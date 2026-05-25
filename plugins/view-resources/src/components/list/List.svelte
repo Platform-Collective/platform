@@ -27,8 +27,9 @@
   import { createQuery, getClient, reduceCalls } from '@hcengineering/presentation'
   import { AnyComponent, AnySvelteComponent } from '@hcengineering/ui'
   import { BuildModelKey, ViewOptionModel, ViewOptions, Viewlet } from '@hcengineering/view'
-  import { createEventDispatcher } from 'svelte'
+  import { createEventDispatcher, onDestroy } from 'svelte'
   import { SelectionFocusProvider } from '../../selection'
+  import { resultIssueCountStore } from '../../stores'
   import { buildConfigLookup } from '../../utils'
   import { getResultOptions, getResultQuery } from '../../viewOptions'
   import ListCategories from './ListCategories.svelte'
@@ -65,6 +66,17 @@
   let fastDocs: Doc[] = []
   let slowDocs: Doc[] = []
 
+  // Plan 2 T8 — every viewlet writes its result-count into the shared
+  // resultIssueCountStore so IssuesView's SearchEmptyState card can render
+  // when search has no matches. queryReady is RE-armed false on every
+  // query change (`$: queryReady = false` below) so a stale count from a
+  // previous query never lingers as truth — without this reset the
+  // SearchEmptyState card could remain stuck on `0` after a successful
+  // search produced new results.
+  let queryReady = false
+  $: if (queryReady) resultIssueCountStore.set(docs.length)
+  onDestroy(() => resultIssueCountStore.set(-1))
+
   $: orderBy = viewOptions.orderBy
 
   const docsQuery = createQuery()
@@ -92,6 +104,12 @@
   $: void update(query, viewOptions)
 
   $: queryNoLookup = noLookup(resultQuery)
+  // Re-arm queryReady whenever the underlying query mutates so the result
+  // count stops claiming the previous query's outcome (see comment above).
+  $: {
+    void queryNoLookup
+    queryReady = false
+  }
 
   let fastQueryIds = new Set<Ref<Doc>>()
 
@@ -112,6 +130,7 @@
     (res) => {
       fastDocs = res
       fastQueryIds = new Set(res.map((it) => it._id))
+      queryReady = true
     },
     { ...categoryQueryOptions, limit: 1000 }
   )

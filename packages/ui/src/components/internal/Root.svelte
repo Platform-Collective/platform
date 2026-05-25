@@ -21,6 +21,7 @@
   import Clock from './Clock.svelte'
   import RootBarExtension from './RootBarExtension.svelte'
   import Settings from './Settings.svelte'
+  import Fullscreen from './Fullscreen.svelte'
   import { isAppFocusedStore } from '../../stores'
 
   let application: AnyComponent | undefined
@@ -277,6 +278,11 @@
           {/if}
         </div>
         <div class="flex-row-reverse flex-gap-0-5" style:-webkit-app-region={'no-drag'}>
+          <!-- Global Fullscreen toggle. Markup-first → visually rightmost in
+               this row-reverse flex container. Sits beyond the Settings
+               (gear) so it occupies the very right edge of the status bar
+               and is reachable from every viewlet (not only Gantt). -->
+          <Fullscreen />
           <Settings />
           <Clock />
           <div class="flex-row-center flex-gap-0-5">
