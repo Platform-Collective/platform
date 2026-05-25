@@ -314,17 +314,46 @@ class ElasticAdapter implements FullTextAdapter {
     from: number | undefined
   ): Promise<IndexedDoc[]> {
     if (query.$search === undefined) return []
+    const raw = String(query.$search)
+    // Route field-targeted queries (e.g. `searchTitle:value`, `identifier:HULY-`,
+    // `comments.message:foo`) through `query_string` so ES can parse the
+    // field-targeted clauses and apply per-field boosts. Restrict the
+    // detector to the set of fields we actually index — typing a bare colon
+    // such as `POC: design review` or a URL must NOT silently route to
+    // `query_string` (which would throw a parsing exception and surface as
+    // zero hits). Anything else falls back to `simple_query_string` for full
+    // backwards compatibility.
+    const KNOWN_FIELD_RE =
+      /(^|\s)(searchTitle|searchShortTitle|identifier|description\.plain|comments\.message|fulltextSummary)\s*:/i
+    const usesQueryString = KNOWN_FIELD_RE.test(raw)
+    const queryBlock: any = usesQueryString
+      ? {
+          query_string: {
+            query: raw,
+            fields: [
+              'searchTitle^3',
+              'searchShortTitle^2',
+              'identifier^2',
+              'description.plain',
+              'comments.message^0.7',
+              'fulltextSummary'
+            ],
+            default_operator: 'AND',
+            allow_leading_wildcard: false
+          }
+        }
+      : {
+          simple_query_string: {
+            query: raw,
+            analyze_wildcard: true,
+            flags: 'OR|PREFIX|PHRASE|FUZZY|NOT|ESCAPE',
+            default_operator: 'and'
+          }
+        }
     const request: any = {
       bool: {
         must: [
-          {
-            simple_query_string: {
-              query: query.$search,
-              analyze_wildcard: true,
-              flags: 'OR|PREFIX|PHRASE|FUZZY|NOT|ESCAPE',
-              default_operator: 'and'
-            }
-          },
+          queryBlock,
           {
             term: {
               workspaceId

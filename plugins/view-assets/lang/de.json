@@ -35,20 +35,18 @@
     "SelectItemAll": "Alle Elemente auswählen",
     "SelectItemNone": "Alle Elemente abwählen",
     "NumberItems": "{count, plural, =0 {keine Elemente} =1 {1 Element} other {# Elemente}}",
-
     "Assigned": "Zugewiesen",
     "Created": "Erstellt",
     "Subscribed": "Abonniert",
-
     "ShowPreview": "Dokumentvorschau anzeigen",
     "ShowActions": "Aktionen-Popup anzeigen",
-
     "ActionPlaceholder": "Suchen oder Befehl ausführen...",
     "General": "Allgemein",
     "Navigation": "Navigation",
     "Editor": "Editor",
     "MarkdownFormatting": "Formatierung",
     "CustomizeView": "Ansicht anpassen",
+    "ConfigureColumns": "Spalten konfigurieren",
     "Filter": "Filter",
     "ClearFilters": "Filter löschen",
     "FilterLessThan": "Weniger als",
@@ -78,7 +76,6 @@
     "Grouping": "Gruppierung",
     "Ordering": "Sortierung",
     "Manual": "Manuell",
-
     "FilteredViews": "Gefilterte Ansichten",
     "NewFilteredView": "Neue gefilterte Ansicht",
     "FilteredViewName": "Name der gefilterten Ansicht",
@@ -119,7 +116,6 @@
     "TableCopiedToClipboard": "Tabelle in die Zwischenablage kopiert",
     "TableCopyFailed": "Tabelle konnte nicht in die Zwischenablage kopiert werden",
     "PublicView": "Öffentlich",
-
     "ChooseIcon": "Symbol wählen",
     "IconColor": "Symbolfarbe wählen",
     "IconCategory": "Symbol",
@@ -158,6 +154,9 @@
     "RoleLabel": "Rolle: {role}",
     "ForbidAttributeChanges": "Änderungen verbieten: ",
     "AllowAttributeChanges": "Änderungen erlauben: ",
-    "RelationshipTable": "Beziehungstabelle"
+    "RelationshipTable": "Beziehungstabelle",
+    "FilterOverflowBadge": "+{count}",
+    "AddFilter": "Filter hinzufügen",
+    "HiddenFilters": "Versteckte Filter"
   }
 }
