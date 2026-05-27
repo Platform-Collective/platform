@@ -22,6 +22,7 @@ export interface ReferenceNodeProps {
   id: Ref<Doc>
   objectclass: Ref<Class<Doc>>
   label: string
+  grantsAccess?: 'true' | 'false'
 }
 
 export interface ReferenceOptions {
@@ -42,7 +43,13 @@ export const ReferenceNode = Node.create<ReferenceOptions>({
     return {
       id: getDataAttribute('id'),
       objectclass: getDataAttribute('objectclass'),
-      label: getDataAttribute('label')
+      label: getDataAttribute('label'),
+      grantsAccess: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-grants-access'),
+        renderHTML: (attributes) =>
+          attributes.grantsAccess == null ? null : { 'data-grants-access': attributes.grantsAccess }
+      } // V3: keep deny flag across edit round-trips
     }
   },
 
@@ -96,9 +103,12 @@ function getAttrs (el: HTMLSpanElement): Attrs | false {
     return false
   }
 
+  const grantsAccess = el.dataset.grantsAccess
+
   return {
     id,
     label,
-    objectclass
+    objectclass,
+    ...(grantsAccess !== undefined ? { grantsAccess } : {})
   }
 }
