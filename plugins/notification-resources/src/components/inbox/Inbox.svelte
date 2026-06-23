@@ -1,5 +1,6 @@
 <!--
 // Copyright © 2023 Hardcore Engineering Inc.
+// Copyright © 2026 Intabia Fusion.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -67,6 +68,8 @@
   }
 
   const linkProviders = client.getModel().findAllSync(view.mixin.LinkIdProvider, {})
+
+  let syncLocationToken = 0
 
   let urlObjectId: Ref<Doc> | undefined = undefined
   let urlObjectClass: Ref<Class<Doc>> | undefined = undefined
@@ -161,7 +164,9 @@
   })
 
   async function syncLocation (newLocation: Location): Promise<void> {
+    const token = ++syncLocationToken
     const loc = await resolveLocation(newLocation)
+    if (token !== syncLocationToken) return
     if (loc?.loc.path[2] !== notificationId) {
       return
     }
@@ -176,6 +181,7 @@
 
     const [id, _class] = decodeObjectURI(loc?.loc.path[3] ?? '')
     const _id = await parseLinkId(linkProviders, id, _class)
+    if (token !== syncLocationToken) return
     urlObjectId = _id
     urlObjectClass = _class
     const thread = loc?.loc.path[4] as Ref<ActivityMessage>
@@ -192,6 +198,7 @@
 
     if (thread !== undefined) {
       const fn = await getResource(chunter.function.OpenThreadInSidebar)
+      if (token !== syncLocationToken) return
       void fn(thread, undefined, undefined, selectedMessageId, { autofocus: false }, false)
     }
 
@@ -200,7 +207,9 @@
         ({ attachedTo }) => attachedTo === selectedMessageId
       )?.$lookup?.attachedTo
       if (selectedMessage === undefined) {
-        selectedMessage = await client.findOne(activity.class.ActivityMessage, { _id: selectedMessageId })
+        const msg = await client.findOne(activity.class.ActivityMessage, { _id: selectedMessageId })
+        if (token !== syncLocationToken) return
+        selectedMessage = msg
       }
     }
   }

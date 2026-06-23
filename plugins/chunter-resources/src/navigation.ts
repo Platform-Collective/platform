@@ -1,3 +1,6 @@
+//
+// Copyright © 2026 Intabia Fusion.
+//
 import {
   closePanel,
   getCurrentLocation,
@@ -198,9 +201,10 @@ export async function replyToThread (message: ActivityMessage, e: Event): Promis
     return
   }
 
-  const newLoc = await buildThreadLink(loc, message.attachedTo, message.attachedToClass, message._id)
-
-  navigate(newLoc)
+  if (loc.path[2] === chunterId || loc.path[2] === notificationId) {
+    const newLoc = await buildThreadLink(loc, message.attachedTo, message.attachedToClass, message._id)
+    navigate(newLoc)
+  }
 }
 
 export async function getMessageLocation (doc: ActivityMessage): Promise<Location> {
@@ -372,11 +376,23 @@ export async function openThreadInSidebar (
   const tabName = await translate(chunter.string.ThreadIn, { name })
   const loc = getCurrentLocation()
 
-  if (loc.path[2] === chunterId || loc.path[2] === notificationId) {
-    loc.path[4] = message._id
+  const appComponent = loc.path[2]
+  let allowedPath: string
+  if (appComponent === chunterId || appComponent === notificationId) {
+    const providers = client.getModel().findAllSync(view.mixin.LinkIdProvider, {})
+    const targetDocLinkId = await getObjectLinkId(providers, message.attachedTo, message.attachedToClass, object)
+    const targetDocUri = encodeObjectURI(targetDocLinkId, message.attachedToClass)
+    const pathCopy = [...loc.path]
+    pathCopy[3] = targetDocUri
+    pathCopy[4] = message._id
+    pathCopy.length = 5
+    allowedPath = pathCopy.join('/')
+  } else {
+    if (loc.path[2] === chunterId || loc.path[2] === notificationId) {
+      loc.path[4] = message._id
+    }
+    allowedPath = loc.path.join('/')
   }
-
-  const allowedPath = loc.path.join('/')
 
   const tabsToClose = currentTabs.filter((t) => t.isPinned !== true && t.allowedPath === allowedPath).map((t) => t.id)
 

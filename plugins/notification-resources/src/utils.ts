@@ -1,6 +1,7 @@
 //
 // Copyright © 2020, 2021 Anticrm Platform Contributors.
 // Copyright © 2021, 2022 Hardcore Engineering Inc.
+// Copyright © 2026 Intabia Fusion.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -534,6 +535,8 @@ async function generateLocation (
   }
 }
 
+let navigateToInboxDocToken = 0
+
 async function navigateToInboxDoc (
   providers: LinkIdProvider[],
   context: Ref<DocNotifyContext>,
@@ -542,6 +545,7 @@ async function navigateToInboxDoc (
   thread?: Ref<ActivityMessage>,
   message?: Ref<ActivityMessage>
 ): Promise<void> {
+  const token = ++navigateToInboxDocToken
   const loc = getLocation()
 
   if (loc.path[2] !== notificationId) {
@@ -553,14 +557,13 @@ async function navigateToInboxDoc (
     return
   }
 
-  const id = await getObjectLinkId(providers, _id, _class)
-
-  loc.path[3] = encodeObjectURI(id, _class)
+  loc.path[3] = encodeObjectURI(_id, _class)
 
   if (thread !== undefined) {
     loc.path[4] = thread
     loc.path.length = 5
     const fn = await getResource(chunter.function.OpenThreadInSidebar)
+    if (token !== navigateToInboxDocToken) return
     void fn(thread, undefined, undefined, message, { autofocus: false })
   } else {
     loc.path[4] = ''
@@ -569,8 +572,22 @@ async function navigateToInboxDoc (
 
   loc.query = { ...loc.query, context, message: message ?? null }
   messageInFocus.set(message)
-  Analytics.handleEvent('inbox.ReadDoc', { objectId: id, objectClass: _class, thread, message })
+  Analytics.handleEvent('inbox.ReadDoc', { objectId: _id, objectClass: _class, thread, message })
   navigate(loc)
+
+  const provider = providers.find(({ _id }) => _id === _class)
+  if (provider !== undefined) {
+    void getObjectLinkId(providers, _id, _class).then((resolvedId) => {
+      if (token !== navigateToInboxDocToken) return
+      if (resolvedId !== _id) {
+        const currentLoc = getCurrentLocation()
+        if (currentLoc.path[2] === notificationId && currentLoc.path[3] === encodeObjectURI(_id, _class)) {
+          currentLoc.path[3] = encodeObjectURI(resolvedId, _class)
+          navigate(currentLoc, true)
+        }
+      }
+    })
+  }
 }
 
 export function resetInboxContext (): void {
