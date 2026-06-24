@@ -40,6 +40,10 @@ import type {
   AccountDB,
   AccountEvent,
   AccountAggregatedInfo,
+  AdminAuditLogCollection,
+  AdminAuditLogEntry,
+  AdminAuditLogListParams,
+  AdminAuditLogListResult,
   DbCollection,
   Integration,
   IntegrationSecret,
@@ -58,8 +62,10 @@ import type {
   WorkspaceOperation,
   WorkspaceStatus,
   WorkspaceStatusData,
-  WorkspacePermission
+  WorkspacePermission,
+  ListAccountsAdminQueryParams
 } from '../types'
+import type { AccountListRow } from '@hcengineering/account-client'
 import { isShallowEqual } from '../utils'
 
 interface MongoIndex {
@@ -392,6 +398,50 @@ interface MigrationInfo {
   lastProcessedTime: number
 }
 
+class MongoAdminAuditLogCollection implements AdminAuditLogCollection {
+  constructor (private readonly db: Db) {}
+
+  private get collection (): Collection<AdminAuditLogEntry & { _id: any }> {
+    return this.db.collection('admin_audit_log')
+  }
+
+  async insert (entry: Omit<AdminAuditLogEntry, 'id' | 'tsMs'>): Promise<void> {
+    await this.collection.insertOne({
+      id: new UUID().toString(),
+      tsMs: Date.now(),
+      adminAccount: entry.adminAccount,
+      targetAccount: entry.targetAccount,
+      action: entry.action,
+      workspaceUuid: entry.workspaceUuid,
+      details: entry.details,
+      batchId: entry.batchId ?? null
+    } as any)
+  }
+
+  async findByTarget (target: AccountUuid, limit: number): Promise<AdminAuditLogEntry[]> {
+    const rows = await this.collection
+      .find({ targetAccount: target } as any)
+      .sort({ tsMs: -1 })
+      .limit(limit)
+      .toArray()
+    return rows.map(({ _id, ...rest }) => rest as AdminAuditLogEntry)
+  }
+
+  async findByAdmin (admin: AccountUuid, limit: number): Promise<AdminAuditLogEntry[]> {
+    const rows = await this.collection
+      .find({ adminAccount: admin } as any)
+      .sort({ tsMs: -1 })
+      .limit(limit)
+      .toArray()
+    return rows.map(({ _id, ...rest }) => rest as AdminAuditLogEntry)
+  }
+
+  async listAuditAdmin (_params: AdminAuditLogListParams): Promise<AdminAuditLogListResult> {
+    // Mongo is not used in production; Postgres impl handles this.
+    throw new Error('listAuditAdmin not implemented for MongoDB')
+  }
+}
+
 export class MongoAccountDB implements AccountDB {
   migration: MongoDbCollection<MigrationInfo, 'key'>
   person: MongoDbCollection<Person, 'uuid'>
@@ -411,6 +461,7 @@ export class MongoAccountDB implements AccountDB {
 
   workspaceMembers: MongoDbCollection<WorkspaceMember>
   workspacePermission: MongoDbCollection<WorkspacePermission>
+  adminAuditLog: AdminAuditLogCollection
 
   constructor (readonly db: Db) {
     this.migration = new MongoDbCollection<MigrationInfo, 'key'>('migration', db, 'key')
@@ -431,6 +482,7 @@ export class MongoAccountDB implements AccountDB {
 
     this.workspaceMembers = new MongoDbCollection<WorkspaceMember>('workspaceMembers', db)
     this.workspacePermission = new MongoDbCollection<WorkspacePermission>('workspacePermissions', db)
+    this.adminAuditLog = new MongoAdminAuditLogCollection(db)
   }
 
   async init (): Promise<void> {
@@ -850,29 +902,20 @@ export class MongoAccountDB implements AccountDB {
     await this.account.update({ uuid: accountId }, { hash: null, salt: null })
   }
 
-  async deleteAccount (accountUuid: AccountUuid): Promise<void> {
-    const socialIds = await this.socialId.find({ personUuid: accountUuid })
-
-    for (const socialIdObj of socialIds) {
-      await this.integrationSecret.deleteMany({ socialId: socialIdObj._id })
-      await this.integration.deleteMany({ socialId: socialIdObj._id })
-    }
-
-    const mailboxes = await this.mailbox.find({ accountUuid })
-
-    for (const mailboxObj of mailboxes) {
-      await this.mailboxSecret.deleteMany({ mailbox: mailboxObj.mailbox })
-    }
-
-    await this.mailbox.deleteMany({ accountUuid })
-
-    await this.socialId.update({ personUuid: accountUuid }, { verifiedOn: undefined })
-    await this.workspaceMembers.deleteMany({ accountUuid })
-    await this.account.deleteMany({ uuid: accountUuid })
-  }
-
   async listAccounts (search?: string, skip?: number, limit?: number): Promise<AccountAggregatedInfo[]> {
     throw new Error('Not implemented')
+  }
+
+  async listAccountsAdmin (_params: ListAccountsAdminQueryParams): Promise<{ rows: AccountListRow[], total: number }> {
+    // Mongo is a dev/test-only backend. The SQL-pushdown implementation lives in
+    // the Postgres backend. Mongo intentionally throws so callers know this path
+    // is not perf-optimised.
+    throw new Error('listAccountsAdmin not implemented for Mongo backend')
+  }
+
+  async pruneAuditOlderThan (_beforeMs: number): Promise<number> {
+    // Same rationale as listAccountsAdmin — v7 audit log lives in CockroachDB.
+    throw new Error('pruneAuditOlderThan not implemented for Mongo backend')
   }
 
   async generatePersonUuid (): Promise<PersonUuid> {
