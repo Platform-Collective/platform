@@ -161,14 +161,25 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
         'data-align': node.attrs.align
       }
 
-      const pos = typeof getPos === 'function' ? getPos() : 0
+      let isLoading = false
+      const updateLoadingState = (loading: boolean): void => {
+        if (isLoading === loading) return
+        isLoading = loading
+        const pos = typeof getPos === 'function' ? getPos() : 0
+        setLoadingState(view, pos, loading)
+      }
+
+      queueMicrotask(() => {
+        updateLoadingState(true)
+      })
+
+      const pos = typeof getPos === 'function' ? (getPos() ?? 0) : 0
       setLoadingState(view, pos, true)
       const setImageProps = (src: string | null, srcset: string | null): void => {
         if (src != null) imgElement.src = src
         if (srcset != null) imgElement.srcset = srcset
         void imgElement.decode().finally(() => {
-          const pos = typeof getPos === 'function' ? getPos() : 0
-          setLoadingState(view, pos, false)
+          updateLoadingState(false)
         })
       }
 

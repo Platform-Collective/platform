@@ -14,9 +14,9 @@
 //
 
 import { getMetadata, translate } from '@hcengineering/platform'
-import { type ActionContext, copyTextToClipboard } from '@hcengineering/presentation'
+import { copyTextToClipboard } from '@hcengineering/presentation'
 import { EmbedNode as BaseEmbedNode, type ReferenceNodeProps } from '@hcengineering/text'
-import textEditor from '@hcengineering/text-editor'
+import textEditor, { type ActionContext } from '@hcengineering/text-editor'
 import { type Editor, type Range } from '@tiptap/core'
 import { Fragment, type Node, type ResolvedPos, Slice } from '@tiptap/pm/model'
 import { type EditorState, Plugin, PluginKey, Selection, type Transaction } from '@tiptap/pm/state'
@@ -51,7 +51,7 @@ export interface EmbedNodeProvider {
 export type EmbedNodeView = (
   editor: Editor,
   root: HTMLDivElement,
-  getPos: () => number
+  getPos: () => number | undefined
 ) => EmbedNodeViewHandle | undefined
 export type EmbedNodeProviderConstructor<T> = (options: T) => EmbedNodeProvider
 
@@ -105,7 +105,7 @@ export const EmbedNode = BaseEmbedNode.extend<EmbedNodeOptions>({
   },
 
   addNodeView () {
-    return ({ node, HTMLAttributes, editor, getPos }) => {
+    return ({ node, editor, getPos }) => {
       const providerPromise = matchUrl(this.options.providers, node.attrs.src)
 
       const root = document.createElement('div')
@@ -113,8 +113,17 @@ export const EmbedNode = BaseEmbedNode.extend<EmbedNodeOptions>({
       root.setAttribute('data-embed-src', node.attrs.src)
       root.classList.add('embed-node')
 
-      const pos = typeof getPos === 'function' ? getPos() : 0
-      setLoadingState(editor.view, pos, true)
+      let isLoading = false
+      const updateLoadingState = (loading: boolean): void => {
+        if (isLoading === loading) return
+        isLoading = loading
+        const pos = typeof getPos === 'function' ? getPos() : 0
+        setLoadingState(editor.view, pos, loading)
+      }
+
+      queueMicrotask(() => {
+        updateLoadingState(true)
+      })
       root.setAttribute('block-editor-blur', 'true')
 
       let handle: EmbedNodeViewHandle | undefined
@@ -128,8 +137,7 @@ export const EmbedNode = BaseEmbedNode.extend<EmbedNodeOptions>({
           }
         })
         .finally(() => {
-          const pos = typeof getPos === 'function' ? getPos() : 0
-          setLoadingState(editor.view, pos, false)
+          updateLoadingState(false)
         })
 
       return {
@@ -506,7 +514,7 @@ export function replacePreviewContent (
   return tr
 }
 
-const StubEmbedNodeView: EmbedNodeView = (editor: Editor, root: HTMLDivElement, getPos: () => number) => {
+const StubEmbedNodeView: EmbedNodeView = (editor: Editor, root: HTMLDivElement, getPos: () => number | undefined) => {
   const hint = document.createElement('p')
   const hintIcon = hint.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'svg'))
   const hintSpan = hint.appendChild(document.createElement('span'))

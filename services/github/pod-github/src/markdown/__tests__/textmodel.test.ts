@@ -672,7 +672,8 @@ A list of closed updated issues`
                     href: 'bar',
                     class: 'cursor-pointer',
                     rel: 'noopener noreferrer',
-                    target: '_blank'
+                    target: '_blank',
+                    title: null
                   }
                 }
               ]
