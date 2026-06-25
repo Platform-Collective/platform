@@ -22,6 +22,7 @@ export interface ReferenceNodeProps {
   id: Ref<Doc>
   objectclass: Ref<Class<Doc>>
   label: string
+  grantsAccess?: 'true' | 'false'
 }
 
 export interface ReferenceOptions {
@@ -42,7 +43,18 @@ export const ReferenceNode = Node.create<ReferenceOptions>({
     return {
       id: getDataAttribute('id'),
       objectclass: getDataAttribute('objectclass'),
-      label: getDataAttribute('label')
+      label: getDataAttribute('label'),
+      grantsAccess: {
+        // V3: keep the deny flag across edit round-trips. parseHTML normalises
+        // a missing attribute to `undefined` rather than `null` so the runtime
+        // value matches the public type `'true' | 'false' | undefined` declared
+        // on ReferenceMarkupNode.attrs — a `null` would break strict
+        // `=== undefined` checks downstream.
+        default: undefined,
+        parseHTML: (element) => element.getAttribute('data-grants-access') ?? undefined,
+        renderHTML: (attributes) =>
+          attributes.grantsAccess == null ? null : { 'data-grants-access': attributes.grantsAccess }
+      }
     }
   },
 
@@ -77,6 +89,11 @@ export const ReferenceNode = Node.create<ReferenceOptions>({
           'data-id': node.attrs.id,
           'data-objectclass': node.attrs.objectclass,
           'data-label': node.attrs.label,
+          // V3: belt-and-suspenders — explicitly emit data-grants-access here
+          // (in addition to the per-attribute renderHTML in addAttributes) so
+          // the deny flag is rendered even if the attribute-renderer merge
+          // path is bypassed by a downstream override.
+          ...(node.attrs.grantsAccess != null ? { 'data-grants-access': node.attrs.grantsAccess } : {}),
           class: 'antiMention'
         },
         this.options.HTMLAttributes,
@@ -96,9 +113,12 @@ function getAttrs (el: HTMLSpanElement): Attrs | false {
     return false
   }
 
+  const grantsAccess = el.dataset.grantsAccess
+
   return {
     id,
     label,
-    objectclass
+    objectclass,
+    ...(grantsAccess !== undefined ? { grantsAccess } : {})
   }
 }

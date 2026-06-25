@@ -630,7 +630,40 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
 
     let clientFilterSpaces: Set<Ref<Space>> | undefined
 
-    if (!isSystem(account, ctx) && account.role !== AccountRole.DocGuest && domain !== DOMAIN_MODEL) {
+    // When a class opts into collaborator-grants-read security AND the caller is a Guest/ReadOnlyGuest,
+    // we deliberately skip the middleware-level space filter. The Postgres adapter's `collabRes`
+    // OR-branch (see postgres/src/storage.ts, getSecurityClause) joins Collaborator records into the
+    // visibility check, so Guests can read individual docs they were added to as Collaborator even
+    // when they are not members of the owning Space. Filtering by space here would strip those docs
+    // before the adapter ever sees the query.
+    const collabSec =
+      domain !== DOMAIN_MODEL
+        ? getClassCollaborators(this.context.modelDb, this.context.hierarchy, _class)
+        : undefined
+    const collabReadBypass =
+      (collabSec?.provideSecurity === true || collabSec?.provideAttachedSecurity === true) &&
+      [AccountRole.Guest, AccountRole.ReadOnlyGuest].includes(account.role)
+    // Self-Collaborator visibility: let the Postgres adapter's self-collab OR-branch
+    // (storage.ts, addSecurity) fire for any non-System caller when reading the
+    // Collaborator class itself. Required for queries like the tracker "Subscribed"
+    // tab `{collaborator: self, attachedToClass: Issue}`, which must surface the
+    // user's own subscriptions even on docs in non-member spaces.
+    const selfCollabBypass = this.context.hierarchy.isDerived(_class, core.class.Collaborator)
+    // Containing-Space visibility for collab-only Guests: let the Postgres adapter's
+    // space-collab OR-branch surface Spaces that host docs the caller is a
+    // Collaborator on. Required so the project/space nav tree can list projects
+    // where the user is collab-only (no member status).
+    const spaceCollabBypass =
+      isSpace && [AccountRole.Guest, AccountRole.ReadOnlyGuest].includes(account.role)
+
+    if (
+      !isSystem(account, ctx) &&
+      account.role !== AccountRole.DocGuest &&
+      domain !== DOMAIN_MODEL &&
+      !collabReadBypass &&
+      !selfCollabBypass &&
+      !spaceCollabBypass
+    ) {
       if (!isOwner(account, ctx) || !isSpace || !showArchived) {
         if (newQuery[field] !== undefined) {
           const res = await this.mergeQuery(ctx, account, newQuery[field], domain, isSpace, showArchived)
