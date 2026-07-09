@@ -45,10 +45,15 @@ if (fs.existsSync(prodPublic)) {
   }
 }
 
-// Use mobile-specific config (full backend URLs) so fallback page can reach the dev server
-const configMobile = path.join(prodPublic, 'config-mobile.json')
-if (fs.existsSync(configMobile)) {
-  fs.cpSync(configMobile, path.join(webDir, 'config.json'))
+// Use mobile-specific config (full backend URLs) so fallback page can reach the dev server.
+// MOBILE_CONFIG selects another file from dev/prod/public (e.g. config-mobile-huly.json in CI).
+const configName = process.env.MOBILE_CONFIG ?? 'config-mobile.json'
+const configFile = path.join(prodPublic, configName)
+if (fs.existsSync(configFile)) {
+  fs.cpSync(configFile, path.join(webDir, 'config.json'))
+} else if (process.env.MOBILE_CONFIG !== undefined) {
+  console.error(`MOBILE_CONFIG=${configName} not found in dev/prod/public`)
+  process.exit(1)
 }
 
 console.log('Web assets copied to mobile/www')
