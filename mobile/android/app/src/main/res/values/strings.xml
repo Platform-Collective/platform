@@ -2,8 +2,8 @@
 <resources>
     <string name="app_name">Huly</string>
     <string name="title_activity_main">Huly</string>
-    <string name="package_name">io.huly.platform</string>
-    <string name="custom_url_scheme">io.huly.platform</string>
+    <string name="package_name">org.platformcollective.app</string>
+    <string name="custom_url_scheme">org.platformcollective.app</string>
 
     <!-- Error screen strings -->
     <string name="error_title">Connection Error</string>

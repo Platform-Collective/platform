@@ -16,7 +16,7 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'io.huly.platform',
+  appId: 'org.platformcollective.app',
   appName: 'Huly',
   webDir: 'www',
   // No server.url: app loads from bundled www/ (local resources) so it opens without a server.

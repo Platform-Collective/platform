@@ -30,7 +30,7 @@ From the repo root:
 
 ## Configuration
 
-- **capacitor.config.ts**: `appId` is `io.huly.platform`; `appName` is `Huly`. Change these if you need a different bundle ID or display name.
+- **capacitor.config.ts**: `appId` is `org.platformcollective.app`; `appName` is `Huly`. Change these if you need a different bundle ID or display name.
 - **Local-first load**: The app loads from the bundled `www/` directory (no `server.url`), so it opens without requiring a connection to any server. The login page and shell are served from local resources.
 - **Backend URL**: The web app reads `/config.json` from the bundle. The copy script uses `dev/prod/public/config-mobile.json` as `www/config.json` when present (full backend URLs); otherwise it copies `config.json`. Set the `MOBILE_CONFIG` environment variable to pick a different file from `dev/prod/public` (e.g. `MOBILE_CONFIG=config-mobile-huly.json npm run sync` for the huly.app cloud backend — this is what CI uses). On Android emulator, replace `localhost` with `10.0.2.2` in `config-mobile.json` if the app cannot reach the backend.
 - **Server unavailable**: When the user tries to use backend features (e.g. login) and the server is unreachable, the app shows a “Server unavailable” message in the login (or relevant) UI. To use the webpack dev server for live reload, temporarily add `server: { url: 'http://localhost:8080', cleartext: true }` to `capacitor.config.ts` and run `npx cap sync`.

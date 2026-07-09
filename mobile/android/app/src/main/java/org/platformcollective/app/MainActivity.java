@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-package io.huly.platform;
+package org.platformcollective.app;
 
 import android.Manifest;
 import android.app.DownloadManager;

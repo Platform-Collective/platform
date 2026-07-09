@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "io.huly.platform"
+    namespace "org.platformcollective.app"
     compileSdk rootProject.ext.compileSdkVersion
     sourceSets {
         main.assets.exclude '**/*.gz'
     }
     defaultConfig {
-        applicationId "io.huly.platform"
+        applicationId "org.platformcollective.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Overridable in CI to distinguish test builds (see .github/workflows/mobile.yml)
