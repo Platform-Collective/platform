@@ -15,14 +15,17 @@
 
 package io.huly.platform;
 
+import android.Manifest;
 import android.app.DownloadManager;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -49,6 +52,7 @@ import com.getcapacitor.BridgeWebViewClient;
  */
 public class MainActivity extends BridgeActivity {
     private static final String TAG = "HulyMainActivity";
+    private static final int REQUEST_POST_NOTIFICATIONS = 1001;
 
     // Error codes we handle
     private static final int ERROR_HOST_LOOKUP = -2;      // ERR_NAME_NOT_RESOLVED
@@ -82,6 +86,9 @@ public class MainActivity extends BridgeActivity {
         // Set up network monitoring
         setupNetworkMonitoring();
 
+        // Android 13+ requires a runtime grant before any notification can be shown
+        requestNotificationPermissionIfNeeded();
+
         // Check initial connectivity
         if (!isNetworkAvailable()) {
             Log.w(TAG, "No network available on startup");
@@ -98,6 +105,17 @@ public class MainActivity extends BridgeActivity {
             if (cm != null) {
                 cm.unregisterNetworkCallback(networkCallback);
             }
+        }
+    }
+
+    /**
+     * Ask for notification permission on Android 13+. Declared in the manifest,
+     * but notifications stay silently blocked until the user grants it at runtime.
+     */
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, REQUEST_POST_NOTIFICATIONS);
         }
     }
 

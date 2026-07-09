@@ -65,8 +65,8 @@ When the server is unavailable:
 
 ## Permissions and downloads
 
-- **Android**: camera, microphone and notification permissions are declared in `AndroidManifest.xml`; Capacitor's built-in `BridgeWebChromeClient` prompts for them at runtime when the web app calls `getUserMedia` (calls, voice messages, photo capture). Attachment downloads from the WebView are routed to the system `DownloadManager` (see `setupDownloadListener` in `MainActivity.java`) and land in the public Downloads folder. `blob:` URLs are not supported by DownloadManager and are currently ignored.
-- **iOS**: usage descriptions for camera, microphone and photo library are set in `Info.plist` (required — iOS kills the app on access without them).
+- **Android**: camera, microphone and notification permissions are declared in `AndroidManifest.xml`; Capacitor's built-in `BridgeWebChromeClient` prompts for camera/mic at runtime when the web app calls `getUserMedia` (calls, voice messages, photo capture). Notification permission (Android 13+) is requested once on first launch (`requestNotificationPermissionIfNeeded` in `MainActivity.java`). Attachment downloads from the WebView are routed to the system `DownloadManager` (see `setupDownloadListener`) and land in the public Downloads folder. `blob:` URLs are not supported by DownloadManager and are currently ignored.
+- **iOS**: usage descriptions for camera, microphone and photo library are set in `Info.plist` (required — iOS kills the app on access without them). Capacitor's `WebViewDelegationHandler` auto-grants WKWebView media-capture requests; the one-time system permission dialogs are driven by the usage descriptions.
 - **Known gap**: OAuth logins (GitHub/Google) do not complete inside the WebView — the provider redirects back to the web origin, not the app. Email/password login works. Fixing this requires opening OAuth in the system browser plus a deep-link return (planned).
 
 ## Icons and splash
