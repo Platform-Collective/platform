@@ -53,6 +53,7 @@ import {
   type Ref,
   type RefTo,
   type Relation,
+  type RelationMetadata,
   type Sequence,
   type Space,
   type Timestamp,
@@ -149,6 +150,8 @@ export class TAssociation extends TDoc implements Association {
   nameB!: string
 
   type!: '1:1' | '1:N' | 'N:N'
+
+  automationOnly?: boolean
 }
 
 @Model(core.class.Relation, core.class.Doc, DOMAIN_RELATION)
@@ -159,6 +162,22 @@ export class TRelation extends TDoc implements Relation {
   docB!: Ref<Doc<Space>>
 
   association!: Ref<Association>
+}
+
+@Model(core.class.RelationMetadata, core.class.Doc, DOMAIN_MODEL)
+export class TRelationMetadata extends TDoc implements RelationMetadata {
+  @Prop(TypeRef(core.class.Class), core.string.Class)
+  @Index(IndexKind.Indexed)
+    sourceClass!: Ref<Class<Doc>>
+
+  @Prop(TypeRef(core.class.Class), core.string.TargetClass)
+    targetClass!: Ref<Class<Doc>>
+
+  @Prop(TypeString(), core.string.ClassPropertyLabel)
+    field!: string
+
+  @Prop(TypeString(), core.string.Description)
+    direction?: 'forward' | 'inverse'
 }
 
 @Model(core.class.Blob, core.class.Doc, DOMAIN_BLOB)
@@ -228,6 +247,7 @@ export class TAttribute extends TDoc implements AnyAttribute {
   isCustom?: boolean
   defaultValue?: any
   automationOnly?: boolean
+  required?: boolean
 }
 
 @Model(core.class.Type, core.class.Obj, DOMAIN_MODEL)
@@ -339,6 +359,7 @@ export class TVersion extends TDoc implements Version {
 export class TMigrationState extends TDoc implements MigrationState {
   plugin!: string
   state!: string
+  durationMs?: number
 }
 
 @Model(core.class.PluginConfiguration, core.class.Doc, DOMAIN_MODEL)
@@ -416,6 +437,7 @@ export class TClassCollaborators extends TDoc implements ClassCollaborators<Doc>
   allFields?: boolean
   fields!: (keyof Doc)[]
   provideSecurity?: boolean
+  provideAttachedSecurity?: boolean
 }
 
 @Model(core.class.Collaborator, core.class.Doc, DOMAIN_COLLABORATOR)
@@ -426,4 +448,7 @@ export class TCollaborator extends TAttachedDoc implements Collaborator {
 @MMixin(core.mixin.VersionableClass, core.class.Class)
 export class TVersionableClass extends TClass implements VersionableClass {
   enabled!: boolean
+  excludedProperties?: string[]
+  excludedRelations?: string[] // ${associationId}_${a|b}
+  excludeMixins?: Ref<Mixin<Doc>>[]
 }

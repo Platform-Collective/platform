@@ -25,17 +25,19 @@ import EnumSetting from './components/EnumSetting.svelte'
 import Integrations from './components/integrations/Integrations.svelte'
 import General from './components/General.svelte'
 import Backup from './components/Backup.svelte'
-import Owners from './components/Owners.svelte'
+import Members from './components/Members.svelte'
 import Password from './components/Password.svelte'
 import Privacy from './components/Privacy.svelte'
 import Profile from './components/Profile.svelte'
 import Settings from './components/Settings.svelte'
+import TwoFactorSettings from './components/TwoFactorSettings.svelte'
 
 import { Analytics } from '@hcengineering/analytics'
 import ClassAttributes from './components/ClassAttributes.svelte'
 import ClassAttributesList from './components/ClassAttributesList.svelte'
 import Configure from './components/Configure.svelte'
 import InviteSetting from './components/InviteSetting.svelte'
+import UserRoleSelect from './components/UserRoleSelect.svelte'
 import PermissionPresenter from './components/presenters/PermissionPresenter.svelte'
 import AttributePermissionPresenter from './components/presenters/AttributePermissionPresenter.svelte'
 import ClassPermissionPresenter from './components/presenters/ClassPermissionPresenter.svelte'
@@ -60,6 +62,7 @@ import RefEditor from './components/typeEditors/RefEditor.svelte'
 import IdentifierTypeEditor from './components/typeEditors/IdentifierTypeEditor.svelte'
 import RelationSetting from './components/RelationSetting.svelte'
 import RoleAssignmentEditor from './components/typeEditors/RoleAssignmentEditor.svelte'
+import MarkupTypeEditor from './components/typeEditors/MarkupTypeEditor.svelte'
 import StringTypeEditor from './components/typeEditors/StringTypeEditor.svelte'
 import WorkspaceSettings from './components/WorkspaceSettings.svelte'
 import SettingsWidget from './components/SettingsWidget.svelte'
@@ -70,14 +73,19 @@ import EditRelation from './components/EditRelation.svelte'
 import AddSocialId from './components/socialIds/AddSocialId.svelte'
 import AddEmailSocialId from './components/socialIds/AddEmailSocialId.svelte'
 import Mailboxes from './components/Mailboxes.svelte'
+import GuestPermissionsSettings from './components/GuestPermissionsSettings.svelte'
 import OfficeSettings from './components/OfficeSettings.svelte'
 import BaseIntegrationState from './components/integrations/BaseIntegrationState.svelte'
 import IntegrationStateRow from './components/integrations/IntegrationStateRow.svelte'
 import EmployeeRefEditor from './components/typeEditors/EmployeeRefEditor.svelte'
 import setting from './plugin'
 import { filterDescendants, getOwnerFirstName, getOwnerLastName, getOwnerPosition, getValue } from './utils'
+import { hasRoleCapabilityAsync } from './hasRoleCapabilityAsync'
 
 export * from './store'
+export { hasRoleCapability, getRolesForCapability } from './roleCapability'
+export { hasRoleCapabilityAsync } from './hasRoleCapabilityAsync'
+export * from './inviteSettingsUtils'
 export {
   ClassAttributes,
   ClassAttributesList,
@@ -137,7 +145,7 @@ export default async (): Promise<Resources> => ({
     EnumSetting,
     General,
     Backup,
-    Owners,
+    Members,
     CreateMixin,
     InviteSetting,
     Configure,
@@ -149,6 +157,7 @@ export default async (): Promise<Resources> => ({
     ClassPermissionPresenter,
     SpaceTypeDescriptorPresenter,
     SpaceTypeGeneralSectionEditor,
+    MarkupTypeEditor,
     SpaceTypePropertiesSectionEditor,
     SpaceTypeRolesSectionEditor,
     RoleEditor,
@@ -158,15 +167,19 @@ export default async (): Promise<Resources> => ({
     CreateRelation,
     EditRelation,
     Mailboxes,
+    GuestPermissionsSettings,
     OfficeSettings,
     AddSocialId,
     AddEmailSocialId,
-    EmployeeRefEditor
+    EmployeeRefEditor,
+    UserRoleSelect,
+    TwoFactorSettings
   },
   actionImpl: {
     DeleteMixin
   },
   function: {
+    HasRoleCapability: hasRoleCapabilityAsync,
     GetOwnerFirstName: getOwnerFirstName,
     GetOwnerLastName: getOwnerLastName,
     GetOwnerPosition: getOwnerPosition,

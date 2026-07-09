@@ -18,10 +18,12 @@
   import core, { AnyAttribute, Class, Ref } from '@hcengineering/core'
   import { translateCB } from '@hcengineering/platform'
   import presentation, { getClient } from '@hcengineering/presentation'
-  import { Process, Step } from '@hcengineering/process'
-  import { Button, eventToHTMLElement, Label, SelectPopup, showPopup, tooltip } from '@hcengineering/ui'
+  import { createContext, Process, Step } from '@hcengineering/process'
+  import { Button, eventToHTMLElement, Label, SelectPopup, showPopup, Toggle, tooltip } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import ParamsEditor from './ParamsEditor.svelte'
+  import plugin from '../../plugin'
+  import { generateContextId } from '../../utils'
 
   export let process: Process
   export let step: Step<Card>
@@ -29,14 +31,16 @@
   const dispatch = createEventDispatcher()
 
   step.params.title = step.params.title ?? ''
+  step.params.targetClass = step.params.targetClass ?? step.params._class ?? process.masterTag
   step.params._class = step.params._class ?? process.masterTag
 
   let params = step.params
 
-  let _class: Ref<Class<MasterTag>> = (params._class as Ref<Class<MasterTag>>) ?? process.masterTag
+  let targetClass: Ref<Class<MasterTag>> =
+    (params.targetClass as Ref<Class<MasterTag>>) ?? (params._class as Ref<Class<MasterTag>>) ?? process.masterTag
 
   const client = getClient()
-  const hierarchy = client.getHierarchy()
+  const h = client.getHierarchy()
 
   translateCB(cardPlugin.string.Card, {}, undefined, (res) => {
     setName(res)
@@ -59,8 +63,8 @@
   }
 
   function getKeys (_class: Ref<Class<MasterTag>>): AnyAttribute[] {
-    const ignoreKeys = ['_class', 'parent', 'attachments', 'todos']
-    const attributes = hierarchy.getAllAttributes(_class, core.class.Doc)
+    const ignoreKeys = ['_class', 'targetClass', 'parent', 'attachments', 'todos']
+    const attributes = h.getAllAttributes(_class, core.class.Doc)
     const res: AnyAttribute[] = []
     for (const [key, attr] of attributes) {
       if (attr.hidden === true) continue
@@ -71,10 +75,10 @@
   }
 
   let keys = Object.keys(params).filter((key) => {
-    return key !== '_class'
+    return key !== '_class' && key !== 'targetClass' && key !== 'askRequired' && key !== 'requiredFields'
   })
 
-  $: allAttrs = getKeys(_class)
+  $: allAttrs = getKeys(targetClass)
   $: possibleAttrs = allAttrs.filter((attr) => !keys.includes(attr.name))
 
   function addKey (key: string): void {
@@ -112,25 +116,106 @@
 
   function typeChange (_id: Ref<Class<MasterTag>>): void {
     if (_id === undefined) return
-    allAttrs = getKeys(_id)
+    const attrKeys = ['_class', 'targetClass', 'askRequired', 'requiredFields', ...getKeys(_id).map((p) => p.name)]
     const oldParams = { ...params }
     params = {}
-    for (const attr of allAttrs) {
-      const key = attr.name
+    for (const key of attrKeys) {
       if (oldParams[key] !== undefined) {
         ;(params as any)[key] = oldParams[key]
       }
     }
-    keys = Object.keys(params)
-    params._class = _class
+    keys = Object.keys(params).filter((key) => {
+      return key !== '_class' && key !== 'targetClass' && key !== 'askRequired' && key !== 'requiredFields'
+    })
+    if (params.targetClass !== _id) {
+      params._class = _id
+      params.targetClass = _id
+    }
+    if (params.askRequired) {
+      params.requiredFields = createContext({
+        type: 'userRequest',
+        id: generateContextId(),
+        _class: _id,
+        key: 'requiredFields'
+      })
+    } else {
+      delete params.requiredFields
+    }
     step.params = params
     if (step.context != null) {
-      step.context._class = _class
+      step.context._class = _id
     }
+    step = step
     dispatch('change', step)
   }
 
-  $: typeChange(_class)
+  $: typeChange(targetClass)
+
+  $: subclasses = h.getDescendants(targetClass).filter((c) => !h.isMixin(c) && c !== targetClass)
+  $: baseTargetType = isBaseTypeWithSubtypes(targetClass)
+
+  let askSubclass = params._class !== params.targetClass
+  $: askSubclass = params._class !== params.targetClass
+  $: if (baseTargetType && !askSubclass) {
+    setAskSubclass()
+  }
+
+  function setAskSubclass (): void {
+    const context = createContext({
+      type: 'userRequest',
+      id: generateContextId(),
+      _class: targetClass,
+      key: '_class'
+    })
+    params._class = context
+    step.params = params
+    dispatch('change', step)
+  }
+
+  function changeAskSubclass (e: CustomEvent<boolean>): void {
+    if (e.detail !== undefined) {
+      if (!e.detail && baseTargetType) return
+      if (e.detail) {
+        setAskSubclass()
+        return
+      }
+      params._class = targetClass
+      step.params = params
+      dispatch('change', step)
+    }
+  }
+
+  function isBaseTypeWithSubtypes (_class: Ref<Class<MasterTag>>): boolean {
+    const clazz = h.getClass(_class) as MasterTag | undefined
+    if (clazz?.baseType !== true) return false
+
+    return h.getDescendants(_class).some((descendant) => {
+      if (descendant === _class || h.isMixin(descendant)) return false
+      const descendantClass = h.getClass(descendant) as MasterTag | undefined
+      return descendantClass?._class === cardPlugin.class.MasterTag && descendantClass.removed !== true
+    })
+  }
+
+  let askRequired = params.askRequired ?? false
+  $: askRequired = params.askRequired ?? false
+
+  function changeAskRequired (e: CustomEvent<boolean>): void {
+    if (e.detail !== undefined) {
+      params.askRequired = e.detail
+      if (e.detail) {
+        params.requiredFields = createContext({
+          type: 'userRequest',
+          id: generateContextId(),
+          _class: targetClass,
+          key: 'requiredFields'
+        })
+      } else {
+        delete params.requiredFields
+      }
+      step.params = params
+      dispatch('change', step)
+    }
+  }
 </script>
 
 <div class="grid">
@@ -143,18 +228,42 @@
     <Label label={cardPlugin.string.MasterTag} />
   </span>
   <TypeSelector
-    value={_class}
+    value={targetClass}
     width={'100%'}
     on:change={(e) => {
       if (e.detail !== undefined) {
-        _class = e.detail
+        targetClass = e.detail
       }
     }}
   />
+  {#if subclasses.length > 0}
+    <span
+      class="labelOnPanel"
+      use:tooltip={{
+        props: { label: plugin.string.AskSubclass }
+      }}
+    >
+      <Label label={plugin.string.AskSubclass} />
+    </span>
+    <div>
+      <Toggle on={baseTargetType || askSubclass} disabled={baseTargetType} on:change={changeAskSubclass} />
+    </div>
+  {/if}
+  <span
+    class="labelOnPanel"
+    use:tooltip={{
+      props: { label: plugin.string.AskRequired }
+    }}
+  >
+    <Label label={plugin.string.AskRequired} />
+  </span>
+  <div>
+    <Toggle on={askRequired} on:change={changeAskRequired} />
+  </div>
 </div>
 <div class="divider" />
-{#key _class}
-  <ParamsEditor {_class} {process} {keys} {params} allowRemove on:remove={remove} on:change={change} />
+{#key targetClass}
+  <ParamsEditor _class={targetClass} {process} {keys} {params} allowRemove on:remove={remove} on:change={change} />
 {/key}
 {#if possibleAttrs.length > 0}
   <div class="flex-center mt-4">

@@ -36,7 +36,8 @@ import {
   withAuthorization,
   withBlob,
   withWorkspace,
-  withReadonly
+  withReadonly,
+  withOptionalAuth
 } from './middleware'
 import {
   handleBlobDelete,
@@ -143,7 +144,19 @@ export async function createServer (
   const app = express()
   app.use(cors())
   app.use(express.json({ limit: '50mb' }))
-  app.use(fileUpload({ useTempFiles: true, tempFileDir: tempDir.path }))
+  app.use(
+    fileUpload({
+      useTempFiles: true,
+      tempFileDir: tempDir.path,
+      limits: { fileSize: config.MaxFileSize },
+      abortOnLimit: true,
+      // Returned to the client when a file exceeds MaxFileSize. Caught by the
+      // existing 'File too large' branch in sendErrorToAnalytics below.
+      limitHandler: (_req, res) => {
+        res.status(413).send({ code: 413, message: 'File too large' })
+      }
+    })
+  )
   app.use(keepAlive({ timeout: KEEP_ALIVE_TIMEOUT, max: KEEP_ALIVE_MAX }))
 
   const childLogger = ctx.logger.childLogger?.('requests', { enableConsole: 'true' })
@@ -176,13 +189,33 @@ export async function createServer (
 
   app.get('/blob/:workspace', withAdminAuthorization, withWorkspace, wrapRequest(ctx, 'listBlobs', handleBlobList))
 
-  app.head('/blob/:workspace/:name', withBlob, wrapRequest(ctx, 'headBlob', handleBlobHead))
+  app.head(
+    '/blob/:workspace/:name',
+    withOptionalAuth(config.Secure),
+    withBlob,
+    wrapRequest(ctx, 'headBlob', handleBlobHead)
+  )
 
-  app.head('/blob/:workspace/:name/:filename', withBlob, wrapRequest(ctx, 'headBlob', handleBlobHead))
+  app.head(
+    '/blob/:workspace/:name/:filename',
+    withOptionalAuth(config.Secure),
+    withBlob,
+    wrapRequest(ctx, 'headBlob', handleBlobHead)
+  )
 
-  app.get('/blob/:workspace/:name', withBlob, wrapRequest(ctx, 'getBlob', handleBlobGet))
+  app.get(
+    '/blob/:workspace/:name',
+    withOptionalAuth(config.Secure),
+    withBlob,
+    wrapRequest(ctx, 'getBlob', handleBlobGet)
+  )
 
-  app.get('/blob/:workspace/:name/:filename', withBlob, wrapRequest(ctx, 'getBlob', handleBlobGet))
+  app.get(
+    '/blob/:workspace/:name/:filename',
+    withOptionalAuth(config.Secure),
+    withBlob,
+    wrapRequest(ctx, 'getBlob', handleBlobGet)
+  )
 
   app.delete('/blob/:workspace/:name', withAuthorization, withBlob, wrapRequest(ctx, 'deleteBlob', handleBlobDelete))
 
@@ -206,7 +239,12 @@ export async function createServer (
 
   // Blob meta
 
-  app.get('/meta/:workspace/:name', withBlob, wrapRequest(ctx, 'getMeta', handleMetaGet))
+  app.get(
+    '/meta/:workspace/:name',
+    withOptionalAuth(config.Secure),
+    withBlob,
+    wrapRequest(ctx, 'getMeta', handleMetaGet)
+  )
 
   app.put('/meta/:workspace/:name', withAuthorization, withBlob, wrapRequest(ctx, 'putMeta', handleMetaPut))
 

@@ -13,12 +13,28 @@
 // limitations under the License.
 //
 
-import card, { Card, MasterTag, Tag } from '@hcengineering/card'
+import activity from '@hcengineering/activity'
+import card, { Card, cardId, MasterTag, Tag } from '@hcengineering/card'
+import communication, { Direct } from '@hcengineering/communication'
+import {
+  AddCollaboratorsEvent,
+  CardEventType,
+  CreatePeerEvent,
+  MessageEventType,
+  NotificationEventType,
+  PeerEventType,
+  RemoveCardEvent,
+  ThreadPatchEvent,
+  UpdateCardTypeEvent
+} from '@hcengineering/communication-sdk-types'
+import { CardPeer } from '@hcengineering/communication-types'
+import contact, { Employee, formatName, Person } from '@hcengineering/contact'
 import core, {
   AccountUuid,
   AnyAttribute,
   ArrOf,
   Class,
+  concatLink,
   Data,
   Doc,
   DocumentUpdate,
@@ -41,24 +57,82 @@ import core, {
   TxRemoveDoc,
   TxUpdateDoc
 } from '@hcengineering/core'
-import { TriggerControl } from '@hcengineering/server-core'
-import setting from '@hcengineering/setting'
-import view from '@hcengineering/view'
-import {
-  AddCollaboratorsEvent,
-  CardEventType,
-  NotificationEventType,
-  PeerEventType,
-  RemoveCardEvent,
-  UpdateCardTypeEvent,
-  CreatePeerEvent,
-  ThreadPatchEvent,
-  MessageEventType
-} from '@hcengineering/communication-sdk-types'
+import { getMetadata, translate } from '@hcengineering/platform'
 import { getEmployee, getPersonSpaces } from '@hcengineering/server-contact'
-import contact, { Employee, formatName, Person } from '@hcengineering/contact'
-import communication, { Direct } from '@hcengineering/communication'
-import { CardPeer } from '@hcengineering/communication-types'
+import serverCore, { TriggerControl } from '@hcengineering/server-core'
+import setting from '@hcengineering/setting'
+import view, { type BuildModelKey, type Viewlet } from '@hcengineering/view'
+import { workbenchId } from '@hcengineering/workbench'
+
+type ViewletConfigItem = BuildModelKey | string
+interface IndexedViewletConfigItem {
+  item: ViewletConfigItem
+  index: number
+}
+
+function getViewletConfigKey (item: ViewletConfigItem): string {
+  return typeof item === 'string' ? item : item.key
+}
+
+function getAttributeKey (key: string): string {
+  if (key.startsWith('$lookup.')) {
+    return key.slice('$lookup.'.length)
+  }
+  const dotIndex = key.lastIndexOf('.')
+  return dotIndex === -1 ? key : key.slice(dotIndex + 1)
+}
+
+function isSourceAttribute (control: TriggerControl, sourceClass: Ref<Class<Doc>>, key: string): boolean {
+  return control.hierarchy.getAllAttributes(sourceClass).has(getAttributeKey(key))
+}
+
+function syncViewletConfigOrder (
+  control: TriggerControl,
+  sourceClass: Ref<Class<Doc>>,
+  previousSourceConfig: ViewletConfigItem[],
+  sourceConfig: ViewletConfigItem[],
+  targetConfig: ViewletConfigItem[]
+): ViewletConfigItem[] {
+  const sourceKeys = new Set(sourceConfig.map(getViewletConfigKey))
+  const previousSourceKeys = new Set(previousSourceConfig.map(getViewletConfigKey))
+  const targetByKey = new Map<string, IndexedViewletConfigItem[]>()
+  for (const [index, item] of targetConfig.entries()) {
+    const key = getViewletConfigKey(item)
+    const items = targetByKey.get(key) ?? []
+    items.push({ item, index })
+    targetByKey.set(key, items)
+  }
+
+  const sourceItems: ViewletConfigItem[] = []
+  const usedIndexes = new Set<number>()
+  for (const sourceItem of sourceConfig) {
+    const key = getViewletConfigKey(sourceItem)
+    const targetItem = targetByKey.get(key)?.shift()
+    const item = targetItem?.item ?? sourceItem
+    sourceItems.push(item)
+    if (targetItem !== undefined) {
+      usedIndexes.add(targetItem.index)
+    }
+  }
+
+  const synced = [...sourceItems]
+  for (const [index, targetItem] of targetConfig.entries()) {
+    if (usedIndexes.has(index)) continue
+
+    const key = getViewletConfigKey(targetItem)
+    if (!sourceKeys.has(key) && (previousSourceKeys.has(key) || isSourceAttribute(control, sourceClass, key))) {
+      continue
+    }
+
+    synced.splice(Math.min(index, synced.length), 0, targetItem)
+  }
+
+  return synced
+}
+
+function isConfigOrderChanged (current: ViewletConfigItem[], next: ViewletConfigItem[]): boolean {
+  return current.length !== next.length || current.some((item, index) => item !== next[index])
+}
 
 async function OnAttribute (ctx: TxCreateDoc<AnyAttribute>[], control: TriggerControl): Promise<Tx[]> {
   const attr = TxProcessor.createDoc2Doc(ctx[0])
@@ -118,28 +192,82 @@ async function OnAttributeRemove (ctx: TxRemoveDoc<AnyAttribute>[], control: Tri
   if (attr === undefined) return []
   if (control.hierarchy.isDerived(attr.attributeOf, card.class.Card)) {
     const desc = control.hierarchy.getDescendants(attr.attributeOf)
+    const forbidden = new Set(desc.map((d) => `${d}.${attr.name}`))
+    forbidden.add(attr.name)
+
     const res: Tx[] = []
-    for (const des of desc) {
-      const viewlets = control.modelDb.findAllSync(view.class.Viewlet, { attachTo: des })
-      for (const viewlet of viewlets) {
+    const viewlets = control.modelDb.findAllSync(view.class.Viewlet, {})
+    for (const viewlet of viewlets) {
+      const filteredConfig = viewlet.config.filter((p) => {
+        const key = typeof p === 'string' ? p : (p as any).key
+        return !forbidden.has(key)
+      })
+      if (filteredConfig.length !== viewlet.config.length) {
         res.push(
           control.txFactory.createTxUpdateDoc(viewlet._class, viewlet.space, viewlet._id, {
-            config: viewlet.config.filter((p) => p !== attr.name)
+            config: filteredConfig
           })
         )
-        const prefs = await control.findAll(control.ctx, view.class.ViewletPreference, { attachedTo: viewlet._id })
-        for (const pref of prefs) {
-          res.push(
-            control.txFactory.createTxUpdateDoc(pref._class, pref.space, pref._id, {
-              config: pref.config.filter((p) => p !== attr.name)
-            })
-          )
-        }
+      }
+    }
+    const prefs = await control.findAll(control.ctx, view.class.ViewletPreference, {})
+    for (const pref of prefs) {
+      const filteredPrefConfig = pref.config.filter((p) => {
+        const key = typeof p === 'string' ? p : (p as any).key
+        return !forbidden.has(key)
+      })
+      if (filteredPrefConfig.length !== pref.config.length) {
+        res.push(
+          control.txFactory.createTxUpdateDoc(pref._class, pref.space, pref._id, {
+            config: filteredPrefConfig
+          })
+        )
       }
     }
     return res
   }
   return []
+}
+
+async function OnViewletUpdate (ctx: TxUpdateDoc<Viewlet>[], control: TriggerControl): Promise<Tx[]> {
+  const updateTx = ctx[0]
+  if (updateTx.space === core.space.DerivedTx) return []
+  if (!Array.isArray(updateTx.operations.config)) return []
+
+  const sourceViewlet = (await control.findAll<Viewlet>(control.ctx, view.class.Viewlet, { _id: updateTx.objectId }))[0]
+  if (sourceViewlet === undefined) return []
+  if (!control.hierarchy.isDerived(sourceViewlet.attachTo, card.class.Card)) return []
+
+  const descendants = control.hierarchy
+    .getDescendants(sourceViewlet.attachTo)
+    .filter((it) => it !== sourceViewlet.attachTo)
+  if (descendants.length === 0) return []
+
+  const childViewlets = await control.findAll<Viewlet>(control.ctx, view.class.Viewlet, {
+    attachTo: { $in: descendants },
+    descriptor: sourceViewlet.descriptor,
+    variant: sourceViewlet.variant ?? { $exists: false }
+  })
+
+  const res: Tx[] = []
+  for (const childViewlet of childViewlets) {
+    const config = syncViewletConfigOrder(
+      control,
+      sourceViewlet.attachTo,
+      sourceViewlet.config,
+      updateTx.operations.config,
+      childViewlet.config
+    )
+    if (!isConfigOrderChanged(childViewlet.config, config)) continue
+
+    res.push(
+      control.txFactory.createTxUpdateDoc(childViewlet._class, childViewlet.space, childViewlet._id, {
+        config
+      })
+    )
+  }
+
+  return res
 }
 
 async function OnMasterTagRemove (ctx: TxUpdateDoc<MasterTag>[], control: TriggerControl): Promise<Tx[]> {
@@ -417,6 +545,24 @@ async function OnCardUpdate (ctx: TxUpdateDoc<Card>[], control: TriggerControl):
   res.push(...(await updatePeers(control, doc, updateTx)))
 
   await updateCollaborators(control, updateTx.operations, doc._class, doc, updateTx.modifiedBy)
+
+  const push = (updateTx.operations as any).$push?.readonlySections as Ref<Class<Doc>> | undefined
+  const pull = (updateTx.operations as any).$pull?.readonlySections as Ref<Class<Doc>> | undefined
+  const sectionId = push ?? pull
+  if (sectionId !== undefined) {
+    const sectionClass = control.hierarchy.getClass(sectionId)
+    const label = sectionClass?.label ?? sectionId
+    const section = await translate(label, {})
+    res.push(
+      control.txFactory.createTxCreateDoc(activity.class.ActivityInfoMessage, doc.space, {
+        attachedTo: doc._id,
+        attachedToClass: doc._class,
+        message: push !== undefined ? card.string.SectionLocked : card.string.SectionUnlocked,
+        props: { section },
+        collection: 'activity'
+      })
+    )
+  }
   return res
 }
 
@@ -876,11 +1022,33 @@ export async function OnCardTag (ctx: TxMixin<Card, Card>[], control: TriggerCon
   return res
 }
 
+export async function CardTextPresenter (doc: Doc): Promise<string> {
+  const card = doc as Card
+
+  return card.title
+}
+
+export async function CardHTMLPresenter (doc: Doc, control: TriggerControl): Promise<string> {
+  const card = doc as Card
+
+  const front = control.branding?.front ?? getMetadata(serverCore.metadata.FrontUrl) ?? ''
+
+  const path = `${workbenchId}/${control.workspace.url}/${cardId}/${card._id}`
+
+  const link = concatLink(front, path)
+  return `<a href='${link}'>${card.title}</a>`
+}
+
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export default async () => ({
+  function: {
+    CardTextPresenter,
+    CardHTMLPresenter
+  },
   trigger: {
     OnAttribute,
     OnAttributeRemove,
+    OnViewletUpdate,
     OnMasterTagCreate,
     OnMasterTagRemove,
     OnTagRemove,

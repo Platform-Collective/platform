@@ -16,6 +16,7 @@
   import contact, { PermissionsStore } from '@hcengineering/contact'
   import core, {
     AnyAttribute,
+    Association,
     AssociationQuery,
     Class,
     Doc,
@@ -34,7 +35,6 @@
   import { createQuery, getClient, reduceCalls, updateAttribute } from '@hcengineering/presentation'
   import ui, {
     Button,
-    IconCopy,
     Label,
     Loading,
     eventToHTMLElement,
@@ -44,14 +44,14 @@
   } from '@hcengineering/ui'
   import { AttributeModel, BuildModelKey, BuildModelOptions, ViewOptionModel, ViewOptions } from '@hcengineering/view'
   import { deepEqual } from 'fast-equals'
-  import { createEventDispatcher, onMount } from 'svelte'
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte'
   import { Readable } from 'svelte/store'
   import { showMenu } from '../actions'
   import { canChangeAttribute } from '../permissions'
   import view from '../plugin'
+  import { ViewletContextStore, viewletContextStore } from '../viewletContextStore'
   import { buildConfigAssociation, buildConfigLookup, buildModel, getAttributeValue, restrictionStore } from '../utils'
   import { getResultOptions, getResultQuery } from '../viewOptions'
-  import converter from '@hcengineering/converter'
   import IconUpDown from './icons/UpDown.svelte'
   import RelationsSelectorPopup from './RelationsSelectorPopup.svelte'
 
@@ -86,12 +86,17 @@
   $: associations = buildConfigAssociation(config)
 
   let _sortKey = prefferedSorting
+  let sortOrder = SortingOrder.Descending
   let userSorting = false
-  $: if (!userSorting) {
+  $: if (!userSorting && !viewOptions?.orderBy) {
     _sortKey = prefferedSorting
   }
 
-  let sortOrder = SortingOrder.Descending
+  $: if (viewOptions?.orderBy) {
+    _sortKey = viewOptions.orderBy[0]
+    sortOrder = viewOptions.orderBy[1]
+  }
+
   let loading = 0
 
   let objects: Doc[] = []
@@ -205,6 +210,7 @@
     } else {
       sortOrder = sortOrder === SortingOrder.Ascending ? SortingOrder.Descending : SortingOrder.Ascending
     }
+    dispatch('sort', { key: _sortKey, order: sortOrder })
   }
 
   const joinProps = (attribute: AttributeModel, object: Doc, readonly: boolean) => {
@@ -485,9 +491,27 @@
     }
   }
 
+  function isAssociationKey (key: string): boolean {
+    // A valid association key ends with `$associations.{assocId}_{direction}`
+    // Sub-field keys like `$associations.assocId_b.fieldName` should NOT be treated as associations
+    const parts = key.split('.')
+    // Find the last $associations segment
+    let lastAssocIdx = -1
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i] === '$associations') {
+        lastAssocIdx = i
+      }
+    }
+    if (lastAssocIdx === -1) return false
+    // The association identifier should be right after the last $associations
+    // and there should be no additional parts after it
+    return lastAssocIdx + 1 === parts.length - 1
+  }
+
   function getAssociations (model: AttributeModel[], associationId?: string): string[] {
     return model
       .filter((p) => {
+        if (!isAssociationKey(p.key)) return false
         if (associationId) {
           return (
             p.key.startsWith(`${associationId}.${assoc}`) &&
@@ -528,7 +552,18 @@
   function clickHandler (e: MouseEvent, cell: CellModel): void {
     if (cell.parentObject === undefined) return
     const parts = cell.attribute.key.split('$associations.')
-    const association = parts.pop()
+    let association = parts.pop()
+    if (association === undefined) return
+    // Strip sub-field suffix if present (e.g., 'assocId_b.name' -> 'assocId_b')
+    const dotIndex = association.indexOf('.')
+    if (dotIndex !== -1) {
+      association = association.substring(0, dotIndex)
+    }
+    const p = association.split('_')
+    const associationId = p[0] as Ref<Association>
+    const assoc = client.getModel().findObject(associationId)
+    if (assoc === undefined) return
+    if (assoc.automationOnly === true) return
     showPopup(
       RelationsSelectorPopup,
       {
@@ -539,16 +574,38 @@
     )
   }
 
-  async function handleCopyAsMarkdown (e: MouseEvent): Promise<void> {
-    if (model === undefined || viewModel.length === 0) return
-    const copyFn = await getResource(converter.function.CopyRelationshipAsMarkdown)
-    await copyFn(e, {
-      viewModel,
-      model,
-      objects,
-      cardClass: _class
+  $: relationshipTableData =
+    model !== undefined && viewModel.length > 0 ? { viewModel, model, objects, cardClass: _class } : undefined
+
+  $: {
+    viewletContextStore.update((cur) => {
+      const contexts = cur.contexts
+      const last = contexts[contexts.length - 1]
+      if (last === undefined) return cur
+      const updated =
+        relationshipTableData !== undefined
+          ? { ...last, relationshipTableData }
+          : (() => {
+              const rest = { ...last }
+              delete rest.relationshipTableData
+              return rest
+            })()
+      return new ViewletContextStore([...contexts.slice(0, -1), updated])
     })
   }
+
+  onDestroy(() => {
+    viewletContextStore.update((cur) => {
+      const contexts = cur.contexts
+      const last = contexts[contexts.length - 1]
+      if (last?.relationshipTableData !== undefined) {
+        const rest = { ...last }
+        delete rest.relationshipTableData
+        return new ViewletContextStore([...contexts.slice(0, -1), rest])
+      }
+      return cur
+    })
+  })
 </script>
 
 {#if !model || isBuildingModel}
@@ -676,19 +733,6 @@
             limit = limit + 100
           }}
         />
-      {/if}
-
-      {#if objects.length > 0 && viewModel.length > 0 && model !== undefined}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <div class="px-1">
-          <Button
-            icon={IconCopy}
-            label={view.string.CopyToClipboard}
-            kind={'ghost'}
-            size={'small'}
-            on:click={handleCopyAsMarkdown}
-          />
-        </div>
       {/if}
     </div>
   </div>

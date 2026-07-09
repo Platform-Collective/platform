@@ -123,6 +123,33 @@ export interface InviteSettings extends Configuration {
   expirationTime: number
   emailMask: string
   limit: number
+  defaultInviteRole: AccountRole
+  inviteLinkGeneratorRoles: AccountRole[]
+}
+
+/**
+ * Stable capability IDs for role-based permissions.
+ * Used with RoleCapabilitySettings to define which AccountRoles can perform which actions.
+ * @public
+ */
+export const RoleCapability = {
+  GenerateInviteLink: 'setting:capability:GenerateInviteLink',
+  ManageInviteSettings: 'setting:capability:ManageInviteSettings'
+} as const
+
+/**
+ * @public
+ */
+export type RoleCapabilityId = (typeof RoleCapability)[keyof typeof RoleCapability]
+
+/**
+ * Workspace-level config: which AccountRoles have which capabilities.
+ * Maps capability ID -> list of roles that have it (account has capability if hasAccountRole(account, role) for any role in the list).
+ * @public
+ */
+export interface RoleCapabilitySettings extends Configuration {
+  /** capabilityId -> roles that are allowed (e.g. [User, Maintainer, Owner]) */
+  roleByCapability: Record<string, AccountRole[]>
 }
 
 /**
@@ -162,8 +189,9 @@ export default plugin(settingId, {
     Terms: '' as Ref<Doc>,
     ClassSetting: '' as Ref<Doc>,
     General: '' as Ref<Doc>,
-    Owners: '' as Ref<Doc>,
+    Members: '' as Ref<Doc>,
     InviteSettings: '' as Ref<Doc>,
+    RoleCapabilitySettings: '' as Ref<Doc>,
     WorkspaceSetting: '' as Ref<Doc>,
     ManageSpaces: '' as Ref<Doc>,
     Spaces: '' as Ref<Doc>,
@@ -171,7 +199,8 @@ export default plugin(settingId, {
     Export: '' as Ref<Doc>,
     OfficeSettings: '' as Ref<Doc>,
     DisablePermissionsConfiguration: '' as Ref<Configuration>,
-    Mailboxes: '' as Ref<Doc>
+    Mailboxes: '' as Ref<Doc>,
+    Security: '' as Ref<Doc>
   },
   mixin: {
     Editable: '' as Ref<Mixin<Editable>>,
@@ -185,6 +214,7 @@ export default plugin(settingId, {
     Integration: '' as Ref<Class<Integration>>,
     IntegrationType: '' as Ref<Class<IntegrationType>>,
     InviteSettings: '' as Ref<Class<InviteSettings>>,
+    RoleCapabilitySettings: '' as Ref<Class<RoleCapabilitySettings>>,
     OfficeSettings: '' as Ref<Class<OfficeSettings>>,
     WorkspaceSetting: '' as Ref<Class<WorkspaceSetting>>
   },
@@ -214,7 +244,9 @@ export default plugin(settingId, {
     EditRelation: '' as AnyComponent,
     Mailboxes: '' as AnyComponent,
     AddEmailSocialId: '' as AnyComponent,
-    OfficeSettings: '' as AnyComponent
+    OfficeSettings: '' as AnyComponent,
+    UserRoleSelect: '' as AnyComponent,
+    TwoFactorSettings: '' as AnyComponent
   },
   string: {
     Settings: '' as IntlString,
@@ -243,9 +275,12 @@ export default plugin(settingId, {
     Reconnect: '' as IntlString,
     ClassSetting: '' as IntlString,
     Classes: '' as IntlString,
-    Owners: '' as IntlString,
+    Members: '' as IntlString,
     Configure: '' as IntlString,
     InviteSettings: '' as IntlString,
+    RoleCapabilitySettings: '' as IntlString,
+    DefaultInviteRoleForJoin: '' as IntlString,
+    InviteLinkGeneratorRoles: '' as IntlString,
     General: '' as IntlString,
     Properties: '' as IntlString,
     TaskTypes: '' as IntlString,
@@ -265,6 +300,14 @@ export default plugin(settingId, {
     BackupFileDownload: '' as IntlString,
     BackupFiles: '' as IntlString,
     BackupNoBackup: '' as IntlString,
+    BackupDownloadAll: '' as IntlString,
+    BackupPreparingDownload: '' as IntlString,
+    BackupDownloadAllInfo: '' as IntlString,
+    BackupCopyScript: '' as IntlString,
+    BackupCopyToken: '' as IntlString,
+    BackupScriptInfo: '' as IntlString,
+    BackupRestoreGuide: '' as IntlString,
+    BackupRestoreGuideInfo: '' as IntlString,
     NonBackupedBlobs: '' as IntlString,
     AddAttribute: '' as IntlString,
     Mailboxes: '' as IntlString,
@@ -276,6 +319,12 @@ export default plugin(settingId, {
     OfficeDefaultSettings: '' as IntlString,
     DefaultStartWithTranscription: '' as IntlString,
     DefaultStartWithRecording: '' as IntlString,
+    GuestPermissionsSettings: '' as IntlString,
+    GuestPermissionsApplicationPermissions: '' as IntlString,
+    GuestPermissionsApplicationPermissionsHint: '' as IntlString,
+    GuestPermissionsTabGuest: '' as IntlString,
+    GuestPermissionsTabAnonymousGuest: '' as IntlString,
+    GuestPermissionsAnonymousApplicationHint: '' as IntlString,
     MailboxErrorInvalidName: '' as IntlString,
     MailboxErrorDomainNotFound: '' as IntlString,
     MailboxErrorNameRulesViolated: '' as IntlString,
@@ -283,6 +332,15 @@ export default plugin(settingId, {
     MailboxErrorMailboxCountLimit: '' as IntlString,
     DeleteMailbox: '' as IntlString,
     MailboxDeleteConfirmation: '' as IntlString,
+    Security: '' as IntlString,
+    TwoFactorAuth: '' as IntlString,
+    TwoFactorAuthDescription: '' as IntlString,
+    EnableTwoFactorAuth: '' as IntlString,
+    DisableTwoFactorAuth: '' as IntlString,
+    TwoFactorAuthEnabled: '' as IntlString,
+    TwoFactorAuthDisabled: '' as IntlString,
+    ShowQRCode: '' as IntlString,
+    EnterVerificationCode: '' as IntlString,
     IntegrationFailed: '' as IntlString,
     IntegrationError: '' as IntlString,
     EmailIsUsed: '' as IntlString,
@@ -307,7 +365,8 @@ export default plugin(settingId, {
   },
   icon: {
     AccountSettings: '' as Asset,
-    Owners: '' as Asset,
+    Members: '' as Asset,
+    GuestPermissions: '' as Asset,
     Password: '' as Asset,
     Setting: '' as Asset,
     Integrations: '' as Asset,
@@ -323,7 +382,8 @@ export default plugin(settingId, {
     Views: '' as Asset,
     Relations: '' as Asset,
     Mailbox: '' as Asset,
-    OfficeSettings: '' as Asset
+    OfficeSettings: '' as Asset,
+    Reset: '' as Asset
   },
   templateFieldCategory: {
     Integration: '' as Ref<TemplateFieldCategory>
@@ -335,6 +395,11 @@ export default plugin(settingId, {
     Value: '' as Ref<TemplateField>
   },
   metadata: {
-    BackupUrl: '' as Metadata<string>
+    BackupUrl: '' as Metadata<string>,
+    DefaultInviteRole: '' as Metadata<string | undefined>,
+    DefaultInviteLinkGeneratorRoles: '' as Metadata<string[] | undefined>
+  },
+  function: {
+    HasRoleCapability: '' as Resource<(capabilityId: RoleCapabilityId | string) => Promise<boolean>>
   }
 })

@@ -87,6 +87,7 @@
   export let limiter: RateLimiter
   export let listProvider: SelectionFocusProvider
   export let singleCategoryLimit: number | undefined = undefined
+  export let readonly: boolean = false
 
   $: groupByKey = viewOptions.groupBy[level] ?? noCategory
   let categories: CategoryType[] = []
@@ -377,7 +378,7 @@
             : resultQuery[groupByKey]?.$in?.length !== 0
               ? undefined
               : []
-          : category
+          : (category ?? null)
     }
   }
 </script>
@@ -420,6 +421,7 @@
     {resultQuery}
     {resultOptions}
     {limiter}
+    {readonly}
     {listProvider}
     on:check
     on:uncheckAll
@@ -481,6 +483,7 @@
         {resultQuery}
         {resultOptions}
         {limiter}
+        {readonly}
         {listProvider}
         bind:dragItem
         on:dragItem

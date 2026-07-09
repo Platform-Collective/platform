@@ -123,6 +123,9 @@
     "NoAssignee": "担当者なし",
     "LastUpdated": "最終更新日",
     "DueDate": "期日",
+    "IssueStartDate": "開始日",
+    "GanttDependency": "Dependency",
+    "GanttLag": "Lag",
     "Manual": "手動",
     "All": "すべて",
     "PastWeek": "先週",
@@ -247,6 +250,7 @@
     "SevenHoursLength": "7時間",
     "EightHoursLength": "8時間",
     "HourLabel": "時間",
+    "MinuteLabel": "分",
     "Saved": "保存済み...",
     "CreatedIssue": "イシューを作成しました",
     "CreatedSubIssue": "子イシューを作成しました",
@@ -271,7 +275,8 @@
     "Extensions": "拡張機能",
     "UnsetParentIssue": "親イシューの設定を解除",
     "ForbidCreateProjectPermission": "プロジェクト作成禁止",
-    "ForbidCreateProjectPermissionDescription": "ユーザーが新しいプロジェクトを作成することを禁止します"
+    "ForbidCreateProjectPermissionDescription": "ユーザーが新しいプロジェクトを作成することを禁止します",
+    "AllowCreatingIssues": "イシューの作成を許可"
   },
   "status": {}
 }

@@ -5,6 +5,7 @@
     "Cards": "Karty",
     "Content": "Obsah",
     "CreateCard": "Vytvořit kartu",
+    "AllowCreatingCards": "Povolit vytváření karet",
     "CreateMasterTag": "Vytvořit typ",
     "CreateTag": "Vytvořit štítek",
     "MasterTag": "Typ",
@@ -70,6 +71,22 @@
     "NewVersionConfirmation": "Chcete vytvořit novou verzi?",
     "RelationCopyDescr": "Které vztahy chcete zkopírovat?",
     "Import": "Importovat",
-    "Export": "Exportovat"
+    "Export": "Exportovat",
+    "CardUpdated": "Karta aktualizována",
+    "CardCreated": "Karta vytvořena",
+    "MyCards": "Moje karty",
+    "GotoMyCards": "Přejít na moje karty",
+    "LockSection": "Zamknout sekci",
+    "UnLockSection": "Odemknout sekci",
+    "SectionLocked": "Sekce {section} zamknuta",
+    "SectionUnlocked": "Sekce {section} odemknuta",
+    "LayoutAuto": "Auto",
+    "SingleColumn": "Jeden sloupec",
+    "BaseType": "Základní typ",
+    "BaseTypeDescription": "Použijte tento typ pouze jako nadřazený. Karty lze vytvářet pouze z jeho podtypů.",
+    "TwoColumns": "Dva sloupce",
+    "Grid": "Mřížka",
+    "RichtextProperties": "Textová pole",
+    "ShowAllVersions": "Ukázat všechny verze"
   }
 }

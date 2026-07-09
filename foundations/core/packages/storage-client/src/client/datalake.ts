@@ -16,14 +16,30 @@
 import { concatLink } from '@hcengineering/core'
 import { FileStorage, FileStorageUploadOptions } from '../types'
 import { uploadMultipart, uploadXhr } from '../upload'
+import { encodePathSegment } from './utils'
+
+const getPathname = (url: string): string => {
+  const base = window?.location?.href !== undefined ? window.location.href : 'http://localhost'
+  return new URL(url, base).pathname
+}
 
 /** @public */
 export class DatalakeStorage implements FileStorage {
   constructor (private readonly baseUrl: string) {}
 
   getFileUrl (workspace: string, file: string, filename?: string): string {
-    const path = filename !== undefined ? `/blob/${workspace}/${file}/${filename}` : `/blob/${workspace}/${file}`
+    const encodedWorkspace = encodePathSegment(workspace)
+    const encodedFile = encodePathSegment(file)
+    const path =
+      filename !== undefined
+        ? `/blob/${encodedWorkspace}/${encodedFile}/${encodePathSegment(filename)}`
+        : `/blob/${encodedWorkspace}/${encodedFile}`
     return concatLink(this.baseUrl, path)
+  }
+
+  getCookiePath (workspace: string): string {
+    const url = concatLink(this.baseUrl, `/blob/${workspace}`)
+    return getPathname(url)
   }
 
   async getFileMeta (token: string, workspace: string, file: string): Promise<Record<string, any>> {

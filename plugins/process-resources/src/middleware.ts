@@ -11,23 +11,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import cardPlugin, { type Card } from '@hcengineering/card'
 import core, {
+  generateId,
   getCurrentAccount,
-  type TxCreateDoc,
-  type TxMixin,
+  SortingOrder,
   TxOperations,
+  TxProcessor,
   type Client,
+  type Doc,
   type Tx,
   type TxApplyIf,
+  type TxCreateDoc,
+  type TxCUD,
+  type TxMixin,
   type TxResult,
-  type TxUpdateDoc,
-  TxProcessor,
-  SortingOrder
+  type TxUpdateDoc
 } from '@hcengineering/core'
+import { translate } from '@hcengineering/platform'
 import { BasePresentationMiddleware, type PresentationMiddleware } from '@hcengineering/presentation'
-import process, { ExecutionStatus, type ProcessToDo, isUpdateTx } from '@hcengineering/process'
-import { createExecution, getNextStateUserInput, requestResult, pickTransition } from './utils'
-import cardPlugin, { type Card } from '@hcengineering/card'
+import { ExecutionStatus, isUpdateTx, type ApproveRequest, type ProcessToDo } from '@hcengineering/process'
+import process from './plugin'
+import { createExecution, getNextStateUserInput, pickTransition, requestResult } from './utils'
 
 /**
  * @public
@@ -49,26 +54,47 @@ export class ProcessMiddleware extends BasePresentationMiddleware implements Pre
     return new ProcessMiddleware(client, next)
   }
 
+  private readonly txFactory = new TxOperations(this.client, getCurrentAccount().primarySocialId).txFactory
+
   async tx (tx: Tx): Promise<TxResult> {
-    await this.handleTx(tx)
+    const preTx: Array<TxCUD<Doc>> = []
+    const postTx: Array<TxCUD<Doc>> = []
+    await this.handleTx(preTx, postTx, tx)
+
+    if (preTx.length > 0 || postTx.length > 0) {
+      if (TxProcessor.isExtendsCUD(tx._class)) {
+        const applyIf = this.txFactory.createTxApplyIf(
+          core.space.Tx,
+          generateId(),
+          [],
+          [],
+          [...preTx, tx as TxCUD<Doc>, ...postTx],
+          'process',
+          true
+        )
+        return await this.provideTx(applyIf)
+      }
+    }
+
     return await this.provideTx(tx)
   }
 
-  private async handleTx (...txes: Tx[]): Promise<void> {
+  private async handleTx (preTx: Array<TxCUD<Doc>>, postTx: Array<TxCUD<Doc>>, ...txes: Tx[]): Promise<void> {
     for (const etx of txes) {
       if (etx._class === core.class.TxApplyIf) {
         const applyIf = etx as TxApplyIf
-        await this.handleTx(...applyIf.txes)
+        await this.handleTx(preTx, postTx, ...applyIf.txes)
       }
 
-      await this.handleCardCreate(etx)
-      await this.handleCardUpdate(etx)
-      await this.handleTagAdd(etx)
-      await this.handleToDoDone(etx)
+      await this.handleCardCreate(postTx, etx)
+      await this.handleCardUpdate(preTx, etx)
+      await this.handleTagAdd(postTx, etx)
+      await this.handleToDoDone(preTx, etx)
+      await this.handleApproveRequest(preTx, etx)
     }
   }
 
-  private async handleCardUpdate (etx: Tx): Promise<void> {
+  private async handleCardUpdate (preTx: Array<TxCUD<Doc>>, etx: Tx): Promise<void> {
     if (etx._class === core.class.TxUpdateDoc || etx._class === core.class.TxMixin) {
       const updateTx = etx as TxUpdateDoc<Card> | TxMixin<Card, Card>
       const hierarchy = this.client.getHierarchy()
@@ -95,21 +121,27 @@ export class ProcessMiddleware extends BasePresentationMiddleware implements Pre
           },
           { sort: { rank: SortingOrder.Ascending } }
         )
-        const transition = await pickTransition(this.client, execution, transitions, {
+        if (transitions.length === 0) continue
+        const inputContext = {
+          ...execution.context,
           card: updated,
           operations: isUpdateTx(updateTx) ? updateTx.operations : updateTx.attributes
-        })
-        if (transition === undefined) return
-        const context = await getNextStateUserInput(execution, transition, execution.context)
-        const txop = new TxOperations(this.client, getCurrentAccount().primarySocialId)
-        await txop.update(execution, {
-          context
-        })
+        }
+        const transition = await pickTransition(this.client, execution, transitions, inputContext)
+        if (transition === undefined) continue
+        const result = await getNextStateUserInput(execution, transition, execution.context, inputContext)
+        if (result?.changed === true) {
+          preTx.push(
+            this.txFactory.createTxUpdateDoc(execution._class, execution.space, execution._id, {
+              context: result.context
+            })
+          )
+        }
       }
     }
   }
 
-  private async handleCardCreate (etx: Tx): Promise<void> {
+  private async handleCardCreate (postTx: Array<TxCUD<Doc>>, etx: Tx): Promise<void> {
     if (etx._class === core.class.TxCreateDoc) {
       const createTx = etx as TxCreateDoc<Card>
       const doc = TxProcessor.createDoc2Doc(createTx)
@@ -128,12 +160,13 @@ export class ProcessMiddleware extends BasePresentationMiddleware implements Pre
         autoStart: true
       })
       for (const proc of processes) {
-        await createExecution(createTx.objectId, proc._id, createTx.objectSpace)
+        const res = await createExecution(createTx.objectId, proc._id, createTx.objectSpace, this.txFactory)
+        if (res !== undefined) postTx.push(res)
       }
     }
   }
 
-  private async handleTagAdd (tx: Tx): Promise<void> {
+  private async handleTagAdd (postTx: Array<TxCUD<Doc>>, tx: Tx): Promise<void> {
     if (tx._class !== core.class.TxMixin) return
     const mixinTx = tx as TxMixin<Card, Card>
     const hierarchy = this.client.getHierarchy()
@@ -144,11 +177,54 @@ export class ProcessMiddleware extends BasePresentationMiddleware implements Pre
       .getModel()
       .findAllSync(process.class.Process, { masterTag: mixinTx.mixin, autoStart: true })
     for (const proc of processes) {
-      await createExecution(mixinTx.objectId, proc._id, mixinTx.objectSpace)
+      const res = await createExecution(mixinTx.objectId, proc._id, mixinTx.objectSpace, this.txFactory)
+      if (res !== undefined) postTx.push(res)
     }
   }
 
-  private async handleToDoDone (etx: Tx): Promise<void> {
+  private async handleApproveRequest (preTx: Array<TxCUD<Doc>>, etx: Tx): Promise<void> {
+    if (etx._class === core.class.TxUpdateDoc) {
+      const cud = etx as TxUpdateDoc<ApproveRequest>
+      if (cud.objectClass !== process.class.ApproveRequest) return
+      if (cud.operations.doneOn == null || cud.operations.approved == null) return
+      const approveRequest = await this.client.findOne(process.class.ApproveRequest, {
+        _id: cud.objectId
+      })
+      if (approveRequest === undefined) return
+      const execution = await this.client.findOne(process.class.Execution, {
+        _id: approveRequest.execution
+      })
+      if (execution === undefined) return
+      const transitions = this.client.getModel().findAllSync(
+        process.class.Transition,
+        {
+          process: execution.process,
+          from: execution.currentState,
+          trigger: cud.operations.approved
+            ? process.trigger.OnApproveRequestApproved
+            : process.trigger.OnApproveRequestRejected
+        },
+        { sort: { rank: SortingOrder.Ascending } }
+      )
+      const updatedApproveRequest = TxProcessor.updateDoc2Doc(approveRequest, cud)
+      const inputContext = {
+        ...execution.context,
+        todo: updatedApproveRequest
+      }
+      const transition = await pickTransition(this.client, execution, transitions, inputContext)
+      if (transition === undefined) return
+      const result = await getNextStateUserInput(execution, transition, execution.context, inputContext)
+      if (result?.changed === true) {
+        preTx.push(
+          this.txFactory.createTxUpdateDoc(execution._class, execution.space, execution._id, {
+            context: result.context
+          })
+        )
+      }
+    }
+  }
+
+  private async handleToDoDone (preTx: Array<TxCUD<Doc>>, etx: Tx): Promise<void> {
     if (etx._class === core.class.TxUpdateDoc) {
       const cud = etx as TxUpdateDoc<ProcessToDo>
       if (cud.objectClass !== process.class.ProcessToDo) return
@@ -161,22 +237,61 @@ export class ProcessMiddleware extends BasePresentationMiddleware implements Pre
         _id: todo.execution
       })
       if (execution === undefined) return
-      const txop = new TxOperations(this.client, getCurrentAccount().primarySocialId)
-      await requestResult(txop, execution, todo.results, execution.context)
+
+      let results = todo.results ?? []
+      if (results.length > 0) {
+        results = await Promise.all(
+          results.map(async (r) => {
+            if (r.key !== undefined) {
+              const _process = this.client.getModel().findObject(execution.process)
+              if (_process !== undefined) {
+                const attr = this.client.getModel().findAllSync(core.class.Attribute, { name: r.key })[0]
+                if (attr?.label !== undefined) {
+                  const name = await translate(attr.label, {})
+                  return { ...r, name }
+                }
+              }
+            }
+            return r
+          })
+        )
+      }
+
+      const context = await requestResult(execution, results, execution.context)
+
       const transitions = this.client.getModel().findAllSync(process.class.Transition, {
         process: execution.process,
         from: execution.currentState,
         trigger: process.trigger.OnToDoClose
       })
-      const transition = await pickTransition(this.client, execution, transitions, {
+      const inputContext = {
+        ...(context ?? execution.context),
         todo
-      })
-      if (transition === undefined) return
-      const context = await getNextStateUserInput(execution, transition, execution.context)
-      if (context !== undefined) {
-        await txop.update(execution, {
-          context
-        })
+      }
+      const transition = await pickTransition(this.client, execution, transitions, inputContext)
+      if (transition === undefined) {
+        if (context !== undefined) {
+          preTx.push(
+            this.txFactory.createTxUpdateDoc(execution._class, execution.space, execution._id, {
+              context
+            })
+          )
+        }
+        return
+      }
+      const finalResult = await getNextStateUserInput(execution, transition, context ?? execution.context, inputContext)
+      if (finalResult?.changed === true) {
+        preTx.push(
+          this.txFactory.createTxUpdateDoc(execution._class, execution.space, execution._id, {
+            context: finalResult.context
+          })
+        )
+      } else if (context !== undefined) {
+        preTx.push(
+          this.txFactory.createTxUpdateDoc(execution._class, execution.space, execution._id, {
+            context
+          })
+        )
       }
     }
   }

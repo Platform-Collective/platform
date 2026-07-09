@@ -1,4 +1,5 @@
 <script lang="ts">
+  import card, { type MasterTag } from '@hcengineering/card'
   import core, { Association, Doc, WithLookup } from '@hcengineering/core'
   import { IntlString } from '@hcengineering/platform'
   import { getClient, ObjectCreate } from '@hcengineering/presentation'
@@ -22,22 +23,50 @@
 
   $: _class = direction === 'B' ? association.classB : association.classA
 
+  $: uniqueDocs = deduplicate(docs)
+
+  function deduplicate (list: Doc[] | undefined): Doc[] {
+    if (!list) return []
+    const seen = new Set<string>()
+    return list.filter((item) => {
+      if (item?._id == null) return false
+      if (seen.has(item._id)) return false
+      seen.add(item._id)
+      return true
+    })
+  }
+
   function getCreate (): ObjectCreate | undefined {
     const factory = client.getHierarchy().classHierarchyMixin(_class, view.mixin.ObjectFactory)
     if (factory) {
+      const usePopup = isBaseCardTypeWithSubtypes()
       return {
-        component: factory.component,
+        component: usePopup ? factory.component : undefined,
         func: factory.create,
         label,
-        props: { _class, space: object.space }
+        props: { _class, type: _class, space: object.space, changeType: usePopup }
       }
     }
+  }
+
+  function isBaseCardTypeWithSubtypes (): boolean {
+    const hierarchy = client.getHierarchy()
+    if (!hierarchy.isDerived(_class, card.class.Card)) return false
+
+    const clazz = hierarchy.getClass(_class) as MasterTag | undefined
+    if (clazz?.baseType !== true) return false
+
+    return hierarchy.getDescendants(_class).some((descendant) => {
+      if (descendant === _class || hierarchy.isMixin(descendant)) return false
+      const descendantClass = hierarchy.getClass(descendant) as MasterTag | undefined
+      return descendantClass?._class === card.class.MasterTag && descendantClass.removed !== true
+    })
   }
 
   function add (): void {
     const create = getCreate()
     const isVersionable = client.getHierarchy().classHierarchyMixin(_class, core.mixin.VersionableClass) !== undefined
-    const baseQuery = { _id: { $nin: docs.map((p) => p._id) } }
+    const baseQuery = { _id: { $nin: uniqueDocs.map((p) => p._id) } }
     const docQuery = isVersionable ? { isLatest: true, ...baseQuery } : baseQuery
     showPopup(
       ObjectBoxPopup,
@@ -82,23 +111,29 @@
         : { docA: doc._id, docB: object._id, association: association._id }
     const relation = await client.findOne(core.class.Relation, q)
     const overrides = new Map()
+    const excludedActions: string[] = []
     if (relation !== undefined) {
-      overrides.set(view.action.Delete, async (obj: Doc | Doc[], ev?: Event) => {
-        if (relation !== undefined) {
-          await client.remove(relation)
-        }
-      })
+      if (association.automationOnly) {
+        excludedActions.push(view.action.Delete)
+      } else {
+        overrides.set(view.action.Delete, async (obj: Doc | Doc[], ev?: Event) => {
+          if (relation !== undefined) {
+            await client.remove(relation)
+          }
+        })
+      }
     }
-    showMenu(ev, { object: doc, overrides })
+    showMenu(ev, { object: doc, overrides, excludedActions })
   }
 
   function isAllowedToCreate (association: Association, docs: Doc[], direction: 'A' | 'B'): boolean {
+    if (association.automationOnly) return false
     if (docs.length === 0 || association.type === 'N:N') return true
     if (association.type === '1:1') return false
     return direction === 'B'
   }
 
-  $: allowToCreate = isAllowedToCreate(association, docs, direction)
+  $: allowToCreate = isAllowedToCreate(association, uniqueDocs, direction)
 
   $: classLabel = client.getHierarchy().getClass(_class).label
 </script>
@@ -117,9 +152,9 @@
   </svelte:fragment>
 
   <svelte:fragment slot="content">
-    {#if docs?.length > 0 && config != null}
+    {#if uniqueDocs?.length > 0 && config != null}
       <Scroller horizontal>
-        <DocTable objects={docs} {_class} {config} {onContextMenu} />
+        <DocTable objects={uniqueDocs} {_class} {config} {onContextMenu} />
       </Scroller>
     {:else if !readonly}
       <div

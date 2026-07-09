@@ -412,7 +412,7 @@ export async function configurePlatform (onWorkbenchConnect?: () => Promise<void
   const languages =
     myBranding.languages !== undefined && myBranding.languages !== ''
       ? myBranding.languages.split(',').map((l) => l.trim())
-      : ['en', 'ru', 'es', 'pt', 'zh', 'fr', 'cs', 'it', 'de', 'ja', 'tr']
+      : ['en', 'ru', 'es', 'pl', 'pt', 'pt-br', 'zh', 'fr', 'cs', 'it', 'de', 'ja', 'ko', 'tr']
 
   setMetadata(uiPlugin.metadata.Languages, languages)
 
@@ -533,6 +533,8 @@ export async function configurePlatform (onWorkbenchConnect?: () => Promise<void
   setMetadata(workbench.metadata.DefaultApplication, myBranding.defaultApplication ?? 'tracker')
   setMetadata(workbench.metadata.DefaultSpace, myBranding.defaultSpace ?? tracker.project.DefaultProject)
   setMetadata(workbench.metadata.DefaultSpecial, myBranding.defaultSpecial ?? 'issues')
+  setMetadata(setting.metadata.DefaultInviteRole, myBranding.defaultInviteRole)
+  setMetadata(setting.metadata.DefaultInviteLinkGeneratorRoles, myBranding.inviteLinkGeneratorRoles)
 
   try {
     const parsed = JSON.parse(config.EXCLUDED_APPLICATIONS_FOR_ANONYMOUS ?? '')

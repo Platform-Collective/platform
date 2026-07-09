@@ -125,6 +125,9 @@
     "NoAssignee": "No assignee",
     "LastUpdated": "Last updated",
     "DueDate": "Due date",
+    "IssueStartDate": "Start date",
+    "GanttDependency": "Dependency",
+    "GanttLag": "Lag",
     "Manual": "Manual",
     "All": "All",
     "PastWeek": "Past week",
@@ -264,6 +267,7 @@
     "SevenHoursLength": "Seven Hours",
     "EightHoursLength": "Eight Hours",
     "HourLabel": "h",
+    "MinuteLabel": "m",
     "Saved": "Saved...",
     "CreatedIssue": "Created issue",
     "CreatedSubIssue": "Created sub-issue",
@@ -288,7 +292,8 @@
     "Extensions": "Extensions",
     "UnsetParentIssue": "Unset parent issue",
     "ForbidCreateProjectPermission": "Forbid create project",
-    "ForbidCreateProjectPermissionDescription": "Forbid users creating new projects"
+    "ForbidCreateProjectPermissionDescription": "Forbid users creating new projects",
+    "AllowCreatingIssues": "Allow creating issues"
   },
   "status": {}
 }

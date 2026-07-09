@@ -16,6 +16,7 @@
 import cardPlugin, { cardId, DOMAIN_CARD, type Card, type Role } from '@hcengineering/card'
 import core, {
   DOMAIN_MODEL,
+  SortingOrder,
   TxOperations,
   type Class,
   type ClassPermission,
@@ -35,7 +36,7 @@ import {
   type MigrationUpgradeClient
 } from '@hcengineering/model'
 import tags from '@hcengineering/tags'
-import view, { type Viewlet } from '@hcengineering/view'
+import view, { type ViewOptionModel, type Viewlet } from '@hcengineering/view'
 import card from '.'
 
 export const cardOperation: MigrateOperation = {
@@ -71,7 +72,7 @@ export const cardOperation: MigrateOperation = {
   async upgrade (state: Map<string, Set<string>>, client: () => Promise<MigrationUpgradeClient>, mode): Promise<void> {
     await tryUpgrade(mode, state, client, cardId, [
       {
-        state: 'migrateViewlets-v6',
+        state: 'migrateViewlets-6',
         func: migrateViewlets
       },
       {
@@ -128,6 +129,16 @@ export const cardOperation: MigrateOperation = {
         state: 'migrate-restricted-permissions',
         mode: 'upgrade',
         func: migrateRestrictedPermissions
+      },
+      {
+        state: 'add-grid-viewlet',
+        mode: 'upgrade',
+        func: addGridViewlet
+      },
+      {
+        state: 'add-show-all-versions-view-option',
+        mode: 'upgrade',
+        func: addShowAllVersionsViewOption
       }
     ])
   }
@@ -282,6 +293,40 @@ async function migrateRestrictedPermissions (_client: MigrationUpgradeClient): P
         },
         `${masterTag._id}_remove_forbidden` as Ref<ClassPermission>
       )
+    }
+  }
+}
+
+async function addGridViewlet (client: MigrationUpgradeClient): Promise<void> {
+  const txOp = new TxOperations(client, core.account.System)
+  const masterTags = await client.findAll(card.class.MasterTag, {})
+  const currentViewlets = await client.findAll(view.class.Viewlet, {
+    descriptor: card.viewlet.CardGridDescriptor,
+    attachTo: { $in: masterTags.map((p) => p._id) }
+  })
+  for (const masterTag of masterTags) {
+    const current = currentViewlets.find((p) => p.attachTo === masterTag._id)
+    if (current === undefined) {
+      await txOp.createDoc(view.class.Viewlet, core.space.Model, {
+        descriptor: card.viewlet.CardGridDescriptor,
+        baseQuery: {
+          isLatest: true
+        },
+        config: [''],
+        configOptions: {
+          strict: true
+        },
+        viewOptions: {
+          groupBy: [],
+          orderBy: [
+            ['modifiedOn', SortingOrder.Descending],
+            ['rank', SortingOrder.Ascending],
+            ['title', SortingOrder.Descending]
+          ],
+          other: []
+        },
+        attachTo: masterTag._id
+      })
     }
   }
 }
@@ -626,5 +671,41 @@ async function fillVersioning (client: MigrationClient): Promise<void> {
     }
   } finally {
     await iterator.close()
+  }
+}
+
+async function addShowAllVersionsViewOption (client: MigrationUpgradeClient): Promise<void> {
+  const txOp = new TxOperations(client, core.account.System)
+  const masterTags = await client.findAll(card.class.MasterTag, {})
+  const cardDescendants = client.getHierarchy().getDescendants(card.class.Card)
+  const allViewletTargets = [...masterTags.map((p) => p._id), ...cardDescendants, card.class.Card]
+
+  const viewlets = await client.findAll(view.class.Viewlet, {
+    attachTo: { $in: allViewletTargets }
+  })
+
+  const showAllVersionsOption: ViewOptionModel = {
+    key: 'showAllVersions',
+    type: 'toggle',
+    defaultValue: false,
+    actionTarget: 'query',
+    action: card.function.ShowAllVersions,
+    label: card.string.ShowAllVersions
+  }
+
+  for (const v of viewlets) {
+    // Skip CardSpace viewlets if any (though they shouldn't be in allViewletTargets)
+    if (v.attachTo === card.class.CardSpace) continue
+
+    const viewOptions = v.viewOptions ?? { groupBy: [], orderBy: [], other: [] }
+    const other = viewOptions.other ?? []
+    if (other.find((o: any) => o.key === 'showAllVersions') === undefined) {
+      await txOp.update(v, {
+        viewOptions: {
+          ...viewOptions,
+          other: [...other, showAllVersionsOption]
+        }
+      })
+    }
   }
 }

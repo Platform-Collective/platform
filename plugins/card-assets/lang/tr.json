@@ -5,6 +5,7 @@
     "Cards": "Kartlar",
     "Content": "İçerik",
     "CreateCard": "Kart Oluştur",
+    "AllowCreatingCards": "Kart oluşturmaya izin ver",
     "CreateMasterTag": "Tip Oluştur",
     "CreateTag": "Etiket Oluştur",
     "MasterTag": "Tip",
@@ -70,6 +71,22 @@
     "NewVersionConfirmation": "Yeni bir sürüm oluşturmak istiyor musunuz?",
     "RelationCopyDescr": "Hangi ilişkileri kopyalamak istiyorsunuz?",
     "Import": "İçe aktar",
-    "Export": "Dışa aktar"
+    "Export": "Dışa aktar",
+    "CardUpdated": "Kart güncellendi",
+    "CardCreated": "Kart oluşturuldu",
+    "MyCards": "Benim kartlarım",
+    "GotoMyCards": "Benim kartlarıma git",
+    "LockSection": "Bölümü kilitle",
+    "UnLockSection": "Bölümü kilitle",
+    "SectionLocked": "Bölüm {section} kilitli",
+    "SectionUnlocked": "Bölüm {section} kilidi açıldı",
+    "LayoutAuto": "Otomatik",
+    "SingleColumn": "Tek sütun",
+    "BaseType": "Temel tür",
+    "BaseTypeDescription": "Bu türü yalnızca üst tür olarak kullanın. Kartlar yalnızca alt türlerinden oluşturulabilir.",
+    "TwoColumns": "İki sütun",
+    "Grid": "Izgara",
+    "RichtextProperties": "Zengin metin alanları",
+    "ShowAllVersions": "Tüm sürümleri göster"
   }
 }

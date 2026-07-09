@@ -43,16 +43,18 @@
     "ExportToWorkspaceFailed": "Export se nezdařil",
     "SelectWorkspace": "Vybrat pracovní prostor",
     "SelectWorkspaceToExport": "Vybrat pracovní prostor pro export {count, plural, =1 {1 dokument} other {# dokumentů}}",
-    "SelectWorkspaceToExportSpace": "Vybrat pracovní prostor pro export dokumentů z prostoru",
+    "SelectWorkspaceToExportSpace": "Vybrat pracovní prostor pro export dokumentů",
     "SelectSpace": "Vybrat prostor",
     "NoSelectedDocuments": "Žádné dokumenty nevybrány",
+    "NoDocumentsMatchedFilters": "Pro export nebyly nalezeny žádné dokumenty odpovídající aktuálním filtrům. Upravte filtry nebo výběr a zkuste to znovu.",
     "RequestPermissionToImport": "Prosím, požádejte vlastníka cílového pracovního prostoru o povolení k importu dokumentů.",
-    "SkipDeletedObsolete": "Přeskočit archivované nebo zastaralé dokumenty",
     "ExportOnlyEffective": "Exportovat pouze dokumenty s platným stavem",
     "ExportFilterMode": "Dokumenty k exportu",
     "ExportFilterEffectiveOnly": "Pouze platné dokumenty",
     "ExportFilterSkipArchivedObsolete": "Vše kromě archivovaných a zastaralých",
     "ExportFilterAll": "Všechny dokumenty",
+    "ExportChildDocuments": "Exportovat podřízené dokumenty",
+    "ExportChildDocumentsDescription": "Také exportovat dokumenty připojené k vybraným",
     "ExportResultRecordTitle": "Export dokumentů z pracovního prostoru {workspace} ({date})"
   }
 }

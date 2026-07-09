@@ -5,6 +5,7 @@
     "Cards": "Cards",
     "Content": "Content",
     "CreateCard": "Create Card",
+    "AllowCreatingCards": "Allow creating cards",
     "CreateMasterTag": "Create Type",
     "CreateTag": "Create Tag",
     "MasterTag": "Type",
@@ -70,6 +71,22 @@
     "NewVersionConfirmation": "Do you want to create a new version?",
     "RelationCopyDescr": "Which relations do you want to copy?",
     "Import": "Import",
-    "Export": "Export"
+    "Export": "Export",
+    "CardUpdated": "Card updated",
+    "CardCreated": "Card created",
+    "MyCards": "My cards",
+    "GotoMyCards": "Go to my cards",
+    "LockSection": "Lock section",
+    "UnLockSection": "Unlock section",
+    "SectionLocked": "Section {section} locked",
+    "SectionUnlocked": "Section {section} unlocked",
+    "LayoutAuto": "Auto",
+    "SingleColumn": "Single column",
+    "BaseType": "Base type",
+    "BaseTypeDescription": "Use this type as a parent only. Cards can be created only from its subtypes.",
+    "TwoColumns": "Two columns",
+    "Grid": "Grid",
+    "RichtextProperties": "Richtext Properties",
+    "ShowAllVersions": "Show all versions"
   }
 }

@@ -34,7 +34,8 @@ export type ExportDocumentFn = (
   sourceHierarchy: Hierarchy,
   sourceLowLevel: LowLevelStorage,
   existingDocsMap: Map<Ref<Doc>, Doc>,
-  relations: RelationDefinition[]
+  relations: RelationDefinition[],
+  includeChildren: boolean
 ) => Promise<boolean>
 
 /**
@@ -56,7 +57,8 @@ export class RelationExporter {
     conflictStrategy: 'skip' | 'duplicate',
     includeAttachments: boolean,
     sourceHierarchy: Hierarchy,
-    sourceLowLevel: LowLevelStorage
+    sourceLowLevel: LowLevelStorage,
+    includeChildren: boolean = false
   ): Promise<void> {
     for (const relation of relations) {
       const direction = relation.direction ?? 'forward'
@@ -71,7 +73,8 @@ export class RelationExporter {
           includeAttachments,
           sourceHierarchy,
           sourceLowLevel,
-          relations
+          relations,
+          includeChildren
         )
       } catch (err: any) {
         this.context.error(`Failed to export forward relation ${relation.field} for document ${doc._id}:`, {
@@ -92,7 +95,8 @@ export class RelationExporter {
     conflictStrategy: 'skip' | 'duplicate',
     includeAttachments: boolean,
     sourceHierarchy: Hierarchy,
-    sourceLowLevel: LowLevelStorage
+    sourceLowLevel: LowLevelStorage,
+    includeChildren: boolean = false
   ): Promise<void> {
     for (const relation of relations) {
       const direction = relation.direction ?? 'forward'
@@ -107,7 +111,8 @@ export class RelationExporter {
           includeAttachments,
           sourceHierarchy,
           sourceLowLevel,
-          relations
+          relations,
+          includeChildren
         )
       } catch (err: any) {
         this.context.error(`Failed to export inverse relation ${relation.field} for document ${doc._id}:`, {
@@ -119,6 +124,35 @@ export class RelationExporter {
     }
   }
 
+  async exportAllRelations (
+    doc: Doc,
+    relations: RelationDefinition[],
+    conflictStrategy: 'skip' | 'duplicate',
+    includeAttachments: boolean,
+    sourceHierarchy: Hierarchy,
+    sourceLowLevel: LowLevelStorage,
+    includeChildren: boolean = false
+  ): Promise<void> {
+    await this.exportForwardRelations(
+      doc,
+      relations,
+      conflictStrategy,
+      includeAttachments,
+      sourceHierarchy,
+      sourceLowLevel,
+      includeChildren
+    )
+    await this.exportInverseRelations(
+      doc,
+      relations,
+      conflictStrategy,
+      includeAttachments,
+      sourceHierarchy,
+      sourceLowLevel,
+      includeChildren
+    )
+  }
+
   private async exportForwardRelation (
     doc: Doc,
     relation: RelationDefinition,
@@ -126,8 +160,13 @@ export class RelationExporter {
     includeAttachments: boolean,
     sourceHierarchy: Hierarchy,
     sourceLowLevel: LowLevelStorage,
-    relations: RelationDefinition[]
+    relations: RelationDefinition[],
+    includeChildren: boolean
   ): Promise<void> {
+    if (relation.sourceClass !== undefined && !sourceHierarchy.isDerived(doc._class, relation.sourceClass)) {
+      return
+    }
+
     const value = (doc as any)[relation.field]
     if (value === undefined || value === null) {
       return
@@ -155,7 +194,8 @@ export class RelationExporter {
         includeAttachments,
         sourceHierarchy,
         sourceLowLevel,
-        relations
+        relations,
+        includeChildren
       )
     }
   }
@@ -167,8 +207,13 @@ export class RelationExporter {
     includeAttachments: boolean,
     sourceHierarchy: Hierarchy,
     sourceLowLevel: LowLevelStorage,
-    relations: RelationDefinition[]
+    relations: RelationDefinition[],
+    includeChildren: boolean
   ): Promise<void> {
+    if (relation.sourceClass !== undefined && !sourceHierarchy.isDerived(doc._class, relation.sourceClass)) {
+      return
+    }
+
     const domain = sourceHierarchy.findDomain(relation.class)
     if (domain === undefined) {
       this.context.warn(`Domain not found for relation class ${relation.class}`)
@@ -198,7 +243,8 @@ export class RelationExporter {
         sourceHierarchy,
         sourceLowLevel,
         new Map(),
-        relations
+        relations,
+        includeChildren
       )
     }
   }
@@ -210,7 +256,8 @@ export class RelationExporter {
     includeAttachments: boolean,
     sourceHierarchy: Hierarchy,
     sourceLowLevel: LowLevelStorage,
-    relations: RelationDefinition[]
+    relations: RelationDefinition[],
+    includeChildren: boolean
   ): Promise<void> {
     if (this.state.idMapping.has(ref)) {
       return
@@ -240,7 +287,8 @@ export class RelationExporter {
       sourceHierarchy,
       sourceLowLevel,
       new Map(),
-      relations
+      relations,
+      includeChildren
     )
   }
 }

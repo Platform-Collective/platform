@@ -43,16 +43,18 @@
     "ExportToWorkspaceFailed": "Export fehlgeschlagen",
     "SelectWorkspace": "Arbeitsbereich auswählen",
     "SelectWorkspaceToExport": "Arbeitsbereich zum Exportieren von {count, plural, =1 {1 Dokument} other {# Dokumenten}} auswählen",
-    "SelectWorkspaceToExportSpace": "Arbeitsbereich zum Exportieren von Dokumenten aus dem Bereich auswählen",
+    "SelectWorkspaceToExportSpace": "Arbeitsbereich zum Exportieren von Dokumenten auswählen",
     "SelectSpace": "Bereich auswählen",
     "NoSelectedDocuments": "Keine Dokumente ausgewählt",
+    "NoDocumentsMatchedFilters": "Es wurden keine Dokumente zum Export gefunden, die den aktuellen Filtern entsprechen. Passen Sie Ihre Filter oder Auswahl an und versuchen Sie es erneut.",
     "RequestPermissionToImport": "Bitte fordern Sie die Berechtigung vom Eigentümer des Ziel-Arbeitsbereichs an, um Dokumente zu importieren.",
-    "SkipDeletedObsolete": "Archivierte oder veraltete Dokumente überspringen",
     "ExportOnlyEffective": "Nur Dokumente mit wirksamem Status exportieren",
     "ExportFilterMode": "Zu exportierende Dokumente",
     "ExportFilterEffectiveOnly": "Nur wirksame Dokumente exportieren",
     "ExportFilterSkipArchivedObsolete": "Alle Dokumente außer archivierten und veralteten",
     "ExportFilterAll": "Alle Dokumente",
+    "ExportChildDocuments": "Untergeordnete Dokumente exportieren",
+    "ExportChildDocumentsDescription": "Auch Dokumente exportieren, die an die ausgewählten angehängt sind",
     "ExportResultRecordTitle": "Export von Dokumenten aus dem Arbeitsbereich {workspace} ({date})"
   }
 }

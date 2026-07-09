@@ -358,6 +358,36 @@ export function defineFunctions (builder: Builder): void {
     process.class.ProcessFunction,
     core.space.Model,
     {
+      of: core.class.TypeNumber,
+      category: 'attribute',
+      label: process.string.Min,
+      presenter: process.transformPresenter.NumberPresenter,
+      type: 'transform',
+      allowMany: true,
+      editor: process.transformEditor.NumberEditor
+    },
+    process.function.Min
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeNumber,
+      category: 'attribute',
+      label: process.string.Max,
+      presenter: process.transformPresenter.NumberPresenter,
+      type: 'transform',
+      allowMany: true,
+      editor: process.transformEditor.NumberEditor
+    },
+    process.function.Max
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
       of: core.class.TypeDate,
       category: 'attribute',
       label: process.string.Offset,
@@ -465,6 +495,18 @@ export function defineFunctions (builder: Builder): void {
     process.class.ProcessFunction,
     core.space.Model,
     {
+      of: core.class.TypeAny,
+      category: 'attribute',
+      label: process.string.EmptyValue,
+      type: 'context'
+    },
+    process.function.EmptyValue
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
       of: core.class.ArrOf,
       category: 'array',
       label: process.string.EmptyArray,
@@ -543,5 +585,214 @@ export function defineFunctions (builder: Builder): void {
       type: 'context'
     },
     process.function.CurrentDate
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeNumber,
+      to: core.class.TypeString,
+      category: 'attribute',
+      label: process.string.TextFromNumber,
+      type: 'convert'
+    },
+    process.function.StringFromNumber
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeIdentifier,
+      to: core.class.TypeString,
+      category: 'attribute',
+      label: process.string.TextFromIdentifier,
+      type: 'convert'
+    },
+    process.function.StringFromIdentifier
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeDate,
+      to: core.class.TypeString,
+      category: 'attribute',
+      label: process.string.TextFromDate,
+      type: 'convert'
+    },
+    process.function.StringFromDate
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeBoolean,
+      to: core.class.TypeString,
+      category: 'attribute',
+      label: process.string.TextFromCheckbox,
+      type: 'convert'
+    },
+    process.function.StringFromBoolean
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeMarkup,
+      to: core.class.TypeString,
+      category: 'attribute',
+      label: process.string.TextFromMarkup,
+      type: 'convert'
+    },
+    process.function.StringFromMarkup
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeString,
+      to: core.class.TypeMarkup,
+      category: 'attribute',
+      label: process.string.MarkupFromText,
+      type: 'convert'
+    },
+    process.function.MarkupFromString
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeDate,
+      to: core.class.TypeNumber,
+      category: 'attribute',
+      label: process.string.NumberFromDate,
+      type: 'convert'
+    },
+    process.function.NumberFromDate
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeNumber,
+      to: core.class.TypeDate,
+      category: 'attribute',
+      label: process.string.DateFromNumber,
+      type: 'convert'
+    },
+    process.function.DateFromNumber
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeDate,
+      to: core.class.TypeNumber,
+      category: 'attribute',
+      label: process.string.DateDifference,
+      type: 'convert',
+      editor: process.transformEditor.DateDifferenceEditor
+    },
+    process.function.DateDifference
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeString,
+      to: core.class.TypeNumber,
+      category: 'attribute',
+      label: process.string.NumberFromText,
+      type: 'convert'
+    },
+    process.function.NumberFromString
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeString,
+      to: core.class.TypeDate,
+      category: 'attribute',
+      label: process.string.DateFromText,
+      type: 'convert'
+    },
+    process.function.DateFromString
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeDate,
+      to: core.class.TypeNumber,
+      category: 'attribute',
+      label: process.string.YearFromDate,
+      type: 'convert'
+    },
+    process.function.YearFromDate
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeDate,
+      to: core.class.TypeNumber,
+      category: 'attribute',
+      label: process.string.MonthFromDate,
+      type: 'convert'
+    },
+    process.function.MonthFromDate
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeDate,
+      to: core.class.TypeNumber,
+      category: 'attribute',
+      label: process.string.DayFromDate,
+      type: 'convert'
+    },
+    process.function.DayFromDate
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.EnumOf,
+      to: core.class.TypeString,
+      category: 'attribute',
+      label: process.string.TextFromSelect,
+      type: 'convert'
+    },
+    process.function.StringFromEnum
+  )
+
+  builder.createDoc(
+    process.class.ProcessFunction,
+    core.space.Model,
+    {
+      of: core.class.TypeString,
+      to: core.class.EnumOf,
+      category: 'attribute',
+      label: process.string.SelectFromText,
+      type: 'convert'
+    },
+    process.function.EnumFromString
   )
 }

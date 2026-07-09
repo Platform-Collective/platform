@@ -21,11 +21,12 @@ import documentsPlugin, {
   DocumentState,
   type Document,
   type DocumentSpace,
+  type DocumentTemplate,
   type ProjectDocument,
   type ChangeControl,
   type DocumentRequest
 } from '@hcengineering/controlled-documents'
-import exportPlugin, { type RelationDefinition } from '@hcengineering/export'
+import exportPlugin from '@hcengineering/export'
 import { type Builder } from '@hcengineering/model'
 import chunter from '@hcengineering/model-chunter'
 import core from '@hcengineering/model-core'
@@ -43,7 +44,7 @@ import setting from '@hcengineering/setting'
 import tags from '@hcengineering/tags'
 import textEditor from '@hcengineering/text-editor'
 
-import { AccountRole, type ClassCollaborators, type Class, type Doc, type Ref } from '@hcengineering/core'
+import { AccountRole, type ClassCollaborators, type Class, type Doc, type Lookup, type Ref } from '@hcengineering/core'
 import { type Action } from '@hcengineering/view'
 import { definePermissions } from './permissions'
 import documents from './plugin'
@@ -78,6 +79,38 @@ import {
 export { documentsId } from '@hcengineering/controlled-documents/src/index'
 export * from './types'
 
+function defineRelationMetadata (builder: Builder): void {
+  const rel = (
+    ref: Ref<Class<Doc>>,
+    field: string,
+    targetClass: Ref<Class<Doc>>,
+    direction: 'forward' | 'inverse' = 'forward'
+  ): void => {
+    builder.createDoc(core.class.RelationMetadata, core.space.Model, {
+      sourceClass: ref,
+      field,
+      targetClass,
+      direction
+    })
+  }
+
+  rel(documents.class.Document, 'category', documents.class.DocumentCategory, 'forward')
+  rel(documents.class.Document, 'template', documents.class.Document, 'forward')
+  rel(documents.class.Document, 'document', documents.class.ProjectDocument, 'inverse')
+  rel(documents.class.HierarchyDocument, 'attachedTo', documents.class.DocumentMeta, 'forward')
+  rel(documents.class.ControlledDocument, 'changeControl', documents.class.ChangeControl, 'forward')
+  rel(documents.class.DocumentMeta, 'meta', documents.class.ProjectMeta, 'inverse')
+  rel(documents.class.Project, 'project', documents.class.ProjectMeta, 'inverse')
+  rel(documents.class.ProjectMeta, 'meta', documents.class.DocumentMeta, 'forward')
+  rel(documents.class.ProjectMeta, 'parent', documents.class.DocumentMeta, 'forward')
+  rel(documents.class.ProjectMeta, 'path', documents.class.DocumentMeta, 'forward')
+  rel(documents.class.ProjectMeta, 'project', documents.class.Project, 'forward')
+  rel(documents.class.ProjectDocument, 'project', documents.class.Project, 'forward')
+  rel(documents.class.ProjectDocument, 'initial', documents.class.Project, 'forward')
+  rel(documents.class.ProjectDocument, 'attachedTo', documents.class.ProjectMeta, 'forward')
+  rel(documents.class.ProjectDocument, 'document', documents.class.Document, 'forward')
+}
+
 export function createModel (builder: Builder): void {
   builder.createModel(
     TDocumentSpace,
@@ -107,6 +140,8 @@ export function createModel (builder: Builder): void {
 
     TDocumentComment
   )
+
+  defineRelationMetadata(builder)
 
   builder.mixin(documents.class.ControlledDocument, core.class.Class, view.mixin.ObjectTitle, {
     titleProvider: documents.function.ControlledDocumentTitleProvider
@@ -255,6 +290,11 @@ export function createModel (builder: Builder): void {
   )
 
   // Workflow
+  const documentTableLookup: Lookup<Document> = {
+    owner: contact.mixin.Employee,
+    category: documents.class.DocumentCategory,
+    template: documents.mixin.DocumentTemplate
+  }
   builder.createDoc(
     view.class.Viewlet,
     core.space.Model,
@@ -308,16 +348,27 @@ export function createModel (builder: Builder): void {
         'modifiedOn'
       ],
       options: {
-        lookup: {
-          owner: contact.mixin.Employee,
-          category: documents.class.DocumentCategory,
-          template: documents.mixin.DocumentTemplate
-        }
+        lookup: documentTableLookup
       }
     },
     documents.viewlet.TableDocument
   )
 
+  builder.createDoc(
+    view.class.ViewletViewAction,
+    core.space.Model,
+    {
+      descriptor: view.viewlet.Table,
+      extension: converter.extensions.CopyAsMarkdownAction,
+      applicableToClass: documents.class.Document
+    },
+    documents.specialViewAction.TableDocument
+  )
+
+  const documentTemplateTableLookup: Lookup<DocumentTemplate> = {
+    owner: contact.mixin.Employee,
+    category: documents.class.DocumentCategory
+  }
   builder.createDoc(
     view.class.Viewlet,
     core.space.Model,
@@ -367,10 +418,7 @@ export function createModel (builder: Builder): void {
         hiddenKeys: ['attachedTo']
       },
       options: {
-        lookup: {
-          owner: contact.mixin.Employee,
-          category: documents.class.DocumentCategory
-        }
+        lookup: documentTemplateTableLookup
       }
     },
     documents.viewlet.TableDocumentTemplate
@@ -421,6 +469,10 @@ export function createModel (builder: Builder): void {
 
   builder.mixin(documents.class.DocumentMeta, core.class.Class, view.mixin.ObjectTitle, {
     titleProvider: documents.function.DocumentMetaTitleProvider
+  })
+
+  builder.mixin(documents.class.DocumentMeta, core.class.Class, view.mixin.ReferenceVersionsProvider, {
+    provider: documents.function.DocumentMetaReferenceVersionsProvider
   })
 
   builder.mixin(documents.class.DocumentMeta, core.class.Class, view.mixin.LinkProvider, {
@@ -833,19 +885,6 @@ export function createModel (builder: Builder): void {
     documents.action.TransferDocument
   )
 
-  const relations: RelationDefinition[] = [
-    // Forward relations - migrate referenced documents first
-    { field: 'attachedTo', class: documents.class.DocumentMeta },
-    { field: 'changeControl', class: documents.class.ChangeControl },
-    { field: 'category', class: documents.class.DocumentCategory },
-    { field: 'template', class: documents.class.Document },
-    // Inverse relations - find documents that reference this one
-    // ProjectMeta references DocumentMeta via 'meta' field - must be migrated before ProjectDocument
-    { field: 'meta', class: documents.class.ProjectMeta, direction: 'inverse' },
-    // ProjectDocument references ControlledDocument via 'document' field
-    { field: 'document', class: documents.class.ProjectDocument, direction: 'inverse' }
-  ]
-
   createAction(
     builder,
     {
@@ -854,9 +893,6 @@ export function createModel (builder: Builder): void {
         component: exportPlugin.component.ExportToWorkspaceModal,
         fillProps: {
           _objects: 'value'
-        },
-        props: {
-          relations
         }
       },
       label: exportPlugin.string.ExportToWorkspace,
@@ -879,10 +915,36 @@ export function createModel (builder: Builder): void {
       actionProps: {
         component: exportPlugin.component.ExportToWorkspaceModal,
         fillProps: {
+          _objects: 'value'
+        },
+        props: {
+          projectDocExport: true,
+          docClass: documents.class.ControlledDocument
+        }
+      },
+      label: exportPlugin.string.ExportToWorkspace,
+      icon: exportPlugin.icon.Export,
+      input: 'any',
+      category: view.category.General,
+      target: documents.class.ProjectDocument,
+      context: {
+        mode: ['context', 'browser'],
+        group: 'copy'
+      }
+    },
+    documents.action.ExportProjectDocuments
+  )
+
+  createAction(
+    builder,
+    {
+      action: view.actionImpl.ShowPopup,
+      actionProps: {
+        component: exportPlugin.component.ExportToWorkspaceModal,
+        fillProps: {
           _object: 'value'
         },
         props: {
-          relations,
           spaceExport: true,
           docClass: documents.class.ControlledDocument
         }
@@ -918,6 +980,28 @@ export function createModel (builder: Builder): void {
       }
     },
     documents.action.CopyAsMarkdownTable
+  )
+
+  createAction(
+    builder,
+    {
+      action: view.actionImpl.CopyDocumentMarkdown,
+      actionProps: {
+        contentClass: documents.class.Document,
+        contentField: 'content'
+      },
+      label: view.string.CopyDocumentMarkdown,
+      icon: view.icon.Print,
+      input: 'focus',
+      category: view.category.General,
+      target: documents.class.Document,
+      query: {},
+      context: {
+        mode: ['context', 'browser'],
+        group: 'copy'
+      }
+    },
+    documents.action.CopyDocumentMarkdown
   )
 
   createAction(
@@ -1046,7 +1130,7 @@ export function createModel (builder: Builder): void {
         label: print.string.PrintToPDF,
         icon: print.icon.Print,
         category: view.category.General,
-        input: 'focus', // NOTE: should only work for one doc for now, not bulk
+        input: 'any',
         target,
         context: { mode: ['context', 'browser'], group: 'tools' },
         visibilityTester: documents.function.CanPrintDocument,
@@ -1060,6 +1144,33 @@ export function createModel (builder: Builder): void {
   createPrintAction(documents.class.Document, documents.action.Print)
 
   defineSpaceType(builder)
+  builder.createDoc(
+    core.class.ModulePermissionGroup,
+    core.space.Model,
+    {
+      application: documents.app.Documents,
+      role: AccountRole.Guest,
+      permissions: [],
+      spaceClass: documents.class.OrgSpace,
+      enabled: true,
+      order: 42
+    },
+    documents.ids.ModulePermissionGroup
+  )
+
+  builder.createDoc(
+    core.class.ModulePermissionGroup,
+    core.space.Model,
+    {
+      application: documents.app.Documents,
+      role: AccountRole.ReadOnlyGuest,
+      permissions: [],
+      spaceClass: documents.class.OrgSpace,
+      enabled: false,
+      order: 42
+    },
+    documents.ids.ModulePermissionGroupReadOnlyGuest
+  )
   definePermissions(builder)
   defineNotifications(builder)
   defineSearch(builder)
@@ -1068,6 +1179,11 @@ export function createModel (builder: Builder): void {
 
 export function defineNotifications (builder: Builder): void {
   builder.mixin(documents.class.ControlledDocument, core.class.Class, activity.mixin.ActivityDoc, {})
+
+  builder.createDoc(activity.class.ActivityExtension, core.space.Model, {
+    ofClass: documents.class.ControlledDocument,
+    components: { input: { component: chunter.component.ChatMessageInput } }
+  })
 
   builder.createDoc(activity.class.ActivityExtension, core.space.Model, {
     ofClass: documents.class.DocumentComment,
@@ -1168,6 +1284,28 @@ export function defineNotifications (builder: Builder): void {
     {
       hidden: false,
       generated: false,
+      allowedForAuthor: true,
+      label: documents.string.Review,
+      group: documents.notification.DocumentsNotificationGroup,
+      field: 'controlledState',
+      txClasses: [core.class.TxUpdateDoc],
+      objectClass: documents.class.ControlledDocument,
+      defaultEnabled: true,
+      templates: {
+        textTemplate: '{sender} marked {doc} as reviewed',
+        htmlTemplate: '<p>{sender} marked {doc} as reviewed</p>',
+        subjectTemplate: '{doc} reviewed'
+      }
+    },
+    documents.notification.ReviewNotification
+  )
+
+  builder.createDoc(
+    notification.class.NotificationType,
+    core.space.Model,
+    {
+      hidden: false,
+      generated: false,
       allowedForAuthor: false,
       label: documents.string.CoAuthors,
       group: documents.notification.DocumentsNotificationGroup,
@@ -1187,7 +1325,11 @@ export function defineNotifications (builder: Builder): void {
   builder.createDoc(notification.class.NotificationProviderDefaults, core.space.Model, {
     provider: notification.providers.InboxNotificationProvider,
     ignoredTypes: [],
-    enabledTypes: [documents.notification.StateNotification, documents.notification.ContentNotification]
+    enabledTypes: [
+      documents.notification.StateNotification,
+      documents.notification.ContentNotification,
+      documents.notification.ReviewNotification
+    ]
   })
 
   generateClassNotificationTypes(

@@ -21,6 +21,7 @@
     "LastName": "Příjmení",
     "FirstName": "Jméno",
     "Join": "Připojit se",
+    "JoinWorkspace": "Připojit se k {workspaceName}",
     "Email": "E-mail",
     "Password": "Heslo",
     "Workspace": "Název pracovního prostoru",
@@ -85,6 +86,23 @@
     "SignUpToCreateWorkspace": "Neexistují žádné pracovní prostory s přístupem pro hosty. Prosím, zaregistrujte se a vytvořte si vlastní.",
     "WhatIsYourName": "Jak se jmenujete?",
     "AccessExpired": "Doba přístupu vypršela. Požádejte prosím o nový odkaz pro přístup.",
-    "AccessNotActive": "Doba přístupu ještě nezačala. Začíná za: "
+    "AccessNotActive": "Doba přístupu ještě nezačala. Začíná za: ",
+    "JoinWithThisAccount": "Připojit se tímto účtem",
+    "UseDifferentAccount": "Použít jiný účet",
+    "UseCurrentAccountToJoin": "Už jste přihlášeni?",
+    "LogInAndJoin": "Přihlásit se a připojit",
+    "SignUpAndJoin": "Registrovat se a připojit",
+    "CreateNewAccount": "Vytvořit nový účet",
+    "SignedInAs": "Přihlášen jako {name}",
+    "TwoFactorAuth": "Dvoufaktorové ověření",
+    "EnterTwoFactorCode": "Zadejte dvoufaktorový ověřovací kód",
+    "TwoFactorCode": "Dvoufaktorový ověřovací kód",
+    "Verify": "Ověřit",
+    "SetPassword": "Nastavit heslo",
+    "SSOPasswordDescription": "Váš účet používá externí přihlášení. Nastavte si heslo prostřednictvím e-mailové potvrzení.",
+    "SendSetupLink": "Odeslat odkaz na nastavení",
+    "SSOPasswordEmailSent": "Zkontrolujte svůj e-mail, zda neobsahuje odkaz pro nastavení hesla.",
+    "SSONoEmailLinked": "K vašemu účtu není přidružena žádná e-mailová adresa. Nejprve ji přidejte v Nastavení účtu → Spravovat identity.",
+    "CreateSampleProjects": "Vytvořit ukázkové projekty a demo obsah"
   }
 }

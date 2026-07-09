@@ -39,12 +39,20 @@ export interface MasterTag extends Class<Card> {
   background?: number
   removed?: boolean
   roles?: CollectionSize<Role>
+  singleColumn?: boolean
+  baseType?: boolean
 }
 
 export interface Tag extends MasterTag, Mixin<Card> {}
 
 export interface Role extends BaseRole {
   types: Ref<MasterTag | Tag>[]
+}
+
+export interface DuplicateSetting extends Class<MasterTag> {
+  excludedProperties?: string[]
+  excludedRelations?: string[] // ${associationId}_${a|b}
+  excludeMixins?: Ref<Mixin<Doc>>[]
 }
 
 export interface Card extends Doc, IconProps, VersionableDoc {
@@ -57,9 +65,11 @@ export interface Card extends Doc, IconProps, VersionableDoc {
   parentInfo: ParentInfo[]
   parent?: Ref<Card> | null
   rank: Rank
-  readonly?: boolean
 
   peerId?: string
+
+  readonlySections?: Ref<MasterTag>[]
+  readonlyFields?: string[]
 }
 
 export interface CardSpace extends TypedSpace {
@@ -154,7 +164,8 @@ const cardPlugin = plugin(cardId, {
   },
   mixin: {
     CardViewDefaults: '' as Ref<Mixin<CardViewDefaults>>,
-    CreateCardExtension: '' as Ref<Mixin<CreateCardExtension>>
+    CreateCardExtension: '' as Ref<Mixin<CreateCardExtension>>,
+    DuplicateSetting: '' as Ref<Mixin<DuplicateSetting>>
   },
   space: {
     Default: '' as Ref<CardSpace>
@@ -181,6 +192,7 @@ const cardPlugin = plugin(cardId, {
     Feed: '' as Asset,
     All: '' as Asset,
     Duplicate: '' as Asset,
+    Grid: '' as Asset,
     Lock: '' as Asset
   },
   extensions: {
@@ -201,10 +213,17 @@ const cardPlugin = plugin(cardId, {
     AddTag: '' as IntlString,
     Feed: '' as IntlString,
     AllCards: '' as IntlString,
+    Grid: '' as IntlString,
     Favorites: '' as IntlString,
     CreateCard: '' as IntlString,
+    AllowCreatingCards: '' as IntlString,
     Version: '' as IntlString,
-    Versions: '' as IntlString
+    Versions: '' as IntlString,
+    LockSection: '' as IntlString,
+    UnLockSection: '' as IntlString,
+    SectionLocked: '' as IntlString,
+    SectionUnlocked: '' as IntlString,
+    ShowAllVersions: '' as IntlString
   },
   section: {
     Attachments: '' as Ref<CardSection>,
@@ -216,7 +235,10 @@ const cardPlugin = plugin(cardId, {
     CommunicationMessages: '' as Ref<CardSection>
   },
   ids: {
-    CardWidget: '' as Ref<Doc>
+    CardWidget: '' as Ref<Doc>,
+    GuestCardClassPermission: '' as Ref<Doc>,
+    ModulePermissionGroup: '' as Ref<Doc>,
+    ModulePermissionGroupReadOnlyGuest: '' as Ref<Doc>
   },
   component: {
     LabelsPresenter: '' as AnyComponent,

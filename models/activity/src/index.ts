@@ -279,6 +279,8 @@ export function createModel (builder: Builder): void {
   )
 
   builder.mixin(activity.class.Reaction, core.class.Class, core.mixin.TxAccessLevel, {
+    createAccessLevel: AccountRole.Guest,
+    updateAccessLevel: AccountRole.Guest,
     removeAccessLevel: AccountRole.Guest
   })
 
@@ -386,6 +388,10 @@ export function createModel (builder: Builder): void {
 
   builder.mixin(activity.class.Reaction, core.class.Class, presentation.mixin.InstantTransactions, {
     txClasses: [core.class.TxCreateDoc]
+  })
+
+  builder.mixin(activity.class.ActivityMessage, core.class.Class, view.mixin.ObjectTooltip, {
+    provider: activity.function.ActivityMessageTooltipProvider
   })
 
   buildActions(builder)

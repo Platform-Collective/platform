@@ -123,6 +123,9 @@
     "NoAssignee": "Sem atribuição",
     "LastUpdated": "Última atualização",
     "DueDate": "Data de vencimento",
+    "IssueStartDate": "Data de início",
+    "GanttDependency": "Dependency",
+    "GanttLag": "Lag",
     "Manual": "Manual",
     "All": "Todos",
     "PastWeek": "Semana passada",
@@ -247,6 +250,7 @@
     "SevenHoursLength": "Sete Horas",
     "EightHoursLength": "Oito Horas",
     "HourLabel": "h",
+    "MinuteLabel": "m",
     "Saved": "Guardado...",
     "CreatedIssue": "Problema criado",
     "CreatedSubIssue": "Sub-problema criado",
@@ -271,7 +275,8 @@
     "Extensions": "Extensions",
     "UnsetParentIssue": "Desmarcar problema pai",
     "ForbidCreateProjectPermission": "Proibir criação de projeto",
-    "ForbidCreateProjectPermissionDescription": "Proíbe os usuários de criar novos projetos"
+    "ForbidCreateProjectPermissionDescription": "Proíbe os usuários de criar novos projetos",
+    "AllowCreatingIssues": "Permitir criar problemas"
   },
   "status": {}
 }

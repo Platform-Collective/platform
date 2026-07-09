@@ -14,17 +14,17 @@
 -->
 
 <script lang="ts">
-  import core, { AnyAttribute, generateId } from '@hcengineering/core'
+  import { Analytics } from '@hcengineering/analytics'
+  import core, { AnyAttribute } from '@hcengineering/core'
   import { getResource } from '@hcengineering/platform'
   import { getClient } from '@hcengineering/presentation'
   import { Process } from '@hcengineering/process'
   import { AnySvelteComponent } from '@hcengineering/ui'
   import view from '@hcengineering/view'
+  import { createEventDispatcher } from 'svelte'
   import plugin from '../../plugin'
   import { getContext, getMockAttribute } from '../../utils'
   import ProcessAttribute from '../ProcessAttribute.svelte'
-  import { createEventDispatcher } from 'svelte'
-  import { Analytics } from '@hcengineering/analytics'
 
   export let readonly: boolean
   export let process: Process
@@ -32,7 +32,7 @@
 
   const client = getClient()
   const h = client.getHierarchy()
-  $: context = getContext(client, process, core.class.TypeDate, 'attribute')
+  $: context = getContext(client, process, core.class.TypeDate, 'attribute', undefined, true)
 
   const attribute: AnyAttribute = getMockAttribute(process.masterTag, plugin.string.WaitUntil, {
     label: core.string.Date,

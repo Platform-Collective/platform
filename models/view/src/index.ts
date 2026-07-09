@@ -29,12 +29,17 @@ import {
   type Ref,
   type Space
 } from '@hcengineering/core'
-import { type Builder, Mixin, Model, UX } from '@hcengineering/model'
+import { type Builder, Mixin, Model, Prop, TypeRecord, TypeRef, TypeString, UX } from '@hcengineering/model'
 import core, { TClass, TDoc } from '@hcengineering/model-core'
 import preference, { TPreference } from '@hcengineering/model-preference'
 import presentation from '@hcengineering/model-presentation'
-import { type Asset, type IntlString, type Resource, type Status } from '@hcengineering/platform'
-import { type AnyComponent, type LabelAndProps, type Location } from '@hcengineering/ui/src/types'
+import { type Asset, getEmbeddedLabel, type IntlString, type Resource, type Status } from '@hcengineering/platform'
+import {
+  type AnyComponent,
+  type ComponentExtensionId,
+  type LabelAndProps,
+  type Location
+} from '@hcengineering/ui/src/types'
 import {
   type TypeEditor,
   type Action,
@@ -87,6 +92,8 @@ import {
   type ObjectValidator,
   type PreviewPresenter,
   type ReferenceObjectProvider,
+  type ReferenceVersion,
+  type ReferenceVersionsProvider,
   type SortFunc,
   type SpaceHeader,
   type SpaceName,
@@ -99,7 +106,8 @@ import {
   type ViewOptionsModel,
   type Viewlet,
   type ViewletDescriptor,
-  type ViewletPreference
+  type ViewletPreference,
+  type ViewletViewAction
 } from '@hcengineering/view'
 
 import view from './plugin'
@@ -269,6 +277,11 @@ export class TReferenceObjectProvider extends TClass implements ReferenceObjectP
   provider!: Resource<<T extends Doc>(client: Client, ref: Ref<T>, doc?: T) => Promise<Doc | undefined>>
 }
 
+@Mixin(view.mixin.ReferenceVersionsProvider, core.class.Class)
+export class TReferenceVersionsProvider extends TClass implements ReferenceVersionsProvider {
+  provider!: Resource<<T extends Doc>(client: Client, ref: Ref<T>, doc?: T) => Promise<ReferenceVersion[]>>
+}
+
 @Mixin(view.mixin.ObjectTooltip, core.class.Class)
 export class TObjectTooltip extends TClass implements ObjectTooltip {
   provider!: Resource<(client: Client, doc?: Doc | null) => Promise<LabelAndProps | undefined>>
@@ -316,6 +329,28 @@ export class TViewletPreference extends TPreference implements ViewletPreference
 export class TViewletDescriptor extends TDoc implements ViewletDescriptor {
   component!: AnyComponent
   label!: IntlString
+}
+
+@Model(view.class.ViewletViewAction, core.class.Doc, DOMAIN_MODEL)
+@UX(view.string.ViewletViewAction)
+export class TViewletViewAction extends TDoc implements ViewletViewAction {
+  @Prop(TypeRef(view.class.Viewlet), getEmbeddedLabel('Viewlet'))
+  declare viewlet?: Ref<Viewlet>
+
+  @Prop(TypeRef(view.class.ViewletDescriptor), getEmbeddedLabel('Descriptor'))
+  declare descriptor?: Ref<ViewletDescriptor>
+
+  @Prop(TypeString(), getEmbeddedLabel('Extension'))
+  declare extension: ComponentExtensionId
+
+  @Prop(TypeRecord(), getEmbeddedLabel('Config'))
+  declare config?: Record<string, any>
+
+  @Prop(TypeRef(core.class.Class), getEmbeddedLabel('ApplicableToClass'))
+  declare applicableToClass?: Ref<Class<Doc>>
+
+  @Prop(TypeRef(core.class.Class), getEmbeddedLabel('DisabledForClass'))
+  declare disabledForClass?: Ref<Class<Doc>>
 }
 
 @Model(view.class.Viewlet, core.class.Doc, DOMAIN_MODEL)
@@ -472,6 +507,7 @@ export function createModel (builder: Builder): void {
     TViewletPreference,
     TViewletDescriptor,
     TViewlet,
+    TViewletViewAction,
     TAction,
     TActionCategory,
     TObjectValidator,
@@ -494,6 +530,7 @@ export function createModel (builder: Builder): void {
     TGroupping,
     TObjectIdentifier,
     TReferenceObjectProvider,
+    TReferenceVersionsProvider,
     TObjectTooltip,
     TObjectIcon,
     TAttrPresenter,
@@ -861,24 +898,28 @@ export function createModel (builder: Builder): void {
     view.action.Join
   )
 
-  createAction(builder, {
-    action: view.actionImpl.ShowPopup,
-    actionProps: {
-      component: view.component.AddRelationPopup,
-      fillProps: {
-        _objects: 'value'
+  createAction(
+    builder,
+    {
+      action: view.actionImpl.ShowPopup as ViewAction<Record<string, any>>,
+      actionProps: {
+        component: view.component.AddRelationPopup,
+        fillProps: {
+          _objects: 'value'
+        }
+      },
+      label: core.string.AddRelation,
+      input: 'any',
+      icon: view.icon.CopyLink,
+      category: view.category.Editor,
+      target: core.class.Doc,
+      context: {
+        mode: ['context', 'browser'],
+        group: 'associate'
       }
     },
-    label: core.string.AddRelation,
-    input: 'any',
-    icon: view.icon.CopyLink,
-    category: view.category.Editor,
-    target: core.class.Doc,
-    context: {
-      mode: ['context', 'browser'],
-      group: 'associate'
-    }
-  })
+    view.action.AddRelation
+  )
 
   createAction(
     builder,

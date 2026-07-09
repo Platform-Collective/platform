@@ -13,8 +13,17 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { AccountArrayEditor, employeeRefByAccountUuidStore } from '@hcengineering/contact-resources'
-  import core, { AccountUuid, Data, Ref, RolesAssignment, getCurrentAccount, notEmpty } from '@hcengineering/core'
+  import { AccountArrayEditor, employeeRefByAccountUuidStore, getAnonymousRefs } from '@hcengineering/contact-resources'
+  import core, {
+    AccountRole,
+    AccountUuid,
+    Data,
+    Ref,
+    RolesAssignment,
+    getCurrentAccount,
+    notEmpty,
+    setWorkspaceGuestAutoJoinRoles
+  } from '@hcengineering/core'
   import presentation, { Card, getClient } from '@hcengineering/presentation'
   import { EditBox, Label, Toggle } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
@@ -41,6 +50,8 @@
 
   let roles = client.getModel().findAllSync(card.class.Role, { types: { $in: types } })
   $: roles = client.getModel().findAllSync(card.class.Role, { types: { $in: types } })
+
+  $: readOnlyGuestOwnerExcludeItems = getAnonymousRefs($employeeRefByAccountUuidStore, owners)
 
   let name: string = space?.name ?? ''
 
@@ -98,6 +109,16 @@
     }
   }
 
+  function normalizeAutoJoinForRoles (roles: AccountRole[]): AccountRole[] | undefined {
+    return roles.length > 0 ? [...roles] : undefined
+  }
+
+  let autoJoinForRoles: AccountRole[] = space?.autoJoinForRoles != null ? hierarchy.clone(space.autoJoinForRoles) : []
+
+  function setGuestAutoJoin (enabled: boolean): void {
+    autoJoinForRoles = setWorkspaceGuestAutoJoinRoles(autoJoinForRoles, enabled)
+  }
+
   function getData (): Data<CardSpace> {
     return {
       name,
@@ -106,6 +127,7 @@
       members,
       owners,
       autoJoin,
+      autoJoinForRoles: normalizeAutoJoinForRoles(autoJoinForRoles),
       archived: false,
       type: card.spaceType.SpaceType,
       types,
@@ -227,6 +249,7 @@
       </div>
       <AccountArrayEditor
         value={owners}
+        excludeItems={readOnlyGuestOwnerExcludeItems}
         label={core.string.Owners}
         onChange={handleOwnersChanged}
         kind={'regular'}
@@ -254,6 +277,19 @@
         <span><Label label={core.string.AutoJoinDescr} /></span>
       </div>
       <Toggle id={'space-autoJoin'} bind:on={autoJoin} />
+    </div>
+
+    <div class="antiGrid-row">
+      <div class="antiGrid-row__header withDesciption">
+        <Label label={core.string.AutoJoinGuests} />
+        <span><Label label={core.string.AutoJoinGuestsDescr} /></span>
+      </div>
+      <Toggle
+        on={autoJoinForRoles.includes(AccountRole.Guest)}
+        on:change={(ev) => {
+          setGuestAutoJoin(ev.detail)
+        }}
+      />
     </div>
 
     <div class="antiGrid-row">

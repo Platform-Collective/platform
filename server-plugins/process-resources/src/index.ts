@@ -17,7 +17,12 @@ import cardPlugin, { Card } from '@hcengineering/card'
 import core, {
   ArrOf,
   Doc,
+  DocumentUpdate,
+  generateId,
+  Mixin,
+  Ref,
   RefTo,
+  Space,
   Tx,
   TxCreateDoc,
   TxCUD,
@@ -27,22 +32,56 @@ import core, {
   TxUpdateDoc
 } from '@hcengineering/core'
 import process, {
+  ApproveRequest,
   ContextId,
   Execution,
+  ExecutionContext,
+  ExecutionStatus,
+  isUpdateTx,
   Method,
   parseContext,
   Process,
   ProcessContext,
+  ProcessCustomEvent,
   ProcessToDo,
   SelectedExecutionContext,
   State,
   Step,
   Transition,
-  isUpdateTx,
-  ProcessCustomEvent
+  Trigger
 } from '@hcengineering/process'
 import { QueueTopic, TriggerControl } from '@hcengineering/server-core'
 import { ProcessMessage } from '@hcengineering/server-process'
+import time from '@hcengineering/time'
+import {
+  AddRelation,
+  AddTag,
+  ApproveRequestApproved,
+  ApproveRequestRejected,
+  CancelSubProcess,
+  CancelToDo,
+  CheckSubProcessesDone,
+  CheckSubProcessMatch,
+  CheckTime,
+  CheckToDoCancelled,
+  CheckToDoDone,
+  CreateCard,
+  CreateToDo,
+  EventCheck,
+  FieldChangedCheck,
+  LockCard,
+  LockField,
+  LockSection,
+  MatchCardCheck,
+  RequiredFieldsFilledCheck,
+  RequestApproval,
+  RunSubProcess,
+  UnlockCard,
+  UnlockField,
+  UnlockSection,
+  UpdateCard
+} from './functions'
+import { FieldChangedRollback, ToDoCancellRollback, ToDoCloseRollback } from './rollback'
 import {
   Absolute,
   Add,
@@ -52,18 +91,34 @@ import {
   CurrentDate,
   CurrentUser,
   Cut,
+  DateDifference,
+  DateFromNumber,
+  DateFromString,
+  DayFromDate,
   Divide,
+  EmptyArray,
+  EmptyValue,
+  ExecutionInitiator,
+  ExecutionStarted,
+  Filter,
+  FirstMatchValue,
   FirstValue,
   FirstWorkingDayAfter,
   Floor,
   Insert,
   LastValue,
   LowerCase,
+  MarkupFromString,
+  StringFromIdentifier,
+  Max,
+  Min,
   Modulo,
+  MonthFromDate,
   Multiply,
+  NumberFromDate,
+  NumberFromString,
   Offset,
   Power,
-  Sqrt,
   Prepend,
   Random,
   Remove,
@@ -74,32 +129,18 @@ import {
   RoleContext,
   Round,
   Split,
+  Sqrt,
+  StringFromBoolean,
+  StringFromDate,
+  StringFromMarkup,
+  StringFromNumber,
   Subtract,
   Trim,
   UpperCase,
-  EmptyArray,
-  ExecutionInitiator,
-  ExecutionStarted,
-  FirstMatchValue,
-  Filter
+  YearFromDate,
+  StringFromEnum,
+  EnumFromString
 } from './transform'
-import {
-  RunSubProcess,
-  CreateToDo,
-  UpdateCard,
-  CreateCard,
-  AddRelation,
-  AddTag,
-  CheckToDoDone,
-  CheckToDoCancelled,
-  MatchCardCheck,
-  CheckSubProcessesDone,
-  CheckSubProcessMatch,
-  CheckTime,
-  FieldChangedCheck,
-  EventCheck
-} from './functions'
-import { ToDoCancellRollback, ToDoCloseRollback } from './rollback'
 
 async function putEventToQueue (value: Omit<ProcessMessage, 'account'>, control: TriggerControl): Promise<void> {
   if (control.queue === undefined) return
@@ -128,17 +169,40 @@ export async function OnProcessToDoClose (txes: Tx[], control: TriggerControl): 
       await control.findAll(control.ctx, process.class.ProcessToDo, { _id: updateTx.objectId }, { limit: 1 })
     )[0]
     if (todo === undefined) continue
+    const events: Ref<Trigger>[] = [process.trigger.OnToDoClose]
+    if (todo._class === process.class.ApproveRequest) {
+      const request = todo as ApproveRequest
+      if (request.approved === true) {
+        events.push(process.trigger.OnApproveRequestApproved)
+      } else if (request.approved === false) {
+        events.push(process.trigger.OnApproveRequestRejected)
+      }
+    }
     await putEventToQueue(
       {
-        event: process.trigger.OnToDoClose,
+        event: events,
         execution: todo.execution,
         createdOn: tx.modifiedOn,
+        _id: tx._id,
         context: {
           todo
         }
       },
       control
     )
+    if (todo._class === process.class.ApproveRequest) {
+      const request = todo as ApproveRequest
+      if (request.approved === false) {
+        // remove all other approve requests for this execution
+        const toRemove = await control.findAll(control.ctx, process.class.ApproveRequest, {
+          group: request.group,
+          doneOn: null
+        })
+        for (const req of toRemove) {
+          res.push(control.txFactory.createTxRemoveDoc(req._class, req.space, req._id))
+        }
+      }
+    }
   }
   return res
 }
@@ -153,10 +217,11 @@ export async function OnCustomEvent (txes: Tx[], control: TriggerControl): Promi
     if (card.length === 0) continue
     await putEventToQueue(
       {
-        event: process.trigger.OnEvent,
+        event: [process.trigger.OnEvent],
         execution: customEvent.execution,
         createdOn: tx.modifiedOn,
         card: customEvent.card,
+        _id: tx._id,
         context: {
           eventType: customEvent.eventType,
           card
@@ -176,9 +241,10 @@ export async function OnExecutionCreate (txes: Tx[], control: TriggerControl): P
     const execution = TxProcessor.createDoc2Doc(createTx)
     await putEventToQueue(
       {
-        event: process.trigger.OnExecutionStart,
+        event: [process.trigger.OnExecutionStart],
         execution: execution._id,
         createdOn: tx.modifiedOn,
+        _id: tx._id,
         context: {}
       },
       control
@@ -192,13 +258,15 @@ export async function OnProcessToDoRemove (txes: Tx[], control: TriggerControl):
     if (tx._class !== core.class.TxRemoveDoc) continue
     const removeTx = tx as TxRemoveDoc<ProcessToDo>
     if (!control.hierarchy.isDerived(removeTx.objectClass, process.class.ProcessToDo)) continue
+    if (removeTx.space === core.space.DerivedTx) continue
     const removedTodo = control.removedMap.get(removeTx.objectId) as ProcessToDo
     if (removedTodo === undefined) continue
     await putEventToQueue(
       {
-        event: process.trigger.OnToDoRemove,
+        event: [process.trigger.OnToDoRemove],
         execution: removedTodo.execution,
         createdOn: tx.modifiedOn,
+        _id: tx._id,
         context: {
           todo: removedTodo
         }
@@ -225,15 +293,44 @@ export async function OnExecutionContinue (txes: Tx[], control: TriggerControl):
     if (transition === undefined) continue
     await putEventToQueue(
       {
-        event: process.trigger.OnExecutionContinue,
+        event: [process.trigger.OnExecutionContinue],
         execution: execution._id,
         createdOn: tx.modifiedOn,
+        _id: tx._id,
         context: {}
       },
       control
     )
   }
   return []
+}
+
+export async function OnExecutionDone (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+  const res: Tx[] = []
+  for (const tx of txes) {
+    if (tx._class !== core.class.TxUpdateDoc) continue
+    if (tx.space !== core.space.Tx) continue
+    const updateTx = tx as TxUpdateDoc<Execution>
+    if (!control.hierarchy.isDerived(updateTx.objectClass, process.class.Execution)) continue
+    if (updateTx.operations.status !== ExecutionStatus.Done) continue
+
+    const todos = await control.findAll(control.ctx, process.class.ProcessToDo, {
+      execution: updateTx.objectId,
+      doneOn: null
+    })
+    if (todos.length === 0) continue
+
+    const workslots = await control.findAll(control.ctx, time.class.WorkSlot, {
+      attachedTo: { $in: todos.map((todo) => todo._id) }
+    })
+    const todosWithWorkslots = new Set(workslots.map((workslot) => workslot.attachedTo as string))
+
+    for (const todo of todos) {
+      if (todosWithWorkslots.has(todo._id as string)) continue
+      res.push(control.txFactory.createTxRemoveDoc(todo._class, todo.space, todo._id))
+    }
+  }
+  return res
 }
 
 export async function OnProcessRemove (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
@@ -289,21 +386,140 @@ export async function OnExecutionRemove (txes: Tx[], control: TriggerControl): P
     for (const todo of todos) {
       res.push(control.txFactory.createTxRemoveDoc(todo._class, todo.space, todo._id))
     }
+    const logs = await control.findAll(control.ctx, process.class.ExecutionLog, {
+      execution: cudTx.objectId
+    })
+    for (const log of logs) {
+      res.push(control.txFactory.createTxRemoveDoc(log._class, log.space, log._id))
+    }
+    const buttons = await control.findAll(control.ctx, process.class.EventButton, {
+      execution: cudTx.objectId
+    })
+    for (const button of buttons) {
+      res.push(control.txFactory.createTxRemoveDoc(button._class, button.space, button._id))
+    }
   }
   return res
 }
 
-async function getExecutionReassignTxes (card: Card, control: TriggerControl): Promise<Tx[]> {
+async function getVersionExecutionTxes (card: Card, control: TriggerControl): Promise<Tx[]> {
   const res: Tx[] = []
   const cards = await control.findAll(control.ctx, cardPlugin.class.Card, { baseId: card.baseId })
   const ids = cards.map((p) => p._id).filter((p) => p !== card._id)
-  const executions = await control.findAll(control.ctx, process.class.Execution, { card: { $in: ids } })
+  const executions = await control.findAll(control.ctx, process.class.Execution, {
+    card: { $in: ids },
+    status: ExecutionStatus.Active
+  })
+  const alreadyStarted = new Set<Ref<Process>>()
   for (const execution of executions) {
     res.push(
       control.txFactory.createTxUpdateDoc(execution._class, execution.space, execution._id, {
         card: card._id
       })
     )
+    alreadyStarted.add(execution.process)
+  }
+  const ancestors = control.hierarchy
+    .getAncestors(card._class)
+    .filter((p) => control.hierarchy.isDerived(p, cardPlugin.class.Card))
+
+  const processes = control.modelDb.findAllSync(process.class.Process, {
+    masterTag: { $in: ancestors },
+    autoStart: true
+  })
+  for (const proc of processes) {
+    if (alreadyStarted.has(proc._id)) continue
+    const tx = createExecution(control, proc._id, card._id, card.space)
+    if (tx !== undefined) res.push(tx)
+  }
+  return res
+}
+
+async function reassignToDos (card: Card, ops: DocumentUpdate<Card>, control: TriggerControl): Promise<Tx[]> {
+  const res: Tx[] = []
+  const todos = await control.findAll(control.ctx, process.class.ProcessToDo, {
+    attachedTo: card._id,
+    doneOn: null,
+    field: { $ne: null }
+  } as any)
+  const cache = new Map<Ref<Execution>, Execution>()
+  const handledGroups = new Set<string>()
+  for (const todo of todos as any[]) {
+    if (todo.field === undefined || !TxProcessor.hasUpdate(ops, todo.field)) continue
+
+    if (todo._class === process.class.ApproveRequest) {
+      const request = todo as ApproveRequest
+      if (handledGroups.has(request.group)) continue
+      handledGroups.add(request.group)
+
+      const execution =
+        cache.get(todo.execution) ??
+        (await control.findAll(control.ctx, process.class.Execution, { _id: todo.execution }, { limit: 1 }))[0]
+      if (execution === undefined) continue
+      cache.set(todo.execution, execution)
+      const _process = control.modelDb.findObject(execution.process)
+      if (_process === undefined) continue
+      const h = control.hierarchy
+
+      const target = h.isMixin(_process.masterTag) ? h.asIf(card, _process.masterTag) : card
+      if (target === undefined) continue
+      const newUsers = (target[todo.field as keyof Card] as any[]) ?? []
+      if (newUsers.length === 0) {
+        continue
+      }
+      const currentRequests = await control.findAll(control.ctx, process.class.ApproveRequest, {
+        group: request.group,
+        doneOn: null
+      })
+      const currentUsers = currentRequests.map((r) => r.user)
+
+      // Remove users not in new list
+      for (const req of currentRequests) {
+        if (!newUsers.includes(req.user)) {
+          res.push(control.txFactory.createTxRemoveDoc(req._class, req.space, req._id))
+        }
+      }
+
+      // Add users not in current list
+      for (const user of newUsers) {
+        if (!currentUsers.includes(user)) {
+          const id = generateId<ApproveRequest>()
+          const { _id, modifiedBy, modifiedOn, ...data } = request as any
+          res.push(
+            control.txFactory.createTxCreateDoc(
+              request._class,
+              request.space,
+              {
+                ...data,
+                user
+              },
+              id
+            )
+          )
+        }
+      }
+    } else {
+      const newUser = card[todo.field as keyof Card]
+      if (newUser === todo.user) continue
+
+      if (newUser != null) {
+        res.push(control.txFactory.createTxRemoveDoc(todo._class, todo.space, todo._id))
+
+        const id = generateId<ProcessToDo>()
+        const { _id, modifiedBy, modifiedOn, ...data } = todo
+        res.push(
+          control.txFactory.createTxCreateDoc(
+            todo._class,
+            todo.space,
+            {
+              ...data,
+              user: newUser
+            },
+            id
+          )
+        )
+      }
+    }
   }
   return res
 }
@@ -317,9 +533,56 @@ export async function OnCardCreate (txes: Tx[], control: TriggerControl): Promis
     const obj = TxProcessor.createDoc2Doc(createTx)
 
     if (obj.baseId !== obj._id) {
-      const reassignTxes = await getExecutionReassignTxes(obj, control)
+      const reassignTxes = await getVersionExecutionTxes(obj, control)
       res.push(...reassignTxes)
+    } else {
+      const newCardTxes = await getNewCardExecutionTxes(obj, control)
+      res.push(...newCardTxes)
     }
+  }
+  return res
+}
+
+async function getNewCardExecutionTxes (card: Card, control: TriggerControl): Promise<Tx[]> {
+  const res: Tx[] = []
+  const executions = await control.findAll(control.ctx, process.class.Execution, {
+    card: card._id
+  })
+
+  const alreadyStarted = new Set(executions.map((e) => e.process))
+
+  const ancestors = control.hierarchy
+    .getAncestors(card._class)
+    .filter((p) => control.hierarchy.isDerived(p, cardPlugin.class.Card))
+
+  const processes = control.modelDb.findAllSync(process.class.Process, {
+    masterTag: { $in: ancestors },
+    autoStart: true
+  })
+
+  for (const proc of processes) {
+    if (alreadyStarted.has(proc._id)) continue
+    const tx = createExecution(control, proc._id, card._id, card.space)
+    if (tx !== undefined) res.push(tx)
+  }
+  return res
+}
+
+async function getTagAddExecutionTxes (card: Card, mixin: Ref<Mixin<Card>>, control: TriggerControl): Promise<Tx[]> {
+  const res: Tx[] = []
+  const executions = await control.findAll(control.ctx, process.class.Execution, {
+    card: card._id,
+    status: ExecutionStatus.Active
+  })
+
+  const alreadyStarted = new Set(executions.map((e) => e.process))
+
+  const processes = control.modelDb.findAllSync(process.class.Process, { masterTag: mixin, autoStart: true })
+
+  for (const proc of processes) {
+    if (alreadyStarted.has(proc._id)) continue
+    const tx = createExecution(control, proc._id, card._id, card.space)
+    if (tx !== undefined) res.push(tx)
   }
   return res
 }
@@ -355,9 +618,14 @@ export async function OnCardUpdate (txes: Tx[], control: TriggerControl): Promis
     const ops = isUpdateTx(cudTx) ? cudTx.operations : cudTx.attributes
     await putEventToQueue(
       {
-        event: process.trigger.OnCardUpdate,
+        event: [
+          process.trigger.OnCardUpdate,
+          process.trigger.WhenFieldChanges,
+          process.trigger.WhenRequiredFieldsFilled
+        ],
         card: cudTx.objectId,
         createdOn: tx.modifiedOn,
+        _id: tx._id,
         context: {
           card: card[0],
           operations: ops ?? {}
@@ -365,18 +633,41 @@ export async function OnCardUpdate (txes: Tx[], control: TriggerControl): Promis
       },
       control
     )
-    await putEventToQueue(
-      {
-        event: process.trigger.WhenFieldChanges,
-        card: cudTx.objectId,
-        createdOn: tx.modifiedOn,
-        context: {
-          card: card[0],
-          operations: ops ?? {}
-        }
-      },
-      control
-    )
+    const reassignTxes = await reassignToDos(card[0], ops ?? {}, control)
+    res.push(...reassignTxes)
+
+    if (tx._class === core.class.TxMixin) {
+      const mixinTx = tx as TxMixin<Card, Card>
+      if (Object.keys(mixinTx.attributes).length === 0) {
+        const mixinTxes = await getTagAddExecutionTxes(card[0], mixinTx.mixin, control)
+        res.push(...mixinTxes)
+      }
+    }
+  }
+  return res
+}
+
+export async function OnCardRemove (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+  const res: Tx[] = []
+  for (const tx of txes) {
+    if (tx._class !== core.class.TxRemoveDoc) continue
+    const removeTx = tx as TxRemoveDoc<Card>
+    if (!control.hierarchy.isDerived(removeTx.objectClass, cardPlugin.class.Card)) continue
+
+    const executions = await control.findAll(control.ctx, process.class.Execution, { card: removeTx.objectId })
+    for (const execution of executions) {
+      res.push(control.txFactory.createTxRemoveDoc(execution._class, execution.space, execution._id))
+    }
+
+    const logs = await control.findAll(control.ctx, process.class.ExecutionLog, { card: removeTx.objectId })
+    for (const log of logs) {
+      res.push(control.txFactory.createTxRemoveDoc(log._class, log.space, log._id))
+    }
+
+    const buttons = await control.findAll(control.ctx, process.class.EventButton, { card: removeTx.objectId })
+    for (const button of buttons) {
+      res.push(control.txFactory.createTxRemoveDoc(button._class, button.space, button._id))
+    }
   }
   return res
 }
@@ -464,6 +755,7 @@ export * from './utils'
 export default async () => ({
   func: {
     RunSubProcess,
+    CancelSubProcess,
     CreateToDo,
     UpdateCard,
     CreateCard,
@@ -473,10 +765,21 @@ export default async () => ({
     CheckToDoCancelled,
     FieldChangedCheck,
     MatchCardCheck,
+    RequiredFieldsFilledCheck,
     CheckSubProcessesDone,
     CheckSubProcessMatch,
     CheckTime,
-    EventCheck
+    EventCheck,
+    RequestApproval,
+    ApproveRequestApproved,
+    ApproveRequestRejected,
+    CancelToDo,
+    LockCard,
+    LockSection,
+    UnlockCard,
+    UnlockSection,
+    LockField,
+    UnlockField
   },
   transform: {
     CurrentDate,
@@ -513,14 +816,34 @@ export default async () => ({
     RemoveFirst,
     RemoveLast,
     EmptyArray,
+    EmptyValue,
     ExecutionInitiator,
     ExecutionStarted,
     FirstMatchValue,
-    Filter
+    Filter,
+    StringFromNumber,
+    StringFromDate,
+    StringFromBoolean,
+    NumberFromDate,
+    DateFromNumber,
+    NumberFromString,
+    DateFromString,
+    YearFromDate,
+    MonthFromDate,
+    DayFromDate,
+    DateDifference,
+    Min,
+    Max,
+    StringFromMarkup,
+    MarkupFromString,
+    StringFromIdentifier,
+    StringFromEnum,
+    EnumFromString
   },
   rollbacks: {
     ToDoCloseRollback,
-    ToDoCancellRollback
+    ToDoCancellRollback,
+    FieldChangedRollback
   },
   trigger: {
     OnProcessRemove,
@@ -531,8 +854,41 @@ export default async () => ({
     OnProcessToDoClose,
     OnProcessToDoRemove,
     OnExecutionContinue,
+    OnExecutionDone,
     OnCustomEvent,
     OnExecutionRemove,
-    OnCardCreate
+    OnCardCreate,
+    OnCardRemove
   }
 })
+
+function createExecution (
+  control: TriggerControl,
+  proc: Ref<Process>,
+  card: Ref<Card>,
+  space: Ref<Space>
+): TxCreateDoc<Execution> | undefined {
+  const initTransition = control.modelDb.findAllSync(process.class.Transition, {
+    process: proc,
+    from: null
+  })[0]
+  if (initTransition === undefined) return
+  const execId = generateId<Execution>()
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  const context = {} as ExecutionContext
+  const tx = control.txFactory.createTxCreateDoc<Execution>(
+    process.class.Execution,
+    space,
+    {
+      process: proc,
+      currentState: null as any,
+      card,
+      rollback: [],
+      context,
+      status: ExecutionStatus.Active
+    },
+    execId
+  )
+
+  return tx
+}

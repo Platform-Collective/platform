@@ -72,6 +72,7 @@
     PopupPosAlignment,
     PopupResult,
     popupstore,
+    printModeStore,
     pushRootBarComponent,
     resizeObserver,
     ResolvedLocation,
@@ -926,6 +927,7 @@
         <AppItem
           icon={IconSettings}
           label={setting.string.Customize}
+          dataId="workbench-app-customize"
           size={appsMini ? 'small' : 'large'}
           on:click={() => showPopup(AppSwitcher, { apps }, popupPosition)}
         />
@@ -1118,7 +1120,7 @@
   <Dock />
   <div bind:this={cover} class="cover" />
   <TooltipInstance />
-  <PanelInstance bind:this={panelInstance} contentPanel={elementPanel}>
+  <PanelInstance bind:this={panelInstance} contentPanel={elementPanel} readonly={$printModeStore}>
     <svelte:fragment slot="panel-header">
       <ActionContext context={{ mode: 'panel' }} />
     </svelte:fragment>

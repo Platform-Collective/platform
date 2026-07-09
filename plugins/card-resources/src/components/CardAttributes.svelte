@@ -45,7 +45,10 @@
     const filtredKeys = [...hierarchy.getAllAttributes(_class, to).entries()]
       .filter(
         ([key, value]) =>
-          value.hidden !== true && !ignoreKeys.includes(key) && !isCollectionAttr(hierarchy, { key, attr: value })
+          value.hidden !== true &&
+          !ignoreKeys.includes(key) &&
+          !isCollectionAttr(hierarchy, { key, attr: value }) &&
+          value.type._class !== core.class.TypeMarkup
       )
       .map(([key, attr]) => ({ key, attr }))
 
@@ -75,7 +78,7 @@
       {_class}
       {object}
       {showHeader}
-      readonly={readonly || !canChange(key.attr, $permissionsStore)}
+      readonly={readonly || !canChange(key.attr, $permissionsStore) || object.readonlyFields?.includes(key.key)}
       withIcon
       on:update
     />

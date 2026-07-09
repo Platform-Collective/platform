@@ -176,6 +176,10 @@ implements DbCollection<T> {
       switch (operator) {
         case '$in': {
           const inVals = Object.values(qKey as object)[0]
+          if (inVals.length === 0) {
+            whereChunks.push('FALSE')
+            break
+          }
           const inVars: string[] = []
           for (const val of inVals) {
             currIdx++
@@ -449,6 +453,7 @@ export class AccountPostgresDbCollection
         a.automatic,
         a.max_workspaces,
         a.failed_login_attempts,
+        a.tfa_secret,
         p.hash,
         p.salt
       FROM ${this.getTableName()} as a
@@ -817,7 +822,7 @@ export class PostgresAccountDB implements AccountDB {
       .client`UPDATE ${this.client(this.workspace.getTableName())} SET allow_guest_sign_up = ${guestSignUpAllowed} WHERE uuid = ${workspaceId}`
   }
 
-  async updatePasswordAgingRule (workspaceId: WorkspaceUuid, days: number): Promise<void> {
+  async updatePasswordAgingRule (workspaceId: WorkspaceUuid, days: number | null): Promise<void> {
     await this
       .client`UPDATE ${this.client(this.workspace.getTableName())} SET password_aging_rule = ${days} WHERE uuid = ${workspaceId}`
   }
@@ -952,6 +957,7 @@ export class PostgresAccountDB implements AccountDB {
           w.created_by,
           w.created_on,
           w.billing_account,
+          w.pending_configuration,
           json_build_object(
             'mode', s.mode,
             'processing_progress', s.processing_progress,

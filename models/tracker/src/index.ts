@@ -39,6 +39,7 @@ import {
   TClassicProjectTypeData,
   TComponent,
   TIssue,
+  TIssueRelation,
   TIssueStatus,
   TIssueTemplate,
   TIssueTypeData,
@@ -441,6 +442,7 @@ export function createModel (builder: Builder): void {
     TProject,
     TComponent,
     TIssue,
+    TIssueRelation,
     TIssueTemplate,
     TIssueStatus,
     TTypeIssuePriority,
@@ -486,6 +488,17 @@ export function createModel (builder: Builder): void {
   })
 
   defineViewlets(builder)
+
+  builder.createDoc(
+    view.class.ViewletViewAction,
+    core.space.Model,
+    {
+      descriptor: view.viewlet.List,
+      extension: converter.extensions.CopyAsMarkdownAction,
+      applicableToClass: tracker.class.Issue
+    },
+    tracker.specialViewAction.IssueList
+  )
 
   const issuesId = 'issues'
   const componentsId = 'components'
@@ -645,6 +658,45 @@ export function createModel (builder: Builder): void {
     role: AccountRole.Maintainer,
     order: 4000
   })
+
+  builder.createDoc(
+    core.class.ClassPermission,
+    core.space.Model,
+    {
+      label: tracker.string.AllowCreatingIssues,
+      scope: 'space',
+      targetClass: tracker.class.Issue
+    },
+    tracker.ids.GuestIssueClassPermission
+  )
+
+  builder.createDoc(
+    core.class.ModulePermissionGroup,
+    core.space.Model,
+    {
+      application: tracker.app.Tracker,
+      role: AccountRole.Guest,
+      permissions: [tracker.ids.GuestIssueClassPermission],
+      spaceClass: tracker.class.Project,
+      enabled: true,
+      order: 10
+    },
+    tracker.ids.ModulePermissionGroup
+  )
+
+  builder.createDoc(
+    core.class.ModulePermissionGroup,
+    core.space.Model,
+    {
+      application: tracker.app.Tracker,
+      role: AccountRole.ReadOnlyGuest,
+      permissions: [],
+      spaceClass: tracker.class.Project,
+      enabled: true,
+      order: 10
+    },
+    tracker.ids.ModulePermissionGroupReadOnlyGuest
+  )
 
   builder.createDoc(
     chunter.class.ChatMessageViewlet,

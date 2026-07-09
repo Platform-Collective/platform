@@ -21,6 +21,7 @@
     "LastName": "Nachname",
     "FirstName": "Vorname",
     "Join": "Beitreten",
+    "JoinWorkspace": "{workspaceName} beitreten",
     "Email": "E-Mail",
     "Password": "Passwort",
     "Workspace": "Name des Arbeitsbereichs",
@@ -85,6 +86,23 @@
     "SignUpToCreateWorkspace": "Keine Arbeitsbereiche mit Gastzugang. Bitte registrieren Sie sich, um Ihren eigenen zu erstellen.",
     "WhatIsYourName": "Wie ist Ihr Name?",
     "AccessExpired": "Zugriffszeit abgelaufen. Bitte fragen Sie nach einem neuen Zugangslink.",
-    "AccessNotActive": "Zugriffszeit hat noch nicht begonnen. Sie beginnt in: "
+    "AccessNotActive": "Zugriffszeit hat noch nicht begonnen. Sie beginnt in: ",
+    "JoinWithThisAccount": "Mit diesem Konto beitreten",
+    "UseDifferentAccount": "Anderes Konto verwenden",
+    "UseCurrentAccountToJoin": "Bereits angemeldet?",
+    "LogInAndJoin": "Anmelden & beitreten",
+    "SignUpAndJoin": "Registrieren & beitreten",
+    "CreateNewAccount": "Neues Konto erstellen",
+    "SignedInAs": "Angemeldet als {name}",
+    "TwoFactorAuth": "Zweistufige Authentifizierung",
+    "EnterTwoFactorCode": "Geben Sie den zweistufigen Authentifizierungscode ein",
+    "TwoFactorCode": "Zweistufiger Authentifizierungscode",
+    "Verify": "Überprüfen",
+    "SetPassword": "Passwort festlegen",
+    "SSOPasswordDescription": "Ihr Konto verwendet externe Anmeldung. Richten Sie ein Passwort über die E-Mail-Bestätigung ein.",
+    "SendSetupLink": "Setup-Link senden",
+    "SSOPasswordEmailSent": "Überprüfen Sie Ihre E-Mail auf einen Link zum Festlegen des Passworts.",
+    "SSONoEmailLinked": "Keine E-Mail-Adresse mit Ihrem Konto verknüpft. Fügen Sie eine unter Kontoeinstellungen → Identitäten verwalten hinzu.",
+    "CreateSampleProjects": "Beispielprojekte und Demo-Inhalte erstellen"
   }
 }

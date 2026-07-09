@@ -1,35 +1,51 @@
 const fs = require('fs')
+const path = require('path')
 const execSync = require('child_process').execSync
 const repo = '@hcengineering'
 
 const packages = {}
 const pathes = {}
 const jsons = {}
+const repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim()
 
 function fillPackages (config) {
-  for (const package of config.projects) {
-    if (!package.name.startsWith(repo)) continue
+  for (const project of config.projects) {
+    const packageName = project.name ?? project.packageName
+    if (typeof packageName !== 'string' || !packageName.startsWith(repo)) continue
+    const projectPath = project.path ?? project.projectFolder ?? path.relative(repoRoot, project.fullPath ?? '')
+    if (typeof projectPath !== 'string' || projectPath.length === 0) continue
+    const fullProjectPath = path.resolve(repoRoot, projectPath)
 
-    packages[package.name] = {
-      version: package.version,
-      path: package.path
+    packages[packageName] = {
+      version: project.version,
+      path: fullProjectPath
     }
-    pathes[package.path] = package.name
+    pathes[fullProjectPath] = packageName
 
-   const file = package.path + '/package.json'
-   const raw = fs.readFileSync(file)
-   jsons[package.name] = JSON.parse(raw)
+    const file = path.join(fullProjectPath, 'package.json')
+    if (!fs.existsSync(file)) {
+      console.log('skip, package.json not found:', file)
+      continue
+    }
+
+    const raw = fs.readFileSync(file)
+    jsons[packageName] = JSON.parse(raw)
   }
 }
 
 function bumpPackage (name, newVersion) {
   const json = jsons[name]
 
+  if (json === undefined) return
   json.version = newVersion
-  if (typeof json.dependencies === 'object') {
-    for (const [dependency] of Object.entries(json.dependencies)) {
+  const depTypes = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']
+  for (const depType of depTypes) {
+    if (typeof json[depType] !== 'object') continue
+    for (const [dependency, currentVersion] of Object.entries(json[depType])) {
       if (packages[dependency] !== undefined) {
-        json.dependencies[dependency] = `^${newVersion}`
+        json[depType][dependency] = String(currentVersion).startsWith('workspace:')
+          ? `workspace:^${newVersion}`
+          : `^${newVersion}`
       }
     }
   }
@@ -44,7 +60,7 @@ function publish (name) {
   const package = packages[name]
   try {
     console.log('publishing', name)
-    execSync(`cd ${package.path} && npm publish && cd ../..`, { encoding: 'utf-8' })
+    execSync('npm publish', { encoding: 'utf-8', cwd: package.path })
   } catch (err) {
     console.log(err)
   }
@@ -54,42 +70,78 @@ function fix (name) {
   const package = packages[name]
   try {
     console.log('fixing', name)
-    execSync(`cd ${package.path} && npm pkg fix && cd ../..`, { encoding: 'utf-8' })
+    execSync('npm pkg fix', { encoding: 'utf-8', cwd: package.path })
   } catch (err) {
     console.log(err)
   }
 }
 
 function main () {
-  const args = process.argv
+  const argv = process.argv.slice(2)
 
-  const doFix = args.includes('--fix')
-  const doPublish = args.includes('--publish')
+  const doFix = argv.includes('--fix')
+  const doPublish = argv.includes('--publish')
+  const doCheck = argv.includes('--check')
 
-  const version = args.reverse().shift()
+  const positional = argv.filter((a) => !a.startsWith('--'))
+  const version = positional[0]
+
   if (version === undefined || version === '') {
-    console.log('usage: node bump.js [--publish] <version>')
+    console.log('usage: node bump.js [--check] [--fix] [--publish] <version>')
     return
   }
-  if( !/^(\d+\.)?(\d+\.)?(\*|\d+)$/.test(version)) {
+  if (!/^(\d+\.)?(\d+\.)?(\*|\d+)$/.test(version)) {
     console.log('Invalid <version>', version, ' should be xx.xx.xx')
     return
   }
 
-  console.log('bump version ...', version)
+  console.log(doCheck ? 'check versions ...' : 'bump version ...', version)
 
-  const config = JSON.parse(execSync('rush list -p --json', { encoding: 'utf-8' }))
+  const output = execSync('node common/scripts/install-run-rush.js list -p --json', { encoding: 'utf-8', cwd: repoRoot })
+  const lines = output.split('\n')
+  let jsonStart = -1
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim().startsWith('{')) {
+      jsonStart = i
+      break
+    }
+  }
+  if (jsonStart === -1) {
+    console.error('Could not find JSON output from rush list')
+    process.exit(1)
+  }
+  const config = JSON.parse(lines.slice(jsonStart).join('\n'))
 
   fillPackages(config)
 
   const packageNames = Object.keys(packages)
+
+  if (doCheck) {
+    let ok = true
+    for (const packageName of packageNames) {
+      const json = jsons[packageName]
+      if (json === undefined) continue
+      if (json.version !== version) {
+        console.error('Version mismatch:', packageName, 'expected', version, 'got', json.version)
+        ok = false
+      }
+    }
+    if (!ok) {
+      console.error('Some @hcengineering package versions do not match', version)
+      process.exit(1)
+    }
+    console.log('All @hcengineering package versions match', version)
+    return
+  }
+
   for (const packageName of packageNames) {
     bumpPackage(packageName, version)
   }
 
   for (const packageName of packageNames) {
-    const package = packages[packageName]
-    const file = package.path + '/package.json'
+    const pkg = packages[packageName]
+    if (jsons[packageName] === undefined) continue
+    const file = path.join(pkg.path, 'package.json')
     const res = JSON.stringify(jsons[packageName], undefined, 2)
     fs.writeFileSync(file, res + '\n')
   }

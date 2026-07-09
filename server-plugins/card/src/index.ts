@@ -16,6 +16,7 @@
 import type { Metadata, Plugin, Resource } from '@hcengineering/platform'
 import { plugin } from '@hcengineering/platform'
 import type { TriggerFunc } from '@hcengineering/server-core'
+import { type Presenter } from '@hcengineering/server-notification'
 
 /**
  * @public
@@ -29,9 +30,14 @@ export default plugin(serverCardId, {
   metadata: {
     CommunicationEnabled: '' as Metadata<boolean>
   },
+  function: {
+    CardTextPresenter: '' as Resource<Presenter>,
+    CardHTMLPresenter: '' as Resource<Presenter>
+  },
   trigger: {
     OnAttribute: '' as Resource<TriggerFunc>,
     OnAttributeRemove: '' as Resource<TriggerFunc>,
+    OnViewletUpdate: '' as Resource<TriggerFunc>,
     OnMasterTagCreate: '' as Resource<TriggerFunc>,
     OnTagRemove: '' as Resource<TriggerFunc>,
     OnMasterTagRemove: '' as Resource<TriggerFunc>,

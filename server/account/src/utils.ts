@@ -29,6 +29,7 @@ import {
   SocialIdType,
   type SocialKey,
   systemAccountUuid,
+  type WorkspaceConfiguration,
   type WorkspaceDataId,
   type WorkspaceInfoWithStatus as WorkspaceInfoWithStatusCore,
   type WorkspaceMode,
@@ -39,6 +40,7 @@ import platform, { getMetadata, PlatformError, Severity, Status, translate } fro
 import { getDBClient, setDBExtraOptions } from '@hcengineering/postgres'
 import { pbkdf2Sync, randomBytes } from 'crypto'
 import otpGenerator from 'otp-generator'
+import { authenticator } from 'otplib'
 
 import { Analytics } from '@hcengineering/analytics'
 import { decodeTokenVerbose, generateToken, type PermissionsGrant, TokenError } from '@hcengineering/server-token'
@@ -950,7 +952,7 @@ export async function updatePasswordAgingRule (
   branding: Branding | null,
   token: string,
   params: {
-    days: number
+    days?: number
   }
 ): Promise<void> {
   const { days } = params
@@ -964,7 +966,7 @@ export async function updatePasswordAgingRule (
   if (accRole == null || getRolePower(accRole) < getRolePower(AccountRole.Maintainer)) {
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
-  await db.updatePasswordAgingRule(workspace, days)
+  await db.updatePasswordAgingRule(workspace, days ?? null)
 }
 
 export async function checkPasswordAging (
@@ -1119,7 +1121,8 @@ export async function createWorkspaceRecord (
   account: PersonUuid,
   region: string = '',
   initMode: WorkspaceMode = 'pending-creation',
-  dataId?: WorkspaceDataId
+  dataId?: WorkspaceDataId,
+  pendingConfiguration?: WorkspaceConfiguration
 ): Promise<CreateWorkspaceRecordResult> {
   const brandingKey = branding?.key ?? 'huly'
   const regionInfo = getRegions().find((it) => it.region === region)
@@ -1161,7 +1164,8 @@ export async function createWorkspaceRecord (
           billingAccount: account,
           allowReadOnlyGuest: false,
           allowGuestSignUp: false,
-          region
+          region,
+          ...(pendingConfiguration !== undefined ? { pendingConfiguration } : {})
         },
         {
           mode: initMode,
@@ -1198,12 +1202,12 @@ export async function createWorkspaceRecord (
 
 export async function checkInvite (ctx: MeasureContext, invite: WorkspaceInvite, email: string): Promise<WorkspaceUuid> {
   if (invite.remainingUses === 0) {
-    ctx.error('Invite limit exceeded', { email, ...invite })
+    ctx.warn('Invite limit exceeded', { email, ...invite })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
   if (invite.expiresOn > 0 && invite.expiresOn < Date.now()) {
-    ctx.error('Invite link expired', { email, ...invite })
+    ctx.warn('Invite link expired', { email, ...invite })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.ExpiredLink, {}))
   }
 
@@ -1220,7 +1224,7 @@ export async function checkInvite (ctx: MeasureContext, invite: WorkspaceInvite,
   // }
 
   if (invite.email != null && invite.email.trim().length > 0 && invite.email !== email) {
-    ctx.error("Invite doesn't allow this email address", { email, ...invite })
+    ctx.warn("Invite doesn't allow this email address", { email, ...invite })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
@@ -1231,7 +1235,8 @@ export async function sendEmailConfirmation (
   ctx: MeasureContext,
   branding: Branding | null,
   account: PersonUuid,
-  email: string
+  email: string,
+  extra?: Record<string, string>
 ): Promise<void> {
   const mailURL = getMetadata(accountPlugin.metadata.MAIL_URL)
   if (mailURL === undefined || mailURL === '') {
@@ -1248,7 +1253,8 @@ export async function sendEmailConfirmation (
   }
 
   const token = generateToken(account, undefined, {
-    confirmEmail: email
+    confirmEmail: email,
+    ...(extra ?? {})
   })
 
   const link = concatLink(front, `/login/confirm?id=${token}`)
@@ -1351,6 +1357,7 @@ export async function getWorkspacesInfoWithStatusByIds (
   db: AccountDB,
   uuids: WorkspaceUuid[]
 ): Promise<WorkspaceInfoWithStatus[]> {
+  if (!Array.isArray(uuids) || uuids.length === 0) return []
   const statuses = await db.workspaceStatus.find({ workspaceUuid: { $in: uuids } })
   const statusesMap = statuses.reduce<Record<string, WorkspaceStatus>>((sm, s) => {
     sm[s.workspaceUuid] = s
@@ -1546,7 +1553,7 @@ export async function loginOrSignUpWithProvider (
         return null
       }
 
-      personUuid = await db.person.insertOne({ firstName: first, lastName: last })
+      personUuid = await db.person.insertOne({ firstName: first, lastName: last ?? '' })
     }
 
     if (personUuid == null) {
@@ -2116,4 +2123,16 @@ export async function doMergeAccounts (
   if (primaryAccountObj.hash == null && secondaryAccountObj.hash != null && secondaryAccountObj.salt != null) {
     await db.setPassword(primaryAccount, secondaryAccountObj.hash, secondaryAccountObj.salt)
   }
+}
+
+export function generateTotpSecret (): string {
+  return authenticator.generateSecret()
+}
+
+export function verifyTotpCode (secret: string, code: string): boolean {
+  return authenticator.check(code, secret)
+}
+
+export function getTotpUrl (account: string, issuer: string, secret: string): string {
+  return authenticator.keyuri(account, issuer, secret)
 }

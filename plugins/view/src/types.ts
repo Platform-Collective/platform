@@ -46,6 +46,7 @@ import { Preference } from '@hcengineering/preference'
 import {
   AnyComponent,
   AnySvelteComponent,
+  type ComponentExtensionId,
   Location,
   Location as PlatformLocation,
   type LabelAndProps
@@ -310,6 +311,23 @@ export interface ReferenceObjectProvider extends Class<Doc> {
 /**
  * @public
  */
+export interface ReferenceVersion {
+  id: Ref<Doc>
+  objectclass: Ref<Class<Doc>>
+  label: string
+  fixed?: boolean
+}
+
+/**
+ * @public
+ */
+export interface ReferenceVersionsProvider extends Class<Doc> {
+  provider: Resource<<T extends Doc>(client: Client, ref: Ref<T>, doc?: T) => Promise<ReferenceVersion[]>>
+}
+
+/**
+ * @public
+ */
 export interface ObjectTooltip extends Class<Doc> {
   provider: Resource<(client: Client, doc?: Doc | null) => Promise<LabelAndProps | undefined>>
 }
@@ -456,6 +474,24 @@ export interface ViewletConfigOptions {
   strict?: boolean
   extraProps?: Omit<BuildModelKey, 'key'>
   sortable?: boolean
+}
+
+/**
+ * Special view action shown in the viewlet header. Exactly one of viewlet or descriptor must be set.
+ * When descriptor is set, scope is filtered by applicableToClass / disabledForClass.
+ * @public
+ */
+export interface ViewletViewAction extends Doc {
+  /** When set, action applies to this viewlet (and template viewlets). */
+  viewlet?: Ref<Viewlet>
+  /** When set, action applies to viewlets with this descriptor; use applicableToClass / disabledForClass to scope. */
+  descriptor?: Ref<ViewletDescriptor>
+  extension: ComponentExtensionId
+  config?: Record<string, any>
+  /** When descriptor is set: show only when viewlet.attachTo is this class or a subclass. */
+  applicableToClass?: Ref<Class<Doc>>
+  /** When descriptor is set: hide when viewlet.attachTo is this class or a subclass. */
+  disabledForClass?: Ref<Class<Doc>>
 }
 
 /**

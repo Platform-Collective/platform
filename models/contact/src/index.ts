@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-import activity from '@hcengineering/activity'
+import activity, { type ActivityMessageControl } from '@hcengineering/activity'
 import { type Role, type Card } from '@hcengineering/card'
 import {
   AvatarType,
@@ -34,7 +34,8 @@ import {
   type SocialIdentity,
   type Status,
   type SocialIdentityProvider,
-  type Translation
+  type Translation,
+  type WorkspaceMemberStatus
 } from '@hcengineering/contact'
 import {
   AccountRole,
@@ -52,6 +53,7 @@ import {
   type PersonId,
   type PersonUuid,
   type Ref,
+  type Space,
   type Timestamp
 } from '@hcengineering/core'
 import { createSystemType } from '@hcengineering/model-card'
@@ -72,6 +74,7 @@ import {
   TypeRef,
   TypeString,
   TypeTimestamp,
+  TypeAccountUuid,
   UX,
   type Builder
 } from '@hcengineering/model'
@@ -271,6 +274,10 @@ export class TEmployee extends TPerson implements Employee {
     position?: string | null
 
   declare personUuid?: AccountUuid
+
+  @Prop(TypeString(), contact.string.Timezone)
+  @Hidden()
+    timezone?: string
 }
 
 @Model(contact.class.ContactsTab, core.class.Doc, DOMAIN_MODEL)
@@ -301,6 +308,24 @@ export class TTranslation extends TPreference implements Translation {
   dontTranslate!: string[]
 }
 
+@Model(contact.class.WorkspaceMemberStatus, core.class.Doc, DOMAIN_CONTACT)
+@UX(contact.string.WorkspaceStatusNote, contact.icon.User)
+export class TWorkspaceMemberStatus extends TDoc implements WorkspaceMemberStatus {
+  @Prop(TypeRef(core.class.Space), core.string.Space)
+  @Index(IndexKind.Indexed)
+  declare space: Ref<Space>
+
+  @Prop(TypeAccountUuid(), core.string.Members)
+  @Index(IndexKind.Indexed)
+    user!: AccountUuid
+
+  @Prop(TypeString(), core.string.Description)
+    message!: string
+
+  @Prop(TypeTimestamp(), contact.string.StatusDueDate)
+    clearAt?: Timestamp
+}
+
 export function createModel (builder: Builder): void {
   builder.createModel(
     TAvatarProvider,
@@ -317,11 +342,18 @@ export function createModel (builder: Builder): void {
     TContactsTab,
     TPersonSpace,
     TUserRole,
-    TTranslation
+    TTranslation,
+    TWorkspaceMemberStatus
   )
 
   builder.mixin(contact.class.PersonSpace, core.class.Class, core.mixin.TxAccessLevel, {
     createAccessLevel: AccountRole.Guest
+  })
+
+  builder.mixin(contact.class.WorkspaceMemberStatus, core.class.Class, core.mixin.TxAccessLevel, {
+    createAccessLevel: AccountRole.Guest,
+    updateAccessLevel: AccountRole.Guest,
+    removeAccessLevel: AccountRole.Guest
   })
 
   builder.mixin(contact.class.Person, core.class.Class, core.mixin.TxAccessLevel, {
@@ -338,6 +370,13 @@ export function createModel (builder: Builder): void {
 
   builder.mixin(contact.class.Person, core.class.Class, activity.mixin.ActivityDoc, {
     preposition: contact.string.For
+  })
+
+  // Prevent leaking private social identifiers (emails, external handles) via activity updates.
+  builder.createDoc<ActivityMessageControl<Person>>(activity.class.ActivityMessageControl, core.space.Model, {
+    objectClass: contact.class.Person,
+    skip: [],
+    skipFields: ['socialIds']
   })
 
   builder.mixin(contact.mixin.Employee, core.class.Class, activity.mixin.ActivityDoc, {
@@ -586,6 +625,20 @@ export function createModel (builder: Builder): void {
       configOptions: {
         hiddenKeys: ['name'],
         sortable: true
+      },
+      viewOptions: {
+        groupBy: [],
+        orderBy: [],
+        other: [
+          {
+            key: 'hideInactive',
+            type: 'toggle',
+            defaultValue: true,
+            actionTarget: 'query',
+            action: contact.function.HideInactive,
+            label: contact.string.HideInactive
+          }
+        ]
       }
     },
     contact.viewlet.TableEmployee
@@ -1393,6 +1446,12 @@ export function createModel (builder: Builder): void {
         keys: {
           _class: 1,
           [contact.mixin.Employee + '.active']: 1
+        }
+      },
+      {
+        keys: {
+          _class: 1,
+          user: 1
         }
       }
     ],

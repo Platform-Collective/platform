@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * Safe publish script that skips packages that are already published
- * Usage: node safe-publish.js [--include <package-name>]
+ * Safe publish script that skips packages that are already published.
+ *
+ * Usage:
+ *   node safe-publish.js [--include <package-name>]
+ *
+ * Options:
+ *   --include <name>  Only consider packages whose name includes <name>
  */
 
 const { execSync, spawnSync } = require('child_process')
+const fs = require('fs')
+const path = require('path')
 const https = require('https')
 const http = require('http')
 
@@ -43,8 +50,24 @@ function checkPackageExists(packageName, version) {
  */
 function getPublishablePackages(includePattern) {
   try {
-    const output = execSync('rush list -p --json', { encoding: 'utf-8' })
-    const config = JSON.parse(output)
+    const repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim()
+    const output = execSync('node common/scripts/install-run-rush.js list -p --json', {
+      encoding: 'utf-8',
+      cwd: repoRoot
+    })
+    const lines = output.split('\n')
+    let jsonStart = -1
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim().startsWith('{')) {
+        jsonStart = i
+        break
+      }
+    }
+    if (jsonStart === -1) {
+      console.error('Could not find JSON output from rush list')
+      return []
+    }
+    const config = JSON.parse(lines.slice(jsonStart).join('\n'))
 
     return config.projects.filter((project) => {
       // Check if package should be published according to rush.json
@@ -69,10 +92,56 @@ function getPublishablePackages(includePattern) {
 }
 
 /**
+ * Normalize workspace: dependency ranges in package.json to plain semver
+ * so that consumers without workspace support can install the package.
+ * Returns the original package.json string so it can be restored.
+ */
+function normalizeWorkspaceDeps(packagePath) {
+  const packageJsonPath = path.join(packagePath, 'package.json')
+  let original = null
+
+  try {
+    original = fs.readFileSync(packageJsonPath, 'utf8')
+    const pkg = JSON.parse(original)
+
+    const depFields = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']
+
+    let changed = false
+    for (const field of depFields) {
+      const deps = pkg[field]
+      if (!deps || typeof deps !== 'object') continue
+
+      for (const [name, range] of Object.entries(deps)) {
+        if (typeof range === 'string' && range.startsWith('workspace:')) {
+          const normalized = range.replace(/^workspace:/, '')
+          deps[name] = normalized
+          changed = true
+        }
+      }
+    }
+
+    if (changed) {
+      fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8')
+    }
+  } catch (err) {
+    console.warn(`Warning: could not normalize workspace dependencies for ${packagePath}: ${err.message}`)
+  }
+
+  return original
+}
+
+/**
  * Publish a single package
  */
 function publishPackage(packagePath, packageName) {
+  const originalPackageJson = normalizeWorkspaceDeps(packagePath)
+
   try {
+    try {
+      execSync('npm pkg fix', { cwd: packagePath, encoding: 'utf-8', stdio: 'pipe' })
+    } catch {
+      // Ignore pkg fix errors (e.g. npm < 10)
+    }
     console.log(`Publishing ${packageName}...`)
     execSync('npm publish', {
       cwd: packagePath,
@@ -84,6 +153,15 @@ function publishPackage(packagePath, packageName) {
   } catch (err) {
     console.error(`✗ Failed to publish ${packageName}:`, err.message)
     return false
+  } finally {
+    if (originalPackageJson != null) {
+      try {
+        const packageJsonPath = path.join(packagePath, 'package.json')
+        fs.writeFileSync(packageJsonPath, originalPackageJson, 'utf8')
+      } catch (err) {
+        console.warn(`Warning: could not restore original package.json for ${packagePath}: ${err.message}`)
+      }
+    }
   }
 }
 

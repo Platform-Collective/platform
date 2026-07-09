@@ -25,7 +25,7 @@ import {
   type IntegrationKind
 } from '@hcengineering/core'
 import exportPlugin from '@hcengineering/export'
-import { Mixin, Model, UX, type Builder } from '@hcengineering/model'
+import { Mixin, Model, Prop, TypeRecord, UX, type Builder } from '@hcengineering/model'
 import core, { TClass, TConfiguration, TDoc } from '@hcengineering/model-core'
 import view, { createAction } from '@hcengineering/model-view'
 import notification from '@hcengineering/notification'
@@ -39,6 +39,7 @@ import {
   type IntegrationType,
   type InviteSettings,
   type OfficeSettings,
+  type RoleCapabilitySettings,
   type SettingsCategory,
   type SpaceTypeCreator,
   type SpaceTypeEditor,
@@ -112,6 +113,15 @@ export class TInviteSettings extends TConfiguration implements InviteSettings {
   expirationTime!: number
   emailMask!: string
   limit!: number
+  defaultInviteRole!: AccountRole
+  inviteLinkGeneratorRoles!: AccountRole[]
+}
+
+@Model(setting.class.RoleCapabilitySettings, core.class.Configuration, DOMAIN_SETTING)
+@UX(setting.string.RoleCapabilitySettings)
+export class TRoleCapabilitySettings extends TConfiguration implements RoleCapabilitySettings {
+  @Prop(TypeRecord(), setting.string.RoleCapabilitySettings)
+    roleByCapability!: Record<string, AccountRole[]>
 }
 
 @Model(setting.class.OfficeSettings, core.class.Configuration, DOMAIN_SETTING)
@@ -146,6 +156,7 @@ export function createModel (builder: Builder): void {
     TEditable,
     TUserMixin,
     TInviteSettings,
+    TRoleCapabilitySettings,
     TOfficeSettings,
     TWorkspaceSetting,
     TSpaceTypeEditor,
@@ -198,6 +209,22 @@ export function createModel (builder: Builder): void {
     },
     setting.ids.Password
   )
+
+  builder.createDoc(
+    setting.class.SettingsCategory,
+    core.space.Model,
+    {
+      name: 'security',
+      label: setting.string.Security,
+      icon: setting.icon.Password,
+      component: setting.component.TwoFactorSettings,
+      group: 'settings-account',
+      role: AccountRole.Guest,
+      order: 1200
+    },
+    setting.ids.Security
+  )
+
   builder.createDoc(
     setting.class.SettingsCategory,
     core.space.Model,
@@ -277,13 +304,26 @@ export function createModel (builder: Builder): void {
     core.space.Model,
     {
       name: 'owners',
-      label: setting.string.Owners,
-      icon: setting.icon.Owners,
-      component: setting.component.Owners,
+      label: setting.string.Members,
+      icon: setting.icon.Members,
+      component: setting.component.Members,
       order: 1000,
       role: AccountRole.Maintainer
     },
-    setting.ids.Owners
+    setting.ids.Members
+  )
+  builder.createDoc(
+    setting.class.WorkspaceSettingCategory,
+    core.space.Model,
+    {
+      name: 'guestPermissions',
+      label: setting.string.GuestPermissionsSettings,
+      icon: setting.icon.GuestPermissions,
+      component: setting.component.GuestPermissionsSettings,
+      role: AccountRole.Owner,
+      order: 1050
+    },
+    'setting:ids:AccountPermissionsSettings' as Ref<any>
   )
   builder.createDoc(
     setting.class.WorkspaceSettingCategory,
@@ -379,7 +419,7 @@ export function createModel (builder: Builder): void {
       component: exportPlugin.component.ExportSettings,
       group: 'settings-editor',
       feature: 'export',
-      role: AccountRole.User,
+      role: AccountRole.Owner,
       order: 4800
     },
     setting.ids.Export
@@ -399,6 +439,7 @@ export function createModel (builder: Builder): void {
     },
     setting.ids.OfficeSettings
   )
+
   // Currently remove Support item from settings
   // builder.createDoc(
   //   setting.class.SettingsCategory,
@@ -487,6 +528,10 @@ export function createModel (builder: Builder): void {
 
   builder.mixin(contact.mixin.Employee, core.class.Class, view.mixin.TypeEditor, {
     editor: setting.component.EmployeeRefEditor
+  })
+
+  builder.mixin(core.class.TypeMarkup, core.class.Class, view.mixin.ObjectEditor, {
+    editor: setting.component.MarkupTypeEditor
   })
 
   builder.mixin(core.class.TypeNumber, core.class.Class, view.mixin.ObjectEditor, {

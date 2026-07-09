@@ -13,20 +13,29 @@
 // limitations under the License.
 -->
 <script lang="ts">
+  import { getMetadata } from '@hcengineering/platform'
+  import presentation from '@hcengineering/presentation'
   import setting from '@hcengineering/setting'
-  import { Icon, Label, showPopup } from '@hcengineering/ui'
+  import { Component, Icon, Label, navFooterExtensions, showPopup } from '@hcengineering/ui'
   import workbench from '../plugin'
   import HelpAndSupport from './HelpAndSupport.svelte'
 
   export let split: boolean = false
 
   let selected: boolean = false
+
+  const version = getMetadata(presentation.metadata.FrontVersion)
+
+  $: extensions = [...$navFooterExtensions].sort((a, b) => a.order - b.order)
 </script>
 
 <div class="antiNav-footer-line" />
 <div class="antiNav-footer-grower" />
 <div class="antiNav-footer">
   <slot />
+  {#each extensions as ext (ext.id)}
+    <Component is={ext.component} props={ext.props ?? {}} />
+  {/each}
   {#if split}<div class="antiNav-space" />{/if}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -46,5 +55,17 @@
     <span class="an-element__label">
       <Label label={workbench.string.HelpAndSupport} />
     </span>
+    {#if version}
+      <span class="version-label">{version}</span>
+    {/if}
   </div>
 </div>
+
+<style lang="scss">
+  .version-label {
+    margin-left: auto;
+    font-size: 0.6875rem;
+    color: var(--theme-dark-color);
+    user-select: all;
+  }
+</style>

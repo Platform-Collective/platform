@@ -20,6 +20,38 @@ export function defineTriggers (builder: Builder): void {
     process.class.Trigger,
     core.space.Model,
     {
+      label: process.string.OnApproveRequestApproved,
+      icon: process.icon.ToDo,
+      editor: process.component.ApproveRequestTriggerEditor,
+      presenter: process.component.ApproveRequestTriggerPresenter,
+      requiredParams: ['_id'],
+      checkFunction: process.triggerCheck.ApproveRequestApproved,
+      init: false,
+      auto: true
+    },
+    process.trigger.OnApproveRequestApproved
+  )
+
+  builder.createDoc(
+    process.class.Trigger,
+    core.space.Model,
+    {
+      label: process.string.OnApproveRequestRejected,
+      icon: process.icon.ToDoRemove,
+      editor: process.component.ApproveRequestTriggerEditor,
+      presenter: process.component.ApproveRequestTriggerPresenter,
+      requiredParams: ['_id'],
+      checkFunction: process.triggerCheck.ApproveRequestRejected,
+      init: false,
+      auto: true
+    },
+    process.trigger.OnApproveRequestRejected
+  )
+
+  builder.createDoc(
+    process.class.Trigger,
+    core.space.Model,
+    {
       label: process.string.OnToDoDone,
       icon: process.icon.ToDo,
       editor: process.component.ToDoCloseEditor,
@@ -87,9 +119,24 @@ export function defineTriggers (builder: Builder): void {
       requiredParams: [],
       checkFunction: process.triggerCheck.FieldChangedCheck,
       init: false,
-      auto: true
+      auto: false
     },
     process.trigger.WhenFieldChanges
+  )
+
+  builder.createDoc(
+    process.class.Trigger,
+    core.space.Model,
+    {
+      label: process.string.WhenRequiredFieldsFilled,
+      icon: process.icon.WhenCardMatches,
+      presenter: process.component.CardUpdatePresenter,
+      requiredParams: [],
+      checkFunction: process.triggerCheck.RequiredFieldsFilledCheck,
+      init: false,
+      auto: true
+    },
+    process.trigger.WhenRequiredFieldsFilled
   )
 
   // builder.createDoc(

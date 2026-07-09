@@ -21,6 +21,7 @@
   import plugin from '../../plugin'
   import TransitionPresenter from '../settings/TransitionPresenter.svelte'
   import RequestUserInputAttribute from './RequestUserInputAttribute.svelte'
+  import ClassUserInput from './ClassUserInput.svelte'
 
   export let processId: Ref<Process>
   export let space: Ref<Space>
@@ -36,6 +37,8 @@
     dispatch('close', { value: values })
   }
 
+  $: canSaveValue = inputs.every((input) => values[input.id] != null)
+
   export function canClose (): boolean {
     return false
   }
@@ -48,8 +51,9 @@
   on:close
   width={'small'}
   label={plugin.string.EnterValue}
-  canSave
+  canSave={canSaveValue}
   okAction={save}
+  hideClose
   okLabel={presentation.string.Save}
 >
   {#if processVal !== undefined}
@@ -63,14 +67,27 @@
   {/if}
   <div class="grid">
     {#each inputs as input}
-      <RequestUserInputAttribute
-        key={input.key}
-        _class={input._class}
-        {space}
-        on:change={(e) => {
-          values[input.id] = e.detail
-        }}
-      />
+      {#if input.key === '_class'}
+        <ClassUserInput
+          _class={input._class}
+          value={values[input.id]}
+          on:change={(e) => {
+            values[input.id] = e.detail
+            values = values
+          }}
+        />
+      {:else}
+        <RequestUserInputAttribute
+          key={input.key}
+          _class={input._class}
+          {space}
+          value={values[input.id]}
+          on:change={(e) => {
+            values[input.id] = e.detail
+            values = values
+          }}
+        />
+      {/if}
     {/each}
   </div>
 </Card>

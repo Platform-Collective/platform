@@ -64,7 +64,7 @@ import { createQuery, getClient, MessageBox } from '@hcengineering/presentation'
 import request, { type Request, RequestStatus } from '@hcengineering/request'
 import { isEmptyMarkup } from '@hcengineering/text'
 import { type Location, getUserTimezone, showPopup } from '@hcengineering/ui'
-import { type KeyFilter } from '@hcengineering/view'
+import { type KeyFilter, type ReferenceVersion } from '@hcengineering/view'
 
 import { makeRank } from '@hcengineering/rank'
 import { getProjectDocumentLink } from './navigation'
@@ -317,12 +317,19 @@ export async function updateExternalApproversAccess (
     })
 
     for (const person of addedPersons) {
+      const accountUuid: AccountUuid = person.personUuid as any
+      await client.createDoc(core.class.Collaborator, controlledDoc.space, {
+        attachedTo: controlledDoc._id,
+        attachedToClass: controlledDoc._class,
+        collection: 'collaborators',
+        collaborator: accountUuid
+      })
       for (const projectDoc of projectDocs) {
         await client.createDoc(core.class.Collaborator, controlledDoc.space, {
           attachedTo: projectDoc._id,
           attachedToClass: projectDoc._class,
           collection: 'collaborators',
-          collaborator: person.personUuid as AccountUuid
+          collaborator: accountUuid
         })
       }
 
@@ -331,7 +338,7 @@ export async function updateExternalApproversAccess (
           attachedTo: controlledDoc.changeControl,
           attachedToClass: documents.class.ChangeControl,
           collection: 'collaborators',
-          collaborator: person.personUuid as AccountUuid
+          collaborator: accountUuid
         })
       }
     }
@@ -833,6 +840,29 @@ export async function getDocumentMetaTitle (
   const hint = await translate(documentsResources.string.LatestVersionHint, {})
 
   return object.title + ` (${hint})`
+}
+
+export async function documentMetaReferenceVersionsProvider (
+  client: Client,
+  ref: Ref<DocumentMeta>
+): Promise<ReferenceVersion[]> {
+  const versions = await client.findAll(
+    documents.class.ControlledDocument,
+    { attachedTo: ref },
+    {
+      sort: {
+        major: SortingOrder.Descending,
+        minor: SortingOrder.Descending
+      }
+    }
+  )
+
+  return versions.map((doc) => ({
+    id: doc._id,
+    objectclass: doc._class,
+    label: `${doc.title} (${getDocumentVersionString(doc)})`,
+    fixed: true
+  }))
 }
 
 export async function controlledDocumentReferenceObjectProvider (

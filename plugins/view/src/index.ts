@@ -59,6 +59,7 @@ import {
   OpenDocumentFunction,
   PreviewPresenter,
   ReferenceObjectProvider,
+  ReferenceVersionsProvider,
   SpaceHeader,
   SpaceName,
   SpacePresenter,
@@ -66,7 +67,8 @@ import {
   ViewAction,
   Viewlet,
   ViewletDescriptor,
-  ViewletPreference
+  ViewletPreference,
+  ViewletViewAction
 } from './types'
 
 export * from './types'
@@ -102,6 +104,7 @@ const view = plugin(viewId, {
     ObjectTitle: '' as Ref<Mixin<ObjectTitle>>,
     ObjectIdentifier: '' as Ref<Mixin<ObjectIdentifier>>,
     ReferenceObjectProvider: '' as Ref<Mixin<ReferenceObjectProvider>>,
+    ReferenceVersionsProvider: '' as Ref<Mixin<ReferenceVersionsProvider>>,
     ObjectTooltip: '' as Ref<Mixin<ObjectTooltip>>,
     SpaceHeader: '' as Ref<Mixin<SpaceHeader>>,
     SpaceName: '' as Ref<Mixin<SpaceName>>,
@@ -126,6 +129,7 @@ const view = plugin(viewId, {
     ViewletPreference: '' as Ref<Class<ViewletPreference>>,
     ViewletDescriptor: '' as Ref<Class<ViewletDescriptor>>,
     Viewlet: '' as Ref<Class<Viewlet>>,
+    ViewletViewAction: '' as Ref<Class<ViewletViewAction>>,
     Action: '' as Ref<Class<Action>>,
     ActionCategory: '' as Ref<Class<ActionCategory>>,
     LinkPresenter: '' as Ref<Class<LinkPresenter>>,
@@ -161,7 +165,8 @@ const view = plugin(viewId, {
     RemoveRelation: '' as Ref<Action>,
 
     CopyLink: '' as Ref<Action<Doc, any>>,
-    CopyDocumentMarkdown: '' as Ref<Action<Doc, any>>
+    CopyDocumentMarkdown: '' as Ref<Action<Doc, any>>,
+    AddRelation: '' as Ref<Action<Doc, any>>
   },
   viewlet: {
     Table: '' as Ref<ViewletDescriptor>,
@@ -224,8 +229,10 @@ const view = plugin(viewId, {
     Subscribed: '' as IntlString,
     HyperlinkPlaceholder: '' as IntlString,
     CopyToClipboard: '' as IntlString,
+    CopyAll: '' as IntlString,
     NoGrouping: '' as IntlString,
     Type: '' as IntlString,
+    ViewletViewAction: '' as IntlString,
     UnArchive: '' as IntlString,
     Archive: '' as IntlString,
     Save: '' as IntlString,

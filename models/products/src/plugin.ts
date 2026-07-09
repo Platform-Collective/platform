@@ -19,11 +19,19 @@ import products from '@hcengineering/products-resources/src/plugin'
 import type { Client, Doc, Ref, Role } from '@hcengineering/core'
 import { type Resource, mergeIds } from '@hcengineering/platform'
 import { type AnyComponent } from '@hcengineering/ui/src/types'
-import type { Action } from '@hcengineering/view'
+import type { Action, ViewAction } from '@hcengineering/view'
 
 export default mergeIds(productsId, products, {
   action: {
+    CreateProductVersion: '' as Ref<Action<Doc, any>>,
     DeleteProductVersion: '' as Ref<Action<Doc, any>>
+  },
+  actionImpl: {
+    CreateProductVersion: '' as ViewAction
+  },
+  ids: {
+    ModulePermissionGroup: '' as Ref<Doc>,
+    ModulePermissionGroupReadOnlyGuest: '' as Ref<Doc>
   },
   component: {
     CreateProduct: '' as AnyComponent,
@@ -40,6 +48,7 @@ export default mergeIds(productsId, products, {
     ProductVersionVersionPresenter: '' as AnyComponent
   },
   function: {
+    CanCreateProductVersion: '' as Resource<(doc?: Doc | Doc[]) => Promise<boolean>>,
     CanDeleteProductVersion: '' as Resource<(doc?: Doc | Doc[]) => Promise<boolean>>,
     ProductIdentifierProvider: '' as Resource<<T extends Doc>(client: Client, ref: Ref<T>, doc?: T) => Promise<string>>
   },

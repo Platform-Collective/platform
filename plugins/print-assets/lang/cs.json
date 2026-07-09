@@ -1,5 +1,10 @@
 {
   "string": {
-      "PrintToPDF": "Tisk do PDF"
+    "PrintToPDF": "Tisk do PDF",
+    "PrintingDocumentOf": "Tisk dokumentu {current} z {total}",
+    "DownloadAll": "Stáhnout vše",
+    "PrintFailed": "Tisk se nezdařil",
+    "PrintSettings": "Print settings",
+    "LandscapeMode": "Landscape mode"
   }
 }

@@ -125,12 +125,14 @@ export const documentsPlugin = plugin(documentsId, {
     EditDocSpace: '' as Ref<Action>,
     TransferDocument: '' as Ref<Action>,
     ExportDocuments: '' as Ref<Action<Document, any>>,
+    ExportProjectDocuments: '' as Ref<Action<Document, any>>,
     ExportDocumentsFromSpace: '' as Ref<Action<DocumentSpace, any>>,
     Print: '' as Ref<Action<Doc, { signed: boolean }>>,
     PrintProjectDocument: '' as Ref<Action<Doc, { signed: boolean }>>,
     OpenDocument: '' as Ref<Action<Doc, { signed: boolean }>>,
     OpenDocumentInNewTab: '' as Ref<Action<Doc, { signed: boolean }>>,
-    CopyAsMarkdownTable: '' as Ref<Action<Doc, any>>
+    CopyAsMarkdownTable: '' as Ref<Action<Doc, any>>,
+    CopyDocumentMarkdown: '' as Ref<Action<Doc, any>>
   },
   function: {
     CanChangeDocumentOwner: '' as Resource<(doc?: Doc | Doc[]) => Promise<boolean>>,
@@ -335,7 +337,8 @@ export const documentsPlugin = plugin(documentsId, {
     ProductChangeControl: '' as Ref<DocumentTemplate>
   },
   notification: {
-    CoAuthorsNotification: '' as Ref<NotificationType>
+    CoAuthorsNotification: '' as Ref<NotificationType>,
+    ReviewNotification: '' as Ref<NotificationType>
   },
   viewlet: {
     DocumentSpaceTable: '' as Ref<Viewlet>

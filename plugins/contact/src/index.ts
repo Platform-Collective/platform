@@ -190,6 +190,7 @@ export interface Employee extends Person {
   statuses?: number
   position?: string | null
   personUuid?: AccountUuid
+  timezone?: string
 }
 
 /**
@@ -218,6 +219,17 @@ export interface Translation extends Preference {
 }
 
 /**
+ * Persistent user status in workspace (e.g. vacation, short note).
+ * @public
+ */
+export interface WorkspaceMemberStatus extends Doc {
+  space: Ref<Space>
+  user: AccountUuid
+  message: string
+  clearAt?: Timestamp
+}
+
+/**
  * @public
  */
 export const contactPlugin = plugin(contactId, {
@@ -236,7 +248,8 @@ export const contactPlugin = plugin(contactId, {
     SocialIdentity: '' as Ref<Class<SocialIdentity>>,
     UserProfile: '' as Ref<MasterTag>,
     UserRole: '' as Ref<Class<UserRole>>,
-    Translation: '' as Ref<Class<Translation>>
+    Translation: '' as Ref<Class<Translation>>,
+    WorkspaceMemberStatus: '' as Ref<Class<WorkspaceMemberStatus>>
   },
   mixin: {
     Employee: '' as Ref<Class<Employee>>
@@ -264,7 +277,8 @@ export const contactPlugin = plugin(contactId, {
     PersonFilterValuePresenter: '' as AnyComponent,
     PersonIdFilter: '' as AnyComponent,
     AssigneePopup: '' as AnyComponent,
-    EmployeePresenter: '' as AnyComponent
+    EmployeePresenter: '' as AnyComponent,
+    WorkspaceMemberStatusEditor: '' as AnyComponent
   },
   channelProvider: {
     Email: '' as Ref<ChannelProvider>,
@@ -372,13 +386,15 @@ export const contactPlugin = plugin(contactId, {
     UserProfile: '' as IntlString,
     DeactivatedAccount: '' as IntlString,
     LocalTime: '' as IntlString,
+    Timezone: '' as IntlString,
     Everyone: '' as IntlString,
     Here: '' as IntlString,
     EveryoneDescription: '' as IntlString,
     HereDescription: '' as IntlString,
     Guest: '' as IntlString,
     Deleted: '' as IntlString,
-    Email: '' as IntlString
+    Email: '' as IntlString,
+    WorkspaceStatusNote: '' as IntlString
   },
   viewlet: {
     TableMember: '' as Ref<Viewlet>,
@@ -429,3 +445,10 @@ export * from './types'
 export * from './utils'
 export * from './analytics'
 export * from './avatar'
+export {
+  WORKSPACE_MEMBER_STATUS_MESSAGE_MAX,
+  trimWorkspaceMemberStatusMessage,
+  isWorkspaceMemberStatusVisible,
+  getWorkspaceMemberStatusSubtitle,
+  extractLeadingStatusEmoji
+} from './workspaceMemberStatusUtils'

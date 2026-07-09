@@ -24,6 +24,19 @@ import { SelectedExecutionContext } from './types'
  */
 export const processId = 'process' as Plugin
 
+export interface SlotModel {
+  slotKind: 'attribute' | 'class' | 'association' | 'process' | 'unknown'
+  _class: Ref<Class<Doc>>
+  label?: IntlString
+  name?: string
+  memberOf?: string
+}
+
+export interface AttributeSlotModel extends SlotModel {
+  slotKind: 'attribute'
+  type: Type<any>
+}
+
 // Process model dscription
 export interface Process extends Doc {
   masterTag: Ref<MasterTag | Tag>
@@ -31,8 +44,11 @@ export interface Process extends Doc {
   description: string
   parallelExecutionForbidden?: boolean
   autoStart?: boolean
+  automationOnly?: boolean
   context: Record<ContextId, ProcessContext>
   resultType?: Type<any>
+  requiredSlots?: Record<string, SlotModel>
+  bindings?: Record<string, string>
 }
 
 export interface ProcessContext {
@@ -123,6 +139,20 @@ export interface ProcessToDo extends ToDo {
   withRollback: boolean
 
   results?: UserResult[]
+  field?: string
+  askRequired?: boolean
+}
+
+export interface ApproveRequest extends ProcessToDo {
+  card: Ref<Card>
+
+  approved?: boolean
+
+  reason?: string
+
+  group: string
+  field?: string
+  actionType?: 'approve' | 'review'
 }
 
 export type MethodParams<T extends Doc> = {
@@ -188,8 +218,9 @@ export interface CreatedContext {
 }
 
 export interface ProcessFunction extends Doc {
-  type: 'transform' | 'reduce' | 'context'
+  type: 'transform' | 'reduce' | 'context' | 'convert'
   of: Ref<Class<Doc>>
+  to?: Ref<Class<Doc>>
   editor?: AnyComponent
   presenter?: AnyComponent
   category: AttributeCategory | undefined
@@ -214,6 +245,7 @@ export default plugin(processId, {
     Process: '' as Ref<Class<Process>>,
     Execution: '' as Ref<Class<Execution>>,
     ProcessToDo: '' as Ref<Class<ProcessToDo>>,
+    ApproveRequest: '' as Ref<Class<ApproveRequest>>,
     Method: '' as Ref<Class<Method<Doc>>>,
     State: '' as Ref<Class<State>>,
     ProcessFunction: '' as Ref<Class<ProcessFunction>>,
@@ -226,6 +258,7 @@ export default plugin(processId, {
   },
   method: {
     RunSubProcess: '' as Ref<Method<Process>>,
+    CancelSubProcess: '' as Ref<Method<Process>>,
     CreateAction: '' as Ref<Method<EventButton>>,
     CancellAction: '' as Ref<Method<EventButton>>,
     CreateToDo: '' as Ref<Method<ProcessToDo>>,
@@ -233,11 +266,20 @@ export default plugin(processId, {
     UpdateCard: '' as Ref<Method<Card>>,
     CreateCard: '' as Ref<Method<Card>>,
     AddRelation: '' as Ref<Method<Association>>,
-    AddTag: '' as Ref<Method<Tag>>
+    AddTag: '' as Ref<Method<Tag>>,
+    RequestApproval: '' as Ref<Method<ApproveRequest>>,
+    CancelToDo: '' as Ref<Method<ProcessToDo>>,
+    LockCard: '' as Ref<Method<Card>>,
+    LockSection: '' as Ref<Method<Card>>,
+    UnlockCard: '' as Ref<Method<Card>>,
+    UnlockSection: '' as Ref<Method<Card>>,
+    LockField: '' as Ref<Method<Card>>,
+    UnlockField: '' as Ref<Method<Card>>
   },
   trigger: {
     OnCardUpdate: '' as Ref<Trigger>, // in fact WhenCardMatches, should migrate in future
     WhenFieldChanges: '' as Ref<Trigger>,
+    WhenRequiredFieldsFilled: '' as Ref<Trigger>,
     OnSubProcessesDone: '' as Ref<Trigger>,
     OnSubProcessMatch: '' as Ref<Trigger>,
     OnToDoClose: '' as Ref<Trigger>,
@@ -245,16 +287,21 @@ export default plugin(processId, {
     OnExecutionStart: '' as Ref<Trigger>,
     OnExecutionContinue: '' as Ref<Trigger>,
     OnTime: '' as Ref<Trigger>,
-    OnEvent: '' as Ref<Trigger>
+    OnEvent: '' as Ref<Trigger>,
+    OnApproveRequestApproved: '' as Ref<Trigger>,
+    OnApproveRequestRejected: '' as Ref<Trigger>
   },
   triggerCheck: {
     ToDo: '' as Resource<CheckFunc>,
     MatchCheck: '' as Resource<CheckFunc>,
     FieldChangedCheck: '' as Resource<CheckFunc>,
+    RequiredFieldsFilledCheck: '' as Resource<CheckFunc>,
     SubProcessesDoneCheck: '' as Resource<CheckFunc>,
     SubProcessMatchCheck: '' as Resource<CheckFunc>,
     Time: '' as Resource<CheckFunc>,
-    OnEventCheck: '' as Resource<CheckFunc>
+    OnEventCheck: '' as Resource<CheckFunc>,
+    ApproveRequestApproved: '' as Resource<CheckFunc>,
+    ApproveRequestRejected: '' as Resource<CheckFunc>
   },
   string: {
     Method: '' as IntlString,
@@ -268,7 +315,12 @@ export default plugin(processId, {
     Actions: '' as IntlString,
     ProcessRunned: '' as IntlString,
     ProcessStateChanged: '' as IntlString,
-    ProcessFinished: '' as IntlString
+    ProcessFinished: '' as IntlString,
+    SyncWithField: '' as IntlString,
+    ActionType: '' as IntlString,
+    ApproveAction: '' as IntlString,
+    ReviewAction: '' as IntlString,
+    Review: '' as IntlString
   },
   error: {
     MethodNotFound: '' as IntlString,
@@ -284,7 +336,8 @@ export default plugin(processId, {
     EmptyFunctionResult: '' as IntlString,
     ContextValueNotProvided: '' as IntlString,
     RequiredParamsNotProvided: '' as IntlString,
-    TooDeepTransitionRecursion: '' as IntlString
+    TooDeepTransitionRecursion: '' as IntlString,
+    ToDoAlreadyCompleted: '' as IntlString
   },
   icon: {
     Process: '' as Asset,
@@ -325,6 +378,8 @@ export default plugin(processId, {
     Absolute: '' as Ref<ProcessFunction>,
     Ceil: '' as Ref<ProcessFunction>,
     Floor: '' as Ref<ProcessFunction>,
+    Min: '' as Ref<ProcessFunction>,
+    Max: '' as Ref<ProcessFunction>,
     Offset: '' as Ref<ProcessFunction>,
     FirstWorkingDayAfter: '' as Ref<ProcessFunction>,
     RoleContext: '' as Ref<ProcessFunction>,
@@ -338,8 +393,25 @@ export default plugin(processId, {
     ExecutionStarted: '' as Ref<ProcessFunction>,
     ExecutionEmployeeInitiator: '' as Ref<ProcessFunction>,
     ExecutionInitiator: '' as Ref<ProcessFunction>,
+    EmptyValue: '' as Ref<ProcessFunction>,
     EmptyArray: '' as Ref<ProcessFunction>,
     CurrentDate: '' as Ref<ProcessFunction>,
+    StringFromIdentifier: '' as Ref<ProcessFunction>,
+    StringFromNumber: '' as Ref<ProcessFunction>,
+    StringFromDate: '' as Ref<ProcessFunction>,
+    StringFromMarkup: '' as Ref<ProcessFunction>,
+    MarkupFromString: '' as Ref<ProcessFunction>,
+    StringFromBoolean: '' as Ref<ProcessFunction>,
+    NumberFromDate: '' as Ref<ProcessFunction>,
+    DateFromNumber: '' as Ref<ProcessFunction>,
+    NumberFromString: '' as Ref<ProcessFunction>,
+    DateFromString: '' as Ref<ProcessFunction>,
+    YearFromDate: '' as Ref<ProcessFunction>,
+    MonthFromDate: '' as Ref<ProcessFunction>,
+    DayFromDate: '' as Ref<ProcessFunction>,
+    StringFromEnum: '' as Ref<ProcessFunction>,
+    EnumFromString: '' as Ref<ProcessFunction>,
+    DateDifference: '' as Ref<ProcessFunction>,
     ExportProcess: '' as Resource<ExportFunc>,
     CheckProcessSectionVisibility: '' as Resource<(doc: Card) => Promise<boolean>>
   }

@@ -14,11 +14,15 @@ import {
   IntegrationKind
 } from '@hcengineering/core'
 
+export type { WorkspaceConfiguration } from '@hcengineering/core'
+
 export interface LoginInfo {
   account: AccountUuid
   name?: string
   socialId?: PersonId
   token?: string
+  tfaRequired?: boolean
+  extra?: Record<string, string>
 }
 
 export interface EndpointInfo {
@@ -41,7 +45,7 @@ export interface LoginInfoWorkspace {
   role: AccountRole | null
   progress?: number
   branding?: string
-  passwordAgingRule?: number // in days
+  passwordAgingRule?: number | null // in days
 }
 
 export interface LoginInfoWithWorkspaces extends LoginInfo {
@@ -78,6 +82,11 @@ export interface WorkspaceInviteInfo {
   workspace: WorkspaceUuid
   email?: string
   name?: string
+}
+
+/** Public invite details from getInviteInfo (no auth required). */
+export interface InviteInfo {
+  workspaceName: string | null
 }
 
 export interface OtpInfo {

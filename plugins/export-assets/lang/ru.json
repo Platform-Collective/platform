@@ -43,16 +43,18 @@
     "ExportToWorkspaceFailed": "Экспорт не удался",
     "SelectWorkspace": "Выбрать рабочее пространство",
     "SelectWorkspaceToExport": "Выбрать рабочее пространство для экспорта {count, plural, =1 {1 документ} one {# документ} few {# документа} other {# документов}}",
-    "SelectWorkspaceToExportSpace": "Выбрать рабочее пространство для экспорта документов из пространства",
+    "SelectWorkspaceToExportSpace": "Выбрать рабочее пространство для экспорта документов",
     "SelectSpace": "Выбрать пространство",
     "NoSelectedDocuments": "Документы не выбраны",
+    "NoDocumentsMatchedFilters": "Не удалось найти документы для экспорта с текущими фильтрами. Измените фильтры или выбор и попробуйте снова.",
     "RequestPermissionToImport": "Пожалуйста, запросите разрешение у владельца рабочего пространства, куда вы хотите экспортировать документы.",
-    "SkipDeletedObsolete": "Пропускать архивированные или устаревшие документы",
     "ExportOnlyEffective": "Экспортировать только документы с действующим статусом",
     "ExportFilterMode": "Документы для экспорта",
     "ExportFilterEffectiveOnly": "Только действующие документы",
     "ExportFilterSkipArchivedObsolete": "Все кроме архивных и устаревших",
     "ExportFilterAll": "Все документы",
+    "ExportChildDocuments": "Экспортировать дочерние документы",
+    "ExportChildDocumentsDescription": "Также экспортировать документы, прикреплённые к выбранным",
     "ExportResultRecordTitle": "Экспорт документов из пространства {workspace} ({date})"
   }
 }

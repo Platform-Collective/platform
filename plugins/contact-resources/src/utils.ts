@@ -14,6 +14,8 @@
 // limitations under the License.
 //
 
+import { loadWorkspaceMemberStatuses } from './workspaceMemberStatus'
+
 import { type AccountClient, getClient as getAccountClientRaw } from '@hcengineering/account-client'
 import {
   addEmployeeListenrer,
@@ -65,7 +67,9 @@ import core, {
   type Permission,
   type PersonId,
   pickPrimarySocialId,
+  readOnlyGuestAccountUuid,
   type Ref,
+  type SocialId,
   SocialIdType,
   type Space,
   type Timestamp,
@@ -221,6 +225,16 @@ export async function getCurrentEmployeeEmail (): Promise<string> {
   return emailSocialId?.value ?? ''
 }
 
+export function isSocialIdOwnedByCurrentUser (value: SocialIdentity | SocialId): boolean {
+  if ('attachedTo' in value) {
+    const me = getCurrentEmployee()
+    return me != null && value.attachedTo === me
+  }
+
+  const account = getCurrentAccount()
+  return account.primarySocialId === value._id || account.socialIds.includes(value._id)
+}
+
 export async function getCurrentEmployeePosition (): Promise<string | undefined> {
   const me = getCurrentEmployee()
   const employee = await getClient().findOne<Employee>(contact.mixin.Employee, { _id: me })
@@ -350,6 +364,39 @@ export const myEmployeeStore = derived(
   }
 )
 
+function detectBrowserTimezone (): string | undefined {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return tz !== '' ? tz : undefined
+  } catch {
+    return undefined
+  }
+}
+
+let timezoneSyncInFlight = false
+
+async function syncMyEmployeeTimezone (employee: WithLookup<Employee> | undefined): Promise<void> {
+  if (timezoneSyncInFlight || employee === undefined) return
+  const browserTz = detectBrowserTimezone()
+  if (browserTz === undefined || employee.timezone === browserTz) return
+
+  timezoneSyncInFlight = true
+  try {
+    const client = getClient()
+    await client.updateMixin(employee._id, contact.class.Person, employee.space, contact.mixin.Employee, {
+      timezone: browserTz
+    })
+  } catch (err) {
+    console.error('Failed to sync employee timezone', err)
+  } finally {
+    timezoneSyncInFlight = false
+  }
+}
+
+myEmployeeStore.subscribe((employee) => {
+  void syncMyEmployeeTimezone(employee)
+})
+
 /**
  * [Ref<Employee> => PersonId (primary)] mapping
  */
@@ -359,6 +406,21 @@ export const primarySocialIdByEmployeeRefStore = writable<Map<Ref<Employee>, Per
  * [AccountUuid => Ref<Person>] mapping
  */
 export const employeeRefByAccountUuidStore = writable<Map<AccountUuid, Ref<Employee>>>(new Map())
+
+/**
+ * {@link Ref}<{@link Person}>[] for `excludeItems` so the read-only anonymous guest does not appear in the picker
+ * when not already selected. If they are in `selectedAccountUuids`, returns [] so they stay visible among chips.
+ */
+export function getAnonymousRefs (
+  byAccount: Map<AccountUuid, Ref<Employee>>,
+  selectedAccountUuids: readonly AccountUuid[] = []
+): Array<Ref<Person>> {
+  if (selectedAccountUuids.includes(readOnlyGuestAccountUuid)) {
+    return []
+  }
+  const ref = byAccount.get(readOnlyGuestAccountUuid)
+  return ref !== undefined ? [ref as unknown as Ref<Person>] : []
+}
 
 /**
  * [PersonId (social ID) => Employee] mapping
@@ -399,6 +461,8 @@ onClient(() => {
   providerQuery.query(contact.class.ChannelProvider, {}, (res) => {
     channelProviders.set(res)
   })
+
+  loadWorkspaceMemberStatuses()
 
   employeesQuery.query(
     contact.mixin.Employee,
@@ -854,4 +918,8 @@ export function getPersonByPersonRefStore (
   personRefs: Array<Ref<Person>>
 ): Readable<Map<Ref<Person>, Readonly<Person>>> {
   return contactCacheStoreManager.getPersonByPersonRefStore(personRefs)
+}
+
+export function hideInactive (value: any, query: DocumentQuery<Doc>): DocumentQuery<Doc> {
+  return value === true ? { ...query, active: true } : query
 }

@@ -33,7 +33,9 @@ import {
   ReadOnly,
   TypeAny,
   TypeBoolean,
+  TypeIntlString,
   TypeRank,
+  TypeRecord,
   TypeRef,
   TypeString,
   UX
@@ -43,9 +45,10 @@ import presentation from '@hcengineering/model-presentation'
 import { TToDo } from '@hcengineering/model-time'
 import view, { createAction } from '@hcengineering/model-view'
 import workbench from '@hcengineering/model-workbench'
-import notification from '@hcengineering/notification'
-import { type Asset, type IntlString, type Resource } from '@hcengineering/platform'
+import notification, { type NotificationGroup } from '@hcengineering/notification'
+import { type Asset, type IntlString, type Resource, getEmbeddedLabel } from '@hcengineering/platform'
 import {
+  type ApproveRequest,
   type CheckFunc,
   type ContextId,
   type CreatedContext,
@@ -63,6 +66,7 @@ import {
   type ProcessCustomEvent,
   type ProcessFunction,
   type ProcessToDo,
+  type SlotModel,
   type State,
   type Step,
   type Transition,
@@ -101,6 +105,15 @@ export class TProcess extends TDoc implements Process {
 
   @Prop(TypeBoolean(), process.string.StartAutomatically)
     autoStart: boolean | undefined
+
+  @Prop(TypeBoolean(), process.string.AutomationOnly)
+    automationOnly: boolean | undefined
+
+  @Prop(TypeRecord(), process.string.RequiredSlots)
+    requiredSlots?: Record<string, SlotModel>
+
+  @Prop(TypeRecord(), process.string.Bindings)
+    bindings?: Record<string, string>
 
   context!: Record<ContextId, ProcessContext>
 }
@@ -198,10 +211,31 @@ export class TExecution extends TDoc implements Execution {
 @Model(process.class.ProcessToDo, time.class.ToDo)
 @UX(process.string.ToDo)
 export class TProcessToDo extends TToDo implements ProcessToDo {
-  execution!: Ref<Execution>
+  @Prop(TypeRef(process.class.Execution), process.string.Execution)
+    execution!: Ref<Execution>
 
   @Prop(TypeBoolean(), process.string.Rollback)
     withRollback!: boolean
+
+  @Prop(TypeBoolean(), process.string.AskRequired)
+    askRequired?: boolean
+}
+
+@Model(process.class.ApproveRequest, process.class.ProcessToDo)
+@UX(process.string.ApproveRequest)
+export class TApproveRequest extends TProcessToDo implements ApproveRequest {
+  @Prop(TypeBoolean(), process.string.IsApproved)
+    approved?: boolean
+
+  @Prop(TypeString(), process.string.RejectionReason)
+    reason?: string
+
+  group!: string
+
+  card!: Ref<Card>
+
+  @Prop(TypeString(), process.string.ActionType)
+    actionType?: 'approve' | 'review'
 }
 
 @Model(process.class.Method, core.class.Doc, DOMAIN_MODEL)
@@ -263,24 +297,40 @@ export class TEventButton extends TDoc implements EventButton {
 
 @Model(process.class.ProcessFunction, core.class.Doc, DOMAIN_MODEL)
 export class TProcessFunction extends TDoc implements ProcessFunction {
-  of!: Ref<Class<Doc<Space>>>
-  category: AttributeCategory | undefined
-  label!: IntlString
+  @Prop(TypeRef(core.class.Class), getEmbeddedLabel('To'))
+    to?: Ref<Class<Doc>>
+
+  @Prop(TypeRef(core.class.Class), getEmbeddedLabel('Of'))
+    of!: Ref<Class<Doc<Space>>>
+
+  @Prop(TypeString(), getEmbeddedLabel('Category'))
+    category: AttributeCategory | undefined
+
+  @Prop(TypeIntlString(), getEmbeddedLabel('Label'))
+    label!: IntlString
+
   editor?: AnyComponent
   presenter?: AnyComponent
-  allowMany?: boolean
-  type!: 'transform' | 'reduce' | 'context'
+
+  @Prop(TypeBoolean(), getEmbeddedLabel('AllowMany'))
+    allowMany?: boolean
+
+  @Prop(TypeString(), getEmbeddedLabel('Type'))
+    type!: 'transform' | 'reduce' | 'context' | 'convert'
 }
 
 @Model(process.class.UpdateCriteriaComponent, core.class.Doc, DOMAIN_MODEL)
 export class TUpdateCriteriaComponent extends TDoc implements UpdateCriteriaComponent {
-  category!: AttributeCategory
+  @Prop(TypeString(), getEmbeddedLabel('Category'))
+    category!: AttributeCategory
 
   editor!: AnyComponent
 
-  of!: Ref<Class<Doc<Space>>>
+  @Prop(TypeRef(core.class.Class), getEmbeddedLabel('Of'))
+    of!: Ref<Class<Doc<Space>>>
 
-  props!: Record<string, any>
+  @Prop(TypeRecord(), getEmbeddedLabel('Props'))
+    props!: Record<string, any>
 }
 
 export * from './migration'
@@ -290,6 +340,7 @@ export function createModel (builder: Builder): void {
     TProcess,
     TExecution,
     TProcessToDo,
+    TApproveRequest,
     TMethod,
     TState,
     TProcessFunction,
@@ -321,6 +372,28 @@ export function createModel (builder: Builder): void {
       }
     },
     process.ids.ProcessToDoCreated
+  )
+
+  builder.createDoc(
+    notification.class.NotificationType,
+    core.space.Model,
+    {
+      hidden: false,
+      generated: false,
+      allowedForAuthor: true,
+      label: process.string.ApproveRequest,
+      group: time.ids.TimeNotificationGroup,
+      txClasses: [core.class.TxCreateDoc],
+      objectClass: process.class.ApproveRequest,
+      onlyOwn: true,
+      defaultEnabled: true,
+      templates: {
+        textTemplate: '{body}',
+        htmlTemplate: '<p>{body}</p>',
+        subjectTemplate: '{title}'
+      }
+    },
+    process.ids.ApproveRequestCreated
   )
 
   createAction(builder, {
@@ -417,6 +490,60 @@ export function createModel (builder: Builder): void {
     view.class.Viewlet,
     core.space.Model,
     {
+      variant: 'cardRequests',
+      attachTo: process.class.ApproveRequest,
+      descriptor: view.viewlet.List,
+      props: {
+        baseMenuClass: process.class.ApproveRequest
+      },
+      viewOptions: {
+        groupBy: ['user', 'approved', 'execution'],
+        orderBy: [
+          ['approved', SortingOrder.Descending],
+          ['modifiedOn', SortingOrder.Descending],
+          ['createdOn', SortingOrder.Descending]
+        ],
+        other: []
+      },
+      configOptions: {
+        strict: true
+      },
+      config: [
+        {
+          key: 'execution',
+          label: process.string.Process,
+          presenter: process.component.ExecutionRefPresenter
+        },
+        'user',
+        {
+          key: 'actionType',
+          label: process.string.ActionType,
+          presenter: process.component.ActionTypePresenter
+        },
+        {
+          key: '',
+          presenter: view.component.GrowPresenter,
+          displayProps: { grow: true }
+        },
+        'reason',
+        {
+          key: '',
+          label: process.string.ApproveRequest,
+          presenter: process.component.ApproveRequestPresenter
+        }
+      ]
+    },
+    process.viewlet.CardRequests
+  )
+
+  builder.mixin(process.class.ApproveRequest, core.class.Class, view.mixin.IgnoreActions, {
+    actions: [view.action.Delete]
+  })
+
+  builder.createDoc(
+    view.class.Viewlet,
+    core.space.Model,
+    {
       variant: 'cardExecutions',
       attachTo: process.class.Execution,
       descriptor: view.viewlet.List,
@@ -433,7 +560,7 @@ export function createModel (builder: Builder): void {
           {
             key: 'showDone',
             type: 'toggle',
-            defaultValue: true,
+            defaultValue: false,
             actionTarget: 'query',
             action: process.function.ShowDoneQuery,
             label: process.string.ShowDone
@@ -601,6 +728,12 @@ export function createModel (builder: Builder): void {
   })
 
   builder.createDoc(presentation.class.ComponentPointExtension, core.space.Model, {
+    extension: card.extensions.EditCardExtension,
+    component: process.component.RequestsExtension,
+    props: {}
+  })
+
+  builder.createDoc(presentation.class.ComponentPointExtension, core.space.Model, {
     extension: card.extensions.EditCardHeaderExtension,
     component: process.component.ProcessesHeaderExtension,
     props: {}
@@ -623,10 +756,41 @@ export function createModel (builder: Builder): void {
     process.section.CardProcesses
   )
 
+  builder.createDoc(
+    card.class.CardSection,
+    core.space.Model,
+    {
+      label: process.string.ApproveRequest,
+      component: process.component.RequestsCardSection,
+      order: 360,
+      navigation: []
+    },
+    process.section.CardApproveRequest
+  )
+
   builder.createDoc(card.class.MasterTagEditorSection, core.space.Model, {
     id: 'processes',
     label: process.string.Processes,
     component: process.component.ProcessesSettingSection
+  })
+
+  builder.createDoc(notification.class.NotificationType, core.space.Model, {
+    hidden: false,
+    generated: false,
+    allowedForAuthor: true,
+    label: process.string.NewProcessToDo,
+    group: time.ids.TimeNotificationGroup as Ref<NotificationGroup>,
+    txClasses: [core.class.TxCreateDoc],
+    objectClass: process.class.ProcessToDo,
+    txMatch: {
+      objectClass: process.class.ProcessToDo
+    },
+    defaultEnabled: true,
+    templates: {
+      textTemplate: '{body}',
+      htmlTemplate: '<p>{body}</p>',
+      subjectTemplate: '{title}'
+    }
   })
 
   // builder.createDoc(presentation.class.ComponentPointExtension, core.space.Model, {
@@ -640,6 +804,24 @@ export function createModel (builder: Builder): void {
     of: core.class.TypeString,
     props: {
       modes: ['Equal', 'StringContains', 'Exists']
+    }
+  })
+
+  builder.createDoc(process.class.UpdateCriteriaComponent, core.space.Model, {
+    category: 'attribute',
+    editor: process.criteriaEditor.BaseCriteria,
+    of: core.class.TypeMarkup,
+    props: {
+      modes: ['StringContains', 'Exists']
+    }
+  })
+
+  builder.createDoc(process.class.UpdateCriteriaComponent, core.space.Model, {
+    category: 'inplace',
+    editor: process.criteriaEditor.BaseCriteria,
+    of: core.class.TypeMarkup,
+    props: {
+      modes: ['StringContains', 'Exists']
     }
   })
 

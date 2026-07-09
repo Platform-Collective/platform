@@ -86,6 +86,8 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
+  let sortOrder = SortingOrder.Descending
+
   let lookup = buildConfigLookup(hierarchy, _class, config, options?.lookup)
   let associations = buildConfigAssociation(config)
 
@@ -94,11 +96,15 @@
 
   let _sortKey = prefferedSorting
   let userSorting = false
-  $: if (!userSorting) {
+  $: if (!userSorting && !viewOptions?.orderBy) {
     _sortKey = prefferedSorting
   }
 
-  let sortOrder = SortingOrder.Descending
+  $: if (viewOptions?.orderBy) {
+    _sortKey = viewOptions.orderBy[0]
+    sortOrder = viewOptions.orderBy[1]
+  }
+
   let loading = 0
 
   let objects: Doc[] = []
@@ -214,6 +220,13 @@
     showMenu(ev, { object: items, baseMenuClass })
   }
 
+  const showHeaderContextMenu = (ev: MouseEvent): void => {
+    if (readonly) return
+    if (!enableChecking || objects.length === 0) return
+    const items = checked.length > 0 ? checked : objects
+    showMenu(ev, { object: items, baseMenuClass })
+  }
+
   function changeSorting (key: string | string[]): void {
     if (key === '') {
       return
@@ -225,6 +238,7 @@
     } else {
       sortOrder = sortOrder === SortingOrder.Ascending ? SortingOrder.Descending : SortingOrder.Ascending
     }
+    dispatch('sort', { key: _sortKey, order: sortOrder })
   }
 
   $: checkedSet = new Set<Ref<Doc>>(checked.map((it) => it._id))
@@ -301,7 +315,7 @@
     if (attr === undefined) return
     if (attribute.collectionAttr) return
     if (attribute.isLookup) return
-    if (attribute?.attribute?.readonly === true) return
+    if (attribute.attribute?.readonly === true) return
     const key = attribute.castRequest ? attribute.key.substring(attribute.castRequest.length + 1) : attribute.key
     return (value: any) => {
       onChange(value, doc, key, attr)
@@ -383,7 +397,7 @@
       <thead class="scroller-thead">
         <tr class="scroller-thead__tr">
           {#if enableChecking || showNotification}
-            <th>
+            <th on:contextmenu={showHeaderContextMenu}>
               {#if enableChecking && objects?.length > 0}
                 <div class="antiTable-cells__checkCell" class:checkall={checkedSet.size > 0}>
                   <CheckBox

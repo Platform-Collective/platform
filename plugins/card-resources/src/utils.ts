@@ -13,8 +13,10 @@
 
 import { type AccountClient, getClient as getAccountClientRaw } from '@hcengineering/account-client'
 import { Analytics } from '@hcengineering/analytics'
-import communication from '@hcengineering/communication'
 import { type Card, CardEvents, cardId, type CardSpace, type MasterTag, type Tag } from '@hcengineering/card'
+import { chatId } from '@hcengineering/chat'
+import communication from '@hcengineering/communication'
+import { type PermissionsStore } from '@hcengineering/contact'
 import core, {
   AccountRole,
   type Class,
@@ -32,9 +34,9 @@ import core, {
   makeDocCollabId,
   type Markup,
   type MarkupBlobRef,
+  type Mixin,
   type Ref,
   type RelatedDocument,
-  SortingOrder,
   type Space,
   toRank,
   type TxOperations,
@@ -50,7 +52,6 @@ import presentation, {
   MessageBox,
   type ObjectSearchResult
 } from '@hcengineering/presentation'
-import { makeRank } from '@hcengineering/rank'
 import { EmptyMarkup, isEmptyMarkup } from '@hcengineering/text'
 import {
   getCurrentLocation,
@@ -69,6 +70,8 @@ import workbench, { type LocationData, type Widget, type WidgetTab } from '@hcen
 import { createWidgetTab } from '@hcengineering/workbench-resources'
 
 import attachment from '@hcengineering/attachment'
+import { makeRank } from '@hcengineering/rank'
+import { writable } from 'svelte/store'
 import CardSearchItem from './components/CardSearchItem.svelte'
 import CreateSpace from './components/navigator/CreateSpace.svelte'
 import card from './plugin'
@@ -276,10 +279,16 @@ export async function createTypePermissions (masterTag: MasterTag | Tag): Promis
   }
 }
 
+interface CopySettings {
+  excludedProperties?: string[]
+  excludedRelations?: string[] // ${associationId}_${a|b}
+  excludeMixins?: Array<Ref<Mixin<Doc>>>
+}
+
 async function cloneCard (
   origin: Card,
   overrideProps: Record<string, any>,
-  relationToCopy: Set<string> | 'all',
+  config?: CopySettings,
   copyIds: boolean = false
 ): Promise<Ref<Card>> {
   const client = getClient()
@@ -291,45 +300,51 @@ async function cloneCard (
   const skipClasses = copyIds
     ? [core.class.TypeCollaborativeDoc]
     : [core.class.TypeCollaborativeDoc, core.class.TypeIdentifier]
+  const systemFields = ['_class', 'id', 'createdOn', 'modifiedOn', 'modifiedBy', 'createdBy', 'createdOn', 'rank']
 
   for (const [key, attr] of attrs) {
-    if (attr.hidden !== true) {
-      if (attr.type._class === core.class.Collection) {
-        ;(props as any)[key] = 0
-      } else if (!skipClasses.includes(attr.type._class)) {
-        ;(props as any)[key] = (origin as any)[key]
-      }
+    if (config?.excludedProperties?.includes(key) === true || systemFields.includes(key)) {
+      continue
+    }
+    if (attr.type._class === core.class.Collection) {
+      ;(props as any)[key] = 0
+    } else if (!skipClasses.includes(attr.type._class)) {
+      ;(props as any)[key] = (origin as any)[key]
     }
   }
   for (const [k, v] of Object.entries(overrideProps)) {
     ;(props as any)[k] = v
   }
+  props.rank = makeRank(origin.rank, undefined)
   const targetId = generateId<Card>()
   const relationsA = await client.findAll(core.class.Relation, { docA: origin._id })
   const relationsB = await client.findAll(core.class.Relation, { docB: origin._id })
 
-  const markup = await getMarkup(makeDocCollabId(origin, 'content'), origin.content)
-  if (!isEmptyMarkup(markup)) {
-    const collabId = makeCollabId(base, targetId, 'content')
-    props.content = await createMarkup(collabId, markup)
+  if (config?.excludedProperties?.includes('content') !== true) {
+    const markup = await getMarkup(makeDocCollabId(origin, 'content'), origin.content)
+    if (!isEmptyMarkup(markup)) {
+      const collabId = makeCollabId(base, targetId, 'content')
+      props.content = await createMarkup(collabId, markup)
+    }
   }
 
   const ops = client.apply(`Duplicate_card_${origin._id}`)
   await ops.createDoc(base, origin.space, props, targetId)
   for (const mixin of mixins) {
+    if (config?.excludeMixins?.includes(mixin) === true) {
+      continue
+    }
     const mixinAttrs = h.getOwnAttributes(mixin)
     const as = h.as(origin, mixin)
     const attributes: Partial<Data<Doc>> = {}
-    for (const [key, attr] of mixinAttrs) {
-      if (attr.readonly !== true && attr.hidden !== true) {
-        ;(attributes as any)[key] = (as as any)[key]
-      }
+    for (const [key] of mixinAttrs) {
+      ;(attributes as any)[key] = (as as any)[key]
     }
     await ops.createMixin(targetId, base, origin.space, mixin, attributes)
   }
 
   for (const rel of relationsA) {
-    if (relationToCopy === 'all' || relationToCopy.has(`${rel.association}_b`)) {
+    if (config?.excludedRelations?.includes(`${rel.association}_b`) !== true) {
       await ops.createDoc(core.class.Relation, core.space.Workspace, {
         docA: targetId,
         docB: rel.docB,
@@ -338,7 +353,7 @@ async function cloneCard (
     }
   }
   for (const rel of relationsB) {
-    if (relationToCopy === 'all' || relationToCopy.has(`${rel.association}_a`)) {
+    if (config?.excludedRelations?.includes(`${rel.association}_a`) !== true) {
       await ops.createDoc(core.class.Relation, core.space.Workspace, {
         docA: rel.docA,
         docB: targetId,
@@ -348,24 +363,26 @@ async function cloneCard (
   }
   await ops.commit()
 
-  const attachments = await client.findAll(attachment.class.Attachment, { attachedTo: origin._id })
-  const attachmentOps = client.apply(`Duplicate_attachments_${origin._id}`)
-  for (const att of attachments) {
-    const { _id, modifiedBy, modifiedOn, attachedTo, attachedToClass, collection, space, ...props } = att
-    await attachmentOps.addCollection(attachment.class.Attachment, origin.space, targetId, base, 'attachments', props)
+  if (config?.excludedProperties?.includes('attachments') !== true) {
+    const attachments = await client.findAll(attachment.class.Attachment, { attachedTo: origin._id })
+    const attachmentOps = client.apply(`Duplicate_attachments_${origin._id}`)
+    for (const att of attachments) {
+      const { _id, modifiedBy, modifiedOn, attachedTo, attachedToClass, collection, space, ...props } = att
+      await attachmentOps.addCollection(attachment.class.Attachment, origin.space, targetId, base, 'attachments', props)
+    }
+    await attachmentOps.commit()
   }
-  await attachmentOps.commit()
 
   return targetId
 }
 
-export async function duplicateCard (origin: Card): Promise<void> {
+export async function duplicateCard (origin: Card, config?: CopySettings): Promise<void> {
   const targetId = await cloneCard(
     origin,
     {
       title: `${origin.title} (Copy)`
     },
-    'all'
+    config
   )
 
   const loc = getCurrentLocation()
@@ -469,6 +486,26 @@ export async function getCardTitle (client: TxOperations, ref: Ref<Card>, doc?: 
   return ids + ' ' + object.title + ' ' + version
 }
 
+export async function cardReferenceObjectProvider<T extends Doc> (
+  client: Client,
+  ref: Ref<T>,
+  doc?: T
+): Promise<Doc | undefined> {
+  const object =
+    (doc as unknown as Card | undefined) ?? (await client.findOne(card.class.Card, { _id: ref as any as Ref<Card> }))
+  if (object === undefined) return
+
+  const versioningEnabled = client
+    .getHierarchy()
+    .classHierarchyMixin(object._class, core.mixin.VersionableClass)?.enabled
+  if (versioningEnabled !== true) return object
+
+  const baseId = object.baseId ?? object._id
+  if (object.isLatest === true) return object
+
+  return (await client.findOne(object._class, { baseId, isLatest: true } as any)) ?? object
+}
+
 export async function getCardLink (doc: Card): Promise<Location> {
   const loc = getCurrentResolvedLocation()
   loc.path.length = 2
@@ -513,17 +550,24 @@ export async function cardFactory (props: Record<string, any> = {}): Promise<Ref
     return undefined
   }
 
+  if (isBaseTypeWithSubtypes(getClient().getHierarchy(), _class)) {
+    return undefined
+  }
+
   return await createCard(_class, space, props.data, props.content)
 }
 
-export async function createNewVersion (card: Card, relationsToCopy: Set<string>): Promise<Ref<Card>> {
+export async function createNewVersion (card: Card): Promise<Ref<Card>> {
+  const client = getClient()
+  const mixin = client.getHierarchy().classHierarchyMixin(card._class, core.mixin.VersionableClass)
+
   return await cloneCard(
     card,
     {
       baseId: card.baseId,
       docCreatedBy: card.docCreatedBy ?? card.createdBy ?? card.modifiedBy
     },
-    relationsToCopy,
+    mixin,
     true
   )
 }
@@ -537,7 +581,11 @@ export async function createCard (
 ): Promise<Ref<Card>> {
   const client = getClient()
   const hierarchy = client.getHierarchy()
-  const lastOne = await client.findOne(card.class.Card, {}, { sort: { rank: SortingOrder.Descending } })
+
+  if (isBaseTypeWithSubtypes(hierarchy, type)) {
+    throw new Error(`Cannot create card with base type ${type}`)
+  }
+
   const title = data.title ?? (await translate(card.string.Card, {}))
 
   const _id = id ?? generateId()
@@ -550,7 +598,7 @@ export async function createCard (
     blobs: {},
     ...data,
     title,
-    rank: makeRank(lastOne?.rank, undefined),
+    rank: '',
     content
   }
 
@@ -560,6 +608,73 @@ export async function createCard (
 
   Analytics.handleEvent(CardEvents.CardCreated)
   return _id
+}
+
+export function isBaseTypeWithSubtypes (hierarchy: Hierarchy, type: Ref<MasterTag>): boolean {
+  const clazz = hierarchy.getClass(type) as MasterTag | undefined
+  if (clazz?.baseType !== true) return false
+
+  return hierarchy.getDescendants(type).some((descendant) => {
+    if (descendant === type || hierarchy.isMixin(descendant)) return false
+    const descendantClass = hierarchy.getClass(descendant) as MasterTag | undefined
+    return descendantClass?._class === card.class.MasterTag && descendantClass.removed !== true
+  })
+}
+
+export function getFirstCreatableSubtype (hierarchy: Hierarchy, type: Ref<MasterTag>): Ref<MasterTag> | undefined {
+  return hierarchy.getDescendants(type).find((descendant) => {
+    if (descendant === type || hierarchy.isMixin(descendant)) return false
+    const descendantClass = hierarchy.getClass(descendant) as MasterTag | undefined
+    return (
+      descendantClass?._class === card.class.MasterTag &&
+      descendantClass.removed !== true &&
+      !isBaseTypeWithSubtypes(hierarchy, descendant as Ref<MasterTag>)
+    )
+  }) as Ref<MasterTag> | undefined
+}
+
+export async function createChildCard (object: Card): Promise<void> {
+  const client = getClient()
+  const hierarchy = client.getHierarchy()
+  const title = await translate(card.string.Card, {})
+
+  const data: Data<Card> = {
+    parent: object._id,
+    title,
+    rank: '',
+    content: '' as MarkupBlobRef,
+    blobs: {},
+    parentInfo: [
+      ...(object.parentInfo ?? []),
+      {
+        _id: object._id,
+        _class: object._class,
+        title: object.title
+      }
+    ]
+  }
+
+  const filledData = fillDefaults(hierarchy, data, object._class)
+
+  const _id = await client.createDoc(object._class, object.space, filledData)
+
+  Analytics.handleEvent(CardEvents.CardCreated)
+
+  const loc = getCurrentLocation()
+  if (loc.path[2] === chatId) {
+    loc.path[3] = encodeObjectURI(_id, card.class.Card)
+  } else {
+    loc.path[2] = cardId
+    loc.path[3] = _id
+  }
+  loc.path.length = 4
+  navigate(loc)
+}
+
+export async function createChildAction (doc: Card | Card[]): Promise<void> {
+  if (doc !== undefined && !Array.isArray(doc)) {
+    await createChildCard(doc)
+  }
 }
 
 export function getRootType (hierarchy: Hierarchy, type: Ref<MasterTag>): Ref<MasterTag> {
@@ -617,11 +732,23 @@ export function cardCustomLinkEncode (doc: Card): Location {
 }
 
 export async function checkOldMessagesSectionVisibility (doc: Card): Promise<boolean> {
+  if (!hasAccountRole(getCurrentAccount(), AccountRole.User)) {
+    return false
+  }
+
   return getMetadata(communication.metadata.Enabled) !== true
 }
 
 export async function checkCommunicationMessagesSectionVisibility (doc: Card): Promise<boolean> {
+  if (!hasAccountRole(getCurrentAccount(), AccountRole.User)) {
+    return false
+  }
+
   return getMetadata(communication.metadata.Enabled) === true
+}
+
+export async function checkChildrenSectionVisibility (doc: Card): Promise<boolean> {
+  return (doc.children ?? 0) > 0
 }
 
 export async function checkRelationsSectionVisibility (doc: Card): Promise<boolean> {
@@ -708,4 +835,39 @@ export async function canGetSpaceAccessPublicLink (doc?: Doc | Doc[]): Promise<b
   }
 
   return await canCopyLink(doc)
+}
+
+export function canLockSection (space: Ref<Space>, store: PermissionsStore): boolean {
+  if (getMetadata(core.metadata.DisablePermissions) === true) return true
+  if (store.whitelist.has(space)) return true
+  const allowed = store.ps[space]?.has(card.permission.LockSection)
+  if (allowed) return true
+  return !store.restrictedSpaces.has(space)
+}
+
+export function canUnlockSection (space: Ref<Space>, store: PermissionsStore): boolean {
+  if (getMetadata(core.metadata.DisablePermissions) === true) return true
+  if (store.whitelist.has(space)) return true
+  const allowed = store.ps[space]?.has(card.permission.UnlockSection)
+  if (allowed) return true
+  return !store.restrictedSpaces.has(space)
+}
+
+export function showAllVersions (value: any, query: DocumentQuery<Doc>): DocumentQuery<Doc> {
+  if (value === true) {
+    return { ...query, isLatest: { $in: [true, false] } }
+  }
+  return query
+}
+
+export const viewStore = writable<Record<Ref<MasterTag>, string>>(
+  JSON.parse(localStorage.getItem('card.layout') ?? '{}')
+)
+
+export function setViewMode (type: Ref<MasterTag>, mode: string): void {
+  viewStore.update((views) => {
+    views[type] = mode
+    localStorage.setItem('card.layout', JSON.stringify(views))
+    return views
+  })
 }

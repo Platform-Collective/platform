@@ -13,12 +13,13 @@
 // limitations under the License.
 //
 
+import cardPlugin from '@hcengineering/card'
 import contact, { Employee, Person } from '@hcengineering/contact'
 import core, { Doc, matchQuery, Ref, Timestamp } from '@hcengineering/core'
 import { Execution, parseContext } from '@hcengineering/process'
 import { ProcessControl } from '@hcengineering/server-process'
+import { markupToText } from '@hcengineering/text-core'
 import { getContextValue } from './utils'
-import cardPlugin from '@hcengineering/card'
 
 // #region ArrayReduce
 
@@ -39,7 +40,7 @@ export function Random (value: Doc[]): Doc {
 }
 
 export function All (value: Doc[]): Doc[] {
-  return value
+  return value ?? []
 }
 
 export async function FirstMatchValue (
@@ -246,6 +247,34 @@ export function Offset (val: Timestamp, props: Record<string, any>): Timestamp {
   return val
 }
 
+export async function DateDifference (
+  value: Timestamp,
+  props: Record<string, any>,
+  control: ProcessControl,
+  execution: Execution
+): Promise<number> {
+  if (typeof value !== 'number') return 0
+  const otherDate = await getContextValue(props.otherDate, control, execution)
+  if (typeof otherDate !== 'number') return 0
+
+  const diff = value - otherDate
+  const v = new Date(value)
+  const o = new Date(otherDate)
+  switch (props.unit) {
+    case 'hours':
+      return Math.floor(diff / (1000 * 60 * 60))
+    case 'weeks':
+      return Math.floor(diff / (1000 * 60 * 60 * 24 * 7))
+    case 'months':
+      return (v.getUTCFullYear() - o.getUTCFullYear()) * 12 + (v.getUTCMonth() - o.getUTCMonth())
+    case 'years':
+      return v.getUTCFullYear() - o.getUTCFullYear()
+    case 'days':
+    default:
+      return Math.floor(diff / (1000 * 60 * 60 * 24))
+  }
+}
+
 // #endregion
 
 // #region Numbers
@@ -397,6 +426,40 @@ export function Floor (value: number): number {
   return value
 }
 
+export async function Min (
+  value: number,
+  props: Record<string, any>,
+  control: ProcessControl,
+  execution: Execution
+): Promise<number> {
+  const context = parseContext(props.value)
+  if (context !== undefined) {
+    const val = await getContextValue(props.value, control, execution)
+    if (typeof val !== 'number') return value
+    return Math.min(value, val)
+  } else if (typeof value === 'number' && typeof props.value === 'number') {
+    return Math.min(value, props.value)
+  }
+  return value
+}
+
+export async function Max (
+  value: number,
+  props: Record<string, any>,
+  control: ProcessControl,
+  execution: Execution
+): Promise<number> {
+  const context = parseContext(props.value)
+  if (context !== undefined) {
+    const val = await getContextValue(props.value, control, execution)
+    if (typeof val !== 'number') return value
+    return Math.max(value, val)
+  } else if (typeof value === 'number' && typeof props.value === 'number') {
+    return Math.max(value, props.value)
+  }
+  return value
+}
+
 // #endregion
 
 // #region Func
@@ -435,6 +498,10 @@ export async function CurrentDate (): Promise<Timestamp> {
   return Date.now()
 }
 
+export function EmptyValue (): null {
+  return null
+}
+
 export function EmptyArray (): any[] {
   return []
 }
@@ -458,6 +525,74 @@ export async function ExecutionStarted (
   execution: Execution
 ): Promise<Timestamp> {
   return execution.createdOn ?? execution.modifiedOn
+}
+
+// #endregion
+
+// #region Convert
+
+export function StringFromNumber (value: number): string {
+  if (value == null) return ''
+  return String(value)
+}
+
+export function StringFromDate (value: Timestamp): string {
+  if (value == null) return ''
+  return new Date(value).toISOString()
+}
+
+export function StringFromBoolean (value: boolean): string {
+  if (value == null) return ''
+  return String(value)
+}
+
+export function NumberFromDate (value: Timestamp): number {
+  return value
+}
+
+export function DateFromNumber (value: number): Date {
+  return new Date(value)
+}
+
+export function NumberFromString (value: string): number {
+  return Number(value)
+}
+
+export function DateFromString (value: string): Date {
+  return new Date(value)
+}
+
+export function YearFromDate (value: Date): number {
+  return new Date(value).getFullYear()
+}
+
+export function MonthFromDate (value: Date): number {
+  return new Date(value).getMonth() + 1
+}
+
+export function DayFromDate (value: Date): number {
+  return new Date(value).getDate()
+}
+
+export function StringFromMarkup (value: string): string {
+  return markupToText(value)
+}
+
+export function MarkupFromString (value: string): string {
+  return value
+}
+
+export function StringFromIdentifier (value: string): string {
+  return value
+}
+
+export function StringFromEnum (value: string): string {
+  if (value == null) return ''
+  return String(value)
+}
+
+export function EnumFromString (value: string): string {
+  return value
 }
 
 // #endregion

@@ -13,12 +13,8 @@
 // limitations under the License.
 //
 import type { AccountRole, Blob, Permission, Ref, Timestamp, TypedSpace } from '@hcengineering/core'
-import type {
-  Asset,
-  IntlString,
-  /* Metadata, Plugin, plugin, */ Resource /*, Service */
-} from '@hcengineering/platform'
-import { /* getContext, */ type ComponentType } from 'svelte'
+import type { Asset, IntlString, Resource } from '@hcengineering/platform'
+import { type ComponentType } from 'svelte'
 
 /**
  * Describe a browser URI location parsed to path, query and fragment.
@@ -154,7 +150,7 @@ export interface RadioItem {
 
 export type ButtonBaseType = 'type-button' | 'type-button-icon'
 
-export type ButtonBaseKind = 'primary' | 'secondary' | 'tertiary' | 'negative'
+export type ButtonBaseKind = 'primary' | 'secondary' | 'tertiary' | 'negative' | 'ghost'
 
 export type ButtonBaseSize = 'large' | 'medium' | 'small' | 'extra-small' | 'min'
 
@@ -175,6 +171,7 @@ export type ButtonKind =
   | 'contrast'
   | 'stepper'
   | 'attention'
+  | 'warning'
 export type ButtonSize = 'inline' | 'x-small' | 'small' | 'medium' | 'large' | 'x-large'
 export type ButtonShape =
   | 'rectangle'
@@ -341,6 +338,10 @@ export interface DropdownIntlItem {
   description?: IntlString
   paramsDescription?: Record<string, any>
   keys?: string[]
+}
+
+export interface NestedSelectItem extends DropdownIntlItem {
+  children?: NestedSelectItem[]
 }
 
 export interface PopupOptions {

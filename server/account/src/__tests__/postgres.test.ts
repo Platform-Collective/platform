@@ -337,6 +337,7 @@ describe('AccountPostgresDbCollection', () => {
         a.automatic,
         a.max_workspaces,
         a.failed_login_attempts,
+        a.tfa_secret,
         p.hash,
         p.salt
       FROM global_account.account as a
@@ -645,6 +646,7 @@ describe('PostgresAccountDB', () => {
               w.created_by,
               w.created_on,
               w.billing_account,
+              w.pending_configuration,
               json_build_object(
                 'mode', s.mode,
                 'processing_progress', s.processing_progress,
@@ -689,6 +691,7 @@ describe('PostgresAccountDB', () => {
               w.created_by,
               w.created_on,
               w.billing_account,
+              w.pending_configuration,
               json_build_object(
                 'mode', s.mode,
                 'processing_progress', s.processing_progress,
@@ -758,6 +761,7 @@ describe('PostgresAccountDB', () => {
               w.created_by,
               w.created_on,
               w.billing_account,
+              w.pending_configuration,
               json_build_object(
                 'mode', s.mode,
                 'processing_progress', s.processing_progress,
@@ -831,6 +835,7 @@ describe('PostgresAccountDB', () => {
               w.created_by,
               w.created_on,
               w.billing_account,
+              w.pending_configuration,
               json_build_object(
                 'mode', s.mode,
                 'processing_progress', s.processing_progress,
@@ -923,6 +928,7 @@ describe('PostgresAccountDB', () => {
               w.created_by,
               w.created_on,
               w.billing_account,
+              w.pending_configuration,
               json_build_object(
                 'mode', s.mode,
                 'processing_progress', s.processing_progress,

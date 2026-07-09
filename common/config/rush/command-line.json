@@ -243,9 +243,17 @@
       "commandKind": "global",
       "name": "docker",
       "summary": "Build docker with platform",
-      "description": "use to build all docker containers required for platform",
+      "description": "Build all docker containers required for platform. Use --minified for resource-constrained dev (or rush docker:min).",
       "safeForSimultaneousRushProcesses": true,
       "shellCommand": "./common/scripts/docker.sh"
+    },
+    {
+      "commandKind": "global",
+      "name": "docker:patch",
+      "summary": "Build and push docker images with a custom version",
+      "description": "Allows building and pushing docker images with a manually specified version tag. Usage: rush docker:patch --version <version> [rush-args]",
+      "safeForSimultaneousRushProcesses": true,
+      "shellCommand": "./common/scripts/docker_patch.sh"
     },
     {
       "commandKind": "global",
@@ -270,6 +278,38 @@
       "description": "Up development build",
       "safeForSimultaneousRushProcesses": true,
       "shellCommand": "cd ./dev && docker compose up -d --force-recreate transactor_cockroach"
+    },
+    {
+      "commandKind": "global",
+      "name": "docker:min",
+      "summary": "Build minified docker images for resource-constrained dev",
+      "description": "Build docker images excluding optional services (hulypulse, redis, process, backup, rating, preview, link-preview, elastic, fulltext, payment, stats, print, sign, hulygun, hulykvs). Use with rush docker:up:min",
+      "safeForSimultaneousRushProcesses": true,
+      "shellCommand": "./common/scripts/docker.sh --minified"
+    },
+    {
+      "commandKind": "global",
+      "name": "docker:up:min",
+      "summary": "Up minified development stack",
+      "description": "Start minified docker compose (docker-compose.yaml + docker-compose.min.yaml) for resource-constrained machines",
+      "safeForSimultaneousRushProcesses": true,
+      "shellCommand": "cd ./dev && docker compose -f docker-compose.yaml -f docker-compose.min.yaml up -d --force-recreate"
+    },
+    {
+      "commandKind": "global",
+      "name": "docker:up:ext",
+      "summary": "Up extended development stack with billing + payment",
+      "description": "Start extended docker compose (docker-compose.yaml + docker-compose.ext.yaml) with the optional billing and payment services enabled. Required env: STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_SUBSCRIPTION_PLANS (or POLAR_* equivalents).",
+      "safeForSimultaneousRushProcesses": true,
+      "shellCommand": "cd ./dev && docker compose -f docker-compose.yaml -f docker-compose.ext.yaml up -d --force-recreate"
+    },
+    {
+      "commandKind": "global",
+      "name": "docker:up:pg",
+      "summary": "Up development stack with PostgreSQL",
+      "description": "Start dev docker compose with PostgreSQL override (docker-compose.yaml + docker-compose.pg.yaml, profile=postgres)",
+      "safeForSimultaneousRushProcesses": true,
+      "shellCommand": "cd ./dev && docker compose -f docker-compose.yaml -f docker-compose.pg.yaml --profile postgres up -d --force-recreate"
     },
     {
       "commandKind": "global",
@@ -408,6 +448,22 @@
       "longName": "--branch",
       "description": "Force formatting of branch",
       "associatedCommands": ["fast-format"]
+    },
+    {
+      "parameterKind": "string",
+      "argumentName": "VERSION",
+      "required": false,
+      "longName": "--version",
+      "description": "The version tag to use for docker images",
+      "associatedCommands": ["docker:patch"]
+    },
+    {
+      "parameterKind": "string",
+      "argumentName": "PLATFORM",
+      "required": false,
+      "longName": "--platform",
+      "description": "The target platform for docker build (e.g., linux/amd64). Defaults to linux/amd64.",
+      "associatedCommands": ["docker:patch"]
     }
     // {
     //   /**

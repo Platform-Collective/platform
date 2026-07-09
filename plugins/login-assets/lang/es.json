@@ -21,6 +21,7 @@
     "LastName": "Apellido",
     "FirstName": "Nombre",
     "Join": "Unirse",
+    "JoinWorkspace": "Unirse a {workspaceName}",
     "Email": "Correo Electrónico",
     "Password": "Contraseña",
     "Workspace": "Nombre del espacio de trabajo",
@@ -84,6 +85,23 @@
     "SignUpToCreateWorkspace": "No hay espacios de trabajo con acceso de invitado. Por favor, regístrese para crear el suyo.",
     "WhatIsYourName": "¿Cuál es su nombre?",
     "AccessExpired": "El tiempo de acceso ha expirado. Por favor, solicite un nuevo enlace de acceso.",
-    "AccessNotActive": "El tiempo de acceso aún no ha comenzado. Comienza en: "
+    "AccessNotActive": "El tiempo de acceso aún no ha comenzado. Comienza en: ",
+    "JoinWithThisAccount": "Unirse con esta cuenta",
+    "UseDifferentAccount": "Usar otra cuenta",
+    "UseCurrentAccountToJoin": "¿Ya has iniciado sesión?",
+    "LogInAndJoin": "Iniciar sesión y unirse",
+    "SignUpAndJoin": "Registrarse y unirse",
+    "CreateNewAccount": "Crear nueva cuenta",
+    "SignedInAs": "Conectado como {name}",
+    "TwoFactorAuth": "Autenticación de dos factores",
+    "EnterTwoFactorCode": "Introduce el código de autenticación de dos factores",
+    "TwoFactorCode": "Código de autenticación de dos factores",
+    "Verify": "Verificar",
+    "SetPassword": "Establecer una contraseña",
+    "SSOPasswordDescription": "Tu cuenta utiliza inicio de sesión externo. Configura una contraseña mediante confirmación por correo electrónico.",
+    "SendSetupLink": "Enviar enlace de configuración",
+    "SSOPasswordEmailSent": "Revisa tu correo electrónico para encontrar un enlace para configurar la contraseña.",
+    "SSONoEmailLinked": "No hay dirección de correo electrónico vinculada a tu cuenta. Añade una en Configuración de la cuenta → Gestionar identidades primero.",
+    "CreateSampleProjects": "Crear proyectos de ejemplo y contenido de demostración"
   }
 }

@@ -114,3 +114,5 @@ dev/tool/history.json
 /combined_dependencies
 .tmp
 ws-tests/docker-compose.override.yml
+.cursor/*
+CLAUDE.md

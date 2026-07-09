@@ -24,11 +24,11 @@
     type Space,
     type Class
   } from '@hcengineering/core'
-  import { Card, getCurrentWorkspaceUuid } from '@hcengineering/presentation'
-  import { DropdownLabels, DropdownLabelsIntl, Label } from '@hcengineering/ui'
+  import { Card, getClient, getCurrentWorkspaceUuid } from '@hcengineering/presentation'
+  import { DropdownLabels, DropdownLabelsIntl, Label, ToggleWithLabel } from '@hcengineering/ui'
   import { getResource } from '@hcengineering/platform'
   import login from '@hcengineering/login'
-  import { type RelationDefinition, shouldSkipDocument, isEffectiveDocument } from '@hcengineering/export'
+  import { shouldSkipDocument, isEffectiveDocument } from '@hcengineering/export'
 
   import { createEventDispatcher } from 'svelte'
 
@@ -37,9 +37,9 @@
 
   export let query: DocumentQuery<Doc> | undefined = undefined
   export let value: Doc | Doc[] | Space
-  export let relations: RelationDefinition[] | undefined = undefined
   export let docClass: Ref<Class<Doc>> | undefined = undefined
   export let spaceExport: boolean | undefined = false
+  export let projectDocExport: boolean | undefined = false
 
   const dispatch = createEventDispatcher()
 
@@ -51,6 +51,11 @@
 
   type ExportFilterMode = 'effectiveOnly' | 'skipArchivedObsolete' | 'all'
   let exportFilterMode: ExportFilterMode = 'effectiveOnly'
+
+  // Whether to recursively export child (collection) documents of the selected docs.
+  // Hidden and forced to true when exporting an entire space — the space already
+  // enumerates every document inside it.
+  let includeChildren: boolean = false
 
   const exportFilterItems = [
     { id: 'effectiveOnly' as const, label: plugin.string.ExportFilterEffectiveOnly },
@@ -118,18 +123,43 @@
   $: canSave =
     targetWorkspace !== undefined && _class != null && (spaceExport === true || filteredSelectedDocs.length > 0)
 
+  async function getExportDocuments (): Promise<Array<Doc>> {
+    if (docClass == null) {
+      console.error('Document class is required to export project documents')
+      return []
+    }
+    const client = getClient()
+    const innerIds = selectedDocs.map((d) => (d as any)?.document).filter((id) => id != null)
+
+    if (innerIds.length > 0) {
+      const docs = await client.findAll(docClass, {
+        _id: { $in: innerIds }
+      })
+      return filterDocsForExport(docs, exportFilterMode)
+    }
+    return []
+  }
+
   async function handleExport (): Promise<void> {
     if (!canSave || _class == null) return
 
     loading = true
+
+    const effectiveDocs = projectDocExport === true ? await getExportDocuments() : filteredSelectedDocs
+
+    // When exporting an entire space, child documents are picked up by the
+    // space-wide traversal — force the flag on regardless of UI state.
+    const effectiveIncludeChildren = spaceExport === true ? true : includeChildren
+
     void exportToWorkspace(
       _class,
       exportQuery,
-      filteredSelectedDocs,
+      effectiveDocs,
       targetWorkspace,
-      relations,
+      undefined,
       exportFilterMode === 'skipArchivedObsolete',
-      exportFilterMode === 'effectiveOnly'
+      exportFilterMode === 'effectiveOnly',
+      effectiveIncludeChildren
     )
     loading = false
     dispatch('close', true)
@@ -171,5 +201,14 @@
       <Label label={plugin.string.ExportFilterMode} />
     </span>
     <DropdownLabelsIntl items={exportFilterItems} bind:selected={exportFilterMode} kind="regular" size="large" />
+    {#if spaceExport !== true}
+      <div class="pl-2 py-4">
+        <ToggleWithLabel
+          label={plugin.string.ExportChildDocuments}
+          description={plugin.string.ExportChildDocumentsDescription}
+          bind:on={includeChildren}
+        />
+      </div>
+    {/if}
   </div>
 </Card>

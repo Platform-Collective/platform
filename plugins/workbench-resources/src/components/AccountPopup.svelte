@@ -13,8 +13,13 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import contact, { formatName, getCurrentEmployee } from '@hcengineering/contact'
-  import { myEmployeeStore } from '@hcengineering/contact-resources'
+  import contact, { formatName, getCurrentEmployee, isWorkspaceMemberStatusVisible } from '@hcengineering/contact'
+  import {
+    myEmployeeStore,
+    loadWorkspaceMemberStatuses,
+    workspaceMemberStatusByAccountStore
+  } from '@hcengineering/contact-resources'
+  import contactResources from '@hcengineering/contact-resources/src/plugin'
   import core, { AccountRole, getCurrentAccount, hasAccountRole } from '@hcengineering/core'
   import rating, { type PersonRating } from '@hcengineering/rating'
   import login, { loginId } from '@hcengineering/login'
@@ -24,7 +29,7 @@
     hasResource,
     isDisabled
   } from '@hcengineering/presentation'
-  import setting, { settingId, SettingsCategory } from '@hcengineering/setting'
+  import setting, { RoleCapability, settingId, SettingsCategory } from '@hcengineering/setting'
   import {
     Action,
     closePopup,
@@ -42,9 +47,11 @@
   import HelpAndSupport from './HelpAndSupport.svelte'
   import { Analytics } from '@hcengineering/analytics'
   import { allowGuestSignUpStore } from '@hcengineering/view-resources'
-  import { getMetadata } from '@hcengineering/platform'
+  import { getMetadata, getResource } from '@hcengineering/platform'
+  import { onMount } from 'svelte'
 
   let items: SettingsCategory[] = []
+  let canGenerateInviteLink = false
 
   const account = getCurrentAccount()
   const settingsQuery = createQuery()
@@ -57,7 +64,22 @@
     { sort: { order: 1 } }
   )
 
+  onMount(() => {
+    loadWorkspaceMemberStatuses()
+    void getResource(setting.function.HasRoleCapability).then((checkCapability) => {
+      if (checkCapability != null) {
+        void checkCapability(RoleCapability.GenerateInviteLink).then((v: boolean) => {
+          canGenerateInviteLink = v
+        })
+      }
+    })
+  })
+
   $: person = $myEmployeeStore
+  $: ownWorkspaceStatus = $workspaceMemberStatusByAccountStore.get(account.uuid)
+  $: workspaceStatusActionLabel = isWorkspaceMemberStatusVisible(ownWorkspaceStatus)
+    ? contactResources.string.WorkspaceStatusUpdateYour
+    : contactResources.string.WorkspaceStatusSetYour
 
   function selectCategory (sp?: SettingsCategory): void {
     closePopup()
@@ -130,8 +152,18 @@
         }
       })
     }
+    if (hasAccountRole(account, AccountRole.User)) {
+      actions.push({
+        icon: contact.icon.User,
+        label: workspaceStatusActionLabel,
+        action: async () => {
+          closePopup()
+          showPopup(contact.component.WorkspaceMemberStatusEditor, {}, 'middle')
+        }
+      })
+    }
     actions.push(...getMenu(items, ['main']))
-    if (hasAccountRole(account, AccountRole.User) && !isDisabled('invites')) {
+    if (hasAccountRole(account, AccountRole.User) && !isDisabled('invites') && canGenerateInviteLink) {
       actions.push({
         icon: setting.icon.InviteWorkspace,
         label: setting.string.InviteWorkspace,

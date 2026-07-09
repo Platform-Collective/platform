@@ -47,6 +47,7 @@ import tracker, {
 } from '@hcengineering/tracker'
 
 import { classicIssueTaskStatuses } from '.'
+import { DOMAIN_TRACKER } from './types'
 
 async function createDefaultProject (tx: TxOperations): Promise<void> {
   const current = await tx.findOne(tracker.class.Project, {
@@ -170,6 +171,16 @@ async function migrateIdentifiers (client: MigrationClient): Promise<void> {
   }
 }
 
+export async function migrateAddStartDate (client: MigrationClient): Promise<void> {
+  // Issues live in DOMAIN_TASK; Milestones live in DOMAIN_TRACKER.
+  await client.update(DOMAIN_TASK, { _class: tracker.class.Issue, startDate: { $exists: false } }, { startDate: null })
+  await client.update(
+    DOMAIN_TRACKER,
+    { _class: tracker.class.Milestone, startDate: { $exists: false } },
+    { startDate: null }
+  )
+}
+
 async function migrateDefaultStatuses (client: MigrationClient, logger: ModelLogger): Promise<void> {
   const defaultTypeId = tracker.ids.ClassingProjectType
   const typeDescriptor = tracker.descriptors.ProjectType
@@ -200,10 +211,12 @@ async function migrateDefaultStatuses (client: MigrationClient, logger: ModelLog
     // 1. defaultIssueStatus
     // 2. DocUpdateMessage:update:defaultIssueStatus
     for (const project of projects) {
-      const newDefaultIssueStatus = getNewStatus(project.defaultIssueStatus)
+      if (project.defaultIssueStatus != null) {
+        const newDefaultIssueStatus = getNewStatus(project.defaultIssueStatus)
 
-      if (project.defaultIssueStatus !== newDefaultIssueStatus) {
-        await client.update(DOMAIN_SPACE, { _id: project._id }, { defaultIssueStatus: newDefaultIssueStatus })
+        if (project.defaultIssueStatus !== newDefaultIssueStatus) {
+          await client.update(DOMAIN_SPACE, { _id: project._id }, { defaultIssueStatus: newDefaultIssueStatus })
+        }
       }
 
       const projectUpdateMessages = await client.find<DocUpdateMessage>(DOMAIN_ACTIVITY, {
@@ -396,6 +409,11 @@ export const trackerOperation: MigrateOperation = {
         state: 'migrateDefaultTypeMixins',
         mode: 'upgrade',
         func: migrateDefaultTypeMixins
+      },
+      {
+        state: 'gantt-add-startdate',
+        mode: 'upgrade',
+        func: migrateAddStartDate
       }
     ])
   },

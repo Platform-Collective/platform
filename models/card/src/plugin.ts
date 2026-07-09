@@ -13,15 +13,16 @@
 // limitations under the License.
 //
 
+import type { ViewletViewAction, Action, ActionCategory, ViewAction } from '@hcengineering/view'
 import { type Card, cardId } from '@hcengineering/card'
 import card from '@hcengineering/card-resources/src/plugin'
-import type { Client, Doc, Ref } from '@hcengineering/core'
+import type { Client, Doc, DocumentQuery, Ref } from '@hcengineering/core'
 import {} from '@hcengineering/core'
 import { mergeIds, type Resource } from '@hcengineering/platform'
 import { type TagCategory } from '@hcengineering/tags'
 import { type Location, type ResolvedLocation } from '@hcengineering/ui/src/types'
-import { type Action, type ActionCategory, type ViewAction } from '@hcengineering/view'
 import { type LocationData } from '@hcengineering/workbench'
+import { type NotificationGroup, type NotificationType } from '@hcengineering/notification'
 
 export default mergeIds(cardId, card, {
   app: {
@@ -29,24 +30,35 @@ export default mergeIds(cardId, card, {
   },
   actionImpl: {
     DeleteMasterTag: '' as ViewAction,
-    DuplicateCard: '' as ViewAction,
-    EditSpace: '' as ViewAction
+    EditSpace: '' as ViewAction,
+    CreateChild: '' as ViewAction
   },
   action: {
     DeleteMasterTag: '' as Ref<Action>,
     SetParent: '' as Ref<Action<Doc, any>>,
     UnsetParent: '' as Ref<Action<Doc, any>>,
     PublicLink: '' as Ref<Action<Doc, any>>,
-    Duplicate: '' as Ref<Action>
+    Duplicate: '' as Ref<Action<Doc, any>>,
+    CreateChild: '' as Ref<Action>
   },
   category: {
     Card: '' as Ref<ActionCategory>,
     Labels: '' as Ref<TagCategory>
   },
+  specialViewAction: {
+    CardRelationshipTable: '' as Ref<ViewletViewAction>,
+    CardTable: '' as Ref<ViewletViewAction>,
+    CopyAsMarkdownTable: '' as Ref<ViewletViewAction>,
+    CopyAsMarkdownRelationshipTable: '' as Ref<ViewletViewAction>
+  },
   ids: {
     MasterTags: '' as Ref<Doc>,
     ManageMasterTags: '' as Ref<Doc>,
-    TagRelations: '' as Ref<Doc>
+    TagRelations: '' as Ref<Doc>,
+    CardNotificationGroup: '' as Ref<NotificationGroup>,
+    CardCreateNotification: '' as Ref<NotificationType>,
+    CardNotification: '' as Ref<NotificationType>,
+    CardMessageNotification: '' as Ref<NotificationType>
   },
   resolver: {
     Location: '' as Resource<(loc: Location) => Promise<ResolvedLocation | undefined>>,
@@ -59,6 +71,7 @@ export default mergeIds(cardId, card, {
     CardCustomLinkEncode: '' as Resource<(doc: Doc) => Location>,
     CheckRelationsSectionVisibility: '' as Resource<(doc: Card) => Promise<boolean>>,
     CheckOldMessagesSectionVisibility: '' as Resource<(doc: Card) => Promise<boolean>>,
-    CheckCommunicationMessagesSectionVisibility: '' as Resource<(doc: Card) => Promise<boolean>>
+    CheckCommunicationMessagesSectionVisibility: '' as Resource<(doc: Card) => Promise<boolean>>,
+    ShowAllVersions: '' as Resource<(value: any, query: DocumentQuery<Doc>) => DocumentQuery<Doc>>
   }
 })

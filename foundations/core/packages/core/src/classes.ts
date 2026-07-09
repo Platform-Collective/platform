@@ -139,6 +139,7 @@ export interface Association extends Doc {
   nameA: string
   nameB: string
   type: '1:1' | '1:N' | 'N:N'
+  automationOnly?: boolean
 }
 
 /**
@@ -148,6 +149,21 @@ export interface Relation extends Doc {
   docA: Ref<Doc>
   docB: Ref<Doc>
   association: Ref<Association>
+}
+
+/**
+ * Describes an existing class field with reference to other document: which relations to follow when building documents graph.
+ * @public
+ */
+export interface RelationMetadata extends Doc {
+  /** Class (source) */
+  sourceClass: Ref<Class<Doc>>
+  /** Class referenced by the field (target) */
+  targetClass: Ref<Class<Doc>>
+  /** Field on the source class */
+  field: string
+  /** Whether this is a forward (source→target) or inverse (target→source) relation */
+  direction?: 'forward' | 'inverse'
 }
 
 /**
@@ -211,6 +227,7 @@ export interface Attribute<T extends PropertyType> extends Doc, UXObject {
   defaultValue?: any
   automationOnly?: boolean
   rank?: Rank
+  required?: boolean
 
   // Extra customization properties
   [key: string]: any
@@ -396,6 +413,13 @@ export interface TypeHyperlink extends Type<Hyperlink> {}
 
 /**
  * @public
+ */
+export interface TypeRank extends Type<Rank> {
+  pos?: 'start' | 'end'
+}
+
+/**
+ * @public
  *
  * A type for some custom serialized field with a set of editors
  */
@@ -476,6 +500,8 @@ export interface Space extends Doc {
   archived: boolean
   owners?: AccountUuid[]
   autoJoin?: boolean
+  /** If it includes {@link AccountRole.Guest}, that guest is auto-added to members on activation (see OnEmployeeCreate). */
+  autoJoinForRoles?: AccountRole[]
 }
 
 /**
@@ -563,6 +589,19 @@ export interface ClassPermission extends Permission {
 /**
  * @public
  */
+export interface ModulePermissionGroup extends Doc {
+  application: Ref<Doc>
+  role: AccountRole
+  permissions: Ref<Permission>[]
+  disabledPermissions?: Ref<Permission>[]
+  spaceClass?: Ref<Class<Space>>
+  enabled: boolean
+  order?: number
+}
+
+/**
+ * @public
+ */
 export enum AccountRole {
   ReadOnlyGuest = 'READONLYGUEST',
   DocGuest = 'DocGuest',
@@ -630,6 +669,7 @@ export interface Version extends Doc {
 export interface MigrationState extends Doc {
   plugin: string
   state: string
+  durationMs?: number
 }
 
 /**
@@ -860,6 +900,25 @@ export type WorkspaceUpdateEvent =
   | 'delete-started'
   | 'delete-done'
 
+/**
+ * Initial-state configuration captured at workspace creation. Currently only
+ * carries whether the workspace should be populated with demo content. Lives
+ * on `WorkspaceInfo.pendingConfiguration` until consumed by workspace-service
+ * after model init, then cleared back to `null`.
+ *
+ * Kept as a struct (rather than a bare boolean) so future opt-in fields can
+ * be added without breaking the wire format.
+ *
+ * @public
+ */
+export interface WorkspaceConfiguration {
+  /**
+   * Whether to run the workspace init script (sample projects and other demo content).
+   * Defaults to `true` on the server side to preserve legacy behavior.
+   */
+  withDemoContent?: boolean
+}
+
 export interface WorkspaceInfo {
   uuid: WorkspaceUuid
   dataId?: WorkspaceDataId // Old workspace identifier. E.g. Database name in Mongo, bucket in R2, etc.
@@ -872,7 +931,10 @@ export interface WorkspaceInfo {
   billingAccount?: PersonUuid // Should always be set for NEW workspaces
   allowReadOnlyGuest?: boolean // Should always be set for NEW workspaces
   allowGuestSignUp?: boolean // Should always be set for NEW workspaces
-  passwordAgingRule?: number // in days
+  passwordAgingRule?: number | null // in days
+  // Initial-state configuration set by the user at workspace creation. Read once
+  // by workspace-service after model init, then cleared back to `null`.
+  pendingConfiguration?: WorkspaceConfiguration | null
 }
 
 export interface BackupStatus {
@@ -889,6 +951,7 @@ export interface UsageStatus {
   usage: Record<string, number>
   startTime: Timestamp
   updateTime: Timestamp
+  limitsExceededSince?: Timestamp // Timestamp when current usage first exceeded the workspace plan limits.
 }
 
 export interface WorkspaceInfoWithStatus extends WorkspaceInfo {
@@ -938,6 +1001,7 @@ export interface SocialId {
 export interface AccountInfo {
   timezone?: string
   locale?: string
+  tfaEnabled?: boolean
 }
 
 export type SocialKey = Pick<SocialId, 'type' | 'value'>
@@ -947,6 +1011,7 @@ export interface ClassCollaborators<T extends Doc> extends Doc {
   allFields?: boolean // for all (PersonId | Ref<Employee> | PersonId[] | Ref<Employee>[]) attributes
   fields: (keyof T)[] // PersonId | Ref<Employee> | PersonId[] | Ref<Employee>[]
   provideSecurity?: boolean // If true, will provide security for collaborators
+  provideAttachedSecurity?: boolean // If true, will provide security for collaborators of attached doc
 }
 
 export interface Collaborator extends AttachedDoc {

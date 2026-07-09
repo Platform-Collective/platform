@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import {
+import core, {
   type AccountUuid,
   type Doc,
   type MeasureContext,
@@ -98,7 +98,8 @@ export class CrossWorkspaceExporter {
         sourceHierarchy,
         sourceLowLevel,
         existingDocsMap,
-        relations
+        relations,
+        includeChildren
       ) => {
         return await this.documentExporter.exportDocument(
           doc,
@@ -107,7 +108,8 @@ export class CrossWorkspaceExporter {
           sourceHierarchy,
           sourceLowLevel,
           existingDocsMap,
-          relations
+          relations,
+          includeChildren
         )
       }
     )
@@ -127,7 +129,9 @@ export class CrossWorkspaceExporter {
       relations = [],
       fieldMappers = {},
       skipDeletedObsolete = true,
-      exportOnlyEffective = false
+      exportOnlyEffective = false,
+      includeChildren = false,
+      customHandlers = []
     } = options
 
     // Store field mappers
@@ -142,6 +146,8 @@ export class CrossWorkspaceExporter {
     )
     // Update document exporter with new data mapper
     this.documentExporter.setDataMapper(this.dataMapper)
+    // Register custom export handlers for this run
+    this.documentExporter.setCustomHandlers(customHandlers)
 
     // Pre-fetch current account's employee ID if available
     if (this.currentAccount !== undefined) {
@@ -177,6 +183,26 @@ export class CrossWorkspaceExporter {
       if (lowLevelStorage === undefined) {
         throw new Error('Low level storage not available')
       }
+
+      // Resolve relations from RelationMetadata when not provided
+      let resolvedRelations = relations
+      try {
+        if (resolvedRelations.length === 0) {
+          const relations = await sourcePipeline.findAll(this.context, core.class.RelationMetadata, {})
+          resolvedRelations = relations.map((doc) => ({
+            sourceClass: doc.sourceClass,
+            field: doc.field,
+            class: doc.targetClass,
+            direction: (doc.direction ?? 'forward') as 'forward' | 'inverse'
+          }))
+        }
+      } catch (err: any) {
+        this.context.error('Failed to get relations:', {
+          error: err instanceof Error ? err.message : String(err)
+        })
+      }
+      const relationsCount = resolvedRelations != null ? resolvedRelations.length : 0
+      this.context.info(`Number of document relations: ${relationsCount}`)
 
       // Get domain for the class
       const domain = hierarchy.findDomain(_class)
@@ -235,7 +261,8 @@ export class CrossWorkspaceExporter {
                 hierarchy,
                 lowLevelStorage,
                 existingDocsMap,
-                relations
+                resolvedRelations,
+                includeChildren
               )
               if (exported) {
                 result.exportedCount++

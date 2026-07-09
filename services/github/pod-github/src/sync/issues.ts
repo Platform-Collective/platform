@@ -29,7 +29,6 @@ import github, {
   GithubIntegrationRepository,
   GithubIssueStateReason,
   GithubProject,
-  IntegrationRepositoryData,
   GithubIssue as TGithubIssue
 } from '@hcengineering/github'
 import task, { TaskType, calcRank } from '@hcengineering/task'
@@ -523,9 +522,7 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
               info.repository as Ref<GithubIntegrationRepository>,
               container.project,
               taskTypes[0]._id,
-              repo as GithubIntegrationRepository & {
-                repository: IntegrationRepositoryData
-              },
+              repo,
               !markdownCompatible
             )
           },
@@ -871,6 +868,7 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
       rank: calcRank(lastOne, undefined),
       comments: 0,
       subIssues: 0,
+      startDate: null,
       dueDate: null,
       parents: [],
       reportedTime: 0,
@@ -939,7 +937,9 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
           break
         }
         const docsPart = allSyncDocs.splice(0, partsize)
-        const idsPart = docsPart.map((it) => (it.external as IssueExternalData).id).filter((it) => it !== undefined)
+        const idsPart = docsPart
+          .map((it) => (it.external as IssueExternalData | undefined)?.id)
+          .filter((id): id is string => id !== undefined)
         if (idsPart.length === 0) {
           break
         }
@@ -986,7 +986,7 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
             })
           } else if (partsize === 1) {
             // We need to update issue, since it is missing on external side.
-            const syncDoc = syncDocs.find((it) => it.external.id === idsPart[0])
+            const syncDoc = syncDocs.find((it) => it.external?.id === idsPart[0])
             if (syncDoc !== undefined) {
               ctx.warn('mark missing external PR', {
                 errors: err.errors,
@@ -1008,7 +1008,7 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
         }
       }
       for (const d of syncDocs) {
-        if ((d.external as IssueExternalData).id == null) {
+        if ((d.external as IssueExternalData)?.id == null) {
           ctx.error('failed to do external sync for', { objectClass: d.objectClass, _id: d._id })
           // no external data for doc
           await derivedClient.update<DocSyncInfo>(d, {

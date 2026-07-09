@@ -2,10 +2,15 @@
 // Copyright © 2024 Hardcore Engineering Inc.
 //
 
+import { config as dotenvConfig } from 'dotenv'
+
+dotenvConfig()
+
 export interface Config {
   Port: number
   Secret: string
   AccountsUrl: string
+  FrontUrl: string
   AllowedHostnames: string[]
   PuppeteerArgs: string[]
 }
@@ -20,6 +25,7 @@ const config: Config = (() => {
     Port: parseNumber(process.env.PORT) ?? 4005,
     Secret: process.env.SECRET,
     AccountsUrl: process.env.ACCOUNTS_URL,
+    FrontUrl: process.env.FRONT_URL,
     AllowedHostnames: allowedHostnames == null ? [] : allowedHostnames.split(','),
     PuppeteerArgs: puppeteerArgs.split(',')
   }

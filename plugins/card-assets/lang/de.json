@@ -5,6 +5,7 @@
     "Cards": "Karten",
     "Content": "Inhalt",
     "CreateCard": "Karte erstellen",
+    "AllowCreatingCards": "Erstellen von Karten erlauben",
     "CreateMasterTag": "Typ erstellen",
     "CreateTag": "Tag erstellen",
     "MasterTag": "Typ",
@@ -70,6 +71,22 @@
     "NewVersionConfirmation": "Möchten Sie eine neue Version erstellen?",
     "RelationCopyDescr": "Welche Beziehungen möchten Sie kopieren?",
     "Import": "Importieren",
-    "Export": "Exportieren"
+    "Export": "Exportieren",
+    "CardUpdated": "Karte aktualisiert",
+    "CardCreated": "Karte erstellt",
+    "MyCards": "Meine Karten",
+    "GotoMyCards": "Zu meinen Karten",
+    "LockSection": "Sperren",
+    "UnLockSection": "Entsperren",
+    "SectionLocked": "Sektion {section} gesperrt",
+    "SectionUnlocked": "Sektion {section} entsperrt",
+    "LayoutAuto": "Auto",
+    "SingleColumn": "Einspaltig",
+    "BaseType": "Basistyp",
+    "BaseTypeDescription": "Verwende diesen Typ nur als übergeordneten Typ. Karten können nur aus seinen Untertypen erstellt werden.",
+    "TwoColumns": "Zwei spaltig",
+    "Grid": "Gitter",
+    "RichtextProperties": "Textfelder",
+    "ShowAllVersions": "Alle Versionen anzeigen"
   }
 }

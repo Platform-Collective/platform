@@ -5,6 +5,7 @@
     "Cards": "Cartões",
     "Content": "Conteúdo",
     "CreateCard": "Criar Cartão",
+    "AllowCreatingCards": "Permitir criar cartões",
     "CreateMasterTag": "Criar Tipo",
     "CreateTag": "Criar Tag",
     "MasterTag": "Tipo",
@@ -70,6 +71,22 @@
     "NewVersionConfirmation": "Deseja criar uma nova versão?",
     "RelationCopyDescr": "Quais relações você deseja copiar?",
     "Import": "Importar",
-    "Export": "Exportar"
+    "Export": "Exportar",
+    "CardUpdated": "Cartão atualizado",
+    "CardCreated": "Cartão criado",
+    "MyCards": "Meus cartões",
+    "GotoMyCards": "Ir para meus cartões",
+    "LockSection": "Bloquear seção",
+    "UnLockSection": "Desbloquear seção",
+    "SectionLocked": "Seção {section} bloqueada",
+    "SectionUnlocked": "Seção {section} desbloqueada",
+    "LayoutAuto": "Automático",
+    "SingleColumn": "Uma coluna",
+    "BaseType": "Tipo base",
+    "BaseTypeDescription": "Use este tipo apenas como pai. Os cartões só podem ser criados a partir de seus subtipos.",
+    "TwoColumns": "Duas colunas",
+    "Grid": "Grade",
+    "RichtextProperties": "Campo de texto",
+    "ShowAllVersions": "Todas as versões"
   }
 }

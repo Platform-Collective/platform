@@ -14,6 +14,7 @@
     "LastName": "姓",
     "FirstName": "名",
     "Join": "参加",
+    "JoinWorkspace": "{workspaceName} に参加",
     "Email": "メールアドレス",
     "Password": "パスワード",
     "Workspace": "ワークスペース名",
@@ -84,6 +85,23 @@
     "EnterCurrentPassword": "現在のパスワードを入力",
     "EnterNewPassword": "新しいパスワードを入力",
     "RepeatNewPassword": "新しいパスワードを再入力",
-    "PasswordExpiredDesc": "パスワードの有効期限が切れています。続行するには新しいパスワードを設定してください。"
+    "PasswordExpiredDesc": "パスワードの有効期限が切れています。続行するには新しいパスワードを設定してください。",
+    "JoinWithThisAccount": "このアカウントで参加",
+    "UseDifferentAccount": "別のアカウントを使用",
+    "UseCurrentAccountToJoin": "すでにサインインしていますか？",
+    "LogInAndJoin": "ログインして参加",
+    "SignUpAndJoin": "サインアップして参加",
+    "CreateNewAccount": "新規アカウントを作成",
+    "SignedInAs": "{name} としてサインイン中",
+    "TwoFactorAuth": "2段階認証",
+    "EnterTwoFactorCode": "2段階認証コードを入力",
+    "TwoFactorCode": "2段階認証コード",
+    "Verify": "確認",
+    "SetPassword": "パスワードを設定",
+    "SSOPasswordDescription": "アカウントは外部ログインを使用しています。メール確認でパスワードを設定してください。",
+    "SendSetupLink": "セットアップリンクを送信",
+    "SSOPasswordEmailSent": "パスワードを設定するためのリンクが記載されたメールを確認してください。",
+    "SSONoEmailLinked": "アカウントにメールアドレスがリンクされていません。まず、アカウント設定 → IDの管理 で追加してください。",
+    "CreateSampleProjects": "サンプルプロジェクトとデモコンテンツを作成"
   }
 }

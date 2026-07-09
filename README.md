@@ -5,6 +5,17 @@
 
 ⭐️ Your star shines on us. Star us on GitHub!
 
+> [!IMPORTANT]
+> **Hosted Huly is shutting down — please migrate your data.**
+>
+> The hosted Huly service is being discontinued because its hosting is no longer being funded. If you keep important data on the hosted platform, export and back it up, and migrate as soon as possible — we can help you move to either a [self-hosted setup](https://github.com/hcengineering/huly-selfhost) or a hosted option.
+>
+> Not sure how? Follow the [backup & restore guide](docs/guides/backup-restore.en.md) for step-by-step instructions on downloading your backup and restoring it elsewhere.
+>
+> The service shutdown is expected on **July 20**. Please make sure to export and migrate your data before then rather than wait until the last day.
+>
+> Have questions or want updates? Join the [Huly community](https://link.huly.io/slack) to discuss migration and stay informed, or email us at [artem@hardcoreeng.com](mailto:artem@hardcoreeng.com) with any questions. This affects only the hosted **Huly** service — self-hosted deployments are not affected.
+
 ## About
 
 The Huly Platform is a robust framework designed to accelerate the development of business applications, such as CRM systems.
@@ -88,6 +99,12 @@ For detailed information about the platform architecture, services, and their in
   - [Node.js](https://nodejs.org/en/download/) (v20.11.0 is required)
   - [Docker](https://docs.docker.com/get-docker/)
   - [Docker Compose](https://docs.docker.com/compose/install/)
+
+If you use `nvm`, run this after entering the repo to align your shell with the repository Node version:
+
+```bash
+nvm use
+```
 
 ## Verification
 
@@ -197,6 +214,8 @@ rush docker:up # Will set up all the containers
 
 Be aware `rush docker:build` will automatically execute all required phases like build, bundle, package.
 
+> **Note:** For resource-constrained machines, you can use the minified variants `rush docker:min` and `rush docker:up:min` to build and run only the required services (excludes hulypulse, redis, process, backup, rating, preview, link-preview, elastic, fulltext, payment, stats, print, sign, hulygun, hulykvs).
+
 Alternatively, you can just execute:
 
 ```bash
@@ -205,7 +224,10 @@ sh ./scripts/build.sh
 
 By default, Docker volumes named dev_db, dev_elastic, and dev_files will be created for the MongoDB, Elasticsearch, and MinIO instances.
 
-Add the following line to your /etc/hosts file
+Add the following lines to your hosts file:
+
+- **macOS / Linux:** `/etc/hosts`
+- **Windows:** `C:\Windows\System32\drivers\etc\hosts`
 
 ```plain
 127.0.0.1 huly.local

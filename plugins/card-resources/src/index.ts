@@ -28,6 +28,7 @@ import {
   editSpace,
   cardCustomLinkEncode,
   cardCustomLinkMatch,
+  cardReferenceObjectProvider,
   openCardInSidebar,
   checkRelationsSectionVisibility,
   checkOldMessagesSectionVisibility,
@@ -35,9 +36,12 @@ import {
   getSpaceAccessPublicLink,
   canGetSpaceAccessPublicLink,
   cardFactory,
-  duplicateCard
+  checkChildrenSectionVisibility,
+  createChildAction,
+  showAllVersions
 } from './utils'
 import { formatCardValue } from './cardTableFormatter'
+import CardGridView from './components/CardGridView.svelte'
 import ManageMasterTagsContent from './components/settings/ManageMasterTagsContent.svelte'
 import ManageMasterTagsTools from './components/settings/ManageMasterTagsTools.svelte'
 import ManageMasterTags from './components/settings/ManageMasterTags.svelte'
@@ -54,6 +58,7 @@ import CardEditor from './components/CardEditor.svelte'
 import CardRefPresenter from './components/CardRefPresenter.svelte'
 import ChangeType from './components/ChangeType.svelte'
 import CreateCardButton from './components/CreateCardButton.svelte'
+import CreateCardPopup from './components/CreateCardPopup.svelte'
 import CardArrayEditor from './components/CardArrayEditor.svelte'
 import SpacePresenter from './components/navigator/SpacePresenter.svelte'
 import TypesNavigator from './components/navigator/TypesNavigator.svelte'
@@ -64,6 +69,8 @@ import CreateRolePopup from './components/settings/CreateRolePopup.svelte'
 import CardWidget from './components/CardWidget.svelte'
 import CreateSpace from './components/navigator/CreateSpace.svelte'
 import CardHeaderButton from './components/navigator/CardHeaderButton.svelte'
+import MyCards from './components/navigator/MyCards.svelte'
+import DuplicateCard from './components/DuplicateCard.svelte'
 
 // Card Sections
 import AttachmentsCardSection from './components/sections/AttachmentsSection.svelte'
@@ -119,6 +126,7 @@ export default async (): Promise<Resources> => ({
     CardsPresenter,
     ChangeType,
     CreateCardButton,
+    CreateCard: CreateCardPopup,
     CardArrayEditor,
     SpacePresenter,
     TypesNavigator,
@@ -132,9 +140,12 @@ export default async (): Promise<Resources> => ({
     CardTagsColored,
     CardIcon,
     CardFeedView,
+    CardGridView,
     CreateSpace,
     CardHeaderButton,
-    CreateRolePopup
+    CreateRolePopup,
+    MyCards,
+    DuplicateCard
   },
   sectionComponent: {
     AttachmentsSection: AttachmentsCardSection,
@@ -154,11 +165,12 @@ export default async (): Promise<Resources> => ({
   },
   actionImpl: {
     DeleteMasterTag: deleteMasterTag,
-    DuplicateCard: duplicateCard,
-    EditSpace: editSpace
+    EditSpace: editSpace,
+    CreateChild: createChildAction
   },
   function: {
     CardTitleProvider: getCardTitle,
+    CardReferenceObjectProvider: cardReferenceObjectProvider,
     GetCardLink: getCardLink,
     CardCustomLinkMatch: cardCustomLinkMatch,
     CardCustomLinkEncode: cardCustomLinkEncode,
@@ -166,9 +178,11 @@ export default async (): Promise<Resources> => ({
     CheckRelationsSectionVisibility: checkRelationsSectionVisibility,
     CheckOldMessagesSectionVisibility: checkOldMessagesSectionVisibility,
     CheckCommunicationMessagesSectionVisibility: checkCommunicationMessagesSectionVisibility,
+    CheckChildrenSectionVisibility: checkChildrenSectionVisibility,
     GetSpaceAccessPublicLink: getSpaceAccessPublicLink,
     CanGetSpaceAccessPublicLink: canGetSpaceAccessPublicLink,
     CardFactory: cardFactory,
-    FormatCardMarkdownValue: formatCardValue
+    FormatCardMarkdownValue: formatCardValue,
+    ShowAllVersions: showAllVersions
   }
 })

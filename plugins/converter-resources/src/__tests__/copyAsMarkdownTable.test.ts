@@ -13,7 +13,8 @@
 // limitations under the License.
 //
 
-import { buildMarkdownTableFromDocs, copyAsMarkdownTable, isIntlString } from '../index'
+import { buildMarkdownTableFromDocs, copyAsMarkdownTable } from '../markdown'
+import { isIntlString } from '../formatter'
 import type { Doc, Class, Ref } from '@hcengineering/core'
 import type { CopyAsMarkdownTableProps } from '../types'
 import { getClient } from '@hcengineering/presentation'
@@ -48,6 +49,7 @@ jest.mock('@hcengineering/view-resources', () => ({
   copyMarkdown: jest.fn(),
   buildModel: jest.fn(),
   buildConfigLookup: jest.fn(() => ({})),
+  buildConfigAssociation: jest.fn(),
   getObjectLinkFragment: jest.fn()
 }))
 
