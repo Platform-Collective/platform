@@ -6,6 +6,7 @@
   "license": "EPL-2.0",
   "scripts": {
     "build:web": "node scripts/copy-web.js",
+    "format": "echo 'no format yet'",
     "sync": "npm run build:web && npx cap sync",
     "add:ios": "npx cap add ios",
     "add:android": "npx cap add android",
