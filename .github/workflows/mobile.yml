@@ -1,0 +1,93 @@
+# Builds the Capacitor mobile app and publishes test artifacts (Android debug APK).
+# iOS is intentionally not built here yet: it needs a macOS runner and Apple signing
+# credentials to produce an installable artifact.
+
+name: Mobile
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [develop, main, mobile-app, 'claude/**']
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile.yml'
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile.yml'
+
+  # Manual run: build an APK for testing from any branch
+  workflow_dispatch:
+    inputs:
+      config:
+        description: 'Config file from dev/prod/public to bundle into the app as config.json'
+        required: false
+        default: 'config-mobile-huly.json'
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          filter: tree:0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Cache node modules
+        uses: actions/cache@v5
+        env:
+          cache-name: cache-node-platform
+        with:
+          path: |
+            common/temp
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Installing...
+        run: node common/scripts/install-run-rush.js install
+
+      - name: Building web app bundle...
+        run: node common/scripts/install-run-rush.js package --to @hcengineering/prod
+
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+
+      - name: Copy web assets and sync native project
+        working-directory: mobile
+        env:
+          MOBILE_CONFIG: ${{ github.event.inputs.config || 'config-mobile-huly.json' }}
+        run: |
+          npm run build:web
+          npx cap sync android
+
+      - name: Build Android debug APK
+        working-directory: mobile/android
+        env:
+          MOBILE_VERSION_CODE: ${{ github.run_number }}
+          MOBILE_VERSION_NAME: 1.0.${{ github.run_number }}
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: huly-android-debug-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
