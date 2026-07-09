@@ -83,7 +83,9 @@ jobs:
         env:
           MOBILE_VERSION_CODE: ${{ github.run_number }}
           MOBILE_VERSION_NAME: 1.0.${{ github.run_number }}
-        run: ./gradlew assembleDebug
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
