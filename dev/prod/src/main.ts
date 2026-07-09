@@ -23,7 +23,7 @@ import { configurePlatform } from './platform'
 function isCapacitorEnvironment (): boolean {
   return (
     typeof window !== 'undefined' &&
-    window.Capacitor !== undefined
+    (window as Window & { Capacitor?: unknown }).Capacitor !== undefined
   )
 }
 
