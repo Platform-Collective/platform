@@ -15,21 +15,27 @@
 
 package io.huly.platform;
 
+import android.app.DownloadManager;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
+import android.webkit.CookieManager;
+import android.webkit.URLUtil;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -66,6 +72,7 @@ public class MainActivity extends BridgeActivity {
             WebView webView = bridge.getWebView();
             if (webView != null) {
                 webView.setWebViewClient(new HulyWebViewClient(bridge));
+                setupDownloadListener(webView);
             }
         }
 
@@ -92,6 +99,39 @@ public class MainActivity extends BridgeActivity {
                 cm.unregisterNetworkCallback(networkCallback);
             }
         }
+    }
+
+    /**
+     * Route WebView downloads (attachments, exports) to the system DownloadManager.
+     * The WebView itself silently ignores downloads without a listener.
+     * blob:/data: URLs cannot go through DownloadManager and are not handled here.
+     */
+    private void setupDownloadListener(WebView webView) {
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
+            if (!URLUtil.isNetworkUrl(url)) {
+                Log.w(TAG, "Unsupported download url scheme: " + url);
+                return;
+            }
+            try {
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                request.setMimeType(mimeType);
+                String cookies = CookieManager.getInstance().getCookie(url);
+                if (cookies != null) {
+                    request.addRequestHeader("Cookie", cookies);
+                }
+                request.addRequestHeader("User-Agent", userAgent);
+                String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+                DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                if (dm != null) {
+                    dm.enqueue(request);
+                    Toast.makeText(this, getString(R.string.download_started, fileName), Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to start download: " + url, e);
+            }
+        });
     }
 
     /**

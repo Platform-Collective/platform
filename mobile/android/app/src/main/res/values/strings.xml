@@ -12,4 +12,7 @@
     <string name="error_connection_timeout">Connection timed out.\nPlease check your network and try again.</string>
     <string name="error_network_restored">Network connection restored.\nTap Retry to continue.</string>
     <string name="retry_button">Retry</string>
+
+    <!-- Downloads -->
+    <string name="download_started">Downloading %1$s…</string>
 </resources>

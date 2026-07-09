@@ -45,5 +45,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Huly uses the camera for video calls and to take photos for attachments.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Huly uses the microphone for calls and voice messages.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Huly needs access to your photo library to attach images to messages and documents.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Huly saves downloaded images to your photo library.</string>
 </dict>
 </plist>
