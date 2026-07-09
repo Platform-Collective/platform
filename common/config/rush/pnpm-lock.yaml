@@ -5627,6 +5627,13 @@ importers:
         version: 29.4.5(@babel/core@7.28.5)(@jest/transform@29.7.0)(@jest/types@30.2.0)(babel-jest@29.7.0(@babel/core@7.28.5))(esbuild@0.25.12)(jest-util@30.2.0)(jest@29.7.0(@types/node@22.19.0)(ts-node@10.9.2(@types/node@22.19.0)(typescript@5.9.3)))(typescript@5.9.3)
 
   ../../mobile:
+    dependencies:
+      '@capacitor/network':
+        specifier: ^7.0.0
+        version: 7.0.4(@capacitor/core@7.4.5)
+      '@capacitor/splash-screen':
+        specifier: ^7.0.0
+        version: 7.0.5(@capacitor/core@7.4.5)
     devDependencies:
       '@capacitor/android':
         specifier: ^7.0.0
@@ -5640,6 +5647,9 @@ importers:
       '@capacitor/ios':
         specifier: ^7.0.0
         version: 7.4.5(@capacitor/core@7.4.5)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   ../../models/achievement:
     dependencies:
@@ -42436,6 +42446,16 @@ packages:
     peerDependencies:
       '@capacitor/core': ^7.4.0
 
+  '@capacitor/network@7.0.4':
+    resolution: {integrity: sha512-fNhN3968AQWMnzasPJ0B8e+nyk7+R6V9PWIBQWSQRHrKndDgWRHpxkjEzJPgnJr3EjnKLjbwO+UYy+EwBlGs3A==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
+
+  '@capacitor/splash-screen@7.0.5':
+    resolution: {integrity: sha512-bPG2SamFL7VT5I3XsgsGgJhkiyxq3OXCOVKEDupSieVdtEiG7j2vLbSD0xL+91zteF/qLuxsjbugGy5LD8mS2A==}
+    peerDependencies:
+      '@capacitor/core': '>=7.0.0'
+
   '@chevrotain/cst-dts-gen@11.0.3':
     resolution: {integrity: sha512-BvIKpRLeS/8UbfxXxgC33xOumsacaeCKAjAeLyOn7Pcp95HiRbrpl14S+9vaZLolnbssPIUuiUd8IvgkRyt6NQ==}
 
@@ -53149,6 +53169,14 @@ snapshots:
       tslib: 2.8.1
 
   '@capacitor/ios@7.4.5(@capacitor/core@7.4.5)':
+    dependencies:
+      '@capacitor/core': 7.4.5
+
+  '@capacitor/network@7.0.4(@capacitor/core@7.4.5)':
+    dependencies:
+      '@capacitor/core': 7.4.5
+
+  '@capacitor/splash-screen@7.0.5(@capacitor/core@7.4.5)':
     dependencies:
       '@capacitor/core': 7.4.5
 
