@@ -61,7 +61,7 @@
     "@hcengineering/platform": "workspace:^0.7.20",
     "express": "^4.21.2",
     "express-fileupload": "^1.5.1",
-    "uuid": "^8.3.2",
+    "uuid": "^14.0.1",
     "cors": "^2.8.5",
     "@hcengineering/server-core": "workspace:^0.7.19",
     "@hcengineering/server-token": "workspace:^0.7.18",

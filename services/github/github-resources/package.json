@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "@hcengineering/platform": "workspace:^0.7.20",
-    "svelte": "^4.2.20",
+    "svelte": "^5.56.4",
     "@hcengineering/github": "workspace:^0.7.0",
     "@hcengineering/ui": "workspace:^0.7.0",
     "@hcengineering/presentation": "workspace:^0.7.0",

@@ -47,7 +47,7 @@
     "@hcengineering/importer": "workspace:^0.7.0",
     "@hcengineering/model": "workspace:^0.7.17",
     "@hcengineering/rank": "workspace:^0.7.18",
-    "uuid": "^8.3.2",
+    "uuid": "^14.0.1",
     "@hcengineering/server-token": "workspace:^0.7.18",
     "@hcengineering/server-core": "workspace:^0.7.19",
     "@hcengineering/server-client": "workspace:^0.7.16",
@@ -59,6 +59,6 @@
     "fast-equals": "^5.2.2",
     "@hcengineering/text": "workspace:^0.7.19",
     "@hcengineering/text-markdown": "workspace:^0.7.21",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^5.2.1"
   }
 }
