@@ -86,10 +86,10 @@
     "@hcengineering/drive": "workspace:^0.7.0",
     "@hcengineering/export": "workspace:^0.7.0",
     "@hcengineering/products": "workspace:^0.7.0",
-    "uuid": "^8.3.2",
+    "uuid": "^14.0.1",
     "tar": "^7.4.3",
     "archiver": "^7.0.1",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^5.2.1",
     "csv-stringify": "^6.5.2"
   }
 }

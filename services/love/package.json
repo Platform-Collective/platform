@@ -71,7 +71,7 @@
     "@hcengineering/billing-client": "workspace:^0.7.0",
     "livekit-server-sdk": "^2.13.3",
     "jwt-simple": "^0.5.6",
-    "uuid": "^8.3.2",
+    "uuid": "^14.0.1",
     "dotenv": "^16.4.5",
     "cors": "^2.8.5",
     "express": "^4.21.2",

@@ -37,7 +37,7 @@
     "svelte-eslint-parser": "^0.33.1"
   },
   "dependencies": {
-    "svelte": "^4.2.20",
+    "svelte": "^5.56.4",
     "@hcengineering/platform": "workspace:^0.7.20",
     "@hcengineering/core": "workspace:^0.7.26",
     "@hcengineering/client": "workspace:^0.7.19",

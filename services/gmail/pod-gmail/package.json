@@ -88,7 +88,7 @@
     "google-auth-library": "^8.0.2",
     "gaxios": "^5.0.1",
     "jwt-simple": "^0.5.6",
-    "uuid": "^8.3.2",
+    "uuid": "^14.0.1",
     "ws": "^8.18.2",
     "@hcengineering/analytics-service": "workspace:^0.7.19",
     "sanitize-html": "^2.15.0"

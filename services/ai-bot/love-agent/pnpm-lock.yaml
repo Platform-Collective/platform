@@ -21,8 +21,8 @@ importers:
         specifier: ^16.4.5
         version: 16.4.7
       ws:
-        specifier: ^8.18.2
-        version: 8.18.2
+        specifier: ^8.21.0
+        version: 8.21.0
     devDependencies:
       '@types/node':
         specifier: ^22.18.1
@@ -289,12 +289,14 @@ packages:
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@livekit/rtc-node-linux-x64-gnu@0.13.11':
     resolution: {integrity: sha512-Zi7Elg29JSmDzikxL2Q9YAAka2Khi7GwYHYBv69W6XXHqz3MN4wtnUGShclmqC7aITkHF0tVNLHdexFmMc3trA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@livekit/rtc-node-win32-x64-msvc@0.13.11':
     resolution: {integrity: sha512-NYemYGbc271SFv+ttYaNvEKLWmwkJqn988xOasq+lWd31kuhj0krR2cThM07HKhgoQwOfdyIcSV87b0mjPzb/A==}
@@ -399,6 +401,7 @@ packages:
 
   '@ungap/structured-clone@1.2.1':
     resolution: {integrity: sha512-fEzPV3hSkSMltkw152tJKNARhOupqbH96MZWyRjNaYZOMIzbrTeQDG+MTc6Mr2pgzFQzFxAfmhGDNP5QK++2ZA==}
+    deprecated: Potential CWE-502 - Update to 1.3.1 or higher
 
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
@@ -864,7 +867,7 @@ packages:
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   globals@13.24.0:
     resolution: {integrity: sha512-AhO5QUcj8llrbG09iWhPU2B204J1xnPeL8kQmVorSsy+Sjj1sk8gIyh6cUocGmH4L0UuhAJy+hJMRA4mgA4mFQ==}
@@ -1522,8 +1525,8 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
-  ws@8.18.2:
-    resolution: {integrity: sha512-DMricUmwGZUVr++AEAe2uiVM7UoO9MAVZMDu05UQOaUII0lp+zOzLLU4Xqh/JvTqklB1T4uELaaPBKyjE1r4fQ==}
+  ws@8.21.0:
+    resolution: {integrity: sha512-Vsp28b7DRcimFQvrqu2Wek3z1iYxDCWqHYB8Qsnk/S4RfaCQzPGPyBNuVjJV3cd6UiKtUtp6sNM77gWvzcCH+g==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -1556,7 +1559,7 @@ snapshots:
       cross-fetch: 3.1.8
       deepmerge: 4.3.1
       events: 3.3.0
-      ws: 8.18.2
+      ws: 8.21.0
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -1685,7 +1688,7 @@ snapshots:
       livekit-server-sdk: 2.9.7
       pino: 8.21.0
       pino-pretty: 11.3.0
-      ws: 8.18.2
+      ws: 8.21.0
       zod: 3.24.1
     transitivePeerDependencies:
       - bufferutil
@@ -3184,7 +3187,7 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@8.18.2: {}
+  ws@8.21.0: {}
 
   yocto-queue@0.1.0: {}
 
