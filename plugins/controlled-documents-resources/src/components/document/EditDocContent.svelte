@@ -14,21 +14,35 @@
 -->
 <script lang="ts">
   import attachment, { Attachment } from '@hcengineering/attachment'
-  import documents, { DocumentState } from '@hcengineering/controlled-documents'
+  import documents, { DocumentState, type DocumentAttachmentState } from '@hcengineering/controlled-documents'
   import { type Blob, type Ref, generateId } from '@hcengineering/core'
   import { getResource, setPlatformStatus, unknownError } from '@hcengineering/platform'
-  import { getClient } from '@hcengineering/presentation'
-  import { Editor, Heading } from '@hcengineering/text-editor'
+  import { createQuery, getClient, getContentType } from '@hcengineering/presentation'
+  import textEditorPlugin, { Editor, Heading, type TextEditorHandler } from '@hcengineering/text-editor'
   import {
+    AttachIcon,
     CollaboratorEditor,
     NodeHighlightType,
+    TableIcon,
     TableOfContents,
     TableOfContentsContent,
+    addTableHandler,
+    defaultRefActions,
     getNodeElement,
     highlightUpdateCommand,
     selectNode
   } from '@hcengineering/text-editor-resources'
-  import { Component, EditBox, Label, Scroller } from '@hcengineering/ui'
+  import { AttachmentsGrid, AttachmentPresenter } from '@hcengineering/attachment-resources'
+  import {
+    Button,
+    Component,
+    EditBox,
+    IconUndo,
+    Label,
+    Scroller,
+    getEventPositionElement,
+    getPopupPositionElement
+  } from '@hcengineering/ui'
   import { getCollaborationUser } from '@hcengineering/view-resources'
   import { merge } from 'effector'
   import { createEventDispatcher, onDestroy, tick } from 'svelte'
@@ -160,6 +174,7 @@
       const uploadFile = await getResource(attachment.helper.UploadFile)
       const { uuid, metadata } = await uploadFile(file)
       const attachmentId: Ref<Attachment> = generateId()
+      const type = getContentType(file.name, file.type)
 
       await client.addCollection(
         attachment.class.Attachment,
@@ -170,7 +185,7 @@
         {
           file: uuid,
           name: file.name,
-          type: file.type,
+          type,
           size: file.size,
           lastModified: file.lastModified,
           metadata
@@ -178,7 +193,15 @@
         attachmentId
       )
 
-      return { file: uuid, type: file.type }
+      await client.updateMixin(
+        attachmentId,
+        attachment.class.Attachment,
+        $controlledDocument.space,
+        documents.mixin.DocumentAttachment,
+        { state: 'new' }
+      )
+
+      return { file: uuid, type }
     } catch (err: any) {
       await setPlatformStatus(unknownError(err))
     } finally {
@@ -190,7 +213,107 @@
     key: 'content',
     attr: client.getHierarchy().getAttribute(documents.class.ControlledDocument, 'content')
   }
+
+  let allAttachments: Attachment[] = []
+
+  const query = createQuery()
+  $: query.query(
+    attachment.class.Attachment,
+    {
+      attachedTo: $controlledDocument?._id
+    },
+    (res) => {
+      allAttachments = res
+    }
+  )
+
+  function isDeleted (att: Attachment): boolean {
+    if (!hierarchy.hasMixin(att, documents.mixin.DocumentAttachment)) return false
+    return hierarchy.as(att, documents.mixin.DocumentAttachment).deletedIn != null
+  }
+
+  // Active attachments shown in the main grid
+  $: attachments = allAttachments.filter((att) => !isDeleted(att))
+
+  // Attachments soft-deleted in the current draft - can be restored until sent for approval
+  $: deletedAttachments = allAttachments.filter(isDeleted)
+  let progress = false
+
+  let inputFile: HTMLInputElement
+
+  export function handleAttach (): void {
+    inputFile.click()
+  }
+
+  async function fileSelected (): Promise<void> {
+    if (!$isEditable) return
+
+    const list = inputFile.files
+    if (list === null || list.length === 0) return
+
+    progress = true
+
+    for (let i = 0; i < list.length; i++) {
+      await createEmbedding(list.item(i) as File)
+    }
+
+    inputFile.value = ''
+    progress = false
+  }
+
+  function handleTable (element: HTMLElement, editorHandler: TextEditorHandler, event?: MouseEvent): void {
+    const position = event !== undefined ? getEventPositionElement(event) : getPopupPositionElement(element)
+    addTableHandler(editorHandler.insertTable, position)
+  }
+
+  $: refActions = !$isEditable
+    ? []
+    : defaultRefActions
+      .concat([
+        { label: textEditorPlugin.string.Attach, icon: AttachIcon, action: handleAttach, order: 1001 },
+        { label: textEditorPlugin.string.Table, icon: TableIcon, action: handleTable, order: 1500 }
+      ])
+      .sort((a, b) => a.order - b.order)
+
+  function getState (att: Attachment): DocumentAttachmentState | undefined {
+    if (!hierarchy.hasMixin(att, documents.mixin.DocumentAttachment)) return undefined
+    return hierarchy.as(att, documents.mixin.DocumentAttachment).state
+  }
+
+  async function removeAttachment (att: Attachment): Promise<void> {
+    if ($controlledDocument == null) return
+
+    // 'new' attachments (added in this version) are removed physically, no soft-delete trace
+    if (getState(att) !== 'referenced') {
+      await client.removeCollection(att._class, att.space, att._id, att.attachedTo, att.attachedToClass, 'attachments')
+      textEditor?.removeAttachment(att.file)
+      return
+    }
+
+    // Soft delete referenced attachments: mark the version in which they were removed
+    await client.updateMixin(att._id, att._class, att.space, documents.mixin.DocumentAttachment, {
+      deletedIn: { major: $controlledDocument.major, minor: $controlledDocument.minor }
+    })
+    textEditor?.removeAttachment(att.file)
+  }
+
+  async function restoreAttachment (att: Attachment): Promise<void> {
+    await client.updateMixin(att._id, att._class, att.space, documents.mixin.DocumentAttachment, {
+      deletedIn: null
+    })
+  }
 </script>
+
+<input
+  bind:this={inputFile}
+  disabled={inputFile == null}
+  multiple
+  type="file"
+  name="file"
+  id="fileInput"
+  style="display: none"
+  on:change={fileSelected}
+/>
 
 {#if $controlledDocument && attribute}
   <DocumentPrintTitlePage />
@@ -234,6 +357,7 @@
           {attribute}
           {user}
           {boundary}
+          {refActions}
           readonly={!$isEditable}
           editorAttributes={{ style: 'padding: 0 2em; margin: 0 -2em;' }}
           overflow="none"
@@ -279,6 +403,38 @@
             return await createEmbedding(file)
           }}
         />
+        {#if attachments.length > 0}
+          <AttachmentsGrid
+            {attachments}
+            readonly={!$isEditable}
+            {progress}
+            useAttachmentPreview={false}
+            on:remove={async (evt) => {
+              if (evt.detail !== undefined) {
+                await removeAttachment(evt.detail)
+              }
+            }}
+          />
+        {/if}
+        {#if $isEditable && deletedAttachments.length > 0}
+          <div class="deleted-attachments">
+            <div class="deleted-header"><Label label={plugin.string.RemovedAttachments} /></div>
+            {#each deletedAttachments as att (att._id)}
+              <div class="deleted-row">
+                <AttachmentPresenter value={att} />
+                <div class="restore-btn">
+                  <Button
+                    icon={IconUndo}
+                    kind="ghost"
+                    size="small"
+                    showTooltip={{ label: plugin.string.Restore }}
+                    on:click={() => restoreAttachment(att)}
+                  />
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
         {#if isActivityDocumentState($documentState)}
           <div class="activity-container no-print">
             <Component
@@ -355,6 +511,35 @@
 
   .bottomSpacing {
     padding-bottom: 55vh;
+  }
+
+  .deleted-attachments {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--theme-divider-color);
+  }
+
+  .deleted-header {
+    font-weight: 500;
+    color: var(--theme-content-color);
+    margin-bottom: 0.5rem;
+  }
+
+  .deleted-row {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0;
+    width: fit-content;
+
+    :global(.name) {
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+
+    .restore-btn {
+      flex-shrink: 0;
+    }
   }
 
   .activity-container {

@@ -65,6 +65,8 @@
     "ComparisonMode": "Karşılaştırma",
     "Compare": "Karşılaştır:",
     "Against": "İle:",
+    "RemovedAttachments": "Kaldırılan ekler",
+    "Restore": "Geri yükle",
     "ComparisonModeNotSupported": "Karşılaştırma modu desteklenmiyor.",
     "CreateDraft": "Taslak Oluştur",
     "SendForApproval": "Onaya gönder",

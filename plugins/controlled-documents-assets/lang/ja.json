@@ -65,6 +65,8 @@
     "ComparisonMode": "比較",
     "Compare": "比較:",
     "Against": "対象:",
+    "RemovedAttachments": "削除された添付ファイル",
+    "Restore": "復元",
     "ComparisonModeNotSupported": "比較モードはサポートされていません。",
     "CreateDraft": "下書きを作成",
     "SendForApproval": "承認のために送信",

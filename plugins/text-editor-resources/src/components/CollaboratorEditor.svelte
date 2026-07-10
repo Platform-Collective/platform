@@ -18,7 +18,7 @@
   import { type Doc } from '@hcengineering/core'
   import { IntlString } from '@hcengineering/platform'
   import { KeyedAttribute } from '@hcengineering/presentation'
-  import textEditor, { CollaborationUser, TextEditorCommandHandler } from '@hcengineering/text-editor'
+  import textEditor, { CollaborationUser, RefAction, TextEditorCommandHandler } from '@hcengineering/text-editor'
   import { AnySvelteComponent, IconSize, registerFocus } from '@hcengineering/ui'
   import { FocusPosition } from '@tiptap/core'
 
@@ -42,6 +42,7 @@
   export let spellcheck: boolean = true
   export let boundary: HTMLElement | undefined = undefined
 
+  export let refActions: RefAction[] = []
   export let attachFile: FileAttachFunction | undefined = undefined
   export let kitOptions: Partial<EditorKitOptions> = {}
   export let requestSideSpace: ((width: number) => void) | undefined = undefined
@@ -58,6 +59,10 @@
 
   export function isFocused (): boolean {
     return collaborativeEditor?.isFocused() ?? false
+  }
+
+  export function removeAttachment (id: string): void {
+    collaborativeEditor?.removeAttachment(id)
   }
 
   export let focusIndex = -1
@@ -92,6 +97,7 @@
     {placeholder}
     {overflow}
     {boundary}
+    {refActions}
     {attachFile}
     {editorAttributes}
     {spellcheck}

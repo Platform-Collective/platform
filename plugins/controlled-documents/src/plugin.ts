@@ -31,6 +31,7 @@ import type {
   DocumentSpaceType,
   DocumentSpaceTypeDescriptor,
   DocumentState,
+  DocumentAttachment,
   DocumentTemplate,
   DocumentTraining,
   HierarchyDocument,
@@ -81,6 +82,7 @@ export const documentsPlugin = plugin(documentsId, {
   mixin: {
     DocumentTemplate: '' as Ref<Mixin<DocumentTemplate>>,
     DocumentTraining: '' as Ref<Mixin<DocumentTraining>>,
+    DocumentAttachment: '' as Ref<Mixin<DocumentAttachment>>,
     DocumentSpaceTypeData: '' as Ref<Mixin<DocumentSpace>>
     // DocTemplateActions: '' as Ref<Mixin<DocTemplateActions>>
   },

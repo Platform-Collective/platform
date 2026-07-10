@@ -66,6 +66,8 @@
     "ComparisonMode": "Comparaison",
     "Compare": "Comparer :",
     "Against": "Contre :",
+    "RemovedAttachments": "Pièces jointes supprimées",
+    "Restore": "Restaurer",
     "ComparisonModeNotSupported": "Le mode de comparaison n'est pas pris en charge.",
     "CreateDraft": "Créer un brouillon",
     "SendForApproval": "Envoyer pour approbation",

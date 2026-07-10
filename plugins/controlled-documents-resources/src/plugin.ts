@@ -70,6 +70,8 @@ export default mergeIds(documentsId, documents, {
     ComparisonMode: '' as IntlString,
     Compare: '' as IntlString,
     Against: '' as IntlString,
+    RemovedAttachments: '' as IntlString,
+    Restore: '' as IntlString,
     ComparisonModeNotSupported: '' as IntlString,
     CreateDraft: '' as IntlString,
     SendForApproval: '' as IntlString,

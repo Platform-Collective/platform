@@ -101,6 +101,40 @@ export function setUploadGuard (guard: UploadGuard | undefined): void {
 }
 
 /** @public */
+// Content types the browser commonly fails to detect, resolved by file extension instead.
+const extensionContentTypes: Record<string, string> = {
+  log: 'text/plain',
+  txt: 'text/plain',
+  text: 'text/plain',
+  ini: 'text/plain',
+  conf: 'text/plain',
+  cfg: 'text/plain',
+  env: 'text/plain',
+  properties: 'text/plain',
+  yaml: 'text/yaml',
+  yml: 'text/yaml',
+  json: 'application/json',
+  md: 'text/markdown',
+  csv: 'text/csv',
+  xml: 'text/xml'
+}
+
+/**
+ * Resolves a usable content type for a file, falling back to its extension when the
+ * browser-provided type is missing or the generic application/octet-stream.
+ * @public
+ */
+export function getContentType (name: string, type: string): string {
+  if (type !== '' && type !== 'application/octet-stream') {
+    return type
+  }
+  const ext = name.split('.').pop()?.toLowerCase()
+  if (ext !== undefined && extensionContentTypes[ext] !== undefined) {
+    return extensionContentTypes[ext]
+  }
+  return type
+}
+
 export async function uploadFile (
   file: File,
   uuid?: Ref<PlatformBlob>
@@ -113,6 +147,11 @@ export async function uploadFile (
 
   const token = getToken()
   const workspace = getCurrentWorkspaceUuid()
+
+  const contentType = getContentType(file.name, file.type)
+  if (contentType !== file.type) {
+    file = new File([file], file.name, { type: contentType, lastModified: file.lastModified })
+  }
 
   const storage = getFileStorage()
   await storage.uploadFile(token, workspace, uuid, file)

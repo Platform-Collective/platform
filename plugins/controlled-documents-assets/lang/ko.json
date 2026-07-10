@@ -66,6 +66,8 @@
         "ComparisonMode": "비교 중",
         "Compare": "비교:",
         "Against": "대상:",
+        "RemovedAttachments": "삭제된 첨부 파일",
+        "Restore": "복원",
         "ComparisonModeNotSupported": "비교 모드는 지원되지 않습니다.",
         "CreateDraft": "초안 생성",
         "SendForApproval": "승인 요청",
