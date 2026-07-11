@@ -13,7 +13,6 @@ overrides:
   fast-xml-parser@5: 5.7.3
   flatted: 3.4.2
   form-data@2: 2.5.6
-  form-data@4: 4.0.6
   glob@10: 10.5.0
   immutable: 5.1.9
   linkify-it: 5.0.2
@@ -26,12 +25,9 @@ overrides:
   node-forge: 1.4.0
   protobufjs: 7.6.5
   svgo: 2.8.2
-  tar@7: 7.5.19
   tmp: 0.2.7
   underscore: 1.13.8
   undici: 7.28.0
-  ws@7: 7.5.11
-  ws@8: 8.21.0
 
 pnpmfileChecksum: sha256-La8sfCMI7irxJPTW6u4mJb4vNiyLrXeEbKaXv5G3dL0=
 
@@ -681,7 +677,7 @@ importers:
         specifier: ^4.2.20
         version: 4.2.20
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     devDependencies:
       '@hcengineering/platform-rig':
@@ -2306,7 +2302,7 @@ importers:
         specifier: ^6.0.4
         version: 6.0.5
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
@@ -3142,7 +3138,7 @@ importers:
         version: 5.9.3
     optionalDependencies:
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
 
   ../../foundations/core/packages/client:
@@ -3273,7 +3269,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
 
   ../../foundations/core/packages/collaborator-client:
@@ -4587,7 +4583,7 @@ importers:
         specifier: workspace:^0.7.18
         version: link:../../../core/packages/token
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
@@ -31292,7 +31288,7 @@ importers:
         specifier: ^6.0.4
         version: 6.0.5
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/model-all':
@@ -36290,7 +36286,7 @@ importers:
         specifier: ^6.16.0
         version: 6.20.0(gcp-metadata@5.3.0(encoding@0.1.13))(snappy@7.3.3)(socks@2.8.7)
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
       yjs:
         specifier: ^13.6.27
@@ -37448,7 +37444,7 @@ importers:
         specifier: ^5.2.2
         version: 5.3.2
       form-data:
-        specifier: 4.0.6
+        specifier: ^4.0.0
         version: 4.0.6
       js-tiktoken:
         specifier: ^1.0.14
@@ -37463,7 +37459,7 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
@@ -37962,7 +37958,7 @@ importers:
         specifier: ^0.5.6
         version: 0.5.6
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
@@ -38370,13 +38366,13 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       tar:
-        specifier: 7.5.19
+        specifier: ^7.4.3
         version: 7.5.19
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
@@ -39230,7 +39226,7 @@ importers:
         specifier: ^3.1.1
         version: 3.2.2
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
@@ -39636,7 +39632,7 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
@@ -39784,7 +39780,7 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
@@ -40646,7 +40642,7 @@ importers:
         specifier: ^24.17.1
         version: 24.29.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@6.0.5)
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
@@ -41489,7 +41485,7 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
@@ -41892,7 +41888,7 @@ importers:
         specifier: ^6.0.4
         version: 6.0.5
       ws:
-        specifier: 8.21.0
+        specifier: ^8.18.2
         version: 8.21.0(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
@@ -49804,7 +49800,7 @@ packages:
     resolution: {integrity: sha512-p99EFNsA/yX6UhVO93f5kJsDRLAg+CTA2RBqdHK4RtK8u5IJw32Hyb2dTGKbnnFmnuoBv5r7Z2CURI9sGZpSuA==}
     hasBin: true
     peerDependencies:
-      ws: 8.21.0
+      ws: ^8.18.0
       zod: ^3.23.8
     peerDependenciesMeta:
       ws:
@@ -58732,7 +58728,7 @@ snapshots:
       has-property-descriptors: 1.0.2
       has-proto: 1.2.0
       has-symbols: 1.1.0
-      hasown: 2.0.2
+      hasown: 2.0.4
       internal-slot: 1.1.0
       is-array-buffer: 3.0.5
       is-callable: 1.2.7
@@ -58784,7 +58780,7 @@ snapshots:
 
   es-shim-unscopables@1.1.0:
     dependencies:
-      hasown: 2.0.2
+      hasown: 2.0.4
 
   es-to-primitive@1.3.0:
     dependencies:
@@ -59526,7 +59522,7 @@ snapshots:
       call-bound: 1.0.4
       define-properties: 1.2.1
       functions-have-names: 1.2.3
-      hasown: 2.0.2
+      hasown: 2.0.4
       is-callable: 1.2.7
 
   functions-have-names@1.2.3: {}
@@ -60152,7 +60148,7 @@ snapshots:
   internal-slot@1.1.0:
     dependencies:
       es-errors: 1.3.0
-      hasown: 2.0.2
+      hasown: 2.0.4
       side-channel: 1.1.0
 
   internmap@1.0.1: {}
@@ -60315,7 +60311,7 @@ snapshots:
       call-bound: 1.0.4
       gopd: 1.2.0
       has-tostringtag: 1.0.2
-      hasown: 2.0.2
+      hasown: 2.0.4
 
   is-set@2.0.3: {}
 
