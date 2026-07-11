@@ -200,8 +200,11 @@
    * PNPM documentation: https://pnpm.io/package_json#pnpmoverrides
    */
   "globalOverrides": {
-    // "example1": "^1.0.0",
-    // "example2": "npm:@company/example2@^1.0.0"
+    // Security: force patched (non-major) versions of vulnerable transitive deps.
+    "flatted": "3.4.2",
+    "immutable": "5.1.9",
+    "minimatch@3": "3.1.4",
+    "minimatch@9": "9.0.7"
   },
 
   /**

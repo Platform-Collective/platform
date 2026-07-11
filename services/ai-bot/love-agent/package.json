@@ -41,6 +41,12 @@
     "ws": "^8.18.2"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": ["esbuild"],
+    "overrides": {
+      "flatted": "3.4.2",
+      "ws@8": "8.21.0",
+      "minimatch@3": "3.1.4",
+      "minimatch@9": "9.0.7"
+    }
   }
 }
