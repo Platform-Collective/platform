@@ -25,6 +25,8 @@ import core, {
   Domain,
   DOMAIN_TX,
   FindOptions,
+  FindPageOptions,
+  FindPageResult,
   FindResult,
   FulltextStorage,
   generateId,
@@ -42,8 +44,10 @@ import core, {
   type DomainParams,
   type DomainRequestOptions,
   type DomainResult,
+  type IterateOptions,
   type OperationDomain,
-  type TxHandler
+  type TxHandler,
+  type WithLookup
 } from '@hcengineering/core'
 import { genMinModel } from './minmodel'
 
@@ -101,6 +105,41 @@ FulltextStorage & {
       options?: FindOptions<T>
     ): Promise<T | undefined> {
       return (await this.findAll(_class, query, { ...options, limit: 1 })).shift()
+    }
+
+    async findAllPage<T extends Doc>(
+      _class: Ref<Class<T>>,
+      query: DocumentQuery<T>,
+      options: FindPageOptions<T>
+    ): Promise<FindPageResult<T>> {
+      const { cursor, limit, ...findOptions } = options
+      const result = await this.findAll(_class, query, findOptions)
+      const parsedOffset = cursor === undefined ? 0 : Number.parseInt(cursor, 10)
+      const offset = Number.isNaN(parsedOffset) || parsedOffset < 0 ? 0 : parsedOffset
+      const docs = result.slice(offset, offset + limit)
+      const nextOffset = offset + docs.length
+      return {
+        docs,
+        ...(nextOffset < result.length ? { nextCursor: String(nextOffset) } : {}),
+        ...(options.total === true ? { total: result.length } : {})
+      }
+    }
+
+    async * iterateAll<T extends Doc>(
+      _class: Ref<Class<T>>,
+      query: DocumentQuery<T>,
+      options?: IterateOptions<T>
+    ): AsyncIterable<WithLookup<T>> {
+      let cursor: string | undefined
+      do {
+        const page = await this.findAllPage(_class, query, {
+          ...options,
+          limit: options?.limit ?? 500,
+          cursor
+        })
+        yield * page.docs
+        cursor = page.nextCursor
+      } while (cursor !== undefined)
     }
 
     async domainRequest (
