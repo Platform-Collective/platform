@@ -33,8 +33,11 @@ import type {
   DomainParams,
   DomainResult,
   FindOptions,
+  FindPageOptions,
+  FindPageResult,
   FindResult,
   FulltextStorage,
+  IterateOptions,
   SearchOptions,
   SearchQuery,
   SearchResult,
@@ -65,6 +68,16 @@ export interface Client extends Storage, FulltextStorage {
     query: DocumentQuery<T>,
     options?: FindOptions<T>
   ) => Promise<WithLookup<T> | undefined>
+  findAllPage: <T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ) => Promise<FindPageResult<T>>
+  iterateAll: <T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ) => AsyncIterable<WithLookup<T>>
   close: () => Promise<void>
 
   domainRequest: <T>(
@@ -112,6 +125,11 @@ export interface ClientConnection extends Storage, FulltextStorage, BackupClient
   loadModel: (last: Timestamp, hash?: string) => Promise<Tx[] | LoadModelResponse>
   getLastHash?: (ctx: MeasureContext) => Promise<string | undefined>
   pushHandler: (handler: TxHandler) => void
+  findAllPage?: <T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ) => Promise<FindPageResult<T>>
   domainRequest: (ctx: OperationDomain, params: DomainParams, options?: DomainRequestOptions) => Promise<DomainResult>
 }
 
@@ -157,6 +175,81 @@ class ClientImpl implements Client, BackupClient {
       return this.hierarchy.updateLookupMixin(_class, v, options)
     })
     return toFindResult(result, data.total)
+  }
+
+  async findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    const domain = this.hierarchy.getDomain(_class)
+    const data =
+      domain === DOMAIN_MODEL
+        ? await this.findModelPage(_class, query, options)
+        : this.conn.findAllPage !== undefined
+          ? await this.conn.findAllPage(_class, query, options)
+          : await this.findConnectionPage(_class, query, options)
+
+    return {
+      ...data,
+      docs: data.docs.map((doc) => this.hierarchy.updateLookupMixin(_class, doc, options))
+    }
+  }
+
+  async * iterateAll<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ): AsyncIterable<WithLookup<T>> {
+    let cursor: string | undefined
+    do {
+      const page = await this.findAllPage(_class, query, {
+        ...options,
+        limit: options?.limit ?? 500,
+        cursor
+      })
+      for (const doc of page.docs) {
+        yield doc
+      }
+      cursor = page.nextCursor
+    } while (cursor !== undefined)
+  }
+
+  private async findModelPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    const { cursor, limit, ...findOptions } = options
+    const sort = options.sort ?? ({ _id: 1 } as FindOptions<T>['sort'])
+    const docs = await this.model.findAll(_class, query, { ...findOptions, sort })
+    const offset = cursor === undefined ? 0 : Number.parseInt(cursor, 10)
+    const start = Number.isNaN(offset) || offset < 0 ? 0 : offset
+    const pageDocs = docs.slice(start, start + limit)
+    const nextOffset = start + pageDocs.length
+    return {
+      docs: pageDocs,
+      nextCursor: nextOffset < docs.length ? String(nextOffset) : undefined,
+      total: options.total === true ? docs.length : undefined
+    }
+  }
+
+  private async findConnectionPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    const { cursor, limit, ...findOptions } = options
+    const docs = await this.conn.findAll(_class, query, findOptions)
+    const offset = cursor === undefined ? 0 : Number.parseInt(cursor, 10)
+    const start = Number.isNaN(offset) || offset < 0 ? 0 : offset
+    const pageDocs = docs.slice(start, start + limit)
+    const nextOffset = start + pageDocs.length
+    return {
+      docs: pageDocs,
+      nextCursor: nextOffset < docs.length ? String(nextOffset) : undefined,
+      total: options.total === true ? docs.length : undefined
+    }
   }
 
   async searchFulltext (query: SearchQuery, options: SearchOptions): Promise<SearchResult> {

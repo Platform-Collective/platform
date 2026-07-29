@@ -477,7 +477,9 @@ abstract class PostgresAdapterBase implements DbAdapter {
           if (joins.length > 0) {
             sqlChunks.push(this.buildJoinString(vars, joins))
           }
-          sqlChunks.push(`WHERE ${this.buildQuery(vars, _class, domain, query, joins, options)}`)
+          const baseQuery = this.buildQuery(vars, _class, domain, query, joins, options)
+          const paginationQuery = this.buildPaginationQuery(vars, _class, domain, joins, options)
+          sqlChunks.push(`WHERE ${baseQuery}${paginationQuery === undefined ? '' : ` AND (${paginationQuery})`}`)
 
           const showArchived = shouldShowArchived(query, options)
           const secJoin = this.addSecurity(_class, vars, query, showArchived, domain, ctx.contextData)
@@ -485,7 +487,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
             sqlChunks.push(secJoin)
           }
           if (options?.sort !== undefined) {
-            sqlChunks.push(this.buildOrder(_class, domain, options.sort, joins))
+            sqlChunks.push(this.buildOrder(_class, domain, options.sort, joins, options.pagination !== undefined))
           }
           if (options?.limit !== undefined) {
             sqlChunks.push(`LIMIT ${escape(options.limit)}`)
@@ -1043,7 +1045,8 @@ abstract class PostgresAdapterBase implements DbAdapter {
     _class: Ref<Class<T>>,
     baseDomain: string,
     sort: SortingQuery<T>,
-    joins: JoinProps[]
+    joins: JoinProps[],
+    pagination: boolean = false
   ): string {
     const res: string[] = []
     for (const _key in sort) {
@@ -1055,7 +1058,11 @@ abstract class PostgresAdapterBase implements DbAdapter {
       if (typeof val === 'number') {
         const key = escape(_key)
         if (attr !== undefined && NumericTypes.includes(attr.type._class)) {
-          res.push(`(${this.getKey(_class, baseDomain, key, joins)})::numeric ${val === 1 ? 'ASC' : 'DESC'}`)
+          res.push(
+            `(${this.getKey(_class, baseDomain, key, joins)})::numeric ${val === 1 ? 'ASC' : 'DESC'}${
+              pagination ? (val === 1 ? ' NULLS FIRST' : ' NULLS LAST') : ''
+            }`
+          )
         } else if (attr !== undefined && attr.type._class === core.class.TypeIdentifier) {
           res.push(
             `regexp_replace(COALESCE(${this.getKey(_class, baseDomain, key, joins)}, ''), '-?\\d+$', '') ${val === 1 ? 'ASC' : 'DESC'}`
@@ -1073,7 +1080,11 @@ abstract class PostgresAdapterBase implements DbAdapter {
             )
           }
         } else {
-          res.push(`${this.getKey(_class, baseDomain, key, joins)} ${val === 1 ? 'ASC' : 'DESC'}`)
+          res.push(
+            `${this.getKey(_class, baseDomain, key, joins)} ${val === 1 ? 'ASC' : 'DESC'}${
+              pagination ? (val === 1 ? ' NULLS FIRST' : ' NULLS LAST') : ''
+            }`
+          )
         }
       } else {
         // todo handle custom sorting
@@ -1084,6 +1095,65 @@ abstract class PostgresAdapterBase implements DbAdapter {
     } else {
       return ''
     }
+  }
+
+  private buildPaginationQuery<T extends Doc>(
+    vars: ValuesVariables,
+    _class: Ref<Class<T>>,
+    baseDomain: string,
+    joins: JoinProps[],
+    options?: ServerFindOptions<T>
+  ): string | undefined {
+    const pagination = options?.pagination
+    if (pagination?.values === undefined) {
+      return
+    }
+
+    const branches: string[] = []
+    for (let index = 0; index < pagination.fields.length; index++) {
+      const equalities: string[] = []
+      for (let prefix = 0; prefix < index; prefix++) {
+        const field = pagination.fields[prefix]
+        const expression = this.getPaginationExpression(_class, baseDomain, field.field, joins)
+        const value = pagination.values[prefix]
+        equalities.push(value == null ? `${expression} IS NULL` : `${expression} = ${vars.add(value)}`)
+      }
+
+      const field = pagination.fields[index]
+      const expression = this.getPaginationExpression(_class, baseDomain, field.field, joins)
+      const value = pagination.values[index]
+      let comparison: string
+      if (value == null) {
+        comparison = field.order === 1 ? `${expression} IS NOT NULL` : 'FALSE'
+      } else if (field.order === 1) {
+        comparison = `${expression} > ${vars.add(value)}`
+      } else {
+        comparison = `(${expression} < ${vars.add(value)} OR ${expression} IS NULL)`
+      }
+      branches.push([...equalities, comparison].join(' AND '))
+    }
+    return branches.join(' OR ')
+  }
+
+  private getPaginationExpression<T extends Doc>(
+    _class: Ref<Class<T>>,
+    baseDomain: string,
+    field: string,
+    joins: JoinProps[]
+  ): string {
+    const attr = this.hierarchy.findAttribute(_class, field)
+    const expression = this.getKey(_class, baseDomain, escape(field), joins)
+    if (attr !== undefined && NumericTypes.includes(attr.type._class)) {
+      return `(${expression})::numeric`
+    }
+    if (
+      attr?.type._class === core.class.TypeIdentifier ||
+      attr?.type._class === core.class.EnumOf ||
+      attr?.type._class === core.class.ArrOf
+    ) {
+      throw new Error(`Unsupported cursor sort field: ${field}`)
+    }
+    return expression
   }
 
   private buildQuery<T extends Doc>(

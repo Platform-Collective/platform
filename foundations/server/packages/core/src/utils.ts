@@ -22,6 +22,8 @@ import core, {
   type DomainParams,
   type DomainResult,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FindResult,
   type MeasureContext,
   type ModelDb,
@@ -308,6 +310,33 @@ export function wrapPipeline (
         result.total
       )[0]
     },
+    findAllPage: async (_class, query, options) => {
+      const { cursor, limit, ...findOptions } = options
+      const all = await pipeline.findAll(ctx, _class, query, findOptions)
+      const offset = cursor === undefined ? 0 : Number.parseInt(cursor, 10)
+      const start = Number.isNaN(offset) ? 0 : offset
+      const docs = all
+        .slice(start, start + limit)
+        .map((doc) => pipeline.context.hierarchy.updateLookupMixin(_class, doc, options))
+      const nextOffset = start + docs.length
+      return {
+        docs,
+        nextCursor: nextOffset < all.length ? String(nextOffset) : undefined,
+        total: options.total === true ? all.length : undefined
+      }
+    },
+    iterateAll: async function * (_class, query, options) {
+      let cursor: string | undefined
+      do {
+        const page = await this.findAllPage(_class, query, {
+          ...options,
+          limit: options?.limit ?? 500,
+          cursor
+        })
+        yield * page.docs
+        cursor = page.nextCursor
+      } while (cursor !== undefined)
+    },
     domainRequest: async (domain, params) => {
       return await pipeline.domainRequest(ctx, domain, params)
     },
@@ -358,6 +387,24 @@ export function wrapAdapterToClient (ctx: MeasureContext, storageAdapter: DbAdap
       options?: FindOptions<Doc>
     ): Promise<FindResult<T>> {
       return (await storageAdapter.findAll(ctx, _class, query, options)) as any
+    }
+
+    async findAllPage<T extends Doc>(
+      _class: Ref<Class<T>>,
+      query: DocumentQuery<T>,
+      options: FindPageOptions<T>
+    ): Promise<FindPageResult<T>> {
+      const { cursor, limit, ...findOptions } = options
+      const all = await storageAdapter.findAll(ctx, _class, query, findOptions)
+      const offset = cursor === undefined ? 0 : Number.parseInt(cursor, 10)
+      const start = Number.isNaN(offset) ? 0 : offset
+      const docs = all.slice(start, start + limit)
+      const nextOffset = start + docs.length
+      return {
+        docs,
+        nextCursor: nextOffset < all.length ? String(nextOffset) : undefined,
+        total: options.total === true ? all.length : undefined
+      }
     }
 
     async domainRequest<T>(domain: OperationDomain, params: DomainParams): Promise<DomainResult<T>> {

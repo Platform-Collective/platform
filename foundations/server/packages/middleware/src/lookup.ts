@@ -17,14 +17,13 @@ import {
   type Class,
   type Doc,
   type DocumentQuery,
-  type FindOptions,
   type FindResult,
   type MeasureContext,
   type Ref,
   clone,
   toFindResult
 } from '@hcengineering/core'
-import { BaseMiddleware, type Middleware, type PipelineContext } from '@hcengineering/server-core'
+import { BaseMiddleware, type Middleware, type PipelineContext, type ServerFindOptions } from '@hcengineering/server-core'
 /**
  * @public
  */
@@ -45,7 +44,7 @@ export class LookupMiddleware extends BaseMiddleware implements Middleware {
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
-    options?: FindOptions<T>
+    options?: ServerFindOptions<T>
   ): Promise<FindResult<T>> {
     const result = await this.provideFindAll(ctx, _class, query, options)
     // Fill lookup map to make more compact representation
@@ -83,23 +82,37 @@ export class LookupMiddleware extends BaseMiddleware implements Middleware {
         }
       }
       const lookupMap = Object.fromEntries(Array.from(Object.values(idClassMap)).map((it) => [it.id, it.doc]))
-      return this.cleanQuery<T>(toFindResult(newResult, result.total, lookupMap), query, lookupMap)
+      return this.cleanQuery<T>(
+        toFindResult(newResult, result.total, lookupMap),
+        query,
+        lookupMap,
+        new Set(options.pagination?.fields.map(({ field }) => field))
+      )
     }
 
     // We need to get rid of simple query parameters matched in documents
-    return this.cleanQuery<T>(result, query)
+    return this.cleanQuery<T>(
+      result,
+      query,
+      undefined,
+      new Set(options?.pagination?.fields.map(({ field }) => field))
+    )
   }
 
   private cleanQuery<T extends Doc>(
     result: FindResult<T>,
     query: DocumentQuery<T>,
-    lookupMap?: Record<string, Doc>
+    lookupMap?: Record<string, Doc>,
+    preserveKeys: Set<string> = new Set()
   ): FindResult<T> {
     const newResult: T[] = []
     for (const doc of result) {
       let _doc = doc
       let cloned = false
       for (const [k, v] of Object.entries(query)) {
+        if (preserveKeys.has(k)) {
+          continue
+        }
         if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
           if ((_doc as any)[k] === v) {
             if (!cloned) {

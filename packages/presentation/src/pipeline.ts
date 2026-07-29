@@ -8,8 +8,11 @@ import {
   type DomainRequestOptions,
   type DomainResult,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FindResult,
   type Hierarchy,
+  type IterateOptions,
   type ModelDb,
   type OperationDomain,
   type QuerySelector,
@@ -152,6 +155,22 @@ export class PresentationPipelineImpl implements PresentationPipeline {
       await setPlatformStatus(status)
       return toFindResult([], -1)
     }
+  }
+
+  async findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    return await this.client.findAllPage(_class, query, options)
+  }
+
+  iterateAll<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ): AsyncIterable<WithLookup<T>> {
+    return this.client.iterateAll(_class, query, options)
   }
 
   async searchFulltext (query: SearchQuery, options: SearchOptions): Promise<SearchResult> {

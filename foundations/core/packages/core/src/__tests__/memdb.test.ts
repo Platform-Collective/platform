@@ -22,6 +22,9 @@ import { TxOperations } from '../operations'
 import {
   type DocumentQuery,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
+  type IterateOptions,
   type SearchOptions,
   type SearchQuery,
   type SearchResult,
@@ -50,6 +53,41 @@ class ClientModel extends ModelDb implements Client {
     options?: FindOptions<T>
   ): Promise<WithLookup<T> | undefined> {
     return (await this.findAll(_class, query, options)).shift()
+  }
+
+  async findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    const { cursor, limit, ...findOptions } = options
+    const docs = await this.findAll(_class, query, findOptions)
+    const offset = cursor === undefined ? 0 : Number.parseInt(cursor, 10)
+    const start = Number.isNaN(offset) ? 0 : offset
+    const pageDocs = docs.slice(start, start + limit)
+    const nextOffset = start + pageDocs.length
+    return {
+      docs: pageDocs,
+      nextCursor: nextOffset < docs.length ? String(nextOffset) : undefined,
+      total: options.total === true ? docs.length : undefined
+    }
+  }
+
+  async * iterateAll<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ): AsyncIterable<WithLookup<T>> {
+    let cursor: string | undefined
+    do {
+      const page = await this.findAllPage(_class, query, {
+        ...options,
+        limit: options?.limit ?? 500,
+        cursor
+      })
+      yield * page.docs
+      cursor = page.nextCursor
+    } while (cursor !== undefined)
   }
 
   async searchFulltext (query: SearchQuery, options: SearchOptions): Promise<SearchResult> {

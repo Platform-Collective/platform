@@ -16,13 +16,17 @@ import {
   type Class,
   type Doc,
   type DocumentQuery,
-  type FindOptions,
   type FindResult,
   type MeasureContext,
   type Ref,
   type SessionData
 } from '@hcengineering/core'
-import { BaseMiddleware, type Middleware, type PipelineContext } from '@hcengineering/server-core'
+import {
+  BaseMiddleware,
+  type Middleware,
+  type PipelineContext,
+  type ServerFindOptions
+} from '@hcengineering/server-core'
 
 /**
  * @public
@@ -44,10 +48,10 @@ export class FindSecurityMiddleware extends BaseMiddleware implements Middleware
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
-    options?: FindOptions<T>
+    options?: ServerFindOptions<T>
   ): Promise<FindResult<T>> {
     if (options != null) {
-      const { limit, sort, lookup, projection, associations, total, showArchived } = options
+      const { limit, sort, lookup, projection, associations, total, showArchived, pagination } = options
       return this.provideFindAll(ctx, _class, query, {
         limit,
         sort,
@@ -55,7 +59,8 @@ export class FindSecurityMiddleware extends BaseMiddleware implements Middleware
         projection,
         associations,
         total,
-        showArchived
+        showArchived,
+        pagination
       })
     }
     return this.provideFindAll(ctx, _class, query, options)

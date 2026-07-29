@@ -36,6 +36,8 @@ import core, {
   type DomainRequestOptions,
   type DomainResult,
   FindOptions,
+  FindPageOptions,
+  FindPageResult,
   FindResult,
   generateId,
   platformNow,
@@ -953,6 +955,49 @@ class Connection implements ClientConnection {
       }
     }
 
+    return result
+  }
+
+  async findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    const result = await this.sendRequest({
+      method: 'findAllPage',
+      params: [_class, query, options]
+    }) as FindPageResult<T>
+
+    if (result.lookupMap !== undefined) {
+      for (const doc of result.docs) {
+        if (doc.$lookup !== undefined) {
+          const lookup = doc.$lookup as Record<string, unknown>
+          for (const [key, value] of Object.entries(lookup)) {
+            if (Array.isArray(value)) {
+              lookup[key] = value.map((item) => result.lookupMap?.[item])
+            } else {
+              lookup[key] = result.lookupMap[value as string]
+            }
+          }
+        }
+      }
+      delete result.lookupMap
+    }
+
+    for (const doc of result.docs) {
+      const docRecord = doc as Record<string, unknown>
+      for (const [key, value] of Object.entries(query)) {
+        if (
+          (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') &&
+          docRecord[key] == null
+        ) {
+          docRecord[key] = value
+        }
+      }
+      if (doc._class == null) {
+        doc._class = _class
+      }
+    }
     return result
   }
 

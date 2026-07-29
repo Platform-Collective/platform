@@ -221,6 +221,47 @@ export type FindResult<T extends Doc> = WithLookup<T>[] & {
   lookupMap?: Record<string, Doc>
 }
 
+/**
+ * A deterministic scalar sort supported by cursor pagination.
+ *
+ * @public
+ */
+export type PaginationSortingQuery<T extends Doc> = {
+  [P in keyof T]?: SortingOrder
+} & Record<string, SortingOrder>
+
+/**
+ * Options for keyset-based document pagination.
+ *
+ * @public
+ */
+export interface FindPageOptions<T extends Doc> extends Omit<FindOptions<T>, 'limit' | 'sort'> {
+  limit: number
+  cursor?: string
+  sort?: PaginationSortingQuery<T>
+}
+
+/**
+ * A page returned by keyset-based document pagination.
+ *
+ * @public
+ */
+export interface FindPageResult<T extends Doc> {
+  docs: WithLookup<T>[]
+  nextCursor?: string
+  total?: number
+  lookupMap?: Record<string, Doc>
+}
+
+/**
+ * Options for iterating over all matching documents page by page.
+ *
+ * @public
+ */
+export interface IterateOptions<T extends Doc> extends Omit<FindPageOptions<T>, 'cursor' | 'limit'> {
+  limit?: number
+}
+
 export type DomainParams = Record<string, any>
 
 export interface DomainResult<T = any> {
