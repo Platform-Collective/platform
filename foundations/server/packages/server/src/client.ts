@@ -90,22 +90,20 @@ function stableStringify (value: unknown): string {
   return JSON.stringify(value)
 }
 
-function calculateQueryHash<T extends Doc>(
+function calculateQueryHash<T extends Doc> (
   _class: Ref<Class<T>>,
   query: DocumentQuery<T>,
   fields: FindPaginationField[],
   showArchived: boolean | undefined
 ): string {
-  return createHash('sha256')
-    .update(stableStringify({ _class, query, fields, showArchived }))
-    .digest('base64url')
+  return createHash('sha256').update(stableStringify({ _class, query, fields, showArchived })).digest('base64url')
 }
 
 function badPageRequest (): PlatformError<Record<string, never>> {
   return new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
 }
 
-function normalizePageSort<T extends Doc>(options: FindPageOptions<T>): FindPaginationField[] {
+function normalizePageSort<T extends Doc> (options: FindPageOptions<T>): FindPaginationField[] {
   const fields: FindPaginationField[] = []
   for (const [field, value] of Object.entries(options.sort ?? {})) {
     if (field.startsWith('$lookup') || (value !== 1 && value !== -1)) {
@@ -366,15 +364,13 @@ export class ClientSession implements Session {
           projectionRecord[field] = 1
           addedProjectionFields.add(field)
         } else if (!inclusionProjection && projectionRecord[field] === 0) {
-          delete projectionRecord[field]
+          Reflect.deleteProperty(projectionRecord, field)
           addedProjectionFields.add(field)
         }
       }
     }
 
-    const sort = Object.fromEntries(
-      fields.map(({ field, order }) => [field, order])
-    ) as FindOptions<T>['sort']
+    const sort = Object.fromEntries(fields.map(({ field, order }) => [field, order])) as FindOptions<T>['sort']
     const findOptions = { ...options }
     delete findOptions.cursor
     const result = await ctx.pipeline.findAll(ctx.ctx, _class, query, {
@@ -397,26 +393,22 @@ export class ClientSession implements Session {
         fields,
         values: fields.map(({ field }) => last[field])
       }
-      nextCursor = generateToken(
-        this.account.uuid,
-        this.workspace.uuid,
-        { cursor: JSON.stringify(payload) }
-      )
+      nextCursor = generateToken(this.account.uuid, this.workspace.uuid, { cursor: JSON.stringify(payload) })
     }
 
     if (addedProjectionFields.size > 0) {
       for (const doc of docs as Array<Record<string, unknown>>) {
         for (const field of addedProjectionFields) {
-          delete doc[field]
+          Reflect.deleteProperty(doc, field)
         }
       }
     }
 
     return {
       docs,
-      nextCursor,
-      total: options.total === true ? result.total : undefined,
-      lookupMap: result.lookupMap
+      ...(nextCursor !== undefined ? { nextCursor } : {}),
+      ...(options.total === true ? { total: result.total } : {}),
+      ...(result.lookupMap !== undefined ? { lookupMap: result.lookupMap } : {})
     }
   }
 
@@ -443,7 +435,11 @@ export class ClientSession implements Session {
         ctx.sendResponse(ctx.requestId, result)
       )
     } catch (err) {
-      await ctx.sendError(ctx.requestId, 'Failed to findAllPage', err instanceof PlatformError ? err.status : unknownError(err))
+      await ctx.sendError(
+        ctx.requestId,
+        'Failed to findAllPage',
+        err instanceof PlatformError ? err.status : unknownError(err)
+      )
       ctx.ctx.error('failed to findAllPage', { err })
     }
   }

@@ -221,7 +221,7 @@ class ClientImpl implements Client, BackupClient {
     options: FindPageOptions<T>
   ): Promise<FindPageResult<T>> {
     const { cursor, limit, ...findOptions } = options
-    const sort = options.sort ?? ({ _id: 1 } as FindOptions<T>['sort'])
+    const sort: FindOptions<T>['sort'] = options.sort ?? { _id: 1 }
     const docs = await this.model.findAll(_class, query, { ...findOptions, sort })
     const offset = cursor === undefined ? 0 : Number.parseInt(cursor, 10)
     const start = Number.isNaN(offset) || offset < 0 ? 0 : offset

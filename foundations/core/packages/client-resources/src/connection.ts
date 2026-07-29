@@ -963,10 +963,10 @@ class Connection implements ClientConnection {
     query: DocumentQuery<T>,
     options: FindPageOptions<T>
   ): Promise<FindPageResult<T>> {
-    const result = await this.sendRequest({
+    const result = (await this.sendRequest({
       method: 'findAllPage',
       params: [_class, query, options]
-    }) as FindPageResult<T>
+    })) as FindPageResult<T>
 
     if (result.lookupMap !== undefined) {
       for (const doc of result.docs) {

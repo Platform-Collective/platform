@@ -4,11 +4,11 @@
   Licensed under the Eclipse Public License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License. You may
   obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-  
+
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  
+
   See the License for the specific language governing permissions and
   limitations under the License.
 */
@@ -42,6 +42,7 @@ interface CollectedPages {
 }
 
 describe('cursor-api', () => {
+  const frontUrl = process.env.FRONT_URL ?? 'http://huly.local:8083'
   const workspaceName = 'api-tests'
   const runId = generateId()
   const prefix = `cursor-${runId}`
@@ -52,15 +53,16 @@ describe('cursor-api', () => {
   let readerWorkspace: WorkspaceToken
   let ownerClient: RestClient
   let readerClient: RestClient
+  let fixtureClient: RestClient
   let txOperations: TxOperations
   const createdChannels: Array<Ref<Channel>> = []
   const publicChannels: Array<Ref<Channel>> = []
   const privateChannels: Array<Ref<Channel>> = []
 
   beforeAll(async () => {
-    config = await loadServerConfig('http://huly.local:8083')
+    config = await loadServerConfig(frontUrl)
     ownerWorkspace = await getWorkspaceToken(
-      'http://huly.local:8083',
+      frontUrl,
       {
         email: 'user1',
         password: '1234',
@@ -71,7 +73,7 @@ describe('cursor-api', () => {
 
     try {
       readerWorkspace = await getWorkspaceToken(
-        'http://huly.local:8083',
+        frontUrl,
         {
           email: 'user2',
           password: '1234',
@@ -86,7 +88,7 @@ describe('cursor-api', () => {
       )
       await adminClient.assignWorkspace('user2', ownerWorkspace.workspaceId, AccountRole.User)
       readerWorkspace = await getWorkspaceToken(
-        'http://huly.local:8083',
+        frontUrl,
         {
           email: 'user2',
           password: '1234',
@@ -98,6 +100,11 @@ describe('cursor-api', () => {
 
     ownerClient = createRestClient(ownerWorkspace.endpoint, ownerWorkspace.workspaceId, ownerWorkspace.token)
     readerClient = createRestClient(readerWorkspace.endpoint, readerWorkspace.workspaceId, readerWorkspace.token)
+    fixtureClient = createRestClient(
+      ownerWorkspace.endpoint,
+      ownerWorkspace.workspaceId,
+      generateToken(systemAccountUuid, ownerWorkspace.workspaceId, undefined, 'secret')
+    )
     txOperations = await createRestTxOperations(
       ownerWorkspace.endpoint,
       ownerWorkspace.workspaceId,
@@ -110,18 +117,14 @@ describe('cursor-api', () => {
         Array.from({ length: end - start }, async (_, offset) => {
           const index = start + offset
           const isPrivate = index % 4 === 0
-          const id = await txOperations.createDoc(
-            chunter.class.Channel,
-            core.space.Space,
-            {
-              name: `${prefix}-${index.toString().padStart(3, '0')}`,
-              description: '',
-              private: isPrivate,
-              archived: false,
-              members: isPrivate ? [ownerWorkspace.info.account] : [],
-              autoJoin: false
-            }
-          )
+          const id = await fixtureClient.createDoc(chunter.class.Channel, core.space.Space, {
+            name: `${prefix}-${index.toString().padStart(3, '0')}`,
+            description: '',
+            private: isPrivate,
+            archived: false,
+            members: isPrivate ? [ownerWorkspace.info.account] : [],
+            autoJoin: false
+          })
           createdChannels.push(id)
           if (isPrivate) {
             privateChannels.push(id)
@@ -134,15 +137,13 @@ describe('cursor-api', () => {
   }, 120000)
 
   afterAll(async () => {
-    if (txOperations === undefined) {
+    if (fixtureClient === undefined) {
       return
     }
     for (let start = 0; start < createdChannels.length; start += 20) {
-      await Promise.all(
-        createdChannels
-          .slice(start, start + 20)
-          .map(async (id) => await txOperations.removeDoc(chunter.class.Channel, core.space.Space, id))
-      )
+      const ids = createdChannels.slice(start, start + 20)
+      const docs = await fixtureClient.findAll(chunter.class.Channel, { _id: { $in: ids } })
+      await Promise.all(docs.map(async (doc) => await fixtureClient.remove(doc)))
     }
   }, 120000)
 
@@ -168,7 +169,7 @@ describe('cursor-api', () => {
         {
           limit: 11,
           cursor,
-          sort: { private: SortingOrder.Ascending }
+          sort: { topic: SortingOrder.Ascending }
         }
       )
       docs.push(...page.docs)
@@ -204,9 +205,7 @@ describe('cursor-api', () => {
     for (const privateId of privateChannels) {
       expect(readerIds.has(privateId)).toBe(false)
     }
-    expect(readerResult.totals).toEqual(
-      Array.from({ length: readerResult.pageCount }, () => publicChannels.length)
-    )
+    expect(readerResult.totals).toEqual(Array.from({ length: readerResult.pageCount }, () => publicChannels.length))
   })
 
   it('rejects a cursor issued for another account', async () => {
@@ -301,11 +300,7 @@ async function collectPages (
   return { docs, pageCount, totals }
 }
 
-async function collectPagesByIds (
-  client: RestClient,
-  ids: Array<Ref<Channel>>,
-  limit: number
-): Promise<CollectedPages> {
+async function collectPagesByIds (client: RestClient, ids: Array<Ref<Channel>>, limit: number): Promise<CollectedPages> {
   const docs: Array<WithLookup<Channel>> = []
   let cursor: string | undefined
   let pageCount = 0

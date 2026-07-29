@@ -23,7 +23,12 @@ import {
   clone,
   toFindResult
 } from '@hcengineering/core'
-import { BaseMiddleware, type Middleware, type PipelineContext, type ServerFindOptions } from '@hcengineering/server-core'
+import {
+  BaseMiddleware,
+  type Middleware,
+  type PipelineContext,
+  type ServerFindOptions
+} from '@hcengineering/server-core'
 /**
  * @public
  */
@@ -91,19 +96,14 @@ export class LookupMiddleware extends BaseMiddleware implements Middleware {
     }
 
     // We need to get rid of simple query parameters matched in documents
-    return this.cleanQuery<T>(
-      result,
-      query,
-      undefined,
-      new Set(options?.pagination?.fields.map(({ field }) => field))
-    )
+    return this.cleanQuery<T>(result, query, undefined, new Set(options?.pagination?.fields.map(({ field }) => field)))
   }
 
   private cleanQuery<T extends Doc>(
     result: FindResult<T>,
     query: DocumentQuery<T>,
     lookupMap?: Record<string, Doc>,
-    preserveKeys: Set<string> = new Set()
+    preserveKeys = new Set<string>()
   ): FindResult<T> {
     const newResult: T[] = []
     for (const doc of result) {
