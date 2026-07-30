@@ -133,6 +133,34 @@ describe('in memory keyset filter', () => {
     expect(filterByPagination(withNulls, pagination).map(({ _id }) => _id)).toEqual(['b', 'c'])
   })
 
+  it.each([1, -1] as const)('follows the in memory sort order, order %i', (order) => {
+    // resultSort compares strings with localeCompare, which differs from a code point order for mixed case
+    // values. A keyset predicate built on a different order would skip documents between pages.
+    const names = [
+      'Default Test Management',
+      'Default Trainings',
+      'Default teamspace type',
+      'Default drive type',
+      'Default product type',
+      'Spaces'
+    ]
+    const sorted = names
+      .map((name, index) => doc(`id-${index}`, name))
+      .sort((left, right) => left.name.localeCompare(right.name) * order)
+
+    const collected: string[] = []
+    let values: unknown[] | undefined
+    for (let page = 0; page <= names.length; page++) {
+      const rest = filterByPagination(sorted, { fields: [{ field: 'name', order }], values })
+      if (rest.length === 0) {
+        break
+      }
+      collected.push(rest[0].name)
+      values = [rest[0].name]
+    }
+    expect(collected).toEqual(sorted.map(({ name }) => name))
+  })
+
   it('places nulls last for a descending order', () => {
     const withNulls = [doc('a', 'one'), doc('b', 'two', false), doc('c', 'three', true)]
     const pagination: FindPagination = {

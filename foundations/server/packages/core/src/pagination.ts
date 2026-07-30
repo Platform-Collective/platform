@@ -335,7 +335,15 @@ export async function findPage<T extends Doc> (
   }
 }
 
+/**
+ * Mirrors the comparison used by `resultSort` in core: in memory sorting compares strings with `localeCompare`,
+ * which is not a code point order, so the keyset predicate has to follow the very same rule. Otherwise a page
+ * boundary would be evaluated against an order the documents are not actually sorted by, skipping documents.
+ */
 function compareValues (left: unknown, right: unknown): number {
+  if (typeof left === 'string' && typeof right === 'string') {
+    return left.localeCompare(right)
+  }
   if (left === right) {
     return 0
   }
