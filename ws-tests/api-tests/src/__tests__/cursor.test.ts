@@ -117,13 +117,16 @@ describe('cursor-api', () => {
         Array.from({ length: end - start }, async (_, offset) => {
           const index = start + offset
           const isPrivate = index % 4 === 0
+          // autoJoin is not a column of the space domain, it is kept in JSONB and extracted as text,
+          // so it covers cursors over a custom boolean field.
+          const autoJoin = index % 3 === 0
           const id = await fixtureClient.createDoc(chunter.class.Channel, core.space.Space, {
             name: `${prefix}-${index.toString().padStart(3, '0')}`,
             description: '',
             private: isPrivate,
             archived: false,
             members: isPrivate ? [ownerWorkspace.info.account] : [],
-            autoJoin: false
+            autoJoin
           })
           createdChannels.push(id)
           if (isPrivate) {
@@ -247,6 +250,69 @@ describe('cursor-api', () => {
           cursor: firstPage.nextCursor
         }
       )
+    ).rejects.toThrow()
+  })
+
+  it.each([SortingOrder.Ascending, SortingOrder.Descending])(
+    'paginates over a boolean field kept in JSONB, order %i',
+    async (order) => {
+      const docs: Array<WithLookup<Channel>> = []
+      let cursor: string | undefined
+      do {
+        const page = await ownerClient.findAllPage(
+          chunter.class.Channel,
+          { name: { $like: `${prefix}%` } },
+          {
+            limit: 10,
+            cursor,
+            sort: { autoJoin: order }
+          }
+        )
+        docs.push(...page.docs)
+        cursor = page.nextCursor
+      } while (cursor !== undefined)
+
+      expect(docs).toHaveLength(largeCount)
+      expect(new Set(docs.map(({ _id }) => _id))).toEqual(new Set(createdChannels))
+
+      const flags = docs.map(({ autoJoin }) => autoJoin === true)
+      const expectedFlags = [...flags].sort((left, right) =>
+        left === right ? 0 : (left ? 1 : -1) * (order === SortingOrder.Ascending ? 1 : -1)
+      )
+      expect(flags).toEqual(expectedFlags)
+    }
+  )
+
+  it('paginates over a model domain class', async () => {
+    // The model is served from memory and bypasses database adapters, so the cursor position has to be
+    // applied by the pipeline itself, otherwise every page repeats the very first one.
+    const ids: string[] = []
+    let cursor: string | undefined
+    let pages = 0
+    do {
+      const page = await ownerClient.findAllPage(
+        core.class.SpaceType,
+        {},
+        { limit: 1, cursor, sort: { name: SortingOrder.Ascending } }
+      )
+      ids.push(...page.docs.map(({ _id }) => _id))
+      cursor = page.nextCursor
+      pages++
+      expect(pages).toBeLessThan(100)
+    } while (cursor !== undefined)
+
+    const all = await ownerClient.findAll(core.class.SpaceType, {})
+    expect(new Set(ids)).toEqual(new Set(all.map(({ _id }) => _id)))
+    expect(ids).toHaveLength(all.length)
+  })
+
+  it('rejects lookup based filters', async () => {
+    await expect(
+      ownerClient.findAllPage(chunter.class.Channel, { '$lookup.space._id': core.space.Space } as any, {
+        limit: 7,
+        sort: { name: SortingOrder.Ascending },
+        lookup: { space: core.class.Space }
+      })
     ).rejects.toThrow()
   })
 

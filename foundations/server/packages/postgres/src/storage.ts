@@ -1114,14 +1114,24 @@ abstract class PostgresAdapterBase implements DbAdapter {
       const equalities: string[] = []
       for (let prefix = 0; prefix < index; prefix++) {
         const field = pagination.fields[prefix]
-        const expression = this.getPaginationExpression(_class, baseDomain, field.field, joins)
-        const value = pagination.values[prefix]
+        const { expression, value } = this.getPaginationTerm(
+          _class,
+          baseDomain,
+          field.field,
+          joins,
+          pagination.values[prefix]
+        )
         equalities.push(value == null ? `${expression} IS NULL` : `${expression} = ${vars.add(value)}`)
       }
 
       const field = pagination.fields[index]
-      const expression = this.getPaginationExpression(_class, baseDomain, field.field, joins)
-      const value = pagination.values[index]
+      const { expression, value } = this.getPaginationTerm(
+        _class,
+        baseDomain,
+        field.field,
+        joins,
+        pagination.values[index]
+      )
       let comparison: string
       if (value == null) {
         comparison = field.order === 1 ? `${expression} IS NOT NULL` : 'FALSE'
@@ -1135,17 +1145,18 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return branches.join(' OR ')
   }
 
-  private getPaginationExpression<T extends Doc>(
+  /**
+   * Builds a keyset comparison term: an SQL expression for a cursor field along with a value
+   * normalized to the type the expression yields.
+   */
+  private getPaginationTerm<T extends Doc>(
     _class: Ref<Class<T>>,
     baseDomain: string,
     field: string,
-    joins: JoinProps[]
-  ): string {
+    joins: JoinProps[],
+    value: unknown
+  ): { expression: string, value: unknown } {
     const attr = this.hierarchy.findAttribute(_class, field)
-    const expression = this.getKey(_class, baseDomain, escape(field), joins)
-    if (attr !== undefined && NumericTypes.includes(attr.type._class)) {
-      return `(${expression})::numeric`
-    }
     if (
       attr?.type._class === core.class.TypeIdentifier ||
       attr?.type._class === core.class.EnumOf ||
@@ -1153,7 +1164,19 @@ abstract class PostgresAdapterBase implements DbAdapter {
     ) {
       throw new Error(`Unsupported cursor sort field: ${field}`)
     }
-    return expression
+    const expression = this.getKey(_class, baseDomain, escape(field), joins)
+    if (attr !== undefined && NumericTypes.includes(attr.type._class)) {
+      // Both sides are numeric, buildOrder casts the very same expression as well.
+      return { expression: `(${expression})::numeric`, value }
+    }
+    // Attributes kept in JSONB are extracted as `text`, so a cursor value has to be compared as text too,
+    // the same way regular query values are normalized in translateQueryValue. Casting the expression instead
+    // would desync the keyset predicate from ORDER BY, which sorts these fields as text.
+    const isJsonText = expression.includes('data') && (expression.includes('->') || expression.includes('#>>'))
+    if (isJsonText && (typeof value === 'boolean' || typeof value === 'number' || typeof value === 'bigint')) {
+      return { expression, value: `${value}` }
+    }
+    return { expression, value }
   }
 
   private buildQuery<T extends Doc>(

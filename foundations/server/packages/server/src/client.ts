@@ -14,8 +14,7 @@
 //
 
 import type { LoginInfoWithWorkspaces } from '@hcengineering/account-client'
-import { createHash } from 'crypto'
-import core, {
+import {
   generateId,
   TxProcessor,
   type Account,
@@ -49,17 +48,20 @@ import core, {
   type WorkspaceDataId,
   type WorkspaceIds
 } from '@hcengineering/core'
-import platform, { PlatformError, Severity, Status, unknownError } from '@hcengineering/platform'
+import { PlatformError, unknownError } from '@hcengineering/platform'
 import {
   BackupClientOps,
+  badPageRequest,
   createBroadcastEvent,
   estimateDocSize,
+  findPage,
   SessionDataImpl,
   type ClientSessionCtx,
   type ConnectionSocket,
+  type CursorCodec,
   type OneSecondCounters,
+  type PageCursorPayload,
   type Pipeline,
-  type FindPaginationField,
   type Session,
   type SessionRequest,
   type StatisticsElement
@@ -67,57 +69,6 @@ import {
 import { decodeToken, generateToken, type Token } from '@hcengineering/server-token'
 
 const useReserveContext = (process.env.USE_RESERVE_CTX ?? 'true') === 'true'
-const MAX_PAGE_SIZE = 1000
-
-interface PageCursorPayload {
-  version: 1
-  objectClass: string
-  queryHash: string
-  fields: FindPaginationField[]
-  values: unknown[]
-}
-
-function stableStringify (value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(',')}]`
-  }
-  if (value !== null && typeof value === 'object') {
-    return `{${Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`)
-      .join(',')}}`
-  }
-  return JSON.stringify(value)
-}
-
-function calculateQueryHash<T extends Doc> (
-  _class: Ref<Class<T>>,
-  query: DocumentQuery<T>,
-  fields: FindPaginationField[],
-  showArchived: boolean | undefined
-): string {
-  return createHash('sha256').update(stableStringify({ _class, query, fields, showArchived })).digest('base64url')
-}
-
-function badPageRequest (): PlatformError<Record<string, never>> {
-  return new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
-}
-
-function normalizePageSort<T extends Doc> (options: FindPageOptions<T>): FindPaginationField[] {
-  const fields: FindPaginationField[] = []
-  for (const [field, value] of Object.entries(options.sort ?? {})) {
-    if (field.startsWith('$lookup') || (value !== 1 && value !== -1)) {
-      throw badPageRequest()
-    }
-    fields.push({ field, order: value })
-  }
-  if (fields.length === 0) {
-    fields.push({ field: '_id', order: 1 })
-  } else if (!fields.some(({ field }) => field === '_id')) {
-    fields.push({ field: '_id', order: 1 })
-  }
-  return fields
-}
 
 /**
  * @public
@@ -293,122 +244,43 @@ export class ClientSession implements Session {
     query: DocumentQuery<T>,
     options: FindPageOptions<T>
   ): Promise<FindPageResult<T>> {
-    if (!Number.isInteger(options.limit) || options.limit < 1 || options.limit > MAX_PAGE_SIZE) {
-      throw badPageRequest()
-    }
-
     this.lastRequest = Date.now()
     this.total.find++
     this.current.find++
     this.includeSessionContext(ctx)
 
-    const fields = normalizePageSort(options)
-    for (const { field } of fields) {
-      if (field.includes('.') || field.includes('$')) {
-        throw badPageRequest()
-      }
-      if (field !== '_id') {
-        try {
-          const attr = ctx.pipeline.context.hierarchy.findAttribute(_class, field)
-          if (
-            attr === undefined ||
-            attr.type._class === core.class.ArrOf ||
-            attr.type._class === core.class.TypeIdentifier ||
-            attr.type._class === core.class.EnumOf
-          ) {
-            throw badPageRequest()
-          }
-        } catch (err) {
-          if (err instanceof PlatformError) {
-            throw err
-          }
-          throw badPageRequest()
-        }
-      }
-    }
-    const queryHash = calculateQueryHash(_class, query, fields, options.showArchived)
-    let values: unknown[] | undefined
-    if (options.cursor !== undefined) {
-      try {
-        const decoded = decodeToken(options.cursor)
-        const payload = JSON.parse(decoded.extra?.cursor ?? '') as PageCursorPayload
-        if (
-          decoded.account !== this.account.uuid ||
-          decoded.workspace !== this.workspace.uuid ||
-          payload.version !== 1 ||
-          payload.objectClass !== _class ||
-          payload.queryHash !== queryHash ||
-          stableStringify(payload.fields) !== stableStringify(fields) ||
-          !Array.isArray(payload.values) ||
-          payload.values.length !== fields.length
-        ) {
-          throw badPageRequest()
-        }
-        values = payload.values
-      } catch (err) {
-        if (err instanceof PlatformError) {
-          throw err
-        }
-        throw badPageRequest()
-      }
-    }
-
-    const originalProjection = options.projection
-    const projection = originalProjection === undefined ? undefined : { ...originalProjection }
-    const addedProjectionFields = new Set<string>()
-    if (projection !== undefined) {
-      const inclusionProjection = Object.values(projection).some((value) => value === 1)
-      for (const { field } of fields) {
-        const projectionRecord = projection as Record<string, 0 | 1>
-        if (inclusionProjection && projectionRecord[field] !== 1) {
-          projectionRecord[field] = 1
-          addedProjectionFields.add(field)
-        } else if (!inclusionProjection && projectionRecord[field] === 0) {
-          Reflect.deleteProperty(projectionRecord, field)
-          addedProjectionFields.add(field)
-        }
-      }
-    }
-
-    const sort = Object.fromEntries(fields.map(({ field, order }) => [field, order])) as FindOptions<T>['sort']
     const findOptions = { ...options }
     delete findOptions.cursor
-    const result = await ctx.pipeline.findAll(ctx.ctx, _class, query, {
-      ...findOptions,
-      limit: options.limit + 1,
-      sort,
-      projection,
-      pagination: { fields, values }
-    })
+    return await findPage(
+      _class,
+      query,
+      options,
+      async (pagination, sort, projection, limit) =>
+        await ctx.pipeline.findAll(ctx.ctx, _class, query, {
+          ...findOptions,
+          sort,
+          projection,
+          limit,
+          pagination
+        }),
+      { hierarchy: ctx.pipeline.context.hierarchy, codec: this.cursorCodec() }
+    )
+  }
 
-    const hasMore = result.length > options.limit
-    const docs = result.slice(0, options.limit)
-    let nextCursor: string | undefined
-    if (hasMore && docs.length > 0) {
-      const last = docs[docs.length - 1] as Record<string, unknown>
-      const payload: PageCursorPayload = {
-        version: 1,
-        objectClass: _class,
-        queryHash,
-        fields,
-        values: fields.map(({ field }) => last[field])
-      }
-      nextCursor = generateToken(this.account.uuid, this.workspace.uuid, { cursor: JSON.stringify(payload) })
-    }
-
-    if (addedProjectionFields.size > 0) {
-      for (const doc of docs as Array<Record<string, unknown>>) {
-        for (const field of addedProjectionFields) {
-          Reflect.deleteProperty(doc, field)
-        }
-      }
-    }
-
+  /**
+   * Cursors handed out to a client are signed, so a client can not forge a position, reuse a cursor issued
+   * for another account or workspace, or pass a cursor produced by an in-process client.
+   */
+  private cursorCodec (): CursorCodec {
     return {
-      docs,
-      ...(nextCursor !== undefined ? { nextCursor } : {}),
-      ...(options.total === true ? { total: result.total } : {}),
-      ...(result.lookupMap !== undefined ? { lookupMap: result.lookupMap } : {})
+      encode: (payload) => generateToken(this.account.uuid, this.workspace.uuid, { cursor: JSON.stringify(payload) }),
+      decode: (cursor) => {
+        const decoded = decodeToken(cursor)
+        if (decoded.account !== this.account.uuid || decoded.workspace !== this.workspace.uuid) {
+          throw badPageRequest()
+        }
+        return JSON.parse(decoded.extra?.cursor ?? '') as PageCursorPayload
+      }
     }
   }
 

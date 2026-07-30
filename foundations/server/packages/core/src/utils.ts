@@ -42,6 +42,7 @@ import { PlatformError, unknownError } from '@hcengineering/platform'
 import { createHash, type Hash } from 'crypto'
 import fs from 'fs'
 import type { DbAdapter } from './adapter'
+import { findPage } from './pagination'
 import { BackupClientOps } from './storage'
 import type { OneSecondCounters, Pipeline } from './types'
 
@@ -312,17 +313,23 @@ export function wrapPipeline (
     },
     findAllPage: async (_class, query, options) => {
       const { cursor, limit, ...findOptions } = options
-      const all = await pipeline.findAll(ctx, _class, query, findOptions)
-      const offset = cursor === undefined ? 0 : Number.parseInt(cursor, 10)
-      const start = Number.isNaN(offset) ? 0 : offset
-      const docs = all
-        .slice(start, start + limit)
-        .map((doc) => pipeline.context.hierarchy.updateLookupMixin(_class, doc, options))
-      const nextOffset = start + docs.length
+      const page = await findPage(
+        _class,
+        query,
+        options,
+        async (pagination, sort, projection, pageLimit) =>
+          await pipeline.findAll(ctx, _class, query, {
+            ...findOptions,
+            sort,
+            projection,
+            limit: pageLimit,
+            pagination
+          }),
+        { hierarchy: pipeline.context.hierarchy }
+      )
       return {
-        docs,
-        nextCursor: nextOffset < all.length ? String(nextOffset) : undefined,
-        total: options.total === true ? all.length : undefined
+        ...page,
+        docs: page.docs.map((doc) => pipeline.context.hierarchy.updateLookupMixin(_class, doc, options))
       }
     },
     iterateAll: async function * (_class, query, options) {
@@ -395,16 +402,19 @@ export function wrapAdapterToClient (ctx: MeasureContext, storageAdapter: DbAdap
       options: FindPageOptions<T>
     ): Promise<FindPageResult<T>> {
       const { cursor, limit, ...findOptions } = options
-      const all = await storageAdapter.findAll(ctx, _class, query, findOptions)
-      const offset = cursor === undefined ? 0 : Number.parseInt(cursor, 10)
-      const start = Number.isNaN(offset) ? 0 : offset
-      const docs = all.slice(start, start + limit)
-      const nextOffset = start + docs.length
-      return {
-        docs,
-        nextCursor: nextOffset < all.length ? String(nextOffset) : undefined,
-        total: options.total === true ? all.length : undefined
-      }
+      return await findPage(
+        _class,
+        query,
+        options,
+        async (pagination, sort, projection, pageLimit) =>
+          await storageAdapter.findAll(ctx, _class, query, {
+            ...findOptions,
+            sort,
+            projection,
+            limit: pageLimit,
+            pagination
+          })
+      )
     }
 
     async domainRequest<T>(domain: OperationDomain, params: DomainParams): Promise<DomainResult<T>> {
