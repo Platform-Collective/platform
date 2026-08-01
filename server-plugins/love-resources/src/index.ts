@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import contact, { Employee, Person, PersonSpace } from '@hcengineering/contact'
+import contact, { Employee, formatName, Person, PersonSpace } from '@hcengineering/contact'
 import core, {
   Class,
   combineAttributes,
@@ -415,11 +415,13 @@ export async function OnUserMeetingInvite (txes: Tx[], control: TriggerControl):
 
         // Create notification with i18n message
         // Don't set headerObjectId/headerObjectClass to show sender's avatar instead
+        const inviterName =
+          senderInfo.person != null ? formatName(senderInfo.person.name, control.branding?.lastNameFirst) : ''
         const data: Partial<Data<CommonInboxNotification>> = {
           ...content,
           message: love.string.InvitingYou,
           props: {
-            name: ''
+            name: inviterName
           },
           header: love.string.MeetingRequest,
           headerIcon: love.icon.Invite
