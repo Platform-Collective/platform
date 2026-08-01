@@ -22,7 +22,7 @@
     NotificationTypeSetting
   } from '@hcengineering/notification'
   import { getResource } from '@hcengineering/platform'
-  import { getClient } from '@hcengineering/presentation'
+  import { getClient, isDisabled } from '@hcengineering/presentation'
   import {
     Breadcrumb,
     defineSeparators,
@@ -126,19 +126,21 @@
           <div class="antiNav-divider line" />
         {/if}
         {#each groups as gr}
-          <NavItem
-            icon={gr.icon}
-            label={gr.label}
-            selected={gr._id === group}
-            on:click={() => {
-              group = gr._id
-              currentPreferenceGroup = undefined
-              const loc = getCurrentResolvedLocation()
-              loc.path[4] = group
-              loc.path.length = 5
-              navigate(loc)
-            }}
-          />
+          {#if !isDisabled(gr._id)}
+            <NavItem
+              icon={gr.icon}
+              label={gr.label}
+              selected={gr._id === group}
+              on:click={() => {
+                group = gr._id
+                currentPreferenceGroup = undefined
+                const loc = getCurrentResolvedLocation()
+                loc.path[4] = group
+                loc.path.length = 5
+                navigate(loc)
+              }}
+            />
+          {/if}
         {/each}
         <div class="antiNav-space" />
       </Scroller>
