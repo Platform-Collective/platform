@@ -37,6 +37,7 @@ import notification, {
   PushSubscription
 } from '@hcengineering/notification'
 import activity, { ActivityMessage } from '@hcengineering/activity'
+import chunter, { ThreadMessage } from '@hcengineering/chunter'
 import serverView from '@hcengineering/server-view'
 import { getMetadata, getResource } from '@hcengineering/platform'
 import { workbenchId } from '@hcengineering/workbench'
@@ -69,27 +70,31 @@ async function createPushFromInbox (
 
   title = title.slice(0, PUSH_NOTIFICATION_TITLE_SIZE)
 
-  const linkProviders = control.modelDb.findAllSync(serverView.mixin.ServerLinkIdProvider, {})
-  const provider = linkProviders.find(({ _id }) => _id === n.objectClass)
+  const objectIdentity = await getObjectIdentity(n, control)
 
-  let id: string = n.objectId
+  const linkProviders = control.modelDb.findAllSync(serverView.mixin.ServerLinkIdProvider, {})
+  const provider = linkProviders.find(({ _id }) => _id === objectIdentity._class)
+
+  let id: string = objectIdentity._id
 
   if (provider !== undefined) {
     const encodeFn = await getResource(provider.encode)
     const cache: Map<Ref<Doc>, Doc> = control.contextCache.get('PushNotificationsHandler') ?? new Map()
-    const doc = cache.get(n.objectId) ?? (await control.findAll(control.ctx, n.objectClass, { _id: n.objectId }))[0]
+    const doc =
+      cache.get(objectIdentity._id) ??
+      (await control.findAll(control.ctx, objectIdentity._class, { _id: objectIdentity._id }))[0]
 
     if (doc === undefined) {
       return
     }
 
-    cache.set(n.objectId, doc)
+    cache.set(doc._id, doc)
     control.contextCache.set('PushNotificationsHandler', cache)
 
     id = await encodeFn(doc, control)
   }
 
-  const path = [workbenchId, control.workspace.url, notificationId, encodeObjectURI(id, n.objectClass)]
+  const path = [workbenchId, control.workspace.url, notificationId, encodeObjectURI(id, objectIdentity._class)]
 
   if (subscriptions.length > 0) {
     await createPushNotification(control, receiver, title, body, n._id, subscriptions, senderPerson, path)
@@ -111,6 +116,41 @@ async function createPushFromInbox (
     },
     soundAlert
   })
+}
+
+/**
+ * Resolves the doc a push notification's link should point to.
+ *
+ * For a reply inside a thread, `n.objectId`/`n.objectClass` point at the
+ * ThreadMessage itself, which isn't a directly navigable page - the link
+ * needs to point at the document the thread is attached to instead (the
+ * ThreadMessage's own `objectId`/`objectClass`), otherwise clicking the
+ * push notification fails to resolve to a real page.
+ */
+async function getObjectIdentity (n: InboxNotification, control: TriggerControl): Promise<Pick<Doc, '_id' | '_class'>> {
+  const { hierarchy } = control
+  if (!hierarchy.isDerived(n._class, notification.class.ActivityInboxNotification)) {
+    return { _id: n.objectId, _class: n.objectClass }
+  }
+
+  const activityNotification = n as ActivityInboxNotification
+
+  if (
+    hierarchy.isDerived(activityNotification.attachedToClass, chunter.class.ThreadMessage) &&
+    hierarchy.isDerived(activityNotification.objectClass, activity.class.ActivityMessage)
+  ) {
+    const attachedTo = (
+      await control.findAll<ThreadMessage>(control.ctx, activityNotification.attachedToClass, {
+        _id: activityNotification.attachedTo as Ref<ThreadMessage>
+      })
+    )[0]
+
+    if (attachedTo != null) {
+      return { _id: attachedTo.objectId, _class: attachedTo.objectClass }
+    }
+  }
+
+  return { _id: activityNotification.objectId, _class: activityNotification.objectClass }
 }
 
 function getMessageInfo (
