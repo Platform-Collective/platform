@@ -758,10 +758,12 @@ export function pushAvailable (): boolean {
   )
 }
 
-export async function subscribePush (): Promise<boolean> {
+export type PushSubscribeResult = 'success' | 'permission_denied' | 'network_error' | 'not_supported'
+
+export async function subscribePush (): Promise<PushSubscribeResult> {
   if (isDesktopClient()) {
     pushAllowed.set(false)
-    return false
+    return 'not_supported'
   }
   const client = getClient()
   const publicKey = getPushPublicKey()
@@ -778,6 +780,14 @@ export async function subscribePush (): Promise<boolean> {
       }
       const current = await registration.pushManager.getSubscription()
       if (current == null) {
+        // Some browsers (notably Edge) don't implicitly prompt for
+        // notification permission from pushManager.subscribe() - request it
+        // explicitly first, otherwise subscribe() can silently fail.
+        const permission = await Notification.requestPermission()
+        if (permission !== 'granted') {
+          pushAllowed.set(false)
+          return 'permission_denied'
+        }
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: publicKey
@@ -810,15 +820,17 @@ export async function subscribePush (): Promise<boolean> {
       }
       addWorkerListener()
       pushAllowed.set(true)
-      return true
+      return 'success'
     } catch (err) {
-      console.error('Service Worker registration failed:', err)
+      const error = err as Error
+      console.error('Service Worker registration failed:', error)
       pushAllowed.set(false)
-      return false
+      if (error?.name === 'NotAllowedError') return 'permission_denied'
+      return 'network_error'
     }
   }
   pushAllowed.set(false)
-  return false
+  return 'not_supported'
 }
 
 export function getPushPublicKey (): string | undefined {

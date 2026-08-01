@@ -128,14 +128,19 @@
   async function subscribe (): Promise<void> {
     if (subscribing) return
     subscribing = true
-    const subscribed = await subscribePush()
+    const subscribeResult = await subscribePush()
     subscribing = false
-    if (subscribed) {
+    if (subscribeResult === 'success') {
       await updateCurrentEndpoint()
     } else {
       showPopup(MessageBox, {
         label: notification.string.PushSubscribeError,
-        message: notification.string.PushSubscribeError,
+        message:
+          subscribeResult === 'permission_denied'
+            ? notification.string.PushSubscribeErrorPermissionDenied
+            : subscribeResult === 'not_supported'
+              ? notification.string.PushSubscribeErrorNotSupported
+              : notification.string.PushSubscribeErrorNetwork,
         canSubmit: false
       })
     }
@@ -152,10 +157,10 @@
       : publicKey === undefined
         ? notification.string.PushNotConfigured
         : !browserSupported
-          ? notification.string.PushNotSupported
-          : permissionDenied
-            ? notification.string.PushDenied
-            : undefined
+            ? notification.string.PushNotSupported
+            : permissionDenied
+              ? notification.string.PushDenied
+              : undefined
 
   $: buttonDisabled = desktopPlatform || alreadySubscribed || publicKey === undefined || !browserSupported || permissionDenied
 </script>
