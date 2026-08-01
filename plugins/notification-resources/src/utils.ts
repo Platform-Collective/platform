@@ -785,6 +785,7 @@ export async function subscribePush (): Promise<boolean> {
         await client.createDoc(notification.class.PushSubscription, core.space.Workspace, {
           user: getCurrentAccount().uuid,
           endpoint: subscription.endpoint,
+          name: navigator.userAgent,
           keys: {
             p256dh: arrayBufferToBase64(subscription.getKey('p256dh')),
             auth: arrayBufferToBase64(subscription.getKey('auth'))
@@ -799,6 +800,7 @@ export async function subscribePush (): Promise<boolean> {
           await client.createDoc(notification.class.PushSubscription, core.space.Workspace, {
             user: getCurrentAccount().uuid,
             endpoint: current.endpoint,
+            name: navigator.userAgent,
             keys: {
               p256dh: arrayBufferToBase64(current.getKey('p256dh')),
               auth: arrayBufferToBase64(current.getKey('auth'))
@@ -819,7 +821,7 @@ export async function subscribePush (): Promise<boolean> {
   return false
 }
 
-function getPushPublicKey (): string | undefined {
+export function getPushPublicKey (): string | undefined {
   const publicKey = getMetadata(notification.metadata.PushPublicKey)
   if (publicKey === undefined) return undefined
   return publicKey.trim() !== '' ? publicKey : undefined
@@ -911,4 +913,31 @@ export async function locationDataResolver (loc: Location): Promise<LocationData
   } catch (e) {
     return {}
   }
+}
+
+/**
+ * Renders a stored webpush subscription's User-Agent string as a short
+ * "<browser> on <OS>" label for the web push subscriptions settings list.
+ */
+export function parseUserAgent (userAgent: string): string {
+  const browsers = [
+    { name: 'Edge', pattern: /Edg\/[\d.]+/ },
+    { name: 'Opera', pattern: /OPR\/[\d.]+/ },
+    { name: 'Chrome', pattern: /CriOS\/[\d.]+|Chrome\/[\d.]+/ },
+    { name: 'Firefox', pattern: /FxiOS\/[\d.]+|Firefox\/[\d.]+/ },
+    { name: 'Safari', pattern: /Safari\/[\d.]+/ }
+  ]
+
+  const os = [
+    { name: 'Windows', pattern: /Windows/ },
+    { name: 'Mac', pattern: /Macintosh/ },
+    { name: 'Linux', pattern: /Linux/ },
+    { name: 'Android', pattern: /Android/ },
+    { name: 'iOS', pattern: /iPhone|iPad/ }
+  ]
+
+  const browser = browsers.find(({ pattern }) => pattern.test(userAgent))?.name ?? 'Unknown browser'
+  const system = os.find(({ pattern }) => pattern.test(userAgent))?.name ?? 'Unknown OS'
+
+  return `${browser} on ${system}`
 }

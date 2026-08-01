@@ -84,6 +84,7 @@ import {
   type NotificationTypeSetting,
   type PushSubscription,
   type PushSubscriptionKeys,
+  type PushSubscriptionSetting,
   type ReactionInboxNotification
 } from '@hcengineering/notification'
 import { type Asset, type IntlString, type Resource } from '@hcengineering/platform'
@@ -116,6 +117,13 @@ export class TPushSubscription extends TDoc implements PushSubscription {
   user!: AccountUuid
   endpoint!: string
   keys!: PushSubscriptionKeys
+  name?: string
+}
+
+@Model(notification.class.PushSubscriptionSetting, preference.class.Preference)
+export class TPushSubscriptionSetting extends TPreference implements PushSubscriptionSetting {
+  declare attachedTo: Ref<PushSubscription>
+  enabled!: boolean
 }
 
 @Model(notification.class.NotificationType, core.class.Doc, DOMAIN_MODEL)
@@ -367,6 +375,7 @@ export function createModel (builder: Builder): void {
     TNotificationType,
     TMentionInboxNotification,
     TPushSubscription,
+    TPushSubscriptionSetting,
     TNotificationProvider,
     TNotificationProviderSetting,
     TNotificationTypeSetting,
@@ -787,7 +796,8 @@ export function createModel (builder: Builder): void {
       depends: notification.providers.InboxNotificationProvider,
       defaultEnabled: true,
       canDisable: true,
-      order: 200
+      order: 200,
+      presenter: notification.component.WebpushesPreferencesPresenter
     },
     notification.providers.PushNotificationProvider
   )

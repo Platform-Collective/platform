@@ -57,6 +57,18 @@
     "CommonNotificationCollectionAdded":  "{senderName} добавил {collection}",
     "CommonNotificationCollectionRemoved": "{senderName} удалил {collection}",
     "NoAccessToObject": "У вас больше нет доступа к этому объекту",
-    "ViewIn": "Посмотреть в {app}"
+    "ViewIn": "Посмотреть в {app}",
+    "Value": "{value}",
+    "Subscribe": "Подписаться",
+    "UnknownDevice": "Неизвестное устройство",
+    "Current": "текущее",
+    "RemoveWebpush": "Удалить",
+    "WebpushRemoveConfirm": "Отключить push-уведомления для <b>{title}</b>?",
+    "PushSubscribeError": "Не удалось подписаться на push-уведомления. Попробуйте ещё раз.",
+    "PushOnDesktop": "Недоступно в десктоп-приложении",
+    "AlreadySubscribed": "Этот браузер уже подписан",
+    "PushNotConfigured": "Push-уведомления не настроены на сервере",
+    "PushNotSupported": "Не поддерживается этим браузером",
+    "PushDenied": "Уведомления заблокированы в настройках браузера"
   }
 }
