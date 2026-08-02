@@ -48,8 +48,15 @@ export function parseQueueConfig (config: string, serviceId: string, region: str
   }
 }
 
+// Global (non-region-scoped) topics. Most topics are produced and consumed
+// within a single region, so they are namespaced with the producer's region.
+// These few are produced by region-specific services but consumed by a single
+// global service (e.g. account-service raising the cross-workspace unread flag),
+// so they must resolve to the same name regardless of the producer's region.
+const globalTopics = new Set<string>([QueueTopic.WorkspaceMemberUnread])
+
 function getKafkaTopicId (topic: QueueTopic | string, config: QueueConfig): string {
-  if (config.region !== '') {
+  if (config.region !== '' && !globalTopics.has(topic)) {
     return `${config.region}.${topic}${config.postfix ?? ''}`
   }
   return `${topic}${config.postfix ?? ''}`
