@@ -57,6 +57,21 @@
     "Sound": "Zvuk",
     "SoundNotificationsDescription": "Přijímejte zvuková oznámení o událostech.",
     "NoAccessToObject": "Již nemáte přístup k tomuto objektu",
-    "ViewIn": "Zobrazit v {app}"
+    "ViewIn": "Zobrazit v {app}",
+    "Value": "{value}",
+    "Subscribe": "Odebírat",
+    "UnknownDevice": "Neznámé zařízení",
+    "Current": "aktuální",
+    "RemoveWebpush": "Odebrat",
+    "WebpushRemoveConfirm": "Odebrat push oznámení pro <b>{title}</b>?",
+    "PushSubscribeError": "Nepodařilo se přihlásit k odběru push oznámení. Zkuste to prosím znovu.",
+    "PushSubscribeErrorPermissionDenied": "Oprávnění k oznámením bylo zamítnuto. Povolte oznámení pro tento web v nastavení prohlížeče.",
+    "PushSubscribeErrorNetwork": "Nepodařilo se spojit se službou push. Zkontrolujte připojení a zkuste to znovu.",
+    "PushSubscribeErrorNotSupported": "Tento prohlížeč nepodporuje push oznámení.",
+    "PushOnDesktop": "Není k dispozici v desktopové aplikaci",
+    "AlreadySubscribed": "Tento prohlížeč je již přihlášen k odběru",
+    "PushNotConfigured": "Push oznámení nejsou na tomto serveru nakonfigurována",
+    "PushNotSupported": "Tento prohlížeč to nepodporuje",
+    "PushDenied": "Oznámení jsou blokována v nastavení prohlížeče"
   }
 }

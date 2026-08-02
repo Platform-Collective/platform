@@ -57,6 +57,21 @@
     "Sound": "Ton",
     "SoundNotificationsDescription": "Erhalten Sie Tonbenachrichtigungen für Ereignisse.",
     "NoAccessToObject": "Sie haben keinen Zugriff mehr auf dieses Objekt",
-    "ViewIn": "Ansehen in {app}"
+    "ViewIn": "Ansehen in {app}",
+    "Value": "{value}",
+    "Subscribe": "Abonnieren",
+    "UnknownDevice": "Unbekanntes Gerät",
+    "Current": "aktuell",
+    "RemoveWebpush": "Entfernen",
+    "WebpushRemoveConfirm": "Push-Benachrichtigungen für <b>{title}</b> entfernen?",
+    "PushSubscribeError": "Push-Benachrichtigungen konnten nicht abonniert werden. Bitte versuchen Sie es erneut.",
+    "PushSubscribeErrorPermissionDenied": "Die Benachrichtigungsberechtigung wurde verweigert. Erlauben Sie Benachrichtigungen für diese Website in den Browsereinstellungen.",
+    "PushSubscribeErrorNetwork": "Der Push-Dienst konnte nicht erreicht werden. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    "PushSubscribeErrorNotSupported": "Push-Benachrichtigungen werden von diesem Browser nicht unterstützt.",
+    "PushOnDesktop": "In der Desktop-App nicht verfügbar",
+    "AlreadySubscribed": "Dieser Browser ist bereits abonniert",
+    "PushNotConfigured": "Push-Benachrichtigungen sind auf diesem Server nicht konfiguriert",
+    "PushNotSupported": "Von diesem Browser nicht unterstützt",
+    "PushDenied": "Benachrichtigungen sind in den Browsereinstellungen blockiert"
   }
 }

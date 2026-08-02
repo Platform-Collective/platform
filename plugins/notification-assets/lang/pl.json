@@ -57,6 +57,21 @@
     "Sound": "Dźwięk",
     "SoundNotificationsDescription": "Otrzymuj powiadomienia dźwiękowe dla zdarzeń.",
     "NoAccessToObject": "Nie masz już dostępu do tego obiektu",
-    "ViewIn": "Wyświetl w aplikacji {app}"
+    "ViewIn": "Wyświetl w aplikacji {app}",
+    "Value": "{value}",
+    "Subscribe": "Subskrybuj",
+    "UnknownDevice": "Nieznane urządzenie",
+    "Current": "bieżące",
+    "RemoveWebpush": "Usuń",
+    "WebpushRemoveConfirm": "Usunąć powiadomienia push dla <b>{title}</b>?",
+    "PushSubscribeError": "Nie udało się zasubskrybować powiadomień push. Spróbuj ponownie.",
+    "PushSubscribeErrorPermissionDenied": "Odmówiono uprawnień do powiadomień. Zezwól na powiadomienia dla tej witryny w ustawieniach przeglądarki.",
+    "PushSubscribeErrorNetwork": "Nie można połączyć się z usługą push. Sprawdź połączenie i spróbuj ponownie.",
+    "PushSubscribeErrorNotSupported": "Ta przeglądarka nie obsługuje powiadomień push.",
+    "PushOnDesktop": "Niedostępne w aplikacji desktopowej",
+    "AlreadySubscribed": "Ta przeglądarka jest już zasubskrybowana",
+    "PushNotConfigured": "Powiadomienia push nie są skonfigurowane na tym serwerze",
+    "PushNotSupported": "Nieobsługiwane przez tę przeglądarkę",
+    "PushDenied": "Powiadomienia są zablokowane w ustawieniach przeglądarki"
   }
 }

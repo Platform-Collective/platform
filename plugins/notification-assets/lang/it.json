@@ -57,6 +57,21 @@
     "Sound": "Suono",
     "SoundNotificationsDescription": "Ricevi notifiche sonore per gli eventi.",
     "NoAccessToObject": "Non hai più accesso a questo oggetto",
-    "ViewIn": "Visualizza in {app}"
+    "ViewIn": "Visualizza in {app}",
+    "Value": "{value}",
+    "Subscribe": "Iscriviti",
+    "UnknownDevice": "Dispositivo sconosciuto",
+    "Current": "attuale",
+    "RemoveWebpush": "Rimuovi",
+    "WebpushRemoveConfirm": "Rimuovere le notifiche push per <b>{title}</b>?",
+    "PushSubscribeError": "Impossibile iscriversi alle notifiche push. Riprova.",
+    "PushSubscribeErrorPermissionDenied": "Autorizzazione alle notifiche negata. Consenti le notifiche per questo sito nelle impostazioni del browser.",
+    "PushSubscribeErrorNetwork": "Impossibile raggiungere il servizio push. Controlla la connessione e riprova.",
+    "PushSubscribeErrorNotSupported": "Le notifiche push non sono supportate da questo browser.",
+    "PushOnDesktop": "Non disponibile nell'app desktop",
+    "AlreadySubscribed": "Questo browser è già iscritto",
+    "PushNotConfigured": "Le notifiche push non sono configurate su questo server",
+    "PushNotSupported": "Non supportato da questo browser",
+    "PushDenied": "Le notifiche sono bloccate nelle impostazioni del browser"
   }
 }

@@ -56,6 +56,21 @@
     "CommonNotificationCollectionAdded":  "{senderName} adicionou {collection}",
     "CommonNotificationCollectionRemoved": "{senderName} removeu {collection}",
     "NoAccessToObject": "Você não tem mais acesso a este objeto",
-    "ViewIn": "Ver em {app}"
+    "ViewIn": "Ver em {app}",
+    "Value": "{value}",
+    "Subscribe": "Inscrever-se",
+    "UnknownDevice": "Dispositivo desconhecido",
+    "Current": "atual",
+    "RemoveWebpush": "Remover",
+    "WebpushRemoveConfirm": "Remover as notificações push para <b>{title}</b>?",
+    "PushSubscribeError": "Não foi possível se inscrever nas notificações push. Tente novamente.",
+    "PushSubscribeErrorPermissionDenied": "A permissão de notificações foi negada. Permita as notificações para este site nas configurações do navegador.",
+    "PushSubscribeErrorNetwork": "Não foi possível acessar o serviço de push. Verifique sua conexão e tente novamente.",
+    "PushSubscribeErrorNotSupported": "Este navegador não oferece suporte a notificações push.",
+    "PushOnDesktop": "Não disponível no aplicativo para desktop",
+    "AlreadySubscribed": "Este navegador já está inscrito",
+    "PushNotConfigured": "As notificações push não estão configuradas neste servidor",
+    "PushNotSupported": "Não compatível com este navegador",
+    "PushDenied": "As notificações estão bloqueadas nas configurações do navegador"
   }
 }

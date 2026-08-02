@@ -57,6 +57,21 @@
     "Sound": "サウンド",
     "SoundNotificationsDescription": "イベントのサウンド通知を受け取ります。",
     "NoAccessToObject": "このオブジェクトへのアクセス権がありません",
-    "ViewIn": "{app} で表示"
+    "ViewIn": "{app} で表示",
+    "Value": "{value}",
+    "Subscribe": "登録する",
+    "UnknownDevice": "不明なデバイス",
+    "Current": "現在",
+    "RemoveWebpush": "削除",
+    "WebpushRemoveConfirm": "<b>{title}</b> のプッシュ通知を削除しますか？",
+    "PushSubscribeError": "プッシュ通知に登録できませんでした。もう一度お試しください。",
+    "PushSubscribeErrorPermissionDenied": "通知の許可が拒否されました。ブラウザの設定でこのサイトの通知を許可してください。",
+    "PushSubscribeErrorNetwork": "プッシュサービスに接続できませんでした。接続を確認してもう一度お試しください。",
+    "PushSubscribeErrorNotSupported": "このブラウザはプッシュ通知に対応していません。",
+    "PushOnDesktop": "デスクトップアプリでは利用できません",
+    "AlreadySubscribed": "このブラウザはすでに登録されています",
+    "PushNotConfigured": "このサーバーではプッシュ通知が設定されていません",
+    "PushNotSupported": "このブラウザでは対応していません",
+    "PushDenied": "ブラウザの設定で通知がブロックされています"
   }
 }
