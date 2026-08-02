@@ -1199,6 +1199,11 @@
     position: absolute;
     top: -0.125rem;
     right: -0.125rem;
+    display: flex;
+    border-radius: 50%;
+    // Ring in the rail background so the dot stays visible on any workspace
+    // logo colour (e.g. a red dot on a red logo would otherwise blend in).
+    box-shadow: 0 0 0 0.125rem var(--theme-navpanel-color);
     pointer-events: none;
   }
   .workbench-container {
