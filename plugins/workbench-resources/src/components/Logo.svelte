@@ -15,6 +15,7 @@
 <script lang="ts">
   import { createQuery, getFileSrcSet, getFileUrl } from '@hcengineering/presentation'
   import setting, { WorkspaceSetting } from '@hcengineering/setting'
+  import { getPlatformColorForText, themeStore } from '@hcengineering/ui'
 
   export let mini: boolean = false
   export let workspace: string
@@ -31,7 +32,9 @@
 {#if workspaceSetting?.icon != null && url != null}
   <img class="logo-medium" src={url} {srcset} alt={''} />
 {:else}
-  <div class="antiLogo red" class:mini>{workspace?.toUpperCase()?.[0] ?? ''}</div>
+  <div class="antiLogo" class:mini style:background-color={getPlatformColorForText(workspace ?? '', $themeStore.dark)}>
+    {workspace?.toUpperCase()?.[0] ?? ''}
+  </div>
 {/if}
 
 <style lang="scss">
@@ -56,9 +59,6 @@
     &.mini {
       width: 1.75rem;
       height: 1.75rem;
-    }
-    &.red {
-      background-color: rgb(246, 105, 77);
     }
   }
   .logo-medium {
