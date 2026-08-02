@@ -67,7 +67,8 @@ import {
   addSocialIdBase,
   doReleaseSocialId,
   getLastPasswordChangeEvent,
-  isPasswordChangedSince
+  isPasswordChangedSince,
+  setWorkspaceMemberUnread
 } from '../utils'
 // eslint-disable-next-line import/no-named-default
 import platform, { getMetadata, PlatformError, Severity, Status } from '@hcengineering/platform'
@@ -2431,6 +2432,107 @@ describe('account utils', () => {
 
         expect(mockDb.socialId.update).not.toHaveBeenCalled()
         expect(mockDb.accountEvent.insertOne).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('setWorkspaceMemberUnread', () => {
+      const mockCtx = {
+        error: jest.fn(),
+        info: jest.fn()
+      } as unknown as MeasureContext
+      const mockBranding = null
+      const workspace = 'ws-uuid' as WorkspaceUuid
+      const caller = 'caller-uuid' as AccountUuid
+      const other = 'other-uuid' as AccountUuid
+      const forbidden = new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+
+      const mockDb = {
+        setWorkspaceMemberUnread: jest.fn() as jest.MockedFunction<AccountDB['setWorkspaceMemberUnread']>
+      } as unknown as AccountDB
+
+      beforeEach(() => {
+        jest.clearAllMocks()
+      })
+
+      test('service token may raise another members flag to true', async () => {
+        ;(decodeTokenVerbose as jest.Mock).mockReturnValue({
+          account: systemAccountUuid,
+          workspace,
+          extra: { service: 'notification' }
+        })
+
+        await setWorkspaceMemberUnread(mockCtx, mockDb, mockBranding, 'svc-token', {
+          targetAccount: other,
+          hasUnread: true
+        })
+
+        expect(mockDb.setWorkspaceMemberUnread).toHaveBeenCalledWith(other, workspace, true)
+      })
+
+      test('non-service token cannot raise another members flag to true', async () => {
+        ;(decodeTokenVerbose as jest.Mock).mockReturnValue({ account: caller, workspace, extra: {} })
+
+        await expect(
+          setWorkspaceMemberUnread(mockCtx, mockDb, mockBranding, 'user-token', {
+            targetAccount: other,
+            hasUnread: true
+          })
+        ).rejects.toThrow(forbidden)
+
+        expect(mockDb.setWorkspaceMemberUnread).not.toHaveBeenCalled()
+      })
+
+      test('non-service token cannot raise even its own flag to true (only the trigger raises flags)', async () => {
+        ;(decodeTokenVerbose as jest.Mock).mockReturnValue({ account: caller, workspace, extra: {} })
+
+        await expect(
+          setWorkspaceMemberUnread(mockCtx, mockDb, mockBranding, 'user-token', {
+            targetAccount: caller,
+            hasUnread: true
+          })
+        ).rejects.toThrow(forbidden)
+
+        expect(mockDb.setWorkspaceMemberUnread).not.toHaveBeenCalled()
+      })
+
+      test('member may self-clear their own flag without a service token', async () => {
+        ;(decodeTokenVerbose as jest.Mock).mockReturnValue({ account: caller, workspace, extra: {} })
+
+        await setWorkspaceMemberUnread(mockCtx, mockDb, mockBranding, 'user-token', {
+          targetAccount: caller,
+          hasUnread: false
+        })
+
+        expect(mockDb.setWorkspaceMemberUnread).toHaveBeenCalledWith(caller, workspace, false)
+      })
+
+      test('non-service token cannot clear another members flag', async () => {
+        ;(decodeTokenVerbose as jest.Mock).mockReturnValue({ account: caller, workspace, extra: {} })
+
+        await expect(
+          setWorkspaceMemberUnread(mockCtx, mockDb, mockBranding, 'user-token', {
+            targetAccount: other,
+            hasUnread: false
+          })
+        ).rejects.toThrow(forbidden)
+
+        expect(mockDb.setWorkspaceMemberUnread).not.toHaveBeenCalled()
+      })
+
+      test('writes to the token workspace (caller cannot target a different workspace)', async () => {
+        ;(decodeTokenVerbose as jest.Mock).mockReturnValue({
+          account: systemAccountUuid,
+          workspace,
+          extra: { service: 'notification' }
+        })
+
+        await setWorkspaceMemberUnread(mockCtx, mockDb, mockBranding, 'svc-token', {
+          targetAccount: other,
+          hasUnread: true
+        })
+
+        // workspace comes from the decoded token, never from caller-supplied params
+        expect(mockDb.setWorkspaceMemberUnread).toHaveBeenCalledWith(other, workspace, true)
       })
     })
   })

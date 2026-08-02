@@ -873,11 +873,17 @@ describe('MongoAccountDB', () => {
     })
 
     describe('getAccountWorkspaces', () => {
-      it('should return workspaces for account', async () => {
-        const members = [{ workspaceUuid: 'ws1' as WorkspaceUuid }, { workspaceUuid: 'ws2' as WorkspaceUuid }]
+      it('should return workspaces for account with per-workspace hasUnread', async () => {
+        // ws1 has an unread notification, ws2 explicitly does not, ws3 has no flag stored yet
+        const members = [
+          { workspaceUuid: 'ws1' as WorkspaceUuid, hasUnread: true },
+          { workspaceUuid: 'ws2' as WorkspaceUuid, hasUnread: false },
+          { workspaceUuid: 'ws3' as WorkspaceUuid }
+        ]
         const workspaces = [
           { uuid: 'ws1', name: 'Workspace 1' },
-          { uuid: 'ws2', name: 'Workspace 2' }
+          { uuid: 'ws2', name: 'Workspace 2' },
+          { uuid: 'ws3', name: 'Workspace 3' }
         ]
 
         ;(accountDb.workspaceMembers.find as jest.Mock).mockResolvedValue(members)
@@ -885,10 +891,26 @@ describe('MongoAccountDB', () => {
 
         const result = await accountDb.getAccountWorkspaces(accountId)
 
-        expect(result).toEqual(workspaces)
+        expect(result).toEqual([
+          { uuid: 'ws1', name: 'Workspace 1', hasUnread: true },
+          { uuid: 'ws2', name: 'Workspace 2', hasUnread: false },
+          // a member with no stored flag defaults to false, never undefined
+          { uuid: 'ws3', name: 'Workspace 3', hasUnread: false }
+        ])
         expect(accountDb.workspace.find).toHaveBeenCalledWith({
-          uuid: { $in: ['ws1', 'ws2'] }
+          uuid: { $in: ['ws1', 'ws2', 'ws3'] }
         })
+      })
+    })
+
+    describe('setWorkspaceMemberUnread', () => {
+      it('should update the has-unread flag for the given member', async () => {
+        await accountDb.setWorkspaceMemberUnread(accountId, workspaceId, true)
+
+        expect(accountDb.workspaceMembers.update).toHaveBeenCalledWith(
+          { workspaceUuid: workspaceId, accountUuid: accountId },
+          { hasUnread: true }
+        )
       })
     })
 
