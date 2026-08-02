@@ -861,7 +861,11 @@ export class PostgresAccountDB implements AccountDB {
     )
   }
 
-  async setWorkspaceMemberUnread (accountUuid: AccountUuid, workspaceUuid: WorkspaceUuid, hasUnread: boolean): Promise<void> {
+  async setWorkspaceMemberUnread (
+    accountUuid: AccountUuid,
+    workspaceUuid: WorkspaceUuid,
+    hasUnread: boolean
+  ): Promise<void> {
     await this.withRetry(
       async (rTx) =>
         await rTx`UPDATE ${this.client(this.getWsMembersTableName())} SET has_unread = ${hasUnread} WHERE workspace_uuid = ${workspaceUuid} AND account_uuid = ${accountUuid}`

@@ -809,7 +809,11 @@ export class MongoAccountDB implements AccountDB {
     )
   }
 
-  async setWorkspaceMemberUnread (accountId: AccountUuid, workspaceId: WorkspaceUuid, hasUnread: boolean): Promise<void> {
+  async setWorkspaceMemberUnread (
+    accountId: AccountUuid,
+    workspaceId: WorkspaceUuid,
+    hasUnread: boolean
+  ): Promise<void> {
     await this.workspaceMembers.update(
       {
         workspaceUuid: workspaceId,

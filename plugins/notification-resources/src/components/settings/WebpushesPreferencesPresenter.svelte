@@ -162,7 +162,8 @@
               ? notification.string.PushDenied
               : undefined
 
-  $: buttonDisabled = desktopPlatform || alreadySubscribed || publicKey === undefined || !browserSupported || permissionDenied
+  $: buttonDisabled =
+    desktopPlatform || alreadySubscribed || publicKey === undefined || !browserSupported || permissionDenied
 </script>
 
 <div class="flex mb-4">
