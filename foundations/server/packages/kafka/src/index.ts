@@ -53,10 +53,14 @@ export function parseQueueConfig (config: string, serviceId: string, region: str
 // These few are produced by region-specific services but consumed by a single
 // global service (e.g. account-service raising the cross-workspace unread flag),
 // so they must resolve to the same name regardless of the producer's region.
-const globalTopics = new Set<string>([QueueTopic.WorkspaceMemberUnread])
+// Referenced by value (not a module-level Set of QueueTopic) so this file has no
+// top-level dependency on server-core's enum being initialized first.
+function isGlobalTopic (topic: QueueTopic | string): boolean {
+  return topic === QueueTopic.WorkspaceMemberUnread
+}
 
 function getKafkaTopicId (topic: QueueTopic | string, config: QueueConfig): string {
-  if (config.region !== '' && !globalTopics.has(topic)) {
+  if (config.region !== '' && !isGlobalTopic(topic)) {
     return `${config.region}.${topic}${config.postfix ?? ''}`
   }
   return `${topic}${config.postfix ?? ''}`

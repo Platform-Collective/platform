@@ -24,7 +24,7 @@ import {
 import { createWorkspaceMemberUnreadHandler } from '../unread'
 
 describe('workspace-member unread consumer', () => {
-  const ctx = {} as unknown as MeasureContext
+  const ctx = { info: jest.fn() } as unknown as MeasureContext
   const control = {} as unknown as ConsumerControl
   const workspace = 'ws-1' as WorkspaceUuid
 

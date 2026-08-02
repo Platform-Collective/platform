@@ -48,7 +48,7 @@ describe('OnInboxNotificationCreate', () => {
     control = {
       workspace: { uuid: workspace },
       queue: { getProducer },
-      ctx: { error: jest.fn() }
+      ctx: { error: jest.fn(), info: jest.fn(), warn: jest.fn() }
     } as unknown as TriggerControl
   })
 
@@ -82,7 +82,10 @@ describe('OnInboxNotificationCreate', () => {
 
   it('does nothing when no queue is configured', async () => {
     const a = 'acc-a' as AccountUuid
-    control = { workspace: { uuid: workspace }, ctx: { error: jest.fn() } } as unknown as TriggerControl
+    control = {
+      workspace: { uuid: workspace },
+      ctx: { error: jest.fn(), info: jest.fn(), warn: jest.fn() }
+    } as unknown as TriggerControl
 
     await expect(OnInboxNotificationCreate([makeTx(a)], control)).resolves.toEqual([])
   })
