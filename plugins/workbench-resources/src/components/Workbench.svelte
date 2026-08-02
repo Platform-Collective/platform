@@ -28,7 +28,11 @@
   } from '@hcengineering/core'
   import login, { loginId } from '@hcengineering/login'
   import notification, { DocNotifyContext, InboxNotification, notificationId } from '@hcengineering/notification'
-  import { BrowserNotificatator, InboxNotificationsClientImpl } from '@hcengineering/notification-resources'
+  import {
+    BrowserNotificatator,
+    InboxNotificationsClientImpl,
+    NotifyMarker
+  } from '@hcengineering/notification-resources'
   import inbox, { inboxId } from '@hcengineering/inbox'
   import { broadcastEvent, getMetadata, getResource, IntlString, translate } from '@hcengineering/platform'
   import {
@@ -105,7 +109,15 @@
   import { getContext, onDestroy, onMount, tick } from 'svelte'
   import { subscribeMobile } from '../mobile'
   import workbench from '../plugin'
-  import { buildNavModel, isAllowedToRole, logOut, reportWorkspaceRead, workspacesStore } from '../utils'
+  import {
+    buildNavModel,
+    hasCrossWorkspaceUnread,
+    isAllowedToRole,
+    logOut,
+    refreshWorkspaces,
+    reportWorkspaceRead,
+    workspacesStore
+  } from '../utils'
   import AccountPopup from './AccountPopup.svelte'
   import AppItem from './AppItem.svelte'
   import AppSwitcher from './AppSwitcher.svelte'
@@ -266,6 +278,26 @@
     })
     syncSidebarState()
     syncWorkbenchTab()
+
+    // Keep cross-workspace unread flags fresh while the app is open: the flag is
+    // raised server-side in workspaces the client isn't connected to, so poll and
+    // refresh on focus rather than trusting the initial snapshot.
+    const refreshInterval = setInterval(() => {
+      void refreshWorkspaces()
+    }, 45000)
+    const onVisible = (): void => {
+      if (document.visibilityState === 'visible') {
+        void refreshWorkspaces()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+
+    return () => {
+      clearInterval(refreshInterval)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
   })
 
   const workspaceId = $location.path[1]
@@ -875,7 +907,14 @@
             showPopup(SelectWorkspaceMenu, {}, popupSpacePosition)
           }}
         >
-          <Logo mini={appsMini} workspace={windowWorkspaceName ?? $resolvedLocationStore.path[1]} />
+          <div class="logo-badge-wrap">
+            <Logo mini={appsMini} workspace={windowWorkspaceName ?? $resolvedLocationStore.path[1]} />
+            {#if $hasCrossWorkspaceUnread}
+              <div class="cross-ws-unread-marker">
+                <NotifyMarker kind={'simple'} size={'x-small'} />
+              </div>
+            {/if}
+          </div>
         </div>
         <div class="topmenu-container clear-mins flex-no-shrink" class:mini={appsMini}>
           <AppItem
@@ -1143,6 +1182,16 @@
 {/if}
 
 <style lang="scss">
+  .logo-badge-wrap {
+    position: relative;
+    display: flex;
+  }
+  .cross-ws-unread-marker {
+    position: absolute;
+    top: -0.125rem;
+    right: -0.125rem;
+    pointer-events: none;
+  }
   .workbench-container {
     position: relative;
     display: flex;

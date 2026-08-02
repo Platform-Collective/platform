@@ -29,6 +29,7 @@ import workbench, { workbenchId } from '@hcengineering/workbench'
 import desktopPreferences, { defaultNotificationPreference } from '@hcengineering/desktop-preferences'
 import { activePreferences } from '@hcengineering/desktop-preferences-resources'
 import { getDisplayInboxData, InboxNotificationsClientImpl } from '@hcengineering/notification-resources'
+import { hasCrossWorkspaceUnread } from '@hcengineering/workbench-resources'
 import { inboxId } from '@hcengineering/inbox'
 import communication from '@hcengineering/communication'
 import { ipcMainExposed } from './typesUtils'
@@ -138,6 +139,20 @@ export function configureNotifications (): void {
   const notificationHistory = new Map<string, number>()
   let newUnreadNotifications = 0
 
+  // Cross-workspace unread contributes one extra to the badge so the app icon
+  // lights up when another workspace has unread even if the current one is fully
+  // read. Mirrors how in-workspace and communication unread are summed below.
+  let hasOtherWorkspaceUnread = false
+  const computeBadge = (): number =>
+    prevUnViewdNotificationsCount + newUnreadNotifications + (hasOtherWorkspaceUnread ? 1 : 0)
+  hasCrossWorkspaceUnread.subscribe((value) => {
+    if (value === hasOtherWorkspaceUnread) return
+    hasOtherWorkspaceUnread = value
+    if (preferences.showUnreadCounter) {
+      ipcMainExposed().setBadge(computeBadge())
+    }
+  })
+
   addEventListener(workbench.event.NotifyConnection, async () => {
     client = getClient()
     const electronAPI = ipcMainExposed()
@@ -153,7 +168,7 @@ export function configureNotifications (): void {
         newUnreadNotifications = res.getTotal()
 
         if (preferences.showUnreadCounter) {
-          electronAPI.setBadge(prevUnViewdNotificationsCount + newUnreadNotifications)
+          electronAPI.setBadge(computeBadge())
         }
 
         if (preferences.bounceAppIcon) {
@@ -210,13 +225,13 @@ export function configureNotifications (): void {
       // We need to get the most recent notifications
 
       if (prevUnViewdNotificationsCount !== unViewedNotifications.length) {
+        prevUnViewdNotificationsCount = unViewedNotifications.length
         if (preferences.showUnreadCounter) {
-          electronAPI.setBadge(unViewedNotifications.length + newUnreadNotifications)
+          electronAPI.setBadge(computeBadge())
         }
         if (preferences.bounceAppIcon) {
           electronAPI.dockBounce()
         }
-        prevUnViewdNotificationsCount = unViewedNotifications.length
       }
 
       const notification = getLasUnViewedNotification(unViewedNotifications, notificationHistory)
@@ -255,7 +270,7 @@ export function configureNotifications (): void {
         electronAPI.setBadge(0)
       }
       if (!preferences.showUnreadCounter && newPreferences.showUnreadCounter) {
-        electronAPI.setBadge(prevUnViewdNotificationsCount + newUnreadNotifications)
+        electronAPI.setBadge(computeBadge())
       }
 
       if (newPreferences.showNotifications && !preferences.showNotifications) {
