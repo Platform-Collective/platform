@@ -1080,6 +1080,11 @@ export async function updateWorkspaceRole (
  * a token scoped to that workspace (`generateToken(systemAccountUuid, workspace, { service: 'notification' })`).
  * Clearing your own flag (hasUnread=false, targetAccount === caller) is self-service and
  * needs no special privileges; clearing someone else's flag still requires the service token.
+ *
+ * Note: the raise path (hasUnread=true) now goes through the WorkspaceMemberUnread
+ * queue consumed by account-service (bulk `setWorkspaceMembersUnread`), so in normal
+ * operation this RPC is only reached for the self-clear. The service-token branch is
+ * kept as a guarded fallback so the endpoint stays safe if called to raise a flag.
  */
 export async function setWorkspaceMemberUnread (
   ctx: MeasureContext,

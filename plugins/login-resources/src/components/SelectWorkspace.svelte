@@ -184,7 +184,7 @@
               <span class="label overflow-label flex-center">
                 {wsName}
                 {#if workspace.hasUnread === true}
-                  <div class="unread-marker" title="Unread notifications" />
+                  <div class="unread-marker" />
                 {/if}
                 {#if isArchivingMode(workspace.mode)}
                   - <Label label={presentation.string.Archived} />

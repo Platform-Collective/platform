@@ -283,6 +283,9 @@
     // raised server-side in workspaces the client isn't connected to, so poll and
     // refresh on focus rather than trusting the initial snapshot.
     const refreshInterval = setInterval(() => {
+      // Skip while hidden — the visibilitychange/focus handler below refreshes on
+      // return, so a backgrounded tab doesn't keep hitting GetWorkspaces.
+      if (document.hidden) return
       void refreshWorkspaces()
     }, 45000)
     const onVisible = (): void => {
