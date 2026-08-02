@@ -920,7 +920,7 @@
             <Logo mini={appsMini} workspace={windowWorkspaceName ?? $resolvedLocationStore.path[1]} />
             {#if $hasCrossWorkspaceUnread}
               <div class="cross-ws-unread-marker">
-                <NotifyMarker kind={'simple'} size={'x-small'} />
+                <NotifyMarker kind={'simple'} size={'xx-small'} />
               </div>
             {/if}
           </div>

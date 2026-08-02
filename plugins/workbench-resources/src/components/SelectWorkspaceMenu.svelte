@@ -226,7 +226,7 @@
                     {wsName}
                     {#if ws.hasUnread === true && $resolvedLocationStore.path[1] !== ws.url}
                       <div class="ml-1">
-                        <NotifyMarker kind={'simple'} size={'x-small'} />
+                        <NotifyMarker kind={'simple'} size={'xx-small'} />
                       </div>
                     {/if}
                   </span>
