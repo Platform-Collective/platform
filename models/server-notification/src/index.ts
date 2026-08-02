@@ -99,6 +99,19 @@ export function createModel (builder: Builder): void {
     }
   })
 
+  // Reports "this account has an unread notification in this workspace" to
+  // account-service, so it can be shown as a cross-workspace indicator in the
+  // workspace switcher. Independent of push-notification settings, unlike
+  // PushNotificationsHandler above.
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverNotification.trigger.OnInboxNotificationCreate,
+    isAsync: true,
+    txMatch: {
+      _class: core.class.TxCreateDoc,
+      objectClass: notification.class.InboxNotification
+    }
+  })
+
   builder.mixin(
     notification.ids.MentionNotificationType,
     notification.class.NotificationType,

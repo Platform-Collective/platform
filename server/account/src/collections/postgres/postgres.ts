@@ -861,6 +861,13 @@ export class PostgresAccountDB implements AccountDB {
     )
   }
 
+  async setWorkspaceMemberUnread (accountUuid: AccountUuid, workspaceUuid: WorkspaceUuid, hasUnread: boolean): Promise<void> {
+    await this.withRetry(
+      async (rTx) =>
+        await rTx`UPDATE ${this.client(this.getWsMembersTableName())} SET has_unread = ${hasUnread} WHERE workspace_uuid = ${workspaceUuid} AND account_uuid = ${accountUuid}`
+    )
+  }
+
   async getWorkspaceRole (accountUuid: AccountUuid, workspaceUuid: WorkspaceUuid): Promise<AccountRole | null> {
     return await this.withRetry(async (rTx) => {
       const res =
@@ -903,6 +910,7 @@ export class PostgresAccountDB implements AccountDB {
           w.created_on,
           w.billing_account,
           w.password_aging_rule,
+          m.has_unread,
           json_build_object(
             'mode', s.mode,
             'processing_progress', s.processing_progress,

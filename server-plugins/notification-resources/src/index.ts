@@ -64,7 +64,7 @@ import { type TriggerControl } from '@hcengineering/server-core'
 import { NOTIFICATION_BODY_SIZE, ReceiverInfo, SenderInfo } from '@hcengineering/server-notification'
 import { markupToText, stripTags } from '@hcengineering/text-core'
 
-import { PushNotificationsHandler } from './push'
+import { OnInboxNotificationCreate, PushNotificationsHandler } from './push'
 import {
   AvailableProvidersCache,
   AvailableProvidersCacheKey,
@@ -1667,7 +1667,8 @@ export default async () => ({
     OnAttributeUpdate,
     OnDocRemove,
     OnEmployeeDeactivate,
-    PushNotificationsHandler
+    PushNotificationsHandler,
+    OnInboxNotificationCreate
   },
   function: {
     IsUserEmployeeInFieldValueTypeMatch: isUserEmployeeInFieldValueTypeMatch,

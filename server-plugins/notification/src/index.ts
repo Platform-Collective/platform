@@ -122,7 +122,8 @@ export default plugin(serverNotificationId, {
     OnReactionChanged: '' as Resource<TriggerFunc>,
     OnDocRemove: '' as Resource<TriggerFunc>,
     OnEmployeeDeactivate: '' as Resource<TriggerFunc>,
-    PushNotificationsHandler: '' as Resource<TriggerFunc>
+    PushNotificationsHandler: '' as Resource<TriggerFunc>,
+    OnInboxNotificationCreate: '' as Resource<TriggerFunc>
   },
   function: {
     IsUserEmployeeInFieldValueTypeMatch: '' as TypeMatchFunc,

@@ -84,7 +84,8 @@ export function getMigrations (ns: string, flavor: DBFlavor): [string, string][]
     getV24Migration(ns, flavor),
     getV25Migration(ns, flavor),
     getV26Migration(ns, flavor),
-    getV27Migration(ns, flavor)
+    getV27Migration(ns, flavor),
+    getV28Migration(ns, flavor)
   ]
 }
 
@@ -833,4 +834,19 @@ function getV27Migration (ns: string, flavor: DBFlavor): [string, string] {
     `
 
   return ['account_db_v27_add_office_social_id_type', addValueSql]
+}
+
+function getV28Migration (ns: string, flavor: DBFlavor): [string, string] {
+  return [
+    'account_db_v28_add_workspace_member_unread',
+    `
+    -- Per-(account, workspace) flag used to render an "unread notifications
+    -- in this workspace" marker in the workspace switcher. Set by the
+    -- workspace's own notification trigger when it creates a notification
+    -- for a member of this workspace, cleared by the client once that
+    -- member has no more unread notifications there.
+    ALTER TABLE ${ns}.workspace_members
+    ADD COLUMN IF NOT EXISTS has_unread BOOLEAN NOT NULL DEFAULT FALSE;
+    `
+  ]
 }

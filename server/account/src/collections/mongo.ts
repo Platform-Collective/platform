@@ -379,6 +379,7 @@ interface WorkspaceMember {
   workspaceUuid: WorkspaceUuid
   accountUuid: AccountUuid
   role: AccountRole
+  hasUnread?: boolean
 }
 
 interface Migration {
@@ -808,6 +809,16 @@ export class MongoAccountDB implements AccountDB {
     )
   }
 
+  async setWorkspaceMemberUnread (accountId: AccountUuid, workspaceId: WorkspaceUuid, hasUnread: boolean): Promise<void> {
+    await this.workspaceMembers.update(
+      {
+        workspaceUuid: workspaceId,
+        accountUuid: accountId
+      },
+      { hasUnread }
+    )
+  }
+
   async getWorkspaceRole (accountId: AccountUuid, workspaceId: WorkspaceUuid): Promise<AccountRole | null> {
     const assignment = await this.workspaceMembers.findOne({
       workspaceUuid: workspaceId,
@@ -838,8 +849,10 @@ export class MongoAccountDB implements AccountDB {
   async getAccountWorkspaces (accountId: AccountUuid): Promise<WorkspaceInfoWithStatus[]> {
     const members = await this.workspaceMembers.find({ accountUuid: accountId })
     const wsIds = members.map((m) => m.workspaceUuid)
+    const unreadByWorkspace = new Map(members.map((m) => [m.workspaceUuid, m.hasUnread ?? false]))
 
-    return await this.workspace.find({ uuid: { $in: wsIds } })
+    const workspaces = await this.workspace.find({ uuid: { $in: wsIds } })
+    return workspaces.map((w) => ({ ...w, hasUnread: unreadByWorkspace.get(w.uuid) ?? false }))
   }
 
   async setPassword (accountId: AccountUuid, passwordHash: Buffer, salt: Buffer): Promise<void> {

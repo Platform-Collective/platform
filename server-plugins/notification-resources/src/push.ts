@@ -23,11 +23,15 @@ import {
   Data,
   Doc,
   Hierarchy,
+  readOnlyGuestAccountUuid,
   Ref,
+  systemAccountUuid,
   Tx,
   TxCreateDoc,
   TxProcessor
 } from '@hcengineering/core'
+import { getAccountClient } from '@hcengineering/server-client'
+import { generateToken } from '@hcengineering/server-token'
 import notification, {
   ActivityInboxNotification,
   InboxNotification,
@@ -347,4 +351,46 @@ export async function PushNotificationsHandler (
   }
 
   return res
+}
+
+/**
+ * Reports to account-service that the receiving account has at least one unread
+ * notification in this workspace, so the workspace switcher can render a
+ * cross-workspace "unread" indicator. Fire-and-forget: a failure here must never
+ * affect notification delivery, so errors are only logged.
+ *
+ * Uses a service token scoped to this workspace (mirrors the pattern used by
+ * server-plugins/calendar-resources to call out to external services from an
+ * in-process trigger). Clearing the flag again is self-service and happens from
+ * the client once a user has no more unread notifications left in a workspace.
+ */
+export async function OnInboxNotificationCreate (
+  txes: TxCreateDoc<InboxNotification>[],
+  control: TriggerControl
+): Promise<Tx[]> {
+  const receivers = new Set<AccountUuid>()
+
+  for (const tx of txes) {
+    const n = TxProcessor.createDoc2Doc(tx)
+    if (n.user === readOnlyGuestAccountUuid || n.isViewed) continue
+    receivers.add(n.user)
+  }
+
+  if (receivers.size === 0) {
+    return []
+  }
+
+  const token = generateToken(systemAccountUuid, control.workspace.uuid, { service: 'notification' })
+
+  await Promise.all(
+    Array.from(receivers).map(async (receiver) => {
+      try {
+        await getAccountClient(token).setWorkspaceMemberUnread(receiver, true)
+      } catch (err) {
+        control.ctx.error('Could not report unread notification to account service', { receiver, err })
+      }
+    })
+  )
+
+  return []
 }

@@ -1072,6 +1072,37 @@ export async function updateWorkspaceRole (
 }
 
 /**
+ * Sets or clears the "has unread notifications in this workspace" flag for a member,
+ * used to render a cross-workspace unread indicator in the workspace switcher.
+ *
+ * Raising the flag (hasUnread=true) for another account requires a service token —
+ * it is meant to be called by the workspace's own notification trigger, running with
+ * a token scoped to that workspace (`generateToken(systemAccountUuid, workspace, { service: 'notification' })`).
+ * Clearing your own flag (hasUnread=false, targetAccount === caller) is self-service and
+ * needs no special privileges; clearing someone else's flag still requires the service token.
+ */
+export async function setWorkspaceMemberUnread (
+  ctx: MeasureContext,
+  db: AccountDB,
+  branding: Branding | null,
+  token: string,
+  params: {
+    targetAccount: AccountUuid
+    hasUnread: boolean
+  }
+): Promise<void> {
+  const { targetAccount, hasUnread } = params
+  const { account, workspace, extra } = decodeTokenVerbose(ctx, token)
+
+  const isSelfClear = !hasUnread && account === targetAccount
+  if (!isSelfClear) {
+    verifyAllowedServices(['notification'], extra)
+  }
+
+  await db.setWorkspaceMemberUnread(targetAccount, workspace, hasUnread)
+}
+
+/**
  * Convert workspace name to a URL-friendly string following these rules:
  *
  * 1. Converts all characters to lowercase

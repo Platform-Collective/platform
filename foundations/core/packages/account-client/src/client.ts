@@ -153,6 +153,7 @@ export interface AccountClient {
   getSocialIds: (includeDeleted?: boolean) => Promise<SocialId[]>
   getWorkspaceMembers: () => Promise<WorkspaceMemberInfo[]>
   updateWorkspaceRole: (account: string, role: AccountRole) => Promise<void>
+  setWorkspaceMemberUnread: (targetAccount: string, hasUnread: boolean) => Promise<void>
   updateAllowReadOnlyGuests: (
     readOnlyGuestsAllowed: boolean
   ) => Promise<{ guestPerson: Person, guestSocialIds: SocialId[] } | undefined>
@@ -833,6 +834,15 @@ class AccountClientImpl implements AccountClient {
     const request = {
       method: 'updateWorkspaceRole' as const,
       params: { targetAccount, targetRole }
+    }
+
+    await this.rpc(request)
+  }
+
+  async setWorkspaceMemberUnread (targetAccount: string, hasUnread: boolean): Promise<void> {
+    const request = {
+      method: 'setWorkspaceMemberUnread' as const,
+      params: { targetAccount, hasUnread }
     }
 
     await this.rpc(request)
