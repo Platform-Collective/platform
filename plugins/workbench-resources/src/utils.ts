@@ -26,7 +26,7 @@ import type {
   TxOperations,
   WorkspaceInfoWithStatus
 } from '@hcengineering/core'
-import core, { hasAccountRole } from '@hcengineering/core'
+import core, { getCurrentAccount, hasAccountRole } from '@hcengineering/core'
 import login from '@hcengineering/login'
 import { getMetadata, getResource, setMetadata } from '@hcengineering/platform'
 import presentation, { closeClient, getClient, setPresentationCookie } from '@hcengineering/presentation'
@@ -214,6 +214,23 @@ export async function logIn (loginInfo: { account: string, token?: string }): Pr
   setMetadata(presentation.metadata.Token, loginInfo.token)
   setMetadataLocalStorage(login.metadata.LastAccount, loginInfo.account)
   setMetadataLocalStorage(login.metadata.LoginAccount, loginInfo.account)
+}
+
+/**
+ * Self-service clear of the cross-workspace "unread notifications" flag for the
+ * current account in the current workspace. Called once the local inbox has no
+ * more unread notifications left. Setting the flag back to true is handled
+ * server-side (OnInboxNotificationCreate trigger), not by the client.
+ */
+export async function reportWorkspaceRead (): Promise<void> {
+  try {
+    const accountsUrl = getMetadata(login.metadata.AccountsUrl)
+    const token = getMetadata(presentation.metadata.Token)
+    if (token === undefined) return
+    await getAccountClient(accountsUrl, token).setWorkspaceMemberUnread(getCurrentAccount().uuid, false)
+  } catch (err) {
+    console.error('Failed to clear workspace unread flag', err)
+  }
 }
 
 export async function logOut (): Promise<void> {

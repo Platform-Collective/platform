@@ -40,6 +40,7 @@
   import { onDestroy, onMount } from 'svelte'
 
   import { Analytics } from '@hcengineering/analytics'
+  import { NotifyMarker } from '@hcengineering/notification-resources'
   import type { PersonRating } from '@hcengineering/rating'
   import ratingPlugin from '@hcengineering/rating'
   import { workspacesStore } from '../utils'
@@ -221,7 +222,14 @@
               <!-- <div class="flex-col flex-grow"> -->
               <div class="flex-col flex-grow">
                 <span class="label overflow-label flex flex-grow flex-between">
-                  {wsName}
+                  <span class="flex-row-center">
+                    {wsName}
+                    {#if ws.hasUnread === true && $resolvedLocationStore.path[1] !== ws.url}
+                      <div class="ml-1">
+                        <NotifyMarker kind={'simple'} size={'x-small'} />
+                      </div>
+                    {/if}
+                  </span>
                   {#if isArchivingMode(ws.mode)}
                     - <Label label={presentation.string.Archived} />
                   {/if}

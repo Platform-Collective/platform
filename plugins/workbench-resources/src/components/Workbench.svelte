@@ -105,7 +105,7 @@
   import { getContext, onDestroy, onMount, tick } from 'svelte'
   import { subscribeMobile } from '../mobile'
   import workbench from '../plugin'
-  import { buildNavModel, isAllowedToRole, logOut, workspacesStore } from '../utils'
+  import { buildNavModel, isAllowedToRole, logOut, reportWorkspaceRead, workspacesStore } from '../utils'
   import AccountPopup from './AccountPopup.svelte'
   import AppItem from './AppItem.svelte'
   import AppSwitcher from './AppSwitcher.svelte'
@@ -282,6 +282,12 @@
   })
 
   $: void hasNotificationsFn?.($inboxNotificationsByContextStore).then((res) => {
+    if (hasInboxNotifications && !res) {
+      // Local inbox just went from "has unread" to "all read" — clear the
+      // cross-workspace unread indicator for this workspace. Raising it back
+      // to true is handled server-side when a new notification arrives.
+      void reportWorkspaceRead()
+    }
     hasInboxNotifications = res
   })
 
