@@ -308,17 +308,23 @@
   let hasNotificationsFn: ((data: Map<Ref<DocNotifyContext>, InboxNotification[]>) => Promise<boolean>) | undefined =
     undefined
   let hasInboxNotifications = false
+  let clearedWorkspaceUnread = false
 
   void getResource(notification.function.HasInboxNotifications).then((f) => {
     hasNotificationsFn = f
   })
 
   $: void hasNotificationsFn?.($inboxNotificationsByContextStore).then((res) => {
-    if (hasInboxNotifications && !res) {
-      // Local inbox just went from "has unread" to "all read" — clear the
-      // cross-workspace unread indicator for this workspace. Raising it back
-      // to true is handled server-side when a new notification arrives.
+    if (!res && !clearedWorkspaceUnread) {
+      // Local inbox is fully read: clear this workspace's cross-workspace unread
+      // flag. Fires both on the has-unread -> all-read transition and once on
+      // load when the inbox is already read (e.g. the items were read on another
+      // device and the server flag is stale-true). Raising it back to true is
+      // handled server-side when a new notification arrives.
+      clearedWorkspaceUnread = true
       void reportWorkspaceRead()
+    } else if (res) {
+      clearedWorkspaceUnread = false
     }
     hasInboxNotifications = res
   })

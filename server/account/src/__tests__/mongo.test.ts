@@ -907,8 +907,9 @@ describe('MongoAccountDB', () => {
       it('should update the has-unread flag for the given member', async () => {
         await accountDb.setWorkspaceMemberUnread(accountId, workspaceId, true)
 
+        // Guarded by hasUnread $ne so a no-op write is skipped when already set.
         expect(accountDb.workspaceMembers.update).toHaveBeenCalledWith(
-          { workspaceUuid: workspaceId, accountUuid: accountId },
+          { workspaceUuid: workspaceId, accountUuid: accountId, hasUnread: { $ne: true } },
           { hasUnread: true }
         )
       })

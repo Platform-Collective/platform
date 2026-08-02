@@ -817,7 +817,8 @@ export class MongoAccountDB implements AccountDB {
     await this.workspaceMembers.update(
       {
         workspaceUuid: workspaceId,
-        accountUuid: accountId
+        accountUuid: accountId,
+        hasUnread: { $ne: hasUnread }
       },
       { hasUnread }
     )

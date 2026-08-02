@@ -868,7 +868,7 @@ export class PostgresAccountDB implements AccountDB {
   ): Promise<void> {
     await this.withRetry(
       async (rTx) =>
-        await rTx`UPDATE ${this.client(this.getWsMembersTableName())} SET has_unread = ${hasUnread} WHERE workspace_uuid = ${workspaceUuid} AND account_uuid = ${accountUuid}`
+        await rTx`UPDATE ${this.client(this.getWsMembersTableName())} SET has_unread = ${hasUnread} WHERE workspace_uuid = ${workspaceUuid} AND account_uuid = ${accountUuid} AND has_unread <> ${hasUnread}`
     )
   }
 
