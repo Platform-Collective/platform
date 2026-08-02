@@ -914,6 +914,26 @@ describe('MongoAccountDB', () => {
       })
     })
 
+    describe('setWorkspaceMembersUnread', () => {
+      it('should update the flag for all given members in one call', async () => {
+        const a = 'acc-a' as AccountUuid
+        const b = 'acc-b' as AccountUuid
+
+        await accountDb.setWorkspaceMembersUnread([a, b], workspaceId, true)
+
+        expect(accountDb.workspaceMembers.update).toHaveBeenCalledWith(
+          { workspaceUuid: workspaceId, accountUuid: { $in: [a, b] } },
+          { hasUnread: true }
+        )
+      })
+
+      it('should be a no-op for an empty account list', async () => {
+        await accountDb.setWorkspaceMembersUnread([], workspaceId, true)
+
+        expect(accountDb.workspaceMembers.update).not.toHaveBeenCalled()
+      })
+    })
+
     describe('getPendingWorkspace', () => {
       const version: Data<Version> = { major: 1, minor: 0, patch: 0 }
       const processingTimeoutMs = 5000

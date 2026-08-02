@@ -48,6 +48,8 @@
     "@hcengineering/platform": "workspace:^0.7.20",
     "@hcengineering/auth-providers": "workspace:^0.7.0",
     "@hcengineering/core": "workspace:^0.7.26",
+    "@hcengineering/kafka": "workspace:^0.7.20",
+    "@hcengineering/server-core": "workspace:^0.7.19",
     "@hcengineering/mongo": "workspace:^0.7.16",
     "@hcengineering/contact": "workspace:^0.7.0",
     "mongodb": "^6.16.0",

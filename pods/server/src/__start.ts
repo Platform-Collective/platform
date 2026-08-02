@@ -20,7 +20,6 @@ import serverCore, {
   type StorageConfiguration,
   type WorkspaceStatistics
 } from '@hcengineering/server-core'
-import serverClientPlugin from '@hcengineering/server-client'
 import serverNotification from '@hcengineering/server-notification'
 import { storageConfigFromEnv } from '@hcengineering/server-storage'
 import serverToken from '@hcengineering/server-token'
@@ -82,11 +81,6 @@ setMetadata(serverCore.metadata.FrontUrl, config.frontUrl)
 setMetadata(serverCore.metadata.FilesUrl, config.filesUrl)
 setMetadata(serverToken.metadata.Secret, config.serverSecret)
 setMetadata(serverToken.metadata.Service, 'transactor')
-// The cross-workspace unread trigger (OnInboxNotificationCreate) calls the
-// account service via getAccountClient() from @hcengineering/server-client,
-// which resolves the account URL from this metadata. Without it the RPC has
-// no endpoint and the has_unread flag is never raised.
-setMetadata(serverClientPlugin.metadata.Endpoint, config.accountsUrl)
 setMetadata(serverNotification.metadata.MailUrl, config.mailUrl ?? '')
 setMetadata(serverNotification.metadata.MailAuthToken, config.mailAuthToken)
 setMetadata(serverNotification.metadata.WebPushUrl, config.webPushUrl)

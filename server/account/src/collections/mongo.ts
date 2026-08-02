@@ -823,6 +823,22 @@ export class MongoAccountDB implements AccountDB {
     )
   }
 
+  async setWorkspaceMembersUnread (
+    accountIds: AccountUuid[],
+    workspaceId: WorkspaceUuid,
+    hasUnread: boolean
+  ): Promise<void> {
+    if (accountIds.length === 0) return
+
+    await this.workspaceMembers.update(
+      {
+        workspaceUuid: workspaceId,
+        accountUuid: { $in: accountIds }
+      },
+      { hasUnread }
+    )
+  }
+
   async getWorkspaceRole (accountId: AccountUuid, workspaceId: WorkspaceUuid): Promise<AccountRole | null> {
     const assignment = await this.workspaceMembers.findOne({
       workspaceUuid: workspaceId,

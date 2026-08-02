@@ -872,6 +872,21 @@ export class PostgresAccountDB implements AccountDB {
     )
   }
 
+  async setWorkspaceMembersUnread (
+    accountUuids: AccountUuid[],
+    workspaceUuid: WorkspaceUuid,
+    hasUnread: boolean
+  ): Promise<void> {
+    if (accountUuids.length === 0) return
+
+    // `has_unread <> ${hasUnread}` skips rows already in the target state, so a
+    // repeated broadcast into an already-flagged workspace writes nothing.
+    await this.withRetry(
+      async (rTx) =>
+        await rTx`UPDATE ${this.client(this.getWsMembersTableName())} SET has_unread = ${hasUnread} WHERE workspace_uuid = ${workspaceUuid} AND account_uuid = ANY(${accountUuids}) AND has_unread <> ${hasUnread}`
+    )
+  }
+
   async getWorkspaceRole (accountUuid: AccountUuid, workspaceUuid: WorkspaceUuid): Promise<AccountRole | null> {
     return await this.withRetry(async (rTx) => {
       const res =

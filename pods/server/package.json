@@ -78,7 +78,6 @@
     "@hcengineering/server": "workspace:^0.7.19",
     "@hcengineering/server-ai-bot": "workspace:^0.7.0",
     "@hcengineering/server-calendar": "workspace:^0.7.0",
-    "@hcengineering/server-client": "workspace:^0.7.16",
     "@hcengineering/server-core": "workspace:^0.7.19",
     "@hcengineering/server-notification": "workspace:^0.7.0",
     "@hcengineering/server-pipeline": "workspace:^0.7.0",

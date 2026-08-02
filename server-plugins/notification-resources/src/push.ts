@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import serverCore, { TriggerControl } from '@hcengineering/server-core'
+import serverCore, { QueueTopic, TriggerControl, type WorkspaceMemberUnreadMessage } from '@hcengineering/server-core'
 import serverNotification, { PUSH_NOTIFICATION_TITLE_SIZE } from '@hcengineering/server-notification'
 import type { ReceiverInfo } from '@hcengineering/server-notification'
 import {
@@ -25,13 +25,10 @@ import {
   Hierarchy,
   readOnlyGuestAccountUuid,
   Ref,
-  systemAccountUuid,
   Tx,
   TxCreateDoc,
   TxProcessor
 } from '@hcengineering/core'
-import { getAccountClient } from '@hcengineering/server-client'
-import { generateToken } from '@hcengineering/server-token'
 import notification, {
   ActivityInboxNotification,
   InboxNotification,
@@ -354,20 +351,24 @@ export async function PushNotificationsHandler (
 }
 
 /**
- * Reports to account-service that the receiving account has at least one unread
- * notification in this workspace, so the workspace switcher can render a
- * cross-workspace "unread" indicator. Fire-and-forget: a failure here must never
- * affect notification delivery, so errors are only logged.
+ * Publishes the receivers of freshly created notifications to the
+ * cross-workspace unread queue, so account-service can raise the "unread
+ * notifications in this workspace" flag that the workspace switcher renders.
  *
- * Uses a service token scoped to this workspace (mirrors the pattern used by
- * server-plugins/calendar-resources to call out to external services from an
- * in-process trigger). Clearing the flag again is self-service and happens from
- * the client once a user has no more unread notifications left in a workspace.
+ * A whole batch of receivers is collapsed into a single queue message, so a
+ * channel-wide mention costs one produce instead of one account RPC per member;
+ * account-service then updates them all in a single statement. Fire-and-forget:
+ * publishing must never affect notification delivery, so errors are only logged.
+ * Clearing the flag again is self-service and happens from the client once a
+ * user has no more unread notifications left in a workspace.
  */
 export async function OnInboxNotificationCreate (
   txes: TxCreateDoc<InboxNotification>[],
   control: TriggerControl
 ): Promise<Tx[]> {
+  const queue = control.queue
+  if (queue === undefined) return []
+
   const receivers = new Set<AccountUuid>()
 
   for (const tx of txes) {
@@ -380,17 +381,12 @@ export async function OnInboxNotificationCreate (
     return []
   }
 
-  const token = generateToken(systemAccountUuid, control.workspace.uuid, { service: 'notification' })
-
-  await Promise.all(
-    Array.from(receivers).map(async (receiver) => {
-      try {
-        await getAccountClient(token).setWorkspaceMemberUnread(receiver, true)
-      } catch (err) {
-        control.ctx.error('Could not report unread notification to account service', { receiver, err })
-      }
-    })
-  )
+  try {
+    const producer = queue.getProducer<WorkspaceMemberUnreadMessage>(control.ctx, QueueTopic.WorkspaceMemberUnread)
+    await producer.send(control.ctx, control.workspace.uuid, [{ accounts: Array.from(receivers) }])
+  } catch (err) {
+    control.ctx.error('Failed to publish cross-workspace unread event', { err })
+  }
 
   return []
 }

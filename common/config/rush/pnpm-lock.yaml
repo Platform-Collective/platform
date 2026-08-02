@@ -31220,9 +31220,6 @@ importers:
       '@hcengineering/server-card':
         specifier: workspace:^0.7.0
         version: link:../../server-plugins/card
-      '@hcengineering/server-client':
-        specifier: workspace:^0.7.16
-        version: link:../../foundations/server/packages/client
       '@hcengineering/server-core':
         specifier: workspace:^0.7.19
         version: link:../../foundations/server/packages/core
@@ -34097,9 +34094,6 @@ importers:
       '@hcengineering/platform':
         specifier: workspace:^0.7.20
         version: link:../../foundations/core/packages/platform
-      '@hcengineering/server-client':
-        specifier: workspace:^0.7.16
-        version: link:../../foundations/server/packages/client
       '@hcengineering/server-contact':
         specifier: workspace:^0.7.0
         version: link:../contact
@@ -34109,9 +34103,6 @@ importers:
       '@hcengineering/server-notification':
         specifier: workspace:^0.7.0
         version: link:../notification
-      '@hcengineering/server-token':
-        specifier: workspace:^0.7.18
-        version: link:../../foundations/core/packages/token
       '@hcengineering/server-view':
         specifier: workspace:^0.7.0
         version: link:../view
@@ -35906,6 +35897,9 @@ importers:
       '@hcengineering/core':
         specifier: workspace:^0.7.26
         version: link:../../foundations/core/packages/core
+      '@hcengineering/kafka':
+        specifier: workspace:^0.7.20
+        version: link:../../foundations/server/packages/kafka
       '@hcengineering/model':
         specifier: workspace:^0.7.17
         version: link:../../foundations/core/packages/model
@@ -35915,6 +35909,9 @@ importers:
       '@hcengineering/platform':
         specifier: workspace:^0.7.20
         version: link:../../foundations/core/packages/platform
+      '@hcengineering/server-core':
+        specifier: workspace:^0.7.19
+        version: link:../../foundations/server/packages/core
       '@hcengineering/server-token':
         specifier: workspace:^0.7.18
         version: link:../../foundations/core/packages/token

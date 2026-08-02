@@ -1,4 +1,4 @@
-import type { MeasureContext, WorkspaceUuid } from '@hcengineering/core'
+import type { AccountUuid, MeasureContext, WorkspaceUuid } from '@hcengineering/core'
 
 export enum QueueTopic {
   // Topic with partitions to split workspace transactions into
@@ -34,7 +34,22 @@ export enum QueueTopic {
   NotificationQueue = 'notifications',
 
   // Events about meetings and operations with meetings
-  LoveQueue = 'love-queue'
+  LoveQueue = 'love-queue',
+
+  // Cross-workspace unread notification flags. The notification trigger publishes
+  // the receivers of freshly created notifications here; account-service consumes
+  // the topic and raises workspace_members.has_unread in bulk, instead of the
+  // trigger issuing one account RPC per receiver.
+  WorkspaceMemberUnread = 'workspace-member-unread'
+}
+
+/**
+ * Payload of a {@link QueueTopic.WorkspaceMemberUnread} message. The workspace is
+ * carried by the queue envelope ({@link ConsumerMessage.workspace}); `accounts`
+ * are the members that just gained an unread notification in that workspace.
+ */
+export interface WorkspaceMemberUnreadMessage {
+  accounts: AccountUuid[]
 }
 
 export interface ConsumerHandle {

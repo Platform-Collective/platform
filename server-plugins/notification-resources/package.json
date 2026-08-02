@@ -50,8 +50,6 @@
     "@hcengineering/text-core": "workspace:^0.7.19",
     "@hcengineering/contact": "workspace:^0.7.0",
     "@hcengineering/server-view": "workspace:^0.7.0",
-    "@hcengineering/server-contact": "workspace:^0.7.0",
-    "@hcengineering/server-client": "workspace:^0.7.16",
-    "@hcengineering/server-token": "workspace:^0.7.18"
+    "@hcengineering/server-contact": "workspace:^0.7.0"
   }
 }
