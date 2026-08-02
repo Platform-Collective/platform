@@ -367,7 +367,12 @@ export async function OnInboxNotificationCreate (
   control: TriggerControl
 ): Promise<Tx[]> {
   const queue = control.queue
-  if (queue === undefined) return []
+  if (queue === undefined) {
+    control.ctx.warn('cross-workspace unread: no queue on trigger control, skipping', {
+      workspace: control.workspace.uuid
+    })
+    return []
+  }
 
   const receivers = new Set<AccountUuid>()
 
@@ -384,8 +389,12 @@ export async function OnInboxNotificationCreate (
   try {
     const producer = queue.getProducer<WorkspaceMemberUnreadMessage>(control.ctx, QueueTopic.WorkspaceMemberUnread)
     await producer.send(control.ctx, control.workspace.uuid, [{ accounts: Array.from(receivers) }])
+    control.ctx.info('cross-workspace unread: published', {
+      workspace: control.workspace.uuid,
+      receivers: receivers.size
+    })
   } catch (err) {
-    control.ctx.error('Failed to publish cross-workspace unread event', { err })
+    control.ctx.error('cross-workspace unread: failed to publish', { err, workspace: control.workspace.uuid })
   }
 
   return []

@@ -46,6 +46,7 @@ export function createWorkspaceMemberUnreadHandler (
     if (accounts === undefined || accounts.length === 0) return
 
     await db.setWorkspaceMembersUnread(accounts, msg.workspace, true)
+    ctx.info('cross-workspace unread: applied', { workspace: msg.workspace, accounts: accounts.length })
   }
 }
 
