@@ -308,6 +308,7 @@
 
   const inboxClient = InboxNotificationsClientImpl.createClient()
   const inboxNotificationsByContextStore = inboxClient.inboxNotificationsByContext
+  const inboxLoadedStore = inboxClient.isLoaded
 
   let hasNotificationsFn: ((data: Map<Ref<DocNotifyContext>, InboxNotification[]>) => Promise<boolean>) | undefined =
     undefined
@@ -318,20 +319,26 @@
     hasNotificationsFn = f
   })
 
-  $: void hasNotificationsFn?.($inboxNotificationsByContextStore).then((res) => {
-    if (!res && !clearedWorkspaceUnread) {
-      // Local inbox is fully read: clear this workspace's cross-workspace unread
-      // flag. Fires both on the has-unread -> all-read transition and once on
-      // load when the inbox is already read (e.g. the items were read on another
-      // device and the server flag is stale-true). Raising it back to true is
-      // handled server-side when a new notification arrives.
-      clearedWorkspaceUnread = true
-      void reportWorkspaceRead()
-    } else if (res) {
-      clearedWorkspaceUnread = false
-    }
-    hasInboxNotifications = res
-  })
+  // Wait for the initial inbox sync ($inboxLoadedStore) before acting on the result:
+  // right after opening a workspace inboxNotificationsByContextStore starts out empty,
+  // which is indistinguishable from "confirmed no unread" and would otherwise clear the
+  // cross-workspace unread flag before the real data has even loaded.
+  $: if ($inboxLoadedStore) {
+    void hasNotificationsFn?.($inboxNotificationsByContextStore).then((res) => {
+      if (!res && !clearedWorkspaceUnread) {
+        // Local inbox is fully read: clear this workspace's cross-workspace unread
+        // flag. Fires both on the has-unread -> all-read transition and once on
+        // load when the inbox is already read (e.g. the items were read on another
+        // device and the server flag is stale-true). Raising it back to true is
+        // handled server-side when a new notification arrives.
+        clearedWorkspaceUnread = true
+        void reportWorkspaceRead()
+      } else if (res) {
+        clearedWorkspaceUnread = false
+      }
+      hasInboxNotifications = res
+    })
+  }
 
   let hasNewInboxNotifications = false
 
