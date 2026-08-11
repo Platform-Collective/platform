@@ -48,7 +48,7 @@
     "@hcengineering/server-token": "workspace:^0.7.18",
     "bufferutil": "^4.0.8",
     "utf-8-validate": "^6.0.4",
-    "ws": "^8.18.2",
+    "ws": "^8.21.0",
     "snappyjs": "^0.7.0",
     "@hcengineering/api-client": "workspace:^0.7.25",
     "@hcengineering/account-client": "workspace:^0.7.25",

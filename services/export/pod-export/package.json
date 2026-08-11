@@ -82,7 +82,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
-    "ws": "^8.18.2",
+    "ws": "^8.21.0",
     "@hcengineering/drive": "workspace:^0.7.0",
     "@hcengineering/export": "workspace:^0.7.0",
     "@hcengineering/products": "workspace:^0.7.0",

@@ -287,7 +287,7 @@
     "livekit-client": "^2.19.0",
     "@hcengineering/server-backup": "workspace:^0.7.0",
     "@hcengineering/communication-types": "workspace:^0.7.12",
-    "ws": "^8.18.2"
+    "ws": "^8.21.0"
   },
   "productName": "Huly Desktop",
   "description": "Huly Desktop experience",

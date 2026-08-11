@@ -39,7 +39,7 @@
     "@types/jest": "^29.5.5",
     "@types/snappyjs": "^0.7.1",
     "@types/node": "^22.18.1",
-    "ws": "^8.18.2",
+    "ws": "^8.21.0",
     "@types/ws": "^8.5.12",
     "eslint-plugin-svelte": "^2.35.1"
   },

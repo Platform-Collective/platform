@@ -44,7 +44,7 @@
     "@hcengineering/account-client": "workspace:^0.7.25",
     "@hcengineering/server-core": "workspace:^0.7.19",
     "@hcengineering/server-token": "workspace:^0.7.18",
-    "ws": "^8.18.2"
+    "ws": "^8.21.0"
   },
   "repository": {
     "type": "git",

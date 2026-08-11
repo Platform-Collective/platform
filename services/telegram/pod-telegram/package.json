@@ -78,7 +78,7 @@
     "mongodb": "^6.16.0",
     "telegram": "2.22.2",
     "uuid": "^8.3.2",
-    "ws": "^8.18.2",
+    "ws": "^8.21.0",
     "@hcengineering/analytics-service": "workspace:^0.7.19"
   }
 }

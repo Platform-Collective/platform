@@ -68,7 +68,7 @@
     "express": "^4.21.2",
     "puppeteer": "^24.17.1",
     "mammoth": "^1.9.0",
-    "ws": "^8.18.2",
+    "ws": "^8.21.0",
     "@hcengineering/analytics-service": "workspace:^0.7.19"
   }
 }

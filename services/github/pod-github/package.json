@@ -172,6 +172,6 @@
     "@hcengineering/server-guest-resources": "workspace:^0.7.0",
     "@hcengineering/analytics": "workspace:^0.7.19",
     "@hcengineering/analytics-service": "workspace:^0.7.19",
-    "ws": "^8.18.2"
+    "ws": "^8.21.0"
   }
 }

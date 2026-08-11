@@ -655,8 +655,8 @@ importers:
         specifier: ^4.2.20
         version: 4.2.20
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -2283,8 +2283,8 @@ importers:
         specifier: ^6.0.4
         version: 6.0.5
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -3119,8 +3119,8 @@ importers:
         version: 5.9.3
     optionalDependencies:
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
 
   ../../foundations/core/packages/client:
     dependencies:
@@ -3250,8 +3250,8 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
 
   ../../foundations/core/packages/collaborator-client:
     dependencies:
@@ -4564,8 +4564,8 @@ importers:
         specifier: workspace:^0.7.18
         version: link:../../../core/packages/token
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -31324,8 +31324,8 @@ importers:
         specifier: ^6.0.4
         version: 6.0.5
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/model-all':
         specifier: workspace:^0.7.0
@@ -36331,8 +36331,8 @@ importers:
         specifier: ^6.16.0
         version: 6.20.0(gcp-metadata@5.3.0(encoding@0.1.13))(snappy@7.3.3)(socks@2.8.7)
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
       yjs:
         specifier: ^13.6.27
         version: 13.6.27
@@ -37504,8 +37504,8 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -38003,8 +38003,8 @@ importers:
         specifier: ^0.5.6
         version: 0.5.6
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -38417,8 +38417,8 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -39271,8 +39271,8 @@ importers:
         specifier: ^3.1.1
         version: 3.2.2
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -39677,8 +39677,8 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -39837,8 +39837,8 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -40702,8 +40702,8 @@ importers:
         specifier: ^24.17.1
         version: 24.29.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@6.0.5)
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -41545,8 +41545,8 @@ importers:
         specifier: ^8.3.2
         version: 8.3.2
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -41948,8 +41948,8 @@ importers:
         specifier: ^6.0.4
         version: 6.0.5
       ws:
-        specifier: ^8.18.2
-        version: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -52194,8 +52194,8 @@ packages:
       utf-8-validate:
         optional: true
 
-  ws@8.18.3:
-    resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
+  ws@8.21.3:
+    resolution: {integrity: sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -53430,7 +53430,7 @@ snapshots:
       '@hocuspocus/common': 2.15.3
       '@lifeomic/attempt': 3.1.0
       lib0: 0.2.114
-      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+      ws: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
       y-protocols: 1.0.6(yjs@13.6.27)
       yjs: 13.6.27
     transitivePeerDependencies:
@@ -53444,7 +53444,7 @@ snapshots:
       kleur: 4.1.5
       lib0: 0.2.114
       uuid: 11.1.0
-      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+      ws: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
       y-protocols: 1.0.6(yjs@13.6.27)
       yjs: 13.6.27
     transitivePeerDependencies:
@@ -60945,7 +60945,7 @@ snapshots:
       whatwg-encoding: 3.1.1
       whatwg-mimetype: 4.0.0
       whatwg-url: 14.2.0
-      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      ws: 8.21.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - bufferutil
@@ -60972,7 +60972,7 @@ snapshots:
       whatwg-encoding: 3.1.1
       whatwg-mimetype: 4.0.0
       whatwg-url: 14.2.0
-      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+      ws: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - bufferutil
@@ -62698,7 +62698,7 @@ snapshots:
       devtools-protocol: 0.0.1521046
       typed-query-selector: 2.12.0
       webdriver-bidi-protocol: 0.3.8
-      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+      ws: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
     transitivePeerDependencies:
       - bare-abort-controller
       - bare-buffer
@@ -64521,7 +64521,7 @@ snapshots:
       sockjs: 0.3.24
       spdy: 4.0.2
       webpack-dev-middleware: 5.3.4(webpack@5.102.1)
-      ws: 8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
+      ws: 8.21.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     optionalDependencies:
       webpack: 5.102.1(esbuild@0.25.12)(webpack-cli@5.1.4)
       webpack-cli: 5.1.4(webpack-bundle-analyzer@4.10.2(bufferutil@4.0.9)(utf-8-validate@5.0.10))(webpack-dev-server@4.15.2)(webpack@5.102.1)
@@ -64809,12 +64809,12 @@ snapshots:
       bufferutil: 4.0.9
       utf-8-validate: 5.0.10
 
-  ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10):
+  ws@8.21.3(bufferutil@4.0.9)(utf-8-validate@5.0.10):
     optionalDependencies:
       bufferutil: 4.0.9
       utf-8-validate: 5.0.10
 
-  ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@6.0.5):
+  ws@8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5):
     optionalDependencies:
       bufferutil: 4.0.9
       utf-8-validate: 6.0.5

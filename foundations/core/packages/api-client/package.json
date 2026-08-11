@@ -70,6 +70,6 @@
     "access": "public"
   },
   "optionalDependencies": {
-    "ws": "^8.18.2"
+    "ws": "^8.21.0"
   }
 }
