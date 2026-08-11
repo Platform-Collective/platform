@@ -2,7 +2,7 @@
 
 **Type**: Rush monorepo (TypeScript)  
 **License**: EPL-2.0  
-**Build System**: Rush v5.158.1 + pnpm v10.15.1
+**Build System**: Rush v5.178.1 + pnpm v10.15.1
 
 ## Critical Rules
 
