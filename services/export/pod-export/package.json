@@ -87,7 +87,7 @@
     "@hcengineering/export": "workspace:^0.7.0",
     "@hcengineering/products": "workspace:^0.7.0",
     "uuid": "^8.3.2",
-    "tar": "^7.4.3",
+    "tar": "^7.5.2",
     "archiver": "^7.0.1",
     "js-yaml": "^4.1.0",
     "csv-stringify": "^6.5.2"
