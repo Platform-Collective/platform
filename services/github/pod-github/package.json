@@ -32,7 +32,7 @@
   "devDependencies": {
     "cross-env": "~7.0.3",
     "@hcengineering/platform-rig": "workspace:^0.7.21",
-    "@types/node": "^22.18.1",
+    "@types/node": "^24.13.3",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-promise": "^6.1.1",
@@ -44,7 +44,7 @@
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "@types/ws": "^8.5.12",
+    "@types/ws": "^8.18.1",
     "smee-client": "^1.2.3",
     "@octokit/webhooks-types": "^7.3.1",
     "@types/markdown-it": "~13.0.0",

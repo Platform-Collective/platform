@@ -24,7 +24,7 @@
         "DEVELOPMENT": "true"
       },
       "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
-      "runtimeVersion": "22",
+      "runtimeVersion": "24",
       "showAsyncStacks": true,
       "outputCapture": "std",
       "sourceMaps": true,
@@ -40,7 +40,7 @@
         "NETWORK_HOST": "localhost:37371"
       },
       "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
-      "runtimeVersion": "22",
+      "runtimeVersion": "24",
       "showAsyncStacks": true,
       "outputCapture": "std",
       "sourceMaps": true,
