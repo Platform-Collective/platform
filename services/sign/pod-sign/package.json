@@ -66,12 +66,12 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
-    "@signpdf/signpdf": "^3.2.4",
-    "@signpdf/placeholder-pdf-lib": "^3.2.4",
-    "@signpdf/signer-p12": "^3.2.4",
-    "@signpdf/utils": "^3.2.4",
-    "node-forge": "^1.3.1",
-    "pdf-lib": "^1.12.0",
+    "@signpdf/signpdf": "^3.3.0",
+    "@signpdf/placeholder-pdf-lib": "^3.3.0",
+    "@signpdf/signer-p12": "^3.3.0",
+    "@signpdf/utils": "^3.3.0",
+    "node-forge": "^1.3.3",
+    "pdf-lib": "^1.17.1",
     "mongodb": "^6.16.0",
     "@hcengineering/analytics-service": "workspace:^0.7.19"
   }
