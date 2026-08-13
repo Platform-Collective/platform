@@ -1,0 +1,30 @@
+{
+  "gif": {
+    "Emoji": "Emoji",
+    "Gifs": "GIFs",
+    "SearchGifs": "Search GIFs",
+    "Upload": "Upload",
+    "UploadGif": "Upload a GIF",
+    "NoGifsYet": "No GIFs yet",
+    "NoGifsYetHint": "Upload one to start your workspace library.",
+    "NoResults": "No matches",
+    "NoResultsHint": "Try a different search.",
+    "Loading": "Loading",
+    "LoadMore": "Load more",
+    "Remove": "Remove",
+    "Title": "Title",
+    "Keywords": "Keywords",
+    "Width": "Width",
+    "Height": "Height",
+    "Size": "Size",
+    "Sha256": "Checksum",
+    "GifLibrary": "GIF library",
+    "RecentlyUsed": "Recently used",
+    "TooLarge": "That GIF is larger than 8 MB. Try a smaller one.",
+    "BadMime": "That file is not a GIF.",
+    "BadDimensions": "That GIF is larger than 2000 pixels on a side.",
+    "UploadFailed": "The upload did not finish. Nothing was added.",
+    "AlreadyInLibrary": "That GIF is already in the library.",
+    "Unavailable": "This GIF is no longer available."
+  }
+}

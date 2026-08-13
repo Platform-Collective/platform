@@ -2622,6 +2622,26 @@
       "shouldPublish": true
     },
     {
+      "packageName": "@hcengineering/gif",
+      "projectFolder": "plugins/gif",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@hcengineering/gif-assets",
+      "projectFolder": "plugins/gif-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/gif-resources",
+      "projectFolder": "plugins/gif-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/model-gif",
+      "projectFolder": "models/gif",
+      "shouldPublish": false
+    },
+    {
       "packageName": "@hcengineering/emoji-assets",
       "projectFolder": "plugins/emoji-assets",
       "shouldPublish": false
