@@ -1,0 +1,115 @@
+name: Create staging release
+
+# Manually triggered workflow: merges develop into staging-new and tags the
+# result as the next s0.x.x staging version. Does NOT deploy anything —
+# pushing the tag only feeds the existing build/test/docker pipeline in
+# main.yml (triggered by tags matching `s*`).
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Which part of s<major>.<minor>.<patch> to increment'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      dry_run:
+        description: 'Compute the next tag and merge locally, but do not push anything'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+# Only one staging release at a time, and never cancel one mid-push.
+concurrency:
+  group: staging-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout staging-new
+        uses: actions/checkout@v7
+        with:
+          ref: staging-new
+          fetch-depth: 0
+          filter: tree:0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch develop
+        run: git fetch origin develop
+
+      - name: Merge develop into staging-new
+        run: |
+          set -euo pipefail
+          if ! git merge --no-edit origin/develop; then
+            echo "::error::Merge conflict while merging origin/develop into staging-new. Resolve it manually and re-run."
+            git merge --abort
+            exit 1
+          fi
+
+      - name: Compute next staging tag
+        id: version
+        run: |
+          set -euo pipefail
+          git fetch --tags origin
+
+          # Only consider well-formed sMAJOR.MINOR.PATCH tags; the repo has a
+          # couple of legacy malformed tags (e.g. s.0.7.216) that must be ignored.
+          LATEST=$(git tag -l | grep -E '^s[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1 || true)
+
+          if [ -z "$LATEST" ]; then
+            MAJOR=0; MINOR=0; PATCH=0
+          else
+            VERSION=${LATEST#s}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          fi
+
+          case "${{ inputs.bump }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            *)     PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEXT="s${MAJOR}.${MINOR}.${PATCH}"
+
+          # Guard against a tag that somehow already exists.
+          if git rev-parse -q --verify "refs/tags/$NEXT" >/dev/null; then
+            echo "::error::Tag $NEXT already exists."
+            exit 1
+          fi
+
+          echo "Previous tag: ${LATEST:-none}"
+          echo "Next tag:     $NEXT"
+          echo "tag=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "previous=${LATEST:-none}" >> "$GITHUB_OUTPUT"
+
+      - name: Create annotated tag
+        run: |
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Staging release ${{ steps.version.outputs.tag }}"
+
+      - name: Push staging-new and tag
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          set -euo pipefail
+          git push origin staging-new
+          git push origin "refs/tags/${{ steps.version.outputs.tag }}"
+
+      - name: Summary
+        run: |
+          {
+            echo "### Staging release"
+            echo "- Previous tag: \`${{ steps.version.outputs.previous }}\`"
+            echo "- New tag: \`${{ steps.version.outputs.tag }}\`"
+            echo "- Dry run: \`${{ inputs.dry_run }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
