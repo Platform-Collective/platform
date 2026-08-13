@@ -2,6 +2,7 @@ import { getResource } from '@hcengineering/platform'
 import { getClient } from '@hcengineering/presentation'
 import { showPopup } from '@hcengineering/ui'
 import emojiPlugin from '@hcengineering/emoji'
+import gifPlugin, { isGifResult } from '@hcengineering/gif'
 import textEditor, { type RefAction } from '@hcengineering/text-editor'
 
 import RiMention from '../icons/RIMention.svelte'
@@ -21,14 +22,20 @@ export const defaultRefActions: RefAction[] = [
     icon: emojiPlugin.icon.Emoji,
     action: (element, editorHandler) => {
       showPopup(
-        emojiPlugin.component.EmojiPopup,
+        gifPlugin.component.GifPickerPopup,
         {},
         element,
-        (emoji) => {
-          if (emoji === null || emoji === undefined) {
+        (result) => {
+          if (result === null || result === undefined) {
             return
           }
-          editorHandler.insertEmoji(emoji.text, emoji.image)
+          // Two shapes come back from one popup and nothing type-checks this: showPopup's
+          // callback is (result: any) => void. Hence the runtime guard.
+          if (isGifResult(result)) {
+            editorHandler.insertGif(result)
+          } else {
+            editorHandler.insertEmoji(result.text, result.image)
+          }
           editorHandler.focus()
         },
         () => {}

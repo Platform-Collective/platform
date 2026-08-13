@@ -58,6 +58,7 @@
     "@hcengineering/text-markdown": "workspace:^0.7.21",
     "@hcengineering/text-ydoc": "workspace:^0.7.19",
     "@hcengineering/emoji": "workspace:^0.7.0",
+    "@hcengineering/gif": "workspace:^0.7.0",
     "@tiptap/core": "^2.11.7",
     "@tiptap/pm": "^2.11.7",
     "@tiptap/extension-code-block-lowlight": "^2.11.7",

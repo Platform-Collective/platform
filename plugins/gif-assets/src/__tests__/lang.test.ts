@@ -18,8 +18,20 @@ it('has a lang file for every locale the platform ships', () => {
   expect(files).toHaveLength(14)
   expect(files).toEqual(
     expect.arrayContaining([
-      'cs.json', 'de.json', 'en.json', 'es.json', 'fr.json', 'it.json', 'ja.json',
-      'ko.json', 'pl.json', 'pt-br.json', 'pt.json', 'ru.json', 'tr.json', 'zh.json'
+      'cs.json',
+      'de.json',
+      'en.json',
+      'es.json',
+      'fr.json',
+      'it.json',
+      'ja.json',
+      'ko.json',
+      'pl.json',
+      'pt-br.json',
+      'pt.json',
+      'ru.json',
+      'tr.json',
+      'zh.json'
     ])
   )
 })

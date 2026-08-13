@@ -61,7 +61,10 @@ export function matchesQuery (gif: Pick<WorkspaceGif, 'title' | 'keywords'>, que
 }
 
 /** @public */
-export function validateUpload (file: { type: string, size: number }, dimensions?: { width: number, height: number }): UploadValidation {
+export function validateUpload (
+  file: { type: string, size: number },
+  dimensions?: { width: number, height: number }
+): UploadValidation {
   if (file.type !== 'image/gif') return { ok: false, reason: 'bad-mime' }
   if (file.size > MAX_GIF_BYTES) return { ok: false, reason: 'too-large' }
   if (dimensions !== undefined && (dimensions.width > MAX_GIF_DIMENSION || dimensions.height > MAX_GIF_DIMENSION)) {
@@ -108,7 +111,12 @@ export type LibraryViewState = 'loading' | 'empty' | 'no-results' | 'populated'
  * one" after a search that simply found nothing tells the user their library was wiped.
  * @public
  */
-export function libraryViewState (opts: { loaded: boolean, query: string, total: number, matched: number }): LibraryViewState {
+export function libraryViewState (opts: {
+  loaded: boolean
+  query: string
+  total: number
+  matched: number
+}): LibraryViewState {
   if (!opts.loaded) return 'loading'
   if (opts.total === 0) return 'empty'
   if (opts.matched === 0) return 'no-results'

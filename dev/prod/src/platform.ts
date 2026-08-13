@@ -80,6 +80,7 @@ import { inboxId } from '@hcengineering/inbox'
 import { achievementId } from '@hcengineering/achievement'
 import communication, { communicationId } from '@hcengineering/communication'
 import { emojiId } from '@hcengineering/emoji'
+import { gifId } from '@hcengineering/gif'
 import billingPlugin, { billingId } from '@hcengineering/billing'
 import { hulyMailId } from '@hcengineering/huly-mail'
 import { aiAssistantId } from '@hcengineering/ai-assistant'
@@ -196,6 +197,8 @@ import * as AchievementLang from '@hcengineering/achievement-assets/lang'
 import '@hcengineering/communication-assets'
 import '@hcengineering/emoji-assets'
 import * as EmojiLang from '@hcengineering/emoji-assets/lang'
+import '@hcengineering/gif-assets'
+import * as GifLang from '@hcengineering/gif-assets/lang'
 import '@hcengineering/billing-assets'
 import * as BillingLang from '@hcengineering/billing-assets/lang'
 import '@hcengineering/huly-mail-assets'
@@ -407,6 +410,7 @@ function configureI18n(): void {
   )
   addStringsLoader(inboxId, InboxLang.loadLang)
   addStringsLoader(emojiId, EmojiLang.loadLang)
+  addStringsLoader(gifId, GifLang.loadLang)
   addStringsLoader(billingId, BillingLang.loadLang)
   addStringsLoader(hulyMailId, HulyMailLang.loadLang)
   addStringsLoader(aiAssistantId, AiAssistantLang.loadLang)
@@ -702,6 +706,7 @@ export async function configurePlatform() {
     async () => await import(/* webpackChunkName: "communication" */ '@hcengineering/communication-resources')
   )
   addLocation(emojiId, async () => await import(/* webpackChunkName: "emoji" */ '@hcengineering/emoji-resources'))
+  addLocation(gifId, async () => await import(/* webpackChunkName: "gif" */ '@hcengineering/gif-resources'))
   if ((config.BILLING_URL ?? '') !== '') {
     addLocation(
       billingId,

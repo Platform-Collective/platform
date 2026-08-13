@@ -237,6 +237,15 @@ importers:
       '@hcengineering/export-resources':
         specifier: workspace:^0.7.0
         version: link:../plugins/export-resources
+      '@hcengineering/gif':
+        specifier: workspace:^0.7.0
+        version: link:../plugins/gif
+      '@hcengineering/gif-assets':
+        specifier: workspace:^0.7.0
+        version: link:../plugins/gif-assets
+      '@hcengineering/gif-resources':
+        specifier: workspace:^0.7.0
+        version: link:../plugins/gif-resources
       '@hcengineering/github':
         specifier: workspace:^0.7.0
         version: link:../services/github/github
@@ -1306,6 +1315,15 @@ importers:
       '@hcengineering/export-resources':
         specifier: workspace:^0.7.0
         version: link:../../plugins/export-resources
+      '@hcengineering/gif':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/gif
+      '@hcengineering/gif-assets':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/gif-assets
+      '@hcengineering/gif-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/gif-resources
       '@hcengineering/github':
         specifier: workspace:^0.7.0
         version: link:../../services/github/github
@@ -18299,6 +18317,9 @@ importers:
       '@hcengineering/emoji-resources':
         specifier: workspace:^0.7.0
         version: link:../emoji-resources
+      '@hcengineering/gif':
+        specifier: workspace:^0.7.0
+        version: link:../gif
       '@hcengineering/platform':
         specifier: workspace:^0.7.20
         version: link:../../foundations/core/packages/platform
@@ -28250,6 +28271,9 @@ importers:
       '@hcengineering/emoji':
         specifier: workspace:^0.7.0
         version: link:../emoji
+      '@hcengineering/gif':
+        specifier: workspace:^0.7.0
+        version: link:../gif
       '@hcengineering/highlight':
         specifier: workspace:^0.7.0
         version: link:../../packages/highlight

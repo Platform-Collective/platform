@@ -55,6 +55,7 @@
     "@hcengineering/contact-resources": "workspace:^0.7.0",
     "@hcengineering/core": "workspace:^0.7.26",
     "@hcengineering/emoji": "workspace:^0.7.0",
+    "@hcengineering/gif": "workspace:^0.7.0",
     "@hcengineering/emoji-resources": "workspace:^0.7.0",
     "@hcengineering/platform": "workspace:^0.7.20",
     "@hcengineering/presence-resources": "workspace:^0.7.0",

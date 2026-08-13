@@ -29,8 +29,7 @@ import {
 } from '../utils'
 import type { WorkspaceGif } from '../types'
 
-const gif = (title: string, keywords: string[] = []): WorkspaceGif =>
-  ({ title, keywords }) as unknown as WorkspaceGif
+const gif = (title: string, keywords: string[] = []): WorkspaceGif => ({ title, keywords }) as unknown as WorkspaceGif
 
 const many = (n: number): WorkspaceGif[] => Array.from({ length: n }, (_, i) => gif(`g${i}`))
 
