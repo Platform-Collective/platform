@@ -22,7 +22,8 @@ on:
         default: false
 
 permissions:
-  contents: write
+  # Push happens over the SSH deploy key, not GITHUB_TOKEN — read is enough.
+  contents: read
 
 # Only one staging release at a time, and never cancel one mid-push.
 concurrency:
@@ -40,6 +41,12 @@ jobs:
           ref: staging-new
           fetch-depth: 0
           filter: tree:0
+          # The default GITHUB_TOKEN is deliberately prevented by GitHub from
+          # triggering other workflow runs (anti-recursion protection), so a
+          # push/tag made with it would silently NOT kick off main.yml. Authenticate
+          # with a repo-scoped deploy key instead (git-only access, no API scope),
+          # so the push is a normal external push and downstream workflows fire.
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
 
       - name: Configure git identity
         run: |
