@@ -88,5 +88,7 @@ export function parseRecents (raw: string | null): string[] {
 /** @public */
 export function orderByRecents<T extends { _id: string }> (items: T[], recents: string[]): T[] {
   const rank = new Map(recents.map((id, i) => [id, i]))
-  return [...items].sort((a, b) => (rank.get(a._id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b._id) ?? Number.MAX_SAFE_INTEGER))
+  return [...items].sort(
+    (a, b) => (rank.get(a._id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b._id) ?? Number.MAX_SAFE_INTEGER)
+  )
 }

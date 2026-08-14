@@ -31,7 +31,7 @@
   // Nothing is fetched until the cell is near the viewport. A GIF is served unresized, because
   // the front deliberately skips preview generation for image/gif so the animation survives,
   // so eagerly loading a page of them would pull down every full-size original at once.
-  function observe (el: HTMLButtonElement): { destroy: () => void } {
+  function observe(el: HTMLButtonElement): { destroy: () => void } {
     observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {

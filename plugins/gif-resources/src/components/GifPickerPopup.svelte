@@ -30,16 +30,16 @@
 
   $: isMobile = $deviceInfo.isMobile
 
-  const tabs: Array<{ id: Tab, label: typeof gifPlugin.string.Emoji }> = [
+  const tabs: Array<{ id: Tab; label: typeof gifPlugin.string.Emoji }> = [
     { id: 'emoji', label: gifPlugin.string.Emoji },
     { id: 'gif', label: gifPlugin.string.Gifs }
   ]
 
-  function select (next: Tab): void {
+  function select(next: Tab): void {
     tab = next
   }
 
-  function onKeydown (e: KeyboardEvent): void {
+  function onKeydown(e: KeyboardEvent): void {
     // Switch tabs without leaving the search box. Escape is left to the popup framework, which
     // already handles it for every popup in the app.
     if (!(e.ctrlKey || e.metaKey)) return

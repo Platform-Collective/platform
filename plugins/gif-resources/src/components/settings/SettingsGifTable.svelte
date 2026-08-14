@@ -29,7 +29,7 @@
 
   // A shared library with no way to remove anything is one tasteless upload from a problem.
   // The blob goes with the row, or the datalake accumulates orphans nobody can see.
-  async function remove (gif: WorkspaceGif): Promise<void> {
+  async function remove(gif: WorkspaceGif): Promise<void> {
     await client.removeDoc(gif._class, gif.space, gif._id)
     await deleteFile(gif.blob)
   }

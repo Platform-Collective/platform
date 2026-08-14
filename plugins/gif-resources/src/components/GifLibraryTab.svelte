@@ -60,7 +60,7 @@
   $: pageResult = gridPage(ordered, 0, (page + 1) * 12)
   $: state = libraryViewState({ loaded, query, total: all.length, matched: matched.length })
 
-  function pick (gif: WorkspaceGif): void {
+  function pick(gif: WorkspaceGif): void {
     recents = pushRecent(recents, gif._id)
     localStorage.setItem(RECENTS_KEY, JSON.stringify(recents))
     dispatch('select', {
@@ -71,7 +71,7 @@
     })
   }
 
-  function onSearchKeydown (e: KeyboardEvent): void {
+  function onSearchKeydown(e: KeyboardEvent): void {
     // Enter picks the first result of what is on screen. Type, Enter, sent.
     if (e.key !== 'Enter') return
     const first = selectFirst(pageResult.items)
@@ -81,7 +81,7 @@
     }
   }
 
-  function openUpload (): void {
+  function openUpload(): void {
     showPopup(GifUploadPopup, {}, undefined, () => {})
   }
 </script>
@@ -129,7 +129,12 @@
       </div>
     {:else}
       <Scroller gap="0.5rem" noStretch>
-        <GifGrid items={pageResult.items} on:select={(e) => { pick(e.detail) }} />
+        <GifGrid
+          items={pageResult.items}
+          on:select={(e) => {
+            pick(e.detail)
+          }}
+        />
         {#if pageResult.hasMore}
           <div class="gifLibrary-more">
             <Button

@@ -29,7 +29,7 @@
   let failed = false
   let duplicate = false
 
-  async function onSelected (e: Event): Promise<void> {
+  async function onSelected(e: Event): Promise<void> {
     const file = (e.target as HTMLInputElement).files?.[0]
     if (file === undefined) return
 
