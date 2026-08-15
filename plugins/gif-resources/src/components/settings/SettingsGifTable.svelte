@@ -14,7 +14,7 @@
 -->
 <script lang="ts">
   import { Button, Label, Scroller, showPopup } from '@hcengineering/ui'
-  import { createQuery, deleteFile, getClient } from '@hcengineering/presentation'
+  import { createQuery, getClient } from '@hcengineering/presentation'
   import gifPlugin, { type WorkspaceGif } from '@hcengineering/gif'
   import GifCell from '../GifCell.svelte'
   import GifUploadPopup from '../GifUploadPopup.svelte'
@@ -27,11 +27,16 @@
     gifs = res
   })
 
-  // A shared library with no way to remove anything is one tasteless upload from a problem.
-  // The blob goes with the row, or the datalake accumulates orphans nobody can see.
+  // A shared library with no way to remove anything is one tasteless upload from a problem, so the
+  // row goes. THE BLOB DOES NOT. Every message that already contains this gif stores the blob id,
+  // not a copy, and nothing rewrites sent messages - so deleting the blob here breaks every one of
+  // them permanently, for everyone, with no recovery. Removing the row only takes it out of the
+  // picker, which is what "remove from the library" has to mean.
+  // The cost is an orphan blob per removal. That is deliberate: an accumulating datalake is a
+  // housekeeping problem, a broken message history is not recoverable. A sweep that deletes blobs
+  // no live message references is the correct fix and belongs server-side, not behind this button.
   async function remove(gif: WorkspaceGif): Promise<void> {
     await client.removeDoc(gif._class, gif.space, gif._id)
-    await deleteFile(gif.blob)
   }
 </script>
 
