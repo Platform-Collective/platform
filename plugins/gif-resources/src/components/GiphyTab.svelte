@@ -39,6 +39,13 @@
   let timer: any
   let controller: AbortController | undefined
   let loadedOnce = false
+  // What the last request was actually FOR. Reactive statements re-run for reasons that have
+  // nothing to do with the user's intent (a tab flag flipping, a variable they assigned), so
+  // intent has to be compared explicitly rather than inferred from "something changed".
+  let lastRequested: string | undefined
+  // Monotonic, so a response can tell whether it is still the newest one. Aborting rejects the
+  // fetch but does not stop an already-resolved promise from continuing into its own `then`.
+  let generation = 0
 
   function abort (): void {
     controller?.abort()
@@ -47,43 +54,69 @@
 
   async function run (q: string, nextOffset: number, append: boolean): Promise<void> {
     abort()
+    const mine = ++generation
     controller = new AbortController()
     loading = true
-    rateLimited = false
     failed = false
+    // NOT cleared here. Clearing on every attempt meant a 429 lasted exactly until the next
+    // keystroke, and then every retry spent another call while the workspace was already dry.
     try {
       const batch =
         q.trim() === ''
           ? await giphyTrending(PAGE, nextOffset, controller.signal)
           : await giphySearch(q, PAGE, nextOffset, controller.signal)
+      // A newer request started while this one was in flight: drop the result on the floor
+      // rather than appending page 2 of an old query onto a new result set.
+      if (mine !== generation) return
+      rateLimited = false
       gifs = append ? [...gifs, ...batch] : batch
       offset = nextOffset + batch.length
       // GIPHY returns a short page at the end of a result set, so a full page implies more.
       more = batch.length === PAGE
     } catch (err: any) {
       if (err?.name === 'AbortError') return
+      if (mine !== generation) return
       if (err instanceof GiphyRateLimited) rateLimited = true
       else failed = true
     } finally {
-      loading = false
+      // Only the newest request owns the spinner. The old code let an aborted request clear
+      // `loading` while its replacement was still running, which read as idle.
+      if (mine === generation) loading = false
     }
   }
 
   function schedule (q: string): void {
     clearTimeout(timer)
+    // Once GIPHY has said 429, stop asking. Every retry is another counted call against an
+    // hourly budget that is already exhausted, and it cannot succeed until the hour rolls.
+    if (rateLimited) return
     timer = setTimeout(() => {
+      lastRequested = q
       void run(q, 0, false)
     }, DEBOUNCE_MS)
   }
 
-  // Only fetch once the tab is actually looked at. Loading trending while the user is on the
-  // emoji tab would spend one of the hundred calls on something nobody asked to see.
-  $: if (active && !loadedOnce) {
-    loadedOnce = true
-    void run('', 0, false)
+  // ONE reactive statement, not two. The previous pair double-fired: setting `loadedOnce` was
+  // itself a dependency of the second statement, so opening the tab sent trending twice - once
+  // immediately and once 450ms later with the same empty query. Two independent reviewers found
+  // it at this line.
+  //
+  // Guarding on `lastRequested !== query` also makes tab switching free. `active` is a
+  // dependency, and the picker keeps this component mounted and toggles CSS, so every
+  // GIPHY -> Emoji -> GIPHY round trip re-ran this block and re-sent the same search.
+  $: if (active) {
+    if (!loadedOnce) {
+      loadedOnce = true
+      lastRequested = ''
+      void run('', 0, false)
+    } else if (query !== lastRequested) {
+      schedule(query)
+    }
+  } else {
+    // Leaving the tab cancels a pending search. Without this the timer set by the last
+    // keystroke still fired against a hidden tab and spent a call nobody would see.
+    clearTimeout(timer)
   }
-
-  $: if (active && loadedOnce) schedule(query)
 
   onDestroy(() => {
     clearTimeout(timer)
@@ -144,8 +177,10 @@
       {#if more}
         <button
           class="giphyTab-more"
-          disabled={loading}
+          disabled={loading || rateLimited}
           on:click={() => {
+            // Paging keeps the same query, so lastRequested must not change or leaving and
+            // returning to the tab would look like a new search and re-fetch page 1.
             void run(query, offset, true)
           }}
         >
