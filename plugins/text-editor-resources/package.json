@@ -35,6 +35,7 @@
     "jest": "^30.4.2",
     "ts-jest": "^29.4.12",
     "@types/jest": "^30.0.0",
+    "@types/node": "^24.13.3",
     "@types/diff": "~5.0.2",
     "@types/katex": "^0.16.0",
     "svelte-eslint-parser": "^1.8.1",
