@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-import { type Asset, type IntlString, plugin, type Plugin } from '@hcengineering/platform'
+import { type Asset, type IntlString, type Metadata, plugin, type Plugin } from '@hcengineering/platform'
 import { type AnyComponent } from '@hcengineering/ui'
 import type { Class, Doc, Ref } from '@hcengineering/core'
 import type { WorkspaceGif } from './types'
@@ -57,10 +57,28 @@ export const gifPlugin = plugin(gifId, {
     BadDimensions: '' as IntlString,
     UploadFailed: '' as IntlString,
     AlreadyInLibrary: '' as IntlString,
-    Unavailable: '' as IntlString
+    Unavailable: '' as IntlString,
+    Giphy: '' as IntlString,
+    SearchGiphy: '' as IntlString,
+    PoweredByGiphy: '' as IntlString,
+    GiphyRateLimited: '' as IntlString,
+    GiphyRateLimitedHint: '' as IntlString,
+    GiphyUnavailable: '' as IntlString,
+    GiphyUnavailableHint: '' as IntlString
   },
   icon: {
     Gif: '' as Asset
+  },
+  metadata: {
+    // Set from config.json GIPHY_API_KEY. Absent means the Giphy tab hides itself and the
+    // picker falls back to the workspace library alone, which is why every read of this is
+    // treated as optional rather than asserted.
+    //
+    // This key reaches the browser by design. GIPHY require it: "All requests to GIPHY should
+    // be made directly from the client side" and "Do not proxy requests to GIPHY, either API
+    // calls or media URL loads". A beta key is rate limited rather than billed, so exposure
+    // costs throughput, not money.
+    GiphyApiKey: '' as Metadata<string>
   }
 })
 

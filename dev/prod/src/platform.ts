@@ -80,7 +80,7 @@ import { inboxId } from '@hcengineering/inbox'
 import { achievementId } from '@hcengineering/achievement'
 import communication, { communicationId } from '@hcengineering/communication'
 import { emojiId } from '@hcengineering/emoji'
-import { gifId } from '@hcengineering/gif'
+import { gifId, gifPlugin } from '@hcengineering/gif'
 import billingPlugin, { billingId } from '@hcengineering/billing'
 import { hulyMailId } from '@hcengineering/huly-mail'
 import { aiAssistantId } from '@hcengineering/ai-assistant'
@@ -230,6 +230,7 @@ export interface Config {
   COLLABORATOR_URL: string
   COLLABORATOR?: string
   REKONI_URL: string
+  GIPHY_API_KEY?: string
   TELEGRAM_URL: string
   GMAIL_URL: string
   CALENDAR_URL: string
@@ -529,6 +530,8 @@ export async function configurePlatform() {
   setMetadata(github.metadata.GithubURL, config.GITHUB_URL)
 
   setMetadata(rekoni.metadata.RekoniUrl, config.REKONI_URL)
+  // Empty string when unset, which the Giphy tab reads as 'no provider configured' and hides itself.
+  setMetadata(gifPlugin.metadata.GiphyApiKey, config.GIPHY_API_KEY ?? '')
 
   setMetadata(uiPlugin.metadata.DefaultApplication, login.component.LoginApp)
   setMetadata(contactPlugin.metadata.LastNameFirst, myBranding.lastNameFirst === 'true')

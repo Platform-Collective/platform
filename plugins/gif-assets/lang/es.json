@@ -25,6 +25,13 @@
     "BadDimensions": "That GIF is larger than 2000 pixels on a side.",
     "UploadFailed": "The upload did not finish. Nothing was added.",
     "AlreadyInLibrary": "That GIF is already in the library.",
-    "Unavailable": "This GIF is no longer available."
+    "Unavailable": "This GIF is no longer available.",
+    "Giphy": "GIPHY",
+    "SearchGiphy": "Search GIPHY",
+    "PoweredByGiphy": "Powered By GIPHY",
+    "GiphyRateLimited": "GIPHY search paused",
+    "GiphyRateLimitedHint": "The hourly search limit was reached. Try again shortly, or pick from your workspace library.",
+    "GiphyUnavailable": "GIPHY is unreachable",
+    "GiphyUnavailableHint": "Check your connection, or pick from your workspace library."
   }
 }

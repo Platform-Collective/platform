@@ -82,7 +82,7 @@ import { inboxId } from '@hcengineering/inbox'
 import { achievementId } from '@hcengineering/achievement'
 import communication, { communicationId } from '@hcengineering/communication'
 import { emojiId } from '@hcengineering/emoji'
-import { gifId } from '@hcengineering/gif'
+import { gifId, gifPlugin } from '@hcengineering/gif'
 import { hulyMailId } from '@hcengineering/huly-mail'
 import { aiAssistantId } from '@hcengineering/ai-assistant'
 import { ratingId } from '@hcengineering/rating'
@@ -387,6 +387,8 @@ export async function configurePlatform (onWorkbenchConnect?: () => Promise<void
   setMetadata(notification.metadata.PushPublicKey, config.PUSH_PUBLIC_KEY)
 
   setMetadata(rekoni.metadata.RekoniUrl, config.REKONI_URL)
+  // Empty string when unset, which the Giphy tab reads as "no provider configured" and hides itself.
+  setMetadata(gifPlugin.metadata.GiphyApiKey, config.GIPHY_API_KEY ?? '')
   setMetadata(contactPlugin.metadata.LastNameFirst, myBranding.lastNameFirst === 'true')
   setMetadata(love.metadata.ServiceEndpoint, config.LOVE_ENDPOINT)
   setMetadata(love.metadata.WebSocketURL, config.LIVEKIT_WS)

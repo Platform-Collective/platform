@@ -18,38 +18,44 @@
   import emojiPlugin from '@hcengineering/emoji'
   import gifPlugin from '@hcengineering/gif'
   import GifLibraryTab from './GifLibraryTab.svelte'
+  import GiphyTab from './GiphyTab.svelte'
+  import { giphyConfigured } from '../giphy'
 
   export let embedded: boolean = false
 
   const dispatch = createEventDispatcher()
 
-  type Tab = 'emoji' | 'gif'
+  type Tab = 'emoji' | 'giphy' | 'gif'
   // Always opens on Emoji. Persisting the last tab would mean the emoji button sometimes opens
   // a GIF grid, which is the one variant that reads as broken rather than as a feature.
   let tab: Tab = 'emoji'
 
   $: isMobile = $deviceInfo.isMobile
 
-  const tabs: Array<{ id: Tab; label: typeof gifPlugin.string.Emoji }> = [
+  // Resolved once at construction: the key comes from config.json, which is fixed for the life
+  // of the page, so re-reading it per render would be work for a value that cannot change.
+  const hasGiphy = giphyConfigured()
+
+  // GIPHY sits before the workspace library because it is the one people reach for. With no
+  // key configured the tab is absent entirely rather than present and broken.
+  const tabs: Array<{ id: Tab, label: typeof gifPlugin.string.Emoji }> = [
     { id: 'emoji', label: gifPlugin.string.Emoji },
+    ...(hasGiphy ? [{ id: 'giphy' as Tab, label: gifPlugin.string.Giphy }] : []),
     { id: 'gif', label: gifPlugin.string.Gifs }
   ]
 
-  function select(next: Tab): void {
+  function select (next: Tab): void {
     tab = next
   }
 
-  function onKeydown(e: KeyboardEvent): void {
+  function onKeydown (e: KeyboardEvent): void {
     // Switch tabs without leaving the search box. Escape is left to the popup framework, which
     // already handles it for every popup in the app.
     if (!(e.ctrlKey || e.metaKey)) return
-    if (e.key === '1') {
-      select('emoji')
-      e.preventDefault()
-    } else if (e.key === '2') {
-      select('gif')
-      e.preventDefault()
-    }
+    const idx = Number(e.key)
+    if (!Number.isInteger(idx) || idx < 1 || idx > tabs.length) return
+    select(tabs[idx - 1].id)
+    e.preventDefault()
   }
 </script>
 
@@ -71,7 +77,13 @@
         <Label label={t.label} />
       </button>
     {/each}
-    <div class="gifPicker-tab-cursor" style:left={`${tabs.findIndex((t) => t.id === tab) * 50}%`} />
+    <!-- Width and offset both derive from tabs.length so adding or hiding a tab cannot leave
+         the underline the wrong size, which a hardcoded 50% did when GIPHY made it three. -->
+    <div
+      class="gifPicker-tab-cursor"
+      style:width={`${100 / tabs.length}%`}
+      style:left={`${(tabs.findIndex((t) => t.id === tab) * 100) / tabs.length}%`}
+    />
   </div>
 
   <!--
@@ -90,6 +102,17 @@
       }}
     />
   </div>
+
+  {#if hasGiphy}
+    <div class="gifPicker-body" class:hidden={tab !== 'giphy'} aria-hidden={tab !== 'giphy'}>
+      <GiphyTab
+        active={tab === 'giphy'}
+        on:select={(evt) => {
+          dispatch('close', { kind: 'gif', ...evt.detail })
+        }}
+      />
+    </div>
+  {/if}
 
   <div class="gifPicker-body" class:hidden={tab !== 'gif'} aria-hidden={tab !== 'gif'}>
     <GifLibraryTab
