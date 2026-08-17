@@ -429,6 +429,7 @@ class Connection implements ClientConnection {
         }
 
         if (promise !== undefined) {
+          this.requests.delete(resp.id)
           promise.reject(new PlatformError(resp.error))
         }
       }
