@@ -33,6 +33,16 @@ export function nodeImage (attrs: { src: string, alt?: string, width?: number, h
   return { type: MarkupNodeType.image, attrs }
 }
 
+export function nodeGif (attrs: {
+  'file-id'?: string
+  src?: string
+  alt?: string
+  width?: number
+  height?: number
+}): MarkupNode {
+  return { type: MarkupNodeType.gif, attrs }
+}
+
 export function nodeReference (attrs: { id: string, label: string, objectclass: string }): MarkupNode {
   return { type: MarkupNodeType.reference, attrs }
 }

@@ -1,4 +1,6 @@
-import { hashAttrs, stripHash } from '../utils'
+import { hashAttrs, isEmptyMarkup, jsonToMarkup, stripHash } from '../utils'
+import { MarkupNodeType } from '../model'
+import { nodeDoc, nodeGif, nodeParagraph, nodeText } from '../dsl'
 
 describe('hashAttrs', () => {
   it('should return a hash of length 8', () => {
@@ -45,5 +47,33 @@ describe('stripHash', () => {
     const name = 'bold--invalid!'
     const result = stripHash(name)
     expect(result).toEqual(name)
+  })
+})
+
+describe('isEmptyMarkup with a gif node', () => {
+  // the enum entry must exist, or every serializer case for gif is unreachable.
+  it('should define MarkupNodeType.gif', () => {
+    expect(MarkupNodeType.gif).toBe('gif')
+  })
+
+  // a gif-only message must not read as empty, or the composer's send button never
+  // enables (ReferenceInput.svelte binds canSubmit to !isEmptyMarkup). emoji is already on
+  // the nonEmptyNodes allowlist for exactly this reason.
+  it('should not report a document containing only a gif as empty', () => {
+    const doc = nodeDoc(nodeParagraph(nodeGif({ 'file-id': 'blob-1', width: 320, height: 240 })))
+    expect(isEmptyMarkup(jsonToMarkup(doc))).toBe(false)
+  })
+
+  it('should still report a document with an empty paragraph as empty', () => {
+    expect(isEmptyMarkup(jsonToMarkup(nodeDoc(nodeParagraph())))).toBe(true)
+  })
+
+  it('should still report a document with text as not empty', () => {
+    expect(isEmptyMarkup(jsonToMarkup(nodeDoc(nodeParagraph(nodeText('hi')))))).toBe(false)
+  })
+
+  it('should report undefined and the empty string as empty', () => {
+    expect(isEmptyMarkup(undefined)).toBe(true)
+    expect(isEmptyMarkup('')).toBe(true)
   })
 })

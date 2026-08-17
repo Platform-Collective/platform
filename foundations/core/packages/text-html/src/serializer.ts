@@ -218,6 +218,25 @@ function addNodeContent (builder: NodeBuilder, node?: MarkupNode): void {
     builder.closeTag('pre')
   } else if (node.type === MarkupNodeType.text) {
     builder.addText(node.text ?? '')
+  } else if (node.type === MarkupNodeType.gif) {
+    // Deliberately not modelled on the image case below: that one reads attrs.src only, so a
+    // library gif (file-id set, src null) would serialize to src="undefined" and lose the blob
+    // reference. file-id wins, src is the fallback for an external source.
+    // Null-check the raw attrs: toString(null) yields the string 'null', so comparing the
+    // stringified value would treat an absent file-id as present and emit src="null".
+    const rawFileId = attrs['file-id']
+    const rawSrc = attrs.src
+    const imgAttrs: Record<string, string | undefined> = { 'data-type': 'gif' }
+    if (rawFileId != null) {
+      imgAttrs['file-id'] = toString(rawFileId)
+      imgAttrs.src = toString(rawFileId)
+    } else if (rawSrc != null) {
+      imgAttrs.src = toString(rawSrc)
+    }
+    if (attrs.alt != null) imgAttrs.alt = toString(attrs.alt)
+    if (attrs.width != null) imgAttrs.width = toString(attrs.width)
+    if (attrs.height != null) imgAttrs.height = toString(attrs.height)
+    builder.openTag('img', imgAttrs, { selfClosing: true })
   } else if (node.type === MarkupNodeType.image) {
     const src = toString(attrs.src)
     const alt = toString(attrs.alt)

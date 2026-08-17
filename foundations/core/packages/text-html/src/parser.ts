@@ -31,7 +31,10 @@ interface HtmlTagHandler {
 }
 
 interface HtmlNodeRule {
-  node: MarkupNodeType
+  // A function lets one tag map to different node types by attribute, e.g. an <img> that is a
+  // gif rather than an image. Without it a gif round-tripped through HTML comes back as an
+  // image node, which the message composers drop because image is off in their kitOptions.
+  node: MarkupNodeType | ((attrs: Record<string, string>) => MarkupNodeType)
   getAttrs?: Record<string, AttrValue> | ((attrs: Record<string, string>) => Record<string, AttrValue> | undefined)
   wrapNode?: boolean
   wrapContent?: boolean
@@ -134,6 +137,7 @@ class HtmlParseState {
 
 function nodeHandler ({ node, getAttrs, wrapContent, wrapNode }: HtmlNodeRule): HtmlTagHandler {
   const wrapStack: boolean[] = []
+  const nodeStack: MarkupNodeType[] = []
 
   return {
     handleOpenTag: (state: HtmlParseState, tag: string, attributes: Record<string, string>) => {
@@ -151,7 +155,9 @@ function nodeHandler ({ node, getAttrs, wrapContent, wrapNode }: HtmlNodeRule): 
       }
       wrapStack.push(shouldWrapNode)
 
-      state.openNode(node, attrs)
+      const nodeType = typeof node === 'function' ? node(attributes) : node
+      nodeStack.push(nodeType)
+      state.openNode(nodeType, attrs)
 
       if (wrapContent === true) {
         state.openNode(MarkupNodeType.paragraph)
@@ -162,7 +168,7 @@ function nodeHandler ({ node, getAttrs, wrapContent, wrapNode }: HtmlNodeRule): 
         state.closeNode(MarkupNodeType.paragraph)
       }
 
-      state.closeNode(node)
+      state.closeNode(nodeStack.pop() ?? (typeof node === 'function' ? node({}) : node))
       if (wrapStack.pop() === true) {
         state.closeNode(MarkupNodeType.paragraph)
       }
@@ -317,7 +323,8 @@ const nodeRules: Record<string, HtmlNodeRule> = {
     node: MarkupNodeType.list_item
   },
   img: {
-    node: MarkupNodeType.image,
+    node: (attributes: Record<string, string>) =>
+      attributes['data-type'] === 'gif' ? MarkupNodeType.gif : MarkupNodeType.image,
     wrapNode: true,
     getAttrs: (attributes: Record<string, string>) => {
       return {
