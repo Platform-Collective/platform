@@ -17,7 +17,6 @@ import core, {
   type Class,
   type Doc,
   type DocumentQuery,
-  type FindOptions,
   type FindResult,
   type Hierarchy,
   type LoadModelResponse,
@@ -36,10 +35,11 @@ import type {
   Middleware,
   MiddlewareCreator,
   PipelineContext,
+  ServerFindOptions,
   TxAdapter,
   TxMiddlewareResult
 } from '@hcengineering/server-core'
-import { BaseMiddleware } from '@hcengineering/server-core'
+import { BaseMiddleware, paginateInMemoryAsync } from '@hcengineering/server-core'
 import crypto from 'node:crypto'
 
 const isAccountTx = (it: TxCUD<Doc>): boolean =>
@@ -90,11 +90,15 @@ export class ModelMiddleware extends BaseMiddleware implements Middleware {
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
-    options?: FindOptions<T>
+    options?: ServerFindOptions<T>
   ): Promise<FindResult<T>> {
     const d = this.context.hierarchy.findDomain(_class)
     if (d === DOMAIN_MODEL) {
-      return this.context.modelDb.findAll(_class, query, options)
+      // The model is served from memory, so a cursor position has to be applied here as well.
+      return paginateInMemoryAsync(
+        options,
+        async (findOptions) => await this.context.modelDb.findAll(_class, query, findOptions)
+      )
     }
     return this.provideFindAll(ctx, _class, query, options)
   }

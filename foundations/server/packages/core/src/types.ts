@@ -25,6 +25,8 @@ import {
   type DomainParams,
   type DomainResult,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FindResult,
   type Hierarchy,
   type LoadModelResponse,
@@ -75,6 +77,19 @@ export interface ServerFindOptions<T extends Doc> extends FindOptions<T> {
   memoryLimit?: number // in bytes
   // A bulk size for cursor fetching
   bulkSize?: number
+
+  // A validated keyset position used by database adapters.
+  pagination?: FindPagination
+}
+
+export interface FindPaginationField {
+  field: string
+  order: 1 | -1
+}
+
+export interface FindPagination {
+  fields: FindPaginationField[]
+  values?: unknown[]
 }
 
 export type SessionFindAll = <T extends Doc>(
@@ -217,7 +232,7 @@ export interface Pipeline {
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
-    options?: FindOptions<T>
+    options?: ServerFindOptions<T>
   ) => Promise<FindResult<T>>
   searchFulltext: (
     ctx: MeasureContext<SessionData>,
@@ -633,6 +648,18 @@ export interface Session {
     query: DocumentQuery<T>,
     options?: FindOptions<T>
   ) => Promise<FindResult<T>>
+  findAllPage: <T extends Doc>(
+    ctx: ClientSessionCtx,
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ) => Promise<void>
+  findAllPageRaw: <T extends Doc>(
+    ctx: ClientSessionCtx,
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ) => Promise<FindPageResult<T>>
   searchFulltext: (ctx: ClientSessionCtx, query: SearchQuery, options: SearchOptions) => Promise<void>
   searchFulltextRaw: (ctx: ClientSessionCtx, query: SearchQuery, options: SearchOptions) => Promise<SearchResult>
   tx: (ctx: ClientSessionCtx, tx: Tx) => Promise<void>

@@ -24,6 +24,8 @@ import core, {
   Doc,
   DocumentQuery,
   FindOptions,
+  FindPageOptions,
+  FindPageResult,
   FindResult,
   Hierarchy,
   IndexingUpdateEvent,
@@ -64,6 +66,7 @@ import core, {
   type DomainParams,
   type DomainRequestOptions,
   type DomainResult,
+  type IterateOptions,
   type OperationDomain
 } from '@hcengineering/core'
 import { PlatformError } from '@hcengineering/platform'
@@ -291,6 +294,22 @@ export class LiveQuery implements WithTx, Client {
       q.result.clean()
     }
     return toFindResult(q.result.getClone(), q.total)
+  }
+
+  findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    return this.client.findAllPage(_class, query, options)
+  }
+
+  iterateAll<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ): AsyncIterable<WithLookup<T>> {
+    return this.client.iterateAll(_class, query, options)
   }
 
   async domainRequest<T>(

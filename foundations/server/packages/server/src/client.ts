@@ -26,6 +26,8 @@ import {
   type DomainParams,
   type DomainResult,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FindResult,
   type LoadModelResponse,
   type MeasureContext,
@@ -49,18 +51,22 @@ import {
 import { PlatformError, unknownError } from '@hcengineering/platform'
 import {
   BackupClientOps,
+  badPageRequest,
   createBroadcastEvent,
   estimateDocSize,
+  findPage,
   SessionDataImpl,
   type ClientSessionCtx,
   type ConnectionSocket,
+  type CursorCodec,
   type OneSecondCounters,
+  type PageCursorPayload,
   type Pipeline,
   type Session,
   type SessionRequest,
   type StatisticsElement
 } from '@hcengineering/server-core'
-import { type Token } from '@hcengineering/server-token'
+import { decodeToken, generateToken, type Token } from '@hcengineering/server-token'
 
 const useReserveContext = (process.env.USE_RESERVE_CTX ?? 'true') === 'true'
 
@@ -229,6 +235,84 @@ export class ClientSession implements Session {
     } catch (err) {
       await ctx.sendError(ctx.requestId, 'Failed to findAll', unknownError(err))
       ctx.ctx.error('failed to findAll', { err })
+    }
+  }
+
+  async findAllPageRaw<T extends Doc>(
+    ctx: ClientSessionCtx,
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    this.lastRequest = Date.now()
+    this.total.find++
+    this.current.find++
+    this.includeSessionContext(ctx)
+
+    const findOptions = { ...options }
+    delete findOptions.cursor
+    return await findPage(
+      _class,
+      query,
+      options,
+      async (pagination, sort, projection, limit) =>
+        await ctx.pipeline.findAll(ctx.ctx, _class, query, {
+          ...findOptions,
+          sort,
+          projection,
+          limit,
+          pagination
+        }),
+      { hierarchy: ctx.pipeline.context.hierarchy, codec: this.cursorCodec() }
+    )
+  }
+
+  /**
+   * Cursors handed out to a client are signed, so a client can not forge a position, reuse a cursor issued
+   * for another account or workspace, or pass a cursor produced by an in-process client.
+   */
+  private cursorCodec (): CursorCodec {
+    return {
+      encode: (payload) => generateToken(this.account.uuid, this.workspace.uuid, { cursor: JSON.stringify(payload) }),
+      decode: (cursor) => {
+        const decoded = decodeToken(cursor)
+        if (decoded.account !== this.account.uuid || decoded.workspace !== this.workspace.uuid) {
+          throw badPageRequest()
+        }
+        return JSON.parse(decoded.extra?.cursor ?? '') as PageCursorPayload
+      }
+    }
+  }
+
+  async findAllPage<T extends Doc>(
+    ctx: ClientSessionCtx,
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<void> {
+    const domain = ctx.pipeline.context.hierarchy.findDomain(_class) ?? ''
+    if (domain === '') {
+      await ctx.sendError(
+        ctx.requestId,
+        'Invalid class name is passed. Failed to findAllPage.',
+        new Error('Unknown domain')
+      )
+      return
+    }
+    try {
+      const result = await this.counter.withCounter('find-page-' + domain, 1, () =>
+        this.findAllPageRaw(ctx, _class, query, options)
+      )
+      await this.counter.withCounter('clientSendMemory', this.estimateSize(result), () =>
+        ctx.sendResponse(ctx.requestId, result)
+      )
+    } catch (err) {
+      await ctx.sendError(
+        ctx.requestId,
+        'Failed to findAllPage',
+        err instanceof PlatformError ? err.status : unknownError(err)
+      )
+      ctx.ctx.error('failed to findAllPage', { err })
     }
   }
 

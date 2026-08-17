@@ -22,10 +22,13 @@ import {
   type DomainRequestOptions,
   type DomainResult,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FindResult,
   Hierarchy,
   ModelDb,
   OperationDomain,
+  type IterateOptions,
   type Ref,
   type SearchOptions,
   type SearchQuery,
@@ -58,6 +61,22 @@ export class RestClientAdapter implements Client {
     options?: FindOptions<T>
   ): Promise<FindResult<T>> {
     return await this.client.findAll(_class, query, options)
+  }
+
+  async findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    return await this.client.findAllPage(_class, query, options)
+  }
+
+  iterateAll<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ): AsyncIterable<WithLookup<T>> {
+    return this.client.iterateAll(_class, query, options)
   }
 
   async tx (tx: Tx): Promise<TxResult> {

@@ -28,7 +28,10 @@ import {
   type DomainRequestOptions,
   type DomainResult,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FindResult,
+  type IterateOptions,
   Hierarchy,
   MeasureMetricsContext,
   type Mixin,
@@ -163,6 +166,81 @@ export class RestClientImpl implements RestClient {
     }
 
     return result
+  }
+
+  async findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    const requestUrl = concatLink(this.endpoint, `/api/v1/find-page/${this.workspace}`)
+    const result = await withRetry<FindPageResult<T> & { error?: Status }>(async () => {
+      const response = await fetch(requestUrl, {
+        method: 'POST',
+        keepalive: true,
+        headers: this.jsonHeaders(),
+        body: JSON.stringify({ _class, query, options })
+      })
+      if (!response.ok) {
+        await this.checkRateLimits(response)
+        throw new PlatformError(unknownError(response.statusText))
+      }
+      this.updateRateLimit(response)
+      return await extractJson<FindPageResult<T>>(response)
+    }, isRLE)
+
+    if (result.error !== undefined) {
+      throw new PlatformError(result.error)
+    }
+    if (result.lookupMap !== undefined) {
+      for (const doc of result.docs) {
+        if (doc.$lookup !== undefined) {
+          const lookup = doc.$lookup as Record<string, unknown>
+          for (const [key, value] of Object.entries(lookup)) {
+            if (Array.isArray(value)) {
+              lookup[key] = value.map((item) => result.lookupMap?.[item])
+            } else {
+              lookup[key] = result.lookupMap[value as string]
+            }
+          }
+        }
+      }
+      delete result.lookupMap
+    }
+    for (const doc of result.docs) {
+      const docRecord = doc as Record<string, unknown>
+      for (const [key, value] of Object.entries(query)) {
+        if (
+          (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') &&
+          docRecord[key] == null
+        ) {
+          docRecord[key] = value
+        }
+      }
+      if (doc._class == null) {
+        doc._class = _class
+      }
+    }
+    return result
+  }
+
+  async * iterateAll<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ): AsyncIterable<WithLookup<T>> {
+    let cursor: string | undefined
+    do {
+      const page = await this.findAllPage(_class, query, {
+        ...options,
+        limit: options?.limit ?? 500,
+        cursor
+      })
+      for (const doc of page.docs) {
+        yield doc
+      }
+      cursor = page.nextCursor
+    } while (cursor !== undefined)
   }
 
   private async checkRate (): Promise<void> {

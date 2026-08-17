@@ -61,6 +61,23 @@ export class LiveQueryMiddleware extends BaseMiddleware implements Middleware {
           results.total
         )
       },
+      findAllPage: async (_class, query, options) => {
+        const { cursor, limit, ...findOptions } = options
+        const results = await this.findAll(metrics, _class, query, findOptions)
+        const offset = cursor === undefined ? 0 : Number.parseInt(cursor, 10)
+        const start = Number.isNaN(offset) ? 0 : offset
+        const docs = results.slice(start, start + limit)
+        const nextOffset = start + docs.length
+        return {
+          docs,
+          nextCursor: nextOffset < results.length ? String(nextOffset) : undefined,
+          total: options.total === true ? results.length : undefined
+        }
+      },
+      iterateAll: async function * (_class, query, options) {
+        const results = await this.findAll(_class, query, options)
+        yield * results
+      },
       findOne: async (_class, query, options) => {
         const _ctx: MeasureContext = (options as ServerFindOptions<Doc>)?.ctx ?? metrics
         delete (options as ServerFindOptions<Doc>)?.ctx
