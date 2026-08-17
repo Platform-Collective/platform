@@ -2112,6 +2112,11 @@
       "shouldPublish": false
     },
     {
+      "packageName": "@hcengineering/mobile",
+      "projectFolder": "mobile",
+      "shouldPublish": false
+    },
+    {
       "packageName": "desktop",
       "projectFolder": "desktop-package",
       "shouldPublish": false

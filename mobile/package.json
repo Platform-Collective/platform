@@ -1,0 +1,35 @@
+{
+  "name": "@hcengineering/mobile",
+  "version": "0.7.0",
+  "private": true,
+  "description": "Platform mobile app (Capacitor wrapper for iOS and Android)",
+  "license": "EPL-2.0",
+  "scripts": {
+    "build:web": "node scripts/copy-web.js",
+    "format": "echo 'no format yet'",
+    "sync": "npm run build:web && npx cap sync",
+    "add:ios": "npx cap add ios",
+    "add:android": "npx cap add android",
+    "open:ios": "npx cap open ios",
+    "open:android": "npx cap open android",
+    "run:ios": "npx cap run ios",
+    "run:android": "npx cap run android"
+  },
+  "dependencies": {
+    "@capacitor/network": "^7.0.0",
+    "@capacitor/splash-screen": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "typescript": "^5.9.3"
+  },
+  "capacitor": {
+    "platforms": [
+      "ios",
+      "android"
+    ]
+  }
+}

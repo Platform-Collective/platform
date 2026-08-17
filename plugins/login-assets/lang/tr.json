@@ -3,7 +3,8 @@
     "RequiredField": "Gerekli alan {field}",
     "FieldsDoNotMatch": "{field}, {field2} ile eşleşmiyor",
     "ConnectingToServer": "Sunucuya bağlanılıyor....",
-    "IncorrectValue": "Yanlış değer {field}"
+    "IncorrectValue": "Yanlış değer {field}",
+    "ServerUnavailable": "Sunucu kullanılamıyor. Lütfen sunucunun çalıştığından emin olun."
   },
   "string": {
     "ChangePassword": "Parolayı değiştir",

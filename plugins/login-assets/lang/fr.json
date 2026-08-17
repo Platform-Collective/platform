@@ -3,7 +3,8 @@
     "RequiredField": "Champ requis {field}",
     "FieldsDoNotMatch": "{field} ne correspond pas à {field2}",
     "ConnectingToServer": "Connexion au serveur...",
-    "IncorrectValue": "Valeur incorrecte {field}"
+    "IncorrectValue": "Valeur incorrecte {field}",
+    "ServerUnavailable": "Serveur indisponible. Veuillez vous assurer que le serveur est en cours d'exécution."
   },
   "string": {
     "ChangePassword": "Changer le mot de passe",

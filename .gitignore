@@ -87,6 +87,7 @@ tsconfig.tsbuildinfo
 ingest-attachment-*.zip
 tsdoc-metadata.json
 pods/front/dist
+mobile/www
 *.cpuprofile
 *.pyc
 metrics.txt

@@ -435,8 +435,19 @@ export async function configurePlatform() {
   configureI18n()
 
   const config: Config = await loadServerConfig(configs[clientType ?? ''] ?? '/config.json')
-  const branding: BrandingMap =
-    config.BRANDING_URL !== undefined ? await (await fetch(config.BRANDING_URL, { keepalive: true })).json() : {}
+
+  // Load branding with fallback to empty object if fetch fails
+  let branding: BrandingMap = {}
+  if (config.BRANDING_URL !== undefined) {
+    try {
+      const brandingResponse = await fetch(config.BRANDING_URL, { keepalive: true })
+      if (brandingResponse.ok) {
+        branding = await brandingResponse.json()
+      }
+    } catch (e) {
+      console.warn('Failed to load branding config:', e)
+    }
+  }
   const myBranding = branding[window.location.host] ?? {}
 
   console.log('loading configuration', config)

@@ -40,6 +40,7 @@ env:
     desktop
     desktop-package
     foundations
+    mobile
     qms-desktop-package
     dev
     models

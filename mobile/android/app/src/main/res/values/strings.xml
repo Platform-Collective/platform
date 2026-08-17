@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Huly</string>
+    <string name="title_activity_main">Huly</string>
+    <string name="package_name">org.platformcollective.app</string>
+    <string name="custom_url_scheme">org.platformcollective.app</string>
+
+    <!-- Error screen strings -->
+    <string name="error_title">Connection Error</string>
+    <string name="error_server_unavailable">Unable to connect to the server.\nPlease check if the server is running and try again.</string>
+    <string name="error_no_network">No internet connection.\nPlease check your network settings and try again.</string>
+    <string name="error_connection_timeout">Connection timed out.\nPlease check your network and try again.</string>
+    <string name="error_network_restored">Network connection restored.\nTap Retry to continue.</string>
+    <string name="retry_button">Retry</string>
+
+    <!-- Downloads -->
+    <string name="download_started">Downloading %1$s…</string>
+</resources>

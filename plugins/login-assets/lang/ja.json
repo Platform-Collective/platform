@@ -3,7 +3,8 @@
     "RequiredField": "必須フィールド {field}",
     "FieldsDoNotMatch": "{field} が {field2} と一致しません",
     "ConnectingToServer": "サーバーに接続中....",
-    "IncorrectValue": "不正な値 {field}"
+    "IncorrectValue": "不正な値 {field}",
+    "ServerUnavailable": "サーバーが利用できません。サーバーが実行されていることを確認してください。"
   },
   "string": {
     "LogIn": "ログイン",

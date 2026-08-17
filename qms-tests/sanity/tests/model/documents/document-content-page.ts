@@ -572,8 +572,9 @@ export class DocumentContentPage extends DocumentCommonPage {
   }
 
   async changeDocumentSpaceMembers (spaceName: string): Promise<void> {
-    await this.page.getByRole('button', { name: spaceName }).hover()
-    await this.page.getByRole('button', { name: spaceName }).getByRole('button').click()
+    // exact: true — random space names like 'late' also substring-match other nav buttons ('Templates')
+    await this.page.getByRole('button', { name: spaceName, exact: true }).hover()
+    await this.page.getByRole('button', { name: spaceName, exact: true }).getByRole('button').click()
     await this.editDocumentSpace.click()
     await this.page.getByRole('button', { name: 'DK Dirak Kainin' }).first().click()
     await this.page.getByRole('button', { name: 'DK Dirak Kainin' }).nth(3).click()

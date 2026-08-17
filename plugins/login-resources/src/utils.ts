@@ -79,6 +79,16 @@ export function getAccountClient (
   return getAccountClientRaw(accountsUrl, token !== null ? token : undefined)
 }
 
+export function isNetworkError (err: any): boolean {
+  if (err instanceof TypeError && err?.message != null) return true
+  const msg = err?.message ?? ''
+  return typeof msg === 'string' && (msg.includes('fetch') || msg.includes('network') || msg.includes('Load failed'))
+}
+
+export function serverUnavailableStatus (): Status {
+  return new Status(Severity.ERROR, login.status.ServerUnavailable, {})
+}
+
 /**
  * Perform a login operation to required workspace with user credentials.
  */
@@ -101,7 +111,7 @@ export async function doLogin (email: string, password: string): Promise<[Status
       Analytics.handleEvent(LoginEvents.LoginPassword, { email, ok: false })
       Analytics.handleError(err)
 
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }
@@ -126,7 +136,7 @@ export async function doLoginAsGuest (): Promise<[Status, LoginInfo | null]> {
       Analytics.handleEvent(LoginEvents.LoginGuestError)
       Analytics.handleError(err)
 
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }
@@ -153,7 +163,7 @@ export async function signUp (
       Analytics.handleEvent(LoginEvents.SignUpEmail, { email, ok: false })
       Analytics.handleError(err)
 
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }
@@ -171,7 +181,7 @@ export async function signUpOtp (email: string, first: string, last: string): Pr
 
       return [err.status, null]
     } else {
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }
@@ -207,7 +217,7 @@ export async function createWorkspace (
       Analytics.handleEvent(LoginEvents.CreateWorkspace, { name: workspaceName, ok: false })
       Analytics.handleError(err)
 
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }
@@ -442,7 +452,7 @@ export async function selectWorkspace (
     } else {
       Analytics.handleEvent(LoginEvents.SelectWorkspace, { name: workspaceUrl, ok: false })
       Analytics.handleError(err)
-      return [unknownError(err), null, false]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null, false]
     }
   }
 }
@@ -472,7 +482,7 @@ export async function fetchWorkspace (): Promise<[Status, WorkspaceInfoWithStatu
     } else {
       Analytics.handleError(err)
 
-      return [unknownError(err), null, false]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null, false]
     }
   }
 }
@@ -504,7 +514,7 @@ export async function getPerson (): Promise<[Status, Person | null]> {
     } else {
       Analytics.handleError(err)
 
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }
@@ -612,7 +622,7 @@ export async function checkAutoJoin (
       return [err.status, null]
     } else {
       Analytics.handleError(err)
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }
@@ -691,7 +701,7 @@ export async function join (
       Analytics.handleEvent('Join', { email, ok: false })
       Analytics.handleError(err)
 
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }
@@ -720,7 +730,7 @@ export async function signUpJoin (
       Analytics.handleEvent('Signup Join', { email, ok: false })
       Analytics.handleError(err)
 
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }
@@ -811,7 +821,7 @@ export async function requestPassword (email: string): Promise<Status> {
     } else {
       Analytics.handleError(err)
 
-      return unknownError(err)
+      return isNetworkError(err) ? serverUnavailableStatus() : unknownError(err)
     }
   }
 }
@@ -831,7 +841,7 @@ export async function confirm (confirmationToken: string): Promise<[Status, Logi
     } else {
       Analytics.handleError(err)
 
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }
@@ -851,7 +861,7 @@ export async function restorePassword (token: string, password: string): Promise
     } else {
       Analytics.handleError(err)
 
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }
@@ -997,7 +1007,7 @@ export async function loginOtp (email: string): Promise<[Status, OtpInfo | null]
       Analytics.handleEvent('sendOtp', { email, ok: false })
       Analytics.handleError(err)
 
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }
@@ -1025,7 +1035,7 @@ export async function doValidateOtp (
       console.error('Login with otp error', err)
       Analytics.handleEvent(telemetryEvent, { email, ok: false })
       Analytics.handleError(err)
-      return [unknownError(err), null]
+      return [isNetworkError(err) ? serverUnavailableStatus() : unknownError(err), null]
     }
   }
 }

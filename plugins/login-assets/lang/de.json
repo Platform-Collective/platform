@@ -3,7 +3,8 @@
     "RequiredField": "Pflichtfeld {field}",
     "FieldsDoNotMatch": "{field} stimmt nicht mit {field2} überein",
     "ConnectingToServer": "Verbindung zum Server wird hergestellt....",
-    "IncorrectValue": "Ungültiger Wert für {field}"
+    "IncorrectValue": "Ungültiger Wert für {field}",
+    "ServerUnavailable": "Server nicht erreichbar. Bitte stellen Sie sicher, dass der Server läuft."
   },
   "string": {
     "ChangePassword": "Passwort ändern",

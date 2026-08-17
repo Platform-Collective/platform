@@ -82,6 +82,7 @@ For detailed information about the platform architecture, services, and their in
   - [Installation](#installation)
   - [Build and run](#build-and-run)
   - [Run in development mode](#run-in-development-mode)
+  - [Mobile (iOS and Android)](#mobile-ios-and-android)
   - [Update project structure and database](#update-project-structure-and-database)
   - [Troubleshooting](#troubleshooting)
   - [Build \& Watch](#build--watch)
@@ -252,6 +253,32 @@ rushx dev-server
 Then go to <http://localhost:8080>
 
 Select "Sign up" on the right panel and click the "Sign up with password" link at the bottom. Enter the new user's credentials, then proceed to create a workspace for them.
+
+## Mobile (iOS and Android)
+
+The Platform includes a Capacitor-based mobile app that wraps the same web frontend. Prerequisites: Node.js, Rush, and for native builds **Xcode** (macOS) and/or **Android Studio**.
+
+1. Build the web app once (from the repo root):
+
+   ```bash
+   rush build --to @hcengineering/prod
+   ```
+
+2. Copy web assets into the mobile project and sync native projects:
+
+   ```bash
+   cd mobile
+   npm run sync
+   ```
+
+3. Open and run the app:
+
+   ```bash
+   npm run open:ios     # Opens Xcode (macOS only)
+   npm run open:android # Opens Android Studio
+   ```
+
+For development, you can point the app at the webpack dev server by keeping `server.url` in `mobile/capacitor.config.ts` (e.g. `http://localhost:8080`). For production builds, remove or override the `server` setting so the app loads bundled content from `www/`. See [mobile/README.md](mobile/README.md) for details.
 
 ## Update project structure and database
 

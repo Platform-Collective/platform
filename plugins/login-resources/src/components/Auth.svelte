@@ -12,9 +12,11 @@
     getLoginInfoFromQuery,
     getAutoJoinInfo,
     goTo,
+    isNetworkError,
     isWorkspaceLoginInfo,
     navigateToWorkspace,
-    isLoginInfoRequest
+    isLoginInfoRequest,
+    serverUnavailableStatus
   } from '../utils'
   import Form from './Form.svelte'
   import login from '../plugin'
@@ -86,7 +88,7 @@
         if (err instanceof PlatformError) {
           status = err.status
         } else {
-          status = unknownError(err)
+          status = isNetworkError(err) ? serverUnavailableStatus() : unknownError(err)
         }
       }
     }
