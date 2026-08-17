@@ -1,9 +1,10 @@
 name: Create staging release
 
 # Manually triggered workflow: merges develop into staging-new and tags the
-# result as the next s0.x.x staging version. Does NOT deploy anything —
-# pushing the tag only feeds the existing build/test/docker pipeline in
-# main.yml (triggered by tags matching `s*`).
+# result as the next s0.x.x staging version and moves the `staging` channel to
+# it. Does NOT deploy anything — pushing the version tag only feeds the
+# existing build/test/docker pipeline in main.yml (triggered by tags matching
+# `s*`).
 
 on:
   workflow_dispatch:
@@ -101,16 +102,18 @@ jobs:
           echo "tag=$NEXT" >> "$GITHUB_OUTPUT"
           echo "previous=${LATEST:-none}" >> "$GITHUB_OUTPUT"
 
-      - name: Create annotated tag
+      - name: Create release and channel tags
         run: |
           git tag -a "${{ steps.version.outputs.tag }}" -m "Staging release ${{ steps.version.outputs.tag }}"
+          git tag -f staging "${{ steps.version.outputs.tag }}"
 
-      - name: Push staging-new and tag
+      - name: Push staging-new and tags
         if: ${{ inputs.dry_run != true }}
         run: |
           set -euo pipefail
           git push origin staging-new
           git push origin "refs/tags/${{ steps.version.outputs.tag }}"
+          git push --force origin "refs/tags/staging"
 
       - name: Summary
         run: |
@@ -118,5 +121,6 @@ jobs:
             echo "### Staging release"
             echo "- Previous tag: \`${{ steps.version.outputs.previous }}\`"
             echo "- New tag: \`${{ steps.version.outputs.tag }}\`"
+            echo "- Staging channel: \`staging → ${{ steps.version.outputs.tag }}\`"
             echo "- Dry run: \`${{ inputs.dry_run }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
