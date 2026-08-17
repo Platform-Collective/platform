@@ -16,6 +16,7 @@
 export * from './image'
 export * from './reference'
 export * from './emoji'
+export * from './gif'
 export * from './todo'
 export * from './file'
 export * from './codeblock'
