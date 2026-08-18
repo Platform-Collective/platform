@@ -438,7 +438,8 @@ export function initOpenTelemetrySDK (serviceName: string, version: string): boo
     keepAlive: true
   })
 
-  const batchLogProcessor = new BatchLogRecordProcessor(logExporter, {
+  const batchLogProcessor = new BatchLogRecordProcessor({
+    exporter: logExporter,
     maxExportBatchSize: parseInt(process.env.OTEL_EXPORTER_OTLP_LOGS_MAX_EXPORT_BATCH_SIZE ?? '1000'),
     maxQueueSize: parseInt(process.env.OTEL_EXPORTER_OTLP_LOGS_MAX_QUEUE_SIZE ?? '1000')
   })
