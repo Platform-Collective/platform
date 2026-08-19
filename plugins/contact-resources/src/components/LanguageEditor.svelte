@@ -36,7 +36,7 @@
     iconProps: { lang }
   }))
 
-  function showLanguagesPopup (ev: MouseEvent): void {
+  function showLanguagesPopup(ev: MouseEvent): void {
     shown = true
     showPopup(DropdownLabelsPopupIntl, { items, selected: value }, eventToHTMLElement(ev), async (result) => {
       if (result != null && result !== '') {

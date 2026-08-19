@@ -32,7 +32,7 @@
 
   const client = getClient()
 
-  function getSpaceModel (space: Ref<Class<Space>>): SpacesNavModel | undefined {
+  function getSpaceModel(space: Ref<Class<Space>>): SpacesNavModel | undefined {
     const hierarchy = client.getHierarchy()
     const ancestors = [space, ...[...hierarchy.getAncestors(space)].reverse()]
     for (const clazz of ancestors) {
@@ -46,7 +46,7 @@
   const notifyContextByDocStore = inboxClient.contextByDoc
   const inboxNotificationsByContextStore = inboxClient.inboxNotificationsByContext
 
-  function isChanged (
+  function isChanged(
     space: Space,
     docUpdates: Map<Ref<Doc>, DocNotifyContext>,
     inboxNotificationsByContext: Map<Ref<DocNotifyContext>, InboxNotification[]>

@@ -10,14 +10,14 @@
 
   const dispatch = createEventDispatcher()
 
-  async function changeShare (): Promise<void> {
+  async function changeShare(): Promise<void> {
     const newValue = $screenSharingState !== ScreenSharingState.Local
     const audio = newValue && $isShareWithSound
     await liveKitClient.setScreenShareEnabled(newValue, audio)
     dispatch('changeShare')
   }
 
-  function shareSettings (e: MouseEvent): void {
+  function shareSettings(e: MouseEvent): void {
     showPopup(ShareSettingPopup, {}, eventToHTMLElement(e))
   }
 

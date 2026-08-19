@@ -30,7 +30,7 @@
   $: content = markupToJSON(value ?? EmptyMarkup)
   $: comparedVersion = markupToJSON(prevValue ?? EmptyMarkup)
 
-  function cleanup (node1: MarkupNode, node2: MarkupNode): MarkupNode[] {
+  function cleanup(node1: MarkupNode, node2: MarkupNode): MarkupNode[] {
     if (node1.type !== MarkupNodeType.doc || node2.type !== MarkupNodeType.doc) {
       return [node1, node2]
     }
@@ -57,7 +57,7 @@
     ]
   }
 
-  function same (node1: MarkupNode | undefined, node2: MarkupNode | undefined): boolean {
+  function same(node1: MarkupNode | undefined, node2: MarkupNode | undefined): boolean {
     if (node1 === undefined && node2 === undefined) return true
     if (node1 === undefined || node2 === undefined) return false
 

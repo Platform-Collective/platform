@@ -26,7 +26,7 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     const data: Data<Mixin<Class<Doc>>> = {
       extends: value._id,
       label: getEmbeddedLabel(name),

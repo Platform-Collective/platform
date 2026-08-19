@@ -41,11 +41,11 @@
   let newQuestionComponent: EditQuestion
   const questionComponents: EditQuestion[] = []
 
-  function handleChange (patch: Partial<Survey>): void {
+  function handleChange(patch: Partial<Survey>): void {
     dispatch('change', patch)
   }
 
-  function deleteQuestion (index: number): void {
+  function deleteQuestion(index: number): void {
     if (!object.questions?.[index]) return
     showPopup(
       MessageBox,
@@ -64,7 +64,7 @@
     )
   }
 
-  function handleNewQuestionChange (patch: Partial<Question>): void {
+  function handleNewQuestionChange(patch: Partial<Question>): void {
     const question = { ...newQuestion, ...patch }
 
     let questions = object.questions ?? []
@@ -75,7 +75,7 @@
     handleChange({ questions })
   }
 
-  function handleQuestionChange (index: number, patch: Partial<Question>): Promise<void> | void {
+  function handleQuestionChange(index: number, patch: Partial<Question>): Promise<void> | void {
     const questions = (object.questions ?? []).slice()
     questions[index] = { ...questions[index], ...patch }
     handleChange({ questions })
@@ -84,7 +84,7 @@
   let draggedIndex: number | undefined = undefined
   let draggedOverIndex: number | undefined = undefined
 
-  function onQuestionDragOver (ev: DragEvent, index: number): void {
+  function onQuestionDragOver(ev: DragEvent, index: number): void {
     if (draggedIndex === undefined || draggedIndex === draggedOverIndex || draggedIndex + 1 === draggedOverIndex) {
       return
     }
@@ -92,14 +92,14 @@
     draggedOverIndex = index
   }
 
-  function onQuestionDragLeave (ev: DragEvent, index: number): void {
+  function onQuestionDragLeave(ev: DragEvent, index: number): void {
     if (draggedIndex === undefined) return
 
     ev.preventDefault()
     if (draggedOverIndex === index) draggedOverIndex = undefined
   }
 
-  function onQuestionDrop (): void {
+  function onQuestionDrop(): void {
     if (draggedIndex === undefined || draggedOverIndex === undefined) {
       return
     }

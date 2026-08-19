@@ -29,11 +29,11 @@
     floor = $floors[0]
   }
 
-  function getRooms (rooms: Room[], floor: Ref<Floor>): Room[] {
+  function getRooms(rooms: Room[], floor: Ref<Floor>): Room[] {
     return rooms.filter((p) => p.floor === floor)
   }
 
-  function addFloor (e: MouseEvent): void {
+  function addFloor(e: MouseEvent): void {
     showPopup(EditFloorPopup, {}, eventToHTMLElement(e))
   }
 

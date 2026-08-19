@@ -47,13 +47,13 @@
 
   let viewlets: WithLookup<Viewlet>[] = []
 
-  function updateResultQuery (search: string): void {
+  function updateResultQuery(search: string): void {
     resultQuery = search === '' ? { ...query } : { ...query, $search: search }
   }
 
   $: updateResultQuery(search)
 
-  function showCreateDialog (): void {
+  function showCreateDialog(): void {
     if (createComponent === undefined) {
       return
     }

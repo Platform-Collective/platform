@@ -16,6 +16,43 @@ const { ESLint } = require('eslint')
 const LEGACY_COMPATIBILITY_RULES = Object.fromEntries(
   require('../profiles/legacy-compatibility-rules.json').map((rule) => [rule, 'off'])
 )
+const LEGACY_FORMATTING_PLUGIN = {
+  rules: {
+    'space-before-generic-function-paren': {
+      meta: {
+        type: 'layout',
+        fixable: 'whitespace',
+        schema: [],
+        messages: {
+          missingSpace: 'Missing space before generic function parentheses.'
+        }
+      },
+      create (context) {
+        const sourceCode = context.sourceCode
+        const checkFunction = (node) => {
+          if (node.typeParameters == null) return
+
+          const leftToken = sourceCode.getLastToken(node.typeParameters)
+          const rightToken = sourceCode.getTokenAfter(leftToken)
+          if (rightToken == null || rightToken.value !== '(' || sourceCode.isSpaceBetween(leftToken, rightToken)) return
+
+          context.report({
+            node,
+            loc: rightToken.loc,
+            messageId: 'missingSpace',
+            fix: (fixer) => fixer.insertTextAfter(leftToken, ' ')
+          })
+        }
+
+        return {
+          ArrowFunctionExpression: checkFunction,
+          FunctionDeclaration: checkFunction,
+          FunctionExpression: checkFunction
+        }
+      }
+    }
+  }
+}
 
 let pluginSvelte
 try {
@@ -50,7 +87,8 @@ async function loadEslintConfig() {
       files: ['**/*.{js,cjs,mjs,ts,cts,mts}'],
       plugins: {
         ...love.plugins,
-        '@stylistic': stylistic
+        '@stylistic': stylistic,
+        'legacy-formatting': LEGACY_FORMATTING_PLUGIN
       },
       rules: {
         ...love.rules,
@@ -59,6 +97,7 @@ async function loadEslintConfig() {
         '@typescript-eslint/promise-function-async': 'off',
         '@typescript-eslint/consistent-type-imports': 'off',
         'space-before-function-paren': ['error', 'always'],
+        'legacy-formatting/space-before-generic-function-paren': 'error',
         '@stylistic/member-delimiter-style': [
           'error',
           {
@@ -79,7 +118,8 @@ async function loadEslintConfig() {
       files: ['**/*.svelte'],
       plugins: {
         ...love.plugins,
-        '@stylistic': stylistic
+        '@stylistic': stylistic,
+        'legacy-formatting': LEGACY_FORMATTING_PLUGIN
       },
       languageOptions: {
         parser: svelteParser,
@@ -93,6 +133,7 @@ async function loadEslintConfig() {
         '@typescript-eslint/array-type': 'off',
         '@typescript-eslint/promise-function-async': 'off',
         '@typescript-eslint/consistent-type-imports': 'off',
+        'legacy-formatting/space-before-generic-function-paren': 'error',
         '@stylistic/member-delimiter-style': [
           'error',
           {

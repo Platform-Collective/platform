@@ -25,7 +25,7 @@
   let previewSrc: string | undefined
   let retryCount = 0
 
-  function refreshPreviewSrc (): void {
+  function refreshPreviewSrc(): void {
     if (src === undefined) {
       previewSrc = undefined
       return

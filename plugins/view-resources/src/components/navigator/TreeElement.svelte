@@ -68,7 +68,7 @@
     })
   }
 
-  async function onMenuClick (ev: MouseEvent): Promise<void> {
+  async function onMenuClick(ev: MouseEvent): Promise<void> {
     // Read actual popup actions on open as visibility might have been changed
     pressed = true
     popupMenuActions = await actions().then((res) => res.filter((action) => action.inline !== true))
@@ -77,7 +77,7 @@
     })
   }
 
-  async function onInlineClick (ev: MouseEvent, action: Action): Promise<void> {
+  async function onInlineClick(ev: MouseEvent, action: Action): Promise<void> {
     action.action([], ev)
   }
 </script>

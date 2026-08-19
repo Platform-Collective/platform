@@ -38,7 +38,7 @@
   export let meeting: MeetingMinutes
 
   const client = getClient()
-  async function getPerson (info: ParticipantInfo | undefined): Promise<Person | null> {
+  async function getPerson(info: ParticipantInfo | undefined): Promise<Person | null> {
     if (info === undefined) {
       return null
     }
@@ -55,12 +55,12 @@
 
   const dispatch = createEventDispatcher()
 
-  async function connect (): Promise<void> {
+  async function connect(): Promise<void> {
     await createMeeting(room, meeting)
     dispatch('close')
   }
 
-  async function backOrOpen (): Promise<void> {
+  async function backOrOpen(): Promise<void> {
     if (meeting !== undefined) {
       const hierarchy = client.getHierarchy()
       const panelComponent = hierarchy.classHierarchyMixin(meeting._class as Ref<Class<Doc>>, view.mixin.ObjectPanel)
@@ -72,7 +72,7 @@
     }
   }
 
-  function canGoBack (joined: boolean, location: Location, meetingMinutes?: MeetingMinutes): boolean {
+  function canGoBack(joined: boolean, location: Location, meetingMinutes?: MeetingMinutes): boolean {
     if (!joined) return false
     if (location.path[2] !== loveId) return true
     if (meetingMinutes === undefined) return false

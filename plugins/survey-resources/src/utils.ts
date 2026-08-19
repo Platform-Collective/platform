@@ -52,7 +52,7 @@ export async function generateSurveyLocation (loc: Location, id: Ref<Survey>): P
   const appComponent = loc.path[0] ?? ''
   const workspace = loc.path[1] ?? ''
 
-  const objectPanel = client.getHierarchy().classHierarchyMixin(doc._class as Ref<Class<Doc>>, view.mixin.ObjectPanel)
+  const objectPanel = client.getHierarchy().classHierarchyMixin(doc._class, view.mixin.ObjectPanel)
   const component = objectPanel?.component ?? view.component.EditDoc
 
   return {
@@ -80,7 +80,7 @@ export async function generatePollLocation (loc: Location, id: Ref<Poll>): Promi
   const workspace = loc.path[1] ?? ''
   const appId = loc.path[2] ?? ''
 
-  const objectPanel = client.getHierarchy().classHierarchyMixin(doc._class as Ref<Class<Doc>>, view.mixin.ObjectPanel)
+  const objectPanel = client.getHierarchy().classHierarchyMixin(doc._class, view.mixin.ObjectPanel)
   const component = objectPanel?.component ?? view.component.EditDoc
 
   return {

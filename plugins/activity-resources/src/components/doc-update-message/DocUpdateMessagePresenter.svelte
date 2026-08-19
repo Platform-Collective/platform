@@ -88,7 +88,7 @@
     attributeModel = model
   })
 
-  async function getParentMessage (
+  async function getParentMessage(
     _class: Ref<Class<Doc>>,
     _id: Ref<Doc>,
     space: Ref<Space>
@@ -114,7 +114,7 @@
   $: void loadObject(value.objectId, value.objectClass, doc)
   $: void loadParentObject(value, parentMessage, doc)
 
-  async function loadObject (_id: Ref<Doc>, _class: Ref<Class<Doc>>, doc?: Doc): Promise<void> {
+  async function loadObject(_id: Ref<Doc>, _class: Ref<Class<Doc>>, doc?: Doc): Promise<void> {
     if (doc !== undefined && doc._id === _id) {
       object = doc
       isObjectRemoved = false
@@ -132,7 +132,7 @@
     }
   }
 
-  async function loadParentObject (
+  async function loadParentObject(
     message: Pick<DocUpdateMessage, 'attachedTo' | 'attachedToClass' | 'objectId' | 'space'>,
     parentMessage?: Pick<ActivityMessage, 'attachedTo' | 'space' | 'attachedToClass'>,
     doc?: Doc

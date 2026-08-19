@@ -84,20 +84,20 @@
 
   const noWeekendHolidayType: Ref<RequestType>[] = [hr.ids.PTO, hr.ids.PTO2, hr.ids.Vacation]
 
-  function checkConflict (request1: Request, request2: Request): boolean {
+  function checkConflict(request1: Request, request2: Request): boolean {
     return (
       tzDateCompare(request1.tzDate, request2.tzDueDate) <= 0 && tzDateCompare(request1.tzDueDate, request2.tzDate) >= 0
     )
   }
 
-  function getMonthDate (request: Request): number {
+  function getMonthDate(request: Request): number {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
 
     return request.tzDate.year === year && request.tzDate.month === month ? request.tzDate.day : startDate.getDate()
   }
 
-  function getMonthDueDate (request: Request): number {
+  function getMonthDueDate(request: Request): number {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
 
@@ -106,7 +106,7 @@
       : endDate.getDate()
   }
 
-  function getOrderedEmployeeRequests (employee: Staff): Request[] {
+  function getOrderedEmployeeRequests(employee: Staff): Request[] {
     const requests = getRequests(employeeRequests, startDate, endDate, employee._id)
     requests.sort((a, b) => {
       const res = tzDateCompare(a.tzDate, b.tzDate)
@@ -118,7 +118,7 @@
     return requests
   }
 
-  function buildTimelineRows (departmentStaff: Staff[], employeeRequests: Map<Ref<Staff>, Request[]>): TimelineRow[] {
+  function buildTimelineRows(departmentStaff: Staff[], employeeRequests: Map<Ref<Staff>, Request[]>): TimelineRow[] {
     const res: TimelineRow[] = []
 
     for (const employee of departmentStaff) {
@@ -157,7 +157,7 @@
     return res
   }
 
-  function createRequest (e: MouseEvent, date: Date, staff: Staff): void {
+  function createRequest(e: MouseEvent, date: Date, staff: Staff): void {
     if (!isEditable(staff)) return
     const readonly = editableList.length === 1
 
@@ -177,7 +177,7 @@
   }
   const me = getCurrentAccount()
 
-  function isFutureDate () {
+  function isFutureDate() {
     const today = new Date(Date.now())
     return (
       currentDate >= today ||
@@ -185,11 +185,11 @@
     )
   }
 
-  function isEditable (employee: Staff): boolean {
+  function isEditable(employee: Staff): boolean {
     return editableList.includes(employee._id) && (isFutureDate() || me.role === AccountRole.Owner || isAdminUser())
   }
 
-  function getTooltip (requests: Request[], day: Date, staff: Staff): LabelAndProps | undefined {
+  function getTooltip(requests: Request[], day: Date, staff: Staff): LabelAndProps | undefined {
     if (requests.length === 0) return
     const weekend = isWeekend(day)
     const holiday =
@@ -203,30 +203,30 @@
     }
   }
 
-  function setPublicHoliday (date: Date): void {
+  function setPublicHoliday(date: Date): void {
     showPopup(CreatePublicHoliday, { date: date.getTime(), department })
   }
 
-  function getRowHeight (row: TimelineRow): number {
+  function getRowHeight(row: TimelineRow): number {
     const height = row.tracks.length * (eventHeightRem + eventMarginRem) - eventMarginRem + 2
     return Math.max(height, minRowHeightRem)
   }
 
-  function getColumnWidth (gridWidth: number, currentDate: Date): number {
+  function getColumnWidth(gridWidth: number, currentDate: Date): number {
     const width = gridWidth / daysInMonth(currentDate)
     return Math.max(width, minColWidthRem)
   }
 
-  export function getCellStyle (): string {
+  export function getCellStyle(): string {
     return `width: ${columnWidthRem}rem;`
   }
 
-  export function getRowStyle (row: TimelineRow): string {
+  export function getRowStyle(row: TimelineRow): string {
     const height = getRowHeight(row)
     return `height: ${height}rem;`
   }
 
-  export function getElementStyle (element: TimelineElement, trackIndex: number): string {
+  export function getElementStyle(element: TimelineElement, trackIndex: number): string {
     const left = (element.date - 1) * columnWidthRem
     const top = trackIndex * (eventHeightRem + eventMarginRem)
     const width = columnWidthRem * element.length
@@ -250,7 +250,7 @@
   let rows: TimelineRow[]
   $: rows = buildTimelineRows(departmentStaff, employeeRequests)
 
-  function getClickHandler (day: Date, staff: Staff): (e: MouseEvent, day: Date, staff: Staff) => void {
+  function getClickHandler(day: Date, staff: Staff): (e: MouseEvent, day: Date, staff: Staff) => void {
     return (e) => {
       createRequest(e, day, staff)
     }

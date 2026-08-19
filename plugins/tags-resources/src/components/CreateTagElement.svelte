@@ -56,7 +56,7 @@
     category = findTagCategory(title, categories)
   }
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return title === ''
   }
 
@@ -76,7 +76,7 @@
     categoryItems = newItems
   })
 
-  async function createTagElementFnc (): Promise<void> {
+  async function createTagElementFnc(): Promise<void> {
     const res = await createTagElement(title, targetClass, category, description, color, keyTitle)
     dispatch('close', res)
   }

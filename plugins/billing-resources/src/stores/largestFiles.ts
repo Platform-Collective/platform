@@ -82,7 +82,7 @@ export async function fetchLargestFiles (client: Client, limit: number): Promise
       {},
       {
         limit,
-        lookup: { file: drive.class.FileVersion as unknown as Ref<Class<FileVersion>> }
+        lookup: { file: drive.class.FileVersion }
       }
     )
   ])

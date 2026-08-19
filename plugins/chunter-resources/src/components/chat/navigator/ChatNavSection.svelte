@@ -98,7 +98,7 @@
     }
   )
 
-  function onShowMore (): void {
+  function onShowMore(): void {
     dispatcher('show-more')
   }
 

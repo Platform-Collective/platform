@@ -50,15 +50,15 @@ export class AggregationMiddleware extends BasePresentationMiddleware implements
   docs: Doc[] | undefined
 
   subscribers: Map<string, DocSubScriber> = new Map<string, DocSubScriber>()
-  private constructor(client: Client, next?: PresentationMiddleware) {
+  private constructor (client: Client, next?: PresentationMiddleware) {
     super(client, next)
   }
 
-  static create(client: Client, next?: PresentationMiddleware): AggregationMiddleware {
+  static create (client: Client, next?: PresentationMiddleware): AggregationMiddleware {
     return new AggregationMiddleware(client, next)
   }
 
-  async notifyTx(...tx: Tx[]): Promise<void> {
+  async notifyTx (...tx: Tx[]): Promise<void> {
     const promises: Array<Promise<void>> = []
     for (const [, value] of this.mgrs) {
       promises.push(value.notifyTx(...tx))
@@ -67,25 +67,25 @@ export class AggregationMiddleware extends BasePresentationMiddleware implements
     await this.provideNotifyTx(...tx)
   }
 
-  async close(): Promise<void> {
+  async close (): Promise<void> {
     this.mgrs.forEach((mgr) => {
       mgr.close()
     })
     await this.provideClose()
   }
 
-  async tx(tx: Tx): Promise<TxResult> {
+  async tx (tx: Tx): Promise<TxResult> {
     return await this.provideTx(tx)
   }
 
-  private refreshSubscribers(): void {
+  private refreshSubscribers (): void {
     for (const s of this.subscribers.values()) {
       // TODO: Do something more smart and track if used component field is changed.
       s.refresh()
     }
   }
 
-  async subscribe<T extends Doc>(
+  async subscribe<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options: FindOptions<T> | undefined,
@@ -129,7 +129,7 @@ export class AggregationMiddleware extends BasePresentationMiddleware implements
   }
 
   // TODO: rework notifications to avoid using Account and remove it
-  private shouldAggregate(attrClass: Ref<Class<Doc>>, _class: Ref<Class<Doc>>): boolean {
+  private shouldAggregate (attrClass: Ref<Class<Doc>>, _class: Ref<Class<Doc>>): boolean {
     // TODO: FIXME
     // if (attrClass !== core.class.Account) {
     //   return true
@@ -157,7 +157,7 @@ export class AggregationMiddleware extends BasePresentationMiddleware implements
     return true
   }
 
-  private async getAggregationManager(_class: Ref<Class<Doc>>): Promise<IAggregationManager<any> | undefined> {
+  private async getAggregationManager (_class: Ref<Class<Doc>>): Promise<IAggregationManager<any> | undefined> {
     let mgr = this.mgrs.get(_class)
 
     if (mgr === undefined) {
@@ -188,7 +188,7 @@ export class AggregationMiddleware extends BasePresentationMiddleware implements
     return mgr
   }
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T> | undefined
@@ -205,7 +205,7 @@ export class AggregationMiddleware extends BasePresentationMiddleware implements
     return await this.provideFindAll(_class, fquery, finalOptions)
   }
 
-  private async updateQueryOptions<T extends Doc>(
+  private async updateQueryOptions<T extends Doc> (
     allAttrs: Map<string, AnyAttribute>,
     h: Hierarchy,
     docFields: Array<Attribute<Doc>>,
@@ -285,28 +285,28 @@ export class AggregationMiddleware extends BasePresentationMiddleware implements
  * @public
  */
 export class AnalyticsMiddleware extends BasePresentationMiddleware implements PresentationMiddleware {
-  private constructor(client: Client, next?: PresentationMiddleware) {
+  private constructor (client: Client, next?: PresentationMiddleware) {
     super(client, next)
   }
 
-  async notifyTx(...tx: Tx[]): Promise<void> {
+  async notifyTx (...tx: Tx[]): Promise<void> {
     await this.provideNotifyTx(...tx)
   }
 
-  async close(): Promise<void> {
+  async close (): Promise<void> {
     await this.provideClose()
   }
 
-  static create(client: Client, next?: PresentationMiddleware): AnalyticsMiddleware {
+  static create (client: Client, next?: PresentationMiddleware): AnalyticsMiddleware {
     return new AnalyticsMiddleware(client, next)
   }
 
-  async tx(tx: Tx): Promise<TxResult> {
+  async tx (tx: Tx): Promise<TxResult> {
     void this.handleTx(tx)
     return await this.provideTx(tx)
   }
 
-  private async handleTx(...txes: Tx[]): Promise<void> {
+  private async handleTx (...txes: Tx[]): Promise<void> {
     for (const etx of txes) {
       if (etx._class === core.class.TxApplyIf) {
         const applyIf = etx as TxApplyIf
@@ -335,23 +335,23 @@ export class AnalyticsMiddleware extends BasePresentationMiddleware implements P
  * @public
  */
 export class ReadOnlyAccessMiddleware extends BasePresentationMiddleware implements PresentationMiddleware {
-  private constructor(client: Client, next?: PresentationMiddleware) {
+  private constructor (client: Client, next?: PresentationMiddleware) {
     super(client, next)
   }
 
-  async notifyTx(...tx: Tx[]): Promise<void> {
+  async notifyTx (...tx: Tx[]): Promise<void> {
     await this.provideNotifyTx(...tx)
   }
 
-  async close(): Promise<void> {
+  async close (): Promise<void> {
     await this.provideClose()
   }
 
-  static create(client: Client, next?: PresentationMiddleware): ReadOnlyAccessMiddleware {
+  static create (client: Client, next?: PresentationMiddleware): ReadOnlyAccessMiddleware {
     return new ReadOnlyAccessMiddleware(client, next)
   }
 
-  async tx(tx: Tx): Promise<TxResult> {
+  async tx (tx: Tx): Promise<TxResult> {
     if (getCurrentAccount()?.role === AccountRole.ReadOnlyGuest) {
       addNotification(
         await translate(view.string.ReadOnlyWarningTitle, {}, getCurrentLanguage()),

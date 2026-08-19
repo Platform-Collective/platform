@@ -45,7 +45,7 @@
         ]
       : []
 
-  async function handleSubmitEvent (event: CustomEvent<string>): Promise<void> {
+  async function handleSubmitEvent(event: CustomEvent<string>): Promise<void> {
     handleSubmit?.(event.detail)
   }
 </script>

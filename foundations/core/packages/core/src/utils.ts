@@ -556,7 +556,7 @@ export function includesAny (arr1: string[] | null | undefined, arr2: string[] |
 }
 
 export const isEnum =
-  <T>(e: T) =>
+  <T> (e: T) =>
   (token: any): token is T[keyof T] =>
     typeof token === 'string' && Object.values(e as Record<string, any>).includes(token)
 
@@ -761,7 +761,7 @@ interface NextCall {
  *
  * This method can be used inside Svelte components to collapse complex update logic and handle interactions.
  */
-export function reduceCalls<T extends (...args: ReduceParameters<T>) => Promise<void>>(
+export function reduceCalls<T extends (...args: ReduceParameters<T>) => Promise<void>> (
   operation: T
 ): (...args: ReduceParameters<T>) => Promise<void> {
   let nextCall: NextCall | undefined

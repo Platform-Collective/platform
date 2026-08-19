@@ -41,15 +41,15 @@
     )
   }
 
-  async function handleCreateProject (): Promise<void> {
+  async function handleCreateProject(): Promise<void> {
     await showCreateProjectPopup()
   }
 
-  async function handleCreateTestSuite (): Promise<void> {
+  async function handleCreateTestSuite(): Promise<void> {
     await showCreateTestSuitePopup(currentSpace, testManagement.ids.NoParent)
   }
 
-  async function handleCreateTestCase (): Promise<void> {
+  async function handleCreateTestCase(): Promise<void> {
     if (currentSpace !== undefined) {
       await showCreateTestCasePopup(currentSpace, getTestSuiteIdFromLocation())
     } else {
@@ -57,7 +57,7 @@
     }
   }
 
-  async function handleDropdownItemSelected (res?: SelectPopupValueType['id']): Promise<void> {
+  async function handleDropdownItemSelected(res?: SelectPopupValueType['id']): Promise<void> {
     switch (res) {
       case testManagement.string.CreateProject: {
         await handleCreateProject()

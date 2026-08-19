@@ -44,7 +44,7 @@
 
   let draft: string = ''
 
-  function onOptionLabelKeyDown (event: KeyboardEvent, index: number): void {
+  function onOptionLabelKeyDown(event: KeyboardEvent, index: number): void {
     if (submit === undefined) {
       return
     }
@@ -68,7 +68,7 @@
     }
   }
 
-  function onOptionLabelChange (index: number): void {
+  function onOptionLabelChange(index: number): void {
     if (submit === undefined) {
       return
     }
@@ -80,7 +80,7 @@
     }
   }
 
-  function appendOption (): void {
+  function appendOption(): void {
     if (submit === undefined) {
       return
     }
@@ -97,7 +97,7 @@
     })
   }
 
-  function removeOptionAt (index: number): void {
+  function removeOptionAt(index: number): void {
     if (submit === undefined) {
       return
     }
@@ -134,7 +134,7 @@
   let positionDropdownItems: DropdownTextItem[] = [{ id: '1', label: '1' }]
   $: positionDropdownItems = questionData.options.map((_, i) => ({ id: String(i + 1), label: String(i + 1) }))
 
-  function changePosition (event: MouseEvent, index: number): void {
+  function changePosition(event: MouseEvent, index: number): void {
     if (submit === undefined || assessmentData === null) {
       return
     }
@@ -176,7 +176,7 @@
   let canDrag: boolean = false
   $: canDrag = submit !== undefined && questionData.options.length > 1
 
-  function onDrop (event: OptionsListDropEvent): void {
+  function onDrop(event: OptionsListDropEvent): void {
     const { from, to } = event.detail
     if (submit === undefined || from === to) {
       return
@@ -191,7 +191,7 @@
     }
   }
 
-  export function focus (): void {
+  export function focus(): void {
     if (submit !== undefined) {
       inputs[0].focus()
     }

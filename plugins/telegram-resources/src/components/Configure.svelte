@@ -110,7 +110,7 @@
   })
 
   // Get channel icon based on type
-  function getChannelIcon (channel: TelegramChannelConfig) {
+  function getChannelIcon(channel: TelegramChannelConfig) {
     switch (channel.type) {
       case 'user':
         return telegram.icon.User
@@ -150,7 +150,7 @@
   })
 
   // Handle filter changes
-  function handleFilterChange (event: CustomEvent<ActiveFilter[]>): void {
+  function handleFilterChange(event: CustomEvent<ActiveFilter[]>): void {
     activeFilters = event.detail
   }
 
@@ -159,7 +159,7 @@
     updateSelectAllForFiltered(filteredChannels, selectedChannels)
   }
 
-  function updateSelectAllForFiltered (filtered: typeof filteredChannels, selected: typeof selectedChannels): void {
+  function updateSelectAllForFiltered(filtered: typeof filteredChannels, selected: typeof selectedChannels): void {
     if (filtered === undefined || filtered.length === 0) {
       selectAll = false
       return
@@ -171,7 +171,7 @@
   }
 
   // Handle individual channel selection
-  function toggleChannelSelection (channelId: string): void {
+  function toggleChannelSelection(channelId: string): void {
     if (selectedChannels.has(channelId)) {
       selectedChannels.delete(channelId)
     } else {
@@ -182,7 +182,7 @@
   }
 
   // Update sync status for individual channel
-  function updateChannelSync (channelId: string, enabled: boolean): void {
+  function updateChannelSync(channelId: string, enabled: boolean): void {
     const channel = channels.find((c) => c.id === channelId)
     if (channel) {
       channel.syncEnabled = enabled
@@ -191,7 +191,7 @@
     }
   }
 
-  function updateChannelSpace (channelId: string, space: Space): void {
+  function updateChannelSpace(channelId: string, space: Space): void {
     const channel = channels.find((c) => c.id === channelId)
     if (channel !== undefined && channel?.syncEnabled) {
       channel.space = space._id
@@ -201,7 +201,7 @@
   }
 
   // Action button functions
-  function selectAllFiltered (): void {
+  function selectAllFiltered(): void {
     filteredChannels.forEach((channel) => {
       selectedChannels.add(channel.id)
     })
@@ -209,7 +209,7 @@
     updateSelectAllForFiltered(filteredChannels, selectedChannels)
   }
 
-  function unselectAllFiltered (): void {
+  function unselectAllFiltered(): void {
     filteredChannels.forEach((channel) => {
       selectedChannels.delete(channel.id)
     })
@@ -217,19 +217,19 @@
     updateSelectAllForFiltered(filteredChannels, selectedChannels)
   }
 
-  function enableSelectedChannels (): void {
+  function enableSelectedChannels(): void {
     selectedChannels.forEach((channelId) => {
       updateChannelSync(channelId, true)
     })
   }
 
-  function disableSelectedChannels (): void {
+  function disableSelectedChannels(): void {
     selectedChannels.forEach((channelId) => {
       updateChannelSync(channelId, false)
     })
   }
 
-  function showActionsPopup (event: MouseEvent): void {
+  function showActionsPopup(event: MouseEvent): void {
     const actionItems = [
       {
         id: 'select-all',
@@ -280,12 +280,12 @@
     )
   }
 
-  function handleRightClick (event: MouseEvent): void {
+  function handleRightClick(event: MouseEvent): void {
     event.preventDefault()
     showActionsPopup(event)
   }
 
-  async function applyChanges (): Promise<void> {
+  async function applyChanges(): Promise<void> {
     // Dispatch event to apply changes
     const integrationClient = await getIntegrationClient()
     integration = isWorkspaceIntegration(integration)
@@ -316,11 +316,11 @@
   }
 
   // Clear search
-  function clearSearch (): void {
+  function clearSearch(): void {
     searchQuery = ''
   }
 
-  function close (): void {
+  function close(): void {
     closePopup()
   }
 

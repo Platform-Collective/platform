@@ -23,7 +23,7 @@
 
   const client = getClient()
 
-  async function getBreadcrumbsModels (elements: readonly Doc[]): Promise<readonly BreadcrumbsModel[]> {
+  async function getBreadcrumbsModels(elements: readonly Doc[]): Promise<readonly BreadcrumbsModel[]> {
     if (elements.length === 0) {
       return []
     }

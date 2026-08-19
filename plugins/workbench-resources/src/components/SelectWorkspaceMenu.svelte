@@ -69,7 +69,7 @@
     return locationToUrl(loc)
   }
 
-  async function clickHandler (e: MouseEvent, wsUrl: string): Promise<void> {
+  async function clickHandler(e: MouseEvent, wsUrl: string): Promise<void> {
     if (!e.metaKey && !e.ctrlKey) {
       e.preventDefault()
       closePopup()
@@ -94,7 +94,7 @@
   let activeElement: HTMLElement
   const btns: HTMLElement[] = []
 
-  function focusTarget (target: HTMLElement): void {
+  function focusTarget(target: HTMLElement): void {
     activeElement = target
   }
 
@@ -147,11 +147,11 @@
 
   $: activeSessions =
     (data?.statistics?.activeSessions as Record<
-    string,
-    Array<{
-      userId: string
-      data?: Record<string, any>
-    }>
+      string,
+      Array<{
+        userId: string
+        data?: Record<string, any>
+      }>
     >) ?? {}
 </script>
 

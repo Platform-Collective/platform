@@ -59,11 +59,11 @@
   let documentById: Map<Ref<Document>, Document> = new Map<Ref<Document>, Document>()
   let descendants: Map<Ref<Document>, Document[]> = new Map<Ref<Document>, Document[]>()
 
-  function getDescendants (obj: Ref<Document>): Ref<Document>[] {
+  function getDescendants(obj: Ref<Document>): Ref<Document>[] {
     return (descendants.get(obj) ?? []).sort((a, b) => a.rank.localeCompare(b.rank)).map((p) => p._id)
   }
 
-  function getAllDescendants (obj: Ref<Document>): Ref<Document>[] {
+  function getAllDescendants(obj: Ref<Document>): Ref<Document>[] {
     const result: Ref<Document>[] = []
     const queue: Ref<Document>[] = [obj]
 
@@ -115,7 +115,7 @@
     }
   )
 
-  function getDocActions (doc: Document): Action[] {
+  function getDocActions(doc: Document): Action[] {
     return [
       {
         icon: IconAdd,
@@ -134,7 +134,7 @@
     ]
   }
 
-  async function getMoreActions (obj: Document): Promise<Action[]> {
+  async function getMoreActions(obj: Document): Promise<Action[]> {
     const result: Action[] = []
     const extraActions = await getContributedActions(client, obj)
     for (const act of extraActions) {
@@ -158,14 +158,14 @@
   let draggedOverTop: number = 0
   let cannotDropTo: Ref<Document>[] = []
 
-  function canDrop (object: Ref<Document>, target: Ref<Document>): boolean {
+  function canDrop(object: Ref<Document>, target: Ref<Document>): boolean {
     if (object === target) return false
     if (cannotDropTo.includes(target)) return false
 
     return true
   }
 
-  function onDragStart (event: DragEvent, object: Ref<Document>): void {
+  function onDragStart(event: DragEvent, object: Ref<Document>): void {
     // no prevent default to leverage default rendering
     // event.preventDefault()
     if (event.dataTransfer === null || event.target === null) {
@@ -181,7 +181,7 @@
     closeTooltip()
   }
 
-  function getDropPosition (event: DragEvent): { pos: 'before' | 'after' | undefined, top: number } {
+  function getDropPosition(event: DragEvent): { pos: 'before' | 'after' | undefined, top: number } {
     const parentRect = parent.getBoundingClientRect()
     const targetRect = (event.target as HTMLElement).getBoundingClientRect()
     const dropPosition = event.clientY - targetRect.top
@@ -195,7 +195,7 @@
     return { pos, top }
   }
 
-  function onDragOver (event: DragEvent, object: Ref<Document>): void {
+  function onDragOver(event: DragEvent, object: Ref<Document>): void {
     event.preventDefault()
     // this is an ugly solution to control drop effect
     // we drag and drop elements that are in the depth of components hierarchy
@@ -217,14 +217,14 @@
     }
   }
 
-  function onDragEnd (event: DragEvent): void {
+  function onDragEnd(event: DragEvent): void {
     event.preventDefault()
     draggedItem = undefined
     draggedOver = undefined
     draggedOverPos = undefined
   }
 
-  function onDrop (event: DragEvent, object: Ref<Document>): void {
+  function onDrop(event: DragEvent, object: Ref<Document>): void {
     event.preventDefault()
     if (event.dataTransfer === null) {
       return

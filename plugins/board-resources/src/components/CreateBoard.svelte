@@ -28,13 +28,13 @@
   const description: string = ''
   let typeId: Ref<ProjectType> | undefined
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return name === '' && typeId !== undefined
   }
 
   const client = getClient()
 
-  async function onCreateBoard (): Promise<void> {
+  async function onCreateBoard(): Promise<void> {
     if (typeId === undefined) {
       return
     }

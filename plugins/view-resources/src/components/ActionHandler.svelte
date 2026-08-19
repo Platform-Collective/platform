@@ -45,7 +45,7 @@
   let delayedAction: (() => Promise<void>) | undefined
   let timer: any | undefined
 
-  function getCurrentActions (
+  function getCurrentActions(
     context: {
       mode: ViewContextType
       application?: Ref<Doc>
@@ -69,7 +69,7 @@
 
   const isMac = /Macintosh/i.test(navigator.userAgent)
 
-  function keyPrefix (key: KeyboardEvent): string {
+  function keyPrefix(key: KeyboardEvent): string {
     return (
       (key.altKey ? 'Alt + ' : '') +
       (key.shiftKey ? 'Shift + ' : '') +
@@ -77,18 +77,18 @@
       (key.ctrlKey ? (isMac ? 'Ctrl + ' : 'Meta + ') : '')
     )
   }
-  function m (s1: string, s2: string): boolean {
+  function m(s1: string, s2: string): boolean {
     return s1 === s2
   }
 
-  function findKeySequence (pattern: string, key: KeyboardEvent): boolean {
+  function findKeySequence(pattern: string, key: KeyboardEvent): boolean {
     const lc = pattern.toLowerCase()
     const pfp = (keyPrefix(key) + key.key).toLowerCase()
     const pfp2 = (keyPrefix(key) + key.code).toLowerCase()
     return lc.startsWith(`${pfp}->`) || lc.startsWith(`${pfp2}->`)
   }
 
-  function getSequences (
+  function getSequences(
     key: KeyboardEvent,
     currentActions: Array<Action<Doc, Record<string, any>>>
   ): Array<Action<Doc, Record<string, any>>> {
@@ -96,7 +96,7 @@
     return res
   }
 
-  function matchKeySequence (key: KeyboardEvent, pattern: string, lastKey: KeyboardEvent): boolean {
+  function matchKeySequence(key: KeyboardEvent, pattern: string, lastKey: KeyboardEvent): boolean {
     const fp = (keyPrefix(key) + key.key).toLowerCase()
     const fp2 = (keyPrefix(key) + key.code).toLowerCase()
     const lc = pattern.toLowerCase()
@@ -106,7 +106,7 @@
     return m(`${pfp}->${fp}`, lc) || m(`${pfp2}->${fp}`, lc) || m(`${pfp}->${fp2}`, lc) || m(`${pfp2}->${fp2}`, lc)
   }
 
-  function matchKey (key: KeyboardEvent, pattern: string): boolean {
+  function matchKey(key: KeyboardEvent, pattern: string): boolean {
     const fp = (keyPrefix(key) + key.key).toLowerCase()
     const fp2 = (keyPrefix(key) + key.code).toLowerCase()
     const lc = pattern.toLowerCase()
@@ -116,7 +116,7 @@
   let currentElement: EventTarget | null = null
   let currentActions: Action[] | undefined = undefined
 
-  function clearActions (doc: any) {
+  function clearActions(doc: any) {
     currentActions = undefined
   }
 
@@ -132,7 +132,7 @@
 
   $: disableActions = $restrictionStore.disableActions
 
-  function handleKeys (evt: KeyboardEvent): void {
+  function handleKeys(evt: KeyboardEvent): void {
     // For none we ignore all actions.
     if (disableActions || ctx?.mode === 'none') return
     const targetTagName = (evt.target as any)?.tagName?.toLowerCase()
@@ -174,7 +174,7 @@
 
     clearTimeout(timer)
 
-    async function activateAction (a: Action): Promise<void> {
+    async function activateAction(a: Action): Promise<void> {
       const action = await getResource(a.action)
       if (action === undefined) return
 

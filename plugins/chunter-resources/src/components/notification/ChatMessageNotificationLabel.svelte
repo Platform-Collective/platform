@@ -43,7 +43,7 @@
       title = res
     })
 
-  function loadChannel (object: ChatMessage, isThread: boolean): void {
+  function loadChannel(object: ChatMessage, isThread: boolean): void {
     const _class = isThread ? (object as ThreadMessage).objectClass : object.attachedToClass
     const _id = isThread ? (object as ThreadMessage).objectId : object.attachedTo
 
@@ -52,11 +52,11 @@
     })
   }
 
-  function toThread (message: ChatMessage): ThreadMessage {
+  function toThread(message: ChatMessage): ThreadMessage {
     return message as ThreadMessage
   }
 
-  function isAvatarIcon (_class: Ref<Class<Doc>>): boolean {
+  function isAvatarIcon(_class: Ref<Class<Doc>>): boolean {
     return hierarchy.isDerived(_class, contact.class.Person) || hierarchy.isDerived(_class, chunter.class.DirectMessage)
   }
 </script>

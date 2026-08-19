@@ -74,7 +74,7 @@ async function preloadRefLookups (
     const refDocs = await client.findAll(targetClass, { _id: { $in: ids as any } })
     const byId = new Map<string, Doc>()
     for (const d of refDocs) {
-      byId.set(d._id as string, d)
+      byId.set(d._id, d)
     }
 
     for (const doc of docs) {
@@ -135,7 +135,7 @@ function collectRelationshipDocsForRefPreload (
 ): Doc[] {
   const byId = new Map<string, Doc>()
   const add = (d: Doc | undefined): void => {
-    if (d !== undefined) byId.set(d._id as string, d)
+    if (d !== undefined) byId.set(d._id, d)
   }
 
   for (const o of props.objects) add(o)

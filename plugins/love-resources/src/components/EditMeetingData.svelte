@@ -43,7 +43,7 @@
     meetingDoc = r.shift()
   })
 
-  async function resetMeeting (meetingDoc: MeetingMinutes): Promise<void> {
+  async function resetMeeting(meetingDoc: MeetingMinutes): Promise<void> {
     if (meetingDoc.status === MeetingStatus.Active || meetingDoc.status === MeetingStatus.Pending) {
       // Disallow change for active meeting
       return

@@ -40,7 +40,7 @@
 
   $: void updateTypingPersons(typingInfo)
 
-  async function updateTypingPersons (typingInfo: Map<string, TypingInfo>): Promise<void> {
+  async function updateTypingPersons(typingInfo: Map<string, TypingInfo>): Promise<void> {
     if (typingInfo.size === 0) {
       typingGroups = []
       return
@@ -80,7 +80,7 @@
     typingGroups = groups
   }
 
-  function handleTyping (typing: Map<string, TypingInfo>): void {
+  function handleTyping(typing: Map<string, TypingInfo>): void {
     typingInfo = typing
   }
 </script>

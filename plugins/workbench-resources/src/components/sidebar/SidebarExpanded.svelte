@@ -56,7 +56,7 @@
   }
   $: float = $sidebarStore.float
 
-  function closeWrongTabs (loc: Location): void {
+  function closeWrongTabs(loc: Location): void {
     if (widget === undefined) return
     for (const tab of tabs) {
       if (tab.allowedPath !== undefined && !tab.isPinned) {
@@ -83,12 +83,12 @@
     unsubscribe()
   })
 
-  async function handleTabClose (tabId: string, widget?: Widget): Promise<void> {
+  async function handleTabClose(tabId: string, widget?: Widget): Promise<void> {
     if (widget === undefined) return
     await closeWidgetTab(widget, tabId)
   }
 
-  function handleTabOpen (tabId: string, widget?: Widget): void {
+  function handleTabOpen(tabId: string, widget?: Widget): void {
     if (widget === undefined) return
     openWidgetTab(widget._id, tabId)
   }
@@ -96,7 +96,7 @@
   let componentHeight = '0px'
   let componentWidth = '0px'
 
-  function resize (element: Element): void {
+  function resize(element: Element): void {
     componentHeight = `${element.clientHeight}px`
     componentWidth = `${element.clientWidth}px`
   }

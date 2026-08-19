@@ -28,7 +28,7 @@
   export let disabled: boolean = false
   export let flex: string | undefined = undefined
 
-  function open (e: MouseEvent) {
+  function open(e: MouseEvent) {
     if (disabled) {
       return
     }

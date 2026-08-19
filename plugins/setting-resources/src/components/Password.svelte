@@ -43,7 +43,7 @@
     password !== password2 ||
     saved
 
-  async function checkPassword (): Promise<void> {
+  async function checkPassword(): Promise<void> {
     try {
       const check = await getResource(login.function.CheckHasPassword)
       hasPassword = await check()
@@ -54,7 +54,7 @@
     }
   }
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     label = setting.string.Saving
     saved = true
     try {
@@ -70,7 +70,7 @@
     }
   }
 
-  async function sendSetupLink (): Promise<void> {
+  async function sendSetupLink(): Promise<void> {
     sendingLink = true
     noEmailLinked = false
     try {
@@ -89,7 +89,7 @@
     }
   }
 
-  function updateSaved (p1: string, p2: string, p3: string): void {
+  function updateSaved(p1: string, p2: string, p3: string): void {
     saved = false
     label = presentation.string.Save
     error = false

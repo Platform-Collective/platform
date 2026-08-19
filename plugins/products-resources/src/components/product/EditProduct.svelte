@@ -47,7 +47,7 @@
 
   let lastId: Ref<Doc> = _id
   $: read(_id)
-  function read (_id: Ref<Doc>): void {
+  function read(_id: Ref<Doc>): void {
     if (lastId !== _id) {
       const prev = lastId
       lastId = _id
@@ -70,7 +70,7 @@
       }
     })
 
-  function chooseIcon (): void {
+  function chooseIcon(): void {
     if (object === undefined) return
 
     const { icon, color } = object
@@ -83,7 +83,7 @@
     showPopup(IconPicker, { icon, color, icons }, 'top', update, update)
   }
 
-  function onChange (key: string, value: any): void {
+  function onChange(key: string, value: any): void {
     if (object === undefined) return
 
     if (value !== (object as any)[key]) {

@@ -88,7 +88,7 @@
     )
   }
 
-  function selectIcon (el: MouseEvent): void {
+  function selectIcon(el: MouseEvent): void {
     if (readonly) {
       return
     }
@@ -107,7 +107,7 @@
     )
   }
 
-  function handleAddStatus (): void {
+  function handleAddStatus(): void {
     if (taskType === undefined || readonly) {
       return
     }
@@ -134,7 +134,7 @@
 
   $: canDelete = !loading && tasksCounter === 0
 
-  async function handleDelete (): Promise<void> {
+  async function handleDelete(): Promise<void> {
     if (!canDelete || readonly || taskType == null) {
       return
     }
@@ -155,7 +155,7 @@
       }
     })
   }
-  async function showIssuesOfTaskType (): Promise<void> {
+  async function showIssuesOfTaskType(): Promise<void> {
     if (taskType == null) return
     const descriptor = client
       .getModel()

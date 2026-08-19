@@ -28,7 +28,7 @@
   export let _class: Ref<Class<Doc>> | undefined = undefined
   export let withoutAttach: boolean = false
 
-  export function createAttachments (): void {
+  export function createAttachments(): void {
     attachments[attachments.length - 1].createAttachments()
   }
 

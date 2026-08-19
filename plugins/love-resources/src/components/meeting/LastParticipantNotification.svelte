@@ -20,11 +20,11 @@
   export let onRemove: () => void
   export let notification: Notification
 
-  function stayInMeeting (): void {
+  function stayInMeeting(): void {
     onRemove()
   }
 
-  async function leave (): Promise<void> {
+  async function leave(): Promise<void> {
     // Use dynamic import to avoid circular dependency
     const { leaveMeeting } = await import('../../meetings')
     await leaveMeeting()

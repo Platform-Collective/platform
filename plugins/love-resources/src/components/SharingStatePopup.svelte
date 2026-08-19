@@ -53,7 +53,7 @@
     }
   }
 
-  function handleStop (): void {
+  function handleStop(): void {
     void liveKitClient.setScreenShareEnabled(false)
     dispatch('close')
   }

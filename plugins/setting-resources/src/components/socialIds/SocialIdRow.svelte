@@ -45,7 +45,7 @@
   $: isLogin = loginSocialTypes.includes(socialId.type)
   $: isPrimary = socialId._id === currAcc.primarySocialId
 
-  async function doRelease (): Promise<void> {
+  async function doRelease(): Promise<void> {
     try {
       // Important to always get current account in the callback to avoid race conditions
       // with the account from the reactive variable
@@ -87,7 +87,7 @@
     }
   }
 
-  async function handleRelease (): Promise<void> {
+  async function handleRelease(): Promise<void> {
     showPopup(MessageBox, {
       label: setting.string.ReleaseSocialId,
       message: setting.string.ReleaseSocialIdConfirm,

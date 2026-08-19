@@ -40,12 +40,12 @@
   $: selectedBytes = selectedRows.reduce((sum, r) => sum + r.size, 0)
   $: selectionCount = selectedRows.length
 
-  function onRowClick (row: LargestFileRow): void {
+  function onRowClick(row: LargestFileRow): void {
     const id = row.id as unknown as string
     dispatch('select', { id, checked: !selected.has(id) })
   }
 
-  function onSelectAll (): void {
+  function onSelectAll(): void {
     dispatch('selectAll', { checked: !allSelected })
   }
 </script>

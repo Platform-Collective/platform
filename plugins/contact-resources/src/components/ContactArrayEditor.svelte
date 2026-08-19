@@ -15,7 +15,7 @@
   $: _clazz = (type?.of as RefTo<Doc>)?.to
   let timer: any
 
-  function onUpdate (evt: CustomEvent<Ref<Contact>[]>): void {
+  function onUpdate(evt: CustomEvent<Ref<Contact>[]>): void {
     clearTimeout(timer)
     timer = setTimeout(() => {
       onChange(evt.detail)

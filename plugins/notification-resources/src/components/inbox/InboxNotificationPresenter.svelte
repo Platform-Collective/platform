@@ -36,19 +36,19 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function asDisplayActivityNotification (notification: DisplayInboxNotification): DisplayActivityInboxNotification {
+  function asDisplayActivityNotification(notification: DisplayInboxNotification): DisplayActivityInboxNotification {
     return notification as DisplayActivityInboxNotification
   }
 
-  function asMentionNotification (notification: DisplayInboxNotification): MentionInboxNotification {
+  function asMentionNotification(notification: DisplayInboxNotification): MentionInboxNotification {
     return notification as MentionInboxNotification
   }
 
-  function asReactionNotification (notification: DisplayInboxNotification): ReactionInboxNotification {
+  function asReactionNotification(notification: DisplayInboxNotification): ReactionInboxNotification {
     return notification as ReactionInboxNotification
   }
 
-  function asCommonNotification (notification: DisplayInboxNotification): CommonInboxNotification {
+  function asCommonNotification(notification: DisplayInboxNotification): CommonInboxNotification {
     return notification as CommonInboxNotification
   }
 </script>

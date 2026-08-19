@@ -47,7 +47,7 @@
   $: syncInputState(question)
   $: validateAnswer(question, input)
 
-  function flush (): void {
+  function flush(): void {
     const patch: Partial<AnsweredQuestion> = {}
     let haveChanges = false
 
@@ -62,7 +62,7 @@
   }
   onDestroy(flush)
 
-  function syncInputState (question: AnsweredQuestion): void {
+  function syncInputState(question: AnsweredQuestion): void {
     const current = extractCurrentAnswerSet(input)
     if (isSameAnswers(current, question)) return
 
@@ -82,11 +82,11 @@
     }
   }
 
-  function validateAnswer (question: AnsweredQuestion, input: InputState): void {
+  function validateAnswer(question: AnsweredQuestion, input: InputState): void {
     isAnswered = isValidAnswer(question, input)
   }
 
-  function isValidAnswer (question: AnsweredQuestion, input: InputState): boolean {
+  function isValidAnswer(question: AnsweredQuestion, input: InputState): boolean {
     if (!question.isMandatory) return true
 
     switch (question.kind) {
@@ -101,11 +101,11 @@
     }
   }
 
-  function handleChange (patch: Partial<AnsweredQuestion>): void {
+  function handleChange(patch: Partial<AnsweredQuestion>): void {
     dispatch('change', patch)
   }
 
-  function handleAnswerChange (): void {
+  function handleAnswerChange(): void {
     const patch = extractCurrentAnswerSet(input)
     handleChange(patch)
   }
@@ -115,11 +115,11 @@
     answers?: number[]
   }
 
-  function isSameAnswers (a1: AnswerSet, a2: AnswerSet): boolean {
+  function isSameAnswers(a1: AnswerSet, a2: AnswerSet): boolean {
     return (a1.answer ?? null) === (a2.answer ?? null) && deepEqual(a1.answers ?? null, a2.answers ?? null)
   }
 
-  function extractCurrentAnswerSet (input: InputState): AnswerSet {
+  function extractCurrentAnswerSet(input: InputState): AnswerSet {
     switch (question.kind) {
       case QuestionKind.STRING: {
         const answer = hasText(input.answer) ? input.answer : undefined
@@ -144,7 +144,7 @@
     }
   }
 
-  function getReadonlyAnswers (): string[] {
+  function getReadonlyAnswers(): string[] {
     switch (question.kind) {
       case QuestionKind.STRING:
         return [input.answer.trim()]

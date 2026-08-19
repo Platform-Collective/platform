@@ -84,7 +84,7 @@
   const notifyContextByDocStore = inboxClient.contextByDoc
   const inboxNotificationsByContextStore = inboxClient.inboxNotificationsByContext
 
-  function isChanged (
+  function isChanged(
     space: Space,
     notifyContextByDoc: Map<Ref<Doc>, DocNotifyContext>,
     inboxNotificationsByContext: Map<Ref<DocNotifyContext>, InboxNotification[]>
@@ -100,7 +100,7 @@
     return inboxNotifications.filter(({ isViewed }) => !isViewed).length > 0
   }
 
-  function getParentActions (): Action[] {
+  function getParentActions(): Action[] {
     const result = hasSpaceBrowser ? [browseSpaces] : []
     if (
       hasAccountRole(getCurrentAccount(), AccountRole.User) &&
@@ -122,7 +122,7 @@
 
   let filteredSpaces: Space[] = []
 
-  async function updateSpaces (spaces: Space[], visibleIf: (space: Space) => Promise<boolean>): Promise<void> {
+  async function updateSpaces(spaces: Space[], visibleIf: (space: Space) => Promise<boolean>): Promise<void> {
     const result: Space[] = []
     for (const s of spaces) {
       if (await visibleIf(s)) {

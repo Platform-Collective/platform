@@ -24,7 +24,7 @@
 
   $: employee = value ? $employeeByIdStore.get(value) : undefined
 
-  function getValue (
+  function getValue(
     employee: Employee | undefined,
     value: Ref<Employee> | null | undefined
   ): Employee | null | undefined {
@@ -42,7 +42,7 @@
 
   $: buildQuery(attribute, space)
 
-  async function buildQuery (attribute: AnyAttribute | undefined, space: Ref<Space> | undefined): Promise<void> {
+  async function buildQuery(attribute: AnyAttribute | undefined, space: Ref<Space> | undefined): Promise<void> {
     const baseQuery = {
       active: true
     }

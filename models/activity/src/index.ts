@@ -205,7 +205,7 @@ export class TDocUpdateMessageViewlet extends TDoc implements DocUpdateMessageVi
 @Model(activity.class.ActivityExtension, core.class.Doc, DOMAIN_MODEL)
 export class TActivityExtension extends TDoc implements ActivityExtension {
   ofClass!: Ref<Class<Doc>>
-  components!: Record<ActivityExtensionKind, { component: AnyComponent; props?: Record<string, any> }>
+  components!: Record<ActivityExtensionKind, { component: AnyComponent, props?: Record<string, any> }>
 }
 
 @Model(activity.class.ActivityMessagesFilter, core.class.Doc, DOMAIN_MODEL)
@@ -258,7 +258,7 @@ export class TUserMentionInfo extends TAttachedDoc {
   content!: string
 }
 
-export function createModel(builder: Builder): void {
+export function createModel (builder: Builder): void {
   builder.createModel(
     TActivityDoc,
     TActivityMessagesFilter,

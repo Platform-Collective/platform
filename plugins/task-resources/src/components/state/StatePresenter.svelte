@@ -61,7 +61,7 @@
 
   const client = getClient()
 
-  async function getType (
+  async function getType(
     space: Ref<Project> | undefined,
     projectType: Ref<ProjectType> | undefined,
     types: IdMap<ProjectType>

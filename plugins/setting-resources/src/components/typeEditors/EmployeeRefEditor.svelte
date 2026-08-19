@@ -31,11 +31,11 @@
   let spaceMembersOnly: boolean = attribute?.spaceMembersOnly ?? false
   let byRole: Ref<Role> | null | undefined = attribute?.byRole
 
-  function changeSpaceMembersOnly () {
+  function changeSpaceMembersOnly() {
     dispatch('change', { extra: isCard ? { spaceMembersOnly, byRole } : { spaceMembersOnly } })
   }
 
-  function changeByRole (e: any) {
+  function changeByRole(e: any) {
     if (!isCard) return
     byRole = e.detail
     dispatch('change', { extra: isCard ? { spaceMembersOnly, byRole } : { spaceMembersOnly } })

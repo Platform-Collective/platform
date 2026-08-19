@@ -50,7 +50,7 @@
 
   onDestroy(location.subscribe(updatePageLoc))
 
-  function updatePageLoc (loc: Location): void {
+  function updatePageLoc(loc: Location): void {
     const token = getMetadata(presentation.metadata.Token)
     page = (loc.path[1] as Pages) ?? (token != null ? 'selectWorkspace' : 'login')
     const allowedUnauthPages: Pages[] = ['onboard', 'auth']
@@ -59,7 +59,7 @@
     }
   }
 
-  async function chooseToken (): Promise<void> {
+  async function chooseToken(): Promise<void> {
     if (page === 'auth') {
       // token handled by auth page
       return

@@ -204,7 +204,7 @@ export async function deleteFilesBatch (
             throw new Error('Attachment is missing parent reference')
           }
           await client.removeCollection<Doc, AttachedDoc>(
-            ref._class as Ref<Class<AttachedDoc>>,
+            ref._class,
             ref.space,
             ref._id as Ref<AttachedDoc>,
             ref.attachedTo,

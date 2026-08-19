@@ -81,7 +81,7 @@
     }
   )
 
-  async function handleFolderSelected (_id: Ref<Doc>): Promise<void> {
+  async function handleFolderSelected(_id: Ref<Doc>): Promise<void> {
     if (getFolderLink !== undefined) {
       const getFolderLinkFunction = await getResource(getFolderLink)
       navigate(getFolderLinkFunction(_id))
@@ -91,11 +91,11 @@
     dispatch('select', _id)
   }
 
-  async function handleAllItemsSelected (): Promise<void> {
+  async function handleAllItemsSelected(): Promise<void> {
     await handleFolderSelected(noParentId)
   }
 
-  async function getFolderActions (obj: Doc): Promise<Action[]> {
+  async function getFolderActions(obj: Doc): Promise<Action[]> {
     const result: Action[] = []
     const extraActions = await getContributedActions(client, obj)
     for (const act of extraActions) {
@@ -111,7 +111,7 @@
     return result
   }
 
-  async function getRootActions (): Promise<Action[]> {
+  async function getRootActions(): Promise<Action[]> {
     return []
   }
 </script>

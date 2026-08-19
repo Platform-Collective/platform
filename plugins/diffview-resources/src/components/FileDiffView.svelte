@@ -39,7 +39,7 @@
 
   let hideDiffLabel = getHideDiffLabel(file)
 
-  function getHideDiffLabel (file: DiffFile): IntlString | undefined {
+  function getHideDiffLabel(file: DiffFile): IntlString | undefined {
     if (diffRenderLimit >= 0 && file.stats.addedLines + file.stats.addedLines > diffRenderLimit) {
       return diffview.string.LargeDiffsAreHidden
     }
@@ -48,7 +48,7 @@
     }
   }
 
-  function getNoChangesLabel (file: DiffFile): IntlString {
+  function getNoChangesLabel(file: DiffFile): IntlString {
     if (file.hunks.length === 0) {
       if (file.isTooBig === true) {
         return diffview.string.FileIsTooLarge
@@ -60,7 +60,7 @@
     return diffview.string.NoChanges
   }
 
-  function showDiff (): void {
+  function showDiff(): void {
     hideDiffLabel = undefined
   }
 </script>

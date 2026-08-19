@@ -30,7 +30,7 @@
   let linkPreviewAttachments: WithLookup<Attachment>[]
 
   $: filter(attachments)
-  function filter (value: WithLookup<Attachment>[]): void {
+  function filter(value: WithLookup<Attachment>[]): void {
     linkPreviewAttachments = []
     otherAttachments = []
     for (const attachment of value) {

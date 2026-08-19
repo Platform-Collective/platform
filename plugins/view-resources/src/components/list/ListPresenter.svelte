@@ -35,7 +35,7 @@
 
   $: dp = attributeModel?.displayProps
 
-  function joinProps (attribute: AttributeModel, object: Doc, props: Record<string, any>, readonly: boolean) {
+  function joinProps(attribute: AttributeModel, object: Doc, props: Record<string, any>, readonly: boolean) {
     const readonlyParams =
       readonly || (attribute?.attribute?.readonly ?? false)
         ? {
@@ -62,7 +62,7 @@
     permissionsStore = await getResource(contact.store.Permissions)
   })
 
-  function canChangeAttr (
+  function canChangeAttr(
     object: Doc,
     attr: AnyAttribute | undefined,
     permissionsStore: PermissionsStore | undefined

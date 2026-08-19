@@ -192,7 +192,7 @@ export function Model<T extends Obj> (
   domain?: Domain,
   _implements?: Ref<Interface<Doc>>[]
 ) {
-  return function classDecorator<C extends new () => T>(constructor: C): void {
+  return function classDecorator<C extends new () => T> (constructor: C): void {
     const txes = getTxes(constructor.prototype)
     txes._id = _class
     txes.extends = _class !== core.class.Obj ? _extends : undefined
@@ -206,7 +206,7 @@ export function Model<T extends Obj> (
  * @public
  */
 export function Implements<T extends Doc> (_interface: Ref<Interface<T>>, _extends?: Ref<Interface<Doc>>[]) {
-  return function classDecorator<C extends new () => T>(constructor: C): void {
+  return function classDecorator<C extends new () => T> (constructor: C): void {
     const txes = getTxes(constructor.prototype)
     txes._id = _interface
     txes.implements = _extends
@@ -218,7 +218,7 @@ export function Implements<T extends Doc> (_interface: Ref<Interface<T>>, _exten
  * @public
  */
 export function Mixin<T extends Obj> (_class: Ref<Class<T>>, _extends: Ref<Class<Obj>>) {
-  return function classDecorator<C extends new () => T>(constructor: C): void {
+  return function classDecorator<C extends new () => T> (constructor: C): void {
     const txes = getTxes(constructor.prototype)
     txes._id = _class
     txes.extends = _extends
@@ -237,7 +237,7 @@ export function UX<T extends Obj> (
   filteringKey?: string,
   pluralLabel?: IntlString
 ) {
-  return function classDecorator<C extends new () => T>(constructor: C): void {
+  return function classDecorator<C extends new () => T> (constructor: C): void {
     const txes = getTxes(constructor.prototype)
     txes.label = label
     txes.icon = icon

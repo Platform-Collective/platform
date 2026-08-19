@@ -38,7 +38,7 @@
   let participants: ParticipantData[] = []
 
   // Attach or update a participant entry (using LiveKit identity as key).
-  function attachParticipant (participant: Participant): void {
+  function attachParticipant(participant: Participant): void {
     if (participant == null) return
     if (participant.identity == null || participant.identity === '') return
 
@@ -59,7 +59,7 @@
     participants = participants
   }
 
-  function handleParticipantDisconnected (participant: RemoteParticipant): void {
+  function handleParticipantDisconnected(participant: RemoteParticipant): void {
     const index = participants.findIndex((p) => p._id === participant.identity)
     if (index !== -1) {
       participants.splice(index, 1)
@@ -96,7 +96,7 @@
 
   // Return active participants to render. For guests we hide agent participants
   // unless there's an explicit reason to show them (guests don't have DB-based info).
-  function getActiveParticipants (items: ParticipantData[]): ParticipantData[] {
+  function getActiveParticipants(items: ParticipantData[]): ParticipantData[] {
     const result = items.filter((p) => !p.isAgent)
     dispatch('participantsCount', result.length)
     return result

@@ -51,7 +51,7 @@
   const client = getClient()
   const leadId: Ref<AttachedDoc> = generateId()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return (preserveCustomer || customer === undefined) && title === ''
   }
 
@@ -66,7 +66,7 @@
 
   $: setStatus(rawStates, object.status)
 
-  function setStatus (rawStates: TaskStatus[], status: Ref<TaskStatus> | undefined) {
+  function setStatus(rawStates: TaskStatus[], status: Ref<TaskStatus> | undefined) {
     if (status === undefined || rawStates.findIndex((it) => it._id === status) === -1) {
       state = rawStates[0]?._id
       object.status = state
@@ -83,7 +83,7 @@
 
   let kind: Ref<TaskType> | undefined = undefined
 
-  async function createLead () {
+  async function createLead() {
     const sequence = await client.findOne(core.class.Sequence, { attachedTo: lead.class.Lead })
     if (sequence === undefined || customer == null) {
       throw new Error('Lead  creation failed')

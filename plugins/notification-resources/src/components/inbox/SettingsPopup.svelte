@@ -26,7 +26,7 @@
   let selection = 0
   let list: ListView
 
-  export function onKeydown (key: KeyboardEvent): boolean {
+  export function onKeydown(key: KeyboardEvent): boolean {
     if (key.code === 'Tab') {
       dispatch('close')
       key.preventDefault()
@@ -72,13 +72,13 @@
     popupElement.focus()
   }
 
-  function selectIndex (index: number): void {
+  function selectIndex(index: number): void {
     if (items.length === 0) return
 
     list.select(Math.max(0, Math.min(index, items.length - 1)))
   }
 
-  function toggleSelectedItem (): void {
+  function toggleSelectedItem(): void {
     const item = items[selection]
     if (item === undefined) return
 

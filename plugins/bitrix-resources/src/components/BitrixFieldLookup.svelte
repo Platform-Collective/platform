@@ -26,7 +26,7 @@
   const client = getClient()
 
   let items: any[] = []
-  function loadItems (order: boolean): void {
+  function loadItems(order: boolean): void {
     bitrixClient
       .call(mapping.type + '.list', { select: ['*', 'UF_*', 'EMAIL', 'IM'], order: { ID: order ? 'ASC' : 'DSC' } })
       .then((res) => {
@@ -41,7 +41,7 @@
     enums = res
   })
 
-  async function updateEnum (evt: MouseEvent, fieldId: string, field: FieldValue): Promise<void> {
+  async function updateEnum(evt: MouseEvent, fieldId: string, field: FieldValue): Promise<void> {
     const enumId = ('bitrix_' + fieldId) as Ref<Enum>
     const existingEnum = await client.findOne(core.class.Enum, { _id: enumId })
     if (existingEnum !== undefined) {

@@ -28,17 +28,17 @@
     }
   }
 
-  function codeLineClass (line: DiffLine): string {
+  function codeLineClass(line: DiffLine): string {
     return `line-${line.type}`
   }
 
   $: highlighted = file.hunks.map((hunk) => renderHunk(hunk, options))
 
-  function prepareLinesForUnifiedView (lines: DiffLineRenderResult[]): DiffLine[] {
+  function prepareLinesForUnifiedView(lines: DiffLineRenderResult[]): DiffLine[] {
     return lines.map(({ before, after }) => (after.type !== DiffLineType.EMPTY ? after : before))
   }
 
-  function prepareLinesForSplitView (lines: DiffLineRenderResult[]): DiffLineRenderResult[] {
+  function prepareLinesForSplitView(lines: DiffLineRenderResult[]): DiffLineRenderResult[] {
     const before: DiffLine[] = []
     const after: DiffLine[] = []
 

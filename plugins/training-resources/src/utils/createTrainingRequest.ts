@@ -13,7 +13,7 @@ import { trainingRequestRoute } from '../routing/routes/trainingRequestRoute'
 import { getCurrentEmployeeRef } from './getCurrentEmployeeRef'
 
 export type CreateTrainingRequestData = Required<
-Omit<AttachedData<TrainingRequest>, 'owner' | 'attempts' | 'canceledOn' | 'canceledBy'> & { roles: Array<Ref<Role>> }
+  Omit<AttachedData<TrainingRequest>, 'owner' | 'attempts' | 'canceledOn' | 'canceledBy'> & { roles: Array<Ref<Role>> }
 >
 
 export async function createTrainingRequest (

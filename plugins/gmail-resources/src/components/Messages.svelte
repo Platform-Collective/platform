@@ -24,7 +24,7 @@
   export let selected: Set<Ref<SharedMessage>> = new Set<Ref<SharedMessage>>()
   const dispatch = createEventDispatcher()
 
-  function select (id: Ref<SharedMessage>): void {
+  function select(id: Ref<SharedMessage>): void {
     if (!selectable) {
       const currentMessage = messages.find((m) => m._id === id)
       dispatch('select', currentMessage)

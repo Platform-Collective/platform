@@ -50,7 +50,7 @@
       ? calendar.string.AddParticipants
       : calendar.string.Participants
 
-  function removeParticipant (_id: Ref<Person>): void {
+  function removeParticipant(_id: Ref<Person>): void {
     const index = participants.findIndex((p) => p === _id)
     if (index !== -1) {
       participants.splice(index, 1)
@@ -58,7 +58,7 @@
     }
   }
 
-  function removeExtParticipant (val: string): void {
+  function removeExtParticipant(val: string): void {
     const index = externalParticipants.findIndex((p) => p === val)
     if (index !== -1) {
       externalParticipants.splice(index, 1)
@@ -66,14 +66,14 @@
     }
   }
 
-  function ref (e: CustomEvent<Ref<Person>>) {
+  function ref(e: CustomEvent<Ref<Person>>) {
     if (e.detail) {
       participants.push(e.detail)
       participants = participants
     }
   }
 
-  function enter (e: CustomEvent<string>) {
+  function enter(e: CustomEvent<string>) {
     if (e.detail && e.detail !== '') {
       if (!externalParticipants.includes(e.detail)) {
         externalParticipants.push(e.detail)

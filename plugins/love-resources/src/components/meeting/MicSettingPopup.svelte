@@ -10,7 +10,7 @@
 
   const client = getClient()
 
-  function isNoiseCancellationSupported (): boolean {
+  function isNoiseCancellationSupported(): boolean {
     try {
       const c = navigator.mediaDevices?.getSupportedConstraints?.() ?? {}
       return c.echoCancellation === true || c.noiseSuppression === true
@@ -19,7 +19,7 @@
     }
   }
 
-  async function saveNoiseCancellationPreference (
+  async function saveNoiseCancellationPreference(
     myPreferences: DevicesPreference | undefined,
     value: boolean
   ): Promise<void> {
@@ -38,7 +38,7 @@
     await liveKitClient.applyNoiseCancellation(value)
   }
 
-  async function saveSpeakingWhileMutedPreference (
+  async function saveSpeakingWhileMutedPreference(
     myPreferences: DevicesPreference | undefined,
     value: boolean
   ): Promise<void> {

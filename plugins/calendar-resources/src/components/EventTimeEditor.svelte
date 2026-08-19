@@ -33,13 +33,13 @@
   const allDayDuration = 24 * 60 * 60 * 1000 - 1
   const dispatch = createEventDispatcher()
 
-  function dateChange () {
+  function dateChange() {
     startDate = allDay ? new Date(startDate).setHours(0, 0, 0, 0) : startDate
     dueDate = startDate + (allDay ? allDayDuration : diff)
     dispatch('change', { startDate, dueDate })
   }
 
-  function dueChange () {
+  function dueChange() {
     const newDiff = dueDate - startDate
     if (newDiff > 0) {
       dueDate = allDay ? new Date(dueDate).setHours(23, 59, 59, 999) : dueDate

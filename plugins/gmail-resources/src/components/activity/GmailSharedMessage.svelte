@@ -29,7 +29,7 @@
 
   $: loadObject(_id, value)
 
-  function loadObject (_id?: Ref<SharedMessages>, value?: SharedMessages): void {
+  function loadObject(_id?: Ref<SharedMessages>, value?: SharedMessages): void {
     if (value === undefined && _id !== undefined) {
       query.query(gmail.class.SharedMessages, { _id }, (res) => {
         doc = res[0]

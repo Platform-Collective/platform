@@ -61,7 +61,7 @@ export async function generateHeaders (
       if (attr.label.startsWith('custom')) {
         label = await resolveCustomAttributeLabel(attr.label, firstDocClass, hierarchy, language)
       } else if (isIntlString(attr.label)) {
-        label = await translate(attr.label as unknown as IntlString, {}, language)
+        label = await translate(attr.label, {}, language)
       } else {
         label = attr.label
       }

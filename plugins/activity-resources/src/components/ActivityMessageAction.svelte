@@ -25,7 +25,7 @@
   export let opened: boolean = false
   export let dataId: string | undefined = undefined
 
-  function onClick (ev: MouseEvent): void {
+  function onClick(ev: MouseEvent): void {
     ev.stopPropagation()
     ev.preventDefault()
     void action(ev)

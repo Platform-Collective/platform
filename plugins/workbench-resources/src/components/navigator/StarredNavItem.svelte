@@ -51,7 +51,7 @@
     }
   }
 
-  async function getActions (space: Space): Promise<Action[]> {
+  async function getActions(space: Space): Promise<Action[]> {
     const result = [unStarSpace]
 
     const extraActions = await getContributedActions(client, space, core.class.Space)

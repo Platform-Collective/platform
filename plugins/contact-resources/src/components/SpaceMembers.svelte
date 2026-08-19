@@ -50,7 +50,7 @@
   $: isSearch = search.trim().length
   let members: Set<Ref<Person>> = new Set<Ref<Person>>()
 
-  async function getUsers (accounts: AccountUuid[], search: string): Promise<Employee[]> {
+  async function getUsers(accounts: AccountUuid[], search: string): Promise<Employee[]> {
     const employeeRefs = accounts.map((acc) => $employeeRefByAccountUuidStore.get(acc)).filter(notEmpty)
     const query: DocumentQuery<Employee> =
       isSearch > 0 ? { name: { $like: '%' + search + '%' } } : { _id: { $in: employeeRefs } }

@@ -70,7 +70,7 @@
 
   const linkProviders = client.getModel().findAllSync(view.mixin.LinkIdProvider, {})
 
-  async function getChannelActions (context: DocNotifyContext | undefined, object: Doc): Promise<Action[]> {
+  async function getChannelActions(context: DocNotifyContext | undefined, object: Doc): Promise<Action[]> {
     const result: Action[] = []
 
     if (context === undefined) {

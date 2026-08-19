@@ -489,10 +489,7 @@ export async function getReferenceObject<T extends Doc> (
     return message
   }
 
-  const referenceObjectProvider = hierarchy.classHierarchyMixin(
-    objectclass,
-    view.mixin.ReferenceObjectProvider
-  )
+  const referenceObjectProvider = hierarchy.classHierarchyMixin(objectclass, view.mixin.ReferenceObjectProvider)
   const referenceObjectProviderFn =
     referenceObjectProvider !== undefined ? await getResource(referenceObjectProvider.provider) : undefined
 

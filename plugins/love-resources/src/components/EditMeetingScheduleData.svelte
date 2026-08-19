@@ -27,7 +27,7 @@
   $: isMeetingSchedule = client.getHierarchy().hasMixin(value, love.mixin.MeetingSchedule)
   $: meetingSchedule = isMeetingSchedule ? client.getHierarchy().as(value, love.mixin.MeetingSchedule) : null
 
-  async function changeRoom (val: Ref<Room>): Promise<void> {
+  async function changeRoom(val: Ref<Room>): Promise<void> {
     const schedules = await client.findAll(value._class, { _id: value._id }, { projection: { _id: 1 } })
     for (const schedule of schedules) {
       await client.updateMixin(schedule._id, schedule._class, schedule.space, love.mixin.MeetingSchedule, { room: val })

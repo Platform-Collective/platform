@@ -47,7 +47,7 @@
     fields = res.result
   })
 
-  async function updateMappingFields (
+  async function updateMappingFields(
     mapping: BitrixEntityMapping,
     fields: Fields,
     statusList: StatusValue[]

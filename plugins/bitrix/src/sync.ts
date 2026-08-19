@@ -1,5 +1,5 @@
 import attachment, { Attachment } from '@hcengineering/attachment'
-import contact, { Channel, Contact, Employee } from '@hcengineering/contact'
+import contact, { Channel, Contact } from '@hcengineering/contact'
 import core, {
   PersonId,
   ApplyOperations,
@@ -13,7 +13,6 @@ import core, {
   generateId,
   Hierarchy,
   Mixin,
-  MixinData,
   MixinUpdate,
   Ref,
   Space,

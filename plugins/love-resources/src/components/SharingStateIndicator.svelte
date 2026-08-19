@@ -24,14 +24,14 @@
 
   let pressed: boolean = false
 
-  function handleShowPopup (ev: MouseEvent): void {
+  function handleShowPopup(ev: MouseEvent): void {
     pressed = true
     showPopup(SharingStatePopup, {}, eventToHTMLElement(ev), () => {
       pressed = false
     })
   }
 
-  function handleShare (): void {
+  function handleShare(): void {
     if ($screenSharingState !== ScreenSharingState.Inactive) return
     void liveKitClient.setScreenShareEnabled(true, $isShareWithSound)
   }

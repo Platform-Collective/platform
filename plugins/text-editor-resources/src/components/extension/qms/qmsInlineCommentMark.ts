@@ -105,7 +105,7 @@ export const QMSInlineCommentMark = Mark.create<QMSInlineCommentMarkOptions>({
     return {
       [qmsInlineCommentMarkName]: {
         default: null,
-        parseHTML: (el) => (el).getAttribute(qmsInlineCommentMarkName)
+        parseHTML: (el) => el.getAttribute(qmsInlineCommentMarkName)
       }
     }
   },
@@ -115,7 +115,7 @@ export const QMSInlineCommentMark = Mark.create<QMSInlineCommentMarkOptions>({
       {
         tag: `span[${qmsInlineCommentMarkName}]`,
         getAttrs: (el) => {
-          const value = (el).getAttribute(qmsInlineCommentMarkName)?.trim()
+          const value = el.getAttribute(qmsInlineCommentMarkName)?.trim()
           if (value === null || value === undefined || value.length === 0) {
             return false
           }

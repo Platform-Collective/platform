@@ -38,7 +38,7 @@
   let folderById: Map<Ref<Folder>, Folder> = new Map<Ref<Folder>, Folder>()
   let descendants: Map<Ref<Folder>, Folder[]> = new Map<Ref<Folder>, Folder[]>()
 
-  function getDescendants (obj: Ref<Folder>): Ref<Folder>[] {
+  function getDescendants(obj: Ref<Folder>): Ref<Folder>[] {
     return (descendants.get(obj) ?? []).sort((a, b) => a.title.localeCompare(b.title)).map((p) => p._id)
   }
 
@@ -75,15 +75,15 @@
     }
   )
 
-  function handleDriveSelected (_id: Ref<Drive>): void {
+  function handleDriveSelected(_id: Ref<Drive>): void {
     navigate(getDriveLink(_id))
   }
 
-  function handleFolderSelected (_id: Ref<Folder>): void {
+  function handleFolderSelected(_id: Ref<Folder>): void {
     navigate(getFolderLink(_id))
   }
 
-  async function getFolderActions (obj: Folder): Promise<Action[]> {
+  async function getFolderActions(obj: Folder): Promise<Action[]> {
     const result: Action[] = []
     const extraActions = await getContributedActions(client, obj)
     for (const act of extraActions) {

@@ -18,7 +18,7 @@
   export let disabled: boolean
   export let selected: number[]
 
-  function onSelect (val: number): void {
+  function onSelect(val: number): void {
     if (disabled) return
     if (selected.includes(val)) {
       selected = selected.filter((v) => v !== val)

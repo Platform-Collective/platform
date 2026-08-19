@@ -109,7 +109,7 @@
     visible = hierarchy.classHierarchyMixin(_class, view.mixin.ClassFilters) !== undefined
   }
 
-  function selectedFilterChanged (
+  function selectedFilterChanged(
     selectedFilter: FilteredView | undefined,
     filters: Filter[],
     activeViewlet: Record<string, Ref<Viewlet> | null>,

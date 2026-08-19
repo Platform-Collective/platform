@@ -37,7 +37,7 @@
   const approvable =
     value.requested.filter((a) => a === myPerson).length > value.approved.filter((a) => a === myPerson).length
 
-  async function approve () {
+  async function approve() {
     await saveComment()
     await client.update(value, {
       $push: {
@@ -48,7 +48,7 @@
 
   $: disabled = commentIsEmpty(message, attachments)
 
-  async function reject () {
+  async function reject() {
     await saveComment()
     await client.update(value, {
       rejected: myPerson,
@@ -59,12 +59,12 @@
   let message: Markup = EmptyMarkup
   let attachments: number | undefined = 0
 
-  async function onUpdate (event: CustomEvent<AttachedData<ChatMessage>>) {
+  async function onUpdate(event: CustomEvent<AttachedData<ChatMessage>>) {
     message = event.detail.message
     attachments = event.detail.attachments
   }
 
-  async function saveComment (): Promise<void> {
+  async function saveComment(): Promise<void> {
     const _id = await client.addCollection(
       chunter.class.ChatMessage,
       value.space,
@@ -83,7 +83,7 @@
     loading = false
   }
 
-  async function comment (): Promise<void> {
+  async function comment(): Promise<void> {
     await client.addCollection(chunter.class.ChatMessage, value.space, value._id, value._class, 'comments', {
       message,
       attachments
@@ -92,7 +92,7 @@
     loading = false
   }
 
-  function commentIsEmpty (message: string, attachments: number | undefined): boolean {
+  function commentIsEmpty(message: string, attachments: number | undefined): boolean {
     return isEmptyMarkup(message) && !((attachments ?? 0) > 0)
   }
 
@@ -122,7 +122,7 @@
   ]
   let loading = false
 
-  async function cancel () {
+  async function cancel() {
     await client.update(value, {
       status: RequestStatus.Cancelled
     })

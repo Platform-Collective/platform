@@ -39,11 +39,11 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return doc.attachedTo.length === 0 && doc.name.length === 0
   }
 
-  async function create () {
+  async function create() {
     const productInstance = await client.findOne(inventory.class.Product, { _id: doc.attachedTo as Ref<Product> })
     if (productInstance === undefined) {
       throw new Error('product not found')

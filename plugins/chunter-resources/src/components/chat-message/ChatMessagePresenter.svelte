@@ -75,9 +75,9 @@
   ;[viewlet] =
     value !== undefined
       ? client.getModel().findAllSync(chunter.class.ChatMessageViewlet, {
-        objectClass: value.attachedToClass,
-        messageClass: value._class
-      })
+          objectClass: value.attachedToClass,
+          messageClass: value._class
+        })
       : []
 
   $: personId = value?.createdBy
@@ -143,7 +143,7 @@
     stale = false
   }
 
-  async function getParentMessage (
+  async function getParentMessage(
     _class: Ref<Class<Doc>>,
     _id: Ref<Doc>,
     space: Ref<Space>
@@ -153,7 +153,7 @@
     }
   }
 
-  async function handleEditAction (): Promise<void> {
+  async function handleEditAction(): Promise<void> {
     if (value == null) return
     editingMessageStore.set(value._id)
   }
@@ -184,7 +184,7 @@
   let inlineActions: MessageInlineAction[] = []
 
   $: updateInlineActions($translatingMessagesStore, $shownTranslatedMessagesStore)
-  function updateInlineActions (
+  function updateInlineActions(
     translatingMessages: Set<Ref<ChatMessage>>,
     shownTranslated: Set<Ref<ChatMessage>>
   ): void {

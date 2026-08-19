@@ -60,11 +60,11 @@
 
   let formElement: HTMLFormElement | undefined
 
-  function trim (field: string): void {
+  function trim(field: string): void {
     otpData[field] = otpData[field].trim()
   }
 
-  async function validateOtp (): Promise<void> {
+  async function validateOtp(): Promise<void> {
     status = new Status(Severity.INFO, login.status.ConnectingToServer, {})
 
     const otp = otpData.otp1 + otpData.otp2 + otpData.otp3 + otpData.otp4 + otpData.otp5 + otpData.otp6
@@ -84,7 +84,7 @@
     }
   }
 
-  function onInput (e: Event): void {
+  function onInput(e: Event): void {
     if (e.target == null) return
 
     const target = e.target as HTMLInputElement
@@ -115,7 +115,7 @@
     }
   }
 
-  function clearOtpData (): void {
+  function clearOtpData(): void {
     Object.keys(otpData).forEach((key) => {
       otpData[key] = ''
     })
@@ -126,7 +126,7 @@
     }
   }
 
-  function onKeydown (e: KeyboardEvent): void {
+  function onKeydown(e: KeyboardEvent): void {
     const key = e.key.toLowerCase()
     const target = e.target as HTMLInputElement
 
@@ -150,7 +150,7 @@
     }
   }
 
-  function onPaste (e: ClipboardEvent): void {
+  function onPaste(e: ClipboardEvent): void {
     e.preventDefault()
 
     if (e.clipboardData == null) return
@@ -159,7 +159,7 @@
     pasteOtpCode(text)
   }
 
-  function pasteOtpCode (text: string): boolean {
+  function pasteOtpCode(text: string): boolean {
     const digits = text.split('').filter((it) => it !== ' ')
 
     if (digits.length !== fields.length) {
@@ -203,7 +203,7 @@
     }
   })
 
-  async function resendCode (): Promise<void> {
+  async function resendCode(): Promise<void> {
     status = new Status(Severity.INFO, login.status.ConnectingToServer, {})
     const [otpStatus, result] = await loginOtp(email)
     status = otpStatus

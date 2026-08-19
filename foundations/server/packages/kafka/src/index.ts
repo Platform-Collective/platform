@@ -309,7 +309,12 @@ class PlatformQueueConsumerImpl implements ConsumerHandle {
             await this.ctx.with(
               'handle-msg',
               {},
-              (ctx) => this.onMessage(ctx, { workspace, value: msgData }, { heartbeat, pause }),
+              (ctx) =>
+                this.onMessage(
+                  ctx,
+                  { workspace, value: msgData },
+                  { heartbeat: () => heartbeat(), pause: () => pause() }
+                ),
               {},
               {
                 meta

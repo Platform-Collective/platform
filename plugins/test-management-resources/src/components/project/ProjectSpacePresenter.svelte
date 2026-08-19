@@ -33,7 +33,7 @@
 
   let specials: SpecialNavModel[] = []
 
-  async function updateSpecials (model: SpacesNavModel, space: TestProject): Promise<void> {
+  async function updateSpecials(model: SpacesNavModel, space: TestProject): Promise<void> {
     const newSpecials: SpecialNavModel[] = []
     for (const sp of model.specials ?? []) {
       let shouldAdd = true

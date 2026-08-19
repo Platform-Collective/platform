@@ -28,7 +28,7 @@
 
   $: store = $statusStore
 
-  async function updateState (e: CustomEvent<boolean>): Promise<void> {
+  async function updateState(e: CustomEvent<boolean>): Promise<void> {
     if (currentState !== undefined) {
       if (e.detail) {
         const targetState = store.byType

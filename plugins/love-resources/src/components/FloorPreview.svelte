@@ -57,13 +57,13 @@
   let floorContainer: HTMLDivElement
   let hovered: number = -1
 
-  function getInfo (room: Ref<Room>, info: ParticipantInfo[]): ParticipantInfo[] {
+  function getInfo(room: Ref<Room>, info: ParticipantInfo[]): ParticipantInfo[] {
     return info.filter((p) => p.room === room)
   }
 
   let roomName: IntlString | undefined = undefined
 
-  function hover (e: CustomEvent<any>, n: number): void {
+  function hover(e: CustomEvent<any>, n: number): void {
     roomName = e.detail.name
     hovered = n
   }
@@ -73,11 +73,11 @@
 
   const client = getClient()
 
-  async function remove (): Promise<void> {
+  async function remove(): Promise<void> {
     await client.remove(floor)
   }
 
-  function renameFloor (): void {
+  function renameFloor(): void {
     showPopup(EditFloorPopup, { id: floor._id }, 'top', () => {
       pressed = false
     })

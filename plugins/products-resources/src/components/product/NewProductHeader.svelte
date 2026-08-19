@@ -18,7 +18,7 @@
   import CreateProduct from './CreateProduct.svelte'
   import { openDocFromRef } from '@hcengineering/view-resources'
 
-  async function newProduct (): Promise<void> {
+  async function newProduct(): Promise<void> {
     showPopup(CreateProduct, {}, 'top', async (id) => {
       if (id != null) {
         void openDocFromRef(products.class.Product, id)

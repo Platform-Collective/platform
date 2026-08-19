@@ -37,7 +37,7 @@
 
   $: void updateProvider(message)
 
-  async function updateProvider (message: ActivityMessage): Promise<void> {
+  async function updateProvider(message: ActivityMessage): Promise<void> {
     if (dataProvider !== undefined) {
       return
     }

@@ -357,7 +357,7 @@ export const notificationActionTemplates = template({
   }
 })
 
-export function createModel(builder: Builder): void {
+export function createModel (builder: Builder): void {
   builder.createModel(
     TCollaborators,
     TBrowserNotification,
@@ -830,7 +830,7 @@ export function createModel(builder: Builder): void {
   })
 }
 
-export function generateClassNotificationTypes(
+export function generateClassNotificationTypes (
   builder: Builder,
   _class: Ref<Class<Doc>>,
   group: Ref<NotificationGroup>,

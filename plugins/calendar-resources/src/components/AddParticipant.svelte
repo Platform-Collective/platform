@@ -48,7 +48,7 @@
     phTranslate = res
   })
 
-  function computeSize (t: HTMLInputElement | EventTarget | null) {
+  function computeSize(t: HTMLInputElement | EventTarget | null) {
     if (t == null) {
       return
     }
@@ -78,10 +78,10 @@
     computeSize(input)
   })
 
-  export function focusInput () {
+  export function focusInput() {
     input?.focus()
   }
-  export function selectInput () {
+  export function selectInput() {
     input?.select()
   }
 
@@ -101,7 +101,7 @@
     input.addEventListener('focus', updateFocus, { once: true })
   }
 
-  export function focus (): void {
+  export function focus(): void {
     input.focus()
   }
 
@@ -119,7 +119,7 @@
 
   $: findCompletions(value, integrations, excluded)
 
-  async function findCompletions (
+  async function findCompletions(
     val: string | undefined,
     integrations: Integration[],
     excluded: Ref<Person>[]
@@ -161,7 +161,7 @@
     }
   }
 
-  function addGuest (e: MouseEvent) {
+  function addGuest(e: MouseEvent) {
     showPopup(CreateGuest, {}, undefined, (res) => {
       if (res) {
         value = ''

@@ -45,7 +45,7 @@
     category: value.category
   }
 
-  async function updateElement () {
+  async function updateElement() {
     const documentUpdate: DocumentUpdate<TagElement> = {}
     const refUpdate: DocumentUpdate<TagReference> = {}
 

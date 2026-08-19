@@ -24,7 +24,7 @@ export { Presence, PresenceAvatars }
 
 export * from './presence'
 export * from './typing'
-export * from './types'
+export type * from './types'
 
 export default async (): Promise<Resources> => ({
   component: {

@@ -36,11 +36,11 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return _title !== undefined && _title.trim().length === 0 && participants.length === 0
   }
 
-  async function saveReminder () {
+  async function saveReminder() {
     let date: number | undefined
     if (value != null) date = value
     if (date === undefined) return

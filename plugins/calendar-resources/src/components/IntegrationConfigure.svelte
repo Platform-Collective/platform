@@ -39,7 +39,7 @@
     }
   )
 
-  async function update (calendar: Calendar, value: boolean) {
+  async function update(calendar: Calendar, value: boolean) {
     await client.update(calendar, {
       hidden: !value
     })

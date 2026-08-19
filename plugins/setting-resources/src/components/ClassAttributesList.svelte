@@ -52,12 +52,12 @@
   export let showAll: boolean = false
 
   export let attributeMapper:
-  | {
-    component: AnySvelteComponent
-    label: IntlString
-    props: Record<string, any>
-  }
-  | undefined = undefined
+    | {
+        component: AnySvelteComponent
+        label: IntlString
+        props: Record<string, any>
+      }
+    | undefined = undefined
 
   const dispatch = createEventDispatcher()
 
@@ -74,7 +74,7 @@
   })
   $: attributes = getCustomAttributes(_class)
 
-  function getCustomAttributes (_class: Ref<Class<Doc>>): AnyAttribute[] {
+  function getCustomAttributes(_class: Ref<Class<Doc>>): AnyAttribute[] {
     const cl = hierarchy.getClass(_class)
     const to = showAll ? ofClass : _class === ofClass && !notUseOfClass ? core.class.Doc : cl.extends
     const attributes = Array.from(hierarchy.getAllAttributes(_class, to).values()).sort((a, b) => {
@@ -91,15 +91,15 @@
     attributes = getCustomAttributes(_class)
   })
 
-  function update (): void {
+  function update(): void {
     attributes = getCustomAttributes(_class)
   }
 
-  export async function editAttribute (attribute: AnyAttribute, exist: boolean): Promise<void> {
+  export async function editAttribute(attribute: AnyAttribute, exist: boolean): Promise<void> {
     showPopup(EditAttribute, { attribute, exist }, 'top', update)
   }
 
-  export async function overrideAttribute (source: AnyAttribute): Promise<void> {
+  export async function overrideAttribute(source: AnyAttribute): Promise<void> {
     const newSeq = await client.createDoc(core.class.CustomSequence, core.space.Workspace, {
       prefix: '',
       sequence: 0,
@@ -116,7 +116,7 @@
     }
   }
 
-  export async function removeAttribute (attribute: AnyAttribute, exist: boolean): Promise<void> {
+  export async function removeAttribute(attribute: AnyAttribute, exist: boolean): Promise<void> {
     showPopup(
       MessageBox,
       {
@@ -131,7 +131,7 @@
     )
   }
 
-  async function showMenu (ev: MouseEvent, attribute: AnyAttribute): Promise<void> {
+  async function showMenu(ev: MouseEvent, attribute: AnyAttribute): Promise<void> {
     hovered = attribute._id
     const exist = (await client.findOne(attribute.attributeOf, { [attribute.name]: { $exists: true } })) !== undefined
     const actions: Action[] = [
@@ -177,7 +177,7 @@
     })
   }
 
-  function getAttrType (type: Type<any>): IntlString | undefined {
+  function getAttrType(type: Type<any>): IntlString | undefined {
     switch (type._class) {
       case core.class.RefTo:
         return client.getHierarchy().getClass((type as RefTo<Doc>).to)?.label
@@ -192,7 +192,7 @@
     }
   }
 
-  function toRank (str: string | undefined): Rank | undefined {
+  function toRank(str: string | undefined): Rank | undefined {
     if (str === undefined) return
     if (str.startsWith('0|')) {
       return str
@@ -200,7 +200,7 @@
     return '0|' + str.replaceAll(/[-:_]/g, '').toLowerCase()
   }
 
-  async function moveHadler (e: CustomEvent<any>): Promise<void> {
+  async function moveHadler(e: CustomEvent<any>): Promise<void> {
     const { item, prev, next } = e.detail
     const rank = makeRank(prev?.rank ?? toRank(prev?._id), next?.rank ?? toRank(next?._id))
     await client.update(item, { rank })

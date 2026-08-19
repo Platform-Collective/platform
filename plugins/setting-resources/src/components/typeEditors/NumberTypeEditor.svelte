@@ -30,7 +30,7 @@
   let max: number | undefined = type?.max
   let isInteger = type?.digits === 0
 
-  function updateType (): void {
+  function updateType(): void {
     dispatch('change', { type: TypeNumber(min, max, isInteger ? 0 : undefined), defaultValue })
   }
 
@@ -40,7 +40,7 @@
     }
   })
 
-  function changeIsInteger (e: CustomEvent<boolean>): void {
+  function changeIsInteger(e: CustomEvent<boolean>): void {
     isInteger = e.detail
     updateType()
   }

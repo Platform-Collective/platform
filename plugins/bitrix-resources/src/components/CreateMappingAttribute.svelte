@@ -21,7 +21,7 @@
 
   let op: CopyMapping | CreateTagMapping | CreateChannelMapping | DownloadAttachmentMapping
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     op.save()
   }
 </script>

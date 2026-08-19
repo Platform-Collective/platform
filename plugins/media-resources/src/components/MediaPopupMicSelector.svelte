@@ -30,7 +30,7 @@
   $: access = $micAccess.state
   $: devices = mediaInfo.devices.filter((device) => device.kind === 'audioinput')
 
-  async function handleSelectMic (device: MediaDeviceInfo | null): Promise<void> {
+  async function handleSelectMic(device: MediaDeviceInfo | null): Promise<void> {
     if (device == null || mediaInfo === undefined) return
     if (mediaInfo.activeMicrophone?.deviceId === device?.deviceId) return
     const deviceId = device?.deviceId

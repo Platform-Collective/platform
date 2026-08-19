@@ -39,7 +39,7 @@
     SU: calendar.string.SundayShort
   }
 
-  async function getDays (days: string[], lang: string): Promise<string> {
+  async function getDays(days: string[], lang: string): Promise<string> {
     let result = ''
     for (const day of Object.keys(weekdays)) {
       if (days.includes(day)) {

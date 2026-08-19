@@ -1,4 +1,4 @@
-import client, { ClientSocket } from '@hcengineering/client'
+import client from '@hcengineering/client'
 import { Client } from '@hcengineering/core'
 import { setMetadata } from '@hcengineering/platform'
 import { createClient, getTransactorEndpoint } from '@hcengineering/server-client'

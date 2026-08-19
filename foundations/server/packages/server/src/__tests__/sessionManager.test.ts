@@ -25,7 +25,6 @@ import {
 import type { Token } from '@hcengineering/server-token'
 
 // Import the module under test after mocks are set up
-// eslint-disable-next-line import/first
 import { TSessionManager, type Timeouts } from '../sessionManager'
 
 // Mock modules before importing the module under test

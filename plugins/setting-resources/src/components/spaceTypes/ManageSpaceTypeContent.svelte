@@ -60,7 +60,7 @@
 
   onDestroy(resolvedLocationStore.subscribe(handleLocationChanged))
 
-  function handleLocationChanged ({ path }: Location): void {
+  function handleLocationChanged({ path }: Location): void {
     selectedTypeId = path[4] as Ref<SpaceType>
 
     if (path.length === 7) {
@@ -70,7 +70,7 @@
     }
   }
 
-  function selectSubItem (editorId: string | undefined, objId: Ref<Doc> | undefined): void {
+  function selectSubItem(editorId: string | undefined, objId: Ref<Doc> | undefined): void {
     selectedSubEditorId = editorId
     selectedSubObjectId = objId
   }
@@ -124,7 +124,7 @@
     }
   }
 
-  function handleCrumbSelected (event: CustomEvent): void {
+  function handleCrumbSelected(event: CustomEvent): void {
     if (event.detail === 0) {
       const loc = getCurrentResolvedLocation()
       loc.path.length = 5

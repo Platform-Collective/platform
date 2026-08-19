@@ -33,7 +33,6 @@ import core, {
   type TxCUD,
   TxFactory,
   TxProcessor,
-  type TxRemoveDoc,
   type TxUpdateDoc,
   type Type,
   getClassCollaborators

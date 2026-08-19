@@ -11,7 +11,7 @@
 
   const me = getCurrentEmployee()
 
-  function setAccess (e: MouseEvent): void {
+  function setAccess(e: MouseEvent): void {
     if (isOffice(room) && room.person !== me) return
     showPopup(RoomAccessPopup, { room }, eventToHTMLElement(e))
   }

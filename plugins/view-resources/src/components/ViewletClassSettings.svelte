@@ -24,12 +24,12 @@
 
   const dispatch = createEventDispatcher()
 
-  function dragEnd () {
+  function dragEnd() {
     selected = undefined
     dispatch('save', items)
   }
 
-  function dragOver (e: DragEvent, i: number) {
+  function dragOver(e: DragEvent, i: number) {
     e.preventDefault()
     e.stopPropagation()
     const s = selected as number
@@ -41,7 +41,7 @@
 
   const elements: HTMLElement[] = []
 
-  function dragswap (ev: MouseEvent, i: number, s: number): boolean {
+  function dragswap(ev: MouseEvent, i: number, s: number): boolean {
     if (i < s) {
       return ev.offsetY < elements[i].offsetHeight / 2
     } else if (i > s) {
@@ -50,7 +50,7 @@
     return false
   }
 
-  function change (item: Config, value: boolean): void {
+  function change(item: Config, value: boolean): void {
     if (isAttribute(item)) {
       item.enabled = value
       dispatch('save', items)

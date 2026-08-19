@@ -41,15 +41,15 @@
   let search: string = ''
   let selectedIds: Ref<Employee>[] = selected
 
-  function handleCancel (): void {
+  function handleCancel(): void {
     dispatch('close')
   }
 
-  function okAction (): void {
+  function okAction(): void {
     dispatch('close', selectedIds)
   }
 
-  function handleSelectionChanged (event: CustomEvent): void {
+  function handleSelectionChanged(event: CustomEvent): void {
     selectedIds = event.detail ?? []
   }
 </script>

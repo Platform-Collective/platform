@@ -75,7 +75,7 @@ let _token: string | undefined
 let _client: Client | undefined
 let _clientSet: boolean = false
 
-export async function disconnect(): Promise<void> {
+export async function disconnect (): Promise<void> {
   if (_client !== undefined) {
     await _client.close()
     _client = undefined
@@ -83,7 +83,7 @@ export async function disconnect(): Promise<void> {
   }
 }
 
-export async function connect(title: string): Promise<Client | undefined> {
+export async function connect (title: string): Promise<Client | undefined> {
   const ctx = uiContext.newChild('connect', {})
   const loc = getCurrentLocation()
   const wsUrl = loc.path[1]
@@ -594,7 +594,7 @@ export async function connect(title: string): Promise<Client | undefined> {
   return newClient
 }
 
-async function getGlobalPerson(): Promise<GlobalPerson | undefined> {
+async function getGlobalPerson (): Promise<GlobalPerson | undefined> {
   const getPerson = await getResource(login.function.GetPerson)
   const [status, globalPerson] = await getPerson()
 

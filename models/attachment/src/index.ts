@@ -109,7 +109,7 @@ export class TDrawing extends TDoc implements Drawing {
   content?: string
 }
 
-export function createModel(builder: Builder): void {
+export function createModel (builder: Builder): void {
   builder.createModel(TAttachment, TEmbedding, TDrawing, TPhoto, TSavedAttachments)
 
   builder.mixin(attachment.class.Attachment, core.class.Class, view.mixin.ObjectPresenter, {

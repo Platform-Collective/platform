@@ -117,7 +117,7 @@ export async function withRetry<T> (
  * @param operationName - Name of the operation for logging
  * @returns A wrapped function that applies retry logic
  */
-export function createRetryableFunction<T extends (...args: any[]) => Promise<any>>(
+export function createRetryableFunction<T extends (...args: any[]) => Promise<any>> (
   fn: T,
   options: Partial<RetryOptions> = {},
   operationName: string = 'operation'

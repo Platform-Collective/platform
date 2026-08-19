@@ -64,7 +64,7 @@
 
   $: void updateParentDoc(doc, _class)
 
-  async function updateParentDoc (doc: Doc | undefined, _class: Ref<Class<Doc>> | undefined): Promise<void> {
+  async function updateParentDoc(doc: Doc | undefined, _class: Ref<Class<Doc>> | undefined): Promise<void> {
     const resultClass = doc?._class ?? _class
     if (resultClass == null) {
       parentDoc = undefined
@@ -91,14 +91,14 @@
   $: void updateDocTooltip(doc)
   $: void updateDocLabel(parentDoc ?? doc, _class)
 
-  function getIcon (doc: Doc | undefined): any {
+  function getIcon(doc: Doc | undefined): any {
     if (doc == null) return undefined
     if (hierarchy.isDerived(doc._class, contact.class.Contact)) return undefined
 
     return classIcon(client, doc._class)
   }
 
-  function getPanelComponent (doc?: Doc, _class?: Ref<Class<Doc>>): AnyComponent {
+  function getPanelComponent(doc?: Doc, _class?: Ref<Class<Doc>>): AnyComponent {
     if (component !== undefined) return component
     const resultClass = doc?._class ?? _class
 
@@ -117,7 +117,7 @@
     }
   }
 
-  async function updateDocLabel (doc?: Doc, _class?: Ref<Class<Doc>>): Promise<void> {
+  async function updateDocLabel(doc?: Doc, _class?: Ref<Class<Doc>>): Promise<void> {
     const resultClass = doc?._class ?? _class
 
     if (resultClass != null) {
@@ -129,11 +129,11 @@
     }
   }
 
-  async function updateDocTitle (doc: Doc | undefined): Promise<void> {
+  async function updateDocTitle(doc: Doc | undefined): Promise<void> {
     docTitle = doc ? await getReferenceLabel(doc._class, doc._id, doc) : undefined
   }
 
-  async function updateDocTooltip (doc?: Doc): Promise<void> {
+  async function updateDocTooltip(doc?: Doc): Promise<void> {
     if (doc === undefined) {
       docTooltip = {}
       return

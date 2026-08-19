@@ -98,7 +98,7 @@ function isStatusLike (err: unknown): err is Pick<Status, 'severity' | 'code' | 
 
 function unwrapEmbeddedStatus (err: unknown): Status | undefined {
   if (typeof err !== 'object' || err === null || !('status' in err)) return undefined
-  const st = (err).status
+  const st = err.status
   if (!isStatusLike(st)) return undefined
   return new Status(st.severity, st.code, st.params)
 }

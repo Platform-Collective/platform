@@ -52,7 +52,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function change () {
+  function change() {
     dispatch('change', value)
   }
 </script>

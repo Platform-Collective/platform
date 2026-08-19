@@ -41,7 +41,7 @@
       linkData = data
     })
 
-  function getTitle (attributeModel: AttributeModel): IntlString | undefined {
+  function getTitle(attributeModel: AttributeModel): IntlString | undefined {
     const isTextType = getIsTextType(attributeModel)
 
     if (!isTextType) {

@@ -39,24 +39,24 @@
   const client = getClient()
   let isEditMode = false
 
-  function exitEditMode (): void {
+  function exitEditMode(): void {
     isEditMode = false
   }
 
-  function enterEditMode (e: MouseEvent): void {
+  function enterEditMode(e: MouseEvent): void {
     isEditMode = true
     showMenu(e, { object }, exitEditMode)
   }
 
-  function showCard () {
+  function showCard() {
     openCardPanel(object)
   }
 
-  function canDropAttachment (e: DragEvent): boolean {
+  function canDropAttachment(e: DragEvent): boolean {
     return !!e.dataTransfer?.items && e.dataTransfer?.items.length > 0
   }
 
-  function updateMembers (e: CustomEvent<Ref<Employee>[]>) {
+  function updateMembers(e: CustomEvent<Ref<Employee>[]>) {
     updateCardMembers(object, client, e.detail)
   }
 

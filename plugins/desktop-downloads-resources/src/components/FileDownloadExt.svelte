@@ -21,7 +21,7 @@
   let pressed: boolean = false
   let element: HTMLElement
 
-  function handleClick (): void {
+  function handleClick(): void {
     pressed = true
     showPopup(FileDownloadStatusPopup, {}, element, () => {
       pressed = false

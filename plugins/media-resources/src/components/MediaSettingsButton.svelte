@@ -27,7 +27,7 @@
 
   let pressed = false
 
-  async function openPopup (): Promise<void> {
+  async function openPopup(): Promise<void> {
     pressed = true
     showPopup(MediaPopup, {}, anchor, () => {
       pressed = false

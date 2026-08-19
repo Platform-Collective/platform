@@ -33,7 +33,7 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  async function fileSelected () {
+  async function fileSelected() {
     const list = inputFile.files
     if (list === null || list.length === 0) return
 
@@ -51,7 +51,7 @@
     dispatch('attached')
   }
 
-  function openFile () {
+  function openFile() {
     inputFile.click()
   }
 </script>

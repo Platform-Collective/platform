@@ -29,7 +29,7 @@
 
   onDestroy(resolvedLocationStore.subscribe(handleLocationChanged))
 
-  function handleLocationChanged (loc: Location): void {
+  function handleLocationChanged(loc: Location): void {
     selectedTypeId = loc.path[4] as Ref<SpaceType>
   }
 
@@ -48,7 +48,7 @@
     }
   )
 
-  function selectProjectType (id: string): void {
+  function selectProjectType(id: string): void {
     clearSettingsStore()
     const loc = getCurrentResolvedLocation()
     loc.path[3] = categoryName
@@ -57,7 +57,7 @@
     navigate(loc)
   }
 
-  function handleTypeChange (event: CustomEvent): void {
+  function handleTypeChange(event: CustomEvent): void {
     selectProjectType(event.detail)
   }
 </script>

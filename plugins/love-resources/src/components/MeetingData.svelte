@@ -23,11 +23,11 @@
 
   export let state: Writable<Record<string, any>>
 
-  function changeRoom (val: Ref<Room>): void {
+  function changeRoom(val: Ref<Room>): void {
     $state.room = val
   }
 
-  function changeIsMeeting (val: boolean): void {
+  function changeIsMeeting(val: boolean): void {
     $state.isMeeting = val
   }
 

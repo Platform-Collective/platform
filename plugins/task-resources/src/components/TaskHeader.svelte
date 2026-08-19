@@ -33,7 +33,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function change () {
+  function change() {
     client.updateCollection(
       object._class,
       object.space,
@@ -47,7 +47,7 @@
 
   $: assigneeTitle = hierarchy.getAttribute(object._class, 'assignee').label
 
-  function getAssigneeClass (object: Task): Ref<Class<Doc>> {
+  function getAssigneeClass(object: Task): Ref<Class<Doc>> {
     const attribute = hierarchy.getAttribute(object._class, 'assignee')
     const attrClass = attribute.type._class
     if (attrClass === core.class.RefTo) {
