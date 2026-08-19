@@ -14,7 +14,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function click (e: MouseEvent) {
+  function click(e: MouseEvent) {
     if (value && value.attachedTo !== time.ids.NotAttached) {
       const panelComponent = hierarchy.classHierarchyMixin<Class<Task>, ObjectPanel>(
         value.attachedToClass,

@@ -16,7 +16,7 @@
 import { config } from 'dotenv'
 import { main } from './main'
 
-export * from './types'
+export type * from './types'
 export * from './exporter'
 
 config()

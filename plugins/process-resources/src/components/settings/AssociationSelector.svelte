@@ -28,7 +28,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function open (e: MouseEvent): void {
+  function open(e: MouseEvent): void {
     const anc = hierarchy.getAncestors(process.masterTag)
     const leftAssociations = client.getModel().findAllSync(core.class.Association, { classA: { $in: anc } })
     const rightAssociations = client.getModel().findAllSync(core.class.Association, { classB: { $in: anc } })

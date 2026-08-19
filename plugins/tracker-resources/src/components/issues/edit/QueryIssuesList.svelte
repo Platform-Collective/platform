@@ -48,7 +48,7 @@
   let viewOptions: ViewOptions | undefined
   export let focusIndex = -1
 
-  function openNewIssueDialog (): void {
+  function openNewIssueDialog(): void {
     showPopup(tracker.component.CreateIssue, { space: object.space, ...createParams, shouldSaveDraft }, 'top')
   }
 
@@ -93,7 +93,7 @@
       }
     )
 
-  function updateConfiguration (configurationRaw: Viewlet[], preference: ViewletPreference[]): void {
+  function updateConfiguration(configurationRaw: Viewlet[], preference: ViewletPreference[]): void {
     const newConfigurations: Record<Ref<Class<Doc>>, Viewlet['config']> = {}
 
     for (const v of configurationRaw) {

@@ -127,7 +127,7 @@
   $: sortedCards = filteredCards
   $: empty = sortedCards.length === 0
 
-  function filterCards (cards: Card[], favorites: FavoriteCard[]): Card[] {
+  function filterCards(cards: Card[], favorites: FavoriteCard[]): Card[] {
     return cards.filter((it) => !favorites.some((fav) => fav.attachedTo === it._id))
   }
 </script>

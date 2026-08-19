@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-export * from './types'
+export type * from './types'
 export { CrossWorkspaceExporter } from './workspace-exporter'
 export { DataMapper } from './data-mapper'
 export { SpaceExporter } from './space-exporter'

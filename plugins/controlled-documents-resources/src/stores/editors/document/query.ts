@@ -60,7 +60,7 @@ const projectQuery = createQuery(true)
 const projectDocumentsQuery = createQuery(true)
 
 const queryControlledDocumentFx = createEffect(
-  (payload: { _id: Ref<ControlledDocument>; _class: Ref<Class<ControlledDocument>> }) => {
+  (payload: { _id: Ref<ControlledDocument>, _class: Ref<Class<ControlledDocument>> }) => {
     const { _class, _id } = payload
 
     if (_class == null || _id == null) {
@@ -110,7 +110,7 @@ const queryDocumentVersionsFx = createEffect((payload: ControlledDocument) => {
 })
 
 const queryReviewRequestFx = createEffect(
-  (payload: { _id: Ref<ControlledDocument>; _class: Ref<Class<ControlledDocument>> }) => {
+  (payload: { _id: Ref<ControlledDocument>, _class: Ref<Class<ControlledDocument>> }) => {
     const { _id, _class } = payload
     if (_id == null || _class == null) {
       reviewRequestQuery.unsubscribe()
@@ -127,7 +127,7 @@ const queryReviewRequestFx = createEffect(
 )
 
 const queryReviewRequestHistoryFx = createEffect(
-  (payload: { _id: Ref<ControlledDocument>; _class: Ref<Class<ControlledDocument>> }) => {
+  (payload: { _id: Ref<ControlledDocument>, _class: Ref<Class<ControlledDocument>> }) => {
     const { _id, _class } = payload
     if (_id == null || _class == null) {
       reviewRequestHistoryQuery.unsubscribe()
@@ -161,7 +161,7 @@ const queryApprovalRequestFx = createEffect((payload: { _id: Ref<ControlledDocum
 })
 
 const queryDocumentCommentsFx = createEffect(
-  (payload: { document: Document | null; filter: DocumentCommentsFilter }) => {
+  (payload: { document: Document | null, filter: DocumentCommentsFilter }) => {
     const { filter, document } = payload
     if (document === null) {
       documentCommentsQuery.unsubscribe()

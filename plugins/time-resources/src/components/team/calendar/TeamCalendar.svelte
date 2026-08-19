@@ -94,7 +94,7 @@
 
   const client = getClient()
 
-  function group (
+  function group(
     txes: Tx[],
     from: Timestamp,
     to: Timestamp

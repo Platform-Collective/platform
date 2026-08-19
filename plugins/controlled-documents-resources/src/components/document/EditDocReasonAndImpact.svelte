@@ -54,7 +54,7 @@
     await updateCCField(field, target.value)
   }
 
-  async function updateCCField<T extends keyof ChangeControl>(field: T, value: ChangeControl[T]): Promise<void> {
+  async function updateCCField<T extends keyof ChangeControl> (field: T, value: ChangeControl[T]): Promise<void> {
     if ($controlledDocument == null) {
       return
     }

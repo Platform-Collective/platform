@@ -232,7 +232,7 @@
     closeTooltip()
   }
 
-  function getDropPosition(event: DragEvent): { pos: 'before' | 'after' | undefined; top: number } {
+  function getDropPosition(event: DragEvent): { pos: 'before' | 'after' | undefined, top: number } {
     const parentRect = parent.getBoundingClientRect()
     const targetRect = (event.target as HTMLElement).getBoundingClientRect()
     const dropPosition = event.clientY - targetRect.top

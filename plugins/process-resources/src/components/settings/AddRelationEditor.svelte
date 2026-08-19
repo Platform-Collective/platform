@@ -37,7 +37,7 @@
   $: assoc = association && client.getModel().findObject(association)
   $: targetClass = assoc && direction ? (direction === 'A' ? assoc.classA : assoc.classB) : undefined
 
-  function changeAssociation (e: CustomEvent<any>): void {
+  function changeAssociation(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       association = e.detail.association
       direction = e.detail.direction
@@ -48,7 +48,7 @@
     }
   }
 
-  function changeParam (e: CustomEvent<any>): void {
+  function changeParam(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       params._id = e.detail
       ;(step.params as any)._id = e.detail

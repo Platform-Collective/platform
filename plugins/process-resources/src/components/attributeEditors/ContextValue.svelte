@@ -34,7 +34,7 @@
 
   $: configurable = contextValue.type !== 'userRequest'
 
-  function configure (e: MouseEvent): void {
+  function configure(e: MouseEvent): void {
     if (!configurable) return
     const onChange = (res: any): void => {
       if (res !== undefined) {

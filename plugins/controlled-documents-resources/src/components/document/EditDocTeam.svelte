@@ -56,7 +56,7 @@
   async function handleUpdate({
     detail
   }: {
-    detail: { type: 'reviewers' | 'approvers' | 'externalApprovers'; users: Ref<Person>[] }
+    detail: { type: 'reviewers' | 'approvers' | 'externalApprovers', users: Ref<Person>[] }
   }): Promise<void> {
     const { type, users } = detail
 

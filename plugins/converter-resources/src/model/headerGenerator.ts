@@ -14,7 +14,7 @@
 //
 
 import type { Class, Doc, Hierarchy, Ref } from '@hcengineering/core'
-import { translate, type IntlString } from '@hcengineering/platform'
+import { translate } from '@hcengineering/platform'
 import type { AttributeModel } from '@hcengineering/view'
 import { isIntlString } from '../formatter/utils'
 

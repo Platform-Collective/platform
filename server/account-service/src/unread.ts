@@ -37,10 +37,10 @@ export const WORKSPACE_MEMBER_UNREAD_GROUP = 'account-service-workspace-member-u
 export function createWorkspaceMemberUnreadHandler (
   db: AccountDB
 ): (
-    ctx: MeasureContext,
-    msg: ConsumerMessage<WorkspaceMemberUnreadMessage>,
-    control: ConsumerControl
-  ) => Promise<void> {
+  ctx: MeasureContext,
+  msg: ConsumerMessage<WorkspaceMemberUnreadMessage>,
+  control: ConsumerControl
+) => Promise<void> {
   return async (ctx, msg, _control) => {
     const accounts = msg.value?.accounts
     if (accounts === undefined || accounts.length === 0) return

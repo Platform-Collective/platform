@@ -110,11 +110,11 @@
   const hierarchy = client.getHierarchy()
   fillDefaults(hierarchy, doc, recruit.class.Applicant)
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return (preserveCandidate || _candidate === undefined) && assignee === undefined
   }
 
-  async function createApplication (): Promise<void> {
+  async function createApplication(): Promise<void> {
     if (selectedState === undefined) {
       throw new Error(`Please select initial state:${_space}`)
     }
@@ -180,14 +180,14 @@
     })
   }
 
-  async function invokeValidate (
+  async function invokeValidate(
     action: Resource<<T extends Doc>(doc: T, client: Client) => Promise<Status>>
   ): Promise<Status> {
     const impl = await getResource(action)
     return await impl({ ...doc, space: _space }, client)
   }
 
-  async function validate (
+  async function validate(
     doc: Applicant,
     space: Ref<Space>,
     _class: Ref<Class<Doc>>,

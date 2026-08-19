@@ -338,7 +338,7 @@ export class TUserMeetingInvite extends TDoc implements UserMeetingInvite {
 
 export default love
 
-export function createModel(builder: Builder): void {
+export function createModel (builder: Builder): void {
   builder.createModel(
     TRoom,
     TFloor,

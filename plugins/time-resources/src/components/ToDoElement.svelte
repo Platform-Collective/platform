@@ -32,7 +32,7 @@
   const client = getClient()
   let updating: Promise<any> | undefined = undefined
 
-  async function markDone (): Promise<void> {
+  async function markDone(): Promise<void> {
     await updating
     updating = client.update(todo, { doneOn: todo.doneOn == null ? Date.now() : null })
     await updating
@@ -53,14 +53,14 @@
   )
 
   let hovered = false
-  async function onMenuClick (ev: MouseEvent): Promise<void> {
+  async function onMenuClick(ev: MouseEvent): Promise<void> {
     hovered = true
     showMenu(ev, { object: todo }, () => {
       hovered = false
     })
   }
 
-  function open (e: MouseEvent): void {
+  function open(e: MouseEvent): void {
     showPanel(time.component.EditToDo, todo._id, todo._class, 'content')
   }
 

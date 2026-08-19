@@ -26,7 +26,7 @@
   async function handleUpdate({
     detail
   }: {
-    detail: { type: 'reviewers' | 'approvers' | 'coAuthors' | 'externalApprovers'; users: Ref<Employee>[] }
+    detail: { type: 'reviewers' | 'approvers' | 'coAuthors' | 'externalApprovers', users: Ref<Employee>[] }
   }): Promise<void> {
     if (docObject === undefined) {
       return

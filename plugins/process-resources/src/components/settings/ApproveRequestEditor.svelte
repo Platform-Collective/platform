@@ -33,7 +33,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function changeParams (e: CustomEvent<any>): void {
+  function changeParams(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       params = e.detail
       ;(step.params as any) = params
@@ -60,7 +60,7 @@
   const presenterClass = getAttributePresenterClass(hierarchy, attribute.type)
   $: context = getContext(client, process, presenterClass.attrClass, presenterClass.category, undefined, true)
 
-  function onChange (e: CustomEvent<any>): void {
+  function onChange(e: CustomEvent<any>): void {
     params.user = e.detail
     ;(step.params as any) = params
     dispatch('change', step)
@@ -68,7 +68,7 @@
 
   let editor: AnySvelteComponent | undefined
 
-  function getBaseEditor (attribute: AnyAttribute): void {
+  function getBaseEditor(attribute: AnyAttribute): void {
     void getAttributeEditor(client, plugin.class.ApproveRequest, {
       attr: attribute,
       key: 'user'
@@ -88,7 +88,7 @@
     dispatch('change', step)
   }
 
-  function toggleField (e: CustomEvent<boolean>): void {
+  function toggleField(e: CustomEvent<boolean>): void {
     if (e.detail) {
       if (contextValue?.type === 'attribute') {
         params.field = contextValue.key
@@ -100,7 +100,7 @@
     dispatch('change', step)
   }
 
-  function toggleActionType (e: CustomEvent<any>): void {
+  function toggleActionType(e: CustomEvent<any>): void {
     params.actionType = e.detail ? 'review' : 'approve'
     step.params = params
     dispatch('change', step)

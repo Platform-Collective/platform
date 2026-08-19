@@ -129,11 +129,11 @@ const toObjectSearchResult = (e: WithLookup<DocumentMeta>): ObjectSearchResult =
   component: DocumentItem
 })
 
-async function queryDocumentMeta(
+async function queryDocumentMeta (
   _class: Ref<Class<DocumentMeta>>,
   client: Client,
   search: string,
-  filter?: { in?: RelatedDocument[]; nin?: RelatedDocument[] }
+  filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
 ): Promise<ObjectSearchResult[]> {
   const q: DocumentQuery<DocumentMeta> = { name: { $like: `%${search}%` } }
   if (filter?.in !== undefined || filter?.nin !== undefined) {
@@ -152,7 +152,7 @@ async function queryDocumentMeta(
   ).map(toObjectSearchResult)
 }
 
-async function deleteDocuments(obj: Document | Document[]): Promise<void> {
+async function deleteDocuments (obj: Document | Document[]): Promise<void> {
   const docs = Array.isArray(obj) ? obj : [obj]
   const docNames = docs.map((d) => `${d.title} (${d.prefix}-${d.seqNumber})`).join(', ')
 
@@ -169,7 +169,7 @@ async function deleteDocuments(obj: Document | Document[]): Promise<void> {
   })
 }
 
-async function archiveDocuments(obj: Document | Document[]): Promise<void> {
+async function archiveDocuments (obj: Document | Document[]): Promise<void> {
   const docs = Array.isArray(obj) ? obj : [obj]
   const docNames = docs.map((d) => `${d.title} (${d.prefix}-${d.seqNumber})`).join(', ')
 
@@ -187,7 +187,7 @@ async function archiveDocuments(obj: Document | Document[]): Promise<void> {
   })
 }
 
-async function makeDocumentObsolete(obj: Document | Document[]): Promise<void> {
+async function makeDocumentObsolete (obj: Document | Document[]): Promise<void> {
   const docs = Array.isArray(obj) ? obj : [obj]
   const docNames = docs.map((d) => `${d.title} (${d.prefix}-${d.seqNumber})`).join(', ')
 
@@ -205,7 +205,7 @@ async function makeDocumentObsolete(obj: Document | Document[]): Promise<void> {
   })
 }
 
-async function canDeleteDocument(obj?: Doc | Doc[]): Promise<boolean> {
+async function canDeleteDocument (obj?: Doc | Doc[]): Promise<boolean> {
   if (obj == null) {
     return false
   }
@@ -221,7 +221,7 @@ async function canDeleteDocument(obj?: Doc | Doc[]): Promise<boolean> {
   return await isDraftDoc(obj)
 }
 
-async function canArchiveDocument(obj?: Doc | Doc[]): Promise<boolean> {
+async function canArchiveDocument (obj?: Doc | Doc[]): Promise<boolean> {
   if (obj == null) {
     return false
   }
@@ -243,7 +243,7 @@ async function canArchiveDocument(obj?: Doc | Doc[]): Promise<boolean> {
   ).then((res) => res.every((r) => r))
 }
 
-async function canMakeDocumentObsolete(obj?: Doc | Doc[]): Promise<boolean> {
+async function canMakeDocumentObsolete (obj?: Doc | Doc[]): Promise<boolean> {
   if (obj == null) {
     return false
   }
@@ -265,7 +265,7 @@ async function canMakeDocumentObsolete(obj?: Doc | Doc[]): Promise<boolean> {
   ).then((res) => res.every((r) => r))
 }
 
-async function canOpenDocument(obj?: ProjectDocument | ProjectDocument[]): Promise<boolean> {
+async function canOpenDocument (obj?: ProjectDocument | ProjectDocument[]): Promise<boolean> {
   if (obj == null) {
     return false
   }
@@ -276,7 +276,7 @@ async function canOpenDocument(obj?: ProjectDocument | ProjectDocument[]): Promi
   return !objs.some((d) => isFolder(h, d))
 }
 
-async function canPrintDocument(obj?: Document | Document[] | ProjectDocument | ProjectDocument[]): Promise<boolean> {
+async function canPrintDocument (obj?: Document | Document[] | ProjectDocument | ProjectDocument[]): Promise<boolean> {
   if (obj == null) {
     return false
   }
@@ -296,7 +296,7 @@ async function canPrintDocument(obj?: Document | Document[] | ProjectDocument | 
   return printURL?.length > 0
 }
 
-async function canTransferDocument(obj?: Doc | Doc[]): Promise<boolean> {
+async function canTransferDocument (obj?: Doc | Doc[]): Promise<boolean> {
   if (obj == null) {
     return false
   }
@@ -311,7 +311,7 @@ async function canTransferDocument(obj?: Doc | Doc[]): Promise<boolean> {
   ).then((res) => res.every((r) => r))
 }
 
-async function transferDocuments(selection: Document | Document[]): Promise<void> {
+async function transferDocuments (selection: Document | Document[]): Promise<void> {
   const objects = Array.isArray(selection) ? selection : [selection]
 
   const client = getClient()
@@ -336,7 +336,7 @@ async function transferDocuments(selection: Document | Document[]): Promise<void
   showPopup(TransferDocumentPopup, { sourceDocumentIds, sourceSpaceId, sourceProjectId })
 }
 
-async function isDraftDoc(obj?: Doc | Doc[]): Promise<boolean> {
+async function isDraftDoc (obj?: Doc | Doc[]): Promise<boolean> {
   if (obj == null) {
     return false
   }
@@ -360,7 +360,7 @@ async function isDraftDoc(obj?: Doc | Doc[]): Promise<boolean> {
   return objs.length > 0
 }
 
-async function editDocSpace(docSpace: DocumentSpace | undefined): Promise<void> {
+async function editDocSpace (docSpace: DocumentSpace | undefined): Promise<void> {
   if (docSpace !== undefined) {
     showPopup(CreateDocumentsSpace, { docSpace, clazz: docSpace?._class })
   }
@@ -411,7 +411,7 @@ export default async (): Promise<Resources> => ({
     DocumentMetaQuery: async (
       client: Client,
       query: string,
-      filter?: { in?: RelatedDocument[]; nin?: RelatedDocument[] }
+      filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
     ) => await queryDocumentMeta(documents.class.DocumentMeta, client, query, filter)
   },
   function: {

@@ -18,7 +18,7 @@
   let viewOptions: ViewOptions | undefined
   let search = ''
   let searchQuery: DocumentQuery<GithubPullRequest> = { ...query }
-  function updateSearchQuery (search: string): void {
+  function updateSearchQuery(search: string): void {
     searchQuery = search === '' ? { ...query } : { ...query, $search: search }
   }
   $: if (query) updateSearchQuery(search)

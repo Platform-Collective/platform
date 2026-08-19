@@ -24,7 +24,7 @@
   export let inline: boolean = false
   export let action: ((item: Ref<Vacancy>) => void) | undefined = undefined
 
-  function editVacancy (): void {
+  function editVacancy(): void {
     openDoc(getClient().getHierarchy(), value)
   }
 </script>

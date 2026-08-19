@@ -53,7 +53,7 @@
     }
     await client.update(object, { startDate })
   }
-  async function changeTargetDate (value: number | null | undefined): Promise<void> {
+  async function changeTargetDate(value: number | null | undefined): Promise<void> {
     if (value === null || value === undefined) return
     // Keep the range non-inverted — clamp the start back if it now sits
     // after the target.

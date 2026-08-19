@@ -32,7 +32,7 @@
   }
   let objects: ObjData[] = []
 
-  async function group (txes: TxCUD<Doc>[]): Promise<void> {
+  async function group(txes: TxCUD<Doc>[]): Promise<void> {
     const h = client.getHierarchy()
     const objs = new Map<Ref<Doc>, ObjData>()
 

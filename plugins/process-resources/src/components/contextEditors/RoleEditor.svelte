@@ -45,7 +45,7 @@
     }
   }
 
-  function onValue (role: Ref<Role>): void {
+  function onValue(role: Ref<Role>): void {
     const pathReduce = getContextFunctionReduce(context, target)
     onSelect({
       type: 'function',

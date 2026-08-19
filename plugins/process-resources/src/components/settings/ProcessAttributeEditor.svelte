@@ -34,7 +34,7 @@
   const hierarchy = client.getHierarchy()
   const dispatch = createEventDispatcher()
 
-  function onChange (value: any | undefined): void {
+  function onChange(value: any | undefined): void {
     if (value === undefined) {
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete (object as any)[objectKey ?? key]
@@ -50,7 +50,7 @@
 
   $: slot = process.requiredSlots?.[key] as any
 
-  function getAttr (_class: Ref<Class<Doc>>, key: string, slot: SlotModel | undefined): AnyAttribute | undefined {
+  function getAttr(_class: Ref<Class<Doc>>, key: string, slot: SlotModel | undefined): AnyAttribute | undefined {
     if (slot !== undefined) return { name: key, label: slot.label, _id: key, type: slot } as any
     const attr = hierarchy.findAttribute(_class, key)
     if (attr !== undefined) return attr
@@ -58,7 +58,7 @@
     return undefined
   }
 
-  function mockAttribute (_class: Ref<Class<Doc>>): AnyAttribute {
+  function mockAttribute(_class: Ref<Class<Doc>>): AnyAttribute {
     const type: RefTo<Doc> = {
       label: core.string.Ref,
       _class: core.class.RefTo,
@@ -85,7 +85,7 @@
 
   let editor: AnySvelteComponent | undefined
 
-  function getBaseEditor (_class: Ref<Class<Doc>>, key: string): void {
+  function getBaseEditor(_class: Ref<Class<Doc>>, key: string): void {
     void getAttributeEditor(client, _class, key).then((p) => {
       editor = p
     })

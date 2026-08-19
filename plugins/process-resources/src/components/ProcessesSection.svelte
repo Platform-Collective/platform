@@ -37,7 +37,7 @@
 
   const client = getClient()
 
-  async function add (): Promise<void> {
+  async function add(): Promise<void> {
     const initState = generateId<State>()
     const id = await client.createDoc(process.class.Process, core.space.Model, {
       name: await translate(process.string.NewProcess, {}),
@@ -81,7 +81,7 @@
     }
   )
 
-  function handleSelect (id: Ref<Process>): void {
+  function handleSelect(id: Ref<Process>): void {
     const loc = getCurrentLocation()
     loc.path[5] = process.component.ProcessEditor
     loc.path[6] = id

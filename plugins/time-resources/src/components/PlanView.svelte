@@ -44,7 +44,7 @@
 
   const client = getClient()
 
-  async function drop (e: CustomEvent<any>) {
+  async function drop(e: CustomEvent<any>) {
     if (dragItem === null) return
     const doc = dragItem
     const date = e.detail.date.getTime()

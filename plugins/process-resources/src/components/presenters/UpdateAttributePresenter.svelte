@@ -34,11 +34,11 @@
   $: [val, selectedMode] = parseValue(Object.values(Modes), value)
   $: presenterClass = attribute !== undefined ? getAttributePresenterClass(hierarchy, attribute.type) : undefined
 
-  function isArraySize (category: AttributeCategory | undefined, selectedMode: Mode): boolean {
+  function isArraySize(category: AttributeCategory | undefined, selectedMode: Mode): boolean {
     return category === 'array' && selectedMode.id.startsWith('size')
   }
 
-  function getPresenter (key: string): AnyComponent | undefined {
+  function getPresenter(key: string): AnyComponent | undefined {
     const isArraySizeCriteria = isArraySize(presenterClass?.category, selectedMode)
     if (isArraySizeCriteria) {
       return view.component.NumberPresenter

@@ -73,7 +73,7 @@ import {
 } from './utils'
 
 type GithubPullRequestData = GithubIssueData &
-Omit<GithubPullRequest, keyof Issue | 'commits' | 'reviews' | 'reviewComments'>
+  Omit<GithubPullRequest, keyof Issue | 'commits' | 'reviews' | 'reviewComments'>
 
 type GithubPullRequestUpdate = DocumentUpdate<WithMarkup<GithubPullRequest>>
 
@@ -81,7 +81,7 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
   externalDerivedSync = true
 
   @withContext('pullrequests-handleEvent')
-  async handleEvent<T>(
+  async handleEvent<T> (
     ctx: MeasureContext,
     integration: IntegrationContainer,
     derivedClient: TxOperations,
@@ -479,7 +479,7 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
               accountGH,
               {
                 ...pullRequestData,
-                status: (await guessStatus(pullRequestExternal, statuses))._id as Ref<Status>
+                status: (await guessStatus(pullRequestExternal, statuses))._id
               },
               pullRequestExternal,
               info.repository as Ref<GithubIntegrationRepository>,
@@ -611,8 +611,8 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
     ctx: MeasureContext,
     client: TxOperations,
     pullRequest: Pick<
-    GithubPullRequest,
-    '_id' | 'identifier' | 'reviewers' | 'title' | 'state' | 'space' | '_class' | 'modifiedBy'
+      GithubPullRequest,
+      '_id' | 'identifier' | 'reviewers' | 'title' | 'state' | 'space' | '_class' | 'modifiedBy'
     >,
     external: PullRequestExternalData,
     info: DocSyncInfo,
@@ -849,8 +849,8 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
   private async requestFix (
     client: TxOperations,
     pullRequest: Pick<
-    GithubPullRequest,
-    '_id' | 'identifier' | 'reviewers' | 'title' | 'space' | 'state' | 'space' | '_class'
+      GithubPullRequest,
+      '_id' | 'identifier' | 'reviewers' | 'title' | 'space' | 'state' | 'space' | '_class'
     >,
     external: PullRequestExternalData,
     todoUser: Ref<Person>,
@@ -917,8 +917,7 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
 
     // We need to update status in case category are different
     const stInstance =
-      statuses.find((it) => it._id === status) ??
-      ((await this.client.findOne(core.class.Status, { _id: status })) as Status)
+      statuses.find((it) => it._id === status) ?? (await this.client.findOne(core.class.Status, { _id: status }))
 
     let gs: IssueStatus | undefined
     if (pullRequestExternal.merged) {

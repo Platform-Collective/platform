@@ -399,34 +399,34 @@ export async function backup (
               st = Date.now()
             }
             const serverDocHash = doTrimHash(hash) as string
-            const currentHash = doTrimHash(digest.get(id as Ref<Doc>) ?? oldHash.get(id as Ref<Doc>))
+            const currentHash = doTrimHash(digest.get(id) ?? oldHash.get(id as Ref<Doc>))
             if (currentHash !== undefined) {
-              const oldD = digest.get(id as Ref<Doc>)
-              if (digest.delete(id as Ref<Doc>)) {
+              const oldD = digest.get(id)
+              if (digest.delete(id)) {
                 if (oldD !== undefined) {
                   same.set(id as Ref<Doc>, oldD)
                 }
                 oldHash.set(id as Ref<Doc>, currentHash)
               }
               if (currentHash !== serverDocHash) {
-                if (changes.updated.has(id as Ref<Doc>)) {
+                if (changes.updated.has(id)) {
                   removeFromNeedRetrieve(needRetrieve, id as Ref<Doc>)
                 }
-                changes.updated.set(id as Ref<Doc>, serverDocHash)
+                changes.updated.set(id, serverDocHash)
                 needRetrieve.set(id as Ref<Doc>, { size, contentType, hash })
                 changed++
-              } else if (changes.updated.has(id as Ref<Doc>)) {
+              } else if (changes.updated.has(id)) {
                 // We have same
-                changes.updated.delete(id as Ref<Doc>)
+                changes.updated.delete(id)
                 removeFromNeedRetrieve(needRetrieve, id as Ref<Doc>)
                 processed -= 1
               }
             } else {
-              if (domain === DOMAIN_BLOB && changes.added.has(id as Ref<Doc>)) {
+              if (domain === DOMAIN_BLOB && changes.added.has(id)) {
                 // We need to clean old need retrieve in case of duplicates.
                 removeFromNeedRetrieve(needRetrieve, id as Ref<Doc>)
               }
-              changes.added.set(id as Ref<Doc>, serverDocHash)
+              changes.added.set(id, serverDocHash)
               needRetrieve.set(id as Ref<Doc>, { size, contentType, hash })
               changed++
             }
@@ -838,7 +838,7 @@ export async function backup (
                 }
               })
 
-              const finalBuffer = Buffer.concat(buffers as any)
+              const finalBuffer = Buffer.concat(buffers)
               if (finalBuffer.length !== blob.size) {
                 ctx.error('download blob size mismatch', {
                   _id: blob._id,

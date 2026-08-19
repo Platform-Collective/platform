@@ -33,7 +33,7 @@
   let classes: MasterTag[] = []
   let allClasses: MasterTag[] = []
 
-  function fillClasses (tags: MasterTag[]): void {
+  function fillClasses(tags: MasterTag[]): void {
     classes = tags.filter((it) => space.types.includes(it._id)).sort((a, b) => a.label.localeCompare(b.label))
   }
 

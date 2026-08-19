@@ -29,7 +29,6 @@ import drive, { type File as DriveFile } from '@hcengineering/drive'
 import {
   type Account,
   type AttachedDoc,
-  type Class,
   type Doc,
   type Ref,
   type UsageStatus,

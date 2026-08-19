@@ -44,7 +44,7 @@
 
   $: fill(contextId)
 
-  function fill (contextId: string): void {
+  function fill(contextId: string): void {
     const _ctx = process.context[contextId as ContextId]
     if (_ctx === undefined) {
       editor = undefined
@@ -69,7 +69,7 @@
     context = getContext(client, process, presenterClass?.attrClass, presenterClass?.category)
   }
 
-  function onChange (e: CustomEvent<any>): void {
+  function onChange(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       dispatch('change', e.detail)
     }

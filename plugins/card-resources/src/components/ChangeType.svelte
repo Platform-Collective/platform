@@ -32,7 +32,7 @@
 
   $: mapping = buildMapping(selected, value._class)
 
-  async function changeType (): Promise<void> {
+  async function changeType(): Promise<void> {
     if (selected == null || selected === value._class) return
     const cloned = hierarchy.clone(value)
     applyMapping(cloned, mapping)
@@ -46,7 +46,7 @@
     Analytics.handleEvent(CardEvents.TypeCreated)
   }
 
-  function applyMapping (object: Card, mapping: Record<string, AnyAttribute>): void {
+  function applyMapping(object: Card, mapping: Record<string, AnyAttribute>): void {
     for (const [key, value] of Object.entries(mapping)) {
       if ((object as any)[key] !== undefined) {
         ;(object as any)[value.name] = (object as any)[key]
@@ -54,7 +54,7 @@
     }
   }
 
-  function buildMapping (selected: Ref<MasterTag> | null, current: Ref<MasterTag>): Record<string, AnyAttribute> {
+  function buildMapping(selected: Ref<MasterTag> | null, current: Ref<MasterTag>): Record<string, AnyAttribute> {
     if (selected == null || selected === current) return {}
     const selectedAttributes = hierarchy.getAllAttributes(selected, card.class.Card)
     const currentAttributes = hierarchy.getAllAttributes(current, card.class.Card)

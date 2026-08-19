@@ -26,7 +26,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function change (e: CustomEvent<string>): void {
+  function change(e: CustomEvent<string>): void {
     if (readonly || e.detail == null) return
     params._id = e.detail
     dispatch('change', { params })

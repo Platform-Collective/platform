@@ -34,7 +34,7 @@
 
   $: context = getContext(step.params._id as string)
 
-  function getContext (value: string | undefined): SelectedExecutionContext | undefined {
+  function getContext(value: string | undefined): SelectedExecutionContext | undefined {
     if (value === undefined) return
     const context = parseContext(value)
     if (context !== undefined && isExecutionContext(context)) {
@@ -42,7 +42,7 @@
     }
   }
 
-  function isExecutionContext (context: SelectedContext): context is SelectedExecutionContext {
+  function isExecutionContext(context: SelectedContext): context is SelectedExecutionContext {
     return context.type === 'context'
   }
 </script>

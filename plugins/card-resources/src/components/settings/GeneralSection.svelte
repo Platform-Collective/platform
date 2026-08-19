@@ -73,7 +73,7 @@
     })
   }
 
-  function setIcon (): void {
+  function setIcon(): void {
     showPopup(
       IconPicker,
       { icon: masterTag.icon, color: masterTag.color, showEmoji: true, showColor: false },
@@ -105,7 +105,7 @@
     )
   }
 
-  async function handleExport (): Promise<void> {
+  async function handleExport(): Promise<void> {
     const str = await exportModule(masterTag._id)
     const blob = new Blob([str], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -117,7 +117,7 @@
     document.body.removeChild(link)
   }
 
-  function getTagStyle (color: ColorDefinition): string {
+  function getTagStyle(color: ColorDefinition): string {
     return `
     background: ${color.color + '33'};
     border: 1px solid ${color.color + '66'};
@@ -125,7 +125,7 @@
   `
   }
 
-  async function enableVersioning (): Promise<void> {
+  async function enableVersioning(): Promise<void> {
     if (h.isMixin(masterTag._id)) return
     showPopup(MessageBox, {
       label: card.string.EnableVersioning,
@@ -148,13 +148,13 @@
     })
   }
 
-  function versioningSetting (): void {
+  function versioningSetting(): void {
     showPopup(VersioningSetting, {
       masterTag: masterTag._id
     })
   }
 
-  function duplicateSetting (): void {
+  function duplicateSetting(): void {
     showPopup(DuplicateSetting, {
       masterTag: masterTag._id
     })

@@ -21,7 +21,7 @@
   export let state: State
   export let direction: 'from' | 'to'
 
-  function add (): void {
+  function add(): void {
     showPopup(AddTransitionPopup, { state, direction }, 'top')
   }
 </script>

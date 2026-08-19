@@ -27,7 +27,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function changeParams (e: CustomEvent<any>): void {
+  function changeParams(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       params = e.detail
       ;(step.params as any) = params
@@ -35,7 +35,7 @@
     }
   }
 
-  function changeResults (e: CustomEvent<UserResult[]>): void {
+  function changeResults(e: CustomEvent<UserResult[]>): void {
     if (e.detail !== undefined) {
       step.results = e.detail
       dispatch('change', step)
@@ -53,7 +53,7 @@
     dispatch('change', step)
   }
 
-  function toggleField (e: CustomEvent<boolean>): void {
+  function toggleField(e: CustomEvent<boolean>): void {
     if (e.detail) {
       if (contextValue?.type === 'attribute') {
         params.field = contextValue.key
@@ -67,7 +67,7 @@
   let askRequired = params.askRequired ?? false
   $: askRequired = params.askRequired ?? false
 
-  function changeAskRequired (e: CustomEvent<boolean>): void {
+  function changeAskRequired(e: CustomEvent<boolean>): void {
     if (e.detail !== undefined) {
       params.askRequired = e.detail
       step.params = params

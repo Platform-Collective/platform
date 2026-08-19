@@ -44,7 +44,7 @@
 
   $: label = getLabel(clazz)
 
-  function getLabel (clazz: MasterTag | undefined): IntlString | undefined {
+  function getLabel(clazz: MasterTag | undefined): IntlString | undefined {
     return clazz?.label
   }
 </script>

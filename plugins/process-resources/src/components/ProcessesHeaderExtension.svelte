@@ -100,7 +100,7 @@
 
   $: rollbacks = docs.filter((d) => d.rollback.length > 0)
 
-  function isRequest (todo: ProcessToDo): todo is ApproveRequest {
+  function isRequest(todo: ProcessToDo): todo is ApproveRequest {
     return todo._class === process.class.ApproveRequest
   }
 </script>

@@ -326,7 +326,7 @@ export class TWorkspaceMemberStatus extends TDoc implements WorkspaceMemberStatu
   clearAt?: Timestamp
 }
 
-export function createModel(builder: Builder): void {
+export function createModel (builder: Builder): void {
   builder.createModel(
     TAvatarProvider,
     TChannelProvider,

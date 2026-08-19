@@ -36,7 +36,7 @@
 
   onDestroy(resolvedLocationStore.subscribe(handleLocationChanged))
 
-  function handleLocationChanged (loc: Location): void {
+  function handleLocationChanged(loc: Location): void {
     selectedTagId = loc.path[4] as Ref<MasterTag>
   }
 
@@ -52,7 +52,7 @@
     ]
   })
 
-  function selectProjectType (id: string): void {
+  function selectProjectType(id: string): void {
     clearSettingsStore()
     const loc = getCurrentResolvedLocation()
     loc.path[3] = categoryName

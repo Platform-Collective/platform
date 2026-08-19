@@ -172,7 +172,7 @@
     }
   }
 
-  function getVersionForSeverity(severity: Severity): { major: number; minor: number } | undefined {
+  function getVersionForSeverity(severity: Severity): { major: number, minor: number } | undefined {
     if ($controlledDocument == null) {
       return
     }

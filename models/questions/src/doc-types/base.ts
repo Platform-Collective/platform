@@ -47,22 +47,22 @@ export class TQuestion<QuestionData extends NonNullable<any>> extends TAttachedD
   @Prop(TypeRank(), questions.string.Rank)
   @Index(IndexKind.Indexed)
   @Hidden()
-    rank!: Rank
+  rank!: Rank
 
   @Prop(TypeString(), questions.string.Question)
   @Index(IndexKind.FullText)
-    title: string = ''
+  title: string = ''
 
   @Prop(TypeRef(contact.mixin.Employee), questions.string.Owner)
   @Index(IndexKind.Indexed)
-    owner!: Ref<Employee>
+  owner!: Ref<Employee>
 
   @Prop(TypeTimestamp(), questions.string.ReleasedDate)
   @Index(IndexKind.Indexed)
-    releasedOn: Timestamp | null = null
+  releasedOn: Timestamp | null = null
 
   @Prop(TypeRef(contact.mixin.Employee), questions.string.ReleasedBy)
-    releasedBy: Ref<Employee> | null = null
+  releasedBy: Ref<Employee> | null = null
 
   // Should be overridden and decorated in child classes
   questionData!: QuestionData
@@ -72,7 +72,8 @@ export class TQuestion<QuestionData extends NonNullable<any>> extends TAttachedD
 @Model(questions.class.Assessment, questions.class.Question)
 export class TAssessment<QuestionData extends NonNullable<any>, AssessmentData extends NonNullable<any>>
   extends TQuestion<QuestionData>
-  implements Assessment<QuestionData, AssessmentData> {
+  implements Assessment<QuestionData, AssessmentData>
+{
   // Should be overridden and decorated in child classes
   assessmentData!: AssessmentData
 }
@@ -81,7 +82,8 @@ export class TAssessment<QuestionData extends NonNullable<any>, AssessmentData e
 @Model(questions.class.Answer, core.class.AttachedDoc, DOMAIN_QUESTIONS)
 export class TAnswer<Q extends Question<any>, AnswerData extends NonNullable<any>>
   extends TAttachedDoc
-  implements Answer<Q, AnswerData> {
+  implements Answer<Q, AnswerData>
+{
   // Should be overridden and decorated in child classes
   question!: Ref<Q>
 

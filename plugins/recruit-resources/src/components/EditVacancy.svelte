@@ -54,7 +54,7 @@
   const query = createQuery()
   // const clazz = client.getHierarchy().getClass(recruit.class.Vacancy)
 
-  function updateObject (_id: Ref<Vacancy>): void {
+  function updateObject(_id: Ref<Vacancy>): void {
     if (lastId !== _id) {
       const prev = lastId
       lastId = _id
@@ -80,7 +80,7 @@
   let descriptionBox: AttachmentStyleBoxCollabEditor
   $: descriptionKey = client.getHierarchy().getAttribute(recruit.class.Vacancy, 'fullDescription')
   let saved = false
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     if (object === undefined) {
       return
     }

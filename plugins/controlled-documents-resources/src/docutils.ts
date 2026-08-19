@@ -49,7 +49,7 @@ import { getCurrentEmployee } from '@hcengineering/contact'
 import documentsRes from './plugin'
 import { getDocumentVersionString } from './utils'
 
-export async function createControlledDocFromTemplate(
+export async function createControlledDocFromTemplate (
   client: TxOperations,
   templateId: Ref<DocumentTemplate> | undefined,
   documentId: Ref<ControlledDocument>,
@@ -58,7 +58,7 @@ export async function createControlledDocFromTemplate(
   project: Ref<Project> | undefined,
   parent: Ref<ProjectDocument> | undefined,
   docClass: Ref<Class<ControlledDocument>> = documents.class.ControlledDocument
-): Promise<{ seqNumber: number; success: boolean }> {
+): Promise<{ seqNumber: number, success: boolean }> {
   const result = await controlledDocFromTemplate(client, templateId, documentId, spec, space, project, parent, docClass)
 
   if (result.success && templateId !== undefined) {
@@ -77,7 +77,7 @@ export async function createControlledDocFromTemplate(
   return result
 }
 
-async function copyDocumentAttachments(
+async function copyDocumentAttachments (
   client: TxOperations,
   sourceId: Ref<Document>,
   targetId: Ref<Document>,
@@ -118,14 +118,14 @@ async function copyDocumentAttachments(
   }
 }
 
-export async function createNewDraftForControlledDoc(
+export async function createNewDraftForControlledDoc (
   client: TxOperations,
   document: ControlledDocument,
   space: Ref<DocumentSpace>,
-  version: { major: number; minor: number },
+  version: { major: number, minor: number },
   project: Ref<Project>,
   newDraftDocId?: Ref<ControlledDocument>
-): Promise<{ success: boolean; id: Ref<ControlledDocument> }> {
+): Promise<{ success: boolean, id: Ref<ControlledDocument> }> {
   const hierarchy = client.getHierarchy()
 
   newDraftDocId = newDraftDocId ?? generateId()
@@ -265,7 +265,7 @@ export async function createNewDraftForControlledDoc(
   return { success: res.result, id: newDraftDocId }
 }
 
-export async function createDocumentSnapshotAndEdit(client: TxOperations, document: ControlledDocument): Promise<void> {
+export async function createDocumentSnapshotAndEdit (client: TxOperations, document: ControlledDocument): Promise<void> {
   const language = get(themeStore).language
   const namePrefix = await translate(documents.string.DraftRevision, {}, language)
   const name = `${namePrefix} ${(document.snapshots ?? 0) + 1}`
@@ -297,17 +297,17 @@ export async function createDocumentSnapshotAndEdit(client: TxOperations, docume
   await copyMarkup(source, target)
 }
 
-export function getDocumentTrainingClass(hierarchy: Hierarchy): Class<DocumentTraining> {
+export function getDocumentTrainingClass (hierarchy: Hierarchy): Class<DocumentTraining> {
   return hierarchy.getClass(documentsRes.mixin.DocumentTraining)
 }
 
-export function getDocumentTraining(hierarchy: Hierarchy, document: ControlledDocument): DocumentTraining | undefined {
+export function getDocumentTraining (hierarchy: Hierarchy, document: ControlledDocument): DocumentTraining | undefined {
   return hierarchy.hasMixin(document, documents.mixin.DocumentTraining)
     ? hierarchy.as<Document, DocumentTraining>(document, documents.mixin.DocumentTraining)
     : undefined
 }
 
-export async function createDocumentTraining(
+export async function createDocumentTraining (
   client: TxOperations,
   document: ControlledDocument,
   create: MixinData<Document, DocumentTraining>
@@ -321,7 +321,7 @@ export async function createDocumentTraining(
   )
 }
 
-export async function updateDocumentTraining(
+export async function updateDocumentTraining (
   client: TxOperations,
   document: ControlledDocument,
   update: MixinUpdate<Document, DocumentTraining>
@@ -335,7 +335,7 @@ export async function updateDocumentTraining(
   )
 }
 
-export function getDocReference(doc: Document | null): string {
+export function getDocReference (doc: Document | null): string {
   if (doc == null) {
     return ''
   }

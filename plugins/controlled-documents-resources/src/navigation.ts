@@ -25,14 +25,14 @@ import view, { type ObjectPanel } from '@hcengineering/view'
 import { accessDeniedStore } from '@hcengineering/view-resources'
 import slugify from 'slugify'
 
-export function getPanelFragment<T extends Doc>(object: Pick<T, '_class' | '_id'>): string {
+export function getPanelFragment<T extends Doc> (object: Pick<T, '_class' | '_id'>): string {
   const hierarchy = getClient().getHierarchy()
   const objectPanelMixin = hierarchy.classHierarchyMixin<Doc, ObjectPanel>(object._class, view.mixin.ObjectPanel)
   const component = objectPanelMixin?.component ?? view.component.EditDoc
   return getPanelURI(component, object._id, object._class, 'content')
 }
 
-async function generateDocumentLocation(
+async function generateDocumentLocation (
   loc: Location,
   document: Ref<ControlledDocument>
 ): Promise<ResolvedLocation | undefined> {
@@ -60,7 +60,7 @@ async function generateDocumentLocation(
   }
 }
 
-async function generateProjectDocumentLocation(
+async function generateProjectDocumentLocation (
   loc: Location,
   document: Ref<ControlledDocument>,
   project: Ref<Project>
@@ -96,7 +96,7 @@ async function generateProjectDocumentLocation(
   }
 }
 
-export function getProjectDocumentLink(doc: Document | Ref<Document>, project: Ref<Project>): Location {
+export function getProjectDocumentLink (doc: Document | Ref<Document>, project: Ref<Project>): Location {
   const loc = getCurrentResolvedLocation()
   loc.fragment = undefined
   loc.query = undefined
@@ -110,7 +110,7 @@ export function getProjectDocumentLink(doc: Document | Ref<Document>, project: R
   return loc
 }
 
-export function getDocumentLink(doc: Document): Location {
+export function getDocumentLink (doc: Document): Location {
   const loc = getCurrentResolvedLocation()
   loc.fragment = undefined
   loc.query = undefined
@@ -121,12 +121,12 @@ export function getDocumentLink(doc: Document): Location {
   return loc
 }
 
-function getDocumentLinkId(doc: Document): string {
+function getDocumentLinkId (doc: Document): string {
   const slug = slugify(doc.title, { lower: true })
   return `${slug}---${doc._id}`
 }
 
-function parseDocumentId(shortLink?: string): Ref<ControlledDocument> | undefined {
+function parseDocumentId (shortLink?: string): Ref<ControlledDocument> | undefined {
   if (shortLink === undefined) return undefined
   const parts = shortLink.split('---')
   if (parts.length > 1) {
@@ -135,13 +135,13 @@ function parseDocumentId(shortLink?: string): Ref<ControlledDocument> | undefine
   return shortLink as Ref<ControlledDocument>
 }
 
-export function getDocumentIdFromFragment(fragment: string): Ref<ProjectDocument> | undefined {
+export function getDocumentIdFromFragment (fragment: string): Ref<ProjectDocument> | undefined {
   const props = decodeURIComponent(fragment).split('|')
 
   return props[1] != null ? (props[1] as Ref<ProjectDocument>) : undefined
 }
 
-export async function resolveLocation(loc: Location): Promise<ResolvedLocation | undefined> {
+export async function resolveLocation (loc: Location): Promise<ResolvedLocation | undefined> {
   if (loc.path[2] !== documentsId) {
     return undefined
   }

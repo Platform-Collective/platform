@@ -193,7 +193,7 @@ export class CrossWorkspaceExporter {
             sourceClass: doc.sourceClass,
             field: doc.field,
             class: doc.targetClass,
-            direction: (doc.direction ?? 'forward') as 'forward' | 'inverse'
+            direction: doc.direction ?? 'forward'
           }))
         }
       } catch (err: any) {

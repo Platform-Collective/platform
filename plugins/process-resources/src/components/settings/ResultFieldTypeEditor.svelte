@@ -31,7 +31,7 @@
   const dispatch = createEventDispatcher()
   $: setType(key)
 
-  function setType (key: string | undefined): void {
+  function setType(key: string | undefined): void {
     const attr = key != null ? hierarchy.findAttribute(process.masterTag, key) : undefined
     if (attr != null) {
       type = attr.type
@@ -41,7 +41,7 @@
     dispatch('change')
   }
 
-  function getKeys (_class: Ref<Class<MasterTag>>): AnyAttribute[] {
+  function getKeys(_class: Ref<Class<MasterTag>>): AnyAttribute[] {
     const ignoreKeys = ['_class', 'content', 'parent', 'attachments', 'todos']
     const attributes = hierarchy.getAllAttributes(_class, core.class.Doc)
     const res: AnyAttribute[] = []

@@ -14,7 +14,7 @@
 //
 
 import attachment, { type Attachment } from '@hcengineering/attachment'
-import { type Class, type Client, type Ref, SortingOrder } from '@hcengineering/core'
+import { type Client, SortingOrder } from '@hcengineering/core'
 import drive, { type File as DriveFile, type FileVersion } from '@hcengineering/drive'
 
 import { type LargestFileRow, type LargestFileRowRef, mergeBySizeDesc, topBySize } from './largestFilesLogic'

@@ -165,7 +165,7 @@
     documentCommentsDisplayRequested({ element, nodeId })
   }
 
-  async function createEmbedding(file: File): Promise<{ file: Ref<Blob>; type: string } | undefined> {
+  async function createEmbedding(file: File): Promise<{ file: Ref<Blob>, type: string } | undefined> {
     if ($controlledDocument === undefined || $controlledDocument === null) {
       return undefined
     }

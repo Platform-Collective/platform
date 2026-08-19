@@ -38,7 +38,7 @@
 
   let limit = 5
 
-  async function disconnect (prj: GithubProject, repository: GithubIntegrationRepository): Promise<void> {
+  async function disconnect(prj: GithubProject, repository: GithubIntegrationRepository): Promise<void> {
     // We need to disable repository first
     await client.update(repository, {
       enabled: false,
@@ -78,7 +78,7 @@
     // await ops.commit()
   }
 
-  async function onDisconnect (
+  async function onDisconnect(
     event: MouseEvent,
     prj: GithubProject,
     repository: GithubIntegrationRepository
@@ -118,7 +118,7 @@
       return (b.updatedAt ?? 0) - (a.updatedAt ?? 0)
     })
 
-  async function showMenu (evt: MouseEvent, prj: GithubProject, repository: GithubIntegrationRepository): Promise<void> {
+  async function showMenu(evt: MouseEvent, prj: GithubProject, repository: GithubIntegrationRepository): Promise<void> {
     if (isAdminUser()) {
       const actions: Action[] = [
         {

@@ -27,11 +27,11 @@
 
   const client = getClient()
 
-  function getFunction (_id: Ref<ProcessFunction>): ProcessFunction {
+  function getFunction(_id: Ref<ProcessFunction>): ProcessFunction {
     return client.getModel().findAllSync(plugin.class.ProcessFunction, { _id })[0]
   }
 
-  function onConfigure (e: MouseEvent): void {
+  function onConfigure(e: MouseEvent): void {
     const f = getFunction(func.func)
     if (f.editor === undefined) return
     showPopup(

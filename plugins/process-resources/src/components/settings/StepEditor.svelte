@@ -28,12 +28,12 @@
 
   $: method = getMethod(step.methodId)
 
-  function change (e: CustomEvent<any>): void {
+  function change(e: CustomEvent<any>): void {
     step = e.detail
     dispatch('change', step)
   }
 
-  function getMethod (_id: Ref<Method<Doc>>): Method<Doc> {
+  function getMethod(_id: Ref<Method<Doc>>): Method<Doc> {
     if (method?._id !== _id) {
       const res = client.getModel().findAllSync(plugin.class.Method, { _id })[0]
       return res

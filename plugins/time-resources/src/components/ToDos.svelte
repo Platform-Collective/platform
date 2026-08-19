@@ -64,11 +64,11 @@
 
   $: updateTags(mode, tag)
 
-  function togglePlannerNav (): void {
+  function togglePlannerNav(): void {
     $deviceInfo.navigator.visible = !$deviceInfo.navigator.visible
   }
 
-  function updateTags (mode: ToDosMode, tag: Ref<TagElement> | undefined): void {
+  function updateTags(mode: ToDosMode, tag: Ref<TagElement> | undefined): void {
     if (mode !== 'tag' || tag === undefined) {
       tagsQuery.unsubscribe()
       ids = []
@@ -85,7 +85,7 @@
     )
   }
 
-  function update (mode: ToDosMode, currentDate: Date, ids: Ref<ToDo>[]): void {
+  function update(mode: ToDosMode, currentDate: Date, ids: Ref<ToDo>[]): void {
     let activeQ: DocumentQuery<ToDo> | undefined = undefined
     let doneQ: DocumentQuery<ToDo> | undefined = undefined
     let inboxQ: DocumentQuery<ToDo> | undefined = undefined
@@ -203,7 +203,7 @@
 
   $: groups = group(inbox, done, active, todoValue)
 
-  function filterActive (mode: ToDosMode, raw: WithLookup<ToDo>[], currentDate: Date): WithLookup<ToDo>[] {
+  function filterActive(mode: ToDosMode, raw: WithLookup<ToDo>[], currentDate: Date): WithLookup<ToDo>[] {
     if (mode === 'planned') {
       const today = areDatesEqual(new Date(), currentDate)
       const res: WithLookup<ToDo>[] = []
@@ -228,11 +228,11 @@
     }
   }
 
-  function getWorkslots (todo: WithLookup<ToDo>): WorkSlot[] {
+  function getWorkslots(todo: WithLookup<ToDo>): WorkSlot[] {
     return (todo.$lookup?.workslots ?? []) as WorkSlot[]
   }
 
-  function group (
+  function group(
     unplanned: WithLookup<ToDo>[],
     done: WithLookup<ToDo>[],
     active: WithLookup<ToDo>[],

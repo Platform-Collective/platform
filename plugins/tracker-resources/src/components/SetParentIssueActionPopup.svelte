@@ -36,7 +36,7 @@
     sort: { modifiedOn: SortingOrder.Descending }
   }
 
-  async function onClose ({ detail: parentIssue }: CustomEvent<Issue | undefined | null>): Promise<void> {
+  async function onClose({ detail: parentIssue }: CustomEvent<Issue | undefined | null>): Promise<void> {
     const vv = Array.isArray(value) ? value : [value]
     for (const docValue of vv) {
       if (
@@ -70,7 +70,7 @@
   $: selected = !Array.isArray(value) ? ('attachedTo' in value ? value.attachedTo : undefined) : undefined
   $: ignoreObjects = getIgnoreObjects(value)
 
-  function getIgnoreObjects (issues: Issue | AttachedData<Issue> | Issue[] | IssueDraft): Ref<Issue>[] {
+  function getIgnoreObjects(issues: Issue | AttachedData<Issue> | Issue[] | IssueDraft): Ref<Issue>[] {
     if (!Array.isArray(issues)) {
       const own = '_id' in issues ? issues._id : undefined
       const childs = 'childInfo' in issues ? issues.childInfo.map((c) => c.childId) : []

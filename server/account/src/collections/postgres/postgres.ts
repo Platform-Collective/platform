@@ -115,7 +115,8 @@ export interface PostgresDbCollectionOptions<T extends Record<string, any>, K ex
 }
 
 export class PostgresDbCollection<T extends Record<string, any>, K extends keyof T | undefined = undefined>
-implements DbCollection<T> {
+  implements DbCollection<T>
+{
   constructor (
     readonly name: string,
     readonly client: Sql,
@@ -425,7 +426,8 @@ implements DbCollection<T> {
 
 export class AccountPostgresDbCollection
   extends PostgresDbCollection<Account, 'uuid'>
-  implements DbCollection<Account> {
+  implements DbCollection<Account>
+{
   private readonly passwordKeys = ['hash', 'salt']
 
   constructor (
@@ -650,8 +652,8 @@ export class PostgresAccountDB implements AccountDB {
           SET last_processed_at = NOW()
           WHERE identifier = ${name} AND applied_at IS NULL
         `.catch((err) => {
-            console.error(`Failed to update last_processed_at for migration ${name}:`, err)
-          })
+          console.error(`Failed to update last_processed_at for migration ${name}:`, err)
+        })
       }, 5000)
 
       await client.unsafe(ddl)

@@ -65,7 +65,7 @@
   let description: Markup = EmptyMarkup
   let initialized = false
 
-  function initializeFromDraft (draft: CardDraft): void {
+  function initializeFromDraft(draft: CardDraft): void {
     title = draft.title
     description = draft.description
     if (draft.type !== undefined) {
@@ -102,12 +102,12 @@
   $: extension =
     type != null
       ? client
-        .getModel()
-        .findAllSync(card.mixin.CreateCardExtension, {})
-        .find((it) => hierarchy.isDerived(type, it._id))
+          .getModel()
+          .findAllSync(card.mixin.CreateCardExtension, {})
+          .find((it) => hierarchy.isDerived(type, it._id))
       : undefined
 
-  async function okAction (): Promise<void> {
+  async function okAction(): Promise<void> {
     if (space === undefined || type == null) return
 
     try {
@@ -182,7 +182,7 @@
     draftController.remove()
   }
 
-  function expand (): void {
+  function expand(): void {
     const prevExpanded = isExpanded
     isExpanded = true
     if (!prevExpanded) {

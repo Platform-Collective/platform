@@ -28,8 +28,8 @@
   const query = createQuery()
   $: !hideDetails
     ? query.query(event.attachedToClass, { _id: event.attachedTo }, (res) => {
-      todo = res[0]
-    })
+        todo = res[0]
+      })
     : query.unsubscribe()
 </script>
 

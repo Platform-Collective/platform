@@ -36,7 +36,7 @@
 
   type PossibleProcessClass = Ref<MasterTag | Tag>
 
-  function getCardPossibleClasses (card: Card): PossibleProcessClass[] {
+  function getCardPossibleClasses(card: Card): PossibleProcessClass[] {
     const ancestors = h.getAncestors(card._class) as PossibleProcessClass[]
     const res = new Set<PossibleProcessClass>(ancestors)
 
@@ -48,7 +48,7 @@
     return [...res]
   }
 
-  function getPossibleClasses (): PossibleProcessClass[] {
+  function getPossibleClasses(): PossibleProcessClass[] {
     if (!value) {
       return []
     }
@@ -70,7 +70,7 @@
     return [...res]
   }
 
-  async function filterProcesses (processes: Process[]): Promise<Process[]> {
+  async function filterProcesses(processes: Process[]): Promise<Process[]> {
     if (value === undefined) return []
     const res: Process[] = []
     const shouldCheck: Process[] = []
@@ -99,7 +99,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function runProcess (_id: Ref<Process>): Promise<void> {
+  async function runProcess(_id: Ref<Process>): Promise<void> {
     if (!value) return
     for (const element of values) {
       const tx = await createExecution(element._id, _id, element.space, client.txFactory)

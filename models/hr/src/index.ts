@@ -136,7 +136,7 @@ export class TTzDate extends TType {
 /**
  * @public
  */
-export function TypeTzDate(): Type<TzDate> {
+export function TypeTzDate (): Type<TzDate> {
   return { _class: hr.class.TzDate, label: core.string.Timestamp }
 }
 
@@ -185,7 +185,7 @@ export class TPublicHoliday extends TDoc implements PublicHoliday {
   department!: Ref<Department>
 }
 
-export function createModel(builder: Builder): void {
+export function createModel (builder: Builder): void {
   builder.createModel(TDepartment, TRequest, TRequestType, TPublicHoliday, TStaff, TTzDate)
 
   builder.createDoc(

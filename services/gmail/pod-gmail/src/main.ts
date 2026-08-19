@@ -112,7 +112,7 @@ export const main = async (): Promise<void> => {
         try {
           ctx.info('Signin code request received')
           const code = req.query.code as string
-          state = JSON.parse(decode64(req.query.state as string)) as unknown as State
+          state = JSON.parse(decode64(req.query.state as string))
           await gmailController.createClient(state, code)
           res.redirect(state.redirectURL)
         } catch (err: any) {

@@ -169,10 +169,10 @@ export async function createServer (
 
   const wrapRequest =
     (ctx: MeasureContext, name: string, fn: AsyncRequestHandler) =>
-      (req: RequestWithAuth, res: Response, next: NextFunction) => {
+    (req: RequestWithAuth, res: Response, next: NextFunction) => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        handleRequest(ctx, name, datalake, tempDir, fn, req, res, next)
-      }
+      handleRequest(ctx, name, datalake, tempDir, fn, req, res, next)
+    }
 
   app.use(morgan('short', { stream: new LogStream() }))
 

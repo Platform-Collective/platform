@@ -25,11 +25,11 @@
 
   const dispatch = createEventDispatcher()
 
-  function save (): void {
+  function save(): void {
     dispatch('close', value)
   }
 
-  function onChange (val: any): void {
+  function onChange(val: any): void {
     value = val
   }
 

@@ -218,10 +218,10 @@ export async function restore (
       opt.recheck === true // If recheck we check all documents.
         ? Array.from(changeset.entries())
         : Array.from(changeset.entries()).filter(
-          ([it]) =>
-            !serverChangeset.has(it) ||
+            ([it]) =>
+              !serverChangeset.has(it) ||
               (serverChangeset.has(it) && doTrimHash(serverChangeset.get(it)) !== doTrimHash(changeset.get(it)))
-        )
+          )
     )
     const docsToRemove = Array.from(serverChangeset.keys()).filter((it) => !changeset.has(it))
 
@@ -370,7 +370,7 @@ export async function restore (
                     chunks.push(chunk)
                   })
                   stream.on('end', () => {
-                    const bf = Buffer.concat(chunks as any)
+                    const bf = Buffer.concat(chunks)
                     const d = blobs.get(name)
                     if (d === undefined) {
                       blobs.set(name, { doc: undefined, buffer: bf })
@@ -395,7 +395,7 @@ export async function restore (
                     chunks.push(chunk)
                   })
                   stream.on('end', () => {
-                    const bf = Buffer.concat(chunks as any)
+                    const bf = Buffer.concat(chunks)
                     let doc: Doc
                     try {
                       doc = JSON.parse(bf.toString()) as Doc
@@ -531,7 +531,7 @@ export async function restore (
                 })
                 stream.on('end', () => {
                   try {
-                    const obj = JSON.parse(Buffer.concat(chunks as any).toString())
+                    const obj = JSON.parse(Buffer.concat(chunks).toString())
                     processed.add(objKey)
                     collectedObjects.push(obj)
                   } catch (err) {

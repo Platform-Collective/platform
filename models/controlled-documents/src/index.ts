@@ -80,7 +80,7 @@ import {
 export { documentsId } from '@hcengineering/controlled-documents/src/index'
 export * from './types'
 
-function defineRelationMetadata(builder: Builder): void {
+function defineRelationMetadata (builder: Builder): void {
   const rel = (
     ref: Ref<Class<Doc>>,
     field: string,
@@ -112,7 +112,7 @@ function defineRelationMetadata(builder: Builder): void {
   rel(documents.class.ProjectDocument, 'document', documents.class.Document, 'forward')
 }
 
-export function createModel(builder: Builder): void {
+export function createModel (builder: Builder): void {
   builder.createModel(
     TDocumentSpace,
     TDocumentSpaceType,
@@ -1121,7 +1121,7 @@ export function createModel(builder: Builder): void {
     documents.action.OpenDocumentInNewTab
   )
 
-  function createPrintAction<T extends Doc = Doc>(target: Ref<Class<T>>, id?: Ref<Action<T, any>>): void {
+  function createPrintAction<T extends Doc = Doc> (target: Ref<Class<T>>, id?: Ref<Action<T, any>>): void {
     createAction(
       builder,
       {
@@ -1179,7 +1179,7 @@ export function createModel(builder: Builder): void {
   defineTextActions(builder)
 }
 
-export function defineNotifications(builder: Builder): void {
+export function defineNotifications (builder: Builder): void {
   builder.mixin(documents.class.ControlledDocument, core.class.Class, activity.mixin.ActivityDoc, {})
 
   builder.createDoc(activity.class.ActivityExtension, core.space.Model, {
@@ -1365,7 +1365,7 @@ export function defineNotifications(builder: Builder): void {
   )
 }
 
-export function defineSearch(builder: Builder): void {
+export function defineSearch (builder: Builder): void {
   builder.createDoc(core.class.FullTextSearchContext, core.space.Model, {
     toClass: documents.class.Document
   })
@@ -1391,7 +1391,7 @@ export function defineSearch(builder: Builder): void {
   )
 }
 
-export function defineTextActions(builder: Builder): void {
+export function defineTextActions (builder: Builder): void {
   // Comment category
   builder.createDoc(textEditor.class.TextEditorAction, core.space.Model, {
     tags: ['text'],

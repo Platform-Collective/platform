@@ -89,7 +89,7 @@ export const isDocumentCommentAttachedTo = (
   return (value.nodeId ?? null) === (location.nodeId ?? null)
 }
 
-export async function getTranslatedDocumentStates(lang: string): Promise<TranslatedDocumentStates> {
+export async function getTranslatedDocumentStates (lang: string): Promise<TranslatedDocumentStates> {
   return {
     [DocumentState.Draft]: await translate(documents.string.Draft, {}, lang),
     [DocumentState.Deleted]: await translate(documents.string.Deleted, {}, lang),
@@ -101,7 +101,7 @@ export async function getTranslatedDocumentStates(lang: string): Promise<Transla
 
 export type TranslatedControlledDocStates = Readonly<Record<ControlledDocumentState, string>>
 
-export async function getTranslatedControlledDocStates(lang: string): Promise<TranslatedControlledDocStates> {
+export async function getTranslatedControlledDocStates (lang: string): Promise<TranslatedControlledDocStates> {
   return {
     [ControlledDocumentState.Approved]: await translate(documentsResources.controlledDocStates.Approved, {}, lang),
     [ControlledDocumentState.InApproval]: await translate(documentsResources.controlledDocStates.InApproval, {}, lang),
@@ -112,42 +112,42 @@ export async function getTranslatedControlledDocStates(lang: string): Promise<Tr
   }
 }
 
-export function isSpace(hierarchy: Hierarchy, doc: Doc): doc is DocumentSpace {
+export function isSpace (hierarchy: Hierarchy, doc: Doc): doc is DocumentSpace {
   return hierarchy.isDerived(doc._class, documents.class.DocumentSpace)
 }
 
-export function isDocument(hierarchy: Hierarchy, doc: Doc): doc is Document {
+export function isDocument (hierarchy: Hierarchy, doc: Doc): doc is Document {
   return hierarchy.isDerived(doc._class, documents.class.Document)
 }
 
-export function isDocumentTemplate(hierarchy: Hierarchy, doc: Doc): doc is DocumentTemplate {
+export function isDocumentTemplate (hierarchy: Hierarchy, doc: Doc): doc is DocumentTemplate {
   return hierarchy.isDerived(doc._class, documents.mixin.DocumentTemplate)
 }
 
-export function isProjectDocument(hierarchy: Hierarchy, doc: Doc): doc is ProjectDocument {
+export function isProjectDocument (hierarchy: Hierarchy, doc: Doc): doc is ProjectDocument {
   return hierarchy.isDerived(doc._class, documents.class.ProjectDocument)
 }
 
-export function isFolder(hierarchy: Hierarchy, doc: Doc): doc is ProjectDocument {
+export function isFolder (hierarchy: Hierarchy, doc: Doc): doc is ProjectDocument {
   if (!isProjectDocument(hierarchy, doc)) return false
   return doc.document === documents.ids.Folder
 }
 
-export async function getVisibleFilters(filters: KeyFilter[], space?: Ref<Space>): Promise<KeyFilter[]> {
+export async function getVisibleFilters (filters: KeyFilter[], space?: Ref<Space>): Promise<KeyFilter[]> {
   // Removes the "Space" filter if a specific space is provided
   return space === undefined ? filters : filters.filter((f) => f.key !== 'space')
 }
 
-export async function sortDocumentStates(_: TxOperations, states: DocumentState[]): Promise<DocumentState[]> {
+export async function sortDocumentStates (_: TxOperations, states: DocumentState[]): Promise<DocumentState[]> {
   states.sort((state1, state2) => documentStatesOrder.indexOf(state2) - documentStatesOrder.indexOf(state1))
   return states
 }
 
-export async function getAllDocumentStates(): Promise<DocumentState[]> {
+export async function getAllDocumentStates (): Promise<DocumentState[]> {
   return documentStatesOrder
 }
 
-export async function getDocumentMetaLinkFragment(document: Doc): Promise<Location> {
+export async function getDocumentMetaLinkFragment (document: Doc): Promise<Location> {
   const meta = document._id as Ref<DocumentMeta>
   const client = getClient()
   const docs = await client.findAll(
@@ -200,7 +200,7 @@ export async function getDocumentMetaLinkFragment(document: Doc): Promise<Locati
   return getProjectDocumentLink(targetDocument, project)
 }
 
-export async function getControlledDocumentLinkFragment(document: ControlledDocument): Promise<Location> {
+export async function getControlledDocumentLinkFragment (document: ControlledDocument): Promise<Location> {
   const client = getClient()
   const targetDocument = await client.findOne(documents.class.ProjectDocument, { document: document._id })
 
@@ -218,7 +218,7 @@ export interface TeamPopupData {
   requireSignature?: boolean
 }
 
-export async function sendReviewRequest(
+export async function sendReviewRequest (
   client: TxOperations,
   controlledDoc: ControlledDocument,
   reviewers: Array<Ref<Employee>>
@@ -245,7 +245,7 @@ export async function sendReviewRequest(
   )
 }
 
-export async function sendApprovalRequest(
+export async function sendApprovalRequest (
   client: TxOperations,
   controlledDoc: ControlledDocument,
   approvers: Array<Ref<Employee>>,
@@ -300,7 +300,7 @@ export async function sendApprovalRequest(
   )
 }
 
-export async function updateExternalApproversAccess(
+export async function updateExternalApproversAccess (
   client: TxOperations,
   controlledDoc: ControlledDocument,
   added: Array<Ref<Person>>,
@@ -381,7 +381,7 @@ export async function updateExternalApproversAccess(
   }
 }
 
-async function createRequest<T extends Doc>(
+async function createRequest<T extends Doc> (
   client: TxOperations,
   attachedTo: Ref<T>,
   attachedToClass: Ref<Class<T>>,
@@ -422,7 +422,7 @@ async function createRequest<T extends Doc>(
   }
 }
 
-async function getActiveRequest(
+async function getActiveRequest (
   client: TxOperations,
   reqClass: Ref<Class<DocumentRequest>>,
   controlledDoc: ControlledDocument
@@ -437,7 +437,7 @@ async function getActiveRequest(
   )
 }
 
-export async function completeRequest(
+export async function completeRequest (
   client: TxOperations,
   reqClass: Ref<Class<DocumentRequest>>,
   controlledDoc: ControlledDocument
@@ -468,7 +468,7 @@ export async function completeRequest(
   await ops.commit()
 }
 
-export async function saveComment(message: Markup | undefined, req: DocumentRequest): Promise<void> {
+export async function saveComment (message: Markup | undefined, req: DocumentRequest): Promise<void> {
   if (message === undefined || message === '' || isEmptyMarkup(message)) {
     return
   }
@@ -479,7 +479,7 @@ export async function saveComment(message: Markup | undefined, req: DocumentRequ
   await client.createMixin(id, chunter.class.ChatMessage, req.space, request.mixin.RequestDecisionComment, {})
 }
 
-export async function rejectRequest(
+export async function rejectRequest (
   client: TxOperations,
   reqClass: Ref<Class<DocumentRequest>>,
   controlledDoc: ControlledDocument,
@@ -559,7 +559,7 @@ export const loginIntlFieldNames: Readonly<{ [K in keyof LoginInfo]: IntlString 
 
 export type DocumentStateTagType = 'effective' | 'inProgress' | 'rejected' | 'draft' | 'obsolete'
 
-export function isDocOwner(ownableDocument: { owner?: Ref<Employee> }): boolean {
+export function isDocOwner (ownableDocument: { owner?: Ref<Employee> }): boolean {
   const currentPerson = getCurrentEmployee()
 
   return ownableDocument.owner === currentPerson
@@ -582,7 +582,7 @@ export async function canChangeDocumentOwner (doc?: Document | Document[]): Prom
   return await checkPermission(getClient(), documents.permission.UpdateDocumentOwner, doc.space)
 }
 
-export async function canCreateChildTemplate(
+export async function canCreateChildTemplate (
   doc?: Document | Document[] | DocumentSpace | DocumentSpace[] | ProjectDocument | ProjectDocument[]
 ): Promise<boolean> {
   if (doc === null || doc === undefined) {
@@ -599,7 +599,7 @@ export async function canCreateChildTemplate(
   return orgSpace !== undefined && (await checkPermission(client, documents.permission.CreateDocument, spaceId))
 }
 
-export async function canCreateChildDocument(
+export async function canCreateChildDocument (
   doc?: Document | Document[] | DocumentSpace | DocumentSpace[] | ProjectDocument | ProjectDocument[],
   includeProjects = false
 ): Promise<boolean> {
@@ -631,7 +631,7 @@ export async function canCreateChildDocument(
   return true
 }
 
-export async function canCreateChildFolder(
+export async function canCreateChildFolder (
   doc?: Document | Document[] | DocumentSpace | DocumentSpace[] | ProjectDocument | ProjectDocument[],
   includeProjects = false
 ): Promise<boolean> {
@@ -663,7 +663,7 @@ export async function canCreateChildFolder(
   return true
 }
 
-export async function canRenameFolder(
+export async function canRenameFolder (
   doc?: Document | Document[] | DocumentSpace | DocumentSpace[] | ProjectDocument | ProjectDocument[],
   includeProjects = false
 ): Promise<boolean> {
@@ -695,7 +695,7 @@ export async function canRenameFolder(
   return await isEditableProject(doc.project)
 }
 
-export async function canDeleteFolder(doc: ProjectDocument): Promise<boolean> {
+export async function canDeleteFolder (doc: ProjectDocument): Promise<boolean> {
   if (doc?._class === undefined) return false
 
   const client = getClient()
@@ -713,7 +713,7 @@ export async function canDeleteFolder(doc: ProjectDocument): Promise<boolean> {
   return await checkPermission(getClient(), documents.permission.ArchiveDocument, doc.space)
 }
 
-export async function canDeleteDocumentCategory(doc?: Doc | Doc[]): Promise<boolean> {
+export async function canDeleteDocumentCategory (doc?: Doc | Doc[]): Promise<boolean> {
   if (doc === null || doc === undefined) {
     return false
   }
@@ -733,7 +733,7 @@ export async function canDeleteDocumentCategory(doc?: Doc | Doc[]): Promise<bool
   return await checkPermission(client, documents.permission.DeleteDocumentCategory, (doc as DocumentCategory).space)
 }
 
-async function getLatestProject(space: Ref<DocumentSpace>, includeReadonly = false): Promise<Project | undefined> {
+async function getLatestProject (space: Ref<DocumentSpace>, includeReadonly = false): Promise<Project | undefined> {
   const client = getClient()
 
   // TODO we should use better approach on selecting the latest available project
@@ -745,7 +745,7 @@ async function getLatestProject(space: Ref<DocumentSpace>, includeReadonly = fal
   })
 }
 
-export async function getLatestProjectId(
+export async function getLatestProjectId (
   spaceRef: Ref<DocumentSpace>,
   includeReadonly = false
 ): Promise<Ref<Project> | undefined> {
@@ -772,7 +772,7 @@ export async function getLatestProjectId(
   }
 }
 
-export async function isEditableProject(_id: Ref<Project> | undefined): Promise<boolean> {
+export async function isEditableProject (_id: Ref<Project> | undefined): Promise<boolean> {
   if (_id === undefined) {
     return false
   }
@@ -786,7 +786,7 @@ export async function isEditableProject(_id: Ref<Project> | undefined): Promise<
   return project !== undefined && !project.readonly
 }
 
-export function getProjectDocsHierarchy(projectMeta: Array<WithLookup<ProjectMeta>>): {
+export function getProjectDocsHierarchy (projectMeta: Array<WithLookup<ProjectMeta>>): {
   rootDocs: Array<WithLookup<ProjectMeta>>
   childrenByParent: Record<Ref<WithLookup<DocumentMeta>>, Array<WithLookup<ProjectMeta>>>
 } {
@@ -810,11 +810,11 @@ export function getProjectDocsHierarchy(projectMeta: Array<WithLookup<ProjectMet
   return { rootDocs, childrenByParent }
 }
 
-export function compareDocs(doc1: Document, doc2: Document): number {
+export function compareDocs (doc1: Document, doc2: Document): number {
   return getDocumentName(doc1).localeCompare(getDocumentName(doc2), undefined, { numeric: true })
 }
 
-export async function documentIdentifierProvider(client: Client, ref: Ref<Document>, doc?: Document): Promise<string> {
+export async function documentIdentifierProvider (client: Client, ref: Ref<Document>, doc?: Document): Promise<string> {
   const document = doc ?? (await client.findOne(documents.class.Document, { _id: ref }))
 
   if (document === undefined) {
@@ -824,7 +824,7 @@ export async function documentIdentifierProvider(client: Client, ref: Ref<Docume
   return document.code
 }
 
-export async function getDocumentMetaTitle(
+export async function getDocumentMetaTitle (
   client: Client,
   ref: Ref<DocumentMeta>,
   doc?: DocumentMeta
@@ -838,7 +838,7 @@ export async function getDocumentMetaTitle(
   return object.title + ` (${hint})`
 }
 
-export async function documentMetaReferenceVersionsProvider(
+export async function documentMetaReferenceVersionsProvider (
   client: Client,
   ref: Ref<DocumentMeta>
 ): Promise<ReferenceVersion[]> {
@@ -861,7 +861,7 @@ export async function documentMetaReferenceVersionsProvider(
   }))
 }
 
-export async function controlledDocumentReferenceObjectProvider(
+export async function controlledDocumentReferenceObjectProvider (
   client: Client,
   ref: Ref<ControlledDocument>,
   doc?: ControlledDocument
@@ -885,7 +885,7 @@ export async function controlledDocumentReferenceObjectProvider(
   return docIndex >= 0 && (docIndex <= effIndex || effIndex < 0) ? meta : document
 }
 
-export async function projectDocumentReferenceObjectProvider(
+export async function projectDocumentReferenceObjectProvider (
   client: Client,
   ref: Ref<ProjectDocument>,
   doc?: ProjectDocument
@@ -896,15 +896,15 @@ export async function projectDocumentReferenceObjectProvider(
   return await controlledDocumentReferenceObjectProvider(client, prjdoc.document as Ref<ControlledDocument>)
 }
 
-export function documentCompareFn(doc1: Document, doc2: Document): number {
+export function documentCompareFn (doc1: Document, doc2: Document): number {
   return doc1.major - doc2.major !== 0 ? doc1.major - doc2.major : doc1.minor - doc2.minor
 }
 
-export function getDocumentVersionString(doc: Document): string {
+export function getDocumentVersionString (doc: Document): string {
   return `v${doc.major}.${doc.minor}`
 }
 
-export async function getControlledDocumentTitle(
+export async function getControlledDocumentTitle (
   client: Client,
   ref: Ref<ControlledDocument>,
   doc?: ControlledDocument
@@ -916,17 +916,17 @@ export async function getControlledDocumentTitle(
   return object.title + ` (${getDocumentVersionString(object)})`
 }
 
-export async function createChildDocument(doc: ProjectDocument): Promise<void> {
+export async function createChildDocument (doc: ProjectDocument): Promise<void> {
   wizardOpened({ $$currentStep: 'template', location: { space: doc.space, project: doc.project, parent: doc._id } })
   showPopup(documents.component.QmsDocumentWizard, {})
 }
 
-export async function createChildTemplate(doc: ProjectDocument): Promise<void> {
+export async function createChildTemplate (doc: ProjectDocument): Promise<void> {
   wizardOpened({ $$currentStep: 'info', location: { space: doc.space, project: doc.project, parent: doc._id } })
   showPopup(documents.component.QmsTemplateWizard, {})
 }
 
-export async function createChildFolder(doc: ProjectDocument): Promise<void> {
+export async function createChildFolder (doc: ProjectDocument): Promise<void> {
   const props = {
     space: doc.space,
     project: doc.project,
@@ -936,7 +936,7 @@ export async function createChildFolder(doc: ProjectDocument): Promise<void> {
   showPopup(documents.component.CreateFolder, props)
 }
 
-export async function renameFolder(doc: ProjectDocument): Promise<void> {
+export async function renameFolder (doc: ProjectDocument): Promise<void> {
   const client = getClient()
 
   const pjmeta = await client.findOne(documents.class.ProjectMeta, { _id: doc.attachedTo })
@@ -953,7 +953,7 @@ export async function renameFolder(doc: ProjectDocument): Promise<void> {
   showPopup(documents.component.CreateFolder, props)
 }
 
-export async function deleteFolder(obj: ProjectDocument): Promise<void> {
+export async function deleteFolder (obj: ProjectDocument): Promise<void> {
   const success = await _deleteFolder(obj)
   if (!success) {
     showPopup(MessageBox, {
@@ -964,7 +964,7 @@ export async function deleteFolder(obj: ProjectDocument): Promise<void> {
   }
 }
 
-async function _deleteFolder(obj: ProjectDocument): Promise<boolean> {
+async function _deleteFolder (obj: ProjectDocument): Promise<boolean> {
   const client = getClient()
 
   if (!(await canDeleteFolder(obj))) {
@@ -1019,7 +1019,7 @@ async function _deleteFolder(obj: ProjectDocument): Promise<boolean> {
   return true
 }
 
-export async function createDocument(space: DocumentSpace): Promise<void> {
+export async function createDocument (space: DocumentSpace): Promise<void> {
   const project = await getLatestProjectId(space._id)
   wizardOpened({
     $$currentStep: 'template',
@@ -1034,7 +1034,7 @@ export async function createTemplate (space: OrgSpace): Promise<void> {
   showPopup(documents.component.QmsTemplateWizard, {})
 }
 
-export async function createFolder(space: DocumentSpace): Promise<void> {
+export async function createFolder (space: DocumentSpace): Promise<void> {
   const project = await getLatestProjectId(space._id)
   const props = {
     space: space._id,
@@ -1043,7 +1043,7 @@ export async function createFolder(space: DocumentSpace): Promise<void> {
   showPopup(documents.component.CreateFolder, props)
 }
 
-export function formatSignatureDate(date: number): string {
+export function formatSignatureDate (date: number): string {
   const timeZone: string = getUserTimezone()
 
   return new Date(date).toLocaleDateString('default', {
@@ -1058,7 +1058,7 @@ export function formatSignatureDate(date: number): string {
   })
 }
 
-export async function moveDocument(doc: ProjectMeta, space: Ref<Space>, target?: ProjectMeta): Promise<void> {
+export async function moveDocument (doc: ProjectMeta, space: Ref<Space>, target?: ProjectMeta): Promise<void> {
   const client = getClient()
 
   let parent = documents.ids.NoParent
@@ -1074,7 +1074,7 @@ export async function moveDocument(doc: ProjectMeta, space: Ref<Space>, target?:
   await client.update(doc, { parent, path, rank })
 }
 
-export async function moveDocumentBefore(doc: ProjectMeta, before: ProjectMeta): Promise<void> {
+export async function moveDocumentBefore (doc: ProjectMeta, before: ProjectMeta): Promise<void> {
   const client = getClient()
 
   const { space, parent, path } = before
@@ -1085,7 +1085,7 @@ export async function moveDocumentBefore(doc: ProjectMeta, before: ProjectMeta):
   await client.update(doc, { parent, path, rank })
 }
 
-export async function moveDocumentAfter(doc: ProjectMeta, after: ProjectMeta): Promise<void> {
+export async function moveDocumentAfter (doc: ProjectMeta, after: ProjectMeta): Promise<void> {
   const client = getClient()
 
   const { space, parent, path } = after
@@ -1104,12 +1104,12 @@ export class DocumentHiearchyQuery {
 
   bundle: DocumentBundle = { ...emptyBundle() }
 
-  handleUpdate(data: Partial<DocumentBundle>, callback: (tree: ProjectDocumentTree) => void): void {
+  handleUpdate (data: Partial<DocumentBundle>, callback: (tree: ProjectDocumentTree) => void): void {
     this.bundle = { ...this.bundle, ...data }
     callback(new ProjectDocumentTree(this.bundle))
   }
 
-  query(
+  query (
     space: Ref<DocumentSpace>,
     project: Ref<Project<DocumentSpace>>,
     callback: (tree: ProjectDocumentTree) => void
@@ -1142,11 +1142,11 @@ export class DocumentHiearchyQuery {
   }
 }
 
-export function createDocumentHierarchyQuery(): DocumentHiearchyQuery {
+export function createDocumentHierarchyQuery (): DocumentHiearchyQuery {
   return new DocumentHiearchyQuery()
 }
 
-export async function extractValidationWorkflow(
+export async function extractValidationWorkflow (
   hierarchy: Hierarchy,
   bundle: DocumentBundle
 ): Promise<Map<Ref<ControlledDocument>, DocumentValidationState[]>> {
@@ -1268,7 +1268,7 @@ export async function extractValidationWorkflow(
   return result
 }
 
-export function isActivityDocumentState(state: DocumentState | ControlledDocumentState | null): boolean {
+export function isActivityDocumentState (state: DocumentState | ControlledDocumentState | null): boolean {
   if (state == null) {
     return false
   }

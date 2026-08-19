@@ -188,7 +188,7 @@ export class RelationExporter {
       }
 
       await this.exportRelatedDocument(
-        ref as Ref<Doc>,
+        ref,
         relation.class,
         conflictStrategy,
         includeAttachments,

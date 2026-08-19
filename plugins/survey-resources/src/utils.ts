@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { clone, type Class, type Client, type Doc, type Ref } from '@hcengineering/core'
+import { clone, type Client, type Doc, type Ref } from '@hcengineering/core'
 import survey, { surveyId, type Poll, type PollData, type Survey } from '@hcengineering/survey'
 import { getClient, MessageBox } from '@hcengineering/presentation'
 import {
