@@ -13,12 +13,65 @@ const {
 const crypto = require('crypto')
 const prettier = require('prettier')
 const { ESLint } = require('eslint')
+const LEGACY_COMPATIBILITY_RULES = Object.fromEntries(
+  require('../profiles/legacy-compatibility-rules.json').map((rule) => [rule, 'off'])
+)
 
 let pluginSvelte
 try {
   pluginSvelte = require('prettier-plugin-svelte')
 } catch (e) {
   console.warn('prettier-plugin-svelte not available')
+}
+
+async function loadEslintConfig() {
+  const [{ default: love }, svelte, { default: tsParser }, svelteParser] = await Promise.all([
+    import('eslint-config-love'),
+    import('eslint-plugin-svelte'),
+    import('@typescript-eslint/parser'),
+    import('svelte-eslint-parser')
+  ])
+
+  return [
+    {
+      ignores: ['**/*.json', '**/node_modules/**', '**/.eslintrc.js', '**/dist/**', '**/lib/**']
+    },
+    {
+      ...love,
+      files: ['**/*.{js,cjs,mjs,ts,cts,mts}'],
+      rules: {
+        ...love.rules,
+        ...LEGACY_COMPATIBILITY_RULES,
+        '@typescript-eslint/array-type': 'off',
+        '@typescript-eslint/promise-function-async': 'off',
+        '@typescript-eslint/consistent-type-imports': 'off'
+      }
+    },
+    {
+      linterOptions: {
+        reportUnusedDisableDirectives: 'off'
+      }
+    },
+    ...svelte.configs.base,
+    {
+      files: ['**/*.svelte'],
+      plugins: love.plugins,
+      languageOptions: {
+        parser: svelteParser,
+        parserOptions: {
+          extraFileExtensions: ['.svelte'],
+          parser: tsParser,
+          projectService: true
+        }
+      },
+      rules: {
+        '@typescript-eslint/array-type': 'off',
+        '@typescript-eslint/promise-function-async': 'off',
+        '@typescript-eslint/consistent-type-imports': 'off',
+        'svelte/no-at-html-tags': 'error'
+      }
+    }
+  ]
 }
 
 if (!existsSync('.format')) {
@@ -156,7 +209,11 @@ if (filesToCheck.length > 0) {
       console.log(`running eslint ${filesToCheck.length}`)
 
       // Run ESLint
-      const eslint = new ESLint({ fix: true })
+      const eslint = new ESLint({
+        fix: true,
+        overrideConfigFile: true,
+        overrideConfig: await loadEslintConfig()
+      })
       const results = await eslint.lintFiles(filesToCheck)
 
       // Apply fixes

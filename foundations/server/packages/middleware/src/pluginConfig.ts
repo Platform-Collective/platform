@@ -36,11 +36,11 @@ import { aiBotAccountEmail } from './identity'
  * @public
  */
 export class PluginConfigurationMiddleware extends BaseMiddleware implements Middleware {
-  private constructor (context: PipelineContext, next?: Middleware) {
+  private constructor(context: PipelineContext, next?: Middleware) {
     super(context, next)
   }
 
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -48,13 +48,13 @@ export class PluginConfigurationMiddleware extends BaseMiddleware implements Mid
     return new PluginConfigurationMiddleware(context, next)
   }
 
-  tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     const account = ctx.contextData.account
     if (account.uuid === systemAccountUuid || account.fullSocialIds.some((it) => it.value === aiBotAccountEmail)) {
       // We pass for system accounts and services.
       return this.provideTx(ctx, txes)
     }
-    function checkTx (tx: Tx): void {
+    function checkTx(tx: Tx): void {
       if (TxProcessor.isExtendsCUD(tx._class)) {
         const cud = tx as TxCUD<Doc>
         if (cud.objectClass === core.class.PluginConfiguration && ctx.contextData.account.role !== AccountRole.Owner) {

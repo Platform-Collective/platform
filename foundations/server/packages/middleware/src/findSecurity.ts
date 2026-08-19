@@ -32,11 +32,11 @@ import {
  * @public
  */
 export class FindSecurityMiddleware extends BaseMiddleware implements Middleware {
-  private constructor (context: PipelineContext, next?: Middleware) {
+  private constructor(context: PipelineContext, next?: Middleware) {
     super(context, next)
   }
 
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined

@@ -105,7 +105,7 @@
   const notificationClient = getResource(notification.function.GetInboxNotificationsClient).then((res) => res())
 
   $: read(_id)
-  function read (_id: Ref<Doc>): void {
+  function read(_id: Ref<Doc>): void {
     if (lastId !== _id) {
       const prev = lastId
       lastId = _id
@@ -171,7 +171,7 @@
     selectedTab = tabs.findIndex((tab) => tab.label === documentRes.string.ContentTab)
   }
 
-  function onSendDocRequest (requestClass: Ref<Class<DocumentRequest>>): void {
+  function onSendDocRequest(requestClass: Ref<Class<DocumentRequest>>): void {
     if ($controlledDocument == null) {
       return
     }
@@ -190,7 +190,7 @@
     showPopup(TeamPopup, teamPopupData, 'center')
   }
 
-  async function completeReviewRequest (ev: MouseEvent): Promise<void> {
+  async function completeReviewRequest(ev: MouseEvent): Promise<void> {
     showPopup(
       SignatureDialog,
       { confirmationTitle: documentRes.string.ConfirmReviewCompletion },
@@ -207,7 +207,7 @@
     )
   }
 
-  async function changeApprovalRequestState (ev: MouseEvent, isRejection: boolean): Promise<void> {
+  async function changeApprovalRequestState(ev: MouseEvent, isRejection: boolean): Promise<void> {
     showPopup(SignatureDialog, { isRejection }, eventToHTMLElement(ev), async (res) => {
       if (!res) return
 
@@ -231,7 +231,7 @@
     })
   }
 
-  async function onCreateNewDraft (): Promise<void> {
+  async function onCreateNewDraft(): Promise<void> {
     if (creating) return
 
     creating = true
@@ -274,7 +274,7 @@
     }
   }
 
-  async function onEditDocument (): Promise<void> {
+  async function onEditDocument(): Promise<void> {
     if ($controlledDocument != null && $canCreateNewSnapshot && $isProjectEditable) {
       try {
         await createDocumentSnapshotAndEdit(client, $controlledDocument)
@@ -287,7 +287,7 @@
   }
 
   let titleElement: HTMLElement
-  function showVersions (): void {
+  function showVersions(): void {
     isTitlePressed = true
     showPopup(DocumentVersionsPopup, {}, titleElement, () => {
       isTitlePressed = false
@@ -324,7 +324,7 @@
     allowClose={withClose && !embedded}
     {embedded}
     printHeader={false}
-    adaptive={'autoExtra'}
+    adaptive="autoExtra"
     overflowExtra
     hideSearch
     on:close
@@ -336,9 +336,9 @@
           <ProjectSelector
             value={project}
             space={$controlledDocument.space}
-            kind={'ghost'}
-            size={'medium'}
-            justify={'left'}
+            kind="ghost"
+            size="medium"
+            justify="left"
             disabled
             on:change={(e) => {
               project = e.detail
@@ -460,7 +460,7 @@
       {#if $editorMode === 'comparing'}
         <DocumentDiffViewer />
       {:else}
-        <Tabs model={tabs} bind:selected={selectedTab} size={'large'} padding="0 1.5rem" noMargin />
+        <Tabs model={tabs} bind:selected={selectedTab} size="large" padding="0 1.5rem" noMargin />
       {/if}
     </Collaboration>
     <svelte:fragment slot="custom-attributes">

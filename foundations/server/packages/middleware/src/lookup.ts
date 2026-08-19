@@ -33,11 +33,11 @@ import {
  * @public
  */
 export class LookupMiddleware extends BaseMiddleware implements Middleware {
-  private constructor (context: PipelineContext, next?: Middleware) {
+  private constructor(context: PipelineContext, next?: Middleware) {
     super(context, next)
   }
 
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -57,9 +57,9 @@ export class LookupMiddleware extends BaseMiddleware implements Middleware {
     if (options?.lookup !== undefined) {
       const newResult: T[] = []
       let counter = 0
-      const idClassMap: Record<string, { id: number, doc: Doc, count: number }> = {}
+      const idClassMap: Record<string, { id: number; doc: Doc; count: number }> = {}
 
-      function mapDoc (doc: Doc): number {
+      function mapDoc(doc: Doc): number {
         const key = doc._class + '@' + doc._id
         let docRef = idClassMap[key]
         if (docRef === undefined) {
@@ -116,7 +116,7 @@ export class LookupMiddleware extends BaseMiddleware implements Middleware {
         if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
           if ((_doc as any)[k] === v) {
             if (!cloned) {
-              _doc = { ...doc } as any
+              _doc = { ...doc }
               cloned = true
             }
             // eslint-disable-next-line @typescript-eslint/no-dynamic-delete

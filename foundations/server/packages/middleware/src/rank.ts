@@ -40,11 +40,11 @@ import {
 export const RANK_AUTO = '' as Rank
 
 export class RankMiddleware extends BaseMiddleware implements Middleware {
-  private constructor (context: PipelineContext, next?: Middleware) {
+  private constructor(context: PipelineContext, next?: Middleware) {
     super(context, next)
   }
 
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -52,7 +52,7 @@ export class RankMiddleware extends BaseMiddleware implements Middleware {
     return new RankMiddleware(context, next)
   }
 
-  async tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  async tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     for (const tx of txes) {
       await this.processTx(ctx, tx)
     }
@@ -60,7 +60,7 @@ export class RankMiddleware extends BaseMiddleware implements Middleware {
     return await this.provideTx(ctx, txes)
   }
 
-  private async processTx (ctx: MeasureContext<SessionData>, tx: Tx): Promise<void> {
+  private async processTx(ctx: MeasureContext<SessionData>, tx: Tx): Promise<void> {
     if (tx._class === core.class.TxCreateDoc) {
       await this.setRank(ctx, tx as TxCreateDoc<Doc>)
     } else if (tx._class === core.class.TxApplyIf) {
@@ -71,7 +71,7 @@ export class RankMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  private async setRank (ctx: MeasureContext<SessionData>, tx: TxCreateDoc<Doc> | TxMixin<Doc, Doc>): Promise<void> {
+  private async setRank(ctx: MeasureContext<SessionData>, tx: TxCreateDoc<Doc> | TxMixin<Doc, Doc>): Promise<void> {
     const attributes =
       tx._class === core.class.TxCreateDoc
         ? this.context.hierarchy.getAllAttributes(tx.objectClass)

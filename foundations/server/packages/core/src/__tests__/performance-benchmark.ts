@@ -25,7 +25,7 @@ interface PerfResult {
   time: number
 }
 
-function benchmark (name: string, obj: any, iterations: number = 1000): PerfResult {
+function benchmark(name: string, obj: any, iterations: number = 1000): PerfResult {
   const start = process.hrtime.bigint()
   let size = 0
   for (let i = 0; i < iterations; i++) {

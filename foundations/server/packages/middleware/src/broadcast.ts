@@ -40,7 +40,7 @@ import { BaseMiddleware, createBroadcastEvent } from '@hcengineering/server-core
  * @public
  */
 export class BroadcastMiddleware extends BaseMiddleware implements Middleware {
-  constructor (
+  constructor(
     context: PipelineContext,
     protected readonly next: Middleware | undefined,
     readonly broadcast: BroadcastOps
@@ -49,11 +49,11 @@ export class BroadcastMiddleware extends BaseMiddleware implements Middleware {
     context.broadcastEvent = (ctx, tx) => this.doBroadcast(ctx, tx)
   }
 
-  static create (broadcast: BroadcastOps): MiddlewareCreator {
+  static create(broadcast: BroadcastOps): MiddlewareCreator {
     return async (ctx, pipelineContext, next) => new BroadcastMiddleware(pipelineContext, next, broadcast)
   }
 
-  async handleBroadcast (ctx: MeasureContext<SessionData>): Promise<void> {
+  async handleBroadcast(ctx: MeasureContext<SessionData>): Promise<void> {
     await this.next?.handleBroadcast(ctx)
 
     await this.doBroadcast(ctx, ctx.contextData.broadcast.txes, ctx.contextData.broadcast.targets)
@@ -63,14 +63,14 @@ export class BroadcastMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  tx (ctx: MeasureContext<SessionData>, tx: Tx[]): Promise<TxMiddlewareResult> {
+  tx(ctx: MeasureContext<SessionData>, tx: Tx[]): Promise<TxMiddlewareResult> {
     // We collect all broadcast information here, so we could send it later
     ctx.contextData.broadcast.txes.push(...tx)
 
     return this.provideTx(ctx, tx)
   }
 
-  async doBroadcast (ctx: MeasureContext<SessionData>, tx: Tx[], targets?: BroadcastTargets): Promise<void> {
+  async doBroadcast(ctx: MeasureContext<SessionData>, tx: Tx[], targets?: BroadcastTargets): Promise<void> {
     if (tx.length === 0) {
       return
     }
@@ -150,7 +150,7 @@ export class BroadcastMiddleware extends BaseMiddleware implements Middleware {
     await handleSend(ctx, toSendAll, undefined, Array.from(toSendTarget.keys()) as AccountUuid[])
   }
 
-  private async sendWithPart (
+  private async sendWithPart(
     derived: Tx[],
     ctx: MeasureContext<SessionData>,
     target: AccountUuid | undefined,
@@ -171,6 +171,6 @@ export class BroadcastMiddleware extends BaseMiddleware implements Middleware {
   }
 }
 
-function isExlcude (result: BroadcastResult): result is BroadcastExcludeResult {
+function isExlcude(result: BroadcastResult): result is BroadcastExcludeResult {
   return (result as BroadcastExcludeResult).exclude !== undefined
 }

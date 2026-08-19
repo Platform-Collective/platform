@@ -76,7 +76,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function transfer (): Promise<void> {
+  async function transfer(): Promise<void> {
     if (request !== undefined) {
       await transferDocuments(client, request)
       dispatch('close')
@@ -97,20 +97,20 @@
     canTransfer = false
   }
 
-  async function selectProject (spaceRef: Ref<DocumentSpace> | undefined): Promise<void> {
+  async function selectProject(spaceRef: Ref<DocumentSpace> | undefined): Promise<void> {
     targetProjectId = spaceRef !== undefined ? await getLatestProjectId(spaceRef) : undefined
   }
 
-  async function fetchSpace (id: Ref<DocumentSpace> | undefined): Promise<void> {
+  async function fetchSpace(id: Ref<DocumentSpace> | undefined): Promise<void> {
     targetSpace = id === undefined ? undefined : await client.findOne(documents.class.DocumentSpace, { _id: id })
   }
 
-  async function fetchSpaceType (id: Ref<DocumentSpaceType> | undefined): Promise<void> {
+  async function fetchSpaceType(id: Ref<DocumentSpaceType> | undefined): Promise<void> {
     targetSpaceType =
       id === undefined ? undefined : await client.findOne(documents.class.DocumentSpaceType, { _id: id }, {})
   }
 
-  async function handleParentSelected (doc: Doc): Promise<void> {
+  async function handleParentSelected(doc: Doc): Promise<void> {
     if (hierarchy.isDerived(doc._class, documents.class.DocumentSpace)) {
       targetParentDocumentId = undefined
       targetParentId = undefined
@@ -122,14 +122,14 @@
     }
   }
 
-  function handleProjectSelected (value: Ref<Project> | undefined): void {
+  function handleProjectSelected(value: Ref<Project> | undefined): void {
     targetProjectId = value
   }
 
   let haveTemplateObjects: boolean = false
   $: void checkForTemplateObjects(affectedDocs)
 
-  async function checkForTemplateObjects (docs: DocumentMeta[]): Promise<void> {
+  async function checkForTemplateObjects(docs: DocumentMeta[]): Promise<void> {
     const cdocs = await client.findAll(documents.class.ControlledDocument, {
       attachedTo: { $in: docs.map((d) => d._id) }
     })
@@ -175,8 +175,8 @@
           <ProjectSelector
             value={targetProjectId}
             space={targetSpace._id}
-            kind={'no-border'}
-            size={'small'}
+            kind="no-border"
+            size="small"
             justify="left"
             showReadonly={false}
             on:change={(e) => {

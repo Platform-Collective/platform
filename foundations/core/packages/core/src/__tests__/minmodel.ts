@@ -23,19 +23,19 @@ import { DOMAIN_TX, TxFactory } from '../tx'
 
 const txFactory = new TxFactory(core.account.System)
 
-function createClass (_class: Ref<Class<Obj>>, attributes: Data<Class<Obj>>): TxCreateDoc<Doc> {
+function createClass(_class: Ref<Class<Obj>>, attributes: Data<Class<Obj>>): TxCreateDoc<Doc> {
   return txFactory.createTxCreateDoc(core.class.Class, core.space.Model, attributes, _class)
 }
 
-function createInterface (_interface: Ref<Interface<Doc>>, attributes: Data<Interface<Doc>>): TxCreateDoc<Doc> {
+function createInterface(_interface: Ref<Interface<Doc>>, attributes: Data<Interface<Doc>>): TxCreateDoc<Doc> {
   return txFactory.createTxCreateDoc(core.class.Interface, core.space.Model, attributes, _interface)
 }
 
-export function createDoc<T extends Doc> (_class: Ref<Class<T>>, attributes: Data<T>): TxCreateDoc<T> {
+export function createDoc<T extends Doc>(_class: Ref<Class<T>>, attributes: Data<T>): TxCreateDoc<T> {
   return txFactory.createTxCreateDoc(_class, core.space.Model, attributes)
 }
 
-export function updateDoc<T extends Doc> (
+export function updateDoc<T extends Doc>(
   _class: Ref<Class<T>>,
   space: Ref<Space>,
   objectId: Ref<T>,
@@ -44,7 +44,7 @@ export function updateDoc<T extends Doc> (
   return txFactory.createTxUpdateDoc(_class, space, objectId, operations)
 }
 
-export function deleteDoc<T extends Doc> (_class: Ref<Class<T>>, space: Ref<Space>, objectId: Ref<T>): TxRemoveDoc<Doc> {
+export function deleteDoc<T extends Doc>(_class: Ref<Class<T>>, space: Ref<Space>, objectId: Ref<T>): TxRemoveDoc<Doc> {
   return txFactory.createTxRemoveDoc(_class, space, objectId)
 }
 
@@ -98,7 +98,7 @@ export const test = plugin('test' as Plugin, {
  * Generate minimal model for testing purposes.
  * @returns R
  */
-export function genMinModel (): TxCUD<Doc>[] {
+export function genMinModel(): TxCUD<Doc>[] {
   const txes = []
   // Fill Tx'es with basic model classes.
   txes.push(createClass(core.class.Obj, { label: 'Obj' as IntlString, kind: ClassifierKind.CLASS }))

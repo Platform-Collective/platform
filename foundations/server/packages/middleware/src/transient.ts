@@ -45,7 +45,7 @@ export class TransientMiddleware extends BaseMiddleware implements Middleware {
   now = Date.now() / 1000
   dbProvider?: DbAdapter
 
-  private constructor (
+  private constructor(
     readonly ctx: MeasureContext,
     context: PipelineContext,
     next?: Middleware
@@ -55,7 +55,7 @@ export class TransientMiddleware extends BaseMiddleware implements Middleware {
     // Need to find all classes with TTL enabled
     const classes = context.modelDb.findAllSync(core.mixin.TransientTTL, {})
     for (const cl of classes) {
-      this.ttlValues.set(cl._id as Ref<Class<Doc>>, cl.ttl)
+      this.ttlValues.set(cl._id, cl.ttl)
     }
 
     this.dbProvider = context.adapterManager?.getAdapter?.(DOMAIN_TRANSIENT, true)
@@ -66,7 +66,7 @@ export class TransientMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -105,7 +105,7 @@ export class TransientMiddleware extends BaseMiddleware implements Middleware {
     }
   })
 
-  override async close (): Promise<void> {
+  override async close(): Promise<void> {
     if (this.ttlChecker !== undefined) {
       clearInterval(this.ttlChecker)
       this.ttlChecker = undefined
@@ -113,7 +113,7 @@ export class TransientMiddleware extends BaseMiddleware implements Middleware {
     await super.close()
   }
 
-  tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     for (const tx of txes.filter((it) => TxProcessor.isExtendsCUD(it._class)) as TxCUD<Doc>[]) {
       const ttl = this.ttlValues.get(tx.objectClass)
       if (ttl !== undefined && this.context.hierarchy.findDomain(tx.objectClass) === DOMAIN_TRANSIENT) {

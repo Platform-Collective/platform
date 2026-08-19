@@ -15,7 +15,7 @@
 
 import { ClientConnectEvent, type DocChunk, generateId } from '..'
 import type { Class, Doc, Domain, Ref, Timestamp } from '../classes'
-import { type ClientConnection } from '../client'
+import type { ClientConnection } from '../client'
 import core from '../component'
 import { Hierarchy } from '../hierarchy'
 import { ModelDb, TxDb } from '../memdb'
@@ -32,7 +32,7 @@ import type { Tx } from '../tx'
 import { DOMAIN_TX } from '../tx'
 import { genMinModel } from './minmodel'
 
-export async function connect (handler: (tx: Tx) => void): Promise<ClientConnection> {
+export async function connect(handler: (tx: Tx) => void): Promise<ClientConnection> {
   const txes = genMinModel()
 
   const hierarchy = new Hierarchy()
@@ -45,8 +45,8 @@ export async function connect (handler: (tx: Tx) => void): Promise<ClientConnect
     await model.tx(tx)
   }
 
-  async function findAll<T extends Doc> (_class: Ref<Class<T>>, query: DocumentQuery<T>): Promise<FindResult<T>> {
-    const domain = hierarchy.getClass(_class).domain
+  async function findAll<T extends Doc>(_class: Ref<Class<T>>, query: DocumentQuery<T>): Promise<FindResult<T>> {
+    const { domain } = hierarchy.getClass(_class)
     if (domain === DOMAIN_TX) return await transactions.findAll(_class, query)
     return await model.findAll(_class, query)
   }
@@ -57,24 +57,24 @@ export async function connect (handler: (tx: Tx) => void): Promise<ClientConnect
 
     handler?: (event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>
 
-    set onConnect (
+    set onConnect(
       handler: ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>) | undefined
     ) {
       this.handler = handler
       void this.handler?.(ClientConnectEvent.Connected, '', {})
     }
 
-    get onConnect (): ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>) | undefined {
+    get onConnect(): ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>) | undefined {
       return this.handler
     }
 
-    async searchFulltext (query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+    async searchFulltext(query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
       return { docs: [] }
     }
 
     pushHandler = (): void => {}
 
-    async tx (tx: Tx): Promise<TxResult> {
+    async tx(tx: Tx): Promise<TxResult> {
       if (tx.objectSpace === core.space.Model) {
         hierarchy.tx(tx)
       }
@@ -82,13 +82,13 @@ export async function connect (handler: (tx: Tx) => void): Promise<ClientConnect
       return result[0]
     }
 
-    async domainRequest (): Promise<DomainResult> {
+    async domainRequest(): Promise<DomainResult> {
       return await Promise.resolve({ domain: 'test' as Domain, value: null })
     }
 
-    async close (): Promise<void> {}
+    async close(): Promise<void> {}
 
-    async loadChunk (domain: Domain, idx?: number): Promise<DocChunk> {
+    async loadChunk(domain: Domain, idx?: number): Promise<DocChunk> {
       return {
         idx: -1,
         docs: [],
@@ -96,22 +96,22 @@ export async function connect (handler: (tx: Tx) => void): Promise<ClientConnect
       }
     }
 
-    async getDomainHash (domain: Domain): Promise<string> {
+    async getDomainHash(domain: Domain): Promise<string> {
       return generateId()
     }
 
-    async closeChunk (idx: number): Promise<void> {}
-    async loadDocs (domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
+    async closeChunk(idx: number): Promise<void> {}
+    async loadDocs(domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
       return []
     }
 
-    async upload (domain: Domain, docs: Doc[]): Promise<void> {}
-    async clean (domain: Domain, docs: Ref<Doc>[]): Promise<void> {}
-    async loadModel (last: Timestamp): Promise<Tx[]> {
+    async upload(domain: Domain, docs: Doc[]): Promise<void> {}
+    async clean(domain: Domain, docs: Ref<Doc>[]): Promise<void> {}
+    async loadModel(last: Timestamp): Promise<Tx[]> {
       return txes
     }
 
-    async sendForceClose (): Promise<void> {}
+    async sendForceClose(): Promise<void> {}
   }
 
   return new ClientConnectionImpl()

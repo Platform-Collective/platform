@@ -356,13 +356,12 @@ describe('RateLimiter and TimeRateLimiter - Advanced Edge Cases', () => {
 
       let executionCount = 0
 
-      const nestedOp = async (id: number): Promise<number> => {
-        return await innerLimiter.exec(async () => {
+      const nestedOp = async (id: number): Promise<number> =>
+        await innerLimiter.exec(async () => {
           executionCount++
           await new Promise((resolve) => setTimeout(resolve, 5))
           return id
         })
-      }
 
       const results = await Promise.all([
         outerLimiter.exec(async () => await nestedOp(1)),

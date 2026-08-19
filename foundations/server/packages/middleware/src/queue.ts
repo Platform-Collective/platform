@@ -27,7 +27,7 @@ import {
 export class QueueMiddleware extends BaseMiddleware {
   txProducer: PlatformQueueProducer<Tx>
   connected: Promise<void> | undefined
-  constructor (
+  constructor(
     ctx: MeasureContext,
     readonly context: PipelineContext,
     protected readonly next: Middleware | undefined,
@@ -37,13 +37,13 @@ export class QueueMiddleware extends BaseMiddleware {
     this.txProducer = queue.getProducer<Tx>(ctx, QueueTopic.Tx)
   }
 
-  static create (queue: PlatformQueue): MiddlewareCreator {
+  static create(queue: PlatformQueue): MiddlewareCreator {
     return async (ctx, context, next) => {
       return new QueueMiddleware(ctx, context, next, queue)
     }
   }
 
-  async handleBroadcast (ctx: MeasureContext<SessionData>): Promise<void> {
+  async handleBroadcast(ctx: MeasureContext<SessionData>): Promise<void> {
     if (this.connected !== undefined) {
       await this.connected
       this.connected = undefined

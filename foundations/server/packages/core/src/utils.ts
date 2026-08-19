@@ -50,7 +50,7 @@ import type { OneSecondCounters, Pipeline } from './types'
  * Return some estimation for object size
  * Optimized version that handles circular references and uses more efficient queue processing
  */
-export function estimateDocSize (_obj: any): number {
+export function estimateDocSize(_obj: any): number {
   let result = 0
   const toProcess = [_obj]
   const visited = new WeakSet<object>()
@@ -125,7 +125,7 @@ export function estimateDocSize (_obj: any): number {
 /**
  * Calculate hash for object
  */
-export function updateHashForDoc (hash: Hash, _obj: any): void {
+export function updateHashForDoc(hash: Hash, _obj: any): void {
   const toProcess = [_obj]
   while (toProcess.length > 0) {
     const obj = toProcess.shift()
@@ -186,7 +186,7 @@ export class SessionDataImpl implements SessionData {
   _contextCache: Map<string, any> | undefined
   _broadcast: SessionData['broadcast'] | undefined
 
-  constructor (
+  constructor(
     readonly account: Account,
     readonly sessionId: string,
     readonly admin: boolean | undefined,
@@ -197,11 +197,11 @@ export class SessionDataImpl implements SessionData {
     _contextCache: Map<string, any> | undefined,
     readonly modelDb: ModelDb,
     readonly socialStringsToUsers: Map<
-    PersonId,
-    {
-      accontUuid: AccountUuid
-      role: AccountRole
-    }
+      PersonId,
+      {
+        accontUuid: AccountUuid
+        role: AccountRole
+      }
     >,
     readonly service: string,
     readonly grant?: PermissionsGrant
@@ -211,7 +211,7 @@ export class SessionDataImpl implements SessionData {
     this._broadcast = _broadcast
   }
 
-  get broadcast (): SessionData['broadcast'] {
+  get broadcast(): SessionData['broadcast'] {
     if (this._broadcast === undefined) {
       this._broadcast = {
         targets: {},
@@ -223,14 +223,14 @@ export class SessionDataImpl implements SessionData {
     return this._broadcast
   }
 
-  get removedMap (): Map<Ref<Doc>, Doc> {
+  get removedMap(): Map<Ref<Doc>, Doc> {
     if (this._removedMap === undefined) {
       this._removedMap = new Map()
     }
     return this._removedMap
   }
 
-  get contextCache (): Map<string, any> {
+  get contextCache(): Map<string, any> {
     if (this._contextCache === undefined) {
       this._contextCache = new Map()
     }
@@ -238,7 +238,7 @@ export class SessionDataImpl implements SessionData {
   }
 }
 
-export function createBroadcastEvent (classes: Ref<Class<Doc>>[]): TxWorkspaceEvent<BulkUpdateEvent> {
+export function createBroadcastEvent(classes: Ref<Class<Doc>>[]): TxWorkspaceEvent<BulkUpdateEvent> {
   return {
     _class: core.class.TxWorkspaceEvent,
     _id: generateId(),
@@ -253,7 +253,7 @@ export function createBroadcastEvent (classes: Ref<Class<Doc>>[]): TxWorkspaceEv
   }
 }
 
-export function loadBrandingMap (brandingPath?: string): BrandingMap {
+export function loadBrandingMap(brandingPath?: string): BrandingMap {
   let brandings: BrandingMap = {}
   if (brandingPath !== undefined && brandingPath !== '') {
     brandings = JSON.parse(fs.readFileSync(brandingPath, 'utf8'))
@@ -267,7 +267,7 @@ export function loadBrandingMap (brandingPath?: string): BrandingMap {
   return brandings
 }
 
-export function wrapPipeline (
+export function wrapPipeline(
   ctx: MeasureContext,
   pipeline: Pipeline,
   wsIds: WorkspaceIds,
@@ -369,24 +369,24 @@ export function wrapPipeline (
   }
 }
 
-export function wrapAdapterToClient (ctx: MeasureContext, storageAdapter: DbAdapter, txes: Tx[]): ClientConnection {
+export function wrapAdapterToClient(ctx: MeasureContext, storageAdapter: DbAdapter, txes: Tx[]): ClientConnection {
   class TestClientConnection implements ClientConnection {
     isConnected = (): boolean => true
 
     handler?: (event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>
 
-    set onConnect (
+    set onConnect(
       handler: ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>) | undefined
     ) {
       this.handler = handler
       void this.handler?.(ClientConnectEvent.Connected, '', {})
     }
 
-    get onConnect (): ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>) | undefined {
+    get onConnect(): ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>) | undefined {
       return this.handler
     }
 
-    pushHandler (): void {}
+    pushHandler(): void {}
 
     async findAll<T extends Doc>(
       _class: Ref<Class<Doc>>,
@@ -421,44 +421,44 @@ export function wrapAdapterToClient (ctx: MeasureContext, storageAdapter: DbAdap
       return { domain, value: null as any }
     }
 
-    async tx (tx: Tx): Promise<TxResult> {
+    async tx(tx: Tx): Promise<TxResult> {
       return await storageAdapter.tx(ctx, tx)
     }
 
-    async searchFulltext (): Promise<SearchResult> {
+    async searchFulltext(): Promise<SearchResult> {
       return { docs: [] }
     }
 
-    async close (): Promise<void> {}
+    async close(): Promise<void> {}
 
-    async loadChunk (domain: Domain): Promise<DocChunk> {
+    async loadChunk(domain: Domain): Promise<DocChunk> {
       throw new Error('unsupported')
     }
 
-    async getDomainHash (domain: Domain): Promise<string> {
+    async getDomainHash(domain: Domain): Promise<string> {
       return await storageAdapter.getDomainHash(ctx, domain)
     }
 
-    async closeChunk (idx: number): Promise<void> {}
+    async closeChunk(idx: number): Promise<void> {}
 
-    async loadDocs (domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
+    async loadDocs(domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
       return []
     }
 
-    async upload (domain: Domain, docs: Doc[]): Promise<void> {}
+    async upload(domain: Domain, docs: Doc[]): Promise<void> {}
 
-    async clean (domain: Domain, docs: Ref<Doc>[]): Promise<void> {}
+    async clean(domain: Domain, docs: Ref<Doc>[]): Promise<void> {}
 
-    async loadModel (): Promise<Tx[]> {
+    async loadModel(): Promise<Tx[]> {
       return txes
     }
 
-    async sendForceClose (): Promise<void> {}
+    async sendForceClose(): Promise<void> {}
   }
   return new TestClientConnection()
 }
 
-export async function calcHashHash (ctx: MeasureContext, domain: Domain, adapter: DbAdapter): Promise<string> {
+export async function calcHashHash(ctx: MeasureContext, domain: Domain, adapter: DbAdapter): Promise<string> {
   const hash = createHash('sha256')
 
   const it = adapter.find(ctx, domain)
@@ -493,7 +493,7 @@ export class OneSecondCountersImpl implements OneSecondCounters {
   private readonly counterTimeouts = new Map<number, TimerOp>()
   ids: number = 0
 
-  add (counter: string, count: number): void {
+  add(counter: string, count: number): void {
     this.counters.set(counter, (this.counters.get(counter) ?? 0) + count)
   }
 
@@ -509,11 +509,11 @@ export class OneSecondCountersImpl implements OneSecondCounters {
     }
   }
 
-  entries (): MapIterator<[string, number]> {
+  entries(): MapIterator<[string, number]> {
     return this.counters.entries()
   }
 
-  check (): void {
+  check(): void {
     // Check for timeouts
     const now = platformNow()
     for (const [k, [timeout, counter, count, completed]] of [...this.counterTimeouts.entries()]) {

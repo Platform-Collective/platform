@@ -36,7 +36,7 @@ import { BaseMiddleware, emptyFindResult, paginateInMemory } from '@hcengineerin
 export class DomainFindMiddleware extends BaseMiddleware implements Middleware {
   adapterManager!: DBAdapterManager
 
-  static async create (ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
+  static async create(ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
     const middleware = new DomainFindMiddleware(context, next)
     if (context.adapterManager == null) {
       throw new PlatformError(unknownError('Adapter maneger should be configured'))
@@ -45,7 +45,7 @@ export class DomainFindMiddleware extends BaseMiddleware implements Middleware {
     return middleware
   }
 
-  toPrintableOptions (options?: ServerFindOptions<Doc>): FindOptions<Doc> {
+  toPrintableOptions(options?: ServerFindOptions<Doc>): FindOptions<Doc> {
     const { ctx, allowedSpaces, associations, ...opt } = options ?? {}
     return opt
   }

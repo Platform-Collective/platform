@@ -24,7 +24,7 @@ describe('OneSecondCountersImpl', () => {
     ;(jest as any).useFakeTimers('modern')
   })
 
-  function ageTimeouts (ms: number): void {
+  function ageTimeouts(ms: number): void {
     const timeouts = (counters as any).counterTimeouts as Map<number, any>
     const now = platformNow()
     for (const [k, v] of timeouts.entries()) {

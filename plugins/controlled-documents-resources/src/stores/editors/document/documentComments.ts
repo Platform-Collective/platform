@@ -91,7 +91,7 @@ export const addCommentFx = createEffect(
 )
 
 export const resolveCommentFx = createEffect(
-  async (payload: { comment: DocumentComment | null | undefined, resolved: boolean }) => {
+  async (payload: { comment: DocumentComment | null | undefined; resolved: boolean }) => {
     const { comment, resolved } = payload
 
     if (comment === null || comment === undefined) {
@@ -105,7 +105,7 @@ export const resolveCommentFx = createEffect(
 )
 
 export const showDocumentCommentsPopupFx = createEffect(
-  (payload: { element?: PopupAlignment, nodeId?: string | null }) => {
+  (payload: { element?: PopupAlignment; nodeId?: string | null }) => {
     showPopup(
       documents.component.DocumentCommentsPopup,
       payload,
@@ -117,7 +117,7 @@ export const showDocumentCommentsPopupFx = createEffect(
   }
 )
 
-export const showAddCommentPopupFx = createEffect((payload: { element?: PopupAlignment, nodeId?: string | null }) => {
+export const showAddCommentPopupFx = createEffect((payload: { element?: PopupAlignment; nodeId?: string | null }) => {
   showPopup(
     documents.component.AddCommentPopup,
     {

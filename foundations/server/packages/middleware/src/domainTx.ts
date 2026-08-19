@@ -44,7 +44,7 @@ export class DomainTxMiddleware extends BaseMiddleware implements Middleware {
   adapterManager!: DBAdapterManager
 
   @withContext('domainTx-middleware')
-  static async create (ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
+  static async create(ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
     const middleware = new DomainTxMiddleware(context, next)
     if (context.adapterManager == null) {
       throw new PlatformError(unknownError('Domain adapter manager should be specified'))
@@ -53,7 +53,7 @@ export class DomainTxMiddleware extends BaseMiddleware implements Middleware {
     return middleware
   }
 
-  async tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  async tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     const txToStore: Tx[] = []
 
     for (const tx of txes) {
@@ -73,7 +73,7 @@ export class DomainTxMiddleware extends BaseMiddleware implements Middleware {
     return result
   }
 
-  private async routeTx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxResult[]> {
+  private async routeTx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxResult[]> {
     const result: TxResult[] = []
 
     const adapterGroups = new Map<string, TxCUD<Doc>[]>()

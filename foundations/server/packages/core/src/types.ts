@@ -221,7 +221,7 @@ export interface PipelineContext {
   contextVars: Record<string, any>
 
   broadcastEvent?: (ctx: MeasureContext, tx: Tx[]) => Promise<void>
-  userStatusMap?: Map<Ref<UserStatus>, { online: boolean, user: AccountUuid }>
+  userStatusMap?: Map<Ref<UserStatus>, { online: boolean; user: AccountUuid }>
 }
 /**
  * @public
@@ -287,7 +287,7 @@ export interface TriggerControl {
   lowLevel: LowLevelStorage
   modelDb: ModelDb
   removedMap: Map<Ref<Doc>, Doc>
-  userStatusMap: Map<Ref<UserStatus>, { online: boolean, user: AccountUuid }>
+  userStatusMap: Map<Ref<UserStatus>, { online: boolean; user: AccountUuid }>
   domainRequest: (ctx: MeasureContext, domain: OperationDomain, params: DomainParams) => Promise<DomainResult>
 
   queue?: PlatformQueue
@@ -423,7 +423,7 @@ export interface FullTextAdapter {
   close: () => Promise<void>
 
   // If no field is provided, will return existing mapping of all dimms.
-  initMapping: (ctx: MeasureContext, field?: { key: string, dims: number }) => Promise<boolean>
+  initMapping: (ctx: MeasureContext, field?: { key: string; dims: number }) => Promise<boolean>
 }
 
 /**
@@ -546,7 +546,7 @@ export interface StorageConfig {
 
 export class NoSuchKeyError extends Error {
   code: string
-  constructor (
+  constructor(
     msg: string,
     readonly cause?: any
   ) {
@@ -574,11 +574,11 @@ export interface ClientSessionCtx {
 
   pipeline: Pipeline
   socialStringsToUsers: Map<
-  PersonId,
-  {
-    accontUuid: AccountUuid
-    role: AccountRole
-  }
+    PersonId,
+    {
+      accontUuid: AccountUuid
+      role: AccountRole
+    }
   >
   requestId: ReqId | undefined
   sendResponse: (id: ReqId | undefined, msg: any) => Promise<void>
@@ -723,7 +723,7 @@ export let LOGGING_ENABLED = true
 /**
  * @public
  */
-export function disableLogging (): void {
+export function disableLogging(): void {
   LOGGING_ENABLED = false
 }
 
@@ -734,8 +734,8 @@ export interface AddSessionActive {
 }
 
 export type GetWorkspaceResponse =
-  | { upgrade: true, progress?: number }
-  | { error: any, terminate?: boolean, specialError?: 'archived' | 'migration' }
+  | { upgrade: true; progress?: number }
+  | { error: any; terminate?: boolean; specialError?: 'archived' | 'migration' }
 
 export type AddSessionResponse = AddSessionActive | GetWorkspaceResponse
 
@@ -746,7 +746,7 @@ export type SessionHealth = 'healthy' | 'degraded' | 'unhealthy'
  */
 export interface SessionManager {
   // workspaces: Map<WorkspaceUuid, Workspace>
-  sessions: Map<string, { session: Session, socket: ConnectionSocket }>
+  sessions: Map<string, { session: Session; socket: ConnectionSocket }>
 
   addSession: (
     ctx: MeasureContext,

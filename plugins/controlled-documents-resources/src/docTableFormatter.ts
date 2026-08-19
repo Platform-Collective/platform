@@ -23,7 +23,7 @@ import { isIntlString } from '@hcengineering/converter-resources'
 /**
  * Format version number from major and minor
  */
-function formatVersion (major: number | undefined, minor: number | undefined): string {
+function formatVersion(major: number | undefined, minor: number | undefined): string {
   if (major === undefined || minor === undefined) {
     return ''
   }
@@ -33,7 +33,7 @@ function formatVersion (major: number | undefined, minor: number | undefined): s
 /**
  * Get state value from document (handles both state and controlledState)
  */
-function getDocumentState (doc: Record<string, unknown>): string | undefined {
+function getDocumentState(doc: Record<string, unknown>): string | undefined {
   const controlledState: unknown = doc.controlledState
   if (controlledState !== undefined && controlledState !== null) {
     return String(controlledState)
@@ -50,7 +50,7 @@ const spaceCache = new Map<Ref<Space>, string>()
 /**
  * Load space name from space reference with caching support
  */
-async function loadSpaceName (spaceRef: Ref<Space>): Promise<string> {
+async function loadSpaceName(spaceRef: Ref<Space>): Promise<string> {
   // Check cache first
   const cachedName = spaceCache.get(spaceRef)
   if (cachedName !== undefined) {
@@ -78,7 +78,7 @@ async function loadSpaceName (spaceRef: Ref<Space>): Promise<string> {
  * Value formatter for controlled document fields
  * Handles special cases where empty keys use custom presenters
  */
-export async function formatControlledDocumentValue (
+export async function formatControlledDocumentValue(
   attr: AttributeModel,
   card: Doc,
   hierarchy: Hierarchy,
@@ -104,9 +104,7 @@ export async function formatControlledDocumentValue (
     // Translate label to determine which field to extract
     let labelText = ''
     if (typeof attr.label === 'string') {
-      labelText = isIntlString(attr.label)
-        ? await translate(attr.label as unknown as IntlString, {}, language)
-        : attr.label
+      labelText = isIntlString(attr.label) ? await translate(attr.label, {}, language) : attr.label
     } else {
       labelText = await translate(attr.label, {}, language)
     }
@@ -210,9 +208,7 @@ export async function formatControlledDocumentValue (
       // Translate label to determine which field to extract for template
       let labelText = ''
       if (typeof attr.label === 'string') {
-        labelText = isIntlString(attr.label)
-          ? await translate(attr.label as unknown as IntlString, {}, language)
-          : attr.label
+        labelText = isIntlString(attr.label) ? await translate(attr.label, {}, language) : attr.label
       } else {
         labelText = await translate(attr.label, {}, language)
       }

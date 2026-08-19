@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-import { type Timestamp } from './classes'
+import type { Timestamp } from './classes'
 
-export function getDay (time: Timestamp): Timestamp {
+export function getDay(time: Timestamp): Timestamp {
   const date: Date = new Date(time)
   return convertToDay(date).getTime()
 }
 
-export function convertToDay (date: Date): Date {
+export function convertToDay(date: Date): Date {
   const originalDay: number = date.getDate()
   const convertedDate: Date = new Date(date)
   // Set 12 AM UTC time, since it will be the same day in most timezones
@@ -30,13 +30,13 @@ export function convertToDay (date: Date): Date {
   return convertedDate
 }
 
-export function getHour (time: Timestamp): Timestamp {
+export function getHour(time: Timestamp): Timestamp {
   const date: Date = new Date(time)
   date.setMinutes(0, 0, 0)
   return date.getTime()
 }
 
-export function getDisplayTime (time: number): string {
+export function getDisplayTime(time: number): string {
   let options: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: 'numeric' }
   if (!isToday(time)) {
     options = {
@@ -49,15 +49,15 @@ export function getDisplayTime (time: number): string {
   return new Date(time).toLocaleString('default', options)
 }
 
-export function isOtherDay (time1: Timestamp, time2: Timestamp): boolean {
+export function isOtherDay(time1: Timestamp, time2: Timestamp): boolean {
   return getDay(time1) !== getDay(time2)
 }
 
-export function isOtherHour (time1: Timestamp, time2: Timestamp): boolean {
+export function isOtherHour(time1: Timestamp, time2: Timestamp): boolean {
   return getHour(time1) !== getHour(time2)
 }
 
-function isToday (time: number): boolean {
+function isToday(time: number): boolean {
   const current = new Date()
   const target = new Date(time)
   return (

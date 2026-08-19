@@ -94,7 +94,7 @@ export async function OnSpaceTypeMembers (txes: Tx[], control: TriggerControl): 
   return result
 }
 
-async function getGrantSpaces (control: TriggerControl, grant?: PermissionsGrant): Promise<Space[]> {
+async function getGrantSpaces(control: TriggerControl, grant?: PermissionsGrant): Promise<Space[]> {
   const spacesRefs = grant?.spaces
   if (spacesRefs == null) {
     return []
@@ -128,7 +128,7 @@ async function getGrantSpaces (control: TriggerControl, grant?: PermissionsGrant
   return allowedGrantedSpaces
 }
 
-export async function OnEmployeeCreate (_txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+export async function OnEmployeeCreate(_txes: Tx[], control: TriggerControl): Promise<Tx[]> {
   const result: Tx[] = []
 
   const systemTxFactory = new TxFactory(core.account.System, false)
@@ -250,7 +250,7 @@ export async function OnEmployeeCreate (_txes: Tx[], control: TriggerControl): P
   return result
 }
 
-export async function OnTypedSpaceCreate (_txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+export async function OnTypedSpaceCreate(_txes: Tx[], control: TriggerControl): Promise<Tx[]> {
   const result: Tx[] = []
   for (const tx of _txes) {
     const ctx = tx as TxCreateDoc<TypedSpace>
@@ -269,7 +269,7 @@ export async function OnTypedSpaceCreate (_txes: Tx[], control: TriggerControl):
   return result
 }
 
-export async function OnPersonCreate (_txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+export async function OnPersonCreate(_txes: Tx[], control: TriggerControl): Promise<Tx[]> {
   const result: Tx[] = []
   for (const tx of _txes) {
     const ctx = tx as TxCreateDoc<Person>
@@ -296,7 +296,7 @@ export async function OnPersonCreate (_txes: Tx[], control: TriggerControl): Pro
   return result
 }
 
-async function createPersonSpace (
+async function createPersonSpace(
   account: AccountUuid,
   person: Ref<Person>,
   control: TriggerControl
@@ -319,7 +319,7 @@ async function createPersonSpace (
 /**
  * @public
  */
-export async function OnContactDelete (
+export async function OnContactDelete(
   txes: Tx[],
   { findAll, hierarchy, storageAdapter, workspace, removedMap, txFactory, ctx }: TriggerControl
 ): Promise<Tx[]> {
@@ -352,7 +352,7 @@ export async function OnContactDelete (
 /**
  * @public
  */
-export async function OnChannelUpdate (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+export async function OnChannelUpdate(txes: Tx[], control: TriggerControl): Promise<Tx[]> {
   const result: Tx[] = []
 
   for (const tx of txes) {
@@ -379,7 +379,7 @@ export async function OnChannelUpdate (txes: Tx[], control: TriggerControl): Pro
 /**
  * @public
  */
-export async function personHTMLPresenter (doc: Doc, control: TriggerControl): Promise<string> {
+export async function personHTMLPresenter(doc: Doc, control: TriggerControl): Promise<string> {
   const person = doc as Person
   const front = control.branding?.front ?? getMetadata(serverCore.metadata.FrontUrl) ?? ''
   const path = `${workbenchId}/${control.workspace.url}/${contactId}/${doc._id}`
@@ -390,7 +390,7 @@ export async function personHTMLPresenter (doc: Doc, control: TriggerControl): P
 /**
  * @public
  */
-export function personTextPresenter (doc: Doc, control: TriggerControl): string {
+export function personTextPresenter(doc: Doc, control: TriggerControl): string {
   const person = doc as Person
   return `${getName(control.hierarchy, person, control.branding?.lastNameFirst)}`
 }
@@ -398,7 +398,7 @@ export function personTextPresenter (doc: Doc, control: TriggerControl): string 
 /**
  * @public
  */
-export async function organizationHTMLPresenter (doc: Doc, control: TriggerControl): Promise<string> {
+export async function organizationHTMLPresenter(doc: Doc, control: TriggerControl): Promise<string> {
   const organization = doc as Organization
   const front = control.branding?.front ?? getMetadata(serverCore.metadata.FrontUrl) ?? ''
   const path = `${workbenchId}/${control.workspace.url}/${contactId}/${doc._id}`
@@ -409,7 +409,7 @@ export async function organizationHTMLPresenter (doc: Doc, control: TriggerContr
 /**
  * @public
  */
-export function organizationTextPresenter (doc: Doc): string {
+export function organizationTextPresenter(doc: Doc): string {
   const organization = doc as Organization
   return `${organization.name}`
 }
@@ -417,7 +417,7 @@ export function organizationTextPresenter (doc: Doc): string {
 /**
  * @public
  */
-export function contactNameProvider (
+export function contactNameProvider(
   doc: Doc,
   parent: Doc | undefined,
   space: Space | undefined,
@@ -430,13 +430,13 @@ export function contactNameProvider (
   return formatContactName(hierarchy, doc._class, (doc as Contact).name ?? '', mode)
 }
 
-export async function getCurrentEmployeeName (control: TriggerControl, context: Record<string, Doc>): Promise<string> {
+export async function getCurrentEmployeeName(control: TriggerControl, context: Record<string, Doc>): Promise<string> {
   const person = await getCurrentPerson(control)
 
   return person !== undefined ? formatName(person.name, control.branding?.lastNameFirst) : ''
 }
 
-export async function getCurrentEmployeeEmail (control: TriggerControl, context: Record<string, Doc>): Promise<string> {
+export async function getCurrentEmployeeEmail(control: TriggerControl, context: Record<string, Doc>): Promise<string> {
   const person = await getCurrentPerson(control)
   if (person === undefined) return ''
 
@@ -452,7 +452,7 @@ export async function getCurrentEmployeeEmail (control: TriggerControl, context:
   return emailSocialId.value
 }
 
-export async function getCurrentEmployeePosition (
+export async function getCurrentEmployeePosition(
   control: TriggerControl,
   context: Record<string, Doc>
 ): Promise<string | undefined> {
@@ -462,7 +462,7 @@ export async function getCurrentEmployeePosition (
   return control.hierarchy.as(person, contact.mixin.Employee)?.position ?? ''
 }
 
-export async function getContactName (
+export async function getContactName(
   control: TriggerControl,
   context: Record<string, Doc>
 ): Promise<string | undefined> {
@@ -475,7 +475,7 @@ export async function getContactName (
   }
 }
 
-export async function getContactLastName (
+export async function getContactLastName(
   control: TriggerControl,
   context: Record<string, Doc>
 ): Promise<string | undefined> {
@@ -488,7 +488,7 @@ export async function getContactLastName (
   }
 }
 
-export async function getContactFirstName (
+export async function getContactFirstName(
   control: TriggerControl,
   context: Record<string, Doc>
 ): Promise<string | undefined> {

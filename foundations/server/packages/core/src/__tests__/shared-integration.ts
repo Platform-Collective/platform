@@ -49,7 +49,7 @@ export interface TestContext {
  * @param adapterName - Name of the adapter being tested (e.g., 'PostgreSQL', 'MongoDB')
  * @param getContext - Function that returns the current test context
  */
-export function runSharedIntegrationTests (adapterName: string, getContext: () => TestContext): void {
+export function runSharedIntegrationTests(adapterName: string, getContext: () => TestContext): void {
   describe(`${adapterName} - Shared Integration Tests`, () => {
     describe('Basic CRUD Operations', () => {
       it('should create a document', async () => {
@@ -135,14 +135,14 @@ export function runSharedIntegrationTests (adapterName: string, getContext: () =
 
         await operations.updateDoc(taskPlugin.class.Task, '' as Ref<Space>, taskId, {
           $push: { arr: 10 }
-        } as any)
+        })
 
         let task: any = await client.findOne(taskPlugin.class.Task, { _id: taskId })
         expect(task?.arr).toEqual([10])
 
         await operations.updateDoc(taskPlugin.class.Task, '' as Ref<Space>, taskId, {
           $push: { arr: 20 }
-        } as any)
+        })
 
         task = await client.findOne(taskPlugin.class.Task, { _id: taskId })
         expect(task?.arr).toEqual([10, 20])
@@ -160,7 +160,7 @@ export function runSharedIntegrationTests (adapterName: string, getContext: () =
 
         await operations.updateDoc(taskPlugin.class.Task, '' as Ref<Space>, taskId, {
           $pull: { arr: 3 }
-        } as any)
+        })
 
         const task: any = await client.findOne(taskPlugin.class.Task, { _id: taskId })
         expect(task?.arr).toEqual([1, 2, 4, 5])

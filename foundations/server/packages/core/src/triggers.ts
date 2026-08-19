@@ -40,7 +40,7 @@ import serverCore from './plugin'
 
 interface TriggerRecord {
   query?: DocumentQuery<Tx>
-  trigger: { op: TriggerFunc | Promise<TriggerFunc>, resource: Resource<TriggerFunc>, isAsync: boolean }
+  trigger: { op: TriggerFunc | Promise<TriggerFunc>; resource: Resource<TriggerFunc>; isAsync: boolean }
 }
 /**
  * @public
@@ -48,16 +48,16 @@ interface TriggerRecord {
 export class Triggers {
   private readonly triggers: TriggerRecord[] = []
 
-  constructor (protected readonly hierarchy: Hierarchy) {}
+  constructor(protected readonly hierarchy: Hierarchy) {}
 
-  init (model: ModelDb): void {
+  init(model: ModelDb): void {
     const allTriggers = model.findAllSync(serverCore.class.Trigger, {})
     for (const t of allTriggers) {
       this.addTrigger(t)
     }
   }
 
-  private addTrigger (t: WithLookup<Trigger>): void {
+  private addTrigger(t: WithLookup<Trigger>): void {
     const match = t.txMatch
 
     const trigger = t.trigger
@@ -70,7 +70,7 @@ export class Triggers {
   }
 
   tresolve = Promise.resolve()
-  tx (txes: Tx[]): Promise<void> {
+  tx(txes: Tx[]): Promise<void> {
     for (const tx of txes) {
       if (tx._class === core.class.TxCreateDoc) {
         const createTx = tx as TxCreateDoc<Doc>
@@ -83,7 +83,7 @@ export class Triggers {
     return this.tresolve
   }
 
-  async applyTrigger (
+  async applyTrigger(
     ctx: MeasureContext,
     ctrl: Omit<TriggerControl, 'txFactory'>,
     matches: Tx[],
@@ -122,7 +122,7 @@ export class Triggers {
     return result.concat(apply)
   }
 
-  async apply (
+  async apply(
     ctx: MeasureContext,
     tx: Tx[],
     ctrl: Omit<TriggerControl, 'txFactory'>,
@@ -159,7 +159,7 @@ export class Triggers {
     return result
   }
 
-  private addDerived (q: DocumentQuery<Tx>, key: string): void {
+  private addDerived(q: DocumentQuery<Tx>, key: string): void {
     if (q[key] === undefined) {
       return
     }

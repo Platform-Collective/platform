@@ -16,7 +16,7 @@ export class TPublicLink extends TDoc implements PublicLink {
   attachedTo!: Ref<Doc>
 }
 
-export function createModel (builder: Builder): void {
+export function createModel(builder: Builder): void {
   builder.createModel(TPublicLink)
 
   builder.createDoc(core.class.DomainIndexConfiguration, core.space.Model, {

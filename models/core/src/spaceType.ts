@@ -28,7 +28,7 @@ const roles = [
   }
 ]
 
-export function defineSpaceType (builder: Builder): void {
+export function defineSpaceType(builder: Builder): void {
   for (const role of roles) {
     const label = getRoleAttributeLabel(role.name)
     const roleAssgtType = ArrOf(TypeString())

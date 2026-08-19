@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-import { type IntlString, type Plugin } from '@hcengineering/platform'
+import type { IntlString, Plugin } from '@hcengineering/platform'
 import { ClientConnectEvent, type DocChunk } from '..'
 import type { Class, Data, Doc, Domain, PluginConfiguration, Ref, Space, Timestamp } from '../classes'
 import { ClassifierKind, DOMAIN_MODEL } from '../classes'
@@ -36,7 +36,7 @@ import { fillConfiguration, generateId, pluginFilterTx } from '../utils'
 import { connect } from './connection'
 import { genMinModel } from './minmodel'
 
-function filterPlugin (plugin: Plugin): (txes: Tx[]) => Tx[] {
+function filterPlugin(plugin: Plugin): (txes: Tx[]) => Tx[] {
   return (txes) => {
     const configs = new Map<Ref<PluginConfiguration>, PluginConfiguration>()
     fillConfiguration(txes, configs)
@@ -95,7 +95,7 @@ describe('client', () => {
       )
     )
 
-    async function connectPlugin (handler: (tx: Tx) => void): Promise<ClientConnection> {
+    async function connectPlugin(handler: (tx: Tx) => void): Promise<ClientConnection> {
       const hierarchy = new Hierarchy()
 
       for (const tx of txes) hierarchy.tx(tx)
@@ -107,23 +107,23 @@ describe('client', () => {
         await model.tx(tx)
       }
 
-      async function findAll<T extends Doc> (_class: Ref<Class<T>>, query: DocumentQuery<T>): Promise<FindResult<T>> {
+      async function findAll<T extends Doc>(_class: Ref<Class<T>>, query: DocumentQuery<T>): Promise<FindResult<T>> {
         return await transactions.findAll(_class, query)
       }
 
       return new (class implements ClientConnection {
         handler?: (event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>
 
-        set onConnect (
+        set onConnect(
           handler: ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>) | undefined
         ) {
           this.handler = handler
           void this.handler?.(ClientConnectEvent.Connected, '', {})
         }
 
-        get onConnect ():
-        | ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>)
-        | undefined {
+        get onConnect():
+          | ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>)
+          | undefined {
           return this.handler
         }
 
@@ -131,13 +131,11 @@ describe('client', () => {
         findAll = findAll
         pushHandler = (): void => {}
 
-        domainRequest (): Promise<DomainResult> {
+        domainRequest(): Promise<DomainResult> {
           return Promise.resolve({ domain: 'test' as Domain, value: null })
         }
 
-        searchFulltext = async (query: SearchQuery, options: SearchOptions): Promise<SearchResult> => {
-          return { docs: [] }
-        }
+        searchFulltext = async (query: SearchQuery, options: SearchOptions): Promise<SearchResult> => ({ docs: [] })
 
         tx = async (tx: Tx): Promise<TxResult> => {
           if (tx.objectSpace === core.space.Model) {
@@ -155,22 +153,22 @@ describe('client', () => {
           finished: true
         })
 
-        async getDomainHash (domain: Domain): Promise<string> {
+        async getDomainHash(domain: Domain): Promise<string> {
           return generateId()
         }
 
-        async closeChunk (idx: number): Promise<void> {}
-        async loadDocs (domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
+        async closeChunk(idx: number): Promise<void> {}
+        async loadDocs(domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
           return []
         }
 
-        async upload (domain: Domain, docs: Doc[]): Promise<void> {}
-        async clean (domain: Domain, docs: Ref<Doc>[]): Promise<void> {}
-        async loadModel (last: Timestamp): Promise<Tx[]> {
+        async upload(domain: Domain, docs: Doc[]): Promise<void> {}
+        async clean(domain: Domain, docs: Ref<Doc>[]): Promise<void> {}
+        async loadModel(last: Timestamp): Promise<Tx[]> {
           return txes
         }
 
-        async sendForceClose (): Promise<void> {}
+        async sendForceClose(): Promise<void> {}
       })()
     }
     const spyCreate = jest.spyOn(TxProcessor, 'createDoc2Doc')
@@ -243,7 +241,7 @@ describe('client', () => {
     expect(result3[0]._id).toStrictEqual(txCreateDoc2.objectId)
     expect(spyCreate).toHaveBeenLastCalledWith(txCreateDoc2, false)
     expect(spyUpdate.mock.calls[1][1]).toStrictEqual(txUpdateDoc)
-    expect(spyUpdate).toBeCalledTimes(2)
+    expect(spyUpdate).toHaveBeenCalledTimes(2)
     await client3.close()
 
     spyCreate.mockReset()

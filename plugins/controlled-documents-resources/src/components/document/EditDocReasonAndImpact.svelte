@@ -40,7 +40,7 @@
     docSpaces = res.map((s) => s._id)
   })
 
-  async function handleFieldUpdated (field: keyof ChangeControl, ev: UIEvent): Promise<void> {
+  async function handleFieldUpdated(field: keyof ChangeControl, ev: UIEvent): Promise<void> {
     if (ev == null) {
       return
     }
@@ -54,7 +54,7 @@
     await updateCCField(field, target.value)
   }
 
-  async function updateCCField<T extends keyof ChangeControl> (field: T, value: ChangeControl[T]): Promise<void> {
+  async function updateCCField<T extends keyof ChangeControl>(field: T, value: ChangeControl[T]): Promise<void> {
     if ($controlledDocument == null) {
       return
     }

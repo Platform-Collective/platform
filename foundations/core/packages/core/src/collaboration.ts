@@ -23,7 +23,7 @@ export interface CollaborativeDoc {
 }
 
 /** @public */
-export function makeCollabId<T extends Doc, U extends keyof T> (
+export function makeCollabId<T extends Doc, U extends keyof T>(
   objectClass: Ref<Class<T>>,
   objectId: Ref<T>,
   objectAttr: Extract<U, string> | string
@@ -32,7 +32,7 @@ export function makeCollabId<T extends Doc, U extends keyof T> (
 }
 
 /** @public */
-export function makeDocCollabId<T extends Doc, U extends keyof T> (
+export function makeDocCollabId<T extends Doc, U extends keyof T>(
   doc: T,
   objectAttr: Extract<U, string> | string
 ): CollaborativeDoc {
@@ -40,13 +40,13 @@ export function makeDocCollabId<T extends Doc, U extends keyof T> (
 }
 
 /** @public */
-export function makeCollabYdocId (doc: CollaborativeDoc): Ref<Blob> {
+export function makeCollabYdocId(doc: CollaborativeDoc): Ref<Blob> {
   const { objectId, objectAttr } = doc
   return `${objectId}%${objectAttr}` as Ref<Blob>
 }
 
 /** @public */
-export function makeCollabJsonId (doc: CollaborativeDoc): MarkupBlobRef {
+export function makeCollabJsonId(doc: CollaborativeDoc): MarkupBlobRef {
   const timestamp = Date.now()
   const { objectId, objectAttr } = doc
   return [objectId, objectAttr, timestamp].join('-') as MarkupBlobRef

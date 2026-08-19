@@ -67,7 +67,7 @@ export class QueryJoiner {
     }
   }
 
-  private getQuery (key: string): Query {
+  private getQuery(key: string): Query {
     const query = this.queries.get(key)
     if (query === undefined) {
       const q: Query = {
@@ -85,7 +85,7 @@ export class QueryJoiner {
     return query
   }
 
-  private removeFromQueue (q: Query): void {
+  private removeFromQueue(q: Query): void {
     if (q.callbacks === 0) {
       this.queries.delete(q.key)
     }
@@ -98,12 +98,12 @@ export class QueryJoiner {
 export class QueryJoinMiddleware extends BaseMiddleware implements Middleware {
   private readonly joiner: QueryJoiner
 
-  private constructor (context: PipelineContext, next?: Middleware) {
+  private constructor(context: PipelineContext, next?: Middleware) {
     super(context, next)
     this.joiner = new QueryJoiner()
   }
 
-  loadModel (
+  loadModel(
     ctx: MeasureContext<SessionData>,
     lastModelTx: Timestamp,
     hash?: string
@@ -113,7 +113,7 @@ export class QueryJoinMiddleware extends BaseMiddleware implements Middleware {
     })
   }
 
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -149,7 +149,7 @@ export class QueryJoinMiddleware extends BaseMiddleware implements Middleware {
     })
   }
 
-  searchFulltext (ctx: MeasureContext<SessionData>, query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+  searchFulltext(ctx: MeasureContext<SessionData>, query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
     return this.joiner.query(ctx, `searchFulltext-${JSON.stringify(query)}-${JSON.stringify(options)}`, async (ctx) => {
       return await this.provideSearchFulltext(ctx, query, options)
     })

@@ -17,13 +17,13 @@ export interface QueueUserLogin extends QueueUserMessage {
 }
 
 export const userEvents = {
-  login: function userLogin (data: Omit<QueueUserLogin, 'type'>): QueueUserLogin {
+  login: function userLogin(data: Omit<QueueUserLogin, 'type'>): QueueUserLogin {
     return {
       type: QueueUserEvent.login,
       ...data
     }
   },
-  logout: function userLogout (data: Omit<QueueUserLogin, 'type'>): QueueUserLogin {
+  logout: function userLogout(data: Omit<QueueUserLogin, 'type'>): QueueUserLogin {
     return {
       type: QueueUserEvent.logout,
       ...data

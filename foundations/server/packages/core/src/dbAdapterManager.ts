@@ -33,7 +33,7 @@ export class DbAdapterManagerImpl implements DBAdapterManager {
 
   domainHelper?: DomainHelper
 
-  constructor (
+  constructor(
     private readonly metrics: MeasureContext,
 
     readonly conf: DbConfiguration,
@@ -42,7 +42,7 @@ export class DbAdapterManagerImpl implements DBAdapterManager {
     private readonly adapters: Map<string, DbAdapter>
   ) {}
 
-  reserveContext (id: string): () => void {
+  reserveContext(id: string): () => void {
     const ops: (() => void)[] = []
     for (const adapter of this.adapters.values()) {
       try {
@@ -60,16 +60,16 @@ export class DbAdapterManagerImpl implements DBAdapterManager {
     }
   }
 
-  getDefaultAdapter (): DbAdapter {
+  getDefaultAdapter(): DbAdapter {
     return this.defaultAdapter
   }
 
-  async registerHelper (ctx: MeasureContext, helper: DomainHelper): Promise<void> {
+  async registerHelper(ctx: MeasureContext, helper: DomainHelper): Promise<void> {
     this.domainHelper = helper
     await this.initDomains(ctx)
   }
 
-  async initDomains (ctx: MeasureContext): Promise<void> {
+  async initDomains(ctx: MeasureContext): Promise<void> {
     const adapterDomains = new Map<DbAdapter, Set<Domain>>()
     for (const d of this.context.hierarchy.domains()) {
       // We need to init domain info
@@ -121,7 +121,7 @@ export class DbAdapterManagerImpl implements DBAdapterManager {
     }
   }
 
-  async initAdapters (ctx: MeasureContext): Promise<void> {
+  async initAdapters(ctx: MeasureContext): Promise<void> {
     for (const [key, adapter] of this.adapters) {
       // already initialized
       if (key !== this.conf.domains[DOMAIN_TX] && adapter.init !== undefined) {
@@ -149,7 +149,7 @@ export class DbAdapterManagerImpl implements DBAdapterManager {
     }
   }
 
-  private async updateInfo (d: Domain, adapterDomains: Map<DbAdapter, Set<Domain>>, info: DomainInfo): Promise<void> {
+  private async updateInfo(d: Domain, adapterDomains: Map<DbAdapter, Set<Domain>>, info: DomainInfo): Promise<void> {
     const name = this.conf.domains[d] ?? '#default'
     const adapter = this.adapters.get(name) ?? this.defaultAdapter
     if (adapter !== undefined) {
@@ -169,7 +169,7 @@ export class DbAdapterManagerImpl implements DBAdapterManager {
     }
   }
 
-  private getDomainInfo (domain: Domain): DomainInfo {
+  private getDomainInfo(domain: Domain): DomainInfo {
     let info = this.domainInfo.get(domain)
     if (info === undefined) {
       info = {
@@ -181,7 +181,7 @@ export class DbAdapterManagerImpl implements DBAdapterManager {
     return info
   }
 
-  async close (): Promise<void> {
+  async close(): Promise<void> {
     for (const o of this.adapters.values()) {
       try {
         await o.close()
@@ -191,12 +191,12 @@ export class DbAdapterManagerImpl implements DBAdapterManager {
     }
   }
 
-  getAdapterName (domain: Domain): string {
+  getAdapterName(domain: Domain): string {
     const adapterName = this.conf.domains[domain]
     return adapterName ?? this.conf.defaultAdapter
   }
 
-  getAdapterByName (name: string): DbAdapter {
+  getAdapterByName(name: string): DbAdapter {
     if (name === this.conf.defaultAdapter) {
       return this.defaultAdapter
     }
@@ -208,7 +208,7 @@ export class DbAdapterManagerImpl implements DBAdapterManager {
     return adapter
   }
 
-  public getAdapter (domain: Domain, requireExists: boolean): DbAdapter {
+  public getAdapter(domain: Domain, requireExists: boolean): DbAdapter {
     const name = this.conf.domains[domain] ?? '#default'
     const adapter = this.adapters.get(name) ?? this.defaultAdapter
     if (adapter === undefined) {

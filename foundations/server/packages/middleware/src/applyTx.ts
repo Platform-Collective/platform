@@ -30,11 +30,11 @@ import { BaseMiddleware } from '@hcengineering/server-core'
 export class ApplyTxMiddleware extends BaseMiddleware implements Middleware {
   scopes = new Map<string, Promise<any>>()
 
-  static async create (ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
+  static async create(ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
     return new ApplyTxMiddleware(context, next)
   }
 
-  async tx (ctx: MeasureContext, txes: Tx[]): Promise<TxMiddlewareResult> {
+  async tx(ctx: MeasureContext, txes: Tx[]): Promise<TxMiddlewareResult> {
     const result: TxResult[] = []
 
     let part: Tx[] = []
@@ -94,14 +94,14 @@ export class ApplyTxMiddleware extends BaseMiddleware implements Middleware {
   /**
    * Verify if apply if is possible to apply.
    */
-  async verifyApplyIf (
+  async verifyApplyIf(
     ctx: MeasureContext,
     applyIf: TxApplyIf
   ): Promise<{
-      onEnd: () => void
-      passed: boolean
-      reason?: string
-    }> {
+    onEnd: () => void
+    passed: boolean
+    reason?: string
+  }> {
     if (applyIf.scope == null) {
       return { passed: true, onEnd: () => {} }
     }

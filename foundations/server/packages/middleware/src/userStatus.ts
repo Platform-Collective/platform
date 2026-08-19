@@ -36,11 +36,11 @@ import {
  * @public
  */
 export class UserStatusMiddleware extends BaseMiddleware implements Middleware {
-  private constructor (context: PipelineContext, next?: Middleware) {
+  private constructor(context: PipelineContext, next?: Middleware) {
     super(context, next)
   }
 
-  static async create (
+  static async create(
     _: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -48,7 +48,7 @@ export class UserStatusMiddleware extends BaseMiddleware implements Middleware {
     return new UserStatusMiddleware(context, next)
   }
 
-  tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     for (const tx of txes) {
       if (tx._class === core.class.TxApplyIf) {
         const atx = tx as TxApplyIf
@@ -62,7 +62,7 @@ export class UserStatusMiddleware extends BaseMiddleware implements Middleware {
     return this.provideTx(ctx, txes)
   }
 
-  private processTx (tx: TxCUD<Doc>): void {
+  private processTx(tx: TxCUD<Doc>): void {
     if (tx._class === core.class.TxCreateDoc && tx.objectClass === core.class.UserStatus) {
       const status = TxProcessor.createDoc2Doc(tx as TxCreateDoc<UserStatus>)
       const map = this.context.userStatusMap ?? new Map()

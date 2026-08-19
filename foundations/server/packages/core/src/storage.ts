@@ -14,7 +14,7 @@ export * from '@hcengineering/storage'
 /**
  * @public
  */
-export function getBucketId (workspace: WorkspaceUuid): string {
+export function getBucketId(workspace: WorkspaceUuid): string {
   return workspace
 }
 
@@ -34,21 +34,21 @@ export interface ChunkInfo {
  * @public
  */
 export class BackupClientOps {
-  constructor (protected readonly storage: LowLevelStorage) {}
+  constructor(protected readonly storage: LowLevelStorage) {}
 
   idIndex = 0
   chunkInfo = new Map<number, ChunkInfo>()
 
-  loadChunk (
+  loadChunk(
     ctx: MeasureContext,
     domain: Domain,
     idx?: number
   ): Promise<{
-      idx: number
-      size?: number
-      docs: DocInfo[]
-      finished: boolean
-    }> {
+    idx: number
+    size?: number
+    docs: DocInfo[]
+    finished: boolean
+  }> {
     return ctx.with('load-chunk', {}, async (ctx) => {
       idx = idx ?? this.idIndex++
       let chunk: ChunkInfo | undefined = this.chunkInfo.get(idx)
@@ -89,11 +89,11 @@ export class BackupClientOps {
     })
   }
 
-  getDomainHash (ctx: MeasureContext, domain: Domain): Promise<string> {
+  getDomainHash(ctx: MeasureContext, domain: Domain): Promise<string> {
     return this.storage.getDomainHash(ctx, domain)
   }
 
-  closeChunk (ctx: MeasureContext, idx: number): Promise<void> {
+  closeChunk(ctx: MeasureContext, idx: number): Promise<void> {
     return ctx.with('close-chunk', {}, async () => {
       const chunk = this.chunkInfo.get(idx)
       this.chunkInfo.delete(idx)
@@ -103,15 +103,15 @@ export class BackupClientOps {
     })
   }
 
-  loadDocs (ctx: MeasureContext, domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
+  loadDocs(ctx: MeasureContext, domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
     return this.storage.load(ctx, domain, docs)
   }
 
-  upload (ctx: MeasureContext, domain: Domain, docs: Doc[]): Promise<void> {
+  upload(ctx: MeasureContext, domain: Domain, docs: Doc[]): Promise<void> {
     return this.storage.upload(ctx, domain, docs)
   }
 
-  clean (ctx: MeasureContext, domain: Domain, docs: Ref<Doc>[]): Promise<void> {
+  clean(ctx: MeasureContext, domain: Domain, docs: Ref<Doc>[]): Promise<void> {
     return this.storage.clean(ctx, domain, docs)
   }
 }

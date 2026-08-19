@@ -68,14 +68,14 @@ const testDocClass = 'test:class:TestDoc' as Ref<Class<TestDoc>>
  */
 class FindAllCounter {
   count: number = 0
-  queries: Array<{ _class: Ref<Class<Doc>>, docId: Ref<Doc> }> = []
+  queries: Array<{ _class: Ref<Class<Doc>>; docId: Ref<Doc> }> = []
 
-  reset (): void {
+  reset(): void {
     this.count = 0
     this.queries = []
   }
 
-  recordQuery (_class: Ref<Class<Doc>>, docId: Ref<Doc>): void {
+  recordQuery(_class: Ref<Class<Doc>>, docId: Ref<Doc>): void {
     this.count++
     this.queries.push({ _class, docId })
   }
@@ -86,15 +86,15 @@ class FindAllCounter {
  */
 class TestLiveQueryMiddleware extends BaseMiddleware implements Middleware {
   private readonly documents = new Map<Ref<Doc>, Doc>()
-  private readonly txQueue: Array<{ tx: TxUpdateDoc<Doc>, delay: number }> = []
+  private readonly txQueue: Array<{ tx: TxUpdateDoc<Doc>; delay: number }> = []
   private readonly findAllCounter: FindAllCounter
 
-  constructor (context: PipelineContext, findAllCounter: FindAllCounter, next?: Middleware) {
+  constructor(context: PipelineContext, findAllCounter: FindAllCounter, next?: Middleware) {
     super(context, next)
     this.findAllCounter = findAllCounter
   }
 
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     findAllCounter: FindAllCounter,
@@ -104,18 +104,18 @@ class TestLiveQueryMiddleware extends BaseMiddleware implements Middleware {
   }
 
   // Create document in "database"
-  async createDoc (doc: Doc): Promise<void> {
+  async createDoc(doc: Doc): Promise<void> {
     this.documents.set(doc._id, doc)
   }
 
   // Simulate getCurrentDoc - fetching document from server
-  async getCurrentDoc (_class: Ref<Class<Doc>>, docId: Ref<Doc>): Promise<Doc | undefined> {
+  async getCurrentDoc(_class: Ref<Class<Doc>>, docId: Ref<Doc>): Promise<Doc | undefined> {
     this.findAllCounter.recordQuery(_class, docId)
     return this.documents.get(docId)
   }
 
   // Apply transaction to local document copy
-  async applyTxToLocalDoc (tx: TxUpdateDoc<Doc>): Promise<boolean> {
+  async applyTxToLocalDoc(tx: TxUpdateDoc<Doc>): Promise<boolean> {
     const doc = this.documents.get(tx.objectId) as any
     if (doc === undefined) {
       return false
@@ -156,7 +156,7 @@ class TestLiveQueryMiddleware extends BaseMiddleware implements Middleware {
     return false // Refresh was not needed
   }
 
-  override async tx (ctx: MeasureContext, txes: any[]): Promise<TxMiddlewareResult> {
+  override async tx(ctx: MeasureContext, txes: any[]): Promise<TxMiddlewareResult> {
     // Just pass through
     return await this.provideTx(ctx, txes)
   }
@@ -180,7 +180,7 @@ describe('LiveQuery Race Condition Tests', () => {
       workspace: { uuid: 'test-workspace' as any, url: 'test', dataId: 'test' as any },
       hierarchy,
       modelDb: model,
-      branding: null as any,
+      branding: null,
       adapterManager: {} as any,
       storageAdapter: {} as any,
       contextVars: {},
@@ -350,7 +350,7 @@ describe('LiveQuery with TxOrderingMiddleware - Solution', () => {
       workspace: { uuid: 'test-workspace' as any, url: 'test', dataId: 'test' as any },
       hierarchy,
       modelDb: model,
-      branding: null as any,
+      branding: null,
       adapterManager: {} as any,
       storageAdapter: {} as any,
       contextVars: {},

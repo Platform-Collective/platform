@@ -18,27 +18,27 @@ import { type MeasureContext } from '@hcengineering/core'
 import { type ServiceAdapter, type ServiceAdapterConfig, type ServiceAdaptersManager } from './types'
 
 export class ServiceAdaptersManagerImpl implements ServiceAdaptersManager {
-  constructor (
+  constructor(
     private readonly adapters: Map<string, ServiceAdapter>,
     private readonly context: MeasureContext
   ) {}
 
-  getAdapter (adapterId: string): ServiceAdapter | undefined {
+  getAdapter(adapterId: string): ServiceAdapter | undefined {
     return this.adapters.get(adapterId)
   }
 
-  async close (): Promise<void> {
+  async close(): Promise<void> {
     for (const adapter of this.adapters.values()) {
       await adapter.close()
     }
   }
 
-  metrics (): MeasureContext {
+  metrics(): MeasureContext {
     return this.context
   }
 }
 
-export async function createServiceAdaptersManager (
+export async function createServiceAdaptersManager(
   serviceAdapters: Record<string, ServiceAdapterConfig>,
   context: MeasureContext
 ): Promise<ServiceAdaptersManager> {

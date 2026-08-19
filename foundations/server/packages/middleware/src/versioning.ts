@@ -42,11 +42,11 @@ import {
  * @public
  */
 export class VersioningMiddleware extends BaseMiddleware implements Middleware {
-  private constructor (context: PipelineContext, next?: Middleware) {
+  private constructor(context: PipelineContext, next?: Middleware) {
     super(context, next)
   }
 
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -104,7 +104,7 @@ export class VersioningMiddleware extends BaseMiddleware implements Middleware {
     return res
   }
 
-  private async setVersionData (
+  private async setVersionData(
     ctx: MeasureContext<SessionData>,
     tx: TxCreateDoc<VersionableDoc>
   ): Promise<Tx[] | undefined> {
@@ -144,7 +144,7 @@ export class VersioningMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  private isVerionableClass (_class: Ref<Class<Doc>>): boolean {
+  private isVerionableClass(_class: Ref<Class<Doc>>): boolean {
     try {
       return this.context.hierarchy.classHierarchyMixin(_class, core.mixin.VersionableClass) !== undefined
     } catch {

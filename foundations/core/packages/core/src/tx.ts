@@ -149,15 +149,15 @@ export interface TxApplyResult {
  * @public
  */
 export type MixinData<D extends Doc, M extends D> = Omit<M, keyof D> &
-PushOptions<Omit<M, keyof D>> &
-IncOptions<Omit<M, keyof D>>
+  PushOptions<Omit<M, keyof D>> &
+  IncOptions<Omit<M, keyof D>>
 
 /**
  * @public
  */
 export type MixinUpdate<D extends Doc, M extends D> = Partial<Omit<M, keyof D>> &
-PushOptions<Omit<M, keyof D>> &
-IncOptions<Omit<M, keyof D>>
+  PushOptions<Omit<M, keyof D>> &
+  IncOptions<Omit<M, keyof D>>
 
 /**
  * Define Create/Update for mixin attributes.
@@ -284,11 +284,11 @@ export interface SpaceUpdate {
  * @public
  */
 export type DocumentUpdate<T extends Doc> = Partial<Data<T>> &
-PushOptions<T> &
-SetEmbeddedOptions<T> &
-IncOptions<T> &
-UnsetOptions &
-SpaceUpdate
+  PushOptions<T> &
+  SetEmbeddedOptions<T> &
+  IncOptions<T> &
+  UnsetOptions &
+  SpaceUpdate
 
 /**
  * @public
@@ -319,7 +319,7 @@ export interface WithTx {
  * @public
  */
 export abstract class TxProcessor implements WithTx {
-  async tx (...txes: Tx[]): Promise<TxResult[]> {
+  async tx(...txes: Tx[]): Promise<TxResult[]> {
     const result: TxResult[] = []
     for (const tx of txes) {
       switch (tx._class) {
@@ -426,7 +426,7 @@ export abstract class TxProcessor implements WithTx {
     return doc as D
   }
 
-  static isExtendsCUD (_class: Ref<Class<Doc>>): boolean {
+  static isExtendsCUD(_class: Ref<Class<Doc>>): boolean {
     return (
       _class === core.class.TxCreateDoc ||
       _class === core.class.TxUpdateDoc ||
@@ -445,7 +445,7 @@ export abstract class TxProcessor implements WithTx {
       if (op.startsWith('$')) {
         const opValue = (ops as any)[op]
         for (const key in opValue) {
-          if (key === attribute || key.startsWith(attribute + '.')) {
+          if (key === attribute || key.startsWith(`${attribute}.`)) {
             return true
           }
         }
@@ -454,10 +454,10 @@ export abstract class TxProcessor implements WithTx {
     return false
   }
 
-  protected abstract txCreateDoc (tx: TxCreateDoc<Doc>): Promise<TxResult>
-  protected abstract txUpdateDoc (tx: TxUpdateDoc<Doc>): Promise<TxResult>
-  protected abstract txRemoveDoc (tx: TxRemoveDoc<Doc>): Promise<TxResult>
-  protected abstract txMixin (tx: TxMixin<Doc, Doc>): Promise<TxResult>
+  protected abstract txCreateDoc(tx: TxCreateDoc<Doc>): Promise<TxResult>
+  protected abstract txUpdateDoc(tx: TxUpdateDoc<Doc>): Promise<TxResult>
+  protected abstract txRemoveDoc(tx: TxRemoveDoc<Doc>): Promise<TxResult>
+  protected abstract txMixin(tx: TxMixin<Doc, Doc>): Promise<TxResult>
 }
 
 /**
@@ -465,9 +465,9 @@ export abstract class TxProcessor implements WithTx {
  */
 export class TxFactory {
   private readonly txSpace: Ref<Space>
-  constructor (
+  constructor(
     readonly account: PersonId,
-    readonly isDerived: boolean = false
+    readonly isDerived = false
   ) {
     this.txSpace = isDerived ? core.space.DerivedTx : core.space.Tx
   }
@@ -578,14 +578,14 @@ export class TxFactory {
     }
   }
 
-  createTxApplyIf (
+  createTxApplyIf(
     space: Ref<Space>,
     scope: string | undefined,
     match: DocumentClassQuery<Doc>[],
     notMatch: DocumentClassQuery<Doc>[],
     txes: TxCUD<Doc>[],
     measureName: string | undefined,
-    notify: boolean = true,
+    notify = true,
     extraNotify: Ref<Class<Doc>>[] = [],
     modifiedOn?: Timestamp,
     modifiedBy?: PersonId

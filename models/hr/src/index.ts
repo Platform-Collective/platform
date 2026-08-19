@@ -72,52 +72,52 @@ export const DOMAIN_HR = 'hr' as Domain
 export class TDepartment extends TDoc implements Department {
   @Prop(TypeRef(hr.class.Department), hr.string.ParentDepartmentLabel)
   @Index(IndexKind.Indexed)
-    parent?: Ref<Department>
+  parent?: Ref<Department>
 
   @Prop(TypeString(), core.string.Name)
   @Index(IndexKind.FullText)
-    name!: string
+  name!: string
 
   @Prop(TypeString(), core.string.Description)
   @Index(IndexKind.FullText)
-    description!: string
+  description!: string
 
   @Prop(Collection(contact.class.Channel), contact.string.ContactInfo)
-    channels?: number
+  channels?: number
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-    attachments?: number
+  attachments?: number
 
   @Prop(Collection(chunter.class.ChatMessage), chunter.string.Comments)
-    comments?: number
+  comments?: number
 
   avatar?: string | null
 
   @Prop(TypeRef(contact.mixin.Employee), hr.string.TeamLead)
-    teamLead!: Ref<Employee> | null
+  teamLead!: Ref<Employee> | null
 
   @Prop(ArrOf(TypeRef(contact.mixin.Employee)), contact.string.Members)
-    members!: Arr<Ref<Employee>>
+  members!: Arr<Ref<Employee>>
 
   @Prop(ArrOf(TypeRef(contact.class.Contact)), hr.string.Subscribers)
-    subscribers?: Arr<Ref<Contact>>
+  subscribers?: Arr<Ref<Contact>>
 
   @Prop(ArrOf(TypeRef(contact.mixin.Employee)), hr.string.Managers)
-    managers!: Arr<Ref<Employee>>
+  managers!: Arr<Ref<Employee>>
 }
 
 @Mixin(hr.mixin.Staff, contact.mixin.Employee)
 @UX(hr.string.Staff, hr.icon.HR, 'STFF', 'name')
 export class TStaff extends TEmployee implements Staff {
   @Prop(TypeRef(hr.class.Department), hr.string.Department)
-    department!: Ref<Department>
+  department!: Ref<Department>
 }
 
 @Model(hr.class.RequestType, core.class.Doc, DOMAIN_MODEL)
 @UX(hr.string.RequestType)
 export class TRequestType extends TDoc implements RequestType {
   @Prop(TypeIntlString(), core.string.Name)
-    label!: IntlString
+  label!: IntlString
 
   icon!: Asset
   value!: number
@@ -136,7 +136,7 @@ export class TTzDate extends TType {
 /**
  * @public
  */
-export function TypeTzDate (): Type<TzDate> {
+export function TypeTzDate(): Type<TzDate> {
   return { _class: hr.class.TzDate, label: core.string.Timestamp }
 }
 
@@ -153,27 +153,27 @@ export class TRequest extends TAttachedDoc implements Request {
 
   @Prop(TypeRef(hr.class.Department), hr.string.Department)
   @Index(IndexKind.Indexed)
-    department!: Ref<Department>
+  department!: Ref<Department>
 
   @Prop(TypeRef(hr.class.RequestType), hr.string.RequestType)
   @Hidden()
-    type!: Ref<RequestType>
+  type!: Ref<RequestType>
 
   @Prop(Collection(chunter.class.ChatMessage), chunter.string.Comments)
-    comments?: number
+  comments?: number
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-    attachments?: number
+  attachments?: number
 
   @Prop(TypeMarkup(), core.string.Description)
   @Index(IndexKind.FullText)
-    description!: Markup
+  description!: Markup
 
   @Prop(TypeTzDate(), calendar.string.Date)
-    tzDate!: TzDate
+  tzDate!: TzDate
 
   @Prop(TypeTzDate(), calendar.string.DueTo)
-    tzDueDate!: TzDate
+  tzDueDate!: TzDate
 }
 
 @Model(hr.class.PublicHoliday, core.class.Doc, DOMAIN_HR)
@@ -185,7 +185,7 @@ export class TPublicHoliday extends TDoc implements PublicHoliday {
   department!: Ref<Department>
 }
 
-export function createModel (builder: Builder): void {
+export function createModel(builder: Builder): void {
   builder.createModel(TDepartment, TRequest, TRequestType, TPublicHoliday, TStaff, TTzDate)
 
   builder.createDoc(

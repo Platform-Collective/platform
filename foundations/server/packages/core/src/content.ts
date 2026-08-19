@@ -18,18 +18,18 @@ import { type ContentTextAdapterConfiguration } from './configuration'
 import { type ContentTextAdapter } from './types'
 
 class ContentAdapter implements ContentTextAdapter {
-  constructor (
+  constructor(
     private readonly adapters: Map<string, ContentTextAdapter>,
     private readonly defaultAdapter: ContentTextAdapter
   ) {}
 
-  content (ctx: MeasureContext, workspace: WorkspaceUuid, name: string, type: string, doc: Buffer): Promise<string> {
+  content(ctx: MeasureContext, workspace: WorkspaceUuid, name: string, type: string, doc: Buffer): Promise<string> {
     const adapter = this.adapters.get(type) ?? this.defaultAdapter
     return adapter.content(ctx, workspace, name, type, doc)
   }
 }
 
-export async function createContentAdapter (
+export async function createContentAdapter(
   contentAdapters: Record<string, ContentTextAdapterConfiguration>,
   defaultContentAdapter: string
 ): Promise<ContentTextAdapter> {

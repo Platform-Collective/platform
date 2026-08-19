@@ -121,18 +121,18 @@
     selectedControlledDoc = undefined
   }
 
-  async function selectProject (space: DocumentSpace): Promise<void> {
+  async function selectProject(space: DocumentSpace): Promise<void> {
     project = (await getLatestProjectId(space._id, true)) ?? documents.ids.NoProject
   }
 
-  function handleDocumentSelected (doc: WithLookup<ProjectDocument>): void {
+  function handleDocumentSelected(doc: WithLookup<ProjectDocument>): void {
     if (doc.$lookup?.document !== undefined) {
       const loc = getProjectDocumentLink(doc.$lookup?.document, doc.project)
       navigate(loc)
     }
   }
 
-  async function getSpaceActions (space: DocumentSpace): Promise<Action[]> {
+  async function getSpaceActions(space: DocumentSpace): Promise<Action[]> {
     const actions = await getActions(space)
 
     if (
@@ -168,7 +168,7 @@
     return orderActions(actions)
   }
 
-  async function getDocumentActions (obj: Doc): Promise<Action[]> {
+  async function getDocumentActions(obj: Doc): Promise<Action[]> {
     const result: Action[] = []
     const extraActions = await getContributedActions(client, obj)
     for (const act of extraActions) {
@@ -186,7 +186,7 @@
     return orderActions(result)
   }
 
-  function orderActions (actions: Action[]): Action[] {
+  function orderActions(actions: Action[]): Action[] {
     const order: Record<ActionGroup, number> = {
       create: 1,
       edit: 2,
@@ -209,14 +209,14 @@
   let draggedOverTop: number = 0
   let cannotDropTo: Ref<DocumentMeta>[] = []
 
-  function canDrop (object: Ref<DocumentMeta>, target: Ref<DocumentMeta>): boolean {
+  function canDrop(object: Ref<DocumentMeta>, target: Ref<DocumentMeta>): boolean {
     if (object === target) return false
     if (cannotDropTo.includes(target)) return false
 
     return true
   }
 
-  function onDragStart (event: DragEvent, object: Ref<DocumentMeta>): void {
+  function onDragStart(event: DragEvent, object: Ref<DocumentMeta>): void {
     // no prevent default to leverage default rendering
     // event.preventDefault()
     if (event.dataTransfer === null || event.target === null) {
@@ -232,7 +232,7 @@
     closeTooltip()
   }
 
-  function getDropPosition (event: DragEvent): { pos: 'before' | 'after' | undefined, top: number } {
+  function getDropPosition(event: DragEvent): { pos: 'before' | 'after' | undefined; top: number } {
     const parentRect = parent.getBoundingClientRect()
     const targetRect = (event.target as HTMLElement).getBoundingClientRect()
     const dropPosition = event.clientY - targetRect.top
@@ -246,7 +246,7 @@
     return { pos, top }
   }
 
-  function onDragOver (event: DragEvent, object: Ref<DocumentMeta>): void {
+  function onDragOver(event: DragEvent, object: Ref<DocumentMeta>): void {
     event.preventDefault()
     // this is an ugly solution to control drop effect
     // we drag and drop elements that are in the depth of components hierarchy
@@ -268,14 +268,14 @@
     }
   }
 
-  function onDragEnd (event: DragEvent): void {
+  function onDragEnd(event: DragEvent): void {
     event.preventDefault()
     draggedItem = undefined
     draggedOver = undefined
     draggedOverPos = undefined
   }
 
-  function onDrop (event: DragEvent, object: Ref<DocumentMeta>): void {
+  function onDrop(event: DragEvent, object: Ref<DocumentMeta>): void {
     event.preventDefault()
     if (event.dataTransfer === null) {
       return
@@ -325,7 +325,7 @@
     showMenu={pressed}
     {forciblyСollapsed}
     actions={() => getSpaceActions(space)}
-    type={'nested'}
+    type="nested"
     draggable
     on:drop={(evt) => {
       onDrop(evt, documents.ids.NoParent)
@@ -342,9 +342,9 @@
         <ProjectSelector
           value={project}
           space={space?._id}
-          maxWidth={'6rem'}
-          kind={'ghost'}
-          size={'x-small'}
+          maxWidth="6rem"
+          kind="ghost"
+          size="x-small"
           showDropdownIcon
           bind:pressed
           on:change={(evt) => {

@@ -11,7 +11,7 @@ import core, {
 import { getMetadata } from '@hcengineering/platform'
 import { getClient } from '@hcengineering/presentation'
 
-export function canChangeAttribute (
+export function canChangeAttribute(
   attr: AnyAttribute,
   space: Ref<TypedSpace>,
   store: PermissionsStore,
@@ -46,7 +46,7 @@ export function canChangeAttribute (
   return canChangeDoc(_class, space, store)
 }
 
-export function canChangeDoc (_class: Ref<Class<Doc>>, space: Ref<Space>, store: PermissionsStore): boolean {
+export function canChangeDoc(_class: Ref<Class<Doc>>, space: Ref<Space>, store: PermissionsStore): boolean {
   const arePermissionsDisabled = getMetadata(core.metadata.DisablePermissions) ?? false
   if (arePermissionsDisabled) return true
   if (store.whitelist.has(space)) return true
@@ -85,7 +85,7 @@ export function canChangeDoc (_class: Ref<Class<Doc>>, space: Ref<Space>, store:
   return !store.restrictedSpaces.has(space)
 }
 
-export function canRemoveDoc (_class: Ref<Class<Doc>>, space: Ref<Space>, store: PermissionsStore): boolean {
+export function canRemoveDoc(_class: Ref<Class<Doc>>, space: Ref<Space>, store: PermissionsStore): boolean {
   const arePermissionsDisabled = getMetadata(core.metadata.DisablePermissions) ?? false
   if (arePermissionsDisabled) return true
   if (store.whitelist.has(space)) return true
@@ -107,7 +107,7 @@ export function canRemoveDoc (_class: Ref<Class<Doc>>, space: Ref<Space>, store:
   return !store.restrictedSpaces.has(space)
 }
 
-export function canCreateObject (_class: Ref<Class<Doc>>, space: Ref<Space>, store: PermissionsStore): boolean {
+export function canCreateObject(_class: Ref<Class<Doc>>, space: Ref<Space>, store: PermissionsStore): boolean {
   const arePermissionsDisabled = getMetadata(core.metadata.DisablePermissions) ?? false
   if (arePermissionsDisabled) return true
   if (store.whitelist.has(space)) return true

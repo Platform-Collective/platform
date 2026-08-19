@@ -58,7 +58,7 @@
 
   $: isExternalApprover = $controlledDocument?.externalApprovers?.includes(me) ?? false
 
-  function getDescription (cc: ChangeControl | undefined): string {
+  function getDescription(cc: ChangeControl | undefined): string {
     if (cc === undefined) {
       return ''
     }

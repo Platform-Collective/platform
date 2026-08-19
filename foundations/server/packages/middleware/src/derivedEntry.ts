@@ -22,7 +22,7 @@ import { BaseMiddleware } from '@hcengineering/server-core'
  * @public
  */
 export class MarkDerivedEntryMiddleware extends BaseMiddleware implements Middleware {
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next?: Middleware

@@ -52,11 +52,11 @@ export class TxOrderingMiddleware extends BaseMiddleware implements Middleware {
   // Only stores the last pending transaction per document
   private readonly docTxQueue = new Map<Ref<Doc>, TxOrderEntry>()
 
-  static create (): MiddlewareCreator {
+  static create(): MiddlewareCreator {
     return async (ctx, context, next) => new TxOrderingMiddleware(context, next)
   }
 
-  override async tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  override async tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     // Group transactions by document ID
     const txesByDoc = new Map<Ref<Doc>, Tx[]>()
 
@@ -132,7 +132,7 @@ export class TxOrderingMiddleware extends BaseMiddleware implements Middleware {
   /**
    * Extract target document ID from transaction
    */
-  private getTargetDocId (tx: Tx): Ref<Doc> | undefined {
+  private getTargetDocId(tx: Tx): Ref<Doc> | undefined {
     if (TxProcessor.isExtendsCUD(tx._class)) {
       return (tx as TxCUD<Doc>).objectId
     }

@@ -131,37 +131,37 @@ export class TSocialIdentityProvider extends TDoc implements SocialIdentityProvi
 export class TContact extends TDoc implements Contact {
   @Prop(TypeString(), contact.string.Name)
   @Index(IndexKind.FullText)
-    name!: string
+  name!: string
 
   @Prop(TypeString(), contact.string.Avatar)
   @Hidden()
-    avatarType!: AvatarType
+  avatarType!: AvatarType
 
   @Prop(TypeBlob(), contact.string.Avatar)
   @Hidden()
-    avatar!: Ref<Blob> | null | undefined
+  avatar!: Ref<Blob> | null | undefined
 
   @Prop(TypeRecord(), contact.string.Avatar)
   @Hidden()
-    avatarProps?: {
+  avatarProps?: {
     color?: string
     url?: string
   }
 
   @Prop(CollectionType(contact.class.Channel), contact.string.ContactInfo)
-    channels?: number
+  channels?: number
 
   @Prop(CollectionType(attachment.class.Attachment), attachment.string.Attachments, {
     shortLabel: attachment.string.Files
   })
-    attachments?: number
+  attachments?: number
 
   @Prop(CollectionType(chunter.class.ChatMessage), chunter.string.Comments)
-    comments?: number
+  comments?: number
 
   @Prop(TypeString(), contact.string.Location)
   @Index(IndexKind.FullText)
-    city?: string
+  city?: string
 }
 
 @Model(contact.class.Channel, core.class.AttachedDoc, DOMAIN_CHANNEL)
@@ -169,16 +169,16 @@ export class TContact extends TDoc implements Contact {
 export class TChannel extends TAttachedDoc implements Channel {
   @Prop(TypeRef(contact.class.ChannelProvider), contact.string.ChannelProvider)
   @Index(IndexKind.Indexed)
-    provider!: Ref<ChannelProvider>
+  provider!: Ref<ChannelProvider>
 
   @Prop(TypeString(), contact.string.Value)
   @Index(IndexKind.FullText)
-    value!: string
+  value!: string
 
   items?: number
 
   @Prop(TypeTimestamp(), core.string.Modified)
-    lastMessage?: Timestamp
+  lastMessage?: Timestamp
 }
 
 @Model(contact.class.SocialIdentity, core.class.AttachedDoc, DOMAIN_CHANNEL)
@@ -190,21 +190,21 @@ export class TSocialIdentity extends TAttachedDoc implements SocialIdentity {
 
   @Prop(TypeString(), getEmbeddedLabel('Key'))
   @Hidden()
-    key!: string
+  key!: string
 
   @Prop(TypeString(), contact.string.Type)
-    type!: SocialIdType
+  type!: SocialIdType
 
   @Prop(TypeString(), contact.string.Value)
   @Index(IndexKind.FullText)
-    value!: string
+  value!: string
 
   @Prop(TypeNumber(), contact.string.Confirmed)
   @ReadOnly()
-    verifiedOn?: number
+  verifiedOn?: number
 
   @Prop(TypeBoolean(), contact.string.Deleted)
-    isDeleted?: boolean
+  isDeleted?: boolean
 }
 
 @Model(contact.class.Person, contact.class.Contact)
@@ -212,24 +212,24 @@ export class TSocialIdentity extends TAttachedDoc implements SocialIdentity {
 export class TPerson extends TContact implements Person {
   @Prop(TypeString(), getEmbeddedLabel('UUID'))
   @Hidden()
-    personUuid?: PersonUuid
+  personUuid?: PersonUuid
 
   @Prop(TypeDate(DateRangeMode.DATE, false), contact.string.Birthday)
-    birthday?: Timestamp
+  birthday?: Timestamp
 
   @Prop(CollectionType(contact.class.SocialIdentity), contact.string.SocialIds)
-    socialIds?: Collection<SocialIdentity>
+  socialIds?: Collection<SocialIdentity>
 
   @Prop(TypeRef(contact.class.UserProfile), contact.string.UserProfile)
   @ReadOnly()
-    profile?: Ref<Card>
+  profile?: Ref<Card>
 }
 
 @Model(contact.class.Member, core.class.AttachedDoc, DOMAIN_CONTACT)
 @UX(contact.string.Member, contact.icon.Person, undefined, 'name')
 export class TMember extends TAttachedDoc implements Member {
   @Prop(TypeRef(contact.class.Contact), contact.string.Contact)
-    contact!: Ref<Contact>
+  contact!: Ref<Contact>
 }
 
 @Model(contact.class.Organization, contact.class.Contact)
@@ -237,10 +237,10 @@ export class TMember extends TAttachedDoc implements Member {
 export class TOrganization extends TContact implements Organization {
   @Prop(TypeCollaborativeDoc(), core.string.Description)
   @Index(IndexKind.FullText)
-    description!: MarkupBlobRef | null
+  description!: MarkupBlobRef | null
 
   @Prop(CollectionType(contact.class.Member), contact.string.Members)
-    members!: number
+  members!: number
 }
 
 @Model(contact.class.Status, core.class.AttachedDoc, DOMAIN_CONTACT)
@@ -258,26 +258,26 @@ export class TEmployee extends TPerson implements Employee {
   @Prop(TypeBoolean(), contact.string.Active)
   @ReadOnly()
   @Hidden()
-    active!: boolean
+  active!: boolean
 
   @Prop(TypeString(), contact.string.Role)
   @ReadOnly()
   @Hidden()
-    role?: 'USER' | 'GUEST'
+  role?: 'USER' | 'GUEST'
 
   @Prop(CollectionType(contact.class.Status), contact.string.Status)
   @Hidden()
-    statuses?: number
+  statuses?: number
 
   @Prop(TypeString(), contact.string.Position)
   @Hidden()
-    position?: string | null
+  position?: string | null
 
   declare personUuid?: AccountUuid
 
   @Prop(TypeString(), contact.string.Timezone)
   @Hidden()
-    timezone?: string
+  timezone?: string
 }
 
 @Model(contact.class.ContactsTab, core.class.Doc, DOMAIN_MODEL)
@@ -291,7 +291,7 @@ export class TContactsTab extends TDoc implements ContactsTab {
 export class TPersonSpace extends TSpace implements PersonSpace {
   @Prop(TypeRef(contact.class.Person), contact.string.Person)
   @Index(IndexKind.Indexed)
-    person!: Ref<Person>
+  person!: Ref<Person>
 }
 
 @Model(contact.class.UserRole, core.class.Doc, DOMAIN_ROLE)
@@ -317,16 +317,16 @@ export class TWorkspaceMemberStatus extends TDoc implements WorkspaceMemberStatu
 
   @Prop(TypeAccountUuid(), core.string.Members)
   @Index(IndexKind.Indexed)
-    user!: AccountUuid
+  user!: AccountUuid
 
   @Prop(TypeString(), core.string.Description)
-    message!: string
+  message!: string
 
   @Prop(TypeTimestamp(), contact.string.StatusDueDate)
-    clearAt?: Timestamp
+  clearAt?: Timestamp
 }
 
-export function createModel (builder: Builder): void {
+export function createModel(builder: Builder): void {
   builder.createModel(
     TAvatarProvider,
     TChannelProvider,

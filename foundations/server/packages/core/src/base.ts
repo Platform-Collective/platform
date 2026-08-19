@@ -45,7 +45,7 @@ export const emptyModelResult = Promise.resolve<Tx[]>([])
  * @public
  */
 export abstract class BaseMiddleware implements Middleware {
-  protected constructor (
+  protected constructor(
     readonly context: PipelineContext,
     protected readonly next?: Middleware
   ) {}
@@ -59,7 +59,7 @@ export abstract class BaseMiddleware implements Middleware {
     return this.provideFindAll(ctx, _class, query, options)
   }
 
-  provideLoadModel (
+  provideLoadModel(
     ctx: MeasureContext<SessionData>,
     lastModelTx: Timestamp,
     hash?: string
@@ -67,7 +67,7 @@ export abstract class BaseMiddleware implements Middleware {
     return this.next?.loadModel(ctx, lastModelTx, hash) ?? emptyModelResult
   }
 
-  loadModel (
+  loadModel(
     ctx: MeasureContext<SessionData>,
     lastModelTx: Timestamp,
     hash?: string
@@ -87,7 +87,7 @@ export abstract class BaseMiddleware implements Middleware {
     return Promise.resolve(new Map<T, number>())
   }
 
-  async close (): Promise<void> {}
+  async close(): Promise<void> {}
 
   groupBy<T, P extends Doc>(
     ctx: MeasureContext<SessionData>,
@@ -98,26 +98,26 @@ export abstract class BaseMiddleware implements Middleware {
     return this.provideGroupBy(ctx, domain, field, query)
   }
 
-  searchFulltext (ctx: MeasureContext<SessionData>, query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+  searchFulltext(ctx: MeasureContext<SessionData>, query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
     return this.provideSearchFulltext(ctx, query, options)
   }
 
-  handleBroadcast (ctx: MeasureContext<SessionData>): Promise<void> {
+  handleBroadcast(ctx: MeasureContext<SessionData>): Promise<void> {
     return this.next?.handleBroadcast(ctx) ?? emptyBroadcastResult
   }
 
-  provideBroadcast (ctx: MeasureContext<SessionData>): Promise<void> {
+  provideBroadcast(ctx: MeasureContext<SessionData>): Promise<void> {
     return this.next?.handleBroadcast(ctx) ?? emptyBroadcastResult
   }
 
-  protected provideTx (ctx: MeasureContext<SessionData>, tx: Tx[]): Promise<TxMiddlewareResult> {
+  protected provideTx(ctx: MeasureContext<SessionData>, tx: Tx[]): Promise<TxMiddlewareResult> {
     if (this.next !== undefined) {
       return this.next.tx(ctx, tx)
     }
     return emptyTxResult
   }
 
-  tx (ctx: MeasureContext, tx: Tx[]): Promise<TxMiddlewareResult> {
+  tx(ctx: MeasureContext, tx: Tx[]): Promise<TxMiddlewareResult> {
     return this.provideTx(ctx, tx)
   }
 
@@ -133,7 +133,7 @@ export abstract class BaseMiddleware implements Middleware {
     return emptyFindResult
   }
 
-  protected provideSearchFulltext (
+  protected provideSearchFulltext(
     ctx: MeasureContext,
     query: SearchQuery,
     options: SearchOptions
@@ -144,11 +144,11 @@ export abstract class BaseMiddleware implements Middleware {
     return emptySearchResult
   }
 
-  domainRequest (ctx: MeasureContext, domain: OperationDomain, params: DomainParams): Promise<DomainResult> {
+  domainRequest(ctx: MeasureContext, domain: OperationDomain, params: DomainParams): Promise<DomainResult> {
     return this.provideDomainRequest(ctx, domain, params)
   }
 
-  protected async provideDomainRequest (
+  protected async provideDomainRequest(
     ctx: MeasureContext,
     domain: OperationDomain,
     params: DomainParams
@@ -159,14 +159,14 @@ export abstract class BaseMiddleware implements Middleware {
     return { domain, value: null }
   }
 
-  provideCloseSession (ctx: MeasureContext, sessionId: string): Promise<void> {
+  provideCloseSession(ctx: MeasureContext, sessionId: string): Promise<void> {
     if (this.next !== undefined) {
       return this.next.closeSession(ctx, sessionId)
     }
     return Promise.resolve()
   }
 
-  closeSession (ctx: MeasureContext, sessionId: string): Promise<void> {
+  closeSession(ctx: MeasureContext, sessionId: string): Promise<void> {
     return this.provideCloseSession(ctx, sessionId)
   }
 }

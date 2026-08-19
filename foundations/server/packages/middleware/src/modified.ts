@@ -30,11 +30,11 @@ import {
  * @public
  */
 export class ModifiedMiddleware extends BaseMiddleware implements Middleware {
-  private constructor (context: PipelineContext, next?: Middleware) {
+  private constructor(context: PipelineContext, next?: Middleware) {
     super(context, next)
   }
 
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -42,9 +42,9 @@ export class ModifiedMiddleware extends BaseMiddleware implements Middleware {
     return new ModifiedMiddleware(context, next)
   }
 
-  tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     const now = Date.now()
-    function updateTx (tx: Tx): void {
+    function updateTx(tx: Tx): void {
       if (tx.modifiedBy !== core.account.System && ctx.contextData.account.uuid !== systemAccountUuid) {
         tx.modifiedOn = now
         tx.createdOn = tx.modifiedOn

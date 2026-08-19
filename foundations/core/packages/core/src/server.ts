@@ -14,8 +14,8 @@
 //
 
 import type { Account, AccountRole, AccountUuid, Doc, Domain, PersonId, Ref } from './classes'
-import { type MeasureContext } from '@hcengineering/measurements'
-import { type DocumentQuery, type FindOptions } from './storage'
+import type { MeasureContext } from '@hcengineering/measurements'
+import type { DocumentQuery, FindOptions } from './storage'
 import type { DocumentUpdate, Tx } from './tx'
 import { PermissionsGrant, type WorkspaceIds } from './utils'
 
@@ -66,11 +66,11 @@ export interface SessionData {
   hasDomainBroadcast?: boolean
   workspace: WorkspaceIds
   socialStringsToUsers: Map<
-  PersonId,
-  {
-    accontUuid: AccountUuid
-    role: AccountRole
-  }
+    PersonId,
+    {
+      accontUuid: AccountUuid
+      role: AccountRole
+    }
   >
   grant?: PermissionsGrant
 

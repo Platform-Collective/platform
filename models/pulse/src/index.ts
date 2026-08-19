@@ -38,7 +38,7 @@ export class TTypingIndicator extends TDoc implements TypingIndicator {
   status?: IntlString
 }
 
-export function createModel (builder: Builder): void {
+export function createModel(builder: Builder): void {
   builder.createModel(TDocumentPresence, TTypingIndicator)
 
   builder.mixin(pulse.class.DocumentPresence, core.class.Class, core.mixin.TransientTTL, {

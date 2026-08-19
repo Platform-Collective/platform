@@ -62,7 +62,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
   cache = new Map<string, any>()
   intervalId: NodeJS.Timeout
 
-  constructor (context: PipelineContext, next: Middleware | undefined) {
+  constructor(context: PipelineContext, next: Middleware | undefined) {
     super(context, next)
     this.triggers = new Triggers(this.context.hierarchy)
     this.intervalId = setInterval(
@@ -73,18 +73,18 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     )
   }
 
-  async close (): Promise<void> {
+  async close(): Promise<void> {
     clearInterval(this.intervalId)
   }
 
-  static async create (ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
+  static async create(ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
     // we need to init triggers from model first.
     const triggers = new TriggersMiddleware(context, next)
     await triggers.init(ctx)
     return triggers
   }
 
-  async init (ctx: MeasureContext): Promise<void> {
+  async init(ctx: MeasureContext): Promise<void> {
     if (this.context.storageAdapter == null) {
       throw new PlatformError(unknownError('Storage adapter should be specified'))
     }
@@ -95,7 +95,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     this.triggers.init(this.context.modelDb)
   }
 
-  async tx (ctx: MeasureContext<SessionData>, tx: Tx[]): Promise<TxMiddlewareResult> {
+  async tx(ctx: MeasureContext<SessionData>, tx: Tx[]): Promise<TxMiddlewareResult> {
     await this.triggers.tx(tx)
     const result = await this.provideTx(ctx, tx)
 
@@ -106,7 +106,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     return result
   }
 
-  private async processDerived (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<void> {
+  private async processDerived(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<void> {
     const findAll: SessionFindAll = async (ctx, _class, query, options) => {
       const _ctx: MeasureContext = (options as ServerFindOptions<Doc>)?.ctx ?? ctx
       delete (options as ServerFindOptions<Doc>)?.ctx
@@ -195,7 +195,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
   }
 
   @withContext('process-sync-triggers')
-  processSyncTriggers (
+  processSyncTriggers(
     ctx: MeasureContext<SessionData>,
     txes: Tx[],
     triggerControl: Omit<TriggerControl, 'txFactory' | 'ctx' | 'txes'>,
@@ -215,7 +215,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
   }
 
   @withContext('process-async-triggers')
-  async processAsyncTriggers (
+  async processAsyncTriggers(
     ctx: MeasureContext<SessionData>,
     triggerControl: Omit<TriggerControl, 'txFactory' | 'ctx' | 'txes'>,
     findAll: Middleware['findAll'],
@@ -263,7 +263,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  private async processDerivedTxes (ctx: MeasureContext<SessionData>, derived: Tx[]): Promise<void> {
+  private async processDerivedTxes(ctx: MeasureContext<SessionData>, derived: Tx[]): Promise<void> {
     if (derived.length > 0) {
       derived.sort((a, b) => a.modifiedOn - b.modifiedOn)
       await this.context.derived?.tx(ctx, derived)
@@ -295,7 +295,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  private async processRemove (ctx: MeasureContext<SessionData>, txes: Tx[], findAll: SessionFindAll): Promise<Tx[]> {
+  private async processRemove(ctx: MeasureContext<SessionData>, txes: Tx[], findAll: SessionFindAll): Promise<Tx[]> {
     const result: Tx[] = []
 
     for (const tx of txes) {
@@ -321,7 +321,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     return result
   }
 
-  private async deleteClassCollections (
+  private async deleteClassCollections(
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<Doc>>,
     objectId: Ref<Doc>,
@@ -342,7 +342,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     return result
   }
 
-  private async updateCollection (
+  private async updateCollection(
     ctx: MeasureContext,
     colTx: TxUpdateDoc<AttachedDoc>,
     findAll: SessionFindAll
@@ -396,7 +396,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     return [...(oldTx !== null ? [oldTx] : []), ...(newTx !== null ? [newTx] : [])]
   }
 
-  private async processCollection (
+  private async processCollection(
     ctx: MeasureContext<SessionData>,
     txes: Tx[],
     findAll: SessionFindAll
@@ -445,7 +445,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     return result
   }
 
-  private getParentClass (_class: Ref<Class<Doc>>): Ref<Class<Doc>> {
+  private getParentClass(_class: Ref<Class<Doc>>): Ref<Class<Doc>> {
     const baseDomain = this.context.hierarchy.getDomain(_class)
     const ancestors = this.context.hierarchy.getAncestors(_class)
     let result: Ref<Class<Doc>> = _class
@@ -460,7 +460,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     return result
   }
 
-  private getMixins (_class: Ref<Class<Doc>>, object: Doc): Array<Ref<Mixin<Doc>>> {
+  private getMixins(_class: Ref<Class<Doc>>, object: Doc): Array<Ref<Mixin<Doc>>> {
     const parentClass = this.getParentClass(_class)
     const descendants = this.context.hierarchy.getDescendants(parentClass)
     return descendants.filter(
@@ -469,7 +469,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     )
   }
 
-  private deleteObject (ctx: MeasureContext, object: Doc, removedMap: Map<Ref<Doc>, Doc>): Tx[] {
+  private deleteObject(ctx: MeasureContext, object: Doc, removedMap: Map<Ref<Doc>, Doc>): Tx[] {
     const result: Tx[] = []
     const factory = new TxFactory(object.modifiedBy, true)
     if (this.context.hierarchy.isDerived(object._class, core.class.AttachedDoc)) {
@@ -491,7 +491,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     return result
   }
 
-  private async deleteRelatedDocuments (
+  private async deleteRelatedDocuments(
     ctx: MeasureContext<SessionData>,
     object: Doc,
     findAll: SessionFindAll
@@ -514,7 +514,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     return result
   }
 
-  private async processMove (ctx: MeasureContext, txes: Tx[], findAll: SessionFindAll): Promise<Tx[]> {
+  private async processMove(ctx: MeasureContext, txes: Tx[], findAll: SessionFindAll): Promise<Tx[]> {
     const result: Tx[] = []
     for (const tx of txes) {
       if (!this.context.hierarchy.isDerived(tx._class, core.class.TxUpdateDoc)) {

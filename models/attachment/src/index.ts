@@ -55,26 +55,26 @@ export const DOMAIN_ATTACHMENT = 'attachment' as Domain
 export class TAttachment extends TAttachedDoc implements Attachment {
   @Prop(TypeString(), attachment.string.Name)
   @Index(IndexKind.FullText)
-    name!: string
+  name!: string
 
   @Prop(TypeBlob(), attachment.string.File)
-    file!: Ref<Blob>
+  file!: Ref<Blob>
 
   @Prop(TypeString(), attachment.string.Size)
-    size!: number
+  size!: number
 
   @Prop(TypeString(), attachment.string.Type)
-    type!: string
+  type!: string
 
   @Prop(TypeTimestamp(), attachment.string.LastModified)
-    lastModified!: number
+  lastModified!: number
 
   @Prop(TypeString(), attachment.string.Description)
   @Index(IndexKind.FullText)
-    description!: string
+  description!: string
 
   @Prop(TypeBoolean(), attachment.string.Pinned)
-    pinned!: boolean
+  pinned!: boolean
 
   metadata?: AttachmentMetadata
 }
@@ -98,18 +98,18 @@ export class TDrawing extends TDoc implements Drawing {
   @Prop(TypeRef(core.class.Doc), getEmbeddedLabel('Parent'))
   @Index(IndexKind.Indexed)
   @Hidden()
-    parent!: Ref<Doc>
+  parent!: Ref<Doc>
 
   @Prop(TypeRef(core.class.Class), getEmbeddedLabel('Parent class'))
   @Index(IndexKind.Indexed)
   @Hidden()
-    parentClass!: Ref<Class<Doc>>
+  parentClass!: Ref<Class<Doc>>
 
   @Prop(TypeString(), getEmbeddedLabel('Content'))
-    content?: string
+  content?: string
 }
 
-export function createModel (builder: Builder): void {
+export function createModel(builder: Builder): void {
   builder.createModel(TAttachment, TEmbedding, TDrawing, TPhoto, TSavedAttachments)
 
   builder.mixin(attachment.class.Attachment, core.class.Class, view.mixin.ObjectPresenter, {

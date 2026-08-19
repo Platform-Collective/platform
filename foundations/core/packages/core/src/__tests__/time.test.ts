@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { type Timestamp } from '../classes'
+import type { Timestamp } from '../classes'
 import { getDay, convertToDay } from '..'
 
 const supportedTimezones: string[] = [
@@ -348,7 +348,7 @@ const supportedTimezones: string[] = [
   'Africa/Johannesburg'
 ]
 
-function testGetDay (date: Date, timezone: string): void {
+function testGetDay(date: Date, timezone: string): void {
   const timestamp: Timestamp = getDay(date.getTime())
   const convertedDate: Date = new Date(timestamp)
   const originalLocaleDate: string = date.toLocaleDateString('en-US', { timeZone: 'Europe/London' })
@@ -356,7 +356,7 @@ function testGetDay (date: Date, timezone: string): void {
   expect(convertedLocaleDate).toEqual(originalLocaleDate)
 }
 
-function testConvertToDay (date: Date, timezone: string): void {
+function testConvertToDay(date: Date, timezone: string): void {
   const convertedDate: Date = convertToDay(date)
   const originalLocaleDate: string = date.toLocaleDateString('en-US', { timeZone: 'Europe/London' })
   const convertedLocaleDate: string = convertedDate.toLocaleDateString('en-US', { timeZone: timezone })

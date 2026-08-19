@@ -1,12 +1,12 @@
 import { PlatformError, Severity, Status } from '@hcengineering/platform'
-import { type Doc } from './classes'
+import type { Doc } from './classes'
 import { clone } from './clone'
 import core from './component'
 
 /**
  * @public
  */
-export function getObjectValue (key: string, doc: Doc): any {
+export function getObjectValue(key: string, doc: Doc): any {
   // Check dot notation
   if (key.length === 0) {
     return doc
@@ -33,7 +33,7 @@ export function getObjectValue (key: string, doc: Doc): any {
 /**
  * @public
  */
-export function setObjectValue (key: string, doc: Doc, newValue: any): void {
+export function setObjectValue(key: string, doc: Doc, newValue: any): void {
   // Check dot notation
   if (key.length === 0) {
     return
@@ -64,11 +64,11 @@ export function setObjectValue (key: string, doc: Doc, newValue: any): void {
   return value
 }
 
-function isNestedArrayQuery (value: any, d: string): boolean {
+function isNestedArrayQuery(value: any, d: string): boolean {
   return Number.isNaN(Number.parseInt(d)) && value?.[d as any] === undefined
 }
 
-function getNestedArrayValue (value: any[], name: string): any[] {
+function getNestedArrayValue(value: any[], name: string): any[] {
   const result = []
   for (const v of value) {
     result.push(...arrayOrValue(getObjectValue(name, v)))
@@ -76,6 +76,6 @@ function getNestedArrayValue (value: any[], name: string): any[] {
   return result
 }
 
-function arrayOrValue (vv: any): any[] {
+function arrayOrValue(vv: any): any[] {
   return Array.isArray(vv) ? vv : [vv]
 }

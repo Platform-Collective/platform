@@ -36,11 +36,11 @@ import { BaseMiddleware } from '@hcengineering/server-core'
 export class ContextNameMiddleware extends BaseMiddleware implements Middleware {
   scopes = new Map<string, Promise<any>>()
 
-  static async create (ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
+  static async create(ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
     return new ContextNameMiddleware(context, next)
   }
 
-  domainRequest (ctx: MeasureContext, domain: OperationDomain, params: DomainParams): Promise<DomainResult> {
+  domainRequest(ctx: MeasureContext, domain: OperationDomain, params: DomainParams): Promise<DomainResult> {
     return ctx.with(
       `${domain}-${Object.keys(params)[0]}`,
       {},
@@ -51,7 +51,7 @@ export class ContextNameMiddleware extends BaseMiddleware implements Middleware 
     )
   }
 
-  async tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  async tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     let measureName: string | undefined
 
     const tx = txes.find((it) => it._class === core.class.TxApplyIf)

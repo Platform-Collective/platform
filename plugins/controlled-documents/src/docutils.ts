@@ -32,7 +32,7 @@ import { makeRank } from '@hcengineering/rank'
 import documents from './plugin'
 import { getDocumentId, getFirstRank, TEMPLATE_PREFIX } from './utils'
 
-async function getParentPath (client: TxOperations, parent: Ref<ProjectDocument>): Promise<Array<Ref<DocumentMeta>>> {
+async function getParentPath(client: TxOperations, parent: Ref<ProjectDocument>): Promise<Array<Ref<DocumentMeta>>> {
   const parentDocObj = await client.findOne(documents.class.ProjectDocument, {
     _id: parent
   })
@@ -54,7 +54,7 @@ async function getParentPath (client: TxOperations, parent: Ref<ProjectDocument>
   return [parentMeta.meta, ...parentMeta.path]
 }
 
-export async function createControlledDocFromTemplate (
+export async function createControlledDocFromTemplate(
   client: TxOperations,
   templateId: Ref<DocumentTemplate> | undefined,
   documentId: Ref<ControlledDocument>,
@@ -63,7 +63,7 @@ export async function createControlledDocFromTemplate (
   project: Ref<Project> | undefined,
   parent: Ref<ProjectDocument> | undefined,
   docClass: Ref<Class<ControlledDocument>> = documents.class.ControlledDocument
-): Promise<{ seqNumber: number, success: boolean }> {
+): Promise<{ seqNumber: number; success: boolean }> {
   if (templateId == null) {
     return { seqNumber: -1, success: false }
   }
@@ -137,7 +137,7 @@ export async function createControlledDocFromTemplate (
 /**
  * Calculate the next available seqNumber by checking existing documents with the template.
  */
-async function calculateNextSeqNumberWithCheck (
+async function calculateNextSeqNumberWithCheck(
   client: TxOperations,
   templateId: Ref<DocumentTemplate>,
   currentTemplateSequence: number
@@ -157,11 +157,11 @@ async function calculateNextSeqNumberWithCheck (
   return Math.max(currentTemplateSequence, maxExistingSeqNumber) + 1
 }
 
-export async function useDocumentTemplate (
+export async function useDocumentTemplate(
   client: TxOperations,
   templateId: Ref<DocumentTemplate>,
   checkExisting: boolean = false
-): Promise<{ seqNumber: number, prefix: string, content: Ref<Blob> | null, category: Ref<DocumentCategory> }> {
+): Promise<{ seqNumber: number; prefix: string; content: Ref<Blob> | null; category: Ref<DocumentCategory> }> {
   const template = await client.findOne(documents.mixin.DocumentTemplate, {
     _id: templateId
   })
@@ -193,7 +193,7 @@ export async function useDocumentTemplate (
   }
 }
 
-export async function createControlledDocMetadata (
+export async function createControlledDocMetadata(
   client: TxOperations,
   templateId: Ref<DocumentTemplate>,
   documentId: Ref<ControlledDocument>,
@@ -206,11 +206,11 @@ export async function createControlledDocMetadata (
   specTitle: string,
   metaId?: Ref<DocumentMeta>
 ): Promise<{
-    success: boolean
-    seqNumber: number
-    documentMetaId: Ref<DocumentMeta>
-    projectDocumentId: Ref<ProjectDocument>
-  }> {
+  success: boolean
+  seqNumber: number
+  documentMetaId: Ref<DocumentMeta>
+  projectDocumentId: Ref<ProjectDocument>
+}> {
   const projectId = project ?? documents.ids.NoProject
 
   const ops = client.apply('create-qms-document')
@@ -285,7 +285,7 @@ export async function createControlledDocMetadata (
   return { success: success.result, seqNumber, documentMetaId, projectDocumentId }
 }
 
-export async function createDocumentTemplate (
+export async function createDocumentTemplate(
   client: TxOperations,
   _class: Ref<Class<Document>>,
   space: Ref<DocumentSpace>,
@@ -357,7 +357,7 @@ export async function createDocumentTemplate (
   return { seqNumber, success: commit.result }
 }
 
-export async function createDocumentTemplateMetadata (
+export async function createDocumentTemplateMetadata(
   client: TxOperations,
   _class: Ref<Class<Document>>,
   space: Ref<DocumentSpace>,
@@ -370,12 +370,12 @@ export async function createDocumentTemplateMetadata (
   specTitle: string,
   metaId?: Ref<DocumentMeta>
 ): Promise<{
-    success: boolean
-    seqNumber: number
-    code: string
-    documentMetaId: Ref<DocumentMeta>
-    projectDocumentId: Ref<ProjectDocument>
-  }> {
+  success: boolean
+  seqNumber: number
+  code: string
+  documentMetaId: Ref<DocumentMeta>
+  projectDocumentId: Ref<ProjectDocument>
+}> {
   const projectId = project ?? documents.ids.NoProject
 
   const incResult = await client.updateDoc(
@@ -469,17 +469,17 @@ export async function createDocumentTemplateMetadata (
   return { success: success.result, seqNumber, code, documentMetaId, projectDocumentId }
 }
 
-export async function createNewFolder (
+export async function createNewFolder(
   client: TxOperations,
   space: Ref<DocumentSpace>,
   project: Ref<Project> | undefined,
   parent: Ref<ProjectDocument> | undefined,
   title: string
 ): Promise<{
-    success: boolean
-    documentMetaId: Ref<DocumentMeta>
-    projectDocumentId: Ref<ProjectDocument>
-  }> {
+  success: boolean
+  documentMetaId: Ref<DocumentMeta>
+  projectDocumentId: Ref<ProjectDocument>
+}> {
   const projectId = project ?? documents.ids.NoProject
 
   const ops = client.apply()

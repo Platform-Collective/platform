@@ -70,7 +70,7 @@ import type {
   Version
 } from './classes'
 import { AccountRole, TxAccessLevel } from './classes'
-import { type Status, type StatusCategory } from './status'
+import type { Status, StatusCategory } from './status'
 import type {
   Tx,
   TxApplyIf,
@@ -227,7 +227,7 @@ export default plugin(coreId, {
   },
   status: {
     ObjectNotFound: '' as StatusCode<{ _id: Ref<Doc> }>,
-    ItemNotFound: '' as StatusCode<{ _id: Ref<Doc>, _localId: string }>
+    ItemNotFound: '' as StatusCode<{ _id: Ref<Doc>; _localId: string }>
   },
   version: {
     Model: '' as Ref<Version>

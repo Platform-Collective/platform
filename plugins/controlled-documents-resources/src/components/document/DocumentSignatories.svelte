@@ -68,7 +68,7 @@
       }
     })
 
-  function getNameByEmployeeId (id: Ref<Person> | undefined): string {
+  function getNameByEmployeeId(id: Ref<Person> | undefined): string {
     if (id === undefined) return ''
 
     const employee = $employeeByIdStore.get(id as Ref<Employee>)
@@ -77,7 +77,7 @@
     return rawName !== undefined ? formatName(rawName) : ''
   }
 
-  function getSignerLabel (role: 'author' | 'reviewer' | 'approver'): IntlString {
+  function getSignerLabel(role: 'author' | 'reviewer' | 'approver'): IntlString {
     switch (role) {
       case 'author':
         return documentsRes.string.Author

@@ -22,17 +22,17 @@ import { VersionableDoc } from './versioning'
 
 export type ArraySizeSelector =
   | {
-    $gt: number
-  }
+      $gt: number
+    }
   | {
-    $lt: number
-  }
+      $lt: number
+    }
   | {
-    $gte: number
-  }
+      $gte: number
+    }
   | {
-    $lte: number
-  }
+      $lte: number
+    }
 
 /**
  * @public
@@ -272,7 +272,7 @@ export interface DomainResult<T = any> {
 /**
  * @public
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 export interface TxResult {}
 
 /**
@@ -312,8 +312,8 @@ export interface SearchResultDoc {
   emojiIcon?: string
   score?: number
   doc: Pick<Doc, '_id' | '_class' | 'createdOn'> &
-  Partial<Pick<AttachedDoc, 'attachedTo' | 'attachedToClass'>> &
-  Partial<Pick<VersionableDoc, 'baseId'>>
+    Partial<Pick<AttachedDoc, 'attachedTo' | 'attachedToClass'>> &
+    Partial<Pick<VersionableDoc, 'baseId'>>
 }
 
 /**
@@ -344,7 +344,7 @@ export interface FulltextStorage {
   searchFulltext: (query: SearchQuery, options: SearchOptions) => Promise<SearchResult>
 }
 
-export function shouldShowArchived<T extends Doc> (
+export function shouldShowArchived<T extends Doc>(
   query: DocumentQuery<T>,
   options: FindOptions<T> | undefined
 ): boolean {

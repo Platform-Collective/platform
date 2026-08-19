@@ -27,7 +27,6 @@ import core, {
   type TxCreateDoc,
   type TxMixin,
   TxProcessor,
-  type TxRemoveDoc,
   type TxUpdateDoc,
   type TypedSpace,
   type MeasureContext,
@@ -51,7 +50,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
   private typeBySpace: Record<Ref<Space>, Ref<SpaceType>> = {}
   wasInit: Promise<void> | boolean = false
 
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -59,7 +58,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     return new SpacePermissionsMiddleware(context, next)
   }
 
-  private async init (ctx: MeasureContext): Promise<void> {
+  private async init(ctx: MeasureContext): Promise<void> {
     if (this.wasInit === true) {
       return
     }
@@ -82,15 +81,15 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     }
   }
 
-  private getPermissions (): Permission[] {
+  private getPermissions(): Permission[] {
     return this.context.modelDb.findAllSync(core.class.Permission, {})
   }
 
-  private getRoles (spaceTypeId: Ref<SpaceType>): Role[] {
+  private getRoles(spaceTypeId: Ref<SpaceType>): Role[] {
     return this.context.modelDb.findAllSync(core.class.Role, { attachedTo: spaceTypeId })
   }
 
-  private setPermissions (
+  private setPermissions(
     spaceId: Ref<Space>,
     roles: Role[],
     assignment: RolesAssignment,
@@ -113,7 +112,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     }
   }
 
-  private addRestrictedSpace (space: TypedSpace): void {
+  private addRestrictedSpace(space: TypedSpace): void {
     this.permissionsBySpace[space._id] = {}
 
     const spaceType = this.context.modelDb.findAllSync(core.class.SpaceType, { _id: space.type })[0]
@@ -149,13 +148,13 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     this.setPermissions(space._id, this.getRoles(spaceType._id), asMixin, this.getPermissions())
   }
 
-  private isTypedSpaceClass (_class: Ref<Class<Space>>): boolean {
+  private isTypedSpaceClass(_class: Ref<Class<Space>>): boolean {
     const h = this.context.hierarchy
 
     return h.isDerived(_class, core.class.TypedSpace)
   }
 
-  private isTypedSpace (space: Space): space is TypedSpace {
+  private isTypedSpace(space: Space): space is TypedSpace {
     return this.isTypedSpaceClass(space._class)
   }
 
@@ -164,7 +163,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
    *
    * Checks if the required permission is present in the space for the given context
    */
-  private checkPermission (
+  private checkPermission(
     ctx: MeasureContext<SessionData>,
     space: Ref<TypedSpace>,
     tx: TxCUD<Doc>,
@@ -231,7 +230,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     return true
   }
 
-  private throwForbidden (): void {
+  private throwForbidden(): void {
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
@@ -248,7 +247,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
   //   this.throwForbidden()
   // }
 
-  private handleCreate (tx: TxCUD<Space>): void {
+  private handleCreate(tx: TxCUD<Space>): void {
     const createTx = tx as TxCreateDoc<Space>
     if (!this.context.hierarchy.isDerived(createTx.objectClass, core.class.Space)) return
     if (this.isTypedSpaceClass(createTx.objectClass)) {
@@ -261,7 +260,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     }
   }
 
-  private handleMixin (tx: TxCUD<Space>): void {
+  private handleMixin(tx: TxCUD<Space>): void {
     if (!this.isTypedSpaceClass(tx.objectClass)) {
       return
     }
@@ -304,8 +303,8 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     this.setPermissions(spaceId, this.getRoles(spaceType._id), assignment, this.getPermissions())
   }
 
-  private handleRemove (tx: TxCUD<Space>): void {
-    const removeTx = tx as TxRemoveDoc<Space>
+  private handleRemove(tx: TxCUD<Space>): void {
+    const removeTx = tx
     if (!this.context.hierarchy.isDerived(removeTx.objectClass, core.class.Space)) return
     if (removeTx._class !== core.class.TxCreateDoc) return
     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
@@ -319,15 +318,15 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     this.restrictedSpaces.delete(tx.objectId)
   }
 
-  private isSpaceTxCUD (tx: TxCUD<Doc>): tx is TxCUD<Space> {
+  private isSpaceTxCUD(tx: TxCUD<Doc>): tx is TxCUD<Space> {
     return this.context.hierarchy.isDerived(tx.objectClass, core.class.Space)
   }
 
-  private isRoleTxCUD (tx: TxCUD<Doc>): tx is TxCUD<Role> {
+  private isRoleTxCUD(tx: TxCUD<Doc>): tx is TxCUD<Role> {
     return this.context.hierarchy.isDerived(tx.objectClass, core.class.Role)
   }
 
-  private handlePermissionsUpdatesFromRoleTx (ctx: MeasureContext, actualTx: TxCUD<Doc>): void {
+  private handlePermissionsUpdatesFromRoleTx(ctx: MeasureContext, actualTx: TxCUD<Doc>): void {
     if (actualTx._class !== core.class.TxUpdateDoc) {
       return
     }
@@ -377,7 +376,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     }
   }
 
-  private handlePermissionsUpdatesFromTx (ctx: MeasureContext, tx: TxCUD<Doc>): void {
+  private handlePermissionsUpdatesFromTx(ctx: MeasureContext, tx: TxCUD<Doc>): void {
     if (this.isSpaceTxCUD(tx)) {
       if (tx._class === core.class.TxCreateDoc) {
         this.handleCreate(tx)
@@ -393,7 +392,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     this.handlePermissionsUpdatesFromRoleTx(ctx, tx)
   }
 
-  private handleSpaceUpdate (tx: TxCUD<Space>): void {
+  private handleSpaceUpdate(tx: TxCUD<Space>): void {
     if (!this.isTypedSpaceClass(tx.objectClass)) {
       return
     }
@@ -408,7 +407,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     }
   }
 
-  private processPermissionsUpdatesFromTx (ctx: MeasureContext, tx: Tx): void {
+  private processPermissionsUpdatesFromTx(ctx: MeasureContext, tx: Tx): void {
     if (!TxProcessor.isExtendsCUD(tx._class)) {
       return
     }
@@ -417,7 +416,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     this.handlePermissionsUpdatesFromTx(ctx, cudTx)
   }
 
-  async tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  async tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     await this.init(ctx)
     for (const tx of txes) {
       this.checkPermissions(ctx, tx)
@@ -430,7 +429,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     return res
   }
 
-  protected checkPermissions (ctx: MeasureContext, tx: Tx): void {
+  protected checkPermissions(ctx: MeasureContext, tx: Tx): void {
     if (tx._class === core.class.TxApplyIf) {
       const applyTx = tx as TxApplyIf
 
@@ -451,7 +450,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     }
   }
 
-  private checkSpaceTypePermissions (ctx: MeasureContext, cudTx: TxCUD<Space>): void {
+  private checkSpaceTypePermissions(ctx: MeasureContext, cudTx: TxCUD<Space>): void {
     const account = ctx.contextData.account
     const h = this.context.hierarchy
     if (account.primarySocialId === core.account.System) return
@@ -461,7 +460,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     }
   }
 
-  private checkSpacePermissions (
+  private checkSpacePermissions(
     ctx: MeasureContext,
     cudTx: TxCUD<Doc>,
     targetSpaceId: Ref<Space>,
@@ -478,11 +477,11 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
   }
 }
 
-function isMixinUpdateTx (tx: Tx): boolean {
+function isMixinUpdateTx(tx: Tx): boolean {
   return tx._class === core.class.TxMixin && Object.keys((tx as TxMixin<Doc, Doc>).attributes).length > 0
 }
 
-function isTxClassMatched (tx: Tx, permission: Permission): boolean {
+function isTxClassMatched(tx: Tx, permission: Permission): boolean {
   if (permission.txClass === tx._class) return true
   if (permission.txMatch === undefined && isMixinUpdateTx(tx)) {
     return permission.txClass === core.class.TxUpdateDoc
@@ -490,6 +489,6 @@ function isTxClassMatched (tx: Tx, permission: Permission): boolean {
   return false
 }
 
-function getTxObjectClass (tx: TxCUD<Doc>): Ref<Class<Doc>> {
+function getTxObjectClass(tx: TxCUD<Doc>): Ref<Class<Doc>> {
   return tx._class === core.class.TxMixin ? (tx as TxMixin<Doc, Doc>).mixin : tx.objectClass
 }

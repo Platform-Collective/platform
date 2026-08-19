@@ -38,7 +38,7 @@
   const client = getClient()
   let descriptionBox: AttachmentStyledBox
 
-  async function handleOkAction (): Promise<void> {
+  async function handleOkAction(): Promise<void> {
     if (isCodeWrong || isTitleWrong) {
       return
     }
@@ -93,10 +93,10 @@
       <EditBox
         placeholder={documents.string.Title}
         bind:value={_title}
-        kind={'large-style'}
+        kind="large-style"
         required
         focusIndex={1}
-        maxWidth={'38rem'}
+        maxWidth="38rem"
         autoFocus
         on:input={() => {
           code = _title
@@ -120,10 +120,10 @@
       <EditBox
         placeholder={documents.string.Code}
         bind:value={code}
-        kind={'large-style'}
+        kind="large-style"
         required
         focusIndex={2}
-        maxWidth={'38rem'}
+        maxWidth="38rem"
         on:input={() => {
           code = code.trim()
         }}
@@ -154,7 +154,7 @@
       focusIndex={3}
       alwaysEdit
       showButtons={false}
-      kind={'normal'}
+      kind="normal"
       isScrollable={false}
       enableAttachments={false}
       on:attachments={(ev) => {
@@ -185,8 +185,8 @@
       focusIndex={10}
       icon={IconAttachment}
       iconProps={{ fill: 'var(--theme-dark-color)' }}
-      size={'large'}
-      kind={'ghost'}
+      size="large"
+      kind="ghost"
       on:click={() => {
         descriptionBox.handleAttach()
       }}

@@ -29,7 +29,7 @@ import { getNodeElement, selectNode } from '@hcengineering/text-editor-resources
 import { showAddCommentPopupFx } from './stores/editors/document'
 import { $editorMode } from './stores/editors/document/editor'
 
-async function getCurrentReviewRequest (doc: ControlledDocument): Promise<DocumentReviewRequest | undefined> {
+async function getCurrentReviewRequest(doc: ControlledDocument): Promise<DocumentReviewRequest | undefined> {
   const client = getClient()
 
   return await client.findOne(documents.class.DocumentReviewRequest, {
@@ -39,7 +39,7 @@ async function getCurrentReviewRequest (doc: ControlledDocument): Promise<Docume
   })
 }
 
-async function getDocumentStateForCurrentUser (
+async function getDocumentStateForCurrentUser(
   doc: ControlledDocument
 ): Promise<DocumentState | ControlledDocumentState | null> {
   if (doc == null) {
@@ -66,7 +66,7 @@ async function getDocumentStateForCurrentUser (
   return doc.state
 }
 
-function isDocumentOwner (doc: ControlledDocument): boolean {
+function isDocumentOwner(doc: ControlledDocument): boolean {
   if (doc == null) {
     return false
   }
@@ -76,7 +76,7 @@ function isDocumentOwner (doc: ControlledDocument): boolean {
   return doc.owner === employee
 }
 
-function isDocumentCoAuthor (doc: ControlledDocument): boolean {
+function isDocumentCoAuthor(doc: ControlledDocument): boolean {
   if (doc == null) {
     return false
   }
@@ -90,7 +90,7 @@ function isDocumentCoAuthor (doc: ControlledDocument): boolean {
   return doc.coAuthors.includes(employee)
 }
 
-function isDocumentReviewer (doc: ControlledDocument): boolean {
+function isDocumentReviewer(doc: ControlledDocument): boolean {
   if (doc == null) {
     return false
   }
@@ -102,14 +102,14 @@ function isDocumentReviewer (doc: ControlledDocument): boolean {
   return doc.reviewers?.includes(employee) ?? false
 }
 
-function canViewDocumentComments (doc: ControlledDocument, mode: EditorMode): boolean {
+function canViewDocumentComments(doc: ControlledDocument, mode: EditorMode): boolean {
   return (
     (isDocumentOwner(doc) || isDocumentCoAuthor(doc) || isDocumentReviewer(doc)) &&
     (mode === 'viewing' || mode === 'editing')
   )
 }
 
-async function canAddDocumentComments (doc: ControlledDocument, mode: EditorMode): Promise<boolean> {
+async function canAddDocumentComments(doc: ControlledDocument, mode: EditorMode): Promise<boolean> {
   if (!canViewDocumentComments(doc, mode)) {
     return false
   }
@@ -127,7 +127,7 @@ async function canAddDocumentComments (doc: ControlledDocument, mode: EditorMode
   return false
 }
 
-export async function comment (editor: Editor, event: MouseEvent, ctx: ActionContext): Promise<void> {
+export async function comment(editor: Editor, event: MouseEvent, ctx: ActionContext): Promise<void> {
   const { objectId, objectClass } = ctx
 
   if (editor === undefined || objectId === undefined || objectClass === undefined) {
@@ -143,7 +143,7 @@ export async function comment (editor: Editor, event: MouseEvent, ctx: ActionCon
   selectNode(editor, nodeId)
 }
 
-export async function isCommentVisible (editor: Editor, ctx: ActionContext): Promise<boolean> {
+export async function isCommentVisible(editor: Editor, ctx: ActionContext): Promise<boolean> {
   const { objectId, objectClass } = ctx
   if (objectId === undefined || objectClass === undefined) {
     return false

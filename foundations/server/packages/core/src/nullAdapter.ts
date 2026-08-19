@@ -20,7 +20,7 @@ import { DummyDbAdapter } from './mem'
 /**
  * @public
  */
-export async function createNullAdapter (
+export async function createNullAdapter(
   ctx: MeasureContext,
   hierarchy: Hierarchy,
   url: string,

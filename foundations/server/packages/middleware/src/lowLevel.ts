@@ -33,7 +33,7 @@ import { BaseMiddleware } from '@hcengineering/server-core'
  * @public
  */
 export class LowLevelMiddleware extends BaseMiddleware implements Middleware {
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -43,19 +43,19 @@ export class LowLevelMiddleware extends BaseMiddleware implements Middleware {
     }
     const adapterManager = context.adapterManager
     context.lowLevelStorage = {
-      find (ctx: MeasureContext, domain: Domain): StorageIterator {
+      find(ctx: MeasureContext, domain: Domain): StorageIterator {
         return adapterManager.getAdapter(domain, false).find(ctx, domain)
       },
 
-      load (ctx: MeasureContext, domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
+      load(ctx: MeasureContext, domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
         return adapterManager.getAdapter(domain, false).load(ctx, domain, docs)
       },
 
-      upload (ctx: MeasureContext, domain: Domain, docs: Doc[]): Promise<void> {
+      upload(ctx: MeasureContext, domain: Domain, docs: Doc[]): Promise<void> {
         return adapterManager.getAdapter(domain, true).upload(ctx, domain, docs)
       },
 
-      clean (ctx: MeasureContext, domain: Domain, docs: Ref<Doc>[]): Promise<void> {
+      clean(ctx: MeasureContext, domain: Domain, docs: Ref<Doc>[]): Promise<void> {
         return adapterManager.getAdapter(domain, true).clean(ctx, domain, docs)
       },
       groupBy<T, P extends Doc>(
@@ -72,10 +72,10 @@ export class LowLevelMiddleware extends BaseMiddleware implements Middleware {
       rawUpdate<T extends Doc>(domain: Domain, query: DocumentQuery<T>, operations: DocumentUpdate<T>): Promise<void> {
         return adapterManager.getAdapter(domain, true).rawUpdate(domain, query, operations)
       },
-      rawDeleteMany (domain, query) {
+      rawDeleteMany(domain, query) {
         return adapterManager.getAdapter(domain, true).rawDeleteMany(domain, query)
       },
-      getDomainHash (ctx: MeasureContext, domain: Domain): Promise<string> {
+      getDomainHash(ctx: MeasureContext, domain: Domain): Promise<string> {
         return adapterManager.getAdapter(domain, false).getDomainHash(ctx, domain)
       },
       traverse<T extends Doc>(

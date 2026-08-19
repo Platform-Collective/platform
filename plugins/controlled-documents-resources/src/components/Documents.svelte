@@ -42,7 +42,7 @@
   {_class}
   {title}
   {icon}
-  adaptive={'doubleRow'}
+  adaptive="doubleRow"
   {modeSelectorProps}
   {query}
   bind:resultQuery

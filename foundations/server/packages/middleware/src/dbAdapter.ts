@@ -28,7 +28,7 @@ import { BaseMiddleware, createServiceAdaptersManager, DbAdapterManagerImpl } fr
  * @public
  */
 export class DBAdapterMiddleware extends BaseMiddleware implements Middleware {
-  constructor (
+  constructor(
     context: PipelineContext,
     next: Middleware | undefined,
     readonly conf: DbConfiguration
@@ -36,7 +36,7 @@ export class DBAdapterMiddleware extends BaseMiddleware implements Middleware {
     super(context, next)
   }
 
-  static create (conf: DbConfiguration): MiddlewareCreator {
+  static create(conf: DbConfiguration): MiddlewareCreator {
     return async (ctx, context, next): Promise<Middleware> => {
       const middleware = new DBAdapterMiddleware(context, next, conf)
       await middleware.init(ctx)
@@ -45,7 +45,7 @@ export class DBAdapterMiddleware extends BaseMiddleware implements Middleware {
   }
 
   @withContext('dbAdapter-middleware')
-  async init (ctx: MeasureContext): Promise<void> {
+  async init(ctx: MeasureContext): Promise<void> {
     const adapters = new Map<string, DbAdapter>()
 
     await ctx.with('create-adapters', {}, async (ctx) => {
@@ -84,7 +84,7 @@ export class DBAdapterMiddleware extends BaseMiddleware implements Middleware {
     this.context.adapterManager = adapterManager
   }
 
-  async close (): Promise<void> {
+  async close(): Promise<void> {
     await this.context.adapterManager?.close()
     await this.context.serviceAdapterManager?.close()
   }

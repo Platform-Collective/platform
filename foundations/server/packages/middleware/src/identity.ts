@@ -34,11 +34,11 @@ export const aiBotAccountEmail = 'huly.ai.bot@hc.engineering'
  * @public
  */
 export class IdentityMiddleware extends BaseMiddleware implements Middleware {
-  private constructor (context: PipelineContext, next?: Middleware) {
+  private constructor(context: PipelineContext, next?: Middleware) {
     super(context, next)
   }
 
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -46,7 +46,7 @@ export class IdentityMiddleware extends BaseMiddleware implements Middleware {
     return new IdentityMiddleware(context, next)
   }
 
-  tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     const account = ctx.contextData.account
 
     if (account.uuid === systemAccountUuid || account.fullSocialIds.some((it) => it.value === aiBotAccountEmail)) {
@@ -55,7 +55,7 @@ export class IdentityMiddleware extends BaseMiddleware implements Middleware {
       // We pass for system accounts and services.
       return this.provideTx(ctx, txes)
     }
-    function checkTx (tx: Tx): void {
+    function checkTx(tx: Tx): void {
       const mxAccount = ctx.contextData.socialStringsToUsers.get(tx.modifiedBy)?.accontUuid
       if (mxAccount === undefined || mxAccount !== account.uuid) {
         throw new PlatformError(

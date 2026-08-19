@@ -97,7 +97,7 @@
   let selectedReviewInterval = $controlledDocument?.reviewInterval
     ? $controlledDocument.reviewInterval.toString()
     : DEFAULT_PERIODIC_REVIEW_INTERVAL.toString()
-  async function changePeriodicReviewInterval (interval?: string) {
+  async function changePeriodicReviewInterval(interval?: string) {
     if ($controlledDocument == null || interval == null) {
       return
     }
@@ -116,7 +116,7 @@
   const hierarchy = client.getHierarchy()
   const documentTrainingClass = getDocumentTrainingClass(hierarchy)
 
-  async function toggleTraining (on: boolean): Promise<void> {
+  async function toggleTraining(on: boolean): Promise<void> {
     if (!$controlledDocument || !canEdit) {
       return
     }
@@ -139,7 +139,7 @@
     }
   }
 
-  async function updateTraining (update: MixinUpdate<Document, DocumentTraining>): Promise<boolean> {
+  async function updateTraining(update: MixinUpdate<Document, DocumentTraining>): Promise<boolean> {
     if (!$controlledDocument || !canEdit || !documentTraining) {
       return false
     }
@@ -149,7 +149,7 @@
 
   $: severity = getSeverity($controlledDocument, $documentAllVersionsDescSorted)
 
-  function getPreviousDocument (
+  function getPreviousDocument(
     document: ControlledDocument,
     allVersionsDesc: ControlledDocument[]
   ): ControlledDocument | undefined {
@@ -158,7 +158,7 @@
     )
   }
 
-  function getSeverity (document: ControlledDocument | null, allVersionsDesc: ControlledDocument[]): Severity {
+  function getSeverity(document: ControlledDocument | null, allVersionsDesc: ControlledDocument[]): Severity {
     if (document == null) {
       return Severity.Minor
     }
@@ -172,7 +172,7 @@
     }
   }
 
-  function getVersionForSeverity (severity: Severity): { major: number, minor: number } | undefined {
+  function getVersionForSeverity(severity: Severity): { major: number; minor: number } | undefined {
     if ($controlledDocument == null) {
       return
     }
@@ -192,7 +192,7 @@
     }
   }
 
-  async function handleSeverityChanged (newSeverity: Severity): Promise<void> {
+  async function handleSeverityChanged(newSeverity: Severity): Promise<void> {
     if (!canEdit || $controlledDocument == null) {
       return
     }

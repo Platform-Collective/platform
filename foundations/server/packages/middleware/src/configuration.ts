@@ -38,14 +38,14 @@ export const configurationAccountEmail = '#configurator@hc.engineering'
 export class ConfigurationMiddleware extends BaseMiddleware implements Middleware {
   private readonly targetDomains = [DOMAIN_CONFIGURATION]
 
-  private constructor (
+  private constructor(
     readonly context: PipelineContext,
     next?: Middleware
   ) {
     super(context, next)
   }
 
-  static async create (
+  static async create(
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -53,7 +53,7 @@ export class ConfigurationMiddleware extends BaseMiddleware implements Middlewar
     return new ConfigurationMiddleware(context, next)
   }
 
-  tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     for (const tx of txes) {
       if (TxProcessor.isExtendsCUD(tx._class)) {
         const txCUD = tx as TxCUD<Doc>

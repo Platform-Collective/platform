@@ -16,7 +16,7 @@ import type { DomainHelper, DomainHelperOperations } from './adapter'
 export class DomainIndexHelperImpl implements DomainHelper {
   domains = new Map<Domain, Set<FieldIndexConfig<Doc>>>()
   domainConfigurations: DomainIndexConfiguration[] = []
-  constructor (
+  constructor(
     readonly ctx: MeasureContext,
     readonly hierarchy: Hierarchy,
     readonly model: ModelDb,
@@ -80,7 +80,7 @@ export class DomainIndexHelperImpl implements DomainHelper {
   /**
    * Check if some indexes need to be created for domain.
    */
-  async checkDomain (
+  async checkDomain(
     ctx: MeasureContext,
     domain: Domain,
     documents: number,
@@ -100,7 +100,7 @@ export class DomainIndexHelperImpl implements DomainHelper {
       const allIndexes = (await operations.listIndexes(domain)).filter((it) => it.name !== '_id_')
       ctx.info('check indexes', { domain, has50Documents, documents })
       if (has50Documents) {
-        async function checkIndex (vv: string | FieldIndexConfig<Doc>, checkDisabled: boolean): Promise<void> {
+        async function checkIndex(vv: string | FieldIndexConfig<Doc>, checkDisabled: boolean): Promise<void> {
           try {
             let name: string
             if (typeof vv === 'string') {

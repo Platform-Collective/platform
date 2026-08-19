@@ -84,7 +84,7 @@
 
   $: commentUuids = $documentComments.map((p) => p.nodeId).filter((id) => id != null)
 
-  function handleRefreshHighlight (): void {
+  function handleRefreshHighlight(): void {
     textEditor?.commands()?.command(highlightUpdateCommand())
   }
 
@@ -140,12 +140,12 @@
     }
   }
 
-  async function handleShowHeading (heading: Heading): Promise<void> {
+  async function handleShowHeading(heading: Heading): Promise<void> {
     const element = window.document.getElementById(heading.id)
     element?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  function handleNodeHighlight (id: string) {
+  function handleNodeHighlight(id: string) {
     if ($documentCommentHighlightedLocation) {
       const { nodeId } = $documentCommentHighlightedLocation
       if (nodeId === id) {
@@ -160,12 +160,12 @@
     return null
   }
 
-  function handleShowDocumentComments (nodeId: string): void {
+  function handleShowDocumentComments(nodeId: string): void {
     const element = getNodeElement(editor, nodeId)
     documentCommentsDisplayRequested({ element, nodeId })
   }
 
-  async function createEmbedding (file: File): Promise<{ file: Ref<Blob>, type: string } | undefined> {
+  async function createEmbedding(file: File): Promise<{ file: Ref<Blob>; type: string } | undefined> {
     if ($controlledDocument === undefined || $controlledDocument === null) {
       return undefined
     }
@@ -227,7 +227,7 @@
     }
   )
 
-  function isDeleted (att: Attachment): boolean {
+  function isDeleted(att: Attachment): boolean {
     if (!hierarchy.hasMixin(att, documents.mixin.DocumentAttachment)) return false
     return hierarchy.as(att, documents.mixin.DocumentAttachment).deletedIn != null
   }
@@ -241,11 +241,11 @@
 
   let inputFile: HTMLInputElement
 
-  export function handleAttach (): void {
+  export function handleAttach(): void {
     inputFile.click()
   }
 
-  async function fileSelected (): Promise<void> {
+  async function fileSelected(): Promise<void> {
     if (!$isEditable) return
 
     const list = inputFile.files
@@ -261,7 +261,7 @@
     progress = false
   }
 
-  function handleTable (element: HTMLElement, editorHandler: TextEditorHandler, event?: MouseEvent): void {
+  function handleTable(element: HTMLElement, editorHandler: TextEditorHandler, event?: MouseEvent): void {
     const position = event !== undefined ? getEventPositionElement(event) : getPopupPositionElement(element)
     addTableHandler(editorHandler.insertTable, position)
   }
@@ -269,18 +269,18 @@
   $: refActions = !$isEditable
     ? []
     : defaultRefActions
-      .concat([
-        { label: textEditorPlugin.string.Attach, icon: AttachIcon, action: handleAttach, order: 1001 },
-        { label: textEditorPlugin.string.Table, icon: TableIcon, action: handleTable, order: 1500 }
-      ])
-      .sort((a, b) => a.order - b.order)
+        .concat([
+          { label: textEditorPlugin.string.Attach, icon: AttachIcon, action: handleAttach, order: 1001 },
+          { label: textEditorPlugin.string.Table, icon: TableIcon, action: handleTable, order: 1500 }
+        ])
+        .sort((a, b) => a.order - b.order)
 
-  function getState (att: Attachment): DocumentAttachmentState | undefined {
+  function getState(att: Attachment): DocumentAttachmentState | undefined {
     if (!hierarchy.hasMixin(att, documents.mixin.DocumentAttachment)) return undefined
     return hierarchy.as(att, documents.mixin.DocumentAttachment).state
   }
 
-  async function removeAttachment (att: Attachment): Promise<void> {
+  async function removeAttachment(att: Attachment): Promise<void> {
     if ($controlledDocument == null) return
 
     // 'new' attachments (added in this version) are removed physically, no soft-delete trace
@@ -297,7 +297,7 @@
     textEditor?.removeAttachment(att.file)
   }
 
-  async function restoreAttachment (att: Attachment): Promise<void> {
+  async function restoreAttachment(att: Attachment): Promise<void> {
     await client.updateMixin(att._id, att._class, att.space, documents.mixin.DocumentAttachment, {
       deletedIn: null
     })
