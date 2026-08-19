@@ -27,7 +27,7 @@
   export let placeholderParam: any | undefined = undefined
   export let searchable: boolean = false
   export let selected: number | string | undefined = undefined
-  export let value: Array<{ id: number | string; color: number; label: string }>
+  export let value: Array<{ id: number | string, color: number, label: string }>
 
   let search: string = ''
 

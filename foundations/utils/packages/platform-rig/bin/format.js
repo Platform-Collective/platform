@@ -25,8 +25,9 @@ try {
 }
 
 async function loadEslintConfig() {
-  const [{ default: love }, svelte, { default: tsParser }, svelteParser] = await Promise.all([
+  const [{ default: love }, { default: stylistic }, svelte, { default: tsParser }, svelteParser] = await Promise.all([
     import('eslint-config-love'),
+    import('@stylistic/eslint-plugin'),
     import('eslint-plugin-svelte'),
     import('@typescript-eslint/parser'),
     import('svelte-eslint-parser')
@@ -34,18 +35,38 @@ async function loadEslintConfig() {
 
   return [
     {
-      ignores: ['**/*.json', '**/node_modules/**', '**/.eslintrc.js', '**/dist/**', '**/lib/**']
+      ignores: [
+        '**/*.json',
+        '**/node_modules/**',
+        '**/.eslintrc.js',
+        '**/dist/**',
+        '**/lib/**',
+        '**/types/**',
+        '**/.build/**'
+      ]
     },
     {
       ...love,
       files: ['**/*.{js,cjs,mjs,ts,cts,mts}'],
+      plugins: {
+        ...love.plugins,
+        '@stylistic': stylistic
+      },
       rules: {
         ...love.rules,
         ...LEGACY_COMPATIBILITY_RULES,
         '@typescript-eslint/array-type': 'off',
         '@typescript-eslint/promise-function-async': 'off',
         '@typescript-eslint/consistent-type-imports': 'off',
-        'space-before-function-paren': ['error', 'always']
+        'space-before-function-paren': ['error', 'always'],
+        '@stylistic/member-delimiter-style': [
+          'error',
+          {
+            multiline: { delimiter: 'none' },
+            singleline: { delimiter: 'comma', requireLast: false }
+          }
+        ],
+        '@stylistic/type-annotation-spacing': 'error'
       }
     },
     {
@@ -56,7 +77,10 @@ async function loadEslintConfig() {
     ...svelte.configs.base,
     {
       files: ['**/*.svelte'],
-      plugins: love.plugins,
+      plugins: {
+        ...love.plugins,
+        '@stylistic': stylistic
+      },
       languageOptions: {
         parser: svelteParser,
         parserOptions: {
@@ -69,6 +93,14 @@ async function loadEslintConfig() {
         '@typescript-eslint/array-type': 'off',
         '@typescript-eslint/promise-function-async': 'off',
         '@typescript-eslint/consistent-type-imports': 'off',
+        '@stylistic/member-delimiter-style': [
+          'error',
+          {
+            multiline: { delimiter: 'none' },
+            singleline: { delimiter: 'comma', requireLast: false }
+          }
+        ],
+        '@stylistic/type-annotation-spacing': 'error',
         'svelte/no-at-html-tags': 'error'
       }
     }
@@ -87,6 +119,7 @@ if (existsSync('.format/format.json')) {
 
 let filesToCheck = []
 let allFiles = []
+let formattingConfigurationChanged = false
 
 let newHash = {}
 
@@ -97,6 +130,8 @@ function calcFileHash(sourceFile, msg, addCheck) {
   if (hash[sourceFile] !== digest) {
     if (addCheck) {
       filesToCheck.push(sourceFile)
+    } else {
+      formattingConfigurationChanged = true
     }
     console.log(msg, relative(process.cwd(), sourceFile))
   }
@@ -145,6 +180,11 @@ for (const f of ['package.json', '.eslintrc.js']) {
 const rigPackage = 'node_modules/@hcengineering/platform-rig/'
 if (existsSync(rigPackage)) {
   calcHash(join(process.cwd(), rigPackage), 'changed', false)
+}
+
+if (formattingConfigurationChanged) {
+  console.log('format configuration changed')
+  filesToCheck = allFiles
 }
 
 if (process.argv.includes('-f') || process.argv.includes('--force')) {
@@ -216,6 +256,7 @@ if (filesToCheck.length > 0) {
         overrideConfig: await loadEslintConfig()
       })
       const results = await eslint.lintFiles(filesToCheck)
+      await ESLint.outputFixes(results)
 
       const formatter = await eslint.loadFormatter('stylish')
       const resultText = formatter.format(results)

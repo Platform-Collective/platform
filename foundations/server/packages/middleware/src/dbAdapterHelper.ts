@@ -22,7 +22,7 @@ import { BaseMiddleware, DomainIndexHelperImpl } from '@hcengineering/server-cor
  */
 export class DBAdapterInitMiddleware extends BaseMiddleware implements Middleware {
   @withContext('db-adapter-init')
-  static async create(
+  static async create (
     ctx: MeasureContext,
     context: PipelineContext,
     next?: Middleware

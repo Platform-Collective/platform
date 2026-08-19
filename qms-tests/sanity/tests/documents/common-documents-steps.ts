@@ -5,7 +5,7 @@ import { NavigationMenuPage } from '../model/documents/navigation-menu-page'
 import { CategoriesPage } from '../model/documents/categories-page'
 import { CategoryCreatePopup } from '../model/documents/category-create-popup'
 
-export async function prepareDocumentStep(
+export async function prepareDocumentStep (
   page: Page,
   document: NewDocument,
   stepNumber: number = 1,
@@ -20,7 +20,7 @@ export async function prepareDocumentStep(
   })
 }
 
-export async function createTemplateStep(
+export async function createTemplateStep (
   page: Page,
   title: string,
   description: string,
@@ -34,7 +34,7 @@ export async function createTemplateStep(
   })
 }
 
-export async function prepareCategoryStep(page: Page, newCategory: NewCategory): Promise<void> {
+export async function prepareCategoryStep (page: Page, newCategory: NewCategory): Promise<void> {
   await test.step('1. Create a new category', async () => {
     const navigationMenuPage = new NavigationMenuPage(page)
     await navigationMenuPage.buttonCategories.click()

@@ -29,48 +29,48 @@ import {
   Body
 } from './types'
 
-export function getWorkspaceClient(baseUrl: string, workspace: WorkspaceUuid, token: string): HulylakeWorkspaceClient {
+export function getWorkspaceClient (baseUrl: string, workspace: WorkspaceUuid, token: string): HulylakeWorkspaceClient {
   const client = new Client(baseUrl, token)
   return new WorkspaceClient(client, workspace)
 }
 
-export function getClient(baseUrl: string, token: string): HulylakeClient {
+export function getClient (baseUrl: string, token: string): HulylakeClient {
   return new Client(baseUrl, token)
 }
 
 class WorkspaceClient implements HulylakeWorkspaceClient {
-  constructor(
+  constructor (
     private readonly client: HulylakeClient,
     private readonly workspace: WorkspaceUuid
   ) {}
 
-  head(key: string, retryOptions?: RetryOptions): Promise<HulyResponse<void>> {
+  head (key: string, retryOptions?: RetryOptions): Promise<HulyResponse<void>> {
     return this.client.head(this.workspace, key, retryOptions)
   }
 
-  get(key: string, retryOptions?: RetryOptions): Promise<HulyResponse<ReadableStream<Uint8Array>>> {
+  get (key: string, retryOptions?: RetryOptions): Promise<HulyResponse<ReadableStream<Uint8Array>>> {
     return this.client.get(this.workspace, key, retryOptions)
   }
 
-  put(key: string, body: Body, opts: PutOptions, retryOptions?: RetryOptions): Promise<HulyResponse<void>> {
+  put (key: string, body: Body, opts: PutOptions, retryOptions?: RetryOptions): Promise<HulyResponse<void>> {
     return this.client.put(this.workspace, key, body, opts, retryOptions)
   }
 
-  patch(key: string, body: Body, opts: PatchOptions, retryOptions?: RetryOptions): Promise<HulyResponse<void>> {
+  patch (key: string, body: Body, opts: PatchOptions, retryOptions?: RetryOptions): Promise<HulyResponse<void>> {
     return this.client.patch(this.workspace, key, body, opts, retryOptions)
   }
 
-  delete(key: string, retryOptions?: RetryOptions): Promise<HulyResponse<void>> {
+  delete (key: string, retryOptions?: RetryOptions): Promise<HulyResponse<void>> {
     return this.client.delete(this.workspace, key, retryOptions)
   }
 
-  public async getJson<T>(key: string, retryOptions?: RetryOptions): Promise<HulyResponse<T>> {
+  public async getJson<T> (key: string, retryOptions?: RetryOptions): Promise<HulyResponse<T>> {
     const res = await this.client.get(this.workspace, key, retryOptions)
     const body = res.ok && res.body != null ? ((await new Response(res.body).json()) as T) : undefined
     return { ...res, body }
   }
 
-  public async putJson<T extends object>(
+  public async putJson<T extends object> (
     key: string,
     json: T,
     options?: Omit<PutOptions, 'mergeStrategy'>,
@@ -79,7 +79,7 @@ class WorkspaceClient implements HulylakeWorkspaceClient {
     return await this.put(key, JSON.stringify(json), { ...options, mergeStrategy: 'jsonpatch' }, retryOptions)
   }
 
-  public async patchJson(
+  public async patchJson (
     key: string,
     body: JsonPatch[],
     options?: Omit<PatchOptions, 'contentType'>,
@@ -95,28 +95,28 @@ class WorkspaceClient implements HulylakeWorkspaceClient {
 }
 
 class Client implements HulylakeClient {
-  constructor(
+  constructor (
     private readonly baseUrl: string,
     private readonly token: string
   ) {
     this.baseUrl = this.baseUrl.endsWith('/') ? this.baseUrl.slice(0, -1) : this.baseUrl
   }
 
-  private authHeaders(init?: HeadersInit): Headers {
+  private authHeaders (init?: HeadersInit): Headers {
     const headers = new Headers(init)
     headers.set('Authorization', `Bearer ${this.token}`)
     return headers
   }
 
-  private applyHeaders(h: Headers, headers?: HulyHeaders): void {
+  private applyHeaders (h: Headers, headers?: HulyHeaders): void {
     if (headers != null) for (const [k, v] of Object.entries(headers)) h.set(`huly-header-${k}`, v)
   }
 
-  private applyMeta(h: Headers, meta?: HulyMeta): void {
+  private applyMeta (h: Headers, meta?: HulyMeta): void {
     if (meta != null) for (const [k, v] of Object.entries(meta)) h.set(`huly-meta-${k}`, v)
   }
 
-  public async status(): Promise<boolean> {
+  public async status (): Promise<boolean> {
     try {
       const res = await fetchSafe(`${this.baseUrl}/status`)
       return res.ok
@@ -125,11 +125,11 @@ class Client implements HulylakeClient {
     }
   }
 
-  public objectUrl(workspace: string, key: string): string {
+  public objectUrl (workspace: string, key: string): string {
     return `${this.baseUrl}/api/${workspace}/${encodeURIComponent(key)}`
   }
 
-  public async head(workspace: string, key: string, retryOptions?: RetryOptions): Promise<HulyResponse<void>> {
+  public async head (workspace: string, key: string, retryOptions?: RetryOptions): Promise<HulyResponse<void>> {
     const res = await fetchSafe(
       this.objectUrl(workspace, key),
       {
@@ -150,7 +150,7 @@ class Client implements HulylakeClient {
     }
   }
 
-  public async get(
+  public async get (
     workspace: string,
     key: string,
     retryOptions?: RetryOptions
@@ -189,7 +189,7 @@ class Client implements HulylakeClient {
     }
   }
 
-  public async partial(
+  public async partial (
     workspace: string,
     key: string,
     offset: number,
@@ -229,7 +229,7 @@ class Client implements HulylakeClient {
     }
   }
 
-  public async put(
+  public async put (
     workspace: string,
     key: string,
     body: Body,
@@ -283,7 +283,7 @@ class Client implements HulylakeClient {
     }
   }
 
-  public async patch(
+  public async patch (
     workspace: string,
     key: string,
     body: Body,
@@ -330,7 +330,7 @@ class Client implements HulylakeClient {
     }
   }
 
-  public async delete(workspace: string, key: string, retryOptions?: RetryOptions): Promise<HulyResponse<void>> {
+  public async delete (workspace: string, key: string, retryOptions?: RetryOptions): Promise<HulyResponse<void>> {
     const res = await fetchSafe(
       this.objectUrl(workspace, key),
       {

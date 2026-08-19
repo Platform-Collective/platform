@@ -40,9 +40,9 @@ export const emoticonGlobalRegex = new RegExp(EMOTICON_REGEX.source, EMOTICON_RE
 export const shortcodeRegex = new RegExp(`(?:^|\\s)(${SHORTCODE_REGEX.source})$`)
 export const shortcodeGlobalRegex = new RegExp(SHORTCODE_REGEX.source, SHORTCODE_REGEX.flags + 'g')
 
-async function fetchEmojis (locale: Locale, options: FetchEmojisOptions & { compact: true }): Promise<CompactEmoji[]>
+async function fetchEmojis(locale: Locale, options: FetchEmojisOptions & { compact: true }): Promise<CompactEmoji[]>
 
-async function fetchEmojis (locale: Locale, options?: FetchEmojisOptions & { compact?: false }): Promise<Emoji[]>
+async function fetchEmojis(locale: Locale, options?: FetchEmojisOptions & { compact?: false }): Promise<Emoji[]>
 
 async function fetchEmojis (locale: Locale, options: FetchEmojisExpandedOptions = {}): Promise<unknown[]> {
   const { compact = false, shortcodes: presets = [] } = options

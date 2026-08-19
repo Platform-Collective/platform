@@ -105,7 +105,7 @@ export async function loadCollabJson (
   }
 
   const buffer = await storageAdapter.read(ctx, wsIds, blobId)
-  return Buffer.concat(buffer as any).toString()
+  return Buffer.concat(buffer).toString()
 }
 
 /** @public */

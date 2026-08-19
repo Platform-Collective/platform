@@ -11,7 +11,7 @@ export class CategoryCreatePopup extends CalendarPage {
   readonly inputAttachFile: Locator
   readonly buttonNewCategoryCreate: Locator
 
-  constructor(page: Page) {
+  constructor (page: Page) {
     super(page)
     this.page = page
     this.inputNewCategoryTitle = page.locator('input[placeholder="Title"]')
@@ -23,7 +23,7 @@ export class CategoryCreatePopup extends CalendarPage {
     )
   }
 
-  async createCategory(data: NewCategory): Promise<void> {
+  async createCategory (data: NewCategory): Promise<void> {
     await this.inputNewCategoryTitle.fill(data.title)
     await this.inputNewCategoryCode.fill(data.code)
     await this.inputNewCategoryDescription.fill(data.description)

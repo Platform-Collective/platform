@@ -72,7 +72,7 @@ export class PlatformWorker {
   }
 
   static async createStorages (): Promise<
-  [Collection<UserRecord>, Collection<LastMsgRecord>, Collection<WorkspaceChannel>]
+    [Collection<UserRecord>, Collection<LastMsgRecord>, Collection<WorkspaceChannel>]
   > {
     const db = await getDB()
     const userStorage = db.collection<UserRecord>('integrations')

@@ -105,7 +105,7 @@ export const QMSInlineCommentMark = Mark.create<QMSInlineCommentMarkOptions>({
     return {
       [qmsInlineCommentMarkName]: {
         default: null,
-        parseHTML: (el) => (el as HTMLSpanElement).getAttribute(qmsInlineCommentMarkName)
+        parseHTML: (el) => (el).getAttribute(qmsInlineCommentMarkName)
       }
     }
   },
@@ -115,7 +115,7 @@ export const QMSInlineCommentMark = Mark.create<QMSInlineCommentMarkOptions>({
       {
         tag: `span[${qmsInlineCommentMarkName}]`,
         getAttrs: (el) => {
-          const value = (el as HTMLSpanElement).getAttribute(qmsInlineCommentMarkName)?.trim()
+          const value = (el).getAttribute(qmsInlineCommentMarkName)?.trim()
           if (value === null || value === undefined || value.length === 0) {
             return false
           }
@@ -163,16 +163,16 @@ export const QMSInlineCommentMark = Mark.create<QMSInlineCommentMarkOptions>({
     return {
       setQMSInlineCommentMark:
         (uuid: string) =>
-          ({ commands, state }: CommandProps) => {
-            if (state.selection.empty) {
-              return false
-            }
-            return commands.setMark(this.name, { [qmsInlineCommentMarkName]: uuid })
-          },
+        ({ commands, state }: CommandProps) => {
+          if (state.selection.empty) {
+            return false
+          }
+          return commands.setMark(this.name, { [qmsInlineCommentMarkName]: uuid })
+        },
       unsetQMSInlineCommentMark:
         () =>
-          ({ commands }: CommandProps) =>
-            commands.unsetMark(this.name)
+        ({ commands }: CommandProps) =>
+          commands.unsetMark(this.name)
     }
   }
 })

@@ -293,7 +293,7 @@ export class IncomingSyncManager {
         const exists = (await this.client.findOne(calendar.class.Event, {
           eventId: event.id,
           calendar: _calendar._id
-        })) as Event | undefined
+        }))
         if (exists === undefined) {
           await this.saveExtEvent(event, accessRole, _calendar)
         } else {
@@ -313,7 +313,7 @@ export class IncomingSyncManager {
       const diff = this.getDiff<ReccuringInstance>(
         {
           ...data,
-          recurringEventId: event.recurringEventId as Ref<ReccuringEvent>,
+          recurringEventId: event.recurringEventId,
           originalStartTime: parseEventDate(event.originalStartTime),
           isCancelled: event.status === 'cancelled'
         },
@@ -426,9 +426,9 @@ export class IncomingSyncManager {
     map: Map<string, Ref<Person>>,
     value: string
   ): {
-      contact?: Ref<Contact>
-      extra?: string
-    } {
+    contact?: Ref<Contact>
+    extra?: string
+  } {
     const contact = map.get(value)
     if (contact !== undefined) {
       return {
@@ -467,7 +467,7 @@ export class IncomingSyncManager {
     return [Array.from(contacts), Array.from(extra)]
   }
 
-  private getDiff<T extends Doc>(data: Partial<DocData<T>>, current: T): Partial<DocData<T>> {
+  private getDiff<T extends Doc> (data: Partial<DocData<T>>, current: T): Partial<DocData<T>> {
     const res = {}
     for (const key in data) {
       if (!deepEqual((data as any)[key], (current as any)[key])) {

@@ -22,7 +22,7 @@ export function markupToHtml (markup: MarkupNode, options: HtmlSerializerOptions
   return serializer.serialize(markup)
 }
 
-export function htmlToMarkup(html: string, options: HtmlParserOptions = {}): MarkupNode {
+export function htmlToMarkup (html: string, options: HtmlParserOptions = {}): MarkupNode {
   const parser = new HtmlParser(options)
   return parser.parse(html)
 }

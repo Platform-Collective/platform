@@ -18,7 +18,7 @@ import { Attribute } from '@tiptap/core'
 /**
  * @public
  */
-export function getDataAttribute(
+export function getDataAttribute (
   name: string,
   options?: Partial<Omit<Attribute, 'parseHTML' | 'renderHTML'>>
 ): Partial<Attribute> {

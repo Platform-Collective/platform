@@ -9,7 +9,7 @@ export class LoginPage {
   readonly buttonSignUp: Locator
   readonly loginWithPassword: Locator
   readonly accountNotFoundMessage: Locator
-  constructor(page: Page) {
+  constructor (page: Page) {
     this.page = page
     this.inputEmail = page.locator('input[name=email]')
     this.inputPassword = page.locator('input[name=current-password]')
@@ -19,11 +19,11 @@ export class LoginPage {
     this.accountNotFoundMessage = page.getByText('Account not found or the provided credentials are incorrect')
   }
 
-  async goto(): Promise<void> {
+  async goto (): Promise<void> {
     await (await this.page.goto(`${PlatformURI}/login/login`))?.finished()
   }
 
-  async login(email: string, password: string): Promise<void> {
+  async login (email: string, password: string): Promise<void> {
     await this.inputEmail.fill(email)
     await this.inputPassword.fill(password)
 
@@ -34,13 +34,13 @@ export class LoginPage {
     await this.buttonLogin.click()
   }
 
-  async checkIfErrorMessageIsShown(message: string): Promise<void> {
+  async checkIfErrorMessageIsShown (message: string): Promise<void> {
     if (message === 'Account not found or the provided credentials are incorrect') {
       await expect(this.accountNotFoundMessage).toContainText(message)
     }
   }
 
-  async checkIfUserIsLoggedIn(credentials: string): Promise<void> {
+  async checkIfUserIsLoggedIn (credentials: string): Promise<void> {
     if (credentials === 'wrong-email' || credentials === 'wrong-password') {
       await expect(this.buttonLogin).toBeVisible()
       await expect(this.page.getByText('Account not found or the provided credentials are incorrect')).toBeVisible()

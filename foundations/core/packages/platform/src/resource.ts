@@ -46,7 +46,7 @@ const locations = new Map<Plugin, PluginLoader<Resources>>()
  * @param plugin -
  * @param module -
  */
-export function addLocation<R extends Resources>(plugin: Plugin, module: PluginLoader<R>): void {
+export function addLocation<R extends Resources> (plugin: Plugin, module: PluginLoader<R>): void {
   locations.set(plugin, module)
 }
 
@@ -54,11 +54,11 @@ export function addLocation<R extends Resources>(plugin: Plugin, module: PluginL
  * @public
  * return list of registred plugins.
  */
-export function getPlugins(): Plugin[] {
+export function getPlugins (): Plugin[] {
   return Array.from(locations.keys())
 }
 
-function getLocation(plugin: Plugin): PluginLoader<Resources> {
+function getLocation (plugin: Plugin): PluginLoader<Resources> {
   const location = locations.get(plugin)
   if (location === undefined) {
     throw new PlatformError(
@@ -72,7 +72,7 @@ function getLocation(plugin: Plugin): PluginLoader<Resources> {
 
 const loading = new Map<Plugin, Resources | Promise<Resources>>()
 
-function loadPlugin(id: Plugin): Resources | Promise<Resources> {
+function loadPlugin (id: Plugin): Resources | Promise<Resources> {
   let pluginLoader = loading.get(id)
   if (pluginLoader === undefined) {
     const status = new Status(Severity.INFO, platform.status.LoadingPlugin, {
@@ -109,7 +109,7 @@ const cachedResource = new Map<string, any>()
  * @param resource -
  * @returns
  */
-export async function getResource<T>(resource: Resource<T>): Promise<T> {
+export async function getResource<T> (resource: Resource<T>): Promise<T> {
   const cached = cachedResource.get(resource)
   if (cached !== undefined) {
     return cached
@@ -133,7 +133,7 @@ export async function getResource<T>(resource: Resource<T>): Promise<T> {
  * @param resource -
  * @returns
  */
-export function getResourceP<T>(resource: Resource<T>): T | Promise<T> {
+export function getResourceP<T> (resource: Resource<T>): T | Promise<T> {
   return cachedResource.get(resource) ?? getResource(resource)
 }
 
@@ -142,7 +142,7 @@ export function getResourceP<T>(resource: Resource<T>): T | Promise<T> {
  * @param resource -
  * @returns
  */
-export function getResourceC<T>(resource: Resource<T> | undefined, callback: (resource: T | undefined) => void): void {
+export function getResourceC<T> (resource: Resource<T> | undefined, callback: (resource: T | undefined) => void): void {
   if (resource === undefined) {
     callback(undefined)
     return
@@ -164,7 +164,7 @@ export function getResourceC<T>(resource: Resource<T> | undefined, callback: (re
 /**
  * @public
  */
-export function getResourcePlugin<T>(resource: Resource<T>): Plugin {
+export function getResourcePlugin<T> (resource: Resource<T>): Plugin {
   const info = _parseId(resource)
   return info.component
 }

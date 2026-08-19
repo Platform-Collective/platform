@@ -54,12 +54,12 @@ import type { IntlString } from '@hcengineering/platform'
 
 const txFactory = new TxFactory(core.account.System)
 
-function createClass(_class: Ref<Class<Obj>>, attributes: Data<Class<Obj>>): TxCreateDoc<Doc> {
+function createClass (_class: Ref<Class<Obj>>, attributes: Data<Class<Obj>>): TxCreateDoc<Doc> {
   return txFactory.createTxCreateDoc(core.class.Class, core.space.Model, attributes, _class)
 }
 
 // Generate minimal model for testing
-function generateMinimalModel(): Tx[] {
+function generateMinimalModel (): Tx[] {
   const txes: Tx[] = []
 
   txes.push(createClass(core.class.Obj, { label: 'Obj' as IntlString, kind: ClassifierKind.CLASS }))
@@ -138,7 +138,7 @@ export class MockClientConnection implements ClientConnection {
   onConnect?: (event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>
   getLastHash?: () => Promise<string | undefined>
 
-  constructor(txes: Tx[] = []) {
+  constructor (txes: Tx[] = []) {
     const minimalModel = txes.length === 0 ? generateMinimalModel() : txes
 
     this.hierarchy = new Hierarchy()
@@ -155,19 +155,19 @@ export class MockClientConnection implements ClientConnection {
     }
   }
 
-  isConnected(): boolean {
+  isConnected (): boolean {
     return this._connected
   }
 
-  setConnected(value: boolean): void {
+  setConnected (value: boolean): void {
     this._connected = value
   }
 
-  pushHandler(handler: TxHandler): void {
+  pushHandler (handler: TxHandler): void {
     this.handlers.push(handler)
   }
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -175,11 +175,11 @@ export class MockClientConnection implements ClientConnection {
     return await this.model.findAll(_class, query, options)
   }
 
-  async searchFulltext(query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+  async searchFulltext (query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
     return { docs: [] }
   }
 
-  async tx(tx: Tx): Promise<TxResult> {
+  async tx (tx: Tx): Promise<TxResult> {
     if (tx.objectSpace === core.space.Model) {
       this.hierarchy.tx(tx)
       await this.model.tx(tx)
@@ -193,7 +193,7 @@ export class MockClientConnection implements ClientConnection {
     return {}
   }
 
-  async loadModel(last: Timestamp, hash?: string): Promise<Tx[] | LoadModelResponse> {
+  async loadModel (last: Timestamp, hash?: string): Promise<Tx[] | LoadModelResponse> {
     const txes = await this.transactions.findAll(core.class.Tx, {
       objectSpace: core.space.Model,
       modifiedOn: { $gt: last }
@@ -209,11 +209,11 @@ export class MockClientConnection implements ClientConnection {
     return txes
   }
 
-  async close(): Promise<void> {
+  async close (): Promise<void> {
     this._connected = false
   }
 
-  async loadChunk(domain: Domain, idx?: number): Promise<DocChunk> {
+  async loadChunk (domain: Domain, idx?: number): Promise<DocChunk> {
     return {
       idx: idx ?? 0,
       docs: [],
@@ -221,23 +221,23 @@ export class MockClientConnection implements ClientConnection {
     }
   }
 
-  async getDomainHash(domain: Domain): Promise<string> {
+  async getDomainHash (domain: Domain): Promise<string> {
     return 'test-hash'
   }
 
-  async closeChunk(idx: number): Promise<void> {}
+  async closeChunk (idx: number): Promise<void> {}
 
-  async loadDocs(domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
+  async loadDocs (domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
     return []
   }
 
-  async upload(domain: Domain, docs: Doc[]): Promise<void> {}
+  async upload (domain: Domain, docs: Doc[]): Promise<void> {}
 
-  async clean(domain: Domain, docs: Ref<Doc>[]): Promise<void> {}
+  async clean (domain: Domain, docs: Ref<Doc>[]): Promise<void> {}
 
-  async sendForceClose(): Promise<void> {}
+  async sendForceClose (): Promise<void> {}
 
-  async domainRequest(
+  async domainRequest (
     ctx: OperationDomain,
     params: DomainParams,
     options?: DomainRequestOptions
@@ -245,13 +245,13 @@ export class MockClientConnection implements ClientConnection {
     return { domain: ctx, value: null }
   }
 
-  simulateTransaction(tx: Tx): void {
+  simulateTransaction (tx: Tx): void {
     this.handlers.forEach((h) => {
       h(tx)
     })
   }
 
-  async simulateConnect(event: ClientConnectEvent = ClientConnectEvent.Connected): Promise<void> {
+  async simulateConnect (event: ClientConnectEvent = ClientConnectEvent.Connected): Promise<void> {
     if (this.onConnect !== undefined) {
       await this.onConnect(event, undefined, {})
     }
@@ -261,7 +261,7 @@ export class MockClientConnection implements ClientConnection {
 /**
  * Create a test client with mock connection
  */
-export async function createTestClient(initialTxes: Tx[] = []): Promise<{
+export async function createTestClient (initialTxes: Tx[] = []): Promise<{
   client: Client
   connection: MockClientConnection
   close: () => Promise<void>
@@ -285,7 +285,7 @@ export async function createTestClient(initialTxes: Tx[] = []): Promise<{
 /**
  * Helper to create a test transaction
  */
-export function createTestTx(objectClass: Ref<Class<Doc>> = core.class.Space, attributes: any = {}): TxCreateDoc<Doc> {
+export function createTestTx (objectClass: Ref<Class<Doc>> = core.class.Space, attributes: any = {}): TxCreateDoc<Doc> {
   return {
     _id: generateId(),
     _class: core.class.TxCreateDoc,

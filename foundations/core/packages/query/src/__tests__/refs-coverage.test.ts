@@ -7,7 +7,7 @@ import core, { createClient, TxOperations } from '@hcengineering/core'
 import { LiveQuery } from '..'
 import { connect } from './connection'
 
-async function getClient(): Promise<{ liveQuery: LiveQuery; factory: TxOperations; close: () => Promise<void> }> {
+async function getClient (): Promise<{ liveQuery: LiveQuery, factory: TxOperations, close: () => Promise<void> }> {
   const storage = await createClient(connect)
   const liveQuery = new LiveQuery(storage)
   storage.notify = (...tx) => {

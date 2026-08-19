@@ -86,13 +86,13 @@ export class ClientSession implements Session {
   total: StatisticsElement = { find: 0, tx: 0 }
   current: StatisticsElement = { find: 0, tx: 0 }
   mins5: StatisticsElement = { find: 0, tx: 0 }
-  measures: { id: string; message: string; time: 0 }[] = []
+  measures: { id: string, message: string, time: 0 }[] = []
 
   ops: BackupClientOps | undefined
   opsPipeline: Pipeline | undefined
   isAdmin: boolean
 
-  constructor(
+  constructor (
     readonly token: Token,
     readonly workspace: WorkspaceIds,
     readonly account: Account,
@@ -103,40 +103,40 @@ export class ClientSession implements Session {
     this.isAdmin = this.token.extra?.admin === 'true'
   }
 
-  getUser(): AccountUuid {
+  getUser (): AccountUuid {
     return this.token.account
   }
 
-  getUserSocialIds(): PersonId[] {
+  getUserSocialIds (): PersonId[] {
     return this.account.socialIds
   }
 
-  getSocialIds(): SocialId[] {
+  getSocialIds (): SocialId[] {
     return this.info.socialIds
   }
 
-  getRawAccount(): Account {
+  getRawAccount (): Account {
     return this.account
   }
 
-  isUpgradeClient(): boolean {
+  isUpgradeClient (): boolean {
     return this.token.extra?.model === 'upgrade'
   }
 
-  getMode(): string {
+  getMode (): string {
     return this.token.extra?.mode ?? 'normal'
   }
 
-  updateLast(): void {
+  updateLast (): void {
     this.lastRequest = Date.now()
   }
 
-  async ping(ctx: ClientSessionCtx): Promise<void> {
+  async ping (ctx: ClientSessionCtx): Promise<void> {
     this.lastRequest = Date.now()
     ctx.sendPong()
   }
 
-  async loadModel(ctx: ClientSessionCtx, lastModelTx: Timestamp, hash?: string): Promise<void> {
+  async loadModel (ctx: ClientSessionCtx, lastModelTx: Timestamp, hash?: string): Promise<void> {
     try {
       this.includeSessionContext(ctx)
       const result = await this.counter.withCounter('loadModel', 1, () =>
@@ -152,13 +152,13 @@ export class ClientSession implements Session {
     }
   }
 
-  async loadModelRaw(ctx: ClientSessionCtx, lastModelTx: Timestamp, hash?: string): Promise<LoadModelResponse | Tx[]> {
+  async loadModelRaw (ctx: ClientSessionCtx, lastModelTx: Timestamp, hash?: string): Promise<LoadModelResponse | Tx[]> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     this.includeSessionContext(ctx)
     return await ctx.ctx.with('load-model', {}, (_ctx) => ctx.pipeline.loadModel(_ctx, lastModelTx, hash))
   }
 
-  private getPermissionsGrant(): PermissionsGrant | undefined {
+  private getPermissionsGrant (): PermissionsGrant | undefined {
     if (this.token.grant == null) {
       return
     }
@@ -169,7 +169,7 @@ export class ClientSession implements Session {
     }
   }
 
-  includeSessionContext(ctx: ClientSessionCtx): void {
+  includeSessionContext (ctx: ClientSessionCtx): void {
     const dataId = this.workspace.dataId ?? (this.workspace.uuid as unknown as WorkspaceDataId)
     const contextData = new SessionDataImpl(
       this.account,
@@ -191,7 +191,7 @@ export class ClientSession implements Session {
     ctx.ctx.contextData = contextData
   }
 
-  findAllRaw<T extends Doc>(
+  findAllRaw<T extends Doc> (
     ctx: ClientSessionCtx,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -204,11 +204,11 @@ export class ClientSession implements Session {
     return ctx.pipeline.findAll(ctx.ctx, _class, query, options)
   }
 
-  estimateSize(doc: any): number {
+  estimateSize (doc: any): number {
     return Math.round((estimateDocSize(doc) * 10) / (1024 * 1024)) / 10
   }
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     ctx: ClientSessionCtx,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -332,13 +332,13 @@ export class ClientSession implements Session {
     }
   }
 
-  async searchFulltextRaw(ctx: ClientSessionCtx, query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+  async searchFulltextRaw (ctx: ClientSessionCtx, query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
     this.lastRequest = Date.now()
     this.includeSessionContext(ctx)
     return await ctx.pipeline.searchFulltext(ctx.ctx, query, options)
   }
 
-  async txRaw(
+  async txRaw (
     ctx: ClientSessionCtx,
     tx: Tx
   ): Promise<{
@@ -388,7 +388,7 @@ export class ClientSession implements Session {
     return { result, broadcastPromise, asyncsPromise }
   }
 
-  async tx(ctx: ClientSessionCtx, tx: Tx): Promise<void> {
+  async tx (ctx: ClientSessionCtx, tx: Tx): Promise<void> {
     const domain =
       ctx.pipeline.context.hierarchy.findDomain(
         TxProcessor.isExtendsCUD(tx._class) ? (tx as TxCUD<Doc>).objectClass : tx._class
@@ -407,7 +407,7 @@ export class ClientSession implements Session {
     })
   }
 
-  broadcast(ctx: MeasureContext, socket: ConnectionSocket, tx: Tx[]): void {
+  broadcast (ctx: MeasureContext, socket: ConnectionSocket, tx: Tx[]): void {
     if (this.tx.length > 10000) {
       const classes = new Set<Ref<Class<Doc>>>()
       for (const dtx of tx) {
@@ -433,7 +433,7 @@ export class ClientSession implements Session {
     }
   }
 
-  getOps(pipeline: Pipeline): BackupClientOps {
+  getOps (pipeline: Pipeline): BackupClientOps {
     if (this.ops === undefined || this.opsPipeline !== pipeline) {
       if (pipeline.context.lowLevelStorage === undefined) {
         throw new PlatformError(unknownError('Low level storage is not available'))
@@ -444,7 +444,7 @@ export class ClientSession implements Session {
     return this.ops
   }
 
-  async loadChunk(ctx: ClientSessionCtx, domain: Domain, idx?: number): Promise<void> {
+  async loadChunk (ctx: ClientSessionCtx, domain: Domain, idx?: number): Promise<void> {
     this.lastRequest = Date.now()
     try {
       const result = await this.getOps(ctx.pipeline).loadChunk(ctx.ctx, domain, idx)
@@ -455,7 +455,7 @@ export class ClientSession implements Session {
     }
   }
 
-  async getDomainHash(ctx: ClientSessionCtx, domain: Domain): Promise<void> {
+  async getDomainHash (ctx: ClientSessionCtx, domain: Domain): Promise<void> {
     this.lastRequest = Date.now()
     try {
       const result = await this.getOps(ctx.pipeline).getDomainHash(ctx.ctx, domain)
@@ -466,7 +466,7 @@ export class ClientSession implements Session {
     }
   }
 
-  async closeChunk(ctx: ClientSessionCtx, idx: number): Promise<void> {
+  async closeChunk (ctx: ClientSessionCtx, idx: number): Promise<void> {
     try {
       this.lastRequest = Date.now()
       await this.getOps(ctx.pipeline).closeChunk(ctx.ctx, idx)
@@ -477,7 +477,7 @@ export class ClientSession implements Session {
     }
   }
 
-  async loadDocs(ctx: ClientSessionCtx, domain: Domain, docs: Ref<Doc>[]): Promise<void> {
+  async loadDocs (ctx: ClientSessionCtx, domain: Domain, docs: Ref<Doc>[]): Promise<void> {
     this.lastRequest = Date.now()
     try {
       const result = await this.getOps(ctx.pipeline).loadDocs(ctx.ctx, domain, docs)
@@ -488,7 +488,7 @@ export class ClientSession implements Session {
     }
   }
 
-  async upload(ctx: ClientSessionCtx, domain: Domain, docs: Doc[]): Promise<void> {
+  async upload (ctx: ClientSessionCtx, domain: Domain, docs: Doc[]): Promise<void> {
     if (!this.allowUpload) {
       await ctx.sendResponse(ctx.requestId, { error: 'Upload not allowed' })
     }
@@ -503,7 +503,7 @@ export class ClientSession implements Session {
     await ctx.sendResponse(ctx.requestId, {})
   }
 
-  async clean(ctx: ClientSessionCtx, domain: Domain, docs: Ref<Doc>[]): Promise<void> {
+  async clean (ctx: ClientSessionCtx, domain: Domain, docs: Ref<Doc>[]): Promise<void> {
     if (!this.allowUpload) {
       await ctx.sendResponse(ctx.requestId, { error: 'Clean not allowed' })
     }
@@ -518,7 +518,7 @@ export class ClientSession implements Session {
     await ctx.sendResponse(ctx.requestId, {})
   }
 
-  async domainRequest(ctx: ClientSessionCtx, domain: OperationDomain, params: DomainParams): Promise<void> {
+  async domainRequest (ctx: ClientSessionCtx, domain: OperationDomain, params: DomainParams): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     await this.counter.withCounter('dr-' + domain, 1, async () => {
       try {
@@ -536,7 +536,7 @@ export class ClientSession implements Session {
     })
   }
 
-  async domainRequestRaw(
+  async domainRequestRaw (
     ctx: ClientSessionCtx,
     domain: OperationDomain,
     params: DomainParams

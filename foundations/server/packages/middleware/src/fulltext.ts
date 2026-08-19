@@ -43,7 +43,7 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
   fulltextEndpoint: string
   contexts = new Map<Ref<Class<Doc>>, FullTextSearchContext>()
 
-  constructor(
+  constructor (
     context: PipelineContext,
     next: Middleware | undefined,
     fulltextUrl: string,
@@ -56,11 +56,11 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
     this.fulltextEndpoint = fulltextEndpoints[Math.abs(hash % fulltextEndpoints.length)]
   }
 
-  hashWorkspace(dbWorkspaceName: string): number {
+  hashWorkspace (dbWorkspaceName: string): number {
     return [...dbWorkspaceName].reduce((hash, c) => (Math.imul(31, hash) + c.charCodeAt(0)) | 0, 0)
   }
 
-  static create(url: string, token: string): MiddlewareCreator {
+  static create (url: string, token: string): MiddlewareCreator {
     return async (ctx, context, next): Promise<Middleware> => {
       const middleware = new FullTextMiddleware(context, next, url, token)
       await middleware.init(ctx)
@@ -68,13 +68,13 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  async init(ctx: MeasureContext): Promise<void> {
+  async init (ctx: MeasureContext): Promise<void> {
     this.contexts = new Map(
       this.context.modelDb.findAllSync(core.class.FullTextSearchContext, {}).map((it) => [it.toClass, it])
     )
   }
 
-  async search<T extends Doc>(
+  async search<T extends Doc> (
     _classes: Ref<Class<T>>[],
     query: DocumentQuery<T>,
     fullTextLimit: number
@@ -108,7 +108,7 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
 
   addExtraFind?: (_class: Ref<Class<Doc>>, childs: Set<Ref<Class<Doc>>>) => void
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -245,13 +245,13 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
     return result
   }
 
-  private async findDocuments<T extends Doc>(
+  private async findDocuments<T extends Doc> (
     classes: Ref<Class<Doc>>[],
     findQuery: DocumentQuery<Doc>,
     fullTextLimit: number,
     baseClass: Ref<Class<T>>,
     ids: Set<Ref<Doc>>
-  ): Promise<{ docs: IndexedDoc[]; indexedDocMap: Map<Ref<Doc>, IndexedDoc> }> {
+  ): Promise<{ docs: IndexedDoc[], indexedDocMap: Map<Ref<Doc>, IndexedDoc> }> {
     const docs = await this.search(classes, findQuery, fullTextLimit)
 
     const indexedDocMap = new Map<Ref<Doc>, IndexedDoc>()
@@ -277,13 +277,13 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
     return { docs, indexedDocMap }
   }
 
-  private async findChildDocuments<T extends Doc>(
+  private async findChildDocuments<T extends Doc> (
     classes: Ref<Class<Doc>>[],
     findQuery: DocumentQuery<Doc>,
     fullTextLimit: number,
     baseClass: Ref<Class<T>>,
     ids: Set<Ref<Doc>>
-  ): Promise<{ childDocs: IndexedDoc[]; childIndexedDocMap: Map<Ref<Doc>, IndexedDoc> }> {
+  ): Promise<{ childDocs: IndexedDoc[], childIndexedDocMap: Map<Ref<Doc>, IndexedDoc> }> {
     const childDocs = await this.search(classes, findQuery, fullTextLimit)
 
     const childIndexedDocMap = new Map<Ref<Doc>, IndexedDoc>()
@@ -304,7 +304,7 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
     return { childDocs, childIndexedDocMap }
   }
 
-  async searchFulltext(ctx: MeasureContext, query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+  async searchFulltext (ctx: MeasureContext, query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
     try {
       return await ctx.with('full-text-search', {}, async (ctx) => {
         return await (
@@ -333,7 +333,7 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  async close(): Promise<void> {
+  async close (): Promise<void> {
     try {
       await fetch(this.fulltextEndpoint + '/api/v1/close', {
         method: 'PUT',
@@ -353,7 +353,7 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  getResultIds(ids: Set<Ref<Doc>>, _id: ObjQueryType<Ref<Doc>> | undefined): Set<Ref<Doc>> {
+  getResultIds (ids: Set<Ref<Doc>>, _id: ObjQueryType<Ref<Doc>> | undefined): Set<Ref<Doc>> {
     const result = new Set<Ref<Doc>>()
     if (_id !== undefined) {
       if (typeof _id === 'string') {

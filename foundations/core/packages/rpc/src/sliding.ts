@@ -10,7 +10,7 @@ export class SlidingWindowRateLimitter {
     }
   >()
 
-  constructor(
+  constructor (
     readonly rateLimitMax: number,
     readonly rateLimitWindow: number,
     readonly now: () => number = Date.now
@@ -19,7 +19,7 @@ export class SlidingWindowRateLimitter {
     this.rateLimitWindow = rateLimitWindow
   }
 
-  public checkRateLimit(groupId: string): RateLimitInfo {
+  public checkRateLimit (groupId: string): RateLimitInfo {
     const now = this.now()
     const windowStart = now - this.rateLimitWindow
 
@@ -68,7 +68,7 @@ export class SlidingWindowRateLimitter {
   }
 
   // Add a reset method for testing purposes
-  public reset(): void {
+  public reset (): void {
     this.rateLimits.clear()
   }
 }

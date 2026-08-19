@@ -396,7 +396,7 @@ async function doIssueUpdate (updateTx: TxUpdateDoc<Issue>, control: TriggerCont
     const [newParent] = await control.findAll(
       control.ctx,
       tracker.class.Issue,
-      { _id: updateTx.operations.attachedTo as Ref<Issue> },
+      { _id: updateTx.operations.attachedTo },
       { limit: 1 }
     )
 

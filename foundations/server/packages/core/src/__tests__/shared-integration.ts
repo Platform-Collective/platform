@@ -49,7 +49,7 @@ export interface TestContext {
  * @param adapterName - Name of the adapter being tested (e.g., 'PostgreSQL', 'MongoDB')
  * @param getContext - Function that returns the current test context
  */
-export function runSharedIntegrationTests(adapterName: string, getContext: () => TestContext): void {
+export function runSharedIntegrationTests (adapterName: string, getContext: () => TestContext): void {
   describe(`${adapterName} - Shared Integration Tests`, () => {
     describe('Basic CRUD Operations', () => {
       it('should create a document', async () => {

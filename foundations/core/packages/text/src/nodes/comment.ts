@@ -25,7 +25,7 @@ export const CommentNode = Node.create({
   content: 'text*',
   marks: '_',
 
-  parseHTML() {
+  parseHTML () {
     return [
       {
         tag: 'comment'
@@ -33,7 +33,7 @@ export const CommentNode = Node.create({
     ]
   },
 
-  renderText() {
+  renderText () {
     return ''
   }
 })

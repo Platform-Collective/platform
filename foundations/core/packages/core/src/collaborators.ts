@@ -15,7 +15,7 @@
 
 import core, { Class, ClassCollaborators, Doc, Hierarchy, ModelDb, Ref } from '.'
 
-export function getClassCollaborators<T extends Doc>(
+export function getClassCollaborators<T extends Doc> (
   model: ModelDb,
   hiearachy: Hierarchy,
   _id: Ref<Class<T>>

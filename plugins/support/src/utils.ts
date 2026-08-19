@@ -20,7 +20,7 @@ import support from '.'
 /**
  * @public
  */
-export async function updateSupportConversation(
+export async function updateSupportConversation (
   client: TxOperations,
   account: PersonId,
   conversationId: string,
@@ -45,7 +45,7 @@ export async function updateSupportConversation(
 /**
  * @public
  */
-export async function deleteSupportConversation(
+export async function deleteSupportConversation (
   client: TxOperations,
   account: PersonId,
   conversationId: string

@@ -9,7 +9,7 @@ import type { SortQuerySelector, SortingOrder, SortingQuery, SortingRules } from
 /**
  * @public
  */
-export function findProperty(objects: Doc[], propertyKey: string, value: any): Doc[] {
+export function findProperty (objects: Doc[], propertyKey: string, value: any): Doc[] {
   if (isPredicate(value)) {
     const preds = createPredicates(value, propertyKey)
     for (const pred of preds) {
@@ -27,11 +27,11 @@ export function findProperty(objects: Doc[], propertyKey: string, value: any): D
   return result
 }
 
-function isArrayValueCheck<T, P>(val: T, value: P): boolean {
+function isArrayValueCheck<T, P> (val: T, value: P): boolean {
   return Array.isArray(val) && !Array.isArray(value) && val.includes(value)
 }
 
-function getEnumValue<T extends Doc>(
+function getEnumValue<T extends Doc> (
   key: string,
   _class: Ref<Class<T>>,
   hierarchy: Hierarchy,
@@ -47,7 +47,7 @@ function getEnumValue<T extends Doc>(
 /**
  * @public
  */
-export function resultSort<T extends Doc>(
+export function resultSort<T extends Doc> (
   result: T[],
   sortOptions: SortingQuery<T>,
   _class: Ref<Class<T>>,
@@ -70,7 +70,7 @@ export function resultSort<T extends Doc>(
   result.sort(sortFunc)
 }
 
-function mapSortingValue(order: SortingOrder | SortingRules<any>, val: any): any {
+function mapSortingValue (order: SortingOrder | SortingRules<any>, val: any): any {
   if (typeof order !== 'object') {
     return val
   }
@@ -93,7 +93,7 @@ function mapSortingValue(order: SortingOrder | SortingRules<any>, val: any): any
   }
 }
 
-function getSortingResult(aValue: any, bValue: any, order: SortingOrder | SortingRules<any>): number {
+function getSortingResult (aValue: any, bValue: any, order: SortingOrder | SortingRules<any>): number {
   let res = 0
   if (typeof aValue === 'undefined') {
     return typeof bValue === 'undefined' ? 0 : -1
@@ -116,7 +116,7 @@ function getSortingResult(aValue: any, bValue: any, order: SortingOrder | Sortin
   return res * orderOrder
 }
 
-function getEnums<T extends Doc>(
+function getEnums<T extends Doc> (
   _class: Ref<Class<T>>,
   sortOptions: SortingQuery<T>,
   hierarchy: Hierarchy,
@@ -138,7 +138,7 @@ function getEnums<T extends Doc>(
   return res
 }
 
-function getValue<T extends Doc>(key: string, obj: any, _class: Ref<Class<T>>, hierarchy: Hierarchy): any {
+function getValue<T extends Doc> (key: string, obj: any, _class: Ref<Class<T>>, hierarchy: Hierarchy): any {
   const tkey = checkMixinKey(key, _class, hierarchy)
   let value = getObjectValue(tkey, obj)
   if (typeof value === 'object' && !Array.isArray(value)) {
@@ -149,7 +149,7 @@ function getValue<T extends Doc>(key: string, obj: any, _class: Ref<Class<T>>, h
 /**
  * @public
  */
-export function matchQuery<T extends Doc>(
+export function matchQuery<T extends Doc> (
   docs: Doc[],
   query: DocumentQuery<T>,
   clazz: Ref<Class<T>>,
@@ -178,7 +178,7 @@ export function matchQuery<T extends Doc>(
 /**
  * @public
  */
-export function checkMixinKey<T extends Doc>(key: string, clazz: Ref<Class<T>>, hierarchy: Hierarchy): string {
+export function checkMixinKey<T extends Doc> (key: string, clazz: Ref<Class<T>>, hierarchy: Hierarchy): string {
   if (!key.includes('.')) {
     try {
       const attr = hierarchy.findAttribute(clazz, key)

@@ -91,7 +91,7 @@
   $: onReadonlyChanged(readonly)
   $: onOffsetChanged(offset)
 
-  function onSavedCommandsChanged (): void {
+  function onSavedCommandsChanged(): void {
     model = commandsProcessor.snapshot()
     setTimeout(() => {
       const status = commandsProcessor.getUndoRedoAvailability()
@@ -100,7 +100,7 @@
     })
   }
 
-  function showCommandProps (id: CommandUid): void {
+  function showCommandProps(id: CommandUid): void {
     changingCmdId = id
     for (const command of model) {
       if (command.id === id) {
@@ -114,19 +114,19 @@
     }
   }
 
-  function changeCommand (cmd: DrawingCmd): void {
+  function changeCommand(cmd: DrawingCmd): void {
     changingCmdId = undefined
     cmdEditor = undefined
     commandsProcessor.changeCommand(cmd)
   }
 
-  function deleteCommand (id: CommandUid): void {
+  function deleteCommand(id: CommandUid): void {
     changingCmdId = undefined
     cmdEditor = undefined
     commandsProcessor.deleteCommand(id)
   }
 
-  function onSelectedChanged (newSelected: boolean): void {
+  function onSelectedChanged(newSelected: boolean): void {
     if (oldSelected !== newSelected) {
       if (oldSelected && !newSelected && changingCmdId !== undefined) {
         changingCmdId = undefined
@@ -136,7 +136,7 @@
     }
   }
 
-  function onReadonlyChanged (newReadonly: boolean): void {
+  function onReadonlyChanged(newReadonly: boolean): void {
     if (oldReadonly !== newReadonly) {
       if (!newReadonly) {
         commandsProcessor.ensureAllCommandsWithUids()
@@ -145,19 +145,19 @@
     }
   }
 
-  function onOffsetChanged (offset: Point): void {
+  function onOffsetChanged(offset: Point): void {
     if (sendLiveData !== undefined) {
       sendLiveData(dataTopicOffset, { boardId, offset: { ...offset } })
     }
   }
 
-  function onPointerMoved (canvasPos: Point): void {
+  function onPointerMoved(canvasPos: Point): void {
     if (sendLiveData !== undefined && selected && !panning) {
       sendLiveData(dataTopicCursor, { boardId, cursorPos: { ...canvasPos } })
     }
   }
 
-  async function onFolloweeData (data: any): Promise<void> {
+  async function onFolloweeData(data: any): Promise<void> {
     if (data === undefined) {
       followee = undefined
       personCursorVisible = false

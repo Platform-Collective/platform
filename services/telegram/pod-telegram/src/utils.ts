@@ -62,7 +62,7 @@ export async function createPlatformClient (token: string): Promise<Client> {
       headers: {
         'User-Agent': config.ServiceID
       }
-    }) as never as ClientSocket
+    }) as never
   })
 
   const endpoint = await getTransactorEndpoint(token)

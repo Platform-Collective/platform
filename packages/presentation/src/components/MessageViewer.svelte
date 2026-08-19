@@ -31,7 +31,7 @@
     parseEmojisFunction = getParseEmojisFunction() ?? (await loadParseEmojisFunction())
   })
 
-  export function isEmpty (): boolean {
+  export function isEmpty(): boolean {
     return empty
   }
 </script>

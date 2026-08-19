@@ -19,12 +19,12 @@ import plugin from './plugin'
 import { ReconiDocument } from './types'
 
 export { default } from './plugin'
-export * from './types'
+export type * from './types'
 
 /**
  * @public
  */
-export async function recognizeDocument(token: string, file: File): Promise<ReconiDocument> {
+export async function recognizeDocument (token: string, file: File): Promise<ReconiDocument> {
   const rekoniUrl = getMetadata(plugin.metadata.RekoniUrl)
   if (rekoniUrl === undefined) {
     // We could try use recognition service to find some document properties.

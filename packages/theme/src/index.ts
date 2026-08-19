@@ -31,7 +31,7 @@ export const setDefaultLanguage = (language: string): void => {
   }
 }
 
-function getDefaultProps(prop: string, value: string): string {
+function getDefaultProps (prop: string, value: string): string {
   localStorage.setItem(prop, value)
   return value
 }
@@ -69,7 +69,7 @@ export const getCurrentEmoji = (): string => localStorage.getItem('emoji') ?? ge
 
 export class ThemeOptions {
   readonly variant: ThemeVariantType
-  constructor(
+  constructor (
     readonly fontSize: number,
     readonly dark: boolean,
     readonly language: string,
@@ -80,7 +80,7 @@ export class ThemeOptions {
 }
 export const themeStore = writable<ThemeOptions>()
 
-export function initThemeStore(): void {
+export function initThemeStore (): void {
   themeStore.set(
     new ThemeOptions(
       getCurrentFontSize() === 'normal-font' ? 16 : 14,

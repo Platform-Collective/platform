@@ -25,9 +25,9 @@ const getPathname = (url: string): string => {
 
 /** @public */
 export class FrontStorage implements FileStorage {
-  constructor(private readonly baseUrl: string) {}
+  constructor (private readonly baseUrl: string) {}
 
-  getFileUrl(workspace: string, file: string, filename?: string): string {
+  getFileUrl (workspace: string, file: string, filename?: string): string {
     const encodedWorkspace = encodePathSegment(workspace)
     const encodedFile = encodePathSegment(file)
     const encodedFilename = encodePathSegment(filename ?? file)
@@ -35,16 +35,16 @@ export class FrontStorage implements FileStorage {
     return concatLink(this.baseUrl, path)
   }
 
-  getCookiePath(workspace: string): string {
+  getCookiePath (workspace: string): string {
     const url = concatLink(this.baseUrl, `/${workspace}`)
     return getPathname(url)
   }
 
-  async getFileMeta(token: string, workspace: string, file: string): Promise<Record<string, any>> {
+  async getFileMeta (token: string, workspace: string, file: string): Promise<Record<string, any>> {
     return {}
   }
 
-  async deleteFile(token: string, workspace: string, file: string): Promise<void> {
+  async deleteFile (token: string, workspace: string, file: string): Promise<void> {
     const url = this.getFileUrl(workspace, file)
 
     const response = await fetch(url, {
@@ -59,7 +59,7 @@ export class FrontStorage implements FileStorage {
     }
   }
 
-  async uploadFile(
+  async uploadFile (
     token: string,
     workspace: string,
     uuid: string,

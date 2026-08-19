@@ -43,10 +43,10 @@ import { NodeSDK } from '@opentelemetry/sdk-node'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-node'
 
 class MetricsContext {
-  counters = new Map<string, { counter: Gauge; value: 0 }>()
-  constructor(readonly meter?: Meter) {}
+  counters = new Map<string, { counter: Gauge, value: 0 }>()
+  constructor (readonly meter?: Meter) {}
 
-  getCounter(name: string): { counter: Gauge; value: number } | undefined {
+  getCounter (name: string): { counter: Gauge, value: number } | undefined {
     if (this.meter === undefined) {
       return undefined
     }
@@ -76,7 +76,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
   isDone = false
   doneTrace: string = ''
 
-  private done(value?: number, override?: boolean): void {
+  private done (value?: number, override?: boolean): void {
     if (!this.isDone) {
       this.doneTrace = new Error().stack ?? ''
       this.isDone = true
@@ -85,7 +85,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     }
   }
 
-  constructor(
+  constructor (
     name: string,
     readonly tracer: Tracer,
     readonly context: Context | undefined,
@@ -117,7 +117,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     this.logger = logger ?? (this.logParams != null ? consoleLogger(this.logParams ?? {}) : noParamsLogger)
   }
 
-  measure(name: string, value: number, override?: boolean): void {
+  measure (name: string, value: number, override?: boolean): void {
     const cnt = this.meter?.getCounter(name)
     if (cnt !== undefined) {
       if (cnt.value !== value) {
@@ -127,7 +127,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     }
   }
 
-  newChild(
+  newChild (
     name: string,
     params: ParamsType,
     opt?: {
@@ -181,7 +181,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     return result
   }
 
-  extractMeta(): Record<string, string | number | boolean> {
+  extractMeta (): Record<string, string | number | boolean> {
     const headers: Record<string, string> = {}
     if (this.context !== undefined) {
       propagation.inject(this.context, headers)
@@ -189,7 +189,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     return headers
   }
 
-  with<T>(
+  with<T> (
     name: string,
     params: ParamsType,
     op: (ctx: MeasureContext) => T | Promise<T>,
@@ -249,7 +249,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     }
   }
 
-  withSync<T>(
+  withSync<T> (
     name: string,
     params: ParamsType,
     op: (ctx: MeasureContext) => T,
@@ -265,7 +265,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     }
   }
 
-  error(message: string, args?: Record<string, any>): void {
+  error (message: string, args?: Record<string, any>): void {
     if (this.otlpLogger !== undefined) {
       this.otlpLogger.emit({
         severityNumber: SeverityNumber.ERROR,
@@ -281,7 +281,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     this.logger.error(message, { ...this.params, ...args, ...(this.logParams ?? {}) })
   }
 
-  info(message: string, args?: Record<string, any>): void {
+  info (message: string, args?: Record<string, any>): void {
     if (this.otlpLogger !== undefined) {
       this.otlpLogger.emit({
         context: this.context,
@@ -297,7 +297,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     this.logger.info(message, { ...this.params, ...args, ...(this.logParams ?? {}) })
   }
 
-  warn(message: string, args?: Record<string, any>): void {
+  warn (message: string, args?: Record<string, any>): void {
     if (this.otlpLogger !== undefined) {
       this.otlpLogger.emit({
         severityNumber: SeverityNumber.WARN,
@@ -313,7 +313,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     this.logger.warn(message, { ...this.params, ...args, ...(this.logParams ?? {}) })
   }
 
-  debug(message: string, args?: Record<string, any>): void {
+  debug (message: string, args?: Record<string, any>): void {
     if (this.logLevel !== 'debug') return
     if (this.otlpLogger !== undefined) {
       this.otlpLogger.emit({
@@ -330,11 +330,11 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     this.logger.debug(message, { ...this.params, ...args, ...(this.logParams ?? {}) })
   }
 
-  end(): void {
+  end (): void {
     this.done()
   }
 
-  getParams(): ParamsType {
+  getParams (): ParamsType {
     return this.params
   }
 }
@@ -345,7 +345,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
  * W3C baggage format: "key1=value1,key2=value2;property=value,key3=value3"
  * Returns only the key-value pairs, ignoring properties
  */
-function parseBaggage(baggageHeader?: string): Record<string, string> {
+function parseBaggage (baggageHeader?: string): Record<string, string> {
   if (baggageHeader == null || typeof baggageHeader !== 'string') {
     return {}
   }
@@ -393,7 +393,7 @@ let sdkServiceName: string | undefined
 let sdkServiceVersion: string | undefined
 let loggerProvider: LoggerProvider | undefined
 
-export function initOpenTelemetrySDK(serviceName: string, version: string): boolean {
+export function initOpenTelemetrySDK (serviceName: string, version: string): boolean {
   if (sdk !== undefined) {
     return true
   }
@@ -501,7 +501,7 @@ export function initOpenTelemetrySDK(serviceName: string, version: string): bool
   return true
 }
 
-export function reportOTELError(error: Error, attributes?: Record<string, any>): void {
+export function reportOTELError (error: Error, attributes?: Record<string, any>): void {
   if (sdkServiceName !== undefined && sdkServiceVersion !== undefined && loggerProvider !== undefined) {
     const otlpLogger = loggerProvider?.getLogger(sdkServiceName, sdkServiceVersion)
     otlpLogger?.emit({
@@ -519,7 +519,7 @@ export function reportOTELError(error: Error, attributes?: Record<string, any>):
   }
 }
 
-export function reportOTEL(
+export function reportOTEL (
   severity: 'info' | 'warning',
   message: string,
   time: number,
@@ -542,7 +542,7 @@ export function reportOTEL(
   }
 }
 
-export function createOpenTelemetryMetricsContext(
+export function createOpenTelemetryMetricsContext (
   name: string,
   params: ParamsType,
   fullParams: FullParamsType | (() => FullParamsType) = {},
@@ -584,7 +584,7 @@ export function createOpenTelemetryMetricsContext(
   )
   return ctx
 }
-function parseTraceExporterHeaders(): Record<string, string> {
+function parseTraceExporterHeaders (): Record<string, string> {
   const headers: Record<string, string> = parseBaggage(process.env.OTEL_EXPORTER_OTLP_HEADERS) ?? {}
 
   if (process.env.OTEL_EXPORTER_OTLP_TRACES_HEADERS !== undefined) {
@@ -596,7 +596,7 @@ function parseTraceExporterHeaders(): Record<string, string> {
   return headers
 }
 
-function getTracesUrl(): string | undefined {
+function getTracesUrl (): string | undefined {
   let tracesUrl = process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ?? process.env.OTEL_EXPORTER_OTLP_ENDPOINT
 
   if (tracesUrl !== undefined && !tracesUrl.endsWith('/v1/traces')) {
@@ -609,7 +609,7 @@ function getTracesUrl(): string | undefined {
   return tracesUrl
 }
 
-function getLogsUrl(): string | undefined {
+function getLogsUrl (): string | undefined {
   let logsUrl = process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT ?? process.env.OTEL_EXPORTER_OTLP_ENDPOINT
 
   if (logsUrl !== undefined && !logsUrl.endsWith('/v1/logs')) {
@@ -621,7 +621,7 @@ function getLogsUrl(): string | undefined {
   }
   return logsUrl
 }
-function parseLogsExporterHeaders(): Record<string, string> {
+function parseLogsExporterHeaders (): Record<string, string> {
   const headers: Record<string, string> = parseBaggage(process.env.OTEL_EXPORTER_OTLP_HEADERS) ?? {}
 
   if (process.env.OTEL_EXPORTER_OTLP_LOGS_HEADERS !== undefined) {
@@ -633,7 +633,7 @@ function parseLogsExporterHeaders(): Record<string, string> {
   return headers
 }
 
-function getMetricsUrl(): string | undefined {
+function getMetricsUrl (): string | undefined {
   let metricsUrl = process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT ?? process.env.OTEL_EXPORTER_OTLP_ENDPOINT
 
   if (metricsUrl !== undefined && !metricsUrl.endsWith('/v1/metrics')) {
@@ -645,7 +645,7 @@ function getMetricsUrl(): string | undefined {
   }
   return metricsUrl
 }
-function parseMetricsExporterHeaders(): Record<string, string> {
+function parseMetricsExporterHeaders (): Record<string, string> {
   const headers: Record<string, string> = parseBaggage(process.env.OTEL_EXPORTER_OTLP_HEADERS) ?? {}
 
   if (process.env.OTEL_EXPORTER_OTLP_METRICS_HEADERS !== undefined) {

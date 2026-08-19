@@ -9,7 +9,7 @@ export * from '@hcengineering/measurements-otlp'
 export * from './logging'
 
 class OTELAnalyticsProvider implements AnalyticProvider {
-  init(config: Record<string, any>): boolean {
+  init (config: Record<string, any>): boolean {
     return true
   }
 
@@ -23,16 +23,16 @@ class OTELAnalyticsProvider implements AnalyticProvider {
 
   handleEvent: (event: string, params: Record<string, string>) => void = (event, params) => {}
 
-  handleError(error: Error): void {
+  handleError (error: Error): void {
     reportOTELError(error)
   }
 
-  navigate(path: string): void {}
+  navigate (path: string): void {}
 
-  logout(): void {}
+  logout (): void {}
 }
 
-export function configureAnalytics(serviceName: string, serviceVersion: string, config?: Record<string, any>): void {
+export function configureAnalytics (serviceName: string, serviceVersion: string, config?: Record<string, any>): void {
   const providers: AnalyticProvider[] = [new OTELAnalyticsProvider()]
 
   initOpenTelemetrySDK(serviceName, serviceVersion)

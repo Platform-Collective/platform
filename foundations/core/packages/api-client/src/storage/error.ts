@@ -14,21 +14,21 @@
 //
 
 export class NetworkError extends Error {
-  constructor(message: string) {
+  constructor (message: string) {
     super(message)
     this.name = 'NetworkError'
   }
 }
 
 export class StorageError extends Error {
-  constructor(message: string) {
+  constructor (message: string) {
     super(message)
     this.name = 'StorageError'
   }
 }
 
 export class NotFoundError extends StorageError {
-  constructor(message = 'Not Found') {
+  constructor (message = 'Not Found') {
     super(message)
     this.name = 'NotFoundError'
   }

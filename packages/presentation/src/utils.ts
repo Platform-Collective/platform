@@ -162,7 +162,7 @@ class UIClient extends TxOperations implements Client {
     }
   }
 
-  override async findAll<T extends Doc>(
+  override async findAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -170,7 +170,7 @@ class UIClient extends TxOperations implements Client {
     return await this.liveQuery.findAll(_class, query, options)
   }
 
-  override async findOne<T extends Doc>(
+  override async findOne<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -309,7 +309,7 @@ class ClientHookImpl implements Client {
     return this.client.getModel()
   }
 
-  async findOne<T extends Doc>(
+  async findOne<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -324,7 +324,7 @@ class ClientHookImpl implements Client {
     await this.client.close()
   }
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -505,7 +505,7 @@ export class LiveQuery {
     }
   }
 
-  query<T extends Doc>(
+  query<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     callback: (result: FindResult<T>) => void | Promise<void>,
@@ -533,7 +533,7 @@ export class LiveQuery {
     }
   )
 
-  private doQuery<T extends Doc>(
+  private doQuery<T extends Doc> (
     id: number,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -602,7 +602,7 @@ export class LiveQuery {
     }
   }
 
-  private needUpdate<T extends Doc>(
+  private needUpdate<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     callback: (result: FindResult<T>) => void | Promise<void>,

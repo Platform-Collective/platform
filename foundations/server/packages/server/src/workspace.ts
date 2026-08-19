@@ -63,7 +63,7 @@ export class Workspace {
     return this.pipeline
   }
 
-  async with<T>(op: (pipeline: Pipeline) => Promise<T>): Promise<T> {
+  async with<T> (op: (pipeline: Pipeline) => Promise<T>): Promise<T> {
     this.operations++
     let pipeline = this.getPipeline()
     if (pipeline instanceof Promise) {

@@ -37,11 +37,11 @@ import {
  * @public
  */
 export class IdentifierMiddleware extends BaseMiddleware implements Middleware {
-  private constructor(context: PipelineContext, next?: Middleware) {
+  private constructor (context: PipelineContext, next?: Middleware) {
     super(context, next)
   }
 
-  static async create(
+  static async create (
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -49,7 +49,7 @@ export class IdentifierMiddleware extends BaseMiddleware implements Middleware {
     return new IdentifierMiddleware(context, next)
   }
 
-  async tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  async tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     for (const tx of txes) {
       if (isTargetTx(tx)) {
         if (tx._class === core.class.TxUpdateDoc) {
@@ -62,7 +62,7 @@ export class IdentifierMiddleware extends BaseMiddleware implements Middleware {
     return await this.provideTx(ctx, txes)
   }
 
-  private async setIdentifiers(
+  private async setIdentifiers (
     ctx: MeasureContext<SessionData>,
     tx: TxCreateDoc<Doc> | TxMixin<Doc, Doc>
   ): Promise<void> {
@@ -83,7 +83,7 @@ export class IdentifierMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  private async setIdentifiersInUpdate(ctx: MeasureContext<SessionData>, tx: TxUpdateDoc<Doc>): Promise<void> {
+  private async setIdentifiersInUpdate (ctx: MeasureContext<SessionData>, tx: TxUpdateDoc<Doc>): Promise<void> {
     const newClass = (tx.operations as any)._class as Ref<Class<Doc>> | undefined
     if (newClass === undefined) {
       return
@@ -109,7 +109,7 @@ export class IdentifierMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  private async generateIdentifier(
+  private async generateIdentifier (
     ctx: MeasureContext<SessionData>,
     tx: Tx,
     type: TypeIdentifier
@@ -133,7 +133,7 @@ export class IdentifierMiddleware extends BaseMiddleware implements Middleware {
   }
 }
 
-function isTargetTx(tx: Tx): boolean {
+function isTargetTx (tx: Tx): boolean {
   return (
     tx._class === core.class.TxCreateDoc ||
     tx._class === core.class.TxMixin ||

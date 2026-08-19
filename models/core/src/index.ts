@@ -115,7 +115,7 @@ export * from './status'
 export * from './tx'
 export { core as default }
 
-export function createModel(builder: Builder): void {
+export function createModel (builder: Builder): void {
   builder.createModel(
     TObj,
     TDoc,

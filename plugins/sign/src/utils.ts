@@ -6,7 +6,7 @@ import { getMetadata } from '@hcengineering/platform'
 
 import sign from './plugin'
 
-export function getSignBaseURL(): string {
+export function getSignBaseURL (): string {
   const endpoint = getMetadata(sign.metadata.SignURL)
 
   if (endpoint === undefined || endpoint === '') {
@@ -16,7 +16,7 @@ export function getSignBaseURL(): string {
   return endpoint
 }
 
-export async function signPDF(file: string, token: string): Promise<string> {
+export async function signPDF (file: string, token: string): Promise<string> {
   if (token === '') {
     return ''
   }

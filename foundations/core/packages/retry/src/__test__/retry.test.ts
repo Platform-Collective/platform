@@ -315,7 +315,7 @@ describe('Using retry in class methods', () => {
   class TestService {
     counter = 0
 
-    async unstableFunction(): Promise<string> {
+    async unstableFunction (): Promise<string> {
       this.counter++
       if (this.counter < 3) {
         throw new Error(`network error ${this.counter}`)

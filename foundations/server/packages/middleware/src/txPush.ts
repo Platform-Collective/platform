@@ -37,7 +37,7 @@ import { BaseMiddleware } from '@hcengineering/server-core'
  */
 export class TxMiddleware extends BaseMiddleware implements Middleware {
   adapterManager!: DBAdapterManager
-  static async create(ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
+  static async create (ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<Middleware> {
     const middleware = new TxMiddleware(context, next)
     if (context.adapterManager == null) {
       throw new PlatformError(unknownError('Adapter manager should be specified'))
@@ -46,9 +46,9 @@ export class TxMiddleware extends BaseMiddleware implements Middleware {
     return middleware
   }
 
-  async init(ctx: MeasureContext): Promise<void> {}
+  async init (ctx: MeasureContext): Promise<void> {}
 
-  async tx(ctx: MeasureContext, txes: Tx[]): Promise<TxMiddlewareResult> {
+  async tx (ctx: MeasureContext, txes: Tx[]): Promise<TxMiddlewareResult> {
     const txToStore: Tx[] = []
     for (const tx of txes) {
       if (TxProcessor.isExtendsCUD(tx._class)) {

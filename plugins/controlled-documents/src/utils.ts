@@ -82,7 +82,7 @@ export const calcRank = (prev?: { rank: string }, next?: { rank: string }): stri
 /**
  * @public
  */
-export async function createChangeControl(
+export async function createChangeControl (
   client: TxOperations,
   ccId: Ref<ChangeControl>,
   ccSpec: Data<ChangeControl>,
@@ -94,7 +94,7 @@ export async function createChangeControl(
 /**
  * @public
  */
-export function getDocumentId(document: Pick<Document, 'prefix' | 'seqNumber'>): string {
+export function getDocumentId (document: Pick<Document, 'prefix' | 'seqNumber'>): string {
   return `${document.prefix}-${document.seqNumber}`
 }
 
@@ -102,7 +102,7 @@ export function getDocumentId(document: Pick<Document, 'prefix' | 'seqNumber'>):
 const documentIdRegExp = /^(?<prefix>\w+)-(?<seqNumber>\d+)$/
 
 /** @public */
-export function matchDocumentId(str: string): Pick<Document, 'prefix' | 'seqNumber'> | null {
+export function matchDocumentId (str: string): Pick<Document, 'prefix' | 'seqNumber'> | null {
   const match = str.match(documentIdRegExp)
   if (match?.groups?.prefix === undefined || match.groups.seqNumber === undefined) {
     return null
@@ -116,7 +116,7 @@ export function matchDocumentId(str: string): Pick<Document, 'prefix' | 'seqNumb
 /**
  * @public
  */
-export function isControlledDocument(client: TxOperations, doc: Document): doc is ControlledDocument {
+export function isControlledDocument (client: TxOperations, doc: Document): doc is ControlledDocument {
   return client.getHierarchy().isDerived(doc._class, documents.class.ControlledDocument)
 }
 
@@ -128,7 +128,7 @@ export type EditorMode = 'viewing' | 'editing' | 'comparing'
 /**
  * @public
  */
-export async function deleteProjectDrafts(client: ApplyOperations, source: Ref<Project>): Promise<void> {
+export async function deleteProjectDrafts (client: ApplyOperations, source: Ref<Project>): Promise<void> {
   const projectDocs = await client.findAll(documents.class.ProjectDocument, { project: source })
 
   const toDelete = await client.findAll(documents.class.Document, {
@@ -141,7 +141,7 @@ export async function deleteProjectDrafts(client: ApplyOperations, source: Ref<P
   }
 }
 
-export function isCollaborator(doc: ControlledDocument, person: Ref<Employee>): boolean {
+export function isCollaborator (doc: ControlledDocument, person: Ref<Employee>): boolean {
   return (
     doc.owner === person ||
     doc.coAuthors.includes(person) ||
@@ -150,15 +150,15 @@ export function isCollaborator(doc: ControlledDocument, person: Ref<Employee>): 
   )
 }
 
-export function isFolder(doc: ProjectDocument | undefined): boolean {
+export function isFolder (doc: ProjectDocument | undefined): boolean {
   return doc !== undefined && doc.document === documents.ids.Folder
 }
 
-function getDocumentSortSequence(doc: ControlledDocument | undefined): number[] {
+function getDocumentSortSequence (doc: ControlledDocument | undefined): number[] {
   return doc !== undefined ? [doc.seqNumber, doc.major, doc.minor, doc.createdOn ?? 0] : [0, 0, 0, 0]
 }
 
-export function compareDocumentVersions(
+export function compareDocumentVersions (
   doc1: ControlledDocument | undefined,
   doc2: ControlledDocument | undefined
 ): number {
@@ -167,7 +167,7 @@ export function compareDocumentVersions(
   return s0.reduce((r, v, i) => (r !== 0 ? r : s1[i] - v), 0)
 }
 
-function extractPresentableStateFromDocumentBundle(bundle: DocumentBundle, prjmeta: ProjectMeta): DocumentBundle {
+function extractPresentableStateFromDocumentBundle (bundle: DocumentBundle, prjmeta: ProjectMeta): DocumentBundle {
   bundle = { ...bundle }
 
   const person = getCurrentEmployee()
@@ -205,7 +205,7 @@ export class ProjectDocumentTree {
   nodes: Map<Ref<DocumentMeta>, DocumentBundle>
   links: Map<Ref<Doc>, Ref<DocumentMeta>>
 
-  constructor(bundle?: DocumentBundle, options?: ProjectDocumentTreeOptions) {
+  constructor (bundle?: DocumentBundle, options?: ProjectDocumentTreeOptions) {
     bundle = { ...emptyBundle(), ...bundle }
     const { bundles, links } = compileBundles(bundle)
     this.links = links
@@ -273,12 +273,12 @@ export class ProjectDocumentTree {
     }
   }
 
-  metaOf(ref: Ref<Doc> | undefined): Ref<DocumentMeta> | undefined {
+  metaOf (ref: Ref<Doc> | undefined): Ref<DocumentMeta> | undefined {
     if (ref === undefined) return
     return this.links.get(ref)
   }
 
-  parentChainOf(ref: Ref<DocumentMeta> | undefined): Ref<DocumentMeta>[] {
+  parentChainOf (ref: Ref<DocumentMeta> | undefined): Ref<DocumentMeta>[] {
     if (ref === undefined) return []
     // Found a bug that can cause path field to contain invalid state,
     // until we fix it with migration and a separate fix it's better to use parent.
@@ -292,24 +292,24 @@ export class ProjectDocumentTree {
     return parents
   }
 
-  parentOf(ref: Ref<DocumentMeta> | undefined): Ref<DocumentMeta> {
+  parentOf (ref: Ref<DocumentMeta> | undefined): Ref<DocumentMeta> {
     if (ref === undefined) {
       return documents.ids.NoParent
     }
     return this.parents.get(ref) ?? documents.ids.NoParent
   }
 
-  bundleOf(ref: Ref<DocumentMeta> | undefined): DocumentBundle | undefined {
+  bundleOf (ref: Ref<DocumentMeta> | undefined): DocumentBundle | undefined {
     if (ref === undefined) return
     return this.nodes.get(ref)
   }
 
-  childrenOf(ref: Ref<DocumentMeta> | undefined): Ref<DocumentMeta>[] {
+  childrenOf (ref: Ref<DocumentMeta> | undefined): Ref<DocumentMeta>[] {
     if (ref === undefined) return []
     return this.nodesChildren.get(ref)?.map((p) => p.ProjectMeta[0].meta) ?? []
   }
 
-  descendantsOf(parent: Ref<DocumentMeta>): Ref<DocumentMeta>[] {
+  descendantsOf (parent: Ref<DocumentMeta>): Ref<DocumentMeta>[] {
     const result: Ref<DocumentMeta>[] = []
     const queue: Ref<DocumentMeta>[] = [parent]
 
@@ -327,7 +327,7 @@ export class ProjectDocumentTree {
   }
 }
 
-export async function findProjectDocsHierarchy(
+export async function findProjectDocsHierarchy (
   client: TxOperations,
   space: Ref<DocumentSpace>,
   project?: Ref<Project<DocumentSpace>>
@@ -353,7 +353,7 @@ export interface DocumentBundle {
   Attachment: Attachment[]
 }
 
-export function emptyBundle(): DocumentBundle {
+export function emptyBundle (): DocumentBundle {
   return {
     DocumentMeta: [],
     ProjectMeta: [],
@@ -368,7 +368,7 @@ export function emptyBundle(): DocumentBundle {
   }
 }
 
-export function compileBundles(all: DocumentBundle): {
+export function compileBundles (all: DocumentBundle): {
   bundles: DocumentBundle[]
   links: Map<Ref<Doc>, Ref<DocumentMeta>>
 } {
@@ -408,13 +408,13 @@ export function compileBundles(all: DocumentBundle): {
   return { bundles: Array.from(bundles.values()), links }
 }
 
-export async function findAllDocumentBundles(
+export async function findAllDocumentBundles (
   client: TxOperations,
   ids: Ref<DocumentMeta>[]
 ): Promise<DocumentBundle[]> {
   const all: DocumentBundle = { ...emptyBundle() }
 
-  async function crawl<T extends Doc, P extends keyof T>(
+  async function crawl<T extends Doc, P extends keyof T> (
     _class: Ref<Class<T>>,
     bkey: keyof DocumentBundle,
     prop: P,
@@ -488,7 +488,7 @@ export async function findAllDocumentBundles(
   return compileBundles(all).bundles
 }
 
-export async function findOneDocumentBundle(
+export async function findOneDocumentBundle (
   client: TxOperations,
   id: Ref<DocumentMeta>
 ): Promise<DocumentBundle | undefined> {
@@ -519,7 +519,7 @@ interface DocumentTransferContext {
   targetParentBundle?: DocumentBundle
 }
 
-async function _buildDocumentTransferContext(
+async function _buildDocumentTransferContext (
   client: TxOperations,
   request: DocumentTransferRequest
 ): Promise<DocumentTransferContext | undefined> {
@@ -561,7 +561,7 @@ async function _buildDocumentTransferContext(
   }
 }
 
-export async function listDocumentsAffectedByTransfer(
+export async function listDocumentsAffectedByTransfer (
   client: TxOperations,
   req: DocumentTransferRequest
 ): Promise<DocumentMeta[]> {
@@ -572,7 +572,7 @@ export async function listDocumentsAffectedByTransfer(
 /**
  * @public
  */
-export async function canTransferDocuments(client: TxOperations, req: DocumentTransferRequest): Promise<boolean> {
+export async function canTransferDocuments (client: TxOperations, req: DocumentTransferRequest): Promise<boolean> {
   const cx = await _buildDocumentTransferContext(client, req)
   return cx !== undefined ? await _transferDocuments(client, cx, 'check') : false
 }
@@ -580,12 +580,12 @@ export async function canTransferDocuments(client: TxOperations, req: DocumentTr
 /**
  * @public
  */
-export async function transferDocuments(client: TxOperations, req: DocumentTransferRequest): Promise<boolean> {
+export async function transferDocuments (client: TxOperations, req: DocumentTransferRequest): Promise<boolean> {
   const cx = await _buildDocumentTransferContext(client, req)
   return cx !== undefined ? await _transferDocuments(client, cx) : false
 }
 
-async function _transferDocuments(
+async function _transferDocuments (
   client: TxOperations,
   cx: DocumentTransferContext,
   mode: 'default' | 'check' = 'default'
@@ -620,7 +620,7 @@ async function _transferDocuments(
   const roots = new Set(cx.request.sourceDocumentIds)
   const updates = new Map<Doc, Partial<Doc>>()
 
-  function update<T extends Doc>(document: T, update: Partial<T>): void {
+  function update<T extends Doc> (document: T, update: Partial<T>): void {
     updates.set(document, { ...updates.get(document), ...update })
   }
 
@@ -688,7 +688,7 @@ export interface DocumentValidationState {
 /**
  * @public
  */
-export async function copyProjectDocuments(
+export async function copyProjectDocuments (
   client: ApplyOperations,
   source: Ref<Project>,
   target: Ref<Project>
@@ -736,7 +736,7 @@ export async function copyProjectDocuments(
 /**
  * @public
  */
-export async function getFirstRank(
+export async function getFirstRank (
   client: TxOperations,
   space: Ref<Space>,
   project: Ref<Project>,
@@ -756,7 +756,7 @@ export async function getFirstRank(
 /**
  * @public
  */
-export function getEffectiveDocUpdates(): DocumentUpdate<ControlledDocument>[] {
+export function getEffectiveDocUpdates (): DocumentUpdate<ControlledDocument>[] {
   return [
     {
       state: DocumentState.Effective,
@@ -771,7 +771,7 @@ export function getEffectiveDocUpdates(): DocumentUpdate<ControlledDocument>[] {
 /**
  * @public
  */
-export function getDocumentName(doc: Document): string {
+export function getDocumentName (doc: Document): string {
   return `${doc.code} ${doc.title}`
 }
 

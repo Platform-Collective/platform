@@ -16,7 +16,7 @@
 /**
  * Calculate Sørensen–Dice coefficient
  */
-export function calcSørensenDiceCoefficient(a: string, b: string): number {
+export function calcSørensenDiceCoefficient (a: string, b: string): number {
   if (a == null || b == null) return 0
 
   const first = a.replace(/\s+/g, '')
@@ -53,13 +53,13 @@ export function calcSørensenDiceCoefficient(a: string, b: string): number {
 /**
  * Perform markdown diff/comparison to understand do we have a major differences.
  */
-export function isMarkdownsEquals(source1: string, source2: string): boolean {
+export function isMarkdownsEquals (source1: string, source2: string): boolean {
   const normalized1 = normalizeMarkdown(source1)
   const normalized2 = normalizeMarkdown(source2)
   return normalized1 === normalized2
 }
 
-export function normalizeMarkdown(source: string): string {
+export function normalizeMarkdown (source: string): string {
   if (source == null || typeof source !== 'string') return ''
 
   const tagRegex = /<(\w+)([^>]*?)(\/?)>/g

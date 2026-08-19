@@ -39,7 +39,7 @@ export interface PermissionsGrant {
  * @public
  */
 export class TokenError extends Error {
-  constructor(message: string) {
+  constructor (message: string) {
     super(message)
     this.name = 'TokenError'
   }
@@ -52,7 +52,7 @@ const getSecret = (): string => {
 /**
  * @public
  */
-export function generateToken(
+export function generateToken (
   accountUuid: PersonUuid,
   workspaceUuid?: WorkspaceUuid,
   extra?: Record<string, string>,
@@ -114,7 +114,7 @@ export function generateToken(
 /**
  * @public
  */
-export function decodeToken(token: string, verify: boolean = true, secret?: string): Token {
+export function decodeToken (token: string, verify: boolean = true, secret?: string): Token {
   try {
     return decode(token, secret ?? getSecret(), !verify)
   } catch (err: any) {
@@ -125,7 +125,7 @@ export function decodeToken(token: string, verify: boolean = true, secret?: stri
 /**
  * @public
  */
-export function decodeTokenVerbose(ctx: MeasureContext, token: string): Token {
+export function decodeTokenVerbose (ctx: MeasureContext, token: string): Token {
   try {
     return decodeToken(token)
   } catch (err: any) {

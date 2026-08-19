@@ -344,7 +344,7 @@ export interface FulltextStorage {
   searchFulltext: (query: SearchQuery, options: SearchOptions) => Promise<SearchResult>
 }
 
-export function shouldShowArchived<T extends Doc>(
+export function shouldShowArchived<T extends Doc> (
   query: DocumentQuery<T>,
   options: FindOptions<T> | undefined
 ): boolean {

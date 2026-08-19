@@ -16,7 +16,7 @@ export const panelstore = writable<{
 }>({ panel: undefined })
 let currentLocation: string | undefined
 
-export function getPanelURI(component: AnyComponent, _id: string, _class: string, element?: PopupAlignment): string {
+export function getPanelURI (component: AnyComponent, _id: string, _class: string, element?: PopupAlignment): string {
   const panelProps = [component, _id, _class]
   if (typeof element === 'string') {
     panelProps.push(element)
@@ -24,7 +24,7 @@ export function getPanelURI(component: AnyComponent, _id: string, _class: string
   return encodeURIComponent(panelProps.join('|'))
 }
 
-export function showPanel(
+export function showPanel (
   component: AnyComponent,
   _id: string,
   _class: string,
@@ -40,7 +40,7 @@ export function showPanel(
   }
 }
 
-function openPanel(
+function openPanel (
   component: AnyComponent,
   _id: string,
   _class: string,
@@ -57,7 +57,7 @@ function openPanel(
   })
 }
 
-export function closePanel(shouldRedirect: boolean = true): void {
+export function closePanel (shouldRedirect: boolean = true): void {
   currentLocation = undefined
   panelstore.update(() => {
     return { panel: undefined }

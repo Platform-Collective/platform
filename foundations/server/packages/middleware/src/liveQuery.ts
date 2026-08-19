@@ -34,18 +34,18 @@ import type { Middleware, PipelineContext, ServerFindOptions, TxMiddlewareResult
 export class LiveQueryMiddleware extends BaseMiddleware implements Middleware {
   liveQuery: LQ
 
-  constructor(metrics: MeasureContext, context: PipelineContext, next?: Middleware) {
+  constructor (metrics: MeasureContext, context: PipelineContext, next?: Middleware) {
     super(context, next)
     this.liveQuery = new LQ(this.newCastClient(context.hierarchy, context.modelDb, metrics))
     this.context.liveQuery = this.liveQuery
   }
 
-  private newCastClient(hierarchy: Hierarchy, modelDb: ModelDb, metrics: MeasureContext): Client {
+  private newCastClient (hierarchy: Hierarchy, modelDb: ModelDb, metrics: MeasureContext): Client {
     return {
-      getHierarchy(): Hierarchy {
+      getHierarchy (): Hierarchy {
         return hierarchy
       },
-      getModel(): ModelDb {
+      getModel (): ModelDb {
         return modelDb
       },
       close: () => Promise.resolve(),
@@ -103,12 +103,12 @@ export class LiveQueryMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  static async create(ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<LiveQueryMiddleware> {
+  static async create (ctx: MeasureContext, context: PipelineContext, next?: Middleware): Promise<LiveQueryMiddleware> {
     // we need to init triggers from model first.
     return new LiveQueryMiddleware(ctx, context, next)
   }
 
-  async tx(ctx: MeasureContext, tx: Tx[]): Promise<TxMiddlewareResult> {
+  async tx (ctx: MeasureContext, tx: Tx[]): Promise<TxMiddlewareResult> {
     await this.liveQuery.tx(...tx)
     return await this.provideTx(ctx, tx)
   }

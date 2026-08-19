@@ -1,4 +1,4 @@
-export function groupByArray<T, K>(array: T[], keyProvider: (item: T) => K): Map<K, T[]> {
+export function groupByArray<T, K> (array: T[], keyProvider: (item: T) => K): Map<K, T[]> {
   const result = new Map<K, T[]>()
 
   array.forEach((item) => {
@@ -14,7 +14,7 @@ export function groupByArray<T, K>(array: T[], keyProvider: (item: T) => K): Map
   return result
 }
 
-export async function groupByArrayAsync<T, K>(array: T[], keyProvider: (item: T) => Promise<K>): Promise<Map<K, T[]>> {
+export async function groupByArrayAsync<T, K> (array: T[], keyProvider: (item: T) => Promise<K>): Promise<Map<K, T[]>> {
   const result = new Map<K, T[]>()
 
   for (const item of array) {
@@ -30,7 +30,7 @@ export async function groupByArrayAsync<T, K>(array: T[], keyProvider: (item: T)
   return result
 }
 
-export function flipSet<T>(set: Set<T>, item: T): Set<T> {
+export function flipSet<T> (set: Set<T>, item: T): Set<T> {
   if (set.has(item)) {
     set.delete(item)
   } else {

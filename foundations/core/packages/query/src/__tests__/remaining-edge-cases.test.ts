@@ -8,7 +8,7 @@ import { LiveQuery } from '..'
 import { connect } from './connection'
 import { test } from './minmodel'
 
-async function getClient(): Promise<{ liveQuery: LiveQuery; factory: TxOperations; close: () => Promise<void> }> {
+async function getClient (): Promise<{ liveQuery: LiveQuery, factory: TxOperations, close: () => Promise<void> }> {
   const storage = await createClient(connect)
   const liveQuery = new LiveQuery(storage)
   storage.notify = (...tx) => {

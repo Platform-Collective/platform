@@ -53,7 +53,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function toAny (object: any): any {
+  function toAny(object: any): any {
     return object
   }
 
@@ -62,7 +62,7 @@
   const stateRefs: HTMLElement[] = []
 
   $: stateRefs.length = stateObjects.length
-  export function scroll (item: Item): void {
+  export function scroll(item: Item): void {
     const pos = stateObjects.findIndex((it) => it._id === item._id)
     if (pos >= 0) {
       stateRefs[pos]?.scrollIntoView({ behavior: 'auto', block: 'nearest' })
@@ -93,7 +93,7 @@
     { ...options, limit }
   )
 
-  function getObject (_id: Ref<DocWithRank>, limitedObjects: IdMap<DocWithRank>): DocWithRank | undefined {
+  function getObject(_id: Ref<DocWithRank>, limitedObjects: IdMap<DocWithRank>): DocWithRank | undefined {
     return limitedObjects.get(_id) ?? (_id === dragCard?._id ? dragCard : undefined)
   }
 </script>

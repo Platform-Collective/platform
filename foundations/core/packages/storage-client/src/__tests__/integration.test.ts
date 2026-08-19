@@ -40,23 +40,23 @@ class MockXMLHttpRequest {
   public onabort: (() => void) | null = null
   public ontimeout: (() => void) | null = null
 
-  open(method: string, url: string, async: boolean = true): void {
+  open (method: string, url: string, async: boolean = true): void {
     this.method = method
     this.url = url
   }
 
-  setRequestHeader(key: string, value: string): void {
+  setRequestHeader (key: string, value: string): void {
     this.headers[key] = value
   }
 
-  send(body: any): void {
+  send (body: any): void {
     this.body = body
     setTimeout(() => {
       this.onload?.()
     }, 0)
   }
 
-  abort(): void {
+  abort (): void {
     this.onabort?.()
   }
 }
@@ -349,7 +349,7 @@ describe('Storage Client Integration Tests', () => {
 
   describe('Error Handling Integration', () => {
     it('should handle upload failures across all storage types', async () => {
-      const configs: Array<{ name: string; config: FileStorageConfig }> = [
+      const configs: Array<{ name: string, config: FileStorageConfig }> = [
         { name: 'Front', config: { uploadUrl: 'https://front.example.com' } },
         {
           name: 'Datalake',
@@ -383,7 +383,7 @@ describe('Storage Client Integration Tests', () => {
     })
 
     it('should handle delete failures across all storage types', async () => {
-      const configs: Array<{ name: string; config: FileStorageConfig }> = [
+      const configs: Array<{ name: string, config: FileStorageConfig }> = [
         { name: 'Front', config: { uploadUrl: 'https://front.example.com' } },
         {
           name: 'Datalake',
@@ -456,7 +456,7 @@ describe('Storage Client Integration Tests', () => {
         signal: controller.signal
       }
 
-      const configs: Array<{ name: string; config: FileStorageConfig }> = [
+      const configs: Array<{ name: string, config: FileStorageConfig }> = [
         { name: 'Front', config: { uploadUrl: 'https://front.example.com' } },
         {
           name: 'Datalake',

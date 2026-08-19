@@ -36,7 +36,7 @@ declare module '@tiptap/core' {
       /**
        * Add an image
        */
-      setImage: (options: { src: string; alt?: string; title?: string }) => ReturnType
+      setImage: (options: { src: string, alt?: string, title?: string }) => ReturnType
       /**
        * Set image alignment
        */
@@ -57,7 +57,7 @@ export interface ImageOptions {
   HTMLAttributes: Record<string, any>
 
   loadingImgSrc?: string
-  getBlobRef: (fileId: Ref<Blob>, filename?: string, size?: number) => Promise<{ src: string; srcset: string }>
+  getBlobRef: (fileId: Ref<Blob>, filename?: string, size?: number) => Promise<{ src: string, srcset: string }>
 }
 
 /**
@@ -66,7 +66,7 @@ export interface ImageOptions {
 export const ImageNode = Node.create<ImageOptions>({
   name: 'image',
 
-  addOptions() {
+  addOptions () {
     return {
       inline: true,
       HTMLAttributes: {},
@@ -74,11 +74,11 @@ export const ImageNode = Node.create<ImageOptions>({
     }
   },
 
-  inline() {
+  inline () {
     return this.options.inline
   },
 
-  group() {
+  group () {
     return this.options.inline ? 'inline' : 'block'
   },
 
@@ -86,7 +86,7 @@ export const ImageNode = Node.create<ImageOptions>({
 
   selectable: true,
 
-  addAttributes() {
+  addAttributes () {
     return {
       'file-id': {
         default: null
@@ -113,7 +113,7 @@ export const ImageNode = Node.create<ImageOptions>({
     }
   },
 
-  parseHTML() {
+  parseHTML () {
     return [
       {
         tag: `img[data-type="${this.name}"]`
@@ -124,7 +124,7 @@ export const ImageNode = Node.create<ImageOptions>({
     ]
   },
 
-  renderHTML({ node, HTMLAttributes }) {
+  renderHTML ({ node, HTMLAttributes }) {
     const divAttributes = {
       class: 'text-editor-image-container',
       'data-type': this.name,

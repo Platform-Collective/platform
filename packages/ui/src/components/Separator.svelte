@@ -58,14 +58,14 @@
   let realIndex: number = index
   let offset: number = 0
   let separatorsSizes: number[] | null = null
-  const separatorsWide: { before: number; after: number; total: number } = { before: 0, after: 0, total: 0 }
-  const containers: { minStart: number; minEnd: number; maxStart: number; maxEnd: number } = {
+  const separatorsWide: { before: number, after: number, total: number } = { before: 0, after: 0, total: 0 }
+  const containers: { minStart: number, minEnd: number, maxStart: number, maxEnd: number } = {
     minStart: -1,
     minEnd: -1,
     maxStart: -1,
     maxEnd: -1
   }
-  let parentSize: { start: number; end: number; size: number } | null = null
+  let parentSize: { start: number, end: number, size: number } | null = null
   let disabled: boolean = false
   let side: 'start' | 'end' | undefined = undefined
 
@@ -575,7 +575,7 @@
         const children: Element[] = Array.from(parentElement.children)
         let totalSize: number = 0
         let ind: number = 0
-        const rects = new Map<number, { size: number; element: HTMLElement }>()
+        const rects = new Map<number, { size: number, element: HTMLElement }>()
         const hasSep: string[] = []
         children.forEach((ch) => {
           const rect = ch.getBoundingClientRect()

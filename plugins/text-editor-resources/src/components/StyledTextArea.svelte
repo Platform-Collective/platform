@@ -30,13 +30,13 @@
 
   let editor: StyledTextEditor
 
-  export function submit (): void {
+  export function submit(): void {
     editor.submit()
   }
-  export function isEditable (): boolean {
+  export function isEditable(): boolean {
     return editor.isEditable()
   }
-  export function setEditable (editable: boolean): void {
+  export function setEditable(editable: boolean): void {
     editor.setEditable(editable)
   }
   const dispatch = createEventDispatcher()

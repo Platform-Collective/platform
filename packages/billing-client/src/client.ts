@@ -13,7 +13,7 @@ import {
 } from './types'
 
 /** @public */
-export function getClient(billingUrl?: string, token?: string): BillingClient {
+export function getClient (billingUrl?: string, token?: string): BillingClient {
   if (billingUrl === undefined || billingUrl == null || billingUrl === '') {
     throw new Error('Billing url not specified')
   }
@@ -27,7 +27,7 @@ export function getClient(billingUrl?: string, token?: string): BillingClient {
 export class BillingClient {
   private readonly headers: Record<string, string>
 
-  constructor(
+  constructor (
     private readonly endpoint: string,
     private readonly token: string
   ) {
@@ -37,63 +37,63 @@ export class BillingClient {
     }
   }
 
-  async getBillingStats(workspace: WorkspaceUuid): Promise<BillingStats> {
+  async getBillingStats (workspace: WorkspaceUuid): Promise<BillingStats> {
     const path = `/api/v1/${workspace}/stats`
     const url = new URL(concatLink(this.endpoint, path))
     const response = await fetchSafe(url, { headers: { ...this.headers } })
     return (await response.json()) as BillingStats
   }
 
-  async getDatalakeStats(workspace: WorkspaceUuid): Promise<DatalakeStats> {
+  async getDatalakeStats (workspace: WorkspaceUuid): Promise<DatalakeStats> {
     const path = `/api/v1/${workspace}/datalake/stats`
     const url = new URL(concatLink(this.endpoint, path))
     const response = await fetchSafe(url, { headers: { ...this.headers } })
     return (await response.json()) as DatalakeStats
   }
 
-  async getLiveKitStats(workspace: WorkspaceUuid): Promise<LiveKitStats> {
+  async getLiveKitStats (workspace: WorkspaceUuid): Promise<LiveKitStats> {
     const path = `/api/v1/${workspace}/livekit/stats`
     const url = new URL(concatLink(this.endpoint, path))
     const response = await fetchSafe(url, { headers: { ...this.headers } })
     return (await response.json()) as LiveKitStats
   }
 
-  async getLiveKitSessionsStats(workspace: WorkspaceUuid): Promise<LiveKitSessionsStats[]> {
+  async getLiveKitSessionsStats (workspace: WorkspaceUuid): Promise<LiveKitSessionsStats[]> {
     const path = `/api/v1/${workspace}/livekit/sessions`
     const url = new URL(concatLink(this.endpoint, path))
     const response = await fetchSafe(url, { headers: { ...this.headers } })
     return (await response.json()) as LiveKitSessionsStats[]
   }
 
-  async getLiveKitEgressStats(workspace: WorkspaceUuid): Promise<LiveKitEgressStats[]> {
+  async getLiveKitEgressStats (workspace: WorkspaceUuid): Promise<LiveKitEgressStats[]> {
     const path = `/api/v1/${workspace}/livekit/egress`
     const url = new URL(concatLink(this.endpoint, path))
     const response = await fetchSafe(url, { headers: { ...this.headers } })
     return (await response.json()) as LiveKitEgressStats[]
   }
 
-  async postLiveKitSessions(sessions: LiveKitSessionData[]): Promise<void> {
+  async postLiveKitSessions (sessions: LiveKitSessionData[]): Promise<void> {
     const path = '/api/v1/livekit/sessions'
     const url = new URL(concatLink(this.endpoint, path))
     const body = JSON.stringify(sessions)
     await fetchSafe(url, { method: 'POST', headers: { ...this.headers }, body })
   }
 
-  async postLiveKitEgress(egress: LiveKitEgressData[]): Promise<void> {
+  async postLiveKitEgress (egress: LiveKitEgressData[]): Promise<void> {
     const path = '/api/v1/livekit/egress'
     const url = new URL(concatLink(this.endpoint, path))
     const body = JSON.stringify(egress)
     await fetchSafe(url, { method: 'POST', headers: { ...this.headers }, body })
   }
 
-  async getAiTranscriptLastData(): Promise<AiTranscriptData | undefined> {
+  async getAiTranscriptLastData (): Promise<AiTranscriptData | undefined> {
     const path = '/api/v1/ai/transcript/last'
     const url = new URL(concatLink(this.endpoint, path))
     const response = await fetchSafe(url, { headers: { ...this.headers } })
     return (await response.json()) as AiTranscriptData | undefined
   }
 
-  async postAiTranscriptData(data: AiTranscriptData[]): Promise<void> {
+  async postAiTranscriptData (data: AiTranscriptData[]): Promise<void> {
     const path = '/api/v1/ai/transcript'
     const url = new URL(concatLink(this.endpoint, path))
     const body = JSON.stringify(data)
@@ -101,7 +101,7 @@ export class BillingClient {
     await fetchSafe(url, { method: 'POST', headers: { ...this.headers }, body })
   }
 
-  async postAiTokensData(data: AiTokensData[]): Promise<void> {
+  async postAiTokensData (data: AiTokensData[]): Promise<void> {
     const path = '/api/v1/ai/tokens'
     const url = new URL(concatLink(this.endpoint, path))
     const body = JSON.stringify(data)

@@ -22,9 +22,9 @@ export class Refs {
   // A map of _class to documents.
   private readonly documentRefs = new Map<string, Map<Ref<Doc>, DocumentRef>>()
 
-  constructor(readonly getHierarchy: () => Hierarchy) {}
+  constructor (readonly getHierarchy: () => Hierarchy) {}
 
-  public updateDocuments(q: Query, docs: Doc[], clean: boolean = false): void {
+  public updateDocuments (q: Query, docs: Doc[], clean: boolean = false): void {
     if (q.options?.projection !== undefined) {
       return
     }
@@ -55,7 +55,7 @@ export class Refs {
     }
   }
 
-  public findFromDocs<T extends Doc>(
+  public findFromDocs<T extends Doc> (
     _class: Ref<Class<Doc>>,
     query: DocumentQuery<Doc>,
     options?: FindOptions<T>

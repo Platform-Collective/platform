@@ -319,7 +319,7 @@ export interface WithTx {
  * @public
  */
 export abstract class TxProcessor implements WithTx {
-  async tx(...txes: Tx[]): Promise<TxResult[]> {
+  async tx (...txes: Tx[]): Promise<TxResult[]> {
     const result: TxResult[] = []
     for (const tx of txes) {
       switch (tx._class) {
@@ -343,7 +343,7 @@ export abstract class TxProcessor implements WithTx {
     return result
   }
 
-  static createDoc2Doc<T extends Doc>(tx: TxCreateDoc<T>, doClone = true): T {
+  static createDoc2Doc<T extends Doc> (tx: TxCreateDoc<T>, doClone = true): T {
     const attached =
       tx.attachedTo !== undefined
         ? {
@@ -367,7 +367,7 @@ export abstract class TxProcessor implements WithTx {
     } as T
   }
 
-  static updateDoc2Doc<T extends Doc>(rawDoc: T, tx: TxUpdateDoc<T>): T {
+  static updateDoc2Doc<T extends Doc> (rawDoc: T, tx: TxUpdateDoc<T>): T {
     const doc = _toDoc(rawDoc)
     TxProcessor.applyUpdate<T>(doc, tx.operations as any)
     doc.modifiedBy = tx.modifiedBy
@@ -375,7 +375,7 @@ export abstract class TxProcessor implements WithTx {
     return rawDoc
   }
 
-  static applyUpdate<T extends Doc>(doc: T, ops: any): void {
+  static applyUpdate<T extends Doc> (doc: T, ops: any): void {
     for (const key in ops) {
       if (key.startsWith('$')) {
         const operator = _getOperator(key)
@@ -386,7 +386,7 @@ export abstract class TxProcessor implements WithTx {
     }
   }
 
-  static updateMixin4Doc<D extends Doc, M extends D>(rawDoc: D, tx: TxMixin<D, M>): D {
+  static updateMixin4Doc<D extends Doc, M extends D> (rawDoc: D, tx: TxMixin<D, M>): D {
     const ops = tx.attributes as any
     const doc = _toDoc(rawDoc)
     const mixin = (doc as any)[tx.mixin] ?? {}
@@ -404,7 +404,7 @@ export abstract class TxProcessor implements WithTx {
     return rawDoc
   }
 
-  static buildDoc2Doc<D extends Doc>(txes: Tx[]): D | undefined | null {
+  static buildDoc2Doc<D extends Doc> (txes: Tx[]): D | undefined | null {
     let doc: Doc
     const deleteTx = txes.find((tx) => tx._class === core.class.TxRemoveDoc)
     if (deleteTx !== undefined) {
@@ -426,7 +426,7 @@ export abstract class TxProcessor implements WithTx {
     return doc as D
   }
 
-  static isExtendsCUD(_class: Ref<Class<Doc>>): boolean {
+  static isExtendsCUD (_class: Ref<Class<Doc>>): boolean {
     return (
       _class === core.class.TxCreateDoc ||
       _class === core.class.TxUpdateDoc ||
@@ -435,11 +435,11 @@ export abstract class TxProcessor implements WithTx {
     )
   }
 
-  static txHasUpdate<T extends Doc>(tx: TxUpdateDoc<T>, attribute: string): boolean {
+  static txHasUpdate<T extends Doc> (tx: TxUpdateDoc<T>, attribute: string): boolean {
     return TxProcessor.hasUpdate(tx.operations, attribute)
   }
 
-  static hasUpdate<T extends Doc>(ops: DocumentUpdate<T>, attribute: string): boolean {
+  static hasUpdate<T extends Doc> (ops: DocumentUpdate<T>, attribute: string): boolean {
     if ((ops as any)[attribute] !== undefined) return true
     for (const op in ops) {
       if (op.startsWith('$')) {
@@ -465,14 +465,14 @@ export abstract class TxProcessor implements WithTx {
  */
 export class TxFactory {
   private readonly txSpace: Ref<Space>
-  constructor(
+  constructor (
     readonly account: PersonId,
     readonly isDerived = false
   ) {
     this.txSpace = isDerived ? core.space.DerivedTx : core.space.Tx
   }
 
-  createTxCreateDoc<T extends Doc>(
+  createTxCreateDoc<T extends Doc> (
     _class: Ref<Class<T>>,
     space: Ref<Space>,
     attributes: Data<T>,
@@ -494,7 +494,7 @@ export class TxFactory {
     }
   }
 
-  createTxCollectionCUD<T extends Doc, P extends AttachedDoc>(
+  createTxCollectionCUD<T extends Doc, P extends AttachedDoc> (
     _class: Ref<Class<T>>,
     objectId: Ref<T>,
     space: Ref<Space>,
@@ -513,7 +513,7 @@ export class TxFactory {
     }
   }
 
-  createTxUpdateDoc<T extends Doc>(
+  createTxUpdateDoc<T extends Doc> (
     _class: Ref<Class<T>>,
     space: Ref<Space>,
     objectId: Ref<T>,
@@ -536,7 +536,7 @@ export class TxFactory {
     }
   }
 
-  createTxRemoveDoc<T extends Doc>(
+  createTxRemoveDoc<T extends Doc> (
     _class: Ref<Class<T>>,
     space: Ref<Space>,
     objectId: Ref<T>,
@@ -555,7 +555,7 @@ export class TxFactory {
     }
   }
 
-  createTxMixin<D extends Doc, M extends D>(
+  createTxMixin<D extends Doc, M extends D> (
     objectId: Ref<D>,
     objectClass: Ref<Class<D>>,
     objectSpace: Ref<Space>,
@@ -578,7 +578,7 @@ export class TxFactory {
     }
   }
 
-  createTxApplyIf(
+  createTxApplyIf (
     space: Ref<Space>,
     scope: string | undefined,
     match: DocumentClassQuery<Doc>[],

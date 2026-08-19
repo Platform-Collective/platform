@@ -25,7 +25,7 @@ type PredicateFactory = (pred: any, propertyKey: string) => Predicate
 
 type ExecPredicate = (value: any) => boolean
 
-function execPredicate(docs: Doc[], propertyKey: string, pred: ExecPredicate): Doc[] {
+function execPredicate (docs: Doc[], propertyKey: string, pred: ExecPredicate): Doc[] {
   const result: Doc[] = []
   for (const doc of docs) {
     const value = getObjectValue(propertyKey, doc)
@@ -88,7 +88,7 @@ const predicates: Record<string, PredicateFactory> = {
     return (docs) => execPredicate(docs, propertyKey, (value) => regex.test(value))
   },
 
-  $regex: (o: { $regex: string; $options: string }, propertyKey: string): Predicate => {
+  $regex: (o: { $regex: string, $options: string }, propertyKey: string): Predicate => {
     const re = new RegExp(o.$regex, o.$options)
     return (docs) => execPredicate(docs, propertyKey, (value) => value.match(re) !== null)
   },
@@ -126,7 +126,7 @@ const predicates: Record<string, PredicateFactory> = {
     })
 }
 
-export function isPredicate(o: Record<string, any>): boolean {
+export function isPredicate (o: Record<string, any>): boolean {
   if (o === null || typeof o !== 'object') {
     return false
   }
@@ -134,7 +134,7 @@ export function isPredicate(o: Record<string, any>): boolean {
   return keys.length > 0 && keys.every((key) => key.startsWith('$'))
 }
 
-export function createPredicates(o: Record<string, any>, propertyKey: string): Predicate[] {
+export function createPredicates (o: Record<string, any>, propertyKey: string): Predicate[] {
   const keys = Object.keys(o)
   const result: Predicate[] = []
   for (const key of keys) {

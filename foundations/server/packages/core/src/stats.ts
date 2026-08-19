@@ -51,7 +51,7 @@ export interface ServiceStatistics {
   workspaces?: WorkspaceStatistics[]
 }
 
-export function getMemoryInfo(): MemoryStatistics {
+export function getMemoryInfo (): MemoryStatistics {
   const memU = process.memoryUsage()
   return {
     memoryUsed: Math.round((memU.heapUsed / 1024 / 1024) * 100) / 100,
@@ -63,7 +63,7 @@ export function getMemoryInfo(): MemoryStatistics {
   }
 }
 
-export function getCPUInfo(): CPUStatistics {
+export function getCPUInfo (): CPUStatistics {
   return {
     usage: Math.round(os.loadavg()[0] * 100) / 100,
     cores: os.cpus().length
@@ -74,7 +74,7 @@ const METRICS_UPDATE_INTERVAL = 5000
 /**
  * @public
  */
-export function initStatisticsContext(
+export function initStatisticsContext (
   serviceName: string,
   ops?: {
     logFile?: string

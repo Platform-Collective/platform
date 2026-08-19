@@ -23,19 +23,19 @@ export type MarkupFormat = 'markup' | 'html' | 'markdown'
 
 /** @public */
 export class MarkupContent {
-  constructor(
+  constructor (
     readonly content: string,
     readonly kind: MarkupFormat
   ) {}
 }
 
 /** @public */
-export function html(content: string): MarkupContent {
+export function html (content: string): MarkupContent {
   return new MarkupContent(content, 'html')
 }
 
 /** @public */
-export function markdown(content: string): MarkupContent {
+export function markdown (content: string): MarkupContent {
   return new MarkupContent(content, 'markdown')
 }
 

@@ -17,10 +17,10 @@ import { HocuspocusProvider, type HocuspocusProviderConfiguration } from '@hocus
 import { type Provider } from './types'
 
 export type HocuspocusCollabProviderConfiguration = HocuspocusProviderConfiguration &
-Required<Pick<HocuspocusProviderConfiguration, 'token'>> &
-Omit<HocuspocusProviderConfiguration, 'parameters'> & {
-  parameters: HocuspocusCollabProviderURLParameters
-}
+  Required<Pick<HocuspocusProviderConfiguration, 'token'>> &
+  Omit<HocuspocusProviderConfiguration, 'parameters'> & {
+    parameters: HocuspocusCollabProviderURLParameters
+  }
 
 export interface HocuspocusCollabProviderURLParameters {
   content: Ref<Blob> | null

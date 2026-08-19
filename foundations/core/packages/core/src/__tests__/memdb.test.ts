@@ -39,15 +39,15 @@ const txes = genMinModel()
 class ClientModel extends ModelDb implements Client {
   notify?: ((...tx: Tx[]) => void) | undefined
 
-  getHierarchy(): Hierarchy {
+  getHierarchy (): Hierarchy {
     return this.hierarchy
   }
 
-  getModel(): ModelDb {
+  getModel (): ModelDb {
     return this
   }
 
-  async findOne<T extends Doc>(
+  async findOne<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -94,7 +94,7 @@ class ClientModel extends ModelDb implements Client {
     return { docs: [] }
   }
 
-  async domainRequest<T>(
+  async domainRequest<T> (
     domain: OperationDomain,
     params: DomainParams,
     options?: DomainRequestOptions
@@ -102,10 +102,10 @@ class ClientModel extends ModelDb implements Client {
     return { domain, value: null as any }
   }
 
-  async close(): Promise<void> {}
+  async close (): Promise<void> {}
 }
 
-async function createModel(modelTxes: Tx[] = txes): Promise<{ model: ClientModel; hierarchy: Hierarchy; txDb: TxDb }> {
+async function createModel (modelTxes: Tx[] = txes): Promise<{ model: ClientModel, hierarchy: Hierarchy, txDb: TxDb }> {
   const hierarchy = new Hierarchy()
   for (const tx of modelTxes) {
     hierarchy.tx(tx)

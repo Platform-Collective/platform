@@ -93,7 +93,7 @@ class RequestPromise {
   // Required to properly handle rate limits
   sendData: () => void = () => {}
 
-  constructor(
+  constructor (
     readonly method: string,
     readonly params: any[],
 
@@ -105,7 +105,7 @@ class RequestPromise {
     })
   }
 
-  chunks?: { index: number; data: FindResult<any> }[]
+  chunks?: { index: number, data: FindResult<any> }[]
 }
 
 const globalRPCHandler: RPCHandler = new RPCHandler()
@@ -150,7 +150,7 @@ class Connection implements ClientConnection {
 
   handlers: TxHandler[] = []
 
-  constructor(
+  constructor (
     private readonly ctx: MeasureContext,
     private readonly url: string,
     handler: TxHandler,
@@ -185,7 +185,7 @@ class Connection implements ClientConnection {
     this.scheduleOpen(this.ctx, false)
   }
 
-  private installVisibilityHandler(): void {
+  private installVisibilityHandler (): void {
     if (typeof document === 'undefined') return
     this.visibilityHandler = () => {
       if (this.closed) return
@@ -238,16 +238,16 @@ class Connection implements ClientConnection {
     document.addEventListener('visibilitychange', this.visibilityHandler)
   }
 
-  pushHandler(handler: TxHandler): void {
+  pushHandler (handler: TxHandler): void {
     this.handlers.push(handler)
   }
 
-  async getLastHash(ctx: MeasureContext): Promise<string | undefined> {
+  async getLastHash (ctx: MeasureContext): Promise<string | undefined> {
     await this.waitOpenConnection(ctx)
     return this.lastHash
   }
 
-  private schedulePing(socketId: number): void {
+  private schedulePing (socketId: number): void {
     this.pingResponse = platformNow()
     const wsocket = this.websocket
 
@@ -302,7 +302,7 @@ class Connection implements ClientConnection {
     }, pingTimeout)
   }
 
-  async close(): Promise<void> {
+  async close (): Promise<void> {
     this.closed = true
     clearTimeout(this.openAction)
     clearTimeout(this.dialTimer)
@@ -323,14 +323,14 @@ class Connection implements ClientConnection {
     }
   }
 
-  isConnected(): boolean {
+  isConnected (): boolean {
     return this.websocket != null && this.websocket.readyState === ClientSocketReadyState.OPEN && this.helloReceived
   }
 
   delay = 0
   onConnectHandlers: OnConnectHandler[] = []
 
-  private waitOpenConnection(ctx: MeasureContext): Promise<void> | undefined {
+  private waitOpenConnection (ctx: MeasureContext): Promise<void> | undefined {
     if (this.isConnected()) {
       return undefined
     }
@@ -350,7 +350,7 @@ class Connection implements ClientConnection {
     )
   }
 
-  scheduleOpen(ctx: MeasureContext, force: boolean): void {
+  scheduleOpen (ctx: MeasureContext, force: boolean): void {
     if (force) {
       ctx.withSync('close-ws', {}, () => {
         if (this.websocket !== null) {
@@ -381,10 +381,10 @@ class Connection implements ClientConnection {
   currentRateLimit: RateLimitInfo | undefined
   slowDownTimer = 0
 
-  handleMsg(
+  handleMsg (
     socketId: number,
     resp: Response<any>,
-    sizes: { compressedSize: number; uncompressedSize: number } = { compressedSize: 0, uncompressedSize: 0 }
+    sizes: { compressedSize: number, uncompressedSize: number } = { compressedSize: 0, uncompressedSize: 0 }
   ): void {
     if (this.closed) {
       return
@@ -621,7 +621,7 @@ class Connection implements ClientConnection {
     }
   }
 
-  checkArrayBufferPing(data: ArrayBuffer): boolean {
+  checkArrayBufferPing (data: ArrayBuffer): boolean {
     if (data.byteLength === pingConst.length || data.byteLength === pongConst.length) {
       const text = new TextDecoder().decode(data)
       if (text === pingConst) {
@@ -638,7 +638,7 @@ class Connection implements ClientConnection {
     return false
   }
 
-  private openConnection(ctx: MeasureContext, socketId: number): void {
+  private openConnection (ctx: MeasureContext, socketId: number): void {
     this.binaryMode = false
     this.helloReceived = false
     // Use defined factory or browser default one.
@@ -795,7 +795,7 @@ class Connection implements ClientConnection {
     }
   }
 
-  private sendRequest(data: {
+  private sendRequest (data: {
     method: string
     params: any[]
     // If not defined, on reconnect with timeout, will retry automatically.
@@ -885,18 +885,18 @@ class Connection implements ClientConnection {
     )
   }
 
-  loadModel(last: Timestamp, hash?: string): Promise<Tx[] | LoadModelResponse> {
+  loadModel (last: Timestamp, hash?: string): Promise<Tx[] | LoadModelResponse> {
     return this.sendRequest({ method: 'loadModel', params: [last, hash] })
   }
 
-  getAccount(): Promise<Account> {
+  getAccount (): Promise<Account> {
     if (this.account !== undefined) {
       return Promise.resolve(clone(this.account))
     }
     return this.sendRequest({ method: 'getAccount', params: [] })
   }
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -1015,35 +1015,35 @@ class Connection implements ClientConnection {
     })
   }
 
-  loadChunk(domain: Domain, idx?: number): Promise<DocChunk> {
+  loadChunk (domain: Domain, idx?: number): Promise<DocChunk> {
     return this.sendRequest({ method: 'loadChunk', params: [domain, idx] })
   }
 
-  async getDomainHash(domain: Domain): Promise<string> {
+  async getDomainHash (domain: Domain): Promise<string> {
     return await this.sendRequest({ method: 'getDomainHash', params: [domain] })
   }
 
-  closeChunk(idx: number): Promise<void> {
+  closeChunk (idx: number): Promise<void> {
     return this.sendRequest({ method: 'closeChunk', params: [idx] })
   }
 
-  loadDocs(domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
+  loadDocs (domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
     return this.sendRequest({ method: 'loadDocs', params: [domain, docs] })
   }
 
-  upload(domain: Domain, docs: Doc[]): Promise<void> {
+  upload (domain: Domain, docs: Doc[]): Promise<void> {
     return this.sendRequest({ method: 'upload', params: [domain, docs] })
   }
 
-  clean(domain: Domain, docs: Ref<Doc>[]): Promise<void> {
+  clean (domain: Domain, docs: Ref<Doc>[]): Promise<void> {
     return this.sendRequest({ method: 'clean', params: [domain, docs] })
   }
 
-  searchFulltext(query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+  searchFulltext (query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
     return this.sendRequest({ method: 'searchFulltext', params: [query, options] })
   }
 
-  domainRequest(domain: OperationDomain, params: DomainParams, options?: DomainRequestOptions): Promise<DomainResult> {
+  domainRequest (domain: OperationDomain, params: DomainParams, options?: DomainRequestOptions): Promise<DomainResult> {
     return this.sendRequest({
       method: 'domainRequest',
       params: [domain, params],
@@ -1053,7 +1053,7 @@ class Connection implements ClientConnection {
     })
   }
 
-  sendForceClose(): Promise<void> {
+  sendForceClose (): Promise<void> {
     return this.sendRequest({ method: 'forceClose', params: [], allowReconnect: false, overrideId: -2, once: true })
   }
 }
@@ -1061,7 +1061,7 @@ class Connection implements ClientConnection {
 /**
  * @public
  */
-export function connect(
+export function connect (
   url: string,
   handler: TxHandler,
   workspace: WorkspaceUuid,

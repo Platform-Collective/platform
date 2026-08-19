@@ -5,7 +5,7 @@ export class NavigationMenuPage {
   readonly buttonTemplates: Locator
   readonly buttonCategories: Locator
 
-  constructor(page: Page) {
+  constructor (page: Page) {
     this.page = page
     this.buttonTemplates = page.locator('a[href$="templates"]', { hasText: 'Templates' })
     this.buttonCategories = page.locator('a[href$="categories"]', { hasText: 'Categories' })

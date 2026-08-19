@@ -78,16 +78,16 @@ export const TodoItemExtension = TaskItem.extend<TodoItemExtensionOptions>({
     return {
       sinkListItem:
         (typeOrName) =>
-          ({ state, dispatch }) => {
-            const type = getNodeType(typeOrName, state.schema)
-            return sinkListItem(type, 'listItems')(state, dispatch)
-          },
+        ({ state, dispatch }) => {
+          const type = getNodeType(typeOrName, state.schema)
+          return sinkListItem(type, 'listItems')(state, dispatch)
+        },
       liftListItem:
         (typeOrName) =>
-          ({ state, dispatch }) => {
-            const type = getNodeType(typeOrName, state.schema)
-            return liftListItem(type, 'listItems')(state, dispatch)
-          },
+        ({ state, dispatch }) => {
+          const type = getNodeType(typeOrName, state.schema)
+          return liftListItem(type, 'listItems')(state, dispatch)
+        },
       convertListItems,
       toggleList
     }
@@ -242,7 +242,7 @@ export function TodoItemPastePlugin (editor: Editor): Plugin<NamedToDosInEditor>
     }
     // Strange conversion to be ok for both typescript and eslint
     // Is ok because rule with 'tag' property is already TagParseRule
-    const tagRule: TagParseRule = rule as any
+    const tagRule: TagParseRule = rule
     if (tagRule.node !== 'todoItem') {
       return rule
     }
@@ -339,120 +339,97 @@ function tryReplaceTodoItemWithListItem (
 
 const convertListItems: RawCommands['convertListItems'] =
   (listItemTypeOrName: string | NodeType) =>
-    ({ editor, chain }) => {
-      const listItemType = getNodeType(listItemTypeOrName, editor.schema)
-      const { extensions } = editor.extensionManager
-      const { selection } = editor.state
-      const { $from, $to } = selection
-      const range = $from.blockRange($to)
-      if (range === null) return false
+  ({ editor, chain }) => {
+    const listItemType = getNodeType(listItemTypeOrName, editor.schema)
+    const { extensions } = editor.extensionManager
+    const { selection } = editor.state
+    const { $from, $to } = selection
+    const range = $from.blockRange($to)
+    if (range === null) return false
 
-      const parentList = findParentNode((node) => isList(node.type.name, extensions))(selection)
-      if (parentList === undefined) return false
+    const parentList = findParentNode((node) => isList(node.type.name, extensions))(selection)
+    if (parentList === undefined) return false
 
-      let pos = parentList.pos
-      for (const child of parentList.node.children) {
-        let shouldConvert = false
-        if (listItemType.name === 'listItem') {
-          shouldConvert =
+    let pos = parentList.pos
+    for (const child of parentList.node.children) {
+      let shouldConvert = false
+      if (listItemType.name === 'listItem') {
+        shouldConvert =
           child.type.name === 'todoItem' && child.attrs.checked !== true && typeof child.attrs.todoid !== 'string'
-        } else if (listItemType.name === 'todoItem') {
-          shouldConvert = child.type !== listItemType
-        }
-        if (shouldConvert) {
-          chain()
-            .command(({ tr }) => {
-              tr.setNodeMarkup(pos + 1, listItemType)
-              return true
-            })
-            .run()
-        }
-        pos += child.nodeSize
+      } else if (listItemType.name === 'todoItem') {
+        shouldConvert = child.type !== listItemType
       }
-      return false
+      if (shouldConvert) {
+        chain()
+          .command(({ tr }) => {
+            tr.setNodeMarkup(pos + 1, listItemType)
+            return true
+          })
+          .run()
+      }
+      pos += child.nodeSize
     }
+    return false
+  }
 
 // Fork of tiptap implementation with support for conversion-based transitions
 // https://github.com/ueberdosis/tiptap/blob/f3258d9ee5fb7979102fe63434f6ea4120507311/packages/core/src/commands/toggleList.ts
 const toggleList: RawCommands['toggleList'] =
   (listTypeOrName, itemTypeOrName, keepMarks, attributes = {}) =>
-    ({ editor, tr, state, dispatch, chain, commands, can }) => {
-      const { extensions, splittableMarks } = editor.extensionManager
-      const listType = getNodeType(listTypeOrName, state.schema)
-      const itemType = getNodeType(itemTypeOrName, state.schema)
-      const { selection, storedMarks } = state
-      const { $from, $to } = selection
-      const range = $from.blockRange($to)
+  ({ editor, tr, state, dispatch, chain, commands, can }) => {
+    const { extensions, splittableMarks } = editor.extensionManager
+    const listType = getNodeType(listTypeOrName, state.schema)
+    const itemType = getNodeType(itemTypeOrName, state.schema)
+    const { selection, storedMarks } = state
+    const { $from, $to } = selection
+    const range = $from.blockRange($to)
 
-      const marks = storedMarks ?? (selection.$to.parentOffset !== 0 ? selection.$from.marks() : null)
+    const marks = storedMarks ?? (selection.$to.parentOffset !== 0 ? selection.$from.marks() : null)
 
-      if (range === null) {
-        return false
-      }
+    if (range === null) {
+      return false
+    }
 
-      const parentList = findParentNode((node) => isList(node.type.name, extensions))(selection)
+    const parentList = findParentNode((node) => isList(node.type.name, extensions))(selection)
 
-      if (range.depth >= 1 && parentList !== undefined && range.depth - parentList.depth <= 1) {
+    if (range.depth >= 1 && parentList !== undefined && range.depth - parentList.depth <= 1) {
       // remove list
-        if (parentList.node.type === listType) {
-          return commands.liftListItem(itemType)
-        }
-        // change list type
-        if (isList(parentList.node.type.name, extensions) && dispatch !== undefined) {
-          if (listType.validContent(parentList.node.content)) {
-            return chain()
-              .command(() => {
-                tr.setNodeMarkup(parentList.pos, listType)
-                return true
-              })
-              .command(() => joinListBackwards(tr, listType))
-              .command(() => joinListForwards(tr, listType))
-              .convertListItems(itemTypeOrName)
-              .run()
-          }
-          if (state.schema.nodes.bulletList.validContent(parentList.node.content)) {
-            return chain()
-              .convertListItems(itemTypeOrName)
-              .command(() => {
-                tr.setNodeMarkup(parentList.pos, listType)
-                return true
-              })
-              .command(() => joinListBackwards(tr, listType))
-              .command(() => joinListForwards(tr, listType))
-              .run()
-          }
-        }
+      if (parentList.node.type === listType) {
+        return commands.liftListItem(itemType)
       }
-
-      if (keepMarks !== true || marks === null || dispatch === undefined) {
-        return (
-          chain()
-          // try to convert node to default node if needed
+      // change list type
+      if (isList(parentList.node.type.name, extensions) && dispatch !== undefined) {
+        if (listType.validContent(parentList.node.content)) {
+          return chain()
             .command(() => {
-              const canWrapInList = can().wrapInList(listType, attributes)
-
-              if (canWrapInList) {
-                return true
-              }
-
-              return commands.clearNodes()
+              tr.setNodeMarkup(parentList.pos, listType)
+              return true
             })
-            .wrapInList(listType, attributes)
+            .command(() => joinListBackwards(tr, listType))
+            .command(() => joinListForwards(tr, listType))
+            .convertListItems(itemTypeOrName)
+            .run()
+        }
+        if (state.schema.nodes.bulletList.validContent(parentList.node.content)) {
+          return chain()
+            .convertListItems(itemTypeOrName)
+            .command(() => {
+              tr.setNodeMarkup(parentList.pos, listType)
+              return true
+            })
             .command(() => joinListBackwards(tr, listType))
             .command(() => joinListForwards(tr, listType))
             .run()
-        )
+        }
       }
+    }
 
+    if (keepMarks !== true || marks === null || dispatch === undefined) {
       return (
         chain()
-        // try to convert node to default node if needed
+          // try to convert node to default node if needed
           .command(() => {
             const canWrapInList = can().wrapInList(listType, attributes)
-
-            const filteredMarks = marks.filter((mark) => splittableMarks.includes(mark.type.name))
-
-            tr.ensureMarks(filteredMarks)
 
             if (canWrapInList) {
               return true
@@ -466,6 +443,29 @@ const toggleList: RawCommands['toggleList'] =
           .run()
       )
     }
+
+    return (
+      chain()
+        // try to convert node to default node if needed
+        .command(() => {
+          const canWrapInList = can().wrapInList(listType, attributes)
+
+          const filteredMarks = marks.filter((mark) => splittableMarks.includes(mark.type.name))
+
+          tr.ensureMarks(filteredMarks)
+
+          if (canWrapInList) {
+            return true
+          }
+
+          return commands.clearNodes()
+        })
+        .wrapInList(listType, attributes)
+        .command(() => joinListBackwards(tr, listType))
+        .command(() => joinListForwards(tr, listType))
+        .run()
+    )
+  }
 
 // Fork of tiptap implementation with support for conversion-based transitions
 // https://github.com/ueberdosis/tiptap/blob/f3258d9ee5fb7979102fe63434f6ea4120507311/packages/core/src/commands/toggleList.ts

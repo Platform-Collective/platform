@@ -18,7 +18,7 @@
 
   import CodeInput from './CodeInput.svelte'
 
-  export let fields: { id: string; name: string; optional: boolean }[] = []
+  export let fields: { id: string, name: string, optional: boolean }[] = []
   export let size: 'small' | 'medium' = 'small'
   export let kind: 'primary' | 'secondary' = 'primary'
   export let padding: string | null = null

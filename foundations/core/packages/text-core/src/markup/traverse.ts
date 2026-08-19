@@ -15,14 +15,14 @@
 
 import { MarkupMark, MarkupNode } from './model'
 
-export function traverseNode(
+export function traverseNode (
   node: MarkupNode,
   fn: (el: MarkupNode, parent: MarkupNode | undefined) => boolean | undefined
 ): void {
   _traverseNode(node, undefined, fn)
 }
 
-function _traverseNode(
+function _traverseNode (
   node: MarkupNode,
   parent: MarkupNode | undefined,
   fn: (el: MarkupNode, parent: MarkupNode | undefined) => boolean | undefined
@@ -35,19 +35,19 @@ function _traverseNode(
   }
 }
 
-export function traverseNodeMarks(node: MarkupNode, f: (el: MarkupMark) => void): void {
+export function traverseNodeMarks (node: MarkupNode, f: (el: MarkupMark) => void): void {
   node.marks?.forEach((p) => {
     f(p)
   })
 }
 
-export function traverseNodeContent(node: MarkupNode, f: (el: MarkupNode) => void): void {
+export function traverseNodeContent (node: MarkupNode, f: (el: MarkupNode) => void): void {
   node.content?.forEach((p) => {
     f(p)
   })
 }
 
-export function traverseAllMarks(node: MarkupNode, f: (el: MarkupNode, mark: MarkupMark) => void): void {
+export function traverseAllMarks (node: MarkupNode, f: (el: MarkupNode, mark: MarkupMark) => void): void {
   traverseNode(node, (node) => {
     traverseNodeMarks(node, (mark) => {
       f(node, mark)

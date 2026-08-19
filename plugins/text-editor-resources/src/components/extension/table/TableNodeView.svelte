@@ -38,14 +38,14 @@
   editor.on('selectionUpdate', handleSelectionUpdate)
 
   let focused = false
-  function handleSelectionUpdate (): void {
+  function handleSelectionUpdate(): void {
     const from = getPos()
     const to = from + node.nodeSize
 
     focused = editor.state.selection.from <= to && editor.state.selection.to >= from && editor.isActive('table')
   }
 
-  function handleAddRow (evt: Event): void {
+  function handleAddRow(evt: Event): void {
     evt.stopPropagation()
     evt.preventDefault()
     const table = findTable(editor.state.selection)
@@ -56,7 +56,7 @@
     }
   }
 
-  function handleAddColumn (evt: Event): void {
+  function handleAddColumn(evt: Event): void {
     evt.stopPropagation()
     evt.preventDefault()
     const table = findTable(editor.state.selection)
@@ -67,7 +67,7 @@
     }
   }
 
-  function updateColumns (): void {
+  function updateColumns(): void {
     updateColumnsOnResize(node, colgroupElement, tableElement, 25)
   }
 
@@ -86,7 +86,7 @@
     editor.off('selectionUpdate', handleSelectionUpdate)
   })
 
-  function onScroll (event: Event): void {
+  function onScroll(event: Event): void {
     if (editor === undefined) return
     const editorState = editor.state
     const currCursor = getToolbarCursor<any>(editorState)

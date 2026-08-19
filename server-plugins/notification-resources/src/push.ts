@@ -159,9 +159,9 @@ function getMessageInfo (
   n: InboxNotification,
   hierarchy: Hierarchy
 ): {
-    _id?: Ref<ActivityMessage>
-    _class?: Ref<Class<ActivityMessage>>
-  } {
+  _id?: Ref<ActivityMessage>
+  _class?: Ref<Class<ActivityMessage>>
+} {
   if (hierarchy.isDerived(n._class, notification.class.ActivityInboxNotification)) {
     const activityNotification = n as ActivityInboxNotification
 

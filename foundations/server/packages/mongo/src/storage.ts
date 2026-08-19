@@ -165,7 +165,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     this._db = new DBCollectionHelper(db)
   }
 
-  async traverse<T extends Doc>(
+  async traverse<T extends Doc> (
     domain: Domain,
     query: DocumentQuery<T>,
     options?: Pick<FindOptions<T>, 'sort' | 'limit' | 'projection'>
@@ -206,7 +206,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     }
   }
 
-  private translateRawQuery<T extends Doc>(query: DocumentQuery<T>): Filter<Document> {
+  private translateRawQuery<T extends Doc> (query: DocumentQuery<T>): Filter<Document> {
     const translated: any = {}
     for (const key in query) {
       const value = (query as any)[key]
@@ -226,7 +226,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     return translated
   }
 
-  async rawFindAll<T extends Doc>(domain: Domain, query: DocumentQuery<T>, options?: FindOptions<T>): Promise<T[]> {
+  async rawFindAll<T extends Doc> (domain: Domain, query: DocumentQuery<T>, options?: FindOptions<T>): Promise<T[]> {
     let cursor = this.db.collection(domain).find<T>(this.translateRawQuery(query))
     if (options?.limit !== undefined) {
       cursor = cursor.limit(options.limit)
@@ -251,7 +251,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     return await cursor.toArray()
   }
 
-  async rawUpdate<T extends Doc>(
+  async rawUpdate<T extends Doc> (
     domain: Domain,
     query: DocumentQuery<T>,
     operations: DocumentUpdate<T>
@@ -268,13 +268,13 @@ abstract class MongoAdapterBase implements DbAdapter {
     }
   }
 
-  rawDeleteMany<T extends Doc>(domain: Domain, query: DocumentQuery<T>): Promise<void> {
+  rawDeleteMany<T extends Doc> (domain: Domain, query: DocumentQuery<T>): Promise<void> {
     return this.db.collection(domain).deleteMany(this.translateRawQuery(query)).then()
   }
 
-  abstract init (ctx: MeasureContext): Promise<void>
+  abstract init(ctx: MeasureContext): Promise<void>
 
-  collection<TSchema extends Document = Document>(domain: Domain): Collection<TSchema> {
+  collection<TSchema extends Document = Document> (domain: Domain): Collection<TSchema> {
     return this._db.collection(domain)
   }
 
@@ -291,7 +291,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     return Promise.resolve()
   }
 
-  private translateQuery<T extends Doc>(
+  private translateQuery<T extends Doc> (
     clazz: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: ServerFindOptions<T>
@@ -373,7 +373,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     return { base: translatedBase, lookup: translatedLookup }
   }
 
-  private getLookupValue<T extends Doc>(
+  private getLookupValue<T extends Doc> (
     clazz: Ref<Class<T>>,
     lookup: Lookup<T>,
     result: LookupStep[],
@@ -456,7 +456,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     }
   }
 
-  private getLookups<T extends Doc>(
+  private getLookups<T extends Doc> (
     _class: Ref<Class<T>>,
     lookup: Lookup<T> | undefined,
     parent?: string
@@ -498,7 +498,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     return res
   }
 
-  private fillLookup<T extends Doc>(
+  private fillLookup<T extends Doc> (
     _class: Ref<Class<T>>,
     object: any,
     key: string,
@@ -559,7 +559,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     return res
   }
 
-  private fillLookupValue<T extends Doc>(
+  private fillLookupValue<T extends Doc> (
     ctx: MeasureContext,
     clazz: Ref<Class<T>>,
     lookup: Lookup<T> | undefined,
@@ -587,7 +587,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     }
   }
 
-  private fillReverseLookup<T extends Doc>(
+  private fillReverseLookup<T extends Doc> (
     clazz: Ref<Class<T>>,
     lookup: ReverseLookups,
     object: any,
@@ -622,7 +622,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     }
   }
 
-  private fillSortPipeline<T extends Doc>(
+  private fillSortPipeline<T extends Doc> (
     clazz: Ref<Class<T>>,
     options: FindOptions<T> | undefined,
     pipeline: any[]
@@ -652,7 +652,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     }
   }
 
-  private async findWithPipeline<T extends Doc>(
+  private async findWithPipeline<T extends Doc> (
     ctx: MeasureContext,
     domain: Domain,
     clazz: Ref<Class<T>>,
@@ -779,7 +779,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     return toFindResult(this.stripHash(result) as T[], total)
   }
 
-  private fillAssociations<T extends Doc>(
+  private fillAssociations<T extends Doc> (
     obj: WithLookup<T>,
     associations: AssociationQuery[],
     parentId: string = '',
@@ -792,7 +792,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     return obj
   }
 
-  private translateKey<T extends Doc>(
+  private translateKey<T extends Doc> (
     key: string,
     clazz: Ref<Class<T>>,
     mixins?: Set<Ref<Class<Doc>>>
@@ -831,7 +831,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     }
   }
 
-  private checkMixinKey<T extends Doc>(key: string, clazz: Ref<Class<T>>, mixins?: Set<Ref<Class<Doc>>>): string {
+  private checkMixinKey<T extends Doc> (key: string, clazz: Ref<Class<T>>, mixins?: Set<Ref<Class<Doc>>>): string {
     if (!key.includes('.')) {
       try {
         const attr = this.hierarchy.findAttribute(clazz, key)
@@ -847,7 +847,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     return key
   }
 
-  private getEnumById<T extends Doc>(_class: Ref<Class<T>>, key: string): Enum | undefined {
+  private getEnumById<T extends Doc> (_class: Ref<Class<T>>, key: string): Enum | undefined {
     const attr = this.hierarchy.findAttribute(_class, key)
     if (attr !== undefined) {
       if (attr.type._class === core.class.EnumOf) {
@@ -858,14 +858,14 @@ abstract class MongoAdapterBase implements DbAdapter {
     return undefined
   }
 
-  private isEnumSort<T extends Doc>(_class: Ref<Class<T>>, options?: FindOptions<T>): boolean {
+  private isEnumSort<T extends Doc> (_class: Ref<Class<T>>, options?: FindOptions<T>): boolean {
     if (options?.sort === undefined) return false
     return Object.keys(options.sort).some(
       (key) => this.hierarchy.findAttribute(_class, key)?.type?._class === core.class.EnumOf
     )
   }
 
-  private isDate<T extends Doc>(_class: Ref<Class<T>>, key: string): boolean {
+  private isDate<T extends Doc> (_class: Ref<Class<T>>, key: string): boolean {
     const attr = this.hierarchy.findAttribute(_class, key)
     if (attr !== undefined) {
       return attr.type._class === core.class.TypeDate
@@ -873,7 +873,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     return false
   }
 
-  private isRulesSort<T extends Doc>(options?: FindOptions<T>): boolean {
+  private isRulesSort<T extends Doc> (options?: FindOptions<T>): boolean {
     if (options?.sort !== undefined) {
       return Object.values(options.sort).some((it) => typeof it === 'object')
     }
@@ -881,7 +881,7 @@ abstract class MongoAdapterBase implements DbAdapter {
   }
 
   @withContext('groupBy')
-  groupBy<T, D extends Doc = Doc>(
+  groupBy<T, D extends Doc = Doc> (
     ctx: MeasureContext,
     domain: Domain,
     field: string,
@@ -904,7 +904,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     })
   }
 
-  findAll<T extends Doc>(
+  findAll<T extends Doc> (
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -1028,12 +1028,12 @@ abstract class MongoAdapterBase implements DbAdapter {
     })
   }
 
-  private collectSort<T extends Doc>(
+  private collectSort<T extends Doc> (
     options:
-    | (FindOptions<T> & {
-      domain?: Domain | undefined // Allow to find for Doc's in specified domain only.
-    })
-    | undefined,
+      | (FindOptions<T> & {
+          domain?: Domain | undefined // Allow to find for Doc's in specified domain only.
+        })
+      | undefined,
     _class: Ref<Class<T>>
   ): Sort | undefined {
     if (options?.sort === undefined) {
@@ -1089,10 +1089,10 @@ abstract class MongoAdapterBase implements DbAdapter {
 
   private calcProjection<T extends Doc>(
     options:
-    | (FindOptions<T> & {
-      domain?: Domain | undefined // Allow to find for Doc's in specified domain only.
-    })
-    | undefined,
+      | (FindOptions<T> & {
+          domain?: Domain | undefined // Allow to find for Doc's in specified domain only.
+        })
+      | undefined,
     _class: Ref<Class<T>>
   ): Projection<T> | undefined {
     if (options?.projection === undefined) {
@@ -1118,7 +1118,7 @@ abstract class MongoAdapterBase implements DbAdapter {
     return projection
   }
 
-  stripHash<T extends Doc>(docs: T | T[]): T | T[] {
+  stripHash<T extends Doc> (docs: T | T[]): T | T[] {
     if (Array.isArray(docs)) {
       docs.forEach((it) => {
         if ('%hash%' in it) {
@@ -1553,7 +1553,7 @@ class MongoAdapter extends MongoAdapterBase {
                   modifiedOn: tx.modifiedOn,
                   '%hash%': this.curHash()
                 }
-              } as unknown as UpdateFilter<Document>,
+              },
               { returnDocument: 'after', includeResultMetadata: true }
             )
             this.handleEvent(domain, 'read', 1)

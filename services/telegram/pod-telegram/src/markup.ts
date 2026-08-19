@@ -21,12 +21,12 @@ const entityMap = new Map<string, EntityBuilder>([
 
 export function platformToTelegram (message: string): TelegramMessage {
   const openedTags = new Map<
-  string,
-  {
-    offset: number
-    count: number
-    url?: string
-  }
+    string,
+    {
+      offset: number
+      count: number
+      url?: string
+    }
   >()
   let pureMessage = ''
   const entities: Api.TypeMessageEntity[] = []

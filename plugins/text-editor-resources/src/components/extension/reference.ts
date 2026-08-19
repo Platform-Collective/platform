@@ -418,7 +418,7 @@ async function getReferenceTooltip<T extends Doc> (
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  const mixin = hierarchy.classHierarchyMixin(objectclass as Ref<Class<Doc>>, view.mixin.ObjectTooltip)
+  const mixin = hierarchy.classHierarchyMixin(objectclass, view.mixin.ObjectTooltip)
 
   if (mixin?.provider !== undefined) {
     const providerFn = await getResource(mixin.provider)
@@ -490,7 +490,7 @@ export async function getReferenceObject<T extends Doc> (
   }
 
   const referenceObjectProvider = hierarchy.classHierarchyMixin(
-    objectclass as Ref<Class<Doc>>,
+    objectclass,
     view.mixin.ReferenceObjectProvider
   )
   const referenceObjectProviderFn =
@@ -641,7 +641,7 @@ function createEmojiElement (emojiCode: number | number[] | Ref<Blob>): HTMLElem
     color: 'black'
   })
 
-  const value = parseEmoji(emojiCode as any)
+  const value = parseEmoji(emojiCode)
   if (value !== undefined) {
     root.textContent = value
     return root

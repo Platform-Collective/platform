@@ -29,7 +29,7 @@ export class LocalizedSearch {
   /**
    * Filter items based on search term with lazy translation loading
    */
-  async filter(
+  async filter (
     items: Array<[DropdownIntlItem, DropdownIntlItem[]]>,
     searchTerm: string
   ): Promise<Array<[DropdownIntlItem, DropdownIntlItem[]]>> {
@@ -65,7 +65,7 @@ export class LocalizedSearch {
   /**
    * Get translated label, using cache or translating and caching if not found
    */
-  private async getTranslatedLabel(label: IntlString): Promise<string> {
+  private async getTranslatedLabel (label: IntlString): Promise<string> {
     if (this.translatedLabels.has(label)) {
       return this.translatedLabels.get(label) ?? label.toLowerCase()
     }

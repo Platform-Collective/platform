@@ -1,6 +1,6 @@
 import { uncompress } from 'snappyjs'
 
-export async function withRetry<T>(fn: () => Promise<T>, ignoreAttemptCheck?: (err: any) => boolean): Promise<T> {
+export async function withRetry<T> (fn: () => Promise<T>, ignoreAttemptCheck?: (err: any) => boolean): Promise<T> {
   const maxRetries = 3
   let lastError: any
 
@@ -23,7 +23,7 @@ export async function withRetry<T>(fn: () => Promise<T>, ignoreAttemptCheck?: (e
   throw lastError
 }
 
-function rpcJSONReceiver(key: string, value: any): any {
+function rpcJSONReceiver (key: string, value: any): any {
   if (typeof value === 'object' && value !== null) {
     if (value.dataType === 'TotalArray') {
       return Object.assign(value.value, { total: value.total, lookupMap: value.lookupMap })
@@ -32,7 +32,7 @@ function rpcJSONReceiver(key: string, value: any): any {
   return value
 }
 
-export async function extractJson<T>(response: Response): Promise<any> {
+export async function extractJson<T> (response: Response): Promise<any> {
   const encoding = response.headers.get('content-encoding')
   if (encoding === 'snappy') {
     const buffer = await response.arrayBuffer()

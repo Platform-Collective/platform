@@ -31,7 +31,7 @@ declare global {
 }
 
 expect.extend({
-  toEqualMarkup(received: string, expected: string) {
+  toEqualMarkup (received: string, expected: string) {
     const pass = received === expected || deepEqual(JSON.parse(received), JSON.parse(expected))
     return {
       message: () =>
@@ -42,7 +42,7 @@ expect.extend({
     }
   },
 
-  toEqualYdoc(received: YDoc, expected: YDoc) {
+  toEqualYdoc (received: YDoc, expected: YDoc) {
     const expectedJSON = expected.toJSON()
     const receivedJSON = received.toJSON()
 
@@ -57,19 +57,19 @@ expect.extend({
   }
 })
 
-function referenceMarkupToYDoc(markup: Markup, field: string): YDoc {
+function referenceMarkupToYDoc (markup: Markup, field: string): YDoc {
   const ydoc = new YDoc({ guid: generateId() })
   const fragment = ydoc.getXmlFragment(field)
   prosemirrorToYXmlFragment(jsonToPmNode(markupToJSON(markup)), fragment)
   return ydoc
 }
 
-function referenceYDocToMarkup(ydoc: YDoc, field: string): Markup {
+function referenceYDocToMarkup (ydoc: YDoc, field: string): Markup {
   const json = yDocToProsemirrorJSON(ydoc, field)
   return jsonToMarkup(json as MarkupNode)
 }
 
-const markups: Array<{ name: string; markup: Markup; skipYdocCompare?: boolean }> = [
+const markups: Array<{ name: string, markup: Markup, skipYdocCompare?: boolean }> = [
   {
     name: 'text',
     markup: '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"hello world"}]}]}'

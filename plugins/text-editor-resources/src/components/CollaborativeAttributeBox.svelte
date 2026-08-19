@@ -36,11 +36,11 @@
 
   export let focusIndex = -1
 
-  export function isFocused (): boolean {
+  export function isFocused(): boolean {
     return editor?.isFocused() ?? false
   }
 
-  export function removeAttachment (id: string): void {
+  export function removeAttachment(id: string): void {
     return editor?.removeAttachment(id)
   }
 

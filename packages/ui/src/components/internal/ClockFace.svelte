@@ -18,7 +18,7 @@
   export let timeZone: string
   export let size: string = '80px'
 
-  const clock: Array<{ value: number; class: string }> = [
+  const clock: Array<{ value: number, class: string }> = [
     { value: 0, class: 'hour-arrow' },
     { value: 0, class: 'minute-arrow' },
     { value: 0, class: 'second-arrow' }

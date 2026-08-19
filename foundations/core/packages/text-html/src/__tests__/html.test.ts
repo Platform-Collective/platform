@@ -16,7 +16,7 @@
 import { MarkupNode } from '@hcengineering/text-core'
 import { htmlToMarkup, markupToHtml } from '..'
 
-const tests: Array<{ name: string; markup: object; html: string }> = [
+const tests: Array<{ name: string, markup: object, html: string }> = [
   {
     name: 'paragraph',
     markup: {

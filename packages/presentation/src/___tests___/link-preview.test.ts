@@ -19,9 +19,9 @@ import plugin from '../plugin'
 
 const fechFunc =
   (responseFunc: (input: RequestInfo | URL, init?: RequestInit) => Response) =>
-    async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-      return responseFunc(input, init)
-    }
+  async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    return responseFunc(input, init)
+  }
 
 describe('canDisplayLinkPreview', () => {
   it('should return false if hostname & title are undefined', () => {

@@ -52,11 +52,11 @@ type ExplicitTx<T> = WithIdType<ExplicitUndefined<T>, Ref<Tx>>
  * @public
  */
 export class NormalizeTxMiddleware extends BaseMiddleware implements Middleware {
-  private constructor(context: PipelineContext, next?: Middleware) {
+  private constructor (context: PipelineContext, next?: Middleware) {
     super(context, next)
   }
 
-  static async create(
+  static async create (
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -64,7 +64,7 @@ export class NormalizeTxMiddleware extends BaseMiddleware implements Middleware 
     return new NormalizeTxMiddleware(context, next)
   }
 
-  tx(ctx: MeasureContext<SessionData>, txes: unknown[]): Promise<TxMiddlewareResult> {
+  tx (ctx: MeasureContext<SessionData>, txes: unknown[]): Promise<TxMiddlewareResult> {
     const parsedTxes = []
     for (const tx of txes) {
       const parsedTx = this.parseTx(tx)
@@ -76,7 +76,7 @@ export class NormalizeTxMiddleware extends BaseMiddleware implements Middleware 
     return this.provideTx(ctx, parsedTxes)
   }
 
-  private checkMeta(meta: unknown): meta is Record<string, string | number | boolean> | undefined {
+  private checkMeta (meta: unknown): meta is Record<string, string | number | boolean> | undefined {
     if (meta === undefined) {
       return true
     }
@@ -91,7 +91,7 @@ export class NormalizeTxMiddleware extends BaseMiddleware implements Middleware 
     return true
   }
 
-  private parseBaseTx(source: unknown): ExplicitTx<Tx> | undefined {
+  private parseBaseTx (source: unknown): ExplicitTx<Tx> | undefined {
     if (source == null || typeof source !== 'object') {
       return undefined
     }
@@ -126,7 +126,7 @@ export class NormalizeTxMiddleware extends BaseMiddleware implements Middleware 
     return baseTx
   }
 
-  private parseTx(source: unknown): Tx | undefined {
+  private parseTx (source: unknown): Tx | undefined {
     const baseTx = this.parseBaseTx(source)
     if (baseTx === undefined) {
       return undefined
@@ -200,7 +200,7 @@ export class NormalizeTxMiddleware extends BaseMiddleware implements Middleware 
     return undefined
   }
 
-  private parseTxCUD(source: unknown, base: ExplicitTx<Tx>): ExplicitTx<TxCUD<Doc>> | undefined {
+  private parseTxCUD (source: unknown, base: ExplicitTx<Tx>): ExplicitTx<TxCUD<Doc>> | undefined {
     const { objectId, objectClass, attachedTo, attachedToClass, collection } = source as Record<
       keyof TxCUD<Doc>,
       unknown

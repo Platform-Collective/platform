@@ -53,7 +53,7 @@ import { type DocumentClassQuery, type Tx, type TxApplyResult, type TxCUD, TxFac
 export class TxOperations implements Omit<Client, 'notify'> {
   readonly txFactory: TxFactory
 
-  constructor(
+  constructor (
     readonly client: Client,
     readonly user: PersonId,
     readonly isDerived = false
@@ -61,19 +61,19 @@ export class TxOperations implements Omit<Client, 'notify'> {
     this.txFactory = new TxFactory(user, isDerived)
   }
 
-  getHierarchy(): Hierarchy {
+  getHierarchy (): Hierarchy {
     return this.client.getHierarchy()
   }
 
-  getModel(): ModelDb {
+  getModel (): ModelDb {
     return this.client.getModel()
   }
 
-  async close(): Promise<void> {
+  async close (): Promise<void> {
     await this.client.close()
   }
 
-  findAll<T extends Doc>(
+  findAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -105,19 +105,19 @@ export class TxOperations implements Omit<Client, 'notify'> {
     return this.client.findOne(_class, query, options)
   }
 
-  domainRequest<T>(domain: OperationDomain, params: DomainParams): Promise<DomainResult<T>> {
+  domainRequest<T> (domain: OperationDomain, params: DomainParams): Promise<DomainResult<T>> {
     return this.client.domainRequest(domain, params)
   }
 
-  searchFulltext(query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+  searchFulltext (query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
     return this.client.searchFulltext(query, options)
   }
 
-  tx(tx: Tx): Promise<TxResult> {
+  tx (tx: Tx): Promise<TxResult> {
     return this.client.tx(tx)
   }
 
-  async createDoc<T extends Doc>(
+  async createDoc<T extends Doc> (
     _class: Ref<Class<T>>,
     space: Ref<Space>,
     attributes: Data<T>,
@@ -137,7 +137,7 @@ export class TxOperations implements Omit<Client, 'notify'> {
     return tx.objectId
   }
 
-  async addCollection<T extends Doc, P extends AttachedDoc>(
+  async addCollection<T extends Doc, P extends AttachedDoc> (
     _class: Ref<Class<P>>,
     space: Ref<Space>,
     attachedTo: Ref<T>,
@@ -161,7 +161,7 @@ export class TxOperations implements Omit<Client, 'notify'> {
     return tx.objectId
   }
 
-  async updateCollection<T extends Doc, P extends AttachedDoc>(
+  async updateCollection<T extends Doc, P extends AttachedDoc> (
     _class: Ref<Class<P>>,
     space: Ref<Space>,
     objectId: Ref<P>,
@@ -186,7 +186,7 @@ export class TxOperations implements Omit<Client, 'notify'> {
     return attachedTo
   }
 
-  async removeCollection<T extends Doc, P extends AttachedDoc>(
+  async removeCollection<T extends Doc, P extends AttachedDoc> (
     _class: Ref<Class<P>>,
     space: Ref<Space>,
     objectId: Ref<P>,
@@ -209,7 +209,7 @@ export class TxOperations implements Omit<Client, 'notify'> {
     return attachedTo
   }
 
-  updateDoc<T extends Doc>(
+  updateDoc<T extends Doc> (
     _class: Ref<Class<T>>,
     space: Ref<Space>,
     objectId: Ref<T>,
@@ -222,7 +222,7 @@ export class TxOperations implements Omit<Client, 'notify'> {
     return this.tx(tx)
   }
 
-  removeDoc<T extends Doc>(
+  removeDoc<T extends Doc> (
     _class: Ref<Class<T>>,
     space: Ref<Space>,
     objectId: Ref<T>,
@@ -233,7 +233,7 @@ export class TxOperations implements Omit<Client, 'notify'> {
     return this.tx(tx)
   }
 
-  createMixin<D extends Doc, M extends D>(
+  createMixin<D extends Doc, M extends D> (
     objectId: Ref<D>,
     objectClass: Ref<Class<D>>,
     objectSpace: Ref<Space>,
@@ -254,7 +254,7 @@ export class TxOperations implements Omit<Client, 'notify'> {
     return this.tx(tx)
   }
 
-  updateMixin<D extends Doc, M extends D>(
+  updateMixin<D extends Doc, M extends D> (
     objectId: Ref<D>,
     objectClass: Ref<Class<D>>,
     objectSpace: Ref<Space>,
@@ -275,7 +275,7 @@ export class TxOperations implements Omit<Client, 'notify'> {
     return this.tx(tx)
   }
 
-  async update<T extends Doc>(
+  async update<T extends Doc> (
     doc: T,
     update: DocumentUpdate<T>,
     retrieve?: boolean,
@@ -331,7 +331,7 @@ export class TxOperations implements Omit<Client, 'notify'> {
     return await this.updateDoc(doc._class, doc.space, doc._id, update, retrieve, modifiedOn, modifiedBy)
   }
 
-  remove<T extends Doc>(doc: T, modifiedOn?: Timestamp, modifiedBy?: PersonId): Promise<TxResult> {
+  remove<T extends Doc> (doc: T, modifiedOn?: Timestamp, modifiedBy?: PersonId): Promise<TxResult> {
     if (this.client.getHierarchy().isDerived(doc._class, core.class.AttachedDoc)) {
       const adoc = doc as unknown as AttachedDoc
       return this.removeCollection(
@@ -348,11 +348,11 @@ export class TxOperations implements Omit<Client, 'notify'> {
     return this.removeDoc(doc._class, doc.space, doc._id)
   }
 
-  apply(scope?: string, measure?: string, derived?: boolean): ApplyOperations {
+  apply (scope?: string, measure?: string, derived?: boolean): ApplyOperations {
     return new ApplyOperations(this, scope, measure, derived ?? this.isDerived)
   }
 
-  async diffUpdate<T extends Doc = Doc>(
+  async diffUpdate<T extends Doc = Doc> (
     doc: T,
     update: T | Data<T> | DocumentUpdate<T>,
     date?: Timestamp,
@@ -366,7 +366,7 @@ export class TxOperations implements Omit<Client, 'notify'> {
     return doc
   }
 
-  async mixinDiffUpdate(
+  async mixinDiffUpdate (
     doc: Doc,
     raw: MixinData<Doc, Mixin<Doc>>,
     mixin: Ref<Class<Mixin<Doc>>>,
@@ -399,7 +399,7 @@ export class TxOperations implements Omit<Client, 'notify'> {
   }
 }
 
-export function getDiffUpdate<T extends Doc>(doc: T, update: T | Data<T> | DocumentUpdate<T>): DocumentUpdate<T> {
+export function getDiffUpdate<T extends Doc> (doc: T, update: T | Data<T> | DocumentUpdate<T>): DocumentUpdate<T> {
   // We need to update fields if they are different.
   const documentUpdate: DocumentUpdate<T> = {}
   for (const [k, v] of Object.entries(update)) {
@@ -414,7 +414,7 @@ export function getDiffUpdate<T extends Doc>(doc: T, update: T | Data<T> | Docum
   return documentUpdate
 }
 
-export function splitMixinUpdate<T extends Doc>(
+export function splitMixinUpdate<T extends Doc> (
   hierarchy: Hierarchy,
   update: DocumentUpdate<T>,
   mixClass: Ref<Class<T>>,
@@ -448,7 +448,7 @@ export function splitMixinUpdate<T extends Doc>(
   return result
 }
 
-function splitObjectAttributes<T extends object>(
+function splitObjectAttributes<T extends object> (
   hierarchy: Hierarchy,
   obj: T,
   objClass: Ref<Class<Doc>>,
@@ -481,7 +481,7 @@ export class ApplyOperations extends TxOperations {
   txes: TxCUD<Doc>[] = []
   matches: DocumentClassQuery<Doc>[] = []
   notMatches: DocumentClassQuery<Doc>[] = []
-  constructor(
+  constructor (
     readonly ops: TxOperations,
     readonly scope?: string,
     readonly measureName?: string,
@@ -507,17 +507,17 @@ export class ApplyOperations extends TxOperations {
     super(txClient, ops.user, isDerived ?? false)
   }
 
-  match<T extends Doc>(_class: Ref<Class<T>>, query: DocumentQuery<T>): this {
+  match<T extends Doc> (_class: Ref<Class<T>>, query: DocumentQuery<T>): this {
     this.matches.push({ _class, query })
     return this
   }
 
-  notMatch<T extends Doc>(_class: Ref<Class<T>>, query: DocumentQuery<T>): this {
+  notMatch<T extends Doc> (_class: Ref<Class<T>>, query: DocumentQuery<T>): this {
     this.notMatches.push({ _class, query })
     return this
   }
 
-  async commit(notify = true, extraNotify: Ref<Class<Doc>>[] = []): Promise<CommitResult> {
+  async commit (notify = true, extraNotify: Ref<Class<Doc>>[] = []): Promise<CommitResult> {
     if (
       this.txes.length === 1 &&
       this.matches.length === 0 &&
@@ -574,7 +574,7 @@ export class ApplyOperations extends TxOperations {
   }
 
   // Apply for this will reuse, same apply context.
-  apply(scope?: string, measure?: string): this {
+  apply (scope?: string, measure?: string): this {
     return this
   }
 }
@@ -587,7 +587,7 @@ export class ApplyOperations extends TxOperations {
 export class TxBuilder extends TxOperations {
   txes: TxCUD<Doc>[] = []
   matches: DocumentClassQuery<Doc>[] = []
-  constructor(
+  constructor (
     readonly hierarchy: Hierarchy,
     readonly modelDb: ModelDb,
     user: PersonId
@@ -616,11 +616,11 @@ export class TxBuilder extends TxOperations {
 /**
  * @public
  */
-export async function updateAttribute(
+export async function updateAttribute (
   client: TxOperations,
   object: Doc,
   _class: Ref<Class<Doc>>,
-  attribute: { key: string; attr: AnyAttribute },
+  attribute: { key: string, attr: AnyAttribute },
   value: any,
   saveModified = false,
   analyticsProps: Record<string, any> = {}

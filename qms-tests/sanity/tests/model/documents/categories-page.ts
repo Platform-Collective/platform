@@ -5,19 +5,19 @@ export class CategoriesPage extends CalendarPage {
   readonly page: Page
   readonly buttonCreateCategory: Locator
 
-  constructor(page: Page) {
+  constructor (page: Page) {
     super(page)
     this.page = page
     this.buttonCreateCategory = page.getByRole('button', { name: 'Category' })
   }
 
-  async openCategory(categoryTitle: string): Promise<void> {
+  async openCategory (categoryTitle: string): Promise<void> {
     await this.page
       .locator(`//span[text()='${categoryTitle}']/../..//div[contains(@class, "antiTable-cells__firstCell")]/a`)
       .click()
   }
 
-  async checkCategoryNotExist(categoryTitle: string): Promise<void> {
+  async checkCategoryNotExist (categoryTitle: string): Promise<void> {
     await expect(
       this.page.locator(
         `//span[text()='${categoryTitle}']/../..//div[contains(@class, "antiTable-cells__firstCell")]/a`

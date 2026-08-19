@@ -49,15 +49,15 @@ const testDocClass = 'test:class:TestDoc' as Ref<Class<TestDoc>>
 class BroadcastTracker {
   broadcasted: Tx[] = []
 
-  record(tx: Tx): void {
+  record (tx: Tx): void {
     this.broadcasted.push(tx)
   }
 
-  reset(): void {
+  reset (): void {
     this.broadcasted = []
   }
 
-  getOrder(): number[] {
+  getOrder (): number[] {
     return this.broadcasted.map((tx) => tx.modifiedOn)
   }
 }

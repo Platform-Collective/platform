@@ -23,7 +23,7 @@ import type { Position, PullArray, QueryUpdate } from './tx'
  */
 export type _OperatorFunc = (doc: Doc, op: any) => void
 
-function $push(document: Doc, keyval: Record<string, PropertyType>): void {
+function $push (document: Doc, keyval: Record<string, PropertyType>): void {
   const doc = document as any
   for (const key in keyval) {
     if (doc[key] === undefined) {
@@ -51,7 +51,7 @@ function $push(document: Doc, keyval: Record<string, PropertyType>): void {
   }
 }
 
-function $pull(document: Doc, keyval: Record<string, PropertyType>): void {
+function $pull (document: Doc, keyval: Record<string, PropertyType>): void {
   const doc = document as any
   for (const key in keyval) {
     if (doc[key] === undefined) {
@@ -87,7 +87,7 @@ function $pull(document: Doc, keyval: Record<string, PropertyType>): void {
   }
 }
 
-function matchArrayElement<T extends Doc>(docs: any[], query: Partial<T>): any[] {
+function matchArrayElement<T extends Doc> (docs: any[], query: Partial<T>): any[] {
   let result = [...docs]
   for (const key in query) {
     const value = (query as any)[key]
@@ -107,7 +107,7 @@ function matchArrayElement<T extends Doc>(docs: any[], query: Partial<T>): any[]
   return result
 }
 
-function $update(document: Doc, keyval: Record<string, PropertyType>): void {
+function $update (document: Doc, keyval: Record<string, PropertyType>): void {
   const doc = document as any
   for (const key in keyval) {
     if (doc[key] === undefined) {
@@ -134,7 +134,7 @@ function $update(document: Doc, keyval: Record<string, PropertyType>): void {
   }
 }
 
-function $inc(document: Doc, keyval: Record<string, number>): void {
+function $inc (document: Doc, keyval: Record<string, number>): void {
   const doc = document as unknown as Record<string, number | undefined>
   for (const key in keyval) {
     const cur = doc[key] ?? 0
@@ -158,7 +158,7 @@ function $inc(document: Doc, keyval: Record<string, number>): void {
   }
 }
 
-function $unset(document: Doc, keyval: Record<string, PropertyType>): void {
+function $unset (document: Doc, keyval: Record<string, PropertyType>): void {
   const doc = document as any
   for (const key in keyval) {
     if (doc[key] !== undefined) {
@@ -168,7 +168,7 @@ function $unset(document: Doc, keyval: Record<string, PropertyType>): void {
   }
 }
 
-function $rename(document: Doc, keyval: Record<string, string>): void {
+function $rename (document: Doc, keyval: Record<string, string>): void {
   const doc = document as any
   for (const key in keyval) {
     if (doc[key] !== undefined) {
@@ -191,7 +191,7 @@ const operators: Record<string, _OperatorFunc> = {
 /**
  * @public
  */
-export function isOperator(o: Record<string, any>): boolean {
+export function isOperator (o: Record<string, any>): boolean {
   if (o === null || typeof o !== 'object') {
     return false
   }
@@ -204,7 +204,7 @@ export function isOperator(o: Record<string, any>): boolean {
  * @param name -
  * @returns
  */
-export function _getOperator(name: string): _OperatorFunc {
+export function _getOperator (name: string): _OperatorFunc {
   const operator = operators[name]
   if (operator === undefined) throw new Error(`unknown operator: ${name}`)
   return operator

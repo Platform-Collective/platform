@@ -16,7 +16,7 @@
 import { findProperty } from '../query'
 import type { Doc, Ref, Class } from '../classes'
 
-function doc(id: string, fields: Record<string, any> = {}): Doc {
+function doc (id: string, fields: Record<string, any> = {}): Doc {
   const doc: Doc = { _id: id as Ref<Doc>, _class: 'test:class:Issue' as Ref<Class<Doc>>, ...fields } as any
   return doc
 }

@@ -64,7 +64,7 @@ export const DriveEmbedProvider: EmbedNodeProviderConstructor<DriveEmbedOptions>
         const pos = typeof getPos === 'function' ? getPos() : 0
         setLoadingState(editor.view, pos, loading)
       }
-      const renderer = new SvelteRenderer(FilePreview as any, {
+      const renderer = new SvelteRenderer(FilePreview, {
         element: root,
         props: {
           file: version.file,

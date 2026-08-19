@@ -28,18 +28,18 @@ export interface FileOptions {
 export const FileNode = Node.create<FileOptions>({
   name: 'file',
 
-  addOptions() {
+  addOptions () {
     return {
       inline: true,
       HTMLAttributes: {}
     }
   },
 
-  inline() {
+  inline () {
     return this.options.inline
   },
 
-  group() {
+  group () {
     return this.options.inline ? 'inline' : 'block'
   },
 
@@ -47,7 +47,7 @@ export const FileNode = Node.create<FileOptions>({
 
   selectable: true,
 
-  addAttributes() {
+  addAttributes () {
     return {
       'file-id': {
         default: null
@@ -67,7 +67,7 @@ export const FileNode = Node.create<FileOptions>({
     }
   },
 
-  parseHTML() {
+  parseHTML () {
     return [
       {
         tag: `div[data-type="${this.name}"]`
@@ -75,7 +75,7 @@ export const FileNode = Node.create<FileOptions>({
     ]
   },
 
-  renderHTML({ node, HTMLAttributes }) {
+  renderHTML ({ node, HTMLAttributes }) {
     const nodeAttributes = {
       'data-type': this.name
     }

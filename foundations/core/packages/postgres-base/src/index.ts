@@ -30,7 +30,7 @@ export interface DBClient {
   raw: () => postgres.Sql
 }
 
-export function createDBClient(client: postgres.Sql, release: () => void = () => {}): DBClient {
+export function createDBClient (client: postgres.Sql, release: () => void = () => {}): DBClient {
   return {
     execute: (query, parameters) =>
       client.unsafe(query, doFetchTypes ? parameters : convertArrayParams(parameters), getPrepare()),
@@ -45,7 +45,7 @@ export function createDBClient(client: postgres.Sql, release: () => void = () =>
   }
 }
 
-export function convertArrayParams(params?: unknown[]): any[] | undefined {
+export function convertArrayParams (params?: unknown[]): any[] | undefined {
   if (params === undefined) return undefined
 
   return params.map((param) => {
@@ -74,7 +74,7 @@ export function convertArrayParams(params?: unknown[]): any[] | undefined {
   })
 }
 
-export async function retryTxn(
+export async function retryTxn (
   pool: postgres.Sql,
   operation: (client: postgres.TransactionSql) => Promise<any>
 ): Promise<any> {
@@ -87,7 +87,7 @@ export async function retryTxn(
 /**
  * @public
  */
-export async function shutdownPostgres(): Promise<void> {
+export async function shutdownPostgres (): Promise<void> {
   for (const c of connections.values()) {
     c.close(true)
   }
@@ -108,7 +108,7 @@ class PostgresClientReferenceImpl {
 
   mgr: ConnectionMgr
 
-  constructor(
+  constructor (
     readonly connectionString: string,
     client: postgres.Sql,
     readonly onclose: () => void
@@ -118,15 +118,15 @@ class PostgresClientReferenceImpl {
     this.mgr = new ConnectionMgr(createDBClient(this.client))
   }
 
-  url(): string {
+  url (): string {
     return this.connectionString
   }
 
-  getClient(): postgres.Sql {
+  getClient (): postgres.Sql {
     return this.client
   }
 
-  close(force: boolean = false): void {
+  close (force: boolean = false): void {
     this.count--
     if (this.count === 0 || force) {
       if (force) {
@@ -141,25 +141,25 @@ class PostgresClientReferenceImpl {
     }
   }
 
-  addRef(): void {
+  addRef (): void {
     this.count++
   }
 }
 export class ClientRef implements PostgresClientReference {
   id = ++clId
-  constructor(
+  constructor (
     readonly client: PostgresClientReferenceImpl,
     readonly mgr: ConnectionMgr
   ) {
     clientRefs.set(this.id, this)
   }
 
-  url(): string {
+  url (): string {
     return this.client.url()
   }
 
   closed = false
-  async getClient(): Promise<postgres.Sql> {
+  async getClient (): Promise<postgres.Sql> {
     if (!this.closed) {
       return this.client.getClient()
     } else {
@@ -167,7 +167,7 @@ export class ClientRef implements PostgresClientReference {
     }
   }
 
-  close(): void {
+  close (): void {
     // Do not allow double close of mongo connection client
     if (!this.closed) {
       clientRefs.delete(this.id)
@@ -178,11 +178,11 @@ export class ClientRef implements PostgresClientReference {
 }
 
 export let dbExtraOptions: Partial<Options<any>> = {}
-export function setDBExtraOptions(options: Partial<Options<any>>): void {
+export function setDBExtraOptions (options: Partial<Options<any>>): void {
   dbExtraOptions = options
 }
 
-export function getPrepare(): { prepare: boolean } {
+export function getPrepare (): { prepare: boolean } {
   return { prepare: dbExtraOptions.prepare ?? false }
 }
 
@@ -194,7 +194,7 @@ const connections = new Map<string, PostgresClientReferenceImpl>()
  * Initialize a connection to DB
  * @public
  */
-export function getDBClient(
+export function getDBClient (
   connectionString: string,
   database?: string,
   serviceName: string = 'transactor'
@@ -219,8 +219,8 @@ export function getDBClient(
       },
       debug: false,
       notice: false,
-      onnotice(notice) {},
-      onparameter(key, value) {},
+      onnotice (notice) {},
+      onparameter (key, value) {},
       ...dbExtraOptions,
       ...extraOptions,
       fetch_types: doFetchTypes
@@ -242,14 +242,14 @@ class ConnectionInfo {
 
   released: boolean = false
 
-  constructor(
+  constructor (
     readonly connectionId: string,
     protected readonly client: DBClient,
     readonly managed: boolean,
     readonly mgrId: string
   ) {}
 
-  async withReserve(action: (reservedClient: DBClient) => Promise<any>, forced: boolean = false): Promise<any> {
+  async withReserve (action: (reservedClient: DBClient) => Promise<any>, forced: boolean = false): Promise<any> {
     let reserved: DBClient | undefined
 
     // Check if we have at least one available connection and reserve one more if required.
@@ -258,7 +258,7 @@ class ConnectionInfo {
         reserved = await this.client.reserve()
       }
     } else {
-      reserved = this.available.shift() as DBClient
+      reserved = this.available.shift()
     }
 
     try {
@@ -284,7 +284,7 @@ class ConnectionInfo {
     }
   }
 
-  release(): void {
+  release (): void {
     for (const c of [...this.available]) {
       c.release()
     }
@@ -294,9 +294,9 @@ class ConnectionInfo {
 
 export class ConnectionMgr {
   private readonly connections = new Map<string, ConnectionInfo>()
-  constructor(protected readonly client: DBClient) {}
+  constructor (protected readonly client: DBClient) {}
 
-  async write(id: string | undefined, mgrId: string, fn: (client: DBClient) => Promise<any>): Promise<void> {
+  async write (id: string | undefined, mgrId: string, fn: (client: DBClient) => Promise<any>): Promise<void> {
     const backoffInterval = 25 // millis
     const maxTries = 5
     let tries = 0
@@ -345,7 +345,7 @@ export class ConnectionMgr {
     }
   }
 
-  async retry(id: string | undefined, mgrId: string, fn: (client: DBClient) => Promise<any>): Promise<any> {
+  async retry (id: string | undefined, mgrId: string, fn: (client: DBClient) => Promise<any>): Promise<any> {
     const backoffInterval = 25 // millis
     const maxTries = 5
     let tries = 0
@@ -390,7 +390,7 @@ export class ConnectionMgr {
     }
   }
 
-  release(id: string): void {
+  release (id: string): void {
     const conn = this.connections.get(id)
     if (conn !== undefined) {
       conn.released = true
@@ -399,7 +399,7 @@ export class ConnectionMgr {
     }
   }
 
-  close(mgrId?: string): void {
+  close (mgrId?: string): void {
     const cnts = this.connections
     for (const [k, conn] of Array.from(cnts.entries())) {
       if (mgrId !== undefined && conn.mgrId !== mgrId) {
@@ -414,7 +414,7 @@ export class ConnectionMgr {
     }
   }
 
-  getConnection(id: string, mgrId: string, managed: boolean = true): ConnectionInfo {
+  getConnection (id: string, mgrId: string, managed: boolean = true): ConnectionInfo {
     let conn = this.connections.get(id)
     if (conn === undefined) {
       conn = new ConnectionInfo(id, this.client, managed, mgrId)
@@ -425,7 +425,7 @@ export class ConnectionMgr {
     return conn
   }
 
-  private isRetryableError(err: any): boolean {
+  private isRetryableError (err: any): boolean {
     const msg: string = err?.message ?? ''
 
     return (

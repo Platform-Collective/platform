@@ -17,63 +17,63 @@ import { MarkupMark, MarkupMarkType, MarkupNode, MarkupNodeType } from './model'
 
 // Nodes
 
-export function nodeDoc(...content: MarkupNode[]): MarkupNode {
+export function nodeDoc (...content: MarkupNode[]): MarkupNode {
   return node(MarkupNodeType.doc, ...content)
 }
 
-export function nodeParagraph(...content: MarkupNode[]): MarkupNode {
+export function nodeParagraph (...content: MarkupNode[]): MarkupNode {
   return node(MarkupNodeType.paragraph, ...content)
 }
 
-export function nodeText(text: string): MarkupNode {
+export function nodeText (text: string): MarkupNode {
   return { type: MarkupNodeType.text, text }
 }
 
-export function nodeImage(attrs: { src: string; alt?: string; width?: number; height?: number }): MarkupNode {
+export function nodeImage (attrs: { src: string, alt?: string, width?: number, height?: number }): MarkupNode {
   return { type: MarkupNodeType.image, attrs }
 }
 
-export function nodeReference(attrs: { id: string; label: string; objectclass: string }): MarkupNode {
+export function nodeReference (attrs: { id: string, label: string, objectclass: string }): MarkupNode {
   return { type: MarkupNodeType.reference, attrs }
 }
 
 // Marks
 
-export function markBold(node: MarkupNode): MarkupNode {
+export function markBold (node: MarkupNode): MarkupNode {
   return withMarks(node, mark(MarkupMarkType.bold))
 }
 
-export function markCode(node: MarkupNode): MarkupNode {
+export function markCode (node: MarkupNode): MarkupNode {
   return withMarks(node, mark(MarkupMarkType.code))
 }
 
-export function markItalic(node: MarkupNode): MarkupNode {
+export function markItalic (node: MarkupNode): MarkupNode {
   return withMarks(node, mark(MarkupMarkType.em))
 }
 
-export function markStrike(node: MarkupNode): MarkupNode {
+export function markStrike (node: MarkupNode): MarkupNode {
   return withMarks(node, mark(MarkupMarkType.strike))
 }
 
-export function markUnderline(node: MarkupNode): MarkupNode {
+export function markUnderline (node: MarkupNode): MarkupNode {
   return withMarks(node, mark(MarkupMarkType.underline))
 }
 
-export function markLink(attrs: { href: string; title: string }, node: MarkupNode): MarkupNode {
+export function markLink (attrs: { href: string, title: string }, node: MarkupNode): MarkupNode {
   return withMarks(node, mark(MarkupMarkType.link, attrs))
 }
 
 // Utility
 
-function node(type: MarkupNodeType, ...content: MarkupNode[]): MarkupNode {
+function node (type: MarkupNodeType, ...content: MarkupNode[]): MarkupNode {
   return { type, content }
 }
 
-function mark(type: MarkupMarkType, attrs?: Record<string, any>): MarkupMark {
+function mark (type: MarkupMarkType, attrs?: Record<string, any>): MarkupMark {
   return { type, attrs: attrs ?? {} }
 }
 
-function withMarks(node: MarkupNode, ...marks: MarkupMark[]): MarkupNode {
+function withMarks (node: MarkupNode, ...marks: MarkupMark[]): MarkupNode {
   const current = node.marks ?? []
   current.push(...marks)
 

@@ -34,13 +34,13 @@ declare module '@tiptap/core' {
 export const BackgroundColor = Extension.create<BackgroundColorOptions>({
   name: 'backgroundColor',
 
-  addOptions() {
+  addOptions () {
     return {
       types: []
     }
   },
 
-  addGlobalAttributes() {
+  addGlobalAttributes () {
     return [
       {
         types: this.options.types,
@@ -65,7 +65,7 @@ export const BackgroundColor = Extension.create<BackgroundColorOptions>({
     ]
   },
 
-  addCommands() {
+  addCommands () {
     return {
       setBackgroundColor:
         (backgroundColor: string) =>
@@ -93,13 +93,13 @@ export interface TextColorOptions {
 export const TextColor = Extension.create<TextColorOptions>({
   name: 'textColor',
 
-  addOptions() {
+  addOptions () {
     return {
       types: ['textStyle']
     }
   },
 
-  addGlobalAttributes() {
+  addGlobalAttributes () {
     return [
       {
         types: this.options.types,
@@ -124,7 +124,7 @@ export const TextColor = Extension.create<TextColorOptions>({
     ]
   },
 
-  addCommands() {
+  addCommands () {
     return {
       setTextColor:
         (color: string) =>

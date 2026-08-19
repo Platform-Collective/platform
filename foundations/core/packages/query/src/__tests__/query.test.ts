@@ -35,7 +35,7 @@ interface Channel extends Space {
   x: number
 }
 
-async function getClient(): Promise<{ liveQuery: LiveQuery; factory: TxOperations }> {
+async function getClient (): Promise<{ liveQuery: LiveQuery, factory: TxOperations }> {
   const storage = await createClient(connect)
   const liveQuery = new LiveQuery(storage)
   storage.notify = (...tx: Tx[]) => {
@@ -930,7 +930,7 @@ describe('query', () => {
     const pp = await new Promise((resolve) => {
       liveQuery.query<Space>(
         test.class.ParticipantsHolder,
-        { participants: 'a' as Ref<Doc> },
+        { participants: 'a' },
         (result) => {
           if (attempt > 0) {
             resolvePpv(result)

@@ -29,13 +29,13 @@ export type ExtensionSpecOptions<T> = {
   [K in keyof T]: T[K] extends ExtensionSpec<infer E> ? Partial<E['options']> | boolean : never
 }
 
-export function extensionKit<O, K>(
+export function extensionKit<O, K> (
   name: string,
   fn: (e: ExtensionFactory, o: O) => K
 ): Extension<O & ExtensionSpecOptions<K>> {
   return Extension.create({
     name,
-    addExtensions() {
+    addExtensions () {
       const e: ExtensionFactory = (extension, options) => {
         // ExtensionFactory -> ExtensionSpec is mostly intented as a wrapper to provide a comfortable typing
         return { extension, options: options ?? true }
@@ -70,7 +70,7 @@ export function extensionKit<O, K>(
   })
 }
 
-export function mergeKitOptions<T extends Record<string, any>>(target: T, source: T): T {
+export function mergeKitOptions<T extends Record<string, any>> (target: T, source: T): T {
   if (typeof target === 'object' && typeof source === 'object') {
     const output = { ...target }
     Object.keys(source).forEach((key: keyof T) => {

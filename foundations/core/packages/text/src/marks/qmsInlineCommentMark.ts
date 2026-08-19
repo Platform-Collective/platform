@@ -9,7 +9,7 @@ export const QMSInlineCommentMark = Mark.create({
   name: NAME,
   inline: true,
 
-  parseHTML() {
+  parseHTML () {
     return [
       {
         tag: `span[${NAME}]`
@@ -17,7 +17,7 @@ export const QMSInlineCommentMark = Mark.create({
     ]
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML ({ HTMLAttributes }) {
     return ['span', HTMLAttributes, 0]
   }
 })

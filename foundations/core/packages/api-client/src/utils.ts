@@ -25,7 +25,7 @@ export interface WorkspaceToken {
   info: WorkspaceLoginInfo
 }
 
-export async function getWorkspaceToken(
+export async function getWorkspaceToken (
   url: string,
   options: AuthOptions,
   config?: ServerConfig

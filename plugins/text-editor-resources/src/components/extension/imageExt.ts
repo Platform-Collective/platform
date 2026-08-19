@@ -66,36 +66,36 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
     return {
       setImage:
         (options) =>
-          ({ commands }) => {
-            return commands.insertContent({
-              type: this.name,
-              attrs: options
-            })
-          },
+        ({ commands }) => {
+          return commands.insertContent({
+            type: this.name,
+            attrs: options
+          })
+        },
 
       setImageAlignment:
         (options) =>
-          ({ chain, tr, state }) => {
-            const cursor = getCursor(state)
-            if (cursor === null) return false
-            return chain()
-              .setNodeSelection(cursor.range.from)
-              .updateAttributes(this.name, { ...options })
-              .setNodeSelection(cursor.range.from)
-              .run()
-          },
+        ({ chain, tr, state }) => {
+          const cursor = getCursor(state)
+          if (cursor === null) return false
+          return chain()
+            .setNodeSelection(cursor.range.from)
+            .updateAttributes(this.name, { ...options })
+            .setNodeSelection(cursor.range.from)
+            .run()
+        },
 
       setImageSize:
         (options) =>
-          ({ chain, tr, state }) => {
-            const cursor = getCursor(state)
-            if (cursor === null) return false
-            return chain()
-              .setNodeSelection(cursor.range.from)
-              .updateAttributes(this.name, { ...options })
-              .setNodeSelection(cursor.range.from)
-              .run()
-          }
+        ({ chain, tr, state }) => {
+          const cursor = getCursor(state)
+          if (cursor === null) return false
+          return chain()
+            .setNodeSelection(cursor.range.from)
+            .updateAttributes(this.name, { ...options })
+            .setNodeSelection(cursor.range.from)
+            .run()
+        }
     }
   },
 

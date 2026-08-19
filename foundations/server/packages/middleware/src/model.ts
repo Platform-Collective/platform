@@ -52,7 +52,7 @@ export class ModelMiddleware extends BaseMiddleware implements Middleware {
   lastHash: string = ''
   lastHashResponse!: Promise<LoadModelResponse>
 
-  constructor(
+  constructor (
     context: PipelineContext,
     next: Middleware | undefined,
     readonly systemTx: Tx[],
@@ -62,7 +62,7 @@ export class ModelMiddleware extends BaseMiddleware implements Middleware {
   }
 
   @withContext('modelAdapter-middleware')
-  static async doCreate(
+  static async doCreate (
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined,
@@ -74,19 +74,19 @@ export class ModelMiddleware extends BaseMiddleware implements Middleware {
     return middleware
   }
 
-  static create(tx: Tx[], filter?: (h: Hierarchy, model: Tx[]) => Tx[]): MiddlewareCreator {
+  static create (tx: Tx[], filter?: (h: Hierarchy, model: Tx[]) => Tx[]): MiddlewareCreator {
     return (ctx, context, next) => {
       return this.doCreate(ctx, context, next, tx, filter)
     }
   }
 
   @withContext('get-model')
-  async getUserTx(ctx: MeasureContext, txAdapter: TxAdapter): Promise<Tx[]> {
+  async getUserTx (ctx: MeasureContext, txAdapter: TxAdapter): Promise<Tx[]> {
     const allUserTxes = await ctx.with('fetch-model', {}, (ctx) => txAdapter.getModel(ctx))
     return allUserTxes.filter((it) => !isAccountTx(it as TxCUD<Doc>))
   }
 
-  findAll<T extends Doc>(
+  findAll<T extends Doc> (
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -103,7 +103,7 @@ export class ModelMiddleware extends BaseMiddleware implements Middleware {
     return this.provideFindAll(ctx, _class, query, options)
   }
 
-  async init(ctx: MeasureContext): Promise<void> {
+  async init (ctx: MeasureContext): Promise<void> {
     if (this.context.adapterManager == null) {
       throw new PlatformError(unknownError('Adapter manager should be configured'))
     }
@@ -124,7 +124,7 @@ export class ModelMiddleware extends BaseMiddleware implements Middleware {
     this.setModel(fmodel)
   }
 
-  private addModelTx(tx: Tx): void {
+  private addModelTx (tx: Tx): void {
     const h = crypto.createHash('sha1')
     h.update(this.lastHash)
     h.update(JSON.stringify(tx))
@@ -132,12 +132,12 @@ export class ModelMiddleware extends BaseMiddleware implements Middleware {
     this.setLastHash(hash)
   }
 
-  private setLastHash(hash: string): void {
+  private setLastHash (hash: string): void {
     this.lastHash = hash
     this.context.lastHash = this.lastHash
   }
 
-  private setModel(model: Tx[]): void {
+  private setModel (model: Tx[]): void {
     let last = ''
     model.map((it, index) => {
       const h = crypto.createHash('sha1')
@@ -149,7 +149,7 @@ export class ModelMiddleware extends BaseMiddleware implements Middleware {
     this.setLastHash(last)
   }
 
-  async loadModel(ctx: MeasureContext, lastModelTx: Timestamp, hash?: string): Promise<Tx[] | LoadModelResponse> {
+  async loadModel (ctx: MeasureContext, lastModelTx: Timestamp, hash?: string): Promise<Tx[] | LoadModelResponse> {
     if (hash !== undefined) {
       if (hash === this.lastHash) {
         return {
@@ -169,7 +169,7 @@ export class ModelMiddleware extends BaseMiddleware implements Middleware {
     return this.systemTx.concat(await this.getUserTx(ctx, txAdapter)).filter((it) => it.modifiedOn > lastModelTx)
   }
 
-  tx(ctx: MeasureContext, tx: Tx[]): Promise<TxMiddlewareResult> {
+  tx (ctx: MeasureContext, tx: Tx[]): Promise<TxMiddlewareResult> {
     const modelTxes = tx.filter((it) => it.objectSpace === core.space.Model)
     if (modelTxes.length > 0) {
       for (const t of modelTxes) {

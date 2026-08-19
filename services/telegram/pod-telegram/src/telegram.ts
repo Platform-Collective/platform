@@ -314,7 +314,7 @@ class TelegramConnection {
   getToken (): string | undefined {
     // TODO: Need recheck
     // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
-    return (this.client.session.save() as never as string) ?? undefined
+    return (this.client.session.save() as never) ?? undefined
   }
 }
 

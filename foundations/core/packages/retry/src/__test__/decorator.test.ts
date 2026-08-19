@@ -54,7 +54,7 @@ describe('Retryable decorator', () => {
       callCount = 0
 
       @Retryable(mockOptions)
-      async testMethod(param1: string, param2: number): Promise<string> {
+      async testMethod (param1: string, param2: number): Promise<string> {
         this.callCount++
         if (this.callCount === 1) {
           throw error
@@ -87,7 +87,7 @@ describe('Retryable decorator', () => {
       callCount = 0
 
       @Retryable()
-      async testMethod(): Promise<string> {
+      async testMethod (): Promise<string> {
         this.callCount++
         if (this.callCount === 1) {
           throw new Error('network error')
@@ -108,7 +108,7 @@ describe('Retryable decorator', () => {
       private counter = 0
 
       @Retryable(mockOptions)
-      async incrementAndGet(): Promise<number> {
+      async incrementAndGet (): Promise<number> {
         if (this.counter === 0) {
           this.counter++
           throw new Error('network error')
@@ -117,7 +117,7 @@ describe('Retryable decorator', () => {
         return this.counter
       }
 
-      getCounter(): number {
+      getCounter (): number {
         return this.counter
       }
     }
@@ -140,7 +140,7 @@ describe('Retryable decorator', () => {
         logger: mockLogger,
         isRetryable: retryAllErrors
       })
-      async alwaysFailingMethod(): Promise<string> {
+      async alwaysFailingMethod (): Promise<string> {
         throw new Error('Persistent failure')
       }
     }
@@ -163,7 +163,7 @@ describe('Retryable decorator', () => {
     // Create a class with an async method that fails then resolves
     class TestService {
       @Retryable(mockOptions)
-      async delayedMethod(): Promise<string> {
+      async delayedMethod (): Promise<string> {
         return await new Promise<string>((resolve, reject) => {
           resolutionCount++
           if (resolutionCount === 1) {
@@ -195,7 +195,7 @@ describe('Retryable decorator', () => {
         logger: mockLogger,
         isRetryable: retryAllErrors
       })
-      async unstableMethod(): Promise<string> {
+      async unstableMethod (): Promise<string> {
         callCount++
         if (callCount < 4) {
           // Succeed on the 4th attempt
@@ -235,7 +235,7 @@ describe('Retryable decorator', () => {
         }),
         isRetryable: retryAllErrors
       })
-      async delayingMethod(): Promise<string> {
+      async delayingMethod (): Promise<string> {
         callCount++
         if (callCount < 4) {
           throw new Error(`Attempt ${callCount} failed`)
@@ -274,7 +274,7 @@ describe('Retryable decorator', () => {
         }),
         isRetryable: retryAllErrors
       })
-      async method(): Promise<string> {
+      async method (): Promise<string> {
         callCount++
         if (callCount < 3) {
           throw new Error(`Attempt ${callCount} failed`)
@@ -299,7 +299,7 @@ describe('Retryable decorator', () => {
         }),
         isRetryable: retryAllErrors
       })
-      async method(): Promise<string> {
+      async method (): Promise<string> {
         callCount++
         if (callCount < 4) {
           throw new Error(`Attempt ${callCount} failed`)
@@ -319,7 +319,7 @@ describe('Retryable decorator', () => {
 
     class TestService {
       @Retryable(mockOptions)
-      nonAsyncMethod(input: string): string {
+      nonAsyncMethod (input: string): string {
         callCount++
         if (callCount === 1) {
           throw new Error('Sync error')
@@ -344,7 +344,7 @@ describe('Retryable decorator', () => {
     // eslint-disable-next-line @typescript-eslint/no-extraneous-class
     class TestService {
       @Retryable(mockOptions)
-      static async staticMethod(input: string): Promise<string> {
+      static async staticMethod (input: string): Promise<string> {
         callCount++
         if (callCount === 1) {
           throw new Error('Static method error')
@@ -372,7 +372,7 @@ describe('Retryable decorator', () => {
           return err instanceof Error && err.message.includes('Please retry')
         }
       })
-      async conditionalRetryMethod(): Promise<string> {
+      async conditionalRetryMethod (): Promise<string> {
         this.callCount++
         if (this.callCount === 1) {
           throw new Error('Please retry this') // should be retried

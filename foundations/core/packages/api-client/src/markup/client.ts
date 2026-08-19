@@ -29,7 +29,7 @@ import { markdownToMarkup, markupToMarkdown } from '@hcengineering/text-markdown
 import { type ServerConfig } from '../config'
 import { type MarkupOperations, type MarkupFormat, type MarkupRef } from './types'
 
-export function createMarkupOperations(
+export function createMarkupOperations (
   url: string,
   workspace: WorkspaceUuid,
   token: string,
@@ -43,7 +43,7 @@ class MarkupOperationsImpl implements MarkupOperations {
   private readonly imageUrl: string
   private readonly refUrl: string
 
-  constructor(
+  constructor (
     private readonly url: string,
     private readonly workspace: WorkspaceUuid,
     private readonly token: string,
@@ -54,7 +54,7 @@ class MarkupOperationsImpl implements MarkupOperations {
     this.collaborator = getClient(workspace, token, config.COLLABORATOR_URL)
   }
 
-  async fetchMarkup(
+  async fetchMarkup (
     objectClass: Ref<Class<Doc>>,
     objectId: Ref<Doc>,
     objectAttr: string,
@@ -77,7 +77,7 @@ class MarkupOperationsImpl implements MarkupOperations {
     }
   }
 
-  async uploadMarkup(
+  async uploadMarkup (
     objectClass: Ref<Class<Doc>>,
     objectId: Ref<Doc>,
     objectAttr: string,

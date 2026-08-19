@@ -61,7 +61,7 @@ import toposort from 'toposort'
 
 const targets = new Map<any, Map<string, IndexKind>>()
 
-function setIndex(target: any, property: string, index: IndexKind): void {
+function setIndex (target: any, property: string, index: IndexKind): void {
   let indexes = targets.get(target)
   if (indexes === undefined) {
     indexes = new Map<string, IndexKind>()
@@ -70,7 +70,7 @@ function setIndex(target: any, property: string, index: IndexKind): void {
   indexes.set(property, index)
 }
 
-function getIndex(target: any, property: string): IndexKind | undefined {
+function getIndex (target: any, property: string): IndexKind | undefined {
   return targets.get(target)?.get(property)
 }
 
@@ -91,7 +91,7 @@ interface ClassTxes {
 
 const transactions = new Map<any, ClassTxes>()
 
-function getTxes(target: any): ClassTxes {
+function getTxes (target: any): ClassTxes {
   const txes = transactions.get(target)
   if (txes === undefined) {
     const txes = { txes: [] } as unknown as ClassTxes
@@ -102,7 +102,7 @@ function getTxes(target: any): ClassTxes {
 }
 
 const attributes = new Map<any, Map<string, Record<string, any>>>()
-function setAttr(target: any, prop: string, key: string, value: any): void {
+function setAttr (target: any, prop: string, key: string, value: any): void {
   const props = attributes.get(target) ?? new Map<string, Record<string, any>>()
   const attrs = props.get(prop) ?? {}
   attrs[key] = value
@@ -111,7 +111,7 @@ function setAttr(target: any, prop: string, key: string, value: any): void {
   attributes.set(target, props)
 }
 
-function clearAttrs(target: any, prop: string): void {
+function clearAttrs (target: any, prop: string): void {
   const props = attributes.get(target)
   props?.delete(prop)
 
@@ -120,14 +120,14 @@ function clearAttrs(target: any, prop: string): void {
   }
 }
 
-function getAttrs(target: any, prop: string): Record<string, any> {
+function getAttrs (target: any, prop: string): Record<string, any> {
   return attributes.get(target)?.get(prop) ?? {}
 }
 
 /**
  * @public
  */
-export function Prop(type: Type<PropertyType>, label: IntlString, extra: Partial<Attribute<PropertyType>> = {}) {
+export function Prop (type: Type<PropertyType>, label: IntlString, extra: Partial<Attribute<PropertyType>> = {}) {
   return function (target: any, propertyKey: string): void {
     const txes = getTxes(target)
     const tx: TxCreateDoc<Attribute<PropertyType>> = {
@@ -159,7 +159,7 @@ export function Prop(type: Type<PropertyType>, label: IntlString, extra: Partial
 /**
  * @public
  */
-export function Hidden() {
+export function Hidden () {
   return function (target: any, propertyKey: string): void {
     setAttr(target, propertyKey, 'hidden', true)
   }
@@ -168,7 +168,7 @@ export function Hidden() {
 /**
  * @public
  */
-export function ReadOnly() {
+export function ReadOnly () {
   return function (target: any, propertyKey: string): void {
     setAttr(target, propertyKey, 'readonly', true)
   }
@@ -177,7 +177,7 @@ export function ReadOnly() {
 /**
  * @public
  */
-export function Index(kind: IndexKind) {
+export function Index (kind: IndexKind) {
   return function (target: any, propertyKey: string): void {
     setIndex(target, propertyKey, kind)
   }
@@ -186,7 +186,7 @@ export function Index(kind: IndexKind) {
 /**
  * @public
  */
-export function Model<T extends Obj>(
+export function Model<T extends Obj> (
   _class: Ref<Class<T>>,
   _extends: Ref<Class<Obj>>,
   domain?: Domain,
@@ -205,7 +205,7 @@ export function Model<T extends Obj>(
 /**
  * @public
  */
-export function Implements<T extends Doc>(_interface: Ref<Interface<T>>, _extends?: Ref<Interface<Doc>>[]) {
+export function Implements<T extends Doc> (_interface: Ref<Interface<T>>, _extends?: Ref<Interface<Doc>>[]) {
   return function classDecorator<C extends new () => T>(constructor: C): void {
     const txes = getTxes(constructor.prototype)
     txes._id = _interface
@@ -217,7 +217,7 @@ export function Implements<T extends Doc>(_interface: Ref<Interface<T>>, _extend
 /**
  * @public
  */
-export function Mixin<T extends Obj>(_class: Ref<Class<T>>, _extends: Ref<Class<Obj>>) {
+export function Mixin<T extends Obj> (_class: Ref<Class<T>>, _extends: Ref<Class<Obj>>) {
   return function classDecorator<C extends new () => T>(constructor: C): void {
     const txes = getTxes(constructor.prototype)
     txes._id = _class
@@ -229,7 +229,7 @@ export function Mixin<T extends Obj>(_class: Ref<Class<T>>, _extends: Ref<Class<
 /**
  * @public
  */
-export function UX<T extends Obj>(
+export function UX<T extends Obj> (
   label: IntlString,
   icon?: Asset,
   shortLabel?: string,
@@ -248,7 +248,7 @@ export function UX<T extends Obj>(
   }
 }
 
-function generateIds(objectId: Ref<Doc>, txes: TxCreateDoc<Attribute<PropertyType>>[]): Tx[] {
+function generateIds (objectId: Ref<Doc>, txes: TxCreateDoc<Attribute<PropertyType>>[]): Tx[] {
   return txes.map((tx) => {
     const withId = {
       ...tx,
@@ -262,7 +262,7 @@ function generateIds(objectId: Ref<Doc>, txes: TxCreateDoc<Attribute<PropertyTyp
 
 const txFactory = new TxFactory(core.account.System)
 
-function _generateTx(tx: ClassTxes): Tx[] {
+function _generateTx (tx: ClassTxes): Tx[] {
   const objectId = tx._id
   const _cl = {
     [ClassifierKind.CLASS]: core.class.Class,
@@ -303,7 +303,7 @@ export class Builder {
 
   onTx?: (tx: Tx) => void
 
-  createModel(...classes: Array<new () => Obj>): void {
+  createModel (...classes: Array<new () => Obj>): void {
     const txes = classes.map((ctor) => getTxes(ctor.prototype))
     const byId = new Map<string, ClassTxes>()
 
@@ -336,7 +336,7 @@ export class Builder {
     }
   }
 
-  private generateTransactions(txes: ClassTxes[], byId: Map<string, ClassTxes>): Tx[] {
+  private generateTransactions (txes: ClassTxes[], byId: Map<string, ClassTxes>): Tx[] {
     const graph = this.createGraph(txes)
     const sorted = toposort(graph)
       .reverse()
@@ -344,12 +344,12 @@ export class Builder {
     return sorted.flatMap((tx) => (tx != null ? _generateTx(tx) : []))
   }
 
-  private createGraph(txes: ClassTxes[]): [string, string | undefined][] {
+  private createGraph (txes: ClassTxes[]): [string, string | undefined][] {
     return txes.map((tx) => [tx._id, tx.extends] as [string, string | undefined])
   }
 
   // do we need this?
-  createDoc<T extends Doc>(
+  createDoc<T extends Doc> (
     _class: Ref<Class<T>>,
     space: Ref<Space>,
     attributes: Data<T>,
@@ -366,7 +366,7 @@ export class Builder {
     return TxProcessor.createDoc2Doc(tx)
   }
 
-  mixin<D extends Doc, M extends D>(
+  mixin<D extends Doc, M extends D> (
     objectId: Ref<D>,
     objectClass: Ref<Class<D>>,
     mixin: Ref<IMixin<M>>,
@@ -378,7 +378,7 @@ export class Builder {
     this.hierarchy.tx(tx)
   }
 
-  getTxes(): Tx[] {
+  getTxes (): Tx[] {
     return [...this.txes]
   }
 }
@@ -388,112 +388,112 @@ export class Builder {
 /**
  * @public
  */
-export function TypeString(): Type<string> {
+export function TypeString (): Type<string> {
   return { _class: core.class.TypeString, label: core.string.String, icon: core.icon.TypeString }
 }
 
 /**
  * @public
  */
-export function TypeRelation(): Type<string> {
+export function TypeRelation (): Type<string> {
   return { _class: core.class.TypeRelation, label: core.string.Relation, icon: core.icon.TypeRef }
 }
 
 /**
  * @public
  */
-export function TypeBlob(): Type<string> {
+export function TypeBlob (): Type<string> {
   return { _class: core.class.TypeBlob, label: core.string.String, icon: core.icon.TypeBlob }
 }
 
 /**
  * @public
  */
-export function TypeHyperlink(): Type<Hyperlink> {
+export function TypeHyperlink (): Type<Hyperlink> {
   return { _class: core.class.TypeHyperlink, label: core.string.Hyperlink, icon: core.icon.TypeHyperlink }
 }
 
 /**
  * @public
  */
-export function TypeNumber(min?: number, max?: number, digits?: number): TypeNumberType {
+export function TypeNumber (min?: number, max?: number, digits?: number): TypeNumberType {
   return { _class: core.class.TypeNumber, label: core.string.Number, icon: core.icon.TypeNumber, min, max, digits }
 }
 
 /**
  * @public
  */
-export function TypeMarkup(): Type<Markup> {
+export function TypeMarkup (): Type<Markup> {
   return { _class: core.class.TypeMarkup, label: core.string.Markup, icon: core.icon.TypeMarkup }
 }
 
 /**
  * @public
  */
-export function TypeRecord(): Type<Record<any, any>> {
+export function TypeRecord (): Type<Record<any, any>> {
   return { _class: core.class.TypeRecord, label: core.string.Record, icon: core.icon.TypeRecord }
 }
 
 /**
  * @public
  */
-export function TypeIntlString(): Type<IntlString> {
+export function TypeIntlString (): Type<IntlString> {
   return { _class: core.class.TypeIntlString, label: core.string.IntlString, icon: core.icon.TypeRef }
 }
 
 /**
  * @public
  */
-export function TypeBoolean(): Type<boolean> {
+export function TypeBoolean (): Type<boolean> {
   return { _class: core.class.TypeBoolean, label: core.string.Boolean, icon: core.icon.TypeBoolean }
 }
 
 /**
  * @public
  */
-export function TypeTimestamp(): Type<Timestamp> {
+export function TypeTimestamp (): Type<Timestamp> {
   return { _class: core.class.TypeTimestamp, label: core.string.Timestamp, icon: core.icon.TypeDate }
 }
 
 /**
  * @public
  */
-export function TypeDate(mode: DateRangeMode = DateRangeMode.DATE, withShift: boolean = true): TypeDateType {
+export function TypeDate (mode: DateRangeMode = DateRangeMode.DATE, withShift: boolean = true): TypeDateType {
   return { _class: core.class.TypeDate, label: core.string.Date, icon: core.icon.TypeDate, mode, withShift }
 }
 
 /**
  * @public
  */
-export function TypeRef(_class: Ref<Class<Doc>>): RefTo<Doc> {
+export function TypeRef (_class: Ref<Class<Doc>>): RefTo<Doc> {
   return { _class: core.class.RefTo, label: core.string.Ref, icon: core.icon.TypeRef, to: _class }
 }
 
 /**
  * @public
  */
-export function TypeIdentifier(of: Ref<CustomSequence>): TypeIdentifierType {
+export function TypeIdentifier (of: Ref<CustomSequence>): TypeIdentifierType {
   return { _class: core.class.TypeIdentifier, label: core.string.Id, icon: core.icon.TypeRef, of }
 }
 
 /**
  * @public
  */
-export function TypeEnum(of: Ref<Enum>): EnumOf {
+export function TypeEnum (of: Ref<Enum>): EnumOf {
   return { _class: core.class.EnumOf, label: core.string.Enum, icon: core.icon.TypeEnumOf, of }
 }
 
 /**
  * @public
  */
-export function TypeFileSize(): Type<number> {
+export function TypeFileSize (): Type<number> {
   return { _class: core.class.TypeFileSize, label: core.string.Size, icon: core.icon.TypeNumber }
 }
 
 /**
  * @public
  */
-export function TypeAny<AnyComponent = any>(
+export function TypeAny<AnyComponent = any> (
   presenter: AnyComponent,
   label: IntlString,
   editor?: AnyComponent
@@ -504,7 +504,7 @@ export function TypeAny<AnyComponent = any>(
 /**
  * @public
  */
-export function Collection<T extends AttachedDoc>(clazz: Ref<Class<T>>, itemLabel?: IntlString): TypeCollection<T> {
+export function Collection<T extends AttachedDoc> (clazz: Ref<Class<T>>, itemLabel?: IntlString): TypeCollection<T> {
   return {
     _class: core.class.Collection,
     label: core.string.Collection,
@@ -517,28 +517,28 @@ export function Collection<T extends AttachedDoc>(clazz: Ref<Class<T>>, itemLabe
 /**
  * @public
  */
-export function ArrOf<T extends PropertyType | Ref<Doc>>(type: Type<T>): TypeArrOf<T> {
+export function ArrOf<T extends PropertyType | Ref<Doc>> (type: Type<T>): TypeArrOf<T> {
   return { _class: core.class.ArrOf, label: core.string.Array, of: type, icon: core.icon.TypeArray }
 }
 
 /**
  * @public
  */
-export function TypeCollaborativeDoc(): Type<MarkupBlobRef> {
+export function TypeCollaborativeDoc (): Type<MarkupBlobRef> {
   return { _class: core.class.TypeCollaborativeDoc, label: core.string.MarkupBlobRef, icon: core.icon.TypeMarkup }
 }
 
 /**
  * @public
  */
-export function TypeRank(pos: 'start' | 'end' = 'end'): TypeRankType {
+export function TypeRank (pos: 'start' | 'end' = 'end'): TypeRankType {
   return { _class: core.class.TypeRank, label: core.string.Rank, icon: core.icon.TypeRank, pos }
 }
 
-export function TypePersonId(): Type<PersonId> {
+export function TypePersonId (): Type<PersonId> {
   return { _class: core.class.TypePersonId, label: core.string.PersonId }
 }
 
-export function TypeAccountUuid(): Type<AccountUuid> {
+export function TypeAccountUuid (): Type<AccountUuid> {
   return { _class: core.class.TypeAccountUuid, label: core.string.AccountId }
 }

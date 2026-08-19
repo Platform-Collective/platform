@@ -26,15 +26,15 @@ import core, {
   type TxCUD
 } from '@hcengineering/core'
 
-export function isOwner(account: Account, ctx: MeasureContext<SessionData>): boolean {
+export function isOwner (account: Account, ctx: MeasureContext<SessionData>): boolean {
   return account.role === AccountRole.Owner || isSystem(account, ctx)
 }
 
-export function isSystem(account: Account, ctx: MeasureContext<SessionData>): boolean {
+export function isSystem (account: Account, ctx: MeasureContext<SessionData>): boolean {
   return account.uuid === systemAccountUuid
 }
 
-export function filterBroadcastOnly(tx: Tx[], hierarchy: Hierarchy): Tx[] {
+export function filterBroadcastOnly (tx: Tx[], hierarchy: Hierarchy): Tx[] {
   const ftx = tx.filter((it) => {
     if (TxProcessor.isExtendsCUD(it._class)) {
       const cud = it as TxCUD<Doc>

@@ -28,7 +28,7 @@ import { IntegrationClient, IntegrationEventData, IntegrationUpdatedData, Integr
 import { isConnection } from './utils'
 import { type EventCallback, getIntegrationEventBus } from './events'
 
-export function getIntegrationClient(
+export function getIntegrationClient (
   accountsUrl: string,
   token: string,
   integrationKind: IntegrationKind,
@@ -41,30 +41,30 @@ export function getIntegrationClient(
 export class IntegrationClientImpl implements IntegrationClient {
   private readonly events = getIntegrationEventBus()
 
-  constructor(
+  constructor (
     private readonly client: AccountClient,
     private readonly integrationKind: IntegrationKind,
     private readonly serviceName: string
   ) {}
 
   // Event methods
-  on<T = any>(event: string, callback: EventCallback<T>): () => void {
+  on<T = any> (event: string, callback: EventCallback<T>): () => void {
     return this.events.on(event, callback)
   }
 
-  off(event: string, callback?: EventCallback): void {
+  off (event: string, callback?: EventCallback): void {
     this.events.off(event, callback)
   }
 
-  private emit<T = any>(event: string, data: T): void {
+  private emit<T = any> (event: string, data: T): void {
     this.events.emit(event, data)
   }
 
-  async getIntegrations(): Promise<Integration[]> {
+  async getIntegrations (): Promise<Integration[]> {
     return (await this.client.listIntegrations({ kind: this.integrationKind })) ?? []
   }
 
-  async getConnection(integration: Integration): Promise<Integration | null> {
+  async getConnection (integration: Integration): Promise<Integration | null> {
     try {
       if (isConnection(integration)) {
         return integration
@@ -87,7 +87,7 @@ export class IntegrationClientImpl implements IntegrationClient {
     }
   }
 
-  async integrate(connection: Integration, workspace: WorkspaceUuid, data?: Record<string, any>): Promise<Integration> {
+  async integrate (connection: Integration, workspace: WorkspaceUuid, data?: Record<string, any>): Promise<Integration> {
     try {
       const existingData = data ?? connection.data ?? {}
       const integration = {
@@ -132,7 +132,7 @@ export class IntegrationClientImpl implements IntegrationClient {
     }
   }
 
-  async connect(socialId: PersonId, data?: Record<string, any>): Promise<Integration> {
+  async connect (socialId: PersonId, data?: Record<string, any>): Promise<Integration> {
     try {
       const connection = {
         socialId,
@@ -194,7 +194,7 @@ export class IntegrationClientImpl implements IntegrationClient {
     }
   }
 
-  async updateConfig(
+  async updateConfig (
     integrationKey: IntegrationKey,
     config: Record<string, any>,
     refresh?: () => Promise<void>
@@ -238,7 +238,7 @@ export class IntegrationClientImpl implements IntegrationClient {
     }
   }
 
-  async removeIntegration(
+  async removeIntegration (
     socialId: PersonId | undefined | null,
     workspaceUuid: WorkspaceUuid | null | undefined
   ): Promise<
@@ -297,7 +297,7 @@ export class IntegrationClientImpl implements IntegrationClient {
     }
   }
 
-  async removeConnection(connection: Integration): Promise<void> {
+  async removeConnection (connection: Integration): Promise<void> {
     try {
       const integrations = await this.client.listIntegrations({
         kind: connection.kind,
@@ -328,7 +328,7 @@ export class IntegrationClientImpl implements IntegrationClient {
     }
   }
 
-  async setSecret(data: IntegrationSecret): Promise<void> {
+  async setSecret (data: IntegrationSecret): Promise<void> {
     const { secret, ...secretKey } = data
     const currentSecret = await this.client.getIntegrationSecret(secretKey)
     if (currentSecret != null) {
@@ -338,7 +338,7 @@ export class IntegrationClientImpl implements IntegrationClient {
     }
   }
 
-  async setIntegrationEnabled(integrationKey: IntegrationKey, enabled: boolean): Promise<void> {
+  async setIntegrationEnabled (integrationKey: IntegrationKey, enabled: boolean): Promise<void> {
     try {
       const integration = await this.client.getIntegration(integrationKey)
       if (integration == null) {

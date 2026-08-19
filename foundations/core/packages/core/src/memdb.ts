@@ -41,11 +41,11 @@ export abstract class MemDb extends TxProcessor implements Storage {
   private readonly objectsByClass = new Map<Ref<Class<Doc>>, Map<Ref<Doc>, Doc>>()
   private readonly objectById = new Map<Ref<Doc>, Doc>()
 
-  constructor(protected readonly hierarchy: Hierarchy) {
+  constructor (protected readonly hierarchy: Hierarchy) {
     super()
   }
 
-  private getObjectsByClass(_class: Ref<Class<Doc>>): Map<Ref<Doc>, Doc> {
+  private getObjectsByClass (_class: Ref<Class<Doc>>): Map<Ref<Doc>, Doc> {
     const result = this.objectsByClass.get(_class)
     if (result === undefined) {
       const result = new Map<Ref<Doc>, Doc>()
@@ -55,14 +55,14 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return result
   }
 
-  private cleanObjectByClass(_class: Ref<Class<Doc>>, _id: Ref<Doc>): void {
+  private cleanObjectByClass (_class: Ref<Class<Doc>>, _id: Ref<Doc>): void {
     const result = this.objectsByClass.get(_class)
     if (result !== undefined) {
       result.delete(_id)
     }
   }
 
-  private getByIdQuery<T extends Doc>(query: DocumentQuery<T>, _class: Ref<Class<T>>): T[] {
+  private getByIdQuery<T extends Doc> (query: DocumentQuery<T>, _class: Ref<Class<T>>): T[] {
     const result: T[] = []
     if (typeof query._id === 'string') {
       const obj = this.objectById.get(query._id) as T
@@ -77,7 +77,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return result
   }
 
-  getObject<T extends Doc>(_id: Ref<T>): T {
+  getObject<T extends Doc> (_id: Ref<T>): T {
     const doc = this.objectById.get(_id)
     if (doc === undefined) {
       throw new PlatformError(new Status(Severity.ERROR, core.status.ObjectNotFound, { _id }))
@@ -85,12 +85,12 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return doc as T
   }
 
-  findObject<T extends Doc>(_id: Ref<T>): T | undefined {
+  findObject<T extends Doc> (_id: Ref<T>): T | undefined {
     const doc = this.objectById.get(_id)
     return doc as T
   }
 
-  private async getLookupValue<T extends Doc>(
+  private async getLookupValue<T extends Doc> (
     _class: Ref<Class<T>>,
     doc: T,
     lookup: Lookup<T>,
@@ -120,7 +120,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     }
   }
 
-  private async getReverseLookupValue<T extends Doc>(
+  private async getReverseLookupValue<T extends Doc> (
     doc: T,
     lookup: ReverseLookups,
     result: LookupData<T>
@@ -137,7 +137,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     }
   }
 
-  private async lookup<T extends Doc>(_class: Ref<Class<T>>, docs: T[], lookup: Lookup<T>): Promise<WithLookup<T>[]> {
+  private async lookup<T extends Doc> (_class: Ref<Class<T>>, docs: T[], lookup: Lookup<T>): Promise<WithLookup<T>[]> {
     const withLookup: WithLookup<T>[] = []
     for (const doc of docs) {
       const result: LookupData<T> = {}
@@ -147,7 +147,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return withLookup
   }
 
-  private async fillAssociations<T extends Doc>(docs: T[], associations: AssociationQuery[]): Promise<WithLookup<T>[]> {
+  private async fillAssociations<T extends Doc> (docs: T[], associations: AssociationQuery[]): Promise<WithLookup<T>[]> {
     const withLookup: WithLookup<T>[] = []
     for (const doc of docs) {
       const result = await this.getAssociationValue(doc, associations)
@@ -156,7 +156,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return withLookup
   }
 
-  private async getAssociationValue<T extends Doc>(
+  private async getAssociationValue<T extends Doc> (
     doc: T,
     associations: AssociationQuery[]
   ): Promise<Record<string, WithLookup<Doc>[]>> {
@@ -179,7 +179,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return result
   }
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -219,7 +219,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return toFindResult(res, total)
   }
 
-  async findOne<T extends Doc>(
+  async findOne<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -231,7 +231,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
    * Only in model find without lookups and sorting.
    * Do not clone results, so be aware modifications are not allowed.
    */
-  findAllSync<T extends Doc>(_class: Ref<Class<T>>, query: DocumentQuery<T>, options?: FindOptions<T>): FindResult<T> {
+  findAllSync<T extends Doc> (_class: Ref<Class<T>>, query: DocumentQuery<T>, options?: FindOptions<T>): FindResult<T> {
     let result: WithLookup<Doc>[]
     const baseClass = this.hierarchy.getBaseClass(_class)
     if (
@@ -259,7 +259,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     )
   }
 
-  addDoc(doc: Doc): void {
+  addDoc (doc: Doc): void {
     this.hierarchy.getAncestors(doc._class).forEach((_class) => {
       const arr = this.getObjectsByClass(_class)
       arr.set(doc._id, doc)
@@ -268,7 +268,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     this.objectById.set(doc._id, doc)
   }
 
-  delDoc(_id: Ref<Doc>): void {
+  delDoc (_id: Ref<Doc>): void {
     const doc = this.objectById.get(_id)
     if (doc === undefined) {
       throw new PlatformError(new Status(Severity.ERROR, core.status.ObjectNotFound, { _id }))
@@ -279,7 +279,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     })
   }
 
-  updateDoc(_id: Ref<Doc>, doc: Doc, update: TxUpdateDoc<Doc> | TxMixin<Doc, Doc>): void {
+  updateDoc (_id: Ref<Doc>, doc: Doc, update: TxUpdateDoc<Doc> | TxMixin<Doc, Doc>): void {
     // TODO: track updates on Contact to adjust memdb accounts?
   }
 }
@@ -290,23 +290,23 @@ export abstract class MemDb extends TxProcessor implements Storage {
  * @public
  */
 export class TxDb extends MemDb {
-  protected txCreateDoc(tx: TxCreateDoc<Doc>): Promise<TxResult> {
+  protected txCreateDoc (tx: TxCreateDoc<Doc>): Promise<TxResult> {
     throw new Error('Method not implemented.')
   }
 
-  protected txUpdateDoc(tx: TxUpdateDoc<Doc>): Promise<TxResult> {
+  protected txUpdateDoc (tx: TxUpdateDoc<Doc>): Promise<TxResult> {
     throw new Error('Method not implemented.')
   }
 
-  protected txRemoveDoc(tx: TxRemoveDoc<Doc>): Promise<TxResult> {
+  protected txRemoveDoc (tx: TxRemoveDoc<Doc>): Promise<TxResult> {
     throw new Error('Method not implemented.')
   }
 
-  protected txMixin(tx: TxMixin<Doc, Doc>): Promise<TxResult> {
+  protected txMixin (tx: TxMixin<Doc, Doc>): Promise<TxResult> {
     throw new Error('Method not implemented.')
   }
 
-  async tx(tx: Tx): Promise<TxResult[]> {
+  async tx (tx: Tx): Promise<TxResult[]> {
     this.addDoc(tx)
     return []
   }
@@ -318,7 +318,7 @@ export class TxDb extends MemDb {
  * @public
  */
 export class ModelDb extends MemDb {
-  protected override async txCreateDoc(tx: TxCreateDoc<Doc>): Promise<TxResult> {
+  protected override async txCreateDoc (tx: TxCreateDoc<Doc>): Promise<TxResult> {
     this.addDoc(TxProcessor.createDoc2Doc(tx))
     return {}
   }
@@ -392,7 +392,7 @@ export class ModelDb extends MemDb {
     }
   }
 
-  protected async txUpdateDoc(tx: TxUpdateDoc<Doc>): Promise<TxResult> {
+  protected async txUpdateDoc (tx: TxUpdateDoc<Doc>): Promise<TxResult> {
     try {
       const doc = this.getObject(tx.objectId) as any
       this.updateDoc(tx.objectId, doc, tx)
@@ -402,7 +402,7 @@ export class ModelDb extends MemDb {
     return {}
   }
 
-  protected async txRemoveDoc(tx: TxRemoveDoc<Doc>): Promise<TxResult> {
+  protected async txRemoveDoc (tx: TxRemoveDoc<Doc>): Promise<TxResult> {
     try {
       this.delDoc(tx.objectId)
     } catch (err: any) {}
@@ -410,7 +410,7 @@ export class ModelDb extends MemDb {
   }
 
   // TODO: process ancessor mixins
-  protected async txMixin(tx: TxMixin<Doc, Doc>): Promise<TxResult> {
+  protected async txMixin (tx: TxMixin<Doc, Doc>): Promise<TxResult> {
     const doc = this.getObject(tx.objectId) as any
     this.updateDoc(tx.objectId, doc, tx)
     TxProcessor.updateMixin4Doc(doc, tx)

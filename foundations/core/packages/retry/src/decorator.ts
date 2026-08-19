@@ -21,7 +21,7 @@ import { type RetryOptions, DEFAULT_RETRY_OPTIONS, withRetry } from './retry'
  * @param operationName - Name of the operation for logging (defaults to method name)
  * @returns Method decorator
  */
-export function Retryable(options: Partial<RetryOptions> = DEFAULT_RETRY_OPTIONS): MethodDecorator {
+export function Retryable (options: Partial<RetryOptions> = DEFAULT_RETRY_OPTIONS): MethodDecorator {
   return function (target: any, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value as (...args: any[]) => any
 

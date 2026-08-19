@@ -23,7 +23,7 @@ export const InlineCommentMark = Mark.create({
 
   inclusive: false,
 
-  parseHTML() {
+  parseHTML () {
     return [
       {
         tag: 'span.proseInlineComment[data-inline-comment-thread]'
@@ -31,11 +31,11 @@ export const InlineCommentMark = Mark.create({
     ]
   },
 
-  renderHTML({ HTMLAttributes, mark }) {
+  renderHTML ({ HTMLAttributes, mark }) {
     return ['span', { ...HTMLAttributes, class: 'proseInlineComment' }, 0]
   },
 
-  addAttributes() {
+  addAttributes () {
     const name = 'data-inline-comment-thread-id'
     return {
       thread: {
@@ -50,12 +50,12 @@ export const InlineCommentMark = Mark.create({
     }
   },
 
-  addProseMirrorPlugins() {
+  addProseMirrorPlugins () {
     return [...(this.parent?.() ?? []), InlineCommentPasteFixPlugin()]
   }
 })
 
-function removeMarkFromNode(node: Node, name: string): Node {
+function removeMarkFromNode (node: Node, name: string): Node {
   if (node.isText) {
     return node.mark(node.marks.filter((mark) => mark.type.name !== name))
   }
@@ -71,7 +71,7 @@ function removeMarkFromNode(node: Node, name: string): Node {
   return node
 }
 
-export function InlineCommentPasteFixPlugin(): Plugin {
+export function InlineCommentPasteFixPlugin (): Plugin {
   return new Plugin({
     key: new PluginKey('inline-comment-paste-fix-plugin'),
     props: {

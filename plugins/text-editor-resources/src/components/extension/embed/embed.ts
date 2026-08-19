@@ -247,7 +247,7 @@ function getNodeUrl (node?: Node | null): string | undefined {
       return link?.attrs.href ?? undefined
     }
     case 'reference': {
-      return buildReferenceUrl(node.attrs as ReferenceNodeProps)
+      return buildReferenceUrl(node.attrs)
     }
     case 'embed': {
       return node.attrs.src

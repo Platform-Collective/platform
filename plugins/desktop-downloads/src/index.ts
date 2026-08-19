@@ -15,7 +15,7 @@
 
 import { desktopDownloadsId, desktopDownloadsPlugin } from './plugin'
 
-export * from './types'
+export type * from './types'
 export * from './utils'
 
 export { desktopDownloadsId }

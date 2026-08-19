@@ -14,14 +14,14 @@
 //
 
 export class NetworkError extends Error {
-  constructor(message: string) {
+  constructor (message: string) {
     super(message)
     this.name = 'NetworkError'
   }
 }
 
 export class HulylakeError extends Error {
-  constructor(message: string) {
+  constructor (message: string) {
     super(message)
     this.name = 'HulylakeError'
   }

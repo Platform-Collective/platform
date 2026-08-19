@@ -163,11 +163,11 @@
   let notFit: number = 0
   let locked: boolean = false
 
-  const windowSize: { width: number; height: number } = { width: 0, height: 0 }
-  const dragParams: { offsetX: number; offsetY: number } = { offsetX: 0, offsetY: 0 }
+  const windowSize: { width: number, height: number } = { width: 0, height: 0 }
+  const dragParams: { offsetX: number, offsetY: number } = { offsetX: 0, offsetY: 0 }
   let popupParams: PopupParams = { x: 0, y: 0, width: 0, height: 0 }
 
-  const updatedPopupParams = (pp: { x: number; y: number; width: number; height: number }): void => {
+  const updatedPopupParams = (pp: { x: number, y: number, width: number, height: number }): void => {
     if (pp.width === 0 || pp.height === 0 || element !== 'movable') return
     options.props.left = `${pp.x}px`
     options.props.right = ''

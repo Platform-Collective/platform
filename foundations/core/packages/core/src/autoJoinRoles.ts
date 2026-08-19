@@ -19,7 +19,7 @@ import { AccountRole } from './classes'
  * Toggle {@link AccountRole.Guest} in {@link Space.autoJoinForRoles}; other roles are preserved.
  * @public
  */
-export function setWorkspaceGuestAutoJoinRoles(
+export function setWorkspaceGuestAutoJoinRoles (
   existing: AccountRole[] | undefined,
   includeGuest: boolean
 ): AccountRole[] {

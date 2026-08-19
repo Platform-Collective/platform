@@ -159,7 +159,7 @@ class DiskCache implements Cache {
     return entry
   }
 
-  async delete (key: string): Promise<void> {
+  delete (key: string): void {
     this.cache.delete(key)
   }
 

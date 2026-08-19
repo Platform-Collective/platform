@@ -47,11 +47,11 @@ export const DOMAIN_PREFERENCE = 'preference' as Domain
 export class PrivateMiddleware extends BaseMiddleware implements Middleware {
   private readonly targetDomains = [DOMAIN_PREFERENCE]
 
-  private constructor(context: PipelineContext, next?: Middleware) {
+  private constructor (context: PipelineContext, next?: Middleware) {
     super(context, next)
   }
 
-  static async create(
+  static async create (
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -59,7 +59,7 @@ export class PrivateMiddleware extends BaseMiddleware implements Middleware {
     return new PrivateMiddleware(context, next)
   }
 
-  isTargetDomain(tx: Tx): boolean {
+  isTargetDomain (tx: Tx): boolean {
     if (TxProcessor.isExtendsCUD(tx._class)) {
       const txCUD = tx as TxCUD<Doc>
       const domain = this.context.hierarchy.getDomain(txCUD.objectClass)
@@ -68,7 +68,7 @@ export class PrivateMiddleware extends BaseMiddleware implements Middleware {
     return false
   }
 
-  tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     for (const tx of txes) {
       if (this.isTargetDomain(tx)) {
         const account = ctx.contextData.account
@@ -96,7 +96,7 @@ export class PrivateMiddleware extends BaseMiddleware implements Middleware {
     return this.provideTx(ctx, txes)
   }
 
-  override async findAll<T extends Doc>(
+  override async findAll<T extends Doc> (
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -143,7 +143,7 @@ export class PrivateMiddleware extends BaseMiddleware implements Middleware {
     return findResult
   }
 
-  isAvailable(ctx: MeasureContext<SessionData>, doc: Doc): boolean {
+  isAvailable (ctx: MeasureContext<SessionData>, doc: Doc): boolean {
     const domain = this.context.hierarchy.getDomain(doc._class)
     if (!this.targetDomains.includes(domain)) return true
     const account = ctx.contextData.account
@@ -151,7 +151,7 @@ export class PrivateMiddleware extends BaseMiddleware implements Middleware {
     return (doc.createdBy !== undefined && socialStrings.includes(doc.createdBy)) || account.uuid === systemAccountUuid
   }
 
-  filterLookup<T extends Doc>(ctx: MeasureContext, lookup: LookupData<T>): void {
+  filterLookup<T extends Doc> (ctx: MeasureContext, lookup: LookupData<T>): void {
     for (const key in lookup) {
       const val = lookup[key]
       if (Array.isArray(val)) {

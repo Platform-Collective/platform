@@ -680,7 +680,7 @@ export interface MigrationState extends Doc {
 /**
  * @public
  */
-export function versionToString(version: Version | Data<Version>): string {
+export function versionToString (version: Version | Data<Version>): string {
   return `${version?.major}.${version?.minor}.${version?.patch}`
 }
 
@@ -879,13 +879,13 @@ export type WorkspaceMode =
 
 export type WorkspaceUserOperation = 'archive' | 'migrate-to' | 'unarchive' | 'delete' | 'reset-attempts'
 
-export function isActiveMode(mode?: WorkspaceMode): boolean {
+export function isActiveMode (mode?: WorkspaceMode): boolean {
   return mode === 'active'
 }
-export function isDeletingMode(mode: WorkspaceMode): boolean {
+export function isDeletingMode (mode: WorkspaceMode): boolean {
   return mode === 'pending-deletion' || mode === 'deleting' || mode === 'deleted'
 }
-export function isArchivingMode(mode?: WorkspaceMode): boolean {
+export function isArchivingMode (mode?: WorkspaceMode): boolean {
   return (
     mode === 'archiving-pending-backup' ||
     mode === 'archiving-backup' ||
@@ -895,7 +895,7 @@ export function isArchivingMode(mode?: WorkspaceMode): boolean {
   )
 }
 
-export function isMigrationMode(mode?: WorkspaceMode): boolean {
+export function isMigrationMode (mode?: WorkspaceMode): boolean {
   return (
     mode === 'migration-pending-backup' ||
     mode === 'migration-backup' ||
@@ -903,11 +903,11 @@ export function isMigrationMode(mode?: WorkspaceMode): boolean {
     mode === 'migration-clean'
   )
 }
-export function isRestoringMode(mode?: WorkspaceMode): boolean {
+export function isRestoringMode (mode?: WorkspaceMode): boolean {
   return mode === 'restoring' || mode === 'pending-restore'
 }
 
-export function isUpgradingMode(mode?: WorkspaceMode): boolean {
+export function isUpgradingMode (mode?: WorkspaceMode): boolean {
   return mode === 'upgrading'
 }
 

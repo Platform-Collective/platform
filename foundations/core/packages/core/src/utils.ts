@@ -55,7 +55,7 @@ import type { Branding, BrandingMap } from './server'
 import type { DocumentQuery, FindResult } from './storage'
 import { DOMAIN_TX, type Tx, type TxCreateDoc, type TxCUD, TxProcessor, type TxUpdateDoc } from './tx'
 
-function toHex(value: number, chars: number): string {
+function toHex (value: number, chars: number): string {
   const result = value.toString(16)
   if (result.length < chars) {
     return '0'.repeat(chars - result.length) + result
@@ -66,12 +66,12 @@ function toHex(value: number, chars: number): string {
 let counter = (Math.random() * (1 << 24)) | 0
 const random = toHex((Math.random() * (1 << 24)) | 0, 6) + toHex((Math.random() * (1 << 16)) | 0, 4)
 
-function timestamp(): string {
+function timestamp (): string {
   const time = (Date.now() / 1000) | 0
   return toHex(time, 8)
 }
 
-function count(): string {
+function count (): string {
   const val = counter++ & 0xffffff
   return toHex(val, 6)
 }
@@ -80,17 +80,17 @@ function count(): string {
  * @public
  * @returns
  */
-export function generateId<T extends Doc>(join = ''): Ref<T> {
+export function generateId<T extends Doc> (join = ''): Ref<T> {
   return (timestamp() + join + random + join + count()) as Ref<T>
 }
 
-export function generateUuid(): string {
+export function generateUuid (): string {
   // Consider own implementation if it will be slow
   return crypto.randomUUID()
 }
 
 /** @public */
-export function isId(value: any): value is Ref<any> {
+export function isId (value: any): value is Ref<any> {
   return typeof value === 'string' && /^[0-9a-f]{24,24}$/.test(value)
 }
 
@@ -100,7 +100,7 @@ let currentAccount: Account
  * @public
  * @returns
  */
-export function getCurrentAccount(): Account {
+export function getCurrentAccount (): Account {
   return currentAccount
 }
 
@@ -108,20 +108,20 @@ export function getCurrentAccount(): Account {
  * @public
  * @param account -
  */
-export function setCurrentAccount(account: Account): void {
+export function setCurrentAccount (account: Account): void {
   currentAccount = account
 }
 /**
  * @public
  */
-export function escapeLikeForRegexp(value: string): string {
+export function escapeLikeForRegexp (value: string): string {
   return value.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')
 }
 
 /**
  * @public
  */
-export function toFindResult<T extends Doc>(docs: T[], total?: number, lookupMap?: Record<string, Doc>): FindResult<T> {
+export function toFindResult<T extends Doc> (docs: T[], total?: number, lookupMap?: Record<string, Doc>): FindResult<T> {
   const length = total ?? docs.length
   if (Object.keys(lookupMap ?? {}).length === 0) {
     lookupMap = undefined
@@ -140,7 +140,7 @@ export interface WorkspaceIds {
 /**
  * @public
  */
-export function isWorkspaceCreating(mode?: WorkspaceMode): boolean {
+export function isWorkspaceCreating (mode?: WorkspaceMode): boolean {
   if (mode === undefined) {
     return false
   }
@@ -151,14 +151,14 @@ export function isWorkspaceCreating(mode?: WorkspaceMode): boolean {
 /**
  * @public
  */
-export function docKey(name: string, _class?: Ref<Class<Doc>>): string {
+export function docKey (name: string, _class?: Ref<Class<Doc>>): string {
   return _class === undefined || _class !== core.class.Doc ? name : `${_class}%${name}`
 }
 
 /**
  * @public
  */
-export function isFullTextAttribute(attr: AnyAttribute): boolean {
+export function isFullTextAttribute (attr: AnyAttribute): boolean {
   return (
     attr.index === IndexKind.FullText ||
     attr.type._class === core.class.TypeBlob ||
@@ -170,7 +170,7 @@ export function isFullTextAttribute(attr: AnyAttribute): boolean {
 /**
  * @public
  */
-export function isIndexedAttribute(attr: AnyAttribute): boolean {
+export function isIndexedAttribute (attr: AnyAttribute): boolean {
   return attr.index === IndexKind.Indexed || attr.index === IndexKind.IndexedDsc
 }
 
@@ -182,14 +182,14 @@ export interface IdMap<T extends Doc> extends Map<Ref<T>, T> {}
 /**
  * @public
  */
-export function toIdMap<T extends Doc>(arr: T[]): IdMap<T> {
+export function toIdMap<T extends Doc> (arr: T[]): IdMap<T> {
   return new Map(arr.map((p) => [p._id, p]))
 }
 
 /**
  * @public
  */
-export function concatLink(host: string, path: string): string {
+export function concatLink (host: string, path: string): string {
   if (!host.endsWith('/') && !path.startsWith('/')) {
     return `${host}/${path}`
   } else if (host.endsWith('/') && path.startsWith('/')) {
@@ -203,7 +203,7 @@ export function concatLink(host: string, path: string): string {
 /**
  * @public
  */
-export function fillDefaults<T extends Doc>(
+export function fillDefaults<T extends Doc> (
   hierarchy: Hierarchy,
   object: DocData<T> | T,
   _class: Ref<Class<T>>
@@ -225,7 +225,7 @@ export function fillDefaults<T extends Doc>(
  * @public
  */
 export class AggregateValueData {
-  constructor(
+  constructor (
     readonly name: string,
     readonly _id: Ref<Doc>,
     readonly space: Ref<Space>,
@@ -233,7 +233,7 @@ export class AggregateValueData {
     readonly category?: Ref<Doc>
   ) {}
 
-  getRank(): string {
+  getRank (): string {
     return this.rank ?? ''
   }
 }
@@ -242,7 +242,7 @@ export class AggregateValueData {
  * @public
  */
 export class AggregateValue {
-  constructor(
+  constructor (
     readonly name: string | undefined,
     readonly values: AggregateValueData[]
   ) {}
@@ -266,23 +266,23 @@ export interface IDocManager<T extends Doc> {
 export class DocManager<T extends Doc> implements IDocManager<T> {
   protected readonly byId: IdMap<T>
 
-  constructor(protected readonly docs: T[]) {
+  constructor (protected readonly docs: T[]) {
     this.byId = toIdMap(docs)
   }
 
-  get(ref: Ref<T>): T | undefined {
+  get (ref: Ref<T>): T | undefined {
     return this.byId.get(ref)
   }
 
-  getDocs(): T[] {
+  getDocs (): T[] {
     return this.docs
   }
 
-  getIdMap(): IdMap<T> {
+  getIdMap (): IdMap<T> {
     return this.byId
   }
 
-  filter(predicate: (value: T) => boolean): T[] {
+  filter (predicate: (value: T) => boolean): T[] {
     return this.docs.filter(predicate)
   }
 }
@@ -299,13 +299,13 @@ export class RateLimiter {
 
   queue: (() => Promise<void>)[] = []
 
-  constructor(rate: number) {
+  constructor (rate: number) {
     this.rate = rate
   }
 
   notify: (() => void)[] = []
 
-  async exec<T, B extends Record<string, any> = any>(op: (args?: B) => Promise<T>, args?: B): Promise<T> {
+  async exec<T, B extends Record<string, any> = any> (op: (args?: B) => Promise<T>, args?: B): Promise<T> {
     const processingId = this.idCounter++
 
     while (this.processingQueue.size >= this.rate) {
@@ -326,7 +326,7 @@ export class RateLimiter {
     }
   }
 
-  async add<T, B extends Record<string, any> = any>(
+  async add<T, B extends Record<string, any> = any> (
     op: (args?: B) => Promise<T>,
     args?: B,
     errHandler?: (err: any) => void
@@ -344,7 +344,7 @@ export class RateLimiter {
     })
   }
 
-  async waitProcessing(): Promise<void> {
+  async waitProcessing (): Promise<void> {
     while (this.processingQueue.size > 0) {
       await new Promise<void>((resolve) => {
         this.notify.push(resolve)
@@ -353,7 +353,7 @@ export class RateLimiter {
   }
 }
 
-export function mergeQueries<T extends Doc>(query1: DocumentQuery<T>, query2: DocumentQuery<T>): DocumentQuery<T> {
+export function mergeQueries<T extends Doc> (query1: DocumentQuery<T>, query2: DocumentQuery<T>): DocumentQuery<T> {
   const keys1 = Object.keys(query1)
   const keys2 = Object.keys(query2)
 
@@ -379,7 +379,7 @@ export function mergeQueries<T extends Doc>(query1: DocumentQuery<T>, query2: Do
   return query
 }
 
-function mergeField(field1: any, field2: any): any | undefined {
+function mergeField (field1: any, field2: any): any | undefined {
   // this is a special predicate that causes query never return any docs
   // it is used in cases when queries intersection is empty
   const never = { $in: [] }
@@ -447,7 +447,7 @@ function mergeField(field1: any, field2: any): any | undefined {
   }
 }
 
-function mergePredicateWithPredicate(predicate: string, val1: any, val2: any): any | undefined {
+function mergePredicateWithPredicate (predicate: string, val1: any, val2: any): any | undefined {
   if (val1 === undefined) return val2
   if (val2 === undefined) return val1
 
@@ -468,7 +468,7 @@ function mergePredicateWithPredicate(predicate: string, val1: any, val2: any): a
   return val1
 }
 
-function mergePredicateWithValue(predicate: string, val1: any, val2: any): any | undefined {
+function mergePredicateWithValue (predicate: string, val1: any, val2: any): any | undefined {
   switch (predicate) {
     case '$in':
       return Array.isArray(val1) && val1.includes(val2) ? val2 : undefined
@@ -492,7 +492,7 @@ function mergePredicateWithValue(predicate: string, val1: any, val2: any): any |
   return val2
 }
 
-function getInNiN(query1: any, query2: any): any {
+function getInNiN (query1: any, query2: any): any {
   const aIn = typeof query1 === 'object' && '$in' in query1 ? query1.$in : undefined
   const bIn = typeof query2 === 'object' && '$in' in query2 ? query2.$in : undefined
   const aNIn =
@@ -526,7 +526,7 @@ function getInNiN(query1: any, query2: any): any {
   return {}
 }
 
-export function cutObjectArray(obj: any): any {
+export function cutObjectArray (obj: any): any {
   if (obj == null) {
     return obj
   }
@@ -547,7 +547,7 @@ export function cutObjectArray(obj: any): any {
   return r
 }
 
-export function includesAny(arr1: string[] | null | undefined, arr2: string[] | null | undefined): boolean {
+export function includesAny (arr1: string[] | null | undefined, arr2: string[] | null | undefined): boolean {
   if (arr1 == null || arr1.length === 0 || arr2 == null || arr2.length === 0) {
     return false
   }
@@ -560,7 +560,7 @@ export const isEnum =
   (token: any): token is T[keyof T] =>
     typeof token === 'string' && Object.values(e as Record<string, any>).includes(token)
 
-export async function checkPermission(
+export async function checkPermission (
   client: TxOperations,
   _id: Ref<Permission>,
   _space: Ref<TypedSpace>,
@@ -572,7 +572,7 @@ export async function checkPermission(
   return await hasPermission(client, _id, _space, space)
 }
 
-export async function checkForbiddenPermission(
+export async function checkForbiddenPermission (
   client: TxOperations,
   _id: Ref<Permission>,
   _space: Ref<TypedSpace>,
@@ -584,7 +584,7 @@ export async function checkForbiddenPermission(
   return await hasPermission(client, _id, _space, space)
 }
 
-async function hasPermission(
+async function hasPermission (
   client: TxOperations,
   _id: Ref<Permission>,
   _space: Ref<TypedSpace>,
@@ -615,14 +615,14 @@ async function hasPermission(
 /**
  * @public
  */
-export function getRoleAttributeLabel(roleName: string): IntlString {
+export function getRoleAttributeLabel (roleName: string): IntlString {
   return getEmbeddedLabel(`Role: ${roleName.trim()}`)
 }
 
 /**
  * @public
  */
-export function getFullTextIndexableAttributes(
+export function getFullTextIndexableAttributes (
   hierarchy: Hierarchy,
   clazz: Ref<Class<Obj>>,
   skipDocs = false
@@ -658,7 +658,7 @@ const ctxKey = 'indexer_ftc'
 /**
  * @public
  */
-export function getFullTextContext(
+export function getFullTextContext (
   hierarchy: Hierarchy,
   objectClass: Ref<Class<Doc>>,
   contexts: Map<Ref<Class<Doc>>, FullTextSearchContext>
@@ -689,7 +689,7 @@ export function getFullTextContext(
 /**
  * @public
  */
-export function isClassIndexable(
+export function isClassIndexable (
   hierarchy: Hierarchy,
   c: Ref<Class<Doc>>,
   contexts: Map<Ref<Class<Doc>>, FullTextSearchContext>
@@ -792,12 +792,12 @@ export function reduceCalls<T extends (...args: ReduceParameters<T>) => Promise<
   }
 }
 
-export function isOwnerOrMaintainer(): boolean {
+export function isOwnerOrMaintainer (): boolean {
   const account = getCurrentAccount()
   return hasAccountRole(account, AccountRole.Maintainer)
 }
 
-export function hasAccountRole(acc: Account, targerRole: AccountRole): boolean {
+export function hasAccountRole (acc: Account, targerRole: AccountRole): boolean {
   return roleOrder[acc.role] >= roleOrder[targerRole]
 }
 
@@ -807,7 +807,7 @@ export function getBranding (brandings: BrandingMap, key: string | undefined): B
   return Object.values(brandings).find((branding) => branding.key === key) ?? null
 }
 
-export function fillConfiguration(systemTx: Tx[], configs: Map<Ref<PluginConfiguration>, PluginConfiguration>): void {
+export function fillConfiguration (systemTx: Tx[], configs: Map<Ref<PluginConfiguration>, PluginConfiguration>): void {
   for (const t of systemTx) {
     if (t._class === core.class.TxCreateDoc) {
       const ct = t as TxCreateDoc<Doc>
@@ -828,7 +828,7 @@ export function fillConfiguration(systemTx: Tx[], configs: Map<Ref<PluginConfigu
   }
 }
 
-export function pluginFilterTx(
+export function pluginFilterTx (
   excludedPlugins: PluginConfiguration[],
   configs: Map<Ref<PluginConfiguration>, PluginConfiguration>,
   systemTx: Tx[]
@@ -877,22 +877,22 @@ export class TimeRateLimiter {
   last = 0
   rate: number
   period: number
-  executions: { time: number; running: boolean }[] = []
+  executions: { time: number, running: boolean }[] = []
 
   queue: (() => Promise<void>)[] = []
   notify: (() => void)[] = []
 
-  constructor(rate: number, period = 1000) {
+  constructor (rate: number, period = 1000) {
     this.rate = rate
     this.period = period
   }
 
-  private cleanupExecutions(): void {
+  private cleanupExecutions (): void {
     const now = Date.now()
     this.executions = this.executions.filter((time) => time.running || now - time.time < this.period)
   }
 
-  async exec<T, B extends Record<string, any> = any>(op: (args?: B) => Promise<T>, args?: B): Promise<T> {
+  async exec<T, B extends Record<string, any> = any> (op: (args?: B) => Promise<T>, args?: B): Promise<T> {
     while (this.active >= this.rate || this.executions.length >= this.rate) {
       this.cleanupExecutions()
       if (this.executions.length < this.rate) {
@@ -920,7 +920,7 @@ export class TimeRateLimiter {
     }
   }
 
-  async waitProcessing(): Promise<void> {
+  async waitProcessing (): Promise<void> {
     while (this.active > 0) {
       await new Promise<void>((resolve) => {
         this.notify.push(resolve)
@@ -929,7 +929,7 @@ export class TimeRateLimiter {
   }
 }
 
-export function combineAttributes(
+export function combineAttributes (
   attributes: any[],
   key: string,
   operator: '$push' | '$pull' | '$unset',
@@ -950,11 +950,11 @@ export function combineAttributes(
   ).filter((v) => v != null)
 }
 
-export function buildSocialIdString(key: SocialKey): string {
+export function buildSocialIdString (key: SocialKey): string {
   return `${key.type}:${key.value}`
 }
 
-export function parseSocialIdString(id: string): SocialKey {
+export function parseSocialIdString (id: string): SocialKey {
   const [type, value] = id.split(':')
 
   if (type === undefined || value === undefined) {
@@ -968,7 +968,7 @@ export function parseSocialIdString(id: string): SocialKey {
   return { type: type as SocialIdType, value }
 }
 
-export function pickPrimarySocialId(socialIds: SocialId[]): SocialId {
+export function pickPrimarySocialId (socialIds: SocialId[]): SocialId {
   const activeSocialIds = socialIds.filter((si) => si.isDeleted !== true)
   if (activeSocialIds.length === 0) {
     throw new Error('No active social ids provided')
@@ -980,15 +980,15 @@ export function pickPrimarySocialId(socialIds: SocialId[]): SocialId {
 
 export const loginSocialTypes = [SocialIdType.EMAIL, SocialIdType.GOOGLE, SocialIdType.GITHUB, SocialIdType.OIDC]
 
-export function notEmpty<T>(id: T | undefined | null): id is T {
+export function notEmpty<T> (id: T | undefined | null): id is T {
   return id !== undefined && id !== null && id !== ''
 }
 
-export function unique<T>(arr: T[]): T[] {
+export function unique<T> (arr: T[]): T[] {
   return Array.from(new Set(arr))
 }
 
-export function uniqueNotEmpty<T extends NonNullable<unknown>>(arr: Array<T | undefined | null>): T[] {
+export function uniqueNotEmpty<T extends NonNullable<unknown>> (arr: Array<T | undefined | null>): T[] {
   return unique(arr).filter(notEmpty)
 }
 export { platformNow, platformNowDiff } from '@hcengineering/measurements'
@@ -1000,7 +1000,7 @@ export interface PermissionsGrant {
 
 export type KeysByType<O extends object, T> = { [k in keyof O]-?: O[k] extends T ? k : never }[keyof O]
 
-export function toRank(str: string | undefined): Rank | undefined {
+export function toRank (str: string | undefined): Rank | undefined {
   if (str === undefined) return
   if (str.startsWith('0|')) {
     return str

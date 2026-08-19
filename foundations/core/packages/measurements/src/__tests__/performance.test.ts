@@ -202,7 +202,7 @@ describe('performance', () => {
 
 // Helper functions
 
-async function simulateWork(durationMs: number): Promise<void> {
+async function simulateWork (durationMs: number): Promise<void> {
   const end = performance.now() + durationMs
   while (performance.now() < end) {
     // Busy wait to simulate work
@@ -211,7 +211,7 @@ async function simulateWork(durationMs: number): Promise<void> {
   }
 }
 
-async function deepNestedExecution(
+async function deepNestedExecution (
   ctx: MeasureContext,
   depth: number,
   workMs: number,
@@ -227,7 +227,7 @@ async function deepNestedExecution(
   })
 }
 
-async function simulateAPIRequest(ctx: MeasureContext | null, requestId: number): Promise<void> {
+async function simulateAPIRequest (ctx: MeasureContext | null, requestId: number): Promise<void> {
   const method = ['GET', 'POST', 'PUT'][requestId % 3]
   const endpoint = `/api/resource/${requestId % 10}`
 

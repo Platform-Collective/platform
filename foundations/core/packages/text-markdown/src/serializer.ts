@@ -56,11 +56,11 @@ interface InlineState {
 
 // *************************************************************
 
-function backticksFor(side: boolean): string {
+function backticksFor (side: boolean): string {
   return side ? '`' : '`'
 }
 
-function isPlainURL(link: MarkupMark, parent: MarkupNode, index: number): boolean {
+function isPlainURL (link: MarkupMark, parent: MarkupNode, index: number): boolean {
   if (link.attrs?.title !== undefined || !/^\w+:/.test(link.attrs?.href)) return false
   const content = parent.content?.[index]
   if (content === undefined) {
@@ -459,7 +459,7 @@ export class MarkdownState implements IState {
   imageUrl: string
   htmlWriter: HtmlWriter
 
-  constructor(
+  constructor (
     nodes = storeNodes,
     marks = storeMarks,
     options: StateOptions = { tightLists: true, refUrl: 'ref://', imageUrl: 'http://' }
@@ -476,7 +476,7 @@ export class MarkdownState implements IState {
     this.options = options
   }
 
-  flushClose(size: number): void {
+  flushClose (size: number): void {
     if (this.closed) {
       if (!this.atBlank()) this.out += '\n'
       if (size > 1) {
@@ -486,7 +486,7 @@ export class MarkdownState implements IState {
     }
   }
 
-  private addDelim(size: number): void {
+  private addDelim (size: number): void {
     let delimMin = this.delim
     const trim = /\s+$/.exec(delimMin)
     if (trim !== null) {
@@ -497,11 +497,11 @@ export class MarkdownState implements IState {
     }
   }
 
-  renderHtml(node: MarkupNode): string {
+  renderHtml (node: MarkupNode): string {
     return this.htmlWriter(node)
   }
 
-  wrapBlock(delim: string, firstDelim: string | null, node: MarkupNode, f: () => void): void {
+  wrapBlock (delim: string, firstDelim: string | null, node: MarkupNode, f: () => void): void {
     const old = this.delim
     this.write(firstDelim ?? delim)
     this.delim += delim
@@ -510,13 +510,13 @@ export class MarkdownState implements IState {
     this.closeBlock(node)
   }
 
-  atBlank(): boolean {
+  atBlank (): boolean {
     return /(^|\n)$/.test(this.out)
   }
 
   // :: ()
   // Ensure the current content ends with a newline.
-  ensureNewLine(): void {
+  ensureNewLine (): void {
     if (!this.atBlank()) this.out += '\n'
   }
 
@@ -524,7 +524,7 @@ export class MarkdownState implements IState {
   // Prepare the state for writing output (closing closed paragraphs,
   // adding delimiters, and so on), and then optionally add content
   // (unescaped) to the output.
-  write(content: string): void {
+  write (content: string): void {
     this.flushClose(2)
     if (this.delim !== undefined && this.atBlank()) this.out += this.delim
     if (content.length > 0) this.out += content
@@ -532,7 +532,7 @@ export class MarkdownState implements IState {
 
   // :: (Node)
   // Close the block for the given node.
-  closeBlock(node: MarkupNode): void {
+  closeBlock (node: MarkupNode): void {
     this.closedNode = node
     this.closed = true
   }
@@ -540,7 +540,7 @@ export class MarkdownState implements IState {
   // :: (string, ?bool)
   // Add the given text to the document. When escape is not `false`,
   // it will be escaped.
-  text(text: string, escape = false): void {
+  text (text: string, escape = false): void {
     const lines = text.split('\n')
     for (let i = 0; i < lines.length; i++) {
       const startOfLine = this.atBlank() || this.closed
@@ -561,13 +561,13 @@ export class MarkdownState implements IState {
 
   // :: (Node)
   // Render the contents of `parent` as block nodes.
-  renderContent(parent: MarkupNode): void {
+  renderContent (parent: MarkupNode): void {
     nodeContent(parent).forEach((node: MarkupNode, i: number) => {
       this.render(node, parent, i)
     })
   }
 
-  reorderMixableMark(state: InlineState, mark: MarkupMark, i: number, len: number): void {
+  reorderMixableMark (state: InlineState, mark: MarkupMark, i: number, len: number): void {
     for (let j = 0; j < state.active.length; j++) {
       const other = state.active[j]
       if (!this.marks[other.type].mixable || this.checkSwitchMarks(i, j, state, mark, other, len)) {
@@ -576,7 +576,7 @@ export class MarkdownState implements IState {
     }
   }
 
-  reorderMixableMarks(state: InlineState, len: number): void {
+  reorderMixableMarks (state: InlineState, len: number): void {
     // Try to reorder 'mixable' marks, such as em and strong, which
     // in Markdown may be opened and closed in different order, so
     // that order of the marks for the token matches the order in
@@ -593,7 +593,7 @@ export class MarkdownState implements IState {
     }
   }
 
-  private checkSwitchMarks(
+  private checkSwitchMarks (
     i: number,
     j: number,
     state: InlineState,
@@ -608,7 +608,7 @@ export class MarkdownState implements IState {
     return true
   }
 
-  private switchMarks(i: number, j: number, state: InlineState, mark: MarkupMark, len: number): void {
+  private switchMarks (i: number, j: number, state: InlineState, mark: MarkupMark, len: number): void {
     if (i > j) {
       state.marks = state.marks
         .slice(0, j)
@@ -625,7 +625,7 @@ export class MarkdownState implements IState {
     }
   }
 
-  renderNodeInline(state: InlineState, index: number): void {
+  renderNodeInline (state: InlineState, index: number): void {
     state.marks = state.node?.marks ?? []
     this.updateHardBreakMarks(state, index)
 
@@ -647,7 +647,7 @@ export class MarkdownState implements IState {
     this.checkOpenMarks(state, len, index, inner, noEsc)
   }
 
-  private checkOpenMarks(
+  private checkOpenMarks (
     state: InlineState,
     len: number,
     index: number,
@@ -667,7 +667,7 @@ export class MarkdownState implements IState {
     }
   }
 
-  private isNoEscapeRequire(
+  private isNoEscapeRequire (
     node: MarkupNode,
     inner: MarkupMark | undefined,
     noEsc: boolean,
@@ -676,7 +676,7 @@ export class MarkdownState implements IState {
     return inner !== undefined && noEsc && node.type === MarkupNodeType.text
   }
 
-  private renderMarkText(inner: MarkupMark, state: InlineState, index: number): void {
+  private renderMarkText (inner: MarkupMark, state: InlineState, index: number): void {
     this.text(
       this.markString(inner, true, state.parent, index) +
         (state.node?.text as string) +
@@ -685,7 +685,7 @@ export class MarkdownState implements IState {
     )
   }
 
-  private updateActiveMarks(state: InlineState, len: number, index: number): void {
+  private updateActiveMarks (state: InlineState, len: number, index: number): void {
     while (state.active.length < len) {
       const add = state.marks[state.active.length]
       state.active.push(add)
@@ -693,7 +693,7 @@ export class MarkdownState implements IState {
     }
   }
 
-  private checkCloseMarks(state: InlineState, len: number, index: number): void {
+  private checkCloseMarks (state: InlineState, len: number, index: number): void {
     let keep = 0
     while (keep < Math.min(state.active.length, len) && markEq(state.marks[keep], state.active[keep])) {
       ++keep
@@ -708,7 +708,7 @@ export class MarkdownState implements IState {
     }
   }
 
-  private adjustLeading(state: InlineState): string {
+  private adjustLeading (state: InlineState): string {
     let leading = state.trailing
     state.trailing = ''
     // If whitespace has to be expelled from the node, adjust
@@ -726,11 +726,11 @@ export class MarkdownState implements IState {
     return leading
   }
 
-  private isMarksHasExpelEnclosingWhitespace(state: InlineState): boolean {
+  private isMarksHasExpelEnclosingWhitespace (state: InlineState): boolean {
     return state.marks.some((mark) => this.marks[mark.type]?.expelEnclosingWhitespace)
   }
 
-  private adjustLeadingTextNode(
+  private adjustLeadingTextNode (
     lead: string,
     trail: string,
     state: InlineState,
@@ -745,13 +745,13 @@ export class MarkdownState implements IState {
     }
   }
 
-  private updateHardBreakMarks(state: InlineState, index: number): void {
+  private updateHardBreakMarks (state: InlineState, index: number): void {
     if (state.node !== undefined && state.node.type === MarkupNodeType.hard_break) {
       state.marks = this.filterHardBreakMarks(state.marks, index, state)
     }
   }
 
-  private filterHardBreakMarks(marks: MarkupMark[], index: number, state: InlineState): MarkupMark[] {
+  private filterHardBreakMarks (marks: MarkupMark[], index: number, state: InlineState): MarkupMark[] {
     const content = state.parent.content ?? []
     const next = content[index + 1]
     if (!this.isHardbreakText(next)) {
@@ -760,19 +760,19 @@ export class MarkdownState implements IState {
     return marks.filter((m) => isInSet(m, next.marks ?? []))
   }
 
-  private isHardbreakText(next?: MarkupNode): boolean {
+  private isHardbreakText (next?: MarkupNode): boolean {
     return (
       next !== undefined && (next.type !== MarkupNodeType.text || (next.text !== undefined && /\S/.test(next.text)))
     )
   }
 
-  private isText(node?: MarkupNode): boolean {
+  private isText (node?: MarkupNode): boolean {
     return node !== undefined && node.type === MarkupNodeType.text && node.text !== undefined
   }
 
   // :: (Node)
   // Render the contents of `parent` as inline content.
-  renderInline(parent: MarkupNode): void {
+  renderInline (parent: MarkupNode): void {
     const state: InlineState = { active: [], trailing: '', parent, marks: [] }
     nodeContent(parent).forEach((nde, index) => {
       state.node = nde
@@ -787,7 +787,7 @@ export class MarkdownState implements IState {
   // indentation added to all lines except the first in an item,
   // `firstDelim` is a function going from an item index to a
   // delimiter for the first line of the item.
-  renderList(node: MarkupNode, delim: string, firstDelim: FirstDelim): void {
+  renderList (node: MarkupNode, delim: string, firstDelim: FirstDelim): void {
     this.flushListClose(node)
 
     const isTight: boolean =
@@ -801,7 +801,7 @@ export class MarkdownState implements IState {
     this.inTightList = prevTight
   }
 
-  renderListItem(
+  renderListItem (
     node: MarkupNode,
     child: MarkupNode,
     i: number,
@@ -815,7 +815,7 @@ export class MarkdownState implements IState {
     })
   }
 
-  private flushListClose(node: MarkupNode): void {
+  private flushListClose (node: MarkupNode): void {
     if (this.closed && this.closedNode?.type === node.type) {
       this.flushClose(3)
     } else if (this.inTightList) {
@@ -827,7 +827,7 @@ export class MarkdownState implements IState {
   // Escape the given string so that it can safely appear in Markdown
   // content. If `startOfLine` is true, also escape characters that
   // has special meaning only at the start of the line.
-  esc(str: string, startOfLine = false): string {
+  esc (str: string, startOfLine = false): string {
     if (str == null) {
       return ''
     }
@@ -839,7 +839,7 @@ export class MarkdownState implements IState {
     return str
   }
 
-  htmlEsc(str: string): string {
+  htmlEsc (str: string): string {
     if (str == null) {
       return ''
     }
@@ -852,14 +852,14 @@ export class MarkdownState implements IState {
       .replace(/'/g, '&#039;')
   }
 
-  quote(str: string): string {
+  quote (str: string): string {
     const wrap = !(str?.includes('"') ?? false) ? '""' : !(str?.includes("'") ?? false) ? "''" : '()'
     return wrap[0] + str + wrap[1]
   }
 
   // :: (string, number) → string
   // Repeat the given string `n` times.
-  repeat(str: string, n: number): string {
+  repeat (str: string, n: number): string {
     let out = ''
     for (let i = 0; i < n; i++) out += str
     return out
@@ -867,7 +867,7 @@ export class MarkdownState implements IState {
 
   // : (Mark, bool, string?) → string
   // Get the markdown string for a given opening or closing mark.
-  markString(mark: MarkupMark, open: boolean, parent: MarkupNode, index: number): string {
+  markString (mark: MarkupMark, open: boolean, parent: MarkupNode, index: number): string {
     let value = mark.attrs?.marker
     if (value === undefined) {
       const info = this.marks[mark.type]
@@ -880,7 +880,7 @@ export class MarkdownState implements IState {
   }
 }
 
-function makeQuery(obj: Record<string, string | number | boolean | null | undefined>): string {
+function makeQuery (obj: Record<string, string | number | boolean | null | undefined>): string {
   return Object.keys(obj)
     .filter((it) => it[1] != null)
     .map(function (k) {

@@ -48,7 +48,7 @@ interface Query {
 export class QueryJoiner {
   private readonly queries: Map<string, Query> = new Map<string, Query>()
 
-  async query<T>(ctx: MeasureContext, key: string, retrieve: (ctx: MeasureContext) => Promise<T>): Promise<T> {
+  async query<T> (ctx: MeasureContext, key: string, retrieve: (ctx: MeasureContext) => Promise<T>): Promise<T> {
     // Will find a query or add + 1 to callbacks
     const q = this.getQuery(key)
     try {
@@ -67,7 +67,7 @@ export class QueryJoiner {
     }
   }
 
-  private getQuery(key: string): Query {
+  private getQuery (key: string): Query {
     const query = this.queries.get(key)
     if (query === undefined) {
       const q: Query = {
@@ -85,7 +85,7 @@ export class QueryJoiner {
     return query
   }
 
-  private removeFromQueue(q: Query): void {
+  private removeFromQueue (q: Query): void {
     if (q.callbacks === 0) {
       this.queries.delete(q.key)
     }
@@ -98,12 +98,12 @@ export class QueryJoiner {
 export class QueryJoinMiddleware extends BaseMiddleware implements Middleware {
   private readonly joiner: QueryJoiner
 
-  private constructor(context: PipelineContext, next?: Middleware) {
+  private constructor (context: PipelineContext, next?: Middleware) {
     super(context, next)
     this.joiner = new QueryJoiner()
   }
 
-  loadModel(
+  loadModel (
     ctx: MeasureContext<SessionData>,
     lastModelTx: Timestamp,
     hash?: string
@@ -113,7 +113,7 @@ export class QueryJoinMiddleware extends BaseMiddleware implements Middleware {
     })
   }
 
-  static async create(
+  static async create (
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -121,7 +121,7 @@ export class QueryJoinMiddleware extends BaseMiddleware implements Middleware {
     return new QueryJoinMiddleware(context, next)
   }
 
-  override findAll<T extends Doc>(
+  override findAll<T extends Doc> (
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -138,7 +138,7 @@ export class QueryJoinMiddleware extends BaseMiddleware implements Middleware {
     )
   }
 
-  groupBy<T, P extends Doc>(
+  groupBy<T, P extends Doc> (
     ctx: MeasureContext<SessionData>,
     domain: Domain,
     field: string,
@@ -149,7 +149,7 @@ export class QueryJoinMiddleware extends BaseMiddleware implements Middleware {
     })
   }
 
-  searchFulltext(ctx: MeasureContext<SessionData>, query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+  searchFulltext (ctx: MeasureContext<SessionData>, query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
     return this.joiner.query(ctx, `searchFulltext-${JSON.stringify(query)}-${JSON.stringify(options)}`, async (ctx) => {
       return await this.provideSearchFulltext(ctx, query, options)
     })

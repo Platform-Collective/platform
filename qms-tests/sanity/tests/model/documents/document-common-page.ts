@@ -11,7 +11,7 @@ export class DocumentCommonPage extends CalendarPage {
   readonly buttonHistoryTab: Locator
   readonly inputPasswordConfirm: Locator
 
-  constructor(page: Page) {
+  constructor (page: Page) {
     super(page)
     this.page = page
     this.inputMessageText = page.locator('div.popup div.tiptap')
@@ -23,7 +23,7 @@ export class DocumentCommonPage extends CalendarPage {
     this.inputPasswordConfirm = page.locator('input[name="documents\\:string\\:Password"]')
   }
 
-  async addMessage(message: string): Promise<void> {
+  async addMessage (message: string): Promise<void> {
     await this.inputMessageText.fill(message)
     await this.buttonMessageSend.click()
   }

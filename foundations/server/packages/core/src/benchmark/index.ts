@@ -37,7 +37,7 @@ import core, {
 import type { DbAdapter } from '../adapter'
 import { DummyDbAdapter } from '../mem'
 
-function genData(dataSize: number): string {
+function genData (dataSize: number): string {
   let result = ''
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
   const charactersLength = characters.length
@@ -50,7 +50,7 @@ function genData(dataSize: number): string {
 let benchData = ''
 
 class BenchmarkDbAdapter extends DummyDbAdapter {
-  async findAll<T extends Doc<Space>>(
+  async findAll<T extends Doc<Space>> (
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -91,12 +91,12 @@ class BenchmarkDbAdapter extends DummyDbAdapter {
     return toFindResult<T>(result as T[])
   }
 
-  getDomainHash(ctx: MeasureContext, domain: Domain): Promise<string> {
+  getDomainHash (ctx: MeasureContext, domain: Domain): Promise<string> {
     // Since benchmark coult not be changed.
     return Promise.resolve('')
   }
 
-  tx(ctx: MeasureContext, ...tx: Tx[]): Promise<TxResult[]> {
+  tx (ctx: MeasureContext, ...tx: Tx[]): Promise<TxResult[]> {
     if (benchData === '') {
       benchData = genData(1024 * 1024)
     }
@@ -123,7 +123,7 @@ class BenchmarkDbAdapter extends DummyDbAdapter {
 /**
  * @public
  */
-export async function createBenchmarkAdapter(
+export async function createBenchmarkAdapter (
   ctx: MeasureContext,
   hierarchy: Hierarchy,
   url: string,

@@ -13,8 +13,8 @@
 
   void getClient()
     .findAll<ComponentPointExtension>(plugin.class.ComponentPointExtension, {
-    extension
-  })
+      extension
+    })
     .then((res) => {
       extensions = res.filter((it) => it.accessLevel === undefined || hasAccountRole(currentAccount, it.accessLevel))
     })

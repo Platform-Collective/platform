@@ -37,7 +37,7 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
   private permissionsCache: GuestPermissionsCache | undefined = undefined
   private initPromise: Promise<void> | undefined = undefined
 
-  static async create(
+  static async create (
     ctx: MeasureContext,
     context: PipelineContext,
     next: Middleware | undefined
@@ -45,7 +45,7 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
     return new GuestPermissionsMiddleware(context, next)
   }
 
-  private async getPermissionsCache(ctx: MeasureContext): Promise<GuestPermissionsCache> {
+  private async getPermissionsCache (ctx: MeasureContext): Promise<GuestPermissionsCache> {
     if (this.permissionsCache !== undefined) return this.permissionsCache
     if (this.initPromise === undefined) {
       this.initPromise = this.loadPermissionsCache(ctx)
@@ -55,7 +55,7 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
     return this.permissionsCache ?? { roleAllowedClasses: new Map() }
   }
 
-  private async loadPermissionsCache(ctx: MeasureContext): Promise<void> {
+  private async loadPermissionsCache (ctx: MeasureContext): Promise<void> {
     try {
       const docs = await this.findAll(ctx, core.class.ModulePermissionGroup, {}, {})
       if (docs.length > 0) {
@@ -108,7 +108,7 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
     }
   }
 
-  private invalidateCacheIfNeeded(txes: Tx[]): void {
+  private invalidateCacheIfNeeded (txes: Tx[]): void {
     for (const tx of txes) {
       if (TxProcessor.isExtendsCUD(tx._class)) {
         const cudTx = tx as TxCUD<Doc>
@@ -120,7 +120,7 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
     }
   }
 
-  async tx(ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+  async tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     const account = ctx.contextData.account
     if (hasAccountRole(account, AccountRole.User)) {
       if (!hasAccountRole(account, AccountRole.Maintainer)) {
@@ -143,7 +143,7 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
     return await this.provideTx(ctx, txes)
   }
 
-  private async processTx(ctx: MeasureContext<SessionData>, tx: Tx): Promise<void> {
+  private async processTx (ctx: MeasureContext<SessionData>, tx: Tx): Promise<void> {
     const h = this.context.hierarchy
     if (tx._class === core.class.TxApplyIf) {
       const applyTx = tx as TxApplyIf
@@ -262,7 +262,7 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
    * Returns the covered-class ancestor of the objectClass if one exists in the new permissions model,
    * or undefined if the class is not covered.
    */
-  private getCoveredClass(
+  private getCoveredClass (
     objectClass: Ref<Class<Doc>>,
     allowedClasses: Set<Ref<Class<Doc>>>
   ): Ref<Class<Doc>> | undefined {
@@ -276,14 +276,14 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
     return undefined
   }
 
-  private isCreatedByAccount(doc: Doc, account: Account): boolean {
+  private isCreatedByAccount (doc: Doc, account: Account): boolean {
     const creator = doc.createdBy
     if (creator === undefined) return false
     if (creator === account.primarySocialId) return true
     return account.socialIds.includes(creator)
   }
 
-  private async isGuestMutationOnOwnDoc(ctx: MeasureContext, tx: TxCUD<Doc>, account: Account): Promise<boolean> {
+  private async isGuestMutationOnOwnDoc (ctx: MeasureContext, tx: TxCUD<Doc>, account: Account): Promise<boolean> {
     if (tx._class !== core.class.TxUpdateDoc && tx._class !== core.class.TxRemoveDoc) return false
     const docs = await this.findAll(ctx, tx.objectClass, { _id: tx.objectId }, { limit: 1 })
     const doc = docs[0] as Doc | undefined
@@ -291,7 +291,7 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
     return this.isCreatedByAccount(doc, account)
   }
 
-  private async isForbiddenTx(ctx: MeasureContext, tx: TxCUD<Doc>, account: Account): Promise<boolean> {
+  private async isForbiddenTx (ctx: MeasureContext, tx: TxCUD<Doc>, account: Account): Promise<boolean> {
     if (tx._class === core.class.TxMixin) return false
 
     // For TxCreateDoc, check the new permission model first for covered types.
@@ -318,7 +318,7 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
     return true
   }
 
-  private async isForbiddenSpaceTx(ctx: MeasureContext, tx: TxCUD<Space>, account: Account): Promise<boolean> {
+  private async isForbiddenSpaceTx (ctx: MeasureContext, tx: TxCUD<Space>, account: Account): Promise<boolean> {
     if (tx._class === core.class.TxRemoveDoc) return true
     if (tx._class === core.class.TxCreateDoc) {
       return !(await this.hasMixinAccessLevel(ctx, tx, account))
@@ -337,7 +337,7 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
     return false
   }
 
-  private async hasMixinAccessLevel(ctx: MeasureContext, tx: TxCUD<Doc>, account: Account): Promise<boolean> {
+  private async hasMixinAccessLevel (ctx: MeasureContext, tx: TxCUD<Doc>, account: Account): Promise<boolean> {
     const h = this.context.hierarchy
     const accessLevelMixin = h.classHierarchyMixin(tx.objectClass, core.mixin.TxAccessLevel)
     if (accessLevelMixin === undefined) return false

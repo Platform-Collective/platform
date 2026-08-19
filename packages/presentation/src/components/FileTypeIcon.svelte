@@ -15,7 +15,7 @@
 <script lang="ts">
   export let name: string
 
-  function iconLabel (name: string): string {
+  function iconLabel(name: string): string {
     const parts = `${name}`.split('.')
     const ext = parts[parts.length - 1]
     return ext.substring(0, 4).toUpperCase()
