@@ -59,18 +59,18 @@ class HtmlParseState {
   private readonly stack: MarkupNode[] = []
   private readonly marks: MarkupMark[] = []
 
-  constructor (
+  constructor(
     readonly root: MarkupNode,
     readonly handlers: Record<string, HtmlTagHandler>
   ) {
     this.stack.push(root)
   }
 
-  top (): MarkupNode | undefined {
+  top(): MarkupNode | undefined {
     return this.stack[this.stack.length - 1]
   }
 
-  addText (text: string): void {
+  addText(text: string): void {
     const top = this.top()
     if (top === undefined || text.length === 0) {
       return
@@ -96,21 +96,21 @@ class HtmlParseState {
     this.push(node)
   }
 
-  openMark (mark: MarkupMarkType, attrs?: Record<string, AttrValue>): void {
+  openMark(mark: MarkupMarkType, attrs?: Record<string, AttrValue>): void {
     this.marks.push(attrs !== undefined ? { type: mark, attrs } : { type: mark })
   }
 
-  closeMark (mark: MarkupMarkType): void {
+  closeMark(mark: MarkupMarkType): void {
     if (this.marks[this.marks.length - 1]?.type === mark) {
       this.marks.pop()
     }
   }
 
-  openNode (node: MarkupNodeType, attrs?: Record<string, AttrValue>): void {
+  openNode(node: MarkupNodeType, attrs?: Record<string, AttrValue>): void {
     this.stack.push(attrs !== undefined ? { type: node, attrs } : { type: node })
   }
 
-  closeNode (node: MarkupNodeType): void {
+  closeNode(node: MarkupNodeType): void {
     this.marks.splice(0)
     const info = this.stack.pop()
     if (info !== undefined) {
@@ -118,11 +118,11 @@ class HtmlParseState {
     }
   }
 
-  addNode (node: MarkupNode): void {
+  addNode(node: MarkupNode): void {
     this.push(node)
   }
 
-  push (node: MarkupNode): void {
+  push(node: MarkupNode): void {
     const parent = this.top()
     if (parent !== undefined) {
       const content = parent.content ?? []
@@ -132,7 +132,7 @@ class HtmlParseState {
   }
 }
 
-function nodeHandler ({ node, getAttrs, wrapContent, wrapNode }: HtmlNodeRule): HtmlTagHandler {
+function nodeHandler({ node, getAttrs, wrapContent, wrapNode }: HtmlNodeRule): HtmlTagHandler {
   const wrapStack: boolean[] = []
 
   return {
@@ -170,7 +170,7 @@ function nodeHandler ({ node, getAttrs, wrapContent, wrapNode }: HtmlNodeRule): 
   }
 }
 
-function markHandler ({ mark, getAttrs }: HtmlMarkRule): HtmlTagHandler {
+function markHandler({ mark, getAttrs }: HtmlMarkRule): HtmlTagHandler {
   return {
     handleOpenTag: (state: HtmlParseState, tag: string, attributes: Record<string, string>) => {
       const attrs =
@@ -187,14 +187,14 @@ function markHandler ({ mark, getAttrs }: HtmlMarkRule): HtmlTagHandler {
   }
 }
 
-function ignoreHandler (rule: HtmlIgnoreRule): HtmlTagHandler {
+function ignoreHandler(rule: HtmlIgnoreRule): HtmlTagHandler {
   return {
     handleOpenTag: () => {},
     handleCloseTag: () => {}
   }
 }
 
-function specialHandler (rule: HtmlSpecialRule): HtmlTagHandler {
+function specialHandler(rule: HtmlSpecialRule): HtmlTagHandler {
   return {
     handleOpenTag: (state: HtmlParseState, tag: string, attributes: Record<string, string>) => {
       rule.handleOpenTag(state, tag, attributes)
@@ -491,7 +491,7 @@ const ignoreRules: Record<string, HtmlIgnoreRule> = {
 export class HtmlParser {
   private readonly handlers: Record<string, HtmlTagHandler> = {}
 
-  constructor (private readonly options: HtmlParserOptions = {}) {
+  constructor(private readonly options: HtmlParserOptions = {}) {
     Object.entries(nodeRules).forEach(([tag, rule]) => {
       this.handlers[tag] = nodeHandler(rule)
     })
@@ -509,7 +509,7 @@ export class HtmlParser {
     })
   }
 
-  parse (html: string): MarkupNode {
+  parse(html: string): MarkupNode {
     const root: MarkupNode = { type: MarkupNodeType.doc, content: [] }
     const state = new HtmlParseState(root, this.handlers)
 
@@ -518,7 +518,7 @@ export class HtmlParser {
 
     const parser = new Parser(
       {
-        onopentag (tag: string, attributes: Record<string, string>) {
+        onopentag(tag: string, attributes: Record<string, string>) {
           if (rawDepth !== undefined) {
             rawDepth += 1
             return
@@ -540,7 +540,7 @@ export class HtmlParser {
           }
         },
 
-        ontext (text: string) {
+        ontext(text: string) {
           if (rawDepth !== undefined) {
             return
           }
@@ -552,7 +552,7 @@ export class HtmlParser {
           state.addText(text)
         },
 
-        oncomment (text: string) {
+        oncomment(text: string) {
           if (rawDepth !== undefined) {
             return
           }
@@ -562,7 +562,7 @@ export class HtmlParser {
           state.closeNode(MarkupNodeType.comment)
         },
 
-        onclosetag (tag: string) {
+        onclosetag(tag: string) {
           if (rawDepth !== undefined) {
             rawDepth -= 1
 
@@ -599,7 +599,7 @@ export class HtmlParser {
   }
 }
 
-function extractStyleAttrs (attrs: Record<string, string>, rules: HtmlStyleRule[]): Record<string, string> | undefined {
+function extractStyleAttrs(attrs: Record<string, string>, rules: HtmlStyleRule[]): Record<string, string> | undefined {
   const style = attrs.style
   if (style !== undefined) {
     const styles: Record<string, string> = {}

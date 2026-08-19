@@ -15,7 +15,7 @@
 
 /** Error for payment service errors */
 export class PaymentError extends Error {
-  constructor (message: string) {
+  constructor(message: string) {
     super(message)
     this.name = 'PaymentError'
   }
@@ -23,7 +23,7 @@ export class PaymentError extends Error {
 
 /** Error for network/connectivity issues */
 export class NetworkError extends Error {
-  constructor (message: string) {
+  constructor(message: string) {
     super(message)
     this.name = 'NetworkError'
   }

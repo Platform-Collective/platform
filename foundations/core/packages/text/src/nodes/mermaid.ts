@@ -26,7 +26,7 @@ export const MermaidExtension = CodeBlock.extend({
   group: 'block',
   marks: 'inline-comment',
 
-  parseHTML () {
+  parseHTML() {
     return [
       {
         tag: 'div.mermaid-diagram',
@@ -35,7 +35,7 @@ export const MermaidExtension = CodeBlock.extend({
     ]
   },
 
-  addAttributes () {
+  addAttributes() {
     return {
       language: {
         default: 'mermaid'

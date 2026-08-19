@@ -39,7 +39,7 @@ export const ReferenceNode = Node.create<ReferenceOptions>({
   inline: true,
   selectable: true,
 
-  addAttributes () {
+  addAttributes() {
     return {
       id: getDataAttribute('id'),
       objectclass: getDataAttribute('objectclass'),
@@ -59,14 +59,14 @@ export const ReferenceNode = Node.create<ReferenceOptions>({
     }
   },
 
-  addOptions () {
+  addOptions() {
     return {
       suggestion: { char: '@' },
       HTMLAttributes: {}
     }
   },
 
-  parseHTML () {
+  parseHTML() {
     return [
       {
         priority: 60,
@@ -81,7 +81,7 @@ export const ReferenceNode = Node.create<ReferenceOptions>({
     ]
   },
 
-  renderHTML ({ node, HTMLAttributes }) {
+  renderHTML({ node, HTMLAttributes }) {
     return [
       'span',
       mergeAttributes(
@@ -100,7 +100,7 @@ export const ReferenceNode = Node.create<ReferenceOptions>({
   }
 })
 
-function getAttrs (el: HTMLSpanElement): Attrs | false {
+function getAttrs(el: HTMLSpanElement): Attrs | false {
   const id = el.dataset.id?.trim()
   const label = el.dataset.label?.trim()
   const objectclass = el.dataset.objectclass?.trim()

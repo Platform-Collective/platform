@@ -30,7 +30,7 @@ export const NodeWebSocketFactory: ClientSocketFactory = (url: string): ClientSo
   const ws = new WebSocket(url)
 
   const client: ClientSocket = {
-    get readyState (): number {
+    get readyState(): number {
       return ws.readyState
     },
 

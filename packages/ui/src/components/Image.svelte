@@ -27,12 +27,12 @@
 
   let retry: number = 0
 
-  function handleLoad (): void {
+  function handleLoad(): void {
     retry = 0
     dispatch('load')
   }
 
-  function handleLoadStart (): void {
+  function handleLoadStart(): void {
     dispatch('loadstart')
   }
 
@@ -41,7 +41,7 @@
     handleLoadStart()
   }
 
-  function handleError (event: any): void {
+  function handleError(event: any): void {
     if (retry > 3) {
       event.target.src = undefined
     } else if (retry > 0) {

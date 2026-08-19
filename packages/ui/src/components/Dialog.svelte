@@ -36,7 +36,7 @@
 
   const dispatch = createEventDispatcher()
 
-  export function maximize (): void {
+  export function maximize(): void {
     toggleFullSize = true
   }
 

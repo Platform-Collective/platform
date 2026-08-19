@@ -51,7 +51,7 @@
     firstDayOfCurrentMonth = firstDay(viewDate, $deviceInfo.firstDayOfWeek)
   })
 
-  function inRange (currentDate: Date | null, selectedTo: Date | null | undefined, target: Date): boolean {
+  function inRange(currentDate: Date | null, selectedTo: Date | null | undefined, target: Date): boolean {
     if (currentDate == null || selectedTo == null) return false
     if (areDatesEqual(currentDate, selectedTo)) return false
     const startDate = currentDate < selectedTo ? currentDate : selectedTo
@@ -59,7 +59,7 @@
     return target > startDate && target < endDate
   }
 
-  function isSelected (currentDate: Date | null, selectedTo: Date | null | undefined, target: Date): boolean {
+  function isSelected(currentDate: Date | null, selectedTo: Date | null | undefined, target: Date): boolean {
     if (currentDate != null) {
       const zonedTime = fromCurrentToTz(currentDate, timeZone)
       if (areDatesEqual(zonedTime, target)) {
@@ -75,25 +75,25 @@
     return false
   }
 
-  function getNextDate (date: Date, shift: 1 | -1): Date {
+  function getNextDate(date: Date, shift: 1 | -1): Date {
     return new Date(new Date(date).setDate(date.getDate() + shift))
   }
 
-  function isPreviosDateWrong (date: Date): boolean {
+  function isPreviosDateWrong(date: Date): boolean {
     return getNextDate(date, -1).getMonth() !== viewDate.getMonth()
   }
 
-  function isNextDateWrong (date: Date): boolean {
+  function isNextDateWrong(date: Date): boolean {
     return getNextDate(date, 1).getMonth() !== viewDate.getMonth()
   }
 
-  function isStart (currentDate: Date | null, selectedTo: Date | null | undefined, target: Date): boolean {
+  function isStart(currentDate: Date | null, selectedTo: Date | null | undefined, target: Date): boolean {
     if (currentDate == null || selectedTo == null) return false
     const startDate = currentDate < selectedTo ? currentDate : selectedTo
     return areDatesEqual(startDate, target)
   }
 
-  function isEnd (currentDate: Date | null, selectedTo: Date | null | undefined, target: Date): boolean {
+  function isEnd(currentDate: Date | null, selectedTo: Date | null | undefined, target: Date): boolean {
     if (currentDate == null || selectedTo == null) return false
     const endDate = currentDate > selectedTo ? currentDate : selectedTo
     return areDatesEqual(endDate, target)

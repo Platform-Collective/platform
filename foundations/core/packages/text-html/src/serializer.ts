@@ -26,9 +26,9 @@ import {
 export interface HtmlSerializerOptions {}
 
 export class HtmlSerializer {
-  constructor (private readonly options: HtmlSerializerOptions = {}) {}
+  constructor(private readonly options: HtmlSerializerOptions = {}) {}
 
-  serialize (markup: MarkupNode): string {
+  serialize(markup: MarkupNode): string {
     const builder = new NodeBuilder(true)
     addNode(builder, markup)
     return builder.toText()
@@ -38,16 +38,16 @@ export class HtmlSerializer {
 class NodeBuilder {
   textParts: string[] = []
 
-  constructor (private readonly addTags: boolean) {}
+  constructor(private readonly addTags: boolean) {}
 
-  addText (text: string): void {
+  addText(text: string): void {
     this.textParts.push(text)
   }
 
-  openTag (
+  openTag(
     tag: string,
     attributes: Record<string, string | number | boolean | null | undefined> = {},
-    options?: { newLine?: boolean, selfClosing?: boolean }
+    options?: { newLine?: boolean; selfClosing?: boolean }
   ): void {
     if (this.addTags) {
       this.textParts.push('<')
@@ -73,7 +73,7 @@ class NodeBuilder {
     }
   }
 
-  closeTag (tag: string, options?: { newLine: boolean }): void {
+  closeTag(tag: string, options?: { newLine: boolean }): void {
     if (this.addTags) {
       this.textParts.push(`</${tag}>`)
     } else if (options?.newLine === true) {
@@ -81,13 +81,13 @@ class NodeBuilder {
     }
   }
 
-  toText (): string {
+  toText(): string {
     return this.textParts.join('')
   }
 }
 
 // Helper function to escape HTML special characters
-function escapeHtml (text: string): string {
+function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -98,7 +98,7 @@ function escapeHtml (text: string): string {
     .replace(/\n/g, '&#10;')
 }
 
-function addMark (builder: NodeBuilder, mark?: MarkupMark, next?: () => void): void {
+function addMark(builder: NodeBuilder, mark?: MarkupMark, next?: () => void): void {
   if (mark != null) {
     const attrs = mark.attrs ?? {}
 
@@ -163,7 +163,7 @@ function addMark (builder: NodeBuilder, mark?: MarkupMark, next?: () => void): v
   }
 }
 
-function addMarks (builder: NodeBuilder, marks: MarkupMark[], next?: () => void): void {
+function addMarks(builder: NodeBuilder, marks: MarkupMark[], next?: () => void): void {
   if (marks.length > 0) {
     const mark = marks[0]
     const others = marks.slice(1)
@@ -178,13 +178,13 @@ function addMarks (builder: NodeBuilder, marks: MarkupMark[], next?: () => void)
   }
 }
 
-function addNodes (builder: NodeBuilder, nodes: MarkupNode[]): void {
+function addNodes(builder: NodeBuilder, nodes: MarkupNode[]): void {
   nodes.forEach((childNode) => {
     addNode(builder, childNode)
   })
 }
 
-function addNodeContent (builder: NodeBuilder, node?: MarkupNode): void {
+function addNodeContent(builder: NodeBuilder, node?: MarkupNode): void {
   if (node == null) return
 
   const attrs = node.attrs ?? {}
@@ -338,7 +338,7 @@ function addNodeContent (builder: NodeBuilder, node?: MarkupNode): void {
   }
 }
 
-function addNode (builder: NodeBuilder, node: MarkupNode): void {
+function addNode(builder: NodeBuilder, node: MarkupNode): void {
   const marks = node.marks ?? []
 
   if (marks.length > 0) {
@@ -350,11 +350,11 @@ function addNode (builder: NodeBuilder, node: MarkupNode): void {
   }
 }
 
-function toString (value: AttrValue | undefined): string | undefined {
+function toString(value: AttrValue | undefined): string | undefined {
   return value !== undefined ? `${value}` : undefined
 }
 
-function toNumber (value: AttrValue | undefined): number | undefined {
+function toNumber(value: AttrValue | undefined): number | undefined {
   if (typeof value === 'boolean') {
     return value ? 1 : 0
   }
@@ -362,7 +362,7 @@ function toNumber (value: AttrValue | undefined): number | undefined {
   return value != null ? (typeof value === 'string' ? parseInt(value) : value) : undefined
 }
 
-function toStyleAttr (attrs: Attrs): string | undefined {
+function toStyleAttr(attrs: Attrs): string | undefined {
   const styles: string[] = []
 
   if (attrs.textAlign != null) {

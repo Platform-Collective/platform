@@ -26,7 +26,7 @@ declare module '@tiptap/core' {
 export const NoteBaseExtension = Mark.create({
   name,
 
-  parseHTML () {
+  parseHTML() {
     return [
       {
         tag: `span[data-mark="${name}"]`
@@ -34,7 +34,7 @@ export const NoteBaseExtension = Mark.create({
     ]
   },
 
-  renderHTML ({ HTMLAttributes, mark }) {
+  renderHTML({ HTMLAttributes, mark }) {
     return [
       'span',
       { ...HTMLAttributes, 'data-mark': this.name, class: `theme-text-editor-note-anchor ${mark.attrs.kind}` },
@@ -42,7 +42,7 @@ export const NoteBaseExtension = Mark.create({
     ]
   },
 
-  addAttributes () {
+  addAttributes() {
     return {
       title: {
         default: null

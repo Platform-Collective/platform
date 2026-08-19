@@ -20,7 +20,7 @@ export class SettingsPage {
   readonly addRoleUpdatePermissionOwner: Locator
   readonly addUpdateDocumentOwnerPermission: Locator
 
-  constructor (page: Page) {
+  constructor(page: Page) {
     this.page = page
     this.profileButton = page.locator('#profile-button')
     this.settings = page.getByRole('button', { name: 'Settings' })
@@ -41,27 +41,27 @@ export class SettingsPage {
     this.addUpdateDocumentOwnerPermission = page.locator('.hulyTableAttr-header > .font-medium-14')
   }
 
-  async openProfileMenu (): Promise<void> {
+  async openProfileMenu(): Promise<void> {
     await this.profileButton.click()
   }
 
-  async clickSettings (): Promise<void> {
+  async clickSettings(): Promise<void> {
     await this.settings.click()
   }
 
-  async clickDefaultDocuments (): Promise<void> {
+  async clickDefaultDocuments(): Promise<void> {
     await this.defaultDocuments.click()
   }
 
-  async clickAddPermissionButton (): Promise<void> {
+  async clickAddPermissionButton(): Promise<void> {
     await this.addPermissionButton.click()
   }
 
-  async clickAddRoleUpdatePermissionOwner (): Promise<void> {
+  async clickAddRoleUpdatePermissionOwner(): Promise<void> {
     await this.addRoleUpdatePermissionOwner.click()
   }
 
-  async checkIfPermissionsExist (): Promise<void> {
+  async checkIfPermissionsExist(): Promise<void> {
     await expect(this.reviewDocumentPermission).toBeVisible()
     await expect(this.approveDocumentPermission).toBeVisible()
     await expect(this.coAuthorDocumentPermission).toBeVisible()
@@ -71,16 +71,16 @@ export class SettingsPage {
     await expect(this.updateSpacePermission).toBeVisible()
   }
 
-  async checkIfAddUpdateDocumentOwnerPermissionIsDisabled (): Promise<void> {
+  async checkIfAddUpdateDocumentOwnerPermissionIsDisabled(): Promise<void> {
     await expect(this.addUpdateDocumentOwnerPermission).toBeDisabled()
   }
 
-  async checkPermissionsExistQualifyUser (): Promise<void> {
+  async checkPermissionsExistQualifyUser(): Promise<void> {
     await expect(this.reviewDocumentPermission).toBeVisible()
     await expect(this.approveDocumentPermission).toBeVisible()
   }
 
-  async chooseRole (role: string): Promise<void> {
+  async chooseRole(role: string): Promise<void> {
     switch (role) {
       case 'Manager':
         await this.managerRole.click()

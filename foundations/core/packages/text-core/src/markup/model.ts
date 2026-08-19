@@ -77,7 +77,7 @@ export interface MarkupNode {
 }
 
 /** @public */
-export function emptyMarkupNode (): MarkupNode {
+export function emptyMarkupNode(): MarkupNode {
   return {
     type: MarkupNodeType.doc,
     content: [{ type: MarkupNodeType.paragraph, content: [] }]
@@ -93,5 +93,5 @@ export interface LinkMark extends MarkupMark {
 /** @public */
 export interface ReferenceMarkupNode extends MarkupNode {
   type: MarkupNodeType.reference
-  attrs: { id: string, label: string, objectclass: string }
+  attrs: { id: string; label: string; objectclass: string }
 }

@@ -18,7 +18,7 @@ import { mergeAttributes, Node } from '@tiptap/core'
 export const EmbedNode = Node.create<any>({
   name: 'embed',
 
-  addOptions () {
+  addOptions() {
     return {}
   },
 
@@ -27,7 +27,7 @@ export const EmbedNode = Node.create<any>({
   atom: false,
   draggable: false,
 
-  addAttributes () {
+  addAttributes() {
     return {
       src: {
         default: null
@@ -35,7 +35,7 @@ export const EmbedNode = Node.create<any>({
     }
   },
 
-  parseHTML () {
+  parseHTML() {
     return [
       {
         priority: 60,
@@ -44,7 +44,7 @@ export const EmbedNode = Node.create<any>({
     ]
   },
 
-  renderHTML ({ HTMLAttributes }) {
+  renderHTML({ HTMLAttributes }) {
     return ['figure', { 'data-type': this.name }, ['iframe', mergeAttributes(HTMLAttributes)]]
   }
 })

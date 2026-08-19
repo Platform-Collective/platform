@@ -16,7 +16,7 @@
 import { RetryOptions, withRetry } from '@hcengineering/retry'
 import { HulylakeError, NetworkError } from './error'
 
-async function innerFetchSafe (url: string | URL, init?: RequestInit): Promise<Response> {
+async function innerFetchSafe(url: string | URL, init?: RequestInit): Promise<Response> {
   let response
   try {
     response = await fetch(url, init)
@@ -37,14 +37,14 @@ async function innerFetchSafe (url: string | URL, init?: RequestInit): Promise<R
   throw new HulylakeError(text)
 }
 
-export async function fetchSafe (url: string | URL, init?: RequestInit, retryOptions?: RetryOptions): Promise<Response> {
+export async function fetchSafe(url: string | URL, init?: RequestInit, retryOptions?: RetryOptions): Promise<Response> {
   if (retryOptions != null) {
     return await withRetry(async () => await innerFetchSafe(url, init), retryOptions)
   }
   return await innerFetchSafe(url, init)
 }
 
-export function unwrapEtag (etag: string | null | undefined): string | undefined {
+export function unwrapEtag(etag: string | null | undefined): string | undefined {
   if (etag == null) {
     return undefined
   }
@@ -60,14 +60,14 @@ export function unwrapEtag (etag: string | null | undefined): string | undefined
   return etag
 }
 
-export function unwrapContentLength (length: string | null | undefined): number | undefined {
+export function unwrapContentLength(length: string | null | undefined): number | undefined {
   if (length == null) {
     return undefined
   }
   return parseInt(length, 10)
 }
 
-export function unwrapLastModified (lastModified: string | null | undefined): number | undefined {
+export function unwrapLastModified(lastModified: string | null | undefined): number | undefined {
   if (lastModified == null) {
     return undefined
   }

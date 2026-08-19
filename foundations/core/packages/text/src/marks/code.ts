@@ -15,7 +15,7 @@ export const codeOptions: CodeOptions = {
  * import 'prosemirror-codemark/dist/codemark.css'
  */
 export const CodeExtension = Code.extend({
-  addProseMirrorPlugins () {
+  addProseMirrorPlugins() {
     return [
       ...codemark({ markType: this.editor.schema.marks.code }),
       new Plugin({

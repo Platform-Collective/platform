@@ -15,10 +15,10 @@
 
 import { Attrs, MarkupNode } from '@hcengineering/text-core'
 
-export function nodeContent (node: MarkupNode): MarkupNode[] {
+export function nodeContent(node: MarkupNode): MarkupNode[] {
   return node?.content ?? []
 }
 
-export function nodeAttrs (node: MarkupNode): Attrs {
+export function nodeAttrs(node: MarkupNode): Attrs {
   return node.attrs ?? {}
 }

@@ -20,56 +20,56 @@ export interface AnalyticProvider {
 export const Analytics = {
   data: {},
 
-  init (provider: AnalyticProvider, config: Record<string, any>): void {
+  init(provider: AnalyticProvider, config: Record<string, any>): void {
     const res = provider.init(config)
     if (res) {
       providers.push(provider)
     }
   },
 
-  setUser (email: string, data: any): void {
+  setUser(email: string, data: any): void {
     providers.forEach((provider) => {
       provider.setUser(email, data)
     })
   },
 
-  setAlias (distinctId: string, alias: string): void {
+  setAlias(distinctId: string, alias: string): void {
     providers.forEach((provider) => {
       provider.setAlias(distinctId, alias)
     })
   },
 
-  setTag (key: string, value: string): void {
+  setTag(key: string, value: string): void {
     providers.forEach((provider) => {
       provider.setTag(key, value)
     })
   },
 
-  setWorkspace (ws: string, guest: boolean): void {
+  setWorkspace(ws: string, guest: boolean): void {
     providers.forEach((provider) => {
       provider.setWorkspace(ws, guest)
     })
   },
 
-  handleEvent (event: string, params: Record<string, any> = {}): void {
+  handleEvent(event: string, params: Record<string, any> = {}): void {
     providers.forEach((provider) => {
       provider.handleEvent(event, { ...this.data, ...params })
     })
   },
 
-  handleError (error: Error): void {
+  handleError(error: Error): void {
     providers.forEach((provider) => {
       provider.handleError(error)
     })
   },
 
-  navigate (path: string): void {
+  navigate(path: string): void {
     providers.forEach((provider) => {
       provider.navigate(path)
     })
   },
 
-  logout (): void {
+  logout(): void {
     providers.forEach((provider) => {
       provider.logout()
     })

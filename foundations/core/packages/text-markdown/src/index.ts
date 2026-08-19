@@ -28,7 +28,7 @@ export interface MarkdownOptions {
 }
 
 /** @public */
-export function markupToMarkdown (markup: MarkupNode, options?: MarkdownOptions): string {
+export function markupToMarkdown(markup: MarkupNode, options?: MarkdownOptions): string {
   const refUrl = options?.refUrl ?? 'ref://'
   const imageUrl = options?.imageUrl ?? 'image://'
 
@@ -38,7 +38,7 @@ export function markupToMarkdown (markup: MarkupNode, options?: MarkdownOptions)
 }
 
 /** @public */
-export function markdownToMarkup (markdown: string, options?: MarkdownOptions): MarkupNode {
+export function markdownToMarkup(markdown: string, options?: MarkdownOptions): MarkupNode {
   const refUrl = options?.refUrl ?? 'ref://'
   const imageUrl = options?.imageUrl ?? 'image://'
 

@@ -39,7 +39,7 @@ export const tildeInputRegex = /^~~~$/
 export const CodeBlockExtension = CodeBlock.extend({
   marks: 'inline-comment',
 
-  addAttributes () {
+  addAttributes() {
     return {
       language: {
         default: null,
@@ -73,7 +73,7 @@ export const CodeBlockExtension = CodeBlock.extend({
       }
     }
   },
-  addInputRules () {
+  addInputRules() {
     return [
       textblockTypeInputRule({
         find: backtickInputRegex,

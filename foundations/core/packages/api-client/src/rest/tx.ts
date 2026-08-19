@@ -42,7 +42,7 @@ import {
 } from '@hcengineering/core'
 import { RestClientImpl } from './rest'
 
-export async function createRestTxOperations (
+export async function createRestTxOperations(
   endpoint: string,
   workspaceId: string,
   token: string,
@@ -57,14 +57,14 @@ export async function createRestTxOperations (
 }
 
 class RestTxClient implements Client {
-  constructor (
+  constructor(
     readonly client: RestClientImpl,
     readonly hierarchy: Hierarchy,
     readonly model: ModelDb,
     readonly account: Account
   ) {}
 
-  close (): Promise<void> {
+  close(): Promise<void> {
     return Promise.resolve()
   }
 
@@ -134,15 +134,15 @@ class RestTxClient implements Client {
   getHierarchy: () => Hierarchy = () => this.hierarchy
   getModel: () => ModelDb = () => this.model
 
-  async getAccount (): Promise<Account> {
+  async getAccount(): Promise<Account> {
     return this.account
   }
 
-  async tx (tx: Tx): Promise<TxResult> {
+  async tx(tx: Tx): Promise<TxResult> {
     return await this.client.tx(tx)
   }
 
-  async searchFulltext (query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+  async searchFulltext(query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
     return await this.client.searchFulltext(query, options)
   }
 }

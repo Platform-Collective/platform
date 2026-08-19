@@ -27,7 +27,7 @@ export const tooltipstore = derived(modalStore, (modals) => {
 })
 
 let toHandler: any
-export function tooltip (node: HTMLElement, options?: LabelAndProps): any {
+export function tooltip(node: HTMLElement, options?: LabelAndProps): any {
   let opt = options
   const show = (): void => {
     const shown = !!(storedValue.label !== undefined || storedValue.component !== undefined)
@@ -80,7 +80,7 @@ export function tooltip (node: HTMLElement, options?: LabelAndProps): any {
   }
 
   return {
-    update (options: LabelAndProps) {
+    update(options: LabelAndProps) {
       const hadContent = hasContent(opt)
       const hasNowContent = hasContent(options)
       opt = options
@@ -114,7 +114,7 @@ export function tooltip (node: HTMLElement, options?: LabelAndProps): any {
       }
     },
 
-    destroy () {
+    destroy() {
       const currentTooltip = get(tooltipstore)
       if (currentTooltip?.element != null && currentTooltip.element === node) {
         closeTooltip()
@@ -125,7 +125,7 @@ export function tooltip (node: HTMLElement, options?: LabelAndProps): any {
   }
 }
 
-export function showTooltip (
+export function showTooltip(
   label: IntlString | undefined,
   element: HTMLElement,
   direction?: TooltipAlignment,
@@ -171,7 +171,7 @@ export function showTooltip (
   })
 }
 
-export function closeTooltip (): void {
+export function closeTooltip(): void {
   clearTimeout(toHandler)
   storedValue = emptyTooltip
   modalStore.update((old) => {

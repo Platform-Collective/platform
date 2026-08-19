@@ -6,14 +6,14 @@ export class LeftSideMenuPage {
   readonly buttonTeam: Locator
   readonly buttonDocuments: Locator
 
-  constructor (page: Page) {
+  constructor(page: Page) {
     this.page = page
     this.buttonPlanning = page.locator('button[id$="Planning"]')
     this.buttonTeam = page.locator('button[id$="Team"]')
     this.buttonDocuments = page.locator('[id$="app-documents\\:string\\:DocumentApplication"]')
   }
 
-  async clickButtonOnTheLeft (buttonName: 'Planning' | 'Team' | 'Documents'): Promise<void> {
+  async clickButtonOnTheLeft(buttonName: 'Planning' | 'Team' | 'Documents'): Promise<void> {
     switch (buttonName) {
       case 'Planning':
         await this.buttonPlanning.click()

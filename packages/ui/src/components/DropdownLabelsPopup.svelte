@@ -39,7 +39,7 @@
 
   $: objects = items.filter((x) => x.label.toLowerCase().includes(search.toLowerCase()))
 
-  async function handleSelection (evt: Event | undefined, selection: number): Promise<void> {
+  async function handleSelection(evt: Event | undefined, selection: number): Promise<void> {
     const item = objects[selection]
     if (item == null) {
       return
@@ -58,7 +58,7 @@
     }
   }
 
-  function onKeydown (key: KeyboardEvent): void {
+  function onKeydown(key: KeyboardEvent): void {
     if (key.code === 'ArrowUp') {
       key.stopPropagation()
       key.preventDefault()
@@ -76,7 +76,7 @@
     }
   }
 
-  function isSelected (
+  function isSelected(
     selected: DropdownTextItem['id'] | Array<DropdownTextItem['id']> | undefined,
     item: DropdownTextItem
   ): boolean {

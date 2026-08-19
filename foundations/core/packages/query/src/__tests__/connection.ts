@@ -51,14 +51,14 @@ import core, {
 } from '@hcengineering/core'
 import { genMinModel } from './minmodel'
 
-export async function connect (handler: (tx: Tx) => void): Promise<
-Client &
-BackupClient &
-FulltextStorage & {
-  isConnected: () => boolean
-  loadModel: (last: Timestamp, hash?: string) => Promise<Tx[] | LoadModelResponse>
-  pushHandler: (handler: TxHandler) => void
-}
+export async function connect(handler: (tx: Tx) => void): Promise<
+  Client &
+    BackupClient &
+    FulltextStorage & {
+      isConnected: () => boolean
+      loadModel: (last: Timestamp, hash?: string) => Promise<Tx[] | LoadModelResponse>
+      pushHandler: (handler: TxHandler) => void
+    }
 > {
   const txes = genMinModel()
 
@@ -77,17 +77,17 @@ FulltextStorage & {
     private readonly model: ModelDb
     private readonly transactions: TxDb
 
-    constructor (hierarchy: Hierarchy, model: ModelDb, transactions: TxDb) {
+    constructor(hierarchy: Hierarchy, model: ModelDb, transactions: TxDb) {
       this.hierarchy = hierarchy
       this.model = model
       this.transactions = transactions
     }
 
-    isConnected (): boolean {
+    isConnected(): boolean {
       return true
     }
 
-    pushHandler (): void {}
+    pushHandler(): void {}
 
     async findAll<T extends Doc>(
       _class: Ref<Class<T>>,
@@ -150,15 +150,15 @@ FulltextStorage & {
       return { domain, value: null }
     }
 
-    getHierarchy (): Hierarchy {
+    getHierarchy(): Hierarchy {
       return this.hierarchy
     }
 
-    getModel (): ModelDb {
+    getModel(): ModelDb {
       return this.model
     }
 
-    async tx (tx: Tx): Promise<TxResult> {
+    async tx(tx: Tx): Promise<TxResult> {
       if (tx.objectSpace === core.space.Model) {
         this.hierarchy.tx(tx)
       }
@@ -167,9 +167,9 @@ FulltextStorage & {
       return {}
     }
 
-    async close (): Promise<void> {}
+    async close(): Promise<void> {}
 
-    async loadChunk (domain: Domain, idx?: number): Promise<DocChunk> {
+    async loadChunk(domain: Domain, idx?: number): Promise<DocChunk> {
       return {
         idx: -1,
         docs: [],
@@ -177,40 +177,40 @@ FulltextStorage & {
       }
     }
 
-    async getDomainHash (domain: Domain): Promise<string> {
+    async getDomainHash(domain: Domain): Promise<string> {
       return generateId()
     }
 
-    async loadModel (lastTxTime: Timestamp): Promise<Tx[]> {
+    async loadModel(lastTxTime: Timestamp): Promise<Tx[]> {
       return txes
     }
 
-    async closeChunk (idx: number): Promise<void> {}
+    async closeChunk(idx: number): Promise<void> {}
 
-    async loadDocs (domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
+    async loadDocs(domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {
       return []
     }
 
-    async upload (domain: Domain, docs: Doc[]): Promise<void> {}
+    async upload(domain: Domain, docs: Doc[]): Promise<void> {}
 
-    async clean (domain: Domain, docs: Ref<Doc>[]): Promise<void> {}
+    async clean(domain: Domain, docs: Ref<Doc>[]): Promise<void> {}
 
-    async searchFulltext (query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+    async searchFulltext(query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
       return { docs: [] }
     }
 
-    async sendForceClose (): Promise<void> {}
+    async sendForceClose(): Promise<void> {}
 
     handler?: (event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>
 
-    set onConnect (
+    set onConnect(
       handler: ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>) | undefined
     ) {
       this.handler = handler
       void this.handler?.(ClientConnectEvent.Connected, '', {})
     }
 
-    get onConnect (): ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>) | undefined {
+    get onConnect(): ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>) | undefined {
       return this.handler
     }
   }

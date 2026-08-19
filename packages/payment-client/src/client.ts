@@ -23,7 +23,7 @@ import { PaymentError, NetworkError } from './error'
  * @param token - Authentication token
  * @returns PaymentClient instance
  */
-export function getClient (paymentUrl?: string, token?: string): PaymentClient {
+export function getClient(paymentUrl?: string, token?: string): PaymentClient {
   if (paymentUrl === undefined || paymentUrl == null || paymentUrl === '') {
     throw new Error('Payment service URL not specified')
   }
@@ -41,7 +41,7 @@ export function getClient (paymentUrl?: string, token?: string): PaymentClient {
 export class PaymentClient {
   private readonly headers: Record<string, string>
 
-  constructor (
+  constructor(
     private readonly endpoint: string,
     private readonly token: string
   ) {
@@ -57,7 +57,7 @@ export class PaymentClient {
    * @param request - Subscription request details
    * @returns Checkout details with URL for payment
    */
-  async createSubscription (workspace: WorkspaceUuid, request: SubscribeRequest): Promise<CheckoutResponse> {
+  async createSubscription(workspace: WorkspaceUuid, request: SubscribeRequest): Promise<CheckoutResponse> {
     const path = `/api/v1/subscriptions/${workspace}/subscribe`
     const url = new URL(concatLink(this.endpoint, path))
     const body = JSON.stringify(request)
@@ -74,7 +74,7 @@ export class PaymentClient {
    * @param subscriptionId - Subscription ID
    * @returns Subscription details from payment provider
    */
-  async getSubscription (subscriptionId: string): Promise<any> {
+  async getSubscription(subscriptionId: string): Promise<any> {
     const path = `/api/v1/subscriptions/${subscriptionId}`
     const url = new URL(concatLink(this.endpoint, path))
     const response = await fetchSafe(url, { headers: { ...this.headers } })
@@ -86,7 +86,7 @@ export class PaymentClient {
    * @param subscriptionId - Subscription ID to cancel
    * @returns Cancellation confirmation
    */
-  async cancelSubscription (subscriptionId: string): Promise<SubscriptionData> {
+  async cancelSubscription(subscriptionId: string): Promise<SubscriptionData> {
     const path = `/api/v1/subscriptions/${subscriptionId}/cancel`
     const url = new URL(concatLink(this.endpoint, path))
     const response = await fetchSafe(url, {
@@ -101,7 +101,7 @@ export class PaymentClient {
    * @param subscriptionId - Subscription ID to uncancel
    * @returns Reactivation confirmation
    */
-  async uncancelSubscription (subscriptionId: string): Promise<SubscriptionData> {
+  async uncancelSubscription(subscriptionId: string): Promise<SubscriptionData> {
     const path = `/api/v1/subscriptions/${subscriptionId}/uncancel`
     const url = new URL(concatLink(this.endpoint, path))
     const response = await fetchSafe(url, {
@@ -119,7 +119,7 @@ export class PaymentClient {
    * @param plan - New plan name
    * @returns CheckoutResponse for free-to-paid upgrades or updated SubscriptionData for direct updates
    */
-  async updateSubscriptionPlan (subscriptionId: string, plan: string): Promise<SubscriptionData | CheckoutResponse> {
+  async updateSubscriptionPlan(subscriptionId: string, plan: string): Promise<SubscriptionData | CheckoutResponse> {
     const path = `/api/v1/subscriptions/${subscriptionId}/updatePlan`
     const url = new URL(concatLink(this.endpoint, path))
     const body = JSON.stringify({ plan })
@@ -137,7 +137,7 @@ export class PaymentClient {
    * @param checkoutId - Checkout ID returned from createSubscription
    * @returns Checkout status with subscription details if completed
    */
-  async getCheckoutStatus (checkoutId: string): Promise<CheckoutStatus> {
+  async getCheckoutStatus(checkoutId: string): Promise<CheckoutStatus> {
     const path = `/api/v1/checkouts/${checkoutId}/status`
     const url = new URL(concatLink(this.endpoint, path))
     const response = await fetchSafe(url, { headers: { ...this.headers } })
@@ -153,7 +153,7 @@ export class PaymentClient {
  * @throws NetworkError on network issues
  * @throws PaymentError on non-ok responses
  */
-async function fetchSafe (url: string | URL, init?: RequestInit): Promise<Response> {
+async function fetchSafe(url: string | URL, init?: RequestInit): Promise<Response> {
   let response
   try {
     response = await fetch(url, init)

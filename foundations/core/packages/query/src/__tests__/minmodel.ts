@@ -34,14 +34,14 @@ import { plugin } from '@hcengineering/platform'
 
 const txFactory = new TxFactory(core.account.System)
 
-function createClass (_class: Ref<Class<Obj>>, attributes: Data<Class<Obj>>): TxCreateDoc<Doc> {
+function createClass(_class: Ref<Class<Obj>>, attributes: Data<Class<Obj>>): TxCreateDoc<Doc> {
   return txFactory.createTxCreateDoc(core.class.Class, core.space.Model, attributes, _class)
 }
 
 /**
  * @public
  */
-export function createDoc<T extends Doc> (
+export function createDoc<T extends Doc>(
   _class: Ref<Class<T>>,
   attributes: Data<T>,
   id?: Ref<T>,
@@ -105,7 +105,7 @@ const DOMAIN_TEST: Domain = 'test' as Domain
  * Generate minimal model for testing purposes.
  * @returns R
  */
-export function genMinModel (): TxCUD<Doc>[] {
+export function genMinModel(): TxCUD<Doc>[] {
   const txes = []
   // Fill Tx'es with basic model classes.
   txes.push(createClass(core.class.Obj, { label: 'Obj' as IntlString, kind: ClassifierKind.CLASS }))

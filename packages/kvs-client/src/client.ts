@@ -25,7 +25,7 @@ import { KeyValueClient, ListResult } from './types'
  * @returns KeyValueClient instance
  * @public
  */
-export function getClient (namespace: string, baseUrl: string, token?: string, retryTimeoutMs?: number): KeyValueClient {
+export function getClient(namespace: string, baseUrl: string, token?: string, retryTimeoutMs?: number): KeyValueClient {
   if (baseUrl === undefined) {
     throw new Error('Key-value API URL not specified')
   }
@@ -36,7 +36,7 @@ export function getClient (namespace: string, baseUrl: string, token?: string, r
 class KeyValueClientImpl implements KeyValueClient {
   private readonly requestInit: RequestInit
 
-  constructor (
+  constructor(
     private readonly namespace: string,
     private readonly baseUrl: string,
     private readonly token?: string,
@@ -83,7 +83,7 @@ class KeyValueClientImpl implements KeyValueClient {
     })
   }
 
-  async deleteKey (key: string): Promise<void> {
+  async deleteKey(key: string): Promise<void> {
     const url = this.buildUrl(key)
     await this.sendRequest(url, {
       method: 'DELETE',
@@ -92,7 +92,7 @@ class KeyValueClientImpl implements KeyValueClient {
     })
   }
 
-  async listKeys (prefix?: string): Promise<ListResult | null> {
+  async listKeys(prefix?: string): Promise<ListResult | null> {
     let url = this.buildUrl()
     if (prefix !== undefined) {
       url += `?prefix=${encodeURIComponent(prefix)}`
@@ -103,7 +103,7 @@ class KeyValueClientImpl implements KeyValueClient {
     })
   }
 
-  private buildUrl (key?: string): string {
+  private buildUrl(key?: string): string {
     const baseApiUrl = concatLink(this.baseUrl, `/api/${encodeURIComponent(this.namespace)}`)
     return key !== undefined ? concatLink(baseApiUrl, encodeURIComponent(key)) : baseApiUrl
   }
@@ -165,7 +165,7 @@ class KeyValueClientImpl implements KeyValueClient {
     return null
   }
 
-  private async fetchWithRetry (url: string, init: RequestInit): Promise<Response> {
+  private async fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
     const timeout = Date.now() + this.retryTimeoutMs
     const connectionErrorCodes = ['ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND']
     let intervalMs = 25

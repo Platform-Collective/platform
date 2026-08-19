@@ -25,7 +25,7 @@ declare module '@tiptap/core' {
 }
 
 export interface EmojiNodeOptions {
-  getBlobRef: (fileId: Ref<Blob>, filename?: string, size?: number) => Promise<{ src: string, srcset: string }>
+  getBlobRef: (fileId: Ref<Blob>, filename?: string, size?: number) => Promise<{ src: string; srcset: string }>
 }
 
 export const EmojiNode = Node.create<EmojiNodeOptions>({
@@ -35,7 +35,7 @@ export const EmojiNode = Node.create<EmojiNodeOptions>({
   atom: true,
   selectable: false,
 
-  addAttributes () {
+  addAttributes() {
     return {
       emoji: {
         default: ''
@@ -49,21 +49,21 @@ export const EmojiNode = Node.create<EmojiNodeOptions>({
     }
   },
 
-  addCommands () {
+  addCommands() {
     return {
       insertEmoji:
         (emoji: string, kind: 'unicode' | 'image', image?: Ref<Blob>) =>
-          ({ commands }) => {
-            if (kind === 'image') emoji = `:${emoji}:`
-            return commands.insertContent({
-              type: this.name,
-              attrs: { emoji, kind, image }
-            })
-          }
+        ({ commands }) => {
+          if (kind === 'image') emoji = `:${emoji}:`
+          return commands.insertContent({
+            type: this.name,
+            attrs: { emoji, kind, image }
+          })
+        }
     }
   },
 
-  parseHTML () {
+  parseHTML() {
     return [
       {
         tag: `span[data-type="${this.name}"]`
@@ -71,7 +71,7 @@ export const EmojiNode = Node.create<EmojiNodeOptions>({
     ]
   },
 
-  addNodeView () {
+  addNodeView() {
     return ({ node, HTMLAttributes }) => {
       const container = document.createElement('span')
       const containerAttributes = mergeAttributes(
@@ -107,7 +107,7 @@ export const EmojiNode = Node.create<EmojiNodeOptions>({
     }
   },
 
-  renderHTML ({ node, HTMLAttributes }) {
+  renderHTML({ node, HTMLAttributes }) {
     if (node.attrs.kind === 'image') {
       return [
         'span',

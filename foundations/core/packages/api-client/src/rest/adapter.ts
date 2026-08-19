@@ -41,7 +41,7 @@ import {
 import type { RestClient } from './types'
 
 export class RestClientAdapter implements Client {
-  constructor (
+  constructor(
     private readonly client: RestClient,
     private readonly hierarchy: Hierarchy | undefined,
     private readonly model: ModelDb | undefined
@@ -91,22 +91,22 @@ export class RestClientAdapter implements Client {
     return await this.client.findOne(_class, query, options)
   }
 
-  async searchFulltext (query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+  async searchFulltext(query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
     return await this.client.searchFulltext(query, options)
   }
 
-  async close (): Promise<void> {
+  async close(): Promise<void> {
     // No ned to close the REST client
   }
 
-  getHierarchy (): Hierarchy {
+  getHierarchy(): Hierarchy {
     if (this.hierarchy === undefined) {
       throw new Error('Hierarchy is not defined')
     }
     return this.hierarchy
   }
 
-  getModel (): ModelDb {
+  getModel(): ModelDb {
     if (this.model === undefined) {
       throw new Error('Model is not defined')
     }

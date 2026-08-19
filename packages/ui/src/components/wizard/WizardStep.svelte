@@ -33,7 +33,7 @@
   let style: string
   let translation: string | undefined
 
-  function getStyle (state: typeof positionState) {
+  function getStyle(state: typeof positionState) {
     switch (state) {
       case 'current':
         return `fill: ${currentColor};`

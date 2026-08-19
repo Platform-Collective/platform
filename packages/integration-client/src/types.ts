@@ -57,10 +57,10 @@ export interface IntegrationClient {
     socialId: PersonId | undefined | null,
     workspaceUuid: WorkspaceUuid | null | undefined
   ) => Promise<
-  | {
-    connectionRemoved: boolean
-  }
-  | undefined
+    | {
+        connectionRemoved: boolean
+      }
+    | undefined
   >
 
   /**
@@ -273,7 +273,7 @@ export interface ServiceClient {
  * Integration-specific error types
  */
 export class IntegrationError extends Error {
-  constructor (
+  constructor(
     message: string,
     public code: string,
     public integrationId: string,
@@ -285,21 +285,21 @@ export class IntegrationError extends Error {
 }
 
 export class ConnectionError extends IntegrationError {
-  constructor (message: string, integrationId: string, workspace: WorkspaceUuid) {
+  constructor(message: string, integrationId: string, workspace: WorkspaceUuid) {
     super(message, 'CONNECTION_ERROR', integrationId, workspace)
     this.name = 'ConnectionError'
   }
 }
 
 export class ConfigurationError extends IntegrationError {
-  constructor (message: string, integrationId: string, workspace: WorkspaceUuid) {
+  constructor(message: string, integrationId: string, workspace: WorkspaceUuid) {
     super(message, 'CONFIGURATION_ERROR', integrationId, workspace)
     this.name = 'ConfigurationError'
   }
 }
 
 export class DisconnectionError extends IntegrationError {
-  constructor (message: string, integrationId: string, workspace: WorkspaceUuid) {
+  constructor(message: string, integrationId: string, workspace: WorkspaceUuid) {
     super(message, 'DISCONNECTION_ERROR', integrationId, workspace)
     this.name = 'DisconnectionError'
   }

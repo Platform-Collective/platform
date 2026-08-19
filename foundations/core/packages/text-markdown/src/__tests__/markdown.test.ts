@@ -31,7 +31,7 @@ declare global {
 }
 
 expect.extend({
-  toEqualMarkdown (received: string, expected: string) {
+  toEqualMarkdown(received: string, expected: string) {
     const pass = isMarkdownsEquals(received, expected)
     return {
       message: () =>
@@ -44,7 +44,7 @@ expect.extend({
 })
 
 describe('markdownToMarkup', () => {
-  const tests: Array<{ name: string, markdown: string, markup: object }> = [
+  const tests: Array<{ name: string; markdown: string; markup: object }> = [
     {
       name: 'simple text',
       markdown: 'Lorem ipsum dolor sit amet.',
@@ -954,7 +954,7 @@ Lorem ipsum dolor sit amet.
 })
 
 describe('markupToMarkdown', () => {
-  const tests: Array<{ name: string, markdown: string, markup: object }> = [
+  const tests: Array<{ name: string; markdown: string; markup: object }> = [
     {
       name: 'links',
       markdown: `[Link](https://example.com)
@@ -1114,7 +1114,7 @@ describe('markupToMarkdown', () => {
 })
 
 describe('markdownToMarkup -> markupToMarkdown', () => {
-  const tests: Array<{ name: string, markdown: string, alternate?: string }> = [
+  const tests: Array<{ name: string; markdown: string; alternate?: string }> = [
     { name: 'Italic', markdown: '*Asteriscs* and _Underscores_' },
     { name: 'Bold', markdown: '**Asteriscs** and __Underscores__' },
     { name: 'Bullet list with asteriscs', markdown: 'Asterisks :\r\n* Firstly\r\n* Secondly' },

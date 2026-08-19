@@ -1,6 +1,6 @@
 import { Loader } from './i18n'
 
-function makeLocaleMatcher (target: object): object {
+function makeLocaleMatcher(target: object): object {
   return Object.entries(target).reduce(
     (obj, [key, value]) => ({
       ...obj,
@@ -17,7 +17,7 @@ const langs = ['en', 'ru']
  * @param loader -
  * @returns
  */
-export function makeLocalesTest (loader: Loader) {
+export function makeLocalesTest(loader: Loader) {
   return async () => {
     const [target, ...rest] = await Promise.all(langs.map(loader))
     const matcher = makeLocaleMatcher(target)

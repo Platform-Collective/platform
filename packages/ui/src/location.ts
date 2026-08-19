@@ -14,14 +14,14 @@
 //
 
 import { Analytics } from '@hcengineering/analytics'
-import { clone, type Ref, type Space } from '@hcengineering/core'
+import { clone } from '@hcengineering/core'
 import { type Plugin } from '@hcengineering/platform'
 import { derived, get, writable } from 'svelte/store'
 
 import { closePopup } from './popups'
 import { type Location as PlatformLocation } from './types'
 
-export function locationToUrl (location: PlatformLocation): string {
+export function locationToUrl(location: PlatformLocation): string {
   let result = '/'
   if (location.path != null) {
     result += location.path.map((p) => encodeURIComponent(p)).join('/')
@@ -48,7 +48,7 @@ export function locationToUrl (location: PlatformLocation): string {
   return result
 }
 
-export function parseLocation (location: Location | URL): PlatformLocation {
+export function parseLocation(location: Location | URL): PlatformLocation {
   return {
     path: parsePath(location.pathname),
     query: parseQuery(location.search),
@@ -56,7 +56,7 @@ export function parseLocation (location: Location | URL): PlatformLocation {
   }
 }
 
-function parseQuery (query: string): Record<string, string | null> | undefined {
+function parseQuery(query: string): Record<string, string | null> | undefined {
   query = query.trim()
   if (query.length === 0 || !query.startsWith('?')) {
     return
@@ -79,7 +79,7 @@ function parseQuery (query: string): Record<string, string | null> | undefined {
   return result
 }
 
-function parsePath (path: string): string[] {
+function parsePath(path: string): string[] {
   const split = path.split('/').map((ps) => decodeURIComponent(ps))
   if (split.length >= 1) {
     if (split[0] === '') {
@@ -94,7 +94,7 @@ function parsePath (path: string): string[] {
   return split
 }
 
-function parseHash (hash: string): string {
+function parseHash(hash: string): string {
   if (hash.startsWith('#')) {
     return decodeURIComponent(hash.substring(1))
   }
@@ -103,11 +103,11 @@ function parseHash (hash: string): string {
 
 // ------------------------
 
-export function getRawCurrentLocation (): PlatformLocation {
+export function getRawCurrentLocation(): PlatformLocation {
   return parseLocation(window.location)
 }
 
-export function getCurrentResolvedLocation (): PlatformLocation {
+export function getCurrentResolvedLocation(): PlatformLocation {
   return clone(resolvedLocation)
 }
 
@@ -117,7 +117,7 @@ declare global {
   }
 }
 
-function isRunningInElectron (): boolean {
+function isRunningInElectron(): boolean {
   // Renderer process
   if (
     typeof window !== 'undefined' &&
@@ -168,19 +168,19 @@ export const workspaceId = derived(location, (loc) => loc.path[1])
 /**
  * @public
  */
-export function getLocation (): PlatformLocation {
+export function getLocation(): PlatformLocation {
   return clone(get(location))
 }
 
 export const resolvedLocationStore = writable(getRawCurrentLocation())
 let resolvedLocation = getRawCurrentLocation()
 
-export function setResolvedLocation (location: PlatformLocation): void {
+export function setResolvedLocation(location: PlatformLocation): void {
   resolvedLocation = location
   resolvedLocationStore.set(clone(location))
 }
 
-export function getCurrentLocation (): PlatformLocation {
+export function getCurrentLocation(): PlatformLocation {
   if (desktopPlatform) {
     return clone(get(locationWritable))
   }
@@ -192,11 +192,11 @@ export function getCurrentLocation (): PlatformLocation {
  */
 export let locationStorageKeyId = 'platform_last_loc'
 
-export function setLocationStorageKey (storageKey: string): void {
+export function setLocationStorageKey(storageKey: string): void {
   locationStorageKeyId = storageKey
 }
 
-export function navigate (location: PlatformLocation, replace = false): boolean {
+export function navigate(location: PlatformLocation, replace = false): boolean {
   closePopup()
   const cur = locationToUrl(getCurrentLocation())
   const url = locationToUrl(location)
@@ -234,11 +234,11 @@ export const setTreeCollapsed = (_id: any, collapsed: boolean, prefix?: string):
   collapsed ? localStorage.setItem(key, COLLAPSED) : localStorage.removeItem(key)
 }
 
-export function isSameSegments (a: PlatformLocation, b: PlatformLocation, len = 2): boolean {
+export function isSameSegments(a: PlatformLocation, b: PlatformLocation, len = 2): boolean {
   return a.path.slice(0, len).every((segment, index) => segment === b.path[index])
 }
 
-export function restoreLocation (loc: PlatformLocation, app: Plugin): void {
+export function restoreLocation(loc: PlatformLocation, app: Plugin): void {
   const last = localStorage.getItem(`${locationStorageKeyId}_${app}`)
 
   if (last !== null) {

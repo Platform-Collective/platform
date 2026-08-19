@@ -18,7 +18,7 @@ import type { Rank } from './types'
 import { LexoDecimal, LexoNumeralSystem36, LexoRank } from 'lexorank'
 
 /** @public */
-export function genRanks (count: number): Rank[] {
+export function genRanks(count: number): Rank[] {
   const sys = new LexoNumeralSystem36()
   const base = 36
   const max = base ** 6
@@ -33,7 +33,7 @@ export function genRanks (count: number): Rank[] {
 }
 
 /** @public */
-export function makeRank (prev: Rank | undefined, next: Rank | undefined): Rank {
+export function makeRank(prev: Rank | undefined, next: Rank | undefined): Rank {
   try {
     if (prev != null && prev.trim() === '') {
       prev = undefined

@@ -211,7 +211,7 @@ export const avatarDarkColors = Object.freeze<ColorDefinition[]>([
   defineAvatarColor('Grey 1', 210, 11, 89, [20, 2, 0], true)
 ])
 
-export function defaultBackground (dark: boolean): string {
+export function defaultBackground(dark: boolean): string {
   return dark ? 'linear-gradient(90deg, #22242A, #161719)' : '#FFFFFF'
 }
 
@@ -240,7 +240,7 @@ export const CadetGreyColor = '#95A2B3'
 /**
  * @public
  */
-export function getPlatformColor (hash: number | number[], darkTheme: boolean): string {
+export function getPlatformColor(hash: number | number[], darkTheme: boolean): string {
   const palette = darkTheme ? darkPalette : whitePalette
   return (palette[Math.abs(Array.isArray(hash) ? hash[0] : hash) % palette.length] ?? palette[0]).color
 }
@@ -248,7 +248,7 @@ export function getPlatformColor (hash: number | number[], darkTheme: boolean): 
 /**
  * @public
  */
-export function getPlatformColorDef (hash: number | number[], darkTheme: boolean): ColorDefinition {
+export function getPlatformColorDef(hash: number | number[], darkTheme: boolean): ColorDefinition {
   const palette = darkTheme ? darkPalette : whitePalette
   return palette[Math.abs(Array.isArray(hash) ? hash[0] : hash) % palette.length] ?? palette[0]
 }
@@ -256,7 +256,7 @@ export function getPlatformColorDef (hash: number | number[], darkTheme: boolean
 /**
  * @public
  */
-export function getPlatformAvatarColorDef (hash: number, darkTheme: boolean): ColorDefinition {
+export function getPlatformAvatarColorDef(hash: number, darkTheme: boolean): ColorDefinition {
   const palette = darkTheme ? avatarDarkColors : avatarWhiteColors
   return palette[Math.abs(hash) % palette.length] ?? palette[0]
 }
@@ -264,14 +264,14 @@ export function getPlatformAvatarColorDef (hash: number, darkTheme: boolean): Co
 /**
  * @public
  */
-export function getPlatformAvatarColorForTextDef (text: string, darkTheme: boolean): ColorDefinition {
+export function getPlatformAvatarColorForTextDef(text: string, darkTheme: boolean): ColorDefinition {
   return getPlatformAvatarColorDef(hashCode(text), darkTheme)
 }
 
 /**
  * @public
  */
-export function getPlatformAvatarColorByName (name: string, darkTheme: boolean): ColorDefinition {
+export function getPlatformAvatarColorByName(name: string, darkTheme: boolean): ColorDefinition {
   const defaultIndex = 0
   return getColorByName(name, darkTheme, avatarWhiteColors, avatarDarkColors, defaultIndex)
 }
@@ -279,26 +279,26 @@ export function getPlatformAvatarColorByName (name: string, darkTheme: boolean):
 /**
  * @public
  */
-export function getPlatformColorByName (name: string, darkTheme: boolean): ColorDefinition | undefined {
+export function getPlatformColorByName(name: string, darkTheme: boolean): ColorDefinition | undefined {
   const defaultIndex: number | undefined = undefined
   return getColorByName(name, darkTheme, whitePalette, darkPalette, defaultIndex)
 }
 
-function getColorByName (
+function getColorByName(
   name: string,
   darkTheme: boolean,
   paletteLight: readonly ColorDefinition[],
   paletteDark: readonly ColorDefinition[],
   defaultIndex: number
 ): ColorDefinition
-function getColorByName (
+function getColorByName(
   name: string,
   darkTheme: boolean,
   paletteLight: readonly ColorDefinition[],
   paletteDark: readonly ColorDefinition[],
   defaultIndex: undefined
 ): ColorDefinition | undefined
-function getColorByName (
+function getColorByName(
   name: string,
   darkTheme: boolean,
   paletteLight: readonly ColorDefinition[],
@@ -316,31 +316,31 @@ function getColorByName (
 /**
  * @public
  */
-export function getPlatformAvatarColors (darkTheme: boolean): readonly ColorDefinition[] {
+export function getPlatformAvatarColors(darkTheme: boolean): readonly ColorDefinition[] {
   return darkTheme ? avatarDarkColors : avatarWhiteColors
 }
 
 /**
  * @public
  */
-export function getPlatformColorForText (text: string, darkTheme: boolean): string {
+export function getPlatformColorForText(text: string, darkTheme: boolean): string {
   return getPlatformColor(hashCode(text), darkTheme)
 }
 /**
  * @public
  */
-export function getPlatformColorForTextDef (text: string, darkTheme: boolean): ColorDefinition {
+export function getPlatformColorForTextDef(text: string, darkTheme: boolean): ColorDefinition {
   return getPlatformColorDef(hashCode(text), darkTheme)
 }
 
 /**
  * @public
  */
-export function getPlatformColors (darkTheme: boolean): readonly ColorDefinition[] {
+export function getPlatformColors(darkTheme: boolean): readonly ColorDefinition[] {
   return darkTheme ? darkPalette : whitePalette
 }
 
-function hashCode (str: string): number {
+function hashCode(str: string): number {
   return (str ?? '')
     .split('')
     .reduce((prevHash, currVal) => ((prevHash << 5) - prevHash + currVal.charCodeAt(0)) | 0, 0)
@@ -349,7 +349,7 @@ function hashCode (str: string): number {
 /**
  * @public
  */
-export function getColorNumberByText (str: string): number {
+export function getColorNumberByText(str: string): number {
   const hash = hashCode(str)
   return Math.abs(hash) % Math.min(darkPalette.length, whitePalette.length)
 }
@@ -357,7 +357,7 @@ export function getColorNumberByText (str: string): number {
 /**
  * @public
  */
-export function hexColorToNumber (hexColor: string): number {
+export function hexColorToNumber(hexColor: string): number {
   if (hexColor === undefined || hexColor === null) {
     return 0
   }
@@ -367,7 +367,7 @@ export function hexColorToNumber (hexColor: string): number {
 /**
  * @public
  */
-export function hexToRgb (color: string): RGBColor {
+export function hexToRgb(color: string): RGBColor {
   if (!color.startsWith('#')) {
     return { r: 128, g: 128, b: 128 }
   }
@@ -389,14 +389,14 @@ export function hexToRgb (color: string): RGBColor {
 /**
  * @public
  */
-export function hexHSLToRgb (color: string, percent = 100): RGBColor {
+export function hexHSLToRgb(color: string, percent = 100): RGBColor {
   const h = parseInt(color.slice(0, 2), 16)
   const s = parseInt(color.slice(2, 4), 16)
   const l = parseInt(color.slice(4, 6), 16)
   return hslToRgb(h, s, (l / 100) * percent)
 }
 
-function addZero (d: string): string {
+function addZero(d: string): string {
   if (d.length < 2) {
     return '0' + d
   }
@@ -406,7 +406,7 @@ function addZero (d: string): string {
 /**
  * @public
  */
-export function defineAlpha (dark: boolean, color: string, percent = 100): string {
+export function defineAlpha(dark: boolean, color: string, percent = 100): string {
   let rgb = color
   if (!rgb.startsWith('#')) {
     rgb = '#' + rgb
@@ -431,7 +431,7 @@ export function defineAlpha (dark: boolean, color: string, percent = 100): strin
 /**
  * @public
  */
-export function numberToHexColor (color: number): string {
+export function numberToHexColor(color: number): string {
   if (color === undefined || color === null) {
     return ''
   }
@@ -441,7 +441,7 @@ export function numberToHexColor (color: number): string {
 /**
  * @public
  */
-export function numberToRGB (color: number, alpha?: number): string {
+export function numberToRGB(color: number, alpha?: number): string {
   if (color === undefined || color === null) {
     return ''
   }
@@ -456,13 +456,13 @@ export function numberToRGB (color: number, alpha?: number): string {
 /**
  * @public
  */
-export function hslToRgb (h: number, s: number, l: number): RGBColor {
+export function hslToRgb(h: number, s: number, l: number): RGBColor {
   let r, g, b
 
   if (s === 0) {
     r = g = b = l // achromatic
   } else {
-    const hue2rgb = function hue2rgb (p: number, q: number, t: number): number {
+    const hue2rgb = function hue2rgb(p: number, q: number, t: number): number {
       if (t < 0) t += 1
       if (t > 1) t -= 1
       if (t < 1 / 6) return p + (q - p) * 6 * t
@@ -484,7 +484,7 @@ export function hslToRgb (h: number, s: number, l: number): RGBColor {
 /**
  * @public
  */
-export function rgbToHex (color: RGBColor): string {
+export function rgbToHex(color: RGBColor): string {
   return (
     '#' +
     addZero((Math.round(color.r) % 255).toString(16)) +
@@ -493,7 +493,7 @@ export function rgbToHex (color: RGBColor): string {
   )
 }
 
-export async function svgToColor (img: SVGSVGElement): Promise<RGBColor | undefined> {
+export async function svgToColor(img: SVGSVGElement): Promise<RGBColor | undefined> {
   const outerHTML = img.outerHTML
   const blob = new Blob([outerHTML], { type: 'image/svg+xml;charset=utf-8' })
   const blobURL = URL.createObjectURL(blob)
@@ -510,7 +510,7 @@ export async function svgToColor (img: SVGSVGElement): Promise<RGBColor | undefi
 /**
  * @public
  */
-export function imageToColor (image: HTMLImageElement): RGBColor | undefined {
+export function imageToColor(image: HTMLImageElement): RGBColor | undefined {
   const canvas = document.createElement('canvas')
 
   const height = (canvas.height = image.naturalHeight ?? image.offsetHeight ?? image.height)
@@ -556,7 +556,7 @@ export function imageToColor (image: HTMLImageElement): RGBColor | undefined {
   }
 }
 
-export function rgbToHsl (r: number, g: number, b: number): { h: number, s: number, l: number } {
+export function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
   r /= 255
   g /= 255
   b /= 255

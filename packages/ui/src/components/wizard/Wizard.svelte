@@ -28,7 +28,7 @@
   let divScroll: HTMLElement
   let selectedItem: WizardModel | undefined
 
-  function getPosition (n: number): WizardItemPosition {
+  function getPosition(n: number): WizardItemPosition {
     if (n === 0) return 'start'
     else if (n === items.length - 1) return 'end'
     else return 'middle'

@@ -18,7 +18,7 @@ const authFileSecond = path.join(__dirname, '../../.auth/storageSecond.json')
 const authFileThird = path.join(__dirname, '../../.auth/storageThird.json')
 const authFileQARA = path.join(__dirname, '../../.auth/storageQaraManager.json')
 
-async function authenticate (page: Page, user: string, password: string): Promise<void> {
+async function authenticate(page: Page, user: string, password: string): Promise<void> {
   const loginPage = new LoginPage(page)
   await (await page.goto(`${PlatformURI}`))?.finished()
   await loginPage.login(user, password)

@@ -2,15 +2,15 @@ import type { RateLimitInfo } from './rpc'
 
 export class SlidingWindowRateLimitter {
   private readonly rateLimits = new Map<
-  string,
-  {
-    requests: number[]
-    rejectedRequests: number // Counter for rejected requests
-    resetTime: number
-  }
+    string,
+    {
+      requests: number[]
+      rejectedRequests: number // Counter for rejected requests
+      resetTime: number
+    }
   >()
 
-  constructor (
+  constructor(
     readonly rateLimitMax: number,
     readonly rateLimitWindow: number,
     readonly now: () => number = Date.now
@@ -19,7 +19,7 @@ export class SlidingWindowRateLimitter {
     this.rateLimitWindow = rateLimitWindow
   }
 
-  public checkRateLimit (groupId: string): RateLimitInfo {
+  public checkRateLimit(groupId: string): RateLimitInfo {
     const now = this.now()
     const windowStart = now - this.rateLimitWindow
 
@@ -68,7 +68,7 @@ export class SlidingWindowRateLimitter {
   }
 
   // Add a reset method for testing purposes
-  public reset (): void {
+  public reset(): void {
     this.rateLimits.clear()
   }
 }

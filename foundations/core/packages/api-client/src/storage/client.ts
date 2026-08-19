@@ -45,7 +45,7 @@ type BlobUploadResult = BlobUploadSuccess | BlobUploadError
 
 export class StorageClientImpl implements StorageClient {
   private readonly headers: Record<string, string>
-  constructor (
+  constructor(
     readonly filesUrl: string,
     readonly uploadUrl: string,
     token: string,
@@ -56,11 +56,11 @@ export class StorageClientImpl implements StorageClient {
     }
   }
 
-  getObjectUrl (objectName: string): string {
+  getObjectUrl(objectName: string): string {
     return this.filesUrl.replace(':filename', objectName).replace(':blobId', objectName)
   }
 
-  async stat (objectName: string): Promise<Blob | undefined> {
+  async stat(objectName: string): Promise<Blob | undefined> {
     const url = this.getObjectUrl(objectName)
     let response
     try {
@@ -88,7 +88,7 @@ export class StorageClientImpl implements StorageClient {
     }
   }
 
-  async get (objectName: string): Promise<Readable> {
+  async get(objectName: string): Promise<Readable> {
     const url = this.getObjectUrl(objectName)
 
     const response = await wrappedFetch(url, { headers: { ...this.headers } })
@@ -99,7 +99,7 @@ export class StorageClientImpl implements StorageClient {
     return Readable.from(response.body)
   }
 
-  async put (objectName: string, stream: Readable | Buffer | string, contentType: string, size?: number): Promise<Blob> {
+  async put(objectName: string, stream: Readable | Buffer | string, contentType: string, size?: number): Promise<Blob> {
     const buffer = await toBuffer(stream)
     const file = new File([new Uint8Array(buffer)], objectName, { type: contentType })
     const formData = new FormData()
@@ -138,7 +138,7 @@ export class StorageClientImpl implements StorageClient {
     }
   }
 
-  async partial (objectName: string, offset: number, length?: number): Promise<Readable> {
+  async partial(objectName: string, offset: number, length?: number): Promise<Readable> {
     const url = this.getObjectUrl(objectName)
 
     const response = await wrappedFetch(url, {
@@ -154,7 +154,7 @@ export class StorageClientImpl implements StorageClient {
     return Readable.from(response.body)
   }
 
-  async remove (objectName: string): Promise<void> {
+  async remove(objectName: string): Promise<void> {
     const url = this.getObjectUrl(objectName)
     await wrappedFetch(url, {
       method: 'DELETE',
@@ -163,7 +163,7 @@ export class StorageClientImpl implements StorageClient {
   }
 }
 
-async function toBuffer (data: Buffer | string | Readable): Promise<Buffer> {
+async function toBuffer(data: Buffer | string | Readable): Promise<Buffer> {
   if (Buffer.isBuffer(data)) {
     return data
   } else if (typeof data === 'string') {
@@ -179,7 +179,7 @@ async function toBuffer (data: Buffer | string | Readable): Promise<Buffer> {
   }
 }
 
-async function wrappedFetch (url: string | URL, init?: RequestInit): Promise<Response> {
+async function wrappedFetch(url: string | URL, init?: RequestInit): Promise<Response> {
   let response: Response
   try {
     response = await fetch(url, init)
@@ -197,7 +197,7 @@ async function wrappedFetch (url: string | URL, init?: RequestInit): Promise<Res
   return response
 }
 
-export function createStorageClient (
+export function createStorageClient(
   filesUrl: string,
   uploadUrl: string,
   token: string,
@@ -206,7 +206,7 @@ export function createStorageClient (
   return new StorageClientImpl(filesUrl, uploadUrl, token, workspace)
 }
 
-export async function connectStorage (url: string, options: AuthOptions, config?: ServerConfig): Promise<StorageClient> {
+export async function connectStorage(url: string, options: AuthOptions, config?: ServerConfig): Promise<StorageClient> {
   config ??= await loadServerConfig(url)
   const token = await getWorkspaceToken(url, options, config)
   const filesUrl = (config.FILES_URL.startsWith('/') ? concatLink(url, config.FILES_URL) : config.FILES_URL).replace(

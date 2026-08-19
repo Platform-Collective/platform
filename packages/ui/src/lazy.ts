@@ -4,7 +4,7 @@ const observers = new Map<string, IntersectionObserver>()
 const entryMap = new WeakMap<Element, { callback: (isIntersecting: boolean) => void }>()
 
 const delayedCaller = new DelayedCaller(5)
-function makeObserver (rootMargin: string): IntersectionObserver {
+function makeObserver(rootMargin: string): IntersectionObserver {
   const entriesPending = new Map<Element, { isIntersecting: boolean }>()
   const notifyObservers = (observer: IntersectionObserver): void => {
     for (const [target, entry] of entriesPending.entries()) {
@@ -36,7 +36,7 @@ function makeObserver (rootMargin: string): IntersectionObserver {
   return observer
 }
 
-function listen (rootMargin: string, element: Element, callback: (isIntersecting: boolean) => void): () => void {
+function listen(rootMargin: string, element: Element, callback: (isIntersecting: boolean) => void): () => void {
   let observer = observers.get(rootMargin)
   if (observer == null) {
     observer = makeObserver(rootMargin)
@@ -56,7 +56,7 @@ function listen (rootMargin: string, element: Element, callback: (isIntersecting
  */
 export const isLazyEnabled = (): boolean => (localStorage.getItem('#platform.lazy.loading') ?? 'true') === 'true'
 
-export function lazyObserver (node: Element, onVisible: (value: boolean, unsubscribe?: () => void) => void): any {
+export function lazyObserver(node: Element, onVisible: (value: boolean, unsubscribe?: () => void) => void): any {
   let visible = false
   const lazyEnabled = isLazyEnabled()
   if (!lazyEnabled) {

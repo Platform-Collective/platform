@@ -33,12 +33,12 @@
   $: defaultDate =
     mode === DateRangeMode.TIME
       ? new Date(
-        startDate.getFullYear(),
-        startDate.getMonth(),
-        startDate.getDate(),
-        today.getHours(),
-        today.getMinutes()
-      )
+          startDate.getFullYear(),
+          startDate.getMonth(),
+          startDate.getDate(),
+          today.getHours(),
+          today.getMinutes()
+        )
       : today
   $: currentDate = defaultDate
 </script>

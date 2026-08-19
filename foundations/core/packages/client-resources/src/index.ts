@@ -83,7 +83,7 @@ interface TokenPayload {
 /**
  * @public
  */
-function decodeTokenPayload (token: string): TokenPayload {
+function decodeTokenPayload(token: string): TokenPayload {
   try {
     return JSON.parse(atob(token.split('.')[1]))
   } catch (err: any) {
@@ -182,7 +182,7 @@ export default async () => {
     }
   }
 }
-function returnUITxes (txes: Tx[], extraFilter: string[]): Tx[] {
+function returnUITxes(txes: Tx[], extraFilter: string[]): Tx[] {
   const configs = new Map<Ref<PluginConfiguration>, PluginConfiguration>()
   fillConfiguration(txes, configs)
 
@@ -193,7 +193,7 @@ function returnUITxes (txes: Tx[], extraFilter: string[]): Tx[] {
   return pluginFilterTx(excludedPlugins, configs, txes)
 }
 
-function returnClientTxes (txes: Tx[]): Tx[] {
+function returnClientTxes(txes: Tx[]): Tx[] {
   const configs = new Map<Ref<PluginConfiguration>, PluginConfiguration>()
   fillConfiguration(txes, configs)
   const excludedPlugins = Array.from(configs.values()).filter((it) => !it.enabled || it.pluginId.startsWith('server-'))
@@ -240,7 +240,7 @@ function returnClientTxes (txes: Tx[]): Tx[] {
   return result
 }
 
-function createModelPersistence (workspace: string): TxPersistenceStore | undefined {
+function createModelPersistence(workspace: string): TxPersistenceStore | undefined {
   const overrideStore = getMetadata(clientPlugin.metadata.OverridePersistenceStore)
   if (overrideStore !== undefined) {
     return overrideStore
@@ -253,8 +253,8 @@ function createModelPersistence (workspace: string): TxPersistenceStore | undefi
         try {
           const transaction = db.transaction('model', 'readwrite') // (1)
           const models = transaction.objectStore('model') // (2)
-          const model = await new Promise<{ id: string, model: LoadModelResponse } | undefined>((resolve) => {
-            const storedValue: IDBRequest<{ id: string, model: LoadModelResponse }> = models.get(workspace)
+          const model = await new Promise<{ id: string; model: LoadModelResponse } | undefined>((resolve) => {
+            const storedValue: IDBRequest<{ id: string; model: LoadModelResponse }> = models.get(workspace)
             storedValue.onsuccess = function () {
               resolve(storedValue.result)
             }
@@ -292,7 +292,7 @@ function createModelPersistence (workspace: string): TxPersistenceStore | undefi
   }
 }
 
-function getWSFromToken (token: string): string {
+function getWSFromToken(token: string): string {
   const parts = token.split('.')
 
   const payload = parts[1]

@@ -16,7 +16,7 @@ export class TemplatesPage extends CalendarPage {
   readonly sectionHighlightedTeam: Locator
   readonly inputNewTemplateCode: Locator
 
-  constructor (page: Page) {
+  constructor(page: Page) {
     super(page)
     this.page = page
     this.buttonCreateTemplate = page.getByRole('button', { name: 'Template', exact: true })
@@ -32,7 +32,7 @@ export class TemplatesPage extends CalendarPage {
     this.inputNewTemplateCode = page.locator('input[placeholder="DOC-1"]')
   }
 
-  async createTemplate (data: NewTemplate): Promise<void> {
+  async createTemplate(data: NewTemplate): Promise<void> {
     if (data.location?.space != null) {
       await this.buttonSpaceSelector.click()
       await this.selectMenuItem(this.page, data.location.space)

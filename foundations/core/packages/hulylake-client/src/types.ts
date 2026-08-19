@@ -77,18 +77,18 @@ export type HulyMeta = Record<string, string>
 
 export type PutOptions =
   | {
-    mergeStrategy?: 'concatenate'
-    contentLength?: number
-    contentType?: string
-    headers?: HulyHeaders
-    meta?: HulyMeta
-  }
+      mergeStrategy?: 'concatenate'
+      contentLength?: number
+      contentType?: string
+      headers?: HulyHeaders
+      meta?: HulyMeta
+    }
   | {
-    mergeStrategy: 'jsonpatch'
-    contentLength?: number
-    headers?: HulyHeaders
-    meta?: HulyMeta
-  }
+      mergeStrategy: 'jsonpatch'
+      contentLength?: number
+      headers?: HulyHeaders
+      meta?: HulyMeta
+    }
 
 export interface PatchOptions {
   contentLength?: number
@@ -98,15 +98,15 @@ export interface PatchOptions {
 }
 
 export type JsonPatch =
-  | { op: 'add', path: string, value: any }
-  | { op: 'replace', path: string, value: any }
-  | { op: 'remove', path: string }
-  | { op: 'move', from: string, path: string }
-  | { op: 'copy', from: string, path: string }
-  | { op: 'test', path: string, value: any }
-  | { hop: 'add', path: string, value: any, safe?: boolean }
-  | { hop: 'inc', path: string, value: number, safe?: boolean }
-  | { hop: 'remove', path: string, safe?: boolean }
+  | { op: 'add'; path: string; value: any }
+  | { op: 'replace'; path: string; value: any }
+  | { op: 'remove'; path: string }
+  | { op: 'move'; from: string; path: string }
+  | { op: 'copy'; from: string; path: string }
+  | { op: 'test'; path: string; value: any }
+  | { hop: 'add'; path: string; value: any; safe?: boolean }
+  | { hop: 'inc'; path: string; value: number; safe?: boolean }
+  | { hop: 'remove'; path: string; safe?: boolean }
 
 export interface HulyResponse<Body = ArrayBuffer | string | any> {
   ok: boolean

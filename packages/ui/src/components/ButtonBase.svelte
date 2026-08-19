@@ -55,7 +55,7 @@
   }
   $: iconOnly = title === undefined && label === undefined && $$slots.default === undefined && icon !== undefined
 
-  export function focus () {
+  export function focus() {
     element?.focus()
   }
 

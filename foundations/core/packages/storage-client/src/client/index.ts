@@ -27,7 +27,7 @@ export interface FileStorageConfig {
 }
 
 /** @public */
-export function createFileStorage (config: FileStorageConfig): FileStorage {
+export function createFileStorage(config: FileStorageConfig): FileStorage {
   const { uploadUrl, datalakeUrl, hulylakeUrl } = config
 
   if (datalakeUrl !== undefined && datalakeUrl !== '') {

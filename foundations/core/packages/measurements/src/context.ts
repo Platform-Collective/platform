@@ -19,7 +19,7 @@ const errorPrinter = ({ message, stack, ...rest }: Error): object => ({
   stack,
   ...rest
 })
-function replacer (value: any): any {
+function replacer(value: any): any {
   return value instanceof Error ? errorPrinter(value) : value
 }
 
@@ -75,11 +75,11 @@ export class MeasureMetricsContext implements MeasureContext {
 
   st = platformNow()
   contextData: object = {}
-  private done (value?: number, override?: boolean): void {
+  private done(value?: number, override?: boolean): void {
     updateMeasure(this.metrics, this.st, this.params, this.fullParams, (spend) => {}, value, override)
   }
 
-  constructor (
+  constructor(
     name: string,
     params: ParamsType,
     fullParams: FullParamsType | (() => FullParamsType) = {},
@@ -106,7 +106,7 @@ export class MeasureMetricsContext implements MeasureContext {
     this.logger = logger ?? (this.logParams != null ? consoleLogger(this.logParams ?? {}) : noParamsLogger)
   }
 
-  measure (name: string, value: number, override?: boolean): void {
+  measure(name: string, value: number, override?: boolean): void {
     const c = new MeasureMetricsContext(
       '#' + name,
       {},
@@ -121,7 +121,7 @@ export class MeasureMetricsContext implements MeasureContext {
     c.done(value, override)
   }
 
-  newChild (
+  newChild(
     name: string,
     params: ParamsType,
     opt?: {
@@ -182,7 +182,7 @@ export class MeasureMetricsContext implements MeasureContext {
     }
   }
 
-  extractMeta (): Record<string, string | number | boolean> {
+  extractMeta(): Record<string, string | number | boolean> {
     return {}
   }
 
@@ -200,28 +200,28 @@ export class MeasureMetricsContext implements MeasureContext {
     }
   }
 
-  error (message: string, args?: Record<string, any>): void {
+  error(message: string, args?: Record<string, any>): void {
     this.logger.error(message, { ...this.params, ...args, ...(this.logParams ?? {}) })
   }
 
-  info (message: string, args?: Record<string, any>): void {
+  info(message: string, args?: Record<string, any>): void {
     this.logger.info(message, { ...this.params, ...args, ...(this.logParams ?? {}) })
   }
 
-  warn (message: string, args?: Record<string, any>): void {
+  warn(message: string, args?: Record<string, any>): void {
     this.logger.warn(message, { ...this.params, ...args, ...(this.logParams ?? {}) })
   }
 
-  debug (message: string, args?: Record<string, any>): void {
+  debug(message: string, args?: Record<string, any>): void {
     if (this.logLevel !== 'debug') return
     this.logger.debug(message, { ...this.params, ...args, ...(this.logParams ?? {}) })
   }
 
-  end (): void {
+  end(): void {
     this.done()
   }
 
-  getParams (): ParamsType {
+  getParams(): ParamsType {
     return this.params
   }
 }
@@ -234,14 +234,14 @@ export class NoMetricsContext implements MeasureContext {
 
   private readonly logLevel: MeasureLogLevel
 
-  constructor (logger?: MeasureLogger, logLevel: MeasureLogLevel = 'info') {
+  constructor(logger?: MeasureLogger, logLevel: MeasureLogLevel = 'info') {
     this.logger = logger ?? consoleLogger({})
     this.logLevel = logLevel
   }
 
-  measure (name: string, value: number, override?: boolean): void {}
+  measure(name: string, value: number, override?: boolean): void {}
 
-  newChild (
+  newChild(
     name: string,
     params: ParamsType,
     opt?: {
@@ -268,7 +268,7 @@ export class NoMetricsContext implements MeasureContext {
     return r instanceof Promise ? r : Promise.resolve(r)
   }
 
-  extractMeta (): Record<string, string | number | boolean> {
+  extractMeta(): Record<string, string | number | boolean> {
     return {}
   }
 
@@ -292,26 +292,26 @@ export class NoMetricsContext implements MeasureContext {
     return r instanceof Promise ? r : Promise.resolve(r)
   }
 
-  error (message: string, args?: Record<string, any>): void {
+  error(message: string, args?: Record<string, any>): void {
     this.logger.error(message, { ...args })
   }
 
-  info (message: string, args?: Record<string, any>): void {
+  info(message: string, args?: Record<string, any>): void {
     this.logger.info(message, { ...args })
   }
 
-  warn (message: string, args?: Record<string, any>): void {
+  warn(message: string, args?: Record<string, any>): void {
     this.logger.warn(message, { ...args })
   }
 
-  debug (message: string, args?: Record<string, any>): void {
+  debug(message: string, args?: Record<string, any>): void {
     if (this.logLevel !== 'debug') return
     this.logger.debug(message, { ...args })
   }
 
-  end (): void {}
+  end(): void {}
 
-  getParams (): ParamsType {
+  getParams(): ParamsType {
     return {}
   }
 }
@@ -319,7 +319,7 @@ export class NoMetricsContext implements MeasureContext {
 /**
  * Allow to use decorator for context enabled functions
  */
-export function withContext (name: string, params: ParamsType = {}, options?: WithOptions): any {
+export function withContext(name: string, params: ParamsType = {}, options?: WithOptions): any {
   return (target: any, propertyKey: string, descriptor: PropertyDescriptor): PropertyDescriptor => {
     const originalMethod = descriptor.value
     descriptor.value = function (...args: any[]): Promise<any> {
@@ -338,13 +338,13 @@ export function withContext (name: string, params: ParamsType = {}, options?: Wi
 
 let operationProfiling = false
 
-export function setOperationLogProfiling (value: boolean): void {
+export function setOperationLogProfiling(value: boolean): void {
   operationProfiling = value
 }
 
 let globalId: number = 0
 
-export function registerOperationLog (ctx: MeasureContext): { opLogMetrics?: Metrics, op?: OperationLog } {
+export function registerOperationLog(ctx: MeasureContext): { opLogMetrics?: Metrics; op?: OperationLog } {
   if (!operationProfiling) {
     return {}
   }
@@ -364,7 +364,7 @@ export function registerOperationLog (ctx: MeasureContext): { opLogMetrics?: Met
   return { opLogMetrics, op }
 }
 
-export function updateOperationLog (opLogMetrics: Metrics | undefined, op: OperationLog | undefined): void {
+export function updateOperationLog(opLogMetrics: Metrics | undefined, op: OperationLog | undefined): void {
   if (!operationProfiling) {
     return
   }
@@ -386,7 +386,7 @@ export function updateOperationLog (opLogMetrics: Metrics | undefined, op: Opera
   }
 }
 
-export function addOperation<T> (
+export function addOperation<T>(
   ctx: MeasureContext,
   name: string,
   params: ParamsType,

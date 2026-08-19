@@ -23,7 +23,7 @@ const delayedCaller = new DelayedCaller(10)
 /**
  * @public
  */
-export function resizeObserver (element: Element, onResize: (element: Element) => any): { destroy: () => void } {
+export function resizeObserver(element: Element, onResize: (element: Element) => any): { destroy: () => void } {
   if (observer === undefined) {
     callbacks = new WeakMap()
     const entriesPending = new Set<Element>()
@@ -95,7 +95,7 @@ const generateSeparatorsId = (name: string, float: string | boolean): string => 
   return separatorsKeyId + '_' + name + (typeof float === 'string' ? '-float-' + float : '')
 }
 
-export function defineSeparators (name: string, items: DefSeparators): void {
+export function defineSeparators(name: string, items: DefSeparators): void {
   const id = generateSeparatorsId(name, false)
   const income = items.map((it) => it ?? nullSeparatedItem)
   let needAdd = true
@@ -127,7 +127,7 @@ export function defineSeparators (name: string, items: DefSeparators): void {
   })
 }
 
-export function getSeparators (name: string, float: string | boolean): SeparatedItem[] | SeparatedItem | null {
+export function getSeparators(name: string, float: string | boolean): SeparatedItem[] | SeparatedItem | null {
   const id = generateSeparatorsId(name, float)
   const saved = localStorage.getItem(id)
   if (saved === null) return null
@@ -135,7 +135,7 @@ export function getSeparators (name: string, float: string | boolean): Separated
   return Array.isArray(result) ? (result as SeparatedItem[]) : (result as SeparatedItem)
 }
 
-export function saveSeparator (
+export function saveSeparator(
   name: string,
   float: string | boolean,
   separators: SeparatedItem | SeparatedItem[]

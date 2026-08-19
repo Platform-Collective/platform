@@ -31,7 +31,7 @@ export interface XHRUploadResult {
 }
 
 /** @public */
-export async function uploadXhr (upload: XHRUpload, options?: FileStorageUploadOptions): Promise<XHRUploadResult> {
+export async function uploadXhr(upload: XHRUpload, options?: FileStorageUploadOptions): Promise<XHRUploadResult> {
   const signal = options?.signal
   const onProgress = options?.onProgress
 
@@ -108,7 +108,7 @@ export interface MultipartUpload {
 }
 
 /** @public */
-export async function uploadMultipart (upload: MultipartUpload, options?: FileStorageUploadOptions): Promise<void> {
+export async function uploadMultipart(upload: MultipartUpload, options?: FileStorageUploadOptions): Promise<void> {
   const CHUNK_SIZE = 5 * 1024 * 1024 // 5MB chunks
   const { url, headers, body } = upload
   const signal = options?.signal
@@ -119,7 +119,7 @@ export async function uploadMultipart (upload: MultipartUpload, options?: FileSt
   try {
     const { uploadId } = await multipartUploadCreate(url, { ...headers, 'Content-Type': body.type }, signal)
 
-    const parts: Array<{ partNumber: number, etag: string }> = []
+    const parts: Array<{ partNumber: number; etag: string }> = []
     const totalParts = Math.ceil(body.size / CHUNK_SIZE)
     let uploaded = 0
 
@@ -163,17 +163,17 @@ export async function uploadMultipart (upload: MultipartUpload, options?: FileSt
   }
 }
 
-function throwIfAborted (signal?: AbortSignal): void {
+function throwIfAborted(signal?: AbortSignal): void {
   if (signal?.aborted === true) {
     throw new Error('Upload aborted')
   }
 }
 
-async function multipartUploadCreate (
+async function multipartUploadCreate(
   baseUrl: string,
   headers: Record<string, string>,
   signal?: AbortSignal
-): Promise<{ uuid: string, uploadId: string }> {
+): Promise<{ uuid: string; uploadId: string }> {
   const response = await fetch(baseUrl, {
     signal,
     method: 'POST',
@@ -188,11 +188,11 @@ async function multipartUploadCreate (
   return { uuid, uploadId }
 }
 
-async function multipartUploadComplete (
+async function multipartUploadComplete(
   baseUrl: string,
   headers: Record<string, string>,
   uploadId: string,
-  parts: Array<{ partNumber: number, etag: string }>,
+  parts: Array<{ partNumber: number; etag: string }>,
   signal?: AbortSignal
 ): Promise<void> {
   const url = new URL(concatLink(baseUrl, '/complete'))
@@ -213,7 +213,7 @@ async function multipartUploadComplete (
   }
 }
 
-async function multipartUploadPart (
+async function multipartUploadPart(
   baseUrl: string,
   headers: Record<string, string>,
   uploadId: string,
@@ -243,7 +243,7 @@ async function multipartUploadPart (
   }
 }
 
-async function multipartUploadAbort (baseUrl: string, headers: Record<string, string>, uploadId: string): Promise<void> {
+async function multipartUploadAbort(baseUrl: string, headers: Record<string, string>, uploadId: string): Promise<void> {
   const url = new URL(concatLink(baseUrl, '/abort'))
   url.searchParams.set('uploadId', uploadId)
 

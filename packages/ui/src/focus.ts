@@ -24,26 +24,26 @@ class FocusManagerImpl implements FocusManager {
   }> = []
 
   current = 0
-  register (order: number, focus: () => boolean, isFocus: () => boolean, canBlur?: () => boolean): number {
+  register(order: number, focus: () => boolean, isFocus: () => boolean, canBlur?: () => boolean): number {
     const el = { id: this.counter++, order, focus, isFocus, canBlur }
     this.elements.push(el)
     this.sort()
     return el.id
   }
 
-  unregister (idx: number): void {
+  unregister(idx: number): void {
     this.elements = this.elements.filter((it) => it.id !== idx)
     this.sort()
   }
 
-  sort (): void {
+  sort(): void {
     // this.needSort = 0
     this.elements.sort((a, b) => {
       return a.order - b.order
     })
   }
 
-  next (inc?: 1 | -1): void {
+  next(inc?: 1 | -1): void {
     if (this.elements.length === 0) return
     const current = this.elements[this.current]
     if (!(current?.canBlur?.() ?? true)) {
@@ -58,7 +58,7 @@ class FocusManagerImpl implements FocusManager {
     }
   }
 
-  setFocus (idx: number): void {
+  setFocus(idx: number): void {
     if (idx === -1) {
       return
     }
@@ -66,7 +66,7 @@ class FocusManagerImpl implements FocusManager {
     this.elements[Math.abs(this.current) % this.elements.length]?.focus()
   }
 
-  setFocusPos (order: number): void {
+  setFocusPos(order: number): void {
     if (order === -1) {
       return
     }
@@ -77,7 +77,7 @@ class FocusManagerImpl implements FocusManager {
     }
   }
 
-  updateFocus (idx: number, order: number): void {
+  updateFocus(idx: number, order: number): void {
     const el = this.elements.find((it) => it.id === idx)
     if (el !== undefined) {
       if (el.order !== order) {
@@ -87,7 +87,7 @@ class FocusManagerImpl implements FocusManager {
     }
   }
 
-  hasFocus (): boolean {
+  hasFocus(): boolean {
     for (const el of this.elements) {
       if (el.isFocus()) {
         return true
@@ -100,20 +100,20 @@ class FocusManagerImpl implements FocusManager {
 /**
  * @public
  */
-export function createFocusManager (): FocusManager {
+export function createFocusManager(): FocusManager {
   const mgr = new FocusManagerImpl()
   setFocusManager(mgr)
   return mgr
 }
 
-export function setFocusManager (manager: FocusManager): void {
+export function setFocusManager(manager: FocusManager): void {
   setContext('ui.focus.elements', manager)
 }
 
 /**
  * @public
  */
-export function getFocusManager (): FocusManager | undefined {
+export function getFocusManager(): FocusManager | undefined {
   return getContext('ui.focus.elements')
 }
 
@@ -121,10 +121,10 @@ export function getFocusManager (): FocusManager | undefined {
  * Register new focus reciever if order !== -1
  * @public
  */
-export function registerFocus (
+export function registerFocus(
   order: number,
-  item: { focus: () => boolean, isFocus: () => boolean, canBlur?: () => boolean }
-): { idx: number, focusManager?: FocusManager } {
+  item: { focus: () => boolean; isFocus: () => boolean; canBlur?: () => boolean }
+): { idx: number; focusManager?: FocusManager } {
   const focusManager = getFocusManager() as FocusManagerImpl
   if (order === -1) {
     return { idx: -1, focusManager }

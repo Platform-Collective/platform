@@ -94,7 +94,7 @@ export interface MigrationClient {
 
   bulk: <T extends Doc>(
     domain: Domain,
-    operations: { filter: MigrationDocumentQuery<T>, update: MigrateUpdate<T> }[]
+    operations: { filter: MigrationDocumentQuery<T>; update: MigrateUpdate<T> }[]
   ) => Promise<void>
 
   // Move documents per domain
@@ -169,7 +169,7 @@ export interface UpgradeOperations {
 /**
  * @public
  */
-export async function tryMigrate (
+export async function tryMigrate(
   mode: MigrateMode,
   client: MigrationClient,
   plugin: string,
@@ -210,7 +210,7 @@ export async function tryMigrate (
 /**
  * @public
  */
-export async function tryUpgrade (
+export async function tryUpgrade(
   mode: MigrateMode,
   state: Map<string, Set<string>>,
   client: () => Promise<MigrationUpgradeClient>,
@@ -249,7 +249,7 @@ type RequiredData<T extends Space> = Omit<Data<T>, keyof DefaultSpaceData<T>> & 
 /**
  * @public
  */
-export async function createDefaultSpace<T extends Space> (
+export async function createDefaultSpace<T extends Space>(
   client: MigrationUpgradeClient,
   _id: Ref<T>,
   props: RequiredData<T>,
@@ -280,7 +280,7 @@ export async function createDefaultSpace<T extends Space> (
 /**
  * @public
  */
-export async function migrateSpace (
+export async function migrateSpace(
   client: MigrationClient,
   from: Ref<Space>,
   to: Ref<Space>,
@@ -292,7 +292,7 @@ export async function migrateSpace (
   await client.update(DOMAIN_TX, { objectSpace: from }, { objectSpace: to })
 }
 
-export async function migrateSpaceRanks (client: MigrationClient, domain: Domain, space: Space): Promise<void> {
+export async function migrateSpaceRanks(client: MigrationClient, domain: Domain, space: Space): Promise<void> {
   type WithRank = Doc & { rank: Rank }
 
   const iterator = await client.traverse<WithRank>(
@@ -310,7 +310,7 @@ export async function migrateSpaceRanks (client: MigrationClient, domain: Domain
         break
       }
 
-      const updates: { filter: MigrationDocumentQuery<Doc<Space>>, update: MigrateUpdate<Doc<Space>> }[] = []
+      const updates: { filter: MigrationDocumentQuery<Doc<Space>>; update: MigrateUpdate<Doc<Space>> }[] = []
       for (const doc of docs) {
         rank = makeRank(rank, undefined)
         updates.push({ filter: { _id: doc._id }, update: { rank } })

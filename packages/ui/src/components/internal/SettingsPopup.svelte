@@ -38,7 +38,7 @@
     setFontSize: (value: string) => void
   }>('fontsize')
 
-  const { currentTheme, setTheme } = getContext<{ currentTheme: Readable<string>, setTheme: (theme: string) => void }>(
+  const { currentTheme, setTheme } = getContext<{ currentTheme: Readable<string>; setTheme: (theme: string) => void }>(
     'theme'
   )
 
@@ -52,18 +52,18 @@
     setEmoji: (emoji: string) => void
   }>('emoji')
 
-  const fontsizes: Array<{ id: string, label: IntlString, size: number }> = [
+  const fontsizes: Array<{ id: string; label: IntlString; size: number }> = [
     { id: 'normal-font', label: ui.string.Spacious, size: 16 },
     { id: 'small-font', label: ui.string.Compact, size: 14 }
   ]
 
-  const themes: Array<{ id: string, label: IntlString }> = [
+  const themes: Array<{ id: string; label: IntlString }> = [
     { id: 'theme-light', label: ui.string.ThemeLight },
     { id: 'theme-dark', label: ui.string.ThemeDark },
     { id: 'theme-system', label: ui.string.ThemeSystem }
   ]
 
-  const emojis: Array<{ id: string, label: IntlString }> = [
+  const emojis: Array<{ id: string; label: IntlString }> = [
     { id: 'emoji-system', label: ui.string.EmojiSystem },
     { id: 'emoji-noto', label: ui.string.EmojiNoto }
   ]
@@ -98,23 +98,23 @@
     )
   }
 
-  function selectFontSize (size: string): void {
+  function selectFontSize(size: string): void {
     if ($currentFontSize === size) return
     setFontSize(size)
     $modalStore = $modalStore
   }
 
-  function selectTheme (theme: string): void {
+  function selectTheme(theme: string): void {
     if ($currentTheme === theme) return
     setTheme(theme)
   }
 
-  function selectLanguage (language: string): void {
+  function selectLanguage(language: string): void {
     if ($currentLanguage === language) return
     setLanguage(language)
   }
 
-  function selectEmoji (emoji: string): void {
+  function selectEmoji(emoji: string): void {
     if ($currentEmoji === emoji) return
     setEmoji(emoji)
   }

@@ -18,7 +18,7 @@ export class DocumentsPage extends CalendarPage {
   readonly newMember: Locator
   readonly changeSpaceButton: Locator
 
-  constructor (page: Page) {
+  constructor(page: Page) {
     super(page)
     this.page = page
     this.buttonCreateDocument = page.locator(
@@ -40,7 +40,7 @@ export class DocumentsPage extends CalendarPage {
     this.changeSpaceButton = page.locator('[id="space\\.selector"]')
   }
 
-  async createDocument (
+  async createDocument(
     data: NewDocument,
     startSecondStep: boolean = false,
     changeSpaceInCreateDocument: string = 'Quality documents'
@@ -74,12 +74,12 @@ export class DocumentsPage extends CalendarPage {
     await this.inputNewDocumentCreateDaft.click()
   }
 
-  async changeSpaceInCreateDocumentForm (space: string): Promise<void> {
+  async changeSpaceInCreateDocumentForm(space: string): Promise<void> {
     await this.changeSpaceButton.click()
     await this.page.locator(`div.selectPopup >> div.list-container >> text=${space}`).click({ force: true })
   }
 
-  async createTemplate (title: string, description: string, category: string, spaceName: string): Promise<void> {
+  async createTemplate(title: string, description: string, category: string, spaceName: string): Promise<void> {
     await this.changeSpaceInCreateDocumentForm(spaceName)
     await this.buttonPopupNextStep.click()
     await this.inputNewDocumentTitle.fill(title)
@@ -94,11 +94,11 @@ export class DocumentsPage extends CalendarPage {
     await this.inputNewDocumentCreateDaft.click()
   }
 
-  async openDocument (name: string): Promise<void> {
+  async openDocument(name: string): Promise<void> {
     await this.page.locator('button.hulyNavItem-container > span[class*="label"]', { hasText: name }).click()
   }
 
-  async executeMoreActionsOnDocument (documentName: string, action: string): Promise<void> {
+  async executeMoreActionsOnDocument(documentName: string, action: string): Promise<void> {
     await this.page.locator('button.hulyNavItem-container > span[class*="label"]', { hasText: documentName }).hover()
     await this.page
       .locator('button.hulyNavItem-container > span[class*="label"]', { hasText: documentName })

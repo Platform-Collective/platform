@@ -4,11 +4,11 @@ import { join } from 'path'
 export class VisualCheck {
   readonly page: Page
 
-  constructor (page: Page) {
+  constructor(page: Page) {
     this.page = page
   }
 
-  async compareScreenshot (selector: string | null, screenshotName: string): Promise<void> {
+  async compareScreenshot(selector: string | null, screenshotName: string): Promise<void> {
     let screenshot
 
     if (selector !== null && selector !== undefined) {
@@ -25,7 +25,7 @@ export class VisualCheck {
     })
   }
 
-  async comparePDFPreview (screenshotName: string): Promise<void> {
+  async comparePDFPreview(screenshotName: string): Promise<void> {
     // Wait for the iframe to be present in the DOM
     const iframe = this.page.locator('iframe.pdfviewer-content')
     await iframe.waitFor({ state: 'attached', timeout: 10000 })

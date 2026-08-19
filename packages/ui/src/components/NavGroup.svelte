@@ -72,7 +72,7 @@
     }
   }
 
-  function toggle (e: MouseEvent): void {
+  function toggle(e: MouseEvent): void {
     e.stopPropagation()
     e.preventDefault()
     if (!empty) {
@@ -81,7 +81,7 @@
     }
   }
 
-  function handleMenuClicked (ev: MouseEvent): void {
+  function handleMenuClicked(ev: MouseEvent): void {
     if (actions.length === 0) return
     ev.stopPropagation()
     pressed = true

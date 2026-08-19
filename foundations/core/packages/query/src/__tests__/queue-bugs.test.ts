@@ -17,7 +17,7 @@ import core, { createClient, SortingOrder, Space, Tx, TxOperations } from '@hcen
 import { LiveQuery } from '..'
 import { connect } from './connection'
 
-async function getClient (): Promise<{ liveQuery: LiveQuery, factory: TxOperations }> {
+async function getClient(): Promise<{ liveQuery: LiveQuery; factory: TxOperations }> {
   const storage = await createClient(connect)
   const liveQuery = new LiveQuery(storage)
   storage.notify = (...tx: Tx[]) => {

@@ -32,13 +32,13 @@
 
   const dispatch = createEventDispatcher()
 
-  function click (e: MouseEvent): void {
+  function click(e: MouseEvent): void {
     if (!editable) return
     calcValue(e)
     dispatch('change', value)
   }
 
-  function calcValue (e: MouseEvent): void {
+  function calcValue(e: MouseEvent): void {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
     const x = e.clientX - rect.left - $deviceOptionsStore.fontSize / 2
     let pos = x / (rect.width - $deviceOptionsStore.fontSize)
@@ -47,14 +47,14 @@
     value = (max - min) * pos + min
   }
 
-  function save (): void {
+  function save(): void {
     if (drag) {
       dispatch('change', value)
       drag = false
     }
   }
 
-  function move (e: MouseEvent): void {
+  function move(e: MouseEvent): void {
     if (!drag) return
     calcValue(e)
   }

@@ -24,23 +24,23 @@ const getPathname = (url: string): string => {
 
 /** @public */
 export class HulylakeStorage implements FileStorage {
-  constructor (private readonly baseUrl: string) {}
+  constructor(private readonly baseUrl: string) {}
 
-  getFileUrl (workspace: string, file: string, filename?: string): string {
+  getFileUrl(workspace: string, file: string, filename?: string): string {
     const path = `/api/${workspace}/${file}`
     return concatLink(this.baseUrl, path)
   }
 
-  getCookiePath (workspace: string): string {
+  getCookiePath(workspace: string): string {
     const url = concatLink(this.baseUrl, `/api/${workspace}`)
     return getPathname(url)
   }
 
-  async getFileMeta (token: string, workspace: string, file: string): Promise<Record<string, any>> {
+  async getFileMeta(token: string, workspace: string, file: string): Promise<Record<string, any>> {
     return {}
   }
 
-  async deleteFile (token: string, workspace: string, file: string): Promise<void> {
+  async deleteFile(token: string, workspace: string, file: string): Promise<void> {
     const url = this.getFileUrl(workspace, file)
 
     const response = await fetch(url, {
@@ -55,7 +55,7 @@ export class HulylakeStorage implements FileStorage {
     }
   }
 
-  async uploadFile (
+  async uploadFile(
     token: string,
     workspace: string,
     uuid: string,

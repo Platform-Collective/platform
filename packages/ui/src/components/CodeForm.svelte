@@ -18,7 +18,7 @@
 
   import CodeInput from './CodeInput.svelte'
 
-  export let fields: { id: string, name: string, optional: boolean }[] = []
+  export let fields: { id: string; name: string; optional: boolean }[] = []
   export let size: 'small' | 'medium' = 'small'
   export let kind: 'primary' | 'secondary' = 'primary'
   export let padding: string | null = null
@@ -29,23 +29,23 @@
 
   let formElement: HTMLFormElement | undefined
 
-  function trim (field: string): void {
+  function trim(field: string): void {
     formData[field] = formData[field].trim()
   }
 
-  export function clear (): void {
+  export function clear(): void {
     Object.keys(formData).forEach((key) => {
       formData[key] = ''
     })
   }
 
-  async function validateCode (): Promise<void> {
+  async function validateCode(): Promise<void> {
     const code = Object.values(formData).join('')
 
     dispatch('submit', code)
   }
 
-  function onInput (e: Event): void {
+  function onInput(e: Event): void {
     if (e.target == null) return
     const target = e.target as HTMLInputElement
     const { value } = target
@@ -64,7 +64,7 @@
     }
   }
 
-  function onKeydown (e: KeyboardEvent): void {
+  function onKeydown(e: KeyboardEvent): void {
     if (e.key === undefined) {
       return
     }
@@ -86,7 +86,7 @@
     }
   }
 
-  function onPaste (e: ClipboardEvent): void {
+  function onPaste(e: ClipboardEvent): void {
     e.preventDefault()
     if (e.clipboardData == null) return
     const text = e.clipboardData.getData('text')

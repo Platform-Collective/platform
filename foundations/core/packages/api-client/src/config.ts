@@ -22,7 +22,7 @@ export interface ServerConfig {
   UPLOAD_URL: string
 }
 
-export async function loadServerConfig (url: string): Promise<ServerConfig> {
+export async function loadServerConfig(url: string): Promise<ServerConfig> {
   const configUrl = concatLink(url, '/config.json')
   const res = await fetch(configUrl, { keepalive: true })
   if (res.ok) {

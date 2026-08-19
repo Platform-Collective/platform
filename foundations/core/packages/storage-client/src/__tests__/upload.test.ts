@@ -30,39 +30,39 @@ class MockXMLHttpRequest {
   public onabort: (() => void) | null = null
   public ontimeout: (() => void) | null = null
 
-  open (method: string, url: string, async: boolean = true): void {
+  open(method: string, url: string, async: boolean = true): void {
     this.method = method
     this.url = url
   }
 
-  setRequestHeader (key: string, value: string): void {
+  setRequestHeader(key: string, value: string): void {
     this.headers[key] = value
   }
 
-  send (body: any): void {
+  send(body: any): void {
     this.body = body
     // Don't auto-call onload - let tests control when it's called
   }
 
-  abort (): void {
+  abort(): void {
     this.onabort?.()
   }
 
   // Test helpers
-  simulateProgress (loaded: number, total: number): void {
+  simulateProgress(loaded: number, total: number): void {
     const event: Partial<ProgressEvent> = { loaded, total, lengthComputable: true }
     this.upload.onprogress?.(event as ProgressEvent)
   }
 
-  simulateError (): void {
+  simulateError(): void {
     this.onerror?.()
   }
 
-  simulateTimeout (): void {
+  simulateTimeout(): void {
     this.ontimeout?.()
   }
 
-  simulateSuccess (responseText: string = ''): void {
+  simulateSuccess(responseText: string = ''): void {
     this.responseText = responseText
     this.onload?.()
   }
@@ -562,7 +562,7 @@ describe('uploadMultipart', () => {
     const file = new File(['test content'], 'test.txt', { type: 'text/plain' })
     Object.defineProperty(file, 'size', { value: 5 * 1024 * 1024 }) // 5MB
 
-    const progressUpdates: Array<{ loaded: number, total: number, percentage: number }> = []
+    const progressUpdates: Array<{ loaded: number; total: number; percentage: number }> = []
     const onProgress = jest.fn((progress) => {
       progressUpdates.push({ ...progress })
     })
@@ -626,7 +626,7 @@ describe('uploadMultipart', () => {
     const file = new File(['test content'], 'test.txt', { type: 'text/plain' })
     Object.defineProperty(file, 'size', { value: 10 * 1024 * 1024 }) // 10MB = 2 chunks
 
-    const progressUpdates: Array<{ loaded: number, total: number, percentage: number }> = []
+    const progressUpdates: Array<{ loaded: number; total: number; percentage: number }> = []
     const onProgress = jest.fn((progress) => {
       progressUpdates.push({ ...progress })
     })

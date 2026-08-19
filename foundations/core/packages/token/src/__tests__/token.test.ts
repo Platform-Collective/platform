@@ -18,7 +18,7 @@ import type { AccountUuid, PersonUuid, WorkspaceUuid } from '@hcengineering/core
 import { decodeToken, generateToken, isTokenExpired, setApiTokenRevocationChecker, verifyToken } from '../token'
 import plugin from '../plugin'
 
-export function decodeTokenPayload (token: string): any {
+export function decodeTokenPayload(token: string): any {
   try {
     return JSON.parse(atob(token.split('.')[1]))
   } catch (err: any) {

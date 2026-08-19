@@ -24,7 +24,7 @@ import { nodeContent } from './node'
 
 type SpecRule<T> = T | ((tok: Token, state: MarkdownParseState) => T)
 
-function readSpec<T> (rule: SpecRule<T>, tok: Token, state: MarkdownParseState): T {
+function readSpec<T>(rule: SpecRule<T>, tok: Token, state: MarkdownParseState): T {
   if (typeof rule === 'function') {
     return (rule as (tok: Token, state: MarkdownParseState) => T)(tok, state)
   }
@@ -50,7 +50,7 @@ interface ParsingMarkRule {
 }
 
 interface ParsingSpecialRule {
-  type: (state: MarkdownParseState, tok: Token) => { type: MarkupMarkType | MarkupNodeType, node: boolean } | undefined
+  type: (state: MarkdownParseState, tok: Token) => { type: MarkupMarkType | MarkupNodeType; node: boolean } | undefined
   getAttrs?: (tok: Token, state: MarkdownParseState) => Attrs | undefined
 }
 
@@ -65,10 +65,10 @@ type HandlersRecord = Record<string, HandlerRecord>
 // ****************************************************************
 // Markdown parser
 // ****************************************************************
-function isText (a: MarkupNode, b: MarkupNode): boolean {
+function isText(a: MarkupNode, b: MarkupNode): boolean {
   return (a.type === MarkupNodeType.text || a.type === MarkupNodeType.reference) && b.type === MarkupNodeType.text
 }
-function maybeMerge (a: MarkupNode, b: MarkupNode): MarkupNode | undefined {
+function maybeMerge(a: MarkupNode, b: MarkupNode): MarkupNode | undefined {
   if (isText(a, b) && (sameSet(a.marks, b.marks) || (a.text === '' && (a.marks?.length ?? 0) === 0))) {
     if (a.text === '' && (a.marks?.length ?? 0) === 0) {
       return { ...b }
@@ -90,7 +90,7 @@ class MarkdownParseState {
   marks: MarkupMark[]
   tokenHandlers: Record<string, (state: MarkdownParseState, tok: Token) => void>
 
-  constructor (
+  constructor(
     tokenHandlers: Record<string, (state: MarkdownParseState, tok: Token) => void>,
     readonly refUrl: string,
     readonly imageUrl: string
@@ -100,18 +100,18 @@ class MarkdownParseState {
     this.tokenHandlers = tokenHandlers
   }
 
-  top (): StateElement | undefined {
+  top(): StateElement | undefined {
     return this.stack[this.stack.length - 1]
   }
 
-  push (elt: MarkupNode): void {
+  push(elt: MarkupNode): void {
     if (this.stack.length > 0) {
       const tt = this.top()
       tt?.content.push(elt)
     }
   }
 
-  mergeWithLast (nodes: MarkupNode[], node: MarkupNode): boolean {
+  mergeWithLast(nodes: MarkupNode[], node: MarkupNode): boolean {
     const last = nodes[nodes.length - 1]
     let merged: MarkupNode | undefined
     if (last !== undefined && (merged = maybeMerge(last, node)) !== undefined) {
@@ -123,7 +123,7 @@ class MarkdownParseState {
 
   // Adds the given text to the current position in the document,
   // using the current marks as styling.
-  addText (text?: string): void {
+  addText(text?: string): void {
     const top = this.top()
     if (text === undefined || top === undefined || text.length === 0) {
       return
@@ -145,16 +145,16 @@ class MarkdownParseState {
   }
 
   // Adds the given mark to the set of active marks.
-  openMark (mark: MarkupMark): void {
+  openMark(mark: MarkupMark): void {
     this.marks = addToSet(mark, this.marks)
   }
 
   // Removes the given mark from the set of active marks.
-  closeMark (mark: MarkupMarkType): void {
+  closeMark(mark: MarkupMarkType): void {
     this.marks = removeFromSet(mark, this.marks)
   }
 
-  parseTokens (toks: Token[] | null): void {
+  parseTokens(toks: Token[] | null): void {
     const _toks = [...(toks ?? [])]
     while (_toks.length > 0) {
       const tok = _toks.shift()
@@ -197,7 +197,7 @@ class MarkdownParseState {
   }
 
   // Add a node at the current position.
-  addNode (type: MarkupNodeType, attrs: Attrs, content: MarkupNode[] = []): MarkupNode {
+  addNode(type: MarkupNodeType, attrs: Attrs, content: MarkupNode[] = []): MarkupNode {
     const node: MarkupNode = { type, content }
 
     if (Object.keys(attrs ?? {}).length > 0) {
@@ -211,12 +211,12 @@ class MarkdownParseState {
   }
 
   // Wrap subsequent content in a node of the given type.
-  openNode (type: MarkupNodeType, attrs: Attrs): void {
+  openNode(type: MarkupNodeType, attrs: Attrs): void {
     this.stack.push({ type, attrs, content: [] })
   }
 
   // Close and return the node that is currently on top of the stack.
-  closeNode (): MarkupNode {
+  closeNode(): MarkupNode {
     if (this.marks.length > 0) this.marks = []
     const info = this.stack.pop()
     if (info !== undefined) {
@@ -226,7 +226,7 @@ class MarkdownParseState {
   }
 }
 
-function attrs (
+function attrs(
   spec: ParsingBlockRule | ParsingMarkRule | ParsingNodeRule,
   token: Token,
   state: MarkdownParseState
@@ -236,15 +236,15 @@ function attrs (
 
 // Code content is represented as a single token with a `content`
 // property in Markdown-it.
-function noCloseToken (spec: ParsingBlockRule | ParsingMarkRule, type: string): boolean {
+function noCloseToken(spec: ParsingBlockRule | ParsingMarkRule, type: string): boolean {
   return (spec.noCloseToken ?? false) || ['code_inline', 'code_block', 'fence'].indexOf(type) > 0
 }
 
-function withoutTrailingNewline (str: string): string {
+function withoutTrailingNewline(str: string): string {
   return str[str.length - 1] === '\n' ? str.slice(0, str.length - 1) : str
 }
 
-function addSpecBlock (
+function addSpecBlock(
   handlers: HandlersRecord,
   spec: ParsingBlockRule,
   type: string,
@@ -267,7 +267,7 @@ function addSpecBlock (
     }
   }
 }
-function newSimpleBlockHandler (specBlock: SpecRule<MarkupNodeType>, spec: ParsingBlockRule): HandlerRecord {
+function newSimpleBlockHandler(specBlock: SpecRule<MarkupNodeType>, spec: ParsingBlockRule): HandlerRecord {
   return (state, tok) => {
     state.openNode(readSpec(specBlock, tok, state), attrs(spec, tok, state))
     state.addText(withoutTrailingNewline(tok.content))
@@ -275,7 +275,7 @@ function newSimpleBlockHandler (specBlock: SpecRule<MarkupNodeType>, spec: Parsi
   }
 }
 
-function addSpecMark (handlers: HandlersRecord, spec: ParsingMarkRule, type: string, specMark: MarkupMarkType): void {
+function addSpecMark(handlers: HandlersRecord, spec: ParsingMarkRule, type: string, specMark: MarkupMarkType): void {
   if (noCloseToken(spec, type)) {
     handlers[type] = newSimpleMarkHandler(spec, specMark)
   } else {
@@ -287,7 +287,7 @@ function addSpecMark (handlers: HandlersRecord, spec: ParsingMarkRule, type: str
     }
   }
 }
-function addSpecialRule (handlers: HandlersRecord, spec: ParsingSpecialRule, type: string): void {
+function addSpecialRule(handlers: HandlersRecord, spec: ParsingSpecialRule, type: string): void {
   handlers[type + '_open'] = (state, tok) => {
     const type = spec.type(state, tok)
     if (type !== undefined) {
@@ -309,11 +309,11 @@ function addSpecialRule (handlers: HandlersRecord, spec: ParsingSpecialRule, typ
     }
   }
 }
-function addIgnoreRule (handlers: HandlersRecord, spec: ParsingIgnoreRule, type: string): void {
+function addIgnoreRule(handlers: HandlersRecord, spec: ParsingIgnoreRule, type: string): void {
   handlers[type + '_open'] = (state, tok) => {}
   handlers[type + '_close'] = (state, tok) => {}
 }
-function newSimpleMarkHandler (spec: ParsingMarkRule, specMark: MarkupMarkType): HandlerRecord {
+function newSimpleMarkHandler(spec: ParsingMarkRule, specMark: MarkupMarkType): HandlerRecord {
   return (state: MarkdownParseState, tok: Token): void => {
     state.openMark({ attrs: attrs(spec, tok, state), type: specMark })
     state.addText(withoutTrailingNewline(tok.content))
@@ -321,7 +321,7 @@ function newSimpleMarkHandler (spec: ParsingMarkRule, specMark: MarkupMarkType):
   }
 }
 
-function tokenHandlers (
+function tokenHandlers(
   tokensBlock: Record<string, ParsingBlockRule>,
   tokensNode: Record<string, ParsingNodeRule>,
   tokensMark: Record<string, ParsingMarkRule>,
@@ -395,7 +395,7 @@ function tokenHandlers (
   return handlers
 }
 
-function addTextHandlers (handlers: HandlersRecord): void {
+function addTextHandlers(handlers: HandlersRecord): void {
   handlers.text = (state, tok) => {
     state.addText(tok.content)
   }
@@ -407,11 +407,11 @@ function addTextHandlers (handlers: HandlersRecord): void {
   }
 }
 
-function addSpecNode (handlers: HandlersRecord, type: string, spec: ParsingNodeRule): void {
+function addSpecNode(handlers: HandlersRecord, type: string, spec: ParsingNodeRule): void {
   handlers[type] = (state: MarkdownParseState, tok: Token) => state.addNode(spec.node, attrs(spec, tok, state))
 }
 
-function tokAttrGet (token: Token, name: string): string | undefined {
+function tokAttrGet(token: Token, name: string): string | undefined {
   const attr = token.attrGet(name)
   if (attr != null) {
     return attr
@@ -424,7 +424,7 @@ function tokAttrGet (token: Token, name: string): string | undefined {
   }
 }
 
-function tokToAttrs (token: Token, ...names: string[]): Record<string, string> {
+function tokToAttrs(token: Token, ...names: string[]): Record<string, string> {
   const result: Record<string, string> = {}
   for (const name of names) {
     const attr = token.attrGet(name)
@@ -435,7 +435,7 @@ function tokToAttrs (token: Token, ...names: string[]): Record<string, string> {
   return result
 }
 
-function todoItemMetaAttrsGet (tok: Token): Record<string, string> {
+function todoItemMetaAttrsGet(tok: Token): Record<string, string> {
   const userid = tokAttrGet(tok, 'userid')
   const todoid = tokAttrGet(tok, 'todoid')
 
@@ -675,7 +675,7 @@ export class MarkdownParser {
   tokenHandlers: Record<string, (state: MarkdownParseState, tok: Token) => void>
   htmlParser: HtmlParser
 
-  constructor (private readonly options: MarkdownParserOptions) {
+  constructor(private readonly options: MarkdownParserOptions) {
     this.tokenizer = MarkdownIt('default', {
       html: true
     })
@@ -686,7 +686,7 @@ export class MarkdownParser {
     this.tokenHandlers = tokenHandlers(tokensBlock, tokensNode, tokensMark, specialRule, ignoreRule, this.htmlParser)
   }
 
-  parse (text: string): MarkupNode {
+  parse(text: string): MarkupNode {
     const state = new MarkdownParseState(this.tokenHandlers, this.options.refUrl, this.options.imageUrl)
     let doc: MarkupNode
 
@@ -714,7 +714,7 @@ export class MarkdownParser {
 
   listRule: RuleCore = (state: TaskListStateCore): boolean => {
     const tokens = (state as any).tokens
-    const states: Array<{ closeIdx: number, lastItemIdx: number }> = []
+    const states: Array<{ closeIdx: number; lastItemIdx: number }> = []
 
     // step #1 - convert list items to todo items
     for (let open = 0; open < tokens.length; open++) {
@@ -763,7 +763,7 @@ export class MarkdownParser {
   }
 }
 
-function convertTodoList (tokens: Token[], open: number, close: number, item: number): void {
+function convertTodoList(tokens: Token[], open: number, close: number, item: number): void {
   if (tokens[open].type !== 'bullet_list_open') {
     throw new Error('bullet_list_open token expected')
   }
@@ -777,7 +777,7 @@ function convertTodoList (tokens: Token[], open: number, close: number, item: nu
   }
 }
 
-function convertTodoItem (tokens: Token[], open: number): boolean {
+function convertTodoItem(tokens: Token[], open: number): boolean {
   const close = findListItemCloseToken(tokens, open)
   if (close !== -1) {
     tokens[open].type = 'todo_item_open'
@@ -821,7 +821,7 @@ function convertTodoItem (tokens: Token[], open: number): boolean {
   return false
 }
 
-function findListItemCloseToken (tokens: Token[], open: number): number {
+function findListItemCloseToken(tokens: Token[], open: number): number {
   if (tokens[open].type !== 'list_item_open') {
     throw new Error('list_item_open token expected')
   }
@@ -840,7 +840,7 @@ function findListItemCloseToken (tokens: Token[], open: number): number {
 // tokens[i].type === list_item_open
 // tokens[i + 1].type === paragraph
 // tokens[i + 2].type === inline
-function isTodoListItem (tokens: Token[], pos: number): boolean {
+function isTodoListItem(tokens: Token[], pos: number): boolean {
   return (
     isListItemToken(tokens[pos]) &&
     isParagraphToken(tokens[pos + 1]) &&
@@ -849,7 +849,7 @@ function isTodoListItem (tokens: Token[], pos: number): boolean {
   )
 }
 
-function convertStringLikeToken (tok: Token, attrValue?: string): string {
+function convertStringLikeToken(tok: Token, attrValue?: string): string {
   if (typeof attrValue === 'string' && attrValue !== '') {
     return attrValue
   }

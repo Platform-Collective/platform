@@ -7,7 +7,7 @@ export const TodoItemNode = TaskItem.extend({
   name: 'todoItem',
   group: 'listItems',
 
-  addOptions () {
+  addOptions() {
     return {
       nested: true,
       HTMLAttributes: {},
@@ -15,7 +15,7 @@ export const TodoItemNode = TaskItem.extend({
     }
   },
 
-  addAttributes () {
+  addAttributes() {
     return {
       ...this.parent?.(),
       todoid: getDataAttribute('todoid', { default: null, keepOnSplit: false }),
@@ -27,7 +27,7 @@ export const TodoItemNode = TaskItem.extend({
 export const TodoListNode = TaskList.extend({
   name: 'todoList',
 
-  addOptions () {
+  addOptions() {
     return {
       itemTypeName: 'todoItem',
       HTMLAttributes: {}

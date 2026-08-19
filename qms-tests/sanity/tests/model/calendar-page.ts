@@ -10,7 +10,7 @@ export class CalendarPage extends CommonPage {
   readonly inputPopupTime: Locator
   readonly inputPopupDateSave: Locator
 
-  constructor (page: Page) {
+  constructor(page: Page) {
     super()
     this.page = page
     this.buttonDatePopupToday = page.locator('div.popup div.today:not(.wrongMonth)')
@@ -21,7 +21,7 @@ export class CalendarPage extends CommonPage {
     this.inputPopupDateSave = page.locator('div[class*="date-popup"] div.footer button')
   }
 
-  async fillSelectDatePopup (day: string, month: string, year: string, time: string): Promise<void> {
+  async fillSelectDatePopup(day: string, month: string, year: string, time: string): Promise<void> {
     await this.inputPopupDateDay.click()
     await this.inputPopupDateDay.pressSequentially(day)
     await this.inputPopupDateMonth.click()
@@ -35,7 +35,7 @@ export class CalendarPage extends CommonPage {
     await this.inputPopupDateSave.click()
   }
 
-  async fillSelectDateByShortcut (shortcut: string): Promise<void> {
+  async fillSelectDateByShortcut(shortcut: string): Promise<void> {
     await this.page.locator('div.shift-container div.btn > span', { hasText: shortcut }).click()
   }
 }

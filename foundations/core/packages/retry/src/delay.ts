@@ -17,21 +17,21 @@ export const DelayStrategyFactory = {
   /**
    * Create a fixed delay strategy
    */
-  fixed (options: FixedDelayOptions): DelayStrategy {
+  fixed(options: FixedDelayOptions): DelayStrategy {
     return new FixedDelayStrategy(options)
   },
 
   /**
    * Create an exponential backoff delay strategy
    */
-  exponentialBackoff (options: ExponentialBackoffOptions): DelayStrategy {
+  exponentialBackoff(options: ExponentialBackoffOptions): DelayStrategy {
     return new ExponentialBackoffStrategy(options)
   },
 
   /**
    * Create a Fibonacci delay strategy
    */
-  fibonacci (options: FibonacciDelayOptions): DelayStrategy {
+  fibonacci(options: FibonacciDelayOptions): DelayStrategy {
     return new FibonacciDelayStrategy(options)
   }
 }
@@ -54,12 +54,12 @@ export class FixedDelayStrategy implements DelayStrategy {
   private readonly delayMs: number
   private readonly jitter: number
 
-  constructor (options: FixedDelayOptions) {
+  constructor(options: FixedDelayOptions) {
     this.delayMs = options.delayMs
     this.jitter = options.jitter ?? 0
   }
 
-  getDelay (_attempt: number): number {
+  getDelay(_attempt: number): number {
     if (this.jitter > 0) {
       const jitterAmount = this.delayMs * this.jitter * (Math.random() * 2 - 1)
       return Math.max(0, this.delayMs + jitterAmount)
@@ -88,14 +88,14 @@ export class ExponentialBackoffStrategy implements DelayStrategy {
   private readonly backoffFactor: number
   private readonly jitter: number
 
-  constructor (options: ExponentialBackoffOptions) {
+  constructor(options: ExponentialBackoffOptions) {
     this.initialDelayMs = options.initialDelayMs
     this.maxDelayMs = options.maxDelayMs
     this.backoffFactor = options.backoffFactor
     this.jitter = options.jitter ?? 0
   }
 
-  getDelay (attempt: number): number {
+  getDelay(attempt: number): number {
     const baseDelay = Math.min(this.initialDelayMs * Math.pow(this.backoffFactor, attempt - 1), this.maxDelayMs)
 
     if (this.jitter > 0) {
@@ -124,7 +124,7 @@ export class FibonacciDelayStrategy implements DelayStrategy {
   // Cache for Fibonacci numbers to improve performance
   private readonly fibCache: Map<number, number>
 
-  constructor (options: FibonacciDelayOptions) {
+  constructor(options: FibonacciDelayOptions) {
     this.baseDelayMs = options.baseDelayMs
     this.maxDelayMs = options.maxDelayMs
     this.jitter = options.jitter ?? 0
@@ -134,7 +134,7 @@ export class FibonacciDelayStrategy implements DelayStrategy {
     ])
   }
 
-  private fibonacci (n: number): number {
+  private fibonacci(n: number): number {
     // Return from cache if available
     if (this.fibCache.has(n)) {
       return this.fibCache.get(n) as number
@@ -150,7 +150,7 @@ export class FibonacciDelayStrategy implements DelayStrategy {
     return result
   }
 
-  getDelay (attempt: number): number {
+  getDelay(attempt: number): number {
     const fibNumber = this.fibonacci(attempt + 1)
     const baseDelay = Math.min(fibNumber * this.baseDelayMs, this.maxDelayMs)
 
@@ -166,6 +166,6 @@ export class FibonacciDelayStrategy implements DelayStrategy {
 /**
  * Promise-based sleep function
  */
-export function sleep (ms: number): Promise<void> {
+export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }

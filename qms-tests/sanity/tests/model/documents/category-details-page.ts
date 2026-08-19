@@ -12,7 +12,7 @@ export class CategoryDetailsPage extends CalendarPage {
   readonly textAttachFile: Locator
   readonly buttonMoreActions: Locator
 
-  constructor (page: Page) {
+  constructor(page: Page) {
     super(page)
     this.page = page
     this.inputCategoryTitle = page.locator('input[placeholder="documents:string:DomainTitle"]')
@@ -23,11 +23,11 @@ export class CategoryDetailsPage extends CalendarPage {
     this.textAttachFile = page.locator('div.attachment-grid-container div[class*="attachment"] div.name')
   }
 
-  async checkTitle (categoryTitle: string): Promise<void> {
+  async checkTitle(categoryTitle: string): Promise<void> {
     await expect(this.inputCategoryTitle).toHaveValue(categoryTitle)
   }
 
-  async editCategory (data: UpdateCategory): Promise<void> {
+  async editCategory(data: UpdateCategory): Promise<void> {
     await this.textDescription.fill(data.description)
 
     if (data.attachFileName != null) {
@@ -36,7 +36,7 @@ export class CategoryDetailsPage extends CalendarPage {
     }
   }
 
-  async checkCategory (data: NewCategory): Promise<void> {
+  async checkCategory(data: NewCategory): Promise<void> {
     await expect(this.inputCategoryTitle).toHaveValue(data.title)
     await expect(this.inputCategoryCode).toHaveValue(data.code)
     await expect(this.textDescription).toContainText(data.description)
@@ -46,13 +46,13 @@ export class CategoryDetailsPage extends CalendarPage {
     }
   }
 
-  async executeMoreAction (action: string): Promise<void> {
+  async executeMoreAction(action: string): Promise<void> {
     await this.buttonMoreActions.click()
     await this.selectFromDropdown(this.page, action)
     await this.pressYesDeletePopup(this.page)
   }
 
-  async checkMoreActionNotExist (action: string): Promise<void> {
+  async checkMoreActionNotExist(action: string): Promise<void> {
     await this.buttonMoreActions.click()
     await expect(this.page.locator('div.popup button.ap-menuItem', { hasText: action })).toBeVisible({ visible: false })
   }

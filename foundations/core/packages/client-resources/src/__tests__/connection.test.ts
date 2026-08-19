@@ -30,7 +30,7 @@ class MockCloseEvent {
   readonly type: string
   readonly code: number
 
-  constructor (type: string, init?: { code?: number }) {
+  constructor(type: string, init?: { code?: number }) {
     this.type = type
     this.code = init?.code ?? 1000
   }
@@ -42,7 +42,7 @@ class MockMessageEvent {
   readonly type: string
   readonly data: any
 
-  constructor (type: string, init: { data: any }) {
+  constructor(type: string, init: { data: any }) {
     this.type = type
     this.data = init.data
   }
@@ -53,7 +53,7 @@ class MockMessageEvent {
 class MockEvent {
   readonly type: string
 
-  constructor (type: string) {
+  constructor(type: string) {
     this.type = type
   }
 }
@@ -71,7 +71,7 @@ class MockWebSocket implements ClientSocket {
   private closeCode?: number
   private timers: any[] = []
 
-  constructor (public url: string) {
+  constructor(public url: string) {
     // Simulate async connection
     const timer = setTimeout(() => {
       if (this.readyState === ClientSocketReadyState.CLOSED) {
@@ -87,14 +87,14 @@ class MockWebSocket implements ClientSocket {
     this.timers.push(timer)
   }
 
-  clearAllTimers (): void {
+  clearAllTimers(): void {
     for (const timer of this.timers) {
       clearTimeout(timer)
     }
     this.timers = []
   }
 
-  send (data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
+  send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
     if (this.readyState !== ClientSocketReadyState.OPEN) {
       throw new Error('WebSocket is not open')
     }
@@ -170,7 +170,7 @@ class MockWebSocket implements ClientSocket {
     }
   }
 
-  close (code?: number): void {
+  close(code?: number): void {
     this.closeCode = code
     this.readyState = ClientSocketReadyState.CLOSING
     this.clearAllTimers()
@@ -184,7 +184,7 @@ class MockWebSocket implements ClientSocket {
   }
 
   // Helper method to simulate receiving messages
-  simulateMessage (data: string | ArrayBuffer): void {
+  simulateMessage(data: string | ArrayBuffer): void {
     if (this.readyState === ClientSocketReadyState.OPEN) {
       if (this.onmessage !== null && this.onmessage !== undefined) {
         const event = new MockMessageEvent('message', { data })
@@ -195,7 +195,7 @@ class MockWebSocket implements ClientSocket {
     }
   }
 
-  private processQueue (): void {
+  private processQueue(): void {
     while (this.messageQueue.length > 0) {
       const data = this.messageQueue.shift()
       this.simulateMessage(data)
@@ -203,7 +203,7 @@ class MockWebSocket implements ClientSocket {
   }
 
   // Helper to simulate server-initiated transactions
-  simulateTransaction (tx: Tx): void {
+  simulateTransaction(tx: Tx): void {
     const message = {
       result: {
         _class: 'core:class:TxNotification',

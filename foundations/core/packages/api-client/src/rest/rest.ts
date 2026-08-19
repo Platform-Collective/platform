@@ -59,18 +59,18 @@ import { getWorkspaceToken } from '../utils'
 import type { EnsurePersonOptions, RestClient } from './types'
 import { extractJson, withRetry } from './utils'
 
-export function createRestClient (endpoint: string, workspaceId: string, token: string): RestClient {
+export function createRestClient(endpoint: string, workspaceId: string, token: string): RestClient {
   return new RestClientImpl(endpoint, workspaceId, token)
 }
 
-export async function connectRest (url: string, options: AuthOptions): Promise<RestClient> {
+export async function connectRest(url: string, options: AuthOptions): Promise<RestClient> {
   const { endpoint, token, workspaceId } = await getWorkspaceToken(url, options)
   return createRestClient(endpoint, workspaceId, token)
 }
 
 const rateLimitError = 'rate-limit'
 
-function isRLE (err: any): boolean {
+function isRLE(err: any): boolean {
   return err.message === rateLimitError
 }
 
@@ -78,11 +78,11 @@ export class RestClientImpl implements RestClient {
   endpoint: string
 
   slowDownTimer = 0
-  currentRateLimit: { remaining: number, limit: number } = { remaining: 1000, limit: 1000 }
+  currentRateLimit: { remaining: number; limit: number } = { remaining: 1000, limit: 1000 }
 
   remaining: number = 1000
   limit: number = 1000
-  constructor (
+  constructor(
     endpoint: string,
     readonly workspace: string,
     readonly token: string
@@ -90,7 +90,7 @@ export class RestClientImpl implements RestClient {
     this.endpoint = endpoint.replace('ws', 'http')
   }
 
-  jsonHeaders (): Record<string, string> {
+  jsonHeaders(): Record<string, string> {
     return {
       'Content-Type': 'application/json',
       Authorization: 'Bearer ' + this.token,
@@ -98,7 +98,7 @@ export class RestClientImpl implements RestClient {
     }
   }
 
-  requestInit (): RequestInit {
+  requestInit(): RequestInit {
     return {
       method: 'GET',
       keepalive: true,
@@ -258,13 +258,13 @@ export class RestClientImpl implements RestClient {
     }
   }
 
-  private updateRateLimit (response: Response): void {
+  private updateRateLimit(response: Response): void {
     const rateLimitLimit: number = parseInt(response.headers.get('X-RateLimit-Limit') ?? '100')
     const remaining: number = parseInt(response.headers.get('X-RateLimit-Remaining') ?? '100')
     this.currentRateLimit = { remaining, limit: rateLimitLimit }
   }
 
-  private async checkRateLimits (response: Response): Promise<void> {
+  private async checkRateLimits(response: Response): Promise<void> {
     if (response.status === 429) {
       // Extract rate limit information from headers
       const retryAfter = response.headers.get('Retry-After')
@@ -284,7 +284,7 @@ export class RestClientImpl implements RestClient {
     }
   }
 
-  async getAccount (): Promise<Account> {
+  async getAccount(): Promise<Account> {
     const requestUrl = concatLink(this.endpoint, `/api/v1/account/${this.workspace}`)
     await this.checkRate()
     const result = await withRetry<Account & { error?: Status }>(async () => {
@@ -302,13 +302,13 @@ export class RestClientImpl implements RestClient {
     return result
   }
 
-  async getModel (full: boolean = false): Promise<{ hierarchy: Hierarchy, model: ModelDb }> {
+  async getModel(full: boolean = false): Promise<{ hierarchy: Hierarchy; model: ModelDb }> {
     const requestUrl = new URL(concatLink(this.endpoint, `/api/v1/load-model/${this.workspace}`))
     if (full) {
       requestUrl.searchParams.append('full', 'true')
     }
     await this.checkRate()
-    const result = await withRetry<{ hierarchy: Hierarchy, model: ModelDb, error?: Status }>(async () => {
+    const result = await withRetry<{ hierarchy: Hierarchy; model: ModelDb; error?: Status }>(async () => {
       const response = await fetch(requestUrl, this.requestInit())
       if (!response.ok) {
         await this.checkRateLimits(response)
@@ -340,7 +340,7 @@ export class RestClientImpl implements RestClient {
     return (await this.findAll(_class, query, { ...options, limit: 1 })).shift()
   }
 
-  async tx (tx: Tx): Promise<TxResult> {
+  async tx(tx: Tx): Promise<TxResult> {
     const requestUrl = concatLink(this.endpoint, `/api/v1/tx/${this.workspace}`)
     await this.checkRate()
     const result = await withRetry<TxResult & { error?: Status }>(async () => {
@@ -363,7 +363,7 @@ export class RestClientImpl implements RestClient {
     return result
   }
 
-  async searchFulltext (query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
+  async searchFulltext(query: SearchQuery, options: SearchOptions): Promise<SearchResult> {
     const result = await withRetry<SearchResult & { error?: Status }>(async () => {
       const params = new URLSearchParams()
       params.append('query', query.query)
@@ -420,13 +420,13 @@ export class RestClientImpl implements RestClient {
     }, isRLE)
   }
 
-  async ensurePerson (
+  async ensurePerson(
     socialType: SocialIdType,
     socialValue: string,
     firstName: string,
     lastName: string,
     options?: EnsurePersonOptions
-  ): Promise<{ uuid: PersonUuid, socialId: PersonId, localPerson: string }> {
+  ): Promise<{ uuid: PersonUuid; socialId: PersonId; localPerson: string }> {
     const requestUrl = concatLink(this.endpoint, `/api/v1/ensure-person/${this.workspace}`)
     await this.checkRate()
     const result = await withRetry(async () => {
@@ -447,7 +447,7 @@ export class RestClientImpl implements RestClient {
         throw new PlatformError(unknownError(response.statusText))
       }
       this.updateRateLimit(response)
-      return await extractJson<{ uuid: PersonUuid, socialId: PersonId, localPerson: string }>(response)
+      return await extractJson<{ uuid: PersonUuid; socialId: PersonId; localPerson: string }>(response)
     }, isRLE)
     if (result.error !== undefined) {
       throw new PlatformError(result.error)
@@ -458,7 +458,7 @@ export class RestClientImpl implements RestClient {
   private async v1op<T extends Doc, P>(op: string, data: any): Promise<P> {
     const requestUrl = concatLink(this.endpoint, `/api/v1/${op}/${this.workspace}`)
     await this.checkRate()
-    const result = await withRetry<{ result?: Ref<T>, error?: Status }>(async () => {
+    const result = await withRetry<{ result?: Ref<T>; error?: Status }>(async () => {
       const response = await fetch(requestUrl, {
         method: 'POST',
         headers: this.jsonHeaders(),

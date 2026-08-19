@@ -90,40 +90,40 @@ export interface StorageAdapterEx extends StorageAdapter {
  */
 export class DummyStorageAdapter implements StorageAdapter, StorageAdapterEx {
   defaultAdapter: string = ''
-  async syncBlobFromStorage (ctx: MeasureContext, wsIds: WorkspaceIds, objectName: string): Promise<Blob> {
+  async syncBlobFromStorage(ctx: MeasureContext, wsIds: WorkspaceIds, objectName: string): Promise<Blob> {
     throw new PlatformError(unknownError('Method not implemented'))
   }
 
-  async initialize (ctx: MeasureContext, wsIds: WorkspaceIds): Promise<void> {}
+  async initialize(ctx: MeasureContext, wsIds: WorkspaceIds): Promise<void> {}
 
-  async close (): Promise<void> {}
+  async close(): Promise<void> {}
 
-  async exists (ctx: MeasureContext, wsIds: WorkspaceIds): Promise<boolean> {
+  async exists(ctx: MeasureContext, wsIds: WorkspaceIds): Promise<boolean> {
     return false
   }
 
-  find (ctx: MeasureContext, wsIds: WorkspaceIds): StorageIterator {
+  find(ctx: MeasureContext, wsIds: WorkspaceIds): StorageIterator {
     return {
       next: async (ctx) => [],
       close: async (ctx) => {}
     }
   }
 
-  async listBuckets (ctx: MeasureContext): Promise<BucketInfo[]> {
+  async listBuckets(ctx: MeasureContext): Promise<BucketInfo[]> {
     return []
   }
 
-  async make (ctx: MeasureContext, wsIds: WorkspaceIds): Promise<void> {}
+  async make(ctx: MeasureContext, wsIds: WorkspaceIds): Promise<void> {}
 
-  async delete (ctx: MeasureContext, wsIds: WorkspaceIds): Promise<void> {}
+  async delete(ctx: MeasureContext, wsIds: WorkspaceIds): Promise<void> {}
 
-  async remove (ctx: MeasureContext, wsIds: WorkspaceIds, objectNames: string[]): Promise<void> {}
+  async remove(ctx: MeasureContext, wsIds: WorkspaceIds, objectNames: string[]): Promise<void> {}
 
-  async list (ctx: MeasureContext, wsIds: WorkspaceIds): Promise<ListBlobResult[]> {
+  async list(ctx: MeasureContext, wsIds: WorkspaceIds): Promise<ListBlobResult[]> {
     return []
   }
 
-  async listStream (ctx: MeasureContext, wsIds: WorkspaceIds): Promise<BlobStorageIterator> {
+  async listStream(ctx: MeasureContext, wsIds: WorkspaceIds): Promise<BlobStorageIterator> {
     return {
       next: async (): Promise<ListBlobResult[]> => {
         return []
@@ -132,15 +132,15 @@ export class DummyStorageAdapter implements StorageAdapter, StorageAdapterEx {
     }
   }
 
-  async stat (ctx: MeasureContext, wsIds: WorkspaceIds, name: string): Promise<Blob | undefined> {
+  async stat(ctx: MeasureContext, wsIds: WorkspaceIds, name: string): Promise<Blob | undefined> {
     return undefined
   }
 
-  async get (ctx: MeasureContext, wsIds: WorkspaceIds, name: string): Promise<Readable> {
+  async get(ctx: MeasureContext, wsIds: WorkspaceIds, name: string): Promise<Readable> {
     throw new Error('not implemented')
   }
 
-  async partial (
+  async partial(
     ctx: MeasureContext,
     wsIds: WorkspaceIds,
     objectName: string,
@@ -150,11 +150,11 @@ export class DummyStorageAdapter implements StorageAdapter, StorageAdapterEx {
     throw new Error('not implemented')
   }
 
-  async read (ctx: MeasureContext, wsIds: WorkspaceIds, name: string): Promise<Buffer[]> {
+  async read(ctx: MeasureContext, wsIds: WorkspaceIds, name: string): Promise<Buffer[]> {
     throw new Error('not implemented')
   }
 
-  async put (
+  async put(
     ctx: MeasureContext,
     wsIds: WorkspaceIds,
     objectName: string,
@@ -165,16 +165,16 @@ export class DummyStorageAdapter implements StorageAdapter, StorageAdapterEx {
     throw new Error('not implemented')
   }
 
-  async getUrl (ctx: MeasureContext, wsIds: WorkspaceIds, objectName: string): Promise<string> {
+  async getUrl(ctx: MeasureContext, wsIds: WorkspaceIds, objectName: string): Promise<string> {
     throw new Error('not implemented')
   }
 }
 
-export function createDummyStorageAdapter (): StorageAdapter {
+export function createDummyStorageAdapter(): StorageAdapter {
   return new DummyStorageAdapter()
 }
 
-export async function removeAllObjects (
+export async function removeAllObjects(
   ctx: MeasureContext,
   storage: StorageAdapter,
   wsIds: WorkspaceIds
@@ -206,7 +206,7 @@ export async function removeAllObjects (
   }
 }
 
-export async function objectsToArray (
+export async function objectsToArray(
   ctx: MeasureContext,
   storage: StorageAdapter,
   wsIds: WorkspaceIds
@@ -228,6 +228,6 @@ export async function objectsToArray (
   }
 }
 
-export function getDataId (wsIds: WorkspaceIds): WorkspaceDataId {
+export function getDataId(wsIds: WorkspaceIds): WorkspaceDataId {
   return wsIds.dataId ?? (wsIds.uuid as unknown as WorkspaceDataId)
 }

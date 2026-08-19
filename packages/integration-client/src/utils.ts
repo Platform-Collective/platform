@@ -17,30 +17,30 @@ import { Integration } from '@hcengineering/account-client'
 import platform, { PlatformError } from '@hcengineering/platform'
 import { IntegrationEventData } from './types'
 
-export function isWorkspaceIntegration (integration: Integration): boolean {
+export function isWorkspaceIntegration(integration: Integration): boolean {
   return integration.workspaceUuid != null
 }
 
-export function isConnection (integration: Integration): boolean {
+export function isConnection(integration: Integration): boolean {
   return integration.workspaceUuid == null
 }
 
-export function isSameIntegrationEvent (event: IntegrationEventData, integration: Integration): boolean {
+export function isSameIntegrationEvent(event: IntegrationEventData, integration: Integration): boolean {
   return (
     event.integration?.socialId === integration.socialId &&
     event.integration?.workspaceUuid === integration.workspaceUuid
   )
 }
 
-export function getIntegrationConfig (integration: Integration): Record<string, any> | undefined {
+export function getIntegrationConfig(integration: Integration): Record<string, any> | undefined {
   return integration?.data?.config
 }
 
-export function isDisabled (integration: Integration): boolean {
+export function isDisabled(integration: Integration): boolean {
   return integration?.data?.disabled === true
 }
 
-export function isUnauthorizedError (error: any): boolean {
+export function isUnauthorizedError(error: any): boolean {
   if (error instanceof PlatformError && error.status.code === platform.status.Unauthorized) {
     return true
   }

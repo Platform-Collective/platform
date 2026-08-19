@@ -25,25 +25,25 @@ import { defaultExtensions } from '../extensions'
 const defaultSchema = getSchema(defaultExtensions)
 
 /** @public */
-export function getMarkup (editor?: Editor): Markup {
+export function getMarkup(editor?: Editor): Markup {
   return jsonToMarkup(editor?.getJSON() as MarkupNode)
 }
 
 // Markup
 
 /** @public */
-export function jsonToPmNode (json: MarkupNode, schema?: Schema, extensions?: Extensions): ProseMirrorNode {
+export function jsonToPmNode(json: MarkupNode, schema?: Schema, extensions?: Extensions): ProseMirrorNode {
   schema ??= extensions == null ? defaultSchema : getSchema(extensions ?? defaultExtensions)
   return ProseMirrorNode.fromJSON(schema, json)
 }
 
 /** @public */
-export function pmNodeToJSON (node: ProseMirrorNode): MarkupNode {
+export function pmNodeToJSON(node: ProseMirrorNode): MarkupNode {
   return node.toJSON()
 }
 
 /** @public */
-export function jsonToText (node: MarkupNode, schema?: Schema, extensions?: Extensions): string {
+export function jsonToText(node: MarkupNode, schema?: Schema, extensions?: Extensions): string {
   const pmNode = jsonToPmNode(node, schema, extensions)
   return pmNode.textBetween(0, pmNode.content.size, '\n', '')
 }
@@ -56,7 +56,7 @@ export function jsonToText (node: MarkupNode, schema?: Schema, extensions?: Exte
 // HTML
 
 /** @public */
-export function htmlToMarkup (html: string, extensions?: Extensions): Markup {
+export function htmlToMarkup(html: string, extensions?: Extensions): Markup {
   const json = htmlToJSON(html, extensions)
   return jsonToMarkup(json)
 }
@@ -68,13 +68,13 @@ export function htmlToMarkup (html: string, extensions?: Extensions): Markup {
 // }
 
 /** @public */
-export function htmlToJSON (html: string, extensions?: Extensions): MarkupNode {
+export function htmlToJSON(html: string, extensions?: Extensions): MarkupNode {
   extensions = extensions ?? defaultExtensions
   return generateJSON(html, extensions, { preserveWhitespace: 'full' }) as MarkupNode
 }
 
 /** @public */
-export function jsonToHTML (json: MarkupNode, extensions?: Extensions): string {
+export function jsonToHTML(json: MarkupNode, extensions?: Extensions): string {
   extensions = extensions ?? defaultExtensions
   return generateHTML(json, extensions)
 }

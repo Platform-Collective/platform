@@ -30,17 +30,17 @@
   let selectedCategory: FilterCategory | null = null
   let view: 'categories' | 'options' = 'categories'
 
-  function selectCategory (category: FilterCategory): void {
+  function selectCategory(category: FilterCategory): void {
     selectedCategory = category
     view = 'options'
   }
 
-  function goBackToCategories (): void {
+  function goBackToCategories(): void {
     selectedCategory = null
     view = 'categories'
   }
 
-  function selectOption (option: FilterOption): void {
+  function selectOption(option: FilterOption): void {
     if (selectedCategory === null) return
 
     const filter: ActiveFilter = {
@@ -53,17 +53,17 @@
     dispatch('close')
   }
 
-  function clearCategoryFilter (): void {
+  function clearCategoryFilter(): void {
     if (selectedCategory === null) return
     onFilterRemove(selectedCategory.id)
     dispatch('close')
   }
 
-  function isActive (categoryId: string): boolean {
+  function isActive(categoryId: string): boolean {
     return activeFilters.some((f) => f.categoryId === categoryId)
   }
 
-  function isOptionSelected (optionId: string): boolean {
+  function isOptionSelected(optionId: string): boolean {
     if (selectedCategory === null) return false
     return activeFilters.some((f) => f.categoryId === selectedCategory?.id && f.optionId === optionId)
   }

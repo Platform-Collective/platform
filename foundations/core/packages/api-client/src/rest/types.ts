@@ -82,7 +82,7 @@ export interface RestClient extends Storage, FulltextStorage {
     firstName: string,
     lastName: string,
     options?: EnsurePersonOptions
-  ) => Promise<{ uuid: PersonUuid, socialId: PersonId, localPerson: string }>
+  ) => Promise<{ uuid: PersonUuid; socialId: PersonId; localPerson: string }>
 
   createDoc: <T extends Doc>(
     _class: Ref<Class<T>>,

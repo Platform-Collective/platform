@@ -13,6 +13,6 @@
 // limitations under the License.
 //
 
-export function encodePathSegment (value: string): string {
+export function encodePathSegment(value: string): string {
   return encodeURIComponent(value)
 }

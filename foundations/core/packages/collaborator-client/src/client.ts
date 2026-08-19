@@ -54,13 +54,13 @@ export interface CollaboratorClient {
 }
 
 /** @public */
-export function getClient (workspaceId: WorkspaceUuid, token: string, collaboratorUrl: string): CollaboratorClient {
+export function getClient(workspaceId: WorkspaceUuid, token: string, collaboratorUrl: string): CollaboratorClient {
   const url = collaboratorUrl.replaceAll('wss://', 'https://').replace('ws://', 'http://')
   return new CollaboratorClientImpl(workspaceId, token, url)
 }
 
 class CollaboratorClientImpl implements CollaboratorClient {
-  constructor (
+  constructor(
     private readonly workspace: WorkspaceUuid,
     private readonly token: string,
     private readonly collaboratorUrl: string
@@ -94,7 +94,7 @@ class CollaboratorClientImpl implements CollaboratorClient {
     return result as R
   }
 
-  async getMarkup (document: CollaborativeDoc, source?: Ref<Blob> | null): Promise<Markup> {
+  async getMarkup(document: CollaborativeDoc, source?: Ref<Blob> | null): Promise<Markup> {
     const payload: GetContentRequest = {
       source: source !== null ? source : undefined
     }
@@ -110,7 +110,7 @@ class CollaboratorClientImpl implements CollaboratorClient {
     return res.content[document.objectAttr] ?? ''
   }
 
-  async createMarkup (document: CollaborativeDoc, markup: Markup): Promise<MarkupBlobRef> {
+  async createMarkup(document: CollaborativeDoc, markup: Markup): Promise<MarkupBlobRef> {
     const content = {
       [document.objectAttr]: markup
     }
@@ -126,7 +126,7 @@ class CollaboratorClientImpl implements CollaboratorClient {
     return res.content[document.objectAttr]
   }
 
-  async updateMarkup (document: CollaborativeDoc, markup: Markup): Promise<void> {
+  async updateMarkup(document: CollaborativeDoc, markup: Markup): Promise<void> {
     const content = {
       [document.objectAttr]: markup
     }
@@ -140,13 +140,13 @@ class CollaboratorClientImpl implements CollaboratorClient {
     )
   }
 
-  async copyContent (source: CollaborativeDoc, target: CollaborativeDoc, content?: Ref<Blob>): Promise<void> {
+  async copyContent(source: CollaborativeDoc, target: CollaborativeDoc, content?: Ref<Blob>): Promise<void> {
     const markup = await this.getMarkup(source, content)
     await this.updateMarkup(target, markup)
   }
 }
 
-async function retry<T> (retries: number, op: () => Promise<T>, delay: number = 100): Promise<T> {
+async function retry<T>(retries: number, op: () => Promise<T>, delay: number = 100): Promise<T> {
   let error: any
   while (retries > 0) {
     retries--

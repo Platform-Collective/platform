@@ -16,13 +16,13 @@
 import { Class, CollaborativeDoc, Doc, Ref } from '@hcengineering/core'
 
 /** @public */
-export function encodeDocumentId (workspaceId: string, documentId: CollaborativeDoc): string {
+export function encodeDocumentId(workspaceId: string, documentId: CollaborativeDoc): string {
   const { objectClass, objectId, objectAttr } = documentId
   return [workspaceId, objectClass, objectId, objectAttr].join('|')
 }
 
 /** @public */
-export function decodeDocumentId (documentId: string): {
+export function decodeDocumentId(documentId: string): {
   workspaceId: string
   documentId: CollaborativeDoc
 } {

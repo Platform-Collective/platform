@@ -44,7 +44,8 @@ async function loadEslintConfig() {
         ...LEGACY_COMPATIBILITY_RULES,
         '@typescript-eslint/array-type': 'off',
         '@typescript-eslint/promise-function-async': 'off',
-        '@typescript-eslint/consistent-type-imports': 'off'
+        '@typescript-eslint/consistent-type-imports': 'off',
+        'space-before-function-paren': ['error', 'always']
       }
     },
     {
@@ -215,9 +216,6 @@ if (filesToCheck.length > 0) {
         overrideConfig: await loadEslintConfig()
       })
       const results = await eslint.lintFiles(filesToCheck)
-
-      // Apply fixes
-      await ESLint.outputFixes(results)
 
       const formatter = await eslint.loadFormatter('stylish')
       const resultText = formatter.format(results)

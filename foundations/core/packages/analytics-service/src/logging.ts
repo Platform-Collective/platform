@@ -9,9 +9,9 @@ import DailyRotateFile from 'winston-daily-rotate-file'
 export class SplitLogger implements MeasureLogger {
   logger: winston.Logger
 
-  constructor (
+  constructor(
     readonly name: string,
-    readonly opts: { root?: string, parent?: winston.Logger, pretty?: boolean, enableConsole?: boolean }
+    readonly opts: { root?: string; parent?: winston.Logger; pretty?: boolean; enableConsole?: boolean }
   ) {
     const rootDir = this.opts.root ?? 'logs'
 
@@ -77,14 +77,14 @@ export class SplitLogger implements MeasureLogger {
     )
   }
 
-  error (message: string, obj?: Record<string, any>): void {
+  error(message: string, obj?: Record<string, any>): void {
     if (this.opts.parent !== undefined) {
       this.opts.parent.error({ message, ...obj })
     }
     this.logger.error({ message, ...obj })
   }
 
-  info (message: string, obj?: Record<string, any>): void {
+  info(message: string, obj?: Record<string, any>): void {
     if (this.opts.parent !== undefined && this.opts.enableConsole === true) {
       // Only propogate if enable console is true
       this.opts.parent.info({ message, ...obj })
@@ -92,25 +92,25 @@ export class SplitLogger implements MeasureLogger {
     this.logger.info({ message, ...obj })
   }
 
-  warn (message: string, obj?: Record<string, any>): void {
+  warn(message: string, obj?: Record<string, any>): void {
     if (this.opts.parent !== undefined) {
       this.opts.parent.warn({ message, ...obj })
     }
     this.logger.warn({ message, ...obj })
   }
 
-  debug (message: string, obj?: Record<string, any>): void {
+  debug(message: string, obj?: Record<string, any>): void {
     if (this.opts.parent !== undefined) {
       this.opts.parent.debug({ message, ...obj })
     }
     this.logger.debug({ message, ...obj })
   }
 
-  logOperation (operation: string, time: number, params: ParamsType): void {
+  logOperation(operation: string, time: number, params: ParamsType): void {
     this.logger.info(operation, { time, ...params })
   }
 
-  childLogger (name: string, params: Record<string, string>): MeasureLogger {
+  childLogger(name: string, params: Record<string, string>): MeasureLogger {
     const dirName = dirname(name)
     const { enableConsole, ...otherParams } = params
     const child = this.logger.child({ name, ...otherParams })
@@ -122,7 +122,7 @@ export class SplitLogger implements MeasureLogger {
     })
   }
 
-  async close (): Promise<void> {
+  async close(): Promise<void> {
     this.logger.close()
   }
 }

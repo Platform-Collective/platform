@@ -15,15 +15,15 @@
 
 import type { LoginInfoByToken, LoginInfoRequest, WorkspaceLoginInfo } from './types'
 
-export function isWorkspaceLoginInfo (loginInfo: LoginInfoByToken): loginInfo is WorkspaceLoginInfo {
+export function isWorkspaceLoginInfo(loginInfo: LoginInfoByToken): loginInfo is WorkspaceLoginInfo {
   return !isLoginInfoRequest(loginInfo) && (loginInfo as WorkspaceLoginInfo)?.workspace != null
 }
 
-export function isLoginInfoRequest (info: LoginInfoByToken): info is LoginInfoRequest {
+export function isLoginInfoRequest(info: LoginInfoByToken): info is LoginInfoRequest {
   return (info as LoginInfoRequest)?.request
 }
 
-export function getClientTimezone (): string | undefined {
+export function getClientTimezone(): string | undefined {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone
   } catch (err: any) {
@@ -40,7 +40,7 @@ const networkMessageKeywords = ['fetch', 'network', 'connection']
 /**
  * Check if a message contains network-related keywords
  */
-function hasNetworkMessage (message: string): boolean {
+function hasNetworkMessage(message: string): boolean {
   const lowerMessage = message.toLowerCase()
   return networkMessageKeywords.some((keyword) => lowerMessage.includes(keyword))
 }
@@ -48,7 +48,7 @@ function hasNetworkMessage (message: string): boolean {
 /**
  * Check if an error is a network/connection error that should be retried
  */
-export function isNetworkError (err: unknown): boolean {
+export function isNetworkError(err: unknown): boolean {
   if (err == null) {
     return false
   }

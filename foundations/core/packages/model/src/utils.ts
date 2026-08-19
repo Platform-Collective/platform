@@ -10,11 +10,11 @@ import {
 } from '@hcengineering/core'
 import { deepEqual } from 'fast-equals'
 
-function toUndef (value: any): any {
+function toUndef(value: any): any {
   return value === null ? undefined : value
 }
 
-function diffAttributes (doc: Data<Doc>, newDoc: Data<Doc>): DocumentUpdate<Doc> {
+function diffAttributes(doc: Data<Doc>, newDoc: Data<Doc>): DocumentUpdate<Doc> {
   const result: DocumentUpdate<any> = {}
   const allDocuments = new Map(Object.entries(doc))
   const newDocuments = new Map(Object.entries(newDoc))
@@ -44,7 +44,7 @@ function diffAttributes (doc: Data<Doc>, newDoc: Data<Doc>): DocumentUpdate<Doc>
  * Create or update document if modified only by system account.
  * @public
  */
-export async function createOrUpdate<T extends Doc> (
+export async function createOrUpdate<T extends Doc>(
   client: TxOperations,
   _class: Ref<Class<T>>,
   space: Ref<Space>,
@@ -79,7 +79,7 @@ const errorPrinter = ({ message, stack, ...rest }: Error): object => ({
   stack,
   ...rest
 })
-function replacer (value: any): any {
+function replacer(value: any): any {
   return value instanceof Error ? errorPrinter(value) : value
 }
 
@@ -87,10 +87,10 @@ function replacer (value: any): any {
  * @public
  */
 export const consoleModelLogger: ModelLogger = {
-  log (msg: string, data: any): void {
+  log(msg: string, data: any): void {
     console.log(msg, data)
   },
-  error (msg: string, data: any): void {
+  error(msg: string, data: any): void {
     console.error(msg, replacer(data))
   }
 }

@@ -26,7 +26,7 @@ import { traverseAllMarks, traverseNode } from './traverse'
 export const EmptyMarkup: Markup = jsonToMarkup(emptyMarkupNode())
 
 /** @public */
-export function isEmptyMarkup (markup: Markup | undefined): boolean {
+export function isEmptyMarkup(markup: Markup | undefined): boolean {
   if (markup === undefined || markup === null || markup === '') {
     return true
   }
@@ -34,7 +34,7 @@ export function isEmptyMarkup (markup: Markup | undefined): boolean {
 }
 
 /** @public */
-export function areEqualMarkups (markup1: Markup, markup2: Markup): boolean {
+export function areEqualMarkups(markup1: Markup, markup2: Markup): boolean {
   if (markup1 === markup2) {
     return true
   }
@@ -50,11 +50,11 @@ export function areEqualMarkups (markup1: Markup, markup2: Markup): boolean {
 }
 
 /** @public */
-export function areEqualJson (json1: MarkupNode, json2: MarkupNode): boolean {
+export function areEqualJson(json1: MarkupNode, json2: MarkupNode): boolean {
   return equalNodes(json1, json2)
 }
 
-function equalNodes (node1: MarkupNode, node2: MarkupNode): boolean {
+function equalNodes(node1: MarkupNode, node2: MarkupNode): boolean {
   if (node1.type !== node2.type) return false
 
   const text1 = node1.text ?? ''
@@ -68,7 +68,7 @@ function equalNodes (node1: MarkupNode, node2: MarkupNode): boolean {
   return true
 }
 
-function equalArrays<T> (a: T[] | undefined, b: T[] | undefined, equal: (a: T, b: T) => boolean): boolean {
+function equalArrays<T>(a: T[] | undefined, b: T[] | undefined, equal: (a: T, b: T) => boolean): boolean {
   if (a === b) return true
   const arr1 = a ?? []
   const arr2 = b ?? []
@@ -76,14 +76,14 @@ function equalArrays<T> (a: T[] | undefined, b: T[] | undefined, equal: (a: T, b
   return arr1.every((item1, i) => equal(item1, arr2[i]))
 }
 
-function equalRecords (a: Record<string, any> | undefined, b: Record<string, any> | undefined): boolean {
+function equalRecords(a: Record<string, any> | undefined, b: Record<string, any> | undefined): boolean {
   if (a === b) return true
   a = Object.fromEntries(Object.entries(a ?? {}).filter(([_, v]) => v != null))
   b = Object.fromEntries(Object.entries(b ?? {}).filter(([_, v]) => v != null))
   return deepEqual(a, b)
 }
 
-export function equalMarks (a: MarkupMark, b: MarkupMark): boolean {
+export function equalMarks(a: MarkupMark, b: MarkupMark): boolean {
   return a.type === b.type && equalRecords(a.attrs, b.attrs)
 }
 
@@ -99,7 +99,7 @@ const nonEmptyNodes = [
 ]
 
 /** @public */
-export function isEmptyNode (node: MarkupNode): boolean {
+export function isEmptyNode(node: MarkupNode): boolean {
   if (emptyNodes.includes(node.type)) return true
   if (nonEmptyNodes.includes(node.type)) return false
   if (node.text !== undefined && node.text?.trim().length > 0) return false
@@ -111,12 +111,12 @@ export function isEmptyNode (node: MarkupNode): boolean {
 // Markup
 
 /** @public */
-export function jsonToMarkup (json: MarkupNode): Markup {
+export function jsonToMarkup(json: MarkupNode): Markup {
   return JSON.stringify(json)
 }
 
 /** @public */
-export function markupToJSON (markup: Markup): MarkupNode {
+export function markupToJSON(markup: Markup): MarkupNode {
   if (markup == null || markup === '') {
     return emptyMarkupNode()
   }
@@ -145,7 +145,7 @@ const ELLIPSIS_CHAR = '…'
 const WHITESPACE = ' '
 
 /** @public */
-export function stripTags (markup: Markup, textLimit = 0): string {
+export function stripTags(markup: Markup, textLimit = 0): string {
   const parsed = markupToJSON(markup)
 
   const textParts: string[] = []
@@ -195,7 +195,7 @@ export function stripTags (markup: Markup, textLimit = 0): string {
   return result
 }
 
-export function markupToText (markup: Markup): string {
+export function markupToText(markup: Markup): string {
   const jsonModel = markupToJSON(markup)
   const fragments: string[] = []
 
@@ -218,12 +218,12 @@ export function markupToText (markup: Markup): string {
 const hashedMarkNameRegex = /(.*)(--[a-zA-Z0-9+/=]{8})$/
 
 /** @public */
-export function stripHash (attrName: string): string {
+export function stripHash(attrName: string): string {
   return hashedMarkNameRegex.exec(attrName)?.[1] ?? attrName
 }
 
 /** @public */
-export function hashAttrs (attrs: any): string {
+export function hashAttrs(attrs: any): string {
   const hash = hashIt(attrs)
   return (hash >>> 0).toString(16).padStart(8, '0')
 }

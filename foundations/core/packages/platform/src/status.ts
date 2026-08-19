@@ -41,7 +41,7 @@ export class Status<P extends Record<string, any> = any> {
   readonly code: StatusCode<P>
   readonly params: P
 
-  constructor (severity: Severity, code: StatusCode<P>, params: P) {
+  constructor(severity: Severity, code: StatusCode<P>, params: P) {
     this.severity = severity
     this.code = code
     this.params = params
@@ -55,7 +55,7 @@ export class Status<P extends Record<string, any> = any> {
 export class PlatformError<P extends Record<string, any>> extends Error {
   readonly status: Status<P>
 
-  constructor (status: Status<P>) {
+  constructor(status: Status<P>) {
     super(`${status.severity}: ${status.code} ${JSON.stringify(status.params)}`)
     this.status = status
   }
@@ -84,11 +84,11 @@ export const UNAUTHORIZED = new Status(Severity.ERROR, platform.status.Unauthori
  * @param message -
  * @returns
  */
-export function unknownStatus (message: string): Status<any> {
+export function unknownStatus(message: string): Status<any> {
   return new Status(Severity.ERROR, platform.status.UnknownError, { message })
 }
 
-function isStatusLike (err: unknown): err is Pick<Status, 'severity' | 'code' | 'params'> {
+function isStatusLike(err: unknown): err is Pick<Status, 'severity' | 'code' | 'params'> {
   if (typeof err !== 'object' || err === null) return false
   const o = err as Record<string, unknown>
   return (
@@ -96,7 +96,7 @@ function isStatusLike (err: unknown): err is Pick<Status, 'severity' | 'code' | 
   )
 }
 
-function unwrapEmbeddedStatus (err: unknown): Status | undefined {
+function unwrapEmbeddedStatus(err: unknown): Status | undefined {
   if (typeof err !== 'object' || err === null || !('status' in err)) return undefined
   const st = (err as { status: unknown }).status
   if (!isStatusLike(st)) return undefined
@@ -107,7 +107,7 @@ function unwrapEmbeddedStatus (err: unknown): Status | undefined {
  * Normalizes a thrown or structured error value into a {@link Status} for RPC / telemetry.
  * @public
  */
-export function errorToStatus (err: unknown): Status {
+export function errorToStatus(err: unknown): Status {
   if (err instanceof PlatformError) return err.status
   if (err instanceof Status) return err
   if (isStatusLike(err)) {
@@ -122,7 +122,7 @@ export function errorToStatus (err: unknown): Status {
  * Creates unknown error status
  * @public
  */
-export function unknownError (err: unknown): Status {
+export function unknownError(err: unknown): Status {
   if (err instanceof PlatformError) return err.status
   if (err instanceof Error) return unknownStatus(err.message)
   if (typeof err === 'string') return unknownStatus(err)

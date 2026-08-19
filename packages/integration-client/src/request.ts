@@ -37,7 +37,7 @@ export interface RequestOptions {
  * @returns Promise that resolves to the parsed JSON response, or undefined for empty responses
  * @throws {PlatformError} When network errors occur or HTTP status indicates failure
  */
-export async function request (options: RequestOptions): Promise<any> {
+export async function request(options: RequestOptions): Promise<any> {
   const { baseUrl, method, path, token, body } = options
   let response: Response
   try {

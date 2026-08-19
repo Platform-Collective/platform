@@ -23,7 +23,7 @@ import { Doc as YDoc, XmlElement as YXmlElement, XmlFragment as YXmlFragment, Xm
  *
  * @public
  */
-export function markupToYDoc (markup: Markup, field: string): YDoc {
+export function markupToYDoc(markup: Markup, field: string): YDoc {
   return jsonToYDoc(markupToJSON(markup), field)
 }
 
@@ -32,7 +32,7 @@ export function markupToYDoc (markup: Markup, field: string): YDoc {
  *
  * @public
  */
-export function jsonToYDoc (json: MarkupNode, field: string): YDoc {
+export function jsonToYDoc(json: MarkupNode, field: string): YDoc {
   const ydoc = new YDoc({ guid: generateId() })
   const fragment = ydoc.getXmlFragment(field)
 
@@ -42,7 +42,7 @@ export function jsonToYDoc (json: MarkupNode, field: string): YDoc {
   return ydoc
 }
 
-function nodeToXmlElement (parent: YXmlFragment, node: MarkupNode): YXmlElement | YXmlText {
+function nodeToXmlElement(parent: YXmlFragment, node: MarkupNode): YXmlElement | YXmlText {
   const elem = node.type === 'text' ? new YXmlText() : new YXmlElement(node.type)
   parent.push([elem])
 
@@ -88,13 +88,13 @@ function nodeToXmlElement (parent: YXmlFragment, node: MarkupNode): YXmlElement 
  *
  * @public
  */
-export function yDocToMarkup (ydoc: YDoc, field: string): Markup {
+export function yDocToMarkup(ydoc: YDoc, field: string): Markup {
   const fragment = ydoc.getXmlFragment(field)
   const json = xmlFragmentToNode(fragment)
   return jsonToMarkup({ type: MarkupNodeType.doc, content: json })
 }
 
-function xmlFragmentToNode (fragment: YXmlFragment): MarkupNode[] {
+function xmlFragmentToNode(fragment: YXmlFragment): MarkupNode[] {
   const result: MarkupNode[] = []
 
   for (let i = 0; i < fragment.length; i++) {

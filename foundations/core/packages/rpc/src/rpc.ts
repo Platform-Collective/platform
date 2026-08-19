@@ -55,10 +55,10 @@ export interface HelloResponse extends Response<any> {
   useCompression?: boolean
 }
 
-function isTotalArray (value: any): value is { total?: number, lookupMap?: Record<string, any> } & any[] {
+function isTotalArray(value: any): value is { total?: number; lookupMap?: Record<string, any> } & any[] {
   return Array.isArray(value) && ((value as any).total !== undefined || (value as any).lookupMap !== undefined)
 }
-export function rpcJSONReplacer (key: string, value: any): any {
+export function rpcJSONReplacer(key: string, value: any): any {
   if (isTotalArray(value)) {
     return {
       dataType: 'TotalArray',
@@ -88,7 +88,7 @@ export function rpcJSONReplacer (key: string, value: any): any {
   }
 }
 
-export function rpcJSONReceiver (key: string, value: any): any {
+export function rpcJSONReceiver(key: string, value: any): any {
   if (typeof value === 'object' && value !== null) {
     if (value.dataType === 'TotalArray') {
       return Object.assign(value.value, { total: value.total, lookupMap: value.lookupMap })
@@ -140,14 +140,14 @@ export interface Response<R> {
 
 export class RPCHandler {
   packr = new Packr({ structuredClone: true, bundleStrings: true, copyBuffers: false })
-  protoSerialize (object: object, binary: boolean): any {
+  protoSerialize(object: object, binary: boolean): any {
     if (!binary) {
       return JSON.stringify(object, rpcJSONReplacer)
     }
     return new Uint8Array(this.packr.pack(object))
   }
 
-  protoDeserialize (data: any, binary: boolean): any {
+  protoDeserialize(data: any, binary: boolean): any {
     if (!binary) {
       let _data = data
       if (_data instanceof ArrayBuffer) {
@@ -170,7 +170,7 @@ export class RPCHandler {
    * @param object -
    * @returns
    */
-  serialize (object: Request<any> | Response<any>, binary: boolean): any {
+  serialize(object: Request<any> | Response<any>, binary: boolean): any {
     if ((object as any).result !== undefined) {
       ;(object as any).result = rpcJSONReplacer('result', (object as any).result)
     }
@@ -210,6 +210,6 @@ export class RPCHandler {
  * @param id -
  * @returns
  */
-export function fromStatus (status: Status, id?: ReqId): Response<any> {
+export function fromStatus(status: Status, id?: ReqId): Response<any> {
   return { id, error: status }
 }

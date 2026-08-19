@@ -11,7 +11,7 @@ export class SignupPage {
   readonly buttonSignUp: Locator
   readonly textError: Locator
 
-  constructor (page: Page) {
+  constructor(page: Page) {
     this.page = page
     this.inputFirstName = page.locator('input[name="given-name"]')
     this.inputLastName = page.locator('input[name="family-name"]')
@@ -22,7 +22,7 @@ export class SignupPage {
     this.textError = page.locator('div.ERROR > span')
   }
 
-  async signupPwd (userData: UserSignUp): Promise<void> {
+  async signupPwd(userData: UserSignUp): Promise<void> {
     await this.inputFirstName.fill(userData.firstName)
     await this.inputLastName.fill(userData.lastName)
     await this.inputEmail.fill(userData.email)

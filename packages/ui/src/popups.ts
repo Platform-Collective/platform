@@ -51,7 +51,7 @@ export const dockStore = derived(modalStore, (modals) => {
   return (modals.filter((m) => m.type === 'popup') as CompAndProps[]).find((popup: CompAndProps) => popup.dock)
 })
 
-export function updatePopup (id: string, props: Partial<CompAndProps>): void {
+export function updatePopup(id: string, props: Partial<CompAndProps>): void {
   modalStore.update((modals) => {
     const popupIndex = (modals.filter((m) => m.type === 'popup') as CompAndProps[]).findIndex(
       (p: CompAndProps) => p.id === id
@@ -63,14 +63,14 @@ export function updatePopup (id: string, props: Partial<CompAndProps>): void {
   })
 }
 
-function addPopup (props: CompAndProps): void {
+function addPopup(props: CompAndProps): void {
   modalStore.update((modals) => {
     modals.push(props)
     return modals
   })
 }
 
-function checkDockPosition (refId: string | undefined): boolean {
+function checkDockPosition(refId: string | undefined): boolean {
   if (refId !== undefined && localStorage.getItem('dock-popup') === refId) {
     const docked = get(dockStore)
     if (docked === undefined) {
@@ -81,7 +81,23 @@ function checkDockPosition (refId: string | undefined): boolean {
 }
 
 let popupId: number = 0
-export function showPopup (
+
+function wrapPopupCallback(
+  callback: ((result: any) => void | Promise<void>) | undefined
+): ((result: any) => void) | undefined {
+  if (callback === undefined) return undefined
+
+  return (result) => {
+    void Promise.resolve()
+      .then(() => callback(result))
+      .catch((err) => {
+        Analytics.handleError(err)
+        console.error(err)
+      })
+  }
+}
+
+export function showPopup(
   component: AnySvelteComponent | AnyComponent | ComponentType,
   props: any,
   element?: PopupAlignment,
@@ -118,8 +134,8 @@ export function showPopup (
     id,
     props,
     element: _element,
-    onClose,
-    onUpdate,
+    onClose: wrapPopupCallback(onClose),
+    onUpdate: wrapPopupCallback(onUpdate),
     close: closePopupOp,
     options,
     type: 'popup'
@@ -148,7 +164,7 @@ export function showPopup (
   }
 }
 
-export function closePopup (category?: string): void {
+export function closePopup(category?: string): void {
   modalStore.update((popups) => {
     if (category !== undefined) {
       popups = popups.filter((p) => p.type === 'popup' && p.options.category !== category)
@@ -182,7 +198,7 @@ export function closePopup (category?: string): void {
  *
  * return boolean to show or not modal overlay.
  */
-export function fitPopupPositionedElement (
+export function fitPopupPositionedElement(
   modalHTML: HTMLElement,
   alignment: PopupPositionElement,
   newProps: Record<string, string | number>
@@ -258,7 +274,7 @@ export function fitPopupPositionedElement (
  *
  * return boolean to show or not modal overlay.
  */
-export function fitPopupElement (
+export function fitPopupElement(
   modalHTML: HTMLElement,
   device: DeviceOptions,
   element?: PopupAlignment,
@@ -435,13 +451,13 @@ export function fitPopupElement (
   return { props: newProps, showOverlay: show, direction: '' }
 }
 
-export function eventToHTMLElement (evt: MouseEvent | TouchEvent): HTMLElement {
+export function eventToHTMLElement(evt: MouseEvent | TouchEvent): HTMLElement {
   return evt.target as HTMLElement
 }
 
-export function getEventPopupPositionElement (
+export function getEventPopupPositionElement(
   e?: Event,
-  position?: { v: VerticalAlignment, h: HorizontalAlignment }
+  position?: { v: VerticalAlignment; h: HorizontalAlignment }
 ): PopupAlignment | undefined {
   if (e?.target == null) {
     return undefined
@@ -450,9 +466,9 @@ export function getEventPopupPositionElement (
   return getPopupPositionElement(target, position)
 }
 
-export function getPopupPositionElement (
+export function getPopupPositionElement(
   el: HTMLElement | undefined,
-  position?: { v: VerticalAlignment, h: HorizontalAlignment }
+  position?: { v: VerticalAlignment; h: HorizontalAlignment }
 ): PopupAlignment | undefined {
   if (el?.getBoundingClientRect != null) {
     const result = el.getBoundingClientRect()
@@ -464,14 +480,14 @@ export function getPopupPositionElement (
 
   return undefined
 }
-export function getEventPositionElement (evt: MouseEvent): PopupAlignment | undefined {
+export function getEventPositionElement(evt: MouseEvent): PopupAlignment | undefined {
   const rect = DOMRect.fromRect({ width: 1, height: 1, x: evt.clientX, y: evt.clientY })
   return {
     getBoundingClientRect: () => rect
   }
 }
 
-export function pin (id: string): void {
+export function pin(id: string): void {
   modalStore.update((popups) => {
     const currentPopups = popups.filter((m) => m.type === 'popup') as CompAndProps[]
     const current = currentPopups.find((p) => p.id === id) as CompAndProps
@@ -483,7 +499,7 @@ export function pin (id: string): void {
   })
 }
 
-export function unpin (): void {
+export function unpin(): void {
   modalStore.update((popups) => {
     ;(popups.filter((m) => m.type === 'popup') as CompAndProps[]).forEach((p) => (p.dock = false))
     return popups

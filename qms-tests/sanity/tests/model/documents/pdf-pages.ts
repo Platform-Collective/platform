@@ -7,7 +7,7 @@ export class PdfPages {
   readonly downloadPdf: Locator
   readonly showFullScreenPdf: Locator
 
-  constructor (page: Page) {
+  constructor(page: Page) {
     this.page = page
     this.printToPdf = page.getByRole('button', { name: 'Print to PDF' })
     this.printToPdfHeader = page.getByText('PDF PDF print preview')
@@ -15,16 +15,16 @@ export class PdfPages {
     this.showFullScreenPdf = page.locator('form').getByRole('button').nth(2)
   }
 
-  async printToPdfClick (): Promise<void> {
+  async printToPdfClick(): Promise<void> {
     await this.printToPdf.click()
     await expect(this.printToPdfHeader).toBeVisible()
   }
 
-  async showFullScreenPdfClick (): Promise<void> {
+  async showFullScreenPdfClick(): Promise<void> {
     await this.showFullScreenPdf.click()
   }
 
-  async downloadAndVerifyPdf (): Promise<void> {
+  async downloadAndVerifyPdf(): Promise<void> {
     const [download] = await Promise.all([this.page.waitForEvent('download'), this.downloadPdf.click()])
     const filePath = await download.path()
     expect(filePath).toBeTruthy()

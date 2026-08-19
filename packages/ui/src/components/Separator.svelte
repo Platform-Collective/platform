@@ -58,14 +58,14 @@
   let realIndex: number = index
   let offset: number = 0
   let separatorsSizes: number[] | null = null
-  const separatorsWide: { before: number, after: number, total: number } = { before: 0, after: 0, total: 0 }
-  const containers: { minStart: number, minEnd: number, maxStart: number, maxEnd: number } = {
+  const separatorsWide: { before: number; after: number; total: number } = { before: 0, after: 0, total: 0 }
+  const containers: { minStart: number; minEnd: number; maxStart: number; maxEnd: number } = {
     minStart: -1,
     minEnd: -1,
     maxStart: -1,
     maxEnd: -1
   }
-  let parentSize: { start: number, end: number, size: number } | null = null
+  let parentSize: { start: number; end: number; size: number } | null = null
   let disabled: boolean = false
   let side: 'start' | 'end' | undefined = undefined
 
@@ -300,7 +300,7 @@
     return 0
   }
 
-  function pointerMove (event: PointerEvent): void {
+  function pointerMove(event: PointerEvent): void {
     if (sState === SeparatorState.NORMAL) normalMouseMove(event)
     else if (sState === SeparatorState.FLOAT) floatMouseMove(event)
   }
@@ -322,7 +322,7 @@
     parentElement.style.pointerEvents = 'none'
   }
 
-  function floatMouseMove (event: PointerEvent): void {
+  function floatMouseMove(event: PointerEvent): void {
     if (!isSeparate || parentSize === null || parentElement === null) return
     const coord: number = Math.round(direction === 'horizontal' ? event.clientX - offset : event.clientY - offset)
     let parentCoord: number = coord - parentSize.start
@@ -347,7 +347,7 @@
     setSize(parentElement, newCoord)
   }
 
-  function normalMouseMove (event: PointerEvent): void {
+  function normalMouseMove(event: PointerEvent): void {
     if (!isSeparate || separatorMap === undefined || parentSize === null || separatorsSizes === null) return
     const coord: number = Math.round(direction === 'horizontal' ? event.clientX - offset : event.clientY - offset)
     let parentCoord: number = coord - parentSize.start
@@ -430,13 +430,13 @@
     if ($panelstore.panel?.refit !== undefined) $panelstore.panel.refit()
   }
 
-  function pointerUp (): void {
+  function pointerUp(): void {
     finalSeparation()
     enableUserSelect()
     document.removeEventListener('pointermove', pointerMove)
     document.removeEventListener('pointerup', pointerUp)
   }
-  function finalSeparation (): void {
+  function finalSeparation(): void {
     isSeparate = false
     if (sState === SeparatorState.NORMAL) {
       applyStyles(true)
@@ -469,7 +469,7 @@
     document.body.style.cursor = ''
   }
 
-  function pointerDown (event: PointerEvent): void {
+  function pointerDown(event: PointerEvent): void {
     if (checkFullWidth()) return
     event.preventDefault()
     disableUserSelect()
@@ -477,7 +477,7 @@
     document.addEventListener('pointermove', pointerMove)
     document.addEventListener('pointerup', pointerUp)
   }
-  function prepareSeparation (event: PointerEvent): void {
+  function prepareSeparation(event: PointerEvent): void {
     if (parentElement == null) return
     if (sState === SeparatorState.FLOAT && parentElement === null) {
       checkParent()
@@ -575,7 +575,7 @@
         const children: Element[] = Array.from(parentElement.children)
         let totalSize: number = 0
         let ind: number = 0
-        const rects = new Map<number, { size: number, element: HTMLElement }>()
+        const rects = new Map<number, { size: number; element: HTMLElement }>()
         const hasSep: string[] = []
         children.forEach((ch) => {
           const rect = ch.getBoundingClientRect()

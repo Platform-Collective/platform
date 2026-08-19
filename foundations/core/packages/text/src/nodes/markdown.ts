@@ -23,7 +23,7 @@ export const MarkdownNode = Node.create({
   code: true,
   defining: true,
 
-  parseHTML () {
+  parseHTML() {
     return [
       {
         tag: 'pre[data-type="markdown"]',
@@ -32,7 +32,7 @@ export const MarkdownNode = Node.create({
     ]
   },
 
-  renderHTML ({ node, HTMLAttributes }) {
+  renderHTML({ node, HTMLAttributes }) {
     return [
       'pre',
       mergeAttributes({ 'data-type': this.name }, this.options.HTMLAttributes, HTMLAttributes),

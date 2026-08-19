@@ -13,7 +13,7 @@ export class DocumentReasonAndImpactPage extends DocumentCommonPage {
   readonly textImpactAnalysis: Locator
   readonly textImpactedDocuments: Locator
 
-  constructor (page: Page) {
+  constructor(page: Page) {
     super(page)
     this.page = page
     this.buttonReasonAndImpactTabSelected = page.locator('div.tab.selected', { hasText: 'Reason & Impact' })
@@ -29,7 +29,7 @@ export class DocumentReasonAndImpactPage extends DocumentCommonPage {
     )
   }
 
-  async setReasonAndImpactData (
+  async setReasonAndImpactData(
     description: string,
     reason: string,
     analysis: string,
@@ -52,7 +52,7 @@ export class DocumentReasonAndImpactPage extends DocumentCommonPage {
     await this.buttonReasonAndImpactTabSelected.click({ force: true })
   }
 
-  async checkReasonAndImpactData (
+  async checkReasonAndImpactData(
     description: string,
     reason: string,
     analysis: string,

@@ -62,7 +62,7 @@ export class IntegrationEventEmitter implements EventEmitter {
     })
   }
 
-  off (event: string, callback?: EventCallback): void {
+  off(event: string, callback?: EventCallback): void {
     if (callback == null) {
       this.listeners.delete(event)
       return
@@ -77,7 +77,7 @@ export class IntegrationEventEmitter implements EventEmitter {
     }
   }
 
-  removeAllListeners (event?: string): void {
+  removeAllListeners(event?: string): void {
     if (event !== undefined) {
       this.listeners.delete(event)
     } else {
@@ -86,7 +86,7 @@ export class IntegrationEventEmitter implements EventEmitter {
   }
 
   // Utility method to get listener count
-  listenerCount (event: string): number {
+  listenerCount(event: string): number {
     return this.listeners.get(event)?.size ?? 0
   }
 }
@@ -94,14 +94,14 @@ export class IntegrationEventEmitter implements EventEmitter {
 const GlobalIntegrationEventBus = {
   instance: null as IntegrationEventEmitter | null,
 
-  getInstance (): IntegrationEventEmitter {
+  getInstance(): IntegrationEventEmitter {
     if (GlobalIntegrationEventBus.instance == null) {
       GlobalIntegrationEventBus.instance = new IntegrationEventEmitter()
     }
     return GlobalIntegrationEventBus.instance
   },
 
-  resetInstance (): void {
+  resetInstance(): void {
     GlobalIntegrationEventBus.instance = null
   }
 }
@@ -110,7 +110,7 @@ export const getIntegrationEventBus = (): IntegrationEventEmitter => {
   return GlobalIntegrationEventBus.getInstance()
 }
 
-export function onIntegrationEvent<T = any> (
+export function onIntegrationEvent<T = any>(
   event: string,
   callback: (data: T) => void,
   filter?: (data: T) => boolean
