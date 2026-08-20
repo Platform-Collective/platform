@@ -925,7 +925,7 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
     }
 
     // If PR is merged or closed, we need to update platform issue status
-    if (gs !== undefined && stInstance.category !== gs.category) {
+    if (gs !== undefined && stInstance?.category !== gs.category) {
       update.status = gs._id
     }
   }
