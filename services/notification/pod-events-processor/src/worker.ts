@@ -29,7 +29,7 @@ import core, {
 import type { ConsumerControl } from '@hcengineering/server-core'
 import notification, { type CommonInboxNotification, type DocNotifyContext } from '@hcengineering/notification'
 import { jsonToMarkup, nodeDoc, nodeParagraph, nodeText } from '@hcengineering/text-core'
-import time from '@hcengineering/time'
+import time, { type ToDo } from '@hcengineering/time'
 import { getClient, type ClientBundle } from './client'
 import type { ScheduledNotificationMessage } from './types'
 
@@ -183,8 +183,8 @@ async function resolveReminderTarget (
 
   const isToDoBacked = event.attachedToClass != null && hierarchy.isDerived(event.attachedToClass, time.class.ToDo)
   if (isToDoBacked && event.attachedTo != null && event.attachedToClass != null) {
-    const todo = await client.findOne(event.attachedToClass, {
-      _id: event.attachedTo
+    const todo = await client.findOne<ToDo>(event.attachedToClass, {
+      _id: event.attachedTo as Ref<ToDo>
     })
     if (todo === undefined) return undefined
     if (todo.doneOn != null) return undefined

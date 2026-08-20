@@ -108,7 +108,7 @@ function getRecordsByType (event: AnalyticEvent): Record<string, any> {
       }
     default:
       return {
-        event: typeof event.event === 'string' && event.event.length > 0 ? event.event : 'unknown_event'
+        event: 'unknown_event'
       }
   }
 }

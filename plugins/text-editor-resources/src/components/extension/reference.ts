@@ -24,7 +24,7 @@ import Suggestion, { type SuggestionKeyDownProps, type SuggestionOptions, type S
 import { type Blob, type Class, type Doc, type Ref } from '@hcengineering/core'
 import { getMetadata, getResource, translate } from '@hcengineering/platform'
 import presentation, { createQuery, getBlobRef, getClient, MessageBox } from '@hcengineering/presentation'
-import view from '@hcengineering/view'
+import view, { type ObjectTooltip, type ReferenceObjectProvider } from '@hcengineering/view'
 import activity, { type ActivityMessage } from '@hcengineering/activity'
 import contact from '@hcengineering/contact'
 import { parseLocation, showPopup, tooltip, type LabelAndProps, type Location, fromCodePoint } from '@hcengineering/ui'
@@ -418,7 +418,10 @@ async function getReferenceTooltip<T extends Doc> (
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  const mixin = hierarchy.classHierarchyMixin(objectclass, view.mixin.ObjectTooltip)
+  const mixin = hierarchy.classHierarchyMixin<Doc, ObjectTooltip>(
+    objectclass,
+    view.mixin.ObjectTooltip
+  )
 
   if (mixin?.provider !== undefined) {
     const providerFn = await getResource(mixin.provider)
@@ -489,7 +492,10 @@ export async function getReferenceObject<T extends Doc> (
     return message
   }
 
-  const referenceObjectProvider = hierarchy.classHierarchyMixin(objectclass, view.mixin.ReferenceObjectProvider)
+  const referenceObjectProvider = hierarchy.classHierarchyMixin<Doc, ReferenceObjectProvider>(
+    objectclass,
+    view.mixin.ReferenceObjectProvider
+  )
   const referenceObjectProviderFn =
     referenceObjectProvider !== undefined ? await getResource(referenceObjectProvider.provider) : undefined
 

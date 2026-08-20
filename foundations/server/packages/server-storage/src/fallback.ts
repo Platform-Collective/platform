@@ -77,8 +77,11 @@ export class FallbackStorageAdapter implements StorageAdapter, StorageAdapterEx 
       next: async () => {
         while (true) {
           if (iterator === undefined && adapters.length > 0) {
-            provider = adapters.shift()
-            iterator = await provider.adapter.listStream(ctx, wsIds)
+            const nextProvider = adapters.shift()
+            if (nextProvider !== undefined) {
+              provider = nextProvider
+              iterator = await provider.adapter.listStream(ctx, wsIds)
+            }
           }
           if (iterator === undefined) {
             return []
