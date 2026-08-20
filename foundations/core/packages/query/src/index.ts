@@ -1084,12 +1084,17 @@ export class LiveQuery implements WithTx, Client {
     lookup: ReverseLookups,
     result: LookupData<T>
   ): Promise<void> {
-    for (const key of Object.keys(lookup._id)) {
+    const reverseLookup = lookup._id
+    if (reverseLookup === undefined) {
+      return
+    }
+
+    for (const key of Object.keys(reverseLookup)) {
       if ((doc as any)[key] === undefined || (doc as any)[key] === 0) {
         continue
       }
 
-      const value = lookup._id[key]
+      const value = reverseLookup[key]
 
       let _class: Ref<Class<Doc>>
       let attr = 'attachedTo'

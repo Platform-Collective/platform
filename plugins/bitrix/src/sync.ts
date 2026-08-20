@@ -13,6 +13,7 @@ import core, {
   generateId,
   Hierarchy,
   Mixin,
+  MixinData,
   MixinUpdate,
   Ref,
   Space,
@@ -71,7 +72,15 @@ async function updateMixin (
   // We need to update fields if they are different.
 
   if (!client.getHierarchy().hasMixin(doc, mixin)) {
-    await client.createMixin(doc._id, doc._class, doc.space, mixin, raw, modifiedOn, modifiedBy)
+    await client.createMixin(
+      doc._id,
+      doc._class,
+      doc.space,
+      mixin,
+      raw as MixinData<Doc, Mixin<Doc>>,
+      modifiedOn,
+      modifiedBy
+    )
     return doc
   }
 
