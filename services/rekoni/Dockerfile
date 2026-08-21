@@ -1,4 +1,4 @@
-FROM platformcollective/rekoni-base:v20260819
+FROM platformcollective/rekoni-base:v20260821
 WORKDIR /usr/src/app
 
 COPY bundle/bundle.js ./

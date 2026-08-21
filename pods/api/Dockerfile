@@ -1,9 +1,9 @@
-FROM platformcollective/preview-base:v20260821
+FROM tracexapp/base-slim:v20260821
 
 WORKDIR /app
 
 COPY bundle/bundle.js ./
 COPY bundle/bundle.js.map ./
 
-EXPOSE 4040
+EXPOSE 8080
 CMD ["dumb-init", "node", "bundle.js"]

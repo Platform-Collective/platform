@@ -1,4 +1,4 @@
-FROM platformcollective/base:v20260811
+FROM platformcollective/base:v20260821
 WORKDIR /usr/src/app
 
 COPY bundle/model.json ./

@@ -1,4 +1,4 @@
-FROM platformcollective/base-slim:v20260819
+FROM platformcollective/base-slim:v20260821
 WORKDIR /app
 
 COPY bundle/bundle.js ./
