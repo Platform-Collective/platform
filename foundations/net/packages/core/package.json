@@ -46,7 +46,7 @@
     "@types/node": "^24.13.3"
   },
   "dependencies": {
-    "uuid": "^8.3.2"
+    "uuid": "^14.0.2"
   },
   "repository": "https://github.com/hcengineering/huly.net",
   "exports": {

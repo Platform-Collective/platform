@@ -51,7 +51,7 @@
     "express": "^4.21.2",
     "express-fileupload": "^1.5.1",
     "express-static-gzip": "^2.2.0",
-    "uuid": "^8.3.2",
+    "uuid": "^14.0.2",
     "cors": "^2.8.5",
     "@hcengineering/account-client": "workspace:^0.7.25",
     "@hcengineering/server-core": "workspace:^0.7.19",
