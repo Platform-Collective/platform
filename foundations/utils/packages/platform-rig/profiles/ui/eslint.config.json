@@ -60,6 +60,7 @@
     }
   ],
   "rules": {
+    "@typescript-eslint/consistent-type-exports": "off",
     "svelte/no-at-html-tags": "error"
   }
 }
