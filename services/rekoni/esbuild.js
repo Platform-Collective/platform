@@ -11,5 +11,5 @@ void esbuild.build({
     loader: { ".node": "file" },
     platform: 'node',
     outfile: 'bundle/bundle.js',
-    external: ['canvas', 'sharp', 'pdfjs-dist']
+    external: ['canvas', 'sharp', 'pdfjs-dist', 'unpdf']
 })

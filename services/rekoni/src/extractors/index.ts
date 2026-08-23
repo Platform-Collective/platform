@@ -5,6 +5,7 @@ import { htmlExtractor } from './html'
 import { pdfExtractor } from './pdf'
 import { rtfExtractor } from './rtf'
 import { DocumentExtractor } from './types'
+import { MeasureContext } from '@hcengineering/core'
 export * from './types'
 
 const extractors: Record<string, DocumentExtractor> = {
@@ -16,6 +17,7 @@ const extractors: Record<string, DocumentExtractor> = {
 }
 
 export async function extract (
+  ctx: MeasureContext,
   fileName: string,
   type: string | false,
   data: Buffer
@@ -23,17 +25,20 @@ export async function extract (
   if (type === false) {
     return { matched: true, content: '', error: new Error('Unknown file type') }
   }
-  console.log('extracting text ', fileName, type)
+
+  ctx.info('extracting text ', { fileName, type })
+
   for (const ex of Object.entries(extractors)) {
     if (await ex[1].isMatch(fileName, type, data)) {
       try {
         const content = await ex[1].extract(fileName, type, data)
         return { matched: true, content }
       } catch (err: any) {
-        console.log(err)
+        ctx.error('extract error', { err })
         return { matched: true, content: '', error: err }
       }
     }
   }
+
   return { matched: false, content: '' }
 }

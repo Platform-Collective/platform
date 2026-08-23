@@ -17,12 +17,13 @@ import { createOpenTelemetryMetricsContext, SplitLogger } from '@hcengineering/a
 import { newMetrics } from '@hcengineering/core'
 import { setMetadata } from '@hcengineering/platform'
 import { initStatisticsContext } from '@hcengineering/server-core'
+import { extractToken } from '@hcengineering/server-client'
 import serverToken from '@hcengineering/server-token'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import express from 'express'
 import formData from 'express-form-data'
-import { type IncomingHttpHeaders, type Server } from 'http'
+import { type Server } from 'http'
 import morgan from 'morgan'
 import os from 'os'
 import { join } from 'path'
@@ -31,24 +32,16 @@ import config from './config'
 import { ApiError } from './error'
 import { extract } from './extractors'
 import { parseGenericResume } from './generic'
-import { decode } from './jwt'
 import { extractDocument } from './process'
 import { type ReconiDocument } from './types'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-
-const extractToken = (header: IncomingHttpHeaders): any => {
-  try {
-    return header.authorization?.slice(7) ?? ''
-  } catch {
-    return undefined
-  }
-}
 
 export const startServer = async (): Promise<void> => {
   const app = express()
 
   setMetadata(serverToken.metadata.Secret, process.env.SECRET)
   setMetadata(serverToken.metadata.Service, 'rekoni')
+
   const ctx = initStatisticsContext('rekoni', {
     factory: () =>
       createOpenTelemetryMetricsContext(
@@ -127,9 +120,14 @@ export const startServer = async (): Promise<void> => {
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   app.post('/recognize', async (req, res) => {
     const token = extractToken(req.headers)
-    decode(token)
+    if (token === undefined) {
+      res.status(401).send()
+      return
+    }
+
     const params = req.body
-    console.log('recognize from', params.fileUrl)
+
+    ctx.info('recognize', { url: params.fileUrl })
 
     const contentType = req.body.type as string
     const name = req.body.name as string
@@ -164,7 +162,7 @@ export const startServer = async (): Promise<void> => {
       await extractQueue.add(async () => {
         res.set('Cache-Control', 'no-cache')
         try {
-          const { content, error } = await extract(name, contentType, body)
+          const { content, error } = await extract(ctx, name, contentType, body)
           if (error !== undefined) {
             res.status(400)
             res.json({ error: JSON.stringify(error) })
@@ -215,7 +213,11 @@ export const startServer = async (): Promise<void> => {
   app.post('/toText', async (req, res) => {
     try {
       const token = extractToken(req.headers)
-      decode(token)
+      if (token === undefined) {
+        res.status(401).send()
+        return
+      }
+
       const name = req.query.name as string
       const contentType = req.query.type as string
       const body = typeof req.body === 'string' ? Buffer.from(req.body, 'base64') : (req.body as Buffer)
@@ -226,7 +228,7 @@ export const startServer = async (): Promise<void> => {
         {},
         () =>
           extractQueue.add(async () => {
-            const { matched, content, error } = await extract(name, contentType, body)
+            const { matched, content, error } = await extract(ctx, name, contentType, body)
             if (error !== undefined) {
               res.status(400)
             } else {

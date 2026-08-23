@@ -27,11 +27,10 @@
     "check-ts": "tsc --noEmit",
     "lint": "eslint src",
     "lint:fix": "eslint --fix src",
-    "test": "jest --passWithNoTests --silent",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests --silent",
     "format": "format src",
-    "find-skills": "ts-node ./src/find-skills.ts",
     "_phase:build": "compile transpile src",
-    "_phase:test": "jest --passWithNoTests --silent",
+    "_phase:test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests --silent",
     "_phase:format": "format src",
     "_phase:validate": "compile validate",
     "build:watch": "compile"
@@ -83,9 +82,11 @@
     "sharp": "~0.35.3",
     "morgan": "^1.10.0",
     "@hcengineering/server-core": "workspace:^0.7.19",
+    "@hcengineering/server-client": "workspace:^0.7.16",
     "@hcengineering/server-token": "workspace:^0.7.18",
     "@hcengineering/platform": "workspace:^0.7.20",
-    "@hcengineering/analytics-service": "workspace:^0.7.19"
+    "@hcengineering/analytics-service": "workspace:^0.7.19",
+    "unpdf": "~1.8.1"
   },
   "description": "Document recognition service"
 }
