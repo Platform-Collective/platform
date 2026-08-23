@@ -33,8 +33,7 @@
     "@types/jest": "^29.5.5",
     "@types/node": "^24.13.3",
     "@types/mime-types": "~2.1.1",
-    "@types/js-yaml": "^4.0.9",
-    "@types/uuid": "^8.3.1"
+    "@types/js-yaml": "^4.0.9"
   },
   "dependencies": {
     "@hcengineering/attachment": "workspace:^0.7.0",
@@ -60,7 +59,7 @@
     "csvtojson": "^2.0.10",
     "js-yaml": "^4.1.0",
     "image-size": "^1.2.1",
-    "uuid": "^14.0.2"
+    "uuid": "^11.1.1"
   },
   "repository": {
     "type": "git",

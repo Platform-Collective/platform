@@ -55,8 +55,7 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "@types/morgan": "~1.9.9",
-    "@types/on-headers": "^1.0.2",
-    "@types/uuid": "^8.3.1"
+    "@types/on-headers": "^1.0.2"
   },
   "dependencies": {
     "@hcengineering/analytics": "workspace:^0.7.19",
@@ -76,6 +75,6 @@
     "morgan": "^1.10.0",
     "postgres": "^3.4.7",
     "on-headers": "^1.0.2",
-    "uuid": "^14.0.2"
+    "uuid": "^11.1.1"
   }
 }

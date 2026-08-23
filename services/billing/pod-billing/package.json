@@ -54,7 +54,6 @@
     "typescript": "^5.9.3",
     "@types/morgan": "~1.9.9",
     "@types/on-headers": "^1.0.2",
-    "@types/uuid": "^8.3.1",
     "cross-env": "~7.0.3"
   },
   "dependencies": {
@@ -75,6 +74,6 @@
     "morgan": "^1.10.0",
     "postgres": "^3.4.7",
     "on-headers": "^1.0.2",
-    "uuid": "^14.0.2"
+    "uuid": "^11.1.1"
   }
 }
