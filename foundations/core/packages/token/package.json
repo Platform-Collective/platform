@@ -38,14 +38,13 @@
     "jest": "^29.7.0",
     "ts-jest": "^29.1.1",
     "@types/jest": "^29.5.5",
-    "@types/uuid": "^8.3.1",
     "eslint-plugin-svelte": "^2.35.1"
   },
   "dependencies": {
     "@hcengineering/core": "workspace:^0.7.26",
     "@hcengineering/platform": "workspace:^0.7.20",
     "jwt-simple": "^0.5.6",
-    "uuid": "^14.0.2"
+    "uuid": "^11.1.1"
   },
   "repository": {
     "type": "git",

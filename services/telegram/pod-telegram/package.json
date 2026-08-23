@@ -32,7 +32,7 @@
   "devDependencies": {
     "@hcengineering/platform-rig": "workspace:^0.7.21",
     "@tsconfig/node16": "^1.0.4",
-    "@types/cors": "^2.8.12",
+    "@types/cors": "^2.8.19",
     "@types/express": "^4.17.13",
     "@types/mime": "^3.0.1",
     "@types/node": "^24.13.3",
@@ -69,7 +69,7 @@
     "@hcengineering/mongo": "workspace:^0.7.16",
     "big-integer": "^1.6.51",
     "dotenv": "^16.4.5",
-    "cors": "^2.8.5",
+    "cors": "^2.8.6",
     "express": "^4.21.2",
     "htmlparser2": "^9.0.0",
     "jwt-simple": "^0.5.6",
