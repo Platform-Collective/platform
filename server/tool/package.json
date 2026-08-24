@@ -58,6 +58,6 @@
     "fast-equals": "^5.2.2",
     "@hcengineering/text": "workspace:^0.7.19",
     "@hcengineering/text-markdown": "workspace:^0.7.21",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.3.1"
   }
 }
