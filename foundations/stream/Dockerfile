@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.24.4 AS base
+FROM golang:1.26.7 AS base
 
 WORKDIR /app
 
