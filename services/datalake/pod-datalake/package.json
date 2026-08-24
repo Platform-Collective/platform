@@ -75,7 +75,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1107.0",
     "@aws-sdk/lib-storage": "^3.1107.0",
     "@smithy/node-http-handler": "^4.0.2",
-    "morgan": "^1.10.0",
+    "morgan": "^1.11.0",
     "on-headers": "^1.0.2",
     "lru-cache": "^11.1.0",
     "uuid": "^11.1.1"

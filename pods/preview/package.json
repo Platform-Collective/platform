@@ -68,7 +68,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "cors": "^2.8.6",
-    "morgan": "^1.10.0",
+    "morgan": "^1.11.0",
     "node-poppler": "^8.0.4",
     "lru-cache": "^11.1.0",
     "heic-decode": "^2.1.0",
