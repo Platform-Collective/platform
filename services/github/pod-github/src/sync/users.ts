@@ -40,7 +40,7 @@ export class UsersSyncManager implements DocSyncManager {
     return false
   }
 
-  async handleEvent<T> (
+  async handleEvent<T>(
     ctx: MeasureContext,
     integration: IntegrationContainer,
     derivedClient: TxOperations,

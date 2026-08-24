@@ -25,7 +25,7 @@ export interface EventEmitter {
 export class IntegrationEventEmitter implements EventEmitter {
   private readonly listeners = new Map<string, Set<EventCallback>>()
 
-  on<T = any> (event: string, callback: EventCallback<T>): () => void {
+  on<T = any>(event: string, callback: EventCallback<T>): () => void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set())
     }
@@ -46,7 +46,7 @@ export class IntegrationEventEmitter implements EventEmitter {
     }
   }
 
-  emit<T = any> (event: string, data: T): void {
+  emit<T = any>(event: string, data: T): void {
     const eventListeners = this.listeners.get(event)
     if (eventListeners === undefined) return
 

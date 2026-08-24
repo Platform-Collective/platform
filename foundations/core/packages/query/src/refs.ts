@@ -55,7 +55,7 @@ export class Refs {
     }
   }
 
-  public findFromDocs<T extends Doc> (
+  public findFromDocs<T extends Doc>(
     _class: Ref<Class<Doc>>,
     query: DocumentQuery<Doc>,
     options?: FindOptions<T>

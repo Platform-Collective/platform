@@ -570,7 +570,7 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
     }
   }
 
-  private async mergeQuery<T extends Doc> (
+  private async mergeQuery<T extends Doc>(
     ctx: MeasureContext,
     account: Account,
     query: ObjQueryType<T['space']>,
@@ -612,7 +612,7 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
     return domain === 'tx' ? 'objectSpace' : domain === 'space' ? '_id' : 'space'
   }
 
-  override async findAll<T extends Doc> (
+  override async findAll<T extends Doc>(
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -732,7 +732,7 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
     return result
   }
 
-  filterLookup<T extends Doc> (ctx: MeasureContext, lookup: LookupData<T>, showArchived: boolean): void {
+  filterLookup<T extends Doc>(ctx: MeasureContext, lookup: LookupData<T>, showArchived: boolean): void {
     if (Object.keys(lookup).length === 0) return
     const account = ctx.contextData.account
     if (isSystem(account, ctx)) return

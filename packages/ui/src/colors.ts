@@ -284,14 +284,14 @@ export function getPlatformColorByName (name: string, darkTheme: boolean): Color
   return getColorByName(name, darkTheme, whitePalette, darkPalette, defaultIndex)
 }
 
-function getColorByName(
+function getColorByName (
   name: string,
   darkTheme: boolean,
   paletteLight: readonly ColorDefinition[],
   paletteDark: readonly ColorDefinition[],
   defaultIndex: number
 ): ColorDefinition
-function getColorByName(
+function getColorByName (
   name: string,
   darkTheme: boolean,
   paletteLight: readonly ColorDefinition[],

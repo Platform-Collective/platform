@@ -236,7 +236,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     }
   }
 
-  async traverse<T extends Doc> (
+  async traverse<T extends Doc>(
     _domain: Domain,
     query: DocumentQuery<T>,
     options?: Pick<FindOptions<T>, 'sort' | 'limit' | 'projection'>
@@ -281,7 +281,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
 
   on?: ((handler: DbAdapterHandler) => void) | undefined
 
-  abstract init(
+  abstract init (
     ctx: MeasureContext,
     contextVars: Record<string, any>,
     domains?: string[],
@@ -293,7 +293,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     this.refClient.close()
   }
 
-  async rawFindAll<T extends Doc> (_domain: Domain, query: DocumentQuery<T>, options?: FindOptions<T>): Promise<T[]> {
+  async rawFindAll<T extends Doc>(_domain: Domain, query: DocumentQuery<T>, options?: FindOptions<T>): Promise<T[]> {
     const domain = translateDomain(_domain)
     const vars = new ValuesVariables()
     const select = `SELECT ${this.getProjection(vars, domain, options?.projection, [])} FROM ${domain}`
@@ -312,7 +312,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return result.map((p) => parseDocWithProjection(p, domain, options?.projection))
   }
 
-  buildRawOrder<T extends Doc> (domain: string, sort: SortingQuery<T>): string {
+  buildRawOrder<T extends Doc>(domain: string, sort: SortingQuery<T>): string {
     const res: string[] = []
     for (const key in sort) {
       const val = sort[key]
@@ -332,7 +332,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     }
   }
 
-  buildRawQuery<T extends Doc> (
+  buildRawQuery<T extends Doc>(
     vars: ValuesVariables,
     domain: string,
     query: DocumentQuery<T>,
@@ -351,7 +351,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return res.join(' AND ')
   }
 
-  async rawUpdate<T extends Doc> (
+  async rawUpdate<T extends Doc>(
     domain: Domain,
     query: DocumentQuery<T>,
     operations: DocumentUpdate<T>
@@ -410,7 +410,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     }
   }
 
-  private async rawUpdateDoc<T extends Doc> (
+  private async rawUpdateDoc<T extends Doc>(
     domain: Domain,
     query: DocumentQuery<T>,
     operations: DocumentUpdate<T>,
@@ -443,7 +443,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     })
   }
 
-  async rawDeleteMany<T extends Doc> (domain: Domain, query: DocumentQuery<T>): Promise<void> {
+  async rawDeleteMany<T extends Doc>(domain: Domain, query: DocumentQuery<T>): Promise<void> {
     const vars = new ValuesVariables()
     const translatedQuery = this.buildRawQuery(vars, domain, query)
     await this.mgr.retry(undefined, this.mgrId, async (client) => {
@@ -451,7 +451,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     })
   }
 
-  findAll<T extends Doc> (
+  findAll<T extends Doc>(
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -577,7 +577,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     )
   }
 
-  private localizeProjection<T extends Doc> (
+  private localizeProjection<T extends Doc>(
     _class: Ref<Class<T>>,
     projection: Projection<T> | undefined
   ): Projection<T> | undefined {
@@ -612,12 +612,12 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return res
   }
 
-  private buildJoins<T extends Doc> (_class: Ref<Class<T>>, options: ServerFindOptions<T> | undefined): JoinProps[] {
+  private buildJoins<T extends Doc>(_class: Ref<Class<T>>, options: ServerFindOptions<T> | undefined): JoinProps[] {
     const joins = this.buildJoin(_class, options?.lookup)
     return joins
   }
 
-  addSecurity<T extends Doc> (
+  addSecurity<T extends Doc>(
     _class: Ref<Class<T>>,
     vars: ValuesVariables,
     query: DocumentQuery<T>,
@@ -654,7 +654,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     }
   }
 
-  private async parseLookup<T extends Doc> (
+  private async parseLookup<T extends Doc>(
     ctx: MeasureContext<SessionData>,
     rows: any[],
     joins: JoinProps[],
@@ -878,7 +878,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     }
   }
 
-  private getModelLookupValue<T extends Doc> (doc: WithLookup<T>, join: JoinProps, otherJoins: JoinProps[]): any {
+  private getModelLookupValue<T extends Doc>(doc: WithLookup<T>, join: JoinProps, otherJoins: JoinProps[]): any {
     if (join.fromAlias.startsWith('lookup_')) {
       const other = otherJoins.find((j) => j.toAlias === join.fromAlias)
       if (other !== undefined) {
@@ -913,7 +913,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return res.join(' ')
   }
 
-  private buildJoin<T extends Doc> (clazz: Ref<Class<T>>, lookup: Lookup<T> | undefined): JoinProps[] {
+  private buildJoin<T extends Doc>(clazz: Ref<Class<T>>, lookup: Lookup<T> | undefined): JoinProps[] {
     const res: JoinProps[] = []
     if (lookup !== undefined) {
       this.buildJoinValue(clazz, lookup, res)
@@ -928,7 +928,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return false
   }
 
-  private buildJoinValue<T extends Doc> (
+  private buildJoinValue<T extends Doc>(
     clazz: Ref<Class<T>>,
     lookup: Lookup<T>,
     res: JoinProps[],
@@ -1041,7 +1041,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     } catch {}
   }
 
-  private buildOrder<T extends Doc> (
+  private buildOrder<T extends Doc>(
     _class: Ref<Class<T>>,
     baseDomain: string,
     sort: SortingQuery<T>,
@@ -1213,7 +1213,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return res.join(' AND ')
   }
 
-  private getValueType<T extends Doc> (_class: Ref<Class<T>>, key: string): ValueType {
+  private getValueType<T extends Doc>(_class: Ref<Class<T>>, key: string): ValueType {
     const splitted = key.split('.')
     const mixinOrKey = splitted[0]
     const domain = this.hierarchy.getDomain(_class)
@@ -1233,7 +1233,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     }
   }
 
-  private fillClass<T extends Doc> (
+  private fillClass<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>
   ): ObjQueryType<Doc['_class']> | undefined {
@@ -1284,7 +1284,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return value
   }
 
-  private getKey<T extends Doc> (
+  private getKey<T extends Doc>(
     _class: Ref<Class<T>>,
     baseDomain: string,
     key: string,
@@ -1317,7 +1317,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return `${join.toAlias}."${tKey}"`
   }
 
-  private transformKey<T extends Doc> (
+  private transformKey<T extends Doc>(
     domain: string,
     _class: Ref<Class<T>>,
     key: string,
@@ -1351,7 +1351,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return isDataArray || isNestedField ? `data->'${tKey}'` : `data#>>'{${tKey}}'`
   }
 
-  private checkMixinKey<T extends Doc> (key: string, _class: Ref<Class<T>>, isDataArray: boolean): string {
+  private checkMixinKey<T extends Doc>(key: string, _class: Ref<Class<T>>, isDataArray: boolean): string {
     if (!key.includes('.')) {
       try {
         const attr = this.hierarchy.findAttribute(_class, key)
@@ -1556,7 +1556,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return Date.now().toString(16) // Current hash value
   }
 
-  private getProjection<T extends Doc> (
+  private getProjection<T extends Doc>(
     vars: ValuesVariables,
     baseDomain: string,
     projection: Projection<T> | undefined,
@@ -1596,7 +1596,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return []
   }
 
-  stripHash<T extends Doc> (docs: T | T[]): T | T[] {
+  stripHash<T extends Doc>(docs: T | T[]): T | T[] {
     if (Array.isArray(docs)) {
       docs.forEach((it) => {
         if ('%hash%' in it) {
@@ -1802,7 +1802,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     }
   }
 
-  groupBy<T, P extends Doc> (
+  groupBy<T, P extends Doc>(
     ctx: MeasureContext,
     domain: Domain,
     field: string,
@@ -2060,7 +2060,7 @@ export class PostgresAdapter extends PostgresAdapterBase {
     return result
   }
 
-  private updateDoc<T extends Doc> (
+  private updateDoc<T extends Doc>(
     ctx: MeasureContext,
     domain: Domain,
     txes: TxUpdateDoc<T>[],

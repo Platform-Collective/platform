@@ -42,7 +42,7 @@ export class Limiter {
     }, this.chatTimeLimit)
   }
 
-  async exec<T> (op: () => Promise<T>): Promise<void> {
+  async exec<T>(op: () => Promise<T>): Promise<void> {
     while (this.sentMsg >= this.maxMsgPerTime) {
       await new Promise((resolve) => setTimeout(resolve, Math.max(Date.now() - this.clearTimeLimitOn), 10))
     }
@@ -56,7 +56,7 @@ export class Limiter {
     }
   }
 
-  async add<T> (telegramId: number, op: () => Promise<T>): Promise<void> {
+  async add<T>(telegramId: number, op: () => Promise<T>): Promise<void> {
     await this.updateChatLimits(telegramId)
 
     if (this.sentMsg >= this.maxMsgPerTime) {

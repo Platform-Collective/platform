@@ -64,13 +64,13 @@ class WorkspaceClient implements HulylakeWorkspaceClient {
     return this.client.delete(this.workspace, key, retryOptions)
   }
 
-  public async getJson<T> (key: string, retryOptions?: RetryOptions): Promise<HulyResponse<T>> {
+  public async getJson<T>(key: string, retryOptions?: RetryOptions): Promise<HulyResponse<T>> {
     const res = await this.client.get(this.workspace, key, retryOptions)
     const body = res.ok && res.body != null ? ((await new Response(res.body).json()) as T) : undefined
     return { ...res, body }
   }
 
-  public async putJson<T extends object> (
+  public async putJson<T extends object>(
     key: string,
     json: T,
     options?: Omit<PutOptions, 'mergeStrategy'>,

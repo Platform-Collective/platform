@@ -96,7 +96,7 @@ export class PrivateMiddleware extends BaseMiddleware implements Middleware {
     return this.provideTx(ctx, txes)
   }
 
-  override async findAll<T extends Doc> (
+  override async findAll<T extends Doc>(
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -151,7 +151,7 @@ export class PrivateMiddleware extends BaseMiddleware implements Middleware {
     return (doc.createdBy !== undefined && socialStrings.includes(doc.createdBy)) || account.uuid === systemAccountUuid
   }
 
-  filterLookup<T extends Doc> (ctx: MeasureContext, lookup: LookupData<T>): void {
+  filterLookup<T extends Doc>(ctx: MeasureContext, lookup: LookupData<T>): void {
     for (const key in lookup) {
       const val = lookup[key]
       if (Array.isArray(val)) {

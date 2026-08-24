@@ -48,7 +48,7 @@ interface Query {
 export class QueryJoiner {
   private readonly queries: Map<string, Query> = new Map<string, Query>()
 
-  async query<T> (ctx: MeasureContext, key: string, retrieve: (ctx: MeasureContext) => Promise<T>): Promise<T> {
+  async query<T>(ctx: MeasureContext, key: string, retrieve: (ctx: MeasureContext) => Promise<T>): Promise<T> {
     // Will find a query or add + 1 to callbacks
     const q = this.getQuery(key)
     try {
@@ -121,7 +121,7 @@ export class QueryJoinMiddleware extends BaseMiddleware implements Middleware {
     return new QueryJoinMiddleware(context, next)
   }
 
-  override findAll<T extends Doc> (
+  override findAll<T extends Doc>(
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -138,7 +138,7 @@ export class QueryJoinMiddleware extends BaseMiddleware implements Middleware {
     )
   }
 
-  groupBy<T, P extends Doc> (
+  groupBy<T, P extends Doc>(
     ctx: MeasureContext<SessionData>,
     domain: Domain,
     field: string,

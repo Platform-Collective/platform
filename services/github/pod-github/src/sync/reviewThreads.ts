@@ -86,7 +86,7 @@ export class ReviewThreadSyncManager implements DocSyncManager {
   eventSync = new Map<string, Promise<void>>()
 
   @withContext('review-threads-handleEvent')
-  async handleEvent<T> (
+  async handleEvent<T>(
     ctx: MeasureContext,
     integration: IntegrationContainer,
     derivedClient: TxOperations,

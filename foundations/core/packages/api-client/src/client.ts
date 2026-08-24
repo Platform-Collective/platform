@@ -143,7 +143,7 @@ class PlatformClientImpl implements PlatformClient {
     return this.account
   }
 
-  async findOne<T extends Doc> (
+  async findOne<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -151,7 +151,7 @@ class PlatformClientImpl implements PlatformClient {
     return await this.client.findOne(_class, query, options)
   }
 
-  async findAll<T extends Doc> (
+  async findAll<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -179,7 +179,7 @@ class PlatformClientImpl implements PlatformClient {
     await this.connection.close()
   }
 
-  private async processMarkup<T> (_class: Ref<Class<Doc>>, id: Ref<Doc>, data: WithMarkup<T>): Promise<T> {
+  private async processMarkup<T>(_class: Ref<Class<Doc>>, id: Ref<Doc>, data: WithMarkup<T>): Promise<T> {
     const result: any = {}
 
     for (const [key, value] of Object.entries(data)) {
@@ -195,7 +195,7 @@ class PlatformClientImpl implements PlatformClient {
 
   // DocOperations
 
-  async createDoc<T extends Doc> (
+  async createDoc<T extends Doc>(
     _class: Ref<Class<T>>,
     space: Ref<Space>,
     attributes: WithMarkup<Data<T>>,
@@ -206,7 +206,7 @@ class PlatformClientImpl implements PlatformClient {
     return await this.client.createDoc(_class, space, data, id)
   }
 
-  async updateDoc<T extends Doc> (
+  async updateDoc<T extends Doc>(
     _class: Ref<Class<T>>,
     space: Ref<Space>,
     objectId: Ref<T>,
@@ -217,13 +217,13 @@ class PlatformClientImpl implements PlatformClient {
     return await this.client.updateDoc(_class, space, objectId, update, retrieve)
   }
 
-  async removeDoc<T extends Doc> (_class: Ref<Class<T>>, space: Ref<Space>, objectId: Ref<T>): Promise<TxResult> {
+  async removeDoc<T extends Doc>(_class: Ref<Class<T>>, space: Ref<Space>, objectId: Ref<T>): Promise<TxResult> {
     return await this.client.removeDoc(_class, space, objectId)
   }
 
   // CollectionOperations
 
-  async addCollection<T extends Doc, P extends AttachedDoc> (
+  async addCollection<T extends Doc, P extends AttachedDoc>(
     _class: Ref<Class<P>>,
     space: Ref<Space>,
     attachedTo: Ref<T>,
@@ -237,7 +237,7 @@ class PlatformClientImpl implements PlatformClient {
     return await this.client.addCollection(_class, space, attachedTo, attachedToClass, collection, data, id)
   }
 
-  async updateCollection<T extends Doc, P extends AttachedDoc> (
+  async updateCollection<T extends Doc, P extends AttachedDoc>(
     _class: Ref<Class<P>>,
     space: Ref<Space>,
     objectId: Ref<P>,
@@ -260,7 +260,7 @@ class PlatformClientImpl implements PlatformClient {
     )
   }
 
-  async removeCollection<T extends Doc, P extends AttachedDoc> (
+  async removeCollection<T extends Doc, P extends AttachedDoc>(
     _class: Ref<Class<P>>,
     space: Ref<Space>,
     objectId: Ref<P>,
@@ -273,7 +273,7 @@ class PlatformClientImpl implements PlatformClient {
 
   // MixinOperations
 
-  async createMixin<D extends Doc, M extends D> (
+  async createMixin<D extends Doc, M extends D>(
     objectId: Ref<D>,
     objectClass: Ref<Class<D>>,
     objectSpace: Ref<Space>,
@@ -284,7 +284,7 @@ class PlatformClientImpl implements PlatformClient {
     return await this.client.createMixin(objectId, objectClass, objectSpace, mixin, data)
   }
 
-  async updateMixin<D extends Doc, M extends D> (
+  async updateMixin<D extends Doc, M extends D>(
     objectId: Ref<D>,
     objectClass: Ref<Class<D>>,
     objectSpace: Ref<Space>,

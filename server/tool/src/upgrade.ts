@@ -53,7 +53,7 @@ export class MigrateClientImpl implements MigrationClient {
 
   migrateState = new Map<string, Set<string>>()
 
-  async find<T extends Doc> (
+  async find<T extends Doc>(
     domain: Domain,
     query: DocumentQuery<T>,
     options?: FindOptions<T> | undefined
@@ -61,11 +61,11 @@ export class MigrateClientImpl implements MigrationClient {
     return await this.lowLevel.rawFindAll(domain, query, options)
   }
 
-  async groupBy<T, P extends Doc> (domain: Domain, field: string, query?: DocumentQuery<P>): Promise<Map<T, number>> {
+  async groupBy<T, P extends Doc>(domain: Domain, field: string, query?: DocumentQuery<P>): Promise<Map<T, number>> {
     return await this.lowLevel.groupBy(this.ctx, domain, field, query)
   }
 
-  async traverse<T extends Doc> (
+  async traverse<T extends Doc>(
     domain: Domain,
     query: DocumentQuery<T>,
     options?: FindOptions<T> | undefined
@@ -73,7 +73,7 @@ export class MigrateClientImpl implements MigrationClient {
     return await this.lowLevel.traverse(domain, query, options)
   }
 
-  async update<T extends Doc> (domain: Domain, query: DocumentQuery<T>, operations: MigrateUpdate<T>): Promise<void> {
+  async update<T extends Doc>(domain: Domain, query: DocumentQuery<T>, operations: MigrateUpdate<T>): Promise<void> {
     const t = Date.now()
     try {
       await this.lowLevel.rawUpdate(domain, query, operations)
@@ -84,7 +84,7 @@ export class MigrateClientImpl implements MigrationClient {
     }
   }
 
-  async bulk<T extends Doc> (
+  async bulk<T extends Doc>(
     domain: Domain,
     operations: { filter: DocumentQuery<T>, update: MigrateUpdate<T> }[]
   ): Promise<void> {
@@ -93,7 +93,7 @@ export class MigrateClientImpl implements MigrationClient {
     }
   }
 
-  async move<T extends Doc> (
+  async move<T extends Doc>(
     sourceDomain: Domain,
     query: DocumentQuery<T>,
     targetDomain: Domain,
@@ -113,17 +113,17 @@ export class MigrateClientImpl implements MigrationClient {
     }
   }
 
-  async create<T extends Doc> (domain: Domain, doc: T | T[]): Promise<void> {
+  async create<T extends Doc>(domain: Domain, doc: T | T[]): Promise<void> {
     const ctx = new MeasureMetricsContext('create', {})
     await this.lowLevel.upload(ctx, domain, Array.isArray(doc) ? doc : [doc])
   }
 
-  async delete<T extends Doc> (domain: Domain, _id: Ref<T>): Promise<void> {
+  async delete<T extends Doc>(domain: Domain, _id: Ref<T>): Promise<void> {
     const ctx = new MeasureMetricsContext('delete', {})
     await this.lowLevel.clean(ctx, domain, [_id])
   }
 
-  async deleteMany<T extends Doc> (domain: Domain, query: DocumentQuery<T>): Promise<void> {
+  async deleteMany<T extends Doc>(domain: Domain, query: DocumentQuery<T>): Promise<void> {
     await this.lowLevel.rawDeleteMany(domain, query)
   }
 

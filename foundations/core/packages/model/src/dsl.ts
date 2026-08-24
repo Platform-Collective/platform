@@ -349,7 +349,7 @@ export class Builder {
   }
 
   // do we need this?
-  createDoc<T extends Doc> (
+  createDoc<T extends Doc>(
     _class: Ref<Class<T>>,
     space: Ref<Space>,
     attributes: Data<T>,
@@ -366,7 +366,7 @@ export class Builder {
     return TxProcessor.createDoc2Doc(tx)
   }
 
-  mixin<D extends Doc, M extends D> (
+  mixin<D extends Doc, M extends D>(
     objectId: Ref<D>,
     objectClass: Ref<Class<D>>,
     mixin: Ref<IMixin<M>>,

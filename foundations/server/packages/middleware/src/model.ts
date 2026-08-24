@@ -86,7 +86,7 @@ export class ModelMiddleware extends BaseMiddleware implements Middleware {
     return allUserTxes.filter((it) => !isAccountTx(it as TxCUD<Doc>))
   }
 
-  findAll<T extends Doc> (
+  findAll<T extends Doc>(
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,

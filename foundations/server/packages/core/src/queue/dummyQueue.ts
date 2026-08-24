@@ -22,7 +22,7 @@ class DummyQueueProducer<T> implements PlatformQueueProducer<T> {
  * A dummy implementation of PlatformQueue for testing and development
  */
 export class DummyQueue implements PlatformQueue {
-  getProducer<T> (ctx: MeasureContext, topic: QueueTopic | string): PlatformQueueProducer<T> {
+  getProducer<T>(ctx: MeasureContext, topic: QueueTopic | string): PlatformQueueProducer<T> {
     return new DummyQueueProducer<T>()
   }
 
@@ -34,7 +34,7 @@ export class DummyQueue implements PlatformQueue {
 
   async createTopic (topics: string | string[], partitions: number): Promise<void> {}
 
-  createConsumer<T> (
+  createConsumer<T>(
     ctx: MeasureContext,
     topic: QueueTopic | string,
     groupId: string,

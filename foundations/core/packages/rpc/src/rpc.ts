@@ -182,7 +182,7 @@ export class RPCHandler {
    * @param response -
    * @returns
    */
-  readResponse<D> (response: any, binary: boolean): Response<D> {
+  readResponse<D>(response: any, binary: boolean): Response<D> {
     const data = this.protoDeserialize(response, binary)
     if (data.result !== undefined) {
       data.result = rpcJSONReceiver('result', data.result)
@@ -195,7 +195,7 @@ export class RPCHandler {
    * @param request -
    * @returns
    */
-  readRequest<P extends any[]> (request: any, binary: boolean): Request<P> {
+  readRequest<P extends any[]>(request: any, binary: boolean): Request<P> {
     const result: Request<P> = this.protoDeserialize(request, binary)
     if (typeof result.method !== 'string') {
       throw new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))

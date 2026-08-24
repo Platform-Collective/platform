@@ -66,7 +66,7 @@ class CollaboratorClientImpl implements CollaboratorClient {
     private readonly collaboratorUrl: string
   ) {}
 
-  private async rpc<P, R> (document: CollaborativeDoc, method: string, payload: P): Promise<R> {
+  private async rpc<P, R>(document: CollaborativeDoc, method: string, payload: P): Promise<R> {
     const workspace = this.workspace
     const documentId = encodeDocumentId(workspace, document)
 

@@ -166,7 +166,7 @@ export class DBCollectionHelper implements DomainHelperOperations {
     }
   }
 
-  collection<TSchema extends Document = Document> (domain: Domain): Collection<TSchema> {
+  collection<TSchema extends Document = Document>(domain: Domain): Collection<TSchema> {
     let info = this.collections.get(domain)
     if (info === undefined) {
       info = this.db.collection(domain)

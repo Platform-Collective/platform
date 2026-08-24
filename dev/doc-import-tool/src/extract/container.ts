@@ -25,7 +25,7 @@ export abstract class Container {
     return this.title
   }
 
-  abstract getArray(): Container[]
+  abstract getArray (): Container[]
 }
 
 export class TableContainer extends Container {

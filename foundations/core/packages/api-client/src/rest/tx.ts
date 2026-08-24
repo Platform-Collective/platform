@@ -68,7 +68,7 @@ class RestTxClient implements Client {
     return Promise.resolve()
   }
 
-  async findAll<T extends Doc> (
+  async findAll<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -119,7 +119,7 @@ class RestTxClient implements Client {
     return await this.client.domainRequest(domain, params, options)
   }
 
-  async findOne<T extends Doc> (
+  async findOne<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>

@@ -191,7 +191,7 @@ export class ClientSession implements Session {
     ctx.ctx.contextData = contextData
   }
 
-  findAllRaw<T extends Doc> (
+  findAllRaw<T extends Doc>(
     ctx: ClientSessionCtx,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -208,7 +208,7 @@ export class ClientSession implements Session {
     return Math.round((estimateDocSize(doc) * 10) / (1024 * 1024)) / 10
   }
 
-  async findAll<T extends Doc> (
+  async findAll<T extends Doc>(
     ctx: ClientSessionCtx,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,

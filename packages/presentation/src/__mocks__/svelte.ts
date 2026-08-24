@@ -36,8 +36,8 @@ export const tick = async (): Promise<void> => {
   await Promise.resolve()
 }
 
-export const createEventDispatcher = <T extends Record<string, any> = any> (): EventDispatcher<T> => {
-  return <K extends keyof T> (eventType: K, detail?: T[K]): boolean => {
+export const createEventDispatcher = <T extends Record<string, any> = any>(): EventDispatcher<T> => {
+  return <K extends keyof T>(eventType: K, detail?: T[K]): boolean => {
     return true
   }
 }

@@ -157,7 +157,7 @@ class ClientImpl implements Client, BackupClient {
     return this.model
   }
 
-  async findAll<T extends Doc> (
+  async findAll<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -262,7 +262,7 @@ class ClientImpl implements Client, BackupClient {
     return await this.conn.domainRequest(ctx, params, options)
   }
 
-  async findOne<T extends Doc> (
+  async findOne<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>

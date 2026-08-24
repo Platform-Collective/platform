@@ -132,7 +132,7 @@ export class PostgresDB implements BlobDB {
     return db
   }
 
-  async execute<T extends any[] = (Row & Iterable<Row>)[]> (query: string, params?: any[]): Promise<T> {
+  async execute<T extends any[] = (Row & Iterable<Row>)[]>(query: string, params?: any[]): Promise<T> {
     query = params !== undefined && params.length > 0 ? injectVars(query, params) : query
     return await this.sql.unsafe<T>(query)
   }

@@ -271,7 +271,7 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     }
   }
 
-  private getCollectionUpdateTx<D extends Doc> (
+  private getCollectionUpdateTx<D extends Doc>(
     _id: Ref<D>,
     _class: Ref<Class<D>>,
     modifiedBy: PersonId,

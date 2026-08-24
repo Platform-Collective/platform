@@ -95,7 +95,7 @@ class PlatformQueueImpl implements PlatformQueue {
     }
   }
 
-  getProducer<T> (ctx: MeasureContext, topic: QueueTopic | string): PlatformQueueProducer<T> {
+  getProducer<T>(ctx: MeasureContext, topic: QueueTopic | string): PlatformQueueProducer<T> {
     const producer = this.producers.get(topic)
     if (producer !== undefined && !producer.isClosed()) return producer
 
@@ -105,7 +105,7 @@ class PlatformQueueImpl implements PlatformQueue {
     return created
   }
 
-  createConsumer<T> (
+  createConsumer<T>(
     ctx: MeasureContext,
     topic: QueueTopic | string,
     groupId: string,

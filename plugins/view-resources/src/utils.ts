@@ -145,7 +145,7 @@ export class AggregationManager<T extends Doc> implements IAggregationManager<T>
     void this.getManager()
   }
 
-  static create<T extends Doc> (
+  static create<T extends Doc>(
     client: Client,
     lqCallback: () => void,
     setStore: (manager: DocManager<T>) => void,

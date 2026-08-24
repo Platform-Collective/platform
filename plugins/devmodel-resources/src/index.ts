@@ -86,7 +86,7 @@ export class PresentationClientHook implements ClientHook {
     return candidate
   }
 
-  async findOne<T extends Doc> (
+  async findOne<T extends Doc>(
     client: Client,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -113,7 +113,7 @@ export class PresentationClientHook implements ClientHook {
     return result
   }
 
-  async findAll<T extends Doc> (
+  async findAll<T extends Doc>(
     client: Client,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,

@@ -50,7 +50,7 @@ export abstract class BaseMiddleware implements Middleware {
     protected readonly next?: Middleware
   ) {}
 
-  findAll<T extends Doc> (
+  findAll<T extends Doc>(
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -75,7 +75,7 @@ export abstract class BaseMiddleware implements Middleware {
     return this.provideLoadModel(ctx, lastModelTx, hash)
   }
 
-  provideGroupBy<T, P extends Doc> (
+  provideGroupBy<T, P extends Doc>(
     ctx: MeasureContext<SessionData>,
     domain: Domain,
     field: string,
@@ -89,7 +89,7 @@ export abstract class BaseMiddleware implements Middleware {
 
   async close (): Promise<void> {}
 
-  groupBy<T, P extends Doc> (
+  groupBy<T, P extends Doc>(
     ctx: MeasureContext<SessionData>,
     domain: Domain,
     field: string,
@@ -121,7 +121,7 @@ export abstract class BaseMiddleware implements Middleware {
     return this.provideTx(ctx, tx)
   }
 
-  protected provideFindAll<T extends Doc> (
+  protected provideFindAll<T extends Doc>(
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,

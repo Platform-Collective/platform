@@ -1724,7 +1724,7 @@ export class GithubWorker implements IntegrationManager {
     }
   }
 
-  async handleEvent<T> (
+  async handleEvent<T>(
     ctx: MeasureContext,
     requestClass: Ref<Class<Doc>>,
     integrationId: number | undefined,

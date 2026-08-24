@@ -58,7 +58,7 @@ export class LowLevelMiddleware extends BaseMiddleware implements Middleware {
       clean (ctx: MeasureContext, domain: Domain, docs: Ref<Doc>[]): Promise<void> {
         return adapterManager.getAdapter(domain, true).clean(ctx, domain, docs)
       },
-      groupBy<T, P extends Doc> (
+      groupBy<T, P extends Doc>(
         ctx: MeasureContext,
         domain: Domain,
         field: string,
@@ -66,10 +66,10 @@ export class LowLevelMiddleware extends BaseMiddleware implements Middleware {
       ): Promise<Map<T, number>> {
         return adapterManager.getAdapter(domain, false).groupBy(ctx, domain, field, query)
       },
-      rawFindAll<T extends Doc> (domain: Domain, query: DocumentQuery<T>, options?: FindOptions<T>): Promise<T[]> {
+      rawFindAll<T extends Doc>(domain: Domain, query: DocumentQuery<T>, options?: FindOptions<T>): Promise<T[]> {
         return adapterManager.getAdapter(domain, false).rawFindAll(domain, query, options)
       },
-      rawUpdate<T extends Doc> (domain: Domain, query: DocumentQuery<T>, operations: DocumentUpdate<T>): Promise<void> {
+      rawUpdate<T extends Doc>(domain: Domain, query: DocumentQuery<T>, operations: DocumentUpdate<T>): Promise<void> {
         return adapterManager.getAdapter(domain, true).rawUpdate(domain, query, operations)
       },
       rawDeleteMany (domain, query) {
@@ -78,7 +78,7 @@ export class LowLevelMiddleware extends BaseMiddleware implements Middleware {
       getDomainHash (ctx: MeasureContext, domain: Domain): Promise<string> {
         return adapterManager.getAdapter(domain, false).getDomainHash(ctx, domain)
       },
-      traverse<T extends Doc> (
+      traverse<T extends Doc>(
         domain: Domain,
         query: DocumentQuery<T>,
         options?: Pick<FindOptions<T>, 'sort' | 'limit' | 'projection'>

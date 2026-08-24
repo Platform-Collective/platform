@@ -1392,7 +1392,7 @@ export class TSessionManager implements SessionManager {
     return this.limitter.checkRateLimit(service.getUser() + (service.token.extra?.service ?? ''))
   }
 
-  async handleRequest<S extends Session> (
+  async handleRequest<S extends Session>(
     requestCtx: MeasureContext,
     service: S,
     ws: ConnectionSocket,
@@ -1528,7 +1528,7 @@ export class TSessionManager implements SessionManager {
     }
   }
 
-  async handleRPC<S extends Session> (
+  async handleRPC<S extends Session>(
     requestCtx: MeasureContext,
     service: S,
     method: string,
@@ -1626,7 +1626,7 @@ export class TSessionManager implements SessionManager {
     return Array.from(this.workspaces.values()).map((it) => this.workspaceToWorkspaceStats(it))
   }
 
-  private async handleHello<S extends Session> (
+  private async handleHello<S extends Session>(
     request: Request<any>,
     service: S,
     ctx: MeasureContext<any>,

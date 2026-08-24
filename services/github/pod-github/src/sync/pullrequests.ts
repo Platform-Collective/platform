@@ -81,7 +81,7 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
   externalDerivedSync = true
 
   @withContext('pullrequests-handleEvent')
-  async handleEvent<T> (
+  async handleEvent<T>(
     ctx: MeasureContext,
     integration: IntegrationContainer,
     derivedClient: TxOperations,

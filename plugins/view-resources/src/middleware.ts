@@ -85,7 +85,7 @@ export class AggregationMiddleware extends BasePresentationMiddleware implements
     }
   }
 
-  async subscribe<T extends Doc> (
+  async subscribe<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options: FindOptions<T> | undefined,
@@ -188,7 +188,7 @@ export class AggregationMiddleware extends BasePresentationMiddleware implements
     return mgr
   }
 
-  async findAll<T extends Doc> (
+  async findAll<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T> | undefined
@@ -205,7 +205,7 @@ export class AggregationMiddleware extends BasePresentationMiddleware implements
     return await this.provideFindAll(_class, fquery, finalOptions)
   }
 
-  private async updateQueryOptions<T extends Doc> (
+  private async updateQueryOptions<T extends Doc>(
     allAttrs: Map<string, AnyAttribute>,
     h: Hierarchy,
     docFields: Array<Attribute<Doc>>,

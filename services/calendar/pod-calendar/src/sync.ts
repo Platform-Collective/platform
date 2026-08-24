@@ -467,7 +467,7 @@ export class IncomingSyncManager {
     return [Array.from(contacts), Array.from(extra)]
   }
 
-  private getDiff<T extends Doc> (data: Partial<DocData<T>>, current: T): Partial<DocData<T>> {
+  private getDiff<T extends Doc>(data: Partial<DocData<T>>, current: T): Partial<DocData<T>> {
     const res = {}
     for (const key in data) {
       if (!deepEqual((data as any)[key], (current as any)[key])) {

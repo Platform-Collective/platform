@@ -37,7 +37,7 @@ export class ResultArray {
     return this.docs.get(_id)
   }
 
-  getClone<T extends Doc> (): T[] {
+  getClone<T extends Doc>(): T[] {
     return this.hierarchy.clone(this.getDocs())
   }
 
@@ -89,7 +89,7 @@ export class ResultArray {
     return undefined
   }
 
-  sort<T extends Doc> (_class: Ref<Class<Doc>>, sort: SortingQuery<T>, hierarchy: Hierarchy, memdb: MemDb): void {
+  sort<T extends Doc>(_class: Ref<Class<Doc>>, sort: SortingQuery<T>, hierarchy: Hierarchy, memdb: MemDb): void {
     const docs = Array.from(this.docs.values())
     resultSort(docs, sort, _class, hierarchy, memdb)
     this.docs = new Map(docs.map((it) => [it._id, it]))

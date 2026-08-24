@@ -388,7 +388,7 @@ export function wrapAdapterToClient (ctx: MeasureContext, storageAdapter: DbAdap
 
     pushHandler (): void {}
 
-    async findAll<T extends Doc> (
+    async findAll<T extends Doc>(
       _class: Ref<Class<Doc>>,
       query: DocumentQuery<Doc>,
       options?: FindOptions<Doc>
@@ -497,7 +497,7 @@ export class OneSecondCountersImpl implements OneSecondCounters {
     this.counters.set(counter, (this.counters.get(counter) ?? 0) + count)
   }
 
-  async withCounter<T> (counter: string, count: number, op: () => Promise<T>): Promise<T> {
+  async withCounter<T>(counter: string, count: number, op: () => Promise<T>): Promise<T> {
     this.add(counter, count)
     const id = ++this.ids
     const vv: TimerOp = [platformNow(), counter, count, false]

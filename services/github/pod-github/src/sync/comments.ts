@@ -63,7 +63,7 @@ export class CommentSyncManager implements DocSyncManager {
   eventSync = new Map<string, Promise<void>>()
 
   @withContext('comments-handle-event')
-  async handleEvent<T> (
+  async handleEvent<T>(
     ctx: MeasureContext,
     integration: IntegrationContainer,
     derivedClient: TxOperations,

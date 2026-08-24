@@ -117,7 +117,7 @@ export class RepositorySyncMapper implements DocSyncManager {
   }
 
   @withContext('repository-handleEvent')
-  async handleEvent<T> (
+  async handleEvent<T>(
     ctx: MeasureContext,
     integration: IntegrationContainer,
     derivedClient: TxOperations,

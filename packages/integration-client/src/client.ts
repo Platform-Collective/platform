@@ -48,7 +48,7 @@ export class IntegrationClientImpl implements IntegrationClient {
   ) {}
 
   // Event methods
-  on<T = any> (event: string, callback: EventCallback<T>): () => void {
+  on<T = any>(event: string, callback: EventCallback<T>): () => void {
     return this.events.on(event, callback)
   }
 
@@ -56,7 +56,7 @@ export class IntegrationClientImpl implements IntegrationClient {
     this.events.off(event, callback)
   }
 
-  private emit<T = any> (event: string, data: T): void {
+  private emit<T = any>(event: string, data: T): void {
     this.events.emit(event, data)
   }
 

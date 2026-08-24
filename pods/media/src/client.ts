@@ -166,7 +166,7 @@ class RestClientAdapter implements Client {
     private readonly model: ModelDb | undefined
   ) {}
 
-  async domainRequest<T> (
+  async domainRequest<T>(
     domain: OperationDomain,
     params: DomainParams,
     options?: DomainRequestOptions
@@ -174,7 +174,7 @@ class RestClientAdapter implements Client {
     return await this.client.domainRequest(domain, params, options)
   }
 
-  async findAll<T extends Doc> (
+  async findAll<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -202,7 +202,7 @@ class RestClientAdapter implements Client {
     return await this.client.tx(tx)
   }
 
-  async findOne<T extends Doc> (
+  async findOne<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>

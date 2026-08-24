@@ -147,7 +147,7 @@ export class MeasureMetricsContext implements MeasureContext {
     return result
   }
 
-  with<T> (
+  with<T>(
     name: string,
     params: ParamsType,
     op: (ctx: MeasureContext) => T | Promise<T>,
@@ -186,7 +186,7 @@ export class MeasureMetricsContext implements MeasureContext {
     return {}
   }
 
-  withSync<T> (
+  withSync<T>(
     name: string,
     params: ParamsType,
     op: (ctx: MeasureContext) => T,
@@ -258,7 +258,7 @@ export class NoMetricsContext implements MeasureContext {
     return result
   }
 
-  with<T> (
+  with<T>(
     name: string,
     params: ParamsType,
     op: (ctx: MeasureContext) => T | Promise<T>,
@@ -272,7 +272,7 @@ export class NoMetricsContext implements MeasureContext {
     return {}
   }
 
-  withSync<T> (
+  withSync<T>(
     name: string,
     params: ParamsType,
     op: (ctx: MeasureContext) => T,
@@ -282,7 +282,7 @@ export class NoMetricsContext implements MeasureContext {
     return op(c)
   }
 
-  withLog<T> (
+  withLog<T>(
     name: string,
     params: ParamsType,
     op: (ctx: MeasureContext) => T | Promise<T>,

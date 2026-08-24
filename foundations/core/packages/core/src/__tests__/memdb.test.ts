@@ -47,7 +47,7 @@ class ClientModel extends ModelDb implements Client {
     return this
   }
 
-  async findOne<T extends Doc> (
+  async findOne<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -94,7 +94,7 @@ class ClientModel extends ModelDb implements Client {
     return { docs: [] }
   }
 
-  async domainRequest<T> (
+  async domainRequest<T>(
     domain: OperationDomain,
     params: DomainParams,
     options?: DomainRequestOptions

@@ -189,7 +189,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     return headers
   }
 
-  with<T> (
+  with<T>(
     name: string,
     params: ParamsType,
     op: (ctx: MeasureContext) => T | Promise<T>,
@@ -249,7 +249,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     }
   }
 
-  withSync<T> (
+  withSync<T>(
     name: string,
     params: ParamsType,
     op: (ctx: MeasureContext) => T,

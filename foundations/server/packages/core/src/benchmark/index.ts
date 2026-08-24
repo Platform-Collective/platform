@@ -50,7 +50,7 @@ function genData (dataSize: number): string {
 let benchData = ''
 
 class BenchmarkDbAdapter extends DummyDbAdapter {
-  async findAll<T extends Doc<Space>> (
+  async findAll<T extends Doc<Space>>(
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,

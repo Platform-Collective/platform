@@ -65,7 +65,7 @@ class KeyValueClientImpl implements KeyValueClient {
     }
   }
 
-  async setValue<T> (key: string, value: T): Promise<void> {
+  async setValue<T>(key: string, value: T): Promise<void> {
     const url = this.buildUrl(key)
     await this.sendRequest(url, {
       method: 'POST',
@@ -75,7 +75,7 @@ class KeyValueClientImpl implements KeyValueClient {
     })
   }
 
-  async getValue<T> (key: string): Promise<T | null> {
+  async getValue<T>(key: string): Promise<T | null> {
     const url = this.buildUrl(key)
     return await this.sendRequest<T>(url, {
       method: 'GET',
@@ -108,7 +108,7 @@ class KeyValueClientImpl implements KeyValueClient {
     return key !== undefined ? concatLink(baseApiUrl, encodeURIComponent(key)) : baseApiUrl
   }
 
-  private async sendRequest<T> (
+  private async sendRequest<T>(
     url: string,
     options: {
       method: string

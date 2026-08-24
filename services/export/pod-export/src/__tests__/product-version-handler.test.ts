@@ -88,7 +88,7 @@ function makeTargetClient (existing: ProductVersion[] = []): {
   const created: ProductVersion[] = []
 
   const client = {
-    findOne: jest.fn(async <T extends Doc> (classRef: Ref<Class<T>>, query: any): Promise<T | undefined> => {
+    findOne: jest.fn(async <T extends Doc>(classRef: Ref<Class<T>>, query: any): Promise<T | undefined> => {
       for (const d of docs) {
         if (d._class !== classRef) continue
         let ok = true

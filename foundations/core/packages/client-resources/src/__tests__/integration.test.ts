@@ -167,7 +167,7 @@ export class MockClientConnection implements ClientConnection {
     this.handlers.push(handler)
   }
 
-  async findAll<T extends Doc> (
+  async findAll<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>

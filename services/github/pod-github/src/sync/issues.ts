@@ -66,7 +66,7 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
   }
 
   @withContext('issues-handleEvent')
-  async handleEvent<T = IssuesEvent | ProjectsV2ItemEvent> (
+  async handleEvent<T = IssuesEvent | ProjectsV2ItemEvent>(
     ctx: MeasureContext,
     integration: IntegrationContainer,
     derivedClient: TxOperations,

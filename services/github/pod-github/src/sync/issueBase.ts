@@ -233,7 +233,7 @@ export abstract class IssueSyncManagerBase {
     }
   }
 
-  abstract fillBackChanges(update: DocumentUpdate<Issue>, existing: GithubIssue, external: any): Promise<void>
+  abstract fillBackChanges (update: DocumentUpdate<Issue>, existing: GithubIssue, external: any): Promise<void>
 
   async addConnectToMessage (
     msg: IntlString,
@@ -259,7 +259,7 @@ export abstract class IssueSyncManagerBase {
     await stripGuestLink(data)
   }
 
-  abstract performIssueFieldsUpdate(
+  abstract performIssueFieldsUpdate (
     ctx: MeasureContext,
     info: DocSyncInfo,
     existing: WithMarkup<Issue>,
@@ -271,7 +271,7 @@ export abstract class IssueSyncManagerBase {
     account: PersonId
   ): Promise<boolean>
 
-  abstract afterSync(
+  abstract afterSync (
     ctx: MeasureContext,
     existing: Issue,
     account: PersonId,
@@ -687,7 +687,7 @@ export abstract class IssueSyncManagerBase {
     this.provider.sync()
   }
 
-  abstract deleteGithubDocument(
+  abstract deleteGithubDocument (
     ctx: MeasureContext,
     container: ContainerFocus,
     account: PersonId,

@@ -62,7 +62,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     }
   }
 
-  private getByIdQuery<T extends Doc> (query: DocumentQuery<T>, _class: Ref<Class<T>>): T[] {
+  private getByIdQuery<T extends Doc>(query: DocumentQuery<T>, _class: Ref<Class<T>>): T[] {
     const result: T[] = []
     if (typeof query._id === 'string') {
       const obj = this.objectById.get(query._id) as T
@@ -77,7 +77,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return result
   }
 
-  getObject<T extends Doc> (_id: Ref<T>): T {
+  getObject<T extends Doc>(_id: Ref<T>): T {
     const doc = this.objectById.get(_id)
     if (doc === undefined) {
       throw new PlatformError(new Status(Severity.ERROR, core.status.ObjectNotFound, { _id }))
@@ -85,12 +85,12 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return doc as T
   }
 
-  findObject<T extends Doc> (_id: Ref<T>): T | undefined {
+  findObject<T extends Doc>(_id: Ref<T>): T | undefined {
     const doc = this.objectById.get(_id)
     return doc as T
   }
 
-  private async getLookupValue<T extends Doc> (
+  private async getLookupValue<T extends Doc>(
     _class: Ref<Class<T>>,
     doc: T,
     lookup: Lookup<T>,
@@ -120,7 +120,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     }
   }
 
-  private async getReverseLookupValue<T extends Doc> (
+  private async getReverseLookupValue<T extends Doc>(
     doc: T,
     lookup: ReverseLookups,
     result: LookupData<T>
@@ -137,7 +137,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     }
   }
 
-  private async lookup<T extends Doc> (_class: Ref<Class<T>>, docs: T[], lookup: Lookup<T>): Promise<WithLookup<T>[]> {
+  private async lookup<T extends Doc>(_class: Ref<Class<T>>, docs: T[], lookup: Lookup<T>): Promise<WithLookup<T>[]> {
     const withLookup: WithLookup<T>[] = []
     for (const doc of docs) {
       const result: LookupData<T> = {}
@@ -147,7 +147,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return withLookup
   }
 
-  private async fillAssociations<T extends Doc> (docs: T[], associations: AssociationQuery[]): Promise<WithLookup<T>[]> {
+  private async fillAssociations<T extends Doc>(docs: T[], associations: AssociationQuery[]): Promise<WithLookup<T>[]> {
     const withLookup: WithLookup<T>[] = []
     for (const doc of docs) {
       const result = await this.getAssociationValue(doc, associations)
@@ -156,7 +156,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return withLookup
   }
 
-  private async getAssociationValue<T extends Doc> (
+  private async getAssociationValue<T extends Doc>(
     doc: T,
     associations: AssociationQuery[]
   ): Promise<Record<string, WithLookup<Doc>[]>> {
@@ -179,7 +179,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return result
   }
 
-  async findAll<T extends Doc> (
+  async findAll<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -219,7 +219,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     return toFindResult(res, total)
   }
 
-  async findOne<T extends Doc> (
+  async findOne<T extends Doc>(
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -231,7 +231,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
    * Only in model find without lookups and sorting.
    * Do not clone results, so be aware modifications are not allowed.
    */
-  findAllSync<T extends Doc> (_class: Ref<Class<T>>, query: DocumentQuery<T>, options?: FindOptions<T>): FindResult<T> {
+  findAllSync<T extends Doc>(_class: Ref<Class<T>>, query: DocumentQuery<T>, options?: FindOptions<T>): FindResult<T> {
     let result: WithLookup<Doc>[]
     const baseClass = this.hierarchy.getBaseClass(_class)
     if (
