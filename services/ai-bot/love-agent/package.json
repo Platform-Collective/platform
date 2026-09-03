@@ -34,9 +34,9 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@deepgram/sdk": "^4.11.2",
-    "@livekit/agents": "^0.7.4",
-    "@livekit/rtc-node": "^0.13.11",
+    "@deepgram/sdk": "^5.9.0",
+    "@livekit/agents": "^1.7.1",
+    "@livekit/rtc-node": "^0.13.34",
     "dotenv": "^16.4.5",
     "ws": "^8.21.0"
   },
