@@ -192,7 +192,7 @@
     "msgpackr-extract": "^3.0.3",
     "@hcengineering/kafka": "workspace:^0.7.18",
     "@hcengineering/api-client": "workspace:^0.7.25",
-    "@faker-js/faker": "^8.4.1",
+    "@faker-js/faker": "^10.6.0",
     "@hcengineering/hulylake-client": "workspace:^0.7.18",
     "@hcengineering/communication-types": "workspace:^0.7.12",
     "@hcengineering/pod-rating": "workspace:^0.7.0"
