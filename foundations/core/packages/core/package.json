@@ -67,8 +67,8 @@
       "import": "./lang/*.json"
     },
     "./lang": {
-      "require": "./lang",
-      "import": "./lang"
+      "types": "./types/lang.d.ts",
+      "default": "./lib/lang.js"
     }
   }
 }
