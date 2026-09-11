@@ -50,7 +50,7 @@
     "fork-ts-checker-webpack-plugin": "^9.0.2",
     "html-webpack-plugin": "^5.5.0",
     "mini-css-extract-plugin": "^2.2.0",
-    "postcss": "8.5.16",
+    "postcss": "8.5.28",
     "postcss-load-config": "^4.0.1",
     "postcss-loader": "^7.0.2",
     "sass": "^1.80.0",
@@ -62,7 +62,7 @@
     "ts-loader": "^9.2.5",
     "typescript": "^5.9.3",
     "update-browserslist-db": "^1.2.3",
-    "webpack": "^5.97.1",
+    "webpack": "^5.110.3",
     "webpack-bundle-analyzer": "^4.10.2",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^6.0.0"
