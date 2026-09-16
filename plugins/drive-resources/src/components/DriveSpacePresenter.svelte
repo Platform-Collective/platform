@@ -29,7 +29,7 @@
   export let currentSpecial: string | undefined
   export let currentFragment: string | undefined
   export let getActions: (space: Space) => Promise<Action[]> = async () => []
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
   export let deselect: boolean = false
 
   const client = getClient()
@@ -108,11 +108,11 @@
     highlighted={currentSpace === space._id && !deselect}
     selected={currentSpace === space._id && selected === drive.ids.Root && currentFragment !== undefined && !deselect}
     visible={(currentSpace === space._id && !deselect && descendants.size !== 0 && selected !== space._id) ||
-      (forciblyСollapsed && currentFragment !== undefined)}
+      (forciblyCollapsed && currentFragment !== undefined)}
     type={'nested-selectable'}
-    empty={descendants.size === 0 || (forciblyСollapsed && selected === space._id && !deselect)}
+    empty={descendants.size === 0 || (forciblyCollapsed && selected === space._id && !deselect)}
     actions={() => getActions(space)}
-    {forciblyСollapsed}
+    {forciblyCollapsed}
     on:click={() => {
       handleDriveSelected(space._id)
     }}
@@ -128,7 +128,7 @@
     />
 
     <svelte:fragment slot="visible">
-      {#if (selected || forciblyСollapsed) && visibleItem}
+      {#if (selected || forciblyCollapsed) && visibleItem}
         {@const folder = visibleItem}
         <TreeItem
           _id={folder._id}
@@ -140,7 +140,7 @@
           empty
           actions={async () => await getFolderActions(folder)}
           shouldTooltip
-          forciblyСollapsed
+          forciblyCollapsed
         />
       {/if}
     </svelte:fragment>

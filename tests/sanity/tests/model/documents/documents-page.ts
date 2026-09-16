@@ -112,6 +112,7 @@ export class DocumentsPage extends CommonPage {
   async moreActionTeamspace (name: string, action: string): Promise<void> {
     await this.page.locator('button.hulyNavGroup-header span[class*="label"]', { hasText: name }).hover()
     await this.page
+      // eslint-disable-next-line secure-coding/no-xpath-injection
       .locator(`xpath=//span[text()="${name}"]/../../div[@class="hulyNavGroup-header__tools"]/button[last()]`)
       .click()
     await this.selectFromDropdown(this.page, action)

@@ -51,7 +51,7 @@
   export let currentFragment: string | undefined
   export let getActions: (space: Space) => Promise<Action[]> = async () => []
   export let deselect: boolean = false
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
 
   const client = getClient()
 
@@ -276,10 +276,10 @@
     title={space.name}
     type={'nested'}
     highlighted={currentSpace === space._id}
-    visible={currentSpace === space._id || forciblyСollapsed}
+    visible={currentSpace === space._id || forciblyCollapsed}
     actions={() => getActions(space)}
     selected={draggedOver === document.ids.NoParent}
-    {forciblyСollapsed}
+    {forciblyCollapsed}
     draggable
     on:drop={(evt) => {
       onDrop(evt, document.ids.NoParent)
@@ -304,7 +304,7 @@
       {draggedOver}
     />
     <svelte:fragment slot="visible">
-      {#if (selected || forciblyСollapsed) && visibleItem}
+      {#if (selected || forciblyCollapsed) && visibleItem}
         {@const item = visibleItem}
         <DocTreeElement
           doc={item}
@@ -324,7 +324,7 @@
           shouldTooltip
           actions={getDocActions(item)}
           moreActions={() => getMoreActions(item)}
-          forciblyСollapsed
+          forciblyCollapsed
         />
       {/if}
     </svelte:fragment>

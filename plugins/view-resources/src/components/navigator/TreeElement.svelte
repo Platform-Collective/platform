@@ -53,7 +53,7 @@
   export let showMenu: boolean = false
   export let noDivider: boolean = false
   export let showNotify: boolean = false
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
   export let actions: (originalEvent?: MouseEvent) => Promise<Action[]> = async () => []
   export let draggable: boolean = false
 
@@ -100,7 +100,7 @@
     {isFold}
     {empty}
     {visible}
-    {forciblyСollapsed}
+    {forciblyCollapsed}
     {shouldTooltip}
     showMenu={showMenu || pressed}
     {noDivider}
@@ -169,7 +169,7 @@
     {isFold}
     {empty}
     {visible}
-    {forciblyСollapsed}
+    {forciblyCollapsed}
     {level}
     {shouldTooltip}
     {draggable}

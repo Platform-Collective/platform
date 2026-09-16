@@ -1,3 +1,4 @@
+/* eslint-disable secure-coding/no-homoglyph-identifiers */
 import core, {
   Hierarchy,
   MeasureMetricsContext,

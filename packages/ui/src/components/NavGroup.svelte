@@ -54,7 +54,7 @@
   export let noDivider: boolean = false
   export let showMenu: boolean = false
   export let shouldTooltip: boolean = false
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
   export let draggable: boolean = false
   export let actions: Action[] = []
   export let _id: Ref<Doc> | string | undefined = undefined
@@ -166,7 +166,7 @@
   </button>
   {#if !empty}
     <div {id} class="hulyNavGroup-content">
-      {#if (!isOpen && visible) || forciblyСollapsed}
+      {#if (!isOpen && visible) || forciblyCollapsed}
         <slot name="visible" {isOpen} />
       {:else}
         <slot />

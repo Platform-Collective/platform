@@ -180,7 +180,7 @@
         {deselect}
         isChanged={isChanged(visibleSpace, $notifyContextByDocStore, $inboxNotificationsByContextStore)}
         spaceActions={[starSpace]}
-        forciblyСollapsed
+        forciblyCollapsed
       />
     {/if}
   </svelte:fragment>

@@ -90,7 +90,7 @@
         {currentFragment}
         {deselect}
         isChanged={isChanged(visibleSpace, $notifyContextByDocStore, $inboxNotificationsByContextStore)}
-        forciblyСollapsed
+        forciblyCollapsed
       />
     {/if}
   </svelte:fragment>

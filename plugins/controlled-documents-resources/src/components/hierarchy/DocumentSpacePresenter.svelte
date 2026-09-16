@@ -64,7 +64,7 @@
   export let currentFragment: string | undefined
   export let getActions: (space: Space) => Promise<Action[]> = async () => []
   export let deselect: boolean = false
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
 
   const client = getClient()
 
@@ -321,9 +321,9 @@
     }}
     title={space.name}
     highlighted={space._id === currentSpace && currentFragment !== undefined && !deselect}
-    visible={(space._id === currentSpace && currentFragment !== undefined && !deselect) || forciblyСollapsed}
+    visible={(space._id === currentSpace && currentFragment !== undefined && !deselect) || forciblyCollapsed}
     showMenu={pressed}
-    {forciblyСollapsed}
+    {forciblyCollapsed}
     actions={() => getSpaceActions(space)}
     type="nested"
     draggable
@@ -379,7 +379,7 @@
     {/if}
 
     <svelte:fragment slot="visible">
-      {#if (selected || forciblyСollapsed) && selectedControlledDoc}
+      {#if (selected || forciblyCollapsed) && selectedControlledDoc}
         {@const doc = selectedControlledDoc}
         <TreeItem
           _id={doc._id}
@@ -392,7 +392,7 @@
           selected
           isFold
           empty
-          forciblyСollapsed
+          forciblyCollapsed
         />
       {/if}
     </svelte:fragment>

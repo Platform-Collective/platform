@@ -27,7 +27,7 @@
   export let space: CardSpace
   export let model: SpacesNavModel
   export let currentSpace: Ref<Space> | undefined
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
   export let getActions: (space: Space) => Promise<Action[]> = async () => []
 
   let classes: MasterTag[] = []
@@ -60,8 +60,8 @@
     title={space.name}
     type={'nested'}
     highlighted={currentSpace === space._id}
-    visible={currentSpace === space._id || forciblyСollapsed}
-    {forciblyСollapsed}
+    visible={currentSpace === space._id || forciblyCollapsed}
+    {forciblyCollapsed}
     actions={() => getActions(space)}
     on:dragstart={(evt) => {
       evt.preventDefault()

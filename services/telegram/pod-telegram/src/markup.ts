@@ -108,7 +108,7 @@ export function platformToTelegram (message: string): TelegramMessage {
   }
 }
 
-const transform = (text: string): string => escape(text).replace(/\n/g, '<br>')
+const transform = (text: string): string => escape(text).replace(/\n/gv, '<br>')
 
 // FYI, copypasted from here:
 // https://github.com/gram-js/gramjs/blob/master/gramjs/extensions/html.ts

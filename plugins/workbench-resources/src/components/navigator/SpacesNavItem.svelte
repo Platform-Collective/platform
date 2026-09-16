@@ -37,7 +37,7 @@
   export let deselect: boolean = false
   export let isChanged: boolean = false
   export let spaceActions: Action[] | undefined
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
 
   const client = getClient()
 
@@ -71,7 +71,7 @@
       {currentFragment}
       {getActions}
       {deselect}
-      {forciblyСollapsed}
+      {forciblyCollapsed}
       selected={deselect ? false : currentSpace === space._id}
     />
   {:else}
@@ -84,7 +84,7 @@
           selected={deselect ? false : currentSpace === space._id}
           actions={async () => await getActions(space)}
           bold={isChanged}
-          {forciblyСollapsed}
+          {forciblyCollapsed}
           indent
         />
       {/await}

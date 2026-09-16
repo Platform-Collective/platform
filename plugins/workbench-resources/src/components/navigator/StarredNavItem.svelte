@@ -36,7 +36,7 @@
   export let currentFragment: string | undefined
   export let deselect: boolean = false
   export let isChanged: boolean = false
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
 
   const client = getClient()
 
@@ -80,7 +80,7 @@
       {currentFragment}
       {getActions}
       {deselect}
-      {forciblyСollapsed}
+      {forciblyCollapsed}
       type={'nested'}
     />
   {:else}
@@ -93,7 +93,7 @@
           selected={currentSpace === space._id}
           actions={async () => await getActions(space)}
           bold={isChanged}
-          {forciblyСollapsed}
+          {forciblyCollapsed}
         />
       </NavLink>
     {/await}

@@ -29,7 +29,7 @@
   export let currentSpecial: string | undefined
   export let getActions: (space: TestProject) => Promise<Action[]> = async () => []
   export let deselect: boolean = false
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
 
   let specials: SpecialNavModel[] = []
 
@@ -55,7 +55,7 @@
   }
   $: visible =
     (!deselect && currentSpace !== undefined && currentSpecial !== undefined && space._id === currentSpace) ||
-    forciblyСollapsed
+    forciblyCollapsed
 </script>
 
 {#if specials}
@@ -75,7 +75,7 @@
     highlighted={space._id === currentSpace}
     {visible}
     actions={() => getActions(space)}
-    {forciblyСollapsed}
+    {forciblyCollapsed}
   >
     {#each specials as special}
       <NavLink space={space._id} special={special.id}>
@@ -93,7 +93,7 @@
         {@const item = specials.find((sp) => sp.id === currentSpecial && currentSpace === space._id)}
         {#if item}
           <NavLink space={space._id} special={item.id}>
-            <SpecialElement indent label={item.label} icon={item.icon} selected forciblyСollapsed />
+            <SpecialElement indent label={item.label} icon={item.icon} selected forciblyCollapsed />
           </NavLink>
         {/if}
       {/if}
