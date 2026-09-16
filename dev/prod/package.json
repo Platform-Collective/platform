@@ -29,6 +29,7 @@
     "deploy": "cp -p public/* dist && aws s3 sync dist s3://anticrm-platform --delete --acl public-read"
   },
   "devDependencies": {
+    "eslint-plugin-secure-coding": "^5.4.4",
     "eslint": "^9.39.5",
     "eslint-plugin-promise": "^7.3.0",
     "eslint-plugin-n": "^18.3.0",

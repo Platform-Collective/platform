@@ -50,6 +50,7 @@
     "@types/jest": "^30.0.0",
     "eslint-plugin-n": "^18.3.0",
     "eslint-plugin-promise": "^7.3.0",
+    "eslint-plugin-secure-coding": "^5.4.4",
     "prettier": "^3.6.2",
     "@types/js-yaml": "^4.0.9",
     "eslint-plugin-svelte": "^3.23.0",

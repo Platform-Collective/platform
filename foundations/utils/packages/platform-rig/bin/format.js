@@ -62,10 +62,11 @@ try {
 }
 
 async function loadEslintConfig() {
-  const [{ default: love }, { default: stylistic }, svelte, { default: tsParser }, svelteParser] = await Promise.all([
+  const [{ default: love }, { default: stylistic }, svelte, secureCoding, { default: tsParser }, svelteParser] = await Promise.all([
     import('eslint-config-love'),
     import('@stylistic/eslint-plugin'),
     import('eslint-plugin-svelte'),
+    import('eslint-plugin-secure-coding'),
     import('@typescript-eslint/parser'),
     import('svelte-eslint-parser')
   ])
@@ -76,12 +77,14 @@ async function loadEslintConfig() {
         '**/*.json',
         '**/node_modules/**',
         '**/.eslintrc.js',
+        '**/eslint.config.mjs',
         '**/dist/**',
         '**/lib/**',
         '**/types/**',
         '**/.build/**'
       ]
     },
+    secureCoding.configs.recommended,
     {
       ...love,
       files: ['**/*.{js,cjs,mjs,ts,cts,mts}'],
@@ -210,8 +213,8 @@ for (const v of process.argv.slice(2)) {
   }
 }
 
-// Add package.json,  .eslintrc.js and node_modules/@hcengineering/platform-rig/ as hash roots.
-for (const f of ['package.json', '.eslintrc.js']) {
+// Add package.json, ESLint configs and node_modules/@hcengineering/platform-rig/ as hash roots.
+for (const f of ['package.json', '.eslintrc.js', 'eslint.config.mjs']) {
   const fFile = join(process.cwd(), f)
   if (existsSync(fFile)) {
     calcFileHash(fFile, 'changed', false)

@@ -1,4 +1,5 @@
 [
+  "eslint-comments/require-description",
   "@eslint-community/eslint-comments/disable-enable-pair",
   "@eslint-community/eslint-comments/no-aggregating-enable",
   "@eslint-community/eslint-comments/no-duplicate-disable",
