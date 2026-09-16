@@ -77,9 +77,10 @@ function getFilteredQuery<T> (query: Query<T>): Query<T> {
   }, {})
 }
 
-export class MongoDbCollection<T extends Record<string, any>, K extends keyof T | undefined = undefined>
-  implements DbCollection<T>
-{
+export class MongoDbCollection<
+  T extends Record<string, any>,
+  K extends keyof T | undefined = undefined
+> implements DbCollection<T> {
   constructor (
     readonly name: string,
     readonly db: Db,

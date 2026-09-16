@@ -34,7 +34,7 @@
     "eslint-config-love": "^155.0.0"
   },
   "dependencies": {
-    "postgres": "^3.4.7",
+    "postgres": "^3.4.9",
     "@hcengineering/core": "workspace:^0.7.26",
     "@hcengineering/platform": "workspace:^0.7.20",
     "@hcengineering/server-core": "workspace:^0.7.19",

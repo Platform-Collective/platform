@@ -29,8 +29,7 @@ export interface MtaMessage {
 }
 
 type Headers =
-  | Record<string, string | string[] | { prepared: boolean, value: string }>
-  | Array<{ key: string, value: string }>
+  Record<string, string | string[] | { prepared: boolean, value: string }> | Array<{ key: string, value: string }>
 
 export interface MailMessage {
   from: string

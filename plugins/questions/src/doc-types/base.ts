@@ -38,8 +38,10 @@ export interface Question<QuestionData extends NonNullable<any>> extends Attache
 export type QuestionDataOf<Q extends Question<any>> = Q extends Question<infer R> ? R : never
 
 /** @public */
-export interface Assessment<QuestionData extends NonNullable<any>, AssessmentData extends NonNullable<any>>
-  extends Question<QuestionData> {
+export interface Assessment<
+  QuestionData extends NonNullable<any>,
+  AssessmentData extends NonNullable<any>
+> extends Question<QuestionData> {
   assessmentData: AssessmentData
 }
 

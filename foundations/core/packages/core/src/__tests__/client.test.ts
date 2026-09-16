@@ -122,8 +122,7 @@ describe('client', () => {
         }
 
         get onConnect ():
-          | ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>)
-          | undefined {
+          ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>) | undefined {
           return this.handler
         }
 

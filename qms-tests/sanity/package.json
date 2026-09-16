@@ -40,9 +40,9 @@
     "@typescript-eslint/parser": "^8.67.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
-    "@playwright/test": "^1.48.2",
-    "allure-playwright": "^3.0.6",
-    "allure-js-commons": "^3.0.6",
+    "@playwright/test": "^1.63.0",
+    "allure-playwright": "^3.12.1",
+    "allure-js-commons": "^3.12.1",
     "@faker-js/faker": "^10.6.0",
     "eslint-plugin-svelte": "^3.23.0",
     "eslint-config-love": "^155.0.0"

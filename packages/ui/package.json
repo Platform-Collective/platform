@@ -19,7 +19,6 @@
   },
   "devDependencies": {
     "@hcengineering/platform-rig": "workspace:^0.7.21",
-    "@types/dompurify": "^3.0.5",
     "@types/jest": "^30.0.0",
     "@typescript-eslint/eslint-plugin": "^8.67.0",
     "@typescript-eslint/parser": "^8.67.0",
@@ -47,7 +46,7 @@
     "autolinker": "4.0.0",
     "date-fns": "^2.30.0",
     "date-fns-tz": "^2.0.0",
-    "dompurify": "^3.1.6",
+    "dompurify": "^3.4.15",
     "fast-equals": "^5.2.2",
     "svelte": "^4.2.20",
     "plyr": "3.7.8",

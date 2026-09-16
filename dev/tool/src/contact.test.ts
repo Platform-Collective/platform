@@ -89,19 +89,17 @@ describe('ensureMissingSocialIdentities', () => {
     const { ops, addCollection } = createMockOps({ persons: [person] })
     const socialId = 'social-id-1' as PersonId
     const accountClient = {
-      getPersonInfo: jest.fn(
-        async (): Promise<PersonInfo> => ({
-          name: 'n',
-          socialIds: [
-            {
-              _id: socialId,
-              type: SocialIdType.EMAIL,
-              value: 'u@v.com',
-              key: 'email:u@v.com'
-            }
-          ]
-        })
-      )
+      getPersonInfo: jest.fn(async (): Promise<PersonInfo> => ({
+        name: 'n',
+        socialIds: [
+          {
+            _id: socialId,
+            type: SocialIdType.EMAIL,
+            value: 'u@v.com',
+            key: 'email:u@v.com'
+          }
+        ]
+      }))
     }
     const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {})
 
@@ -119,20 +117,18 @@ describe('ensureMissingSocialIdentities', () => {
     const { ops, addCollection } = createMockOps({ persons: [person] })
     const socialId = 'social-id-2' as PersonId
     const accountClient = {
-      getPersonInfo: jest.fn(
-        async (): Promise<PersonInfo> => ({
-          name: 'n',
-          socialIds: [
-            {
-              _id: socialId,
-              type: SocialIdType.EMAIL,
-              value: 'a@b.com',
-              key: 'email:a@b.com',
-              verifiedOn: 1
-            }
-          ]
-        })
-      )
+      getPersonInfo: jest.fn(async (): Promise<PersonInfo> => ({
+        name: 'n',
+        socialIds: [
+          {
+            _id: socialId,
+            type: SocialIdType.EMAIL,
+            value: 'a@b.com',
+            key: 'email:a@b.com',
+            verifiedOn: 1
+          }
+        ]
+      }))
     }
 
     const result = await ensureMissingSocialIdentities(toolCtx, ops, accountClient, false)
@@ -167,19 +163,17 @@ describe('ensureMissingSocialIdentities', () => {
     })
     const { ops, addCollection } = createMockOps({ persons: [person], findOne })
     const accountClient = {
-      getPersonInfo: jest.fn(
-        async (): Promise<PersonInfo> => ({
-          name: 'n',
-          socialIds: [
-            {
-              _id: socialId,
-              type: SocialIdType.EMAIL,
-              value: 'x@y.com',
-              key: 'email:x@y.com'
-            }
-          ]
-        })
-      )
+      getPersonInfo: jest.fn(async (): Promise<PersonInfo> => ({
+        name: 'n',
+        socialIds: [
+          {
+            _id: socialId,
+            type: SocialIdType.EMAIL,
+            value: 'x@y.com',
+            key: 'email:x@y.com'
+          }
+        ]
+      }))
     }
 
     const result = await ensureMissingSocialIdentities(toolCtx, ops, accountClient, false)
@@ -193,12 +187,10 @@ describe('ensureMissingSocialIdentities', () => {
     const person = personFixture({ personUuid: undefined })
     const { ops } = createMockOps({ persons: [person], employeePersonUuid: empUuid })
     const accountClient = {
-      getPersonInfo: jest.fn(
-        async (): Promise<PersonInfo> => ({
-          name: 'n',
-          socialIds: []
-        })
-      )
+      getPersonInfo: jest.fn(async (): Promise<PersonInfo> => ({
+        name: 'n',
+        socialIds: []
+      }))
     }
 
     await ensureMissingSocialIdentities(toolCtx, ops, accountClient, false)

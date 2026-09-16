@@ -87,13 +87,7 @@ export const mInsertTable = [
 ]
 
 export type InlineCommandId =
-  | 'image'
-  | 'table'
-  | 'code-block'
-  | 'separator-line'
-  | 'todo-list'
-  | 'drawing-board'
-  | 'mermaid'
+  'image' | 'table' | 'code-block' | 'separator-line' | 'todo-list' | 'drawing-board' | 'mermaid'
 
 /**
  * @public

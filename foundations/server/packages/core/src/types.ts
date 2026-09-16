@@ -734,8 +734,7 @@ export interface AddSessionActive {
 }
 
 export type GetWorkspaceResponse =
-  | { upgrade: true, progress?: number }
-  | { error: any, terminate?: boolean, specialError?: 'archived' | 'migration' }
+  { upgrade: true, progress?: number } | { error: any, terminate?: boolean, specialError?: 'archived' | 'migration' }
 
 export type AddSessionResponse = AddSessionActive | GetWorkspaceResponse
 

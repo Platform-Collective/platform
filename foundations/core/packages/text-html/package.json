@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@hcengineering/text-core": "workspace:^0.7.19",
-    "htmlparser2": "^9.0.0"
+    "htmlparser2": "~10.1.0"
   },
   "repository": {
     "type": "git",

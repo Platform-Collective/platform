@@ -23,14 +23,7 @@ import { Person } from './index'
  * @public
  */
 export type GravatarPlaceholderType =
-  | '404'
-  | 'mp'
-  | 'identicon'
-  | 'monsterid'
-  | 'wavatar'
-  | 'retro'
-  | 'robohash'
-  | 'blank'
+  '404' | 'mp' | 'identicon' | 'monsterid' | 'wavatar' | 'retro' | 'robohash' | 'blank'
 
 /**
  * @public

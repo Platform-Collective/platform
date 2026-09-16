@@ -367,7 +367,9 @@ export async function restore (
                 if (requiredDocs.has(name as Ref<Doc>)) {
                   const chunks: Buffer[] = []
                   stream.on('data', (chunk) => {
-                    chunks.push(chunk)
+                    if (Buffer.isBuffer(chunk)) {
+                      chunks.push(chunk)
+                    }
                   })
                   stream.on('end', () => {
                     const bf = Buffer.concat(chunks)
@@ -392,7 +394,9 @@ export async function restore (
                   const chunks: Buffer[] = []
                   const bname = name.substring(0, name.length - 5)
                   stream.on('data', (chunk) => {
-                    chunks.push(chunk)
+                    if (Buffer.isBuffer(chunk)) {
+                      chunks.push(chunk)
+                    }
                   })
                   stream.on('end', () => {
                     const bf = Buffer.concat(chunks)
@@ -527,7 +531,9 @@ export async function restore (
               if (changeset.has(objKey) && !processed.has(objKey)) {
                 const chunks: Buffer[] = []
                 stream.on('data', (chunk) => {
-                  chunks.push(chunk)
+                  if (Buffer.isBuffer(chunk)) {
+                    chunks.push(chunk)
+                  }
                 })
                 stream.on('end', () => {
                   try {

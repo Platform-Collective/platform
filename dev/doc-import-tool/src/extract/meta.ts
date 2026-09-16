@@ -108,9 +108,7 @@ export class PageHeaderTableRowDocMetadataExtractor implements DocMetadataExtrac
 }
 
 type AnyDocMetadataExtractor =
-  | MetaTagsDocMetadataExtractor
-  | TableRowDocMetadataExtractor
-  | PageHeaderTableRowDocMetadataExtractor
+  MetaTagsDocMetadataExtractor | TableRowDocMetadataExtractor | PageHeaderTableRowDocMetadataExtractor
 
 export function createMetadataExtractor (metadata: DocMetadataSpec): AnyDocMetadataExtractor {
   switch (metadata.in) {

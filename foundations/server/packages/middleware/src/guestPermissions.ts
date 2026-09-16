@@ -353,8 +353,7 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
       }
       if (accessLevelMixin.isIdentity === true && h.isDerived(tx.objectClass, contact.class.Person)) {
         const person = (await this.findAll(ctx, tx.objectClass, { _id: tx.objectId }, { limit: 1 }))[0] as
-          | Person
-          | undefined
+          Person | undefined
         return person?.personUuid === account.uuid
       }
       return accessLevelMixin.updateAccessLevel === AccountRole.Guest
