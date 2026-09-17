@@ -41,7 +41,7 @@
     "@types/htmlparser2": "^3.10.7",
     "@types/domhandler": "^2.4.5",
     "eslint-plugin-svelte": "^3.23.0",
-    "eslint-config-love": "^155.0.0"
+    "eslint-config-love": "^157.0.0"
   },
   "dependencies": {
     "@hcengineering/controlled-documents": "workspace:^0.7.0",

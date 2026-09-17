@@ -24,7 +24,7 @@
   "devDependencies": {
     "@hcengineering/platform-rig": "workspace:^0.7.21",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-promise": "^6.1.1",
     "eslint-plugin-secure-coding": "^5.4.4",
     "eslint-plugin-n": "^15.4.0",

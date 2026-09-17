@@ -33,7 +33,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.13.3",
     "eslint-plugin-svelte": "^3.23.0",
-    "eslint-config-love": "^155.0.0"
+    "eslint-config-love": "^157.0.0"
   },
   "dependencies": {
     "mongodb": "^6.16.0",

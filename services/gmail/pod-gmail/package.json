@@ -52,7 +52,7 @@
     "ts-node": "^10.9.2",
     "cross-env": "~7.0.3",
     "eslint-plugin-svelte": "^3.23.0",
-    "eslint-config-love": "^155.0.0"
+    "eslint-config-love": "^157.0.0"
   },
   "dependencies": {
     "@hcengineering/attachment": "workspace:^0.7.0",

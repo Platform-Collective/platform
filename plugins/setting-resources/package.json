@@ -37,7 +37,7 @@
     "@types/jest": "^30.0.0",
     "svelte-eslint-parser": "^1.8.1",
     "@types/qrcode": "^1.5.5",
-    "eslint-config-love": "^155.0.0"
+    "eslint-config-love": "^157.0.0"
   },
   "dependencies": {
     "@hcengineering/platform": "workspace:^0.7.20",

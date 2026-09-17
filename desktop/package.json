@@ -79,7 +79,7 @@
     "@testing-library/jest-dom": "6.9.1",
     "jest-environment-jsdom": "^30.4.1",
     "eslint-plugin-svelte": "^3.23.0",
-    "eslint-config-love": "^155.0.0"
+    "eslint-config-love": "^157.0.0"
   },
   "dependencies": {
     "@hcengineering/platform": "workspace:^0.7.20",

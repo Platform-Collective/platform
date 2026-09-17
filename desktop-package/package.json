@@ -39,7 +39,7 @@
     "eslint": "^9.39.5",
     "@typescript-eslint/parser": "^8.67.0",
     "eslint-plugin-svelte": "^3.23.0",
-    "eslint-config-love": "^155.0.0"
+    "eslint-config-love": "^157.0.0"
   },
   "dependencies": {
     "electron-squirrel-startup": "~1.0.1",

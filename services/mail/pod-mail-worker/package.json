@@ -31,7 +31,7 @@
     "_phase:validate": "compile validate"
   },
   "devDependencies": {
-    "eslint-config-love": "^155.0.0",
+    "eslint-config-love": "^157.0.0",
     "eslint-plugin-svelte": "^3.23.0",
     "@hcengineering/platform-rig": "workspace:^0.7.21",
     "@tsconfig/node16": "^1.0.4",

@@ -37,7 +37,7 @@
     "start-flame": "rush bundle --to @hcengineering/pod-server && cross-env NODE_ENV=production MODEL_VERSION=$(node ../../common/scripts/show_version.js) ACCOUNTS_URL=http://localhost:3000 REKONI_URL=http://localhost:4004 MONGO_URL=mongodb://localhost:27017 FRONT_URL=http://localhost:8087 UPLOAD_URL=/upload MINIO_ENDPOINT=localhost MINIO_ACCESS_KEY=minioadmin MINIO_SECRET_KEY=minioadmin METRICS_CONSOLE=true SERVER_SECRET=secret MODEL_JSON=../../models/all/bundle/model.json clinic flame --dest ./out -- node --nolazy -r ts-node/register --enable-source-maps src/__start.ts"
   },
   "devDependencies": {
-    "eslint-config-love": "^155.0.0",
+    "eslint-config-love": "^157.0.0",
     "eslint-plugin-svelte": "^3.23.0",
     "cross-env": "~7.0.3",
     "@hcengineering/platform-rig": "workspace:^0.7.21",

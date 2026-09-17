@@ -39,7 +39,7 @@
     "@types/markdown-it": "~13.0.0",
     "jest-environment-jsdom": "^30.4.1",
     "eslint-plugin-svelte": "^3.23.0",
-    "eslint-config-love": "^155.0.0"
+    "eslint-config-love": "^157.0.0"
   },
   "dependencies": {
     "@hcengineering/core": "workspace:^0.7.26",

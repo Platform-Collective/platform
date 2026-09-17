@@ -38,7 +38,7 @@
     "@types/diff": "~5.0.2",
     "@types/katex": "^0.16.0",
     "svelte-eslint-parser": "^1.8.1",
-    "eslint-config-love": "^155.0.0"
+    "eslint-config-love": "^157.0.0"
   },
   "dependencies": {
     "@hcengineering/platform": "workspace:^0.7.20",

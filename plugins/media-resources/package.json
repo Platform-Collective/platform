@@ -37,7 +37,7 @@
     "typescript": "^5.9.3",
     "@types/events": "^3.0.3",
     "typed-emitter": "^2.1.0",
-    "eslint-config-love": "^155.0.0"
+    "eslint-config-love": "^157.0.0"
   },
   "dependencies": {
     "@hcengineering/core": "workspace:^0.7.26",

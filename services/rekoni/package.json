@@ -60,7 +60,7 @@
     "prettier": "^3.6.2",
     "@types/morgan": "~1.9.9",
     "eslint-plugin-svelte": "^3.23.0",
-    "eslint-config-love": "^155.0.0"
+    "eslint-config-love": "^157.0.0"
   },
   "dependencies": {
     "@anticrm/skillset": "^0.6.0",

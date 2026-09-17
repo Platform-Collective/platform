@@ -32,7 +32,7 @@
     "@types/jest": "^30.0.0",
     "ts-node": "^10.9.2",
     "eslint-plugin-svelte": "^3.23.0",
-    "eslint-config-love": "^155.0.0"
+    "eslint-config-love": "^157.0.0"
   },
   "dependencies": {
     "@hcengineering/core": "workspace:^0.7.26",
