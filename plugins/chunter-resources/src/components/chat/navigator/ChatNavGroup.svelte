@@ -1,5 +1,6 @@
 <!--
 // Copyright © 2023 Hardcore Engineering Inc.
+// Copyright © 2026 TraceX SAS.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -56,6 +57,7 @@
     if (model.isPinned !== isPinned) return false
     if (model._class !== undefined && model._class !== objectClass) return false
     if (model.skipClasses !== undefined && model.skipClasses.includes(objectClass)) return false
+    if (!hierarchy.hasClass(objectClass)) return false
     if (hierarchy.classHierarchyMixin(objectClass, activity.mixin.ActivityDoc) === undefined) return false
     return true
   })
