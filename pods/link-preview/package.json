@@ -65,7 +65,7 @@
     "cors": "^2.8.6",
     "morgan": "^1.11.0",
     "cheerio": "^1.2.0",
-    "image-size": "^1.2.1",
+    "image-size": "^2.0.4",
     "oembed-providers": "~1.0.20260604"
   }
 }
