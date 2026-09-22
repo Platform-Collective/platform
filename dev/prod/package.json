@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@hcengineering/platform-rig": "workspace:^0.7.21",
-    "@types/node": "^22.18.1",
+    "@types/node": "^24.13.3",
     "autoprefixer": "^10.4.14",
     "browserslist": "^4.28.2",
     "compression-webpack-plugin": "^10.0.0",
@@ -52,7 +52,7 @@
     "webpack": "^5.97.1",
     "webpack-bundle-analyzer": "^4.10.2",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.11.1"
+    "webpack-dev-server": "^4.15.2"
   },
   "dependencies": {
     "@hcengineering/achievement": "workspace:^0.7.0",

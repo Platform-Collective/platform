@@ -102,7 +102,7 @@ export async function importNotion (
 async function getFilesForImport (dir: string): Promise<Dirent[]> {
   const filesAndDirs = await readdir(dir, { recursive: true, withFileTypes: true })
   const files = filesAndDirs.filter((file) => {
-    return !file.isDirectory() && !(file.name === 'index.html' && file.path === dir)
+    return !file.isDirectory() && !(file.name === 'index.html' && file.parentPath === dir)
   })
   return files
 }
@@ -114,7 +114,7 @@ async function collectMetadata (
   documentMetaMap: Map<string, DocumentMetadata>
 ): Promise<void> {
   for (const file of files) {
-    const st = await stat(file.path)
+    const st = await stat(file.parentPath)
     collectFileMetadata(root, file, st.size, fileMetaMap, documentMetaMap)
   }
 }
@@ -126,15 +126,15 @@ function collectFileMetadata (
   fileMetaMap: Map<string, FileMetadata>,
   documentMetaMap: Map<string, DocumentMetadata>
 ): void {
-  const notionId = getFileId(file.path, file.name)
+  const notionId = getFileId(file.parentPath, file.name)
   const extension = extractExtension(file.name)
-  const ancestors = getAncestorEntries(root, file.path)
+  const ancestors = getAncestorEntries(root, file.parentPath)
   const meta = fileMetaMap.get(notionId)
   fileMetaMap.set(notionId, {
     level: ancestors.length,
     isFolder: false,
     extension,
-    fileName: join(file.path, file.name),
+    fileName: join(file.parentPath, file.name),
     hasChildren: meta?.hasChildren ?? false
   })
 
