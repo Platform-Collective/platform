@@ -86,7 +86,7 @@ services:
       retries: 10
       test: curl -s http://localhost:9200/_cluster/health | grep -vq '"status":"red"'
   account:
-    image: hardcoreeng/account
+    image: platformcollective/account
     extra_hosts:
       - 'huly.local:host-gateway'
     pull_policy: never
@@ -107,7 +107,7 @@ services:
       - STORAGE_CONFIG=${STORAGE_CONFIG}
       - BRANDING_PATH=/var/cfg/branding-test.json
   workspace:
-    image: hardcoreeng/workspace
+    image: platformcollective/workspace
     extra_hosts:
       - 'huly.local:host-gateway'
     links:
@@ -126,7 +126,7 @@ services:
       - BRANDING_PATH=/var/cfg/branding.json
     restart: unless-stopped
   front:
-    image: hardcoreeng/front
+    image: platformcollective/front
     extra_hosts:
       - 'huly.local:host-gateway'
     pull_policy: never
@@ -156,7 +156,7 @@ services:
       - PRINT_URL=http://huly.local:4003
       - SIGN_URL=http://huly.local:4008
   transactor:
-    image: hardcoreeng/transactor
+    image: platformcollective/transactor
     extra_hosts:
       - 'huly.local:host-gateway'
     pull_policy: never
@@ -187,7 +187,7 @@ services:
       - RATE_LIMIT_MAX=25000
       - RATE_LIMIT_WINDOW=1000
   collaborator:
-    image: hardcoreeng/collaborator
+    image: platformcollective/collaborator
     extra_hosts:
       - 'huly.local:host-gateway'
     links:
@@ -204,12 +204,12 @@ services:
       - STORAGE_CONFIG=${STORAGE_CONFIG}
     restart: unless-stopped
   rekoni:
-    image: hardcoreeng/rekoni-service
+    image: platformcollective/rekoni-service
     restart: on-failure
     ports:
       - 4007:4004
   print:
-    image: hardcoreeng/print
+    image: platformcollective/print
     extra_hosts:
       - 'huly.local:host-gateway'
     restart: unless-stopped
@@ -225,7 +225,7 @@ services:
         limits:
           memory: 300M
   sign:
-    image: hardcoreeng/sign
+    image: platformcollective/sign
     extra_hosts:
       - 'huly.local:host-gateway'
     restart: unless-stopped
@@ -248,7 +248,7 @@ services:
         limits:
           memory: 300M
   fulltext:
-    image: hardcoreeng/fulltext
+    image: platformcollective/fulltext
     restart: unless-stopped
     depends_on:
       redpanda:

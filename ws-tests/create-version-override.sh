@@ -17,17 +17,17 @@ fi
 echo "# Automatically generated docker-compose override with fixed versions" > $OVERRIDE_FILE
 echo "services:" >> $OVERRIDE_FILE
 
-# Extract hardcoreeng services and add them to the override file with fixed versions
-grep -B 1 "image: hardcoreeng/" $COMPOSE_FILE | grep -v "\-\-" | grep -v "image:" | sed 's/:$//g' | while read -r service; do
+# Extract platformcollective services and add them to the override file with fixed versions
+grep -B 1 "image: platformcollective/" $COMPOSE_FILE | grep -v "\-\-" | grep -v "image:" | sed 's/:$//g' | while read -r service; do
     service=$(echo $service | tr -d ' ')
     if [ -n "$service" ]; then
         echo "  $service:" >> $OVERRIDE_FILE
         
         # Get the image name
-        image=$(grep -A 1 "$service:" $COMPOSE_FILE | grep "image: hardcoreeng/" | awk '{print $2}')
-        pod_name=$(echo $image | sed 's/hardcoreeng\///')
+        image=$(grep -A 1 "$service:" $COMPOSE_FILE | grep "image: platformcollective/" | awk '{print $2}')
+        pod_name=$(echo $image | sed 's/platformcollective\///')
         
-        echo "    image: hardcoreeng/$pod_name:$VERSION" >> $OVERRIDE_FILE
+        echo "    image: platformcollective/$pod_name:$VERSION" >> $OVERRIDE_FILE
         echo "    pull_policy: always" >> $OVERRIDE_FILE
         if [ "$pod_name" == "account" ]; then
           echo "    environment:" >> $OVERRIDE_FILE
@@ -42,6 +42,6 @@ done
 
 ./fetch-tool-bundle.sh
 
-echo "Created $OVERRIDE_FILE with fixed version $VERSION for all hardcoreeng services"
+echo "Created $OVERRIDE_FILE with fixed version $VERSION for all platformcollective services"
 echo "To use it, run: prepare.sh"
 

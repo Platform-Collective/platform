@@ -1,6 +1,6 @@
 services:
   network:
-    image: hardcoreeng/network-pod
+    image: platformcollective/network-pod
     pull_policy: never
     extra_hosts:
       - 'huly.local:host-gateway'

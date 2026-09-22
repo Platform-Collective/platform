@@ -128,7 +128,7 @@ you invoke the tool depends on how the destination platform is run:
 
 - **huly-selfhost deployment** — use
   [`run-tool.sh`](https://github.com/hcengineering/huly-selfhost/blob/main/run-tool.sh):
-  it starts the `hardcoreeng/tool` container with all connection settings
+  it starts the `platformcollective/tool` container with all connection settings
   taken from your `huly_v7.conf`. Mount the backup folder into the container
   via `RUN_TOOL_DOCKER_ARGS`:
 
@@ -137,7 +137,7 @@ you invoke the tool depends on how the destination platform is run:
     ./run-tool.sh backup-restore /backup <target-workspace> --accounts
   ```
 
-- **Other Docker setups** — run the `hardcoreeng/tool` image on your stack's
+- **Other Docker setups** — run the `platformcollective/tool` image on your stack's
   network with the same environment variables your services use
   (`SERVER_SECRET`, `DB_URL`, `ACCOUNT_DB_URL`, `STORAGE_CONFIG`,
   `ACCOUNTS_URL`, `TRANSACTOR_URL`, ...) and the backup folder mounted —
