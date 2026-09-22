@@ -21,7 +21,6 @@ import {
   type DocumentQuery,
   type Domain,
   type DomainParams,
-  type FindOptions,
   type FindResult,
   type LoadModelResponse,
   type MeasureContext,
@@ -34,7 +33,7 @@ import {
   type Timestamp,
   type Tx
 } from '@hcengineering/core'
-import type { Middleware, PipelineContext, TxMiddlewareResult } from './types'
+import type { Middleware, PipelineContext, ServerFindOptions, TxMiddlewareResult } from './types'
 
 export const emptyFindResult = Promise.resolve(toFindResult([]))
 export const emptySearchResult = Promise.resolve({ docs: [], total: 0 })
@@ -55,7 +54,7 @@ export abstract class BaseMiddleware implements Middleware {
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
-    options?: FindOptions<T>
+    options?: ServerFindOptions<T>
   ): Promise<FindResult<T>> {
     return this.provideFindAll(ctx, _class, query, options)
   }
@@ -126,7 +125,7 @@ export abstract class BaseMiddleware implements Middleware {
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
-    options?: FindOptions<T>
+    options?: ServerFindOptions<T>
   ): Promise<FindResult<T>> {
     if (this.next !== undefined) {
       return this.next.findAll(ctx, _class, query, options)

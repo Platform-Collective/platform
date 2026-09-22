@@ -25,12 +25,15 @@ import {
   type DocumentQuery,
   type DocumentUpdate,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FindResult,
   type Hierarchy,
   type Mixin,
   type MixinData,
   type MixinUpdate,
   type ModelDb,
+  type IterateOptions,
   type Ref,
   type Space,
   type TxResult,
@@ -77,6 +80,18 @@ export interface FindOperations {
     query: DocumentQuery<T>,
     options?: FindOptions<T> | undefined
   ) => Promise<FindResult<T>>
+
+  findAllPage: <T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ) => Promise<FindPageResult<T>>
+
+  iterateAll: <T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ) => AsyncIterable<WithLookup<T>>
 
   findOne: <T extends Doc>(
     _class: Ref<Class<T>>,

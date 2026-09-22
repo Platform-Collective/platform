@@ -23,7 +23,6 @@ import {
   type Domain,
   type DomainParams,
   type DomainResult,
-  type FindOptions,
   type FindResult,
   type LoadModelResponse,
   type MeasureContext,
@@ -38,7 +37,13 @@ import {
   type TxResult
 } from '@hcengineering/core'
 import { emptyBroadcastResult } from './base'
-import { type Middleware, type MiddlewareCreator, type Pipeline, type PipelineContext } from './types'
+import {
+  type Middleware,
+  type MiddlewareCreator,
+  type Pipeline,
+  type PipelineContext,
+  type ServerFindOptions
+} from './types'
 
 /**
  * @public
@@ -101,7 +106,7 @@ class PipelineImpl implements Pipeline {
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
-    options?: FindOptions<T>
+    options?: ServerFindOptions<T>
   ): Promise<FindResult<T>> {
     return this.head?.findAll(ctx, _class, query, options) ?? Promise.resolve(toFindResult([]))
   }

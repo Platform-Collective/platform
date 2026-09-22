@@ -30,11 +30,14 @@ import core, {
   type DomainRequestOptions,
   type DomainResult,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FindResult,
   getCurrentAccount,
   platformNow,
   hasAccountRole,
   type Hierarchy,
+  type IterateOptions,
   MeasureMetricsContext,
   type Mixin,
   type ModelDb,
@@ -108,7 +111,7 @@ export const pendingCreatedDocs = writable<Record<Ref<Doc>, boolean>>({})
 class UIClient extends TxOperations implements Client {
   constructor (
     client: Client,
-    private readonly liveQuery: Client
+    private readonly liveQuery: Pick<Client, 'findAll' | 'findOne'>
   ) {
     super(client, getCurrentAccount().primarySocialId)
   }
@@ -330,6 +333,22 @@ class ClientHookImpl implements Client {
       return await this.hook.findAll(this.client, _class, query, options)
     }
     return await this.client.findAll(_class, query, options)
+  }
+
+  async findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    return await this.client.findAllPage(_class, query, options)
+  }
+
+  iterateAll<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ): AsyncIterable<WithLookup<T>> {
+    return this.client.iterateAll(_class, query, options)
   }
 
   async domainRequest<T>(

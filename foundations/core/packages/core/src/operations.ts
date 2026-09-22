@@ -31,7 +31,10 @@ import type {
   DomainParams,
   DomainResult,
   FindOptions,
+  FindPageOptions,
+  FindPageResult,
   FindResult,
+  IterateOptions,
   SearchOptions,
   SearchQuery,
   SearchResult,
@@ -76,6 +79,22 @@ export class TxOperations implements Omit<Client, 'notify'> {
     options?: FindOptions<T> | undefined
   ): Promise<FindResult<T>> {
     return this.client.findAll(_class, query, options)
+  }
+
+  findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    return this.client.findAllPage(_class, query, options)
+  }
+
+  iterateAll<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ): AsyncIterable<WithLookup<T>> {
+    return this.client.iterateAll(_class, query, options)
   }
 
   findOne<T extends Doc>(
@@ -474,6 +493,8 @@ export class ApplyOperations extends TxOperations {
       close: () => ops.client.close(),
       findOne: (_class, query, options?) => ops.client.findOne(_class, query, options),
       findAll: (_class, query, options?) => ops.client.findAll(_class, query, options),
+      findAllPage: (_class, query, options) => ops.client.findAllPage(_class, query, options),
+      iterateAll: (_class, query, options?) => ops.client.iterateAll(_class, query, options),
       searchFulltext: (query, options) => ops.client.searchFulltext(query, options),
       domainRequest: (domain, params) => ops.client.domainRequest(domain, params),
       tx: async (tx): Promise<TxResult> => {
@@ -577,6 +598,8 @@ export class TxBuilder extends TxOperations {
       close: async () => {},
       findOne: async (_class, query, options?) => undefined,
       findAll: async (_class, query, options?) => toFindResult([]),
+      findAllPage: async (_class, query, options) => ({ docs: [] }),
+      iterateAll: async function * () {},
       searchFulltext: async (query, options) => ({ docs: [] }),
       domainRequest: async (domain, params) => ({ domain, value: null as any }),
       tx: async (tx): Promise<TxResult> => {

@@ -26,8 +26,11 @@ import {
   type DomainRequestOptions,
   type DomainResult,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FulltextStorage,
   type Hierarchy,
+  type IterateOptions,
   type Mixin,
   type MixinData,
   type MixinUpdate,
@@ -52,6 +55,18 @@ export interface RestClient extends Storage, FulltextStorage {
     query: DocumentQuery<T>,
     options?: FindOptions<T>
   ) => Promise<WithLookup<T> | undefined>
+
+  findAllPage: <T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ) => Promise<FindPageResult<T>>
+
+  iterateAll: <T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ) => AsyncIterable<WithLookup<T>>
 
   getModel: () => Promise<{ hierarchy: Hierarchy, model: ModelDb }>
 

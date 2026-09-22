@@ -295,6 +295,26 @@ export function registerRPC (app: Express, sessions: SessionManager, ctx: Measur
     })
   })
 
+  app.post('/api/v1/find-page/:workspaceId', (req, res) => {
+    void withSession(req, res, 'findAllPage', async (ctx, session, rateLimit) => {
+      const { _class, query, options }: any = (await retrieveJson(req)) ?? {}
+
+      try {
+        const result = await session.findAllPageRaw(ctx, _class, query, options)
+        await sendJson(req, res, result, rateLimitToHeaders(rateLimit))
+      } catch (err: unknown) {
+        if (err instanceof PlatformError && err.status.code === platform.status.BadRequest) {
+          sendError(res, 400, {
+            message: 'Failed to execute operation',
+            error: 'Invalid pagination request'
+          })
+          return
+        }
+        throw err
+      }
+    })
+  })
+
   app.post('/api/v1/tx/:workspaceId', (req, res) => {
     void withSession(req, res, 'tx', async (ctx, session, rateLimit) => {
       const tx: any = (await retrieveJson(req)) ?? {}

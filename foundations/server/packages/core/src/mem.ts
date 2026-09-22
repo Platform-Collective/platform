@@ -36,6 +36,8 @@ import core, {
   type WorkspaceIds
 } from '@hcengineering/core'
 import { type DbAdapter, type DbAdapterHandler, type DomainHelperOperations, type RawFindIterator } from './adapter'
+import { paginateInMemoryAsync } from './pagination'
+import type { ServerFindOptions } from './types'
 /**
  * @public
  */
@@ -146,9 +148,18 @@ class InMemoryAdapter extends DummyDbAdapter implements DbAdapter {
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
-    options?: FindOptions<T>
+    options?: ServerFindOptions<T>
   ): Promise<FindResult<T>> {
-    return ctx.withSync('inmem-find', {}, () => this.modeldb.findAll(_class, query, options))
+    // A cursor position can not be pushed down to an in memory model, so it is applied in memory.
+    return ctx.with(
+      'inmem-find',
+      {},
+      async () =>
+        await paginateInMemoryAsync(
+          options,
+          async (findOptions) => await this.modeldb.findAll(_class, query, findOptions)
+        )
+    )
   }
 
   load (ctx: MeasureContext, domain: Domain, docs: Ref<Doc>[]): Promise<Doc[]> {

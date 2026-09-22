@@ -27,7 +27,7 @@ import {
 } from '@hcengineering/core'
 import { PlatformError, unknownError } from '@hcengineering/platform'
 import type { DBAdapterManager, Middleware, PipelineContext, ServerFindOptions } from '@hcengineering/server-core'
-import { BaseMiddleware, emptyFindResult } from '@hcengineering/server-core'
+import { BaseMiddleware, emptyFindResult, paginateInMemory } from '@hcengineering/server-core'
 
 /**
  * Will perform a find inside adapters
@@ -63,7 +63,10 @@ export class DomainFindMiddleware extends BaseMiddleware implements Middleware {
     const p = options?.prefix ?? 'client'
     const domain = this.context.hierarchy.getDomain(_class)
     if (domain === DOMAIN_MODEL) {
-      return Promise.resolve(this.context.modelDb.findAllSync(_class, query, options))
+      // The model is served from memory, so a cursor position has to be applied here as well.
+      return Promise.resolve(
+        paginateInMemory(options, (findOptions) => this.context.modelDb.findAllSync(_class, query, findOptions))
+      )
     }
     return ctx.with(
       p + '-find-all',

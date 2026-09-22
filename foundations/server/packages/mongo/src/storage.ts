@@ -688,6 +688,10 @@ abstract class MongoAdapterBase implements DbAdapter {
       }
     }
     const totalPipeline: any[] = [...pipeline]
+    const paginationQuery = this.buildPaginationQuery(clazz, options)
+    if (paginationQuery !== undefined) {
+      pipeline.push({ $match: paginationQuery })
+    }
     this.fillSortPipeline(clazz, options, pipeline)
     if (options?.limit !== undefined || typeof query._id === 'string') {
       pipeline.push({ $limit: options?.limit ?? 1 })
@@ -909,6 +913,8 @@ abstract class MongoAdapterBase implements DbAdapter {
     const stTime = platformNow()
     const mongoQuery = this.translateQuery(_class, query, options)
     const fQuery = { ...mongoQuery.base, ...mongoQuery.lookup }
+    const paginationQuery = this.buildPaginationQuery(_class, options)
+    const pageQuery = paginationQuery === undefined ? fQuery : { $and: [fQuery, paginationQuery] }
     return addOperation(ctx, 'find-all', {}, async () => {
       const st = platformNow()
       let result: FindResult<T>
@@ -946,7 +952,7 @@ abstract class MongoAdapterBase implements DbAdapter {
                 doc = null
               }
             } else {
-              doc = await coll.findOne(fQuery, findOptions)
+              doc = await coll.findOne(pageQuery, findOptions)
             }
 
             let total = -1
@@ -962,7 +968,7 @@ abstract class MongoAdapterBase implements DbAdapter {
         )
       }
 
-      let cursor = coll.find<T>(fQuery)
+      let cursor = coll.find<T>(pageQuery)
 
       if (options?.projection !== undefined) {
         const projection = this.calcProjection<T>(options, _class)
@@ -1045,6 +1051,40 @@ abstract class MongoAdapterBase implements DbAdapter {
       return undefined
     }
     return sort
+  }
+
+  private buildPaginationQuery<T extends Doc>(
+    _class: Ref<Class<T>>,
+    options?: ServerFindOptions<T>
+  ): Filter<Document> | undefined {
+    const pagination = options?.pagination
+    if (pagination?.values === undefined) {
+      return
+    }
+    const branches: Array<Record<string, unknown>> = []
+    for (let index = 0; index < pagination.fields.length; index++) {
+      const branch: Record<string, unknown> = {}
+      for (let prefix = 0; prefix < index; prefix++) {
+        const field = pagination.fields[prefix]
+        branch[this.translateKey(field.field, _class).key] = pagination.values[prefix]
+      }
+      const field = pagination.fields[index]
+      const key = this.translateKey(field.field, _class).key
+      const value = pagination.values[index]
+      if (value == null) {
+        if (field.order === 1) {
+          branch[key] = { $ne: null }
+          branches.push(branch)
+        }
+        continue
+      }
+      branch[key] = { [field.order === 1 ? '$gt' : '$lt']: value }
+      branches.push(branch)
+      if (field.order === -1) {
+        branches.push({ ...branch, [key]: null })
+      }
+    }
+    return { $or: branches }
   }
 
   private calcProjection<T extends Doc>(
