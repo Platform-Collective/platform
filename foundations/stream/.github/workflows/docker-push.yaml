@@ -22,14 +22,14 @@ jobs:
       - name: "Login to GitHub Container Registry"
         uses: docker/login-action@v1
         with:
-          username: hardcoreeng
+          username: platformcollective
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
 
       - name: Docker meta
         id: metaci
         uses: docker/metadata-action@v3
         with:
-          images: hardcoreeng/stream:${{ inputs.version }}
+          images: platformcollective/stream:${{ inputs.version }}
           tags: |
             type=ref,event=pr
             type=sha,prefix=
@@ -41,4 +41,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: hardcoreeng/service_stream:${{ inputs.version }}
+          tags: platformcollective/service_stream:${{ inputs.version }}

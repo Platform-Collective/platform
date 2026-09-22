@@ -1,4 +1,4 @@
-FROM hardcoreeng/base
+FROM platformcollective/base
 
 # Chromium hangs when usging LD_PRELOAD and MALLOC_CONF
 ENV LD_PRELOAD=

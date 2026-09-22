@@ -4,4 +4,4 @@
  -e MINIO_ACCESS_KEY=minioadmin \
  -e MINIO_SECRET_KEY=minioadmin \
  --rm --network host \
- hardcoreeng/tool node ./bundle upgrade
+ platformcollective/tool node ./bundle upgrade

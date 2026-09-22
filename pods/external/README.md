@@ -10,7 +10,7 @@ Imports external images into the local registry. The `services.d/` directory con
 
 ## docker:push
 
-Copies external images into the official registry (hardcoreeng). A git-based `git describe --tags --abbrev=0` tag is applied to copied images.
+Copies external images into the official registry (platformcollective). A git-based `git describe --tags --abbrev=0` tag is applied to copied images.
 
 ## Configuration
 

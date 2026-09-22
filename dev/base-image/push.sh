@@ -3,9 +3,9 @@
 # Default version if not set
 VERSION=${VERSION:-"latest"}
 
-docker push hardcoreeng/base:${VERSION}
-docker push hardcoreeng/base-slim:${VERSION}
-docker push hardcoreeng/rekoni-base:${VERSION}
-docker push hardcoreeng/print-base:${VERSION}
-docker push hardcoreeng/front-base:${VERSION}
-docker push hardcoreeng/preview-base:${VERSION}
+docker push platformcollective/base:${VERSION}
+docker push platformcollective/base-slim:${VERSION}
+docker push platformcollective/rekoni-base:${VERSION}
+docker push platformcollective/print-base:${VERSION}
+docker push platformcollective/front-base:${VERSION}
+docker push platformcollective/preview-base:${VERSION}

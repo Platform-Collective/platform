@@ -116,7 +116,7 @@ version: '3.8'
 
 services:
   network-server:
-    image: hardcoreeng/network-pod:latest
+    image: platformcollective/network-pod:latest
     container_name: huly-network
     restart: unless-stopped
     ports:
@@ -249,7 +249,7 @@ spec:
     spec:
       containers:
         - name: network
-          image: hardcoreeng/network-pod:latest
+          image: platformcollective/network-pod:latest
           ports:
             - containerPort: 3737
               name: network
@@ -775,7 +775,7 @@ node --inspect agent.js
 ```bash
 # Kubernetes rolling update
 kubectl set image deployment/huly-network \
-  network=hardcoreeng/network-pod:v2.0.0 \
+  network=platformcollective/network-pod:v2.0.0 \
   --record -n huly-network
 
 # Docker Compose

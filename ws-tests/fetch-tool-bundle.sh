@@ -5,8 +5,8 @@ set -e
 # Define the path to the docker-compose.override.yml
 DOCKER_COMPOSE_PATH="./docker-compose.override.yml"
 
-# Extract the version of hardcoreeng/transactor from the docker-compose file
-VERSION=$(grep "image: hardcoreeng/transactor:" "$DOCKER_COMPOSE_PATH" | head -1 | sed -E 's/.*image: hardcoreeng\/transactor:([^[:space:]]+).*/\1/')
+# Extract the version of platformcollective/transactor from the docker-compose file
+VERSION=$(grep "image: platformcollective/transactor:" "$DOCKER_COMPOSE_PATH" | head -1 | sed -E 's/.*image: platformcollective\/transactor:([^[:space:]]+).*/\1/')
 
 if [ -z "$VERSION" ]; then
   echo "Error: Could not find transactor version in docker-compose file"
@@ -14,13 +14,13 @@ if [ -z "$VERSION" ]; then
 fi
 
 echo "Found transactor version: $VERSION"
-echo "Fetching hardcoreeng/tool:$VERSION..."
+echo "Fetching platformcollective/tool:$VERSION..."
 
 # Pull the tool image with the same version
-docker pull "hardcoreeng/tool:$VERSION"
+docker pull "platformcollective/tool:$VERSION"
 
 # Create a temporary container from the image
-CONTAINER_ID=$(docker container create "hardcoreeng/tool:$VERSION")
+CONTAINER_ID=$(docker container create "platformcollective/tool:$VERSION")
 
 # Extract bundle.js from the container
 echo "Extracting bundle.js..."

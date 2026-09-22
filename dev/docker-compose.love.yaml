@@ -10,7 +10,7 @@
 #
 services:
   love:
-    image: hardcoreeng/love
+    image: platformcollective/love
     container_name: love
     extra_hosts:
       - 'huly.local:host-gateway'

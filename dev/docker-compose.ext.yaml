@@ -18,7 +18,7 @@
 
 services:
   payment:
-    image: hardcoreeng/payment
+    image: platformcollective/payment
     # Clear the profile gate from docker-compose.min.yaml so the service starts
     # whenever this overlay is included, even alongside `min`.
     profiles: !override []
@@ -48,7 +48,7 @@ services:
     restart: unless-stopped
 
   billing:
-    image: hardcoreeng/billing
+    image: platformcollective/billing
     profiles: !override []
     extra_hosts:
       - 'huly.local:host-gateway'
