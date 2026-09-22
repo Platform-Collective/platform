@@ -58,7 +58,8 @@ import type {
   WorkspaceOperation,
   WorkspaceStatus,
   WorkspaceStatusData,
-  WorkspacePermission
+  WorkspacePermission,
+  ApiToken
 } from '../types'
 import { isShallowEqual } from '../utils'
 
@@ -412,6 +413,7 @@ export class MongoAccountDB implements AccountDB {
 
   workspaceMembers: MongoDbCollection<WorkspaceMember>
   workspacePermission: MongoDbCollection<WorkspacePermission>
+  apiToken: MongoDbCollection<ApiToken, 'id'>
 
   constructor (readonly db: Db) {
     this.migration = new MongoDbCollection<MigrationInfo, 'key'>('migration', db, 'key')
@@ -432,6 +434,7 @@ export class MongoAccountDB implements AccountDB {
 
     this.workspaceMembers = new MongoDbCollection<WorkspaceMember>('workspaceMembers', db)
     this.workspacePermission = new MongoDbCollection<WorkspacePermission>('workspacePermissions', db)
+    this.apiToken = new MongoDbCollection<ApiToken, 'id'>('apiTokens', db, 'id')
   }
 
   async init (): Promise<void> {
@@ -899,6 +902,7 @@ export class MongoAccountDB implements AccountDB {
     }
 
     await this.mailbox.deleteMany({ accountUuid })
+    await this.apiToken.deleteMany({ accountUuid })
 
     await this.socialId.update({ personUuid: accountUuid }, { verifiedOn: undefined })
     await this.workspaceMembers.deleteMany({ accountUuid })
