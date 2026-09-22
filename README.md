@@ -1,43 +1,12 @@
-# Huly Platform
+# Platform
 
-[![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/huly_io?style=for-the-badge)](https://x.com/huly_io)
-![GitHub License](https://img.shields.io/github/license/hcengineering/platform?style=for-the-badge)
-
-⭐️ Your star shines on us. Star us on GitHub!
-
-> [!IMPORTANT]
-> **Hosted Huly is shutting down — please migrate your data.**
->
-> The hosted Huly service is being discontinued because its hosting is no longer being funded. If you keep important data on the hosted platform, export and back it up, and migrate as soon as possible — we can help you move to either a [self-hosted setup](https://github.com/hcengineering/huly-selfhost) or a hosted option.
->
-> Not sure how? Follow the [backup & restore guide](docs/guides/backup-restore.en.md) for step-by-step instructions on downloading your backup and restoring it elsewhere.
->
-> The service shutdown is expected on **July 20**. Please make sure to export and migrate your data before then rather than wait until the last day.
->
-> Have questions or want updates? Join the [Huly community](https://link.huly.io/slack) to discuss migration and stay informed, or email us at [artem@hardcoreeng.com](mailto:artem@hardcoreeng.com) with any questions. This affects only the hosted **Huly** service — self-hosted deployments are not affected.
+![GitHub License](https://img.shields.io/github/license/Platform-Collective/platform?style=for-the-badge)
 
 ## About
 
-The Huly Platform is a robust framework designed to accelerate the development of business applications, such as CRM systems.
-This repository includes several applications, such as Chat, Project Management, CRM, HRM, and ATS.
-Various teams are building products on top of the Platform, including [Huly](https://huly.io) and [TraceX](https://tracex.co).
+This repository is the Platform Collective platform — a framework for building business applications such as CRM, project management, chat, HRM and ATS systems.
 
-![Huly](https://repository-images.githubusercontent.com/392073243/6d27d5cc-38cd-4d88-affe-bb88b393180c)
-
-## Self-Hosting
-
-If you're primarily interested in self-hosting Huly without the intention to modify or contribute to its development, please use [huly-selfhost](https://github.com/hcengineering/huly-selfhost).
-This project offers a convenient method to host Huly using `docker`, designed for ease of use and quick setup. Explore this option to effortlessly enjoy Huly on your own server.
-
-## Activity
-
-![Alt](https://repobeats.axiom.co/api/embed/c42c99e21691fa60ea61b5cdf11c2e0647621534.svg 'Repobeats analytics image')
-
-## API Client
-
-If you want to interact with Huly programmatically, check out our [API Client](https://github.com/hcengineering/huly.core/tree/main/packages/api-client) documentation. The API client provides a typed interface for all Huly operations and can be used to build integrations and custom applications.
-
-You can find API usage examples in the [Huly examples](https://github.com/hcengineering/huly-examples) repository.
+It is a fork of [Huly Platform](https://github.com/hcengineering/platform) by Hardcore Engineering Inc. and is developed independently. For the original project, see the [upstream repository](https://github.com/hcengineering/platform).
 
 ## Changelog
 
@@ -45,13 +14,13 @@ For detailed information about changes, improvements, and bug fixes in each vers
 
 ## Versions
 
-The Huly Platform uses two types of version tags to distinguish between production-ready and development releases:
+The platform uses two types of version tags to distinguish between production-ready and development releases:
 
 - **Production Versions (`v*`)** - Stable releases for end users
   - Example: `v0.7.310`, `v0.7.307`, `v0.6.501`
   - These versions are recommended for production deployments
   - Suitable for self-hosted installations
-  - Published with release notes on [GitHub Releases](https://github.com/hcengineering/platform/releases)
+  - Published with release notes on [GitHub Releases](https://github.com/Platform-Collective/platform/releases)
 
 - **Development Versions (`s*`)** - Pre-release builds for developers
   - Example: `s0.7.313`, `s0.7.292`, `s0.7.288`
@@ -65,11 +34,8 @@ For detailed information about the platform architecture, services, and their in
 
 ## Table of Contents
 
-- [Huly Platform](#huly-platform)
+- [Platform](#platform)
   - [About](#about)
-  - [Self-Hosting](#self-hosting)
-  - [Activity](#activity)
-  - [API Client](#api-client)
   - [Changelog](#changelog)
   - [Versions](#versions)
   - [Architecture](#architecture)
@@ -395,4 +361,4 @@ When starting the application (`rush docker:up`), some network ports in Windows 
 1. Find what's using that port
 2. Update the new address in the corresponding service configuration
 
-<sub><sup>&copy; 2025 <a href="https://hardcoreeng.com">Hardcore Engineering Inc</a>.</sup></sub>
+<sub><sup>Based on <a href="https://github.com/hcengineering/platform">Huly Platform</a> &copy; Hardcore Engineering Inc. Licensed under EPL-2.0.</sup></sub>
