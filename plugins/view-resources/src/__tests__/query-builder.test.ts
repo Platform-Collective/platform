@@ -84,4 +84,14 @@ describe('makeFilterQuery', () => {
     await makeFilterQuery(base, filters, async () => mockMode, mockResolveResource as any)
     expect(base).toEqual(baseSnapshot)
   })
+  it('ignores prototype-polluting keys in filter results and filter keys', async () => {
+    const polluted = JSON.parse('{"$in": ["a"], "__proto__": {"polluted": true}, "constructor": {"x": 1}}')
+    const resolvePolluted = jest.fn(async () => async () => polluted)
+    const base: DocumentQuery<Doc> = { status: { $in: ['a', 'b'] } as any }
+    const filters: Filter[] = [mockFilter('status', [], 1), mockFilter('__proto__', [], 2)]
+    const out = await makeFilterQuery(base, filters, async () => mockMode, resolvePolluted as any)
+    expect(out).toEqual({ status: { $in: ['a'] } })
+    expect(({} as any).polluted).toBeUndefined()
+    expect((out as any).status.polluted).toBeUndefined()
+  })
 })

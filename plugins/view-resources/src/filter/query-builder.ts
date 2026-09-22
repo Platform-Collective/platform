@@ -34,6 +34,18 @@ type ResultFn = (filter: Filter, refresh: () => void) => Promise<unknown>
 const defaultResolveResource: ResourceResolver = async <T>(r: Resource<T>) => await getResource(r)
 
 /**
+ * Keys that must never be written through dynamic property assignment:
+ * they would reach `Object.prototype` (prototype pollution).
+ */
+function isUnsafeKey (key: string): boolean {
+  return key === '__proto__' || key === 'constructor' || key === 'prototype'
+}
+
+function isPlainObject (value: unknown): value is Record<string, any> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
  * Deep-clone a query so the helper never mutates the caller's `base`.
  * Prefers `hierarchy.clone()` when available (it knows about huly's
  * domain model and may preserve special types); falls back to
@@ -72,46 +84,54 @@ export async function makeFilterQuery (
       }
     }
 
-    const existing = (out as any)[filterKey]
+    if (isUnsafeKey(filterKey)) continue
+
+    const target = out as Record<string, any>
+    const existing = Object.prototype.hasOwnProperty.call(target, filterKey) ? target[filterKey] : undefined
     if (existing == null) {
-      ;(out as any)[filterKey] = result
+      target[filterKey] = result
       continue
     }
-    let merged = false
-    for (const key in result) {
-      if (existing[key] === undefined) {
-        if (key === '$in' && typeof existing === 'string') {
-          ;(out as any)[filterKey] = { $in: (result[key] as any[]).filter((p) => p === existing) }
-        } else {
-          existing[key] = result[key]
-        }
-        merged = true
+    if (!isPlainObject(result)) continue
+
+    const resultKeys = Object.keys(result).filter((key) => !isUnsafeKey(key))
+    if (typeof existing === 'string') {
+      // A literal value can only be narrowed by `$in`; anything else leaves it as is.
+      if (Array.isArray(result.$in)) {
+        target[filterKey] = { $in: result.$in.filter((p) => p === existing) }
+      }
+      continue
+    }
+    if (!isPlainObject(existing)) continue
+
+    for (const key of resultKeys) {
+      const next = result[key]
+      if (!Object.prototype.hasOwnProperty.call(existing, key) || existing[key] === undefined) {
+        existing[key] = next
         continue
       }
-      if (key === '$in') {
-        existing[key] = (existing[key] as any[]).filter((p) => (result[key] as any[]).includes(p))
-        merged = true
-      } else if (key === '$nin') {
-        existing[key] = [...(existing[key] as any[]), ...(result[key] as any[])]
-        merged = true
-      } else if (key === '$lt') {
-        existing[key] = existing[key] < result[key] ? existing[key] : result[key]
-        merged = true
-      } else if (key === '$gt') {
-        existing[key] = existing[key] > result[key] ? existing[key] : result[key]
-        merged = true
-      } else if (key === '$lte') {
-        // Date filters emit $lte/$gte (before/after/dateToday). Two
-        // filters on one key must intersect — the tighter upper bound wins.
-        existing[key] = existing[key] < result[key] ? existing[key] : result[key]
-        merged = true
-      } else if (key === '$gte') {
-        // Tighter lower bound wins.
-        existing[key] = existing[key] > result[key] ? existing[key] : result[key]
-        merged = true
+      const prev = existing[key]
+      switch (key) {
+        case '$in':
+          existing[key] = (prev as any[]).filter((p) => (next as any[]).includes(p))
+          break
+        case '$nin':
+          existing[key] = [...(prev as any[]), ...(next as any[])]
+          break
+        case '$lt':
+        case '$lte':
+          // Tighter upper bound wins (date filters emit $lte/$gte).
+          existing[key] = prev < next ? prev : next
+          break
+        case '$gt':
+        case '$gte':
+          // Tighter lower bound wins.
+          existing[key] = prev > next ? prev : next
+          break
+        default:
+          existing[key] = next
       }
     }
-    if (!merged) Object.assign(existing, result)
   }
   return out
 }
