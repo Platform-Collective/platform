@@ -14,39 +14,61 @@
 -->
 <script lang="ts">
   import { IdMap, Ref, toIdMap } from '@hcengineering/core'
-  import { isOffice, ParticipantInfo, Room } from '@hcengineering/love'
-  import { getClient } from '@hcengineering/presentation'
-  import { closePopup, eventToHTMLElement, Location, location, showPopup, closeTooltip } from '@hcengineering/ui'
+  import { isOffice, ParticipantInfo, Room, MeetingMinutes } from '@hcengineering/love'
+  import { getMetadata } from '@hcengineering/platform'
+  import presentation, { getClient } from '@hcengineering/presentation'
+  import { closePopup, eventToHTMLElement, location, showPopup, closeTooltip } from '@hcengineering/ui'
+  import type { Location } from '@hcengineering/ui'
   import { onDestroy } from 'svelte'
   import workbench from '@hcengineering/workbench'
   import { closeWidget, sidebarStore } from '@hcengineering/workbench-resources'
 
   import love from '../../plugin'
-  import { currentRoom, infos, myInfo, rooms } from '../../stores'
-  import { createMeetingWidget, getRoomName } from '../../utils'
+  import { currentRoom, infos, myInfo, myConnectingSessionId, rooms, meetings } from '../../stores'
+  import { createMeetingWidget, getRoomName, liveKitClient } from '../../utils'
   import PersonActionPopup from '../PersonActionPopup.svelte'
-  import RoomPopup from '../RoomPopup.svelte'
   import RoomButton from '../RoomButton.svelte'
-  import { leaveMeeting, currentMeetingRoom } from '../../meetings'
-  import { lkSessionConnected } from '../../liveKitClient'
+  import { lkIsConnecting, lkSessionConnected } from '../../liveKitClient'
+  import RoomPopup from '../RoomPopup.svelte'
+  import { currentMeeting, leaveMeeting } from '../../meetings'
+  import { get } from 'svelte/store'
 
   const client = getClient()
 
   interface ActiveRoom extends Room {
     participants: ParticipantInfo[]
+    meeting: MeetingMinutes
   }
 
-  function getActiveRooms (rooms: Room[], infos: ParticipantInfo[]): ActiveRoom[] {
+  function getActiveMeetings (rooms: Room[], infos: ParticipantInfo[], meetings: MeetingMinutes[]): ActiveRoom[] {
     const roomMap = toIdMap(rooms)
     const map: IdMap<ActiveRoom> = new Map()
     for (const info of infos) {
+      // Skip explicit reception occupants (they are rendered separately)
       if (info.room === love.ids.Reception) continue
-      const room = roomMap.get(info.room)
-      if (room === undefined) continue
-      // temprory disabled check for floor
-      // if (room.floor !== selectedFloor?._id) continue
-      const _id = room._id as Ref<ActiveRoom>
-      const active = map.get(_id) ?? { ...room, _id, participants: [] }
+
+      // Determine the room this participant should be associated with:
+      // - If participant is meeting-bound, use the meeting's attached room
+      // - Otherwise, use the legacy `room` field
+      let attachedRoom = info.room
+      let meeting: MeetingMinutes | undefined
+      if (info.meeting !== undefined) {
+        meeting = meetings.find((m) => m._id === info.meeting)
+        if (meeting === undefined) continue
+        attachedRoom = meeting.attachedTo as Ref<Room> | undefined
+        if (attachedRoom === undefined || attachedRoom === love.ids.Reception) continue
+      }
+
+      if (meeting === undefined) continue
+
+      if (attachedRoom === undefined) continue
+
+      const roomObj = roomMap.get(attachedRoom)
+      if (roomObj === undefined) continue
+      // temporary disabled check for floor
+      // if (roomObj.floor !== selectedFloor?._id) continue
+      const _id = roomObj._id as Ref<ActiveRoom>
+      const active = map.get(_id) ?? { ...roomObj, _id, participants: [], meeting }
       active.participants.push(info)
       map.set(_id, active)
     }
@@ -56,12 +78,12 @@
     return arr
   }
 
-  $: activeRooms = getActiveRooms($rooms, $infos)
+  $: activeMeetings = getActiveMeetings($rooms, $infos, $meetings)
 
-  function openRoom (room: Room): (e: MouseEvent) => void {
+  function openRoom (room: ActiveRoom): (e: MouseEvent) => void {
     return (e: MouseEvent) => {
       closeTooltip()
-      showPopup(RoomPopup, { room }, eventToHTMLElement(e))
+      showPopup(RoomPopup, { room, meeting: room.meeting }, eventToHTMLElement(e))
     }
   }
 
@@ -71,9 +93,20 @@
 
   $: receptionParticipants = $infos.filter((p) => p.room === love.ids.Reception)
 
-  function checkActiveMeeting (loc: Location, meetingSessionConnected: boolean, room: Ref<Room> | undefined): void {
+  function checkActiveMeeting (
+    loc: Location,
+    meetingSessionConnected: boolean,
+    room: Ref<Room> | undefined,
+    hasPendingJoinInThisSession: boolean
+  ): void {
     const meetingWidgetState = $sidebarStore.widgetsState.get(love.ids.MeetingWidget)
     const isMeetingWidgetCreated = meetingWidgetState !== undefined
+
+    // If user has a pending join in THIS session or is currently connecting, don't make any decisions yet
+    // Pending joins from other browser tabs/sessions should not block this session
+    if (hasPendingJoinInThisSession || $lkIsConnecting) {
+      return
+    }
 
     if (room === undefined) {
       if (isMeetingWidgetCreated) {
@@ -83,7 +116,9 @@
     }
 
     if (meetingSessionConnected) {
-      if (currentMeetingRoom !== undefined && room !== currentMeetingRoom) {
+      // Only check room mismatch if we have a valid myRoomAttached (myInfo exists with meeting/room)
+      // Otherwise we're still waiting for ParticipantInfo from server webhook
+      if (currentMeeting !== undefined && myRoomAttached !== undefined && myRoomAttached !== room) {
         void leaveMeeting()
         return
       }
@@ -94,17 +129,37 @@
         createMeetingWidget(widget, room, meetingSessionConnected)
       }
     } else {
-      if (isMeetingWidgetCreated) {
+      // If user has a ParticipantInfo showing they are in this meeting, keep the widget
+      // so they can return after a page reload. Otherwise close the widget.
+      if (isMeetingWidgetCreated && myRoomAttached !== room) {
         closeWidget(love.ids.MeetingWidget)
       }
     }
   }
 
-  $: checkActiveMeeting($location, $lkSessionConnected, $currentRoom?._id)
+  // Check if pending join is for THIS session (same browser tab)
+  $: currentSessionId = getMetadata(presentation.metadata.SessionId)
+  $: hasPendingJoinInThisSession = $myConnectingSessionId !== null && $myConnectingSessionId === currentSessionId
 
-  $: joined = activeRooms.filter((r) => $myInfo?.room === r._id)
+  $: checkActiveMeeting($location, $lkSessionConnected, $currentRoom?._id, hasPendingJoinInThisSession)
+
+  let myRoomAttached: Ref<Room> | undefined = undefined
+  $: myRoomAttached =
+    $myInfo?.meeting !== undefined
+      ? ($meetings.find((m) => m._id === $myInfo.meeting)?.attachedTo as Ref<Room>)
+      : $myInfo?.room
+  $: joined = activeMeetings.filter((r) => myRoomAttached === r._id)
+
+  const beforeUnloadListener = (): void => {
+    if ($myInfo !== undefined && $lkSessionConnected) {
+      void leaveMeeting()
+    }
+  }
+
+  window.addEventListener('beforeunload', beforeUnloadListener)
 
   onDestroy(() => {
+    removeEventListener('beforeunload', beforeUnloadListener)
     closePopup(myInvitesCategory)
     closeWidget(love.ids.MeetingWidget)
   })
@@ -121,23 +176,13 @@
     }
   }
 
-  onDestroy(() => {
-    removeEventListener('beforeunload', beforeUnloadListener)
-  })
-
-  const beforeUnloadListener = () => {
-    if ($myInfo !== undefined && $lkSessionConnected) {
-      leaveMeeting()
-    }
-  }
-
-  window.addEventListener('beforeunload', beforeUnloadListener)
+  // beforeUnload listener moved above and cleanup merged into onDestroy
 </script>
 
 <div class="flex-row-center flex-gap-2">
-  {#if activeRooms.length > 0}
+  {#if activeMeetings.length > 0}
     <!--    <div class="divider" />-->
-    {#each activeRooms as active}
+    {#each activeMeetings as active}
       {#await getRoomName(active) then name}
         <RoomButton
           label={name}
@@ -149,7 +194,7 @@
     {/each}
   {/if}
   {#if reception !== undefined && receptionParticipants.length > 0}
-    {#if activeRooms.length > 0}
+    {#if activeMeetings.length > 0}
       <div class="divider" />
     {/if}
     {#await getRoomName(reception) then name}

@@ -114,3 +114,17 @@ dev/tool/history.json
 .tmp
 ws-tests/docker-compose.override.yml
 .cursor/*
+CLAUDE.md
+# FUSE temporary files
+.fuse_hidden*
+
+# Local notes and scratch files
+/PR_DESCRIPTION.md
+/RelyFrame_naming_proposal*.md
+/_to_delete/
+/fetch_account_data.py
+
+# Local environment configs
+/dev/prod/public/config-local.json
+/dev/prod/public/config-prod.json
+/dev/prod/public/config-staging.json

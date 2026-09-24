@@ -363,6 +363,85 @@ describe('LiveQuery Coverage Tests', () => {
     await close()
   })
 
+  it('refreshConnect should drop idle queries when reconnect gap exceeds IDLE_DROP_GAP_MS', async () => {
+    const { liveQuery, close } = await getClient()
+
+    const cb = jest.fn()
+    const unsubscribe = liveQuery.query(core.class.Space, {}, cb)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    unsubscribe()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    // Idle entry sits in queue. Simulate gap above threshold.
+    const queueBefore = (liveQuery as any).queue.size
+    expect(queueBefore).toBeGreaterThan(0)
+
+    await liveQuery.refreshConnect(false, LiveQuery.IDLE_DROP_GAP_MS + 1000)
+
+    expect((liveQuery as any).queue.size).toBe(0)
+    await close()
+  })
+
+  it('refreshConnect should keep idle queries when gap is small', async () => {
+    const { liveQuery, close } = await getClient()
+
+    const cb = jest.fn()
+    const unsubscribe = liveQuery.query(core.class.Space, {}, cb)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    unsubscribe()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    const queueBefore = (liveQuery as any).queue.size
+    expect(queueBefore).toBeGreaterThan(0)
+
+    await liveQuery.refreshConnect(false, 100)
+
+    expect((liveQuery as any).queue.size).toBe(queueBefore)
+    await close()
+  })
+
+  it('refreshConnect should refresh active queries ordered by size (smallest first)', async () => {
+    const { liveQuery, factory, close } = await getClient()
+
+    // Create several spaces so the unfiltered query returns more docs than the filtered one.
+    for (let i = 0; i < 5; i++) {
+      await factory.createDoc(core.class.Space, core.space.Model, {
+        name: `s-${i}`,
+        description: '',
+        private: false,
+        members: [],
+        archived: false
+      })
+    }
+
+    const bigCb = jest.fn()
+    const smallCb = jest.fn()
+    liveQuery.query(core.class.Space, {}, bigCb)
+    liveQuery.query(core.class.Space, { name: 'no-such-space-xyz' }, smallCb)
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    const order: number[] = []
+    const origRefresh = (liveQuery as any).refresh.bind(liveQuery)
+    ;(liveQuery as any).refresh = async (q: any) => {
+      order.push(q.id)
+      await origRefresh(q)
+    }
+
+    await liveQuery.refreshConnect(false, 0)
+
+    // Find query ids: smaller result must be refreshed first.
+    const queries: any[] = []
+    for (const v of (liveQuery as any).queries.values()) {
+      for (const q of v.values()) queries.push(q)
+    }
+    const small = queries.find((q) => q.query.name === 'no-such-space-xyz')
+    const big = queries.find((q) => q.query.name === undefined)
+    expect(small).toBeDefined()
+    expect(big).toBeDefined()
+    expect(order.indexOf(small.id)).toBeLessThan(order.indexOf(big.id))
+    await close()
+  })
+
   it('should handle associations option', async () => {
     const { liveQuery, close } = await getClient()
 

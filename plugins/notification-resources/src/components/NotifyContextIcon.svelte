@@ -64,6 +64,7 @@
       position: absolute;
       top: -0.375rem;
       right: -0.375rem;
+      z-index: 100;
     }
   }
 </style>

@@ -23,9 +23,9 @@ import core, {
   type OperationLog,
   type SessionData,
   type Tx,
-  type TxApplyIf
+  type TxApplyIf,
+  type DomainResult
 } from '@hcengineering/core'
-import type { DomainResult } from '@hcengineering/core/src'
 import type { Middleware, PipelineContext, TxMiddlewareResult } from '@hcengineering/server-core'
 import { BaseMiddleware } from '@hcengineering/server-core'
 

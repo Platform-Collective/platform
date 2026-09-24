@@ -43,7 +43,6 @@
     Toggle
   } from '@hcengineering/ui'
   import settingsRes from '../plugin'
-  import ApiTokenPopup from './ApiTokenPopup.svelte'
   import WorkspacePermissionEditor from './WorkspacePermissionEditor.svelte'
 
   let loading = true
@@ -149,13 +148,8 @@
   )
 
   async function changePasswordAgingRules (val: number | undefined): Promise<void> {
-    passwordAgingRule = Math.max(val ?? 1, 1)
+    passwordAgingRule = val !== undefined ? Math.max(val, 1) : undefined
     await accountClient.updatePasswordAgingRule(passwordAgingRule)
-  }
-
-  async function handleGenerateApiToken (): Promise<void> {
-    const { token } = await accountClient.selectWorkspace(workspaceUrl)
-    showPopup(ApiTokenPopup, { token })
   }
 
   function handleTogglePermissions (): void {
@@ -317,19 +311,6 @@
             description={settingsRes.string.ImportDocumentDescription}
             allowGuests={true}
           />
-
-          <div class="flex-col flex-gap-4 mt-6">
-            <div class="title"><Label label={settingsRes.string.ApiAccess} /></div>
-            <div class="w-32">
-              <Button
-                label={settingsRes.string.GenerateApiToken}
-                kind="regular"
-                disabled={workspaceUrl === ''}
-                showTooltip={{ label: settingsRes.string.GenerateApiToken }}
-                on:click={handleGenerateApiToken}
-              />
-            </div>
-          </div>
 
           <div class="flex-col flex-gap-4 mt-6">
             <div class="title"><Label label={settingsRes.string.DangerZone} /></div>

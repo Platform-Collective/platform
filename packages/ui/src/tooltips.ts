@@ -28,11 +28,6 @@ export const tooltipstore = derived(modalStore, (modals) => {
 
 let toHandler: any
 export function tooltip (node: HTMLElement, options?: LabelAndProps): any {
-  if (options === undefined || (options.label === undefined && options.component === undefined)) {
-    // No tooltip
-    // TODO: Fix reactive options update in this case
-    return {}
-  }
   let opt = options
   const show = (): void => {
     const shown = !!(storedValue.label !== undefined || storedValue.component !== undefined)
@@ -40,6 +35,67 @@ export function tooltip (node: HTMLElement, options?: LabelAndProps): any {
       if (opt?.kind !== 'submenu' || opt.timeout !== undefined) {
         clearTimeout(toHandler)
         toHandler = setTimeout(() => {
+          showTooltip(
+            opt?.label,
+            node,
+            opt?.direction,
+            opt?.component,
+            opt?.props,
+            opt?.anchor,
+            opt?.onUpdate,
+            opt?.kind,
+            opt?.keys,
+            opt?.style,
+            opt?.noArrow,
+            opt?.textAlign
+          )
+        }, opt?.timeout ?? 10)
+      } else {
+        showTooltip(
+          opt?.label,
+          node,
+          opt?.direction,
+          opt?.component,
+          opt?.props,
+          opt?.anchor,
+          opt?.onUpdate,
+          opt?.kind,
+          opt?.keys,
+          opt?.style,
+          opt?.noArrow,
+          opt?.textAlign
+        )
+      }
+    }
+  }
+  const hide = (): void => {
+    clearTimeout(toHandler)
+  }
+
+  const hasContent = (o?: LabelAndProps): boolean => o?.label !== undefined || o?.component !== undefined
+
+  if (hasContent(options)) {
+    node.addEventListener('mouseleave', hide)
+    node.addEventListener('mousemove', show)
+  }
+
+  return {
+    update (options: LabelAndProps) {
+      const hadContent = hasContent(opt)
+      const hasNowContent = hasContent(options)
+      opt = options
+
+      if (!hadContent && hasNowContent) {
+        node.addEventListener('mousemove', show)
+        node.addEventListener('mouseleave', hide)
+      } else if (hadContent && !hasNowContent) {
+        node.removeEventListener('mousemove', show)
+        node.removeEventListener('mouseleave', hide)
+      }
+
+      if (hasNowContent && node === storedValue.element) {
+        const shown = !!(storedValue.label !== undefined || storedValue.component !== undefined)
+        if (shown) {
           showTooltip(
             opt.label,
             node,
@@ -54,50 +110,7 @@ export function tooltip (node: HTMLElement, options?: LabelAndProps): any {
             opt.noArrow,
             opt.textAlign
           )
-        }, opt.timeout ?? 10)
-      } else {
-        showTooltip(
-          opt.label,
-          node,
-          opt.direction,
-          opt.component,
-          opt.props,
-          opt.anchor,
-          opt.onUpdate,
-          opt.kind,
-          opt.keys,
-          opt.style,
-          opt.noArrow,
-          opt.textAlign
-        )
-      }
-    }
-  }
-  const hide = (): void => {
-    clearTimeout(toHandler)
-  }
-  node.addEventListener('mouseleave', hide)
-  node.addEventListener('mousemove', show)
-  return {
-    update (options: LabelAndProps) {
-      opt = options
-      if (node !== storedValue.element) return
-      const shown = !!(storedValue.label !== undefined || storedValue.component !== undefined)
-      if (shown) {
-        showTooltip(
-          opt.label,
-          node,
-          opt.direction,
-          opt.component,
-          opt.props,
-          opt.anchor,
-          opt.onUpdate,
-          opt.kind,
-          opt.keys,
-          opt.style,
-          opt.noArrow,
-          opt.textAlign
-        )
+        }
       }
     },
 

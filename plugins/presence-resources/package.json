@@ -48,7 +48,7 @@
     "@hcengineering/contact": "workspace:^0.7.0",
     "@hcengineering/contact-resources": "workspace:^0.7.0",
     "@hcengineering/presence": "workspace:^0.7.0",
-    "@hcengineering/hulypulse-client": "workspace:^0.7.0",
+    "@hcengineering/pulse": "workspace:^0.7.0",
     "svelte": "^4.2.20",
     "fast-equals": "^5.2.2"
   }

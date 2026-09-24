@@ -18,10 +18,10 @@
     "_phase:docker-build": "rushx docker:build",
     "_phase:docker-staging": "rushx docker:staging",
     "bundle": "node ../../../common/scripts/esbuild.js --sourcemap=external",
-    "docker:build": "../../../common/scripts/docker_build.sh hardcoreeng/github",
-    "docker:staging": "../../../common/scripts/docker_tag.sh hardcoreeng/github staging",
-    "docker:push": "../../../common/scripts/docker_tag.sh hardcoreeng/github",
-    "docker:tbuild": "rush bundle --to @hcengineering/pod-github && docker build -t hardcoreeng/github . --platform=linux/amd64 && ../../../common/scripts/docker_tag_push.sh hardcoreeng/github",
+    "docker:build": "../../../common/scripts/docker_build.sh platformcollective/github",
+    "docker:staging": "../../../common/scripts/docker_tag.sh platformcollective/github staging",
+    "docker:push": "../../../common/scripts/docker_tag.sh platformcollective/github",
+    "docker:tbuild": "rush bundle --to @hcengineering/pod-github && docker build -t platformcollective/github . --platform=linux/amd64 && ../../../common/scripts/docker_tag_push.sh platformcollective/github",
     "run-local": "./run.sh",
     "format": "format src",
     "_phase:build": "compile transpile src",
@@ -32,7 +32,7 @@
   "devDependencies": {
     "cross-env": "~7.0.3",
     "@hcengineering/platform-rig": "workspace:^0.7.21",
-    "@types/node": "^22.18.1",
+    "@types/node": "^24.13.3",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-promise": "^6.1.1",
@@ -44,7 +44,7 @@
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "@types/ws": "^8.5.12",
+    "@types/ws": "^8.18.1",
     "smee-client": "^1.2.3",
     "@octokit/webhooks-types": "^7.3.1",
     "@types/markdown-it": "~13.0.0",
@@ -172,6 +172,6 @@
     "@hcengineering/server-guest-resources": "workspace:^0.7.0",
     "@hcengineering/analytics": "workspace:^0.7.19",
     "@hcengineering/analytics-service": "workspace:^0.7.19",
-    "ws": "^8.18.2"
+    "ws": "^8.21.0"
   }
 }

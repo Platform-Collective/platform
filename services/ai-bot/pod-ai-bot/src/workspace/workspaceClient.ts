@@ -434,7 +434,7 @@ export class WorkspaceClient {
       return
     }
 
-    await this.love.disconnect(request.roomId)
+    await this.love.disconnectMeeting(request.meetingId)
   }
 
   async processLoveTranscript (text: string, participant: Ref<Person>, room: Ref<Room>): Promise<void> {

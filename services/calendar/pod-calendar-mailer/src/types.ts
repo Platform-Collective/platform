@@ -15,11 +15,11 @@
 
 import { Event } from '@hcengineering/calendar'
 import { Data, PersonId } from '@hcengineering/core'
-import { Meeting } from '@hcengineering/love'
+import { MeetingEventLink } from '@hcengineering/love'
 
 export interface EventCUDMessage {
   action: 'create' | 'update' | 'delete' | 'mixin'
   event: Event
   modifiedBy: PersonId
-  changes?: Partial<Data<Event>> | Partial<Data<Meeting>>
+  changes?: Partial<Data<Event>> | Partial<Data<MeetingEventLink>>
 }

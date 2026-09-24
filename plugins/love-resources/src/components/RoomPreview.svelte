@@ -14,19 +14,21 @@
 -->
 <script lang="ts">
   import { getCurrentEmployee, Person } from '@hcengineering/contact'
-  import { Avatar, myEmployeeStore, getPersonByPersonRef } from '@hcengineering/contact-resources'
-  import { ParticipantInfo, Room, RoomAccess, RoomType, MeetingStatus } from '@hcengineering/love'
+  import { Avatar, myEmployeeStore, getPersonByPersonRef, statusByUserStore } from '@hcengineering/contact-resources'
+  import { ParticipantInfo, Room, RoomAccess, RoomType, MeetingStatus, isOffice, Office } from '@hcengineering/love'
   import { Icon, Label, eventToHTMLElement, showPopup } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import { getClient } from '@hcengineering/presentation'
   import { openDoc } from '@hcengineering/view-resources'
 
   import love from '../plugin'
-  import { myInfo, selectedRoomPlace, currentRoom, currentMeetingMinutes } from '../stores'
+  import { myInfo, myOffice, selectedRoomPlace, currentRoom, currentMeetingMinutes, infos } from '../stores'
   import { getRoomLabel } from '../utils'
-  import PersonActionPopup from './PersonActionPopup.svelte'
   import { IntlString } from '@hcengineering/platform'
   import { lkSessionConnected } from '../liveKitClient'
+  import { AccountUuid, clone, Ref } from '@hcengineering/core'
+  // import RoomLanguage from './RoomLanguage.svelte'
+  import PersonActionPopup from './PersonActionPopup.svelte'
 
   export let room: Room
   export let info: ParticipantInfo[]
@@ -35,6 +37,41 @@
 
   const dispatch = createEventDispatcher()
 
+  function prepareInfo (info: ParticipantInfo[]): ParticipantInfo[] {
+    const result: ParticipantInfo[] = []
+    const posMap = new Set<string>()
+
+    const conflicts: ParticipantInfo[] = []
+    for (const r of info) {
+      if (posMap.has(`${r.x}.${r.y}`)) {
+        conflicts.push(r)
+      } else {
+        result.push(r)
+      }
+    }
+    for (const c of conflicts) {
+      let found = false
+      for (let y = 0; y < room.height; y++) {
+        for (let x = 0; x < room.width; x++) {
+          if (!posMap.has(`${x}.${y}`)) {
+            const nc = clone(c)
+            nc.x = x
+            nc.y = y
+            posMap.add(`${x}.${y}`)
+            result.push(nc)
+            found = true
+            break
+          }
+        }
+        if (found) break
+      }
+    }
+
+    return result
+  }
+
+  $: _info = prepareInfo(info ?? [])
+
   const me = getCurrentEmployee()
   $: myName = $myEmployeeStore?.name
 
@@ -42,21 +79,25 @@
   let hoveredRoomY: number | undefined = undefined
 
   let roomLabel: IntlString
-  $: void getRoomLabel(room).then((label) => {
-    roomLabel = label
-  })
+  $: {
+    void getRoomLabel(room).then((label) => {
+      roomLabel = label
+    })
+  }
 
-  $: disabled = room._class === love.class.Office && info.length === 0
+  $: disabled = room._class === love.class.Office && _info.length === 0
 
-  async function getPerson (info: ParticipantInfo | undefined): Promise<Person | undefined> {
+  let personPopupVisible: Ref<Person> | undefined = undefined
+
+  async function getPerson (info: Ref<Person> | undefined): Promise<Person | undefined> {
     if (info === undefined) {
       return
     }
 
-    return (await getPersonByPersonRef(info.person)) ?? undefined
+    return (await getPersonByPersonRef(info)) ?? undefined
   }
 
-  function getPersonInfo (y: number, x: number, info: ParticipantInfo[]): ParticipantInfo | undefined {
+  function getPersonInfo (y: number, x: number, info: ParticipantInfo[]): Omit<ParticipantInfo, 'meeting'> | undefined {
     return info.find((p) => p.x === x && p.y === y)
   }
 
@@ -83,6 +124,7 @@
       if (meeting === undefined) {
         await openDoc(hierarchy, room)
       } else {
+        // We have active meeting, let's connect to it.
         await openDoc(hierarchy, meeting)
       }
     } else {
@@ -91,18 +133,42 @@
     }
   }
 
-  async function placeClickHandler (e: MouseEvent, x: number, y: number, person: Person | undefined): Promise<void> {
+  async function placeClickHandler (e: MouseEvent, x: number, y: number): Promise<void> {
     e.stopPropagation()
     e.preventDefault()
-    if (person !== undefined) {
-      if ($myInfo === undefined || (person._id === me && $myInfo?.room === room._id)) return
-      showPopup(PersonActionPopup, { room, person: person._id }, eventToHTMLElement(e))
-    } else {
-      await openRoom(x, y)
+
+    // Get person at this position
+    const personInfo = getPersonInfo(y, x, _info)
+    if (personInfo !== undefined) {
+      const person = await getPerson(personInfo.person)
+      if (person !== undefined) {
+        if ($myInfo === undefined || (person._id === me && $myInfo?.room === room._id)) return
+        personPopupVisible = person._id
+        showPopup(PersonActionPopup, { room, person: person._id }, eventToHTMLElement(e), () => {
+          personPopupVisible = undefined
+        })
+        return
+      }
     }
+
+    // Check if clicking on room owner avatar (shown in office at position 0,0)
+    if (isOffice(room) && x === 0 && y === 0 && shouldShowAvatar && roomPerson != null) {
+      const isMe = roomPerson._id === me && $myInfo?.room === room._id
+      if (isMe) {
+        await openRoom(x, y)
+        return
+      }
+      personPopupVisible = roomPerson._id
+      showPopup(PersonActionPopup, { room, person: roomPerson._id }, eventToHTMLElement(e), () => {
+        personPopupVisible = undefined
+      })
+      return
+    }
+
+    await openRoom(x, y)
   }
 
-  $: extraRow = calcExtraRows(hovered, room, info, $myInfo)
+  $: extraRow = calcExtraRows(hovered, room, _info, $myInfo)
 
   function calcExtraRows (
     hovered: boolean,
@@ -143,6 +209,31 @@
   async function handleClick (): Promise<void> {
     await openRoom(0, 0)
   }
+
+  // Create a store for the office person that reacts to room.person changes
+  let roomPerson: Person | null
+
+  $: if (isOffice(room) && room.person != null) {
+    void getPersonByPersonRef(room.person).then((res) => {
+      roomPerson = res
+    })
+  } else {
+    roomPerson = null
+  }
+
+  // Check if this is the user's current room (where they are in ParticipantInfo)
+  $: isUserInOtherRoom = $infos.some((it) => it.person === roomPerson?._id && it.room !== room._id)
+
+  // Show avatar for office owner if:
+  // 1. It's an office AND
+  // 2. There's a person assigned to it
+  $: shouldShowAvatar = isOffice(room) && room.person != null
+
+  // Check if user is online (for styling)
+  $: isUserOnline =
+    roomPerson?.personUuid != null
+      ? ($statusByUserStore.get(roomPerson.personUuid as AccountUuid)?.online ?? false)
+      : false
 </script>
 
 <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -152,7 +243,7 @@
   class="floorGrid-room"
   class:hovered
   class:disabled
-  class:myOffice={$myInfo?.room === room._id}
+  class:myOffice={$myOffice?._id === room._id}
   style:--huly-floor-roomWidth={room.width + extraRow}
   style:--huly-floor-roomHeight={room.height}
   style:grid-column={`${room.x + 2} / span ${room.width + extraRow}`}
@@ -167,34 +258,43 @@
 >
   {#each new Array(room.height) as _, y}
     {#each new Array(room.width + extraRow) as _, x}
-      {@const personInfo = getPersonInfo(y, x, info)}
-      {#await getPerson(personInfo) then person}
-        <!-- svelte-ignore a11y-click-events-have-key-events -->
-        <div
-          class="floorGrid-room__field"
-          class:hovered={hoveredRoomX === x && hoveredRoomY === y}
-          class:person={personInfo || person || $myInfo?.room === room._id}
-          on:mouseenter={() => {
-            if (!(personInfo || person) && !disabled && $myInfo?.room !== room._id) {
-              hoveredRoomX = x
-              hoveredRoomY = y
-            }
-          }}
-          on:mouseout={() => {
-            hoveredRoomX = undefined
-            hoveredRoomY = undefined
-          }}
-          on:click={(e) => {
-            placeClickHandler(e, x, y, person)
-          }}
-        >
-          {#if personInfo}
-            <Avatar name={person?.name ?? personInfo.name} {person} size={'large'} showStatus={false} adaptiveName />
-          {:else if hoveredRoomX === x && hoveredRoomY === y}
-            <Avatar name={myName} person={$myEmployeeStore} size={'large'} showStatus={false} adaptiveName />
+      {@const personInfo = getPersonInfo(y, x, _info)}
+      {@const isHovered = hoveredRoomX === x && hoveredRoomY === y}
+      <!-- svelte-ignore a11y-click-events-have-key-events -->
+      <div
+        class="floorGrid-room__field"
+        class:hovered={isHovered}
+        class:person={$myInfo?.room === room._id}
+        on:mouseenter={() => {
+          if ($myInfo?.room !== room._id) {
+            hoveredRoomX = x
+            hoveredRoomY = y
+          }
+        }}
+        on:mouseout={() => {
+          hoveredRoomX = undefined
+          hoveredRoomY = undefined
+        }}
+        on:click={(e) => {
+          placeClickHandler(e, x, y).catch(() => {
+            // Ignore errors
+          })
+        }}
+      >
+        {#if personInfo === undefined && shouldShowAvatar && !isUserInOtherRoom && roomPerson != null && x === 0 && y === 0}
+          {#if isHovered || isUserOnline || personPopupVisible === roomPerson?._id}
+            <Avatar name={roomPerson.name} person={roomPerson} size={'large'} variant={'roundedRect'} adaptiveName />
           {/if}
-        </div>
-      {/await}
+        {:else if personInfo !== undefined}
+          {#await getPerson(personInfo.person) then person}
+            {#if personInfo}
+              <Avatar name={person?.name ?? personInfo.name} {person} size={'large'} showStatus={false} adaptiveName />
+            {:else if hoveredRoomX === x && hoveredRoomY === y}
+              <Avatar name={myName} person={$myEmployeeStore} size={'large'} showStatus={false} adaptiveName />
+            {/if}
+          {/await}
+        {/if}
+      </div>
     {/each}
   {/each}
 

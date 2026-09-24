@@ -18,6 +18,7 @@ import type {
   LoginInfo,
   OtpInfo,
   RegionInfo,
+  WorkspaceConfiguration,
   WorkspaceLoginInfo,
   WorkspaceInviteInfo,
   ProviderInfo,
@@ -177,7 +178,8 @@ export async function signUpOtp (email: string, first: string, last: string): Pr
 
 export async function createWorkspace (
   workspaceName: string,
-  region?: string
+  region?: string,
+  configuration?: WorkspaceConfiguration
 ): Promise<[Status, WorkspaceLoginInfo | null]> {
   const token = getMetadata(presentation.metadata.Token)
   if (token == null) {
@@ -190,7 +192,7 @@ export async function createWorkspace (
   }
 
   try {
-    const workspaceLoginInfo = await getAccountClient(token).createWorkspace(workspaceName, region)
+    const workspaceLoginInfo = await getAccountClient(token).createWorkspace(workspaceName, region, configuration)
 
     Analytics.handleEvent(LoginEvents.CreateWorkspace, { name: workspaceName, ok: true })
 
@@ -413,7 +415,8 @@ export async function getRegionInfo (doNavigate: boolean = true): Promise<Region
 
 export async function selectWorkspace (
   workspaceUrl: string,
-  token?: string | null | undefined
+  token?: string | null | undefined,
+  doNavigate: boolean | undefined = true
 ): Promise<[Status, WorkspaceLoginInfo | null, boolean]> {
   const actualToken = token ?? getMetadata(presentation.metadata.Token) ?? undefined
 
@@ -423,11 +426,13 @@ export async function selectWorkspace (
     return [OK, loginInfo, true]
   } catch (err: any) {
     if (err instanceof PlatformError && err.status.code === platform.status.Unauthorized) {
-      const loc = getCurrentLocation()
-      loc.path[0] = 'login'
-      loc.path[1] = 'login'
-      loc.path.length = 2
-      navigate(loc)
+      if (doNavigate ?? true) {
+        const loc = getCurrentLocation()
+        loc.path[0] = 'login'
+        loc.path[1] = 'login'
+        loc.path.length = 2
+        navigate(loc)
+      }
       return [unknownStatus('Please login'), null, true]
     } else if (err instanceof PlatformError) {
       Analytics.handleEvent(LoginEvents.SelectWorkspace, { name: workspaceUrl, ok: false })

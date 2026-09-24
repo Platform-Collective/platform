@@ -78,12 +78,9 @@ function applyMetadata (data: string | undefined, stt: Stt): void {
     stt.updateLanguage(metadata.language)
   }
 
-  if (metadata.transcription === TranscriptionStatus.InProgress) {
+  if (metadata.transcription === true) {
     stt.start()
-  } else if (
-    metadata.transcription === TranscriptionStatus.Completed ||
-    metadata.transcription === TranscriptionStatus.Idle
-  ) {
+  } else {
     stt.stop()
   }
 }

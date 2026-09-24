@@ -55,6 +55,7 @@ import {
   TRelationMetadata,
   TSequence,
   TTransientConfiguration,
+  TTTransientTTL,
   TType,
   TTypeAccountUuid,
   TTypeAny,
@@ -187,7 +188,8 @@ export function createModel (builder: Builder): void {
     TTransientConfiguration,
     TClassCollaborators,
     TCollaborator,
-    TVersionableClass
+    TVersionableClass,
+    TTTransientTTL
   )
 
   builder.createDoc(core.class.DomainIndexConfiguration, core.space.Model, {

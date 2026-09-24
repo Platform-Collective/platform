@@ -13,8 +13,9 @@
 // limitations under the License.
 //
 
-import serverCore, { TriggerControl } from '@hcengineering/server-core'
+import serverCore, { QueueTopic, TriggerControl, type WorkspaceMemberUnreadMessage } from '@hcengineering/server-core'
 import serverNotification, { PUSH_NOTIFICATION_TITLE_SIZE } from '@hcengineering/server-notification'
+import type { ReceiverInfo } from '@hcengineering/server-notification'
 import {
   AccountUuid,
   Class,
@@ -22,6 +23,7 @@ import {
   Data,
   Doc,
   Hierarchy,
+  readOnlyGuestAccountUuid,
   Ref,
   Tx,
   TxCreateDoc,
@@ -33,9 +35,11 @@ import notification, {
   MentionInboxNotification,
   notificationId,
   PushData,
-  PushSubscription
+  PushSubscription,
+  PushSubscriptionSetting
 } from '@hcengineering/notification'
 import activity, { ActivityMessage } from '@hcengineering/activity'
+import chunter, { ThreadMessage } from '@hcengineering/chunter'
 import serverView from '@hcengineering/server-view'
 import { getMetadata, getResource } from '@hcengineering/platform'
 import { workbenchId } from '@hcengineering/workbench'
@@ -49,6 +53,7 @@ import contact, {
 } from '@hcengineering/contact'
 import { AvailableProvidersCache, AvailableProvidersCacheKey, getTranslatedNotificationContent } from './index'
 import { getPerson } from '@hcengineering/server-contact'
+import { getAllowedProviders, getNotificationProviderControl, getReceiversInfo } from './utils'
 
 async function createPushFromInbox (
   control: TriggerControl,
@@ -67,27 +72,31 @@ async function createPushFromInbox (
 
   title = title.slice(0, PUSH_NOTIFICATION_TITLE_SIZE)
 
-  const linkProviders = control.modelDb.findAllSync(serverView.mixin.ServerLinkIdProvider, {})
-  const provider = linkProviders.find(({ _id }) => _id === n.objectClass)
+  const objectIdentity = await getObjectIdentity(n, control)
 
-  let id: string = n.objectId
+  const linkProviders = control.modelDb.findAllSync(serverView.mixin.ServerLinkIdProvider, {})
+  const provider = linkProviders.find(({ _id }) => _id === objectIdentity._class)
+
+  let id: string = objectIdentity._id
 
   if (provider !== undefined) {
     const encodeFn = await getResource(provider.encode)
     const cache: Map<Ref<Doc>, Doc> = control.contextCache.get('PushNotificationsHandler') ?? new Map()
-    const doc = cache.get(n.objectId) ?? (await control.findAll(control.ctx, n.objectClass, { _id: n.objectId }))[0]
+    const doc =
+      cache.get(objectIdentity._id) ??
+      (await control.findAll(control.ctx, objectIdentity._class, { _id: objectIdentity._id }))[0]
 
     if (doc === undefined) {
       return
     }
 
-    cache.set(n.objectId, doc)
+    cache.set(doc._id, doc)
     control.contextCache.set('PushNotificationsHandler', cache)
 
     id = await encodeFn(doc, control)
   }
 
-  const path = [workbenchId, control.workspace.url, notificationId, encodeObjectURI(id, n.objectClass)]
+  const path = [workbenchId, control.workspace.url, notificationId, encodeObjectURI(id, objectIdentity._class)]
 
   if (subscriptions.length > 0) {
     await createPushNotification(control, receiver, title, body, n._id, subscriptions, senderPerson, path)
@@ -109,6 +118,41 @@ async function createPushFromInbox (
     },
     soundAlert
   })
+}
+
+/**
+ * Resolves the doc a push notification's link should point to.
+ *
+ * For a reply inside a thread, `n.objectId`/`n.objectClass` point at the
+ * ThreadMessage itself, which isn't a directly navigable page - the link
+ * needs to point at the document the thread is attached to instead (the
+ * ThreadMessage's own `objectId`/`objectClass`), otherwise clicking the
+ * push notification fails to resolve to a real page.
+ */
+async function getObjectIdentity (n: InboxNotification, control: TriggerControl): Promise<Pick<Doc, '_id' | '_class'>> {
+  const { hierarchy } = control
+  if (!hierarchy.isDerived(n._class, notification.class.ActivityInboxNotification)) {
+    return { _id: n.objectId, _class: n.objectClass }
+  }
+
+  const activityNotification = n as ActivityInboxNotification
+
+  if (
+    hierarchy.isDerived(activityNotification.attachedToClass, chunter.class.ThreadMessage) &&
+    hierarchy.isDerived(activityNotification.objectClass, activity.class.ActivityMessage)
+  ) {
+    const attachedTo = (
+      await control.findAll<ThreadMessage>(control.ctx, activityNotification.attachedToClass, {
+        _id: activityNotification.attachedTo as Ref<ThreadMessage>
+      })
+    )[0]
+
+    if (attachedTo != null) {
+      return { _id: attachedTo.objectId, _class: attachedTo.objectClass }
+    }
+  }
+
+  return { _id: activityNotification.objectId, _class: activityNotification.objectClass }
 }
 
 function getMessageInfo (
@@ -229,31 +273,75 @@ async function sendPushToSubscription (
   }
 }
 
+/**
+ * Drops subscriptions the user has explicitly disabled via the per-device toggle
+ * (`PushSubscriptionSetting.enabled === false`). A subscription with no matching
+ * setting is treated as enabled. Exported for unit testing.
+ */
+export function filterEnabledSubscriptions (
+  subscriptions: PushSubscription[],
+  settings: PushSubscriptionSetting[]
+): PushSubscription[] {
+  const disabled = new Set(settings.filter((s) => !s.enabled).map((s) => s.attachedTo))
+  return subscriptions.filter((it) => !disabled.has(it._id))
+}
+
 export async function PushNotificationsHandler (
   txes: TxCreateDoc<InboxNotification>[],
   control: TriggerControl
 ): Promise<Tx[]> {
   const availableProviders: AvailableProvidersCache = control.contextCache.get(AvailableProvidersCacheKey) ?? new Map()
 
-  const all: InboxNotification[] = txes
-    .map((tx) => TxProcessor.createDoc2Doc(tx))
-    .filter(
-      (it) =>
-        availableProviders.get(it._id)?.find((p) => p === notification.providers.PushNotificationProvider) !== undefined
-    )
+  const all: InboxNotification[] = txes.map((tx) => TxProcessor.createDoc2Doc(tx))
 
-  if (all.length === 0) {
+  // First pass: use cache if present.
+  const pushEnabled: InboxNotification[] = all.filter(
+    (it) =>
+      availableProviders.get(it._id)?.find((p) => p === notification.providers.PushNotificationProvider) !== undefined
+  )
+
+  // Fallback: if cache doesn't have the provider info (e.g. scheduled notifications created outside tx-trigger paths),
+  // compute allowed providers from notification type + user settings.
+  if (pushEnabled.length < all.length) {
+    const notificationControl = await getNotificationProviderControl(control.ctx, control)
+    const receivers: ReceiverInfo[] = await getReceiversInfo(control.ctx, [...new Set(all.map((n) => n.user))], control)
+    const receiverByAccount = new Map(receivers.map((r) => [r.account, r]))
+
+    for (const n of all) {
+      if (availableProviders.get(n._id) !== undefined) continue
+      if (pushEnabled.includes(n)) continue
+
+      const type = (n.types ?? [])[0]
+      if (type === undefined) continue
+
+      const notificationType = control.modelDb.getObject(type)
+      const receiver = receiverByAccount.get(n.user)
+      if (receiver === undefined) continue
+
+      const allowedProviders = getAllowedProviders(control, receiver.socialIds, notificationType, notificationControl)
+      if (allowedProviders.includes(notification.providers.PushNotificationProvider)) {
+        pushEnabled.push(n)
+      }
+    }
+  }
+
+  if (pushEnabled.length === 0) {
     return []
   }
 
-  const receivers = new Set(all.map((it) => it.user))
-  const subscriptions = (await control.queryFind(control.ctx, notification.class.PushSubscription, {})).filter((it) =>
-    receivers.has(it.user)
+  const receivers = new Set(pushEnabled.map((it) => it.user))
+  const allSubscriptions = (await control.queryFind(control.ctx, notification.class.PushSubscription, {})).filter(
+    (it) => receivers.has(it.user)
   )
+
+  // Honor the per-device enable toggle: a PushSubscriptionSetting with enabled === false
+  // suppresses delivery to that subscription. Absence of a setting means enabled.
+  const settings = await control.queryFind(control.ctx, notification.class.PushSubscriptionSetting, {})
+  const subscriptions = filterEnabledSubscriptions(allSubscriptions, settings)
 
   const res: Tx[] = []
 
-  for (const inboxNotification of all) {
+  for (const inboxNotification of pushEnabled) {
     const { user } = inboxNotification
     const userSubscriptions = subscriptions.filter((it) => it.user === user)
 
@@ -279,4 +367,54 @@ export async function PushNotificationsHandler (
   }
 
   return res
+}
+
+/**
+ * Publishes the receivers of freshly created notifications to the
+ * cross-workspace unread queue, so account-service can raise the "unread
+ * notifications in this workspace" flag that the workspace switcher renders.
+ *
+ * A whole batch of receivers is collapsed into a single queue message, so a
+ * channel-wide mention costs one produce instead of one account RPC per member;
+ * account-service then updates them all in a single statement. Fire-and-forget:
+ * publishing must never affect notification delivery, so errors are only logged.
+ * Clearing the flag again is self-service and happens from the client once a
+ * user has no more unread notifications left in a workspace.
+ */
+export async function OnInboxNotificationCreate (
+  txes: TxCreateDoc<InboxNotification>[],
+  control: TriggerControl
+): Promise<Tx[]> {
+  const queue = control.queue
+  if (queue === undefined) {
+    control.ctx.warn('cross-workspace unread: no queue on trigger control, skipping', {
+      workspace: control.workspace.uuid
+    })
+    return []
+  }
+
+  const receivers = new Set<AccountUuid>()
+
+  for (const tx of txes) {
+    const n = TxProcessor.createDoc2Doc(tx)
+    if (n.user === readOnlyGuestAccountUuid || n.isViewed) continue
+    receivers.add(n.user)
+  }
+
+  if (receivers.size === 0) {
+    return []
+  }
+
+  try {
+    const producer = queue.getProducer<WorkspaceMemberUnreadMessage>(control.ctx, QueueTopic.WorkspaceMemberUnread)
+    await producer.send(control.ctx, control.workspace.uuid, [{ accounts: Array.from(receivers) }])
+    control.ctx.info('cross-workspace unread: published', {
+      workspace: control.workspace.uuid,
+      receivers: receivers.size
+    })
+  } catch (err) {
+    control.ctx.error('cross-workspace unread: failed to publish', { err, workspace: control.workspace.uuid })
+  }
+
+  return []
 }

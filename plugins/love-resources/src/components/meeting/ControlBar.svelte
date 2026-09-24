@@ -32,15 +32,19 @@
   import CameraButton from './controls/CameraButton.svelte'
   import ShareScreenButton from './controls/ShareScreenButton.svelte'
   import InviteEmployeeButton from './invites/InviteEmployeeButton.svelte'
+  import ToggleParticipantsButton from './controls/ToggleParticipantsButton.svelte'
 
   export let room: Room
+  export let isModal: boolean = false
   export let canMaximize: boolean = true
   export let fullScreen: boolean = false
   export let onFullScreen: (() => void) | undefined = undefined
 
   let allowLeave: boolean = false
 
-  $: allowLeave = $myInfo?.room !== ($myOffice?._id ?? love.ids.Reception)
+  // If user is not in a meeting (no myInfo), they cannot leave
+  // If user is in a meeting, they can leave unless it's their office or reception
+  $: allowLeave = $myInfo !== undefined && $myInfo.room !== ($myOffice?._id ?? love.ids.Reception)
 
   function maximize (): void {
     showPopup(RoomModal, { room }, 'full-centered')
@@ -51,7 +55,7 @@
   <ControlBarContainer>
     <svelte:fragment slot="left">
       {#if room._id !== love.ids.Reception && $lkSessionConnected}
-        <RoomAccessButton {room} />
+        <!-- <RoomAccessButton {room} /> -->
         <InviteEmployeeButton
           kind={'secondary'}
           type={'type-button-icon'}
@@ -63,14 +67,17 @@
     </svelte:fragment>
     <svelte:fragment slot="center">
       {#if $lkSessionConnected}
+        {#if isModal}
+          <ToggleParticipantsButton />
+        {/if}
         <SendReactionButton />
         <MicrophoneButton />
         <CameraButton />
         <ShareScreenButton />
-        <RecordingButton {room} />
-        <TranscriptionButton {room} />
-      {:else}
-        <RoomAccessButton {room} />
+        <RecordingButton />
+        <TranscriptionButton />
+        <!-- {:else}
+        <RoomAccessButton {room} /> -->
       {/if}
     </svelte:fragment>
     <svelte:fragment slot="right">

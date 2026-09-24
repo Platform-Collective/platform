@@ -16,7 +16,9 @@
   import { formatName, Person } from '@hcengineering/contact'
   import { Avatar, getPersonByPersonRefStore } from '@hcengineering/contact-resources'
   import { Ref } from '@hcengineering/core'
-  import { Loading } from '@hcengineering/ui'
+  import { Label, Loading } from '@hcengineering/ui'
+  import love from '../../plugin'
+  import { speakingWhileMuted } from '../../stores'
   import MicDisabled from '../icons/MicDisabled.svelte'
   import { onDestroy, onMount } from 'svelte'
   import {
@@ -52,7 +54,7 @@
   let isBadConnection: boolean = false
 
   $: personByRefStore = getPersonByPersonRefStore([_id as Ref<Person>])
-  $: user = $personByRefStore.get(_id as Ref<Person>)
+  $: user = $personByRefStore?.get(_id as Ref<Person>)
   $: userName = (user !== undefined ? user.name : activeParticipant?.name) ?? ''
 
   function attachTrack (track: Track): void {
@@ -218,6 +220,12 @@
   <div class="ava">
     <Avatar size={'full'} name={userName} person={user} showStatus={false} />
   </div>
+  {#if mirror && microphoneMuted && $speakingWhileMuted}
+    <div class="speaking-muted-badge">
+      <MicDisabled fill={'#fff'} size={'small'} />
+      <span><Label label={love.string.SpeakingWhileMuted} /></span>
+    </div>
+  {/if}
   <div class="label" class:withIcon={microphoneMuted || isBadConnection || participant === undefined}>
     {#if participant === undefined}<Loading size={'small'} shrink />{/if}
     {#if isBadConnection}<BadConnection fill={'var(--bg-negative-default)'} size={'small'} />{/if}
@@ -284,6 +292,24 @@
     background-color: black;
     border-radius: 0.75rem;
 
+    .speaking-muted-badge {
+      position: absolute;
+      top: 0.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.375rem;
+      background-color: var(--bg-negative-default, #d64340);
+      color: #fff;
+      font-size: 0.75rem;
+      white-space: nowrap;
+      animation: speaking-muted-blink 1s ease-in-out infinite;
+    }
+
     .label {
       overflow: hidden;
       text-overflow: ellipsis;
@@ -321,6 +347,16 @@
     }
     &.speach::after {
       border: 2px solid var(--border-talk-indication-primary);
+    }
+  }
+
+  @keyframes speaking-muted-blink {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
     }
   }
 </style>

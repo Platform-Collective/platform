@@ -64,6 +64,14 @@ export function createModel (builder: Builder): void {
     }
   })
 
+  // Unified trigger for UserMeetingInvite - handles creation, sender updates, and recipient responses
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverLove.trigger.OnUserMeetingInvite,
+    txMatch: {
+      objectClass: love.class.UserMeetingInvite
+    }
+  })
+
   builder.mixin(love.class.MeetingMinutes, core.class.Class, serverCore.mixin.SearchPresenter, {
     searchIcon: love.icon.MeetingMinutes,
     title: [['title']]

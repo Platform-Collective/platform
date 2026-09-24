@@ -82,7 +82,11 @@ export function getMigrations (ns: string, flavor: DBFlavor): [string, string][]
     getV22Migration(ns, flavor),
     getV23Migration(ns, flavor),
     getV24Migration(ns, flavor),
-    getV25Migration(ns, flavor)
+    getV25Migration(ns, flavor),
+    getV26Migration(ns, flavor),
+    getV27Migration(ns, flavor),
+    getV28Migration(ns, flavor),
+    getV29Migration(ns, flavor)
   ]
 }
 
@@ -791,6 +795,93 @@ function getV25Migration (ns: string, flavor: DBFlavor): [string, string] {
     `
     ALTER TABLE ${ns}.account
     ADD COLUMN IF NOT EXISTS tfa_secret ${types.string};
+    `
+  ]
+}
+
+function getV26Migration (ns: string, flavor: DBFlavor): [string, string] {
+  return [
+    'account_db_v26_add_workspace_pending_configuration',
+    `
+    -- Captures the initial-state choices made by the user in the
+    -- workspace creation dialog (which apps to disable on first run,
+    -- whether to populate with demo content). Read once by workspace-service
+    -- after model init, then cleared back to NULL.
+    ALTER TABLE ${ns}.workspace
+    ADD COLUMN IF NOT EXISTS pending_configuration JSONB;
+    `
+  ]
+}
+
+function getV27Migration (ns: string, flavor: DBFlavor): [string, string] {
+  // For PostgreSQL, we need to check if the value exists before adding it
+  const addValueSql =
+    flavor === 'postgres'
+      ? `
+    -- Add office value to social_id_type enum (PostgreSQL)
+    DO $$     BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_enum
+            WHERE enumlabel = 'office'
+            AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'social_id_type' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = '${ns}'))
+        ) THEN
+            ALTER TYPE ${ns}.social_id_type ADD VALUE 'office';
+        END IF;
+    END $$;
+    `
+      : `
+    -- Add office value to social_id_type enum (CockroachDB)
+    ALTER TYPE ${ns}.social_id_type ADD VALUE IF NOT EXISTS 'office';
+    `
+
+  return ['account_db_v27_add_office_social_id_type', addValueSql]
+}
+
+function getV28Migration (ns: string, flavor: DBFlavor): [string, string] {
+  return [
+    'account_db_v28_add_workspace_member_unread',
+    `
+    -- Per-(account, workspace) flag used to render an "unread notifications
+    -- in this workspace" marker in the workspace switcher. Set by the
+    -- workspace's own notification trigger when it creates a notification
+    -- for a member of this workspace, cleared by the client once that
+    -- member has no more unread notifications there.
+    ALTER TABLE ${ns}.workspace_members
+    ADD COLUMN IF NOT EXISTS has_unread BOOLEAN NOT NULL DEFAULT FALSE;
+    `
+  ]
+}
+
+// Upstream's v27 (API tokens). Our fork already used v27/v28 for office social ids and
+// workspace unread flags, so it is appended here. The migration key is kept identical to
+// upstream so future upstream merges don't re-run it under a different name.
+function getV29Migration (ns: string, flavor: DBFlavor): [string, string] {
+  const types = dbTypes[flavor]
+  return [
+    'account_db_v27_add_api_tokens_table',
+    `
+    /* ======= A P I   T O K E N S ======= */
+    CREATE TABLE IF NOT EXISTS ${ns}.api_tokens (
+        id ${types.string} NOT NULL,
+        account_uuid UUID NOT NULL,
+        name ${types.string} NOT NULL,
+        workspace_uuid UUID NOT NULL,
+        created_on ${types.int8} NOT NULL DEFAULT current_epoch_ms(),
+        expires_on ${types.int8} NOT NULL,
+        revoked ${types.bool} NOT NULL DEFAULT false,
+        CONSTRAINT api_tokens_pk PRIMARY KEY (id),
+        CONSTRAINT api_tokens_account_fk FOREIGN KEY (account_uuid) REFERENCES ${ns}.person(uuid),
+        CONSTRAINT api_tokens_workspace_fk FOREIGN KEY (workspace_uuid) REFERENCES ${ns}.workspace(uuid)
+    );
+
+    CREATE INDEX IF NOT EXISTS api_tokens_account_idx
+    ON ${ns}.api_tokens (account_uuid);
+
+    CREATE INDEX IF NOT EXISTS api_tokens_workspace_idx
+    ON ${ns}.api_tokens (workspace_uuid);
+
+    CREATE INDEX IF NOT EXISTS api_tokens_expires_on_idx
+    ON ${ns}.api_tokens (expires_on);
     `
   ]
 }

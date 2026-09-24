@@ -3,13 +3,21 @@
   import { DevicesPreference } from '@hcengineering/love'
   import { getClient } from '@hcengineering/presentation'
   import { Component, Label, Loading, Toggle } from '@hcengineering/ui'
-  import { isKrispNoiseFilterSupported } from '@livekit/krisp-noise-filter'
   import love from '../../plugin'
   import { myPreferences } from '../../stores'
-  import { krispProcessor } from '../../utils'
+  import { liveKitClient } from '../../utils'
   import mediaPlugin, { getMediaDevices } from '@hcengineering/media'
 
   const client = getClient()
+
+  function isNoiseCancellationSupported (): boolean {
+    try {
+      const c = navigator.mediaDevices?.getSupportedConstraints?.() ?? {}
+      return c.echoCancellation === true || c.noiseSuppression === true
+    } catch {
+      return false
+    }
+  }
 
   async function saveNoiseCancellationPreference (
     myPreferences: DevicesPreference | undefined,
@@ -27,7 +35,26 @@
         blurRadius: 0
       })
     }
-    await krispProcessor.setEnabled(value)
+    await liveKitClient.applyNoiseCancellation(value)
+  }
+
+  async function saveSpeakingWhileMutedPreference (
+    myPreferences: DevicesPreference | undefined,
+    value: boolean
+  ): Promise<void> {
+    if (myPreferences !== undefined) {
+      await client.update(myPreferences, { speakingWhileMutedAlert: value })
+    } else {
+      const acc = getCurrentAccount().uuid
+      await client.createDoc(love.class.DevicesPreference, core.space.Workspace, {
+        attachedTo: acc,
+        noiseCancellation: true,
+        camEnabled: true,
+        micEnabled: true,
+        blurRadius: 0,
+        speakingWhileMutedAlert: value
+      })
+    }
   }
 </script>
 
@@ -39,17 +66,24 @@
   {:then mediaInfo}
     <Component is={mediaPlugin.component.MediaPopupMicSelector} props={{ mediaInfo }} />
     <Component is={mediaPlugin.component.MediaPopupSpkSelector} props={{ mediaInfo }} />
-    {#if isKrispNoiseFilterSupported()}
-      <div class="grid p-3">
+    <div class="grid p-3">
+      {#if isNoiseCancellationSupported()}
         <Label label={love.string.NoiseCancellation} />
         <Toggle
           on={$myPreferences?.noiseCancellation ?? true}
           on:change={(e) => {
-            saveNoiseCancellationPreference($myPreferences, e.detail)
+            void saveNoiseCancellationPreference($myPreferences, e.detail)
           }}
         />
-      </div>
-    {/if}
+      {/if}
+      <Label label={love.string.SpeakingWhileMutedAlert} />
+      <Toggle
+        on={$myPreferences?.speakingWhileMutedAlert ?? true}
+        on:change={(e) => {
+          void saveSpeakingWhileMutedPreference($myPreferences, e.detail)
+        }}
+      />
+    </div>
   {/await}
 </div>
 

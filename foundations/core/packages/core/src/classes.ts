@@ -227,6 +227,7 @@ export interface Attribute<T extends PropertyType> extends Doc, UXObject {
   defaultValue?: any
   automationOnly?: boolean
   rank?: Rank
+  required?: boolean
 
   // Extra customization properties
   [key: string]: any
@@ -269,6 +270,11 @@ export type OperationDomain = string & { __domain: true }
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface Interface<T extends Doc> extends Classifier {
   extends?: Ref<Interface<Doc>>[]
+}
+
+// Mixin to control TTL for transient objects.
+export interface TransientTTL extends Class<Doc> {
+  ttl: number // TTL in seconds
 }
 
 /**
@@ -753,6 +759,33 @@ export interface FullTextSearchContext extends Doc {
 
 /**
  * @public
+ *
+ * The canonical set of document fields the full-text index exposes for
+ * `field:value` targeting in a `$search` query. This is the single source of
+ * truth shared by every layer that needs to know which prefixes are valid:
+ *
+ * - the client search-input encoder (which `field:` prefixes it may route to a
+ *   field-targeted query instead of leaving as a bare term), and
+ * - the full-text backend adapter (which fields it recognises as a
+ *   field-targeted clause vs. a plain query).
+ *
+ * Keeping it here — backend-agnostic, alongside {@link FullTextSearchContext} —
+ * means both sides derive from the same list, so the set can never drift out of
+ * sync between client and server. Storage-specific concerns (per-field boost
+ * weights, query syntax) stay in the respective adapter and are intentionally
+ * NOT part of this list.
+ */
+export const fullTextSearchFields: readonly string[] = [
+  'searchTitle',
+  'searchShortTitle',
+  'identifier',
+  'description.plain',
+  'comments.message',
+  'fulltextSummary'
+]
+
+/**
+ * @public
  */
 export interface ConfigurationElement extends Class<Doc> {
   // Title will be presented to owner.
@@ -899,6 +932,25 @@ export type WorkspaceUpdateEvent =
   | 'delete-started'
   | 'delete-done'
 
+/**
+ * Initial-state configuration captured at workspace creation. Currently only
+ * carries whether the workspace should be populated with demo content. Lives
+ * on `WorkspaceInfo.pendingConfiguration` until consumed by workspace-service
+ * after model init, then cleared back to `null`.
+ *
+ * Kept as a struct (rather than a bare boolean) so future opt-in fields can
+ * be added without breaking the wire format.
+ *
+ * @public
+ */
+export interface WorkspaceConfiguration {
+  /**
+   * Whether to run the workspace init script (sample projects and other demo content).
+   * Defaults to `true` on the server side to preserve legacy behavior.
+   */
+  withDemoContent?: boolean
+}
+
 export interface WorkspaceInfo {
   uuid: WorkspaceUuid
   dataId?: WorkspaceDataId // Old workspace identifier. E.g. Database name in Mongo, bucket in R2, etc.
@@ -911,7 +963,10 @@ export interface WorkspaceInfo {
   billingAccount?: PersonUuid // Should always be set for NEW workspaces
   allowReadOnlyGuest?: boolean // Should always be set for NEW workspaces
   allowGuestSignUp?: boolean // Should always be set for NEW workspaces
-  passwordAgingRule?: number // in days
+  passwordAgingRule?: number | null // in days
+  // Initial-state configuration set by the user at workspace creation. Read once
+  // by workspace-service after model init, then cleared back to `null`.
+  pendingConfiguration?: WorkspaceConfiguration | null
 }
 
 export interface BackupStatus {
@@ -928,6 +983,7 @@ export interface UsageStatus {
   usage: Record<string, number>
   startTime: Timestamp
   updateTime: Timestamp
+  limitsExceededSince?: Timestamp // Timestamp when current usage first exceeded the workspace plan limits.
 }
 
 export interface WorkspaceInfoWithStatus extends WorkspaceInfo {
@@ -941,6 +997,9 @@ export interface WorkspaceInfoWithStatus extends WorkspaceInfo {
   backupInfo?: BackupStatus
   usageInfo?: UsageStatus
   processingAttemps: number
+  // Whether the current account has unread notifications in this workspace.
+  // Only populated by getAccountWorkspaces(); absent/undefined elsewhere.
+  hasUnread?: boolean
 }
 
 export interface WorkspaceMemberInfo {
@@ -956,7 +1015,8 @@ export enum SocialIdType {
   OIDC = 'oidc',
   HULY = 'huly',
   TELEGRAM = 'telegram',
-  HULY_ASSISTANT = 'huly-assistant'
+  HULY_ASSISTANT = 'huly-assistant',
+  LOVE = 'office'
 }
 
 export interface SocialId {

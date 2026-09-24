@@ -1,5 +1,15 @@
 import core, { AccountRole, getCurrentAccount, type Ref } from '@hcengineering/core'
-import love, { getFreeRoomPlace, MeetingStatus, type Room, RoomType, isOffice, RoomAccess } from '@hcengineering/love'
+import love, {
+  getFreeRoomPlace,
+  MeetingStatus,
+  TranscriptionState,
+  RecordingState,
+  type Room,
+  RoomType,
+  isOffice,
+  RoomAccess,
+  type MeetingMinutes
+} from '@hcengineering/love'
 import presentation, { getClient } from '@hcengineering/presentation'
 import {
   closeMeetingMinutes,
@@ -11,45 +21,68 @@ import {
   navigateToOfficeDoc
 } from './utils'
 import { get } from 'svelte/store'
-import { infos, myInfo, myOffice, rooms } from './stores'
+import { infos, myInfo, myOffice, rooms, myConnectingSessionId, meetings } from './stores'
 import { getCurrentEmployee, type Person } from '@hcengineering/contact'
 import { getPersonByPersonRef } from '@hcengineering/contact-resources'
 import { getMetadata } from '@hcengineering/platform'
-import { sendJoinRequest, unsubscribeJoinRequests } from './joinRequests'
+import { sendInvites, unsubscribeFromIncomingInvites } from './invites'
+import { lkIsConnecting } from './liveKitClient'
 
 export let currentMeetingRoom: Ref<Room> | undefined
+export let currentMeeting: Ref<MeetingMinutes> | undefined
 
-export async function createMeeting (room: Room): Promise<void> {
-  if (room.access === RoomAccess.DND) return
+export async function createMeeting (room: Room, meeting?: MeetingMinutes): Promise<MeetingMinutes | undefined> {
+  if (room.access === RoomAccess.DND) {
+    return
+  }
 
+  const client = getClient()
   const me = getCurrentEmployee()
   const currentPerson = await getPersonByPersonRef(me)
 
-  if (isOffice(room) && room.person !== currentPerson?._id) {
-    sendJoinRequest(room._id)
+  if (isOffice(room) && room.person != null && room.person !== currentPerson?._id) {
+    await sendInvites([room.person])
     return
   }
 
-  const client = getClient()
-  const meeting = await client.findOne(love.class.MeetingMinutes, {
-    attachedTo: room._id,
-    status: MeetingStatus.Active
-  })
+  // TODO: We need server atomic operation to create a meeting minutes with pending, or create one
+  meeting =
+    meeting ??
+    (await client.findOne(love.class.MeetingMinutes, {
+      attachedTo: room._id,
+      status: { $in: [MeetingStatus.Active, MeetingStatus.Pending] }
+    }))
 
   if (meeting !== undefined) {
-    await joinMeeting(room)
-    return
+    await joinMeeting(meeting)
+    return meeting
   }
 
-  await createMeetingDocument(room)
-  await connectToMeeting(room)
+  // Create MeetingMinutes document before connecting to LiveKit (atomic apply -> Pending)
+  meeting = await createMeetingDocument(room)
+  await connectToMeeting(meeting, room)
+  return meeting
 }
 
 export async function leaveMeeting (): Promise<void> {
+  // If we're still in the process of connecting, don't disconnect
+  if (get(lkIsConnecting)) {
+    return
+  }
+
   const client = getClient()
+
   const currentParticipationInfo = get(myInfo)
   const office = get(myOffice)
-  if (currentParticipationInfo === undefined) return
+  if (currentParticipationInfo === undefined) {
+    // If there was no active ParticipantInfo, ensure we still disconnect/cleanup state
+    await liveKitClient.disconnect()
+    unsubscribeFromIncomingInvites()
+    closeMeetingMinutes()
+    currentMeeting = undefined
+    currentMeetingRoom = undefined
+    return
+  }
 
   if (office === undefined) {
     await client.update(currentParticipationInfo, { room: love.ids.Reception, x: 0, y: 0 })
@@ -68,43 +101,62 @@ export async function leaveMeeting (): Promise<void> {
     }
   }
   await liveKitClient.disconnect()
-  await unsubscribeJoinRequests()
-  closeMeetingMinutes()
+  currentMeeting = undefined
   currentMeetingRoom = undefined
 }
 
-export async function joinMeeting (room: Room): Promise<void> {
-  if (room.access === RoomAccess.DND) return
+export async function joinMeeting (meeting: MeetingMinutes): Promise<void> {
+  const room = getRoomById(meeting.attachedTo as Ref<Room>)
+  if (meeting.access === RoomAccess.DND) return
 
   const isGuest = getCurrentAccount().role === AccountRole.Guest
-  if (room.access === RoomAccess.Knock || isOffice(room) || isGuest) {
-    sendJoinRequest(room._id)
+
+  // Check if this is the user's own office - allow direct connection without knock
+  const isOwnOffice = room !== undefined && isOffice(room) && room.person === getCurrentEmployee()
+
+  const officePerson = room != null ? (isOffice(room) ? room.person : undefined) : undefined
+  if ((isGuest || (meeting.access === RoomAccess.Knock && !isOwnOffice)) && officePerson != null && !isOwnOffice) {
+    await sendInvites([officePerson], meeting._id)
     return
   }
 
-  await connectToMeeting(room)
+  await connectToMeeting(meeting)
 }
 
-export async function joinOrCreateMeetingByInvite (roomId: Ref<Room>): Promise<void> {
-  if (currentMeetingRoom === roomId) return
-
+export async function joinOrCreateMeetingByInvite (meetingId: Ref<MeetingMinutes>): Promise<void> {
   const client = getClient()
-  const room = getRoomById(roomId)
 
-  if (room === undefined) return
+  // Retry finding meeting - it may take time to propagate
+  let meeting: MeetingMinutes | undefined = get(meetings).find((it) => it._id === meetingId)
+  let attempts = 0
+  const maxAttempts = 20
+  const delay = 100 // ms
 
-  const meeting = await client.findOne(love.class.MeetingMinutes, {
-    attachedTo: room._id,
-    status: MeetingStatus.Active
-  })
-  if (meeting === undefined) {
-    await createMeetingDocument(room)
+  while (attempts < maxAttempts) {
+    if (meeting === undefined) {
+      meeting = await client.findOne(love.class.MeetingMinutes, { _id: meetingId })
+    }
+
+    if (meeting !== undefined) {
+      break
+    }
+
+    attempts++
+    if (attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
   }
 
-  await connectToMeeting(room)
+  if (meeting === undefined) {
+    console.error('[joinOrCreateMeetingByInvite] MeetingMinutes not found after all retries', { meetingId })
+    return
+  }
+
+  await connectToMeeting(meeting)
 }
 
 export async function kick (person: Ref<Person>): Promise<void> {
+  // TODO: Need to rework a logic to kick a person from a personal meeting.
   const client = getClient()
   const allRooms = get(rooms)
   const participantsInfo = get(infos)
@@ -114,72 +166,151 @@ export async function kick (person: Ref<Person>): Promise<void> {
   await client.update(participantInfo, { room: participantOffice?._id ?? love.ids.Reception, x: 0, y: 0 })
 }
 
-async function connectToMeeting (room: Room): Promise<void> {
-  if (getCurrentAccount().role === AccountRole.ReadOnlyGuest) return
-  if (currentMeetingRoom === room._id) return
+async function connectToMeeting (mm: MeetingMinutes, room?: Room): Promise<void> {
+  if (getCurrentAccount().role === AccountRole.ReadOnlyGuest) {
+    return
+  }
+  if (currentMeeting === mm._id) {
+    return
+  }
 
-  if (currentMeetingRoom !== undefined) {
+  if (currentMeeting !== undefined) {
     await leaveMeeting()
   }
 
-  currentMeetingRoom = room._id
-
-  await navigateToOfficeDoc(room)
-  await moveToMeetingRoom(room)
+  currentMeeting = mm._id
 
   try {
-    const token = await loveClient.getRoomToken(room)
+    if (mm.attachedToClass === love.class.Room) {
+      room = room ?? (await getClient().findOne<Room>(mm.attachedToClass, { _id: mm.attachedTo as Ref<Room> }))
+      currentMeetingRoom = room?._id
+    }
+
+    await navigateToOfficeDoc(mm) // TODO: Select room?
+    await moveToMeetingRoom(mm, room)
+
+    // Resolve current person so we can cleanup pending entries after connect
+    const me = getCurrentEmployee()
+    const currentPerson = await getPersonByPersonRef(me)
+    if (currentPerson == null) {
+      // Could not resolve current person: unwind so a later attempt is not blocked by the guard above.
+      currentMeeting = undefined
+      currentMeetingRoom = undefined
+      return
+    }
+    const token = await loveClient.getRoomToken(mm)
     const wsURL = getLiveKitEndpoint()
-    await liveKitClient.connect(wsURL, token, room.type === RoomType.Video)
-    await navigateToMeetingMinutes(room)
-  } catch (err) {
-    console.error(err)
-    await leaveMeeting()
+
+    // Mark local session as connecting (prevents accidental disconnects while connecting)
+    const sessionId = getMetadata(presentation.metadata.SessionId) ?? null
+    myConnectingSessionId.set(sessionId)
+
+    await liveKitClient.connect(wsURL, token, room?.type === RoomType.Video)
+    await navigateToMeetingMinutes(mm)
+
+    // Connection completed successfully: clear connecting flag
+    myConnectingSessionId.set(null)
+  } catch (err: any) {
+    console.error('[connectToMeeting] Error connecting:', err)
+    // Ensure local connecting flag is cleared on error
+    myConnectingSessionId.set(null)
+    // Reset meeting state so the `currentMeeting === mm._id` guard above does not
+    // permanently block a retry after a failed connect.
+    currentMeeting = undefined
+    currentMeetingRoom = undefined
+    throw err
   }
 }
 
-async function moveToMeetingRoom (room: Room): Promise<void> {
+async function moveToMeetingRoom (mm: MeetingMinutes, room?: Room): Promise<void> {
   const me = getCurrentEmployee()
   const currentPerson = await getPersonByPersonRef(me)
   const client = getClient()
   const myParticipation = get(myInfo)
-  if (myParticipation?.room === room._id) return
-  if (room === undefined || currentPerson == null) return
-  const roomParticipants = get(infos).filter((p) => p.room === room._id)
-  const place = getFreeRoomPlace(room, roomParticipants, me)
+  if (mm === undefined || currentPerson == null) return
+
+  if (myParticipation?.meeting === mm._id) return
+  if (mm.attachedTo === undefined) return
+
+  const roomParticipants = get(infos).filter((p) => p.meeting === mm._id)
+  let place: { x: number, y: number } | undefined
+  if (room !== undefined) {
+    place = getFreeRoomPlace(room, roomParticipants, me)
+  }
   const sessionId = getMetadata(presentation.metadata.SessionId) ?? null
 
   const currentInfo = get(myInfo)
   if (currentInfo !== undefined) {
+    // Update existing ParticipantInfo (created by server via webhook)
     await client.diffUpdate(currentInfo, {
-      x: place.x,
-      y: place.y,
-      room: room._id,
-      sessionId
-    })
-  } else {
-    await client.createDoc(love.class.ParticipantInfo, core.space.Workspace, {
-      x: place.x,
-      y: place.y,
-      room: room._id,
-      person: currentPerson._id,
-      name: currentPerson.name,
-      account: getCurrentAccount().uuid,
+      x: place?.x ?? 0,
+      y: place?.y ?? 0,
+      meeting: mm._id,
+      room: room?._id,
       sessionId
     })
   }
+  // ParticipantInfo creation is handled by the server when it receives
+  // the participant_joined webhook from LiveKit. Client only updates
+  // position/room if ParticipantInfo already exists.
 }
 
-async function createMeetingDocument (room: Room): Promise<void> {
+async function createMeetingDocument (room: Room): Promise<MeetingMinutes> {
   const client = getClient()
-  await client.createDoc(love.class.MeetingMinutes, core.space.Workspace, {
-    description: null,
-    attachedTo: room._id,
-    status: MeetingStatus.Active,
-    title: await getNewMeetingTitle(room),
-    attachedToClass: love.class.Room,
-    collection: 'meetings'
-  })
+
+  while (true) {
+    // First, check if there is an Active or Pending meeting already
+    const meeting = await client.findOne(love.class.MeetingMinutes, {
+      attachedTo: room._id,
+      status: { $in: [MeetingStatus.Active, MeetingStatus.Pending] }
+    })
+    if (meeting !== undefined) {
+      return meeting
+    }
+
+    // Use apply() to atomically create MeetingMinutes with Pending status
+    const ops = client.apply(`create_meeting_${room._id}`)
+    // Ensure no MeetingMinutes for this room exists at the time of commit
+    ops.notMatch(love.class.MeetingMinutes, {
+      attachedTo: room._id,
+      status: { $in: [MeetingStatus.Active, MeetingStatus.Pending] }
+    })
+    const newMeetingId = await ops.addCollection(
+      love.class.MeetingMinutes,
+      core.space.Workspace,
+      room._id,
+      love.class.Room,
+      'meetings',
+      {
+        description: null,
+        status: MeetingStatus.Pending,
+        transcriptionState: TranscriptionState.NotStarted,
+        recordingState: RecordingState.NotStarted,
+        title: await getNewMeetingTitle(room),
+        language: room.language,
+        access: room.access,
+        startWithRecording: room.startWithRecording ?? false,
+        startWithTranscription: room.startWithTranscription ?? false
+      }
+    )
+    try {
+      await ops.commit()
+      const meeting = await client.findOne(love.class.MeetingMinutes, { _id: newMeetingId })
+      if (meeting !== undefined) {
+        return meeting
+      }
+    } catch (err: any) {
+      // Concurrent creation happened — pick the existing one with Active/Pending status (if available)
+      const existing = await client.findOne(love.class.MeetingMinutes, {
+        attachedTo: room._id,
+        status: { $in: [MeetingStatus.Active, MeetingStatus.Pending] }
+      })
+      if (existing !== undefined) return existing
+      throw err
+    }
+    // Retry with a delay
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
 }
 
 async function getNewMeetingTitle (room: Room): Promise<string> {

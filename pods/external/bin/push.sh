@@ -1,6 +1,6 @@
 set -e
 
-registry=hardcoreeng
+registry=platformcollective
 tag=$(git describe --tags --abbrev=0)
 
 find services.d/ -type f -name "*.service" ! -name "-*" | sort | while read -r file; do

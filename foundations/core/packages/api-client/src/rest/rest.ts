@@ -15,23 +15,35 @@
 
 import {
   type Account,
+  type AttachedData,
+  type AttachedDoc,
   buildModel,
   type Class,
   concatLink,
+  type Data,
   type Doc,
+  type DocumentUpdate,
   type DocumentQuery,
   type DomainParams,
   type DomainRequestOptions,
   type DomainResult,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FindResult,
+  type IterateOptions,
   Hierarchy,
   MeasureMetricsContext,
+  type Mixin,
+  type MixinData,
+  type MixinUpdate,
   ModelDb,
   OperationDomain,
   PersonId,
   PersonUuid,
   type Ref,
+  type Space,
+  type Timestamp,
   type SearchOptions,
   type SearchQuery,
   type SearchResult,
@@ -44,7 +56,7 @@ import { PlatformError, type Status, unknownError } from '@hcengineering/platfor
 
 import { AuthOptions } from '../types'
 import { getWorkspaceToken } from '../utils'
-import type { RestClient } from './types'
+import type { EnsurePersonOptions, RestClient } from './types'
 import { extractJson, withRetry } from './utils'
 
 export function createRestClient (endpoint: string, workspaceId: string, token: string): RestClient {
@@ -154,6 +166,81 @@ export class RestClientImpl implements RestClient {
     }
 
     return result
+  }
+
+  async findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    const requestUrl = concatLink(this.endpoint, `/api/v1/find-page/${this.workspace}`)
+    const result = await withRetry<FindPageResult<T> & { error?: Status }>(async () => {
+      const response = await fetch(requestUrl, {
+        method: 'POST',
+        keepalive: true,
+        headers: this.jsonHeaders(),
+        body: JSON.stringify({ _class, query, options })
+      })
+      if (!response.ok) {
+        await this.checkRateLimits(response)
+        throw new PlatformError(unknownError(response.statusText))
+      }
+      this.updateRateLimit(response)
+      return await extractJson<FindPageResult<T>>(response)
+    }, isRLE)
+
+    if (result.error !== undefined) {
+      throw new PlatformError(result.error)
+    }
+    if (result.lookupMap !== undefined) {
+      for (const doc of result.docs) {
+        if (doc.$lookup !== undefined) {
+          const lookup = doc.$lookup as Record<string, unknown>
+          for (const [key, value] of Object.entries(lookup)) {
+            if (Array.isArray(value)) {
+              lookup[key] = value.map((item) => result.lookupMap?.[item])
+            } else {
+              lookup[key] = result.lookupMap[value as string]
+            }
+          }
+        }
+      }
+      delete result.lookupMap
+    }
+    for (const doc of result.docs) {
+      const docRecord = doc as Record<string, unknown>
+      for (const [key, value] of Object.entries(query)) {
+        if (
+          (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') &&
+          docRecord[key] == null
+        ) {
+          docRecord[key] = value
+        }
+      }
+      if (doc._class == null) {
+        doc._class = _class
+      }
+    }
+    return result
+  }
+
+  async * iterateAll<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ): AsyncIterable<WithLookup<T>> {
+    let cursor: string | undefined
+    do {
+      const page = await this.findAllPage(_class, query, {
+        ...options,
+        limit: options?.limit ?? 500,
+        cursor
+      })
+      for (const doc of page.docs) {
+        yield doc
+      }
+      cursor = page.nextCursor
+    } while (cursor !== undefined)
   }
 
   private async checkRate (): Promise<void> {
@@ -337,7 +424,8 @@ export class RestClientImpl implements RestClient {
     socialType: SocialIdType,
     socialValue: string,
     firstName: string,
-    lastName: string
+    lastName: string,
+    options?: EnsurePersonOptions
   ): Promise<{ uuid: PersonUuid, socialId: PersonId, localPerson: string }> {
     const requestUrl = concatLink(this.endpoint, `/api/v1/ensure-person/${this.workspace}`)
     await this.checkRate()
@@ -350,7 +438,8 @@ export class RestClientImpl implements RestClient {
           socialType,
           socialValue,
           firstName,
-          lastName
+          lastName,
+          options
         })
       })
       if (!response.ok) {
@@ -364,5 +453,152 @@ export class RestClientImpl implements RestClient {
       throw new PlatformError(result.error)
     }
     return result
+  }
+
+  private async v1op<T extends Doc, P>(op: string, data: any): Promise<P> {
+    const requestUrl = concatLink(this.endpoint, `/api/v1/${op}/${this.workspace}`)
+    await this.checkRate()
+    const result = await withRetry<{ result?: Ref<T>, error?: Status }>(async () => {
+      const response = await fetch(requestUrl, {
+        method: 'POST',
+        headers: this.jsonHeaders(),
+        keepalive: true,
+        body: JSON.stringify(data)
+      })
+      if (!response.ok) {
+        await this.checkRateLimits(response)
+        throw new PlatformError(unknownError(response.statusText))
+      }
+      this.updateRateLimit(response)
+      return await extractJson<TxResult>(response)
+    }, isRLE)
+    if (result.error !== undefined) {
+      throw new PlatformError(result.error)
+    }
+    return result as P
+  }
+
+  createDoc<T extends Doc>(
+    _class: Ref<Class<T>>,
+    space: Ref<Space>,
+    attributes: Data<T>,
+    id?: Ref<T>,
+    modifiedOn?: Timestamp,
+    modifiedBy?: PersonId
+  ): Promise<Ref<T>> {
+    return this.v1op('create', {
+      _class,
+      space,
+      attributes,
+      id,
+      modifiedBy,
+      modifiedOn
+    })
+  }
+
+  addCollection<T extends Doc, P extends AttachedDoc>(
+    _class: Ref<Class<P>>,
+    space: Ref<Space>,
+    attachedTo: Ref<T>,
+    attachedToClass: Ref<Class<T>>,
+    collection: Extract<keyof T, string> | string,
+    attributes: AttachedData<P>,
+    id?: Ref<P>,
+    modifiedOn?: Timestamp,
+    modifiedBy?: PersonId
+  ): Promise<Ref<P>> {
+    return this.v1op('addCollection', {
+      _class,
+      space,
+      attachedTo,
+      attachedToClass,
+      collection,
+      attributes,
+      id,
+      modifiedBy,
+      modifiedOn
+    })
+  }
+
+  update<T extends Doc>(
+    doc: T,
+    update: DocumentUpdate<T>,
+    retrieve?: boolean,
+    modifiedOn?: Timestamp,
+    modifiedBy?: PersonId
+  ): Promise<TxResult> {
+    const req = {
+      _class: doc._class,
+      _id: doc._id,
+      space: doc.space,
+      update,
+      retrieve,
+      modifiedBy,
+      modifiedOn
+    }
+    const adoc = doc as any as AttachedDoc
+    if (adoc.attachedTo !== undefined && adoc.attachedToClass !== undefined && adoc.collection !== undefined) {
+      ;(req as any as AttachedDoc).attachedTo = adoc.attachedTo
+      ;(req as any as AttachedDoc).attachedToClass = adoc.attachedToClass
+      ;(req as any as AttachedDoc).collection = adoc.collection
+    }
+    return this.v1op('update', req)
+  }
+
+  remove<T extends Doc>(doc: T, modifiedOn?: Timestamp, modifiedBy?: PersonId): Promise<TxResult> {
+    const req = {
+      _class: doc._class,
+      _id: doc._id,
+      space: doc.space,
+      modifiedBy,
+      modifiedOn
+    }
+    const adoc = doc as any as AttachedDoc
+    if (adoc.attachedTo !== undefined && adoc.attachedToClass !== undefined && adoc.collection !== undefined) {
+      ;(req as any as AttachedDoc).attachedTo = adoc.attachedTo
+      ;(req as any as AttachedDoc).attachedToClass = adoc.attachedToClass
+      ;(req as any as AttachedDoc).collection = adoc.collection
+    }
+    return this.v1op('remove', req)
+  }
+
+  createMixin<D extends Doc, M extends D>(
+    objectId: Ref<D>,
+    objectClass: Ref<Class<D>>,
+    objectSpace: Ref<Space>,
+    mixin: Ref<Mixin<M>>,
+    attributes: MixinData<D, M>,
+    modifiedOn?: Timestamp,
+    modifiedBy?: PersonId
+  ): Promise<TxResult> {
+    return this.v1op('createMixin', {
+      objectId,
+      objectClass,
+      objectSpace,
+      mixin,
+      attributes,
+      modifiedOn,
+      modifiedBy
+    })
+  }
+
+  updateMixin<D extends Doc, M extends D>(
+    objectId: Ref<D>,
+    objectClass: Ref<Class<D>>,
+    objectSpace: Ref<Space>,
+    mixin: Ref<Mixin<M>>,
+    attributes: MixinUpdate<D, M>,
+    modifiedOn?: Timestamp,
+    modifiedBy?: PersonId
+  ): Promise<TxResult> {
+    return this.v1op('updateMixin', {
+      objectId,
+      objectClass,
+      objectSpace,
+      mixin,
+      attributes,
+      modifiedOn,
+      modifiedBy
+    })
   }
 }

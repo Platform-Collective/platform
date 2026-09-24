@@ -18,6 +18,8 @@ import accountRu from '@hcengineering/account/lang/ru.json'
 import { Analytics } from '@hcengineering/analytics'
 import { registerProviders } from '@hcengineering/auth-providers'
 import { metricsAggregate, type Branding, type BrandingMap, type MeasureContext } from '@hcengineering/core'
+import { getPlatformQueue } from '@hcengineering/kafka'
+import { type ConsumerHandle, type PlatformQueue } from '@hcengineering/server-core'
 import platform, { Severity, Status, addStringsLoader, setMetadata, unknownStatus } from '@hcengineering/platform'
 import serverToken, { decodeToken, decodeTokenVerbose, generateToken } from '@hcengineering/server-token'
 import cors from '@koa/cors'
@@ -28,6 +30,7 @@ import bodyParser from 'koa-bodyparser'
 import Router from 'koa-router'
 import os from 'os'
 import { migrateFromOldAccounts } from './migration/migration'
+import { startWorkspaceMemberUnreadConsumer } from './unread'
 
 export * from './migration/utils'
 export * from './migration/types'
@@ -181,6 +184,21 @@ export function serveAccount (measureCtx: MeasureContext, brandings: BrandingMap
       3 * 60 * 1000
     )
   })
+
+  // Cross-workspace unread indicator: consume the queue the notification trigger
+  // publishes to and raise workspace_members.has_unread in bulk. Only when a
+  // queue is configured — deployments without one simply don't light the dot.
+  let unreadQueue: PlatformQueue | undefined
+  let unreadConsumer: ConsumerHandle | undefined
+  if (process.env.QUEUE_CONFIG !== undefined) {
+    unreadQueue = getPlatformQueue('account')
+    void accountsDb.then((res) => {
+      const [db] = res
+      unreadConsumer = startWorkspaceMemberUnreadConsumer(measureCtx, unreadQueue as PlatformQueue, db)
+    })
+  } else {
+    measureCtx.warn('QUEUE_CONFIG is not set, cross-workspace unread indicator will not be updated')
+  }
 
   const extractCookieToken = (headers: IncomingHttpHeaders): string | undefined => {
     if (headers.cookie != null) {
@@ -453,6 +471,8 @@ export function serveAccount (measureCtx: MeasureContext, brandings: BrandingMap
 
   const close = (): void => {
     onClose?.()
+    void unreadConsumer?.close()
+    void unreadQueue?.shutdown()
     void accountsDb.then(([, closeAccountsDb]) => {
       closeAccountsDb()
     })

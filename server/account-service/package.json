@@ -21,7 +21,7 @@
   "devDependencies": {
     "cross-env": "~7.0.3",
     "@hcengineering/platform-rig": "workspace:^0.7.21",
-    "@types/node": "^22.18.1",
+    "@types/node": "^24.13.3",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-promise": "^6.1.1",
@@ -48,6 +48,8 @@
     "@hcengineering/platform": "workspace:^0.7.20",
     "@hcengineering/auth-providers": "workspace:^0.7.0",
     "@hcengineering/core": "workspace:^0.7.26",
+    "@hcengineering/kafka": "workspace:^0.7.18",
+    "@hcengineering/server-core": "workspace:^0.7.19",
     "@hcengineering/mongo": "workspace:^0.7.16",
     "@hcengineering/contact": "workspace:^0.7.0",
     "mongodb": "^6.16.0",

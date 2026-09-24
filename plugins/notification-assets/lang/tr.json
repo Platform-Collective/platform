@@ -57,6 +57,21 @@
     "Sound": "Ses",
     "SoundNotificationsDescription": "Olaylar için sesli bildirimler alın.",
     "NoAccessToObject": "Artık bu nesneye erişiminiz yok",
-    "ViewIn": "{app} içinde görüntüle"
+    "ViewIn": "{app} içinde görüntüle",
+    "Value": "{value}",
+    "Subscribe": "Abone ol",
+    "UnknownDevice": "Bilinmeyen cihaz",
+    "Current": "geçerli",
+    "RemoveWebpush": "Kaldır",
+    "WebpushRemoveConfirm": "<b>{title}</b> için anlık bildirimler kaldırılsın mı?",
+    "PushSubscribeError": "Anlık bildirimlere abone olunamadı. Lütfen tekrar deneyin.",
+    "PushSubscribeErrorPermissionDenied": "Bildirim izni reddedildi. Tarayıcı ayarlarından bu site için bildirimlere izin verin.",
+    "PushSubscribeErrorNetwork": "Anlık bildirim hizmetine ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.",
+    "PushSubscribeErrorNotSupported": "Bu tarayıcı anlık bildirimleri desteklemiyor.",
+    "PushOnDesktop": "Masaüstü uygulamasında kullanılamaz",
+    "AlreadySubscribed": "Bu tarayıcı zaten abone",
+    "PushNotConfigured": "Anlık bildirimler bu sunucuda yapılandırılmamış",
+    "PushNotSupported": "Bu tarayıcı tarafından desteklenmiyor",
+    "PushDenied": "Bildirimler tarayıcı ayarlarında engellenmiş"
   }
 }

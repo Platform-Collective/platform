@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 version=${DOCKER_VERSION:-$(git rev-parse HEAD)}
 
 # Check for cleanup flag from environment
 cleanup=false
-if [ "$DOCKER_BUILD_CLEANUP" = "true" ]; then
+if [ "${DOCKER_BUILD_CLEANUP:-}" = "true" ]; then
   cleanup=true
 fi
 
 echo "Building version: $version" 
 
-docker build -t "$1" -t "$1:$version" ${DOCKER_EXTRA} .
+docker build -t "$1" -t "$1:$version" ${DOCKER_EXTRA:-} .
 
 if [ "$cleanup" = true ]; then
   echo "Cleaning up build artifacts..."

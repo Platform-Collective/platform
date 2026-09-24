@@ -224,4 +224,40 @@ describe('i18n', () => {
     const out = await translateCBAsync(deferMsg, { v: 'ok' }, 'en')
     expect(out).toBe('Deferred ok')
   })
+
+  it('translate format failure should not poison the cache', async () => {
+    const fmtPlugin = 'i18n-cache-poisoning-test' as Plugin
+    addStringsLoader(fmtPlugin, async () => ({
+      string: {
+        hello: 'Hello, {name}!'
+      }
+    }))
+    const message = `${fmtPlugin}:string:hello` as IntlString
+
+    // 1. Call with MISSING param. It should fail and return message.
+    const out1 = await translate(message, {}, 'en')
+    expect(out1).toBe(message)
+
+    // 2. Call with CORRECT param. It should succeed because the cache is NOT poisoned!
+    const out2 = await translate(message, { name: 'World' }, 'en')
+    expect(out2).toBe('Hello, World!')
+  })
+
+  it('translateCB format failure should not poison the cache', async () => {
+    const fmtPlugin = 'i18n-cache-poisoning-test-cb' as Plugin
+    addStringsLoader(fmtPlugin, async () => ({
+      string: {
+        hello: 'Hello, {name}!'
+      }
+    }))
+    const message = `${fmtPlugin}:string:hello` as IntlString
+
+    // 1. Call with MISSING param. It should fail and resolve message.
+    const out1 = await translateCBAsync(message, {}, 'en')
+    expect(out1).toBe(message)
+
+    // 2. Call with CORRECT param. It should succeed because the cache is NOT poisoned!
+    const out2 = await translateCBAsync(message, { name: 'World' }, 'en')
+    expect(out2).toBe('Hello, World!')
+  })
 })

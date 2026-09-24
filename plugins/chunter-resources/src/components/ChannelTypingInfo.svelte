@@ -87,6 +87,7 @@
 
 <span
   class="root h-4 mt-1 mb-1 ml-0-5 overflow-label"
+  data-id="channel-typing-info"
   use:typing={{
     socialId: acc.primarySocialId,
     objectId: object._id,

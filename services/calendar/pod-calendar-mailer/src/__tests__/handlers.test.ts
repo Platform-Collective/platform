@@ -15,7 +15,7 @@
 
 import { Event } from '@hcengineering/calendar'
 import { MeasureContext, PersonId, Ref, WorkspaceUuid } from '@hcengineering/core'
-import { Meeting, Room } from '@hcengineering/love'
+import { MeetingEventLink, Room } from '@hcengineering/love'
 import { MeetingNotificationType } from '../notification'
 import { eventCreated, eventUpdated, eventDeleted, eventMixin } from '../handlers'
 import * as notification from '../notification'
@@ -29,13 +29,13 @@ const ctx = {
   info: jest.fn()
 } as unknown as MeasureContext
 
-function eventFor (user: PersonId, props?: Partial<Event> | Partial<Meeting>): Event {
+function eventFor (user: PersonId, props?: Partial<Event> | Partial<MeetingEventLink>): Event {
   return {
-    _id: 'test-event',
+    _id: 'test-event' as Ref<Event>,
     user,
     date: Date.now() + 3600000,
     ...props
-  } as any as Event
+  } as any
 }
 
 function pastDate (): number {
@@ -57,7 +57,7 @@ jest.mock('../utils', () => {
     ...actual,
     ...actual.default,
     isMeeting: jest.fn((ws: WorkspaceUuid, event: Event): Promise<boolean> => {
-      return Promise.resolve((event as any as Meeting).room !== undefined)
+      return Promise.resolve((event as any as MeetingEventLink).room !== undefined)
     })
   }
 })

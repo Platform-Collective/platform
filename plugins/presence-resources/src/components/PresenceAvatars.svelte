@@ -54,6 +54,7 @@
 </script>
 
 <div
+  data-id="document-presence"
   use:presence={{
     personId: me,
     objectId: presenceId ?? object._id,

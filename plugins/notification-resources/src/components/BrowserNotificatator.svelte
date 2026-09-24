@@ -36,8 +36,8 @@
       query.unsubscribe()
       return
     }
-    const isSubscribed = await subscribePush()
-    if (isSubscribed) {
+    const subscribeResult = await subscribePush()
+    if (subscribeResult === 'success') {
       query.unsubscribe()
       return
     }

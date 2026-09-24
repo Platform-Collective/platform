@@ -1,4 +1,4 @@
-FROM hardcoreeng/preview-base:v20250916
+FROM platformcollective/preview-base:v20260811
 
 WORKDIR /app
 

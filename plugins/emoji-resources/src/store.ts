@@ -106,5 +106,5 @@ function getStoredFrequentlyEmojis (): Array<{ hexcode: string, count: number }>
 
 function getEmojisLocalStorageKey (suffix: string = 'frequently'): string {
   const me = getCurrentAccount()
-  return `emojis1.${suffix}.${me.uuid}`
+  return `emojis1.${suffix}.${me.uuid ?? ''}`
 }

@@ -12,7 +12,8 @@
 
   const dispatch = createEventDispatcher()
 
-  $: isMyOffice = isOffice(room) && $myInfo?.room === $myOffice?._id
+  // Check if this is my office using myOffice store (works even when not in a meeting)
+  $: isMyOffice = isOffice(room) && room._id === $myOffice?._id
 
   async function leave (): Promise<void> {
     await leaveMeeting()

@@ -50,6 +50,7 @@ import type {
   UserProfile,
   Subscription,
   WorkspacePermission,
+  ApiToken,
   DBFlavor
 } from '../../types'
 
@@ -540,6 +541,7 @@ export class PostgresAccountDB implements AccountDB {
   userProfile: PostgresDbCollection<UserProfile, 'personUuid'>
   subscription: PostgresDbCollection<Subscription, 'id'>
   workspacePermission: PostgresDbCollection<WorkspacePermission>
+  apiToken: PostgresDbCollection<ApiToken, 'id'>
 
   constructor (
     readonly client: Sql,
@@ -607,6 +609,12 @@ export class PostgresAccountDB implements AccountDB {
     this.workspacePermission = new PostgresDbCollection<WorkspacePermission>('workspace_permissions', client, {
       ns,
       timestampFields: ['createdOn'],
+      withRetryClient
+    })
+    this.apiToken = new PostgresDbCollection<ApiToken, 'id'>('api_tokens', client, {
+      ns,
+      idKey: 'id',
+      timestampFields: ['createdOn', 'expiresOn'],
       withRetryClient
     })
   }
@@ -822,7 +830,7 @@ export class PostgresAccountDB implements AccountDB {
       .client`UPDATE ${this.client(this.workspace.getTableName())} SET allow_guest_sign_up = ${guestSignUpAllowed} WHERE uuid = ${workspaceId}`
   }
 
-  async updatePasswordAgingRule (workspaceId: WorkspaceUuid, days: number): Promise<void> {
+  async updatePasswordAgingRule (workspaceId: WorkspaceUuid, days: number | null): Promise<void> {
     await this
       .client`UPDATE ${this.client(this.workspace.getTableName())} SET password_aging_rule = ${days} WHERE uuid = ${workspaceId}`
   }
@@ -858,6 +866,32 @@ export class PostgresAccountDB implements AccountDB {
     await this.withRetry(
       async (rTx) =>
         await rTx`UPDATE ${this.client(this.getWsMembersTableName())} SET role = ${role} WHERE workspace_uuid = ${workspaceUuid} AND account_uuid = ${accountUuid}`
+    )
+  }
+
+  async setWorkspaceMemberUnread (
+    accountUuid: AccountUuid,
+    workspaceUuid: WorkspaceUuid,
+    hasUnread: boolean
+  ): Promise<void> {
+    await this.withRetry(
+      async (rTx) =>
+        await rTx`UPDATE ${this.client(this.getWsMembersTableName())} SET has_unread = ${hasUnread} WHERE workspace_uuid = ${workspaceUuid} AND account_uuid = ${accountUuid} AND has_unread <> ${hasUnread}`
+    )
+  }
+
+  async setWorkspaceMembersUnread (
+    accountUuids: AccountUuid[],
+    workspaceUuid: WorkspaceUuid,
+    hasUnread: boolean
+  ): Promise<void> {
+    if (accountUuids.length === 0) return
+
+    // `has_unread <> ${hasUnread}` skips rows already in the target state, so a
+    // repeated broadcast into an already-flagged workspace writes nothing.
+    await this.withRetry(
+      async (rTx) =>
+        await rTx`UPDATE ${this.client(this.getWsMembersTableName())} SET has_unread = ${hasUnread} WHERE workspace_uuid = ${workspaceUuid} AND account_uuid = ANY(${accountUuids}) AND has_unread <> ${hasUnread}`
     )
   }
 
@@ -903,6 +937,7 @@ export class PostgresAccountDB implements AccountDB {
           w.created_on,
           w.billing_account,
           w.password_aging_rule,
+          m.has_unread,
           json_build_object(
             'mode', s.mode,
             'processing_progress', s.processing_progress,
@@ -957,6 +992,7 @@ export class PostgresAccountDB implements AccountDB {
           w.created_by,
           w.created_on,
           w.billing_account,
+          w.pending_configuration,
           json_build_object(
             'mode', s.mode,
             'processing_progress', s.processing_progress,
@@ -1079,6 +1115,7 @@ export class PostgresAccountDB implements AccountDB {
       }
 
       await this.mailbox.deleteMany({ accountUuid }, rTx)
+      await this.apiToken.deleteMany({ accountUuid }, rTx)
 
       await this.socialId.update({ personUuid: accountUuid }, { verifiedOn: undefined }, rTx)
 

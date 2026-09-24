@@ -57,6 +57,21 @@
         "Sound": "사운드",
         "SoundNotificationsDescription": "이벤트 발생 시 사운드 알림을 받습니다.",
         "NoAccessToObject": "이 객체에 더 이상 접근할 수 없습니다",
-        "ViewIn": "{app}에서 보기"
+        "ViewIn": "{app}에서 보기",
+    "Value": "{value}",
+    "Subscribe": "구독",
+    "UnknownDevice": "알 수 없는 기기",
+    "Current": "현재",
+    "RemoveWebpush": "제거",
+    "WebpushRemoveConfirm": "<b>{title}</b>의 푸시 알림을 제거하시겠습니까?",
+    "PushSubscribeError": "푸시 알림을 구독하지 못했습니다. 다시 시도해 주세요.",
+    "PushSubscribeErrorPermissionDenied": "알림 권한이 거부되었습니다. 브라우저 설정에서 이 사이트의 알림을 허용해 주세요.",
+    "PushSubscribeErrorNetwork": "푸시 서비스에 연결하지 못했습니다. 연결을 확인하고 다시 시도해 주세요.",
+    "PushSubscribeErrorNotSupported": "이 브라우저는 푸시 알림을 지원하지 않습니다.",
+    "PushOnDesktop": "데스크톱 앱에서는 사용할 수 없습니다",
+    "AlreadySubscribed": "이 브라우저는 이미 구독되어 있습니다",
+    "PushNotConfigured": "이 서버에는 푸시 알림이 구성되어 있지 않습니다",
+    "PushNotSupported": "이 브라우저에서 지원되지 않습니다",
+    "PushDenied": "브라우저 설정에서 알림이 차단되어 있습니다"
     }
 }

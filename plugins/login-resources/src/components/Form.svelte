@@ -34,8 +34,9 @@
     func: () => Promise<void>
   }
 
-  export let caption: IntlString
+  export let caption: IntlString | undefined = undefined
   export let captionParams: Record<string, any> = {}
+  export let proceedDisabled: boolean = false
   export let status: Status
   export let fields: Field[]
   export let action: Action
@@ -151,7 +152,9 @@
       </div>
     {/if}
     <div class="flex-row-center">
-      <div class="title"><Label label={caption} params={captionParams} /></div>
+      {#if caption !== undefined}
+        <div class="title"><Label label={caption} params={captionParams} /></div>
+      {/if}
       <slot name="region-selector" />
     </div>
   {/if}
@@ -172,6 +175,8 @@
       </div>
     {/each}
 
+    <slot name="extra-fields" />
+
     <div class="status">
       <StatusControl {status} />
     </div>
@@ -185,7 +190,7 @@
         size={'x-large'}
         width="100%"
         loading={inAction}
-        disabled={status.severity !== Severity.OK && status.severity !== Severity.ERROR}
+        disabled={proceedDisabled || (status.severity !== Severity.OK && status.severity !== Severity.ERROR)}
         on:click={(e) => {
           e.preventDefault()
           if (!inAction) {

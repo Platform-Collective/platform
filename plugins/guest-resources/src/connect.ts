@@ -48,13 +48,19 @@ export async function connect (title: string): Promise<Client | undefined> {
 
   const selectWorkspace = await getResource(login.function.SelectWorkspace)
   let workspaceLoginInfo: WorkspaceLoginInfo | undefined
+  let connectAttempt = 0
   while (true) {
     const selectResult = await selectWorkspace(wsUrl, exchangedToken)
     if (!selectResult[2]) {
-      // Connection error happen, wait and retry
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Connection error: exponential backoff capped at 10s to avoid request storm when server is down
+      connectAttempt++
+      const delay = Math.min(1000 * 2 ** Math.min(connectAttempt - 1, 4), 10000)
+      await new Promise((resolve) => setTimeout(resolve, delay))
+      // Abort if user navigated away to another workspace while we were waiting
+      if (wsUrl !== getCurrentLocation().path[1]) return
       continue
     }
+    connectAttempt = 0
     workspaceLoginInfo = selectResult[1]
     if (workspaceLoginInfo == null) {
       const err = `Error selecting workspace ${wsUrl}. There might be something wrong with the token. Please try to log in again.`

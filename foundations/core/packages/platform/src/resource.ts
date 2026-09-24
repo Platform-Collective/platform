@@ -92,7 +92,7 @@ function loadPlugin (id: Plugin): Resources | Promise<Resources> {
           }
           return await plugin.default()
         } catch (err: any) {
-          console.error(err)
+          console.error('failed to load ', id, err)
           throw err
         }
       }

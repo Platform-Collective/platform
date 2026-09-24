@@ -40,7 +40,7 @@
     {
       id: 'office',
       label: love.string.Office,
-      type: RoomType.Audio,
+      type: RoomType.Video,
       _class: love.class.Office,
       access: RoomAccess.Knock
     }

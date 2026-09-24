@@ -53,6 +53,7 @@ export default plugin(loginId, {
     LoginAccount: '' as Metadata<string>,
     DisableSignUp: '' as Metadata<boolean>,
     HideLocalLogin: '' as Metadata<boolean>,
+    LoginTheme: '' as Metadata<string>,
     TransactorOverride: '' as Metadata<string>,
     PasswordValidations: '' as Metadata<{
       MinLength: number
@@ -123,7 +124,8 @@ export default plugin(loginId, {
     SelectWorkspace: '' as Resource<
     (
       workspace: string,
-      token: string | null | undefined
+      token: string | null | undefined,
+      doNavigate?: boolean | undefined // Default to true
     ) => Promise<[Status, WorkspaceLoginInfo | undefined, boolean]>
     >,
     ExchangeGuestToken: '' as Resource<(token: string) => Promise<string>>,

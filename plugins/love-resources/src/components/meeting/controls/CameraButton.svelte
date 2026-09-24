@@ -9,12 +9,14 @@
   import { getClient } from '@hcengineering/presentation'
 
   export let size: 'large' | 'medium' | 'small' | 'extra-small' | 'min' = 'large'
+  export let checkActions: boolean = true
 
-  $: allowCam = $currentRoom?.type === RoomType.Video
+  $: allowCam = $currentRoom?.type !== RoomType.Audio
   $: isCamEnabled = $state.camera?.enabled === true
 
-  const client = getClient()
-  const camKeys = client.getModel().findAllSync(view.class.Action, { _id: love.action.ToggleVideo })?.[0]?.keyBinding
+  const camKeys = checkActions
+    ? getClient().getModel().findAllSync(view.class.Action, { _id: love.action.ToggleVideo })?.[0]?.keyBinding
+    : []
 
   function camSettings (e: MouseEvent): void {
     showPopup(CamSettingPopup, {}, eventToHTMLElement(e))

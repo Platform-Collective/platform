@@ -62,6 +62,7 @@ import type {
   SystemSpace,
   Timestamp,
   TransientConfiguration,
+  TransientTTL,
   Type,
   TypeAny,
   TypedSpace,
@@ -205,7 +206,8 @@ export default plugin(coreId, {
     SpacesTypeData: '' as Ref<Mixin<Space>>,
     TransientConfiguration: '' as Ref<Mixin<TransientConfiguration>>,
     TxAccessLevel: '' as Ref<Mixin<TxAccessLevel>>,
-    VersionableClass: '' as Ref<Mixin<VersionableClass>>
+    VersionableClass: '' as Ref<Mixin<VersionableClass>>,
+    TransientTTL: '' as Ref<Class<TransientTTL>>
   },
   space: {
     Tx: '' as Ref<Space>,

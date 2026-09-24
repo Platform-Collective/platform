@@ -15,27 +15,67 @@
 <script lang="ts">
   import { Event } from '@hcengineering/calendar'
   import love from '../plugin'
-  import RoomSelector from './RoomSelector.svelte'
-  import { getClient } from '@hcengineering/presentation'
-  import { Ref } from '@hcengineering/core'
-  import { Room } from '@hcengineering/love'
+  import { createQuery, getClient } from '@hcengineering/presentation'
+  import { ObjectPresenter } from '@hcengineering/view-resources'
+  import { MeetingMinutes, MeetingStatus } from '@hcengineering/love'
+  import { Button, Icon, IconRedo, Label } from '@hcengineering/ui'
+  import MeetingMinutesStatusPresenter from './MeetingMinutesStatusPresenter.svelte'
 
   export let value: Event
   export let readOnly: boolean = false
 
+  const valueQuery = createQuery()
+  const meetingQuery = createQuery()
+
+  let _value: Event = value
+
+  $: valueQuery.query(value._class, { _id: value._id }, (r) => {
+    _value = r.shift() ?? value
+  })
   const client = getClient()
 
-  $: isMeeting = client.getHierarchy().hasMixin(value, love.mixin.Meeting)
-  $: meeting = isMeeting ? client.getHierarchy().as(value, love.mixin.Meeting) : null
+  $: isMeeting = client.getHierarchy().hasMixin(_value, love.mixin.MeetingEventLink)
+  $: meeting = isMeeting ? client.getHierarchy().as(_value, love.mixin.MeetingEventLink) : null
 
-  async function changeRoom (val: Ref<Room>): Promise<void> {
-    const events = await client.findAll(value._class, { eventId: value.eventId }, { projection: { _id: 1 } })
-    for (const event of events) {
-      await client.updateMixin(event._id, event._class, event.space, love.mixin.Meeting, { room: val })
+  let meetingDoc: MeetingMinutes | undefined
+
+  $: meetingQuery.query(love.class.MeetingMinutes, { _id: meeting?.meetingId }, (r) => {
+    meetingDoc = r.shift()
+  })
+
+  async function resetMeeting (meetingDoc: MeetingMinutes): Promise<void> {
+    if (meetingDoc.status === MeetingStatus.Active || meetingDoc.status === MeetingStatus.Pending) {
+      // Disallow change for active meeting
+      return
     }
+    await client.diffUpdate(meetingDoc, { status: MeetingStatus.Scheduled })
   }
 </script>
 
-{#if isMeeting && meeting}
-  <RoomSelector value={meeting?.room} disabled={readOnly} on:change={(ev) => changeRoom(ev.detail)} />
+{#if isMeeting && meetingDoc !== undefined}
+  {@const doc = meetingDoc}
+  <div class="flex-col mt-2">
+    <div class="flex-row-center">
+      <div class="mr-2">
+        <Icon icon={love.icon.MeetingMinutes} size={'small'} />
+      </div>
+      <div class="mr-2">
+        <Label label={love.string.Meeting} />
+      </div>
+      <div class="flex-grow">
+        <ObjectPresenter
+          shouldShowAvatar={false}
+          objectId={meetingDoc._id}
+          _class={meetingDoc._class}
+          value={meetingDoc}
+        />
+      </div>
+      <div class="ml-3 flex flex-row-center">
+        <MeetingMinutesStatusPresenter object={meetingDoc} value={meetingDoc.status} attributeKey={'status'} />
+        {#if meetingDoc?.status === MeetingStatus.Finished}
+          <Button kind={'ghost'} icon={IconRedo} size={'x-small'} on:click={() => resetMeeting(doc)} />
+        {/if}
+      </div>
+    </div>
+  </div>
 {/if}

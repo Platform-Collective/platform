@@ -23,9 +23,12 @@ import {
   type DomainRequestOptions,
   type DomainResult,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FindResult,
   Hierarchy,
   ModelDb,
+  type IterateOptions,
   type OperationDomain,
   type Ref,
   type SearchOptions,
@@ -75,6 +78,37 @@ class RestTxClient implements Client {
       return this.hierarchy.updateLookupMixin(_class, v, options)
     })
     return toFindResult(result, data.total)
+  }
+
+  async findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    const page = await this.client.findAllPage(_class, query, options)
+    return {
+      ...page,
+      docs: page.docs.map((doc) => this.hierarchy.updateLookupMixin(_class, doc, options))
+    }
+  }
+
+  async * iterateAll<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ): AsyncIterable<WithLookup<T>> {
+    let cursor: string | undefined
+    do {
+      const page = await this.findAllPage(_class, query, {
+        ...options,
+        limit: options?.limit ?? 500,
+        cursor
+      })
+      for (const doc of page.docs) {
+        yield doc
+      }
+      cursor = page.nextCursor
+    } while (cursor !== undefined)
   }
 
   async domainRequest<T>(

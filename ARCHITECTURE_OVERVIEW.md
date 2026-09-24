@@ -361,43 +361,43 @@ sequenceDiagram
 | Service | Container | Port | Purpose | Dependencies |
 |---------|-----------|------|---------|--------------|
 | **Frontend** | | | | |
-| front | hardcoreeng/front | 8087/8088 | Web application server | account, transactor, collaborator, datalake |
+| front | platformcollective/front | 8087/8088 | Web application server | account, transactor, collaborator, datalake |
 | **Core** | | | | |
-| account | hardcoreeng/account | 3000 | Authentication & user management | cockroach, redpanda, stats |
-| transactor | hardcoreeng/transactor | 3332 | Transaction processing (WebSocket) | cockroach, redpanda, fulltext, account |
-| workspace | hardcoreeng/workspace | - | Workspace management | cockroach, redpanda, minio, account |
-| stats | hardcoreeng/stats | 4900 | Metrics collection | - |
+| account | platformcollective/account | 3000 | Authentication & user management | cockroach, redpanda, stats |
+| transactor | platformcollective/transactor | 3332 | Transaction processing (WebSocket) | cockroach, redpanda, fulltext, account |
+| workspace | platformcollective/workspace | - | Workspace management | cockroach, redpanda, minio, account |
+| stats | platformcollective/stats | 4900 | Metrics collection | - |
 | **Storage** | | | | |
-| datalake | hardcoreeng/datalake | 4030 | Blob storage & metadata | cockroach, minio, account |
-| hulylake | hardcoreeng/hulylake | 8096 | Storage adapter API | cockroach, minio |
-| hulykvs | hardcoreeng/hulykvs | 8094 | Key-value store | cockroach |
+| datalake | platformcollective/datalake | 4030 | Blob storage & metadata | cockroach, minio, account |
+| hulylake | platformcollective/hulylake | 8096 | Storage adapter API | cockroach, minio |
+| hulykvs | platformcollective/hulykvs | 8094 | Key-value store | cockroach |
 | **Search** | | | | |
-| fulltext | hardcoreeng/fulltext | 4702 | Full-text search indexing | elasticsearch, cockroach, rekoni, redpanda |
-| rekoni | hardcoreeng/rekoni-service | 4004 | Document intelligence | stats |
+| fulltext | platformcollective/fulltext | 4702 | Full-text search indexing | elasticsearch, cockroach, rekoni, redpanda |
+| rekoni | platformcollective/rekoni-service | 4004 | Document intelligence | stats |
 | **Real-time** | | | | |
-| collaborator | hardcoreeng/collaborator | 3078 | Real-time document collaboration | account, datalake, transactor |
-| hulypulse | hardcoreeng/hulypulse | 8099 | WebSocket notifications | redis |
-| hulygun | hardcoreeng/hulygun | - | Event processor | redpanda, account |
+| collaborator | platformcollective/collaborator | 3078 | Real-time document collaboration | account, datalake, transactor |
+| hulypulse | platformcollective/hulypulse | 8099 | WebSocket notifications | redis |
+| hulygun | platformcollective/hulygun | - | Event processor | redpanda, account |
 | **Media** | | | | |
-| stream | hardcoreeng/stream | 1080 | Video streaming | datalake, redpanda |
-| media | hardcoreeng/media | - | Media processing | redpanda, account |
-| preview | hardcoreeng/preview | 4040 | Thumbnail generation | datalake |
+| stream | platformcollective/stream | 1080 | Video streaming | datalake, redpanda |
+| media | platformcollective/media | - | Media processing | redpanda, account |
+| preview | platformcollective/preview | 4040 | Thumbnail generation | datalake |
 | **Features** | | | | |
-| print | hardcoreeng/print | 4005 | PDF generation | cockroach, minio, account |
-| sign | hardcoreeng/sign | 4006 | Digital signatures | cockroach, minio, account |
-| payment | hardcoreeng/payment | 3040 | Payment processing | account |
-| export | hardcoreeng/export | 4009 | Data export | cockroach, minio, account |
-| analytics | hardcoreeng/analytics-collector | 4017 | Analytics collection | account, stats |
-| process | hardcoreeng/process | - | Workflow automation | redpanda, account |
-| rating | hardcoreeng/rating | - | Content rating | cockroach, redpanda, account |
+| print | platformcollective/print | 4005 | PDF generation | cockroach, minio, account |
+| sign | platformcollective/sign | 4006 | Digital signatures | cockroach, minio, account |
+| payment | platformcollective/payment | 3040 | Payment processing | account |
+| export | platformcollective/export | 4009 | Data export | cockroach, minio, account |
+| analytics | platformcollective/analytics-collector | 4017 | Analytics collection | account, stats |
+| process | platformcollective/process | - | Workflow automation | redpanda, account |
+| rating | platformcollective/rating | - | Content rating | cockroach, redpanda, account |
 | **Backup** | | | | |
-| backup | hardcoreeng/backup | - | Automated backup | cockroach, minio, account |
-| backup-api | hardcoreeng/backup-api | 4039 | Backup REST API | minio, account |
+| backup | platformcollective/backup | - | Automated backup | cockroach, minio, account |
+| backup-api | platformcollective/backup-api | 4039 | Backup REST API | minio, account |
 | **Primary Database** | | | | |
 | cockroach | cockroachdb/cockroach:latest-v24.3 | 26257, 8089 | **Main application database** - stores users, workspaces, documents, transactions, metadata, permissions | - |
 | **Supporting Infrastructure** | | | | |
 | elastic | elasticsearch:7.14.2 | 9200 | Search engine for full-text indexes | - |
-| minio | minio/minio | 9000, 9001 | Object storage (S3) for files and blobs | - |
+| minio | pgsty/silo | 9000, 9001 | Object storage (S3) for files and blobs | - |
 | redpanda | redpandadata/redpanda:v24.3.6 | 9092, 19092 | Event streaming (Kafka) for async processing | - |
 | redis | redis:8.0.2-alpine3.21 | 6379 | Cache & pub/sub for real-time features | - |
 | **Monitoring** | | | | |

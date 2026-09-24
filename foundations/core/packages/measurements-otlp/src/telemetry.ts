@@ -11,6 +11,7 @@ import {
   updateMeasure,
   type FullParamsType,
   type MeasureLogger,
+  type MeasureLogLevel,
   type Metrics,
   type ParamsType,
   type WithOptions
@@ -97,7 +98,8 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     readonly logParams?: ParamsType,
 
     readonly otlpLogger?: Logger,
-    readonly meter?: MetricsContext
+    readonly meter?: MetricsContext,
+    readonly logLevel: MeasureLogLevel = 'info'
   ) {
     this.name = name
     this.params = params
@@ -133,6 +135,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
       logger?: MeasureLogger
       span?: WithOptions['span'] // By default true
       meta?: Record<string, string | number | boolean>
+      logLevel?: MeasureLogLevel
     }
   ): MeasureContext {
     let _span: Span | undefined
@@ -170,7 +173,8 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
       this,
       this.logParams,
       this.otlpLogger,
-      this.meter
+      this.meter,
+      opt?.logLevel ?? this.logLevel
     )
     result.id = this.id
     result.contextData = this.contextData
@@ -309,6 +313,23 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
     this.logger.warn(message, { ...this.params, ...args, ...(this.logParams ?? {}) })
   }
 
+  debug (message: string, args?: Record<string, any>): void {
+    if (this.logLevel !== 'debug') return
+    if (this.otlpLogger !== undefined) {
+      this.otlpLogger.emit({
+        severityNumber: SeverityNumber.DEBUG,
+        severityText: 'debug',
+        context: this.context,
+        body: message,
+        attributes: {
+          'service.name': sdkServiceName,
+          ...(args ?? {})
+        }
+      })
+    }
+    this.logger.debug(message, { ...this.params, ...args, ...(this.logParams ?? {}) })
+  }
+
   end (): void {
     this.done()
   }
@@ -417,7 +438,8 @@ export function initOpenTelemetrySDK (serviceName: string, version: string): boo
     keepAlive: true
   })
 
-  const batchLogProcessor = new BatchLogRecordProcessor(logExporter, {
+  const batchLogProcessor = new BatchLogRecordProcessor({
+    exporter: logExporter,
     maxExportBatchSize: parseInt(process.env.OTEL_EXPORTER_OTLP_LOGS_MAX_EXPORT_BATCH_SIZE ?? '1000'),
     maxQueueSize: parseInt(process.env.OTEL_EXPORTER_OTLP_LOGS_MAX_QUEUE_SIZE ?? '1000')
   })
@@ -530,7 +552,8 @@ export function createOpenTelemetryMetricsContext (
 ): MeasureContext {
   if (!initOpenTelemetrySDK(name, version ?? '')) {
     console.warn('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is not set, OpenTelemetry metrics will not be sent')
-    return new MeasureMetricsContext(name, params, fullParams, metrics, logger)
+    const rootLogLevel: MeasureLogLevel = process.env.LOG_LEVEL === 'debug' ? 'debug' : 'info'
+    return new MeasureMetricsContext(name, params, fullParams, metrics, logger, undefined, undefined, rootLogLevel)
   }
 
   // Traces
@@ -541,6 +564,8 @@ export function createOpenTelemetryMetricsContext (
     process.env.OTEL_LOGGER_ENABLED === 'true' ? loggerProvider?.getLogger(sdkServiceName ?? name, version) : undefined
 
   const meter = otelMetrics.getMeter(name, version)
+
+  const rootLogLevel: MeasureLogLevel = process.env.LOG_LEVEL === 'debug' ? 'debug' : 'info'
 
   const ctx = new OpenTelemetryMetricsContext(
     name,
@@ -554,7 +579,8 @@ export function createOpenTelemetryMetricsContext (
     undefined,
     undefined,
     otlpLogger,
-    new MetricsContext(meter)
+    new MetricsContext(meter),
+    rootLogLevel
   )
   return ctx
 }

@@ -24,6 +24,8 @@ import core, {
   Doc,
   DocumentQuery,
   FindOptions,
+  FindPageOptions,
+  FindPageResult,
   FindResult,
   Hierarchy,
   IndexingUpdateEvent,
@@ -57,12 +59,14 @@ import core, {
   getObjectValue,
   matchQuery,
   platformNow,
+  RateLimiter,
   reduceCalls,
   shouldShowArchived,
   toFindResult,
   type DomainParams,
   type DomainRequestOptions,
   type DomainResult,
+  type IterateOptions,
   type OperationDomain
 } from '@hcengineering/core'
 import { PlatformError } from '@hcengineering/platform'
@@ -72,6 +76,22 @@ import { ResultArray } from './results'
 import { Callback, Query, type QueryId } from './types'
 
 const CACHE_SIZE = 125
+
+/**
+ * @public
+ * Stats returned from {@link LiveQuery.refreshConnect} so callers can log
+ * what was dropped vs refreshed after a reconnect.
+ */
+export interface RefreshConnectStats {
+  gapMs: number
+  dropIdle: boolean
+  droppedQueries: number
+  droppedDocs: number
+  activeQueries: number
+  activeDocs: number
+  droppedByClass: Map<string, { count: number, docs: number }>
+  activeByClass: Map<string, { count: number, docs: number }>
+}
 
 /**
  * @public
@@ -108,47 +128,88 @@ export class LiveQuery implements WithTx, Client {
     return this.client.getModel()
   }
 
+  // Drop idle queries when reconnect gap exceeds this window.
+  // Idle = sits in queue with no active callbacks. Holding stale results across
+  // long disconnects (sleep/network drop) is wasteful — drop and let next
+  // subscription refetch fresh.
+  static readonly IDLE_DROP_GAP_MS = 5000
+
+  // Concurrency cap for parallel refresh after reconnect — avoid request storm.
+  static readonly REFRESH_CONCURRENCY = 4
+
   // Perform refresh of content since connection established.
-  async refreshConnect (clean: boolean): Promise<void> {
-    for (const q of [...this.queue.values()]) {
-      if (!this.removeFromQueue(q)) {
-        try {
-          if (clean) {
-            this.cleanQuery(q)
-          }
-          // No need to refresh, since it will be on next for
-        } catch (err: any) {
-          if (err instanceof PlatformError) {
-            if (err.message === 'connection closed') {
-              continue
-            }
-          }
-          Analytics.handleError(err)
-          console.error(err)
-        }
-      } else {
-        // No callbacks, let's remove it on conenct
-        this.removeQueue(q)
-      }
+  // `lastReconnectGapMs` — ms since previous successful connection. When the
+  // gap is large, drop idle queries instead of refreshing them.
+  // Returns stats so the caller can log/track it.
+  async refreshConnect (clean: boolean, lastReconnectGapMs: number = 0): Promise<RefreshConnectStats> {
+    const dropIdle = lastReconnectGapMs > LiveQuery.IDLE_DROP_GAP_MS
+    const sizeOf = (q: Query): number => (q.result instanceof Promise ? 0 : q.result.length)
+
+    const stats: RefreshConnectStats = {
+      gapMs: lastReconnectGapMs,
+      dropIdle,
+      droppedQueries: 0,
+      droppedDocs: 0,
+      activeQueries: 0,
+      activeDocs: 0,
+      droppedByClass: new Map(),
+      activeByClass: new Map()
     }
+    for (const q of [...this.queue.values()]) {
+      if (q.callbacks.size === 0) {
+        // No active callbacks. On long gap drop the cached result; otherwise
+        // leave it — TTL eviction will clean it.
+        if (dropIdle) {
+          const docs = sizeOf(q)
+          stats.droppedQueries++
+          stats.droppedDocs += docs
+          const key = q._class as string
+          const prev = stats.droppedByClass.get(key) ?? { count: 0, docs: 0 }
+          prev.count++
+          prev.docs += docs
+          stats.droppedByClass.set(key, prev)
+          this.removeQueue(q)
+        }
+        continue
+      }
+      // Has callbacks but somehow ended up in queue — keep going to refresh below.
+    }
+    // Collect active subscriptions, refresh smallest first so quick queries
+    // unblock UI before heavy ones.
+    const active: Query[] = []
     for (const v of this.queries.values()) {
       for (const q of v.values()) {
+        if (q.callbacks.size === 0) continue
+        active.push(q)
+        const docs = sizeOf(q)
+        stats.activeQueries++
+        stats.activeDocs += docs
+        const key = q._class as string
+        const prev = stats.activeByClass.get(key) ?? { count: 0, docs: 0 }
+        prev.count++
+        prev.docs += docs
+        stats.activeByClass.set(key, prev)
+      }
+    }
+    active.sort((a, b) => sizeOf(a) - sizeOf(b))
+
+    const limiter = new RateLimiter(LiveQuery.REFRESH_CONCURRENCY)
+    for (const q of active) {
+      if (clean) {
+        this.cleanQuery(q)
+      }
+      void limiter.add(async () => {
         try {
-          if (clean) {
-            this.cleanQuery(q)
-          }
-          void this.refresh(q)
+          await this.refresh(q)
         } catch (err: any) {
-          if (err instanceof PlatformError) {
-            if (err.message === 'connection closed') {
-              continue
-            }
-          }
+          if (err instanceof PlatformError && err.message === 'connection closed') return
           Analytics.handleError(err)
           console.error(err)
         }
-      }
+      })
     }
+    await limiter.waitProcessing()
+    return stats
   }
 
   private cleanQuery (q: Query): void {
@@ -233,6 +294,22 @@ export class LiveQuery implements WithTx, Client {
       q.result.clean()
     }
     return toFindResult(q.result.getClone(), q.total)
+  }
+
+  findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    return this.client.findAllPage(_class, query, options)
+  }
+
+  iterateAll<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ): AsyncIterable<WithLookup<T>> {
+    return this.client.iterateAll(_class, query, options)
   }
 
   async domainRequest<T>(

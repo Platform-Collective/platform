@@ -1,4 +1,6 @@
+//
 // Copyright © 2025 Hardcore Engineering Inc.
+// Copyright © 2026 Intabia Fusion.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -11,16 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 
-import { type UnsubscribeCallback, type Callback } from '@hcengineering/hulypulse-client'
-import { type IntlString, getMetadata } from '@hcengineering/platform'
-import presentation, { createPulseClient } from '@hcengineering/presentation'
-import { type PersonId } from '@hcengineering/core'
-
-const typingDelaySeconds = 2
-
-function getWorkspace (): string {
-  return getMetadata(presentation.metadata.WorkspaceUuid) ?? ''
-}
+import { type PersonId, type Ref, type Space } from '@hcengineering/core'
+import { type IntlString } from '@hcengineering/platform'
+import { createQuery, getClient } from '@hcengineering/presentation'
+import pulse, { type TypingIndicator } from '@hcengineering/pulse'
 
 export interface TypingInfo {
   socialId: PersonId
@@ -31,98 +27,83 @@ export interface TypingInfo {
 export interface TypingActionParams {
   socialId: PersonId
   objectId: string
-  onTyping: (presence: Map<string, TypingInfo>) => void
+  onTyping: (typing: Map<string, TypingInfo>) => void
+}
+
+function typingDocId (objectId: string, socialId: PersonId): Ref<TypingIndicator> {
+  return `typing:${objectId}:${socialId}` as Ref<TypingIndicator>
 }
 
 export function typing (node: HTMLElement, params: TypingActionParams): any {
-  let unsubscribe: Promise<UnsubscribeCallback> | undefined
-  let typing = new Map<string, TypingInfo>()
+  const liveQuery = createQuery(true)
+  let state = new Map<string, TypingInfo>()
 
   let socialId = params.socialId
   let objectId = params.objectId
   let onTyping = params.onTyping
 
-  function handleTypingInfo (key: string, value: TypingInfo | undefined): void {
-    if (value?.socialId === socialId) {
-      return
-    }
-
-    if (value === undefined) {
-      typing.delete(key)
-    } else {
-      typing.set(key, value)
-    }
-
-    onTyping(typing)
+  function runQuery (): void {
+    liveQuery.query(pulse.class.TypingIndicator, { objectId }, (result) => {
+      const next = new Map<string, TypingInfo>()
+      for (const doc of result) {
+        if (doc.socialId === socialId) continue
+        next.set(doc._id, { socialId: doc.socialId, objectId: doc.objectId, status: doc.status })
+      }
+      state = next
+      onTyping(state)
+    })
   }
 
-  unsubscribe = subscribeTyping(params.objectId, handleTypingInfo)
+  runQuery()
 
   return {
     update: (params: TypingActionParams) => {
-      if (objectId !== params.objectId) {
-        socialId = params.socialId
-        objectId = params.objectId
-        onTyping = params.onTyping
+      const needResubscribe = objectId !== params.objectId || socialId !== params.socialId
+      socialId = params.socialId
+      objectId = params.objectId
+      onTyping = params.onTyping
 
-        void unsubscribe?.then((unsub) => {
-          void unsub()
-        })
-
-        typing = new Map<string, TypingInfo>()
-        unsubscribe = subscribeTyping(params.objectId, handleTypingInfo)
-
-        onTyping(typing)
+      if (needResubscribe) {
+        state = new Map<string, TypingInfo>()
+        onTyping(state)
+        runQuery()
       }
     },
     destroy: () => {
-      void unsubscribe?.then((unsub) => {
-        void unsub()
-      })
+      liveQuery.unsubscribe()
     }
   }
 }
 
-export async function subscribeTyping (
+export async function setTyping (
+  socialId: PersonId,
   objectId: string,
-  callback: Callback<TypingInfo | undefined>
-): Promise<UnsubscribeCallback> {
-  const client = await createPulseClient()
-  if (client !== undefined) {
-    const workspace = getWorkspace()
-    try {
-      return await client.subscribe(`${workspace}/typing/${objectId}/`, callback)
-    } catch (error) {
-      console.warn('failed to subscribe typing info:', error)
+  space: Ref<Space>,
+  status?: IntlString
+): Promise<void> {
+  try {
+    const client = getClient()
+    const id = typingDocId(objectId, socialId)
+    const existing = await client.findOne(pulse.class.TypingIndicator, { _id: id })
+    if (existing !== undefined) {
+      await client.diffUpdate(existing, { status })
+      return
     }
-  }
-
-  return async () => false
-}
-
-export async function setTyping (socialId: PersonId, objectId: string, status?: IntlString): Promise<void> {
-  const client = await createPulseClient()
-
-  if (client !== undefined) {
-    const workspace = getWorkspace()
-    const typingInfo: TypingInfo = { socialId, objectId, status }
-    try {
-      await client.put(`${workspace}/typing/${objectId}/${socialId}`, typingInfo, typingDelaySeconds)
-    } catch (error) {
-      console.warn('failed to put typing info:', error)
-    }
+    await client.createDoc(pulse.class.TypingIndicator, space, { objectId, socialId, status }, id)
+  } catch (err) {
+    console.warn('failed to set typing:', err)
   }
 }
 
 export async function clearTyping (socialId: PersonId, objectId: string): Promise<void> {
-  const client = await createPulseClient()
-
-  if (client !== undefined) {
-    const workspace = getWorkspace()
-    try {
-      await client.delete(`${workspace}/typing/${objectId}/${socialId}`)
-    } catch (error) {
-      console.warn('failed to delete typing info:', error)
+  try {
+    const client = getClient()
+    const id = typingDocId(objectId, socialId)
+    const existing = await client.findOne(pulse.class.TypingIndicator, { _id: id })
+    if (existing !== undefined) {
+      await client.removeDoc(pulse.class.TypingIndicator, existing.space, existing._id)
     }
+  } catch (err) {
+    console.warn('failed to clear typing:', err)
   }
 }

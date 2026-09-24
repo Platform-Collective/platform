@@ -61,8 +61,9 @@
     }
     &.hovered:hover {
       background-color: transparent;
-
-      & > div { opacity: .35; }
+      & > div {
+          opacity: .75;
+      }
     }
     & > * { pointer-events: none; }
   }
@@ -103,7 +104,7 @@
   &__header {
     top: calc(100% / var(--huly-floor-roomHeight) / 3 * -1.6 + .75rem - 1px);
     // transition: top .15s ease-in-out;
-    
+
     & > .antiEditBox input {
       font-size: .8125rem;
       transition: font-size .15s ease-in-out;
@@ -153,7 +154,7 @@
 // Room conners and header
 @container floorGridContainer (max-width: 800px) {
   .floorGrid-room::before,
-  .floorGrid-configureRoom::before { border-radius: 0.75rem; }  
+  .floorGrid-configureRoom::before { border-radius: 0.75rem; }
   .floorGrid-room .floorGrid-room__header {
     top: calc(100% / var(--huly-floor-roomHeight) / 3 * -1.6 + .125rem + 1px);
     span { font-size: .75rem; }
@@ -166,7 +167,7 @@
 }
 @container floorGridContainer (max-width: 600px) {
   .floorGrid-room::before,
-  .floorGrid-configureRoom::before { border-radius: 0.5rem; }  
+  .floorGrid-configureRoom::before { border-radius: 0.5rem; }
   .floorGrid-room .floorGrid-room__header {
     top: calc(100% / var(--huly-floor-roomHeight) / 3 * -1.6 + .125rem);
     span { font-size: .7rem; }
@@ -178,7 +179,7 @@
 }
 @container floorGridContainer (max-width: 380px) {
   .floorGrid-room::before,
-  .floorGrid-configureRoom::before { border-radius: 0.25rem; }  
+  .floorGrid-configureRoom::before { border-radius: 0.25rem; }
   .floorGrid-room .floorGrid-room__header {
     top: calc(100% / var(--huly-floor-roomHeight) / 3 * -1.6 + .125rem);
     span { font-size: .5rem; }

@@ -1,12 +1,11 @@
 import { concatLink } from '@hcengineering/core'
-import love, { type Room } from '@hcengineering/love'
+import love, { RecordingState, type MeetingMinutes, type Room } from '@hcengineering/love'
 import { getMetadata } from '@hcengineering/platform'
-import presentation from '@hcengineering/presentation'
-import { getPlatformToken, lk } from './utils'
+import { getPlatformToken } from './utils'
 import { getCurrentEmployee } from '@hcengineering/contact'
 import { getPersonByPersonRef } from '@hcengineering/contact-resources'
 import { Analytics } from '@hcengineering/analytics'
-import { currentMeetingMinutes } from './stores'
+import { selectedRoomPlace } from './stores'
 import { get } from 'svelte/store'
 
 export function getLoveClient (): LoveClient {
@@ -14,15 +13,14 @@ export function getLoveClient (): LoveClient {
 }
 
 export class LoveClient {
-  async getRoomToken (room: Room): Promise<string> {
-    return await this.refreshRoomToken(room)
+  async getRoomToken (meetingMinutes: MeetingMinutes): Promise<string> {
+    return await this.refreshRoomToken(meetingMinutes)
   }
 
-  async updateSessionLanguage (room: Room): Promise<void> {
+  async updateSessionLanguage (mm: MeetingMinutes, room: Room): Promise<void> {
     try {
       const endpoint = this.getLoveEndpoint()
       const token = getPlatformToken()
-      const roomName = this.getTokenRoomName(room)
 
       await fetch(concatLink(endpoint, '/language'), {
         method: 'POST',
@@ -30,7 +28,10 @@ export class LoveClient {
           Authorization: 'Bearer ' + token,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ roomName, room: room.name, language: room.language })
+        body: JSON.stringify({
+          meetingId: mm._id,
+          language: room.language
+        })
       })
     } catch (err: any) {
       Analytics.handleError(err)
@@ -38,19 +39,21 @@ export class LoveClient {
     }
   }
 
-  async record (room: Room): Promise<void> {
+  async record (mm: MeetingMinutes): Promise<void> {
     try {
       const endpoint = this.getLoveEndpoint()
       const token = getPlatformToken()
-      const roomName = this.getTokenRoomName(room)
-      if (lk.isRecording) {
+      if (mm.recordingState === RecordingState.Recording) {
         await fetch(concatLink(endpoint, '/stopRecord'), {
           method: 'POST',
           headers: {
             Authorization: 'Bearer ' + token,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ roomName, room: room.name })
+          body: JSON.stringify({
+            meetingId: mm._id,
+            title: mm.title
+          })
         })
       } else {
         await fetch(concatLink(endpoint, '/startRecord'), {
@@ -59,7 +62,10 @@ export class LoveClient {
             Authorization: 'Bearer ' + token,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ roomName, room: room.name, meetingMinutes: get(currentMeetingMinutes)?._id })
+          body: JSON.stringify({
+            meetingId: mm._id,
+            title: mm.title
+          })
         })
       }
     } catch (err: any) {
@@ -69,7 +75,7 @@ export class LoveClient {
   }
 
   private getLoveEndpoint (): string {
-    const endpoint = getMetadata(love.metadata.ServiceEnpdoint)
+    const endpoint = getMetadata(love.metadata.ServiceEndpoint)
     if (endpoint === undefined) {
       throw new Error('Love service endpoint not found')
     }
@@ -77,8 +83,7 @@ export class LoveClient {
     return endpoint
   }
 
-  private async refreshRoomToken (room: Room): Promise<string> {
-    const sessionName = this.getTokenRoomName(room)
+  private async refreshRoomToken (meetingMinutes: MeetingMinutes): Promise<string> {
     const endpoint = this.getLoveEndpoint()
     if (endpoint === undefined) {
       throw new Error('Love service endpoint not found')
@@ -88,22 +93,50 @@ export class LoveClient {
       throw new Error('Cannot find current person')
     }
     const platformToken = getPlatformToken()
+
+    const place = get(selectedRoomPlace)
+
+    let x: number | undefined
+    let y: number | undefined
+
+    if (meetingMinutes.attachedTo === place?._id && place != null) {
+      x = place.x
+      y = place.y
+    }
+
     const res = await fetch(concatLink(endpoint, '/getToken'), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${platformToken}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ roomName: sessionName, _id: myPerson._id, participantName: myPerson.name })
+      body: JSON.stringify({
+        meetingId: meetingMinutes._id,
+        _id: myPerson._id,
+        participantName: myPerson.name,
+        x,
+        y
+      })
     })
     return await res.text()
   }
 
-  private getTokenRoomName (room: Room): string {
-    const currentWorkspaceUuid = getMetadata(presentation.metadata.WorkspaceUuid)
-    if (currentWorkspaceUuid === undefined) {
-      throw new Error('Current workspace not found')
+  async getGuestToken (mm: MeetingMinutes): Promise<string> {
+    const res = await fetch(concatLink(this.getLoveEndpoint(), '/guestToken'), {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + getPlatformToken(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ meetingId: mm._id })
+    })
+
+    if (!res.ok) {
+      console.error('Failed to create guest token', { status: res.status })
+      return ''
     }
-    return `${currentWorkspaceUuid}_${room.name}_${room._id}`
+
+    const data = await res.json()
+    return data?.token ?? data
   }
 }

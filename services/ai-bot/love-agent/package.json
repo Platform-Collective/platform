@@ -13,14 +13,14 @@
   "type": "module",
   "scripts": {
     "build": "node esbuild.config.js",
-    "docker:build": "../../../common/scripts/docker_build.sh hardcoreeng/love-agent",
-    "docker:push": "../../../common/scripts/docker_tag.sh hardcoreeng/love-agent",
+    "docker:build": "../../../common/scripts/docker_build.sh platformcollective/love-agent",
+    "docker:push": "../../../common/scripts/docker_tag.sh platformcollective/love-agent",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint --fix src/**/*.ts",
     "format": "prettier --write src/**/*.ts && pnpm lint:fix"
   },
   "devDependencies": {
-    "@types/node": "^22.18.1",
+    "@types/node": "^24.13.3",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "esbuild": "^0.25.10",
@@ -38,7 +38,7 @@
     "@livekit/agents": "^0.7.4",
     "@livekit/rtc-node": "^0.13.11",
     "dotenv": "^16.4.5",
-    "ws": "^8.18.2"
+    "ws": "^8.21.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild"]

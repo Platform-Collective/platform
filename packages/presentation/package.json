@@ -63,7 +63,6 @@
     "@hcengineering/theme": "workspace:^0.7.0",
     "@hcengineering/retry": "workspace:^0.7.18",
     "@hcengineering/hulylake-client": "workspace:^0.7.18",
-    "@hcengineering/hulypulse-client": "workspace:^0.7.0",
     "@hcengineering/storage-client": "workspace:^0.7.18",
     "fast-equals": "^5.2.2",
     "png-chunks-extract": "^1.0.0",

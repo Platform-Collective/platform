@@ -7,11 +7,13 @@
   import MicSettingPopup from '../MicSettingPopup.svelte'
 
   export let size: 'large' | 'medium' | 'small' | 'extra-small' | 'min' = 'large'
+  export let checkActions: boolean = true
 
   $: isMicEnabled = $state.microphone?.enabled === true
 
-  const client = getClient()
-  const micKeys = client.getModel().findAllSync(view.class.Action, { _id: love.action.ToggleMic })?.[0]?.keyBinding
+  const micKeys = checkActions
+    ? getClient().getModel().findAllSync(view.class.Action, { _id: love.action.ToggleMic })?.[0]?.keyBinding
+    : ['Alt+D']
 
   function micSettings (e: MouseEvent): void {
     showPopup(MicSettingPopup, {}, eventToHTMLElement(e))

@@ -825,8 +825,21 @@ export class DocumentContentPage extends DocumentCommonPage {
   }
 
   async closeNewMessagePopup (): Promise<void> {
-    await this.textPageHeader.press('Escape', { delay: 300 })
+    const overlay = this.page.locator('div.modal-overlay')
+    // Adding a message can leave one or more popups open, each rendering a modal
+    // overlay that intercepts pointer events for the following actions. Escape
+    // only closes the topmost popup, so keep dismissing until no overlay remains,
+    // otherwise a lingering overlay makes subsequent clicks time out.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      if ((await overlay.count()) === 0) break
+      await this.textPageHeader.press('Escape', { delay: 300 })
+      await overlay
+        .first()
+        .waitFor({ state: 'detached', timeout: 1000 })
+        .catch(() => {})
+    }
     await this.textPageHeader.click({ force: true, delay: 300, position: { x: 1, y: 1 } })
+    await expect(overlay).toHaveCount(0, { timeout: 5000 })
   }
 
   async completeReview (): Promise<void> {

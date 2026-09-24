@@ -4,7 +4,7 @@
   import view from '@hcengineering/view'
   import { createEventDispatcher } from 'svelte'
   import love from '../plugin'
-  import { currentRoom, infos, myInfo, myOffice } from '../stores'
+  import { currentRoom, currentMeetingMinutes, infos, myInfo, myOffice } from '../stores'
   import { liveKitClient } from '../utils'
   import { lkSessionConnected, ScreenSharingState, screenSharingState } from '../liveKitClient'
   import MeetingHeader from './meeting/MeetingHeader.svelte'
@@ -14,8 +14,10 @@
 
   const dispatch = createEventDispatcher()
 
-  $: isMyOffice = $myInfo?.room === $myOffice?._id
-  $: allowLeave = !isMyOffice && $myInfo?.room !== love.ids.Reception
+  // Check if current room is my office using myOffice store (works even when not in a meeting)
+  $: isMyOffice = $currentRoom?._id === $myOffice?._id
+  // Can leave if in a meeting (myInfo exists) and it's not my office or reception
+  $: allowLeave = $myInfo !== undefined && !isMyOffice && $myInfo.room !== love.ids.Reception
 
   let leaving = false
   async function handleLeaveClick (): Promise<void> {
@@ -35,7 +37,7 @@
     await liveKitClient.setScreenShareEnabled(false)
   }
 
-  $: participants = $infos.filter((p) => p.room === $currentRoom?._id)
+  $: participants = $infos.filter((p) => p.meeting === $currentMeetingMinutes?._id)
   $: personByRefStore = getPersonByPersonRefStore(participants.map((p) => p.person))
 </script>
 

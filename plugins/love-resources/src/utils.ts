@@ -3,9 +3,9 @@ import { connectMeeting, disconnectMeeting } from '@hcengineering/ai-bot-resourc
 import { Analytics } from '@hcengineering/analytics'
 import calendar, { type Event, type Schedule } from '@hcengineering/calendar'
 import chunter from '@hcengineering/chunter'
-import { getName } from '@hcengineering/contact'
+import contact, { getName } from '@hcengineering/contact'
+import workbench from '@hcengineering/workbench'
 import core, {
-  AccountRole,
   type Client,
   concatLink,
   type Data,
@@ -16,22 +16,25 @@ import core, {
   type RelatedDocument,
   type Space,
   type TxOperations,
-  type WithLookup
+  type WithLookup,
+  reduceCalls
 } from '@hcengineering/core'
-import login from '@hcengineering/login'
 import {
   isOffice,
   LoveEvents,
   loveId,
-  type Meeting,
+  MeetingStatus,
+  RecordingState,
+  RoomAccess,
+  TranscriptionState,
+  type MeetingEventLink,
   type MeetingMinutes,
   type MeetingSchedule,
   type Room,
   type RoomMetadata,
-  TranscriptionStatus,
-  MeetingStatus
+  type UserMeetingInvite
 } from '@hcengineering/love'
-import { getEmbeddedLabel, getMetadata, getResource, type IntlString } from '@hcengineering/platform'
+import { getEmbeddedLabel, getMetadata, translate, type IntlString } from '@hcengineering/platform'
 import presentation, {
   copyTextToClipboard,
   type DocCreatePhase,
@@ -39,6 +42,7 @@ import presentation, {
   type ObjectSearchResult
 } from '@hcengineering/presentation'
 import { closePanel, getCurrentLocation, navigate, panelstore, showPopup } from '@hcengineering/ui'
+import { getCurrentLanguage } from '@hcengineering/theme'
 import view from '@hcengineering/view'
 import { getObjectLinkFragment } from '@hcengineering/view-resources'
 import { type Widget, type WidgetTab } from '@hcengineering/workbench'
@@ -54,16 +58,15 @@ import {
   RoomEvent,
   Track
 } from 'livekit-client'
-import { get, writable } from 'svelte/store'
+import { derived, get, writable } from 'svelte/store'
 
 import { getPersonByPersonRef } from '@hcengineering/contact-resources'
 import MeetingMinutesSearchItem from './components/MeetingMinutesSearchItem.svelte'
 import RoomSettingsPopup from './components/RoomSettingsPopup.svelte'
 import love from './plugin'
-import { $myPreferences, currentMeetingMinutes, currentRoom } from './stores'
+import { $myPreferences, currentMeetingMinutes } from './stores'
 import { getLiveKitClient } from './liveKitClient'
 import { getLoveClient } from './loveClient'
-import { getClient as getAccountClientRaw } from '@hcengineering/account-client'
 
 export const liveKitClient = getLiveKitClient()
 export const lk: LKRoom = liveKitClient.liveKitRoom
@@ -80,9 +83,20 @@ export const isRecordingAvailable = writable<boolean>(false)
 export const isFullScreen = writable<boolean>(false)
 export const isShareWithSound = writable<boolean>(false)
 
-export const krispProcessor = KrispNoiseFilter()
+// Feature toggle: Krisp is a paid LiveKit add-on that has been failing to
+// authenticate (404). When false, microphone audio uses only the WebRTC
+// echoCancellation/noiseSuppression configured in audioCaptureDefaults.
+const useKrisp = false
+
+export let krispProcessor: ReturnType<typeof KrispNoiseFilter> | undefined = useKrisp ? KrispNoiseFilter() : undefined
 export let blurProcessor: ProcessorWrapper<BackgroundOptions> | undefined
 let localVideo: LocalVideoTrack | undefined
+
+// Kill-switch: after KRISP_MAX_FAILURES consecutive setEnabled failures we stop
+// attempting to enable Krisp for the session. Prevents 404 loops on broken deploys.
+const KRISP_MAX_FAILURES = 3
+let krispFailureCount = 0
+let krispDisabled = false
 
 try {
   blurProcessor = BackgroundBlur()
@@ -90,17 +104,87 @@ try {
   console.log("Can't set blur processor", err)
 }
 
+/**
+ * Internal immediate recreate. Callers that must observe the new krispProcessor
+ * before proceeding should await this directly — reduceCalls-wrapped variants
+ * resolve when the call is scheduled, not when the recreation completes.
+ */
+async function recreateKrispProcessorImmediate (): Promise<void> {
+  if (!useKrisp) return
+  try {
+    // Stop processor on all local audio tracks before recreating
+    // to release AudioContext references and avoid resource leaks
+    for (const publication of lk.localParticipant.trackPublications.values()) {
+      if (publication.track instanceof LocalAudioTrack) {
+        await publication.track.stopProcessor().catch(() => {})
+      }
+    }
+
+    krispProcessor = KrispNoiseFilter()
+    console.log('[utils] Krisp processor recreated')
+  } catch (err: any) {
+    console.error('[utils] Failed to recreate Krisp processor', err)
+  }
+}
+
+/**
+ * Recreate Krisp noise filter processor. Called on reconnect to avoid
+ * InvalidAccessError when old processor holds a stale AudioContext reference.
+ * Stops processor on all local audio tracks before recreating to release resources.
+ * Note: reduceCalls resolves when the call is scheduled, not when finished.
+ * If you need to observe the new instance synchronously, use recreateKrispProcessorImmediate.
+ */
+export const recreateKrispProcessor = reduceCalls(recreateKrispProcessorImmediate)
+
 async function setKrispProcessor (pub: LocalTrackPublication): Promise<void> {
+  if (!useKrisp || krispProcessor === undefined) return
   if (pub.track instanceof LocalAudioTrack) {
     if (!isKrispNoiseFilterSupported()) {
       console.warn('enhanced noise filter is currently not supported on this browser')
       return
     }
+    if (krispDisabled) {
+      // Previous attempts failed repeatedly; don't route audio through Krisp.
+      try {
+        await pub.track.stopProcessor()
+      } catch {}
+      return
+    }
     try {
+      // Stop existing processor to avoid AudioContext conflicts
+      try {
+        await pub.track.stopProcessor()
+      } catch {
+        // Ignore if no processor was set
+      }
       // once instantiated the filter will begin initializing and will download additional resources
       console.log('enabling LiveKit enhanced noise filter')
       await pub.track.setProcessor(krispProcessor)
-      await krispProcessor.setEnabled($myPreferences?.noiseCancellation ?? true)
+      try {
+        await krispProcessor.setEnabled($myPreferences?.noiseCancellation ?? true)
+        krispFailureCount = 0
+      } catch (err: any) {
+        // Krisp failed to initialize (e.g. 404 on model resources). The processor is
+        // attached to the track but not functional — detach it, otherwise outgoing
+        // audio is routed through a dead processor and remote participants hear nothing.
+        krispFailureCount++
+        console.error(
+          `[utils] Krisp setEnabled failed (${krispFailureCount}/${KRISP_MAX_FAILURES}), detaching processor`,
+          err
+        )
+        try {
+          await pub.track.stopProcessor()
+        } catch {}
+        if (krispFailureCount >= KRISP_MAX_FAILURES) {
+          krispDisabled = true
+          console.warn('[utils] Krisp disabled for this session after repeated failures')
+        } else {
+          // Recreate the shared instance so the next attempt does not reuse the broken one.
+          // Use the immediate helper — reduceCalls returns before the recreation finishes.
+          await recreateKrispProcessorImmediate()
+        }
+        Analytics.handleError(err)
+      }
     } catch (err: any) {
       if (err?.message !== 'SDK_ALREADY_INITIALIZED') {
         console.error(err)
@@ -183,36 +267,32 @@ lk.on(RoomEvent.RecordingStatusChanged, (evt) => {
 })
 lk.on(RoomEvent.RoomMetadataChanged, (metadata) => {
   const data = parseMetadata(metadata)
-  if (data.recording !== undefined) {
-    isRecording.set(data.recording)
-  }
-  if (data.transcription !== undefined) {
-    isTranscription.set(data.transcription === TranscriptionStatus.InProgress)
-  }
+  isRecording.set(data.recording ?? false)
+  isTranscription.set(data.transcription ?? false)
 })
 
 lk.on(RoomEvent.Connected, () => {
-  isRecording.set(lk.isRecording)
-  void initRoomMetadata(lk.metadata)
+  const data: RoomMetadata = parseMetadata(lk.metadata)
+  isTranscription.set(data.transcription ?? false)
+  isRecording.set(data.recording ?? false)
   Analytics.handleEvent(LoveEvents.ConnectedToRoom)
 })
-
-async function initRoomMetadata (metadata: string | undefined): Promise<void> {
-  const room = get(currentRoom)
-  const data: RoomMetadata = parseMetadata(metadata)
-
-  isTranscription.set(data.transcription === TranscriptionStatus.InProgress)
-
-  if (
-    (data.transcription == null || data.transcription === TranscriptionStatus.Idle) &&
-    room?.startWithTranscription === true
-  ) {
-    await startTranscription(room)
-  }
-
-  if (get(isRecordingAvailable) && data.recording == null && room?.startWithRecording === true && !get(isRecording)) {
-    await loveClient.record(room)
-  }
+if (useKrisp) {
+  lk.on(RoomEvent.Disconnected, () => {
+    // Recreate Krisp processor on disconnect so that the next connect
+    // does not hit InvalidAccessError due to stale AudioContext references.
+    void recreateKrispProcessor()
+  })
+  lk.on(RoomEvent.Reconnecting, () => {
+    // Recreate Krisp processor on reconnecting to ensure fresh AudioContext
+    // before the connection is re-established.
+    void recreateKrispProcessor()
+  })
+  lk.on(RoomEvent.Reconnected, () => {
+    // Ensure processor is fresh after successful reconnection
+    // as the AudioContext may have changed during reconnect.
+    void recreateKrispProcessor()
+  })
 }
 
 function parseMetadata (metadata: string | undefined): RoomMetadata {
@@ -236,7 +316,6 @@ export function closeMeetingMinutes (): void {
       closePanel()
     }
   }
-  currentMeetingMinutes.set(undefined)
 }
 
 export async function getRoomName (room: Room): Promise<string> {
@@ -267,16 +346,8 @@ export async function navigateToOfficeDoc (object: Doc): Promise<void> {
   navigate(loc)
 }
 
-export async function navigateToMeetingMinutes (room: Room): Promise<void> {
-  const meeting = await getClient().findOne(love.class.MeetingMinutes, {
-    attachedTo: room._id,
-    status: MeetingStatus.Active
-  })
-  if (meeting !== undefined) {
-    await navigateToOfficeDoc(meeting)
-    return
-  }
-  await navigateToOfficeDoc(room)
+export async function navigateToMeetingMinutes (mm: MeetingMinutes): Promise<void> {
+  await navigateToOfficeDoc(mm)
 }
 
 export function calculateFloorSize (_rooms: Room[], _preview?: boolean): number {
@@ -289,7 +360,7 @@ export function calculateFloorSize (_rooms: Room[], _preview?: boolean): number 
 
 async function checkRecordAvailable (): Promise<void> {
   try {
-    const endpoint = getMetadata(love.metadata.ServiceEnpdoint)
+    const endpoint = getMetadata(love.metadata.ServiceEndpoint)
     if (endpoint === undefined) {
       setTimeout(() => {
         void checkRecordAvailable()
@@ -321,18 +392,50 @@ export async function createMeeting (
     const event = await client.findOne(calendar.class.Event, { _id })
     if (event === undefined) return
     const events = await client.findAll(calendar.class.Event, { eventId: event.eventId })
+
+    const meetingId = await client.addCollection(
+      love.class.MeetingMinutes,
+      space._id,
+      store.room,
+      love.class.Room,
+      'meetings',
+      {
+        status: MeetingStatus.Scheduled,
+        access: RoomAccess.Open,
+        language: 'en',
+        description: null,
+        recordingState: RecordingState.NotStarted,
+        transcriptionState: TranscriptionState.NotStarted,
+        title: event.title,
+        startWithRecording: false,
+        startWithTranscription: false,
+        meetingScheduledDate: event.date
+      }
+    )
+
+    const meetingDoc = await client.findOne(love.class.MeetingMinutes, { _id: meetingId })
+    if (meetingDoc === undefined) {
+      throw new Error('Failed to create meeting minutes')
+    }
+
     for (const event of events) {
-      await client.createMixin<Event, Meeting>(event._id, calendar.class.Event, space._id, love.mixin.Meeting, {
-        room: store.room as Ref<Room>
-      })
+      await client.createMixin<Event, MeetingEventLink>(
+        event._id,
+        calendar.class.Event,
+        space._id,
+        love.mixin.MeetingEventLink,
+        {
+          room: store.room as Ref<Room>,
+          meetingId
+        }
+      )
     }
     const navigateUrl = getCurrentLocation()
     navigateUrl.path[2] = loveId
     navigateUrl.query = {
       meetId: _id
     }
-    const func = await getResource(login.function.GetInviteLink)
-    const link = await func(-1, '', -1, AccountRole.Guest, encodeURIComponent(JSON.stringify(navigateUrl)))
+    const link = await getMeetingGuestLink(meetingDoc)
     await client.update(event, { location: link })
   }
 }
@@ -370,6 +473,7 @@ export function getLiveKitEndpoint (): string {
 }
 
 export function getPlatformToken (): string {
+  // TODO: Change to cookie
   const token = getMetadata(presentation.metadata.Token)
   if (token === undefined) {
     throw new Error('Token not found')
@@ -378,18 +482,18 @@ export function getPlatformToken (): string {
   return token
 }
 
-export async function startTranscription (room: Room): Promise<void> {
-  const current = get(currentRoom)
-  if (current === undefined || room._id !== current._id) return
+export async function startTranscription (mm: MeetingMinutes): Promise<void> {
+  const current = get(currentMeetingMinutes)
+  if (current === undefined || mm._id !== current._id) return
 
-  await connectMeeting(room._id, room.language, { transcription: true })
+  await connectMeeting(mm._id, mm.language, { transcription: true })
 }
 
-export async function stopTranscription (room: Room): Promise<void> {
-  const current = get(currentRoom)
-  if (current === undefined || room._id !== current._id) return
+export async function stopTranscription (mm: MeetingMinutes): Promise<void> {
+  const current = get(currentMeetingMinutes)
+  if (current === undefined || mm._id !== current._id) return
 
-  await disconnectMeeting(room._id)
+  await disconnectMeeting(mm._id)
 }
 
 export async function showRoomSettings (room?: Room): Promise<void> {
@@ -398,37 +502,67 @@ export async function showRoomSettings (room?: Room): Promise<void> {
   showPopup(RoomSettingsPopup, { room }, 'top')
 }
 
-export async function copyGuestLink (room?: Room): Promise<void> {
-  if (room === undefined) return
+export async function copyGuestLink (mm: MeetingMinutes): Promise<void> {
+  if (mm === undefined) return
 
-  await copyTextToClipboard(getRoomGuestLink(room))
+  // Pass a Promise so ClipboardItem is created synchronously within the user gesture (Safari)
+  await copyTextToClipboard(getMeetingGuestLink(mm))
 }
 
-async function getRoomGuestLink (room: Room): Promise<string> {
-  const client = getClient()
-  const roomInfo = await client.findOne(love.class.RoomInfo, { room: room._id })
-  if (roomInfo !== undefined) {
+async function getMeetingGuestLink (mm: MeetingMinutes): Promise<string> {
+  const endpoint = getMetadata(love.metadata.ServiceEndpoint)
+  if (endpoint === undefined) {
+    console.error('Love service endpoint is not configured')
+    return ''
+  }
+
+  const platformToken = getMetadata(presentation.metadata.Token)
+  if (platformToken === undefined) {
+    throw new Error('Platform token not found')
+  }
+
+  try {
+    const guestToken = await getLoveClient().getGuestToken(mm)
+
     const navigateUrl = getCurrentLocation()
+    navigateUrl.path = ['meetings']
     navigateUrl.query = {
-      sessionId: roomInfo._id
+      guestToken
     }
 
-    const accountsUrl = getMetadata(login.metadata.AccountsUrl)
-    const token = getMetadata(presentation.metadata.Token)
+    // Build direct guest link (no createAccessLink). Use current front origin to build a full URL.
+    // This simplifies the flow: result link will be like https://front/meetings?meetingId=...&guestToken=...
+    try {
+      const front = getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin
 
-    console.log('Create link')
-    const accountClient = getAccountClientRaw(accountsUrl, token)
-    return await accountClient.createAccessLink(AccountRole.Guest, {
-      navigateUrl: encodeURIComponent(JSON.stringify(navigateUrl))
-    })
+      const query = new URLSearchParams({ guestToken })
+      return concatLink(front, `/meetings?${query.toString()}`)
+    } catch (err: any) {
+      console.error('Failed to create guest link', err)
+      return ''
+    }
+  } catch (err: any) {
+    console.error('Failed to generate guest token', err)
+    return ''
   }
-  return ''
 }
 
 export function isTranscriptionAllowed (): boolean {
   const url = getMetadata(aiBot.metadata.EndpointURL) ?? ''
   return url !== ''
 }
+
+export const videoVisible = derived(sidebarStore, (store) => {
+  const widget = getClient().getModel().findAllSync(workbench.class.Widget, { _id: love.ids.MeetingWidget })[0]
+  if (widget === undefined) return false
+
+  const wstate = store.widgetsState.get(widget._id)
+  if (store.widget !== widget._id) return false
+  if (wstate === undefined) return false
+  if (wstate.tab === 'video') return true
+
+  return false
+})
 
 export function createMeetingWidget (widget: Widget, room: Ref<Room>, video: boolean): void {
   const tabs: WidgetTab[] = [
@@ -493,6 +627,20 @@ export async function getMeetingMinutesTitle (
   const meeting = doc ?? (await client.findOne(love.class.MeetingMinutes, { _id: ref }))
 
   return meeting?.title ?? ''
+}
+
+export async function getUserMeetingInviteTitle (
+  client: TxOperations,
+  ref: Ref<UserMeetingInvite>,
+  doc?: UserMeetingInvite
+): Promise<string> {
+  const invite = doc ?? (await client.findOne(love.class.UserMeetingInvite, { _id: ref }))
+  if (invite === undefined) return ''
+
+  const sender = await client.findOne(contact.class.Person, { _id: invite.from })
+  const senderName = sender?.name ?? ''
+
+  return await translate(love.string.InvitingYou, { name: senderName }, getCurrentLanguage())
 }
 
 export async function queryMeetingMinutes (

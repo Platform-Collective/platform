@@ -33,6 +33,7 @@
   export let element: HTMLElement
   export let adaptiveName: boolean = false
   export let disabled: boolean = false
+  export let grayscale: boolean = false
   export let style: 'modern' | undefined = undefined
   export let clipPath: string | undefined = undefined
 
@@ -73,11 +74,12 @@
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div
     bind:this={element}
-    class="hulyAvatar-container hulyAvatarSize-{size} {variant} {style}"
+    class="hulyAvatar-container hulyAvatarSize-{size} {variant ?? ''} {style ?? ''}"
     class:no-img={!hasImg && color}
     class:bordered={!hasImg && color === undefined}
     class:border={bColor !== undefined}
-    class:withStatus
+    class:withStatus={withStatus ?? false}
+    class:grayscale={grayscale ?? false}
     style:--border-color={bColor ?? 'var(--primary-button-default)'}
     style:background-color={background}
     style:clip-path={clipPath}
@@ -98,11 +100,12 @@
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <div
     bind:this={element}
-    class="hulyAvatar-container hulyAvatarSize-{size} {variant} {style}"
+    class="hulyAvatar-container hulyAvatarSize-{size} {variant ?? ''} {style ?? ''}"
     class:no-img={!hasImg && color}
     class:bordered={!hasImg && color === undefined}
     class:border={bColor !== undefined}
-    class:withStatus
+    class:withStatus={withStatus ?? false}
+    class:grayscale={grayscale ?? false}
     style:--border-color={bColor ?? 'var(--primary-button-default)'}
     style:background-color={background}
     style:clip-path={clipPath}
@@ -118,12 +121,12 @@
       />
     {:else if displayName && displayName !== ''}
       <div
-        class="ava-text"
+        class="hulyAvatarSize-{size} ava-text"
         style:color={disabled ? 'white' : color ? color.iconText : 'var(--primary-button-color)'}
         data-name={displayName.toLocaleUpperCase()}
       />
     {:else}
-      <div class="icon">
+      <div class="hulyAvatarSize-{size} icon">
         <Icon
           icon={icon ?? AvatarIcon}
           fill={color ? 'var(--primary-button-color)' : 'var(--theme-caption-color)'}

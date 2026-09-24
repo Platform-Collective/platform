@@ -73,10 +73,12 @@ async function CopyTextToClipboard (
     props?: Record<string, any>
   }
 ): Promise<void> {
-  const getText = await getResource(props.textProvider)
-  const text = Array.isArray(doc)
-    ? (await Promise.all(doc.map(async (d) => await getText(d, props.props)))).join(',')
-    : await getText(doc, props.props)
+  // Pass a Promise so ClipboardItem is created synchronously within the user gesture (Safari)
+  const text = getResource(props.textProvider).then(async (getText) =>
+    Array.isArray(doc)
+      ? (await Promise.all(doc.map(async (d) => await getText(d, props.props)))).join(',')
+      : await getText(doc, props.props)
+  )
   await copyText(text, 'text/plain')
 }
 
@@ -123,53 +125,17 @@ export async function copyText (text: any, contentType: string = 'text/plain'): 
  * @param metadata - Optional metadata object containing table information (query, config, document IDs, etc.)
  */
 export async function copyMarkdown (markdown: string, metadata?: Record<string, any>): Promise<void> {
-  // Step 1: Always embed metadata in markdown FIRST (if metadata exists)
+  // Browsers reject text/markdown and custom MIME types in ClipboardItem (NotAllowedError),
+  // so metadata is embedded as an HTML comment and everything is copied as text/plain
   let markdownToCopy = markdown
   if (metadata !== undefined) {
     try {
-      const metadataComment = `<!-- huly-table-metadata:${JSON.stringify(metadata)} -->`
-      markdownToCopy = markdown + '\n' + metadataComment
+      markdownToCopy = markdown + '\n' + `<!-- platform-table-metadata:${JSON.stringify(metadata)} -->`
     } catch (e) {
       console.error('Failed to embed metadata in markdown:', e)
-      // Continue with original markdown if embedding fails
     }
   }
-
-  // Step 2: Try modern ClipboardItem API (with custom MIME type for performance)
-  try {
-    if (typeof ClipboardItem !== 'undefined') {
-      const clipboardData: Record<string, any> = {
-        'text/markdown': Promise.resolve(markdownToCopy)
-      }
-      // Add custom MIME type for fast parsing in modern browsers
-      if (metadata !== undefined) {
-        try {
-          clipboardData['application/x-huly-table-metadata'] = Promise.resolve(JSON.stringify(metadata))
-        } catch (e) {
-          console.error('Failed to stringify metadata for custom MIME type:', e)
-        }
-      }
-
-      const clipboardItem = new ClipboardItem(clipboardData)
-      await navigator.clipboard.write([clipboardItem])
-      return // Success, exit early
-    }
-  } catch (error) {
-    console.error('Failed to copy with ClipboardItem, falling back:', error)
-  }
-
-  // Step 3: Fallback to writeText (markdownToCopy already has metadata)
-  try {
-    if (navigator.clipboard != null && typeof navigator.clipboard.writeText === 'function') {
-      await navigator.clipboard.writeText(markdownToCopy)
-      return // Success, exit early
-    }
-  } catch (fallbackError) {
-    console.error('Failed to copy with writeText, using old browser fallback:', fallbackError)
-  }
-
-  // Step 4: Final fallback to old browser method (markdownToCopy already has metadata)
-  copyTextToClipboardOldBrowser(markdownToCopy)
+  await copyText(markdownToCopy, 'text/plain')
 }
 
 function Delete (
@@ -703,15 +669,12 @@ async function CopyDocumentMarkdown (
     return
   }
   if (contentField.type._class === core.class.TypeCollaborativeDoc) {
-    const content = await getMarkup(
+    // Pass a Promise so ClipboardItem is created synchronously within the user gesture (Safari)
+    const content = getMarkup(
       makeDocCollabId(docs[0], props.contentField),
       (docs[0] as any)[props.contentField] as Ref<Blob>
-    )
-    if (content !== null) {
-      const jsonMarkup = markupToJSON(content)
-      const contentJson = markupToMarkdown(jsonMarkup)
-      await copyText(contentJson, 'text/markdown')
-    }
+    ).then((c) => (c !== null ? markupToMarkdown(markupToJSON(c)) : ''))
+    await copyText(content, 'text/plain')
   }
 }
 

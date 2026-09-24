@@ -15,14 +15,8 @@
 
 import { RemoteParticipant, RemoteTrack, RemoteTrackPublication } from '@livekit/rtc-node'
 
-export enum TranscriptionStatus {
-  Idle = 'idle',
-  InProgress = 'inProgress',
-  Completed = 'completed'
-}
-
 export interface Metadata {
-  transcription?: TranscriptionStatus
+  transcription?: boolean
   language?: string
 }
 

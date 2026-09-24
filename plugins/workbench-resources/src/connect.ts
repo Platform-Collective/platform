@@ -12,6 +12,7 @@ import core, {
   isWorkspaceCreating,
   type MeasureMetricsContext,
   metricsToString,
+  platformNow,
   pickPrimarySocialId,
   setCurrentAccount,
   type SocialId,
@@ -105,14 +106,20 @@ export async function connect (title: string): Promise<Client | undefined> {
   const selectWorkspace = await getResource(login.function.SelectWorkspace)
   let workspaceLoginInfo: WorkspaceLoginInfo | undefined
 
+  let connectAttempt = 0
   while (true) {
     const selectResult = await ctx.with('select-workspace', {}, async () => await selectWorkspace(wsUrl, null))
     workspaceLoginInfo = selectResult[1] ?? undefined
     if (!selectResult[2]) {
-      // Connection error happen, wait and retry
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Connection error: exponential backoff capped at 10s to avoid request storm when server is down
+      connectAttempt++
+      const delay = Math.min(500 * 2 ** Math.min(connectAttempt - 1, 5), 10000)
+      await new Promise((resolve) => setTimeout(resolve, delay))
+      // Abort if user navigated away to another workspace while we were waiting
+      if (wsUrl !== getCurrentLocation().path[1]) return
       continue
     }
+    connectAttempt = 0
 
     // OK but unauthorized - we need to login
     if (workspaceLoginInfo == null) {
@@ -211,6 +218,7 @@ export async function connect (title: string): Promise<Client | undefined> {
   }
 
   let tokenChanged = false
+  let lastOnConnectAt = 0
 
   if (_token !== token && _client !== undefined) {
     // We need to flush all data from memory
@@ -362,13 +370,17 @@ export async function connect (title: string): Promise<Client | undefined> {
             if (event === ClientConnectEvent.Connected || event === ClientConnectEvent.Reconnected) {
               setMetadata(presentation.metadata.SessionId, data)
             }
+            const gapMs = lastOnConnectAt === 0 ? 0 : platformNow() - lastOnConnectAt
+            lastOnConnectAt = platformNow()
             if ((_clientSet && event === ClientConnectEvent.Connected) || event === ClientConnectEvent.Refresh) {
+              console.log('[workbench] refreshClient triggered', { event, tokenChanged, gapMs })
               void ctx.with('refresh client', {}, async () => {
-                await refreshClient(tokenChanged)
+                await refreshClient(tokenChanged, gapMs)
                 await refreshCommunicationClient()
               })
               tokenChanged = false
             } else if (event === ClientConnectEvent.Reconnected) {
+              console.log('[workbench] reconnected no-refresh (lastTx unchanged)', { gapMs })
               await refreshCommunicationClient()
             }
 

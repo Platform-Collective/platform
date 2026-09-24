@@ -3,6 +3,7 @@ import aiBot from '@hcengineering/ai-bot'
 import { AccountRole, getCurrentAccount, hasAccountRole } from '@hcengineering/core'
 
 import ControlExt from './components/meeting/ControlExt.svelte'
+import InvitesExt from './components/meeting/invites/InvitesExt.svelte'
 import EditMeetingData from './components/EditMeetingData.svelte'
 import Main from './components/Main.svelte'
 import MeetingData from './components/MeetingData.svelte'
@@ -22,12 +23,17 @@ import MeetingMinutesTable from './components/MeetingMinutesTable.svelte'
 import RoomPresenter from './components/RoomPresenter.svelte'
 import MeetingMinutesDocEditor from './components/MeetingMinutesDocEditor.svelte'
 import MeetingMinutesStatusPresenter from './components/MeetingMinutesStatusPresenter.svelte'
+import MeetingMinutesTranscriptionStatePresenter from './components/MeetingMinutesTranscriptionStatePresenter.svelte'
+import MeetingMinutesRecordingStatePresenter from './components/MeetingMinutesRecordingStatePresenter.svelte'
 import RoomLanguageEditor from './components/RoomLanguageEditor.svelte'
 import MediaPopupItemExt from './components/MediaPopupItemExt.svelte'
 import SharingStateIndicator from './components/SharingStateIndicator.svelte'
+import SpeakingWhileMutedIndicator from './components/meeting/SpeakingWhileMutedIndicator.svelte'
 import MeetingScheduleData from './components/MeetingScheduleData.svelte'
 import EditMeetingScheduleData from './components/EditMeetingScheduleData.svelte'
 import InviteEmployeeButton from './components/meeting/invites/InviteEmployeeButton.svelte'
+import PendingRecordingPresenter from './components/PendingRecordingPresenter.svelte'
+import GuestMeetingApp from './components/guest/GuestMeetingApp.svelte'
 
 import {
   copyGuestLink,
@@ -37,9 +43,23 @@ import {
   startTranscription,
   stopTranscription,
   getMeetingMinutesTitle,
-  queryMeetingMinutes
+  queryMeetingMinutes,
+  getUserMeetingInviteTitle
 } from './utils'
 import { toggleMicState, toggleCamState } from '@hcengineering/media-resources'
+
+function canShowRoomSettings (): boolean | undefined {
+  if (!hasAccountRole(getCurrentAccount(), AccountRole.User)) {
+    return undefined
+  }
+  // For now settings is available only when AI bot is enabled
+  const url = getMetadata(aiBot.metadata.EndpointURL) ?? ''
+  return url !== ''
+}
+
+function canCopyGuestLink (): boolean {
+  return hasAccountRole(getCurrentAccount(), AccountRole.User)
+}
 
 export { setCustomCreateScreenTracks } from './utils'
 
@@ -47,6 +67,7 @@ export default async (): Promise<Resources> => ({
   component: {
     Main,
     ControlExt,
+    InvitesExt,
     Settings,
     WorkbenchExtension,
     SelectScreenSourcePopup,
@@ -65,28 +86,25 @@ export default async (): Promise<Resources> => ({
     RoomPresenter,
     MeetingMinutesDocEditor,
     MeetingMinutesStatusPresenter,
+    MeetingMinutesTranscriptionStatePresenter,
+    MeetingMinutesRecordingStatePresenter,
     RoomLanguageEditor,
     MediaPopupItemExt,
     SharingStateIndicator,
+    SpeakingWhileMutedIndicator,
     MeetingScheduleData,
     EditMeetingScheduleData,
-    InviteEmployeeButton
+    InviteEmployeeButton,
+    PendingRecordingPresenter,
+    GuestMeetingApp
   },
   function: {
     CreateMeeting: createMeeting,
     CreateMeetingSchedule: createMeetingSchedule,
-    CanShowRoomSettings: () => {
-      if (!hasAccountRole(getCurrentAccount(), AccountRole.User)) {
-        return
-      }
-      // For now settings is available only when AI bot is enabled
-      const url = getMetadata(aiBot.metadata.EndpointURL) ?? ''
-      return url !== ''
-    },
-    CanCopyGuestLink: () => {
-      return hasAccountRole(getCurrentAccount(), AccountRole.User)
-    },
-    MeetingMinutesTitleProvider: getMeetingMinutesTitle
+    CanShowRoomSettings: canShowRoomSettings,
+    CanCopyGuestLink: canCopyGuestLink,
+    MeetingMinutesTitleProvider: getMeetingMinutesTitle,
+    UserMeetingInviteTitleProvider: getUserMeetingInviteTitle
   },
   actionImpl: {
     ToggleMic: toggleMicState,

@@ -26,7 +26,7 @@
   import { onDestroy } from 'svelte'
 
   import RoomModal from '../../RoomModal.svelte'
-  import { currentRoom } from '../../../stores'
+  import { currentRoom, roomModalActive } from '../../../stores'
   import MeetingOptionsButton from '../controls/MeetingOptionsButton.svelte'
   import RecordingButton from '../controls/RecordingButton.svelte'
   import TranscriptionButton from '../controls/TranscriptionButton.svelte'
@@ -46,7 +46,7 @@
   ]
 
   function maximize (): void {
-    popup = showPopup(RoomModal, { room }, 'full-centered')
+    popup = showPopup(RoomModal, { room }, 'full-centered', undefined)
   }
 
   onDestroy(() => {
@@ -58,9 +58,9 @@
   <Breadcrumbs items={breadcrumbs} currentOnly />
   <svelte:fragment slot="actions">
     {#if $currentRoom !== undefined}
-      <RoomAccessButton {room} kind="tertiary" size="small" />
-      <RecordingButton {room} kind="tertiary" size="small" />
-      <TranscriptionButton {room} kind="tertiary" size="small" />
+      <!-- <RoomAccessButton {room} kind="tertiary" size="small" /> -->
+      <RecordingButton kind="tertiary" size="small" />
+      <TranscriptionButton kind="tertiary" size="small" />
       <MeetingOptionsButton {room} kind="tertiary" size="small" />
       <ButtonIcon icon={IconMaximize} kind="tertiary" size="small" noPrint on:click={maximize} />
     {/if}

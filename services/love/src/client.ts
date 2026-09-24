@@ -14,10 +14,11 @@
 // limitations under the License.
 //
 
-import { type Client } from '@hcengineering/core'
-import { createClient, getTransactorEndpoint } from '@hcengineering/server-client'
+import { createRestClient, RestClient } from '@hcengineering/api-client'
+import { WorkspaceUuid } from '@hcengineering/core'
+import { getTransactorEndpoint } from '@hcengineering/server-client'
 
-export async function getClient (token: string): Promise<Client> {
+export async function getClient (token: string, workspaceId: WorkspaceUuid): Promise<RestClient> {
   const endpoint = await getTransactorEndpoint(token)
-  return await createClient(endpoint, token)
+  return createRestClient(endpoint, workspaceId, token)
 }

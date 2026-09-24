@@ -7,7 +7,7 @@
   import chunter, { ThreadMessage } from '@hcengineering/chunter'
   import { getResource } from '@hcengineering/platform'
   import activity, { ActivityMessage } from '@hcengineering/activity'
-  import { getClient, playSound } from '@hcengineering/presentation'
+  import { getClient, playThrottledSound } from '@hcengineering/presentation'
   import { pushAvailable, subscribePush } from '../utils'
   import plugin from '../plugin'
   import { onMount } from 'svelte'
@@ -64,9 +64,9 @@
     await fn(_id, _class, undefined, thread, true, selectedMessageId)
   }
 
-  onMount(async () => {
+  onMount(() => {
     if (!value.soundAlert) return
-    await playSound(plugin.sound.InboxNotification)
+    playThrottledSound(plugin.sound.InboxNotification)
   })
 </script>
 

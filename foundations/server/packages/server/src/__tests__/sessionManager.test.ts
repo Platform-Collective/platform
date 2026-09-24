@@ -761,16 +761,6 @@ describe('TSessionManager', () => {
 
       expect(sessionManager.ticks).toBe(initialTicks + 1)
     })
-
-    it('should update now timestamp', () => {
-      const beforeNow = sessionManager.now
-
-      // Wait a bit to ensure time passes
-      setTimeout(() => {
-        sessionManager.handleTick()
-        expect(sessionManager.now).toBeGreaterThanOrEqual(beforeNow)
-      }, 10)
-    })
   })
 
   describe('createSession', () => {

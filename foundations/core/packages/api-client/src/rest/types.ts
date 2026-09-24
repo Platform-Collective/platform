@@ -15,22 +15,35 @@
 
 import {
   type Account,
+  type AttachedData,
+  type AttachedDoc,
   type Class,
+  type Data,
   type Doc,
+  type DocumentUpdate,
   type DocumentQuery,
   type DomainParams,
   type DomainRequestOptions,
   type DomainResult,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FulltextStorage,
   type Hierarchy,
+  type IterateOptions,
+  type Mixin,
+  type MixinData,
+  type MixinUpdate,
   type ModelDb,
   type OperationDomain,
   type PersonId,
   type PersonUuid,
   type Ref,
   type SocialIdType,
+  type Space,
   type Storage,
+  type Timestamp,
+  type TxResult,
   type WithLookup
 } from '@hcengineering/core'
 
@@ -42,6 +55,18 @@ export interface RestClient extends Storage, FulltextStorage {
     query: DocumentQuery<T>,
     options?: FindOptions<T>
   ) => Promise<WithLookup<T> | undefined>
+
+  findAllPage: <T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ) => Promise<FindPageResult<T>>
+
+  iterateAll: <T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ) => AsyncIterable<WithLookup<T>>
 
   getModel: () => Promise<{ hierarchy: Hierarchy, model: ModelDb }>
 
@@ -55,6 +80,62 @@ export interface RestClient extends Storage, FulltextStorage {
     socialType: SocialIdType,
     socialValue: string,
     firstName: string,
-    lastName: string
+    lastName: string,
+    options?: EnsurePersonOptions
   ) => Promise<{ uuid: PersonUuid, socialId: PersonId, localPerson: string }>
+
+  createDoc: <T extends Doc>(
+    _class: Ref<Class<T>>,
+    space: Ref<Space>,
+    attributes: Data<T>,
+    id?: Ref<T>,
+    modifiedOn?: Timestamp,
+    modifiedBy?: PersonId
+  ) => Promise<Ref<T>>
+
+  addCollection: <T extends Doc, P extends AttachedDoc>(
+    _class: Ref<Class<P>>,
+    space: Ref<Space>,
+    attachedTo: Ref<T>,
+    attachedToClass: Ref<Class<T>>,
+    collection: Extract<keyof T, string> | string,
+    attributes: AttachedData<P>,
+    id?: Ref<P>,
+    modifiedOn?: Timestamp,
+    modifiedBy?: PersonId
+  ) => Promise<Ref<P>>
+
+  update: <T extends Doc>(
+    doc: T,
+    update: DocumentUpdate<T>,
+    retrieve?: boolean,
+    modifiedOn?: Timestamp,
+    modifiedBy?: PersonId
+  ) => Promise<TxResult>
+
+  remove: <T extends Doc>(doc: T, modifiedOn?: Timestamp, modifiedBy?: PersonId) => Promise<TxResult>
+
+  createMixin: <D extends Doc, M extends D>(
+    objectId: Ref<D>,
+    objectClass: Ref<Class<D>>,
+    objectSpace: Ref<Space>,
+    mixin: Ref<Mixin<M>>,
+    attributes: MixinData<D, M>,
+    modifiedOn?: Timestamp,
+    modifiedBy?: PersonId
+  ) => Promise<TxResult>
+
+  updateMixin: <D extends Doc, M extends D>(
+    objectId: Ref<D>,
+    objectClass: Ref<Class<D>>,
+    objectSpace: Ref<Space>,
+    mixin: Ref<Mixin<M>>,
+    attributes: MixinUpdate<D, M>,
+    modifiedOn?: Timestamp,
+    modifiedBy?: PersonId
+  ) => Promise<TxResult>
+}
+
+export interface EnsurePersonOptions {
+  addGuestEmployee?: boolean
 }

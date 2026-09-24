@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+import { type Client, type Doc, type Ref } from '@hcengineering/core'
 import love, { loveId } from '@hcengineering/love'
 import { mergeIds, type IntlString, type Resource } from '@hcengineering/platform'
 import { type DocCreateFunction } from '@hcengineering/presentation/src/types'
@@ -22,6 +23,7 @@ import { type ViewActionAvailabilityFunction } from '@hcengineering/view'
 export default mergeIds(loveId, love, {
   component: {
     ControlExt: '' as AnyComponent,
+    InvitesExt: '' as AnyComponent,
     MeetingData: '' as AnyComponent,
     EditMeetingData: '' as AnyComponent,
     MeetingMinutesPresenter: '' as AnyComponent,
@@ -34,36 +36,45 @@ export default mergeIds(loveId, love, {
     FloorView: '' as AnyComponent,
     MeetingMinutesDocEditor: '' as AnyComponent,
     MeetingMinutesStatusPresenter: '' as AnyComponent,
+    MeetingMinutesTranscriptionStatePresenter: '' as AnyComponent,
+    MeetingMinutesRecordingStatePresenter: '' as AnyComponent,
+    RoomLanguageEditor: '' as AnyComponent,
+    MediaPopupItemExt: '' as AnyComponent,
+    SharingStateIndicator: '' as AnyComponent,
+    SpeakingWhileMutedIndicator: '' as AnyComponent,
     MeetingScheduleData: '' as AnyComponent,
-    EditMeetingScheduleData: '' as AnyComponent
+    EditMeetingScheduleData: '' as AnyComponent,
+    InviteEmployeeButton: '' as AnyComponent,
+    PendingRecordingPresenter: '' as AnyComponent
   },
   function: {
     CreateMeeting: '' as Resource<DocCreateFunction>,
     CreateMeetingSchedule: '' as Resource<DocCreateFunction>,
     CanShowRoomSettings: '' as Resource<ViewActionAvailabilityFunction>,
-    CanCopyGuestLink: '' as Resource<ViewActionAvailabilityFunction>
+    CanCopyGuestLink: '' as Resource<ViewActionAvailabilityFunction>,
+    MeetingMinutesTitleProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,
+    UserMeetingInviteTitleProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>
   },
   string: {
     CreateMeeting: '' as IntlString,
     LeaveRoom: '' as IntlString,
+    AcceptRecording: '' as IntlString,
     LeaveRoomConfirmation: '' as IntlString,
     Mute: '' as IntlString,
     UnMute: '' as IntlString,
     Share: '' as IntlString,
     StopShare: '' as IntlString,
     StartVideo: '' as IntlString,
+    ShowVideo: '' as IntlString,
     StopVideo: '' as IntlString,
     Floors: '' as IntlString,
     Floor: '' as IntlString,
     EditOffice: '' as IntlString,
     FinalizeEditing: '' as IntlString,
     ChangeFloor: '' as IntlString,
-    Accept: '' as IntlString,
-    Decline: '' as IntlString,
     ChangeAccess: '' as IntlString,
     AddAFloor: '' as IntlString,
     RenameAFloor: '' as IntlString,
-    KnockingTo: '' as IntlString,
     Cancel: '' as IntlString,
     EnterRoom: '' as IntlString,
     Configure: '' as IntlString,
@@ -78,7 +89,7 @@ export default mergeIds(loveId, love, {
     DefaultDevice: '' as IntlString,
     StartWithMutedMic: '' as IntlString,
     StartWithoutVideo: '' as IntlString,
-    YouInivite: '' as IntlString,
+    YouInvite: '' as IntlString,
     NoiseCancellation: '' as IntlString,
     NoiseCancellationNotSupported: '' as IntlString,
     Blur: '' as IntlString,
@@ -92,7 +103,6 @@ export default mergeIds(loveId, love, {
     FullscreenMode: '' as IntlString,
     ExitingFullscreenMode: '' as IntlString,
     Invite: '' as IntlString,
-    KnockAction: '' as IntlString,
     Select: '' as IntlString,
     ChooseShare: '' as IntlString,
     MoreOptions: '' as IntlString,
@@ -107,6 +117,18 @@ export default mergeIds(loveId, love, {
     Window: '' as IntlString,
     MeetingEmptyTitle: '' as IntlString,
     MeetingEmptyMessage: '' as IntlString,
-    StayInRoom: '' as IntlString
+    InvalidOrExpiredLink: '' as IntlString,
+    CheckingLink: '' as IntlString,
+    PreparingGuestConnection: '' as IntlString,
+    GuestJoin: '' as IntlString,
+    StartOptions: '' as IntlString,
+    Error: '' as IntlString,
+    StayInRoom: '' as IntlString,
+    From: '' as IntlString,
+    To: '' as IntlString,
+    ExpiresAt: '' as IntlString,
+    Organizators: '' as IntlString,
+    SpeakingWhileMuted: '' as IntlString,
+    SpeakingWhileMutedAlert: '' as IntlString
   }
 })

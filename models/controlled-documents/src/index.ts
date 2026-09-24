@@ -66,6 +66,7 @@ import {
   TDocumentSpaceTypeDescriptor,
   TDocumentTemplate,
   TDocumentTraining,
+  TDocumentAttachment,
   TExternalSpace,
   THierarchyDocument,
   TOrgSpace,
@@ -128,6 +129,7 @@ export function createModel (builder: Builder): void {
     THierarchyDocument,
     TDocumentTemplate,
     TDocumentTraining,
+    TDocumentAttachment,
     TDocumentCategory,
     TControlledDocument,
     TChangeControl,
@@ -469,6 +471,10 @@ export function createModel (builder: Builder): void {
 
   builder.mixin(documents.class.DocumentMeta, core.class.Class, view.mixin.ObjectTitle, {
     titleProvider: documents.function.DocumentMetaTitleProvider
+  })
+
+  builder.mixin(documents.class.DocumentMeta, core.class.Class, view.mixin.ReferenceVersionsProvider, {
+    provider: documents.function.DocumentMetaReferenceVersionsProvider
   })
 
   builder.mixin(documents.class.DocumentMeta, core.class.Class, view.mixin.LinkProvider, {

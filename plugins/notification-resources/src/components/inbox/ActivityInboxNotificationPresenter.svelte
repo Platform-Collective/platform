@@ -29,6 +29,7 @@
   import { Action, Component } from '@hcengineering/ui'
   import { getActions } from '@hcengineering/view-resources'
   import { getResource } from '@hcengineering/platform'
+  import { Analytics } from '@hcengineering/analytics'
 
   export let object: Doc | undefined
   export let value: DisplayActivityInboxNotification
@@ -80,10 +81,14 @@
     }
 
     for (const v of viewlets) {
-      const matched = matchViewlet(v, message)
-      if (matched) {
-        viewlet = v
-        return
+      try {
+        const matched = matchViewlet(v, message)
+        if (matched) {
+          viewlet = v
+          return
+        }
+      } catch (err: any) {
+        Analytics.handleError(err)
       }
     }
 

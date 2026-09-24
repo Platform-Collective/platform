@@ -38,7 +38,7 @@ import love, {
   ParticipantInfo,
   Room,
   RoomLanguage,
-  TranscriptionStatus
+  TranscriptionState
 } from '@hcengineering/love'
 import { jsonToMarkup, MarkupNodeType } from '@hcengineering/text'
 
@@ -133,15 +133,15 @@ export class LoveController {
   }
 
   async connect (request: ConnectMeetingRequest): Promise<void> {
-    const room = await this.getRoom(request.roomId)
+    const meeting = await this.client.findOne(love.class.MeetingMinutes, { _id: request.meetingId })
+    const room = meeting !== undefined ? await this.getRoom(meeting.attachedTo as Ref<Room>) : undefined
 
     if (room === undefined) {
       this.ctx.error('Room not found', request)
-      this.connectedRooms.delete(request.roomId)
       return
     }
 
-    this.connectedRooms.add(request.roomId)
+    this.connectedRooms.add(room._id)
 
     this.ctx.info('Connecting', { room: room.name, roomId: room._id })
 
@@ -149,12 +149,18 @@ export class LoveController {
       await this.requestTranscription(room, request.language)
     }
 
-    await this.createAiParticipant(room)
+    await this.createAiParticipant(room, request.meetingId)
   }
 
   async requestTranscription (room: Room, language: RoomLanguage): Promise<void> {
     const roomTokenName = getTokenRoomName(this.workspace, room.name, room._id)
     await startTranscription(this.token, roomTokenName, room.name, language)
+  }
+
+  async disconnectMeeting (meetingId: Ref<MeetingMinutes>): Promise<void> {
+    const meeting = await this.client.findOne(love.class.MeetingMinutes, { _id: meetingId })
+    if (meeting === undefined) return
+    await this.disconnect(meeting.attachedTo as Ref<Room>)
   }
 
   async disconnect (roomId: Ref<Room>): Promise<void> {
@@ -258,7 +264,7 @@ export class LoveController {
     return doc
   }
 
-  async createAiParticipant (room: Room): Promise<Ref<ParticipantInfo>> {
+  async createAiParticipant (room: Room, meeting: Ref<MeetingMinutes>): Promise<Ref<ParticipantInfo>> {
     const participants = await this.client.findAll(love.class.ParticipantInfo, { room: room._id })
     const currentInfo = participants.find((p) => p.person === this.currentPerson._id)
 
@@ -269,9 +275,11 @@ export class LoveController {
     const y: number = place.y
 
     return await this.client.createDoc(love.class.ParticipantInfo, core.space.Workspace, {
+      kind: 'agent',
       x,
       y,
       room: room._id,
+      meeting,
       person: this.currentPerson._id,
       name: this.currentPerson.name,
       account: (this.currentPerson.personUuid as AccountUuid) ?? null,
@@ -319,7 +327,7 @@ async function startTranscription (
         roomName: roomTokenName,
         room: roomName,
         language,
-        transcription: TranscriptionStatus.InProgress
+        transcription: TranscriptionState.Transcribing
       })
     })
     return res.ok
@@ -338,7 +346,7 @@ async function stopTranscription (token: string, roomTokenName: string, roomName
         Authorization: 'Bearer ' + token,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ roomName: roomTokenName, room: roomName, transcription: TranscriptionStatus.Idle })
+      body: JSON.stringify({ roomName: roomTokenName, room: roomName, transcription: TranscriptionState.NotStarted })
     })
     return res.ok
   } catch (err: any) {

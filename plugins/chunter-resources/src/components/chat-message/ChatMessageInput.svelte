@@ -110,7 +110,7 @@
     if (!withTypingInfo) return
 
     throttle.call(() => {
-      void setTyping(acc.primarySocialId, object._id)
+      void setTyping(acc.primarySocialId, object._id, object.space)
     })
   }
 

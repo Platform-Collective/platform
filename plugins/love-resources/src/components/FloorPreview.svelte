@@ -22,21 +22,21 @@
     IconDelete,
     IconEdit,
     IconMoreH,
-    IconSettings,
     Label,
     SelectPopup,
     eventToHTMLElement,
     showPopup,
     type SelectPopupValueType
   } from '@hcengineering/ui'
-  import { Floor, ParticipantInfo, Room } from '@hcengineering/love'
-  import { createEventDispatcher } from 'svelte'
+  import love, { Floor, isOffice, Office, ParticipantInfo, Room } from '@hcengineering/love'
+  import { createEventDispatcher, onMount } from 'svelte'
   import plugin from '../plugin'
   import { infos } from '../stores'
   import { calculateFloorSize } from '../utils'
   import EditFloorPopup from './EditFloorPopup.svelte'
   import FloorGrid from './FloorGrid.svelte'
   import RoomPreview from './RoomPreview.svelte'
+  import { loadUsersStatus } from '@hcengineering/contact-resources'
 
   export let floor: Floor
   export let configurable: boolean = false
@@ -91,9 +91,15 @@
       if (result === 'configure') {
         dispatch('configure', floor)
         pressed = false
-      } else if (result === 'rename') renameFloor()
+      } else if (result === 'rename') {
+        renameFloor()
+      }
     })
   }
+
+  onMount(() => {
+    loadUsersStatus()
+  })
 </script>
 
 <AccordionItem

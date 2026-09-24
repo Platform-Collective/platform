@@ -4,12 +4,13 @@
  */
 {
   "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/command-line.schema.json",
-
   "phases": [
     {
       "name": "_phase:build",
       "dependencies": {
-        "upstream": ["_phase:build"]
+        "upstream": [
+          "_phase:build"
+        ]
       },
       "ignoreMissingScript": true,
       "allowWarningsOnSuccess": false
@@ -17,8 +18,13 @@
     {
       "name": "_phase:validate",
       "dependencies": {
-        "self": ["_phase:build"],
-        "upstream": ["_phase:validate", "_phase:build"]
+        "self": [
+          "_phase:build"
+        ],
+        "upstream": [
+          "_phase:validate",
+          "_phase:build"
+        ]
       },
       "ignoreMissingScript": true,
       "allowWarningsOnSuccess": false
@@ -26,8 +32,12 @@
     {
       "name": "_phase:test",
       "dependencies": {
-        "self": ["_phase:build"],
-        "upstream": ["_phase:validate"]
+        "self": [
+          "_phase:build"
+        ],
+        "upstream": [
+          "_phase:validate"
+        ]
       },
       "ignoreMissingScript": true,
       "allowWarningsOnSuccess": true
@@ -35,7 +45,9 @@
     {
       "name": "_phase:lint",
       "dependencies": {
-        "self": ["_phase:build"]
+        "self": [
+          "_phase:build"
+        ]
       },
       "ignoreMissingScript": true,
       "allowWarningsOnSuccess": false
@@ -43,7 +55,9 @@
     {
       "name": "_phase:bundle",
       "dependencies": {
-        "self": ["_phase:build"]
+        "self": [
+          "_phase:build"
+        ]
       },
       "ignoreMissingScript": true,
       "allowWarningsOnSuccess": false
@@ -51,7 +65,9 @@
     {
       "name": "_phase:format",
       "dependencies": {
-        "self": ["_phase:build"]
+        "self": [
+          "_phase:build"
+        ]
       },
       "ignoreMissingScript": true,
       "allowWarningsOnSuccess": false
@@ -59,7 +75,9 @@
     {
       "name": "_phase:svelte-check",
       "dependencies": {
-        "self": ["_phase:build"]
+        "self": [
+          "_phase:build"
+        ]
       },
       "ignoreMissingScript": true,
       "allowWarningsOnSuccess": true
@@ -67,8 +85,12 @@
     {
       "name": "_phase:package",
       "dependencies": {
-        "self": ["_phase:build"],
-        "upstream": ["_phase:package"]
+        "self": [
+          "_phase:build"
+        ],
+        "upstream": [
+          "_phase:package"
+        ]
       },
       "ignoreMissingScript": true,
       "allowWarningsOnSuccess": false
@@ -76,8 +98,16 @@
     {
       "name": "_phase:docker-build",
       "dependencies": {
-        "self": ["_phase:build", "_phase:package", "_phase:bundle"],
-        "upstream": ["_phase:build", "_phase:bundle", "_phase:package"]
+        "self": [
+          "_phase:build",
+          "_phase:package",
+          "_phase:bundle"
+        ],
+        "upstream": [
+          "_phase:build",
+          "_phase:bundle",
+          "_phase:package"
+        ]
       },
       "ignoreMissingScript": true,
       "allowWarningsOnSuccess": true
@@ -85,7 +115,11 @@
     {
       "name": "_phase:docker-staging",
       "dependencies": {
-        "self": ["_phase:build", "_phase:package", "_phase:bundle"]
+        "self": [
+          "_phase:build",
+          "_phase:package",
+          "_phase:bundle"
+        ]
       },
       "ignoreMissingScript": true,
       "allowWarningsOnSuccess": true
@@ -115,21 +149,30 @@
       "commandKind": "phased",
       "name": "build:watch",
       "summary": "Build and watch",
-      "phases": ["_phase:build", "_phase:validate"],
+      "phases": [
+        "_phase:build",
+        "_phase:validate"
+      ],
       "description": "Perform build with tsc and watch for changes with rush",
       "enableParallelism": true,
       "incremental": true,
       "safeForSimultaneousRushProcesses": true,
       "watchOptions": {
         "alwaysWatch": true,
-        "watchPhases": ["_phase:build", "_phase:validate"]
+        "watchPhases": [
+          "_phase:build",
+          "_phase:validate"
+        ]
       }
     },
     {
       "summary": "svelte-check",
       "commandKind": "phased",
       "name": "svelte-check",
-      "phases": ["_phase:build", "_phase:svelte-check"],
+      "phases": [
+        "_phase:build",
+        "_phase:svelte-check"
+      ],
       "enableParallelism": true,
       "incremental": true
     },
@@ -137,18 +180,24 @@
       "commandKind": "phased",
       "name": "build",
       "summary": "build",
-      "phases": ["_phase:build"],
+      "phases": [
+        "_phase:build"
+      ],
       "enableParallelism": true,
       "incremental": true,
       "watchOptions": {
         "alwaysWatch": false,
-        "watchPhases": ["_phase:build"]
+        "watchPhases": [
+          "_phase:build"
+        ]
       }
     },
     {
       "commandKind": "phased",
       "name": "validate",
-      "phases": ["_phase:validate"],
+      "phases": [
+        "_phase:validate"
+      ],
       "summary": "validate",
       "enableParallelism": true,
       "incremental": true
@@ -157,14 +206,18 @@
       "commandKind": "phased",
       "name": "rebuild",
       "summary": "ReBuild and test all projects.",
-      "phases": ["_phase:build"],
+      "phases": [
+        "_phase:build"
+      ],
       "enableParallelism": true,
       "incremental": false
     },
     {
       "commandKind": "phased",
       "name": "dorevalidate",
-      "phases": ["_phase:validate"],
+      "phases": [
+        "_phase:validate"
+      ],
       "summary": "dorevalidate",
       "enableParallelism": true,
       "incremental": false
@@ -173,7 +226,10 @@
       "commandKind": "phased",
       "summary": "Do testing",
       "name": "test",
-      "phases": ["_phase:build", "_phase:test"],
+      "phases": [
+        "_phase:build",
+        "_phase:test"
+      ],
       "enableParallelism": true,
       "incremental": true
     },
@@ -181,16 +237,21 @@
       "commandKind": "phased",
       "name": "retest",
       "summary": "Build and test all projects.",
-      "phases": ["_phase:build", "_phase:test"],
+      "phases": [
+        "_phase:build",
+        "_phase:test"
+      ],
       "enableParallelism": true,
       "incremental": false
     },
-
     {
       "commandKind": "phased",
       "summary": "Do bundle",
       "name": "bundle",
-      "phases": ["_phase:build", "_phase:bundle"],
+      "phases": [
+        "_phase:build",
+        "_phase:bundle"
+      ],
       "enableParallelism": true,
       "incremental": true
     },
@@ -198,16 +259,23 @@
       "commandKind": "phased",
       "summary": "Do packaging",
       "name": "package",
-      "phases": ["_phase:build", "_phase:package"],
+      "phases": [
+        "_phase:build",
+        "_phase:package"
+      ],
       "enableParallelism": true,
       "incremental": true
     },
-
     {
       "summary": "docker:build",
       "commandKind": "phased",
       "name": "docker:build",
-      "phases": ["_phase:build", "_phase:bundle", "_phase:package", "_phase:docker-build"],
+      "phases": [
+        "_phase:build",
+        "_phase:bundle",
+        "_phase:package",
+        "_phase:docker-build"
+      ],
       "enableParallelism": true,
       "incremental": true
     },
@@ -215,7 +283,12 @@
       "summary": "docker:rebuild",
       "commandKind": "phased",
       "name": "docker:rebuild",
-      "phases": ["_phase:build", "_phase:bundle", "_phase:package", "_phase:docker-build"],
+      "phases": [
+        "_phase:build",
+        "_phase:bundle",
+        "_phase:package",
+        "_phase:docker-build"
+      ],
       "enableParallelism": true,
       "incremental": false
     },
@@ -223,7 +296,12 @@
       "summary": "docker:staging",
       "commandKind": "phased",
       "name": "docker:staging",
-      "phases": ["_phase:build", "_phase:bundle", "_phase:package", "_phase:docker-staging"],
+      "phases": [
+        "_phase:build",
+        "_phase:bundle",
+        "_phase:package",
+        "_phase:docker-staging"
+      ],
       "enableParallelism": true,
       "incremental": true
     },
@@ -294,6 +372,14 @@
       "description": "Start minified docker compose (docker-compose.yaml + docker-compose.min.yaml) for resource-constrained machines",
       "safeForSimultaneousRushProcesses": true,
       "shellCommand": "cd ./dev && docker compose -f docker-compose.yaml -f docker-compose.min.yaml up -d --force-recreate"
+    },
+    {
+      "commandKind": "global",
+      "name": "docker:up:ext",
+      "summary": "Up extended development stack with billing + payment",
+      "description": "Start extended docker compose (docker-compose.yaml + docker-compose.ext.yaml) with the optional billing and payment services enabled. Required env: STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_SUBSCRIPTION_PLANS (or POLAR_* equivalents).",
+      "safeForSimultaneousRushProcesses": true,
+      "shellCommand": "cd ./dev && docker compose -f docker-compose.yaml -f docker-compose.ext.yaml up -d --force-recreate"
     },
     {
       "commandKind": "global",
@@ -405,7 +491,6 @@
       "shellCommand": "./common/scripts/node_modules/.bin/update-deps"
     }
   ],
-
   /**
    * Custom "parameters" introduce new parameters for specified Rush command-line commands.
    * For example, you might define a "--production" parameter for the "rush build" command.
@@ -416,20 +501,28 @@
       "longName": "--lite",
       "shortName": "-l",
       "description": "Enable Heft lite building option, will skip some phases.",
-      "associatedCommands": ["build", "rebuild"]
+      "associatedCommands": [
+        "build",
+        "rebuild"
+      ]
     },
     {
       "parameterKind": "flag",
       "longName": "--clean",
       "description": "Enable Heft clean building option",
-      "associatedCommands": ["build", "rebuild"]
+      "associatedCommands": [
+        "build",
+        "rebuild"
+      ]
     },
     {
       "parameterKind": "flag",
       "longName": "--force",
       "shortName": "-f",
       "description": "Force formatting",
-      "associatedCommands": ["format"]
+      "associatedCommands": [
+        "format"
+      ]
     },
     {
       "parameterKind": "string",
@@ -439,7 +532,9 @@
       "shortName": "-b",
       "longName": "--branch",
       "description": "Force formatting of branch",
-      "associatedCommands": ["fast-format"]
+      "associatedCommands": [
+        "fast-format"
+      ]
     },
     {
       "parameterKind": "string",

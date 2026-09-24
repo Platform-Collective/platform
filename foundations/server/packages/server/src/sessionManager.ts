@@ -126,8 +126,6 @@ export class TSessionManager implements SessionManager {
   usersProducer: PlatformQueueProducer<QueueUserMessage>
   workspaceConsumer: ConsumerHandle
 
-  now: number = Date.now()
-
   ticksContext: MeasureContext
 
   hungSessionsWarnPercent = parseInt(process.env.HUNG_SESSIONS_WARN_PERCENT ?? '25')
@@ -766,7 +764,7 @@ export class TSessionManager implements SessionManager {
             this.workspaceInfoCache.delete(token.workspace)
           }
 
-          if (wsInfo.passwordAgingRule !== undefined && wsInfo.passwordAgingRule > 0) {
+          if (wsInfo.passwordAgingRule != null && wsInfo.passwordAgingRule > 0) {
             const isPasswordAgingOk = await this.checkPasswordAging(ctx, rawToken)
             if (!isPasswordAgingOk) {
               return { error: new Status(Severity.ERROR, platform.status.PasswordExpired, {}), terminate: true }
@@ -1111,7 +1109,7 @@ export class TSessionManager implements SessionManager {
         user: sessionRef.session.getSocialIds().find((it) => it.type !== SocialIdType.HULY)?.value,
         binary: sessionRef.session.binaryMode,
         compression: sessionRef.session.useCompression,
-        totalTime: this.now - sessionRef.session.createTime,
+        totalTime: Date.now() - sessionRef.session.createTime,
         workspaceUsers: workspace?.sessions?.size,
         totalUsers: this.sessions.size
       })
@@ -1318,7 +1316,6 @@ export class TSessionManager implements SessionManager {
           id: reqId,
           result: msg,
           time: platformNowDiff(st),
-          bfst: this.now,
           queue: service.requests.size,
           rateLimit
         }),
@@ -1333,7 +1330,6 @@ export class TSessionManager implements SessionManager {
           error,
           time: platformNowDiff(st),
           rateLimit,
-          bfst: this.now,
           queue: service.requests.size
         })
     }

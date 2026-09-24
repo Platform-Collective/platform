@@ -204,7 +204,7 @@
           if (isOffice(room) && rX === 0 && rY === 0) e.stopPropagation()
         }}
       >
-        {#if isOffice(room) && rX === 0 && rY === 0 && !room.person}
+        {#if isOffice(room) && rX === 0 && rY === 0}
           <AssigneeBox
             _class={contact.class.Person}
             excluded={excludedPersons}
@@ -215,6 +215,7 @@
             label={contact.string.Person}
             value={room.person}
             avatarSize={'full'}
+            allowDeselect={true}
             on:change={changePerson}
           />
         {/if}
@@ -241,3 +242,13 @@
     {/if}
   </div>
 </div>
+
+<style lang="scss">
+  .floorGrid-configureRoom__field :global(.employee-presenter),
+  .floorGrid-configureRoom__field :global(.employee-presenter .antiPresenter),
+  .floorGrid-configureRoom__field :global(.employee-presenter .ap-icon) {
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+  }
+</style>

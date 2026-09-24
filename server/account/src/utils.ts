@@ -29,6 +29,7 @@ import {
   SocialIdType,
   type SocialKey,
   systemAccountUuid,
+  type WorkspaceConfiguration,
   type WorkspaceDataId,
   type WorkspaceInfoWithStatus as WorkspaceInfoWithStatusCore,
   type WorkspaceMode,
@@ -42,7 +43,13 @@ import otpGenerator from 'otp-generator'
 import { authenticator } from 'otplib'
 
 import { Analytics } from '@hcengineering/analytics'
-import { decodeTokenVerbose, generateToken, type PermissionsGrant, TokenError } from '@hcengineering/server-token'
+import {
+  decodeToken,
+  decodeTokenVerbose,
+  generateToken,
+  type PermissionsGrant,
+  TokenError
+} from '@hcengineering/server-token'
 import { MongoAccountDB } from './collections/mongo'
 import { PostgresAccountDB } from './collections/postgres/postgres'
 import { accountPlugin } from './plugin'
@@ -182,6 +189,26 @@ export function wrap (
     token?: string,
     meta?: Meta
   ): Promise<any> {
+    // The account is the source of truth for API token validity. Reject revoked
+    // or expired API tokens up front so every method (and any service that
+    // delegates token verification here) sees a consistent answer.
+    if (token != null && token !== '') {
+      const decoded = (() => {
+        try {
+          return decodeToken(token)
+        } catch {
+          return undefined
+        }
+      })()
+      const apiTokenId = decoded?.extra?.apiTokenId
+      if (apiTokenId !== undefined) {
+        const apiToken = await db.apiToken.findOne({ id: apiTokenId })
+        if (apiToken == null || apiToken.revoked || apiToken.expiresOn <= Date.now()) {
+          return { error: new Status(Severity.ERROR, platform.status.Unauthorized, {}) }
+        }
+      }
+    }
+
     return await accountMethod(ctx, db, branding, token, { ...request.params }, meta)
       .then((result) => ({ id: request.id, result }))
       .catch((err: Error) => {
@@ -951,7 +978,7 @@ export async function updatePasswordAgingRule (
   branding: Branding | null,
   token: string,
   params: {
-    days: number
+    days?: number
   }
 ): Promise<void> {
   const { days } = params
@@ -965,7 +992,7 @@ export async function updatePasswordAgingRule (
   if (accRole == null || getRolePower(accRole) < getRolePower(AccountRole.Maintainer)) {
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
-  await db.updatePasswordAgingRule(workspace, days)
+  await db.updatePasswordAgingRule(workspace, days ?? null)
 }
 
 export async function checkPasswordAging (
@@ -1071,6 +1098,42 @@ export async function updateWorkspaceRole (
 }
 
 /**
+ * Sets or clears the "has unread notifications in this workspace" flag for a member,
+ * used to render a cross-workspace unread indicator in the workspace switcher.
+ *
+ * Raising the flag (hasUnread=true) for another account requires a service token —
+ * it is meant to be called by the workspace's own notification trigger, running with
+ * a token scoped to that workspace (`generateToken(systemAccountUuid, workspace, { service: 'notification' })`).
+ * Clearing your own flag (hasUnread=false, targetAccount === caller) is self-service and
+ * needs no special privileges; clearing someone else's flag still requires the service token.
+ *
+ * Note: the raise path (hasUnread=true) now goes through the WorkspaceMemberUnread
+ * queue consumed by account-service (bulk `setWorkspaceMembersUnread`), so in normal
+ * operation this RPC is only reached for the self-clear. The service-token branch is
+ * kept as a guarded fallback so the endpoint stays safe if called to raise a flag.
+ */
+export async function setWorkspaceMemberUnread (
+  ctx: MeasureContext,
+  db: AccountDB,
+  branding: Branding | null,
+  token: string,
+  params: {
+    targetAccount: AccountUuid
+    hasUnread: boolean
+  }
+): Promise<void> {
+  const { targetAccount, hasUnread } = params
+  const { account, workspace, extra } = decodeTokenVerbose(ctx, token)
+
+  const isSelfClear = !hasUnread && account === targetAccount
+  if (!isSelfClear) {
+    verifyAllowedServices(['notification'], extra)
+  }
+
+  await db.setWorkspaceMemberUnread(targetAccount, workspace, hasUnread)
+}
+
+/**
  * Convert workspace name to a URL-friendly string following these rules:
  *
  * 1. Converts all characters to lowercase
@@ -1120,7 +1183,8 @@ export async function createWorkspaceRecord (
   account: PersonUuid,
   region: string = '',
   initMode: WorkspaceMode = 'pending-creation',
-  dataId?: WorkspaceDataId
+  dataId?: WorkspaceDataId,
+  pendingConfiguration?: WorkspaceConfiguration
 ): Promise<CreateWorkspaceRecordResult> {
   const brandingKey = branding?.key ?? 'huly'
   const regionInfo = getRegions().find((it) => it.region === region)
@@ -1162,7 +1226,8 @@ export async function createWorkspaceRecord (
           billingAccount: account,
           allowReadOnlyGuest: false,
           allowGuestSignUp: false,
-          region
+          region,
+          ...(pendingConfiguration !== undefined ? { pendingConfiguration } : {})
         },
         {
           mode: initMode,
@@ -1232,7 +1297,8 @@ export async function sendEmailConfirmation (
   ctx: MeasureContext,
   branding: Branding | null,
   account: PersonUuid,
-  email: string
+  email: string,
+  extra?: Record<string, string>
 ): Promise<void> {
   const mailURL = getMetadata(accountPlugin.metadata.MAIL_URL)
   if (mailURL === undefined || mailURL === '') {
@@ -1249,7 +1315,8 @@ export async function sendEmailConfirmation (
   }
 
   const token = generateToken(account, undefined, {
-    confirmEmail: email
+    confirmEmail: email,
+    ...(extra ?? {})
   })
 
   const link = concatLink(front, `/login/confirm?id=${token}`)

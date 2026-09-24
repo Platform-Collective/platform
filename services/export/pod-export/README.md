@@ -262,14 +262,14 @@ Storage configuration (via `storageConfigFromEnv`):
 ### Docker Deployment
 
 ```bash
-docker build -t hardcoreeng/export .
+docker build -t platformcollective/export .
 docker run -p 4006:4006 \
   -e SECRET=your-secret \
   -e ACCOUNTS_URL=http://accounts:3000 \
   -e SERVICE_ID=export-service \
   -e STORAGE_PROVIDER=minio \
   -e STORAGE_ENDPOINT=http://minio:9000 \
-  hardcoreeng/export
+  platformcollective/export
 ```
 
 ## Development

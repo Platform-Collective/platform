@@ -30,10 +30,14 @@ import core, {
   type DomainRequestOptions,
   type DomainResult,
   type FindOptions,
+  type FindPageOptions,
+  type FindPageResult,
   type FindResult,
   getCurrentAccount,
+  platformNow,
   hasAccountRole,
   type Hierarchy,
+  type IterateOptions,
   MeasureMetricsContext,
   type Mixin,
   type ModelDb,
@@ -107,7 +111,7 @@ export const pendingCreatedDocs = writable<Record<Ref<Doc>, boolean>>({})
 class UIClient extends TxOperations implements Client {
   constructor (
     client: Client,
-    private readonly liveQuery: Client
+    private readonly liveQuery: Pick<Client, 'findAll' | 'findOne'>
   ) {
     super(client, getCurrentAccount().primarySocialId)
   }
@@ -331,6 +335,22 @@ class ClientHookImpl implements Client {
     return await this.client.findAll(_class, query, options)
   }
 
+  async findAllPage<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options: FindPageOptions<T>
+  ): Promise<FindPageResult<T>> {
+    return await this.client.findAllPage(_class, query, options)
+  }
+
+  iterateAll<T extends Doc>(
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: IterateOptions<T>
+  ): AsyncIterable<WithLookup<T>> {
+    return this.client.iterateAll(_class, query, options)
+  }
+
   async domainRequest<T>(
     domain: OperationDomain,
     params: DomainParams,
@@ -414,9 +434,29 @@ export async function setClient (_client: Client): Promise<void> {
 /**
  * @public
  */
-export async function refreshClient (clean: boolean): Promise<void> {
+export async function refreshClient (clean: boolean, lastReconnectGapMs: number = 0): Promise<void> {
   if (!(liveQuery?.isClosed() ?? true)) {
-    await liveQuery?.refreshConnect(clean)
+    const startedAt = platformNow()
+    const stats = await liveQuery?.refreshConnect(clean, lastReconnectGapMs)
+    const elapsedMs = platformNow() - startedAt
+    if (stats !== undefined && elapsedMs > 1000) {
+      const fmt = (m: Map<string, { count: number, docs: number }>): string[] =>
+        [...m.entries()]
+          .sort((a, b) => b[1].docs - a[1].docs)
+          .slice(0, 10)
+          .map(([cls, v]) => `${cls}=${v.count}q/${v.docs}d`)
+      console.error('[refresh] slow liveQuery refreshConnect', {
+        elapsedMs,
+        gapMs: stats.gapMs,
+        dropIdle: stats.dropIdle,
+        droppedQueries: stats.droppedQueries,
+        droppedDocs: stats.droppedDocs,
+        activeQueries: stats.activeQueries,
+        activeDocs: stats.activeDocs,
+        topDropped: fmt(stats.droppedByClass),
+        topActive: fmt(stats.activeByClass)
+      })
+    }
     for (const q of globalQueries) {
       q.refreshClient()
     }

@@ -14,8 +14,7 @@
 -->
 <script lang="ts">
   import { closeWidget, minimizeSidebar, WidgetState } from '@hcengineering/workbench-resources'
-  import { createQuery } from '@hcengineering/presentation'
-  import { MeetingMinutes, MeetingStatus, Room } from '@hcengineering/love'
+  import { Room } from '@hcengineering/love'
   import { Loading } from '@hcengineering/ui'
 
   import love from '../../../plugin'
@@ -37,10 +36,7 @@
   export let height: string
   export let width: string
 
-  const meetingQuery = createQuery()
-
-  let meetingMinutes: MeetingMinutes | undefined = undefined
-  let isMeetingMinutesLoaded = false
+  $: meetingMinutes = $currentMeetingMinutes
 
   let room: Room | undefined = undefined
 
@@ -57,24 +53,6 @@
     closeWidget(love.ids.MeetingWidget)
   }
 
-  $: if (room !== undefined) {
-    meetingQuery.query(
-      love.class.MeetingMinutes,
-      { attachedTo: room._id, status: MeetingStatus.Active },
-      async (res) => {
-        meetingMinutes = res[0]
-        if (meetingMinutes) {
-          currentMeetingMinutes.set(meetingMinutes)
-        }
-        isMeetingMinutesLoaded = true
-      }
-    )
-  } else {
-    meetingQuery.unsubscribe()
-    meetingMinutes = undefined
-    isMeetingMinutesLoaded = false
-  }
-
   function handleClose (): void {
     minimizeSidebar()
   }
@@ -88,13 +66,13 @@
     {#if widgetState.tab === 'video'}
       <VideoTab {room} doc={meetingMinutes} on:close={handleClose} />
     {:else if widgetState.tab === 'chat'}
-      {#if !isMeetingMinutesLoaded}
+      {#if meetingMinutes == null}
         <Loading />
       {:else if meetingMinutes}
         <ChatTab {meetingMinutes} {widgetState} height={contentHeight + 'px'} {width} on:close={handleClose} />
       {/if}
     {:else if widgetState.tab === 'transcription'}
-      {#if !isMeetingMinutesLoaded}
+      {#if meetingMinutes == null}
         <Loading />
       {:else if meetingMinutes}
         <TranscriptionTab

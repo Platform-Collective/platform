@@ -26,7 +26,7 @@ import type {
   TxOperations,
   WorkspaceInfoWithStatus
 } from '@hcengineering/core'
-import core, { hasAccountRole } from '@hcengineering/core'
+import core, { getCurrentAccount, hasAccountRole } from '@hcengineering/core'
 import login from '@hcengineering/login'
 import { getMetadata, getResource, setMetadata } from '@hcengineering/platform'
 import presentation, { closeClient, getClient, setPresentationCookie } from '@hcengineering/presentation'
@@ -40,7 +40,7 @@ import {
 } from '@hcengineering/ui'
 import view from '@hcengineering/view'
 import workbench, { type Application, type NavigatorModel } from '@hcengineering/workbench'
-import { derived, writable } from 'svelte/store'
+import { derived, get, writable } from 'svelte/store'
 
 export const workspaceCreating = writable<number | undefined>(undefined)
 
@@ -174,6 +174,33 @@ export const currentWorkspaceStore = derived(
 )
 
 /**
+ * True when the account has unread notifications in some workspace other than
+ * the one currently open. Single source of truth for the cross-workspace unread
+ * indicator across the switcher, the workbench logo, and the desktop badge.
+ */
+export const hasCrossWorkspaceUnread = derived(
+  [workspacesStore, locationWorkspaceStore],
+  ([$workspaces, $locationWorkspace]) =>
+    $workspaces.some((ws) => ws.hasUnread === true && ws.url !== $locationWorkspace)
+)
+
+/**
+ * Re-fetches the account's workspaces (including their per-workspace hasUnread
+ * flag) into workspacesStore. Called on workspace change, window focus and a
+ * periodic poll so the cross-workspace indicator reflects the server without a
+ * relogin, since the flag is raised server-side in workspaces the client isn't
+ * connected to.
+ */
+export async function refreshWorkspaces (): Promise<void> {
+  try {
+    const getWorkspacesFn = await getResource(login.function.GetWorkspaces)
+    workspacesStore.set(await getWorkspacesFn())
+  } catch (err) {
+    console.error('Failed to refresh workspaces', err)
+  }
+}
+
+/**
  * @public
  */
 export async function buildNavModel (
@@ -214,6 +241,27 @@ export async function logIn (loginInfo: { account: string, token?: string }): Pr
   setMetadata(presentation.metadata.Token, loginInfo.token)
   setMetadataLocalStorage(login.metadata.LastAccount, loginInfo.account)
   setMetadataLocalStorage(login.metadata.LoginAccount, loginInfo.account)
+}
+
+/**
+ * Self-service clear of the cross-workspace "unread notifications" flag for the
+ * current account in the current workspace. Called once the local inbox has no
+ * more unread notifications left. Setting the flag back to true is handled
+ * server-side (OnInboxNotificationCreate trigger), not by the client.
+ */
+export async function reportWorkspaceRead (): Promise<void> {
+  try {
+    const accountsUrl = getMetadata(login.metadata.AccountsUrl)
+    const token = getMetadata(presentation.metadata.Token)
+    if (token === undefined) return
+    await getAccountClient(accountsUrl, token).setWorkspaceMemberUnread(getCurrentAccount().uuid, false)
+    // Optimistically clear the flag locally so switching away and back reflects
+    // the read state immediately, without waiting for the next refresh.
+    const currentUrl = get(locationWorkspaceStore)
+    workspacesStore.update((wss) => wss.map((ws) => (ws.url === currentUrl ? { ...ws, hasUnread: false } : ws)))
+  } catch (err) {
+    console.error('Failed to clear workspace unread flag', err)
+  }
 }
 
 export async function logOut (): Promise<void> {

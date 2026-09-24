@@ -135,7 +135,6 @@ export interface Response<R> {
     final: boolean
   }
   time?: number // Server time to perform operation
-  bfst?: number // Server time to perform operation
   queue?: number
 }
 

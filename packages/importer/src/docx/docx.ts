@@ -123,6 +123,6 @@ function fileNameNoExt (path: string): string {
 
 async function scanFiles (dir: string): Promise<string[]> {
   const filesAndDirs = await readdir(dir, { recursive: true, withFileTypes: true })
-  const files = filesAndDirs.filter((file) => !file.isDirectory()).map((f) => join(f.path, f.name))
+  const files = filesAndDirs.filter((file) => !file.isDirectory()).map((f) => join(f.parentPath, f.name))
   return files
 }

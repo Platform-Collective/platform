@@ -1,4 +1,4 @@
-FROM hardcoreeng/base:v20250916
+FROM platformcollective/base:v20260811
 WORKDIR /usr/src/app
 
 COPY bundle/model.json ./

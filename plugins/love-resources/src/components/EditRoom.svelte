@@ -16,13 +16,17 @@
   import { EditBox, ModernButton } from '@hcengineering/ui'
   import { Room, isOffice, type ParticipantInfo } from '@hcengineering/love'
   import { createEventDispatcher, onMount } from 'svelte'
-  import { IntlString } from '@hcengineering/platform'
+  import { getMetadata, IntlString } from '@hcengineering/platform'
+  import presentation from '@hcengineering/presentation'
 
   import love from '../plugin'
   import { getRoomName } from '../utils'
-  import { infos, myOffice, currentRoom } from '../stores'
+  import { infos, myOffice, currentRoom, meetings, myConnectingSessionId } from '../stores'
   import { lkSessionConnected } from '../liveKitClient'
   import { createMeeting, joinMeeting } from '../meetings'
+  import { get } from 'svelte/store'
+  import RoomPreview from './RoomPreview.svelte'
+  import { Ref } from '@hcengineering/core'
 
   export let object: Room
 
@@ -39,27 +43,37 @@
     dispatch('open', { ignoreKeys: ['name'] })
   })
 
-  const tryConnecting = false
-
   async function connect (): Promise<void> {
-    if ($infos.some(({ room }) => room === object._id)) {
-      await joinMeeting(object)
+    const mm = get(meetings).find((it) => it.attachedTo === object._id)
+    if (mm !== undefined) {
+      await joinMeeting(mm)
     } else {
       await createMeeting(object)
     }
   }
 
-  $: connecting = tryConnecting || ($currentRoom?._id === object._id && !$lkSessionConnected)
+  let connectLabel: IntlString | undefined
 
-  let connectLabel: IntlString = $infos.some(({ room }) => room === object._id)
-    ? love.string.JoinMeeting
-    : love.string.StartMeeting
+  async function updateConnecting (object: Room, infos: ParticipantInfo[], isLocalConnecting: boolean): Promise<void> {
+    connecting = isLocalConnecting || ($currentRoom?._id === object._id && !$lkSessionConnected)
 
-  $: if ($infos.some(({ room }) => room === object._id) && !connecting) {
-    connectLabel = love.string.JoinMeeting
-  } else if (!connecting) {
-    connectLabel = love.string.StartMeeting
+    let _connectLabel: IntlString = infos.some(({ room }) => room === object._id)
+      ? love.string.JoinMeeting
+      : love.string.StartMeeting
+
+    if (infos.some(({ room }) => room === object._id) && !connecting) {
+      _connectLabel = love.string.JoinMeeting
+    } else if (!connecting) {
+      _connectLabel = love.string.StartMeeting
+    }
+    connectLabel = _connectLabel
   }
+
+  // Check if pending join is for THIS session (same browser tab)
+  $: currentSessionId = getMetadata(presentation.metadata.SessionId)
+  $: hasPendingJoinInThisSession = $myConnectingSessionId !== null && $myConnectingSessionId === currentSessionId
+
+  $: void updateConnecting(object, $infos, hasPendingJoinInThisSession)
 
   function showConnectionButton (
     object: Room,
@@ -88,17 +102,30 @@
 
     return true
   }
+  function getInfo (room: Ref<Room>, info: ParticipantInfo[]): ParticipantInfo[] {
+    return info.filter((p) => p.room === room)
+  }
+
+  $: roomInfos = getInfo(object._id, $infos)
 </script>
 
-<div class="flex-row-stretch">
-  <div class="row flex-grow">
-    <div class="name">
-      <EditBox disabled={true} placeholder={love.string.Room} bind:value={roomName} focusIndex={1} />
+<div class="flex flex-col">
+  <div class="flex flex-row">
+    <div class="flex flex-grow space-between gap-2 mb-4">
+      <div class="name">
+        <EditBox disabled={true} placeholder={love.string.Room} bind:value={roomName} focusIndex={1} />
+      </div>
+
+      {#if showConnectionButton(object, connecting, $lkSessionConnected, $infos, $myOffice, $currentRoom) && connectLabel != null}
+        <ModernButton label={connectLabel} size="large" kind={'primary'} on:click={connect} loading={connecting} />
+      {/if}
     </div>
-    {#if showConnectionButton(object, connecting, $lkSessionConnected, $infos, $myOffice, $currentRoom)}
-      <ModernButton label={connectLabel} size="large" kind={'primary'} on:click={connect} loading={connecting} />
-    {/if}
   </div>
+  {#if object != null && roomInfos.length > 0}
+    <div class="room-preview">
+      <RoomPreview room={object} info={roomInfos} preview />
+    </div>
+  {/if}
 </div>
 
 <style lang="scss">
@@ -109,10 +136,11 @@
     width: 100%;
   }
 
-  .row {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-1);
-    justify-content: space-between;
+  .room-preview {
+    /* width: 100%; */
+    height: 200px;
+    max-width: 500px;
+    overflow: hidden;
+    padding: 2rem;
   }
 </style>

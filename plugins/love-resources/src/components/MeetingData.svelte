@@ -19,6 +19,7 @@
   import { Writable } from 'svelte/store'
   import love from '../plugin'
   import RoomSelector from './RoomSelector.svelte'
+  import { myOffice } from '../stores'
 
   export let state: Writable<Record<string, any>>
 
@@ -50,6 +51,9 @@
     on:click={() => {
       isMeeting = !isMeeting
       changeIsMeeting(isMeeting)
+      if (isMeeting && $state.room === undefined) {
+        $state.room = $myOffice?._id
+      }
     }}
   />
 </div>

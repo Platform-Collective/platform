@@ -1,5 +1,5 @@
 //
-// Copyright © 2025 Hardcore Engineering Inc.
+// Copyright © 2026 Intabia Fusion.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -13,23 +13,48 @@
 // limitations under the License.
 //
 
+import { getCurrentEmployee, getCurrentEmployeeSpace, type Person } from '@hcengineering/contact'
 import { AccountRole, getCurrentAccount, type Ref } from '@hcengineering/core'
-import { getCurrentEmployee, type Person } from '@hcengineering/contact'
-import { type PopupResult, showPopup } from '@hcengineering/ui'
-import { type UnsubscribeCallback } from '@hcengineering/hulypulse-client'
-import presentation, { createPulseClient } from '@hcengineering/presentation'
-import { getMetadata } from '@hcengineering/platform'
-import { get } from 'svelte/store'
-import { myInfo } from './stores'
-import love, { type Room } from '@hcengineering/love'
-import InviteRequestPopup from './components/meeting/invites/InviteRequestPopup.svelte'
-import InviteResponsePopup from './components/meeting/invites/InviteResponsePopup.svelte'
-import { joinOrCreateMeetingByInvite } from './meetings'
+import love, { type MeetingMinutes, type UserMeetingInvite } from '@hcengineering/love'
+import { createQuery, getClient, playSound } from '@hcengineering/presentation'
+import { type PopupResult } from '@hcengineering/ui'
+import { derived, get, writable, type Writable } from 'svelte/store'
+import { createMeeting, joinOrCreateMeetingByInvite } from './meetings'
+import { currentMeetingMinutes } from './stores'
 
-export const inviteRequestSecondsToLive = 5
-const responseSecondsToLive = 2
+export const inviteRequestSecondsToLive = 30
 
-const pulsePrefix = 'love/invite'
+let requestPopup: PopupResult | undefined
+let responsePopup: PopupResult | undefined
+
+export const allInvites: Writable<UserMeetingInvite[]> = writable([])
+
+// All invites we send to somebody.
+export const outgoingInvitesStore = derived(allInvites, (all) => {
+  const outgoing = all.filter((it) => it.kind === 'invite-request')
+  void checkAndJoinIfRecipientJoined(outgoing)
+  return outgoing
+})
+
+// All waiting for confirmation
+export const incomingInvitesStore = derived(allInvites, (all) => {
+  const now = Date.now()
+  const incoming = all.filter((it) => it.kind === 'invite-response' && it.status === 'pending' && it.expiresAt > now)
+
+  if (incoming.length > 0 && stopIncomingSound == null) {
+    stopIncomingSound = playIncomingSound()
+  } else if (incoming.length === 0 && stopIncomingSound != null) {
+    void stopIncomingInviteSound()
+  }
+
+  return incoming
+})
+
+// Active sound stop function
+let stopIncomingSound: Promise<(() => void) | null> | undefined
+
+// Query for incoming invite-response (created by server trigger in recipient's space)
+const incomingInvitesQuery = createQuery(true)
 
 export interface InviteRequest {
   from: Ref<Person>
@@ -42,196 +67,218 @@ export interface InviteResponse {
   accept: boolean
 }
 
-const requestPopupCategory = 'inviteRequest'
-let unsubscribeResponse: UnsubscribeCallback | undefined
-let requestPopup: PopupResult | undefined
-let requestPersons: Array<Ref<Person>> | undefined
-
-export async function subscribeInviteResponses (): Promise<void> {
-  const client = await createPulseClient()
-  if (client === undefined) return
+/**
+ * Send meeting invites to multiple persons
+ * Shows popup for sender with cancel button
+ */
+export async function sendInvites (persons: Array<Ref<Person>>, meeting?: Ref<MeetingMinutes>): Promise<void> {
+  if (getCurrentAccount().role === AccountRole.ReadOnlyGuest) {
+    return
+  }
 
   const currentPerson = getCurrentEmployee()
+  if (currentPerson === undefined) {
+    return
+  }
 
-  unsubscribeResponse = await client.subscribe(
-    `${getPulsePrefix()}/response/${currentPerson}/`,
-    (key: string, inviteResponse: InviteResponse | undefined) => {
-      void onInviteResponse(key, inviteResponse)
-    }
-  )
-}
+  // Filter out self-invites
+  const validPersons = persons.filter((p) => p !== currentPerson)
+  if (validPersons.length === 0) {
+    return
+  }
 
-export async function unsubscribeInviteResponses (): Promise<void> {
-  if (unsubscribeResponse !== undefined) {
-    await unsubscribeResponse()
+  closeInvitesPopup()
+
+  // Check if we're in a meeting
+  const meetingId = meeting ?? get(currentMeetingMinutes)?._id
+
+  const mySpace = getCurrentEmployeeSpace()
+
+  if (mySpace === undefined) {
+    return
+  }
+
+  const expiresAt = Date.now() + inviteRequestSecondsToLive * 1000
+
+  const client = getClient()
+  for (const person of validPersons) {
+    // Use per-person apply with notMatch to prevent duplicate pending invites
+    const apply = client.apply('create-invite:' + currentPerson + ':' + person)
+    apply.notMatch(love.class.UserMeetingInvite, {
+      kind: 'invite-request',
+      from: currentPerson,
+      to: person,
+      status: 'pending'
+    })
+    await apply.createDoc(love.class.UserMeetingInvite, mySpace, {
+      kind: 'invite-request',
+      from: currentPerson,
+      to: person,
+      expiresAt,
+      status: 'pending',
+      ...(meetingId !== undefined && { meeting: meetingId })
+    })
+    await apply.commit()
   }
 }
 
-export function sendInvites (persons: Array<Ref<Person>>): void {
-  if (getCurrentAccount().role === AccountRole.ReadOnlyGuest) return
-  closeInvitesPopup()
-  requestPersons = persons
-  const myParticipation = get(myInfo)
-  const room = myParticipation?.room
-  if (room === undefined || room === love.ids.Reception) return
-  requestPopup = showPopup(InviteRequestPopup, { persons, meetingId: room }, undefined, undefined, undefined, {
-    category: requestPopupCategory,
-    overlay: false,
-    fixed: true
-  })
-}
-
+/**
+ * Close the invite request popup
+ */
 export function closeInvitesPopup (): void {
   requestPopup?.close()
   requestPopup = undefined
 }
 
-export async function updateInvites (persons: Array<Ref<Person>>, meetingId: string): Promise<void> {
-  if (getCurrentAccount().role === AccountRole.ReadOnlyGuest) return
-  const client = await createPulseClient()
-  const currentPerson = getCurrentEmployee()
-
-  if (client === undefined) return
-
-  try {
-    for (const person of persons) {
-      await client.put(
-        `${getPulsePrefix()}/request/${person}/${currentPerson}/${meetingId}`,
-        { from: currentPerson, meetingId },
-        inviteRequestSecondsToLive
-      )
-    }
-  } catch (error) {
-    console.warn('failed to put invite info:', error)
-  }
-}
-
-export async function cancelInvites (meetingId: string): Promise<void> {
-  const client = await createPulseClient()
-  const currentPerson = getCurrentEmployee()
-
-  if (client === undefined || requestPersons === undefined) return
-  try {
-    for (const person of requestPersons) {
-      await client.delete(`${getPulsePrefix()}/request/${person}/${currentPerson}/${meetingId}`)
-    }
-  } catch (error) {
-    console.warn('failed to delete invite info:', error)
-  }
-}
-
-async function onInviteResponse (_key: string, response: InviteResponse | undefined): Promise<void> {
-  const client = await createPulseClient()
-  if (client === undefined || response === undefined || requestPersons === undefined) return
-
-  const currentPerson = getCurrentEmployee()
-  await client.delete(`${getPulsePrefix()}/request/${response.from}/${currentPerson}/${response.meetingId}`)
-  await client.delete(`${getPulsePrefix()}/response/${currentPerson}/${response.from}/${response.meetingId}`)
-  requestPersons = requestPersons.filter((p) => p !== response.from)
-  if (requestPersons.length === 0) {
-    closeInvitesPopup()
-  } else {
-    requestPopup?.update({ persons: requestPersons })
-  }
-
-  if (!response.accept) return
-  await joinOrCreateMeetingByInvite(response.meetingId as Ref<Room>)
-}
-
-const responsePopupCategory = 'inviteResponse'
-let responsePopup: PopupResult | undefined
-let unsubscribeRequest: UnsubscribeCallback | undefined
-let activeRequestKey: string | undefined
-let activeRequestsMap: Map<string, InviteRequest | undefined>
-
-export async function subscribeInviteRequests (): Promise<void> {
-  if (getCurrentAccount().role === AccountRole.ReadOnlyGuest) return
-  const client = await createPulseClient()
-  if (client === undefined) return
-
-  const currentPerson = getCurrentEmployee()
-
-  activeRequestsMap = new Map<string, InviteRequest>()
-  unsubscribeRequest = await client.subscribe(`${getPulsePrefix()}/request/${currentPerson}/`, onInviteRequest)
-}
-
-export async function unsubscribeInviteRequests (): Promise<void> {
-  if (unsubscribeRequest !== undefined) {
-    await unsubscribeRequest()
-  }
-}
-
-export async function responseToInviteRequest (accept: boolean): Promise<void> {
-  if (activeRequestKey === undefined) return
-
-  const client = await createPulseClient()
-  if (client === undefined) return
-
-  const activeInvite = activeRequestsMap.get(activeRequestKey)
-  if (activeInvite === undefined) return
-
-  const currentPerson = getCurrentEmployee()
-  await client.put(
-    `${getPulsePrefix()}/response/${activeInvite.from}/${currentPerson}/${activeInvite.meetingId}`,
-    { accept, from: currentPerson, meetingId: activeInvite.meetingId },
-    responseSecondsToLive
-  )
-
+/**
+ * Close the invite response popup
+ */
+export function closeResponsePopup (): void {
   responsePopup?.close()
   responsePopup = undefined
-  if (activeRequestKey === undefined) return
-  activeRequestsMap.set(activeRequestKey, undefined)
-  activeRequestKey = undefined
-
-  if (!accept) return
-  await joinOrCreateMeetingByInvite(activeInvite.meetingId as Ref<Room>)
 }
 
-function onInviteRequest (key: string, request: InviteRequest | undefined): void {
-  if (request === undefined) {
-    activeRequestsMap.delete(key)
-    if (activeRequestKey === key) {
-      activeRequestKey = undefined
+/**
+ * Cancel all invites for a meeting
+ */
+export async function cancelInvites (
+  meetingId: Ref<MeetingMinutes> | undefined,
+  invites: UserMeetingInvite[]
+): Promise<void> {
+  const client = getClient()
+  const currentPerson = getCurrentEmployee()
+  if (currentPerson === undefined) return
+
+  try {
+    // Cancel them
+    for (const invite of invites) {
+      await client.remove(invite)
     }
-  } else if (!activeRequestsMap.has(key)) {
-    activeRequestsMap.set(key, request)
-  }
-  let keyChanged: boolean = false
-  if (activeRequestKey === undefined && activeRequestsMap.size > 0) {
-    const requests = Array.from(activeRequestsMap.entries())
-    const unprocessedRequest = requests.find((v: [string, InviteRequest | undefined]) => v[1] !== undefined)
-    if (unprocessedRequest !== undefined) {
-      activeRequestKey = unprocessedRequest[0]
-      keyChanged = true
-    }
-  }
-  if (activeRequestKey === undefined) {
-    responsePopup?.close()
-    responsePopup = undefined
-    return
+  } catch (error) {
+    console.warn('Failed to cancel invites:', error)
   }
 
-  if (responsePopup === undefined) {
-    responsePopup = showPopup(
-      InviteResponsePopup,
-      { invite: activeRequestsMap.get(activeRequestKey) },
-      undefined,
-      undefined,
-      undefined,
-      {
-        category: responsePopupCategory,
-        overlay: false,
-        fixed: true
+  closeInvitesPopup()
+}
+
+/**
+ * Subscribe to incoming meeting invites
+ * Called when app starts
+ * We read ALL UserMeetingInvite from our personal space, then separate by kind:
+ * - invite-request: outgoing invites from us, track status changes
+ * - invite-response: incoming invites to us, show accept/decline panel
+ */
+export function subscribeToIncomingInvites (): void {
+  const mySpace = getCurrentEmployeeSpace()
+  if (mySpace === undefined) return
+
+  incomingInvitesQuery.query(love.class.UserMeetingInvite, { space: mySpace }, (invites) => {
+    allInvites.set(invites)
+  })
+}
+
+/**
+ * Respond to an invite request (accept or decline)
+ * This function is called from IncomingInvitePanel component
+ * Updates invite-response, server trigger syncs to invite-request
+ */
+export async function responseToInviteRequest (invite: UserMeetingInvite, accept: boolean): Promise<void> {
+  const client = getClient()
+  const me = getCurrentEmployee()
+  if (me === undefined) return
+
+  try {
+    if (accept) {
+      // Check if this is an invite to an existing meeting
+      if (invite.meeting !== undefined) {
+        // Join existing meeting
+        await joinOrCreateMeetingByInvite(invite.meeting)
+        await client.update(invite, { status: 'accepted' })
+      } else {
+        // Create new meeting in MY office (the recipient's office)
+        const myOffice = await client.findOne(love.class.Office, {
+          person: me
+        })
+
+        if (myOffice !== undefined) {
+          // Create meeting in MY office and join
+          const meeting = await createMeeting(myOffice)
+
+          if (meeting !== undefined) {
+            // Update invite-response with meeting reference
+            await client.update(invite, {
+              status: 'accepted',
+              meeting: meeting._id
+            })
+          } else {
+            // If meeting creation failed, decline the invite
+            await client.update(invite, { status: 'declined' })
+          }
+        }
       }
-    )
-    return
-  }
-  if (keyChanged) {
-    responsePopup?.update({ invite: activeRequestsMap.get(activeRequestKey) })
+    } else {
+      // Just decline the invite
+      await client.update(invite, { status: 'declined' })
+    }
+  } catch (error) {
+    console.warn('Failed to respond to invite:', error)
   }
 }
 
-function getPulsePrefix (): string {
-  const workspace = getMetadata(presentation.metadata.WorkspaceUuid) ?? ''
-  return `${workspace}/${pulsePrefix}`
+/**
+ * Play sound for incoming invites
+ */
+async function playIncomingSound (): Promise<(() => void) | null> {
+  try {
+    // Stop previous sound if playing
+    await stopIncomingInviteSound()
+    return (await playSound(love.sound.Knock, true)) ?? null
+  } catch (err) {
+    console.error('Error playing sound:', err)
+  }
+  return null
+}
+
+/**
+ * Stop incoming invite sound
+ */
+export async function stopIncomingInviteSound (): Promise<void> {
+  if (stopIncomingSound != null) {
+    const stop = await stopIncomingSound
+    stop?.()
+    stopIncomingSound = undefined
+  }
+}
+
+/**
+ * Unsubscribe from incoming invites
+ */
+export function unsubscribeFromIncomingInvites (): void {
+  incomingInvitesQuery.unsubscribe()
+}
+
+export async function checkAndJoinIfRecipientJoined (invites: UserMeetingInvite[]): Promise<void> {
+  const client = getClient()
+  const me = getCurrentEmployee()
+  if (me === undefined) return
+
+  // Use cached outgoing invite-requests instead of querying
+  for (const invite of invites) {
+    if (invite.status === 'accepted' && invite.meeting !== undefined) {
+      // Check if we're already in this meeting
+      const currentMeeting = get(currentMeetingMinutes)
+      if (currentMeeting?._id === invite.meeting) {
+        // Already joined, delete the invite request
+        await client.remove(invite)
+      } else {
+        // Try to join the meeting
+        await joinOrCreateMeetingByInvite(invite.meeting)
+        // After successful join, delete the invite
+        await client.removeDoc(love.class.UserMeetingInvite, invite.space, invite._id)
+      }
+    } else if (invite.status === 'declined') {
+      // Remove declined or expired invites
+      await client.removeDoc(love.class.UserMeetingInvite, invite.space, invite._id)
+    }
+  }
 }

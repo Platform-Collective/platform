@@ -306,7 +306,7 @@
     if (message !== undefined) return
     if (!isEmptyMarkup(markup)) {
       throttle.call(() => {
-        void setTyping(acc.primarySocialId, card.peerId ? `peer:${card.peerId}` : card._id)
+        void setTyping(acc.primarySocialId, card.peerId ? `peer:${card.peerId}` : card._id, card.space)
       })
     }
   }

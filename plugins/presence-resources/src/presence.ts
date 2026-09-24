@@ -1,4 +1,6 @@
+//
 // Copyright © 2025 Hardcore Engineering Inc.
+// Copyright © 2026 Intabia Fusion.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -12,15 +14,15 @@
 // limitations under the License
 
 import { type Employee, type Person } from '@hcengineering/contact'
-import { type UnsubscribeCallback, type Callback } from '@hcengineering/hulypulse-client'
-import { type Class, type Doc, type Ref } from '@hcengineering/core'
-import { getMetadata } from '@hcengineering/platform'
-import presentation, { createPulseClient } from '@hcengineering/presentation'
+import { type Class, type Doc, type Ref, type Space } from '@hcengineering/core'
+import { createQuery, getClient } from '@hcengineering/presentation'
+import pulse, { type DocumentPresence } from '@hcengineering/pulse'
 
 export interface PresenceInfo {
   personId: Ref<Person>
   objectId: string
   objectClass: Ref<Class<Doc>>
+  space: Ref<Space>
 }
 
 export interface PresenceActionParams {
@@ -30,96 +32,89 @@ export interface PresenceActionParams {
   onPresence: (presence: Map<string, Ref<Person>>) => void
 }
 
+function presenceDocId (objectId: string, personId: Ref<Person>): Ref<DocumentPresence> {
+  return `presence:${objectId}:${personId}` as Ref<DocumentPresence>
+}
+
 export function presence (node: HTMLElement, params: PresenceActionParams): any {
-  let unsubscribe: Promise<UnsubscribeCallback> | undefined
-  let presence = new Map<string, Ref<Person>>()
+  const liveQuery = createQuery(true)
+  let presenceMap = new Map<string, Ref<Person>>()
 
   let personId = params.personId
   let objectId = params.objectId
   let objectClass = params.objectClass
   let onPresence = params.onPresence
 
-  function handlePresenceInfo (key: string, value: PresenceInfo | undefined): void {
-    if (value?.personId === personId) {
-      return
-    }
-
-    if (value === undefined) {
-      presence.delete(key)
-    } else {
-      presence.set(key, value.personId)
-    }
-
-    onPresence(presence)
+  function runQuery (): void {
+    liveQuery.query(pulse.class.DocumentPresence, { objectId: objectId as Ref<Doc>, objectClass }, (result) => {
+      const next = new Map<string, Ref<Person>>()
+      for (const doc of result) {
+        if (doc.person === personId) continue
+        next.set(doc._id, doc.person)
+      }
+      presenceMap = next
+      onPresence(presenceMap)
+    })
   }
 
-  unsubscribe = subscribePresence(params.objectClass, params.objectId, handlePresenceInfo)
+  runQuery()
 
   return {
     update: (params: PresenceActionParams) => {
-      if (objectId !== params.objectId || objectClass !== params.objectClass) {
-        personId = params.personId
-        objectId = params.objectId
-        objectClass = params.objectClass
-        onPresence = params.onPresence
+      const needResubscribe =
+        objectId !== params.objectId || objectClass !== params.objectClass || personId !== params.personId
+      personId = params.personId
+      objectId = params.objectId
+      objectClass = params.objectClass
+      onPresence = params.onPresence
 
-        void unsubscribe?.then((unsub) => {
-          void unsub()
-        })
-
-        presence = new Map<string, Ref<Person>>()
-        unsubscribe = subscribePresence(params.objectClass, params.objectId, handlePresenceInfo)
-
-        onPresence(presence)
+      if (needResubscribe) {
+        presenceMap = new Map<string, Ref<Person>>()
+        onPresence(presenceMap)
+        runQuery()
       }
     },
     destroy: () => {
-      void unsubscribe?.then((unsub) => {
-        void unsub()
-      })
+      liveQuery.unsubscribe()
     }
   }
 }
 
-export async function subscribePresence (
-  objectClass: Ref<Class<Doc>>,
-  objectId: string,
-  callback: Callback<PresenceInfo | undefined>
-): Promise<UnsubscribeCallback> {
-  const client = await createPulseClient()
-
-  if (client !== undefined) {
-    const workspace = getMetadata(presentation.metadata.WorkspaceUuid) ?? ''
-    return await client.subscribe(`${workspace}/presence/${objectId}/`, callback)
-  }
-
-  return async () => false
-}
-
-export async function updatePresence (presence: PresenceInfo, presenceTtlSeconds: number): Promise<void> {
-  const client = await createPulseClient()
-
-  if (client !== undefined) {
-    const workspace = getMetadata(presentation.metadata.WorkspaceUuid) ?? ''
-    const { personId, objectId } = presence
-    try {
-      await client.put(`${workspace}/presence/${objectId}/${personId}`, presence, presenceTtlSeconds)
-    } catch (error) {
-      console.warn('failed to put presence info:', error)
+export async function updatePresence (info: PresenceInfo): Promise<void> {
+  try {
+    const client = getClient()
+    const id = presenceDocId(info.objectId, info.personId)
+    const existing = await client.findOne(pulse.class.DocumentPresence, { _id: id })
+    const now = Date.now()
+    if (existing !== undefined) {
+      await client.diffUpdate(existing, { lastActive: now })
+      return
     }
+    await client.createDoc(
+      pulse.class.DocumentPresence,
+      info.space,
+      {
+        objectId: info.objectId as Ref<Doc>,
+        objectClass: info.objectClass,
+        person: info.personId,
+        lastActive: now
+      },
+      id
+    )
+  } catch (err) {
+    console.warn('failed to update presence:', err)
   }
 }
 
-export async function deletePresence (presence: PresenceInfo): Promise<void> {
-  const client = await createPulseClient()
-
-  if (client !== undefined) {
-    const workspace = getMetadata(presentation.metadata.WorkspaceUuid) ?? ''
-    const { personId, objectId } = presence
-    try {
-      await client.delete(`${workspace}/presence/${objectId}/${personId}`)
-    } catch (error) {
-      console.warn('failed to delete presence info:', error)
+export async function deletePresence (info: PresenceInfo): Promise<void> {
+  try {
+    const client = getClient()
+    const id = presenceDocId(info.objectId, info.personId)
+    const existing = await client.findOne(pulse.class.DocumentPresence, { _id: id })
+    if (existing !== undefined) {
+      await client.removeDoc(pulse.class.DocumentPresence, existing.space, existing._id)
     }
+  } catch (err) {
+    console.warn('failed to delete presence:', err)
   }
 }

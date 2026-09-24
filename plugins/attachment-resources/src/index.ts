@@ -33,6 +33,7 @@ import AttachmentStyleBoxCollabEditor from './components/AttachmentStyleBoxColla
 import AttachmentStyleBoxEditor from './components/AttachmentStyleBoxEditor.svelte'
 import AttachmentStyledBox from './components/AttachmentStyledBox.svelte'
 import Attachments from './components/Attachments.svelte'
+import AttachmentsGrid from './components/AttachmentsGrid.svelte'
 import AttachmentsPresenter from './components/AttachmentsPresenter.svelte'
 import AttachmentsTooltip from './components/AttachmentsTooltip.svelte'
 import FileBrowser from './components/FileBrowser.svelte'
@@ -65,6 +66,7 @@ export {
   AttachmentStyleBoxEditor,
   AttachmentStyledBox,
   Attachments,
+  AttachmentsGrid,
   AttachmentsPresenter,
   AttachmentsTooltip,
   FileBrowser,

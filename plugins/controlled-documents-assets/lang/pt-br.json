@@ -66,6 +66,8 @@
     "ComparisonMode": "Comparar",
     "Compare": "Comparar:",
     "Against": "Contra:",
+    "RemovedAttachments": "Anexos removidos",
+    "Restore": "Restaurar",
     "ComparisonModeNotSupported": "Modo de comparação não suportado.",
     "CreateDraft": "Criar rascunho",
     "SendForApproval": "Enviar para aprovação",

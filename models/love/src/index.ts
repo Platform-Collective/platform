@@ -26,23 +26,29 @@ import {
   DateRangeMode,
   IndexKind,
   type ClassCollaborators,
-  type AccountUuid
+  type AccountUuid,
+  SocialIdType
 } from '@hcengineering/core'
 import {
   type DevicesPreference,
   type Floor,
   loveId,
-  type Meeting,
+  type MeetingEventLink,
   type MeetingMinutes,
   type MeetingStatus,
   type MeetingSchedule,
   type Office,
   type ParticipantInfo,
+  type PendingRecording,
+  type RecordingFormat,
   type Room,
   type RoomAccess,
   type RoomInfo,
   type RoomLanguage,
-  type RoomType
+  type RoomType,
+  type TranscriptionState,
+  type RecordingState,
+  type UserMeetingInvite
 } from '@hcengineering/love'
 import {
   type Builder,
@@ -58,6 +64,7 @@ import {
   TypeDate,
   TypeRef,
   TypeString,
+  TypeTimestamp,
   UX,
   TypeBoolean,
   Hidden
@@ -82,6 +89,7 @@ import love from './plugin'
 export { loveId } from '@hcengineering/love'
 export * from './migration'
 export const DOMAIN_LOVE = 'love' as Domain
+export const DOMAIN_LOVE_PENDING = 'love-pending' as Domain
 export const DOMAIN_MEETING_MINUTES = 'meeting-minutes' as Domain
 
 @Model(love.class.Room, core.class.Doc, DOMAIN_LOVE)
@@ -149,15 +157,48 @@ export class TParticipantInfo extends TDoc implements ParticipantInfo {
   @Prop(TypeRef(contact.class.Person), getEmbeddedLabel('Person'))
     person!: Ref<Person>
 
+  @Prop(TypeRef(love.class.MeetingMinutes), love.string.MeetingMinutes)
+    meeting!: Ref<MeetingMinutes>
+
   @Prop(TypeRef(love.class.Room), love.string.Room)
     room!: Ref<Room>
 
   x!: number
   y!: number
 
+  kind!: 'user' | 'agent'
+
   sessionId!: string | null
 
   account!: AccountUuid | null
+}
+
+@Model(love.class.PendingRecording, core.class.AttachedDoc, DOMAIN_LOVE_PENDING)
+export class TPendingRecording extends TAttachedDoc implements PendingRecording {
+  @Prop(TypeRef(love.class.MeetingMinutes), love.string.MeetingMinutes)
+  @Index(IndexKind.Indexed)
+  declare attachedTo: Ref<MeetingMinutes>
+
+  declare collection: 'recordings'
+
+  egressId?: string
+
+  @Prop(TypeString(), love.string.Recording)
+    format!: RecordingFormat
+
+  @Prop(TypeTimestamp(), love.string.MeetingStart)
+    startedAt!: Timestamp
+
+  roomName!: string
+
+  @Prop(TypeString(), core.string.Name)
+    name!: string
+
+  @Prop(TypeString(), getEmbeddedLabel('Size'))
+    size?: number
+
+  @Prop(TypeString(), getEmbeddedLabel('Status'))
+    status!: 'active' | 'cancelled' | 'completed'
 }
 
 @Model(love.class.DevicesPreference, preference.class.Preference)
@@ -175,9 +216,10 @@ export class TRoomInfo extends TDoc implements RoomInfo {
   isOffice!: boolean
 }
 
-@Mixin(love.mixin.Meeting, calendar.class.Event)
-export class TMeeting extends TEvent implements Meeting {
+@Mixin(love.mixin.MeetingEventLink, calendar.class.Event)
+export class TMeeting extends TEvent implements MeetingEventLink {
   room!: Ref<Room>
+  meetingId!: Ref<MeetingMinutes>
 }
 
 @Model(love.class.MeetingMinutes, core.class.Doc, DOMAIN_MEETING_MINUTES)
@@ -209,8 +251,33 @@ export class TMeetingMinutes extends TAttachedDoc implements MeetingMinutes, Tod
   @ReadOnly()
     status!: MeetingStatus
 
+  @Prop(
+    TypeAny(love.component.MeetingMinutesTranscriptionStatePresenter, love.string.TranscriptionState),
+    love.string.TranscriptionState,
+    {
+      editor: love.component.MeetingMinutesTranscriptionStatePresenter
+    }
+  )
+  @ReadOnly()
+    transcriptionState!: TranscriptionState
+
+  @Prop(
+    TypeAny(love.component.MeetingMinutesRecordingStatePresenter, love.string.RecordingState),
+    love.string.RecordingState,
+    {
+      editor: love.component.MeetingMinutesRecordingStatePresenter
+    }
+  )
+  @ReadOnly()
+    recordingState!: RecordingState
+
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
     attachments?: number
+
+  @Prop(Collection(love.class.PendingRecording), love.string.Recording, {
+    collectionEditor: love.component.PendingRecordingPresenter
+  })
+    recordings?: number
 
   @Prop(PropCollection(chunter.class.ChatMessage), love.string.Transcription)
     transcription?: number
@@ -229,11 +296,44 @@ export class TMeetingMinutes extends TAttachedDoc implements MeetingMinutes, Tod
 
   @Prop(Collection(time.class.ToDo), getEmbeddedLabel('Action Items'))
     todos?: CollectionSize<ToDo>
+
+  access!: RoomAccess
+
+  language!: RoomLanguage
 }
 
 @Mixin(love.mixin.MeetingSchedule, calendar.class.Schedule)
 export class TMeetingSchedule extends TSchedule implements MeetingSchedule {
   room!: Ref<Room>
+  meetingId!: Ref<MeetingMinutes>
+}
+
+export const DOMAIN_USER_MEETING_INVITE = 'user-meeting-invite' as Domain
+
+@Model(love.class.UserMeetingInvite, core.class.Doc, DOMAIN_USER_MEETING_INVITE)
+@UX(love.string.MeetingRequest, love.icon.Invite)
+export class TUserMeetingInvite extends TDoc implements UserMeetingInvite {
+  @Prop(TypeString(), love.string.Kind)
+  @Index(IndexKind.Indexed)
+    kind!: 'invite-request' | 'invite-response'
+
+  @Prop(TypeRef(contact.class.Person), love.string.From)
+  @Index(IndexKind.Indexed)
+    from!: Ref<Person>
+
+  @Prop(TypeRef(contact.class.Person), love.string.To)
+  @Index(IndexKind.Indexed)
+    to!: Ref<Person>
+
+  @Prop(TypeRef(love.class.MeetingMinutes), love.string.Meeting)
+    meeting?: Ref<MeetingMinutes>
+
+  @Prop(TypeTimestamp(), love.string.ExpiresAt)
+  @Index(IndexKind.Indexed)
+    expiresAt!: Timestamp
+
+  @Prop(TypeString(), love.string.Status)
+    status!: 'pending' | 'accepted' | 'declined'
 }
 
 export default love
@@ -244,11 +344,13 @@ export function createModel (builder: Builder): void {
     TFloor,
     TOffice,
     TParticipantInfo,
+    TPendingRecording,
     TDevicesPreference,
     TRoomInfo,
     TMeeting,
     TMeetingMinutes,
-    TMeetingSchedule
+    TMeetingSchedule,
+    TUserMeetingInvite
   )
 
   builder.createDoc(
@@ -359,6 +461,11 @@ export function createModel (builder: Builder): void {
     component: love.component.SharingStateIndicator
   })
 
+  builder.createDoc(presentation.class.ComponentPointExtension, core.space.Model, {
+    extension: media.extension.StateIndicator,
+    component: love.component.SpeakingWhileMutedIndicator
+  })
+
   builder.createDoc(
     setting.class.SettingsCategory,
     core.space.Model,
@@ -446,7 +553,7 @@ export function createModel (builder: Builder): void {
     icon: view.icon.Copy,
     category: love.category.Office,
     input: 'focus',
-    target: love.class.Room,
+    target: love.class.MeetingMinutes,
     visibilityTester: love.function.CanCopyGuestLink,
     context: {
       mode: 'context'
@@ -481,14 +588,12 @@ export function createModel (builder: Builder): void {
     components: { input: { component: chunter.component.ChatMessageInput, props: { collection: 'messages' } } }
   })
 
-  builder.mixin(love.class.ParticipantInfo, core.class.Class, core.mixin.TxAccessLevel, {
-    createAccessLevel: AccountRole.Guest,
-    updateAccessLevel: AccountRole.Guest
-  })
-
   builder.mixin(love.class.MeetingMinutes, core.class.Class, activity.mixin.ActivityDoc, {})
 
   builder.mixin(love.class.Room, core.class.Class, activity.mixin.ActivityDoc, {})
+
+  // Exclude PendingRecording from Activity feed - it should only appear in the recordings collection
+  builder.mixin(love.class.PendingRecording, core.class.Class, activity.mixin.IgnoreActivity, {})
 
   builder.mixin(love.class.MeetingMinutes, core.class.Class, view.mixin.ObjectPresenter, {
     presenter: love.component.MeetingMinutesPresenter
@@ -504,6 +609,10 @@ export function createModel (builder: Builder): void {
 
   builder.mixin(love.class.MeetingMinutes, core.class.Class, view.mixin.ObjectTitle, {
     titleProvider: love.function.MeetingMinutesTitleProvider
+  })
+
+  builder.mixin(love.class.UserMeetingInvite, core.class.Class, view.mixin.ObjectTitle, {
+    titleProvider: love.function.UserMeetingInviteTitleProvider
   })
 
   builder.mixin(love.class.Room, core.class.Class, view.mixin.ObjectEditor, {
@@ -700,5 +809,16 @@ export function createModel (builder: Builder): void {
     love.class.MeetingMinutes,
     'meetingEnd',
     'attribute'
+  )
+
+  builder.createDoc(
+    contact.class.SocialIdentityProvider,
+    core.space.Model,
+    {
+      label: love.string.Office,
+      icon: love.icon.Love,
+      type: SocialIdType.LOVE
+    },
+    love.socialIdentityProvider.Love
   )
 }

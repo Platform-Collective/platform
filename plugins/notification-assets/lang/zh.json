@@ -57,6 +57,21 @@
     "CommonNotificationCollectionAdded":  "{senderName} 添加了 {collection}",
     "CommonNotificationCollectionRemoved": "{senderName} 移除了 {collection}",
     "NoAccessToObject": "您不再可以访问此对象",
-    "ViewIn": "在 {app} 中查看"
+    "ViewIn": "在 {app} 中查看",
+    "Value": "{value}",
+    "Subscribe": "订阅",
+    "UnknownDevice": "未知设备",
+    "Current": "当前",
+    "RemoveWebpush": "移除",
+    "WebpushRemoveConfirm": "移除 <b>{title}</b> 的推送通知？",
+    "PushSubscribeError": "无法订阅推送通知。请重试。",
+    "PushSubscribeErrorPermissionDenied": "通知权限被拒绝。请在浏览器设置中允许此网站的通知。",
+    "PushSubscribeErrorNetwork": "无法连接到推送服务。请检查网络连接后重试。",
+    "PushSubscribeErrorNotSupported": "此浏览器不支持推送通知。",
+    "PushOnDesktop": "桌面应用中不可用",
+    "AlreadySubscribed": "此浏览器已订阅",
+    "PushNotConfigured": "此服务器未配置推送通知",
+    "PushNotSupported": "此浏览器不支持",
+    "PushDenied": "通知已在浏览器设置中被屏蔽"
   }
 }

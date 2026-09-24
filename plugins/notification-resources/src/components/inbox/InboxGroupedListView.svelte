@@ -58,6 +58,18 @@
   }
   $: updateDisplayData(data)
 
+  // Keep the highlighted row stable while the currently selected context is
+  // being removed from displayData (e.g. right after archiving it) instead
+  // of momentarily losing the highlight (findIndex would return -1 for one
+  // render until the parent updates `selectedContext`).
+  let stableIndex = 0
+  $: {
+    const idx = displayData.findIndex(([context]) => context === selectedContext)
+    if (idx !== -1) {
+      stableIndex = idx
+    }
+  }
+
   function updateDisplayData (data: InboxData): void {
     let result: [Ref<DocNotifyContext>, DisplayInboxNotification[]][] = Array.from(data.entries())
     if (archivedContexts.size > 0) {
@@ -172,7 +184,7 @@
     bind:selection={listSelection}
     count={displayData.length}
     items={displayData}
-    highlightIndex={displayData.findIndex(([context]) => context === selectedContext)}
+    highlightIndex={displayData.length > 0 ? Math.max(0, Math.min(stableIndex, displayData.length - 1)) : -1}
     noScroll
     minHeight="5.625rem"
     kind="full-size"

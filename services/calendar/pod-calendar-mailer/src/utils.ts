@@ -54,5 +54,5 @@ export async function isMeeting (workspaceUuid: WorkspaceUuid, event: Event): Pr
     hierarchy = client.getHierarchy()
     hierarchies.set(workspaceUuid, hierarchy)
   }
-  return hierarchy.hasMixin(event, love.mixin.Meeting)
+  return hierarchy.hasMixin(event, love.mixin.MeetingEventLink)
 }

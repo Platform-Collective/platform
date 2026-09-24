@@ -190,14 +190,14 @@ export class ChannelPage extends CommonPage {
     await this.updateButton().click()
   }
 
-  async getClipboardCopyMessage (): Promise<void> {
-    await this.page.evaluate(async () => {
+  async getClipboardCopyMessage (): Promise<string> {
+    return await this.page.evaluate(async () => {
       return await navigator.clipboard.readText()
     })
   }
 
   async checkIfMessageIsCopied (message: string): Promise<void> {
-    expect(this.getClipboardCopyMessage()).toContain(message)
+    expect(await this.getClipboardCopyMessage()).toContain(message)
   }
 
   async clickChooseChannel (channel: string): Promise<void> {

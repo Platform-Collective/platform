@@ -191,15 +191,26 @@ export async function translate<P extends Record<string, any>> (
   if (!cache.has(locale)) {
     cache.set(locale, localCache)
   }
-  try {
-    const compiled = localCache.get(message)
 
-    if (compiled !== undefined) {
-      if (compiled instanceof Status) {
-        return message
-      }
-      return compiled.format(params)
+  const compiled = localCache.get(message)
+
+  if (compiled !== undefined) {
+    if (compiled instanceof Status) {
+      return message
     }
+    // A formatting failure here is specific to these `params`, not to the
+    // compiled message itself - do not fall through to
+    // handleIntlPipelineFailure, which would cache a permanent Status
+    // failure for `message` and break future (valid) calls with it.
+    try {
+      return compiled.format(params)
+    } catch (err) {
+      await setStatus(unknownError(err), skipError)
+      return message
+    }
+  }
+
+  try {
     const id = _parseId(message)
     if (id.component === _EmbeddedId) {
       return id.name
@@ -211,7 +222,13 @@ export async function translate<P extends Record<string, any>> (
     }
     const compiledNew = new IntlMessageFormat(translation, locale, undefined, { ignoreTag: true })
     localCache.set(message, compiledNew)
-    return compiledNew.format(params)
+
+    try {
+      return compiledNew.format(params)
+    } catch (err) {
+      await setStatus(unknownError(err), skipError)
+      return message
+    }
   } catch (err) {
     return await handleIntlPipelineFailure(err, message, localCache, skipError)
   }
@@ -231,44 +248,61 @@ export function translateCB<P extends Record<string, any>> (
   if (!cache.has(locale)) {
     cache.set(locale, localCache)
   }
-  try {
-    const compiled = localCache.get(message)
 
-    if (compiled !== undefined) {
-      if (compiled instanceof Status) {
-        resolve(message)
-        return
-      }
+  const compiled = localCache.get(message)
+
+  if (compiled !== undefined) {
+    if (compiled instanceof Status) {
+      resolve(message)
+      return
+    }
+    try {
       resolve(compiled.format(params))
-    } else {
-      let id: _IdInfo
-      try {
-        id = _parseId(message)
-        if (id.component === _EmbeddedId) {
-          resolve(id.name)
-          return
-        }
-      } catch (err) {
-        void handleIntlPipelineFailure(err, message, localCache, skipError).then(resolve)
-        return
-      }
-      const translation = getCachedTranslation(id, locale)
-      if (translation === undefined || translation instanceof Status) {
-        void translate(message, params, language, skipError)
-          .then((res) => {
-            resolve(res)
-          })
-          .catch((err) => {
-            void handleIntlPipelineFailure(err, message, localCache, skipError).then(resolve)
-          })
-        return
-      }
+    } catch (err) {
+      void setStatus(unknownError(err), skipError)
+      resolve(message)
+    }
+    return
+  }
 
-      const compiledNew = new IntlMessageFormat(translation, locale, undefined, { ignoreTag: true })
-      localCache.set(message, compiledNew)
-      resolve(compiledNew.format(params))
+  let id: _IdInfo
+  try {
+    id = _parseId(message)
+    if (id.component === _EmbeddedId) {
+      resolve(id.name)
+      return
     }
   } catch (err) {
     void handleIntlPipelineFailure(err, message, localCache, skipError).then(resolve)
+    return
+  }
+
+  const translation = getCachedTranslation(id, locale)
+  if (translation === undefined || translation instanceof Status) {
+    void translate(message, params, language, skipError)
+      .then((res) => {
+        resolve(res)
+      })
+      .catch((err) => {
+        void setStatus(unknownError(err), skipError)
+        resolve(message)
+      })
+    return
+  }
+
+  let compiledNew: IntlMessageFormat
+  try {
+    compiledNew = new IntlMessageFormat(translation, locale, undefined, { ignoreTag: true })
+    localCache.set(message, compiledNew)
+  } catch (err) {
+    void handleIntlPipelineFailure(err, message, localCache, skipError).then(resolve)
+    return
+  }
+
+  try {
+    resolve(compiledNew.format(params))
+  } catch (err) {
+    void setStatus(unknownError(err), skipError)
+    resolve(message)
   }
 }

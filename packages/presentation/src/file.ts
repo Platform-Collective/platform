@@ -62,15 +62,96 @@ export function getFileUrl (file: string, filename?: string): string {
   return storage.getFileUrl(workspace, file, filename)
 }
 
+/**
+ * Error thrown by registered upload guards (see {@link setUploadGuard}) when the
+ * current workspace is not allowed to upload new files (e.g. plan limit reached
+ * and grace period expired). Caller code should handle this distinct from generic
+ * upload failures and surface a user-friendly message + upgrade CTA.
+ *
+ * @public
+ */
+export class UploadRestrictedError extends Error {
+  constructor (
+    public readonly reason: string,
+    message?: string
+  ) {
+    super(message ?? reason)
+    this.name = 'UploadRestrictedError'
+  }
+}
+
 /** @public */
+export type UploadGuard = (file: File) => Promise<void> | void
+
+let uploadGuard: UploadGuard | undefined
+
+/**
+ * Register a synchronous/async guard called before every {@link uploadFile}.
+ * Throw an {@link UploadRestrictedError} from the guard to block the upload.
+ * Pass `undefined` to clear the guard.
+ *
+ * The guard lives in `presentation` to keep upload restriction concerns out of
+ * every individual call site, and to avoid a dependency from `presentation` to
+ * higher-level plugins (billing-resources) — DI inversion via a setter.
+ *
+ * @public
+ */
+export function setUploadGuard (guard: UploadGuard | undefined): void {
+  uploadGuard = guard
+}
+
+/** @public */
+// Content types the browser commonly fails to detect, resolved by file extension instead.
+const extensionContentTypes: Record<string, string> = {
+  log: 'text/plain',
+  txt: 'text/plain',
+  text: 'text/plain',
+  ini: 'text/plain',
+  conf: 'text/plain',
+  cfg: 'text/plain',
+  env: 'text/plain',
+  properties: 'text/plain',
+  yaml: 'text/yaml',
+  yml: 'text/yaml',
+  json: 'application/json',
+  md: 'text/markdown',
+  csv: 'text/csv',
+  xml: 'text/xml'
+}
+
+/**
+ * Resolves a usable content type for a file, falling back to its extension when the
+ * browser-provided type is missing or the generic application/octet-stream.
+ * @public
+ */
+export function getContentType (name: string, type: string): string {
+  if (type !== '' && type !== 'application/octet-stream') {
+    return type
+  }
+  const ext = name.split('.').pop()?.toLowerCase()
+  if (ext !== undefined && extensionContentTypes[ext] !== undefined) {
+    return extensionContentTypes[ext]
+  }
+  return type
+}
+
 export async function uploadFile (
   file: File,
   uuid?: Ref<PlatformBlob>
 ): Promise<{ uuid: Ref<PlatformBlob>, metadata: Record<string, any> }> {
+  if (uploadGuard !== undefined) {
+    await uploadGuard(file)
+  }
+
   uuid ??= generateFileId() as Ref<PlatformBlob>
 
   const token = getToken()
   const workspace = getCurrentWorkspaceUuid()
+
+  const contentType = getContentType(file.name, file.type)
+  if (contentType !== file.type) {
+    file = new File([file], file.name, { type: contentType, lastModified: file.lastModified })
+  }
 
   const storage = getFileStorage()
   await storage.uploadFile(token, workspace, uuid, file)

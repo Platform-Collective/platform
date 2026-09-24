@@ -21,6 +21,7 @@ export default plugin(serverLoveId, {
     OnUserStatus: '' as Resource<TriggerFunc>,
     OnParticipantInfo: '' as Resource<TriggerFunc>,
     OnRoomInfo: '' as Resource<TriggerFunc>,
-    OnKnock: '' as Resource<TriggerFunc>
+    OnKnock: '' as Resource<TriggerFunc>,
+    OnUserMeetingInvite: '' as Resource<TriggerFunc>
   }
 })

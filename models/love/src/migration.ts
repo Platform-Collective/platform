@@ -65,7 +65,7 @@ async function createRooms (client: MigrationUpgradeClient): Promise<void> {
   const data = createDefaultRooms(
     employees.map((p) => p._id),
     true,
-    true
+    false
   )
   for (const room of data) {
     const _class = isOffice(room) ? love.class.Office : love.class.Room
@@ -178,6 +178,17 @@ export const loveOperation: MigrateOperation = {
         state: 'meeting-minutes-reindex-v1',
         func: async (client) => {
           await client.reindex(DOMAIN_MEETING_MINUTES, [love.class.MeetingMinutes])
+        }
+      },
+      {
+        state: 'office-rooms-to-video-v1',
+        mode: 'upgrade',
+        func: async (client: MigrationClient) => {
+          await client.update(
+            DOMAIN_LOVE,
+            { _class: love.class.Office, type: RoomType.Audio },
+            { type: RoomType.Video }
+          )
         }
       }
     ])

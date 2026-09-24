@@ -38,7 +38,7 @@
     }
 
     if (mounted) {
-      checkHandle = setTimeout(check, CHECK_INTERVAL)
+      checkHandle = setTimeout(check, CHECK_INTERVAL) as unknown as number
     }
   }
 

@@ -28,7 +28,11 @@
   } from '@hcengineering/core'
   import login, { loginId } from '@hcengineering/login'
   import notification, { DocNotifyContext, InboxNotification, notificationId } from '@hcengineering/notification'
-  import { BrowserNotificatator, InboxNotificationsClientImpl } from '@hcengineering/notification-resources'
+  import {
+    BrowserNotificatator,
+    InboxNotificationsClientImpl,
+    NotifyMarker
+  } from '@hcengineering/notification-resources'
   import inbox, { inboxId } from '@hcengineering/inbox'
   import { broadcastEvent, getMetadata, getResource, IntlString, translate } from '@hcengineering/platform'
   import {
@@ -72,6 +76,7 @@
     PopupPosAlignment,
     PopupResult,
     popupstore,
+    printModeStore,
     pushRootBarComponent,
     resizeObserver,
     ResolvedLocation,
@@ -104,7 +109,15 @@
   import { getContext, onDestroy, onMount, tick } from 'svelte'
   import { subscribeMobile } from '../mobile'
   import workbench from '../plugin'
-  import { buildNavModel, isAllowedToRole, logOut, workspacesStore } from '../utils'
+  import {
+    buildNavModel,
+    hasCrossWorkspaceUnread,
+    isAllowedToRole,
+    logOut,
+    refreshWorkspaces,
+    reportWorkspaceRead,
+    workspacesStore
+  } from '../utils'
   import AccountPopup from './AccountPopup.svelte'
   import AppItem from './AppItem.svelte'
   import AppSwitcher from './AppSwitcher.svelte'
@@ -265,6 +278,29 @@
     })
     syncSidebarState()
     syncWorkbenchTab()
+
+    // Keep cross-workspace unread flags fresh while the app is open: the flag is
+    // raised server-side in workspaces the client isn't connected to, so poll and
+    // refresh on focus rather than trusting the initial snapshot.
+    const refreshInterval = setInterval(() => {
+      // Skip while hidden — the visibilitychange/focus handler below refreshes on
+      // return, so a backgrounded tab doesn't keep hitting GetWorkspaces.
+      if (document.hidden) return
+      void refreshWorkspaces()
+    }, 45000)
+    const onVisible = (): void => {
+      if (document.visibilityState === 'visible') {
+        void refreshWorkspaces()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+
+    return () => {
+      clearInterval(refreshInterval)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
   })
 
   const workspaceId = $location.path[1]
@@ -275,12 +311,24 @@
   let hasNotificationsFn: ((data: Map<Ref<DocNotifyContext>, InboxNotification[]>) => Promise<boolean>) | undefined =
     undefined
   let hasInboxNotifications = false
+  let clearedWorkspaceUnread = false
 
   void getResource(notification.function.HasInboxNotifications).then((f) => {
     hasNotificationsFn = f
   })
 
   $: void hasNotificationsFn?.($inboxNotificationsByContextStore).then((res) => {
+    if (!res && !clearedWorkspaceUnread) {
+      // Local inbox is fully read: clear this workspace's cross-workspace unread
+      // flag. Fires both on the has-unread -> all-read transition and once on
+      // load when the inbox is already read (e.g. the items were read on another
+      // device and the server flag is stale-true). Raising it back to true is
+      // handled server-side when a new notification arrives.
+      clearedWorkspaceUnread = true
+      void reportWorkspaceRead()
+    } else if (res) {
+      clearedWorkspaceUnread = false
+    }
     hasInboxNotifications = res
   })
 
@@ -868,7 +916,14 @@
             showPopup(SelectWorkspaceMenu, {}, popupSpacePosition)
           }}
         >
-          <Logo mini={appsMini} workspace={windowWorkspaceName ?? $resolvedLocationStore.path[1]} />
+          <div class="logo-badge-wrap">
+            <Logo mini={appsMini} workspace={windowWorkspaceName ?? $resolvedLocationStore.path[1]} />
+            {#if $hasCrossWorkspaceUnread}
+              <div class="cross-ws-unread-marker">
+                <NotifyMarker kind={'simple'} size={'xx-small'} />
+              </div>
+            {/if}
+          </div>
         </div>
         <div class="topmenu-container clear-mins flex-no-shrink" class:mini={appsMini}>
           <AppItem
@@ -1119,7 +1174,7 @@
   <Dock />
   <div bind:this={cover} class="cover" />
   <TooltipInstance />
-  <PanelInstance bind:this={panelInstance} contentPanel={elementPanel}>
+  <PanelInstance bind:this={panelInstance} contentPanel={elementPanel} readonly={$printModeStore}>
     <svelte:fragment slot="panel-header">
       <ActionContext context={{ mode: 'panel' }} />
     </svelte:fragment>
@@ -1136,6 +1191,21 @@
 {/if}
 
 <style lang="scss">
+  .logo-badge-wrap {
+    position: relative;
+    display: flex;
+  }
+  .cross-ws-unread-marker {
+    position: absolute;
+    top: -0.125rem;
+    right: -0.125rem;
+    display: flex;
+    border-radius: 50%;
+    // Ring in the rail background so the dot stays visible on any workspace
+    // logo colour (e.g. a red dot on a red logo would otherwise blend in).
+    box-shadow: 0 0 0 0.125rem var(--theme-navpanel-color);
+    pointer-events: none;
+  }
   .workbench-container {
     position: relative;
     display: flex;

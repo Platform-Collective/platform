@@ -20,6 +20,7 @@
 
   import ParticipantsListView from './meeting/ParticipantsListView.svelte'
   import ScreenSharingView from './meeting/ScreenSharingView.svelte'
+  import { roomModalActive } from '../stores'
 
   export let isDock: boolean = false
   export let room: Ref<TypeRoom>
@@ -43,23 +44,27 @@
 
 <div class="antiPopup videoPopup-container" class:isDock>
   <div class="screenContainer" class:hidden={!withScreenSharing}>
-    <ScreenSharingView showLocalTrack={false} bind:hasActiveTrack={withScreenSharing} />
+    {#if !$roomModalActive}
+      <ScreenSharingView showLocalTrack={true} bind:hasActiveTrack={withScreenSharing} />
+    {/if}
   </div>
   <Scroller
     bind:divScroll
     noStretch
     padding={'.5rem'}
-    containerName={'videoPopupСontainer'}
+    containerName={'videoPopupContainer'}
     onResize={dispatchFit}
     stickedScrollBars
   >
     <div class="videoGrid">
-      <ParticipantsListView
-        {room}
-        on:participantsCount={(evt) => {
-          dispatchFit(evt.detail > 0)
-        }}
-      />
+      {#if !$roomModalActive}
+        <ParticipantsListView
+          {room}
+          on:participantsCount={(evt) => {
+            dispatchFit(evt.detail > 0)
+          }}
+        />
+      {/if}
     </div>
   </Scroller>
   <div class="antiNav-space" />
@@ -73,6 +78,7 @@
     align-items: stretch;
     width: 100%;
     max-width: 100%;
+    -webkit-user-select: none;
     user-select: none;
 
     &:not(.isDock) {
@@ -107,12 +113,12 @@
     grid-auto-flow: row;
     gap: var(--spacing-1);
   }
-  @container videoPopupСontainer (max-width: 60rem) {
+  @container videoPopupContainer (max-width: 60rem) {
     .videoGrid {
       grid-template-columns: repeat(2, 1fr);
     }
   }
-  @container videoPopupСontainer (max-width: 30rem) {
+  @container videoPopupContainer (max-width: 30rem) {
     .videoGrid {
       grid-template-columns: 1fr;
     }

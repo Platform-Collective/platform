@@ -57,6 +57,7 @@
   export let adaptiveName: boolean = false
   export let showPreview: boolean = false
   export let disabled: boolean = false
+  export let grayscale: boolean = false
   export let style: 'modern' | undefined = undefined
   export let clickable: boolean = false
   export let clipPath: string | undefined = undefined
@@ -126,7 +127,7 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div class="flex-presenter" class:no-pointer={!clickable} use:tooltip={getPreviewPopup(person, showPreview)} on:click>
   {#if showStatus && person}
-    <div class="relative">
+    <div class="relative" style="display: flex; width: 100%; height: 100%; position: relative; z-index: 0;">
       <AvatarInstance
         bind:this={avatarInst}
         {url}
@@ -140,6 +141,7 @@
         bind:element
         {adaptiveName}
         {disabled}
+        {grayscale}
         {style}
         withStatus
         {clipPath}
@@ -164,6 +166,7 @@
       bind:element
       {adaptiveName}
       {disabled}
+      {grayscale}
       {style}
       {clipPath}
     />

@@ -21,7 +21,7 @@ import {
   type TranslateResponse
 } from '@hcengineering/ai-bot'
 import { type Class, concatLink, type Doc, type Markup, type Ref } from '@hcengineering/core'
-import { type Room, type RoomLanguage } from '@hcengineering/love'
+import { type MeetingMinutes, type RoomLanguage } from '@hcengineering/love'
 import { getMetadata } from '@hcengineering/platform'
 import presentation from '@hcengineering/presentation'
 
@@ -94,7 +94,7 @@ export async function summarizeMessages (
 }
 
 export async function connectMeeting (
-  roomId: Ref<Room>,
+  meetingId: Ref<MeetingMinutes>,
   language: RoomLanguage,
   options: Partial<ConnectMeetingRequest>
 ): Promise<void> {
@@ -106,7 +106,7 @@ export async function connectMeeting (
   }
 
   try {
-    const req: ConnectMeetingRequest = { roomId, transcription: options.transcription ?? false, language }
+    const req: ConnectMeetingRequest = { meetingId, transcription: options.transcription ?? false, language }
     await fetch(concatLink(url, 'love/connect'), {
       method: 'POST',
       headers: {
@@ -121,7 +121,7 @@ export async function connectMeeting (
   }
 }
 
-export async function disconnectMeeting (roomId: Ref<Room>): Promise<void> {
+export async function disconnectMeeting (meetingId: Ref<MeetingMinutes>): Promise<void> {
   const url = getMetadata(aiBot.metadata.EndpointURL) ?? ''
   const token = getMetadata(presentation.metadata.Token) ?? ''
 
@@ -130,7 +130,7 @@ export async function disconnectMeeting (roomId: Ref<Room>): Promise<void> {
   }
 
   try {
-    const req: DisconnectMeetingRequest = { roomId }
+    const req: DisconnectMeetingRequest = { meetingId }
     await fetch(concatLink(url, 'love/disconnect'), {
       method: 'POST',
       headers: {

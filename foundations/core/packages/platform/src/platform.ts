@@ -181,6 +181,7 @@ export default plugin(platformId, {
   },
   metadata: {
     locale: '' as Metadata<string>,
-    LoadHelper: '' as Metadata<<T extends Resources>(loader: PluginLoader<T>) => Promise<PluginModule<T>>>
+    LoadHelper: '' as Metadata<<T extends Resources>(loader: PluginLoader<T>) => Promise<PluginModule<T>>>,
+    DevModel: '' as Metadata<boolean>
   }
 })

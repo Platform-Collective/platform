@@ -35,6 +35,7 @@ import documents, {
   type DocumentSpace,
   type DocumentTemplate,
   type DocumentTraining,
+  type DocumentAttachment,
   type ControlledDocumentSnapshot,
   type ChangeControl,
   type ProjectDocument,
@@ -43,6 +44,7 @@ import documents, {
   createChangeControl,
   createControlledDocFromTemplate as controlledDocFromTemplate
 } from '@hcengineering/controlled-documents'
+import attachment, { type Attachment } from '@hcengineering/attachment'
 import { getCurrentEmployee } from '@hcengineering/contact'
 import documentsRes from './plugin'
 import { getDocumentVersionString } from './utils'
@@ -68,9 +70,52 @@ export async function createControlledDocFromTemplate (
       await setPlatformStatus(unknownError(err))
       return { ...result, success: false }
     }
+
+    await copyDocumentAttachments(client, templateId, documentId, docClass, space)
   }
 
   return result
+}
+
+async function copyDocumentAttachments (
+  client: TxOperations,
+  sourceId: Ref<Document>,
+  targetId: Ref<Document>,
+  targetClass: Ref<Class<Document>>,
+  space: Ref<DocumentSpace>
+): Promise<void> {
+  const hierarchy = client.getHierarchy()
+  const attachments = await client.findAll(attachment.class.Attachment, { attachedTo: sourceId })
+
+  for (const att of attachments) {
+    if (hierarchy.hasMixin(att, documents.mixin.DocumentAttachment)) {
+      const docAtt = hierarchy.as<Attachment, DocumentAttachment>(att, documents.mixin.DocumentAttachment)
+      if (docAtt.deletedIn != null) {
+        continue
+      }
+    }
+
+    const newAttId = generateId<Attachment>()
+    await client.addCollection(
+      att._class,
+      space,
+      targetId,
+      targetClass,
+      'attachments',
+      {
+        file: att.file,
+        name: att.name,
+        type: att.type,
+        size: att.size,
+        lastModified: att.lastModified,
+        metadata: att.metadata
+      },
+      newAttId
+    )
+    await client.updateMixin(newAttId, att._class, space, documents.mixin.DocumentAttachment, {
+      state: 'referenced'
+    })
+  }
 }
 
 export async function createNewDraftForControlledDoc (
@@ -181,6 +226,38 @@ export async function createNewDraftForControlledDoc (
         dueDays: documentTraining.dueDays
       })
     }
+  }
+
+  // Copy attachments to the new version, skipping those marked as deleted
+  const attachments = await client.findAll(attachment.class.Attachment, { attachedTo: document._id })
+  for (const att of attachments) {
+    if (hierarchy.hasMixin(att, documents.mixin.DocumentAttachment)) {
+      const docAtt = hierarchy.as<Attachment, DocumentAttachment>(att, documents.mixin.DocumentAttachment)
+      if (docAtt.deletedIn != null) {
+        continue
+      }
+    }
+
+    const newAttId = generateId<Attachment>()
+    await ops.addCollection(
+      att._class,
+      space,
+      newDraftDocId,
+      document._class,
+      'attachments',
+      {
+        file: att.file,
+        name: att.name,
+        type: att.type,
+        size: att.size,
+        lastModified: att.lastModified,
+        metadata: att.metadata
+      },
+      newAttId
+    )
+    await ops.updateMixin(newAttId, att._class, space, documents.mixin.DocumentAttachment, {
+      state: 'referenced'
+    })
   }
 
   const res = await ops.commit()

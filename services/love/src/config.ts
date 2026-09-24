@@ -23,8 +23,10 @@ interface Config {
   ApiKey: string
   ApiSecret: string
 
+  LiveKitWebhookKey: string
+  LiveKitWebhookSecret: string
+
   StorageConfig: string
-  StorageProviderName: string
   S3StorageConfig: string
   Secret: string
 
@@ -32,6 +34,15 @@ interface Config {
 
   BillingUrl: string
   BillingPollInterval: number
+  UseGlobalLiveKit: boolean
+
+  Agents: string[] // A comma-separated list of agent types to run
+
+  WebHookUrl: string
+  UseEgressWebHook: boolean
+
+  // Polling configuration
+  PollingIntervalMs: number
 }
 
 const envMap: { [key in keyof Config]: string } = {
@@ -42,9 +53,10 @@ const envMap: { [key in keyof Config]: string } = {
   LiveKitHost: 'LIVEKIT_HOST',
   ApiKey: 'LIVEKIT_API_KEY',
   ApiSecret: 'LIVEKIT_API_SECRET',
+  LiveKitWebhookKey: 'LIVEKIT_WEBHOOK_API_KEY',
+  LiveKitWebhookSecret: 'LIVEKIT_WEBHOOK_API_SECRET',
 
   StorageConfig: 'STORAGE_CONFIG',
-  StorageProviderName: 'STORAGE_PROVIDER_NAME',
   S3StorageConfig: 'S3_STORAGE_CONFIG',
   Secret: 'SECRET',
   ServiceID: 'SERVICE_ID',
@@ -52,7 +64,13 @@ const envMap: { [key in keyof Config]: string } = {
   RecordingPreset: 'RECORDING_PRESET',
 
   BillingUrl: 'BILLING_URL',
-  BillingPollInterval: 'BILLING_POLL_INTERVAL'
+  BillingPollInterval: 'BILLING_POLL_INTERVAL',
+  UseGlobalLiveKit: 'USE_GLOBAL_LIVEKIT',
+  Agents: 'AGENTS',
+  WebHookUrl: 'WEBHOOK_URL',
+  UseEgressWebHook: 'USE_EGRESS_WEBHOOK',
+
+  PollingIntervalMs: 'POLLING_INTERVAL_MS'
 }
 
 const parseNumber = (str: string | undefined): number | undefined => (str !== undefined ? Number(str) : undefined)
@@ -61,21 +79,27 @@ const config: Config = (() => {
   const params: Partial<Config> = {
     AccountsURL: process.env[envMap.AccountsURL],
     Port: parseNumber(process.env[envMap.Port]) ?? 8096,
-    LiveKitProject: process.env[envMap.LiveKitProject] ?? '',
+    LiveKitProject: process.env[envMap.LiveKitProject],
     LiveKitHost: process.env[envMap.LiveKitHost],
     ApiKey: process.env[envMap.ApiKey],
     ApiSecret: process.env[envMap.ApiSecret],
+    LiveKitWebhookKey: process.env[envMap.LiveKitWebhookKey] ?? '',
+    LiveKitWebhookSecret: process.env[envMap.LiveKitWebhookSecret] ?? '',
     StorageConfig: process.env[envMap.StorageConfig],
-    StorageProviderName: process.env[envMap.StorageProviderName] ?? 's3',
     S3StorageConfig: process.env[envMap.S3StorageConfig],
     Secret: process.env[envMap.Secret],
     ServiceID: process.env[envMap.ServiceID] ?? 'love-service',
     RecordingPreset: process.env[envMap.RecordingPreset] ?? '720p',
     BillingUrl: process.env[envMap.BillingUrl] ?? '',
-    BillingPollInterval: parseNumber(process.env[envMap.BillingPollInterval]) ?? 15
+    BillingPollInterval: parseNumber(process.env[envMap.BillingPollInterval]) ?? 15,
+    UseGlobalLiveKit: process.env[envMap.UseGlobalLiveKit] === 'true',
+    Agents: (process.env[envMap.Agents] ?? '').split(','),
+    WebHookUrl: process.env[envMap.WebHookUrl] ?? '',
+    UseEgressWebHook: process.env[envMap.UseEgressWebHook] === 'true',
+    PollingIntervalMs: parseNumber(process.env[envMap.PollingIntervalMs]) ?? 30000 // Default: 30 seconds
   }
 
-  const optional = ['StorageConfig', 'S3StorageConfig', 'LiveKitProject', 'BillingUrl']
+  const optional = ['StorageConfig', 'S3StorageConfig', 'BillingUrl', 'PollingIntervalMs']
 
   const missingEnv = (Object.keys(params) as Array<keyof Config>)
     .filter((key) => !optional.includes(key))

@@ -28,6 +28,7 @@ import {
   type PersonUuid,
   type SocialId as SocialIdBase,
   type UsageStatus,
+  type WorkspaceConfiguration,
   type WorkspaceDataId,
   type WorkspaceUuid,
   type WorkspaceInfo,
@@ -115,7 +116,7 @@ export interface Workspace {
   url: string
   allowReadOnlyGuest: boolean
   allowGuestSignUp: boolean
-  passwordAgingRule?: number // Number of days after which password must be changed
+  passwordAgingRule?: number | null // Number of days after which password must be changed
   dataId?: WorkspaceDataId // Old workspace identifier. E.g. Database name in Mongo, bucket in R2, etc.
   branding?: string
   location?: Location
@@ -123,6 +124,8 @@ export interface Workspace {
   createdBy?: PersonUuid
   billingAccount?: PersonUuid
   createdOn?: Timestamp
+  // Initial-state configuration captured at workspace creation
+  pendingConfiguration?: WorkspaceConfiguration | null
 }
 
 export interface OTP {
@@ -155,6 +158,28 @@ export interface WorkspaceJoinInfo {
   email: string
   workspace: Workspace
   invite?: WorkspaceInvite | null
+}
+
+/**
+ * Represents an API token record in the database.
+ * Timestamps are in milliseconds since Unix epoch.
+ *
+ * A token carries the full rights of the account that created it. Narrowing
+ * that down needs enforcement in the pipeline, where it applies to every
+ * transport, so it is deliberately not attempted here.
+ *
+ * @public
+ */
+export interface ApiToken {
+  id: string
+  accountUuid: PersonUuid
+  name: string
+  workspaceUuid: WorkspaceUuid
+  /** Milliseconds since epoch */
+  createdOn: number
+  /** Milliseconds since epoch */
+  expiresOn: number
+  revoked: boolean
 }
 
 export interface Mailbox {
@@ -324,15 +349,28 @@ export interface AccountDB {
   userProfile: DbCollection<UserProfile>
   subscription: DbCollection<Subscription>
   workspacePermission: DbCollection<WorkspacePermission>
+  apiToken: DbCollection<ApiToken>
 
   init: () => Promise<void>
   createWorkspace: (data: WorkspaceData, status: WorkspaceStatusData) => Promise<WorkspaceUuid>
   updateAllowReadOnlyGuests: (workspaceId: WorkspaceUuid, readOnlyGuestsAllowed: boolean) => Promise<void>
   updateAllowGuestSignUp: (workspaceId: WorkspaceUuid, guestSignUpAllowed: boolean) => Promise<void>
-  updatePasswordAgingRule: (workspaceId: WorkspaceUuid, days: number) => Promise<void>
+  updatePasswordAgingRule: (workspaceId: WorkspaceUuid, days: number | null) => Promise<void>
   assignWorkspace: (accountId: AccountUuid, workspaceId: WorkspaceUuid, role: AccountRole) => Promise<void>
   batchAssignWorkspace: (data: [AccountUuid, WorkspaceUuid, AccountRole][]) => Promise<void>
   updateWorkspaceRole: (accountId: AccountUuid, workspaceId: WorkspaceUuid, role: AccountRole) => Promise<void>
+  // Marks/clears the "has unread notifications in this workspace" flag for a member.
+  // Set with a service token by the workspace's own notification trigger; cleared
+  // by the member themselves (self-service token) once their unread count hits zero.
+  setWorkspaceMemberUnread: (accountId: AccountUuid, workspaceId: WorkspaceUuid, hasUnread: boolean) => Promise<void>
+  // Bulk variant of setWorkspaceMemberUnread for a single workspace. Used by the
+  // account-service consumer of the cross-workspace unread queue to raise the flag
+  // for a whole batch of members in one statement instead of one call per member.
+  setWorkspaceMembersUnread: (
+    accountIds: AccountUuid[],
+    workspaceId: WorkspaceUuid,
+    hasUnread: boolean
+  ) => Promise<void>
   unassignWorkspace: (accountId: AccountUuid, workspaceId: WorkspaceUuid) => Promise<void>
   getWorkspaceRole: (accountId: AccountUuid, workspaceId: WorkspaceUuid) => Promise<AccountRole | null>
   getWorkspaceRoles: (accountId: AccountUuid) => Promise<Map<WorkspaceUuid, AccountRole>>
@@ -455,7 +493,7 @@ export interface LoginInfoWorkspace {
 
   progress?: number
   branding?: string
-  passwordAgingRule?: number
+  passwordAgingRule?: number | null
 }
 
 export interface LoginInfoWithWorkspaces extends LoginInfo {

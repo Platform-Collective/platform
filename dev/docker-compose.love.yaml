@@ -1,0 +1,47 @@
+# Dev-overlay to run love service.
+#
+# Usage from dev/ directory:
+#   docker compose -f docker-compose.yaml -f docker-compose.love.yaml up -d
+#
+# It is assumed the livekit service launched with default settings
+# (dev/run_livekit.sh + dev/livekit-dev-config.yaml):
+#   - LiveKit API:      http://127.0.0.1:7880
+#   - Webhook -> love:  http://127.0.0.1:8097/webhook
+#
+services:
+  love:
+    image: platformcollective/love
+    container_name: love
+    extra_hosts:
+      - 'huly.local:host-gateway'
+    depends_on:
+      redpanda:
+        condition: service_started
+      account:
+        condition: service_started
+      datalake:
+        condition: service_started
+    ports:
+      - 8097:8097
+    environment:
+      - PORT=8097
+      - SERVICE_ID=love-service
+      - SECRET=secret
+      - ACCOUNTS_URL=http://huly.local:3000
+      - STATS_URL=http://huly.local:4900
+      - REGION=cockroach
+      - QUEUE_CONFIG=${QUEUE_CONFIG}
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - LIVEKIT_HOST=http://huly.local:7880
+      - LIVEKIT_PROJECT=dev
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=secret
+      - LIVEKIT_WEBHOOK_API_KEY=whkey
+      - LIVEKIT_WEBHOOK_API_SECRET=whsecret
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318/v1/traces
+    restart: unless-stopped
+
+  front:
+    environment:
+      - LOVE_ENDPOINT=http://huly.local:8097
+      - LIVEKIT_WS=ws://huly.local:7880

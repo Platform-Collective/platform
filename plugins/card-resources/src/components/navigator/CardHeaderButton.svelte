@@ -14,19 +14,30 @@
 -->
 <script lang="ts">
   import { AccountRole, getCurrentAccount, hasAccountRole, Ref } from '@hcengineering/core'
+  import { getClient } from '@hcengineering/presentation'
   import { ButtonIcon, getCurrentLocation, IconAdd, location, Menu, navigate, showPopup } from '@hcengineering/ui'
 
   import { MasterTag } from '@hcengineering/card'
   import card from '../../plugin'
   import CreateSpace from './CreateSpace.svelte'
   import CreateCardPopup from '../CreateCardPopup.svelte'
+  import { isBaseTypeWithSubtypes } from '../../utils'
 
   const me = getCurrentAccount()
 
   let pressed: boolean = false
 
-  $: _class = $location.path[4] as Ref<MasterTag>
-  $: space = $location.path[3]
+  let _class: Ref<MasterTag> | undefined
+  let space: string | undefined
+
+  $: updateContext($location.path[3], $location.path[4] as Ref<MasterTag> | undefined)
+
+  function updateContext (pathSpace: string | undefined, pathClass: Ref<MasterTag> | undefined): void {
+    if (pathClass !== undefined) {
+      _class = pathClass
+      space = pathSpace
+    }
+  }
 
   async function navigateToCard (cardId: string): Promise<void> {
     const loc = getCurrentLocation()
@@ -36,8 +47,8 @@
   }
 
   async function handleCreateCard (): Promise<void> {
-    console.log('Creating card of type', _class, 'in space', space)
-    showPopup(CreateCardPopup, { type: _class, space }, 'center', async (result) => {
+    const changeType = _class !== undefined && isBaseTypeWithSubtypes(getClient().getHierarchy(), _class)
+    showPopup(CreateCardPopup, { type: _class, space, changeType }, 'center', async (result) => {
       if (result != null && result !== '') {
         await navigateToCard(result)
       }

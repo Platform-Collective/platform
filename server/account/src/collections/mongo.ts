@@ -58,7 +58,8 @@ import type {
   WorkspaceOperation,
   WorkspaceStatus,
   WorkspaceStatusData,
-  WorkspacePermission
+  WorkspacePermission,
+  ApiToken
 } from '../types'
 import { isShallowEqual } from '../utils'
 
@@ -379,6 +380,7 @@ interface WorkspaceMember {
   workspaceUuid: WorkspaceUuid
   accountUuid: AccountUuid
   role: AccountRole
+  hasUnread?: boolean
 }
 
 interface Migration {
@@ -411,6 +413,7 @@ export class MongoAccountDB implements AccountDB {
 
   workspaceMembers: MongoDbCollection<WorkspaceMember>
   workspacePermission: MongoDbCollection<WorkspacePermission>
+  apiToken: MongoDbCollection<ApiToken, 'id'>
 
   constructor (readonly db: Db) {
     this.migration = new MongoDbCollection<MigrationInfo, 'key'>('migration', db, 'key')
@@ -431,6 +434,7 @@ export class MongoAccountDB implements AccountDB {
 
     this.workspaceMembers = new MongoDbCollection<WorkspaceMember>('workspaceMembers', db)
     this.workspacePermission = new MongoDbCollection<WorkspacePermission>('workspacePermissions', db)
+    this.apiToken = new MongoDbCollection<ApiToken, 'id'>('apiTokens', db, 'id')
   }
 
   async init (): Promise<void> {
@@ -648,7 +652,7 @@ export class MongoAccountDB implements AccountDB {
     )
   }
 
-  async updatePasswordAgingRule (workspaceId: WorkspaceUuid, days: number): Promise<void> {
+  async updatePasswordAgingRule (workspaceId: WorkspaceUuid, days: number | null): Promise<void> {
     await this.workspace.update(
       {
         uuid: workspaceId
@@ -808,6 +812,37 @@ export class MongoAccountDB implements AccountDB {
     )
   }
 
+  async setWorkspaceMemberUnread (
+    accountId: AccountUuid,
+    workspaceId: WorkspaceUuid,
+    hasUnread: boolean
+  ): Promise<void> {
+    await this.workspaceMembers.update(
+      {
+        workspaceUuid: workspaceId,
+        accountUuid: accountId,
+        hasUnread: { $ne: hasUnread }
+      },
+      { hasUnread }
+    )
+  }
+
+  async setWorkspaceMembersUnread (
+    accountIds: AccountUuid[],
+    workspaceId: WorkspaceUuid,
+    hasUnread: boolean
+  ): Promise<void> {
+    if (accountIds.length === 0) return
+
+    await this.workspaceMembers.update(
+      {
+        workspaceUuid: workspaceId,
+        accountUuid: { $in: accountIds }
+      },
+      { hasUnread }
+    )
+  }
+
   async getWorkspaceRole (accountId: AccountUuid, workspaceId: WorkspaceUuid): Promise<AccountRole | null> {
     const assignment = await this.workspaceMembers.findOne({
       workspaceUuid: workspaceId,
@@ -838,8 +873,10 @@ export class MongoAccountDB implements AccountDB {
   async getAccountWorkspaces (accountId: AccountUuid): Promise<WorkspaceInfoWithStatus[]> {
     const members = await this.workspaceMembers.find({ accountUuid: accountId })
     const wsIds = members.map((m) => m.workspaceUuid)
+    const unreadByWorkspace = new Map(members.map((m) => [m.workspaceUuid, m.hasUnread ?? false]))
 
-    return await this.workspace.find({ uuid: { $in: wsIds } })
+    const workspaces = await this.workspace.find({ uuid: { $in: wsIds } })
+    return workspaces.map((w) => ({ ...w, hasUnread: unreadByWorkspace.get(w.uuid) ?? false }))
   }
 
   async setPassword (accountId: AccountUuid, passwordHash: Buffer, salt: Buffer): Promise<void> {
@@ -865,6 +902,7 @@ export class MongoAccountDB implements AccountDB {
     }
 
     await this.mailbox.deleteMany({ accountUuid })
+    await this.apiToken.deleteMany({ accountUuid })
 
     await this.socialId.update({ personUuid: accountUuid }, { verifiedOn: undefined })
     await this.workspaceMembers.deleteMany({ accountUuid })

@@ -57,6 +57,21 @@
     "Sound": "Sound",
     "SoundNotificationsDescription": "Receive sound notifications for events.",
     "NoAccessToObject": "You no longer have access to this object",
-    "ViewIn": "View in {app}"
+    "ViewIn": "View in {app}",
+    "Value": "{value}",
+    "Subscribe": "Subscribe",
+    "UnknownDevice": "Unknown device",
+    "Current": "current",
+    "RemoveWebpush": "Remove",
+    "WebpushRemoveConfirm": "Remove push notifications for <b>{title}</b>?",
+    "PushSubscribeError": "Could not subscribe to push notifications. Please try again.",
+    "PushSubscribeErrorPermissionDenied": "Notification permission was denied. Allow notifications for this site in your browser settings.",
+    "PushSubscribeErrorNetwork": "Could not reach the push service. Check your connection and try again.",
+    "PushSubscribeErrorNotSupported": "Push notifications are not supported by this browser.",
+    "PushOnDesktop": "Not available in the desktop app",
+    "AlreadySubscribed": "This browser is already subscribed",
+    "PushNotConfigured": "Push notifications are not configured on this server",
+    "PushNotSupported": "Not supported by this browser",
+    "PushDenied": "Notifications are blocked in browser settings"
   }
 }

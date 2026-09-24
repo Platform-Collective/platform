@@ -1,5 +1,6 @@
 <!--
 // Copyright © 2024 Anticrm Platform Contributors.
+// Copyright © 2026 Intabia Fusion.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -14,21 +15,7 @@
 -->
 
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte'
-  import { HulypulseClient } from '@hcengineering/hulypulse-client'
-  import { createPulseClient } from '@hcengineering/presentation'
-
   let parentElement: HTMLDivElement
-
-  let pulseclient: HulypulseClient | undefined
-
-  onMount(async () => {
-    pulseclient = await createPulseClient()
-  })
-
-  onDestroy(() => {
-    pulseclient?.close()
-  })
 </script>
 
 <div bind:this={parentElement} class="hidden"></div>
