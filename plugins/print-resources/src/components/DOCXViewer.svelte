@@ -270,7 +270,7 @@
       <Spinner size="medium" />
     </div>
   {:else}
-    <EmbeddedHTML {src} {name} {css} />
+    <EmbeddedHTML {src} {name} {css} {token} />
   {/if}
 {/if}
 

@@ -14,39 +14,14 @@
 -->
 
 <script lang="ts">
-  import { onDestroy } from 'svelte'
   import EmbeddedPDF from './EmbeddedPDF.svelte'
-  import Loading from './Loading.svelte'
 
   export let src: string
   export let name: string
   export let fit: boolean = false
   export let css: string | undefined = undefined
-
-  let iframeSrc: string | undefined
-
-  async function loadFile (src: string): Promise<void> {
-    if (iframeSrc !== undefined) {
-      URL.revokeObjectURL(iframeSrc)
-      iframeSrc = undefined
-    }
-
-    const response = await fetch(src)
-    const blob = await response.blob()
-    iframeSrc = URL.createObjectURL(blob)
-  }
-
-  $: void loadFile(src)
-
-  onDestroy(() => {
-    if (iframeSrc !== undefined) {
-      URL.revokeObjectURL(iframeSrc)
-    }
-  })
+  export let token: string | undefined = undefined
 </script>
 
-{#if iframeSrc}
-  <EmbeddedPDF src={iframeSrc} {name} {fit} {css} />
-{:else}
-  <Loading />
-{/if}
+<!-- css is injected into the iframe document by EmbeddedPDF (DOCX-to-HTML preview). -->
+<EmbeddedPDF {src} {name} {fit} {css} {token} />
