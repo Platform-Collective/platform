@@ -113,6 +113,7 @@ describe('rest-api-server', () => {
       parents: [],
       childInfo: [],
       dueDate: null,
+      startDate: null,
       rank: ''
     }
 
