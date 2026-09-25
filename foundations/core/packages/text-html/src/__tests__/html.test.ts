@@ -579,3 +579,50 @@ describe('htmlToMarkup', () => {
     })
   })
 })
+
+describe('gif node', () => {
+  const gifDoc = (attrs: Record<string, any>): MarkupNode => ({
+    type: 'doc' as any,
+    content: [{ type: 'paragraph' as any, content: [{ type: 'gif' as any, attrs }] }]
+  })
+
+  // the one that matters. The image case in this serializer reads attrs.src ONLY, so a
+  // gif case copied from it would emit src="undefined" for a library gif and lose the blob.
+  it('emits a resolvable src for a gif with file-id set and src null', () => {
+    const html = markupToHtml(gifDoc({ 'file-id': 'blob-1', src: null, width: 320 }))
+    expect(html).toContain('blob-1')
+    expect(html).not.toContain('undefined')
+  })
+
+  it('emits the external src for a gif with no file-id', () => {
+    const html = markupToHtml(gifDoc({ 'file-id': null, src: 'https://media.example.com/x.gif?cid=1' }))
+    expect(html).toContain('https://media.example.com/x.gif?cid=1')
+    expect(html).not.toContain('undefined')
+  })
+
+  // img is mapped to MarkupNodeType.image unconditionally by default. Without the
+  // data-type discrimination a gif comes back as an image node, which the message composers
+  // drop because image is disabled in their kitOptions. Silent message loss.
+  it('parses its own html back to a gif node, not an image node', () => {
+    const back = htmlToMarkup(markupToHtml(gifDoc({ 'file-id': 'blob-1' })))
+    const found: string[] = []
+    const walk = (n: any): void => {
+      if (n?.type != null) found.push(n.type)
+      ;(n?.content ?? []).forEach(walk)
+    }
+    walk(back)
+    expect(found).toContain('gif')
+    expect(found).not.toContain('image')
+  })
+
+  it('still parses a plain img without data-type as an image node', () => {
+    const found: string[] = []
+    const walk = (n: any): void => {
+      if (n?.type != null) found.push(n.type)
+      ;(n?.content ?? []).forEach(walk)
+    }
+    walk(htmlToMarkup('<p><img src="https://example.com/a.png"></p>'))
+    expect(found).toContain('image')
+    expect(found).not.toContain('gif')
+  })
+})

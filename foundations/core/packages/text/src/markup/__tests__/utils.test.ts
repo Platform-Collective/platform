@@ -441,3 +441,23 @@ describe('jsonToText', () => {
     expect(() => jsonToText(node)).toThrow('Empty text nodes are not allowed')
   })
 })
+
+describe('gif node in the server kit', () => {
+  // without this registration the collaborator strips the node server-side, so a GIF
+  // survives locally and disappears once the message syncs. The emoji node is registered the
+  // same way for the same reason.
+  it('is present in the server kit schema', () => {
+    const schema = getSchema(extensions)
+    expect(schema.nodes.gif).toBeDefined()
+  })
+
+  // a gif must be selectable and must not be an atom, unlike emoji. This is the one of
+  // the four reasons not to reuse insertEmoji that no serializer test covers.
+  it('is selectable and not an atom, unlike emoji', () => {
+    const schema = getSchema(extensions)
+    expect(schema.nodes.gif.spec.atom).not.toBe(true)
+    expect(schema.nodes.gif.spec.selectable).not.toBe(false)
+    expect(schema.nodes.emoji.spec.atom).toBe(true)
+    expect(schema.nodes.emoji.spec.selectable).toBe(false)
+  })
+})

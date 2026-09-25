@@ -17,6 +17,7 @@ export type CollaboratorType = 'local' | 'cloud'
 export interface TextEditorHandler {
   insertText: (html: string) => void
   insertEmoji: (text: string, image: Ref<Blob>) => void
+  insertGif: (attrs: { 'file-id'?: Ref<Blob>, src?: string, width?: number, height?: number, alt?: string }) => void
   insertMarkup: (markup: Markup) => void
   insertTemplate: (name: string, markup: string) => void
   insertTable: (options: { rows?: number, cols?: number, withHeaderRow?: boolean }) => void

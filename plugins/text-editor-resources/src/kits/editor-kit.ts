@@ -43,6 +43,7 @@ import { EmbedNode } from '../components/extension/embed/embed'
 import { defaultDriveEmbedOptions, DriveEmbedProvider } from '../components/extension/embed/providers/drive'
 import { defaultYoutubeEmbedUrlOptions, YoutubeEmbedProvider } from '../components/extension/embed/providers/youtube'
 import { EmojiExtension } from '../components/extension/emoji'
+import { GifExtension } from '../components/extension/gifExt'
 import { FileExtension } from '../components/extension/fileExt'
 import { HardBreakExtension } from '../components/extension/hardBreak'
 import { EditableExtension } from '../components/extension/hooks/editable'
@@ -106,6 +107,7 @@ const StaticEditorKit = extensionKit(
       file: e(FileExtension, { inline: true }),
       image: e(ImageExtension),
       emoji: e(EmojiExtension),
+      gif: e(GifExtension),
       mathematics: e(MathematicsExtension, context.mode === 'full'),
       highlight: e(Highlight, { multicolor: false }),
       subscript: e(Subscript),
