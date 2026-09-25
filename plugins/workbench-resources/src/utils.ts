@@ -29,7 +29,7 @@ import type {
 import core, { getCurrentAccount, hasAccountRole } from '@hcengineering/core'
 import login from '@hcengineering/login'
 import { getMetadata, getResource, setMetadata } from '@hcengineering/platform'
-import presentation, { closeClient, getClient, setPresentationCookie } from '@hcengineering/presentation'
+import presentation, { clearWorkspaceFaviconCache, closeClient, getClient, setPresentationCookie } from '@hcengineering/presentation'
 import {
   closePanel,
   getCurrentLocation,
@@ -265,6 +265,7 @@ export async function reportWorkspaceRead (): Promise<void> {
 }
 
 export async function logOut (): Promise<void> {
+  clearWorkspaceFaviconCache()
   const accountsUrl = getMetadata(login.metadata.AccountsUrl)
   try {
     await getAccountClient(accountsUrl).deleteCookie()
