@@ -1,9 +1,16 @@
 // Copyright © 2026 Huly Contributors. Licensed under the Eclipse Public License, Version 2.0.
 
 import { mixLogoColor, normalizeIdentityColor, renderWorkspaceIdentity } from '../workspaceIdentity'
-import { readFileSync } from 'fs'
-import { resolve } from 'path'
-import { runInNewContext } from 'vm'
+
+// The UI tsconfig profile does not include Node typings, so the few Node APIs this test needs are declared locally.
+declare const __dirname: string
+declare function require (id: 'fs'): { readFileSync: (path: string, encoding: 'utf8') => string }
+declare function require (id: 'path'): { resolve: (...segments: string[]) => string }
+declare function require (id: 'vm'): { runInNewContext: (code: string, context: Record<string, unknown>) => unknown }
+
+const { readFileSync } = require('fs')
+const { resolve } = require('path')
+const { runInNewContext } = require('vm')
 
 describe('workspace favicon before application startup', () => {
   const icon = 'data:image/png;base64,iVBORw0KGgo='
