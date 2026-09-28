@@ -36,6 +36,7 @@ import core, {
   type SocialId,
   type Space,
   type TxCreateDoc,
+  type TxRemoveDoc,
   type TxOperations,
   type WorkspaceUuid
 } from '@hcengineering/core'
@@ -213,8 +214,24 @@ describe('rest-api-server', () => {
       objectId: generateId()
     }
     await conn.tx(tx)
-    const spaces = await conn.findAll(core.class.Space, {})
-    expect(spaces.filter((it) => it.name === spaceName).length).toBe(1)
+    try {
+      const spaces = await conn.findAll(core.class.Space, {})
+      expect(spaces.filter((it) => it.name === spaceName).length).toBe(1)
+    } finally {
+      // Remove created space, so repeated runs do not accumulate spaces
+      // and slow down the 'find avg' performance check.
+      const removeTx: TxRemoveDoc<Space> = {
+        _class: core.class.TxRemoveDoc,
+        space: core.space.Tx,
+        _id: generateId(),
+        objectSpace: core.space.Model,
+        modifiedBy: account.primarySocialId,
+        modifiedOn: Date.now(),
+        objectClass: core.class.Space,
+        objectId: tx.objectId
+      }
+      await conn.tx(removeTx)
+    }
   })
 
   it('get-model', async () => {
@@ -344,6 +361,11 @@ async function checkFindPerformance (conn: RestClient): Promise<void> {
   let ops = 0
   let total = 0
   const attempts = 500
+  const warmup = 20
+  // Warm up connection, server caches and JIT before measuring
+  for (let i = 0; i < warmup; i++) {
+    await conn.findAll(core.class.Space, {})
+  }
   for (let i = 0; i < attempts; i++) {
     const st = performance.now()
     const spaces = await conn.findAll(core.class.Space, {})
