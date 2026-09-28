@@ -78,6 +78,16 @@
     return editor
   }
 
+  export function insertGif (attrs: {
+    'file-id'?: Ref<Blob>
+    src?: string
+    width?: number
+    height?: number
+    alt?: string
+  }): void {
+    editor?.commands.insertGif(attrs)
+  }
+
   export function insertEmoji (text: string, image?: Ref<Blob>): void {
     editor?.commands.insertEmoji(text, image === undefined ? 'unicode' : 'image', image)
   }

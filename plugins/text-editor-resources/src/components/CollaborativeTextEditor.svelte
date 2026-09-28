@@ -154,6 +154,9 @@
     insertText: (text) => {
       editor?.commands.insertContent(text)
     },
+    insertGif: (attrs: { 'file-id'?: Ref<Blob>, src?: string, width?: number, height?: number, alt?: string }) => {
+      editor?.commands.insertGif(attrs)
+    },
     insertEmoji: (text: string, image?: Ref<Blob>) => {
       editor?.commands.insertEmoji(text, image === undefined ? 'unicode' : 'image', image)
     },
