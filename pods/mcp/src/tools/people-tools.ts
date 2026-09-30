@@ -21,8 +21,8 @@ import tracker from '@hcengineering/tracker'
 
 import { textResult } from '../mcp/protocol'
 import { booleanProp, objectSchema, stringProp } from '../mcp/schema'
-import { type HulyTool } from '../mcp/tool'
-import { clampLimit, personNames, statusNames, taskProjectNames, toIso } from './shared'
+import { type HulyTool, type ToolContext } from '../mcp/tool'
+import { clampLimit, likePattern, personNames, statusNames, taskProjectNames, toIso } from './shared'
 
 interface TaskRow {
   _id: string
@@ -108,6 +108,74 @@ export const listTasksTool: HulyTool = {
   }
 }
 
+async function allPeople (ctx: ToolContext, limit: number): Promise<Person[]> {
+  return (await ctx.client.findAll(
+    contact.class.Person,
+    {},
+    { limit, sort: { name: SortingOrder.Ascending } }
+  )) as unknown as Person[]
+}
+
+/**
+ * Matches on name or email in the database rather than after a `limit`, so a
+ * match is never missed just because it sits beyond the first page of people.
+ */
+async function matchingPeople (ctx: ToolContext, needle: string, limit: number): Promise<Person[]> {
+  const like = likePattern(needle)
+  const nameQuery: Record<string, unknown> = { name: { $like: like } }
+  const valueQuery: Record<string, unknown> = { value: { $like: like } }
+
+  const [byName, identityHits, channelHits] = await Promise.all([
+    ctx.client.findAll(contact.class.Person, nameQuery as never, {
+      limit,
+      sort: { name: SortingOrder.Ascending }
+    }) as unknown as Promise<Person[]>,
+    ctx.client.findAll(contact.class.SocialIdentity, valueQuery as never, { limit }) as unknown as Promise<
+    Array<{ attachedTo: string }>
+    >,
+    ctx.client.findAll(contact.class.Channel, valueQuery as never, { limit }) as unknown as Promise<
+    Array<{ attachedTo: string }>
+    >
+  ])
+
+  const known = new Set(byName.map((person) => person._id as string))
+  const extraIds = [...identityHits, ...channelHits].map((hit) => hit.attachedTo).filter((id) => !known.has(id))
+  if (extraIds.length === 0) return byName
+
+  const idQuery: Record<string, unknown> = { _id: { $in: [...new Set(extraIds)] } }
+  const byEmail = (await ctx.client.findAll(contact.class.Person, idQuery as never, {
+    limit
+  })) as unknown as Person[]
+  return [...byName, ...byEmail].slice(0, limit)
+}
+
+/** Email per person, from social identities first and legacy channels second. */
+async function emailsOf (ctx: ToolContext, personIds: string[]): Promise<Map<string, string>> {
+  const result = new Map<string, string>()
+  if (personIds.length === 0) return result
+
+  const attachedQuery: Record<string, unknown> = { attachedTo: { $in: personIds } }
+  const channelQuery: Record<string, unknown> = { ...attachedQuery, provider: contact.channelProvider.Email }
+  const [identities, channels] = await Promise.all([
+    ctx.client.findAll(contact.class.SocialIdentity, attachedQuery as never, {
+      limit: personIds.length * 10
+    }) as unknown as Promise<Array<{ attachedTo: string, type?: string, value: string }>>,
+    ctx.client.findAll(
+      contact.class.Channel,
+      channelQuery as never,
+      { limit: personIds.length * 10 }
+    ) as unknown as Promise<Array<{ attachedTo: string, value: string }>>
+  ])
+
+  for (const identity of identities) {
+    if (identity.type === 'email' && !result.has(identity.attachedTo)) result.set(identity.attachedTo, identity.value)
+  }
+  for (const channel of channels) {
+    if (!result.has(channel.attachedTo)) result.set(channel.attachedTo, channel.value)
+  }
+  return result
+}
+
 export const findPeopleTool: HulyTool = {
   name: 'huly_find_people',
   title: 'Find people',
@@ -121,32 +189,19 @@ export const findPeopleTool: HulyTool = {
   }),
   handler: async (ctx, args) => {
     const limit = clampLimit(args.limit)
+    const needle = (args.query as string | undefined)?.trim() ?? ''
 
-    const persons = (await ctx.client.findAll(
-      contact.class.Person,
-      {},
-      { limit, sort: { name: SortingOrder.Ascending } }
-    )) as unknown as Person[]
+    const persons = needle === '' ? await allPeople(ctx, limit) : await matchingPeople(ctx, needle, limit)
+    const emails = await emailsOf(
+      ctx,
+      persons.map((person) => person._id)
+    )
 
-    const identityQuery: Record<string, unknown> = { _id: { $in: persons.map((person) => person._id) } }
-    const identities = await ctx.client.findAll(contact.class.SocialIdentity, identityQuery as never, {
-      limit: persons.length
-    })
-
-    const byPerson = new Map<string, string>()
-    for (const identity of identities as unknown as Array<{ _id: string, value: string }>) {
-      byPerson.set(identity._id, identity.value)
-    }
-
-    const needle = (args.query as string | undefined)?.toLowerCase()
-    const rows = persons
-      .map((person) => ({ id: person._id, name: person.name, email: byPerson.get(person._id) ?? null }))
-      .filter(
-        (row) =>
-          needle === undefined ||
-          row.name.toLowerCase().includes(needle) ||
-          (row.email ?? '').toLowerCase().includes(needle)
-      )
+    const rows = persons.map((person) => ({
+      id: person._id,
+      name: person.name,
+      email: emails.get(person._id) ?? null
+    }))
 
     if (rows.length === 0) {
       return textResult('No people matched.', { people: [] })

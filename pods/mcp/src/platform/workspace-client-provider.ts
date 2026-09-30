@@ -17,13 +17,16 @@ import { createRestTxOperations } from '@hcengineering/api-client'
 import { type AccountUuid, type MeasureContext, type TxOperations, type WorkspaceUuid } from '@hcengineering/core'
 
 import { type SessionIdentity } from '../auth/authenticator'
-import { type MarkupReader } from './markup-reader'
+import { type MarkupReader, type MarkupWriter } from './markup-reader'
+import { fromMarkup } from './markup'
 
 /** Everything a tool needs to talk to one workspace on behalf of one user. */
 export interface WorkspaceSession {
   client: TxOperations
   identity: SessionIdentity
   markup: MarkupReader
+  /** Undefined when no collaborator service is configured. */
+  markupWriter?: MarkupWriter
 }
 
 export interface WorkspaceClientProvider {
@@ -38,6 +41,7 @@ export interface WorkspaceClientProviderOptions {
   ctx: MeasureContext
   createClient?: ClientFactory
   createMarkupReader?: (identity: SessionIdentity) => MarkupReader
+  createMarkupWriter?: (identity: SessionIdentity) => MarkupWriter | undefined
   /** Idle time after which a cached client is closed, in milliseconds. */
   idleTtlMs?: number
   /** How often idle entries are swept, in milliseconds. */
@@ -72,6 +76,7 @@ export class CachingWorkspaceClientProvider implements WorkspaceClientProvider {
   private readonly ctx: MeasureContext
   private readonly createClient: ClientFactory
   private readonly createMarkupReader: (identity: SessionIdentity) => MarkupReader
+  private readonly createMarkupWriter: (identity: SessionIdentity) => MarkupWriter | undefined
   private readonly idleTtlMs: number
   private readonly now: () => number
   private readonly cache = new Map<string, CacheEntry>()
@@ -82,6 +87,7 @@ export class CachingWorkspaceClientProvider implements WorkspaceClientProvider {
     this.ctx = options.ctx
     this.createClient = options.createClient ?? defaultClientFactory
     this.createMarkupReader = options.createMarkupReader ?? defaultMarkupReaderFactory
+    this.createMarkupWriter = options.createMarkupWriter ?? (() => undefined)
     this.idleTtlMs = options.idleTtlMs ?? DEFAULT_IDLE_TTL_MS
     this.now = options.now ?? Date.now
 
@@ -111,7 +117,8 @@ export class CachingWorkspaceClientProvider implements WorkspaceClientProvider {
       const session: WorkspaceSession = {
         client,
         identity,
-        markup: this.createMarkupReader(identity)
+        markup: this.createMarkupReader(identity),
+        markupWriter: this.createMarkupWriter(identity)
       }
       this.cache.set(key, { session, lastUsed: this.now() })
       return session
@@ -163,7 +170,7 @@ const defaultClientFactory: ClientFactory = async (identity) =>
   await createRestTxOperations(identity.transactorUrl, identity.workspace, identity.workspaceToken, true)
 
 const defaultMarkupReaderFactory = (identity: SessionIdentity): MarkupReader => ({
-  read: async (ref: string) => await fetchMarkup(identity.transactorUrl, identity.workspaceToken, ref)
+  read: async (ref: string) => fromMarkup(await fetchMarkup(identity.transactorUrl, identity.workspaceToken, ref))
 })
 
 /**

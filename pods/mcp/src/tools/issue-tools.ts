@@ -15,12 +15,14 @@
 
 import chunter, { type ChatMessage } from '@hcengineering/chunter'
 import core, { generateId, SortingOrder } from '@hcengineering/core'
+import task from '@hcengineering/task'
 import tracker, { IssuePriority, type Issue, type Milestone } from '@hcengineering/tracker'
 
 import { textResult } from '../mcp/protocol'
+import { toMarkup } from '../platform/markup'
 import { booleanProp, objectSchema, stringProp } from '../mcp/schema'
 import { type HulyTool, type ToolContext } from '../mcp/tool'
-import { clampLimit, personNames, projectNames, statusNames, toIso, uniqueIds } from './shared'
+import { clampLimit, likePattern, personNames, projectNames, statusNames, toIso } from './shared'
 
 /** The slice of an Issue the tools read. */
 interface IssueRow {
@@ -51,8 +53,6 @@ const priorityIndex = (name: string | undefined): number => {
   const index = PRIORITY_NAMES.indexOf(name)
   return index < 0 ? IssuePriority.NoPriority : index
 }
-
-const uniqueStatuses = (issues: IssueRow[]): string[] => uniqueIds(issues.map((issue) => issue.status))
 
 /**
  * Turns raw issues into the shape an agent can act on: human names instead of
@@ -96,6 +96,31 @@ async function formatIssues (ctx: ToolContext, issues: IssueRow[]): Promise<Arra
   })
 }
 
+/** Status categories that mean the work is finished, whether completed or canceled. */
+const DONE_CATEGORIES = new Set(['won', 'lost'])
+
+/** Ids of the issue statuses matching a name and/or excluding finished ones. */
+async function allowedStatusIds (ctx: ToolContext, name: string | undefined, excludeDone: boolean): Promise<string[]> {
+  const query: Record<string, unknown> = { ofAttribute: tracker.attribute.IssueStatus }
+  const statuses = (await ctx.client.findAll(tracker.class.IssueStatus, query as never, {
+    limit: 200
+  })) as unknown as Array<{ _id: string }>
+  const resolved = await statusNames(
+    ctx.client,
+    statuses.map((status) => status._id)
+  )
+
+  const wanted = name?.toLowerCase()
+  return statuses
+    .filter((status) => {
+      const info = resolved.get(status._id)
+      if (wanted !== undefined && (info?.name ?? '').toLowerCase() !== wanted) return false
+      if (excludeDone && DONE_CATEGORIES.has((info?.category ?? '').toLowerCase())) return false
+      return true
+    })
+    .map((status) => status._id)
+}
+
 export const listIssuesTool: HulyTool = {
   name: 'huly_list_issues',
   title: 'List issues',
@@ -119,35 +144,27 @@ export const listIssuesTool: HulyTool = {
     if (args.projectId !== undefined) query.space = args.projectId
     if (args.assignee !== undefined) query.assignee = args.assignee
     if (args.search !== undefined) {
-      // Anchored, escaped substring match: an unescaped user string would be
-      // interpreted as a regular expression by the storage layer.
-      query.title = { $regex: `^${escapeRegExp(String(args.search))}`, $options: 'i' }
+      query.title = { $like: likePattern(String(args.search)) }
     }
 
-    let issues = (await ctx.client.findAll(tracker.class.Issue, query as never, {
+    // Status is a reference to a status document, so a name or a "done" filter
+    // is turned into a set of status ids first. Filtering before the limit
+    // means a page is never emptied by a filter applied afterwards.
+    if (args.status !== undefined || args.includeDone === false) {
+      const allowed = await allowedStatusIds(ctx, args.status as string | undefined, args.includeDone === false)
+      if (allowed.length === 0) {
+        return textResult(
+          `No issue status matches "${String(args.status)}". Call huly_list_issue_statuses for the valid names.`,
+          { issues: [] }
+        )
+      }
+      query.status = { $in: allowed }
+    }
+
+    const issues = (await ctx.client.findAll(tracker.class.Issue, query as never, {
       limit,
       sort: { modifiedOn: SortingOrder.Descending }
     })) as unknown as IssueRow[]
-
-    // Status filtering happens in JS on purpose: status is a ref to a document,
-    // so filtering by name would otherwise need a join the storage layer does
-    // not do. The page limit was already applied above.
-    if (args.status !== undefined || args.includeDone === false) {
-      const statuses = await statusNames(ctx.client, uniqueStatuses(issues))
-
-      if (args.status !== undefined) {
-        const wanted = String(args.status).toLowerCase()
-        issues = issues.filter((issue) => (statuses.get(issue.status)?.name ?? '').toLowerCase() === wanted)
-      }
-
-      if (args.includeDone === false) {
-        issues = issues.filter((issue) => {
-          const category = statuses.get(issue.status)?.category
-          // A status with no category cannot be known to be done, so it stays.
-          return category == null || category.toLowerCase() !== 'done'
-        })
-      }
-    }
 
     if (issues.length === 0) {
       return textResult('No issues matched. Try widening the filters or call huly_list_projects.', {
@@ -301,54 +318,106 @@ export const createIssueTool: HulyTool = {
       })
     }
 
-    const statusId = (args.statusId as string | undefined) ?? project.defaultIssueStatus
-    if (statusId === undefined) {
+    // The task type decides both the issue `kind` and, when the project itself
+    // names no default, the first status of the workflow.
+    const taskTypeQuery: Record<string, unknown> = { parent: project.type, ofClass: tracker.class.Issue }
+    const taskType = (await ctx.client.findOne(task.class.TaskType, taskTypeQuery as never)) as unknown as
+      | TaskTypeDefaults
+      | undefined
+
+    const statusId = (args.statusId as string | undefined) ?? project.defaultIssueStatus ?? taskType?.statuses?.[0]
+    if (statusId === undefined || taskType === undefined) {
       return textResult(
-        'The project has no default issue status configured, so the issue was not created. ' +
-          'Pass an explicit statusId, or ask an administrator to set a default status on the project.',
+        'The project has no default issue status or issue task type configured, so the issue was not created. ' +
+          'Pass an explicit statusId, or ask an administrator to configure the project.',
         { created: false }
       )
     }
 
-    // Numbers are assigned per project. Huly's numbering middleware lives
-    // outside this repository, so the next number is derived here; a concurrent
-    // create could claim the same value.
-    const highestQuery: Record<string, unknown> = { space: projectId }
-    const highest = (await ctx.client.findAll(tracker.class.Issue, highestQuery as never, {
-      limit: 1,
-      sort: { number: SortingOrder.Descending },
-      projection: { number: 1 }
-    })) as unknown as Array<{ number: number }>
-    const number = (highest[0]?.number ?? 0) + 1
-
+    // The body is stored as a blob owned by the collaborator service. Refuse up
+    // front, before a number is consumed, when that service is not configured.
     const issueId = generateId<Issue>()
+    const description = ((args.description as string | undefined) ?? '').trim()
+    let descriptionRef: string | null = null
+    if (description !== '') {
+      if (ctx.markupWriter === undefined) {
+        return textResult(
+          'A description was given but this server has no COLLABORATOR_URL configured, so the issue was not ' +
+            'created. Retry without a description, or ask the administrator to set COLLABORATOR_URL.',
+          { created: false }
+        )
+      }
+      descriptionRef = await ctx.markupWriter.write(tracker.class.Issue, issueId, 'description', description)
+    }
+
+    // Numbers are assigned by incrementing the project's sequence counter, which
+    // the transactor applies atomically. This is what the web client does, so
+    // concurrent creates never receive the same number.
+    const increment: Record<string, unknown> = { $inc: { sequence: 1 } }
+    const incremented = (await ctx.client.updateDoc(
+      tracker.class.Project,
+      core.space.Space,
+      projectId as never,
+      increment as never,
+      true
+    )) as unknown as { object?: { sequence?: number } }
+    const number = incremented.object?.sequence
+    if (typeof number !== 'number') {
+      throw new Error('The workspace did not return the next issue number')
+    }
+    const identifier = `${project.identifier ?? '?'}-${number}`
+
     const attributes: Record<string, unknown> = {
-      number,
       title: args.title,
+      description: descriptionRef,
+      assignee: (args.assignee as string | undefined) ?? null,
+      component: null,
+      milestone: (args.milestone as string | undefined) ?? null,
+      number,
+      identifier,
+      kind: taskType._id,
       status: statusId,
       priority: priorityIndex(args.priority as string | undefined),
-      assignee: (args.assignee as string | undefined) ?? null,
-      space: projectId,
+      rank: '',
+      comments: 0,
+      subIssues: 0,
+      parents: [],
+      childInfo: [],
+      relations: [],
       startDate: toTimestamp(args.startDate as string | undefined),
       dueDate: toTimestamp(args.dueDate as string | undefined),
       estimation: 0,
       remainingTime: 0,
       reportedTime: 0,
-      milestone: (args.milestone as string | undefined) ?? null
+      reports: 0
     }
 
-    await ctx.client.createDoc(tracker.class.Issue, projectId as never, attributes as never, issueId)
-
-    return textResult(
-      JSON.stringify({ id: issueId, key: `${project.identifier ?? '?'}-${number}`, title: args.title }, null, 2),
-      { created: true, issueId }
+    await ctx.client.addCollection(
+      tracker.class.Issue,
+      projectId as never,
+      tracker.ids.NoParent,
+      tracker.class.Issue,
+      'subIssues',
+      attributes as never,
+      issueId
     )
+
+    return textResult(JSON.stringify({ id: issueId, key: identifier, title: args.title }, null, 2), {
+      created: true,
+      issueId
+    })
   }
 }
 
 interface ProjectDefaults {
   identifier?: string
-  defaultIssueStatus?: string
+  type?: string
+  defaultIssueStatus?: string | null
+}
+
+interface TaskTypeDefaults {
+  _id: string
+  statuses?: string[]
 }
 
 export const updateIssueTool: HulyTool = {
@@ -439,13 +508,19 @@ export const addCommentTool: HulyTool = {
       })
     }
 
+    // Comments are attached documents living in the issue's own space, and the
+    // message body is stored as rich text, not as the raw string the agent sent.
     const messageId = generateId<ChatMessage>()
-    const attributes: Record<string, unknown> = {
-      attachedTo: issueId,
-      collection: 'comments',
-      message: args.text
-    }
-    await ctx.client.createDoc(chunter.class.ChatMessage, core.space.Space, attributes as never, messageId)
+    const attributes: Record<string, unknown> = { message: toMarkup(args.text as string) }
+    await ctx.client.addCollection(
+      chunter.class.ChatMessage,
+      issue.space as never,
+      issueId as never,
+      tracker.class.Issue,
+      'comments',
+      attributes as never,
+      messageId
+    )
 
     return textResult(`Commented on issue ${issueId}.`, { created: true, messageId })
   }
@@ -488,7 +563,7 @@ export const createMilestoneTool: HulyTool = {
     const milestoneId = generateId<Milestone>()
     const attributes: Record<string, unknown> = {
       name: args.name,
-      description: (args.description as string | undefined) ?? '',
+      description: toMarkup((args.description as string | undefined) ?? ''),
       dueDate: toTimestamp(args.dueDate as string | undefined),
       project: projectId,
       done: []
@@ -534,10 +609,6 @@ function toTimestamp (value: string | null | undefined): number | null {
     throw Error(`"${value}" is not a valid ISO-8601 date`)
   }
   return parsed
-}
-
-function escapeRegExp (value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 export const issueTools: HulyTool[] = [

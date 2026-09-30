@@ -20,7 +20,7 @@ import { truncate } from '../platform/markup-reader'
 import { textResult } from '../mcp/protocol'
 import { numberProp, objectSchema, stringProp } from '../mcp/schema'
 import { type HulyTool } from '../mcp/tool'
-import { clampLimit, toIso } from './shared'
+import { clampLimit, likePattern, toIso } from './shared'
 
 /** Bodies can be very large; keep responses inside a model's context window. */
 const BODY_CHAR_LIMIT = 20_000
@@ -51,7 +51,7 @@ export const listDocumentsTool: HulyTool = {
   handler: async (ctx, args) => {
     const query: Record<string, unknown> = {}
     if (args.spaceId !== undefined) query.space = args.spaceId
-    if (args.search !== undefined) query.title = { $regex: escapeRegExp(String(args.search)), $options: 'i' }
+    if (args.search !== undefined) query.title = { $like: likePattern(String(args.search)) }
 
     const documents = (await ctx.client.findAll(doc.class.Document, query as never, {
       limit: clampLimit(args.limit),
@@ -132,10 +132,6 @@ export const getDocumentTool: HulyTool = {
       }
     )
   }
-}
-
-function escapeRegExp (value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 export const documentTools: HulyTool[] = [listDocumentsTool, getDocumentTool]

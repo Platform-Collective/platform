@@ -25,6 +25,9 @@ import { decodeToken } from '@hcengineering/server-token'
 import { type Config } from '../config'
 import { AuthenticationError, type Authenticator, type SessionIdentity, toTransactorHttpUrl } from './authenticator'
 
+/** Builds an account-service client; injectable so the login flow can be unit tested. */
+export type AccountClientFactory = (accountsUrl: string, token?: string) => AccountClient
+
 /**
  * Authenticates every caller as one account configured on the pod itself.
  *
@@ -43,9 +46,12 @@ export class ConfiguredAuthenticator implements Authenticator {
   private cached: { identity: SessionIdentity, expiresOn: number } | undefined
   private inFlight: Promise<SessionIdentity> | undefined
 
-  constructor (ctx: MeasureContext, config: Config) {
+  private readonly createClient: AccountClientFactory
+
+  constructor (ctx: MeasureContext, config: Config, createClient: AccountClientFactory = getAccountClient) {
     this.ctx = ctx
     this.config = config
+    this.createClient = createClient
   }
 
   async authenticate (): Promise<SessionIdentity> {
@@ -81,12 +87,13 @@ export class ConfiguredAuthenticator implements Authenticator {
 
   private async login (): Promise<LoginInfoByToken> {
     try {
-      if (this.config.HulyToken !== '') {
-        const client = getAccountClient(this.config.AccountsUrl, this.config.HulyToken)
-        return await client.getLoginInfoByToken()
+      const { info, accountToken } = await this.loginAtAccountLevel()
+      if (isWorkspaceLoginInfo(info) || this.config.HulyWorkspace === '') {
+        return info
       }
-      const client: AccountClient = getAccountClient(this.config.AccountsUrl)
-      return await client.login(this.config.HulyEmail, this.config.HulyPassword)
+      // A login or a plain account token is scoped to the account, not to a
+      // workspace, so the account service must be asked for a workspace token.
+      return await this.createClient(this.config.AccountsUrl, accountToken).selectWorkspace(this.config.HulyWorkspace)
     } catch (err) {
       this.ctx.error('mcp configured login failed', { error: (err as Error)?.message })
       throw new AuthenticationError(
@@ -94,6 +101,19 @@ export class ConfiguredAuthenticator implements Authenticator {
         'The configured Huly credentials were rejected. Check HULY_TOKEN or HULY_EMAIL/HULY_PASSWORD.'
       )
     }
+  }
+
+  private async loginAtAccountLevel (): Promise<{ info: LoginInfoByToken, accountToken: string }> {
+    if (this.config.HulyToken !== '') {
+      const client = this.createClient(this.config.AccountsUrl, this.config.HulyToken)
+      return { info: await client.getLoginInfoByToken(), accountToken: this.config.HulyToken }
+    }
+    const client = this.createClient(this.config.AccountsUrl)
+    const info = await client.login(this.config.HulyEmail, this.config.HulyPassword)
+    if (info?.token === undefined) {
+      throw new Error('The account service returned no token (two-factor authentication may be required)')
+    }
+    return { info, accountToken: info.token }
   }
 
   private toIdentity (loginInfo: LoginInfoByToken): SessionIdentity {

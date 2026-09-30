@@ -31060,6 +31060,9 @@ importers:
       '@hcengineering/chunter':
         specifier: workspace:^0.7.0
         version: link:../../plugins/chunter
+      '@hcengineering/collaborator-client':
+        specifier: workspace:^0.7.18
+        version: link:../../foundations/core/packages/collaborator-client
       '@hcengineering/contact':
         specifier: workspace:^0.7.0
         version: link:../../plugins/contact
@@ -31084,6 +31087,12 @@ importers:
       '@hcengineering/task':
         specifier: workspace:^0.7.0
         version: link:../../plugins/task
+      '@hcengineering/text-core':
+        specifier: workspace:^0.7.19
+        version: link:../../foundations/core/packages/text-core
+      '@hcengineering/text-markdown':
+        specifier: workspace:^0.7.21
+        version: link:../../foundations/core/packages/text-markdown
       '@hcengineering/tracker':
         specifier: workspace:^0.7.0
         version: link:../../plugins/tracker

@@ -24,6 +24,7 @@ import { join } from 'node:path'
 import { createAuthenticator } from './auth/authenticator-factory'
 import { loadConfig } from './config'
 import { RateLimiter } from './middleware/rate-limiter'
+import { createCollaboratorWriter } from './platform/collaborator-writer'
 import { CachingWorkspaceClientProvider } from './platform/workspace-client-provider'
 import { createServer, listen } from './server'
 import { buildRegistry } from './tools/register'
@@ -62,7 +63,11 @@ async function main (): Promise<void> {
 
   const registry = buildRegistry()
   const authenticator = createAuthenticator(ctx, config)
-  const clients = new CachingWorkspaceClientProvider({ ctx, idleTtlMs: config.ClientCacheTtlMs })
+  const clients = new CachingWorkspaceClientProvider({
+    ctx,
+    idleTtlMs: config.ClientCacheTtlMs,
+    createMarkupWriter: createCollaboratorWriter(config.CollaboratorUrl)
+  })
   const limiter = new RateLimiter(ctx, config.RequestRateLimit, config.RequestRateWindowMs)
 
   const { app, sessions, transport } = createServer({

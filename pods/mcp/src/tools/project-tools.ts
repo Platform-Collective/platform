@@ -81,7 +81,10 @@ export const listProjectsTool: HulyTool = {
     ])
 
     const projectRows = projects as ProjectRow[]
-    const taskRows = taskProjects as Array<TaskProject & ProjectRow>
+    // A tracker project is also a task project (its base class), so the second
+    // query returns every tracker project again. Keep only the task-only ones.
+    const trackerIds = new Set(projectRows.map((project) => project._id))
+    const taskRows = (taskProjects as Array<TaskProject & ProjectRow>).filter((project) => !trackerIds.has(project._id))
     const issueCounts = await countIssuesPerProject(
       ctx.client,
       projectRows.map((project) => project._id)

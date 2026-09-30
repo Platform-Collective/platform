@@ -137,8 +137,11 @@ export async function projectNames (client: TxOperations, refs: MaybeId[]): Prom
   for (const project of projects as unknown as ProjectRow[]) {
     result.set(project._id, { name: project.name, identifier: project.identifier ?? null })
   }
+  // `task.class.Project` is the base class of `tracker.class.Project`, so this
+  // query returns the tracker projects again. Only fill in ids not seen yet, or
+  // the identifier gathered above would be overwritten with null.
   for (const project of taskProjects as unknown as Array<{ _id: string, name: string }>) {
-    result.set(project._id, { name: project.name, identifier: null })
+    if (!result.has(project._id)) result.set(project._id, { name: project.name, identifier: null })
   }
   return result
 }
@@ -161,3 +164,8 @@ export async function taskProjectNames (client: TxOperations, refs: MaybeId[]): 
 /** Casts a JSON-supplied id to a `Ref<T>` for use in a typed query. */
 export const asRef = <T extends Doc>(id: string): Ref<T> => id as Ref<T>
 export const asTaskProjectRef = asRef<TaskProject>
+
+/** Builds a case-insensitive "contains" pattern with LIKE wildcards in the input escaped. */
+export function likePattern (needle: string): string {
+  return `%${needle.replace(/[\\%_]/g, (char) => `\\${char}`)}%`
+}

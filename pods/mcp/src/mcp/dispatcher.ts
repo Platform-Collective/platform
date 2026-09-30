@@ -137,7 +137,7 @@ export class McpDispatcher {
       case 'ping':
         return {}
       case 'tools/list':
-        return { tools: this.registry.list() }
+        return { tools: this.registry.list({ readOnly: session.identity.readOnly }) }
       case 'tools/call':
         return await this.callTool(session, request.params)
       case 'resources/list':

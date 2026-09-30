@@ -45,6 +45,10 @@ export interface Config {
   HulyPassword: string
   /** Restrict `configured` mode to one workspace, by id or url slug. */
   HulyWorkspace: string
+  /** Collaborator service URL; enables writing rich-text descriptions. */
+  CollaboratorUrl: string
+  /** Lets a development stack keep the platform-wide default secret. Never enable in production. */
+  AllowDefaultSecret: boolean
   /** Drop write tools and refuse all mutations. */
   ReadOnly: boolean
   /** Identifiers callers may present when `AuthMode` is `perRequest`. */
@@ -112,6 +116,8 @@ function buildConfig (env: NodeJS.ProcessEnv): Config {
     HulyEmail: env.HULY_EMAIL ?? '',
     HulyPassword: env.HULY_PASSWORD ?? '',
     HulyWorkspace: env.HULY_WORKSPACE ?? '',
+    CollaboratorUrl: env.COLLABORATOR_URL ?? '',
+    AllowDefaultSecret: bool(env.MCP_ALLOW_DEFAULT_SECRET, false),
     ReadOnly: bool(env.MCP_READONLY, false),
     AllowedTokens: list(env.MCP_ALLOWED_TOKENS),
     SessionIdleTtlMs: int(env.MCP_SESSION_TTL_MS, 30 * 60_000),
@@ -133,8 +139,14 @@ function buildConfig (env: NodeJS.ProcessEnv): Config {
  * only safe response.
  */
 function validate (config: Config): Config {
-  if (config.Secret === '' || config.Secret === 'secret') {
-    throw Error('SECRET must be set to a real secret; refusing to start with the default')
+  if (config.Secret === '') {
+    throw Error('SECRET must be set; refusing to start without it')
+  }
+  if (config.Secret === 'secret' && !config.AllowDefaultSecret) {
+    throw Error(
+      'SECRET is the well-known default; refusing to start. Use the platform secret, ' +
+        'or set MCP_ALLOW_DEFAULT_SECRET=true for a throwaway development stack only'
+    )
   }
   if (config.Port < 1 || config.Port > 65535) {
     throw Error(`PORT is out of range: ${config.Port}`)

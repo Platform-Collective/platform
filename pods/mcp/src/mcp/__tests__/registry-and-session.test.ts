@@ -66,6 +66,13 @@ describe('ToolRegistry', () => {
     expect(result.content[0].text).toContain('must be of type string')
   })
 
+  it('hides write tools from a read-only listing', () => {
+    const registry = new ToolRegistry().registerAll([echoTool, writeTool])
+
+    expect(registry.list({ readOnly: true }).map((tool) => tool.name)).toEqual([echoTool.name])
+    expect(registry.list().map((tool) => tool.name)).toEqual([echoTool.name, writeTool.name])
+  })
+
   it('blocks a write tool for a read-only identity', async () => {
     const registry = new ToolRegistry().registerAll([echoTool, writeTool])
     const identity = fakeIdentity({ readOnly: true })

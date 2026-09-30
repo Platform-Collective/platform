@@ -23,6 +23,15 @@ export interface MarkupReader {
   read: (ref: string) => Promise<string>
 }
 
+/**
+ * Stores rich text in the workspace and returns the blob reference to keep on
+ * the owning document. Writing goes through the collaborator service, which is
+ * optional infrastructure, so a session may have no writer at all.
+ */
+export interface MarkupWriter {
+  write: (objectClass: string, objectId: string, attribute: string, markdown: string) => Promise<string>
+}
+
 /** Reads a bounded number of characters, appending a marker when it truncates. */
 export function truncate (value: string, maxChars: number): string {
   if (value.length <= maxChars) return value

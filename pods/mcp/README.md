@@ -39,7 +39,8 @@ services:
       - SECRET=<a long random string>
       - ACCOUNTS_URL=https://huly.your-company.com
       - HULY_TOKEN=<a Huly API token>       # or HULY_EMAIL + HULY_PASSWORD
-      - HULY_WORKSPACE=<workspace id or url slug>   # optional pin
+      - HULY_WORKSPACE=<workspace url slug or id>   # required unless the token is workspace-bound
+      - COLLABORATOR_URL=http://collaborator:3078   # optional, enables issue descriptions
     ports:
       - 4090:4090
     restart: unless-stopped
@@ -48,6 +49,11 @@ services:
 Create the API token in Huly under **Settings → API Tokens**. The token carries
 the full rights of the account that created it, so use a dedicated service
 account rather than your own.
+
+The pod must be able to reach the transactor at the address the account service
+advertises for the workspace (`TRANSACTOR_URL` on the account service, second
+value), and the collaborator at `COLLABORATOR_URL`. In a compose network that
+usually means the public host name plus `extra_hosts`, as above.
 
 ### Multi-tenant
 
@@ -69,12 +75,14 @@ sessions are pinned to the account that opened them.
 | --- | --- | --- |
 | `PORT` | `4090` | HTTP listen port |
 | `HOST` | `0.0.0.0` | Bind address |
-| `SECRET` | — | **Required.** Shared Huly signing secret. The pod refuses to start on the default. |
+| `SECRET` | — | **Required.** The platform's signing secret (the same value the account and transactor use). The pod refuses to start on the well-known default `secret`. |
+| `MCP_ALLOW_DEFAULT_SECRET` | `false` | Lets a throwaway development stack keep `SECRET=secret`. Never set in production. |
 | `ACCOUNTS_URL` | `http://huly.local:3000` | Account service URL; the public Huly base URL in a self-hosted install |
 | `SERVICE_ID` | `mcp` | Service name used in logs and metrics |
 | `HULY_TOKEN` | — | Static Huly API token. Presence selects self-hosted mode. |
 | `HULY_EMAIL` / `HULY_PASSWORD` | — | Static login, used when no token is set |
-| `HULY_WORKSPACE` | — | Pin the configured account to one workspace |
+| `HULY_WORKSPACE` | — | Workspace url slug or id. Required with email/password or an account-level token: the pod asks the account service for a token scoped to it. |
+| `COLLABORATOR_URL` | — | Collaborator service URL. Without it, tools that write rich text (issue `description`) refuse instead of silently dropping the text; comments and everything else are unaffected. |
 | `MCP_READONLY` | `false` | Refuse every write tool regardless of credentials |
 | `MCP_ALLOWED_TOKENS` | — | Comma-separated allowlist for multi-tenant mode |
 | `MCP_SESSION_TTL_MS` | `1800000` | Idle session lifetime |

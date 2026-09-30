@@ -391,7 +391,7 @@ sequenceDiagram
 | process | platformcollective/process | - | Workflow automation | redpanda, account |
 | rating | platformcollective/rating | - | Content rating | cockroach, redpanda, account |
 | **AI** | | | | |
-| mcp | platformcollective/mcp | 4090 | Model Context Protocol server (Streamable HTTP) | account, transactor, stats |
+| mcp | platformcollective/mcp | 4090 | Model Context Protocol server (Streamable HTTP) | account, transactor, collaborator |
 | **Backup** | | | | |
 | backup | platformcollective/backup | - | Automated backup | cockroach, minio, account |
 | backup-api | platformcollective/backup-api | 4039 | Backup REST API | minio, account |
@@ -439,6 +439,9 @@ sequenceDiagram
 - `HULY_TOKEN`: Huly API token for the pod's own identity. Setting it selects self-hosted mode, where MCP clients need no Huly credential.
 - `HULY_EMAIL` / `HULY_PASSWORD`: Login used when no `HULY_TOKEN` is set
 - `HULY_WORKSPACE`: Pin the configured account to a single workspace
+- `COLLABORATOR_URL`: Collaborator service URL; enables writing rich-text descriptions
+- `HULY_WORKSPACE`: Workspace url slug or id the configured account is scoped to
+- `MCP_ALLOW_DEFAULT_SECRET`: `false` - Dev stacks only; permits `SECRET=secret`
 - `MCP_READONLY`: `false` - Refuse every write tool
 - `MCP_ALLOWED_TOKENS`: Comma-separated token allowlist for multi-tenant mode
 - `MCP_RATE_LIMIT` / `MCP_RATE_WINDOW_MS`: `300` / `60000` - Per-client rate limit

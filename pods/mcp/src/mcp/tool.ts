@@ -88,8 +88,10 @@ export class ToolRegistry {
     return this.tools.size
   }
 
-  list (): McpToolDescriptor[] {
-    return [...this.tools.values()].map((tool) => ({
+  /** Lists tools; a read-only caller is not shown tools it could never run. */
+  list (options: { readOnly?: boolean } = {}): McpToolDescriptor[] {
+    const visible = [...this.tools.values()].filter((tool) => options.readOnly !== true || tool.readOnly)
+    return visible.map((tool) => ({
       name: tool.name,
       title: tool.title,
       description: tool.description,
