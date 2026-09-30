@@ -107,6 +107,18 @@ export const errorHandler = (ctx: MeasureContext): ErrorRequestHandler => {
       return
     }
 
+    // Body parser rejections (payload too large, unsupported charset, aborted
+    // request) carry a 4xx status and are safe to report as-is.
+    if (err?.type === 'entity.too.large') {
+      res.status(413).json({ error: 'Request body is too large' })
+      return
+    }
+    const status = typeof err?.status === 'number' ? err.status : 0
+    if (err?.expose === true && status >= 400 && status < 500) {
+      res.status(status).json({ error: 'Bad request' })
+      return
+    }
+
     ctx.error('mcp unhandled error', { error: err?.message, path: req.path })
     Analytics.handleError(err)
     res.status(500).json({ error: 'Internal Server Error' })

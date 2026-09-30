@@ -141,3 +141,22 @@ rushx run-local     # needs SECRET, ACCOUNTS_URL and credentials
 
 The MCP protocol layer has no dependency on Huly: `src/mcp/` is transport- and
 platform-agnostic and unit tested on its own.
+
+### Smoke test against a running platform
+
+With the dev stack up (`cd dev && docker compose up -d`) and `HULY_TOKEN` (or
+`HULY_EMAIL` + `HULY_PASSWORD`) set on the `mcp` service:
+
+```bash
+curl -s localhost:4090/api/v1/health
+
+# initialize: expect HTTP 200, an Mcp-Session-Id response header and a protocolVersion echo
+curl -si localhost:4090/mcp -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}'
+
+# then reuse the returned session id
+curl -s localhost:4090/mcp -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' -H "Mcp-Session-Id: $SID" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"huly_list_projects","arguments":{}}}'
+```
