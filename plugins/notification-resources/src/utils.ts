@@ -770,7 +770,7 @@ export async function subscribePush (): Promise<PushSubscribeResult> {
   if ('serviceWorker' in navigator && 'PushManager' in window && hasValidPushPublicKeyFormat(publicKey)) {
     if (!(await isValidPushPublicKey(publicKey))) {
       pushAllowed.set(false)
-      return false
+      return 'not_supported'
     }
 
     try {
