@@ -18,6 +18,7 @@ import { accountTools } from './account-tools'
 import { componentTools } from './component-tools'
 import { documentTools } from './document-tools'
 import { issueTools } from './issue-tools'
+import { modelTools } from './model-tools'
 import { personTools } from './people-tools'
 import { projectTools } from './project-tools'
 import { searchTools } from './search-tool'
@@ -37,7 +38,8 @@ export function buildRegistry (): ToolRegistry {
     ...issueTools,
     ...componentTools,
     ...personTools,
-    ...documentTools
+    ...documentTools,
+    ...modelTools
   ])
 }
 
@@ -55,6 +57,8 @@ export const MCP_INSTRUCTIONS = [
   '  before huly_update_issue.',
   '- Sub-issues are created with huly_create_issue and parentIssueId; components come from huly_list_components.',
   '- People are referenced by id. Call huly_find_people to resolve a name to an id.',
+  '- For anything the named tools do not cover, discover it: huly_list_classes -> huly_describe_class ->',
+  '  huly_find / huly_get_doc. These can read any class the caller is allowed to see.',
   '- Tools that modify data are refused when the server runs in read-only mode.',
   '',
   'Ids are opaque strings. Always pass an id obtained from a list or search tool rather than',

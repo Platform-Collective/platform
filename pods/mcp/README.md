@@ -120,6 +120,11 @@ Read:
 - `huly_list_spaces`, `huly_list_drives`, `huly_list_documents`, `huly_get_document`
 - `huly_list_milestones`, `huly_list_components`
 - `huly_get_workspace` (settings and the caller's own role), `huly_list_members`
+- Generic access to any class, for everything the named tools do not cover (templates, space types, roles,
+  custom fields, other apps): `huly_list_classes` (discover what exists), `huly_describe_class` (fields and
+  types), `huly_find` (query with filters, sort, projection and a total count), `huly_get_doc` (one document,
+  with rich-text fields returned as Markdown). They run as the caller, so the transactor decides which
+  documents come back: a user who is not in a project sees none of its issues.
 
 Write (refused when read-only):
 
