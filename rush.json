@@ -1617,6 +1617,11 @@
       "shouldPublish": false
     },
     {
+      "packageName": "@hcengineering/pod-mcp",
+      "projectFolder": "pods/mcp",
+      "shouldPublish": false
+    },
+    {
       "packageName": "@hcengineering/hr",
       "projectFolder": "plugins/hr",
       "shouldPublish": true

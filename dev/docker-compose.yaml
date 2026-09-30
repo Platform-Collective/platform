@@ -51,6 +51,22 @@ services:
     ports:
       - 4041:4041
     restart: unless-stopped
+  mcp:
+    image: 'platformcollective/mcp'
+    extra_hosts:
+      - 'huly.local:host-gateway'
+    container_name: mcp
+    environment:
+      - SECRET=secret
+      - PORT=4090
+      - ACCOUNTS_URL=http://huly.local:3000
+      # Set HULY_TOKEN (or HULY_EMAIL + HULY_PASSWORD) to run in self-hosted
+      # mode. Without it the server expects each MCP client to send its own
+      # Huly API token, which is not practical from Claude Desktop.
+      # - HULY_TOKEN=${HULY_TOKEN}
+    ports:
+      - 4090:4090
+    restart: unless-stopped
   cockroach:
     image: cockroachdb/cockroach:latest-v24.3
     extra_hosts:
