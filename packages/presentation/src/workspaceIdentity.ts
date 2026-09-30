@@ -210,9 +210,9 @@ export function createWorkspaceFavicon (ownerDocument: Document = document): {
   let disposed = false
   let request: AbortController | undefined
   function removeDefaultLinks (): void {
-    ownerDocument.head.querySelectorAll('link[rel~="icon"]:not(#workspace-favicon)').forEach((icon) => {
+    for (const icon of Array.from(ownerDocument.head.querySelectorAll('link[rel~="icon"]:not(#workspace-favicon)'))) {
       icon.remove()
-    })
+    }
   }
   function restore (): void {
     link.remove()
