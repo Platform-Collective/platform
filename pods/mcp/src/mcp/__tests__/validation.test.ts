@@ -13,7 +13,7 @@
   limitations under the License.
 */
 
-import { type JsonSchema, objectSchema } from '../schema'
+import { type JsonSchema, nullableStringProp, objectSchema } from '../schema'
 import { type ValidationResult, validateArguments } from '../validation'
 
 const schema: JsonSchema = {
@@ -113,5 +113,24 @@ describe('validateArguments', () => {
     expect(isOk(validateArguments(schema, { title: 'ok', count: 5 }))).toBe(true)
     expect(isOk(validateArguments(schema, { title: 'ok', count: 0 }))).toBe(false)
     expect(isOk(validateArguments(schema, { title: 'ok', count: 6 }))).toBe(false)
+  })
+
+  describe('nullable types', () => {
+    const nullable = objectSchema({ due: nullableStringProp('Due date, or null to clear.') })
+
+    it('accepts null and a string for a nullable field', () => {
+      expect(isOk(validateArguments(nullable, { due: null }))).toBe(true)
+      expect(isOk(validateArguments(nullable, { due: '2026-12-31' }))).toBe(true)
+    })
+
+    it('still rejects any other type and names both allowed types', () => {
+      const issues = issuesOf(validateArguments(nullable, { due: 5 }))
+      expect(issues).toEqual(['due must be of type string or null (received integer)'])
+    })
+
+    it('keeps null invalid for a plain string field', () => {
+      const plain = objectSchema({ name: { type: 'string' } })
+      expect(isOk(validateArguments(plain, { name: null }))).toBe(false)
+    })
   })
 })

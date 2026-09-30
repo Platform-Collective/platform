@@ -16,7 +16,10 @@
 import contact from '@hcengineering/contact'
 import core, { type Class, type Doc, type Ref, type TxOperations } from '@hcengineering/core'
 import task, { type Project as TaskProject } from '@hcengineering/task'
-import tracker from '@hcengineering/tracker'
+import tracker, { MilestoneStatus } from '@hcengineering/tracker'
+
+/** Names of the milestone statuses, indexed by their enum value. */
+export const MILESTONE_STATUS_NAMES = Object.keys(MilestoneStatus).filter((key) => Number.isNaN(Number(key)))
 
 /** Hard ceiling on rows any list tool may return, regardless of what is asked. */
 export const MAX_PAGE_SIZE = 200

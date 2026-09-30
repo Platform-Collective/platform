@@ -22,7 +22,7 @@ import tracker from '@hcengineering/tracker'
 import { textResult } from '../mcp/protocol'
 import { booleanProp, objectSchema, stringProp } from '../mcp/schema'
 import { type HulyTool, type ToolContext } from '../mcp/tool'
-import { clampLimit, likePattern, personNames, statusNames, taskProjectNames, toIso } from './shared'
+import { clampLimit, likePattern, MILESTONE_STATUS_NAMES, personNames, statusNames, taskProjectNames, toIso } from './shared'
 
 interface TaskRow {
   _id: string
@@ -40,9 +40,10 @@ interface TaskRow {
 
 interface MilestoneRow {
   _id: string
-  name: string
-  dueDate?: number
-  done?: string[]
+  label: string
+  status: number
+  startDate: number | null
+  targetDate: number
 }
 
 export const listTasksTool: HulyTool = {
@@ -317,20 +318,21 @@ export const listDrivesTool: HulyTool = {
 export const listMilestonesTool: HulyTool = {
   name: 'huly_list_milestones',
   title: 'List milestones',
-  description: 'List the milestones of a project, with their target dates and how many issues are done.',
+  description: 'List the milestones of a project with their status, start date and target date.',
   readOnly: true,
   inputSchema: objectSchema({ projectId: stringProp('Project id.') }, ['projectId']),
   handler: async (ctx, args) => {
-    const query: Record<string, unknown> = { project: args.projectId }
+    const query: Record<string, unknown> = { space: args.projectId }
     const milestones = (await ctx.client.findAll(tracker.class.Milestone, query as never, {
       limit: 200
     })) as unknown as MilestoneRow[]
 
     const rows = milestones.map((milestone) => ({
       id: milestone._id,
-      name: milestone.name,
-      dueDate: toIso(milestone.dueDate),
-      doneCount: milestone.done?.length ?? 0
+      name: milestone.label,
+      status: MILESTONE_STATUS_NAMES[milestone.status] ?? `Unknown(${milestone.status})`,
+      startDate: toIso(milestone.startDate),
+      targetDate: toIso(milestone.targetDate)
     }))
 
     return textResult(

@@ -24,7 +24,8 @@
 export type JsonSchemaType = 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array' | 'null'
 
 export interface JsonSchema {
-  type?: JsonSchemaType
+  /** A single type, or a list when the value may be one of several (e.g. `['string', 'null']`). */
+  type?: JsonSchemaType | JsonSchemaType[]
   description?: string
   title?: string
 
@@ -86,6 +87,13 @@ export const numberProp = (description: string, extra: Partial<JsonSchema> = {})
 
 export const booleanProp = (description: string, extra: Partial<JsonSchema> = {}): JsonSchema => ({
   type: 'boolean',
+  description,
+  ...extra
+})
+
+/** A string that may also be `null`, for fields where `null` means "clear this value". */
+export const nullableStringProp = (description: string, extra: Partial<JsonSchema> = {}): JsonSchema => ({
+  type: ['string', 'null'],
   description,
   ...extra
 })

@@ -14,6 +14,7 @@
 */
 
 import { ToolRegistry } from '../mcp/tool'
+import { componentTools } from './component-tools'
 import { documentTools } from './document-tools'
 import { issueTools } from './issue-tools'
 import { personTools } from './people-tools'
@@ -32,6 +33,7 @@ export function buildRegistry (): ToolRegistry {
     ...searchTools,
     ...projectTools,
     ...issueTools,
+    ...componentTools,
     ...personTools,
     ...documentTools
   ])
@@ -49,6 +51,7 @@ export const MCP_INSTRUCTIONS = [
   'Writing:',
   '- Issue statuses are documents, not strings. Call huly_list_issue_statuses to get valid ids',
   '  before huly_update_issue.',
+  '- Sub-issues are created with huly_create_issue and parentIssueId; components come from huly_list_components.',
   '- People are referenced by id. Call huly_find_people to resolve a name to an id.',
   '- Tools that modify data are refused when the server runs in read-only mode.',
   '',

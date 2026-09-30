@@ -67,9 +67,12 @@ function compilePattern (pattern: string): RegExp | undefined {
 
 /** Validates a single value against a schema node, collecting issues. */
 function validateValue (value: unknown, schema: JsonSchema, path: string, issues: string[]): void {
-  if (schema.type !== undefined && !matchesType(value, schema.type)) {
-    issues.push(`${path} must be of type ${schema.type} (received ${typeOf(value)})`)
-    return
+  if (schema.type !== undefined) {
+    const allowed = Array.isArray(schema.type) ? schema.type : [schema.type]
+    if (!allowed.some((type) => matchesType(value, type))) {
+      issues.push(`${path} must be of type ${allowed.join(' or ')} (received ${typeOf(value)})`)
+      return
+    }
   }
 
   if (schema.enum !== undefined) {

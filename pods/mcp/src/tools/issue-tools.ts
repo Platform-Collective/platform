@@ -16,13 +16,13 @@
 import chunter, { type ChatMessage } from '@hcengineering/chunter'
 import core, { generateId, SortingOrder } from '@hcengineering/core'
 import task from '@hcengineering/task'
-import tracker, { IssuePriority, type Issue, type Milestone } from '@hcengineering/tracker'
+import tracker, { IssuePriority, MilestoneStatus, type Issue, type Milestone } from '@hcengineering/tracker'
 
 import { textResult } from '../mcp/protocol'
 import { toMarkup } from '../platform/markup'
-import { booleanProp, objectSchema, stringProp } from '../mcp/schema'
+import { booleanProp, nullableStringProp, objectSchema, stringProp } from '../mcp/schema'
 import { type HulyTool, type ToolContext } from '../mcp/tool'
-import { clampLimit, likePattern, personNames, projectNames, statusNames, toIso } from './shared'
+import { clampLimit, likePattern, MILESTONE_STATUS_NAMES, personNames, projectNames, statusNames, toIso } from './shared'
 
 /** The slice of an Issue the tools read. */
 interface IssueRow {
@@ -40,9 +40,13 @@ interface IssueRow {
   startDate: number | null
   dueDate: number | null
   milestone: string | null
+  component?: string | null
   description?: string | null
   estimation: number
 }
+
+/** How far ahead a milestone's target date lands when the caller gives none; matches the web client. */
+const DEFAULT_MILESTONE_SPAN_MS = 14 * 24 * 60 * 60 * 1000
 
 const PRIORITY_NAMES = Object.keys(IssuePriority).filter((key) => Number.isNaN(Number(key)))
 
@@ -90,6 +94,8 @@ async function formatIssues (ctx: ToolContext, issues: IssueRow[]): Promise<Arra
       labels: issue.labels,
       startDate: toIso(issue.startDate),
       dueDate: toIso(issue.dueDate),
+      milestoneId: issue.milestone ?? null,
+      componentId: issue.component ?? null,
       estimation: issue.estimation,
       modifiedOn: toIso(issue.modifiedOn)
     }
@@ -200,7 +206,8 @@ export const getIssueTool: HulyTool = {
       )
     }
 
-    const subtaskQuery: Record<string, unknown> = { space: issue.space, parent: issue._id }
+    // Sub-issues are attached documents of their parent; an issue has no `parent` field.
+    const subtaskQuery: Record<string, unknown> = { space: issue.space, attachedTo: issue._id }
     const commentQuery: Record<string, unknown> = { attachedTo: issueId, collection: 'comments' }
 
     const [subtasks, comments, description] = await Promise.all([
@@ -300,7 +307,9 @@ export const createIssueTool: HulyTool = {
       assignee: stringProp('Person id to assign. Use huly_find_people to look one up.'),
       dueDate: stringProp('ISO-8601 due date, e.g. 2026-12-31 or 2026-12-31T17:00:00Z.'),
       startDate: stringProp('ISO-8601 start date.'),
-      milestone: stringProp('Milestone id to attach the issue to.')
+      milestone: stringProp('Milestone id to attach the issue to.'),
+      componentId: stringProp('Component id from huly_list_components. Must belong to the same project.'),
+      parentIssueId: stringProp('Create this as a sub-issue of the issue with this id. Must be in the same project.')
     },
     ['projectId', 'title']
   ),
@@ -330,6 +339,28 @@ export const createIssueTool: HulyTool = {
       return textResult(
         'The project has no default issue status or issue task type configured, so the issue was not created. ' +
           'Pass an explicit statusId, or ask an administrator to configure the project.',
+        { created: false }
+      )
+    }
+
+    // Every check that can refuse the request runs before the sequence counter
+    // is incremented, so a rejected call never burns an issue number.
+    let parent: ParentRow | undefined
+    if (args.parentIssueId !== undefined) {
+      const parentQuery: Record<string, unknown> = { _id: args.parentIssueId }
+      parent = (await ctx.client.findOne(tracker.class.Issue, parentQuery as never)) as unknown as ParentRow | undefined
+      if (parent === undefined || parent.space !== projectId) {
+        return textResult(
+          `No issue with id ${String(args.parentIssueId)} exists in project ${projectId}, so the sub-issue was not created.`,
+          { created: false }
+        )
+      }
+    }
+
+    if (args.componentId !== undefined && !(await componentInProject(ctx, args.componentId as string, projectId))) {
+      return textResult(
+        `No component with id ${String(args.componentId)} exists in project ${projectId}, so the issue was not ` +
+          'created. Call huly_list_components for the valid ids.',
         { created: false }
       )
     }
@@ -371,7 +402,7 @@ export const createIssueTool: HulyTool = {
       title: args.title,
       description: descriptionRef,
       assignee: (args.assignee as string | undefined) ?? null,
-      component: null,
+      component: (args.componentId as string | undefined) ?? null,
       milestone: (args.milestone as string | undefined) ?? null,
       number,
       identifier,
@@ -381,7 +412,19 @@ export const createIssueTool: HulyTool = {
       rank: '',
       comments: 0,
       subIssues: 0,
-      parents: [],
+      // Ancestors nearest first, as the web client stores them.
+      parents:
+        parent === undefined
+          ? []
+          : [
+              {
+                parentId: parent._id,
+                parentTitle: parent.title,
+                space: parent.space,
+                identifier: parent.identifier
+              },
+              ...(parent.parents ?? [])
+            ],
       childInfo: [],
       relations: [],
       startDate: toTimestamp(args.startDate as string | undefined),
@@ -395,18 +438,32 @@ export const createIssueTool: HulyTool = {
     await ctx.client.addCollection(
       tracker.class.Issue,
       projectId as never,
-      tracker.ids.NoParent,
+      (parent?._id ?? tracker.ids.NoParent) as never,
       tracker.class.Issue,
       'subIssues',
       attributes as never,
       issueId
     )
 
-    return textResult(JSON.stringify({ id: issueId, key: identifier, title: args.title }, null, 2), {
-      created: true,
-      issueId
-    })
+    return textResult(
+      JSON.stringify({ id: issueId, key: identifier, title: args.title, parentIssueId: parent?._id ?? null }, null, 2),
+      { created: true, issueId }
+    )
   }
+}
+
+interface ParentRow {
+  _id: string
+  title: string
+  identifier: string
+  space: string
+  parents?: Array<{ parentId: string, parentTitle: string, space: string, identifier: string }>
+}
+
+/** True when the component exists and belongs to the given project. */
+async function componentInProject (ctx: ToolContext, componentId: string, projectId: string): Promise<boolean> {
+  const query: Record<string, unknown> = { _id: componentId, space: projectId }
+  return (await ctx.client.findOne(tracker.class.Component, query as never)) !== undefined
 }
 
 interface ProjectDefaults {
@@ -425,8 +482,8 @@ export const updateIssueTool: HulyTool = {
   title: 'Update issue',
   description:
     'Change fields on an existing issue. Only the fields you pass are changed; everything else is left alone. ' +
-    'Use statusId from huly_list_issue_statuses. Passing null for dueDate, startDate, assignee or ' +
-    'milestone clears that field.',
+    'Use statusId from huly_list_issue_statuses. Passing null for dueDate, startDate, assignee, ' +
+    'milestone or componentId clears that field.',
   readOnly: false,
   inputSchema: objectSchema(
     {
@@ -438,10 +495,11 @@ export const updateIssueTool: HulyTool = {
         description: 'New priority.',
         enum: ['NoPriority', 'Urgent', 'High', 'Medium', 'Low']
       },
-      assignee: stringProp('New assignee person id, or null to unassign.'),
-      dueDate: stringProp('New ISO-8601 due date, or null to clear it.'),
-      startDate: stringProp('New ISO-8601 start date, or null to clear it.'),
-      milestone: stringProp('New milestone id, or null to detach.')
+      assignee: nullableStringProp('New assignee person id, or null to unassign.'),
+      dueDate: nullableStringProp('New ISO-8601 due date, or null to clear it.'),
+      startDate: nullableStringProp('New ISO-8601 start date, or null to clear it.'),
+      milestone: nullableStringProp('New milestone id, or null to detach.'),
+      componentId: nullableStringProp('New component id from huly_list_components, or null to clear it.')
     },
     ['issueId']
   ),
@@ -468,11 +526,21 @@ export const updateIssueTool: HulyTool = {
     if (args.dueDate !== undefined) operations.dueDate = toTimestamp(args.dueDate as string)
     if (args.startDate !== undefined) operations.startDate = toTimestamp(args.startDate as string)
     if (args.milestone !== undefined) operations.milestone = args.milestone
+    if (args.componentId !== undefined) {
+      if (args.componentId !== null && !(await componentInProject(ctx, args.componentId as string, issue.space))) {
+        return textResult(
+          `No component with id ${String(args.componentId)} exists in the issue's project, so nothing was changed. ` +
+            'Call huly_list_components for the valid ids.',
+          { updated: false }
+        )
+      }
+      operations.component = args.componentId
+    }
 
     const changed = Object.keys(operations)
     if (changed.length === 0) {
       return textResult(
-        'No fields to update. Pass at least one of title, statusId, priority, assignee, dueDate or milestone.',
+        'No fields to update. Pass at least one of title, statusId, priority, assignee, dueDate, startDate, milestone or componentId.',
         { updated: false }
       )
     }
@@ -539,7 +607,8 @@ export const createMilestoneTool: HulyTool = {
       projectId: stringProp('Project id from huly_list_projects.'),
       name: stringProp('Milestone name.', { minLength: 1, maxLength: 200 }),
       description: stringProp('Milestone description.', { maxLength: 20_000 }),
-      dueDate: stringProp('ISO-8601 target date.'),
+      startDate: stringProp('ISO-8601 start date. Omit for an open-ended start.'),
+      targetDate: stringProp('ISO-8601 target date. Defaults to two weeks from now.'),
       issueIds: {
         type: 'array',
         description: 'Issue ids to attach to the new milestone.',
@@ -562,11 +631,13 @@ export const createMilestoneTool: HulyTool = {
 
     const milestoneId = generateId<Milestone>()
     const attributes: Record<string, unknown> = {
-      name: args.name,
+      label: args.name,
       description: toMarkup((args.description as string | undefined) ?? ''),
-      dueDate: toTimestamp(args.dueDate as string | undefined),
-      project: projectId,
-      done: []
+      status: MilestoneStatus.Planned,
+      comments: 0,
+      attachments: 0,
+      startDate: toTimestamp(args.startDate as string | undefined),
+      targetDate: toTimestamp(args.targetDate as string | undefined) ?? Date.now() + DEFAULT_MILESTONE_SPAN_MS
     }
     await ctx.client.createDoc(tracker.class.Milestone, projectId as never, attributes as never, milestoneId)
 
@@ -602,6 +673,75 @@ export const createMilestoneTool: HulyTool = {
   }
 }
 
+export const updateMilestoneTool: HulyTool = {
+  name: 'huly_update_milestone',
+  title: 'Update milestone',
+  description:
+    'Change fields on an existing milestone. Only the fields you pass are changed. ' +
+    'Passing null for startDate makes the start open-ended; targetDate cannot be cleared.',
+  readOnly: false,
+  inputSchema: objectSchema(
+    {
+      milestoneId: stringProp('Milestone id from huly_list_milestones.'),
+      name: stringProp('New name.', { minLength: 1, maxLength: 200 }),
+      description: stringProp('New description. Plain text or Markdown.', { maxLength: 20_000 }),
+      status: {
+        type: 'string',
+        description: 'New status.',
+        enum: MILESTONE_STATUS_NAMES
+      },
+      startDate: nullableStringProp('New ISO-8601 start date, or null for an open-ended start.'),
+      targetDate: stringProp('New ISO-8601 target date.')
+    },
+    ['milestoneId']
+  ),
+  handler: async (ctx, args) => {
+    const milestoneId = args.milestoneId as string
+    const query: Record<string, unknown> = { _id: milestoneId }
+    const milestone = (await ctx.client.findOne(tracker.class.Milestone, query as never)) as unknown as
+      | { _id: string, space: string }
+      | undefined
+
+    if (milestone === undefined) {
+      return textResult(`No milestone with id ${milestoneId} is visible to you, so nothing was changed.`, {
+        updated: false
+      })
+    }
+
+    const operations: Record<string, unknown> = {}
+    if (args.name !== undefined) operations.label = args.name
+    if (args.description !== undefined) operations.description = toMarkup(args.description as string)
+    if (args.status !== undefined) {
+      const index = MILESTONE_STATUS_NAMES.indexOf(args.status as string)
+      if (index < 0) {
+        return textResult(`Unknown milestone status "${String(args.status)}". Use ${MILESTONE_STATUS_NAMES.join(', ')}.`, {
+          updated: false
+        })
+      }
+      operations.status = index
+    }
+    if (args.startDate !== undefined) operations.startDate = toTimestamp(args.startDate as string | null)
+    if (args.targetDate !== undefined) {
+      const target = toTimestamp(args.targetDate as string | null)
+      if (target === null) {
+        return textResult('targetDate cannot be cleared; pass an ISO-8601 date.', { updated: false })
+      }
+      operations.targetDate = target
+    }
+
+    const changed = Object.keys(operations)
+    if (changed.length === 0) {
+      return textResult('No fields to update. Pass at least one of name, description, status, startDate or targetDate.', {
+        updated: false
+      })
+    }
+
+    await ctx.client.updateDoc(tracker.class.Milestone, milestone.space as never, milestone._id as never, operations as never)
+
+    return textResult(`Updated milestone ${milestoneId}: ${changed.sort().join(', ')}.`, { updated: true, changed })
+  }
+}
+
 function toTimestamp (value: string | null | undefined): number | null {
   if (value === undefined || value === null || value === '') return null
   const parsed = Date.parse(value)
@@ -618,5 +758,6 @@ export const issueTools: HulyTool[] = [
   createIssueTool,
   updateIssueTool,
   addCommentTool,
-  createMilestoneTool
+  createMilestoneTool,
+  updateMilestoneTool
 ]

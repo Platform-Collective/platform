@@ -118,12 +118,12 @@ Read:
 - `huly_list_issues`, `huly_get_issue`, `huly_list_issue_statuses`
 - `huly_list_tasks`, `huly_find_people`
 - `huly_list_spaces`, `huly_list_drives`, `huly_list_documents`, `huly_get_document`
-- `huly_list_milestones`
+- `huly_list_milestones`, `huly_list_components`
 
 Write (refused when read-only):
 
-- `huly_create_issue`, `huly_update_issue`, `huly_add_issue_comment`
-- `huly_create_milestone`, `huly_create_person`
+- `huly_create_issue` (optionally as a sub-issue via `parentIssueId`, with a `componentId`), `huly_update_issue`, `huly_add_issue_comment`
+- `huly_create_milestone`, `huly_update_milestone`, `huly_create_component`, `huly_create_person`
 
 ## Security notes
 
