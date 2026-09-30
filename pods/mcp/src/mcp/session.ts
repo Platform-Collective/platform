@@ -45,9 +45,7 @@ export class McpSession {
   }
 
   belongsTo (identity: SessionIdentity): boolean {
-    return (
-      this.identity.account === identity.account && this.identity.workspace === identity.workspace
-    )
+    return this.identity.account === identity.account && this.identity.workspace === identity.workspace
   }
 }
 

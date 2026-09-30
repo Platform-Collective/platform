@@ -98,7 +98,7 @@ export class McpDispatcher {
       }
     }
 
-    const request = message as JsonRpcRequest
+    const request = message
 
     // Guard every method except initialize: a client that skips the handshake
     // would otherwise be able to call tools with no negotiated protocol version.

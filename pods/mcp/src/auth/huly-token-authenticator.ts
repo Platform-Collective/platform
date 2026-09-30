@@ -13,11 +13,15 @@
   limitations under the License.
 */
 
-import { getClient as getAccountClient, isWorkspaceLoginInfo, type AccountClient, type LoginInfoByToken } from '@hcengineering/account-client'
+import {
+  getClient as getAccountClient,
+  isWorkspaceLoginInfo,
+  type AccountClient,
+  type LoginInfoByToken
+} from '@hcengineering/account-client'
 import { type MeasureContext } from '@hcengineering/core'
 import { setApiTokenRevocationChecker, verifyToken } from '@hcengineering/server-token'
 
-import { type Config } from '../config'
 import { AuthenticationError, type Authenticator, type SessionIdentity, toTransactorHttpUrl } from './authenticator'
 
 export interface HulyTokenAuthenticatorOptions {

@@ -144,10 +144,7 @@ export async function projectNames (client: TxOperations, refs: MaybeId[]): Prom
 }
 
 /** Names a task project without the tracker lookup, for task-only listings. */
-export async function taskProjectNames (
-  client: TxOperations,
-  refs: MaybeId[]
-): Promise<Map<string, ProjectInfo>> {
+export async function taskProjectNames (client: TxOperations, refs: MaybeId[]): Promise<Map<string, ProjectInfo>> {
   const wanted = uniqueIds(refs)
   if (wanted.length === 0) return new Map()
 
@@ -162,5 +159,5 @@ export async function taskProjectNames (
 }
 
 /** Casts a JSON-supplied id to a `Ref<T>` for use in a typed query. */
-export const asRef = <T extends Doc> (id: string): Ref<T> => id as Ref<T>
+export const asRef = <T extends Doc>(id: string): Ref<T> => id as Ref<T>
 export const asTaskProjectRef = asRef<TaskProject>

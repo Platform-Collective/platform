@@ -49,8 +49,7 @@ export const listTasksTool: HulyTool = {
   name: 'huly_list_tasks',
   title: 'List tasks',
   description:
-    'List to-do tasks and subtasks, optionally scoped to one task project (board). ' +
-    'Returns at most 200 per call.',
+    'List to-do tasks and subtasks, optionally scoped to one task project (board). ' + 'Returns at most 200 per call.',
   readOnly: true,
   inputSchema: objectSchema({
     projectId: stringProp('Task project (board) id from huly_list_projects.'),
@@ -77,9 +76,18 @@ export const listTasksTool: HulyTool = {
     }
 
     const [people, statuses, projects] = await Promise.all([
-      personNames(ctx.client, rows.map((row) => row.assignee)),
-      statusNames(ctx.client, rows.map((row) => row.status)),
-      taskProjectNames(ctx.client, rows.map((row) => row.space))
+      personNames(
+        ctx.client,
+        rows.map((row) => row.assignee)
+      ),
+      statusNames(
+        ctx.client,
+        rows.map((row) => row.status)
+      ),
+      taskProjectNames(
+        ctx.client,
+        rows.map((row) => row.space)
+      )
     ])
 
     const tasks = rows.map((row) => ({
@@ -242,13 +250,12 @@ export const listDrivesTool: HulyTool = {
     })) as unknown as Drive[]
 
     const rows = drives
-      .filter((item) => item.archived !== true)
+      .filter((item) => !item.archived)
       .map((item) => ({ id: item._id, name: item.name, description: item.description ?? '' }))
 
-    return textResult(
-      rows.length === 0 ? 'No drives found.' : JSON.stringify({ drives: rows }, null, 2),
-      { drives: rows }
-    )
+    return textResult(rows.length === 0 ? 'No drives found.' : JSON.stringify({ drives: rows }, null, 2), {
+      drives: rows
+    })
   }
 }
 
@@ -260,11 +267,9 @@ export const listMilestonesTool: HulyTool = {
   inputSchema: objectSchema({ projectId: stringProp('Project id.') }, ['projectId']),
   handler: async (ctx, args) => {
     const query: Record<string, unknown> = { project: args.projectId }
-    const milestones = (await ctx.client.findAll(
-      tracker.class.Milestone,
-      query as never,
-      { limit: 200 }
-    )) as unknown as MilestoneRow[]
+    const milestones = (await ctx.client.findAll(tracker.class.Milestone, query as never, {
+      limit: 200
+    })) as unknown as MilestoneRow[]
 
     const rows = milestones.map((milestone) => ({
       id: milestone._id,

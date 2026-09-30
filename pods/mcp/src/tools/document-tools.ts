@@ -95,8 +95,9 @@ export const getDocumentTool: HulyTool = {
   handler: async (ctx, args) => {
     const documentId = args.documentId as string
 
-    const document = (await ctx.client.findOne(doc.class.Document, { _id: documentId } as never)) as
-      | unknown as DocumentRow
+    const documentIdQuery: Record<string, unknown> = { _id: documentId }
+    const document = (await ctx.client.findOne(doc.class.Document, documentIdQuery as never)) as unknown as
+      | DocumentRow
       | undefined
 
     if (document === undefined) {

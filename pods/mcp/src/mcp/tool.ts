@@ -111,11 +111,7 @@ export class ToolRegistry {
    * `isError` results lets the model self-correct; the transport stays a
    * successful JSON-RPC call.
    */
-  async call (
-    name: string,
-    rawArgs: unknown,
-    context: ToolContext
-  ): Promise<McpToolCallResult> {
+  async call (name: string, rawArgs: unknown, context: ToolContext): Promise<McpToolCallResult> {
     const tool = this.tools.get(name)
     if (tool === undefined) {
       const available = [...this.tools.keys()].join(', ')

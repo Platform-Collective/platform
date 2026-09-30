@@ -136,17 +136,19 @@ export function createServer (deps: ServerDependencies): McpServer {
   app.get('/api/v1/statistics', statistics(ctx, config))
 
   app.get('/', (_req: Request, res: Response) => {
-    res.type('text/plain').send(
-      [
-        'Huly MCP Server',
-        '',
-        `MCP endpoint:   POST ${MCP_ENDPOINT}`,
-        'Health:         GET /api/v1/health',
-        `Auth mode:      ${config.AuthMode}${config.ReadOnly ? ' (read-only)' : ''}`,
-        `Tools:          ${registry.size}`,
-        ''
-      ].join('\n')
-    )
+    res
+      .type('text/plain')
+      .send(
+        [
+          'Huly MCP Server',
+          '',
+          `MCP endpoint:   POST ${MCP_ENDPOINT}`,
+          'Health:         GET /api/v1/health',
+          `Auth mode:      ${config.AuthMode}${config.ReadOnly ? ' (read-only)' : ''}`,
+          `Tools:          ${registry.size}`,
+          ''
+        ].join('\n')
+      )
   })
 
   app.use((_req: Request, res: Response) => {

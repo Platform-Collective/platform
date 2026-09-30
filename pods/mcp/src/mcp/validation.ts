@@ -22,9 +22,7 @@ import { type JsonSchema, type JsonSchemaType, type ToolArguments } from './sche
 // a malformed Huly query. It therefore fails fast and reports every issue at
 // once, so an agent can correct the whole call in one round trip.
 
-export type ValidationResult =
-  | { ok: true, value: ToolArguments }
-  | { ok: false, issues: string[] }
+export type ValidationResult = { ok: true, value: ToolArguments } | { ok: false, issues: string[] }
 
 const MAX_PATTERN_LENGTH = 512
 const patternCache = new Map<string, RegExp>()
@@ -123,12 +121,7 @@ function validateValue (value: unknown, schema: JsonSchema, path: string, issues
   }
 }
 
-function validateObject (
-  value: Record<string, unknown>,
-  schema: JsonSchema,
-  path: string,
-  issues: string[]
-): void {
+function validateObject (value: Record<string, unknown>, schema: JsonSchema, path: string, issues: string[]): void {
   const properties = schema.properties ?? {}
   const required = schema.required ?? []
 
@@ -158,7 +151,7 @@ function validateObject (
  */
 export function validateArguments (schema: JsonSchema, args: unknown): ValidationResult {
   const issues: string[] = []
-  const input = args === undefined || args === null ? {} : args
+  const input = args ?? {}
 
   if (!isPlainObject(input)) {
     return { ok: false, issues: ['arguments must be an object'] }

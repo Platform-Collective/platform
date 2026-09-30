@@ -37,11 +37,11 @@ const schema: JsonSchema = {
  * comparison also documents intent: these assertions care about *which* branch
  * they took, not merely whether validation passed.
  */
-const issuesOf = (result: ValidationResult): string[] => (result.ok === true ? [] : result.issues)
+const issuesOf = (result: ValidationResult): string[] => (result.ok ? [] : result.issues)
 
-const valueOf = (result: ValidationResult): Record<string, unknown> => (result.ok === true ? result.value : {})
+const valueOf = (result: ValidationResult): Record<string, unknown> => (result.ok ? result.value : {})
 
-const isOk = (result: ValidationResult): boolean => result.ok === true
+const isOk = (result: ValidationResult): boolean => result.ok
 
 describe('validateArguments', () => {
   it('accepts a minimal valid payload', () => {

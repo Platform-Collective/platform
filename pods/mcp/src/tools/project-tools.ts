@@ -82,7 +82,10 @@ export const listProjectsTool: HulyTool = {
 
     const projectRows = projects as ProjectRow[]
     const taskRows = taskProjects as Array<TaskProject & ProjectRow>
-    const issueCounts = await countIssuesPerProject(ctx.client, projectRows.map((project) => project._id))
+    const issueCounts = await countIssuesPerProject(
+      ctx.client,
+      projectRows.map((project) => project._id)
+    )
 
     const payload = [
       ...projectRows.map((project) => summarize(project, 'tracker', issueCounts.get(project._id) ?? 0)),
@@ -90,10 +93,9 @@ export const listProjectsTool: HulyTool = {
     ]
 
     if (payload.length === 0) {
-      return textResult(
-        'No projects found. The user is not a member of any project, or every project is archived.',
-        { projects: [] }
-      )
+      return textResult('No projects found. The user is not a member of any project, or every project is archived.', {
+        projects: []
+      })
     }
 
     return textResult(JSON.stringify({ projects: payload }, null, 2), { projects: payload })
@@ -108,15 +110,13 @@ export const getProjectTool: HulyTool = {
     'Accepts both tracker project ids and task project ids. ' +
     'Call huly_list_issue_statuses for the set of statuses an issue may be moved to.',
   readOnly: true,
-  inputSchema: objectSchema(
-    { projectId: stringProp('Project id, as returned by huly_list_projects.') },
-    ['projectId']
-  ),
+  inputSchema: objectSchema({ projectId: stringProp('Project id, as returned by huly_list_projects.') }, ['projectId']),
   handler: async (ctx, args) => {
     const projectId = args.projectId as string
 
-    const project = (await ctx.client.findOne(tracker.class.Project, { _id: projectId } as never)) as
-      | unknown as ProjectRow
+    const projectIdQuery: Record<string, unknown> = { _id: projectId }
+    const project = (await ctx.client.findOne(tracker.class.Project, projectIdQuery as never)) as unknown as
+      | ProjectRow
       | undefined
 
     if (project !== undefined) {
@@ -134,8 +134,8 @@ export const getProjectTool: HulyTool = {
       )
     }
 
-    const taskProject = (await ctx.client.findOne(taskProjectClass, { _id: projectId } as never)) as
-      | unknown as ProjectRow
+    const taskProject = (await ctx.client.findOne(taskProjectClass, projectIdQuery as never)) as unknown as
+      | ProjectRow
       | undefined
 
     if (taskProject !== undefined) {

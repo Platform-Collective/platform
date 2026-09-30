@@ -138,8 +138,6 @@ export class ConfiguredAuthenticator implements Authenticator {
 /** Accepts a workspace id, its url slug, or a case-insensitive id. */
 function matchesWorkspace (loginInfo: { workspace: string, workspaceUrl: string }, wanted: string): boolean {
   return (
-    loginInfo.workspace === wanted ||
-    loginInfo.workspaceUrl === wanted ||
-    loginInfo.workspace === wanted.toLowerCase()
+    loginInfo.workspace === wanted || loginInfo.workspaceUrl === wanted || loginInfo.workspace === wanted.toLowerCase()
   )
 }

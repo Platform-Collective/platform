@@ -60,9 +60,18 @@ const uniqueStatuses = (issues: IssueRow[]): string[] => uniqueIds(issues.map((i
  */
 async function formatIssues (ctx: ToolContext, issues: IssueRow[]): Promise<Array<Record<string, unknown>>> {
   const [people, statuses, projects] = await Promise.all([
-    personNames(ctx.client, issues.map((issue) => issue.assignee)),
-    statusNames(ctx.client, issues.map((issue) => issue.status)),
-    projectNames(ctx.client, issues.map((issue) => issue.space))
+    personNames(
+      ctx.client,
+      issues.map((issue) => issue.assignee)
+    ),
+    statusNames(
+      ctx.client,
+      issues.map((issue) => issue.status)
+    ),
+    projectNames(
+      ctx.client,
+      issues.map((issue) => issue.space)
+    )
   ])
 
   return issues.map((issue) => {
@@ -162,8 +171,9 @@ export const getIssueTool: HulyTool = {
   handler: async (ctx, args) => {
     const issueId = args.issueId as string
 
-    const issue = (await ctx.client.findOne(tracker.class.Issue, { _id: issueId } as never)) as
-      | unknown as IssueRow
+    const issueIdQuery: Record<string, unknown> = { _id: issueId }
+    const issue = (await ctx.client.findOne(tracker.class.Issue, issueIdQuery as never)) as unknown as
+      | IssueRow
       | undefined
 
     if (issue === undefined) {
@@ -210,7 +220,10 @@ export const getIssueTool: HulyTool = {
 
 async function formatComments (ctx: ToolContext, comments: ChatMessage[]): Promise<Array<Record<string, unknown>>> {
   if (comments.length === 0) return []
-  const people = await personNames(ctx.client, comments.map((comment) => comment.createdBy as never))
+  const people = await personNames(
+    ctx.client,
+    comments.map((comment) => comment.createdBy as never)
+  )
   return comments.map((comment) => ({
     id: comment._id,
     author: people.get(comment.createdBy as never) ?? 'Unknown',
@@ -233,7 +246,10 @@ export const listIssueStatusesTool: HulyTool = {
       limit: 200
     })) as unknown as Array<{ _id: string, name: string }>
 
-    const resolved = await statusNames(ctx.client, statuses.map((status) => status._id))
+    const resolved = await statusNames(
+      ctx.client,
+      statuses.map((status) => status._id)
+    )
 
     const rows = statuses.map((status) => ({
       id: status._id,
@@ -274,15 +290,15 @@ export const createIssueTool: HulyTool = {
   handler: async (ctx, args) => {
     const projectId = args.projectId as string
 
-    const project = (await ctx.client.findOne(tracker.class.Project, { _id: projectId } as never)) as
-      | unknown as ProjectDefaults
+    const projectIdQuery: Record<string, unknown> = { _id: projectId }
+    const project = (await ctx.client.findOne(tracker.class.Project, projectIdQuery as never)) as unknown as
+      | ProjectDefaults
       | undefined
 
     if (project === undefined) {
-      return textResult(
-        `No project with id ${projectId} is visible to you, so the issue was not created.`,
-        { created: false }
-      )
+      return textResult(`No project with id ${projectId} is visible to you, so the issue was not created.`, {
+        created: false
+      })
     }
 
     const statusId = (args.statusId as string | undefined) ?? project.defaultIssueStatus
@@ -348,7 +364,11 @@ export const updateIssueTool: HulyTool = {
       issueId: stringProp('Issue id from huly_list_issues.'),
       title: stringProp('New title.', { maxLength: 500 }),
       statusId: stringProp('New status id from huly_list_issue_statuses.'),
-      priority: { type: 'string', description: 'New priority.', enum: ['NoPriority', 'Urgent', 'High', 'Medium', 'Low'] },
+      priority: {
+        type: 'string',
+        description: 'New priority.',
+        enum: ['NoPriority', 'Urgent', 'High', 'Medium', 'Low']
+      },
       assignee: stringProp('New assignee person id, or null to unassign.'),
       dueDate: stringProp('New ISO-8601 due date, or null to clear it.'),
       startDate: stringProp('New ISO-8601 start date, or null to clear it.'),
@@ -359,8 +379,9 @@ export const updateIssueTool: HulyTool = {
   handler: async (ctx, args) => {
     const issueId = args.issueId as string
 
-    const issue = (await ctx.client.findOne(tracker.class.Issue, { _id: issueId } as never)) as
-      | unknown as IssueRow
+    const issueIdQuery: Record<string, unknown> = { _id: issueId }
+    const issue = (await ctx.client.findOne(tracker.class.Issue, issueIdQuery as never)) as unknown as
+      | IssueRow
       | undefined
 
     if (issue === undefined) {
@@ -407,8 +428,9 @@ export const addCommentTool: HulyTool = {
   ),
   handler: async (ctx, args) => {
     const issueId = args.issueId as string
-    const issue = (await ctx.client.findOne(tracker.class.Issue, { _id: issueId } as never)) as
-      | unknown as IssueRow
+    const issueIdQuery: Record<string, unknown> = { _id: issueId }
+    const issue = (await ctx.client.findOne(tracker.class.Issue, issueIdQuery as never)) as unknown as
+      | IssueRow
       | undefined
 
     if (issue === undefined) {
@@ -477,18 +499,15 @@ export const createMilestoneTool: HulyTool = {
     const attached: string[] = []
 
     for (const issueId of issueIds) {
-      const issue = (await ctx.client.findOne(tracker.class.Issue, { _id: issueId } as never)) as
-        | unknown as IssueRow
+      const issueIdQuery: Record<string, unknown> = { _id: issueId }
+      const issue = (await ctx.client.findOne(tracker.class.Issue, issueIdQuery as never)) as unknown as
+        | IssueRow
         | undefined
       // Silently skipping unknown ids would make a partial failure look like a
       // complete one, so unattached ids are reported back to the caller.
       if (issue === undefined || issue.space !== projectId) continue
-      await ctx.client.updateDoc(
-        tracker.class.Issue,
-        issue.space as never,
-        issue._id as never,
-        { milestone: milestoneId } as never
-      )
+      const attach: Record<string, unknown> = { milestone: milestoneId }
+      await ctx.client.updateDoc(tracker.class.Issue, issue.space as never, issue._id as never, attach as never)
       attached.push(issue._id)
     }
 
