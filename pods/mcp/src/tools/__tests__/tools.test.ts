@@ -78,6 +78,7 @@ function scriptedClient (script: Script): { client: TxOperations, recorded: Reco
 function context (client: TxOperations, markupWriter?: MarkupWriter): ToolContext {
   const session: WorkspaceSession = {
     client,
+    accounts: Object.create(null) as WorkspaceSession['accounts'],
     identity: fakeIdentity(),
     markup: { read: async () => '' },
     markupWriter

@@ -14,6 +14,7 @@
 */
 
 import { ToolRegistry } from '../mcp/tool'
+import { accountTools } from './account-tools'
 import { componentTools } from './component-tools'
 import { documentTools } from './document-tools'
 import { issueTools } from './issue-tools'
@@ -31,6 +32,7 @@ import { searchTools } from './search-tool'
 export function buildRegistry (): ToolRegistry {
   return new ToolRegistry().registerAll([
     ...searchTools,
+    ...accountTools,
     ...projectTools,
     ...issueTools,
     ...componentTools,

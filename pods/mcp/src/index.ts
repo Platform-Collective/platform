@@ -24,6 +24,7 @@ import { join } from 'node:path'
 import { createAuthenticator } from './auth/authenticator-factory'
 import { loadConfig } from './config'
 import { RateLimiter } from './middleware/rate-limiter'
+import { createAccountApi } from './platform/account-api'
 import { createCollaboratorWriter } from './platform/collaborator-writer'
 import { CachingWorkspaceClientProvider } from './platform/workspace-client-provider'
 import { createServer, listen } from './server'
@@ -66,6 +67,7 @@ async function main (): Promise<void> {
   const clients = new CachingWorkspaceClientProvider({
     ctx,
     idleTtlMs: config.ClientCacheTtlMs,
+    createAccounts: createAccountApi(config.AccountsUrl),
     createMarkupWriter: createCollaboratorWriter(config.CollaboratorUrl)
   })
   const limiter = new RateLimiter(ctx, config.RequestRateLimit, config.RequestRateWindowMs)

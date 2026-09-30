@@ -17,12 +17,15 @@ import { createRestTxOperations } from '@hcengineering/api-client'
 import { type AccountUuid, type MeasureContext, type TxOperations, type WorkspaceUuid } from '@hcengineering/core'
 
 import { type SessionIdentity } from '../auth/authenticator'
+import { type AccountApi, type AccountApiFactory } from './account-api'
 import { type MarkupReader, type MarkupWriter } from './markup-reader'
 import { fromMarkup } from './markup'
 
 /** Everything a tool needs to talk to one workspace on behalf of one user. */
 export interface WorkspaceSession {
   client: TxOperations
+  /** Account-service calls (members, roles, workspace settings), made as the caller. */
+  accounts: AccountApi
   identity: SessionIdentity
   markup: MarkupReader
   /** Undefined when no collaborator service is configured. */
@@ -40,6 +43,7 @@ export type ClientFactory = (identity: SessionIdentity) => Promise<TxOperations>
 export interface WorkspaceClientProviderOptions {
   ctx: MeasureContext
   createClient?: ClientFactory
+  createAccounts: AccountApiFactory
   createMarkupReader?: (identity: SessionIdentity) => MarkupReader
   createMarkupWriter?: (identity: SessionIdentity) => MarkupWriter | undefined
   /** Idle time after which a cached client is closed, in milliseconds. */
@@ -75,6 +79,7 @@ const keyOf = (account: AccountUuid, workspace: WorkspaceUuid): string => `${acc
 export class CachingWorkspaceClientProvider implements WorkspaceClientProvider {
   private readonly ctx: MeasureContext
   private readonly createClient: ClientFactory
+  private readonly createAccounts: AccountApiFactory
   private readonly createMarkupReader: (identity: SessionIdentity) => MarkupReader
   private readonly createMarkupWriter: (identity: SessionIdentity) => MarkupWriter | undefined
   private readonly idleTtlMs: number
@@ -86,6 +91,7 @@ export class CachingWorkspaceClientProvider implements WorkspaceClientProvider {
   constructor (options: WorkspaceClientProviderOptions) {
     this.ctx = options.ctx
     this.createClient = options.createClient ?? defaultClientFactory
+    this.createAccounts = options.createAccounts
     this.createMarkupReader = options.createMarkupReader ?? defaultMarkupReaderFactory
     this.createMarkupWriter = options.createMarkupWriter ?? (() => undefined)
     this.idleTtlMs = options.idleTtlMs ?? DEFAULT_IDLE_TTL_MS
@@ -116,6 +122,7 @@ export class CachingWorkspaceClientProvider implements WorkspaceClientProvider {
       const client = await this.createClient(identity)
       const session: WorkspaceSession = {
         client,
+        accounts: this.createAccounts(identity),
         identity,
         markup: this.createMarkupReader(identity),
         markupWriter: this.createMarkupWriter(identity)

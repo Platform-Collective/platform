@@ -119,11 +119,15 @@ Read:
 - `huly_list_tasks`, `huly_find_people`
 - `huly_list_spaces`, `huly_list_drives`, `huly_list_documents`, `huly_get_document`
 - `huly_list_milestones`, `huly_list_components`
+- `huly_get_workspace` (settings and the caller's own role), `huly_list_members`
 
 Write (refused when read-only):
 
 - `huly_create_issue` (optionally as a sub-issue via `parentIssueId`, with a `componentId`), `huly_update_issue`, `huly_add_issue_comment`
 - `huly_create_milestone`, `huly_update_milestone`, `huly_create_component`, `huly_create_person`
+- Workspace administration, enforced by the account service against the caller's role: `huly_update_workspace_name`,
+  `huly_update_workspace_guest_settings`, `huly_set_member_role`, `huly_remove_member`, `huly_invite_member`,
+  `huly_create_invite_link`. A refusal comes back as a plain sentence naming the action the role does not allow.
 
 ## Security notes
 
