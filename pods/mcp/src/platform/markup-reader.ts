@@ -30,6 +30,8 @@ export interface MarkupReader {
  */
 export interface MarkupWriter {
   write: (objectClass: string, objectId: string, attribute: string, markdown: string) => Promise<string>
+  /** Replaces the text behind an existing blob reference; the reference itself does not change. */
+  update: (objectClass: string, objectId: string, attribute: string, markdown: string) => Promise<void>
 }
 
 /** Reads a bounded number of characters, appending a marker when it truncates. */

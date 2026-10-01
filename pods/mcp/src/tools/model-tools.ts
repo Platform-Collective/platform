@@ -63,14 +63,14 @@ function queryableError (hierarchy: Hierarchy, id: string): string | undefined {
 /** Model type classes whose own names read poorly to an agent. */
 const TYPE_NAMES: Record<string, string> = { RefTo: 'Ref', ArrOf: 'Array', EnumOf: 'Enum' }
 
-interface TypeDescription {
+export interface TypeDescription {
   type: string
   to?: string
   of?: string | TypeDescription
 }
 
 /** Reduces a model `Type` to a short, readable description. */
-function describeType (type: { _class: string, to?: string, of?: unknown }): TypeDescription {
+export function describeType (type: { _class: string, to?: string, of?: unknown }): TypeDescription {
   const name = type._class.split(':').pop() ?? type._class
   const kind = TYPE_NAMES[name] ?? (name.startsWith('Type') ? name.slice(4) : name)
   const result: TypeDescription = { type: kind }

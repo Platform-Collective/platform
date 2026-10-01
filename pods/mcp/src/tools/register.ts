@@ -17,6 +17,8 @@ import { ToolRegistry } from '../mcp/tool'
 import { accountTools } from './account-tools'
 import { componentTools } from './component-tools'
 import { documentTools } from './document-tools'
+import { documentWriteTools } from './document-write-tools'
+import { genericWriteTools } from './generic-write-tools'
 import { issueTools } from './issue-tools'
 import { modelTools } from './model-tools'
 import { personTools } from './people-tools'
@@ -39,7 +41,9 @@ export function buildRegistry (): ToolRegistry {
     ...componentTools,
     ...personTools,
     ...documentTools,
-    ...modelTools
+    ...documentWriteTools,
+    ...modelTools,
+    ...genericWriteTools
   ])
 }
 
@@ -59,6 +63,9 @@ export const MCP_INSTRUCTIONS = [
   '- People are referenced by id. Call huly_find_people to resolve a name to an id.',
   '- For anything the named tools do not cover, discover it: huly_list_classes -> huly_describe_class ->',
   '  huly_find / huly_get_doc. These can read any class the caller is allowed to see.',
+  '- Creating and editing pages: huly_create_document / huly_update_document. Other creates, updates and deletes:',
+  '  huly_create_doc / huly_update_doc / huly_delete_doc, which list the classes they support in their errors.',
+  '  Deletes are permanent; only a workspace owner or the creator of a document may delete it.',
   '- Tools that modify data are refused when the server runs in read-only mode.',
   '',
   'Ids are opaque strings. Always pass an id obtained from a list or search tool rather than',

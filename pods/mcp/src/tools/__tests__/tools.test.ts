@@ -158,7 +158,8 @@ describe('huly_create_issue', () => {
       write: async (cls, id, attribute, markdown) => {
         written.push([cls, attribute, markdown])
         return `blob-for-${id}`
-      }
+      },
+      update: async () => {}
     }
 
     await createIssueTool.handler(context(client, writer), { projectId: 'proj-1', title: 'Hello', description: 'Body' })

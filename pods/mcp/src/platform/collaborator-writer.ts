@@ -33,10 +33,14 @@ export function createCollaboratorWriter (
 
   return (identity) => {
     const client = getCollaboratorClient(identity.workspace, identity.workspaceToken, collaboratorUrl)
+    const collabIdOf = (objectClass: string, objectId: string, attribute: string): ReturnType<typeof makeCollabId> =>
+      makeCollabId(objectClass as Ref<Class<Doc>>, objectId as Ref<Doc>, attribute)
+
     return {
-      write: async (objectClass, objectId, attribute, markdown) => {
-        const collabId = makeCollabId(objectClass as Ref<Class<Doc>>, objectId as Ref<Doc>, attribute)
-        return await client.createMarkup(collabId, toMarkup(markdown))
+      write: async (objectClass, objectId, attribute, markdown) =>
+        await client.createMarkup(collabIdOf(objectClass, objectId, attribute), toMarkup(markdown)),
+      update: async (objectClass, objectId, attribute, markdown) => {
+        await client.updateMarkup(collabIdOf(objectClass, objectId, attribute), toMarkup(markdown))
       }
     }
   }

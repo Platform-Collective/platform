@@ -130,11 +130,24 @@ Write (refused when read-only):
 
 - `huly_create_issue` (optionally as a sub-issue via `parentIssueId`, with a `componentId`), `huly_update_issue`, `huly_add_issue_comment`
 - `huly_create_milestone`, `huly_update_milestone`, `huly_create_component`, `huly_create_person`
+- Documents: `huly_create_document` (a page in a teamspace, optionally nested, body as Markdown) and
+  `huly_update_document` (title and/or replace the body).
+- Generic writes for a verified set of classes: `huly_create_doc`, `huly_update_doc`, `huly_delete_doc`. Supported:
+  components, milestones, issue templates, labels and document teamspaces (create, update, delete), tracker
+  projects (update only: rename, archive, members and owners), plus delete for issues and documents. Counters,
+  defaults, ranks and rich text are filled in as the web app does, and any field outside a class's allowed list
+  is refused. `huly_update_doc` also takes `push`/`pull` to add or remove one member or owner. Other classes
+  stay readable through `huly_find` but are not writable yet.
 - Workspace administration, enforced by the account service against the caller's role: `huly_update_workspace_name`,
   `huly_update_workspace_guest_settings`, `huly_set_member_role`, `huly_remove_member`, `huly_invite_member`,
   `huly_create_invite_link`. A refusal comes back as a plain sentence naming the action the role does not allow.
 
 ## Security notes
+
+- **The generic write tools mirror the web app's ownership rules.** The transactor lets any member write to a public
+  space, so on its own it would let a plain user delete or rename a teamspace somebody else owns. The tools apply the
+  web app's rule on top: only a workspace owner or the creator may delete a document, and only a workspace owner, a
+  space owner or the creator may rename a space or change its members.
 
 - **Write access is the caller's, not the server's.** Every write goes through
   `TxOperations`, which is permission-checked by the transactor. The pod never
