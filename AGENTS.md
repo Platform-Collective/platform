@@ -213,39 +213,16 @@ Key principles:
 
 ## License
 
-For every new files please add a 2026 Intabia Fusion license header like this:
+For new source files covered by the repository's Eclipse Public License 2.0, add a license identifier without assuming a copyright owner:
 
 ```ts
-/**
-  Copyright © 2026 Intabia Fusion.
-
-  Licensed under the Eclipse Public License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License. You may
-  obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-  
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+// SPDX-License-Identifier: EPL-2.0
 ```
 
-For Svelte files (`.svelte`) use an HTML comment wrapper and prefix each line with `//` (to avoid interfering with markup and ensure clear in-file commenting). Example Svelte header:
+For Svelte files (`.svelte`), use an HTML comment:
 
 ```svelte
-<!--
-// Copyright © 2026 Intabia Fusion.
-// Licensed under the Eclipse Public License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License. You may
-// obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//
-// See the License for the specific language governing permissions and
-// limitations under the License.
--->
+<!-- SPDX-License-Identifier: EPL-2.0 -->
 ```
+
+Preserve existing copyright and license notices when editing files. Do not add a copyright attribution for a person or organization unless its ownership has been confirmed.
