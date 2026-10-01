@@ -31078,12 +31078,18 @@ importers:
       '@hcengineering/platform':
         specifier: workspace:^0.7.20
         version: link:../../foundations/core/packages/platform
+      '@hcengineering/rank':
+        specifier: workspace:^0.7.18
+        version: link:../../foundations/core/packages/rank
       '@hcengineering/server-core':
         specifier: workspace:^0.7.19
         version: link:../../foundations/server/packages/core
       '@hcengineering/server-token':
         specifier: workspace:^0.7.18
         version: link:../../foundations/core/packages/token
+      '@hcengineering/tags':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/tags
       '@hcengineering/task':
         specifier: workspace:^0.7.0
         version: link:../../plugins/task
@@ -61263,7 +61269,7 @@ snapshots:
   node-loader@2.0.0(webpack@5.102.1):
     dependencies:
       loader-utils: 2.0.4
-      webpack: 5.102.1(esbuild@0.25.12)(webpack-cli@5.1.4)
+      webpack: 5.102.1
 
   node-localstorage@2.2.1:
     dependencies:
