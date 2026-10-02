@@ -4,7 +4,7 @@ TypeScript/Svelte 4 monorepo using Rush.js (pnpm 10.15.1), Node >=20 <25, Webpac
 
 ## Interaction preferences
 
-Respond to user using Russian language, all comments should be in English.
+Respond to the user in English. All code comments should be in English.
 
 ## Code Style
 
