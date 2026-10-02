@@ -1,23 +1,10 @@
-/**
-  Copyright © 2026 Intabia Fusion.
-
-  Licensed under the Eclipse Public License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License. You may
-  obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+// SPDX-License-Identifier: EPL-2.0
 
 import { fakeIdentity, fakeMeasureContext, fakeToolContext, fakeWorkspaceSession } from '../../__tests__/test-doubles'
 import { McpDispatcher } from '../dispatcher'
 import { objectSchema } from '../schema'
 import { SessionStore } from '../session'
-import { type HulyTool, ToolRegistry } from '../tool'
+import { toolContext, type HulyTool, ToolRegistry } from '../tool'
 
 const ctx = fakeMeasureContext()
 
@@ -139,6 +126,41 @@ describe('SessionStore', () => {
     expect(session.belongsTo(fakeIdentity())).toBe(true)
     expect(session.belongsTo(fakeIdentity({ account: 'other' as never }))).toBe(false)
     expect(session.belongsTo(fakeIdentity({ workspace: 'other' as never }))).toBe(false)
+  })
+
+  it('binds a session to one privilege class, not just account and workspace', () => {
+    const store = new SessionStore({ ctx })
+    const readOnlySession = store.create(fakeIdentity({ readOnly: true }))
+    const fullSession = store.create(fakeIdentity({ readOnly: false }))
+
+    // Same account and workspace, different read-only flag: letting the token
+    // through would authorize requests as the (more privileged) identity the
+    // session was initialized with.
+    expect(readOnlySession.belongsTo(fakeIdentity({ readOnly: true }))).toBe(true)
+    expect(readOnlySession.belongsTo(fakeIdentity({ readOnly: false }))).toBe(false)
+    expect(fullSession.belongsTo(fakeIdentity({ readOnly: true }))).toBe(false)
+    expect(fullSession.belongsTo(fakeIdentity({ readOnly: false }))).toBe(true)
+  })
+})
+
+describe('toolContext', () => {
+  it('takes readOnly from the identity of this request, not from the cached session', () => {
+    const cachedFullAccess = fakeWorkspaceSession(fakeIdentity({ workspaceToken: 'full-token' }))
+
+    const guarded = toolContext(
+      cachedFullAccess,
+      fakeMeasureContext(),
+      fakeIdentity({ readOnly: true, workspaceToken: 'read-only-token' })
+    )
+    expect(guarded.readOnly).toBe(true)
+    expect(guarded.identity.workspaceToken).toBe('read-only-token')
+
+    // The opposite direction: a cached read-only session must not drag a
+    // full-access request down either — the passed identity always wins.
+    const cachedReadOnly = fakeWorkspaceSession(fakeIdentity({ readOnly: true, workspaceToken: 'read-only-token' }))
+    const allowed = toolContext(cachedReadOnly, fakeMeasureContext(), fakeIdentity({ workspaceToken: 'full-token' }))
+    expect(allowed.readOnly).toBe(false)
+    expect(allowed.identity.workspaceToken).toBe('full-token')
   })
 })
 

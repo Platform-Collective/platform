@@ -1,20 +1,7 @@
-/**
-  Copyright © 2026 Intabia Fusion.
-
-  Licensed under the Eclipse Public License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License. You may
-  obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+// SPDX-License-Identifier: EPL-2.0
 
 import { createRestTxOperations } from '@hcengineering/api-client'
-import { type AccountUuid, type MeasureContext, type TxOperations, type WorkspaceUuid } from '@hcengineering/core'
+import { type MeasureContext, type TxOperations } from '@hcengineering/core'
 
 import { type SessionIdentity } from '../auth/authenticator'
 import { type AccountApi, type AccountApiFactory } from './account-api'
@@ -61,10 +48,33 @@ interface CacheEntry {
 const DEFAULT_IDLE_TTL_MS = 10 * 60_000
 const DEFAULT_SWEEP_INTERVAL_MS = 60_000
 
-const keyOf = (account: AccountUuid, workspace: WorkspaceUuid): string => `${account}:${workspace}`
+/**
+ * Cache key for one client: account, workspace, privilege class.
+ *
+ * The read-only flag is part of the key on purpose. A `WorkspaceSession`
+ * carries the identity (and the workspace token) of whoever populated the
+ * cache, so a read-only token sharing a key with a full-access token would get
+ * a session whose `readOnly` says `false` and whose token can write — the
+ * read-only gate would open for the wrong request. `ro` / `rw` keeps the key
+ * short but readable in log output.
+ */
+const keyOf = (identity: SessionIdentity): string =>
+  `${identity.account}:${identity.workspace}:${identity.readOnly ? 'ro' : 'rw'}`
 
 /**
- * Caches one `TxOperations` per (account, workspace).
+ * Re-labels a cached session with the identity of the request being served.
+ *
+ * The expensive parts (client, account API, markup reader) stay shared — the
+ * key already guarantees the two identities have the same account, workspace
+ * and privilege class. What must NOT be shared is the identity itself: tools
+ * and the read-only gate read `readOnly` and `workspaceToken` off it, and
+ * those must describe this request, not whichever request filled the cache.
+ */
+const withCallerIdentity = (session: WorkspaceSession, identity: SessionIdentity): WorkspaceSession =>
+  identity === session.identity ? session : { ...session, identity }
+
+/**
+ * Caches one `TxOperations` per (account, workspace, read-only flag).
  *
  * Building a client is not cheap: `createRestTxOperations` fetches the account
  * and the full workspace model over HTTP. MCP sessions are long lived and many
@@ -74,7 +84,9 @@ const keyOf = (account: AccountUuid, workspace: WorkspaceUuid): string => `${acc
  * Caching per *account* (not just per workspace) matters for correctness, not
  * just speed: a client is bound to a social id, and every write is attributed
  * to that social id. Sharing one client between users would attribute their
- * edits to whoever happened to populate the cache first.
+ * edits to whoever happened to populate the cache first. The same logic
+ * applies to the read-only flag: two entries, two privilege classes, no
+ * cross-contamination.
  */
 export class CachingWorkspaceClientProvider implements WorkspaceClientProvider {
   private readonly ctx: MeasureContext
@@ -105,18 +117,18 @@ export class CachingWorkspaceClientProvider implements WorkspaceClientProvider {
   }
 
   async get (identity: SessionIdentity): Promise<WorkspaceSession> {
-    const key = keyOf(identity.account, identity.workspace)
+    const key = keyOf(identity)
 
     const cached = this.cache.get(key)
     if (cached !== undefined) {
       cached.lastUsed = this.now()
-      return cached.session
+      return withCallerIdentity(cached.session, identity)
     }
 
     // Collapse concurrent first-hits for the same identity into one build,
     // otherwise a burst of parallel tool calls each loads the whole model.
     const existing = this.inFlight.get(key)
-    if (existing !== undefined) return await existing
+    if (existing !== undefined) return withCallerIdentity(await existing, identity)
 
     const creation = (async (): Promise<WorkspaceSession> => {
       const client = await this.createClient(identity)

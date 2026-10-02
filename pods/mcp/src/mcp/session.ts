@@ -1,17 +1,4 @@
-/**
-  Copyright © 2026 Intabia Fusion.
-
-  Licensed under the Eclipse Public License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License. You may
-  obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+// SPDX-License-Identifier: EPL-2.0
 
 import { type MeasureContext } from '@hcengineering/core'
 import { randomUUID as cryptoRandomUUID } from 'node:crypto'
@@ -23,7 +10,10 @@ import { type SessionIdentity } from '../auth/authenticator'
  *
  * The identity is resolved at `initialize` and never changes afterwards. A
  * request carrying a different identity than the session's is rejected by the
- * transport, so a session id cannot be replayed under another account.
+ * transport, so a session id cannot be replayed under another account. The
+ * read-only flag is part of that match too (see `belongsTo`), which is what
+ * lets `session.identity.readOnly` be trusted as the CURRENT request's
+ * privilege class on every request the transport lets through.
  */
 export class McpSession {
   readonly id: string
@@ -44,8 +34,23 @@ export class McpSession {
     this.lastSeen = now
   }
 
+  /**
+   * Whether this request's identity may keep using this session.
+   *
+   * Account and workspace must match (a leaked session id is useless under
+   * another user), and so must the read-only flag: a session opened with a
+   * full-access token must never answer a read-only token, or its pinned
+   * `identity` — which authorization falls back to — would describe a MORE
+   * privileged token than the one presented right now. The reverse direction
+   * matters too: a full token must not ride a read-only session either, or
+   * `tools/list` would hide tools the caller may actually use.
+   */
   belongsTo (identity: SessionIdentity): boolean {
-    return this.identity.account === identity.account && this.identity.workspace === identity.workspace
+    return (
+      this.identity.account === identity.account &&
+      this.identity.workspace === identity.workspace &&
+      this.identity.readOnly === identity.readOnly
+    )
   }
 }
 

@@ -1,17 +1,4 @@
-/**
-  Copyright © 2026 Intabia Fusion.
-
-  Licensed under the Eclipse Public License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License. You may
-  obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+// SPDX-License-Identifier: EPL-2.0
 
 import { type MeasureContext } from '@hcengineering/core'
 
@@ -42,6 +29,10 @@ export interface McpDispatcherOptions {
    * Resolves the workspace client for the session. Injected rather than
    * constructed so the dispatcher stays free of platform dependencies and can be
    * tested with a fake.
+   *
+   * By the time this runs, the transport has matched `session.identity`
+   * against the current request's token — account, workspace and read-only
+   * flag — so implementations may trust it as THIS request's identity.
    */
   resolveSession: (session: McpSession) => Promise<WorkspaceSession>
 }
@@ -137,6 +128,10 @@ export class McpDispatcher {
       case 'ping':
         return {}
       case 'tools/list':
+        // The transport checks `session.identity` against THIS request's
+        // token on every call — including the read-only flag, see
+        // `McpSession.belongsTo` — so this is the current request's privilege
+        // class, not a stale one from `initialize`.
         return { tools: this.registry.list({ readOnly: session.identity.readOnly }) }
       case 'tools/call':
         return await this.callTool(session, request.params)
@@ -180,7 +175,14 @@ export class McpDispatcher {
     }
 
     const workspaceSession = await this.resolveSession(session)
-    const context = toolContext(workspaceSession, this.ctx.newChild(args.name, {}, { span: false }))
+    // Pass the identity authenticated for this request explicitly: the write
+    // gate must not read `readOnly` from whatever identity sits in the shared
+    // client cache, because a more privileged request may have filled it first.
+    const context = toolContext(
+      workspaceSession,
+      this.ctx.newChild(args.name, {}, { span: false }),
+      session.identity
+    )
 
     return await this.registry.call(args.name, args.arguments, context)
   }

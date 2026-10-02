@@ -31111,9 +31111,6 @@ importers:
       express:
         specifier: ^4.21.2
         version: 4.21.2
-      morgan:
-        specifier: ^1.10.0
-        version: 1.10.1
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -31127,9 +31124,6 @@ importers:
       '@types/jest':
         specifier: ^29.5.5
         version: 29.5.14
-      '@types/morgan':
-        specifier: ~1.9.9
-        version: 1.9.10
       '@types/node':
         specifier: ^24.13.3
         version: 24.13.6

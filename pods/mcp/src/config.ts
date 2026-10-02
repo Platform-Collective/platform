@@ -1,17 +1,4 @@
-/**
-  Copyright © 2026 Intabia Fusion.
-
-  Licensed under the Eclipse Public License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License. You may
-  obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+// SPDX-License-Identifier: EPL-2.0
 
 import { config as dotenv } from 'dotenv'
 
@@ -53,6 +40,21 @@ export interface Config {
   ReadOnly: boolean
   /** Identifiers callers may present when `AuthMode` is `perRequest`. */
   AllowedTokens: string[]
+  /**
+   * Browser origins allowed to call the endpoint, for CORS and Origin checks.
+   *
+   * Empty means "no browser origin is allowed": non-browser clients never send
+   * `Origin`, so they are unaffected, while a web page is refused outright.
+   */
+  AllowedOrigins: string[]
+  /**
+   * How many proxies sit in front of this pod.
+   *
+   * Express only trusts `X-Forwarded-For` when this is set. Leaving it unset
+   * makes every proxied request look like it came from the proxy, which collapses
+   * all clients into one rate-limit bucket.
+   */
+  TrustProxy: number
   SessionIdleTtlMs: number
   ClientCacheTtlMs: number
   LoginCacheTtlMs: number
@@ -83,6 +85,18 @@ const list = (value: string | undefined): string[] =>
     .filter((entry) => entry.length > 0)
 
 const DEFAULT_ACCOUNTS_URL = 'http://huly.local:3000'
+
+/**
+ * True when `HOST` addresses only this machine.
+ *
+ * Loopback is the one situation where an unauthenticated `configured` endpoint is
+ * acceptable: nothing outside the host can reach it, so there is no remote caller
+ * to impersonate the configured account.
+ */
+export function isLoopbackHost (host: string): boolean {
+  const normalized = host.trim().toLowerCase().replace(/^\[|\]$/g, '')
+  return normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1'
+}
 
 /**
  * Resolves the auth mode from the environment.
@@ -120,6 +134,8 @@ function buildConfig (env: NodeJS.ProcessEnv): Config {
     AllowDefaultSecret: bool(env.MCP_ALLOW_DEFAULT_SECRET, false),
     ReadOnly: bool(env.MCP_READONLY, false),
     AllowedTokens: list(env.MCP_ALLOWED_TOKENS),
+    AllowedOrigins: list(env.MCP_ALLOWED_ORIGINS),
+    TrustProxy: int(env.TRUST_PROXY, 0),
     SessionIdleTtlMs: int(env.MCP_SESSION_TTL_MS, 30 * 60_000),
     ClientCacheTtlMs: int(env.MCP_CLIENT_CACHE_TTL_MS, 10 * 60_000),
     LoginCacheTtlMs: int(env.MCP_LOGIN_CACHE_TTL_MS, 60_000),
@@ -150,6 +166,22 @@ function validate (config: Config): Config {
   }
   if (config.Port < 1 || config.Port > 65535) {
     throw Error(`PORT is out of range: ${config.Port}`)
+  }
+  // `configured` mode authenticates nobody: the caller is whatever account the
+  // pod was configured with. Reachable from anywhere and open to anyone, that
+  // is an unauthenticated handle on a real account, so a shared secret is
+  // required unless the listener is loopback-only. AllowlistedAuthenticator
+  // checks this token before the configured authenticator runs, so
+  // MCP_ALLOWED_TOKENS doubles as that secret.
+  if (config.AuthMode === 'configured' && config.AllowedTokens.length === 0 && !isLoopbackHost(config.Host)) {
+    throw Error(
+      'Auth mode is "configured" with no MCP_ALLOWED_TOKENS and HOST is not loopback. ' +
+        'Anyone who can reach this port would act as the configured Huly account. ' +
+        'Set MCP_ALLOWED_TOKENS, or bind HOST to 127.0.0.1 for a local-only server.'
+    )
+  }
+  if (config.TrustProxy < 0) {
+    throw Error(`TRUST_PROXY must not be negative: ${config.TrustProxy}`)
   }
   return config
 }

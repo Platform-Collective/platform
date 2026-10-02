@@ -1,17 +1,4 @@
-/**
-  Copyright © 2026 Intabia Fusion.
-
-  Licensed under the Eclipse Public License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License. You may
-  obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+// SPDX-License-Identifier: EPL-2.0
 
 import { type AccountClient } from '@hcengineering/account-client'
 import { type AccountUuid, type PersonUuid, type WorkspaceUuid } from '@hcengineering/core'
@@ -58,8 +45,16 @@ function fakeClientFactory (
   }
 }
 
+/**
+ * Config for these tests.
+ *
+ * `HOST` is loopback on purpose: these cases exercise the login exchange, not
+ * endpoint reachability, and `configured` mode refuses to start on a routable
+ * HOST without an allowlist. The reachability gate itself is covered in
+ * `authenticator-factory.test.ts`.
+ */
 const config = (env: Record<string, string>): ReturnType<typeof loadConfig> =>
-  loadConfig({ SECRET: 'not-the-default', ...env })
+  loadConfig({ SECRET: 'not-the-default', HOST: '127.0.0.1', ...env })
 
 describe('ConfiguredAuthenticator', () => {
   it('exchanges an account-level HULY_TOKEN for a workspace token', async () => {

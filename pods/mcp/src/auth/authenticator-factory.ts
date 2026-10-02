@@ -1,17 +1,4 @@
-/**
-  Copyright © 2026 Intabia Fusion.
-
-  Licensed under the Eclipse Public License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License. You may
-  obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+// SPDX-License-Identifier: EPL-2.0
 
 import { type MeasureContext } from '@hcengineering/core'
 
@@ -21,13 +8,22 @@ import { ConfiguredAuthenticator } from './configured-authenticator'
 import { HulyTokenAuthenticator } from './huly-token-authenticator'
 
 /**
- * Optional allowlist applied on top of per-request authentication.
+ * Allowlist checked before the real authenticator runs.
  *
- * Huly API tokens carry the full rights of their account and cannot be scoped
- * narrower, so a shared multi-tenant endpoint needs its own gate: an operator
- * can pin the endpoint to specific tokens without changing Huly itself.
+ * It does two different jobs, and the two need different failure reasons:
+ *
+ * - In `perRequest` mode it narrows a shared endpoint down to the tokens an
+ *   operator pinned to it, because Huly API tokens carry the full rights of
+ *   their account and cannot be scoped any narrower.
+ * - In `configured` mode it is the *only* thing standing between an anonymous
+ *   caller and the configured Huly account. The configured authenticator
+ *   ignores the credential entirely, so without this gate anyone who could
+ *   reach the port would act as that account.
+ *
+ * Checking before delegating also means an unknown token never triggers a
+ * login attempt against the account service.
  */
-class AllowlistedAuthenticator implements Authenticator {
+export class AllowlistedAuthenticator implements Authenticator {
   private readonly inner: Authenticator
   private readonly allowed: Set<string>
 
@@ -37,6 +33,12 @@ class AllowlistedAuthenticator implements Authenticator {
   }
 
   async authenticate (rawToken: string): Promise<SessionIdentity> {
+    // Distinguishing "no credential" from "wrong credential" matters to the
+    // client: only `missing` gets a WWW-Authenticate challenge back, which is
+    // what tells a client that it should present a credential at all.
+    if (rawToken === '') {
+      throw new AuthenticationError('missing', 'This MCP endpoint requires a bearer token')
+    }
     if (!this.allowed.has(rawToken)) {
       throw new AuthenticationError('forbidden', 'This token is not permitted to use this MCP endpoint')
     }
@@ -63,6 +65,11 @@ class ReadOnlyAuthenticator implements Authenticator {
  *
  * Decorators are applied outermost-last so the read-only clamp always wins: it
  * is the operator's bluntest control and must not be bypassable by a token flag.
+ *
+ * `loadConfig` refuses to start in `configured` mode with an empty allowlist on
+ * a non-loopback HOST, so by the time this runs the shared-secret gate exists
+ * whenever it is needed. Logging it here makes that visible at boot rather than
+ * something an operator has to infer from an absent 401.
  */
 export function createAuthenticator (ctx: MeasureContext, config: Config): Authenticator {
   let authenticator: Authenticator

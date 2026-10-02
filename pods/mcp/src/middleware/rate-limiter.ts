@@ -1,17 +1,4 @@
-/**
-  Copyright © 2026 Intabia Fusion.
-
-  Licensed under the Eclipse Public License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License. You may
-  obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+// SPDX-License-Identifier: EPL-2.0
 
 import { type MeasureContext } from '@hcengineering/core'
 
@@ -20,9 +7,20 @@ import { type MeasureContext } from '@hcengineering/core'
  *
  * Standalone pods get no rate limiting from the platform — the transactor's
  * limiter is coupled to having a live Session — so an MCP endpoint that accepts
- * internet traffic needs its own. Buckets are keyed by the authenticated account
- * where known and by client address otherwise, so one noisy agent cannot starve
- * the rest.
+ * internet traffic needs its own.
+ *
+ * Buckets are keyed by client address, taken from `req.ip`. That is a coarse
+ * key: it limits per address, not per account or per token, so everyone behind
+ * one NAT or proxy shares a bucket. The alternative (keying by account) would
+ * need authentication to run first, and an unauthenticated flood would then cost
+ * a login attempt per request before anything was rejected.
+ *
+ * Two consequences worth knowing when deploying:
+ *
+ * - Behind a reverse proxy `req.ip` is the proxy's address unless `TRUST_PROXY`
+ *   is set, which would put the whole deployment in a single bucket.
+ * - A distributed denial of service from many addresses needs an edge limiter;
+ *   this one only bounds a single noisy client.
  */
 export class RateLimiter {
   private readonly ctx: MeasureContext

@@ -1,17 +1,4 @@
-/**
-  Copyright © 2026 Intabia Fusion.
-
-  Licensed under the Eclipse Public License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License. You may
-  obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+// SPDX-License-Identifier: EPL-2.0
 
 import { type MeasureContext } from '@hcengineering/core'
 import cors from 'cors'
@@ -29,6 +16,7 @@ import {
   keepAlive,
   KEEP_ALIVE_MAX,
   KEEP_ALIVE_TIMEOUT,
+  originGuard,
   rateLimit,
   requestLogger,
   statistics
@@ -98,8 +86,25 @@ export function createServer (deps: ServerDependencies): McpServer {
   const app = express()
   app.disable('x-powered-by')
 
+  // Behind nginx/ingress every connection physically arrives from the proxy's
+  // address, so req.ip would report the proxy for all callers and the rate
+  // limiter (which keys on req.ip) would collapse every client into one
+  // bucket. TRUST_PROXY=0 — the default — trusts no X-Forwarded-For, so a
+  // direct connection behaves exactly as it did before this line.
+  app.set('trust proxy', config.TrustProxy)
+
+  // Must sit before cors(): a disallowed origin has to be refused outright,
+  // not answered with a failing CORS response, so the browser never even sees
+  // a preflight result for a site we do not trust.
+  app.use(originGuard(config.AllowedOrigins))
+
   app.use(
     cors({
+      // Reflect only the configured origins instead of the wildcard `*`. An
+      // empty list leaves every browser request without an
+      // Access-Control-Allow-Origin header (cors skips false values), while
+      // non-browser clients, which send no Origin, are unaffected.
+      origin: config.AllowedOrigins,
       maxAge: 86400,
       // A browser-based MCP client must be able to read the session id, or
       // every request after initialize would be rejected as session-less.
@@ -115,6 +120,12 @@ export function createServer (deps: ServerDependencies): McpServer {
 
   // Limiting sits in front of the MCP routes only, so /health keeps working
   // when a client manages to exhaust the window.
+  //
+  // The key is the client address, not the account: authentication has not run
+  // yet at this point, and resolving an account first would cost a login attempt
+  // per request before any flood was rejected. That makes the limit per address,
+  // so callers behind one NAT share a bucket — and, without `trust proxy` set
+  // above, so would every client behind one reverse proxy.
   const rateKey = (req: Request): string => req.ip ?? req.socket.remoteAddress ?? 'unknown'
   app.use(MCP_ENDPOINT, rateLimit(limiter, rateKey))
 

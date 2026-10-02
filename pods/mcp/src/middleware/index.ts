@@ -1,17 +1,4 @@
-/**
-  Copyright © 2026 Intabia Fusion.
-
-  Licensed under the Eclipse Public License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License. You may
-  obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+// SPDX-License-Identifier: EPL-2.0
 
 import { Analytics } from '@hcengineering/analytics'
 import { type MeasureContext, metricsAggregate } from '@hcengineering/core'
@@ -53,12 +40,45 @@ export const requestLogger = (ctx: MeasureContext): RequestHandler => {
 }
 
 /**
+ * Rejects browser requests whose `Origin` is not on the allowlist.
+ *
+ * Why this exists: the MCP spec requires servers to validate `Origin` as a
+ * defence against DNS rebinding. Without the check, any web page the user
+ * happens to visit can resolve `http://localhost:4090`, send a request that
+ * carries the browser's implicit trust of localhost, and drive this server as
+ * if it were a same-origin local service. The preflight would even pass,
+ * because a permissive CORS setup answers "yes" to everyone.
+ *
+ * Requests without an `Origin` header are allowed through on purpose:
+ * non-browser clients (Claude Desktop, curl, MCP CLIs) never send it, and the
+ * header is the only signal a browser-originated call carries. An empty
+ * allowlist therefore means "no browser origin is accepted" (fail closed)
+ * rather than "accept everything" — desktop clients keep working either way.
+ */
+export const originGuard = (allowed: string[]): RequestHandler => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const origin = req.headers.origin
+    if (origin === undefined || origin === '') {
+      next()
+      return
+    }
+    // Exact string match only: a browser origin has no trailing slash and no
+    // wildcard meaning, so anything not explicitly listed is a stranger.
+    if (typeof origin !== 'string' || !allowed.includes(origin)) {
+      res.status(403).json({ error: 'Origin not allowed' })
+      return
+    }
+    next()
+  }
+}
+
+/**
  * Per-caller rate limiting.
  *
- * The key prefers the client address, which is the only thing available before
- * authentication runs. The transactor's own limiter is coupled to a live
- * Session, which a stateless MCP endpoint never has, so this is the only limit
- * in front of the tools.
+ * The key comes from `resolveKey`, which reads the client address — the only
+ * thing available before authentication runs. The transactor's own limiter is
+ * coupled to a live Session, which a stateless MCP endpoint never has, so this
+ * is the only limit in front of the tools.
  */
 export const rateLimit = (limiter: RateLimiter, resolveKey: (req: Request) => string): RequestHandler => {
   return (req: Request, res: Response, next: NextFunction) => {

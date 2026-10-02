@@ -1,20 +1,8 @@
-/**
-  Copyright © 2026 Intabia Fusion.
-
-  Licensed under the Eclipse Public License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License. You may
-  obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
-  See the License for the specific language governing permissions and
-  limitations under the License.
-*/
+// SPDX-License-Identifier: EPL-2.0
 
 import { type AccountUuid, type MeasureContext, type WorkspaceUuid } from '@hcengineering/core'
 
+import { type SessionIdentity } from '../auth/authenticator'
 import { type WorkspaceSession } from '../platform/workspace-client-provider'
 import { errorResult, type McpToolCallResult } from './protocol'
 import { type JsonSchema, type McpToolDescriptor, type ToolArguments } from './schema'
@@ -26,6 +14,7 @@ export interface ToolContext extends WorkspaceSession {
   ctx: MeasureContext
   account: AccountUuid
   workspace: WorkspaceUuid
+  /** Read-only flag of THIS request's identity — the write gate reads it, not the cached one. */
   readOnly: boolean
 }
 
@@ -44,13 +33,35 @@ export interface HulyTool {
   handler: (ctx: ToolContext, args: ToolArguments) => Promise<McpToolCallResult>
 }
 
-export function toolContext (session: WorkspaceSession, ctx: MeasureContext): ToolContext {
+/**
+ * Builds the context for one tool call.
+ *
+ * `identity` must be the identity authenticated for the CURRENT request — it
+ * is the source of the `readOnly` flag that `ToolRegistry.call` uses to refuse
+ * writes. It must never be pulled from the shared client cache: a full-access
+ * request could have populated that cache first, and the write would then run
+ * under the wrong token.
+ *
+ * The parameter defaults to `session.identity` for older call sites. That
+ * fallback cannot cross privilege classes in practice, because the provider
+ * keys its cache by the read-only flag too, but production code (the
+ * dispatcher) passes the identity explicitly so the authorization source is
+ * visible at the call site.
+ */
+export function toolContext (
+  session: WorkspaceSession,
+  ctx: MeasureContext,
+  identity: SessionIdentity = session.identity
+): ToolContext {
   return {
     ...session,
     ctx,
-    account: session.identity.account,
-    workspace: session.identity.workspace,
-    readOnly: session.identity.readOnly
+    // The whole context describes THIS request: identity first, then the
+    // fields derived from it, so nothing can be read off the shared cache.
+    identity,
+    account: identity.account,
+    workspace: identity.workspace,
+    readOnly: identity.readOnly
   }
 }
 

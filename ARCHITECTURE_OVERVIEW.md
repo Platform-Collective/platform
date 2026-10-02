@@ -438,9 +438,8 @@ sequenceDiagram
 ### MCP Configuration (mcp only)
 - `HULY_TOKEN`: Huly API token for the pod's own identity. Setting it selects self-hosted mode, where MCP clients need no Huly credential.
 - `HULY_EMAIL` / `HULY_PASSWORD`: Login used when no `HULY_TOKEN` is set
-- `HULY_WORKSPACE`: Pin the configured account to a single workspace
+- `HULY_WORKSPACE`: Workspace URL slug or ID the configured account is pinned/scoped to
 - `COLLABORATOR_URL`: Collaborator service URL; enables writing rich-text descriptions
-- `HULY_WORKSPACE`: Workspace url slug or id the configured account is scoped to
 - `MCP_ALLOW_DEFAULT_SECRET`: `false` - Dev stacks only; permits `SECRET=secret`
 - `MCP_READONLY`: `false` - Refuse every write tool
 - `MCP_ALLOWED_TOKENS`: Comma-separated token allowlist for multi-tenant mode
