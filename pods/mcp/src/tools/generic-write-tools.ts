@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import core, { generateId, type Class, type Doc, type Ref } from '@hcengineering/core'
+import core, { generateId, type Class, type Doc, type Hierarchy, type Ref } from '@hcengineering/core'
 
 import { textResult } from '../mcp/protocol'
 import { objectSchema, stringProp } from '../mcp/schema'
 import { type HulyTool } from '../mcp/tool'
 import { mayDelete, mayManageSpace } from './caller-rights'
 import {
+  checkArrayItem,
   coerceFields,
   creatableClasses,
   profileFor,
@@ -29,6 +30,9 @@ const unsupported = (action: string, classId: string, supported: string[]): stri
 
 const isObject = (value: unknown): value is WriteData =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/** Narrows a field value to the id list that array fields such as members hold. */
+const idList = (value: unknown): string[] | undefined => (Array.isArray(value) ? (value as string[]) : undefined)
 
 export const createDocTool: HulyTool = {
   name: 'huly_create_doc',
@@ -93,7 +97,19 @@ export const createDocTool: HulyTool = {
       spaceId = create.space
     }
 
-    let values: WriteData = { ...create.defaults(ctx, coerced.data), ...coerced.data }
+    // The caller's data wins over the defaults, except for the array fields the
+    // profile lists in unionDefaults: there the default items are kept as well,
+    // so a caller passing `members: []` cannot create a teamspace they are not
+    // a member or owner of — and therefore cannot manage afterwards.
+    const defaults = create.defaults(ctx, coerced.data)
+    let values: WriteData = { ...defaults, ...coerced.data }
+    for (const field of create.unionDefaults ?? []) {
+      const base = idList(defaults[field])
+      const given = idList(coerced.data[field])
+      if (base !== undefined && given !== undefined) {
+        values[field] = [...new Set([...base, ...given])]
+      }
+    }
     if (create.prepare !== undefined) {
       const prepared = await create.prepare(ctx, spaceId, values)
       if (typeof prepared === 'string') return textResult(prepared, { created: false })
@@ -107,8 +123,13 @@ export const createDocTool: HulyTool = {
   }
 }
 
-/** Builds the `$push` / `$pull` operations, refusing fields the profile does not allow. */
+/**
+ * Builds the `$push` / `$pull` operations, refusing fields the profile does not
+ * allow and items whose type does not match what the field holds — `$push` and
+ * `$pull` each carry ONE item, never a whole replacement list.
+ */
 function arrayOperations (
+  hierarchy: Hierarchy,
   profile: WriteProfile,
   push: WriteData | undefined,
   pull: WriteData | undefined
@@ -116,12 +137,14 @@ function arrayOperations (
   const operations: WriteData = {}
   for (const [key, source] of [['$push', push], ['$pull', pull]] as const) {
     if (source === undefined) continue
-    for (const field of Object.keys(source)) {
+    for (const [field, item] of Object.entries(source)) {
       if (!(profile.pushable ?? []).includes(field)) {
         const pushable = profile.pushable ?? []
         const allowed = pushable.length === 0 ? 'none' : pushable.join(', ')
         return { ok: false, error: `"${field}" cannot be added to or removed from on ${profile.classId}. Allowed: ${allowed}.` }
       }
+      const wrongType = checkArrayItem(hierarchy, profile, field, item)
+      if (wrongType !== undefined) return { ok: false, error: wrongType }
     }
     operations[key] = source
   }
@@ -162,6 +185,7 @@ export const updateDocTool: HulyTool = {
     if (!coerced.ok) return textResult(coerced.error, { updated: false })
 
     const arrays = arrayOperations(
+      hierarchy,
       profile,
       isObject(args.push) ? args.push : undefined,
       isObject(args.pull) ? args.pull : undefined
@@ -240,7 +264,11 @@ export const deleteDocTool: HulyTool = {
       )
     }
 
-    await remove.beforeRemove?.(ctx, doc)
+    // A string from beforeRemove refuses the delete, as a string from prepare refuses a create.
+    const refusal = await remove.beforeRemove?.(ctx, doc)
+    if (typeof refusal === 'string') {
+      return textResult(refusal, { deleted: false })
+    }
 
     if (remove.attached === true) {
       await ctx.client.removeCollection(

@@ -91,7 +91,7 @@ sessions are pinned to the account that opened them.
 | `MCP_RATE_LIMIT` | `300` | Requests per window, per client |
 | `MCP_RATE_WINDOW_MS` | `60000` | Rate limit window |
 | `MCP_MAX_BODY_BYTES` | `1048576` | Max JSON-RPC request body |
-| `MCP_STATS` | `true` | Serve `/api/v1/statistics` |
+| `MCP_STATS` | `false` | Serve `/api/v1/statistics`. Off by default: the endpoint is unauthenticated and reports CPU and memory, so it must be opted into explicitly |
 
 ## Connecting a client
 

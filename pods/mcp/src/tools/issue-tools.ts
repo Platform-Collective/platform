@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import chunter, { type ChatMessage } from '@hcengineering/chunter'
-import core, { generateId, SortingOrder } from '@hcengineering/core'
+import core, { type Class, type Doc, generateId, type Ref, SortingOrder } from '@hcengineering/core'
+import { makeRank } from '@hcengineering/rank'
 import task from '@hcengineering/task'
 import tracker, { IssuePriority, MilestoneStatus, type Issue, type Milestone } from '@hcengineering/tracker'
 
@@ -294,7 +295,7 @@ export const createIssueTool: HulyTool = {
       assignee: stringProp('Person id to assign. Use huly_find_people to look one up.'),
       dueDate: stringProp('ISO-8601 due date, e.g. 2026-12-31 or 2026-12-31T17:00:00Z.'),
       startDate: stringProp('ISO-8601 start date.'),
-      milestone: stringProp('Milestone id to attach the issue to.'),
+      milestone: stringProp('Milestone id to attach the issue to. Must belong to the same project.'),
       componentId: stringProp('Component id from huly_list_components. Must belong to the same project.'),
       parentIssueId: stringProp('Create this as a sub-issue of the issue with this id. Must be in the same project.')
     },
@@ -344,33 +345,73 @@ export const createIssueTool: HulyTool = {
       }
     }
 
-    if (args.componentId !== undefined && !(await componentInProject(ctx, args.componentId as string, projectId))) {
+    const componentId = args.componentId as string | undefined
+    if (componentId !== undefined && !(await docInProject(ctx, tracker.class.Component, componentId, projectId))) {
       return textResult(
-        `No component with id ${String(args.componentId)} exists in project ${projectId}, so the issue was not ` +
+        `No component with id ${componentId} exists in project ${projectId}, so the issue was not ` +
           'created. Call huly_list_components for the valid ids.',
         { created: false }
       )
     }
 
+    // Milestones live in the project's space just like components do, so the
+    // same "does it belong here" check applies.
+    const milestoneId = args.milestone as string | undefined
+    if (milestoneId !== undefined && !(await docInProject(ctx, tracker.class.Milestone, milestoneId, projectId))) {
+      return textResult(
+        `No milestone with id ${milestoneId} exists in project ${projectId}, so the issue was not ` +
+          'created. Call huly_list_milestones for the valid ids.',
+        { created: false }
+      )
+    }
+
+    // The assignee must be a person this workspace can see. personNames is the
+    // same lookup the list tools use to turn assignee ids into names, so an id
+    // it does not know would otherwise persist and render as "Unknown" forever.
+    const assignee = args.assignee as string | undefined
+    if (assignee !== undefined && !(await personNames(ctx.client, [assignee])).has(assignee)) {
+      return textResult(
+        `No person with id ${assignee} is visible in this workspace, so the issue was not created. ` +
+          'Call huly_find_people for the valid ids.',
+        { created: false }
+      )
+    }
+
     // The body is stored as a blob owned by the collaborator service. Refuse up
-    // front, before a number is consumed, when that service is not configured.
+    // front, before a number is consumed, when that service is not configured:
+    // a missing COLLABORATOR_URL is fixable by the caller, a burned number is not.
     const issueId = generateId<Issue>()
     const description = ((args.description as string | undefined) ?? '').trim()
-    let descriptionRef: string | null = null
-    if (description !== '') {
-      if (ctx.markupWriter === undefined) {
-        return textResult(
-          'A description was given but this server has no COLLABORATOR_URL configured, so the issue was not ' +
-            'created. Retry without a description, or ask the administrator to set COLLABORATOR_URL.',
-          { created: false }
-        )
-      }
-      descriptionRef = await ctx.markupWriter.write(tracker.class.Issue, issueId, 'description', description)
+    if (description !== '' && ctx.markupWriter === undefined) {
+      return textResult(
+        'A description was given but this server has no COLLABORATOR_URL configured, so the issue was not ' +
+          'created. Retry without a description, or ask the administrator to set COLLABORATOR_URL.',
+        { created: false }
+      )
     }
+
+    // A new issue belongs at the END of the project's rank order, so the rank
+    // is derived from the current maximum. This mirrors what the importer and
+    // the server's RankMiddleware do for issues: with no issues yet the query
+    // returns nothing and makeRank falls back to the very first rank, so no
+    // rank string is ever hardcoded here.
+    const rankQuery: Record<string, unknown> = { space: projectId }
+    const last = await ctx.client.findOne(tracker.class.Issue, rankQuery as never, {
+      sort: { rank: SortingOrder.Descending },
+      projection: { rank: 1 }
+    })
+    const rank = makeRank(last?.rank, undefined)
 
     // Numbers are assigned by incrementing the project's sequence counter, which
     // the transactor applies atomically. This is what the web client does, so
     // concurrent creates never receive the same number.
+    //
+    // The reservation deliberately runs before the description blob is written.
+    // If the reservation fails, nothing has been persisted yet. Had the blob
+    // been written first, a failed reservation would leave it orphaned with no
+    // issue ever able to reference it again, and no way to reclaim it. A later
+    // failure costs at most a gap in the identifier sequence, which is purely
+    // cosmetic.
     const increment: Record<string, unknown> = { $inc: { sequence: 1 } }
     const incremented = (await ctx.client.updateDoc(
       tracker.class.Project,
@@ -385,18 +426,23 @@ export const createIssueTool: HulyTool = {
     }
     const identifier = `${project.identifier ?? '?'}-${number}`
 
+    const descriptionRef =
+      description === '' || ctx.markupWriter === undefined
+        ? null
+        : await ctx.markupWriter.write(tracker.class.Issue, issueId, 'description', description)
+
     const attributes: Record<string, unknown> = {
       title: args.title,
       description: descriptionRef,
-      assignee: (args.assignee as string | undefined) ?? null,
-      component: (args.componentId as string | undefined) ?? null,
-      milestone: (args.milestone as string | undefined) ?? null,
+      assignee: assignee ?? null,
+      component: componentId ?? null,
+      milestone: milestoneId ?? null,
       number,
       identifier,
       kind: taskType._id,
       status: statusId,
       priority: priorityIndex(args.priority as string | undefined),
-      rank: '',
+      rank,
       comments: 0,
       subIssues: 0,
       // Ancestors nearest first, as the web client stores them.
@@ -447,10 +493,20 @@ interface ParentRow {
   parents?: Array<{ parentId: string, parentTitle: string, space: string, identifier: string }>
 }
 
-/** True when the component exists and belongs to the given project. */
-async function componentInProject (ctx: ToolContext, componentId: string, projectId: string): Promise<boolean> {
-  const query: Record<string, unknown> = { _id: componentId, space: projectId }
-  return (await ctx.client.findOne(tracker.class.Component, query as never)) !== undefined
+/**
+ * True when the document exists and lives in the given project's space.
+ *
+ * Components and milestones are both stored with `space` set to the project
+ * they belong to, so one check covers either kind of id.
+ */
+async function docInProject<T extends Doc> (
+  ctx: ToolContext,
+  _class: Ref<Class<T>>,
+  docId: string,
+  projectId: string
+): Promise<boolean> {
+  const query: Record<string, unknown> = { _id: docId, space: projectId }
+  return (await ctx.client.findOne(_class, query as never)) !== undefined
 }
 
 interface ProjectDefaults {
@@ -514,9 +570,10 @@ export const updateIssueTool: HulyTool = {
     if (args.startDate !== undefined) operations.startDate = toTimestamp(args.startDate as string)
     if (args.milestone !== undefined) operations.milestone = args.milestone
     if (args.componentId !== undefined) {
-      if (args.componentId !== null && !(await componentInProject(ctx, args.componentId as string, issue.space))) {
+      const componentId = args.componentId as string | null
+      if (componentId !== null && !(await docInProject(ctx, tracker.class.Component, componentId, issue.space))) {
         return textResult(
-          `No component with id ${String(args.componentId)} exists in the issue's project, so nothing was changed. ` +
+          `No component with id ${componentId} exists in the issue's project, so nothing was changed. ` +
             'Call huly_list_components for the valid ids.',
           { updated: false }
         )

@@ -36,3 +36,15 @@ describe('loadConfig allowed origins', () => {
     expect(config.AllowedOrigins).toEqual(['http://localhost:5173', 'https://huly.example.com'])
   })
 })
+
+describe('loadConfig statistics endpoint', () => {
+  it('leaves /api/v1/statistics disabled by default, so nothing is exposed out of the box', () => {
+    // No MCP_STATS in the environment: a fresh deployment must not serve
+    // system figures to unauthenticated callers until an operator opts in.
+    expect(loadConfig(fakeEnv({ SECRET: 'a-real-one' })).EnableStats).toBe(false)
+  })
+
+  it('enables /api/v1/statistics only when MCP_STATS opts in', () => {
+    expect(loadConfig(fakeEnv({ SECRET: 'a-real-one', MCP_STATS: 'true' })).EnableStats).toBe(true)
+  })
+})

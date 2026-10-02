@@ -3,6 +3,7 @@
 import core, { type TxOperations } from '@hcengineering/core'
 import chunter from '@hcengineering/chunter'
 import contact from '@hcengineering/contact'
+import { makeRank } from '@hcengineering/rank'
 import task from '@hcengineering/task'
 import tracker from '@hcengineering/tracker'
 
@@ -37,6 +38,8 @@ interface Script {
   findAll?: Record<string, Row[] | ((query: Row) => Row[])>
   findOne?: Record<string, Row | undefined>
   sequence?: number
+  /** Makes the increment return no number, as a workspace that withholds the next issue number would. */
+  failIncrement?: boolean
 }
 
 function scriptedClient (script: Script): { client: TxOperations, recorded: Recorded } {
@@ -53,6 +56,7 @@ function scriptedClient (script: Script): { client: TxOperations, recorded: Reco
     },
     updateDoc: async (...args: unknown[]) => {
       recorded.updateDoc.push({ args })
+      if (script.failIncrement === true) return {}
       return { object: { sequence: script.sequence ?? 1 } }
     },
     addCollection: async (cls: string, space: string, attachedTo: string, _attachedToClass: string, collection: string, attributes: Row) => {
@@ -158,6 +162,82 @@ describe('huly_create_issue', () => {
   it('does not create anything for an unknown project', async () => {
     const { client, recorded } = scriptedClient({})
     await createIssueTool.handler(context(client), { projectId: 'missing', title: 'Hello' })
+    expect(recorded.addCollection).toHaveLength(0)
+  })
+
+  it('gives the created issue a real rank produced by makeRank', async () => {
+    const { client, recorded } = scriptedClient({
+      ...script(),
+      findOne: { ...script().findOne, [tracker.class.Issue]: { rank: '0|hzzzzz:' } }
+    })
+
+    await createIssueTool.handler(context(client), { projectId: 'proj-1', title: 'Hello' })
+
+    const rank = recorded.addCollection[0].attributes.rank
+    expect(rank).toBe(makeRank('0|hzzzzz:', undefined))
+    expect(rank).not.toBe('')
+    expect(rank).not.toBeUndefined()
+  })
+
+  it('produces a valid rank when the project has no issues yet', async () => {
+    const { client, recorded } = scriptedClient(script())
+
+    await createIssueTool.handler(context(client), { projectId: 'proj-1', title: 'Hello' })
+
+    const rank = recorded.addCollection[0].attributes.rank
+    expect(rank).toBe(makeRank(undefined, undefined))
+    expect(typeof rank).toBe('string')
+    expect(rank).not.toBe('')
+  })
+
+  it('refuses a milestone from outside the project without incrementing the counter', async () => {
+    const { client, recorded } = scriptedClient(script())
+
+    const result = await createIssueTool.handler(context(client), {
+      projectId: 'proj-1',
+      title: 'Hello',
+      milestone: 'ms-other'
+    })
+
+    expect(result.structuredContent).toEqual({ created: false })
+    expect(JSON.stringify(result.content)).toContain('huly_list_milestones')
+    expect(recorded.updateDoc).toHaveLength(0)
+    expect(recorded.addCollection).toHaveLength(0)
+  })
+
+  it('refuses an assignee who is not a person in the workspace without incrementing the counter', async () => {
+    const { client, recorded } = scriptedClient(script())
+
+    const result = await createIssueTool.handler(context(client), {
+      projectId: 'proj-1',
+      title: 'Hello',
+      assignee: 'ghost'
+    })
+
+    expect(result.structuredContent).toEqual({ created: false })
+    expect(JSON.stringify(result.content)).toContain('huly_find_people')
+    expect(recorded.updateDoc).toHaveLength(0)
+    expect(recorded.addCollection).toHaveLength(0)
+  })
+
+  it('writes no description blob when reserving the issue number fails', async () => {
+    const { client, recorded } = scriptedClient({ ...script(), failIncrement: true })
+    const written: string[][] = []
+    const writer: MarkupWriter = {
+      write: async (cls, id, attribute, markdown) => {
+        written.push([cls, attribute, markdown])
+        return `blob-for-${id}`
+      },
+      update: async () => {}
+    }
+
+    await expect(
+      createIssueTool.handler(context(client, writer), { projectId: 'proj-1', title: 'Hello', description: 'Body' })
+    ).rejects.toThrow('The workspace did not return the next issue number')
+
+    // The reservation ran before the blob write, so nothing was persisted to leak.
+    expect(recorded.updateDoc).toHaveLength(1)
+    expect(written).toHaveLength(0)
     expect(recorded.addCollection).toHaveLength(0)
   })
 })

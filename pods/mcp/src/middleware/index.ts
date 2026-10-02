@@ -95,10 +95,21 @@ export const rateLimit = (limiter: RateLimiter, resolveKey: (req: Request) => st
   }
 }
 
+/**
+ * Unauthenticated metrics endpoint — only mounted while `MCP_STATS=true`.
+ *
+ * It answers with process metrics plus CPU/memory figures, which is useful for
+ * a scraper but is still information disclosure to anyone who can reach the
+ * port, so it must be opted into rather than on by default. When disabled the
+ * handler passes the request along instead of answering itself: the catch-all
+ * then replies with the exact 404 every unknown path gets, so probing the URL
+ * reveals nothing about whether the route exists (a bespoke 403/404 body would
+ * confirm it does).
+ */
 export const statistics = (ctx: MeasureContext, config: Config): RequestHandler => {
-  return (req: Request, res: Response) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!config.EnableStats) {
-      res.status(404).json({ message: 'Not Found' })
+      next()
       return
     }
     res.setHeader('Content-Type', 'application/json')

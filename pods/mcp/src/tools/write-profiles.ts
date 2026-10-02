@@ -40,14 +40,24 @@ export interface WriteProfile {
     /** Class the named space must belong to. */
     spaceClass?: string
     defaults: (ctx: ToolContext, data: WriteData) => WriteData
+    /**
+     * Array fields whose default items must survive caller input: the caller's
+     * list is unioned with the default instead of replacing it. Without this a
+     * caller could pass `members: []` and create a teamspace they cannot manage.
+     */
+    unionDefaults?: string[]
     /** Derives fields that need a lookup. Returns a message to refuse the create. */
     prepare?: (ctx: ToolContext, spaceId: string, data: WriteData) => Promise<WriteData | string>
   }
   remove?: {
     /** Attached documents are removed through their parent's collection. */
     attached?: boolean
-    /** Clears references that would otherwise dangle. */
-    beforeRemove?: (ctx: ToolContext, doc: Doc) => Promise<void>
+    /**
+     * Clears references that would otherwise dangle. Resolves to a message that
+     * refuses the delete, or undefined to let it proceed — the same convention
+     * `prepare` uses to refuse a create.
+     */
+    beforeRemove?: (ctx: ToolContext, doc: Doc) => Promise<string | undefined>
   }
 }
 
@@ -63,13 +73,49 @@ const colorFor = (title: string): number => {
 
 const emptyMarkup = (): string => toMarkup('')
 
-/** Sets a reference field to null on every issue that points at the removed document. */
-async function detachFromIssues (ctx: ToolContext, field: 'milestone' | 'component', doc: Doc): Promise<void> {
+/**
+ * Issues detached per round trip while clearing a reference.
+ *
+ * Every round re-runs the SAME `{ [field]: doc._id }` query: an issue whose
+ * field was cleared no longer matches, so the result set only ever shrinks and
+ * the sweep ends on an empty query instead of on a fixed cut-off.
+ */
+const DETACH_BATCH_SIZE = 1000
+
+/**
+ * Rounds the sweep may run before the delete is refused.
+ *
+ * Clearing an issue removes it from the next round's query, so a healthy
+ * workspace finishes in `linked issues / batch size` rounds. The cap exists for
+ * the pathological case where the clears do not take effect: there it turns an
+ * endless loop into a refused delete, and refusing is the right outcome because
+ * the alternative is a milestone or component removed while issues still point
+ * at it — exactly the dangling reference the sweep is here to prevent.
+ */
+const DETACH_MAX_ROUNDS = 50
+
+/**
+ * Clears the reference on every issue linked to a document that is about to be
+ * deleted. Returns undefined only after a query that found nothing left, so a
+ * partial sweep cannot happen unnoticed; when the sweep cannot finish it
+ * returns a message that refuses the delete and says what is still linked.
+ */
+async function detachFromIssues (ctx: ToolContext, field: 'milestone' | 'component', doc: Doc): Promise<string | undefined> {
   const query: Record<string, unknown> = { [field]: doc._id }
-  const issues = await ctx.client.findAll(tracker.class.Issue, query as never, { limit: 1000 })
-  for (const issue of issues) {
-    const clear: Record<string, unknown> = { [field]: null }
-    await ctx.client.updateDoc(tracker.class.Issue, issue.space as never, issue._id as never, clear as never)
+  for (let round = 0; ; round++) {
+    const issues = await ctx.client.findAll(tracker.class.Issue, query as never, { limit: DETACH_BATCH_SIZE })
+    if (issues.length === 0) return undefined
+    if (round >= DETACH_MAX_ROUNDS) {
+      return (
+        `Detaching issues from this ${field} did not finish: the query still matched ${issues.length} of them ` +
+        `after ${DETACH_MAX_ROUNDS} batches, so nothing was deleted. ` +
+        'No issue will be left referencing a deleted document. Try again later.'
+      )
+    }
+    for (const issue of issues) {
+      const clear: Record<string, unknown> = { [field]: null }
+      await ctx.client.updateDoc(tracker.class.Issue, issue.space as never, issue._id as never, clear as never)
+    }
   }
 }
 
@@ -99,9 +145,7 @@ export const WRITE_PROFILES: WriteProfile[] = [
       defaults: () => ({ description: emptyMarkup(), lead: null, comments: 0, attachments: 0 })
     },
     remove: {
-      beforeRemove: async (ctx, doc) => {
-        await detachFromIssues(ctx, 'component', doc)
-      }
+      beforeRemove: async (ctx, doc) => await detachFromIssues(ctx, 'component', doc)
     }
   },
   {
@@ -123,9 +167,7 @@ export const WRITE_PROFILES: WriteProfile[] = [
       })
     },
     remove: {
-      beforeRemove: async (ctx, doc) => {
-        await detachFromIssues(ctx, 'milestone', doc)
-      }
+      beforeRemove: async (ctx, doc) => await detachFromIssues(ctx, 'milestone', doc)
     }
   },
   {
@@ -179,7 +221,9 @@ export const WRITE_PROFILES: WriteProfile[] = [
     pushable: ['members', 'owners'],
     create: {
       space: core.space.Space,
-      // The creator becomes a member and owner, as in the web client.
+      // The creator becomes a member and owner, as in the web client, and stays
+      // one even when the caller passes their own members or owners lists.
+      unionDefaults: ['members', 'owners'],
       defaults: (ctx) => ({
         description: '',
         private: false,
@@ -302,4 +346,65 @@ export function coerceFields (hierarchy: Hierarchy, profile: WriteProfile, input
   }
 
   return { ok: true, data }
+}
+
+/**
+ * What one array element may be, keyed by the type name `describeType` already
+ * produces for `coerceFields`: the same lookup for both checks, so they can
+ * never disagree about what a field holds.
+ */
+interface ElementCheck {
+  /** How the element reads in an error message. */
+  label: string
+  ok: (value: unknown) => boolean
+}
+
+const ELEMENT_CHECKS: Record<string, ElementCheck> = {
+  String: { label: 'string', ok: (value) => typeof value === 'string' },
+  Markup: { label: 'string', ok: (value) => typeof value === 'string' },
+  Ref: { label: 'id string', ok: (value) => typeof value === 'string' },
+  // AccountUuid and PersonId are the ids members and owners hold.
+  AccountUuid: { label: 'account id', ok: (value) => typeof value === 'string' },
+  PersonId: { label: 'account id', ok: (value) => typeof value === 'string' },
+  Number: { label: 'number', ok: (value) => typeof value === 'number' },
+  Estimation: { label: 'number', ok: (value) => typeof value === 'number' },
+  Boolean: { label: 'boolean', ok: (value) => typeof value === 'boolean' },
+  Date: { label: 'date', ok: (value) => toMillis(value) !== undefined },
+  Timestamp: { label: 'date', ok: (value) => toMillis(value) !== undefined },
+  Array: { label: 'array', ok: (value) => Array.isArray(value) }
+}
+
+/**
+ * Checks one pushed or pulled item against the element type the model declares
+ * for the field, so a whole array or a stray object can never be written where
+ * a single id belongs. Returns undefined when the value is acceptable.
+ *
+ * This is a type check only — it does not verify that an id exists, which is
+ * the transactor's job and which no helper in these tools performs today.
+ */
+export function checkArrayItem (
+  hierarchy: Hierarchy,
+  profile: WriteProfile,
+  field: string,
+  value: unknown
+): string | undefined {
+  const attribute = attributesOf(hierarchy, profile.classId).get(field)
+  if (attribute === undefined) {
+    return `"${field}" is not a field of ${profile.classId} in this workspace.`
+  }
+  const described = describeType(attribute.type as never)
+  if (described.type !== 'Array') {
+    return `"${field}" is not an array field on ${profile.classId}, so nothing can be pushed to or pulled from it.`
+  }
+  // `of` is a nested Type normally, but describeType passes a bare id through as a string.
+  const element = typeof described.of === 'string' ? { type: 'Ref' } : described.of
+  // A field with no declared element type, or one of a custom type, gives this
+  // check nothing to judge; the profiles only push ids, which are covered above.
+  const check = element === undefined ? undefined : ELEMENT_CHECKS[element.type]
+  if (check === undefined || check.ok(value)) return undefined
+  const shown = JSON.stringify(value) ?? 'undefined'
+  return (
+    `"${field}" expects a single ${check.label} — push and pull take ONE item at a time, ` +
+    `e.g. push {"${field}": "<${check.label}>"}. Received: ${shown}.`
+  )
 }

@@ -27,6 +27,11 @@ const arr = { _class: 'core:class:ArrOf', of: str }
 const num = { _class: 'core:class:TypeNumber' }
 const attrs = (entries: Record<string, Row>): Map<string, Row> => new Map(Object.entries(entries))
 
+// `members` and `owners` are ArrOf(TypeAccountUuid()) in the model, so push and
+// pull must accept one account id and nothing else.
+const accountId = { _class: 'core:class:TypeAccountUuid' }
+const idArr = { _class: 'core:class:ArrOf', of: accountId }
+
 const ATTRIBUTES: Record<string, Map<string, Row>> = {
   [tracker.class.Component]: attrs({ label: { type: str }, description: { type: markup }, lead: { type: ref } }),
   [tracker.class.Milestone]: attrs({
@@ -52,11 +57,17 @@ const ATTRIBUTES: Record<string, Map<string, Row>> = {
     description: { type: str },
     private: { type: bool },
     archived: { type: bool },
-    members: { type: arr },
-    owners: { type: arr },
+    members: { type: idArr },
+    owners: { type: idArr },
     autoJoin: { type: bool }
   }),
-  [tracker.class.Project]: attrs({ name: { type: str }, description: { type: str }, archived: { type: bool }, members: { type: arr }, owners: { type: arr } })
+  [tracker.class.Project]: attrs({
+    name: { type: str },
+    description: { type: str },
+    archived: { type: bool },
+    members: { type: idArr },
+    owners: { type: idArr }
+  })
 }
 
 const DERIVED: Record<string, string[]> = {
@@ -77,9 +88,14 @@ interface Calls {
   removeCollection: unknown[][]
 }
 
+type FindAll = (cls: string, query: Row, options?: { limit?: number }) => Row[]
+
 interface Script {
   findOne?: Record<string, Row | undefined>
-  findAll?: Record<string, Row[]>
+  /** Per class, or a function for fakes that must react to the query. */
+  findAll?: Record<string, Row[]> | FindAll
+  /** Lets a fake apply a recorded write, as the workspace would. */
+  onOps?: (id: string, ops: Row) => void
   role?: AccountRole
 }
 
@@ -88,12 +104,18 @@ function setup (script: Script = {}): { ctx: ToolContext, calls: Calls } {
   const client = {
     getHierarchy: hierarchy,
     findOne: async (cls: string) => script.findOne?.[cls],
-    findAll: async (cls: string) => script.findAll?.[cls] ?? [],
+    findAll: async (cls: string, query: Row, options?: { limit?: number }) => {
+      if (typeof script.findAll === 'function') {
+        return script.findAll(cls, query, options)
+      }
+      return script.findAll?.[cls] ?? []
+    },
     createDoc: async (cls: string, space: string, values: Row, id: string) => {
       calls.createDoc.push({ cls, space, values, id })
     },
     updateDoc: async (cls: string, space: string, id: string, ops: Row) => {
       calls.updateDoc.push({ cls, space, id, ops })
+      script.onOps?.(id, ops)
     },
     removeDoc: async (cls: string, space: string, id: string) => {
       calls.removeDoc.push([cls, space, id])
@@ -116,6 +138,35 @@ function setup (script: Script = {}): { ctx: ToolContext, calls: Calls } {
 
 const textOf = (result: { content: unknown[] }): string => (result.content[0] as { text: string }).text
 const projectSpace = { _id: PROJECT, _class: tracker.class.Project }
+
+/**
+ * A query-aware fake for issues linked to one document: findAll only returns
+ * issues that still carry the reference, and the recorded updates clear it, so
+ * a sweep has to come back batch after batch until nothing matches. That is the
+ * contract detachFromIssues relies on to know when it is finished.
+ */
+function linkedIssues (
+  ids: string[],
+  field: 'milestone' | 'component',
+  target: string
+): { findAll: FindAll, onOps: (id: string, ops: Row) => void, queries: Row[], limits: number[] } {
+  const issues: Row[] = ids.map((id) => ({ _id: id, space: PROJECT, [field]: target }))
+  const queries: Row[] = []
+  const limits: number[] = []
+  return {
+    queries,
+    limits,
+    findAll: (_cls, query, options) => {
+      queries.push(query)
+      limits.push(options?.limit ?? 0)
+      return issues.filter((issue) => issue[field] === query[field]).slice(0, options?.limit)
+    },
+    onOps: (id, ops) => {
+      const issue = issues.find((row) => row._id === id)
+      if (issue !== undefined) Object.assign(issue, ops)
+    }
+  }
+}
 
 describe('huly_create_doc', () => {
   it('refuses a class without a create profile and lists what is supported', async () => {
@@ -210,6 +261,29 @@ describe('huly_create_doc', () => {
     expect(calls.createDoc[1]).toMatchObject({ cls: document.class.Teamspace, space: core.space.Space })
     expect(calls.createDoc[1].values).toMatchObject({ name: 'Handbook', members: [ME], owners: [ME], private: false })
   })
+
+  it('keeps the creator in members and owners when the caller passes empty lists', async () => {
+    const { ctx, calls } = setup()
+
+    await createDocTool.handler(ctx, {
+      classId: document.class.Teamspace,
+      data: { name: 'Handbook', members: [], owners: [] }
+    })
+
+    expect(calls.createDoc).toHaveLength(1)
+    expect(calls.createDoc[0].values).toMatchObject({ members: [ME], owners: [ME] })
+  })
+
+  it('adds the creator to caller-supplied members and owners instead of replacing them', async () => {
+    const { ctx, calls } = setup()
+
+    await createDocTool.handler(ctx, {
+      classId: document.class.Teamspace,
+      data: { name: 'Handbook', members: ['a2', 'a3'], owners: ['a2'] }
+    })
+
+    expect(calls.createDoc[0].values).toMatchObject({ members: [ME, 'a2', 'a3'], owners: [ME, 'a2'] })
+  })
 })
 
 describe('huly_update_doc', () => {
@@ -243,6 +317,25 @@ describe('huly_update_doc', () => {
     expect(calls.updateDoc[0].ops).toEqual({ $push: { members: 'a2' }, $pull: { owners: 'a3' } })
     expect(textOf(bad)).toContain('"name" cannot be added to or removed from')
     expect(calls.updateDoc).toHaveLength(1)
+  })
+
+  it('refuses a push or pull item that is not the field element type, and writes nothing', async () => {
+    const space = { _id: 's1', space: core.space.Space, owners: [ME] }
+    const { ctx, calls } = setup({ findOne: { [document.class.Teamspace]: space } })
+
+    const numberItem = await updateDocTool.handler(ctx, { classId: document.class.Teamspace, id: 's1', push: { members: 123 } })
+    const objectItem = await updateDocTool.handler(ctx, { classId: document.class.Teamspace, id: 's1', push: { owners: { nested: true } } })
+    const wholeList = await updateDocTool.handler(ctx, { classId: document.class.Teamspace, id: 's1', pull: { members: ['a2'] } })
+
+    expect(textOf(numberItem)).toContain('"members" expects a single account id')
+    expect(textOf(objectItem)).toContain('"owners" expects a single account id')
+    expect(textOf(wholeList)).toContain('push and pull take ONE item at a time')
+    expect(calls.updateDoc).toHaveLength(0)
+
+    // Only the value was refused: a correctly typed item still goes through.
+    await updateDocTool.handler(ctx, { classId: document.class.Teamspace, id: 's1', push: { members: 'a4' } })
+    expect(calls.updateDoc).toHaveLength(1)
+    expect(calls.updateDoc[0].ops).toEqual({ $push: { members: 'a4' } })
   })
 
   it('lets only a workspace owner, a space owner or the creator manage a space', async () => {
@@ -317,10 +410,12 @@ describe('huly_delete_doc', () => {
   })
 
   it('detaches issues from a milestone before deleting it', async () => {
+    const sweep = linkedIssues(['i1', 'i2'], 'milestone', 'm1')
     const { ctx, calls } = setup({
       role: AccountRole.Owner,
       findOne: { [tracker.class.Milestone]: { _id: 'm1', space: PROJECT } },
-      findAll: { [tracker.class.Issue]: [{ _id: 'i1', space: PROJECT }, { _id: 'i2', space: PROJECT }] }
+      findAll: sweep.findAll,
+      onOps: sweep.onOps
     })
 
     await deleteDocTool.handler(ctx, { classId: tracker.class.Milestone, id: 'm1' })
@@ -330,6 +425,40 @@ describe('huly_delete_doc', () => {
       ['i2', { milestone: null }]
     ])
     expect(calls.removeDoc).toEqual([[tracker.class.Milestone, PROJECT, 'm1']])
+  })
+
+  it('detaches every issue in batches, however many point at the milestone', async () => {
+    const ids = Array.from({ length: 1500 }, (_unused, index) => `i${index}`)
+    const sweep = linkedIssues(ids, 'milestone', 'm1')
+    const { ctx, calls } = setup({
+      role: AccountRole.Owner,
+      findOne: { [tracker.class.Milestone]: { _id: 'm1', space: PROJECT } },
+      findAll: sweep.findAll,
+      onOps: sweep.onOps
+    })
+
+    await deleteDocTool.handler(ctx, { classId: tracker.class.Milestone, id: 'm1' })
+
+    // The same predicate is re-run until it comes back empty: 1000, then 500, then none.
+    expect(sweep.queries).toEqual([{ milestone: 'm1' }, { milestone: 'm1' }, { milestone: 'm1' }])
+    expect(sweep.limits).toEqual([1000, 1000, 1000])
+    expect(calls.updateDoc).toHaveLength(1500)
+    expect(calls.removeDoc).toEqual([[tracker.class.Milestone, PROJECT, 'm1']])
+  })
+
+  it('refuses the delete instead of leaving issues pointing at a milestone it cannot detach', async () => {
+    const { ctx, calls } = setup({
+      role: AccountRole.Owner,
+      findOne: { [tracker.class.Milestone]: { _id: 'm1', space: PROJECT } },
+      // The same issue comes back on every round, as if the clearing never took effect.
+      findAll: { [tracker.class.Issue]: [{ _id: 'i1', space: PROJECT }] }
+    })
+
+    const result = await deleteDocTool.handler(ctx, { classId: tracker.class.Milestone, id: 'm1' })
+
+    expect(textOf(result)).toContain('did not finish')
+    expect(textOf(result)).toContain('nothing was deleted')
+    expect(calls.removeDoc).toHaveLength(0)
   })
 
   it('removes an issue through its parent collection', async () => {

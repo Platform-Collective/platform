@@ -61,6 +61,13 @@ export interface Config {
   RequestRateLimit: number
   RequestRateWindowMs: number
   MaxBodyBytes: number
+  /**
+   * Serve `/api/v1/statistics` (CPU/memory/metrics payload).
+   *
+   * Off by default: the endpoint answers without any credential, so shipping
+   * it enabled would hand system figures to anyone who knows the path. An
+   * operator who wants to scrape it opts in with MCP_STATS=true.
+   */
   EnableStats: boolean
 }
 
@@ -142,7 +149,7 @@ function buildConfig (env: NodeJS.ProcessEnv): Config {
     RequestRateLimit: int(env.MCP_RATE_LIMIT, 300),
     RequestRateWindowMs: int(env.MCP_RATE_WINDOW_MS, 60_000),
     MaxBodyBytes: int(env.MCP_MAX_BODY_BYTES, 1024 * 1024),
-    EnableStats: bool(env.MCP_STATS, true)
+    EnableStats: bool(env.MCP_STATS, false)
   }
 }
 

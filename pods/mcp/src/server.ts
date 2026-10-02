@@ -133,19 +133,31 @@ export function createServer (deps: ServerDependencies): McpServer {
   app.get(MCP_ENDPOINT, asyncHandler(transport.handleGet))
   app.delete(MCP_ENDPOINT, asyncHandler(transport.handleDelete))
 
+  // Liveness probe: must answer 200 with no credential, because that is all a
+  // Docker/k8s healthcheck can present. What it reports is deliberately narrow:
+  // `authMode` and `readOnly` described how the server authenticates and
+  // authorizes — a roadmap for an unauthenticated caller — and `sessions` was a
+  // live activity counter. `version` and `tools` are fixed at boot and only
+  // tell an operator that the new image and the tool registry are the ones
+  // actually serving.
   app.get('/api/v1/health', (_req: Request, res: Response) => {
     res.status(200).json({
       status: 'ok',
       version: VERSION,
-      authMode: config.AuthMode,
-      readOnly: config.ReadOnly,
-      tools: registry.size,
-      sessions: sessions.size
+      tools: registry.size
     })
   })
 
+  // Mounted unconditionally: while MCP_STATS is unset the handler defers to the
+  // catch-all below, which answers exactly like any unknown path (see
+  // `statistics` in middleware/index.ts).
   app.get('/api/v1/statistics', statistics(ctx, config))
 
+  // A friendly landing page for a human who opens the pod in a browser. Same
+  // disclosure rule as /api/v1/health: it lists where the MCP endpoint and the
+  // health probe are, but not the auth mode or the read-only flag — those
+  // describe the server's security posture and are nobody's business but the
+  // operator's (who reads them from the environment that set them).
   app.get('/', (_req: Request, res: Response) => {
     res
       .type('text/plain')
@@ -155,7 +167,6 @@ export function createServer (deps: ServerDependencies): McpServer {
           '',
           `MCP endpoint:   POST ${MCP_ENDPOINT}`,
           'Health:         GET /api/v1/health',
-          `Auth mode:      ${config.AuthMode}${config.ReadOnly ? ' (read-only)' : ''}`,
           `Tools:          ${registry.size}`,
           ''
         ].join('\n')
