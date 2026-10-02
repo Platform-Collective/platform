@@ -51,6 +51,7 @@ else
     --to @hcengineering/pod-media \
     --to @hcengineering/pod-preview \
     --to @hcengineering/pod-link-preview \
+    --to @hcengineering/pod-mcp \
     --to @hcengineering/pod-external \
     --to @hcengineering/pod-backup \
     --to @hcengineering/backup-api-pod \
