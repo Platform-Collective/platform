@@ -1174,3 +1174,95 @@ rush build --to <pkg>             # cross-package type check before PR
 - A draft is created with an empty rank, like a new issue from the create form.
 - A draft cannot be the parent of issues (the sub-issue list is hidden in its panel, it is left out of the parent pickers) but nothing on the server refuses a parent link to it.
 - The export does not include the hierarchy depth, the predecessors or the sub-issue counter, and it is not streamed: the whole view is built in memory.
+
+
+---
+
+## Phase 12 implementation notes (Calendar layout)
+
+**What was built**
+
+- Fourth layout `Calendar` (`tracker.viewlet.Calendar` descriptor, `tracker.viewlet.IssueCalendar` viewlet, icon `tracker.icon.Calendar`, component
+  `tracker.component.CalendarView`). `SavedViewBar` offers it next to Table, Board and Roadmap (`viewLayouts` of `IssuesView`), the ids are declared once
+  (`tracker-resources/plugin.ts`, `models/tracker/plugin.ts`, `plugins/tracker`), the viewlet is registered in `models/tracker/src/viewlets.ts`
+  (`calendarViewOptions`).
+- Pure logic in `plugins/tracker-resources/src/calendar/` with jest tests next to it (also run under UTC, Los Angeles, Berlin, Auckland, Kolkata, Kiritimati
+  and Sao Paulo): `grid` (month and week grids, week start, ranges, navigation, keyboard moves, labels), `events` (items to events, split of an event
+  across week rows, lane packing, overflow), `agenda` (grouping by day), `drag` (days moved by a drag), `addItem` (what a draft added to a day starts
+  with), `config` (the `calendar` settings block). The date sources, the schedule of an item and the reschedule plans are the Roadmap ones
+  (`roadmap/dates`, `roadmap/reschedule`), not copies.
+- UI in `components/calendar/`: `CalendarView` (data, drag, popups), `CalendarToolbar`, `CalendarGrid` (month grid and week view), `CalendarEventChip`,
+  `CalendarAgenda`, `CalendarUnscheduled`, `CalendarDayPopup` ("+N more"), `CalendarAddItemPopup`. The date popup reuses `RoadmapOptionsPopup`.
+- 16 new strings in `tracker.string` and in all 14 locale files of `tracker-assets` by plain text insertion (ru translated, the others English);
+  strings of the Roadmap that fit (Today, Unscheduled, Set dates, Undo, Dates updated, the truncation notice, the start / target field titles) are reused.
+
+**Behaviour**
+
+- Modes: Month grid (default; only the weeks the month needs, 4 to 6), Week and Agenda (the days of the month that have items). Previous / Today / Next
+  and a title (`October 2026`, `Oct 5 – 11, 2026`) in the toolbar; Previous / Next move a month (a week in the week mode). Weeks start on the day of
+  the platform setting (`deviceOptionsStore.firstDayOfWeek`, Settings > General; the system value by default), Monday when it is not a valid weekday.
+  Today is a red badge on the day number, Saturday and Sunday are shaded, days of the neighbouring months are dimmed. All maths is on whole local
+  days (the day index of `roadmap/timeScale`), so a month never gets a day more or less around a daylight saving change.
+- Dates: like the Roadmap, a start and an end source per view (the dates of the issue, a custom Date field, an Iteration field, the milestone dates).
+  The defaults are Start date and Due date. Each of the two can also be `None`, so a view with start = None and end = Due date is a plain due date
+  calendar; two `None` fall back to the defaults. Items with both dates are bars over the days (an iteration is a bar over its days), items with one
+  date, or with both on the same day, are chips, items without a day are listed in the **Unscheduled** side panel (toggle with the count in the
+  toolbar, `Set dates` button, rows are drawn up to 300 and the rest is counted). An inverted range is drawn hatched, like in the Roadmap.
+- Bars spanning weeks are split at the week edges (arrows mark the continuation) and packed into lanes: bars first (earliest start, then longest),
+  then the chips of every day in the order of the view; a segment takes the first lane that is free in all of its columns. When the cell has no room
+  for all lanes the last row shows `+N more` per day (a hidden bar counts on each of its days); clicking it opens a popup with all items of the day as
+  cards. The week view has no limit, its cells grow with their items.
+- Reschedule: drag a chip or a bar to another day (the day under the pointer minus the day grabbed gives the shift, so the duration is kept and the
+  time of day stays), drag the left / right edge of a range to write only that date (an edge cannot pass the other one), drag a row of the Unscheduled
+  panel onto a day to give it the day. The item is drawn where it would land while dragging and the drop target day is outlined; Esc cancels. Every
+  change is one `EditJournal` batch of Phase 4 with the same `Undo` toast as the Roadmap. Milestone dates and read-only viewers cannot be written
+  (a toast says so for the milestone; for a read-only viewer nothing is draggable and no handle is drawn), Iteration sources snap to the iteration
+  of the day.
+- Click an item (or press Enter on it) opens the issue panel, right-click opens the context menu. Click an empty part of a day cell (or Enter on the
+  focused day) with write access opens the quick **Add item** popup: it is the `AddItemRow` of Phase 11b (a typed title creates a draft, `#`
+  searches issues, the item limit message and the read-only / permission guard come with it) and the draft starts with the day in the date fields of
+  the view (`draftValuesForDay`; `DraftValues` got optional `startDate`, `dueDate` and `deadline`). A view whose dates both come from the milestone
+  cannot add on a day (toast).
+- Fields on an item come from the fields of the view (Configure columns, saved per view, default `assignee, priority, dueDate, labels`): `planCardFields`
+  of Phase 7 decides. The chips of the grid always show the identifier (a Draft badge for a draft) and the title and, when switched on, the assignee
+  avatar and the priority; the **agenda, the `+N more` popup** show every item as the `CardFieldRenderer` card of the board with all fields.
+- Group by is not offered (`hideGrouping` of the Customize View popup, new optional prop of `ViewletSettingButton` / `ViewOptionsButton` /
+  `ViewOptions`; Sort by stays and orders the chips of a day, default Manual (rank)). Filter string, chips, search, slice, archived scope, view
+  options and field sums behave as in the Roadmap because they are applied by `IssuesView` to the query the layout receives; the slice button and the
+  field sum footer were enabled for the calendar. Above 5000 items the same truncation banner as the Roadmap is shown.
+- Keyboard: a day cell is focusable (roving tabindex); arrows move by a day or a week, Home / End to the ends of the week, Page Up / Page Down by a
+  month, the grid moves to another month or week when the focus leaves it; Enter or Space opens Add item on the day.
+
+**Per-view config and dirty tracking**
+
+- `mode`, `start` and `target` live in the view options under the key `calendar` (the precedent of `roadmap`, `board`). The saved view already stores,
+  restores and diffs `viewOptions`, so saving, the unsaved dot and discard work with no change in `SavedViewBar`; the default config is not stored,
+  so a changed-and-changed-back calendar is clean again (covered by a test through `isViewDirty`). Which month or week is open is navigation and is
+  not stored. A deleted date field falls back to the default in the displayed settings (`sanitizeCalendarConfig`) and is not rewritten in the saved view.
+
+**Deviations / decisions**
+
+- The brief says "one date source per view" and also that items with a start and a target span days; the Roadmap pair (start + end, either can be
+  `None`) satisfies both.
+- The chips of the grid are one compact line, so the other fields of the view (component, milestone, custom fields, labels, estimation) are on the cards
+  of the agenda and of `+N more`, not on the chips. The tooltip of a chip has the identifier, the title and the dates.
+- Dragging uses pointer events (like the Roadmap) and finds the day cell under the pointer with `elementsFromPoint`, so it works over bars of other
+  items and over the Unscheduled panel.
+- `AddItemRow` got the optional `autofocus` prop (additive) for the popup.
+
+**Verified / not verified**
+
+- Verified: jest (tracker-resources 1057 incl. 75 new calendar tests, also under 7 time zones for `src/calendar` and `src/draft`; tracker-assets lang tests;
+  view-resources 298; model-tracker), `svelte-check` of tracker-resources and view-resources, `rush validate --to @hcengineering/model-tracker` and
+  `--to @hcengineering/prod`.
+- Not verified: nothing was run in a browser or against a server (no sanity spec). The layout of the grid in the page flex chain, the lane capacity of a
+  month cell (measured from the height of the weeks area), the look of the chips, the positions of the popups, the drag over the Unscheduled panel and the
+  quick add popup are by reasoning, not by eye. The custom date field and iteration sources are covered by the pure tests only.
+
+**Not done / limits**
+
+- No auto-scroll or month change while dragging (use the week view, or drag in two steps); no keyboard rescheduling.
+- The month grid shows only the whole weeks of the month, so a bar is clipped at the edges of that grid; the neighbouring month shows the rest.
+- The `+N more` popup is a snapshot of the day when it was opened, it does not follow later changes.
+- Picking an issue with `#` in the quick add popup brings the issue into the project like in the table; it does not get the day.
+- Weekend days are Saturday and Sunday (the working days of the project are not used).

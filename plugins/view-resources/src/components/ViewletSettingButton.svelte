@@ -51,6 +51,12 @@
   export let hideGroupingAndOrdering: boolean = false
 
   /**
+   * Hides only the "Group by" rows of the options popup, for a layout that has no groups (a calendar: the day is the
+   * group). Sorting stays. Forwarded to ViewOptionsButton → ViewOptions.
+   */
+  export let hideGrouping: boolean = false
+
+  /**
    * Keys in this list are skipped from the popup's "other" rendering.
    * Forwarded to ViewOptionsButton → ViewOptions. Use it when a viewlet
    * renders the same ViewOption elsewhere (e.g. Gantt has a toolbar
@@ -114,6 +120,7 @@
       {viewOptions}
       {viewOptionsConfig}
       {hideGroupingAndOrdering}
+      {hideGrouping}
       {hideKeys}
       extra={extraOptions}
     />

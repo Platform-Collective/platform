@@ -635,7 +635,23 @@
     "ExportViewData": "Export view data",
     "ExportColumnUrl": "URL",
     "ExportViewDataFailed": "The view data could not be exported",
-    "CopyViewLink": "Copy link to view"
+    "CopyViewLink": "Copy link to view",
+    "Calendar": "Calendar",
+    "CalendarMonth": "Month",
+    "CalendarWeek": "Week",
+    "CalendarAgenda": "Agenda",
+    "CalendarPrevious": "Previous",
+    "CalendarNext": "Next",
+    "CalendarNoDateSource": "None",
+    "CalendarDatesHint": "Items with both dates are bars across the days. Items with one date are chips. Items without dates are listed under Unscheduled.",
+    "CalendarMore": "+{count} more",
+    "CalendarAddItemOn": "Add item on {date}",
+    "CalendarDayItems": "Items on {date}",
+    "CalendarAgendaEmpty": "There are no items in this period",
+    "CalendarUnscheduledCount": "Unscheduled ({count})",
+    "CalendarUnscheduledHint": "Drag an item onto a day to schedule it.",
+    "CalendarUnscheduledMore": "{count} more items are not listed. Narrow the filter to see them.",
+    "CalendarAddNeedsDates": "Items cannot be added to a day while the view takes its dates from the milestone"
   },
   "status": {}
 }

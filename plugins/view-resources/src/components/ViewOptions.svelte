@@ -20,6 +20,8 @@
   // the user sees the same control twice in two places without a wire
   // between them.
   export let hideGroupingAndOrdering: boolean = false
+  // Hides only the "Group by" rows, for a layout that has no groups (a calendar: the day is the group)
+  export let hideGrouping: boolean = false
   /**
    * Other-toggle keys that should not render in this popup instance. Useful
    * when a viewlet exposes the same ViewOption through its own toolbar (e.g.
@@ -129,7 +131,7 @@
 
 <div class="antiCard dialog menu">
   <div class="antiCard-menu__spacer" />
-  {#if !hideGroupingAndOrdering && hasMultipleSelections(config.groupBy)}
+  {#if !hideGroupingAndOrdering && !hideGrouping && hasMultipleSelections(config.groupBy)}
     {#each groups as group, i}
       <div class="antiCard-menu__item grouping">
         <span class="overflow-label"><Label label={i === 0 ? view.string.Grouping : view.string.Then} /></span>
@@ -175,7 +177,7 @@
       />
     </div>
   {/if}
-  {#if visibleOthers.length > 0 && !hideGroupingAndOrdering && (hasMultipleSelections(config.groupBy) || hasMultipleSelections(config.orderBy))}
+  {#if visibleOthers.length > 0 && !hideGroupingAndOrdering && ((!hideGrouping && hasMultipleSelections(config.groupBy)) || hasMultipleSelections(config.orderBy))}
     <div class="antiCard-menu__divider" />
   {/if}
   {#each visibleOthers as model}

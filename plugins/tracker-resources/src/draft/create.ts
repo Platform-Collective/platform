@@ -30,6 +30,10 @@ export interface DraftValues {
   assignee?: Ref<Employee> | null
   component?: Ref<Component> | null
   milestone?: Ref<Milestone> | null
+  // Dates, e.g. the day of the calendar cell a draft is added from
+  startDate?: number | null
+  dueDate?: number | null
+  deadline?: number | null
   customFields?: Record<string, unknown>
 }
 
@@ -75,8 +79,8 @@ export function buildDraftIssue (target: DraftTarget, title: string, values: Dra
     rank: '',
     comments: 0,
     subIssues: 0,
-    startDate: null,
-    dueDate: null,
+    startDate: values.startDate ?? null,
+    dueDate: values.dueDate ?? null,
     parents: [],
     reportedTime: 0,
     remainingTime: 0,
@@ -87,6 +91,7 @@ export function buildDraftIssue (target: DraftTarget, title: string, values: Dra
     kind: target.kind,
     identifier: draftIdentifier(project.identifier),
     isDraft: true,
+    ...(values.deadline !== undefined && values.deadline !== null ? { deadline: values.deadline } : {}),
     ...(values.customFields !== undefined && Object.keys(values.customFields).length > 0
       ? { customFields: values.customFields }
       : {})

@@ -52,6 +52,17 @@ describe('buildDraftIssue', () => {
     expect(doc.customFields).toEqual({ sprint: 'it1' })
   })
 
+  it('starts with the dates it is given, e.g. the day of a calendar cell', () => {
+    const doc = buildDraftIssue(target(), 'a', { startDate: 100, dueDate: 200, deadline: 300 })
+    expect(doc.startDate).toBe(100)
+    expect(doc.dueDate).toBe(200)
+    expect(doc.deadline).toBe(300)
+    const plain = buildDraftIssue(target(), 'a')
+    expect(plain.startDate).toBeNull()
+    expect(plain.dueDate).toBeNull()
+    expect('deadline' in plain).toBe(false)
+  })
+
   it('leaves out an empty custom field record', () => {
     expect('customFields' in buildDraftIssue(target(), 'a', { customFields: {} })).toBe(false)
   })

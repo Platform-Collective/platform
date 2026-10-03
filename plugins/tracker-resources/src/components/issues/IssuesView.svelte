@@ -164,8 +164,8 @@
 
   let viewlet: WithLookup<Viewlet> | undefined = undefined
   const viewletQuery = { attachTo: tracker.class.Issue, variant: { $nin: ['subissue', 'component', 'milestone'] } }
-  // The three GitHub Projects layouts: Table (the list), Board and Roadmap
-  const viewLayouts = [view.viewlet.List, tracker.viewlet.Kanban, tracker.viewlet.Roadmap]
+  // The layouts of a project view: Table (the list), Board, Roadmap (the three GitHub Projects layouts) and Calendar
+  const viewLayouts = [view.viewlet.List, tracker.viewlet.Kanban, tracker.viewlet.Roadmap, tracker.viewlet.Calendar]
   // Columns of the active saved view and its bar, which also keeps the unsaved column edits
   let viewConfig: Array<BuildModelKey | string> | undefined
   let savedViewBar: SavedViewBar | undefined
@@ -186,6 +186,8 @@
   $: isGanttMode = viewlet?.descriptor === tracker.viewlet.Gantt
   // The roadmap has its own toolbar for dates, markers and fields; its columns are not configurable
   $: isRoadmapMode = viewlet?.descriptor === tracker.viewlet.Roadmap
+  // The calendar has its own toolbar for dates and navigation; its columns are the fields shown on an item and it has no groups
+  $: isCalendarMode = viewlet?.descriptor === tracker.viewlet.Calendar
   // The board keeps its own settings (column field, hidden columns, limits) in the Customize View popup;
   // its "Group by" is the swimlanes
   $: isBoardMode = viewlet?.descriptor === tracker.viewlet.Kanban
@@ -468,7 +470,7 @@
   // The panel lists the values of one field with counts; the chosen values narrow the view on top of the filter.
   // The settings are part of the view (`slice` in its options). The counts and the narrowing are made on the client
   // over the same bounded scan as the other client-side work, so above the limit the slice is off, never partial.
-  $: sliceAvailable = project !== undefined && (isTableMode || isRoadmapMode)
+  $: sliceAvailable = project !== undefined && (isTableMode || isRoadmapMode || isCalendarMode)
   $: sliceStored = sliceAvailable ? readSliceConfig(viewOptions) : undefined
   $: slicePanelOpen = sliceStored !== undefined
   $: sliceFields = buildSliceFields(filterSchema)
@@ -821,14 +823,17 @@
     component: FieldSumGroupSummary
   }
   $: fieldSumKeys = readFieldSums(viewOptions)
-  $: showFooter = project !== undefined && fieldSumKeys.length > 0 && (isTableMode || isRoadmapMode)
+  $: showFooter = project !== undefined && fieldSumKeys.length > 0 && (isTableMode || isRoadmapMode || isCalendarMode)
 
   // The rows that go after the generic ones of the "Customize view" popup
   $: viewExtras =
-    isBoardMode || (project !== undefined && (isTableMode || isRoadmapMode))
+    isBoardMode || (project !== undefined && (isTableMode || isRoadmapMode || isCalendarMode))
       ? {
           component: ProjectViewOptionsSection,
-          props: { space: project, layout: isBoardMode ? 'board' : isRoadmapMode ? 'roadmap' : 'table' }
+          props: {
+            space: project,
+            layout: isBoardMode ? 'board' : isRoadmapMode ? 'roadmap' : isCalendarMode ? 'calendar' : 'table'
+          }
         }
       : undefined
 
@@ -1005,6 +1010,7 @@
       bind:viewOptions
       bind:viewlet
       hideGroupingAndOrdering={isGanttMode}
+      hideGrouping={isCalendarMode}
       showConfigureColumns={!isGanttMode && !isRoadmapMode}
       hideKeys={isGanttMode ? ['ganttGroupBy'] : []}
       configOverride={project !== undefined ? viewConfig : undefined}

@@ -883,7 +883,23 @@
     "ExportViewData": "Экспортировать данные представления",
     "ExportColumnUrl": "URL",
     "ExportViewDataFailed": "Не удалось экспортировать данные представления",
-    "CopyViewLink": "Скопировать ссылку на представление"
+    "CopyViewLink": "Скопировать ссылку на представление",
+    "Calendar": "Календарь",
+    "CalendarMonth": "Месяц",
+    "CalendarWeek": "Неделя",
+    "CalendarAgenda": "Повестка",
+    "CalendarPrevious": "Назад",
+    "CalendarNext": "Вперёд",
+    "CalendarNoDateSource": "Нет",
+    "CalendarDatesHint": "Элементы с двумя датами показаны полосами по дням, элементы с одной датой чипами, а элементы без дат перечислены в разделе «Без дат».",
+    "CalendarMore": "Ещё {count}",
+    "CalendarAddItemOn": "Добавить элемент на {date}",
+    "CalendarDayItems": "Элементы на {date}",
+    "CalendarAgendaEmpty": "В этом периоде нет элементов",
+    "CalendarUnscheduledCount": "Без дат ({count})",
+    "CalendarUnscheduledHint": "Перетащите элемент на день, чтобы запланировать его.",
+    "CalendarUnscheduledMore": "Ещё {count} элементов не показано. Сузьте фильтр, чтобы увидеть их.",
+    "CalendarAddNeedsDates": "Нельзя добавить элемент на день, пока представление берёт даты из вехи"
   },
   "status": {}
 }

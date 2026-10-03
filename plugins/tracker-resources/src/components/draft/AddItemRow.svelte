@@ -13,7 +13,7 @@
   import { MAX_ITEM_TITLE_LENGTH, MAX_PROJECT_ITEMS, parseAddItemInput, type Project } from '@hcengineering/tracker'
   import { Icon, IconAdd, Label, themeStore } from '@hcengineering/ui'
   import { canCreateObject, restrictionStore } from '@hcengineering/view-resources'
-  import { onDestroy } from 'svelte'
+  import { onDestroy, tick } from 'svelte'
 
   import { addItemAvailability } from '../../draft/addItem'
   import { createDraftItem, type DraftValues } from '../../draft/create'
@@ -32,6 +32,8 @@
   export let compact: boolean = false
   // Whether the search results are listed above or below the input
   export let placement: 'above' | 'below' = 'above'
+  // Puts the cursor in the input when the row appears (the row of a popup)
+  export let autofocus: boolean = false
 
   const client = getClient()
   const hierarchy = client.getHierarchy()
@@ -77,6 +79,15 @@
   let failed = false
   $: input = parseAddItemInput(text)
   $: enabled = availability === 'ok' && target !== undefined
+
+  // The input is disabled until the project and its task types are known, so it takes the focus once it can
+  let autofocused = false
+  $: if (autofocus && enabled && inputElement !== undefined && !autofocused) {
+    autofocused = true
+    void tick().then(() => {
+      inputElement?.focus()
+    })
+  }
 
   let placeholder = ''
   $: void translate(tracker.string.AddItemPlaceholder, {}, $themeStore.language).then((res) => {

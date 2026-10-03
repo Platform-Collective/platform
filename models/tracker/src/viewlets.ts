@@ -596,6 +596,30 @@ export function roadmapViewOptions (): ViewOptionsModel {
   }
 }
 
+// Calendar (month grid, week and agenda). Which dates place an item, and the mode, are stored in the view options under
+// the `calendar` key and edited in the toolbar of the layout itself. The fields shown on an item are the columns of the
+// view (Configure columns), like the cards of the board. There is no grouping: a day is the group. Order-by is the
+// order of the items inside a day.
+export function calendarViewOptions (): ViewOptionsModel {
+  const base = issuesOptions(true)
+  return {
+    // A single entry: the Customize View popup offers no "Group by" for a layout that has one entry
+    groupBy: ['status'],
+    defaultGroupBy: '#no_category',
+    orderBy: [
+      ['rank', SortingOrder.Ascending],
+      ['priority', SortingOrder.Ascending],
+      ['startDate', SortingOrder.Ascending],
+      ['dueDate', SortingOrder.Ascending],
+      ['modifiedOn', SortingOrder.Descending],
+      ['createdOn', SortingOrder.Descending],
+      ['status', SortingOrder.Ascending]
+    ],
+    groupDepth: 1,
+    other: base.other
+  }
+}
+
 export function defineViewlets (builder: Builder): void {
   builder.createDoc(
     view.class.ViewletDescriptor,
@@ -617,6 +641,17 @@ export function defineViewlets (builder: Builder): void {
       component: tracker.component.RoadmapView
     },
     tracker.viewlet.Roadmap
+  )
+
+  builder.createDoc(
+    view.class.ViewletDescriptor,
+    core.space.Model,
+    {
+      label: tracker.string.Calendar,
+      icon: tracker.icon.Calendar,
+      component: tracker.component.CalendarView
+    },
+    tracker.viewlet.Calendar
   )
 
   builder.createDoc(
@@ -925,6 +960,21 @@ export function defineViewlets (builder: Builder): void {
       config: []
     },
     tracker.viewlet.IssueRoadmap
+  )
+
+  // The calendar follows the roadmap, after the layouts of the saved view bar
+  builder.createDoc(
+    view.class.Viewlet,
+    core.space.Model,
+    {
+      attachTo: tracker.class.Issue,
+      descriptor: tracker.viewlet.Calendar,
+      viewOptions: calendarViewOptions(),
+      configOptions: { strict: true, hiddenKeys: ['title'] },
+      // The fields an item of the calendar shows; the title, the identifier and the status marker are always shown
+      config: ['assignee', 'priority', 'dueDate', 'labels']
+    },
+    tracker.viewlet.IssueCalendar
   )
 
   // Gantt is registered AFTER List + Kanban so List remains the default
