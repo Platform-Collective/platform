@@ -887,12 +887,18 @@ export function defineViewlets (builder: Builder): void {
       descriptor: tracker.viewlet.Kanban,
       viewOptions: {
         ...issuesOptions(true),
+        // The board starts without swimlanes: its "Group by" is the swimlanes, the columns come from the column
+        // field of the board settings (the status unless chosen otherwise). '#no_category' is the "No grouping"
+        // choice of the Customize View popup.
+        defaultGroupBy: '#no_category',
         groupDepth: 1
       },
       configOptions: {
         strict: true
       },
+      // The fields of a card; the title, the identifier and the status marker are always shown
       config: [
+        'assignee',
         'subIssues',
         'priority',
         'component',

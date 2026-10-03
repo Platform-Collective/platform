@@ -656,7 +656,20 @@
     "RoadmapUndo": "Undo",
     "RoadmapRescheduled": "Dates updated",
     "RoadmapRescheduleFailed": "Could not update the dates",
-    "RoadmapReadOnlyDates": "These dates cannot be changed in the roadmap"
+    "RoadmapReadOnlyDates": "These dates cannot be changed in the roadmap",
+    "BoardColumnField": "Column field",
+    "BoardHideColumn": "Hide column",
+    "BoardSetColumnLimit": "Set column limit",
+    "BoardEditColumnLimit": "Edit column limit",
+    "BoardRemoveColumnLimit": "Remove column limit",
+    "BoardColumnLimitPlaceholder": "Item limit",
+    "BoardColumnLimitExceeded": "The column limit is exceeded: {count} of {limit}",
+    "BoardHiddenColumns": "Hidden columns",
+    "BoardShowColumn": "Show",
+    "BoardShowHiddenColumns": "Show hidden columns ({count})",
+    "BoardClearColumnLimits": "Clear column limits ({count})",
+    "BoardCollapseLane": "Collapse swimlane",
+    "BoardExpandLane": "Expand swimlane"
   },
   "status": {}
 }

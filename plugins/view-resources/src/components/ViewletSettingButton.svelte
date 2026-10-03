@@ -13,7 +13,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { ButtonIcon, showPopup, closeTooltip } from '@hcengineering/ui'
+  import { type AnySvelteComponent, ButtonIcon, showPopup, closeTooltip } from '@hcengineering/ui'
   import { ViewOptionModel, ViewOptions, Viewlet, type ViewOptionsModel, BuildModelKey } from '@hcengineering/view'
   import view from '../plugin'
   import { getViewOptions, viewOptionStore, defaultOptions } from '../viewOptions'
@@ -60,6 +60,12 @@
   export let hideKeys: string[] = []
 
   /**
+   * Settings of the layout that are not part of the generic options; shown after the generic rows of the
+   * options popup. Forwarded to ViewOptionsButton → ViewOptions.
+   */
+  export let extraOptions: { component: AnySvelteComponent, props?: Record<string, any> } | undefined = undefined
+
+  /**
    * When false, the Configure-columns ButtonIcon is hidden. List mode keeps
    * the default `true` (column visibility is meaningful there). Gantt mode
    * passes false because the Gantt sidebar uses its own ganttSidebarShow*
@@ -102,7 +108,15 @@
 
 {#if viewlet}
   {#if viewOptions && showViewOptions}
-    <ViewOptionsButton {viewlet} {kind} {viewOptions} {viewOptionsConfig} {hideGroupingAndOrdering} {hideKeys} />
+    <ViewOptionsButton
+      {viewlet}
+      {kind}
+      {viewOptions}
+      {viewOptionsConfig}
+      {hideGroupingAndOrdering}
+      {hideKeys}
+      extra={extraOptions}
+    />
   {/if}
   {#if showConfigureColumns}
     <!-- Configure-columns button gets its own IntlString so the tooltip differs

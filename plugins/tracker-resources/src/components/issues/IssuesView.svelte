@@ -63,6 +63,7 @@
   } from '../../projectFields/query'
   import { buildRegistry } from '../../projectFields/registry'
   import { issuePriorities } from '../../types'
+  import BoardOptionsSection from '../board/BoardOptionsSection.svelte'
   import CreateIssue from '../CreateIssue.svelte'
   import GanttToolbarBar from '../gantt/GanttToolbarBar.svelte'
   import SearchEmptyState from '../SearchEmptyState.svelte'
@@ -100,6 +101,9 @@
   $: isGanttMode = viewlet?.descriptor === tracker.viewlet.Gantt
   // The roadmap has its own toolbar for dates, markers and fields; its columns are not configurable
   $: isRoadmapMode = viewlet?.descriptor === tracker.viewlet.Roadmap
+  // The board keeps its own settings (column field, hidden columns, limits) in the Customize View popup;
+  // its "Group by" is the swimlanes
+  $: isBoardMode = viewlet?.descriptor === tracker.viewlet.Kanban
   $: if (isGanttMode && viewlet !== undefined) {
     viewOptions = getViewOptions(viewlet, $viewOptionStore)
   }
@@ -121,9 +125,11 @@
   $: hasFilterableFields = $registry.fields.some((f) => isFilterableType(f.type))
   $: scanLimit = resolveScanLimit(getMetadata(tracker.metadata.CustomFieldScanLimit))
 
+  // The board groups by custom fields over all of its issues, it does not use the bounded scan
   $: usesCustomKeys =
-    (viewOptions?.groupBy ?? []).some((it) => parseCustomFieldViewKey(it) !== undefined) ||
-    parseCustomFieldViewKey(viewOptions?.orderBy?.[0] ?? '') !== undefined
+    !isBoardMode &&
+    ((viewOptions?.groupBy ?? []).some((it) => parseCustomFieldViewKey(it) !== undefined) ||
+      parseCustomFieldViewKey(viewOptions?.orderBy?.[0] ?? '') !== undefined)
   // The custom field rules are dormant while a filter string exists (the string is authoritative)
   $: filtersActive = activeFilterCount(filters) > 0 && !stringFilterActive
   $: needsScan = ($registry.fields.length > 0 && (filtersActive || usesCustomKeys)) || residual !== undefined
@@ -464,6 +470,7 @@
       hideKeys={isGanttMode ? ['ganttGroupBy'] : []}
       configOverride={project !== undefined ? viewConfig : undefined}
       onSaveConfig={project !== undefined ? (config) => savedViewBar?.setLocalConfig(config) : undefined}
+      extraOptions={isBoardMode ? { component: BoardOptionsSection, props: { space: project } } : undefined}
     />
   </svelte:fragment>
 

@@ -673,7 +673,20 @@
     "RoadmapUndo": "Отменить",
     "RoadmapRescheduled": "Даты обновлены",
     "RoadmapRescheduleFailed": "Не удалось обновить даты",
-    "RoadmapReadOnlyDates": "Эти даты нельзя изменить на дорожной карте"
+    "RoadmapReadOnlyDates": "Эти даты нельзя изменить на дорожной карте",
+    "BoardColumnField": "Поле колонок",
+    "BoardHideColumn": "Скрыть колонку",
+    "BoardSetColumnLimit": "Задать лимит колонки",
+    "BoardEditColumnLimit": "Изменить лимит колонки",
+    "BoardRemoveColumnLimit": "Убрать лимит колонки",
+    "BoardColumnLimitPlaceholder": "Лимит задач",
+    "BoardColumnLimitExceeded": "Лимит колонки превышен: {count} из {limit}",
+    "BoardHiddenColumns": "Скрытые колонки",
+    "BoardShowColumn": "Показать",
+    "BoardShowHiddenColumns": "Показать скрытые колонки ({count})",
+    "BoardClearColumnLimits": "Убрать лимиты колонок ({count})",
+    "BoardCollapseLane": "Свернуть дорожку",
+    "BoardExpandLane": "Развернуть дорожку"
   },
   "status": {}
 }

@@ -45,6 +45,10 @@
   export let options: FindOptions<DocWithRank> | undefined = undefined
   export let groupByKey: any
   export let limiter: RateLimiter
+  // Query of the full documents of the column. By default they are found by the group-by key and the column;
+  // a host whose columns are not a plain attribute of the document passes the query by the ids it shows.
+  export let getGroupQuery: ((state: CategoryType, stateObjects: Item[]) => DocumentQuery<DocWithRank>) | undefined =
+    undefined
 
   export let cardDragOver: (evt: CardDragEvent, object: Item) => void
   export let cardDrop: (evt: CardDragEvent, object: Item) => void
@@ -74,7 +78,7 @@
   let limitedObjects: IdMap<DocWithRank> = new Map()
 
   const docQuery = createQuery()
-  $: groupQuery = {
+  $: attributeQuery = {
     ...query,
     [groupByKey]:
       typeof state === 'object'
@@ -83,6 +87,26 @@
           : undefined
         : state
   }
+
+  // The query of the host is rebuilt only when it changes, so that moving cards around does not restart it
+  let hostQuery: DocumentQuery<DocWithRank> = {}
+  let hostQueryKey = ''
+  function updateHostQuery (
+    factory: (state: CategoryType, stateObjects: Item[]) => DocumentQuery<DocWithRank>,
+    state: CategoryType,
+    stateObjects: Item[],
+    limit: number
+  ): void {
+    const next = factory(state, stateObjects.slice(0, limit))
+    const key = JSON.stringify(next)
+    if (key !== hostQueryKey) {
+      hostQueryKey = key
+      hostQuery = next
+    }
+  }
+  $: if (getGroupQuery !== undefined) updateHostQuery(getGroupQuery, state, stateObjects, limit)
+
+  $: groupQuery = getGroupQuery !== undefined ? hostQuery : attributeQuery
 
   $: docQuery.query(
     _class,

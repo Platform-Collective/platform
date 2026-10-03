@@ -103,6 +103,8 @@
   export let assignee: Ref<Employee> | null = null
   export let component: Ref<ComponentType> | null = null
   export let milestone: Ref<Milestone> | null = null
+  // Values of the custom fields the issue starts with, e.g. the column of a board it is added from
+  export let customFields: Record<string, unknown> | undefined = undefined
   export let relatedTo: Doc | undefined
   export let shouldSaveDraft: boolean = true
   export let parentIssue: Issue | undefined
@@ -516,7 +518,8 @@
         relations: relatedTo !== undefined ? [{ _id: relatedTo._id, _class: relatedTo._class }] : [],
         childInfo: [],
         kind,
-        identifier
+        identifier,
+        ...(customFields !== undefined && Object.keys(customFields).length > 0 ? { customFields } : {})
       }
 
       if (!isEmptyMarkup(object.description)) {

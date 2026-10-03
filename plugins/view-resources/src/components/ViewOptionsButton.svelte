@@ -14,7 +14,7 @@
 -->
 <script lang="ts">
   import { getClient } from '@hcengineering/presentation'
-  import { ButtonIcon, closeTooltip, IconOptions, showPopup } from '@hcengineering/ui'
+  import { type AnySvelteComponent, ButtonIcon, closeTooltip, IconOptions, showPopup } from '@hcengineering/ui'
   import { OrderOption, Viewlet, ViewOptionModel, ViewOptions } from '@hcengineering/view'
   import { createEventDispatcher } from 'svelte'
   import view from '../plugin'
@@ -37,6 +37,8 @@
   // the "other" toggle/dropdown rendering (useful for viewlets that expose
   // the same ViewOption elsewhere, e.g. Gantt's `ganttGroupBy` toolbar).
   export let hideKeys: string[] = []
+  // Forwarded to the ViewOptions popup: settings of the layout shown after the generic rows
+  export let extra: { component: AnySvelteComponent, props?: Record<string, any> } | undefined = undefined
 
   const dispatch = createEventDispatcher()
   const client = getClient()
@@ -89,8 +91,8 @@
 
     config.groupBy = Array.from(new Set([...config.groupBy, ...customAttributes]))
 
-    // Keys provided by the host view (e.g. user-defined fields), supported by the list only
-    const extension = viewlet.descriptor === view.viewlet.List ? getClientViewExtension() : undefined
+    // Keys provided by the host view (e.g. user-defined fields)
+    const extension = getClientViewExtension()
     if (extension !== undefined) {
       config.groupBy = Array.from(new Set([...config.groupBy, ...extension.groupByKeys().map((it) => it.id)]))
       const extraOrder: OrderOption[] = extension.orderByKeys().map((it) => [it.id, SortingOrder.Ascending])
@@ -99,7 +101,7 @@
 
     showPopup(
       ViewOptionsEditor,
-      { viewlet, config, viewOptions: h.clone(viewOptions), hideGroupingAndOrdering, hideKeys },
+      { viewlet, config, viewOptions: h.clone(viewOptions), hideGroupingAndOrdering, hideKeys, extra },
       btn,
       () => {
         pressed = false
@@ -108,6 +110,11 @@
         if (result?.key === undefined) return
         if (viewlet) {
           viewOptions = { ...viewOptions, [result.key]: result.value }
+          // An option that is set back to nothing is not stored, so that the view does not look changed
+          if (result.value === undefined) {
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+            delete viewOptions[result.key]
+          }
 
           // Clear selection on view settings change.
           focusStore.set({})

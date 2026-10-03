@@ -647,3 +647,79 @@ rush build --to <pkg>             # cross-package type check before PR
 - Group headers are plain text (no avatars/status icons); item labels are plain text.
 - Drag to reschedule of a group header value (changing the group) is not supported.
 - Not exercised in a running UI or e2e (no sanity spec added): verified by jest, `rush validate` and `svelte-check`.
+
+
+---
+
+## Phase 7 implementation notes (Board parity)
+
+**What was built**
+
+- Pure logic in `plugins/tracker-resources/src/board/` with jest tests next to it: `config` (the `board` settings block,
+  column field resolution), `columns` (columns and swimlanes of a custom field), `swimlanes` (the swimlane x column grid),
+  `limits` (advisory column limits), `move` (what a drop writes), `cardFields` (what a card shows).
+- UI in `components/board/`: `CardFieldRenderer` (the card body, replaces the hardcoded body of `KanbanView.svelte`),
+  `BoardColumnHeader` (count/limit, column menu), `BoardLanes` (swimlanes), `HiddenColumnsPanel`, `DimensionTitle`,
+  `BoardOptionsSection` (board rows of the Customize View popup).
+- `KanbanView.svelte` was reworked around a column axis and an optional swimlane axis; without swimlanes it still renders
+  the shared `packages/kanban` board (keyboard navigation and manual rank are unchanged), with swimlanes it renders `BoardLanes`.
+
+**Behaviour (GitHub Projects board)**
+
+- Column field: Status (default), Assignee, Priority, Component, Milestone, any single-select custom field or any Iteration
+  field. Chosen in Customize View ("Column field"). Custom/iteration columns list every option (every iteration, in calendar
+  order, breaks left out) even when empty, and "No <field>" is the first column. A drop writes the status / the attribute /
+  `customFields[key]` (an option id or an iteration id; "No <field>" clears it). The "+" of a column creates the issue with
+  the column's value (`CreateIssue` got an optional `customFields` prop for that).
+- Swimlanes = the "Group by" of the view (Customize View > Grouping, same as GitHub). Single level; a built-in attribute or
+  a custom field (the client view extension keys are now offered for every layout, they used to be offered to the table only).
+  Lanes without cards are dropped unless "show empty groups" is on; "No <field>" is the last lane. A lane can be collapsed.
+  Dropping a card on a cell writes the column value and the lane value in one update (`resolveDropUpdate`). Group by the same
+  field as the columns is ignored. A new board starts without swimlanes (`defaultGroupBy: '#no_category'` on the Kanban viewlet).
+- Column menu (header "..."): Hide column, Set / Edit / Remove column limit. The limit is advisory and per column: the header
+  shows `count/limit`, and a column over its limit is tinted red; nothing stops a drop. Limits count the cards of the column
+  over all swimlanes. Typing 0 removes a limit; closing the popup without a number leaves it alone.
+- Hidden columns leave the board and are listed in a "Hidden columns" area at its right edge with a Show button; Customize View
+  has "Show hidden columns (n)" and "Clear column limits (n)".
+- Card fields follow the view's field list (Configure columns, saved per view): assignee, sub-issues, priority, component,
+  milestone, due date, labels, estimation, attachments, comments and every custom/iteration field (shown when the issue has a
+  value). The chips follow the order of the list. The title, identifier, status marker, parent and notification marker are
+  always shown. The default list is the old look (`assignee` was added to the Kanban viewlet config for this).
+- Sorting: manual rank is written only when the sort is Manual (unchanged); in swimlane mode there is no manual order inside a cell.
+
+**Per-view config and dirty tracking**
+
+- `columnField`, `columnLimits` and `hiddenColumns` live in the view options under the key `board` (the same precedent as
+  `roadmap`; limits and hidden columns are kept per column field). The saved view already stores, restores and diffs
+  `viewOptions`, so the effective config, the unsaved dot and discard work with no change in `SavedViewBar`; the default config
+  is not stored, so a changed-and-changed-back board is clean again (covered by a test through `isViewDirty`). The swimlane
+  field is the normal `viewOptions.groupBy` of the same object.
+- A column field that no longer exists (a deleted custom field) shows the status columns; the saved value is kept.
+
+**Shared code touched (additive)**
+
+- `packages/kanban`: `KanbanRow`/`Kanban` take an optional `getGroupQuery` (full documents of a column by ids, for columns that
+  are not a plain attribute); `KanbanRow` is exported.
+- `view-resources`: `ViewOptions` / `ViewOptionsButton` / `ViewletSettingButton` take an optional `extra` / `extraOptions`
+  component shown after the generic rows of the Customize View popup (it reports changes with `update`, like the rows do); an
+  option set to `undefined` is deleted from the options instead of stored. The client view extension keys are offered to any layout.
+
+**Deviations / decisions**
+
+- Swimlanes reuse the generic Group by instead of a second control, so on a board Grouping no longer means "columns". A
+  board whose localStorage options hold an old group-by other than the status now gets swimlanes by that field.
+- `columnField` / `columnLimits` are not new `FilteredView` props (D2 lists them): the view options block carries them like the
+  roadmap settings, which keeps one place for per-view layout state.
+- In swimlane mode the whole board scrolls, column headers and lane headers are sticky; there is no per-column scroll.
+- "No assignee/component/milestone" columns and lanes now accept drops (they write `null`); before, such a drop was refused.
+- Collapsed swimlanes are not persisted (session only).
+- The hook for column totals (`columnTotal` in `KanbanView.svelte`, shown by `BoardColumnHeader` as `total`) is unset; Phase 8
+  will provide the sum of a number field.
+
+**Not done / limits**
+
+- Not exercised in a running UI or e2e (no sanity spec added): verified by jest, `rush validate --to @hcengineering/prod`
+  and `svelte-check` of tracker-resources, view-resources and kanban.
+- The legacy `ViewletPreference` of the Kanban viewlet (a user's own column choice) does not contain `assignee`, so those users
+  see cards without the avatar until they switch it on.
+- A drop on a lane/column whose category has no value for the project of the card (status of another project) is refused.

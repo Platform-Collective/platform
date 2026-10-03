@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getClient } from '@hcengineering/presentation'
-  import { DropdownIntlItem, DropdownLabelsIntl, Label, Toggle } from '@hcengineering/ui'
+  import { type AnySvelteComponent, DropdownIntlItem, DropdownLabelsIntl, Label, Toggle } from '@hcengineering/ui'
   import { Viewlet, ViewOptions, ViewOptionsModel, ViewOptionModel } from '@hcengineering/view'
   import type { IntlString } from '@hcengineering/platform'
   import { createEventDispatcher } from 'svelte'
@@ -27,6 +27,12 @@
    * popup duplicate is undesired.
    */
   export let hideKeys: string[] = []
+  /**
+   * Settings of the layout that are not part of the generic options (e.g. the column field of a board).
+   * The component is shown after the generic rows; it receives `viewOptions` and the given props, and reports a
+   * change with an `update` event, like the rows above do.
+   */
+  export let extra: { component: AnySvelteComponent, props?: Record<string, any> } | undefined = undefined
 
   const dispatch = createEventDispatcher()
 
@@ -217,5 +223,15 @@
     </div>
   {/each}
   <slot name="extra" />
+  {#if extra !== undefined}
+    <svelte:component
+      this={extra.component}
+      {...extra.props ?? {}}
+      {viewOptions}
+      on:update={(e) => {
+        dispatch('update', e.detail)
+      }}
+    />
+  {/if}
   <div class="antiCard-menu__spacer" />
 </div>
