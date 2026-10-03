@@ -188,6 +188,12 @@ export { default as SubIssueList } from './components/issues/edit/SubIssueList.s
 export { default as IssueStatusIcon } from './components/issues/IssueStatusIcon.svelte'
 export { default as StatusPresenter } from './components/issues/StatusPresenter.svelte'
 
+export { default as CustomFieldPresenter } from './projectFields/CustomFieldPresenter.svelte'
+export { default as FieldValueEditor } from './projectFields/FieldValueEditor.svelte'
+export { default as ProjectFieldsPopup } from './projectFields/ProjectFieldsPopup.svelte'
+export * from './projectFields/registry'
+export { projectFieldsStore } from './projectFields/projectFieldsStore'
+
 export { activeProjects, CreateProject, IssuePresenter, PriorityEditor, StatusEditor, TitlePresenter }
 
 export async function queryIssue<D extends Issue> (

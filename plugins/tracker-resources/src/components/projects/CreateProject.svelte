@@ -58,6 +58,8 @@
   import { deepEqual } from 'fast-equals'
   import { createEventDispatcher } from 'svelte'
 
+  import ProjectFieldsPopup from '../../projectFields/ProjectFieldsPopup.svelte'
+
   import tracker from '../../plugin'
   import StatusSelector from '../issues/StatusSelector.svelte'
   import { workingDaysUpdate } from '../gantt/lib/working-days-editor'
@@ -614,6 +616,20 @@
         />
       </div>
     {/each}
+
+    {#if project != null}
+      <div class="antiGrid-row">
+        <div class="antiGrid-row__header">
+          <Label label={tracker.string.ProjectFields} />
+        </div>
+        <Button
+          label={tracker.string.ProjectFields}
+          kind={'regular'}
+          size={'large'}
+          on:click={() => showPopup(ProjectFieldsPopup, { project }, 'top')}
+        />
+      </div>
+    {/if}
   </div>
 </Card>
 
