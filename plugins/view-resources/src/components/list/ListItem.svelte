@@ -84,6 +84,7 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
   bind:this={elem}
+  data-row-doc={docObject._id}
   class="listGrid antiList__row row flex-gap-2 flex-grow"
   class:compactMode
   class:checking={checked}

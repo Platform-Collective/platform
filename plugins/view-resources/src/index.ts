@@ -68,6 +68,7 @@ import ReadOnlyNotification from './components/ReadOnlyNotification.svelte'
 import RolePresenter from './components/RolePresenter.svelte'
 import SearchSelector from './components/SearchSelector.svelte'
 import SavedViewBar from './components/view/SavedViewBar.svelte'
+import CellGrid from './components/table/CellGrid.svelte'
 import FilterQueryBar from './components/filter/FilterQueryBar.svelte'
 import SpaceHeader from './components/SpaceHeader.svelte'
 import SpacePresenter from './components/SpacePresenter.svelte'
@@ -235,6 +236,7 @@ export * from './viewOptions'
 export * from './clientViewExtension'
 export * from './savedViews'
 export * as filterGrammar from './filter/grammar'
+export * as tableEdit from './tableEdit'
 export * from './viewletContextStore'
 export { getViewletSpecialActions } from './viewletUtils'
 export { copyMarkdown } from './actionImpl'
@@ -268,6 +270,7 @@ export {
   SortableList,
   SortableListItem,
   SavedViewBar,
+  CellGrid,
   FilterQueryBar,
   SpaceHeader,
   SpacePresenter,

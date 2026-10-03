@@ -1,5 +1,12 @@
 {
   "string": {
+    "BulkItemsUpdated": "{count, plural, =1 {1 item updated} other {# items updated}}",
+    "BulkItemsUpdatedSkipped": "{count, plural, =1 {1 item updated} other {# items updated}}, {skipped, plural, =1 {1 cell skipped} other {# cells skipped}}",
+    "BulkCellsSkipped": "Nothing changed: {skipped, plural, =1 {1 cell does not accept this value} other {# cells do not accept this value}}",
+    "BulkUndo": "Undo",
+    "BulkUndone": "{count, plural, =1 {1 item restored} other {# items restored}}",
+    "BulkFailed": "Could not update the items",
+    "BulkUndoFailed": "Could not undo the changes",
     "Contains": "包含",
     "NotContains": "不包含",
     "MoveClass": "移动 {class}",

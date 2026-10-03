@@ -1,5 +1,9 @@
 {
     "string": {
+    "RowHeight": "Row height",
+    "RowHeightCompact": "Compact",
+    "RowHeightDefault": "Default",
+    "RowHeightComfortable": "Comfortable",
     "CustomFieldFilter": "Field filter",
     "AddFieldFilter": "Add field filter",
     "NoFieldFilters": "No custom field filters",

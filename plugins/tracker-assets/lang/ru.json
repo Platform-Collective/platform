@@ -1,5 +1,9 @@
 {
   "string": {
+    "RowHeight": "Высота строки",
+    "RowHeightCompact": "Компактная",
+    "RowHeightDefault": "Обычная",
+    "RowHeightComfortable": "Просторная",
     "CustomFieldFilter": "Фильтр по полям",
     "AddFieldFilter": "Добавить фильтр по полю",
     "NoFieldFilters": "Нет фильтров по пользовательским полям",

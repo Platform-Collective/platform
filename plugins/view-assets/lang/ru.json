@@ -1,5 +1,12 @@
 {
   "string": {
+    "BulkItemsUpdated": "{count, plural, one {Обновлён # элемент} few {Обновлено # элемента} other {Обновлено # элементов}}",
+    "BulkItemsUpdatedSkipped": "{count, plural, one {Обновлён # элемент} few {Обновлено # элемента} other {Обновлено # элементов}}, {skipped, plural, one {# ячейка пропущена} few {# ячейки пропущены} other {# ячеек пропущено}}",
+    "BulkCellsSkipped": "Ничего не изменено: {skipped, plural, one {# ячейка не принимает это значение} few {# ячейки не принимают это значение} other {# ячеек не принимают это значение}}",
+    "BulkUndo": "Отменить",
+    "BulkUndone": "{count, plural, one {Восстановлен # элемент} few {Восстановлено # элемента} other {Восстановлено # элементов}}",
+    "BulkFailed": "Не удалось обновить элементы",
+    "BulkUndoFailed": "Не удалось отменить изменения",
     "Contains": "содержит",
     "NotContains": "не содержит",
     "MoveClass": "Переместить {class}",

@@ -5,6 +5,10 @@
 
 const path = require('path')
 
-// Jest stand-in for @hcengineering/view-resources: only the pure filter grammar, without the svelte components.
+// Jest stand-in for @hcengineering/view-resources: only the pure modules (filter grammar, table editing),
+// without the svelte components.
 // The path is built at run time so that the type checkers do not pull view-resources sources into this package.
-module.exports = { filterGrammar: require(path.resolve(__dirname, '../../../view-resources/src/filter/grammar')) }
+module.exports = {
+  filterGrammar: require(path.resolve(__dirname, '../../../view-resources/src/filter/grammar')),
+  tableEdit: require(path.resolve(__dirname, '../../../view-resources/src/tableEdit'))
+}

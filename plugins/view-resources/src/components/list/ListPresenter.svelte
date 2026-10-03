@@ -20,6 +20,7 @@
   import { createEventDispatcher, onMount } from 'svelte'
   import { Readable } from 'svelte/store'
   import { canChangeAttribute, FixedColumn, restrictionStore } from '../..'
+  import { CELL_END_MARKER, cellStartMarker } from '../../tableEdit/cells'
   import DividerPresenter from './DividerPresenter.svelte'
 
   export let docObject: Doc
@@ -34,6 +35,11 @@
   const dispatch = createEventDispatcher()
 
   $: dp = attributeModel?.displayProps
+  // Comment nodes around the cell tell the table editing layer which column it is (see tableEdit/cells.ts);
+  // unlike a wrapper element they do not change the layout or the child selectors of the row
+  $: cellKey = dp?.key ?? attributeModel?.key ?? ''
+  $: cellStart = cellKey !== '' ? cellStartMarker(cellKey) : ''
+  $: cellEnd = cellKey !== '' ? CELL_END_MARKER : ''
 
   function joinProps (attribute: AttributeModel, object: Doc, props: Record<string, any>, readonly: boolean) {
     const readonlyParams =
@@ -76,6 +82,7 @@
 {#if dp?.dividerBefore === true && !hideDivider}
   <DividerPresenter />
 {/if}
+{@html cellStart}
 {#if dp?.fixed}
   <FixedColumn key={`list_item_${dp.key}`} justify={dp.fixed}>
     <svelte:component
@@ -113,3 +120,4 @@
     on:resize={translateSize}
   />
 {/if}
+{@html cellEnd}

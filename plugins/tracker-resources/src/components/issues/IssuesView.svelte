@@ -1,10 +1,11 @@
 <script lang="ts">
   import { DocumentQuery, Ref, Space, WithLookup } from '@hcengineering/core'
-  import { Asset, getMetadata, IntlString, translate, translateCB } from '@hcengineering/platform'
-  import contact, { Employee, getCurrentEmployee, getName } from '@hcengineering/contact'
+  import { Asset, getMetadata, getResource, IntlString, translate, translateCB } from '@hcengineering/platform'
+  import contact, { Employee, getCurrentEmployee, getName, type PermissionsStore } from '@hcengineering/contact'
   import { ComponentExtensions, createQuery, getClient } from '@hcengineering/presentation'
   import tags, { TagElement, TagReference } from '@hcengineering/tags'
-  import task from '@hcengineering/task'
+  import task, { getTaskTypeStates } from '@hcengineering/task'
+  import { taskTypeStore } from '@hcengineering/task-resources'
   import { Issue, Project, TrackerEvents } from '@hcengineering/tracker'
   import {
     Button,
@@ -18,6 +19,8 @@
   } from '@hcengineering/ui'
   import view, { BuildModelKey, ViewOptions, Viewlet } from '@hcengineering/view'
   import {
+    canChangeAttribute,
+    CellGrid,
     clientViewExtension,
     filterGrammar,
     FilterBar,
@@ -36,10 +39,12 @@
     searchHighlightEnabledStore,
     shouldShowSearchEmptyState,
     statusStore,
+    tableEdit,
     viewOptionStore
   } from '@hcengineering/view-resources'
   import { onDestroy } from 'svelte'
   import { readable } from 'svelte/store'
+  import { createIssueCellColumns, runIssueOps, type IssueCellLookups, type IssueLabelRef } from '../../bulkEdit/issueCells'
   import { buildIssueFilterSchema, customFilterToQuery, type NamedOption } from '../../issueFilter'
   import tracker from '../../plugin'
   import CustomFieldFilterButton from '../../projectFields/CustomFieldFilterButton.svelte'
@@ -129,6 +134,9 @@
   let milestones: NamedOption[] = []
   let labels: NamedOption[] = []
   let labelRefs: Array<{ issue: string, label: string }> = []
+  // Labels with what a bulk edit needs to add or remove them
+  let labelElements: Array<{ id: string, title: string, color: number }> = []
+  let labelRefsByIssue = new Map<string, IssueLabelRef[]>()
   let priorities: NamedOption[] = []
   const assigneeQuery = createQuery()
   const componentQuery = createQuery()
@@ -142,6 +150,7 @@
   })
   labelQuery.query(tags.class.TagElement, { targetClass: tracker.class.Issue }, (res: TagElement[]) => {
     labels = res.map((e) => ({ id: e._id, name: e.title }))
+    labelElements = res.map((e) => ({ id: e._id, title: e.title, color: e.color }))
   })
   $: if (project !== undefined) {
     componentQuery.query(tracker.class.Component, { space: project }, (res) => {
@@ -155,8 +164,15 @@
       { space: project, attachedToClass: tracker.class.Issue },
       (res: TagReference[]) => {
         labelRefs = res.map((r) => ({ issue: r.attachedTo, label: r.tag }))
+        const byIssue = new Map<string, IssueLabelRef[]>()
+        for (const r of res) {
+          const list = byIssue.get(r.attachedTo) ?? []
+          list.push({ _id: r._id, tag: r.tag, title: r.title, color: r.color })
+          byIssue.set(r.attachedTo, list)
+        }
+        labelRefsByIssue = byIssue
       },
-      { projection: { attachedTo: 1, tag: 1 } }
+      { projection: { attachedTo: 1, tag: 1, title: 1, color: 1 } }
     )
   }
 
@@ -168,6 +184,48 @@
     )
   }
   $: void updatePriorities($themeStore.language)
+
+  // ---- spreadsheet-style editing of the table cells (plan 2.5) ----
+  // Values a pasted text can be turned into follow the project that is shown; for several projects only
+  // what is common to all of them (statuses, priorities, assignees, labels) is available.
+  let permissions: PermissionsStore | undefined
+  let unsubscribePermissions: (() => void) | undefined
+  void getResource(contact.store.Permissions).then((store) => {
+    unsubscribePermissions = store.subscribe((value) => {
+      permissions = value
+    })
+  })
+  onDestroy(() => {
+    unsubscribePermissions?.()
+  })
+
+  function canChangeIssueAttribute (issue: Issue, attribute: string): boolean {
+    const attr = client.getHierarchy().findAttribute(issue._class, attribute)
+    if (attr === undefined || permissions === undefined) return true
+    return canChangeAttribute(attr, issue.space, permissions, issue._class)
+  }
+
+  let cellLookups: IssueCellLookups
+  $: cellLookups = {
+    statuses: (issue) =>
+      (getTaskTypeStates(issue.kind, $taskTypeStore, $statusStore.byId) ?? []).map((s) => ({ id: s._id, label: s.name })),
+    priorities: priorities.map((p) => ({ id: Number(p.id), label: p.name })),
+    assignees: assignees.map((a) => ({ id: String(a.id), label: a.name })),
+    components: components.map((c) => ({ id: String(c.id), label: c.name })),
+    milestones: milestones.map((m) => ({ id: String(m.id), label: m.name })),
+    labels: labelElements,
+    labelRefs: (id) => labelRefsByIssue.get(id) ?? [],
+    fields: $registry.byKey,
+    canEdit: canChangeIssueAttribute
+  }
+  const cellAdapter = {
+    column: createIssueCellColumns(() => cellLookups),
+    run: async (ops: readonly tableEdit.EditOp[]) => {
+      await runIssueOps(client, ops)
+    }
+  }
+  // Only the table layout renders cells that can be edited like this
+  $: cellAdapterActive = viewlet?.descriptor === view.viewlet.List ? cellAdapter : undefined
 
   $: statuses = [...$statusStore.byId.values()].filter((s) => s.ofAttribute === tracker.attribute.IssueStatus)
   $: closedStatuses = new Set<string>(
@@ -558,18 +616,20 @@
      user's explicit view option wins. -->
 <div class="viewlet-wrap">
   {#if viewlet && viewOptions}
-    <ViewletContentView
-      _class={tracker.class.Issue}
-      {viewlet}
-      query={viewQuery}
-      {space}
-      {viewOptions}
-      configOverride={project !== undefined ? viewConfig : undefined}
-      createItemDialog={CreateIssue}
-      createItemLabel={tracker.string.AddIssueTooltip}
-      createItemEvent={TrackerEvents.IssuePlusButtonClicked}
-      createItemDialogProps={{ shouldSaveDraft: true }}
-    />
+    <CellGrid adapter={cellAdapterActive} rowHeight={viewOptions.rowHeight}>
+      <ViewletContentView
+        _class={tracker.class.Issue}
+        {viewlet}
+        query={viewQuery}
+        {space}
+        {viewOptions}
+        configOverride={project !== undefined ? viewConfig : undefined}
+        createItemDialog={CreateIssue}
+        createItemLabel={tracker.string.AddIssueTooltip}
+        createItemEvent={TrackerEvents.IssuePlusButtonClicked}
+        createItemDialogProps={{ shouldSaveDraft: true }}
+      />
+    </CellGrid>
   {/if}
 </div>
 {#if showSearchEmptyState}

@@ -141,7 +141,15 @@ export default mergeIds(viewId, typedView, {
     FilterQueryErrorDate: '' as IntlString,
     FilterQueryErrorNumber: '' as IntlString,
     FilterQueryErrorRange: '' as IntlString,
-    FilterQueryErrorKeyword: '' as IntlString
+    FilterQueryErrorKeyword: '' as IntlString,
+
+    BulkItemsUpdated: '' as IntlString,
+    BulkItemsUpdatedSkipped: '' as IntlString,
+    BulkCellsSkipped: '' as IntlString,
+    BulkUndo: '' as IntlString,
+    BulkUndone: '' as IntlString,
+    BulkFailed: '' as IntlString,
+    BulkUndoFailed: '' as IntlString
   },
   function: {
     CreateDocMiddleware: '' as Resource<PresentationMiddlewareCreator>,

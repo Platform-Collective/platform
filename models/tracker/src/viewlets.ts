@@ -55,6 +55,19 @@ const SEARCH_VIEW_OPTIONS: ViewOptionModel[] = [
   }
 ]
 
+// Row height of the table layout (GitHub Projects: "Row height"). Saved with the view like any view option.
+const ROW_HEIGHT_VIEW_OPTION: ViewOptionModel = {
+  key: 'rowHeight',
+  type: 'dropdown',
+  defaultValue: 'default',
+  values: [
+    { id: 'compact', label: tracker.string.RowHeightCompact },
+    { id: 'default', label: tracker.string.RowHeightDefault },
+    { id: 'comfortable', label: tracker.string.RowHeightComfortable }
+  ],
+  label: tracker.string.RowHeight
+}
+
 export const issuesOptions = (kanban: boolean): ViewOptionsModel => ({
   groupBy: [
     'status',
@@ -107,7 +120,7 @@ export const issuesOptions = (kanban: boolean): ViewOptionsModel => ({
       action: view.function.HideArchived,
       label: view.string.HideArchived
     },
-    ...(!kanban ? [showColorsViewOption] : []),
+    ...(!kanban ? [showColorsViewOption, ROW_HEIGHT_VIEW_OPTION] : []),
     ...SEARCH_VIEW_OPTIONS
   ]
 })
