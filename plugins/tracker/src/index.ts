@@ -51,10 +51,12 @@ import { AnyComponent, ComponentExtensionId, Location, ResolvedLocation } from '
 import { Action, ActionCategory, IconProps } from '@hcengineering/view'
 import type { ProjectField } from './projectField'
 import type { Iteration } from './iteration'
+import type { InsightChart } from './insightChart'
 
 export * from './analytics'
 export * from './projectField'
 export * from './iteration'
+export * from './insightChart'
 export * from './iterationRollup'
 
 /**
@@ -585,6 +587,7 @@ const pluginState = plugin(trackerId, {
     Milestone: '' as Ref<Class<Milestone>>,
     ProjectField: '' as Ref<Class<ProjectField>>,
     Iteration: '' as Ref<Class<Iteration>>,
+    InsightChart: '' as Ref<Class<InsightChart>>,
     TypeMilestoneStatus: '' as Ref<Class<Type<MilestoneStatus>>>,
     TimeSpendReport: '' as Ref<Class<TimeSpendReport>>,
     TypeReportedTime: '' as Ref<Class<Type<number>>>,

@@ -72,6 +72,10 @@ import {
   type IssueTemplate,
   type IssueTemplateChild,
   type Milestone,
+  type InsightChart,
+  type InsightDateBucket,
+  type InsightLayout,
+  type InsightYAxis,
   type Iteration,
   type ProjectField,
   type ProjectFieldOption,
@@ -530,6 +534,41 @@ export class TIteration extends TDoc implements Iteration {
 
   @Prop(TypeBoolean(), tracker.string.IterationBreak)
     isBreak?: boolean
+
+  declare space: Ref<Project>
+}
+
+/**
+ * A saved chart of the project Insights. `space` is the project.
+ * @public
+ */
+@Model(tracker.class.InsightChart, core.class.Doc, DOMAIN_TRACKER)
+@UX(tracker.string.InsightChart, tracker.icon.Issues, '', 'name', undefined, tracker.string.InsightCharts)
+export class TInsightChart extends TDoc implements InsightChart {
+  @Prop(TypeString(), tracker.string.Title)
+    name!: string
+
+  @Prop(TypeString(), tracker.string.InsightLayout)
+    layout!: InsightLayout
+
+  @Prop(TypeString(), tracker.string.InsightXAxis)
+    xField!: string
+
+  @Prop(TypeString(), tracker.string.InsightDateBucket)
+    xBucket?: InsightDateBucket | null
+
+  @Prop(TypeString(), tracker.string.InsightGroupBy)
+    groupField?: string | null
+
+  @Prop(TypeRecord(), tracker.string.InsightYAxis)
+    yAggregate!: InsightYAxis
+
+  @Prop(TypeString(), tracker.string.InsightFilter)
+    filter!: string
+
+  @Prop(TypeNumber(), tracker.string.Number)
+  @Hidden()
+    position!: number
 
   declare space: Ref<Project>
 }

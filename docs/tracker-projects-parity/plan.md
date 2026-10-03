@@ -802,3 +802,82 @@ rush build --to <pkg>             # cross-package type check before PR
 - Not exercised in a running UI or e2e (no sanity spec added): verified by jest (tracker-resources, view-resources,
   tracker-assets), `svelte-check` of view-resources and tracker-resources and `rush validate --to @hcengineering/prod`. The layout
   of the slice panel and of the footer in the page flex chain is by reasoning, not by eye.
+
+
+---
+
+## Phase 9 implementation notes (Insights, current charts)
+
+**What was built**
+
+- Model: `tracker.class.InsightChart` (`DOMAIN_TRACKER`, `space` = project; `name`, `layout`, `xField`, `xBucket?`, `groupField?`,
+  `yAggregate {type, field?}`, `filter`, `position`). Types in `plugins/tracker/src/insightChart.ts`, class `TInsightChart` in
+  `models/tracker`, the class id is declared once in `plugins/tracker` (`tracker.class.InsightChart`), strings in the tracker-resources
+  `plugin.ts`. `xBucket` is an addition to the brief: it is the day/week/month size of a date X-axis. `OnProjectRemove`
+  (`server-plugins/tracker-resources`) removes the charts of a removed project (jest test next to the existing trigger tests). No
+  `@Migration` step: a new class in an existing domain has nothing to migrate.
+- Pure logic with jest tests in `plugins/tracker-resources/src/insights/`: `config` (layouts, normalization, dirty tracking, edits,
+  resolving a config against the project's fields), `fields` (what each project field can be: category / date / number), `aggregate`
+  (buckets, series, Count/Sum/Average/Minimum/Maximum, "No <field>", ordering, date buckets), `build` (fields -> request for the
+  aggregation), `drill` (filter string behind a bar), `layout` (scales, ticks, bars, lines, areas in pixels), `colors`. Tests also run
+  under four time zones (dates are local days, like iterations).
+- UI in `components/insights/`: `InsightsPanel` (page: charts sidebar, filter bar, chart, configuration), `ChartConfigPanel`,
+  `charts/ChartCanvas` (SVG, written in-repo; no chart library exists in the repo), `charts/ChartLegend`, `IconInsights`. `IssuesView`
+  got an "Insights" button in the project header (`header-tools` slot).
+- Strings (50) were added to `tracker.string` and to all 14 locale files by plain text insertion (ru translated, the others English).
+
+**Behaviour (GitHub Projects Insights, current charts)**
+
+- The page covers the project view (its own header has the way back); the view keeps its state, so unsaved view changes survive
+  opening Insights. The page lists the charts of the project; a project without charts shows the default chart "Issues by status"
+  (Column, X = Status, Count). The default chart is virtual and is stored the first time it is saved, renamed, duplicated or when a
+  chart is added. (The GitHub default "Burn up" is a historical chart and is out of scope, D6 option C.)
+- Chart menu (the "..." of a chart or right-click): rename, duplicate (`X (copy)`), delete (with confirmation). `+ New chart` adds
+  `Chart N` with the default configuration. The selected chart is remembered per viewer and project (local storage).
+- Configuration panel: Layout (exactly Bar, Column, Stacked bar, Stacked column, Stacked area, Line), X-axis, Group by (optional),
+  Y-axis (Count of items, or Sum / Average / Minimum / Maximum of a number field: the estimation or a Number custom field), a bucket
+  size (Day / Week / Month) when the X-axis is a date, and the filter string bar above the chart (the Phase 3 `FilterQueryBar`).
+  X-axis and Group by: status, priority, assignee, labels, component, milestone and the single select, multi select and iteration
+  fields (text and number fields are not offered). A date field (due date, start date, deadline, Date custom fields) can be the
+  X-axis of a Line or Stacked area only; switching to another layout moves the X-axis back to the first category field.
+- Bar and Column with a group-by draw the series side by side, the stacked layouts stack them (negative values stack downwards), Line
+  draws a line per series, Stacked area stacks the areas. Labels: items with several values (labels, multi select) count in each of
+  them; items without a value are in a last "No <field>" bucket / series (neutral color); the options of the project's own fields are
+  all listed (also with 0), the options of the others (status of another type, people, labels) only when used. Statuses follow the
+  workflow order, people / labels / components / milestones are alphabetical, iterations calendar order. Weeks start on Monday.
+- Y aggregates: the count counts every item; the others use the items that have a finite number in the field (anything else is
+  ignored); a bucket with no numbers has no value for average / minimum / maximum (a gap, not a 0), 0 for the sum.
+- Date axis: every bucket from the first item to the last is drawn (empty ones are 0 / a gap); beyond 1000 buckets only the buckets
+  that have items are drawn. Items without a date are the last "No <field>" point: on a Line it is a separate marker, on a Stacked area
+  a stacked column next to the areas (they cannot be joined to the dates).
+- Unsaved changes: the draft is compared with the saved chart (`isChartDirty`; filter whitespace and an unused bucket are not changes,
+  a change that is changed back is clean again). A dot shows on the chart in the sidebar and the toolbar offers Discard changes,
+  Save to new chart and Save changes. A saved chart that changes elsewhere is taken unless the draft has changes of its own.
+- A field that was removed from the project (X-axis, group-by, Y number field) falls back (first category field / no grouping / count)
+  with a notice; the saved chart is not rewritten. A filter that no longer parses is not applied and the chart is not drawn.
+- Scan limit: the chart is computed over a scan of the project's issues (server-narrowed by the indexable part of the filter, the rest
+  evaluated on the client) capped at `TRACKER_CUSTOM_FIELD_SCAN_LIMIT` + 1. Above the limit an explicit message is shown and nothing is
+  drawn (never a truncated chart). Archived projects' issues are not scanned (the usual `findAll` rule).
+- Hover shows a tooltip (category, series, value, item count); the marks are focusable (Enter / Space activate) and carry a text
+  label; the chart has a text description. Click a bar, point or segment: the project view opens with that bucket's filter (the
+  chart's filter AND `field:value`, or `no:field`, or a day range for a date bucket); view chips, legacy custom field rules and the
+  slice are cleared for that, so the view shows exactly the issues behind the number. The result is an unsaved change of the active
+  saved view (Discard brings the old filter back).
+
+**Deviations / decisions**
+
+- Group by also accepts the same field set as the X-axis (category fields only; a date cannot be a series), and cannot repeat the
+  X field. GitHub's docs do not say which layouts support Group by; here all six do.
+- The "popup list of the filtered items" (optional in the brief) was not built; the click goes to the project view instead.
+- Charts are not scoped per user: any member who can edit the project can save, rename and delete them (like saved views); a
+  read-only viewer (`restrictionStore.readonly`) sees the controls disabled / hidden.
+- The configuration panel is on the right, the filter above the chart (as on GitHub); below 60rem the three columns stack.
+
+**Not done / limits**
+
+- Historical charts (X-axis = time, burn up) are not built and not faked (D6).
+- No pie / donut, no chart export, no reordering of charts by drag (they follow `position`; duplicate / new append).
+- Not exercised in a running UI or e2e (no sanity spec added): verified by jest (tracker-resources, tracker-assets,
+  server-tracker-resources, model-tracker), `svelte-check` of tracker-resources and `rush validate --to @hcengineering/prod`,
+  `--to @hcengineering/model-tracker`. Layout of the page in the panel (absolute overlay), the tooltip position and the colors are by
+  reasoning, not by eye.

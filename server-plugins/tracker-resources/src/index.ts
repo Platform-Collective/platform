@@ -177,7 +177,8 @@ export async function OnProjectRemove (txes: Tx[], control: TriggerControl): Pro
       tracker.class.Milestone,
       tracker.class.IssueTemplate,
       tracker.class.ProjectField,
-      tracker.class.Iteration
+      tracker.class.Iteration,
+      tracker.class.InsightChart
     ]
     for (const cls of classes) {
       const docs = await control.findAll(control.ctx, cls, { space: ctx.objectId })

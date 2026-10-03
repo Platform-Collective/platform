@@ -158,4 +158,18 @@ describe('OnProjectRemove', () => {
     const res: any[] = await OnProjectRemove([{ objectId: SPACE } as unknown as Tx], control)
     expect(res.map((r) => r.id)).toEqual(['it1'])
   })
+
+  it('removes the saved insight charts of the project', async () => {
+    const charts = [
+      { _id: 'c1', _class: tracker.class.InsightChart, space: SPACE },
+      { _id: 'c2', _class: tracker.class.InsightChart, space: SPACE }
+    ]
+    const control = makeControl({ [tracker.class.InsightChart]: charts })
+    control.ctx = { contextData: { broadcast: { targets: {} } } }
+    const res: any[] = await OnProjectRemove([{ objectId: SPACE } as unknown as Tx], control)
+    expect(res.map((r) => [r._class, r.id])).toEqual([
+      [tracker.class.InsightChart, 'c1'],
+      [tracker.class.InsightChart, 'c2']
+    ])
+  })
 })

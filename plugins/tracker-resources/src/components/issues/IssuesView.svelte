@@ -41,6 +41,7 @@
     resultIssueCountStore,
     resetResultCount,
     searchHighlightEnabledStore,
+    setFilters,
     setViewOptions,
     shouldShowSearchEmptyState,
     statusStore,
@@ -100,6 +101,8 @@
   import FieldSumFooter from '../fieldSum/FieldSumFooter.svelte'
   import FieldSumGroupSummary from '../fieldSum/FieldSumGroupSummary.svelte'
   import GanttToolbarBar from '../gantt/GanttToolbarBar.svelte'
+  import IconInsights from '../insights/IconInsights.svelte'
+  import InsightsPanel from '../insights/InsightsPanel.svelte'
   import SearchEmptyState from '../SearchEmptyState.svelte'
   import IconSlice from '../slice/IconSlice.svelte'
   import SlicePanel from '../slice/SlicePanel.svelte'
@@ -509,6 +512,21 @@
     changeSlice(detail.id === undefined ? selectAllValues(sliceConfig) : toggleSliceValue(sliceConfig, detail.id, detail.multi))
   }
 
+  // ---- insights (GitHub's "Insights": current charts of the project) ----
+  // The page covers the view while it is open (its own header has the way back); the view keeps its state, so nothing
+  // the user has not saved is lost. Opening the issues behind a bar applies that bar's filter to the view and shows it.
+  let insightsOpen = false
+  $: if (project === undefined) insightsOpen = false
+
+  function openFromInsights (e: CustomEvent<{ filter: string }>): void {
+    // The chart is independent of the filters of the view, so its issues are shown by those of the chart alone
+    setFilters([])
+    if (project !== undefined) customFieldFilterStore(project).set([])
+    if (sliceStored !== undefined) changeSlice(undefined)
+    filterQuery = e.detail.filter
+    insightsOpen = false
+  }
+
   // ---- sub-issue hierarchy (GitHub's "Show hierarchy") ----
   // Sub-issues are nested under their parents in the table of a view that turned it on. The rows are made by the
   // list (see ClientHierarchy); here the view says how to find the parent, where the expanded rows are kept and
@@ -710,6 +728,19 @@
   shrinkSearch={isGanttMode}
 >
   <svelte:fragment slot="header-tools">
+    {#if project !== undefined}
+      <Button
+        kind={'ghost'}
+        size={'small'}
+        icon={IconInsights}
+        label={tracker.string.Insights}
+        selected={insightsOpen}
+        dataId={'btn-insights'}
+        on:click={() => {
+          insightsOpen = !insightsOpen
+        }}
+      />
+    {/if}
     <ViewletSettingButton
       bind:viewOptions
       bind:viewlet
@@ -952,6 +983,19 @@
     {/if}
   </div>
 </div>
+{#if insightsOpen && project !== undefined}
+  <InsightsPanel
+    space={project}
+    {filterSchema}
+    {filterCtx}
+    {statusOrder}
+    {scanLimit}
+    on:close={() => {
+      insightsOpen = false
+    }}
+    on:open={openFromInsights}
+  />
+{/if}
 {#if showSearchEmptyState}
   <div class="search-empty-state-overlay">
     <SearchEmptyState searchText={$rawSearchTextStore} activeFilters={$filterStore.map((f) => f.key.key)} />
