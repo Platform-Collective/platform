@@ -288,6 +288,12 @@ export class TIssue extends TTask implements Issue {
   @Hidden()
     archivedAt?: Timestamp | null
 
+  // Set while the issue is a draft item (GitHub "draft issue"): an item of the project that is not an issue yet,
+  // with number 0. Converting it takes the next number of the project and sets false
+  @Prop(TypeBoolean(), tracker.string.Draft)
+  @Hidden()
+    isDraft?: boolean
+
   // Soft deadline, independent of dueDate. Optional.
   // When set, the Gantt renders a flag marker at this date and flags the
   // issue as overdue when dueDate > deadline. Undefined for existing issues

@@ -46,7 +46,7 @@ describe('suggest', () => {
   it('offers field names after has: and no:, and is: values', () => {
     expect(labels('has:a')).toEqual(expect.arrayContaining(['assignee', 'area']))
     expect(labels('no:du')).toEqual(['due'])
-    expect(labels('is:')).toEqual(['open', 'closed', 'issue', 'sub-issue', 'archived'])
+    expect(labels('is:')).toEqual(['open', 'closed', 'issue', 'sub-issue', 'archived', 'draft'])
   })
 
   it('ignores comparison operators when completing', () => {

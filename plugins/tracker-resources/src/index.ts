@@ -142,6 +142,7 @@ import {
   setFilters
 } from '@hcengineering/view-resources'
 import { archiveIssue, restoreIssue } from './archive/actions'
+import { convertDraftToIssue } from './draft/actions'
 import MoveAndDeleteMilestonePopup from './components/milestones/MoveAndDeleteMilestonePopup.svelte'
 import EditIssueTemplate from './components/templates/EditIssueTemplate.svelte'
 import TemplateEstimationEditor from './components/templates/EstimationEditor.svelte'
@@ -564,7 +565,8 @@ export default async (): Promise<Resources> => ({
     DeleteProject: deleteProject,
     DeleteIssue: deleteIssue,
     ArchiveIssue: archiveIssue,
-    RestoreIssue: restoreIssue
+    RestoreIssue: restoreIssue,
+    ConvertDraftToIssue: convertDraftToIssue
   },
   resolver: {
     Location: resolveLocation

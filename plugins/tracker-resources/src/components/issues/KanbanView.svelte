@@ -75,6 +75,8 @@
     partitionColumns
   } from '../../board/columns'
   import { attributeTarget, customTarget, resolveDropUpdate, type DropTarget } from '../../board/move'
+  import { draftValuesFromUpdate } from '../../draft/addItem'
+  import type { DraftValues } from '../../draft/create'
   import { buildBoardGrid, gridOrder } from '../../board/swimlanes'
   import { readFieldSums, resolveFieldSums, sumProjection, type SummableField } from '../../fieldSum/config'
   import { loadSummableFields } from '../../fieldSum/load'
@@ -92,6 +94,7 @@
   import HiddenColumnsPanel from '../board/HiddenColumnsPanel.svelte'
   import type { DimensionInfo } from '../board/types'
   import CreateIssue from '../CreateIssue.svelte'
+  import AddItemRow from '../draft/AddItemRow.svelte'
 
   const _class = tracker.class.Issue
   export let space: Ref<Project> | undefined = undefined
@@ -404,6 +407,18 @@
     showPopup(CreateIssue, props, 'top')
   }
 
+  // What a draft added in a cell of the board starts with: the value of its column and, with swimlanes, of its swimlane.
+  // `undefined` when the cell cannot take a new item (its value does not exist for the project).
+  function draftValuesFor (column: CategoryType, lane?: CategoryType): DraftValues | undefined {
+    if (space === undefined) return undefined
+    const stub = { space } as unknown as Doc
+    const columnTarget = targetOf(columnKey, column, stub)
+    const laneTarget = laneKey !== undefined ? targetOf(laneKey, lane, stub) : undefined
+    if (columnTarget === undefined || (laneKey !== undefined && laneTarget === undefined)) return undefined
+    const update = resolveDropUpdate(stub, [columnTarget, laneTarget])
+    return update === undefined ? undefined : draftValuesFromUpdate(update)
+  }
+
   // ---- moving cards ----
   function targetOf (key: string, category: unknown, doc: Doc): DropTarget | undefined {
     const fieldKey = parseCustomFieldViewKey(key)
@@ -530,6 +545,14 @@
       <svelte:fragment slot="lane-header" let:lane>
         <DimensionTitle info={lanesInfo} category={lane.category} {space} accent={false} />
       </svelte:fragment>
+      <svelte:fragment slot="cell-footer" let:lane let:column>
+        {#if space !== undefined && !$restrictionStore.readonly}
+          {@const values = draftValuesFor(column, lane.category)}
+          {#if values !== undefined}
+            <AddItemRow project={space} {values} compact placement={'below'} />
+          {/if}
+        {/if}
+      </svelte:fragment>
       <svelte:fragment slot="card" let:object>
         {#key object._id}
           <CardFieldRenderer issue={toIssue(object)} {config} {space} {currentProject} />
@@ -615,6 +638,14 @@
         {#key object._id}
           <CardFieldRenderer issue={toIssue(object)} {config} {space} {currentProject} />
         {/key}
+      </svelte:fragment>
+      <svelte:fragment slot="afterCard" let:state>
+        {#if space !== undefined && !$restrictionStore.readonly}
+          {@const values = draftValuesFor(state)}
+          {#if values !== undefined}
+            <AddItemRow project={space} {values} compact placement={'below'} />
+          {/if}
+        {/if}
       </svelte:fragment>
       <svelte:fragment slot="afterPanel">
         <HiddenColumnsPanel

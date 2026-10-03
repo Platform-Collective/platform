@@ -45,6 +45,7 @@ import tracker, {
   groupShiftsByRecipient,
   Issue,
   IssueParentInfo,
+  issueLinkSegment,
   itemsOverProjectLimit,
   type Iteration,
   overLimitFields,
@@ -82,7 +83,7 @@ async function updateSubIssues (
 export async function issueHTMLPresenter (doc: Doc, control: TriggerControl): Promise<string> {
   const issue = doc as Issue
   const front = control.branding?.front ?? getMetadata(serverCore.metadata.FrontUrl) ?? ''
-  const path = `${workbenchId}/${control.workspace.url}/${trackerId}/${issue.identifier}`
+  const path = `${workbenchId}/${control.workspace.url}/${trackerId}/${issueLinkSegment(issue)}`
   const link = concatLink(front, path)
   return `<a href="${link}">${issue.identifier}</a> ${issue.title}`
 }
@@ -92,6 +93,8 @@ export async function issueHTMLPresenter (doc: Doc, control: TriggerControl): Pr
  */
 export async function getIssueId (doc: Issue, control: TriggerControl): Promise<string> {
   const issue = doc
+  // A draft item has no number in the project sequence, only the placeholder identifier
+  if (issue.isDraft === true) return issue.identifier
   const project = (await control.findAll(control.ctx, tracker.class.Project, { _id: issue.space }))[0]
   return `${project?.identifier ?? '?'}-${issue.number}`
 }
@@ -658,7 +661,8 @@ function updateIssueParentEstimations (
 }
 
 async function issueLinkIdProvider (issue: Issue): Promise<string> {
-  return issue.identifier
+  // A draft item has no identifier of an issue yet, its link carries the id of the document
+  return issueLinkSegment(issue)
 }
 
 /**

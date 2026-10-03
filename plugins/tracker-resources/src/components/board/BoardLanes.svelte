@@ -248,6 +248,7 @@
                       <slot name="card" {object} {dragged} />
                     </svelte:fragment>
                   </KanbanRow>
+                  <slot name="cell-footer" {lane} column={cell.column} />
                 </div>
               {/each}
             </div>

@@ -194,6 +194,8 @@
     "FilterQueryErrorDate": "\"{token}\" is not a valid date. Use YYYY-MM-DD or @today-7d",
     "FilterQueryErrorNumber": "\"{token}\" is not a number",
     "FilterQueryErrorRange": "A range needs exactly two bounds, like 1..5",
-    "FilterQueryErrorKeyword": "Unknown keyword \"{token}\""
+    "FilterQueryErrorKeyword": "Unknown keyword \"{token}\"",
+    "SavedViewCopyLink": "Copy link to view",
+    "SavedViewLinkCopied": "The link to the view is copied"
   }
 }

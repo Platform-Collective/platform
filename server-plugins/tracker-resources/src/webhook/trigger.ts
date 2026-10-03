@@ -19,6 +19,7 @@ import { getPerson } from '@hcengineering/server-contact'
 import serverCore, { type TriggerControl } from '@hcengineering/server-core'
 import tracker, {
   isAutomationAuthor,
+  issueLinkSegment,
   MAX_PROJECT_WEBHOOKS,
   trackerId,
   type Issue,
@@ -91,6 +92,12 @@ function issueUrl (control: TriggerControl, identifier: string | undefined): str
   const front = control.branding?.front ?? getMetadata(serverCore.metadata.FrontUrl) ?? ''
   if (front === '') return undefined
   return concatLink(front, `${workbenchId}/${control.workspace.url}/${trackerId}/${identifier}`)
+}
+
+// The part of the link of an item, `undefined` when the item has no identifier (a removed one that could not be rebuilt)
+function linkSegmentOf (issue: Partial<Issue> & { _id: Ref<Issue> }): string | undefined {
+  if (issue.identifier === undefined) return undefined
+  return issueLinkSegment({ _id: issue._id, identifier: issue.identifier, isDraft: issue.isDraft })
 }
 
 const WATCHED = new Set(Object.keys(WATCHED_ATTRIBUTES))
@@ -253,10 +260,12 @@ export async function OnProjectItemWebhook (txes: Tx[], control: TriggerControl)
             id: event.issue._id,
             identifier: event.issue.identifier,
             title: event.issue.title,
-            url: issueUrl(control, event.issue.identifier),
+            // A draft item has no identifier of an issue, its link carries the id of the document
+            url: issueUrl(control, linkSegmentOf(event.issue)),
             createdOn: event.issue.createdOn,
             modifiedOn: event.tx.modifiedOn,
-            archivedAt: event.issue.archivedAt
+            archivedAt: event.issue.archivedAt,
+            isDraft: event.issue.isDraft === true
           },
           change: event.change,
           sender

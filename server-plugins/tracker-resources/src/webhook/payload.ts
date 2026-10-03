@@ -231,6 +231,8 @@ export interface PayloadInput {
     createdOn?: number
     modifiedOn?: number
     archivedAt?: number | null
+    // A draft item (GitHub `DraftIssue`), not an issue yet
+    isDraft?: boolean
   }
   // Only for `edited`
   change?: FieldValueChange
@@ -246,7 +248,7 @@ export function buildPayload (input: PayloadInput): Record<string, unknown> {
     project_item: {
       id: input.issue.id,
       project_id: input.project.id,
-      content_type: 'Issue',
+      content_type: input.issue.isDraft === true ? 'DraftIssue' : 'Issue',
       content_id: input.issue.id,
       identifier: boundValue(input.issue.identifier),
       title: boundValue(input.issue.title),

@@ -132,7 +132,8 @@ describe('splitServerClient', () => {
   it('compiles is: states', () => {
     expect(compileQuery(ast('is:open'), ctx)).toEqual({ status: { $nin: ['st-done', 'st-canceled'] } })
     expect(compileQuery(ast('is:closed'), ctx)).toEqual({ status: { $in: ['st-done', 'st-canceled'] } })
-    expect(compileQuery(ast('is:issue'), ctx)).toEqual({})
+    expect(compileQuery(ast('is:issue'), ctx)).toEqual({ isDraft: { $ne: true } })
+    expect(compileQuery(ast('is:draft'), ctx)).toEqual({ isDraft: true })
     expect(compileQuery(ast('is:sub-issue'), ctx)).toEqual({ attachedTo: { $ne: 'no-parent' } })
   })
 
@@ -294,5 +295,62 @@ describe('archived items', () => {
 
   it('reads archivedAt for client evaluation', () => {
     expect(referencedProperties(ast('is:archived'))).toEqual(expect.arrayContaining(['archivedAt']))
+  })
+})
+
+describe('draft items', () => {
+  const DRAFT_DOCS = [
+    { _id: 'd1', title: 'Idea', status: 'st-todo', isDraft: true },
+    { _id: 'd2', title: 'Converted', status: 'st-todo', isDraft: false },
+    { _id: 'd3', title: 'Plain issue', status: 'st-todo' },
+    { _id: 'd4', title: 'Closed draft', status: 'st-done', isDraft: true }
+  ]
+
+  it('compiles is:draft, -is:draft, is:issue and -is:issue to isDraft selectors', () => {
+    expect(compileQuery(ast('is:draft'), ctx)).toEqual({ isDraft: true })
+    expect(compileQuery(ast('-is:draft'), ctx)).toEqual({ isDraft: { $ne: true } })
+    expect(compileQuery(ast('is:issue'), ctx)).toEqual({ isDraft: { $ne: true } })
+    expect(compileQuery(ast('-is:issue'), ctx)).toEqual({ isDraft: true })
+  })
+
+  it('selects the same documents on the server and on the client', () => {
+    for (const f of [
+      'is:draft',
+      '-is:draft',
+      'is:issue',
+      '-is:issue',
+      'is:draft is:closed',
+      'is:issue is:open',
+      'is:draft OR status:Todo',
+      'is:draft -is:draft',
+      'is:issue is:draft'
+    ]) {
+      const res = compileFilter(f, schema, ctx)
+      if (!res.ok) throw new Error(res.error.message)
+      const combined = DRAFT_DOCS.filter((d) => matchQuery(res.value.query, d) && res.value.predicate(d)).map((d) => d._id)
+      const full = DRAFT_DOCS.filter((d) => res.value.matches(d)).map((d) => d._id)
+      expect(combined).toEqual(full)
+    }
+  })
+
+  it('tells drafts from issues', () => {
+    const only = (f: string): string[] => {
+      const res = compileFilter(f, schema, ctx)
+      if (!res.ok) throw new Error(res.error.message)
+      return DRAFT_DOCS.filter((d) => res.value.matches(d)).map((d) => d._id)
+    }
+    expect(only('is:draft')).toEqual(['d1', 'd4'])
+    expect(only('-is:draft')).toEqual(['d2', 'd3'])
+    expect(only('is:issue')).toEqual(['d2', 'd3'])
+    expect(only('is:draft is:closed')).toEqual(['d4'])
+  })
+
+  it('reads isDraft for client evaluation', () => {
+    expect(referencedProperties(ast('is:draft'))).toEqual(expect.arrayContaining(['isDraft']))
+    expect(referencedProperties(ast('is:issue'))).toEqual(expect.arrayContaining(['isDraft']))
+  })
+
+  it('does not hide drafts the way archived items are hidden', () => {
+    expect(archiveScopeQuery(ast('is:draft'))).toEqual({ archivedAt: null })
   })
 })

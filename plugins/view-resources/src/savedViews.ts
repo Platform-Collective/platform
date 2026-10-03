@@ -207,3 +207,34 @@ export function parseStoredFilters (json: string | undefined): any[] {
     return []
   }
 }
+
+/** Name of the location query parameter that carries the id of a saved view (a link to a view). */
+export const VIEW_LINK_PARAM = 'view'
+
+/**
+ * The saved view a location asks for (`?view=<id>`), `undefined` when it does not name one.
+ */
+export function viewIdFromQuery (query: Record<string, string | null | undefined> | undefined): string | undefined {
+  const id = query?.[VIEW_LINK_PARAM]
+  return typeof id === 'string' && id.trim() !== '' ? id.trim() : undefined
+}
+
+/**
+ * The location query of a link to a view: the view id and nothing else. The default view that is not stored yet (no id)
+ * is the project itself, so its link has no query.
+ */
+export function viewLinkQuery (viewId: string | undefined): Record<string, string> | undefined {
+  return viewId === undefined || viewId === DEFAULT_VIEW_ID ? undefined : { [VIEW_LINK_PARAM]: viewId }
+}
+
+/**
+ * The tab a link asks for, when the project has it. A link to a view that was deleted, or that belongs to another
+ * project (the location query survives a switch of the project), gives nothing, so the caller falls back to its own choice.
+ */
+export function viewFromLink<T extends { _id: string }> (
+  query: Record<string, string | null | undefined> | undefined,
+  tabs: readonly T[]
+): T | undefined {
+  const id = viewIdFromQuery(query)
+  return id === undefined ? undefined : tabs.find((tab) => tab._id === id)
+}

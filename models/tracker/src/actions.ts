@@ -213,6 +213,27 @@ export function createActions (builder: Builder, issuesId: string, componentsId:
     tracker.action.RestoreIssue
   )
 
+  // Draft items (GitHub "Convert to issue"): the draft gets the next number of its project and stops being a draft
+  createAction(
+    builder,
+    {
+      action: tracker.actionImpl.ConvertDraftToIssue,
+      label: tracker.string.ConvertToIssue,
+      icon: tracker.icon.Issue,
+      input: 'any',
+      category: tracker.category.Tracker,
+      target: tracker.class.Issue,
+      query: {
+        isDraft: true
+      },
+      context: {
+        mode: ['context', 'browser'],
+        group: 'edit'
+      }
+    },
+    tracker.action.ConvertDraftToIssue
+  )
+
   builder.createDoc(
     view.class.ActionCategory,
     core.space.Model,

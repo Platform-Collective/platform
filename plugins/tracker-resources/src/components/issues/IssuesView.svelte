@@ -2,22 +2,28 @@
   import { Doc, DocumentQuery, FindOptions, mergeQueries, Ref, SortingOrder, Space, WithLookup } from '@hcengineering/core'
   import { Asset, getMetadata, getResource, IntlString, translate, translateCB } from '@hcengineering/platform'
   import contact, { Employee, getCurrentEmployee, getName, type PermissionsStore } from '@hcengineering/contact'
-  import { ComponentExtensions, createQuery, getClient } from '@hcengineering/presentation'
+  import { Analytics } from '@hcengineering/analytics'
+  import { ComponentExtensions, createQuery, getClient, IconDownload } from '@hcengineering/presentation'
   import tags, { TagElement, TagReference } from '@hcengineering/tags'
   import task, { getTaskTypeStates } from '@hcengineering/task'
   import { taskTypeStore } from '@hcengineering/task-resources'
   import {
+    buildViewTsv,
+    draftQuery,
     EffectiveWorkflow,
     Issue,
+    issueLinkSegment,
     Iteration,
     Project,
     ProjectStatus,
     ProjectStatusUpdate,
     TrackerEvents,
-    toIterationRanges
+    toIterationRanges,
+    viewExportFileName
   } from '@hcengineering/tracker'
   import {
     Button,
+    addNotification,
     ButtonIcon,
     eventToHTMLElement,
     IconAdd,
@@ -30,6 +36,7 @@
     Label,
     Menu,
     ModeSelector,
+    NotificationSeverity,
     SearchInputAdvanced,
     showPopup,
     themeStore,
@@ -52,6 +59,8 @@
     ViewletContentView,
     ViewletSettingButton,
     filterStore,
+    getCategories,
+    getClientViewExtension,
     getResultOptions,
     getResultQuery,
     getViewOptions,
@@ -62,6 +71,7 @@
     setFilters,
     setViewOptions,
     shouldShowSearchEmptyState,
+    SimpleNotification,
     statusStore,
     tableEdit,
     viewOptionStore,
@@ -70,6 +80,7 @@
   } from '@hcengineering/view-resources'
   import { onDestroy } from 'svelte'
   import { readable, writable } from 'svelte/store'
+  import { readBoardConfig, resolveBoardDimensions } from '../../board/config'
   import { createIssueCellColumns, runIssueOps, type IssueCellLookups, type IssueLabelRef } from '../../bulkEdit/issueCells'
   import { readFieldSums, resolveFieldSums, sumProjection, type SummableField } from '../../fieldSum/config'
   import { loadSummableFields } from '../../fieldSum/load'
@@ -78,11 +89,16 @@
   import { expansionStore } from '../../hierarchy/expansionStore'
   import { buildProgressIndex, type SubIssueRef } from '../../hierarchy/progress'
   import { buildIssueFilterSchema, customFilterToQuery, type NamedOption } from '../../issueFilter'
+  import { generateIssueShortLink } from '../../issues'
   import { iterationsByFieldKey, sharedIterationsStore } from '../../iterations/iterationsStore'
   import tracker from '../../plugin'
   import CustomFieldFilterButton from '../../projectFields/CustomFieldFilterButton.svelte'
   import { createCustomFieldViewExtension, customFieldFilterStore } from '../../projectFields/customFieldView'
   import { sharedProjectFieldsStore } from '../../projectFields/projectFieldsStore'
+  import { buildExportColumns, type ExportEnv } from '../../viewExport/columns'
+  import { downloadTsv } from '../../viewExport/download'
+  import { exportGroupKeys } from '../../viewExport/groups'
+  import { loadExportRows } from '../../viewExport/rows'
   import { requestWorkflowRun } from '../../workflows/save'
   import { workflowsStore } from '../../workflows/store'
   import {
@@ -119,6 +135,7 @@
   import { listIssueStatusOrder } from '../../utils'
   import ArchivedItemsPopup from '../archive/ArchivedItemsPopup.svelte'
   import CreateIssue from '../CreateIssue.svelte'
+  import AddItemRow from '../draft/AddItemRow.svelte'
   import FieldSumFooter from '../fieldSum/FieldSumFooter.svelte'
   import FieldSumGroupSummary from '../fieldSum/FieldSumGroupSummary.svelte'
   import GanttToolbarBar from '../gantt/GanttToolbarBar.svelte'
@@ -589,6 +606,22 @@
         action: async () => {
           showPopup(CreateProject, { copyFrom: doc }, 'top')
         }
+      },
+      {
+        label: tracker.string.ExportViewData,
+        icon: IconDownload,
+        group: 'view',
+        action: async () => {
+          await exportViewData()
+        }
+      },
+      {
+        label: tracker.string.CopyViewLink,
+        icon: view.icon.CopyLink,
+        group: 'view',
+        action: async () => {
+          await savedViewBar?.copyActiveViewLink()
+        }
       }
     ]
     if (canEdit) {
@@ -601,6 +634,84 @@
       })
     }
     showPopup(Menu, { actions }, eventToHTMLElement(ev))
+  }
+
+  // ---- export view data (GitHub's "Export view data") ----
+  // The file has the visible fields of the view in the order of the view and the rows the view shows, in the order it
+  // shows them (sort, then group after group). Sub-issues are on rows of their own, whether the table nests them or not.
+  async function exportHeader (id: string, entry: BuildModelKey | string, lang: string): Promise<string> {
+    if (typeof entry !== 'string' && entry.label !== undefined) return await translate(entry.label, {}, lang)
+    if (id.startsWith('cf_')) return $registry.byKey.get(id.slice(3))?.label ?? id
+    const attribute = client.getHierarchy().findAttribute(tracker.class.Issue, typeof entry === 'string' ? entry : entry.key || id)
+    return attribute !== undefined ? await translate(attribute.label, {}, lang) : id
+  }
+
+  async function exportViewData (): Promise<void> {
+    if (project === undefined || viewlet === undefined || viewOptions === undefined) return
+    const options = viewOptions
+    const lang = $themeStore.language
+    try {
+      // With a filter that is still being evaluated the view shows nothing yet, so there would be nothing to export
+      if (clientFilterActive && !overLimit && !scanReady) throw new Error('The view is not loaded yet')
+      const config: Array<BuildModelKey | string> = viewConfig ?? viewlet.config
+      const headers = new Map<string, string>()
+      for (const entry of config) {
+        const id = typeof entry === 'string' ? entry : (entry.displayProps?.key ?? entry.key)
+        if (id !== '') headers.set(id, await exportHeader(id, entry, lang))
+      }
+      const [title, identifier, url, draftLabel] = await Promise.all([
+        translate(tracker.string.Title, {}, lang),
+        translate(tracker.string.Identifier, {}, lang),
+        translate(tracker.string.ExportColumnUrl, {}, lang),
+        translate(tracker.string.Draft, {}, lang)
+      ])
+      const env: ExportEnv = {
+        cell: (key) => cellAdapter.column(key),
+        label: (id) => headers.get(id) ?? id,
+        taskTypeName: (kind) => $taskTypeStore.get(kind as any)?.name ?? kind,
+        issueUrl: (issue) => generateIssueShortLink(issueLinkSegment(issue)),
+        draftLabel,
+        headers: { title, identifier, url }
+      }
+      const columns = buildExportColumns(config, env)
+      const extension = getClientViewExtension()
+      let board: { columnKey: string, laneKey: string | undefined } | undefined
+      if (isBoardMode) {
+        const dimensions = resolveBoardDimensions(readBoardConfig(options), options.groupBy, { fields: $registry.fields })
+        board = { columnKey: dimensions.columnKey, laneKey: dimensions.laneKey }
+      }
+      const { rows } = await loadExportRows(client, tracker.class.Issue, {
+        query: mergeQueries(optionsQuery, viewQuery),
+        options: optionsFind,
+        orderBy: options.orderBy as [string, SortingOrder] | undefined,
+        groupBy: exportGroupKeys({ groupBy: options.groupBy, board }),
+        client:
+          extension !== undefined
+            ? {
+                handlesKey: (key) => extension.handlesKey(key),
+                compare: (key, order) => extension.compare(key, order),
+                getCategories: (key, docs) => extension.getCategories(key, docs, options)
+              }
+            : undefined,
+        getCategories: async (docs, key) => await getCategories(client, tracker.class.Issue, project, docs, key)
+      })
+      const text = buildViewTsv(
+        columns,
+        rows.map((issue) => columns.map((column) => column.value(issue)))
+      )
+      const projectDoc = await client.findOne(tracker.class.Project, { _id: project })
+      const viewName = savedViewBar?.getActiveViewName() ?? ''
+      downloadTsv(text, viewExportFileName(projectDoc?.name ?? '', viewName))
+    } catch (err: any) {
+      Analytics.handleError(err)
+      addNotification(
+        await translate(tracker.string.ExportViewData, {}, lang),
+        await translate(tracker.string.ExportViewDataFailed, {}, lang),
+        SimpleNotification,
+        undefined,
+        NotificationSeverity.Error
+      )
+    }
   }
 
   // ---- archived items and workflows ----
@@ -764,11 +875,13 @@
     rawSearchTextStore.set('')
   })
 
+  // Draft items belong to the project they were added to: the lists that span projects (My issues, all issues) leave
+  // them out, the views of a project show them
   let searchQuery: DocumentQuery<Issue> = { ...query }
-  function updateSearchQuery (eff: string): void {
-    searchQuery = eff === '' ? { ...query } : { ...query, $search: eff }
+  function updateSearchQuery (eff: string, scope: DocumentQuery<Issue>): void {
+    searchQuery = eff === '' ? { ...query, ...scope } : { ...query, ...scope, $search: eff }
   }
-  $: if (query !== undefined) updateSearchQuery(searchEncoded)
+  $: if (query !== undefined) updateSearchQuery(searchEncoded, project === undefined ? draftQuery(false) : {})
   let resultQuery: DocumentQuery<Issue> = { ...searchQuery }
 
   $: if (title) {
@@ -1014,6 +1127,19 @@
     bind:filterQuery
     bind:activeViewId
     newViewOptions={(layout) => newViewHierarchyOptions(layout.descriptor === view.viewlet.List)}
+    tabActions={(tab) =>
+      tab.active
+        ? [
+            {
+              label: tracker.string.ExportViewData,
+              icon: IconDownload,
+              group: 'share',
+              action: async () => {
+                await exportViewData()
+              }
+            }
+          ]
+        : []}
   />
   <!-- GitHub-style filter string; it is the filter of the active view -->
   <FilterQueryBar value={filterQuery} schema={filterSchema} on:apply={applyFilterQuery} />
@@ -1125,6 +1251,10 @@
         </CellGrid>
       {/if}
     </div>
+    {#if project !== undefined && isTableMode}
+      <!-- Typing a title adds a draft item to the project, `#` searches issues to bring into it -->
+      <AddItemRow {project} />
+    {/if}
     {#if showFooter}
       <FieldSumFooter {project} query={mergeQueries(optionsQuery, viewQuery)} options={optionsFind} keys={fieldSumKeys} {scanLimit} />
     {/if}

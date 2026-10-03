@@ -226,6 +226,13 @@ describe('buildPayload', () => {
     expect(payload.workspace).toEqual({ url: 'acme' })
   })
 
+  it('says a draft item is a DraftIssue, like GitHub', () => {
+    const draft: any = buildPayload({ ...input, action: 'created', issue: { ...input.issue, isDraft: true } })
+    expect(draft.project_item.content_type).toBe('DraftIssue')
+    const issue: any = buildPayload({ ...input, action: 'created', issue: { ...input.issue, isDraft: false } })
+    expect(issue.project_item.content_type).toBe('Issue')
+  })
+
   it('has no changes unless the item was edited', () => {
     for (const action of ['created', 'archived', 'restored', 'deleted'] as const) {
       expect((buildPayload({ ...input, action }) as any).changes).toBeUndefined()

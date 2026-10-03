@@ -4,16 +4,20 @@
 -->
 <script lang="ts">
   import core, { Class, Doc, getCurrentAccount, Ref, Space, WithLookup } from '@hcengineering/core'
-  import { translate } from '@hcengineering/platform'
-  import { createQuery, getClient, MessageBox } from '@hcengineering/presentation'
+  import { getMetadata, translate } from '@hcengineering/platform'
+  import presentation, { copyTextToClipboard, createQuery, getClient, MessageBox } from '@hcengineering/presentation'
   import {
     Action,
+    addNotification,
     Button,
     getCurrentResolvedLocation,
     Icon,
     IconAdd,
+    locationToUrl,
     Menu,
+    NotificationSeverity,
     eventToHTMLElement,
+    resolvedLocationStore,
     showPopup,
     themeStore,
     tooltip
@@ -40,12 +44,16 @@
     nextViewName,
     orderForMove,
     parseStoredFilters,
+    viewFromLink,
+    viewIdFromQuery,
+    viewLinkQuery,
     type ViewColumns,
     type ViewConfigLayer
   } from '../../savedViews'
   import { restrictionStore, setActiveViewletId } from '../../utils'
   import { getViewletDefaultOptions, getViewOptions, setViewOptions, viewOptionStore } from '../../viewOptions'
   import EditBoxPopup from '../EditBoxPopup.svelte'
+  import SimpleNotification from '../SimpleNotification.svelte'
 
   export let space: Ref<Space>
   export let _class: Ref<Class<Doc>>
@@ -64,6 +72,8 @@
   export let activeViewId: string | undefined = undefined
   // View options a new view of the layout starts with, on top of the defaults of the layout
   export let newViewOptions: ((layout: WithLookup<Viewlet>) => Partial<ViewOptions> | undefined) | undefined = undefined
+  // Further entries of the menu of a view tab, for what only the host can do with the view (e.g. export its data)
+  export let tabActions: ((tab: { id: string, name: string, active: boolean }) => Action[]) | undefined = undefined
 
   const client = getClient()
   const noExtra = writable<any[]>([])
@@ -155,6 +165,16 @@
   $: if (found !== undefined && awaitingId === activeId) awaitingId = undefined
   $: activeTab = found ?? (awaitingId !== undefined ? undefined : tabs[0])
   $: activeViewId = activeTab?._id
+
+  // A link to a view (`?view=<id>`) selects that view, on load and whenever the link changes. A link to a view this
+  // project does not have (deleted, or the query survived a switch of the project) is ignored.
+  $: linkedId = viewIdFromQuery($resolvedLocationStore.query)
+  let appliedLinkId: string | undefined
+  $: if (viewsLoaded && linkedId !== undefined && linkedId !== appliedLinkId) {
+    appliedLinkId = linkedId
+    const linked = viewFromLink($resolvedLocationStore.query, tabs)
+    if (linked !== undefined && linked._id !== activeTab?._id) select(linked)
+  }
 
   // Unsaved column edits of the active view
   let localConfig: { viewletId: string, config: ViewColumns } | undefined
@@ -421,6 +441,33 @@
     localConfig = { viewletId: viewlet._id, config: columns }
   }
 
+  // ---- link to a view ----
+  async function copyViewLink (tab: Tab): Promise<void> {
+    const loc = getCurrentResolvedLocation()
+    // A view that is not stored yet (the default one) is the project itself
+    loc.query = viewLinkQuery(tab.doc !== undefined ? tab._id : undefined)
+    loc.fragment = undefined
+    const origin = getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin
+    await copyTextToClipboard(`${origin}${locationToUrl(loc)}`)
+    addNotification(
+      await translate(view.string.Copied, {}, $themeStore.language),
+      await translate(viewPlugin.string.SavedViewLinkCopied, {}, $themeStore.language),
+      SimpleNotification,
+      undefined,
+      NotificationSeverity.Success
+    )
+  }
+
+  /** Copies the link to the active view, for the menu of the host (the same as the entry of the tab menu) */
+  export async function copyActiveViewLink (): Promise<void> {
+    if (activeTab !== undefined) await copyViewLink(activeTab)
+  }
+
+  /** Name of the active view, e.g. for the name of an export */
+  export function getActiveViewName (): string {
+    return activeTab?.name ?? ''
+  }
+
   // ---- menus ----
   async function layoutLabel (vl: WithLookup<Viewlet>): Promise<string> {
     const label =
@@ -469,7 +516,16 @@
         action: async () => {
           await duplicate(tab)
         }
-      }
+      },
+      {
+        label: viewPlugin.string.SavedViewCopyLink,
+        icon: view.icon.CopyLink,
+        group: 'share',
+        action: async () => {
+          await copyViewLink(tab)
+        }
+      },
+      ...(tabActions?.({ id: tab._id, name: tab.name, active: isActive }) ?? [])
     ]
     const currentLayout = tab.doc?.viewletId ?? (isActive ? viewlet?._id : undefined)
     for (const vl of layoutViewlets) {

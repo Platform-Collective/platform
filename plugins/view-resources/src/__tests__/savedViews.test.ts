@@ -12,7 +12,11 @@ import {
   nextViewName,
   orderForMove,
   parseStoredFilters,
-  sortViews
+  sortViews,
+  viewFromLink,
+  viewIdFromQuery,
+  viewLinkQuery,
+  VIEW_LINK_PARAM
 } from '../savedViews'
 
 const opts = (groupBy: string): any => ({ groupBy: [groupBy], orderBy: ['modifiedOn', -1] })
@@ -203,5 +207,31 @@ describe('getEffectiveViewConfig filterQuery', () => {
     expect(
       getEffectiveViewConfig({ saved: { filterQuery: 'b' }, local: { filterQuery: '' } }).filterQuery
     ).toBe('')
+  })
+})
+
+describe('links to a view', () => {
+  it('reads the view a location asks for', () => {
+    expect(VIEW_LINK_PARAM).toBe('view')
+    expect(viewIdFromQuery({ view: 'abc' })).toBe('abc')
+    expect(viewIdFromQuery({ view: ' abc ' })).toBe('abc')
+    expect(viewIdFromQuery({ mode: 'all' })).toBeUndefined()
+    expect(viewIdFromQuery({ view: null })).toBeUndefined()
+    expect(viewIdFromQuery({ view: '' })).toBeUndefined()
+    expect(viewIdFromQuery(undefined)).toBeUndefined()
+  })
+
+  it('builds the query of a link to a stored view only', () => {
+    expect(viewLinkQuery('abc')).toEqual({ view: 'abc' })
+    expect(viewLinkQuery('default-view')).toBeUndefined()
+    expect(viewLinkQuery(undefined)).toBeUndefined()
+  })
+
+  it('finds the tab a link asks for and ignores a view the project does not have', () => {
+    const tabs = [{ _id: 'a' }, { _id: 'b' }]
+    expect(viewFromLink({ view: 'b' }, tabs)).toBe(tabs[1])
+    expect(viewFromLink({ view: 'zzz' }, tabs)).toBeUndefined()
+    expect(viewFromLink({}, tabs)).toBeUndefined()
+    expect(viewFromLink({ view: 'a' }, [])).toBeUndefined()
   })
 })

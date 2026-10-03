@@ -596,7 +596,23 @@
     "ProjectIncludeIssues": "Include issues",
     "ProjectIncludeIssuesHint": "Issues are not copied. The copy gets the fields, views, workflows and charts of the project.",
     "ProjectItemLimitReached": "This project holds the most items a project can ({limit}). Delete some to add more.",
-    "ProjectSettingsClosedNote": "This project is closed"
+    "ProjectSettingsClosedNote": "This project is closed",
+    "Draft": "Draft",
+    "DraftItemTooltip": "A draft item is not an issue yet. Convert it to an issue to give it a number.",
+    "ConvertToIssue": "Convert to issue",
+    "AddItemPlaceholder": "Add item: type a title and press Enter, or type # to find an issue",
+    "AddItemTooLong": "A title can have at most {limit} characters",
+    "AddItemFailed": "The item could not be added",
+    "AddItemNoIssues": "No issues found",
+    "AddItemInProject": "Already in this project",
+    "AddItemArchived": "Archived: click to restore",
+    "AddItemMoveHere": "Move here",
+    "AddItemMoveHint": "An issue belongs to one project. Picking an issue of another project of the same type moves it here.",
+    "AddItemOtherType": "Cannot be moved here",
+    "ExportViewData": "Export view data",
+    "ExportColumnUrl": "URL",
+    "ExportViewDataFailed": "The view data could not be exported",
+    "CopyViewLink": "Copy link to view"
   },
   "status": {}
 }

@@ -61,6 +61,8 @@ export * from './projectField'
 export * from './iteration'
 export * from './insightChart'
 export * from './archive'
+export * from './draft'
+export * from './viewExport'
 export * from './workflow'
 export * from './webhook'
 export * from './projectStatus'
@@ -296,6 +298,10 @@ export interface Issue extends Task {
   // Set while the issue is archived (GitHub Projects "Archive item"), `null` once restored. Archived issues keep all of
   // their values and are left out of the project views, slice and Insights unless a filter asks for them (`is:archived`)
   archivedAt?: Timestamp | null
+
+  // Set while the issue is a draft item (GitHub Projects "draft issue"): a project item that is not an issue yet. A draft
+  // has no number in the project sequence (`number` is 0) until it is converted, which clears the flag (`false`)
+  isDraft?: boolean
 
   // Soft deadline, independent of dueDate. The Gantt renders
   // a flag marker at this date and flags the issue as overdue when

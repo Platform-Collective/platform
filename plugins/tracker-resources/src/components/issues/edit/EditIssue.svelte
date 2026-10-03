@@ -25,7 +25,7 @@
   } from '@hcengineering/presentation'
   import setting, { settingId } from '@hcengineering/setting'
   import { taskTypeStore, typeStore } from '@hcengineering/task-resources'
-  import { Issue, TrackerEvents } from '@hcengineering/tracker'
+  import { Issue, issueLinkSegment, TrackerEvents } from '@hcengineering/tracker'
   import {
     AnyComponent,
     Button,
@@ -50,9 +50,11 @@
   import { Analytics } from '@hcengineering/analytics'
 
   import { createEventDispatcher, onDestroy } from 'svelte'
+  import { convertDraftToIssue } from '../../../draft/actions'
   import { generateIssueShortLink, getIssueIdByIdentifier } from '../../../issues'
   import { canEditIssue } from '../../../utils'
   import tracker from '../../../plugin'
+  import DraftBadge from '../DraftBadge.svelte'
   import IssueStatusActivity from '../IssueStatusActivity.svelte'
   import ControlPanel from './ControlPanel.svelte'
   import CopyToClipboard from './CopyToClipboard.svelte'
@@ -272,10 +274,14 @@
       {/if}
       {#if embedded}
         <DocNavLink noUnderline object={issue}>
-          <div class="title">{issue.identifier}</div>
+          <div class="title">
+            {#if issue.isDraft === true}<DraftBadge kind="panel" />{:else}{issue.identifier}{/if}
+          </div>
         </DocNavLink>
       {:else}
-        <div class="title not-active">{issue.identifier}</div>
+        <div class="title not-active">
+          {#if issue.isDraft === true}<DraftBadge kind="panel" />{:else}{issue.identifier}{/if}
+        </div>
       {/if}
 
       {#if (projectType?.tasks.length ?? 0) > 1 && taskType !== undefined}
@@ -302,6 +308,18 @@
 
     <svelte:fragment slot="utils">
       {#if !effectiveReadonly}
+        {#if issue.isDraft === true}
+          <!-- A draft item becomes an issue with the next number of its project -->
+          <Button
+            kind={'primary'}
+            size={'medium'}
+            label={tracker.string.ConvertToIssue}
+            dataId={'btnConvertDraft'}
+            on:click={() => {
+              if (issue !== undefined) void convertDraftToIssue(issue)
+            }}
+          />
+        {/if}
         <Button
           icon={IconMoreH}
           iconProps={{ size: 'medium' }}
@@ -309,7 +327,7 @@
           dataId={'btnMoreActions'}
           on:click={showContextMenu}
         />
-        <CopyToClipboard issueUrl={generateIssueShortLink(issue.identifier)} />
+        <CopyToClipboard issueUrl={generateIssueShortLink(issueLinkSegment(issue))} />
         <Button
           icon={setting.icon.Setting}
           kind={'icon'}
@@ -396,11 +414,14 @@
         }}
       />
     </div>
-    <div class="mt-6">
-      {#key issue._id}
-        <SubIssues focusIndex={50} {issue} shouldSaveDraft />
-      {/key}
-    </div>
+    {#if issue.isDraft !== true}
+      <!-- A draft item has no number yet, so it cannot be the parent of issues -->
+      <div class="mt-6">
+        {#key issue._id}
+          <SubIssues focusIndex={50} {issue} shouldSaveDraft />
+        {/key}
+      </div>
+    {/if}
 
     <RelationsEditor object={issue} readonly={effectiveReadonly} />
 
@@ -414,7 +435,7 @@
     {/if}
 
     <span slot="actions-label" class="select-text">
-      {issue.identifier}
+      {#if issue.isDraft === true}<Label label={tracker.string.Draft} />{:else}{issue.identifier}{/if}
     </span>
 
     <svelte:fragment slot="custom-attributes">

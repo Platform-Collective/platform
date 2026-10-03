@@ -127,6 +127,8 @@ export default mergeIds(viewId, typedView, {
     SavedViewUnsaved: '' as IntlString,
     SavedViewLayoutTable: '' as IntlString,
     SavedViewLayoutTo: '' as IntlString,
+    SavedViewCopyLink: '' as IntlString,
+    SavedViewLinkCopied: '' as IntlString,
 
     FilterQueryPlaceholder: '' as IntlString,
     FilterQueryClear: '' as IntlString,

@@ -107,6 +107,7 @@ export default mergeIds(trackerId, tracker, {
     DeleteIssue: '' as ViewAction,
     ArchiveIssue: '' as ViewAction,
     RestoreIssue: '' as ViewAction,
+    ConvertDraftToIssue: '' as ViewAction,
     DeleteMilestone: '' as ViewAction
   },
   action: {
@@ -116,7 +117,8 @@ export default mergeIds(trackerId, tracker, {
     DeleteProjectClean: '' as Ref<Action<Doc, Record<string, any>>>,
     DeleteIssue: '' as Ref<Action<Doc, Record<string, any>>>,
     ArchiveIssue: '' as Ref<Action<Doc, Record<string, any>>>,
-    RestoreIssue: '' as Ref<Action<Doc, Record<string, any>>>
+    RestoreIssue: '' as Ref<Action<Doc, Record<string, any>>>,
+    ConvertDraftToIssue: '' as Ref<Action<Doc, Record<string, any>>>
   },
 
   // For migration only

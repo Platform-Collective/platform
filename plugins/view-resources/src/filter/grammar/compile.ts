@@ -143,7 +143,9 @@ function compileClause (node: Node, ctx: FilterContext): Clause | undefined {
     case 'is':
       switch (node.state) {
         case 'issue':
-          return {}
+          return { isDraft: { $ne: true } }
+        case 'draft':
+          return { isDraft: true }
         case 'open':
         case 'closed': {
           if (ctx.closedStatuses === undefined) return undefined
@@ -162,6 +164,9 @@ function compileClause (node: Node, ctx: FilterContext): Clause | undefined {
     case 'not': {
       // `-is:archived`
       if (node.child.type === 'is' && node.child.state === 'archived') return { archivedAt: null }
+      // `-is:draft` leaves drafts out, `-is:issue` keeps only drafts
+      if (node.child.type === 'is' && node.child.state === 'draft') return { isDraft: { $ne: true } }
+      if (node.child.type === 'is' && node.child.state === 'issue') return { isDraft: true }
       const inner = node.child.type === 'or' ? (mergeSameField(node.child) ?? node.child) : node.child
       return inner.type === 'field' ? fieldClause(inner.field, inner.values, true, ctx) : undefined
     }
@@ -265,7 +270,15 @@ export function referencedProperties (node: Node | undefined): string[] {
         n.field.dependsOn?.forEach((d) => props.add(d))
         break
       case 'is':
-        props.add(n.state === 'sub-issue' ? 'attachedTo' : n.state === 'archived' ? 'archivedAt' : 'status')
+        props.add(
+          n.state === 'sub-issue'
+            ? 'attachedTo'
+            : n.state === 'archived'
+              ? 'archivedAt'
+              : n.state === 'draft' || n.state === 'issue'
+                ? 'isDraft'
+                : 'status'
+        )
         break
     }
   }

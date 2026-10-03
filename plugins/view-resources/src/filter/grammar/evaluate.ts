@@ -18,6 +18,14 @@ export function isArchivedDoc (doc: any): boolean {
 }
 
 /**
+ * Whether a document is a draft item (`isDraft` is true), as opposed to an issue.
+ * @public
+ */
+export function isDraftDoc (doc: any): boolean {
+  return doc?.isDraft === true
+}
+
+/**
  * Raw value of a field in a document.
  * @public
  */
@@ -249,6 +257,10 @@ export function evaluate (node: Node, doc: any, ctx: FilterContext): boolean {
           return ctx.noParentId !== undefined && doc?.attachedTo !== ctx.noParentId
         case 'archived':
           return isArchivedDoc(doc)
+        case 'draft':
+          return isDraftDoc(doc)
+        case 'issue':
+          return !isDraftDoc(doc)
         default:
           return true
       }

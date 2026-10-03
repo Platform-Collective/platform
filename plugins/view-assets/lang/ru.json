@@ -191,6 +191,8 @@
     "FilterQueryErrorDate": "«{token}» не является датой. Используйте ГГГГ-ММ-ДД или @today-7d",
     "FilterQueryErrorNumber": "«{token}» не является числом",
     "FilterQueryErrorRange": "Диапазон должен иметь ровно две границы, например 1..5",
-    "FilterQueryErrorKeyword": "Неизвестное ключевое слово «{token}»"
+    "FilterQueryErrorKeyword": "Неизвестное ключевое слово «{token}»",
+    "SavedViewCopyLink": "Скопировать ссылку на представление",
+    "SavedViewLinkCopied": "Ссылка на представление скопирована"
   }
 }

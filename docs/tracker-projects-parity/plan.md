@@ -1079,3 +1079,98 @@ rush build --to <pkg>             # cross-package type check before PR
 - Closing a project does not make the server reject writes into it; it relies on the existing archive behaviour of Huly.
 - The status pill is not shown in the navigator tree, only in the header and the project list.
 - No separate "Use this template" button on a template, the create form is the entry point.
+
+
+---
+
+## Phase 11b implementation notes (Draft items, Add item row, Export view data, view links)
+
+**What was built**
+
+- Pure logic in `plugins/tracker/src` with jest tests: `draft` (`isIssueDraft`, `draftQuery`, `draftIdentifier`, `convertDraftUpdate`, `parseAddItemInput`,
+  link segments `draftLinkSegment` / `parseDraftLinkSegment` / `issueLinkSegment`) and `viewExport` (`buildViewTsv`, `formatTsvCell`, `orderRowsByGroups`,
+  `viewExportFileName`, `MAX_EXPORT_ROWS`).
+- Resource logic in `plugins/tracker-resources/src/draft` (`create`, `convert`, `target`, `addItem`, `itemCount`, `actions`) and `src/viewExport` (`columns`, `rows`,
+  `groups`, `download`), tests next to it. Svelte: `components/draft/AddItemRow` + `AddItemSearch`, `components/issues/DraftBadge`.
+- Model: `Issue.isDraft?: boolean` (hidden prop of `TIssue`, optional, so no migration), action `tracker.action.ConvertDraftToIssue` (context menu and board, `query: { isDraft: true }`).
+- `view-resources`: grammar `is:draft`, `-is:draft`, `is:issue` / `-is:issue`; `SavedViewBar` got "Copy link to view", the `?view=<id>` deep link and a `tabActions` hook;
+  `savedViews.ts` got `viewIdFromQuery`, `viewLinkQuery`, `viewFromLink`.
+- 16 new strings in `tracker.string` and 2 in the view plugin, in all 14 locale files by plain text insertion (ru translated, the others English).
+
+**Draft items (GitHub "draft issue")**
+
+- A draft is an issue document with `isDraft: true`, so it takes part in every view, filter, field, board, roadmap, slice, Insights chart and workflow of the project
+  unchanged. It is created with `number: 0` (the project sequence starts at 1, so no issue has it), `identifier: "<PROJ>-Draft"` (a placeholder that does not match the
+  issue id pattern `PROJ-12`, so nothing resolves it as an issue) and the first creatable task type of the project type. Status is the project default status, else the first
+  status of the task type. The project sequence is **not** touched when a draft is created. There is no default assignee on a draft (it would send an assignment notification
+  for an idea).
+- The identifier column (`IssuePresenter`, also the board card) shows a "Draft" badge, the panel shows it in the title, and a draft has no sub-issue list.
+- Convert to issue: context menu / board action and a button in the detail panel. `convertDraftsToIssues` takes the next number of the project the way the create issue form
+  does (`$inc` on the project sequence, which has to return the new value), then updates all drafts in **one `client.apply` batch** that is guarded with
+  `match(Issue, { _id, isDraft: true })`: when somebody converted the draft in the meantime the batch is refused and nothing is renumbered. The number taken is then unused,
+  like after a failed create. At most 500 drafts per conversion.
+- Links: a draft is opened by its document id (`.../tracker/draft-<id>`, resolved by `resolveLocation`; panel URIs carry the id). `getTitle`, the server link providers
+  (`issueLinkIdProvider`, `issueHTMLPresenter`, the webhook url) use `issueLinkSegment`. Webhook payloads say `content_type: "DraftIssue"` for drafts.
+- Drafts can be deleted and archived like any item (the normal actions). They count against the 50,000 item limit.
+- Filter: `is:draft` / `-is:draft`, `is:issue` leaves drafts out (`-is:issue` = only drafts). Compiled to `isDraft: true` / `isDraft: { $ne: true }`, evaluated on the client
+  (`isDraftDoc`) with the same result. `is:` is completed with `draft`.
+- Left out of lists that span projects: the issue lists with no project (My issues and similar, `IssuesView` without a `space`) and the parent / sub-issue pickers.
+
+**Add item row**
+
+- Table: a row below the table (a footer under the list, like the field sum footer, not a row inside the virtual list). Typing a title and pressing Enter creates a draft and keeps
+  the focus; Esc clears. Titles are limited to 256 characters (GitHub). Board: "Add item" at the bottom of every column, and of every swimlane cell when the board has swimlanes;
+  the draft starts with the value of the column and of the swimlane (`resolveDropUpdate` of the cell, so status, assignee, component, milestone, priority and custom / iteration
+  fields). A cell whose value does not exist for the project has no row.
+- `#` opens a search of existing issues of every project the user can see (full text, plus an identifier lookup for `PROJ-12`; recent issues for a bare `#`; drafts are not offered).
+  Arrow keys and Enter pick, the list sits above the table input and below a board input. What picking does: an issue of this project is "Already in this project" (nothing);
+  an **archived** item of this project is restored; an issue of **another project of the same type** opens the existing tracker move dialog (`Move.svelte`, new optional `target`
+  prop) with this project preselected, so components and milestones are mapped and the issue is renumbered by the existing `moveIssueToSpace`; anything else is shown as
+  "Cannot be moved here" (other project type, closed project, archived issue elsewhere, no permission to change the issue). GitHub ties an issue to many projects; in Huly an issue
+  belongs to one, so adding it is a move, and the hint under the list says so.
+- Guards: the row is not shown for read-only viewers (`restrictionStore`, `ReadOnlyGuest`, no create permission in the project); at the item limit it is disabled with the
+  existing "project holds the most items" message. A shared per-project count query (`sharedItemCountStore`) feeds the limit.
+
+**Export view data**
+
+- "Export view data" in the menu of the active view tab and in the project "..." menu. The file is `.tsv` named `<Project> - <View>.tsv`: header row of the field names, then the
+  columns Title, Identifier ("Draft" for a draft) and URL, then the visible fields of the view in the order of the view (priority, status, assignee, labels joined with `, `,
+  component, milestone, due date as `YYYY-MM-DD`, estimation as a number, task type, comments, attachments, parent, modified / created as ISO timestamps and every custom or
+  iteration field as the same text the table copies). Spacers, the extension area, the sub-issue counter and predecessors are not exported.
+- Rows are what the view shows (filter string, chips, search, slice, archived scope, the view options query), loaded again with `findAll` (not read from the list), sorted by the
+  sort of the view (server sort, or the client comparator for a custom field) and then put in group order with the same categories the list uses (`getCategories` for built-in keys,
+  the client extension for custom fields), several levels deep. A board exports lane after lane, column after column inside it. Rows are flat: a table that nests sub-issues
+  exports every issue on its own row (the Parent column has the parent).
+- Escaping: a tab or a line break inside a value is replaced by a space (no quoting), lists are joined with `, `, `null` is empty. **Spreadsheet formula injection**: a text cell that
+  starts with `=`, `+`, `-` or `@` gets a leading `'`. GitHub does not do this; it is on by default here (`escapeFormulas`), numbers are never prefixed. No BOM is written.
+- Limit: 50,000 rows (the item limit of a project); the rest of a bigger view is cut off.
+
+**Links to a view**
+
+- "Copy link to view" in the tab menu and the project "..." menu copies `<front url>/<workbench>/<workspace>/tracker/<project>/issues?view=<saved view id>` (the default view that is not
+  stored yet is the plain project link). `SavedViewBar` reads `?view=` on load and whenever the location changes and selects that tab (and remembers it as the active one); a view the
+  project does not have (deleted, or the query survived a switch of the project) is ignored. Selecting a tab does not write the id back into the URL.
+- Reset view is the existing Discard of the unsaved dot.
+
+**Deviations**
+
+- The "Add item" row of the table is a footer below the list, not the last row of the virtualised list (the shared `List` is untouched).
+- A draft has one assignee, not several (Huly's issue has one), and no body field in the add row (the body is edited in the panel, like the description of an issue).
+- No `converted` webhook event (GitHub has one); a conversion only changes `number`, `identifier` and `isDraft`, none of which is a watched field.
+- The placeholder identifier is stored in English (`PROJ-Draft`); the views always show the localized badge instead.
+
+**Verified / not verified**
+
+- Verified: jest (tracker 174, tracker-resources 981, view-resources 298, server-tracker-resources 111, tracker-assets and view-assets lang tests, model-tracker), `svelte-check` of
+  tracker-resources and view-resources, `rush validate --to @hcengineering/prod` (also model-tracker, model-server-tracker, server-tracker-resources).
+- Not verified: nothing was run in a browser or against a server. Untested: the layout and keyboard behaviour of the add row and its search list (table and board cells), the `Move`
+  dialog opened from the search, the `$search` query of the live query for issues, `$ne: true` on `isDraft` on the real database, the `apply` + `match` batch of a conversion against a
+  real client, the download in a browser and in the desktop app, the location query `?view=` surviving the workbench navigation, trigger behaviour for drafts in a running pipeline.
+
+**Not done / limits**
+
+- Drafts are not excluded from notifications (an assignee set on a draft is notified like for an issue) nor from the global full text search and the `#` mention completion; the pipeline
+  has no hook for that without touching the notification and indexing services. Sub-issue lists of a component or a milestone show drafts of that component / milestone.
+- A draft is created with an empty rank, like a new issue from the create form.
+- A draft cannot be the parent of issues (the sub-issue list is hidden in its panel, it is left out of the parent pickers) but nothing on the server refuses a parent link to it.
+- The export does not include the hierarchy depth, the predecessors or the sub-issue counter, and it is not streamed: the whole view is built in memory.
