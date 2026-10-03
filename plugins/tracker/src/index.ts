@@ -49,8 +49,10 @@ import {
 } from '@hcengineering/task'
 import { AnyComponent, ComponentExtensionId, Location, ResolvedLocation } from '@hcengineering/ui'
 import { Action, ActionCategory, IconProps } from '@hcengineering/view'
+import type { ProjectField } from './projectField'
 
 export * from './analytics'
+export * from './projectField'
 
 /**
  * @public
@@ -278,6 +280,9 @@ export interface Issue extends Task {
   space: Ref<Project>
 
   milestone?: Ref<Milestone> | null
+
+  // Values of user-defined project fields, keyed by ProjectField.key
+  customFields?: Record<string, unknown>
 
   // Estimation in man hours
   estimation: number
@@ -575,6 +580,7 @@ const pluginState = plugin(trackerId, {
     IssueStatus: '' as Ref<Class<IssueStatus>>,
     TypeIssuePriority: '' as Ref<Class<Type<IssuePriority>>>,
     Milestone: '' as Ref<Class<Milestone>>,
+    ProjectField: '' as Ref<Class<ProjectField>>,
     TypeMilestoneStatus: '' as Ref<Class<Type<MilestoneStatus>>>,
     TimeSpendReport: '' as Ref<Class<TimeSpendReport>>,
     TypeReportedTime: '' as Ref<Class<Type<number>>>,
