@@ -5,7 +5,7 @@
 <script lang="ts">
   import { Analytics } from '@hcengineering/analytics'
   import contact, { getName, type Employee } from '@hcengineering/contact'
-  import { Card, createQuery, getClient } from '@hcengineering/presentation'
+  import { createQuery, getClient } from '@hcengineering/presentation'
   import { translate, type IntlString } from '@hcengineering/platform'
   import task from '@hcengineering/task'
   import {
@@ -28,6 +28,7 @@
 
   import { sharedIterationsStore } from '../../iterations/iterationsStore'
   import tracker from '../../plugin'
+  import ProjectSettingsCard from '../projects/ProjectSettingsCard.svelte'
   import { sharedProjectFieldsStore } from '../../projectFields/projectFieldsStore'
   import { compileWorkflowPreview } from '../../workflows/preview'
   import { saveWorkflow, type WorkflowPatch } from '../../workflows/save'
@@ -37,6 +38,8 @@
   // The built-in workflows of a project (GitHub "Workflows"): a toggle for each, the field the item workflows write,
   // the filter of the filter workflows
   export let project: Project
+  // Shown in a section of the project settings instead of a popup
+  export let embedded: boolean = false
 
   const client = getClient()
   const dispatch = createEventDispatcher()
@@ -186,13 +189,11 @@
   }
 </script>
 
-<Card
+<ProjectSettingsCard
+  {embedded}
   label={tracker.string.Workflows}
-  okAction={() => {}}
   hideFooter
-  accentHeader
   width={'large'}
-  gap={'gapV-4'}
   onCancel={() => dispatch('close')}
   on:close
   on:changeContent
@@ -268,7 +269,7 @@
   <div class="content-dark-color">
     <Label label={tracker.string.WorkflowRunNote} params={{ limit: MAX_WORKFLOW_ITEMS_PER_RUN }} />
   </div>
-</Card>
+</ProjectSettingsCard>
 
 <style lang="scss">
   .workflow {

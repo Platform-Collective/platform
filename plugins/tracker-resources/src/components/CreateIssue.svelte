@@ -61,6 +61,8 @@
     IssuePriority,
     IssueStatus,
     IssueTemplate,
+    isProjectItemLimitReached,
+    MAX_PROJECT_ITEMS,
     Milestone,
     Project,
     ProjectTargetPreference,
@@ -236,6 +238,25 @@
 
   let currentProject: Project | undefined
 
+  // A project holds at most MAX_PROJECT_ITEMS items (GitHub parity): a full project refuses new issues with an explicit
+  // error. The server removes the issue again if a client skips this check (OnProjectItemLimit).
+  const itemCountQuery = createQuery()
+  let projectItems = 0
+  $: if (_space !== undefined) {
+    itemCountQuery.query(
+      tracker.class.Issue,
+      { space: _space as Ref<Project> },
+      (res) => {
+        projectItems = res.total
+      },
+      { limit: 1, total: true, projection: { _id: 1 } }
+    )
+  } else {
+    itemCountQuery.unsubscribe()
+    projectItems = 0
+  }
+  $: itemLimitReached = isProjectItemLimitReached(projectItems)
+
   let descriptionBox: AttachmentStyledBox | undefined
 
   $: updateIssueStatusId(object, currentProject)
@@ -245,7 +266,8 @@
     getTitle(object.title ?? '').length > 0 &&
     object.status !== undefined &&
     kind !== undefined &&
-    currentProject !== undefined
+    currentProject !== undefined &&
+    !itemLimitReached
 
   $: empty = {
     assignee: assignee ?? currentProject?.defaultAssignee,
@@ -1050,6 +1072,13 @@
           }}
         />
       {/each}
+    {/if}
+  </svelte:fragment>
+  <svelte:fragment slot="error">
+    {#if itemLimitReached}
+      <span class="error-color" data-id="project-item-limit">
+        <Label label={tracker.string.ProjectItemLimitReached} params={{ limit: MAX_PROJECT_ITEMS }} />
+      </span>
     {/if}
   </svelte:fragment>
   <svelte:fragment slot="footer">

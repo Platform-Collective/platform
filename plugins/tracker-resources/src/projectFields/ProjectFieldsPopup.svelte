@@ -5,7 +5,7 @@
 <script lang="ts">
   import { generateId, type Ref } from '@hcengineering/core'
   import { translate, type IntlString } from '@hcengineering/platform'
-  import presentation, { Card, getClient, MessageBox } from '@hcengineering/presentation'
+  import presentation, { getClient, MessageBox } from '@hcengineering/presentation'
   import {
     durationToDays,
     generateFieldKey,
@@ -47,11 +47,15 @@
   import { createEventDispatcher } from 'svelte'
 
   import IterationsEditor from '../iterations/IterationsEditor.svelte'
+  import ProjectSettingsCard from '../components/projects/ProjectSettingsCard.svelte'
   import tracker from '../plugin'
   import { projectFieldsStore } from './projectFieldsStore'
   import { computeMove, nextFieldPosition } from './registry'
 
   export let project: Project
+  // Shown in a section of the project settings (a list of the fields next to the settings of the selected one)
+  // instead of a popup
+  export let embedded: boolean = false
 
   interface Draft {
     id?: Ref<ProjectField>
@@ -322,6 +326,7 @@
       message: tracker.string.DeleteProjectFieldConfirm,
       action: async () => {
         await client.removeDoc(tracker.class.ProjectField, project._id, field._id)
+        if (draft?.id === field._id) draft = undefined
       }
     })
   }
@@ -330,29 +335,40 @@
   $: optionItems = (draft?.options ?? []).map((o) => ({ id: o.value, label: o.label }))
 </script>
 
-<Card
-  label={draft === undefined ? tracker.string.ProjectFields : draft.id === undefined ? tracker.string.NewProjectField : tracker.string.EditProjectField}
+<ProjectSettingsCard
+  {embedded}
+  label={draft === undefined || embedded ? tracker.string.ProjectFields : draft.id === undefined ? tracker.string.NewProjectField : tracker.string.EditProjectField}
   okLabel={presentation.string.Save}
   okAction={save}
   canSave={draft !== undefined}
   hideFooter={draft === undefined}
   isBack={draft !== undefined}
   backAction={cancelEdit}
-  accentHeader
   width={'medium'}
-  gap={'gapV-4'}
   onCancel={() => dispatch('close')}
   on:close
   on:changeContent
 >
-  {#if draft === undefined}
+<div class="fields-root" class:fields-sidebar={embedded}>
+  {#if embedded || draft === undefined}
+  <div class="fields-list">
     {#if fields.length === 0}
       <div class="flex-center p-4 content-dark-color">
         <Label label={tracker.string.NoProjectFields} />
       </div>
     {/if}
     {#each fields as field, i (field._id)}
-      <div class="flex-row-center flex-gap-2">
+      <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-static-element-interactions -->
+      <div
+        class="flex-row-center flex-gap-2 field-row"
+        class:selected={embedded && draft?.id === field._id}
+        class:selectable={embedded}
+        data-id={`project-field-${field.key}`}
+        on:click={(e) => {
+          // The buttons of the row (move, edit, delete) do their own thing
+          if (embedded && !(e.target instanceof Element && e.target.closest('button') !== null)) startEdit(field)
+        }}
+      >
         <svelte:component this={typeIcon(field.type)} size={'small'} />
         <div class="flex-grow overflow-label">{field.label}</div>
         <span class="content-dark-color"><Label label={typeLabel(field.type)} /></span>
@@ -364,7 +380,9 @@
           disabled={i === fields.length - 1}
           on:click={() => move(field, 1)}
         />
-        <Button label={presentation.string.Edit} kind={'ghost'} size={'small'} on:click={() => startEdit(field)} />
+        {#if !embedded}
+          <Button label={presentation.string.Edit} kind={'ghost'} size={'small'} on:click={() => startEdit(field)} />
+        {/if}
         <ButtonIcon icon={IconDelete} size={'small'} kind={'tertiary'} on:click={() => remove(field)} />
       </div>
     {/each}
@@ -380,7 +398,10 @@
         <span class="ml-2 error-color"><Label label={tracker.string.ProjectFieldErrorTooManyFields} /></span>
       {/if}
     </div>
-  {:else}
+  </div>
+  {/if}
+  {#if draft !== undefined}
+  <div class="fields-editor">
     <EditBox
       label={tracker.string.ProjectField}
       placeholder={tracker.string.ProjectFieldNamePlaceholder}
@@ -491,10 +512,50 @@
     {#if showErrors && error !== undefined}
       <div class="error-color"><Label label={errorLabels[error]} /></div>
     {/if}
+  </div>
+  {:else if embedded}
+  <div class="fields-editor content-dark-color"><Label label={tracker.string.ProjectFieldSelectHint} /></div>
   {/if}
-</Card>
+</div>
+</ProjectSettingsCard>
 
 <style lang="scss">
+  .fields-root {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+  }
+  .fields-list,
+  .fields-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  .fields-sidebar {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .fields-sidebar .fields-list {
+    flex: 0 0 18rem;
+    padding-right: 1rem;
+    border-right: 1px solid var(--theme-divider-color);
+  }
+  .fields-sidebar .fields-editor {
+    flex: 1 1 0;
+  }
+  .field-row {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+  }
+  .field-row.selectable {
+    cursor: pointer;
+  }
+  .field-row.selectable:hover,
+  .field-row.selected {
+    background-color: var(--theme-list-row-hover-color, var(--theme-button-hovered));
+  }
   .amount {
     width: 4rem;
   }

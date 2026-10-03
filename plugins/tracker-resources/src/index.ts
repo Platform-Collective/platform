@@ -127,6 +127,7 @@ import RelationActivityPresenter from './components/activity/RelationActivityPre
 import DependencyShiftedPresenter from './components/notifications/DependencyShiftedPresenter.svelte'
 import PredecessorsColumnPresenter from './components/issues/PredecessorsColumnPresenter.svelte'
 import CustomFieldColumn from './projectFields/CustomFieldColumn.svelte'
+import ProjectStatusPresenter from './components/projects/ProjectStatusPresenter.svelte'
 
 import ComponentSelector from './components/components/ComponentSelector.svelte'
 
@@ -197,6 +198,10 @@ export { default as ProjectFieldsPopup } from './projectFields/ProjectFieldsPopu
 export { default as ArchivedItemsPopup } from './components/archive/ArchivedItemsPopup.svelte'
 export { default as WorkflowsPopup } from './components/workflows/WorkflowsPopup.svelte'
 export { default as WebhooksPopup } from './components/webhooks/WebhooksPopup.svelte'
+export { default as ProjectSettings } from './components/projects/ProjectSettings.svelte'
+export { default as ProjectStatusUpdatePopup } from './components/projects/ProjectStatusUpdatePopup.svelte'
+export * from './projectDetails/copy'
+export * from './projectDetails/lifecycle'
 export * from './projectFields/registry'
 export { projectFieldsStore, sharedProjectFieldsStore } from './projectFields/projectFieldsStore'
 
@@ -479,6 +484,7 @@ export default async (): Promise<Resources> => ({
     DependencyShiftedPresenter,
     PredecessorsColumn: PredecessorsColumnPresenter,
     CustomFieldColumn,
+    ProjectStatusPresenter,
     ComponentSelector,
     IssueTemplates,
     IssueTemplatePresenter,

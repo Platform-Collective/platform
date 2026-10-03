@@ -45,6 +45,7 @@ import tracker, {
   groupShiftsByRecipient,
   Issue,
   IssueParentInfo,
+  itemsOverProjectLimit,
   type Iteration,
   overLimitFields,
   type ProjectField,
@@ -185,7 +186,8 @@ export async function OnProjectRemove (txes: Tx[], control: TriggerControl): Pro
       tracker.class.Iteration,
       tracker.class.InsightChart,
       tracker.class.Workflow,
-      tracker.class.ProjectWebhook
+      tracker.class.ProjectWebhook,
+      tracker.class.ProjectStatusUpdate
     ]
     for (const cls of classes) {
       const docs = await control.findAll(control.ctx, cls, { space: ctx.objectId })
@@ -227,6 +229,37 @@ export async function OnProjectFieldCreate (txes: Tx[], control: TriggerControl)
     const fields = await control.findAll(control.ctx, tracker.class.ProjectField, { space: createTx.objectSpace as Ref<Project> })
     for (const field of overLimitFields(fields)) {
       result.push(control.txFactory.createTxRemoveDoc(field._class, field.space, field._id))
+    }
+  }
+  return result
+}
+
+/**
+ * Server-side guard for the 50,000 items per project limit (GitHub parity). The UI refuses to create an issue in a
+ * full project; a client that skips that check still cannot exceed the limit: the newest issues beyond it are removed
+ * again, like the fields beyond the field limit.
+ * @public
+ */
+export async function OnProjectItemLimit (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+  const created = new Map<Ref<Space>, Array<Ref<Issue>>>()
+  for (const tx of txes) {
+    if (tx._class !== core.class.TxCreateDoc) continue
+    const createTx = tx as TxCreateDoc<Issue>
+    if (!control.hierarchy.isDerived(createTx.objectClass, tracker.class.Issue)) continue
+    const list = created.get(createTx.objectSpace) ?? []
+    list.push(createTx.objectId)
+    created.set(createTx.objectSpace, list)
+  }
+  const result: Tx[] = []
+  for (const [space, ids] of created) {
+    const found = await control.findAll(
+      control.ctx,
+      tracker.class.Issue,
+      { space: space as Ref<Project> },
+      { limit: 1, total: true, projection: { _id: 1 } }
+    )
+    for (const id of itemsOverProjectLimit(ids, found.total)) {
+      result.push(control.txFactory.createTxRemoveDoc(tracker.class.Issue, space, id))
     }
   }
   return result
@@ -991,6 +1024,7 @@ export default async () => ({
     OnProjectRemove,
     OnProjectFieldCreate,
     OnProjectFieldRemove,
+    OnProjectItemLimit,
     OnIterationRemove,
     OnDependencyShiftRequest,
     OnIssueWorkflow,

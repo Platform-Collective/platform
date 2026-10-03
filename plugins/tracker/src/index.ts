@@ -54,6 +54,7 @@ import type { Iteration } from './iteration'
 import type { InsightChart } from './insightChart'
 import type { Workflow } from './workflow'
 import type { ProjectWebhook, ProjectWebhookSecret } from './webhook'
+import type { ProjectStatusUpdate } from './projectStatus'
 
 export * from './analytics'
 export * from './projectField'
@@ -62,6 +63,9 @@ export * from './insightChart'
 export * from './archive'
 export * from './workflow'
 export * from './webhook'
+export * from './projectStatus'
+export * from './projectSettings'
+export * from './projectCopy'
 export * from './issueFilterSchema'
 export * from './iterationRollup'
 
@@ -135,6 +139,12 @@ export interface Project extends TaskProject, IconProps {
    * `undefined` means "every day is a working day" (legacy behaviour).
    */
   workingDaysConfig?: WorkingDaysConfig
+  // Short description (GitHub: at most 256 characters), shown in the project details
+  shortDescription?: string
+  // README of the project (GitHub: Markdown), shown in the project details
+  readme?: Markup
+  // A template can be used to create new projects (GitHub "Make template")
+  isTemplate?: boolean
 }
 
 /**
@@ -601,6 +611,7 @@ const pluginState = plugin(trackerId, {
     Workflow: '' as Ref<Class<Workflow>>,
     ProjectWebhook: '' as Ref<Class<ProjectWebhook>>,
     ProjectWebhookSecret: '' as Ref<Class<ProjectWebhookSecret>>,
+    ProjectStatusUpdate: '' as Ref<Class<ProjectStatusUpdate>>,
     TypeMilestoneStatus: '' as Ref<Class<Type<MilestoneStatus>>>,
     TimeSpendReport: '' as Ref<Class<TimeSpendReport>>,
     TypeReportedTime: '' as Ref<Class<Type<number>>>,

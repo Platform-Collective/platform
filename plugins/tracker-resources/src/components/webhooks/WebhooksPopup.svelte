@@ -7,7 +7,7 @@
   import contact from '@hcengineering/contact'
   import { generateId, getCurrentAccount, type Ref } from '@hcengineering/core'
   import { type IntlString } from '@hcengineering/platform'
-  import presentation, { Card, createQuery, getClient, MessageBox } from '@hcengineering/presentation'
+  import presentation, { createQuery, getClient, MessageBox } from '@hcengineering/presentation'
   import {
     MAX_PROJECT_WEBHOOKS,
     MAX_WEBHOOK_SECRET_LENGTH,
@@ -20,6 +20,7 @@
   import { createEventDispatcher } from 'svelte'
 
   import tracker from '../../plugin'
+  import ProjectSettingsCard from '../projects/ProjectSettingsCard.svelte'
   import {
     editWebhookDraft,
     generateWebhookSecret,
@@ -35,6 +36,8 @@
   // it is stored in the personal space of the person who typed it (no other member can read it), and this form never
   // shows it again.
   export let project: Project
+  // Shown in a section of the project settings instead of a popup
+  export let embedded: boolean = false
 
   const client = getClient()
   const dispatch = createEventDispatcher()
@@ -157,7 +160,8 @@
   $: canCreateMore = webhooks.length < MAX_PROJECT_WEBHOOKS
 </script>
 
-<Card
+<ProjectSettingsCard
+  {embedded}
   label={draft === undefined ? tracker.string.ProjectWebhooks : tracker.string.ProjectWebhook}
   okLabel={presentation.string.Save}
   okAction={save}
@@ -165,9 +169,7 @@
   hideFooter={draft === undefined}
   isBack={draft !== undefined}
   backAction={cancel}
-  accentHeader
   width={'medium'}
-  gap={'gapV-4'}
   onCancel={() => dispatch('close')}
   on:close
   on:changeContent
@@ -242,4 +244,4 @@
       </div>
     {/if}
   {/if}
-</Card>
+</ProjectSettingsCard>

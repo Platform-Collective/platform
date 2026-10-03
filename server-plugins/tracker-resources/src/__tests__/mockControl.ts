@@ -89,6 +89,7 @@ export function makeControl (options: MockOptions): any {
         const [[key, dir]] = Object.entries(sort)
         found = [...found].sort((a, b) => ((a[key] ?? 0) - (b[key] ?? 0)) * (dir as number))
       }
+      const total = found.length
       if (typeof findOptions.limit === 'number') found = found.slice(0, findOptions.limit)
       const projection = findOptions.projection as Record<string, 1> | undefined
       if (projection !== undefined) {
@@ -98,6 +99,8 @@ export function makeControl (options: MockOptions): any {
           return out
         })
       }
+      // Like the real findAll, `total` is the number of matches before the limit
+      if (findOptions.total === true) (found as any).total = total
       return found
     }
   }

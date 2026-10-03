@@ -89,6 +89,15 @@ export function createModel (builder: Builder): void {
     }
   })
 
+  // At most 50,000 items per project (GitHub parity)
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnProjectItemLimit,
+    txMatch: {
+      _class: core.class.TxCreateDoc,
+      objectClass: tracker.class.Issue
+    }
+  })
+
   builder.createDoc(serverCore.class.Trigger, core.space.Model, {
     trigger: serverTracker.trigger.OnIterationRemove,
     txMatch: {

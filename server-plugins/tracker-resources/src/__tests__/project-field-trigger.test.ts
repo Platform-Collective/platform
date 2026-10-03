@@ -188,4 +188,18 @@ describe('OnProjectRemove', () => {
       [tracker.class.ProjectWebhookSecret, 's1', 'person-space']
     ])
   })
+
+  it('removes the status updates of the project', async () => {
+    const updates = [
+      { _id: 'u1', _class: tracker.class.ProjectStatusUpdate, space: SPACE },
+      { _id: 'u2', _class: tracker.class.ProjectStatusUpdate, space: SPACE }
+    ]
+    const control = makeControl({ [tracker.class.ProjectStatusUpdate]: updates })
+    control.ctx = { contextData: { broadcast: { targets: {} } } }
+    const res: any[] = await OnProjectRemove([{ objectId: SPACE } as unknown as Tx], control)
+    expect(res.map((r) => [r._class, r.id, r.space])).toEqual([
+      [tracker.class.ProjectStatusUpdate, 'u1', SPACE],
+      [tracker.class.ProjectStatusUpdate, 'u2', SPACE]
+    ])
+  })
 })

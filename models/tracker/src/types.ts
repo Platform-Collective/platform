@@ -80,6 +80,8 @@ import {
   type ProjectField,
   type ProjectFieldOption,
   ProjectFieldType,
+  type ProjectStatus,
+  type ProjectStatusUpdate,
   type ProjectWebhook,
   type ProjectWebhookSecret,
   type WebhookEvent,
@@ -160,6 +162,18 @@ export class TProject extends TTaskProject implements Project {
 
   @Prop(TypeRecord(), tracker.string.WorkingDaysConfig)
     workingDaysConfig?: WorkingDaysConfig
+
+  @Prop(TypeString(), tracker.string.ProjectShortDescription)
+  @Hidden()
+    shortDescription?: string
+
+  @Prop(TypeMarkup(), tracker.string.ProjectReadme)
+  @Hidden()
+    readme?: Markup
+
+  @Prop(TypeBoolean(), tracker.string.ProjectTemplate)
+  @Hidden()
+    isTemplate?: boolean
 }
 /**
  * @public
@@ -635,6 +649,29 @@ export class TProjectWebhook extends TDoc implements ProjectWebhook {
 
   @Prop(TypeString(), tracker.string.Description)
     description?: string
+
+  declare space: Ref<Project>
+}
+
+/**
+ * A status update of the project (GitHub "Project status updates"). `space` is the project; the author is the
+ * creator of the document, the latest update is the status of the project.
+ * @public
+ */
+@Model(tracker.class.ProjectStatusUpdate, core.class.Doc, DOMAIN_TRACKER)
+@UX(tracker.string.ProjectStatusUpdate, tracker.icon.Issues, '', undefined, undefined, tracker.string.ProjectStatusUpdates)
+export class TProjectStatusUpdate extends TDoc implements ProjectStatusUpdate {
+  @Prop(TypeString(), tracker.string.Status)
+    status!: ProjectStatus
+
+  @Prop(TypeDate(DateRangeMode.DATETIME), tracker.string.StartDate)
+    startDate?: Timestamp | null
+
+  @Prop(TypeDate(DateRangeMode.DATETIME), tracker.string.TargetDate)
+    targetDate?: Timestamp | null
+
+  @Prop(TypeMarkup(), tracker.string.Description)
+    body!: Markup
 
   declare space: Ref<Project>
 }

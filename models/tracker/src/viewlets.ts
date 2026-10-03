@@ -1033,6 +1033,12 @@ export function defineViewlets (builder: Builder): void {
         },
         'members',
         {
+          key: '',
+          label: tracker.string.ProjectStatus,
+          presenter: tracker.component.ProjectStatusPresenter,
+          displayProps: { key: 'projectStatus' }
+        },
+        {
           key: 'defaultAssignee',
           props: { kind: 'list' }
         },
@@ -1070,6 +1076,12 @@ export function defineViewlets (builder: Builder): void {
           }
         },
         'members',
+        {
+          key: '',
+          label: tracker.string.ProjectStatus,
+          presenter: tracker.component.ProjectStatusPresenter,
+          displayProps: { key: 'projectStatus' }
+        },
         {
           key: 'defaultAssignee',
           props: { kind: 'list' }

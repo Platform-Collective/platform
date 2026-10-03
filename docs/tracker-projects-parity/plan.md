@@ -1004,3 +1004,78 @@ rush build --to <pkg>             # cross-package type check before PR
   a milestone, search, links, notifications, and the hierarchy progress count (it counts every sub-issue, archived or not).
 - A parent that is archived does not archive its sub-issues.
 - The number of webhooks per project is also checked only by the form and the delivery (no server guard that removes the extra ones).
+
+
+---
+
+## Phase 11 implementation notes (Project-level features)
+
+**What was built**
+
+- Pure logic in `plugins/tracker/src` with jest tests: `projectStatus` (status enum, `ProjectStatusUpdate`, validation, latest update,
+  who may edit), `projectSettings` (limits, `isProjectItemLimitReached`, `itemsOverProjectLimit`, short description / README validation,
+  `canMakeProjectPrivate`, `isDeleteConfirmed`, `projectShortDescription`), `projectCopy` (`buildProjectCopyPlan`).
+- Resource logic in `plugins/tracker-resources/src/projectDetails` (tests next to it): `copy` (read the source, apply the plan to a batch),
+  `lifecycle` (close, reopen, visibility, template, delete with name), `status` (label and colour of a status), `identifier` (free
+  identifier for a copy).
+- Model: `Project.shortDescription?`, `Project.readme?` (Markup), `Project.isTemplate?` (all hidden props of `TProject`, optional, so no
+  migration), new class `tracker.class.ProjectStatusUpdate` (`DOMAIN_TRACKER`, `space` = project; `status`, `startDate?`, `targetDate?`,
+  `body`; the author is `createdBy`). Ids declared once (`plugins/tracker` for the class, `tracker-resources/plugin.ts` for strings and the
+  `ProjectStatusPresenter` component).
+- Server (`server-plugins/tracker-resources`): `OnProjectRemove` also removes the status updates; new sync trigger `OnProjectItemLimit`
+  (model-server-tracker registers it). Jest: `project-item-limit.test.ts`, extended `project-field-trigger.test.ts`, `mockControl` supports `total`.
+- UI (`plugins/tracker-resources/src/components/projects`): `ProjectSettings` (popup with a left sidebar: General, Custom fields, Workflows,
+  Webhooks, Archived items, Danger zone), `ProjectGeneralSettings` + `ReadmeEditor` (Write / Preview), `ProjectDangerZone`,
+  `ProjectDetailsPanel` (About panel), `ProjectStatusUpdatePopup`, `ProjectStatusPill`, `ProjectStatusPresenter` (column of the project list
+  viewlets), `ProjectSettingsCard`. 60 strings in all 14 locale files by plain text insertion (ru translated, the others English).
+- Project header (`IssuesView`): the latest status as a pill (opens the About panel), an About (info) button that toggles the panel, a "..."
+  menu (Settings, Add status update, Copy project, Make / Unmake template). The edit-project popup keeps Fields, Workflows, Webhooks and
+  Archived items and got a "Project settings" button.
+
+**Behaviour and GitHub mapping**
+
+- Settings sections reuse the existing editors, not copies: `ProjectFieldsPopup`, `WorkflowsPopup`, `WebhooksPopup` and
+  `ArchivedItemsPopup` take an `embedded` prop and draw their frame with `ProjectSettingsCard` (the old `Card` when they are popups).
+  In the settings the field list is a sidebar: selecting a field shows its editor next to it (key and type stay immutable).
+- Short description (<= 256 characters, GitHub) is the new `shortDescription`; the old `Space.description` is not touched and is shown as
+  the fallback in the About panel for projects that have no short description. README is stored as Markup (the platform editor takes Markdown
+  shortcuts and pasted Markdown; the preview is the platform message viewer), limited to 100,000 characters of markup (our limit).
+- Status updates: five statuses with the GitHub names (`INACTIVE`, `ON_TRACK`, `AT_RISK`, `OFF_TRACK`, `COMPLETE`), optional start and target
+  date (target before start is refused), Markdown body (<= 65,536 characters, our limit). The newest update is the project status. The author
+  or someone who can edit the space may edit and delete an update. Added from the About panel or the "..." menu.
+- Close / Reopen maps on `Space.archived` (hidden from the navigator, not offered when creating issues; reopen restores it). Visibility
+  maps on `Space.private` (a private project needs an owner among its members). Make / Unmake template is `isTemplate`. Delete asks for the
+  project name and removes the project (the existing `OnProjectRemove` cleans up everything that belongs to it). Every action uses
+  `canEditSpace`, `canArchiveSpace` and `canDeleteSpace` (workspace roles and space owners, no per-project roles, decision 5).
+- Templates and copies: "Copy project" (menu) opens the create form pre-filled from the project, a new project can pick a template in
+  "Create from template" (only non archived templates are listed). The plan copies fields (new ids, same keys and option values), iteration
+  fields with their iterations, saved views, workflows (enabled state, filter and target as they are) and Insights charts, plus short
+  description, README and working days. Iterations are recreated shifted by whole days so the first of each field starts today (durations,
+  gaps and breaks stay). Everything the views mention that is a document id (iteration ids in column limits and filters, the project in the
+  location) is rewritten. Fields, iterations, views, workflows, charts and the project itself are created in one `client.apply` batch.
+  The "Include issues" switch is shown off and disabled: issues are never copied (Huly has no draft items; an issue belongs to exactly one
+  project and carries numbering, status and parent links). The copy keeps the project type of the source (the template choice fixes it).
+- Item limit: 50,000 items per project (`MAX_PROJECT_ITEMS`). The create-issue form counts the issues of the project and refuses with an
+  explicit error; `OnProjectItemLimit` (sync trigger on issue creation) removes the newest created issues that exceed the limit, never
+  older ones, like the field limit trigger. The limit counts all issues of the project, archived ones included (GitHub counts them
+  separately). Moving an issue into a project is not checked.
+
+**Deviations**
+
+- No new IntlString for the status column label beyond `ProjectStatus`; the pill is the same component everywhere.
+- The README and status update body are Markup, not raw Markdown text.
+- "Make template" is a flag on the project, there is no separate template list page; the template picker is a dropdown in the create form.
+- The settings page is a popup (Modal with a sidebar), not a route.
+
+**Verified / not verified**
+
+- Verified: jest (tracker, tracker-resources, server-tracker-resources, tracker-assets), `svelte-check` of tracker-resources, `rush validate
+  --to @hcengineering/prod`.
+- Not verified: nothing was run in a browser or against a server. Layout of the settings popup and the About panel, the sidebar of the field
+  editor, trigger registration in a running pipeline, the project list column and the apply batch of a copy against a real client are untested.
+
+**Not done / limits**
+
+- Closing a project does not make the server reject writes into it; it relies on the existing archive behaviour of Huly.
+- The status pill is not shown in the navigator tree, only in the header and the project list.
+- No separate "Use this template" button on a template, the create form is the entry point.

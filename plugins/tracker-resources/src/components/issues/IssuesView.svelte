@@ -1,27 +1,45 @@
 <script lang="ts">
-  import { Doc, DocumentQuery, FindOptions, mergeQueries, Ref, Space, WithLookup } from '@hcengineering/core'
+  import { Doc, DocumentQuery, FindOptions, mergeQueries, Ref, SortingOrder, Space, WithLookup } from '@hcengineering/core'
   import { Asset, getMetadata, getResource, IntlString, translate, translateCB } from '@hcengineering/platform'
   import contact, { Employee, getCurrentEmployee, getName, type PermissionsStore } from '@hcengineering/contact'
   import { ComponentExtensions, createQuery, getClient } from '@hcengineering/presentation'
   import tags, { TagElement, TagReference } from '@hcengineering/tags'
   import task, { getTaskTypeStates } from '@hcengineering/task'
   import { taskTypeStore } from '@hcengineering/task-resources'
-  import { EffectiveWorkflow, Issue, Iteration, Project, TrackerEvents, toIterationRanges } from '@hcengineering/tracker'
+  import {
+    EffectiveWorkflow,
+    Issue,
+    Iteration,
+    Project,
+    ProjectStatus,
+    ProjectStatusUpdate,
+    TrackerEvents,
+    toIterationRanges
+  } from '@hcengineering/tracker'
   import {
     Button,
     ButtonIcon,
+    eventToHTMLElement,
     IconAdd,
+    IconCopy,
+    IconDescription,
+    IconInfo,
+    IconMoreH,
+    IconSettings,
     IModeSelector,
     Label,
+    Menu,
     ModeSelector,
     SearchInputAdvanced,
     showPopup,
     themeStore,
+    type Action,
     type DropdownTextItem
   } from '@hcengineering/ui'
   import view, { BuildModelKey, ViewOptions, Viewlet } from '@hcengineering/view'
   import {
     canChangeAttribute,
+    canEditSpace,
     CellGrid,
     clientViewExtension,
     filterGrammar,
@@ -107,6 +125,11 @@
   import IconInsights from '../insights/IconInsights.svelte'
   import InsightsPanel from '../insights/InsightsPanel.svelte'
   import SearchEmptyState from '../SearchEmptyState.svelte'
+  import CreateProject from '../projects/CreateProject.svelte'
+  import ProjectDetailsPanel from '../projects/ProjectDetailsPanel.svelte'
+  import ProjectSettings from '../projects/ProjectSettings.svelte'
+  import ProjectStatusPill from '../projects/ProjectStatusPill.svelte'
+  import ProjectStatusUpdatePopup from '../projects/ProjectStatusUpdatePopup.svelte'
   import IconSlice from '../slice/IconSlice.svelte'
   import SlicePanel from '../slice/SlicePanel.svelte'
   import ProjectViewOptionsSection from '../view/ProjectViewOptionsSection.svelte'
@@ -517,6 +540,69 @@
     changeSlice(detail.id === undefined ? selectAllValues(sliceConfig) : toggleSliceValue(sliceConfig, detail.id, detail.multi))
   }
 
+  // ---- project details, status and settings (GitHub: project details sidebar, status updates, settings) ----
+  const statusQuery = createQuery()
+  let latestStatus: ProjectStatusUpdate | undefined
+  let detailsOpen = false
+
+  $: if (project !== undefined) {
+    statusQuery.query(
+      tracker.class.ProjectStatusUpdate,
+      { space: project },
+      (res) => {
+        latestStatus = res[0]
+      },
+      { sort: { createdOn: SortingOrder.Descending }, limit: 1 }
+    )
+  } else {
+    statusQuery.unsubscribe()
+    latestStatus = undefined
+  }
+  $: if (project === undefined) detailsOpen = false
+
+  async function openProjectMenu (ev: MouseEvent): Promise<void> {
+    if (project === undefined) return
+    const doc = await client.findOne(tracker.class.Project, { _id: project })
+    if (doc === undefined) return
+    const canEdit = await canEditSpace(doc)
+    const actions: Action[] = [
+      {
+        label: tracker.string.ProjectSettingsMenu,
+        icon: IconSettings,
+        action: async () => {
+          showPopup(ProjectSettings, { projectId: doc._id }, 'top')
+        }
+      },
+      {
+        label: tracker.string.NewProjectStatusUpdate,
+        icon: IconAdd,
+        action: async () => {
+          showPopup(ProjectStatusUpdatePopup, {
+            project: doc,
+            initialStatus: latestStatus?.status ?? ProjectStatus.OnTrack
+          })
+        }
+      },
+      {
+        label: tracker.string.CopyProject,
+        icon: IconCopy,
+        action: async () => {
+          showPopup(CreateProject, { copyFrom: doc }, 'top')
+        }
+      }
+    ]
+    if (canEdit) {
+      actions.push({
+        label: doc.isTemplate === true ? tracker.string.ProjectUnmakeTemplate : tracker.string.ProjectMakeTemplate,
+        icon: IconDescription,
+        action: async () => {
+          await client.update(doc, { isTemplate: doc.isTemplate !== true })
+        }
+      })
+    }
+    showPopup(Menu, { actions }, eventToHTMLElement(ev))
+  }
+
   // ---- archived items and workflows ----
   async function openArchivedItems (): Promise<void> {
     if (project === undefined) return
@@ -747,6 +833,39 @@
 >
   <svelte:fragment slot="header-tools">
     {#if project !== undefined}
+      {#if latestStatus !== undefined}
+        <button
+          type="button"
+          class="status-button"
+          data-id="btn-project-status"
+          on:click={() => {
+            detailsOpen = true
+          }}
+        >
+          <ProjectStatusPill status={latestStatus.status} clickable />
+        </button>
+      {/if}
+      <Button
+        kind={'ghost'}
+        size={'small'}
+        icon={IconInfo}
+        label={tracker.string.ProjectAbout}
+        selected={detailsOpen}
+        dataId={'btn-project-about'}
+        on:click={() => {
+          detailsOpen = !detailsOpen
+        }}
+      />
+      <ButtonIcon
+        icon={IconMoreH}
+        size={'small'}
+        kind={'tertiary'}
+        tooltip={{ label: tracker.string.ProjectSettingsMenu, direction: 'bottom' }}
+        dataId={'btn-project-menu'}
+        on:click={(ev) => {
+          void openProjectMenu(ev)
+        }}
+      />
       <Button
         kind={'ghost'}
         size={'small'}
@@ -968,7 +1087,7 @@
      user's explicit view option wins. -->
 <!-- The slice panel sits left of the viewlet. The wrappers are `display: contents` while the panel is closed, so
      that the viewlet keeps being a direct flex child of the page and is not remounted when the panel opens. -->
-<div class="slice-layout" class:open={slicePanelOpen && sliceConfig !== undefined}>
+<div class="slice-layout" class:open={(slicePanelOpen && sliceConfig !== undefined) || detailsOpen}>
   {#if slicePanelOpen && sliceConfig !== undefined}
     <SlicePanel
       fields={sliceFieldItems}
@@ -987,7 +1106,7 @@
       on:close={toggleSlicePanel}
     />
   {/if}
-  <div class="slice-body" class:open={slicePanelOpen && sliceConfig !== undefined}>
+  <div class="slice-body" class:open={(slicePanelOpen && sliceConfig !== undefined) || detailsOpen}>
     <div class="viewlet-wrap">
       {#if viewlet && viewOptions}
         <CellGrid adapter={cellAdapterActive} rowHeight={viewOptions.rowHeight}>
@@ -1010,6 +1129,14 @@
       <FieldSumFooter {project} query={mergeQueries(optionsQuery, viewQuery)} options={optionsFind} keys={fieldSumKeys} {scanLimit} />
     {/if}
   </div>
+  {#if detailsOpen && project !== undefined}
+    <ProjectDetailsPanel
+      space={project}
+      on:close={() => {
+        detailsOpen = false
+      }}
+    />
+  {/if}
 </div>
 {#if insightsOpen && project !== undefined}
   <InsightsPanel
@@ -1031,6 +1158,12 @@
 {/if}
 
 <style lang="scss">
+  .status-button {
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
   .custom-field-error {
     padding: 0.5rem 1rem;
     color: var(--theme-error-color, #d73a49);

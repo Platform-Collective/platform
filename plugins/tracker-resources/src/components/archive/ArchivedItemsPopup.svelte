@@ -5,7 +5,7 @@
 <script lang="ts">
   import { Analytics } from '@hcengineering/analytics'
   import { SortingOrder } from '@hcengineering/core'
-  import { Card, createQuery, getClient, MessageBox } from '@hcengineering/presentation'
+  import { createQuery, getClient, MessageBox } from '@hcengineering/presentation'
   import { archivedQuery, type Issue, type Project } from '@hcengineering/tracker'
   import { Button, Label, showPopup, themeStore } from '@hcengineering/ui'
   import { deleteObjects } from '@hcengineering/view-resources'
@@ -13,9 +13,12 @@
 
   import { setArchived } from '../../archive/apply'
   import tracker from '../../plugin'
+  import ProjectSettingsCard from '../projects/ProjectSettingsCard.svelte'
 
   // The archived items of a project (GitHub "Archived items"): they can be restored or deleted for good
   export let project: Project
+  // Shown in a section of the project settings instead of a popup
+  export let embedded: boolean = false
 
   // Rows listed at once; the rest is reported, not hidden
   const LIMIT = 200
@@ -74,13 +77,11 @@
   }
 </script>
 
-<Card
+<ProjectSettingsCard
+  {embedded}
   label={tracker.string.ArchivedItems}
-  okAction={() => {}}
   hideFooter
-  accentHeader
   width={'medium'}
-  gap={'gapV-4'}
   onCancel={() => dispatch('close')}
   on:close
   on:changeContent
@@ -125,4 +126,4 @@
       <Button label={tracker.string.ArchivedDeleteAll} kind={'regular'} disabled={busy} on:click={() => remove(items)} />
     </div>
   {/if}
-</Card>
+</ProjectSettingsCard>
