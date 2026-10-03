@@ -67,5 +67,6 @@ loadMetadata(tracker.icon, {
   Estimation: `${icons}#estimation`,
   Gantt: `${icons}#timeline`,
   Roadmap: `${icons}#roadmap`,
-  Calendar: `${icons}#calendar-layout`
+  Calendar: `${icons}#calendar-layout`,
+  Workload: `${icons}#workload-layout`
 })

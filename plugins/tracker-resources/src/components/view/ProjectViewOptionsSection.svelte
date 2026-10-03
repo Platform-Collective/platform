@@ -22,7 +22,7 @@
   // settings (board), the sub-issue hierarchy (table) and the number fields to sum (every layout).
   export let viewOptions: ViewOptions
   export let space: Ref<Project> | undefined = undefined
-  export let layout: 'table' | 'board' | 'roadmap' | 'calendar'
+  export let layout: 'table' | 'board' | 'roadmap' | 'calendar' | 'workload'
 
   const dispatch = createEventDispatcher<{ update: { key: string, value: unknown } }>()
 

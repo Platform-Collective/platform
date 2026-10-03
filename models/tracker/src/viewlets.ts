@@ -620,6 +620,21 @@ export function calendarViewOptions (): ViewOptionsModel {
   }
 }
 
+// Workload (people by time buckets). The dates that place an item, the zoom, the load measure and the capacity per day
+// are stored in the view options under the `workload` key and edited in the toolbar of the layout itself. The rows are
+// the assignees, so there is no grouping and no sorting; the fields of an item are not configurable.
+export function workloadViewOptions (): ViewOptionsModel {
+  const base = issuesOptions(true)
+  return {
+    // A single entry: the Customize View popup offers no "Group by" for a layout that has one entry
+    groupBy: ['status'],
+    defaultGroupBy: '#no_category',
+    orderBy: [['rank', SortingOrder.Ascending]],
+    groupDepth: 1,
+    other: base.other
+  }
+}
+
 export function defineViewlets (builder: Builder): void {
   builder.createDoc(
     view.class.ViewletDescriptor,
@@ -652,6 +667,17 @@ export function defineViewlets (builder: Builder): void {
       component: tracker.component.CalendarView
     },
     tracker.viewlet.Calendar
+  )
+
+  builder.createDoc(
+    view.class.ViewletDescriptor,
+    core.space.Model,
+    {
+      label: tracker.string.Workload,
+      icon: tracker.icon.Workload,
+      component: tracker.component.WorkloadView
+    },
+    tracker.viewlet.Workload
   )
 
   builder.createDoc(
@@ -975,6 +1001,20 @@ export function defineViewlets (builder: Builder): void {
       config: ['assignee', 'priority', 'dueDate', 'labels']
     },
     tracker.viewlet.IssueCalendar
+  )
+
+  // The workload follows the calendar, the last layout of the saved view bar
+  builder.createDoc(
+    view.class.Viewlet,
+    core.space.Model,
+    {
+      attachTo: tracker.class.Issue,
+      descriptor: tracker.viewlet.Workload,
+      viewOptions: workloadViewOptions(),
+      configOptions: { strict: true, hiddenKeys: ['title'] },
+      config: []
+    },
+    tracker.viewlet.IssueWorkload
   )
 
   // Gantt is registered AFTER List + Kanban so List remains the default

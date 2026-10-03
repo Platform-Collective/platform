@@ -1266,3 +1266,104 @@ rush build --to <pkg>             # cross-package type check before PR
 - The `+N more` popup is a snapshot of the day when it was opened, it does not follow later changes.
 - Picking an issue with `#` in the quick add popup brings the issue into the project like in the table; it does not get the day.
 - Weekend days are Saturday and Sunday (the working days of the project are not used).
+
+
+---
+
+## Phase 13 implementation notes (Workload layout)
+
+An extra beyond GitHub parity (the tracker alone should be at least as good as a GitHub board): a team workload planner in the style of the Linear / Jira /
+Asana workload views, with the toolbar and the per-view settings of the Roadmap and the Calendar.
+
+**What was built**
+
+- Fifth layout `Workload` (`tracker.viewlet.Workload` descriptor, `tracker.viewlet.IssueWorkload` viewlet, icon `tracker.icon.Workload`, component
+  `tracker.component.WorkloadView`). `SavedViewBar` offers it after Table, Board, Roadmap and Calendar (`viewLayouts` of `IssuesView`); ids are declared once
+  (`tracker-resources/plugin.ts`, `models/tracker/plugin.ts`, `plugins/tracker`), the viewlet is registered in `models/tracker/src/viewlets.ts`
+  (`workloadViewOptions`).
+- Pure logic in `plugins/tracker-resources/src/workload/` with jest tests next to it (also run under UTC, Los Angeles, Berlin, Auckland, Kolkata, Kiritimati and
+  Sao Paulo): `config` (the `workload` settings block), `axis` (Day / Week / Month buckets, header groups, viewport windowing), `workdays` (working day index on
+  the Gantt rule), `load` (the load of an item per measure), `compute` (distribution over working days, aggregation, capacity, states, utilization, the items
+  behind a cell), `rows` (row keys and order), `reassign` (what a drop writes), `format`. The date sources and the schedule of an item are the Roadmap ones
+  (`roadmap/dates`), week starts and month arithmetic are the Calendar ones (`calendar/grid`), `toSummable` is the one of the field sums.
+- UI in `components/workload/`: `WorkloadView` (data, working calendar, drag, journal, toast), `WorkloadToolbar`, `WorkloadGrid` (windowed grid with sticky
+  headers and sticky person and Unscheduled columns), `WorkloadPanel` (the items of a cell), `types.ts`.
+- 23 new strings in `tracker.string` and in all 14 locale files of `tracker-assets` by plain text insertion (ru translated, the others English); the strings of
+  the Roadmap and the Calendar that fit (Today, Unscheduled, Dates, start / target field titles, Undo, the truncation notice, Estimation, Remaining time, Unassigned,
+  Total, Custom fields) are reused.
+- `IssuesView` treats the layout like the Calendar: slice and field sum footer are available, the Customize View popup hides Group by / Sort by (the rows are the
+  assignees) and the column list.
+
+**Behaviour**
+
+- Rows are people: every assignee of the items the view shows, every member of the project (so free capacity and drop targets are visible) and an `Unassigned`
+  row last. People are ordered by name. Rows are always assignees, grouping by iteration or team is not offered.
+- Columns are buckets on a horizontal axis: Day, Week (default) or Month. Weeks start on the platform's first day of the week (like the Calendar). The axis covers
+  all scheduled items and today, is at least 8 weeks (day), 26 weeks (week) or 12 months (month) long with more room ahead of today, is made of whole buckets and
+  is cut to 366 / 156 / 72 buckets around today if the items need more; items that end up outside it are counted in a notice, never dropped silently. A column
+  of today is highlighted and a line marks today. The grid scrolls to today when it opens, on Today and on a change of the zoom; it follows today while nobody
+  scrolled it (the axis grows to the left when the items load). Only the visible columns are drawn.
+- Dates: the Roadmap source pair (start + target, either can be `None`; defaults start date and due date), including custom Date fields, iteration spans and
+  milestone dates. An item with both dates spans its days (an inverted pair is read from the earlier to the later day), an item with one date puts all of its load
+  on that day, an item with none goes to the `Unscheduled` column of its person (total load and a count; sticky next to the name).
+- Load measure (per view): Estimate (`Issue.estimation`, man hours), Remaining time (`remainingTime`), Item count (every item is 1) or a Number custom field. A
+  value that is not a finite number above zero is no load (0), so `NaN`, text, negatives and empty fields cannot poison a sum; such items are still listed in
+  the cell with a share of 0 and the person's header says how many items have no value. Closed items are counted like any other (filter them out with
+  `is:open` if they should not count).
+- Distribution: the load of an item is spread evenly over the working days of its span; a cell holds the share of the days that fall into its bucket
+  (`distribute`, the shares of an item add up to its load). A span without any working day (a weekend only, holidays only) is planned on its calendar days so the
+  load is not lost (and shows as over capacity, there is none). Days more than about 11 years from today are not planned.
+- Working days reuse the Gantt: `isWorkingDay` of `@hcengineering/gantt` (weekday mask bit 0 = Monday) and the holidays of the HR calendar resolved by the Gantt's
+  `CalendarStateMachine` for the project's `workingDaysConfig` (the project's department plus its ancestors). A project without `workingDaysConfig` is planned on
+  **Monday to Friday**, not on every day as the Gantt does: a person has no capacity on a weekend. The calendar days are the local day indexes of the layouts, so the
+  UTC-midnight holidays of the Gantt and the days of the layout are the same frame.
+- Capacity (toolbar field `Capacity per day`, default 8, stored per view): what one person can take per working day, in the unit of the measure (hours for the
+  estimate and the remaining time, items or the field's unit otherwise). The capacity of a bucket is that times the working days of the bucket (a holiday week has
+  less, a weekend column none). A cell is under (< 80 % of the capacity), near (80 % up to the capacity) or over capacity: tinted green, amber, red; over cells carry a
+  visible `!`, a border and a tooltip, and every cell has a visually hidden text with person, period, load, capacity, percent and state (also read by the tooltip), so
+  the state is never color only. A bucket with load and no capacity is over. The legend in the toolbar names the three states. A load that is over by only
+  floating point noise is not over.
+- Row header: total load inside the axis, a utilization percentage and `N over capacity` when a cell is over. The utilization is measured over the span in which the
+  person has load (first to last loaded bucket), so someone booked full for two weeks reads 100 % and not a share of the whole axis; the header is flagged over as soon
+  as one bucket is.
+- Click a cell (or press Enter on it; arrow keys move between cells) to dock the **panel of items** on the right: the items that hold working days of that bucket with
+  their share of the load, the biggest first, or all unscheduled items of the person with their whole load. Click an item to open it, right-click for its menu.
+- Reassign: drag an item of the panel onto another person's row (the row is outlined, Esc cancels) to write `assignee` (a drop on `Unassigned` clears it). The panel
+  also has a `Reassign` button per item that opens a list of the rows, for keyboard users. Every change is one `EditJournal` batch of Phase 4 with the same `Undo` toast
+  as the Roadmap and the Calendar. A read-only viewer (`restrictionStore.readonly`) gets no drag and no Reassign button, a press only opens the item. Dragging to
+  reschedule is not offered (not required).
+- Filter string, chips, search, slice, archived scope, drafts and field sums are applied by `IssuesView` to the query the layout receives, so they behave as in the
+  Roadmap and the Calendar. Above 5000 items the same truncation banner as the Roadmap is shown.
+
+**Per-view config and dirty tracking**
+
+- `start`, `target`, `zoom`, `measure`, `field` (the Number field key, only with the measure Number field) and `capacity` live in the view options under the key `workload`
+  (the precedent of `roadmap`, `board`, `calendar`). The saved view already stores, restores and diffs `viewOptions`, so saving, the unsaved dot and discard work with no
+  change in `SavedViewBar`; the default config is not stored, so a changed-and-changed-back view is clean again (covered by a test through `isViewDirty`). A deleted date
+  field falls back to the default and a deleted Number field to the Estimate measure in the displayed settings (`sanitizeWorkloadConfig`), the saved view is not rewritten.
+
+**Deviations / decisions**
+
+- The items behind a cell are shown in a docked panel, not in a modal popup: a popup closes on the first click outside it, which would make dragging an item to another
+  row impossible. Behaviour is otherwise the one asked for (click a cell, see the contributing items with their share, open them).
+- One capacity for everybody (per view), no per-person override: the `per-person capacity default` of the brief is read as the same default for every person.
+- `Item count` and `Number field` use the same capacity number as the time measures (the unit is the measure's): change the capacity when switching the measure.
+- Items without a load value are not counted in totals but are listed (share 0) so they are not invisible.
+- Rows are not limited to people who have items: project members are added (accounts that have no person yet, and the read-only anonymous guest, are left out).
+
+**Verified / not verified**
+
+- Verified: jest (tracker-resources 1172 incl. 115 new workload tests, also under 7 time zones for `src/workload`; performance case 5000 items x 52 weeks and 5000 items at
+  day zoom each under 2 s with margin; tracker-assets lang tests; model-tracker), `svelte-check` of tracker-resources, `rush validate --to @hcengineering/model-tracker` and
+  `--to @hcengineering/prod`.
+- Not verified: nothing was run in a browser or against a server (no sanity spec). The layout of the grid in the page flex chain (sticky header and the two sticky columns,
+  the absolutely positioned windowed cells, row heights), the look of the heat colors in the light and dark themes, the position of the today line, the scroll-to-today
+  behaviour, the docked panel width, the drag over the rows, the HR holiday loading through the Gantt state machine in a real workspace and the `Avatar` in the row header are by
+  reasoning, not by eye.
+
+**Not done / limits**
+
+- No rescheduling by dragging, no per-person capacity or leave, no grouping of rows by team or iteration, no weekend toggle (the project's working days are the only source).
+- The axis is cut to 366 days / 156 weeks / 72 months around today; items beyond it are only counted in the out of range notice. Totals and utilization are over the axis.
+- A marker item (one date) puts its whole load on that day, which makes a single estimated item over capacity on its own when it is bigger than the capacity of the day.
+- The `Reassign` list offers the rows of the view (assignees with items and members of the project), not every person of the workspace.

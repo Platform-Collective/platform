@@ -717,6 +717,7 @@ const pluginState = plugin(trackerId, {
     Gantt: '' as Asset,
     Roadmap: '' as Asset,
     Calendar: '' as Asset,
+    Workload: '' as Asset,
 
     // Project icons
     Home: '' as Asset,
