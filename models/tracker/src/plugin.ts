@@ -72,6 +72,7 @@ export default mergeIds(trackerId, tracker, {
     IssueTemplateList: '' as Ref<Viewlet>,
     IssueKanban: '' as Ref<Viewlet>,
     IssueGantt: '' as Ref<Viewlet>,
+    IssueRoadmap: '' as Ref<Viewlet>,
     MilestoneList: '' as Ref<Viewlet>,
     ComponentList: '' as Ref<Viewlet>,
     ProjectList: '' as Ref<Viewlet>,

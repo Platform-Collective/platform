@@ -80,7 +80,7 @@
 
   function getDefaults (viewOptions: ViewOptionsModel): ViewOptions {
     const res: ViewOptions = {
-      groupBy: [viewOptions.groupBy[0] ?? defaultOptions.groupBy[0]],
+      groupBy: [viewOptions.defaultGroupBy ?? viewOptions.groupBy[0] ?? defaultOptions.groupBy[0]],
       orderBy: viewOptions.orderBy?.[0] ?? defaultOptions.orderBy
     }
     for (const opt of viewOptions.other) {

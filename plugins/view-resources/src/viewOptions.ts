@@ -42,7 +42,7 @@ export function getViewletDefaultOptions (viewlet: Viewlet | undefined): ViewOpt
   const model: ViewOptionsModel | undefined = viewlet?.viewOptions
   if (model == null) return defaultOptions
   const res: ViewOptions = {
-    groupBy: [model.groupBy[0] ?? defaultOptions.groupBy[0]],
+    groupBy: [model.defaultGroupBy ?? model.groupBy[0] ?? defaultOptions.groupBy[0]],
     orderBy: model.orderBy?.[0] ?? defaultOptions.orderBy
   }
   for (const opt of model.other) {

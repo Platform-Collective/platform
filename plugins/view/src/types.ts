@@ -894,6 +894,8 @@ export interface CustomObjectLinkProvider extends Class<Doc> {
  */
 export interface ViewOptionsModel {
   groupBy: string[]
+  // Group-by a new view starts with; the first of `groupBy` when absent
+  defaultGroupBy?: string
   orderBy: OrderOption[]
   other: ViewOptionModel[]
   groupDepth?: number

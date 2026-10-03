@@ -583,3 +583,67 @@ rush build --to <pkg>             # cross-package type check before PR
 - `rush validate --from @hcengineering/tracker` fails only in `@hcengineering/prod` on type errors in earlier
   phase files (`view-resources` filter grammar parser/compile and `tableEdit`), unrelated to this phase.
 
+
+---
+
+## Phase 6 implementation notes (Roadmap layout)
+
+**What was built**
+
+- Third layout `Roadmap` (`tracker.viewlet.Roadmap` descriptor, `tracker.viewlet.IssueRoadmap` viewlet, icon
+  `tracker.icon.Roadmap`, component `tracker.component.RoadmapView`). It is offered by `SavedViewBar` next to Table and
+  Board (`viewLayouts` of `IssuesView`), and appears in the generic viewlet selector like the Gantt does.
+- New files only; `GanttView.svelte` is untouched. Pure logic is in `plugins/tracker-resources/src/roadmap/`
+  (`timeScale`, `dates`, `layout`, `markers`, `reschedule`, `config`, `label`, `grouping`, `customValue`) with jest tests
+  next to it (also run under four time zones). UI is in `components/roadmap/` (`RoadmapView`, `RoadmapToolbar`,
+  `RoadmapOptionsPopup`).
+- Date sources (stored as ids in the view): `issue:startDate|dueDate|deadline`, `milestone:startDate|targetDate`
+  (read only), `field:<key>` (custom Date field), `iteration:<key>` (an Iteration field: start = first day of the
+  iteration, target = its last day). Each view picks a start and a target source (default start date / due date).
+- Item rendering: both dates -> bar (an inverted start/target is drawn from the earlier to the later day with a hatch);
+  one date -> marker; none -> listed in a collapsible "Unscheduled" section at the bottom, with a "Set dates" button
+  (date picker) and click-on-timeline to put the item on a day.
+- Zoom Month / Quarter / Year (header: months over weeks, quarters over months, years over quarters), today line,
+  Today button, horizontal and vertical scroll with a sticky title column and sticky header, rows are windowed.
+- Markers menu: milestones (flag at the target date), iterations of chosen Iteration fields (line at the start, shaded
+  span), dates of items of chosen date sources (busiest 100 days). Fields menu: what the label of an item contains
+  (identifier, title, status, assignee, priority, labels, component, milestone, estimation, custom fields).
+- Drag the bar = move both dates keeping the duration (timestamps keep their time of day); drag an edge = write only
+  that date, clamped so the range keeps at least one day. Iteration sources snap to the iteration whose first (start)
+  or last (target) day is closest, so dragging an item over an iteration field moves it to another iteration.
+  Milestone dates are read only: an item that takes a date from its milestone cannot be moved (a toast says so), the
+  other edge can still be resized. Markers can be moved, not resized. Esc cancels a drag. Every change is one
+  `EditJournal` batch of Phase 4 (`tableEdit.updateOp` + `runIssueOps`) and shows an "Undo" toast.
+- Group by and Sort by reuse the generic view options (Customize View): model keys `status, kind, assignee, priority,
+  component, milestone` plus custom/iteration keys through the existing `clientViewExtension` (category order comes from
+  the extension). The view starts ungrouped: `ViewOptionsModel.defaultGroupBy` is a new optional field (additive) that
+  `getViewletDefaultOptions` and `ViewletSettingButton` honour.
+
+**Per-view config and dirty tracking**
+
+- The roadmap settings (`start`, `target`, `zoom`, `markers`, `fields`) live in the view options under the key
+  `roadmap`. The saved view already stores, restores and diffs `viewOptions`, so nothing in `SavedViewBar` had to change
+  for saving, "unsaved changes" or discarding. The default config is not stored (`withRoadmapConfig`), so a view that
+  was never customized stays clean and changing a setting back clears the dot (covered by a test through
+  `isViewDirty`). Group-by and sort-by are the normal `viewOptions.groupBy/orderBy` of the same object.
+- Settings that point at something deleted (a removed field) are dropped from the displayed config
+  (`sanitizeConfig`) but are not rewritten in the saved view.
+
+**Deviations / decisions**
+
+- `packages/gantt` `time-scale.ts` was not reused: it only knows Day/Week/Month/Quarter zooms and computes in UTC,
+  while the roadmap needs Month/Quarter/Year and has to agree with iterations and Date fields, which are local days.
+  The roadmap has its own small local-day axis (`timeScale.ts`).
+- The table "config" columns do not apply to a roadmap; "Configure columns" is hidden for this layout and the Fields
+  menu of the roadmap replaces it.
+- No `rank`-based manual ordering and no slice-by / field-sum (Phase 8).
+- GitHub's docs do not describe single-date items, unscheduled items or resizing; the behaviour above (marker,
+  Unscheduled section, edge resize) follows the task brief.
+
+**Not done / limits**
+
+- At most 5000 items are loaded; above that a notice is shown (not silently cut). No auto-scroll while dragging near
+  the edge of the viewport; no keyboard rescheduling.
+- Group headers are plain text (no avatars/status icons); item labels are plain text.
+- Drag to reschedule of a group header value (changing the group) is not supported.
+- Not exercised in a running UI or e2e (no sanity spec added): verified by jest, `rush validate` and `svelte-check`.

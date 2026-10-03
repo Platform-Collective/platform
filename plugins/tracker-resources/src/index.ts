@@ -53,6 +53,7 @@ import CreateIssue from './components/CreateIssue.svelte'
 import EditRelatedTargets from './components/EditRelatedTargets.svelte'
 import EditRelatedTargetsPopup from './components/EditRelatedTargetsPopup.svelte'
 import GanttView from './components/gantt/GanttView.svelte'
+import RoadmapView from './components/roadmap/RoadmapView.svelte'
 import AssigneeEditor from './components/issues/AssigneeEditor.svelte'
 import DueDatePresenter from './components/issues/DueDatePresenter.svelte'
 import EditIssue from './components/issues/edit/EditIssue.svelte'
@@ -449,6 +450,7 @@ export default async (): Promise<Resources> => ({
     IssuesView,
     KanbanView,
     GanttView,
+    RoadmapView,
     ProjectComponents,
     IssuePreview,
     RelationsPopup,

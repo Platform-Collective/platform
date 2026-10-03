@@ -80,8 +80,8 @@
 
   let viewlet: WithLookup<Viewlet> | undefined = undefined
   const viewletQuery = { attachTo: tracker.class.Issue, variant: { $nin: ['subissue', 'component', 'milestone'] } }
-  // GitHub Projects layouts that exist in the tracker: Table (the list) and Board
-  const viewLayouts = [view.viewlet.List, tracker.viewlet.Kanban]
+  // The three GitHub Projects layouts: Table (the list), Board and Roadmap
+  const viewLayouts = [view.viewlet.List, tracker.viewlet.Kanban, tracker.viewlet.Roadmap]
   // Columns of the active saved view and its bar, which also keeps the unsaved column edits
   let viewConfig: Array<BuildModelKey | string> | undefined
   let savedViewBar: SavedViewBar | undefined
@@ -98,6 +98,8 @@
   // resolve a viewOptions object inline so ViewletContentView mounts
   // (without it the Gantt component never renders).
   $: isGanttMode = viewlet?.descriptor === tracker.viewlet.Gantt
+  // The roadmap has its own toolbar for dates, markers and fields; its columns are not configurable
+  $: isRoadmapMode = viewlet?.descriptor === tracker.viewlet.Roadmap
   $: if (isGanttMode && viewlet !== undefined) {
     viewOptions = getViewOptions(viewlet, $viewOptionStore)
   }
@@ -458,7 +460,7 @@
       bind:viewOptions
       bind:viewlet
       hideGroupingAndOrdering={isGanttMode}
-      showConfigureColumns={!isGanttMode}
+      showConfigureColumns={!isGanttMode && !isRoadmapMode}
       hideKeys={isGanttMode ? ['ganttGroupBy'] : []}
       configOverride={project !== undefined ? viewConfig : undefined}
       onSaveConfig={project !== undefined ? (config) => savedViewBar?.setLocalConfig(config) : undefined}

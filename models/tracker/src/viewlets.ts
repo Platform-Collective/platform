@@ -572,6 +572,30 @@ export function ganttConfig (): BuildModelKey[] {
   ]
 }
 
+// Roadmap (GitHub Projects layout of the same name). Start/target date fields, zoom, markers and the fields shown
+// on an item are not listed here: they are stored in the view options under the `roadmap` key and edited in the
+// toolbar of the layout itself. Group-by and order-by are the generic ones, plus the custom fields that the
+// client view extension adds.
+export function roadmapViewOptions (): ViewOptionsModel {
+  const base = issuesOptions(true)
+  return {
+    groupBy: ['status', 'kind', 'assignee', 'priority', 'component', 'milestone'],
+    // A roadmap starts ungrouped ('#no_category' is the "No grouping" choice of the Customize View popup)
+    defaultGroupBy: '#no_category',
+    orderBy: [
+      ['startDate', SortingOrder.Ascending],
+      ['dueDate', SortingOrder.Ascending],
+      ['rank', SortingOrder.Ascending],
+      ['modifiedOn', SortingOrder.Descending],
+      ['createdOn', SortingOrder.Descending],
+      ['status', SortingOrder.Ascending],
+      ['priority', SortingOrder.Ascending]
+    ],
+    groupDepth: 1,
+    other: base.other
+  }
+}
+
 export function defineViewlets (builder: Builder): void {
   builder.createDoc(
     view.class.ViewletDescriptor,
@@ -582,6 +606,17 @@ export function defineViewlets (builder: Builder): void {
       component: tracker.component.KanbanView
     },
     tracker.viewlet.Kanban
+  )
+
+  builder.createDoc(
+    view.class.ViewletDescriptor,
+    core.space.Model,
+    {
+      label: tracker.string.Roadmap,
+      icon: tracker.icon.Roadmap,
+      component: tracker.component.RoadmapView
+    },
+    tracker.viewlet.Roadmap
   )
 
   builder.createDoc(
@@ -870,6 +905,20 @@ export function defineViewlets (builder: Builder): void {
       ]
     },
     tracker.viewlet.IssueKanban
+  )
+
+  // The roadmap follows Kanban so that List stays the default viewlet
+  builder.createDoc(
+    view.class.Viewlet,
+    core.space.Model,
+    {
+      attachTo: tracker.class.Issue,
+      descriptor: tracker.viewlet.Roadmap,
+      viewOptions: roadmapViewOptions(),
+      configOptions: { strict: true, hiddenKeys: ['title'] },
+      config: []
+    },
+    tracker.viewlet.IssueRoadmap
   )
 
   // Gantt is registered AFTER List + Kanban so List remains the default
