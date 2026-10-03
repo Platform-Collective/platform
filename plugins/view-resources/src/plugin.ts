@@ -126,7 +126,22 @@ export default mergeIds(viewId, typedView, {
     SavedViewDiscard: '' as IntlString,
     SavedViewUnsaved: '' as IntlString,
     SavedViewLayoutTable: '' as IntlString,
-    SavedViewLayoutTo: '' as IntlString
+    SavedViewLayoutTo: '' as IntlString,
+
+    FilterQueryPlaceholder: '' as IntlString,
+    FilterQueryClear: '' as IntlString,
+    FilterQueryDidYouMean: '' as IntlString,
+    FilterQueryErrorQuote: '' as IntlString,
+    FilterQueryErrorParenthesis: '' as IntlString,
+    FilterQueryErrorUnexpected: '' as IntlString,
+    FilterQueryErrorUnknownField: '' as IntlString,
+    FilterQueryErrorMissingValue: '' as IntlString,
+    FilterQueryErrorOperator: '' as IntlString,
+    FilterQueryErrorValue: '' as IntlString,
+    FilterQueryErrorDate: '' as IntlString,
+    FilterQueryErrorNumber: '' as IntlString,
+    FilterQueryErrorRange: '' as IntlString,
+    FilterQueryErrorKeyword: '' as IntlString
   },
   function: {
     CreateDocMiddleware: '' as Resource<PresentationMiddlewareCreator>,

@@ -1,7 +1,10 @@
 <script lang="ts">
   import { DocumentQuery, Ref, Space, WithLookup } from '@hcengineering/core'
   import { Asset, getMetadata, IntlString, translate, translateCB } from '@hcengineering/platform'
-  import { ComponentExtensions, createQuery } from '@hcengineering/presentation'
+  import contact, { Employee, getCurrentEmployee, getName } from '@hcengineering/contact'
+  import { ComponentExtensions, createQuery, getClient } from '@hcengineering/presentation'
+  import tags, { TagElement, TagReference } from '@hcengineering/tags'
+  import task from '@hcengineering/task'
   import { Issue, Project, TrackerEvents } from '@hcengineering/tracker'
   import {
     Button,
@@ -16,8 +19,10 @@
   import view, { BuildModelKey, ViewOptions, Viewlet } from '@hcengineering/view'
   import {
     clientViewExtension,
+    filterGrammar,
     FilterBar,
     FilterButton,
+    FilterQueryBar,
     InlineFilterChips,
     SavedViewBar,
     SpaceHeader,
@@ -30,10 +35,12 @@
     resetResultCount,
     searchHighlightEnabledStore,
     shouldShowSearchEmptyState,
+    statusStore,
     viewOptionStore
   } from '@hcengineering/view-resources'
   import { onDestroy } from 'svelte'
   import { readable } from 'svelte/store'
+  import { buildIssueFilterSchema, customFilterToQuery, type NamedOption } from '../../issueFilter'
   import tracker from '../../plugin'
   import CustomFieldFilterButton from '../../projectFields/CustomFieldFilterButton.svelte'
   import { createCustomFieldViewExtension, customFieldFilterStore } from '../../projectFields/customFieldView'
@@ -49,6 +56,7 @@
     type CustomFieldFilter
   } from '../../projectFields/query'
   import { buildRegistry } from '../../projectFields/registry'
+  import { issuePriorities } from '../../types'
   import CreateIssue from '../CreateIssue.svelte'
   import GanttToolbarBar from '../gantt/GanttToolbarBar.svelte'
   import SearchEmptyState from '../SearchEmptyState.svelte'
@@ -104,10 +112,107 @@
   $: usesCustomKeys =
     (viewOptions?.groupBy ?? []).some((it) => parseCustomFieldViewKey(it) !== undefined) ||
     parseCustomFieldViewKey(viewOptions?.orderBy?.[0] ?? '') !== undefined
-  $: filtersActive = activeFilterCount(filters) > 0
-  $: needsScan = $registry.fields.length > 0 && (filtersActive || usesCustomKeys)
+  // The custom field rules are dormant while a filter string exists (the string is authoritative)
+  $: filtersActive = activeFilterCount(filters) > 0 && !stringFilterActive
+  $: needsScan = ($registry.fields.length > 0 && (filtersActive || usesCustomKeys)) || residual !== undefined
 
-  let scanned: Array<Pick<Issue, '_id' | 'customFields'>> = []
+  // ---- GitHub-style filter string (plan D3) ----
+  // The string is the view's filter: it is saved with the saved view, and it is authoritative. The part the
+  // server can index is compiled into the query, the rest is evaluated on the client over a bounded scan,
+  // like the custom field rules. While a string exists the custom field filter button is hidden and its rules
+  // are not applied; applying a string folds active rules into it, so nothing stays active unseen.
+  const client = getClient()
+  let filterQuery = ''
+
+  let assignees: NamedOption[] = []
+  let components: NamedOption[] = []
+  let milestones: NamedOption[] = []
+  let labels: NamedOption[] = []
+  let labelRefs: Array<{ issue: string, label: string }> = []
+  let priorities: NamedOption[] = []
+  const assigneeQuery = createQuery()
+  const componentQuery = createQuery()
+  const milestoneQuery = createQuery()
+  const labelQuery = createQuery()
+  const labelRefQuery = createQuery()
+
+  assigneeQuery.query(contact.mixin.Employee, { active: true }, (res: Employee[]) => {
+    const hierarchy = client.getHierarchy()
+    assignees = res.map((e) => ({ id: e._id, name: getName(hierarchy, e) }))
+  })
+  labelQuery.query(tags.class.TagElement, { targetClass: tracker.class.Issue }, (res: TagElement[]) => {
+    labels = res.map((e) => ({ id: e._id, name: e.title }))
+  })
+  $: if (project !== undefined) {
+    componentQuery.query(tracker.class.Component, { space: project }, (res) => {
+      components = res.map((e) => ({ id: e._id, name: e.label }))
+    })
+    milestoneQuery.query(tracker.class.Milestone, { space: project }, (res) => {
+      milestones = res.map((e) => ({ id: e._id, name: e.label }))
+    })
+    labelRefQuery.query(
+      tags.class.TagReference,
+      { space: project, attachedToClass: tracker.class.Issue },
+      (res: TagReference[]) => {
+        labelRefs = res.map((r) => ({ issue: r.attachedTo, label: r.tag }))
+      },
+      { projection: { attachedTo: 1, tag: 1 } }
+    )
+  }
+
+  async function updatePriorities (lang: string): Promise<void> {
+    priorities = await Promise.all(
+      Object.entries(issuePriorities).map(
+        async ([value, { label }]) => ({ id: Number(value), name: await translate(label, {}, lang) })
+      )
+    )
+  }
+  $: void updatePriorities($themeStore.language)
+
+  $: statuses = [...$statusStore.byId.values()].filter((s) => s.ofAttribute === tracker.attribute.IssueStatus)
+  $: closedStatuses = new Set<string>(
+    statuses.filter((s) => s.category === task.statusCategory.Won || s.category === task.statusCategory.Lost).map((s) => s._id)
+  )
+  $: filterSchema = buildIssueFilterSchema({
+    statuses: statuses.map((s) => ({ id: s._id, name: s.name })),
+    priorities,
+    assignees,
+    components,
+    milestones,
+    labels,
+    labelRefs,
+    customFields: $registry.fields,
+    noParentId: tracker.ids.NoParent
+  })
+
+  // `now` is taken when the filter is compiled, so `@today` follows the day the filter was applied
+  $: filterCtx = {
+    now: Date.now(),
+    me: getCurrentEmployee() as string,
+    closedStatuses,
+    noParentId: tracker.ids.NoParent as string,
+    iterations: () => []
+  } satisfies filterGrammar.FilterContext
+  $: reservedKeys = new Set(Object.keys(resultQuery).filter((k) => !k.startsWith('$')))
+  $: stringFilterActive = filterQuery.trim() !== ''
+  $: parsedFilter = stringFilterActive ? filterGrammar.parseFilter(filterQuery, filterSchema) : undefined
+  // An invalid string is not applied; the filter bar shows the error
+  $: split =
+    parsedFilter?.ok === true ? filterGrammar.splitServerClient(parsedFilter.value, filterCtx, reservedKeys) : undefined
+  $: stringServerQuery = split?.query ?? {}
+  $: residual = split?.residual
+  $: residualPredicate = filterGrammar.createPredicate(residual, filterCtx)
+
+  function applyFilterQuery (e: CustomEvent<string>): void {
+    let next = e.detail
+    if (project !== undefined && next.trim() !== '' && activeFilterCount(filters) > 0) {
+      next = filterGrammar.joinAnd(next, customFilterToQuery(filters, $registry.byKey))
+      customFieldFilterStore(project).set([])
+    }
+    filterQuery = next
+  }
+
+  let scanned: Array<Partial<Issue>> = []
   let scanReady = false
 
   function withoutLookup (q: DocumentQuery<Issue>): DocumentQuery<Issue> {
@@ -120,14 +225,16 @@
 
   // The scan is capped at limit + 1 so that exceeding the limit is detected without loading everything
   $: if (needsScan) {
+    const projection: Record<string, 1> = { _id: 1, customFields: 1 }
+    for (const key of filterGrammar.referencedProperties(residual)) projection[key] = 1
     scanQuery.query(
       tracker.class.Issue,
-      withoutLookup(resultQuery),
+      withoutLookup(serverQuery),
       (res) => {
         scanned = res
         scanReady = true
       },
-      { limit: scanLimit + 1, projection: { _id: 1, customFields: 1 } }
+      { limit: scanLimit + 1, projection }
     )
   } else {
     scanQuery.unsubscribe()
@@ -137,22 +244,26 @@
 
   // Above the limit custom-field filter/sort/group is off; it is never applied to a truncated set
   $: overLimit = needsScan && scanReady && exceedsScanLimit(scanned.length, scanLimit)
-  $: predicate = buildFiltersPredicate($registry.byKey, filters)
+  $: legacyPredicate = buildFiltersPredicate($registry.byKey, filtersActive ? filters : [])
+  $: predicate = (issue: Partial<Issue>): boolean => legacyPredicate(issue) && residualPredicate(issue)
+  // What the server narrows to: the view's chips and search plus the indexable part of the filter string
+  $: serverQuery = { ...resultQuery, ...stringServerQuery } as DocumentQuery<Issue>
+  $: clientFilterActive = filtersActive || residual !== undefined
 
   function buildViewQuery (
     base: DocumentQuery<Issue>,
     active: boolean,
     ready: boolean,
     over: boolean,
-    scan: Array<Pick<Issue, '_id' | 'customFields'>>,
-    match: (issue: Pick<Issue, 'customFields'>) => boolean
+    scan: Array<Partial<Issue>>,
+    match: (issue: Partial<Issue>) => boolean
   ): DocumentQuery<Issue> {
     if (!active || over) return base
     // Nothing is shown until the first scan arrives instead of flashing unfiltered rows
     if (!ready) return { ...base, _id: { $in: [] } }
-    return { ...base, _id: { $in: scan.filter(match).map((it) => it._id) } }
+    return { ...base, _id: { $in: scan.filter(match).map((it) => it._id as Ref<Issue>) } }
   }
-  $: viewQuery = buildViewQuery(resultQuery, filtersActive, scanReady, overLimit, scanned, predicate)
+  $: viewQuery = buildViewQuery(serverQuery, clientFilterActive, scanReady, overLimit, scanned, predicate)
 
   let emptyLabels = new Map<string, string>()
   async function updateEmptyLabels (fields: Array<{ key: string, label: string, type: any }>, lang: string): Promise<void> {
@@ -301,7 +412,7 @@
       <GanttToolbarBar section="cluster" />
       <InlineFilterChips _class={tracker.class.Issue} {space} constrained />
       <FilterButton _class={tracker.class.Issue} {space} />
-      {#if project !== undefined && hasFilterableFields}
+      {#if project !== undefined && hasFilterableFields && !stringFilterActive}
         <CustomFieldFilterButton space={project} />
       {/if}
       {#if modeSelectorProps !== undefined && (viewOptions?.showQuickModeSelector ?? true) !== false}
@@ -320,7 +431,7 @@
         scope={viewOptions?.searchScope ?? 'all'}
         collapsed
       />
-      {#if project !== undefined && hasFilterableFields}
+      {#if project !== undefined && hasFilterableFields && !stringFilterActive}
         <CustomFieldFilterButton space={project} />
       {/if}
       <FilterButton _class={tracker.class.Issue} {space} />
@@ -378,7 +489,10 @@
     layouts={viewLayouts}
     extra={customFieldFilterStore(project)}
     bind:config={viewConfig}
+    bind:filterQuery
   />
+  <!-- GitHub-style filter string; it is the filter of the active view -->
+  <FilterQueryBar value={filterQuery} schema={filterSchema} on:apply={applyFilterQuery} />
 {/if}
 
 <!-- FilterBar owns the filter→resultQuery data path (debounced via

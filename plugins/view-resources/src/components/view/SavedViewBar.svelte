@@ -56,6 +56,8 @@
   export let layouts: Array<Ref<ViewletDescriptor>>
   // Host specific filter state that is saved with the view (e.g. custom field filters)
   export let extra: Writable<any[]> | undefined = undefined
+  // GitHub-style filter string of the view (bind it); saved with the view and part of its unsaved-changes state
+  export let filterQuery: string = ''
   // Columns of the active view; undefined until it is known
   export let config: ViewColumns | undefined = undefined
 
@@ -161,7 +163,8 @@
       filters: doc?.filters,
       viewOptions: doc?.viewOptions,
       config: doc?.config,
-      extra: doc?.extra
+      extra: doc?.extra,
+      filterQuery: doc?.filterQuery
     }
   }
 
@@ -179,6 +182,7 @@
     if (layer.viewOptions !== undefined && target !== undefined) setViewOptions(target, clone(layer.viewOptions))
     setFilters(parseStoredFilters(layer.filters))
     extraStore.set(parseStoredFilters(layer.extra))
+    filterQuery = layer.filterQuery ?? ''
   }
 
   function apply (tab: Tab): void {
@@ -213,7 +217,8 @@
     filters: JSON.stringify($filterStore),
     viewOptions: currentOptions as ViewOptions | undefined,
     config: effective.config,
-    extra: JSON.stringify($extraStore)
+    extra: JSON.stringify($extraStore),
+    filterQuery
   } satisfies ViewConfigLayer
 
   // The baseline is taken once the view is applied and the displayed layout has caught up
@@ -242,7 +247,8 @@
       viewletId: current.viewletId as Ref<Viewlet> | undefined,
       sharable: true,
       config: clone(current.config) ?? [],
-      extra: current.extra
+      extra: current.extra,
+      filterQuery: current.filterQuery
     }
   }
 
@@ -327,7 +333,8 @@
         viewletId,
         sharable: true,
         config: [],
-        extra: '[]'
+        extra: '[]',
+        filterQuery: ''
       },
       order
     )
@@ -352,7 +359,8 @@
       viewletId: doc.viewletId,
       sharable: true,
       config: clone(doc.config) ?? [],
-      extra: doc.extra
+      extra: doc.extra,
+      filterQuery: doc.filterQuery
     }
   }
 

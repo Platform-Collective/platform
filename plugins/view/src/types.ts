@@ -130,6 +130,9 @@ export interface FilteredView extends Doc {
   order?: number
   // JSON of host-specific filter state that is not a Filter[] (e.g. custom field filters)
   extra?: string
+  // GitHub-style filter string (`status:Done label:bug`), see view-resources/src/filter/grammar.
+  // Filters saved before it existed keep using `filters`/`extra` and have no filter string
+  filterQuery?: string
 }
 
 /**

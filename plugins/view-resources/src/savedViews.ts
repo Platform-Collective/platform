@@ -25,6 +25,8 @@ export interface ViewConfigLayer {
   config?: ViewColumns
   // JSON of host-specific filter state
   extra?: string
+  // GitHub-style filter string
+  filterQuery?: string
 }
 
 export interface EffectiveViewConfig {
@@ -33,6 +35,7 @@ export interface EffectiveViewConfig {
   viewOptions?: ViewOptions
   config?: ViewColumns
   extra?: string
+  filterQuery: string
 }
 
 export interface EffectiveViewConfigParams {
@@ -84,7 +87,8 @@ export function getEffectiveViewConfig (params: EffectiveViewConfigParams): Effe
     filters: local?.filters ?? saved?.filters ?? defaults?.filters ?? EMPTY_FILTERS,
     viewOptions,
     config: hasColumns(config) ? config : undefined,
-    extra: local?.extra ?? saved?.extra ?? defaults?.extra
+    extra: local?.extra ?? saved?.extra ?? defaults?.extra,
+    filterQuery: local?.filterQuery ?? saved?.filterQuery ?? defaults?.filterQuery ?? ''
   }
 }
 
@@ -94,7 +98,9 @@ function normalize (layer: ViewConfigLayer): Required<Pick<ViewConfigLayer, 'fil
     filters: layer.filters === undefined || layer.filters === '' ? EMPTY_FILTERS : layer.filters,
     viewOptions: layer.viewOptions,
     config: hasColumns(layer.config) ? layer.config : undefined,
-    extra: layer.extra === undefined || layer.extra === '' || layer.extra === '[]' ? undefined : layer.extra
+    extra: layer.extra === undefined || layer.extra === '' || layer.extra === '[]' ? undefined : layer.extra,
+    // Whitespace around the filter string is not a change
+    filterQuery: layer.filterQuery === undefined || layer.filterQuery.trim() === '' ? undefined : layer.filterQuery.trim()
   }
 }
 

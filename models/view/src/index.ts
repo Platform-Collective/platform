@@ -137,6 +137,7 @@ export class TFilteredView extends TDoc implements FilteredView {
   config?: (BuildModelKey | string)[]
   order?: number
   extra?: string
+  filterQuery?: string
 }
 
 @Model(view.class.FilterMode, core.class.Doc, DOMAIN_MODEL)

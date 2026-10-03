@@ -170,6 +170,20 @@
     "SavedViewDiscard": "Отменить",
     "SavedViewUnsaved": "Несохранённые изменения",
     "SavedViewLayoutTable": "Таблица",
-    "SavedViewLayoutTo": "Вид: {layout}"
+    "SavedViewLayoutTo": "Вид: {layout}",
+    "FilterQueryPlaceholder": "Фильтр по ключевому слову или по полю",
+    "FilterQueryClear": "Сбросить фильтр",
+    "FilterQueryDidYouMean": "Возможно, вы имели в виду: {hints}",
+    "FilterQueryErrorQuote": "Не закрыта кавычка",
+    "FilterQueryErrorParenthesis": "Несбалансированные скобки",
+    "FilterQueryErrorUnexpected": "Неожиданный ввод",
+    "FilterQueryErrorUnknownField": "Неизвестное поле «{token}»",
+    "FilterQueryErrorMissingValue": "Не указано значение",
+    "FilterQueryErrorOperator": "Этот оператор нельзя использовать с этим полем",
+    "FilterQueryErrorValue": "Недопустимое значение «{token}»",
+    "FilterQueryErrorDate": "«{token}» не является датой. Используйте ГГГГ-ММ-ДД или @today-7d",
+    "FilterQueryErrorNumber": "«{token}» не является числом",
+    "FilterQueryErrorRange": "Диапазон должен иметь ровно две границы, например 1..5",
+    "FilterQueryErrorKeyword": "Неизвестное ключевое слово «{token}»"
   }
 }

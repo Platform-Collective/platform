@@ -168,6 +168,20 @@
     "SavedViewDiscard": "Discard",
     "SavedViewUnsaved": "Unsaved changes",
     "SavedViewLayoutTable": "Table",
-    "SavedViewLayoutTo": "Layout: {layout}"
+    "SavedViewLayoutTo": "Layout: {layout}",
+    "FilterQueryPlaceholder": "Filter by keyword or by field",
+    "FilterQueryClear": "Clear filter",
+    "FilterQueryDidYouMean": "Did you mean: {hints}",
+    "FilterQueryErrorQuote": "Missing closing quote",
+    "FilterQueryErrorParenthesis": "Unbalanced parenthesis",
+    "FilterQueryErrorUnexpected": "Unexpected input",
+    "FilterQueryErrorUnknownField": "Unknown field \"{token}\"",
+    "FilterQueryErrorMissingValue": "A value is missing",
+    "FilterQueryErrorOperator": "This operator cannot be used with this field",
+    "FilterQueryErrorValue": "Invalid value \"{token}\"",
+    "FilterQueryErrorDate": "\"{token}\" is not a valid date. Use YYYY-MM-DD or @today-7d",
+    "FilterQueryErrorNumber": "\"{token}\" is not a number",
+    "FilterQueryErrorRange": "A range needs exactly two bounds, like 1..5",
+    "FilterQueryErrorKeyword": "Unknown keyword \"{token}\""
   }
 }

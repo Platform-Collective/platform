@@ -94,7 +94,7 @@ describe('isViewDirty', () => {
   })
 
   it('normalizes absent and empty values', () => {
-    expect(isViewDirty({ viewletId: null }, { filters: '', config: [], extra: '[]' })).toBe(false)
+    expect(isViewDirty({ viewletId: null }, { filters: '', config: [], extra: '[]', filterQuery: '  ' })).toBe(false)
   })
 
   it('detects a change of each part', () => {
@@ -103,6 +103,14 @@ describe('isViewDirty', () => {
     expect(isViewDirty(base, { ...base, viewOptions: opts('priority') })).toBe(true)
     expect(isViewDirty(base, { ...base, config: ['a', 'b'] })).toBe(true)
     expect(isViewDirty(base, { ...base, extra: '[{"k":1}]' })).toBe(true)
+    expect(isViewDirty(base, { ...base, filterQuery: 'status:Done' })).toBe(true)
+  })
+
+  it('ignores whitespace around the filter string only', () => {
+    const q = { ...base, filterQuery: 'status:Done' }
+    expect(isViewDirty(q, { ...base, filterQuery: ' status:Done ' })).toBe(false)
+    expect(isViewDirty(q, { ...base, filterQuery: 'status:Todo' })).toBe(true)
+    expect(isViewDirty(q, base)).toBe(true)
   })
 
   it('detects column reorder', () => {
@@ -181,5 +189,19 @@ describe('parseStoredFilters', () => {
     expect(parseStoredFilters(undefined)).toEqual([])
     expect(parseStoredFilters('{bad')).toEqual([])
     expect(parseStoredFilters('{"a":1}')).toEqual([])
+  })
+})
+
+describe('getEffectiveViewConfig filterQuery', () => {
+  it('is empty by default and for old views without a filter string', () => {
+    expect(getEffectiveViewConfig({}).filterQuery).toBe('')
+    expect(getEffectiveViewConfig({ saved: { filters: '[]' } }).filterQuery).toBe('')
+  })
+
+  it('prefers local edits over the saved view over defaults', () => {
+    expect(getEffectiveViewConfig({ defaults: { filterQuery: 'a' }, saved: { filterQuery: 'b' } }).filterQuery).toBe('b')
+    expect(
+      getEffectiveViewConfig({ saved: { filterQuery: 'b' }, local: { filterQuery: '' } }).filterQuery
+    ).toBe('')
   })
 })
