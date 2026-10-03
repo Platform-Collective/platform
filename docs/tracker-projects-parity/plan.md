@@ -723,3 +723,82 @@ rush build --to <pkg>             # cross-package type check before PR
 - The legacy `ViewletPreference` of the Kanban viewlet (a user's own column choice) does not contain `assignee`, so those users
   see cards without the avatar until they switch it on.
 - A drop on a lane/column whose category has no value for the project of the card (status of another project) is refused.
+
+
+---
+
+## Phase 8 implementation notes (Hierarchy, Slice by, Field sum)
+
+**What was built**
+
+- Pure logic with jest tests next to it. `plugins/view-resources/src/hierarchy.ts` (generic tree rows: nesting, expansion, depth
+  cap, cycles, large lists) and in `plugins/tracker-resources/src/`: `hierarchy/` (`config`, `expansion`, `progress`;
+  `expansionStore.ts` is the svelte store on top of `expansion`), `slice/` (`config`, `fields`, `values`, `sums`) and `fieldSum/`
+  (`config`, `sum`; `load.ts` only translates the estimation label).
+- UI: `components/slice/{SlicePanel,IconSlice}`, `components/fieldSum/{FieldSumGroupSummary,FieldSumFooter}`,
+  `components/view/ProjectViewOptionsSection` (the rows that `IssuesView` adds to the "Customize view" popup: board section,
+  Hierarchy toggle, Field sum toggles). `IssuesView`, `KanbanView`, `RoadmapView` and `BoardColumnHeader` were extended.
+- Strings (10) were added to `tracker.string` and to all 14 locale files of `tracker-assets` by plain text insertion (ru
+  translated, the others English); `view-assets` needed none (the expander tooltip text comes from the host).
+
+**Behaviour**
+
+- Hierarchy (Table only). Sub-issues are nested under their parent with a chevron (up to 8 levels, deeper issues follow as
+  top level rows right after their tree). Collapsed by default; the expanded rows are kept per viewer and per view in local
+  storage (`tracker.hierarchy.expanded.<project>.<viewId>`, at most 2000 ids). The tree is built per group over the issues the
+  view shows: an issue whose parent is not in that group (filtered out, other group, other page of the filter) is a top level
+  row and keeps showing the parent name, so nothing is lost; an issue is shown once. Sort order is kept among siblings. The
+  chevron tooltip and the existing sub-issues button of the row show the progress `done of total` (direct sub-issues, all of
+  them, whether the view shows them or not; done = status category Won or Lost, the same rule as the button). The tree needs
+  the whole group, so the list loads up to the scan limit per group in this mode. Drag-to-rank is off while the tree is on.
+  It needs the "Sub-issues" view option to be on (root-only lists have nothing to nest).
+- Opt-in per saved view: `viewOptions.hierarchy === true`. Absent = off, so views saved before and the unsaved default view
+  stay flat. A new Table view (and a view whose layout is switched to Table) starts with it on (`SavedViewBar` got the optional
+  props `newViewOptions` and `activeViewId`). Off is not stored, so on-then-off leaves the view clean.
+- Slice by (Table and Roadmap; no button on Board and Gantt). Toolbar button next to the filter button opens a left panel
+  with a field menu and the values of the field with counts, `All items` and `No <field>`. A click chooses a value (a second
+  click on the only chosen one goes back to All), Cmd/Ctrl-click adds or removes values. Fields: status, priority, assignee,
+  labels, component, milestone and the single select, multi select and iteration custom fields. The counts are over what the
+  view shows without the slice itself (filter string and chips applied), the slice narrows the result on top of it (AND). The
+  values of custom fields are all listed (also with 0), built-in ones only when in use, and a chosen value is always listed.
+  Stored as `viewOptions.slice = { field, value: string[] }` (`field` is the filter name of a built-in or `customFields.<key>`,
+  `value` empty = All, `__none__` = "No <field>"; the key exists while the panel is open). Deleted options are dropped from the
+  effective choice, a deleted field falls back to the first one; neither rewrites the saved view.
+- Field sum. The "Customize view" popup lists Estimation and every Number custom field with a toggle; stored as
+  `viewOptions.fieldSums: string[]` (`estimation`, `customFields.<key>`). Shown: in every group header of the Table (not on
+  an ungrouped table, as on GitHub), in the group headers of the Roadmap, in the board column headers (`columnTotal` hook of
+  Phase 7), in the slice panel next to the counts, and as a footer below Table and Roadmap with the total of the whole view.
+  Only the issues the view shows are summed (filter, search and slice applied); values that are not finite numbers are
+  ignored (`NaN`, text, empty), the sum is compensated and printed with at most 2 decimals.
+- Scan limit (`TRACKER_CUSTOM_FIELD_SCAN_LIMIT`). Slice counts and the narrowing use the same bounded scan as the custom field
+  filters; above the limit the panel says so and the slice is not applied. The hierarchy checks the size of the view with a
+  count query and is turned off above the limit with a banner; the footer shows a note instead of a total. Group header sums
+  and board totals read the documents the list already holds.
+
+**Shared code touched (additive, opt-in)**
+
+- `ClientViewExtension` got the optional `hierarchy` and `groupSummary`; the list reads them only when the view options of the
+  list turn the feature on (`hierarchy` / `fieldSums` keys), so the sub-issues list of an issue, related issues and every other
+  embedded list are unaffected although the extension store is global.
+- `ListCategory` builds the tree rows, `ListItem` has an optional `tree` prop (chevron + indent, emits `toggle-tree`), `ListHeader`
+  renders the optional summary, `List` projects the properties the summary reads. `SavedViewBar` has the two props above.
+
+**Deviations / decisions**
+
+- GitHub's docs do not describe grouping together with the hierarchy beyond "preserved"; here a child whose parent is in another
+  group is shown flat in its own group.
+- Slice and field sums are stored in the view options (the precedent of `roadmap` / `board`), not as `FilteredView.sliceField` /
+  `fieldSum` props of D2: one place for the per-view layout state, and saving, restoring and the unsaved dot work unchanged.
+- The columns of the table shift right by one rem per level of the tree (the chevron cell is the first cell of the row); the
+  identifier/title columns are not re-aligned.
+- Progress in the row is the existing sub-issues button; the chevron adds the tooltip. No separate progress column was added.
+
+**Not done / limits**
+
+- No expand all / collapse all, no keyboard expand/collapse, no drag to re-parent. Arrow-key navigation follows the existing
+  order logic of the list, which is not aware of the tree rows.
+- Hierarchy on the Roadmap and Board is not offered.
+- The slice panel cannot be resized, has no search box, and slices by custom Text, Number and Date fields are not offered.
+- Not exercised in a running UI or e2e (no sanity spec added): verified by jest (tracker-resources, view-resources,
+  tracker-assets), `svelte-check` of view-resources and tracker-resources and `rush validate --to @hcengineering/prod`. The layout
+  of the slice panel and of the footer in the page flex chain is by reasoning, not by eye.

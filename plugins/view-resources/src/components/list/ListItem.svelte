@@ -15,8 +15,16 @@
 <script lang="ts">
   import { AnyAttribute, Doc, getObjectValue } from '@hcengineering/core'
   import notification from '@hcengineering/notification'
+  import { getEmbeddedLabel } from '@hcengineering/platform'
   import { getClient, updateAttribute } from '@hcengineering/presentation'
-  import { CheckBox, Component, IconCircles, tooltip, deviceOptionsStore as deviceInfo } from '@hcengineering/ui'
+  import {
+    CheckBox,
+    Component,
+    IconChevronRight,
+    IconCircles,
+    tooltip,
+    deviceOptionsStore as deviceInfo
+  } from '@hcengineering/ui'
   import { AttributeModel } from '@hcengineering/view'
   import { createEventDispatcher, onMount } from 'svelte'
   import view from '../../plugin'
@@ -33,6 +41,16 @@
   export let props: Record<string, any> = {}
   export let compactMode: boolean = false
   export let readonly: boolean = false
+  // Position of the row in a tree display (see ClientHierarchy); the rows of other lists have none
+  export let tree:
+  | {
+    depth: number
+    hasChildren: boolean
+    expanded: boolean
+    // Tooltip of the expander
+    label?: string
+  }
+  | undefined = undefined
 
   export function scroll () {
     elem?.scrollIntoView({ behavior: 'auto', block: 'nearest' })
@@ -125,6 +143,27 @@
       />
     </div>
   </div>
+  {#if tree !== undefined}
+    <div class="tree-cell" style:padding-left={`${tree.depth}rem`} data-tree-depth={tree.depth}>
+      {#if tree.hasChildren}
+        <button
+          class="tree-toggle"
+          class:expanded={tree.expanded}
+          type="button"
+          data-id="hierarchy-toggle"
+          aria-expanded={tree.expanded}
+          use:tooltip={tree.label !== undefined ? { label: getEmbeddedLabel(tree.label) } : undefined}
+          on:click|stopPropagation={() => {
+            dispatch('toggle-tree')
+          }}
+        >
+          <IconChevronRight size={'small'} />
+        </button>
+      {:else}
+        <span class="tree-spacer" />
+      {/if}
+    </div>
+  {/if}
   {#each model.filter((p) => !(p.displayProps?.optional === true || p.displayProps?.compression === true || p.displayProps?.suffix === true)) as attributeModel, i}
     {@const displayProps = attributeModel.displayProps}
     {#if !groupByKey || displayProps?.excludeByKey !== groupByKey}
@@ -253,8 +292,39 @@
   {/if}
 </div>
 
-<!--
 <style lang="scss">
   /* Global styles in components.scss */
+  .tree-cell {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-right: 0.25rem;
+  }
+  .tree-toggle,
+  .tree-spacer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  .tree-toggle {
+    padding: 0;
+    border: none;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--theme-dark-color);
+    cursor: pointer;
+    transition: transform 0.15s ease-in-out;
+
+    &:hover,
+    &:focus-visible {
+      color: var(--theme-caption-color);
+      background: var(--theme-button-hovered);
+    }
+    &.expanded {
+      transform: rotate(90deg);
+    }
+  }
 </style>
--->

@@ -686,7 +686,17 @@
     "BoardShowHiddenColumns": "Показать скрытые колонки ({count})",
     "BoardClearColumnLimits": "Убрать лимиты колонок ({count})",
     "BoardCollapseLane": "Свернуть дорожку",
-    "BoardExpandLane": "Развернуть дорожку"
+    "BoardExpandLane": "Развернуть дорожку",
+    "SliceBy": "Срез по",
+    "SliceAll": "Все элементы",
+    "SliceClose": "Закрыть панель среза",
+    "SliceScanLimitExceeded": "Срез отключён: в этом представлении больше {limit} задач. Сузьте выборку другими фильтрами.",
+    "HierarchyView": "Иерархия",
+    "HierarchyProgress": "Выполнено подзадач: {done} из {total}",
+    "HierarchyScanLimitExceeded": "Иерархия подзадач отключена: в этом представлении больше {limit} задач. Сузьте выборку другими фильтрами.",
+    "FieldSum": "Сумма по полям",
+    "FieldSumTotal": "Итого",
+    "FieldSumScanLimitExceeded": "Итоги не показаны: в этом представлении больше {limit} задач. Сузьте выборку другими фильтрами."
   },
   "status": {}
 }

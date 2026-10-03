@@ -6,7 +6,7 @@
 import type { CategoryType, Doc, SortingOrder } from '@hcengineering/core'
 import type { AnySvelteComponent } from '@hcengineering/ui'
 import type { BuildModelKey, ViewOptions } from '@hcengineering/view'
-import { get, writable } from 'svelte/store'
+import { get, writable, type Readable } from 'svelte/store'
 
 /**
  * Option offered in the Group-by / Order-by dropdowns.
@@ -26,6 +26,38 @@ export interface ClientViewColumn {
   key: BuildModelKey
   // Plain (already translated) label
   label: string
+}
+
+/**
+ * Tree display of a list: the documents are shown nested under their parents. A list takes part only when
+ * `isEnabled` accepts its view options, so lists of other views are never affected.
+ * @public
+ */
+export interface ClientHierarchy {
+  // Whether the view options ask for the tree
+  isEnabled: (viewOptions: ViewOptions) => boolean
+  // Id of the parent of a document; undefined for a document without a parent
+  parentOf: (doc: Doc) => string | undefined
+  // Levels of nesting, 8 by default
+  maxDepth?: number
+  // Ids of the documents whose children are shown
+  expanded: Readable<ReadonlySet<string>>
+  toggle: (id: string) => void
+  // Tooltip of the expander of a parent row, e.g. the progress of its children
+  describe?: Readable<(doc: Doc) => string | undefined>
+}
+
+/**
+ * Summary that is shown at the end of every group header, e.g. the sums of number fields of the group.
+ * It is shown only when `isEnabled` accepts the view options of the list.
+ * @public
+ */
+export interface ClientGroupSummary {
+  isEnabled: (viewOptions: ViewOptions) => boolean
+  // Document properties the summary reads, they are loaded together with the group-by keys
+  projection: (viewOptions: ViewOptions) => string[]
+  // Receives `docs` (the documents of the group), `viewOptions`, `value` (the category), `groupKey` and `space`
+  component: AnySvelteComponent
 }
 
 /**
@@ -57,6 +89,10 @@ export interface ClientViewExtension {
   compare: (key: string, order: SortingOrder) => ((a: Doc, b: Doc) => number) | undefined
   // Upper bound of documents to load per group when sorting on the client
   scanLimit: number
+  // Nests documents under their parents, for lists that turn it on in their view options
+  hierarchy?: ClientHierarchy
+  // Totals shown in the group headers, for lists that turn it on in their view options
+  groupSummary?: ClientGroupSummary
 }
 
 /**

@@ -76,6 +76,9 @@
   } from '../../board/columns'
   import { attributeTarget, customTarget, resolveDropUpdate, type DropTarget } from '../../board/move'
   import { buildBoardGrid, gridOrder } from '../../board/swimlanes'
+  import { readFieldSums, resolveFieldSums, sumProjection, type SummableField } from '../../fieldSum/config'
+  import { loadSummableFields } from '../../fieldSum/load'
+  import { computeFieldSums, formatFieldSums } from '../../fieldSum/sum'
   import { iterationsByFieldKey, sharedIterationsStore } from '../../iterations/iterationsStore'
   import tracker from '../../plugin'
   import { sharedProjectFieldsStore } from '../../projectFields/projectFieldsStore'
@@ -220,9 +223,20 @@
 
   let fastQueryIds = new Set<Ref<DocWithRank>>()
 
+  // The number fields whose sums the column headers show (GitHub's "Field sum")
+  $: sumKeys = readFieldSums(viewOptions)
+  let summable: SummableField[] = []
+  $: void loadSummableFields($registry.fields, $themeStore.language).then((res) => {
+    summable = res
+  })
+  $: sumFields = resolveFieldSums(sumKeys, summable)
+
   // Custom fields are stored in one record, so a board that uses one needs the whole record of the issues
   $: projectionKeys = Array.from(
-    new Set([columnKey, ...(laneKey !== undefined ? [laneKey] : [])].map((k) => (isCustomDimensionKey(k) ? 'customFields' : k)))
+    new Set([
+      ...[columnKey, ...(laneKey !== undefined ? [laneKey] : [])].map((k) => (isCustomDimensionKey(k) ? 'customFields' : k)),
+      ...sumProjection(sumKeys)
+    ])
   )
 
   let categoryQueryOptions: Partial<FindOptions<DocWithRank>>
@@ -362,8 +376,10 @@
     return { key, category, count: (grid?.columnTotals.get(key) ?? groupByDocs[key]?.length ?? 0) }
   })
 
-  // Hook for the sum of a number field of the items of a column (Phase 8); nothing is shown while it is unset
+  // The sums of the chosen number fields over the items of a column; nothing is shown without chosen fields
   let columnTotal: ((items: readonly Item[]) => string | undefined) | undefined
+  $: columnTotal =
+    sumFields.length > 0 ? (items) => formatFieldSums(computeFieldSums(items, sumFields)) : undefined
 
   function hideColumn (category: CategoryType): void {
     changeBoardConfig(withColumnHidden(boardConfig, columnKey, categoryKey(category), true))

@@ -60,6 +60,10 @@
   export let filterQuery: string = ''
   // Columns of the active view; undefined until it is known
   export let config: ViewColumns | undefined = undefined
+  // Id of the active view (bind it), e.g. to keep per-view state of the viewer
+  export let activeViewId: string | undefined = undefined
+  // View options a new view of the layout starts with, on top of the defaults of the layout
+  export let newViewOptions: ((layout: WithLookup<Viewlet>) => Partial<ViewOptions> | undefined) | undefined = undefined
 
   const client = getClient()
   const noExtra = writable<any[]>([])
@@ -150,6 +154,7 @@
   $: found = tabs.find((it) => it._id === activeId)
   $: if (found !== undefined && awaitingId === activeId) awaitingId = undefined
   $: activeTab = found ?? (awaitingId !== undefined ? undefined : tabs[0])
+  $: activeViewId = activeTab?._id
 
   // Unsaved column edits of the active view
   let localConfig: { viewletId: string, config: ViewColumns } | undefined
@@ -170,6 +175,11 @@
 
   function clone<T> (value: T): T {
     return value === undefined ? value : JSON.parse(JSON.stringify(value))
+  }
+
+  // Options of a view that starts with the layout: its defaults and what the host adds for new views
+  function startOptions (layout: WithLookup<Viewlet>): ViewOptions {
+    return { ...clone(getViewletDefaultOptions(layout)), ...(newViewOptions?.(layout) ?? {}) }
   }
 
   // Puts the stores that drive the view into the state of the layer
@@ -328,7 +338,7 @@
       name,
       {
         filters: '[]',
-        viewOptions: clone(getViewletDefaultOptions(target)),
+        viewOptions: startOptions(target),
         filterClass: _class,
         viewletId,
         sharable: true,
@@ -377,7 +387,7 @@
     // Columns and view options belong to a layout, so the new layout starts from its defaults
     const update = {
       viewletId: target._id,
-      viewOptions: clone(getViewletDefaultOptions(target)),
+      viewOptions: startOptions(target),
       config: []
     }
     await client.update(doc, update)

@@ -6,7 +6,7 @@
 import { SortingOrder, type CategoryType, type Doc, type Ref } from '@hcengineering/core'
 import type { Iteration, Project, ProjectField } from '@hcengineering/tracker'
 import { buildIterationGroupCategories, ProjectFieldType } from '@hcengineering/tracker'
-import type { ClientViewExtension } from '@hcengineering/view-resources'
+import type { ClientGroupSummary, ClientHierarchy, ClientViewExtension } from '@hcengineering/view-resources'
 import { writable, type Writable } from 'svelte/store'
 
 import IterationGroupExtras from '../iterations/IterationGroupExtras.svelte'
@@ -38,6 +38,10 @@ export interface CustomFieldViewParams {
   iterations?: readonly Iteration[]
   // Timestamp that `current` refers to; defaults to the time of the call
   now?: number
+  // Nests sub-issues under their parents in lists whose view options turn it on
+  hierarchy?: ClientHierarchy
+  // Totals in the group headers of lists whose view options turn it on
+  groupSummary?: ClientGroupSummary
 }
 
 type IssueLike = Doc & { customFields?: Record<string, unknown> }
@@ -154,7 +158,9 @@ export function createCustomFieldViewExtension (params: CustomFieldViewParams): 
       const cmp = buildFieldComparator(field, order === SortingOrder.Ascending ? 1 : -1, iterationContext)
       return (a, b) => cmp(a as IssueLike, b as IssueLike)
     },
-    scanLimit
+    scanLimit,
+    hierarchy: params.hierarchy,
+    groupSummary: params.groupSummary
   }
 }
 

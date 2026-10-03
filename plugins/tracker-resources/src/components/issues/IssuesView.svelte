@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { DocumentQuery, Ref, Space, WithLookup } from '@hcengineering/core'
+  import { Doc, DocumentQuery, FindOptions, mergeQueries, Ref, Space, WithLookup } from '@hcengineering/core'
   import { Asset, getMetadata, getResource, IntlString, translate, translateCB } from '@hcengineering/platform'
   import contact, { Employee, getCurrentEmployee, getName, type PermissionsStore } from '@hcengineering/contact'
   import { ComponentExtensions, createQuery, getClient } from '@hcengineering/presentation'
@@ -9,13 +9,15 @@
   import { Issue, Iteration, Project, TrackerEvents, toIterationRanges } from '@hcengineering/tracker'
   import {
     Button,
+    ButtonIcon,
     IconAdd,
     IModeSelector,
     Label,
     ModeSelector,
     SearchInputAdvanced,
     showPopup,
-    themeStore
+    themeStore,
+    type DropdownTextItem
   } from '@hcengineering/ui'
   import view, { BuildModelKey, ViewOptions, Viewlet } from '@hcengineering/view'
   import {
@@ -32,19 +34,30 @@
     ViewletContentView,
     ViewletSettingButton,
     filterStore,
+    getResultOptions,
+    getResultQuery,
     getViewOptions,
     rawSearchTextStore,
     resultIssueCountStore,
     resetResultCount,
     searchHighlightEnabledStore,
+    setViewOptions,
     shouldShowSearchEmptyState,
     statusStore,
     tableEdit,
-    viewOptionStore
+    viewOptionStore,
+    type ClientGroupSummary,
+    type ClientHierarchy
   } from '@hcengineering/view-resources'
   import { onDestroy } from 'svelte'
-  import { readable } from 'svelte/store'
+  import { readable, writable } from 'svelte/store'
   import { createIssueCellColumns, runIssueOps, type IssueCellLookups, type IssueLabelRef } from '../../bulkEdit/issueCells'
+  import { readFieldSums, resolveFieldSums, sumProjection, type SummableField } from '../../fieldSum/config'
+  import { loadSummableFields } from '../../fieldSum/load'
+  import { isHierarchyEnabled, newViewHierarchyOptions } from '../../hierarchy/config'
+  import { expansionStorageKey } from '../../hierarchy/expansion'
+  import { expansionStore } from '../../hierarchy/expansionStore'
+  import { buildProgressIndex, type SubIssueRef } from '../../hierarchy/progress'
   import { buildIssueFilterSchema, customFilterToQuery, type NamedOption } from '../../issueFilter'
   import { iterationsByFieldKey, sharedIterationsStore } from '../../iterations/iterationsStore'
   import tracker from '../../plugin'
@@ -62,11 +75,35 @@
     type CustomFieldFilter
   } from '../../projectFields/query'
   import { buildRegistry } from '../../projectFields/registry'
+  import {
+    readSliceConfig,
+    sanitizeSliceValues,
+    selectAllValues,
+    toggleSliceValue,
+    withSliceConfig,
+    withSliceField,
+    type SliceConfig
+  } from '../../slice/config'
+  import {
+    buildSliceFields,
+    defaultSliceField,
+    listsEmptyValues,
+    resolveSliceField,
+    sliceFieldId,
+    sliceProjection
+  } from '../../slice/fields'
+  import { collectSliceSums } from '../../slice/sums'
+  import { collectSliceValues, createSlicePredicate, optionIdSet } from '../../slice/values'
   import { issuePriorities } from '../../types'
-  import BoardOptionsSection from '../board/BoardOptionsSection.svelte'
+  import { listIssueStatusOrder } from '../../utils'
   import CreateIssue from '../CreateIssue.svelte'
+  import FieldSumFooter from '../fieldSum/FieldSumFooter.svelte'
+  import FieldSumGroupSummary from '../fieldSum/FieldSumGroupSummary.svelte'
   import GanttToolbarBar from '../gantt/GanttToolbarBar.svelte'
   import SearchEmptyState from '../SearchEmptyState.svelte'
+  import IconSlice from '../slice/IconSlice.svelte'
+  import SlicePanel from '../slice/SlicePanel.svelte'
+  import ProjectViewOptionsSection from '../view/ProjectViewOptionsSection.svelte'
 
   function newIssue (): void {
     showPopup(CreateIssue, { space, shouldSaveDraft: true }, 'top')
@@ -86,6 +123,8 @@
   // Columns of the active saved view and its bar, which also keeps the unsaved column edits
   let viewConfig: Array<BuildModelKey | string> | undefined
   let savedViewBar: SavedViewBar | undefined
+  // The active saved view, the key of the state the viewer keeps per view (expanded sub-issues)
+  let activeViewId: string | undefined
   const viewlets: WithLookup<Viewlet>[] | undefined = undefined
   let viewOptions: ViewOptions | undefined
 
@@ -104,6 +143,7 @@
   // The board keeps its own settings (column field, hidden columns, limits) in the Customize View popup;
   // its "Group by" is the swimlanes
   $: isBoardMode = viewlet?.descriptor === tracker.viewlet.Kanban
+  $: isTableMode = viewlet?.descriptor === view.viewlet.List
   $: if (isGanttMode && viewlet !== undefined) {
     viewOptions = getViewOptions(viewlet, $viewOptionStore)
   }
@@ -132,7 +172,9 @@
       parseCustomFieldViewKey(viewOptions?.orderBy?.[0] ?? '') !== undefined)
   // The custom field rules are dormant while a filter string exists (the string is authoritative)
   $: filtersActive = activeFilterCount(filters) > 0 && !stringFilterActive
-  $: needsScan = ($registry.fields.length > 0 && (filtersActive || usesCustomKeys)) || residual !== undefined
+  // What needs custom fields or the filter string on the client; the slice panel needs the scan to count the values
+  $: customNeedsScan = ($registry.fields.length > 0 && (filtersActive || usesCustomKeys)) || residual !== undefined
+  $: needsScan = customNeedsScan || slicePanelOpen
 
   // ---- GitHub-style filter string (plan D3) ----
   // The string is the view's filter: it is saved with the saved view, and it is authoritative. The part the
@@ -301,14 +343,19 @@
   $: if (needsScan) {
     const projection: Record<string, 1> = { _id: 1, customFields: 1 }
     for (const key of filterGrammar.referencedProperties(residual)) projection[key] = 1
+    if (slicePanelOpen && sliceSpec !== undefined) {
+      for (const key of sliceProjection(sliceSpec)) projection[key] = 1
+      // The panel shows the sums of the chosen number fields next to the counts
+      for (const key of sumProjection(fieldSumKeys)) projection[key] = 1
+    }
     scanQuery.query(
       tracker.class.Issue,
-      withoutLookup(serverQuery),
+      withoutLookup(scopedServerQuery),
       (res) => {
         scanned = res
         scanReady = true
       },
-      { limit: scanLimit + 1, projection }
+      { ...optionsFind, limit: scanLimit + 1, projection }
     )
   } else {
     scanQuery.unsubscribe()
@@ -322,10 +369,26 @@
     iterations: (key) => iterationsByKey.get(key) ?? [],
     now: filterCtx.now
   })
-  $: predicate = (issue: Partial<Issue>): boolean => legacyPredicate(issue) && residualPredicate(issue)
+  $: basePredicate = (issue: Partial<Issue>): boolean => legacyPredicate(issue) && residualPredicate(issue)
+  $: predicate = (issue: Partial<Issue>): boolean => basePredicate(issue) && slicePredicate(issue)
   // What the server narrows to: the view's chips and search plus the indexable part of the filter string
   $: serverQuery = { ...resultQuery, ...stringServerQuery } as DocumentQuery<Issue>
-  $: clientFilterActive = filtersActive || residual !== undefined
+
+  // The view options narrow the result too (hidden sub-issues, archived): the list applies them on its own, a scan that
+  // counts or sums has to apply them as well to see the same issues
+  let optionsQuery: DocumentQuery<Issue> = {}
+  let optionsFind: FindOptions<Issue> = {}
+  $: if (viewlet !== undefined && viewOptions !== undefined) {
+    const model = viewlet.viewOptions?.other
+    void getResultQuery(client.getHierarchy(), {}, model, viewOptions).then((q) => {
+      optionsQuery = q as DocumentQuery<Issue>
+    })
+    void getResultOptions<Issue>(undefined, model, viewOptions).then((o) => {
+      optionsFind = o ?? {}
+    })
+  }
+  $: scopedServerQuery = mergeQueries(optionsQuery, serverQuery)
+  $: clientFilterActive = filtersActive || residual !== undefined || sliceActive
 
   function buildViewQuery (
     base: DocumentQuery<Issue>,
@@ -353,6 +416,189 @@
   }
   $: void updateEmptyLabels($registry.fields, $themeStore.language)
 
+  // ---- slice by (GitHub's "Slice by" panel) ----
+  // The panel lists the values of one field with counts; the chosen values narrow the view on top of the filter.
+  // The settings are part of the view (`slice` in its options). The counts and the narrowing are made on the client
+  // over the same bounded scan as the other client-side work, so above the limit the slice is off, never partial.
+  $: sliceAvailable = project !== undefined && (isTableMode || isRoadmapMode)
+  $: sliceStored = sliceAvailable ? readSliceConfig(viewOptions) : undefined
+  $: slicePanelOpen = sliceStored !== undefined
+  $: sliceFields = buildSliceFields(filterSchema)
+  // A stored field that does not exist (any more) falls back to the first one, without rewriting the view
+  $: sliceSpec = slicePanelOpen ? (resolveSliceField(sliceStored, sliceFields) ?? defaultSliceField(sliceFields)) : undefined
+  $: sliceConfig = ((): SliceConfig | undefined => {
+    if (sliceStored === undefined || sliceSpec === undefined) return undefined
+    const field = sliceFieldId(sliceSpec)
+    return {
+      field,
+      value: sliceStored.field === field ? sanitizeSliceValues(sliceStored.value, optionIdSet(sliceSpec)) : []
+    }
+  })()
+  $: sliceActive = sliceConfig !== undefined && sliceConfig.value.length > 0
+  $: slicePredicate = sliceSpec !== undefined && sliceActive ? createSlicePredicate(sliceSpec, sliceConfig) : () => true
+
+  let builtinSliceLabels = new Map<string, string>()
+  async function loadSliceLabels (lang: string): Promise<void> {
+    const keys: Array<[string, IntlString]> = [
+      ['status', tracker.string.Status],
+      ['priority', tracker.string.Priority],
+      ['assignee', tracker.string.Assignee],
+      ['label', tracker.string.Labels],
+      ['component', tracker.string.Component],
+      ['milestone', tracker.string.Milestone]
+    ]
+    builtinSliceLabels = new Map(await Promise.all(keys.map(async ([name, key]) => [name, await translate(key, {}, lang)] as const)))
+  }
+  $: void loadSliceLabels($themeStore.language)
+  $: sliceFieldItems = sliceFields.map(
+    (f): DropdownTextItem => ({
+      id: sliceFieldId(f),
+      label: f.source === 'custom' ? f.label : (builtinSliceLabels.get(f.name) ?? f.label)
+    })
+  )
+  $: sliceFieldLabel = sliceFieldItems.find((it) => it.id === sliceConfig?.field)?.label ?? ''
+
+  // Statuses in the order of the workflow: active first, then to do, backlog, done and cancelled
+  $: statusOrder = [...statuses]
+    .sort(
+      (a, b) =>
+        listIssueStatusOrder.indexOf(a.category ?? task.statusCategory.UnStarted) -
+          listIssueStatusOrder.indexOf(b.category ?? task.statusCategory.UnStarted) ||
+        a.name.localeCompare(b.name)
+    )
+    .map((s) => s._id)
+
+  // What the view shows without the slice itself: the counts tell what choosing a value leaves
+  $: sliceBase = slicePanelOpen && scanReady && !overLimit ? scanned.filter(basePredicate) : undefined
+  $: sliceData =
+    sliceBase !== undefined && sliceSpec !== undefined
+      ? collectSliceValues(sliceSpec, sliceBase, {
+        includeEmpty: listsEmptyValues(sliceSpec),
+        keep: sliceConfig?.value,
+        order: sliceSpec.name === 'status' && sliceSpec.source === 'attribute' ? statusOrder : undefined,
+        sortByLabel: ['assignee', 'label', 'component', 'milestone'].includes(sliceSpec.name) && sliceSpec.source === 'attribute'
+      })
+      : undefined
+
+  // The sums of the chosen number fields for every value, shown next to the counts
+  let summableFields: SummableField[] = []
+  $: void loadSummableFields($registry.fields, $themeStore.language).then((res) => {
+    summableFields = res
+  })
+  $: sliceSums =
+    sliceBase !== undefined && sliceSpec !== undefined
+      ? collectSliceSums(sliceSpec, sliceBase, resolveFieldSums(fieldSumKeys, summableFields))
+      : new Map<string, string>()
+
+  function changeSlice (next: SliceConfig | undefined): void {
+    if (viewlet === undefined || viewOptions === undefined) return
+    setViewOptions(viewlet, withSliceConfig(viewOptions, next))
+  }
+
+  function toggleSlicePanel (): void {
+    if (slicePanelOpen) {
+      changeSlice(undefined)
+      return
+    }
+    const first = defaultSliceField(sliceFields)
+    if (first !== undefined) changeSlice({ field: sliceFieldId(first), value: [] })
+  }
+
+  function selectSliceValue (detail: { id: string | undefined, multi: boolean }): void {
+    if (sliceConfig === undefined) return
+    changeSlice(detail.id === undefined ? selectAllValues(sliceConfig) : toggleSliceValue(sliceConfig, detail.id, detail.multi))
+  }
+
+  // ---- sub-issue hierarchy (GitHub's "Show hierarchy") ----
+  // Sub-issues are nested under their parents in the table of a view that turned it on. The rows are made by the
+  // list (see ClientHierarchy); here the view says how to find the parent, where the expanded rows are kept and
+  // what the progress of a parent is. The tree needs the whole group, so above the scan limit it is off, with a note.
+  const hierarchyCountQuery = createQuery()
+  const progressQuery = createQuery()
+  let hierarchyTotal = 0
+  let progressSubs: SubIssueRef[] = []
+  let progressComplete = true
+  let progressTemplate = ''
+
+  $: hierarchyOn = project !== undefined && isTableMode && isHierarchyEnabled(viewOptions)
+  $: if (hierarchyOn && project !== undefined) {
+    hierarchyCountQuery.query(
+      tracker.class.Issue,
+      withoutLookup(scopedServerQuery),
+      (res) => {
+        hierarchyTotal = res.total
+      },
+      { ...optionsFind, limit: 1, total: true, projection: { _id: 1 } }
+    )
+    // The progress counts every sub-issue of the project, whether the view shows it or not
+    progressQuery.query(
+      tracker.class.Issue,
+      { space: project, attachedTo: { $ne: tracker.ids.NoParent } },
+      (res) => {
+        progressComplete = !exceedsScanLimit(res.length, scanLimit)
+        progressSubs = res.map((it) => ({ attachedTo: it.attachedTo as string, status: it.status as string }))
+      },
+      { limit: scanLimit + 1, projection: { _id: 1, attachedTo: 1, status: 1 } }
+    )
+  } else {
+    hierarchyCountQuery.unsubscribe()
+    progressQuery.unsubscribe()
+    hierarchyTotal = 0
+    progressSubs = []
+  }
+  $: progressIndex = buildProgressIndex(progressSubs, closedStatuses, tracker.ids.NoParent as string)
+  $: hierarchyTooLarge = hierarchyOn && exceedsScanLimit(hierarchyTotal, scanLimit)
+
+  // The text has the numbers put in per call, so that it is translated once
+  $: void translate(tracker.string.HierarchyProgress, { done: '{{done}}', total: '{{total}}' }, $themeStore.language).then((res) => {
+    progressTemplate = res
+  })
+  const describeStore = writable<(doc: Doc) => string | undefined>(() => undefined)
+  $: describeStore.set((doc) => {
+    const progress = progressComplete ? progressIndex.get(doc._id) : undefined
+    return progress === undefined || progressTemplate === ''
+      ? undefined
+      : progressTemplate.replace('{{done}}', String(progress.done)).replace('{{total}}', String(progress.total))
+  })
+
+  const parentOfIssue = (doc: Doc): string | undefined => {
+    const parent = (doc as Issue).attachedTo as string | undefined
+    return parent === undefined || parent === (tracker.ids.NoParent as string) ? undefined : parent
+  }
+  let hierarchy: ClientHierarchy | undefined
+  $: if (hierarchyOn && !hierarchyTooLarge && project !== undefined && activeViewId !== undefined) {
+    const expansion = expansionStore(expansionStorageKey(project, activeViewId))
+    hierarchy = {
+      isEnabled: isHierarchyEnabled,
+      parentOf: parentOfIssue,
+      expanded: expansion,
+      toggle: expansion.toggle,
+      describe: describeStore
+    }
+  } else {
+    hierarchy = undefined
+  }
+
+  // ---- field sum (GitHub's "Field sum") ----
+  // Sums of number fields in the group headers (the list shows them for the views that chose fields), and the
+  // total of the whole view below the list.
+  const groupSummary: ClientGroupSummary = {
+    isEnabled: (options) => readFieldSums(options).length > 0,
+    projection: (options) => sumProjection(readFieldSums(options)),
+    component: FieldSumGroupSummary
+  }
+  $: fieldSumKeys = readFieldSums(viewOptions)
+  $: showFooter = project !== undefined && fieldSumKeys.length > 0 && (isTableMode || isRoadmapMode)
+
+  // The rows that go after the generic ones of the "Customize view" popup
+  $: viewExtras =
+    isBoardMode || (project !== undefined && (isTableMode || isRoadmapMode))
+      ? {
+          component: ProjectViewOptionsSection,
+          props: { space: project, layout: isBoardMode ? 'board' : isRoadmapMode ? 'roadmap' : 'table' }
+        }
+      : undefined
+
   // Always installed (even without fields) so a saved custom group/order key never reaches the server
   $: clientViewExtension.set(
     createCustomFieldViewExtension({
@@ -360,7 +606,9 @@
       scanLimit,
       disabled: overLimit,
       emptyLabels,
-      iterations: $iterationsStore
+      iterations: $iterationsStore,
+      hierarchy,
+      groupSummary
     })
   )
   onDestroy(() => {
@@ -470,7 +718,7 @@
       hideKeys={isGanttMode ? ['ganttGroupBy'] : []}
       configOverride={project !== undefined ? viewConfig : undefined}
       onSaveConfig={project !== undefined ? (config) => savedViewBar?.setLocalConfig(config) : undefined}
-      extraOptions={isBoardMode ? { component: BoardOptionsSection, props: { space: project } } : undefined}
+      extraOptions={viewExtras}
     />
   </svelte:fragment>
 
@@ -519,6 +767,18 @@
         <CustomFieldFilterButton space={project} />
       {/if}
       <FilterButton _class={tracker.class.Issue} {space} />
+      {#if sliceAvailable}
+        <!-- Slice by: a panel with the values of a field; a board has its columns instead, so it has no button -->
+        <ButtonIcon
+          icon={IconSlice}
+          size={'small'}
+          kind={'secondary'}
+          pressed={slicePanelOpen}
+          tooltip={{ label: tracker.string.SliceBy, direction: 'bottom' }}
+          dataId={'btn-slice'}
+          on:click={toggleSlicePanel}
+        />
+      {/if}
     {/if}
   </svelte:fragment>
 
@@ -574,6 +834,8 @@
     extra={customFieldFilterStore(project)}
     bind:config={viewConfig}
     bind:filterQuery
+    bind:activeViewId
+    newViewOptions={(layout) => newViewHierarchyOptions(layout.descriptor === view.viewlet.List)}
   />
   <!-- GitHub-style filter string; it is the filter of the active view -->
   <FilterQueryBar value={filterQuery} schema={filterSchema} on:apply={applyFilterQuery} />
@@ -592,9 +854,14 @@
   on:change={(e) => (resultQuery = e.detail)}
 />
 <slot name="afterHeader" />
-{#if overLimit}
+{#if overLimit && customNeedsScan}
   <div class="custom-field-error" role="alert">
     <Label label={tracker.string.CustomFieldScanLimitExceeded} params={{ limit: scanLimit }} />
+  </div>
+{/if}
+{#if hierarchyTooLarge}
+  <div class="custom-field-error" role="alert" data-id="hierarchy-scan-limit">
+    <Label label={tracker.string.HierarchyScanLimitExceeded} params={{ limit: scanLimit }} />
   </div>
 {/if}
 {#if !isGanttMode}
@@ -640,23 +907,50 @@
      with "show empty groups" (shouldShowAll) on it stays false, so the empty
      groups / Kanban columns remain visible and the card is suppressed — the
      user's explicit view option wins. -->
-<div class="viewlet-wrap">
-  {#if viewlet && viewOptions}
-    <CellGrid adapter={cellAdapterActive} rowHeight={viewOptions.rowHeight}>
-      <ViewletContentView
-        _class={tracker.class.Issue}
-        {viewlet}
-        query={viewQuery}
-        {space}
-        {viewOptions}
-        configOverride={project !== undefined ? viewConfig : undefined}
-        createItemDialog={CreateIssue}
-        createItemLabel={tracker.string.AddIssueTooltip}
-        createItemEvent={TrackerEvents.IssuePlusButtonClicked}
-        createItemDialogProps={{ shouldSaveDraft: true }}
-      />
-    </CellGrid>
+<!-- The slice panel sits left of the viewlet. The wrappers are `display: contents` while the panel is closed, so
+     that the viewlet keeps being a direct flex child of the page and is not remounted when the panel opens. -->
+<div class="slice-layout" class:open={slicePanelOpen && sliceConfig !== undefined}>
+  {#if slicePanelOpen && sliceConfig !== undefined}
+    <SlicePanel
+      fields={sliceFieldItems}
+      config={sliceConfig}
+      fieldLabel={sliceFieldLabel}
+      data={sliceData}
+      sums={sliceSums}
+      {overLimit}
+      {scanLimit}
+      on:field={(e) => {
+        changeSlice(withSliceField(sliceConfig, e.detail))
+      }}
+      on:select={(e) => {
+        selectSliceValue(e.detail)
+      }}
+      on:close={toggleSlicePanel}
+    />
   {/if}
+  <div class="slice-body" class:open={slicePanelOpen && sliceConfig !== undefined}>
+    <div class="viewlet-wrap">
+      {#if viewlet && viewOptions}
+        <CellGrid adapter={cellAdapterActive} rowHeight={viewOptions.rowHeight}>
+          <ViewletContentView
+            _class={tracker.class.Issue}
+            {viewlet}
+            query={viewQuery}
+            {space}
+            {viewOptions}
+            configOverride={project !== undefined ? viewConfig : undefined}
+            createItemDialog={CreateIssue}
+            createItemLabel={tracker.string.AddIssueTooltip}
+            createItemEvent={TrackerEvents.IssuePlusButtonClicked}
+            createItemDialogProps={{ shouldSaveDraft: true }}
+          />
+        </CellGrid>
+      {/if}
+    </div>
+    {#if showFooter}
+      <FieldSumFooter {project} query={mergeQueries(optionsQuery, viewQuery)} options={optionsFind} keys={fieldSumKeys} {scanLimit} />
+    {/if}
+  </div>
 </div>
 {#if showSearchEmptyState}
   <div class="search-empty-state-overlay">
@@ -689,6 +983,24 @@
      sibling, so the live viewlet's layout is always intact. */
   .viewlet-wrap {
     display: contents;
+  }
+  .slice-layout,
+  .slice-body {
+    display: contents;
+  }
+  .slice-layout.open {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .slice-body.open {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
   }
   /* Out-of-flow overlay centred on the panel.
 

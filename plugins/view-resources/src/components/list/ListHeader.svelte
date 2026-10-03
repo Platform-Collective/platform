@@ -96,6 +96,11 @@
     ? $clientViewExtension?.getGroupExtras?.(groupByKey)
     : undefined
 
+  // Totals of the group (e.g. sums of number fields), only for lists whose view options ask for them
+  $: summary = $clientViewExtension?.groupSummary
+  $: summaryComponent =
+    summary !== undefined && groupByKey !== noCategory && summary.isEnabled(viewOptions) ? summary.component : undefined
+
   $: selectionIds = new Set($selection.map((it) => it._id))
   $: selected = items.filter((it) => selectionIds.has(it._id))
   // $: if (itemsProj.length === 0 && !collapsed) collapsed = true
@@ -194,6 +199,16 @@
             this={groupExtras}
             value={category}
             docs={itemsProj}
+            space={space ?? (items.every((i) => i?.space === items[0]?.space) ? items[0]?.space : undefined)}
+          />
+        {/if}
+        {#if summaryComponent !== undefined}
+          <svelte:component
+            this={summaryComponent}
+            value={category}
+            docs={itemsProj}
+            {viewOptions}
+            groupKey={groupByKey}
             space={space ?? (items.every((i) => i?.space === items[0]?.space) ? items[0]?.space : undefined)}
           />
         {/if}

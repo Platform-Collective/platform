@@ -145,6 +145,10 @@
 
   let fastQueryIds = new Set<Ref<Doc>>()
 
+  $: groupSummary = $clientViewExtension?.groupSummary
+  $: summaryProjection =
+    groupSummary !== undefined && groupSummary.isEnabled(viewOptions) ? groupSummary.projection(viewOptions) : undefined
+
   let categoryQueryOptions: Partial<FindOptions<Doc>>
   $: categoryQueryOptions = {
     ...noLookupSortingOptions(resultOptions),
@@ -153,11 +157,15 @@
       _id: 1,
       _class: 1,
       ...getProjection(
-        viewOptions.groupBy.flatMap((it) =>
-          isClientViewKey($clientViewExtension, it)
-            ? [$clientViewExtension?.projectionKey(it) ?? it, ...($clientViewExtension?.extraProjection?.(it) ?? [])]
-            : [it]
-        ),
+        [
+          ...viewOptions.groupBy.flatMap((it) =>
+            isClientViewKey($clientViewExtension, it)
+              ? [$clientViewExtension?.projectionKey(it) ?? it, ...($clientViewExtension?.extraProjection?.(it) ?? [])]
+              : [it]
+          ),
+          // What the totals in the group headers read (only when the view asks for them)
+          ...(summaryProjection ?? [])
+        ],
         queryNoLookup,
         _class
       )

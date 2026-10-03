@@ -431,7 +431,17 @@
     "BoardShowHiddenColumns": "Show hidden columns ({count})",
     "BoardClearColumnLimits": "Clear column limits ({count})",
     "BoardCollapseLane": "Collapse swimlane",
-    "BoardExpandLane": "Expand swimlane"
+    "BoardExpandLane": "Expand swimlane",
+    "SliceBy": "Slice by",
+    "SliceAll": "All items",
+    "SliceClose": "Close slice panel",
+    "SliceScanLimitExceeded": "Slicing is turned off: this view has more than {limit} issues. Narrow it down with other filters.",
+    "HierarchyView": "Hierarchy",
+    "HierarchyProgress": "{done} of {total} sub-issues done",
+    "HierarchyScanLimitExceeded": "Sub-issue hierarchy is turned off: this view has more than {limit} issues. Narrow it down with other filters.",
+    "FieldSum": "Field sum",
+    "FieldSumTotal": "Total",
+    "FieldSumScanLimitExceeded": "Totals are not shown: this view has more than {limit} issues. Narrow it down with other filters."
   },
   "status": {}
 }

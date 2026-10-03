@@ -44,6 +44,9 @@
   import { afterUpdate, onDestroy, onMount, tick } from 'svelte'
   import { readable } from 'svelte/store'
   import { issueTarget, runIssueOps } from '../../bulkEdit/issueCells'
+  import { readFieldSums, resolveFieldSums, type SummableField } from '../../fieldSum/config'
+  import { loadSummableFields } from '../../fieldSum/load'
+  import { computeFieldSums, formatFieldSums } from '../../fieldSum/sum'
   import { iterationsByFieldKey, sharedIterationsStore } from '../../iterations/iterationsStore'
   import tracker from '../../plugin'
   import { sharedProjectFieldsStore } from '../../projectFields/projectFieldsStore'
@@ -369,6 +372,22 @@
   }
 
   $: groups = buildGroups(split.scheduled, groupKey, [ext, $statusStore, $taskTypeStore, $registry, iterationsByKey, assignees, componentById, milestoneById, priorityNames, texts], viewOptions.shouldShowAll === true)
+
+  // Sums of the chosen number fields in the group headers (GitHub's "Field sum"); the items of a group are the ones
+  // the view shows, so what the filter leaves out is not counted
+  let summable: SummableField[] = []
+  $: void loadSummableFields($registry.fields, $themeStore.language).then((res) => {
+    summable = res
+  })
+  $: sumFields = resolveFieldSums(readFieldSums(viewOptions), summable)
+  $: groupSums = new Map<string, string>(
+    sumFields.length === 0
+      ? []
+      : groups.flatMap((g): Array<[string, string]> => {
+        const text = formatFieldSums(computeFieldSums(g.items, sumFields))
+        return text === undefined ? [] : [[g.id, text]]
+      })
+  )
 
   let collapsed = new Set<string>()
   function toggleGroup (id: string): void {
@@ -943,6 +962,11 @@
                   {/if}
                 </span>
                 <span class="count">{row.count}</span>
+                {#if row.type !== 'unscheduled' && groupSums.has(row.id)}
+                  <span class="group-sums" data-id="roadmap-group-sums" title={groupSums.get(row.id)}>
+                    {groupSums.get(row.id)}
+                  </span>
+                {/if}
               </button>
             </div>
           {/if}
@@ -1342,6 +1366,17 @@
   }
   .count {
     flex-shrink: 0;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--theme-dark-color);
+  }
+  .group-sums {
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 0.75rem;
     font-weight: 400;
     color: var(--theme-dark-color);

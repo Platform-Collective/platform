@@ -235,6 +235,7 @@ export {
 export * from './viewOptions'
 export * from './clientViewExtension'
 export * from './savedViews'
+export * from './hierarchy'
 export * as filterGrammar from './filter/grammar'
 export * as tableEdit from './tableEdit'
 export * from './viewletContextStore'

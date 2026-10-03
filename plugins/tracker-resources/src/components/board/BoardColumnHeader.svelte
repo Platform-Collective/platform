@@ -31,7 +31,7 @@
   // Advisory limit of the column, if it has one
   export let limit: number | undefined = undefined
   export let canAdd: boolean = true
-  // Text that goes after the count, e.g. a total of a field of the items of the column (see Phase 8)
+  // Text that goes after the count, e.g. the sums of the number fields of the items of the column
   export let total: string | undefined = undefined
   // Whether the board is read only for the user: the menu is then not offered
   export let readonly: boolean = false
@@ -116,7 +116,7 @@
       {formatColumnCount(count, limit)}
     </span>
     {#if total !== undefined}
-      <span class="counter">{total}</span>
+      <span class="counter overflow-label" data-id="board-column-total" title={total}>{total}</span>
     {/if}
   </div>
   <div class="tools gap-1">
