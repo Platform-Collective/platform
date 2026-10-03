@@ -65,7 +65,7 @@ class Parser {
   parse (): Tagged<Node> {
     if (this.tokens.length === 0) return { ok: true, value: { type: 'and', children: [] } }
     const res = this.parseOr()
-    if (!res.ok) return res
+    if (res.ok === false) return res
     const rest = this.tokens[this.i]
     if (rest !== undefined) {
       if (rest.type === 'rparen') return err('unbalancedParenthesis', 'Unmatched ")"', rest.pos, rest.end)
@@ -80,12 +80,12 @@ class Parser {
 
   private parseOr (): Tagged<Node> {
     const first = this.parseAnd()
-    if (!first.ok) return first
+    if (first.ok === false) return first
     const children: Node[] = [first.value]
     while (this.peek()?.type === 'or') {
       this.i++
       const next = this.parseAnd()
-      if (!next.ok) return next
+      if (next.ok === false) return next
       children.push(next.value)
     }
     return { ok: true, value: children.length === 1 ? children[0] : { type: 'or', children } }
@@ -93,14 +93,14 @@ class Parser {
 
   private parseAnd (): Tagged<Node> {
     const first = this.parseUnary()
-    if (!first.ok) return first
+    if (first.ok === false) return first
     const children: Node[] = [first.value]
     for (;;) {
       const t = this.peek()
       if (t === undefined || t.type === 'or' || t.type === 'rparen') break
       if (t.type === 'and') this.i++
       const next = this.parseUnary()
-      if (!next.ok) return next
+      if (next.ok === false) return next
       children.push(next.value)
     }
     return { ok: true, value: children.length === 1 ? children[0] : { type: 'and', children } }
@@ -123,7 +123,7 @@ class Parser {
         const open = this.tokens[this.i]
         this.i++
         const inner = this.parseOr()
-        if (!inner.ok) return inner
+        if (inner.ok === false) return inner
         const close = this.peek()
         if (close?.type !== 'rparen') return err('unbalancedParenthesis', 'Missing ")"', open.pos, open.end)
         this.i++
@@ -163,7 +163,7 @@ class Parser {
     const values: FieldValue[] = []
     for (const v of t.values) {
       const parsed = parseFieldValue(spec, v)
-      if (!parsed.ok) return parsed
+      if (parsed.ok === false) return parsed
       values.push(parsed.value)
     }
     return wrap({ type: 'field', field: spec, values, pos: t.pos })
@@ -260,7 +260,8 @@ export function parseFieldValue (spec: FieldSpec, v: ValueToken): Tagged<FieldVa
       text = text.slice(op.length)
       if (text === '') return err('missingValue', `Expected a value after "${op}"`, v.pos, v.end)
       const scalar = parseScalar(spec, text, false, v.pos + op.length, v.end)
-      return scalar.ok ? { ok: true, value: { kind: 'compare', op, value: scalar.value } } : scalar
+      if (scalar.ok === false) return scalar
+      return { ok: true, value: { kind: 'compare', op, value: scalar.value } }
     }
     const dots = text.indexOf('..')
     if (dots !== -1 && ordered) {
@@ -272,14 +273,15 @@ export function parseFieldValue (spec: FieldSpec, v: ValueToken): Tagged<FieldVa
       }
       if (right.includes('..')) return err('invalidRange', 'A range has exactly two bounds', v.pos, v.end)
       const from = bound(left, 0)
-      if (!from.ok) return from
+      if (from.ok === false) return from
       const to = bound(right, dots + 2)
-      if (!to.ok) return to
+      if (to.ok === false) return to
       return { ok: true, value: { kind: 'range', from: from.value, to: to.value } }
     }
   }
   const scalar = parseScalar(spec, text, v.quoted, v.pos, v.end)
-  return scalar.ok ? { ok: true, value: { kind: 'eq', value: scalar.value } } : scalar
+  if (scalar.ok === false) return scalar
+  return { ok: true, value: { kind: 'eq', value: scalar.value } }
 }
 
 /**
@@ -289,6 +291,6 @@ export function parseFieldValue (spec: FieldSpec, v: ValueToken): Tagged<FieldVa
  */
 export function parseFilter (input: string, schema: readonly FieldSpec[]): Result<Node> {
   const tokens = tokenize(input)
-  if (!tokens.ok) return tokens
+  if (tokens.ok === false) return tokens
   return new Parser(tokens.value, schema).parse()
 }

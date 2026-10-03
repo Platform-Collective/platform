@@ -220,7 +220,7 @@ export function compileFilter (
   ctx: FilterContext
 ): { ok: true, value: CompiledFilter } | { ok: false, error: ParseError } {
   const parsed = parseFilter(input, schema)
-  if (!parsed.ok) return parsed
+  if (parsed.ok === false) return parsed
   const ast = parsed.value
   const { query, residual } = splitServerClient(ast, ctx)
   return {

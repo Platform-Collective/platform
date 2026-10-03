@@ -53,7 +53,7 @@ export async function changeIteration (
   change: IterationChange
 ): Promise<IterationPlanError | undefined> {
   const plan = planIterationChange(iterations, id, change)
-  if (!plan.ok) return plan.error
+  if (plan.ok === false) return plan.error
   if (plan.updates.length === 0) return undefined
   const space = iterations.find((it) => it._id === id)?.space
   if (space === undefined) return 'unknown'
@@ -75,7 +75,7 @@ export async function addIteration (
   options: AddIterationOptions
 ): Promise<IterationPlanError | undefined> {
   const plan = planAddIteration(iterations, options)
-  if (!plan.ok) return plan.error
+  if (plan.ok === false) return plan.error
   const batch = client.apply()
   for (const u of plan.updates) {
     await batch.updateDoc(tracker.class.Iteration, field.space, u.id, u.update)

@@ -107,7 +107,7 @@ export function parseMultiOptionValue<Id extends string | number> (
   for (const part of text.split(/[,;]/)) {
     if (part.trim() === '') continue
     const one = parseOptionValue(part, options)
-    if (!one.ok) return fail(one.reason)
+    if (one.ok === false) return fail(one.reason)
     if (one.value !== null && !res.includes(one.value)) res.push(one.value)
   }
   return ok(res)

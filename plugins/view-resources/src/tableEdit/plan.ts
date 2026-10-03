@@ -81,7 +81,7 @@ export function planEdits<D> (edits: ReadonlyArray<CellEdit<D>>, adapter: Pick<C
     const id = docId(edit.doc)
     const current = working.get(id) ?? edit.doc
     const res = column.edit(current, edit.text)
-    if (!res.ok) {
+    if (res.ok === false) {
       skip(res.reason)
       continue
     }

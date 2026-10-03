@@ -74,7 +74,7 @@
 
   function apply (): void {
     const text = draft.trim()
-    if (!parsed.ok) {
+    if (parsed.ok === false) {
       showError = true
       return
     }
@@ -139,7 +139,7 @@
 
   function onBlur (): void {
     focused = false
-    if (!parsed.ok && draft.trim() !== '') showError = true
+    if (parsed.ok === false && draft.trim() !== '') showError = true
   }
 </script>
 

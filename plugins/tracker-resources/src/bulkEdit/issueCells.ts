@@ -129,7 +129,7 @@ function labelsColumn (lookups: () => IssueCellLookups): CellColumn {
       const l = lookups()
       if (l.canEdit?.(issue, 'labels') === false) return fail('readonly')
       const parsed = tableEdit.parseMultiOptionValue(text, options(l))
-      if (!parsed.ok) return parsed
+      if (parsed.ok === false) return parsed
       const wanted = new Set(parsed.value)
       const current = l.labelRefs(issue._id)
       const ops: EditOp[] = []
@@ -244,7 +244,7 @@ function customFieldColumn (field: ProjectField, lookups: () => IssueCellLookups
       const l = lookups()
       if (l.canEdit?.(issue, 'customFields') === false) return fail('readonly')
       const parsed = parse(text, l.now?.() ?? Date.now())
-      if (!parsed.ok) return parsed
+      if (parsed.ok === false) return parsed
       const customFields = mergeCustomFieldValue(issue.customFields, field.key, parsed.value)
       const op = tableEdit.updateOp(issueTarget(issue), issue as unknown as Record<string, unknown>, { customFields })
       // An issue without custom fields goes back to an empty record, not to null
@@ -277,7 +277,7 @@ export function createIssueCellColumns (lookups: () => IssueCellLookups): (key: 
       const l = lookups()
       if (l.canEdit?.(issue, 'status') === false) return fail('readonly')
       const parsed = tableEdit.parseOptionValue(text, l.statuses(issue))
-      if (!parsed.ok) return parsed
+      if (parsed.ok === false) return parsed
       // Every issue has a status
       return parsed.value === null ? fail('notClearable') : setAttribute(issue, 'status', parsed.value)
     }
