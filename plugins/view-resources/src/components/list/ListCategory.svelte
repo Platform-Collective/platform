@@ -44,6 +44,7 @@
   import { fade } from 'svelte/transition'
   import { showMenu } from '../../actions'
   import { FocusSelection, SelectionFocusProvider, focusStore } from '../../selection'
+  import { clientViewExtension, isClientViewKey } from '../../clientViewExtension'
   import ListHeader from './ListHeader.svelte'
   import ListItem from './ListItem.svelte'
 
@@ -134,6 +135,13 @@
       })
       : resultQuery
 
+  // Ordering by a client-side key (e.g. a custom field): load the whole group and sort it here,
+  // the server cannot order by such a key and a server-side limit would cut the wrong rows
+  $: clientCompare = isClientViewKey($clientViewExtension, viewOptions.orderBy?.[0])
+    ? $clientViewExtension?.compare(viewOptions.orderBy[0], viewOptions.orderBy[1])
+    : undefined
+  $: clientSorted = isClientViewKey($clientViewExtension, viewOptions.orderBy?.[0])
+
   $: if (lastLevel) {
     void limiter.add(async () => {
       try {
@@ -141,14 +149,14 @@
           _class,
           { ...finalResultQuery, ...docKeys },
           (res) => {
-            items = res
+            items = clientCompare !== undefined ? [...res].sort(clientCompare) : res
             loading = false
             const focusDoc = items.find((it) => it._id === $focusStore.focus?._id)
             if (focusDoc) {
               handleRowFocused(focusDoc)
             }
           },
-          { ...resultOptions, limit: limit ?? 200 }
+          { ...resultOptions, limit: clientSorted ? ($clientViewExtension?.scanLimit ?? 5000) : (limit ?? 200) }
         )
       } catch (e) {
         console.error(e)
@@ -211,7 +219,7 @@
     return {
       ...newObjectProps(doc),
       ...(doc ? { space: doc.space } : {}),
-      ...(groupValue !== undefined ? { [groupByKey]: groupValue } : {})
+      ...(groupValue !== undefined && !isClientViewKey($clientViewExtension, groupByKey) ? { [groupByKey]: groupValue } : {})
     }
   }
 

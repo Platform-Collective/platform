@@ -20,6 +20,7 @@
   import view from '../plugin'
   import { focusStore } from '../selection'
   import { setViewOptions } from '../viewOptions'
+  import { getClientViewExtension } from '../clientViewExtension'
   import ViewOptionsEditor from './ViewOptions.svelte'
   import core, { Class, Doc, Hierarchy, Ref, SortingOrder, Type } from '@hcengineering/core'
 
@@ -87,6 +88,14 @@
     config.orderBy = Array.from(new Set([...config.orderBy, ...customSort]))
 
     config.groupBy = Array.from(new Set([...config.groupBy, ...customAttributes]))
+
+    // Keys provided by the host view (e.g. user-defined fields), supported by the list only
+    const extension = viewlet.descriptor === view.viewlet.List ? getClientViewExtension() : undefined
+    if (extension !== undefined) {
+      config.groupBy = Array.from(new Set([...config.groupBy, ...extension.groupByKeys().map((it) => it.id)]))
+      const extraOrder: OrderOption[] = extension.orderByKeys().map((it) => [it.id, SortingOrder.Ascending])
+      config.orderBy = [...config.orderBy, ...extraOrder]
+    }
 
     showPopup(
       ViewOptionsEditor,

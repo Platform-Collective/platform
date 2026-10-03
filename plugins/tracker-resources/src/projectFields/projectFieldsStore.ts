@@ -26,3 +26,18 @@ export function projectFieldsStore (project: Ref<Project>): Readable<ProjectFiel
     }
   })
 }
+
+const sharedStores = new Map<Ref<Project>, Readable<ProjectFieldRegistry>>()
+
+/**
+ * Same as `projectFieldsStore`, but one store (and so one live query) per project is shared by all
+ * callers. Use it where many components need the registry at once, e.g. one cell per list row.
+ */
+export function sharedProjectFieldsStore (project: Ref<Project>): Readable<ProjectFieldRegistry> {
+  let store = sharedStores.get(project)
+  if (store === undefined) {
+    store = projectFieldsStore(project)
+    sharedStores.set(project, store)
+  }
+  return store
+}

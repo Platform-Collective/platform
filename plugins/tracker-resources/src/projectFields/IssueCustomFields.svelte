@@ -8,7 +8,7 @@
   import { ProjectFieldType } from '@hcengineering/tracker'
 
   import FieldValueEditor from './FieldValueEditor.svelte'
-  import { mergeCustomFieldValue } from './registry'
+  import { setIssueCustomFieldValue } from './actions'
   import { projectFieldsStore } from './projectFieldsStore'
 
   export let issue: Issue
@@ -21,16 +21,7 @@
   $: fields = $registry.fields.filter((f) => f.type !== ProjectFieldType.Iteration)
 
   async function setValue (key: string, value: ProjectFieldValue): Promise<void> {
-    const customFields = mergeCustomFieldValue(issue.customFields, key, value)
-    await client.updateCollection(
-      issue._class,
-      issue.space,
-      issue._id,
-      issue.attachedTo,
-      issue.attachedToClass,
-      issue.collection,
-      { customFields }
-    )
+    await setIssueCustomFieldValue(client, issue, key, value)
   }
 </script>
 

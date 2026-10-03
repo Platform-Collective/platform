@@ -30,6 +30,7 @@
   import { createEventDispatcher, onDestroy } from 'svelte'
   import { SelectionFocusProvider } from '../../selection'
   import { claimResultCountOwner, releaseResultCountOwner, setResultCount } from '../../stores'
+  import { clientViewExtension, isClientViewKey } from '../../clientViewExtension'
   import { buildConfigLookup } from '../../utils'
   import { getResultOptions, getResultQuery } from '../../viewOptions'
   import ListCategories from './ListCategories.svelte'
@@ -105,7 +106,10 @@
   $: resultOptions = {
     ...configOptions,
     ...(Object.keys(lookup).length > 0 ? { lookup } : {}),
-    ...(orderBy !== undefined ? { sort: { [orderBy[0]]: orderBy[1] } } : {})
+    // Ordering by a client-side key (e.g. a custom field) is applied by the list category after loading
+    ...(orderBy !== undefined && !isClientViewKey($clientViewExtension, orderBy[0])
+      ? { sort: { [orderBy[0]]: orderBy[1] } }
+      : {})
   }
 
   const updateOptions = reduceCalls(async function (options: FindOptions<Doc> | undefined, viewOptions: ViewOptions) {
@@ -148,7 +152,11 @@
       ...resultOptions.projection,
       _id: 1,
       _class: 1,
-      ...getProjection(viewOptions.groupBy, queryNoLookup, _class)
+      ...getProjection(
+        viewOptions.groupBy.map((it) => (isClientViewKey($clientViewExtension, it) ? $clientViewExtension?.projectionKey(it) ?? it : it)),
+        queryNoLookup,
+        _class
+      )
     }
   }
 

@@ -125,6 +125,7 @@ import IssueRelationPresenter from './components/IssueRelationPresenter.svelte'
 import RelationActivityPresenter from './components/activity/RelationActivityPresenter.svelte'
 import DependencyShiftedPresenter from './components/notifications/DependencyShiftedPresenter.svelte'
 import PredecessorsColumnPresenter from './components/issues/PredecessorsColumnPresenter.svelte'
+import CustomFieldColumn from './projectFields/CustomFieldColumn.svelte'
 
 import ComponentSelector from './components/components/ComponentSelector.svelte'
 
@@ -192,7 +193,7 @@ export { default as CustomFieldPresenter } from './projectFields/CustomFieldPres
 export { default as FieldValueEditor } from './projectFields/FieldValueEditor.svelte'
 export { default as ProjectFieldsPopup } from './projectFields/ProjectFieldsPopup.svelte'
 export * from './projectFields/registry'
-export { projectFieldsStore } from './projectFields/projectFieldsStore'
+export { projectFieldsStore, sharedProjectFieldsStore } from './projectFields/projectFieldsStore'
 
 export { activeProjects, CreateProject, IssuePresenter, PriorityEditor, StatusEditor, TitlePresenter }
 
@@ -471,6 +472,7 @@ export default async (): Promise<Resources> => ({
     RelationActivityPresenter,
     DependencyShiftedPresenter,
     PredecessorsColumn: PredecessorsColumnPresenter,
+    CustomFieldColumn,
     ComponentSelector,
     IssueTemplates,
     IssueTemplatePresenter,

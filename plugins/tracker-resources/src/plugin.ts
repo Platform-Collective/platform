@@ -77,6 +77,29 @@ export default mergeIds(trackerId, tracker, {
     ProjectFieldErrorOptionsRequired: '' as IntlString,
     ProjectFieldErrorDefaultNotAllowed: '' as IntlString,
     ProjectFieldErrorInvalidDefault: '' as IntlString,
+    CustomFieldFilter: '' as IntlString,
+    AddFieldFilter: '' as IntlString,
+    NoFieldFilters: '' as IntlString,
+    ClearFieldFilters: '' as IntlString,
+    RemoveFieldFilter: '' as IntlString,
+    FieldFilterUnknownField: '' as IntlString,
+    FieldFilterValue: '' as IntlString,
+    FieldFilterFrom: '' as IntlString,
+    FieldFilterTo: '' as IntlString,
+    FieldFilterOpContains: '' as IntlString,
+    FieldFilterOpEq: '' as IntlString,
+    FieldFilterOpGt: '' as IntlString,
+    FieldFilterOpGte: '' as IntlString,
+    FieldFilterOpLt: '' as IntlString,
+    FieldFilterOpLte: '' as IntlString,
+    FieldFilterOpBetween: '' as IntlString,
+    FieldFilterOpBefore: '' as IntlString,
+    FieldFilterOpAfter: '' as IntlString,
+    FieldFilterOpAnyOf: '' as IntlString,
+    FieldFilterOpIsEmpty: '' as IntlString,
+    FieldFilterOpIsNotEmpty: '' as IntlString,
+    CustomFieldScanLimitExceeded: '' as IntlString,
+    NoFieldValue: '' as IntlString,
     More: '' as IntlString,
     Delete: '' as IntlString,
     Open: '' as IntlString,
@@ -633,10 +656,14 @@ export default mergeIds(trackerId, tracker, {
     // Activity-Log
     RelationActivityPresenter: '' as AnyComponent,
     // Predecessor column in the Tracker list view.
-    PredecessorsColumn: '' as AnyComponent
+    PredecessorsColumn: '' as AnyComponent,
+    // List column showing and editing one custom field of a project.
+    CustomFieldColumn: '' as AnyComponent
   },
   metadata: {
-    CreateIssueDraft: '' as Metadata<IssueDraft>
+    CreateIssueDraft: '' as Metadata<IssueDraft>,
+    // Max issues custom-field filter/sort/group works on (TRACKER_CUSTOM_FIELD_SCAN_LIMIT, default 5000).
+    CustomFieldScanLimit: '' as Metadata<number>
   },
   function: {
     IssueTitleProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,

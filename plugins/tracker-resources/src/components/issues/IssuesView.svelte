@@ -1,12 +1,13 @@
 <script lang="ts">
   import { DocumentQuery, Ref, Space, WithLookup } from '@hcengineering/core'
-  import { Asset, IntlString, translateCB } from '@hcengineering/platform'
-  import { ComponentExtensions } from '@hcengineering/presentation'
-  import { Issue, TrackerEvents } from '@hcengineering/tracker'
+  import { Asset, getMetadata, IntlString, translate, translateCB } from '@hcengineering/platform'
+  import { ComponentExtensions, createQuery } from '@hcengineering/presentation'
+  import { Issue, Project, TrackerEvents } from '@hcengineering/tracker'
   import {
     Button,
     IconAdd,
     IModeSelector,
+    Label,
     ModeSelector,
     SearchInputAdvanced,
     showPopup,
@@ -14,6 +15,7 @@
   } from '@hcengineering/ui'
   import { ViewOptions, Viewlet } from '@hcengineering/view'
   import {
+    clientViewExtension,
     FilterBar,
     FilterButton,
     InlineFilterChips,
@@ -30,7 +32,22 @@
     viewOptionStore
   } from '@hcengineering/view-resources'
   import { onDestroy } from 'svelte'
+  import { readable } from 'svelte/store'
   import tracker from '../../plugin'
+  import CustomFieldFilterButton from '../../projectFields/CustomFieldFilterButton.svelte'
+  import { createCustomFieldViewExtension, customFieldFilterStore } from '../../projectFields/customFieldView'
+  import { sharedProjectFieldsStore } from '../../projectFields/projectFieldsStore'
+  import {
+    activeFilterCount,
+    buildFiltersPredicate,
+    exceedsScanLimit,
+    isFilterableType,
+    isGroupableType,
+    parseCustomFieldViewKey,
+    resolveScanLimit,
+    type CustomFieldFilter
+  } from '../../projectFields/query'
+  import { buildRegistry } from '../../projectFields/registry'
   import CreateIssue from '../CreateIssue.svelte'
   import GanttToolbarBar from '../gantt/GanttToolbarBar.svelte'
   import SearchEmptyState from '../SearchEmptyState.svelte'
@@ -63,6 +80,91 @@
   $: if (isGanttMode && viewlet !== undefined) {
     viewOptions = getViewOptions(viewlet, $viewOptionStore)
   }
+
+  // Custom fields of the project (plan D1): optional columns, group-by / order-by keys and a filter.
+  // The values live in an untyped record, so all of it runs on the client over a bounded scan.
+  const emptyRegistry = readable(buildRegistry([]))
+  const noFilters = readable<CustomFieldFilter[]>([])
+  const scanQuery = createQuery()
+
+  $: project = space as Ref<Project> | undefined
+  $: registry = project !== undefined ? sharedProjectFieldsStore(project) : emptyRegistry
+  $: filtersStore = project !== undefined ? customFieldFilterStore(project) : noFilters
+  $: filters = $filtersStore
+  $: hasFilterableFields = $registry.fields.some((f) => isFilterableType(f.type))
+  $: scanLimit = resolveScanLimit(getMetadata(tracker.metadata.CustomFieldScanLimit))
+
+  $: usesCustomKeys =
+    (viewOptions?.groupBy ?? []).some((it) => parseCustomFieldViewKey(it) !== undefined) ||
+    parseCustomFieldViewKey(viewOptions?.orderBy?.[0] ?? '') !== undefined
+  $: filtersActive = activeFilterCount(filters) > 0
+  $: needsScan = $registry.fields.length > 0 && (filtersActive || usesCustomKeys)
+
+  let scanned: Array<Pick<Issue, '_id' | 'customFields'>> = []
+  let scanReady = false
+
+  function withoutLookup (q: DocumentQuery<Issue>): DocumentQuery<Issue> {
+    const res: DocumentQuery<Issue> = {}
+    for (const [k, v] of Object.entries(q)) {
+      if (!k.startsWith('$lookup.')) (res as any)[k] = v
+    }
+    return res
+  }
+
+  // The scan is capped at limit + 1 so that exceeding the limit is detected without loading everything
+  $: if (needsScan) {
+    scanQuery.query(
+      tracker.class.Issue,
+      withoutLookup(resultQuery),
+      (res) => {
+        scanned = res
+        scanReady = true
+      },
+      { limit: scanLimit + 1, projection: { _id: 1, customFields: 1 } }
+    )
+  } else {
+    scanQuery.unsubscribe()
+    scanned = []
+    scanReady = false
+  }
+
+  // Above the limit custom-field filter/sort/group is off; it is never applied to a truncated set
+  $: overLimit = needsScan && scanReady && exceedsScanLimit(scanned.length, scanLimit)
+  $: predicate = buildFiltersPredicate($registry.byKey, filters)
+
+  function buildViewQuery (
+    base: DocumentQuery<Issue>,
+    active: boolean,
+    ready: boolean,
+    over: boolean,
+    scan: Array<Pick<Issue, '_id' | 'customFields'>>,
+    match: (issue: Pick<Issue, 'customFields'>) => boolean
+  ): DocumentQuery<Issue> {
+    if (!active || over) return base
+    // Nothing is shown until the first scan arrives instead of flashing unfiltered rows
+    if (!ready) return { ...base, _id: { $in: [] } }
+    return { ...base, _id: { $in: scan.filter(match).map((it) => it._id) } }
+  }
+  $: viewQuery = buildViewQuery(resultQuery, filtersActive, scanReady, overLimit, scanned, predicate)
+
+  let emptyLabels = new Map<string, string>()
+  async function updateEmptyLabels (fields: Array<{ key: string, label: string, type: any }>, lang: string): Promise<void> {
+    const entries = await Promise.all(
+      fields
+        .filter((f) => isGroupableType(f.type))
+        .map(async (f) => [f.key, await translate(tracker.string.NoFieldValue, { field: f.label }, lang)] as const)
+    )
+    emptyLabels = new Map(entries)
+  }
+  $: void updateEmptyLabels($registry.fields, $themeStore.language)
+
+  // Always installed (even without fields) so a saved custom group/order key never reaches the server
+  $: clientViewExtension.set(
+    createCustomFieldViewExtension({ registry: $registry, scanLimit, disabled: overLimit, emptyLabels })
+  )
+  onDestroy(() => {
+    clientViewExtension.set(undefined)
+  })
 
   // Single search source-of-truth. The legacy `search` binding still
   // exists for SpaceHeader's internal SearchInput (only used when
@@ -153,7 +255,7 @@
   {viewlets}
   {label}
   {space}
-  {resultQuery}
+  resultQuery={viewQuery}
   modeSelectorProps={isGanttMode ? undefined : modeSelectorProps}
   overrideSearch={true}
   shrinkSearch={isGanttMode}
@@ -190,6 +292,9 @@
       <GanttToolbarBar section="cluster" />
       <InlineFilterChips _class={tracker.class.Issue} {space} constrained />
       <FilterButton _class={tracker.class.Issue} {space} />
+      {#if project !== undefined && hasFilterableFields}
+        <CustomFieldFilterButton space={project} />
+      {/if}
       {#if modeSelectorProps !== undefined && (viewOptions?.showQuickModeSelector ?? true) !== false}
         <ModeSelector kind={'subtle'} props={modeSelectorProps} />
       {/if}
@@ -206,6 +311,9 @@
         scope={viewOptions?.searchScope ?? 'all'}
         collapsed
       />
+      {#if project !== undefined && hasFilterableFields}
+        <CustomFieldFilterButton space={project} />
+      {/if}
       <FilterButton _class={tracker.class.Issue} {space} />
     {/if}
   </svelte:fragment>
@@ -263,6 +371,11 @@
   on:change={(e) => (resultQuery = e.detail)}
 />
 <slot name="afterHeader" />
+{#if overLimit}
+  <div class="custom-field-error" role="alert">
+    <Label label={tracker.string.CustomFieldScanLimitExceeded} params={{ limit: scanLimit }} />
+  </div>
+{/if}
 {#if !isGanttMode}
   <!-- List / Kanban modes: render the chip strip below the SpaceHeader.
        Gantt has its own inline placement inside the search slot above.
@@ -311,7 +424,7 @@
     <ViewletContentView
       _class={tracker.class.Issue}
       {viewlet}
-      query={resultQuery}
+      query={viewQuery}
       {space}
       {viewOptions}
       createItemDialog={CreateIssue}
@@ -328,6 +441,11 @@
 {/if}
 
 <style lang="scss">
+  .custom-field-error {
+    padding: 0.5rem 1rem;
+    color: var(--theme-error-color, #d73a49);
+    border-bottom: 1px solid var(--theme-divider-color);
+  }
   .below-header-filters {
     display: flex;
     align-items: center;

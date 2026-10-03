@@ -2,11 +2,14 @@
   import { getClient } from '@hcengineering/presentation'
   import { DropdownIntlItem, DropdownLabelsIntl, Label, Toggle } from '@hcengineering/ui'
   import { Viewlet, ViewOptions, ViewOptionsModel, ViewOptionModel } from '@hcengineering/view'
+  import type { IntlString } from '@hcengineering/platform'
   import { createEventDispatcher } from 'svelte'
   import view from '../plugin'
   import { buildConfigLookup, canResolveAttribute, getKeyLabel } from '../utils'
   import { isDropdownType, isToggleType, noCategory } from '../viewOptions'
   import { SortingOrder } from '@hcengineering/core'
+  import { getEmbeddedLabel } from '@hcengineering/platform'
+  import { getClientViewExtension, isClientViewKey } from '../clientViewExtension'
 
   export let viewlet: Viewlet
   export let config: ViewOptionsModel
@@ -37,23 +40,35 @@
   const hierarchy = client.getHierarchy()
   const lookup = buildConfigLookup(hierarchy, viewlet.attachTo, viewlet.config, viewlet.options?.lookup)
 
+  const extension = getClientViewExtension()
+  const extensionLabels = new Map(
+    [...(extension?.groupByKeys() ?? []), ...(extension?.orderByKeys() ?? [])].map((it) => [it.id, it.label])
+  )
+  const getLabel = (key: string): IntlString =>
+    isClientViewKey(extension, key)
+      ? getEmbeddedLabel(extensionLabels.get(key) ?? key)
+      : getKeyLabel(client, viewlet.attachTo, key, lookup)
+
   const groupBy = config.groupBy
-    .filter((p) => canResolveAttribute(hierarchy, viewlet.attachTo, p, lookup))
+    .filter((p) => isClientViewKey(extension, p) || canResolveAttribute(hierarchy, viewlet.attachTo, p, lookup))
     .map((p) => {
       return {
         id: p,
-        label: getKeyLabel(client, viewlet.attachTo, p, lookup)
+        label: getLabel(p)
       }
     })
     .concat({ id: noCategory, label: view.string.NoGrouping })
 
   const orderBy = config.orderBy
-    .filter((p) => p[0] === 'rank' || canResolveAttribute(hierarchy, viewlet.attachTo, p[0], lookup))
+    .filter(
+      (p) =>
+        p[0] === 'rank' || isClientViewKey(extension, p[0]) || canResolveAttribute(hierarchy, viewlet.attachTo, p[0], lookup)
+    )
     .map((p) => {
       const key = p[0]
       return {
         id: key,
-        label: key === 'rank' ? view.string.Manual : getKeyLabel(client, viewlet.attachTo, key, lookup)
+        label: key === 'rank' ? view.string.Manual : getLabel(key)
       }
     })
 

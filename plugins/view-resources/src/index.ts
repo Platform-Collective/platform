@@ -230,6 +230,7 @@ export {
   type LoadingProps
 } from './utils'
 export * from './viewOptions'
+export * from './clientViewExtension'
 export * from './viewletContextStore'
 export { getViewletSpecialActions } from './viewletUtils'
 export { copyMarkdown } from './actionImpl'

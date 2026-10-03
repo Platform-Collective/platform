@@ -32,6 +32,7 @@
   import { createEventDispatcher } from 'svelte'
   import view from '../plugin'
   import { buildConfigLookup, canResolveAttribute, getKeyLabel } from '../utils'
+  import { getClientViewExtension } from '../clientViewExtension'
   import ViewletClassSettings from './ViewletClassSettings.svelte'
 
   export let viewlet: Viewlet
@@ -447,6 +448,25 @@
       }
 
       await addAssociations(result, viewlet.attachTo, preference)
+    }
+
+    // Optional columns provided by the host view (e.g. user-defined fields)
+    const extension = getClientViewExtension()
+    if (extension !== undefined) {
+      const clazz = hierarchy.getClass(viewlet.attachTo)
+      for (const column of extension.columns()) {
+        const columnConfig: AttributeConfig = {
+          type: 'attribute',
+          value: column.key,
+          label: getEmbeddedLabel(column.label),
+          enabled: false,
+          _class: viewlet.attachTo,
+          icon: clazz.icon
+        }
+        if (!isExist(result, columnConfig)) {
+          result.push(columnConfig)
+        }
+      }
     }
 
     return preference === undefined ? result : setStatus(result, preference)

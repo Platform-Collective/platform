@@ -49,6 +49,7 @@
     groupBy
   } from '../../utils'
   import { CategoryQuery, noCategory } from '../../viewOptions'
+  import { clientViewExtension, isClientViewKey, type ClientViewExtension } from '../../clientViewExtension'
   import ListCategory from './ListCategory.svelte'
 
   export let docs: Doc[]
@@ -91,7 +92,7 @@
 
   $: groupByKey = viewOptions.groupBy[level] ?? noCategory
   let categories: CategoryType[] = []
-  $: void updateCategories(_class, space, docs, groupByKey, viewOptions, viewOptionsConfig)
+  $: void updateCategories(_class, space, docs, groupByKey, viewOptions, viewOptionsConfig, $clientViewExtension)
 
   $: groupByDocs = groupBy(docs, groupByKey, categories)
 
@@ -110,8 +111,14 @@
       docs: Doc[],
       groupByKey: string,
       viewOptions: ViewOptions,
-      viewOptionsModel: ViewOptionModel[] | undefined
+      viewOptionsModel: ViewOptionModel[] | undefined,
+      extension: ClientViewExtension | undefined
     ): Promise<void> => {
+      if (extension !== undefined && isClientViewKey(extension, groupByKey)) {
+        // Grouping by a client-side key is computed from the loaded documents
+        categories = extension.getCategories(groupByKey, docs, viewOptions)
+        return
+      }
       categories = await getCategories(client, _class, space, docs, groupByKey)
       if (level === 0) {
         for (const viewOption of viewOptionsModel ?? []) {
@@ -131,21 +138,42 @@
   )
 
   function update (): void {
-    void updateCategories(_class, space, docs, groupByKey, viewOptions, viewOptionsConfig)
+    void updateCategories(_class, space, docs, groupByKey, viewOptions, viewOptionsConfig, $clientViewExtension)
   }
 
   let itemModels = new Map<Ref<Class<Doc>>, AttributeModel[]>()
 
-  const getHeader = reduceCalls(async function (_class: Ref<Class<Doc>>, groupByKey: string): Promise<void> {
+  const getHeader = reduceCalls(async function (
+    _class: Ref<Class<Doc>>,
+    groupByKey: string,
+    // Only a trigger: the extension is re-read from the store inside
+    extension?: unknown
+  ): Promise<void> {
+    void extension
     if (groupByKey === noCategory) {
       headerComponent = undefined
+    } else if (isClientViewKey($clientViewExtension, groupByKey)) {
+      const presenter = $clientViewExtension?.getGroupHeader(groupByKey)
+      headerComponent =
+        presenter === undefined
+          ? undefined
+          : {
+              key: groupByKey,
+              sortingKey: groupByKey,
+              _class,
+              label: '' as IntlString,
+              presenter,
+              props: {},
+              collectionAttr: false,
+              isLookup: false
+            }
     } else {
       await getPresenter(client, _class, { key: groupByKey }, { key: groupByKey }).then((p) => (headerComponent = p))
     }
   })
 
   let headerComponent: AttributeModel | undefined
-  $: void getHeader(_class, groupByKey)
+  $: void getHeader(_class, groupByKey, $clientViewExtension)
 
   let configurationsVersion = 0
   const buildModels = reduceCalls(async function (
@@ -367,8 +395,14 @@
   function getGroupByKey (
     docKeys: Partial<DocumentQuery<Doc<Space>>>,
     category: CategoryType,
-    resultQuery: DocumentQuery<Doc<Space>>
+    resultQuery: DocumentQuery<Doc<Space>>,
+    docsByGroup: Record<any, Doc[]>,
+    extension: ClientViewExtension | undefined
   ): Partial<DocumentQuery<Doc>> {
+    if (isClientViewKey(extension, groupByKey)) {
+      // Documents of a client-side group are addressed by id, the key is not queryable on the server
+      return { ...docKeys, _id: { $in: getGroupByValues(docsByGroup, category).map((it) => it._id) } }
+    }
     return {
       ...docKeys,
       [groupByKey]:
@@ -385,7 +419,7 @@
 
 {#each categories as category, i (typeof category === 'object' ? category.name : category)}
   {@const items = groupByKey === noCategory ? docs : getGroupByValues(groupByDocs, category)}
-  {@const categoryDocKeys = getGroupByKey(docKeys, category, resultQuery)}
+  {@const categoryDocKeys = getGroupByKey(docKeys, category, resultQuery, groupByDocs, $clientViewExtension)}
   <ListCategory
     bind:this={listListCategory[i]}
     {extraHeaders}

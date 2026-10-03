@@ -39,6 +39,7 @@
   import view from '../../plugin'
   import { SelectionFocusProvider, selectionLimit } from '../../selection'
   import { noCategory } from '../../viewOptions'
+  import { clientViewExtension, isClientViewKey } from '../../clientViewExtension'
 
   export let groupByKey: string
   export let category: PrimitiveType | AggregateValue
@@ -137,7 +138,11 @@
         </span>
       {:else if category === undefined}
         <span class="fs-bold content-color overflow-label pointer-events-none">
-          <Label label={view.string.NotSpecified} />
+          {#if isClientViewKey($clientViewExtension, groupByKey) && $clientViewExtension?.emptyGroupLabel(groupByKey) !== undefined}
+            {$clientViewExtension?.emptyGroupLabel(groupByKey)}
+          {:else}
+            <Label label={view.string.NotSpecified} />
+          {/if}
         </span>
       {:else if headerComponent}
         <svelte:component
