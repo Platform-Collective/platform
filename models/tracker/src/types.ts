@@ -71,6 +71,9 @@ import {
   type IssueTemplate,
   type IssueTemplateChild,
   type Milestone,
+  type ProjectField,
+  type ProjectFieldOption,
+  ProjectFieldType,
   type MilestoneStatus,
   type Project,
   type RelatedClassRule,
@@ -242,6 +245,10 @@ export class TIssue extends TTask implements Issue {
   @Index(IndexKind.Indexed)
   @ReadOnly()
   declare space: Ref<Project>
+
+  @Prop(TypeRecord(), tracker.string.CustomFields)
+  @Hidden()
+    customFields?: Record<string, unknown>
 
   @Prop(TypeDate(DateRangeMode.DATETIME), tracker.string.IssueStartDate)
   @Index(IndexKind.Indexed)
@@ -458,6 +465,39 @@ export class TMilestone extends TDoc implements Milestone {
 
   @Prop(TypeNumber(), tracker.string.Color)
     color?: number
+
+  declare space: Ref<Project>
+}
+
+/**
+ * @public
+ */
+@Model(tracker.class.ProjectField, core.class.Doc, DOMAIN_TRACKER)
+@UX(tracker.string.ProjectField, tracker.icon.Issues, '', 'label', undefined, tracker.string.ProjectFields)
+export class TProjectField extends TDoc implements ProjectField {
+  @Prop(TypeString(), tracker.string.Title)
+    label!: string
+
+  @Prop(TypeString(), tracker.string.FieldKey)
+  @ReadOnly()
+    key!: string
+
+  @Prop(TypeString(), tracker.string.FieldType)
+  @ReadOnly()
+    type!: ProjectFieldType
+
+  @Prop(TypeNumber(), tracker.string.Number)
+  @Hidden()
+    position!: number
+
+  @Prop(TypeString(), tracker.string.Description)
+    description?: string
+
+  @Prop(TypeRecord(), tracker.string.FieldDefaultValue)
+    defaultValue?: string | number | null
+
+  @Prop(ArrOf(TypeRecord()), tracker.string.FieldOptions)
+    options?: ProjectFieldOption[]
 
   declare space: Ref<Project>
 }

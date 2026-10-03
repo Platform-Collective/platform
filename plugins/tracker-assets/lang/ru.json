@@ -1,5 +1,12 @@
 {
   "string": {
+    "ProjectField": "Поле",
+    "ProjectFields": "Поля",
+    "CustomFields": "Пользовательские поля",
+    "FieldKey": "Ключ",
+    "FieldType": "Тип",
+    "FieldDefaultValue": "Значение по умолчанию",
+    "FieldOptions": "Варианты",
     "TrackerApplication": "Трекер",
     "Projects": "Проекты",
     "More": "Больше",

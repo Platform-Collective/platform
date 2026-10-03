@@ -1,5 +1,12 @@
 {
   "string": {
+    "ProjectField": "Field",
+    "ProjectFields": "Fields",
+    "CustomFields": "Custom fields",
+    "FieldKey": "Key",
+    "FieldType": "Type",
+    "FieldDefaultValue": "Default value",
+    "FieldOptions": "Options",
     "TrackerApplication": "Tracker",
     "Projects": "Your projects",
     "More": "More",
