@@ -38,6 +38,8 @@ export default plugin(serverTrackerId, {
     OnIssueUpdate: '' as Resource<TriggerFunc>,
     OnComponentRemove: '' as Resource<TriggerFunc>,
     OnProjectRemove: '' as Resource<TriggerFunc>,
+    OnProjectFieldCreate: '' as Resource<TriggerFunc>,
+    OnProjectFieldRemove: '' as Resource<TriggerFunc>,
     OnDependencyShiftRequest: '' as Resource<TriggerFunc>
   }
 })

@@ -45,6 +45,8 @@ import tracker, {
   groupShiftsByRecipient,
   Issue,
   IssueParentInfo,
+  overLimitFields,
+  type ProjectField,
   type ShiftedIssuePayload,
   TimeSpendReport,
   trackerId,
@@ -166,7 +168,13 @@ export async function OnProjectRemove (txes: Tx[], control: TriggerControl): Pro
   const result: Tx[] = []
   for (const tx of txes) {
     const ctx = tx as TxRemoveDoc<Project>
-    const classes = [tracker.class.Issue, tracker.class.Component, tracker.class.Milestone, tracker.class.IssueTemplate]
+    const classes = [
+      tracker.class.Issue,
+      tracker.class.Component,
+      tracker.class.Milestone,
+      tracker.class.IssueTemplate,
+      tracker.class.ProjectField
+    ]
     for (const cls of classes) {
       const docs = await control.findAll(control.ctx, cls, { space: ctx.objectId })
       for (const doc of docs) {
@@ -178,6 +186,46 @@ export async function OnProjectRemove (txes: Tx[], control: TriggerControl): Pro
   control.ctx.contextData.broadcast.targets.projectRemove = async (it) => {
     return {
       target: []
+    }
+  }
+  return result
+}
+
+/**
+ * Server-side guard for the per-project custom field limit. A client that skips the UI check
+ * still cannot exceed GitHub's cap: the newest field beyond the limit is removed again.
+ * @public
+ */
+export async function OnProjectFieldCreate (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+  const result: Tx[] = []
+  const handled = new Set<Ref<Space>>()
+  for (const tx of txes) {
+    const createTx = tx as TxCreateDoc<ProjectField>
+    if (handled.has(createTx.objectSpace)) continue
+    handled.add(createTx.objectSpace)
+    const fields = await control.findAll(control.ctx, tracker.class.ProjectField, { space: createTx.objectSpace as Ref<Project> })
+    for (const field of overLimitFields(fields)) {
+      result.push(control.txFactory.createTxRemoveDoc(field._class, field.space, field._id))
+    }
+  }
+  return result
+}
+
+/**
+ * Drop the values of a removed custom field from every issue of the project.
+ * @public
+ */
+export async function OnProjectFieldRemove (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+  const result: Tx[] = []
+  for (const tx of txes) {
+    const rmTx = tx as TxRemoveDoc<ProjectField>
+    const field = control.removedMap.get(rmTx.objectId) as ProjectField | undefined
+    if (field === undefined) continue
+    const issues = await control.findAll(control.ctx, tracker.class.Issue, { space: field.space as Ref<Project> })
+    for (const issue of issues) {
+      if (issue.customFields === undefined || !(field.key in issue.customFields)) continue
+      const { [field.key]: _removed, ...rest } = issue.customFields
+      result.push(control.txFactory.createTxUpdateDoc(issue._class, issue.space, issue._id, { customFields: rest }))
     }
   }
   return result
@@ -873,6 +921,8 @@ export default async () => ({
     OnIssueUpdate,
     OnComponentRemove,
     OnProjectRemove,
+    OnProjectFieldCreate,
+    OnProjectFieldRemove,
     OnDependencyShiftRequest
   }
 })
