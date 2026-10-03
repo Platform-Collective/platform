@@ -90,6 +90,14 @@ export function createModel (builder: Builder): void {
   })
 
   builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnIterationRemove,
+    txMatch: {
+      _class: core.class.TxRemoveDoc,
+      objectClass: tracker.class.Iteration
+    }
+  })
+
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
     trigger: serverTracker.trigger.OnDependencyShiftRequest,
     txMatch: {
       _class: core.class.TxCreateDoc,

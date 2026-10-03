@@ -5,15 +5,17 @@
 <script lang="ts">
   import { generateId, type Ref } from '@hcengineering/core'
   import type { IntlString } from '@hcengineering/platform'
-  import type { Project, ProjectField } from '@hcengineering/tracker'
-  import { ProjectFieldType } from '@hcengineering/tracker'
+  import type { Iteration, Project, ProjectField } from '@hcengineering/tracker'
+  import { getAssignableIterations, ProjectFieldType } from '@hcengineering/tracker'
   import { Button, ButtonIcon, DropdownLabels, DropdownLabelsIntl, EditBox, IconAdd, IconDelete, Label } from '@hcengineering/ui'
 
+  import { iterationsOfField, sharedIterationsStore } from '../iterations/iterationsStore'
   import tracker from '../plugin'
   import { customFieldFilterStore } from './customFieldView'
   import { sharedProjectFieldsStore } from './projectFieldsStore'
   import {
     isFilterableType,
+    ITERATION_KEYWORDS,
     operatorsFor,
     type CustomFieldFilter,
     type FieldFilterOperator,
@@ -24,6 +26,17 @@
 
   const filtersStore = customFieldFilterStore(space)
   const registry = sharedProjectFieldsStore(space)
+  const iterationStore = sharedIterationsStore(space)
+
+  const keywordLabels: Record<(typeof ITERATION_KEYWORDS)[number], IntlString> = {
+    '@current': tracker.string.IterationCurrent,
+    '@next': tracker.string.IterationNext,
+    '@previous': tracker.string.IterationPrevious
+  }
+
+  function iterationsFor (field: ProjectField, all: readonly Iteration[]): Iteration[] {
+    return getAssignableIterations(iterationsOfField(all, field))
+  }
 
   $: fields = $registry.fields.filter((f) => isFilterableType(f.type))
   $: filters = $filtersStore
@@ -195,6 +208,29 @@
             value={dateToInput(typeof filter.value === 'number' ? filter.value : undefined)}
             on:change={(e) => patch(filter.id, { value: inputToDate(e.currentTarget.value) })}
           />
+        {:else if filter.operator === 'anyOf' && field.type === ProjectFieldType.Iteration}
+          <div class="options">
+            {#each ITERATION_KEYWORDS as keyword (keyword)}
+              <label class="option">
+                <input
+                  type="checkbox"
+                  checked={Array.isArray(filter.value) && filter.value.includes(keyword)}
+                  on:change={(e) => toggleOption(filter, keyword, e.currentTarget.checked)}
+                />
+                <span class="overflow-label"><Label label={keywordLabels[keyword]} /></span>
+              </label>
+            {/each}
+            {#each iterationsFor(field, $iterationStore) as iteration (iteration._id)}
+              <label class="option">
+                <input
+                  type="checkbox"
+                  checked={Array.isArray(filter.value) && filter.value.includes(iteration._id)}
+                  on:change={(e) => toggleOption(filter, iteration._id, e.currentTarget.checked)}
+                />
+                <span class="overflow-label">{iteration.label}</span>
+              </label>
+            {/each}
+          </div>
         {:else if filter.operator === 'anyOf'}
           <div class="options">
             {#each field.options ?? [] as option (option.value)}

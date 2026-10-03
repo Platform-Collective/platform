@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: EPL-2.0
 //
 
-import { ProjectFieldType, type ProjectField } from '@hcengineering/tracker'
+import { ProjectFieldType, toIterationRanges, type ProjectField } from '@hcengineering/tracker'
 import { filterGrammar } from '@hcengineering/view-resources'
 import { buildIssueFilterSchema, customFilterToQuery, fieldFilterName } from '../issueFilter'
 import { buildFiltersPredicate, endOfDay, startOfDay, type CustomFieldFilter } from '../projectFields/query'
@@ -168,5 +168,89 @@ describe('customFilterToQuery', () => {
         expect([text, issue._id, evaluate(parsed.value.ast, issue, ctx)]).toEqual([text, issue._id, legacy(issue)])
       }
     }
+  })
+})
+
+describe('iteration fields in the filter', () => {
+  const day = (m: number, d: number): number => new Date(2026, m - 1, d).getTime()
+  const sprintField = field('sprint', 'Sprint', ProjectFieldType.Iteration)
+  const iterations: any[] = [
+    { _id: 'it1', field: 'sprint', label: 'Sprint 1', number: 1, startDate: day(10, 5), duration: 7 },
+    { _id: 'it2', field: 'sprint', label: 'Sprint 2', number: 2, startDate: day(10, 12), duration: 7 },
+    { _id: 'brk', field: 'sprint', label: 'Break', number: 0, startDate: day(10, 19), duration: 7, isBreak: true },
+    { _id: 'it3', field: 'sprint', label: 'Sprint 3', number: 3, startDate: day(10, 26), duration: 7 },
+    { _id: 'other', field: 'elsewhere', label: 'Other', number: 1, startDate: day(10, 5), duration: 7 }
+  ]
+  const sprintSchema = buildIssueFilterSchema({
+    statuses: [],
+    priorities: [],
+    assignees: [],
+    components: [],
+    milestones: [],
+    labels: [],
+    labelRefs: [],
+    customFields: [sprintField],
+    iterations,
+    noParentId: 'no-parent'
+  })
+  // Wednesday of the second iteration
+  const now = new Date(2026, 9, 14, 12).getTime()
+  const ctx = {
+    now,
+    iterations: (key: string) => (key === 'sprint' ? toIterationRanges(iterations.filter((it) => it.field === 'sprint')) : [])
+  }
+  const issues: any[] = [
+    { _id: 'a', customFields: { sprint: 'it1' } },
+    { _id: 'b', customFields: { sprint: 'it2' } },
+    { _id: 'c', customFields: { sprint: 'it3' } },
+    { _id: 'd' }
+  ]
+  const match = (text: string): string[] => {
+    const parsed = parseFilter(text, sprintSchema)
+    if (!parsed.ok) throw new Error(`${text}: ${parsed.error.message}`)
+    const predicate = filterGrammar.createPredicate(parsed.value, ctx)
+    return issues.filter((i) => predicate(i)).map((i) => i._id)
+  }
+
+  it('offers the iterations of the field, without breaks, as options', () => {
+    const spec = sprintSchema.find((f) => f.name === 'sprint')
+    expect(spec?.type).toBe('iteration')
+    expect(spec?.options).toEqual([
+      { id: 'it1', name: 'Sprint 1' },
+      { id: 'it2', name: 'Sprint 2' },
+      { id: 'it3', name: 'Sprint 3' }
+    ])
+  })
+
+  it('resolves @current, @next and @previous against the iterations of the project', () => {
+    expect(match('sprint:@current')).toEqual(['b'])
+    expect(match('sprint:@next')).toEqual(['c'])
+    expect(match('sprint:@previous')).toEqual(['a'])
+    expect(match('sprint:@current,@next')).toEqual(['b', 'c'])
+    expect(match('sprint:@current+1')).toEqual(['c'])
+    expect(match('sprint:>@previous')).toEqual(['b', 'c'])
+    expect(match('-sprint:@current')).toEqual(['a', 'c', 'd'])
+    expect(match('no:sprint')).toEqual(['d'])
+  })
+
+  it('matches by title', () => {
+    expect(match('sprint:"Sprint 1"')).toEqual(['a'])
+  })
+
+  it('finds no current iteration during a break', () => {
+    const during = { ...ctx, now: new Date(2026, 9, 21, 12).getTime() }
+    const parsed = parseFilter('sprint:@current', sprintSchema)
+    if (!parsed.ok) throw new Error('parse')
+    const predicate = filterGrammar.createPredicate(parsed.value, during)
+    expect(issues.filter((i) => predicate(i))).toEqual([])
+  })
+
+  it('names the picked iterations when folding the rules into a filter string', () => {
+    const rules: CustomFieldFilter[] = [
+      { id: '1', fieldKey: 'sprint', operator: 'anyOf', value: ['@current', 'it1'] }
+    ]
+    const text = customFilterToQuery(rules, new Map([['sprint', sprintField]]), () => iterations.filter((it) => it.field === 'sprint'))
+    expect(text).toBe('sprint:@current,"Sprint 1"')
+    expect(match(text)).toEqual(['a', 'b'])
   })
 })

@@ -536,3 +536,50 @@ rush build --to <pkg>             # cross-package type check before PR
 ---
 
 *Append-only. Next entry should record the Phase 0 spike result.*
+
+---
+
+## Phase 5 implementation notes (Iterations)
+
+**Deviations from D4**
+
+- **No `TIssue.iteration` prop.** An issue's iteration is the iteration id stored in
+  `issue.customFields[field.key]`, like every other custom field (D1). A project can therefore have several
+  Iteration fields, each with its own iterations, and no model migration or index is needed. The cost is the
+  same as for all custom fields: filter/sort/group run on the client over the scanned issues.
+- **`tracker.class.Iteration` has no `project` prop**: `space` is the project (D4 says the same). `field`
+  references the owning `ProjectField`. `number` is the ordinal for default titles (`Iteration 4`), 0 for breaks.
+- **No stored status.** `getIterationState(iteration, now)` derives `planned | current | completed` from
+  `startDate` + `duration` (whole local days; `end` is the last millisecond of the last day).
+- Default duration of a new iteration is not stored on the field: it is the duration of the last iteration
+  (a week when there is none). The creation form asks for the duration (days or weeks) and the first start date
+  (default today) and creates three consecutive iterations together with the field in one `client.apply` batch
+  (`generateInitialIterations`).
+
+**Behaviour**
+
+- Changing the duration or start date of an iteration moves all later iterations (and breaks) by the same
+  number of days, so gaps stay; a start that would run into the previous iteration is rejected (`planIterationChange`).
+  Adding appends after the last item; "Insert break after" inserts a break (`isBreak`, not assignable, not
+  offered in editors/groups/filters, ignored by `@current/@next/@previous`) and shifts what follows.
+  Deleting leaves the other dates alone; the server (`OnIterationRemove`) strips the id from issues. Removing
+  the field or the project removes its iterations. Completed iterations are listed in their own collapsible section.
+- Editor: single-select popup, current iteration marked, `No iteration`; presenter shows the title with the date
+  range as tooltip. Cell paste accepts titles and `@current/@next/@previous[+-N]`.
+- Filter: `iteration:@current`, `@next`, `@previous`, `+/-N`, `>@current`, titles (grammar callback is wired to the
+  project's iterations); the legacy custom-field filter has an any-of rule with the three keywords plus iterations.
+- Sort by iteration start date; group by iteration (calendar order, `No <field>` last). The group header shows the
+  date range, count, done count (status category Won) and estimation sum (`computeIterationRollups`), plus a menu
+  `Move items to...`.
+- View extension additions (`ClientViewExtension`): optional `extraProjection` and `getGroupExtras`.
+
+**Remaining gaps / not done**
+
+- "Move items to..." moves the items of the group as currently shown (respects the active filter), not every
+  item of the iteration in the project.
+- Board column field and Roadmap date source from iterations are Phase 7 / 12 (the data and pure helpers exist).
+- Iteration settings are saved per edit, not with the form's Save button; no undo.
+- Not exercised in a running UI or e2e (no sanity spec added); verified by jest, `rush validate`, `svelte-check`.
+- `rush validate --from @hcengineering/tracker` fails only in `@hcengineering/prod` on type errors in earlier
+  phase files (`view-resources` filter grammar parser/compile and `tableEdit`), unrelated to this phase.
+

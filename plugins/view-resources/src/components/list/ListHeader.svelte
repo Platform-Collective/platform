@@ -92,6 +92,10 @@
 
   const selection = listProvider.selection
 
+  $: groupExtras = isClientViewKey($clientViewExtension, groupByKey)
+    ? $clientViewExtension?.getGroupExtras?.(groupByKey)
+    : undefined
+
   $: selectionIds = new Set($selection.map((it) => it._id))
   $: selected = items.filter((it) => selectionIds.has(it._id))
   // $: if (itemsProj.length === 0 && !collapsed) collapsed = true
@@ -184,6 +188,14 @@
           {/if}
         {:else}
           <span class="antiSection-header__counter ml-2">{itemsProj.length}</span>
+        {/if}
+        {#if groupExtras !== undefined && category !== undefined}
+          <svelte:component
+            this={groupExtras}
+            value={category}
+            docs={itemsProj}
+            space={space ?? (items.every((i) => i?.space === items[0]?.space) ? items[0]?.space : undefined)}
+          />
         {/if}
         <div class="flex-row-center flex-reverse flex-grow mr-2 gap-2 reverse">
           {#each extraHeaders ?? [] as extra}

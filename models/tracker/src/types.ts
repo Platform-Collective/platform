@@ -40,6 +40,7 @@ import {
   Model,
   Prop,
   ReadOnly,
+  TypeBoolean,
   TypeCollaborativeDoc,
   TypeDate,
   TypeMarkup,
@@ -71,6 +72,7 @@ import {
   type IssueTemplate,
   type IssueTemplateChild,
   type Milestone,
+  type Iteration,
   type ProjectField,
   type ProjectFieldOption,
   ProjectFieldType,
@@ -498,6 +500,36 @@ export class TProjectField extends TDoc implements ProjectField {
 
   @Prop(ArrOf(TypeRecord()), tracker.string.FieldOptions)
     options?: ProjectFieldOption[]
+
+  declare space: Ref<Project>
+}
+
+/**
+ * A time box of an Iteration field. Issues reference it by id from `customFields[field.key]`.
+ * @public
+ */
+@Model(tracker.class.Iteration, core.class.Doc, DOMAIN_TRACKER)
+@UX(tracker.string.Iteration, tracker.icon.Issues, '', 'label', undefined, tracker.string.Iterations)
+export class TIteration extends TDoc implements Iteration {
+  @Prop(TypeRef(tracker.class.ProjectField), tracker.string.ProjectField)
+  @ReadOnly()
+    field!: Ref<ProjectField>
+
+  @Prop(TypeString(), tracker.string.Title)
+    label!: string
+
+  @Prop(TypeNumber(), tracker.string.Number)
+  @Hidden()
+    number!: number
+
+  @Prop(TypeDate(), tracker.string.StartDate)
+    startDate!: Timestamp
+
+  @Prop(TypeNumber(), tracker.string.IterationDuration)
+    duration!: number
+
+  @Prop(TypeBoolean(), tracker.string.IterationBreak)
+    isBreak?: boolean
 
   declare space: Ref<Project>
 }

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: EPL-2.0
 //
 
-import type { ProjectField } from '@hcengineering/tracker'
-import { ProjectFieldType } from '@hcengineering/tracker'
+import type { Iteration, ProjectField } from '@hcengineering/tracker'
+import { getAssignableIterations, ProjectFieldType } from '@hcengineering/tracker'
 import type { filterGrammar } from '@hcengineering/view-resources'
 
 import { isFilterComplete, type CustomFieldFilter } from './projectFields/query'
@@ -31,6 +31,8 @@ export interface IssueFilterSchemaInput {
   // Tag references: which issue carries which label
   labelRefs: Array<{ issue: string, label: string }>
   customFields: ProjectField[]
+  // Iterations of the iteration fields among the custom fields
+  iterations?: readonly Iteration[]
   // Value of Issue.attachedTo for an issue without a parent
   noParentId: string
 }
@@ -165,7 +167,12 @@ export function buildIssueFilterSchema (input: IssueFilterSchemaInput): FieldSpe
       source: 'custom',
       key: field.key,
       options:
-        field.options !== undefined ? field.options.map((o) => ({ id: o.value, name: o.label })) : undefined
+        field.type === ProjectFieldType.Iteration
+          ? getAssignableIterations((input.iterations ?? []).filter((it) => it.field === field._id)).map((it) => ({
+            id: it._id,
+            name: it.label
+          }))
+          : field.options?.map((o) => ({ id: o.value, name: o.label }))
     })
   }
   return schema
@@ -190,7 +197,9 @@ function quote (text: string): string {
  */
 export function customFilterToQuery (
   rules: readonly CustomFieldFilter[],
-  fields: ReadonlyMap<string, Pick<ProjectField, 'key' | 'label' | 'type' | 'options'>>
+  fields: ReadonlyMap<string, Pick<ProjectField, 'key' | 'label' | 'type' | 'options'>>,
+  // Iterations of an iteration field by its key, to name the picked ones
+  iterationsOf: (fieldKey: string) => ReadonlyArray<Pick<Iteration, '_id' | 'label'>> = () => []
 ): string {
   const terms: string[] = []
   for (const rule of rules) {
@@ -235,7 +244,12 @@ export function customFilterToQuery (
         break
       }
       case 'anyOf': {
-        const labels = (value as string[]).map((id) => field.options?.find((o) => o.value === id)?.label ?? id)
+        const labels = (value as string[]).map(
+          (id) =>
+            (field.type === ProjectFieldType.Iteration
+              ? iterationsOf(field.key).find((it) => it._id === id)?.label
+              : field.options?.find((o) => o.value === id)?.label) ?? id
+        )
         terms.push(`${name}:${labels.map(quote).join(',')}`)
         break
       }

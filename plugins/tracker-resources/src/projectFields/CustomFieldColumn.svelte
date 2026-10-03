@@ -52,7 +52,7 @@
   }
 </script>
 
-{#if field !== undefined && field.type !== ProjectFieldType.Iteration}
+{#if field !== undefined}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div class="custom-field-cell" on:click|stopPropagation>

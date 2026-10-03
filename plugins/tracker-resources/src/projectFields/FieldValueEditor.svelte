@@ -7,6 +7,7 @@
   import { createEventDispatcher } from 'svelte'
   import { getFieldValue } from '@hcengineering/tracker'
 
+  import IterationFieldEditor from '../iterations/IterationFieldEditor.svelte'
   import DateFieldEditor from './DateFieldEditor.svelte'
   import MultiSelectFieldEditor from './MultiSelectFieldEditor.svelte'
   import NumberFieldEditor from './NumberFieldEditor.svelte'
@@ -46,4 +47,6 @@
     {readonly}
     on:change={forward}
   />
+{:else if field.type === ProjectFieldType.Iteration}
+  <IterationFieldEditor {field} value={typeof value === 'string' ? value : null} {readonly} on:change={forward} />
 {/if}

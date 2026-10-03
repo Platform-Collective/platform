@@ -50,9 +50,12 @@ import {
 import { AnyComponent, ComponentExtensionId, Location, ResolvedLocation } from '@hcengineering/ui'
 import { Action, ActionCategory, IconProps } from '@hcengineering/view'
 import type { ProjectField } from './projectField'
+import type { Iteration } from './iteration'
 
 export * from './analytics'
 export * from './projectField'
+export * from './iteration'
+export * from './iterationRollup'
 
 /**
  * @public
@@ -581,6 +584,7 @@ const pluginState = plugin(trackerId, {
     TypeIssuePriority: '' as Ref<Class<Type<IssuePriority>>>,
     Milestone: '' as Ref<Class<Milestone>>,
     ProjectField: '' as Ref<Class<ProjectField>>,
+    Iteration: '' as Ref<Class<Iteration>>,
     TypeMilestoneStatus: '' as Ref<Class<Type<MilestoneStatus>>>,
     TimeSpendReport: '' as Ref<Class<TimeSpendReport>>,
     TypeReportedTime: '' as Ref<Class<Type<number>>>,

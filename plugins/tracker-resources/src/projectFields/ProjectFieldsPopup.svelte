@@ -4,14 +4,18 @@
 -->
 <script lang="ts">
   import { generateId, type Ref } from '@hcengineering/core'
-  import type { IntlString } from '@hcengineering/platform'
+  import { translate, type IntlString } from '@hcengineering/platform'
   import presentation, { Card, getClient, MessageBox } from '@hcengineering/presentation'
   import {
+    durationToDays,
     generateFieldKey,
+    generateInitialIterations,
     MAX_PROJECT_FIELD_OPTIONS,
     MAX_PROJECT_FIELDS,
     ProjectFieldType,
+    startOfDay,
     validateProjectField,
+    type IterationDurationUnit,
     type Project,
     type ProjectField,
     type ProjectFieldOption,
@@ -32,6 +36,7 @@
     IconDelete,
     IconDescription,
     IconDown,
+    IconHistory,
     IconScale,
     IconUp,
     Label,
@@ -41,6 +46,7 @@
   import { ColorsPopup } from '@hcengineering/view-resources'
   import { createEventDispatcher } from 'svelte'
 
+  import IterationsEditor from '../iterations/IterationsEditor.svelte'
   import tracker from '../plugin'
   import { projectFieldsStore } from './projectFieldsStore'
   import { computeMove, nextFieldPosition } from './registry'
@@ -54,18 +60,22 @@
     description: string
     options: ProjectFieldOption[]
     defaultValue: string | number | null
+    // Iteration fields: what the first iterations look like (only used on creation)
+    iterationAmount: number
+    iterationUnit: IterationDurationUnit
+    iterationStart: number
   }
 
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  // Iteration fields are introduced in a later phase
   const typeItems: Array<{ id: ProjectFieldType, label: IntlString }> = [
     { id: ProjectFieldType.Text, label: tracker.string.ProjectFieldTypeText },
     { id: ProjectFieldType.Number, label: tracker.string.ProjectFieldTypeNumber },
     { id: ProjectFieldType.Date, label: tracker.string.ProjectFieldTypeDate },
     { id: ProjectFieldType.SingleSelect, label: tracker.string.ProjectFieldTypeSingleSelect },
-    { id: ProjectFieldType.MultiSelect, label: tracker.string.ProjectFieldTypeMultiSelect }
+    { id: ProjectFieldType.MultiSelect, label: tracker.string.ProjectFieldTypeMultiSelect },
+    { id: ProjectFieldType.Iteration, label: tracker.string.ProjectFieldTypeIteration }
   ]
 
   const errorLabels: Record<ProjectFieldValidationError, IntlString> = {
@@ -104,6 +114,8 @@
         return IconCheckCircle
       case ProjectFieldType.MultiSelect:
         return IconCheckAll
+      case ProjectFieldType.Iteration:
+        return IconHistory
       default:
         return IconDescription
     }
@@ -113,9 +125,21 @@
     return typeItems.find((t) => t.id === type)?.label ?? tracker.string.ProjectFieldTypeText
   }
 
+  function newIterationDefaults (): Pick<Draft, 'iterationAmount' | 'iterationUnit' | 'iterationStart'> {
+    // GitHub starts a new iteration field with one-week iterations, the first one starting today
+    return { iterationAmount: 1, iterationUnit: 'weeks', iterationStart: startOfDay(Date.now()) }
+  }
+
   function startCreate (): void {
     showErrors = false
-    draft = { label: '', type: ProjectFieldType.Text, description: '', options: [], defaultValue: null }
+    draft = {
+      label: '',
+      type: ProjectFieldType.Text,
+      description: '',
+      options: [],
+      defaultValue: null,
+      ...newIterationDefaults()
+    }
   }
 
   function startEdit (field: ProjectField): void {
@@ -126,7 +150,8 @@
       type: field.type,
       description: field.description ?? '',
       options: (field.options ?? []).map((o) => ({ ...o })),
-      defaultValue: field.defaultValue ?? null
+      defaultValue: field.defaultValue ?? null,
+      ...newIterationDefaults()
     }
   }
 
@@ -181,6 +206,37 @@
     )
   }
 
+  function pad (n: number): string {
+    return String(n).padStart(2, '0')
+  }
+
+  function dateToInput (ts: number): string {
+    const d = new Date(ts)
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  }
+
+  function setIterationStart (raw: string): void {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw)
+    if (draft === undefined || m === null) return
+    draft.iterationStart = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime()
+  }
+
+  function setIterationAmount (e: CustomEvent<string | number>): void {
+    if (draft === undefined) return
+    const parsed = Math.round(Number(String(e.detail).trim()))
+    draft.iterationAmount = Number.isFinite(parsed) && parsed >= 1 ? parsed : 1
+  }
+
+  function setIterationUnit (e: CustomEvent<IterationDurationUnit | undefined>): void {
+    if (draft === undefined || e.detail === undefined) return
+    draft.iterationUnit = e.detail
+  }
+
+  const unitItems = [
+    { id: 'days', label: tracker.string.IterationDurationDays },
+    { id: 'weeks', label: tracker.string.IterationDurationWeeks }
+  ]
+
   function setDefaultText (e: CustomEvent<string>): void {
     if (draft === undefined) return
     draft.defaultValue = e.detail.trim() === '' ? null : e.detail
@@ -220,17 +276,37 @@
       if (key === '') {
         return
       }
-      await client.createDoc(tracker.class.ProjectField, project._id, {
-        ...common,
-        key,
-        type: d.type,
-        position: nextFieldPosition(fields)
-      })
+      const fieldData = { ...common, key, type: d.type, position: nextFieldPosition(fields) }
+      if (d.type === ProjectFieldType.Iteration) {
+        // A new iteration field starts with three consecutive iterations (GitHub parity), created together with it
+        const labelOf = await getIterationLabeler()
+        const drafts = generateInitialIterations({
+          now: Date.now(),
+          duration: durationToDays(d.iterationAmount, d.iterationUnit),
+          startDate: d.iterationStart,
+          labelOf
+        })
+        const fieldId = generateId<ProjectField>()
+        const batch = client.apply()
+        await batch.createDoc(tracker.class.ProjectField, project._id, fieldData, fieldId)
+        for (const it of drafts) {
+          await batch.createDoc(tracker.class.Iteration, project._id, { ...it, field: fieldId })
+        }
+        await batch.commit()
+      } else {
+        await client.createDoc(tracker.class.ProjectField, project._id, fieldData)
+      }
     } else {
       // Key and type are immutable after creation
       await client.updateDoc(tracker.class.ProjectField, project._id, d.id, common)
     }
     draft = undefined
+  }
+
+  // Titles of the first iterations follow the interface language
+  async function getIterationLabeler (): Promise<(n: number) => string> {
+    const base = await translate(tracker.string.Iteration, {}, $themeStore.language)
+    return (n) => `${base} ${n}`
   }
 
   async function move (field: ProjectField, direction: -1 | 1): Promise<void> {
@@ -250,6 +326,7 @@
     })
   }
 
+  $: currentField = draft?.id !== undefined ? fields.find((f) => f._id === draft?.id) : undefined
   $: optionItems = (draft?.options ?? []).map((o) => ({ id: o.value, label: o.label }))
 </script>
 
@@ -350,6 +427,36 @@
       </div>
     {/if}
 
+    {#if draft.type === ProjectFieldType.Iteration}
+      {#if draft.id === undefined}
+        <div class="flex-row-center flex-gap-2">
+          <Label label={tracker.string.IterationDuration} />
+          <div class="amount">
+            <EditBox kind={'default'} format={'number'} minValue={1} value={draft.iterationAmount} on:blur={setIterationAmount} />
+          </div>
+          <DropdownLabelsIntl
+            kind={'regular'}
+            size={'medium'}
+            width={'6rem'}
+            items={unitItems}
+            selected={draft.iterationUnit}
+            on:selected={setIterationUnit}
+          />
+        </div>
+        <div class="flex-row-center flex-gap-2">
+          <Label label={tracker.string.IterationStartsOn} />
+          <input
+            type="date"
+            aria-label="start"
+            value={dateToInput(draft.iterationStart)}
+            on:change={(e) => setIterationStart(e.currentTarget.value)}
+          />
+        </div>
+      {:else if currentField !== undefined}
+        <IterationsEditor field={currentField} />
+      {/if}
+    {/if}
+
     {#if supportsDefault(draft.type)}
       <div class="flex-row-center flex-gap-2">
         <Label label={tracker.string.FieldDefaultValue} />
@@ -388,6 +495,16 @@
 </Card>
 
 <style lang="scss">
+  .amount {
+    width: 4rem;
+  }
+  input[type='date'] {
+    padding: 0.25rem 0.5rem;
+    color: var(--theme-caption-color);
+    background: var(--theme-button-default);
+    border: 1px solid var(--theme-button-border);
+    border-radius: 0.25rem;
+  }
   .option-color {
     flex-shrink: 0;
     width: 1.25rem;

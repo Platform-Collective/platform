@@ -53,6 +53,13 @@ const fields = [
   field({ key: 'sprint', type: ProjectFieldType.Iteration })
 ]
 
+const day = (m: number, d: number): number => new Date(2026, m - 1, d).getTime()
+const iterations: any[] = [
+  { _id: 'it1', label: 'Sprint 1', number: 1, startDate: day(1, 5), duration: 7 },
+  { _id: 'it2', label: 'Sprint 2', number: 2, startDate: day(1, 12), duration: 7 },
+  { _id: 'brk', label: 'Holiday', number: 0, startDate: day(1, 19), duration: 7, isBreak: true }
+]
+
 let refs: Record<string, IssueLabelRef[]> = {}
 let allowed = true
 
@@ -74,6 +81,7 @@ const lookups: IssueCellLookups = {
   ],
   labelRefs: (id) => refs[id] ?? [],
   fields: new Map(fields.map((f) => [f.key, f])),
+  iterations: () => iterations,
   canEdit: () => allowed,
   now: () => new Date(2026, 0, 10, 12).getTime()
 }
@@ -91,13 +99,43 @@ beforeEach(() => {
   allowed = true
 })
 
+describe('iteration cells', () => {
+  // The lookups pin "now" to 2026-01-10, which is in Sprint 1
+  it('shows the title and parses titles case-insensitively', () => {
+    const d = issue({ _id: 'i1', customFields: { sprint: 'it2' } })
+    expect(column('cf_sprint')?.format(d)).toBe('Sprint 2')
+    expect(edit('cf_sprint', d, 'sprint 1')).toMatchObject({
+      ok: true,
+      value: [{ kind: 'update', after: { customFields: { sprint: 'it1' } } }]
+    })
+  })
+
+  it('understands the filter keywords', () => {
+    const d = issue({ _id: 'i1' })
+    const after = (text: string): unknown => {
+      const res = edit('cf_sprint', d, text)
+      return res.ok ? (res.value[0] as any).after.customFields : res
+    }
+    expect(after('@current')).toEqual({ sprint: 'it1' })
+    expect(after('@next')).toEqual({ sprint: 'it2' })
+    expect(after('@current+1')).toEqual({ sprint: 'it2' })
+    expect(edit('cf_sprint', d, '@previous')).toEqual({ ok: false, reason: 'unknown' })
+  })
+
+  it('refuses breaks and unknown titles, and clears on empty text', () => {
+    const d = issue({ _id: 'i1', customFields: { sprint: 'it1', other: 1 } })
+    expect(edit('cf_sprint', d, 'Holiday')).toEqual({ ok: false, reason: 'unknown' })
+    expect(edit('cf_sprint', d, 'nope')).toEqual({ ok: false, reason: 'unknown' })
+    expect(edit('cf_sprint', d, '')).toMatchObject({ ok: true, value: [{ after: { customFields: { other: 1 } } }] })
+  })
+})
+
 describe('issue cell columns', () => {
   it('has no column for read-only cells', () => {
     expect(column('issue')).toBeUndefined()
     expect(column('modified')).toBeUndefined()
     expect(column('cf_missing')).toBeUndefined()
-    // Iteration fields are not edited here
-    expect(column('cf_sprint')).toBeUndefined()
+    expect(column('cf_sprint')).toBeDefined()
   })
 
   it('sets the status by name and refuses to clear it', () => {

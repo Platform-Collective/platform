@@ -153,7 +153,11 @@
       _id: 1,
       _class: 1,
       ...getProjection(
-        viewOptions.groupBy.map((it) => (isClientViewKey($clientViewExtension, it) ? $clientViewExtension?.projectionKey(it) ?? it : it)),
+        viewOptions.groupBy.flatMap((it) =>
+          isClientViewKey($clientViewExtension, it)
+            ? [$clientViewExtension?.projectionKey(it) ?? it, ...($clientViewExtension?.extraProjection?.(it) ?? [])]
+            : [it]
+        ),
         queryNoLookup,
         _class
       )

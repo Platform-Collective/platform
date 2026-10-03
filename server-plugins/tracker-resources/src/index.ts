@@ -45,8 +45,11 @@ import tracker, {
   groupShiftsByRecipient,
   Issue,
   IssueParentInfo,
+  type Iteration,
   overLimitFields,
   type ProjectField,
+  ProjectFieldType,
+  stripIterationValues,
   type ShiftedIssuePayload,
   TimeSpendReport,
   trackerId,
@@ -173,7 +176,8 @@ export async function OnProjectRemove (txes: Tx[], control: TriggerControl): Pro
       tracker.class.Component,
       tracker.class.Milestone,
       tracker.class.IssueTemplate,
-      tracker.class.ProjectField
+      tracker.class.ProjectField,
+      tracker.class.Iteration
     ]
     for (const cls of classes) {
       const docs = await control.findAll(control.ctx, cls, { space: ctx.objectId })
@@ -226,6 +230,53 @@ export async function OnProjectFieldRemove (txes: Tx[], control: TriggerControl)
       if (issue.customFields === undefined || !(field.key in issue.customFields)) continue
       const { [field.key]: _removed, ...rest } = issue.customFields
       result.push(control.txFactory.createTxUpdateDoc(issue._class, issue.space, issue._id, { customFields: rest }))
+    }
+    // The iterations of an Iteration field are meaningless without it
+    if (field.type === ProjectFieldType.Iteration) {
+      const iterations = await control.findAll(control.ctx, tracker.class.Iteration, { field: field._id })
+      for (const iteration of iterations) {
+        result.push(control.txFactory.createTxRemoveDoc(iteration._class, iteration.space, iteration._id))
+      }
+    }
+  }
+  return result
+}
+
+/**
+ * Drop a deleted iteration from the issues that were in it. Several iterations removed together are
+ * handled in one pass, so an issue gets a single update.
+ * @public
+ */
+export async function OnIterationRemove (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+  // Removed iteration ids by project and owning field
+  const removed = new Map<Ref<Project>, Map<Ref<ProjectField>, Set<string>>>()
+  for (const tx of txes) {
+    const iteration = control.removedMap.get((tx as TxRemoveDoc<Iteration>).objectId) as Iteration | undefined
+    if (iteration === undefined) continue
+    const byField = removed.get(iteration.space) ?? new Map<Ref<ProjectField>, Set<string>>()
+    const ids = byField.get(iteration.field) ?? new Set<string>()
+    ids.add(iteration._id)
+    byField.set(iteration.field, ids)
+    removed.set(iteration.space, byField)
+  }
+
+  const result: Tx[] = []
+  for (const [space, byField] of removed) {
+    // The field may be gone already (it was removed together with its iterations): its values are dropped by
+    // OnProjectFieldRemove, an update from here would only race with that one
+    const fields = await control.findAll(control.ctx, tracker.class.ProjectField, {
+      _id: { $in: [...byField.keys()] },
+      space
+    })
+    const dropped = new Map<string, Set<string>>()
+    for (const field of fields) dropped.set(field.key, byField.get(field._id) ?? new Set<string>())
+    if (dropped.size === 0) continue
+
+    const issues = await control.findAll(control.ctx, tracker.class.Issue, { space })
+    for (const issue of issues) {
+      const customFields = stripIterationValues(issue.customFields, dropped)
+      if (customFields === undefined) continue
+      result.push(control.txFactory.createTxUpdateDoc(issue._class, issue.space, issue._id, { customFields }))
     }
   }
   return result
@@ -923,6 +974,7 @@ export default async () => ({
     OnProjectRemove,
     OnProjectFieldCreate,
     OnProjectFieldRemove,
+    OnIterationRemove,
     OnDependencyShiftRequest
   }
 })

@@ -42,10 +42,15 @@ export interface ClientViewExtension {
   columns: () => ClientViewColumn[]
   // Top-level document property that has to be loaded to evaluate the key
   projectionKey: (key: string) => string
+  // Further properties of the documents that the group header needs (see `getGroupExtras`)
+  extraProjection?: (key: string) => string[]
   // Ordered categories (group values) for the documents
   getCategories: (key: string, docs: Doc[], viewOptions: ViewOptions) => CategoryType[]
   // Presenter of a group header, receives the category as `value`
   getGroupHeader: (key: string) => AnySvelteComponent | undefined
+  // Component shown at the end of a group header, e.g. totals and a menu of the group. It receives the
+  // category as `value`, the documents of the group as `docs` and the `space` of the list
+  getGroupExtras?: (key: string) => AnySvelteComponent | undefined
   // Label of the group of documents without a value
   emptyGroupLabel: (key: string) => string | undefined
   // Client-side comparator, undefined when there is nothing to sort by

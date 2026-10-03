@@ -5,8 +5,14 @@
 
 import { generateId, type DocumentUpdate, type TxOperations } from '@hcengineering/core'
 import tags from '@hcengineering/tags'
-import type { Issue, ProjectField } from '@hcengineering/tracker'
-import { IssuePriority, ProjectFieldType, getFieldValue } from '@hcengineering/tracker'
+import type { Issue, Iteration, ProjectField } from '@hcengineering/tracker'
+import {
+  IssuePriority,
+  ProjectFieldType,
+  getAssignableIterations,
+  getFieldValue,
+  resolveRelativeIteration
+} from '@hcengineering/tracker'
 import { tableEdit } from '@hcengineering/view-resources'
 
 import { mergeCustomFieldValue } from '../projectFields/registry'
@@ -37,6 +43,8 @@ export interface IssueCellLookups {
   labelRefs: (issueId: string) => IssueLabelRef[]
   // Custom fields by field key
   fields: ReadonlyMap<string, ProjectField>
+  // Iterations of an iteration field
+  iterations?: (field: ProjectField) => readonly Iteration[]
   // Whether the current user may change the attribute of the issue
   canEdit?: (issue: Issue, attribute: string) => boolean
   now?: () => number
@@ -169,6 +177,31 @@ function fieldOptions (field: ProjectField): Array<ValueOption<string>> {
   return (field.options ?? []).map((o) => ({ id: o.value, label: o.label }))
 }
 
+// `@current`, `@next` and `@previous`, optionally with `+N` / `-N`, as in the filter string
+const ITERATION_KEYWORD = /^@(current|next|previous)(?:([+-])(\d+))?$/i
+
+function iterationOptions (field: ProjectField, lookups: IssueCellLookups): Array<ValueOption<string>> {
+  return getAssignableIterations(lookups.iterations?.(field) ?? []).map((it) => ({ id: it._id, label: it.label }))
+}
+
+function parseIteration (
+  field: ProjectField,
+  text: string,
+  lookups: IssueCellLookups,
+  now: number
+): tableEdit.ParseResult<string | null> {
+  const m = ITERATION_KEYWORD.exec(text.trim())
+  if (m === null) return tableEdit.parseOptionValue(text, iterationOptions(field, lookups))
+  const offset = m[2] === undefined ? 0 : Number(m[3]) * (m[2] === '-' ? -1 : 1)
+  const target = resolveRelativeIteration(
+    lookups.iterations?.(field) ?? [],
+    m[1].toLowerCase() as 'current' | 'next' | 'previous',
+    offset,
+    now
+  )
+  return target === undefined ? { ok: false, reason: 'unknown' } : { ok: true, value: target._id }
+}
+
 function customFieldColumn (field: ProjectField, lookups: () => IssueCellLookups): CellColumn | undefined {
   const key = customFieldColumnKey(field.key)
   const read = (issue: Issue): ReturnType<typeof getFieldValue> => getFieldValue(issue.customFields, field)
@@ -196,8 +229,11 @@ function customFieldColumn (field: ProjectField, lookups: () => IssueCellLookups
       format = (issue) => tableEdit.formatMultiOptionValue(read(issue) as string[] | null, fieldOptions(field))
       parse = (text) => tableEdit.parseMultiOptionValue(text, fieldOptions(field))
       break
+    case ProjectFieldType.Iteration:
+      format = (issue) => tableEdit.formatOptionValue(read(issue) as string | null, iterationOptions(field, lookups()))
+      parse = (text, now) => parseIteration(field, text, lookups(), now)
+      break
     default:
-      // Iteration values are managed by the iteration features
       return undefined
   }
   return {

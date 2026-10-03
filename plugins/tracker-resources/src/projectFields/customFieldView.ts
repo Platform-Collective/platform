@@ -4,11 +4,14 @@
 //
 
 import { SortingOrder, type CategoryType, type Doc, type Ref } from '@hcengineering/core'
-import type { Project, ProjectField } from '@hcengineering/tracker'
-import { ProjectFieldType } from '@hcengineering/tracker'
+import type { Iteration, Project, ProjectField } from '@hcengineering/tracker'
+import { buildIterationGroupCategories, ProjectFieldType } from '@hcengineering/tracker'
 import type { ClientViewExtension } from '@hcengineering/view-resources'
 import { writable, type Writable } from 'svelte/store'
 
+import IterationGroupExtras from '../iterations/IterationGroupExtras.svelte'
+import IterationGroupHeader from '../iterations/IterationGroupHeader.svelte'
+import { iterationsByFieldKey } from '../iterations/iterationsStore'
 import tracker from '../plugin'
 import CustomFieldGroupHeader from './CustomFieldGroupHeader.svelte'
 import {
@@ -19,7 +22,8 @@ import {
   isSortableType,
   parseCustomFieldViewKey,
   toCustomFieldViewKey,
-  type CustomFieldFilter
+  type CustomFieldFilter,
+  type IterationContext
 } from './query'
 import type { ProjectFieldRegistry } from './registry'
 
@@ -30,11 +34,23 @@ export interface CustomFieldViewParams {
   disabled: boolean
   // "No <field>" group labels by field key
   emptyLabels: ReadonlyMap<string, string>
+  // Iterations of the Iteration fields; empty when the project has none
+  iterations?: readonly Iteration[]
+  // Timestamp that `current` refers to; defaults to the time of the call
+  now?: number
 }
 
 type IssueLike = Doc & { customFields?: Record<string, unknown> }
 
-function headerPresenterFor (field: ProjectField): any {
+function headerPresenterFor (field: ProjectField, iterations: readonly Iteration[]): any {
+  if (field.type === ProjectFieldType.Iteration) {
+    const own = iterations.filter((it) => it.field === field._id)
+    return class extends IterationGroupHeader {
+      constructor (opts: any) {
+        super({ ...opts, props: { ...opts.props, iterations: own } })
+      }
+    }
+  }
   const options = field.options ?? []
   // The list renders the header as `new Presenter({ props: { value, ... } })`, so the options are bound here
   return class extends CustomFieldGroupHeader {
@@ -50,6 +66,13 @@ function headerPresenterFor (field: ProjectField): any {
  */
 export function createCustomFieldViewExtension (params: CustomFieldViewParams): ClientViewExtension {
   const { registry, scanLimit, disabled, emptyLabels } = params
+  const iterations = params.iterations ?? []
+  const byKey = iterationsByFieldKey(iterations, registry.fields)
+  const iterationContext: IterationContext = {
+    iterations: (fieldKey) => byKey.get(fieldKey) ?? [],
+    now: params.now ?? Date.now()
+  }
+  const extras = new Map<string, any>()
   const fieldOf = (key: string): ProjectField | undefined => {
     const fieldKey = parseCustomFieldViewKey(key)
     return fieldKey === undefined ? undefined : registry.byKey.get(fieldKey)
@@ -70,7 +93,6 @@ export function createCustomFieldViewExtension (params: CustomFieldViewParams): 
         .map((f) => ({ id: toCustomFieldViewKey(f.key), label: f.label })),
     columns: () =>
       registry.fields
-        .filter((f) => f.type !== ProjectFieldType.Iteration)
         .map((f) => ({
           key: {
             key: '',
@@ -81,9 +103,19 @@ export function createCustomFieldViewExtension (params: CustomFieldViewParams): 
           label: f.label
         })),
     projectionKey: () => 'customFields',
+    // Totals in the header of an iteration group need the status and the estimation
+    extraProjection: (key) => (fieldOf(key)?.type === ProjectFieldType.Iteration ? ['status', 'estimation'] : []),
     getCategories: (key, docs, viewOptions): CategoryType[] => {
       const field = fieldOf(key)
       if (field === undefined || disabled || !isGroupableType(field.type)) return [undefined]
+      if (field.type === ProjectFieldType.Iteration) {
+        return buildIterationGroupCategories(
+          byKey.get(field.key) ?? [],
+          docs as IssueLike[],
+          field.key,
+          viewOptions.shouldShowAll === true
+        )
+      }
       return buildGroupCategories(field, docs as IssueLike[], viewOptions.shouldShowAll === true)
     },
     getGroupHeader: (key) => {
@@ -91,10 +123,26 @@ export function createCustomFieldViewExtension (params: CustomFieldViewParams): 
       if (field === undefined) return undefined
       let presenter = headers.get(key)
       if (presenter === undefined) {
-        presenter = headerPresenterFor(field)
+        presenter = headerPresenterFor(field, iterations)
         headers.set(key, presenter)
       }
       return presenter
+    },
+    getGroupExtras: (key) => {
+      const field = fieldOf(key)
+      if (field === undefined || field.type !== ProjectFieldType.Iteration) return undefined
+      let component = extras.get(key)
+      if (component === undefined) {
+        const own = byKey.get(field.key) ?? []
+        // The list renders the extras as `new Component({ props: { value, docs, space } })`
+        component = class extends IterationGroupExtras {
+          constructor (opts: any) {
+            super({ ...opts, props: { ...opts.props, field, iterations: own } })
+          }
+        }
+        extras.set(key, component)
+      }
+      return component
     },
     emptyGroupLabel: (key) => {
       const fieldKey = parseCustomFieldViewKey(key)
@@ -103,7 +151,7 @@ export function createCustomFieldViewExtension (params: CustomFieldViewParams): 
     compare: (key, order: SortingOrder) => {
       const field = fieldOf(key)
       if (field === undefined || disabled || !isSortableType(field.type)) return undefined
-      const cmp = buildFieldComparator(field, order === SortingOrder.Ascending ? 1 : -1)
+      const cmp = buildFieldComparator(field, order === SortingOrder.Ascending ? 1 : -1, iterationContext)
       return (a, b) => cmp(a as IssueLike, b as IssueLike)
     },
     scanLimit

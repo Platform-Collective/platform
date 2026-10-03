@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: EPL-2.0
 //
 
-import type { ProjectField } from '@hcengineering/tracker'
-import { getFieldValue, ProjectFieldType } from '@hcengineering/tracker'
+import type { Iteration, ProjectField } from '@hcengineering/tracker'
+import { getFieldValue, ProjectFieldType, resolveRelativeIteration } from '@hcengineering/tracker'
 
 /**
  * Pure helpers for filtering, sorting and grouping issues by custom field values.
@@ -68,6 +68,22 @@ export interface FieldRange {
   to?: number
 }
 
+/**
+ * What an Iteration field needs to be filtered or sorted: its iterations (by field key) and what `now` is.
+ */
+export interface IterationContext {
+  iterations: (fieldKey: string) => ReadonlyArray<Pick<Iteration, '_id' | 'startDate' | 'duration' | 'number' | 'isBreak'>>
+  now: number
+}
+
+// An iteration is picked by id or relative to today: `@current`, `@next`, `@previous`, optionally `+N` / `-N`
+const ITERATION_TOKEN = /^@(current|next|previous)(?:([+-])(\d+))?$/
+
+/**
+ * Keywords offered next to the iterations of a field in a filter.
+ */
+export const ITERATION_KEYWORDS = ['@current', '@next', '@previous'] as const
+
 export type FieldFilterValue = string | number | string[] | FieldRange | undefined
 
 /**
@@ -95,13 +111,14 @@ export function operatorsFor (type: ProjectFieldType): FieldFilterOperator[] {
       return ['before', 'after', 'between', ...EMPTY_OPERATORS]
     case ProjectFieldType.SingleSelect:
     case ProjectFieldType.MultiSelect:
+    case ProjectFieldType.Iteration:
       return ['anyOf', ...EMPTY_OPERATORS]
     default:
       return []
   }
 }
 
-/** Field types that can be filtered on. Iteration gets its own support in a later phase. */
+/** Field types that can be filtered on. */
 export function isFilterableType (type: ProjectFieldType): boolean {
   return operatorsFor(type).length > 0
 }
@@ -112,13 +129,14 @@ export function isSortableType (type: ProjectFieldType): boolean {
     type === ProjectFieldType.Text ||
     type === ProjectFieldType.Number ||
     type === ProjectFieldType.Date ||
-    type === ProjectFieldType.SingleSelect
+    type === ProjectFieldType.SingleSelect ||
+    type === ProjectFieldType.Iteration
   )
 }
 
-/** Only single-select fields can be grouped by (GitHub parity). */
+/** Only single-select and iteration fields can be grouped by (GitHub parity). */
 export function isGroupableType (type: ProjectFieldType): boolean {
-  return type === ProjectFieldType.SingleSelect
+  return type === ProjectFieldType.SingleSelect || type === ProjectFieldType.Iteration
 }
 
 function isRange (value: FieldFilterValue): value is FieldRange {
@@ -168,13 +186,43 @@ function isEmptyValue (value: unknown): boolean {
 export type CustomFieldsRecord = Record<string, unknown> | undefined
 
 /**
+ * Iteration ids a list of picked ids and relative keywords stands for. A keyword that has no iteration
+ * (no current iteration, say) stands for nothing.
+ */
+export function resolveIterationValues (
+  fieldKey: string,
+  values: readonly string[],
+  context: IterationContext | undefined
+): string[] {
+  const res: string[] = []
+  for (const v of values) {
+    const m = ITERATION_TOKEN.exec(v)
+    if (m === null) {
+      res.push(v)
+      continue
+    }
+    if (context === undefined) continue
+    const offset = m[2] === undefined ? 0 : Number(m[3]) * (m[2] === '-' ? -1 : 1)
+    const target = resolveRelativeIteration(
+      context.iterations(fieldKey),
+      m[1] as 'current' | 'next' | 'previous',
+      offset,
+      context.now
+    )
+    if (target !== undefined) res.push(target._id)
+  }
+  return res
+}
+
+/**
  * Build a predicate over `Issue.customFields` for one filter rule.
  * Incomplete rules match everything. Date bounds are whole calendar days: "before D" excludes D,
  * "after D" starts the day after D, and a range includes both end days.
  */
 export function buildFieldPredicate (
   field: Pick<ProjectField, 'key' | 'type' | 'options'>,
-  filter: Pick<CustomFieldFilter, 'operator' | 'value'>
+  filter: Pick<CustomFieldFilter, 'operator' | 'value'>,
+  iterationContext?: IterationContext
 ): (customFields: CustomFieldsRecord) => boolean {
   if (!isFilterComplete(filter)) return () => true
   const read = (cf: CustomFieldsRecord): ReturnType<typeof getFieldValue> => getFieldValue(cf, field)
@@ -192,7 +240,11 @@ export function buildFieldPredicate (
   }
 
   if (operator === 'anyOf') {
-    const wanted = new Set(value as string[])
+    const wanted = new Set(
+      field.type === ProjectFieldType.Iteration
+        ? resolveIterationValues(field.key, value as string[], iterationContext)
+        : (value as string[])
+    )
     return (cf) => {
       const v = read(cf)
       if (Array.isArray(v)) return v.some((x) => wanted.has(x))
@@ -246,13 +298,14 @@ export function buildFieldPredicate (
  */
 export function buildFiltersPredicate (
   fieldsByKey: ReadonlyMap<string, Pick<ProjectField, 'key' | 'type' | 'options'>>,
-  filters: readonly CustomFieldFilter[]
+  filters: readonly CustomFieldFilter[],
+  iterationContext?: IterationContext
 ): (issue: { customFields?: Record<string, unknown> }) => boolean {
   const predicates = filters
     .filter((f) => isFilterComplete(f))
     .map((f) => {
       const field = fieldsByKey.get(f.fieldKey)
-      return field === undefined ? () => false : buildFieldPredicate(field, f)
+      return field === undefined ? () => false : buildFieldPredicate(field, f, iterationContext)
     })
   if (predicates.length === 0) return () => true
   return (issue) => predicates.every((p) => p(issue.customFields))
@@ -264,8 +317,16 @@ export function activeFilterCount (filters: readonly CustomFieldFilter[]): numbe
 }
 
 /** Comparator for two non-empty values of the field. */
-function compareNonEmpty (field: Pick<ProjectField, 'type' | 'options'>): (a: any, b: any) => number {
+function compareNonEmpty (
+  field: Pick<ProjectField, 'key' | 'type' | 'options'>,
+  iterationContext?: IterationContext
+): (a: any, b: any) => number {
   switch (field.type) {
+    case ProjectFieldType.Iteration: {
+      // GitHub orders by the start of the iteration; an id no iteration answers to (deleted) goes last
+      const start = new Map((iterationContext?.iterations(field.key) ?? []).map((it) => [it._id as string, it.startDate]))
+      return (a: string, b: string) => (start.get(a) ?? Infinity) - (start.get(b) ?? Infinity) || 0
+    }
     case ProjectFieldType.Number:
     case ProjectFieldType.Date:
       return (a: number, b: number) => a - b
@@ -285,9 +346,10 @@ function compareNonEmpty (field: Pick<ProjectField, 'type' | 'options'>): (a: an
  */
 export function buildFieldComparator (
   field: Pick<ProjectField, 'key' | 'type' | 'options'>,
-  direction: 1 | -1
+  direction: 1 | -1,
+  iterationContext?: IterationContext
 ): (a: { customFields?: Record<string, unknown> }, b: { customFields?: Record<string, unknown> }) => number {
-  const cmp = compareNonEmpty(field)
+  const cmp = compareNonEmpty(field, iterationContext)
   return (a, b) => {
     const va = getFieldValue(a.customFields, field)
     const vb = getFieldValue(b.customFields, field)

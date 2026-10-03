@@ -12,6 +12,11 @@ import {
   buildGroupCategories,
   endOfDay,
   startOfDay,
+  isGroupableType,
+  isSortableType,
+  isFilterableType,
+  resolveIterationValues,
+  type IterationContext,
   DEFAULT_CUSTOM_FIELD_SCAN_LIMIT,
   exceedsScanLimit,
   isFilterComplete,
@@ -152,7 +157,7 @@ describe('custom field filter predicates', () => {
     expect(operatorsFor(ProjectFieldType.Number)).toContain('between')
     expect(operatorsFor(ProjectFieldType.Date)).toContain('before')
     expect(operatorsFor(ProjectFieldType.MultiSelect)).toContain('anyOf')
-    expect(operatorsFor(ProjectFieldType.Iteration)).toEqual([])
+    expect(operatorsFor(ProjectFieldType.Iteration)).toEqual(['anyOf', 'isEmpty', 'isNotEmpty'])
   })
 })
 
@@ -244,5 +249,78 @@ describe('scan limit and view keys', () => {
     expect(parseCustomFieldViewKey('customFields.size')).toBe('size')
     expect(parseCustomFieldViewKey('customFields.')).toBeUndefined()
     expect(parseCustomFieldViewKey('status')).toBeUndefined()
+  })
+})
+
+describe('iteration fields', () => {
+  const sprint = field('sprint', ProjectFieldType.Iteration)
+  // Oct 5 - 11, Oct 12 - 18, Oct 19 - 25; the break Oct 26 - Nov 1 is not assignable
+  const day = (m: number, d: number): number => new Date(2026, m - 1, d).getTime()
+  const mk = (id: string, number: number, start: number, isBreak = false): any => ({
+    _id: id,
+    number,
+    startDate: start,
+    duration: 7,
+    ...(isBreak ? { isBreak } : {})
+  })
+  const list = [mk('c', 3, day(10, 19)), mk('a', 1, day(10, 5)), mk('b', 2, day(10, 12)), mk('brk', 0, day(10, 26), true)]
+  const ctx = (now: number): IterationContext => ({ iterations: () => list, now })
+  const now = new Date(2026, 9, 14, 12).getTime()
+  const cf = (value?: string): Record<string, unknown> => (value === undefined ? {} : { sprint: value })
+
+  it('can be filtered, sorted and grouped', () => {
+    expect(isFilterableType(ProjectFieldType.Iteration)).toBe(true)
+    expect(isSortableType(ProjectFieldType.Iteration)).toBe(true)
+    expect(isGroupableType(ProjectFieldType.Iteration)).toBe(true)
+    expect(isGroupableType(ProjectFieldType.MultiSelect)).toBe(false)
+  })
+
+  it('resolves keywords to iteration ids', () => {
+    expect(resolveIterationValues('sprint', ['@current'], ctx(now))).toEqual(['b'])
+    expect(resolveIterationValues('sprint', ['@next', '@previous'], ctx(now))).toEqual(['c', 'a'])
+    expect(resolveIterationValues('sprint', ['@current+1', '@current-1', 'x'], ctx(now))).toEqual(['c', 'a', 'x'])
+    // No iteration at that offset, and keywords need a context
+    expect(resolveIterationValues('sprint', ['@current+5'], ctx(now))).toEqual([])
+    expect(resolveIterationValues('sprint', ['@current', 'a'], undefined)).toEqual(['a'])
+  })
+
+  it('has no current iteration during a break', () => {
+    const duringBreak = new Date(2026, 9, 28, 12).getTime()
+    expect(resolveIterationValues('sprint', ['@current'], ctx(duringBreak))).toEqual([])
+    expect(resolveIterationValues('sprint', ['@previous'], ctx(duringBreak))).toEqual(['c'])
+  })
+
+  it('filters by picked iterations and by keywords', () => {
+    const picked = buildFieldPredicate(sprint, { operator: 'anyOf', value: ['a', 'c'] }, ctx(now))
+    expect([picked(cf('a')), picked(cf('b')), picked(cf('c')), picked(cf())]).toEqual([true, false, true, false])
+    const current = buildFieldPredicate(sprint, { operator: 'anyOf', value: ['@current'] }, ctx(now))
+    expect([current(cf('a')), current(cf('b')), current(cf())]).toEqual([false, true, false])
+    // A keyword with nothing behind it matches nothing
+    const none = buildFieldPredicate(sprint, { operator: 'anyOf', value: ['@current'] }, ctx(new Date(2027, 0, 1).getTime()))
+    expect(none(cf('b'))).toBe(false)
+    const empty = buildFieldPredicate(sprint, { operator: 'isEmpty' }, ctx(now))
+    expect([empty(cf('a')), empty(cf())]).toEqual([false, true])
+  })
+
+  it('combines with other rules through the registry predicate', () => {
+    const rules: CustomFieldFilter[] = [{ id: '1', fieldKey: 'sprint', operator: 'anyOf', value: ['@next'] }]
+    const predicate = buildFiltersPredicate(new Map([['sprint', sprint]]), rules, ctx(now))
+    expect(predicate({ customFields: cf('c') })).toBe(true)
+    expect(predicate({ customFields: cf('b') })).toBe(false)
+  })
+
+  it('sorts by the start of the iteration with empty values last', () => {
+    const items = [
+      { id: 'x1', customFields: cf('c') },
+      { id: 'x2', customFields: cf() },
+      { id: 'x3', customFields: cf('a') },
+      { id: 'x4', customFields: cf('gone') },
+      { id: 'x5', customFields: cf('b') }
+    ]
+    const asc = [...items].sort(buildFieldComparator(sprint, 1, ctx(now))).map((i) => i.id)
+    expect(asc).toEqual(['x3', 'x5', 'x1', 'x4', 'x2'])
+    const desc = [...items].sort(buildFieldComparator(sprint, -1, ctx(now))).map((i) => i.id)
+    expect(desc.slice(-1)).toEqual(['x2'])
+    expect(desc.slice(0, 4)).toEqual(['x4', 'x1', 'x5', 'x3'])
   })
 })

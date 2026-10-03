@@ -6,7 +6,7 @@
   import tags, { TagElement, TagReference } from '@hcengineering/tags'
   import task, { getTaskTypeStates } from '@hcengineering/task'
   import { taskTypeStore } from '@hcengineering/task-resources'
-  import { Issue, Project, TrackerEvents } from '@hcengineering/tracker'
+  import { Issue, Iteration, Project, TrackerEvents, toIterationRanges } from '@hcengineering/tracker'
   import {
     Button,
     IconAdd,
@@ -46,6 +46,7 @@
   import { readable } from 'svelte/store'
   import { createIssueCellColumns, runIssueOps, type IssueCellLookups, type IssueLabelRef } from '../../bulkEdit/issueCells'
   import { buildIssueFilterSchema, customFilterToQuery, type NamedOption } from '../../issueFilter'
+  import { iterationsByFieldKey, sharedIterationsStore } from '../../iterations/iterationsStore'
   import tracker from '../../plugin'
   import CustomFieldFilterButton from '../../projectFields/CustomFieldFilterButton.svelte'
   import { createCustomFieldViewExtension, customFieldFilterStore } from '../../projectFields/customFieldView'
@@ -105,10 +106,14 @@
   // The values live in an untyped record, so all of it runs on the client over a bounded scan.
   const emptyRegistry = readable(buildRegistry([]))
   const noFilters = readable<CustomFieldFilter[]>([])
+  const noIterations = readable<Iteration[]>([])
   const scanQuery = createQuery()
 
   $: project = space as Ref<Project> | undefined
   $: registry = project !== undefined ? sharedProjectFieldsStore(project) : emptyRegistry
+  $: iterationsStore = project !== undefined ? sharedIterationsStore(project) : noIterations
+  // Iterations of each iteration field, by the key of the field
+  $: iterationsByKey = iterationsByFieldKey($iterationsStore, $registry.fields)
   $: filtersStore = project !== undefined ? customFieldFilterStore(project) : noFilters
   $: filters = $filtersStore
   $: hasFilterableFields = $registry.fields.some((f) => isFilterableType(f.type))
@@ -216,6 +221,7 @@
     labels: labelElements,
     labelRefs: (id) => labelRefsByIssue.get(id) ?? [],
     fields: $registry.byKey,
+    iterations: (field) => iterationsByKey.get(field.key) ?? [],
     canEdit: canChangeIssueAttribute
   }
   const cellAdapter = {
@@ -240,6 +246,7 @@
     labels,
     labelRefs,
     customFields: $registry.fields,
+    iterations: $iterationsStore,
     noParentId: tracker.ids.NoParent
   })
 
@@ -249,7 +256,8 @@
     me: getCurrentEmployee() as string,
     closedStatuses,
     noParentId: tracker.ids.NoParent as string,
-    iterations: () => []
+    // `@current`, `@next` and `@previous` resolve against the iterations of the project; breaks never match
+    iterations: (fieldKey: string) => toIterationRanges(iterationsByKey.get(fieldKey) ?? [])
   } satisfies filterGrammar.FilterContext
   $: reservedKeys = new Set(Object.keys(resultQuery).filter((k) => !k.startsWith('$')))
   $: stringFilterActive = filterQuery.trim() !== ''
@@ -264,7 +272,7 @@
   function applyFilterQuery (e: CustomEvent<string>): void {
     let next = e.detail
     if (project !== undefined && next.trim() !== '' && activeFilterCount(filters) > 0) {
-      next = filterGrammar.joinAnd(next, customFilterToQuery(filters, $registry.byKey))
+      next = filterGrammar.joinAnd(next, customFilterToQuery(filters, $registry.byKey, (key) => iterationsByKey.get(key) ?? []))
       customFieldFilterStore(project).set([])
     }
     filterQuery = next
@@ -302,7 +310,10 @@
 
   // Above the limit custom-field filter/sort/group is off; it is never applied to a truncated set
   $: overLimit = needsScan && scanReady && exceedsScanLimit(scanned.length, scanLimit)
-  $: legacyPredicate = buildFiltersPredicate($registry.byKey, filtersActive ? filters : [])
+  $: legacyPredicate = buildFiltersPredicate($registry.byKey, filtersActive ? filters : [], {
+    iterations: (key) => iterationsByKey.get(key) ?? [],
+    now: filterCtx.now
+  })
   $: predicate = (issue: Partial<Issue>): boolean => legacyPredicate(issue) && residualPredicate(issue)
   // What the server narrows to: the view's chips and search plus the indexable part of the filter string
   $: serverQuery = { ...resultQuery, ...stringServerQuery } as DocumentQuery<Issue>
@@ -336,7 +347,13 @@
 
   // Always installed (even without fields) so a saved custom group/order key never reaches the server
   $: clientViewExtension.set(
-    createCustomFieldViewExtension({ registry: $registry, scanLimit, disabled: overLimit, emptyLabels })
+    createCustomFieldViewExtension({
+      registry: $registry,
+      scanLimit,
+      disabled: overLimit,
+      emptyLabels,
+      iterations: $iterationsStore
+    })
   )
   onDestroy(() => {
     clientViewExtension.set(undefined)

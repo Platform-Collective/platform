@@ -5,7 +5,6 @@
 <script lang="ts">
   import { getClient } from '@hcengineering/presentation'
   import type { Issue, ProjectFieldValue } from '@hcengineering/tracker'
-  import { ProjectFieldType } from '@hcengineering/tracker'
 
   import FieldValueEditor from './FieldValueEditor.svelte'
   import { setIssueCustomFieldValue } from './actions'
@@ -17,8 +16,7 @@
   const client = getClient()
 
   $: registry = projectFieldsStore(issue.space)
-  // Iteration fields get their own UI in a later phase
-  $: fields = $registry.fields.filter((f) => f.type !== ProjectFieldType.Iteration)
+  $: fields = $registry.fields
 
   async function setValue (key: string, value: ProjectFieldValue): Promise<void> {
     await setIssueCustomFieldValue(client, issue, key, value)
