@@ -35,6 +35,11 @@
    */
   export let showViewOptions: boolean = true
 
+  /** Columns of the active saved view, shown in the configure popup instead of the global preference */
+  export let configOverride: (BuildModelKey | string)[] | undefined = undefined
+  /** Receives column edits instead of the global ViewletPreference (used by saved views) */
+  export let onSaveConfig: ((config: Array<BuildModelKey | string>) => void) | undefined = undefined
+
   /**
    * When true, the ViewOptionsButton is still shown but the popup it
    * opens hides its grouping + ordering rows. Use this in viewlets that
@@ -68,7 +73,7 @@
   function clickHandler () {
     pressed = true
     closeTooltip()
-    showPopup(ViewletSetting, { viewlet, defaultConfig }, btn, () => {
+    showPopup(ViewletSetting, { viewlet, defaultConfig, configOverride, onSaveConfig }, btn, () => {
       pressed = false
     })
   }

@@ -37,6 +37,10 @@
 
   export let viewlet: Viewlet
   export let defaultConfig: (BuildModelKey | string)[] | undefined = undefined
+  // Columns of the active saved view; shown instead of the global preference of the viewlet
+  export let configOverride: (BuildModelKey | string)[] | undefined = undefined
+  // When set, column edits go to the host (the active saved view) instead of the global ViewletPreference
+  export let onSaveConfig: ((config: Array<BuildModelKey | string>) => void) | undefined = undefined
 
   const dispatch = createEventDispatcher()
 
@@ -557,6 +561,10 @@
       }
       return value
     })
+    if (onSaveConfig !== undefined && viewletId === viewlet._id) {
+      onSaveConfig(config)
+      return
+    }
     const selectedViewlet = viewlets.find((it) => it._id === viewletId)
     const previousSourceConfig =
       preferences.find((p) => p.attachedTo === viewletId)?.config ?? selectedViewlet?.config ?? []
@@ -568,7 +576,21 @@
     }
   }
 
+  // The columns of the active saved view replace the stored preference of its viewlet
+  function withConfigOverride (
+    viewletId: Ref<Viewlet>,
+    stored: ViewletPreference | undefined,
+    override: (BuildModelKey | string)[] | undefined
+  ): ViewletPreference | undefined {
+    if (override === undefined || viewletId !== viewlet._id) return stored
+    return { ...(stored ?? ({} as ViewletPreference)), config: override }
+  }
+
   async function restoreDefault (viewletId: Ref<Viewlet>): Promise<void> {
+    if (onSaveConfig !== undefined && viewletId === viewlet._id) {
+      onSaveConfig(defaultConfig ?? viewlet.config)
+      return
+    }
     const preference = preferences.find((p) => p.attachedTo === viewletId)
     if (preference !== undefined) {
       await client.remove(preference)
@@ -616,7 +638,8 @@
           </div>
         {/if}
         {@const selectedViewlet = viewlets.find((it) => it._id === selected)}
-        {@const selectedPreferece = preferences.find((it) => it.attachedTo === selected)}
+        {@const storedPreference = preferences.find((it) => it.attachedTo === selected)}
+        {@const selectedPreferece = withConfigOverride(selected, storedPreference, configOverride)}
         {#if selectedViewlet}
           {#await getConfig(selectedViewlet, selectedPreferece)}
             <Loading />

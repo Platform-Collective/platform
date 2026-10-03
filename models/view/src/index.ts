@@ -133,6 +133,10 @@ export class TFilteredView extends TDoc implements FilteredView {
   users!: AccountUuid[]
   attachedTo!: string
   sharable?: boolean
+  project?: Ref<Space>
+  config?: (BuildModelKey | string)[]
+  order?: number
+  extra?: string
 }
 
 @Model(view.class.FilterMode, core.class.Doc, DOMAIN_MODEL)

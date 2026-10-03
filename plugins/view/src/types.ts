@@ -118,6 +118,18 @@ export interface FilteredView extends Doc {
   users: AccountUuid[]
   createdBy: PersonId
   attachedTo: string
+
+  // Project saved views (Tracker, GitHub-Projects style). All fields are optional and additive,
+  // so filters saved before they existed keep working unchanged.
+
+  // Space (project) the view is a tab of. Project views are shared by every member of the project
+  project?: Ref<Space>
+  // Ordered visible columns of the view's layout (overrides the global ViewletPreference)
+  config?: (BuildModelKey | string)[]
+  // Position of the tab, ascending
+  order?: number
+  // JSON of host-specific filter state that is not a Filter[] (e.g. custom field filters)
+  extra?: string
 }
 
 /**

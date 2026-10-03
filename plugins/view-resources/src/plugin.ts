@@ -114,7 +114,19 @@ export default mergeIds(viewId, typedView, {
     NumberItems: '' as IntlString,
     ToViewCommands: '' as IntlString,
     NoRelations: '' as IntlString,
-    FilterOverflowBadge: '' as IntlString
+    FilterOverflowBadge: '' as IntlString,
+
+    SavedViewNew: '' as IntlString,
+    SavedViewDefaultName: '' as IntlString,
+    SavedViewDuplicate: '' as IntlString,
+    SavedViewDelete: '' as IntlString,
+    SavedViewDeleteConfirm: '' as IntlString,
+    SavedViewSave: '' as IntlString,
+    SavedViewSaveAsNew: '' as IntlString,
+    SavedViewDiscard: '' as IntlString,
+    SavedViewUnsaved: '' as IntlString,
+    SavedViewLayoutTable: '' as IntlString,
+    SavedViewLayoutTo: '' as IntlString
   },
   function: {
     CreateDocMiddleware: '' as Resource<PresentationMiddlewareCreator>,

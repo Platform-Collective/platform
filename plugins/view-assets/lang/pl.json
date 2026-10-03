@@ -158,6 +158,17 @@
     "RoleLabel": "Rola: {role}",
     "ForbidAttributeChanges": "Zablokuj zmiany: ",
     "AllowAttributeChanges": "Zezwól na zmiany: ",
-    "RelationshipTable": "Macierz powiązań"
+    "RelationshipTable": "Macierz powiązań",
+    "SavedViewNew": "New view",
+    "SavedViewDefaultName": "View",
+    "SavedViewDuplicate": "Duplicate view",
+    "SavedViewDelete": "Delete view",
+    "SavedViewDeleteConfirm": "Delete the view \"{name}\"? This cannot be undone.",
+    "SavedViewSave": "Save changes",
+    "SavedViewSaveAsNew": "Save to new view",
+    "SavedViewDiscard": "Discard",
+    "SavedViewUnsaved": "Unsaved changes",
+    "SavedViewLayoutTable": "Table",
+    "SavedViewLayoutTo": "Layout: {layout}"
   }
 }

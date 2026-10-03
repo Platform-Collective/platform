@@ -11,6 +11,8 @@
   export let space: Ref<Space> | undefined
 
   export let viewOptions: ViewOptions
+  // Columns of the active saved view; wins over the viewlet preference
+  export let configOverride: Viewlet['config'] | undefined = undefined
 
   export let createItemDialog: AnySvelteComponent | undefined = undefined
   export let createItemLabel: IntlString | undefined = undefined
@@ -87,7 +89,7 @@
 
   $: updateConfiguration(configurationRaw, preference)
 
-  $: config = preference.find((it) => it.attachedTo === viewlet._id)?.config ?? viewlet.config
+  $: config = configOverride ?? preference.find((it) => it.attachedTo === viewlet._id)?.config ?? viewlet.config
 </script>
 
 {#if viewlet?.$lookup?.descriptor?.component}

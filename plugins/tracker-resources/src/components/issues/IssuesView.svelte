@@ -13,12 +13,13 @@
     showPopup,
     themeStore
   } from '@hcengineering/ui'
-  import { ViewOptions, Viewlet } from '@hcengineering/view'
+  import view, { BuildModelKey, ViewOptions, Viewlet } from '@hcengineering/view'
   import {
     clientViewExtension,
     FilterBar,
     FilterButton,
     InlineFilterChips,
+    SavedViewBar,
     SpaceHeader,
     ViewletContentView,
     ViewletSettingButton,
@@ -64,6 +65,12 @@
   export let modeSelectorProps: IModeSelector | undefined = undefined
 
   let viewlet: WithLookup<Viewlet> | undefined = undefined
+  const viewletQuery = { attachTo: tracker.class.Issue, variant: { $nin: ['subissue', 'component', 'milestone'] } }
+  // GitHub Projects layouts that exist in the tracker: Table (the list) and Board
+  const viewLayouts = [view.viewlet.List, tracker.viewlet.Kanban]
+  // Columns of the active saved view and its bar, which also keeps the unsaved column edits
+  let viewConfig: Array<BuildModelKey | string> | undefined
+  let savedViewBar: SavedViewBar | undefined
   const viewlets: WithLookup<Viewlet>[] | undefined = undefined
   let viewOptions: ViewOptions | undefined
 
@@ -251,7 +258,7 @@
   bind:viewlet
   bind:search
   showLabelSelector={$$slots.label_selector}
-  viewletQuery={{ attachTo: tracker.class.Issue, variant: { $nin: ['subissue', 'component', 'milestone'] } }}
+  {viewletQuery}
   {viewlets}
   {label}
   {space}
@@ -267,6 +274,8 @@
       hideGroupingAndOrdering={isGanttMode}
       showConfigureColumns={!isGanttMode}
       hideKeys={isGanttMode ? ['ganttGroupBy'] : []}
+      configOverride={project !== undefined ? viewConfig : undefined}
+      onSaveConfig={project !== undefined ? (config) => savedViewBar?.setLocalConfig(config) : undefined}
     />
   </svelte:fragment>
 
@@ -358,6 +367,20 @@
   </svelte:fragment>
 </SpaceHeader>
 
+{#if project !== undefined}
+  <!-- View tabs: every tab is a saved view (layout, filter, sort, group-by, columns) of this project -->
+  <SavedViewBar
+    bind:this={savedViewBar}
+    space={project}
+    _class={tracker.class.Issue}
+    {viewlet}
+    {viewletQuery}
+    layouts={viewLayouts}
+    extra={customFieldFilterStore(project)}
+    bind:config={viewConfig}
+  />
+{/if}
+
 <!-- FilterBar owns the filter→resultQuery data path (debounced via
      reduceCalls, shared with non-Tracker consumers). hideChips=true
      suppresses its chip render — chips are mounted separately by
@@ -427,6 +450,7 @@
       query={viewQuery}
       {space}
       {viewOptions}
+      configOverride={project !== undefined ? viewConfig : undefined}
       createItemDialog={CreateIssue}
       createItemLabel={tracker.string.AddIssueTooltip}
       createItemEvent={TrackerEvents.IssuePlusButtonClicked}

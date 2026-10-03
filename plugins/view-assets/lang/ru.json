@@ -159,6 +159,17 @@
     "RelationshipTable": "Таблица связей",
     "FilterOverflowBadge": "+{count}",
     "AddFilter": "Добавить фильтр",
-    "HiddenFilters": "Скрытые фильтры"
+    "HiddenFilters": "Скрытые фильтры",
+    "SavedViewNew": "Новое представление",
+    "SavedViewDefaultName": "Представление",
+    "SavedViewDuplicate": "Дублировать представление",
+    "SavedViewDelete": "Удалить представление",
+    "SavedViewDeleteConfirm": "Удалить представление «{name}»? Это действие нельзя отменить.",
+    "SavedViewSave": "Сохранить изменения",
+    "SavedViewSaveAsNew": "Сохранить как новое представление",
+    "SavedViewDiscard": "Отменить",
+    "SavedViewUnsaved": "Несохранённые изменения",
+    "SavedViewLayoutTable": "Таблица",
+    "SavedViewLayoutTo": "Вид: {layout}"
   }
 }

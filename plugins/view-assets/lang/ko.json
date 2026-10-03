@@ -157,6 +157,17 @@
         "RelationshipTable": "추적 매트릭스",
         "FilterOverflowBadge": "+{count}",
         "AddFilter": "필터 추가",
-        "HiddenFilters": "숨겨진 필터"
+        "HiddenFilters": "숨겨진 필터",
+        "SavedViewNew": "New view",
+        "SavedViewDefaultName": "View",
+        "SavedViewDuplicate": "Duplicate view",
+        "SavedViewDelete": "Delete view",
+        "SavedViewDeleteConfirm": "Delete the view \"{name}\"? This cannot be undone.",
+        "SavedViewSave": "Save changes",
+        "SavedViewSaveAsNew": "Save to new view",
+        "SavedViewDiscard": "Discard",
+        "SavedViewUnsaved": "Unsaved changes",
+        "SavedViewLayoutTable": "Table",
+        "SavedViewLayoutTo": "Layout: {layout}"
     }
 }
