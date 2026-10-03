@@ -41,6 +41,10 @@ export default plugin(serverTrackerId, {
     OnProjectFieldCreate: '' as Resource<TriggerFunc>,
     OnProjectFieldRemove: '' as Resource<TriggerFunc>,
     OnIterationRemove: '' as Resource<TriggerFunc>,
-    OnDependencyShiftRequest: '' as Resource<TriggerFunc>
+    OnDependencyShiftRequest: '' as Resource<TriggerFunc>,
+    OnIssueWorkflow: '' as Resource<TriggerFunc>,
+    OnWorkflowEvaluate: '' as Resource<TriggerFunc>,
+    OnProjectItemWebhook: '' as Resource<TriggerFunc>,
+    OnProjectWebhookRemove: '' as Resource<TriggerFunc>
   }
 })

@@ -3,10 +3,17 @@
 // SPDX-License-Identifier: EPL-2.0
 //
 
-import { compileFilter, compileQuery, referencedProperties, splitServerClient } from '../compile'
+import {
+  archiveScopeQuery,
+  compileFilter,
+  compileQuery,
+  mentionsArchived,
+  referencedProperties,
+  splitServerClient
+} from '../compile'
 import { parseFilter } from '../parser'
 import type { Node } from '../types'
-import { ctx, ISSUES, schema } from './fixtures'
+import { ctx, ISSUES, NOW, schema } from './fixtures'
 
 function ast (input: string): Node {
   const res = parseFilter(input, schema)
@@ -244,5 +251,48 @@ describe('referencedProperties', () => {
     expect(referencedProperties(undefined)).toEqual(['_id'])
     const props = referencedProperties(ast('login (priority:urgent OR story-points:>1) is:open has:parent-issue'))
     expect(props).toEqual(expect.arrayContaining(['_id', 'title', 'priority', 'customFields', 'status', 'attachedTo']))
+  })
+})
+
+describe('archived items', () => {
+  const ARCHIVE_DOCS = [
+    { _id: 'a1', title: 'Old', status: 'st-done', archivedAt: NOW - 1000 },
+    { _id: 'a2', title: 'Restored', status: 'st-done', archivedAt: null },
+    { _id: 'a3', title: 'Never archived', status: 'st-todo' }
+  ]
+
+  it('compiles is:archived and -is:archived to archivedAt selectors', () => {
+    expect(compileQuery(ast('is:archived'), ctx)).toEqual({ archivedAt: { $ne: null } })
+    expect(compileQuery(ast('-is:archived'), ctx)).toEqual({ archivedAt: null })
+  })
+
+  it('selects the same documents on the server and on the client', () => {
+    for (const f of ['is:archived', '-is:archived', 'is:archived is:closed', 'is:archived OR status:Todo']) {
+      const res = compileFilter(f, schema, ctx)
+      if (!res.ok) throw new Error(res.error.message)
+      const combined = ARCHIVE_DOCS.filter((d) => matchQuery(res.value.query, d) && res.value.predicate(d)).map((d) => d._id)
+      const full = ARCHIVE_DOCS.filter((d) => res.value.matches(d)).map((d) => d._id)
+      expect(combined).toEqual(full)
+    }
+    const only = compileFilter('is:archived', schema, ctx)
+    expect(only.ok && ARCHIVE_DOCS.filter((d) => only.value.matches(d)).map((d) => d._id)).toEqual(['a1'])
+  })
+
+  it('tells whether a filter asks for archived items', () => {
+    expect(mentionsArchived(ast('is:archived'))).toBe(true)
+    expect(mentionsArchived(ast('-is:archived'))).toBe(true)
+    expect(mentionsArchived(ast('status:Todo (is:archived OR login)'))).toBe(true)
+    expect(mentionsArchived(ast('status:Todo is:closed'))).toBe(false)
+    expect(mentionsArchived(undefined)).toBe(false)
+  })
+
+  it('hides archived items unless the filter mentions them', () => {
+    expect(archiveScopeQuery(undefined)).toEqual({ archivedAt: null })
+    expect(archiveScopeQuery(ast('status:Todo'))).toEqual({ archivedAt: null })
+    expect(archiveScopeQuery(ast('is:archived'))).toEqual({})
+  })
+
+  it('reads archivedAt for client evaluation', () => {
+    expect(referencedProperties(ast('is:archived'))).toEqual(expect.arrayContaining(['archivedAt']))
   })
 })

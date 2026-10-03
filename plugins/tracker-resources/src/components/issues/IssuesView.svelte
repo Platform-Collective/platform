@@ -6,7 +6,7 @@
   import tags, { TagElement, TagReference } from '@hcengineering/tags'
   import task, { getTaskTypeStates } from '@hcengineering/task'
   import { taskTypeStore } from '@hcengineering/task-resources'
-  import { Issue, Iteration, Project, TrackerEvents, toIterationRanges } from '@hcengineering/tracker'
+  import { EffectiveWorkflow, Issue, Iteration, Project, TrackerEvents, toIterationRanges } from '@hcengineering/tracker'
   import {
     Button,
     ButtonIcon,
@@ -65,6 +65,8 @@
   import CustomFieldFilterButton from '../../projectFields/CustomFieldFilterButton.svelte'
   import { createCustomFieldViewExtension, customFieldFilterStore } from '../../projectFields/customFieldView'
   import { sharedProjectFieldsStore } from '../../projectFields/projectFieldsStore'
+  import { requestWorkflowRun } from '../../workflows/save'
+  import { workflowsStore } from '../../workflows/store'
   import {
     activeFilterCount,
     buildFiltersPredicate,
@@ -97,6 +99,7 @@
   import { collectSliceValues, createSlicePredicate, optionIdSet } from '../../slice/values'
   import { issuePriorities } from '../../types'
   import { listIssueStatusOrder } from '../../utils'
+  import ArchivedItemsPopup from '../archive/ArchivedItemsPopup.svelte'
   import CreateIssue from '../CreateIssue.svelte'
   import FieldSumFooter from '../fieldSum/FieldSumFooter.svelte'
   import FieldSumGroupSummary from '../fieldSum/FieldSumGroupSummary.svelte'
@@ -375,7 +378,9 @@
   $: basePredicate = (issue: Partial<Issue>): boolean => legacyPredicate(issue) && residualPredicate(issue)
   $: predicate = (issue: Partial<Issue>): boolean => basePredicate(issue) && slicePredicate(issue)
   // What the server narrows to: the view's chips and search plus the indexable part of the filter string
-  $: serverQuery = { ...resultQuery, ...stringServerQuery } as DocumentQuery<Issue>
+  // Archived items are left out of every view, slice and count unless the filter asks for them (`is:archived`, GitHub's rule)
+  $: archiveScope = filterGrammar.archiveScopeQuery(parsedFilter?.ok === true ? parsedFilter.value : undefined)
+  $: serverQuery = { ...resultQuery, ...stringServerQuery, ...archiveScope } as DocumentQuery<Issue>
 
   // The view options narrow the result too (hidden sub-issues, archived): the list applies them on its own, a scan that
   // counts or sums has to apply them as well to see the same issues
@@ -511,6 +516,19 @@
     if (sliceConfig === undefined) return
     changeSlice(detail.id === undefined ? selectAllValues(sliceConfig) : toggleSliceValue(sliceConfig, detail.id, detail.multi))
   }
+
+  // ---- archived items and workflows ----
+  async function openArchivedItems (): Promise<void> {
+    if (project === undefined) return
+    const doc = await client.findOne(tracker.class.Project, { _id: project })
+    if (doc !== undefined) showPopup(ArchivedItemsPopup, { project: doc }, 'top')
+  }
+
+  // The filter workflows (auto-archive) are evaluated by the server when something changes; there is no timer, so
+  // opening a project is also a moment to ask for it (once per session)
+  const noWorkflows = readable<EffectiveWorkflow[]>([])
+  $: workflowList = project !== undefined ? workflowsStore(project) : noWorkflows
+  $: if (project !== undefined) void requestWorkflowRun(client, project, $workflowList)
 
   // ---- insights (GitHub's "Insights": current charts of the project) ----
   // The page covers the view while it is open (its own header has the way back); the view keeps its state, so nothing
@@ -729,6 +747,16 @@
 >
   <svelte:fragment slot="header-tools">
     {#if project !== undefined}
+      <Button
+        kind={'ghost'}
+        size={'small'}
+        icon={view.icon.Archive}
+        label={tracker.string.ArchivedItems}
+        dataId={'btn-archived-items'}
+        on:click={() => {
+          void openArchivedItems()
+        }}
+      />
       <Button
         kind={'ghost'}
         size={'small'}

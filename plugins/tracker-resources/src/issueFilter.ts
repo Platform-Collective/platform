@@ -4,178 +4,32 @@
 //
 
 import type { Iteration, ProjectField } from '@hcengineering/tracker'
-import { getAssignableIterations, ProjectFieldType } from '@hcengineering/tracker'
+import {
+  buildIssueFilterSchema as buildSharedIssueFilterSchema,
+  fieldFilterName,
+  ProjectFieldType,
+  type IssueFilterSchemaInput,
+  type NamedOption
+} from '@hcengineering/tracker'
 import type { filterGrammar } from '@hcengineering/view-resources'
 
 import { isFilterComplete, type CustomFieldFilter } from './projectFields/query'
 
 // Glue between the filter grammar (view-resources) and the tracker's issues: the field schema
 // the grammar parses against, and the conversion of the legacy custom-field rules into filter text.
+// The schema itself is built in `@hcengineering/tracker`, because the server workflows parse filters with it too.
 
 type FieldSpec = filterGrammar.FieldSpec
-type FieldOption = filterGrammar.FieldOption
 
-export interface NamedOption {
-  id: string | number
-  name: string
-}
-
-export interface IssueFilterSchemaInput {
-  statuses: NamedOption[]
-  priorities: NamedOption[]
-  assignees: NamedOption[]
-  components: NamedOption[]
-  milestones: NamedOption[]
-  // Label (tag element) options
-  labels: NamedOption[]
-  // Tag references: which issue carries which label
-  labelRefs: Array<{ issue: string, label: string }>
-  customFields: ProjectField[]
-  // Iterations of the iteration fields among the custom fields
-  iterations?: readonly Iteration[]
-  // Value of Issue.attachedTo for an issue without a parent
-  noParentId: string
-}
-
-const NAME_PATTERN = /^\p{L}[\p{L}\p{N}_.-]*$/u
-
-/**
- * Name of a user-defined field in a filter: its label lowercased with spaces replaced by hyphens
- * (GitHub's convention). A label that does not make a valid name falls back to the field key.
- */
-export function fieldFilterName (label: string, key: string): string {
-  const slug = label.trim().toLowerCase().replace(/\s+/g, '-')
-  return NAME_PATTERN.test(slug) ? slug : key.toLowerCase()
-}
-
-function customFieldType (type: ProjectFieldType): FieldSpec['type'] {
-  switch (type) {
-    case ProjectFieldType.Number:
-      return 'number'
-    case ProjectFieldType.Date:
-      return 'date'
-    case ProjectFieldType.SingleSelect:
-      return 'select'
-    case ProjectFieldType.MultiSelect:
-      return 'multi'
-    case ProjectFieldType.Iteration:
-      return 'iteration'
-    default:
-      return 'text'
-  }
-}
+export { fieldFilterName }
+export type { IssueFilterSchemaInput, NamedOption }
 
 /**
  * Fields a project's issues can be filtered by: the built-in attributes first, then the project's
  * custom fields. A custom field whose name collides with an earlier one is not filterable by string.
  */
 export function buildIssueFilterSchema (input: IssueFilterSchemaInput): FieldSpec[] {
-  const labelsByIssue = new Map<string, string[]>()
-  for (const ref of input.labelRefs) {
-    const list = labelsByIssue.get(ref.issue)
-    if (list === undefined) labelsByIssue.set(ref.issue, [ref.label])
-    else list.push(ref.label)
-  }
-  const options = (list: NamedOption[]): FieldOption[] => list.map((o) => ({ id: o.id, name: o.name }))
-
-  const schema: FieldSpec[] = [
-    { name: 'title', label: 'Title', type: 'text', source: 'attribute', key: 'title' },
-    { name: 'status', label: 'Status', type: 'select', source: 'attribute', key: 'status', options: options(input.statuses) },
-    {
-      name: 'priority',
-      label: 'Priority',
-      type: 'select',
-      source: 'attribute',
-      key: 'priority',
-      options: options(input.priorities)
-    },
-    {
-      name: 'assignee',
-      label: 'Assignee',
-      type: 'user',
-      source: 'attribute',
-      key: 'assignee',
-      options: options(input.assignees)
-    },
-    {
-      name: 'label',
-      label: 'Label',
-      type: 'multi',
-      source: 'attribute',
-      key: 'labels',
-      options: options(input.labels),
-      // Labels are separate documents: the issues that carry them are looked up by id
-      read: (doc) => labelsByIssue.get(doc._id) ?? [],
-      resolveDocIds: (ids) => {
-        const wanted = new Set(ids.map(String))
-        const res: string[] = []
-        for (const [issue, labels] of labelsByIssue) {
-          if (labels.some((l) => wanted.has(l))) res.push(issue)
-        }
-        return res
-      }
-    },
-    {
-      name: 'component',
-      label: 'Component',
-      type: 'select',
-      source: 'attribute',
-      key: 'component',
-      options: options(input.components)
-    },
-    {
-      name: 'milestone',
-      label: 'Milestone',
-      type: 'select',
-      source: 'attribute',
-      key: 'milestone',
-      options: options(input.milestones)
-    },
-    { name: 'due', label: 'Due date', type: 'date', source: 'attribute', key: 'dueDate' },
-    { name: 'start', label: 'Start date', type: 'date', source: 'attribute', key: 'startDate' },
-    { name: 'deadline', label: 'Deadline', type: 'date', source: 'attribute', key: 'deadline' },
-    { name: 'estimate', label: 'Estimate', type: 'number', source: 'attribute', key: 'estimation' },
-    {
-      name: 'parent-issue',
-      label: 'Parent issue',
-      type: 'presence',
-      source: 'attribute',
-      key: 'attachedTo',
-      read: (doc) => (doc.attachedTo === input.noParentId ? undefined : doc.attachedTo),
-      presenceQuery: (present) => ({ attachedTo: present ? { $ne: input.noParentId } : input.noParentId })
-    },
-    {
-      name: 'sub-issues',
-      label: 'Sub-issues',
-      type: 'presence',
-      source: 'attribute',
-      key: 'subIssues',
-      read: (doc) => (typeof doc.subIssues === 'number' && doc.subIssues > 0 ? doc.subIssues : undefined),
-      presenceQuery: (present) => ({ subIssues: present ? { $gt: 0 } : 0 })
-    }
-  ]
-
-  const taken = new Set(schema.map((f) => f.name))
-  for (const field of input.customFields) {
-    const name = fieldFilterName(field.label, field.key)
-    if (taken.has(name)) continue
-    taken.add(name)
-    schema.push({
-      name,
-      label: field.label,
-      type: customFieldType(field.type),
-      source: 'custom',
-      key: field.key,
-      options:
-        field.type === ProjectFieldType.Iteration
-          ? getAssignableIterations((input.iterations ?? []).filter((it) => it.field === field._id)).map((it) => ({
-            id: it._id,
-            name: it.label
-          }))
-          : field.options?.map((o) => ({ id: o.value, name: o.label }))
-    })
-  }
-  return schema
+  return buildSharedIssueFilterSchema(input)
 }
 
 function pad (n: number): string {

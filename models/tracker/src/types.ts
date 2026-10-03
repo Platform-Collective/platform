@@ -80,6 +80,12 @@ import {
   type ProjectField,
   type ProjectFieldOption,
   ProjectFieldType,
+  type ProjectWebhook,
+  type ProjectWebhookSecret,
+  type WebhookEvent,
+  type Workflow,
+  type WorkflowConfig,
+  type WorkflowKind,
   type MilestoneStatus,
   type Project,
   type RelatedClassRule,
@@ -262,6 +268,11 @@ export class TIssue extends TTask implements Issue {
 
   @Prop(TypeDate(DateRangeMode.DATETIME), tracker.string.DueDate)
   declare dueDate: Timestamp | null
+
+  // Set while the issue is archived (GitHub "Archive item"), null once restored
+  @Prop(TypeDate(DateRangeMode.DATETIME), tracker.string.ArchivedAt)
+  @Hidden()
+    archivedAt?: Timestamp | null
 
   // Soft deadline, independent of dueDate. Optional.
   // When set, the Gantt renders a flag marker at this date and flags the
@@ -571,6 +582,77 @@ export class TInsightChart extends TDoc implements InsightChart {
     position!: number
 
   declare space: Ref<Project>
+}
+
+/**
+ * A built-in workflow of the project. `space` is the project.
+ * @public
+ */
+@Model(tracker.class.Workflow, core.class.Doc, DOMAIN_TRACKER)
+@UX(tracker.string.Workflow, tracker.icon.Issues, '', 'name', undefined, tracker.string.Workflows)
+export class TWorkflow extends TDoc implements Workflow {
+  @Prop(TypeString(), tracker.string.Title)
+    name!: string
+
+  @Prop(TypeBoolean(), tracker.string.WorkflowEnabled)
+    enabled!: boolean
+
+  @Prop(TypeString(), tracker.string.Workflow)
+    kind!: WorkflowKind
+
+  @Prop(TypeString(), tracker.string.InsightFilter)
+    filter?: string
+
+  @Prop(TypeRecord(), tracker.string.Workflow)
+  @Hidden()
+    config?: WorkflowConfig
+
+  @Prop(TypeNumber(), tracker.string.Number)
+  @Hidden()
+    runRequestedAt?: Timestamp
+
+  declare space: Ref<Project>
+}
+
+/**
+ * A webhook of the project that is called when an item changes. `space` is the project.
+ * @public
+ */
+@Model(tracker.class.ProjectWebhook, core.class.Doc, DOMAIN_TRACKER)
+@UX(tracker.string.ProjectWebhook, tracker.icon.Issues, '', 'url', undefined, tracker.string.ProjectWebhooks)
+export class TProjectWebhook extends TDoc implements ProjectWebhook {
+  @Prop(TypeString(), tracker.string.WebhookUrl)
+    url!: string
+
+  @Prop(TypeBoolean(), tracker.string.WorkflowEnabled)
+    enabled!: boolean
+
+  @Prop(ArrOf(TypeString()), tracker.string.WebhookEvents)
+    events!: WebhookEvent[]
+
+  @Prop(TypeBoolean(), tracker.string.WebhookSecret)
+    hasSecret!: boolean
+
+  @Prop(TypeString(), tracker.string.Description)
+    description?: string
+
+  declare space: Ref<Project>
+}
+
+/**
+ * The secret of a webhook. It lives in the personal space of the person who set it (never in the project), so the
+ * other members of the project can not read it.
+ * @public
+ */
+@Model(tracker.class.ProjectWebhookSecret, core.class.Doc, DOMAIN_TRACKER)
+export class TProjectWebhookSecret extends TDoc implements ProjectWebhookSecret {
+  @Prop(TypeRef(tracker.class.ProjectWebhook), tracker.string.ProjectWebhook)
+  @Hidden()
+    webhook!: Ref<ProjectWebhook>
+
+  @Prop(TypeString(), tracker.string.WebhookSecret)
+  @Hidden()
+    secret!: string
 }
 
 @UX(core.string.Number)

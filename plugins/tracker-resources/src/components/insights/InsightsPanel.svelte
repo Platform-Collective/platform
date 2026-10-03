@@ -207,7 +207,8 @@
 
   interface CompiledChartFilter {
     invalid: boolean
-    // The part of the filter the server applies
+    // The part of the filter the server applies, with the rule that archived items are left out unless the filter asks
+    // for them (`is:archived`)
     query: Record<string, any>
     // What is left to the client
     residual: filterGrammar.Node | undefined
@@ -217,7 +218,12 @@
   function compileChartFilter (text: string, schema: filterGrammar.FieldSpec[], ctx: filterGrammar.FilterContext): CompiledChartFilter {
     const res = filterGrammar.compileFilter(text, schema, ctx)
     if (res.ok === false) return { invalid: true, query: {}, residual: undefined, predicate: () => true }
-    return { invalid: false, query: res.value.query, residual: res.value.residual, predicate: res.value.predicate }
+    return {
+      invalid: false,
+      query: { ...res.value.query, ...filterGrammar.archiveScopeQuery(res.value.ast) },
+      residual: res.value.residual,
+      predicate: res.value.predicate
+    }
   }
 
   // A filter that does not parse (it refers to a field that was removed) is not applied: the chart is not drawn

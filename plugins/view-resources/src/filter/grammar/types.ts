@@ -166,7 +166,7 @@ export type FieldValue =
 /**
  * @public
  */
-export type IsState = 'open' | 'closed' | 'issue' | 'sub-issue'
+export type IsState = 'open' | 'closed' | 'issue' | 'sub-issue' | 'archived'
 
 /**
  * @public

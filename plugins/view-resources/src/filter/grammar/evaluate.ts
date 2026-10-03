@@ -10,6 +10,14 @@ import { containsGlob, endOfDay, matchGlob, resolveDate, resolveIteration } from
 // grammar; the server query built by compile.ts must select the same documents.
 
 /**
+ * Whether a document is archived: it has an archive timestamp (`archivedAt`), a restored one carries `null`.
+ * @public
+ */
+export function isArchivedDoc (doc: any): boolean {
+  return doc?.archivedAt !== undefined && doc?.archivedAt !== null
+}
+
+/**
  * Raw value of a field in a document.
  * @public
  */
@@ -239,6 +247,8 @@ export function evaluate (node: Node, doc: any, ctx: FilterContext): boolean {
           return ctx.closedStatuses?.has(String(doc?.status)) ?? false
         case 'sub-issue':
           return ctx.noParentId !== undefined && doc?.attachedTo !== ctx.noParentId
+        case 'archived':
+          return isArchivedDoc(doc)
         default:
           return true
       }

@@ -52,11 +52,17 @@ import { Action, ActionCategory, IconProps } from '@hcengineering/view'
 import type { ProjectField } from './projectField'
 import type { Iteration } from './iteration'
 import type { InsightChart } from './insightChart'
+import type { Workflow } from './workflow'
+import type { ProjectWebhook, ProjectWebhookSecret } from './webhook'
 
 export * from './analytics'
 export * from './projectField'
 export * from './iteration'
 export * from './insightChart'
+export * from './archive'
+export * from './workflow'
+export * from './webhook'
+export * from './issueFilterSchema'
 export * from './iterationRollup'
 
 /**
@@ -276,6 +282,10 @@ export interface Issue extends Task {
   parents: IssueParentInfo[]
 
   startDate: Timestamp | null // for Gantt scheduling; null = unscheduled
+
+  // Set while the issue is archived (GitHub Projects "Archive item"), `null` once restored. Archived issues keep all of
+  // their values and are left out of the project views, slice and Insights unless a filter asks for them (`is:archived`)
+  archivedAt?: Timestamp | null
 
   // Soft deadline, independent of dueDate. The Gantt renders
   // a flag marker at this date and flags the issue as overdue when
@@ -588,6 +598,9 @@ const pluginState = plugin(trackerId, {
     ProjectField: '' as Ref<Class<ProjectField>>,
     Iteration: '' as Ref<Class<Iteration>>,
     InsightChart: '' as Ref<Class<InsightChart>>,
+    Workflow: '' as Ref<Class<Workflow>>,
+    ProjectWebhook: '' as Ref<Class<ProjectWebhook>>,
+    ProjectWebhookSecret: '' as Ref<Class<ProjectWebhookSecret>>,
     TypeMilestoneStatus: '' as Ref<Class<Type<MilestoneStatus>>>,
     TimeSpendReport: '' as Ref<Class<TimeSpendReport>>,
     TypeReportedTime: '' as Ref<Class<Type<number>>>,

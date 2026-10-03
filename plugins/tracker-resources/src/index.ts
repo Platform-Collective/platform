@@ -140,6 +140,7 @@ import {
   deleteObjects,
   setFilters
 } from '@hcengineering/view-resources'
+import { archiveIssue, restoreIssue } from './archive/actions'
 import MoveAndDeleteMilestonePopup from './components/milestones/MoveAndDeleteMilestonePopup.svelte'
 import EditIssueTemplate from './components/templates/EditIssueTemplate.svelte'
 import TemplateEstimationEditor from './components/templates/EstimationEditor.svelte'
@@ -193,6 +194,9 @@ export { default as StatusPresenter } from './components/issues/StatusPresenter.
 export { default as CustomFieldPresenter } from './projectFields/CustomFieldPresenter.svelte'
 export { default as FieldValueEditor } from './projectFields/FieldValueEditor.svelte'
 export { default as ProjectFieldsPopup } from './projectFields/ProjectFieldsPopup.svelte'
+export { default as ArchivedItemsPopup } from './components/archive/ArchivedItemsPopup.svelte'
+export { default as WorkflowsPopup } from './components/workflows/WorkflowsPopup.svelte'
+export { default as WebhooksPopup } from './components/webhooks/WebhooksPopup.svelte'
 export * from './projectFields/registry'
 export { projectFieldsStore, sharedProjectFieldsStore } from './projectFields/projectFieldsStore'
 
@@ -552,7 +556,9 @@ export default async (): Promise<Resources> => ({
     EditProject: editProject,
     DeleteMilestone: deleteMilestone,
     DeleteProject: deleteProject,
-    DeleteIssue: deleteIssue
+    DeleteIssue: deleteIssue,
+    ArchiveIssue: archiveIssue,
+    RestoreIssue: restoreIssue
   },
   resolver: {
     Location: resolveLocation

@@ -150,6 +150,8 @@ function compileClause (node: Node, ctx: FilterContext): Clause | undefined {
           const ids = [...ctx.closedStatuses]
           return { status: node.state === 'open' ? { $nin: ids } : { $in: ids } }
         }
+        case 'archived':
+          return { archivedAt: { $ne: null } }
         default:
           return ctx.noParentId === undefined ? undefined : { attachedTo: { $ne: ctx.noParentId } }
       }
@@ -158,6 +160,8 @@ function compileClause (node: Node, ctx: FilterContext): Clause | undefined {
       return merged !== undefined ? compileClause(merged, ctx) : undefined
     }
     case 'not': {
+      // `-is:archived`
+      if (node.child.type === 'is' && node.child.state === 'archived') return { archivedAt: null }
       const inner = node.child.type === 'or' ? (mergeSameField(node.child) ?? node.child) : node.child
       return inner.type === 'field' ? fieldClause(inner.field, inner.values, true, ctx) : undefined
     }
@@ -261,10 +265,39 @@ export function referencedProperties (node: Node | undefined): string[] {
         n.field.dependsOn?.forEach((d) => props.add(d))
         break
       case 'is':
-        props.add(n.state === 'sub-issue' ? 'attachedTo' : 'status')
+        props.add(n.state === 'sub-issue' ? 'attachedTo' : n.state === 'archived' ? 'archivedAt' : 'status')
         break
     }
   }
   if (node !== undefined) visit(node)
   return [...props]
+}
+
+/**
+ * Whether a filter talks about archived items anywhere (`is:archived`, `-is:archived`). Archived items are hidden
+ * unless the filter asks for them (GitHub's rule), see `archiveScopeQuery`.
+ * @public
+ */
+export function mentionsArchived (node: Node | undefined): boolean {
+  if (node === undefined) return false
+  switch (node.type) {
+    case 'and':
+    case 'or':
+      return node.children.some(mentionsArchived)
+    case 'not':
+      return mentionsArchived(node.child)
+    case 'is':
+      return node.state === 'archived'
+    default:
+      return false
+  }
+}
+
+/**
+ * The query that keeps archived items out of a view: none when the filter mentions archived items (the filter
+ * decides then), otherwise `archivedAt` must be empty.
+ * @public
+ */
+export function archiveScopeQuery (node: Node | undefined): Record<string, any> {
+  return mentionsArchived(node) ? {} : { archivedAt: null }
 }

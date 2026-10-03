@@ -60,6 +60,8 @@ export const chartFieldId = sliceFieldId
 const SORTED_BY_LABEL = new Set(['assignee', 'label', 'component', 'milestone'])
 
 function kindOf (spec: FieldSpec): ChartFieldKind | undefined {
+  // The time of the last change is a filter (`updated:`), not something a chart is drawn over
+  if (spec.source === 'attribute' && spec.name === 'updated') return undefined
   if (spec.type === 'date') return 'date'
   if (spec.type === 'number') return 'number'
   if (spec.source === 'custom') {

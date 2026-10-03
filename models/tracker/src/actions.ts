@@ -172,6 +172,47 @@ export function createActions (builder: Builder, issuesId: string, componentsId:
     tracker.action.DeleteIssue
   )
 
+  // Archive (GitHub "Archive item"): the issue keeps its values and is hidden from the views until it is restored
+  createAction(
+    builder,
+    {
+      action: tracker.actionImpl.ArchiveIssue,
+      label: tracker.string.ArchiveItem,
+      icon: view.icon.Archive,
+      input: 'any',
+      category: tracker.category.Tracker,
+      target: tracker.class.Issue,
+      query: {
+        archivedAt: null
+      },
+      context: {
+        mode: ['context', 'browser'],
+        group: 'remove'
+      }
+    },
+    tracker.action.ArchiveIssue
+  )
+
+  createAction(
+    builder,
+    {
+      action: tracker.actionImpl.RestoreIssue,
+      label: tracker.string.RestoreItem,
+      icon: view.icon.Undo,
+      input: 'any',
+      category: tracker.category.Tracker,
+      target: tracker.class.Issue,
+      query: {
+        archivedAt: { $ne: null }
+      },
+      context: {
+        mode: ['context', 'browser'],
+        group: 'remove'
+      }
+    },
+    tracker.action.RestoreIssue
+  )
+
   builder.createDoc(
     view.class.ActionCategory,
     core.space.Model,

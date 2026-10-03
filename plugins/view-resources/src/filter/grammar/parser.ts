@@ -20,8 +20,8 @@ import type {
 } from './types'
 import { parseDateScalar, parseIterationScalar } from './values'
 
-/** Values accepted by `is:`. `issue` and `sub-issue` mirror GitHub's item kinds. */
-export const IS_VALUES: IsState[] = ['open', 'closed', 'issue', 'sub-issue']
+/** Values accepted by `is:`. `issue` and `sub-issue` mirror GitHub's item kinds, `archived` is GitHub's `is:archived`. */
+export const IS_VALUES: IsState[] = ['open', 'closed', 'issue', 'sub-issue', 'archived']
 
 /** Pseudo fields that are not part of the schema. */
 export const RESERVED_FIELDS = ['has', 'no', 'is']

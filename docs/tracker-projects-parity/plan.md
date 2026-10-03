@@ -881,3 +881,126 @@ rush build --to <pkg>             # cross-package type check before PR
   server-tracker-resources, model-tracker), `svelte-check` of tracker-resources and `rush validate --to @hcengineering/prod`,
   `--to @hcengineering/model-tracker`. Layout of the page in the panel (absolute overlay), the tooltip position and the colors are by
   reasoning, not by eye.
+
+
+---
+
+## Phase 10 implementation notes (Built-in workflows, archive, field-change webhook)
+
+**What was built**
+
+- Archive. `Issue.archivedAt?: Timestamp | null` (hidden `TIssue` prop; `null` after a restore). Huly's `hideArchived` is about archived
+  *projects*, so it was not reusable. Pure helpers in `plugins/tracker/src/archive.ts`. Actions `Archive` / `Restore`
+  (`tracker.action.ArchiveIssue` / `RestoreIssue`, `input: 'any'`, so they work on the context menu and on a bulk selection; Archive is shown
+  for issues without `archivedAt`, Restore for archived ones). "Archived items" popup (restore / delete one, restore all / delete all, first 200
+  rows, count of the rest) from the project header and from the project settings. Archived items keep every value.
+- Grammar (`view-resources/src/filter/grammar`): `is:archived` (and `-is:archived`), `mentionsArchived`, `archiveScopeQuery`. GitHub's rule is
+  applied: archived items are left out of the project views, slice, counts, field sums, hierarchy and Insights unless the filter mentions
+  archived items, in which case the filter alone decides. `IssuesView` adds `archivedAt: null` to the server query (everything that scans, counts
+  or sums derives from it); `InsightsPanel` does the same for the chart scan. `updated:` (the time of the last change, `modifiedOn`) was
+  missing and was added to the filter schema (`updated:<@today-2w`); it is not offered as a chart axis.
+- Filter schema moved: `buildIssueFilterSchema` / `fieldFilterName` now live in `plugins/tracker/src/issueFilterSchema.ts` (types repeat the
+  shape of the grammar's `FieldSpec`); `tracker-resources/issueFilter.ts` re-exports them. The server needs the same schema for workflow
+  filters. `buildWorkflowFilterSchema` (same file family, `workflow.ts`) is that schema without labels and with English priority names.
+- Workflow doc `tracker.class.Workflow` (`DOMAIN_TRACKER`, `space` = project): `name`, `enabled`, `kind`, `filter?`, `config?` (`target`),
+  `runRequestedAt?`. Kinds: `setStatusDoneOnClose`, `itemReopened`, `itemAdded`, `autoArchive`, `autoAddFromQuery`. One doc per kind (the
+  oldest wins if two clients created one at once). A kind without a doc has its defaults (virtual, like the default Insights chart), so there
+  is no migration and no project-create trigger.
+- Server (`server-plugins/tracker-resources`): sync trigger `OnIssueWorkflow` (item workflows), async trigger `OnWorkflowEvaluate` (filter
+  workflows), async trigger `OnProjectItemWebhook`, sync trigger `OnProjectWebhookRemove`; `OnProjectRemove` also removes workflows, webhooks
+  and the secrets of the webhooks. UI: `WorkflowsPopup` (toggle per workflow, field / value pickers, filter bar with the Phase 3
+  `FilterQueryBar` and a preview count) and `WebhooksPopup`, both opened from the project settings (the edit-project popup).
+- Strings (62) were added to `tracker.string` and to all 14 locale files by plain text insertion (ru translated, the others English).
+
+**Workflow semantics and defaults (GitHub parity, with the Huly deviations)**
+
+- Item closed / Item reopened / Item added to project. GitHub writes its separate Status field. Huly's issue status already *is* the
+  open/closed state, so these workflows write a **single-select custom field** (the Status field analogue): closed = the issue status
+  moves from an open category to done or canceled (Won / Lost category) -> field = Done; reopened = it moves from a closed to an open
+  status -> field = the default open value (`Todo`, `To do` or `Open`); added = a new issue gets `Todo` unless it already has a value. The
+  target is automatic (the first single-select field called `Status` that has such an option) or chosen in the form (`config.target`);
+  a chosen target that disappears makes the workflow do nothing, never fall back. Without a target nothing happens. Defaults like GitHub:
+  these three are **on**, Auto-archive and Auto-add are **off** and need a filter before they can be switched on. The previous status is
+  rebuilt from the transaction history (`history.ts`), a move between two closed statuses is not a close.
+- Auto-archive. Archives the not archived issues that match the filter. Default text for a new workflow: `is:closed updated:<@today-2w`.
+  Items that already match are archived when it is switched on (GitHub does the same). A filter that is empty, does not parse, is over 1000
+  characters or mentions archived items is skipped (and the form says so), never guessed at. Restoring an item bumps `modifiedOn`, so an
+  `updated:` filter does not archive it again at once.
+- Auto-add. GitHub pulls matching issues of a repository into the project. Huly has no repository, an issue belongs to exactly one project and
+  moving it renumbers it (identifier, rank, status mapping), which would have to be redone on the server and is destructive. So the workflow
+  **never moves or copies anything**. Its Huly analogue restores archived items of the project that match the filter (the inverse of
+  Auto-archive). To keep the two from undoing each other, an item that the project's Auto-archive would archive again is not restored
+  ("archive wins"). Documented in the form.
+- Caps and idempotency. A filter workflow reads at most 2000 issues per run (oldest first) and changes at most 100 per run per workflow
+  (`MAX_WORKFLOW_ITEMS_PER_RUN`); a backlog is worked off over several runs. The filter is always evaluated again on the scanned issues on the
+  server (the database query is only a narrowing), so the result does not depend on how much of the filter the database can take. Every
+  write is skipped when the value is already there, so repeating a run changes nothing.
+- Loop protection and attribution. Every write of a workflow is authored by the system account (`core.account.System`, passed as
+  `modifiedBy` of the transaction) and a workflow never reacts to a transaction authored by it (`isAutomationAuthor`). The activity timeline
+  shows an unknown author as "System"; there is no separate "Project automation" label in the timeline (the webhook payload does say
+  `sender.type = Automation`, `name = Project automation`).
+- When filter workflows run. The server has no periodic runner (triggers are transaction driven; the periodic code lives in separate
+  services), so they are evaluated (1) when a workflow doc is created or changed, (2) after an issue of the project changes, at most once a
+  minute per project (`control.cache`), (3) when a client opens the project: it touches `runRequestedAt` of the stored, enabled filter
+  workflows once per session. **Limitation:** a project in which nothing happens and nobody opens does not age items into a filter until one of
+  those happens.
+- Workflow filters use the vocabulary of the project views minus labels (a label is a separate document per issue). Priorities are named in
+  English whatever the language of the viewer (`priority:urgent`), because the server does not translate. `@me` has no meaning on the server.
+
+**Field-change webhook (parity with `projects_v2_item`)**
+
+- No webhook facility existed (the love / payment / github hits are inbound webhooks), so a minimal one was built: docs
+  `tracker.class.ProjectWebhook` (`space` = project: `url`, `enabled`, `events`, `hasSecret`) and `tracker.class.ProjectWebhookSecret`.
+  At most 20 per project (UI check, and the server only uses the 20 oldest).
+- Events (the `action` of GitHub's event): `created`, `edited`, `archived`, `restored`, `deleted`. `edited` is one delivery per changed field
+  with `changes.field_value = { field_node_id, field_name, field_type, from, to }` (`from` rebuilt from the history; select-like values are
+  `{ id, name }`, dates ISO strings). Watched: title, status, priority, assignee, component, milestone, estimation, start / due date,
+  deadline and every custom field (by type: text, number, date, single_select, multi_select, iteration). Payload keys: `action`,
+  `project_item`, `changes`, `project`, `workspace`, `sender`, `delivery`. Headers: `X-Huly-Event: project_item`, `X-Huly-Delivery`,
+  `X-Huly-Signature-256: sha256=<hex HMAC SHA-256 of the exact body>` (only when a secret is set; verified against GitHub's published
+  reference vector in the tests).
+- Delivery. Async trigger, so it never delays the transaction, and the deliveries are not even awaited by it: they run in the background
+  (5 at a time, 5 s timeout, one retry after 1 s for a network error, timeout, 5xx or 429, none after another answer). Changes made by the
+  workflows are delivered too (they are in the operation's transactions). At most 100 events per run, payload bounded to 64 KiB (values are
+  dropped first, the field stays named). There is **no persistent queue**: a delivery in flight when the server stops is lost, and there is no
+  delivery log or redelivery UI.
+- Security model.
+  - SSRF: https only, no credentials in the URL, internal host names and private / loopback / link-local (cloud metadata) / CGNAT /
+    multicast / reserved IPv4 and IPv6 ranges are refused, IPv6 addresses that embed IPv4 (mapped, NAT64, 6to4) are judged by the IPv4 part.
+    The same pure validator runs in the form and on the server. On the server the name is resolved by the socket's own `lookup`, every
+    address must be public, and the connection goes to the address that was checked (no second resolution, so no DNS rebinding); an IP
+    in the URL is checked directly; redirects are never followed; the answer body is never read. A refused target is never retried.
+    `TRACKER_WEBHOOK_ALLOW_PRIVATE=true` (development only) allows http and local targets. This uses Node's `http(s).request` with a custom
+    `lookup`, not `fetch` (a `fetch` call cannot be pinned to a checked address); the tests mock the transport.
+  - Secret: it is typed once, stored as `ProjectWebhookSecret` in the **personal space** of the person who typed it (no other member of the
+    project can read it, the server can), the webhook doc only carries `hasSecret`, and the form never shows a secret again (an empty
+    field keeps the current one; a new one is a new doc and the newest wins, so setting one rotates it). The secret is not in any payload
+    or header. Residual risks: the author can read their own secret doc through the API, and the old secret docs of a rotation stay in the
+    author's personal space until the webhook is removed (removing a webhook or a project removes all of its secrets).
+  - Who can configure: any member who can write the project's docs (same as saved views and charts). The data a webhook receives is data
+    its configurer can read anyway.
+
+**Shared code touched**
+
+- `server-plugins/tracker-resources` now depends on `@hcengineering/view-resources` (deep import of the pure filter grammar,
+  `@hcengineering/view-resources/src/filter/grammar`, no svelte is loaded; the same pattern as `model-tracker` importing
+  `tracker-resources/src/types`), on `@types/node`, and uses the `node` tsconfig profile (node modules are used for crypto / dns / http).
+  `pnpm-lock.yaml` was edited by hand for these two (no network install was possible); run `rush update` to confirm it is stable.
+
+**Verified / not verified**
+
+- Verified: jest (tracker 112, tracker-resources 922, view-resources 290, server-tracker-resources 101, tracker-assets 15, model-tracker 4),
+  `svelte-check` of tracker-resources and view-resources, `rush validate --to @hcengineering/prod` (also `model-server-tracker` and
+  `server-tracker-resources`).
+- Not verified: nothing was run against a real server or in a browser (no sanity spec). In particular the trigger registration in a running
+  pipeline, the notifications that a System authored issue update may produce, the layout of the three popups, delivery over a real
+  network, and the bundling of the server with the deep grammar import. The `archivedAt` / workflow queries were checked only against the
+  in-memory test double.
+
+**Not done / limits**
+
+- No rule builder (phase 15) and no per-workflow history or run log.
+- Archived items still show in places that do not use the project issues view: the sub-issue list of a parent, the lists of a component or
+  a milestone, search, links, notifications, and the hierarchy progress count (it counts every sub-issue, archived or not).
+- A parent that is archived does not archive its sub-issues.
+- The number of webhooks per project is also checked only by the form and the delivery (no server guard that removes the extra ones).

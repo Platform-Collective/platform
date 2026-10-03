@@ -49,6 +49,7 @@ import tracker, {
   overLimitFields,
   type ProjectField,
   ProjectFieldType,
+  type ProjectWebhook,
   stripIterationValues,
   type ShiftedIssuePayload,
   TimeSpendReport,
@@ -56,6 +57,10 @@ import tracker, {
   type Project
 } from '@hcengineering/tracker'
 import { workbenchId } from '@hcengineering/workbench'
+import { OnIssueWorkflow, OnWorkflowEvaluate } from './workflow/triggers'
+import { OnProjectItemWebhook, OnProjectWebhookRemove } from './webhook/trigger'
+
+export { OnIssueWorkflow, OnWorkflowEvaluate, OnProjectItemWebhook, OnProjectWebhookRemove }
 
 async function updateSubIssues (
   updateTx: TxUpdateDoc<Issue>,
@@ -178,13 +183,24 @@ export async function OnProjectRemove (txes: Tx[], control: TriggerControl): Pro
       tracker.class.IssueTemplate,
       tracker.class.ProjectField,
       tracker.class.Iteration,
-      tracker.class.InsightChart
+      tracker.class.InsightChart,
+      tracker.class.Workflow,
+      tracker.class.ProjectWebhook
     ]
     for (const cls of classes) {
       const docs = await control.findAll(control.ctx, cls, { space: ctx.objectId })
       for (const doc of docs) {
         const tx = control.txFactory.createTxRemoveDoc(cls, doc.space, doc._id)
         result.push(tx)
+      }
+      // The secrets of the webhooks are in the personal spaces of their authors, not in the project
+      if (cls === tracker.class.ProjectWebhook && docs.length > 0) {
+        const secrets = await control.findAll(control.ctx, tracker.class.ProjectWebhookSecret, {
+          webhook: { $in: docs.map((it) => it._id as unknown as Ref<ProjectWebhook>) }
+        })
+        for (const secret of secrets) {
+          result.push(control.txFactory.createTxRemoveDoc(secret._class, secret.space, secret._id))
+        }
       }
     }
   }
@@ -976,6 +992,10 @@ export default async () => ({
     OnProjectFieldCreate,
     OnProjectFieldRemove,
     OnIterationRemove,
-    OnDependencyShiftRequest
+    OnDependencyShiftRequest,
+    OnIssueWorkflow,
+    OnWorkflowEvaluate,
+    OnProjectItemWebhook,
+    OnProjectWebhookRemove
   }
 })

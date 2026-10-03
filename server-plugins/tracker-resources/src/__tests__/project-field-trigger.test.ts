@@ -172,4 +172,20 @@ describe('OnProjectRemove', () => {
       [tracker.class.InsightChart, 'c2']
     ])
   })
+
+  it('removes the workflows and webhooks of the project and the secrets of the webhooks', async () => {
+    const docs = {
+      [tracker.class.Workflow]: [{ _id: 'w1', _class: tracker.class.Workflow, space: SPACE }],
+      [tracker.class.ProjectWebhook]: [{ _id: 'h1', _class: tracker.class.ProjectWebhook, space: SPACE }],
+      [tracker.class.ProjectWebhookSecret]: [{ _id: 's1', _class: tracker.class.ProjectWebhookSecret, space: 'person-space', webhook: 'h1' }]
+    }
+    const control = makeControl(docs)
+    control.ctx = { contextData: { broadcast: { targets: {} } } }
+    const res: any[] = await OnProjectRemove([{ objectId: SPACE } as unknown as Tx], control)
+    expect(res.map((r) => [r._class, r.id, r.space])).toEqual([
+      [tracker.class.Workflow, 'w1', SPACE],
+      [tracker.class.ProjectWebhook, 'h1', SPACE],
+      [tracker.class.ProjectWebhookSecret, 's1', 'person-space']
+    ])
+  })
 })

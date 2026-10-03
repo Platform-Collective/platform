@@ -105,6 +105,43 @@ export function createModel (builder: Builder): void {
     }
   })
 
+  // The "set a field" workflows run with the change that causes them
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnIssueWorkflow,
+    txMatch: {
+      _class: { $in: [core.class.TxCreateDoc, core.class.TxUpdateDoc] },
+      objectClass: tracker.class.Issue
+    }
+  })
+
+  // Auto-archive and auto-add are evaluated after the fact
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnWorkflowEvaluate,
+    isAsync: true,
+    txMatch: {
+      _class: { $in: [core.class.TxCreateDoc, core.class.TxUpdateDoc] },
+      objectClass: { $in: [tracker.class.Issue, tracker.class.Workflow] }
+    }
+  })
+
+  // Webhooks are delivered after the transaction, in the background
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnProjectItemWebhook,
+    isAsync: true,
+    txMatch: {
+      _class: { $in: [core.class.TxCreateDoc, core.class.TxUpdateDoc, core.class.TxRemoveDoc] },
+      objectClass: tracker.class.Issue
+    }
+  })
+
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnProjectWebhookRemove,
+    txMatch: {
+      _class: core.class.TxRemoveDoc,
+      objectClass: tracker.class.ProjectWebhook
+    }
+  })
+
   builder.mixin(
     tracker.ids.AssigneeNotification,
     notification.class.NotificationType,

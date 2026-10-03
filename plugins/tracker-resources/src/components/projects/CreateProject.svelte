@@ -59,6 +59,9 @@
   import { createEventDispatcher } from 'svelte'
 
   import ProjectFieldsPopup from '../../projectFields/ProjectFieldsPopup.svelte'
+  import ArchivedItemsPopup from '../archive/ArchivedItemsPopup.svelte'
+  import WebhooksPopup from '../webhooks/WebhooksPopup.svelte'
+  import WorkflowsPopup from '../workflows/WorkflowsPopup.svelte'
 
   import tracker from '../../plugin'
   import StatusSelector from '../issues/StatusSelector.svelte'
@@ -627,6 +630,42 @@
           kind={'regular'}
           size={'large'}
           on:click={() => showPopup(ProjectFieldsPopup, { project }, 'top')}
+        />
+      </div>
+      <div class="antiGrid-row">
+        <div class="antiGrid-row__header">
+          <Label label={tracker.string.Workflows} />
+        </div>
+        <Button
+          label={tracker.string.Workflows}
+          kind={'regular'}
+          size={'large'}
+          dataId={'btn-project-workflows'}
+          on:click={() => showPopup(WorkflowsPopup, { project }, 'top')}
+        />
+      </div>
+      <div class="antiGrid-row">
+        <div class="antiGrid-row__header">
+          <Label label={tracker.string.ProjectWebhooks} />
+        </div>
+        <Button
+          label={tracker.string.ProjectWebhooks}
+          kind={'regular'}
+          size={'large'}
+          dataId={'btn-project-webhooks'}
+          on:click={() => showPopup(WebhooksPopup, { project }, 'top')}
+        />
+      </div>
+      <div class="antiGrid-row">
+        <div class="antiGrid-row__header">
+          <Label label={tracker.string.ArchivedItems} />
+        </div>
+        <Button
+          label={tracker.string.ArchivedItems}
+          kind={'regular'}
+          size={'large'}
+          dataId={'btn-project-archived-items'}
+          on:click={() => showPopup(ArchivedItemsPopup, { project }, 'top')}
         />
       </div>
     {/if}
