@@ -18,16 +18,19 @@
     "_phase:bundle": "rushx bundle",
     "_phase:docker-build": "rushx docker:build",
     "_phase:docker-staging": "rushx docker:staging",
-    "docker:build": "../../common/scripts/docker_build.sh platformcollective/worker .",
-    "docker:tbuild": "docker build -t platformcollective/worker . --platform=linux/amd64 && ../../common/scripts/docker_tag_push.sh platformcollective/worker",
-    "docker:staging": "../../common/scripts/docker_tag.sh platformcollective/worker staging",
-    "docker:push": "../../common/scripts/docker_tag.sh platformcollective/worker",
-    "run-local": "cross-env QUEUE_CONFIG='localhost:19092' REGION='cockroach' ts-node src/index.ts",
+    "docker:build": "node ../../common/scripts/bash.js ../../common/scripts/docker_build.sh platformcollective/worker .",
+    "docker:tbuild": "docker build -t platformcollective/worker . --platform=linux/amd64 && node ../../common/scripts/bash.js ../../common/scripts/docker_tag_push.sh platformcollective/worker",
+    "docker:staging": "node ../../common/scripts/bash.js ../../common/scripts/docker_tag.sh platformcollective/worker staging",
+    "docker:push": "node ../../common/scripts/bash.js ../../common/scripts/docker_tag.sh platformcollective/worker",
+    "run-local": "node ../../common/scripts/bash.js --script run-local",
     "format": "format src",
     "_phase:build": "compile transpile src",
     "_phase:test": "jest --passWithNoTests --silent",
     "_phase:format": "format src",
     "_phase:validate": "compile validate"
+  },
+  "bashScripts": {
+    "run-local": "cross-env QUEUE_CONFIG='localhost:19092' REGION='cockroach' ts-node src/index.ts"
   },
   "devDependencies": {
     "@tsconfig/node16": "^1.0.4",

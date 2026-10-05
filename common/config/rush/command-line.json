@@ -143,7 +143,7 @@
       "summary": "Do a format and show errors after it",
       "description": "Do a format and show errors after it",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "(rush format && true) && ./common/scripts/format-show.sh"
+      "shellCommand": "node common/scripts/bash.js -c \"(rush format && true) && ./common/scripts/format-show.sh\""
     },
     {
       "commandKind": "phased",
@@ -323,7 +323,7 @@
       "summary": "Build docker with platform",
       "description": "Build all docker containers required for platform. Use --minified for resource-constrained dev (or rush docker:min).",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "./common/scripts/docker.sh"
+      "shellCommand": "node common/scripts/bash.js common/scripts/docker.sh"
     },
     {
       "commandKind": "global",
@@ -331,7 +331,7 @@
       "summary": "Build and push docker images with a custom version",
       "description": "Allows building and pushing docker images with a manually specified version tag. Usage: rush docker:patch --version <version> [rush-args]",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "./common/scripts/docker_patch.sh"
+      "shellCommand": "node common/scripts/bash.js common/scripts/docker_patch.sh"
     },
     {
       "commandKind": "global",
@@ -339,7 +339,7 @@
       "summary": "Build docker with platform",
       "description": "use to build all docker containers required for platform",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "./common/scripts/docker-server.sh && rush docker:up:server"
+      "shellCommand": "node common/scripts/bash.js common/scripts/docker-server.sh && rush docker:up:server"
     },
     {
       "commandKind": "global",
@@ -347,7 +347,7 @@
       "summary": "Up development build",
       "description": "Up development build",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "cd ./dev && docker compose up -d --force-recreate"
+      "shellCommand": "node common/scripts/bash.js -c \"cd ./dev && docker compose up -d --force-recreate\""
     },
     {
       "commandKind": "global",
@@ -355,7 +355,7 @@
       "summary": "Up development build",
       "description": "Up development build",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "cd ./dev && docker compose up -d --force-recreate transactor_cockroach"
+      "shellCommand": "node common/scripts/bash.js -c \"cd ./dev && docker compose up -d --force-recreate transactor_cockroach\""
     },
     {
       "commandKind": "global",
@@ -363,7 +363,7 @@
       "summary": "Build minified docker images for resource-constrained dev",
       "description": "Build docker images excluding optional services (hulypulse, redis, process, backup, rating, preview, link-preview, elastic, fulltext, payment, stats, print, sign, hulygun, hulykvs). Use with rush docker:up:min",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "./common/scripts/docker.sh --minified"
+      "shellCommand": "node common/scripts/bash.js common/scripts/docker.sh --minified"
     },
     {
       "commandKind": "global",
@@ -371,7 +371,7 @@
       "summary": "Up minified development stack",
       "description": "Start minified docker compose (docker-compose.yaml + docker-compose.min.yaml) for resource-constrained machines",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "cd ./dev && docker compose -f docker-compose.yaml -f docker-compose.min.yaml up -d --force-recreate"
+      "shellCommand": "node common/scripts/bash.js -c \"cd ./dev && docker compose -f docker-compose.yaml -f docker-compose.min.yaml up -d --force-recreate\""
     },
     {
       "commandKind": "global",
@@ -379,7 +379,7 @@
       "summary": "Up extended development stack with billing + payment",
       "description": "Start extended docker compose (docker-compose.yaml + docker-compose.ext.yaml) with the optional billing and payment services enabled. Required env: STRIPE_API_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_SUBSCRIPTION_PLANS (or POLAR_* equivalents).",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "cd ./dev && docker compose -f docker-compose.yaml -f docker-compose.ext.yaml up -d --force-recreate"
+      "shellCommand": "node common/scripts/bash.js -c \"cd ./dev && docker compose -f docker-compose.yaml -f docker-compose.ext.yaml up -d --force-recreate\""
     },
     {
       "commandKind": "global",
@@ -387,7 +387,7 @@
       "summary": "Up development stack with PostgreSQL",
       "description": "Start dev docker compose with PostgreSQL override (docker-compose.yaml + docker-compose.pg.yaml, profile=postgres)",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "cd ./dev && docker compose -f docker-compose.yaml -f docker-compose.pg.yaml --profile postgres up -d --force-recreate"
+      "shellCommand": "node common/scripts/bash.js -c \"cd ./dev && docker compose -f docker-compose.yaml -f docker-compose.pg.yaml --profile postgres up -d --force-recreate\""
     },
     {
       "commandKind": "global",
@@ -395,7 +395,7 @@
       "summary": "Up development build",
       "description": "Up development build",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "cd ./dev/local-mongo && docker compose -p dev up -d --force-recreate"
+      "shellCommand": "node common/scripts/bash.js -c \"cd ./dev/local-mongo && docker compose -p dev up -d --force-recreate\""
     },
     {
       "commandKind": "global",
@@ -403,7 +403,7 @@
       "summary": "Upgrade all local models",
       "description": "Upgrade all local models",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "cd ./dev/tool && rushx run-local upgrade -f"
+      "shellCommand": "node common/scripts/bash.js -c \"cd ./dev/tool && rushx run-local upgrade -f\""
     },
     {
       "commandKind": "global",
@@ -419,7 +419,7 @@
       "summary": "Clean tsconfig.tsbuildinfo",
       "description": "Clean typescript incremental cache",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "find .|grep tsconfig.tsbuildinfo | xargs rm | pwd"
+      "shellCommand": "node common/scripts/bash.js -c \"find .|grep tsconfig.tsbuildinfo | xargs rm | pwd\""
     },
     {
       "commandKind": "global",
@@ -427,14 +427,14 @@
       "summary": "Clean Validate cache and to validate again",
       "description": "Clean typescript incremental cache",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "find .|grep tsBuildInfoFile.info | xargs rm | pwd && rush dorevalidate"
+      "shellCommand": "node common/scripts/bash.js -c \"find .|grep tsBuildInfoFile.info | xargs rm | pwd && rush dorevalidate\""
     },
     {
       "commandKind": "bulk",
       "name": "remove-ts-types",
       "summary": "Clean validate types",
       "description": "Clean validate types",
-      "shellCommand": "rm -rf ./types",
+      "shellCommand": "node common/scripts/bash.js -c \"rm -rf ./types\"",
       "enableParallelism": true,
       "incremental": false,
       "ignoreDependencyOrder": true,
@@ -456,7 +456,7 @@
       "summary": "show model",
       "description": "show model",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "cd ./models/all && rushx show-model"
+      "shellCommand": "node common/scripts/bash.js -c \"cd ./models/all && rushx show-model\""
     },
     {
       "commandKind": "global",
@@ -464,7 +464,7 @@
       "summary": "Clean package-deps-*.json files",
       "description": "Clean package-deps-*.json files",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "find .|grep .rush/temp/package-deps_ | xargs rm"
+      "shellCommand": "node common/scripts/bash.js -c \"find .|grep .rush/temp/package-deps_ | xargs rm\""
     },
     {
       "commandKind": "global",
@@ -472,7 +472,7 @@
       "summary": "Format changed projects",
       "description": "Format and autofix linting issues in changed projects",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "./common/scripts/fast-format.sh"
+      "shellCommand": "node common/scripts/bash.js common/scripts/fast-format.sh"
     },
     {
       "commandKind": "global",
@@ -480,7 +480,7 @@
       "summary": "Build desktop build",
       "description": "use to build all docker containers required for platform",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "rush package -p 20 --to desktop && cd ./desktop-package && rushx dist"
+      "shellCommand": "node common/scripts/bash.js -c \"rush package -p 20 --to desktop && cd ./desktop-package && rushx dist\""
     },
     {
       "commandKind": "global",
@@ -488,7 +488,7 @@
       "summary": "Update published dependencies",
       "description": "use to update published dependencies to latest versions",
       "safeForSimultaneousRushProcesses": true,
-      "shellCommand": "./common/scripts/node_modules/.bin/update-deps"
+      "shellCommand": "node common/scripts/bash.js -c \"./common/scripts/node_modules/.bin/update-deps\""
     }
   ],
   /**
