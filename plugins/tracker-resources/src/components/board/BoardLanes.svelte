@@ -20,12 +20,13 @@
 
   import { categoryKey } from '../../board/columns'
   import { isAvailableCategory, isNoopUpdate } from '../../board/move'
-  import { toggleLane, type BoardGrid, type BoardLane } from '../../board/swimlanes'
+  import { cellLanes, type BoardGrid, type BoardLane } from '../../board/swimlanes'
   import tracker from '../../plugin'
 
-  // Swimlanes of columns: every swimlane is a horizontal section that holds its own cell of every column. A card
-  // is dragged between cells, which writes the value of the column and of the swimlane. There is no manual order
-  // of the cards inside a cell: they follow the sort of the view.
+  // Swimlanes of columns: every swimlane is a horizontal section that holds its own cell of every column. With a
+  // second level ("Then by") a swimlane is a header over its sub-lanes, and the sub-lanes hold the cells. A card
+  // is dragged between cells, which writes the value of the column and of the swimlane (and sub-lane). There is no
+  // manual order of the cards inside a cell: they follow the sort of the view.
   export let _class: Ref<Class<DocWithRank>>
   export let options: FindOptions<DocWithRank> | undefined = undefined
   // Visible columns, left to right
@@ -33,17 +34,18 @@
   export let grid: BoardGrid<Item, CategoryType>
   // Items in the order the keyboard moves through them (see gridOrder)
   export let objects: Item[]
-  // Collapsed swimlanes, by key
-  export let collapsed: Set<string> = new Set()
+  // Collapsed lanes, by key; the host keeps them and is told with `toggle` when one is clicked
+  export let collapsed: ReadonlySet<string> = new Set()
   export let selection: number | undefined = undefined
   export let checked: Doc[] = []
   // Full documents of the items of a cell are loaded by their ids
   export let getGroupQuery: (state: CategoryType, stateObjects: Item[]) => DocumentQuery<DocWithRank>
-  // What dropping a card on a swimlane and a column writes; undefined when the card cannot go there
-  export let getUpdate: (doc: Item, lane: CategoryType, column: CategoryType) => DocumentUpdate<Item> | undefined
-  // Categories a card can be dropped on, for the columns and for the swimlanes
+  // What dropping a card on a lane (the categories from the swimlane down to the lane) and a column writes;
+  // undefined when the card cannot go there
+  export let getUpdate: (doc: Item, lane: CategoryType[], column: CategoryType) => DocumentUpdate<Item> | undefined
+  // Categories a card can be dropped on, for the columns and for the swimlanes of a level (0, or 1 for sub-lanes)
   export let getAvailableColumns: ((doc: Doc) => Promise<CategoryType[]>) | undefined = undefined
-  export let getAvailableLanes: ((doc: Doc) => Promise<CategoryType[]>) | undefined = undefined
+  export let getAvailableLanes: ((doc: Doc, level: number) => Promise<CategoryType[]>) | undefined = undefined
 
   const dispatch = createEventDispatcher()
   const client = getClient()
@@ -55,8 +57,20 @@
   let dragCard: Item | undefined
   let isDragging = false
   let availableColumns: CategoryType[] | undefined
-  let availableLanes: CategoryType[] | undefined
+  // Per level of lanes
+  let availableLanes: Array<CategoryType[] | undefined> = []
   let dropCell: string | undefined
+
+  // What is drawn: a swimlane with sub-lanes is a header, every other lane a header and a row of cells
+  type Section = { lane: BoardLane<Item, CategoryType>, group: boolean }
+  $: sections = grid.lanes.flatMap((lane): Section[] => {
+    if (lane.subLanes.length === 0) return [{ lane, group: false }]
+    return [
+      { lane, group: true },
+      ...(collapsed.has(lane.key) ? [] : lane.subLanes.map((sub): Section => ({ lane: sub, group: false })))
+    ]
+  })
+  $: levels = grid.lanes.some((lane) => lane.subLanes.length > 0) ? 2 : 1
 
   const cellId = (lane: BoardLane<Item, CategoryType>, columnKey: string): string => `${lane.key}\u0000${columnKey}`
 
@@ -64,9 +78,12 @@
     dragCard = object
     isDragging = true
     availableColumns = undefined
-    availableLanes = undefined
+    availableLanes = []
     dispatch('obj-focus', object)
-    const [cols, lanes] = await Promise.all([getAvailableColumns?.(object), getAvailableLanes?.(object)])
+    const [cols, ...lanes] = await Promise.all([
+      getAvailableColumns?.(object),
+      ...Array.from({ length: levels }, async (_, level) => await getAvailableLanes?.(object, level))
+    ])
     if (dragCard?._id === object._id) {
       availableColumns = cols
       availableLanes = lanes
@@ -77,13 +94,16 @@
     dragCard = undefined
     isDragging = false
     availableColumns = undefined
-    availableLanes = undefined
+    availableLanes = []
     dropCell = undefined
   }
 
   function canDropOn (lane: BoardLane<Item, CategoryType>, column: CategoryType): boolean {
     if (dragCard === undefined) return false
-    return isAvailableCategory(availableColumns, column) && isAvailableCategory(availableLanes, lane.category)
+    return (
+      isAvailableCategory(availableColumns, column) &&
+      lane.path.every((category, level) => isAvailableCategory(availableLanes[level], category))
+    )
   }
 
   async function drop (lane: BoardLane<Item, CategoryType>, column: CategoryType): Promise<void> {
@@ -91,7 +111,7 @@
     const allowed = canDropOn(lane, column)
     endDrag()
     if (doc === undefined || !allowed) return
-    const update = getUpdate(doc, lane.category, column)
+    const update = getUpdate(doc, lane.path, column)
     if (update === undefined || isNoopUpdate(doc, update)) return
     try {
       await client.diffUpdate(doc, update)
@@ -125,7 +145,7 @@
   const rows: Record<string, KanbanRow | undefined> = {}
 
   function locate (item: Item): { lane: BoardLane<Item, CategoryType>, cell: number, row: number } | undefined {
-    for (const lane of grid.lanes) {
+    for (const lane of cellLanes(grid)) {
       for (const [cell, c] of lane.cells.entries()) {
         const row = c.items.findIndex((it) => it._id === item._id)
         if (row !== -1) return { lane, cell, row }
@@ -167,7 +187,7 @@
   }
 
   function toggle (lane: BoardLane<Item, CategoryType>): void {
-    collapsed = toggleLane(collapsed, lane.key)
+    dispatch('toggle', lane.key)
   }
 </script>
 
@@ -181,9 +201,9 @@
           </div>
         {/each}
       </div>
-      {#each grid.lanes as lane (lane.key)}
+      {#each sections as { lane, group } (lane.key)}
         {@const isCollapsed = collapsed.has(lane.key)}
-        <div class="lane" data-id="board-lane" data-lane={lane.key}>
+        <div class="lane" class:sub={lane.depth > 0} data-id="board-lane" data-lane={lane.key} data-depth={lane.depth}>
           <div class="lane-header">
             <button
               class="toggle"
@@ -198,11 +218,11 @@
               <Icon icon={isCollapsed ? IconChevronRight : IconDown} size={'small'} />
             </button>
             <span class="lane-title overflow-label">
-              <slot name="lane-header" {lane} />
+              <slot name="lane-header" {lane} level={lane.depth} />
             </span>
             <span class="lane-count" data-id="board-lane-count">{lane.items.length}</span>
           </div>
-          {#if !isCollapsed}
+          {#if !isCollapsed && !group}
             <div class="lane-row">
               {#each lane.cells as cell (cell.columnKey)}
                 {@const id = cellId(lane, cell.columnKey)}
@@ -299,6 +319,12 @@
     display: flex;
     flex-direction: column;
     margin-bottom: 0.75rem;
+
+    // A sub-lane sits under the header of its swimlane
+    &.sub {
+      margin-top: -0.25rem;
+      margin-left: 1.25rem;
+    }
   }
   .lane-header {
     position: sticky;

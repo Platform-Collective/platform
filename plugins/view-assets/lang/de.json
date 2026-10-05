@@ -91,6 +91,7 @@
     "NewFilteredView": "Neue gefilterte Ansicht",
     "FilteredViewName": "Name der gefilterten Ansicht",
     "Then": "Dann",
+    "ThenBy": "Then by",
     "ShowPreviewOnClick": "Bitte klicken Sie, um die Dokumentindexvorschau anzuzeigen...",
     "Shown": "zeige {len} Ergebnisse {total, plural, =-1 {} other {von gefilterten # Elementen}}",
     "Total": "Gesamt: {total, plural, other{#}}",

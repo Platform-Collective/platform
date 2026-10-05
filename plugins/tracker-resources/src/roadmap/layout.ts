@@ -61,12 +61,15 @@ export function estimateTextWidth (text: string, charWidth: number = 7): number 
 
 export interface RowGroup<T> {
   id: string
-  // Items that have dates
+  // Items that have dates; for a group with sub groups all the items below it
   items: T[]
+  // Sub groups (nested grouping). A group with sub groups draws them instead of its own items.
+  children?: ReadonlyArray<RowGroup<T>>
 }
 
 export type RoadmapRow<T> =
-  | { type: 'group', id: string, y: number, height: number, count: number, collapsed: boolean }
+  // `depth` is the nesting level of the group, 0 for the first level
+  | { type: 'group', id: string, depth: number, y: number, height: number, count: number, collapsed: boolean }
   | { type: 'item', id: string, item: T, y: number, height: number, unscheduled: boolean }
   | { type: 'unscheduled', id: string, y: number, height: number, count: number, collapsed: boolean }
 
@@ -91,8 +94,8 @@ export interface RowsLayout<T> {
 }
 
 /**
- * Vertical layout of the roadmap: an optional header per group followed by its items, and the section of
- * the items without dates at the end.
+ * Vertical layout of the roadmap: an optional header per group followed by its sub groups (or, at the last level,
+ * its items), and the section of the items without dates at the end.
  */
 export function buildRows<T> (params: RowParams<T>): RowsLayout<T> {
   const rowHeight = params.rowHeight ?? ROW_HEIGHT
@@ -100,18 +103,25 @@ export function buildRows<T> (params: RowParams<T>): RowsLayout<T> {
   const rows: Array<RoadmapRow<T>> = []
   let y = 0
 
-  for (const group of params.groups) {
-    const collapsed = params.collapsed.has(group.id)
-    if (params.showGroupHeaders) {
-      rows.push({ type: 'group', id: group.id, y, height: groupHeight, count: group.items.length, collapsed })
-      y += groupHeight
-    }
-    if (collapsed && params.showGroupHeaders) continue
-    for (const item of group.items) {
-      rows.push({ type: 'item', id: params.idOf(item), item, y, height: rowHeight, unscheduled: false })
-      y += rowHeight
+  const addGroups = (groups: ReadonlyArray<RowGroup<T>>, depth: number): void => {
+    for (const group of groups) {
+      const collapsed = params.collapsed.has(group.id)
+      if (params.showGroupHeaders) {
+        rows.push({ type: 'group', id: group.id, depth, y, height: groupHeight, count: group.items.length, collapsed })
+        y += groupHeight
+      }
+      if (collapsed && params.showGroupHeaders) continue
+      if (group.children !== undefined && group.children.length > 0) {
+        addGroups(group.children, depth + 1)
+        continue
+      }
+      for (const item of group.items) {
+        rows.push({ type: 'item', id: params.idOf(item), item, y, height: rowHeight, unscheduled: false })
+        y += rowHeight
+      }
     }
   }
+  addGroups(params.groups, 0)
 
   if (params.unscheduled.length > 0) {
     const collapsed = params.collapsed.has(UNSCHEDULED_ID)

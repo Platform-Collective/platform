@@ -93,6 +93,10 @@ export interface ClientViewExtension {
   hierarchy?: ClientHierarchy
   // Totals shown in the group headers, for lists that turn it on in their view options
   groupSummary?: ClientGroupSummary
+  // Identity of the displayed view (project and saved view). A list that groups on several levels keeps which of
+  // its groups the viewer collapsed under it, so that every view remembers its own groups. Lists that group on one
+  // level keep their own key, so the sub-issues of an issue and the other embedded lists are unaffected.
+  groupStateScope?: string
 }
 
 /**

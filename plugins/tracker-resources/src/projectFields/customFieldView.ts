@@ -42,6 +42,8 @@ export interface CustomFieldViewParams {
   hierarchy?: ClientHierarchy
   // Totals in the group headers of lists whose view options turn it on
   groupSummary?: ClientGroupSummary
+  // Identity of the displayed saved view; lists that group on several levels keep their collapsed groups under it
+  groupStateScope?: string
 }
 
 type IssueLike = Doc & { customFields?: Record<string, unknown> }
@@ -160,7 +162,8 @@ export function createCustomFieldViewExtension (params: CustomFieldViewParams): 
     },
     scanLimit,
     hierarchy: params.hierarchy,
-    groupSummary: params.groupSummary
+    groupSummary: params.groupSummary,
+    groupStateScope: params.groupStateScope
   }
 }
 

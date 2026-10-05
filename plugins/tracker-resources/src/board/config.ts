@@ -4,6 +4,7 @@
 //
 
 import { deepEqual } from 'fast-equals'
+import { MAX_BOARD_GROUP_LEVELS, resolveGroupLevels } from '../grouping/levels'
 import { isGroupableType, parseCustomFieldViewKey, toCustomFieldViewKey } from '../projectFields/query'
 import type { ProjectField } from '@hcengineering/tracker'
 
@@ -28,8 +29,7 @@ export const BOARD_OPTION_KEY = 'board'
 /** Column field of a board that was never configured. */
 export const DEFAULT_COLUMN_FIELD = 'status'
 
-/** The "No grouping" value of the group-by view option (it is `noCategory` of the view plugin). */
-export const NO_GROUPING = '#no_category'
+export { NO_GROUPING } from '../grouping/levels'
 
 /** Built-in attributes of an issue that can be the column field, in the order they are offered. */
 export const BUILTIN_COLUMN_FIELDS: readonly string[] = ['status', 'assignee', 'priority', 'component', 'milestone']
@@ -221,12 +221,15 @@ export interface BoardDimensions {
   columnKey: string
   // Field the swimlanes come from; undefined when the board has no swimlanes
   laneKey?: string
+  // Field the sub-lanes of a swimlane come from ("Then by"); only with swimlanes
+  subLaneKey?: string
 }
 
 /**
  * The fields the board is laid out by. A column field that does not exist (a deleted custom field) falls back to
- * the status. The swimlanes are the first "Group by" of the view; the same field as the columns would only give
- * one swimlane per column, so it is ignored, and so is a custom field that does not exist.
+ * the status. The swimlanes are the first "Group by" of the view and the sub-lanes the second ("Then by"). The same
+ * field as the columns would only give one swimlane per column, so it is skipped, and so is a custom field that does
+ * not exist or cannot be grouped by.
  */
 export function resolveBoardDimensions (
   config: BoardConfig,
@@ -234,9 +237,10 @@ export function resolveBoardDimensions (
   available: BoardFieldAvailability
 ): BoardDimensions {
   const columnKey = isAvailableColumnField(config.columnField, available) ? config.columnField : DEFAULT_COLUMN_FIELD
-  const first = groupBy?.[0]
-  const noLanes = first === undefined || first === '' || first === NO_GROUPING || first === columnKey
-  // A custom field that is gone (or cannot be grouped by) gives no swimlanes
-  const gone = first !== undefined && parseCustomFieldViewKey(first) !== undefined && !isAvailableColumnField(first, available)
-  return { columnKey, laneKey: noLanes || gone ? undefined : first }
+  const [laneKey, subLaneKey] = resolveGroupLevels(groupBy, {
+    max: MAX_BOARD_GROUP_LEVELS,
+    exclude: [columnKey],
+    isAvailable: (key) => parseCustomFieldViewKey(key) === undefined || isAvailableColumnField(key, available)
+  })
+  return { columnKey, laneKey, subLaneKey }
 }

@@ -30,7 +30,6 @@
     getResultOptions,
     getResultQuery,
     isClientViewKey,
-    noCategory,
     openDoc,
     claimResultCountOwner,
     releaseResultCountOwner,
@@ -47,6 +46,16 @@
   import { readFieldSums, resolveFieldSums, type SummableField } from '../../fieldSum/config'
   import { loadSummableFields } from '../../fieldSum/load'
   import { computeFieldSums, formatFieldSums } from '../../fieldSum/sum'
+  import { expansionStore } from '../../hierarchy/expansionStore'
+  import {
+    allGroups,
+    buildNestedGroups,
+    summarizeGroups,
+    toggleGroupCollapsed,
+    type GroupLevel,
+    type NestedGroup
+  } from '../../grouping/nested'
+  import { collapsedGroupsStorageKey, MAX_ROADMAP_GROUP_LEVELS, resolveGroupLevels } from '../../grouping/levels'
   import { iterationsByFieldKey, sharedIterationsStore } from '../../iterations/iterationsStore'
   import tracker from '../../plugin'
   import { sharedProjectFieldsStore } from '../../projectFields/projectFieldsStore'
@@ -63,7 +72,6 @@
     type DateSource,
     type ItemSchedule
   } from '../../roadmap/dates'
-  import { groupItems, sortGroupsByLabel, type RoadmapGroupOf } from '../../roadmap/grouping'
   import {
     BUILTIN_LABEL_FIELDS,
     buildItemLabel,
@@ -77,7 +85,8 @@
     itemShape,
     placeLabel,
     visibleRowRange,
-    type RoadmapRow
+    type RoadmapRow,
+    type RowGroup
   } from '../../roadmap/layout'
   import { collectMarkers, markersInRange } from '../../roadmap/markers'
   import {
@@ -250,7 +259,8 @@
   })
 
   $: orderBy = viewOptions.orderBy
-  $: groupKey = viewOptions.groupBy?.[0] ?? noCategory
+  // The levels the rows are grouped by: "Group by", then "Then by" (the table's popup offers both)
+  $: groupKeys = resolveGroupLevels(viewOptions.groupBy, { max: MAX_ROADMAP_GROUP_LEVELS })
   $: ext = $clientViewExtension
   // Order by a custom field is evaluated on the client, every other key by the server
   $: clientSort = isClientViewKey(ext, orderBy?.[0])
@@ -288,12 +298,12 @@
   $: split = partitionBySchedule(items, scheduleOf)
 
   // ---- groups ----
-  $: grouping = groupKey !== noCategory
+  $: grouping = groupKeys.length > 0
   const idOf = (issue: Issue): string => issue._id
 
-  function groupValueOf (issue: Issue): string | undefined {
-    const fieldKey = parseCustomFieldViewKey(groupKey)
-    const raw = fieldKey !== undefined ? issue.customFields?.[fieldKey] : (issue as unknown as Record<string, unknown>)[groupKey]
+  function groupValueOf (issue: Issue, key: string): string | undefined {
+    const fieldKey = parseCustomFieldViewKey(key)
+    const raw = fieldKey !== undefined ? issue.customFields?.[fieldKey] : (issue as unknown as Record<string, unknown>)[key]
     return raw === undefined || raw === null || raw === '' ? undefined : String(raw)
   }
 
@@ -308,44 +318,48 @@
     return index === -1 ? categoryOrder.length : index
   }
 
-  function buildGroups (
-    scheduled: Issue[],
+  // How one level splits the items. The first level lists the empty groups of a custom field with "show empty
+  // groups"; a level below lists only what is in its parent group.
+  function levelOf (
     key: string,
+    scheduled: Issue[],
     fieldsDep: unknown,
+    first: boolean,
     shouldShowAll: boolean
-  ): Array<RoadmapGroupOf<Issue>> {
+  ): GroupLevel<Issue> {
     void fieldsDep
-    if (key === noCategory) return [{ id: 'all', value: undefined, items: scheduled }]
+    const valueOf = (issue: Issue): string | undefined => groupValueOf(issue, key)
     if (isClientViewKey(ext, key) && ext !== undefined) {
       // Custom fields: the extension knows the order of the values (options, iterations in calendar order)
       const order = ext
         .getCategories(key, scheduled, viewOptions)
         .filter((c): c is string | undefined => c === undefined || typeof c === 'string')
-      return groupItems(scheduled, groupValueOf, order, shouldShowAll)
+      return { valueOf, order, includeEmpty: first && shouldShowAll }
     }
-    const groups = groupItems(scheduled, groupValueOf)
     switch (key) {
       case 'status':
-        return [...groups].sort((a, b) => {
-          if (a.value === undefined || b.value === undefined) return a.value === b.value ? 0 : a.value === undefined ? 1 : -1
-          const sa = $statusStore.byId.get(a.value as any)
-          const sb = $statusStore.byId.get(b.value as any)
-          // Not started, active, done, canceled; then by name
-          return statusRank(sa?.category) - statusRank(sb?.category) || (sa?.name ?? '').localeCompare(sb?.name ?? '')
-        })
+        // Not started, active, done, canceled; then by name
+        return {
+          valueOf,
+          compare: (a, b) => {
+            const sa = $statusStore.byId.get(a as any)
+            const sb = $statusStore.byId.get(b as any)
+            return statusRank(sa?.category) - statusRank(sb?.category) || (sa?.name ?? '').localeCompare(sb?.name ?? '')
+          }
+        }
       case 'priority': {
         // Urgent first, "No priority" (0) last
-        const rank = (v: string | undefined): number => (v === undefined ? 10 : Number(v) === 0 ? 9 : Number(v))
-        return [...groups].sort((a, b) => rank(a.value) - rank(b.value))
+        const rank = (v: string): number => (Number(v) === 0 ? 9 : Number(v))
+        return { valueOf, compare: (a, b) => rank(a) - rank(b) }
       }
       default:
-        return sortGroupsByLabel(groups, (v) => groupLabel(v))
+        return { valueOf, compare: (a, b) => groupLabel(a, key).localeCompare(groupLabel(b, key)) }
     }
   }
 
-  function groupLabel (value: string | undefined): string {
-    if (value === undefined) return ext?.emptyGroupLabel(groupKey) ?? text('noValue')
-    const fieldKey = parseCustomFieldViewKey(groupKey)
+  function groupLabel (value: string | undefined, key: string): string {
+    if (value === undefined) return ext?.emptyGroupLabel(key) ?? text('noValue')
+    const fieldKey = parseCustomFieldViewKey(key)
     if (fieldKey !== undefined) {
       const field = $registry.byKey.get(fieldKey)
       if (field === undefined) return value
@@ -353,7 +367,7 @@
         formatCustomValue(field, { [field.key]: value }, iterationsByKey.get(field.key) ?? [], $themeStore.language) ?? value
       )
     }
-    switch (groupKey) {
+    switch (key) {
       case 'status':
         return $statusStore.byId.get(value as any)?.name ?? value
       case 'kind':
@@ -371,30 +385,46 @@
     }
   }
 
-  $: groups = buildGroups(split.scheduled, groupKey, [ext, $statusStore, $taskTypeStore, $registry, iterationsByKey, assignees, componentById, milestoneById, priorityNames, texts], viewOptions.shouldShowAll === true)
+  // The groups of the scheduled items, nested by the levels; without grouping there is one group that is not drawn
+  $: nested = buildNestedGroups(
+    split.scheduled,
+    groupKeys.map((key, index) =>
+      levelOf(
+        key,
+        split.scheduled,
+        [ext, $statusStore, $taskTypeStore, $registry, iterationsByKey, assignees, componentById, milestoneById, priorityNames, texts],
+        index === 0,
+        viewOptions.shouldShowAll === true
+      )
+    )
+  )
+  let groups: Array<RowGroup<Issue>>
+  $: groups = grouping ? nested : [{ id: 'all', items: split.scheduled }]
+  $: groupById = new Map<string, NestedGroup<Issue>>(allGroups(nested).map((g) => [g.id, g]))
+  function labelOfGroup (id: string): string {
+    const group = groupById.get(id)
+    return group === undefined ? '' : groupLabel(group.value, groupKeys[group.level])
+  }
 
-  // Sums of the chosen number fields in the group headers (GitHub's "Field sum"); the items of a group are the ones
-  // the view shows, so what the filter leaves out is not counted
+  // Sums of the chosen number fields in the group headers (GitHub's "Field sum"), on every level; the items of a
+  // group are the ones the view shows, so what the filter leaves out is not counted
   let summable: SummableField[] = []
   $: void loadSummableFields($registry.fields, $themeStore.language).then((res) => {
     summable = res
   })
   $: sumFields = resolveFieldSums(readFieldSums(viewOptions), summable)
-  $: groupSums = new Map<string, string>(
+  $: groupSums =
     sumFields.length === 0
-      ? []
-      : groups.flatMap((g): Array<[string, string]> => {
-        const text = formatFieldSums(computeFieldSums(g.items, sumFields))
-        return text === undefined ? [] : [[g.id, text]]
-      })
-  )
+      ? new Map<string, string>()
+      : summarizeGroups(nested, (list) => formatFieldSums(computeFieldSums(list, sumFields)))
 
-  let collapsed = new Set<string>()
+  // The collapsed groups are kept per viewer and per saved view; without a saved view they last for the session
+  let sessionCollapsed = new Set<string>()
+  $: collapsedStore = ext?.groupStateScope !== undefined ? expansionStore(collapsedGroupsStorageKey('roadmap', ext.groupStateScope)) : undefined
+  $: collapsed = (collapsedStore !== undefined ? $collapsedStore : undefined) ?? sessionCollapsed
   function toggleGroup (id: string): void {
-    const next = new Set(collapsed)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    collapsed = next
+    if (collapsedStore !== undefined) collapsedStore.toggle(id)
+    else sessionCollapsed = toggleGroupCollapsed(sessionCollapsed, id)
   }
 
   $: layout = buildRows<Issue>({
@@ -948,6 +978,7 @@
                 class="group-toggle"
                 type="button"
                 style:width="{LEFT_WIDTH}px"
+                style:padding-left={row.type === 'group' ? `${0.75 + row.depth}rem` : undefined}
                 aria-expanded={!row.collapsed}
                 on:click={() => {
                   toggleGroup(row.id)
@@ -958,7 +989,7 @@
                   {#if row.type === 'unscheduled'}
                     <Label label={tracker.string.RoadmapUnscheduled} />
                   {:else}
-                    {groupLabel(groups.find((g) => g.id === row.id)?.value)}
+                    {labelOfGroup(row.id)}
                   {/if}
                 </span>
                 <span class="count">{row.count}</span>

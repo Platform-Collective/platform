@@ -6,6 +6,7 @@
   import { createEventDispatcher } from 'svelte'
   import view from '../plugin'
   import { buildConfigLookup, canResolveAttribute, getKeyLabel } from '../utils'
+  import { groupByFromRows, groupByRows, selectGroupLevel } from '../nestedGroups'
   import { isDropdownType, isToggleType, noCategory } from '../viewOptions'
   import { SortingOrder } from '@hcengineering/core'
   import { getEmbeddedLabel } from '@hcengineering/platform'
@@ -38,11 +39,8 @@
 
   const dispatch = createEventDispatcher()
 
-  const groups =
-    viewOptions.groupBy[viewOptions.groupBy.length - 1] === noCategory ||
-    viewOptions.groupBy.length === config.groupDepth
-      ? [...viewOptions.groupBy]
-      : [...viewOptions.groupBy, noCategory]
+  // One row per level of grouping and, while the layout allows another level, a row to choose it
+  let groups = groupByRows(viewOptions.groupBy, config.groupDepth)
 
   const client = getClient()
   const hierarchy = client.getHierarchy()
@@ -80,15 +78,9 @@
       }
     })
 
-  function selectGrouping (value: string, i: number) {
-    groups[i] = value
-    if (value === noCategory) {
-      groups.length = i + 1
-    } else if (config.groupDepth === undefined || config.groupDepth > viewOptions.groupBy.length) {
-      groups.length = i + 1
-      groups[i + 1] = noCategory
-    }
-    viewOptions.groupBy = groups.length > 1 ? groups.filter((p) => p !== noCategory) : [...groups]
+  function selectGrouping (value: string, i: number): void {
+    groups = selectGroupLevel(groups, i, value, config.groupDepth)
+    viewOptions.groupBy = groupByFromRows(groups)
     dispatch('update', {
       key: 'groupBy',
       value: viewOptions.groupBy
@@ -134,7 +126,7 @@
   {#if !hideGroupingAndOrdering && !hideGrouping && hasMultipleSelections(config.groupBy)}
     {#each groups as group, i}
       <div class="antiCard-menu__item grouping">
-        <span class="overflow-label"><Label label={i === 0 ? view.string.Grouping : view.string.Then} /></span>
+        <span class="overflow-label"><Label label={i === 0 ? view.string.Grouping : view.string.ThenBy} /></span>
         <DropdownLabelsIntl
           label={view.string.Grouping}
           kind={'regular'}

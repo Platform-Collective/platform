@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: EPL-2.0
 //
 
-import { groupItems, groupIdOf, sortGroupsByLabel } from '../grouping'
 import {
   buildItemLabel,
   customLabelFieldId,
@@ -79,53 +78,5 @@ describe('label field ids', () => {
     expect(toggleLabelField(['title'], 'identifier', all)).toEqual(['identifier', 'title'])
     expect(toggleLabelField(['identifier', 'title'], 'identifier', all)).toEqual(['title'])
     expect(toggleLabelField([], 'assignee', all)).toEqual(['assignee'])
-  })
-})
-
-describe('groupItems', () => {
-  const items = [
-    { id: 1, g: 'b' },
-    { id: 2, g: 'a' },
-    { id: 3, g: undefined },
-    { id: 4, g: 'b' },
-    { id: 5, g: 'c' },
-    { id: 6, g: '' }
-  ]
-  const valueOf = (i: { g: string | undefined }): string | undefined => i.g
-
-  it('groups in first-seen order with the empty group last and keeps the item order', () => {
-    const groups = groupItems(items, valueOf)
-    expect(groups.map((g) => [g.value, g.items.map((i) => i.id)])).toEqual([
-      ['b', [1, 4]],
-      ['a', [2]],
-      ['c', [5]],
-      [undefined, [3, 6]]
-    ])
-    expect(groups[3].id).toBe(groupIdOf(undefined))
-  })
-
-  it('follows the given order and appends values it does not know', () => {
-    const groups = groupItems(items, valueOf, ['c', 'a', 'zzz'])
-    expect(groups.map((g) => g.value)).toEqual(['c', 'a', 'b', undefined])
-  })
-
-  it('lists empty groups of the order on request', () => {
-    const groups = groupItems(items.slice(0, 2), valueOf, ['z', 'a', 'b', undefined], true)
-    expect(groups.map((g) => [g.value, g.items.length])).toEqual([
-      ['z', 0],
-      ['a', 1],
-      ['b', 1],
-      [undefined, 0]
-    ])
-  })
-
-  it('has no groups without items', () => {
-    expect(groupItems([], valueOf)).toEqual([])
-  })
-
-  it('sorts groups by label with the empty group last', () => {
-    const groups = groupItems(items, valueOf)
-    const sorted = sortGroupsByLabel(groups, (v) => ({ a: 'Zed', b: 'Alpha', c: 'Mid' })[v] ?? v)
-    expect(sorted.map((g) => g.value)).toEqual(['b', 'c', 'a', undefined])
   })
 })

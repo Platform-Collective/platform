@@ -52,7 +52,13 @@ import view, { type ViewOptionModel } from '@hcengineering/view'
 import { classicIssueTaskStatuses } from '.'
 import tracker from './plugin'
 import { DOMAIN_TRACKER } from './types'
-import { ganttViewOptions, issuesOptions } from './viewlets'
+import {
+  BOARD_GROUP_DEPTH,
+  ganttViewOptions,
+  issuesOptions,
+  ROADMAP_GROUP_DEPTH,
+  TABLE_GROUP_DEPTH
+} from './viewlets'
 
 async function createDefaultProject (tx: TxOperations): Promise<void> {
   const current = await tx.findOne(tracker.class.Project, {
@@ -250,6 +256,28 @@ async function addSearchViewOptions (client: MigrationUpgradeClient): Promise<vo
           other: [...currentOther, ...missing]
         }
       })
+    }
+  }
+}
+
+// The Table, Board and Roadmap viewlets of a project group on several levels ("Group by", then "Then by").
+// The number of levels is part of the stored viewlet docs, which builder.createDoc never updates in an existing
+// workspace, so it is set here. Idempotent: a viewlet that already has the depth is left alone.
+async function setNestedGroupDepth (client: MigrationUpgradeClient): Promise<void> {
+  const txOp = new TxOperations(client, core.account.System)
+
+  const targets = [
+    { id: tracker.viewlet.IssueList, depth: TABLE_GROUP_DEPTH },
+    { id: tracker.viewlet.IssueKanban, depth: BOARD_GROUP_DEPTH },
+    { id: tracker.viewlet.IssueRoadmap, depth: ROADMAP_GROUP_DEPTH }
+  ]
+
+  for (const t of targets) {
+    const viewlets = await client.findAll(view.class.Viewlet, { _id: t.id })
+    for (const v of viewlets) {
+      const current = v.viewOptions
+      if (current === undefined || current.groupDepth === t.depth) continue
+      await txOp.update(v, { viewOptions: { ...current, groupDepth: t.depth } })
     }
   }
 }
@@ -588,6 +616,10 @@ export const trackerOperation: MigrateOperation = {
       {
         state: 'add-search-view-options',
         func: addSearchViewOptions
+      },
+      {
+        state: 'set-nested-group-depth',
+        func: setNestedGroupDepth
       }
     ])
   }

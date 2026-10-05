@@ -90,6 +90,7 @@
     "NewFilteredView": "Nowy widok filtrowany",
     "FilteredViewName": "Nazwa filtrowanego widoku",
     "Then": "Następnie po",
+    "ThenBy": "Then by",
     "ShowPreviewOnClick": "Aby wyświetlić podgląd indeksu dokumentu, należy kliknąć...",
     "Shown": "{len, plural, =1 {wyświetlany # wynik} few {wyświetlane # wyniki} other {wyświetlanych # wyników}} {total, plural, =-1 {} =1 {z # przefiltrowanego wyniku} other {z # przefiltrowanych wyników}}",
     "Total": "Razem: {total, plural, other{#}}",

@@ -27,4 +27,17 @@ describe('exportGroupKeys', () => {
       'status'
     ])
   })
+
+  it('lists the sub-lanes of a board between its lanes and its columns', () => {
+    expect(
+      exportGroupKeys({
+        groupBy: ['assignee', 'priority'],
+        board: { columnKey: 'status', laneKey: 'assignee', subLaneKey: 'priority' }
+      })
+    ).toEqual(['assignee', 'priority', 'status'])
+  })
+
+  it('lists three levels of a table', () => {
+    expect(exportGroupKeys({ groupBy: ['status', 'assignee', 'priority'] })).toEqual(['status', 'assignee', 'priority'])
+  })
 })

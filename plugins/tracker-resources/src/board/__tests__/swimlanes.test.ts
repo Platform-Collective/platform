@@ -4,7 +4,7 @@
 //
 
 import { categoryKey, groupByCustomField } from '../columns'
-import { buildBoardGrid, gridOrder, toggleLane } from '../swimlanes'
+import { buildBoardGrid, cellLanes, gridOrder, toggleLane } from '../swimlanes'
 
 interface Item {
   id: string
@@ -117,5 +117,107 @@ describe('gridOrder', () => {
   it('skips collapsed swimlanes', () => {
     const grid = buildBoardGrid(input)
     expect(ids(gridOrder(grid, new Set(['a'])))).toEqual(['4', '3'])
+  })
+})
+
+describe('sub-lanes', () => {
+  const nested = {
+    ...input,
+    columns: [undefined, 'todo', 'doing', 'done'],
+    // the sub-lane field is "kind", kept in customFields like the others
+    subLanes: ['bug', 'task', undefined],
+    bucketSubLanes: (list: readonly Item[]) => groupByCustomField(list, 'kind')
+  }
+  const withKinds = [
+    item('1', { stage: 'todo', team: 'a', kind: 'bug' }),
+    item('2', { stage: 'doing', team: 'a', kind: 'task' }),
+    item('3', { stage: 'todo', team: 'b', kind: 'task' }),
+    item('4', { team: 'b' }),
+    item('5', { stage: 'done', team: 'a', kind: 'bug' })
+  ]
+  const grid = buildBoardGrid({ ...nested, items: withKinds })
+
+  it('nests a lane per sub-lane value inside every swimlane, without empty sub-lanes', () => {
+    expect(grid.lanes.map((l) => l.key)).toEqual(['a', 'b'])
+    const a = grid.lanes[0]
+    expect(a.subLanes.map((l) => l.category)).toEqual(['bug', 'task'])
+    expect(a.subLanes.map((l) => l.depth)).toEqual([1, 1])
+    expect(a.subLanes.map((l) => l.path)).toEqual([['a', 'bug'], ['a', 'task']])
+    const b = grid.lanes[1]
+    // "No kind" is last and only listed where there are items without a kind
+    expect(b.subLanes.map((l) => l.category)).toEqual(['task', undefined])
+  })
+
+  it('gives every sub-lane a key that is unique over the board', () => {
+    const keys = [...grid.lanes.map((l) => l.key), ...grid.lanes.flatMap((l) => l.subLanes.map((s) => s.key))]
+    expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('holds the cells in the sub-lanes and every item in exactly one cell', () => {
+    const a = grid.lanes[0]
+    expect(a.cells).toEqual([])
+    expect(cellLanes(grid).every((l) => l.cells.length === 4)).toBe(true)
+    const seen = cellLanes(grid).flatMap((l) => l.cells.flatMap((c) => ids(c.items)))
+    expect(seen.sort()).toEqual(['1', '2', '3', '4', '5'])
+    expect(ids(a.items)).toEqual(['1', '2', '5'])
+    expect(a.subLanes[0].cells.map((c) => ids(c.items))).toEqual([[], ['1'], [], ['5']])
+  })
+
+  it('counts the items of a swimlane over its sub-lanes in the visible columns', () => {
+    const visible = buildBoardGrid({ ...nested, items: withKinds, columns: [undefined, 'todo', 'doing'] })
+    expect(visible.lanes.map((l) => l.count)).toEqual([2, 2])
+    expect(visible.lanes[0].subLanes.map((l) => l.count)).toEqual([1, 1])
+    expect(visible.lanes[0].items).toHaveLength(3)
+  })
+
+  it('keeps the column totals over all swimlanes and sub-lanes', () => {
+    expect(grid.columnTotals.get('todo')).toBe(2)
+    expect(grid.columnTotals.get('done')).toBe(1)
+  })
+
+  it('shows empty swimlanes with "show empty groups" but never empty sub-lanes', () => {
+    const shown = buildBoardGrid({ ...nested, items: withKinds, lanes: ['a', 'empty', 'b'], showEmptyLanes: true })
+    expect(shown.lanes.map((l) => l.key)).toEqual(['a', 'empty', 'b'])
+    expect(shown.lanes[1].subLanes).toEqual([])
+    // an empty swimlane draws its own (empty) cells, like a board without sub-lanes
+    expect(shown.lanes[1].cells).toHaveLength(4)
+  })
+
+  it('is the plain grid without sub-lanes', () => {
+    const plain = buildBoardGrid({ ...input, items: withKinds })
+    expect(plain.lanes.every((l) => l.subLanes.length === 0 && l.depth === 0)).toBe(true)
+    expect(plain.lanes[0].path).toEqual(['a'])
+    expect(cellLanes(plain)).toEqual(plain.lanes)
+  })
+
+  it('moves the keyboard lane by lane, sub-lane by sub-lane, and skips collapsed ones', () => {
+    expect(ids(gridOrder(grid, new Set()))).toEqual(['1', '5', '2', '3', '4'])
+    // collapse the swimlane "a"
+    expect(ids(gridOrder(grid, new Set(['a'])))).toEqual(['3', '4'])
+    // collapse one sub-lane of "a"
+    expect(ids(gridOrder(grid, new Set([grid.lanes[0].subLanes[0].key])))).toEqual(['2', '3', '4'])
+  })
+
+  it('groups 50k items on two levels quickly', () => {
+    const teams = ['a', 'b', 'c', 'd']
+    const kinds = ['bug', 'task', 'epic']
+    const stages = ['todo', 'doing', 'done']
+    const big: Item[] = []
+    for (let n = 0; n < 50000; n++) {
+      big.push(item(String(n), { team: teams[n % 4], kind: kinds[n % 3], stage: stages[n % 3 === 0 ? 0 : n % 5 % 3] }))
+    }
+    const started = Date.now()
+    const result = buildBoardGrid({
+      items: big,
+      lanes: teams,
+      columns: stages,
+      bucketLanes: (list) => groupByCustomField(list, 'team'),
+      bucketColumns: (list) => groupByCustomField(list, 'stage'),
+      showEmptyLanes: false,
+      subLanes: kinds,
+      bucketSubLanes: (list) => groupByCustomField(list, 'kind')
+    })
+    expect(Date.now() - started).toBeLessThan(3000)
+    expect(cellLanes(result).reduce((n, l) => n + l.count, 0)).toBe(50000)
   })
 })

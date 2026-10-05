@@ -201,6 +201,40 @@ describe('resolveBoardDimensions', () => {
     )
   })
 
+  it('takes the second group-by as sub-lanes', () => {
+    expect(resolveBoardDimensions(DEFAULT_BOARD_CONFIG, ['assignee', 'priority'], available)).toEqual({
+      columnKey: 'status',
+      laneKey: 'assignee',
+      subLaneKey: 'priority'
+    })
+    expect(resolveBoardDimensions(DEFAULT_BOARD_CONFIG, ['assignee', 'customFields.sprint'], available).subLaneKey).toBe(
+      'customFields.sprint'
+    )
+    // a single group-by has no sub-lanes, as before
+    expect(resolveBoardDimensions(DEFAULT_BOARD_CONFIG, ['assignee'], available).subLaneKey).toBeUndefined()
+    // only two levels are drawn
+    expect(resolveBoardDimensions(DEFAULT_BOARD_CONFIG, ['assignee', 'priority', 'component'], available)).toEqual({
+      columnKey: 'status',
+      laneKey: 'assignee',
+      subLaneKey: 'priority'
+    })
+  })
+
+  it('skips the field of the columns and fields that are gone when choosing the levels', () => {
+    // the column field is not a swimlane, so the next level moves up
+    expect(resolveBoardDimensions(DEFAULT_BOARD_CONFIG, ['status', 'assignee', 'priority'], available)).toEqual({
+      columnKey: 'status',
+      laneKey: 'assignee',
+      subLaneKey: 'priority'
+    })
+    expect(
+      resolveBoardDimensions(DEFAULT_BOARD_CONFIG, ['assignee', 'customFields.gone'], available).subLaneKey
+    ).toBeUndefined()
+    expect(
+      resolveBoardDimensions(DEFAULT_BOARD_CONFIG, ['assignee', 'assignee'], available).subLaneKey
+    ).toBeUndefined()
+  })
+
   it('falls back to the status when the column field does not exist', () => {
     expect(
       resolveBoardDimensions({ ...DEFAULT_BOARD_CONFIG, columnField: 'customFields.gone' }, [], available).columnKey

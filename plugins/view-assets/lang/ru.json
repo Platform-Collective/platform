@@ -87,6 +87,7 @@
     "NewFilteredView": "Новое фильтрованное отображение",
     "FilteredViewName": "Имя фильтрованного отображения",
     "Then": "Затем",
+    "ThenBy": "Затем по",
     "ShowPreviewOnClick": "Пожалуйста, нажмите, чтобы увидеть предпросмотр...",
     "Shown": "показано {len} результатов {total, plural, =-1 {} other {из #}}",
     "Total": "Всего: {total, plural, other{#}}",

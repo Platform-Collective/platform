@@ -87,6 +87,7 @@
     "NewFilteredView": "Nouvelle vue filtrée",
     "FilteredViewName": "Nom de la vue filtrée",
     "Then": "Puis",
+    "ThenBy": "Then by",
     "ShowPreviewOnClick": "Cliquez pour afficher l'aperçu de l'index du document...",
     "Shown": "affiche {len} résultats {total, plural, =-1 {} other {sur # éléments filtrés}}",
     "Total": "Total : {total, plural, other{#}}",

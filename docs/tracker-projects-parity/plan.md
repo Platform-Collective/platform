@@ -1367,3 +1367,84 @@ Asana workload views, with the toolbar and the per-view settings of the Roadmap 
 - The axis is cut to 366 days / 156 weeks / 72 months around today; items beyond it are only counted in the out of range notice. Totals and utilization are over the axis.
 - A marker item (one date) puts its whole load on that day, which makes a single estimated item over capacity on its own when it is bigger than the capacity of the day.
 - The `Reassign` list offers the rows of the view (assignees with items and members of the project), not every person of the workspace.
+
+
+---
+
+## Phase 14 implementation notes (Nested grouping)
+
+**What was found first**
+
+- The shared list of the view plugin already nests groups: `viewOptions.groupBy` is an array, `ListCategories` recurses one level per entry
+  (`level`, `lastLevel`), headers, counts, the group summary of Phase 8 and the hierarchy of Phase 8 (only at the last level) all work per level, and the
+  Customize View popup already offered "Then" rows for any viewlet without `groupDepth`. The tracker table never used it only because its stored
+  viewlet had no depth cap and the rows said "Then". So the Table work is making that machinery correct, bounded and per view, not a new renderer.
+- `plugins/view-resources/src/utils/nested-groups.ts` listed in section 5 never existed. It is dropped: the pure helpers of the shared list are
+  `plugins/view-resources/src/nestedGroups.ts`, those of the tracker layouts `plugins/tracker-resources/src/grouping/`.
+
+**What was built**
+
+- Pure logic with jest tests next to it. `grouping/nested.ts` (tracker-resources): the nested bucket builder (`buildNestedGroups`: up to any number of levels,
+  order by an explicit option/iteration order, then by a comparator such as the label, then first seen; "No <field>" last on every level; `includeEmpty` per level;
+  path ids that stay stable; `flattenNestedGroups`, `visibleNestedItems`, `summarizeGroups` (sums per group at every level), `toggleGroupCollapsed`), tested including 50k
+  items on three levels. `grouping/levels.ts`: `resolveGroupLevels` (caps, de-duplicates, skips the columns' field and deleted custom fields, "No grouping" ends the list),
+  the layout caps and the storage keys of the collapsed groups. `view-resources/src/nestedGroups.ts`: rows of the group-by controls of the popup, `isEmptyCategory`,
+  `emptyCategoryLast`, `categoriesWithDocs`, tested together with `isViewDirty`.
+- Table (shared list, additive): "Group by" + "Then by" + "Then by" (`groupDepth` 3 on the tracker Table viewlet, new string `view.ThenBy` in all 14 locales of `view-assets`).
+  The popup logic moved into `nestedGroups.ts` and fixes an off-by-one: the old code let the popup grow a fourth row in the same session. Changing a level keeps the levels
+  below it (a key that becomes a duplicate is dropped) instead of throwing them away.
+- Board: swimlanes in two levels (lane, then sub-lane) taken from "Group by" and "Then by" (`groupDepth` 2 on the board viewlet); `buildBoardGrid` got optional `subLanes`
+  / `bucketSubLanes`, `BoardLane` got `path`, `depth`, `subLanes`; `BoardLanes.svelte` draws a swimlane with sub-lanes as a header over its sub-lanes, each with the cells.
+  A drop on a sub-lane writes column + lane + sub-lane in one update, the "+" row of a cell starts with all three values. The field of the columns is skipped as a level.
+- Roadmap: rows in two levels (`groupDepth` 2 on the roadmap viewlet). `buildRows` takes optional `children` per group and puts `depth` on a group row (indent in the
+  header); `RoadmapView` builds its groups with `buildNestedGroups`, the old single level `roadmap/grouping.ts` was removed (same ordering rules, now covered by the builder tests).
+  Field sums are shown on every level.
+- View export: the board export lists the sub-lane keys between the lane and the column keys (`exportGroupKeys`).
+- Model: `groupDepth` of `issuesOptions` is 3 for the Table and 2 for the Board, the Roadmap has 2 (`TABLE_/BOARD_/ROADMAP_GROUP_DEPTH`). The stored viewlet docs are not updated by
+  `builder.createDoc`, so the upgrade step `set-nested-group-depth` of `model-tracker` sets the depth on the existing `IssueList`, `IssueKanban` and `IssueRoadmap` viewlets.
+
+**Behaviour**
+
+- Group headers on every level show their own count and, when "Field sum" is on, their own sums. "No <field>" is the last group of every level of a nested view.
+  Hierarchy (Phase 8) applies inside the deepest group only. "Show empty groups" lists the empty groups of the first level only; a level below lists what is in its parent
+  group (so a custom field with every option does not repeat all options under every parent). Same on the board (empty sub-lanes are always dropped) and the roadmap.
+- Collapsed groups are kept per viewer and per saved view in local storage. Table: only when the view groups on two or more levels (the key is the old key prefixed with
+  `<project>.<view id>`, a single level keeps the legacy key, so every other list and the sub-issues of an issue are unaffected; `ClientViewExtension.groupStateScope`).
+  Roadmap and Board: set of collapsed group ids under `tracker.groups.collapsed.<layout>.<project>.<view id>` (the same store as the Phase 8 expansion). The board used to forget
+  its collapsed lanes on every reload, the roadmap its groups; both now remember them. Without a saved view the state lasts for the session.
+- A stored single `groupBy` behaves as before: `resolveGroupLevels` gives the same single level, the Table list code path for one level is unchanged (`emptyCategoryLast` and the
+  per-view key are applied for two or more levels only).
+
+**Per-view config and dirty tracking**
+
+- Nothing new is stored: the levels are the existing `viewOptions.groupBy` array, saved with the view like any view option. The unsaved dot works through the existing
+  `isViewDirty` deep compare (tests: adding a level makes the view dirty, removing it again makes it clean, a single stored group-by set again stays clean, the order of the
+  levels is a change). The popup stores `["status"]`, not `["status", "#no_category"]`, so choosing nothing for the next row leaves the view clean.
+
+**Shared code touched (additive, opt-in)**
+
+- `view-resources`: `ListCategories` (arranges "No <field>" last and drops empty groups of a client key below the first level, only when the view has two or more levels),
+  `List` (the per-view key for nested views), `ViewOptions` (rows through the pure helpers, label `ThenBy`), `ClientViewExtension.groupStateScope`, `index` exports.
+  The GitHub integration model reuses `issuesOptions(false)`, so its issue list also gets the three levels.
+
+**Deviations / decisions**
+
+- The Table is not rendered from the new builder: the shared list already renders nested groups (virtual limits, drag to rank, keyboard, selection, hierarchy rows), rewriting that
+  would put every other list at risk. The builder serves the layouts that draw their own groups (Roadmap now, Board sub-lanes use the same bucket idea in `buildBoardGrid`).
+- The popup label changed from "Then" to "Then by" for every list that nests (all of them use the same popup).
+
+**Verified / not verified**
+
+- Verified: jest (view-resources 313 -> incl. new `nestedGroups`, tracker-resources incl. nested builder, levels, board sub-lanes, roadmap nested rows, export keys),
+  tracker-assets / view-assets lang tests, `svelte-check` of view-resources and tracker-resources, `rush validate --to @hcengineering/model-tracker` and `--to @hcengineering/prod`.
+- Not verified: nothing was run in a browser or against a server (no sanity spec). Keyboard navigation across nested table groups is the existing recursive logic of
+  `ListCategories.select` and was read, not exercised; the look of the indented sub-lane and roadmap sub-group headers, the sticky offsets of the lane headers and the
+  upgrade step against a real workspace are by reasoning, not by eye.
+
+**Not done / limits**
+
+- Keyboard navigation inside the board's sub-lanes follows the order of the cards lane by lane (sub-lane by sub-lane); sideways moves stay inside a sub-lane's row.
+- No "collapse all / expand all" for groups, no drag of a group to reorder levels, and no third level on the Board or the Roadmap (two, as decided).
+- The popup does not offer the same field twice in one chain, but a stored view that does has the repeated key skipped by the board and the roadmap and rendered as is by the Table.
+- A Table view stored with more than three levels (possible before the cap) keeps rendering all of them; only the popup is capped.
+

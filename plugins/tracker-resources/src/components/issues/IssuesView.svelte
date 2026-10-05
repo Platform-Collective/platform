@@ -87,6 +87,7 @@
   import { isHierarchyEnabled, newViewHierarchyOptions } from '../../hierarchy/config'
   import { expansionStorageKey } from '../../hierarchy/expansion'
   import { expansionStore } from '../../hierarchy/expansionStore'
+  import { groupStateScope } from '../../grouping/levels'
   import { buildProgressIndex, type SubIssueRef } from '../../hierarchy/progress'
   import { buildIssueFilterSchema, customFilterToQuery, type NamedOption } from '../../issueFilter'
   import { generateIssueShortLink } from '../../issues'
@@ -686,10 +687,10 @@
       }
       const columns = buildExportColumns(config, env)
       const extension = getClientViewExtension()
-      let board: { columnKey: string, laneKey: string | undefined } | undefined
+      let board: { columnKey: string, laneKey: string | undefined, subLaneKey?: string } | undefined
       if (isBoardMode) {
         const dimensions = resolveBoardDimensions(readBoardConfig(options), options.groupBy, { fields: $registry.fields })
-        board = { columnKey: dimensions.columnKey, laneKey: dimensions.laneKey }
+        board = { columnKey: dimensions.columnKey, laneKey: dimensions.laneKey, subLaneKey: dimensions.subLaneKey }
       }
       const { rows } = await loadExportRows(client, tracker.class.Issue, {
         query: mergeQueries(optionsQuery, viewQuery),
@@ -855,6 +856,9 @@
         }
       : undefined
 
+  // Nested groups, the roadmap and the board keep their collapsed groups per viewer and per saved view
+  $: viewStateScope = groupStateScope(project, activeViewId)
+
   // Always installed (even without fields) so a saved custom group/order key never reaches the server
   $: clientViewExtension.set(
     createCustomFieldViewExtension({
@@ -864,7 +868,8 @@
       emptyLabels,
       iterations: $iterationsStore,
       hierarchy,
-      groupSummary
+      groupSummary,
+      groupStateScope: viewStateScope
     })
   )
   onDestroy(() => {

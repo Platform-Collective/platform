@@ -38,6 +38,7 @@
   } from '@hcengineering/view'
   import { createEventDispatcher, onDestroy, SvelteComponentTyped } from 'svelte'
   import { SelectionFocusProvider } from '../../selection'
+  import { categoriesWithDocs, emptyCategoryLast } from '../../nestedGroups'
   import {
     buildModel,
     concatCategories,
@@ -116,10 +117,16 @@
     ): Promise<void> => {
       if (extension !== undefined && isClientViewKey(extension, groupByKey)) {
         // Grouping by a client-side key is computed from the loaded documents
-        categories = extension.getCategories(groupByKey, docs, viewOptions)
+        let res = extension.getCategories(groupByKey, docs, viewOptions)
+        if (level > 0) {
+          // A level below the first lists what is in its parent group, not the groups listed for being empty
+          const present = groupBy(docs, groupByKey)
+          res = categoriesWithDocs(res, (c) => getGroupByValues(present, c).length)
+        }
+        categories = arrangeCategories(res, viewOptions)
         return
       }
-      categories = await getCategories(client, _class, space, docs, groupByKey)
+      categories = arrangeCategories(await getCategories(client, _class, space, docs, groupByKey), viewOptions)
       if (level === 0) {
         for (const viewOption of viewOptionsModel ?? []) {
           if (viewOption.actionTarget !== 'category') continue
@@ -128,7 +135,7 @@
             const f = await getResource(categoryFunc.action)
             const res = hierarchy.clone(await f(_class, query, space, groupByKey, update, queryId))
             if (res !== undefined) {
-              categories = concatCategories(res, categories)
+              categories = arrangeCategories(concatCategories(res, categories), viewOptions)
               return
             }
           }
@@ -136,6 +143,11 @@
       }
     }
   )
+
+  // A view that groups on several levels lists the group without a value ("No <field>") last on every level
+  function arrangeCategories (list: CategoryType[], viewOptions: ViewOptions): CategoryType[] {
+    return viewOptions.groupBy.length > 1 ? emptyCategoryLast(list) : list
+  }
 
   function update (): void {
     void updateCategories(_class, space, docs, groupByKey, viewOptions, viewOptionsConfig, $clientViewExtension)

@@ -68,7 +68,14 @@ const ROW_HEIGHT_VIEW_OPTION: ViewOptionModel = {
   label: tracker.string.RowHeight
 }
 
+// Levels of nested grouping ("Group by", then "Then by") a layout offers. The Table nests three levels, the Board
+// shows the swimlanes in two (a lane and a sub-lane) and the Roadmap groups its rows in two.
+export const TABLE_GROUP_DEPTH = 3
+export const BOARD_GROUP_DEPTH = 2
+export const ROADMAP_GROUP_DEPTH = 2
+
 export const issuesOptions = (kanban: boolean): ViewOptionsModel => ({
+  groupDepth: kanban ? BOARD_GROUP_DEPTH : TABLE_GROUP_DEPTH,
   groupBy: [
     'status',
     'kind',
@@ -591,7 +598,7 @@ export function roadmapViewOptions (): ViewOptionsModel {
       ['status', SortingOrder.Ascending],
       ['priority', SortingOrder.Ascending]
     ],
-    groupDepth: 1,
+    groupDepth: ROADMAP_GROUP_DEPTH,
     other: base.other
   }
 }
@@ -952,7 +959,7 @@ export function defineViewlets (builder: Builder): void {
         // field of the board settings (the status unless chosen otherwise). '#no_category' is the "No grouping"
         // choice of the Customize View popup.
         defaultGroupBy: '#no_category',
-        groupDepth: 1
+        groupDepth: BOARD_GROUP_DEPTH
       },
       configOptions: {
         strict: true

@@ -77,7 +77,9 @@
   import { attributeTarget, customTarget, resolveDropUpdate, type DropTarget } from '../../board/move'
   import { draftValuesFromUpdate } from '../../draft/addItem'
   import type { DraftValues } from '../../draft/create'
-  import { buildBoardGrid, gridOrder } from '../../board/swimlanes'
+  import { buildBoardGrid, cellLanes, gridOrder, toggleLane } from '../../board/swimlanes'
+  import { expansionStore } from '../../hierarchy/expansionStore'
+  import { collapsedGroupsStorageKey } from '../../grouping/levels'
   import { readFieldSums, resolveFieldSums, sumProjection, type SummableField } from '../../fieldSum/config'
   import { loadSummableFields } from '../../fieldSum/load'
   import { computeFieldSums, formatFieldSums } from '../../fieldSum/sum'
@@ -156,6 +158,8 @@
   $: dimensions = resolveBoardDimensions(boardConfig, viewOptions.groupBy, { fields: $registry.fields })
   $: columnKey = dimensions.columnKey
   $: laneKey = dimensions.laneKey
+  // The second level of the swimlanes ("Then by"); only drawn inside swimlanes
+  $: subLaneKey = laneKey !== undefined ? dimensions.subLaneKey : undefined
   $: hiddenKeys = hiddenOf(boardConfig, columnKey)
   $: limits = limitsOf(boardConfig, columnKey)
 
@@ -165,6 +169,7 @@
 
   let columnInfo: DimensionInfo = { key: 'status', custom: false }
   let laneInfo: DimensionInfo | undefined
+  let subLaneInfo: DimensionInfo | undefined
 
   // The presenters of custom fields are made by the view extension, which is rebuilt when the fields change
   async function loadInfo (key: string, extension: ClientViewExtension | undefined): Promise<DimensionInfo> {
@@ -189,6 +194,14 @@
     })
   } else {
     laneInfo = undefined
+  }
+  $: if (subLaneKey !== undefined) {
+    const key = subLaneKey
+    void loadInfo(key, $clientViewExtension).then((res) => {
+      if (res.key === subLaneKey) subLaneInfo = res
+    })
+  } else {
+    subLaneInfo = undefined
   }
 
   let kanbanUI: KanbanUI
@@ -237,7 +250,9 @@
   // Custom fields are stored in one record, so a board that uses one needs the whole record of the issues
   $: projectionKeys = Array.from(
     new Set([
-      ...[columnKey, ...(laneKey !== undefined ? [laneKey] : [])].map((k) => (isCustomDimensionKey(k) ? 'customFields' : k)),
+      ...[columnKey, ...(laneKey !== undefined ? [laneKey] : []), ...(subLaneKey !== undefined ? [subLaneKey] : [])].map(
+        (k) => (isCustomDimensionKey(k) ? 'customFields' : k)
+      ),
       ...sumProjection(sumKeys)
     ])
   )
@@ -278,15 +293,17 @@
   // ---- columns and swimlanes ----
   let columnCategories: CategoryType[] = []
   let laneCategories: CategoryType[] = []
+  let subLaneCategories: CategoryType[] = []
   let loadCategories = true
 
   const columnQueryId = generateId()
   const laneQueryId = generateId()
+  const subLaneQueryId = generateId()
 
   async function loadAxis (
     key: string,
     queryId: Ref<Doc>,
-    axis: 'column' | 'lane',
+    axis: 'column' | 'lane' | 'subLane',
     docs: DocWithRank[],
     refresh: () => void
   ): Promise<CategoryType[]> {
@@ -315,6 +332,7 @@
   // An answer that arrives after a newer request was made is dropped
   let columnRequest = 0
   let laneRequest = 0
+  let subLaneRequest = 0
 
   function updateColumns (): void {
     const request = ++columnRequest
@@ -338,9 +356,23 @@
     })
   }
 
+  function updateSubLanes (): void {
+    if (subLaneKey === undefined) {
+      subLaneRequest++
+      subLaneCategories = []
+      return
+    }
+    const request = ++subLaneRequest
+    void loadAxis(subLaneKey, subLaneQueryId, 'subLane', tasks, updateSubLanes).then((res) => {
+      if (request !== subLaneRequest) return
+      subLaneCategories = res
+    })
+  }
+
   // The dependencies are listed so that the categories follow the data, the settings and the project's fields
   $: if ([columnKey, tasks, viewOptions, viewOptionsConfig, $registry, $iterationsStore].length > 0) updateColumns()
   $: if ([laneKey, tasks, viewOptions, viewOptionsConfig, $registry, $iterationsStore].length > 0) updateLanes()
+  $: if ([subLaneKey, tasks, viewOptions, viewOptionsConfig, $registry, $iterationsStore].length > 0) updateSubLanes()
 
   function bucket (docs: readonly DocWithRank[], key: string, categories: CategoryType[]): Record<string, DocWithRank[]> {
     const fieldKey = parseCustomFieldViewKey(key)
@@ -359,11 +391,24 @@
         columns: columns.visible,
         bucketLanes: (items) => bucket(items, laneKey ?? '', laneCategories),
         bucketColumns: (items) => bucket(items, columnKey, columnCategories),
-        showEmptyLanes: viewOptions.shouldShowAll === true
+        showEmptyLanes: viewOptions.shouldShowAll === true,
+        ...(subLaneKey !== undefined
+          ? { subLanes: subLaneCategories, bucketSubLanes: (items: readonly DocWithRank[]) => bucket(items, subLaneKey ?? '', subLaneCategories) }
+          : {})
       })
       : undefined
 
-  let collapsedLanes = new Set<string>()
+  // The collapsed lanes are kept per viewer and per saved view; without a saved view they last for the session
+  let sessionCollapsed = new Set<string>()
+  $: collapsedStore =
+    $clientViewExtension?.groupStateScope !== undefined
+      ? expansionStore(collapsedGroupsStorageKey('board', $clientViewExtension.groupStateScope))
+      : undefined
+  $: collapsedLanes = (collapsedStore !== undefined ? $collapsedStore : undefined) ?? sessionCollapsed
+  function toggleCollapsedLane (key: string): void {
+    if (collapsedStore !== undefined) collapsedStore.toggle(key)
+    else sessionCollapsed = toggleLane(sessionCollapsed, key)
+  }
 
   $: visibleTasks = ((): DocWithRank[] => {
     if (grid !== undefined) return gridOrder(grid, collapsedLanes)
@@ -409,14 +454,28 @@
 
   // What a draft added in a cell of the board starts with: the value of its column and, with swimlanes, of its swimlane.
   // `undefined` when the cell cannot take a new item (its value does not exist for the project).
-  function draftValuesFor (column: CategoryType, lane?: CategoryType): DraftValues | undefined {
+  function draftValuesFor (column: CategoryType, lane: CategoryType[] = []): DraftValues | undefined {
     if (space === undefined) return undefined
     const stub = { space } as unknown as Doc
     const columnTarget = targetOf(columnKey, column, stub)
-    const laneTarget = laneKey !== undefined ? targetOf(laneKey, lane, stub) : undefined
-    if (columnTarget === undefined || (laneKey !== undefined && laneTarget === undefined)) return undefined
-    const update = resolveDropUpdate(stub, [columnTarget, laneTarget])
+    const laneTargets = laneTargetsOf(stub, lane)
+    if (columnTarget === undefined || laneTargets === undefined) return undefined
+    const update = resolveDropUpdate(stub, [columnTarget, ...laneTargets])
     return update === undefined ? undefined : draftValuesFromUpdate(update)
+  }
+
+  // What the lanes of a path (swimlane, sub-lane) write; undefined when one of them cannot take the value
+  function laneTargetsOf (doc: Doc, path: CategoryType[]): Array<DropTarget | undefined> | undefined {
+    const keys = [laneKey, subLaneKey]
+    const targets: Array<DropTarget | undefined> = []
+    for (const [level, category] of path.entries()) {
+      const key = keys[level]
+      if (key === undefined) continue
+      const target = targetOf(key, category, doc)
+      if (target === undefined) return undefined
+      targets.push(target)
+    }
+    return targets
   }
 
   // ---- moving cards ----
@@ -431,13 +490,13 @@
     return resolveDropUpdate(doc as Item, [target]) as DocumentUpdate<Item> | undefined
   }
 
-  // Dropping on a swimlane writes the value of the swimlane and of the column together
-  const getLaneUpdateProps = (doc: Item, lane: CategoryType, column: CategoryType): DocumentUpdate<Item> | undefined => {
+  // Dropping on a lane writes the value of the column, of the swimlane and of the sub-lane together
+  const getLaneUpdateProps = (doc: Item, lane: CategoryType[], column: CategoryType): DocumentUpdate<Item> | undefined => {
     if (laneKey === undefined) return undefined
     const columnTarget = targetOf(columnKey, column, doc)
-    const laneTarget = targetOf(laneKey, lane, doc)
-    if (columnTarget === undefined || laneTarget === undefined) return undefined
-    return resolveDropUpdate(doc, [columnTarget, laneTarget]) as DocumentUpdate<Item> | undefined
+    const laneTargets = laneTargetsOf(doc, lane)
+    if (columnTarget === undefined || laneTargets === undefined) return undefined
+    return resolveDropUpdate(doc, [columnTarget, ...laneTargets]) as DocumentUpdate<Item> | undefined
   }
 
   // Full documents of a column of a custom field are loaded by the ids of its cards
@@ -487,11 +546,14 @@
       mode: 'browser'
     }}
   />
-  {#if grid !== undefined && laneInfo !== undefined && laneInfo.key === laneKey}
+  {#if grid !== undefined && laneInfo !== undefined && laneInfo.key === laneKey && (subLaneKey === undefined || subLaneInfo?.key === subLaneKey)}
     {@const lanesInfo = laneInfo}
     <BoardLanes
       bind:this={lanesUI}
-      bind:collapsed={collapsedLanes}
+      collapsed={collapsedLanes}
+      on:toggle={(evt) => {
+        toggleCollapsedLane(evt.detail)
+      }}
       {_class}
       options={resultOptions}
       columns={columns.visible}
@@ -500,7 +562,10 @@
       getGroupQuery={getIdsQuery}
       getUpdate={getLaneUpdateProps}
       getAvailableColumns={async (doc) => await getAvailableCategories(columnKey, columnCategories, doc)}
-      getAvailableLanes={async (doc) => await getAvailableCategories(laneKey ?? '', laneCategories, doc)}
+      getAvailableLanes={async (doc, level) =>
+        level === 0
+          ? await getAvailableCategories(laneKey ?? '', laneCategories, doc)
+          : await getAvailableCategories(subLaneKey ?? '', subLaneCategories, doc)}
       selection={listProvider.current($focusStore)}
       checked={$selection ?? []}
       on:obj-focus={(evt) => {
@@ -520,7 +585,7 @@
           titleColor={color?.title ?? 'var(--theme-caption-color)'}
           {count}
           limit={limits[categoryKey(column)]}
-          total={columnTotal?.(grid.lanes.flatMap((lane) => lane.cells[index]?.items ?? []))}
+          total={columnTotal?.(cellLanes(grid).flatMap((lane) => lane.cells[index]?.items ?? []))}
           readonly={$restrictionStore.readonly}
           on:add={() => {
             addIssue(column)
@@ -542,12 +607,16 @@
           />
         </BoardColumnHeader>
       </svelte:fragment>
-      <svelte:fragment slot="lane-header" let:lane>
-        <DimensionTitle info={lanesInfo} category={lane.category} {space} accent={false} />
+      <svelte:fragment slot="lane-header" let:lane let:level>
+        {#if level === 0 || subLaneInfo === undefined}
+          <DimensionTitle info={lanesInfo} category={lane.category} {space} accent={false} />
+        {:else}
+          <DimensionTitle info={subLaneInfo} category={lane.category} {space} accent={false} />
+        {/if}
       </svelte:fragment>
       <svelte:fragment slot="cell-footer" let:lane let:column>
         {#if space !== undefined && !$restrictionStore.readonly}
-          {@const values = draftValuesFor(column, lane.category)}
+          {@const values = draftValuesFor(column, lane.path)}
           {#if values !== undefined}
             <AddItemRow project={space} {values} compact placement={'below'} />
           {/if}

@@ -91,6 +91,7 @@
     "NewFilteredView": "新筛选视图",
     "FilteredViewName": "筛选视图名称",
     "Then": "然后",
+    "ThenBy": "Then by",
     "ShowPreviewOnClick": "请点击显示文档索引预览...",
     "Shown": "显示 {len} 结果 {total, plural, =-1 {} other {共筛选 # 个项目}}",
     "Total": "总计: {total, plural, other {#}}",

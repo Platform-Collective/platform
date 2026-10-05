@@ -87,6 +87,7 @@
     "NewFilteredView": "新しいフィルターされたビュー",
     "FilteredViewName": "フィルターされたビュー名",
     "Then": "次に",
+    "ThenBy": "Then by",
     "ShowPreviewOnClick": "クリックしてドキュメントインデックスプレビューを表示してください...",
     "Shown": " {total, plural, =-1 {} other {フィルターされた # 件のアイテムのうち}} {len} 件の結果を表示中",
     "Total": "合計: {total, plural, other{#}}",

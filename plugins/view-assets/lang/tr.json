@@ -87,6 +87,7 @@
     "NewFilteredView": "Yeni filtreli görünüm",
     "FilteredViewName": "Filtreli görünüm adı",
     "Then": "Sonra",
+    "ThenBy": "Then by",
     "ShowPreviewOnClick": "Doküman indeks önizlemesini göstermek için lütfen tıklayın...",
     "Shown": "{len} sonuç gösteriliyor {total, plural, =-1 {} other {filtrelenmiş # öğeden}}",
     "Total": "Toplam: {total, plural, other{#}}",

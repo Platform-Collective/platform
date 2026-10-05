@@ -91,6 +91,7 @@
     "NewFilteredView": "Nové filtrované zobrazení",
     "FilteredViewName": "Název filtrovaného zobrazení",
     "Then": "Poté",
+    "ThenBy": "Then by",
     "ShowPreviewOnClick": "Klikněte pro zobrazení náhledu indexu dokumentu...",
     "Shown": "zobrazeno {len} výsledků {total, plural, =-1 {} other {z filtrovaných # položek}}",
     "Total": "Celkem: {total, plural, other{#}}",

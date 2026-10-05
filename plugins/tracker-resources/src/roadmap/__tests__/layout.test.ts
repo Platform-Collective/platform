@@ -154,6 +154,60 @@ describe('buildRows', () => {
   })
 })
 
+describe('buildRows with nested groups', () => {
+  const idOf = (it: { id: string }): string => it.id
+  const item = (id: string): { id: string } => ({ id })
+  const a = item('a')
+  const b = item('b')
+  const c = item('c')
+  const groups = [
+    {
+      id: 'g1',
+      items: [a, b, c],
+      children: [
+        { id: 'g1/x', items: [a, b] },
+        { id: 'g1/y', items: [c] }
+      ]
+    },
+    { id: 'g2', items: [], children: [] }
+  ]
+  const layoutOf = (collapsed: string[]): ReturnType<typeof buildRows<{ id: string }>> =>
+    buildRows({ groups, unscheduled: [], idOf, collapsed: new Set(collapsed), showGroupHeaders: true })
+  const describeRows = (rows: ReturnType<typeof layoutOf>['rows']): string[] =>
+    rows.map((r) => (r.type === 'group' ? `${r.id}@${r.depth}:${r.count}` : r.id))
+
+  it('draws the headers of the sub groups under their group and the items under the last level', () => {
+    expect(describeRows(layoutOf([]).rows)).toEqual(['g1@0:3', 'g1/x@1:2', 'a', 'b', 'g1/y@1:1', 'c', 'g2@0:0'])
+  })
+
+  it('hides everything below a collapsed group', () => {
+    expect(describeRows(layoutOf(['g1']).rows)).toEqual(['g1@0:3', 'g2@0:0'])
+  })
+
+  it('collapses a sub group without touching its siblings', () => {
+    expect(describeRows(layoutOf(['g1/x']).rows)).toEqual(['g1@0:3', 'g1/x@1:2', 'g1/y@1:1', 'c', 'g2@0:0'])
+  })
+
+  it('stacks the rows without gaps', () => {
+    const layout = layoutOf([])
+    expect(layout.rows.map((r) => r.y)).toEqual([
+      0,
+      GROUP_ROW_HEIGHT,
+      2 * GROUP_ROW_HEIGHT,
+      2 * GROUP_ROW_HEIGHT + ROW_HEIGHT,
+      2 * GROUP_ROW_HEIGHT + 2 * ROW_HEIGHT,
+      3 * GROUP_ROW_HEIGHT + 2 * ROW_HEIGHT,
+      3 * GROUP_ROW_HEIGHT + 3 * ROW_HEIGHT
+    ])
+    expect(layout.height).toBe(4 * GROUP_ROW_HEIGHT + 3 * ROW_HEIGHT)
+  })
+
+  it('lists the items of the last level when there are no headers', () => {
+    const layout = buildRows({ groups, unscheduled: [], idOf, collapsed: new Set(['g1']), showGroupHeaders: false })
+    expect(layout.rows.map((r) => r.id)).toEqual(['a', 'b', 'c'])
+  })
+})
+
 describe('visibleRowRange', () => {
   const rows = Array.from({ length: 100 }, (_, i) => ({ y: i * 10, height: 10 }))
 

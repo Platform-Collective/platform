@@ -87,6 +87,7 @@
     "NewFilteredView": "Nova visualização com filtros",
     "FilteredViewName": "Nome da visualização com filtros",
     "Then": "Então",
+    "ThenBy": "Then by",
     "ShowPreviewOnClick": "Por favor, clique para mostrar a pré-visualização do índice do documento...",
     "Shown": "mostrando {len} resultados {total, plural, =-1 {} other {de # itens filtrados}}",
     "Total": "Total: {total, plural, other{#}}",

@@ -145,6 +145,9 @@
 
   let fastQueryIds = new Set<Ref<Doc>>()
 
+  // The collapsed groups of a list that groups on several levels are kept per view; other lists keep the legacy key
+  $: groupPersistKey = viewOptions.groupBy.length > 1 ? ($clientViewExtension?.groupStateScope ?? '') : ''
+
   $: groupSummary = $clientViewExtension?.groupSummary
   $: summaryProjection =
     groupSummary !== undefined && groupSummary.isEnabled(viewOptions) ? groupSummary.projection(viewOptions) : undefined
@@ -281,7 +284,7 @@
     {limiter}
     {listProvider}
     level={0}
-    groupPersistKey={''}
+    {groupPersistKey}
     {createItemDialog}
     {createItemDialogProps}
     {createItemLabel}
