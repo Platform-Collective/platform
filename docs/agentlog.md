@@ -59,3 +59,47 @@ Phase list went from 8 to 12 and is now ordered by real dependency: fields(0-1) 
 
 Next: get answers on the 7 open questions in plan.md §8, then time-box Phase 0 as a
 2-3 day spike to validate the custom-field-on-record design end to end.
+
+## 2026-10-03 — Phases 0-14 implemented; PR #48 raised
+
+Author resolved the open questions (recorded in plan.md §8): the four dropped extras
+(Calendar, Workload, nested grouping, automation builder) **stay in scope** as phases 12-15
+because the goal is "the tracker alone is as good as a GitHub board". Roles stay
+workspace-level. Historical Insights / burn-up is out. One large PR.
+
+Phases **0-14** are now implemented and committed on `feat/tracker-projects-parity`
+(20 commits). Phase 15 (automation rule builder) is deliberately not started — the phase 10
+field-change webhook is the parity-faithful route and lands first.
+
+Validation run locally across the 5 changed packages before raising the PR:
+
+```
+plugins/tracker-resources   tsc --noEmit clean   1215 tests pass (86 suites)
+plugins/view-resources      tsc --noEmit clean    313 tests pass (16 suites)
+models/tracker              tsc --noEmit clean      4 tests pass
+plugins/view                tsc --noEmit clean
+plugins/view-assets         lang key-parity test passes (14 locales)
+```
+
+1533 tests, 0 failures. No formatter run (repo rule).
+
+## 2026-10-03 — Phase 14: nested grouping (the last commit on the branch)
+
+- Table groups up to 3 levels, Board 2 (lane + sub-lane), Roadmap 2. `groupDepth` per viewlet,
+  and since `builder.createDoc` does not update already-stored viewlet docs, the upgrade step
+  `set-nested-group-depth` of `model-tracker` patches the existing `IssueList` / `IssueKanban` /
+  `IssueRoadmap` viewlets. **If a new viewlet is added later, it needs the same treatment.**
+- A drop on a board sub-lane writes column + lane + sub-lane in ONE update. Getting that wrong
+  silently loses the lane value — do not "simplify" it into three writes.
+- Collapsed-group state is per viewer AND per saved view, but **only when the view groups on two
+  or more levels** (single level keeps the legacy key so every other list and the sub-issues of an
+  issue are unaffected).
+- Plan correction recorded in plan.md: `plugins/view-resources/src/utils/nested-groups.ts` listed in
+  plan section 5 never existed. The real files are `view-resources/src/nestedGroups.ts` (shared list)
+  and `tracker-resources/src/grouping/` (tracker layouts).
+- The old single-level `roadmap/grouping.ts` was deleted; its ordering rules are now covered by the
+  nested builder tests.
+
+Next: PR #48 is open against `develop`. It is **stacked on `feat/mcp-http-server`**, which has no
+PR of its own, so the diff also shows 11 MCP commits that are not part of this effort. Either merge
+the MCP work first or review only `git log d1a668cb2..HEAD`. Next work item is phase 15.
