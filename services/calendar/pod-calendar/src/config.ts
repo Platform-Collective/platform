@@ -38,7 +38,8 @@ type RequiredKey =
   | 'InitLimit'
   | 'WorkspaceInactivityInterval'
 
-const envMap: { [key in keyof Config]-?: string } = {
+// GoogleEnabled is derived from Credentials and WATCH_URL and has no environment variable of its own.
+const envMap: { [key in Exclude<keyof Config, 'GoogleEnabled'>]-?: string } = {
   Port: 'PORT',
 
   AccountsURL: 'ACCOUNTS_URL',
@@ -48,8 +49,7 @@ const envMap: { [key in keyof Config]-?: string } = {
   WATCH_URL: 'WATCH_URL',
   InitLimit: 'INIT_LIMIT',
   KvsUrl: 'KVS_URL',
-  WorkspaceInactivityInterval: 'WORKSPACE_INACTIVITY_INTERVAL',
-  GoogleEnabled: 'GOOGLE_ENABLED' // derived, not read from the environment
+  WorkspaceInactivityInterval: 'WORKSPACE_INACTIVITY_INTERVAL'
 }
 
 const parseNumber = (str: string | undefined): number | undefined => (str !== undefined ? Number(str) : undefined)

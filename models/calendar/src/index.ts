@@ -72,6 +72,7 @@ import workbench from '@hcengineering/model-workbench'
 import { WidgetType } from '@hcengineering/workbench'
 import preference, { TPreference } from '@hcengineering/model-preference'
 import { calendarIntegrationKind } from '@hcengineering/calendar'
+import { getEmbeddedLabel } from '@hcengineering/platform'
 
 import calendar from './plugin'
 
@@ -102,15 +103,15 @@ export class TExternalCalendar extends TCalendar implements ExternalCalendar {
 
 @Mixin(calendar.mixin.CalDavCalendar, calendar.class.ExternalCalendar)
 export class TCalDavCalendar extends TExternalCalendar implements CalDavCalendar {
-  @Prop(TypeString(), calendar.string.Account)
+  @Prop(TypeString(), getEmbeddedLabel('CalDAV account key'))
   @Hidden()
     accountKey!: string
 
-  @Prop(TypeString(), calendar.string.Calendar)
+  @Prop(TypeString(), getEmbeddedLabel('CalDAV collection href'))
   @Hidden()
     href!: string
 
-  @Prop(TypeString(), calendar.string.Calendar)
+  @Prop(TypeString(), getEmbeddedLabel('CalDAV collection ctag'))
   @Hidden()
     ctag?: string
 }

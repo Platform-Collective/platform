@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { isAllowlistedAddress, isBlockedAddress } from '../ranges'
+import { isAllowlistedAddress, isBlockedAddress, validateOptions } from '../ranges'
 
 describe('isBlockedAddress', () => {
   const blocked = [
@@ -34,6 +34,9 @@ describe('isBlockedAddress', () => {
     '::10.0.0.1',
     '64:ff9b::10.0.0.1',
     '64:ff9b::8.8.8.8',
+    '64:ff9b:1::a00:1',
+    '64:ff9b:1:ffff::808:808',
+    '::ffff:0:a00:1',
     '2002:0a00:0001::',
     '2002:0808:0808::',
     '2001::1',
@@ -62,6 +65,7 @@ describe('isBlockedAddress', () => {
     '2606:4700:4700::1111',
     '2a00:1450:4001:80e::200e',
     '::ffff:8.8.8.8',
+    '::ffff:0:808:808',
     '::8.8.8.8',
     '[2606:4700:4700::1001]'
   ]
@@ -101,5 +105,34 @@ describe('isAllowlistedAddress', () => {
 
   it('does not match across address families', () => {
     expect(isAllowlistedAddress('::ffff:10.0.0.1', ['10.0.0.0/8'])).toBe(false)
+  })
+})
+
+describe('validateOptions', () => {
+  it('accepts valid entries', () => {
+    expect(() => {
+      validateOptions({ allowlist: ['caldav.example', '*.internal.test', '10.0.0.0/8', '::1'] })
+    }).not.toThrow()
+    expect(() => {
+      validateOptions({ blockedRanges: ['8.8.0.0/16', 'fd00::/8'] })
+    }).not.toThrow()
+    expect(() => {
+      validateOptions({})
+    }).not.toThrow()
+  })
+
+  it('rejects malformed CIDRs and empty allowlist entries up front', () => {
+    expect(() => {
+      validateOptions({ blockedRanges: ['8.8.0.0'] })
+    }).toThrow(/blockedRanges/)
+    expect(() => {
+      validateOptions({ blockedRanges: ['10.0.0.0/33'] })
+    }).toThrow(/blockedRanges/)
+    expect(() => {
+      validateOptions({ allowlist: ['10.0.0.0/8/'] })
+    }).toThrow(/allowlist CIDR/)
+    expect(() => {
+      validateOptions({ allowlist: [' '] })
+    }).toThrow(/empty allowlist/)
   })
 })

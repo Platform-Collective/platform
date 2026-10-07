@@ -2,13 +2,15 @@
 
 import http from 'http'
 import { type AddressInfo } from 'net'
-import { createSafeFetch } from '../fetch'
+import { createSafeFetch, PinnedAddresses } from '../fetch'
 import { type Lookup, SafeFetchError } from '../safe-fetch-types'
 
 interface Seen {
   method: string
   path: string
   authorization?: string
+  proxyAuthorization?: string
+  contentType?: string
   body: string
 }
 
@@ -32,6 +34,8 @@ async function startServer (
         method: req.method ?? '',
         path: req.url ?? '',
         authorization: req.headers.authorization,
+        proxyAuthorization: req.headers['proxy-authorization'],
+        contentType: req.headers['content-type'],
         body
       }
       seen.push(entry)
@@ -107,13 +111,36 @@ describe('createSafeFetch', () => {
           res.write(Buffer.alloc(600, 'b'))
           res.end()
           return
+        case '/head-big':
+          res.setHeader('content-length', '5000')
+          res.end()
+          return
+        case '/echo':
+          res.setHeader('content-type', 'application/json')
+          res.end(JSON.stringify({ method: seen.method, contentType: seen.contentType ?? null, body: seen.body }))
+          return
+        case '/stall':
+          res.writeHead(200, { 'content-type': 'text/plain' })
+          res.write('partial')
+          // never ends; the client timeout must fire while the body is being read
+          return
+        case '/redirect-nolocation':
+          res.writeHead(302)
+          res.end('nowhere to go')
+          return
+        case '/form':
+          res.setHeader('content-type', 'application/x-www-form-urlencoded')
+          res.end('a=1&b=two')
+          return
         default:
           res.writeHead(404)
           res.end()
       }
     })
     secondary = await startServer((_req, res, seen) => {
-      res.end(JSON.stringify({ host: 'other', auth: seen.authorization ?? null }))
+      res.end(
+        JSON.stringify({ host: 'other', auth: seen.authorization ?? null, proxy: seen.proxyAuthorization ?? null })
+      )
     })
   })
 
@@ -149,11 +176,61 @@ describe('createSafeFetch', () => {
     expect(await res.json()).toEqual({ ok: true, auth: 'Bearer t' })
   })
 
-  it('drops the authorization header on a cross-origin redirect', async () => {
+  it('drops authorization and proxy-authorization on a cross-origin redirect', async () => {
     const fetch = createSafeFetch(base)
-    const res = await fetch(url('/redirect-other'), { headers: { authorization: 'Bearer t' } })
+    const res = await fetch(url('/redirect-other'), {
+      headers: { authorization: 'Bearer t', 'proxy-authorization': 'Basic x' }
+    })
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ host: 'other', auth: null })
+    expect(res.redirected).toBe(true)
+    expect(await res.json()).toEqual({ host: 'other', auth: null, proxy: null })
+  })
+
+  it('keeps method, headers and body from a Request object', async () => {
+    const fetch = createSafeFetch(base)
+    const request = new Request(url('/echo'), {
+      method: 'PROPFIND',
+      headers: { 'content-type': 'application/xml' },
+      body: '<propfind/>'
+    })
+    const res = await fetch(request)
+    expect(await res.json()).toEqual({ method: 'PROPFIND', contentType: 'application/xml', body: '<propfind/>' })
+    const overridden = await fetch(new Request(url('/echo'), { method: 'PROPFIND' }), { method: 'REPORT' })
+    expect((await overridden.json()).method).toBe('REPORT')
+  })
+
+  it('supports clone() and formData() on the limited body', async () => {
+    const fetch = createSafeFetch(base)
+    const res = await fetch(url('/form'))
+    const copy = res.clone()
+    const form = await res.formData()
+    expect(form.get('a')).toBe('1')
+    expect(await copy.text()).toBe('a=1&b=two')
+  })
+
+  it('ignores Content-Length on responses that cannot carry a body', async () => {
+    const fetch = createSafeFetch({ ...base, maxBodyBytes: 100 })
+    const res = await fetch(url('/head-big'), { method: 'HEAD' })
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-length')).toBe('5000')
+  })
+
+  it('returns a redirect without Location as an ordinary readable response', async () => {
+    const fetch = createSafeFetch(base)
+    const res = await fetch(url('/redirect-nolocation'))
+    expect(res.status).toBe(302)
+    expect(await res.text()).toBe('nowhere to go')
+  })
+
+  it('reports TIMEOUT when the timer fires during the body read', async () => {
+    const fetch = createSafeFetch({ ...base, timeoutMs: 300 })
+    const res = await fetch(url('/stall'))
+    expect(res.status).toBe(200)
+    expect(await codeOf(res.text())).toBe('TIMEOUT')
+  })
+
+  it('fails at creation on a malformed blockedRanges entry', () => {
+    expect(() => createSafeFetch({ ...base, blockedRanges: ['not-a-cidr'] })).toThrow(/blockedRanges/)
   })
 
   it('validates every redirect hop against the blocked ranges and DNS', async () => {
@@ -198,5 +275,43 @@ describe('createSafeFetch', () => {
     expect(await codeOf(streamed.text())).toBe('BODY_TOO_LARGE')
     const fine = await createSafeFetch({ ...base, maxBodyBytes: 2000 })(url('/big-chunked'))
     expect((await fine.text()).length).toBe(1200)
+  })
+})
+
+describe('PinnedAddresses', () => {
+  it('removes an entry when the last request for the host releases it', () => {
+    const pinned = new PinnedAddresses()
+    const release1 = pinned.acquire('Host.Example', [{ address: '93.184.216.34', family: 4 }])
+    const release2 = pinned.acquire('host.example.', [{ address: '93.184.216.34', family: 4 }])
+    expect(pinned.size).toBe(1)
+    release1()
+    release1()
+    expect(pinned.size).toBe(1)
+    release2()
+    expect(pinned.size).toBe(0)
+  })
+
+  it('answers lookups only for pinned hosts and respects the requested family', () => {
+    const pinned = new PinnedAddresses()
+    const release = pinned.acquire('dual.example', [
+      { address: '2606:4700::1111', family: 6 },
+      { address: '1.1.1.1', family: 4 }
+    ])
+    const results: unknown[] = []
+    pinned.lookup('dual.example', { family: 4 }, (err, address, family) => results.push([err, address, family]))
+    pinned.lookup('dual.example', { all: true }, (err, address) => results.push([err, address]))
+    pinned.lookup('unknown.example', {}, (err) => results.push([err?.code]))
+    expect(results[0]).toEqual([null, '1.1.1.1', 4])
+    expect(results[1]).toEqual([
+      null,
+      [
+        { address: '2606:4700::1111', family: 6 },
+        { address: '1.1.1.1', family: 4 }
+      ]
+    ])
+    expect(results[2]).toEqual(['ENOTFOUND'])
+    release()
+    pinned.lookup('dual.example', {}, (err) => results.push([err?.code]))
+    expect(results[3]).toEqual(['ENOTFOUND'])
   })
 })

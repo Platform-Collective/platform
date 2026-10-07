@@ -194,6 +194,12 @@ export const main = async (): Promise<void> => {
           res.status(400).send({ err: "'event' or 'workspace' or 'type' is missing" })
           return
         }
+        // Outbound sync to Google only. Without the Google module there is nothing to push, and trying
+        // would take the workspace lock and look up Google secrets on every event write.
+        if (!config.GoogleEnabled) {
+          res.send()
+          return
+        }
         void OutcomingClient.push(ctx, accountClient, workspace, event, type).catch((err: any) => {
           ctx.error('Outcoming sync failed', { eventId: event.eventId, workspace, type, error: err.message })
         })

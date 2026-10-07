@@ -29,6 +29,7 @@ export const BLOCKED_IPV6_RANGES: readonly string[] = [
   '::/128', // unspecified
   '::1/128', // loopback
   '64:ff9b::/96', // NAT64 well-known prefix, blocked as a whole
+  '64:ff9b:1::/48', // NAT64 local-use prefix (RFC 8215), blocked as a whole
   '2001::/32', // Teredo, blocked as a whole
   '2002::/16', // 6to4, blocked as a whole
   'fc00::/7', // unique local
@@ -65,14 +66,18 @@ function ipv4FromParts (hi: number, lo: number): ipaddr.IPv4 {
 }
 
 /**
- * Returns the IPv4 address embedded in the deprecated IPv4-compatible form ::a.b.c.d, if any.
- * NAT64, 6to4 and Teredo prefixes are blocked wholesale instead, see BLOCKED_IPV6_RANGES.
+ * Returns the IPv4 address embedded in the deprecated IPv4-compatible form ::a.b.c.d or in the
+ * IPv4-translated form ::ffff:0:a.b.c.d (RFC 2765), if any. The IPv4-mapped form ::ffff:a.b.c.d is
+ * handled by ipaddr.js itself. NAT64, 6to4 and Teredo prefixes are blocked wholesale instead, see
+ * BLOCKED_IPV6_RANGES.
  */
 function embeddedIpv4 (addr: ipaddr.IPv6): ipaddr.IPv4 | undefined {
   const parts = addr.parts
-  const leadingZero =
-    parts[0] === 0 && parts[1] === 0 && parts[2] === 0 && parts[3] === 0 && parts[4] === 0 && parts[5] === 0
-  if (leadingZero && (parts[6] !== 0 || parts[7] > 1)) {
+  const fourZero = parts[0] === 0 && parts[1] === 0 && parts[2] === 0 && parts[3] === 0
+  if (fourZero && parts[4] === 0 && parts[5] === 0 && (parts[6] !== 0 || parts[7] > 1)) {
+    return ipv4FromParts(parts[6], parts[7])
+  }
+  if (fourZero && parts[4] === 0xffff && parts[5] === 0) {
     return ipv4FromParts(parts[6], parts[7])
   }
   return undefined
@@ -121,6 +126,36 @@ export function isAllowlistedAddress (address: string, allowlist: string[] | und
     if (literal !== undefined && literal.kind() === addr.kind() && literal.toString() === addr.toString()) return true
   }
   return false
+}
+
+/**
+ * Checks allowlist and blockedRanges entries once, so an operator's typo fails at start-up rather than
+ * on the first request. Allowlist entries may be hostnames, `*.suffix` wildcards, IP literals or CIDRs;
+ * blockedRanges entries must be CIDRs.
+ */
+export function validateOptions (opts: SafeFetchOptions): void {
+  for (const entry of opts.blockedRanges ?? []) {
+    try {
+      ipaddr.parseCIDR(entry.trim())
+    } catch {
+      throw new Error(`safe-fetch: invalid blockedRanges entry '${entry}', expected a CIDR such as 10.0.0.0/8`)
+    }
+  }
+  for (const entry of opts.allowlist ?? []) {
+    const item = entry.trim()
+    if (item === '') {
+      throw new Error('safe-fetch: empty allowlist entry')
+    }
+    if (item.includes('/')) {
+      try {
+        ipaddr.parseCIDR(item)
+      } catch {
+        throw new Error(`safe-fetch: invalid allowlist CIDR '${entry}'`)
+      }
+    }
+  }
+  // Warm the parse cache so the per-request path never parses user input again.
+  parseRanges(opts.blockedRanges)
 }
 
 /**
