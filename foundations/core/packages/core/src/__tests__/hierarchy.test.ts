@@ -62,7 +62,7 @@ describe('hierarchy', () => {
     const data = hierarchy.getClass(core.class.TxCreateDoc)
     expect(data).toMatchObject((txes.find((p) => p.objectId === core.class.TxCreateDoc) as TxCreateDoc<Doc>).attributes)
     const notExistClass = 'class:test.MyClass' as Ref<Class<Obj>>
-    expect(() => hierarchy.getClass(notExistClass)).toThrowError('class not found: ' + notExistClass)
+    expect(() => hierarchy.getClass(notExistClass)).toThrow('class not found: ' + notExistClass)
   })
 
   it('getDomain', async () => {
@@ -78,10 +78,10 @@ describe('hierarchy', () => {
     const hierarchy = prepare()
 
     hierarchy.as(txes[0], test.mixin.TestMixin)
-    expect(spyProxy).toBeCalledTimes(1)
+    expect(spyProxy).toHaveBeenCalledTimes(1)
 
     hierarchy.as(txes[0], test.mixin.TestMixin)
-    expect(spyProxy).toBeCalledTimes(1)
+    expect(spyProxy).toHaveBeenCalledTimes(1)
 
     spyProxy.mockReset()
     spyProxy.mockRestore()
@@ -90,20 +90,20 @@ describe('hierarchy', () => {
   it('should call static methods', async () => {
     const spyToDoc = jest.spyOn(Proxy, '_toDoc')
     Hierarchy.toDoc(txes[0])
-    expect(spyToDoc).toBeCalledTimes(1)
+    expect(spyToDoc).toHaveBeenCalledTimes(1)
     spyToDoc.mockReset()
     spyToDoc.mockRestore()
 
     const spyMixinClass = jest.spyOn(Proxy, '_mixinClass')
     Hierarchy.mixinClass(txes[0])
-    expect(spyMixinClass).toBeCalledTimes(1)
+    expect(spyMixinClass).toHaveBeenCalledTimes(1)
 
     spyMixinClass.mockImplementationOnce(() => undefined).mockImplementationOnce(() => test.mixin.TestMixin)
     let result = Hierarchy.mixinOrClass(txes[0])
     expect(result).toStrictEqual(txes[0]._class)
     result = Hierarchy.mixinOrClass(txes[0])
     expect(result).toStrictEqual(test.mixin.TestMixin)
-    expect(spyMixinClass).toBeCalledTimes(3)
+    expect(spyMixinClass).toHaveBeenCalledTimes(3)
 
     spyMixinClass.mockReset()
     spyMixinClass.mockRestore()
@@ -364,7 +364,7 @@ describe('hierarchy', () => {
     expect(withStateInterface._id).toBe(test.interface.WithState)
 
     // Should throw for non-existent
-    expect(() => hierarchy.getClassOrInterface('class:NonExistent' as Ref<Class<Obj>>)).toThrowError(
+    expect(() => hierarchy.getClassOrInterface('class:NonExistent' as Ref<Class<Obj>>)).toThrow(
       'class not found: class:NonExistent'
     )
   })
@@ -377,12 +377,12 @@ describe('hierarchy', () => {
     expect(withStateInterface._id).toBe(test.interface.WithState)
 
     // Should throw for non-existent interface
-    expect(() => hierarchy.getInterface('interface:NonExistent' as any)).toThrowError(
+    expect(() => hierarchy.getInterface('interface:NonExistent' as any)).toThrow(
       'interface not found: interface:NonExistent'
     )
 
     // Should throw for class (not interface)
-    expect(() => hierarchy.getInterface(core.class.Space as any)).toThrowError()
+    expect(() => hierarchy.getInterface(core.class.Space as any)).toThrow()
   })
 
   it('should handle isMixin correctly', async () => {
@@ -525,7 +525,7 @@ describe('hierarchy', () => {
     const hierarchy = prepare()
 
     // Should throw for non-existent attribute
-    expect(() => hierarchy.getAttribute(core.class.Space, 'nonExistentAttr')).toThrowError(
+    expect(() => hierarchy.getAttribute(core.class.Space, 'nonExistentAttr')).toThrow(
       'attribute not found: nonExistentAttr'
     )
   })
@@ -607,7 +607,7 @@ describe('hierarchy', () => {
     const hierarchy = prepare()
 
     // Should throw for non-existent class
-    expect(() => hierarchy.getAncestors('class:NonExistent' as any)).toThrowError(
+    expect(() => hierarchy.getAncestors('class:NonExistent' as any)).toThrow(
       'ancestors not found: class:NonExistent'
     )
   })
@@ -616,7 +616,7 @@ describe('hierarchy', () => {
     const hierarchy = prepare()
 
     // Should throw for non-existent class
-    expect(() => hierarchy.getDescendants('class:NonExistent' as any)).toThrowError(
+    expect(() => hierarchy.getDescendants('class:NonExistent' as any)).toThrow(
       'descendants not found: class:NonExistent'
     )
   })
@@ -625,7 +625,7 @@ describe('hierarchy', () => {
     const hierarchy = prepare()
 
     // Should throw for class without domain
-    expect(() => hierarchy.getDomain('class:NonExistent' as any)).toThrowError('domain not found: class:NonExistent')
+    expect(() => hierarchy.getDomain('class:NonExistent' as any)).toThrow('domain not found: class:NonExistent')
   })
 
   it('should handle static hasMixin correctly', async () => {
