@@ -17,6 +17,7 @@
   "@typescript-eslint/no-empty-function",
   "@typescript-eslint/no-empty-object-type",
   "@typescript-eslint/no-explicit-any",
+  "@typescript-eslint/no-generated-empty-object-type",
   "@typescript-eslint/no-import-type-side-effects",
   "@typescript-eslint/no-inferrable-types",
   "@typescript-eslint/no-magic-numbers",
