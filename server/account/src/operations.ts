@@ -48,7 +48,7 @@ import {
 import { randomUUID } from 'crypto'
 import { isAdminEmail } from './admin'
 import { accountPlugin } from './plugin'
-import { type AccountServiceMethods, getServiceMethods } from './serviceOperations'
+import { type AccountServiceMethods } from './serviceOperations'
 import {
   AccountEventType,
   type MailboxSecret,

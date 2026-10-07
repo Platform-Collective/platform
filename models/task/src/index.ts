@@ -54,12 +54,7 @@ import core, {
   TTypedSpace
 } from '@hcengineering/model-core'
 import { createPublicLinkAction } from '@hcengineering/model-guest'
-import view, {
-  classPresenter,
-  createAction,
-  template,
-  actionTemplates as viewTemplates
-} from '@hcengineering/model-view'
+import view, { classPresenter, createAction, template } from '@hcengineering/model-view'
 import { getEmbeddedLabel, type Asset, type IntlString, type Resource } from '@hcengineering/platform'
 import setting from '@hcengineering/setting'
 import tags from '@hcengineering/tags'

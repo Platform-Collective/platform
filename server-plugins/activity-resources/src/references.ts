@@ -48,7 +48,7 @@ import {
   getReceiversInfo,
   type NotificationProviderControl
 } from '@hcengineering/server-notification-resources'
-import { areEqualJson, extractReferences, jsonToMarkup, markupToJSON } from '@hcengineering/text-core'
+import { areEqualJson, jsonToMarkup, markupToJSON } from '@hcengineering/text-core'
 
 export function isDocMentioned (doc: Ref<Doc>, content: string): boolean {
   const references = []

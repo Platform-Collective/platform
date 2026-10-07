@@ -34,7 +34,6 @@ import {
   doSessionOp,
   getFile,
   getFileRange,
-  getStatistics,
   processRequest,
   wipeStatistics,
   type BlobResponse,

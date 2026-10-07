@@ -24,7 +24,7 @@ import Suggestion, { type SuggestionKeyDownProps, type SuggestionOptions, type S
 import { type Blob, type Class, type Doc, type Ref } from '@hcengineering/core'
 import { getMetadata, getResource, translate } from '@hcengineering/platform'
 import presentation, { createQuery, getBlobRef, getClient, MessageBox } from '@hcengineering/presentation'
-import view, { type ObjectTooltip, type ReferenceObjectProvider } from '@hcengineering/view'
+import view from '@hcengineering/view'
 import activity, { type ActivityMessage } from '@hcengineering/activity'
 import contact from '@hcengineering/contact'
 import { parseLocation, showPopup, tooltip, type LabelAndProps, type Location, fromCodePoint } from '@hcengineering/ui'

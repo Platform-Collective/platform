@@ -34,7 +34,6 @@ import documents, {
   type DocumentValidationState,
   ProjectDocumentTree,
   compareDocumentVersions,
-  emptyBundle,
   getDocumentName,
   getFirstRank,
   transferDocuments
