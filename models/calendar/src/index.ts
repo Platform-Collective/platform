@@ -18,6 +18,7 @@ import {
   type AccessLevel,
   calendarId,
   type PrimaryCalendar,
+  type CalDavCalendar,
   type Calendar,
   type CalendarEventPresenter,
   type Event,
@@ -45,6 +46,7 @@ import {
 import {
   ArrOf,
   Collection,
+  Hidden,
   Index,
   Mixin,
   Model,
@@ -96,6 +98,21 @@ export class TExternalCalendar extends TCalendar implements ExternalCalendar {
   default!: boolean
   externalId!: string
   externalUser!: string
+}
+
+@Mixin(calendar.mixin.CalDavCalendar, calendar.class.ExternalCalendar)
+export class TCalDavCalendar extends TExternalCalendar implements CalDavCalendar {
+  @Prop(TypeString(), calendar.string.Account)
+  @Hidden()
+    accountKey!: string
+
+  @Prop(TypeString(), calendar.string.Calendar)
+  @Hidden()
+    href!: string
+
+  @Prop(TypeString(), calendar.string.Calendar)
+  @Hidden()
+    ctag?: string
 }
 
 @Model(calendar.class.Event, core.class.AttachedDoc, DOMAIN_EVENT)
@@ -200,6 +217,7 @@ export function createModel (builder: Builder): void {
   builder.createModel(
     TCalendar,
     TExternalCalendar,
+    TCalDavCalendar,
     TReccuringEvent,
     TReccuringInstance,
     TEvent,

@@ -57,6 +57,21 @@ export interface ExternalCalendar extends Calendar {
   externalUser: string
 }
 
+/**
+ * @public
+ *
+ * Marks an ExternalCalendar as owned by a CalDAV account. Google calendars never carry this mixin,
+ * so provider-specific code can tell the two apart by its presence.
+ */
+export interface CalDavCalendar extends ExternalCalendar {
+  // Key of the account secret in the account service, see caldavCalendarIntegrationKind
+  accountKey: string
+  // Collection href on the CalDAV server, absolute path without origin
+  href: string
+  // Last seen getctag, informational only
+  ctag?: string
+}
+
 export interface PrimaryCalendar extends Preference {
   attachedTo: Ref<Calendar>
 }
@@ -186,6 +201,14 @@ export const caldavIntegrationKind = 'caldav' as IntegrationKind
 
 /**
  * @public
+ *
+ * Integration kind for syncing calendars from an external CalDAV server into the platform.
+ * Distinct from caldavIntegrationKind, which is the platform acting as a CalDAV server.
+ */
+export const caldavCalendarIntegrationKind = 'caldav-calendar' as IntegrationKind
+
+/**
+ * @public
  */
 export const calendarId = 'calendar' as Plugin
 
@@ -203,7 +226,8 @@ const calendarPlugin = plugin(calendarId, {
     PrimaryCalendar: '' as Ref<Class<PrimaryCalendar>>
   },
   mixin: {
-    CalendarEventPresenter: '' as Ref<Mixin<CalendarEventPresenter>>
+    CalendarEventPresenter: '' as Ref<Mixin<CalendarEventPresenter>>,
+    CalDavCalendar: '' as Ref<Mixin<CalDavCalendar>>
   },
   icon: {
     Calendar: '' as Asset,

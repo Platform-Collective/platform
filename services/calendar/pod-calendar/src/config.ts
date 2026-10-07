@@ -20,13 +20,25 @@ interface Config {
   ServiceID: string
   Secret: string
   KvsUrl: string
-  Credentials: string
-  WATCH_URL: string
   InitLimit: number
   WorkspaceInactivityInterval: number // Interval in days to stop workspace synchronization if not visited
+
+  // Google Calendar provider. The Google module starts only when both values are present and non-blank.
+  Credentials?: string
+  WATCH_URL?: string
+  GoogleEnabled: boolean
 }
 
-const envMap: { [key in keyof Config]: string } = {
+type RequiredKey =
+  | 'Port'
+  | 'AccountsURL'
+  | 'ServiceID'
+  | 'Secret'
+  | 'KvsUrl'
+  | 'InitLimit'
+  | 'WorkspaceInactivityInterval'
+
+const envMap: { [key in keyof Config]-?: string } = {
   Port: 'PORT',
 
   AccountsURL: 'ACCOUNTS_URL',
@@ -36,33 +48,44 @@ const envMap: { [key in keyof Config]: string } = {
   WATCH_URL: 'WATCH_URL',
   InitLimit: 'INIT_LIMIT',
   KvsUrl: 'KVS_URL',
-  WorkspaceInactivityInterval: 'WORKSPACE_INACTIVITY_INTERVAL'
+  WorkspaceInactivityInterval: 'WORKSPACE_INACTIVITY_INTERVAL',
+  GoogleEnabled: 'GOOGLE_ENABLED' // derived, not read from the environment
 }
 
 const parseNumber = (str: string | undefined): number | undefined => (str !== undefined ? Number(str) : undefined)
 
+// Treat blank values as unset so a deployment can disable Google with Credentials="".
+const optionalString = (str: string | undefined): string | undefined =>
+  str !== undefined && str.trim() !== '' ? str : undefined
+
 const config: Config = (() => {
-  const params: Partial<Config> = {
+  const required: { [key in RequiredKey]: Config[key] | undefined } = {
     Port: parseNumber(process.env[envMap.Port]) ?? 8095,
     AccountsURL: process.env[envMap.AccountsURL],
     ServiceID: process.env[envMap.ServiceID] ?? 'calendar-service',
     Secret: process.env[envMap.Secret],
-    Credentials: process.env[envMap.Credentials],
     InitLimit: parseNumber(process.env[envMap.InitLimit]) ?? 50,
-    WATCH_URL: process.env[envMap.WATCH_URL],
     KvsUrl: process.env[envMap.KvsUrl],
     WorkspaceInactivityInterval: parseNumber(process.env[envMap.WorkspaceInactivityInterval] ?? '3') // In days
   }
 
-  const missingEnv = (Object.keys(params) as Array<keyof Config>)
-    .filter((key) => params[key] === undefined)
+  const missingEnv = (Object.keys(required) as RequiredKey[])
+    .filter((key) => required[key] === undefined)
     .map((key) => envMap[key])
 
   if (missingEnv.length > 0) {
     throw Error(`Missing env variables: ${missingEnv.join(', ')}`)
   }
 
-  return params as Config
+  const credentials = optionalString(process.env[envMap.Credentials])
+  const watchUrl = optionalString(process.env[envMap.WATCH_URL])
+
+  return {
+    ...(required as { [key in RequiredKey]: Config[key] }),
+    Credentials: credentials,
+    WATCH_URL: watchUrl,
+    GoogleEnabled: credentials !== undefined && watchUrl !== undefined
+  }
 })()
 
 export default config
