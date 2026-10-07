@@ -1,4 +1,4 @@
-FROM platformcollective/preview-base:v20260821
+FROM platformcollective/preview-base:v20261006
 
 WORKDIR /app
 

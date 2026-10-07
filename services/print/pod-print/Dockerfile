@@ -1,5 +1,5 @@
 
-FROM platformcollective/print-base:v20260821
+FROM platformcollective/print-base:v20261006
 
 WORKDIR /usr/src/app
 COPY bundle/bundle.js ./

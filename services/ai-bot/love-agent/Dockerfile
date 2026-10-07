@@ -1,4 +1,4 @@
-FROM platformcollective/base-slim:v20260821
+FROM platformcollective/base-slim:v20261006
 WORKDIR /usr/src/app
 
 RUN npm install -g pnpm@10

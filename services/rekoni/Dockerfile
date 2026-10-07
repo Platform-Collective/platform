@@ -1,4 +1,4 @@
-FROM platformcollective/rekoni-base:v20260821
+FROM platformcollective/rekoni-base:v20261006
 WORKDIR /usr/src/app
 
 RUN npm install --ignore-scripts=false --verbose pdfjs-dist@v6.2.108 unpdf@~1.8.1 --unsafe-perm
