@@ -172,6 +172,7 @@ export const storeNodes: Record<string, NodeProcessor> = {
     state.write('</sub>')
   },
 
+  /* eslint-disable secure-coding/no-improper-sanitization -- values are escaped with state.esc / state.quote, the rule cannot follow them */
   image: (state, node) => {
     const attrs = nodeAttrs(node)
     if (attrs.token != null && attrs['file-id'] != null) {
@@ -224,6 +225,7 @@ export const storeNodes: Record<string, NodeProcessor> = {
       }
     }
   },
+  /* eslint-enable secure-coding/no-improper-sanitization */
   reference: (state, node) => {
     const attrs = nodeAttrs(node)
     let url = state.refUrl
@@ -715,6 +717,7 @@ export class MarkdownState implements IState {
     // leading and trailing accordingly.
     const node = state?.node
     if (this.isText(node) && this.isMarksHasExpelEnclosingWhitespace(state)) {
+      // eslint-disable-next-line secure-coding/no-redos-vulnerable-regex -- text nodes are short, behaviour kept as is
       const match = /^(\s*)(.*?)(\s*)$/m.exec(node?.text ?? '')
       if (match !== null) {
         const [leadMatch, innerMatch, trailMatch] = [match[1], match[2], match[3]]

@@ -1433,7 +1433,7 @@ export class LiveQuery implements WithTx, Client {
     const result: [string, string, string?][] = []
     const hierarchy = this.client.getHierarchy()
     if (lookup._id !== undefined) {
-      for (const key in lookup._id) {
+      for (const key of Object.keys(lookup._id)) {
         const value = (lookup._id as any)[key]
         const [valueClass, reverseLookupKey] = Array.isArray(value) ? value : [value, 'attachedTo']
         const clazz = hierarchy.isMixin(valueClass) ? hierarchy.getBaseClass(valueClass) : valueClass
