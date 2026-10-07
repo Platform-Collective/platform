@@ -197,11 +197,11 @@ export class SessionDataImpl implements SessionData {
     _contextCache: Map<string, any> | undefined,
     readonly modelDb: ModelDb,
     readonly socialStringsToUsers: Map<
-      PersonId,
-      {
-        accontUuid: AccountUuid
-        role: AccountRole
-      }
+    PersonId,
+    {
+      accontUuid: AccountUuid
+      role: AccountRole
+    }
     >,
     readonly service: string,
     readonly grant?: PermissionsGrant

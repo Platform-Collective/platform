@@ -367,7 +367,7 @@ export async function getSocialKeyByOldAccount (client: MigrationClient): Promis
     if (systemAccounts.includes(account._id)) {
       socialKeyByAccount[account._id] = account._id
     } else {
-      socialKeyByAccount[account._id] = buildSocialIdString(getSocialKeyByOldEmail(account.email))
+      socialKeyByAccount[account._id] = buildSocialIdString(getSocialKeyByOldEmail(account.email)) as any
     }
   }
 
@@ -526,8 +526,8 @@ async function migrateAccounts (client: MigrationClient): Promise<void> {
           accountUuidBySocialKey
         )
         const update: MigrateUpdate<Space> = {
-          members: newMembers,
-          owners: newOwners
+          members: newMembers as any,
+          owners: newOwners as any
         }
 
         const type = spaceTypesById.get((space as TypedSpace).type)
@@ -594,7 +594,7 @@ async function migrateAccounts (client: MigrationClient): Promise<void> {
       objectClass: spaceType._class,
       objectSpace: spaceType.space,
       operations: {
-        members: newMembers
+        members: newMembers as any
       },
       modifiedOn: Date.now(),
       createdBy: core.account.ConfigUser,
@@ -843,7 +843,7 @@ async function processMigrateJsonForDoc (
           const stat = await storageAdapter.stat(client.ctx, wsIds, currentYdocId)
           if (stat !== undefined) {
             const data = await storageAdapter.read(client.ctx, wsIds, currentYdocId)
-            const buffer = Buffer.concat(data)
+            const buffer = Buffer.concat(data as any)
             await storageAdapter.put(client.ctx, wsIds, ydocId, buffer, 'application/ydoc', buffer.length)
           }
         })

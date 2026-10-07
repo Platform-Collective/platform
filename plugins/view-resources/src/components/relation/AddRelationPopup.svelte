@@ -25,7 +25,7 @@
   const h = client.getHierarchy()
   const dispatch = createEventDispatcher()
 
-  function getCommonClass(value: Doc | Doc[]): Ref<Class<Doc>> | undefined {
+  function getCommonClass (value: Doc | Doc[]): Ref<Class<Doc>> | undefined {
     if (Array.isArray(value)) {
       if (value.length === 0) {
         return undefined
@@ -49,7 +49,7 @@
 
   $: items = getItems(value)
 
-  function getItems(value: Doc | Doc[]): Item[] {
+  function getItems (value: Doc | Doc[]): Item[] {
     const _class = getCommonClass(value)
     if (_class === undefined) return []
     const descendants = h.getDescendants(_class)
@@ -79,7 +79,7 @@
 
   let selected: Item | undefined = undefined
 
-  async function save(): Promise<void> {
+  async function save (): Promise<void> {
     if (selected === undefined || target === undefined) return
     const objects = Array.isArray(value) ? value : [value]
     for (const obj of objects) {

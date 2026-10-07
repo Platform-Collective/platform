@@ -36,7 +36,7 @@
     ? allInviteRoleItems.filter((item) => item.id !== AccountRole.Owner && item.id !== AccountRole.Maintainer)
     : allInviteRoleItems
 
-  function handleSelected(e: CustomEvent<AccountRole>): void {
+  function handleSelected (e: CustomEvent<AccountRole>): void {
     dispatch('selected', e.detail)
   }
 </script>

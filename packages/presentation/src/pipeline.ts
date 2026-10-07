@@ -203,10 +203,10 @@ export class PresentationPipelineImpl implements PresentationPipeline {
     options: FindOptions<T> | undefined,
     refresh: () => void
   ): Promise<{
-    unsubscribe: () => void
-    query?: DocumentQuery<T>
-    options?: FindOptions<T>
-  }> {
+      unsubscribe: () => void
+      query?: DocumentQuery<T>
+      options?: FindOptions<T>
+    }> {
     return this.head !== undefined
       ? await this.head.subscribe(_class, query, options, refresh)
       : { unsubscribe: () => {} }
@@ -283,10 +283,10 @@ export abstract class BasePresentationMiddleware {
     options: FindOptions<T> | undefined,
     refresh: () => void
   ): Promise<{
-    unsubscribe: () => void
-    query?: DocumentQuery<T>
-    options?: FindOptions<T>
-  }> {
+      unsubscribe: () => void
+      query?: DocumentQuery<T>
+      options?: FindOptions<T>
+    }> {
     return await this.provideSubscribe(_class, query, options, refresh)
   }
 
@@ -344,10 +344,10 @@ export abstract class BasePresentationMiddleware {
     options: FindOptions<T> | undefined,
     refresh: () => void
   ): Promise<{
-    unsubscribe: () => void
-    query?: DocumentQuery<T>
-    options?: FindOptions<T>
-  }> {
+      unsubscribe: () => void
+      query?: DocumentQuery<T>
+      options?: FindOptions<T>
+    }> {
     if (this.next !== undefined) {
       return await this.next.subscribe(_class, query, options, refresh)
     }
@@ -400,10 +400,10 @@ export class OptimizeQueryMiddleware extends BasePresentationMiddleware implemen
     options: FindOptions<T> | undefined,
     refresh: () => void
   ): Promise<{
-    unsubscribe: () => void
-    query?: DocumentQuery<T>
-    options?: FindOptions<T>
-  }> {
+      unsubscribe: () => void
+      query?: DocumentQuery<T>
+      options?: FindOptions<T>
+    }> {
     return await this.provideSubscribe(_class, query, options, refresh)
   }
 

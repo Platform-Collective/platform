@@ -362,7 +362,7 @@ export class UnifiedConverter {
         return ''
       }
 
-      const markup = Buffer.concat(buffer).toString()
+      const markup = Buffer.concat(buffer as any).toString()
       // const markdown = await markupToMarkdown(markup, '', '')
       return markup // todo: test it is a markdown
     } catch (err) {
@@ -405,17 +405,26 @@ export class UnifiedConverter {
     }
 
     // Create attachments with getData callbacks
-    const resolved = attachments.map((att): UnifiedAttachment => ({
-      id: att._id,
-      name: att.name,
-      size: att.size,
-      contentType: att.type,
-      getData: async () => {
-        try {
-          const buffer = await this.storage.read(this.context, this.wsIds, att.file)
+    const resolved = attachments.map(
+      (att): UnifiedAttachment => ({
+        id: att._id,
+        name: att.name,
+        size: att.size,
+        contentType: att.type,
+        getData: async () => {
+          try {
+            const buffer = await this.storage.read(this.context, this.wsIds, att.file)
 
-          if (buffer === undefined) {
-            this.context.warn(`Attachment not found: ${att._id}`)
+            if (buffer === undefined) {
+              this.context.warn(`Attachment not found: ${att._id}`)
+              return Buffer.from([])
+            }
+
+            return Buffer.concat(buffer as any)
+          } catch (err) {
+            this.context.warn(`Failed to read attachment: ${att._id}`, {
+              error: err instanceof Error ? err.message : String(err)
+            })
             return Buffer.from([])
           }
 

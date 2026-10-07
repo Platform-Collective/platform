@@ -21,6 +21,7 @@ import { DOMAIN_TELEGRAM } from '@hcengineering/model-telegram'
 import { getMongoClient, getWorkspaceMongoDB } from '@hcengineering/mongo'
 import { type StorageAdapter } from '@hcengineering/server-core'
 import telegram, { type SharedTelegramMessage, type SharedTelegramMessages } from '@hcengineering/telegram'
+import { type Document, type UpdateFilter } from 'mongodb'
 
 const LastMessages = 'last-msgs'
 
@@ -86,7 +87,7 @@ export async function clearTelegramHistory (
           $set: {
             items: 0
           }
-        }
+        } as unknown as UpdateFilter<Document>
       ),
       workspaceDB.collection(DOMAIN_ATTACHMENT).deleteMany({
         attachedToClass: telegram.class.Message

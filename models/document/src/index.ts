@@ -71,13 +71,13 @@ export const DOMAIN_DOCUMENT = 'document' as Domain
 export class TDocument extends TDoc implements Document, Todoable {
   @Prop(TypeString(), document.string.Name)
   @Index(IndexKind.FullText)
-  title!: string
+    title!: string
 
   @Prop(TypeCollaborativeDoc(), document.string.Document)
-  content!: MarkupBlobRef | null
+    content!: MarkupBlobRef | null
 
   @Prop(TypeRef(document.class.Document), document.string.ParentDocument)
-  parent!: Ref<Document>
+    parent!: Ref<Document>
 
   @Prop(TypeRef(core.class.Space), core.string.Space)
   @Index(IndexKind.Indexed)
@@ -86,41 +86,41 @@ export class TDocument extends TDoc implements Document, Todoable {
 
   @Prop(TypeAccountUuid(), document.string.LockedBy)
   @Hidden()
-  lockedBy?: AccountUuid
+    lockedBy?: AccountUuid
 
   @Prop(Collection(attachment.class.Embedding), attachment.string.Embeddings)
-  embeddings?: number
+    embeddings?: number
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-  attachments?: number
+    attachments?: number
 
   @Prop(Collection(chunter.class.ChatMessage), chunter.string.Comments)
-  comments?: number
+    comments?: number
 
   @Prop(Collection(tags.class.TagReference), document.string.Labels)
-  labels?: number
+    labels?: number
 
   @Prop(Collection(activity.class.ActivityReference), document.string.Backlinks)
   @Hidden()
-  references!: number
+    references!: number
 
   @Prop(TypeString(), document.string.Icon)
   @Hidden()
   @Index(IndexKind.FullText)
-  icon?: Asset
+    icon?: Asset
 
   @Prop(TypeNumber(), document.string.Color)
   @Hidden()
   @Index(IndexKind.FullText)
-  color?: number
+    color?: number
 
   @Prop(Collection(time.class.ToDo), getEmbeddedLabel('Action Items'))
-  todos?: CollectionSize<ToDo>
+    todos?: CollectionSize<ToDo>
 
   @Prop(TypeRank(), core.string.Rank)
   @Index(IndexKind.Indexed)
   @Hidden()
-  rank!: Rank
+    rank!: Rank
 }
 
 @Model(document.class.DocumentSnapshot, core.class.Doc, DOMAIN_DOCUMENT)
@@ -133,14 +133,14 @@ export class TDocumentSnapshot extends TDoc implements DocumentSnapshot {
 
   @Prop(TypeString(), document.string.Name)
   @Index(IndexKind.FullText)
-  title!: string
+    title!: string
 
   @Prop(TypeCollaborativeDoc(), document.string.Document)
   @ReadOnly()
-  content!: MarkupBlobRef
+    content!: MarkupBlobRef
 
   @Prop(TypeRef(document.class.Document), document.string.ParentDocument)
-  parent!: Ref<Document>
+    parent!: Ref<Document>
 }
 
 @Model(document.class.Teamspace, core.class.TypedSpace)

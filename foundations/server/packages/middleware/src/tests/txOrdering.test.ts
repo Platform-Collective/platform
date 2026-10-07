@@ -88,7 +88,7 @@ describe('TxOrderingMiddleware', () => {
       workspace: { uuid: 'test-workspace' as any, url: 'test', dataId: 'test' as any },
       hierarchy,
       modelDb: model,
-      branding: null,
+      branding: null as any,
       adapterManager: {} as any,
       storageAdapter: {} as any,
       contextVars: {},
@@ -222,7 +222,7 @@ describe('TxOrderingMiddleware', () => {
       workspace: { uuid: 'test-workspace' as any, url: 'test', dataId: 'test' as any },
       hierarchy: new Hierarchy(),
       modelDb: new ModelDb(new Hierarchy()),
-      branding: null,
+      branding: null as any,
       adapterManager: {} as any,
       storageAdapter: {} as any,
       contextVars: {},
@@ -324,7 +324,7 @@ describe('TxOrderingMiddleware', () => {
       workspace: { uuid: 'test-workspace' as any, url: 'test', dataId: 'test' as any },
       hierarchy: new Hierarchy(),
       modelDb: new ModelDb(new Hierarchy()),
-      branding: null,
+      branding: null as any,
       adapterManager: {} as any,
       storageAdapter: {} as any,
       contextVars: {},
@@ -353,7 +353,7 @@ describe('TxOrderingMiddleware', () => {
 describe('TxOrderingMiddleware Integration', () => {
   it('should work with provideTx flow', async () => {
     const ctx = new MeasureMetricsContext('test', {})
-    ctx.contextData = { broadcast: { txes: [], queue: [], sessions: {} } }
+    ctx.contextData = { broadcast: { txes: [], queue: [], sessions: {} } } as any
 
     const hierarchy = new Hierarchy()
     const model = new ModelDb(hierarchy)
@@ -375,7 +375,7 @@ describe('TxOrderingMiddleware Integration', () => {
       workspace: { uuid: 'test-workspace' as any, url: 'test', dataId: 'test' as any },
       hierarchy,
       modelDb: model,
-      branding: null,
+      branding: null as any,
       adapterManager: {} as any,
       storageAdapter: {} as any,
       contextVars: {},
@@ -392,10 +392,10 @@ describe('TxOrderingMiddleware Integration', () => {
     const txFactory = new TxFactory(core.account.System)
 
     const docId = generateId()
-    const tx1 = txFactory.createTxUpdateDoc('test:class' as any, 'test:space' as any, docId, {})
+    const tx1 = txFactory.createTxUpdateDoc('test:class' as any, 'test:space' as any, docId as any, {} as any)
     tx1.modifiedOn = 102
 
-    const tx2 = txFactory.createTxUpdateDoc('test:class' as any, 'test:space' as any, docId, {})
+    const tx2 = txFactory.createTxUpdateDoc('test:class' as any, 'test:space' as any, docId as any, {} as any)
     tx2.modifiedOn = 101
 
     // Process in parallel - they should be serialized

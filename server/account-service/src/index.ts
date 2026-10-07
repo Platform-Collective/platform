@@ -33,7 +33,7 @@ import { migrateFromOldAccounts } from './migration/migration'
 import { startWorkspaceMemberUnreadConsumer } from './unread'
 
 export * from './migration/utils'
-export type * from './migration/types'
+export * from './migration/types'
 
 const AUTH_TOKEN_COOKIE = 'account-metadata-Token'
 

@@ -39,7 +39,7 @@
     }
   }
 
-  async function navigateToCard(cardId: string): Promise<void> {
+  async function navigateToCard (cardId: string): Promise<void> {
     const loc = getCurrentLocation()
     loc.path[3] = cardId
     loc.path.length = 4
@@ -55,7 +55,7 @@
     })
   }
 
-  async function newTeamspace(): Promise<void> {
+  async function newTeamspace (): Promise<void> {
     showPopup(CreateSpace, {}, 'top')
   }
 
@@ -80,7 +80,7 @@
         }
       ]
 
-  function addButtonClicked(ev: MouseEvent): void {
+  function addButtonClicked (ev: MouseEvent): void {
     pressed = true
     showPopup(Menu, { actions: globalActions }, ev.target as HTMLElement, () => {
       pressed = false

@@ -15,7 +15,7 @@
 //
 
 import { getClient, isWorkspaceLoginInfo } from '@hcengineering/account-client'
-import client from '@hcengineering/client'
+import client, { ClientSocket } from '@hcengineering/client'
 import core, {
   AccountRole,
   AccountUuid,
@@ -174,7 +174,7 @@ const normalizeRelations = (input: unknown): RelationDefinition[] | undefined =>
       }
 
       if (typeof value === 'string') {
-        result.push({ field: key, class: value, direction: 'forward' })
+        result.push({ field: key, class: value as Ref<Class<Doc>>, direction: 'forward' })
         continue
       }
 
@@ -662,7 +662,7 @@ async function createPlatformClient (token: string): Promise<Client> {
       headers: {
         'User-Agent': process.env.SERVICE_ID
       }
-    }) as never
+    }) as never as ClientSocket
   })
 
   const endpoint = await getTransactorEndpoint(token)

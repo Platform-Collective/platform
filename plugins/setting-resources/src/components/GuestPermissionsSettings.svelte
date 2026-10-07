@@ -117,9 +117,9 @@
   $: workspaceApplications = client
     .getModel()
     .findAllSync<Application>(workbench.class.Application, {
-      hidden: false,
-      _id: { $nin: excludedApplicationIds }
-    })
+    hidden: false,
+    _id: { $nin: excludedApplicationIds }
+  })
     .filter((app) => !hiddenApplicationIds.includes(app._id))
 
   $: applicationsMap = new Map<Ref<Doc>, Application>(
@@ -140,23 +140,23 @@
   /** Anonymous (read-only guest) module rows are view-only until workspace allows anonymous guests. */
   $: anonymousModulePermissionsReadOnly = guestPermissionsTab === 'anonymous' && !allowReadOnlyGuests
 
-  function getApplicationLabel(applicationId: Ref<Doc>): IntlString {
+  function getApplicationLabel (applicationId: Ref<Doc>): IntlString {
     return applicationsMap.get(applicationId)?.label ?? getEmbeddedLabel(applicationId)
   }
 
-  function getApplication(applicationId: Ref<Doc>): Application | undefined {
+  function getApplication (applicationId: Ref<Doc>): Application | undefined {
     return applicationsMap.get(applicationId)
   }
 
-  function getDisabledPermissions(group: ModulePermissionGroup): Set<Ref<Permission>> {
+  function getDisabledPermissions (group: ModulePermissionGroup): Set<Ref<Permission>> {
     return new Set(group.disabledPermissions ?? [])
   }
 
-  function isPermissionActive(group: ModulePermissionGroup, permissionId: Ref<Permission>): boolean {
+  function isPermissionActive (group: ModulePermissionGroup, permissionId: Ref<Permission>): boolean {
     return !getDisabledPermissions(group).has(permissionId)
   }
 
-  async function togglePermission(
+  async function togglePermission (
     group: ModulePermissionGroup,
     permissionId: Ref<Permission>,
     enabled: boolean
@@ -174,44 +174,44 @@
     } as any)
   }
 
-  async function toggleModule(group: ModulePermissionGroup, enabled: boolean): Promise<void> {
+  async function toggleModule (group: ModulePermissionGroup, enabled: boolean): Promise<void> {
     if (anonymousModulePermissionsReadOnly) return
     await client.updateDoc(core.class.ModulePermissionGroup, core.space.Model, group._id, {
       enabled
     } as any)
   }
 
-  function isModuleEnabled(group: ModulePermissionGroup): boolean {
+  function isModuleEnabled (group: ModulePermissionGroup): boolean {
     return group.enabled ?? true
   }
 
-  function getPermissionLabel(permissionId: Ref<Permission>): IntlString {
+  function getPermissionLabel (permissionId: Ref<Permission>): IntlString {
     return permissionsMap.get(permissionId)?.label ?? getEmbeddedLabel(permissionId)
   }
 
-  function onAccessToggle(group: ModulePermissionGroup, ev: Event): void {
+  function onAccessToggle (group: ModulePermissionGroup, ev: Event): void {
     const e = ev as CustomEvent<boolean>
     void toggleModule(group, e.detail)
   }
 
-  function onPermissionToggle(group: ModulePermissionGroup, permissionId: Ref<Permission>, ev: Event): void {
+  function onPermissionToggle (group: ModulePermissionGroup, permissionId: Ref<Permission>, ev: Event): void {
     const e = ev as CustomEvent<boolean>
     void togglePermission(group, permissionId, e.detail)
   }
 
-  function handleAccessToggle(group: ModulePermissionGroup): (ev: Event) => void {
+  function handleAccessToggle (group: ModulePermissionGroup): (ev: Event) => void {
     return (ev: Event) => {
       onAccessToggle(group, ev)
     }
   }
 
-  function handlePermissionToggle(group: ModulePermissionGroup, permissionId: Ref<Permission>): (ev: Event) => void {
+  function handlePermissionToggle (group: ModulePermissionGroup, permissionId: Ref<Permission>): (ev: Event) => void {
     return (ev: Event) => {
       onPermissionToggle(group, permissionId, ev)
     }
   }
 
-  async function handleToggleReadonlyAccess(e: CustomEvent<boolean>): Promise<void> {
+  async function handleToggleReadonlyAccess (e: CustomEvent<boolean>): Promise<void> {
     const enabled = e.detail
     const guestUserInfo = await accountClient.updateAllowReadOnlyGuests(enabled)
     allowReadOnlyGuests = enabled
@@ -241,16 +241,16 @@
     }
   }
 
-  async function handleToggleGuestSignUp(e: CustomEvent<boolean>): Promise<void> {
+  async function handleToggleGuestSignUp (e: CustomEvent<boolean>): Promise<void> {
     await accountClient.updateAllowGuestSignUp(e.detail)
     allowGuestSignUp = e.detail
   }
 
-  function onReadonlyGuestsToggle(e: CustomEvent<boolean>): void {
+  function onReadonlyGuestsToggle (e: CustomEvent<boolean>): void {
     void handleToggleReadonlyAccess(e)
   }
 
-  function onGuestSignUpToggle(e: CustomEvent<boolean>): void {
+  function onGuestSignUpToggle (e: CustomEvent<boolean>): void {
     void handleToggleGuestSignUp(e)
   }
 

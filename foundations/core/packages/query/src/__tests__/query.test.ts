@@ -930,7 +930,7 @@ describe('query', () => {
     const pp = await new Promise((resolve) => {
       liveQuery.query<Space>(
         test.class.ParticipantsHolder,
-        { participants: 'a' },
+        { participants: 'a' as Ref<Doc> },
         (result) => {
           if (attempt > 0) {
             resolvePpv(result)

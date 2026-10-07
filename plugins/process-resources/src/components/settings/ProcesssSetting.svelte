@@ -24,13 +24,13 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  async function saveRestriction(e: CustomEvent<boolean>): Promise<void> {
+  async function saveRestriction (e: CustomEvent<boolean>): Promise<void> {
     if (value !== undefined) {
       await client.update(value, { parallelExecutionForbidden: e.detail })
     }
   }
 
-  async function saveAutoStart(e: CustomEvent<boolean>): Promise<void> {
+  async function saveAutoStart (e: CustomEvent<boolean>): Promise<void> {
     if (value !== undefined) {
       await client.update(value, { autoStart: e.detail })
     }

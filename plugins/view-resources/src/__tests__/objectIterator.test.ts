@@ -99,7 +99,7 @@ describe('ObjectIterator', () => {
   })
 
   it('should return undefined for empty array', async () => {
-    mockObjects = []
+    mockObjects = [] as any
     const query: DocumentQuery<Doc> = { key: 'value' }
     const _class: Ref<Class<Doc>> = { id: 'class1' } as any
     const iterator = new ObjectIterator(_class, storeAdapter, { query })

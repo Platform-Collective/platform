@@ -464,7 +464,7 @@ export class LiveQuery implements WithTx, Client {
       query: _query,
       result: result.then((docs) => new ResultArray(docs, this.getHierarchy())),
       total: 0,
-      options,
+      options: options as FindOptions<Doc>,
       callbacks: new Map(),
       refresh: reduceCalls(() => this.doRefresh(q)),
       refreshId: 0
@@ -1084,17 +1084,12 @@ export class LiveQuery implements WithTx, Client {
     lookup: ReverseLookups,
     result: LookupData<T>
   ): Promise<void> {
-    const reverseLookup = lookup._id
-    if (reverseLookup === undefined) {
-      return
-    }
-
-    for (const key of Object.keys(reverseLookup)) {
+    for (const key in lookup._id) {
       if ((doc as any)[key] === undefined || (doc as any)[key] === 0) {
         continue
       }
 
-      const value = reverseLookup[key]
+      const value = lookup._id[key]
 
       let _class: Ref<Class<Doc>>
       let attr = 'attachedTo'
@@ -1438,7 +1433,7 @@ export class LiveQuery implements WithTx, Client {
     const result: [string, string, string?][] = []
     const hierarchy = this.client.getHierarchy()
     if (lookup._id !== undefined) {
-      for (const key of Object.keys(lookup._id)) {
+      for (const key in lookup._id) {
         const value = (lookup._id as any)[key]
         const [valueClass, reverseLookupKey] = Array.isArray(value) ? value : [value, 'attachedTo']
         const clazz = hierarchy.isMixin(valueClass) ? hierarchy.getBaseClass(valueClass) : valueClass

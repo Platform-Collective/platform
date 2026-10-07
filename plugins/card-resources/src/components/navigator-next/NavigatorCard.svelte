@@ -42,7 +42,7 @@
 
   let activeAction: string | undefined = undefined
 
-  function toggleFavoriteCard(): void {
+  function toggleFavoriteCard (): void {
     if (favorite !== undefined) {
       void client.remove(favorite)
     } else {
@@ -81,7 +81,7 @@
     }
   ]
 
-  function getCardTitle(card: Card): string {
+  function getCardTitle (card: Card): string {
     if ((card?.parentInfo?.length ?? 0) === 0) return card.title
     const parent = card.parentInfo[card.parentInfo.length - 1]
     if (parent != null) {

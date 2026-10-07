@@ -70,6 +70,7 @@ import {
   isPasswordChangedSince,
   setWorkspaceMemberUnread
 } from '../utils'
+// eslint-disable-next-line import/no-named-default
 import platform, { getMetadata, PlatformError, Severity, Status } from '@hcengineering/platform'
 import { decodeTokenVerbose, generateToken, TokenError } from '@hcengineering/server-token'
 import { randomBytes } from 'crypto'
@@ -1958,7 +1959,7 @@ describe('account utils', () => {
       const mockSocialId = { key: 'email:test@example.com' as PersonId }
       ;(mockDb.socialId.findOne as jest.Mock).mockResolvedValue(mockSocialId)
 
-      const result = await getSocialIdByKey(mockDb, 'email:test@example.com')
+      const result = await getSocialIdByKey(mockDb, 'email:test@example.com' as PersonId)
       expect(result).toEqual(mockSocialId)
       expect(mockDb.socialId.findOne).toHaveBeenCalledWith({ key: 'email:test@example.com' })
     })
@@ -1966,7 +1967,7 @@ describe('account utils', () => {
     test('should return null when social id not found', async () => {
       ;(mockDb.socialId.findOne as jest.Mock).mockResolvedValue(null)
 
-      const result = await getSocialIdByKey(mockDb, 'nonexistent')
+      const result = await getSocialIdByKey(mockDb, 'nonexistent' as PersonId)
       expect(result).toBeNull()
     })
   })

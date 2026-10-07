@@ -67,7 +67,7 @@ function isContentValid (body: any[]): boolean {
 }
 
 function getRecordsByType (event: AnalyticEvent): Record<string, any> {
-  switch (event.event) {
+  switch (event.event as AnalyticEventType) {
     case AnalyticEventType.SetTag:
       return {
         event: '$set',

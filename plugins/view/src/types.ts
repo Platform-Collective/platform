@@ -350,12 +350,12 @@ export interface ListHeaderExtra extends Class<Doc> {
  * @public
  */
 export type SortFunc = Resource<
-  (
-    client: TxOperations,
-    values: PrimitiveType[],
-    space: Ref<Space> | undefined,
-    viewletDescriptorId?: Ref<ViewletDescriptor>
-  ) => Promise<any[]>
+(
+  client: TxOperations,
+  values: PrimitiveType[],
+  space: Ref<Space> | undefined,
+  viewletDescriptorId?: Ref<ViewletDescriptor>
+) => Promise<any[]>
 >
 
 /**
@@ -369,12 +369,12 @@ export interface ClassSortFuncs extends Class<Doc> {
  * @public
  */
 export type GetAllValuesFunc = Resource<
-  (
-    query: DocumentQuery<Doc> | undefined,
-    onUpdate: () => void,
-    queryId: Ref<Doc>,
-    attr: AnyAttribute
-  ) => Promise<any[] | undefined>
+(
+  query: DocumentQuery<Doc> | undefined,
+  onUpdate: () => void,
+  queryId: Ref<Doc>,
+  attr: AnyAttribute
+) => Promise<any[] | undefined>
 >
 
 /**
@@ -431,13 +431,13 @@ export type AggregationManagerResource = Resource<IAggregationManager<any>>
  * @public
  */
 export type CreateAggregationManagerFunc = Resource<
-  (
-    client: Client,
-    lqCallback: () => void,
-    setStore: (manager: DocManager<any>) => void,
-    categorizingFunc: (doc: any, target: any) => boolean,
-    _class: Ref<Class<any>>
-  ) => IAggregationManager<any>
+(
+  client: Client,
+  lqCallback: () => void,
+  setStore: (manager: DocManager<any>) => void,
+  categorizingFunc: (doc: any, target: any) => boolean,
+  _class: Ref<Class<any>>
+) => IAggregationManager<any>
 >
 
 /**
@@ -771,7 +771,7 @@ export interface ViewOption {
  * @public
  */
 export type ViewOptionsAction<T extends Doc = Doc> = Resource<
-  (value: any, query: FindOptions<T> | undefined) => FindOptions<T>
+(value: any, query: FindOptions<T> | undefined) => FindOptions<T>
 >
 
 /**
@@ -811,7 +811,7 @@ export interface CategoryOption extends ViewOption {
  * @public
  */
 export type ViewQueryAction = Resource<
-  (value: any, query: DocumentQuery<Doc>) => DocumentQuery<Doc> | Promise<DocumentQuery<Doc>>
+(value: any, query: DocumentQuery<Doc>) => DocumentQuery<Doc> | Promise<DocumentQuery<Doc>>
 >
 
 /**

@@ -77,7 +77,7 @@ export interface ToolbarOverflowResult {
  *                  it is, see `ganttToolbarHiddenTiers` — so the arithmetic
  *                  neither reserves its width nor a gap for it.
  */
-export function computeToolbarOverflow (
+export function computeToolbarOverflow(
   present: readonly ToolbarTier[],
   widths: Readonly<Partial<Record<ToolbarTier, number>>>,
   available: number,

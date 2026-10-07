@@ -87,7 +87,7 @@
       menuActions = res
     })
 
-  function scrollToMessage(): void {
+  function scrollToMessage (): void {
     if (element != null && shouldScroll) {
       element.scrollIntoView({ behavior: 'auto', block: 'end' })
       shouldScroll = false
@@ -98,15 +98,15 @@
     setTimeout(scrollToMessage, 100)
   }
 
-  function handleActionsOpened(): void {
+  function handleActionsOpened (): void {
     isActionsOpened = true
   }
 
-  function handleActionsClosed(): void {
+  function handleActionsClosed (): void {
     isActionsOpened = false
   }
 
-  function handleAnimationEnd(event: AnimationEvent): void {
+  function handleAnimationEnd (event: AnimationEvent): void {
     const name = event.animationName.split('-').pop()
     if (name === 'highlight') {
       clearMessageInLocation()
@@ -120,17 +120,17 @@
 
   $: readonly = readonly || $restrictionStore.disableComments
 
-  function canDisplayShort(type: ActivityMessageViewType, isSaved: boolean): boolean {
+  function canDisplayShort (type: ActivityMessageViewType, isSaved: boolean): boolean {
     return type === 'short' && !isSaved && (message.replies ?? 0) === 0
   }
 
   $: isShort = canDisplayShort(type, isSaved)
 
-  function isInside(x: number, y: number, rect: DOMRect): boolean {
+  function isInside (x: number, y: number, rect: DOMRect): boolean {
     return x >= rect.left && y >= rect.top && x <= rect.right && y <= rect.bottom
   }
 
-  function isTextClicked(element: HTMLElement | null, x: number, y: number): boolean {
+  function isTextClicked (element: HTMLElement | null, x: number, y: number): boolean {
     if (element == null) {
       return false
     }
@@ -152,7 +152,7 @@
     return false
   }
 
-  function handleContextMenu(event: MouseEvent): void {
+  function handleContextMenu (event: MouseEvent): void {
     if (readonly) return
     const showCustomPopup = !isTextClicked(event.target as HTMLElement, event.clientX, event.clientY)
     if (showCustomPopup) {

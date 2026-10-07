@@ -96,7 +96,7 @@
     }
   }
 
-  function _open(ev: any) {
+  function _open (ev: any) {
     if (ev.detail.presenter !== undefined) {
       if (allowOpen) {
         closeTooltip()

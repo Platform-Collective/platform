@@ -126,7 +126,7 @@
     }
   }
 
-  function handleStep(event: CustomEvent<OtpLoginSteps>): void {
+  function handleStep (event: CustomEvent<OtpLoginSteps>): void {
     step = event.detail
   }
 </script>

@@ -111,7 +111,7 @@ import {
   simpleEscape,
   toWithLookup
 } from './utils'
-async function* createCursorGenerator (
+async function * createCursorGenerator (
   client: postgres.Sql,
   sql: string,
   params: any,
@@ -850,9 +850,9 @@ abstract class PostgresAdapterBase implements DbAdapter {
     shouldCreate: boolean = true
   ):
     | {
-        obj: any
-        key: string
-      }
+      obj: any
+      key: string
+    }
     | undefined {
     const path = fullPath.split('.')
     for (let i = 0; i < path.length; i++) {

@@ -56,8 +56,8 @@ export class GmailController {
 
   private readonly credentials: ProjectCredentials
   private readonly clients: Map<PersonId, Map<WorkspaceUuid, GmailClient>> = new Map<
-    PersonId,
-    Map<WorkspaceUuid, GmailClient>
+  PersonId,
+  Map<WorkspaceUuid, GmailClient>
   >()
 
   private readonly personIdByEmail = new Map<string, PersonId>()

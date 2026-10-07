@@ -64,7 +64,7 @@
   }
 
   let avatarEditor: EditableAvatar
-  async function onAvatarDone(): Promise<void> {
+  async function onAvatarDone (): Promise<void> {
     if ($myEmployeeStore === undefined) return
 
     if ($myEmployeeStore.avatar != null) {
@@ -76,7 +76,7 @@
 
   const manager = createFocusManager()
 
-  async function leave(): Promise<void> {
+  async function leave (): Promise<void> {
     showPopup(MessageBox, {
       label: setting.string.Leave,
       message: setting.string.LeaveDescr,
@@ -111,7 +111,7 @@
     })
   }
 
-  async function nameChange(): Promise<void> {
+  async function nameChange (): Promise<void> {
     if ($myEmployeeStore !== undefined) {
       await client.diffUpdate($myEmployeeStore, {
         name: combineName(firstName, lastName)

@@ -43,7 +43,7 @@
   let btn: HTMLButtonElement
   let pressed: boolean = false
 
-  function getGroupingCustomAttributes(h: Hierarchy, _class: Ref<Class<Doc>>): string[] {
+  function getGroupingCustomAttributes (h: Hierarchy, _class: Ref<Class<Doc>>): string[] {
     const customAttributes = [...h.getOwnAttributes(_class).values()]
       .filter(
         (attr) => attr.isCustom && !attr.isHidden && [core.class.RefTo, core.class.EnumOf].includes(attr.type._class)
@@ -52,7 +52,7 @@
     return customAttributes
   }
 
-  function getCustomSortingAttributes(h: Hierarchy, _class: Ref<Class<Doc>>): OrderOption[] {
+  function getCustomSortingAttributes (h: Hierarchy, _class: Ref<Class<Doc>>): OrderOption[] {
     const sortableTypes: Ref<Class<Type<any>>>[] = [
       core.class.EnumOf,
       core.class.TypeString,
@@ -69,7 +69,7 @@
     return customSortableAttributes
   }
 
-  async function clickHandler(): Promise<void> {
+  async function clickHandler (): Promise<void> {
     if (viewlet === undefined) {
       return
     }

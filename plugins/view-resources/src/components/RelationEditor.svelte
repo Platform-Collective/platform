@@ -36,7 +36,7 @@
     })
   }
 
-  function getCreate(): ObjectCreate | undefined {
+  function getCreate (): ObjectCreate | undefined {
     const factory = client.getHierarchy().classHierarchyMixin(_class, view.mixin.ObjectFactory)
     if (factory) {
       const usePopup = isBaseCardTypeWithSubtypes()
@@ -49,7 +49,7 @@
     }
   }
 
-  function isBaseCardTypeWithSubtypes(): boolean {
+  function isBaseCardTypeWithSubtypes (): boolean {
     const hierarchy = client.getHierarchy()
     if (!hierarchy.isDerived(_class, card.class.Card)) return false
 
@@ -104,7 +104,7 @@
       : !p.key.includes('$lookup') && !p.key.startsWith('@')
   )
 
-  async function onContextMenu(ev: MouseEvent, doc: Doc): Promise<void> {
+  async function onContextMenu (ev: MouseEvent, doc: Doc): Promise<void> {
     const q =
       direction === 'B'
         ? { docA: object._id, docB: doc._id, association: association._id }

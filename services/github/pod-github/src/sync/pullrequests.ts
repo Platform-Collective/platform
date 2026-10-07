@@ -479,7 +479,7 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
               accountGH,
               {
                 ...pullRequestData,
-                status: (await guessStatus(pullRequestExternal, statuses))._id
+                status: (await guessStatus(pullRequestExternal, statuses))._id as Ref<Status>
               },
               pullRequestExternal,
               info.repository as Ref<GithubIntegrationRepository>,
@@ -917,7 +917,8 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
 
     // We need to update status in case category are different
     const stInstance =
-      statuses.find((it) => it._id === status) ?? (await this.client.findOne(core.class.Status, { _id: status }))
+      statuses.find((it) => it._id === status) ??
+      ((await this.client.findOne(core.class.Status, { _id: status })) as Status)
 
     let gs: IssueStatus | undefined
     if (pullRequestExternal.merged) {

@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import type { Client, DomainParams, DomainRequestOptions, DomainResult } from '..'
+import { type Client, type DomainParams, type DomainRequestOptions, type DomainResult } from '..'
 import type { Class, Doc, Obj, OperationDomain, Ref, Space } from '../classes'
 import core from '../component'
 import { Hierarchy } from '../hierarchy'
@@ -31,7 +31,7 @@ import {
   SortingOrder,
   type WithLookup
 } from '../storage'
-import type { Tx } from '../tx'
+import { type Tx } from '../tx'
 import { genMinModel, test, type TestMixin } from './minmodel'
 
 const txes = genMinModel()
@@ -204,7 +204,7 @@ describe('memdb', () => {
     })
     expect(second.length).toBe(2)
     const incorrectId = await model.findAll(core.class.Class, {
-      _id: `${txes[1].objectId}test` as Ref<Class<Obj>>
+      _id: (txes[1].objectId + 'test') as Ref<Class<Obj>>
     })
     expect(incorrectId.length).toBe(0)
     const result = await model.findAll(core.class.Class, {
@@ -378,7 +378,7 @@ describe('memdb', () => {
       }
     )
     expect(r.length).toEqual(1)
-    expect((r[0].$associations?.[`${association._id}_b`][0] as any)?._id).toEqual(second)
+    expect((r[0].$associations?.[association._id + '_b'][0] as any)?._id).toEqual(second)
   })
 
   it('check deep associations', async () => {
@@ -567,7 +567,7 @@ describe('memdb', () => {
     expect(results.length).toEqual(2)
     const attached = results[0].$lookup?.attachedTo
     expect(attached).toBeDefined()
-    expect(Hierarchy.mixinOrClass(attached!)).toEqual(test.mixin.TaskMixinTodos)
+    expect(Hierarchy.mixinOrClass(attached as Doc)).toEqual(test.mixin.TaskMixinTodos)
   })
 
   it('createDoc for AttachedDoc', async () => {

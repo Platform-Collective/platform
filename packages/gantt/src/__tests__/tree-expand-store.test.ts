@@ -5,10 +5,10 @@
 
 import { createTreeExpandStore } from '../tree-expand-store'
 
-function makeStorage (): Storage {
+function makeStorage(): Storage {
   const map = new Map<string, string>()
   return {
-    get length (): number {
+    get length(): number {
       return map.size
     },
     clear: () => {

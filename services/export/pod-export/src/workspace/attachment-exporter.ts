@@ -107,9 +107,9 @@ export class AttachmentExporter {
         }
 
         try {
-          const blobBuffers = await this.storage.read(this.context, this.sourceWorkspace, blobRef)
+          const blobBuffers = await this.storage.read(this.context, this.sourceWorkspace, blobRef as string)
           if (blobBuffers !== undefined && blobBuffers.length > 0) {
-            const sourceBlob = await this.storage.stat(this.context, this.sourceWorkspace, blobRef)
+            const sourceBlob = await this.storage.stat(this.context, this.sourceWorkspace, blobRef as string)
             if (sourceBlob !== undefined) {
               const totalSize = blobBuffers.reduce((sum, buf) => sum + buf.length, 0)
               const combinedBuffer = Buffer.concat(blobBuffers)
@@ -165,9 +165,9 @@ export class AttachmentExporter {
             }
 
             try {
-              const blobBuffers = await this.storage.read(this.context, this.sourceWorkspace, blobRef)
+              const blobBuffers = await this.storage.read(this.context, this.sourceWorkspace, blobRef as string)
               if (blobBuffers !== undefined && blobBuffers.length > 0) {
-                const sourceBlob = await this.storage.stat(this.context, this.sourceWorkspace, blobRef)
+                const sourceBlob = await this.storage.stat(this.context, this.sourceWorkspace, blobRef as string)
                 if (sourceBlob !== undefined) {
                   const totalSize = blobBuffers.reduce((sum, buf) => sum + buf.length, 0)
                   const combinedBuffer = Buffer.concat(blobBuffers)

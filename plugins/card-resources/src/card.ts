@@ -18,7 +18,7 @@ import { type Heading } from '@hcengineering/text-editor'
 
 export async function getCardSections (card: Card): Promise<CardSection[]> {
   const client = getClient()
-  const sections: CompactModeCardSection[] = client
+  const sections: CardSection[] = client
     .getModel()
     .findAllSync(cardPlugin.class.CardSection, {})
     .sort((a, b) => a.order - b.order)

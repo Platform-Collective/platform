@@ -302,7 +302,7 @@ describe('StripeProvider', () => {
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const res = {} as Response
 
-    const handleStripeWebhookSpy = jest.spyOn(webhookModule, 'handleStripeWebhook').mockResolvedValue(undefined)
+    const handleStripeWebhookSpy = jest.spyOn(webhookModule, 'handleStripeWebhook').mockResolvedValue(undefined as any)
 
     handler(req, res)
 

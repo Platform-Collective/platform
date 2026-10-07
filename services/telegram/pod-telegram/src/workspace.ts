@@ -639,7 +639,7 @@ export class WorkspaceWorker {
     const res: Buffer[] = []
     for (const attachment of attachments) {
       const chunks = await this.storageAdapter.read(this.ctx, this.workspace as any, attachment.file) // TODO: FIXME <--WorkspaceIds
-      const buffer = Buffer.concat(chunks)
+      const buffer = Buffer.concat(chunks as unknown as Uint8Array[])
       if (buffer.length > 0) {
         res.push(
           Object.assign(buffer, {

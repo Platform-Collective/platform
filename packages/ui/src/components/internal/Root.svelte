@@ -25,23 +25,23 @@
 
   let application: AnyComponent | undefined
 
-  function updateAppFocused(isFocused: boolean): void {
+  function updateAppFocused (isFocused: boolean): void {
     const isFocusedCurrent = $isAppFocusedStore
     const isFocusedNew = isFocused && !document.hidden && document.hasFocus()
     if (isFocusedCurrent !== isFocusedNew) {
       isAppFocusedStore.set(isFocusedNew)
     }
   }
-  function visibilityChangeHandler(): void {
+  function visibilityChangeHandler (): void {
     updateAppFocused(!document.hidden)
   }
-  function handleWindowFocus(): void {
+  function handleWindowFocus (): void {
     updateAppFocused(true)
   }
-  function handleWindowBlur(): void {
+  function handleWindowBlur (): void {
     updateAppFocused(false)
   }
-  function handleWindowBeforeUnload(): void {
+  function handleWindowBeforeUnload (): void {
     // Many text inputs across the platform rely on the blur event to persist state,
     // but they don’t account for cases where the tab is forcefully closed, navigated away from, or destroyed.
     // Handling beforeunload for every input individually is impractical,

@@ -43,7 +43,7 @@ export const MAX_VISIBLE_DAYS = 999
  *   that preset (the user wheeled exactly back onto a preset).
  * - Else return `'custom'`.
  */
-export function dropdownSelectionForPxPerDay (userPxPerDay: number | null, zoom: ZoomLevel): DropdownSelection {
+export function dropdownSelectionForPxPerDay(userPxPerDay: number | null, zoom: ZoomLevel): DropdownSelection {
   if (userPxPerDay === null) return zoom
   if (!Number.isFinite(userPxPerDay) || userPxPerDay <= 0) return 'custom'
   const levels: ZoomLevel[] = ['day', 'week', 'month', 'quarter']
@@ -61,7 +61,7 @@ export function dropdownSelectionForPxPerDay (userPxPerDay: number | null, zoom:
  * Always returns at least `MIN_VISIBLE_DAYS` (1) and defends against
  * NaN, zero or negative inputs so the UI never displays nonsense.
  */
-export function visibleDaysFromPxPerDay (viewportWidth: number, pxPerDay: number): number {
+export function visibleDaysFromPxPerDay(viewportWidth: number, pxPerDay: number): number {
   if (!Number.isFinite(viewportWidth) || viewportWidth <= 0) return MIN_VISIBLE_DAYS
   if (!Number.isFinite(pxPerDay) || pxPerDay <= 0) return MIN_VISIBLE_DAYS
   const raw = Math.round(viewportWidth / pxPerDay)
@@ -78,7 +78,7 @@ export function visibleDaysFromPxPerDay (viewportWidth: number, pxPerDay: number
  * - Returns `MIN_PPD` for invalid viewport widths so the caller can
  *   still apply the result without further error handling.
  */
-export function pxPerDayFromVisibleDays (viewportWidth: number, days: number): number {
+export function pxPerDayFromVisibleDays(viewportWidth: number, days: number): number {
   if (!Number.isFinite(viewportWidth) || viewportWidth <= 0) return MIN_PPD
   let clamped: number
   if (!Number.isFinite(days)) {

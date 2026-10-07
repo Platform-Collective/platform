@@ -46,7 +46,7 @@ describe('handleStripeWebhook', () => {
     }
 
     res = {
-      status: statusMock
+      status: statusMock as unknown as any
     }
 
     jest.clearAllMocks()

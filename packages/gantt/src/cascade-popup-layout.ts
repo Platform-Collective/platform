@@ -26,7 +26,7 @@ export interface CascadePopupLayoutInput {
   bodyMaxHeight: number
 }
 
-export function computeCascadeBodyHeight (input: CascadePopupLayoutInput): number {
+export function computeCascadeBodyHeight(input: CascadePopupLayoutInput): number {
   const desired =
     input.rowCount * input.rowHeight + input.barTopPadding + input.bodyVerticalPadding + input.bodyBottomSafety
   return Math.min(desired, input.bodyMaxHeight)

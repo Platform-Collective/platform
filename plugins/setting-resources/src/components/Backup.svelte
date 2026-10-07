@@ -41,22 +41,22 @@
   const workspaceId = workspaceDataId ?? workspaceUuid
 
   let backupInfo:
-    | {
-        files: { name: string, size: number }[]
-        extraBlobs: { name: string, size: number, contentType: string }[]
-        extraBlobsTotal?: number
-        error?: string
-        info?: BackupInfo
-      }
-    | undefined
+  | {
+    files: { name: string, size: number }[]
+    extraBlobs: { name: string, size: number, contentType: string }[]
+    extraBlobsTotal?: number
+    error?: string
+    info?: BackupInfo
+  }
+  | undefined
 
   $: fileSizes = new Map(backupInfo?.files?.map((it) => [it.name, it.size ?? 0]))
 
-  function formatDate(timestamp: number): string {
+  function formatDate (timestamp: number): string {
     return new Date(timestamp).toLocaleString()
   }
 
-  function getSize(size: number): string {
+  function getSize (size: number): string {
     const mbSize = size / (1024 * 1024)
 
     if (size < 1024) {
@@ -69,7 +69,7 @@
     return `${Math.round(mbSize * 100) / 100}Mb`
   }
 
-  function getSnapshotSummary(snapshot: BackupSnapshot): string {
+  function getSnapshotSummary (snapshot: BackupSnapshot): string {
     let size = 0
 
     Object.values(snapshot.domains).forEach((domain) => {
@@ -80,7 +80,7 @@
     return getSize(size)
   }
 
-  function getBackupSize(files: { name: string, size: number }[]): string {
+  function getBackupSize (files: { name: string, size: number }[]): string {
     let size = 0
 
     files.forEach((file) => {
@@ -90,7 +90,7 @@
     return getSize(size)
   }
 
-  async function updateBackupInfo(): Promise<void> {
+  async function updateBackupInfo (): Promise<void> {
     if (owner && backupUrl !== '') {
       try {
         const response = await fetch(`${backupUrl}/${workspaceId}/index.json`, {
@@ -111,7 +111,7 @@
     void updateBackupInfo()
   })
 
-  function formatAgoHours(timestamp: number): string {
+  function formatAgoHours (timestamp: number): string {
     const date = new Date(timestamp)
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
@@ -127,11 +127,11 @@
 
     return ''
   }
-  function getBackupFileUrl(filename: string): string {
+  function getBackupFileUrl (filename: string): string {
     return `${backupUrl}/${workspaceId}/${filename}`
   }
 
-  async function doDownload(downloadUrl: string, filename?: string): Promise<void> {
+  async function doDownload (downloadUrl: string, filename?: string): Promise<void> {
     const a = document.createElement('a')
     try {
       const response = await fetch(downloadUrl, {
@@ -160,11 +160,11 @@
     }
   }
 
-  async function downloadFile(filename: string): Promise<void> {
+  async function downloadFile (filename: string): Promise<void> {
     const url = getBackupFileUrl(filename)
     await doDownload(url, filename)
   }
-  async function downloadBlobFile(filename: string): Promise<void> {
+  async function downloadBlobFile (filename: string): Promise<void> {
     const url = getFileUrl(filename)
     await doDownload(url, filename)
   }
@@ -176,7 +176,7 @@
   let scriptCopied = false
   let tokenCopied = false
 
-  function copyToken(): void {
+  function copyToken (): void {
     void copyTextToClipboard(token).then(() => {
       tokenCopied = true
       setTimeout(() => {
@@ -185,12 +185,12 @@
     })
   }
 
-  function backupArchiveName(): string {
+  function backupArchiveName (): string {
     const date = new Date().toISOString().slice(0, 10)
     return `huly-backup-${workspaceId}-${date}.zip`
   }
 
-  async function downloadFullBackup(): Promise<void> {
+  async function downloadFullBackup (): Promise<void> {
     if (downloading) {
       return
     }
@@ -233,7 +233,7 @@
     }
   }
 
-  function copyBackupScript(): void {
+  function copyBackupScript (): void {
     const files = collectBackupFileNames(backupInfo)
     const script = generateBackupScript({
       baseUrl: downloadBase,

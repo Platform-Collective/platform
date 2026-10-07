@@ -121,7 +121,7 @@ export class TInviteSettings extends TConfiguration implements InviteSettings {
 @UX(setting.string.RoleCapabilitySettings)
 export class TRoleCapabilitySettings extends TConfiguration implements RoleCapabilitySettings {
   @Prop(TypeRecord(), setting.string.RoleCapabilitySettings)
-  roleByCapability!: Record<string, AccountRole[]>
+    roleByCapability!: Record<string, AccountRole[]>
 }
 
 @Model(setting.class.OfficeSettings, core.class.Configuration, DOMAIN_SETTING)

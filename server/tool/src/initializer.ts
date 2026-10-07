@@ -239,7 +239,7 @@ export class WorkspaceInitializer {
     if (_id === undefined || space === undefined) {
       throw new Error('Update step must have _id and space')
     }
-    await this.client.updateDoc(step._class, space, _id, props)
+    await this.client.updateDoc(step._class, space, _id as Ref<Doc>, props)
   }
 
   private async processBulkUpdate<T extends Doc>(step: BulkUpdateStep<T>, vars: Record<string, any>): Promise<void> {

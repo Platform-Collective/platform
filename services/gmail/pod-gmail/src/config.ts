@@ -61,7 +61,7 @@ const config: Config = (() => {
   const versionStr = process.env[envMap.Version] ?? 'v1'
   let version: IntegrationVersion
   if (versionStr === IntegrationVersion.V1 || versionStr === IntegrationVersion.V2) {
-    version = versionStr
+    version = versionStr as IntegrationVersion
   } else {
     throw new Error(`Invalid version: ${versionStr}. Must be 'v1' or 'v2'.`)
   }

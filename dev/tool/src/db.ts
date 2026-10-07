@@ -479,7 +479,7 @@ export async function moveAccountDbFromMongoToPG (
         invite.expiresOn = -1
       }
 
-      if (["USER'", 'ADMIN'].includes(invite.role)) {
+      if (["USER'", 'ADMIN'].includes(invite.role as any)) {
         invite.role = AccountRole.User
       }
 

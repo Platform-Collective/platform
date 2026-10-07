@@ -172,14 +172,8 @@ export const storeNodes: Record<string, NodeProcessor> = {
     state.write('</sub>')
   },
 
-  /*
-   * URL components are encoded with encodeURIComponent and HTML attributes use htmlEsc below.
-   * The rule cannot follow these context-specific sanitizers through Markdown string assembly.
-   */
-  /* eslint-disable secure-coding/no-improper-sanitization */
   image: (state, node) => {
     const attrs = nodeAttrs(node)
-    const fileId = attrs['file-id'] == null ? '' : encodeURIComponent(String(attrs['file-id']))
     if (attrs.token != null && attrs['file-id'] != null) {
       // Convert image to token format
       state.write(
@@ -187,12 +181,11 @@ export const storeNodes: Record<string, NodeProcessor> = {
           state.esc(`${attrs.alt ?? ''}`) +
           '](' +
           (state.imageUrl +
-            fileId +
-            '?file=' +
-            fileId +
-            (attrs.width != null ? '&width=' + encodeURIComponent(String(attrs.width)) : '') +
-            (attrs.height != null ? '&height=' + encodeURIComponent(String(attrs.height)) : '') +
-            (attrs.token != null ? '&token=' + encodeURIComponent(String(attrs.token)) : '')) +
+            `${attrs['file-id']}` +
+            `?file=${attrs['file-id']}` +
+            (attrs.width != null ? '&width=' + state.esc(`${attrs.width}`) : '') +
+            (attrs.height != null ? '&height=' + state.esc(`${attrs.height}`) : '') +
+            (attrs.token != null ? '&token=' + state.esc(`${attrs.token}`) : '')) +
           (attrs.title != null ? ' ' + state.quote(`${attrs.title}`) : '') +
           ')'
       )
@@ -213,28 +206,24 @@ export const storeNodes: Record<string, NodeProcessor> = {
       if (attrs.width != null || attrs.height != null) {
         state.write(
           '<img' +
-            (attrs.width != null ? ' width="' + state.htmlEsc(String(attrs.width)) + '"' : '') +
-            (attrs.height != null ? ' height="' + state.htmlEsc(String(attrs.height)) + '"' : '') +
-            ' src="' +
-            state.htmlEsc(String(attrs.src ?? '')) +
-            '"' +
-            (attrs.alt != null ? ' alt="' + state.htmlEsc(String(attrs.alt)) + '"' : '') +
-            (attrs.title != null ? ' title="' + state.htmlEsc(String(attrs.title)) + '"' : '') +
-            '>'
+            (attrs.width != null ? ` width="${state.esc(`${attrs.width}`)}"` : '') +
+            (attrs.height != null ? ` height="${state.esc(`${attrs.height}`)}"` : '') +
+            ` src="${state.esc(`${attrs.src}`)}"` +
+            (attrs.alt != null ? ` alt="${state.esc(`${attrs.alt}`)}"` : '') +
+            (attrs.title != null ? '>' + state.quote(`${attrs.title}`) + '</img>' : '>')
         )
       } else {
         state.write(
           '![' +
             state.esc(`${attrs.alt ?? ''}`) +
             '](' +
-            encodeURI(String(attrs.src ?? '')) +
+            state.esc(`${attrs.src}`) +
             (attrs.title != null ? ' ' + state.quote(`${attrs.title}`) : '') +
             ')'
         )
       }
     }
   },
-  /* eslint-enable secure-coding/no-improper-sanitization */
   reference: (state, node) => {
     const attrs = nodeAttrs(node)
     let url = state.refUrl
@@ -380,8 +369,12 @@ export const storeMarks: Record<string, MarkProcessor> = {
     escape: true
   },
   code: {
-    open: (state, mark, parent, index) => backticksFor(false),
-    close: (state, mark, parent, index) => backticksFor(true),
+    open: (state, mark, parent, index) => {
+      return backticksFor(false)
+    },
+    close: (state, mark, parent, index) => {
+      return backticksFor(true)
+    },
     mixable: false,
     expelEnclosingWhitespace: false,
     escape: false
@@ -411,7 +404,7 @@ export const storeMarks: Record<string, MarkProcessor> = {
       }
       const styleAttrs = Object.entries(attrs)
         .map(([key, value]) => {
-          const kebabKey = key.replace(/[A-Z]/gv, (letter) => `-${letter.toLowerCase()}`)
+          const kebabKey = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)
           return `${kebabKey}: ${value}`
         })
         .join('; ')
@@ -722,13 +715,9 @@ export class MarkdownState implements IState {
     // leading and trailing accordingly.
     const node = state?.node
     if (this.isText(node) && this.isMarksHasExpelEnclosingWhitespace(state)) {
-      const text = node?.text ?? ''
-      const leadMatch = text.match(/^\s*/)?.[0] ?? ''
-      const textWithoutLeading = text.slice(leadMatch.length)
-      const trailMatch = textWithoutLeading.match(/\s*$/)?.[0] ?? ''
-      const innerMatch = textWithoutLeading.slice(0, textWithoutLeading.length - trailMatch.length)
-
-      if (leadMatch !== '' || trailMatch !== '') {
+      const match = /^(\s*)(.*?)(\s*)$/m.exec(node?.text ?? '')
+      if (match !== null) {
+        const [leadMatch, innerMatch, trailMatch] = [match[1], match[2], match[3]]
         leading += leadMatch
         state.trailing = trailMatch
         this.adjustLeadingTextNode(leadMatch, trailMatch, state, innerMatch, node as MarkupNode)

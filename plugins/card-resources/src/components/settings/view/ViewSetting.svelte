@@ -60,7 +60,7 @@
     order?: number
   }
 
-  function getObjectConfig(_class: Ref<Class<Doc>>, param: string): AttributeConfig {
+  function getObjectConfig (_class: Ref<Class<Doc>>, param: string): AttributeConfig {
     const clazz = hierarchy.getClass(_class)
     return {
       type: 'attribute',
@@ -72,11 +72,11 @@
     }
   }
 
-  function getAssociationLabel(client: TxOperations, param: string): IntlString {
+  function getAssociationLabel (client: TxOperations, param: string): IntlString {
     return getKeyLabel(client, viewlet.attachTo, param, undefined)
   }
 
-  function getBaseConfig(viewlet: Viewlet): Config[] {
+  function getBaseConfig (viewlet: Viewlet): Config[] {
     const lookup = buildConfigLookup(hierarchy, viewlet.attachTo, viewlet.config, viewlet.options?.lookup)
     const result: Config[] = []
     const clazz = hierarchy.getClass(viewlet.attachTo)
@@ -139,7 +139,7 @@
     return result
   }
 
-  function getValue(name: string, type: Type<any>, attrClass: Ref<Class<Doc>>): string {
+  function getValue (name: string, type: Type<any>, attrClass: Ref<Class<Doc>>): string {
     const presenter = hierarchy.classHierarchyMixin(attrClass, view.mixin.AttributePresenter)?.presenter
     if (presenter !== undefined) {
       return name
@@ -150,7 +150,7 @@
     return name
   }
 
-  function processAttribute(attribute: AnyAttribute, result: Config[], useMixinProxy = false): void {
+  function processAttribute (attribute: AnyAttribute, result: Config[], useMixinProxy = false): void {
     if (attribute.hidden === true || attribute.label === undefined) return
     if (viewlet.configOptions?.hiddenKeys?.includes(attribute.name)) return
     if (hierarchy.isDerived(attribute.type._class, core.class.Collection)) return
@@ -203,15 +203,15 @@
     }
   }
 
-  function getKey(value: string | BuildModelKey | undefined): string | undefined {
+  function getKey (value: string | BuildModelKey | undefined): string | undefined {
     return typeof value === 'string' ? value : value?.key
   }
 
-  function isAttribute(val: Config): val is AttributeConfig {
+  function isAttribute (val: Config): val is AttributeConfig {
     return val.type === 'attribute'
   }
 
-  function isExist(result: Config[], newValue: Config): boolean {
+  function isExist (result: Config[], newValue: Config): boolean {
     if (!isAttribute(newValue)) return false
     const newValueKey = getKey(newValue.value)
     if (newValueKey === undefined) return false
@@ -230,7 +230,7 @@
     return false
   }
 
-  async function getConfig(viewlet: Viewlet): Promise<Config[]> {
+  async function getConfig (viewlet: Viewlet): Promise<Config[]> {
     const result = getBaseConfig(viewlet)
     if (viewlet.configOptions?.strict !== true) {
       const allAttributes = hierarchy.getAllAttributes(viewlet.attachTo)
@@ -249,7 +249,7 @@
       await addAssociations(result, viewlet.attachTo)
     }
 
-    async function addAssociations(
+    async function addAssociations (
       result: Config[],
       _class: Ref<Class<Doc>>,
       parents: AssociationQuery[] = []
@@ -280,11 +280,11 @@
       }
     }
 
-    function getParentsString(parents: AssociationQuery[]): string {
+    function getParentsString (parents: AssociationQuery[]): string {
       return parents.map(([assocId, direction]) => `$associations.${assocId}_${direction === 1 ? 'a' : 'b'}`).join('.')
     }
 
-    async function processAssociation(
+    async function processAssociation (
       association: Association,
       direction: 'a' | 'b',
       result: Config[],
@@ -333,7 +333,7 @@
       }
     }
 
-    async function addAssociationAttributes(
+    async function addAssociationAttributes (
       result: Config[],
       targetClass: Ref<Class<Doc>>,
       associationKey: string,

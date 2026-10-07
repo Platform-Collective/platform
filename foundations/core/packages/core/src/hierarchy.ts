@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import type { FindOptions, Lookup, ToClassRefT, WithLookup } from '.'
+import { type FindOptions, type Lookup, type ToClassRefT, type WithLookup } from '.'
 import type { AnyAttribute, Class, Classifier, Doc, Domain, Interface, Mixin, Obj, Ref } from './classes'
 import { ClassifierKind } from './classes'
 import { clone as deepClone } from './clone'
@@ -37,7 +37,7 @@ export class Hierarchy {
 
   private createMixinProxyHandler (mixin: Ref<Mixin<Doc>>): ProxyHandler<Doc> {
     const value = this.getClass(mixin)
-    const ancestor = this.getClass(value.extends!)
+    const ancestor = this.getClass(value.extends as Ref<Class<Obj>>)
     const ancestorProxy = ancestor.kind === ClassifierKind.MIXIN ? this.getMixinProxyHandler(ancestor._id) : null
     return _createMixinProxy(value, ancestorProxy)
   }
@@ -187,7 +187,7 @@ export class Hierarchy {
   getAncestors (_class: Ref<Classifier>): Ref<Classifier>[] {
     const result = this.ancestors.get(_class)
     if (result === undefined) {
-      throw new Error(`ancestors not found: ${_class}`)
+      throw new Error('ancestors not found: ' + _class)
     }
     return result
   }
@@ -195,7 +195,7 @@ export class Hierarchy {
   getClass<T extends Obj = Obj>(_class: Ref<Class<T>>): Class<T> {
     const data = this.classifiers.get(_class)
     if (data === undefined || this.isInterface(data)) {
-      throw new Error(`class not found: ${_class}`)
+      throw new Error('class not found: ' + _class)
     }
     return data
   }
@@ -217,7 +217,7 @@ export class Hierarchy {
   getClassOrInterface (_class: Ref<Class<Obj>>): Class<Obj> {
     const data = this.classifiers.get(_class)
     if (data === undefined) {
-      throw new Error(`class not found: ${_class}`)
+      throw new Error('class not found: ' + _class)
     }
     return data
   }
@@ -225,7 +225,7 @@ export class Hierarchy {
   getInterface (_interface: Ref<Interface<Doc>>): Interface<Doc> {
     const data = this.classifiers.get(_interface)
     if (data === undefined || !this.isInterface(data)) {
-      throw new Error(`interface not found: ${_interface}`)
+      throw new Error('interface not found: ' + _interface)
     }
     return data
   }
@@ -374,7 +374,7 @@ export class Hierarchy {
     const result: Ref<Interface<Doc>>[] = []
     const toVisit = [...extendsOrImplements]
     while (toVisit.length > 0) {
-      const ref = toVisit.shift()!
+      const ref = toVisit.shift() as Ref<Interface<Doc>>
       if (ref === from) {
         return true
       }
@@ -387,7 +387,7 @@ export class Hierarchy {
   getDescendants<T extends Obj>(_class: Ref<Class<T>>): Ref<Class<Obj>>[] {
     const data = this.descendants.get(_class)
     if (data === undefined) {
-      throw new Error(`descendants not found: ${_class}`)
+      throw new Error('descendants not found: ' + _class)
     }
     return data
   }
@@ -409,12 +409,14 @@ export class Hierarchy {
         if (add) {
           this.descendants.set(cls, [_class])
         }
-      } else if (add) {
-        list.push(_class)
       } else {
-        const pos = list.indexOf(_class)
-        if (pos !== -1) {
-          list.splice(pos, 1)
+        if (add) {
+          list.push(_class)
+        } else {
+          const pos = list.indexOf(_class)
+          if (pos !== -1) {
+            list.splice(pos, 1)
+          }
         }
       }
     }
@@ -426,7 +428,7 @@ export class Hierarchy {
     const ancestorList: Ref<Classifier>[] = []
 
     while (cl.length > 0) {
-      const classifier = cl.shift()!
+      const classifier = cl.shift() as Ref<Classifier>
       if (addNew(visited, classifier)) {
         ancestorList.push(classifier)
         cl.push(...this.ancestorsOf(classifier))
@@ -536,7 +538,7 @@ export class Hierarchy {
     let result: Ref<Class<Obj>> = _class
     for (const ancestor of ancestors) {
       try {
-        const { domain } = this.getClass(ancestor)
+        const domain = this.getClass(ancestor).domain
         if (domain === baseDomain) {
           result = ancestor
         }
@@ -548,7 +550,7 @@ export class Hierarchy {
   getAttribute (classifier: Ref<Classifier>, name: string): AnyAttribute {
     const attr = this.findAttribute(classifier, name)
     if (attr === undefined) {
-      throw new Error(`attribute not found: ${name}`)
+      throw new Error('attribute not found: ' + name)
     }
     return attr
   }
@@ -557,7 +559,7 @@ export class Hierarchy {
     const list = [classifier]
     const visited = new Set<Ref<Classifier>>()
     while (list.length > 0) {
-      const cl = list.shift()!
+      const cl = list.shift() as Ref<Classifier>
       if (addNew(visited, cl)) {
         const attribute = this.attributes.get(cl)?.get(name)
         if (attribute !== undefined) {

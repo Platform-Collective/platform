@@ -93,7 +93,7 @@ const KNOWN_SET: ReadonlySet<string> = new Set(ALL_COLUMN_KEYS)
  * unknown keys, deduplicates, and falls back to {@link DEFAULT_COLUMNS}
  * when the input shape is wrong or the resulting list would be empty.
  */
-export function parseColumns (raw: unknown): SidebarColumnKey[] {
+export function parseColumns(raw: unknown): SidebarColumnKey[] {
   if (!Array.isArray(raw)) return [...DEFAULT_COLUMNS]
   const seen = new Set<SidebarColumnKey>()
   const out: SidebarColumnKey[] = []
@@ -120,7 +120,7 @@ export function parseColumns (raw: unknown): SidebarColumnKey[] {
  * the defaults so a partially-written blob can never leave a column
  * width-less.
  */
-export function parseWidths (raw: unknown): Record<SidebarColumnKey, number> {
+export function parseWidths(raw: unknown): Record<SidebarColumnKey, number> {
   const out: Record<SidebarColumnKey, number> = { ...DEFAULT_WIDTHS }
   if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return out
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
@@ -132,7 +132,7 @@ export function parseWidths (raw: unknown): Record<SidebarColumnKey, number> {
 }
 
 /** Clamp + round a width value so persisted/dragged values stay sane. */
-export function clampWidth (px: number): number {
+export function clampWidth(px: number): number {
   if (!Number.isFinite(px)) return MIN_WIDTH
   const rounded = Math.round(px)
   if (rounded < MIN_WIDTH) return MIN_WIDTH
@@ -150,7 +150,7 @@ export function clampWidth (px: number): number {
  * coerced to {@link DEFAULT_WIDTHS} for that column — matches the
  * defensive parsing contract in {@link parseColumns}.
  */
-export function computeTotalWidth (cols: readonly SidebarColumnKey[], widths: Record<string, number>): number {
+export function computeTotalWidth(cols: readonly SidebarColumnKey[], widths: Record<string, number>): number {
   let sum = 0
   for (const c of cols) {
     const override = widths[c]

@@ -87,7 +87,7 @@ export async function handleProviderAuth (
         email,
         first,
         last,
-        state.inviteId,
+        state.inviteId as any,
         socialKey,
         signUpDisabled
       )

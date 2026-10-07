@@ -45,6 +45,7 @@ import core, {
   type TxCreateDoc,
   type TxCUD,
   TxProcessor,
+  type TxRemoveDoc,
   type TxUpdateDoc,
   type TxWorkspaceEvent,
   WorkspaceEvent
@@ -359,7 +360,7 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
   }
 
   private handleRemove (tx: TxCUD<Space>): void {
-    const removeTx = tx
+    const removeTx = tx as TxRemoveDoc<Space>
     if (!this.context.hierarchy.isDerived(removeTx.objectClass, core.class.Space)) return
     if (removeTx._class !== core.class.TxRemoveDoc) return
     this.removeSpace(tx.objectId)

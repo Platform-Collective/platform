@@ -15,7 +15,7 @@ const PX_PER_DAY: Record<ZoomLevel, number> = {
 }
 
 /** Snap any Timestamp (ms) to the start of its UTC day. */
-export function snapToUtcMidnight (t: number): number {
+export function snapToUtcMidnight(t: number): number {
   const d = new Date(t)
   return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
 }
@@ -30,7 +30,7 @@ export function snapToUtcMidnight (t: number): number {
  *
  * `null`/`undefined` (unscheduled / no deadline) map to `null`.
  */
-export function toGanttDay (t: number | null | undefined): number | null {
+export function toGanttDay(t: number | null | undefined): number | null {
   return t == null ? null : snapToUtcMidnight(t)
 }
 
@@ -45,7 +45,7 @@ export interface TimeScale {
   ticks: (range: [number, number]) => Tick[]
 }
 
-export function createTimeScale (zoom: ZoomLevel, origin: number, pxPerDayOverride?: number): TimeScale {
+export function createTimeScale(zoom: ZoomLevel, origin: number, pxPerDayOverride?: number): TimeScale {
   const pxPerDay = pxPerDayOverride ?? PX_PER_DAY[zoom]
   const originSnapped = snapToUtcMidnight(origin)
 
@@ -192,7 +192,7 @@ export function createTimeScale (zoom: ZoomLevel, origin: number, pxPerDayOverri
 }
 
 /** ISO 8601 week number for a UTC date. */
-function isoWeekNumber (d: Date): number {
+function isoWeekNumber(d: Date): number {
   const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
   const dayNum = (target.getUTCDay() + 6) % 7
   target.setUTCDate(target.getUTCDate() - dayNum + 3)

@@ -183,7 +183,7 @@ export async function updateModel (
       for (const op of migrateOperations) {
         const st = platformNow()
         await ctx.with(op[0], {}, async () => {
-          await op[1].upgrade(migrateState, async () => connection, mode)
+          await op[1].upgrade(migrateState, async () => connection as any, mode)
         })
         const tdelta = platformNowDiff(st)
         if (tdelta > 0) {

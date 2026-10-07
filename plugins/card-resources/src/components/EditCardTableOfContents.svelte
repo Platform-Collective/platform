@@ -67,7 +67,7 @@
 
   let renderTopSections = defaults?.defaultSection !== communication.ids.CardMessagesSection
 
-  export function scrollDown(): void {
+  export function scrollDown (): void {
     if (scrollDiv == null) return
     const lastTocItem = toc[toc.length - 1]
     if (lastTocItem === undefined) return
@@ -76,11 +76,11 @@
     void navigate()
   }
 
-  export function editLastMessage(): void {
+  export function editLastMessage (): void {
     sectionRef[messagesId]?.editLastMessage?.()
   }
 
-  export function hideScrollBar(): void {
+  export function hideScrollBar (): void {
     hideBar = true
     if (timer != null) {
       clearTimeout(timer)
@@ -90,12 +90,12 @@
     }, 1000)
   }
 
-  function getBottomOffset(): number {
+  function getBottomOffset (): number {
     if (scrollDiv == null) return 0
     return Math.max(0, Math.floor(scrollDiv.scrollHeight - scrollDiv.scrollTop - scrollDiv.clientHeight))
   }
 
-  async function navigate(): Promise<void> {
+  async function navigate (): Promise<void> {
     if (selectedToc === undefined) return
     if (selectedToc.id !== messagesId && !renderTopSections) {
       renderTopSections = true
@@ -115,7 +115,7 @@
     isScrollInitialized = true
   }
 
-  function updateToc(sections: CardSection[], subTocBySection: Record<string, Heading[]>): void {
+  function updateToc (sections: CardSection[], subTocBySection: Record<string, Heading[]>): void {
     if (sections.length === 0) return
 
     toc = getCardToc(sections, subTocBySection)
@@ -127,7 +127,7 @@
     }
   }
 
-  function handleNavigationClick(heading: Heading): void {
+  function handleNavigationClick (heading: Heading): void {
     if (heading.group !== messagesId) {
       renderTopSections = true
     }
@@ -135,7 +135,7 @@
     void navigate()
   }
 
-  function handleSectionLoaded(_id: Ref<CardSection>): void {
+  function handleSectionLoaded (_id: Ref<CardSection>): void {
     const wasLoaded = sectionLoaded[_id] === true
     sectionLoaded[_id] = true
     if (!wasLoaded && selectedToc?.group === _id) {
@@ -143,12 +143,12 @@
     }
   }
 
-  function handleChangeNavigation(section: Ref<CardSection>, id: string): void {
+  function handleChangeNavigation (section: Ref<CardSection>, id: string): void {
     if (selectedToc?.group !== section) return
     selectedToc = toc.find((it) => it.group === section && it.id === id)
   }
 
-  function handleAction(section: Ref<CardSection>, action: CardSectionAction): void {
+  function handleAction (section: Ref<CardSection>, action: CardSectionAction): void {
     if (action.id === 'toc') {
       subTocBySection[section] = action.toc
       subTocBySection = subTocBySection
@@ -164,7 +164,7 @@
     }
   }
 
-  function handleScroll(): void {
+  function handleScroll (): void {
     if (scrollDiv == null || showOverlay) return
 
     const allLoaded = renderTopSections
@@ -200,7 +200,7 @@
     bottomOffset = getBottomOffset()
   }
 
-  function handleScrollDown(): void {
+  function handleScrollDown (): void {
     const ref = sectionRef[messagesId]
     if (ref?.scrollDown != null) {
       ref.scrollDown()
@@ -209,7 +209,7 @@
     }
   }
 
-  function canScrollDown(): boolean {
+  function canScrollDown (): boolean {
     const ref = sectionRef[messagesId]
     if (ref === undefined) return false
 

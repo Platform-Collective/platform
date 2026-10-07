@@ -89,31 +89,31 @@ const DOMAIN_PROCESS_LOG = 'process-log' as Domain
 @Model(process.class.Process, core.class.Doc, DOMAIN_MODEL)
 export class TProcess extends TDoc implements Process {
   @Prop(TypeString(), core.string.Name)
-  name!: string
+    name!: string
 
   @Prop(TypeString(), core.string.Description)
-  description!: string
+    description!: string
 
   @Prop(TypeRef(card.class.MasterTag), card.string.MasterTag)
-  masterTag!: Ref<MasterTag | Tag>
+    masterTag!: Ref<MasterTag | Tag>
 
   @Prop(TypeRef(process.class.State), process.string.NewState)
-  initState!: Ref<State>
+    initState!: Ref<State>
 
   @Prop(TypeBoolean(), process.string.ParallelExecutionForbidden)
-  parallelExecutionForbidden?: boolean
+    parallelExecutionForbidden?: boolean
 
   @Prop(TypeBoolean(), process.string.StartAutomatically)
-  autoStart: boolean | undefined
+    autoStart: boolean | undefined
 
   @Prop(TypeBoolean(), process.string.AutomationOnly)
-  automationOnly: boolean | undefined
+    automationOnly: boolean | undefined
 
   @Prop(TypeRecord(), process.string.RequiredSlots)
-  requiredSlots?: Record<string, SlotModel>
+    requiredSlots?: Record<string, SlotModel>
 
   @Prop(TypeRecord(), process.string.Bindings)
-  bindings?: Record<string, string>
+    bindings?: Record<string, string>
 
   context!: Record<ContextId, ProcessContext>
 }
@@ -140,64 +140,64 @@ export class TTrigger extends TDoc implements Trigger {
 @Model(process.class.Transition, core.class.Doc, DOMAIN_MODEL)
 export class TTransition extends TDoc implements Transition {
   @Prop(TypeRef(process.class.Process), process.string.Process)
-  process!: Ref<Process>
+    process!: Ref<Process>
 
   @Prop(TypeRef(process.class.State), process.string.From)
-  from!: Ref<State> | null
+    from!: Ref<State> | null
 
   @Prop(TypeRef(process.class.State), process.string.To)
-  to!: Ref<State>
+    to!: Ref<State>
 
   @Prop(TypeAny(process.component.ActionsPresenter, process.string.Actions), process.string.Actions)
-  actions!: Step<Doc>[]
+    actions!: Step<Doc>[]
 
   @Prop(TypeRef(process.class.Trigger), process.string.Trigger)
-  trigger!: Ref<Trigger>
+    trigger!: Ref<Trigger>
 
   triggerParams!: Record<string, any>
 
   @Prop(TypeRank(), core.string.Rank)
   @Hidden()
-  rank!: Rank
+    rank!: Rank
 }
 
 @Model(process.class.ExecutionLog, core.class.Doc, DOMAIN_PROCESS_LOG)
 export class TExecutionLog extends TDoc implements ExecutionLog {
   @Prop(TypeRef(process.class.Execution), process.string.Execution)
-  execution!: Ref<Execution>
+    execution!: Ref<Execution>
 
   @Prop(TypeRef(process.class.Process), process.string.Process)
-  process!: Ref<Process>
+    process!: Ref<Process>
 
   @Prop(TypeRef(card.class.Card), card.string.Card)
-  card!: Ref<Card>
+    card!: Ref<Card>
 
   @Prop(TypeRef(process.class.Transition), process.string.Transition)
-  transition?: Ref<Transition>
+    transition?: Ref<Transition>
 
   @Prop(TypeAny(process.component.LogActionPresenter, process.string.LogAction), process.string.LogAction)
-  action!: ExecutionLogAction
+    action!: ExecutionLogAction
 }
 
 @Model(process.class.Execution, core.class.Doc, DOMAIN_PROCESS)
 export class TExecution extends TDoc implements Execution {
   @Prop(TypeRef(process.class.Process), process.string.Process)
   @ReadOnly()
-  process!: Ref<Process>
+    process!: Ref<Process>
 
   @Prop(TypeRef(process.class.State), process.string.Step)
   @ReadOnly()
-  currentState!: Ref<State>
+    currentState!: Ref<State>
 
   rollback!: Tx[][]
 
   @Prop(TypeRef(card.class.Card), card.string.Card)
   @ReadOnly()
-  card!: Ref<Card>
+    card!: Ref<Card>
 
   @Prop(TypeAny(process.component.ErrorPresenter, process.string.Error), process.string.Error)
   @ReadOnly()
-  error?: ExecutionError[] | null
+    error?: ExecutionError[] | null
 
   parentId?: Ref<Execution>
 
@@ -212,30 +212,30 @@ export class TExecution extends TDoc implements Execution {
 @UX(process.string.ToDo)
 export class TProcessToDo extends TToDo implements ProcessToDo {
   @Prop(TypeRef(process.class.Execution), process.string.Execution)
-  execution!: Ref<Execution>
+    execution!: Ref<Execution>
 
   @Prop(TypeBoolean(), process.string.Rollback)
-  withRollback!: boolean
+    withRollback!: boolean
 
   @Prop(TypeBoolean(), process.string.AskRequired)
-  askRequired?: boolean
+    askRequired?: boolean
 }
 
 @Model(process.class.ApproveRequest, process.class.ProcessToDo)
 @UX(process.string.ApproveRequest)
 export class TApproveRequest extends TProcessToDo implements ApproveRequest {
   @Prop(TypeBoolean(), process.string.IsApproved)
-  approved?: boolean
+    approved?: boolean
 
   @Prop(TypeString(), process.string.RejectionReason)
-  reason?: string
+    reason?: string
 
   group!: string
 
   card!: Ref<Card>
 
   @Prop(TypeString(), process.string.ActionType)
-  actionType?: 'approve' | 'review'
+    actionType?: 'approve' | 'review'
 }
 
 @Model(process.class.Method, core.class.Doc, DOMAIN_MODEL)
@@ -261,14 +261,14 @@ export class TMethod extends TDoc implements Method<Doc> {
 export class TState extends TDoc implements State {
   @Prop(TypeRef(process.class.Process), process.string.Process)
   @ReadOnly()
-  process!: Ref<Process>
+    process!: Ref<Process>
 
   @Prop(TypeString(), core.string.Name)
-  title!: string
+    title!: string
 
   @Prop(TypeRank(), core.string.Rank)
   @Hidden()
-  rank!: Rank
+    rank!: Rank
 }
 
 @Model(process.class.ProcessCustomEvent, core.class.Doc, DOMAIN_TRANSIENT)
@@ -276,10 +276,10 @@ export class TProcessCustomEvent extends TDoc implements ProcessCustomEvent {
   eventType!: string
 
   @Prop(TypeRef(process.class.Execution), process.string.Execution)
-  execution!: Ref<Execution>
+    execution!: Ref<Execution>
 
   @Prop(TypeRef(card.class.Card), card.string.Card)
-  card!: Ref<Card>
+    card!: Ref<Card>
 }
 
 @Model(process.class.EventButton, core.class.Doc, DOMAIN_PROCESS)
@@ -289,48 +289,48 @@ export class TEventButton extends TDoc implements EventButton {
   eventType!: string
 
   @Prop(TypeRef(process.class.Execution), process.string.Execution)
-  execution!: Ref<Execution>
+    execution!: Ref<Execution>
 
   @Prop(TypeRef(card.class.Card), card.string.Card)
-  card!: Ref<Card>
+    card!: Ref<Card>
 }
 
 @Model(process.class.ProcessFunction, core.class.Doc, DOMAIN_MODEL)
 export class TProcessFunction extends TDoc implements ProcessFunction {
   @Prop(TypeRef(core.class.Class), getEmbeddedLabel('To'))
-  to?: Ref<Class<Doc>>
+    to?: Ref<Class<Doc>>
 
   @Prop(TypeRef(core.class.Class), getEmbeddedLabel('Of'))
-  of!: Ref<Class<Doc<Space>>>
+    of!: Ref<Class<Doc<Space>>>
 
   @Prop(TypeString(), getEmbeddedLabel('Category'))
-  category: AttributeCategory | undefined
+    category: AttributeCategory | undefined
 
   @Prop(TypeIntlString(), getEmbeddedLabel('Label'))
-  label!: IntlString
+    label!: IntlString
 
   editor?: AnyComponent
   presenter?: AnyComponent
 
   @Prop(TypeBoolean(), getEmbeddedLabel('AllowMany'))
-  allowMany?: boolean
+    allowMany?: boolean
 
   @Prop(TypeString(), getEmbeddedLabel('Type'))
-  type!: 'transform' | 'reduce' | 'context' | 'convert'
+    type!: 'transform' | 'reduce' | 'context' | 'convert'
 }
 
 @Model(process.class.UpdateCriteriaComponent, core.class.Doc, DOMAIN_MODEL)
 export class TUpdateCriteriaComponent extends TDoc implements UpdateCriteriaComponent {
   @Prop(TypeString(), getEmbeddedLabel('Category'))
-  category!: AttributeCategory
+    category!: AttributeCategory
 
   editor!: AnyComponent
 
   @Prop(TypeRef(core.class.Class), getEmbeddedLabel('Of'))
-  of!: Ref<Class<Doc<Space>>>
+    of!: Ref<Class<Doc<Space>>>
 
   @Prop(TypeRecord(), getEmbeddedLabel('Props'))
-  props!: Record<string, any>
+    props!: Record<string, any>
 }
 
 export * from './migration'

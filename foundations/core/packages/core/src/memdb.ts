@@ -18,7 +18,7 @@ import { type Lookup, type MeasureContext, type ReverseLookups, getObjectValue }
 import type { Class, Doc, Ref } from './classes'
 
 import core from './component'
-import type { Hierarchy } from './hierarchy'
+import { type Hierarchy } from './hierarchy'
 import { checkMixinKey, matchQuery, resultSort } from './query'
 import type {
   AssociationQuery,
@@ -142,7 +142,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     for (const doc of docs) {
       const result: LookupData<T> = {}
       await this.getLookupValue(_class, doc, lookup, result)
-      withLookup.push({ ...doc, $lookup: result })
+      withLookup.push(Object.assign({}, doc, { $lookup: result }))
     }
     return withLookup
   }
@@ -151,7 +151,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     const withLookup: WithLookup<T>[] = []
     for (const doc of docs) {
       const result = await this.getAssociationValue(doc, associations)
-      withLookup.push({ ...doc, $associations: result })
+      withLookup.push(Object.assign({}, doc, { $associations: result }))
     }
     return withLookup
   }
@@ -187,7 +187,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     let result: WithLookup<Doc>[]
     const baseClass = this.hierarchy.getBaseClass(_class)
     if (
-      Object.hasOwn(query, '_id') &&
+      Object.prototype.hasOwnProperty.call(query, '_id') &&
       (typeof query._id === 'string' || query._id?.$in !== undefined || query._id === undefined || query._id === null)
     ) {
       result = this.getByIdQuery(query, baseClass)
@@ -235,7 +235,7 @@ export abstract class MemDb extends TxProcessor implements Storage {
     let result: WithLookup<Doc>[]
     const baseClass = this.hierarchy.getBaseClass(_class)
     if (
-      Object.hasOwn(query, '_id') &&
+      Object.prototype.hasOwnProperty.call(query, '_id') &&
       (typeof query._id === 'string' || query._id?.$in !== undefined || query._id === undefined || query._id === null)
     ) {
       result = this.getByIdQuery(query, baseClass)
@@ -254,7 +254,9 @@ export abstract class MemDb extends TxProcessor implements Storage {
     result = result.slice(0, options?.limit)
 
     return toFindResult(
-      result.map((it) => (baseClass !== _class ? this.hierarchy.as(it, _class) : it)) as WithLookup<T>[],
+      result.map((it) => {
+        return baseClass !== _class ? this.hierarchy.as(it, _class) : it
+      }) as WithLookup<T>[],
       total
     )
   }

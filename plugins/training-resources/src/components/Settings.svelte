@@ -71,7 +71,7 @@
     )
   }
 
-  async function onChange(roleId: Ref<Role>, members: AccountUuid[]): Promise<void> {
+  async function onChange (roleId: Ref<Role>, members: AccountUuid[]): Promise<void> {
     if (space === null || spaceType === null) {
       return
     }

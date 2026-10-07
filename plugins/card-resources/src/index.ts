@@ -99,7 +99,7 @@ export { default as CardTagsColored } from './components/CardTagsColored.svelte'
 export { default as CardPathPresenter } from './components/CardPathPresenter.svelte'
 export { default as CardTimestamp } from './components/CardTimestamp.svelte'
 
-export type * from './types'
+export * from './types'
 export { getCardIconInfo, openCardInSidebar } from './utils'
 
 export default async (): Promise<Resources> => ({

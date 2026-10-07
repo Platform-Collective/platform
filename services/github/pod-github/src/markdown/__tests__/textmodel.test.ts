@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-/* global describe, expect, it */
+/* eslint-env jest */
 import {
   MarkupMarkType,
   MarkupNode,

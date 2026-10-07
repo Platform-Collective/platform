@@ -33,7 +33,7 @@ async function migrateSettings (client: MigrationClient): Promise<void> {
     DOMAIN_PREFERENCE,
     {
       _class: 'notification:class:NotificationSetting' as Ref<Class<Doc>>,
-      attachedTo: 'notification:providers:EmailNotification'
+      attachedTo: 'notification:providers:EmailNotification' as Ref<Doc>
     },
     {
       _class: notification.class.NotificationTypeSetting,

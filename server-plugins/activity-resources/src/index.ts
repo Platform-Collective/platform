@@ -342,7 +342,7 @@ export async function generateDocUpdateMessages (
           await control.findAll(ctx, core.class.TxCreateDoc, { objectId: tx.attachedTo }, { limit: 1 })
         )[0]
 
-        doc = createTx !== undefined ? TxProcessor.createDoc2Doc(createTx) : undefined
+        doc = createTx !== undefined ? TxProcessor.createDoc2Doc(createTx as TxCreateDoc<Doc>) : undefined
       }
       if (doc !== undefined) {
         objectCache?.docs?.set(tx.attachedTo, doc)
@@ -417,8 +417,8 @@ async function ActivityMessagesHandler (_txes: TxCUD<Doc>[], control: TriggerCon
       tx.space === core.space.DerivedTx
         ? []
         : await control.ctx.with('generateDocUpdateMessages', {}, (ctx) =>
-            generateDocUpdateMessages(ctx, tx, control, [], cache)
-          )
+          generateDocUpdateMessages(ctx, tx, control, [], cache)
+        )
 
     const messages = txes.map((messageTx) => TxProcessor.createDoc2Doc(messageTx as TxCreateDoc<DocUpdateMessage>))
 

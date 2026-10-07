@@ -29,21 +29,21 @@ export const MOVE_THRESHOLD_PX = 10
 
 export type LongPressState =
   | { kind: 'idle' }
-  | { kind: 'pending', startedAt: number, x: number, y: number }
+  | { kind: 'pending'; startedAt: number; x: number; y: number }
   | { kind: 'fired' }
   | { kind: 'cancelled' }
 
 export type LongPressEvent =
-  | { type: 'start', now: number, x: number, y: number }
-  | { type: 'tick', now: number }
-  | { type: 'move', now: number, x: number, y: number }
+  | { type: 'start'; now: number; x: number; y: number }
+  | { type: 'tick'; now: number }
+  | { type: 'move'; now: number; x: number; y: number }
   | { type: 'cancel' }
 
-export function initial (): LongPressState {
+export function initial(): LongPressState {
   return { kind: 'idle' }
 }
 
-export function reduceLongPress (state: LongPressState, event: LongPressEvent): LongPressState {
+export function reduceLongPress(state: LongPressState, event: LongPressEvent): LongPressState {
   switch (event.type) {
     case 'start':
       if (state.kind === 'pending') return state // second start while pending is a no-op

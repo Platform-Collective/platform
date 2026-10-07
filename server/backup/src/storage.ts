@@ -99,7 +99,7 @@ class AdapterStorage implements BackupStorage {
 
   async loadFile (name: string): Promise<Buffer> {
     const data = await this.client.read(this.ctx, this.wsIds, join(this.root, name))
-    return Buffer.concat(data)
+    return Buffer.concat(data as any)
   }
 
   async write (name: string): Promise<Writable> {

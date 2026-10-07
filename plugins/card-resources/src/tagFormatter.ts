@@ -51,7 +51,9 @@ export function getCardTagMixins (card: Card, hierarchy: Hierarchy): Array<Ref<C
   const parentClass = hierarchy.getParentClass(card._class)
   return hierarchy
     .getDescendants(parentClass)
-    .filter((m) => hierarchy.getClass(m).kind === ClassifierKind.MIXIN && hierarchy.hasMixin(card, m))
+    .filter((m) => hierarchy.getClass(m).kind === ClassifierKind.MIXIN && hierarchy.hasMixin(card, m)) as Array<
+  Ref<Class<Doc>>
+  >
 }
 
 /**

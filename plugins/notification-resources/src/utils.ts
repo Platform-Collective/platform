@@ -659,12 +659,12 @@ export async function selectInboxContext (
         object?._id === objectId
           ? (object as ThreadMessage)
           : await client.findOne(
-              chunter.class.ThreadMessage,
-              {
-                _id: objectId as Ref<ThreadMessage>
-              },
-              { projection: { _id: 1, attachedTo: 1 } }
-            )
+            chunter.class.ThreadMessage,
+            {
+              _id: objectId as Ref<ThreadMessage>
+            },
+            { projection: { _id: 1, attachedTo: 1 } }
+          )
 
       void navigateToInboxDoc(
         linkProviders,

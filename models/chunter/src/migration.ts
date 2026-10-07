@@ -172,7 +172,7 @@ async function removeBacklinks (client: MigrationClient): Promise<void> {
   }
   await client.deleteMany(DOMAIN_ACTIVITY, {
     _class: activity.class.DocUpdateMessage,
-    objectClass: 'chunter:class:Backlink'
+    objectClass: 'chunter:class:Backlink' as Ref<Class<Doc>>
   })
 }
 

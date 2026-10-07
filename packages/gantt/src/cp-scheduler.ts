@@ -26,10 +26,10 @@
 export class DebouncedRecompute {
   private handle: ReturnType<typeof setTimeout> | null = null
 
-  constructor (private readonly delayMs: number) {}
+  constructor(private readonly delayMs: number) {}
 
   /** Replace any pending run with a new one `delayMs` from now. */
-  schedule (run: () => void): void {
+  schedule(run: () => void): void {
     this.cancel()
     this.handle = setTimeout(() => {
       this.handle = null
@@ -38,7 +38,7 @@ export class DebouncedRecompute {
   }
 
   /** Drop a pending run, if any. Idempotent. */
-  cancel (): void {
+  cancel(): void {
     if (this.handle !== null) {
       clearTimeout(this.handle)
       this.handle = null
@@ -46,7 +46,7 @@ export class DebouncedRecompute {
   }
 
   /** True while a run is queued. */
-  get pending (): boolean {
+  get pending(): boolean {
     return this.handle !== null
   }
 }

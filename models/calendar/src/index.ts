@@ -104,44 +104,44 @@ export class TEvent extends TAttachedDoc implements Event {
   declare space: Ref<SystemSpace>
 
   @Prop(TypeRef(calendar.class.Calendar), calendar.string.Calendar)
-  calendar!: Ref<Calendar>
+    calendar!: Ref<Calendar>
 
   eventId!: string
 
   @Prop(TypeString(), calendar.string.Title)
   @Index(IndexKind.FullText)
-  title!: string
+    title!: string
 
   @Prop(TypeMarkup(), calendar.string.Description)
   @Index(IndexKind.FullText)
-  description!: Markup
+    description!: Markup
 
   @Prop(TypeString(), calendar.string.Location, { icon: calendar.icon.Location })
   @Index(IndexKind.FullText)
-  location?: string
+    location?: string
 
   @Prop(TypeBoolean(), calendar.string.AllDay)
   @ReadOnly()
-  allDay!: boolean
+    allDay!: boolean
 
   @Prop(TypeDate(DateRangeMode.DATETIME), calendar.string.Date)
-  date!: Timestamp
+    date!: Timestamp
 
   @Prop(TypeDate(DateRangeMode.DATETIME), calendar.string.DueTo)
-  dueDate!: Timestamp
+    dueDate!: Timestamp
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-  attachments?: number
+    attachments?: number
 
   @Prop(ArrOf(TypeRef(contact.class.Contact)), calendar.string.Participants)
-  participants!: Ref<Contact>[]
+    participants!: Ref<Contact>[]
 
   @Prop(ArrOf(TypeTimestamp()), calendar.string.Reminders)
-  reminders?: number[]
+    reminders?: number[]
 
   @Prop(ArrOf(TypeString()), calendar.string.ExternalParticipants)
   @Index(IndexKind.Indexed)
-  externalParticipants?: string[]
+    externalParticipants?: string[]
 
   access!: AccessLevel
 
@@ -150,7 +150,7 @@ export class TEvent extends TAttachedDoc implements Event {
   timeZone?: string
 
   @Index(IndexKind.Indexed)
-  user!: PersonId
+    user!: PersonId
 
   blockTime!: boolean
 }

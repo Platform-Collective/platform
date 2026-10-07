@@ -113,75 +113,75 @@ export interface DragTarget<D extends GanttItem = GanttItem> {
  */
 export type DragState<TTarget extends DragTarget = DragTarget, TNode extends GanttItem = GanttItem> =
   | { kind: 'idle' }
-  | { kind: 'hover-bar', issueId: string, edge: 'left' | 'right' | 'body' | 'none' }
+  | { kind: 'hover-bar'; issueId: string; edge: 'left' | 'right' | 'body' | 'none' }
   | {
-    kind: 'dragging-body'
-    target: TTarget
-    originStart: number
-    originEnd: number
-    cursorStartX: number
-    previewStart: number
-    previewEnd: number
-    /** Bulk co-drag state: other selected issues being shifted in sync. */
-    coDrag?: {
-      members: Array<{ issueId: string, originStart: number, originEnd: number }>
-      minDeltaMs: number
-      maxDeltaMs: number
-      anchorDeltaMs: number
+      kind: 'dragging-body'
+      target: TTarget
+      originStart: number
+      originEnd: number
+      cursorStartX: number
+      previewStart: number
+      previewEnd: number
+      /** Bulk co-drag state: other selected issues being shifted in sync. */
+      coDrag?: {
+        members: Array<{ issueId: string; originStart: number; originEnd: number }>
+        minDeltaMs: number
+        maxDeltaMs: number
+        anchorDeltaMs: number
+      }
     }
-  }
   | {
-    kind: 'resizing-left'
-    target: TTarget
-    originStart: number
-    originEnd: number
-    cursorStartX: number
-    previewStart: number
-  }
+      kind: 'resizing-left'
+      target: TTarget
+      originStart: number
+      originEnd: number
+      cursorStartX: number
+      previewStart: number
+    }
   | {
-    kind: 'resizing-right'
-    target: TTarget
-    originStart: number
-    originEnd: number
-    cursorStartX: number
-    previewEnd: number
-  }
+      kind: 'resizing-right'
+      target: TTarget
+      originStart: number
+      originEnd: number
+      cursorStartX: number
+      previewEnd: number
+    }
   | {
-    kind: 'dragging-unscheduled'
-    target: TTarget
-    /** Anchor date the drag was started from (defaults to today at UTC midnight). */
-    originStart: number
-    /** originStart + 1 day; used for ghost-outline / commit symmetry with dragging-body. */
-    originEnd: number
-    cursorStartX: number
-    previewStart: number
-    previewEnd: number
-    /**
+      kind: 'dragging-unscheduled'
+      target: TTarget
+      /** Anchor date the drag was started from (defaults to today at UTC midnight). */
+      originStart: number
+      /** originStart + 1 day; used for ghost-outline / commit symmetry with dragging-body. */
+      originEnd: number
+      cursorStartX: number
+      previewStart: number
+      previewEnd: number
+      /**
        * True once the cursor has been over the canvas during the drag and a real
        * canvas-X has been observed. Guards against the click-without-drag case
        * where mouseup fires before the user has moved over the canvas — committing
        * such a "drag" would schedule the issue to today silently. `commitDrag`
        * treats `dragging-unscheduled && !hasCanvasTarget` as a no-op.
        */
-    hasCanvasTarget: boolean
-  }
+      hasCanvasTarget: boolean
+    }
   | {
-    kind: 'connector-drawing'
-    /** Source item the user is drawing the dependency from. */
-    source: TNode
-    /** Pixel x/y of the connector-dot on the source bar (where the curve starts). */
-    originPx: { x: number, y: number }
-    /** Live cursor x/y in canvas-content coordinates (where the curve ends). */
-    cursorPx: { x: number, y: number }
-  }
+      kind: 'connector-drawing'
+      /** Source item the user is drawing the dependency from. */
+      source: TNode
+      /** Pixel x/y of the connector-dot on the source bar (where the curve starts). */
+      originPx: { x: number; y: number }
+      /** Live cursor x/y in canvas-content coordinates (where the curve ends). */
+      cursorPx: { x: number; y: number }
+    }
   | {
-    kind: 'connector-target-hover'
-    source: TNode
-    originPx: { x: number, y: number }
-    cursorPx: { x: number, y: number }
-    /** Candidate target item under the pointer. */
-    target: TNode
-  }
+      kind: 'connector-target-hover'
+      source: TNode
+      originPx: { x: number; y: number }
+      cursorPx: { x: number; y: number }
+      /** Candidate target item under the pointer. */
+      target: TNode
+    }
 
 /**
  * Input events fed into the drag-controller reducer.
@@ -202,40 +202,40 @@ export type DragState<TTarget extends DragTarget = DragTarget, TNode extends Gan
  * default ("today") until the cursor enters the canvas.
  */
 export type DragEvent<TTarget extends DragTarget = DragTarget, TNode extends GanttItem = GanttItem> =
-  | { type: 'mouseenter-bar', issueId: string, edge: 'left' | 'right' | 'body' }
+  | { type: 'mouseenter-bar'; issueId: string; edge: 'left' | 'right' | 'body' }
   | { type: 'mouseleave-bar' }
   | {
-    type: 'mousedown-bar'
-    target: TTarget
-    /** Start / end dates of the target at mousedown; reducer stores these
+      type: 'mousedown-bar'
+      target: TTarget
+      /** Start / end dates of the target at mousedown; reducer stores these
        *  as `originStart` / `originEnd` and adds the cursor-delta to compute
        *  previews. Captured here at the dispatch boundary so the doc-agnostic
        *  reducer doesn't need to know which field on `target.doc` to read. */
-    originStart: number
-    originEnd: number
-    edge: 'left' | 'right' | 'body'
-    cursorX: number
-    /** Bulk co-drag state: other selected issues to shift in sync. */
-    coDrag?: {
-      members: Array<{ issueId: string, originStart: number, originEnd: number }>
-      minDeltaMs: number
-      maxDeltaMs: number
+      originStart: number
+      originEnd: number
+      edge: 'left' | 'right' | 'body'
+      cursorX: number
+      /** Bulk co-drag state: other selected issues to shift in sync. */
+      coDrag?: {
+        members: Array<{ issueId: string; originStart: number; originEnd: number }>
+        minDeltaMs: number
+        maxDeltaMs: number
+      }
     }
-  }
-  | { type: 'mousedown-unscheduled', target: TTarget, cursorX: number }
-  | { type: 'mousemove', cursorX: number, canvasX?: number }
+  | { type: 'mousedown-unscheduled'; target: TTarget; cursorX: number }
+  | { type: 'mousemove'; cursorX: number; canvasX?: number }
   | { type: 'mouseup' }
   | { type: 'cancel' }
   | {
-    type: 'mousedown-connector'
-    source: TNode
-    originPx: { x: number, y: number }
-    cursorPx: { x: number, y: number }
-  }
+      type: 'mousedown-connector'
+      source: TNode
+      originPx: { x: number; y: number }
+      cursorPx: { x: number; y: number }
+    }
   | {
-    type: 'mousemove-connector'
-    cursorPx: { x: number, y: number }
-    /** Bar under the cursor right now, or null when over empty canvas. */
-    hoveredBar: TNode | null
-  }
+      type: 'mousemove-connector'
+      cursorPx: { x: number; y: number }
+      /** Bar under the cursor right now, or null when over empty canvas. */
+      hoveredBar: TNode | null
+    }
   | { type: 'mouseup-connector' }

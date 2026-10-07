@@ -124,17 +124,17 @@
   let canProceed: false // Note: determined by individual steps
   const isLoading = false
 
-  function getCurrentStepComponent(currentStep: TemplateWizardStep): AnySvelteComponent {
+  function getCurrentStepComponent (currentStep: TemplateWizardStep): AnySvelteComponent {
     return stepComponents[currentStep]
   }
 
-  function handleStepChanged(e: CustomEvent): void {
+  function handleStepChanged (e: CustomEvent): void {
     currentStepUpdated(e.detail)
   }
 
   let submitted = false
 
-  async function handleSubmit(): Promise<void> {
+  async function handleSubmit (): Promise<void> {
     if ($locationStep.space === undefined || $locationStep.project === undefined) {
       return
     }
@@ -196,7 +196,7 @@
 
   $: space = $locationStep.space
 
-  async function handleClose(): Promise<void> {
+  async function handleClose (): Promise<void> {
     showPopup(
       MessageBox,
       {

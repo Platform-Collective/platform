@@ -37,13 +37,13 @@
 
   let oldSelection = Date.now()
 
-  function onRow(item: number): void {
+  function onRow (item: number): void {
     if (updateSelection(item)) {
       dispatch('on-select', item)
     }
   }
 
-  function updateSelection(item: number): boolean {
+  function updateSelection (item: number): boolean {
     const now = Date.now()
     if (now - oldSelection >= 25) {
       selection = item
@@ -53,7 +53,7 @@
     return false
   }
 
-  export function select(pos: number): void {
+  export function select (pos: number): void {
     if (pos < 0) {
       pos = 0
     }

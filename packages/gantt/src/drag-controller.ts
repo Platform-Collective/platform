@@ -18,7 +18,7 @@ import type { TimeScale } from './time-scale'
  * threaded through unchanged so commitDrag (in GanttView.svelte) can route
  * to the right update field.
  */
-export function reduce<TTarget extends DragTarget = DragTarget, TNode extends GanttItem = GanttItem> (
+export function reduce<TTarget extends DragTarget = DragTarget, TNode extends GanttItem = GanttItem>(
   state: DragState<TTarget, TNode>,
   event: DragEvent<TTarget, TNode>,
   timeScale: TimeScale
@@ -28,12 +28,12 @@ export function reduce<TTarget extends DragTarget = DragTarget, TNode extends Ga
   // implementation and re-asserting the generic parameters is therefore sound —
   // whatever specific target/node the caller fed in is exactly what comes back.
   return reduceImpl(state as unknown as DragState, event as unknown as DragEvent, timeScale) as unknown as DragState<
-  TTarget,
-  TNode
+    TTarget,
+    TNode
   >
 }
 
-function reduceImpl (state: DragState, event: DragEvent, timeScale: TimeScale): DragState {
+function reduceImpl(state: DragState, event: DragEvent, timeScale: TimeScale): DragState {
   switch (state.kind) {
     case 'idle':
       return reduceFromIdle(state, event)
@@ -50,7 +50,7 @@ function reduceImpl (state: DragState, event: DragEvent, timeScale: TimeScale): 
   }
 }
 
-function reduceFromIdle (state: DragState & { kind: 'idle' }, event: DragEvent): DragState {
+function reduceFromIdle(state: DragState & { kind: 'idle' }, event: DragEvent): DragState {
   if (event.type === 'mouseenter-bar') {
     return { kind: 'hover-bar', issueId: event.issueId, edge: event.edge }
   }
@@ -123,7 +123,7 @@ function reduceFromIdle (state: DragState & { kind: 'idle' }, event: DragEvent):
   return state
 }
 
-function reduceFromHover (state: DragState & { kind: 'hover-bar' }, event: DragEvent, timeScale: TimeScale): DragState {
+function reduceFromHover(state: DragState & { kind: 'hover-bar' }, event: DragEvent, timeScale: TimeScale): DragState {
   if (event.type === 'mouseleave-bar') {
     return { kind: 'idle' }
   }
@@ -171,7 +171,7 @@ function reduceFromHover (state: DragState & { kind: 'hover-bar' }, event: DragE
   return state
 }
 
-function reduceFromActive (state: DragState, event: DragEvent, timeScale: TimeScale): DragState {
+function reduceFromActive(state: DragState, event: DragEvent, timeScale: TimeScale): DragState {
   if (event.type === 'mouseup' || event.type === 'cancel') {
     return { kind: 'idle' }
   }
@@ -236,7 +236,7 @@ function reduceFromActive (state: DragState, event: DragEvent, timeScale: TimeSc
   return state
 }
 
-function reduceFromConnector (
+function reduceFromConnector(
   state: DragState & { kind: 'connector-drawing' | 'connector-target-hover' },
   event: DragEvent
 ): DragState {
@@ -276,6 +276,6 @@ function reduceFromConnector (
 }
 
 /** Convenience helper used by later tasks to clamp a date to a UTC midnight. */
-export function snapDate (t: number): number {
+export function snapDate(t: number): number {
   return snapToUtcMidnight(t)
 }

@@ -338,7 +338,7 @@ export class CardsProcessor {
     return {
       _class: card.class.MasterTag,
       props: {
-        _id: this.metadataRegistry.getRef(filePath),
+        _id: this.metadataRegistry.getRef(filePath) as Ref<MasterTag>,
         space: core.space.Model,
         extends: parentMasterTagId ?? card.class.Card,
         label: ('embedded:embedded:' + title) as IntlString,
@@ -407,7 +407,7 @@ export class CardsProcessor {
     return {
       _class: card.class.Tag,
       props: {
-        _id: this.metadataRegistry.getRef(filePath),
+        _id: this.metadataRegistry.getRef(filePath) as Ref<Tag>,
         space: core.space.Model,
         extends: parentTagId ?? masterTagId,
         label: ('embedded:embedded:' + title) as IntlString,

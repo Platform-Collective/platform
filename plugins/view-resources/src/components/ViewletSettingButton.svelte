@@ -73,7 +73,7 @@
     })
   }
 
-  function getDefaults(viewOptions: ViewOptionsModel): ViewOptions {
+  function getDefaults (viewOptions: ViewOptionsModel): ViewOptions {
     const res: ViewOptions = {
       groupBy: [viewOptions.groupBy[0] ?? defaultOptions.groupBy[0]],
       orderBy: viewOptions.orderBy?.[0] ?? defaultOptions.orderBy
@@ -84,7 +84,7 @@
     return res
   }
 
-  function getDefaultOptions(): ViewOptions {
+  function getDefaultOptions (): ViewOptions {
     if (defaultViewOptions != null) return defaultViewOptions
 
     return viewlet?.viewOptions != null ? getDefaults(viewlet.viewOptions) : defaultOptions

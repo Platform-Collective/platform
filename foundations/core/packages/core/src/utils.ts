@@ -48,11 +48,11 @@ import {
   type WorkspaceMode
 } from './classes'
 import core from './component'
-import type { Hierarchy } from './hierarchy'
-import type { TxOperations } from './operations'
+import { type Hierarchy } from './hierarchy'
+import { type TxOperations } from './operations'
 import { isPredicate } from './predicate'
-import type { Branding, BrandingMap } from './server'
-import type { DocumentQuery, FindResult } from './storage'
+import { type Branding, type BrandingMap } from './server'
+import { type DocumentQuery, type FindResult } from './storage'
 import { DOMAIN_TX, type Tx, type TxCreateDoc, type TxCUD, TxProcessor, type TxUpdateDoc } from './tx'
 
 function toHex (value: number, chars: number): string {
@@ -80,7 +80,7 @@ function count (): string {
  * @public
  * @returns
  */
-export function generateId<T extends Doc> (join = ''): Ref<T> {
+export function generateId<T extends Doc> (join: string = ''): Ref<T> {
   return (timestamp() + join + random + join + count()) as Ref<T>
 }
 
@@ -292,9 +292,9 @@ export class DocManager<T extends Doc> implements IDocManager<T> {
  */
 
 export class RateLimiter {
-  idCounter = 0
+  idCounter: number = 0
   processingQueue = new Map<number, Promise<void>>()
-  last = 0
+  last: number = 0
   rate: number
 
   queue: (() => Promise<void>)[] = []
@@ -557,8 +557,9 @@ export function includesAny (arr1: string[] | null | undefined, arr2: string[] |
 
 export const isEnum =
   <T>(e: T) =>
-  (token: any): token is T[keyof T] =>
-    typeof token === 'string' && Object.values(e as Record<string, any>).includes(token)
+    (token: any): token is T[keyof T] => {
+      return typeof token === 'string' && Object.values(e as Record<string, any>).includes(token)
+    }
 
 export async function checkPermission (
   client: TxOperations,
@@ -590,7 +591,7 @@ async function hasPermission (
   _space: Ref<TypedSpace>,
   space?: TypedSpace
 ): Promise<boolean> {
-  space ??= await client.findOne(core.class.TypedSpace, { _id: _space })
+  space = space ?? (await client.findOne(core.class.TypedSpace, { _id: _space }))
   const type = await client
     .getModel()
     .findOne(core.class.SpaceType, { _id: space?.type }, { lookup: { _id: { roles: core.class.Role } } })
@@ -625,7 +626,7 @@ export function getRoleAttributeLabel (roleName: string): IntlString {
 export function getFullTextIndexableAttributes (
   hierarchy: Hierarchy,
   clazz: Ref<Class<Obj>>,
-  skipDocs = false
+  skipDocs: boolean = false
 ): AnyAttribute[] {
   const allAttributes = hierarchy.getAllAttributes(clazz)
   const result: AnyAttribute[] = []
@@ -872,9 +873,9 @@ export function pluginFilterTx (
  * @public
  */
 export class TimeRateLimiter {
-  idCounter = 0
-  active = 0
-  last = 0
+  idCounter: number = 0
+  active: number = 0
+  last: number = 0
   rate: number
   period: number
   executions: { time: number, running: boolean }[] = []
@@ -882,7 +883,7 @@ export class TimeRateLimiter {
   queue: (() => Promise<void>)[] = []
   notify: (() => void)[] = []
 
-  constructor (rate: number, period = 1000) {
+  constructor (rate: number, period: number = 1000) {
     this.rate = rate
     this.period = period
   }
@@ -1005,7 +1006,7 @@ export function toRank (str: string | undefined): Rank | undefined {
   if (str.startsWith('0|')) {
     return str
   }
-  return `0|${str.replaceAll(/[-:_]/g, '').toLowerCase()}`
+  return '0|' + str.replaceAll(/[-:_]/g, '').toLowerCase()
 }
 
 /**

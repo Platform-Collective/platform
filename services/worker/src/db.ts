@@ -91,7 +91,7 @@ export class TimeMachineDB {
 
   async deleteEvents (events: DelayedEventRecord[]): Promise<void> {
     if (events.length === 0) return
-    await this.client.begin(async (sql: postgres.Sql) => {
+    await this.client.begin(async (sql) => {
       for (const event of events) {
         await sql`
           DELETE FROM time_machine.delayed_events 

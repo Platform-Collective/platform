@@ -33,7 +33,7 @@
   $: color = clazz.background ?? 0
   $: platformColor = getPlatformColorDef(color, $themeStore.dark)
 
-  function getIconStyle(platformColor: any): string {
+  function getIconStyle (platformColor: any): string {
     return `
       box-shadow: 0 2px 3px 0 ${platformColor.color};
     `

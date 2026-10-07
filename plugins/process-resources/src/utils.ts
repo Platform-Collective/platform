@@ -122,7 +122,7 @@ export function getContextMasterTag (
     const assoc = model.findObject(context.association)
     if (assoc === undefined) return
     const targetClass = context.direction === 'A' ? assoc.classA : assoc.classB
-    if (context.key === '_id') return targetClass
+    if (context.key === '_id') return targetClass as Ref<MasterTag>
     const nested = h.findAttribute(targetClass, context.key)
     return (nested?.type as RefTo<Doc>)?.to
   }
@@ -304,7 +304,7 @@ export function getContext (
   if (includeConvertible) {
     const funcs = client.getModel().findAllSync(process.class.ProcessFunction, { type: 'convert', to: target })
     for (const func of funcs) {
-      const convContext = getContext(client, _process, func.of, category, attr, false)
+      const convContext = getContext(client, _process, func.of as Ref<Class<Type<any>>>, category, attr, false)
       if (
         convContext.attributes.length > 0 ||
         Object.keys(convContext.executionContext).length > 0 ||

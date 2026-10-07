@@ -160,7 +160,7 @@
     }
   }
 
-  async function searchSpotlight(search: string): Promise<SearchItem[]> {
+  async function searchSpotlight (search: string): Promise<SearchItem[]> {
     return (await searchFor('spotlight', search, category, 50)).items
   }
 </script>

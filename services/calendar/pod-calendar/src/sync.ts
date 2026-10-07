@@ -293,7 +293,7 @@ export class IncomingSyncManager {
         const exists = await this.client.findOne(calendar.class.Event, {
           eventId: event.id,
           calendar: _calendar._id
-        })
+        })) as Event | undefined
         if (exists === undefined) {
           await this.saveExtEvent(event, accessRole, _calendar)
         } else {
@@ -313,7 +313,7 @@ export class IncomingSyncManager {
       const diff = this.getDiff<ReccuringInstance>(
         {
           ...data,
-          recurringEventId: event.recurringEventId,
+          recurringEventId: event.recurringEventId as Ref<ReccuringEvent>,
           originalStartTime: parseEventDate(event.originalStartTime),
           isCancelled: event.status === 'cancelled'
         },

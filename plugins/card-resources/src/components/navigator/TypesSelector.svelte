@@ -32,7 +32,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function buildHierarchy(): NestedSelectItem[] {
+  function buildHierarchy (): NestedSelectItem[] {
     const rootTags = hierarchy.getDescendants(card.class.Card)
     const items: NestedSelectItem[] = []
 
@@ -59,7 +59,7 @@
     )
   }
 
-  function getChildrenNodes(parentId: Ref<Class<Doc>>): NestedSelectItem[] {
+  function getChildrenNodes (parentId: Ref<Class<Doc>>): NestedSelectItem[] {
     const descendants = hierarchy.getDescendants(parentId)
     const items: NestedSelectItem[] = []
 
@@ -80,7 +80,7 @@
     )
   }
 
-  function getIconProps(tag: MasterTag): { icon: any, iconProps: any } {
+  function getIconProps (tag: MasterTag): { icon: any, iconProps: any } {
     return {
       icon: tag.icon === view.ids.IconWithEmoji ? IconWithEmoji : (tag.icon ?? card.icon.MasterTag),
       iconProps: tag.icon === view.ids.IconWithEmoji ? { icon: tag.color } : {}

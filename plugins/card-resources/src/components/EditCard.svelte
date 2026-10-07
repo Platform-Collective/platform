@@ -27,7 +27,7 @@
   export let embedded: boolean = false
   export let allowClose: boolean = true
 
-  export function canClose(): boolean {
+  export function canClose (): boolean {
     return false
   }
 

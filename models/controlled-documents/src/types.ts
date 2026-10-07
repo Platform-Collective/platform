@@ -116,7 +116,7 @@ export class TDocumentSpaceType extends TSpaceType implements DocumentSpaceType 
   declare targetClass: Ref<Class<DocumentSpace>>
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Projects'))
-  projects!: boolean
+    projects!: boolean
 }
 
 @Model(documents.class.DocumentSpaceTypeDescriptor, core.class.SpaceTypeDescriptor)
@@ -140,23 +140,23 @@ export class TProject extends TDoc implements Project {
   @Prop(TypeString(), documents.string.Name)
   @Index(IndexKind.FullText)
   @ReadOnly()
-  name!: string
+    name!: string
 
   @Prop(TypeBoolean(), documents.string.Readonly)
   @ReadOnly()
   @Hidden()
-  readonly!: boolean
+    readonly!: boolean
 }
 
 @Model(documents.class.DocumentMeta, core.class.Doc, DOMAIN_DOCUMENTS)
 @UX(documents.string.ControlledDocument, documents.icon.Document)
 export class TDocumentMeta extends TDoc implements DocumentMeta {
   @Prop(Collection(documents.class.Document), documents.string.Documents)
-  documents!: CollectionSize<Document>
+    documents!: CollectionSize<Document>
 
   @Prop(TypeString(), documents.string.Title)
   @Index(IndexKind.FullText)
-  title!: string
+    title!: string
 }
 
 @Model(documents.class.ProjectMeta, core.class.Doc, DOMAIN_DOCUMENTS)
@@ -164,31 +164,31 @@ export class TDocumentMeta extends TDoc implements DocumentMeta {
 export class TProjectMeta extends TDoc implements ProjectMeta {
   @Prop(TypeRef(documents.class.Project), documents.string.Project)
   @Index(IndexKind.Indexed)
-  project!: Ref<Project>
+    project!: Ref<Project>
 
   @Prop(TypeRef(documents.class.DocumentMeta), documents.string.Document)
   @Index(IndexKind.Indexed)
   @Hidden()
-  meta!: Ref<DocumentMeta>
+    meta!: Ref<DocumentMeta>
 
   @Prop(ArrOf(TypeRef(documents.class.DocumentMeta)), documents.string.Path)
-  path!: Ref<DocumentMeta>[]
+    path!: Ref<DocumentMeta>[]
 
   @Prop(TypeRef(documents.class.DocumentMeta), documents.string.Parent)
   @Index(IndexKind.Indexed)
-  parent!: Ref<DocumentMeta>
+    parent!: Ref<DocumentMeta>
 
   // @Prop(TypeRef(documents.class.Document), documents.string.Document)
   // @Index(IndexKind.Indexed)
   //   head!: Ref<HierarchyDocument>
 
   @Prop(Collection(documents.class.ProjectDocument), documents.string.Documents)
-  documents!: CollectionSize<ProjectDocument>
+    documents!: CollectionSize<ProjectDocument>
 
   @Prop(TypeRank(), core.string.Rank)
   @Index(IndexKind.Indexed)
   @Hidden()
-  rank!: Rank
+    rank!: Rank
 }
 
 @Model(documents.class.ProjectDocument, core.class.AttachedDoc, DOMAIN_DOCUMENTS)
@@ -210,15 +210,15 @@ export class TProjectDocument extends TAttachedDoc implements ProjectDocument {
 
   @Prop(TypeRef(documents.class.Project), documents.string.Project)
   @Index(IndexKind.Indexed)
-  project!: Ref<Project>
+    project!: Ref<Project>
 
   @Prop(TypeRef(documents.class.Project), documents.string.Project)
   @Hidden()
-  initial!: Ref<Project>
+    initial!: Ref<Project>
 
   @Prop(TypeRef(documents.class.Document), documents.string.Document)
   @Index(IndexKind.Indexed)
-  document!: Ref<HierarchyDocument>
+    document!: Ref<HierarchyDocument>
 }
 
 @Model(documents.class.Document, core.class.Doc, DOMAIN_DOCUMENTS)
@@ -231,64 +231,64 @@ export class TDocument extends TDoc implements Document {
 
   @Prop(TypeRef(documents.mixin.DocumentTemplate), documents.string.DocumentTemplate)
   @Hidden()
-  template?: Ref<DocumentTemplate>
+    template?: Ref<DocumentTemplate>
 
   @Prop(TypeString(), documents.string.Title)
   @Index(IndexKind.FullText)
-  title!: string
+    title!: string
 
   @Prop(TypeString(), documents.string.Title)
   @Index(IndexKind.FullText)
-  code!: string
+    code!: string
 
   @Prop(TypeString(), documents.string.Code)
   @Index(IndexKind.FullText)
-  prefix!: string
+    prefix!: string
 
   @Prop(TypeNumber(), documents.string.Number)
   @Hidden()
-  seqNumber!: number
+    seqNumber!: number
 
   @Prop(TypeNumber(), documents.string.Major)
-  major!: number
+    major!: number
 
   @Prop(TypeNumber(), documents.string.Minor)
-  minor!: number
+    minor!: number
 
   @Prop(TypeRef(documents.class.DocumentCategory), documents.string.Category)
-  category?: Ref<DocumentCategory>
+    category?: Ref<DocumentCategory>
 
   @Prop(TypeRef(contact.mixin.Employee), documents.string.Author)
-  author?: Ref<Employee>
+    author?: Ref<Employee>
 
   @Prop(TypeRef(contact.mixin.Employee), documents.string.Owner)
-  owner?: Ref<Employee>
+    owner?: Ref<Employee>
 
   @Prop(TypeDocumentState(), documents.string.Status)
-  state!: DocumentState
+    state!: DocumentState
 
   @Prop(TypeCollaborativeDoc(), documents.string.CollaborativeDocument)
-  content!: MarkupBlobRef | null
+    content!: MarkupBlobRef | null
 
   @Prop(Collection(tags.class.TagReference), documents.string.Labels)
-  labels?: CollectionSize<TagReference>
+    labels?: CollectionSize<TagReference>
 
   @Prop(TypeString(), documents.string.MetaAbstract)
   @Index(IndexKind.FullText)
-  abstract?: string
+    abstract?: string
 
   @Prop(TypeNumber(), documents.string.Number)
   @Hidden()
-  commentSequence!: number
+    commentSequence!: number
 
   @Prop(Collection(documents.class.DocumentComment), chunter.string.Comments)
-  comments?: CollectionSize<DocumentComment>
+    comments?: CollectionSize<DocumentComment>
 
   @Prop(Collection(documents.class.DocumentSnapshot), documents.string.Snapshots)
-  snapshots?: CollectionSize<DocumentSnapshot>
+    snapshots?: CollectionSize<DocumentSnapshot>
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-  attachments?: CollectionSize<Attachment>
+    attachments?: CollectionSize<Attachment>
 }
 
 @Model(documents.class.HierarchyDocument, documents.class.Document)
@@ -297,16 +297,16 @@ export class THierarchyDocument extends TDocument implements HierarchyDocument {
   @Prop(TypeRef(documents.class.DocumentMeta), core.string.AttachedTo)
   @Index(IndexKind.Indexed)
   @Hidden()
-  attachedTo!: Ref<DocumentMeta>
+    attachedTo!: Ref<DocumentMeta>
 
   @Prop(TypeRef(core.class.Class), core.string.AttachedToClass)
   @Index(IndexKind.Indexed)
   @Hidden()
-  attachedToClass!: Ref<Class<DocumentMeta>>
+    attachedToClass!: Ref<Class<DocumentMeta>>
 
   @Prop(TypeString(), core.string.Collection)
   @Hidden()
-  collection!: 'documents'
+    collection!: 'documents'
 }
 
 @Mixin(documents.mixin.DocumentTemplate, documents.class.Document)
@@ -314,44 +314,44 @@ export class THierarchyDocument extends TDocument implements HierarchyDocument {
 export class TDocumentTemplate extends TDocument implements DocumentTemplate {
   @Prop(TypeNumber(), core.string.Collection)
   @Hidden()
-  sequence!: number
+    sequence!: number
 
   @Prop(TypeString(), documents.string.DocumentPrefix)
   @Index(IndexKind.FullText)
-  docPrefix!: string
+    docPrefix!: string
 }
 
 @Mixin(documents.mixin.DocumentTraining, documents.class.Document)
 @UX(training.string.Training, training.icon.Training)
 export class TDocumentTraining extends TDocument implements DocumentTraining {
   @Prop(TypeBoolean(), documents.string.DocumentTrainingEnabled, { defaultValue: false })
-  enabled: boolean = false
+    enabled: boolean = false
 
   @Prop(TypeRef(training.class.Training), training.string.Training, { defaultValue: null })
-  training: Ref<Training> | null = null
+    training: Ref<Training> | null = null
 
   @Prop(ArrOf(TypeRef(core.class.Role)), training.string.TrainingRequestRoles, { defaultValue: [] })
-  roles: Array<Ref<Role>> = []
+    roles: Array<Ref<Role>> = []
 
   @Prop(ArrOf(TypeRef(contact.mixin.Employee)), training.string.TrainingRequestTrainees, { defaultValue: [] })
-  trainees: TrainingRequest['trainees'] = []
+    trainees: TrainingRequest['trainees'] = []
 
   @Prop(TypeNumber(), training.string.TrainingRequestMaxAttempts, { defaultValue: null })
-  maxAttempts: TrainingRequest['maxAttempts'] = null
+    maxAttempts: TrainingRequest['maxAttempts'] = null
 
   @Prop(TypeNumber(), documents.string.DocumentTrainingDueDays, { defaultValue: null })
-  dueDays: number | null = null
+    dueDays: number | null = null
 }
 
 @Mixin(documents.mixin.DocumentAttachment, attachment.class.Attachment)
 export class TDocumentAttachment extends TAttachment implements DocumentAttachment {
   @Prop(TypeString(), getEmbeddedLabel('State'))
   @Hidden()
-  state?: DocumentAttachmentState
+    state?: DocumentAttachmentState
 
   @Prop(TypeRecord(), getEmbeddedLabel('DeletedIn'))
   @Hidden()
-  deletedIn?: { major: number, minor: number }
+    deletedIn?: { major: number, minor: number }
 }
 
 @Model(documents.class.DocumentCategory, core.class.Doc, DOMAIN_DOCUMENTS)
@@ -364,18 +364,18 @@ export class TDocumentCategory extends TDoc implements DocumentCategory {
 
   @Prop(TypeString(), documents.string.Code)
   @Index(IndexKind.FullText)
-  code!: string
+    code!: string
 
   @Prop(TypeString(), documents.string.Title)
   @Index(IndexKind.FullText)
-  title!: string
+    title!: string
 
   @Prop(TypeMarkup(), documents.string.Description)
   @Index(IndexKind.FullText)
-  description?: string
+    description?: string
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-  attachments?: CollectionSize<Attachment>
+    attachments?: CollectionSize<Attachment>
 }
 
 @Model(documents.class.ControlledDocument, documents.class.HierarchyDocument)
@@ -390,39 +390,39 @@ export class TDocumentCategory extends TDoc implements DocumentCategory {
 export class TControlledDocument extends THierarchyDocument implements ControlledDocument {
   @Prop(Collection(documents.class.DocumentRequest), documents.string.Requests)
   @Hidden()
-  requests!: CollectionSize<DocumentRequest>
+    requests!: CollectionSize<DocumentRequest>
 
   @Prop(ArrOf(TypeRef(contact.mixin.Employee)), documents.string.Reviewers)
-  reviewers!: Ref<Employee>[]
+    reviewers!: Ref<Employee>[]
 
   @Prop(ArrOf(TypeRef(contact.mixin.Employee)), documents.string.Approvers)
-  approvers!: Ref<Employee>[]
+    approvers!: Ref<Employee>[]
 
   @Prop(ArrOf(TypeRef(contact.mixin.Employee)), documents.string.ExternalApprovers)
-  externalApprovers!: Ref<Employee>[]
+    externalApprovers!: Ref<Employee>[]
 
   @Prop(ArrOf(TypeRef(contact.mixin.Employee)), documents.string.CoAuthors)
-  coAuthors!: Ref<Employee>[]
+    coAuthors!: Ref<Employee>[]
 
   @Prop(TypeNumber(), documents.string.ReviewInterval)
-  reviewInterval?: number
+    reviewInterval?: number
 
   @Prop(TypeControlledDocumentState(), documents.string.ControlledStatus)
-  controlledState?: ControlledDocumentState
+    controlledState?: ControlledDocumentState
 
   @Prop(TypeDate(DateRangeMode.DATE), documents.string.EffectiveDate)
-  effectiveDate?: Timestamp
+    effectiveDate?: Timestamp
 
   @Prop(TypeDate(DateRangeMode.DATE), documents.string.PlannedEffectiveDate)
   @Hidden()
-  plannedEffectiveDate!: Timestamp
+    plannedEffectiveDate!: Timestamp
 
   @Prop(TypeRef(documents.class.Document), documents.string.ChangeControl)
   @Hidden()
-  changeControl!: Ref<ChangeControl>
+    changeControl!: Ref<ChangeControl>
 
   @Prop(Collection(time.class.ToDo), getEmbeddedLabel('Action Items'))
-  todos?: CollectionSize<ToDo>
+    todos?: CollectionSize<ToDo>
 }
 
 @Model(documents.class.ChangeControl, core.class.Doc, DOMAIN_DOCUMENTS)
@@ -430,50 +430,50 @@ export class TControlledDocument extends THierarchyDocument implements Controlle
 export class TChangeControl extends TDoc implements ChangeControl {
   @Prop(TypeString(), documents.string.Description)
   @Index(IndexKind.FullText)
-  description!: string
+    description!: string
 
   @Prop(TypeString(), documents.string.Reason)
   @Index(IndexKind.FullText)
-  reason!: string
+    reason!: string
 
   @Prop(TypeString(), documents.string.ImpactAnalysis)
-  impact!: string
+    impact!: string
 
   @Prop(ArrOf(TypeRef(documents.class.Document)), documents.string.ImpactedDocuments)
-  impactedDocuments!: Ref<Document>[]
+    impactedDocuments!: Ref<Document>[]
 }
 
 @Model(documents.class.DocumentSnapshot, core.class.AttachedDoc, DOMAIN_DOCUMENTS)
 @UX(documents.string.Snapshot)
 export class TDocumentSnapshot extends TAttachedDoc implements DocumentSnapshot {
   @Prop(TypeString(), documents.string.Name)
-  name?: string
+    name?: string
 
   @Prop(TypeCollaborativeDoc(), documents.string.CollaborativeDocument)
   @Hidden()
-  content!: MarkupBlobRef | null
+    content!: MarkupBlobRef | null
 
   @Prop(TypeDocumentState(), documents.string.Status)
-  state?: DocumentState
+    state?: DocumentState
 }
 
 @Model(documents.class.ControlledDocumentSnapshot, documents.class.DocumentSnapshot)
 @UX(documents.string.ControlledSnapshot)
 export class TControlledDocumentSnapshot extends TDocumentSnapshot implements ControlledDocumentSnapshot {
   @Prop(TypeControlledDocumentState(), documents.string.Status)
-  controlledState!: ControlledDocumentState
+    controlledState!: ControlledDocumentState
 }
 
 @Model(documents.class.DocumentComment, chunter.class.ChatMessage)
 export class TDocumentComment extends TChatMessage implements DocumentComment {
   @Prop(TypeString(), documents.string.ID)
-  nodeId?: string
+    nodeId?: string
 
   @Prop(TypeBoolean(), documents.string.Resolve)
-  resolved?: boolean
+    resolved?: boolean
 
   @Prop(TypeNumber(), documents.string.Index)
-  index?: number
+    index?: number
 }
 
 @Model(documents.class.DocumentRequest, request.class.Request)

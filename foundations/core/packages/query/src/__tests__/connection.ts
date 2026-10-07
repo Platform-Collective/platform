@@ -52,13 +52,13 @@ import core, {
 import { genMinModel } from './minmodel'
 
 export async function connect (handler: (tx: Tx) => void): Promise<
-  Client &
-    BackupClient &
-    FulltextStorage & {
-      isConnected: () => boolean
-      loadModel: (last: Timestamp, hash?: string) => Promise<Tx[] | LoadModelResponse>
-      pushHandler: (handler: TxHandler) => void
-    }
+Client &
+BackupClient &
+FulltextStorage & {
+  isConnected: () => boolean
+  loadModel: (last: Timestamp, hash?: string) => Promise<Tx[] | LoadModelResponse>
+  pushHandler: (handler: TxHandler) => void
+}
 > {
   const txes = genMinModel()
 

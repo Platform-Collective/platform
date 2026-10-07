@@ -70,7 +70,7 @@
     }, 500)
   })
 
-  function selectCategory(id: string): void {
+  function selectCategory (id: string): void {
     clearSettingsStore()
     const loc = getCurrentResolvedLocation()
     loc.path[3] = categoryName

@@ -169,7 +169,7 @@ export class AggregationManager<T extends Doc> implements IAggregationManager<T>
         (res) => {
           const first = this.docs === undefined
           this.docs = res
-          this.mgr = new DocManager<T>(res)
+          this.mgr = new DocManager<T>(res as T[])
           this.setStore(this.mgr)
           if (!first) {
             this.lqCallback()
@@ -789,7 +789,7 @@ export async function deleteObjects (client: TxOperations, objects: Doc[], skipC
 }
 
 export function getMixinStyle (id: Ref<Class<Doc>>, selected: boolean, black: boolean): string {
-  const color = getPlatformColorForText(id, black)
+  const color = getPlatformColorForText(id as string, black)
   return `
     color: ${selected ? '#fff' : 'var(--caption-color)'};
     background: ${color + (selected ? 'ff' : '33')};
@@ -912,9 +912,9 @@ export function categorizeFields (
   useAsCollection: string[],
   useAsAttribute: string[]
 ): {
-  attributes: CategoryKey[]
-  collections: CategoryKey[]
-} {
+    attributes: CategoryKey[]
+    collections: CategoryKey[]
+  } {
   const result = {
     attributes: [] as CategoryKey[],
     collections: [] as CategoryKey[]
@@ -1143,9 +1143,9 @@ export function getCategorySpaces (categories: CategoryType[]): Array<Ref<Space>
     categories
       .filter((it) => typeof it === 'object')
       .reduce<Set<Ref<Space>>>((arr, val) => {
-        val.values.forEach((it) => arr.add(it.space))
-        return arr
-      }, new Set())
+      val.values.forEach((it) => arr.add(it.space))
+      return arr
+    }, new Set())
   )
 }
 
@@ -1781,10 +1781,10 @@ export async function getDocAttrsInfo (
   allowedCollections: string[] = [],
   collectionArrays: string[] = []
 ): Promise<{
-  keys: KeyedAttribute[]
-  inplaceAttributes: string[]
-  editors: Array<{ key: KeyedAttribute, editor: AnyComponent, category: AttributeCategory }>
-}> {
+    keys: KeyedAttribute[]
+    inplaceAttributes: string[]
+    editors: Array<{ key: KeyedAttribute, editor: AnyComponent, category: AttributeCategory }>
+  }> {
   const client = getClient()
   const hierarchy = client.getHierarchy()
 

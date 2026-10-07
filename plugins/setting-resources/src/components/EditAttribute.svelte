@@ -67,7 +67,7 @@
     name = p
   })
 
-  async function save(): Promise<void> {
+  async function save (): Promise<void> {
     if (disabled) {
       return
     }
@@ -106,7 +106,7 @@
     clearSettingsStore()
   }
 
-  function getTypes(): DropdownIntlItem[] {
+  function getTypes (): DropdownIntlItem[] {
     const descendants = hierarchy.getDescendants(core.class.Type)
     const res: DropdownIntlItem[] = []
     for (const descendant of descendants) {
@@ -126,7 +126,7 @@
 
   $: selectedType && selectType(selectedType)
 
-  function selectType(type: Ref<Class<Type<PropertyType>>>): void {
+  function selectType (type: Ref<Class<Type<PropertyType>>>): void {
     const _class = hierarchy.getClass(type)
     const editor = hierarchy.as(_class, view.mixin.ObjectEditor)
     if (editor.editor !== undefined) {
@@ -149,7 +149,7 @@
     }
   }
 
-  async function remove(evt: MouseEvent): Promise<void> {
+  async function remove (evt: MouseEvent): Promise<void> {
     const impl = await getResource(view.actionImpl.Delete)
     await impl(attribute, evt, {
       afterDelete: () => {
@@ -158,13 +158,13 @@
     })
   }
 
-  async function hide(): Promise<void> {
+  async function hide (): Promise<void> {
     const value = !attribute.hidden
     attribute.hidden = value
     await client.update(attribute, { hidden: value })
   }
 
-  function setIcon(): void {
+  function setIcon (): void {
     showPopup(IconPicker, { icon, showEmoji: false, showColor: false }, 'top', async (res) => {
       if (res !== undefined) {
         icon = res.icon
@@ -176,11 +176,11 @@
     client.getModel().findObject(getAttributePermissionRef(attribute, false)) !== undefined ||
     client.getModel().findObject(getAttributePermissionRef(attribute, true)) !== undefined
 
-  function getAttributePermissionRef(attr: AnyAttribute, forbidden: boolean): Ref<AttributePermission> {
+  function getAttributePermissionRef (attr: AnyAttribute, forbidden: boolean): Ref<AttributePermission> {
     return `${attr._id}_${forbidden ? 'forbidden' : 'allowed'}` as Ref<AttributePermission>
   }
 
-  function changeRestricted(): void {
+  function changeRestricted (): void {
     showPopup(
       MessageBox,
       {
@@ -239,7 +239,7 @@
 
 <Modal
   label={setting.string.EditAttribute}
-  type="type-aside"
+  type={'type-aside'}
   okLabel={presentation.string.Save}
   okAction={save}
   canSave={!(name === undefined || name.trim().length === 0) && !disabled}
@@ -256,7 +256,7 @@
         on:click={hide}
       />
       {#if attribute.isCustom}
-        <ButtonIcon icon={IconDelete} size="small" kind="tertiary" {disabled} on:click={remove} />
+        <ButtonIcon icon={IconDelete} size={'small'} kind={'tertiary'} {disabled} on:click={remove} />
       {/if}
     {/if}
   </svelte:fragment>
@@ -264,9 +264,9 @@
     <div class="flex items-center">
       <ButtonIcon
         icon={icon ?? setting.icon.Enums}
-        size="medium"
-        iconSize="large"
-        kind="tertiary"
+        size={'medium'}
+        iconSize={'large'}
+        kind={'tertiary'}
         {disabled}
         on:click={setIcon}
       />
@@ -283,8 +283,8 @@
       <DropdownLabelsIntl
         label={setting.string.Type}
         {items}
-        size="large"
-        width="100%"
+        size={'large'}
+        width={'100%'}
         bind:selected={selectedType}
         on:selected={handleSelect}
         {disabled}

@@ -20,11 +20,11 @@ const DAY_MS = 86_400_000
  * a start move by calendar DAY rather than raw milliseconds (stored issues can
  * reach the scheduler with a time-of-day on the cascade-commit path).
  */
-export function utcMidnight (t: number): number {
+export function utcMidnight(t: number): number {
   return Math.floor(t / DAY_MS) * DAY_MS
 }
 
-function holidayHas (cfg: WorkingCalendar, midnight: number): boolean {
+function holidayHas(cfg: WorkingCalendar, midnight: number): boolean {
   // Linear scan — typical configs have ≤ 30 entries. Switch to Set<number> if
   // a very large holiday set would become slow; current usage is well below.
   for (const h of cfg.holidays) {
@@ -38,7 +38,7 @@ function holidayHas (cfg: WorkingCalendar, midnight: number): boolean {
  * before comparing weekday and holiday entries — so any time-of-day on a
  * working date is still a working day.
  */
-export function isWorkingDay (t: number, cfg: WorkingCalendar): boolean {
+export function isWorkingDay(t: number, cfg: WorkingCalendar): boolean {
   const midnight = utcMidnight(t)
   if (holidayHas(cfg, midnight)) return false
   const date = new Date(midnight)
@@ -54,7 +54,7 @@ export function isWorkingDay (t: number, cfg: WorkingCalendar): boolean {
  * 60 calendar-day iterations as a safety bail when no working days are
  * configured (weekdayMask = 0 + no holidays granting any day).
  */
-export function nextWorkingDay (t: number, cfg: WorkingCalendar): number {
+export function nextWorkingDay(t: number, cfg: WorkingCalendar): number {
   let cur = utcMidnight(t)
   for (let i = 0; i < 60; i++) {
     if (isWorkingDay(cur, cfg)) return cur
@@ -71,7 +71,7 @@ export function nextWorkingDay (t: number, cfg: WorkingCalendar): number {
  * Safety: aborts after `|n| × 7 + 60` iterations to guard against
  * non-progressing loops when all weekdays are non-working.
  */
-export function addWorkingDays (t: number, n: number, cfg: WorkingCalendar): number {
+export function addWorkingDays(t: number, n: number, cfg: WorkingCalendar): number {
   if (n === 0) return t
   const step = n > 0 ? DAY_MS : -DAY_MS
   let remaining = Math.abs(n)
@@ -92,7 +92,7 @@ export function addWorkingDays (t: number, n: number, cfg: WorkingCalendar): num
  *
  * Used by critical-path slack rendering and by potential UI summaries.
  */
-export function workingDaysBetween (a: number, b: number, cfg: WorkingCalendar): number {
+export function workingDaysBetween(a: number, b: number, cfg: WorkingCalendar): number {
   const sign = a <= b ? 1 : -1
   const start = utcMidnight(Math.min(a, b))
   const end = utcMidnight(Math.max(a, b))
@@ -113,7 +113,7 @@ export function workingDaysBetween (a: number, b: number, cfg: WorkingCalendar):
  * equals `utcMidnight(to)` whenever `to` falls on a working day and `from`
  * is UTC-midnight-normalized.
  */
-export function workingDayDelta (from: number, to: number, cfg: WorkingCalendar): number {
+export function workingDayDelta(from: number, to: number, cfg: WorkingCalendar): number {
   const a = utcMidnight(from)
   const b = utcMidnight(to)
   if (a === b) return 0
@@ -140,49 +140,49 @@ export function workingDayDelta (from: number, to: number, cfg: WorkingCalendar)
  * +1-day (causing FS-anchored successors to be scheduled one day too early
  * relative to CPM).
  */
-export function fsAnchor (predDue: number, lag: number, cfg: WorkingCalendar | undefined): number {
+export function fsAnchor(predDue: number, lag: number, cfg: WorkingCalendar | undefined): number {
   if (cfg === undefined) return predDue + (1 + lag) * DAY_MS
   return addWorkingDays(predDue, 1 + lag, cfg)
 }
 
 /** Start-to-Start anchor: successor starts `lag` working days after `predStart`. */
-export function ssAnchor (predStart: number, lag: number, cfg: WorkingCalendar | undefined): number {
+export function ssAnchor(predStart: number, lag: number, cfg: WorkingCalendar | undefined): number {
   if (cfg === undefined) return predStart + lag * DAY_MS
   return addWorkingDays(predStart, lag, cfg)
 }
 
 /** Finish-to-Finish anchor: successor finishes `lag` working days after `predDue`. */
-export function ffAnchor (predDue: number, lag: number, cfg: WorkingCalendar | undefined): number {
+export function ffAnchor(predDue: number, lag: number, cfg: WorkingCalendar | undefined): number {
   if (cfg === undefined) return predDue + lag * DAY_MS
   return addWorkingDays(predDue, lag, cfg)
 }
 
 /** Start-to-Finish anchor: successor finishes `lag` working days after `predStart`. */
-export function sfAnchor (predStart: number, lag: number, cfg: WorkingCalendar | undefined): number {
+export function sfAnchor(predStart: number, lag: number, cfg: WorkingCalendar | undefined): number {
   if (cfg === undefined) return predStart + lag * DAY_MS
   return addWorkingDays(predStart, lag, cfg)
 }
 
 /** Inverse of {@link fsAnchor} for backward (pull-predecessor) traversal. */
-export function fsReverseAnchor (succStart: number, lag: number, cfg: WorkingCalendar | undefined): number {
+export function fsReverseAnchor(succStart: number, lag: number, cfg: WorkingCalendar | undefined): number {
   if (cfg === undefined) return succStart - (1 + lag) * DAY_MS
   return addWorkingDays(succStart, -(1 + lag), cfg)
 }
 
 /** Inverse of {@link ssAnchor}. */
-export function ssReverseAnchor (succStart: number, lag: number, cfg: WorkingCalendar | undefined): number {
+export function ssReverseAnchor(succStart: number, lag: number, cfg: WorkingCalendar | undefined): number {
   if (cfg === undefined) return succStart - lag * DAY_MS
   return addWorkingDays(succStart, -lag, cfg)
 }
 
 /** Inverse of {@link ffAnchor}. */
-export function ffReverseAnchor (succDue: number, lag: number, cfg: WorkingCalendar | undefined): number {
+export function ffReverseAnchor(succDue: number, lag: number, cfg: WorkingCalendar | undefined): number {
   if (cfg === undefined) return succDue - lag * DAY_MS
   return addWorkingDays(succDue, -lag, cfg)
 }
 
 /** Inverse of {@link sfAnchor}. */
-export function sfReverseAnchor (succDue: number, lag: number, cfg: WorkingCalendar | undefined): number {
+export function sfReverseAnchor(succDue: number, lag: number, cfg: WorkingCalendar | undefined): number {
   if (cfg === undefined) return succDue - lag * DAY_MS
   return addWorkingDays(succDue, -lag, cfg)
 }

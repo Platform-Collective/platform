@@ -87,7 +87,7 @@ export async function performGmailAccountMigrations (
   const oldNewIds = new Map(allWorkpaces.map((it) => [it.dataId ?? it.uuid, it]))
   const workspaceProvider: WorkspaceInfoProvider = {
     getWorkspaceInfo: async (workspaceUuid: WorkspaceUuid) => {
-      const ws = oldNewIds.get(workspaceUuid) ?? byId.get(workspaceUuid)
+      const ws = oldNewIds.get(workspaceUuid as any) ?? byId.get(workspaceUuid as any)
       if (ws == null) {
         console.error('No workspace found for token', workspaceUuid)
         return undefined
@@ -128,7 +128,7 @@ async function migrateGmailIntegrations (
 
     for (const token of allTokens) {
       try {
-        const ws = await workspaceProvider.getWorkspaceInfo(token.workspace)
+        const ws = await workspaceProvider.getWorkspaceInfo(token.workspace as any)
         if (ws == null) {
           continue
         }
@@ -222,7 +222,7 @@ async function migrateGmailHistory (
 
     for (const history of allHistories) {
       try {
-        const ws = await workspaceProvider.getWorkspaceInfo(history.workspace)
+        const ws = await workspaceProvider.getWorkspaceInfo(history.workspace as any)
         if (ws == null) {
           continue
         }
@@ -295,7 +295,7 @@ async function getSociaKeysMap (
     if (systemAccounts.includes(account._id as any)) {
       ;(socialKeyByAccount as any)[account._id] = account._id
     } else {
-      socialKeyByAccount[account._id] = buildSocialIdString(getSocialKeyByOldEmail(account.email))
+      socialKeyByAccount[account._id] = buildSocialIdString(getSocialKeyByOldEmail(account.email)) as any
     }
   }
   return socialKeyByAccount

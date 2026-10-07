@@ -295,8 +295,7 @@ class PlatformQueueConsumerImpl implements ConsumerHandle {
     await this.doSubscribe()
 
     await this.cc.run({
-      eachMessage: async (payload) => {
-        const { message } = payload
+      eachMessage: async ({ topic, message, pause, heartbeat }) => {
         const msgKey = message.key?.toString() ?? ''
         const msgData = JSON.parse(message.value?.toString() ?? '{}')
         const meta = JSON.parse(message.headers?.meta?.toString() ?? '{}')
@@ -310,12 +309,7 @@ class PlatformQueueConsumerImpl implements ConsumerHandle {
             await this.ctx.with(
               'handle-msg',
               {},
-              (ctx) =>
-                this.onMessage(
-                  ctx,
-                  { workspace, value: msgData },
-                  { heartbeat: () => payload.heartbeat(), pause: () => payload.pause() }
-                ),
+              (ctx) => this.onMessage(ctx, { workspace, value: msgData }, { heartbeat, pause }),
               {},
               {
                 meta
@@ -324,7 +318,7 @@ class PlatformQueueConsumerImpl implements ConsumerHandle {
             break
           } catch (err: any) {
             this.ctx.error('failed to process message', { err, msgKey, msgData, workspace })
-            await payload.heartbeat()
+            await heartbeat()
             await new Promise((resolve) => setTimeout(resolve, to * retryDelay))
             if (to < maxRetryDelay) {
               to++

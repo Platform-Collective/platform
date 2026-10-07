@@ -501,7 +501,7 @@ export async function getTranslatedNotificationContent (
   } else if (control.hierarchy.isDerived(_class, notification.class.MentionInboxNotification)) {
     return await mentionInboxNotificationToText(data as Data<MentionInboxNotification>, control)
   } else if (control.hierarchy.isDerived(_class, notification.class.CommonInboxNotification)) {
-    return await commonInboxNotificationToText(data)
+    return await commonInboxNotificationToText(data as Data<CommonInboxNotification>)
   }
 
   return { title: '', body: '' }
@@ -786,8 +786,8 @@ export async function createCollabDocInfo (
   const filteredCollaborators = !space.private
     ? collaborators
     : collaborators.filter(
-        (it) =>
-          space.members.includes(it) ||
+      (it) =>
+        space.members.includes(it) ||
           currentRes.some((tx) => {
             if (tx._class === core.class.TxUpdateDoc) {
               const updateTx = tx as TxUpdateDoc<Space>
@@ -798,7 +798,7 @@ export async function createCollabDocInfo (
             }
             return false
           })
-      )
+    )
   const targets = new Set(filteredCollaborators)
 
   // user is not collaborator of himself, but we should notify user of changes related to users account (mentions, comments etc)
@@ -867,10 +867,10 @@ async function getTxCollabs (
   cache: Map<Ref<Doc>, Collaborator[]>,
   doc: Doc
 ): Promise<{
-  added: AccountUuid[]
-  removed: AccountUuid[]
-  result: AccountUuid[]
-}> {
+    added: AccountUuid[]
+    removed: AccountUuid[]
+    result: AccountUuid[]
+  }> {
   const { hierarchy } = control
   const mixin = getClassCollaborators(control.modelDb, hierarchy, doc._class)
   if (mixin === undefined) return { added: [], removed: [], result: [] }

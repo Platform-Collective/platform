@@ -345,10 +345,10 @@ async function Open (
   doc: Doc,
   evt: Event,
   props:
-    | {
-        component?: AnyComponent
-      }
-    | undefined
+  | {
+    component?: AnyComponent
+  }
+  | undefined
 ): Promise<void> {
   evt.preventDefault()
   const d = Array.isArray(doc) ? doc[0] : doc
@@ -364,10 +364,10 @@ async function OpenInNewTab (
   doc: Doc,
   evt: Event,
   props:
-    | {
-        component?: AnyComponent
-      }
-    | undefined
+  | {
+    component?: AnyComponent
+  }
+  | undefined
 ): Promise<void> {
   evt.preventDefault()
   const d = Array.isArray(doc) ? doc[0] : doc

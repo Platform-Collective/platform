@@ -445,7 +445,7 @@ export function startHttpServer (
           if (Array.isArray(data)) {
             sessions.broadcastAll(ctx, ws, data as Tx[])
           } else {
-            sessions.broadcastAll(ctx, ws, [data])
+            sessions.broadcastAll(ctx, ws, [data as unknown as Tx])
           }
           res.end()
         })
@@ -535,7 +535,7 @@ export function startHttpServer (
         if (msg instanceof Buffer) {
           buff = msg
         } else if (Array.isArray(msg)) {
-          buff = Buffer.concat(msg)
+          buff = Buffer.concat(msg as any)
         }
         if (buff !== undefined) {
           doSessionOp(

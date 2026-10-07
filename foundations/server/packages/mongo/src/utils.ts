@@ -169,7 +169,7 @@ export class DBCollectionHelper implements DomainHelperOperations {
   collection<TSchema extends Document = Document>(domain: Domain): Collection<TSchema> {
     let info = this.collections.get(domain)
     if (info === undefined) {
-      info = this.db.collection(domain)
+      info = this.db.collection(domain as string)
       this.collections.set(domain, info)
     }
     return info
@@ -177,7 +177,7 @@ export class DBCollectionHelper implements DomainHelperOperations {
 
   async create (domain: Domain): Promise<void> {
     if (this.collections.get(domain) === undefined) {
-      const coll = this.db.collection(domain)
+      const coll = this.db.collection(domain as string)
       this.collections.set(domain, coll)
 
       while (true) {

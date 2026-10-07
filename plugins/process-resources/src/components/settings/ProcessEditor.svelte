@@ -95,13 +95,13 @@
     }
   )
 
-  async function saveName(): Promise<void> {
+  async function saveName (): Promise<void> {
     if (value !== undefined) {
       await client.update(value, { name: value.name })
     }
   }
 
-  async function deleteProcess(): Promise<void> {
+  async function deleteProcess (): Promise<void> {
     if (value === undefined) return
     // to do handle on server trigger
     await client.remove(value)
@@ -111,7 +111,7 @@
     navigate(loc)
   }
 
-  async function handleDelete(): Promise<void> {
+  async function handleDelete (): Promise<void> {
     if (value === undefined) return
     const execution = await client.findOne(process.class.Execution, { process: value?._id })
     if (execution !== undefined) {
@@ -129,7 +129,7 @@
 
   defineSeparators('spaceTypeEditor', secondNavSeparators)
 
-  function handleContext(): void {
+  function handleContext (): void {
     $settingsStore = {
       id: value?._id,
       component: ContextEditor,
@@ -137,11 +137,11 @@
     }
   }
 
-  function handleSettings(): void {
+  function handleSettings (): void {
     showPopup(ProcesssSetting, { value })
   }
 
-  function handleBindings(): void {
+  function handleBindings (): void {
     showPopup(BindingsEditor, { process: value })
   }
 
@@ -160,7 +160,7 @@
     }
   ]
 
-  function onExportSelected(event: CustomEvent<string | number>): void {
+  function onExportSelected (event: CustomEvent<string | number>): void {
     if (event.detail === EXPORT_WITH_SLOTS) {
       handleExport(true)
     } else if (event.detail === EXPORT_WITHOUT_SLOTS) {
@@ -168,7 +168,7 @@
     }
   }
 
-  function handleExport(withSlots: boolean): void {
+  function handleExport (withSlots: boolean): void {
     if (value === undefined) return
     const str = JSON.stringify(
       exportProcess(value, withSlots).docs.map((doc) => {

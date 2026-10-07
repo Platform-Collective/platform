@@ -99,10 +99,10 @@ export class TMasterTag extends TClass implements MasterTag {
   removed?: boolean
 
   @Prop(TypeBoolean(), card.string.SingleColumn)
-  singleColumn?: boolean
+    singleColumn?: boolean
 
   @Prop(TypeBoolean(), card.string.BaseType)
-  baseType?: boolean
+    baseType?: boolean
 }
 
 @Model(card.class.Tag, core.class.Mixin)
@@ -124,36 +124,36 @@ export class TCard extends TDoc implements Card {
 
   @Prop(TypeString(), core.string.Name)
   @Index(IndexKind.FullText)
-  title!: string
+    title!: string
 
   @Prop(TypeCollaborativeDoc(), card.string.Content)
-  content!: MarkupBlobRef
+    content!: MarkupBlobRef
 
   blobs!: Blobs
 
   @Prop(TypeRef(card.class.Card), card.string.Parent)
-  parent?: Ref<Card> | null
+    parent?: Ref<Card> | null
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-  attachments?: number
+    attachments?: number
 
   @Prop(TypeRank(), core.string.Rank)
   @Hidden()
-  rank!: Rank
+    rank!: Rank
 
   @Prop(Collection(time.class.ToDo), getEmbeddedLabel('Action Items'))
-  todos?: CollectionSize<ToDo>
+    todos?: CollectionSize<ToDo>
 
   @Prop(TypeString(), view.string.Icon)
   @Hidden()
-  icon?: Asset
+    icon?: Asset
 
   @Prop(TypeNumber(), view.string.Color)
   @Hidden()
-  color?: number
+    color?: number
 
   @Hidden()
-  readonly?: boolean
+    readonly?: boolean
 
   children?: number
 
@@ -161,17 +161,17 @@ export class TCard extends TDoc implements Card {
 
   @Hidden()
   @ReadOnly()
-  peerId?: string
+    peerId?: string
 
   @Prop(Collection(chunter.class.ChatMessage), chunter.string.Comments)
-  comments?: number
+    comments?: number
 }
 
 @Model(card.class.CardSpace, core.class.TypedSpace, DOMAIN_SPACE)
 @UX(core.string.Space)
 export class TCardSpace extends TTypedSpace implements CardSpace {
   @Prop(ArrOf(TypeRef(card.class.MasterTag)), card.string.MasterTags)
-  types!: Ref<MasterTag>[]
+    types!: Ref<MasterTag>[]
 }
 
 @Model(card.class.MasterTagEditorSection, core.class.Doc, DOMAIN_MODEL)

@@ -42,14 +42,14 @@
 
   $: activeTags = tags.filter((tag) => hierarchy.hasMixin(doc, tag._id))
 
-  async function removeTag(tagId: string): Promise<void> {
+  async function removeTag (tagId: string): Promise<void> {
     await client.update(doc, { $unset: { [tagId]: true } })
   }
 
   $: ancestors = hierarchy.getAncestors(doc._class)
   $: possibleMixins = getPossibleMixins(doc._class, tags)
 
-  function getPossibleMixins(_class: Ref<Class<Doc>>, tags: Tag[]): Tag[] {
+  function getPossibleMixins (_class: Ref<Class<Doc>>, tags: Tag[]): Tag[] {
     const res: Tag[] = []
     for (const p of tags) {
       try {
@@ -65,7 +65,7 @@
     return res
   }
   $: dropdownItems = possibleMixins.map((mixin) => ({ id: mixin._id, label: mixin.label }))
-  function add(e: MouseEvent): void {
+  function add (e: MouseEvent): void {
     showPopup(
       SelectPopup,
       {
@@ -80,20 +80,20 @@
     )
   }
 
-  function isRemoveable(mixinId: Ref<Mixin<Doc>>, activeTags: Tag[]): boolean {
+  function isRemoveable (mixinId: Ref<Mixin<Doc>>, activeTags: Tag[]): boolean {
     const desc = hierarchy.getDescendants(mixinId)
     return !desc.some((p) => hierarchy.hasMixin(doc, p) && p !== mixinId)
   }
 
-  function checkForbiddenPermission(permission: Ref<Permission>, permissionsStore: PermissionsStore): boolean {
+  function checkForbiddenPermission (permission: Ref<Permission>, permissionsStore: PermissionsStore): boolean {
     return checkMyPermission(permission, doc.space as Ref<TypedSpace>, permissionsStore)
   }
 
-  function checkRemovePermission(permissionsStore: PermissionsStore): boolean {
+  function checkRemovePermission (permissionsStore: PermissionsStore): boolean {
     return checkForbiddenPermission(card.permission.ForbidRemoveTag, permissionsStore)
   }
 
-  function checkAddPermission(permissionsStore: PermissionsStore): boolean {
+  function checkAddPermission (permissionsStore: PermissionsStore): boolean {
     return checkForbiddenPermission(card.permission.ForbidAddTag, permissionsStore)
   }
 

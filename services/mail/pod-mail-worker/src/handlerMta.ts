@@ -133,7 +133,6 @@ function extractContactName (
   email: string
 ): { firstName: string, lastName: string } {
   // Match name part that appears before an email in angle brackets
-  // eslint-disable-next-line secure-coding/no-redos-vulnerable-regex
   const nameMatch = fromHeader.match(/^\s*"?([^"<]+?)"?\s*<.+?>/)
   const encodedName = nameMatch?.[1].trim() ?? ''
   const name = encodedName.length > 0 ? decodeEncodedWords(ctx, encodedName) : ''

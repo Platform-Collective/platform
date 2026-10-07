@@ -161,12 +161,12 @@
   $: _readonly = (readonly || doc?.readonly || doc?.readonlyFields?.includes('title')) ?? false
   $: updatePermissionForbidden = doc && !canChangeDoc(doc?._class, doc?.space, $permissionsStore)
 
-  function setLayout(mode: 'auto' | '1' | '2'): void {
+  function setLayout (mode: 'auto' | '1' | '2'): void {
     if (doc === undefined) return
     setViewMode(doc?._class, mode)
   }
 
-  function showViewPopup(ev: MouseEvent): void {
+  function showViewPopup (ev: MouseEvent): void {
     if (doc === undefined) return
     const items: DropdownIntlItem[] = [
       {

@@ -297,7 +297,7 @@ export abstract class IssueSyncManagerBase {
         {},
         async (ctx) => {
           await this.client.createMixin<Issue, GithubIssue>(
-            existing._id,
+            existing._id as Ref<GithubIssue>,
             existing._class,
             existing.space,
             github.mixin.GithubIssue,

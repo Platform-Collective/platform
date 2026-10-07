@@ -105,7 +105,7 @@
   let selection = 0
   let list: ListView
 
-  function handleSelection(evt: Event | undefined, objects: Doc[], selection: number): void {
+  function handleSelection (evt: Event | undefined, objects: Doc[], selection: number): void {
     const item = objects[selection]
     if (item === undefined) {
       return
@@ -114,7 +114,7 @@
     select(item)
   }
 
-  function select(item: Doc): void {
+  function select (item: Doc): void {
     onSelect?.(item)
     if (!multiSelect) {
       if (allowDeselect) {
@@ -128,7 +128,7 @@
     }
   }
 
-  function onKeydown(key: KeyboardEvent): void {
+  function onKeydown (key: KeyboardEvent): void {
     if (key.code === 'ArrowUp') {
       key.stopPropagation()
       key.preventDefault()
@@ -147,7 +147,7 @@
   }
   const manager = createFocusManager()
 
-  async function onCreate(): Promise<void> {
+  async function onCreate (): Promise<void> {
     if (create === undefined) {
       return
     }
@@ -172,13 +172,13 @@
       }
     }
   }
-  function toAny(obj: any): any {
+  function toAny (obj: any): any {
     return obj
   }
 
   const forbiddenDeselectItemIds = new Set(disallowDeselect)
 
-  function getGroup(doc: Doc, groupBy: any): any {
+  function getGroup (doc: Doc, groupBy: any): any {
     if (created.find((it) => it._id === doc._id) !== undefined) {
       return '_created'
     }
@@ -188,7 +188,7 @@
     return getObjectValue(groupBy, toAny(doc))
   }
 
-  function findObjectPresenter(_class: Ref<Class<Doc>>): void {
+  function findObjectPresenter (_class: Ref<Class<Doc>>): void {
     const presenterMixin = getClient().getHierarchy().classHierarchyMixin(_class, view.mixin.ObjectPresenter)
     if (presenterMixin?.presenter !== undefined) {
       getResource(presenterMixin.presenter)
@@ -201,7 +201,7 @@
     }
   }
 
-  function isHasVersions(isVersionable: boolean, doc: Doc): VersionableDoc | undefined {
+  function isHasVersions (isVersionable: boolean, doc: Doc): VersionableDoc | undefined {
     if (!isVersionable) return
     const vDoc = doc as VersionableDoc
     if (vDoc.baseId === undefined) return

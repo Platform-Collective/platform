@@ -62,31 +62,31 @@ import { TAttachedDoc, TClass, TDoc } from './core'
 export class TSpace extends TDoc implements Space {
   @Prop(TypeString(), core.string.Name)
   @Index(IndexKind.FullText)
-  name!: string
+    name!: string
 
   @Prop(TypeString(), core.string.Description)
   @Index(IndexKind.FullText)
-  description!: string
+    description!: string
 
   @Prop(TypeBoolean(), core.string.Private)
-  private!: boolean
+    private!: boolean
 
   @Prop(TypeBoolean(), core.string.Archived)
   @Index(IndexKind.Indexed)
-  archived!: boolean
+    archived!: boolean
 
   @Prop(ArrOf(TypeAccountUuid()), core.string.Members)
   @Index(IndexKind.Indexed)
-  members!: AccountUuid[]
+    members!: AccountUuid[]
 
   @Prop(ArrOf(TypeAccountUuid()), core.string.Owners)
-  owners?: AccountUuid[]
+    owners?: AccountUuid[]
 
   @Prop(TypeBoolean(), core.string.AutoJoin)
-  autoJoin?: boolean
+    autoJoin?: boolean
 
   @Prop(ArrOf(TypeString()), core.string.AutoJoinGuests)
-  autoJoinForRoles?: AccountRole[]
+    autoJoinForRoles?: AccountRole[]
 }
 
 @Model(core.class.SystemSpace, core.class.Space)
@@ -97,7 +97,7 @@ export class TSystemSpace extends TSpace implements Space {}
 @UX(core.string.TypedSpace, undefined, undefined, 'name')
 export class TTypedSpace extends TSpace implements TypedSpace {
   @Prop(TypeRef(core.class.SpaceType), core.string.SpaceType)
-  type!: Ref<SpaceType>
+    type!: Ref<SpaceType>
 }
 
 @Model(core.class.SpaceTypeDescriptor, core.class.Doc, DOMAIN_MODEL)
@@ -115,25 +115,25 @@ export class TSpaceTypeDescriptor extends TDoc implements SpaceTypeDescriptor {
 export class TSpaceType extends TDoc implements SpaceType {
   @Prop(TypeString(), core.string.Name)
   @Index(IndexKind.FullText)
-  name!: string
+    name!: string
 
   @Prop(TypeString(), core.string.ShortDescription)
-  shortDescription?: string
+    shortDescription?: string
 
   @Prop(TypeRef(core.class.SpaceTypeDescriptor), core.string.Descriptor)
-  descriptor!: Ref<SpaceTypeDescriptor>
+    descriptor!: Ref<SpaceTypeDescriptor>
 
   @Prop(TypeRef(core.class.Class), core.string.TargetClass)
-  targetClass!: Ref<Class<Space>>
+    targetClass!: Ref<Class<Space>>
 
   @Prop(Collection(core.class.Role), core.string.Roles)
-  roles!: CollectionSize<Role>
+    roles!: CollectionSize<Role>
 
   @Prop(ArrOf(TypeAccountUuid()), core.string.Members)
-  members!: AccountUuid[]
+    members!: AccountUuid[]
 
   @Prop(TypeBoolean(), core.string.AutoJoin)
-  autoJoin?: boolean
+    autoJoin?: boolean
 }
 
 @Model(core.class.Role, core.class.AttachedDoc, DOMAIN_MODEL)
@@ -155,10 +155,10 @@ export class TRole extends TAttachedDoc implements Role {
 
   @Prop(TypeString(), core.string.Name)
   @Index(IndexKind.FullText)
-  name!: string
+    name!: string
 
   @Prop(ArrOf(TypeRef(core.class.Permission)), core.string.Permission)
-  permissions!: Ref<Permission>[]
+    permissions!: Ref<Permission>[]
 }
 
 @Model(core.class.Permission, core.class.Doc, DOMAIN_MODEL)
@@ -202,23 +202,23 @@ export class TTxAccessLevel extends TClass implements TxAccessLevel {
 @Model(core.class.ModulePermissionGroup, core.class.Doc, DOMAIN_MODEL)
 export class TModulePermissionGroup extends TDoc implements ModulePermissionGroup {
   @Prop(TypeRef(core.class.Doc), core.string.AttachedTo)
-  application!: Ref<Doc>
+    application!: Ref<Doc>
 
   @Prop(TypeString(), core.string.Roles)
-  role!: AccountRole
+    role!: AccountRole
 
   @Prop(ArrOf(TypeRef(core.class.Permission)), core.string.Permission)
-  permissions!: Ref<Permission>[]
+    permissions!: Ref<Permission>[]
 
   @Prop(ArrOf(TypeRef(core.class.Permission)), core.string.Permission)
-  disabledPermissions?: Ref<Permission>[]
+    disabledPermissions?: Ref<Permission>[]
 
   @Prop(TypeRef(core.class.Class), core.string.Class)
-  spaceClass!: Ref<Class<Space>>
+    spaceClass!: Ref<Class<Space>>
 
   @Prop(TypeBoolean(), core.string.Name)
-  enabled!: boolean
+    enabled!: boolean
 
   @Prop(TypeNumber(), core.string.Order)
-  order?: number
+    order?: number
 }

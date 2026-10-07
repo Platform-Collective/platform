@@ -54,7 +54,7 @@ export const DEFAULT_RETRY_OPTIONS: RetryOptions = {
  * @returns The result of the operation
  * @throws The last error encountered after all retries have been exhausted
  */
-export async function withRetry<T> (
+export async function withRetry<T>(
   operation: () => Promise<T>,
   options: Partial<RetryOptions> = {},
   operationName: string = 'operation'
@@ -117,7 +117,7 @@ export async function withRetry<T> (
  * @param operationName - Name of the operation for logging
  * @returns A wrapped function that applies retry logic
  */
-export function createRetryableFunction<T extends (...args: any[]) => Promise<any>> (
+export function createRetryableFunction<T extends (...args: any[]) => Promise<any>>(
   fn: T,
   options: Partial<RetryOptions> = {},
   operationName: string = 'operation'

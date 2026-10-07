@@ -22,6 +22,7 @@ import core, {
   MeasureContext,
   MeasureMetricsContext,
   Ref,
+  type Space,
   type Blob
 } from '@hcengineering/core'
 import {
@@ -296,7 +297,7 @@ export async function backupFind (
                 }
               })
               stream.on('end', () => {
-                const bf = Buffer.concat(chunks)
+                const bf = Buffer.concat(chunks as any)
                 console.log('>>>>>>>>>>>')
                 console.log(JSON.stringify(JSON.parse(bf.toString()), undefined, 2))
                 console.log('>>>>>>>>>>>')
@@ -654,7 +655,7 @@ export async function compactBackup (
                   const name = headers.name ?? ''
                   processed++
                   // We found blob data
-                  if (requiredDocs.has(name)) {
+                  if (requiredDocs.has(name as Ref<Doc>)) {
                     const chunks: Buffer[] = []
                     stream.on('data', (chunk) => {
                       if (Buffer.isBuffer(chunk)) {
@@ -662,7 +663,7 @@ export async function compactBackup (
                       }
                     })
                     stream.on('end', () => {
-                      const bf = Buffer.concat(chunks)
+                      const bf = Buffer.concat(chunks as any)
                       const d = blobs.get(name)
                       if (d === undefined) {
                         blobs.set(name, { doc: undefined, buffer: bf })
@@ -686,7 +687,10 @@ export async function compactBackup (
                           })
                       }
                     })
-                  } else if (name.endsWith('.json') && requiredDocs.has(name.substring(0, name.length - 5))) {
+                  } else if (
+                    name.endsWith('.json') &&
+                    requiredDocs.has(name.substring(0, name.length - 5) as Ref<Doc>)
+                  ) {
                     const chunks: Buffer[] = []
                     const bname = name.substring(0, name.length - 5)
                     stream.on('data', (chunk) => {
@@ -695,7 +699,7 @@ export async function compactBackup (
                       }
                     })
                     stream.on('end', () => {
-                      const bf = Buffer.concat(chunks)
+                      const bf = Buffer.concat(chunks as any)
                       let doc: Doc
                       try {
                         doc = JSON.parse(bf.toString()) as Doc
@@ -1007,13 +1011,13 @@ export async function loadDigest (
           gunzipSync(new Uint8Array(await storage.loadFile(d.snapshot))).toString()
         )
         for (const [k, v] of Object.entries(dChanges.added)) {
-          result.set(k, v)
+          result.set(k as Ref<Doc>, v)
         }
         for (const [k, v] of Object.entries(dChanges.updated)) {
-          result.set(k, v)
+          result.set(k as Ref<Doc>, v)
         }
         for (const d of dChanges.removed) {
-          result.delete(d)
+          result.delete(d as Ref<Doc<Space>>)
         }
       } catch (err: any) {
         ctx.warn('failed to load digest', { snapshot: d.snapshot, ...(msg ?? {}) })
@@ -1028,20 +1032,20 @@ export async function loadDigest (
         const added = dataBlob.splice(0, addedCount)
         for (const it of added) {
           const [k, v] = it.split(';')
-          result.set(k, v)
+          result.set(k as Ref<Doc>, v)
         }
 
         const updatedCount = parseInt(dataBlob.shift() ?? '0')
         const updated = dataBlob.splice(0, updatedCount)
         for (const it of updated) {
           const [k, v] = it.split(';')
-          result.set(k, v)
+          result.set(k as Ref<Doc>, v)
         }
 
         const removedCount = parseInt(dataBlob.shift() ?? '0')
         const removed = dataBlob.splice(0, removedCount)
         for (const k of removed) {
-          result.delete(k)
+          result.delete(k as Ref<Doc>)
         }
       } catch (err: any) {
         ctx.warn('digest is broken', { domain, err: err.message, snapshot, ...(msg ?? {}) })
@@ -1098,7 +1102,7 @@ export async function verifyDigest (
             })
             stream.on('end', () => {
               try {
-                const bf = Buffer.concat(chunks)
+                const bf = Buffer.concat(chunks as any)
                 const doc = JSON.parse(bf.toString()) as Doc
                 if (doc._class === core.class.Blob || doc._class === 'core:class:BlobData') {
                   const data = migradeBlobData(doc as Blob, '')
@@ -1205,7 +1209,7 @@ export async function updateDigest (
         for (const it of added) {
           const [k, v] = it.split(';')
           if (validDocs.has(k as any)) {
-            changes.added.set(k, v)
+            changes.added.set(k as Ref<Doc>, v)
           } else {
             lmodified = true
           }
@@ -1216,7 +1220,7 @@ export async function updateDigest (
         for (const it of updated) {
           const [k, v] = it.split(';')
           if (validDocs.has(k as any)) {
-            changes.updated.set(k, v)
+            changes.updated.set(k as Ref<Doc>, v)
           } else {
             lmodified = true
           }
@@ -1224,7 +1228,7 @@ export async function updateDigest (
 
         const removedCount = parseInt(dataBlob.shift() ?? '0')
         const removed = dataBlob.splice(0, removedCount)
-        changes.removed = removed
+        changes.removed = removed as Ref<Doc>[]
         if (addedCount === 0 && removedCount === 0 && updatedCount === 0) {
           // Empty digest, need to clean
           digestToRemove.add(snapshot)
@@ -1340,7 +1344,7 @@ export async function verifyDocsFromSnapshot (
                 }
               })
               stream.on('end', () => {
-                const bf = Buffer.concat(chunks)
+                const bf = Buffer.concat(chunks as any)
                 let doc: Doc
                 try {
                   doc = JSON.parse(bf.toString()) as Doc

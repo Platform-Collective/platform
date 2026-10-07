@@ -459,7 +459,7 @@ export class CommentSyncManager implements DocSyncManager {
         const upd: DocumentUpdate<DocSyncInfo> = {
           parent: (result?.data.html_url?.split('#')?.[0] ?? '').toLowerCase(),
           url: (result?.data.url ?? '').toLowerCase(),
-          external: result?.data,
+          external: result?.data as CommentExternalData,
           current: result?.data,
           repository: repo._id,
           needSync: githubSyncVersion

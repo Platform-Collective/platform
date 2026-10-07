@@ -27,6 +27,7 @@ import core, {
   type TxCreateDoc,
   type TxMixin,
   TxProcessor,
+  type TxRemoveDoc,
   type TxUpdateDoc,
   type TypedSpace,
   type MeasureContext,
@@ -304,7 +305,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
   }
 
   private handleRemove (tx: TxCUD<Space>): void {
-    const removeTx = tx
+    const removeTx = tx as TxRemoveDoc<Space>
     if (!this.context.hierarchy.isDerived(removeTx.objectClass, core.class.Space)) return
     if (removeTx._class !== core.class.TxCreateDoc) return
     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete

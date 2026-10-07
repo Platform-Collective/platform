@@ -25,21 +25,21 @@ export type LayoutMode = 'phone' | 'tablet' | 'desktop'
 export const PHONE_MAX_WIDTH = 640
 export const TABLET_MAX_WIDTH = 1024
 
-export function detectLayoutMode (width: number): LayoutMode {
+export function detectLayoutMode(width: number): LayoutMode {
   if (!Number.isFinite(width) || width <= 0) return 'phone'
   if (width <= PHONE_MAX_WIDTH) return 'phone'
   if (width <= TABLET_MAX_WIDTH) return 'tablet'
   return 'desktop'
 }
 
-export function isPhone (mode: LayoutMode): boolean {
+export function isPhone(mode: LayoutMode): boolean {
   return mode === 'phone'
 }
 
-export function isTablet (mode: LayoutMode): boolean {
+export function isTablet(mode: LayoutMode): boolean {
   return mode === 'tablet'
 }
 
-export function isDesktop (mode: LayoutMode): boolean {
+export function isDesktop(mode: LayoutMode): boolean {
   return mode === 'desktop'
 }

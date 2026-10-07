@@ -39,7 +39,7 @@ const englishTranslationsForMissing = new Map<Plugin, Messages | Status>()
  * @param plugin -
  * @param loader -
  */
-export function addStringsLoader (plugin: Plugin, loader: Loader): void {
+export function addStringsLoader(plugin: Plugin, loader: Loader): void {
   loaders.set(plugin, loader)
 }
 
@@ -47,7 +47,7 @@ export function addStringsLoader (plugin: Plugin, loader: Loader): void {
  * Perform load of all internationalization sources for all plugins available.
  * @public
  */
-export async function loadPluginStrings (locale: string, force: boolean = false): Promise<void> {
+export async function loadPluginStrings(locale: string, force: boolean = false): Promise<void> {
   if (force) {
     cache.clear()
   }
@@ -64,14 +64,14 @@ export async function loadPluginStrings (locale: string, force: boolean = false)
   }
 }
 
-async function setStatus (status: Status, skipError?: boolean): Promise<void> {
+async function setStatus(status: Status, skipError?: boolean): Promise<void> {
   if (skipError !== true) {
     await setPlatformStatus(status)
   }
 }
 
 /** Notify platform and return a Status for load/resolve paths that do not use the per-message format cache. */
-async function pipelineErrorToStatus (err: unknown, skipError?: boolean): Promise<Status> {
+async function pipelineErrorToStatus(err: unknown, skipError?: boolean): Promise<Status> {
   const status = unknownError(err)
   await setStatus(status, skipError)
   return status
@@ -80,7 +80,7 @@ async function pipelineErrorToStatus (err: unknown, skipError?: boolean): Promis
 /**
  * On compile/resolve failure: cache failure for this intl id, notify platform, return `message` as UI fallback.
  */
-async function handleIntlPipelineFailure (
+async function handleIntlPipelineFailure(
   err: unknown,
   message: IntlString,
   localeCache: Map<IntlString, IntlMessageFormat | Status>,
@@ -92,7 +92,7 @@ async function handleIntlPipelineFailure (
   return message
 }
 
-async function loadTranslationsForComponent (
+async function loadTranslationsForComponent(
   plugin: Plugin,
   locale: string,
   skipError?: boolean
@@ -115,7 +115,7 @@ async function loadTranslationsForComponent (
   }
 }
 
-function getCachedTranslation (id: _IdInfo, locale: string): IntlString | Status | undefined {
+function getCachedTranslation(id: _IdInfo, locale: string): IntlString | Status | undefined {
   const localtTanslations = translations.get(locale)
   if (localtTanslations === undefined) {
     return undefined
@@ -134,7 +134,7 @@ function getCachedTranslation (id: _IdInfo, locale: string): IntlString | Status
   }
 }
 
-async function getTranslation (
+async function getTranslation(
   id: _IdInfo,
   locale: string,
   skipError?: boolean
@@ -180,7 +180,7 @@ async function getTranslation (
  * @param params -
  * @returns
  */
-export async function translate<P extends Record<string, any>> (
+export async function translate<P extends Record<string, any>>(
   message: IntlString<P>,
   params: P,
   language?: string,
@@ -236,7 +236,7 @@ export async function translate<P extends Record<string, any>> (
 /**
  * Will do a translation in case language file already in cache, a translate is called and Promise is returned overwise
  */
-export function translateCB<P extends Record<string, any>> (
+export function translateCB<P extends Record<string, any>>(
   message: IntlString<P>,
   params: P,
   language: string | undefined,
