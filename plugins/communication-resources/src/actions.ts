@@ -97,7 +97,7 @@ export const replyInThread: MessageActionFunction = async (message: Message, par
   if (thread != null) {
     const client = getClient()
     const _id = thread.threadId
-    const card = await client.findOne(cardPlugin.class.Card, { _id: _id as Ref<Card> })
+    const card = await client.findOne(cardPlugin.class.Card, { _id })
     if (card === undefined) return
     const r = await getResource(cardPlugin.function.OpenCardInSidebar)
     await r(_id, card)

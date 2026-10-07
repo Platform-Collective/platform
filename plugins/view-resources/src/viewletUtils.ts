@@ -31,7 +31,7 @@ export function getViewletSpecialActions (client: Client, viewlet: Viewlet): Res
   if (actions == null || actions.length === 0) {
     actions = model.findAllSync(view.class.ViewletViewAction, {
       descriptor: viewlet.descriptor
-    }) as ViewletViewAction[]
+    })
   }
 
   if (actions == null || actions.length === 0) {

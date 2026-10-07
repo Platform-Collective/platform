@@ -53,14 +53,14 @@
     })
     .filter(notEmpty)
 
-  function handleAdd (ev: MouseEvent): void {
+  function handleAdd(ev: MouseEvent): void {
     showPopup(Menu, { actions: addActions }, ev.target as HTMLElement)
   }
 
   $: onlyHuly = socialIds.filter((it) => it.type === SocialIdType.HULY).length === 1
   $: onlyLogin = socialIds.filter((it) => loginSocialTypes.includes(it.type)).length === 1
 
-  function handleAccountUpdated (): void {
+  function handleAccountUpdated(): void {
     account = getCurrentAccount()
   }
 

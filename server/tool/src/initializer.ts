@@ -176,7 +176,7 @@ export class WorkspaceInitializer {
     }
   }
 
-  private async processDefault<T extends Doc>(
+  private async processDefault<T extends Doc> (
     step: DefaultStep<T>,
     defaults: Map<Ref<Class<T>>, Props<T>>
   ): Promise<void> {
@@ -213,7 +213,7 @@ export class WorkspaceInitializer {
     }
   }
 
-  private async processFind<T extends Doc>(step: FindStep<T>, vars: Record<string, any>): Promise<void> {
+  private async processFind<T extends Doc> (step: FindStep<T>, vars: Record<string, any>): Promise<void> {
     const query = this.fillProps(step.query, vars)
     const res = await this.client.findOne(step._class, { ...(query as any) })
     if (res === undefined) {
@@ -224,7 +224,7 @@ export class WorkspaceInitializer {
     }
   }
 
-  private async processMixin<T extends Doc>(step: MixinStep<T, T>, vars: Record<string, any>): Promise<void> {
+  private async processMixin<T extends Doc> (step: MixinStep<T, T>, vars: Record<string, any>): Promise<void> {
     const data = await this.fillPropsWithMarkdown(step.data, vars, step.markdownFields)
     const { _id, space, ...props } = data
     if (_id === undefined || space === undefined) {
@@ -233,16 +233,16 @@ export class WorkspaceInitializer {
     await this.client.createMixin(_id, step._class, space, step.mixin, props)
   }
 
-  private async processUpdate<T extends Doc>(step: UpdateStep<T>, vars: Record<string, any>): Promise<void> {
+  private async processUpdate<T extends Doc> (step: UpdateStep<T>, vars: Record<string, any>): Promise<void> {
     const data = await this.fillPropsWithMarkdown(step.data, vars, step.markdownFields)
     const { _id, space, ...props } = data
     if (_id === undefined || space === undefined) {
       throw new Error('Update step must have _id and space')
     }
-    await this.client.updateDoc(step._class, space, _id as Ref<Doc>, props)
+    await this.client.updateDoc(step._class, space, _id, props)
   }
 
-  private async processBulkUpdate<T extends Doc>(step: BulkUpdateStep<T>, vars: Record<string, any>): Promise<void> {
+  private async processBulkUpdate<T extends Doc> (step: BulkUpdateStep<T>, vars: Record<string, any>): Promise<void> {
     const ops = this.client.apply()
     const docs = await this.client.findAll(step._class, { ...(step.query as any) })
     const data = await this.fillPropsWithMarkdown(step.data, vars, step.markdownFields)
@@ -252,7 +252,7 @@ export class WorkspaceInitializer {
     await ops.commit()
   }
 
-  private async processCreate<T extends Doc>(
+  private async processCreate<T extends Doc> (
     step: CreateStep<T>,
     vars: Record<string, any>,
     defaults: Map<Ref<Class<T>>, Props<T>>
@@ -286,7 +286,7 @@ export class WorkspaceInitializer {
     return JSON.stringify(json)
   }
 
-  private async create<T extends Doc>(_class: Ref<Class<T>>, data: Props<T>, _id?: Ref<T>): Promise<Ref<T>> {
+  private async create<T extends Doc> (_class: Ref<Class<T>>, data: Props<T>, _id?: Ref<T>): Promise<Ref<T>> {
     const hierarchy = this.client.getHierarchy()
 
     if (hierarchy.isDerived(_class, core.class.AttachedDoc)) {
@@ -317,7 +317,7 @@ export class WorkspaceInitializer {
     }
   }
 
-  private async fillPropsWithMarkdown<T extends Doc, P extends Partial<T> | Props<T>>(
+  private async fillPropsWithMarkdown<T extends Doc, P extends Partial<T> | Props<T>> (
     data: P,
     vars: Record<string, any>,
     markdownFields?: string[]
@@ -352,7 +352,7 @@ export class WorkspaceInitializer {
     return await saveCollabJson(this.ctx, this.storageAdapter, this.wsIds, doc, markup)
   }
 
-  private async fillProps<T extends Doc, P extends Partial<T> | Props<T>>(
+  private async fillProps<T extends Doc, P extends Partial<T> | Props<T>> (
     data: P,
     vars: Record<string, any>
   ): Promise<P> {

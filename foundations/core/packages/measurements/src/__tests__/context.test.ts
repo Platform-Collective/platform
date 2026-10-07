@@ -344,7 +344,7 @@ describe('context', () => {
     it('should wrap method with context', async () => {
       class TestClass {
         @withContext('testOperation', { service: 'test' })
-        async testMethod(ctx: MeasureContext, value: number): Promise<number> {
+        async testMethod (ctx: MeasureContext, value: number): Promise<number> {
           return value * 2
         }
       }

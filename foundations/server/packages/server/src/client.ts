@@ -191,7 +191,7 @@ export class ClientSession implements Session {
     ctx.ctx.contextData = contextData
   }
 
-  findAllRaw<T extends Doc>(
+  findAllRaw<T extends Doc> (
     ctx: ClientSessionCtx,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -208,7 +208,7 @@ export class ClientSession implements Session {
     return Math.round((estimateDocSize(doc) * 10) / (1024 * 1024)) / 10
   }
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     ctx: ClientSessionCtx,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -238,7 +238,7 @@ export class ClientSession implements Session {
     }
   }
 
-  async findAllPageRaw<T extends Doc>(
+  async findAllPageRaw<T extends Doc> (
     ctx: ClientSessionCtx,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -284,7 +284,7 @@ export class ClientSession implements Session {
     }
   }
 
-  async findAllPage<T extends Doc>(
+  async findAllPage<T extends Doc> (
     ctx: ClientSessionCtx,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -342,10 +342,10 @@ export class ClientSession implements Session {
     ctx: ClientSessionCtx,
     tx: Tx
   ): Promise<{
-      result: TxResult
-      broadcastPromise: Promise<void>
-      asyncsPromise: Promise<void> | undefined
-    }> {
+    result: TxResult
+    broadcastPromise: Promise<void>
+    asyncsPromise: Promise<void> | undefined
+  }> {
     this.lastRequest = Date.now()
     this.total.tx++
     this.current.tx++
@@ -541,10 +541,10 @@ export class ClientSession implements Session {
     domain: OperationDomain,
     params: DomainParams
   ): Promise<{
-      result: DomainResult
-      broadcastPromise: Promise<void>
-      asyncsPromise: Promise<void> | undefined
-    }> {
+    result: DomainResult
+    broadcastPromise: Promise<void>
+    asyncsPromise: Promise<void> | undefined
+  }> {
     this.lastRequest = Date.now()
     this.total.find++
     this.current.find++

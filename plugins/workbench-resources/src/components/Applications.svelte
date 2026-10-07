@@ -36,7 +36,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function getClickHandler (app: Application, customProps: any): () => void {
+  function getClickHandler(app: Application, customProps: any): () => void {
     return (
       customProps.onClick ??
       (() => {
@@ -98,7 +98,7 @@
     hasNewMessagesNotification = res.getResult().length > 0
   })
 
-  function updateExcludedApps (): void {
+  function updateExcludedApps(): void {
     const me = getCurrentAccount()
 
     if (me.role === AccountRole.ReadOnlyGuest || me.role === AccountRole.Guest) {
@@ -147,7 +147,7 @@
     hasInboxNotifications = res
   })
 
-  function showNotify (
+  function showNotify(
     alias: string,
     hasOldNotifications: boolean,
     hasNewNotifications: boolean,

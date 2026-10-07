@@ -5,7 +5,7 @@
 
 import { shouldPromoteCanvasPan, shouldStartCanvasPan } from '../pan-target'
 
-function targetWithClosest(matches: Set<string>): Pick<Element, 'closest'> {
+function targetWithClosest (matches: Set<string>): Pick<Element, 'closest'> {
   return {
     closest: (selector: string) => {
       for (const part of selector.split(',').map((s) => s.trim())) {

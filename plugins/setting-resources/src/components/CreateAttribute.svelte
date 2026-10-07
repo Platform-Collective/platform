@@ -61,7 +61,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     if (type === undefined) return
 
     const data: Data<AnyAttribute> = {
@@ -86,7 +86,7 @@
     clearSettingsStore()
   }
 
-  function getTypes (): DropdownIntlItem[] {
+  function getTypes(): DropdownIntlItem[] {
     const descendants = hierarchy.getDescendants(core.class.Type)
     const res: DropdownIntlItem[] = []
     for (const descendant of descendants) {
@@ -106,7 +106,7 @@
 
   $: selectType(selectedType)
 
-  function selectType (type: Ref<Class<Type<PropertyType>>> | undefined): void {
+  function selectType(type: Ref<Class<Type<PropertyType>>> | undefined): void {
     if (type === undefined) return
     const _class = hierarchy.getClass(type)
     const editor = hierarchy.as(_class, view.mixin.ObjectEditor)
@@ -129,7 +129,7 @@
       extra = e.detail?.extra ?? extra
     }
   }
-  function setIcon (): void {
+  function setIcon(): void {
     showPopup(IconPicker, { icon, showEmoji: false, showColor: false }, 'top', async (res) => {
       if (res !== undefined) {
         icon = res.icon

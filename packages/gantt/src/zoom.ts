@@ -31,7 +31,7 @@ export const ZOOM_PX_PER_DAY: Record<ZoomLevel, number> = {
 }
 
 /** Clamp px/day to the supported continuous range. */
-export function clampPxPerDay(ppd: number): number {
+export function clampPxPerDay (ppd: number): number {
   if (Number.isNaN(ppd)) return MIN_PPD
   if (ppd <= 0) return MIN_PPD
   if (ppd < MIN_PPD) return MIN_PPD
@@ -46,7 +46,7 @@ export function clampPxPerDay(ppd: number): number {
  * pixel range. Bump the factor for the low-density bands so users feel
  * the same responsiveness at every zoom level.
  */
-export function adaptiveWheelFactor(currentPpd: number): number {
+export function adaptiveWheelFactor (currentPpd: number): number {
   if (!Number.isFinite(currentPpd) || currentPpd <= 0) return 0.012
   if (currentPpd < 4) return 0.012
   return 0.006
@@ -66,7 +66,7 @@ export function adaptiveWheelFactor(currentPpd: number): number {
  * `adaptiveWheelFactor` is used. Callers that need a fixed sensitivity
  * (e.g. tests) can pass an explicit factor.
  */
-export function applyWheelZoom(currentPpd: number, deltaY: number, factor?: number): number {
+export function applyWheelZoom (currentPpd: number, deltaY: number, factor?: number): number {
   if (!Number.isFinite(currentPpd) || currentPpd <= 0) return clampPxPerDay(MIN_PPD)
   if (!Number.isFinite(deltaY) || deltaY === 0) return clampPxPerDay(currentPpd)
   const f = factor ?? adaptiveWheelFactor(currentPpd)
@@ -81,7 +81,7 @@ export function applyWheelZoom(currentPpd: number, deltaY: number, factor?: numb
  * relative to the scroller, the current scrollLeft, and the old/new
  * px-per-day values. Origin is implicit (cancels out).
  */
-export function cursorAnchoredScrollLeft(
+export function cursorAnchoredScrollLeft (
   cursorX: number,
   oldScrollLeft: number,
   oldPpd: number,
@@ -113,7 +113,7 @@ export function cursorAnchoredScrollLeft(
  * `createTimeScale(zoom, origin, pxPerDayOverride)` API: callers don't
  * need a new tick generator.
  */
-export function pxPerDayToTickZoom(ppd: number): ZoomLevel {
+export function pxPerDayToTickZoom (ppd: number): ZoomLevel {
   if (!Number.isFinite(ppd) || ppd <= 0) return 'quarter'
   if (ppd > 20) return 'day'
   if (ppd > 7) return 'week'
@@ -122,6 +122,6 @@ export function pxPerDayToTickZoom(ppd: number): ZoomLevel {
 }
 
 /** Inverse of `pxPerDayToTickZoom` for the toolbar "active preset" highlight. */
-export function presetForPxPerDay(ppd: number): ZoomLevel {
+export function presetForPxPerDay (ppd: number): ZoomLevel {
   return pxPerDayToTickZoom(ppd)
 }

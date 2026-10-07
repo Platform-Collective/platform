@@ -28,7 +28,7 @@ export interface Point {
 
 export type PinchState =
   | { kind: 'idle' }
-  | { kind: 'single'; id: number; x: number; y: number }
+  | { kind: 'single', id: number, x: number, y: number }
   | {
       kind: 'pinch'
       idA: number
@@ -42,22 +42,22 @@ export type PinchState =
     }
 
 export type PinchEvent =
-  | { type: 'down'; id: number; x: number; y: number; pxPerDay: number }
-  | { type: 'move'; id: number; x: number; y: number }
-  | { type: 'up'; id: number }
+  | { type: 'down', id: number, x: number, y: number, pxPerDay: number }
+  | { type: 'move', id: number, x: number, y: number }
+  | { type: 'up', id: number }
   | { type: 'cancel' }
 
-export function initial(): PinchState {
+export function initial (): PinchState {
   return { kind: 'idle' }
 }
 
-export function computeDistance(a: Point, b: Point): number {
+export function computeDistance (a: Point, b: Point): number {
   const dx = b.x - a.x
   const dy = b.y - a.y
   return Math.sqrt(dx * dx + dy * dy)
 }
 
-export function computeCenter(a: Point, b: Point): Point {
+export function computeCenter (a: Point, b: Point): Point {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
 }
 
@@ -69,7 +69,7 @@ export function computeCenter(a: Point, b: Point): Point {
  *
  * Defensive: non-finite or zero ratios are treated as "no change".
  */
-export function computePxPerDayFromRatio(initialPpd: number, ratio: number): number {
+export function computePxPerDayFromRatio (initialPpd: number, ratio: number): number {
   if (!Number.isFinite(ratio) || ratio <= 0) return initialPpd
   if (!Number.isFinite(initialPpd) || initialPpd <= 0) return MIN_PPD
   const next = initialPpd * ratio
@@ -78,7 +78,7 @@ export function computePxPerDayFromRatio(initialPpd: number, ratio: number): num
   return next
 }
 
-export function reducePinch(state: PinchState, event: PinchEvent): PinchState {
+export function reducePinch (state: PinchState, event: PinchEvent): PinchState {
   switch (event.type) {
     case 'down':
       return onDown(state, event)
@@ -91,7 +91,7 @@ export function reducePinch(state: PinchState, event: PinchEvent): PinchState {
   }
 }
 
-function onDown(state: PinchState, event: Extract<PinchEvent, { type: 'down' }>): PinchState {
+function onDown (state: PinchState, event: Extract<PinchEvent, { type: 'down' }>): PinchState {
   if (state.kind === 'idle') {
     return { kind: 'single', id: event.id, x: event.x, y: event.y }
   }
@@ -115,7 +115,7 @@ function onDown(state: PinchState, event: Extract<PinchEvent, { type: 'down' }>)
   return state
 }
 
-function onMove(state: PinchState, event: Extract<PinchEvent, { type: 'move' }>): PinchState {
+function onMove (state: PinchState, event: Extract<PinchEvent, { type: 'move' }>): PinchState {
   if (state.kind === 'single') {
     if (state.id !== event.id) return state
     return { ...state, x: event.x, y: event.y }
@@ -129,7 +129,7 @@ function onMove(state: PinchState, event: Extract<PinchEvent, { type: 'move' }>)
   return state
 }
 
-function onUp(state: PinchState, event: Extract<PinchEvent, { type: 'up' }>): PinchState {
+function onUp (state: PinchState, event: Extract<PinchEvent, { type: 'up' }>): PinchState {
   if (state.kind === 'single') {
     if (state.id !== event.id) return state
     return { kind: 'idle' }

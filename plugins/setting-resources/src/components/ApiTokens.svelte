@@ -36,7 +36,7 @@
     expired: setting.string.ApiTokenStatusExpired
   } as const
 
-  function loadTokens (): void {
+  function loadTokens(): void {
     loading = true
     loadError = false
     getAccountClient()
@@ -53,7 +53,7 @@
       })
   }
 
-  function create (): void {
+  function create(): void {
     showPopup(ApiTokenCreatePopup, {}, 'top', (res) => {
       if (res === true) {
         loadTokens()
@@ -61,7 +61,7 @@
     })
   }
 
-  function revoke (token: ApiTokenInfo): void {
+  function revoke(token: ApiTokenInfo): void {
     showPopup(MessageBox, {
       label: setting.string.ApiTokenRevoke,
       message: setting.string.ApiTokenRevokeConfirm,
@@ -79,7 +79,7 @@
     })
   }
 
-  function formatDate (ts: number): string {
+  function formatDate(ts: number): string {
     return new Date(ts).toLocaleDateString($themeStore.language ?? 'en', {
       month: 'short',
       day: 'numeric',
@@ -87,7 +87,7 @@
     })
   }
 
-  function getStatus (token: ApiTokenInfo): 'active' | 'expiring' | 'revoked' | 'expired' {
+  function getStatus(token: ApiTokenInfo): 'active' | 'expiring' | 'revoked' | 'expired' {
     if (token.revoked) return 'revoked'
     const now = Date.now()
     if (token.expiresOn < now) return 'expired'

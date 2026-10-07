@@ -6,7 +6,7 @@
 // Domain-neutral Gantt engine: scheduling, zoom, drag/pointer, time-scale and
 // viewport primitives with no dependency on any platform package.
 
-export * from './types'
+export type * from './types'
 export * from './breakpoint'
 export * from './cascade-popup-layout'
 export * from './cascade-token'

@@ -100,7 +100,7 @@ export const startServer = async (): Promise<void> => {
   let idx = 0
   // Allow to execute 30 per second.
   const extractQueue = {
-    add: async <T>(exec: () => Promise<T>): Promise<T> => {
+    add: async <T> (exec: () => Promise<T>): Promise<T> => {
       if (ops.size > 100) {
         await Promise.any(ops.values())
       }

@@ -36,7 +36,7 @@
     }
   })
 
-  function load (_class: Ref<Class<Doc>> | undefined): void {
+  function load(_class: Ref<Class<Doc>> | undefined): void {
     const key = getFilterKey(_class)
     const items = localStorage.getItem(key)
     if (items !== null) {
@@ -44,7 +44,7 @@
     }
   }
 
-  function save (_class: Ref<Class<Doc>> | undefined, p: Filter[]): void {
+  function save(_class: Ref<Class<Doc>> | undefined, p: Filter[]): void {
     const key = getFilterKey(_class)
     localStorage.setItem(key, JSON.stringify(p))
   }
@@ -53,12 +53,12 @@
     save(_class, p)
   })
 
-  function nextFilterIndex (): number {
+  function nextFilterIndex(): number {
     const current = $filterStore.map((f) => f.index)
     return current.length === 0 ? 1 : Math.max(...current) + 1
   }
 
-  function onChange (e: Filter | undefined): void {
+  function onChange(e: Filter | undefined): void {
     if (e !== undefined) updateFilter(e)
   }
 
@@ -66,7 +66,7 @@
     _class = undefined
   })
 
-  function add (e: MouseEvent): void {
+  function add(e: MouseEvent): void {
     const target = eventToHTMLElement(e)
     showPopup(
       FilterTypePopup,

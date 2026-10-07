@@ -35,10 +35,10 @@ export const converterPlugin = plugin(converterId, {
     CopyAsMarkdownTable: '' as Resource<CopyAsMarkdownTableFunction>,
     CopyRelationshipAsMarkdown: '' as Resource<CopyRelationshipTableAsMarkdownFunction>,
     BuildMarkdownTableFromMetadata: '' as Resource<
-    (docs: Doc[], metadata: BuildMarkdownTableMetadata, client: Client) => Promise<string>
+      (docs: Doc[], metadata: BuildMarkdownTableMetadata, client: Client) => Promise<string>
     >,
     BuildMarkdownTableFromDocs: '' as Resource<
-    (docs: Doc[], props: CopyAsMarkdownTableProps, client: Client) => Promise<string>
+      (docs: Doc[], props: CopyAsMarkdownTableProps, client: Client) => Promise<string>
     >
   },
   extensions: {

@@ -527,7 +527,7 @@ export class WorkspaceClient {
     try {
       const socialIds = await this.client.findAll(contact.class.SocialIdentity, { attachedTo: personRef }, { limit: 1 })
       if (socialIds.length > 0) {
-        return socialIds[0]._id as PersonId
+        return socialIds[0]._id
       }
     } catch (err: any) {
       this.ctx.error('[WorkspaceClient.getPersonIdByPersonRef] Failed', {

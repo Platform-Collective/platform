@@ -89,7 +89,7 @@ export class TObj implements Obj {
   @Prop(TypeRef(core.class.Class), core.string.ClassLabel)
   @Index(IndexKind.Indexed)
   @Hidden()
-    _class!: Ref<Class<this>>
+  _class!: Ref<Class<this>>
 }
 
 @Model(core.class.Doc, core.class.Obj)
@@ -98,29 +98,29 @@ export class TDoc extends TObj implements Doc {
   @Prop(TypeRef(core.class.Doc), core.string.Id)
   @Hidden()
   // @Index(IndexKind.Indexed) // - automatically indexed by default.
-    _id!: Ref<this>
+  _id!: Ref<this>
 
   @Prop(TypeRef(core.class.Space), core.string.Space)
   @Index(IndexKind.Indexed)
   @Hidden()
-    space!: Ref<Space>
+  space!: Ref<Space>
 
   @Prop(TypeTimestamp(), core.string.ModifiedDate)
   @Index(IndexKind.Indexed)
-    modifiedOn!: Timestamp
+  modifiedOn!: Timestamp
 
   @Prop(TypePersonId(), core.string.ModifiedBy)
   @Index(IndexKind.Indexed)
-    modifiedBy!: PersonId
+  modifiedBy!: PersonId
 
   @Prop(TypePersonId(), core.string.CreatedBy)
   @Index(IndexKind.Indexed)
-    createdBy!: PersonId
+  createdBy!: PersonId
 
   @Prop(TypeTimestamp(), core.string.CreatedDate)
   @ReadOnly()
   @Index(IndexKind.IndexedDsc)
-    createdOn!: Timestamp
+  createdOn!: Timestamp
 }
 
 @Model(core.class.AttachedDoc, core.class.Doc)
@@ -128,16 +128,16 @@ export class TAttachedDoc extends TDoc implements AttachedDoc {
   @Prop(TypeRef(core.class.Doc), core.string.AttachedTo)
   @Index(IndexKind.Indexed)
   @Hidden()
-    attachedTo!: Ref<Doc>
+  attachedTo!: Ref<Doc>
 
   @Prop(TypeRef(core.class.Class), core.string.AttachedToClass)
   @Index(IndexKind.Indexed)
   @Hidden()
-    attachedToClass!: Ref<Class<Doc>>
+  attachedToClass!: Ref<Class<Doc>>
 
   @Prop(TypeString(), core.string.Collection)
   @Hidden()
-    collection!: string
+  collection!: string
 }
 
 @Model(core.class.Association, core.class.Doc, DOMAIN_MODEL)
@@ -169,16 +169,16 @@ export class TRelation extends TDoc implements Relation {
 export class TRelationMetadata extends TDoc implements RelationMetadata {
   @Prop(TypeRef(core.class.Class), core.string.Class)
   @Index(IndexKind.Indexed)
-    sourceClass!: Ref<Class<Doc>>
+  sourceClass!: Ref<Class<Doc>>
 
   @Prop(TypeRef(core.class.Class), core.string.TargetClass)
-    targetClass!: Ref<Class<Doc>>
+  targetClass!: Ref<Class<Doc>>
 
   @Prop(TypeString(), core.string.ClassPropertyLabel)
-    field!: string
+  field!: string
 
   @Prop(TypeString(), core.string.Description)
-    direction?: 'forward' | 'inverse'
+  direction?: 'forward' | 'inverse'
 }
 
 @Model(core.class.Blob, core.class.Doc, DOMAIN_BLOB)
@@ -187,27 +187,27 @@ export class TBlob extends TDoc implements Blob {
   @Prop(TypeString(), core.string.Blob)
   @ReadOnly()
   // @Index(IndexKind.Indexed)
-    provider!: string
+  provider!: string
 
   @Prop(TypeString(), core.string.BlobContentType)
   @ReadOnly()
-    contentType!: string
+  contentType!: string
 
   @Prop(TypeString(), core.string.BlobStorageId)
   @ReadOnly()
-    storageId!: string
+  storageId!: string
 
   @Prop(TypeString(), core.string.BlobEtag)
   @ReadOnly()
-    etag!: string
+  etag!: string
 
   @Prop(TypeString(), core.string.BlobVersion)
   @ReadOnly()
-    version!: string
+  version!: string
 
   @Prop(TypeFileSize(), core.string.BlobSize)
   @ReadOnly()
-    size!: number
+  size!: number
 }
 
 @UX(core.string.ClassLabel)
@@ -216,7 +216,7 @@ export class TClass extends TDoc implements Class<Obj> {
   kind!: ClassifierKind
 
   @Prop(TypeIntlString(), core.string.ClassPropertyLabel)
-    label!: IntlString
+  label!: IntlString
 
   extends!: Ref<Class<Obj>>
   domain!: Domain
@@ -381,16 +381,16 @@ export class TFullTextSearchContext extends TDoc implements FullTextSearchContex
 @MMixin(core.mixin.ConfigurationElement, core.class.Class)
 export class TConfigurationElement extends TClass implements ConfigurationElement {
   @Prop(TypeIntlString(), core.string.Private)
-    title!: IntlString
+  title!: IntlString
 
   @Prop(TypeIntlString(), core.string.Private)
-    group!: IntlString
+  group!: IntlString
 }
 
 @Model(core.class.Configuration, core.class.Doc, DOMAIN_CONFIGURATION)
 export class TConfiguration extends TDoc implements Configuration {
   @Prop(TypeBoolean(), core.string.Private)
-    enabled!: boolean
+  enabled!: boolean
 }
 
 @MMixin(core.mixin.IndexConfiguration, core.class.Class)
@@ -415,14 +415,14 @@ export class TTypeRank extends TType {}
 @MMixin(core.mixin.TransientConfiguration, core.class.Class)
 export class TTransientConfiguration extends TClass implements TransientConfiguration {
   @Prop(TypeBoolean(), core.string.Private)
-    broadcastOnly!: boolean
+  broadcastOnly!: boolean
 }
 
 @Model(core.class.Sequence, core.class.Doc, DOMAIN_SEQUENCE)
 export class TSequence extends TDoc implements Sequence {
   @Prop(TypeRef(core.class.Class), core.string.AttachedTo)
   @Index(IndexKind.Indexed)
-    attachedTo!: Ref<Class<Doc>>
+  attachedTo!: Ref<Class<Doc>>
 
   sequence!: number
 }

@@ -110,7 +110,7 @@ function createRowDragMarker (): DragMarkerHTMLElement {
 export type DropMarkerHTMLElement = HTMLElement
 
 export function getDropMarker (): DropMarkerHTMLElement | null {
-  return document.getElementById(dropMarkerId) as DropMarkerHTMLElement
+  return document.getElementById(dropMarkerId)
 }
 
 export function hideDropMarker (element: DropMarkerHTMLElement): void {
@@ -136,11 +136,11 @@ export function updateRowDropMarker (element: DropMarkerHTMLElement, top: number
 export type DragMarkerHTMLElement = HTMLElement
 
 export function getColDragMarker (): DragMarkerHTMLElement | null {
-  return document.getElementById(colDragMarkerId) as DragMarkerHTMLElement
+  return document.getElementById(colDragMarkerId)
 }
 
 export function getRowDragMarker (): DragMarkerHTMLElement | null {
-  return document.getElementById(rowDragMarkerId) as DragMarkerHTMLElement
+  return document.getElementById(rowDragMarkerId)
 }
 
 export function getDragMarker (element: DragMarkerHTMLElement): void {

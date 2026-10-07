@@ -71,9 +71,7 @@ jest.mock('@hcengineering/tracker', () => {
 })
 
 // Imported after the mocks are registered.
-// eslint-disable-next-line import/first
 import { OnDependencyShiftRequest } from '../index'
-// eslint-disable-next-line import/first
 import tracker from '@hcengineering/tracker'
 
 const REAL = 'acc-real' as AccountUuid

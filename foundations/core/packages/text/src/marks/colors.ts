@@ -69,19 +69,19 @@ export const BackgroundColor = Extension.create<BackgroundColorOptions>({
     return {
       setBackgroundColor:
         (backgroundColor: string) =>
-          ({ commands }) => {
-            return this.options.types
-              .map((type) => commands.updateAttributes(type, { backgroundColor }))
-              .every((response) => response)
-          },
+        ({ commands }) => {
+          return this.options.types
+            .map((type) => commands.updateAttributes(type, { backgroundColor }))
+            .every((response) => response)
+        },
 
       unsetBackgroundColor:
         () =>
-          ({ commands }) => {
-            return this.options.types
-              .map((type) => commands.resetAttributes(type, 'backgroundColor'))
-              .every((response) => response)
-          }
+        ({ commands }) => {
+          return this.options.types
+            .map((type) => commands.resetAttributes(type, 'backgroundColor'))
+            .every((response) => response)
+        }
     }
   }
 })
@@ -128,15 +128,15 @@ export const TextColor = Extension.create<TextColorOptions>({
     return {
       setTextColor:
         (color: string) =>
-          ({ chain }) => {
-            return chain().setMark('textStyle', { color }).run()
-          },
+        ({ chain }) => {
+          return chain().setMark('textStyle', { color }).run()
+        },
 
       unsetTextColor:
         () =>
-          ({ chain }) => {
-            return chain().unsetMark('textStyle').run()
-          }
+        ({ chain }) => {
+          return chain().unsetMark('textStyle').run()
+        }
     }
   }
 })

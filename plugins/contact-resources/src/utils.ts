@@ -204,11 +204,11 @@ export async function getRefs (
         const filteredRefs =
           docUpdates !== undefined && inboxNotificationsByContext !== undefined
             ? refs.filter((channel) => {
-              const docUpdate = docUpdates.get(channel._id)
-              return docUpdate != null
-                ? inboxNotificationsByContext.get(docUpdate._id)?.some(({ isViewed }) => !isViewed)
-                : (channel.items ?? 0) > 0
-            })
+                const docUpdate = docUpdates.get(channel._id)
+                return docUpdate != null
+                  ? inboxNotificationsByContext.get(docUpdate._id)?.some(({ isViewed }) => !isViewed)
+                  : (channel.items ?? 0) > 0
+              })
             : refs
         const result = Array.from(new Set(filteredRefs.map((p) => p.attachedTo)))
         FilterQuery.results.set(filter.index, result)
@@ -433,7 +433,7 @@ export function getAnonymousRefs (
     return []
   }
   const ref = byAccount.get(readOnlyGuestAccountUuid)
-  return ref !== undefined ? [ref as unknown as Ref<Person>] : []
+  return ref !== undefined ? [ref] : []
 }
 
 /**

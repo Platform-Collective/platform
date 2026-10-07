@@ -125,8 +125,8 @@ export async function setCommunicationClient (platformClient: PlatformClient): P
 }
 
 export type AttachmentDataWithOptionalId<P extends AttachmentParams = AttachmentParams> = Omit<
-AttachmentData<P>,
-'id'
+  AttachmentData<P>,
+  'id'
 > & {
   id?: AttachmentID
 }
@@ -236,7 +236,7 @@ class Client {
     await this.sendEvent(event)
   }
 
-  async attachmentPatch<P extends AttachmentParams>(
+  async attachmentPatch<P extends AttachmentParams> (
     cardId: CardID,
     messageId: MessageID,
     ops: {
@@ -247,7 +247,7 @@ class Client {
     }
   ): Promise<void> {
     const operations: Array<
-    AddAttachmentsOperation | RemoveAttachmentsOperation | SetAttachmentsOperation | UpdateAttachmentsOperation
+      AddAttachmentsOperation | RemoveAttachmentsOperation | SetAttachmentsOperation | UpdateAttachmentsOperation
     > = []
 
     if (ops.add != null && ops.add.length > 0) {
@@ -444,8 +444,8 @@ class Client {
 
     const eventPromise: Promise<EventResult> = this.connection
       .domainRequest<EventResult>(COMMUNICATION, {
-      event: ev
-    })
+        event: ev
+      })
       .then((result) => result.value)
     this.onRequest(ev, eventPromise)
     return await eventPromise

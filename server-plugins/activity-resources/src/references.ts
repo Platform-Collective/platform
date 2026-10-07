@@ -33,7 +33,6 @@ import core, {
   type TxCUD,
   TxFactory,
   TxProcessor,
-  type TxRemoveDoc,
   type TxUpdateDoc,
   type Type,
   getClassCollaborators
@@ -48,7 +47,7 @@ import {
   getReceiversInfo,
   type NotificationProviderControl
 } from '@hcengineering/server-notification-resources'
-import { areEqualJson, jsonToMarkup, markupToJSON } from '@hcengineering/text-core'
+import { areEqualJson, extractReferences, jsonToMarkup, markupToJSON } from '@hcengineering/text-core'
 
 export function isDocMentioned (doc: Ref<Doc>, content: string): boolean {
   const references = []
@@ -288,7 +287,7 @@ async function getCreateReferencesTxes (
       if (blobId != null && blobId !== '') {
         try {
           const buffer = await storage.read(ctx, control.workspace, blobId)
-          const markup = Buffer.concat(buffer as any).toString()
+          const markup = Buffer.concat(buffer).toString()
           const attrReferences = getReferencesData(srcDocId, srcDocClass, attachedDocId, attachedDocClass, markup)
           refs.push(...attrReferences)
         } catch {
@@ -335,7 +334,7 @@ async function getUpdateReferencesTxes (
         const blobId = (updatedDoc as any)[attr.name] as Ref<Blob>
         if (blobId != null) {
           const buffer = await storage.read(ctx, control.workspace, blobId)
-          const markup = Buffer.concat(buffer as any).toString()
+          const markup = Buffer.concat(buffer).toString()
           const attrReferences = getReferencesData(srcDocId, srcDocClass, attachedDocId, attachedDocClass, markup)
           references.push(...attrReferences)
         }
@@ -565,9 +564,9 @@ function guessReferenceObj (
   hierarchy: Hierarchy,
   tx: TxCUD<Doc>
 ): {
-    objectId: Ref<Doc>
-    objectClass: Ref<Class<Doc>>
-  } {
+  objectId: Ref<Doc>
+  objectClass: Ref<Class<Doc>>
+} {
   // Try to guess reference target Tx for TxCollectionCUD txes based on collaborators availability
   if (tx.attachedToClass !== undefined && tx.attachedTo !== undefined) {
     if (hierarchy.isDerived(tx.objectClass, activity.class.ActivityMessage)) {
@@ -674,7 +673,7 @@ async function ActivityReferenceUpdate (tx: TxCUD<Doc>, control: TriggerControl)
 }
 
 async function ActivityReferenceRemove (tx: TxCUD<Doc>, control: TriggerControl): Promise<Tx[]> {
-  const ctx = tx as TxRemoveDoc<Doc>
+  const ctx = tx
   const attributes = control.hierarchy.getAllAttributes(ctx.objectClass)
 
   let hasMarkdown = false

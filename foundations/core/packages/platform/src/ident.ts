@@ -30,7 +30,7 @@ export interface _IdInfo {
 /**
  * @internal
  */
-export function _parseId(id: Id): _IdInfo {
+export function _parseId (id: Id): _IdInfo {
   const path = id.split(_ID_SEPARATOR)
   if (path.length < 3) {
     throw new PlatformError(new Status(Severity.ERROR, platform.status.InvalidId, { id }))

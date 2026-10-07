@@ -29,21 +29,21 @@ export interface FlashStore {
 
 const timers = new WeakMap<FlashStore, Map<string, ReturnType<typeof setTimeout>>>()
 
-export function createFlashStore(): FlashStore {
+export function createFlashStore (): FlashStore {
   let value = new Set<string>()
   const subs = new Set<(value: Set<string>) => void>()
   const store: FlashStore = {
-    subscribe(run) {
+    subscribe (run) {
       subs.add(run)
       run(value)
       return () => {
         subs.delete(run)
       }
     },
-    get() {
+    get () {
       return value
     },
-    set(next) {
+    set (next) {
       value = next
       for (const fn of subs) fn(value)
     }
@@ -52,7 +52,7 @@ export function createFlashStore(): FlashStore {
   return store
 }
 
-export function flashIssues(ids: string[], durationMs: number, store: FlashStore): void {
+export function flashIssues (ids: string[], durationMs: number, store: FlashStore): void {
   const perStoreTimers = timers.get(store) ?? new Map<string, ReturnType<typeof setTimeout>>()
   timers.set(store, perStoreTimers)
 

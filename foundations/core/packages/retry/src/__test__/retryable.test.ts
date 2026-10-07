@@ -151,7 +151,7 @@ describe('retryNetworkErrors', () => {
 /**
  * Helper function to create an Error object with a status property
  */
-function createErrorWithStatus(status: number): Error {
+function createErrorWithStatus (status: number): Error {
   const error: any = new Error(`HTTP Error ${status}`)
   error.status = status
   return error

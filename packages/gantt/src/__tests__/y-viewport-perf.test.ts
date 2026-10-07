@@ -21,7 +21,7 @@ interface SynthRow {
   height: number
 }
 
-function genRows(count: number, rowHeight: number): SynthRow[] {
+function genRows (count: number, rowHeight: number): SynthRow[] {
   const rows: SynthRow[] = new Array(count)
   for (let i = 0; i < count; i++) {
     rows[i] = { id: `row-${i}`, y: i * rowHeight, height: rowHeight }

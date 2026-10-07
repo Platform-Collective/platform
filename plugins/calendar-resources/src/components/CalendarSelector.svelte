@@ -38,7 +38,7 @@
     setCalendar(calendars, preference)
   })
 
-  function setCalendar (calendars: Calendar[], primary: PrimaryCalendar | undefined): void {
+  function setCalendar(calendars: Calendar[], primary: PrimaryCalendar | undefined): void {
     if (value) return
     if (!calendarsLoaded || !prefsLoaded) return
     const target = getPrimaryCalendar(calendars, primary, getCurrentAccount().uuid)
@@ -54,7 +54,7 @@
 
   $: selected = value !== undefined ? items.find((p) => p._id === value) : undefined
 
-  function change (id: Ref<Calendar>) {
+  function change(id: Ref<Calendar>) {
     if (value !== id) {
       dispatch('change', { _id: id })
       value = id

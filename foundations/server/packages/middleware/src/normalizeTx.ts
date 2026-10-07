@@ -121,7 +121,7 @@ export class NormalizeTxMiddleware extends BaseMiddleware implements Middleware 
       createdBy: createdBy as PersonId | undefined,
       createdOn,
       objectSpace: objectSpace as Ref<Space>,
-      meta: meta as Record<string, any> | undefined
+      meta
     }
     return baseTx
   }

@@ -57,7 +57,7 @@
       .sort((a, b) => formatName(a.name).localeCompare(formatName(b.name)))
   })
 
-  async function change (personUuid: string, value: AccountRole): Promise<void> {
+  async function change(personUuid: string, value: AccountRole): Promise<void> {
     if (accountClient == null) {
       return
     }
@@ -81,7 +81,7 @@
     (e) => e.personUuid != null && workspaceMembers[e.personUuid] === AccountRole.Owner
   ).length
 
-  function getItems (role: AccountRole, currentAccount: Account): DropdownIntlItem[] {
+  function getItems(role: AccountRole, currentAccount: Account): DropdownIntlItem[] {
     return items.filter((i) => i.id === role || hasAccountRole(currentAccount, i.id as AccountRole))
   }
 </script>

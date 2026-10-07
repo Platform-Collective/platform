@@ -15,7 +15,7 @@
 
 import type { AnyAttribute, Class, Doc, Obj, Ref } from '../classes'
 import { ClassifierKind, DOMAIN_MODEL } from '../classes'
-import type { TxCreateDoc } from '../tx'
+import type { MixinUpdate, TxCreateDoc } from '../tx'
 import { TxFactory } from '../tx'
 import core from '../component'
 import { Hierarchy } from '../hierarchy'
@@ -607,9 +607,7 @@ describe('hierarchy', () => {
     const hierarchy = prepare()
 
     // Should throw for non-existent class
-    expect(() => hierarchy.getAncestors('class:NonExistent' as any)).toThrow(
-      'ancestors not found: class:NonExistent'
-    )
+    expect(() => hierarchy.getAncestors('class:NonExistent' as any)).toThrow('ancestors not found: class:NonExistent')
   })
 
   it('should handle getDescendants error case', async () => {
@@ -816,11 +814,11 @@ describe('hierarchy', () => {
     // Create a TxMixin transaction
     const txFactory = new TxFactory(core.account.System)
     const mixinTx = txFactory.createTxMixin(
-      core.class.Space as any,
-      core.class.Class as any,
+      core.class.Space,
+      core.class.Class,
       core.space.Model,
       test.mixin.TestMixin,
-      { arr: ['test'] }
+      { arr: ['test'] } as unknown as MixinUpdate<Class<Obj>, Class<Obj>>
     )
 
     // Apply the mixin transaction
@@ -992,7 +990,7 @@ describe('hierarchy', () => {
       }
     }
 
-    const result = hierarchy.updateLookupMixin(test.class.Task, doc as any, options as any)
+    const result = hierarchy.updateLookupMixin(test.class.Task, doc as any, options)
     expect(result).toBeDefined()
     expect(result.$lookup).toBeDefined()
   })
@@ -1029,7 +1027,7 @@ describe('hierarchy', () => {
       }
     }
 
-    const result = hierarchy.updateLookupMixin(test.class.Task, doc as any, options as any)
+    const result = hierarchy.updateLookupMixin(test.class.Task, doc as any, options)
     expect(result).toBeDefined()
   })
 
@@ -1091,7 +1089,7 @@ describe('hierarchy', () => {
       }
     }
 
-    const result = hierarchy.updateLookupMixin(test.class.Task, doc as any, options as any)
+    const result = hierarchy.updateLookupMixin(test.class.Task, doc as any, options)
     expect(result).toBeDefined()
     expect(result.$lookup?.space).toBeNull()
   })

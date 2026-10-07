@@ -101,7 +101,7 @@ export const ImageUploadExtension = Extension.create<ImageUploadExtensionOptions
       if (attachFile === undefined || !html.includes('data:image/')) return html
 
       const document = new DOMParser().parseFromString(html, 'text/html')
-      document.querySelectorAll('img[src^="data:image/"]').forEach(image => {
+      document.querySelectorAll('img[src^="data:image/"]').forEach((image) => {
         const source = image.getAttribute('src')
         if (source !== null) {
           const placeholder = `[Uploading image ${generateId()}]`

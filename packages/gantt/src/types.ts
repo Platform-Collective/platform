@@ -113,7 +113,7 @@ export interface DragTarget<D extends GanttItem = GanttItem> {
  */
 export type DragState<TTarget extends DragTarget = DragTarget, TNode extends GanttItem = GanttItem> =
   | { kind: 'idle' }
-  | { kind: 'hover-bar'; issueId: string; edge: 'left' | 'right' | 'body' | 'none' }
+  | { kind: 'hover-bar', issueId: string, edge: 'left' | 'right' | 'body' | 'none' }
   | {
       kind: 'dragging-body'
       target: TTarget
@@ -124,7 +124,7 @@ export type DragState<TTarget extends DragTarget = DragTarget, TNode extends Gan
       previewEnd: number
       /** Bulk co-drag state: other selected issues being shifted in sync. */
       coDrag?: {
-        members: Array<{ issueId: string; originStart: number; originEnd: number }>
+        members: Array<{ issueId: string, originStart: number, originEnd: number }>
         minDeltaMs: number
         maxDeltaMs: number
         anchorDeltaMs: number
@@ -170,15 +170,15 @@ export type DragState<TTarget extends DragTarget = DragTarget, TNode extends Gan
       /** Source item the user is drawing the dependency from. */
       source: TNode
       /** Pixel x/y of the connector-dot on the source bar (where the curve starts). */
-      originPx: { x: number; y: number }
+      originPx: { x: number, y: number }
       /** Live cursor x/y in canvas-content coordinates (where the curve ends). */
-      cursorPx: { x: number; y: number }
+      cursorPx: { x: number, y: number }
     }
   | {
       kind: 'connector-target-hover'
       source: TNode
-      originPx: { x: number; y: number }
-      cursorPx: { x: number; y: number }
+      originPx: { x: number, y: number }
+      cursorPx: { x: number, y: number }
       /** Candidate target item under the pointer. */
       target: TNode
     }
@@ -202,7 +202,7 @@ export type DragState<TTarget extends DragTarget = DragTarget, TNode extends Gan
  * default ("today") until the cursor enters the canvas.
  */
 export type DragEvent<TTarget extends DragTarget = DragTarget, TNode extends GanttItem = GanttItem> =
-  | { type: 'mouseenter-bar'; issueId: string; edge: 'left' | 'right' | 'body' }
+  | { type: 'mouseenter-bar', issueId: string, edge: 'left' | 'right' | 'body' }
   | { type: 'mouseleave-bar' }
   | {
       type: 'mousedown-bar'
@@ -217,24 +217,24 @@ export type DragEvent<TTarget extends DragTarget = DragTarget, TNode extends Gan
       cursorX: number
       /** Bulk co-drag state: other selected issues to shift in sync. */
       coDrag?: {
-        members: Array<{ issueId: string; originStart: number; originEnd: number }>
+        members: Array<{ issueId: string, originStart: number, originEnd: number }>
         minDeltaMs: number
         maxDeltaMs: number
       }
     }
-  | { type: 'mousedown-unscheduled'; target: TTarget; cursorX: number }
-  | { type: 'mousemove'; cursorX: number; canvasX?: number }
+  | { type: 'mousedown-unscheduled', target: TTarget, cursorX: number }
+  | { type: 'mousemove', cursorX: number, canvasX?: number }
   | { type: 'mouseup' }
   | { type: 'cancel' }
   | {
       type: 'mousedown-connector'
       source: TNode
-      originPx: { x: number; y: number }
-      cursorPx: { x: number; y: number }
+      originPx: { x: number, y: number }
+      cursorPx: { x: number, y: number }
     }
   | {
       type: 'mousemove-connector'
-      cursorPx: { x: number; y: number }
+      cursorPx: { x: number, y: number }
       /** Bar under the cursor right now, or null when over empty canvas. */
       hoveredBar: TNode | null
     }

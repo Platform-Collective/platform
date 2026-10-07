@@ -56,7 +56,7 @@
   $: isEditing = $messageEditingStore === message.id
   $: void updateAuthor(message.creator)
 
-  async function updateAuthor (socialId: SocialID): Promise<void> {
+  async function updateAuthor(socialId: SocialID): Promise<void> {
     author = $employeeByPersonIdStore.get(socialId)
 
     if (author === undefined) {
@@ -65,17 +65,17 @@
   }
 
   $: updateStore(message)
-  function updateStore (message: Message): void {
+  function updateStore(message: Message): void {
     if (!readonly && message.id === $threadCreateMessageStore?.id) {
       threadCreateMessageStore.set(message)
     }
   }
 
-  function isInside (x: number, y: number, rect: DOMRect): boolean {
+  function isInside(x: number, y: number, rect: DOMRect): boolean {
     return x >= rect.left && y >= rect.top && x <= rect.right && y <= rect.bottom
   }
 
-  function isContentClicked (element: HTMLElement | null, x: number, y: number): boolean {
+  function isContentClicked(element: HTMLElement | null, x: number, y: number): boolean {
     if (element == null) {
       return false
     }
@@ -116,7 +116,7 @@
 
   $: actions = allActions.filter((it) => !excludedActions.includes(it._id))
 
-  function getExcludedActions (isTranslated: boolean): Ref<MessageAction>[] {
+  function getExcludedActions(isTranslated: boolean): Ref<MessageAction>[] {
     if (!isTranslated) {
       return [communication.messageAction.ShowOriginalMessage]
     } else {
@@ -124,7 +124,7 @@
     }
   }
 
-  function handleContextMenu (event: MouseEvent): void {
+  function handleContextMenu(event: MouseEvent): void {
     const showCustomPopup = !isContentClicked(event.target as HTMLElement, event.clientX, event.clientY)
     if (!showCustomPopup) return
 

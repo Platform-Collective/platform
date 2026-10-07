@@ -141,7 +141,7 @@ export async function formatSingleValue (
     const isRef = attrType?._class === core.class.RefTo
     if (isRef) {
       if (attrType.to !== undefined && hierarchy.isDerived(attrType.to, contact.mixin.Employee)) {
-        const name = await loadPersonNameByRef(value as any, hierarchy, userCache as any)
+        const name = await loadPersonNameByRef(value, hierarchy, userCache)
         return name
       }
     }

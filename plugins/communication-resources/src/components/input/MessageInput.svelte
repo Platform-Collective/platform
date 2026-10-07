@@ -80,14 +80,14 @@
 
   $: _saveDraft(markup, attachmentsDraft)
 
-  function initDraft (): void {
+  function initDraft(): void {
     const draft = message != null ? messageToDraft(message) : getDraft(card._id)
     attachmentsDraft = draft
     markup = draft.content
     previewUrls.clear()
   }
 
-  function _saveDraft (markup: Markup, draft: Omit<MessageDraft, 'content'>): void {
+  function _saveDraft(markup: Markup, draft: Omit<MessageDraft, 'content'>): void {
     for (const link of draft.links) {
       previewUrls.set(link.url, true)
     }
@@ -96,7 +96,7 @@
     }
   }
 
-  async function handleSubmit (event: CustomEvent<Markup>): Promise<void> {
+  async function handleSubmit(event: CustomEvent<Markup>): Promise<void> {
     event.preventDefault()
     event.stopPropagation()
 
@@ -130,7 +130,7 @@
     void clearTyping(acc.primarySocialId, card._id)
   }
 
-  async function fileSelected (): Promise<void> {
+  async function fileSelected(): Promise<void> {
     progress = true
     await tick()
     const list = inputElement.files
@@ -147,7 +147,7 @@
     progress = false
   }
 
-  async function addFile (file: File): Promise<void> {
+  async function addFile(file: File): Promise<void> {
     const { uuid, metadata } = await uploadFile(file)
 
     const blob = {
@@ -174,7 +174,7 @@
     order: 1000
   }
 
-  async function handleCancel (): Promise<void> {
+  async function handleCancel(): Promise<void> {
     onCancel?.()
     for (const blob of attachmentsDraft.blobs) {
       const fromMessage =
@@ -186,7 +186,7 @@
     attachmentsDraft = getEmptyDraft()
   }
 
-  async function loadFiles (evt: ClipboardEvent): Promise<void> {
+  async function loadFiles(evt: ClipboardEvent): Promise<void> {
     progress = true
     const files = (evt.clipboardData?.files ?? []) as File[]
 
@@ -197,7 +197,7 @@
     progress = false
   }
 
-  function pasteAction (_: any, evt: ClipboardEvent): boolean {
+  function pasteAction(_: any, evt: ClipboardEvent): boolean {
     let target: HTMLElement | null = evt.target as HTMLElement
     let allowed = false
     const hasFiles = Array.from(evt.clipboardData?.items ?? []).some((i) => i.kind === 'file')
@@ -219,7 +219,7 @@
     return allowed
   }
 
-  async function fileDrop (e: DragEvent): Promise<void> {
+  async function fileDrop(e: DragEvent): Promise<void> {
     const list = e.dataTransfer?.files
     const limiter = new RateLimiter(10)
 
@@ -235,7 +235,7 @@
     progress = false
   }
 
-  function isValidUrl (s: string): boolean {
+  function isValidUrl(s: string): boolean {
     let url: URL
     try {
       url = new URL(s)
@@ -245,7 +245,7 @@
     return url.protocol.startsWith('http')
   }
 
-  function updateLinkPreview (): void {
+  function updateLinkPreview(): void {
     if (refContainer == null) return
     const hrefs = refContainer.getElementsByTagName('a')
     const validUrls = Array.from(hrefs)
@@ -278,7 +278,7 @@
     }
   }
 
-  async function loadLinks (urls: string[]): Promise<void> {
+  async function loadLinks(urls: string[]): Promise<void> {
     const draftId = attachmentsDraft._id
 
     for (const url of urls) {
@@ -297,7 +297,7 @@
     }
   }
 
-  async function onUpdate (event: CustomEvent<Markup>): Promise<void> {
+  async function onUpdate(event: CustomEvent<Markup>): Promise<void> {
     markup = event.detail
     const visiblePreviewUrls = Array.from(previewUrls.keys()).filter((it) => previewUrls.get(it) === true)
     if (isLinkPreviewEnabled() && visiblePreviewUrls.length < maxLinkPreviewCount) {
@@ -311,11 +311,11 @@
     }
   }
 
-  function isEmptyDraft (): boolean {
+  function isEmptyDraft(): boolean {
     return isEmptyMarkup(markup) && attachmentsDraft.blobs.length === 0 && attachmentsDraft.applets.length === 0
   }
 
-  function hasChanges (blobs: BlobParams[], message: Message | undefined, appletDrafts: AppletDraft[]): boolean {
+  function hasChanges(blobs: BlobParams[], message: Message | undefined, appletDrafts: AppletDraft[]): boolean {
     if (isEmptyDraft()) return false
     if (message === undefined) return blobs.length > 0 || !isEmptyMarkup(markup) || appletDrafts.length > 0
     const messageBlobs = message?.attachments.filter(isBlobAttachment) ?? []
@@ -351,7 +351,7 @@
     }
   })
 
-  async function uploadWith (uploader: UploadHandlerDefinition): Promise<void> {
+  async function uploadWith(uploader: UploadHandlerDefinition): Promise<void> {
     const cardId = card._id
 
     const onFileUploaded = async ({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> => {
@@ -396,7 +396,7 @@
     }
   }))
 
-  function handleKeyDown (_: any, event: KeyboardEvent): boolean {
+  function handleKeyDown(_: any, event: KeyboardEvent): boolean {
     if (event.key === 'ArrowUp') {
       if (isEmptyDraft() && $messageEditingStore === undefined) {
         dispatch('arrowUp')
@@ -410,21 +410,21 @@
     return false
   }
 
-  function onChangeApplet (event: CustomEvent<AppletDraft>): void {
+  function onChangeApplet(event: CustomEvent<AppletDraft>): void {
     attachmentsDraft = {
       ...attachmentsDraft,
       applets: attachmentsDraft.applets.map((it) => (it.id === event.detail.id ? event.detail : it))
     }
   }
 
-  function onDeleteApplet (event: CustomEvent<string>): void {
+  function onDeleteApplet(event: CustomEvent<string>): void {
     attachmentsDraft = {
       ...attachmentsDraft,
       applets: attachmentsDraft.applets.filter((it) => it.id !== event.detail)
     }
   }
 
-  function onDeleteBlob (event: CustomEvent<BlobID>): void {
+  function onDeleteBlob(event: CustomEvent<BlobID>): void {
     const blobId = event.detail
     attachmentsDraft = {
       ...attachmentsDraft,
@@ -436,7 +436,7 @@
     }
   }
 
-  function onDeleteLink (event: CustomEvent<string>): void {
+  function onDeleteLink(event: CustomEvent<string>): void {
     attachmentsDraft = {
       ...attachmentsDraft,
       links: attachmentsDraft.links.filter((it) => it.url !== event.detail)

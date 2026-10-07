@@ -37,7 +37,7 @@ export interface ConfirmGate {
 }
 
 /** Create an independent gate. One per mounted GanttView. */
-export function createConfirmGate(): ConfirmGate {
+export function createConfirmGate (): ConfirmGate {
   let confirming = false
   return {
     setConfirming: (value: boolean): void => {

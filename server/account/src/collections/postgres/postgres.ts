@@ -114,10 +114,9 @@ export interface PostgresDbCollectionOptions<T extends Record<string, any>, K ex
   withRetryClient?: <R>(callback: (client: ISql) => Promise<R>) => Promise<R>
 }
 
-export class PostgresDbCollection<
-  T extends Record<string, any>,
-  K extends keyof T | undefined = undefined
-> implements DbCollection<T> {
+export class PostgresDbCollection<T extends Record<string, any>, K extends keyof T | undefined = undefined>
+  implements DbCollection<T>
+{
   constructor (
     readonly name: string,
     readonly client: ISql,
@@ -781,7 +780,7 @@ export class PostgresAccountDB implements AccountDB {
     }
   }
 
-  withRetry = async <T>(operation: (client: ISql) => Promise<T>): Promise<T> => {
+  withRetry = async <T> (operation: (client: ISql) => Promise<T>): Promise<T> => {
     let attempt = 0
     let delay = this.retryOptions.initialDelayMs
 

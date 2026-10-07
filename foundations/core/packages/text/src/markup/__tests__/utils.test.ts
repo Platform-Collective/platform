@@ -284,7 +284,7 @@ describe('pmNodeToJSON', () => {
 
     const json: MarkupNode = {
       type: MarkupNodeType.paragraph,
-      attrs: { textAlign: null as any },
+      attrs: { textAlign: null },
       content: [nodeText('Hello, world!')]
     }
     expect(pmNodeToJSON(node)).toEqual(json)
@@ -310,7 +310,7 @@ describe('jsonToPmNode', () => {
       content: [
         {
           type: MarkupNodeType.paragraph,
-          attrs: { textAlign: null as any },
+          attrs: { textAlign: null },
           content: [
             {
               type: MarkupNodeType.text,

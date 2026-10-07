@@ -47,7 +47,7 @@ export interface TreeExpandStore {
   subscribe: (cb: (collapsed: Set<string>) => void) => () => void
 }
 
-function readPersisted(storage: Storage, key: string): Set<string> {
+function readPersisted (storage: Storage, key: string): Set<string> {
   try {
     const raw = storage.getItem(key)
     if (raw === null || raw === '') return new Set()
@@ -63,7 +63,7 @@ function readPersisted(storage: Storage, key: string): Set<string> {
   }
 }
 
-function writePersisted(storage: Storage, key: string, value: Set<string>): void {
+function writePersisted (storage: Storage, key: string, value: Set<string>): void {
   try {
     storage.setItem(key, JSON.stringify([...value]))
   } catch {
@@ -78,12 +78,12 @@ function writePersisted(storage: Storage, key: string, value: Set<string>): void
  * key would not be observed without a manual reload (acceptable since the
  * user typically has a single Gantt tab open per project).
  */
-export function createTreeExpandStore(projectId: string, storage: Storage): TreeExpandStore {
+export function createTreeExpandStore (projectId: string, storage: Storage): TreeExpandStore {
   const key = KEY_PREFIX + projectId
   let current: Set<string> = readPersisted(storage, key)
   const listeners = new Set<(c: Set<string>) => void>()
 
-  function commit(next: Set<string>): void {
+  function commit (next: Set<string>): void {
     current = next
     writePersisted(storage, key, current)
     for (const cb of listeners) cb(current)

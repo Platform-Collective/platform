@@ -6,7 +6,7 @@ import { pdfExtractor } from './pdf'
 import { rtfExtractor } from './rtf'
 import { DocumentExtractor } from './types'
 import { MeasureContext } from '@hcengineering/core'
-export * from './types'
+export type * from './types'
 
 const extractors: Record<string, DocumentExtractor> = {
   pdf: pdfExtractor,

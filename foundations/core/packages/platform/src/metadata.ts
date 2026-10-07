@@ -40,7 +40,7 @@ const metadata = new Map<Metadata<any>, any>()
  * @param id -
  * @returns
  */
-export function getMetadata<T>(id: Metadata<T>): T | undefined {
+export function getMetadata<T> (id: Metadata<T>): T | undefined {
   return metadata.get(id)
 }
 
@@ -49,7 +49,7 @@ export function getMetadata<T>(id: Metadata<T>): T | undefined {
  * @param id -
  * @param value -
  */
-export function setMetadata<T>(id: Metadata<T>, value: T): void {
+export function setMetadata<T> (id: Metadata<T>, value: T): void {
   metadata.set(id, value)
 }
 
@@ -58,7 +58,7 @@ export function setMetadata<T>(id: Metadata<T>, value: T): void {
  * @param ids -
  * @param data -
  */
-export function loadMetadata<T, X extends Record<string, Metadata<T>>>(ids: X, data: ExtractType<T, X>): void {
+export function loadMetadata<T, X extends Record<string, Metadata<T>>> (ids: X, data: ExtractType<T, X>): void {
   for (const key in ids) {
     const id = ids[key]
     const resource = data[key]

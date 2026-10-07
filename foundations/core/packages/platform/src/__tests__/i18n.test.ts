@@ -21,7 +21,7 @@ import { Severity, Status } from '../status'
 import { addStringsLoader, loadPluginStrings, translate, translateCB } from '../i18n'
 import { addEventListener, PlatformEvent, removeEventListener } from '../event'
 
-function translateCBAsync(
+function translateCBAsync (
   message: IntlString,
   params: Record<string, any>,
   language: string | undefined

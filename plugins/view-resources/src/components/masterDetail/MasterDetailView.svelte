@@ -39,7 +39,7 @@
 
   $: void getViewlets(viewlet?._id)
 
-  async function getViewlets (viewletId: Ref<Viewlet>): Promise<void> {
+  async function getViewlets(viewletId: Ref<Viewlet>): Promise<void> {
     if (viewlet === undefined) return
     const views: MasterDetailConfig[] = viewlet?.masterDetailOptions?.views ?? []
     const results = await client.findAll(view.class.ViewletDescriptor, { _id: { $in: [views[0].view, views[1].view] } })
@@ -47,7 +47,7 @@
     detailView = results.find((v) => v._id === views[1].view)
   }
 
-  async function selected (e: CustomEvent<any>): Promise<void> {
+  async function selected(e: CustomEvent<any>): Promise<void> {
     const views: MasterDetailConfig[] = viewlet?.masterDetailOptions?.views ?? []
     if (detailView === undefined) return
     if (detailView?._id === view.viewlet.Document) {

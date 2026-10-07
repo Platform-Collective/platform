@@ -244,7 +244,7 @@ export function TodoItemPastePlugin (editor: Editor): Plugin<NamedToDosInEditor>
     }
     // Strange conversion to be ok for both typescript and eslint
     // Is ok because rule with 'tag' property is already TagParseRule
-    const tagRule: TagParseRule = rule as any
+    const tagRule: TagParseRule = rule
     if (tagRule.node !== 'todoItem') {
       return rule
     }

@@ -29,11 +29,11 @@ export interface GanttSavedViewOptions {
   ganttShowSubIssueProgress?: boolean
 }
 
-function isZoomLevel(v: unknown): v is ZoomLevel {
+function isZoomLevel (v: unknown): v is ZoomLevel {
   return typeof v === 'string' && (ZOOM_LEVELS as readonly string[]).includes(v)
 }
 
-function isValidIsoDate(v: unknown): v is string {
+function isValidIsoDate (v: unknown): v is string {
   if (typeof v !== 'string' || !ISO_DATE_RE.test(v)) return false
   const t = Date.parse(v + 'T00:00:00Z')
   return Number.isFinite(t)
@@ -42,12 +42,12 @@ function isValidIsoDate(v: unknown): v is string {
 const BAR_COLOR_MODES: readonly BarColorMode[] = ['status', 'priority', 'assignee', 'component', 'milestone', 'none']
 
 /** Type-guard for a persisted bar-colour mode. Exported so GanttView can reuse it. */
-export function isBarColorMode(v: unknown): v is BarColorMode {
+export function isBarColorMode (v: unknown): v is BarColorMode {
   return typeof v === 'string' && (BAR_COLOR_MODES as readonly string[]).includes(v)
 }
 
 /** Read the Gantt-specific keys back out of a (possibly mixed) viewOptions blob. */
-export function extractGanttSavedView(raw: Record<string, unknown> | undefined): GanttSavedViewOptions {
+export function extractGanttSavedView (raw: Record<string, unknown> | undefined): GanttSavedViewOptions {
   if (raw == null) return { zoomLevel: 'week' }
   const zoom = isZoomLevel(raw.ganttZoomLevel) ? raw.ganttZoomLevel : 'week'
   const out: GanttSavedViewOptions = { zoomLevel: zoom }
@@ -76,7 +76,7 @@ export function extractGanttSavedView(raw: Record<string, unknown> | undefined):
  * `ganttPanAnchorDate` in the base is dropped — pinning the time window
  * unchecked must clear a previously-saved anchor.
  */
-export function mergeGanttSavedView(
+export function mergeGanttSavedView (
   base: Record<string, unknown> | undefined,
   opts: GanttSavedViewOptions
 ): Record<string, unknown> {
@@ -108,7 +108,7 @@ export function mergeGanttSavedView(
 }
 
 /** Format a millisecond timestamp as 'YYYY-MM-DD' (UTC). */
-export function isoDateForTimestamp(t: number): string {
+export function isoDateForTimestamp (t: number): string {
   const d = new Date(t)
   const yyyy = d.getUTCFullYear().toString().padStart(4, '0')
   const mm = (d.getUTCMonth() + 1).toString().padStart(2, '0')
@@ -117,7 +117,7 @@ export function isoDateForTimestamp(t: number): string {
 }
 
 /** Parse 'YYYY-MM-DD' to UTC-midnight ms. Returns NaN on malformed input. */
-export function timestampForIsoDate(iso: string): number {
+export function timestampForIsoDate (iso: string): number {
   if (!ISO_DATE_RE.test(iso)) return Number.NaN
   return Date.parse(iso + 'T00:00:00Z')
 }

@@ -19,7 +19,7 @@
 
   export let lastReply: Date | string | number | undefined = undefined
 
-  function getTime (date: Date | string | number | undefined): Timestamp | undefined {
+  function getTime(date: Date | string | number | undefined): Timestamp | undefined {
     if (date === undefined) return undefined
     if (date instanceof Date) return date.getTime()
     if (typeof date === 'number') return date

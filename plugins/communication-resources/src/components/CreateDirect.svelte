@@ -25,14 +25,14 @@
 
   $: updateData(collaborators)
 
-  function updateData (collaborators: Ref<Employee>[]): void {
+  function updateData(collaborators: Ref<Employee>[]): void {
     const title = getTitle(collaborators)
     if (data.title === title) return
 
     dispatch('change', { data: { title, members: collaborators } })
   }
 
-  function getTitle (ids: Ref<Employee>[]): string {
+  function getTitle(ids: Ref<Employee>[]): string {
     const me = getCurrentEmployee()
     const employees = ids.map((id) => $employeeByIdStore.get(id)).filter(notEmpty)
 

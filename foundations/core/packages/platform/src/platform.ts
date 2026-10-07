@@ -75,7 +75,7 @@ export const _ID_SEPARATOR = ':'
  */
 export const _EmbeddedId = 'embedded'
 
-function identify(result: Record<string, any>, prefix: string, namespace: Record<string, any>): Namespace {
+function identify (result: Record<string, any>, prefix: string, namespace: Record<string, any>): Namespace {
   for (const key in namespace) {
     const value = namespace[key]
     if (typeof result[key] === 'string') {
@@ -90,7 +90,7 @@ function identify(result: Record<string, any>, prefix: string, namespace: Record
 /**
  * @public
  */
-export function getEmbeddedLabel(str: string): IntlString {
+export function getEmbeddedLabel (str: string): IntlString {
   return (_EmbeddedId + _ID_SEPARATOR + _EmbeddedId + _ID_SEPARATOR + str) as IntlString
 }
 
@@ -102,7 +102,7 @@ export function getEmbeddedLabel(str: string): IntlString {
  * @param namespace -
  * @returns
  */
-export function plugin<N extends Namespace>(plugin: Plugin, namespace: N): N {
+export function plugin<N extends Namespace> (plugin: Plugin, namespace: N): N {
   return identify({}, plugin, namespace) as N
 }
 
@@ -115,7 +115,7 @@ export function plugin<N extends Namespace>(plugin: Plugin, namespace: N): N {
  * @param merge -
  * @returns
  */
-export function mergeIds<N extends Namespace, M extends Namespace>(plugin: Plugin, ns: N, merge: M): N & M {
+export function mergeIds<N extends Namespace, M extends Namespace> (plugin: Plugin, ns: N, merge: M): N & M {
   return identify({ ...ns }, plugin, merge) as N & M
 }
 
@@ -148,17 +148,17 @@ export default plugin(platformId, {
     ExpiredLink: '' as StatusCode,
     UnknownMethod: '' as StatusCode<{ method: string }>,
     InternalServerError: '' as StatusCode,
-    MaintenanceWarning: '' as StatusCode<{ time: number; message?: string }>,
+    MaintenanceWarning: '' as StatusCode<{ time: number, message?: string }>,
     MaintenanceWarningTime: '' as IntlString,
     AccountNotFound: '' as StatusCode<{ account?: string }>,
-    AccountMismatch: '' as StatusCode<{ account?: string; requiredAccount?: string }>,
+    AccountMismatch: '' as StatusCode<{ account?: string, requiredAccount?: string }>,
     AccountNotConfirmed: '' as StatusCode,
-    WorkspaceNotFound: '' as StatusCode<{ workspaceUuid?: string; workspaceName?: string; workspaceUrl?: string }>,
+    WorkspaceNotFound: '' as StatusCode<{ workspaceUuid?: string, workspaceName?: string, workspaceUrl?: string }>,
     WorkspaceArchived: '' as StatusCode<{ workspaceUuid: string }>,
     WorkspaceMigration: '' as StatusCode<{ workspaceUuid: string }>,
-    SocialIdNotFound: '' as StatusCode<{ value?: string; type?: string; _id?: string }>,
-    SocialIdNotConfirmed: '' as StatusCode<{ socialId: string; type: string }>,
-    SocialIdAlreadyConfirmed: '' as StatusCode<{ socialId: string; type: string }>,
+    SocialIdNotFound: '' as StatusCode<{ value?: string, type?: string, _id?: string }>,
+    SocialIdNotConfirmed: '' as StatusCode<{ socialId: string, type: string }>,
+    SocialIdAlreadyConfirmed: '' as StatusCode<{ socialId: string, type: string }>,
     IntegrationExists: '' as StatusCode,
     IntegrationAlreadyExists: '' as StatusCode,
     IntegrationNotFound: '' as StatusCode,

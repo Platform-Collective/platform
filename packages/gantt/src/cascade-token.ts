@@ -55,7 +55,7 @@ let counter = 0
  * for human-readable tx-logs, while the trailing `:<id>` segment
  * identifies the cascade instance.
  */
-export function newCascadeToken(prefix: string = 'gantt-cascade'): string {
+export function newCascadeToken (prefix: string = 'gantt-cascade'): string {
   counter = (counter + 1) | 0
   return `${prefix}:${Date.now()}-${counter}`
 }

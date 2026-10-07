@@ -32,7 +32,7 @@
   const me = getCurrentAccount()
   const dispatch = createEventDispatcher()
 
-  function getOptionPercentage (optionId: string, result?: Poll): number {
+  function getOptionPercentage(optionId: string, result?: Poll): number {
     if (result == null) return 0
     const votes: number = (result as any)[optionId] ?? 0
     if (votes === 0) return 0
@@ -40,7 +40,7 @@
     return Math.round((votes / total) * 100)
   }
 
-  function isOptionVotedByMe (optionId: string, result?: WithLookup<Poll>, privateAnswers: PollAnswer[] = []): boolean {
+  function isOptionVotedByMe(optionId: string, result?: WithLookup<Poll>, privateAnswers: PollAnswer[] = []): boolean {
     if (result == null) return false
     if (anonymous) {
       return privateAnswers.some((it: PollAnswer) => it.options.includes(optionId)) ?? false
@@ -54,7 +54,7 @@
   $: isVotedByMe = isOptionVotedByMe(option.id, result, privateAnswers)
   $: voteKind = getVoteKind(option.id, result)
 
-  function getVoteKind (optionId: string, result: Poll | undefined): 'todo' | 'positive' | 'negative' {
+  function getVoteKind(optionId: string, result: Poll | undefined): 'todo' | 'positive' | 'negative' {
     if (result == null) return 'todo'
     if (answer == null) return 'todo'
     if (optionId === answer) return 'positive'

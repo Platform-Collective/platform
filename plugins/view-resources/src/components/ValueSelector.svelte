@@ -18,12 +18,12 @@
   export let attribute: string
   export let searchField: string
   export let values:
-  | Array<{
-    icon?: Asset
-    label: IntlString
-    id: string | number
-  }>
-  | undefined = undefined
+    | Array<{
+        icon?: Asset
+        label: IntlString
+        id: string | number
+      }>
+    | undefined = undefined
 
   export let fillQuery: Record<string, string> | undefined
   export let docMatches: string[] | undefined
@@ -80,7 +80,7 @@
 
   let docMatch = true
 
-  function updateQuery (
+  function updateQuery(
     query: DocumentQuery<Doc> | undefined,
     value: Doc | Doc[],
     fillQuery: Record<string, string> | undefined

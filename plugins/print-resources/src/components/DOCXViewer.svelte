@@ -24,7 +24,7 @@
 
   const token = getMetadata(presentation.metadata.Token) ?? ''
 
-  async function loadPreview (file: Ref<Blob> | undefined): Promise<void> {
+  async function loadPreview(file: Ref<Blob> | undefined): Promise<void> {
     request?.abort()
     const controller = new AbortController()
     request = controller

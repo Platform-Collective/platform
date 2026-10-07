@@ -1,5 +1,5 @@
 import attachment, { Attachment } from '@hcengineering/attachment'
-import contact, { Channel, Contact, Employee } from '@hcengineering/contact'
+import contact, { Channel, Contact } from '@hcengineering/contact'
 import core, {
   PersonId,
   ApplyOperations,
@@ -990,7 +990,7 @@ async function synchronizeUsers (
         //   }
         // )
       } else if (account != null) {
-        const emp = employees.get(account.person as unknown as Ref<Employee>)
+        const emp = employees.get(account.person)
         if (emp !== undefined && !ops.client.getHierarchy().hasMixin(emp, bitrix.mixin.BitrixSyncDoc)) {
           await ops.client.createMixin<Doc, BitrixSyncDoc>(emp._id, emp._class, emp.space, bitrix.mixin.BitrixSyncDoc, {
             type: 'employee',

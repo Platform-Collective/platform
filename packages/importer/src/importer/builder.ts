@@ -313,7 +313,7 @@ export class ImportWorkspaceBuilder {
     }
   }
 
-  private validateAndAdd<T, K>(
+  private validateAndAdd<T, K> (
     type: string,
     path: string,
     item: T,

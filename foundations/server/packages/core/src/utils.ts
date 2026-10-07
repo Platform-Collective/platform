@@ -197,11 +197,11 @@ export class SessionDataImpl implements SessionData {
     _contextCache: Map<string, any> | undefined,
     readonly modelDb: ModelDb,
     readonly socialStringsToUsers: Map<
-    PersonId,
-    {
-      accontUuid: AccountUuid
-      role: AccountRole
-    }
+      PersonId,
+      {
+        accontUuid: AccountUuid
+        role: AccountRole
+      }
     >,
     readonly service: string,
     readonly grant?: PermissionsGrant
@@ -332,7 +332,7 @@ export function wrapPipeline (
         docs: page.docs.map((doc) => pipeline.context.hierarchy.updateLookupMixin(_class, doc, options))
       }
     },
-    iterateAll: async function * (_class, query, options) {
+    iterateAll: async function* (_class, query, options) {
       let cursor: string | undefined
       do {
         const page = await this.findAllPage(_class, query, {
@@ -340,7 +340,7 @@ export function wrapPipeline (
           limit: options?.limit ?? 500,
           cursor
         })
-        yield * page.docs
+        yield* page.docs
         cursor = page.nextCursor
       } while (cursor !== undefined)
     },
@@ -388,7 +388,7 @@ export function wrapAdapterToClient (ctx: MeasureContext, storageAdapter: DbAdap
 
     pushHandler (): void {}
 
-    async findAll<T extends Doc>(
+    async findAll<T extends Doc> (
       _class: Ref<Class<Doc>>,
       query: DocumentQuery<Doc>,
       options?: FindOptions<Doc>
@@ -396,7 +396,7 @@ export function wrapAdapterToClient (ctx: MeasureContext, storageAdapter: DbAdap
       return (await storageAdapter.findAll(ctx, _class, query, options)) as any
     }
 
-    async findAllPage<T extends Doc>(
+    async findAllPage<T extends Doc> (
       _class: Ref<Class<T>>,
       query: DocumentQuery<T>,
       options: FindPageOptions<T>
@@ -417,7 +417,7 @@ export function wrapAdapterToClient (ctx: MeasureContext, storageAdapter: DbAdap
       )
     }
 
-    async domainRequest<T>(domain: OperationDomain, params: DomainParams): Promise<DomainResult<T>> {
+    async domainRequest<T> (domain: OperationDomain, params: DomainParams): Promise<DomainResult<T>> {
       return { domain, value: null as any }
     }
 
@@ -497,7 +497,7 @@ export class OneSecondCountersImpl implements OneSecondCounters {
     this.counters.set(counter, (this.counters.get(counter) ?? 0) + count)
   }
 
-  async withCounter<T>(counter: string, count: number, op: () => Promise<T>): Promise<T> {
+  async withCounter<T> (counter: string, count: number, op: () => Promise<T>): Promise<T> {
     this.add(counter, count)
     const id = ++this.ids
     const vv: TimerOp = [platformNow(), counter, count, false]

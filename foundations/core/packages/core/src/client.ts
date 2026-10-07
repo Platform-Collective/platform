@@ -157,7 +157,7 @@ class ClientImpl implements Client, BackupClient {
     return this.model
   }
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -175,7 +175,7 @@ class ClientImpl implements Client, BackupClient {
     return toFindResult(result, data.total)
   }
 
-  async findAllPage<T extends Doc>(
+  async findAllPage<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options: FindPageOptions<T>
@@ -194,7 +194,7 @@ class ClientImpl implements Client, BackupClient {
     }
   }
 
-  async * iterateAll<T extends Doc>(
+  async *iterateAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: IterateOptions<T>
@@ -213,7 +213,7 @@ class ClientImpl implements Client, BackupClient {
     } while (cursor !== undefined)
   }
 
-  private async findModelPage<T extends Doc>(
+  private async findModelPage<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options: FindPageOptions<T>
@@ -232,7 +232,7 @@ class ClientImpl implements Client, BackupClient {
     }
   }
 
-  private async findConnectionPage<T extends Doc>(
+  private async findConnectionPage<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options: FindPageOptions<T>
@@ -262,7 +262,7 @@ class ClientImpl implements Client, BackupClient {
     return await this.conn.domainRequest(ctx, params, options)
   }
 
-  async findOne<T extends Doc>(
+  async findOne<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -407,7 +407,8 @@ export async function createClient (
   txBuffer = undefined
 
   const oldOnConnect:
-    ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>) | undefined = conn.onConnect
+    | ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>)
+    | undefined = conn.onConnect
   conn.onConnect = async (event, _lastTx, data) => {
     console.log('Client: onConnect', event)
     if (event === ClientConnectEvent.Maintenance) {

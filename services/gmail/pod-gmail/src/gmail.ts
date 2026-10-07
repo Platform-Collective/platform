@@ -39,6 +39,7 @@ import {
   MailRecipient,
   type SyncOptions,
   getChannel,
+  getMailHeaders,
   isSyncedMessage
 } from '@hcengineering/mail-common'
 import chat from '@hcengineering/chat'

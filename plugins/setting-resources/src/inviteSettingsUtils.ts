@@ -26,7 +26,7 @@ const numericAccountRoles = new Set<number>(Object.values(AccountRole).filter((v
 
 export function normalizeInviteRole (value: string | AccountRole | undefined, fallback: AccountRole): AccountRole {
   if (value !== undefined && typeof value === 'number' && numericAccountRoles.has(value)) {
-    return value as AccountRole
+    return value
   }
   if (typeof value === 'string') {
     const n = value.toLowerCase()
@@ -91,13 +91,13 @@ export function resolveInviteSettings (doc: InviteSettings | undefined): Resolve
       expirationTime: doc.expirationTime,
       emailMask: doc.emailMask,
       limit: doc.limit,
-      defaultInviteRole: normalizeInviteRole(doc.defaultInviteRole as string | AccountRole | undefined, metaRole),
+      defaultInviteRole: normalizeInviteRole(doc.defaultInviteRole, metaRole),
       inviteLinkGeneratorRoles:
         doc.inviteLinkGeneratorRoles != null && doc.inviteLinkGeneratorRoles.length > 0
           ? normalizeInviteRoles(
-            doc.inviteLinkGeneratorRoles as Array<string | AccountRole>,
-            DEFAULT_INVITE_LINK_GENERATOR_ROLES
-          )
+              doc.inviteLinkGeneratorRoles,
+              DEFAULT_INVITE_LINK_GENERATOR_ROLES
+            )
           : [...DEFAULT_INVITE_LINK_GENERATOR_ROLES],
       noLimit: doc.limit === -1
     }

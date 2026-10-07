@@ -49,15 +49,15 @@ export interface TextPresenter<T extends Doc = any> extends Class<T> {
  * @public
  */
 export type TypeMatchFunc = Resource<
-(
-  tx: Tx,
-  doc: Doc,
-  person: Ref<Person>,
-  socialIds: PersonId[],
-  type: NotificationType,
-  control: TriggerControl,
-  account: AccountUuid
-) => boolean | Promise<boolean>
+  (
+    tx: Tx,
+    doc: Doc,
+    person: Ref<Person>,
+    socialIds: PersonId[],
+    type: NotificationType,
+    control: TriggerControl,
+    account: AccountUuid
+  ) => boolean | Promise<boolean>
 >
 
 /**

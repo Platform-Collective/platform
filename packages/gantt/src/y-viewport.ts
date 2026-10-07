@@ -49,7 +49,7 @@ export interface YViewportInput {
 /** Output of {@link computeYViewport}. */
 export interface YViewportSnapshot {
   /** Inclusive `startIndex`, exclusive `endIndex` of the rendered slice. */
-  visibleRange: { startIndex: number; endIndex: number }
+  visibleRange: { startIndex: number, endIndex: number }
   /** Total scrollable height in pixels (`rowCount × rowHeight`). */
   totalSize: number
   /** Spacer height above the first rendered row, in pixels. */
@@ -65,7 +65,7 @@ const DEFAULT_OVERSCAN = 5
  * non-positive `rowHeight` (returns the full range) and negative scrollTop
  * (rubber-band → clamp to 0).
  */
-export function computeYViewport(input: YViewportInput): YViewportSnapshot {
+export function computeYViewport (input: YViewportInput): YViewportSnapshot {
   const { rowCount, rowHeight, viewportHeight } = input
   const overscan = input.overscan ?? DEFAULT_OVERSCAN
 
@@ -108,7 +108,7 @@ export function computeYViewport(input: YViewportInput): YViewportSnapshot {
 }
 
 /** Pixel-y of a given row index. Clamps negative indices to 0. */
-export function rowIndexToY(index: number, rowHeight: number): number {
+export function rowIndexToY (index: number, rowHeight: number): number {
   return Math.max(0, index) * rowHeight
 }
 
@@ -116,7 +116,7 @@ export function rowIndexToY(index: number, rowHeight: number): number {
  * Pixel-y → row index (floor). Clamps to `[0, totalRows-1]`. Returns 0 for
  * an empty list or non-positive `rowHeight` (defensive).
  */
-export function yToRowIndex(y: number, rowHeight: number, totalRows: number): number {
+export function yToRowIndex (y: number, rowHeight: number, totalRows: number): number {
   if (totalRows <= 0 || rowHeight <= 0 || !Number.isFinite(rowHeight)) return 0
   if (y <= 0) return 0
   const idx = Math.floor(y / rowHeight)
@@ -129,7 +129,7 @@ export function yToRowIndex(y: number, rowHeight: number, totalRows: number): nu
  * rows whose `[y, y + height)` intersects `bounds`. Used by the sidebar and
  * arrow layer when the canvas already emits rows in their layout-y space.
  */
-export function sliceVisibleRows<T extends { y: number; height: number }>(rows: readonly T[], bounds: YBounds): T[] {
+export function sliceVisibleRows<T extends { y: number, height: number }> (rows: readonly T[], bounds: YBounds): T[] {
   if (rows.length === 0) return []
   const out: T[] = []
   for (const r of rows) {

@@ -44,7 +44,7 @@
 
   let lastId: Ref<Doc> = _id
   $: read(_id)
-  function read (_id: Ref<Doc>): void {
+  function read(_id: Ref<Doc>): void {
     if (lastId !== _id) {
       const prev = lastId
       lastId = _id
