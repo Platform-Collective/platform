@@ -63,8 +63,7 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
         const allPermissionIds = new Set<Ref<Permission>>()
         for (const group of docs as any[]) {
           if (group.enabled === false) continue
-          const role =
-            (group.role as AccountRole | undefined) ??
+          const role = ((group.role as AccountRole | undefined) ??
             (Array.isArray(group.roles) && group.roles.length > 0 ? (group.roles[0] as AccountRole) : undefined) ??
             AccountRole.Guest) as AccountRole
           const permissions = (group.permissions ?? []) as Ref<Permission>[]

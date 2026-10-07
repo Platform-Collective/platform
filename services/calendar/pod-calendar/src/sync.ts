@@ -290,7 +290,7 @@ export class IncomingSyncManager {
     if (event.id != null) {
       const _calendar = this.getEventCalendar(calendarId, event)
       if (_calendar !== undefined) {
-        const exists = await this.client.findOne(calendar.class.Event, {
+        const exists = (await this.client.findOne(calendar.class.Event, {
           eventId: event.id,
           calendar: _calendar._id
         })) as Event | undefined
