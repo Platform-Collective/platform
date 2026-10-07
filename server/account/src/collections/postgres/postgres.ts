@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-import { type Sql, type TransactionSql } from 'postgres'
+import { ISql, type Sql } from 'postgres'
 import {
   type Data,
   type Version,
@@ -289,7 +289,7 @@ export class PostgresDbCollection<
     return result[0]?.exists === true
   }
 
-  async find (query: Query<T>, sort?: Sort<T>, limit?: number, client?: Sql): Promise<T[]> {
+  async find (query: Query<T>, sort?: Sort<T>, limit?: number, client?: ISql): Promise<T[]> {
     const sqlChunks: string[] = [this.buildSelectClause()]
     const [whereClause, whereValues] = this.buildWhereClause(query)
 
@@ -781,13 +781,13 @@ export class PostgresAccountDB implements AccountDB {
     }
   }
 
-  withRetry = async <T>(callback: (client: TransactionSql) => Promise<T>): Promise<T> => {
+  withRetry = async <T>(operation: (client: ISql) => Promise<T>): Promise<T> => {
     let attempt = 0
     let delay = this.retryOptions.initialDelayMs
 
     while (true) {
       try {
-        return (await this.client.begin(callback)) as T
+        return (await this.client.begin(async (client) => await operation(client as unknown as ISql))) as T
       } catch (err: any) {
         attempt++
 
