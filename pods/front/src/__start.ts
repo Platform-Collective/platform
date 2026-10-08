@@ -32,6 +32,7 @@ startFront(metricsContext, {
   INTERCOM_APP_ID: process.env.INTERCOM_APP_ID ?? '',
   INTERCOM_API_URL: process.env.INTERCOM_API_URL ?? '',
   GITHUB_URL: process.env.GITHUB_URL ?? '',
+  GITLAB_URL: process.env.GITLAB_URL ?? '',
   LIVEKIT_WS: process.env.LIVEKIT_WS ?? '',
   LOVE_ENDPOINT: process.env.LOVE_ENDPOINT ?? '',
   SIGN_URL: process.env.SIGN_URL ?? '',

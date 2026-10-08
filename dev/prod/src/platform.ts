@@ -74,6 +74,7 @@ import workbench, { workbenchId } from '@hcengineering/workbench'
 import { mailId } from '@hcengineering/mail'
 import { chatId } from '@hcengineering/chat'
 import github, { githubId } from '@hcengineering/github'
+import gitlab, { gitlabId } from '@hcengineering/gitlab'
 import { bitrixId } from '@hcengineering/bitrix'
 import { inboxId } from '@hcengineering/inbox'
 import { achievementId } from '@hcengineering/achievement'
@@ -136,6 +137,7 @@ import '@hcengineering/chat-assets'
 import '@hcengineering/inbox-assets'
 import '@hcengineering/mail-assets'
 import '@hcengineering/github-assets'
+import '@hcengineering/gitlab-assets'
 import '@hcengineering/achievement-assets'
 import '@hcengineering/communication-assets'
 import '@hcengineering/emoji-assets'
@@ -173,6 +175,7 @@ export interface Config {
   GITHUB_APP?: string
   GITHUB_CLIENTID?: string
   GITHUB_URL: string
+  GITLAB_URL?: string
   LOVE_ENDPOINT?: string
   LIVEKIT_WS?: string
   SIGN_URL?: string
@@ -364,6 +367,7 @@ function configureI18n(): void {
   addStringsLoader(documentId, async (lang: string) => await import(`@hcengineering/document-assets/lang/${lang}.json`))
   addStringsLoader(timeId, async (lang: string) => await import(`@hcengineering/time-assets/lang/${lang}.json`))
   addStringsLoader(githubId, async (lang: string) => await import(`@hcengineering/github-assets/lang/${lang}.json`))
+  addStringsLoader(gitlabId, async (lang: string) => await import(`@hcengineering/gitlab-assets/lang/${lang}.json`))
   addStringsLoader(
     documentsId,
     async (lang: string) => await import(`@hcengineering/controlled-documents-assets/lang/${lang}.json`)
@@ -527,6 +531,7 @@ export async function configurePlatform() {
   setMetadata(github.metadata.GithubApplication, config.GITHUB_APP ?? '')
   setMetadata(github.metadata.GithubClientID, config.GITHUB_CLIENTID ?? '')
   setMetadata(github.metadata.GithubURL, config.GITHUB_URL)
+  setMetadata(gitlab.metadata.GitlabURL, config.GITLAB_URL ?? '')
 
   setMetadata(rekoni.metadata.RekoniUrl, config.REKONI_URL)
 
@@ -562,6 +567,7 @@ export async function configurePlatform() {
       [loginId, login.component.LoginApp],
       [onboardId, onboard.component.OnboardApp],
       [githubId, github.component.ConnectApp],
+      [gitlabId, gitlab.component.ConnectApp],
       [calendarId, calendar.component.ConnectApp],
       [guestId, guest.component.GuestApp],
       [globalProfileRoute, globalProfile.component.GlobalProfileApp],
@@ -647,6 +653,7 @@ export async function configurePlatform() {
     async () => await import(/* webpackChunkName: "document" */ '@hcengineering/document-resources')
   )
   addLocation(githubId, async () => await import(/* webpackChunkName: "github" */ '@hcengineering/github-resources'))
+  addLocation(gitlabId, async () => await import(/* webpackChunkName: "gitlab" */ '@hcengineering/gitlab-resources'))
   addLocation(
     questionsId,
     async () => await import(/* webpackChunkName: "training" */ '@hcengineering/questions-resources')

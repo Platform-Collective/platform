@@ -618,7 +618,7 @@ export async function addSocialIdToPerson (
 
   if (extra?.admin !== 'true') {
     verifyAllowedServices(
-      ['github', 'telegram-bot', 'gmail', 'tool', 'workspace', 'hulygram', 'google-calendar', 'ai-assistant'],
+      ['github', 'gitlab', 'telegram-bot', 'gmail', 'tool', 'workspace', 'hulygram', 'google-calendar', 'ai-assistant'],
       extra
     )
   }

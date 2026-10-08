@@ -2059,6 +2059,7 @@ export async function setTimezone (
 // Move to config?
 export const integrationServices = [
   'github',
+  'gitlab',
   'telegram-bot',
   'hulygram',
   'mailbox',

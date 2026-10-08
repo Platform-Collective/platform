@@ -2182,6 +2182,46 @@
       "shouldPublish": false
     },
     {
+      "packageName": "@hcengineering/gitlab",
+      "projectFolder": "services/gitlab/gitlab",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/gitlab-assets",
+      "projectFolder": "services/gitlab/gitlab-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/pod-gitlab",
+      "projectFolder": "services/gitlab/pod-gitlab",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/model-gitlab",
+      "projectFolder": "services/gitlab/model-gitlab",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/gitlab-resources",
+      "projectFolder": "services/gitlab/gitlab-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/server-gitlab",
+      "projectFolder": "services/gitlab/server-gitlab",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/server-gitlab-resources",
+      "projectFolder": "services/gitlab/server-gitlab-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/server-gitlab-model",
+      "projectFolder": "services/gitlab/server-gitlab-model",
+      "shouldPublish": false
+    },
+    {
       "packageName": "@hcengineering/desktop-preferences",
       "projectFolder": "plugins/desktop-preferences",
       "shouldPublish": false

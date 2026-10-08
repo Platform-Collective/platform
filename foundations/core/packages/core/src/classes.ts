@@ -1010,6 +1010,7 @@ export interface WorkspaceMemberInfo {
 export enum SocialIdType {
   EMAIL = 'email',
   GITHUB = 'github',
+  GITLAB = 'gitlab',
   GOOGLE = 'google',
   PHONE = 'phone',
   OIDC = 'oidc',

@@ -163,6 +163,8 @@ import { ipcMainExposed } from './typesUtils'
 
 import github, { githubId } from '@hcengineering/github'
 import '@hcengineering/github-assets'
+import gitlab, { gitlabId } from '@hcengineering/gitlab'
+import '@hcengineering/gitlab-assets'
 import { preferenceId } from '@hcengineering/preference'
 import { uiId } from '@hcengineering/ui/src/plugin'
 
@@ -258,6 +260,7 @@ function configureI18n (): void {
   addStringsLoader(documentId, async (lang: string) => await import(`@hcengineering/document-assets/lang/${lang}.json`))
   addStringsLoader(timeId, async (lang: string) => await import(`@hcengineering/time-assets/lang/${lang}.json`))
   addStringsLoader(githubId, async (lang: string) => await import(`@hcengineering/github-assets/lang/${lang}.json`))
+  addStringsLoader(gitlabId, async (lang: string) => await import(`@hcengineering/gitlab-assets/lang/${lang}.json`))
   addStringsLoader(
     documentsId,
     async (lang: string) => await import(`@hcengineering/controlled-documents-assets/lang/${lang}.json`)
@@ -369,6 +372,7 @@ export async function configurePlatform (onWorkbenchConnect?: () => Promise<void
   setMetadata(github.metadata.GithubApplication, config.GITHUB_APP ?? '')
   setMetadata(github.metadata.GithubClientID, config.GITHUB_CLIENTID ?? '')
   setMetadata(github.metadata.GithubURL, config.GITHUB_URL ?? '')
+  setMetadata(gitlab.metadata.GitlabURL, config.GITLAB_URL ?? '')
 
   setMetadata(communication.metadata.Enabled, config.COMMUNICATION_API_ENABLED === 'true')
 
@@ -475,6 +479,7 @@ export async function configurePlatform (onWorkbenchConnect?: () => Promise<void
   addLocation(recorderId, async () => await import('@hcengineering/recorder-resources'))
   addLocation(presenceId, async () => await import('@hcengineering/presence-resources'))
   addLocation(githubId, async () => await import(/* webpackChunkName: "github" */ '@hcengineering/github-resources'))
+  addLocation(gitlabId, async () => await import(/* webpackChunkName: "gitlab" */ '@hcengineering/gitlab-resources'))
   addLocation(
     desktopPreferencesId,
     async () =>
