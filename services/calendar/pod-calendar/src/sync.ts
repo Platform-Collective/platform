@@ -599,9 +599,12 @@ export class IncomingSyncManager {
   }
 
   private async getMyCalendars (): Promise<void> {
-    this.calendars = await this.client.findAll(calendar.class.ExternalCalendar, {
+    const calendars = await this.client.findAll(calendar.class.ExternalCalendar, {
       user: this.user.userId
     })
+    // CalDAV calendars are owned by the CalDAV module and must never be queried through the Google API
+    const hierarchy = this.client.getHierarchy()
+    this.calendars = calendars.filter((c) => !hierarchy.hasMixin(c, calendar.mixin.CalDavCalendar))
   }
 
   async syncCalendars (): Promise<void> {

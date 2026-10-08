@@ -18,6 +18,7 @@ import {
   type AccessLevel,
   calendarId,
   type PrimaryCalendar,
+  type CalDavCalendar,
   type Calendar,
   type CalendarEventPresenter,
   type Event,
@@ -45,6 +46,7 @@ import {
 import {
   ArrOf,
   Collection,
+  Hidden,
   Index,
   Mixin,
   Model,
@@ -70,6 +72,7 @@ import workbench from '@hcengineering/model-workbench'
 import { WidgetType } from '@hcengineering/workbench'
 import preference, { TPreference } from '@hcengineering/model-preference'
 import { calendarIntegrationKind } from '@hcengineering/calendar'
+import { getEmbeddedLabel } from '@hcengineering/platform'
 
 import calendar from './plugin'
 
@@ -96,6 +99,21 @@ export class TExternalCalendar extends TCalendar implements ExternalCalendar {
   default!: boolean
   externalId!: string
   externalUser!: string
+}
+
+@Mixin(calendar.mixin.CalDavCalendar, calendar.class.ExternalCalendar)
+export class TCalDavCalendar extends TExternalCalendar implements CalDavCalendar {
+  @Prop(TypeString(), getEmbeddedLabel('CalDAV account key'))
+  @Hidden()
+    accountKey!: string
+
+  @Prop(TypeString(), getEmbeddedLabel('CalDAV collection href'))
+  @Hidden()
+    href!: string
+
+  @Prop(TypeString(), getEmbeddedLabel('CalDAV collection ctag'))
+  @Hidden()
+    ctag?: string
 }
 
 @Model(calendar.class.Event, core.class.AttachedDoc, DOMAIN_EVENT)
@@ -200,6 +218,7 @@ export function createModel (builder: Builder): void {
   builder.createModel(
     TCalendar,
     TExternalCalendar,
+    TCalDavCalendar,
     TReccuringEvent,
     TReccuringInstance,
     TEvent,
