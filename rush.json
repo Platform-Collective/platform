@@ -2587,6 +2587,11 @@
       "shouldPublish": false
     },
     {
+      "packageName": "@hcengineering/safe-fetch",
+      "projectFolder": "packages/safe-fetch",
+      "shouldPublish": false
+    },
+    {
       "packageName": "@hcengineering/communication",
       "projectFolder": "plugins/communication",
       "shouldPublish": false

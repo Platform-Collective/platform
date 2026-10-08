@@ -62,14 +62,31 @@ export const main = async (): Promise<void> => {
     config.ServiceID
   )
 
-  const pushHandler = new PushHandler(ctx, accountClient)
-  const watchController = WatchController.get(ctx, accountClient)
+  // Google Calendar provider. Skipped entirely when the OAuth client or the webhook URL is not configured,
+  // so the service can run with other providers only.
+  let pushHandler: PushHandler | undefined
+  let watchController: WatchController | undefined
+  if (config.GoogleEnabled) {
+    pushHandler = new PushHandler(ctx, accountClient)
+    watchController = WatchController.get(ctx, accountClient)
 
-  const calendarController = CalendarController.getCalendarController(ctx, accountClient)
-  await calendarController.startAll()
-  ctx.info('Calendar controller started')
-  watchController.startCheck()
-  const endpoints: Endpoint[] = [
+    const calendarController = CalendarController.getCalendarController(ctx, accountClient)
+    await calendarController.startAll()
+    ctx.info('Calendar controller started')
+    watchController.startCheck()
+  } else {
+    ctx.warn('Google Calendar module disabled: Credentials or WATCH_URL is not set')
+  }
+
+  const googleDisabledEndpoints: Endpoint[] = ['/signin', '/signout'].map((endpoint) => ({
+    endpoint,
+    type: 'get',
+    handler: async (_req, res) => {
+      res.status(501).send({ error: 'google-disabled' })
+    }
+  }))
+
+  const googleEndpoints: Endpoint[] = [
     {
       endpoint: '/signin',
       type: 'get',
@@ -150,12 +167,16 @@ export const main = async (): Promise<void> => {
             res.status(400).send({ err: "'data' is missing" })
             return
           }
-          await pushHandler.push(data.user as GoogleEmail, data.mode as 'events' | 'calendar', data.calendarId)
+          await pushHandler?.push(data.user as GoogleEmail, data.mode as 'events' | 'calendar', data.calendarId)
         }
 
         res.send()
       }
-    },
+    }
+  ]
+
+  const endpoints: Endpoint[] = [
+    ...(config.GoogleEnabled ? googleEndpoints : googleDisabledEndpoints),
     {
       endpoint: '/event',
       type: 'post',
@@ -173,6 +194,12 @@ export const main = async (): Promise<void> => {
           res.status(400).send({ err: "'event' or 'workspace' or 'type' is missing" })
           return
         }
+        // Outbound sync to Google only. Without the Google module there is nothing to push, and trying
+        // would take the workspace lock and look up Google secrets on every event write.
+        if (!config.GoogleEnabled) {
+          res.send()
+          return
+        }
         void OutcomingClient.push(ctx, accountClient, workspace, event, type).catch((err: any) => {
           ctx.error('Outcoming sync failed', { eventId: event.eventId, workspace, type, error: err.message })
         })
@@ -185,7 +212,7 @@ export const main = async (): Promise<void> => {
 
   const shutdown = (): void => {
     server.close(() => {
-      watchController.stop()
+      watchController?.stop()
       process.exit()
     })
   }
