@@ -62,30 +62,30 @@
   $: sliderValue = clampLagSlider(lagValue, SLIDER_MIN, SLIDER_MAX)
   $: outOfSliderRange = lagValue < SLIDER_MIN || lagValue > SLIDER_MAX
 
-  function clampLag (n: number): number {
+  function clampLag(n: number): number {
     if (Number.isNaN(n)) return 0
     if (n < -30) return -30
     if (n > 90) return 90
     return Math.round(n)
   }
 
-  async function focusKindButton (code: DiagramKindCode): Promise<void> {
+  async function focusKindButton(code: DiagramKindCode): Promise<void> {
     await tick()
     const btn = gridEl?.querySelector<HTMLButtonElement>(`button[data-kind="${code}"]`)
     btn?.focus()
   }
 
-  function pickKind (code: DiagramKindCode): void {
+  function pickKind(code: DiagramKindCode): void {
     kindCodeValue = code
     pickerExpanded = false
   }
 
-  function changeKind (): void {
+  function changeKind(): void {
     pickerExpanded = true
     void focusKindButton(kindCodeValue)
   }
 
-  function onGridKeydown (event: KeyboardEvent): void {
+  function onGridKeydown(event: KeyboardEvent): void {
     let dir: 'up' | 'down' | 'left' | 'right' | null = null
     if (event.key === 'ArrowUp') dir = 'up'
     else if (event.key === 'ArrowDown') dir = 'down'
@@ -112,13 +112,13 @@
     }
   }
 
-  function onSliderInput (event: Event): void {
+  function onSliderInput(event: Event): void {
     if (!canEdit) return
     const v = Number((event.target as HTMLInputElement).value)
     lagValue = clampLag(v)
   }
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     if (!canEdit || !dirty) return
     const before = { kind: relation.kind, lag: relation.lag }
     const after = { kind: kindFromCode(kindCodeValue), lag: clampLag(lagValue) }
@@ -138,7 +138,7 @@
     dispatch('close')
   }
 
-  async function doDelete (): Promise<void> {
+  async function doDelete(): Promise<void> {
     if (!canEdit) return
     // Snapshot the full doc BEFORE delete so undo can re-create it with the
     // exact same _id (matches the deterministic-id pattern used in
@@ -157,7 +157,7 @@
     dispatch('close')
   }
 
-  function cancel (): void {
+  function cancel(): void {
     dispatch('close')
   }
 </script>

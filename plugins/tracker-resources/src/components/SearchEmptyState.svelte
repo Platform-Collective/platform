@@ -14,7 +14,7 @@
   // URL shape: /workbench/<ws>/tracker/<project|special>/<view> — replace the
   // project-or-special slot with the 'allIssues' special view. The search
   // text is intentionally not carried over (the view opens unfiltered).
-  function gotoAllIssues (): void {
+  function gotoAllIssues(): void {
     const loc = getCurrentResolvedLocation()
     if (loc.path.length < 3 || loc.path[2] !== 'tracker') return
     loc.path[3] = 'allIssues'

@@ -54,7 +54,7 @@
     }
   )
 
-  function handleMenu (event: CustomEvent<MouseEvent>): void {
+  function handleMenu(event: CustomEvent<MouseEvent>): void {
     if (actions.length === 0) {
       return
     }

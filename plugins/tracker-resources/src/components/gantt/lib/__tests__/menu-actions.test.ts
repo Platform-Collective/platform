@@ -64,7 +64,7 @@ jest.mock(
   { virtual: true }
 )
 
-function makeIssue (overrides: Partial<Issue> = {}): Issue {
+function makeIssue(overrides: Partial<Issue> = {}): Issue {
   return {
     _id: 'iss-1' as Ref<Issue>,
     _class: 'tracker:class:Issue' as any,

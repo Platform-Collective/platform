@@ -78,7 +78,7 @@ describe('cardTableFormatter.formatCardValue (markup)', () => {
       buildMarkupAttr('richtext'),
       card,
       buildHierarchy(),
-      cardPlugin.class.Card as Ref<Class<Doc>>,
+      cardPlugin.class.Card,
       'en'
     )
 
@@ -108,7 +108,7 @@ describe('cardTableFormatter.formatCardValue (markup)', () => {
       buildMarkupAttr('richtext'),
       card,
       buildHierarchy(),
-      cardPlugin.class.Card as Ref<Class<Doc>>,
+      cardPlugin.class.Card,
       'en'
     )
 
@@ -125,7 +125,7 @@ describe('cardTableFormatter.formatCardValue (markup)', () => {
       buildMarkupAttr('richtext'),
       card,
       buildHierarchy(),
-      cardPlugin.class.Card as Ref<Class<Doc>>,
+      cardPlugin.class.Card,
       'en'
     )
 
@@ -141,7 +141,7 @@ describe('cardTableFormatter.formatCardValue (markup)', () => {
       buildMarkupAttr('richtext'),
       card,
       buildHierarchy(),
-      cardPlugin.class.Card as Ref<Class<Doc>>,
+      cardPlugin.class.Card,
       'en'
     )
 
@@ -158,7 +158,7 @@ describe('cardTableFormatter.formatCardValue (markup)', () => {
       buildMarkupAttr('richtext'),
       card,
       buildHierarchy(),
-      cardPlugin.class.Card as Ref<Class<Doc>>,
+      cardPlugin.class.Card,
       'en'
     )
 
@@ -197,13 +197,7 @@ describe('cardTableFormatter.formatCardValue (markup)', () => {
       isLookup: false
     } as unknown as AttributeModel
 
-    const result = await formatCardValue(
-      attr,
-      castDoc,
-      buildHierarchy(),
-      cardPlugin.class.Card as Ref<Class<Doc>>,
-      'en'
-    )
+    const result = await formatCardValue(attr, castDoc, buildHierarchy(), cardPlugin.class.Card, 'en')
 
     expect(result).toBe('mixin value')
   })
@@ -249,7 +243,7 @@ describe('cardTableFormatter.formatCardValue (markup)', () => {
       buildMarkupAttr('richtext'),
       card,
       buildHierarchy(),
-      cardPlugin.class.Card as Ref<Class<Doc>>,
+      cardPlugin.class.Card,
       'en'
     )
 
@@ -276,7 +270,7 @@ describe('cardTableFormatter.formatCardValue (markup)', () => {
       buildMarkupAttr('richtext'),
       card,
       buildHierarchy(),
-      cardPlugin.class.Card as Ref<Class<Doc>>,
+      cardPlugin.class.Card,
       'en'
     )
 
@@ -342,7 +336,7 @@ describe('cardTableFormatter.formatCardValue (markup)', () => {
       getAllAttributes: jest.fn(() => new Map())
     } as unknown as Hierarchy
 
-    const result = await formatCardValue(attr, card, hierarchy, cardPlugin.class.Card as Ref<Class<Doc>>, 'en')
+    const result = await formatCardValue(attr, card, hierarchy, cardPlugin.class.Card, 'en')
 
     expect(result).not.toMatch(/<[^>]+>/)
     expect(result).not.toContain('\n')
@@ -371,7 +365,7 @@ describe('cardTableFormatter.formatCardValue (markup)', () => {
       getAllAttributes: jest.fn(() => new Map())
     } as unknown as Hierarchy
 
-    const result = await formatCardValue(attr, card, hierarchy, cardPlugin.class.Card as Ref<Class<Doc>>, 'en')
+    const result = await formatCardValue(attr, card, hierarchy, cardPlugin.class.Card, 'en')
     expect(result).toBeUndefined()
   })
 
@@ -394,7 +388,7 @@ describe('cardTableFormatter.formatCardValue (markup)', () => {
       isLookup: false
     } as unknown as AttributeModel
 
-    const result = await formatCardValue(attr, card, buildHierarchy(), cardPlugin.class.Card as Ref<Class<Doc>>, 'en')
+    const result = await formatCardValue(attr, card, buildHierarchy(), cardPlugin.class.Card, 'en')
 
     expect(result).toBeUndefined()
   })

@@ -119,7 +119,7 @@
 
   $: queryNoLookup = getCategoryQueryNoLookup(resultQuery)
 
-  function toIssue (object: any): WithLookup<Issue> {
+  function toIssue(object: any): WithLookup<Issue> {
     return object as WithLookup<Issue>
   }
 
@@ -208,7 +208,7 @@
 
   const queryId = generateId()
 
-  function update (): void {
+  function update(): void {
     void updateTaskKanbanCategories(
       client,
       viewlet,
@@ -244,7 +244,7 @@
 
   const fullFilled: Record<string, boolean> = {}
 
-  function getHeader (_class: Ref<Class<Doc>>, groupByKey: string): void {
+  function getHeader(_class: Ref<Class<Doc>>, groupByKey: string): void {
     if (groupByKey === noCategory) {
       headerComponent = undefined
     } else {
@@ -269,7 +269,7 @@
     }
   }
 
-  async function shouldShowFooter (
+  async function shouldShowFooter(
     config: (string | BuildModelKey)[],
     reports: number,
     estimations: number,

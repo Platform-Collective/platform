@@ -215,11 +215,7 @@ async function resolveReminderTarget (
   const person = await client.findOne(contact.class.Person, { personUuid }, { projection: { _id: 1 } })
   if (person === undefined) return undefined
 
-  const space = await client.findOne(
-    contact.class.PersonSpace,
-    { person: person._id },
-    { projection: { _id: 1 } }
-  )
+  const space = await client.findOne(contact.class.PersonSpace, { person: person._id }, { projection: { _id: 1 } })
   if (space === undefined) return undefined
 
   return {

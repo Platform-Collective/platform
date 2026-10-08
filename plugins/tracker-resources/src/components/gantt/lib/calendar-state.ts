@@ -74,8 +74,8 @@ export class CalendarStateMachine {
   private rawHolidays: PublicHoliday[] = []
   private holidaysLoaded = false
 
-  constructor (
-    private readonly q: { project: LiveQueryLike, departments: LiveQueryLike, holidays: LiveQueryLike },
+  constructor(
+    private readonly q: { project: LiveQueryLike; departments: LiveQueryLike; holidays: LiveQueryLike },
     private readonly hrModelPresent: boolean,
     private readonly classes: {
       project: Ref<Class<Project>>
@@ -87,7 +87,7 @@ export class CalendarStateMachine {
     private readonly onProjectSwitch: () => void
   ) {}
 
-  private get ready (): boolean {
+  private get ready(): boolean {
     return isCalendarReady({
       projectCfgLoaded: this.projectCfgLoaded,
       cfgPresent: this.cfg !== undefined,
@@ -105,11 +105,11 @@ export class CalendarStateMachine {
    * WorkingDaysConfig. Manual, calendar-independent date-picks (context menu)
    * are unaffected — they never take a mutation ticket.
    */
-  get calendarMutable (): boolean {
+  get calendarMutable(): boolean {
     return this.ready && this.space !== undefined && this.space !== null
   }
 
-  get snapshot (): CalendarSnapshot {
+  get snapshot(): CalendarSnapshot {
     const scope = resolveHolidayScope(
       this.cfg?.holidayDepartment as Ref<Department> | undefined,
       this.head,
@@ -123,7 +123,7 @@ export class CalendarStateMachine {
     }
   }
 
-  setSpace (sp: Ref<Project> | undefined): void {
+  setSpace(sp: Ref<Project> | undefined): void {
     if (this.space !== null && sp === this.space) return
     const isSwitch = this.space !== null
     // SYNCHRONOUS invalidation: generation bump + full reset happen before
@@ -163,7 +163,7 @@ export class CalendarStateMachine {
     )
   }
 
-  private syncHr (): void {
+  private syncHr(): void {
     if (!this.hrModelPresent || this.cfg === undefined) {
       this.teardownHr()
       return
@@ -190,7 +190,7 @@ export class CalendarStateMachine {
     })
   }
 
-  private teardownHr (): void {
+  private teardownHr(): void {
     this.q.departments.unsubscribe()
     this.q.holidays.unsubscribe()
     this.departments = new Map()
@@ -199,7 +199,7 @@ export class CalendarStateMachine {
     this.holidaysLoaded = false
   }
 
-  beginMutation (): MutationTicket {
+  beginMutation(): MutationTicket {
     return { generation: this.generation, space: this.space ?? undefined }
   }
 
@@ -211,7 +211,7 @@ export class CalendarStateMachine {
    * knows the space it is about to write to — that target space must match
    * the currently displayed project.
    */
-  isTicketCurrent (t: MutationTicket, targetSpace?: Ref<Project>): boolean {
+  isTicketCurrent(t: MutationTicket, targetSpace?: Ref<Project>): boolean {
     if (!this.calendarMutable) return false
     if (t.generation !== this.generation) return false
     // Defense-in-depth: the ticket's own captured space must still match the
@@ -224,7 +224,7 @@ export class CalendarStateMachine {
     return true
   }
 
-  private emit (): void {
+  private emit(): void {
     this.onChange(this.snapshot)
   }
 }

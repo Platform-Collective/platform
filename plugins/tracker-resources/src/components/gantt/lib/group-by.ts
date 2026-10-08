@@ -63,7 +63,7 @@ const ALL_SENTINELS: ReadonlySet<string> = new Set([
  * multi-bucket mode would let an issue appear in every label-lane it owns,
  * but would also double-count it — deferred to v2.
  */
-export function resolveGroupKey (issue: Issue, groupBy: GroupByKey): string {
+export function resolveGroupKey(issue: Issue, groupBy: GroupByKey): string {
   switch (groupBy) {
     case 'none':
       return NONE_KEY
@@ -99,7 +99,7 @@ export function resolveGroupKey (issue: Issue, groupBy: GroupByKey): string {
  * by full name) is a UI-layer follow-up — it requires the person/status
  * stores which the helper layer cannot import without breaking purity.
  */
-export function sortGroupKeys (keys: readonly string[], groupBy: GroupByKey): string[] {
+export function sortGroupKeys(keys: readonly string[], groupBy: GroupByKey): string[] {
   const arr = [...keys]
   if (groupBy === 'priority') {
     arr.sort((a, b) => Number(a) - Number(b))
@@ -127,7 +127,7 @@ export function sortGroupKeys (keys: readonly string[], groupBy: GroupByKey): st
  * rendered the raw Mongo-style id for any non-sentinel key, which made
  * group-by unusable for Component/Milestone/Label/Status/Priority.
  */
-export function getGroupLabel (key: string, _groupBy: GroupByKey, nameLookup?: ReadonlyMap<string, string>): string {
+export function getGroupLabel(key: string, _groupBy: GroupByKey, nameLookup?: ReadonlyMap<string, string>): string {
   switch (key) {
     case NONE_KEY:
       return 'All issues'

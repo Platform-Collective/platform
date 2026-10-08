@@ -17,7 +17,7 @@ import type { CascadeShift, PrimaryEdit } from '../types'
 // not here. These tests assert only the client contract: build payloads → one
 // createDoc → return 1, and fail-soft error handling.
 
-function issue (id: string, identifier: string, title: string, start: number | null, due: number | null): Issue {
+function issue(id: string, identifier: string, title: string, start: number | null, due: number | null): Issue {
   return {
     _id: id as Ref<Issue>,
     _class: 'tracker:class:Issue' as any,
@@ -48,10 +48,10 @@ const SHIFT: CascadeShift = {
   triggeredBy: TRIGGER_ISSUE._id
 }
 
-function makeClient (
+function makeClient(
   createImpl?: () => Promise<unknown>,
   hasClass: boolean = true
-): { client: TxOperations, createDoc: jest.Mock, hasClassMock: jest.Mock } {
+): { client: TxOperations; createDoc: jest.Mock; hasClassMock: jest.Mock } {
   const createDoc = jest.fn(createImpl ?? (async () => 'newId' as any))
   // The emitter guards on the workspace model knowing the request class, so
   // the fake client has to expose a hierarchy just like the real one.
@@ -63,7 +63,7 @@ function makeClient (
   }
 }
 
-function args (primaries: PrimaryEdit[] = [], shifts: CascadeShift[] = []): DependencyShiftSendArgs {
+function args(primaries: PrimaryEdit[] = [], shifts: CascadeShift[] = []): DependencyShiftSendArgs {
   return {
     triggerIssue: TRIGGER_ISSUE,
     triggerUser: 'acc-trigger' as any,

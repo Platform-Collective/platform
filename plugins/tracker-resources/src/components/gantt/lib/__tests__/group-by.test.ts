@@ -18,7 +18,7 @@ import {
   type GroupByKey
 } from '../group-by'
 
-function makeIssue (over: Partial<Issue>): Issue {
+function makeIssue(over: Partial<Issue>): Issue {
   return {
     _id: 'i1',
     _class: 'tracker:class:Issue',

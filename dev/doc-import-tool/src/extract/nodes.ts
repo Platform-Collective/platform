@@ -264,7 +264,10 @@ function setTextMatchingParams (params: ListParams | GenericParams | TocParaSeqP
 
 type NodeParams = ListParams | TableParams | GenericParams | TocParaSeqParams
 type AnyNodeExtractor =
-  TableNodeExtractor | ListNodeExtractor | GenericNodeExtractor | TocParagraphSequenceNodeExtractor
+  | TableNodeExtractor
+  | ListNodeExtractor
+  | GenericNodeExtractor
+  | TocParagraphSequenceNodeExtractor
 
 export type AnyContainer = TableContainer | ListContainer | GenericContainer
 

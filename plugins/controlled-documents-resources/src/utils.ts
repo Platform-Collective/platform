@@ -353,11 +353,11 @@ export async function updateExternalApproversAccess (
       removedPersons.length === 0
         ? []
         : await client.findAll(core.class.Collaborator, {
-          attachedTo: controlledDoc._id,
-          attachedToClass: controlledDoc._class,
-          collection: 'collaborators',
-          collaborator: { $in: removedPersonUuids }
-        })
+            attachedTo: controlledDoc._id,
+            attachedToClass: controlledDoc._class,
+            collection: 'collaborators',
+            collaborator: { $in: removedPersonUuids }
+          })
     const projectDocs = await client.findAll(documents.class.ProjectDocument, {
       document: controlledDoc._id
     })
@@ -501,9 +501,7 @@ export async function rejectRequest (
   })
 }
 
-export type ControlledStatesTags = {
-  [K in ControlledDocumentState]: DocumentStateTagType
-}
+export type ControlledStatesTags = Record<ControlledDocumentState, DocumentStateTagType>
 
 export const controlledStatesTags: ControlledStatesTags = {
   [ControlledDocumentState.InReview]: 'inProgress',
@@ -514,9 +512,7 @@ export const controlledStatesTags: ControlledStatesTags = {
   [ControlledDocumentState.ToReview]: 'effective'
 }
 
-export type StatesTags = {
-  [K in DocumentState]: DocumentStateTagType
-}
+export type StatesTags = Record<DocumentState, DocumentStateTagType>
 
 export const statesTags: StatesTags = {
   [DocumentState.Draft]: 'draft',

@@ -372,7 +372,7 @@ export async function restore (
                     }
                   })
                   stream.on('end', () => {
-                    const bf = Buffer.concat(chunks as any)
+                    const bf = Buffer.concat(chunks)
                     const d = blobs.get(name)
                     if (d === undefined) {
                       blobs.set(name, { doc: undefined, buffer: bf })
@@ -399,7 +399,7 @@ export async function restore (
                     }
                   })
                   stream.on('end', () => {
-                    const bf = Buffer.concat(chunks as any)
+                    const bf = Buffer.concat(chunks)
                     let doc: Doc
                     try {
                       doc = JSON.parse(bf.toString()) as Doc
@@ -537,7 +537,7 @@ export async function restore (
                 })
                 stream.on('end', () => {
                   try {
-                    const obj = JSON.parse(Buffer.concat(chunks as any).toString())
+                    const obj = JSON.parse(Buffer.concat(chunks).toString())
                     processed.add(objKey)
                     collectedObjects.push(obj)
                   } catch (err) {

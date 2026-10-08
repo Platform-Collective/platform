@@ -30,7 +30,7 @@ import core, {
 } from '@hcengineering/core'
 import { translate } from '@hcengineering/platform'
 import { BasePresentationMiddleware, type PresentationMiddleware } from '@hcengineering/presentation'
-import { ExecutionStatus, isUpdateTx, type ApproveRequest, type ProcessToDo } from '@hcengineering/process'
+import { ExecutionStatus, type ApproveRequest, type ProcessToDo } from '@hcengineering/process'
 import process from './plugin'
 import { createExecution, getNextStateUserInput, pickTransition, requestResult } from './utils'
 

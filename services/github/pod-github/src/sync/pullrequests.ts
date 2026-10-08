@@ -81,7 +81,7 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
   externalDerivedSync = true
 
   @withContext('pullrequests-handleEvent')
-  async handleEvent<T>(
+  async handleEvent<T> (
     ctx: MeasureContext,
     integration: IntegrationContainer,
     derivedClient: TxOperations,
@@ -479,7 +479,7 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
               accountGH,
               {
                 ...pullRequestData,
-                status: (await guessStatus(pullRequestExternal, statuses))._id as Ref<Status>
+                status: (await guessStatus(pullRequestExternal, statuses))._id
               },
               pullRequestExternal,
               info.repository as Ref<GithubIntegrationRepository>,
@@ -917,8 +917,7 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
 
     // We need to update status in case category are different
     const stInstance =
-      statuses.find((it) => it._id === status) ??
-      ((await this.client.findOne(core.class.Status, { _id: status })) as Status)
+      statuses.find((it) => it._id === status) ?? (await this.client.findOne(core.class.Status, { _id: status }))
 
     let gs: IssueStatus | undefined
     if (pullRequestExternal.merged) {

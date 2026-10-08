@@ -47,7 +47,7 @@ describe('PullRequestSyncManager', () => {
 
     it('should handle undefined reviewRequests gracefully', async () => {
       const prData: Partial<PullRequestExternalData> = {
-        reviewRequests: undefined as any,
+        reviewRequests: undefined,
         latestReviews: { nodes: [], totalCount: 0 }
       }
 
@@ -138,7 +138,7 @@ describe('PullRequestSyncManager', () => {
     it('should handle undefined latestReviews', async () => {
       const prData: Partial<PullRequestExternalData> = {
         reviewRequests: { nodes: [], totalCount: 0 },
-        latestReviews: undefined as any
+        latestReviews: undefined
       }
 
       const result = await manager.getReviewers(prData as PullRequestExternalData)

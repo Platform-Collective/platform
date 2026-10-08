@@ -94,20 +94,20 @@ export class TProduct extends TExternalSpace implements Product {
 
   @Prop(TypeMarkup(), products.string.Description)
   @Index(IndexKind.FullText)
-    fullDescription?: string
+  fullDescription?: string
 
   @Prop(TypeString(), products.string.Icon)
   @Index(IndexKind.FullText)
   @Hidden()
-    icon?: Asset
+  icon?: Asset
 
   @Prop(TypeNumber(), products.string.Color)
   @Index(IndexKind.FullText)
   @Hidden()
-    color?: number
+  color?: number
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-    attachments?: CollectionSize<Attachment>
+  attachments?: CollectionSize<Attachment>
 }
 
 @Model(products.class.ProductVersion, documents.class.Project)
@@ -119,31 +119,31 @@ export class TProductVersion extends TProject implements ProductVersion {
 
   @Prop(TypeNumber(), products.string.Major)
   @ReadOnly()
-    major!: number
+  major!: number
 
   @Prop(TypeNumber(), products.string.Minor)
   @ReadOnly()
-    minor!: number
+  minor!: number
 
   @Prop(TypeNumber(), products.string.Patch)
   @ReadOnly()
-    patch!: number
+  patch!: number
 
   @Prop(TypeString(), products.string.Codename)
-    codename?: string
+  codename?: string
 
   @Prop(TypeMarkup(), products.string.Description)
   @Index(IndexKind.FullText)
-    description!: Markup
+  description!: Markup
 
   @Prop(TypeRef(products.class.ProductVersion), products.string.ProductVersionParent)
   @Index(IndexKind.Indexed)
   @ReadOnly()
-    parent!: Ref<ProductVersion>
+  parent!: Ref<ProductVersion>
 
   @Prop(TypeProductVersionState(), products.string.ProductVersionState)
   @ReadOnly()
-    state!: ProductVersionState
+  state!: ProductVersionState
 
   @Prop(
     TypeAny(
@@ -154,7 +154,7 @@ export class TProductVersion extends TProject implements ProductVersion {
     products.string.ChangeControl
   )
   @ReadOnly()
-    changeControl?: Ref<Document>
+  changeControl?: Ref<Document>
 }
 
 @Mixin(products.mixin.ProductTypeData, products.class.Product)

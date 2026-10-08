@@ -92,7 +92,7 @@ describe('utils.ts', () => {
           headers: [['Content-Type', 'text/html; charset=utf-8']],
           contents: '<html><body><p>This is an HTML email</p></body></html>'
         }
-      } as any
+      }
 
       // Mock readEml to return HTML content
       ;(readEml as jest.Mock).mockImplementation((content, callback) => {
@@ -125,7 +125,7 @@ describe('utils.ts', () => {
           contents:
             '--boundary\r\nContent-Type: text/plain\r\n\r\nText part\r\n--boundary\r\nContent-Type: text/html\r\n\r\n<p>HTML part</p>\r\n--boundary--'
         }
-      } as any
+      }
 
       // Mock readEml to return both text and HTML content
       ;(readEml as jest.Mock).mockImplementation((content, callback) => {

@@ -42,13 +42,13 @@
   //    `onCancel` directly bypasses the `<Card on:close={...}>` chain
   //    which was empirically not closing the popup on X-click in
   //     (user report Refactor A).
-  async function onSave (): Promise<void> {
+  async function onSave(): Promise<void> {
     const trimmed = viewName.trim()
     if (trimmed.length === 0) return
     dispatch('close', { name: trimmed, fixTimeWindow, sharable })
   }
 
-  function onCancel (): void {
+  function onCancel(): void {
     dispatch('close')
   }
 </script>

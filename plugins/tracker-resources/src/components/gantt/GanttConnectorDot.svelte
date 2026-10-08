@@ -39,7 +39,7 @@
 
   let lastDownAt = 0
 
-  function onDown (evt: MouseEvent): void {
+  function onDown(evt: MouseEvent): void {
     if (evt.button !== 0) return
     const now = Date.now()
     if (now - lastDownAt < 30) return

@@ -65,7 +65,7 @@
     messages = []
   }
 
-  function hasNewMessages (labels: CardLabel[], cardId: CardID): boolean {
+  function hasNewMessages(labels: CardLabel[], cardId: CardID): boolean {
     return labels.some((it) => (it.labelId as string) === cardPlugin.label.NewMessages && it.cardId === cardId)
   }
 

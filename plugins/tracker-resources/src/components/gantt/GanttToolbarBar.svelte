@@ -75,7 +75,7 @@
   // button can swap between the maximize and minimize glyph. Only the
   // `trailing` instance renders the button, so only it needs the listener.
   let isFullscreen = false
-  function onFullscreenChange (): void {
+  function onFullscreenChange(): void {
     isFullscreen = document.fullscreenElement != null
   }
   onMount(() => {
@@ -111,7 +111,7 @@
   const tierWidths: Partial<Record<ToolbarTier, number>> = {}
 
   /** Used `column-gap` of the cluster in px; `normal` / unparsable → fallback. */
-  function measureGapPx (el: HTMLElement): number {
+  function measureGapPx(el: HTMLElement): number {
     const parsed = Number.parseFloat(getComputedStyle(el).columnGap)
     return Number.isFinite(parsed) && parsed >= 0 ? parsed : GAP_FALLBACK_PX
   }
@@ -144,11 +144,11 @@
     ganttToolbarHiddenTiers.set(hiddenTiers)
   }
 
-  function sameTiers (a: readonly ToolbarTier[], b: readonly ToolbarTier[]): boolean {
+  function sameTiers(a: readonly ToolbarTier[], b: readonly ToolbarTier[]): boolean {
     return a.length === b.length && a.every((v, i) => v === b[i])
   }
 
-  async function recompute (): Promise<void> {
+  async function recompute(): Promise<void> {
     if (section !== 'cluster') return
     await tick()
     if (clusterEl === undefined) return
@@ -181,12 +181,12 @@
     void recompute()
   }
 
-  function onClusterResize (el: Element): void {
+  function onClusterResize(el: Element): void {
     const w = (el as HTMLElement).clientWidth
     if (w !== availableWidth) availableWidth = w
   }
 
-  function openOverflowPopup (e: MouseEvent): void {
+  function openOverflowPopup(e: MouseEvent): void {
     showPopup(GanttToolbarOverflowPopup, { tiers: $ganttToolbarHiddenTiers }, eventToHTMLElement(e))
   }
 </script>

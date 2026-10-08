@@ -39,7 +39,7 @@
   let visibleSecondNav: boolean = true
   let selectedTagId: Ref<MasterTag> | undefined
 
-  function handleLocationChanged ({ path }: Location): void {
+  function handleLocationChanged({ path }: Location): void {
     if (path[3] !== 'types' || path[4] === undefined) {
       selectedTagId = undefined
     } else {
@@ -58,7 +58,7 @@
     title: string
   }
 
-  function selectSubItem (editorId: AnyComponent | undefined, objId: Ref<Doc> | undefined): void {
+  function selectSubItem(editorId: AnyComponent | undefined, objId: Ref<Doc> | undefined): void {
     if (editorId !== undefined && objId !== undefined) {
       selectedSubObjectId = objId
       void getResource(editorId)
@@ -83,13 +83,13 @@
     masterTag = res[0]
   })
 
-  function handleSubEditorOpen (event: CustomEvent): void {
+  function handleSubEditorOpen(event: CustomEvent): void {
     if (Array.isArray(event.detail)) {
       subEditorParamas = event.detail
     }
   }
 
-  function getBreadcrumbs (tag: Ref<MasterTag> | undefined, subEditorParams: SubEditorParams[]): BreadcrumbItem[] {
+  function getBreadcrumbs(tag: Ref<MasterTag> | undefined, subEditorParams: SubEditorParams[]): BreadcrumbItem[] {
     if (tag === undefined) return []
     const toAncestors = hierarchy.getAncestors(card.class.Card)
     const ancestors = hierarchy.getAncestors(tag)
@@ -115,7 +115,7 @@
     }, 500)
   })
 
-  function handleSelect (e: CustomEvent<any>): void {
+  function handleSelect(e: CustomEvent<any>): void {
     const id = items[e.detail]?.id
     if (id !== undefined) {
       const isSub = subEditorParamas.find((it) => it.id === id)

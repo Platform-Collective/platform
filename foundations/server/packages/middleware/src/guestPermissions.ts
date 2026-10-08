@@ -80,8 +80,8 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
         const classPermissions =
           allPermissionIds.size > 0
             ? await this.findAll(ctx, core.class.ClassPermission, {
-              _id: { $in: Array.from(allPermissionIds) as Array<Ref<ClassPermission>> }
-            })
+                _id: { $in: Array.from(allPermissionIds) as Array<Ref<ClassPermission>> }
+              })
             : []
         const permissionToClass = new Map<Ref<Permission>, Ref<Class<Doc>>>(
           classPermissions

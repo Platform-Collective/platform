@@ -1434,8 +1434,8 @@ export class GithubWorker implements IntegrationManager {
     const docsMap = new Map<Ref<Doc>, Doc>(externalDocs.map((it) => [it._id as Ref<Doc>, it]))
     const orderedSyncInfo = [...syncInfo]
     orderedSyncInfo.sort((a, b) => {
-      const adoc = docsMap.get(a._id as Ref<Doc>)
-      const bdoc = docsMap.get(a._id as Ref<Doc>)
+      const adoc = docsMap.get(a._id)
+      const bdoc = docsMap.get(a._id)
       return (bdoc?.createdOn ?? 0) - (adoc?.createdOn ?? 0)
     })
 
@@ -1724,7 +1724,7 @@ export class GithubWorker implements IntegrationManager {
     }
   }
 
-  async handleEvent<T>(
+  async handleEvent<T> (
     ctx: MeasureContext,
     requestClass: Ref<Class<Doc>>,
     integrationId: number | undefined,

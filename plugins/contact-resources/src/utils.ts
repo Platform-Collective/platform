@@ -94,7 +94,7 @@ import {
   type ResolvedLocation,
   type TabItem
 } from '@hcengineering/ui'
-import view, { type Filter, type GrouppingManager } from '@hcengineering/view'
+import view, { type Filter, type GrouppingManager, type ObjectPanel } from '@hcengineering/view'
 import { accessDeniedStore, FilterQuery } from '@hcengineering/view-resources'
 import { type LocationData } from '@hcengineering/workbench'
 import { derived, get, type Readable, writable } from 'svelte/store'
@@ -342,7 +342,7 @@ async function generateLocation (loc: Location, id: Ref<Contact>): Promise<Resol
       ? 'employees'
       : 'persons'
 
-  const objectPanel = client.getHierarchy().classHierarchyMixin(doc._class as Ref<Class<Doc>>, view.mixin.ObjectPanel)
+  const objectPanel = client.getHierarchy().classHierarchyMixin<Doc, ObjectPanel>(doc._class, view.mixin.ObjectPanel)
   const component = objectPanel?.component ?? view.component.EditDoc
 
   return {

@@ -40,9 +40,9 @@ export const NO_SORT: GanttSortState = { column: null, direction: 'asc' }
  * throwing — the stored blob is user-writable (localStorage) and must never
  * be able to break the sidebar.
  */
-export function parseSortState (raw: unknown): GanttSortState {
+export function parseSortState(raw: unknown): GanttSortState {
   if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return { ...NO_SORT }
-  const { column, direction } = raw as { column?: unknown, direction?: unknown }
+  const { column, direction } = raw as { column?: unknown; direction?: unknown }
   if (typeof column !== 'string' || !(ALL_COLUMN_KEYS as readonly string[]).includes(column)) {
     return { ...NO_SORT }
   }
@@ -53,7 +53,7 @@ export function parseSortState (raw: unknown): GanttSortState {
 }
 
 /** Cycle: same column asc→desc→null (off); different column resets to asc. */
-export function cycleSort (state: GanttSortState, column: SidebarColumnKey): GanttSortState {
+export function cycleSort(state: GanttSortState, column: SidebarColumnKey): GanttSortState {
   if (state.column !== column) {
     return { column, direction: 'asc' }
   }
@@ -77,13 +77,13 @@ const NUMBER_COLS: ReadonlySet<SidebarColumnKey> = new Set<SidebarColumnKey>([
 ])
 const DATE_COLS: ReadonlySet<SidebarColumnKey> = new Set<SidebarColumnKey>(['startDate', 'dueDate', 'deadline'])
 
-function readString (issue: Issue, col: SidebarColumnKey): string {
+function readString(issue: Issue, col: SidebarColumnKey): string {
   if (col === 'title') return issue.title ?? ''
   if (col === 'identifier') return issue.identifier ?? ''
   return ''
 }
 
-function readNumber (issue: Issue, col: SidebarColumnKey): number {
+function readNumber(issue: Issue, col: SidebarColumnKey): number {
   if (col === 'estimation') return issue.estimation ?? 0
   if (col === 'priority') return issue.priority as unknown as number
   if (col === 'modifiedOn') return issue.modifiedOn ?? 0
@@ -91,7 +91,7 @@ function readNumber (issue: Issue, col: SidebarColumnKey): number {
   return 0
 }
 
-function readDate (issue: Issue, col: SidebarColumnKey): number | null {
+function readDate(issue: Issue, col: SidebarColumnKey): number | null {
   if (col === 'startDate') return issue.startDate ?? null
   if (col === 'dueDate') return issue.dueDate ?? null
   if (col === 'deadline') return issue.deadline ?? null
@@ -99,7 +99,7 @@ function readDate (issue: Issue, col: SidebarColumnKey): number | null {
 }
 
 /** Build a comparator for `(column, direction)`. */
-export function comparatorFor (column: SidebarColumnKey, direction: SortDirection): IssueComparator {
+export function comparatorFor(column: SidebarColumnKey, direction: SortDirection): IssueComparator {
   const sign = direction === 'asc' ? 1 : -1
 
   if (STRING_COLS.has(column)) {

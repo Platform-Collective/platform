@@ -12,16 +12,16 @@ import { resolveHolidayScope, resolveHrHolidays, tzDateToUtcMidnight } from '../
 const head = 'head' as Ref<Department>
 
 // Only `_id` and `parent` matter to the scope walk — fabricate minimal docs.
-function dept (id: string, parent?: string): Department {
+function dept(id: string, parent?: string): Department {
   return { _id: id, parent } as unknown as Department
 }
 
-function deptMap (...docs: Department[]): Map<Ref<Department>, Department> {
+function deptMap(...docs: Department[]): Map<Ref<Department>, Department> {
   return new Map(docs.map((d) => [d._id, d]))
 }
 
 // Only `date` and `department` matter to the resolver.
-function holiday (year: number, month: number, day: number, department: string): PublicHoliday {
+function holiday(year: number, month: number, day: number, department: string): PublicHoliday {
   return { date: { year, month, day, offset: 0 }, department } as unknown as PublicHoliday
 }
 

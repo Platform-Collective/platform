@@ -8,7 +8,7 @@ import type { Issue } from '@hcengineering/tracker'
  * True iff the issue has a deadline set. Treats both null and undefined
  * as "no deadline" — `0` is a valid (if degenerate) timestamp.
  */
-export function hasDeadline (issue: Issue): boolean {
+export function hasDeadline(issue: Issue): boolean {
   return issue.deadline !== undefined && issue.deadline !== null
 }
 
@@ -19,7 +19,7 @@ export function hasDeadline (issue: Issue): boolean {
  *
  * `dueDate === deadline` is NOT overdue — last-minute delivery is fine.
  */
-export function isOverdue (issue: Issue): boolean {
+export function isOverdue(issue: Issue): boolean {
   const d = issue.deadline
   const due = issue.dueDate
   if (d === undefined || d === null) return false
