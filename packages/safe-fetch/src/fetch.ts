@@ -294,5 +294,5 @@ export function createSafeFetch (opts: SafeFetchOptions = {}): typeof fetch {
     }
   }
 
-  return safeFetch as typeof fetch
+  return safeFetch
 }

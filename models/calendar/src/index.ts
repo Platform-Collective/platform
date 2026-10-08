@@ -105,15 +105,15 @@ export class TExternalCalendar extends TCalendar implements ExternalCalendar {
 export class TCalDavCalendar extends TExternalCalendar implements CalDavCalendar {
   @Prop(TypeString(), getEmbeddedLabel('CalDAV account key'))
   @Hidden()
-    accountKey!: string
+  accountKey!: string
 
   @Prop(TypeString(), getEmbeddedLabel('CalDAV collection href'))
   @Hidden()
-    href!: string
+  href!: string
 
   @Prop(TypeString(), getEmbeddedLabel('CalDAV collection ctag'))
   @Hidden()
-    ctag?: string
+  ctag?: string
 }
 
 @Model(calendar.class.Event, core.class.AttachedDoc, DOMAIN_EVENT)
