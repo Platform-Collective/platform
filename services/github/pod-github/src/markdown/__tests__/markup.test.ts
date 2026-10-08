@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-/* eslint-env jest */
+/* global describe, expect, it */
 import { setMetadata } from '@hcengineering/platform'
 import serverCore from '@hcengineering/server-core'
 import { jsonToHTML, htmlToJSON } from '@hcengineering/text'
