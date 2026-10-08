@@ -74,10 +74,80 @@ export function createModel (builder: Builder): void {
   })
 
   builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnProjectFieldCreate,
+    txMatch: {
+      _class: core.class.TxCreateDoc,
+      objectClass: tracker.class.ProjectField
+    }
+  })
+
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnProjectFieldRemove,
+    txMatch: {
+      _class: core.class.TxRemoveDoc,
+      objectClass: tracker.class.ProjectField
+    }
+  })
+
+  // At most 50,000 items per project (GitHub parity)
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnProjectItemLimit,
+    txMatch: {
+      _class: core.class.TxCreateDoc,
+      objectClass: tracker.class.Issue
+    }
+  })
+
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnIterationRemove,
+    txMatch: {
+      _class: core.class.TxRemoveDoc,
+      objectClass: tracker.class.Iteration
+    }
+  })
+
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
     trigger: serverTracker.trigger.OnDependencyShiftRequest,
     txMatch: {
       _class: core.class.TxCreateDoc,
       objectClass: tracker.class.DependencyShiftRequest
+    }
+  })
+
+  // The "set a field" workflows run with the change that causes them
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnIssueWorkflow,
+    txMatch: {
+      _class: { $in: [core.class.TxCreateDoc, core.class.TxUpdateDoc] },
+      objectClass: tracker.class.Issue
+    }
+  })
+
+  // Auto-archive and auto-add are evaluated after the fact
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnWorkflowEvaluate,
+    isAsync: true,
+    txMatch: {
+      _class: { $in: [core.class.TxCreateDoc, core.class.TxUpdateDoc] },
+      objectClass: { $in: [tracker.class.Issue, tracker.class.Workflow] }
+    }
+  })
+
+  // Webhooks are delivered after the transaction, in the background
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnProjectItemWebhook,
+    isAsync: true,
+    txMatch: {
+      _class: { $in: [core.class.TxCreateDoc, core.class.TxUpdateDoc, core.class.TxRemoveDoc] },
+      objectClass: tracker.class.Issue
+    }
+  })
+
+  builder.createDoc(serverCore.class.Trigger, core.space.Model, {
+    trigger: serverTracker.trigger.OnProjectWebhookRemove,
+    txMatch: {
+      _class: core.class.TxRemoveDoc,
+      objectClass: tracker.class.ProjectWebhook
     }
   })
 

@@ -55,6 +55,9 @@
 
   export let getUpdateProps: (doc: Doc, state: CategoryType) => DocumentUpdate<Item> | undefined
   export let getAvailableCategories: ((doc: Doc) => Promise<CategoryType[]>) | undefined = undefined
+  // See KanbanRow: query of the full documents of a column, for columns that are not a plain attribute
+  export let getGroupQuery: ((state: CategoryType, stateObjects: Item[]) => DocumentQuery<DocWithRank>) | undefined =
+    undefined
 
   const dispatch = createEventDispatcher()
 
@@ -429,6 +432,7 @@
               {query}
               {options}
               {groupByKey}
+              {getGroupQuery}
             >
               <svelte:fragment slot="card" let:object let:dragged>
                 <slot name="card" {object} {dragged} />

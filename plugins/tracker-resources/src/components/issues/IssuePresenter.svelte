@@ -28,6 +28,7 @@
   import { ObjectPresenterType } from '@hcengineering/view'
 
   import tracker from '../../plugin'
+  import DraftBadge from './DraftBadge.svelte'
 
   export let value: WithLookup<Issue> | undefined
   export let disabled: boolean = false
@@ -70,11 +71,16 @@
             </div>
           {/if}
           <span class="overflow-label" class:select-text={!noSelect} title={value?.title}>
-            <HighlightedText
-              text={value.identifier}
-              query={$rawSearchTextStore}
-              enabled={$searchHighlightEnabledStore}
-            />
+            {#if value.isDraft === true}
+              <!-- A draft item has no identifier of an issue yet -->
+              <DraftBadge />
+            {:else}
+              <HighlightedText
+                text={value.identifier}
+                query={$rawSearchTextStore}
+                enabled={$searchHighlightEnabledStore}
+              />
+            {/if}
             <slot name="details" />
           </span>
         </span>
@@ -82,7 +88,11 @@
     </div>
   {:else if value && type === 'text'}
     <span class="overflow-label" class:select-text={!noSelect} use:tooltip={{ label: getEmbeddedLabel(value.title) }}>
-      {value.identifier}
+      {#if value.isDraft === true}
+        <DraftBadge />
+      {:else}
+        {value.identifier}
+      {/if}
     </span>
   {/if}
 {/if}

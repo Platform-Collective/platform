@@ -44,6 +44,8 @@
   import { fade } from 'svelte/transition'
   import { showMenu } from '../../actions'
   import { FocusSelection, SelectionFocusProvider, focusStore } from '../../selection'
+  import { clientViewExtension, isClientViewKey } from '../../clientViewExtension'
+  import { buildHierarchyRows, type HierarchyRow } from '../../hierarchy'
   import ListHeader from './ListHeader.svelte'
   import ListItem from './ListItem.svelte'
 
@@ -134,6 +136,17 @@
       })
       : resultQuery
 
+  // Ordering by a client-side key (e.g. a custom field): load the whole group and sort it here,
+  // the server cannot order by such a key and a server-side limit would cut the wrong rows
+  $: clientCompare = isClientViewKey($clientViewExtension, viewOptions.orderBy?.[0])
+    ? $clientViewExtension?.compare(viewOptions.orderBy[0], viewOptions.orderBy[1])
+    : undefined
+  $: clientSorted = isClientViewKey($clientViewExtension, viewOptions.orderBy?.[0])
+
+  // Tree display: only for lists whose view options turn it on (see ClientHierarchy)
+  $: hierarchyExt = lastLevel ? $clientViewExtension?.hierarchy : undefined
+  $: hierarchyOn = hierarchyExt !== undefined && hierarchyExt.isEnabled(viewOptions)
+
   $: if (lastLevel) {
     void limiter.add(async () => {
       try {
@@ -141,14 +154,18 @@
           _class,
           { ...finalResultQuery, ...docKeys },
           (res) => {
-            items = res
+            items = clientCompare !== undefined ? [...res].sort(clientCompare) : res
             loading = false
             const focusDoc = items.find((it) => it._id === $focusStore.focus?._id)
             if (focusDoc) {
               handleRowFocused(focusDoc)
             }
           },
-          { ...resultOptions, limit: limit ?? 200 }
+          {
+            ...resultOptions,
+            // A tree needs the whole group: a child may come long after its parent
+            limit: clientSorted || hierarchyOn ? ($clientViewExtension?.scanLimit ?? 5000) : (limit ?? 200)
+          }
         )
       } catch (e) {
         console.error(e)
@@ -189,7 +206,28 @@
     dispatch('row-focus', object)
   }
 
-  $: limited = limitGroup(items, limit)
+  const noExpanded: ReadonlySet<string> = new Set()
+  $: expandedStore = hierarchyOn ? hierarchyExt?.expanded : undefined
+  $: expandedIds = (expandedStore !== undefined ? $expandedStore : undefined) ?? noExpanded
+  $: describeStore = hierarchyOn ? hierarchyExt?.describe : undefined
+  $: describe = describeStore !== undefined ? $describeStore : undefined
+
+  let treeRows: Array<HierarchyRow<Doc>> | undefined
+  $: treeRows =
+    hierarchyOn && hierarchyExt !== undefined
+      ? buildHierarchyRows(items, {
+        idOf: (it) => it._id,
+        parentOf: hierarchyExt.parentOf,
+        expanded: expandedIds,
+        maxDepth: hierarchyExt.maxDepth
+      })
+      : undefined
+  $: treeRowById = treeRows !== undefined ? new Map(treeRows.map((r) => [r.item._id as string, r])) : undefined
+  // What the group shows: the rows of the tree, or the loaded documents
+  $: shown = treeRows !== undefined ? treeRows.map((r) => r.item) : items
+  $: shownTotal = treeRows !== undefined ? treeRows.length : itemProj.length
+
+  $: limited = limitGroup(shown, limit)
 
   $: selectedObjectIdsSet = new Set<Ref<Doc>>(selectedObjectIds.map((it) => it._id))
 
@@ -211,7 +249,7 @@
     return {
       ...newObjectProps(doc),
       ...(doc ? { space: doc.space } : {}),
-      ...(groupValue !== undefined ? { [groupByKey]: groupValue } : {})
+      ...(groupValue !== undefined && !isClientViewKey($clientViewExtension, groupByKey) ? { [groupByKey]: groupValue } : {})
     }
   }
 
@@ -226,7 +264,8 @@
   let dragItemIndex: number | undefined
 
   function dragswap (ev: MouseEvent, i: number): boolean {
-    if (dragItemIndex === undefined || !byRank) return false
+    // Rows of a tree are not in the order of the loaded documents, so they cannot be swapped by their index
+    if (dragItemIndex === undefined || !byRank || hierarchyOn) return false
     const s = dragItemIndex
     if (i < s) {
       return ev.offsetY < (ev.target as HTMLElement).offsetHeight / 2
@@ -314,7 +353,7 @@
     ev.stopPropagation()
     ev.preventDefault()
     const update: DocumentUpdate<Doc> = {}
-    if (dragItemIndex !== undefined && viewOptions.orderBy?.[0] === 'rank') {
+    if (dragItemIndex !== undefined && viewOptions.orderBy?.[0] === 'rank' && !hierarchyOn) {
       const prev = limited[dragItemIndex - 1] as DocWithRank
       const next = limited[dragItemIndex + 1] as DocWithRank
       try {
@@ -525,6 +564,7 @@
         {#if limited}
           {#key configurationsVersion}
             {#each limited as docObject, i (docObject._id)}
+              {@const treeRow = treeRowById?.get(docObject._id)}
               <ListItem
                 bind:this={listItems[i]}
                 {docObject}
@@ -533,8 +573,19 @@
                 selected={isSelected(docObject, $focusStore)}
                 {readonly}
                 checked={selectedObjectIdsSet.has(docObject._id)}
-                last={i === limited.length - 1 && HLimited >= itemProj.length}
-                lastCat={i === limited.length - 1 && (oneCat || lastCat) && HLimited >= itemProj.length}
+                last={i === limited.length - 1 && HLimited >= shownTotal}
+                lastCat={i === limited.length - 1 && (oneCat || lastCat) && HLimited >= shownTotal}
+                tree={treeRow !== undefined
+                  ? {
+                    depth: treeRow.depth,
+                    hasChildren: treeRow.hasChildren,
+                    expanded: treeRow.expanded,
+                    label: treeRow.hasChildren ? describe?.(docObject) : undefined
+                  }
+                  : undefined}
+                on:toggle-tree={() => {
+                  hierarchyExt?.toggle(docObject._id)
+                }}
                 on:dragstart={(e) => {
                   dragStart(e, docObject, i)
                 }}
@@ -569,7 +620,7 @@
                 }}
               />
             {/each}
-            {#if HLimited < itemProj.length}
+            {#if HLimited < shownTotal}
               <!-- svelte-ignore a11y-click-events-have-key-events -->
               <div
                 class="listGrid antiList__row row gap-2 flex-grow hoverable showMore last"
@@ -587,7 +638,7 @@
                     <Loading shrink size={'small'} />
                   </div>
                 {:else}
-                  <span class="content-halfcontent-color ml-0-5">({HLimited} / {itemProj.length})</span>
+                  <span class="content-halfcontent-color ml-0-5">({HLimited} / {shownTotal})</span>
                 {/if}
               </div>
             {/if}

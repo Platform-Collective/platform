@@ -17,3 +17,4 @@ import '@hcengineering/platform-rig/profiles/ui/svelte'
 export * from './types'
 
 export { default as Kanban } from './components/Kanban.svelte'
+export { default as KanbanRow } from './components/KanbanRow.svelte'

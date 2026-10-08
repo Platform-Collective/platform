@@ -65,5 +65,8 @@ loadMetadata(tracker.icon, {
   Duplicate: `${icons}#duplicate`,
   TimeReport: `${icons}#timeReport`,
   Estimation: `${icons}#estimation`,
-  Gantt: `${icons}#timeline`
+  Gantt: `${icons}#timeline`,
+  Roadmap: `${icons}#roadmap`,
+  Calendar: `${icons}#calendar-layout`,
+  Workload: `${icons}#workload-layout`
 })

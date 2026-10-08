@@ -36,14 +36,23 @@
     notEmpty,
     setWorkspaceGuestAutoJoinRoles
   } from '@hcengineering/core'
-  import { Asset } from '@hcengineering/platform'
+  import { Asset, translate } from '@hcengineering/platform'
   import presentation, { IconWithEmoji, Card, createQuery, getClient } from '@hcengineering/presentation'
   import task, { ProjectType, TaskType } from '@hcengineering/task'
   import { taskTypeStore, typeStore } from '@hcengineering/task-resources'
-  import { IssueStatus, Project, TimeReportDayType, TrackerEvents, WorkingDaysConfig } from '@hcengineering/tracker'
+  import {
+    buildProjectCopyPlan,
+    IssueStatus,
+    Project,
+    ProjectCopyPlan,
+    TimeReportDayType,
+    TrackerEvents,
+    WorkingDaysConfig
+  } from '@hcengineering/tracker'
   import {
     Button,
     Component,
+    DropdownLabels,
     EditBox,
     Label,
     Toggle,
@@ -58,12 +67,22 @@
   import { deepEqual } from 'fast-equals'
   import { createEventDispatcher } from 'svelte'
 
+  import { applyProjectCopyPlan, loadProjectCopySource, projectCopyClasses } from '../../projectDetails/copy'
+  import { freeIdentifier } from '../../projectDetails/identifier'
+  import ProjectFieldsPopup from '../../projectFields/ProjectFieldsPopup.svelte'
+  import ArchivedItemsPopup from '../archive/ArchivedItemsPopup.svelte'
+  import WebhooksPopup from '../webhooks/WebhooksPopup.svelte'
+  import WorkflowsPopup from '../workflows/WorkflowsPopup.svelte'
+  import ProjectSettings from './ProjectSettings.svelte'
+
   import tracker from '../../plugin'
   import StatusSelector from '../issues/StatusSelector.svelte'
   import { workingDaysUpdate } from '../gantt/lib/working-days-editor'
   import WorkingDaysEditor from './WorkingDaysEditor.svelte'
 
   export let project: Project | undefined = undefined
+  // "Copy project": a new project that starts as a copy of this one (its fields, views, workflows and charts)
+  export let copyFrom: Project | undefined = undefined
   export let namePlaceholder: string = ''
   export let descriptionPlaceholder: string = ''
 
@@ -71,27 +90,30 @@
   const hierarchy = client.getHierarchy()
   const projectsQuery = createQuery()
 
+  // What the form starts from: the project that is edited, or the one that is copied
+  const base: Project | undefined = project ?? copyFrom
+
   let name: string = project?.name ?? namePlaceholder
-  let description: string = project?.description ?? descriptionPlaceholder
+  let description: string = base?.description ?? descriptionPlaceholder
   let isPrivate: boolean = project?.private ?? false
-  let icon: Asset | undefined = project?.icon ?? tracker.icon.Home
-  let color = project?.color ?? getColorNumberByText(name)
-  let isColorSelected = false
-  let defaultAssignee: Ref<Employee> | null | undefined = project?.defaultAssignee ?? null
+  let icon: Asset | undefined = base?.icon ?? tracker.icon.Home
+  let color = base?.color ?? getColorNumberByText(name)
+  let isColorSelected = copyFrom !== undefined
+  let defaultAssignee: Ref<Employee> | null | undefined = base?.defaultAssignee ?? null
   let members: AccountUuid[] =
     project?.members !== undefined ? hierarchy.clone(project.members) : [getCurrentAccount().uuid]
   let owners: AccountUuid[] =
     project?.owners !== undefined ? hierarchy.clone(project.owners) : [getCurrentAccount().uuid]
   let projectsIdentifiers = new Set<string>()
   let isSaving = false
-  let defaultStatus: Ref<IssueStatus> | undefined = project?.defaultIssueStatus
+  let defaultStatus: Ref<IssueStatus> | undefined = base?.defaultIssueStatus
   // Flat copy: the editor mutates the object; the query-cache doc stays
   // untouched until save.
   let workingDaysConfig: WorkingDaysConfig | undefined =
-    project?.workingDaysConfig !== undefined ? { ...project.workingDaysConfig } : undefined
+    base?.workingDaysConfig !== undefined ? { ...base.workingDaysConfig } : undefined
   let rolesAssignment: RolesAssignment | undefined
 
-  let typeId: Ref<ProjectType> | undefined = project?.type
+  let typeId: Ref<ProjectType> | undefined = base?.type
   $: typeType = typeId !== undefined ? $typeStore.get(typeId) : undefined
   $: membersPersons = members.map((m) => $employeeRefByAccountUuidStore.get(m)).filter(notEmpty)
   $: readOnlyGuestOwnerExcludeItems = getAnonymousRefs($employeeRefByAccountUuidStore, owners)
@@ -114,6 +136,46 @@
   }
 
   $: isNew = project == null
+
+  // ---- copy and templates ----
+  // "Copy project" starts from the copied project; a new project can start from a template instead. Either way the
+  // fields, views, workflows and Insights charts are copied together with the project (see buildProjectCopyPlan).
+  // Issues are never copied.
+  const isCopy = copyFrom !== undefined
+  const templatesQuery = createQuery()
+  let templates: Project[] = []
+  let templateId: Ref<Project> | undefined = copyFrom?._id
+  let identifierPicked = copyFrom === undefined
+
+  $: if (project == null && copyFrom === undefined) {
+    templatesQuery.query(tracker.class.Project, { isTemplate: true, archived: false }, (res) => {
+      templates = res
+    })
+  }
+  $: templateItems = templates.map((it) => ({ id: it._id as string, label: it.name }))
+  $: source = copyFrom ?? templates.find((it) => it._id === templateId)
+
+  function handleTemplateChange (evt: CustomEvent<string | undefined>): void {
+    const chosen = templates.find((it) => it._id === evt.detail)
+    templateId = chosen?._id
+    if (chosen !== undefined) {
+      // The workflow statuses of the template belong to its project type
+      typeId = chosen.type
+      defaultStatus = chosen.defaultIssueStatus
+    }
+  }
+
+  if (copyFrom !== undefined) {
+    void translate(tracker.string.ProjectCopyName, { name: copyFrom.name }, $themeStore.language).then((res) => {
+      name = res
+    })
+  }
+
+  // A copy gets a free identifier derived from the one of the copied project
+  $: if (!identifierPicked && copyFrom !== undefined && projectsIdentifiers.size > 0) {
+    identifier = freeIdentifier(copyFrom.identifier, projectsIdentifiers)
+    identifierPicked = true
+  }
 
   async function handleSave (): Promise<void> {
     if (isNew) {
@@ -279,7 +341,31 @@
         .notMatch(tracker.class.Project, { identifier: projectData.identifier.toUpperCase() })
 
       isSaving = true
-      await ops.createDoc(tracker.class.Project, core.space.Space, { ...projectData, type: typeId }, projectId)
+      let plan: ProjectCopyPlan | undefined
+      if (source !== undefined) {
+        const account = getCurrentAccount()
+        plan = buildProjectCopyPlan(await loadProjectCopySource(client, source), {
+          target: projectId,
+          now: Date.now(),
+          generateId: () => generateId(),
+          classes: projectCopyClasses,
+          author: { account: account.uuid, person: account.primarySocialId }
+        })
+      }
+      const details = plan?.projectData
+      await ops.createDoc(
+        tracker.class.Project,
+        core.space.Space,
+        {
+          ...projectData,
+          shortDescription: details?.shortDescription,
+          readme: details?.readme,
+          workingDaysConfig: projectData.workingDaysConfig ?? details?.workingDaysConfig,
+          type: typeId
+        },
+        projectId
+      )
+      if (plan !== undefined) await applyProjectCopyPlan(ops, plan)
       const succeeded = await ops.commit()
       Analytics.handleEvent(TrackerEvents.ProjectCreated, {
         ok: succeeded.result,
@@ -393,7 +479,7 @@
 </script>
 
 <Card
-  label={isNew ? tracker.string.NewProject : tracker.string.EditProject}
+  label={isCopy ? tracker.string.CopyProject : isNew ? tracker.string.NewProject : tracker.string.EditProject}
   okLabel={isNew ? presentation.string.Create : presentation.string.Save}
   okAction={handleSave}
   {canSave}
@@ -411,7 +497,7 @@
 
       <Component
         is={task.component.ProjectTypeSelector}
-        disabled={!isNew}
+        disabled={!isNew || source !== undefined}
         props={{
           descriptors: [tracker.descriptors.ProjectType],
           type: typeId,
@@ -422,6 +508,36 @@
         on:change={handleTypeChange}
       />
     </div>
+    {#if isNew && (isCopy || templates.length > 0)}
+      <div class="antiGrid-row" data-id="project-template-row">
+        <div class="antiGrid-row__header">
+          <Label label={tracker.string.ProjectFromTemplate} />
+        </div>
+        {#if copyFrom !== undefined}
+          <span class="overflow-label">{copyFrom.name}</span>
+        {:else}
+          <DropdownLabels
+            items={templateItems}
+            selected={templateId}
+            allowDeselect
+            autoSelect={false}
+            label={tracker.string.ProjectNoTemplate}
+            kind={'regular'}
+            size={'large'}
+            on:selected={handleTemplateChange}
+          />
+        {/if}
+      </div>
+      {#if source !== undefined}
+        <div class="antiGrid-row">
+          <div class="antiGrid-row__header withDesciption">
+            <Label label={tracker.string.ProjectIncludeIssues} />
+            <span><Label label={tracker.string.ProjectIncludeIssuesHint} /></span>
+          </div>
+          <Toggle id={'project-include-issues'} on={false} disabled />
+        </div>
+      {/if}
+    {/if}
     <div class="antiGrid-row">
       <div class="antiGrid-row__header">
         <Label label={tracker.string.ProjectTitle} />
@@ -434,7 +550,7 @@
           kind={'large-style'}
           autoFocus
           on:input={() => {
-            if (isNew) {
+            if (isNew && !isCopy) {
               identifier = name.toLocaleUpperCase().replaceAll('-', '_').replaceAll(' ', '_').substring(0, 5)
               color = isColorSelected ? color : getColorNumberByText(name)
             }
@@ -614,6 +730,68 @@
         />
       </div>
     {/each}
+
+    {#if project != null}
+      <div class="antiGrid-row">
+        <div class="antiGrid-row__header">
+          <Label label={tracker.string.ProjectSettings} />
+        </div>
+        <Button
+          label={tracker.string.ProjectSettings}
+          kind={'regular'}
+          size={'large'}
+          dataId={'btn-project-settings'}
+          on:click={() => showPopup(ProjectSettings, { projectId: project?._id }, 'top')}
+        />
+      </div>
+      <div class="antiGrid-row">
+        <div class="antiGrid-row__header">
+          <Label label={tracker.string.ProjectFields} />
+        </div>
+        <Button
+          label={tracker.string.ProjectFields}
+          kind={'regular'}
+          size={'large'}
+          on:click={() => showPopup(ProjectFieldsPopup, { project }, 'top')}
+        />
+      </div>
+      <div class="antiGrid-row">
+        <div class="antiGrid-row__header">
+          <Label label={tracker.string.Workflows} />
+        </div>
+        <Button
+          label={tracker.string.Workflows}
+          kind={'regular'}
+          size={'large'}
+          dataId={'btn-project-workflows'}
+          on:click={() => showPopup(WorkflowsPopup, { project }, 'top')}
+        />
+      </div>
+      <div class="antiGrid-row">
+        <div class="antiGrid-row__header">
+          <Label label={tracker.string.ProjectWebhooks} />
+        </div>
+        <Button
+          label={tracker.string.ProjectWebhooks}
+          kind={'regular'}
+          size={'large'}
+          dataId={'btn-project-webhooks'}
+          on:click={() => showPopup(WebhooksPopup, { project }, 'top')}
+        />
+      </div>
+      <div class="antiGrid-row">
+        <div class="antiGrid-row__header">
+          <Label label={tracker.string.ArchivedItems} />
+        </div>
+        <Button
+          label={tracker.string.ArchivedItems}
+          kind={'regular'}
+          size={'large'}
+          dataId={'btn-project-archived-items'}
+          on:click={() => showPopup(ArchivedItemsPopup, { project }, 'top')}
+        />
+      </div>
+    {/if}
   </div>
 </Card>
 

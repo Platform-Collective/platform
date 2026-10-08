@@ -118,6 +118,21 @@ export interface FilteredView extends Doc {
   users: AccountUuid[]
   createdBy: PersonId
   attachedTo: string
+
+  // Project saved views (Tracker, GitHub-Projects style). All fields are optional and additive,
+  // so filters saved before they existed keep working unchanged.
+
+  // Space (project) the view is a tab of. Project views are shared by every member of the project
+  project?: Ref<Space>
+  // Ordered visible columns of the view's layout (overrides the global ViewletPreference)
+  config?: (BuildModelKey | string)[]
+  // Position of the tab, ascending
+  order?: number
+  // JSON of host-specific filter state that is not a Filter[] (e.g. custom field filters)
+  extra?: string
+  // GitHub-style filter string (`status:Done label:bug`), see view-resources/src/filter/grammar.
+  // Filters saved before it existed keep using `filters`/`extra` and have no filter string
+  filterQuery?: string
 }
 
 /**
@@ -879,6 +894,8 @@ export interface CustomObjectLinkProvider extends Class<Doc> {
  */
 export interface ViewOptionsModel {
   groupBy: string[]
+  // Group-by a new view starts with; the first of `groupBy` when absent
+  defaultGroupBy?: string
   orderBy: OrderOption[]
   other: ViewOptionModel[]
   groupDepth?: number

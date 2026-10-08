@@ -226,6 +226,7 @@ const view = plugin(viewId, {
     Created: '' as IntlString,
     Delete: '' as IntlString,
     Then: '' as IntlString,
+    ThenBy: '' as IntlString,
     Or: '' as IntlString,
     Subscribed: '' as IntlString,
     HyperlinkPlaceholder: '' as IntlString,

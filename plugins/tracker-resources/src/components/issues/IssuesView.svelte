@@ -1,39 +1,156 @@
 <script lang="ts">
-  import { DocumentQuery, Ref, Space, WithLookup } from '@hcengineering/core'
-  import { Asset, IntlString, translateCB } from '@hcengineering/platform'
-  import { ComponentExtensions } from '@hcengineering/presentation'
-  import { Issue, TrackerEvents } from '@hcengineering/tracker'
+  import { Doc, DocumentQuery, FindOptions, mergeQueries, Ref, SortingOrder, Space, WithLookup } from '@hcengineering/core'
+  import { Asset, getMetadata, getResource, IntlString, translate, translateCB } from '@hcengineering/platform'
+  import contact, { Employee, getCurrentEmployee, getName, type PermissionsStore } from '@hcengineering/contact'
+  import { Analytics } from '@hcengineering/analytics'
+  import { ComponentExtensions, createQuery, getClient, IconDownload } from '@hcengineering/presentation'
+  import tags, { TagElement, TagReference } from '@hcengineering/tags'
+  import task, { getTaskTypeStates } from '@hcengineering/task'
+  import { taskTypeStore } from '@hcengineering/task-resources'
+  import {
+    buildViewTsv,
+    draftQuery,
+    EffectiveWorkflow,
+    Issue,
+    issueLinkSegment,
+    Iteration,
+    Project,
+    ProjectStatus,
+    ProjectStatusUpdate,
+    TrackerEvents,
+    toIterationRanges,
+    viewExportFileName
+  } from '@hcengineering/tracker'
   import {
     Button,
+    addNotification,
+    ButtonIcon,
+    eventToHTMLElement,
     IconAdd,
+    IconCopy,
+    IconDescription,
+    IconInfo,
+    IconMoreH,
+    IconSettings,
     IModeSelector,
+    Label,
+    Menu,
     ModeSelector,
+    NotificationSeverity,
     SearchInputAdvanced,
     showPopup,
-    themeStore
+    themeStore,
+    type Action,
+    type DropdownTextItem
   } from '@hcengineering/ui'
-  import { ViewOptions, Viewlet } from '@hcengineering/view'
+  import view, { BuildModelKey, ViewOptions, Viewlet } from '@hcengineering/view'
   import {
+    canChangeAttribute,
+    canEditSpace,
+    CellGrid,
+    clientViewExtension,
+    filterGrammar,
     FilterBar,
     FilterButton,
+    FilterQueryBar,
     InlineFilterChips,
+    SavedViewBar,
     SpaceHeader,
     ViewletContentView,
     ViewletSettingButton,
     filterStore,
+    getCategories,
+    getClientViewExtension,
+    getResultOptions,
+    getResultQuery,
     getViewOptions,
     rawSearchTextStore,
     resultIssueCountStore,
     resetResultCount,
     searchHighlightEnabledStore,
+    setFilters,
+    setViewOptions,
     shouldShowSearchEmptyState,
-    viewOptionStore
+    SimpleNotification,
+    statusStore,
+    tableEdit,
+    viewOptionStore,
+    type ClientGroupSummary,
+    type ClientHierarchy
   } from '@hcengineering/view-resources'
   import { onDestroy } from 'svelte'
+  import { readable, writable } from 'svelte/store'
+  import { readBoardConfig, resolveBoardDimensions } from '../../board/config'
+  import { createIssueCellColumns, runIssueOps, type IssueCellLookups, type IssueLabelRef } from '../../bulkEdit/issueCells'
+  import { readFieldSums, resolveFieldSums, sumProjection, type SummableField } from '../../fieldSum/config'
+  import { loadSummableFields } from '../../fieldSum/load'
+  import { isHierarchyEnabled, newViewHierarchyOptions } from '../../hierarchy/config'
+  import { expansionStorageKey } from '../../hierarchy/expansion'
+  import { expansionStore } from '../../hierarchy/expansionStore'
+  import { groupStateScope } from '../../grouping/levels'
+  import { buildProgressIndex, type SubIssueRef } from '../../hierarchy/progress'
+  import { buildIssueFilterSchema, customFilterToQuery, type NamedOption } from '../../issueFilter'
+  import { generateIssueShortLink } from '../../issues'
+  import { iterationsByFieldKey, sharedIterationsStore } from '../../iterations/iterationsStore'
   import tracker from '../../plugin'
+  import CustomFieldFilterButton from '../../projectFields/CustomFieldFilterButton.svelte'
+  import { createCustomFieldViewExtension, customFieldFilterStore } from '../../projectFields/customFieldView'
+  import { sharedProjectFieldsStore } from '../../projectFields/projectFieldsStore'
+  import { buildExportColumns, type ExportEnv } from '../../viewExport/columns'
+  import { downloadTsv } from '../../viewExport/download'
+  import { exportGroupKeys } from '../../viewExport/groups'
+  import { loadExportRows } from '../../viewExport/rows'
+  import { requestWorkflowRun } from '../../workflows/save'
+  import { workflowsStore } from '../../workflows/store'
+  import {
+    activeFilterCount,
+    buildFiltersPredicate,
+    exceedsScanLimit,
+    isFilterableType,
+    isGroupableType,
+    parseCustomFieldViewKey,
+    resolveScanLimit,
+    type CustomFieldFilter
+  } from '../../projectFields/query'
+  import { buildRegistry } from '../../projectFields/registry'
+  import {
+    readSliceConfig,
+    sanitizeSliceValues,
+    selectAllValues,
+    toggleSliceValue,
+    withSliceConfig,
+    withSliceField,
+    type SliceConfig
+  } from '../../slice/config'
+  import {
+    buildSliceFields,
+    defaultSliceField,
+    listsEmptyValues,
+    resolveSliceField,
+    sliceFieldId,
+    sliceProjection
+  } from '../../slice/fields'
+  import { collectSliceSums } from '../../slice/sums'
+  import { collectSliceValues, createSlicePredicate, optionIdSet } from '../../slice/values'
+  import { issuePriorities } from '../../types'
+  import { listIssueStatusOrder } from '../../utils'
+  import ArchivedItemsPopup from '../archive/ArchivedItemsPopup.svelte'
   import CreateIssue from '../CreateIssue.svelte'
+  import AddItemRow from '../draft/AddItemRow.svelte'
+  import FieldSumFooter from '../fieldSum/FieldSumFooter.svelte'
+  import FieldSumGroupSummary from '../fieldSum/FieldSumGroupSummary.svelte'
   import GanttToolbarBar from '../gantt/GanttToolbarBar.svelte'
+  import IconInsights from '../insights/IconInsights.svelte'
+  import InsightsPanel from '../insights/InsightsPanel.svelte'
   import SearchEmptyState from '../SearchEmptyState.svelte'
+  import CreateProject from '../projects/CreateProject.svelte'
+  import ProjectDetailsPanel from '../projects/ProjectDetailsPanel.svelte'
+  import ProjectSettings from '../projects/ProjectSettings.svelte'
+  import ProjectStatusPill from '../projects/ProjectStatusPill.svelte'
+  import ProjectStatusUpdatePopup from '../projects/ProjectStatusUpdatePopup.svelte'
+  import IconSlice from '../slice/IconSlice.svelte'
+  import SlicePanel from '../slice/SlicePanel.svelte'
+  import ProjectViewOptionsSection from '../view/ProjectViewOptionsSection.svelte'
 
   function newIssue (): void {
     showPopup(CreateIssue, { space, shouldSaveDraft: true }, 'top')
@@ -47,6 +164,20 @@
   export let modeSelectorProps: IModeSelector | undefined = undefined
 
   let viewlet: WithLookup<Viewlet> | undefined = undefined
+  const viewletQuery = { attachTo: tracker.class.Issue, variant: { $nin: ['subissue', 'component', 'milestone'] } }
+  // The layouts of a project view: Table (the list), Board, Roadmap (the three GitHub Projects layouts), Calendar and Workload
+  const viewLayouts = [
+    view.viewlet.List,
+    tracker.viewlet.Kanban,
+    tracker.viewlet.Roadmap,
+    tracker.viewlet.Calendar,
+    tracker.viewlet.Workload
+  ]
+  // Columns of the active saved view and its bar, which also keeps the unsaved column edits
+  let viewConfig: Array<BuildModelKey | string> | undefined
+  let savedViewBar: SavedViewBar | undefined
+  // The active saved view, the key of the state the viewer keeps per view (expanded sub-issues)
+  let activeViewId: string | undefined
   const viewlets: WithLookup<Viewlet>[] | undefined = undefined
   let viewOptions: ViewOptions | undefined
 
@@ -60,9 +191,690 @@
   // resolve a viewOptions object inline so ViewletContentView mounts
   // (without it the Gantt component never renders).
   $: isGanttMode = viewlet?.descriptor === tracker.viewlet.Gantt
+  // The roadmap has its own toolbar for dates, markers and fields; its columns are not configurable
+  $: isRoadmapMode = viewlet?.descriptor === tracker.viewlet.Roadmap
+  // The calendar has its own toolbar for dates and navigation; its columns are the fields shown on an item and it has no groups
+  $: isCalendarMode = viewlet?.descriptor === tracker.viewlet.Calendar
+  // The workload has its own toolbar for dates, load measure and capacity; its rows are the assignees, so there is no
+  // grouping, sorting or column list
+  $: isWorkloadMode = viewlet?.descriptor === tracker.viewlet.Workload
+  // The board keeps its own settings (column field, hidden columns, limits) in the Customize View popup;
+  // its "Group by" is the swimlanes
+  $: isBoardMode = viewlet?.descriptor === tracker.viewlet.Kanban
+  $: isTableMode = viewlet?.descriptor === view.viewlet.List
   $: if (isGanttMode && viewlet !== undefined) {
     viewOptions = getViewOptions(viewlet, $viewOptionStore)
   }
+
+  // Custom fields of the project (plan D1): optional columns, group-by / order-by keys and a filter.
+  // The values live in an untyped record, so all of it runs on the client over a bounded scan.
+  const emptyRegistry = readable(buildRegistry([]))
+  const noFilters = readable<CustomFieldFilter[]>([])
+  const noIterations = readable<Iteration[]>([])
+  const scanQuery = createQuery()
+
+  $: project = space as Ref<Project> | undefined
+  $: registry = project !== undefined ? sharedProjectFieldsStore(project) : emptyRegistry
+  $: iterationsStore = project !== undefined ? sharedIterationsStore(project) : noIterations
+  // Iterations of each iteration field, by the key of the field
+  $: iterationsByKey = iterationsByFieldKey($iterationsStore, $registry.fields)
+  $: filtersStore = project !== undefined ? customFieldFilterStore(project) : noFilters
+  $: filters = $filtersStore
+  $: hasFilterableFields = $registry.fields.some((f) => isFilterableType(f.type))
+  $: scanLimit = resolveScanLimit(getMetadata(tracker.metadata.CustomFieldScanLimit))
+
+  // The board groups by custom fields over all of its issues, it does not use the bounded scan
+  $: usesCustomKeys =
+    !isBoardMode &&
+    ((viewOptions?.groupBy ?? []).some((it) => parseCustomFieldViewKey(it) !== undefined) ||
+      parseCustomFieldViewKey(viewOptions?.orderBy?.[0] ?? '') !== undefined)
+  // The custom field rules are dormant while a filter string exists (the string is authoritative)
+  $: filtersActive = activeFilterCount(filters) > 0 && !stringFilterActive
+  // What needs custom fields or the filter string on the client; the slice panel needs the scan to count the values
+  $: customNeedsScan = ($registry.fields.length > 0 && (filtersActive || usesCustomKeys)) || residual !== undefined
+  $: needsScan = customNeedsScan || slicePanelOpen
+
+  // ---- GitHub-style filter string (plan D3) ----
+  // The string is the view's filter: it is saved with the saved view, and it is authoritative. The part the
+  // server can index is compiled into the query, the rest is evaluated on the client over a bounded scan,
+  // like the custom field rules. While a string exists the custom field filter button is hidden and its rules
+  // are not applied; applying a string folds active rules into it, so nothing stays active unseen.
+  const client = getClient()
+  let filterQuery = ''
+
+  let assignees: NamedOption[] = []
+  let components: NamedOption[] = []
+  let milestones: NamedOption[] = []
+  let labels: NamedOption[] = []
+  let labelRefs: Array<{ issue: string, label: string }> = []
+  // Labels with what a bulk edit needs to add or remove them
+  let labelElements: Array<{ id: string, title: string, color: number }> = []
+  let labelRefsByIssue = new Map<string, IssueLabelRef[]>()
+  let priorities: NamedOption[] = []
+  const assigneeQuery = createQuery()
+  const componentQuery = createQuery()
+  const milestoneQuery = createQuery()
+  const labelQuery = createQuery()
+  const labelRefQuery = createQuery()
+
+  assigneeQuery.query(contact.mixin.Employee, { active: true }, (res: Employee[]) => {
+    const hierarchy = client.getHierarchy()
+    assignees = res.map((e) => ({ id: e._id, name: getName(hierarchy, e) }))
+  })
+  labelQuery.query(tags.class.TagElement, { targetClass: tracker.class.Issue }, (res: TagElement[]) => {
+    labels = res.map((e) => ({ id: e._id, name: e.title }))
+    labelElements = res.map((e) => ({ id: e._id, title: e.title, color: e.color }))
+  })
+  $: if (project !== undefined) {
+    componentQuery.query(tracker.class.Component, { space: project }, (res) => {
+      components = res.map((e) => ({ id: e._id, name: e.label }))
+    })
+    milestoneQuery.query(tracker.class.Milestone, { space: project }, (res) => {
+      milestones = res.map((e) => ({ id: e._id, name: e.label }))
+    })
+    labelRefQuery.query(
+      tags.class.TagReference,
+      { space: project, attachedToClass: tracker.class.Issue },
+      (res: TagReference[]) => {
+        labelRefs = res.map((r) => ({ issue: r.attachedTo, label: r.tag }))
+        const byIssue = new Map<string, IssueLabelRef[]>()
+        for (const r of res) {
+          const list = byIssue.get(r.attachedTo) ?? []
+          list.push({ _id: r._id, tag: r.tag, title: r.title, color: r.color })
+          byIssue.set(r.attachedTo, list)
+        }
+        labelRefsByIssue = byIssue
+      },
+      { projection: { attachedTo: 1, tag: 1, title: 1, color: 1 } }
+    )
+  }
+
+  async function updatePriorities (lang: string): Promise<void> {
+    priorities = await Promise.all(
+      Object.entries(issuePriorities).map(
+        async ([value, { label }]) => ({ id: Number(value), name: await translate(label, {}, lang) })
+      )
+    )
+  }
+  $: void updatePriorities($themeStore.language)
+
+  // ---- spreadsheet-style editing of the table cells (plan 2.5) ----
+  // Values a pasted text can be turned into follow the project that is shown; for several projects only
+  // what is common to all of them (statuses, priorities, assignees, labels) is available.
+  let permissions: PermissionsStore | undefined
+  let unsubscribePermissions: (() => void) | undefined
+  void getResource(contact.store.Permissions).then((store) => {
+    unsubscribePermissions = store.subscribe((value) => {
+      permissions = value
+    })
+  })
+  onDestroy(() => {
+    unsubscribePermissions?.()
+  })
+
+  function canChangeIssueAttribute (issue: Issue, attribute: string): boolean {
+    const attr = client.getHierarchy().findAttribute(issue._class, attribute)
+    if (attr === undefined || permissions === undefined) return true
+    return canChangeAttribute(attr, issue.space, permissions, issue._class)
+  }
+
+  let cellLookups: IssueCellLookups
+  $: cellLookups = {
+    statuses: (issue) =>
+      (getTaskTypeStates(issue.kind, $taskTypeStore, $statusStore.byId) ?? []).map((s) => ({ id: s._id, label: s.name })),
+    priorities: priorities.map((p) => ({ id: Number(p.id), label: p.name })),
+    assignees: assignees.map((a) => ({ id: String(a.id), label: a.name })),
+    components: components.map((c) => ({ id: String(c.id), label: c.name })),
+    milestones: milestones.map((m) => ({ id: String(m.id), label: m.name })),
+    labels: labelElements,
+    labelRefs: (id) => labelRefsByIssue.get(id) ?? [],
+    fields: $registry.byKey,
+    iterations: (field) => iterationsByKey.get(field.key) ?? [],
+    canEdit: canChangeIssueAttribute
+  }
+  const cellAdapter = {
+    column: createIssueCellColumns(() => cellLookups),
+    run: async (ops: readonly tableEdit.EditOp[]) => {
+      await runIssueOps(client, ops)
+    }
+  }
+  // Only the table layout renders cells that can be edited like this
+  $: cellAdapterActive = viewlet?.descriptor === view.viewlet.List ? cellAdapter : undefined
+
+  $: statuses = [...$statusStore.byId.values()].filter((s) => s.ofAttribute === tracker.attribute.IssueStatus)
+  $: closedStatuses = new Set<string>(
+    statuses.filter((s) => s.category === task.statusCategory.Won || s.category === task.statusCategory.Lost).map((s) => s._id)
+  )
+  $: filterSchema = buildIssueFilterSchema({
+    statuses: statuses.map((s) => ({ id: s._id, name: s.name })),
+    priorities,
+    assignees,
+    components,
+    milestones,
+    labels,
+    labelRefs,
+    customFields: $registry.fields,
+    iterations: $iterationsStore,
+    noParentId: tracker.ids.NoParent
+  })
+
+  // `now` is taken when the filter is compiled, so `@today` follows the day the filter was applied
+  $: filterCtx = {
+    now: Date.now(),
+    me: getCurrentEmployee() as string,
+    closedStatuses,
+    noParentId: tracker.ids.NoParent as string,
+    // `@current`, `@next` and `@previous` resolve against the iterations of the project; breaks never match
+    iterations: (fieldKey: string) => toIterationRanges(iterationsByKey.get(fieldKey) ?? [])
+  } satisfies filterGrammar.FilterContext
+  $: reservedKeys = new Set(Object.keys(resultQuery).filter((k) => !k.startsWith('$')))
+  $: stringFilterActive = filterQuery.trim() !== ''
+  $: parsedFilter = stringFilterActive ? filterGrammar.parseFilter(filterQuery, filterSchema) : undefined
+  // An invalid string is not applied; the filter bar shows the error
+  $: split =
+    parsedFilter?.ok === true ? filterGrammar.splitServerClient(parsedFilter.value, filterCtx, reservedKeys) : undefined
+  $: stringServerQuery = split?.query ?? {}
+  $: residual = split?.residual
+  $: residualPredicate = filterGrammar.createPredicate(residual, filterCtx)
+
+  function applyFilterQuery (e: CustomEvent<string>): void {
+    let next = e.detail
+    if (project !== undefined && next.trim() !== '' && activeFilterCount(filters) > 0) {
+      next = filterGrammar.joinAnd(next, customFilterToQuery(filters, $registry.byKey, (key) => iterationsByKey.get(key) ?? []))
+      customFieldFilterStore(project).set([])
+    }
+    filterQuery = next
+  }
+
+  let scanned: Array<Partial<Issue>> = []
+  let scanReady = false
+
+  function withoutLookup (q: DocumentQuery<Issue>): DocumentQuery<Issue> {
+    const res: DocumentQuery<Issue> = {}
+    for (const [k, v] of Object.entries(q)) {
+      if (!k.startsWith('$lookup.')) (res as any)[k] = v
+    }
+    return res
+  }
+
+  // The scan is capped at limit + 1 so that exceeding the limit is detected without loading everything
+  $: if (needsScan) {
+    const projection: Record<string, 1> = { _id: 1, customFields: 1 }
+    for (const key of filterGrammar.referencedProperties(residual)) projection[key] = 1
+    if (slicePanelOpen && sliceSpec !== undefined) {
+      for (const key of sliceProjection(sliceSpec)) projection[key] = 1
+      // The panel shows the sums of the chosen number fields next to the counts
+      for (const key of sumProjection(fieldSumKeys)) projection[key] = 1
+    }
+    scanQuery.query(
+      tracker.class.Issue,
+      withoutLookup(scopedServerQuery),
+      (res) => {
+        scanned = res
+        scanReady = true
+      },
+      { ...optionsFind, limit: scanLimit + 1, projection }
+    )
+  } else {
+    scanQuery.unsubscribe()
+    scanned = []
+    scanReady = false
+  }
+
+  // Above the limit custom-field filter/sort/group is off; it is never applied to a truncated set
+  $: overLimit = needsScan && scanReady && exceedsScanLimit(scanned.length, scanLimit)
+  $: legacyPredicate = buildFiltersPredicate($registry.byKey, filtersActive ? filters : [], {
+    iterations: (key) => iterationsByKey.get(key) ?? [],
+    now: filterCtx.now
+  })
+  $: basePredicate = (issue: Partial<Issue>): boolean => legacyPredicate(issue) && residualPredicate(issue)
+  $: predicate = (issue: Partial<Issue>): boolean => basePredicate(issue) && slicePredicate(issue)
+  // What the server narrows to: the view's chips and search plus the indexable part of the filter string
+  // Archived items are left out of every view, slice and count unless the filter asks for them (`is:archived`, GitHub's rule)
+  $: archiveScope = filterGrammar.archiveScopeQuery(parsedFilter?.ok === true ? parsedFilter.value : undefined)
+  $: serverQuery = { ...resultQuery, ...stringServerQuery, ...archiveScope } as DocumentQuery<Issue>
+
+  // The view options narrow the result too (hidden sub-issues, archived): the list applies them on its own, a scan that
+  // counts or sums has to apply them as well to see the same issues
+  let optionsQuery: DocumentQuery<Issue> = {}
+  let optionsFind: FindOptions<Issue> = {}
+  $: if (viewlet !== undefined && viewOptions !== undefined) {
+    const model = viewlet.viewOptions?.other
+    void getResultQuery(client.getHierarchy(), {}, model, viewOptions).then((q) => {
+      optionsQuery = q as DocumentQuery<Issue>
+    })
+    void getResultOptions<Issue>(undefined, model, viewOptions).then((o) => {
+      optionsFind = o ?? {}
+    })
+  }
+  $: scopedServerQuery = mergeQueries(optionsQuery, serverQuery)
+  $: clientFilterActive = filtersActive || residual !== undefined || sliceActive
+
+  function buildViewQuery (
+    base: DocumentQuery<Issue>,
+    active: boolean,
+    ready: boolean,
+    over: boolean,
+    scan: Array<Partial<Issue>>,
+    match: (issue: Partial<Issue>) => boolean
+  ): DocumentQuery<Issue> {
+    if (!active || over) return base
+    // Nothing is shown until the first scan arrives instead of flashing unfiltered rows
+    if (!ready) return { ...base, _id: { $in: [] } }
+    return { ...base, _id: { $in: scan.filter(match).map((it) => it._id as Ref<Issue>) } }
+  }
+  $: viewQuery = buildViewQuery(serverQuery, clientFilterActive, scanReady, overLimit, scanned, predicate)
+
+  let emptyLabels = new Map<string, string>()
+  async function updateEmptyLabels (fields: Array<{ key: string, label: string, type: any }>, lang: string): Promise<void> {
+    const entries = await Promise.all(
+      fields
+        .filter((f) => isGroupableType(f.type))
+        .map(async (f) => [f.key, await translate(tracker.string.NoFieldValue, { field: f.label }, lang)] as const)
+    )
+    emptyLabels = new Map(entries)
+  }
+  $: void updateEmptyLabels($registry.fields, $themeStore.language)
+
+  // ---- slice by (GitHub's "Slice by" panel) ----
+  // The panel lists the values of one field with counts; the chosen values narrow the view on top of the filter.
+  // The settings are part of the view (`slice` in its options). The counts and the narrowing are made on the client
+  // over the same bounded scan as the other client-side work, so above the limit the slice is off, never partial.
+  $: sliceAvailable = project !== undefined && (isTableMode || isRoadmapMode || isCalendarMode || isWorkloadMode)
+  $: sliceStored = sliceAvailable ? readSliceConfig(viewOptions) : undefined
+  $: slicePanelOpen = sliceStored !== undefined
+  $: sliceFields = buildSliceFields(filterSchema)
+  // A stored field that does not exist (any more) falls back to the first one, without rewriting the view
+  $: sliceSpec = slicePanelOpen ? (resolveSliceField(sliceStored, sliceFields) ?? defaultSliceField(sliceFields)) : undefined
+  $: sliceConfig = ((): SliceConfig | undefined => {
+    if (sliceStored === undefined || sliceSpec === undefined) return undefined
+    const field = sliceFieldId(sliceSpec)
+    return {
+      field,
+      value: sliceStored.field === field ? sanitizeSliceValues(sliceStored.value, optionIdSet(sliceSpec)) : []
+    }
+  })()
+  $: sliceActive = sliceConfig !== undefined && sliceConfig.value.length > 0
+  $: slicePredicate = sliceSpec !== undefined && sliceActive ? createSlicePredicate(sliceSpec, sliceConfig) : () => true
+
+  let builtinSliceLabels = new Map<string, string>()
+  async function loadSliceLabels (lang: string): Promise<void> {
+    const keys: Array<[string, IntlString]> = [
+      ['status', tracker.string.Status],
+      ['priority', tracker.string.Priority],
+      ['assignee', tracker.string.Assignee],
+      ['label', tracker.string.Labels],
+      ['component', tracker.string.Component],
+      ['milestone', tracker.string.Milestone]
+    ]
+    builtinSliceLabels = new Map(await Promise.all(keys.map(async ([name, key]) => [name, await translate(key, {}, lang)] as const)))
+  }
+  $: void loadSliceLabels($themeStore.language)
+  $: sliceFieldItems = sliceFields.map(
+    (f): DropdownTextItem => ({
+      id: sliceFieldId(f),
+      label: f.source === 'custom' ? f.label : (builtinSliceLabels.get(f.name) ?? f.label)
+    })
+  )
+  $: sliceFieldLabel = sliceFieldItems.find((it) => it.id === sliceConfig?.field)?.label ?? ''
+
+  // Statuses in the order of the workflow: active first, then to do, backlog, done and cancelled
+  $: statusOrder = [...statuses]
+    .sort(
+      (a, b) =>
+        listIssueStatusOrder.indexOf(a.category ?? task.statusCategory.UnStarted) -
+          listIssueStatusOrder.indexOf(b.category ?? task.statusCategory.UnStarted) ||
+        a.name.localeCompare(b.name)
+    )
+    .map((s) => s._id)
+
+  // What the view shows without the slice itself: the counts tell what choosing a value leaves
+  $: sliceBase = slicePanelOpen && scanReady && !overLimit ? scanned.filter(basePredicate) : undefined
+  $: sliceData =
+    sliceBase !== undefined && sliceSpec !== undefined
+      ? collectSliceValues(sliceSpec, sliceBase, {
+        includeEmpty: listsEmptyValues(sliceSpec),
+        keep: sliceConfig?.value,
+        order: sliceSpec.name === 'status' && sliceSpec.source === 'attribute' ? statusOrder : undefined,
+        sortByLabel: ['assignee', 'label', 'component', 'milestone'].includes(sliceSpec.name) && sliceSpec.source === 'attribute'
+      })
+      : undefined
+
+  // The sums of the chosen number fields for every value, shown next to the counts
+  let summableFields: SummableField[] = []
+  $: void loadSummableFields($registry.fields, $themeStore.language).then((res) => {
+    summableFields = res
+  })
+  $: sliceSums =
+    sliceBase !== undefined && sliceSpec !== undefined
+      ? collectSliceSums(sliceSpec, sliceBase, resolveFieldSums(fieldSumKeys, summableFields))
+      : new Map<string, string>()
+
+  function changeSlice (next: SliceConfig | undefined): void {
+    if (viewlet === undefined || viewOptions === undefined) return
+    setViewOptions(viewlet, withSliceConfig(viewOptions, next))
+  }
+
+  function toggleSlicePanel (): void {
+    if (slicePanelOpen) {
+      changeSlice(undefined)
+      return
+    }
+    const first = defaultSliceField(sliceFields)
+    if (first !== undefined) changeSlice({ field: sliceFieldId(first), value: [] })
+  }
+
+  function selectSliceValue (detail: { id: string | undefined, multi: boolean }): void {
+    if (sliceConfig === undefined) return
+    changeSlice(detail.id === undefined ? selectAllValues(sliceConfig) : toggleSliceValue(sliceConfig, detail.id, detail.multi))
+  }
+
+  // ---- project details, status and settings (GitHub: project details sidebar, status updates, settings) ----
+  const statusQuery = createQuery()
+  let latestStatus: ProjectStatusUpdate | undefined
+  let detailsOpen = false
+
+  $: if (project !== undefined) {
+    statusQuery.query(
+      tracker.class.ProjectStatusUpdate,
+      { space: project },
+      (res) => {
+        latestStatus = res[0]
+      },
+      { sort: { createdOn: SortingOrder.Descending }, limit: 1 }
+    )
+  } else {
+    statusQuery.unsubscribe()
+    latestStatus = undefined
+  }
+  $: if (project === undefined) detailsOpen = false
+
+  async function openProjectMenu (ev: MouseEvent): Promise<void> {
+    if (project === undefined) return
+    const doc = await client.findOne(tracker.class.Project, { _id: project })
+    if (doc === undefined) return
+    const canEdit = await canEditSpace(doc)
+    const actions: Action[] = [
+      {
+        label: tracker.string.ProjectSettingsMenu,
+        icon: IconSettings,
+        action: async () => {
+          showPopup(ProjectSettings, { projectId: doc._id }, 'top')
+        }
+      },
+      {
+        label: tracker.string.NewProjectStatusUpdate,
+        icon: IconAdd,
+        action: async () => {
+          showPopup(ProjectStatusUpdatePopup, {
+            project: doc,
+            initialStatus: latestStatus?.status ?? ProjectStatus.OnTrack
+          })
+        }
+      },
+      {
+        label: tracker.string.CopyProject,
+        icon: IconCopy,
+        action: async () => {
+          showPopup(CreateProject, { copyFrom: doc }, 'top')
+        }
+      },
+      {
+        label: tracker.string.ExportViewData,
+        icon: IconDownload,
+        group: 'view',
+        action: async () => {
+          await exportViewData()
+        }
+      },
+      {
+        label: tracker.string.CopyViewLink,
+        icon: view.icon.CopyLink,
+        group: 'view',
+        action: async () => {
+          await savedViewBar?.copyActiveViewLink()
+        }
+      }
+    ]
+    if (canEdit) {
+      actions.push({
+        label: doc.isTemplate === true ? tracker.string.ProjectUnmakeTemplate : tracker.string.ProjectMakeTemplate,
+        icon: IconDescription,
+        action: async () => {
+          await client.update(doc, { isTemplate: doc.isTemplate !== true })
+        }
+      })
+    }
+    showPopup(Menu, { actions }, eventToHTMLElement(ev))
+  }
+
+  // ---- export view data (GitHub's "Export view data") ----
+  // The file has the visible fields of the view in the order of the view and the rows the view shows, in the order it
+  // shows them (sort, then group after group). Sub-issues are on rows of their own, whether the table nests them or not.
+  async function exportHeader (id: string, entry: BuildModelKey | string, lang: string): Promise<string> {
+    if (typeof entry !== 'string' && entry.label !== undefined) return await translate(entry.label, {}, lang)
+    if (id.startsWith('cf_')) return $registry.byKey.get(id.slice(3))?.label ?? id
+    const attribute = client.getHierarchy().findAttribute(tracker.class.Issue, typeof entry === 'string' ? entry : entry.key || id)
+    return attribute !== undefined ? await translate(attribute.label, {}, lang) : id
+  }
+
+  async function exportViewData (): Promise<void> {
+    if (project === undefined || viewlet === undefined || viewOptions === undefined) return
+    const options = viewOptions
+    const lang = $themeStore.language
+    try {
+      // With a filter that is still being evaluated the view shows nothing yet, so there would be nothing to export
+      if (clientFilterActive && !overLimit && !scanReady) throw new Error('The view is not loaded yet')
+      const config: Array<BuildModelKey | string> = viewConfig ?? viewlet.config
+      const headers = new Map<string, string>()
+      for (const entry of config) {
+        const id = typeof entry === 'string' ? entry : (entry.displayProps?.key ?? entry.key)
+        if (id !== '') headers.set(id, await exportHeader(id, entry, lang))
+      }
+      const [title, identifier, url, draftLabel] = await Promise.all([
+        translate(tracker.string.Title, {}, lang),
+        translate(tracker.string.Identifier, {}, lang),
+        translate(tracker.string.ExportColumnUrl, {}, lang),
+        translate(tracker.string.Draft, {}, lang)
+      ])
+      const env: ExportEnv = {
+        cell: (key) => cellAdapter.column(key),
+        label: (id) => headers.get(id) ?? id,
+        taskTypeName: (kind) => $taskTypeStore.get(kind as any)?.name ?? kind,
+        issueUrl: (issue) => generateIssueShortLink(issueLinkSegment(issue)),
+        draftLabel,
+        headers: { title, identifier, url }
+      }
+      const columns = buildExportColumns(config, env)
+      const extension = getClientViewExtension()
+      let board: { columnKey: string, laneKey: string | undefined, subLaneKey?: string } | undefined
+      if (isBoardMode) {
+        const dimensions = resolveBoardDimensions(readBoardConfig(options), options.groupBy, { fields: $registry.fields })
+        board = { columnKey: dimensions.columnKey, laneKey: dimensions.laneKey, subLaneKey: dimensions.subLaneKey }
+      }
+      const { rows } = await loadExportRows(client, tracker.class.Issue, {
+        query: mergeQueries(optionsQuery, viewQuery),
+        options: optionsFind,
+        orderBy: options.orderBy as [string, SortingOrder] | undefined,
+        groupBy: exportGroupKeys({ groupBy: options.groupBy, board }),
+        client:
+          extension !== undefined
+            ? {
+                handlesKey: (key) => extension.handlesKey(key),
+                compare: (key, order) => extension.compare(key, order),
+                getCategories: (key, docs) => extension.getCategories(key, docs, options)
+              }
+            : undefined,
+        getCategories: async (docs, key) => await getCategories(client, tracker.class.Issue, project, docs, key)
+      })
+      const text = buildViewTsv(
+        columns,
+        rows.map((issue) => columns.map((column) => column.value(issue)))
+      )
+      const projectDoc = await client.findOne(tracker.class.Project, { _id: project })
+      const viewName = savedViewBar?.getActiveViewName() ?? ''
+      downloadTsv(text, viewExportFileName(projectDoc?.name ?? '', viewName))
+    } catch (err: any) {
+      Analytics.handleError(err)
+      addNotification(
+        await translate(tracker.string.ExportViewData, {}, lang),
+        await translate(tracker.string.ExportViewDataFailed, {}, lang),
+        SimpleNotification,
+        undefined,
+        NotificationSeverity.Error
+      )
+    }
+  }
+
+  // ---- archived items and workflows ----
+  async function openArchivedItems (): Promise<void> {
+    if (project === undefined) return
+    const doc = await client.findOne(tracker.class.Project, { _id: project })
+    if (doc !== undefined) showPopup(ArchivedItemsPopup, { project: doc }, 'top')
+  }
+
+  // The filter workflows (auto-archive) are evaluated by the server when something changes; there is no timer, so
+  // opening a project is also a moment to ask for it (once per session)
+  const noWorkflows = readable<EffectiveWorkflow[]>([])
+  $: workflowList = project !== undefined ? workflowsStore(project) : noWorkflows
+  $: if (project !== undefined) void requestWorkflowRun(client, project, $workflowList)
+
+  // ---- insights (GitHub's "Insights": current charts of the project) ----
+  // The page covers the view while it is open (its own header has the way back); the view keeps its state, so nothing
+  // the user has not saved is lost. Opening the issues behind a bar applies that bar's filter to the view and shows it.
+  let insightsOpen = false
+  $: if (project === undefined) insightsOpen = false
+
+  function openFromInsights (e: CustomEvent<{ filter: string }>): void {
+    // The chart is independent of the filters of the view, so its issues are shown by those of the chart alone
+    setFilters([])
+    if (project !== undefined) customFieldFilterStore(project).set([])
+    if (sliceStored !== undefined) changeSlice(undefined)
+    filterQuery = e.detail.filter
+    insightsOpen = false
+  }
+
+  // ---- sub-issue hierarchy (GitHub's "Show hierarchy") ----
+  // Sub-issues are nested under their parents in the table of a view that turned it on. The rows are made by the
+  // list (see ClientHierarchy); here the view says how to find the parent, where the expanded rows are kept and
+  // what the progress of a parent is. The tree needs the whole group, so above the scan limit it is off, with a note.
+  const hierarchyCountQuery = createQuery()
+  const progressQuery = createQuery()
+  let hierarchyTotal = 0
+  let progressSubs: SubIssueRef[] = []
+  let progressComplete = true
+  let progressTemplate = ''
+
+  $: hierarchyOn = project !== undefined && isTableMode && isHierarchyEnabled(viewOptions)
+  $: if (hierarchyOn && project !== undefined) {
+    hierarchyCountQuery.query(
+      tracker.class.Issue,
+      withoutLookup(scopedServerQuery),
+      (res) => {
+        hierarchyTotal = res.total
+      },
+      { ...optionsFind, limit: 1, total: true, projection: { _id: 1 } }
+    )
+    // The progress counts every sub-issue of the project, whether the view shows it or not
+    progressQuery.query(
+      tracker.class.Issue,
+      { space: project, attachedTo: { $ne: tracker.ids.NoParent } },
+      (res) => {
+        progressComplete = !exceedsScanLimit(res.length, scanLimit)
+        progressSubs = res.map((it) => ({ attachedTo: it.attachedTo as string, status: it.status as string }))
+      },
+      { limit: scanLimit + 1, projection: { _id: 1, attachedTo: 1, status: 1 } }
+    )
+  } else {
+    hierarchyCountQuery.unsubscribe()
+    progressQuery.unsubscribe()
+    hierarchyTotal = 0
+    progressSubs = []
+  }
+  $: progressIndex = buildProgressIndex(progressSubs, closedStatuses, tracker.ids.NoParent as string)
+  $: hierarchyTooLarge = hierarchyOn && exceedsScanLimit(hierarchyTotal, scanLimit)
+
+  // The text has the numbers put in per call, so that it is translated once
+  $: void translate(tracker.string.HierarchyProgress, { done: '{{done}}', total: '{{total}}' }, $themeStore.language).then((res) => {
+    progressTemplate = res
+  })
+  const describeStore = writable<(doc: Doc) => string | undefined>(() => undefined)
+  $: describeStore.set((doc) => {
+    const progress = progressComplete ? progressIndex.get(doc._id) : undefined
+    return progress === undefined || progressTemplate === ''
+      ? undefined
+      : progressTemplate.replace('{{done}}', String(progress.done)).replace('{{total}}', String(progress.total))
+  })
+
+  const parentOfIssue = (doc: Doc): string | undefined => {
+    const parent = (doc as Issue).attachedTo as string | undefined
+    return parent === undefined || parent === (tracker.ids.NoParent as string) ? undefined : parent
+  }
+  let hierarchy: ClientHierarchy | undefined
+  $: if (hierarchyOn && !hierarchyTooLarge && project !== undefined && activeViewId !== undefined) {
+    const expansion = expansionStore(expansionStorageKey(project, activeViewId))
+    hierarchy = {
+      isEnabled: isHierarchyEnabled,
+      parentOf: parentOfIssue,
+      expanded: expansion,
+      toggle: expansion.toggle,
+      describe: describeStore
+    }
+  } else {
+    hierarchy = undefined
+  }
+
+  // ---- field sum (GitHub's "Field sum") ----
+  // Sums of number fields in the group headers (the list shows them for the views that chose fields), and the
+  // total of the whole view below the list.
+  const groupSummary: ClientGroupSummary = {
+    isEnabled: (options) => readFieldSums(options).length > 0,
+    projection: (options) => sumProjection(readFieldSums(options)),
+    component: FieldSumGroupSummary
+  }
+  $: fieldSumKeys = readFieldSums(viewOptions)
+  $: showFooter =
+    project !== undefined && fieldSumKeys.length > 0 && (isTableMode || isRoadmapMode || isCalendarMode || isWorkloadMode)
+
+  // The rows that go after the generic ones of the "Customize view" popup
+  $: viewExtras =
+    isBoardMode || (project !== undefined && (isTableMode || isRoadmapMode || isCalendarMode || isWorkloadMode))
+      ? {
+          component: ProjectViewOptionsSection,
+          props: {
+            space: project,
+            layout: isBoardMode
+              ? 'board'
+              : isRoadmapMode
+                ? 'roadmap'
+                : isCalendarMode
+                  ? 'calendar'
+                  : isWorkloadMode
+                    ? 'workload'
+                    : 'table'
+          }
+        }
+      : undefined
+
+  // Nested groups, the roadmap and the board keep their collapsed groups per viewer and per saved view
+  $: viewStateScope = groupStateScope(project, activeViewId)
+
+  // Always installed (even without fields) so a saved custom group/order key never reaches the server
+  $: clientViewExtension.set(
+    createCustomFieldViewExtension({
+      registry: $registry,
+      scanLimit,
+      disabled: overLimit,
+      emptyLabels,
+      iterations: $iterationsStore,
+      hierarchy,
+      groupSummary,
+      groupStateScope: viewStateScope
+    })
+  )
+  onDestroy(() => {
+    clientViewExtension.set(undefined)
+  })
 
   // Single search source-of-truth. The legacy `search` binding still
   // exists for SpaceHeader's internal SearchInput (only used when
@@ -91,11 +903,13 @@
     rawSearchTextStore.set('')
   })
 
+  // Draft items belong to the project they were added to: the lists that span projects (My issues, all issues) leave
+  // them out, the views of a project show them
   let searchQuery: DocumentQuery<Issue> = { ...query }
-  function updateSearchQuery (eff: string): void {
-    searchQuery = eff === '' ? { ...query } : { ...query, $search: eff }
+  function updateSearchQuery (eff: string, scope: DocumentQuery<Issue>): void {
+    searchQuery = eff === '' ? { ...query, ...scope } : { ...query, ...scope, $search: eff }
   }
-  $: if (query !== undefined) updateSearchQuery(searchEncoded)
+  $: if (query !== undefined) updateSearchQuery(searchEncoded, project === undefined ? draftQuery(false) : {})
   let resultQuery: DocumentQuery<Issue> = { ...searchQuery }
 
   $: if (title) {
@@ -149,22 +963,82 @@
   bind:viewlet
   bind:search
   showLabelSelector={$$slots.label_selector}
-  viewletQuery={{ attachTo: tracker.class.Issue, variant: { $nin: ['subissue', 'component', 'milestone'] } }}
+  {viewletQuery}
   {viewlets}
   {label}
   {space}
-  {resultQuery}
+  resultQuery={viewQuery}
   modeSelectorProps={isGanttMode ? undefined : modeSelectorProps}
   overrideSearch={true}
   shrinkSearch={isGanttMode}
 >
   <svelte:fragment slot="header-tools">
+    {#if project !== undefined}
+      {#if latestStatus !== undefined}
+        <button
+          type="button"
+          class="status-button"
+          data-id="btn-project-status"
+          on:click={() => {
+            detailsOpen = true
+          }}
+        >
+          <ProjectStatusPill status={latestStatus.status} clickable />
+        </button>
+      {/if}
+      <Button
+        kind={'ghost'}
+        size={'small'}
+        icon={IconInfo}
+        label={tracker.string.ProjectAbout}
+        selected={detailsOpen}
+        dataId={'btn-project-about'}
+        on:click={() => {
+          detailsOpen = !detailsOpen
+        }}
+      />
+      <ButtonIcon
+        icon={IconMoreH}
+        size={'small'}
+        kind={'tertiary'}
+        tooltip={{ label: tracker.string.ProjectSettingsMenu, direction: 'bottom' }}
+        dataId={'btn-project-menu'}
+        on:click={(ev) => {
+          void openProjectMenu(ev)
+        }}
+      />
+      <Button
+        kind={'ghost'}
+        size={'small'}
+        icon={view.icon.Archive}
+        label={tracker.string.ArchivedItems}
+        dataId={'btn-archived-items'}
+        on:click={() => {
+          void openArchivedItems()
+        }}
+      />
+      <Button
+        kind={'ghost'}
+        size={'small'}
+        icon={IconInsights}
+        label={tracker.string.Insights}
+        selected={insightsOpen}
+        dataId={'btn-insights'}
+        on:click={() => {
+          insightsOpen = !insightsOpen
+        }}
+      />
+    {/if}
     <ViewletSettingButton
       bind:viewOptions
       bind:viewlet
-      hideGroupingAndOrdering={isGanttMode}
-      showConfigureColumns={!isGanttMode}
+      hideGroupingAndOrdering={isGanttMode || isWorkloadMode}
+      hideGrouping={isCalendarMode}
+      showConfigureColumns={!isGanttMode && !isRoadmapMode && !isWorkloadMode}
       hideKeys={isGanttMode ? ['ganttGroupBy'] : []}
+      configOverride={project !== undefined ? viewConfig : undefined}
+      onSaveConfig={project !== undefined ? (config) => savedViewBar?.setLocalConfig(config) : undefined}
+      extraOptions={viewExtras}
     />
   </svelte:fragment>
 
@@ -190,6 +1064,9 @@
       <GanttToolbarBar section="cluster" />
       <InlineFilterChips _class={tracker.class.Issue} {space} constrained />
       <FilterButton _class={tracker.class.Issue} {space} />
+      {#if project !== undefined && hasFilterableFields && !stringFilterActive}
+        <CustomFieldFilterButton space={project} />
+      {/if}
       {#if modeSelectorProps !== undefined && (viewOptions?.showQuickModeSelector ?? true) !== false}
         <ModeSelector kind={'subtle'} props={modeSelectorProps} />
       {/if}
@@ -206,7 +1083,22 @@
         scope={viewOptions?.searchScope ?? 'all'}
         collapsed
       />
+      {#if project !== undefined && hasFilterableFields && !stringFilterActive}
+        <CustomFieldFilterButton space={project} />
+      {/if}
       <FilterButton _class={tracker.class.Issue} {space} />
+      {#if sliceAvailable}
+        <!-- Slice by: a panel with the values of a field; a board has its columns instead, so it has no button -->
+        <ButtonIcon
+          icon={IconSlice}
+          size={'small'}
+          kind={'secondary'}
+          pressed={slicePanelOpen}
+          tooltip={{ label: tracker.string.SliceBy, direction: 'bottom' }}
+          dataId={'btn-slice'}
+          on:click={toggleSlicePanel}
+        />
+      {/if}
     {/if}
   </svelte:fragment>
 
@@ -250,6 +1142,38 @@
   </svelte:fragment>
 </SpaceHeader>
 
+{#if project !== undefined}
+  <!-- View tabs: every tab is a saved view (layout, filter, sort, group-by, columns) of this project -->
+  <SavedViewBar
+    bind:this={savedViewBar}
+    space={project}
+    _class={tracker.class.Issue}
+    {viewlet}
+    {viewletQuery}
+    layouts={viewLayouts}
+    extra={customFieldFilterStore(project)}
+    bind:config={viewConfig}
+    bind:filterQuery
+    bind:activeViewId
+    newViewOptions={(layout) => newViewHierarchyOptions(layout.descriptor === view.viewlet.List)}
+    tabActions={(tab) =>
+      tab.active
+        ? [
+            {
+              label: tracker.string.ExportViewData,
+              icon: IconDownload,
+              group: 'share',
+              action: async () => {
+                await exportViewData()
+              }
+            }
+          ]
+        : []}
+  />
+  <!-- GitHub-style filter string; it is the filter of the active view -->
+  <FilterQueryBar value={filterQuery} schema={filterSchema} on:apply={applyFilterQuery} />
+{/if}
+
 <!-- FilterBar owns the filter→resultQuery data path (debounced via
      reduceCalls, shared with non-Tracker consumers). hideChips=true
      suppresses its chip render — chips are mounted separately by
@@ -263,6 +1187,16 @@
   on:change={(e) => (resultQuery = e.detail)}
 />
 <slot name="afterHeader" />
+{#if overLimit && customNeedsScan}
+  <div class="custom-field-error" role="alert">
+    <Label label={tracker.string.CustomFieldScanLimitExceeded} params={{ limit: scanLimit }} />
+  </div>
+{/if}
+{#if hierarchyTooLarge}
+  <div class="custom-field-error" role="alert" data-id="hierarchy-scan-limit">
+    <Label label={tracker.string.HierarchyScanLimitExceeded} params={{ limit: scanLimit }} />
+  </div>
+{/if}
 {#if !isGanttMode}
   <!-- List / Kanban modes: render the chip strip below the SpaceHeader.
        Gantt has its own inline placement inside the search slot above.
@@ -306,21 +1240,76 @@
      with "show empty groups" (shouldShowAll) on it stays false, so the empty
      groups / Kanban columns remain visible and the card is suppressed — the
      user's explicit view option wins. -->
-<div class="viewlet-wrap">
-  {#if viewlet && viewOptions}
-    <ViewletContentView
-      _class={tracker.class.Issue}
-      {viewlet}
-      query={resultQuery}
-      {space}
-      {viewOptions}
-      createItemDialog={CreateIssue}
-      createItemLabel={tracker.string.AddIssueTooltip}
-      createItemEvent={TrackerEvents.IssuePlusButtonClicked}
-      createItemDialogProps={{ shouldSaveDraft: true }}
+<!-- The slice panel sits left of the viewlet. The wrappers are `display: contents` while the panel is closed, so
+     that the viewlet keeps being a direct flex child of the page and is not remounted when the panel opens. -->
+<div class="slice-layout" class:open={(slicePanelOpen && sliceConfig !== undefined) || detailsOpen}>
+  {#if slicePanelOpen && sliceConfig !== undefined}
+    <SlicePanel
+      fields={sliceFieldItems}
+      config={sliceConfig}
+      fieldLabel={sliceFieldLabel}
+      data={sliceData}
+      sums={sliceSums}
+      {overLimit}
+      {scanLimit}
+      on:field={(e) => {
+        changeSlice(withSliceField(sliceConfig, e.detail))
+      }}
+      on:select={(e) => {
+        selectSliceValue(e.detail)
+      }}
+      on:close={toggleSlicePanel}
+    />
+  {/if}
+  <div class="slice-body" class:open={(slicePanelOpen && sliceConfig !== undefined) || detailsOpen}>
+    <div class="viewlet-wrap">
+      {#if viewlet && viewOptions}
+        <CellGrid adapter={cellAdapterActive} rowHeight={viewOptions.rowHeight}>
+          <ViewletContentView
+            _class={tracker.class.Issue}
+            {viewlet}
+            query={viewQuery}
+            {space}
+            {viewOptions}
+            configOverride={project !== undefined ? viewConfig : undefined}
+            createItemDialog={CreateIssue}
+            createItemLabel={tracker.string.AddIssueTooltip}
+            createItemEvent={TrackerEvents.IssuePlusButtonClicked}
+            createItemDialogProps={{ shouldSaveDraft: true }}
+          />
+        </CellGrid>
+      {/if}
+    </div>
+    {#if project !== undefined && isTableMode}
+      <!-- Typing a title adds a draft item to the project, `#` searches issues to bring into it -->
+      <AddItemRow {project} />
+    {/if}
+    {#if showFooter}
+      <FieldSumFooter {project} query={mergeQueries(optionsQuery, viewQuery)} options={optionsFind} keys={fieldSumKeys} {scanLimit} />
+    {/if}
+  </div>
+  {#if detailsOpen && project !== undefined}
+    <ProjectDetailsPanel
+      space={project}
+      on:close={() => {
+        detailsOpen = false
+      }}
     />
   {/if}
 </div>
+{#if insightsOpen && project !== undefined}
+  <InsightsPanel
+    space={project}
+    {filterSchema}
+    {filterCtx}
+    {statusOrder}
+    {scanLimit}
+    on:close={() => {
+      insightsOpen = false
+    }}
+    on:open={openFromInsights}
+  />
+{/if}
 {#if showSearchEmptyState}
   <div class="search-empty-state-overlay">
     <SearchEmptyState searchText={$rawSearchTextStore} activeFilters={$filterStore.map((f) => f.key.key)} />
@@ -328,6 +1317,17 @@
 {/if}
 
 <style lang="scss">
+  .status-button {
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  .custom-field-error {
+    padding: 0.5rem 1rem;
+    color: var(--theme-error-color, #d73a49);
+    border-bottom: 1px solid var(--theme-divider-color);
+  }
   .below-header-filters {
     display: flex;
     align-items: center;
@@ -347,6 +1347,24 @@
      sibling, so the live viewlet's layout is always intact. */
   .viewlet-wrap {
     display: contents;
+  }
+  .slice-layout,
+  .slice-body {
+    display: contents;
+  }
+  .slice-layout.open {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .slice-body.open {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
   }
   /* Out-of-flow overlay centred on the panel.
 

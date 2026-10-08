@@ -45,12 +45,24 @@ import tracker, {
   groupShiftsByRecipient,
   Issue,
   IssueParentInfo,
+  issueLinkSegment,
+  itemsOverProjectLimit,
+  type Iteration,
+  overLimitFields,
+  type ProjectField,
+  ProjectFieldType,
+  type ProjectWebhook,
+  stripIterationValues,
   type ShiftedIssuePayload,
   TimeSpendReport,
   trackerId,
   type Project
 } from '@hcengineering/tracker'
 import { workbenchId } from '@hcengineering/workbench'
+import { OnIssueWorkflow, OnWorkflowEvaluate } from './workflow/triggers'
+import { OnProjectItemWebhook, OnProjectWebhookRemove } from './webhook/trigger'
+
+export { OnIssueWorkflow, OnWorkflowEvaluate, OnProjectItemWebhook, OnProjectWebhookRemove }
 
 async function updateSubIssues (
   updateTx: TxUpdateDoc<Issue>,
@@ -71,7 +83,7 @@ async function updateSubIssues (
 export async function issueHTMLPresenter (doc: Doc, control: TriggerControl): Promise<string> {
   const issue = doc as Issue
   const front = control.branding?.front ?? getMetadata(serverCore.metadata.FrontUrl) ?? ''
-  const path = `${workbenchId}/${control.workspace.url}/${trackerId}/${issue.identifier}`
+  const path = `${workbenchId}/${control.workspace.url}/${trackerId}/${issueLinkSegment(issue)}`
   const link = concatLink(front, path)
   return `<a href="${link}">${issue.identifier}</a> ${issue.title}`
 }
@@ -81,6 +93,8 @@ export async function issueHTMLPresenter (doc: Doc, control: TriggerControl): Pr
  */
 export async function getIssueId (doc: Issue, control: TriggerControl): Promise<string> {
   const issue = doc
+  // A draft item has no number in the project sequence, only the placeholder identifier
+  if (issue.isDraft === true) return issue.identifier
   const project = (await control.findAll(control.ctx, tracker.class.Project, { _id: issue.space }))[0]
   return `${project?.identifier ?? '?'}-${issue.number}`
 }
@@ -166,18 +180,156 @@ export async function OnProjectRemove (txes: Tx[], control: TriggerControl): Pro
   const result: Tx[] = []
   for (const tx of txes) {
     const ctx = tx as TxRemoveDoc<Project>
-    const classes = [tracker.class.Issue, tracker.class.Component, tracker.class.Milestone, tracker.class.IssueTemplate]
+    const classes = [
+      tracker.class.Issue,
+      tracker.class.Component,
+      tracker.class.Milestone,
+      tracker.class.IssueTemplate,
+      tracker.class.ProjectField,
+      tracker.class.Iteration,
+      tracker.class.InsightChart,
+      tracker.class.Workflow,
+      tracker.class.ProjectWebhook,
+      tracker.class.ProjectStatusUpdate
+    ]
     for (const cls of classes) {
       const docs = await control.findAll(control.ctx, cls, { space: ctx.objectId })
       for (const doc of docs) {
         const tx = control.txFactory.createTxRemoveDoc(cls, doc.space, doc._id)
         result.push(tx)
       }
+      // The secrets of the webhooks are in the personal spaces of their authors, not in the project
+      if (cls === tracker.class.ProjectWebhook && docs.length > 0) {
+        const secrets = await control.findAll(control.ctx, tracker.class.ProjectWebhookSecret, {
+          webhook: { $in: docs.map((it) => it._id as unknown as Ref<ProjectWebhook>) }
+        })
+        for (const secret of secrets) {
+          result.push(control.txFactory.createTxRemoveDoc(secret._class, secret.space, secret._id))
+        }
+      }
     }
   }
   control.ctx.contextData.broadcast.targets.projectRemove = async (it) => {
     return {
       target: []
+    }
+  }
+  return result
+}
+
+/**
+ * Server-side guard for the per-project custom field limit. A client that skips the UI check
+ * still cannot exceed GitHub's cap: the newest field beyond the limit is removed again.
+ * @public
+ */
+export async function OnProjectFieldCreate (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+  const result: Tx[] = []
+  const handled = new Set<Ref<Space>>()
+  for (const tx of txes) {
+    const createTx = tx as TxCreateDoc<ProjectField>
+    if (handled.has(createTx.objectSpace)) continue
+    handled.add(createTx.objectSpace)
+    const fields = await control.findAll(control.ctx, tracker.class.ProjectField, { space: createTx.objectSpace as Ref<Project> })
+    for (const field of overLimitFields(fields)) {
+      result.push(control.txFactory.createTxRemoveDoc(field._class, field.space, field._id))
+    }
+  }
+  return result
+}
+
+/**
+ * Server-side guard for the 50,000 items per project limit (GitHub parity). The UI refuses to create an issue in a
+ * full project; a client that skips that check still cannot exceed the limit: the newest issues beyond it are removed
+ * again, like the fields beyond the field limit.
+ * @public
+ */
+export async function OnProjectItemLimit (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+  const created = new Map<Ref<Space>, Array<Ref<Issue>>>()
+  for (const tx of txes) {
+    if (tx._class !== core.class.TxCreateDoc) continue
+    const createTx = tx as TxCreateDoc<Issue>
+    if (!control.hierarchy.isDerived(createTx.objectClass, tracker.class.Issue)) continue
+    const list = created.get(createTx.objectSpace) ?? []
+    list.push(createTx.objectId)
+    created.set(createTx.objectSpace, list)
+  }
+  const result: Tx[] = []
+  for (const [space, ids] of created) {
+    const found = await control.findAll(
+      control.ctx,
+      tracker.class.Issue,
+      { space: space as Ref<Project> },
+      { limit: 1, total: true, projection: { _id: 1 } }
+    )
+    for (const id of itemsOverProjectLimit(ids, found.total)) {
+      result.push(control.txFactory.createTxRemoveDoc(tracker.class.Issue, space, id))
+    }
+  }
+  return result
+}
+
+/**
+ * Drop the values of a removed custom field from every issue of the project.
+ * @public
+ */
+export async function OnProjectFieldRemove (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+  const result: Tx[] = []
+  for (const tx of txes) {
+    const rmTx = tx as TxRemoveDoc<ProjectField>
+    const field = control.removedMap.get(rmTx.objectId) as ProjectField | undefined
+    if (field === undefined) continue
+    const issues = await control.findAll(control.ctx, tracker.class.Issue, { space: field.space as Ref<Project> })
+    for (const issue of issues) {
+      if (issue.customFields === undefined || !(field.key in issue.customFields)) continue
+      const { [field.key]: _removed, ...rest } = issue.customFields
+      result.push(control.txFactory.createTxUpdateDoc(issue._class, issue.space, issue._id, { customFields: rest }))
+    }
+    // The iterations of an Iteration field are meaningless without it
+    if (field.type === ProjectFieldType.Iteration) {
+      const iterations = await control.findAll(control.ctx, tracker.class.Iteration, { field: field._id })
+      for (const iteration of iterations) {
+        result.push(control.txFactory.createTxRemoveDoc(iteration._class, iteration.space, iteration._id))
+      }
+    }
+  }
+  return result
+}
+
+/**
+ * Drop a deleted iteration from the issues that were in it. Several iterations removed together are
+ * handled in one pass, so an issue gets a single update.
+ * @public
+ */
+export async function OnIterationRemove (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+  // Removed iteration ids by project and owning field
+  const removed = new Map<Ref<Project>, Map<Ref<ProjectField>, Set<string>>>()
+  for (const tx of txes) {
+    const iteration = control.removedMap.get((tx as TxRemoveDoc<Iteration>).objectId) as Iteration | undefined
+    if (iteration === undefined) continue
+    const byField = removed.get(iteration.space) ?? new Map<Ref<ProjectField>, Set<string>>()
+    const ids = byField.get(iteration.field) ?? new Set<string>()
+    ids.add(iteration._id)
+    byField.set(iteration.field, ids)
+    removed.set(iteration.space, byField)
+  }
+
+  const result: Tx[] = []
+  for (const [space, byField] of removed) {
+    // The field may be gone already (it was removed together with its iterations): its values are dropped by
+    // OnProjectFieldRemove, an update from here would only race with that one
+    const fields = await control.findAll(control.ctx, tracker.class.ProjectField, {
+      _id: { $in: [...byField.keys()] },
+      space
+    })
+    const dropped = new Map<string, Set<string>>()
+    for (const field of fields) dropped.set(field.key, byField.get(field._id) ?? new Set<string>())
+    if (dropped.size === 0) continue
+
+    const issues = await control.findAll(control.ctx, tracker.class.Issue, { space })
+    for (const issue of issues) {
+      const customFields = stripIterationValues(issue.customFields, dropped)
+      if (customFields === undefined) continue
+      result.push(control.txFactory.createTxUpdateDoc(issue._class, issue.space, issue._id, { customFields }))
     }
   }
   return result
@@ -509,7 +661,8 @@ function updateIssueParentEstimations (
 }
 
 async function issueLinkIdProvider (issue: Issue): Promise<string> {
-  return issue.identifier
+  // A draft item has no identifier of an issue yet, its link carries the id of the document
+  return issueLinkSegment(issue)
 }
 
 /**
@@ -873,6 +1026,14 @@ export default async () => ({
     OnIssueUpdate,
     OnComponentRemove,
     OnProjectRemove,
-    OnDependencyShiftRequest
+    OnProjectFieldCreate,
+    OnProjectFieldRemove,
+    OnProjectItemLimit,
+    OnIterationRemove,
+    OnDependencyShiftRequest,
+    OnIssueWorkflow,
+    OnWorkflowEvaluate,
+    OnProjectItemWebhook,
+    OnProjectWebhookRemove
   }
 })

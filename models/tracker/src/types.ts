@@ -40,6 +40,7 @@ import {
   Model,
   Prop,
   ReadOnly,
+  TypeBoolean,
   TypeCollaborativeDoc,
   TypeDate,
   TypeMarkup,
@@ -71,6 +72,22 @@ import {
   type IssueTemplate,
   type IssueTemplateChild,
   type Milestone,
+  type InsightChart,
+  type InsightDateBucket,
+  type InsightLayout,
+  type InsightYAxis,
+  type Iteration,
+  type ProjectField,
+  type ProjectFieldOption,
+  ProjectFieldType,
+  type ProjectStatus,
+  type ProjectStatusUpdate,
+  type ProjectWebhook,
+  type ProjectWebhookSecret,
+  type WebhookEvent,
+  type Workflow,
+  type WorkflowConfig,
+  type WorkflowKind,
   type MilestoneStatus,
   type Project,
   type RelatedClassRule,
@@ -145,6 +162,18 @@ export class TProject extends TTaskProject implements Project {
 
   @Prop(TypeRecord(), tracker.string.WorkingDaysConfig)
     workingDaysConfig?: WorkingDaysConfig
+
+  @Prop(TypeString(), tracker.string.ProjectShortDescription)
+  @Hidden()
+    shortDescription?: string
+
+  @Prop(TypeMarkup(), tracker.string.ProjectReadme)
+  @Hidden()
+    readme?: Markup
+
+  @Prop(TypeBoolean(), tracker.string.ProjectTemplate)
+  @Hidden()
+    isTemplate?: boolean
 }
 /**
  * @public
@@ -243,12 +272,27 @@ export class TIssue extends TTask implements Issue {
   @ReadOnly()
   declare space: Ref<Project>
 
+  @Prop(TypeRecord(), tracker.string.CustomFields)
+  @Hidden()
+    customFields?: Record<string, unknown>
+
   @Prop(TypeDate(DateRangeMode.DATETIME), tracker.string.IssueStartDate)
   @Index(IndexKind.Indexed)
   declare startDate: Timestamp | null
 
   @Prop(TypeDate(DateRangeMode.DATETIME), tracker.string.DueDate)
   declare dueDate: Timestamp | null
+
+  // Set while the issue is archived (GitHub "Archive item"), null once restored
+  @Prop(TypeDate(DateRangeMode.DATETIME), tracker.string.ArchivedAt)
+  @Hidden()
+    archivedAt?: Timestamp | null
+
+  // Set while the issue is a draft item (GitHub "draft issue"): an item of the project that is not an issue yet,
+  // with number 0. Converting it takes the next number of the project and sets false
+  @Prop(TypeBoolean(), tracker.string.Draft)
+  @Hidden()
+    isDraft?: boolean
 
   // Soft deadline, independent of dueDate. Optional.
   // When set, the Gantt renders a flag marker at this date and flags the
@@ -460,6 +504,198 @@ export class TMilestone extends TDoc implements Milestone {
     color?: number
 
   declare space: Ref<Project>
+}
+
+/**
+ * @public
+ */
+@Model(tracker.class.ProjectField, core.class.Doc, DOMAIN_TRACKER)
+@UX(tracker.string.ProjectField, tracker.icon.Issues, '', 'label', undefined, tracker.string.ProjectFields)
+export class TProjectField extends TDoc implements ProjectField {
+  @Prop(TypeString(), tracker.string.Title)
+    label!: string
+
+  @Prop(TypeString(), tracker.string.FieldKey)
+  @ReadOnly()
+    key!: string
+
+  @Prop(TypeString(), tracker.string.FieldType)
+  @ReadOnly()
+    type!: ProjectFieldType
+
+  @Prop(TypeNumber(), tracker.string.Number)
+  @Hidden()
+    position!: number
+
+  @Prop(TypeString(), tracker.string.Description)
+    description?: string
+
+  @Prop(TypeRecord(), tracker.string.FieldDefaultValue)
+    defaultValue?: string | number | null
+
+  @Prop(ArrOf(TypeRecord()), tracker.string.FieldOptions)
+    options?: ProjectFieldOption[]
+
+  declare space: Ref<Project>
+}
+
+/**
+ * A time box of an Iteration field. Issues reference it by id from `customFields[field.key]`.
+ * @public
+ */
+@Model(tracker.class.Iteration, core.class.Doc, DOMAIN_TRACKER)
+@UX(tracker.string.Iteration, tracker.icon.Issues, '', 'label', undefined, tracker.string.Iterations)
+export class TIteration extends TDoc implements Iteration {
+  @Prop(TypeRef(tracker.class.ProjectField), tracker.string.ProjectField)
+  @ReadOnly()
+    field!: Ref<ProjectField>
+
+  @Prop(TypeString(), tracker.string.Title)
+    label!: string
+
+  @Prop(TypeNumber(), tracker.string.Number)
+  @Hidden()
+    number!: number
+
+  @Prop(TypeDate(), tracker.string.StartDate)
+    startDate!: Timestamp
+
+  @Prop(TypeNumber(), tracker.string.IterationDuration)
+    duration!: number
+
+  @Prop(TypeBoolean(), tracker.string.IterationBreak)
+    isBreak?: boolean
+
+  declare space: Ref<Project>
+}
+
+/**
+ * A saved chart of the project Insights. `space` is the project.
+ * @public
+ */
+@Model(tracker.class.InsightChart, core.class.Doc, DOMAIN_TRACKER)
+@UX(tracker.string.InsightChart, tracker.icon.Issues, '', 'name', undefined, tracker.string.InsightCharts)
+export class TInsightChart extends TDoc implements InsightChart {
+  @Prop(TypeString(), tracker.string.Title)
+    name!: string
+
+  @Prop(TypeString(), tracker.string.InsightLayout)
+    layout!: InsightLayout
+
+  @Prop(TypeString(), tracker.string.InsightXAxis)
+    xField!: string
+
+  @Prop(TypeString(), tracker.string.InsightDateBucket)
+    xBucket?: InsightDateBucket | null
+
+  @Prop(TypeString(), tracker.string.InsightGroupBy)
+    groupField?: string | null
+
+  @Prop(TypeRecord(), tracker.string.InsightYAxis)
+    yAggregate!: InsightYAxis
+
+  @Prop(TypeString(), tracker.string.InsightFilter)
+    filter!: string
+
+  @Prop(TypeNumber(), tracker.string.Number)
+  @Hidden()
+    position!: number
+
+  declare space: Ref<Project>
+}
+
+/**
+ * A built-in workflow of the project. `space` is the project.
+ * @public
+ */
+@Model(tracker.class.Workflow, core.class.Doc, DOMAIN_TRACKER)
+@UX(tracker.string.Workflow, tracker.icon.Issues, '', 'name', undefined, tracker.string.Workflows)
+export class TWorkflow extends TDoc implements Workflow {
+  @Prop(TypeString(), tracker.string.Title)
+    name!: string
+
+  @Prop(TypeBoolean(), tracker.string.WorkflowEnabled)
+    enabled!: boolean
+
+  @Prop(TypeString(), tracker.string.Workflow)
+    kind!: WorkflowKind
+
+  @Prop(TypeString(), tracker.string.InsightFilter)
+    filter?: string
+
+  @Prop(TypeRecord(), tracker.string.Workflow)
+  @Hidden()
+    config?: WorkflowConfig
+
+  @Prop(TypeNumber(), tracker.string.Number)
+  @Hidden()
+    runRequestedAt?: Timestamp
+
+  declare space: Ref<Project>
+}
+
+/**
+ * A webhook of the project that is called when an item changes. `space` is the project.
+ * @public
+ */
+@Model(tracker.class.ProjectWebhook, core.class.Doc, DOMAIN_TRACKER)
+@UX(tracker.string.ProjectWebhook, tracker.icon.Issues, '', 'url', undefined, tracker.string.ProjectWebhooks)
+export class TProjectWebhook extends TDoc implements ProjectWebhook {
+  @Prop(TypeString(), tracker.string.WebhookUrl)
+    url!: string
+
+  @Prop(TypeBoolean(), tracker.string.WorkflowEnabled)
+    enabled!: boolean
+
+  @Prop(ArrOf(TypeString()), tracker.string.WebhookEvents)
+    events!: WebhookEvent[]
+
+  @Prop(TypeBoolean(), tracker.string.WebhookSecret)
+    hasSecret!: boolean
+
+  @Prop(TypeString(), tracker.string.Description)
+    description?: string
+
+  declare space: Ref<Project>
+}
+
+/**
+ * A status update of the project (GitHub "Project status updates"). `space` is the project; the author is the
+ * creator of the document, the latest update is the status of the project.
+ * @public
+ */
+@Model(tracker.class.ProjectStatusUpdate, core.class.Doc, DOMAIN_TRACKER)
+@UX(tracker.string.ProjectStatusUpdate, tracker.icon.Issues, '', undefined, undefined, tracker.string.ProjectStatusUpdates)
+export class TProjectStatusUpdate extends TDoc implements ProjectStatusUpdate {
+  @Prop(TypeString(), tracker.string.Status)
+    status!: ProjectStatus
+
+  @Prop(TypeDate(DateRangeMode.DATETIME), tracker.string.StartDate)
+    startDate?: Timestamp | null
+
+  @Prop(TypeDate(DateRangeMode.DATETIME), tracker.string.TargetDate)
+    targetDate?: Timestamp | null
+
+  @Prop(TypeMarkup(), tracker.string.Description)
+    body!: Markup
+
+  declare space: Ref<Project>
+}
+
+/**
+ * The secret of a webhook. It lives in the personal space of the person who set it (never in the project), so the
+ * other members of the project can not read it.
+ * @public
+ */
+@Model(tracker.class.ProjectWebhookSecret, core.class.Doc, DOMAIN_TRACKER)
+export class TProjectWebhookSecret extends TDoc implements ProjectWebhookSecret {
+  @Prop(TypeRef(tracker.class.ProjectWebhook), tracker.string.ProjectWebhook)
+  @Hidden()
+    webhook!: Ref<ProjectWebhook>
+
+  @Prop(TypeString(), tracker.string.WebhookSecret)
+  @Hidden()
+    secret!: string
 }
 
 @UX(core.string.Number)

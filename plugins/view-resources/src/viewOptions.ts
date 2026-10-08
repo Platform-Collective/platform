@@ -19,6 +19,7 @@ import {
   type ToggleViewOption,
   type ViewOptionModel,
   type ViewOptions,
+  type ViewOptionsModel,
   type Viewlet,
   type ViewletDescriptor,
   type BuildModelKey
@@ -32,6 +33,22 @@ export const noCategory = '#no_category'
 export const defaultOptions: ViewOptions = {
   groupBy: [noCategory],
   orderBy: ['modifiedBy', SortingOrder.Descending]
+}
+
+/**
+ * Options a viewlet starts with when the user has not changed anything yet
+ */
+export function getViewletDefaultOptions (viewlet: Viewlet | undefined): ViewOptions {
+  const model: ViewOptionsModel | undefined = viewlet?.viewOptions
+  if (model == null) return defaultOptions
+  const res: ViewOptions = {
+    groupBy: [model.defaultGroupBy ?? model.groupBy[0] ?? defaultOptions.groupBy[0]],
+    orderBy: model.orderBy?.[0] ?? defaultOptions.orderBy
+  }
+  for (const opt of model.other) {
+    res[opt.key] = opt.defaultValue
+  }
+  return res
 }
 
 export function isToggleType (viewOption: ViewOptionModel): viewOption is ToggleViewOption {

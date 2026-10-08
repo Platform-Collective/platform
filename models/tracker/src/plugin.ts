@@ -72,6 +72,9 @@ export default mergeIds(trackerId, tracker, {
     IssueTemplateList: '' as Ref<Viewlet>,
     IssueKanban: '' as Ref<Viewlet>,
     IssueGantt: '' as Ref<Viewlet>,
+    IssueRoadmap: '' as Ref<Viewlet>,
+    IssueCalendar: '' as Ref<Viewlet>,
+    IssueWorkload: '' as Ref<Viewlet>,
     MilestoneList: '' as Ref<Viewlet>,
     ComponentList: '' as Ref<Viewlet>,
     ProjectList: '' as Ref<Viewlet>,
@@ -104,6 +107,9 @@ export default mergeIds(trackerId, tracker, {
     EditProject: '' as ViewAction,
     DeleteProject: '' as ViewAction,
     DeleteIssue: '' as ViewAction,
+    ArchiveIssue: '' as ViewAction,
+    RestoreIssue: '' as ViewAction,
+    ConvertDraftToIssue: '' as ViewAction,
     DeleteMilestone: '' as ViewAction
   },
   action: {
@@ -111,7 +117,10 @@ export default mergeIds(trackerId, tracker, {
     DeleteMilestone: '' as Ref<Action<Doc, Record<string, any>>>,
     DeleteProject: '' as Ref<Action<Doc, Record<string, any>>>,
     DeleteProjectClean: '' as Ref<Action<Doc, Record<string, any>>>,
-    DeleteIssue: '' as Ref<Action<Doc, Record<string, any>>>
+    DeleteIssue: '' as Ref<Action<Doc, Record<string, any>>>,
+    ArchiveIssue: '' as Ref<Action<Doc, Record<string, any>>>,
+    RestoreIssue: '' as Ref<Action<Doc, Record<string, any>>>,
+    ConvertDraftToIssue: '' as Ref<Action<Doc, Record<string, any>>>
   },
 
   // For migration only

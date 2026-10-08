@@ -30,6 +30,7 @@
   import { createEventDispatcher, onDestroy } from 'svelte'
   import { SelectionFocusProvider } from '../../selection'
   import { claimResultCountOwner, releaseResultCountOwner, setResultCount } from '../../stores'
+  import { clientViewExtension, isClientViewKey } from '../../clientViewExtension'
   import { buildConfigLookup } from '../../utils'
   import { getResultOptions, getResultQuery } from '../../viewOptions'
   import ListCategories from './ListCategories.svelte'
@@ -105,7 +106,10 @@
   $: resultOptions = {
     ...configOptions,
     ...(Object.keys(lookup).length > 0 ? { lookup } : {}),
-    ...(orderBy !== undefined ? { sort: { [orderBy[0]]: orderBy[1] } } : {})
+    // Ordering by a client-side key (e.g. a custom field) is applied by the list category after loading
+    ...(orderBy !== undefined && !isClientViewKey($clientViewExtension, orderBy[0])
+      ? { sort: { [orderBy[0]]: orderBy[1] } }
+      : {})
   }
 
   const updateOptions = reduceCalls(async function (options: FindOptions<Doc> | undefined, viewOptions: ViewOptions) {
@@ -141,6 +145,13 @@
 
   let fastQueryIds = new Set<Ref<Doc>>()
 
+  // The collapsed groups of a list that groups on several levels are kept per view; other lists keep the legacy key
+  $: groupPersistKey = viewOptions.groupBy.length > 1 ? ($clientViewExtension?.groupStateScope ?? '') : ''
+
+  $: groupSummary = $clientViewExtension?.groupSummary
+  $: summaryProjection =
+    groupSummary !== undefined && groupSummary.isEnabled(viewOptions) ? groupSummary.projection(viewOptions) : undefined
+
   let categoryQueryOptions: Partial<FindOptions<Doc>>
   $: categoryQueryOptions = {
     ...noLookupSortingOptions(resultOptions),
@@ -148,7 +159,19 @@
       ...resultOptions.projection,
       _id: 1,
       _class: 1,
-      ...getProjection(viewOptions.groupBy, queryNoLookup, _class)
+      ...getProjection(
+        [
+          ...viewOptions.groupBy.flatMap((it) =>
+            isClientViewKey($clientViewExtension, it)
+              ? [$clientViewExtension?.projectionKey(it) ?? it, ...($clientViewExtension?.extraProjection?.(it) ?? [])]
+              : [it]
+          ),
+          // What the totals in the group headers read (only when the view asks for them)
+          ...(summaryProjection ?? [])
+        ],
+        queryNoLookup,
+        _class
+      )
     }
   }
 
@@ -261,7 +284,7 @@
     {limiter}
     {listProvider}
     level={0}
-    groupPersistKey={''}
+    {groupPersistKey}
     {createItemDialog}
     {createItemDialogProps}
     {createItemLabel}

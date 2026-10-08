@@ -14,12 +14,13 @@
 -->
 <script lang="ts">
   import { getClient } from '@hcengineering/presentation'
-  import { ButtonIcon, closeTooltip, IconOptions, showPopup } from '@hcengineering/ui'
+  import { type AnySvelteComponent, ButtonIcon, closeTooltip, IconOptions, showPopup } from '@hcengineering/ui'
   import { OrderOption, Viewlet, ViewOptionModel, ViewOptions } from '@hcengineering/view'
   import { createEventDispatcher } from 'svelte'
   import view from '../plugin'
   import { focusStore } from '../selection'
   import { setViewOptions } from '../viewOptions'
+  import { getClientViewExtension } from '../clientViewExtension'
   import ViewOptionsEditor from './ViewOptions.svelte'
   import core, { Class, Doc, Hierarchy, Ref, SortingOrder, Type } from '@hcengineering/core'
 
@@ -32,10 +33,14 @@
   // group-by + order-by rows (used by viewlets that render dedicated
   // group/sort controls of their own, e.g. the Gantt toolbar).
   export let hideGroupingAndOrdering: boolean = false
+  // Forwarded to the ViewOptions popup: hides only the group-by rows (a layout without groups, e.g. a calendar)
+  export let hideGrouping: boolean = false
   // Forwarded to the ViewOptions popup: keys in this list are skipped from
   // the "other" toggle/dropdown rendering (useful for viewlets that expose
   // the same ViewOption elsewhere, e.g. Gantt's `ganttGroupBy` toolbar).
   export let hideKeys: string[] = []
+  // Forwarded to the ViewOptions popup: settings of the layout shown after the generic rows
+  export let extra: { component: AnySvelteComponent, props?: Record<string, any> } | undefined = undefined
 
   const dispatch = createEventDispatcher()
   const client = getClient()
@@ -88,9 +93,17 @@
 
     config.groupBy = Array.from(new Set([...config.groupBy, ...customAttributes]))
 
+    // Keys provided by the host view (e.g. user-defined fields)
+    const extension = getClientViewExtension()
+    if (extension !== undefined) {
+      config.groupBy = Array.from(new Set([...config.groupBy, ...extension.groupByKeys().map((it) => it.id)]))
+      const extraOrder: OrderOption[] = extension.orderByKeys().map((it) => [it.id, SortingOrder.Ascending])
+      config.orderBy = [...config.orderBy, ...extraOrder]
+    }
+
     showPopup(
       ViewOptionsEditor,
-      { viewlet, config, viewOptions: h.clone(viewOptions), hideGroupingAndOrdering, hideKeys },
+      { viewlet, config, viewOptions: h.clone(viewOptions), hideGroupingAndOrdering, hideGrouping, hideKeys, extra },
       btn,
       () => {
         pressed = false
@@ -99,6 +112,11 @@
         if (result?.key === undefined) return
         if (viewlet) {
           viewOptions = { ...viewOptions, [result.key]: result.value }
+          // An option that is set back to nothing is not stored, so that the view does not look changed
+          if (result.value === undefined) {
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+            delete viewOptions[result.key]
+          }
 
           // Clear selection on view settings change.
           focusStore.set({})

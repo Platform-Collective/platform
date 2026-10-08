@@ -6,7 +6,7 @@
   import core, { type FindOptions, type Rank, type Ref, SortingOrder } from '@hcengineering/core'
   import { ObjectPopup, createQuery, getClient } from '@hcengineering/presentation'
   import { makeRank } from '@hcengineering/task'
-  import { type Issue } from '@hcengineering/tracker'
+  import { draftQuery, type Issue } from '@hcengineering/tracker'
   import { createEventDispatcher } from 'svelte'
   import tracker from '../plugin'
   import IssueStatusIcon from './issues/IssueStatusIcon.svelte'
@@ -109,7 +109,7 @@
 
 <ObjectPopup
   _class={tracker.class.Issue}
-  docQuery={{ space: value.space }}
+  docQuery={{ space: value.space, ...draftQuery(false) }}
   {options}
   groupBy={'$lookup.status'}
   {ignoreObjects}

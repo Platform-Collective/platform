@@ -55,7 +55,27 @@ const SEARCH_VIEW_OPTIONS: ViewOptionModel[] = [
   }
 ]
 
+// Row height of the table layout (GitHub Projects: "Row height"). Saved with the view like any view option.
+const ROW_HEIGHT_VIEW_OPTION: ViewOptionModel = {
+  key: 'rowHeight',
+  type: 'dropdown',
+  defaultValue: 'default',
+  values: [
+    { id: 'compact', label: tracker.string.RowHeightCompact },
+    { id: 'default', label: tracker.string.RowHeightDefault },
+    { id: 'comfortable', label: tracker.string.RowHeightComfortable }
+  ],
+  label: tracker.string.RowHeight
+}
+
+// Levels of nested grouping ("Group by", then "Then by") a layout offers. The Table nests three levels, the Board
+// shows the swimlanes in two (a lane and a sub-lane) and the Roadmap groups its rows in two.
+export const TABLE_GROUP_DEPTH = 3
+export const BOARD_GROUP_DEPTH = 2
+export const ROADMAP_GROUP_DEPTH = 2
+
 export const issuesOptions = (kanban: boolean): ViewOptionsModel => ({
+  groupDepth: kanban ? BOARD_GROUP_DEPTH : TABLE_GROUP_DEPTH,
   groupBy: [
     'status',
     'kind',
@@ -107,7 +127,7 @@ export const issuesOptions = (kanban: boolean): ViewOptionsModel => ({
       action: view.function.HideArchived,
       label: view.string.HideArchived
     },
-    ...(!kanban ? [showColorsViewOption] : []),
+    ...(!kanban ? [showColorsViewOption, ROW_HEIGHT_VIEW_OPTION] : []),
     ...SEARCH_VIEW_OPTIONS
   ]
 })
@@ -559,6 +579,69 @@ export function ganttConfig (): BuildModelKey[] {
   ]
 }
 
+// Roadmap (GitHub Projects layout of the same name). Start/target date fields, zoom, markers and the fields shown
+// on an item are not listed here: they are stored in the view options under the `roadmap` key and edited in the
+// toolbar of the layout itself. Group-by and order-by are the generic ones, plus the custom fields that the
+// client view extension adds.
+export function roadmapViewOptions (): ViewOptionsModel {
+  const base = issuesOptions(true)
+  return {
+    groupBy: ['status', 'kind', 'assignee', 'priority', 'component', 'milestone'],
+    // A roadmap starts ungrouped ('#no_category' is the "No grouping" choice of the Customize View popup)
+    defaultGroupBy: '#no_category',
+    orderBy: [
+      ['startDate', SortingOrder.Ascending],
+      ['dueDate', SortingOrder.Ascending],
+      ['rank', SortingOrder.Ascending],
+      ['modifiedOn', SortingOrder.Descending],
+      ['createdOn', SortingOrder.Descending],
+      ['status', SortingOrder.Ascending],
+      ['priority', SortingOrder.Ascending]
+    ],
+    groupDepth: ROADMAP_GROUP_DEPTH,
+    other: base.other
+  }
+}
+
+// Calendar (month grid, week and agenda). Which dates place an item, and the mode, are stored in the view options under
+// the `calendar` key and edited in the toolbar of the layout itself. The fields shown on an item are the columns of the
+// view (Configure columns), like the cards of the board. There is no grouping: a day is the group. Order-by is the
+// order of the items inside a day.
+export function calendarViewOptions (): ViewOptionsModel {
+  const base = issuesOptions(true)
+  return {
+    // A single entry: the Customize View popup offers no "Group by" for a layout that has one entry
+    groupBy: ['status'],
+    defaultGroupBy: '#no_category',
+    orderBy: [
+      ['rank', SortingOrder.Ascending],
+      ['priority', SortingOrder.Ascending],
+      ['startDate', SortingOrder.Ascending],
+      ['dueDate', SortingOrder.Ascending],
+      ['modifiedOn', SortingOrder.Descending],
+      ['createdOn', SortingOrder.Descending],
+      ['status', SortingOrder.Ascending]
+    ],
+    groupDepth: 1,
+    other: base.other
+  }
+}
+
+// Workload (people by time buckets). The dates that place an item, the zoom, the load measure and the capacity per day
+// are stored in the view options under the `workload` key and edited in the toolbar of the layout itself. The rows are
+// the assignees, so there is no grouping and no sorting; the fields of an item are not configurable.
+export function workloadViewOptions (): ViewOptionsModel {
+  const base = issuesOptions(true)
+  return {
+    // A single entry: the Customize View popup offers no "Group by" for a layout that has one entry
+    groupBy: ['status'],
+    defaultGroupBy: '#no_category',
+    orderBy: [['rank', SortingOrder.Ascending]],
+    groupDepth: 1,
+    other: base.other
+  }
+}
+
 export function defineViewlets (builder: Builder): void {
   builder.createDoc(
     view.class.ViewletDescriptor,
@@ -569,6 +652,39 @@ export function defineViewlets (builder: Builder): void {
       component: tracker.component.KanbanView
     },
     tracker.viewlet.Kanban
+  )
+
+  builder.createDoc(
+    view.class.ViewletDescriptor,
+    core.space.Model,
+    {
+      label: tracker.string.Roadmap,
+      icon: tracker.icon.Roadmap,
+      component: tracker.component.RoadmapView
+    },
+    tracker.viewlet.Roadmap
+  )
+
+  builder.createDoc(
+    view.class.ViewletDescriptor,
+    core.space.Model,
+    {
+      label: tracker.string.Calendar,
+      icon: tracker.icon.Calendar,
+      component: tracker.component.CalendarView
+    },
+    tracker.viewlet.Calendar
+  )
+
+  builder.createDoc(
+    view.class.ViewletDescriptor,
+    core.space.Model,
+    {
+      label: tracker.string.Workload,
+      icon: tracker.icon.Workload,
+      component: tracker.component.WorkloadView
+    },
+    tracker.viewlet.Workload
   )
 
   builder.createDoc(
@@ -839,12 +955,18 @@ export function defineViewlets (builder: Builder): void {
       descriptor: tracker.viewlet.Kanban,
       viewOptions: {
         ...issuesOptions(true),
-        groupDepth: 1
+        // The board starts without swimlanes: its "Group by" is the swimlanes, the columns come from the column
+        // field of the board settings (the status unless chosen otherwise). '#no_category' is the "No grouping"
+        // choice of the Customize View popup.
+        defaultGroupBy: '#no_category',
+        groupDepth: BOARD_GROUP_DEPTH
       },
       configOptions: {
         strict: true
       },
+      // The fields of a card; the title, the identifier and the status marker are always shown
       config: [
+        'assignee',
         'subIssues',
         'priority',
         'component',
@@ -857,6 +979,49 @@ export function defineViewlets (builder: Builder): void {
       ]
     },
     tracker.viewlet.IssueKanban
+  )
+
+  // The roadmap follows Kanban so that List stays the default viewlet
+  builder.createDoc(
+    view.class.Viewlet,
+    core.space.Model,
+    {
+      attachTo: tracker.class.Issue,
+      descriptor: tracker.viewlet.Roadmap,
+      viewOptions: roadmapViewOptions(),
+      configOptions: { strict: true, hiddenKeys: ['title'] },
+      config: []
+    },
+    tracker.viewlet.IssueRoadmap
+  )
+
+  // The calendar follows the roadmap, after the layouts of the saved view bar
+  builder.createDoc(
+    view.class.Viewlet,
+    core.space.Model,
+    {
+      attachTo: tracker.class.Issue,
+      descriptor: tracker.viewlet.Calendar,
+      viewOptions: calendarViewOptions(),
+      configOptions: { strict: true, hiddenKeys: ['title'] },
+      // The fields an item of the calendar shows; the title, the identifier and the status marker are always shown
+      config: ['assignee', 'priority', 'dueDate', 'labels']
+    },
+    tracker.viewlet.IssueCalendar
+  )
+
+  // The workload follows the calendar, the last layout of the saved view bar
+  builder.createDoc(
+    view.class.Viewlet,
+    core.space.Model,
+    {
+      attachTo: tracker.class.Issue,
+      descriptor: tracker.viewlet.Workload,
+      viewOptions: workloadViewOptions(),
+      configOptions: { strict: true, hiddenKeys: ['title'] },
+      config: []
+    },
+    tracker.viewlet.IssueWorkload
   )
 
   // Gantt is registered AFTER List + Kanban so List remains the default
@@ -965,6 +1130,12 @@ export function defineViewlets (builder: Builder): void {
         },
         'members',
         {
+          key: '',
+          label: tracker.string.ProjectStatus,
+          presenter: tracker.component.ProjectStatusPresenter,
+          displayProps: { key: 'projectStatus' }
+        },
+        {
           key: 'defaultAssignee',
           props: { kind: 'list' }
         },
@@ -1002,6 +1173,12 @@ export function defineViewlets (builder: Builder): void {
           }
         },
         'members',
+        {
+          key: '',
+          label: tracker.string.ProjectStatus,
+          presenter: tracker.component.ProjectStatusPresenter,
+          displayProps: { key: 'projectStatus' }
+        },
         {
           key: 'defaultAssignee',
           props: { kind: 'list' }

@@ -61,6 +61,8 @@
     IssuePriority,
     IssueStatus,
     IssueTemplate,
+    isProjectItemLimitReached,
+    MAX_PROJECT_ITEMS,
     Milestone,
     Project,
     ProjectTargetPreference,
@@ -103,6 +105,8 @@
   export let assignee: Ref<Employee> | null = null
   export let component: Ref<ComponentType> | null = null
   export let milestone: Ref<Milestone> | null = null
+  // Values of the custom fields the issue starts with, e.g. the column of a board it is added from
+  export let customFields: Record<string, unknown> | undefined = undefined
   export let relatedTo: Doc | undefined
   export let shouldSaveDraft: boolean = true
   export let parentIssue: Issue | undefined
@@ -234,6 +238,25 @@
 
   let currentProject: Project | undefined
 
+  // A project holds at most MAX_PROJECT_ITEMS items (GitHub parity): a full project refuses new issues with an explicit
+  // error. The server removes the issue again if a client skips this check (OnProjectItemLimit).
+  const itemCountQuery = createQuery()
+  let projectItems = 0
+  $: if (_space !== undefined) {
+    itemCountQuery.query(
+      tracker.class.Issue,
+      { space: _space as Ref<Project> },
+      (res) => {
+        projectItems = res.total
+      },
+      { limit: 1, total: true, projection: { _id: 1 } }
+    )
+  } else {
+    itemCountQuery.unsubscribe()
+    projectItems = 0
+  }
+  $: itemLimitReached = isProjectItemLimitReached(projectItems)
+
   let descriptionBox: AttachmentStyledBox | undefined
 
   $: updateIssueStatusId(object, currentProject)
@@ -243,7 +266,8 @@
     getTitle(object.title ?? '').length > 0 &&
     object.status !== undefined &&
     kind !== undefined &&
-    currentProject !== undefined
+    currentProject !== undefined &&
+    !itemLimitReached
 
   $: empty = {
     assignee: assignee ?? currentProject?.defaultAssignee,
@@ -516,7 +540,8 @@
         relations: relatedTo !== undefined ? [{ _id: relatedTo._id, _class: relatedTo._class }] : [],
         childInfo: [],
         kind,
-        identifier
+        identifier,
+        ...(customFields !== undefined && Object.keys(customFields).length > 0 ? { customFields } : {})
       }
 
       if (!isEmptyMarkup(object.description)) {
@@ -1047,6 +1072,13 @@
           }}
         />
       {/each}
+    {/if}
+  </svelte:fragment>
+  <svelte:fragment slot="error">
+    {#if itemLimitReached}
+      <span class="error-color" data-id="project-item-limit">
+        <Label label={tracker.string.ProjectItemLimitReached} params={{ limit: MAX_PROJECT_ITEMS }} />
+      </span>
     {/if}
   </svelte:fragment>
   <svelte:fragment slot="footer">

@@ -49,8 +49,27 @@ import {
 } from '@hcengineering/task'
 import { AnyComponent, ComponentExtensionId, Location, ResolvedLocation } from '@hcengineering/ui'
 import { Action, ActionCategory, IconProps } from '@hcengineering/view'
+import type { ProjectField } from './projectField'
+import type { Iteration } from './iteration'
+import type { InsightChart } from './insightChart'
+import type { Workflow } from './workflow'
+import type { ProjectWebhook, ProjectWebhookSecret } from './webhook'
+import type { ProjectStatusUpdate } from './projectStatus'
 
 export * from './analytics'
+export * from './projectField'
+export * from './iteration'
+export * from './insightChart'
+export * from './archive'
+export * from './draft'
+export * from './viewExport'
+export * from './workflow'
+export * from './webhook'
+export * from './projectStatus'
+export * from './projectSettings'
+export * from './projectCopy'
+export * from './issueFilterSchema'
+export * from './iterationRollup'
 
 /**
  * @public
@@ -122,6 +141,12 @@ export interface Project extends TaskProject, IconProps {
    * `undefined` means "every day is a working day" (legacy behaviour).
    */
   workingDaysConfig?: WorkingDaysConfig
+  // Short description (GitHub: at most 256 characters), shown in the project details
+  shortDescription?: string
+  // README of the project (GitHub: Markdown), shown in the project details
+  readme?: Markup
+  // A template can be used to create new projects (GitHub "Make template")
+  isTemplate?: boolean
 }
 
 /**
@@ -270,6 +295,14 @@ export interface Issue extends Task {
 
   startDate: Timestamp | null // for Gantt scheduling; null = unscheduled
 
+  // Set while the issue is archived (GitHub Projects "Archive item"), `null` once restored. Archived issues keep all of
+  // their values and are left out of the project views, slice and Insights unless a filter asks for them (`is:archived`)
+  archivedAt?: Timestamp | null
+
+  // Set while the issue is a draft item (GitHub Projects "draft issue"): a project item that is not an issue yet. A draft
+  // has no number in the project sequence (`number` is 0) until it is converted, which clears the flag (`false`)
+  isDraft?: boolean
+
   // Soft deadline, independent of dueDate. The Gantt renders
   // a flag marker at this date and flags the issue as overdue when
   // dueDate > deadline. Undefined for issues that haven't opted in.
@@ -278,6 +311,9 @@ export interface Issue extends Task {
   space: Ref<Project>
 
   milestone?: Ref<Milestone> | null
+
+  // Values of user-defined project fields, keyed by ProjectField.key
+  customFields?: Record<string, unknown>
 
   // Estimation in man hours
   estimation: number
@@ -575,6 +611,13 @@ const pluginState = plugin(trackerId, {
     IssueStatus: '' as Ref<Class<IssueStatus>>,
     TypeIssuePriority: '' as Ref<Class<Type<IssuePriority>>>,
     Milestone: '' as Ref<Class<Milestone>>,
+    ProjectField: '' as Ref<Class<ProjectField>>,
+    Iteration: '' as Ref<Class<Iteration>>,
+    InsightChart: '' as Ref<Class<InsightChart>>,
+    Workflow: '' as Ref<Class<Workflow>>,
+    ProjectWebhook: '' as Ref<Class<ProjectWebhook>>,
+    ProjectWebhookSecret: '' as Ref<Class<ProjectWebhookSecret>>,
+    ProjectStatusUpdate: '' as Ref<Class<ProjectStatusUpdate>>,
     TypeMilestoneStatus: '' as Ref<Class<Type<MilestoneStatus>>>,
     TimeSpendReport: '' as Ref<Class<TimeSpendReport>>,
     TypeReportedTime: '' as Ref<Class<Type<number>>>,
@@ -672,6 +715,9 @@ const pluginState = plugin(trackerId, {
     TimeReport: '' as Asset,
     Estimation: '' as Asset,
     Gantt: '' as Asset,
+    Roadmap: '' as Asset,
+    Calendar: '' as Asset,
+    Workload: '' as Asset,
 
     // Project icons
     Home: '' as Asset,

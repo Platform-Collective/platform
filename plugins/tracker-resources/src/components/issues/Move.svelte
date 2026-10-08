@@ -31,6 +31,9 @@
   import SelectReplacement from './move/SelectReplacement.svelte'
 
   export let selected: Issue | Issue[]
+  // Project the issues are moved to when the dialog opens, e.g. the project the issue was searched from; it starts with
+  // the project of the issue otherwise
+  export let target: Ref<Project> | undefined = undefined
   $: docs = Array.isArray(selected) ? selected : [selected]
 
   const client = getClient()
@@ -44,7 +47,7 @@
   $: {
     const doc = docs[0]
     if (space === undefined) {
-      space = doc.space
+      space = target ?? doc.space
     }
   }
 

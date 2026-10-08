@@ -40,6 +40,7 @@
   import StartDateEditor from '../StartDateEditor.svelte'
   import StatusEditor from '../StatusEditor.svelte'
   import SchedulingModeEditor from '../SchedulingModeEditor.svelte'
+  import IssueCustomFields from '../../../projectFields/IssueCustomFields.svelte'
   import notification from '@hcengineering/notification'
 
   export let issue: Issue
@@ -232,6 +233,8 @@
     <Label label={tracker.string.SchedulingMode} />
   </span>
   <SchedulingModeEditor value={issue} width={'100%'} editable={!readonly} />
+
+  <IssueCustomFields {issue} {readonly} />
 
   {#if keys.length > 0}
     <div class="divider" />

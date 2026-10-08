@@ -53,6 +53,9 @@ import CreateIssue from './components/CreateIssue.svelte'
 import EditRelatedTargets from './components/EditRelatedTargets.svelte'
 import EditRelatedTargetsPopup from './components/EditRelatedTargetsPopup.svelte'
 import GanttView from './components/gantt/GanttView.svelte'
+import RoadmapView from './components/roadmap/RoadmapView.svelte'
+import CalendarView from './components/calendar/CalendarView.svelte'
+import WorkloadView from './components/workload/WorkloadView.svelte'
 import AssigneeEditor from './components/issues/AssigneeEditor.svelte'
 import DueDatePresenter from './components/issues/DueDatePresenter.svelte'
 import EditIssue from './components/issues/edit/EditIssue.svelte'
@@ -125,6 +128,8 @@ import IssueRelationPresenter from './components/IssueRelationPresenter.svelte'
 import RelationActivityPresenter from './components/activity/RelationActivityPresenter.svelte'
 import DependencyShiftedPresenter from './components/notifications/DependencyShiftedPresenter.svelte'
 import PredecessorsColumnPresenter from './components/issues/PredecessorsColumnPresenter.svelte'
+import CustomFieldColumn from './projectFields/CustomFieldColumn.svelte'
+import ProjectStatusPresenter from './components/projects/ProjectStatusPresenter.svelte'
 
 import ComponentSelector from './components/components/ComponentSelector.svelte'
 
@@ -138,6 +143,8 @@ import {
   deleteObjects,
   setFilters
 } from '@hcengineering/view-resources'
+import { archiveIssue, restoreIssue } from './archive/actions'
+import { convertDraftToIssue } from './draft/actions'
 import MoveAndDeleteMilestonePopup from './components/milestones/MoveAndDeleteMilestonePopup.svelte'
 import EditIssueTemplate from './components/templates/EditIssueTemplate.svelte'
 import TemplateEstimationEditor from './components/templates/EstimationEditor.svelte'
@@ -187,6 +194,19 @@ export { default as AssigneeEditor } from './components/issues/AssigneeEditor.sv
 export { default as SubIssueList } from './components/issues/edit/SubIssueList.svelte'
 export { default as IssueStatusIcon } from './components/issues/IssueStatusIcon.svelte'
 export { default as StatusPresenter } from './components/issues/StatusPresenter.svelte'
+
+export { default as CustomFieldPresenter } from './projectFields/CustomFieldPresenter.svelte'
+export { default as FieldValueEditor } from './projectFields/FieldValueEditor.svelte'
+export { default as ProjectFieldsPopup } from './projectFields/ProjectFieldsPopup.svelte'
+export { default as ArchivedItemsPopup } from './components/archive/ArchivedItemsPopup.svelte'
+export { default as WorkflowsPopup } from './components/workflows/WorkflowsPopup.svelte'
+export { default as WebhooksPopup } from './components/webhooks/WebhooksPopup.svelte'
+export { default as ProjectSettings } from './components/projects/ProjectSettings.svelte'
+export { default as ProjectStatusUpdatePopup } from './components/projects/ProjectStatusUpdatePopup.svelte'
+export * from './projectDetails/copy'
+export * from './projectDetails/lifecycle'
+export * from './projectFields/registry'
+export { projectFieldsStore, sharedProjectFieldsStore } from './projectFields/projectFieldsStore'
 
 export { activeProjects, CreateProject, IssuePresenter, PriorityEditor, StatusEditor, TitlePresenter }
 
@@ -442,6 +462,9 @@ export default async (): Promise<Resources> => ({
     IssuesView,
     KanbanView,
     GanttView,
+    RoadmapView,
+    CalendarView,
+    WorkloadView,
     ProjectComponents,
     IssuePreview,
     RelationsPopup,
@@ -465,6 +488,8 @@ export default async (): Promise<Resources> => ({
     RelationActivityPresenter,
     DependencyShiftedPresenter,
     PredecessorsColumn: PredecessorsColumnPresenter,
+    CustomFieldColumn,
+    ProjectStatusPresenter,
     ComponentSelector,
     IssueTemplates,
     IssueTemplatePresenter,
@@ -542,7 +567,10 @@ export default async (): Promise<Resources> => ({
     EditProject: editProject,
     DeleteMilestone: deleteMilestone,
     DeleteProject: deleteProject,
-    DeleteIssue: deleteIssue
+    DeleteIssue: deleteIssue,
+    ArchiveIssue: archiveIssue,
+    RestoreIssue: restoreIssue,
+    ConvertDraftToIssue: convertDraftToIssue
   },
   resolver: {
     Location: resolveLocation

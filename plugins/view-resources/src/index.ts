@@ -67,6 +67,9 @@ import IdPresenter from './components/IdPresenter.svelte'
 import ReadOnlyNotification from './components/ReadOnlyNotification.svelte'
 import RolePresenter from './components/RolePresenter.svelte'
 import SearchSelector from './components/SearchSelector.svelte'
+import SavedViewBar from './components/view/SavedViewBar.svelte'
+import CellGrid from './components/table/CellGrid.svelte'
+import FilterQueryBar from './components/filter/FilterQueryBar.svelte'
 import SpaceHeader from './components/SpaceHeader.svelte'
 import SpacePresenter from './components/SpacePresenter.svelte'
 import SpaceRefPresenter from './components/SpaceRefPresenter.svelte'
@@ -230,6 +233,12 @@ export {
   type LoadingProps
 } from './utils'
 export * from './viewOptions'
+export * from './clientViewExtension'
+export * from './savedViews'
+export * from './hierarchy'
+export * from './nestedGroups'
+export * as filterGrammar from './filter/grammar'
+export * as tableEdit from './tableEdit'
 export * from './viewletContextStore'
 export { getViewletSpecialActions } from './viewletUtils'
 export { copyMarkdown } from './actionImpl'
@@ -262,6 +271,9 @@ export {
   SortableDocList,
   SortableList,
   SortableListItem,
+  SavedViewBar,
+  CellGrid,
+  FilterQueryBar,
   SpaceHeader,
   SpacePresenter,
   StringEditor,

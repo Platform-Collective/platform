@@ -1,12 +1,16 @@
 <script lang="ts">
   import { getClient } from '@hcengineering/presentation'
-  import { DropdownIntlItem, DropdownLabelsIntl, Label, Toggle } from '@hcengineering/ui'
+  import { type AnySvelteComponent, DropdownIntlItem, DropdownLabelsIntl, Label, Toggle } from '@hcengineering/ui'
   import { Viewlet, ViewOptions, ViewOptionsModel, ViewOptionModel } from '@hcengineering/view'
+  import type { IntlString } from '@hcengineering/platform'
   import { createEventDispatcher } from 'svelte'
   import view from '../plugin'
   import { buildConfigLookup, canResolveAttribute, getKeyLabel } from '../utils'
+  import { groupByFromRows, groupByRows, selectGroupLevel } from '../nestedGroups'
   import { isDropdownType, isToggleType, noCategory } from '../viewOptions'
   import { SortingOrder } from '@hcengineering/core'
+  import { getEmbeddedLabel } from '@hcengineering/platform'
+  import { getClientViewExtension, isClientViewKey } from '../clientViewExtension'
 
   export let viewlet: Viewlet
   export let config: ViewOptionsModel
@@ -17,6 +21,8 @@
   // the user sees the same control twice in two places without a wire
   // between them.
   export let hideGroupingAndOrdering: boolean = false
+  // Hides only the "Group by" rows, for a layout that has no groups (a calendar: the day is the group)
+  export let hideGrouping: boolean = false
   /**
    * Other-toggle keys that should not render in this popup instance. Useful
    * when a viewlet exposes the same ViewOption through its own toolbar (e.g.
@@ -24,48 +30,57 @@
    * popup duplicate is undesired.
    */
   export let hideKeys: string[] = []
+  /**
+   * Settings of the layout that are not part of the generic options (e.g. the column field of a board).
+   * The component is shown after the generic rows; it receives `viewOptions` and the given props, and reports a
+   * change with an `update` event, like the rows above do.
+   */
+  export let extra: { component: AnySvelteComponent, props?: Record<string, any> } | undefined = undefined
 
   const dispatch = createEventDispatcher()
 
-  const groups =
-    viewOptions.groupBy[viewOptions.groupBy.length - 1] === noCategory ||
-    viewOptions.groupBy.length === config.groupDepth
-      ? [...viewOptions.groupBy]
-      : [...viewOptions.groupBy, noCategory]
+  // One row per level of grouping and, while the layout allows another level, a row to choose it
+  let groups = groupByRows(viewOptions.groupBy, config.groupDepth)
 
   const client = getClient()
   const hierarchy = client.getHierarchy()
   const lookup = buildConfigLookup(hierarchy, viewlet.attachTo, viewlet.config, viewlet.options?.lookup)
 
+  const extension = getClientViewExtension()
+  const extensionLabels = new Map(
+    [...(extension?.groupByKeys() ?? []), ...(extension?.orderByKeys() ?? [])].map((it) => [it.id, it.label])
+  )
+  const getLabel = (key: string): IntlString =>
+    isClientViewKey(extension, key)
+      ? getEmbeddedLabel(extensionLabels.get(key) ?? key)
+      : getKeyLabel(client, viewlet.attachTo, key, lookup)
+
   const groupBy = config.groupBy
-    .filter((p) => canResolveAttribute(hierarchy, viewlet.attachTo, p, lookup))
+    .filter((p) => isClientViewKey(extension, p) || canResolveAttribute(hierarchy, viewlet.attachTo, p, lookup))
     .map((p) => {
       return {
         id: p,
-        label: getKeyLabel(client, viewlet.attachTo, p, lookup)
+        label: getLabel(p)
       }
     })
     .concat({ id: noCategory, label: view.string.NoGrouping })
 
   const orderBy = config.orderBy
-    .filter((p) => p[0] === 'rank' || canResolveAttribute(hierarchy, viewlet.attachTo, p[0], lookup))
+    .filter(
+      (p) =>
+        p[0] === 'rank' || isClientViewKey(extension, p[0]) || canResolveAttribute(hierarchy, viewlet.attachTo, p[0], lookup)
+    )
     .map((p) => {
       const key = p[0]
       return {
         id: key,
-        label: key === 'rank' ? view.string.Manual : getKeyLabel(client, viewlet.attachTo, key, lookup)
+        label: key === 'rank' ? view.string.Manual : getLabel(key)
       }
     })
 
-  function selectGrouping (value: string, i: number) {
-    groups[i] = value
-    if (value === noCategory) {
-      groups.length = i + 1
-    } else if (config.groupDepth === undefined || config.groupDepth > viewOptions.groupBy.length) {
-      groups.length = i + 1
-      groups[i + 1] = noCategory
-    }
-    viewOptions.groupBy = groups.length > 1 ? groups.filter((p) => p !== noCategory) : [...groups]
+  function selectGrouping (value: string, i: number): void {
+    groups = selectGroupLevel(groups, i, value, config.groupDepth)
+    viewOptions.groupBy = groupByFromRows(groups)
     dispatch('update', {
       key: 'groupBy',
       value: viewOptions.groupBy
@@ -108,10 +123,10 @@
 
 <div class="antiCard dialog menu">
   <div class="antiCard-menu__spacer" />
-  {#if !hideGroupingAndOrdering && hasMultipleSelections(config.groupBy)}
+  {#if !hideGroupingAndOrdering && !hideGrouping && hasMultipleSelections(config.groupBy)}
     {#each groups as group, i}
       <div class="antiCard-menu__item grouping">
-        <span class="overflow-label"><Label label={i === 0 ? view.string.Grouping : view.string.Then} /></span>
+        <span class="overflow-label"><Label label={i === 0 ? view.string.Grouping : view.string.ThenBy} /></span>
         <DropdownLabelsIntl
           label={view.string.Grouping}
           kind={'regular'}
@@ -154,7 +169,7 @@
       />
     </div>
   {/if}
-  {#if visibleOthers.length > 0 && !hideGroupingAndOrdering && (hasMultipleSelections(config.groupBy) || hasMultipleSelections(config.orderBy))}
+  {#if visibleOthers.length > 0 && !hideGroupingAndOrdering && ((!hideGrouping && hasMultipleSelections(config.groupBy)) || hasMultipleSelections(config.orderBy))}
     <div class="antiCard-menu__divider" />
   {/if}
   {#each visibleOthers as model}
@@ -202,5 +217,15 @@
     </div>
   {/each}
   <slot name="extra" />
+  {#if extra !== undefined}
+    <svelte:component
+      this={extra.component}
+      {...extra.props ?? {}}
+      {viewOptions}
+      on:update={(e) => {
+        dispatch('update', e.detail)
+      }}
+    />
+  {/if}
   <div class="antiCard-menu__spacer" />
 </div>

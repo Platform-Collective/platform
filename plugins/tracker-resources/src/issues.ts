@@ -1,7 +1,14 @@
 import { type Doc, type DocumentUpdate, type Ref, type RelatedDocument, type TxOperations } from '@hcengineering/core'
 import { getMetadata } from '@hcengineering/platform'
 import presentation, { getClient } from '@hcengineering/presentation'
-import { trackerId, type Component, type Issue, type Milestone } from '@hcengineering/tracker'
+import {
+  issueLinkSegment,
+  parseDraftLinkSegment,
+  trackerId,
+  type Component,
+  type Issue,
+  type Milestone
+} from '@hcengineering/tracker'
 import { getCurrentResolvedLocation, getPanelURI, type Location, type ResolvedLocation } from '@hcengineering/ui'
 import { accessDeniedStore } from '@hcengineering/view-resources'
 import { workbenchId } from '@hcengineering/workbench'
@@ -35,13 +42,17 @@ export async function issueTitleProvider (client: TxOperations, ref: Ref<Doc>, d
   return await getIssueTitle(object)
 }
 
+/**
+ * The part of a link that opens the issue: its identifier, or for a draft item (no identifier of an issue yet) its id.
+ */
 export async function getTitle (doc: Doc): Promise<string> {
-  const issue = doc as Issue
-  return issue.identifier
+  return issueLinkSegment(doc as Issue)
 }
 
 export function generateIssuePanelUri (issue: Issue): string {
-  return getPanelURI(tracker.component.EditIssue, issue.identifier, issue._class, 'content')
+  // A draft is opened by its id, there is no identifier of an issue to resolve
+  const id = issue.isDraft === true ? issue._id : issue.identifier
+  return getPanelURI(tracker.component.EditIssue, id, issue._class, 'content')
 }
 
 export async function issueLinkFragmentProvider (doc: Doc): Promise<Location> {
@@ -92,6 +103,33 @@ export async function generateIssueLocation (loc: Location, issueId: string): Pr
   }
 }
 
+// A draft item has no identifier of an issue, its link carries the id of the document
+export async function generateDraftLocation (loc: Location, draftId: string): Promise<ResolvedLocation | undefined> {
+  const client = getClient()
+  const issue = await client.findOne(
+    tracker.class.Issue,
+    { _id: draftId as Ref<Issue>, isDraft: true },
+    { showArchived: true }
+  )
+  if (issue === undefined) {
+    accessDeniedStore.set(true)
+    console.error(`Could not find draft ${draftId}.`)
+    return undefined
+  }
+  const appComponent = loc.path[0] ?? ''
+  const workspace = loc.path[1] ?? ''
+  return {
+    loc: {
+      path: [appComponent, workspace],
+      fragment: generateIssuePanelUri(issue)
+    },
+    defaultLocation: {
+      path: [appComponent, workspace, trackerId, issue.space, 'issues'],
+      fragment: generateIssuePanelUri(issue)
+    }
+  }
+}
+
 export async function resolveLocation (loc: Location): Promise<ResolvedLocation | undefined> {
   const app = loc.path[2]
   if (app !== trackerId) {
@@ -103,6 +141,12 @@ export async function resolveLocation (loc: Location): Promise<ResolvedLocation 
   // issue shortlink
   if (isIssueId(shortLink)) {
     return await generateIssueLocation(loc, shortLink)
+  }
+
+  // draft item link
+  const draftId = parseDraftLinkSegment(shortLink)
+  if (draftId !== undefined) {
+    return await generateDraftLocation(loc, draftId)
   }
 
   return undefined

@@ -7,6 +7,8 @@ module.exports = {
     // tests that only need constants (PaletteColorIndexes, etc.) don't pull
     // in the svelte/store transitive import from the main index.
     // Tests that need richer UI stubs override this via their own jest.mock().
-    '^@hcengineering/ui$': '<rootDir>/node_modules/@hcengineering/ui/src/colors.ts'
+    '^@hcengineering/ui$': '<rootDir>/node_modules/@hcengineering/ui/src/colors.ts',
+    // The filter grammar is a pure module of view-resources; the package index pulls in svelte components
+    '^@hcengineering/view-resources$': '<rootDir>/src/__mocks__/view-resources.js'
   }
 }
