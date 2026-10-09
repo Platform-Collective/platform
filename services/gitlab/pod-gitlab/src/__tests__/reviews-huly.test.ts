@@ -33,17 +33,34 @@ function setup (ownUser?: GitlabUserRef | null): Env {
   return { memory, reviews: new ReviewSyncManager(provider), api, provider }
 }
 
-const docOf = (memory: MemoryClient, id: string, _class: string): any => memory.docs.find((d) => d._id === id && d._class === _class)
+const docOf = (memory: MemoryClient, id: string, _class: string): any =>
+  memory.docs.find((d) => d._id === id && d._class === _class)
 
 /** A review message a Huly user created through the approvals footer, queued by the trigger. */
 function hulyReview (memory: MemoryClient, state: string, key = ''): void {
   memory.docs.push({
-    _id: 'rv-1', _class: gitlab.class.GitlabReview, space: 'prj-1', attachedTo: 'mr-1', attachedToClass: gitlab.class.GitlabMergeRequest,
-    collection: 'activity', state, createdBy: HULY_USER, modifiedBy: HULY_USER, createdOn: 1000, modifiedOn: 1000
+    _id: 'rv-1',
+    _class: gitlab.class.GitlabReview,
+    space: 'prj-1',
+    attachedTo: 'mr-1',
+    attachedToClass: gitlab.class.GitlabMergeRequest,
+    collection: 'activity',
+    state,
+    createdBy: HULY_USER,
+    modifiedBy: HULY_USER,
+    createdOn: 1000,
+    modifiedOn: 1000
   })
   memory.docs.push({
-    _id: 'rv-1', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key, objectClass: gitlab.class.GitlabReview,
-    repository: null, gitlabIid: 0, attachedTo: 'mr-1', needSync: ''
+    _id: 'rv-1',
+    _class: gitlab.class.DocSyncInfo,
+    space: 'prj-1',
+    key,
+    objectClass: gitlab.class.GitlabReview,
+    repository: null,
+    gitlabIid: 0,
+    attachedTo: 'mr-1',
+    needSync: ''
   })
 }
 
@@ -51,18 +68,29 @@ async function syncReview (env: Env): Promise<any> {
   const info = docOf(env.memory, 'rv-1', gitlab.class.DocSyncInfo)
   const review = docOf(env.memory, 'rv-1', gitlab.class.GitlabReview)
   const parent = docOf(env.memory, 'mr-1', gitlab.class.DocSyncInfo)
-  const update = await env.reviews.sync(ctx, review === undefined ? undefined : { ...review }, { ...info }, { ...parent })
+  const update = await env.reviews.sync(
+    ctx,
+    review === undefined ? undefined : { ...review },
+    { ...info },
+    { ...parent }
+  )
   await env.memory.update(info, update)
   return update
 }
 
 describe('ReviewSyncManager', () => {
-  it('approves with the reviewer\'s own token and records the approval on the merge request', async () => {
+  it("approves with the reviewer's own token and records the approval on the merge request", async () => {
     const env = setup()
     hulyReview(env.memory, 'approved')
     const update = await syncReview(env)
     expect(env.api.approveMergeRequest).toHaveBeenCalledWith(PROJECT_ID, 3)
-    expect(update).toMatchObject({ key: `${KEY_3}/reviews/5/1000`, parent: KEY_3, repository: 'repo-1', needSync: GITLAB_SYNC_VERSION, error: null })
+    expect(update).toMatchObject({
+      key: `${KEY_3}/reviews/5/1000`,
+      parent: KEY_3,
+      repository: 'repo-1',
+      needSync: GITLAB_SYNC_VERSION,
+      error: null
+    })
     expect(docOf(env.memory, 'mr-1', gitlab.class.DocSyncInfo)).toMatchObject({
       reviews: { 5: { user: gitlabUser(5), state: 'approved' } },
       needSync: ''
@@ -96,7 +124,7 @@ describe('ReviewSyncManager', () => {
     expect(env.api.unapproveMergeRequest).toHaveBeenCalledWith(PROJECT_ID, 3)
   })
 
-  it('never approves with someone else\'s token, and keeps the message marked not sent', async () => {
+  it("never approves with someone else's token, and keeps the message marked not sent", async () => {
     const env = setup(null)
     hulyReview(env.memory, 'approved')
     const update = await syncReview(env)

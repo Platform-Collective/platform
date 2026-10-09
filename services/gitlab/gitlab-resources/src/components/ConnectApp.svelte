@@ -118,7 +118,13 @@
       {:else if failureMessage !== undefined}
         <span class="error-color">{failureMessage}</span>
       {/if}
-      <Button label={gitlab.string.CloseTab} kind="primary" on:click={() => { window.close() }} />
+      <Button
+        label={gitlab.string.CloseTab}
+        kind="primary"
+        on:click={() => {
+          window.close()
+        }}
+      />
     </div>
   {/if}
 </div>

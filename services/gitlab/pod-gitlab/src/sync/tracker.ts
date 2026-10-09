@@ -14,17 +14,42 @@ export interface IssueNumber {
 }
 
 /** Number, rank (after the last task) and identifier of a new task in `project`. */
-export async function allocateIssueNumber (client: TxOperations, project: Pick<Project, '_id' | 'identifier'>): Promise<IssueNumber> {
-  const lastOne = await client.findOne(tracker.class.Issue, { space: project._id }, { sort: { rank: SortingOrder.Descending } })
-  const incResult = await client.updateDoc(tracker.class.Project, core.space.Space, project._id, { $inc: { sequence: 1 } }, true)
+export async function allocateIssueNumber (
+  client: TxOperations,
+  project: Pick<Project, '_id' | 'identifier'>
+): Promise<IssueNumber> {
+  const lastOne = await client.findOne(
+    tracker.class.Issue,
+    { space: project._id },
+    { sort: { rank: SortingOrder.Descending } }
+  )
+  const incResult = await client.updateDoc(
+    tracker.class.Project,
+    core.space.Space,
+    project._id,
+    { $inc: { sequence: 1 } },
+    true
+  )
   const number = (incResult as unknown as { object: { sequence: number } }).object.sequence
   return { number, rank: calcRank(lastOne, undefined), identifier: `${project.identifier}-${number}` }
 }
 
 export type EmptyIssueFields = Pick<
 AttachedData<Issue>,
-'component' | 'milestone' | 'priority' | 'comments' | 'subIssues' | 'startDate' | 'dueDate' | 'parents' |
-'reportedTime' | 'remainingTime' | 'estimation' | 'reports' | 'relations' | 'childInfo'
+| 'component'
+| 'milestone'
+| 'priority'
+| 'comments'
+| 'subIssues'
+| 'startDate'
+| 'dueDate'
+| 'parents'
+| 'reportedTime'
+| 'remainingTime'
+| 'estimation'
+| 'reports'
+| 'relations'
+| 'childInfo'
 >
 
 /** The issue fields GitLab has no counterpart for. */

@@ -16,7 +16,12 @@ export interface MergeResult<T> {
 /**
  * Three-way merge of a synchronized object against `base`, the last state both sides agreed on.
  */
-export function mergeFields<T extends object> (base: T, platform: T, external: T, equals: FieldEquals<T> = {}): MergeResult<T> {
+export function mergeFields<T extends object> (
+  base: T,
+  platform: T,
+  external: T,
+  equals: FieldEquals<T> = {}
+): MergeResult<T> {
   const result: MergeResult<T> = { toPlatform: {}, toGitlab: {}, conflicts: [], merged: { ...platform } }
   const keys = new Set([...Object.keys(base), ...Object.keys(platform), ...Object.keys(external)]) as Set<keyof T>
   for (const key of keys) {

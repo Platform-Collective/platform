@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { AccountClient } from '@hcengineering/account-client'
-import core, { type MeasureContext, type PersonId, type PersonUuid, type Ref, type TxOperations, type WorkspaceUuid } from '@hcengineering/core'
+import core, {
+  type MeasureContext,
+  type PersonId,
+  type PersonUuid,
+  type Ref,
+  type TxOperations,
+  type WorkspaceUuid
+} from '@hcengineering/core'
 import gitlab, {
   gitlabIntegrationKind,
   type GitlabAuthentication,
@@ -98,9 +105,17 @@ export class GitlabService {
     return { configured: true, host: app.host, clientId: app.clientId, ...common }
   }
 
-  async saveApp (ctx: MeasureContext, workspace: WorkspaceUuid, accountId: PersonId, input: GitlabAppInput): Promise<void> {
+  async saveApp (
+    ctx: MeasureContext,
+    workspace: WorkspaceUuid,
+    accountId: PersonId,
+    input: GitlabAppInput
+  ): Promise<void> {
     const rawHost = input.host?.trim() ?? ''
-    const host = rawHost === '' ? DEFAULT_GITLAB_HOST : normalizeHost(rawHost, { allowInsecure: this.deps.config.AllowInsecureHosts === true })
+    const host =
+      rawHost === ''
+        ? DEFAULT_GITLAB_HOST
+        : normalizeHost(rawHost, { allowInsecure: this.deps.config.AllowInsecureHosts === true })
     const clientId = input.clientId.trim()
     if (clientId === '') {
       throw new Error('Application ID is required')
@@ -135,7 +150,9 @@ export class GitlabService {
       (await client.findAll(gitlab.class.GitlabIntegration, {})).map((it) => it.login)
     )
     if (logins.length > 0) {
-      throw new Error(`Disconnect GitLab before changing the application (connected: ${[...new Set(logins)].join(', ')})`)
+      throw new Error(
+        `Disconnect GitLab before changing the application (connected: ${[...new Set(logins)].join(', ')})`
+      )
     }
   }
 
@@ -151,7 +168,11 @@ export class GitlabService {
     return toOAuthConfig(await this.appFor(workspace), this.deps.config.RedirectURI)
   }
 
-  private async withClient<T>(workspace: WorkspaceUuid, accountId: PersonId, fn: (client: TxOperations) => Promise<T>): Promise<T> {
+  private async withClient<T>(
+    workspace: WorkspaceUuid,
+    accountId: PersonId,
+    fn: (client: TxOperations) => Promise<T>
+  ): Promise<T> {
     const session = await this.deps.openSession(workspace, accountId)
     try {
       return await fn(session.client)
@@ -213,7 +234,9 @@ export class GitlabService {
       try {
         await this.deps.linkIdentity?.(client, state.account as PersonUuid, host, user)
       } catch (err: unknown) {
-        ctx.warn('gitlab identity not linked to the Huly person', { error: err instanceof Error ? err.message : String(err) })
+        ctx.warn('gitlab identity not linked to the Huly person', {
+          error: err instanceof Error ? err.message : String(err)
+        })
       }
       await this.syncRepositories(client, host, integration, record.token)
     })
@@ -241,7 +264,7 @@ export class GitlabService {
             continue
           }
           await this.syncRepositories(client, app.host, integration, record.token)
-          if (integration.alive !== true || (integration.error ?? null) !== null) {
+          if (!integration.alive || (integration.error ?? null) !== null) {
             await client.update(integration, { alive: true, error: null })
           }
         } catch (err: unknown) {
@@ -264,7 +287,11 @@ export class GitlabService {
       const base = this.deps.config.WebhookBaseURL
       const target = { workspace, integration: integration._id }
       // Scoped URL and secret
-      const hook = await api.ensureProjectHook(repository.projectId, hookUrl(base, target), hookSecret(this.deps.config.WebhookSecret, target))
+      const hook = await api.ensureProjectHook(
+        repository.projectId,
+        hookUrl(base, target),
+        hookSecret(this.deps.config.WebhookSecret, target)
+      )
       await client.update(repository, { hookId: hook.id })
       ctx.info('gitlab hook installed', { workspace, projectId: repository.projectId, hookId: hook.id })
     })
@@ -299,7 +326,9 @@ export class GitlabService {
    */
   async disconnectAll (ctx: MeasureContext, workspace: WorkspaceUuid): Promise<void> {
     const members = await this.withClient(workspace, core.account.System, async (client) => {
-      const connected = [...new Set((await client.findAll(gitlab.class.GitlabIntegration, {})).map((it) => it.connectedBy))]
+      const connected = [
+        ...new Set((await client.findAll(gitlab.class.GitlabIntegration, {})).map((it) => it.connectedBy))
+      ]
       for (const member of connected) {
         await this.removeMemberDocs(ctx, client, workspace, member)
       }
@@ -310,7 +339,9 @@ export class GitlabService {
         await this.removeMemberAccountState(workspace, member)
       } catch (err: unknown) {
         // A member without an account row (e.g. a half-finished earlier authorization) must not block the rest
-        ctx.warn('gitlab account state cleanup failed for a member', { error: err instanceof Error ? err.message : String(err) })
+        ctx.warn('gitlab account state cleanup failed for a member', {
+          error: err instanceof Error ? err.message : String(err)
+        })
         await this.deps.users.remove(workspace, member).catch(() => {})
       }
     }
@@ -331,7 +362,9 @@ export class GitlabService {
         token = (await this.deps.users.getValidRecord(workspace, member))?.token
       } catch (err: unknown) {
         // An unrefreshable token must not block disconnecting; the hooks are then left in place.
-        ctx.warn('gitlab token unavailable for hook cleanup', { error: err instanceof Error ? err.message : String(err) })
+        ctx.warn('gitlab token unavailable for hook cleanup', {
+          error: err instanceof Error ? err.message : String(err)
+        })
       }
       await this.removeIntegration(ctx, client, integration, token)
     }
@@ -341,7 +374,11 @@ export class GitlabService {
   }
 
   private async removeMemberAccountState (workspace: WorkspaceUuid, member: PersonId): Promise<void> {
-    await this.deps.accounts.deleteIntegration({ kind: gitlabIntegrationKind, workspaceUuid: workspace, socialId: member })
+    await this.deps.accounts.deleteIntegration({
+      kind: gitlabIntegrationKind,
+      workspaceUuid: workspace,
+      socialId: member
+    })
     // Tokens are workspace-scoped: drop the member's token last, since hook cleanup still needs it.
     await this.deps.users.remove(workspace, member)
   }
@@ -406,7 +443,11 @@ export class GitlabService {
     if (orphanedHooks.length > 0) {
       ctx.warn('gitlab hooks left in place, token unavailable', { projectIds: orphanedHooks })
     }
-    await this.unlinkRemovedRepositories(client, integration._id, repositories.map((it) => it._id))
+    await this.unlinkRemovedRepositories(
+      client,
+      integration._id,
+      repositories.map((it) => it._id)
+    )
     await client.remove(integration)
   }
 
@@ -433,9 +474,15 @@ export class GitlabService {
       const current = project.repositories ?? []
       const remaining = current.filter((it) => !removedIds.has(it))
       if (remaining.length === current.length) continue
-      await client.updateMixin(project._id as Ref<Project>, tracker.class.Project, project.space, gitlab.mixin.GitlabProject, {
-        repositories: remaining
-      })
+      await client.updateMixin(
+        project._id as Ref<Project>,
+        tracker.class.Project,
+        project.space,
+        gitlab.mixin.GitlabProject,
+        {
+          repositories: remaining
+        }
+      )
     }
   }
 
@@ -486,7 +533,13 @@ export class GitlabService {
   ): Promise<GitlabIntegration> {
     const existing = await client.findOne(gitlab.class.GitlabIntegration, { host, gitlabUserId: user.id })
     if (existing !== undefined) {
-      await client.update(existing, { login: user.username, name: user.name, connectedBy: accountId, alive: true, error: null })
+      await client.update(existing, {
+        login: user.username,
+        name: user.name,
+        connectedBy: accountId,
+        alive: true,
+        error: null
+      })
       return { ...existing, login: user.username, name: user.name, connectedBy: accountId, alive: true, error: null }
     }
     const _id = await client.createDoc(gitlab.class.GitlabIntegration, core.space.Configuration, {

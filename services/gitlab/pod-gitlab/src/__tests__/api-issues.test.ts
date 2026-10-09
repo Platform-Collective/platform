@@ -10,9 +10,16 @@ interface Reply {
 function recorder (replies: Reply[]): { fn: FetchFn, calls: Array<{ method: string, url: string, body?: unknown }> } {
   const calls: Array<{ method: string, url: string, body?: unknown }> = []
   const fn = (async (url: string, init?: RequestInit) => {
-    calls.push({ method: init?.method ?? 'GET', url, body: init?.body !== undefined ? JSON.parse(String(init.body)) : undefined })
+    calls.push({
+      method: init?.method ?? 'GET',
+      url,
+      body: init?.body !== undefined ? JSON.parse(String(init.body)) : undefined
+    })
     const next = replies.shift() ?? { status: 404, body: { message: 'unexpected' } }
-    return new Response(next.body === undefined ? '' : JSON.stringify(next.body), { status: next.status ?? 200, headers: next.headers })
+    return new Response(next.body === undefined ? '' : JSON.stringify(next.body), {
+      status: next.status ?? 200,
+      headers: next.headers
+    })
   }) as unknown as FetchFn
   return { fn, calls }
 }
@@ -25,7 +32,9 @@ describe('GitlabApi issues and notes', () => {
     const { fn, calls } = recorder([{ status: 201, body: { ...issue, iid: 8, project_id: 43 } }])
     const moved = await new GitlabApi(host, 't', fn).moveIssue(42, 1, 43)
     expect(moved.iid).toBe(8)
-    expect(calls).toEqual([{ method: 'POST', url: `${host}/api/v4/projects/42/issues/1/move`, body: { to_project_id: 43 } }])
+    expect(calls).toEqual([
+      { method: 'POST', url: `${host}/api/v4/projects/42/issues/1/move`, body: { to_project_id: 43 } }
+    ])
   })
 
   it('lists issues updated after a time, oldest first, across pages', async () => {

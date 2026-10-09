@@ -6,7 +6,13 @@
   import { getMetadata, translate } from '@hcengineering/platform'
   import { getClient } from '@hcengineering/presentation'
   import tracker, { type Project } from '@hcengineering/tracker'
-  import ui, { Button, DropdownLabelsPopup, IconChevronDown, getEventPopupPositionElement, showPopup } from '@hcengineering/ui'
+  import ui, {
+    Button,
+    DropdownLabelsPopup,
+    IconChevronDown,
+    getEventPopupPositionElement,
+    showPopup
+  } from '@hcengineering/ui'
   import { errorText } from '../errors'
   import { isLinkableProject } from '../state'
   import gitlab from '../plugin'
@@ -25,7 +31,8 @@
   let error: string | undefined
 
   async function link (projectId: Ref<Project>): Promise<void> {
-    const project = projects.find((it) => it._id === projectId) ?? (await client.findOne(tracker.class.Project, { _id: projectId }))
+    const project =
+      projects.find((it) => it._id === projectId) ?? (await client.findOne(tracker.class.Project, { _id: projectId }))
     if (project === undefined) return
     busy = true
     error = undefined
@@ -80,7 +87,11 @@
 
   $: existingIntegrationIds = new Set<string>(integrations.map((it) => it._id))
   $: allowed = projects.filter((it) =>
-    isLinkableProject(client.getHierarchy().asIf(it, gitlab.mixin.GitlabProject), integration._id, existingIntegrationIds)
+    isLinkableProject(
+      client.getHierarchy().asIf(it, gitlab.mixin.GitlabProject),
+      integration._id,
+      existingIntegrationIds
+    )
   )
 
   async function select (event: MouseEvent): Promise<void> {

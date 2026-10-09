@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { CollaboratorClient } from '@hcengineering/collaborator-client'
-import type { Doc, DocumentUpdate, MeasureContext, PersonId, Ref, Status, TxOperations, WorkspaceUuid } from '@hcengineering/core'
+import type {
+  Doc,
+  DocumentUpdate,
+  MeasureContext,
+  PersonId,
+  Ref,
+  Status,
+  TxOperations,
+  WorkspaceUuid
+} from '@hcengineering/core'
 import type { DocSyncInfo, GitlabIntegration, GitlabIntegrationRepository, GitlabProject } from '@hcengineering/gitlab'
 import type { TaskType } from '@hcengineering/task'
 import type { GitlabApi } from '../gitlab/api'

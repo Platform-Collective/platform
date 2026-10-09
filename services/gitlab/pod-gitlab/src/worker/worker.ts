@@ -50,7 +50,15 @@ import { ReviewSyncManager } from '../sync/reviews'
 import { SyncRunner } from '../sync/runner'
 import { mergeRequestSyncState } from '../sync/status'
 import { mergeRequestTaskTypeData } from '../sync/task-types'
-import type { DocSyncManager, ImageStore, IssueTaskType, PatchStore, RepositoryContext, SyncProvider, UserApi } from '../sync/types'
+import type {
+  DocSyncManager,
+  ImageStore,
+  IssueTaskType,
+  PatchStore,
+  RepositoryContext,
+  SyncProvider,
+  UserApi
+} from '../sync/types'
 import { GITLAB_SYNC_VERSION } from '../sync/versions'
 import type { GitlabUserManager, GitlabUserRecord } from '../users'
 
@@ -329,30 +337,48 @@ export class GitlabWorker implements SyncProvider {
     return this.reposFor(webUrl, projectId).length > 0
   }
 
-  async handleWebhook (kind: GitlabHookKind, payload: GitlabHookPayload, integration?: Ref<GitlabIntegration>): Promise<void> {
+  async handleWebhook (
+    kind: GitlabHookKind,
+    payload: GitlabHookPayload,
+    integration?: Ref<GitlabIntegration>
+  ): Promise<void> {
     // Dropped while closing: the next full sync catches up
     if (this.closing) return
     await this.track(this.processWebhook(kind, payload, integration))
   }
 
-  private async processWebhook (kind: GitlabHookKind, payload: GitlabHookPayload, integration?: Ref<GitlabIntegration>): Promise<void> {
+  private async processWebhook (
+    kind: GitlabHookKind,
+    payload: GitlabHookPayload,
+    integration?: Ref<GitlabIntegration>
+  ): Promise<void> {
     const projectId = payload.project?.id
     const webUrl = payload.project?.web_url
     if (projectId === undefined || webUrl === undefined) return
     // A scoped hook speaks for one integration only
-    const repos = this.reposFor(webUrl, projectId).filter((it) => integration === undefined || it.integration._id === integration)
+    const repos = this.reposFor(webUrl, projectId).filter(
+      (it) => integration === undefined || it.integration._id === integration
+    )
     for (const repo of repos) {
       try {
         const api = await this.integrationApi(repo.integration)
         if (api === undefined) continue
-        const actor = payload.user !== undefined ? await this.persons.personIdFor(repo.integration.host, payload.user) : undefined
+        const actor =
+          payload.user !== undefined ? await this.persons.personIdFor(repo.integration.host, payload.user) : undefined
         const attributes = payload.object_attributes ?? {}
         if (kind === 'Issue Hook' && attributes.iid !== undefined) {
           await this.managers.issues.handleIssueEvent(this.deps.ctx, repo, api, attributes.iid, actor)
         }
         if (kind === 'Merge Request Hook' && attributes.iid !== undefined) {
           const refresh = APPROVAL_ACTIONS.includes(attributes.action ?? '')
-          const found = await this.managers.mergeRequests.handleMergeRequestEvent(this.deps.ctx, repo, api, attributes.iid, actor, refresh)
+          const found = await this.managers.mergeRequests.handleMergeRequestEvent(
+            this.deps.ctx,
+            repo,
+            api,
+            attributes.iid,
+            actor,
+            refresh
+          )
           // Gone from GitLab (404): so are its discussions
           if (found) await this.managers.threads.refreshDiscussions(this.deps.ctx, repo, api, attributes.iid)
         }
@@ -362,9 +388,22 @@ export class GitlabWorker implements SyncProvider {
           }
           if (attributes.noteable_type === 'MergeRequest' && payload.merge_request?.iid !== undefined) {
             if (attributes.type === 'DiffNote' && attributes.discussion_id !== undefined) {
-              await this.managers.threads.handleDiscussionEvent(this.deps.ctx, repo, api, payload.merge_request.iid, attributes.discussion_id)
+              await this.managers.threads.handleDiscussionEvent(
+                this.deps.ctx,
+                repo,
+                api,
+                payload.merge_request.iid,
+                attributes.discussion_id
+              )
             } else {
-              await this.managers.notes.handleNoteEvent(this.deps.ctx, repo, api, payload.merge_request.iid, attributes.id, 'merge_requests')
+              await this.managers.notes.handleNoteEvent(
+                this.deps.ctx,
+                repo,
+                api,
+                payload.merge_request.iid,
+                attributes.id,
+                'merge_requests'
+              )
             }
           }
         }
@@ -417,7 +456,11 @@ export class GitlabWorker implements SyncProvider {
 
   /** A GitLab image for one viewer, downloaded with their own GitLab token. */
   async gitlabImage (url: string, actor: PersonId): Promise<GitlabImageAccess> {
-    return await findGitlabImage(this.repositories, url, async (repository) => await this.userApi(repository.integration, actor))
+    return await findGitlabImage(
+      this.repositories,
+      url,
+      async (repository) => await this.userApi(repository.integration, actor)
+    )
   }
 
   async issueTaskType (project: GitlabProject): Promise<IssueTaskType | undefined> {
@@ -451,7 +494,10 @@ export class GitlabWorker implements SyncProvider {
     return this.deps.createApi?.(host, token) ?? new GitlabApi(host, token)
   }
 
-  private async taskTypeOf (projectType: Ref<ProjectType>, ofClass: Ref<Class<Task>>): Promise<IssueTaskType | undefined> {
+  private async taskTypeOf (
+    projectType: Ref<ProjectType>,
+    ofClass: Ref<Class<Task>>
+  ): Promise<IssueTaskType | undefined> {
     const key = `${projectType}/${ofClass}`
     const now = this.now()
     const cached = this.taskTypes.get(key)
@@ -471,7 +517,11 @@ export class GitlabWorker implements SyncProvider {
   private async ensureMergeRequestTaskType (projectType: Ref<ProjectType>): Promise<void> {
     let running = this.ensuringTaskType.get(projectType)
     if (running === undefined) {
-      const ensure = this.deps.ensureTaskType ?? (async (client, type, data) => { await updateProjectType(client, type, [data]) })
+      const ensure =
+        this.deps.ensureTaskType ??
+        (async (client, type, data) => {
+          await updateProjectType(client, type, [data])
+        })
       running = ensure(this.client, projectType, mergeRequestTaskTypeData()).finally(() => {
         this.ensuringTaskType.delete(projectType)
       })
@@ -493,7 +543,10 @@ export class GitlabWorker implements SyncProvider {
    * Removes the hook of an unlinked repository. Unlinked while this worker watched it: at once. Otherwise (unlinked
    * while the pod was down, or a link in progress, which installs the hook before it links) after a grace period.
    */
-  private async cleanUpHook (integration: GitlabIntegration | undefined, repository: GitlabIntegrationRepository): Promise<void> {
+  private async cleanUpHook (
+    integration: GitlabIntegration | undefined,
+    repository: GitlabIntegrationRepository
+  ): Promise<void> {
     if (integration === undefined || repository.gitlabProject !== null || repository.hookId === null) {
       this.orphanSince.delete(repository._id)
       return
@@ -512,7 +565,9 @@ export class GitlabWorker implements SyncProvider {
   }
 
   private reposFor (webUrl: string, projectId: number): RepositoryContext[] {
-    return this.repositories.filter((it) => it.repository.projectId === projectId && belongsToHost(webUrl, it.integration.host))
+    return this.repositories.filter(
+      (it) => it.repository.projectId === projectId && belongsToHost(webUrl, it.integration.host)
+    )
   }
 
   private async userRecord (person: PersonId): Promise<GitlabUserRecord | undefined> {
@@ -551,7 +606,10 @@ export class GitlabWorker implements SyncProvider {
       const context: RepositoryContext = { integration, repository, project }
       if (this.wasEnabled.get(repository._id) !== true) {
         for (const listing of LISTINGS) {
-          this.fullSyncFrom.set(windowKey(repository._id, listing.kind), await this.storedSince(context, listing.objectClass))
+          this.fullSyncFrom.set(
+            windowKey(repository._id, listing.kind),
+            await this.storedSince(context, listing.objectClass)
+          )
         }
         this.nextFullSync.set(repository._id, 0)
       }
@@ -606,13 +664,21 @@ export class GitlabWorker implements SyncProvider {
         }
         this.nextFullSync.set(id, start + FULL_SYNC_INTERVAL_MS)
       } catch (err: unknown) {
-        this.deps.ctx.error('gitlab full sync failed', { repository: repo.repository.pathWithNamespace, error: errorMessage(err) })
+        this.deps.ctx.error('gitlab full sync failed', {
+          repository: repo.repository.pathWithNamespace,
+          error: errorMessage(err)
+        })
         this.nextFullSync.set(id, start + FAILED_FULL_SYNC_RETRY_MS)
       }
     }
   }
 
-  private async fullSyncListing (repo: RepositoryContext, api: GitlabApi, kind: GitlabNoteable, start: number): Promise<void> {
+  private async fullSyncListing (
+    repo: RepositoryContext,
+    api: GitlabApi,
+    kind: GitlabNoteable,
+    start: number
+  ): Promise<void> {
     const key = windowKey(repo.repository._id, kind)
     const from = this.fullSyncFrom.get(key)
     const since = from === undefined ? undefined : new Date(from - SINCE_MARGIN_MS).toISOString()
@@ -663,7 +729,10 @@ export class GitlabWorker implements SyncProvider {
           await this.managers.threads.refreshDiscussions(this.deps.ctx, repo, api, iid)
         }
       } catch (err: unknown) {
-        this.deps.ctx.warn('gitlab thread refresh failed', { repository: repo.repository.pathWithNamespace, error: errorMessage(err) })
+        this.deps.ctx.warn('gitlab thread refresh failed', {
+          repository: repo.repository.pathWithNamespace,
+          error: errorMessage(err)
+        })
       }
     }
   }
@@ -676,13 +745,20 @@ export class GitlabWorker implements SyncProvider {
     const parents = new Set<string>()
     for (const thread of threads) {
       const external = thread.external as { resolved?: boolean } | undefined
-      if (thread.deleted !== true && thread.parent !== undefined && external?.resolved === false) parents.add(thread.parent)
+      if (thread.deleted !== true && thread.parent !== undefined && external?.resolved === false) {
+        parents.add(thread.parent)
+      }
     }
     const iids: number[] = []
     for (const key of parents) {
       const info = await this.derived.findOne(gitlab.class.DocSyncInfo, { space: repo.project._id, key })
       const external = info?.external as GitlabMergeRequestInfo | undefined
-      if (info !== undefined && info.deleted !== true && external !== undefined && mergeRequestSyncState(external.state) === 'opened') {
+      if (
+        info !== undefined &&
+        info.deleted !== true &&
+        external !== undefined &&
+        mergeRequestSyncState(external.state) === 'opened'
+      ) {
         iids.push(info.gitlabIid)
       }
     }
@@ -707,7 +783,10 @@ export class GitlabWorker implements SyncProvider {
       record = await this.deps.users.getValidRecord(this.workspace, integration.connectedBy)
     } catch (err: unknown) {
       // Account service or token refresh trouble says nothing about the token: alive and error stay as they are
-      this.deps.ctx.warn('gitlab health check skipped, token unavailable', { login: integration.login, error: errorMessage(err) })
+      this.deps.ctx.warn('gitlab health check skipped, token unavailable', {
+        login: integration.login,
+        error: errorMessage(err)
+      })
       return false
     }
     if (record === undefined) {
@@ -760,7 +839,11 @@ export class GitlabWorker implements SyncProvider {
     for (const repository of linked) {
       if (repository.gitlabProject === null || this.hooksChecked.has(repository._id)) continue
       try {
-        const hook = await api.ensureProjectHook(repository.projectId, hookUrl(hooks.baseUrl, target), hookSecret(hooks.master, target))
+        const hook = await api.ensureProjectHook(
+          repository.projectId,
+          hookUrl(hooks.baseUrl, target),
+          hookSecret(hooks.master, target)
+        )
         if (hook.id !== repository.hookId) await this.client.update(repository, { hookId: hook.id })
         this.hooksChecked.add(repository._id)
       } catch (err: unknown) {
@@ -788,7 +871,11 @@ export class GitlabWorker implements SyncProvider {
     const repositories = this.repositories.map((it) => it.repository._id)
     const docs = await this.derived.findAll(
       gitlab.class.DocSyncInfo,
-      { needSync: { $ne: GITLAB_SYNC_VERSION }, space: { $in: projects }, repository: { $in: [null, ...repositories] } },
+      {
+        needSync: { $ne: GITLAB_SYNC_VERSION },
+        space: { $in: projects },
+        repository: { $in: [null, ...repositories] }
+      },
       { limit: BATCH }
     )
     if (docs.length === 0) return false
@@ -825,7 +912,10 @@ export class GitlabWorker implements SyncProvider {
    * A webhook may store a newer GitLab object while a doc syncs. The sync did not see it, so the doc stays queued with
    * that object instead of being marked done with the older one.
    */
-  private async withoutStaleExternal (info: DocSyncInfo, update: DocumentUpdate<DocSyncInfo>): Promise<DocumentUpdate<DocSyncInfo>> {
+  private async withoutStaleExternal (
+    info: DocSyncInfo,
+    update: DocumentUpdate<DocSyncInfo>
+  ): Promise<DocumentUpdate<DocSyncInfo>> {
     const fresh = await this.derived.findOne(gitlab.class.DocSyncInfo, { _id: info._id })
     const seen = update.lastModified ?? info.lastModified ?? 0
     if (fresh?.lastModified === undefined || fresh.lastModified <= seen) return update
@@ -877,7 +967,11 @@ export class GitlabWorker implements SyncProvider {
       await this.showError(existing, update.error)
     } catch (err: unknown) {
       ctx.error('gitlab sync failed', { _id: info._id, objectClass: info.objectClass, error: errorMessage(err) })
-      await this.derived.update(info, { needSync: GITLAB_SYNC_VERSION, error: errorMessage(err), retryable: !isPermanentError(err) })
+      await this.derived.update(info, {
+        needSync: GITLAB_SYNC_VERSION,
+        error: errorMessage(err),
+        retryable: !isPermanentError(err)
+      })
       try {
         await this.showError(existing, errorMessage(err))
       } catch (showErr: unknown) {

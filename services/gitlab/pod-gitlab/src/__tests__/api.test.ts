@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: EPL-2.0
 import { GitlabApi, GitlabApiError, GitlabReadonlyError, GitlabUploadTooLargeError, type FetchFn } from '../gitlab/api'
 
-interface Call { url: string, init: RequestInit | undefined }
+interface Call {
+  url: string
+  init: RequestInit | undefined
+}
 
-function fakeFetch (responses: Array<{ status: number, body?: unknown, headers?: Record<string, string> }>): { fn: FetchFn, calls: Call[] } {
+function fakeFetch (responses: Array<{ status: number, body?: unknown, headers?: Record<string, string> }>): {
+  fn: FetchFn
+  calls: Call[]
+} {
   const calls: Call[] = []
   const fn = (async (url: string, init?: RequestInit) => {
     calls.push({ url, init })
@@ -15,7 +21,11 @@ function fakeFetch (responses: Array<{ status: number, body?: unknown, headers?:
 }
 
 // Answers every call with the same raw (non-JSON) body
-function rawFetch (status: number, body: string | Uint8Array, headers: Record<string, string> = {}): { fn: FetchFn, calls: Call[] } {
+function rawFetch (
+  status: number,
+  body: string | Uint8Array,
+  headers: Record<string, string> = {}
+): { fn: FetchFn, calls: Call[] } {
   const calls: Call[] = []
   const fn = (async (url: string, init?: RequestInit) => {
     calls.push({ url, init })
@@ -28,7 +38,9 @@ const SECRET = '0123456789abcdef0123456789abcdef'
 
 describe('GitlabApi', () => {
   it('sends bearer token to /api/v4 on a sub-path host', async () => {
-    const { fn, calls } = fakeFetch([{ status: 200, body: { id: 1, username: 'u', name: 'U', avatar_url: null, web_url: 'w' } }])
+    const { fn, calls } = fakeFetch([
+      { status: 200, body: { id: 1, username: 'u', name: 'U', avatar_url: null, web_url: 'w' } }
+    ])
     const user = await new GitlabApi('https://git.corp.local/gitlab', 'tok', fn).getCurrentUser()
     expect(user.username).toBe('u')
     expect(calls[0].url).toBe('https://git.corp.local/gitlab/api/v4/user')
@@ -42,7 +54,9 @@ describe('GitlabApi', () => {
     ])
     const projects = await new GitlabApi('https://gitlab.com', 't', fn).listMaintainedProjects()
     expect(projects.map((p) => p.id)).toEqual([1, 2])
-    expect(calls[0].url).toBe('https://gitlab.com/api/v4/projects?membership=true&min_access_level=40&per_page=100&page=1')
+    expect(calls[0].url).toBe(
+      'https://gitlab.com/api/v4/projects?membership=true&min_access_level=40&per_page=100&page=1'
+    )
     expect(calls[1].url).toContain('page=2')
   })
 
@@ -58,7 +72,11 @@ describe('GitlabApi', () => {
       { status: 200, body: [{ id: 7, url: 'https://hooks/api/webhook' }] },
       { status: 200, body: { id: 7, url: 'https://hooks/api/webhook' } }
     ])
-    const hook = await new GitlabApi('https://gitlab.com', 't', fn).ensureProjectHook(5, 'https://hooks/api/webhook', 's')
+    const hook = await new GitlabApi('https://gitlab.com', 't', fn).ensureProjectHook(
+      5,
+      'https://hooks/api/webhook',
+      's'
+    )
     expect(hook.id).toBe(7)
     expect(calls.map((c) => c.init?.method)).toEqual(['GET', 'PUT'])
     expect(calls[0].url).toBe('https://gitlab.com/api/v4/projects/5/hooks?per_page=100&page=1')
@@ -72,7 +90,11 @@ describe('GitlabApi', () => {
       { status: 200, body: [{ id: 7, url: 'https://hooks/api/webhook' }], headers: { 'x-next-page': '' } },
       { status: 200, body: { id: 7, url: 'https://hooks/api/webhook' } }
     ])
-    const hook = await new GitlabApi('https://gitlab.com', 't', fn).ensureProjectHook(5, 'https://hooks/api/webhook', 's')
+    const hook = await new GitlabApi('https://gitlab.com', 't', fn).ensureProjectHook(
+      5,
+      'https://hooks/api/webhook',
+      's'
+    )
     expect(hook.id).toBe(7)
     expect(calls.map((c) => c.init?.method)).toEqual(['GET', 'GET', 'PUT'])
   })
@@ -82,11 +104,20 @@ describe('GitlabApi', () => {
       { status: 200, body: [{ id: 1, url: 'https://other' }] },
       { status: 201, body: { id: 9, url: 'https://hooks/api/webhook' } }
     ])
-    const hook = await new GitlabApi('https://gitlab.com', 't', fn).ensureProjectHook(5, 'https://hooks/api/webhook', 's')
+    const hook = await new GitlabApi('https://gitlab.com', 't', fn).ensureProjectHook(
+      5,
+      'https://hooks/api/webhook',
+      's'
+    )
     expect(hook.id).toBe(9)
     expect(calls[1].init?.method).toBe('POST')
     const body = JSON.parse(calls[1].init?.body as string)
-    expect(body).toMatchObject({ issues_events: true, merge_requests_events: true, note_events: true, push_events: false })
+    expect(body).toMatchObject({
+      issues_events: true,
+      merge_requests_events: true,
+      note_events: true,
+      push_events: false
+    })
     // Confidential issues and internal notes are never imported, so their hooks stay off
     expect(body).toMatchObject({ confidential_issues_events: false, confidential_note_events: false })
   })
@@ -98,8 +129,15 @@ describe('GitlabApi', () => {
 
   it('uploads a file as multipart form data', async () => {
     const url = `/uploads/${SECRET}/shot.png`
-    const { fn, calls } = fakeFetch([{ status: 201, body: { alt: 'shot', url, full_path: `/-/project/5${url}`, markdown: `![shot](${url})` } }])
-    const upload = await new GitlabApi('https://gitlab.com', 't', fn).uploadFile(5, 'shot.png', Buffer.from('png-bytes'), 'image/png')
+    const { fn, calls } = fakeFetch([
+      { status: 201, body: { alt: 'shot', url, full_path: `/-/project/5${url}`, markdown: `![shot](${url})` } }
+    ])
+    const upload = await new GitlabApi('https://gitlab.com', 't', fn).uploadFile(
+      5,
+      'shot.png',
+      Buffer.from('png-bytes'),
+      'image/png'
+    )
     expect(upload.url).toBe(url)
     expect(calls[0].url).toBe('https://gitlab.com/api/v4/projects/5/uploads')
     expect(calls[0].init?.method).toBe('POST')
@@ -129,30 +167,38 @@ describe('GitlabApi', () => {
     ['svg', [...Buffer.from('<svg xmlns=')], 'application/octet-stream'],
     ['text', [...Buffer.from('hello world!')], 'application/octet-stream']
   ])('recognises a %s served as application/octet-stream', async (_name, bytes, expected) => {
-    const { fn } = rawFetch(200, new Uint8Array(bytes as number[]), { 'content-type': 'application/octet-stream' })
+    const { fn } = rawFetch(200, new Uint8Array(bytes), { 'content-type': 'application/octet-stream' })
     const got = await new GitlabApi('https://gitlab.com', 't', fn).downloadUpload(5, SECRET, 'a.png', 100)
     expect(got.contentType).toBe(expected)
   })
 
   it('keeps a specific type GitLab sends', async () => {
     const { fn } = rawFetch(200, new Uint8Array([0x89, 0x50, 0x4e, 0x47]), { 'content-type': 'image/x-custom' })
-    expect((await new GitlabApi('https://gitlab.com', 't', fn).downloadUpload(5, SECRET, 'a.png', 100)).contentType).toBe('image/x-custom')
+    expect(
+      (await new GitlabApi('https://gitlab.com', 't', fn).downloadUpload(5, SECRET, 'a.png', 100)).contentType
+    ).toBe('image/x-custom')
   })
 
   it.each(['..', '.', '%2E%2E', '%2e'])('refuses the dot-segment file name %p without fetching', async (name) => {
     const { fn, calls } = rawFetch(200, 'img', { 'content-type': 'image/png' })
-    await expect(new GitlabApi('https://gitlab.com', 't', fn).downloadUpload(5, SECRET, name, 100)).rejects.toThrow('Invalid upload file name')
+    await expect(new GitlabApi('https://gitlab.com', 't', fn).downloadUpload(5, SECRET, name, 100)).rejects.toThrow(
+      'Invalid upload file name'
+    )
     expect(calls).toHaveLength(0)
   })
 
   it('refuses a download larger than the limit', async () => {
     const { fn } = rawFetch(200, 'x'.repeat(11), { 'content-type': 'image/png' })
-    await expect(new GitlabApi('https://gitlab.com', 't', fn).downloadUpload(5, SECRET, 'a.png', 10)).rejects.toBeInstanceOf(GitlabUploadTooLargeError)
+    await expect(
+      new GitlabApi('https://gitlab.com', 't', fn).downloadUpload(5, SECRET, 'a.png', 10)
+    ).rejects.toBeInstanceOf(GitlabUploadTooLargeError)
   })
 
   it('refuses a download whose content-length exceeds the limit without reading it', async () => {
     const { fn } = rawFetch(200, 'x'.repeat(11), { 'content-type': 'image/png', 'content-length': '11' })
-    const err = await new GitlabApi('https://gitlab.com', 't', fn).downloadUpload(5, SECRET, 'a.png', 10).catch((e) => e)
+    const err = await new GitlabApi('https://gitlab.com', 't', fn)
+      .downloadUpload(5, SECRET, 'a.png', 10)
+      .catch((e) => e)
     expect(err).toBeInstanceOf(GitlabUploadTooLargeError)
     expect(err.size).toBe(11)
     expect(err.limit).toBe(10)
@@ -160,7 +206,9 @@ describe('GitlabApi', () => {
 
   it('reports a GitLab without the download endpoint as a 404 GitlabApiError', async () => {
     const { fn } = rawFetch(404, '{"error":"404 Not Found"}')
-    const err = await new GitlabApi('https://gitlab.com', 't', fn).downloadUpload(5, SECRET, 'a.png', 10).catch((e) => e)
+    const err = await new GitlabApi('https://gitlab.com', 't', fn)
+      .downloadUpload(5, SECRET, 'a.png', 10)
+      .catch((e) => e)
     expect(err).toBeInstanceOf(GitlabApiError)
     expect(err.status).toBe(404)
   })
@@ -174,14 +222,18 @@ describe('GITLAB_READONLY', () => {
   it('refuses a write without calling GitLab', async () => {
     process.env.GITLAB_READONLY = 'true'
     const { fn, calls } = fakeFetch([])
-    await expect(new GitlabApi('https://gitlab.com', 't', fn).updateIssue(5, 1, { title: 'x' })).rejects.toThrow(GitlabReadonlyError)
+    await expect(new GitlabApi('https://gitlab.com', 't', fn).updateIssue(5, 1, { title: 'x' })).rejects.toThrow(
+      GitlabReadonlyError
+    )
     expect(calls).toEqual([])
   })
 
   it('refuses an upload', async () => {
     process.env.GITLAB_READONLY = 'true'
     const { fn, calls } = fakeFetch([])
-    await expect(new GitlabApi('https://gitlab.com', 't', fn).uploadFile(5, 'a.png', Buffer.from('x'), 'image/png')).rejects.toThrow(GitlabReadonlyError)
+    await expect(
+      new GitlabApi('https://gitlab.com', 't', fn).uploadFile(5, 'a.png', Buffer.from('x'), 'image/png')
+    ).rejects.toThrow(GitlabReadonlyError)
     expect(calls).toEqual([])
   })
 

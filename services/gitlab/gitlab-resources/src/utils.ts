@@ -6,7 +6,10 @@ import presentation from '@hcengineering/presentation'
 import gitlab from './plugin'
 import { parseServiceResponse, serviceUrl, stateFromAuthorizeUrl } from './state'
 
-export async function sendGLServiceRequest (path: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+export async function sendGLServiceRequest (
+  path: string,
+  args: Record<string, unknown>
+): Promise<Record<string, unknown>> {
   const base = getMetadata(gitlab.metadata.GitlabURL)
   if (base === undefined || base === '') {
     throw new PlatformError(unknownError('GitLab integration is not configured'))

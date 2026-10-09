@@ -7,7 +7,7 @@ describe('expansionAfter', () => {
     expect(expansionAfter({ expanded: false, resolved: true }, false)).toEqual({ expanded: true, resolved: false })
   })
 
-  it('keeps the user\'s choice while the state stays the same', () => {
+  it("keeps the user's choice while the state stays the same", () => {
     const opened = { expanded: true, resolved: true }
     expect(expansionAfter(opened, true)).toBe(opened)
   })

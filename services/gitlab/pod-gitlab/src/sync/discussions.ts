@@ -85,7 +85,9 @@ export class ReviewThreadSyncManager implements DocSyncManager {
     await this.provider.runner.exec(mrKey, async () => {
       if (await isTombstoned(this.provider, repo, mrKey)) return
       const headSha = await this.headSha(repo, mrKey)
-      const discussions = (await api.listMergeRequestDiscussions(repo.repository.projectId, iid)).filter(isDiffDiscussion)
+      const discussions = (await api.listMergeRequestDiscussions(repo.repository.projectId, iid)).filter(
+        isDiffDiscussion
+      )
       for (const discussion of discussions) {
         await this.store(ctx, repo, mrKey, discussion, headSha)
       }
@@ -195,10 +197,19 @@ export class ReviewThreadSyncManager implements DocSyncManager {
   private async removeThread (ctx: MeasureContext, info: DocSyncInfo): Promise<void> {
     const { client, derived } = this.provider
     await this.comments.removeAll(ctx, info.key)
-    const thread = await client.findOne(gitlab.class.GitlabReviewThread, { _id: info._id as unknown as Ref<GitlabReviewThread> })
+    const thread = await client.findOne(gitlab.class.GitlabReviewThread, {
+      _id: info._id as unknown as Ref<GitlabReviewThread>
+    })
     if (thread !== undefined) {
       // Written as System, so the trigger does not queue anything back to GitLab
-      await client.removeCollection(thread._class, thread.space, thread._id, thread.attachedTo, thread.attachedToClass, thread.collection)
+      await client.removeCollection(
+        thread._class,
+        thread.space,
+        thread._id,
+        thread.attachedTo,
+        thread.attachedToClass,
+        thread.collection
+      )
     }
     await derived.remove(info)
     ctx.info('gitlab discussion gone, Huly review thread removed', { key: info.key })
@@ -211,7 +222,9 @@ export class ReviewThreadSyncManager implements DocSyncManager {
     external: ThreadExternal
   ): Promise<DocumentUpdate<DocSyncInfo>> {
     const { client, derived, persons } = this.provider
-    const mr = await client.findOne(gitlab.class.GitlabMergeRequest, { _id: parent._id as unknown as Ref<GitlabMergeRequest> })
+    const mr = await client.findOne(gitlab.class.GitlabMergeRequest, {
+      _id: parent._id as unknown as Ref<GitlabMergeRequest>
+    })
     // Created once the merge request exists: its sync re-queues its threads
     if (mr === undefined) return DONE
     const host = repo.integration.host
@@ -262,7 +275,12 @@ export class ReviewThreadSyncManager implements DocSyncManager {
       }
       const resolved = toGitlab.isResolved
       latest = await this.provider.runner.exec(parent.key, async () => {
-        const discussion = await api.resolveMergeRequestDiscussion(repo.repository.projectId, parent.gitlabIid, external.id, resolved)
+        const discussion = await api.resolveMergeRequestDiscussion(
+          repo.repository.projectId,
+          parent.gitlabIid,
+          external.id,
+          resolved
+        )
         const updated: ThreadExternal = { ...threadExternal(discussion, null), outdated: external.outdated }
         await this.provider.derived.update(info, { external: updated, current: merged, lastModified: Date.now() })
         return updated
@@ -272,7 +290,8 @@ export class ReviewThreadSyncManager implements DocSyncManager {
     let actor: PersonId = core.account.System
     if (toPlatform.isResolved !== undefined) {
       update.isResolved = toPlatform.isResolved
-      update.resolvedBy = latest.resolvedBy === null ? null : await persons.personIdFor(repo.integration.host, latest.resolvedBy)
+      update.resolvedBy =
+        latest.resolvedBy === null ? null : await persons.personIdFor(repo.integration.host, latest.resolvedBy)
       if (update.resolvedBy !== null) actor = update.resolvedBy
     }
     if (thread.isOutdated !== latest.outdated) update.isOutdated = latest.outdated

@@ -13,7 +13,11 @@ function loginInfo (role: AccountRole | undefined, workspace: string = ws): any 
 describe('resolveCaller', () => {
   it('accepts a social id owned by the caller', async () => {
     const list = jest.fn(async () => owned)
-    await expect(resolveCaller(decoded, 'p2', list)).resolves.toEqual({ workspace: 'ws1', account: 'acc1', accountId: 'p2' })
+    await expect(resolveCaller(decoded, 'p2', list)).resolves.toEqual({
+      workspace: 'ws1',
+      account: 'acc1',
+      accountId: 'p2'
+    })
     expect(list).toHaveBeenCalledTimes(1)
   })
 
@@ -29,13 +33,16 @@ describe('resolveCaller', () => {
     expect(list).not.toHaveBeenCalled()
   })
 
-  it.each([undefined, '', null, 42])('rejects a token without a workspace (%p) before any lookup', async (workspace) => {
-    const list = jest.fn(async () => owned)
-    await expect(resolveCaller({ workspace: workspace as any, account: 'acc1' }, 'p1', list)).rejects.toThrow(
-      'A workspace token is required'
-    )
-    expect(list).not.toHaveBeenCalled()
-  })
+  it.each([undefined, '', null, 42])(
+    'rejects a token without a workspace (%p) before any lookup',
+    async (workspace) => {
+      const list = jest.fn(async () => owned)
+      await expect(resolveCaller({ workspace: workspace as any, account: 'acc1' }, 'p1', list)).rejects.toThrow(
+        'A workspace token is required'
+      )
+      expect(list).not.toHaveBeenCalled()
+    }
+  )
 })
 
 describe('requireTokenWorkspace', () => {
@@ -50,11 +57,15 @@ describe('requireTokenWorkspace', () => {
 
 describe('assertWorkspace', () => {
   it.each([undefined, '', null])('throws for %p', (workspace) => {
-    expect(() => { assertWorkspace(workspace as any) }).toThrow('workspace is required')
+    expect(() => {
+      assertWorkspace(workspace as any)
+    }).toThrow('workspace is required')
   })
 
   it('accepts a workspace uuid', () => {
-    expect(() => { assertWorkspace(ws) }).not.toThrow()
+    expect(() => {
+      assertWorkspace(ws)
+    }).not.toThrow()
   })
 })
 
@@ -106,7 +117,9 @@ describe('assertOwner', () => {
     await expect(assertOwner(ws, async () => ({ account: 'acc1' }) as any)).rejects.toThrow(
       'Only workspace owners can change the GitLab application'
     )
-    await expect(assertOwner(ws, async () => null)).rejects.toThrow('Only workspace owners can change the GitLab application')
+    await expect(assertOwner(ws, async () => null)).rejects.toThrow(
+      'Only workspace owners can change the GitLab application'
+    )
   })
 
   it('rejects an empty expected workspace without looking up the role', async () => {

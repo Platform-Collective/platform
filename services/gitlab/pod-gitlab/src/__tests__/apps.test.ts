@@ -10,9 +10,13 @@ type MemoryStore = AppSecretStore & { secrets: any[], integrations: any[], failA
 function memoryStore (): MemoryStore {
   const secrets: any[] = []
   const integrations: any[] = []
-  const sameIntegration = (a: any, b: any): boolean => a.kind === b.kind && a.socialId === b.socialId && a.workspaceUuid === b.workspaceUuid
+  const sameIntegration = (a: any, b: any): boolean =>
+    a.kind === b.kind && a.socialId === b.socialId && a.workspaceUuid === b.workspaceUuid
   const same = (a: any, b: any): boolean => a.key === b.key && sameIntegration(a, b)
-  const matches = (q: any) => (s: any): boolean => Object.entries(q).every(([k, v]) => v === undefined || s[k] === v)
+  const matches =
+    (q: any) =>
+      (s: any): boolean =>
+        Object.entries(q).every(([k, v]) => v === undefined || s[k] === v)
   const requireIntegration = (k: any): void => {
     if (!integrations.some((i) => sameIntegration(i, k))) throw new Error('IntegrationNotFound')
   }
@@ -21,9 +25,21 @@ function memoryStore (): MemoryStore {
     integrations,
     listIntegrations: async (q: any) => integrations.filter(matches(q)),
     getIntegration: async (k: any) => integrations.find((i) => sameIntegration(i, k)) ?? null,
-    createIntegration: async (i: any) => { integrations.push({ ...i }) },
-    updateIntegration: async (i: any) => { Object.assign(integrations.find((x) => sameIntegration(x, i)), i) },
-    deleteIntegration: async (k: any) => { integrations.splice(integrations.findIndex((i) => sameIntegration(i, k)), 1) },
+    createIntegration: async (i: any) => {
+      integrations.push({ ...i })
+    },
+    updateIntegration: async (i: any) => {
+      Object.assign(
+        integrations.find((x) => sameIntegration(x, i)),
+        i
+      )
+    },
+    deleteIntegration: async (k: any) => {
+      integrations.splice(
+        integrations.findIndex((i) => sameIntegration(i, k)),
+        1
+      )
+    },
     listIntegrationsSecrets: async (q: any) => secrets.filter(matches(q)),
     getIntegrationSecret: async (k: any) => secrets.find((s) => same(s, k)) ?? null,
     addIntegrationSecret: async (s: any) => {
@@ -31,10 +47,18 @@ function memoryStore (): MemoryStore {
       requireIntegration(s)
       secrets.push({ ...s })
     },
-    updateIntegrationSecret: async (s: any) => { Object.assign(secrets.find((x) => same(x, s)), s) },
+    updateIntegrationSecret: async (s: any) => {
+      Object.assign(
+        secrets.find((x) => same(x, s)),
+        s
+      )
+    },
     deleteIntegrationSecret: async (k: any) => {
       requireIntegration(k)
-      secrets.splice(secrets.findIndex((s) => same(s, k)), 1)
+      secrets.splice(
+        secrets.findIndex((s) => same(s, k)),
+        1
+      )
     }
   }
   return store
@@ -54,17 +78,29 @@ describe('normalizeHost', () => {
     expect(normalizeHost(raw, { allowInsecure: true })).toBe(expected)
   })
 
-  it.each(['http://localhost:8929', 'http://127.0.0.1', 'http://gitlab.local'])('rejects plain http %s by default', (raw) => {
-    expect(() => normalizeHost(raw)).toThrow('Invalid GitLab URL')
-    expect(() => normalizeHost(raw, { allowInsecure: false })).toThrow('Invalid GitLab URL')
-  })
-
-  it.each(['', 'gitlab.com', 'ftp://gitlab.com', 'http://gitlab.com', 'https://gitlab.com/?x=1', 'https://gitlab.com/#a', 'https://user:pw@gitlab.com', 'https://gitlab.com?', 'https://gitlab.com#', 'http://evil.com.local.attacker.com', 'http://gitlab.local@evil.com'])(
-    'rejects %s',
+  it.each(['http://localhost:8929', 'http://127.0.0.1', 'http://gitlab.local'])(
+    'rejects plain http %s by default',
     (raw) => {
-      expect(() => normalizeHost(raw, { allowInsecure: true })).toThrow('Invalid GitLab URL')
+      expect(() => normalizeHost(raw)).toThrow('Invalid GitLab URL')
+      expect(() => normalizeHost(raw, { allowInsecure: false })).toThrow('Invalid GitLab URL')
     }
   )
+
+  it.each([
+    '',
+    'gitlab.com',
+    'ftp://gitlab.com',
+    'http://gitlab.com',
+    'https://gitlab.com/?x=1',
+    'https://gitlab.com/#a',
+    'https://user:pw@gitlab.com',
+    'https://gitlab.com?',
+    'https://gitlab.com#',
+    'http://evil.com.local.attacker.com',
+    'http://gitlab.local@evil.com'
+  ])('rejects %s', (raw) => {
+    expect(() => normalizeHost(raw, { allowInsecure: true })).toThrow('Invalid GitLab URL')
+  })
 
   it('does not echo the raw input (it may hold credentials) in the error', () => {
     expect(() => normalizeHost('ftp://user:pw@git.example.com')).toThrow('Invalid GitLab URL')
@@ -140,19 +176,26 @@ describe('GitlabAppStore', () => {
   it('serialises concurrent saves by different owners', async () => {
     const store = memoryStore()
     const apps = new GitlabAppStore(store)
-    await Promise.all([
-      apps.save(ws, cfg),
-      apps.save(ws, { ...cfg, updatedBy: 'p2' as PersonId, updatedOn: 2 })
-    ])
+    await Promise.all([apps.save(ws, cfg), apps.save(ws, { ...cfg, updatedBy: 'p2' as PersonId, updatedOn: 2 })])
     expect(store.secrets).toHaveLength(1)
     expect(store.integrations).toHaveLength(1)
   })
 
   it('get returns the newest config when several secrets exist', async () => {
     const store = memoryStore()
-    for (const [who, on] of [['p1', 5], ['p2', 9], ['p3', 7]] as const) {
+    for (const [who, on] of [
+      ['p1', 5],
+      ['p2', 9],
+      ['p3', 7]
+    ] as const) {
       store.integrations.push({ kind: 'gitlab-app', workspaceUuid: ws, socialId: who })
-      store.secrets.push({ kind: 'gitlab-app', workspaceUuid: ws, socialId: who, key: 'app', secret: JSON.stringify({ ...cfg, updatedOn: on, updatedBy: who }) })
+      store.secrets.push({
+        kind: 'gitlab-app',
+        workspaceUuid: ws,
+        socialId: who,
+        key: 'app',
+        secret: JSON.stringify({ ...cfg, updatedOn: on, updatedBy: who })
+      })
     }
     expect((await new GitlabAppStore(store).get(ws))?.updatedBy).toBe('p2')
   })
@@ -160,7 +203,13 @@ describe('GitlabAppStore', () => {
   it('get skips malformed secrets', async () => {
     const store = memoryStore()
     store.secrets.push({ kind: 'gitlab-app', workspaceUuid: ws, socialId: 'p1', key: 'app', secret: '{nope' })
-    store.secrets.push({ kind: 'gitlab-app', workspaceUuid: ws, socialId: 'p2', key: 'app', secret: JSON.stringify({ host: 1 }) })
+    store.secrets.push({
+      kind: 'gitlab-app',
+      workspaceUuid: ws,
+      socialId: 'p2',
+      key: 'app',
+      secret: JSON.stringify({ host: 1 })
+    })
     expect(await new GitlabAppStore(store).get(ws)).toBeUndefined()
   })
 
@@ -174,7 +223,9 @@ describe('GitlabAppStore', () => {
 
 describe('GitlabAppStore workspace guard', () => {
   function spyStore (): AppSecretStore {
-    const fail = jest.fn(async () => { throw new Error('store must not be called') })
+    const fail = jest.fn(async () => {
+      throw new Error('store must not be called')
+    })
     return {
       listIntegrations: fail,
       getIntegration: fail,
@@ -189,12 +240,15 @@ describe('GitlabAppStore workspace guard', () => {
     } as unknown as AppSecretStore
   }
 
-  it.each([undefined, ''])('get, save and remove throw for workspace %p without calling the store', async (workspace) => {
-    const store = spyStore()
-    const apps = new GitlabAppStore(store)
-    await expect(apps.get(workspace as any)).rejects.toThrow('workspace is required')
-    await expect(apps.save(workspace as any, cfg)).rejects.toThrow('workspace is required')
-    await expect(apps.remove(workspace as any)).rejects.toThrow('workspace is required')
-    for (const fn of Object.values(store)) expect(fn).not.toHaveBeenCalled()
-  })
+  it.each([undefined, ''])(
+    'get, save and remove throw for workspace %p without calling the store',
+    async (workspace) => {
+      const store = spyStore()
+      const apps = new GitlabAppStore(store)
+      await expect(apps.get(workspace as any)).rejects.toThrow('workspace is required')
+      await expect(apps.save(workspace as any, cfg)).rejects.toThrow('workspace is required')
+      await expect(apps.remove(workspace as any)).rejects.toThrow('workspace is required')
+      for (const fn of Object.values(store)) expect(fn).not.toHaveBeenCalled()
+    }
+  )
 })

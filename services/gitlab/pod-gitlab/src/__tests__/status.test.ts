@@ -42,7 +42,9 @@ describe('status mapping', () => {
   })
 
   it('throws when the project has no status for the state', () => {
-    expect(() => statusForState('closed', false, statuses.slice(0, 3))).toThrow('No Huly status for GitLab state closed')
+    expect(() => statusForState('closed', false, statuses.slice(0, 3))).toThrow(
+      'No Huly status for GitLab state closed'
+    )
   })
 })
 
@@ -73,6 +75,8 @@ describe('merge request status mapping', () => {
   })
 
   it('throws when the task type has no status for the state', () => {
-    expect(() => statusForMergeRequestState('closed', mr.slice(0, 2))).toThrow('No Huly status for GitLab merge request state closed')
+    expect(() => statusForMergeRequestState('closed', mr.slice(0, 2))).toThrow(
+      'No Huly status for GitLab merge request state closed'
+    )
   })
 })

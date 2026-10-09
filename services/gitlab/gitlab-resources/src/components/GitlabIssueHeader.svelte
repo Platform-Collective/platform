@@ -26,7 +26,9 @@
   // A change this browser could not save (the server refused it)
   let failed: string | null = null
 
-  $: mergeRequest = hierarchy.isDerived(value._class, gitlab.class.GitlabMergeRequest) ? (value as GitlabMergeRequest) : undefined
+  $: mergeRequest = hierarchy.isDerived(value._class, gitlab.class.GitlabMergeRequest)
+    ? (value as GitlabMergeRequest)
+    : undefined
   $: link = mergeRequest === undefined ? hierarchy.asIf(value, gitlab.mixin.GitlabIssue) : undefined
   $: repositoryId = mergeRequest?.repository ?? link?.repository ?? undefined
   $: repository = repositoryId != null ? $gitlabRepositories.get(repositoryId) : undefined

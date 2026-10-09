@@ -2,7 +2,13 @@
 
 import client, { type ClientSocket } from '@hcengineering/client'
 import clientResources from '@hcengineering/client-resources'
-import { systemAccountUuid, type Client, type ClientConnectEvent, type MeasureContext, type WorkspaceUuid } from '@hcengineering/core'
+import {
+  systemAccountUuid,
+  type Client,
+  type ClientConnectEvent,
+  type MeasureContext,
+  type WorkspaceUuid
+} from '@hcengineering/core'
 import { setMetadata } from '@hcengineering/platform'
 import { getTransactorEndpoint } from '@hcengineering/server-client'
 import { generateToken } from '@hcengineering/server-token'
@@ -24,9 +30,16 @@ export async function createPlatformClient (
   setMetadata(client.metadata.ConnectionTimeout, 30000)
   setMetadata(client.metadata.FilterModel, 'client')
   const endpoint = await getTransactorEndpoint(token)
-  return await (await clientResources()).function.GetClient(token, endpoint, {
+  return await (
+    await clientResources()
+  ).function.GetClient(token, endpoint, {
     ctx,
     useGlobalRPCHandler: true,
-    onConnect: onConnect === undefined ? undefined : async (event) => { await onConnect(event) }
+    onConnect:
+      onConnect === undefined
+        ? undefined
+        : async (event) => {
+          await onConnect(event)
+        }
   })
 }

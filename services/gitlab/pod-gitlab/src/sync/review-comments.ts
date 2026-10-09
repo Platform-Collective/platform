@@ -32,7 +32,12 @@ export class ReviewCommentSyncManager implements DocSyncManager {
   constructor (private readonly provider: SyncProvider) {}
 
   /** Stores the notes of one diff discussion and removes Huly comments whose note is gone. Runs inside the merge request's lock. */
-  async storeNotes (ctx: MeasureContext, repo: RepositoryContext, threadKey: string, notes: GitlabNoteInfo[]): Promise<void> {
+  async storeNotes (
+    ctx: MeasureContext,
+    repo: RepositoryContext,
+    threadKey: string,
+    notes: GitlabNoteInfo[]
+  ): Promise<void> {
     const kept = notes.filter(isVisibleNote)
     for (const note of kept) {
       await this.upsertExternal(repo, threadKey, note)
@@ -105,12 +110,17 @@ export class ReviewCommentSyncManager implements DocSyncManager {
 
   private async contextOf (thread: DocSyncInfo): Promise<CommentContext | undefined> {
     if (thread.objectClass !== gitlab.class.GitlabReviewThread || thread.parent === undefined) return undefined
-    const mergeRequest = await this.provider.derived.findOne(gitlab.class.DocSyncInfo, { space: thread.space, key: thread.parent })
+    const mergeRequest = await this.provider.derived.findOne(gitlab.class.DocSyncInfo, {
+      space: thread.space,
+      key: thread.parent
+    })
     return mergeRequest === undefined ? undefined : { thread, mergeRequest }
   }
 
   private async mergeRequestDoc (info: DocSyncInfo): Promise<GitlabMergeRequest | undefined> {
-    return await this.provider.client.findOne(gitlab.class.GitlabMergeRequest, { _id: info._id as unknown as Ref<GitlabMergeRequest> })
+    return await this.provider.client.findOne(gitlab.class.GitlabMergeRequest, {
+      _id: info._id as unknown as Ref<GitlabMergeRequest>
+    })
   }
 
   private async upsertExternal (repo: RepositoryContext, threadKey: string, note: GitlabNoteInfo): Promise<void> {
@@ -146,9 +156,18 @@ export class ReviewCommentSyncManager implements DocSyncManager {
   // Written as System, so the trigger does not queue a deletion back to GitLab
   private async removeHulyComment (info: DocSyncInfo): Promise<void> {
     const { client } = this.provider
-    const comment = await client.findOne(gitlab.class.GitlabReviewComment, { _id: info._id as unknown as Ref<GitlabReviewComment> })
+    const comment = await client.findOne(gitlab.class.GitlabReviewComment, {
+      _id: info._id as unknown as Ref<GitlabReviewComment>
+    })
     if (comment !== undefined) {
-      await client.removeCollection(comment._class, comment.space, comment._id, comment.attachedTo, comment.attachedToClass, comment.collection)
+      await client.removeCollection(
+        comment._class,
+        comment.space,
+        comment._id,
+        comment.attachedTo,
+        comment.attachedToClass,
+        comment.collection
+      )
     }
   }
 
@@ -174,7 +193,12 @@ export class ReviewCommentSyncManager implements DocSyncManager {
       return { ...DONE, error: 'GitLab authorization expired', retryable: true }
     }
     return await this.provider.runner.exec(parent.key, async () => {
-      const note = await api.createMergeRequestDiscussionNote(repo.repository.projectId, parent.gitlabIid, comment.discussionId, body)
+      const note = await api.createMergeRequestDiscussionNote(
+        repo.repository.projectId,
+        parent.gitlabIid,
+        comment.discussionId,
+        body
+      )
       const update: DocumentUpdate<DocSyncInfo> = {
         key: noteKey(threadKey, note.id),
         parent: threadKey,
@@ -230,7 +254,9 @@ export class ReviewCommentSyncManager implements DocSyncManager {
   ): Promise<DocumentUpdate<DocSyncInfo>> {
     const remote: CommentSnapshot = { body: await this.provider.content.toMarkup(repo, external.body) }
     const base = (info.current as CommentSnapshot | undefined) ?? remote
-    const { toPlatform, toGitlab, merged } = mergeFields(base, { body: comment.body }, remote, { body: areEqualMarkups })
+    const { toPlatform, toGitlab, merged } = mergeFields(base, { body: comment.body }, remote, {
+      body: areEqualMarkups
+    })
     let latest = external
     if (toGitlab.body !== undefined) {
       const body = await this.provider.content.toMarkdown(repo, toGitlab.body)
@@ -248,14 +274,24 @@ export class ReviewCommentSyncManager implements DocSyncManager {
             external.id,
             body
           )
-          await this.provider.derived.update(info, { external: updated, current: merged, lastModified: Date.parse(updated.updated_at) })
+          await this.provider.derived.update(info, {
+            external: updated,
+            current: merged,
+            lastModified: Date.parse(updated.updated_at)
+          })
           return updated
         })
       }
     }
     if (toPlatform.body !== undefined) {
       const author = await this.provider.persons.personIdFor(repo.integration.host, external.author)
-      await this.provider.client.update(comment, { body: toPlatform.body }, false, Date.parse(external.updated_at), author)
+      await this.provider.client.update(
+        comment,
+        { body: toPlatform.body },
+        false,
+        Date.parse(external.updated_at),
+        author
+      )
     }
     return { ...DONE, current: merged, external: latest, lastModified: Date.parse(latest.updated_at), error: null }
   }

@@ -9,8 +9,30 @@ import tracker from '@hcengineering/tracker'
 import { GitlabApiError, GitlabReadonlyError } from '../gitlab/api'
 import { GITLAB_SYNC_VERSION } from '../sync/versions'
 import { hookSecret, hookUrl } from '../hooks'
-import { EXPIRED_ERROR, FULL_SYNC_INTERVAL_MS, GitlabWorker, HEALTH_INTERVAL_MS, THREAD_REFRESH_MS, isRelevantTx, ORPHAN_HOOK_GRACE_MS, SINCE_MARGIN_MS, type SyncManagers, type WorkerDeps } from '../worker/worker'
-import { CONNECTED_BY, HOST, HULY_USER, PROJECT_ID, PROJECT_TYPE, gitlabIssue, gitlabMergeRequest, gitlabProject, hulyIssue, seedRepository } from './helpers/fixtures'
+import {
+  EXPIRED_ERROR,
+  FULL_SYNC_INTERVAL_MS,
+  GitlabWorker,
+  HEALTH_INTERVAL_MS,
+  THREAD_REFRESH_MS,
+  isRelevantTx,
+  ORPHAN_HOOK_GRACE_MS,
+  SINCE_MARGIN_MS,
+  type SyncManagers,
+  type WorkerDeps
+} from '../worker/worker'
+import {
+  CONNECTED_BY,
+  HOST,
+  HULY_USER,
+  PROJECT_ID,
+  PROJECT_TYPE,
+  gitlabIssue,
+  gitlabMergeRequest,
+  gitlabProject,
+  hulyIssue,
+  seedRepository
+} from './helpers/fixtures'
 import { asTxOperations, createMemoryClient, type MemoryClient } from './helpers/memory'
 import { asApi, ctx, fakeApi, fakeCollaborator, fakePersons, type FakeApi } from './helpers/provider'
 import { createMarkdownConverter } from '../markdown'
@@ -29,33 +51,50 @@ interface Env {
   users: { getValidRecord: jest.Mock }
 }
 
-function setup (options: { seed?: (memory: MemoryClient) => void, token?: boolean, deps?: Partial<WorkerDeps> } = {}): Env {
+function setup (
+  options: { seed?: (memory: MemoryClient) => void, token?: boolean, deps?: Partial<WorkerDeps> } = {}
+): Env {
   const memory = createMemoryClient()
   options.seed !== undefined ? options.seed(memory) : seedRepository(memory)
   const api = fakeApi({
     listIssues: async () => [],
     listMergeRequests: async () => [],
     deleteProjectHook: async () => {},
-    getCurrentUser: async () => ({ id: 9, username: 'connector', name: 'Connector', avatar_url: null, web_url: `${HOST}/connector` }),
+    getCurrentUser: async () => ({
+      id: 9,
+      username: 'connector',
+      name: 'Connector',
+      avatar_url: null,
+      web_url: `${HOST}/connector`
+    }),
     listMaintainedProjects: async () => [gitlabProject()]
   })
   const calls: string[] = []
   const managers = {
     issues: {
-      sync: jest.fn(async (_c: unknown, _e: unknown, info: any) => { calls.push(`issue:${info._id}`); return { needSync: GITLAB_SYNC_VERSION } }),
+      sync: jest.fn(async (_c: unknown, _e: unknown, info: any) => {
+        calls.push(`issue:${info._id}`)
+        return { needSync: GITLAB_SYNC_VERSION }
+      }),
       handleDelete: jest.fn(async () => true),
       receive: jest.fn(async () => {}),
       handleIssueEvent: jest.fn(async () => {}),
       handleMove: jest.fn(async () => {})
     },
     notes: {
-      sync: jest.fn(async (_c: unknown, _e: unknown, info: any) => { calls.push(`note:${info._id}`); return { needSync: GITLAB_SYNC_VERSION } }),
+      sync: jest.fn(async (_c: unknown, _e: unknown, info: any) => {
+        calls.push(`note:${info._id}`)
+        return { needSync: GITLAB_SYNC_VERSION }
+      }),
       handleDelete: jest.fn(async () => true),
       refreshNotes: jest.fn(async () => {}),
       handleNoteEvent: jest.fn(async () => {})
     },
     mergeRequests: {
-      sync: jest.fn(async (_c: unknown, _e: unknown, info: any) => { calls.push(`mr:${info._id}`); return { needSync: GITLAB_SYNC_VERSION } }),
+      sync: jest.fn(async (_c: unknown, _e: unknown, info: any) => {
+        calls.push(`mr:${info._id}`)
+        return { needSync: GITLAB_SYNC_VERSION }
+      }),
       handleDelete: jest.fn(async () => false),
       receive: jest.fn(async () => {}),
       handleMergeRequestEvent: jest.fn(async () => true),
@@ -63,17 +102,26 @@ function setup (options: { seed?: (memory: MemoryClient) => void, token?: boolea
       handleMove: jest.fn(async () => {})
     },
     reviews: {
-      sync: jest.fn(async (_c: unknown, _e: unknown, info: any) => { calls.push(`review:${info._id}`); return { needSync: GITLAB_SYNC_VERSION } }),
+      sync: jest.fn(async (_c: unknown, _e: unknown, info: any) => {
+        calls.push(`review:${info._id}`)
+        return { needSync: GITLAB_SYNC_VERSION }
+      }),
       handleDelete: jest.fn(async () => true)
     },
     threads: {
-      sync: jest.fn(async (_c: unknown, _e: unknown, info: any) => { calls.push(`thread:${info._id}`); return { needSync: GITLAB_SYNC_VERSION } }),
+      sync: jest.fn(async (_c: unknown, _e: unknown, info: any) => {
+        calls.push(`thread:${info._id}`)
+        return { needSync: GITLAB_SYNC_VERSION }
+      }),
       handleDelete: jest.fn(async () => false),
       refreshDiscussions: jest.fn(async () => {}),
       handleDiscussionEvent: jest.fn(async () => {})
     },
     comments: {
-      sync: jest.fn(async (_c: unknown, _e: unknown, info: any) => { calls.push(`comment:${info._id}`); return { needSync: GITLAB_SYNC_VERSION } }),
+      sync: jest.fn(async (_c: unknown, _e: unknown, info: any) => {
+        calls.push(`comment:${info._id}`)
+        return { needSync: GITLAB_SYNC_VERSION }
+      }),
       handleDelete: jest.fn(async () => true)
     }
   }
@@ -103,18 +151,31 @@ function setup (options: { seed?: (memory: MemoryClient) => void, token?: boolea
 }
 
 function pending (memory: MemoryClient, id: string, extra: any = {}): void {
-  memory.docs.push({ _id: id, _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: `k-${id}`, objectClass: tracker.class.Issue, repository: 'repo-1', gitlabIid: 1, needSync: '', ...extra })
+  memory.docs.push({
+    _id: id,
+    _class: gitlab.class.DocSyncInfo,
+    space: 'prj-1',
+    key: `k-${id}`,
+    objectClass: tracker.class.Issue,
+    repository: 'repo-1',
+    gitlabIid: 1,
+    needSync: '',
+    ...extra
+  })
 }
 
-const infoOf = (memory: MemoryClient, id: string): any => memory.docs.find((d) => d._id === id && d._class === gitlab.class.DocSyncInfo)
+const infoOf = (memory: MemoryClient, id: string): any =>
+  memory.docs.find((d) => d._id === id && d._class === gitlab.class.DocSyncInfo)
 
 describe('isRelevantTx', () => {
   it('reacts to sync doc, repository and integration changes, also inside apply', () => {
-    const tx = (objectClass: string): Tx => ({ _class: core.class.TxUpdateDoc, objectClass } as unknown as Tx)
+    const tx = (objectClass: string): Tx => ({ _class: core.class.TxUpdateDoc, objectClass }) as unknown as Tx
     expect(isRelevantTx(tx(gitlab.class.DocSyncInfo))).toBe(true)
     expect(isRelevantTx(tx(gitlab.class.GitlabIntegrationRepository))).toBe(true)
     expect(isRelevantTx(tx(tracker.class.Issue))).toBe(false)
-    expect(isRelevantTx({ _class: core.class.TxApplyIf, txes: [tx(gitlab.class.DocSyncInfo)] } as unknown as Tx)).toBe(true)
+    expect(isRelevantTx({ _class: core.class.TxApplyIf, txes: [tx(gitlab.class.DocSyncInfo)] } as unknown as Tx)).toBe(
+      true
+    )
   })
 })
 
@@ -132,16 +193,35 @@ describe('GitlabWorker', () => {
   it('lists the discussions of open merge requests with unresolved threads every 10 minutes', async () => {
     const env = setup()
     const mrInfo = (id: string, iid: number, state: string): any => ({
-      _id: id, _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: `k-${id}`, objectClass: gitlab.class.GitlabMergeRequest,
-      repository: 'repo-1', gitlabIid: iid, external: gitlabMergeRequest(iid, { state: state as any }), needSync: GITLAB_SYNC_VERSION
+      _id: id,
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: `k-${id}`,
+      objectClass: gitlab.class.GitlabMergeRequest,
+      repository: 'repo-1',
+      gitlabIid: iid,
+      external: gitlabMergeRequest(iid, { state: state as any }),
+      needSync: GITLAB_SYNC_VERSION
     })
     const thread = (id: string, parent: string, resolved: boolean): any => ({
-      _id: id, _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: `${parent}/discussions/${id}`, parent,
-      objectClass: gitlab.class.GitlabReviewThread, repository: 'repo-1', gitlabIid: 0, external: { id, resolved }, needSync: GITLAB_SYNC_VERSION
+      _id: id,
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: `${parent}/discussions/${id}`,
+      parent,
+      objectClass: gitlab.class.GitlabReviewThread,
+      repository: 'repo-1',
+      gitlabIid: 0,
+      external: { id, resolved },
+      needSync: GITLAB_SYNC_VERSION
     })
     env.memory.docs.push(
-      mrInfo('mr-open', 3, 'opened'), mrInfo('mr-merged', 4, 'merged'), mrInfo('mr-done', 6, 'opened'),
-      thread('t1', 'k-mr-open', false), thread('t2', 'k-mr-merged', false), thread('t3', 'k-mr-done', true)
+      mrInfo('mr-open', 3, 'opened'),
+      mrInfo('mr-merged', 4, 'merged'),
+      mrInfo('mr-done', 6, 'opened'),
+      thread('t1', 'k-mr-open', false),
+      thread('t2', 'k-mr-merged', false),
+      thread('t3', 'k-mr-done', true)
     )
     await env.worker.init()
     await env.worker.runOnce()
@@ -150,14 +230,22 @@ describe('GitlabWorker', () => {
     env.clock.now += THREAD_REFRESH_MS
     await env.worker.runOnce()
     expect(env.managers.threads.refreshDiscussions).toHaveBeenCalledTimes(1)
-    expect(env.managers.threads.refreshDiscussions).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), 3)
+    expect(env.managers.threads.refreshDiscussions).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      3
+    )
   })
 
   it('does not list discussions after a merge request webhook GitLab answers with 404', async () => {
     const env = setup()
     await env.worker.init()
     env.managers.mergeRequests.handleMergeRequestEvent.mockResolvedValueOnce(false)
-    await env.worker.handleWebhook('Merge Request Hook', { project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` }, object_attributes: { iid: 3 } })
+    await env.worker.handleWebhook('Merge Request Hook', {
+      project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` },
+      object_attributes: { iid: 3 }
+    })
     expect(env.managers.threads.refreshDiscussions).not.toHaveBeenCalled()
   })
 
@@ -171,10 +259,15 @@ describe('GitlabWorker', () => {
     await env.worker.runOnce()
     expect(env.managers.notes.refreshNotes).toHaveBeenCalledTimes(2)
     expect(env.managers.threads.refreshDiscussions).toHaveBeenCalledTimes(1)
-    expect(env.managers.threads.refreshDiscussions).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), 5)
+    expect(env.managers.threads.refreshDiscussions).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      5
+    )
   })
 
-  it('reads a project\'s task type once a minute', async () => {
+  it("reads a project's task type once a minute", async () => {
     const env = setup()
     await env.worker.init()
     const findOne = jest.spyOn(env.memory, 'findOne')
@@ -194,7 +287,11 @@ describe('GitlabWorker', () => {
     pending(env.memory, 'mr-1', { objectClass: gitlab.class.GitlabMergeRequest })
     await env.worker.init()
     await env.worker.runOnce()
-    expect(env.managers.mergeRequests.handleMove).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ _id: 'mr-1', space: 'prj-other' }), expect.objectContaining({ _id: 'mr-1', space: 'prj-1' }))
+    expect(env.managers.mergeRequests.handleMove).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ _id: 'mr-1', space: 'prj-other' }),
+      expect.objectContaining({ _id: 'mr-1', space: 'prj-1' })
+    )
     expect(env.managers.mergeRequests.sync).not.toHaveBeenCalled()
   })
 
@@ -204,7 +301,7 @@ describe('GitlabWorker', () => {
     pending(env.memory, 'issue-1')
     env.memory.docs.push({ _id: 'msg-1', _class: chunter.class.ChatMessage, space: 'prj-2', attachedTo: 'issue-1' })
     pending(env.memory, 'msg-1', { objectClass: chunter.class.ChatMessage, parent: 'k-issue-1' })
-    // The issue's move re-homes its comments' sync docs (Task 10)
+    // The issue's move re-homes its comments' sync docs
     env.managers.issues.handleMove.mockImplementation(async () => {
       infoOf(env.memory, 'msg-1').space = 'prj-2'
     })
@@ -218,7 +315,9 @@ describe('GitlabWorker', () => {
     const env = setup()
     hulyIssue(env.memory, 'issue-1')
     pending(env.memory, 'issue-1')
-    env.managers.issues.sync.mockRejectedValueOnce(new GitlabApiError(403, 'GitLab POST /projects/42/issues failed: 403 Forbidden'))
+    env.managers.issues.sync.mockRejectedValueOnce(
+      new GitlabApiError(403, 'GitLab POST /projects/42/issues failed: 403 Forbidden')
+    )
     await env.worker.init()
     await env.worker.runOnce()
     const issue = env.memory.docs.find((d) => d._id === 'issue-1' && d._class === tracker.class.Issue) as any
@@ -233,10 +332,16 @@ describe('GitlabWorker', () => {
     const env = setup()
     env.memory.docs.push({ _id: 'rv-1', _class: gitlab.class.GitlabReview, space: 'prj-1', state: 'approved' })
     pending(env.memory, 'rv-1', { objectClass: gitlab.class.GitlabReview, key: '' })
-    env.managers.reviews.sync.mockResolvedValueOnce({ needSync: GITLAB_SYNC_VERSION, error: 'GitLab POST failed: 401', retryable: false })
+    env.managers.reviews.sync.mockResolvedValueOnce({
+      needSync: GITLAB_SYNC_VERSION,
+      error: 'GitLab POST failed: 401',
+      retryable: false
+    })
     await env.worker.init()
     await env.worker.runOnce()
-    expect(env.memory.docs.find((d) => d._id === 'rv-1' && d._class === gitlab.class.GitlabReview)).toMatchObject({ syncError: 'GitLab POST failed: 401' })
+    expect(env.memory.docs.find((d) => d._id === 'rv-1' && d._class === gitlab.class.GitlabReview)).toMatchObject({
+      syncError: 'GitLab POST failed: 401'
+    })
   })
 
   it('checks the token at start and then hourly, and leaves alive alone on a network error', async () => {
@@ -269,20 +374,29 @@ describe('GitlabWorker', () => {
 
   it('keeps a transferred project linked and rewrites its issue links', async () => {
     const env = setup()
-    hulyIssue(env.memory, 'issue-1', { [gitlab.mixin.GitlabIssue]: { url: `${HOST}/group/proj/-/issues/1`, gitlabIid: 1, repository: 'repo-1' } })
+    hulyIssue(env.memory, 'issue-1', {
+      [gitlab.mixin.GitlabIssue]: { url: `${HOST}/group/proj/-/issues/1`, gitlabIid: 1, repository: 'repo-1' }
+    })
     env.api.listMaintainedProjects.mockResolvedValue([])
-    env.api.getProject.mockResolvedValue(gitlabProject({ path_with_namespace: 'other/proj', web_url: `${HOST}/other/proj` }))
+    env.api.getProject.mockResolvedValue(
+      gitlabProject({ path_with_namespace: 'other/proj', web_url: `${HOST}/other/proj` })
+    )
     await env.worker.init()
     await env.worker.runOnce()
     const repo = env.memory.docs.find((d) => d._class === gitlab.class.GitlabIntegrationRepository) as any
-    expect(repo).toMatchObject({ deleted: false, webUrl: `${HOST}/other/proj`, pathWithNamespace: 'other/proj', gitlabProject: 'prj-1' })
+    expect(repo).toMatchObject({
+      deleted: false,
+      webUrl: `${HOST}/other/proj`,
+      pathWithNamespace: 'other/proj',
+      gitlabProject: 'prj-1'
+    })
     const issue = env.memory.docs.find((d) => d._id === 'issue-1' && d._class === tracker.class.Issue) as any
     expect(issue[gitlab.mixin.GitlabIssue].url).toBe(`${HOST}/other/proj/-/issues/1`)
     // Still synchronized: the next pass lists its issues
     expect(env.api.listIssues).toHaveBeenCalled()
   })
 
-  it('installs a linked repository\'s hook at its scoped URL once per pod start', async () => {
+  it("installs a linked repository's hook at its scoped URL once per pod start", async () => {
     const env = setup({ deps: { hooks: { baseUrl: 'https://hooks.example.com', master: 'm' } } })
     env.api.ensureProjectHook.mockResolvedValue({ id: 9, url: 'scoped' })
     await env.worker.init()
@@ -293,7 +407,9 @@ describe('GitlabWorker', () => {
       hookUrl('https://hooks.example.com', target),
       hookSecret('m', target)
     )
-    expect(env.memory.docs.find((d) => d._class === gitlab.class.GitlabIntegrationRepository)).toMatchObject({ hookId: 9 })
+    expect(env.memory.docs.find((d) => d._class === gitlab.class.GitlabIntegrationRepository)).toMatchObject({
+      hookId: 9
+    })
     env.clock.now += HEALTH_INTERVAL_MS
     await env.worker.runOnce()
     expect(env.api.ensureProjectHook).toHaveBeenCalledTimes(1)
@@ -301,7 +417,9 @@ describe('GitlabWorker', () => {
 
   it('retries a hook it could not check at the next health run', async () => {
     const env = setup({ deps: { hooks: { baseUrl: 'https://hooks.example.com', master: 'm' } } })
-    env.api.ensureProjectHook.mockRejectedValueOnce(new GitlabApiError(403, 'forbidden')).mockResolvedValue({ id: 7, url: 'scoped' })
+    env.api.ensureProjectHook
+      .mockRejectedValueOnce(new GitlabApiError(403, 'forbidden'))
+      .mockResolvedValue({ id: 7, url: 'scoped' })
     await env.worker.init()
     await env.worker.runOnce()
     env.clock.now += HEALTH_INTERVAL_MS
@@ -358,7 +476,11 @@ describe('GitlabWorker', () => {
 
   it('re-queues retryable errors on the next full sync', async () => {
     const env = setup()
-    pending(env.memory, 'issue-1', { needSync: GITLAB_SYNC_VERSION, error: 'GitLab authorization expired', retryable: true })
+    pending(env.memory, 'issue-1', {
+      needSync: GITLAB_SYNC_VERSION,
+      error: 'GitLab authorization expired',
+      retryable: true
+    })
     await env.worker.init()
     await env.worker.runOnce()
     expect(env.calls).toEqual(['issue:issue-1'])
@@ -384,7 +506,11 @@ describe('GitlabWorker', () => {
     await env.worker.init()
     await env.worker.runOnce()
     expect(env.api.listIssues).toHaveBeenCalledWith(PROJECT_ID, new Date(newest - SINCE_MARGIN_MS).toISOString())
-    expect(env.managers.issues.receive).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ repository: expect.objectContaining({ _id: 'repo-1' }) }), gitlabIssue(3))
+    expect(env.managers.issues.receive).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ repository: expect.objectContaining({ _id: 'repo-1' }) }),
+      gitlabIssue(3)
+    )
     expect(env.managers.notes.refreshNotes).toHaveBeenCalledTimes(1)
     const firstRun = env.clock.now
     await env.worker.runOnce()
@@ -420,7 +546,11 @@ describe('GitlabWorker', () => {
   })
 
   it('leaves the hook of a repository that was never enabled (linking in progress)', async () => {
-    const env = setup({ seed: (memory) => { seedRepository(memory, { enabled: false }) } })
+    const env = setup({
+      seed: (memory) => {
+        seedRepository(memory, { enabled: false })
+      }
+    })
     await env.worker.init()
     await env.worker.runOnce()
     expect(env.api.deleteProjectHook).not.toHaveBeenCalled()
@@ -438,11 +568,36 @@ describe('GitlabWorker', () => {
     const env = setup()
     await env.worker.init()
     const user = { id: 5, username: 'u5', name: 'U5', avatar_url: null }
-    await env.worker.handleWebhook('Issue Hook', { project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` }, user, object_attributes: { iid: 3 } })
-    expect(env.managers.issues.handleIssueEvent).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), 3, 'sid-5')
-    await env.worker.handleWebhook('Note Hook', { project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` }, user, object_attributes: { id: 77, noteable_type: 'Issue' }, issue: { iid: 3 } })
-    expect(env.managers.notes.handleNoteEvent).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), 3, 77)
-    await env.worker.handleWebhook('Note Hook', { project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` }, user, object_attributes: { id: 78, noteable_type: 'MergeRequest' } })
+    await env.worker.handleWebhook('Issue Hook', {
+      project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` },
+      user,
+      object_attributes: { iid: 3 }
+    })
+    expect(env.managers.issues.handleIssueEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      3,
+      'sid-5'
+    )
+    await env.worker.handleWebhook('Note Hook', {
+      project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` },
+      user,
+      object_attributes: { id: 77, noteable_type: 'Issue' },
+      issue: { iid: 3 }
+    })
+    expect(env.managers.notes.handleNoteEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      3,
+      77
+    )
+    await env.worker.handleWebhook('Note Hook', {
+      project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` },
+      user,
+      object_attributes: { id: 78, noteable_type: 'MergeRequest' }
+    })
     expect(env.managers.notes.handleNoteEvent).toHaveBeenCalledTimes(1)
   })
 
@@ -456,18 +611,32 @@ describe('GitlabWorker', () => {
     })
     await env.worker.init()
     await env.worker.runOnce()
-    expect(infoOf(env.memory, 'issue-1')).toMatchObject({ needSync: '', external: { v: 'new' }, lastModified: 200, current: { v: 'merged' } })
+    expect(infoOf(env.memory, 'issue-1')).toMatchObject({
+      needSync: '',
+      external: { v: 'new' },
+      lastModified: 200,
+      current: { v: 'merged' }
+    })
   })
 
   it('adds the merge request task type once, then finds it', async () => {
-    let memory: MemoryClient | undefined
+    const holder: { memory?: MemoryClient } = {}
     const ensureTaskType = jest.fn(async (_client: unknown, projectType: string, data: any) => {
-      memory?.docs.push({ _id: 'tt-mr', _class: task.class.TaskType, parent: projectType, ofClass: data.ofClass, statuses: ['st-done'] })
+      holder.memory?.docs.push({
+        _id: 'tt-mr',
+        _class: task.class.TaskType,
+        parent: projectType,
+        ofClass: data.ofClass,
+        statuses: ['st-done']
+      })
     })
     const env = setup({ deps: { ensureTaskType } as any })
-    memory = env.memory
+    holder.memory = env.memory
     const project = { type: PROJECT_TYPE } as any
-    const [first, second] = await Promise.all([env.worker.mergeRequestTaskType(project), env.worker.mergeRequestTaskType(project)])
+    const [first, second] = await Promise.all([
+      env.worker.mergeRequestTaskType(project),
+      env.worker.mergeRequestTaskType(project)
+    ])
     expect(ensureTaskType).toHaveBeenCalledTimes(1)
     expect(ensureTaskType.mock.calls[0][1]).toBe(PROJECT_TYPE)
     expect(ensureTaskType.mock.calls[0][2]).toMatchObject({
@@ -482,7 +651,9 @@ describe('GitlabWorker', () => {
   })
 
   it('reports no merge request task type when adding it failed, and tries again next time', async () => {
-    const ensureTaskType = jest.fn(async () => { throw new Error('model write refused') })
+    const ensureTaskType = jest.fn(async () => {
+      throw new Error('model write refused')
+    })
     const env = setup({ deps: { ensureTaskType } as any })
     const project = { type: PROJECT_TYPE } as any
     await expect(env.worker.mergeRequestTaskType(project)).rejects.toThrow('model write refused')
@@ -499,16 +670,28 @@ describe('GitlabWorker', () => {
     await env.worker.runOnce()
     expect(env.api.listIssues).toHaveBeenCalledWith(PROJECT_ID, new Date(newest - SINCE_MARGIN_MS).toISOString())
     expect(env.api.listMergeRequests).toHaveBeenCalledWith(PROJECT_ID, undefined)
-    expect(env.managers.mergeRequests.receive).toHaveBeenCalledWith(expect.anything(), expect.anything(), gitlabMergeRequest(3))
+    expect(env.managers.mergeRequests.receive).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      gitlabMergeRequest(3)
+    )
     expect(env.managers.notes.refreshNotes).toHaveBeenCalledWith(
-      expect.anything(), expect.anything(), expect.anything(), gitlabMergeRequest(3), 'merge_requests'
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      gitlabMergeRequest(3),
+      'merge_requests'
     )
   })
 
   it('moves the merge request window on its own', async () => {
     const env = setup()
     const stored = Date.parse('2026-01-10T00:00:00.000Z')
-    pending(env.memory, 'mr-1', { objectClass: gitlab.class.GitlabMergeRequest, needSync: GITLAB_SYNC_VERSION, lastModified: stored })
+    pending(env.memory, 'mr-1', {
+      objectClass: gitlab.class.GitlabMergeRequest,
+      needSync: GITLAB_SYNC_VERSION,
+      lastModified: stored
+    })
     await env.worker.init()
     await env.worker.runOnce()
     expect(env.api.listMergeRequests).toHaveBeenCalledWith(PROJECT_ID, new Date(stored - SINCE_MARGIN_MS).toISOString())
@@ -516,7 +699,10 @@ describe('GitlabWorker', () => {
     const firstRun = env.clock.now
     env.clock.now += FULL_SYNC_INTERVAL_MS
     await env.worker.runOnce()
-    expect(env.api.listMergeRequests).toHaveBeenLastCalledWith(PROJECT_ID, new Date(firstRun - SINCE_MARGIN_MS).toISOString())
+    expect(env.api.listMergeRequests).toHaveBeenLastCalledWith(
+      PROJECT_ID,
+      new Date(firstRun - SINCE_MARGIN_MS).toISOString()
+    )
   })
 
   it('syncs merge requests through their manager, before notes', async () => {
@@ -561,9 +747,28 @@ describe('GitlabWorker', () => {
     const user = { id: 5, username: 'u5', name: 'U5', avatar_url: null }
     const project = { id: PROJECT_ID, web_url: `${HOST}/group/proj` }
     await env.worker.handleWebhook('Merge Request Hook', { project, user, object_attributes: { iid: 3 } })
-    expect(env.managers.mergeRequests.handleMergeRequestEvent).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), 3, 'sid-5', false)
-    await env.worker.handleWebhook('Note Hook', { project, user, object_attributes: { id: 78, noteable_type: 'MergeRequest' }, merge_request: { iid: 3 } })
-    expect(env.managers.notes.handleNoteEvent).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), 3, 78, 'merge_requests')
+    expect(env.managers.mergeRequests.handleMergeRequestEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      3,
+      'sid-5',
+      false
+    )
+    await env.worker.handleWebhook('Note Hook', {
+      project,
+      user,
+      object_attributes: { id: 78, noteable_type: 'MergeRequest' },
+      merge_request: { iid: 3 }
+    })
+    expect(env.managers.notes.handleNoteEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      3,
+      78,
+      'merge_requests'
+    )
   })
 
   it('the health job marks the integration alive again once its token works', async () => {
@@ -613,9 +818,14 @@ describe('GitlabWorker', () => {
     await env.worker.init()
     let finish: () => void = () => {}
     env.managers.issues.handleIssueEvent.mockImplementationOnce(async () => {
-      await new Promise<void>((resolve) => { finish = resolve })
+      await new Promise<void>((resolve) => {
+        finish = resolve
+      })
     })
-    const webhook = env.worker.handleWebhook('Issue Hook', { project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` }, object_attributes: { iid: 3 } })
+    const webhook = env.worker.handleWebhook('Issue Hook', {
+      project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` },
+      object_attributes: { iid: 3 }
+    })
     await flush()
     const closing = env.worker.close()
     await flush()
@@ -644,7 +854,10 @@ describe('GitlabWorker', () => {
     const env = setup()
     await env.worker.init()
     await env.worker.close()
-    await env.worker.handleWebhook('Issue Hook', { project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` }, object_attributes: { iid: 3 } })
+    await env.worker.handleWebhook('Issue Hook', {
+      project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` },
+      object_attributes: { iid: 3 }
+    })
     expect(env.managers.issues.handleIssueEvent).not.toHaveBeenCalled()
   })
 
@@ -655,10 +868,20 @@ describe('GitlabWorker', () => {
     const handle = env.managers.mergeRequests.handleMergeRequestEvent
     await env.worker.handleWebhook('Merge Request Hook', { project, object_attributes: { iid: 3, action: 'approved' } })
     expect(handle).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), expect.anything(), 3, undefined, true)
-    await env.worker.handleWebhook('Merge Request Hook', { project, object_attributes: { iid: 3, action: 'unapproval' } })
+    await env.worker.handleWebhook('Merge Request Hook', {
+      project,
+      object_attributes: { iid: 3, action: 'unapproval' }
+    })
     expect(handle).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), expect.anything(), 3, undefined, true)
     await env.worker.handleWebhook('Merge Request Hook', { project, object_attributes: { iid: 3, action: 'update' } })
-    expect(handle).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), expect.anything(), 3, undefined, false)
+    expect(handle).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      3,
+      undefined,
+      false
+    )
   })
 
   it('re-queues open merge requests on every full sync', async () => {
@@ -670,14 +893,19 @@ describe('GitlabWorker', () => {
     )
   })
 
-  it('gives a user API only for the actor\'s own connection on the integration host', async () => {
+  it("gives a user API only for the actor's own connection on the integration host", async () => {
     const env = setup()
     env.users.getValidRecord.mockImplementation(async (_ws: WorkspaceUuid, person: PersonId) =>
       person === HULY_USER ? { token: 'own', host: HOST, userId: 5, login: 'huly-user' } : undefined
     )
     await env.worker.init()
     const integration = env.memory.docs.find((d) => d._class === gitlab.class.GitlabIntegration) as any
-    expect((await env.worker.userApi(integration, HULY_USER))?.user).toEqual({ id: 5, username: 'huly-user', name: 'huly-user', avatar_url: null })
+    expect((await env.worker.userApi(integration, HULY_USER))?.user).toEqual({
+      id: 5,
+      username: 'huly-user',
+      name: 'huly-user',
+      avatar_url: null
+    })
     expect(await env.worker.userApi(integration, CONNECTED_BY)).toBeUndefined()
   })
 
@@ -697,21 +925,46 @@ describe('GitlabWorker', () => {
     await env.worker.init()
     const project = { id: PROJECT_ID, web_url: `${HOST}/group/proj` }
     await env.worker.handleWebhook('Note Hook', {
-      project, object_attributes: { id: 51, noteable_type: 'MergeRequest', type: 'DiffNote', discussion_id: 'd1' }, merge_request: { iid: 3 }
+      project,
+      object_attributes: { id: 51, noteable_type: 'MergeRequest', type: 'DiffNote', discussion_id: 'd1' },
+      merge_request: { iid: 3 }
     })
-    expect(env.managers.threads.handleDiscussionEvent).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), 3, 'd1')
+    expect(env.managers.threads.handleDiscussionEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      3,
+      'd1'
+    )
     expect(env.managers.notes.handleNoteEvent).not.toHaveBeenCalled()
     await env.worker.handleWebhook('Note Hook', {
-      project, object_attributes: { id: 52, noteable_type: 'MergeRequest', type: 'DiscussionNote', discussion_id: 'd2' }, merge_request: { iid: 3 }
+      project,
+      object_attributes: { id: 52, noteable_type: 'MergeRequest', type: 'DiscussionNote', discussion_id: 'd2' },
+      merge_request: { iid: 3 }
     })
-    expect(env.managers.notes.handleNoteEvent).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), 3, 52, 'merge_requests')
+    expect(env.managers.notes.handleNoteEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      3,
+      52,
+      'merge_requests'
+    )
   })
 
   it('refreshes the discussions of a merge request after its webhook', async () => {
     const env = setup()
     await env.worker.init()
-    await env.worker.handleWebhook('Merge Request Hook', { project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` }, object_attributes: { iid: 3 } })
-    expect(env.managers.threads.refreshDiscussions).toHaveBeenCalledWith(expect.anything(), expect.anything(), expect.anything(), 3)
+    await env.worker.handleWebhook('Merge Request Hook', {
+      project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` },
+      object_attributes: { iid: 3 }
+    })
+    expect(env.managers.threads.refreshDiscussions).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      3
+    )
   })
 
   it('refreshes the discussions of listed and of re-queued open merge requests on a full sync', async () => {

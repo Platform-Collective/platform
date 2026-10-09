@@ -17,7 +17,9 @@ describe('changesUrl', () => {
   it('refuses anything that is not http(s)', () => {
     expect(changesUrl('javascript:alert(1)')).toBeUndefined()
     expect(changesUrl('')).toBeUndefined()
-    expect(changesUrl('HTTP://gitlab.local/g/r/-/merge_requests/1')).toBe('HTTP://gitlab.local/g/r/-/merge_requests/1/diffs')
+    expect(changesUrl('HTTP://gitlab.local/g/r/-/merge_requests/1')).toBe(
+      'HTTP://gitlab.local/g/r/-/merge_requests/1/diffs'
+    )
   })
 })
 

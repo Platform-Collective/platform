@@ -204,7 +204,10 @@ export class TGitlabMergeRequest extends TIssue implements GitlabMergeRequest {
   @Hidden()
     syncError?: string | null
 
-  @Prop(TypeAny(gitlab.component.MergeRequestStateValuePresenter, gitlab.string.MergeRequestState), gitlab.string.MergeRequestState)
+  @Prop(
+    TypeAny(gitlab.component.MergeRequestStateValuePresenter, gitlab.string.MergeRequestState),
+    gitlab.string.MergeRequestState
+  )
   @ReadOnly()
     state!: GitlabMergeRequestState
 
@@ -606,8 +609,22 @@ export function createModel (builder: Builder): void {
       configOptions: {
         strict: true,
         hiddenKeys: [
-          'title', 'blockedBy', 'relations', 'description', 'number', 'reportedTime', 'reports', 'priority',
-          'component', 'milestone', 'estimation', 'remainingTime', 'status', 'dueDate', 'attachedTo', 'createdBy',
+          'title',
+          'blockedBy',
+          'relations',
+          'description',
+          'number',
+          'reportedTime',
+          'reports',
+          'priority',
+          'component',
+          'milestone',
+          'estimation',
+          'remainingTime',
+          'status',
+          'dueDate',
+          'attachedTo',
+          'createdBy',
           'modifiedBy'
         ]
       },
@@ -731,18 +748,37 @@ export function createModel (builder: Builder): void {
     objectClass: tracker.class.Issue,
     skip: [{ _class: core.class.TxMixin, mixin: gitlab.mixin.GitlabIssue }]
   })
-  builder.createDoc<ActivityMessageControl<GitlabMergeRequest>>(activity.class.ActivityMessageControl, core.space.Model, {
-    objectClass: gitlab.class.GitlabMergeRequest,
-    skip: [],
-    skipFields: [
-      'url', 'gitlabIid', 'repository', 'state', 'draft', 'sourceBranch', 'targetBranch', 'mergeStatus',
-      'hasConflicts', 'mergedAt', 'closedAt', 'commits', 'files', 'additions', 'deletions', 'approvedBy', 'reviewComments',
-      // Collection of GitlabMergeRequestReview (viewed files); a counter, not a declared attribute
-      'viewedFiles' as keyof GitlabMergeRequest,
-      // Counter of the hidden GitlabPatch collection; not a declared attribute
-      'patch' as keyof GitlabMergeRequest
-    ]
-  })
+  builder.createDoc<ActivityMessageControl<GitlabMergeRequest>>(
+    activity.class.ActivityMessageControl,
+    core.space.Model,
+    {
+      objectClass: gitlab.class.GitlabMergeRequest,
+      skip: [],
+      skipFields: [
+        'url',
+        'gitlabIid',
+        'repository',
+        'state',
+        'draft',
+        'sourceBranch',
+        'targetBranch',
+        'mergeStatus',
+        'hasConflicts',
+        'mergedAt',
+        'closedAt',
+        'commits',
+        'files',
+        'additions',
+        'deletions',
+        'approvedBy',
+        'reviewComments',
+        // Collection of GitlabMergeRequestReview (viewed files); a counter, not a declared attribute
+        'viewedFiles' as keyof GitlabMergeRequest,
+        // Counter of the hidden GitlabPatch collection; not a declared attribute
+        'patch' as keyof GitlabMergeRequest
+      ]
+    }
+  )
   builder.createDoc(activity.class.DocUpdateMessageViewlet, core.space.Model, {
     objectClass: gitlab.class.GitlabMergeRequest,
     action: 'update',

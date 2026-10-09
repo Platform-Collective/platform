@@ -35,7 +35,9 @@ const defaultSleep: SleepFn = async (ms) => {
 
 function retryDelayMs (header: string | null): number {
   const seconds = Number(header)
-  return header !== null && header !== '' && Number.isFinite(seconds) && seconds >= 0 ? Math.min(seconds, 60) * 1000 : 1000
+  return header !== null && header !== '' && Number.isFinite(seconds) && seconds >= 0
+    ? Math.min(seconds, 60) * 1000
+    : 1000
 }
 
 export class GitlabApiError extends Error {
@@ -74,10 +76,17 @@ export class GitlabUploadTooLargeError extends Error {
 
 // Image formats recognised by their first bytes; SVG is not among them, so it stays application/octet-stream
 const IMAGE_SIGNATURES: Array<{ type: string, matches: (data: Buffer) => boolean }> = [
-  { type: 'image/png', matches: (data) => data.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) },
+  {
+    type: 'image/png',
+    matches: (data) => data.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  },
   { type: 'image/jpeg', matches: (data) => data.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])) },
   { type: 'image/gif', matches: (data) => ['GIF87a', 'GIF89a'].includes(data.subarray(0, 6).toString('latin1')) },
-  { type: 'image/webp', matches: (data) => data.subarray(0, 4).toString('latin1') === 'RIFF' && data.subarray(8, 12).toString('latin1') === 'WEBP' },
+  {
+    type: 'image/webp',
+    matches: (data) =>
+      data.subarray(0, 4).toString('latin1') === 'RIFF' && data.subarray(8, 12).toString('latin1') === 'WEBP'
+  },
   { type: 'image/bmp', matches: (data) => data.subarray(0, 2).toString('latin1') === 'BM' },
   { type: 'image/avif', matches: (data) => data.subarray(4, 12).toString('latin1') === 'ftypavif' }
 ]
@@ -153,12 +162,15 @@ export class GitlabApi {
     return (await this.request<GitlabUser>('GET', '/user')).data
   }
 
-  private async paginate<T> (path: string): Promise<T[]> {
+  private async paginate<T>(path: string): Promise<T[]> {
     const result: T[] = []
     const sep = path.includes('?') ? '&' : '?'
     let page: string | null = '1'
     while (page !== null && page !== '') {
-      const resp: { data: T[], headers: Headers } = await this.request<T[]>('GET', `${path}${sep}per_page=100&page=${page}`)
+      const resp: { data: T[], headers: Headers } = await this.request<T[]>(
+        'GET',
+        `${path}${sep}per_page=100&page=${page}`
+      )
       result.push(...resp.data)
       page = resp.headers.get('x-next-page')
     }
@@ -166,7 +178,9 @@ export class GitlabApi {
   }
 
   async listMaintainedProjects (): Promise<GitlabProjectInfo[]> {
-    return await this.paginate<GitlabProjectInfo>(`/projects?membership=true&min_access_level=${MAINTAINER_ACCESS_LEVEL}`)
+    return await this.paginate<GitlabProjectInfo>(
+      `/projects?membership=true&min_access_level=${MAINTAINER_ACCESS_LEVEL}`
+    )
   }
 
   /** One project by its stable id; follows renames and transfers. */
@@ -182,7 +196,12 @@ export class GitlabApi {
   }
 
   /** Downloads an upload by its secret and file name (GitLab 17.4 and later). */
-  async downloadUpload (projectId: number, secret: string, filename: string, maxBytes: number): Promise<{ data: Buffer, contentType: string }> {
+  async downloadUpload (
+    projectId: number,
+    secret: string,
+    filename: string,
+    maxBytes: number
+  ): Promise<{ data: Buffer, contentType: string }> {
     const name = decodeFileName(filename)
     // A dot segment would normalize to another endpoint (the project's upload list)
     if (['.', '..'].includes(filename) || ['.', '..'].includes(name)) {
@@ -266,7 +285,11 @@ export class GitlabApi {
 
   /** Moves an issue to another project; GitLab copies its notes and closes the original. */
   async moveIssue (projectId: number, iid: number, toProjectId: number): Promise<GitlabIssueInfo> {
-    return (await this.request<GitlabIssueInfo>('POST', `/projects/${projectId}/issues/${iid}/move`, { to_project_id: toProjectId })).data
+    return (
+      await this.request<GitlabIssueInfo>('POST', `/projects/${projectId}/issues/${iid}/move`, {
+        to_project_id: toProjectId
+      })
+    ).data
   }
 
   private notesPath (projectId: number, noteable: GitlabNoteable, iid: number): string {
@@ -274,19 +297,39 @@ export class GitlabApi {
   }
 
   private async listNotes (projectId: number, noteable: GitlabNoteable, iid: number): Promise<GitlabNoteInfo[]> {
-    return await this.paginate<GitlabNoteInfo>(`${this.notesPath(projectId, noteable, iid)}?order_by=created_at&sort=asc`)
+    return await this.paginate<GitlabNoteInfo>(
+      `${this.notesPath(projectId, noteable, iid)}?order_by=created_at&sort=asc`
+    )
   }
 
-  private async getNote (projectId: number, noteable: GitlabNoteable, iid: number, noteId: number): Promise<GitlabNoteInfo> {
+  private async getNote (
+    projectId: number,
+    noteable: GitlabNoteable,
+    iid: number,
+    noteId: number
+  ): Promise<GitlabNoteInfo> {
     return (await this.request<GitlabNoteInfo>('GET', `${this.notesPath(projectId, noteable, iid)}/${noteId}`)).data
   }
 
-  private async createNote (projectId: number, noteable: GitlabNoteable, iid: number, body: string): Promise<GitlabNoteInfo> {
+  private async createNote (
+    projectId: number,
+    noteable: GitlabNoteable,
+    iid: number,
+    body: string
+  ): Promise<GitlabNoteInfo> {
     return (await this.request<GitlabNoteInfo>('POST', this.notesPath(projectId, noteable, iid), { body })).data
   }
 
-  private async updateNote (projectId: number, noteable: GitlabNoteable, iid: number, noteId: number, body: string): Promise<GitlabNoteInfo> {
-    return (await this.request<GitlabNoteInfo>('PUT', `${this.notesPath(projectId, noteable, iid)}/${noteId}`, { body })).data
+  private async updateNote (
+    projectId: number,
+    noteable: GitlabNoteable,
+    iid: number,
+    noteId: number,
+    body: string
+  ): Promise<GitlabNoteInfo> {
+    return (
+      await this.request<GitlabNoteInfo>('PUT', `${this.notesPath(projectId, noteable, iid)}/${noteId}`, { body })
+    ).data
   }
 
   private async deleteNote (projectId: number, noteable: GitlabNoteable, iid: number, noteId: number): Promise<void> {
@@ -347,15 +390,24 @@ export class GitlabApi {
   /** Merge requests of every state, oldest update first; only those updated at or after `updatedAfter` when given. */
   async listMergeRequests (projectId: number, updatedAfter?: string): Promise<GitlabMergeRequestInfo[]> {
     const since = updatedAfter !== undefined ? `&updated_after=${encodeURIComponent(updatedAfter)}` : ''
-    return await this.paginate<GitlabMergeRequestInfo>(`/projects/${projectId}/merge_requests?order_by=updated_at&sort=asc&state=all${since}`)
+    return await this.paginate<GitlabMergeRequestInfo>(
+      `/projects/${projectId}/merge_requests?order_by=updated_at&sort=asc&state=all${since}`
+    )
   }
 
-  async updateMergeRequest (projectId: number, iid: number, input: GitlabMergeRequestInput): Promise<GitlabMergeRequestInfo> {
-    return (await this.request<GitlabMergeRequestInfo>('PUT', `/projects/${projectId}/merge_requests/${iid}`, input)).data
+  async updateMergeRequest (
+    projectId: number,
+    iid: number,
+    input: GitlabMergeRequestInput
+  ): Promise<GitlabMergeRequestInfo> {
+    return (await this.request<GitlabMergeRequestInfo>('PUT', `/projects/${projectId}/merge_requests/${iid}`, input))
+      .data
   }
 
   async listMergeRequestReviewers (projectId: number, iid: number): Promise<GitlabMergeRequestReviewer[]> {
-    return (await this.request<GitlabMergeRequestReviewer[]>('GET', `/projects/${projectId}/merge_requests/${iid}/reviewers`)).data
+    return (
+      await this.request<GitlabMergeRequestReviewer[]>('GET', `/projects/${projectId}/merge_requests/${iid}/reviewers`)
+    ).data
   }
 
   async listMergeRequestCommits (projectId: number, iid: number): Promise<GitlabCommitRef[]> {
@@ -368,7 +420,9 @@ export class GitlabApi {
   }
 
   async listMergeRequestDiffs (projectId: number, iid: number): Promise<GitlabMergeRequestDiff[]> {
-    return await this.paginate<GitlabMergeRequestDiff>(`/projects/${projectId}/merge_requests/${iid}/diffs?unidiff=true`)
+    return await this.paginate<GitlabMergeRequestDiff>(
+      `/projects/${projectId}/merge_requests/${iid}/diffs?unidiff=true`
+    )
   }
 
   async getMergeRequestApprovals (projectId: number, iid: number): Promise<GitlabApprovals> {
@@ -401,10 +455,20 @@ export class GitlabApi {
   }
 
   async getMergeRequestDiscussion (projectId: number, iid: number, discussionId: string): Promise<GitlabDiscussion> {
-    return (await this.request<GitlabDiscussion>('GET', `${this.discussionsPath(projectId, iid)}/${encodeURIComponent(discussionId)}`)).data
+    return (
+      await this.request<GitlabDiscussion>(
+        'GET',
+        `${this.discussionsPath(projectId, iid)}/${encodeURIComponent(discussionId)}`
+      )
+    ).data
   }
 
-  async createMergeRequestDiscussionNote (projectId: number, iid: number, discussionId: string, body: string): Promise<GitlabDiscussionNote> {
+  async createMergeRequestDiscussionNote (
+    projectId: number,
+    iid: number,
+    discussionId: string,
+    body: string
+  ): Promise<GitlabDiscussionNote> {
     const path = `${this.discussionsPath(projectId, iid)}/${encodeURIComponent(discussionId)}/notes`
     return (await this.request<GitlabDiscussionNote>('POST', path, { body })).data
   }
@@ -420,9 +484,17 @@ export class GitlabApi {
     return (await this.request<GitlabDiscussionNote>('PUT', path, { body })).data
   }
 
-  async deleteMergeRequestDiscussionNote (projectId: number, iid: number, discussionId: string, noteId: number): Promise<void> {
+  async deleteMergeRequestDiscussionNote (
+    projectId: number,
+    iid: number,
+    discussionId: string,
+    noteId: number
+  ): Promise<void> {
     try {
-      await this.request<undefined>('DELETE', `${this.discussionsPath(projectId, iid)}/${encodeURIComponent(discussionId)}/notes/${noteId}`)
+      await this.request<undefined>(
+        'DELETE',
+        `${this.discussionsPath(projectId, iid)}/${encodeURIComponent(discussionId)}/notes/${noteId}`
+      )
     } catch (err: unknown) {
       if (err instanceof GitlabApiError && err.status === 404) {
         return
@@ -431,7 +503,12 @@ export class GitlabApi {
     }
   }
 
-  async resolveMergeRequestDiscussion (projectId: number, iid: number, discussionId: string, resolved: boolean): Promise<GitlabDiscussion> {
+  async resolveMergeRequestDiscussion (
+    projectId: number,
+    iid: number,
+    discussionId: string,
+    resolved: boolean
+  ): Promise<GitlabDiscussion> {
     const path = `${this.discussionsPath(projectId, iid)}/${encodeURIComponent(discussionId)}?resolved=${resolved}`
     return (await this.request<GitlabDiscussion>('PUT', path)).data
   }

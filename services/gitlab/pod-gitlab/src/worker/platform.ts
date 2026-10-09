@@ -18,7 +18,11 @@ export interface WorkerHandle {
   close: () => Promise<void>
   ownsProject: (webUrl: string, projectId: number) => boolean
   // `integration`: only that integration's repositories (an event from a scoped hook)
-  handleWebhook: (kind: GitlabHookKind, payload: GitlabHookPayload, integration?: Ref<GitlabIntegration>) => Promise<void>
+  handleWebhook: (
+    kind: GitlabHookKind,
+    payload: GitlabHookPayload,
+    integration?: Ref<GitlabIntegration>
+  ) => Promise<void>
   requestFullSync: () => void
   lease: (accountId: PersonId) => SessionLease | undefined
   gitlabImage: (url: string, actor: PersonId) => Promise<GitlabImageAccess>
@@ -93,7 +97,11 @@ export class GitlabPlatform {
   async close (): Promise<void> {
     if (this.timer !== undefined) clearInterval(this.timer)
     await this.checking
-    await Promise.all([...this.workers.values()].map(async (worker) => { await worker.close() }))
+    await Promise.all(
+      [...this.workers.values()].map(async (worker) => {
+        await worker.close()
+      })
+    )
     this.workers.clear()
   }
 

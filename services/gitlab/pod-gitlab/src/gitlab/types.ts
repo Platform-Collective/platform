@@ -128,7 +128,13 @@ export interface GitlabMergeRequestInfo {
   reviewers: GitlabUserRef[]
 }
 
-export type GitlabReviewState = 'unreviewed' | 'review_started' | 'reviewed' | 'requested_changes' | 'approved' | 'unapproved'
+export type GitlabReviewState =
+  | 'unreviewed'
+  | 'review_started'
+  | 'reviewed'
+  | 'requested_changes'
+  | 'approved'
+  | 'unapproved'
 
 export interface GitlabMergeRequestReviewer {
   user: GitlabUserRef

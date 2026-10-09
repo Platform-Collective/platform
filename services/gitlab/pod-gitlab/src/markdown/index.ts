@@ -34,7 +34,11 @@ export function parseMessageMarkdown (message: string, urls: MarkdownUrls): Mark
 }
 
 export function serializeMessage (node: MarkupNode, urls: MarkdownUrls): string {
-  const state = new MarkdownState(storeNodes, storeMarks, { tightLists: true, refUrl: urls.refUrl, imageUrl: urls.imageUrl })
+  const state = new MarkdownState(storeNodes, storeMarks, {
+    tightLists: true,
+    refUrl: urls.refUrl,
+    imageUrl: urls.imageUrl
+  })
   state.renderContent(node)
   return state.out
 }

@@ -21,11 +21,17 @@
   async function load (integration: Integration): Promise<void> {
     try {
       const userId = integration?.data?.gitlabUserId as number | undefined
-      glIntegration = userId === undefined ? undefined : await client.findOne(gitlab.class.GitlabIntegration, { gitlabUserId: userId })
+      glIntegration =
+        userId === undefined
+          ? undefined
+          : await client.findOne(gitlab.class.GitlabIntegration, { gitlabUserId: userId })
       linked =
         glIntegration === undefined
           ? []
-          : await client.findAll(gitlab.class.GitlabIntegrationRepository, { attachedTo: glIntegration._id, enabled: true })
+          : await client.findAll(gitlab.class.GitlabIntegrationRepository, {
+            attachedTo: glIntegration._id,
+            enabled: true
+          })
       status = glIntegration?.error != null ? ERROR : OK
     } catch (err: unknown) {
       status = ERROR

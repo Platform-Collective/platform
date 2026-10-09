@@ -1,5 +1,17 @@
 // SPDX-License-Identifier: EPL-2.0
-import { belongsToHost, discussionIdOf, discussionKey, gitlabSocialValue, hostKey, issueKey, mergeRequestKey, noteKey, objectKey, parseGitlabSocialValue, reviewKey } from '../sync/keys'
+import {
+  belongsToHost,
+  discussionIdOf,
+  discussionKey,
+  gitlabSocialValue,
+  hostKey,
+  issueKey,
+  mergeRequestKey,
+  noteKey,
+  objectKey,
+  parseGitlabSocialValue,
+  reviewKey
+} from '../sync/keys'
 
 describe('keys', () => {
   it('normalises hosts with sub-paths, schemes and case', () => {
@@ -32,7 +44,9 @@ describe('keys', () => {
   it('builds merge request keys next to issue keys', () => {
     expect(mergeRequestKey('https://gitlab.com', 42, 3)).toBe('gitlab.com/projects/42/merge_requests/3')
     expect(objectKey('https://gitlab.com', 42, 'issues', 3)).toBe(issueKey('https://gitlab.com', 42, 3))
-    expect(noteKey(mergeRequestKey('https://gitlab.com', 42, 3), 9)).toBe('gitlab.com/projects/42/merge_requests/3/notes/9')
+    expect(noteKey(mergeRequestKey('https://gitlab.com', 42, 3), 9)).toBe(
+      'gitlab.com/projects/42/merge_requests/3/notes/9'
+    )
   })
 })
 

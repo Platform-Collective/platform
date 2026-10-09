@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: EPL-2.0
-import { ATTACHMENT_MARKER, attachmentBlock, attachmentLink, splitAttachmentBlock, withAttachments } from '../sync/attachments'
+import {
+  ATTACHMENT_MARKER,
+  attachmentBlock,
+  attachmentLink,
+  splitAttachmentBlock,
+  withAttachments
+} from '../sync/attachments'
 
 describe('the attachment block of a note', () => {
   it('links images inline and other files as links, escaping the name', () => {
@@ -8,7 +14,9 @@ describe('the attachment block of a note', () => {
   })
 
   it('wraps a path with a space in angle brackets', () => {
-    expect(attachmentLink('my shot.png', 'image/png', '/uploads/s/my shot.png')).toBe('![my shot.png](</uploads/s/my shot.png>)')
+    expect(attachmentLink('my shot.png', 'image/png', '/uploads/s/my shot.png')).toBe(
+      '![my shot.png](</uploads/s/my shot.png>)'
+    )
   })
 
   it('builds, appends and splits a block', () => {

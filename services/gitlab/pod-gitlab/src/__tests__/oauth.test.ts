@@ -2,8 +2,14 @@
 import { buildAuthorizeUrl, exchangeCode, GitlabOAuthError, isTokenExpired, refreshTokens } from '../gitlab/oauth'
 import type { FetchFn } from '../gitlab/api'
 import { signState, verifyState } from '../state'
+import { createHmac } from 'crypto'
 
-const cfg = { GitlabHost: 'https://gitlab.com', ClientID: 'cid', ClientSecret: 'cs', RedirectURI: 'http://front/gitlab' }
+const cfg = {
+  GitlabHost: 'https://gitlab.com',
+  ClientID: 'cid',
+  ClientSecret: 'cs',
+  RedirectURI: 'http://front/gitlab'
+}
 
 function tokenFetch (status: number, body: unknown): { fn: FetchFn, bodies: string[] } {
   const bodies: string[] = []
@@ -26,7 +32,14 @@ describe('oauth', () => {
   })
 
   it('exchanges a code and computes expiresAt from created_at', async () => {
-    const { fn, bodies } = tokenFetch(200, { access_token: 'a', token_type: 'Bearer', expires_in: 7200, refresh_token: 'r', created_at: 1000, scope: 'api read_user' })
+    const { fn, bodies } = tokenFetch(200, {
+      access_token: 'a',
+      token_type: 'Bearer',
+      expires_in: 7200,
+      refresh_token: 'r',
+      created_at: 1000,
+      scope: 'api read_user'
+    })
     const tokens = await exchangeCode(cfg, 'code1', fn)
     expect(tokens).toEqual({ token: 'a', refreshToken: 'r', expiresAt: 8200, scope: 'api read_user' })
     const sent = new URLSearchParams(bodies[0])
@@ -36,7 +49,14 @@ describe('oauth', () => {
   })
 
   it('refreshes with grant_type refresh_token', async () => {
-    const { fn, bodies } = tokenFetch(200, { access_token: 'b', token_type: 'Bearer', expires_in: 7200, refresh_token: 'r2', created_at: 2000, scope: 'api' })
+    const { fn, bodies } = tokenFetch(200, {
+      access_token: 'b',
+      token_type: 'Bearer',
+      expires_in: 7200,
+      refresh_token: 'r2',
+      created_at: 2000,
+      scope: 'api'
+    })
     const tokens = await refreshTokens(cfg, 'r1', fn)
     expect(tokens.refreshToken).toBe('r2')
     const sent = new URLSearchParams(bodies[0])
@@ -45,8 +65,13 @@ describe('oauth', () => {
   })
 
   it('raises GitlabOAuthError with the provider description', async () => {
-    const { fn } = tokenFetch(400, { error: 'invalid_grant', error_description: 'The provided authorization grant is invalid' })
-    await expect(exchangeCode(cfg, 'bad', fn)).rejects.toThrow(new GitlabOAuthError('The provided authorization grant is invalid'))
+    const { fn } = tokenFetch(400, {
+      error: 'invalid_grant',
+      error_description: 'The provided authorization grant is invalid'
+    })
+    await expect(exchangeCode(cfg, 'bad', fn)).rejects.toThrow(
+      new GitlabOAuthError('The provided authorization grant is invalid')
+    )
   })
 
   it('isTokenExpired respects skew and null expiry', () => {
@@ -73,7 +98,9 @@ describe('signed OAuth state', () => {
     const raw = signState(payload, 'secret', 1000)
     expect(() => verifyState(raw, 'other', 2000)).toThrow('Invalid OAuth state')
     const [data, sig] = raw.split('.')
-    const forged = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(data, 'base64url').toString()), account: 'evil' })).toString('base64url')
+    const forged = Buffer.from(
+      JSON.stringify({ ...JSON.parse(Buffer.from(data, 'base64url').toString()), account: 'evil' })
+    ).toString('base64url')
     expect(() => verifyState(`${forged}.${sig}`, 'secret', 2000)).toThrow('Invalid OAuth state')
   })
 
@@ -94,8 +121,10 @@ describe('signed OAuth state redirect', () => {
   })
 
   it('rejects a state whose redirect URI is not a string', () => {
-    const data = Buffer.from(JSON.stringify({ ...payload, redirectUri: 5, nonce: 'n', exp: 9e15 })).toString('base64url')
-    const sig = require('crypto').createHmac('sha256', 'secret').update(data).digest('base64url')
+    const data = Buffer.from(JSON.stringify({ ...payload, redirectUri: 5, nonce: 'n', exp: 9e15 })).toString(
+      'base64url'
+    )
+    const sig = createHmac('sha256', 'secret').update(data).digest('base64url')
     expect(() => verifyState(`${data}.${sig}`, 'secret', 2000)).toThrow('Invalid OAuth state')
   })
 })

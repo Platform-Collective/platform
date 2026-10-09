@@ -6,10 +6,13 @@ import { IMAGE_HEADERS, imageRoute, imageStatus } from '../image-route'
 const caller = { workspace: 'ws-1' as WorkspaceUuid, account: 'acc-1', accountId: 'person-1' as PersonId }
 
 describe('imageRoute', () => {
-  it("asks for the image as the verified caller", async () => {
+  it('asks for the image as the verified caller', async () => {
     const image = jest.fn(async () => ({ kind: 'no-access' as const }))
     const onError = jest.fn()
-    const result = await imageRoute({ token: 't', url: 'https://gitlab.example.com/group/proj/uploads/x/a.png' }, { verify: async () => caller, image, onError })
+    const result = await imageRoute(
+      { token: 't', url: 'https://gitlab.example.com/group/proj/uploads/x/a.png' },
+      { verify: async () => caller, image, onError }
+    )
     expect(result).toEqual({ kind: 'no-access' })
     expect(image).toHaveBeenCalledWith('ws-1', 'person-1', 'https://gitlab.example.com/group/proj/uploads/x/a.png')
   })
@@ -17,14 +20,27 @@ describe('imageRoute', () => {
   it('answers not-found without a url', async () => {
     const image = jest.fn()
     const onError = jest.fn()
-    expect(await imageRoute({ token: 't' }, { verify: async () => caller, image, onError })).toEqual({ kind: 'not-found' })
+    expect(await imageRoute({ token: 't' }, { verify: async () => caller, image, onError })).toEqual({
+      kind: 'not-found'
+    })
     expect(image).not.toHaveBeenCalled()
   })
 
   it('refuses an unverified caller', async () => {
     const image = jest.fn()
     const onError = jest.fn()
-    await expect(imageRoute({ token: 'bad', url: 'x' }, { verify: async () => { throw new Error('bad token') }, image, onError })).rejects.toThrow('bad token')
+    await expect(
+      imageRoute(
+        { token: 'bad', url: 'x' },
+        {
+          verify: async () => {
+            throw new Error('bad token')
+          },
+          image,
+          onError
+        }
+      )
+    ).rejects.toThrow('bad token')
     expect(image).not.toHaveBeenCalled()
     expect(onError).not.toHaveBeenCalled()
   })
@@ -47,9 +63,14 @@ describe('imageRoute', () => {
 
   it('converts GitLab errors to unavailable', async () => {
     const gitlabError = new Error('GitLab GET /projects/42/uploads/secret/a.png failed: 500 body')
-    const image = jest.fn(async () => { throw gitlabError })
+    const image = jest.fn(async () => {
+      throw gitlabError
+    })
     const onError = jest.fn()
-    const result = await imageRoute({ token: 't', url: 'https://gitlab.example.com/group/proj/uploads/x/a.png' }, { verify: async () => caller, image, onError })
+    const result = await imageRoute(
+      { token: 't', url: 'https://gitlab.example.com/group/proj/uploads/x/a.png' },
+      { verify: async () => caller, image, onError }
+    )
     expect(result).toEqual({ kind: 'unavailable' })
     expect(onError).toHaveBeenCalledWith(gitlabError)
   })

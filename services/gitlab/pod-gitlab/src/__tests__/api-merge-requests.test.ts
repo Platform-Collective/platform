@@ -11,7 +11,11 @@ interface Reply {
 function recorder (replies: Reply[]): { fn: FetchFn, calls: Array<{ method: string, url: string, body?: unknown }> } {
   const calls: Array<{ method: string, url: string, body?: unknown }> = []
   const fn = (async (url: string, init?: RequestInit) => {
-    calls.push({ method: init?.method ?? 'GET', url, body: init?.body !== undefined ? JSON.parse(String(init.body)) : undefined })
+    calls.push({
+      method: init?.method ?? 'GET',
+      url,
+      body: init?.body !== undefined ? JSON.parse(String(init.body)) : undefined
+    })
     const next = replies.shift() ?? { status: 404, body: { message: 'unexpected' } }
     const payload = next.text ?? (next.body === undefined ? '' : JSON.stringify(next.body))
     return new Response(payload, { status: next.status ?? 200, headers: next.headers })
@@ -59,7 +63,16 @@ describe('GitlabApi merge requests', () => {
 
   it('returns the raw diff as text, and lists per-file diffs in unified format', async () => {
     const raw = 'diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n'
-    const file = { old_path: 'x', new_path: 'x', a_mode: '100644', b_mode: '100644', diff: '@@ -1 +1 @@\n-a\n+b\n', new_file: false, renamed_file: false, deleted_file: false }
+    const file = {
+      old_path: 'x',
+      new_path: 'x',
+      a_mode: '100644',
+      b_mode: '100644',
+      diff: '@@ -1 +1 @@\n-a\n+b\n',
+      new_file: false,
+      renamed_file: false,
+      deleted_file: false
+    }
     const { fn, calls } = recorder([{ text: raw }, { body: [file], headers: { 'x-next-page': '' } }])
     const api = new GitlabApi(host, 't', fn)
     expect(await api.getMergeRequestRawDiffs(42, 3)).toBe(raw)

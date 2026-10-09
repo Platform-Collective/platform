@@ -6,8 +6,14 @@ import { assembleUnifiedDiff, countPatchFiles, countPatchLines, fetchMergeReques
 
 function file (overrides: Partial<GitlabMergeRequestDiff>): GitlabMergeRequestDiff {
   return {
-    old_path: 'src/a.ts', new_path: 'src/a.ts', a_mode: '100644', b_mode: '100644',
-    diff: '@@ -1 +1 @@\n-a\n+b\n', new_file: false, renamed_file: false, deleted_file: false,
+    old_path: 'src/a.ts',
+    new_path: 'src/a.ts',
+    a_mode: '100644',
+    b_mode: '100644',
+    diff: '@@ -1 +1 @@\n-a\n+b\n',
+    new_file: false,
+    renamed_file: false,
+    deleted_file: false,
     ...overrides
   }
 }
@@ -21,13 +27,37 @@ describe('assembleUnifiedDiff', () => {
       file({ old_path: 'old.ts', new_path: 'new.ts', renamed_file: true, diff: '' })
     ])
     // Checksum lines are covered by the next test
-    expect(patch.split('\n').filter((it) => !it.startsWith('index ')).join('\n')).toBe([
-      'diff --git a/src/a.ts b/src/a.ts', '--- a/src/a.ts', '+++ b/src/a.ts', '@@ -1 +1 @@', '-a', '+b',
-      'diff --git a/n.ts b/n.ts', 'new file mode 100644', '--- /dev/null', '+++ b/n.ts', '@@ -0,0 +1 @@', '+x',
-      'diff --git a/d.ts b/d.ts', 'deleted file mode 100644', '--- a/d.ts', '+++ /dev/null', '@@ -1 +0,0 @@', '-x',
-      'diff --git a/old.ts b/new.ts', 'rename from old.ts', 'rename to new.ts',
-      ''
-    ].join('\n'))
+    expect(
+      patch
+        .split('\n')
+        .filter((it) => !it.startsWith('index '))
+        .join('\n')
+    ).toBe(
+      [
+        'diff --git a/src/a.ts b/src/a.ts',
+        '--- a/src/a.ts',
+        '+++ b/src/a.ts',
+        '@@ -1 +1 @@',
+        '-a',
+        '+b',
+        'diff --git a/n.ts b/n.ts',
+        'new file mode 100644',
+        '--- /dev/null',
+        '+++ b/n.ts',
+        '@@ -0,0 +1 @@',
+        '+x',
+        'diff --git a/d.ts b/d.ts',
+        'deleted file mode 100644',
+        '--- a/d.ts',
+        '+++ /dev/null',
+        '@@ -1 +0,0 @@',
+        '-x',
+        'diff --git a/old.ts b/new.ts',
+        'rename from old.ts',
+        'rename to new.ts',
+        ''
+      ].join('\n')
+    )
     expect(countPatchFiles(patch)).toBe(4)
   })
 
@@ -59,7 +89,10 @@ describe('countPatchLines', () => {
 
   it('counts nothing in an empty or header-only patch', () => {
     expect(countPatchLines('')).toEqual({ additions: 0, deletions: 0 })
-    expect(countPatchLines('diff --git a/x b/x\nBinary files a/x and b/x differ\n')).toEqual({ additions: 0, deletions: 0 })
+    expect(countPatchLines('diff --git a/x b/x\nBinary files a/x and b/x differ\n')).toEqual({
+      additions: 0,
+      deletions: 0
+    })
   })
 })
 
@@ -72,7 +105,9 @@ describe('fetchMergeRequestPatch', () => {
 
   it('assembles the per-file diffs on a GitLab without raw_diffs (404)', async () => {
     const api = {
-      getMergeRequestRawDiffs: jest.fn(async () => { throw new GitlabApiError(404, 'not found') }),
+      getMergeRequestRawDiffs: jest.fn(async () => {
+        throw new GitlabApiError(404, 'not found')
+      }),
       listMergeRequestDiffs: jest.fn(async () => [file({})])
     }
     expect(await fetchMergeRequestPatch(api as any, 42, 3)).toBe(assembleUnifiedDiff([file({})]))
@@ -81,7 +116,9 @@ describe('fetchMergeRequestPatch', () => {
 
   it('does not hide other errors behind the fallback', async () => {
     const api = {
-      getMergeRequestRawDiffs: jest.fn(async () => { throw new GitlabApiError(500, 'boom') }),
+      getMergeRequestRawDiffs: jest.fn(async () => {
+        throw new GitlabApiError(500, 'boom')
+      }),
       listMergeRequestDiffs: jest.fn()
     }
     await expect(fetchMergeRequestPatch(api as any, 42, 3)).rejects.toThrow('boom')

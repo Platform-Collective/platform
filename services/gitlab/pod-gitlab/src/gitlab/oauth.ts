@@ -73,6 +73,10 @@ export async function exchangeCode (cfg: OAuthConfig, code: string, fetchFn: Fet
   return await postToken(cfg, { code, grant_type: 'authorization_code' }, fetchFn)
 }
 
-export async function refreshTokens (cfg: OAuthConfig, refreshToken: string, fetchFn: FetchFn = fetch): Promise<TokenSet> {
+export async function refreshTokens (
+  cfg: OAuthConfig,
+  refreshToken: string,
+  fetchFn: FetchFn = fetch
+): Promise<TokenSet> {
   return await postToken(cfg, { refresh_token: refreshToken, grant_type: 'refresh_token' }, fetchFn)
 }

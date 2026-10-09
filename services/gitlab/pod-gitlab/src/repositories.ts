@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { Hyperlink, Ref, TxOperations } from '@hcengineering/core'
-import gitlab, { type GitlabIntegration, type GitlabIntegrationRepository, type GitlabIssue } from '@hcengineering/gitlab'
+import gitlab, {
+  type GitlabIntegration,
+  type GitlabIntegrationRepository,
+  type GitlabIssue
+} from '@hcengineering/gitlab'
 import type { Issue } from '@hcengineering/tracker'
 import { type GitlabApi, GitlabApiError } from './gitlab/api'
 import type { GitlabProjectInfo } from './gitlab/types'
@@ -157,7 +161,10 @@ export async function confirmMissing (
       }
       throw err
     }
-    const changed: Partial<RepositoryFields> & { deleted?: boolean } = changedFields(current, toRepositoryFields(project))
+    const changed: Partial<RepositoryFields> & { deleted?: boolean } = changedFields(
+      current,
+      toRepositoryFields(project)
+    )
     if (current.deleted) changed.deleted = false
     if (Object.keys(changed).length > 0) update.push({ _id: current._id, update: changed })
   }
@@ -178,12 +185,14 @@ export function urlChanges (existing: GitlabIntegrationRepository[], plan: Repos
 /** Points the links of a renamed or transferred project's issues and merge requests at its new URL. */
 export async function rewriteRepositoryUrls (client: TxOperations, change: RepositoryUrlChange): Promise<number> {
   const rewrite = (url: string | undefined): Hyperlink | undefined =>
-    url !== undefined && url.startsWith(`${change.from}/`) ? (`${change.to}${url.slice(change.from.length)}` as Hyperlink) : undefined
+    url !== undefined && url.startsWith(`${change.from}/`) ? `${change.to}${url.slice(change.from.length)}` : undefined
   let count = 0
   for (const issue of await client.findAll(gitlab.mixin.GitlabIssue, { repository: change.repository })) {
     const url = rewrite(issue.url)
     if (url === undefined) continue
-    await client.updateMixin<Issue, GitlabIssue>(issue._id, issue._class, issue.space, gitlab.mixin.GitlabIssue, { url })
+    await client.updateMixin<Issue, GitlabIssue>(issue._id, issue._class, issue.space, gitlab.mixin.GitlabIssue, {
+      url
+    })
     count++
   }
   for (const mr of await client.findAll(gitlab.class.GitlabMergeRequest, { repository: change.repository })) {

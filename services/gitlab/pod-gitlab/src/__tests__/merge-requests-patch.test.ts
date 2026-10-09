@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 /* eslint-disable @typescript-eslint/no-explicit-any -- test doubles */
 
-import gitlab, { type DocSyncInfo } from '@hcengineering/gitlab'
+import gitlab from '@hcengineering/gitlab'
 import { GitlabApiError } from '../gitlab/api'
 import { MergeRequestSyncManager } from '../sync/merge-requests'
 import { MAX_PATCH_BYTES } from '../sync/patch'
@@ -64,7 +64,12 @@ const patchDocs = (memory: MemoryClient): any[] => memory.docs.filter((d) => d._
 async function syncDoc (env: Env, id: string): Promise<void> {
   const info = syncOf(env.memory, id)
   const existing = mrOf(env.memory, id)
-  const update = await env.mergeRequests.sync(ctx, existing === undefined ? undefined : { ...existing }, { ...info } as DocSyncInfo, undefined)
+  const update = await env.mergeRequests.sync(
+    ctx,
+    existing === undefined ? undefined : { ...existing },
+    { ...info },
+    undefined
+  )
   await env.memory.update(info, update)
 }
 
@@ -87,7 +92,11 @@ describe('MergeRequestSyncManager: diff', () => {
     const id = await imported(env)
     expect(patchDocs(env.memory)).toEqual([
       expect.objectContaining({
-        attachedTo: id, attachedToClass: gitlab.class.GitlabMergeRequest, collection: 'patch', file: 'blob-1', size: Buffer.byteLength(RAW)
+        attachedTo: id,
+        attachedToClass: gitlab.class.GitlabMergeRequest,
+        collection: 'patch',
+        file: 'blob-1',
+        size: Buffer.byteLength(RAW)
       })
     ])
     const [patch] = patchDocs(env.memory)
@@ -137,7 +146,9 @@ describe('MergeRequestSyncManager: diff', () => {
 
   it('does not store a diff over 5 MB, but keeps the counts', async () => {
     const env = setup()
-    env.api.getMergeRequestRawDiffs.mockResolvedValue('diff --git a/x b/x\n@@ -1 +1 @@\n-a\n+' + 'x'.repeat(MAX_PATCH_BYTES) + '\n+b\n')
+    env.api.getMergeRequestRawDiffs.mockResolvedValue(
+      'diff --git a/x b/x\n@@ -1 +1 @@\n-a\n+' + 'x'.repeat(MAX_PATCH_BYTES) + '\n+b\n'
+    )
     const id = await imported(env)
     expect(env.patches.put).not.toHaveBeenCalled()
     expect(patchDocs(env.memory)).toEqual([])
@@ -165,7 +176,11 @@ describe('MergeRequestSyncManager: diff', () => {
 })
 
 describe('MergeRequestSyncManager: first-import cost', () => {
-  const OLD = { state: 'merged' as const, updated_at: '2025-10-01T00:00:00.000Z', merged_at: '2025-10-01T00:00:00.000Z' }
+  const OLD = {
+    state: 'merged' as const,
+    updated_at: '2025-10-01T00:00:00.000Z',
+    merged_at: '2025-10-01T00:00:00.000Z'
+  }
 
   it('imports an old merged merge request without diff, commits, reviewers or approvals', async () => {
     const env = setup()

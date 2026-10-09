@@ -6,12 +6,20 @@ import { GitlabPersonMapper, linkGitlabIdentity, personName } from '../sync/pers
 import { asTxOperations, createMemoryClient } from './helpers/memory'
 
 const host = 'https://gitlab.example.com'
-const user = (id: number, username = `user${id}`): any => ({ id, username, name: `First${id} Last${id}`, avatar_url: null })
+const user = (id: number, username = `user${id}`): any => ({
+  id,
+  username,
+  name: `First${id} Last${id}`,
+  avatar_url: null
+})
 
 function setup (): any {
   const memory = createMemoryClient()
   const accounts = {
-    ensurePerson: jest.fn(async (_type: SocialIdType, value: string) => ({ uuid: `uuid-${value}`, socialId: `sid-${value}` }))
+    ensurePerson: jest.fn(async (_type: SocialIdType, value: string) => ({
+      uuid: `uuid-${value}`,
+      socialId: `sid-${value}`
+    }))
   }
   const mapper = new GitlabPersonMapper(asTxOperations(memory), accounts as any)
   return { memory, accounts, mapper }
@@ -39,14 +47,25 @@ describe('GitlabPersonMapper', () => {
 
   it('reuses a workspace social id that already exists', async () => {
     const { memory, accounts, mapper } = setup()
-    memory.docs.push({ _id: 'sid-known', _class: contact.class.SocialIdentity, type: SocialIdType.GITLAB, value: '7@gitlab.example.com', attachedTo: 'person-1' })
+    memory.docs.push({
+      _id: 'sid-known',
+      _class: contact.class.SocialIdentity,
+      type: SocialIdType.GITLAB,
+      value: '7@gitlab.example.com',
+      attachedTo: 'person-1'
+    })
     expect(await mapper.personIdFor(host, user(7))).toBe('sid-known')
     expect(accounts.ensurePerson).not.toHaveBeenCalled()
   })
 
   it('reuses the local person of an account that already has the GitLab id', async () => {
     const { memory, mapper } = setup()
-    memory.docs.push({ _id: 'person-alice', _class: contact.class.Person, personUuid: 'uuid-7@gitlab.example.com', name: 'Alice' })
+    memory.docs.push({
+      _id: 'person-alice',
+      _class: contact.class.Person,
+      personUuid: 'uuid-7@gitlab.example.com',
+      name: 'Alice'
+    })
     await mapper.personIdFor(host, user(7))
     expect(memory.docs.filter((d: any) => d._class === contact.class.Person)).toHaveLength(1)
     expect(memory.docs.find((d: any) => d._class === contact.class.SocialIdentity).attachedTo).toBe('person-alice')
@@ -69,8 +88,20 @@ describe('GitlabPersonMapper', () => {
 
   it('finds the GitLab user id of a person on the matching host only', async () => {
     const { memory, mapper } = setup()
-    memory.docs.push({ _id: 's1', _class: contact.class.SocialIdentity, type: SocialIdType.GITLAB, value: '5@gitlab.com', attachedTo: 'p1' })
-    memory.docs.push({ _id: 's2', _class: contact.class.SocialIdentity, type: SocialIdType.GITLAB, value: '9@gitlab.example.com', attachedTo: 'p1' })
+    memory.docs.push({
+      _id: 's1',
+      _class: contact.class.SocialIdentity,
+      type: SocialIdType.GITLAB,
+      value: '5@gitlab.com',
+      attachedTo: 'p1'
+    })
+    memory.docs.push({
+      _id: 's2',
+      _class: contact.class.SocialIdentity,
+      type: SocialIdType.GITLAB,
+      value: '9@gitlab.example.com',
+      attachedTo: 'p1'
+    })
     expect(await mapper.gitlabUserIdFor('p1' as Ref<Person>, host)).toBe(9)
     expect(await mapper.gitlabUserIdFor('p1' as Ref<Person>, 'https://other.example.com')).toBeUndefined()
     expect(await mapper.gitlabUserIdFor(null, host)).toBeUndefined()
@@ -91,10 +122,25 @@ describe('linkGitlabIdentity', () => {
   it("moves a placeholder's GitLab identity to the user who connected", async () => {
     const memory = createMemoryClient()
     memory.docs.push({ _id: 'person-user', _class: contact.class.Person, personUuid: 'acc-1' })
-    memory.docs.push({ _id: 'sid-x', _class: contact.class.SocialIdentity, type: SocialIdType.GITLAB, value: '7@gitlab.example.com', attachedTo: 'person-ghost' })
+    memory.docs.push({
+      _id: 'sid-x',
+      _class: contact.class.SocialIdentity,
+      type: SocialIdType.GITLAB,
+      value: '7@gitlab.example.com',
+      attachedTo: 'person-ghost'
+    })
     await linkGitlabIdentity(asTxOperations(memory), accounts as any, 'acc-1' as PersonUuid, host, user(7), 123)
-    expect(accounts.addSocialIdToPerson).toHaveBeenCalledWith('acc-1', SocialIdType.GITLAB, '7@gitlab.example.com', true, 'user7')
-    expect(memory.docs.find((d: any) => d._id === 'sid-x')).toMatchObject({ attachedTo: 'person-user', verifiedOn: 123 })
+    expect(accounts.addSocialIdToPerson).toHaveBeenCalledWith(
+      'acc-1',
+      SocialIdType.GITLAB,
+      '7@gitlab.example.com',
+      true,
+      'user7'
+    )
+    expect(memory.docs.find((d: any) => d._id === 'sid-x')).toMatchObject({
+      attachedTo: 'person-user',
+      verifiedOn: 123
+    })
   })
 
   it('creates the identity when the workspace has none', async () => {

@@ -9,10 +9,14 @@ const repo = {
   integration: { _id: 'int-1', host: 'https://gitlab.example.com' },
   repository: { _id: 'repo-1', webUrl: 'https://gitlab.example.com/group/proj', projectId: 42 }
 } as unknown as RepositoryContext
-const URL_OF = (name = 'a.png'): string => `https://gitlab.example.com/group/proj/uploads/${S}/${name}#gitlab-image=width%3D3`
+const URL_OF = (name = 'a.png'): string =>
+  `https://gitlab.example.com/group/proj/uploads/${S}/${name}#gitlab-image=width%3D3`
 
 function userApi (download: jest.Mock): (repository: RepositoryContext) => Promise<UserApi> {
-  return async () => ({ api: { downloadUpload: download } as any, user: { id: 7, username: 'u7', name: 'U7', avatar_url: null } })
+  return async () => ({
+    api: { downloadUpload: download } as any,
+    user: { id: 7, username: 'u7', name: 'U7', avatar_url: null }
+  })
 }
 
 describe('findGitlabImage', () => {
@@ -28,37 +32,55 @@ describe('findGitlabImage', () => {
   })
 
   it.each([401, 403, 404])('answers no-access when GitLab refuses with %p', async (status) => {
-    const download = jest.fn(async () => { throw new GitlabApiError(status, 'refused') })
+    const download = jest.fn(async () => {
+      throw new GitlabApiError(status, 'refused')
+    })
     expect(await findGitlabImage([repo], URL_OF(), userApi(download))).toEqual({ kind: 'no-access' })
   })
 
   it('answers unavailable for an image over the limit or a non-image', async () => {
-    const tooLarge = jest.fn(async () => { throw new GitlabUploadTooLargeError(30, 20) })
+    const tooLarge = jest.fn(async () => {
+      throw new GitlabUploadTooLargeError(30, 20)
+    })
     expect(await findGitlabImage([repo], URL_OF(), userApi(tooLarge))).toEqual({ kind: 'unavailable' })
     const html = jest.fn(async () => ({ data: Buffer.from('<html>'), contentType: 'text/html' }))
     expect(await findGitlabImage([repo], URL_OF(), userApi(html))).toEqual({ kind: 'unavailable' })
   })
 
-  it.each(['image/svg+xml', 'Image/SVG+XML; charset=utf-8'])('refuses %p because SVG can carry script', async (contentType) => {
-    const download = jest.fn(async () => ({ data: Buffer.from('<svg/>'), contentType }))
-    expect(await findGitlabImage([repo], URL_OF(), userApi(download))).toEqual({ kind: 'unavailable' })
-  })
+  it.each(['image/svg+xml', 'Image/SVG+XML; charset=utf-8'])(
+    'refuses %p because SVG can carry script',
+    async (contentType) => {
+      const download = jest.fn(async () => ({ data: Buffer.from('<svg/>'), contentType }))
+      expect(await findGitlabImage([repo], URL_OF(), userApi(download))).toEqual({ kind: 'unavailable' })
+    }
+  )
 
   it('accepts an image type in any case and keeps the content type as GitLab sent it', async () => {
     const download = jest.fn(async () => ({ data: Buffer.from('png'), contentType: 'IMAGE/PNG' }))
-    expect(await findGitlabImage([repo], URL_OF(), userApi(download))).toEqual({ kind: 'image', data: Buffer.from('png'), contentType: 'IMAGE/PNG' })
+    expect(await findGitlabImage([repo], URL_OF(), userApi(download))).toEqual({
+      kind: 'image',
+      data: Buffer.from('png'),
+      contentType: 'IMAGE/PNG'
+    })
   })
 
   it('answers not-found for anything that is not an upload of a linked repository', async () => {
     const download = jest.fn()
-    for (const url of [`/uploads/${S}/a.png`, `https://gitlab.example.com/other/proj/uploads/${S}/a.png`, 'https://example.com/a.png', `https://gitlab.example.com/group/proj/uploads/${S}/..`]) {
+    for (const url of [
+      `/uploads/${S}/a.png`,
+      `https://gitlab.example.com/other/proj/uploads/${S}/a.png`,
+      'https://example.com/a.png',
+      `https://gitlab.example.com/group/proj/uploads/${S}/..`
+    ]) {
       expect(await findGitlabImage([repo], url, userApi(download))).toEqual({ kind: 'not-found' })
     }
     expect(download).not.toHaveBeenCalled()
   })
 
   it('lets other errors through', async () => {
-    const download = jest.fn(async () => { throw new Error('network down') })
+    const download = jest.fn(async () => {
+      throw new Error('network down')
+    })
     await expect(findGitlabImage([repo], URL_OF(), userApi(download))).rejects.toThrow('network down')
   })
 })

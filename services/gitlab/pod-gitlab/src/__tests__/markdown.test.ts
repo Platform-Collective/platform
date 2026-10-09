@@ -40,14 +40,20 @@ describe('markdown converter', () => {
   })
 
   it('round-trips a sized external image as an img tag', () => {
-    const html = '<img width="300" height="200" src="https://gitlab.example.com/group/proj/uploads/0123456789abcdef0123456789abcdef/a.png" alt="shot">'
+    const html =
+      '<img width="300" height="200" src="https://gitlab.example.com/group/proj/uploads/0123456789abcdef0123456789abcdef/a.png" alt="shot">'
     expect(md.toMarkdown(md.toMarkup(html))).toBe(html)
-    const inline = 'before <img width="300" src="https://gitlab.example.com/group/proj/uploads/0123456789abcdef0123456789abcdef/my shot.png" alt="my\\_shot"> after'
+    const inline =
+      'before <img width="300" src="https://gitlab.example.com/group/proj/uploads/0123456789abcdef0123456789abcdef/my shot.png" alt="my\\_shot"> after'
     expect(md.toMarkdown(md.toMarkup(inline))).toBe(inline)
   })
 
   it('returns a linked image to GitLab byte for byte through the converter', () => {
-    const target = { host: 'https://gitlab.example.com', webUrl: 'https://gitlab.example.com/group/proj', projectId: 42 }
+    const target = {
+      host: 'https://gitlab.example.com',
+      webUrl: 'https://gitlab.example.com/group/proj',
+      projectId: 42
+    }
     const imageUrl = 'http://front/files?file='
     const S = '0123456789abcdef0123456789abcdef'
     for (const gitlab of [
@@ -70,8 +76,11 @@ describe('markdown converter', () => {
   })
 
   it('shows a linked image as a plain link marked by its fragment', () => {
-    const href = 'https://gitlab.example.com/group/proj/uploads/0123456789abcdef0123456789abcdef/a.png#gitlab-image=width%3D300'
+    const href =
+      'https://gitlab.example.com/group/proj/uploads/0123456789abcdef0123456789abcdef/a.png#gitlab-image=width%3D300'
     const markup = JSON.parse(md.toMarkup(`[shot](${href})`))
-    expect(markup.content[0].content).toEqual([{ type: 'text', text: 'shot', marks: [{ type: 'link', attrs: expect.objectContaining({ href }) }] }])
+    expect(markup.content[0].content).toEqual([
+      { type: 'text', text: 'shot', marks: [{ type: 'link', attrs: expect.objectContaining({ href }) }] }
+    ])
   })
 })

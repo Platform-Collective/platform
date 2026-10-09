@@ -16,14 +16,44 @@ import { asTxOperations, type MemoryClient } from './memory'
 export const ctx = new MeasureMetricsContext('test', {})
 
 const API_METHODS = [
-  'getCurrentUser', 'listMaintainedProjects', 'getProject', 'ensureProjectHook', 'deleteProjectHook', 'getIssue', 'listIssues',
-  'createIssue', 'updateIssue', 'moveIssue', 'listIssueNotes', 'getIssueNote', 'createIssueNote', 'updateIssueNote', 'deleteIssueNote',
-  'getMergeRequest', 'listMergeRequests', 'updateMergeRequest', 'listMergeRequestReviewers', 'listMergeRequestCommits',
-  'getMergeRequestRawDiffs', 'listMergeRequestDiffs', 'listMergeRequestNotes', 'getMergeRequestNote',
-  'createMergeRequestNote', 'updateMergeRequestNote', 'deleteMergeRequestNote',
-  'getMergeRequestApprovals', 'approveMergeRequest', 'unapproveMergeRequest', 'listMergeRequestDiscussions',
-  'getMergeRequestDiscussion', 'createMergeRequestDiscussionNote', 'updateMergeRequestDiscussionNote',
-  'deleteMergeRequestDiscussionNote', 'resolveMergeRequestDiscussion', 'uploadFile', 'downloadUpload'
+  'getCurrentUser',
+  'listMaintainedProjects',
+  'getProject',
+  'ensureProjectHook',
+  'deleteProjectHook',
+  'getIssue',
+  'listIssues',
+  'createIssue',
+  'updateIssue',
+  'moveIssue',
+  'listIssueNotes',
+  'getIssueNote',
+  'createIssueNote',
+  'updateIssueNote',
+  'deleteIssueNote',
+  'getMergeRequest',
+  'listMergeRequests',
+  'updateMergeRequest',
+  'listMergeRequestReviewers',
+  'listMergeRequestCommits',
+  'getMergeRequestRawDiffs',
+  'listMergeRequestDiffs',
+  'listMergeRequestNotes',
+  'getMergeRequestNote',
+  'createMergeRequestNote',
+  'updateMergeRequestNote',
+  'deleteMergeRequestNote',
+  'getMergeRequestApprovals',
+  'approveMergeRequest',
+  'unapproveMergeRequest',
+  'listMergeRequestDiscussions',
+  'getMergeRequestDiscussion',
+  'createMergeRequestDiscussionNote',
+  'updateMergeRequestDiscussionNote',
+  'deleteMergeRequestDiscussionNote',
+  'resolveMergeRequestDiscussion',
+  'uploadFile',
+  'downloadUpload'
 ] as const
 
 export type ApiMethod = (typeof API_METHODS)[number]
@@ -33,7 +63,12 @@ export type FakeApi = Record<ApiMethod, jest.Mock>
 export function fakeApi (impl: Partial<Record<ApiMethod, (...args: any[]) => Promise<unknown>>> = {}): FakeApi {
   const api: Partial<FakeApi> = {}
   for (const name of API_METHODS) {
-    api[name] = jest.fn(impl[name] ?? (async () => { throw new Error(`unexpected GitLab call: ${name}`) }))
+    api[name] = jest.fn(
+      impl[name] ??
+        (async () => {
+          throw new Error(`unexpected GitLab call: ${name}`)
+        })
+    )
   }
   return api as FakeApi
 }
@@ -108,7 +143,8 @@ export function createTestProvider (
     projectRepositories: (project) => repositories.filter((it) => it.project._id === project),
     integrationApi: async () => (available ? asApi(api) : undefined),
     apiFor: async () => (available ? asApi(api) : undefined),
-    userApi: async () => (options.ownUser === null ? undefined : { api: asApi(api), user: options.ownUser ?? gitlabUser(5) }),
+    userApi: async () =>
+      options.ownUser === null ? undefined : { api: asApi(api), user: options.ownUser ?? gitlabUser(5) },
     issueTaskType: async () => ({ taskType: TASK_TYPE, statuses: STATUSES }),
     mergeRequestTaskType: async () => ({ taskType: MR_TASK_TYPE, statuses: MR_STATUSES }),
     triggerSync: jest.fn(),

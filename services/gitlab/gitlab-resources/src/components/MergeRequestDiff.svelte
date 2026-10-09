@@ -54,7 +54,10 @@
   })
 
   async function onViewed (fileName: string, sha: string, viewed: boolean): Promise<void> {
-    const current = await client.findOne(gitlab.class.GitlabMergeRequestReview, { attachedTo: mergeRequest._id, author: me })
+    const current = await client.findOne(gitlab.class.GitlabMergeRequestReview, {
+      attachedTo: mergeRequest._id,
+      author: me
+    })
     const next = toggleViewed(current?.files ?? [], fileName, sha, viewed)
     if (current !== undefined) {
       await client.update(current, { files: next })
@@ -85,7 +88,13 @@
             }}
           >
             <svelte:fragment slot="content">
-              <Chevron size={'small'} expanded={!collapsed} outline fill={'var(--caption-color)'} marginRight={'.375rem'} />
+              <Chevron
+                size={'small'}
+                expanded={!collapsed}
+                outline
+                fill={'var(--caption-color)'}
+                marginRight={'.375rem'}
+              />
               <Label label={gitlab.string.ChangedFiles} params={{ files: mergeRequest.files }} />
             </svelte:fragment>
           </Button>

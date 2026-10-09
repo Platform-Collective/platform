@@ -34,10 +34,37 @@ it.each(locales)('issue strings exist with their params (%s)', async (lang) => {
 })
 
 const MERGE_REQUEST_KEYS = [
-  'MergeRequest', 'MergeRequests', 'MergeRequestConnectedActivityInfo', 'Draft', 'MergedAt', 'ClosedAt', 'Commits', 'Files',
-  'SourceBranch', 'TargetBranch', 'MergeStatus', 'MergeRequestState', 'Reviewers', 'StateOpened', 'StateMerged',
-  'StateClosed', 'StateLocked', 'ReadyToMerge', 'Conflict', 'Checking', 'PipelinePending', 'UnresolvedDiscussions',
-  'NeedsApproval', 'All', 'Active', 'Closed', 'ChangedFiles', 'WithoutRepository', 'CreateInGitlab', 'DiffUnavailable', 'DiffTooLarge'
+  'MergeRequest',
+  'MergeRequests',
+  'MergeRequestConnectedActivityInfo',
+  'Draft',
+  'MergedAt',
+  'ClosedAt',
+  'Commits',
+  'Files',
+  'SourceBranch',
+  'TargetBranch',
+  'MergeStatus',
+  'MergeRequestState',
+  'Reviewers',
+  'StateOpened',
+  'StateMerged',
+  'StateClosed',
+  'StateLocked',
+  'ReadyToMerge',
+  'Conflict',
+  'Checking',
+  'PipelinePending',
+  'UnresolvedDiscussions',
+  'NeedsApproval',
+  'All',
+  'Active',
+  'Closed',
+  'ChangedFiles',
+  'WithoutRepository',
+  'CreateInGitlab',
+  'DiffUnavailable',
+  'DiffTooLarge'
 ]
 
 // The pod renders the activity message with exactly these params; the diff panel passes {files}.
@@ -53,9 +80,23 @@ it.each(locales)('merge request strings exist with their params (%s)', async (la
 })
 
 const REVIEW_KEYS = [
-  'ApprovedBy', 'Approve', 'RevokeApproval', 'ConnectToApprove', 'Review', 'ReviewThread', 'ReviewComment',
-  'ReviewComments', 'ReviewApproved', 'ReviewUnapproved', 'ReviewRequestedChanges', 'ReviewReviewed', 'CommentedOnDiff',
-  'ResolveThread', 'UnresolveThread', 'ResolvedBy', 'Outdated'
+  'ApprovedBy',
+  'Approve',
+  'RevokeApproval',
+  'ConnectToApprove',
+  'Review',
+  'ReviewThread',
+  'ReviewComment',
+  'ReviewComments',
+  'ReviewApproved',
+  'ReviewUnapproved',
+  'ReviewRequestedChanges',
+  'ReviewReviewed',
+  'CommentedOnDiff',
+  'ResolveThread',
+  'UnresolveThread',
+  'ResolvedBy',
+  'Outdated'
 ]
 
 // The thread presenter always passes {path}

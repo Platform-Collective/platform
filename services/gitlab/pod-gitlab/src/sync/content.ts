@@ -2,7 +2,12 @@
 
 import attachment from '@hcengineering/attachment'
 import core, { type Blob, type Markup, type MeasureContext, type Ref, type TxOperations } from '@hcengineering/core'
-import gitlab, { imageModeOf, type GitlabIntegration, type GitlabUpload, type GitlabUploadOrigin } from '@hcengineering/gitlab'
+import gitlab, {
+  imageModeOf,
+  type GitlabIntegration,
+  type GitlabUpload,
+  type GitlabUploadOrigin
+} from '@hcengineering/gitlab'
 import type { GitlabApi } from '../gitlab/api'
 import type { MarkdownConverter } from '../markdown'
 import { errorMessage } from './errors'
@@ -81,7 +86,10 @@ export class ContentConverter {
    * repository's project, no such file, too large). Throws when GitLab refuses the upload.
    */
   async uploadFile (repo: RepositoryContext, file: string, name: string | undefined): Promise<string | undefined> {
-    const known = await this.deps.derived.findOne(gitlab.class.GitlabUpload, { repository: repo.repository._id, file: file as Ref<Blob> })
+    const known = await this.deps.derived.findOne(gitlab.class.GitlabUpload, {
+      repository: repo.repository._id,
+      file: file as Ref<Blob>
+    })
     if (known !== undefined) return known.path
     const { images, ctx } = this.deps
     if (images === undefined) return undefined
@@ -103,7 +111,12 @@ export class ContentConverter {
     }
     const api = await this.deps.integrationApi(repo.integration)
     if (api === undefined) throw new Error('GitLab authorization expired')
-    const uploaded = await api.uploadFile(repo.repository.projectId, uploadName(name, blob.contentType), blob.data, blob.contentType)
+    const uploaded = await api.uploadFile(
+      repo.repository.projectId,
+      uploadName(name, blob.contentType),
+      blob.data,
+      blob.contentType
+    )
     await this.record(repo, uploaded.url, file, 'huly')
     return uploaded.url
   }
@@ -134,7 +147,10 @@ export class ContentConverter {
 
   // A file attached to a document of the repository's Huly project, as a pasted image or a comment attachment is
   private async isProjectFile (repo: RepositoryContext, file: string): Promise<boolean> {
-    const found = await this.deps.derived.findOne(attachment.class.Attachment, { space: repo.project._id, file: file as Ref<Blob> })
+    const found = await this.deps.derived.findOne(attachment.class.Attachment, {
+      space: repo.project._id,
+      file: file as Ref<Blob>
+    })
     return found !== undefined
   }
 

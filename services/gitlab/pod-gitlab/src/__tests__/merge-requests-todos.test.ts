@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 /* eslint-disable @typescript-eslint/no-explicit-any -- test doubles */
 
-import gitlab, { type DocSyncInfo } from '@hcengineering/gitlab'
+import gitlab from '@hcengineering/gitlab'
 import time from '@hcengineering/time'
 import { GitlabApiError } from '../gitlab/api'
 import { MergeRequestSyncManager } from '../sync/merge-requests'
@@ -21,7 +21,10 @@ function setup (): Env {
   const memory = createMemoryClient()
   const repo = seedRepository(memory)
   for (const person of ['person-1', 'person-7', 'person-8']) employee(memory, person)
-  const api = fakeApi({ listMergeRequestReviewers: async () => [], getMergeRequestApprovals: async () => ({ approved_by: [] }) })
+  const api = fakeApi({
+    listMergeRequestReviewers: async () => [],
+    getMergeRequestApprovals: async () => ({ approved_by: [] })
+  })
   const provider = createTestProvider(memory, [repo], api)
   return { memory, mergeRequests: new MergeRequestSyncManager(provider), api, repo }
 }
@@ -36,7 +39,12 @@ let updatedAt = Date.parse('2026-01-02T00:00:00.000Z')
 async function syncDoc (env: Env, id: string): Promise<void> {
   const info = syncOf(env.memory, id)
   const existing = env.memory.docs.find((d) => d._id === id && d._class === gitlab.class.GitlabMergeRequest)
-  const update = await env.mergeRequests.sync(ctx, existing === undefined ? undefined : ({ ...existing } as any), { ...info } as DocSyncInfo, undefined)
+  const update = await env.mergeRequests.sync(
+    ctx,
+    existing === undefined ? undefined : ({ ...existing } as any),
+    { ...info },
+    undefined
+  )
   await env.memory.update(info, update)
 }
 
@@ -50,7 +58,9 @@ async function imported (env: Env, overrides: any = {}): Promise<string> {
 /** A newer GitLab version of !3 (each call one minute later). */
 async function gitlabChange (env: Env, id: string, overrides: any = {}): Promise<void> {
   updatedAt += 60 * 1000
-  env.api.getMergeRequest.mockResolvedValueOnce(gitlabMergeRequest(3, { updated_at: new Date(updatedAt).toISOString(), ...overrides }))
+  env.api.getMergeRequest.mockResolvedValueOnce(
+    gitlabMergeRequest(3, { updated_at: new Date(updatedAt).toISOString(), ...overrides })
+  )
   await env.mergeRequests.handleMergeRequestEvent(ctx, env.repo, asApi(env.api), 3)
   await syncDoc(env, id)
 }
@@ -62,8 +72,13 @@ describe('MergeRequestSyncManager: ToDos', () => {
     const id = await imported(env, { reviewers: [gitlabUser(8)] })
     expect(todos(env.memory)).toEqual([
       expect.objectContaining({
-        attachedTo: id, attachedToClass: gitlab.class.GitlabMergeRequest, collection: 'todos', user: 'person-8',
-        title: 'Review MR 3', doneOn: null, [gitlab.mixin.GitlabTodo]: { purpose: 'review' }
+        attachedTo: id,
+        attachedToClass: gitlab.class.GitlabMergeRequest,
+        collection: 'todos',
+        user: 'person-8',
+        title: 'Review MR 3',
+        doneOn: null,
+        [gitlab.mixin.GitlabTodo]: { purpose: 'review' }
       })
     ])
     expect(syncOf(env.memory, id).todos).toEqual(['review:person-8'])
@@ -99,7 +114,11 @@ describe('MergeRequestSyncManager: ToDos', () => {
     const env = setup()
     env.api.listMergeRequestReviewers.mockResolvedValue([reviewer(8, 'requested_changes')])
     await imported(env, { reviewers: [gitlabUser(8)], assignees: [gitlabUser(7)] })
-    expect(todos(env.memory).map((it) => [it.user, it.title, it[gitlab.mixin.GitlabTodo].purpose]).sort()).toEqual([
+    expect(
+      todos(env.memory)
+        .map((it) => [it.user, it.title, it[gitlab.mixin.GitlabTodo].purpose])
+        .sort((a, b) => a.join('|').localeCompare(b.join('|')))
+    ).toEqual([
       ['person-1', 'Resolve MR 3', 'fix'],
       ['person-7', 'Resolve MR 3', 'fix']
     ])

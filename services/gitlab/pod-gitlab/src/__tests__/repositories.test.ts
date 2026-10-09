@@ -5,7 +5,14 @@ import gitlab, { type GitlabIntegrationRepository } from '@hcengineering/gitlab'
 import tracker from '@hcengineering/tracker'
 import { GitlabApiError } from '../gitlab/api'
 import type { GitlabProjectInfo } from '../gitlab/types'
-import { confirmMissing, planRepositorySync, refreshIntegrationRepositories, rewriteRepositoryUrls, toRepositoryFields, urlChanges } from '../repositories'
+import {
+  confirmMissing,
+  planRepositorySync,
+  refreshIntegrationRepositories,
+  rewriteRepositoryUrls,
+  toRepositoryFields,
+  urlChanges
+} from '../repositories'
 import { asTxOperations, createMemoryClient } from './helpers/memory'
 
 function remote (id: number, patch: Partial<GitlabProjectInfo> = {}): GitlabProjectInfo {
@@ -94,7 +101,9 @@ describe('confirmMissing', () => {
     const plan = await confirmMissing(api, current, [], planRepositorySync(current, []))
     expect(api.getProject).toHaveBeenCalledWith(1)
     expect(plan.markDeleted).toEqual([])
-    expect(plan.update).toEqual([{ _id: 'r1', update: { pathWithNamespace: 'other/p1', webUrl: 'https://gitlab.com/other/p1' } }])
+    expect(plan.update).toEqual([
+      { _id: 'r1', update: { pathWithNamespace: 'other/p1', webUrl: 'https://gitlab.com/other/p1' } }
+    ])
   })
 
   it('marks a linked project deleted when GitLab answers 404 or 403', async () => {
@@ -125,7 +134,11 @@ describe('confirmMissing', () => {
 
   it('lets other GitLab errors through', async () => {
     const current = [linked(1)]
-    const api = { getProject: jest.fn(async () => { throw new GitlabApiError(500, 'boom') }) }
+    const api = {
+      getProject: jest.fn(async () => {
+        throw new GitlabApiError(500, 'boom')
+      })
+    }
     await expect(confirmMissing(api, current, [], planRepositorySync(current, []))).rejects.toThrow('boom')
   })
 })
@@ -133,17 +146,43 @@ describe('confirmMissing', () => {
 describe('urlChanges and rewriteRepositoryUrls', () => {
   it('lists repositories whose web URL changed', () => {
     const current = [existing(1), existing(2)]
-    const plan = planRepositorySync(current, [remote(1, { web_url: 'https://gitlab.com/other/p1' }), remote(2, { name: 'renamed' })])
-    expect(urlChanges(current, plan)).toEqual([{ repository: 'r1', from: 'https://gitlab.com/g/p1', to: 'https://gitlab.com/other/p1' }])
+    const plan = planRepositorySync(current, [
+      remote(1, { web_url: 'https://gitlab.com/other/p1' }),
+      remote(2, { name: 'renamed' })
+    ])
+    expect(urlChanges(current, plan)).toEqual([
+      { repository: 'r1', from: 'https://gitlab.com/g/p1', to: 'https://gitlab.com/other/p1' }
+    ])
   })
 
-  it('rewrites the links of a moved project\'s issues and merge requests, and nothing else', async () => {
+  it("rewrites the links of a moved project's issues and merge requests, and nothing else", async () => {
     const memory = createMemoryClient()
     memory.docs.push(
-      { _id: 'i1', _class: tracker.class.Issue, space: 'prj', [gitlab.mixin.GitlabIssue]: { url: 'https://gitlab.com/g/p1/-/issues/4', gitlabIid: 4, repository: 'r1' } },
-      { _id: 'i2', _class: tracker.class.Issue, space: 'prj', [gitlab.mixin.GitlabIssue]: { url: 'https://gitlab.com/g/p12/-/issues/1', gitlabIid: 1, repository: 'r1' } },
-      { _id: 'i3', _class: tracker.class.Issue, space: 'prj', [gitlab.mixin.GitlabIssue]: { url: 'https://gitlab.com/g/p1/-/issues/9', gitlabIid: 9, repository: 'r2' } },
-      { _id: 'm1', _class: gitlab.class.GitlabMergeRequest, space: 'prj', url: 'https://gitlab.com/g/p1/-/merge_requests/3', repository: 'r1' }
+      {
+        _id: 'i1',
+        _class: tracker.class.Issue,
+        space: 'prj',
+        [gitlab.mixin.GitlabIssue]: { url: 'https://gitlab.com/g/p1/-/issues/4', gitlabIid: 4, repository: 'r1' }
+      },
+      {
+        _id: 'i2',
+        _class: tracker.class.Issue,
+        space: 'prj',
+        [gitlab.mixin.GitlabIssue]: { url: 'https://gitlab.com/g/p12/-/issues/1', gitlabIid: 1, repository: 'r1' }
+      },
+      {
+        _id: 'i3',
+        _class: tracker.class.Issue,
+        space: 'prj',
+        [gitlab.mixin.GitlabIssue]: { url: 'https://gitlab.com/g/p1/-/issues/9', gitlabIid: 9, repository: 'r2' }
+      },
+      {
+        _id: 'm1',
+        _class: gitlab.class.GitlabMergeRequest,
+        space: 'prj',
+        url: 'https://gitlab.com/g/p1/-/merge_requests/3',
+        repository: 'r1'
+      }
     )
     const count = await rewriteRepositoryUrls(asTxOperations(memory), {
       repository: 'r1' as Ref<GitlabIntegrationRepository>,
@@ -166,7 +205,15 @@ describe('refreshIntegrationRepositories', () => {
     memory.docs.push(integration)
     const api = { listMaintainedProjects: async () => [remote(1), remote(2)], getProject: jest.fn() }
     const client = asTxOperations(memory)
-    await Promise.all([refreshIntegrationRepositories(client, api, integration), refreshIntegrationRepositories(client, api, integration)])
-    expect(memory.docs.filter((d) => d._class === gitlab.class.GitlabIntegrationRepository).map((d) => d.projectId).sort()).toEqual([1, 2])
+    await Promise.all([
+      refreshIntegrationRepositories(client, api, integration),
+      refreshIntegrationRepositories(client, api, integration)
+    ])
+    expect(
+      memory.docs
+        .filter((d) => d._class === gitlab.class.GitlabIntegrationRepository)
+        .map((d) => d.projectId)
+        .sort((a, b) => a - b)
+    ).toEqual([1, 2])
   })
 })

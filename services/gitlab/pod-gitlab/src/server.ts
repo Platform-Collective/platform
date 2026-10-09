@@ -2,11 +2,7 @@
 
 import { Analytics } from '@hcengineering/analytics'
 import type { LoginInfoByToken } from '@hcengineering/account-client'
-import {
-  systemAccountUuid,
-  TxOperations,
-  type MeasureContext
-} from '@hcengineering/core'
+import { systemAccountUuid, TxOperations, type MeasureContext } from '@hcengineering/core'
 import { gitlabIntegrationKind } from '@hcengineering/gitlab'
 import { setMetadata } from '@hcengineering/platform'
 import serverClient, { getAccountClient } from '@hcengineering/server-client'
@@ -67,7 +63,8 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
   }
 
   // Merge request diffs are stored only when the pod has blob storage
-  const storage = config.StorageConfig !== undefined ? buildStorageFromConfig(storageConfigFromEnv(config.StorageConfig)) : undefined
+  const storage =
+    config.StorageConfig !== undefined ? buildStorageFromConfig(storageConfigFromEnv(config.StorageConfig)) : undefined
 
   const accountClient = getAccountClient(generateToken(systemAccountUuid, undefined, { service: 'gitlab' }), 30000)
   const apps = new GitlabAppStore(accountClient)
@@ -77,10 +74,15 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
   })
   const platform = new GitlabPlatform({
     ctx,
-    listWorkspaces: async () => workspacesWithGitlab(await accountClient.listIntegrations({ kind: gitlabIntegrationKind })),
-    createWorker: async (workspace) => await createWorkspaceWorker(ctx, workspace, config, { users, accounts: accountClient, storage }),
+    listWorkspaces: async () =>
+      workspacesWithGitlab(await accountClient.listIntegrations({ kind: gitlabIntegrationKind })),
+    createWorker: async (workspace) =>
+      await createWorkspaceWorker(ctx, workspace, config, { users, accounts: accountClient, storage }),
     workspaceState: async (workspace) => {
-      const info = await getAccountClient(generateToken(systemAccountUuid, workspace, { service: 'gitlab' }), 30000).getWorkspaceInfo()
+      const info = await getAccountClient(
+        generateToken(systemAccountUuid, workspace, { service: 'gitlab' }),
+        30000
+      ).getWorkspaceInfo()
       return workspaceWorkerState(info, config.WorkspaceInactivityDays, Date.now())
     }
   })
@@ -100,10 +102,20 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
       const lease = platform.getWorker(workspace)?.lease(accountId)
       if (lease !== undefined) {
         // The worker keeps its connection open until the request releases it
-        return { client: lease.client, close: async () => { lease.release() } }
+        return {
+          client: lease.client,
+          close: async () => {
+            lease.release()
+          }
+        }
       }
       const raw = await createPlatformClient(ctx, workspace, config)
-      return { client: new TxOperations(raw, accountId), close: async () => { await raw.close() } }
+      return {
+        client: new TxOperations(raw, accountId),
+        close: async () => {
+          await raw.close()
+        }
+      }
     },
     linkIdentity: async (client, personUuid, host, user) => {
       await linkGitlabIdentity(client, accountClient, personUuid, host, user, Date.now())
@@ -136,48 +148,88 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
           })
       }
 
-  app.post('/api/v1/authorize-url', route('authorize-url', async (body) => {
-    const { workspace, account, accountId } = await verifiedCaller(body)
-    return { url: await service.authorizeUrl({ workspace, account, accountId }, typeof body.origin === 'string' ? body.origin : undefined) }
-  }))
-  app.post('/api/v1/app-status', route('app-status', async (body) => {
-    const { workspace } = await verifiedCaller(body)
-    return await service.appStatus(workspace, typeof body.origin === 'string' ? body.origin : undefined)
-  }))
+  app.post(
+    '/api/v1/authorize-url',
+    route('authorize-url', async (body) => {
+      const { workspace, account, accountId } = await verifiedCaller(body)
+      return {
+        url: await service.authorizeUrl(
+          { workspace, account, accountId },
+          typeof body.origin === 'string' ? body.origin : undefined
+        )
+      }
+    })
+  )
+  app.post(
+    '/api/v1/app-status',
+    route('app-status', async (body) => {
+      const { workspace } = await verifiedCaller(body)
+      return await service.appStatus(workspace, typeof body.origin === 'string' ? body.origin : undefined)
+    })
+  )
   // Owner-only routes: a verified workspace token, then the caller's role in that same workspace.
   const ownerDeps: OwnerRouteDeps = { verify: verifiedCaller, loginInfo, service }
-  app.post('/api/v1/app-config', route('app-config', async (body) => {
-    await appConfigRoute(ctx, body, ownerDeps)
-  }))
-  app.post('/api/v1/app-remove', route('app-remove', async (body) => {
-    await appRemoveRoute(ctx, body, ownerDeps)
-  }))
-  app.post('/api/v1/disconnect-all', route('disconnect-all', async (body) => {
-    await disconnectAllRoute(ctx, body, ownerDeps)
-  }))
-  app.post('/api/v1/auth', route('auth', async (body) => {
-    const { workspace, account } = await verifiedCaller(body)
-    await service.authorize(ctx, { code: String(body.code), state: String(body.state), caller: { workspace, account } })
-  }))
-  app.post('/api/v1/refresh', route('refresh', async (body) => {
-    const { workspace, accountId } = await verifiedCaller(body)
-    await service.refresh(ctx, workspace, accountId)
-  }))
+  app.post(
+    '/api/v1/app-config',
+    route('app-config', async (body) => {
+      await appConfigRoute(ctx, body, ownerDeps)
+    })
+  )
+  app.post(
+    '/api/v1/app-remove',
+    route('app-remove', async (body) => {
+      await appRemoveRoute(ctx, body, ownerDeps)
+    })
+  )
+  app.post(
+    '/api/v1/disconnect-all',
+    route('disconnect-all', async (body) => {
+      await disconnectAllRoute(ctx, body, ownerDeps)
+    })
+  )
+  app.post(
+    '/api/v1/auth',
+    route('auth', async (body) => {
+      const { workspace, account } = await verifiedCaller(body)
+      await service.authorize(ctx, {
+        code: String(body.code),
+        state: String(body.state),
+        caller: { workspace, account }
+      })
+    })
+  )
+  app.post(
+    '/api/v1/refresh',
+    route('refresh', async (body) => {
+      const { workspace, accountId } = await verifiedCaller(body)
+      await service.refresh(ctx, workspace, accountId)
+    })
+  )
   const repositoryDeps: RepositoryRouteDeps = { verify: verifiedCaller, service }
-  app.post('/api/v1/repository-enable', route('repository-enable', async (body) => {
-    await repositoryEnableRoute(ctx, body, repositoryDeps)
-  }))
-  app.post('/api/v1/repository-disable', route('repository-disable', async (body) => {
-    await repositoryDisableRoute(ctx, body, repositoryDeps)
-  }))
-  app.post('/api/v1/disconnect', route('disconnect', async (body) => {
-    const { workspace, accountId } = await verifiedCaller(body)
-    await service.disconnect(ctx, workspace, accountId)
-  }))
+  app.post(
+    '/api/v1/repository-enable',
+    route('repository-enable', async (body) => {
+      await repositoryEnableRoute(ctx, body, repositoryDeps)
+    })
+  )
+  app.post(
+    '/api/v1/repository-disable',
+    route('repository-disable', async (body) => {
+      await repositoryDisableRoute(ctx, body, repositoryDeps)
+    })
+  )
+  app.post(
+    '/api/v1/disconnect',
+    route('disconnect', async (body) => {
+      const { workspace, accountId } = await verifiedCaller(body)
+      await service.disconnect(ctx, workspace, accountId)
+    })
+  )
 
   const imageDeps: ImageRouteDeps = {
     verify: verifiedCaller,
-    image: async (workspace, actor, url) => (await platform.getWorker(workspace)?.gitlabImage(url, actor)) ?? { kind: 'unavailable' },
+    image: async (workspace, actor, url) =>
+      (await platform.getWorker(workspace)?.gitlabImage(url, actor)) ?? { kind: 'unavailable' },
     onError: (err) => {
       Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
       ctx.error('/api/v1/image failed', { error: err instanceof Error ? err.message : String(err) })
@@ -187,7 +239,10 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
     imageRoute(req.body, imageDeps)
       .then((result) => {
         if (result.kind === 'image') {
-          res.status(200).set({ ...IMAGE_HEADERS, 'Content-Type': result.contentType }).send(result.data)
+          res
+            .status(200)
+            .set({ ...IMAGE_HEADERS, 'Content-Type': result.contentType })
+            .send(result.data)
           return
         }
         res.status(imageStatus(result.kind)).json({ error: result.kind })

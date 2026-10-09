@@ -9,10 +9,24 @@ export interface MemoryClient {
   docs: Row[]
   findAll: (_class: string, query?: Row, options?: { sort?: Record<string, number>, limit?: number }) => Promise<Row[]>
   findOne: (_class: string, query?: Row, options?: { sort?: Record<string, number> }) => Promise<Row | undefined>
-  createDoc: (_class: string, space: string, data: Row, id?: string, modifiedOn?: number, modifiedBy?: string) => Promise<string>
+  createDoc: (
+    _class: string,
+    space: string,
+    data: Row,
+    id?: string,
+    modifiedOn?: number,
+    modifiedBy?: string
+  ) => Promise<string>
   addCollection: (
-    _class: string, space: string, attachedTo: string, attachedToClass: string, collection: string,
-    data: Row, id?: string, modifiedOn?: number, modifiedBy?: string
+    _class: string,
+    space: string,
+    attachedTo: string,
+    attachedToClass: string,
+    collection: string,
+    data: Row,
+    id?: string,
+    modifiedOn?: number,
+    modifiedBy?: string
   ) => Promise<string>
   update: (doc: Row, ops: Row, retrieve?: boolean, modifiedOn?: number, modifiedBy?: string) => Promise<void>
   updateDoc: (_class: string, space: string, id: string, ops: Row, retrieve?: boolean) => Promise<Row>
@@ -21,7 +35,11 @@ export interface MemoryClient {
   remove: (doc: Row) => Promise<void>
   removeCollection: (_class: string, space: string, id: string) => Promise<void>
   removeDoc: (_class: string, space: string, id: string) => Promise<void>
-  getHierarchy: () => { hasMixin: (doc: Row, mixin: string) => boolean, as: (doc: Row, mixin: string) => Row, isDerived: (a: string, b: string) => boolean }
+  getHierarchy: () => {
+    hasMixin: (doc: Row, mixin: string) => boolean
+    as: (doc: Row, mixin: string) => Row
+    isDerived: (a: string, b: string) => boolean
+  }
 }
 
 function matchValue (value: unknown, cond: unknown): boolean {
@@ -75,7 +93,8 @@ export function createMemoryClient (): MemoryClient {
       if (options.limit !== undefined) rows = rows.slice(0, options.limit)
       return rows
     },
-    findOne: async (_class, query = {}, options = {}) => (await client.findAll(_class, query, { ...options, limit: 1 }))[0],
+    findOne: async (_class, query = {}, options = {}) =>
+      (await client.findAll(_class, query, { ...options, limit: 1 }))[0],
     createDoc: async (_class, space, data, id, modifiedOn, modifiedBy) => {
       const _id = id ?? `doc-${++n}`
       const time = modifiedOn ?? Date.now()
@@ -83,7 +102,14 @@ export function createMemoryClient (): MemoryClient {
       return _id
     },
     addCollection: async (_class, space, attachedTo, attachedToClass, collection, data, id, modifiedOn, modifiedBy) =>
-      await client.createDoc(_class, space, { ...data, attachedTo, attachedToClass, collection }, id, modifiedOn, modifiedBy),
+      await client.createDoc(
+        _class,
+        space,
+        { ...data, attachedTo, attachedToClass, collection },
+        id,
+        modifiedOn,
+        modifiedBy
+      ),
     update: async (doc, ops, _retrieve, modifiedOn, modifiedBy) => {
       const target = byId(doc._id, doc._class)
       Object.assign(target, ops)

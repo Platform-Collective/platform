@@ -37,11 +37,15 @@ export function oauthCallbackMessage (code: string, state: string): OAuthCallbac
 }
 
 export function oauthErrorMessage (error: string, description?: string): OAuthErrorMessage {
-  return description === undefined ? { type: 'gitlab-oauth-error', error } : { type: 'gitlab-oauth-error', error, description }
+  return description === undefined
+    ? { type: 'gitlab-oauth-error', error }
+    : { type: 'gitlab-oauth-error', error, description }
 }
 
 export function oauthResultMessage (state: string, ok: boolean, error?: string): OAuthResultMessage {
-  return error === undefined ? { type: 'gitlab-oauth-result', state, ok } : { type: 'gitlab-oauth-result', state, ok, error }
+  return error === undefined
+    ? { type: 'gitlab-oauth-result', state, ok }
+    : { type: 'gitlab-oauth-result', state, ok, error }
 }
 
 function isRecord (value: unknown): value is Record<string, unknown> {
@@ -171,7 +175,7 @@ export function isLinkableProject (
   integrationId: string,
   existingIntegrationIds: ReadonlySet<string>
 ): boolean {
-  if (mixin === undefined || mixin.integration === undefined || mixin.integration === integrationId) return true
+  if (mixin?.integration === undefined || mixin.integration === integrationId) return true
   // A dangling owner (deleted integration) or an owner that links no repositories does not block linking.
   return !existingIntegrationIds.has(mixin.integration) || (mixin.repositories ?? []).length === 0
 }

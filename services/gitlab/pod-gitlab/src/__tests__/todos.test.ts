@@ -11,7 +11,10 @@ function input (overrides: Partial<TodoInput>): TodoInput {
 
 describe('planTodos', () => {
   it('asks each pending reviewer once', () => {
-    const reviewers = [{ person: p('a'), state: 'unreviewed' as const }, { person: p('b'), state: 'approved' as const }]
+    const reviewers = [
+      { person: p('a'), state: 'unreviewed' as const },
+      { person: p('b'), state: 'approved' as const }
+    ]
     const first = planTodos(input({ reviewers }))
     expect(first).toEqual({ create: [{ purpose: 'review', person: 'a' }], complete: [], keys: ['review:a'] })
     expect(planTodos(input({ reviewers, keys: first.keys }))).toEqual({ create: [], complete: [], keys: ['review:a'] })
@@ -26,7 +29,10 @@ describe('planTodos', () => {
 
   it('asks the author and the assignee to fix, once each even when they are the same person', () => {
     const plan = planTodos(input({ needsFix: true, fixers: [p('a'), p('a'), p('c')] }))
-    expect(plan.create).toEqual([{ purpose: 'fix', person: 'a' }, { purpose: 'fix', person: 'c' }])
+    expect(plan.create).toEqual([
+      { purpose: 'fix', person: 'a' },
+      { purpose: 'fix', person: 'c' }
+    ])
     expect(plan.keys).toEqual(['fix:a', 'fix:c'])
   })
 
@@ -36,16 +42,21 @@ describe('planTodos', () => {
   })
 
   it('completes everything when the merge request is no longer open', () => {
-    const plan = planTodos(input({
-      open: false,
-      reviewers: [{ person: p('a'), state: 'unreviewed' }],
-      needsFix: true,
-      fixers: [p('c')],
-      keys: ['review:a', 'fix:c']
-    }))
+    const plan = planTodos(
+      input({
+        open: false,
+        reviewers: [{ person: p('a'), state: 'unreviewed' }],
+        needsFix: true,
+        fixers: [p('c')],
+        keys: ['review:a', 'fix:c']
+      })
+    )
     expect(plan).toEqual({
       create: [],
-      complete: [{ purpose: 'review', person: 'a' }, { purpose: 'fix', person: 'c' }],
+      complete: [
+        { purpose: 'review', person: 'a' },
+        { purpose: 'fix', person: 'c' }
+      ],
       keys: []
     })
   })

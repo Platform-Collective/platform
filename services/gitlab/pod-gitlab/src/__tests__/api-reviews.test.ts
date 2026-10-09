@@ -11,7 +11,11 @@ interface Reply {
 function recorder (replies: Reply[]): { fn: FetchFn, calls: Array<{ method: string, url: string, body?: unknown }> } {
   const calls: Array<{ method: string, url: string, body?: unknown }> = []
   const fn = (async (url: string, init?: RequestInit) => {
-    calls.push({ method: init?.method ?? 'GET', url, body: init?.body !== undefined ? JSON.parse(String(init.body)) : undefined })
+    calls.push({
+      method: init?.method ?? 'GET',
+      url,
+      body: init?.body !== undefined ? JSON.parse(String(init.body)) : undefined
+    })
     const next = replies.shift() ?? { status: 404, body: { message: 'unexpected' } }
     const payload = next.text ?? (next.body === undefined ? '' : JSON.stringify(next.body))
     return new Response(payload, { status: next.status ?? 200, headers: next.headers })
@@ -22,18 +26,35 @@ function recorder (replies: Reply[]): { fn: FetchFn, calls: Array<{ method: stri
 const host = 'https://gitlab.example.com'
 const base = `${host}/api/v4/projects/42/merge_requests/3`
 const user = { id: 7, username: 'u7', name: 'U7', avatar_url: null }
-const note = { id: 51, body: 'Hm', author: user, created_at: 'c', updated_at: 'u', system: false, noteable_type: 'MergeRequest', type: 'DiffNote' }
+const note = {
+  id: 51,
+  body: 'Hm',
+  author: user,
+  created_at: 'c',
+  updated_at: 'u',
+  system: false,
+  noteable_type: 'MergeRequest',
+  type: 'DiffNote'
+}
 const discussion = { id: 'd1', individual_note: false, notes: [note] }
 
 describe('GitlabApi approvals', () => {
   it('reads approvals, approves and revokes', async () => {
     const approvals = { approved_by: [{ user }] }
-    const { fn, calls } = recorder([{ body: approvals }, { status: 201, body: approvals }, { status: 201, body: { approved_by: [] } }])
+    const { fn, calls } = recorder([
+      { body: approvals },
+      { status: 201, body: approvals },
+      { status: 201, body: { approved_by: [] } }
+    ])
     const api = new GitlabApi(host, 't', fn)
     expect(await api.getMergeRequestApprovals(42, 3)).toEqual(approvals)
     await api.approveMergeRequest(42, 3)
     await api.unapproveMergeRequest(42, 3)
-    expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([`GET ${base}/approvals`, `POST ${base}/approve`, `POST ${base}/unapprove`])
+    expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([
+      `GET ${base}/approvals`,
+      `POST ${base}/approve`,
+      `POST ${base}/unapprove`
+    ])
   })
 
   it('treats revoking an approval that does not exist as done', async () => {
@@ -65,7 +86,12 @@ describe('GitlabApi discussions', () => {
   })
 
   it('replies, edits and deletes discussion notes; a missing note counts as deleted', async () => {
-    const { fn, calls } = recorder([{ status: 201, body: note }, { body: note }, { text: '' }, { status: 404, body: { message: 'gone' } }])
+    const { fn, calls } = recorder([
+      { status: 201, body: note },
+      { body: note },
+      { text: '' },
+      { status: 404, body: { message: 'gone' } }
+    ])
     const api = new GitlabApi(host, 't', fn)
     await api.createMergeRequestDiscussionNote(42, 3, 'd1', 'Reply')
     await api.updateMergeRequestDiscussionNote(42, 3, 'd1', 51, 'Edited')

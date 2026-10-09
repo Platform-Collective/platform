@@ -162,13 +162,13 @@
               <ReviewCommentPresenter {comment} />
             {/each}
           </div>
-          {#if !readonly}
+          {#if readonly !== true}
             <div class="ml-4 mr-4">
               <ReferenceInput showSend showHeader showActions on:message={reply} />
             </div>
           {/if}
           <div class="p-2 flex-row-center">
-            {#if !readonly}
+            {#if readonly !== true}
               <Button
                 label={value.isResolved ? gitlab.string.UnresolveThread : gitlab.string.ResolveThread}
                 on:click={toggleResolved}

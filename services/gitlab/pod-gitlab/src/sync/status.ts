@@ -6,7 +6,11 @@ import task from '@hcengineering/task'
 
 export type GitlabIssueState = 'opened' | 'closed'
 
-const OPEN: Array<Ref<StatusCategory>> = [task.statusCategory.UnStarted, task.statusCategory.ToDo, task.statusCategory.Active]
+const OPEN: Array<Ref<StatusCategory>> = [
+  task.statusCategory.UnStarted,
+  task.statusCategory.ToDo,
+  task.statusCategory.Active
+]
 const CLOSED: Array<Ref<StatusCategory>> = [task.statusCategory.Won, task.statusCategory.Lost]
 
 /** GitLab state of a Huly status; undefined for a status outside the given list or category. */

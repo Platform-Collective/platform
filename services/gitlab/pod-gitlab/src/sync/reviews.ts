@@ -23,9 +23,7 @@ export interface UserReviewState {
 }
 
 /** DocSyncInfo.reviews of a merge request: the last state seen per GitLab user id. */
-export interface ReviewRecord {
-  [gitlabUserId: string]: UserReviewState
-}
+export type ReviewRecord = Record<string, UserReviewState>
 
 /** One review message to write. */
 export interface ReviewEvent {

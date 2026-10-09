@@ -30,7 +30,10 @@ export function defaultRepository (linked: GitlabIntegrationRepository[]): Gitla
 }
 
 /** The repository the picker shows; null shows "Without repository". */
-export function shownRepository (choice: RepositoryChoice, linked: GitlabIntegrationRepository[]): GitlabIntegrationRepository | null {
+export function shownRepository (
+  choice: RepositoryChoice,
+  linked: GitlabIntegrationRepository[]
+): GitlabIntegrationRepository | null {
   if (choice.repository === undefined) return defaultRepository(linked) ?? null
   if (choice.repository === null) return null
   return linked.find((it) => it._id === choice.repository) ?? null

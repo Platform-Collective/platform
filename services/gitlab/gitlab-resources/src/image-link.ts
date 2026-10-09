@@ -3,7 +3,11 @@
 import { serviceUrl } from './state'
 
 /** What the image viewer shows. */
-export type GitlabImageResult = { kind: 'image', blob: Blob } | { kind: 'not-connected' } | { kind: 'no-access' } | { kind: 'unavailable' }
+export type GitlabImageResult =
+  | { kind: 'image', blob: Blob }
+  | { kind: 'not-connected' }
+  | { kind: 'no-access' }
+  | { kind: 'unavailable' }
 
 export interface GitlabImageRequest {
   // URL of the pod-gitlab service
@@ -40,7 +44,9 @@ export async function loadGitlabImage (href: string, request: GitlabImageRequest
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: request.token, accountId: request.accountId, url: href })
     })
-    if (res.ok && (res.headers.get('Content-Type') ?? '').toLowerCase().startsWith('image/')) return { kind: 'image', blob: await res.blob() }
+    if (res.ok && (res.headers.get('Content-Type') ?? '').toLowerCase().startsWith('image/')) {
+      return { kind: 'image', blob: await res.blob() }
+    }
     let error: unknown
     try {
       error = ((await res.json()) as { error?: unknown }).error

@@ -225,7 +225,9 @@
           {#if showLinks}
             <ul>
               <li>
-                <a href={links.user} target="_blank" rel="noopener noreferrer"><Label label={gitlab.string.SetupUserOwned} /></a>
+                <a href={links.user} target="_blank" rel="noopener noreferrer"
+                  ><Label label={gitlab.string.SetupUserOwned} /></a
+                >
               </li>
               <li>
                 <Label label={gitlab.string.SetupGroupOwned} />
@@ -233,7 +235,9 @@
               </li>
               {#if selfManaged}
                 <li>
-                  <a href={links.admin} target="_blank" rel="noopener noreferrer"><Label label={gitlab.string.SetupInstanceWide} /></a>
+                  <a href={links.admin} target="_blank" rel="noopener noreferrer"
+                    ><Label label={gitlab.string.SetupInstanceWide} /></a
+                  >
                   <span class="content-dark-color"><Label label={gitlab.string.SetupTrustedHint} /></span>
                 </li>
               {/if}
@@ -274,7 +278,12 @@
             <span class="error-color"><Label label={gitlab.string.InvalidGitlabUrl} /></span>
           {/if}
         {/if}
-        <EditBox label={gitlab.string.ApplicationId} placeholder={gitlab.string.ApplicationId} kind={'default'} bind:value={clientId} />
+        <EditBox
+          label={gitlab.string.ApplicationId}
+          placeholder={gitlab.string.ApplicationId}
+          kind={'default'}
+          bind:value={clientId}
+        />
         <EditBox
           label={gitlab.string.ApplicationSecret}
           placeholder={isChange ? gitlab.string.KeepSecretHint : gitlab.string.ApplicationSecret}

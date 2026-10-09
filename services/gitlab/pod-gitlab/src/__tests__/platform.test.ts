@@ -21,16 +21,25 @@ function handle (owns: boolean): WorkerHandle & Record<string, jest.Mock> {
 
 describe('workspacesWithGitlab', () => {
   it('lists each workspace with a GitLab integration once', () => {
-    expect(workspacesWithGitlab([
-      { workspaceUuid: 'a' }, { workspaceUuid: 'b' }, { workspaceUuid: 'a' }, { workspaceUuid: null }
-    ] as any)).toEqual(['a', 'b'])
+    expect(
+      workspacesWithGitlab([
+        { workspaceUuid: 'a' },
+        { workspaceUuid: 'b' },
+        { workspaceUuid: 'a' },
+        { workspaceUuid: null }
+      ] as any)
+    ).toEqual(['a', 'b'])
   })
 })
 
 describe('GitlabPlatform', () => {
-  it('routes a scoped event only to the hook\'s workspace, with its integration', async () => {
+  it("routes a scoped event only to the hook's workspace, with its integration", async () => {
     const workers: Record<string, any> = { ws1: handle(true), ws2: handle(true) }
-    const platform = new GitlabPlatform({ ctx, listWorkspaces: async () => ['ws1', 'ws2'] as WorkspaceUuid[], createWorker: async (ws) => workers[ws] })
+    const platform = new GitlabPlatform({
+      ctx,
+      listWorkspaces: async () => ['ws1', 'ws2'] as WorkspaceUuid[],
+      createWorker: async (ws) => workers[ws]
+    })
     await platform.checkWorkspaces()
     const payload = { project: { id: 42, web_url: 'https://gitlab.example.com/group/proj' } }
     await platform.dispatch('Issue Hook', payload, { workspace: 'ws2' as WorkspaceUuid, integration: 'int-9' as any })
@@ -78,7 +87,11 @@ describe('GitlabPlatform', () => {
   })
 
   it('skips workspaces where GitLab is disabled (no worker)', async () => {
-    const platform = new GitlabPlatform({ ctx, listWorkspaces: async () => ['ws1'] as WorkspaceUuid[], createWorker: async () => undefined })
+    const platform = new GitlabPlatform({
+      ctx,
+      listWorkspaces: async () => ['ws1'] as WorkspaceUuid[],
+      createWorker: async () => undefined
+    })
     await platform.checkWorkspaces()
     expect(platform.getWorker('ws1' as WorkspaceUuid)).toBeUndefined()
   })
@@ -96,7 +109,11 @@ describe('GitlabPlatform', () => {
     ;(failing.handleWebhook as jest.Mock).mockRejectedValue(new Error('boom'))
     const other = handle(false)
     const byWs: Record<string, any> = { a: owner, b: failing, c: other }
-    const platform = new GitlabPlatform({ ctx, listWorkspaces: async () => ['a', 'b', 'c'] as WorkspaceUuid[], createWorker: async (ws) => byWs[ws] })
+    const platform = new GitlabPlatform({
+      ctx,
+      listWorkspaces: async () => ['a', 'b', 'c'] as WorkspaceUuid[],
+      createWorker: async (ws) => byWs[ws]
+    })
     await platform.checkWorkspaces()
     const payload = { project: { id: 42, web_url: 'https://gitlab.example.com/g/p' }, object_attributes: { iid: 1 } }
     await platform.dispatch('Issue Hook', payload)
@@ -107,7 +124,11 @@ describe('GitlabPlatform', () => {
 
   it('ignores a webhook without a project', async () => {
     const owner = handle(true)
-    const platform = new GitlabPlatform({ ctx, listWorkspaces: async () => ['a'] as WorkspaceUuid[], createWorker: async () => owner })
+    const platform = new GitlabPlatform({
+      ctx,
+      listWorkspaces: async () => ['a'] as WorkspaceUuid[],
+      createWorker: async () => owner
+    })
     await platform.checkWorkspaces()
     await platform.dispatch('Issue Hook', {})
     expect(owner.handleWebhook).not.toHaveBeenCalled()
@@ -116,7 +137,11 @@ describe('GitlabPlatform', () => {
   it('closes a worker whose init failed, so its connection is not leaked', async () => {
     const broken = handle(false)
     ;(broken.init as jest.Mock).mockRejectedValue(new Error('model mismatch'))
-    const platform = new GitlabPlatform({ ctx, listWorkspaces: async () => ['ws1'] as WorkspaceUuid[], createWorker: async () => broken })
+    const platform = new GitlabPlatform({
+      ctx,
+      listWorkspaces: async () => ['ws1'] as WorkspaceUuid[],
+      createWorker: async () => broken
+    })
     await platform.checkWorkspaces()
     expect(broken.close).toHaveBeenCalled()
     expect(platform.getWorker('ws1' as WorkspaceUuid)).toBeUndefined()

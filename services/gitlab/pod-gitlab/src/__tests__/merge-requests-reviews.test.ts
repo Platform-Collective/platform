@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 /* eslint-disable @typescript-eslint/no-explicit-any -- test doubles */
 
-import gitlab, { type DocSyncInfo } from '@hcengineering/gitlab'
+import gitlab from '@hcengineering/gitlab'
 import time from '@hcengineering/time'
 import { GitlabApiError } from '../gitlab/api'
 import { mergeRequestKey } from '../sync/keys'
@@ -25,7 +25,10 @@ function setup (): Env {
   const memory = createMemoryClient()
   const repo = seedRepository(memory)
   for (const person of ['person-1', 'person-7', 'person-8']) employee(memory, person)
-  const api = fakeApi({ listMergeRequestReviewers: async () => [], getMergeRequestApprovals: async () => ({ approved_by: [] }) })
+  const api = fakeApi({
+    listMergeRequestReviewers: async () => [],
+    getMergeRequestApprovals: async () => ({ approved_by: [] })
+  })
   const provider = createTestProvider(memory, [repo], api)
   return { memory, mergeRequests: new MergeRequestSyncManager(provider), api, repo }
 }
@@ -43,7 +46,12 @@ let updatedAt = Date.parse('2026-01-02T00:00:00.000Z')
 async function syncDoc (env: Env, id: string): Promise<void> {
   const info = syncOf(env.memory, id)
   const existing = mrOf(env.memory, id)
-  const update = await env.mergeRequests.sync(ctx, existing === undefined ? undefined : ({ ...existing } as any), { ...info } as DocSyncInfo, undefined)
+  const update = await env.mergeRequests.sync(
+    ctx,
+    existing === undefined ? undefined : { ...existing },
+    { ...info },
+    undefined
+  )
   await env.memory.update(info, update)
 }
 
@@ -57,7 +65,9 @@ async function imported (env: Env, overrides: any = {}): Promise<string> {
 /** A newer GitLab version of !3 (each call one minute later). */
 async function gitlabChange (env: Env, id: string, overrides: any = {}): Promise<void> {
   updatedAt += 60 * 1000
-  env.api.getMergeRequest.mockResolvedValueOnce(gitlabMergeRequest(3, { updated_at: new Date(updatedAt).toISOString(), ...overrides }))
+  env.api.getMergeRequest.mockResolvedValueOnce(
+    gitlabMergeRequest(3, { updated_at: new Date(updatedAt).toISOString(), ...overrides })
+  )
   await env.mergeRequests.handleMergeRequestEvent(ctx, env.repo, asApi(env.api), 3)
   await syncDoc(env, id)
 }
@@ -70,7 +80,7 @@ describe('MergeRequestSyncManager: reviews', () => {
     // The author's fix ToDo cannot be stored: the sync fails after the review message
     env.memory.addCollection = jest.fn(async (...args: any[]) => {
       if (args[0] === time.class.ProjectToDo) throw new Error('ToDo store down')
-      return await (add as any)(...args)
+      return (add as any)(...args)
     }) as any
     env.api.listMergeRequestReviewers.mockResolvedValue([reviewer(7, 'requested_changes')])
     await expect(gitlabChange(env, id, { reviewers: [gitlabUser(7)] })).rejects.toThrow('ToDo store down')
@@ -81,7 +91,9 @@ describe('MergeRequestSyncManager: reviews', () => {
 
   it('re-creates a review message whose sync doc was written but the message was not', async () => {
     const env = setup()
-    env.api.getMergeRequestApprovals.mockResolvedValue({ approved_by: [{ user: gitlabUser(8), approved_at: '2026-01-01T12:00:00.000Z' }] })
+    env.api.getMergeRequestApprovals.mockResolvedValue({
+      approved_by: [{ user: gitlabUser(8), approved_at: '2026-01-01T12:00:00.000Z' }]
+    })
     const id = await imported(env)
     const [message] = reviews(env.memory)
     env.memory.docs.splice(env.memory.docs.indexOf(message), 1)
@@ -89,17 +101,25 @@ describe('MergeRequestSyncManager: reviews', () => {
     delete syncOf(env.memory, id).reviews
     syncOf(env.memory, id).needSync = ''
     await syncDoc(env, id)
-    expect(reviews(env.memory)).toEqual([expect.objectContaining({ _id: message._id, state: 'approved', modifiedBy: 'sid-8' })])
+    expect(reviews(env.memory)).toEqual([
+      expect.objectContaining({ _id: message._id, state: 'approved', modifiedBy: 'sid-8' })
+    ])
   })
 
   it('imports current approvals as review messages written as the approver, and mirrors the approvers', async () => {
     const env = setup()
-    env.api.getMergeRequestApprovals.mockResolvedValue({ approved_by: [{ user: gitlabUser(8), approved_at: '2026-01-01T12:00:00.000Z' }] })
+    env.api.getMergeRequestApprovals.mockResolvedValue({
+      approved_by: [{ user: gitlabUser(8), approved_at: '2026-01-01T12:00:00.000Z' }]
+    })
     const id = await imported(env)
     expect(reviews(env.memory)).toEqual([
       expect.objectContaining({
-        attachedTo: id, attachedToClass: gitlab.class.GitlabMergeRequest, collection: 'activity', state: 'approved',
-        modifiedBy: 'sid-8', modifiedOn: Date.parse('2026-01-01T12:00:00.000Z')
+        attachedTo: id,
+        attachedToClass: gitlab.class.GitlabMergeRequest,
+        collection: 'activity',
+        state: 'approved',
+        modifiedBy: 'sid-8',
+        modifiedOn: Date.parse('2026-01-01T12:00:00.000Z')
       })
     ])
     expect(mrOf(env.memory, id).approvedBy).toEqual(['person-8'])
@@ -108,13 +128,18 @@ describe('MergeRequestSyncManager: reviews', () => {
 
   it('gives each review message a done sync doc under the merge request, created before the message', async () => {
     const env = setup()
-    env.api.getMergeRequestApprovals.mockResolvedValue({ approved_by: [{ user: gitlabUser(8), approved_at: '2026-01-01T12:00:00.000Z' }] })
+    env.api.getMergeRequestApprovals.mockResolvedValue({
+      approved_by: [{ user: gitlabUser(8), approved_at: '2026-01-01T12:00:00.000Z' }]
+    })
     const id = await imported(env)
     const review = reviews(env.memory)[0]
     const info = syncOf(env.memory, review._id)
     expect(info).toMatchObject({
-      key: `${KEY_3}/reviews/8/${Date.parse('2026-01-01T12:00:00.000Z')}`, parent: KEY_3, objectClass: gitlab.class.GitlabReview,
-      needSync: GITLAB_SYNC_VERSION, attachedTo: id
+      key: `${KEY_3}/reviews/8/${Date.parse('2026-01-01T12:00:00.000Z')}`,
+      parent: KEY_3,
+      objectClass: gitlab.class.GitlabReview,
+      needSync: GITLAB_SYNC_VERSION,
+      attachedTo: id
     })
     expect(env.memory.docs.indexOf(info)).toBeLessThan(env.memory.docs.indexOf(review))
   })

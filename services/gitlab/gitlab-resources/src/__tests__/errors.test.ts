@@ -23,7 +23,11 @@ describe('errorText', () => {
     expect(errorText(new Error('boom'))).toBe('boom')
   })
 
-  it.each([['text', 'text'], [42, '42'], [undefined, 'undefined']])('stringifies %p', (value, expected) => {
+  it.each([
+    ['text', 'text'],
+    [42, '42'],
+    [undefined, 'undefined']
+  ])('stringifies %p', (value, expected) => {
     expect(errorText(value)).toBe(expected)
   })
 })

@@ -9,7 +9,6 @@ import core, {
   type DocumentQuery,
   type DocumentUpdate,
   generateId,
-  type Hyperlink,
   makeCollabId,
   makeCollabJsonId,
   makeDocCollabId,
@@ -20,7 +19,12 @@ import core, {
   SortingOrder,
   type Status
 } from '@hcengineering/core'
-import gitlab, { type DocSyncInfo, type GitlabMergeRequest, type GitlabReview, type GitlabTodo } from '@hcengineering/gitlab'
+import gitlab, {
+  type DocSyncInfo,
+  type GitlabMergeRequest,
+  type GitlabReview,
+  type GitlabTodo
+} from '@hcengineering/gitlab'
 import { makeRank } from '@hcengineering/task'
 import { areEqualMarkups } from '@hcengineering/text'
 import time, { type ToDo, ToDoPriority } from '@hcengineering/time'
@@ -74,8 +78,17 @@ export interface MergeRequestSnapshot {
 /** GitLab-only fields mirrored into Huly as read-only. */
 type MirrorFields = Pick<
 GitlabMergeRequest,
-'url' | 'gitlabIid' | 'repository' | 'state' | 'draft' | 'sourceBranch' | 'targetBranch' | 'mergeStatus' |
-'hasConflicts' | 'mergedAt' | 'closedAt'
+| 'url'
+| 'gitlabIid'
+| 'repository'
+| 'state'
+| 'draft'
+| 'sourceBranch'
+| 'targetBranch'
+| 'mergeStatus'
+| 'hasConflicts'
+| 'mergedAt'
+| 'closedAt'
 >
 
 const DONE: DocumentUpdate<DocSyncInfo> = { needSync: GITLAB_SYNC_VERSION }
@@ -217,7 +230,9 @@ export class MergeRequestSyncManager implements DocSyncManager {
         ? await this.createInHuly(repo, info, external, type)
         : await this.mergeExisting(ctx, repo, existing as GitlabMergeRequest, info, external, type)
     if (update.error != null) return update
-    const mr = await this.provider.client.findOne(gitlab.class.GitlabMergeRequest, { _id: info._id as unknown as Ref<GitlabMergeRequest> })
+    const mr = await this.provider.client.findOne(gitlab.class.GitlabMergeRequest, {
+      _id: info._id as unknown as Ref<GitlabMergeRequest>
+    })
     if (mr === undefined) return update
     const latest = (update.external as GitlabMergeRequestInfo | undefined) ?? external
     // First import of old history: the merge request only; nothing marks the rest as fetched, so a later event loads it
@@ -244,7 +259,12 @@ export class MergeRequestSyncManager implements DocSyncManager {
   async handleMove (ctx: MeasureContext, existing: Doc, info: DocSyncInfo): Promise<void> {
     ctx.info('gitlab merge request moved to another project, no longer synchronized', { key: info.key })
     await this.provider.client.update(existing as GitlabMergeRequest, { syncError: MERGE_REQUEST_MOVED })
-    await this.provider.derived.update(info, { needSync: GITLAB_SYNC_VERSION, deleted: true, error: MERGE_REQUEST_MOVED, retryable: false })
+    await this.provider.derived.update(info, {
+      needSync: GITLAB_SYNC_VERSION,
+      deleted: true,
+      error: MERGE_REQUEST_MOVED,
+      retryable: false
+    })
   }
 
   /**
@@ -291,7 +311,13 @@ export class MergeRequestSyncManager implements DocSyncManager {
    * Points the hidden patch doc at a new blob and then removes the old one. If the doc cannot be
    * written, the new blob is removed and the error goes to the caller, which leaves patchSha unchanged for a retry.
    */
-  private async storePatch (ctx: MeasureContext, store: PatchStore, mr: GitlabMergeRequest, patch: string, lastModified: number): Promise<void> {
+  private async storePatch (
+    ctx: MeasureContext,
+    store: PatchStore,
+    mr: GitlabMergeRequest,
+    patch: string,
+    lastModified: number
+  ): Promise<void> {
     const { client } = this.provider
     const existing = await client.findOne(gitlab.class.GitlabPatch, { attachedTo: mr._id })
     const stored = await store.put(ctx, patch)
@@ -317,7 +343,14 @@ export class MergeRequestSyncManager implements DocSyncManager {
     const { client } = this.provider
     const existing = await client.findOne(gitlab.class.GitlabPatch, { attachedTo: mr._id })
     if (existing === undefined) return
-    await client.removeCollection(existing._class, existing.space, existing._id, existing.attachedTo, existing.attachedToClass, existing.collection)
+    await client.removeCollection(
+      existing._class,
+      existing.space,
+      existing._id,
+      existing.attachedTo,
+      existing.attachedToClass,
+      existing.collection
+    )
     await this.removeBlob(ctx, store, existing.file)
   }
 
@@ -374,16 +407,23 @@ export class MergeRequestSyncManager implements DocSyncManager {
       Date.parse(external.created_at),
       author
     )
-    await client.addCollection(activity.class.ActivityInfoMessage, repo.project._id, id, gitlab.class.GitlabMergeRequest, 'activity', {
-      message: gitlab.string.MergeRequestConnectedActivityInfo,
-      icon: gitlab.icon.MergeRequest,
-      props: {
-        url: external.web_url,
-        repository: repo.repository.webUrl,
-        repoName: repo.repository.pathWithNamespace,
-        number: external.iid
+    await client.addCollection(
+      activity.class.ActivityInfoMessage,
+      repo.project._id,
+      id,
+      gitlab.class.GitlabMergeRequest,
+      'activity',
+      {
+        message: gitlab.string.MergeRequestConnectedActivityInfo,
+        icon: gitlab.icon.MergeRequest,
+        props: {
+          url: external.web_url,
+          repository: repo.repository.webUrl,
+          repoName: repo.repository.pathWithNamespace,
+          number: external.iid
+        }
       }
-    })
+    )
     // Notes that arrived before their merge request can now be created
     await this.requeueChildren({ parent: info.key })
     return { ...DONE, current: snapshot, error: null }
@@ -405,7 +445,10 @@ export class MergeRequestSyncManager implements DocSyncManager {
       reviewers: sameMembers
     })
     if (conflicts.length > 0) {
-      ctx.warn('GitLab and Huly both changed a merge request, keeping the Huly value', { mr: mr.identifier, fields: conflicts })
+      ctx.warn('GitLab and Huly both changed a merge request, keeping the Huly value', {
+        mr: mr.identifier,
+        fields: conflicts
+      })
     }
     // GitLab still shows Huly image links (written before images were copied, or after a failed upload): send the
     // description again, its images are uploaded now. toGitlabInput skips it when nothing changes.
@@ -433,17 +476,30 @@ export class MergeRequestSyncManager implements DocSyncManager {
       latest = await this.provider.runner.exec(info.key, async () => {
         const updated = await api.updateMergeRequest(repo.repository.projectId, external.iid, input)
         // Stored inside the lock, so the webhook echo of this write is recognised
-        await this.provider.derived.update(info, { external: updated, current: merged, lastModified: Date.parse(updated.updated_at) })
+        await this.provider.derived.update(info, {
+          external: updated,
+          current: merged,
+          lastModified: Date.parse(updated.updated_at)
+        })
         return updated
       })
     }
-    await this.applyToHuly(repo, mr, toPlatform, revert, latest, unmapped, type.statuses, info.lastGitlabUser ?? core.account.System)
+    await this.applyToHuly(
+      repo,
+      mr,
+      toPlatform,
+      revert,
+      latest,
+      unmapped,
+      type.statuses,
+      info.lastGitlabUser ?? core.account.System
+    )
     return { ...DONE, current: merged, external: latest, lastModified: Date.parse(latest.updated_at), error: null }
   }
 
   private mirror (repo: RepositoryContext, external: GitlabMergeRequestInfo): MirrorFields {
     return {
-      url: external.web_url as Hyperlink,
+      url: external.web_url,
       gitlabIid: external.iid,
       repository: repo.repository._id,
       state: external.state,
@@ -483,7 +539,10 @@ export class MergeRequestSyncManager implements DocSyncManager {
     }
   }
 
-  private async externalSnapshot (repo: RepositoryContext, external: GitlabMergeRequestInfo): Promise<MergeRequestSnapshot> {
+  private async externalSnapshot (
+    repo: RepositoryContext,
+    external: GitlabMergeRequestInfo
+  ): Promise<MergeRequestSnapshot> {
     const { persons, content } = this.provider
     const reviewers: Array<Ref<Person>> = []
     for (const user of external.reviewers) {
@@ -523,7 +582,12 @@ export class MergeRequestSyncManager implements DocSyncManager {
         const id = await this.provider.persons.gitlabUserIdFor(person, host)
         if (id !== undefined) ids.push(id)
       }
-      if (!sameMembers(ids, external.reviewers.map((it) => it.id))) {
+      if (
+        !sameMembers(
+          ids,
+          external.reviewers.map((it) => it.id)
+        )
+      ) {
         input.reviewer_ids = ids.length > 0 ? ids : [0]
       }
     }
@@ -588,7 +652,10 @@ export class MergeRequestSyncManager implements DocSyncManager {
       ])
       return { reviewers, approvals }
     } catch (err: unknown) {
-      ctx.warn('gitlab review states unavailable, reviews and ToDos left as they are', { key: info.key, error: errorMessage(err) })
+      ctx.warn('gitlab review states unavailable, reviews and ToDos left as they are', {
+        key: info.key,
+        error: errorMessage(err)
+      })
       return undefined
     }
   }
@@ -634,7 +701,10 @@ export class MergeRequestSyncManager implements DocSyncManager {
   ): Promise<void> {
     const { client, derived } = this.provider
     const known = async (time: number): Promise<DocSyncInfo | undefined> =>
-      await derived.findOne(gitlab.class.DocSyncInfo, { space: info.space, key: reviewKey(info.key, event.user.id, time) })
+      await derived.findOne(gitlab.class.DocSyncInfo, {
+        space: info.space,
+        key: reviewKey(info.key, event.user.id, time)
+      })
     if (!seenNow) {
       // A GitLab time or the first import's time identifies the change: an existing key means it is already written
       const written = await known(at)
@@ -647,7 +717,9 @@ export class MergeRequestSyncManager implements DocSyncManager {
         return
       }
     }
-    while (seenNow && (await known(at)) !== undefined) at++
+    if (seenNow) {
+      while ((await known(at)) !== undefined) at++
+    }
     const key = reviewKey(info.key, event.user.id, at)
     const id = generateId<GitlabReview>()
     // The sync doc comes first and is done: the trigger then finds it and never sends the review back to GitLab
@@ -676,7 +748,17 @@ export class MergeRequestSyncManager implements DocSyncManager {
     id: Ref<GitlabReview>
   ): Promise<void> {
     const author = await this.provider.persons.personIdFor(repo.integration.host, event.user)
-    await this.provider.client.addCollection(gitlab.class.GitlabReview, mr.space, mr._id, mr._class, 'activity', { state: event.state }, id, at, author)
+    await this.provider.client.addCollection(
+      gitlab.class.GitlabReview,
+      mr.space,
+      mr._id,
+      mr._class,
+      'activity',
+      { state: event.state },
+      id,
+      at,
+      author
+    )
   }
 
   /** Stores one user's review state as seen on the merge request's sync doc; undefined drops it (a revoked approver). */
@@ -684,11 +766,12 @@ export class MergeRequestSyncManager implements DocSyncManager {
     const { derived } = this.provider
     const fresh = await derived.findOne(gitlab.class.DocSyncInfo, { _id: info._id })
     if (fresh === undefined) return
-    const reviews: ReviewRecord = { ...((fresh.reviews ?? {}) as ReviewRecord) }
-    if (state === undefined) {
-      delete reviews[String(userId)]
-    } else {
-      reviews[String(userId)] = { user: state.user, state: state.state }
+    const user = String(userId)
+    const reviews: ReviewRecord = Object.fromEntries(
+      Object.entries((fresh.reviews ?? {}) as ReviewRecord).filter(([key]) => key !== user)
+    )
+    if (state !== undefined) {
+      reviews[user] = { user: state.user, state: state.state }
     }
     await derived.update(fresh, { reviews })
   }
@@ -720,7 +803,8 @@ export class MergeRequestSyncManager implements DocSyncManager {
     const author = await persons.personRefFor(host, external.author)
     if (author !== null) fixers.push(author)
     if (mr.assignee !== null) fixers.push(mr.assignee)
-    const needsFix = [...states.values()].some((it) => it.state === 'requested_changes') || !external.blocking_discussions_resolved
+    const needsFix =
+      [...states.values()].some((it) => it.state === 'requested_changes') || !external.blocking_discussions_resolved
     const plan = planTodos({ open, reviewers, fixers, needsFix, keys })
     for (const todo of plan.complete) {
       await this.completeTodos(mr, todo)
@@ -752,15 +836,24 @@ export class MergeRequestSyncManager implements DocSyncManager {
       visibility: 'public',
       rank: makeRank(undefined, latest?.rank)
     })
-    await client.createMixin<ToDo, GitlabTodo>(id, time.class.ProjectToDo, time.space.ToDos, gitlab.mixin.GitlabTodo, { purpose: todo.purpose })
+    await client.createMixin<ToDo, GitlabTodo>(id, time.class.ProjectToDo, time.space.ToDos, gitlab.mixin.GitlabTodo, {
+      purpose: todo.purpose
+    })
   }
 
   private async completeTodos (mr: GitlabMergeRequest, todo: TodoRef): Promise<void> {
     const { client } = this.provider
     const h = client.getHierarchy()
-    const open = await client.findAll(time.class.ProjectToDo, { attachedTo: mr._id, user: todo.person as Ref<Employee>, doneOn: null })
+    const open = await client.findAll(time.class.ProjectToDo, {
+      attachedTo: mr._id,
+      user: todo.person as Ref<Employee>,
+      doneOn: null
+    })
     for (const it of open) {
-      if (h.hasMixin(it, gitlab.mixin.GitlabTodo) && h.as<ToDo, GitlabTodo>(it, gitlab.mixin.GitlabTodo).purpose === todo.purpose) {
+      if (
+        h.hasMixin(it, gitlab.mixin.GitlabTodo) &&
+        h.as<ToDo, GitlabTodo>(it, gitlab.mixin.GitlabTodo).purpose === todo.purpose
+      ) {
         await client.update(it, { doneOn: Date.now() })
       }
     }

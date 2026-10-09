@@ -2,17 +2,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- test data */
 import type { Ref, Space } from '@hcengineering/core'
 import type { GitlabIntegrationRepository } from '@hcengineering/gitlab'
-import {
-  defaultRepository,
-  issueLinkFor,
-  linkedRepositories,
-  shownRepository,
-  validChoice
-} from '../repository-choice'
+import { defaultRepository, issueLinkFor, linkedRepositories, shownRepository, validChoice } from '../repository-choice'
 
 function repo (id: string, extra: Partial<GitlabIntegrationRepository> = {}): GitlabIntegrationRepository {
   return {
-    _id: id, gitlabProject: 'prj-1', enabled: true, deleted: false, pathWithNamespace: `group/${id}`, ...extra
+    _id: id,
+    gitlabProject: 'prj-1',
+    enabled: true,
+    deleted: false,
+    pathWithNamespace: `group/${id}`,
+    ...extra
   } as unknown as GitlabIntegrationRepository
 }
 
@@ -22,7 +21,12 @@ const project = 'prj-1' as Ref<Space>
 
 describe('repository choice', () => {
   it('lists the enabled, present repositories of the project', () => {
-    const all = [r1, repo('off', { enabled: false }), repo('gone', { deleted: true }), repo('other', { gitlabProject: 'prj-2' as any })]
+    const all = [
+      r1,
+      repo('off', { enabled: false }),
+      repo('gone', { deleted: true }),
+      repo('other', { gitlabProject: 'prj-2' as any })
+    ]
     expect(linkedRepositories(all, project).map((it) => it._id)).toEqual(['r1'])
     expect(linkedRepositories(all, undefined)).toEqual([])
   })

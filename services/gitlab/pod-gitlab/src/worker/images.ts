@@ -5,7 +5,10 @@ import type { StorageAdapter } from '@hcengineering/server-core'
 import type { ImageStore } from '../sync/types'
 
 /** Copied images in the workspace's blob storage. */
-export function createImageStore (storage: Pick<StorageAdapter, 'stat' | 'read' | 'put'>, workspace: WorkspaceIds): ImageStore {
+export function createImageStore (
+  storage: Pick<StorageAdapter, 'stat' | 'read' | 'put'>,
+  workspace: WorkspaceIds
+): ImageStore {
   return {
     stat: async (ctx, file) => {
       const blob = await storage.stat(ctx, workspace, file)

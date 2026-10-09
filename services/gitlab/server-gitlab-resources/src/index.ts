@@ -78,7 +78,10 @@ export async function OnProjectChanges (txes: Tx[], control: TriggerControl): Pr
     }
     if (!TxProcessor.isExtendsCUD(tx._class)) continue
     const cud = tx as TxCUD<Doc>
-    if (control.hierarchy.isDerived(cud.objectClass, attachment.class.Attachment) && cud.attachedToClass === chunter.class.ChatMessage) {
+    if (
+      control.hierarchy.isDerived(cud.objectClass, attachment.class.Attachment) &&
+      cud.attachedToClass === chunter.class.ChatMessage
+    ) {
       await queueCommentOfAttachment(control, cud, cache, toApply)
       continue
     }
@@ -104,7 +107,7 @@ async function linkedProjects (control: TriggerControl, cache: TriggerCache): Pr
 function movedTo (cud: TxCUD<Doc>): Ref<Space> | undefined {
   if (cud._class !== core.class.TxUpdateDoc) return undefined
   const space = (cud as TxUpdateDoc<Doc>).operations.space
-  return typeof space === 'string' ? (space as Ref<Space>) : undefined
+  return typeof space === 'string' ? space : undefined
 }
 
 async function queueSync (control: TriggerControl, cud: TxCUD<Doc>, cache: TriggerCache, toApply: Tx[]): Promise<void> {
@@ -122,7 +125,9 @@ async function queueSync (control: TriggerControl, cud: TxCUD<Doc>, cache: Trigg
   const target = movedTo(cud)
   if (!linked.has(cud.objectSpace) && (target === undefined || !linked.has(target))) return
 
-  const info = (await control.findAll(control.ctx, gitlab.class.DocSyncInfo, { _id: cud.objectId as Ref<DocSyncInfo> }))[0]
+  const info = (
+    await control.findAll(control.ctx, gitlab.class.DocSyncInfo, { _id: cud.objectId as Ref<DocSyncInfo> })
+  )[0]
   if (info === undefined) {
     // Removing a document that was never synced needs nothing
     if (cud._class === core.class.TxRemoveDoc) return
@@ -130,9 +135,17 @@ async function queueSync (control: TriggerControl, cud: TxCUD<Doc>, cache: Trigg
     // Where the document is now; a never-synced document that left a linked project needs nothing
     const space = target ?? cud.objectSpace
     if (!linked.has(space)) return
-    const data: Data<DocSyncInfo> = { key: '', objectClass: cud.objectClass, repository: null, gitlabIid: 0, needSync: '' }
+    const data: Data<DocSyncInfo> = {
+      key: '',
+      objectClass: cud.objectClass,
+      repository: null,
+      gitlabIid: 0,
+      needSync: ''
+    }
     if (cud.attachedTo !== undefined) data.attachedTo = cud.attachedTo
-    toApply.push(control.txFactory.createTxCreateDoc(gitlab.class.DocSyncInfo, space, data, cud.objectId as Ref<DocSyncInfo>))
+    toApply.push(
+      control.txFactory.createTxCreateDoc(gitlab.class.DocSyncInfo, space, data, cud.objectId as Ref<DocSyncInfo>)
+    )
     return
   }
   const update: DocumentUpdate<DocSyncInfo> =
@@ -141,7 +154,12 @@ async function queueSync (control: TriggerControl, cud: TxCUD<Doc>, cache: Trigg
 }
 
 // An attachment added to or removed from a synced comment changes its GitLab note
-async function queueCommentOfAttachment (control: TriggerControl, cud: TxCUD<Doc>, cache: TriggerCache, toApply: Tx[]): Promise<void> {
+async function queueCommentOfAttachment (
+  control: TriggerControl,
+  cud: TxCUD<Doc>,
+  cache: TriggerCache,
+  toApply: Tx[]
+): Promise<void> {
   if (cud.modifiedBy === core.account.System) return
   if (cud._class !== core.class.TxCreateDoc && cud._class !== core.class.TxRemoveDoc) return
   if (cud.attachedTo === undefined || !(await linkedProjects(control, cache)).has(cud.objectSpace)) return
@@ -183,7 +201,9 @@ export async function OnProjectRemove (txes: Tx[], control: TriggerControl): Pro
         })
       )
     }
-    for (const info of await control.findAll(control.ctx, gitlab.class.DocSyncInfo, { space: cud.objectId as Ref<Space> })) {
+    for (const info of await control.findAll(control.ctx, gitlab.class.DocSyncInfo, {
+      space: cud.objectId as Ref<Space>
+    })) {
       result.push(control.txFactory.createTxRemoveDoc(info._class, info.space, info._id))
     }
   }

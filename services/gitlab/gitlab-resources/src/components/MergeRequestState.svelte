@@ -20,7 +20,10 @@
 {#if mr !== undefined}
   {#if mr.state === 'merged' || mr.state === 'closed'}
     <div class="flex-row-center" class:ml-4={!small} class:flex-no-shrink={small}>
-      <Icon icon={mr.state === 'merged' ? gitlab.icon.MergeRequestMerged : gitlab.icon.MergeRequestClosed} size={'small'} />
+      <Icon
+        icon={mr.state === 'merged' ? gitlab.icon.MergeRequestMerged : gitlab.icon.MergeRequestClosed}
+        size={'small'}
+      />
       {#if !small}
         <span class="ml-1">
           <Label label={mr.state === 'merged' ? gitlab.string.StateMerged : gitlab.string.StateClosed} />

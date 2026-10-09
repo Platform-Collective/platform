@@ -10,7 +10,9 @@ describe('gitlab model', () => {
   it('keeps the hidden merge request diff out of activity', () => {
     const builder = new Builder()
     createModel(builder)
-    const mixins = builder.getTxes().filter((tx: any) => tx.objectId === gitlab.class.GitlabPatch && tx.objectClass === core.class.Class)
+    const mixins = builder
+      .getTxes()
+      .filter((tx: any) => tx.objectId === gitlab.class.GitlabPatch && tx.objectClass === core.class.Class)
     expect(mixins.map((tx: any) => tx.mixin)).toContain(activity.mixin.IgnoreActivity)
   })
 })

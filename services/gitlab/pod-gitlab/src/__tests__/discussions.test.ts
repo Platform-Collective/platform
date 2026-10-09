@@ -9,7 +9,15 @@ import { mergeRequestKey } from '../sync/keys'
 import { ReviewCommentSyncManager } from '../sync/review-comments'
 import { GITLAB_SYNC_VERSION } from '../sync/versions'
 import {
-  HOST, HULY_USER, PROJECT_ID, gitlabDiffNote, gitlabDiscussion, gitlabNote, gitlabUser, seedMergeRequest, seedRepository
+  HOST,
+  HULY_USER,
+  PROJECT_ID,
+  gitlabDiffNote,
+  gitlabDiscussion,
+  gitlabNote,
+  gitlabUser,
+  seedMergeRequest,
+  seedRepository
 } from './helpers/fixtures'
 import { createMemoryClient, type MemoryClient } from './helpers/memory'
 import { asApi, createTestProvider, ctx, fakeApi, type FakeApi } from './helpers/provider'
@@ -39,10 +47,14 @@ function setup (headSha = 'sha-2'): Env {
   return { memory, threads: new ReviewThreadSyncManager(provider, comments), comments, api, repo }
 }
 
-const d1 = (): GitlabDiscussion => gitlabDiscussion('d1', [gitlabDiffNote(51), gitlabDiffNote(52, { author: gitlabUser(7), body: 'Reply' })])
-const syncOf = (memory: MemoryClient, id: string): any => memory.docs.find((d) => d._id === id && d._class === gitlab.class.DocSyncInfo)
-const threadDocs = (memory: MemoryClient): any[] => memory.docs.filter((d) => d._class === gitlab.class.GitlabReviewThread)
-const commentDocs = (memory: MemoryClient): any[] => memory.docs.filter((d) => d._class === gitlab.class.GitlabReviewComment)
+const d1 = (): GitlabDiscussion =>
+  gitlabDiscussion('d1', [gitlabDiffNote(51), gitlabDiffNote(52, { author: gitlabUser(7), body: 'Reply' })])
+const syncOf = (memory: MemoryClient, id: string): any =>
+  memory.docs.find((d) => d._id === id && d._class === gitlab.class.DocSyncInfo)
+const threadDocs = (memory: MemoryClient): any[] =>
+  memory.docs.filter((d) => d._class === gitlab.class.GitlabReviewThread)
+const commentDocs = (memory: MemoryClient): any[] =>
+  memory.docs.filter((d) => d._class === gitlab.class.GitlabReviewComment)
 const infosOf = (memory: MemoryClient, objectClass: string): any[] =>
   memory.docs.filter((d) => d._class === gitlab.class.DocSyncInfo && d.objectClass === objectClass)
 
@@ -53,7 +65,12 @@ async function syncPending (env: Env): Promise<void> {
     for (const info of infosOf(env.memory, objectClass).filter((it) => it.needSync === '')) {
       const existing = env.memory.docs.find((d) => d._id === info._id && d._class === objectClass)
       const parent = env.memory.docs.find((d) => d._class === gitlab.class.DocSyncInfo && d.key === info.parent)
-      const update = await manager.sync(ctx, existing === undefined ? undefined : ({ ...existing } as any), { ...info } as any, parent === undefined ? undefined : ({ ...parent } as any))
+      const update = await manager.sync(
+        ctx,
+        existing === undefined ? undefined : ({ ...existing } as any),
+        { ...info },
+        parent === undefined ? undefined : ({ ...parent } as any)
+      )
       await env.memory.update(info, update)
     }
   }
@@ -75,16 +92,31 @@ describe('ReviewThreadSyncManager', () => {
 
   it('imports a diff discussion as a thread with its position, and its notes as comments; other discussions stay out', async () => {
     const env = setup()
-    await refreshed(env, [d1(), gitlabDiscussion('d2', [gitlabNote(60, { noteable_type: 'MergeRequest', type: 'DiscussionNote' })])])
+    await refreshed(env, [
+      d1(),
+      gitlabDiscussion('d2', [gitlabNote(60, { noteable_type: 'MergeRequest', type: 'DiscussionNote' })])
+    ])
     expect(threadDocs(env.memory)).toEqual([
       expect.objectContaining({
-        attachedTo: 'mr-1', attachedToClass: gitlab.class.GitlabMergeRequest, collection: 'activity', discussionId: 'd1',
-        path: 'src/a.ts', oldPath: 'src/a.ts', line: 12, oldLine: null, isResolved: false, resolvedBy: null,
-        isOutdated: false, modifiedBy: 'sid-2'
+        attachedTo: 'mr-1',
+        attachedToClass: gitlab.class.GitlabMergeRequest,
+        collection: 'activity',
+        discussionId: 'd1',
+        path: 'src/a.ts',
+        oldPath: 'src/a.ts',
+        line: 12,
+        oldLine: null,
+        isResolved: false,
+        resolvedBy: null,
+        isOutdated: false,
+        modifiedBy: 'sid-2'
       })
     ])
     expect(syncOf(env.memory, threadDocs(env.memory)[0]._id)).toMatchObject({
-      key: `${KEY_3}/discussions/d1`, parent: KEY_3, needSync: GITLAB_SYNC_VERSION, current: { isResolved: false }
+      key: `${KEY_3}/discussions/d1`,
+      parent: KEY_3,
+      needSync: GITLAB_SYNC_VERSION,
+      current: { isResolved: false }
     })
     expect(commentDocs(env.memory).map((it) => it.discussionId)).toEqual(['d1', 'd1'])
   })
@@ -99,11 +131,28 @@ describe('ReviewThreadSyncManager', () => {
     const env = setup()
     await refreshed(env, [d1()])
     const moved = {
-      base_sha: 'base', start_sha: 'base', head_sha: 'sha-2', position_type: 'text',
-      old_path: 'src/a.ts', new_path: 'src/b.ts', old_line: 9, new_line: 15
+      base_sha: 'base',
+      start_sha: 'base',
+      head_sha: 'sha-2',
+      position_type: 'text',
+      old_path: 'src/a.ts',
+      new_path: 'src/b.ts',
+      old_line: 9,
+      new_line: 15
     }
-    await refreshed(env, [gitlabDiscussion('d1', [gitlabDiffNote(51, { position: moved }), gitlabDiffNote(52, { author: gitlabUser(7), body: 'Reply' })])])
-    expect(threadDocs(env.memory)[0]).toMatchObject({ path: 'src/b.ts', oldPath: 'src/a.ts', line: 15, oldLine: 9, isOutdated: false })
+    await refreshed(env, [
+      gitlabDiscussion('d1', [
+        gitlabDiffNote(51, { position: moved }),
+        gitlabDiffNote(52, { author: gitlabUser(7), body: 'Reply' })
+      ])
+    ])
+    expect(threadDocs(env.memory)[0]).toMatchObject({
+      path: 'src/b.ts',
+      oldPath: 'src/a.ts',
+      line: 15,
+      oldLine: 9,
+      isOutdated: false
+    })
   })
 
   it('resolves the discussion in GitLab when a Huly user resolves the thread', async () => {
@@ -114,7 +163,10 @@ describe('ReviewThreadSyncManager', () => {
     await env.memory.update(syncOf(env.memory, thread._id), { needSync: '' })
     await syncPending(env)
     expect(env.api.resolveMergeRequestDiscussion).toHaveBeenCalledWith(PROJECT_ID, 3, 'd1', true)
-    expect(syncOf(env.memory, thread._id)).toMatchObject({ current: { isResolved: true }, external: { resolved: true } })
+    expect(syncOf(env.memory, thread._id)).toMatchObject({
+      current: { isResolved: true },
+      external: { resolved: true }
+    })
     expect(threadDocs(env.memory)[0]).toMatchObject({ isResolved: true, resolvedBy: HULY_USER })
   })
 
@@ -122,7 +174,12 @@ describe('ReviewThreadSyncManager', () => {
     const env = setup()
     await refreshed(env, [d1()])
     const resolved = { resolved: true, resolved_by: gitlabUser(7) }
-    await refreshed(env, [gitlabDiscussion('d1', [gitlabDiffNote(51, resolved), gitlabDiffNote(52, { ...resolved, author: gitlabUser(7), body: 'Reply' })])])
+    await refreshed(env, [
+      gitlabDiscussion('d1', [
+        gitlabDiffNote(51, resolved),
+        gitlabDiffNote(52, { ...resolved, author: gitlabUser(7), body: 'Reply' })
+      ])
+    ])
     expect(threadDocs(env.memory)[0]).toMatchObject({ isResolved: true, resolvedBy: 'sid-7' })
     expect(env.api.resolveMergeRequestDiscussion).not.toHaveBeenCalled()
   })
@@ -166,7 +223,12 @@ describe('ReviewThreadSyncManager', () => {
 
   it('ignores threads that start in Huly', async () => {
     const env = setup()
-    const update = await env.threads.sync(ctx, undefined, { _id: 'x', key: '', objectClass: gitlab.class.GitlabReviewThread } as any, undefined)
+    const update = await env.threads.sync(
+      ctx,
+      undefined,
+      { _id: 'x', key: '', objectClass: gitlab.class.GitlabReviewThread } as any,
+      undefined
+    )
     expect(update).toEqual({ needSync: GITLAB_SYNC_VERSION })
   })
 })

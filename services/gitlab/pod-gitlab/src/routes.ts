@@ -36,13 +36,21 @@ function repositoryIdOf (body: RouteBody): Ref<GitlabIntegrationRepository> {
 }
 
 /** Repository routes check the posted social id like every other route. */
-export async function repositoryEnableRoute (ctx: MeasureContext, body: RouteBody, deps: RepositoryRouteDeps): Promise<void> {
+export async function repositoryEnableRoute (
+  ctx: MeasureContext,
+  body: RouteBody,
+  deps: RepositoryRouteDeps
+): Promise<void> {
   const repositoryId = repositoryIdOf(body)
   const { workspace } = await deps.verify(body)
   await deps.service.enableRepository(ctx, workspace, repositoryId)
 }
 
-export async function repositoryDisableRoute (ctx: MeasureContext, body: RouteBody, deps: RepositoryRouteDeps): Promise<void> {
+export async function repositoryDisableRoute (
+  ctx: MeasureContext,
+  body: RouteBody,
+  deps: RepositoryRouteDeps
+): Promise<void> {
   const repositoryId = repositoryIdOf(body)
   const { workspace } = await deps.verify(body)
   await deps.service.disableRepository(ctx, workspace, repositoryId)

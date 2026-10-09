@@ -25,12 +25,16 @@ const PATCH = [
 describe('extractHunk', () => {
   it('cuts the hunk after the commented new line', () => {
     expect(extractHunk(PATCH, 'src/a.ts', 12, null)).toBe(
-      ['@@ -10,4 +10,5 @@ export function f () {', ' const a = 1', '-const b = 2', '+const b = 3', '+const c = 4'].join('\n')
+      ['@@ -10,4 +10,5 @@ export function f () {', ' const a = 1', '-const b = 2', '+const b = 3', '+const c = 4'].join(
+        '\n'
+      )
     )
   })
 
   it('finds a removed line by its old number', () => {
-    expect(extractHunk(PATCH, 'src/a.ts', null, 11)).toBe(['@@ -10,4 +10,5 @@ export function f () {', ' const a = 1', '-const b = 2'].join('\n'))
+    expect(extractHunk(PATCH, 'src/a.ts', null, 11)).toBe(
+      ['@@ -10,4 +10,5 @@ export function f () {', ' const a = 1', '-const b = 2'].join('\n')
+    )
   })
 
   it('looks in the right file', () => {

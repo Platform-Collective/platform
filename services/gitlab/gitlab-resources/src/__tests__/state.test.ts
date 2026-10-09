@@ -66,7 +66,12 @@ describe('oauth broadcast messages', () => {
       const callbackOk = isOAuthCallbackMessage(value)
       const resultOk = isOAuthResultMessage(value)
       const errorOk = isOAuthErrorMessage(value)
-      expect({ value, callbackOk, resultOk, errorOk }).toEqual({ value, callbackOk: false, resultOk: false, errorOk: false })
+      expect({ value, callbackOk, resultOk, errorOk }).toEqual({
+        value,
+        callbackOk: false,
+        resultOk: false,
+        errorOk: false
+      })
     }
   })
 })
@@ -161,7 +166,7 @@ describe('isValidHostInput', () => {
     ['https://user:pass@gitlab.com', false],
     ['ftp://gitlab.com', false]
   ])('%s -> %s', (raw, ok) => {
-    expect(isValidHostInput(raw as string)).toBe(ok)
+    expect(isValidHostInput(raw)).toBe(ok)
   })
 })
 

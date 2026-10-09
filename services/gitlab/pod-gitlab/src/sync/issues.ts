@@ -46,7 +46,13 @@ export class IssueSyncManager implements DocSyncManager {
   constructor (private readonly provider: SyncProvider) {}
 
   /** Fetches the issue a webhook names and stores it for the sync loop. A 404 (deleted, or no access) is ignored. */
-  async handleIssueEvent (ctx: MeasureContext, repo: RepositoryContext, api: GitlabApi, iid: number, actor?: PersonId): Promise<void> {
+  async handleIssueEvent (
+    ctx: MeasureContext,
+    repo: RepositoryContext,
+    api: GitlabApi,
+    iid: number,
+    actor?: PersonId
+  ): Promise<void> {
     const key = issueKey(repo.integration.host, repo.repository.projectId, iid)
     await this.provider.runner.exec(repositoryLockKey(repo.repository._id), async () => {
       await this.provider.runner.exec(key, async () => {
@@ -75,7 +81,12 @@ export class IssueSyncManager implements DocSyncManager {
     })
   }
 
-  private async upsertExternal (ctx: MeasureContext, repo: RepositoryContext, issue: GitlabIssueInfo, actor?: PersonId): Promise<void> {
+  private async upsertExternal (
+    ctx: MeasureContext,
+    repo: RepositoryContext,
+    issue: GitlabIssueInfo,
+    actor?: PersonId
+  ): Promise<void> {
     if (issue.confidential) {
       ctx.info('gitlab confidential issue skipped', { projectId: repo.repository.projectId, iid: issue.iid })
       return
@@ -88,7 +99,10 @@ export class IssueSyncManager implements DocSyncManager {
     if (info?.deleted === true) return
     // The closed original GitLab leaves after a move: never imported
     if (info === undefined && issue.moved_to_id != null) {
-      ctx.info('gitlab issue moved to another project skipped', { projectId: repo.repository.projectId, iid: issue.iid })
+      ctx.info('gitlab issue moved to another project skipped', {
+        projectId: repo.repository.projectId,
+        iid: issue.iid
+      })
       return
     }
     if (info === undefined) {
@@ -105,7 +119,11 @@ export class IssueSyncManager implements DocSyncManager {
     } else {
       const stored = info.external as GitlabIssueInfo | undefined
       // Same or older version: our own write coming back, or an out-of-order event
-      if (stored !== undefined && Date.parse(stored.updated_at) >= lastModified && info.repository === repo.repository._id) {
+      if (
+        stored !== undefined &&
+        Date.parse(stored.updated_at) >= lastModified &&
+        info.repository === repo.repository._id
+      ) {
         return
       }
       await derived.update(info, {
@@ -202,7 +220,10 @@ export class IssueSyncManager implements DocSyncManager {
     if (picked == null || this.provider.repositoryContext(picked)?.project._id === issue.space) return
     const candidates = this.provider.projectRepositories(issue.space as Ref<GitlabProject>)
     const repository = candidates.length === 1 ? candidates[0].repository._id : null
-    await this.provider.client.updateMixin(issue._id, issue._class, issue.space, gitlab.mixin.GitlabIssue, { repository, syncError: null })
+    await this.provider.client.updateMixin(issue._id, issue._class, issue.space, gitlab.mixin.GitlabIssue, {
+      repository,
+      syncError: null
+    })
   }
 
   private moveTarget (issue: Issue, source: RepositoryContext): RepositoryContext | undefined {
@@ -262,7 +283,12 @@ export class IssueSyncManager implements DocSyncManager {
         retryable: false
       })
       const { client } = this.provider
-      const link = { url: result.web_url as Hyperlink, gitlabIid: result.iid, repository: target.repository._id, syncError: null }
+      const link = {
+        url: result.web_url,
+        gitlabIid: result.iid,
+        repository: target.repository._id,
+        syncError: null
+      }
       if (client.getHierarchy().hasMixin(issue, gitlab.mixin.GitlabIssue)) {
         await client.updateMixin(issue._id, issue._class, issue.space, gitlab.mixin.GitlabIssue, link)
       } else {
@@ -284,9 +310,15 @@ export class IssueSyncManager implements DocSyncManager {
   ): Promise<void> {
     const { derived } = this.provider
     const newKey = issueKey(target.integration.host, target.repository.projectId, moved.iid)
-    const synced = await derived.findAll(gitlab.class.DocSyncInfo, { parent: oldKey, objectClass: chunter.class.ChatMessage })
-    const known = synced.flatMap((it) => (it.external === undefined ? [] : [{ id: it._id as string, note: it.external as GitlabNoteInfo }]))
-    const copies = known.length === 0 ? [] : (await api.listIssueNotes(target.repository.projectId, moved.iid)).filter(isSyncedNote)
+    const synced = await derived.findAll(gitlab.class.DocSyncInfo, {
+      parent: oldKey,
+      objectClass: chunter.class.ChatMessage
+    })
+    const known = synced.flatMap((it) =>
+      it.external === undefined ? [] : [{ id: it._id as string, note: it.external as GitlabNoteInfo }]
+    )
+    const copies =
+      known.length === 0 ? [] : (await api.listIssueNotes(target.repository.projectId, moved.iid)).filter(isSyncedNote)
     const pairs = pairMovedNotes(known, copies)
     for (const info of synced) {
       const copy = pairs.get(info._id)
@@ -308,7 +340,11 @@ export class IssueSyncManager implements DocSyncManager {
       })
     }
     // Comments not in GitLab yet go to the moved issue
-    for (const info of await derived.findAll(gitlab.class.DocSyncInfo, { attachedTo: issue._id, objectClass: chunter.class.ChatMessage, key: '' })) {
+    for (const info of await derived.findAll(gitlab.class.DocSyncInfo, {
+      attachedTo: issue._id,
+      objectClass: chunter.class.ChatMessage,
+      key: ''
+    })) {
       await derived.update(info, { space: issue.space, needSync: '', error: null })
     }
     if (pairs.size < known.length) {
@@ -318,7 +354,12 @@ export class IssueSyncManager implements DocSyncManager {
   }
 
   /** No single repository on this host in the new project: GitLab closes the issue, Huly keeps it unlinked. */
-  private async detach (ctx: MeasureContext, issue: Issue, info: DocSyncInfo, source: RepositoryContext | undefined): Promise<void> {
+  private async detach (
+    ctx: MeasureContext,
+    issue: Issue,
+    info: DocSyncInfo,
+    source: RepositoryContext | undefined
+  ): Promise<void> {
     if (source !== undefined) await this.closeInGitlab(info, source)
     await this.removeChildren({ attachedTo: info._id, objectClass: chunter.class.ChatMessage })
     await this.removeChildren({ parent: info.key })
@@ -349,7 +390,11 @@ export class IssueSyncManager implements DocSyncManager {
     ctx.info('gitlab issue closed, its Huly issue moved to a project without its repository', { key: info.key })
   }
 
-  private async createInGitlab (ctx: MeasureContext, issue: Issue | undefined, info: DocSyncInfo): Promise<DocumentUpdate<DocSyncInfo>> {
+  private async createInGitlab (
+    ctx: MeasureContext,
+    issue: Issue | undefined,
+    info: DocSyncInfo
+  ): Promise<DocumentUpdate<DocSyncInfo>> {
     if (issue === undefined) return DONE
     const repo = this.targetRepository(issue)
     if (repo === undefined) {
@@ -362,7 +407,10 @@ export class IssueSyncManager implements DocSyncManager {
     }
     const statuses = (await this.provider.issueTaskType(repo.project))?.statuses ?? []
     const platform = await this.platformSnapshot(issue, statuses, 'opened')
-    const input: GitlabIssueInput = { title: platform.title, description: await this.provider.content.toMarkdown(repo, platform.description) }
+    const input: GitlabIssueInput = {
+      title: platform.title,
+      description: await this.provider.content.toMarkdown(repo, platform.description)
+    }
     const assigneeId = await this.provider.persons.gitlabUserIdFor(platform.assignee, repo.integration.host)
     if (assigneeId !== undefined) {
       input.assignee_ids = [assigneeId]
@@ -371,7 +419,11 @@ export class IssueSyncManager implements DocSyncManager {
     return await this.provider.runner.exec(repositoryLockKey(repo.repository._id), async () => {
       let created = await api.createIssue(projectId, input)
       // An assignee GitLab could not take is recorded as unassigned, so the next merge does not undo it in Huly
-      const agreed: IssueSnapshot = { ...platform, assignee: assigneeId !== undefined ? platform.assignee : null, state: created.state }
+      const agreed: IssueSnapshot = {
+        ...platform,
+        assignee: assigneeId !== undefined ? platform.assignee : null,
+        state: created.state
+      }
       const update: DocumentUpdate<DocSyncInfo> = {
         key: issueKey(repo.integration.host, projectId, created.iid),
         repository: repo.repository._id,
@@ -401,7 +453,11 @@ export class IssueSyncManager implements DocSyncManager {
     })
   }
 
-  private async createInHuly (repo: RepositoryContext, info: DocSyncInfo, external: GitlabIssueInfo): Promise<DocumentUpdate<DocSyncInfo>> {
+  private async createInHuly (
+    repo: RepositoryContext,
+    info: DocSyncInfo,
+    external: GitlabIssueInfo
+  ): Promise<DocumentUpdate<DocSyncInfo>> {
     const type = await this.provider.issueTaskType(repo.project)
     if (type === undefined) {
       return { ...DONE, error: 'The Huly project has no issue task type', retryable: false }
@@ -456,9 +512,14 @@ export class IssueSyncManager implements DocSyncManager {
     const remote = await this.externalSnapshot(repo, external)
     const base = (info.current as IssueSnapshot | undefined) ?? remote
     const platform = await this.platformSnapshot(issue, statuses, base.state)
-    const { toPlatform, toGitlab, conflicts, merged } = mergeFields(base, platform, remote, { description: areEqualMarkups })
+    const { toPlatform, toGitlab, conflicts, merged } = mergeFields(base, platform, remote, {
+      description: areEqualMarkups
+    })
     if (conflicts.length > 0) {
-      ctx.warn('GitLab and Huly both changed an issue, keeping the Huly value', { issue: issue.identifier, fields: conflicts })
+      ctx.warn('GitLab and Huly both changed an issue, keeping the Huly value', {
+        issue: issue.identifier,
+        fields: conflicts
+      })
     }
     // GitLab still shows Huly image links (written before images were copied, or after a failed upload): send the
     // description again, its images are uploaded now. toGitlabInput skips it when nothing changes.
@@ -480,7 +541,11 @@ export class IssueSyncManager implements DocSyncManager {
       latest = await this.provider.runner.exec(info.key, async () => {
         const updated = await api.updateIssue(repo.repository.projectId, external.iid, input)
         // Stored inside the lock, so the webhook echo of this write is recognised
-        await this.provider.derived.update(info, { external: updated, current: merged, lastModified: Date.parse(updated.updated_at) })
+        await this.provider.derived.update(info, {
+          external: updated,
+          current: merged,
+          lastModified: Date.parse(updated.updated_at)
+        })
         return updated
       })
     }
@@ -492,7 +557,9 @@ export class IssueSyncManager implements DocSyncManager {
 
   private targetRepository (issue: Issue): RepositoryContext | undefined {
     const h = this.provider.client.getHierarchy()
-    const picked = h.hasMixin(issue, gitlab.mixin.GitlabIssue) ? h.as(issue, gitlab.mixin.GitlabIssue).repository : undefined
+    const picked = h.hasMixin(issue, gitlab.mixin.GitlabIssue)
+      ? h.as(issue, gitlab.mixin.GitlabIssue).repository
+      : undefined
     if (picked !== undefined) {
       // null: kept in Huly on purpose. A repository of another project (stale pick, moved issue) is no target either.
       const context = this.provider.repositoryContext(picked)
@@ -504,7 +571,10 @@ export class IssueSyncManager implements DocSyncManager {
   }
 
   private async platformSnapshot (issue: Issue, statuses: Status[], fallback: GitlabIssueState): Promise<IssueSnapshot> {
-    const description = await this.provider.collaborator.getMarkup(makeDocCollabId(issue, 'description'), issue.description)
+    const description = await this.provider.collaborator.getMarkup(
+      makeDocCollabId(issue, 'description'),
+      issue.description
+    )
     return {
       title: issue.title,
       description,
@@ -522,7 +592,11 @@ export class IssueSyncManager implements DocSyncManager {
     }
   }
 
-  private async toGitlabInput (repo: RepositoryContext, change: Partial<IssueSnapshot>, external: GitlabIssueInfo): Promise<GitlabIssueInput> {
+  private async toGitlabInput (
+    repo: RepositoryContext,
+    change: Partial<IssueSnapshot>,
+    external: GitlabIssueInfo
+  ): Promise<GitlabIssueInput> {
     const input: GitlabIssueInput = {}
     if (change.title !== undefined && change.title !== external.title) {
       input.title = change.title
@@ -532,7 +606,12 @@ export class IssueSyncManager implements DocSyncManager {
       if (!compareMarkdown(markdown, external.description ?? '')) input.description = markdown
     }
     if (change.assignee !== undefined) {
-      const ids = await assigneeIdsFor(this.provider.persons, repo.integration.host, change.assignee, external.assignees)
+      const ids = await assigneeIdsFor(
+        this.provider.persons,
+        repo.integration.host,
+        change.assignee,
+        external.assignees
+      )
       if (ids !== undefined) input.assignee_ids = ids
     }
     if (change.state !== undefined && change.state !== external.state) {
@@ -541,7 +620,12 @@ export class IssueSyncManager implements DocSyncManager {
     return input
   }
 
-  private async applyToHuly (issue: Issue, change: Partial<IssueSnapshot>, statuses: Status[], actor: PersonId): Promise<void> {
+  private async applyToHuly (
+    issue: Issue,
+    change: Partial<IssueSnapshot>,
+    statuses: Status[],
+    actor: PersonId
+  ): Promise<void> {
     const update: DocumentUpdate<Issue> = {}
     if (change.title !== undefined) update.title = change.title
     if (change.assignee !== undefined) update.assignee = change.assignee
@@ -559,7 +643,7 @@ export class IssueSyncManager implements DocSyncManager {
 
   private async linkIssue (issue: Issue, repo: RepositoryContext, external: GitlabIssueInfo): Promise<void> {
     const { client } = this.provider
-    const data = { url: external.web_url as Hyperlink, gitlabIid: external.iid, repository: repo.repository._id }
+    const data = { url: external.web_url, gitlabIid: external.iid, repository: repo.repository._id }
     if (client.getHierarchy().hasMixin(issue, gitlab.mixin.GitlabIssue)) {
       await client.updateMixin(issue._id, issue._class, issue.space, gitlab.mixin.GitlabIssue, data)
     } else {

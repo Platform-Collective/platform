@@ -3,18 +3,38 @@
 
 import activity from '@hcengineering/activity'
 import attachment from '@hcengineering/attachment'
-import gitlab, { type DocSyncInfo } from '@hcengineering/gitlab'
+import gitlab from '@hcengineering/gitlab'
 import { GitlabApiError } from '../gitlab/api'
 import { mergeRequestKey } from '../sync/keys'
 import type { ImageStore } from '../sync/types'
 import { MERGE_REQUEST_MOVED, MergeRequestSyncManager } from '../sync/merge-requests'
 import { GITLAB_SYNC_VERSION } from '../sync/versions'
-import { HOST, MR_TASK_TYPE, PROJECT_ID, gitlabDiffNote, gitlabDiscussion, gitlabMergeRequest, gitlabNote, gitlabUser, seedMergeRequest, seedRepository, setImageMode } from './helpers/fixtures'
+import {
+  HOST,
+  MR_TASK_TYPE,
+  PROJECT_ID,
+  gitlabDiffNote,
+  gitlabDiscussion,
+  gitlabMergeRequest,
+  gitlabNote,
+  gitlabUser,
+  seedMergeRequest,
+  seedRepository,
+  setImageMode
+} from './helpers/fixtures'
 import { NoteSyncManager } from '../sync/notes'
 import { ReviewThreadSyncManager } from '../sync/discussions'
 import { ReviewCommentSyncManager } from '../sync/review-comments'
 import { createMemoryClient, type MemoryClient } from './helpers/memory'
-import { asApi, createTestProvider, ctx, fakeApi, fakeImages, type FakeApi, type TestProvider } from './helpers/provider'
+import {
+  asApi,
+  createTestProvider,
+  ctx,
+  fakeApi,
+  fakeImages,
+  type FakeApi,
+  type TestProvider
+} from './helpers/provider'
 
 const KEY_3 = mergeRequestKey(HOST, PROJECT_ID, 3)
 
@@ -44,7 +64,12 @@ const syncInfos = (memory: MemoryClient): any[] => memory.docs.filter((d) => d._
 async function syncDoc (env: Env, id: string): Promise<any> {
   const info = syncOf(env.memory, id)
   const existing = mrOf(env.memory, id)
-  const update = await env.mergeRequests.sync(ctx, existing === undefined ? undefined : { ...existing }, { ...info } as DocSyncInfo, undefined)
+  const update = await env.mergeRequests.sync(
+    ctx,
+    existing === undefined ? undefined : { ...existing },
+    { ...info },
+    undefined
+  )
   await env.memory.update(info, update)
   return update
 }
@@ -59,7 +84,9 @@ async function imported (env: Env, overrides: any = {}): Promise<string> {
 
 /** A newer GitLab version of !3, delivered by a webhook sent by GitLab user 5. */
 async function gitlabChange (env: Env, overrides: any): Promise<void> {
-  env.api.getMergeRequest.mockResolvedValueOnce(gitlabMergeRequest(3, { updated_at: '2026-01-02T00:00:00.000Z', ...overrides }))
+  env.api.getMergeRequest.mockResolvedValueOnce(
+    gitlabMergeRequest(3, { updated_at: '2026-01-02T00:00:00.000Z', ...overrides })
+  )
   await env.mergeRequests.handleMergeRequestEvent(ctx, env.repo, asApi(env.api), 3, 'sid-5' as any)
 }
 
@@ -68,10 +95,23 @@ describe('MergeRequestSyncManager: GitLab to Huly', () => {
     const env = setup()
     const id = await imported(env, { assignees: [gitlabUser(7)], reviewers: [gitlabUser(8)], draft: true })
     expect(mrOf(env.memory, id)).toMatchObject({
-      title: 'MR 3', status: 'st-mr-open', kind: MR_TASK_TYPE, assignee: 'person-7', reviewers: ['person-8'],
-      identifier: 'PRJ-1', modifiedBy: 'sid-1', url: `${HOST}/group/proj/-/merge_requests/3`, gitlabIid: 3,
-      repository: 'repo-1', state: 'opened', draft: true, sourceBranch: 'feature', targetBranch: 'main',
-      mergeStatus: 'mergeable', hasConflicts: false, mergedAt: null
+      title: 'MR 3',
+      status: 'st-mr-open',
+      kind: MR_TASK_TYPE,
+      assignee: 'person-7',
+      reviewers: ['person-8'],
+      identifier: 'PRJ-1',
+      modifiedBy: 'sid-1',
+      url: `${HOST}/group/proj/-/merge_requests/3`,
+      gitlabIid: 3,
+      repository: 'repo-1',
+      state: 'opened',
+      draft: true,
+      sourceBranch: 'feature',
+      targetBranch: 'main',
+      mergeStatus: 'mergeable',
+      hasConflicts: false,
+      mergedAt: null
     })
     expect(env.provider.collab.store.get(`${id}:description`)).toBe(env.provider.markdown.toMarkup('MR body 3'))
     expect(env.memory.docs.find((d) => d._class === activity.class.ActivityInfoMessage)).toMatchObject({
@@ -80,19 +120,28 @@ describe('MergeRequestSyncManager: GitLab to Huly', () => {
       props: { number: 3, repoName: 'group/proj' }
     })
     expect(syncOf(env.memory, id)).toMatchObject({
-      key: KEY_3, needSync: GITLAB_SYNC_VERSION, current: { state: 'opened', reviewers: ['person-8'], assignee: 'person-7' }
+      key: KEY_3,
+      needSync: GITLAB_SYNC_VERSION,
+      current: { state: 'opened', reviewers: ['person-8'], assignee: 'person-7' }
     })
   })
 
   it('imports merged and closed merge requests as Merged and Closed', async () => {
     const env = setup()
-    await env.mergeRequests.receive(ctx, env.repo, gitlabMergeRequest(3, { state: 'merged', merged_at: '2026-01-03T00:00:00.000Z' }))
+    await env.mergeRequests.receive(
+      ctx,
+      env.repo,
+      gitlabMergeRequest(3, { state: 'merged', merged_at: '2026-01-03T00:00:00.000Z' })
+    )
     await env.mergeRequests.receive(ctx, env.repo, gitlabMergeRequest(4, { state: 'closed' }))
     for (const info of syncInfos(env.memory)) await syncDoc(env, info._id)
     const result = env.memory.docs
       .filter((d) => d._class === gitlab.class.GitlabMergeRequest)
       .map((d) => [d.gitlabIid, d.status, d.mergedAt])
-    expect(result).toEqual([[3, 'st-mr-merged', Date.parse('2026-01-03T00:00:00.000Z')], [4, 'st-mr-closed', null]])
+    expect(result).toEqual([
+      [3, 'st-mr-merged', Date.parse('2026-01-03T00:00:00.000Z')],
+      [4, 'st-mr-closed', null]
+    ])
   })
 
   it('applies a GitLab change and refreshes the mirrored fields, as the GitLab user who made it', async () => {
@@ -100,7 +149,12 @@ describe('MergeRequestSyncManager: GitLab to Huly', () => {
     const id = await imported(env)
     await gitlabChange(env, { title: 'Renamed in GitLab', detailed_merge_status: 'conflict', has_conflicts: true })
     await syncDoc(env, id)
-    expect(mrOf(env.memory, id)).toMatchObject({ title: 'Renamed in GitLab', mergeStatus: 'conflict', hasConflicts: true, modifiedBy: 'sid-5' })
+    expect(mrOf(env.memory, id)).toMatchObject({
+      title: 'Renamed in GitLab',
+      mergeStatus: 'conflict',
+      hasConflicts: true,
+      modifiedBy: 'sid-5'
+    })
   })
 
   it('ignores a webhook echo with the same updated_at', async () => {
@@ -135,19 +189,34 @@ describe('MergeRequestSyncManager: Huly to GitLab', () => {
     const env = setup()
     const id = await imported(env)
     env.api.updateMergeRequest.mockResolvedValueOnce(
-      gitlabMergeRequest(3, { title: 'Huly title', reviewers: [gitlabUser(9)], state: 'closed', updated_at: '2026-01-02T00:00:00.000Z' })
+      gitlabMergeRequest(3, {
+        title: 'Huly title',
+        reviewers: [gitlabUser(9)],
+        state: 'closed',
+        updated_at: '2026-01-02T00:00:00.000Z'
+      })
     )
     Object.assign(mrOf(env.memory, id), { title: 'Huly title', reviewers: ['person-9'], status: 'st-mr-closed' })
     await syncDoc(env, id)
-    expect(env.api.updateMergeRequest).toHaveBeenCalledWith(PROJECT_ID, 3, { title: 'Huly title', reviewer_ids: [9], state_event: 'close' })
+    expect(env.api.updateMergeRequest).toHaveBeenCalledWith(PROJECT_ID, 3, {
+      title: 'Huly title',
+      reviewer_ids: [9],
+      state_event: 'close'
+    })
     expect(mrOf(env.memory, id)).toMatchObject({ state: 'closed', status: 'st-mr-closed' })
-    expect(syncOf(env.memory, id).current).toMatchObject({ title: 'Huly title', reviewers: ['person-9'], state: 'closed' })
+    expect(syncOf(env.memory, id).current).toMatchObject({
+      title: 'Huly title',
+      reviewers: ['person-9'],
+      state: 'closed'
+    })
   })
 
   it('reopens a closed merge request moved to an open status in Huly', async () => {
     const env = setup()
     const id = await imported(env, { state: 'closed' })
-    env.api.updateMergeRequest.mockResolvedValueOnce(gitlabMergeRequest(3, { state: 'opened', updated_at: '2026-01-02T00:00:00.000Z' }))
+    env.api.updateMergeRequest.mockResolvedValueOnce(
+      gitlabMergeRequest(3, { state: 'opened', updated_at: '2026-01-02T00:00:00.000Z' })
+    )
     mrOf(env.memory, id).status = 'st-mr-open'
     await syncDoc(env, id)
     expect(env.api.updateMergeRequest).toHaveBeenCalledWith(PROJECT_ID, 3, { state_event: 'reopen' })
@@ -156,7 +225,9 @@ describe('MergeRequestSyncManager: Huly to GitLab', () => {
   it('removes every GitLab reviewer when Huly clears them', async () => {
     const env = setup()
     const id = await imported(env, { reviewers: [gitlabUser(8)] })
-    env.api.updateMergeRequest.mockResolvedValueOnce(gitlabMergeRequest(3, { reviewers: [], updated_at: '2026-01-02T00:00:00.000Z' }))
+    env.api.updateMergeRequest.mockResolvedValueOnce(
+      gitlabMergeRequest(3, { reviewers: [], updated_at: '2026-01-02T00:00:00.000Z' })
+    )
     mrOf(env.memory, id).reviewers = []
     await syncDoc(env, id)
     expect(env.api.updateMergeRequest).toHaveBeenCalledWith(PROJECT_ID, 3, { reviewer_ids: [0] })
@@ -189,14 +260,24 @@ describe('MergeRequestSyncManager: Huly to GitLab', () => {
     expect(env.api.updateMergeRequest).not.toHaveBeenCalled()
     await gitlabChange(env, { reviewers: [gitlabUser(8), gitlabUser(9)] })
     await syncDoc(env, id)
-    expect([...mrOf(env.memory, id).reviewers].sort()).toEqual(['person-8', 'person-9', 'person-huly'])
+    expect([...mrOf(env.memory, id).reviewers].sort((a: string, b: string) => a.localeCompare(b))).toEqual([
+      'person-8',
+      'person-9',
+      'person-huly'
+    ])
   })
 
   it('never creates a merge request in GitLab', async () => {
     const env = setup()
     env.memory.docs.push({
-      _id: 'mr-x', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: '', objectClass: gitlab.class.GitlabMergeRequest,
-      repository: null, gitlabIid: 0, needSync: ''
+      _id: 'mr-x',
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: '',
+      objectClass: gitlab.class.GitlabMergeRequest,
+      repository: null,
+      gitlabIid: 0,
+      needSync: ''
     })
     expect(await syncDoc(env, 'mr-x')).toEqual({ needSync: GITLAB_SYNC_VERSION })
   })
@@ -243,12 +324,14 @@ describe('MergeRequestSyncManager: approvals keep updated_at', () => {
 
 describe('MergeRequestSyncManager: moved in Huly', () => {
   it('imports no GitLab notes or threads under a detached merge request', async () => {
-    const env = setup(fakeApi({
-      listMergeRequestNotes: async () => [gitlabNote(41, { noteable_type: 'MergeRequest', noteable_iid: 3 })],
-      getMergeRequestNote: async () => gitlabNote(42, { noteable_type: 'MergeRequest', noteable_iid: 3 }),
-      listMergeRequestDiscussions: async () => [gitlabDiscussion('d1', [gitlabDiffNote(51)])],
-      getMergeRequestDiscussion: async () => gitlabDiscussion('d2', [gitlabDiffNote(52)])
-    }))
+    const env = setup(
+      fakeApi({
+        listMergeRequestNotes: async () => [gitlabNote(41, { noteable_type: 'MergeRequest', noteable_iid: 3 })],
+        getMergeRequestNote: async () => gitlabNote(42, { noteable_type: 'MergeRequest', noteable_iid: 3 }),
+        listMergeRequestDiscussions: async () => [gitlabDiscussion('d1', [gitlabDiffNote(51)])],
+        getMergeRequestDiscussion: async () => gitlabDiscussion('d2', [gitlabDiffNote(52)])
+      })
+    )
     seedMergeRequest(env.memory)
     const mr = env.memory.docs.find((d) => d._id === 'mr-1' && d._class === gitlab.class.GitlabMergeRequest) as any
     mr.space = 'prj-2'
@@ -275,7 +358,11 @@ describe('MergeRequestSyncManager: moved in Huly', () => {
     expect(info).toMatchObject({ deleted: true, retryable: false, error: MERGE_REQUEST_MOVED })
     // A later GitLab change does not import it again into the repository's project
     await env.mergeRequests.receive(ctx, env.repo, gitlabMergeRequest(3, { updated_at: '2026-02-01T00:00:00.000Z' }))
-    expect(env.memory.docs.filter((d) => d._class === gitlab.class.DocSyncInfo && d.objectClass === gitlab.class.GitlabMergeRequest)).toHaveLength(1)
+    expect(
+      env.memory.docs.filter(
+        (d) => d._class === gitlab.class.DocSyncInfo && d.objectClass === gitlab.class.GitlabMergeRequest
+      )
+    ).toHaveLength(1)
   })
 })
 
@@ -286,7 +373,9 @@ describe('MergeRequestSyncManager: images', () => {
     setImageMode(env.repo, 'copy')
     env.api.downloadUpload.mockResolvedValue({ data: Buffer.from('png'), contentType: 'image/png' })
     const id = await imported(env, { description: `![shot](/uploads/${S}/shot.png)` })
-    expect(env.provider.collab.store.get(`${id}:description`)).toBe(env.provider.markdown.toMarkup('![shot](http://front/files?file=blob-1)'))
+    expect(env.provider.collab.store.get(`${id}:description`)).toBe(
+      env.provider.markdown.toMarkup('![shot](http://front/files?file=blob-1)')
+    )
   })
   it('sends a description again when GitLab still shows a Huly image link', async () => {
     const S = '0123456789abcdef0123456789abcdef'
@@ -295,11 +384,31 @@ describe('MergeRequestSyncManager: images', () => {
     const env = setup(fakeApi(), { images })
     env.api.uploadFile.mockResolvedValue({ alt: 'photo', url: `/uploads/${S}/photo.png`, full_path: '', markdown: '' })
     // The image is a file of the project
-    env.memory.docs.push({ _id: 'att-huly-1', _class: attachment.class.Attachment, space: 'prj-1', attachedTo: 'mr-other', attachedToClass: gitlab.class.GitlabMergeRequest, collection: 'attachments', file: 'huly-1', name: 'photo.png', type: 'image/png', size: 3 })
-    env.api.updateMergeRequest.mockResolvedValue(gitlabMergeRequest(3, { description: `![photo](/uploads/${S}/photo.png)`, updated_at: '2026-01-03T00:00:00.000Z' }))
+    env.memory.docs.push({
+      _id: 'att-huly-1',
+      _class: attachment.class.Attachment,
+      space: 'prj-1',
+      attachedTo: 'mr-other',
+      attachedToClass: gitlab.class.GitlabMergeRequest,
+      collection: 'attachments',
+      file: 'huly-1',
+      name: 'photo.png',
+      type: 'image/png',
+      size: 3
+    })
+    env.api.updateMergeRequest.mockResolvedValue(
+      gitlabMergeRequest(3, {
+        description: `![photo](/uploads/${S}/photo.png)`,
+        updated_at: '2026-01-03T00:00:00.000Z'
+      })
+    )
     const id = await imported(env, { description: '![photo](http://front/files?file=huly-1)' })
     syncOf(env.memory, id).needSync = ''
     await syncDoc(env, id)
-    expect(env.api.updateMergeRequest).toHaveBeenCalledWith(PROJECT_ID, 3, expect.objectContaining({ description: `![photo](/uploads/${S}/photo.png)` }))
+    expect(env.api.updateMergeRequest).toHaveBeenCalledWith(
+      PROJECT_ID,
+      3,
+      expect.objectContaining({ description: `![photo](/uploads/${S}/photo.png)` })
+    )
   })
 })

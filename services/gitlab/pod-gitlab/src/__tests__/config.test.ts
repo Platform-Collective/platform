@@ -14,7 +14,9 @@ describe('loadConfig', () => {
   it('reads the workspace inactivity interval in days (default 3)', () => {
     expect(loadConfig(base).WorkspaceInactivityDays).toBe(3)
     expect(loadConfig({ ...base, WORKSPACE_INACTIVITY_INTERVAL: '0' }).WorkspaceInactivityDays).toBe(0)
-    expect(() => loadConfig({ ...base, WORKSPACE_INACTIVITY_INTERVAL: 'soon' })).toThrow('WORKSPACE_INACTIVITY_INTERVAL must be a number')
+    expect(() => loadConfig({ ...base, WORKSPACE_INACTIVITY_INTERVAL: 'soon' })).toThrow(
+      'WORKSPACE_INACTIVITY_INTERVAL must be a number'
+    )
   })
 
   it('applies defaults for gitlab.com', () => {
@@ -64,7 +66,9 @@ describe('loadConfig', () => {
   it('reads the optional blob storage configuration', () => {
     expect(loadConfig(base).StorageConfig).toBeUndefined()
     expect(loadConfig({ ...base, STORAGE_CONFIG: '' }).StorageConfig).toBeUndefined()
-    expect(loadConfig({ ...base, STORAGE_CONFIG: 'minio|minio?accessKey=a&secretKey=b' }).StorageConfig).toBe('minio|minio?accessKey=a&secretKey=b')
+    expect(loadConfig({ ...base, STORAGE_CONFIG: 'minio|minio?accessKey=a&secretKey=b' }).StorageConfig).toBe(
+      'minio|minio?accessKey=a&secretKey=b'
+    )
   })
 })
 
@@ -81,10 +85,15 @@ describe('redirectUriFor', () => {
     expect(redirectUriFor('http://huly.local:8087', 'http://front/gitlab')).toBe('http://huly.local:8087/gitlab')
   })
 
-  it.each([undefined, '', 'not a url', 'javascript:alert(1)', 'ftp://huly.example', 'https://huly.example/path', 'https://user:pw@huly.example'])(
-    'falls back to the configured redirect for %p',
-    (origin) => {
-      expect(redirectUriFor(origin, 'http://front/gitlab')).toBe('http://front/gitlab')
-    }
-  )
+  it.each([
+    undefined,
+    '',
+    'not a url',
+    'javascript:alert(1)',
+    'ftp://huly.example',
+    'https://huly.example/path',
+    'https://user:pw@huly.example'
+  ])('falls back to the configured redirect for %p', (origin) => {
+    expect(redirectUriFor(origin, 'http://front/gitlab')).toBe('http://front/gitlab')
+  })
 })

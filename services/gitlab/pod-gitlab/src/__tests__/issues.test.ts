@@ -3,7 +3,7 @@
 
 import activity from '@hcengineering/activity'
 import attachment from '@hcengineering/attachment'
-import gitlab, { type DocSyncInfo } from '@hcengineering/gitlab'
+import gitlab from '@hcengineering/gitlab'
 import tracker from '@hcengineering/tracker'
 import { GitlabApiError } from '../gitlab/api'
 import { IssueSyncManager, type IssueSnapshot } from '../sync/issues'
@@ -12,7 +12,15 @@ import type { ImageStore } from '../sync/types'
 import { GITLAB_SYNC_VERSION } from '../sync/versions'
 import { HOST, PROJECT_ID, gitlabIssue, gitlabUser, hulyIssue, seedRepository, setImageMode } from './helpers/fixtures'
 import { createMemoryClient, type MemoryClient } from './helpers/memory'
-import { asApi, createTestProvider, ctx, fakeApi, fakeImages, type FakeApi, type TestProvider } from './helpers/provider'
+import {
+  asApi,
+  createTestProvider,
+  ctx,
+  fakeApi,
+  fakeImages,
+  type FakeApi,
+  type TestProvider
+} from './helpers/provider'
 
 const KEY_1 = issueKey(HOST, PROJECT_ID, 1)
 
@@ -24,7 +32,10 @@ interface Env {
   repo: any
 }
 
-function setup (api: FakeApi = fakeApi(), options: { apiAvailable?: boolean, secondRepo?: boolean, images?: ImageStore } = {}): Env {
+function setup (
+  api: FakeApi = fakeApi(),
+  options: { apiAvailable?: boolean, secondRepo?: boolean, images?: ImageStore } = {}
+): Env {
   const memory = createMemoryClient()
   const repo = seedRepository(memory)
   const repos = [repo]
@@ -34,15 +45,27 @@ function setup (api: FakeApi = fakeApi(), options: { apiAvailable?: boolean, sec
 }
 
 // A Huly issue and its DocSyncInfo share the same _id; these helpers pick one by class.
-const issueOf = (memory: MemoryClient, id: string): any => memory.docs.find((d) => d._id === id && d._class === tracker.class.Issue)
-const syncOf = (memory: MemoryClient, id: string): any => memory.docs.find((d) => d._id === id && d._class === gitlab.class.DocSyncInfo)
+const issueOf = (memory: MemoryClient, id: string): any =>
+  memory.docs.find((d) => d._id === id && d._class === tracker.class.Issue)
+const syncOf = (memory: MemoryClient, id: string): any =>
+  memory.docs.find((d) => d._id === id && d._class === gitlab.class.DocSyncInfo)
 const syncInfos = (memory: MemoryClient): any[] => memory.docs.filter((d) => d._class === gitlab.class.DocSyncInfo)
 
-/** What the worker does for one pending doc (Task 10): sync with the Huly doc and store the result. */
+/** Lets pending callbacks run until `ready` holds (at most 50 turns). */
+async function waitUntil (ready: () => boolean): Promise<void> {
+  for (let i = 0; i < 50 && !ready(); i++) await new Promise<void>((resolve) => setImmediate(resolve))
+}
+
+/** What the worker does for one pending doc: sync with the Huly doc and store the result. */
 async function syncDoc (env: Env, id: string): Promise<any> {
   const info = syncOf(env.memory, id)
   const existing = issueOf(env.memory, id)
-  const update = await env.issues.sync(ctx, existing === undefined ? undefined : { ...existing }, { ...info } as DocSyncInfo, undefined)
+  const update = await env.issues.sync(
+    ctx,
+    existing === undefined ? undefined : { ...existing },
+    { ...info },
+    undefined
+  )
   await env.memory.update(info, update)
   return update
 }
@@ -70,15 +93,30 @@ describe('IssueSyncManager: GitLab to Huly', () => {
     const env = setup()
     const id = await imported(env, { assignees: [gitlabUser(7)] })
     const issue = issueOf(env.memory, id)
-    expect(issue).toMatchObject({ _id: id, title: 'Issue 1', status: 'st-backlog', assignee: 'person-7', identifier: 'PRJ-1', modifiedBy: 'sid-1' })
-    expect(issue[gitlab.mixin.GitlabIssue]).toEqual({ url: `${HOST}/group/proj/-/issues/1`, gitlabIid: 1, repository: 'repo-1' })
+    expect(issue).toMatchObject({
+      _id: id,
+      title: 'Issue 1',
+      status: 'st-backlog',
+      assignee: 'person-7',
+      identifier: 'PRJ-1',
+      modifiedBy: 'sid-1'
+    })
+    expect(issue[gitlab.mixin.GitlabIssue]).toEqual({
+      url: `${HOST}/group/proj/-/issues/1`,
+      gitlabIid: 1,
+      repository: 'repo-1'
+    })
     expect(hulyDescription(env, id)).toBe(env.provider.markdown.toMarkup('Body 1'))
     expect(env.memory.docs.find((d) => d._class === activity.class.ActivityInfoMessage)).toMatchObject({
       attachedTo: id,
       message: gitlab.string.IssueConnectedActivityInfo,
       props: { number: 1, repoName: 'group/proj' }
     })
-    expect(syncOf(env.memory, id)).toMatchObject({ key: KEY_1, needSync: GITLAB_SYNC_VERSION, current: { title: 'Issue 1', state: 'opened', assignee: 'person-7' } })
+    expect(syncOf(env.memory, id)).toMatchObject({
+      key: KEY_1,
+      needSync: GITLAB_SYNC_VERSION,
+      current: { title: 'Issue 1', state: 'opened', assignee: 'person-7' }
+    })
   })
 
   it('imports a closed GitLab issue as done', async () => {
@@ -88,7 +126,11 @@ describe('IssueSyncManager: GitLab to Huly', () => {
   })
 
   it('applies a GitLab title change to Huly as the GitLab user who made it', async () => {
-    const env = setup(fakeApi({ getIssue: async () => gitlabIssue(1, { title: 'Renamed in GitLab', updated_at: '2026-01-02T00:00:00.000Z' }) }))
+    const env = setup(
+      fakeApi({
+        getIssue: async () => gitlabIssue(1, { title: 'Renamed in GitLab', updated_at: '2026-01-02T00:00:00.000Z' })
+      })
+    )
     const id = await imported(env)
     await env.issues.handleIssueEvent(ctx, env.repo, asApi(env.api), 1, 'sid-5' as any)
     await syncDoc(env, id)
@@ -112,7 +154,9 @@ describe('IssueSyncManager: GitLab to Huly', () => {
   })
 
   it('reopening in GitLab moves a done issue to in progress', async () => {
-    const env = setup(fakeApi({ getIssue: async () => gitlabIssue(1, { state: 'opened', updated_at: '2026-01-02T00:00:00.000Z' }) }))
+    const env = setup(
+      fakeApi({ getIssue: async () => gitlabIssue(1, { state: 'opened', updated_at: '2026-01-02T00:00:00.000Z' }) })
+    )
     const id = await imported(env, { state: 'closed' })
     await env.issues.handleIssueEvent(ctx, env.repo, asApi(env.api), 1)
     await syncDoc(env, id)
@@ -127,7 +171,13 @@ describe('IssueSyncManager: GitLab to Huly', () => {
   })
 
   it('ignores a webhook for an issue GitLab no longer returns', async () => {
-    const env = setup(fakeApi({ getIssue: async () => { throw new GitlabApiError(404, 'gone') } }))
+    const env = setup(
+      fakeApi({
+        getIssue: async () => {
+          throw new GitlabApiError(404, 'gone')
+        }
+      })
+    )
     await expect(env.issues.handleIssueEvent(ctx, env.repo, asApi(env.api), 1)).resolves.toBeUndefined()
     expect(syncInfos(env.memory)).toEqual([])
   })
@@ -138,13 +188,24 @@ describe('IssueSyncManager: Huly to GitLab', () => {
     const api = fakeApi({ createIssue: async () => gitlabIssue(5) })
     const env = setup(api)
     hulyIssue(env.memory, 'issue-e', { [gitlab.mixin.GitlabIssue]: { syncError: 'GitLab POST failed: 500' } })
-    env.memory.docs.push({ _id: 'issue-e', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: '', objectClass: tracker.class.Issue, repository: null, gitlabIid: 0, needSync: '' })
+    env.memory.docs.push({
+      _id: 'issue-e',
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: '',
+      objectClass: tracker.class.Issue,
+      repository: null,
+      gitlabIid: 0,
+      needSync: ''
+    })
     await syncDoc(env, 'issue-e')
     expect(api.createIssue).toHaveBeenCalledTimes(1)
   })
 
   it('pushes a Huly title change to GitLab and records the new agreed state', async () => {
-    const api = fakeApi({ updateIssue: async () => gitlabIssue(1, { title: 'Renamed in Huly', updated_at: '2026-01-02T00:00:00.000Z' }) })
+    const api = fakeApi({
+      updateIssue: async () => gitlabIssue(1, { title: 'Renamed in Huly', updated_at: '2026-01-02T00:00:00.000Z' })
+    })
     const env = setup(api)
     const id = await imported(env)
     await env.memory.update(issueOf(env.memory, id), { title: 'Renamed in Huly', modifiedBy: 'sid-huly' })
@@ -155,11 +216,17 @@ describe('IssueSyncManager: Huly to GitLab', () => {
   })
 
   it('keeps the Huly value when both sides changed the title', async () => {
-    const api = fakeApi({ updateIssue: async (_p: number, _i: number, input: any) => gitlabIssue(1, { ...input, updated_at: '2026-01-03T00:00:00.000Z' }) })
+    const api = fakeApi({
+      updateIssue: async (_p: number, _i: number, input: any) =>
+        gitlabIssue(1, { ...input, updated_at: '2026-01-03T00:00:00.000Z' })
+    })
     const env = setup(api)
     const id = await imported(env)
     await env.memory.update(issueOf(env.memory, id), { title: 'Huly title' })
-    await env.memory.update(syncInfos(env.memory)[0], { external: gitlabIssue(1, { title: 'GitLab title', updated_at: '2026-01-02T00:00:00.000Z' }), needSync: '' })
+    await env.memory.update(syncInfos(env.memory)[0], {
+      external: gitlabIssue(1, { title: 'GitLab title', updated_at: '2026-01-02T00:00:00.000Z' }),
+      needSync: ''
+    })
     await syncDoc(env, id)
     expect(api.updateIssue).toHaveBeenCalledWith(PROJECT_ID, 1, { title: 'Huly title' })
     expect(issueOf(env.memory, id).title).toBe('Huly title')
@@ -196,26 +263,67 @@ describe('IssueSyncManager: Huly to GitLab', () => {
     const env = setup(api)
     hulyIssue(env.memory, 'issue-h', { title: 'From Huly', assignee: 'person-7' })
     env.provider.collab.store.set('issue-h:description', env.provider.markdown.toMarkup('Text'))
-    env.memory.docs.push({ _id: 'issue-h', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: '', objectClass: tracker.class.Issue, repository: null, gitlabIid: 0, needSync: '' })
-    env.memory.docs.push({ _id: 'msg-1', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: '', objectClass: 'chunter:class:ChatMessage', repository: null, gitlabIid: 0, needSync: GITLAB_SYNC_VERSION, attachedTo: 'issue-h' })
+    env.memory.docs.push({
+      _id: 'issue-h',
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: '',
+      objectClass: tracker.class.Issue,
+      repository: null,
+      gitlabIid: 0,
+      needSync: ''
+    })
+    env.memory.docs.push({
+      _id: 'msg-1',
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: '',
+      objectClass: 'chunter:class:ChatMessage',
+      repository: null,
+      gitlabIid: 0,
+      needSync: GITLAB_SYNC_VERSION,
+      attachedTo: 'issue-h'
+    })
     await syncDoc(env, 'issue-h')
     const [projectId, input] = api.createIssue.mock.calls[0]
     expect(projectId).toBe(PROJECT_ID)
     expect(input).toMatchObject({ title: 'From Huly', assignee_ids: [7] })
     expect(input.description.trim()).toBe('Text')
-    expect(syncOf(env.memory, 'issue-h')).toMatchObject({ key: issueKey(HOST, PROJECT_ID, 5), repository: 'repo-1', gitlabIid: 5 })
+    expect(syncOf(env.memory, 'issue-h')).toMatchObject({
+      key: issueKey(HOST, PROJECT_ID, 5),
+      repository: 'repo-1',
+      gitlabIid: 5
+    })
     expect(issueOf(env.memory, 'issue-h')[gitlab.mixin.GitlabIssue]).toMatchObject({ gitlabIid: 5 })
     expect(syncOf(env.memory, 'msg-1').needSync).toBe('')
   })
 
   it('records the new GitLab issue before closing it, so a failed close neither duplicates nor loses it', async () => {
     const created = gitlabIssue(5, { title: 'Done in Huly' })
-    const api = fakeApi({ createIssue: async () => created, updateIssue: async () => { throw new GitlabApiError(502, 'bad gateway') } })
+    const api = fakeApi({
+      createIssue: async () => created,
+      updateIssue: async () => {
+        throw new GitlabApiError(502, 'bad gateway')
+      }
+    })
     const env = setup(api)
     hulyIssue(env.memory, 'issue-h', { title: 'Done in Huly', status: 'st-done' })
-    env.memory.docs.push({ _id: 'issue-h', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: '', objectClass: tracker.class.Issue, repository: null, gitlabIid: 0, needSync: '' })
+    env.memory.docs.push({
+      _id: 'issue-h',
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: '',
+      objectClass: tracker.class.Issue,
+      repository: null,
+      gitlabIid: 0,
+      needSync: ''
+    })
     await expect(syncDoc(env, 'issue-h')).rejects.toBeInstanceOf(GitlabApiError)
-    expect(syncOf(env.memory, 'issue-h')).toMatchObject({ key: issueKey(HOST, PROJECT_ID, 5), gitlabIid: 5, repository: 'repo-1' })
+    expect(syncOf(env.memory, 'issue-h')).toMatchObject({
+      key: issueKey(HOST, PROJECT_ID, 5),
+      gitlabIid: 5,
+      repository: 'repo-1'
+    })
     expect(syncOf(env.memory, 'issue-h').current.state).toBe('opened')
     // The retry pushes the close as an ordinary state change instead of creating another issue
     api.updateIssue.mockResolvedValue(gitlabIssue(5, { state: 'closed', updated_at: '2026-01-02T00:00:00.000Z' }))
@@ -229,16 +337,27 @@ describe('IssueSyncManager: Huly to GitLab', () => {
     let release: (() => void) | undefined
     const api = fakeApi({
       createIssue: async () => {
-        await new Promise<void>((resolve) => { release = resolve })
+        await new Promise<void>((resolve) => {
+          release = resolve
+        })
         return created
       },
       getIssue: async () => created
     })
     const env = setup(api)
     hulyIssue(env.memory, 'issue-h', { title: 'From Huly' })
-    env.memory.docs.push({ _id: 'issue-h', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: '', objectClass: tracker.class.Issue, repository: null, gitlabIid: 0, needSync: '' })
+    env.memory.docs.push({
+      _id: 'issue-h',
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: '',
+      objectClass: tracker.class.Issue,
+      repository: null,
+      gitlabIid: 0,
+      needSync: ''
+    })
     const syncing = syncDoc(env, 'issue-h')
-    for (let i = 0; i < 50 && release === undefined; i++) await new Promise((r) => setImmediate(r))
+    await waitUntil(() => release !== undefined)
     const event = env.issues.handleIssueEvent(ctx, env.repo, asApi(api), 5)
     release?.()
     await Promise.all([syncing, event])
@@ -250,7 +369,16 @@ describe('IssueSyncManager: Huly to GitLab', () => {
     const api = fakeApi()
     const env = setup(api, { secondRepo: true })
     hulyIssue(env.memory, 'issue-h')
-    env.memory.docs.push({ _id: 'issue-h', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: '', objectClass: tracker.class.Issue, repository: null, gitlabIid: 0, needSync: '' })
+    env.memory.docs.push({
+      _id: 'issue-h',
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: '',
+      objectClass: tracker.class.Issue,
+      repository: null,
+      gitlabIid: 0,
+      needSync: ''
+    })
     const update = await syncDoc(env, 'issue-h')
     expect(update).toEqual({ needSync: GITLAB_SYNC_VERSION })
     expect(api.createIssue).not.toHaveBeenCalled()
@@ -259,12 +387,25 @@ describe('IssueSyncManager: Huly to GitLab', () => {
   it('records a retryable error when no GitLab token is available', async () => {
     const env = setup(fakeApi(), { apiAvailable: false })
     hulyIssue(env.memory, 'issue-h')
-    env.memory.docs.push({ _id: 'issue-h', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: '', objectClass: tracker.class.Issue, repository: null, gitlabIid: 0, needSync: '' })
+    env.memory.docs.push({
+      _id: 'issue-h',
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: '',
+      objectClass: tracker.class.Issue,
+      repository: null,
+      gitlabIid: 0,
+      needSync: ''
+    })
     expect(await syncDoc(env, 'issue-h')).toMatchObject({ needSync: GITLAB_SYNC_VERSION, retryable: true })
   })
 
   it('keeps the Huly issue when GitLab answers 404 to a push', async () => {
-    const api = fakeApi({ updateIssue: async () => { throw new GitlabApiError(404, 'gone') } })
+    const api = fakeApi({
+      updateIssue: async () => {
+        throw new GitlabApiError(404, 'gone')
+      }
+    })
     const env = setup(api)
     const id = await imported(env)
     await env.memory.update(issueOf(env.memory, id), { title: 'Changed' })
@@ -282,7 +423,16 @@ describe('IssueSyncManager: Huly to GitLab', () => {
 
   function pickedIssue (env: Env, repository: string | null): void {
     hulyIssue(env.memory, 'issue-p', { [gitlab.mixin.GitlabIssue]: { repository, url: '', gitlabIid: 0 } })
-    env.memory.docs.push({ _id: 'issue-p', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: '', objectClass: tracker.class.Issue, repository: null, gitlabIid: 0, needSync: '' })
+    env.memory.docs.push({
+      _id: 'issue-p',
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: '',
+      objectClass: tracker.class.Issue,
+      repository: null,
+      gitlabIid: 0,
+      needSync: ''
+    })
   }
 
   it('creates the issue in the repository picked in a project with two repositories', async () => {
@@ -316,7 +466,10 @@ describe('IssueSyncManager: deletion', () => {
     const api = fakeApi({ updateIssue: async () => gitlabIssue(1, { state: 'closed' }) })
     const env = setup(api)
     const id = await imported(env)
-    env.memory.docs.splice(env.memory.docs.findIndex((d) => d._id === id && d._class === tracker.class.Issue), 1)
+    env.memory.docs.splice(
+      env.memory.docs.findIndex((d) => d._id === id && d._class === tracker.class.Issue),
+      1
+    )
     syncOf(env.memory, id).deleted = true
     if (!(await env.issues.handleDelete(ctx, syncOf(env.memory, id)))) {
       await env.memory.update(syncOf(env.memory, id), { needSync: GITLAB_SYNC_VERSION })
@@ -331,7 +484,17 @@ describe('IssueSyncManager: deletion', () => {
     const api = fakeApi({ updateIssue: async () => gitlabIssue(1, { state: 'closed' }) })
     const env = setup(api)
     const id = await imported(env)
-    env.memory.docs.push({ _id: 'msg-1', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: `${KEY_1}/notes/9`, parent: KEY_1, objectClass: 'chunter:class:ChatMessage', repository: 'repo-1', gitlabIid: 0, needSync: GITLAB_SYNC_VERSION })
+    env.memory.docs.push({
+      _id: 'msg-1',
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: `${KEY_1}/notes/9`,
+      parent: KEY_1,
+      objectClass: 'chunter:class:ChatMessage',
+      repository: 'repo-1',
+      gitlabIid: 0,
+      needSync: GITLAB_SYNC_VERSION
+    })
     // Kept as a tombstone: the close event must not import the issue again
     expect(await env.issues.handleDelete(ctx, syncOf(env.memory, id))).toBe(false)
     expect(api.updateIssue).toHaveBeenCalledWith(PROJECT_ID, 1, { state_event: 'close' })
@@ -350,7 +513,18 @@ describe('IssueSyncManager: deletion', () => {
     const api = fakeApi({ updateIssue: async () => gitlabIssue(1, { state: 'closed' }) })
     const env = setup(api)
     const id = await imported(env)
-    env.memory.docs.push({ _id: 'sub-1', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: issueKey(HOST, PROJECT_ID, 2), objectClass: tracker.class.Issue, repository: 'repo-1', gitlabIid: 2, needSync: '', deleted: true, attachedTo: id })
+    env.memory.docs.push({
+      _id: 'sub-1',
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: issueKey(HOST, PROJECT_ID, 2),
+      objectClass: tracker.class.Issue,
+      repository: 'repo-1',
+      gitlabIid: 2,
+      needSync: '',
+      deleted: true,
+      attachedTo: id
+    })
     await env.issues.handleDelete(ctx, syncOf(env.memory, id))
     expect(syncOf(env.memory, 'sub-1')).toBeDefined()
   })
@@ -358,7 +532,18 @@ describe('IssueSyncManager: deletion', () => {
 
 // A Huly file attached in the repository's project, as an image pasted into a description is
 function projectAttachment (env: Env, file: string): void {
-  env.memory.docs.push({ _id: `att-${file}`, _class: attachment.class.Attachment, space: 'prj-1', attachedTo: 'issue-other', attachedToClass: tracker.class.Issue, collection: 'attachments', file, name: file, type: 'image/png', size: 3 })
+  env.memory.docs.push({
+    _id: `att-${file}`,
+    _class: attachment.class.Attachment,
+    space: 'prj-1',
+    attachedTo: 'issue-other',
+    attachedToClass: tracker.class.Issue,
+    collection: 'attachments',
+    file,
+    name: file,
+    type: 'image/png',
+    size: 3
+  })
 }
 
 describe('IssueSyncManager: images', () => {
@@ -368,7 +553,8 @@ describe('IssueSyncManager: images', () => {
   it('sends a description again when GitLab still shows a Huly image link', async () => {
     const hulyLink = '![photo](http://front/files?file=huly-1)'
     const api = fakeApi({
-      updateIssue: async () => gitlabIssue(1, { description: `![photo](/uploads/${S}/photo.png)`, updated_at: '2026-01-03T00:00:00.000Z' }),
+      updateIssue: async () =>
+        gitlabIssue(1, { description: `![photo](/uploads/${S}/photo.png)`, updated_at: '2026-01-03T00:00:00.000Z' }),
       uploadFile: async () => ({ alt: 'photo', url: `/uploads/${S}/photo.png`, full_path: '', markdown: '' })
     })
     const images = fakeImages()
@@ -403,7 +589,10 @@ describe('IssueSyncManager: images', () => {
   })
 
   it('an imported image does not change the GitLab description on the next sync', async () => {
-    const api = fakeApi({ downloadUpload: async () => ({ data: Buffer.from('png'), contentType: 'image/png' }), updateIssue: async () => gitlabIssue(1) })
+    const api = fakeApi({
+      downloadUpload: async () => ({ data: Buffer.from('png'), contentType: 'image/png' }),
+      updateIssue: async () => gitlabIssue(1)
+    })
     const env = setup(api, { images: fakeImages() })
     setImageMode(env.repo, 'copy')
     const id = await imported(env, { description: `See ![shot](${PATH})` })
@@ -427,21 +616,38 @@ describe('IssueSyncManager: images', () => {
     // The image is a file of the project
     projectAttachment(env, 'huly-1')
     hulyIssue(env.memory, 'issue-h', { title: 'With image' })
-    env.provider.collab.store.set('issue-h:description', env.provider.markdown.toMarkup('![photo](http://front/files?file=huly-1)'))
-    env.memory.docs.push({ _id: 'issue-h', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: '', objectClass: tracker.class.Issue, repository: null, gitlabIid: 0, needSync: '' })
+    env.provider.collab.store.set(
+      'issue-h:description',
+      env.provider.markdown.toMarkup('![photo](http://front/files?file=huly-1)')
+    )
+    env.memory.docs.push({
+      _id: 'issue-h',
+      _class: gitlab.class.DocSyncInfo,
+      space: 'prj-1',
+      key: '',
+      objectClass: tracker.class.Issue,
+      repository: null,
+      gitlabIid: 0,
+      needSync: ''
+    })
     await syncDoc(env, 'issue-h')
     expect(api.createIssue.mock.calls[0][1].description.trim()).toBe(`![photo](/uploads/${S}/photo.png)`)
   })
 
   describe('image mode', () => {
-    const linked = (name = 'shot.png'): string => `[shot](https://gitlab.example.com/-/project/42/uploads/${S}/${name}#gitlab-image)`
+    const linked = (name = 'shot.png'): string =>
+      `[shot](https://gitlab.example.com/-/project/42/uploads/${S}/${name}#gitlab-image)`
 
     it('links a GitLab image by default, and an unrelated change sends no description', async () => {
       const api = fakeApi({ updateIssue: async () => gitlabIssue(1) })
       const env = setup(api, { images: fakeImages() })
       const id = await imported(env, { description: `See ![shot](${PATH}){width=300}` })
       expect(api.downloadUpload).not.toHaveBeenCalled()
-      expect(hulyDescription(env, id)).toBe(env.provider.markdown.toMarkup(`See [shot](https://gitlab.example.com/-/project/42${PATH}#gitlab-image=width%3D300)`))
+      expect(hulyDescription(env, id)).toBe(
+        env.provider.markdown.toMarkup(
+          `See [shot](https://gitlab.example.com/-/project/42${PATH}#gitlab-image=width%3D300)`
+        )
+      )
       issueOf(env.memory, id).title = 'Renamed'
       syncOf(env.memory, id).needSync = ''
       await syncDoc(env, id)
@@ -449,11 +655,16 @@ describe('IssueSyncManager: images', () => {
     })
 
     it('re-links a copied image after switching to link, writing nothing to GitLab', async () => {
-      const api = fakeApi({ downloadUpload: async () => ({ data: Buffer.from('png'), contentType: 'image/png' }), updateIssue: async () => gitlabIssue(1) })
+      const api = fakeApi({
+        downloadUpload: async () => ({ data: Buffer.from('png'), contentType: 'image/png' }),
+        updateIssue: async () => gitlabIssue(1)
+      })
       const env = setup(api, { images: fakeImages() })
       setImageMode(env.repo, 'copy')
       const id = await imported(env, { description: `See ![shot](${PATH})` })
-      expect(hulyDescription(env, id)).toBe(env.provider.markdown.toMarkup('See ![shot](http://front/files?file=blob-1)'))
+      expect(hulyDescription(env, id)).toBe(
+        env.provider.markdown.toMarkup('See ![shot](http://front/files?file=blob-1)')
+      )
       setImageMode(env.repo, 'link')
       syncOf(env.memory, id).needSync = ''
       await syncDoc(env, id)
@@ -462,13 +673,18 @@ describe('IssueSyncManager: images', () => {
     })
 
     it('copies after switching back to copy', async () => {
-      const api = fakeApi({ downloadUpload: async () => ({ data: Buffer.from('png'), contentType: 'image/png' }), updateIssue: async () => gitlabIssue(1) })
+      const api = fakeApi({
+        downloadUpload: async () => ({ data: Buffer.from('png'), contentType: 'image/png' }),
+        updateIssue: async () => gitlabIssue(1)
+      })
       const env = setup(api, { images: fakeImages() })
       const id = await imported(env, { description: `See ![shot](${PATH})` })
       setImageMode(env.repo, 'copy')
       syncOf(env.memory, id).needSync = ''
       await syncDoc(env, id)
-      expect(hulyDescription(env, id)).toBe(env.provider.markdown.toMarkup('See ![shot](http://front/files?file=blob-1)'))
+      expect(hulyDescription(env, id)).toBe(
+        env.provider.markdown.toMarkup('See ![shot](http://front/files?file=blob-1)')
+      )
       expect(api.updateIssue).not.toHaveBeenCalled()
     })
 
@@ -484,15 +700,29 @@ describe('IssueSyncManager: images', () => {
       const env = setup(api, { images })
       projectAttachment(env, 'huly-1')
       hulyIssue(env.memory, 'issue-h', { title: 'With image' })
-      env.provider.collab.store.set('issue-h:description', env.provider.markdown.toMarkup('![photo](http://front/files?file=huly-1)'))
-      env.memory.docs.push({ _id: 'issue-h', _class: gitlab.class.DocSyncInfo, space: 'prj-1', key: '', objectClass: tracker.class.Issue, repository: null, gitlabIid: 0, needSync: '' })
+      env.provider.collab.store.set(
+        'issue-h:description',
+        env.provider.markdown.toMarkup('![photo](http://front/files?file=huly-1)')
+      )
+      env.memory.docs.push({
+        _id: 'issue-h',
+        _class: gitlab.class.DocSyncInfo,
+        space: 'prj-1',
+        key: '',
+        objectClass: tracker.class.Issue,
+        repository: null,
+        gitlabIid: 0,
+        needSync: ''
+      })
       await syncDoc(env, 'issue-h')
       syncOf(env.memory, 'issue-h').needSync = ''
       // The merge path converts the GitLab description to Huly markup; the spy proves the second sync ran it
       const toMarkup = jest.spyOn(env.provider.content, 'toMarkup')
       await syncDoc(env, 'issue-h')
       expect(toMarkup).toHaveBeenCalledWith(env.repo, created.description)
-      expect(hulyDescription(env, 'issue-h')).toBe(env.provider.markdown.toMarkup('![photo](http://front/files?file=huly-1)'))
+      expect(hulyDescription(env, 'issue-h')).toBe(
+        env.provider.markdown.toMarkup('![photo](http://front/files?file=huly-1)')
+      )
       expect(api.downloadUpload).not.toHaveBeenCalled()
     })
   })

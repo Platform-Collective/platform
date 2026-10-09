@@ -43,7 +43,9 @@ export async function createWorkspaceWorker (
     let patches: PatchStore | undefined
     let images: ImageStore | undefined
     if (deps.storage !== undefined) {
-      const info = await getAccountClient(generateToken(systemAccountUuid, workspace, { service: 'gitlab' })).getWorkspaceInfo()
+      const info = await getAccountClient(
+        generateToken(systemAccountUuid, workspace, { service: 'gitlab' })
+      ).getWorkspaceInfo()
       const ids = { uuid: info.uuid, url: info.url, dataId: info.dataId }
       patches = createPatchStore(deps.storage, ids)
       images = createImageStore(deps.storage, ids)

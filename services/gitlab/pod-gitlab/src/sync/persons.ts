@@ -2,7 +2,14 @@
 
 import type { AccountClient } from '@hcengineering/account-client'
 import contact, { AvatarType, type Person, type SocialIdentityRef } from '@hcengineering/contact'
-import { buildSocialIdString, type PersonId, type PersonUuid, type Ref, SocialIdType, type TxOperations } from '@hcengineering/core'
+import {
+  buildSocialIdString,
+  type PersonId,
+  type PersonUuid,
+  type Ref,
+  SocialIdType,
+  type TxOperations
+} from '@hcengineering/core'
 import type { GitlabUserRef } from '../gitlab/types'
 import { gitlabSocialValue, hostKey, parseGitlabSocialValue } from './keys'
 
@@ -16,7 +23,10 @@ export interface PersonMapping {
 
 /** Huly person name ("Last,First") from a GitLab display name. */
 export function personName (name: string): string {
-  const parts = name.trim().split(/\s+/).filter((it) => it !== '')
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter((it) => it !== '')
   if (parts.length <= 1) return parts[0] ?? ''
   return `${parts[parts.length - 1]},${parts.slice(0, -1).join(' ')}`
 }
@@ -55,7 +65,10 @@ export class GitlabPersonMapper implements PersonMapping {
   async gitlabUserIdFor (person: Ref<Person> | null, host: string): Promise<number | undefined> {
     if (person === null) return undefined
     const key = hostKey(host)
-    const identities = await this.client.findAll(contact.class.SocialIdentity, { attachedTo: person, type: SocialIdType.GITLAB })
+    const identities = await this.client.findAll(contact.class.SocialIdentity, {
+      attachedTo: person,
+      type: SocialIdType.GITLAB
+    })
     for (const identity of identities) {
       const parsed = parseGitlabSocialValue(identity.value)
       if (parsed?.host === key) return parsed.userId
@@ -75,7 +88,12 @@ export class GitlabPersonMapper implements PersonMapping {
       person,
       contact.class.Person,
       'socialIds',
-      { type: SocialIdType.GITLAB, value, key: buildSocialIdString({ type: SocialIdType.GITLAB, value }), displayValue: user.username },
+      {
+        type: SocialIdType.GITLAB,
+        value,
+        key: buildSocialIdString({ type: SocialIdType.GITLAB, value }),
+        displayValue: user.username
+      },
       socialId as SocialIdentityRef
     )
     return socialId

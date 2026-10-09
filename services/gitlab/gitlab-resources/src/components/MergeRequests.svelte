@@ -39,11 +39,12 @@
 
   $: spaceQuery =
     currentSpace !== undefined ? { space: currentSpace } : { space: { $nin: archived as Array<Ref<GitlabProject>> } }
+  let queries: Record<string, DocumentQuery<GitlabMergeRequest>>
   $: queries = {
     all: { ...spaceQuery },
     active: { ...spaceQuery, status: { $in: openStatuses } },
     closed: { ...spaceQuery, status: { $in: closedStatuses } }
-  } as Record<string, DocumentQuery<GitlabMergeRequest>>
+  }
 
   let mode: string | undefined
   $: mode = $resolvedLocationStore.query?.mode ?? undefined

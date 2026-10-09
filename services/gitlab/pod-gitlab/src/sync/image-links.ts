@@ -65,7 +65,9 @@ export function uploadPathOf (url: string, target: UploadTarget): string | undef
   else if (url.startsWith(`${target.webUrl}/uploads/`)) path = url.slice(target.webUrl.length)
   else if (url.startsWith(`${prefix}/uploads/`)) path = url.slice(prefix.length)
   else if (url.startsWith(`${target.host}${prefix}/uploads/`)) path = url.slice(target.host.length + prefix.length)
-  return path !== undefined && UPLOAD_PATH.test(path) && !isDotSegment(path.slice(path.lastIndexOf('/') + 1)) ? path : undefined
+  return path !== undefined && UPLOAD_PATH.test(path) && !isDotSegment(path.slice(path.lastIndexOf('/') + 1))
+    ? path
+    : undefined
 }
 
 // '.' or '..', as written or percent-encoded: such a name would address another GitLab endpoint
@@ -111,14 +113,25 @@ function sizeOf (attributes: string): { width?: string, height?: string } {
 
 // ' width=W height=H' style attribute list without the braces, empty when there is no size
 function sizeAttributes (width: string | undefined, height: string | undefined): string {
-  return [width !== undefined ? `width=${width}` : '', height !== undefined ? `height=${height}` : ''].filter((it) => it !== '').join(' ')
+  return [width !== undefined ? `width=${width}` : '', height !== undefined ? `height=${height}` : '']
+    .filter((it) => it !== '')
+    .join(' ')
 }
 
 // A GitLab image as a link marked by its fragment: the size travels in the fragment, so the image comes
 // back to GitLab byte for byte. Undefined when a link cannot hold the image: a title, no label, or inside another link.
-function imageLink (label: string, url: string, title: string | undefined, attributes: string | undefined, insideLink: boolean): string | undefined {
+function imageLink (
+  label: string,
+  url: string,
+  title: string | undefined,
+  attributes: string | undefined,
+  insideLink: boolean
+): string | undefined {
   if (title !== undefined || label === '' || insideLink) return undefined
-  const fragment = attributes === undefined ? GITLAB_IMAGE_FRAGMENT : `${GITLAB_IMAGE_FRAGMENT}=${encodeURIComponent(attributes.slice(1, -1))}`
+  const fragment =
+    attributes === undefined
+      ? GITLAB_IMAGE_FRAGMENT
+      : `${GITLAB_IMAGE_FRAGMENT}=${encodeURIComponent(attributes.slice(1, -1))}`
   return `[${label}](${linkTarget(`${url}#${fragment}`)})`
 }
 
@@ -131,8 +144,9 @@ function imageOfLink (label: string, raw: string, target: UploadTarget): string 
   if (relative === undefined || uploadPathOf(relative, target) === undefined) return undefined
   let encoded: string | undefined = hash < 0 ? undefined : url.slice(hash + 1)
   if (encoded === GITLAB_IMAGE_FRAGMENT) encoded = undefined
-  else if (encoded?.startsWith(`${GITLAB_IMAGE_FRAGMENT}=`) === true) encoded = encoded.slice(GITLAB_IMAGE_FRAGMENT.length + 1)
-  else return undefined
+  else if (encoded?.startsWith(`${GITLAB_IMAGE_FRAGMENT}=`) === true) {
+    encoded = encoded.slice(GITLAB_IMAGE_FRAGMENT.length + 1)
+  } else return undefined
   let attributes = ''
   if (encoded !== undefined) {
     try {
@@ -169,23 +183,44 @@ export function inboundImagePaths (markdown: string, target: UploadTarget): stri
 }
 
 /** Copied images point at their Huly file; other images of this project become links marked as GitLab images, other links absolute. */
-export function rewriteInbound (markdown: string, target: UploadTarget, files: ReadonlyMap<string, string>, imageUrl: string): string {
+export function rewriteInbound (
+  markdown: string,
+  target: UploadTarget,
+  files: ReadonlyMap<string, string>,
+  imageUrl: string
+): string {
   return outsideCode(markdown, (text) =>
-    text.replace(LINK, (whole: string, bang: string, label: string, raw: string, title: string | undefined, attributes: string | undefined, offset: number, all: string) => {
-      const url = unwrap(raw)
-      const path = uploadPathOf(url, target)
-      if (path === undefined) return whole
-      const file = bang === '!' ? files.get(path) : undefined
-      if (file !== undefined) {
-        const { width, height } = sizeOf(attributes ?? '')
-        const params = (width !== undefined ? `&width=${width}` : '') + (height !== undefined ? `&height=${height}` : '')
-        return `![${label}](${imageUrl}${file}${params}${title ?? ''})`
+    text.replace(
+      LINK,
+      (
+        whole: string,
+        bang: string,
+        label: string,
+        raw: string,
+        title: string | undefined,
+        attributes: string | undefined,
+        offset: number,
+        all: string
+      ) => {
+        const url = unwrap(raw)
+        const path = uploadPathOf(url, target)
+        if (path === undefined) return whole
+        const file = bang === '!' ? files.get(path) : undefined
+        if (file !== undefined) {
+          const { width, height } = sizeOf(attributes ?? '')
+          const params =
+            (width !== undefined ? `&width=${width}` : '') + (height !== undefined ? `&height=${height}` : '')
+          return `![${label}](${imageUrl}${file}${params}${title ?? ''})`
+        }
+        const absolute = absoluteUrl(url, target)
+        // A link right after '[' or '!' would be read as part of a link or as an image
+        const link =
+          bang === '!'
+            ? imageLink(label, absolute, title, attributes, all[offset - 1] === '[' || all[offset - 1] === '!')
+            : undefined
+        return link ?? `${bang}[${label}](${linkTarget(absolute)}${title ?? ''})${attributes ?? ''}`
       }
-      const absolute = absoluteUrl(url, target)
-      // A link right after '[' or '!' would be read as part of a link or as an image
-      const link = bang === '!' ? imageLink(label, absolute, title, attributes, all[offset - 1] === '[' || all[offset - 1] === '!') : undefined
-      return link ?? `${bang}[${label}](${linkTarget(absolute)}${title ?? ''})${attributes ?? ''}`
-    })
+    )
   )
 }
 
@@ -195,7 +230,9 @@ export function outboundImages (markdown: string, imageUrl: string): HulyImage[]
   outsideCode(markdown, (text) => {
     for (const match of text.matchAll(LINK)) {
       const url = unwrap(match[3])
-      if (match[1] === '!' && url.startsWith(imageUrl)) images.push({ file: hulyImageOf(url, imageUrl).file, alt: match[2] })
+      if (match[1] === '!' && url.startsWith(imageUrl)) {
+        images.push({ file: hulyImageOf(url, imageUrl).file, alt: match[2] })
+      }
     }
     return text
   })
@@ -203,24 +240,31 @@ export function outboundImages (markdown: string, imageUrl: string): HulyImage[]
 }
 
 /** Huly images with a GitLab copy point at the upload; marked links become images again, absolute upload links relative. */
-export function rewriteOutbound (markdown: string, target: UploadTarget, paths: ReadonlyMap<string, string>, imageUrl: string): string {
+export function rewriteOutbound (
+  markdown: string,
+  target: UploadTarget,
+  paths: ReadonlyMap<string, string>,
+  imageUrl: string
+): string {
   return outsideCode(markdown, (text) =>
     text
       .replace(LINK, (whole: string, bang: string, label: string, raw: string, title?: string, attributes?: string) => {
-      const url = unwrap(raw)
-      if (bang === '!' && url.startsWith(imageUrl)) {
-        const { file, width, height } = hulyImageOf(url, imageUrl)
-        const path = paths.get(file)
-        if (path === undefined) return whole
-        const size = sizeAttributes(width, height)
-        return `![${label}](${linkTarget(path)}${title ?? ''})${size !== '' ? `{${size}}` : ''}`
-      }
-      if (bang === '' && title === undefined && attributes === undefined) {
-        const image = imageOfLink(label, raw, target)
-        if (image !== undefined) return image
-      }
-      const relative = relativeUrl(url, target)
-      return relative === undefined ? whole : `${bang}[${label}](${linkTarget(relative)}${title ?? ''})${attributes ?? ''}`
+        const url = unwrap(raw)
+        if (bang === '!' && url.startsWith(imageUrl)) {
+          const { file, width, height } = hulyImageOf(url, imageUrl)
+          const path = paths.get(file)
+          if (path === undefined) return whole
+          const size = sizeAttributes(width, height)
+          return `![${label}](${linkTarget(path)}${title ?? ''})${size !== '' ? `{${size}}` : ''}`
+        }
+        if (bang === '' && title === undefined && attributes === undefined) {
+          const image = imageOfLink(label, raw, target)
+          if (image !== undefined) return image
+        }
+        const relative = relativeUrl(url, target)
+        return relative === undefined
+          ? whole
+          : `${bang}[${label}](${linkTarget(relative)}${title ?? ''})${attributes ?? ''}`
       })
       .replace(IMG, (whole: string, width?: string, height?: string, src?: string, alt?: string) => {
         const relative = relativeUrl(src ?? '', target)
@@ -238,10 +282,7 @@ export function hasHulyImages (markdown: string | null | undefined, imageUrl: st
 
 /** A file name for an upload: the image's alt text, with an extension from its type when it has none. */
 export function uploadName (alt: string | undefined, contentType: string): string {
-  const base = (alt ?? '')
-    .replace(/\\(.)/g, '$1')
-    .replace(/[/\\]/g, '_')
-    .trim()
+  const base = (alt ?? '').replace(/\\(.)/g, '$1').replace(/[/\\]/g, '_').trim()
   const extension = EXTENSIONS[contentType]
   if (base === '') return extension !== undefined ? `image.${extension}` : 'image'
   return extension === undefined || /\.[A-Za-z0-9]{1,5}$/.test(base) ? base : `${base}.${extension}`

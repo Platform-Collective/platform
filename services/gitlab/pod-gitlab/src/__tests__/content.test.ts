@@ -24,7 +24,18 @@ interface Env {
 
 // A Huly file attached to a document of the repository's project, as a pasted image is
 function projectAttachment (memory: MemoryClient, file: string, space = 'prj-1'): void {
-  memory.docs.push({ _id: `att-${file}`, _class: attachment.class.Attachment, space, attachedTo: 'issue-1', attachedToClass: 'tracker:class:Issue', collection: 'attachments', file, name: file, type: 'image/png', size: 1 })
+  memory.docs.push({
+    _id: `att-${file}`,
+    _class: attachment.class.Attachment,
+    space,
+    attachedTo: 'issue-1',
+    attachedToClass: 'tracker:class:Issue',
+    collection: 'attachments',
+    file,
+    name: file,
+    type: 'image/png',
+    size: 1
+  })
 }
 
 function setup (options: { storage?: boolean, apiAvailable?: boolean } = {}): Env {
@@ -36,7 +47,12 @@ function setup (options: { storage?: boolean, apiAvailable?: boolean } = {}): En
   projectAttachment(memory, 'huly-1')
   const api = fakeApi({
     downloadUpload: async () => ({ data: Buffer.from('png-bytes'), contentType: 'image/png' }),
-    uploadFile: async (_id: number, name: string) => ({ alt: name, url: `/uploads/${S}/${name}`, full_path: '', markdown: '' })
+    uploadFile: async (_id: number, name: string) => ({
+      alt: name,
+      url: `/uploads/${S}/${name}`,
+      full_path: '',
+      markdown: ''
+    })
   })
   const images = fakeImages()
   const content = new ContentConverter({
@@ -95,7 +111,9 @@ describe('ContentConverter: Huly to GitLab', () => {
     expect(await env.content.toMarkdown(env.repo, markup)).toBe(`![photo](/uploads/${S}/photo.jpg)`)
     expect(env.api.uploadFile).toHaveBeenCalledTimes(1)
     expect(env.api.uploadFile).toHaveBeenCalledWith(42, 'photo.jpg', Buffer.from('jpg-bytes'), 'image/jpeg')
-    expect(uploads(env.memory)).toEqual([expect.objectContaining({ repository: 'repo-1', path: `/uploads/${S}/photo.jpg`, file: 'huly-1' })])
+    expect(uploads(env.memory)).toEqual([
+      expect.objectContaining({ repository: 'repo-1', path: `/uploads/${S}/photo.jpg`, file: 'huly-1' })
+    ])
   })
 
   it('reuses the GitLab upload an image was copied from', async () => {
@@ -109,7 +127,9 @@ describe('ContentConverter: Huly to GitLab', () => {
     const env = setup()
     env.images.blobs.set('huly-1', { data: Buffer.from('x'), contentType: 'image/png' })
     env.api.uploadFile.mockRejectedValue(new GitlabReadonlyError('POST', '/projects/42/uploads'))
-    expect(await env.content.toMarkdown(env.repo, markdown.toMarkup(`![a](${IMAGE_URL}huly-1)`))).toBe(`![a](${IMAGE_URL}huly-1)`)
+    expect(await env.content.toMarkdown(env.repo, markdown.toMarkup(`![a](${IMAGE_URL}huly-1)`))).toBe(
+      `![a](${IMAGE_URL}huly-1)`
+    )
   })
 
   it('does not copy a file larger than the limit', async () => {
@@ -131,7 +151,9 @@ describe('ContentConverter: Huly to GitLab', () => {
     const env = setup()
     env.images.blobs.set('huly-1', { data: Buffer.from('x'), contentType: 'image/png' })
     jest.spyOn(env.images, 'read').mockRejectedValue(new Error('gone'))
-    expect(await env.content.toMarkdown(env.repo, markdown.toMarkup(`![a](${IMAGE_URL}huly-1)`))).toBe(`![a](${IMAGE_URL}huly-1)`)
+    expect(await env.content.toMarkdown(env.repo, markdown.toMarkup(`![a](${IMAGE_URL}huly-1)`))).toBe(
+      `![a](${IMAGE_URL}huly-1)`
+    )
     await expect(env.content.uploadFile(env.repo, 'huly-1', 'a.png')).rejects.toThrow('gone')
   })
 
@@ -139,7 +161,9 @@ describe('ContentConverter: Huly to GitLab', () => {
     const env = setup()
     env.images.blobs.set('huly-1', { data: Buffer.from('x'), contentType: 'image/png' })
     const markup = markdown.toMarkup(`![a](${IMAGE_URL}huly-1) and ![b](${IMAGE_URL}huly-1)`)
-    expect(await env.content.toMarkdown(env.repo, markup)).toBe(`![a](/uploads/${S}/a.png) and ![b](/uploads/${S}/a.png)`)
+    expect(await env.content.toMarkdown(env.repo, markup)).toBe(
+      `![a](/uploads/${S}/a.png) and ![b](/uploads/${S}/a.png)`
+    )
     expect(env.api.uploadFile).toHaveBeenCalledTimes(1)
   })
 
@@ -168,7 +192,17 @@ describe('ContentConverter: Huly to GitLab', () => {
   it('does not upload a stored merge request diff', async () => {
     const env = setup()
     env.images.blobs.set('patch-blob', { data: Buffer.from('diff'), contentType: 'text/x-patch' })
-    env.memory.docs.push({ _id: 'patch-1', _class: gitlab.class.GitlabPatch, space: 'prj-1', attachedTo: 'mr-1', attachedToClass: gitlab.class.GitlabMergeRequest, collection: 'patch', file: 'patch-blob', size: 4, lastModified: 0 })
+    env.memory.docs.push({
+      _id: 'patch-1',
+      _class: gitlab.class.GitlabPatch,
+      space: 'prj-1',
+      attachedTo: 'mr-1',
+      attachedToClass: gitlab.class.GitlabMergeRequest,
+      collection: 'patch',
+      file: 'patch-blob',
+      size: 4,
+      lastModified: 0
+    })
     expect(await env.content.uploadFile(env.repo, 'patch-blob', 'x')).toBeUndefined()
     expect(env.api.uploadFile).not.toHaveBeenCalled()
   })
@@ -213,7 +247,10 @@ describe('ContentConverter: image mode', () => {
     await env.content.toMarkup(env.repo, `![shot](${PATH})`)
     env.images.blobs.set('huly-1', { data: Buffer.from('jpg'), contentType: 'image/jpeg' })
     await env.content.toMarkdown(env.repo, markdown.toMarkup(`![photo](${IMAGE_URL}huly-1)`))
-    expect(uploads(env.memory).map((it) => [it.file, it.origin])).toEqual([['blob-1', 'gitlab'], ['huly-1', 'huly']])
+    expect(uploads(env.memory).map((it) => [it.file, it.origin])).toEqual([
+      ['blob-1', 'gitlab'],
+      ['huly-1', 'huly']
+    ])
   })
 
   it('stops using downloaded copies after a switch to link mode', async () => {

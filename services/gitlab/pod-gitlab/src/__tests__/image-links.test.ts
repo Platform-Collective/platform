@@ -11,7 +11,11 @@ import {
   type UploadTarget
 } from '../sync/image-links'
 
-const target: UploadTarget = { host: 'https://gitlab.example.com', webUrl: 'https://gitlab.example.com/group/proj', projectId: 42 }
+const target: UploadTarget = {
+  host: 'https://gitlab.example.com',
+  webUrl: 'https://gitlab.example.com/group/proj',
+  projectId: 42
+}
 const S = '0123456789abcdef0123456789abcdef'
 const PATH = `/uploads/${S}/shot.png`
 const IMAGE_URL = 'http://front/files?file='
@@ -49,7 +53,9 @@ describe('inbound', () => {
   it('links uploads by project id, and returns them to the relative form', () => {
     const gitlab = `[file](/uploads/${S}/report.pdf) ![a](${PATH})`
     const huly = rewriteInbound(gitlab, target, new Map(), IMAGE_URL)
-    expect(huly).toBe(`[file](https://gitlab.example.com/-/project/42/uploads/${S}/report.pdf) [a](https://gitlab.example.com/-/project/42${PATH}#gitlab-image)`)
+    expect(huly).toBe(
+      `[file](https://gitlab.example.com/-/project/42/uploads/${S}/report.pdf) [a](https://gitlab.example.com/-/project/42${PATH}#gitlab-image)`
+    )
     expect(rewriteOutbound(huly, target, new Map(), IMAGE_URL)).toBe(gitlab)
   })
 
@@ -94,13 +100,19 @@ describe('inbound', () => {
 
   it('keeps the image form when a link cannot hold it: a title, no label, or inside another link', () => {
     const titled = `![a](${PATH} "t"){width=300}`
-    expect(rewriteInbound(titled, target, new Map(), IMAGE_URL)).toBe(`![a](${target.host}/-/project/42${PATH} "t"){width=300}`)
+    expect(rewriteInbound(titled, target, new Map(), IMAGE_URL)).toBe(
+      `![a](${target.host}/-/project/42${PATH} "t"){width=300}`
+    )
     const unlabelled = `![](${PATH})`
     expect(rewriteInbound(unlabelled, target, new Map(), IMAGE_URL)).toBe(`![](${target.host}/-/project/42${PATH})`)
     const exclaimed = `Wow!![a](${PATH}){width=3}`
-    expect(rewriteInbound(exclaimed, target, new Map(), IMAGE_URL)).toBe(`Wow!![a](${target.host}/-/project/42${PATH}){width=3}`)
+    expect(rewriteInbound(exclaimed, target, new Map(), IMAGE_URL)).toBe(
+      `Wow!![a](${target.host}/-/project/42${PATH}){width=3}`
+    )
     const wrapped = `[![a](${PATH})](https://example.com)`
-    expect(rewriteInbound(wrapped, target, new Map(), IMAGE_URL)).toBe(`[![a](${target.host}/-/project/42${PATH})](https://example.com)`)
+    expect(rewriteInbound(wrapped, target, new Map(), IMAGE_URL)).toBe(
+      `[![a](${target.host}/-/project/42${PATH})](https://example.com)`
+    )
   })
 })
 
@@ -114,7 +126,9 @@ describe('angle-bracket URLs', () => {
   })
 
   it('keeps the brackets in the inbound fallback', () => {
-    expect(rewriteInbound(input, target, new Map(), IMAGE_URL)).toBe(`[a](<${target.host}/-/project/42${SPACED}#gitlab-image>)`)
+    expect(rewriteInbound(input, target, new Map(), IMAGE_URL)).toBe(
+      `[a](<${target.host}/-/project/42${SPACED}#gitlab-image>)`
+    )
   })
 
   it('keeps the brackets from absolute to relative', () => {
@@ -124,11 +138,15 @@ describe('angle-bracket URLs', () => {
 
 describe('outbound', () => {
   it('reads the file id of a token URL', () => {
-    expect(outboundImages(`![a](${IMAGE_URL}blob-1?file=blob-1&width=300&token=t)`, IMAGE_URL)).toEqual([{ file: 'blob-1', alt: 'a' }])
+    expect(outboundImages(`![a](${IMAGE_URL}blob-1?file=blob-1&width=300&token=t)`, IMAGE_URL)).toEqual([
+      { file: 'blob-1', alt: 'a' }
+    ])
   })
 
   it('lists Huly images with their alt text', () => {
-    expect(outboundImages(`![shot](${IMAGE_URL}blob-1&width=300) ![x](https://example.com/x.png)`, IMAGE_URL)).toEqual([{ file: 'blob-1', alt: 'shot' }])
+    expect(outboundImages(`![shot](${IMAGE_URL}blob-1&width=300) ![x](https://example.com/x.png)`, IMAGE_URL)).toEqual([
+      { file: 'blob-1', alt: 'shot' }
+    ])
   })
 
   it('points Huly images with a GitLab copy at the upload, and absolute upload links back to relative ones', () => {
@@ -174,7 +192,9 @@ describe('outbound', () => {
   })
 
   it('turns a sized img tag back into a GitLab image', () => {
-    expect(rewriteOutbound(`<img width="300" src="${target.webUrl}${PATH}" alt="a">`, target, new Map(), IMAGE_URL)).toBe(`![a](${PATH}){width=300}`)
+    expect(
+      rewriteOutbound(`<img width="300" src="${target.webUrl}${PATH}" alt="a">`, target, new Map(), IMAGE_URL)
+    ).toBe(`![a](${PATH}){width=300}`)
   })
 
   it('leaves links with another fragment alone', () => {

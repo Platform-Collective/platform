@@ -84,7 +84,9 @@ export function loadConfig (env: Record<string, string | undefined>): Config {
     FrontURL: frontUrl,
     Port: port,
     RedirectURI:
-      env.GITLAB_REDIRECT_URI !== undefined && env.GITLAB_REDIRECT_URI !== '' ? env.GITLAB_REDIRECT_URI : `${frontUrl}/gitlab`,
+      env.GITLAB_REDIRECT_URI !== undefined && env.GITLAB_REDIRECT_URI !== ''
+        ? env.GITLAB_REDIRECT_URI
+        : `${frontUrl}/gitlab`,
     WebhookBaseURL: trimSlash(env.WEBHOOK_BASE_URL as string),
     WebhookSecret: env.WEBHOOK_SECRET as string,
     CollaboratorURL: env.COLLABORATOR_URL as string,

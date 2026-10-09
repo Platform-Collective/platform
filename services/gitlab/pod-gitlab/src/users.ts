@@ -52,7 +52,11 @@ export class GitlabUserManager {
 
   async getByRef (workspace: WorkspaceUuid, socialId: PersonId): Promise<GitlabUserRecord | undefined> {
     assertWorkspace(workspace)
-    const secrets = await this.store.listIntegrationsSecrets({ kind: gitlabUserIntegrationKind, workspaceUuid: workspace, socialId })
+    const secrets = await this.store.listIntegrationsSecrets({
+      kind: gitlabUserIntegrationKind,
+      workspaceUuid: workspace,
+      socialId
+    })
     if (secrets.length === 0) {
       return undefined
     }
@@ -62,7 +66,11 @@ export class GitlabUserManager {
   async save (record: GitlabUserRecord): Promise<void> {
     assertWorkspace(record.workspace)
     const key = String(record.userId)
-    const integrationKey = { kind: gitlabUserIntegrationKind, workspaceUuid: record.workspace, socialId: record.account }
+    const integrationKey = {
+      kind: gitlabUserIntegrationKind,
+      workspaceUuid: record.workspace,
+      socialId: record.account
+    }
     const data = { login: record.login, userId: record.userId }
     const integration = await this.store.getIntegration(integrationKey)
     if (integration == null) {
@@ -134,7 +142,11 @@ export class GitlabUserManager {
     try {
       const tokens = await refreshTokens(oauth, record.refreshToken, this.fetchFn)
       // GitLab may omit refresh_token on refresh; keep the stored one rather than losing it.
-      const updated: GitlabUserRecord = { ...record, ...tokens, refreshToken: tokens.refreshToken ?? record.refreshToken }
+      const updated: GitlabUserRecord = {
+        ...record,
+        ...tokens,
+        refreshToken: tokens.refreshToken ?? record.refreshToken
+      }
       await this.save(updated)
       return updated
     } catch (err: unknown) {

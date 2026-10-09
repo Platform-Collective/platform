@@ -2,7 +2,15 @@
 
 import attachment from '@hcengineering/attachment'
 import chunter, { type ChatMessage } from '@hcengineering/chunter'
-import { SortingOrder, type Doc, type DocumentUpdate, type Markup, type MeasureContext, type PersonId, type Ref } from '@hcengineering/core'
+import {
+  SortingOrder,
+  type Doc,
+  type DocumentUpdate,
+  type Markup,
+  type MeasureContext,
+  type PersonId,
+  type Ref
+} from '@hcengineering/core'
 import gitlab, { type DocSyncInfo } from '@hcengineering/gitlab'
 import { areEqualMarkups } from '@hcengineering/text'
 import type { GitlabApi } from '../gitlab/api'
@@ -40,7 +48,9 @@ function noteOps (api: GitlabApi, noteable: GitlabNoteable): NoteOps {
       get: async (projectId, iid, noteId) => await api.getMergeRequestNote(projectId, iid, noteId),
       create: async (projectId, iid, body) => await api.createMergeRequestNote(projectId, iid, body),
       update: async (projectId, iid, noteId, body) => await api.updateMergeRequestNote(projectId, iid, noteId, body),
-      remove: async (projectId, iid, noteId) => { await api.deleteMergeRequestNote(projectId, iid, noteId) }
+      remove: async (projectId, iid, noteId) => {
+        await api.deleteMergeRequestNote(projectId, iid, noteId)
+      }
     }
   }
   return {
@@ -48,7 +58,9 @@ function noteOps (api: GitlabApi, noteable: GitlabNoteable): NoteOps {
     get: async (projectId, iid, noteId) => await api.getIssueNote(projectId, iid, noteId),
     create: async (projectId, iid, body) => await api.createIssueNote(projectId, iid, body),
     update: async (projectId, iid, noteId, body) => await api.updateIssueNote(projectId, iid, noteId, body),
-    remove: async (projectId, iid, noteId) => { await api.deleteIssueNote(projectId, iid, noteId) }
+    remove: async (projectId, iid, noteId) => {
+      await api.deleteIssueNote(projectId, iid, noteId)
+    }
   }
 }
 
@@ -73,7 +85,11 @@ export function isSyncedNote (note: GitlabNoteInfo): boolean {
  * A parent closed or detached from Huly (an issue deleted or moved out, a merge request moved): its
  * GitLab notes and threads are not imported any more.
  */
-export async function isTombstoned (provider: Pick<SyncProvider, 'derived'>, repo: RepositoryContext, parentKey: string): Promise<boolean> {
+export async function isTombstoned (
+  provider: Pick<SyncProvider, 'derived'>,
+  repo: RepositoryContext,
+  parentKey: string
+): Promise<boolean> {
   const parent = await provider.derived.findOne(gitlab.class.DocSyncInfo, { space: repo.project._id, key: parentKey })
   return parent?.deleted === true
 }
@@ -82,7 +98,10 @@ export async function isTombstoned (provider: Pick<SyncProvider, 'derived'>, rep
  * Pairs an issue's notes with their copies after a GitLab issue move. GitLab copies the author and
  * created_at, so those match first; what is left is paired in order per author. Returns sync doc id → copy.
  */
-export function pairMovedNotes (known: Array<{ id: string, note: GitlabNoteInfo }>, moved: GitlabNoteInfo[]): Map<string, GitlabNoteInfo> {
+export function pairMovedNotes (
+  known: Array<{ id: string, note: GitlabNoteInfo }>,
+  moved: GitlabNoteInfo[]
+): Map<string, GitlabNoteInfo> {
   const pairs = new Map<string, GitlabNoteInfo>()
   const free = [...moved]
   const take = (match: (note: GitlabNoteInfo) => boolean): GitlabNoteInfo | undefined => {
@@ -218,7 +237,9 @@ export class NoteSyncManager implements DocSyncManager {
   }
 
   private async removeDeletedNote (ctx: MeasureContext, info: DocSyncInfo): Promise<void> {
-    const message = await this.provider.client.findOne(chunter.class.ChatMessage, { _id: info._id as unknown as Ref<ChatMessage> })
+    const message = await this.provider.client.findOne(chunter.class.ChatMessage, {
+      _id: info._id as unknown as Ref<ChatMessage>
+    })
     if (message !== undefined) {
       // Written as System, so the trigger does not queue a deletion back to GitLab
       await this.provider.client.removeCollection(
@@ -320,7 +341,9 @@ export class NoteSyncManager implements DocSyncManager {
     const { text, block } = splitAttachmentBlock(external.body)
     const remote: NoteSnapshot = { message: await this.provider.content.toMarkup(repo, text) }
     const base = (info.current as NoteSnapshot | undefined) ?? remote
-    const { toPlatform, toGitlab, merged } = mergeFields(base, { message: message.message }, remote, { message: areEqualMarkups })
+    const { toPlatform, toGitlab, merged } = mergeFields(base, { message: message.message }, remote, {
+      message: areEqualMarkups
+    })
     let latest = external
     // A refused upload must not hold back GitLab's edits: they are applied below, and the note is retried
     let wanted: string | undefined
@@ -349,14 +372,29 @@ export class NoteSyncManager implements DocSyncManager {
       }
       const sent = body
       latest = await this.provider.runner.exec(parent.key, async () => {
-        const updated = await noteOps(api, noteableOf(parent)).update(repo.repository.projectId, parent.gitlabIid, external.id, sent)
-        await this.provider.derived.update(info, { external: updated, current: merged, lastModified: Date.parse(updated.updated_at) })
+        const updated = await noteOps(api, noteableOf(parent)).update(
+          repo.repository.projectId,
+          parent.gitlabIid,
+          external.id,
+          sent
+        )
+        await this.provider.derived.update(info, {
+          external: updated,
+          current: merged,
+          lastModified: Date.parse(updated.updated_at)
+        })
         return updated
       })
     }
     if (toPlatform.message !== undefined) {
       const author = await this.provider.persons.personIdFor(repo.integration.host, external.author)
-      await this.provider.client.update(message, { message: toPlatform.message }, false, Date.parse(external.updated_at), author)
+      await this.provider.client.update(
+        message,
+        { message: toPlatform.message },
+        false,
+        Date.parse(external.updated_at),
+        author
+      )
     }
     if (blockError !== undefined) {
       // A Huly edit not sent yet stays pending: the snapshot advances only when nothing was owed to GitLab

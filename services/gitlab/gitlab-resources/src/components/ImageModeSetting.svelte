@@ -34,12 +34,7 @@
 <div class="flex-col flex-gap-1">
   <div class="flex-row-center flex-gap-2">
     <Label label={gitlab.string.ImageMode} />
-    <DropdownLabelsIntl
-      {items}
-      selected={mode}
-      disabled={!isOwner}
-      on:selected={(ev) => choose(ev.detail)}
-    />
+    <DropdownLabelsIntl {items} selected={mode} disabled={!isOwner} on:selected={(ev) => choose(ev.detail)} />
   </div>
   <span class="dark-color"><Label label={imageModeHint(mode)} /></span>
   {#if error !== undefined}

@@ -18,7 +18,16 @@ export interface GitlabAppConfig {
 
 export type AppSecretStore = Pick<
 AccountClient,
-'listIntegrations' | 'getIntegration' | 'createIntegration' | 'updateIntegration' | 'deleteIntegration' | 'listIntegrationsSecrets' | 'getIntegrationSecret' | 'addIntegrationSecret' | 'updateIntegrationSecret' | 'deleteIntegrationSecret'
+| 'listIntegrations'
+| 'getIntegration'
+| 'createIntegration'
+| 'updateIntegration'
+| 'deleteIntegration'
+| 'listIntegrationsSecrets'
+| 'getIntegrationSecret'
+| 'addIntegrationSecret'
+| 'updateIntegrationSecret'
+| 'deleteIntegrationSecret'
 >
 
 // Used when a workspace saves an application without a host
@@ -55,7 +64,10 @@ export function normalizeHost (raw: string, options: NormalizeHostOptions = {}):
 }
 
 /** Maps a workspace's stored application to the OAuth settings used for GitLab calls. */
-export function toOAuthConfig (app: Pick<GitlabAppConfig, 'host' | 'clientId' | 'clientSecret'>, redirectUri: string): OAuthConfig {
+export function toOAuthConfig (
+  app: Pick<GitlabAppConfig, 'host' | 'clientId' | 'clientSecret'>,
+  redirectUri: string
+): OAuthConfig {
   return { GitlabHost: app.host, ClientID: app.clientId, ClientSecret: app.clientSecret, RedirectURI: redirectUri }
 }
 
@@ -122,8 +134,13 @@ export class GitlabAppStore {
       for (const old of await this.list(workspace)) {
         if (old.socialId !== config.updatedBy) await this.deleteSecretAndIntegration(old)
       }
-      for (const row of await this.store.listIntegrations({ kind: gitlabAppIntegrationKind, workspaceUuid: workspace })) {
-        if (row.socialId !== config.updatedBy) await this.store.deleteIntegration(this.integrationKey(row.socialId, workspace))
+      for (const row of await this.store.listIntegrations({
+        kind: gitlabAppIntegrationKind,
+        workspaceUuid: workspace
+      })) {
+        if (row.socialId !== config.updatedBy) {
+          await this.store.deleteIntegration(this.integrationKey(row.socialId, workspace))
+        }
       }
     })
   }
@@ -135,7 +152,10 @@ export class GitlabAppStore {
         await this.deleteSecretAndIntegration(old)
       }
       // Integration rows left without a secret
-      for (const row of await this.store.listIntegrations({ kind: gitlabAppIntegrationKind, workspaceUuid: workspace })) {
+      for (const row of await this.store.listIntegrations({
+        kind: gitlabAppIntegrationKind,
+        workspaceUuid: workspace
+      })) {
         await this.store.deleteIntegration(this.integrationKey(row.socialId, workspace))
       }
     })
@@ -153,11 +173,14 @@ export class GitlabAppStore {
     }
   }
 
-  private integrationKey (socialId: PersonId, workspace: WorkspaceUuid): {
-    kind: typeof gitlabAppIntegrationKind
-    workspaceUuid: WorkspaceUuid
-    socialId: PersonId
-  } {
+  private integrationKey (
+    socialId: PersonId,
+    workspace: WorkspaceUuid
+  ): {
+      kind: typeof gitlabAppIntegrationKind
+      workspaceUuid: WorkspaceUuid
+      socialId: PersonId
+    } {
     return { kind: gitlabAppIntegrationKind, workspaceUuid: workspace, socialId }
   }
 
