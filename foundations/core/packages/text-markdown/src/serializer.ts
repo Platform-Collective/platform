@@ -224,6 +224,21 @@ export const storeNodes: Record<string, NodeProcessor> = {
       }
     }
   },
+  gif: (state, node) => {
+    // Emitted as a tagged <img> rather than markdown image syntax, because markdown's ![](...)
+    // carries no way to distinguish a gif from an image and the parser would hand it back as an
+    // image node. 'file-id' and 'src' are independent; file-id wins.
+    const attrs = nodeAttrs(node)
+    state.write(
+      '<img data-type="gif"' +
+        (attrs['file-id'] != null ? ` file-id="${state.esc(`${attrs['file-id']}`)}"` : '') +
+        (attrs.src != null ? ` src="${state.esc(`${attrs.src}`)}"` : '') +
+        (attrs.width != null ? ` width="${state.esc(`${attrs.width}`)}"` : '') +
+        (attrs.height != null ? ` height="${state.esc(`${attrs.height}`)}"` : '') +
+        (attrs.alt != null ? ` alt="${state.esc(`${attrs.alt}`)}"` : '') +
+        '>'
+    )
+  },
   reference: (state, node) => {
     const attrs = nodeAttrs(node)
     let url = state.refUrl
