@@ -15,12 +15,15 @@
 <script lang="ts">
   import { getMetadata } from '@hcengineering/platform'
   import { MarkupMark, MarkupMarkType } from '@hcengineering/text'
-  import uiPlugin, { navigate, parseLocation } from '@hcengineering/ui'
+  import uiPlugin, { Component, navigate, parseLocation } from '@hcengineering/ui'
 
   import presentation from '../../plugin'
   import { Analytics } from '@hcengineering/analytics'
+  import { linkMarkExtensionFor, linkMarkExtensions } from './link-extensions'
 
   export let mark: MarkupMark
+
+  const linkExtensions = linkMarkExtensions()
 
   function handleLink (e: MouseEvent): void {
     try {
@@ -57,14 +60,21 @@
   {:else if mark.type === MarkupMarkType.em}
     <em><slot /></em>
   {:else if mark.type === MarkupMarkType.link}
-    <a
-      href={attrs.href}
-      target={attrs.target ?? '_blank'}
-      on:click|stopPropagation={handleLink}
-      on:contextmenu|stopPropagation
-    >
-      <slot />
-    </a>
+    {@const extension = linkMarkExtensionFor($linkExtensions, attrs.href)}
+    {#if extension !== undefined}
+      <Component is={extension.component} showLoading={false} props={{ ...extension.props, href: attrs.href }}>
+        <slot />
+      </Component>
+    {:else}
+      <a
+        href={attrs.href}
+        target={attrs.target ?? '_blank'}
+        on:click|stopPropagation={handleLink}
+        on:contextmenu|stopPropagation
+      >
+        <slot />
+      </a>
+    {/if}
   {:else if mark.type === MarkupMarkType.strike}
     <s><slot /></s>
   {:else if mark.type === MarkupMarkType.underline}
