@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { type IntlString, mergeIds } from '@hcengineering/platform'
+import { type IntlString, mergeIds, type Resource } from '@hcengineering/platform'
 import gitlab, { gitlabId } from '@hcengineering/gitlab'
-import { type Ref } from '@hcengineering/core'
+import { type Ref, type Space } from '@hcengineering/core'
+import { type DocCreateFunction } from '@hcengineering/presentation'
 import { type Handler, type IntegrationType } from '@hcengineering/setting'
 import { type AnyComponent } from '@hcengineering/ui'
 
 export default mergeIds(gitlabId, gitlab, {
   string: {
+    SyncError: '' as IntlString,
+    Retry: '' as IntlString,
+    ReviewNotSent: '' as IntlString,
     Authorize: '' as IntlString,
     ReAuthorize: '' as IntlString,
     Authorized: '' as IntlString,
@@ -15,6 +19,15 @@ export default mergeIds(gitlabId, gitlab, {
     Repositories: '' as IntlString,
     NoRepositories: '' as IntlString,
     RefreshRepositories: '' as IntlString,
+    ImageMode: '' as IntlString,
+    ImageModeLink: '' as IntlString,
+    ImageModeCopy: '' as IntlString,
+    ImageModeLinkHint: '' as IntlString,
+    ImageModeCopyHint: '' as IntlString,
+    ImageNoAccess: '' as IntlString,
+    ImageNotConnected: '' as IntlString,
+    ImageUnavailable: '' as IntlString,
+    OpenInGitlab: '' as IntlString,
     LinkToProject: '' as IntlString,
     Unlink: '' as IntlString,
     LinkedTo: '' as IntlString,
@@ -50,16 +63,78 @@ export default mergeIds(gitlabId, gitlab, {
     InvalidGitlabUrl: '' as IntlString,
     SetupEnterUrlFirst: '' as IntlString,
     DisconnectEveryone: '' as IntlString,
-    DisconnectEveryoneConfirm: '' as IntlString
+    DisconnectEveryoneConfirm: '' as IntlString,
+    Draft: '' as IntlString,
+    MergedAt: '' as IntlString,
+    ClosedAt: '' as IntlString,
+    Commits: '' as IntlString,
+    Files: '' as IntlString,
+    SourceBranch: '' as IntlString,
+    TargetBranch: '' as IntlString,
+    MergeStatus: '' as IntlString,
+    MergeRequestState: '' as IntlString,
+    Reviewers: '' as IntlString,
+    StateOpened: '' as IntlString,
+    StateMerged: '' as IntlString,
+    StateClosed: '' as IntlString,
+    StateLocked: '' as IntlString,
+    ReadyToMerge: '' as IntlString,
+    Conflict: '' as IntlString,
+    Checking: '' as IntlString,
+    PipelinePending: '' as IntlString,
+    UnresolvedDiscussions: '' as IntlString,
+    NeedsApproval: '' as IntlString,
+    All: '' as IntlString,
+    Active: '' as IntlString,
+    Closed: '' as IntlString,
+    ChangedFiles: '' as IntlString,
+    WithoutRepository: '' as IntlString,
+    CreateInGitlab: '' as IntlString,
+    DiffUnavailable: '' as IntlString,
+    DiffTooLarge: '' as IntlString,
+    ApprovedBy: '' as IntlString,
+    Approve: '' as IntlString,
+    RevokeApproval: '' as IntlString,
+    ConnectToApprove: '' as IntlString,
+    Review: '' as IntlString,
+    ReviewThread: '' as IntlString,
+    ReviewComment: '' as IntlString,
+    ReviewComments: '' as IntlString,
+    ReviewApproved: '' as IntlString,
+    ReviewUnapproved: '' as IntlString,
+    ReviewRequestedChanges: '' as IntlString,
+    ReviewReviewed: '' as IntlString,
+    CommentedOnDiff: '' as IntlString,
+    ResolveThread: '' as IntlString,
+    UnresolveThread: '' as IntlString,
+    ResolvedBy: '' as IntlString,
+    Outdated: '' as IntlString
   },
   component: {
     Connect: '' as AnyComponent,
     Configure: '' as AnyComponent,
     GitlabIcon: '' as AnyComponent,
-    IntegrationState: '' as AnyComponent
+    IntegrationState: '' as AnyComponent,
+    MergeRequests: '' as AnyComponent,
+    MergeRequestPresenter: '' as AnyComponent,
+    TitlePresenter: '' as AnyComponent,
+    MergeRequestState: '' as AnyComponent,
+    MergeRequestStateValuePresenter: '' as AnyComponent,
+    MergeStatusValuePresenter: '' as AnyComponent,
+    EditMergeRequest: '' as AnyComponent,
+    GitlabIssueHeader: '' as AnyComponent,
+    GitlabIssuePresenter: '' as AnyComponent,
+    GitlabRepositoryPool: '' as AnyComponent,
+    GitlabReviewPresenter: '' as AnyComponent,
+    GitlabReviewThreadPresenter: '' as AnyComponent,
+    GitlabImageLink: '' as AnyComponent
   },
   handler: {
     DisconnectHandler: '' as Handler
+  },
+  function: {
+    ShowForRepositoryOnly: '' as Resource<(spaces: Space[]) => Promise<boolean>>,
+    UpdateIssue: '' as Resource<DocCreateFunction>
   },
   integrationType: {
     Gitlab: '' as Ref<IntegrationType>

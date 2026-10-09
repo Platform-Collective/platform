@@ -21,6 +21,7 @@
   } from '../state'
   import { onAuthorize, sendGLServiceRequest } from '../utils'
   import GitlabRepositories from './GitlabRepositories.svelte'
+  import ImageModeSetting from './ImageModeSetting.svelte'
   import SetupApp from './SetupApp.svelte'
 
   // Passed by IntegrationCard (showPopup(component, { integration })); kept so Svelte does not warn about an unknown prop.
@@ -146,6 +147,7 @@
     {#if appConfigured}
       {#each integrations as gl (gl._id)}
         <div class="fs-title"><Label label={gitlab.string.Repositories} /> — {gl.host} / {gl.login}</div>
+        <ImageModeSetting integration={gl} />
         <GitlabRepositories integration={gl} {projects} {integrations} />
       {/each}
     {/if}
