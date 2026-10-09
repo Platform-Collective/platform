@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { LoginInfoByToken } from '@hcengineering/account-client'
-import type { MeasureContext, PersonId, WorkspaceUuid } from '@hcengineering/core'
-import { assertOwner, requireTokenWorkspace, resolveCaller, type VerifiedCaller } from './caller'
+import type { MeasureContext, PersonId, Ref, WorkspaceUuid } from '@hcengineering/core'
+import type { GitlabIntegrationRepository } from '@hcengineering/gitlab'
+import { assertOwner, resolveCaller, type VerifiedCaller } from './caller'
 import type { GitlabAppInput, GitlabService } from './service'
 
 export type RouteBody = Record<string, unknown>
@@ -22,9 +23,29 @@ export async function verifyCallerToken (body: RouteBody, deps: TokenDeps): Prom
   return await resolveCaller(decoded, body.accountId, async () => await deps.listSocialIds(token))
 }
 
-/** Workspace of the posted token for repository routes; throws for an account-level token. */
-export function repositoryWorkspace (body: RouteBody, decode: TokenDeps['decode']): WorkspaceUuid {
-  return requireTokenWorkspace(decode(String(body.token)))
+export interface RepositoryRouteDeps {
+  verify: (body: RouteBody) => Promise<VerifiedCaller>
+  service: Pick<GitlabService, 'enableRepository' | 'disableRepository'>
+}
+
+function repositoryIdOf (body: RouteBody): Ref<GitlabIntegrationRepository> {
+  if (typeof body.repositoryId !== 'string' || body.repositoryId === '') {
+    throw new Error('repositoryId is required')
+  }
+  return body.repositoryId as Ref<GitlabIntegrationRepository>
+}
+
+/** Repository routes check the posted social id like every other route. */
+export async function repositoryEnableRoute (ctx: MeasureContext, body: RouteBody, deps: RepositoryRouteDeps): Promise<void> {
+  const repositoryId = repositoryIdOf(body)
+  const { workspace } = await deps.verify(body)
+  await deps.service.enableRepository(ctx, workspace, repositoryId)
+}
+
+export async function repositoryDisableRoute (ctx: MeasureContext, body: RouteBody, deps: RepositoryRouteDeps): Promise<void> {
+  const repositoryId = repositoryIdOf(body)
+  const { workspace } = await deps.verify(body)
+  await deps.service.disableRepository(ctx, workspace, repositoryId)
 }
 
 export function appInput (body: RouteBody): GitlabAppInput {

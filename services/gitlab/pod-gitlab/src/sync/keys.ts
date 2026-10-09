@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import type { GitlabNoteable } from '../gitlab/types'
+
 /** GitLab host without scheme or trailing slash, lower case: 'gitlab.com', 'git.corp.local/gitlab'. */
 export function hostKey (host: string): string {
   return host
@@ -8,13 +10,36 @@ export function hostKey (host: string): string {
     .toLowerCase()
 }
 
-/** Stable key of a GitLab issue. Project ids and iids survive project renames and transfers. */
+/** Stable key of a GitLab issue or merge request. Project ids and iids survive project renames and transfers. */
+export function objectKey (host: string, projectId: number, noteable: GitlabNoteable, iid: number): string {
+  return `${hostKey(host)}/projects/${projectId}/${noteable}/${iid}`
+}
+
 export function issueKey (host: string, projectId: number, iid: number): string {
-  return `${hostKey(host)}/projects/${projectId}/issues/${iid}`
+  return objectKey(host, projectId, 'issues', iid)
+}
+
+export function mergeRequestKey (host: string, projectId: number, iid: number): string {
+  return objectKey(host, projectId, 'merge_requests', iid)
 }
 
 export function noteKey (issue: string, noteId: number): string {
   return `${issue}/notes/${noteId}`
+}
+
+/** A diff discussion of a merge request; GitLab discussion ids are hex strings unique per merge request. */
+export function discussionKey (mergeRequest: string, discussionId: string): string {
+  return `${mergeRequest}/discussions/${discussionId}`
+}
+
+export function discussionIdOf (key: string): string {
+  const marker = '/discussions/'
+  return key.slice(key.lastIndexOf(marker) + marker.length)
+}
+
+/** A review message: one review state change of one GitLab user, at `at` (epoch ms). */
+export function reviewKey (mergeRequest: string, userId: number, at: number): string {
+  return `${mergeRequest}/reviews/${userId}/${at}`
 }
 
 /** Lock key that serialises issue creation and issue webhooks of one repository. */

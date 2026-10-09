@@ -3,6 +3,7 @@
 import type { Plugin, Resource } from '@hcengineering/platform'
 import { plugin } from '@hcengineering/platform'
 import type { TriggerFunc } from '@hcengineering/server-core'
+import type { TodoDoneTester } from '@hcengineering/time'
 
 /**
  * @public
@@ -17,5 +18,8 @@ export default plugin(serverGitlabId, {
     OnProjectChanges: '' as Resource<TriggerFunc>,
     OnProjectRemove: '' as Resource<TriggerFunc>,
     OnGitlabBroadcast: '' as Resource<TriggerFunc>
+  },
+  functions: {
+    TodoDoneTester: '' as Resource<TodoDoneTester>
   }
 })

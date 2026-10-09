@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { belongsToHost, gitlabSocialValue, hostKey, issueKey, noteKey, parseGitlabSocialValue } from '../sync/keys'
+import { belongsToHost, discussionIdOf, discussionKey, gitlabSocialValue, hostKey, issueKey, mergeRequestKey, noteKey, objectKey, parseGitlabSocialValue, reviewKey } from '../sync/keys'
 
 describe('keys', () => {
   it('normalises hosts with sub-paths, schemes and case', () => {
@@ -27,5 +27,24 @@ describe('keys', () => {
     expect(belongsToHost('https://git.corp.local/gitlab/g/p', 'https://git.corp.local/gitlab')).toBe(true)
     expect(belongsToHost('https://git.corp.local/other/g/p', 'https://git.corp.local/gitlab')).toBe(false)
     expect(belongsToHost('https://gitlab.company.com/g/p', 'https://gitlab.com')).toBe(false)
+  })
+
+  it('builds merge request keys next to issue keys', () => {
+    expect(mergeRequestKey('https://gitlab.com', 42, 3)).toBe('gitlab.com/projects/42/merge_requests/3')
+    expect(objectKey('https://gitlab.com', 42, 'issues', 3)).toBe(issueKey('https://gitlab.com', 42, 3))
+    expect(noteKey(mergeRequestKey('https://gitlab.com', 42, 3), 9)).toBe('gitlab.com/projects/42/merge_requests/3/notes/9')
+  })
+})
+
+describe('review keys', () => {
+  const mr = 'gitlab.example.com/projects/42/merge_requests/3'
+
+  it('puts discussions and review messages under their merge request', () => {
+    expect(discussionKey(mr, 'abc123')).toBe(`${mr}/discussions/abc123`)
+    expect(reviewKey(mr, 7, 1000)).toBe(`${mr}/reviews/7/1000`)
+  })
+
+  it('reads the discussion id back from a discussion key', () => {
+    expect(discussionIdOf(discussionKey(mr, 'abc123'))).toBe('abc123')
   })
 })

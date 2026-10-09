@@ -21,6 +21,13 @@ const host = 'https://gitlab.example.com'
 const issue = { id: 1001, iid: 1, title: 'T', state: 'opened', updated_at: '2026-01-01T00:00:00.000Z' }
 
 describe('GitlabApi issues and notes', () => {
+  it('moves an issue to another project', async () => {
+    const { fn, calls } = recorder([{ status: 201, body: { ...issue, iid: 8, project_id: 43 } }])
+    const moved = await new GitlabApi(host, 't', fn).moveIssue(42, 1, 43)
+    expect(moved.iid).toBe(8)
+    expect(calls).toEqual([{ method: 'POST', url: `${host}/api/v4/projects/42/issues/1/move`, body: { to_project_id: 43 } }])
+  })
+
   it('lists issues updated after a time, oldest first, across pages', async () => {
     const { fn, calls } = recorder([
       { body: [issue], headers: { 'x-next-page': '2' } },

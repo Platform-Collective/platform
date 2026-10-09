@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: EPL-2.0
-import { MeasureMetricsContext, type PersonId, type WorkspaceUuid } from '@hcengineering/core'
+import core, { MeasureMetricsContext, type PersonId, type WorkspaceUuid } from '@hcengineering/core'
 import gitlab from '@hcengineering/gitlab'
 import tracker from '@hcengineering/tracker'
 import type { GitlabAppConfig } from '../apps'
 import type { FetchFn } from '../gitlab/api'
+import { hookSecret, hookUrl } from '../hooks'
 import { GitlabService } from '../service'
 import { signState } from '../state'
 
@@ -14,7 +15,8 @@ const caller = { workspace: ws, account: 'acc1' }
 const config = {
   AccountsURL: '', ServerSecret: 'srv-secret', ServiceID: 's', FrontURL: 'http://front', Port: 0,
   RedirectURI: 'http://front/gitlab',
-  WebhookBaseURL: 'https://hooks.example.com', WebhookSecret: 'whs', CollaboratorURL: ''
+  WebhookBaseURL: 'https://hooks.example.com', WebhookSecret: 'whs', CollaboratorURL: '',
+  WorkspaceInactivityDays: 3
 }
 
 function memoryClient (): any {
@@ -92,18 +94,22 @@ function setup (
     deleteIntegration: jest.fn(async () => {})
   }
   const { fn, calls, requests } = gitlabFetch(routes)
+  const sessions: PersonId[] = []
   const service = new GitlabService({
     config: { ...config, AllowInsecureHosts: opts.allowInsecure === true },
     users: users as any,
     accounts,
     apps: appStore,
-    openSession: async () => ({ client, close: async () => {} }),
+    openSession: async (_workspace: WorkspaceUuid, account: PersonId) => {
+      sessions.push(account)
+      return { client, close: async () => {} }
+    },
     linkIdentity: opts.linkIdentity,
     onWorkspaceChanged: opts.onWorkspaceChanged,
     fetchFn: fn,
     now: () => 1000
   })
-  return { service, client, users, accounts, apps, calls, requests, routes }
+  return { service, client, users, accounts, apps, calls, requests, routes, sessions }
 }
 
 // now() in the service is 1000 ms; the state is signed at 1000 and valid for 10 minutes.
@@ -130,6 +136,15 @@ describe('GitlabService', () => {
     const { service, client } = setup(routes, { linkIdentity })
     await expect(service.authorize(ctx, { code: 'c', state, caller })).resolves.toBeUndefined()
     expect(client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegration)).toBeDefined()
+  })
+
+  it('refresh writes its bookkeeping as System and marks a working integration alive', async () => {
+    const { service, client, users, sessions } = setup({ 'GET https://gitlab.com/api/v4/projects': [project] })
+    client.docs.push({ _id: 'i1', _class: gitlab.class.GitlabIntegration, connectedBy: 'p-good', host: 'https://gitlab.com', alive: false, error: 'boom' })
+    users.getValidRecord.mockResolvedValue({ token: 'tok' })
+    await service.refresh(ctx, ws, person)
+    expect(sessions).toEqual([core.account.System])
+    expect(client.docs.find((d: any) => d._id === 'i1')).toMatchObject({ alive: true, error: null })
   })
 
   it('refresh continues with the next integration when one fails', async () => {
@@ -229,6 +244,23 @@ describe('GitlabService', () => {
     const { service, client } = setup({})
     await expect(service.authorize(ctx, { code: 'bad', state, caller })).rejects.toThrow()
     expect(client.docs.find((d: any) => d._class === gitlab.class.GitlabAuthentication)?.error).toBeTruthy()
+  })
+
+  it('enableRepository installs the integration\'s own hook URL and secret', async () => {
+    const { service, client, requests } = setup({
+      ...routes,
+      'GET https://gitlab.com/api/v4/projects/5/hooks': [],
+      'POST https://gitlab.com/api/v4/projects/5/hooks': { id: 77, url: 'scoped' }
+    })
+    await service.authorize(ctx, { code: 'c', state, caller })
+    const repo = client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegrationRepository)
+    const integration = client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegration)
+    await service.enableRepository(ctx, ws, repo._id)
+    const target = { workspace: ws, integration: integration._id }
+    const post = JSON.parse(requests.find((it: any) => it.key === 'POST https://gitlab.com/api/v4/projects/5/hooks').body)
+    expect(post.url).toBe(hookUrl('https://hooks.example.com', target))
+    expect(post.token).toBe(hookSecret('whs', target))
+    expect(repo.hookId).toBe(77)
   })
 
   it('enableRepository installs the hook and stores its id', async () => {

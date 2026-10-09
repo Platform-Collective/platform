@@ -15,9 +15,14 @@ export interface Config {
 
   // Collaborator service URL, used to read and write issue descriptions
   CollaboratorURL: string
+  // Blob storage (STORAGE_CONFIG, same format as other services) for merge request diffs; unset: no diffs
+  StorageConfig?: string
 
   // Dev only: accept plain-http GitLab hosts (localhost, 127.0.0.1, *.local). Default false.
   AllowInsecureHosts?: boolean
+
+  // Days without a visit after which a workspace's worker stops; 0 = never
+  WorkspaceInactivityDays: number
 }
 
 // OAuth settings of one workspace's GitLab application (see toOAuthConfig in apps.ts)
@@ -68,6 +73,10 @@ export function loadConfig (env: Record<string, string | undefined>): Config {
     throw new Error('PORT must be a number')
   }
   const frontUrl = trimSlash(env.FRONT_URL as string)
+  const inactivityDays = parseInt(env.WORKSPACE_INACTIVITY_INTERVAL ?? '3')
+  if (Number.isNaN(inactivityDays)) {
+    throw new Error('WORKSPACE_INACTIVITY_INTERVAL must be a number')
+  }
   return {
     AccountsURL: env.ACCOUNTS_URL as string,
     ServerSecret: env.SERVER_SECRET as string,
@@ -79,6 +88,8 @@ export function loadConfig (env: Record<string, string | undefined>): Config {
     WebhookBaseURL: trimSlash(env.WEBHOOK_BASE_URL as string),
     WebhookSecret: env.WEBHOOK_SECRET as string,
     CollaboratorURL: env.COLLABORATOR_URL as string,
-    AllowInsecureHosts: env.GITLAB_ALLOW_INSECURE_HOSTS === 'true'
+    StorageConfig: env.STORAGE_CONFIG !== undefined && env.STORAGE_CONFIG !== '' ? env.STORAGE_CONFIG : undefined,
+    AllowInsecureHosts: env.GITLAB_ALLOW_INSECURE_HOSTS === 'true',
+    WorkspaceInactivityDays: inactivityDays
   }
 }

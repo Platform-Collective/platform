@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { Integration } from '@hcengineering/account-client'
-import type { MeasureContext, PersonId, TxOperations, WorkspaceUuid } from '@hcengineering/core'
+import type { MeasureContext, PersonId, Ref, WorkspaceUuid } from '@hcengineering/core'
+import type { GitlabIntegration } from '@hcengineering/gitlab'
+import type { HookTarget } from '../hooks'
+import type { WorkspaceWorkerState } from '../workspace-state'
 import { errorMessage } from '../sync/errors'
-import type { GitlabHookKind, GitlabHookPayload } from './worker'
+import type { GitlabImageAccess } from '../sync/image-access'
+import type { GitlabHookKind, GitlabHookPayload, SessionLease } from './worker'
 
 export const WORKSPACE_CHECK_INTERVAL_MS = 5 * 60 * 1000
 
@@ -13,9 +17,11 @@ export interface WorkerHandle {
   start: () => void
   close: () => Promise<void>
   ownsProject: (webUrl: string, projectId: number) => boolean
-  handleWebhook: (kind: GitlabHookKind, payload: GitlabHookPayload) => Promise<void>
+  // `integration`: only that integration's repositories (an event from a scoped hook)
+  handleWebhook: (kind: GitlabHookKind, payload: GitlabHookPayload, integration?: Ref<GitlabIntegration>) => Promise<void>
   requestFullSync: () => void
-  session: (accountId: PersonId) => TxOperations | undefined
+  lease: (accountId: PersonId) => SessionLease | undefined
+  gitlabImage: (url: string, actor: PersonId) => Promise<GitlabImageAccess>
 }
 
 export interface PlatformDeps {
@@ -25,6 +31,8 @@ export interface PlatformDeps {
   // undefined when GitLab is disabled in the workspace
   createWorker: (workspace: WorkspaceUuid) => Promise<WorkerHandle | undefined>
   checkIntervalMs?: number
+  // Unset: every listed workspace connects (tests)
+  workspaceState?: (workspace: WorkspaceUuid) => Promise<WorkspaceWorkerState>
 }
 
 export function workspacesWithGitlab (integrations: Array<Pick<Integration, 'workspaceUuid'>>): WorkspaceUuid[] {
@@ -66,14 +74,16 @@ export class GitlabPlatform {
     return this.workers.get(workspace)
   }
 
-  async dispatch (kind: GitlabHookKind, payload: GitlabHookPayload): Promise<void> {
+  /** Routes an event to the workers that link its project; a scoped event only to its own workspace. */
+  async dispatch (kind: GitlabHookKind, payload: GitlabHookPayload, target?: HookTarget): Promise<void> {
     const projectId = payload.project?.id
     const webUrl = payload.project?.web_url
     if (projectId === undefined || webUrl === undefined) return
     for (const [workspace, worker] of this.workers) {
+      if (target !== undefined && workspace !== target.workspace) continue
       if (!worker.ownsProject(webUrl, projectId)) continue
       try {
-        await worker.handleWebhook(kind, payload)
+        await worker.handleWebhook(kind, payload, target?.integration)
       } catch (err: unknown) {
         this.deps.ctx.error('gitlab webhook dispatch failed', { workspace, kind, error: errorMessage(err) })
       }
@@ -90,15 +100,17 @@ export class GitlabPlatform {
   private async doCheck (): Promise<void> {
     const wanted = new Set(await this.deps.listWorkspaces())
     for (const [workspace, worker] of [...this.workers]) {
-      if (!wanted.has(workspace)) {
-        this.workers.delete(workspace)
-        await worker.close().catch((err: unknown) => {
-          this.deps.ctx.error('failed to close gitlab worker', { workspace, error: errorMessage(err) })
-        })
-      }
+      const state = wanted.has(workspace) ? await this.stateOf(workspace) : 'skip'
+      if (state !== 'skip' && state !== 'inactive') continue
+      this.workers.delete(workspace)
+      this.deps.ctx.info('gitlab worker stopped', { workspace, state })
+      await worker.close().catch((err: unknown) => {
+        this.deps.ctx.error('failed to close gitlab worker', { workspace, error: errorMessage(err) })
+      })
     }
     for (const workspace of wanted) {
       if (this.workers.has(workspace)) continue
+      if ((await this.stateOf(workspace)) !== 'connect') continue
       let worker: WorkerHandle | undefined
       try {
         worker = await this.deps.createWorker(workspace)
@@ -114,6 +126,17 @@ export class GitlabPlatform {
           this.deps.ctx.error('failed to close gitlab worker', { workspace, error: errorMessage(closeErr) })
         })
       }
+    }
+  }
+
+  // Unknown state (account service unavailable): keep what runs, start nothing new
+  private async stateOf (workspace: WorkspaceUuid): Promise<WorkspaceWorkerState> {
+    if (this.deps.workspaceState === undefined) return 'connect'
+    try {
+      return await this.deps.workspaceState(workspace)
+    } catch (err: unknown) {
+      this.deps.ctx.warn('gitlab workspace state unavailable', { workspace, error: errorMessage(err) })
+      return 'wait'
     }
   }
 }

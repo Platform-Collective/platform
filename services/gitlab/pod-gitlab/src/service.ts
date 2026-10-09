@@ -15,7 +15,8 @@ import { redirectUriFor, type Config, type OAuthConfig } from './config'
 import { GitlabApi, type FetchFn } from './gitlab/api'
 import { buildAuthorizeUrl, exchangeCode, GITLAB_SCOPES } from './gitlab/oauth'
 import type { GitlabUser, GitlabUserRef } from './gitlab/types'
-import { applyRepositoryPlan, planRepositorySync } from './repositories'
+import { hookSecret, hookUrl } from './hooks'
+import { refreshIntegrationRepositories } from './repositories'
 import { signState, verifyState, type OAuthStatePayload } from './state'
 import type { GitlabUserManager, GitlabUserRecord } from './users'
 
@@ -77,10 +78,6 @@ export class GitlabService {
 
   private now (): number {
     return (this.deps.now ?? Date.now)()
-  }
-
-  get webhookUrl (): string {
-    return `${this.deps.config.WebhookBaseURL}/api/webhook`
   }
 
   /** `origin` is the browser's Huly front origin; the callback goes back there. */
@@ -233,7 +230,9 @@ export class GitlabService {
 
   async refresh (ctx: MeasureContext, workspace: WorkspaceUuid, accountId: PersonId): Promise<void> {
     const app = await this.appFor(workspace)
-    await this.withClient(workspace, accountId, async (client) => {
+    ctx.info('gitlab refresh requested', { workspace, accountId })
+    // Bookkeeping as System: link rewrites must not queue every issue again or make the caller their author
+    await this.withClient(workspace, core.account.System, async (client) => {
       for (const integration of await client.findAll(gitlab.class.GitlabIntegration, {})) {
         try {
           const record = await this.deps.users.getValidRecord(workspace, integration.connectedBy)
@@ -242,6 +241,9 @@ export class GitlabService {
             continue
           }
           await this.syncRepositories(client, app.host, integration, record.token)
+          if (integration.alive !== true || (integration.error ?? null) !== null) {
+            await client.update(integration, { alive: true, error: null })
+          }
         } catch (err: unknown) {
           // One member's broken connection must not stop the others' refresh
           const message = err instanceof Error ? err.message : String(err)
@@ -258,8 +260,11 @@ export class GitlabService {
     repositoryId: Ref<GitlabIntegrationRepository>
   ): Promise<void> {
     await this.withClient(workspace, core.account.System, async (client) => {
-      const { repository, api } = await this.resolveRepository(client, workspace, repositoryId)
-      const hook = await api.ensureProjectHook(repository.projectId, this.webhookUrl, this.deps.config.WebhookSecret)
+      const { repository, integration, api } = await this.resolveRepository(client, workspace, repositoryId)
+      const base = this.deps.config.WebhookBaseURL
+      const target = { workspace, integration: integration._id }
+      // Scoped URL and secret
+      const hook = await api.ensureProjectHook(repository.projectId, hookUrl(base, target), hookSecret(this.deps.config.WebhookSecret, target))
       await client.update(repository, { hookId: hook.id })
       ctx.info('gitlab hook installed', { workspace, projectId: repository.projectId, hookId: hook.id })
     })
@@ -438,7 +443,7 @@ export class GitlabService {
     client: TxOperations,
     workspace: WorkspaceUuid,
     repositoryId: Ref<GitlabIntegrationRepository>
-  ): Promise<{ repository: GitlabIntegrationRepository, api: GitlabApi }> {
+  ): Promise<{ repository: GitlabIntegrationRepository, integration: GitlabIntegration, api: GitlabApi }> {
     const repository = await client.findOne(gitlab.class.GitlabIntegrationRepository, { _id: repositoryId })
     if (repository === undefined) {
       throw new Error('Repository not found')
@@ -452,7 +457,7 @@ export class GitlabService {
     if (record === undefined) {
       throw new Error('GitLab authorization expired, please re-authorize')
     }
-    return { repository, api: new GitlabApi(app.host, record.token, this.fetchFn) }
+    return { repository, integration, api: new GitlabApi(app.host, record.token, this.fetchFn) }
   }
 
   private async upsertAuthentication (
@@ -507,8 +512,6 @@ export class GitlabService {
     integration: GitlabIntegration,
     token: string
   ): Promise<void> {
-    const remote = await new GitlabApi(host, token, this.fetchFn).listMaintainedProjects()
-    const existing = await client.findAll(gitlab.class.GitlabIntegrationRepository, { attachedTo: integration._id })
-    await applyRepositoryPlan(client, integration, existing, planRepositorySync(existing, remote))
+    await refreshIntegrationRepositories(client, new GitlabApi(host, token, this.fetchFn), integration)
   }
 }

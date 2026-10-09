@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import attachment from '@hcengineering/attachment'
 import chunter from '@hcengineering/chunter'
 import core, {
   type Class,
@@ -9,14 +10,17 @@ import core, {
   type Hierarchy,
   type Ref,
   type Space,
+  type Storage,
   type Tx,
   type TxCUD,
+  type TxUpdateDoc,
   type TxMixin,
   TxProcessor,
   systemAccountUuid
 } from '@hcengineering/core'
 import gitlab, { type DocSyncInfo, type GitlabProject } from '@hcengineering/gitlab'
 import type { TriggerControl } from '@hcengineering/server-core'
+import type { ToDo } from '@hcengineering/time'
 import tracker from '@hcengineering/tracker'
 
 /**
@@ -33,8 +37,26 @@ export async function OnGitlabBroadcast (txes: Tx[], control: TriggerControl): P
   return []
 }
 
+// Review documents of merge requests; viewed-file marks (GitlabMergeRequestReview) stay in Huly
+const REVIEW_CLASSES: Array<Ref<Class<Doc>>> = [
+  gitlab.class.GitlabReview,
+  gitlab.class.GitlabReviewThread,
+  gitlab.class.GitlabReviewComment
+]
+
+// Issues (merge requests derive from them), comments and review documents; thread replies (ThreadMessage) are not
+// synchronized
 function isSyncedClass (h: Hierarchy, objectClass: Ref<Class<Doc>>): boolean {
-  return h.isDerived(objectClass, tracker.class.Issue) || h.isDerived(objectClass, chunter.class.ChatMessage)
+  return (
+    h.isDerived(objectClass, tracker.class.Issue) ||
+    objectClass === chunter.class.ChatMessage ||
+    REVIEW_CLASSES.includes(objectClass)
+  )
+}
+
+// A comment gets a sync doc only when it is written on an issue or merge request
+function isIssueComment (h: Hierarchy, cud: TxCUD<Doc>): boolean {
+  return cud.attachedToClass !== undefined && h.isDerived(cud.attachedToClass, tracker.class.Issue)
 }
 
 interface TriggerCache {
@@ -56,6 +78,10 @@ export async function OnProjectChanges (txes: Tx[], control: TriggerControl): Pr
     }
     if (!TxProcessor.isExtendsCUD(tx._class)) continue
     const cud = tx as TxCUD<Doc>
+    if (control.hierarchy.isDerived(cud.objectClass, attachment.class.Attachment) && cud.attachedToClass === chunter.class.ChatMessage) {
+      await queueCommentOfAttachment(control, cud, cache, toApply)
+      continue
+    }
     if (isSyncedClass(control.hierarchy, cud.objectClass)) {
       await queueSync(control, cud, cache, toApply)
     }
@@ -74,6 +100,13 @@ async function linkedProjects (control: TriggerControl, cache: TriggerCache): Pr
   return cache.projects
 }
 
+// The new project of a moved document: an update that sets `space`
+function movedTo (cud: TxCUD<Doc>): Ref<Space> | undefined {
+  if (cud._class !== core.class.TxUpdateDoc) return undefined
+  const space = (cud as TxUpdateDoc<Doc>).operations.space
+  return typeof space === 'string' ? (space as Ref<Space>) : undefined
+}
+
 async function queueSync (control: TriggerControl, cud: TxCUD<Doc>, cache: TriggerCache, toApply: Tx[]): Promise<void> {
   // The GitLab service writes its bookkeeping as System; those changes must not queue another sync.
   if (cud.modifiedBy === core.account.System) return
@@ -84,13 +117,19 @@ async function queueSync (control: TriggerControl, cud: TxCUD<Doc>, cache: Trigg
       (it as TxCUD<Doc>).objectId === cud.objectId
   )
   if (pending) return
-  const space = cud.objectSpace
-  if (!(await linkedProjects(control, cache)).has(space)) return
+  const linked = await linkedProjects(control, cache)
+  // A move into a GitLab-linked project counts as well
+  const target = movedTo(cud)
+  if (!linked.has(cud.objectSpace) && (target === undefined || !linked.has(target))) return
 
   const info = (await control.findAll(control.ctx, gitlab.class.DocSyncInfo, { _id: cud.objectId as Ref<DocSyncInfo> }))[0]
   if (info === undefined) {
     // Removing a document that was never synced needs nothing
     if (cud._class === core.class.TxRemoveDoc) return
+    if (cud.objectClass === chunter.class.ChatMessage && !isIssueComment(control.hierarchy, cud)) return
+    // Where the document is now; a never-synced document that left a linked project needs nothing
+    const space = target ?? cud.objectSpace
+    if (!linked.has(space)) return
     const data: Data<DocSyncInfo> = { key: '', objectClass: cud.objectClass, repository: null, gitlabIid: 0, needSync: '' }
     if (cud.attachedTo !== undefined) data.attachedTo = cud.attachedTo
     toApply.push(control.txFactory.createTxCreateDoc(gitlab.class.DocSyncInfo, space, data, cud.objectId as Ref<DocSyncInfo>))
@@ -99,6 +138,25 @@ async function queueSync (control: TriggerControl, cud: TxCUD<Doc>, cache: Trigg
   const update: DocumentUpdate<DocSyncInfo> =
     cud._class === core.class.TxRemoveDoc ? { needSync: '', deleted: true } : { needSync: '' }
   toApply.push(control.txFactory.createTxUpdateDoc(gitlab.class.DocSyncInfo, info.space, info._id, update))
+}
+
+// An attachment added to or removed from a synced comment changes its GitLab note
+async function queueCommentOfAttachment (control: TriggerControl, cud: TxCUD<Doc>, cache: TriggerCache, toApply: Tx[]): Promise<void> {
+  if (cud.modifiedBy === core.account.System) return
+  if (cud._class !== core.class.TxCreateDoc && cud._class !== core.class.TxRemoveDoc) return
+  if (cud.attachedTo === undefined || !(await linkedProjects(control, cache)).has(cud.objectSpace)) return
+  const commentId = cud.attachedTo as Ref<DocSyncInfo>
+  const pending = [...control.txes, ...control.ctx.contextData.broadcast.txes, ...toApply].some(
+    (it) =>
+      TxProcessor.isExtendsCUD(it._class) &&
+      (it as TxCUD<Doc>).objectClass === gitlab.class.DocSyncInfo &&
+      (it as TxCUD<Doc>).objectId === commentId
+  )
+  if (pending) return
+  const info = (await control.findAll(control.ctx, gitlab.class.DocSyncInfo, { _id: commentId }))[0]
+  // A comment not synced yet picks up its attachments when it syncs
+  if (info === undefined || info.deleted === true) return
+  toApply.push(control.txFactory.createTxUpdateDoc(gitlab.class.DocSyncInfo, info.space, info._id, { needSync: '' }))
 }
 
 /**
@@ -135,11 +193,25 @@ export async function OnProjectRemove (txes: Tx[], control: TriggerControl): Pro
   return result
 }
 
+/**
+ * @public
+ * A GitLab ToDo is completed by the GitLab service; completing it must not advance its task's status.
+ */
+export async function TodoDoneTester (
+  client: { findAll: Storage['findAll'], hierarchy: Hierarchy },
+  todo: ToDo
+): Promise<boolean> {
+  return !client.hierarchy.hasMixin(todo, gitlab.mixin.GitlabTodo)
+}
+
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export default async () => ({
   trigger: {
     OnProjectChanges,
     OnProjectRemove,
     OnGitlabBroadcast
+  },
+  functions: {
+    TodoDoneTester
   }
 })

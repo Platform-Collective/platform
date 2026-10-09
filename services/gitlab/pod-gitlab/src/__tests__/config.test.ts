@@ -11,6 +11,12 @@ const base = {
 }
 
 describe('loadConfig', () => {
+  it('reads the workspace inactivity interval in days (default 3)', () => {
+    expect(loadConfig(base).WorkspaceInactivityDays).toBe(3)
+    expect(loadConfig({ ...base, WORKSPACE_INACTIVITY_INTERVAL: '0' }).WorkspaceInactivityDays).toBe(0)
+    expect(() => loadConfig({ ...base, WORKSPACE_INACTIVITY_INTERVAL: 'soon' })).toThrow('WORKSPACE_INACTIVITY_INTERVAL must be a number')
+  })
+
   it('applies defaults for gitlab.com', () => {
     const cfg = loadConfig(base)
     expect(cfg.Port).toBe(3600)
@@ -53,6 +59,12 @@ describe('loadConfig', () => {
 
   it('rejects a non-numeric port', () => {
     expect(() => loadConfig({ ...base, PORT: 'abc' })).toThrow('PORT must be a number')
+  })
+
+  it('reads the optional blob storage configuration', () => {
+    expect(loadConfig(base).StorageConfig).toBeUndefined()
+    expect(loadConfig({ ...base, STORAGE_CONFIG: '' }).StorageConfig).toBeUndefined()
+    expect(loadConfig({ ...base, STORAGE_CONFIG: 'minio|minio?accessKey=a&secretKey=b' }).StorageConfig).toBe('minio|minio?accessKey=a&secretKey=b')
   })
 })
 

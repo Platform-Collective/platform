@@ -11,6 +11,7 @@ export interface MarkdownUrls {
 }
 
 export interface MarkdownConverter {
+  readonly urls: MarkdownUrls
   // Markdown that would not round-trip is kept verbatim as a raw-markdown node
   toMarkup: (markdown: string | null | undefined) => Markup
   toMarkdown: (markup: Markup) => string
@@ -48,6 +49,7 @@ function rawMarkdown (text: string): Markup {
 export function createMarkdownConverter (urls: MarkdownUrls): MarkdownConverter {
   const toMarkdown = (markup: Markup): string => serializeMessage(markupToJSON(markup), urls)
   return {
+    urls,
     toMarkdown,
     toMarkup: (markdown) => {
       if (markdown == null || markdown === '') return ''

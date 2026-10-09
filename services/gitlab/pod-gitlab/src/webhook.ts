@@ -2,12 +2,26 @@
 
 import type { MeasureContext } from '@hcengineering/core'
 import { timingSafeEqual } from 'crypto'
+import { hookSecret, hookTargetOf, type HookTarget } from './hooks'
 
-export type WebhookHandler = (payload: unknown) => Promise<void>
+export type WebhookHandler = (payload: unknown, target?: HookTarget) => Promise<void>
 
 export interface WebhookRequest {
   header: (name: string) => string | undefined
   body: unknown
+  // Route parameters of a scoped hook URL (workspace, integration)
+  params?: Record<string, string | undefined>
+}
+
+/** The secret a request must carry and the integration it is scoped to; undefined rejects the request. */
+export type HookSecretResolver = (req: WebhookRequest) => { secret: string, target?: HookTarget } | undefined
+
+/** Scoped hooks: the secret is derived from the master secret and the URL's workspace and integration. */
+export function scopedResolver (master: string): HookSecretResolver {
+  return (req) => {
+    const target = hookTargetOf(req.params ?? {})
+    return target === undefined ? undefined : { secret: hookSecret(master, target), target }
+  }
 }
 
 export interface WebhookResponse {
@@ -34,10 +48,10 @@ export class WebhookRouter {
     this.handlers.set(event, [...(this.handlers.get(event) ?? []), handler])
   }
 
-  async dispatch (event: string, payload: unknown): Promise<boolean> {
+  async dispatch (event: string, payload: unknown, target?: HookTarget): Promise<boolean> {
     const handlers = this.handlers.get(event) ?? []
     for (const handler of handlers) {
-      await handler(payload)
+      await handler(payload, target)
     }
     return handlers.length > 0
   }
@@ -45,18 +59,19 @@ export class WebhookRouter {
 
 export function createWebhookHandler (
   router: WebhookRouter,
-  secret: string,
+  resolve: HookSecretResolver,
   ctx: MeasureContext
 ): (req: WebhookRequest, res: WebhookResponse) => void {
   return (req, res) => {
-    if (!verifyGitlabToken(req.header('x-gitlab-token'), secret)) {
+    const expected = resolve(req)
+    if (expected === undefined || !verifyGitlabToken(req.header('x-gitlab-token'), expected.secret)) {
       res.status(401).json({ error: 'invalid token' })
       return
     }
     const event = req.header('x-gitlab-event') ?? ''
     // Acknowledge immediately: GitLab disables hooks that time out or keep failing.
     res.status(200).json({})
-    router.dispatch(event, req.body).catch((err: Error) => {
+    router.dispatch(event, req.body, expected.target).catch((err: Error) => {
       ctx.error('gitlab webhook handler failed', { event, error: err.message })
     })
   }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { Ref, Status, StatusCategory } from '@hcengineering/core'
+import type { GitlabMergeRequestState } from '@hcengineering/gitlab'
 import task from '@hcengineering/task'
 
 export type GitlabIssueState = 'opened' | 'closed'
@@ -37,6 +38,33 @@ export function statusForState (state: GitlabIssueState, reopened: boolean, stat
       : firstOf(statuses, reopened ? [Active, ToDo, UnStarted] : [UnStarted, ToDo, Active])
   if (result === undefined) {
     throw new Error(`No Huly status for GitLab state ${state}`)
+  }
+  return result
+}
+
+/** The merge request states Huly distinguishes; GitLab's transient 'locked' counts as open. */
+export type MergeRequestSyncState = 'opened' | 'closed' | 'merged'
+
+export function mergeRequestSyncState (state: GitlabMergeRequestState): MergeRequestSyncState {
+  return state === 'locked' ? 'opened' : state
+}
+
+/** Merge request state of a Huly status: Won is merged, Lost is closed, the open categories are opened. */
+export function mergeRequestStateOfStatus (status: Ref<Status>, statuses: Status[]): MergeRequestSyncState | undefined {
+  const category = statuses.find((it) => it._id === status)?.category
+  if (category === undefined) return undefined
+  if (category === task.statusCategory.Won) return 'merged'
+  if (category === task.statusCategory.Lost) return 'closed'
+  if (OPEN.includes(category)) return 'opened'
+  return undefined
+}
+
+export function statusForMergeRequestState (state: MergeRequestSyncState, statuses: Status[]): Ref<Status> {
+  const { UnStarted, ToDo, Active, Won, Lost } = task.statusCategory
+  const categories = state === 'merged' ? [Won] : state === 'closed' ? [Lost] : [Active, ToDo, UnStarted]
+  const result = firstOf(statuses, categories)
+  if (result === undefined) {
+    throw new Error(`No Huly status for GitLab merge request state ${state}`)
   }
   return result
 }

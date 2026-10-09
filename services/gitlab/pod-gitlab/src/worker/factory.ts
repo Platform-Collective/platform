@@ -4,16 +4,23 @@ import type { AccountClient } from '@hcengineering/account-client'
 import { getClient as getCollaboratorClient } from '@hcengineering/collaborator-client'
 import core, { type MeasureContext, systemAccountUuid, TxOperations, type WorkspaceUuid } from '@hcengineering/core'
 import { gitlabId } from '@hcengineering/gitlab'
+import { getAccountClient } from '@hcengineering/server-client'
+import type { StorageAdapter } from '@hcengineering/server-core'
 import { generateToken } from '@hcengineering/server-token'
 import { createPlatformClient } from '../client'
 import type { Config } from '../config'
 import { createMarkdownConverter, markdownUrls } from '../markdown'
+import type { ImageStore, PatchStore } from '../sync/types'
 import type { GitlabUserManager } from '../users'
+import { createImageStore } from './images'
+import { createPatchStore } from './patches'
 import { GitlabWorker } from './worker'
 
 export interface FactoryDeps {
   users: Pick<GitlabUserManager, 'getValidRecord'>
   accounts: Pick<AccountClient, 'ensurePerson'>
+  // Blob storage for merge request diffs and copied images; undefined when STORAGE_CONFIG is not set
+  storage?: StorageAdapter
 }
 
 /** Connects to the workspace and builds its worker; undefined when GitLab is disabled there. */
@@ -33,6 +40,14 @@ export async function createWorkspaceWorker (
       await connection.close()
       return undefined
     }
+    let patches: PatchStore | undefined
+    let images: ImageStore | undefined
+    if (deps.storage !== undefined) {
+      const info = await getAccountClient(generateToken(systemAccountUuid, workspace, { service: 'gitlab' })).getWorkspaceInfo()
+      const ids = { uuid: info.uuid, url: info.url, dataId: info.dataId }
+      patches = createPatchStore(deps.storage, ids)
+      images = createImageStore(deps.storage, ids)
+    }
     const collaborator = getCollaboratorClient(
       workspace,
       generateToken(systemAccountUuid, workspace, { service: 'gitlab' }),
@@ -50,7 +65,10 @@ export async function createWorkspaceWorker (
       users: deps.users,
       accounts: deps.accounts,
       collaborator,
-      markdown: createMarkdownConverter(markdownUrls(config.FrontURL, workspace))
+      markdown: createMarkdownConverter(markdownUrls(config.FrontURL, workspace)),
+      patches,
+      images,
+      hooks: { baseUrl: config.WebhookBaseURL, master: config.WebhookSecret }
     })
     connection.notify = (...txes) => {
       worker?.onTx(txes)

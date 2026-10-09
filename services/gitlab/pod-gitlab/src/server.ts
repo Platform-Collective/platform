@@ -5,13 +5,12 @@ import type { LoginInfoByToken } from '@hcengineering/account-client'
 import {
   systemAccountUuid,
   TxOperations,
-  type MeasureContext,
-  type Ref,
-  type WorkspaceUuid
+  type MeasureContext
 } from '@hcengineering/core'
-import { gitlabIntegrationKind, type GitlabIntegrationRepository } from '@hcengineering/gitlab'
+import { gitlabIntegrationKind } from '@hcengineering/gitlab'
 import { setMetadata } from '@hcengineering/platform'
 import serverClient, { getAccountClient } from '@hcengineering/server-client'
+import { buildStorageFromConfig, storageConfigFromEnv } from '@hcengineering/server-storage'
 import { decodeToken, generateToken } from '@hcengineering/server-token'
 import bp from 'body-parser'
 import cors from 'cors'
@@ -20,22 +19,28 @@ import { GitlabAppStore, toOAuthConfig } from './apps'
 import type { VerifiedCaller } from './caller'
 import { createPlatformClient } from './client'
 import type { Config } from './config'
+import { isGitlabWriteAllowed } from './gitlab/api'
+import { IMAGE_HEADERS, imageRoute, imageStatus, type ImageRouteDeps } from './image-route'
+import { WEBHOOK_PATH } from './hooks'
 import {
   appConfigRoute,
   appRemoveRoute,
   disconnectAllRoute,
-  repositoryWorkspace,
+  repositoryDisableRoute,
+  repositoryEnableRoute,
   verifyCallerToken,
   type OwnerRouteDeps,
+  type RepositoryRouteDeps,
   type RouteBody,
   type TokenDeps
 } from './routes'
 import { GitlabService } from './service'
 import { linkGitlabIdentity } from './sync/persons'
 import { GitlabUserManager } from './users'
-import { createWebhookHandler, WebhookRouter } from './webhook'
+import { createWebhookHandler, scopedResolver, WebhookRouter } from './webhook'
 import { createWorkspaceWorker } from './worker/factory'
 import { GitlabPlatform, workspacesWithGitlab } from './worker/platform'
+import { workspaceWorkerState } from './workspace-state'
 import type { GitlabHookPayload } from './worker/worker'
 
 export const webhookRouter = new WebhookRouter()
@@ -44,10 +49,6 @@ export const webhookRouter = new WebhookRouter()
 const tokenDeps: TokenDeps = {
   decode: (token) => decodeToken(token),
   listSocialIds: async (token) => await getAccountClient(token, 30000).getSocialIds()
-}
-
-function tokenWorkspace (body: RouteBody): WorkspaceUuid {
-  return repositoryWorkspace(body, tokenDeps.decode)
 }
 
 async function verifiedCaller (body: RouteBody): Promise<VerifiedCaller> {
@@ -61,6 +62,12 @@ async function loginInfo (body: RouteBody): Promise<LoginInfoByToken | undefined
 export async function start (ctx: MeasureContext, config: Config): Promise<() => Promise<void>> {
   setMetadata(serverClient.metadata.Endpoint, config.AccountsURL)
   setMetadata(serverClient.metadata.UserAgent, config.ServiceID)
+  if (!isGitlabWriteAllowed()) {
+    ctx.warn('GitLab is read-only (GITLAB_READONLY=true): changes made in Huly are kept and not sent to GitLab')
+  }
+
+  // Merge request diffs are stored only when the pod has blob storage
+  const storage = config.StorageConfig !== undefined ? buildStorageFromConfig(storageConfigFromEnv(config.StorageConfig)) : undefined
 
   const accountClient = getAccountClient(generateToken(systemAccountUuid, undefined, { service: 'gitlab' }), 30000)
   const apps = new GitlabAppStore(accountClient)
@@ -71,15 +78,18 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
   const platform = new GitlabPlatform({
     ctx,
     listWorkspaces: async () => workspacesWithGitlab(await accountClient.listIntegrations({ kind: gitlabIntegrationKind })),
-    createWorker: async (workspace) => await createWorkspaceWorker(ctx, workspace, config, { users, accounts: accountClient })
+    createWorker: async (workspace) => await createWorkspaceWorker(ctx, workspace, config, { users, accounts: accountClient, storage }),
+    workspaceState: async (workspace) => {
+      const info = await getAccountClient(generateToken(systemAccountUuid, workspace, { service: 'gitlab' }), 30000).getWorkspaceInfo()
+      return workspaceWorkerState(info, config.WorkspaceInactivityDays, Date.now())
+    }
   })
   platform.start()
-  webhookRouter.on('Issue Hook', async (payload) => {
-    await platform.dispatch('Issue Hook', payload as GitlabHookPayload)
-  })
-  webhookRouter.on('Note Hook', async (payload) => {
-    await platform.dispatch('Note Hook', payload as GitlabHookPayload)
-  })
+  for (const kind of ['Issue Hook', 'Note Hook', 'Merge Request Hook'] as const) {
+    webhookRouter.on(kind, async (payload, target) => {
+      await platform.dispatch(kind, payload as GitlabHookPayload, target)
+    })
+  }
   const service = new GitlabService({
     config,
     users,
@@ -87,9 +97,10 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
     apps,
     openSession: async (workspace, accountId) => {
       // Reuse the workspace worker's connection when there is one
-      const pooled = platform.getWorker(workspace)?.session(accountId)
-      if (pooled !== undefined) {
-        return { client: pooled, close: async () => {} }
+      const lease = platform.getWorker(workspace)?.lease(accountId)
+      if (lease !== undefined) {
+        // The worker keeps its connection open until the request releases it
+        return { client: lease.client, close: async () => { lease.release() } }
       }
       const raw = await createPlatformClient(ctx, workspace, config)
       return { client: new TxOperations(raw, accountId), close: async () => { await raw.close() } }
@@ -108,9 +119,9 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
   app.use(cors())
   app.use(bp.json({ limit: '10mb' }))
 
-  const webhook = createWebhookHandler(webhookRouter, config.WebhookSecret, ctx)
-  app.post('/api/webhook', (req: Request, res: Response) => {
-    webhook({ header: (name) => req.header(name), body: req.body }, res)
+  const scoped = createWebhookHandler(webhookRouter, scopedResolver(config.WebhookSecret), ctx)
+  app.post(`${WEBHOOK_PATH}/:workspace/:integration`, (req: Request, res: Response) => {
+    scoped({ header: (name) => req.header(name), body: req.body, params: req.params }, res)
   })
 
   const route =
@@ -152,18 +163,41 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
     const { workspace, accountId } = await verifiedCaller(body)
     await service.refresh(ctx, workspace, accountId)
   }))
+  const repositoryDeps: RepositoryRouteDeps = { verify: verifiedCaller, service }
   app.post('/api/v1/repository-enable', route('repository-enable', async (body) => {
-    const workspace = tokenWorkspace(body)
-    await service.enableRepository(ctx, workspace, body.repositoryId as Ref<GitlabIntegrationRepository>)
+    await repositoryEnableRoute(ctx, body, repositoryDeps)
   }))
   app.post('/api/v1/repository-disable', route('repository-disable', async (body) => {
-    const workspace = tokenWorkspace(body)
-    await service.disableRepository(ctx, workspace, body.repositoryId as Ref<GitlabIntegrationRepository>)
+    await repositoryDisableRoute(ctx, body, repositoryDeps)
   }))
   app.post('/api/v1/disconnect', route('disconnect', async (body) => {
     const { workspace, accountId } = await verifiedCaller(body)
     await service.disconnect(ctx, workspace, accountId)
   }))
+
+  const imageDeps: ImageRouteDeps = {
+    verify: verifiedCaller,
+    image: async (workspace, actor, url) => (await platform.getWorker(workspace)?.gitlabImage(url, actor)) ?? { kind: 'unavailable' },
+    onError: (err) => {
+      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+      ctx.error('/api/v1/image failed', { error: err instanceof Error ? err.message : String(err) })
+    }
+  }
+  app.post('/api/v1/image', (req: Request, res: Response) => {
+    imageRoute(req.body, imageDeps)
+      .then((result) => {
+        if (result.kind === 'image') {
+          res.status(200).set({ ...IMAGE_HEADERS, 'Content-Type': result.contentType }).send(result.data)
+          return
+        }
+        res.status(imageStatus(result.kind)).json({ error: result.kind })
+      })
+      .catch((err: Error) => {
+        Analytics.handleError(err)
+        ctx.error('/api/v1/image failed', { error: err.message })
+        res.status(400).json({ error: err.message })
+      })
+  })
 
   const server = app.listen(config.Port, () => {
     ctx.info('GitLab service listening', { port: config.Port })
@@ -171,5 +205,6 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
   return async () => {
     server.close()
     await platform.close()
+    await storage?.close()
   }
 }
