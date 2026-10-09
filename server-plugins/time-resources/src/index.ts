@@ -51,6 +51,7 @@ import task, { makeRank } from '@hcengineering/task'
 import { jsonToMarkup, nodeDoc, nodeParagraph, nodeText } from '@hcengineering/text-core'
 import time, { ProjectToDo, ToDo, ToDoPriority, TodoAutomationHelper, WorkSlot } from '@hcengineering/time'
 import tracker, { Issue, IssueStatus, Project, TimeSpendReport } from '@hcengineering/tracker'
+import { getAutoCompleteTesters, selectAutoCompletable } from './automation'
 
 /**
  * @public
@@ -670,8 +671,8 @@ async function changeIssueAssigneeHandler (
         attachedTo: issue._id
       })
       const now = Date.now()
-      for (const todo of todos) {
-        if (todo.doneOn != null) continue
+      // ToDos owned by an integration (GitLab review and fix ToDos) stay open
+      for (const todo of await selectAutoCompletable(control, todos, await getAutoCompleteTesters(control))) {
         res.push(control.txFactory.createTxUpdateDoc(todo._class, todo.space, todo._id, { doneOn: now }))
       }
       const tx = await getCreateToDoTx(issue, newAssignee, control)
@@ -714,10 +715,8 @@ async function changeIssueStatusHandler (
       })
       const res: Tx[] = []
       const now = Date.now()
-      for (const todo of todos) {
-        if (todo.doneOn == null) {
-          res.push(control.txFactory.createTxUpdateDoc(todo._class, todo.space, todo._id, { doneOn: now }))
-        }
+      for (const todo of await selectAutoCompletable(control, todos, await getAutoCompleteTesters(control))) {
+        res.push(control.txFactory.createTxUpdateDoc(todo._class, todo.space, todo._id, { doneOn: now }))
       }
       return res
     }

@@ -148,6 +148,7 @@ export class TProjectToDo extends TToDo implements ProjectToDo {
 @UX(time.string.ToDo, time.icon.Planned)
 export class TTodoAutomationHelper extends TDoc implements TodoAutomationHelper {
   onDoneTester!: Resource<TodoDoneTester>
+  onAutoCompleteTester?: Resource<TodoDoneTester>
 }
 
 export function createModel (builder: Builder): void {
