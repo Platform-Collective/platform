@@ -321,3 +321,98 @@ services:
       - PORT=4901
       - SERVER_SECRET=secret
     restart: unless-stopped
+
+  # --- OTP login contour -------------------------------------------------
+  # A separate account/front pair with MAIL_URL configured. MAIL_URL switches
+  # the login UI to OTP mode and forces email confirmation on sign-up, so it
+  # must not be enabled on the main account/front used by the other tests.
+  # Database and storage settings must match the main account service (see
+  # docker-compose.override.yaml and docker-compose.purepg.yaml).
+  mailpit:
+    image: axllent/mailpit:v1.29
+    ports:
+      - 8025:8025 # Web UI + REST API used by tests to read OTP codes
+    restart: unless-stopped
+  mail:
+    image: platformcollective/mail
+    pull_policy: never
+    depends_on:
+      - mailpit
+    environment:
+      - PORT=8097
+      - SOURCE=noreply@huly.local
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_TLS_MODE=ignore
+      - MAIL_AUTH_TOKEN=${MAIL_AUTH_TOKEN}
+    restart: unless-stopped
+  account-otp:
+    image: platformcollective/account
+    pull_policy: never
+    depends_on:
+      postgres:
+        condition: service_healthy
+      account:
+        condition: service_started
+      mail:
+        condition: service_started
+    links:
+      - mongodb
+      - minio
+      - cockroach
+      - postgres
+    ports:
+      - 3004:3004
+    volumes:
+      - ./branding-test.json:/var/cfg/branding.json
+    # QUEUE_CONFIG is intentionally omitted: sharing the consumer group with
+    # the main account service would steal its queue messages.
+    environment:
+      - ACCOUNT_PORT=3004
+      - SERVER_SECRET=secret
+      - ADMIN_EMAILS=admin,${PLATFORM_ADMIN_EMAILS}
+      - WORKSPACE_LIMIT_PER_USER=100
+      - DB_URL=${MONGO_URL}
+      - PROCEED_V7_MONGO=true
+      - REGION_INFO=|America
+      - TRANSACTOR_URL=ws://transactor:3334;ws://localhost:3334
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - BRANDING_PATH=/var/cfg/branding.json
+      - STATS_URL=http://stats:4901
+      - FRONT_URL=http://localhost:8084
+      - MAIL_URL=http://mail:8097
+      - MAIL_AUTH_TOKEN=${MAIL_AUTH_TOKEN}
+    restart: unless-stopped
+  front-otp:
+    image: platformcollective/front
+    pull_policy: never
+    depends_on:
+      - account-otp
+    links:
+      - elastic
+      - collaborator
+      - stats
+      - transactor
+    ports:
+      - 8084:8084
+    volumes:
+      - ./branding-test.json:/app/dist/branding-test.json
+    environment:
+      - SERVER_PORT=8084
+      - SERVER_SECRET=secret
+      - ACCOUNTS_URL_INTERNAL=http://account-otp:3004
+      - ACCOUNTS_URL=http://localhost:3004
+      - UPLOAD_URL=/files
+      - ELASTIC_URL=http://elastic:9200
+      - GMAIL_URL=http://localhost:8088
+      - CALENDAR_URL=http://localhost:8095
+      - REKONI_URL=http://rekoni:4007
+      - TELEGRAM_URL=http://localhost:8086
+      - COLLABORATOR_URL=ws://localhost:3079
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      - BRANDING_URL=http://localhost:8084/branding-test.json
+      - STATS_URL=http://stats:4901
+      - STATS_API=http://localhost:4901
+      # Only needs to be non-empty: it switches the login UI to OTP mode
+      - MAIL_URL=http://mail:8097
+    restart: unless-stopped

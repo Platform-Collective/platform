@@ -24,6 +24,18 @@ services:
       - UPLOAD_URL=http://localhost:4031/upload/form-data/:workspace
       - DATALAKE_URL=http://localhost:4031
       - PREVIEW_URL=http://localhost:4031
+  account-otp:
+    environment:
+      - DB_URL=${DB_PURE_PG_URL}
+      - STORAGE_CONFIG=${DATALAKE_STORAGE_CONFIG}
+      - PROCEED_V7_MONGO=false
+  front-otp:
+    environment:
+      - STORAGE_CONFIG=${DATALAKE_STORAGE_CONFIG}
+      - FILES_URL=http://localhost:4031/blob/:workspace/:blobId/:filename
+      - UPLOAD_URL=http://localhost:4031/upload/form-data/:workspace
+      - DATALAKE_URL=http://localhost:4031
+      - PREVIEW_URL=http://localhost:4031
   collaborator:
     environment:
       - STORAGE_CONFIG=${DATALAKE_STORAGE_CONFIG}
