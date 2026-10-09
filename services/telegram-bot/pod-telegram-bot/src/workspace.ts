@@ -282,7 +282,7 @@ export class WorkspaceClient {
   }
 
   async getPersons (_ids: AccountUuid[]): Promise<Person[]> {
-    return (await this.client.findAll(contact.class.Person, { personUuid: { $in: _ids } }))
+    return await this.client.findAll(contact.class.Person, { personUuid: { $in: _ids } })
   }
 
   async sendMessage (

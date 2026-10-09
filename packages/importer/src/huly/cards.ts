@@ -436,7 +436,7 @@ export class CardsProcessor {
           space: core.space.Model,
           attributeOf: masterTagId,
           name: generateId<Attribute<MasterTag>>(),
-          label: ('embedded:embedded:' + property.label),
+          label: 'embedded:embedded:' + property.label,
           isCustom: true,
           type,
           defaultValue: property.defaultValue ?? null

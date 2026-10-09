@@ -1172,9 +1172,7 @@ export class FullTextIndexPipeline implements FullTextPipeline {
     indexedDoc: IndexedDoc
   ): Promise<void> {
     if (docInfo !== undefined) {
-      let textContent = Buffer.concat(
-        (await this.storageAdapter?.read(ctx, this.workspace, docInfo._id))
-      ).toString()
+      let textContent = Buffer.concat(await this.storageAdapter?.read(ctx, this.workspace, docInfo._id)).toString()
 
       textContent = textContent
         .split(/ +|\t+|\f+/)

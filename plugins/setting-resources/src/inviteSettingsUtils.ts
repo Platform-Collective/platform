@@ -94,10 +94,7 @@ export function resolveInviteSettings (doc: InviteSettings | undefined): Resolve
       defaultInviteRole: normalizeInviteRole(doc.defaultInviteRole, metaRole),
       inviteLinkGeneratorRoles:
         doc.inviteLinkGeneratorRoles != null && doc.inviteLinkGeneratorRoles.length > 0
-          ? normalizeInviteRoles(
-              doc.inviteLinkGeneratorRoles,
-              DEFAULT_INVITE_LINK_GENERATOR_ROLES
-            )
+          ? normalizeInviteRoles(doc.inviteLinkGeneratorRoles, DEFAULT_INVITE_LINK_GENERATOR_ROLES)
           : [...DEFAULT_INVITE_LINK_GENERATOR_ROLES],
       noLimit: doc.limit === -1
     }
