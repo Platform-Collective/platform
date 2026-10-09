@@ -33,7 +33,10 @@ export function linkMarkExtensions (): Readable<ComponentPointExtension[]> {
 }
 
 /** The first link presenter whose props.hrefPattern matches the href; undefined keeps the plain link. */
-export function linkMarkExtensionFor (all: ComponentPointExtension[], href: unknown): ComponentPointExtension | undefined {
+export function linkMarkExtensionFor (
+  all: ComponentPointExtension[],
+  href: unknown
+): ComponentPointExtension | undefined {
   if (typeof href !== 'string' || href === '') return undefined
   return all.find((it) => {
     const pattern = it.props?.hrefPattern
