@@ -6,5 +6,9 @@ import gitlab from '@hcengineering/gitlab'
 const icons = require('../assets/icons.svg') as string // eslint-disable-line
 loadMetadata(gitlab.icon, {
   Gitlab: `${icons}#gitlab`,
-  GitlabRepository: `${icons}#repository`
+  GitlabRepository: `${icons}#repository`,
+  MergeRequest: `${icons}#mergeRequest`,
+  MergeRequestMerged: `${icons}#mergeRequestMerged`,
+  MergeRequestClosed: `${icons}#mergeRequestClosed`,
+  Image: `${icons}#image`
 })

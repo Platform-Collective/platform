@@ -39673,6 +39673,15 @@ importers:
 
   ../../services/gitlab/gitlab:
     dependencies:
+      '@hcengineering/activity':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/activity
+      '@hcengineering/attachment':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/attachment
+      '@hcengineering/contact':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/contact
       '@hcengineering/core':
         specifier: workspace:^0.7.26
         version: link:../../../foundations/core/packages/core
@@ -39682,6 +39691,12 @@ importers:
       '@hcengineering/preference':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/preference
+      '@hcengineering/task':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/task
+      '@hcengineering/time':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/time
       '@hcengineering/tracker':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/tracker
@@ -39786,12 +39801,27 @@ importers:
       '@hcengineering/account-client':
         specifier: workspace:^0.7.25
         version: link:../../../foundations/core/packages/account-client
+      '@hcengineering/activity':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/activity
+      '@hcengineering/activity-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/activity-resources
       '@hcengineering/analytics':
         specifier: workspace:^0.7.19
         version: link:../../../foundations/core/packages/analytics
+      '@hcengineering/contact':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/contact
+      '@hcengineering/contact-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/contact-resources
       '@hcengineering/core':
         specifier: workspace:^0.7.26
         version: link:../../../foundations/core/packages/core
+      '@hcengineering/diffview':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/diffview
       '@hcengineering/gitlab':
         specifier: workspace:^0.7.0
         version: link:../gitlab
@@ -39810,12 +39840,24 @@ importers:
       '@hcengineering/setting-resources':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/setting-resources
+      '@hcengineering/task':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/task
+      '@hcengineering/text-editor-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/text-editor-resources
       '@hcengineering/tracker':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/tracker
+      '@hcengineering/tracker-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/tracker-resources
       '@hcengineering/ui':
         specifier: workspace:^0.7.0
         version: link:../../../packages/ui
+      '@hcengineering/view':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/view
       '@hcengineering/view-resources':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/view-resources
@@ -39886,6 +39928,12 @@ importers:
 
   ../../services/gitlab/model-gitlab:
     dependencies:
+      '@hcengineering/activity':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/activity
+      '@hcengineering/chunter':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/chunter
       '@hcengineering/contact':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/contact
@@ -39901,6 +39949,12 @@ importers:
       '@hcengineering/model':
         specifier: workspace:^0.7.17
         version: link:../../../foundations/core/packages/model
+      '@hcengineering/model-activity':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/activity
+      '@hcengineering/model-chunter':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/chunter
       '@hcengineering/model-contact':
         specifier: workspace:^0.7.0
         version: link:../../../models/contact
@@ -39910,9 +39964,21 @@ importers:
       '@hcengineering/model-preference':
         specifier: workspace:^0.7.0
         version: link:../../../models/preference
+      '@hcengineering/model-presentation':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/presentation
+      '@hcengineering/model-time':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/time
       '@hcengineering/model-tracker':
         specifier: workspace:^0.7.0
         version: link:../../../models/tracker
+      '@hcengineering/model-view':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/view
+      '@hcengineering/model-workbench':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/workbench
       '@hcengineering/platform':
         specifier: workspace:^0.7.20
         version: link:../../../foundations/core/packages/platform
@@ -39922,9 +39988,21 @@ importers:
       '@hcengineering/setting':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/setting
+      '@hcengineering/tags':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/tags
+      '@hcengineering/task':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/task
+      '@hcengineering/time':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/time
       '@hcengineering/ui':
         specifier: workspace:^0.7.0
         version: link:../../../packages/ui
+      '@hcengineering/view':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/view
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -39983,6 +40061,9 @@ importers:
       '@hcengineering/analytics-service':
         specifier: workspace:^0.7.19
         version: link:../../../foundations/core/packages/analytics-service
+      '@hcengineering/attachment':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/attachment
       '@hcengineering/chunter':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/chunter
@@ -40013,6 +40094,9 @@ importers:
       '@hcengineering/server-core':
         specifier: workspace:^0.7.19
         version: link:../../../foundations/server/packages/core
+      '@hcengineering/server-storage':
+        specifier: workspace:^0.7.16
+        version: link:../../../foundations/server/packages/server-storage
       '@hcengineering/server-token':
         specifier: workspace:^0.7.18
         version: link:../../../foundations/core/packages/token
@@ -40025,6 +40109,9 @@ importers:
       '@hcengineering/text-markdown':
         specifier: workspace:^0.7.21
         version: link:../../../foundations/core/packages/text-markdown
+      '@hcengineering/time':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/time
       '@hcengineering/tracker':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/tracker
@@ -40113,6 +40200,9 @@ importers:
       '@hcengineering/server-core':
         specifier: workspace:^0.7.19
         version: link:../../../foundations/server/packages/core
+      '@hcengineering/time':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/time
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -40171,6 +40261,9 @@ importers:
       '@hcengineering/server-gitlab':
         specifier: workspace:^0.7.0
         version: link:../server-gitlab
+      '@hcengineering/time':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/time
       '@hcengineering/tracker':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/tracker
@@ -40220,6 +40313,9 @@ importers:
 
   ../../services/gitlab/server-gitlab-resources:
     dependencies:
+      '@hcengineering/attachment':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/attachment
       '@hcengineering/chunter':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/chunter
@@ -40238,6 +40334,9 @@ importers:
       '@hcengineering/server-gitlab':
         specifier: workspace:^0.7.0
         version: link:../server-gitlab
+      '@hcengineering/time':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/time
       '@hcengineering/tracker':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/tracker
