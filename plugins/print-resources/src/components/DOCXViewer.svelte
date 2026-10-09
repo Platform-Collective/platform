@@ -306,9 +306,9 @@
 {:else if src}
   {#key src}
     {#if convertedFile?.contentType === 'application/pdf'}
-      <EmbeddedPDF {src} name={previewName} />
+      <EmbeddedPDF {src} name={previewName} {token} />
     {:else}
-      <EmbeddedHTML {src} {name} {css} />
+      <EmbeddedHTML {src} {name} {css} {token} />
     {/if}
   {/key}
 {/if}

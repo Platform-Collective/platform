@@ -15,6 +15,7 @@
 <script lang="ts">
   // import { Doc } from '@hcengineering/core'
   import type { Blob, Ref } from '@hcengineering/core'
+  import { getMetadata } from '@hcengineering/platform'
   import { Button, Dialog, EmbeddedPDF, Label, Spinner } from '@hcengineering/ui'
   import { createEventDispatcher, onMount } from 'svelte'
   import presentation, { getFileUrl } from '..'
@@ -44,6 +45,8 @@
     }
   })
   let download: HTMLAnchorElement
+
+  const token = getMetadata(presentation.metadata.Token)
 
   $: src = file !== undefined ? getFileUrl(file, name) : undefined
 
@@ -97,7 +100,7 @@
         <img class="img-fit" {src} alt="" />
       </div>
     {:else}
-      <EmbeddedPDF {src} {name} {css} fit />
+      <EmbeddedPDF {src} {name} {css} {token} fit />
     {/if}
   {:else}
     <div class="centered">
