@@ -54,7 +54,7 @@
   export let noDivider: boolean = false
   export let showMenu: boolean = false
   export let shouldTooltip: boolean = false
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
   export let draggable: boolean = false
   export let actions: Action[] = []
   export let _id: Ref<Doc> | string | undefined = undefined
@@ -72,7 +72,7 @@
     }
   }
 
-  function toggle (e: MouseEvent): void {
+  function toggle(e: MouseEvent): void {
     e.stopPropagation()
     e.preventDefault()
     if (!empty) {
@@ -81,7 +81,7 @@
     }
   }
 
-  function handleMenuClicked (ev: MouseEvent): void {
+  function handleMenuClicked(ev: MouseEvent): void {
     if (actions.length === 0) return
     ev.stopPropagation()
     pressed = true
@@ -166,7 +166,7 @@
   </button>
   {#if !empty}
     <div {id} class="hulyNavGroup-content">
-      {#if (!isOpen && visible) || forciblyСollapsed}
+      {#if (!isOpen && visible) || forciblyCollapsed}
         <slot name="visible" {isOpen} />
       {:else}
         <slot />

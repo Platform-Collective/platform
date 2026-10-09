@@ -23,11 +23,11 @@
   export let height: string
   export let width: string
 
-  function replyToThread (message: ActivityMessage): void {
+  function replyToThread(message: ActivityMessage): void {
     updateTabData(love.ids.MeetingWidget, 'chat', { thread: message._id })
   }
 
-  function closeThread (): void {
+  function closeThread(): void {
     updateTabData(love.ids.MeetingWidget, 'chat', { thread: undefined })
   }
 </script>

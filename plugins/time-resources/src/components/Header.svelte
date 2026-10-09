@@ -17,7 +17,7 @@
 
   export let currentDate: Date = new Date()
 
-  function inc (val: number): void {
+  function inc(val: number): void {
     if (val === 0) {
       currentDate = new Date()
       return
@@ -26,7 +26,7 @@
     currentDate = currentDate
   }
 
-  function getTitle (day: Date, now: Timestamp): IntlString {
+  function getTitle(day: Date, now: Timestamp): IntlString {
     // const today = new Date(now)
     // const tomorrow = new Date(new Date(now).setDate(new Date(now).getDate() + 1))
     // const yesterday = new Date(new Date(now).setDate(new Date(now).getDate() - 1))

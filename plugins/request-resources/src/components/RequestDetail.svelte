@@ -47,7 +47,7 @@
     comment?: RequestDecisionComment
   }
 
-  function convert (value: Request, comments: Map<Ref<Person> | undefined, RequestDecisionComment>): RequestDecision[] {
+  function convert(value: Request, comments: Map<Ref<Person> | undefined, RequestDecisionComment>): RequestDecision[] {
     const res: RequestDecision[] = []
     for (const emp of value.requested) {
       const decision = value.rejected === emp ? false : value.approved.includes(emp) ? true : undefined

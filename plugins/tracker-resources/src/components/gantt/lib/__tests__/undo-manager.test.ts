@@ -9,7 +9,7 @@ import { UndoManager, type UndoEntry, type UndoApplyClient } from '../undo-manag
 
 const space = 'space-1' as Ref<Space>
 
-function makeIssue (id: string, startDate: number | null, dueDate: number | null): Issue {
+function makeIssue(id: string, startDate: number | null, dueDate: number | null): Issue {
   return {
     _id: id as Ref<Issue>,
     _class: 'tracker:class:Issue' as Issue['_class'],
@@ -19,7 +19,7 @@ function makeIssue (id: string, startDate: number | null, dueDate: number | null
   } as unknown as Issue
 }
 
-function makeRelation (
+function makeRelation(
   id: string,
   from: string,
   to: string,
@@ -39,7 +39,7 @@ function makeRelation (
   } as unknown as IssueRelation
 }
 
-function dateChange (
+function dateChange(
   id: string,
   beforeStart: number,
   beforeDue: number,
@@ -57,7 +57,7 @@ function dateChange (
 }
 
 interface MockOps {
-  updates: Array<{ doc: { _id: string }, update: Record<string, unknown> }>
+  updates: Array<{ doc: { _id: string }; update: Record<string, unknown> }>
   added: Array<{
     _class: string
     space: string
@@ -67,7 +67,7 @@ interface MockOps {
     attributes: Record<string, unknown>
     id?: string
   }>
-  removed: Array<{ _class: string, space: string, id: string }>
+  removed: Array<{ _class: string; space: string; id: string }>
   removeDocCount: number
 }
 
@@ -80,7 +80,7 @@ interface MockClient extends UndoApplyClient {
   }
 }
 
-function makeClient (initial: { issues?: Issue[], relations?: IssueRelation[] } = {}): MockClient {
+function makeClient(initial: { issues?: Issue[]; relations?: IssueRelation[] } = {}): MockClient {
   const issues = new Map<string, Issue>()
   const relations = new Map<string, IssueRelation>()
   for (const i of initial.issues ?? []) issues.set(String(i._id), i)
@@ -89,20 +89,20 @@ function makeClient (initial: { issues?: Issue[], relations?: IssueRelation[] } 
 
   const client: MockClient = {
     state: { issues, relations, mockOps },
-    async findOne (clazz: unknown, query: { _id: unknown }) {
+    async findOne(clazz: unknown, query: { _id: unknown }) {
       const id = String(query._id)
       // pick from the right map by stringified class
       const c = String(clazz)
       if (c.includes('IssueRelation')) return relations.get(id) as unknown as never
       return issues.get(id) as unknown as never
     },
-    async findAll (_clazz: unknown, _query: unknown) {
+    async findAll(_clazz: unknown, _query: unknown) {
       return Array.from(relations.values()) as unknown as never
     },
-    apply (_marker: string | undefined) {
+    apply(_marker: string | undefined) {
       const pending: Array<() => void> = []
       return {
-        async update (doc: { _id: string, _class?: string }, update: Record<string, unknown>) {
+        async update(doc: { _id: string; _class?: string }, update: Record<string, unknown>) {
           mockOps.updates.push({ doc: { _id: String(doc._id) }, update })
           pending.push(() => {
             const cur = issues.get(String(doc._id))
@@ -117,7 +117,7 @@ function makeClient (initial: { issues?: Issue[], relations?: IssueRelation[] } 
           })
           return undefined
         },
-        async addCollection (
+        async addCollection(
           clazz: string,
           spc: string,
           attachedTo: string,
@@ -141,7 +141,7 @@ function makeClient (initial: { issues?: Issue[], relations?: IssueRelation[] } 
           })
           return newId
         },
-        async removeCollection (
+        async removeCollection(
           clazz: string,
           spc: string,
           id: string,
@@ -155,7 +155,7 @@ function makeClient (initial: { issues?: Issue[], relations?: IssueRelation[] } 
           })
           return undefined
         },
-        async commit () {
+        async commit() {
           if (client.state.failNextCommit === true) {
             client.state.failNextCommit = false
             throw new Error('mock-commit-fail')

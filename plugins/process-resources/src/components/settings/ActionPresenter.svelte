@@ -32,7 +32,7 @@
 
   $: void validate(action.params)
 
-  async function validate (params: MethodParams<Doc>): Promise<void> {
+  async function validate(params: MethodParams<Doc>): Promise<void> {
     try {
       const res: string[] = []
       for (const key of method.requiredParams) {

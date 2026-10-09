@@ -32,7 +32,7 @@
     drop: { from: number, to: number }
   }>()
 
-  function onDragStart (event: DragEvent, index: number): void {
+  function onDragStart(event: DragEvent, index: number): void {
     if (!canDrag || event.dataTransfer === null) {
       return
     }
@@ -44,7 +44,7 @@
     draggedIndex = index
   }
 
-  function onDragOver (event: DragEvent, index: number): void {
+  function onDragOver(event: DragEvent, index: number): void {
     if (!canDrag || event.dataTransfer === null) {
       return
     }
@@ -54,7 +54,7 @@
     draggedOverIndex = index
   }
 
-  function onDragLeave (event: DragEvent, index: number): void {
+  function onDragLeave(event: DragEvent, index: number): void {
     if (!canDrag || event.dataTransfer === null) {
       return
     }
@@ -67,7 +67,7 @@
     draggedOverIndex = undefined
   }
 
-  function onDragEnd (event: DragEvent): void {
+  function onDragEnd(event: DragEvent): void {
     if (!canDrag || event.dataTransfer === null) {
       return
     }

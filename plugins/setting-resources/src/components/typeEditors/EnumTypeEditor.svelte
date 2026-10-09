@@ -43,18 +43,18 @@
     component: setting.component.EditEnum
   }
 
-  function changeEnum (value: Enum) {
+  function changeEnum(value: Enum) {
     type = TypeEnum(value._id)
     dispatch('change', { type, defaultValue, index: IndexKind.FullText })
   }
 
-  async function updateSelected (ref: Ref<Enum> | undefined) {
+  async function updateSelected(ref: Ref<Enum> | undefined) {
     value = ref !== undefined ? await client.findOne(core.class.Enum, { _id: ref }) : undefined
   }
 
   $: updateSelected(ref)
 
-  async function edit () {
+  async function edit() {
     if (value === undefined) return
     showPopup(setting.component.EditEnum, { value }, 'top')
   }

@@ -39,7 +39,7 @@
     }
   )
 
-  function onClick (): void {
+  function onClick(): void {
     if (trainingObject === null) {
       return
     }

@@ -227,6 +227,8 @@ export const getEmbedUrlFromYoutubeUrl = (url: string, options: YoutubeEmbedUrlO
 }
 
 export const YOUTUBE_REGEX =
+  // eslint-disable-next-line secure-coding/no-redos-vulnerable-regex
   /^((?:https?:)?\/\/)?((?:www|m|music)\.)?((?:youtube\.com|youtu.be|youtube-nocookie\.com))(\/(?:[\w-]+\?v=|embed\/|v\/)?)([\w-]+)(\S+)?$/
 export const YOUTUBE_REGEX_GLOBAL =
+  // eslint-disable-next-line secure-coding/no-redos-vulnerable-regex
   /^((?:https?:)?\/\/)?((?:www|m|music)\.)?((?:youtube\.com|youtu.be|youtube-nocookie\.com))(\/(?:[\w-]+\?v=|embed\/|v\/)?)([\w-]+)(\S+)?$/g

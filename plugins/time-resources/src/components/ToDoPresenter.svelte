@@ -27,7 +27,7 @@
   export let withouthWorkItem: boolean = false
   export let showCheck = false
 
-  function isVisible (value: ToDo): boolean {
+  function isVisible(value: ToDo): boolean {
     if (value.createdBy !== undefined && getCurrentAccount().socialIds.includes(value.createdBy)) return true
     if (value.visibility === 'public') {
       return true
@@ -45,7 +45,7 @@
 
   let updating: Promise<any> | undefined = undefined
 
-  async function markDone (): Promise<void> {
+  async function markDone(): Promise<void> {
     await updating
     updating = client.update(value, { doneOn: value.doneOn == null ? Date.now() : null })
     await updating

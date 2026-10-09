@@ -166,7 +166,7 @@ export class DraftController<T> {
     removeDraft(id)
   }
 
-  static save<T>(id: string, object: T, emptyObj: Partial<T> | undefined = undefined): void {
+  static save<T> (id: string, object: T, emptyObj: Partial<T> | undefined = undefined): void {
     if (emptyObj !== undefined && isEmptyDraft(object, emptyObj)) {
       DraftController.remove(id)
       return

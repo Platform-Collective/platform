@@ -31,11 +31,11 @@
 
   const dispatch = createEventDispatcher()
 
-  function getColorDefinition (color: number | undefined): ColorDefinition {
+  function getColorDefinition(color: number | undefined): ColorDefinition {
     return getPlatformColorDef(color ?? 0, $themeStore.dark)
   }
 
-  function getTagStyle (color: ColorDefinition): string {
+  function getTagStyle(color: ColorDefinition): string {
     return `
     background: ${color.color + '33'};
     border: 1px solid ${color.color + '66'};

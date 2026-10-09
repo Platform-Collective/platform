@@ -29,7 +29,7 @@
   $: state = $recorderState.state
   $: elapsedTime = $recorderState.elapsedTime
 
-  function handleRecClick (): void {
+  function handleRecClick(): void {
     void record({})
   }
 

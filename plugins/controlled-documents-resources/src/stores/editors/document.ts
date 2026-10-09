@@ -41,7 +41,7 @@ export * from './document/canSendForReview'
 export * from './document/documentComments'
 export * from './document/comparison'
 export * from './document/editor'
-export * from './document/query'
+export type * from './document/query'
 
 export const addDocumentCommentFx = attach({
   source: { document: $controlledDocument },

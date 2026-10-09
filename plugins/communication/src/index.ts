@@ -17,7 +17,7 @@ import { Class, Ref } from '@hcengineering/core'
 
 import { GuestCommunicationSettings, Applet, CustomActivityPresenter, MessageAction, PollAnswer } from './types'
 
-export * from './types'
+export type * from './types'
 
 /**
  * @public

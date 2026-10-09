@@ -56,7 +56,7 @@
     return setting?.enabled ?? true
   }
 
-  async function toggle (sub: PushSubscription): Promise<void> {
+  async function toggle(sub: PushSubscription): Promise<void> {
     const setting = settings.find(({ attachedTo }) => attachedTo === sub._id)
     const currentEnabled: boolean = setting !== undefined ? Boolean(setting.enabled) : true
     const enabled = !currentEnabled
@@ -71,7 +71,7 @@
     }
   }
 
-  async function remove (sub: PushSubscription): Promise<void> {
+  async function remove(sub: PushSubscription): Promise<void> {
     showPopup(
       MessageBox,
       {
@@ -104,7 +104,7 @@
 
   let currentEndpoint: string | undefined
 
-  async function updateCurrentEndpoint (): Promise<void> {
+  async function updateCurrentEndpoint(): Promise<void> {
     if (!('serviceWorker' in navigator)) return
     const loc = getCurrentLocation()
     const registration = await navigator.serviceWorker.getRegistration(`/${loc.path[0]}/${loc.path[1]}`)
@@ -125,7 +125,7 @@
 
   let subscribing = false
 
-  async function subscribe (): Promise<void> {
+  async function subscribe(): Promise<void> {
     if (subscribing) return
     subscribing = true
     const subscribeResult = await subscribePush()
@@ -157,10 +157,10 @@
       : publicKey === undefined
         ? notification.string.PushNotConfigured
         : !browserSupported
-            ? notification.string.PushNotSupported
-            : permissionDenied
-              ? notification.string.PushDenied
-              : undefined
+          ? notification.string.PushNotSupported
+          : permissionDenied
+            ? notification.string.PushDenied
+            : undefined
 
   $: buttonDisabled =
     desktopPlatform || alreadySubscribed || publicKey === undefined || !browserSupported || permissionDenied

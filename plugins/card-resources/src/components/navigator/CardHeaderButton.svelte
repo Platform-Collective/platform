@@ -32,21 +32,21 @@
 
   $: updateContext($location.path[3], $location.path[4] as Ref<MasterTag> | undefined)
 
-  function updateContext (pathSpace: string | undefined, pathClass: Ref<MasterTag> | undefined): void {
+  function updateContext(pathSpace: string | undefined, pathClass: Ref<MasterTag> | undefined): void {
     if (pathClass !== undefined) {
       _class = pathClass
       space = pathSpace
     }
   }
 
-  async function navigateToCard (cardId: string): Promise<void> {
+  async function navigateToCard(cardId: string): Promise<void> {
     const loc = getCurrentLocation()
     loc.path[3] = cardId
     loc.path.length = 4
     navigate(loc)
   }
 
-  async function handleCreateCard (): Promise<void> {
+  async function handleCreateCard(): Promise<void> {
     const changeType = _class !== undefined && isBaseTypeWithSubtypes(getClient().getHierarchy(), _class)
     showPopup(CreateCardPopup, { type: _class, space, changeType }, 'center', async (result) => {
       if (result != null && result !== '') {
@@ -55,7 +55,7 @@
     })
   }
 
-  async function newTeamspace (): Promise<void> {
+  async function newTeamspace(): Promise<void> {
     showPopup(CreateSpace, {}, 'top')
   }
 
@@ -80,7 +80,7 @@
         }
       ]
 
-  function addButtonClicked (ev: MouseEvent): void {
+  function addButtonClicked(ev: MouseEvent): void {
     pressed = true
     showPopup(Menu, { actions: globalActions }, ev.target as HTMLElement, () => {
       pressed = false

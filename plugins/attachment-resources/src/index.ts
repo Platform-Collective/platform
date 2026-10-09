@@ -48,7 +48,7 @@ import DrawingPresenter from './components/DrawingPresenter.svelte'
 import LinkPreview from './components/LinkPreview.svelte'
 import LinkPreviewCard from './components/LinkPreviewCard.svelte'
 
-export * from './types'
+export type * from './types'
 export * from './stores'
 
 export {

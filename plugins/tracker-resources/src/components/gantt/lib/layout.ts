@@ -11,7 +11,7 @@ export type GroupBy = 'none' | 'component' | 'milestone'
 const DEFAULT_OVERSCAN_PX = 240
 
 /** Stable id used for keyed iteration AND collapse-state lookup. */
-export function rowId (row: LayoutRow): string {
+export function rowId(row: LayoutRow): string {
   return row.id
 }
 
@@ -56,7 +56,7 @@ export interface BuildLayoutOptions {
  * parent under a hard filter) are promoted to roots so matching issues don't
  * silently disappear from the Gantt.
  */
-export function buildLayout (
+export function buildLayout(
   issues: Issue[],
   milestones: MilestoneMarker[],
   _group: GroupBy,
@@ -107,7 +107,7 @@ export function buildLayout (
   }
 
   /** True iff `issueId` should appear under the active filter (match OR breadcrumb). */
-  function isVisibleUnderFilter (issueId: string): boolean {
+  function isVisibleUnderFilter(issueId: string): boolean {
     if (!hasFilter) return true
     if (matchedIds?.has(issueId)) return true
     return breadcrumbIds.has(issueId)
@@ -166,7 +166,7 @@ export function buildLayout (
   const rows: LayoutRow[] = []
   let y = 0
 
-  function emitIssue (issue: Issue, depth: number): void {
+  function emitIssue(issue: Issue, depth: number): void {
     const issueId = issue._id as unknown as string
     if (!isVisibleUnderFilter(issueId)) return
     const kids = issueChildrenOf.get(issueId) ?? []
@@ -247,7 +247,7 @@ export function buildLayout (
  * Return the subset of rows whose [y, y+height] intersects
  * [viewportTop - overscan, viewportTop + viewportHeight + overscan].
  */
-export function filterVisibleRows (
+export function filterVisibleRows(
   rows: LayoutRow[],
   viewportTop: number,
   viewportHeight: number,

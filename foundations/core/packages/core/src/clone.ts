@@ -66,7 +66,7 @@ export function clone (
     return new Date(obj.getTime())
   } else if (typeOf === 'Array' || typeOf === 'Object') {
     const isArray = Array.isArray(obj)
-    const result: any = isArray ? [] : Object.assign({}, obj)
+    const result: any = isArray ? [] : { ...obj }
     for (const key in obj) {
       // include prototype properties
       const value = obj[key]
@@ -78,10 +78,8 @@ export function clone (
         result[key] = valClone
       } else if (type === 'Date') {
         result[key] = new Date(value.getTime())
-      } else {
-        if (isArray) {
-          result[key] = value
-        }
+      } else if (isArray) {
+        result[key] = value
       }
     }
     if (typeOf === 'Object') {

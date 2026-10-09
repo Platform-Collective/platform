@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+import { generateId, type Blob, type Ref } from '@hcengineering/core'
 import { setPlatformStatus, unknownError } from '@hcengineering/platform'
 import { imageSizeToRatio, getImageSize } from '@hcengineering/presentation'
 import { Extension } from '@tiptap/core'
+import { type Node } from '@tiptap/pm/model'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { type EditorView } from '@tiptap/pm/view'
 
 import { type FileAttachFunction } from '../types'
-import type { Blob, Ref } from '@hcengineering/core'
 
 /**
  * @public
@@ -44,6 +45,73 @@ export const ImageUploadExtension = Extension.create<ImageUploadExtensionOptions
   addProseMirrorPlugins () {
     const attachFile = this.options.attachFile
     const getFileUrl = this.options.getFileUrl
+
+    const replacePendingInlineImage = (view: EditorView, placeholder: string, node: Node): void => {
+      let imagePosition: number | undefined
+
+      view.state.doc.descendants((currentNode, position) => {
+        if (!currentNode.isText || currentNode.text === undefined) return
+
+        const offset = currentNode.text.indexOf(placeholder)
+        if (offset !== -1) {
+          imagePosition = position + offset
+          return false
+        }
+      })
+
+      if (imagePosition !== undefined) {
+        view.dispatch(view.state.tr.replaceWith(imagePosition, imagePosition + placeholder.length, node))
+      }
+    }
+
+    const uploadInlineImage = async (
+      view: EditorView,
+      source: string,
+      placeholder: string,
+      alt: string
+    ): Promise<void> => {
+      if (attachFile === undefined) return
+
+      try {
+        const response = await fetch(source)
+        const blob = await response.blob()
+        if (!blob.type.startsWith('image/')) return
+
+        const file = new File([blob], getInlineImageName(blob.type, alt), { type: blob.type })
+        const attached = await attachFile(file)
+        if (attached === undefined) return
+
+        const size = await getImageSize(file)
+        const node = view.state.schema.nodes.image.create({
+          'file-id': attached.file,
+          'data-file-type': file.type,
+          src: getFileUrl(attached.file),
+          alt: alt || file.name,
+          title: alt || file.name,
+          width: imageSizeToRatio(size.width, size.pixelRatio)
+        })
+
+        replacePendingInlineImage(view, placeholder, node)
+      } catch (err) {
+        void setPlatformStatus(unknownError(err))
+      }
+    }
+
+    const transformPastedHTML = (html: string, view: EditorView): string => {
+      if (attachFile === undefined || !html.includes('data:image/')) return html
+
+      const document = new DOMParser().parseFromString(html, 'text/html')
+      document.querySelectorAll('img[src^="data:image/"]').forEach((image) => {
+        const source = image.getAttribute('src')
+        if (source !== null) {
+          const placeholder = `[Uploading image ${generateId()}]`
+          image.replaceWith(document.createTextNode(placeholder))
+          void uploadInlineImage(view, source, placeholder, image.getAttribute('alt') ?? '')
+        }
+      })
+
+      return document.body.innerHTML
+    }
 
     function handleDrop (
       view: EditorView,
@@ -95,6 +163,7 @@ export const ImageUploadExtension = Extension.create<ImageUploadExtensionOptions
       new Plugin({
         key: new PluginKey('handle-image-paste'),
         props: {
+          transformPastedHTML,
           handlePaste (view, event) {
             const dataTransfer = event.clipboardData
             if (dataTransfer !== null) {
@@ -122,6 +191,21 @@ export const ImageUploadExtension = Extension.create<ImageUploadExtensionOptions
     ]
   }
 })
+
+function getInlineImageName (contentType: string, alt: string): string {
+  if (alt.trim() !== '') return alt
+
+  const extension =
+    {
+      'image/gif': 'gif',
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/svg+xml': 'svg',
+      'image/webp': 'webp'
+    }[contentType] ?? 'bin'
+
+  return `image.${extension}`
+}
 
 async function handleImageUpload (
   file: File,

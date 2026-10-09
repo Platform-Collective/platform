@@ -34,7 +34,6 @@ import { type TextInputAction } from './types'
 import { get } from 'svelte/store'
 import view from '@hcengineering/view'
 import { type Direct } from '@hcengineering/communication'
-import { type Employee } from '@hcengineering/contact'
 
 export async function unsubscribe (card: Card): Promise<void> {
   const client = getCommunicationClient()
@@ -178,7 +177,7 @@ export async function canCreateDirect (space: Ref<Space>, data: Partial<Data<Dir
     const createMembers = new Set(members)
     if (directMembers.size !== createMembers.size) return false
     for (const item of directMembers) {
-      if (!createMembers.has(item as Ref<Employee>)) return false
+      if (!createMembers.has(item)) return false
     }
     return true
   })

@@ -133,7 +133,7 @@
   )
   $: void updateInboxData($notificationsByContextStore, archivedNotifications, showArchive)
 
-  async function updateInboxData (
+  async function updateInboxData(
     notificationsByContext: Map<Ref<DocNotifyContext>, InboxNotification[]>,
     archivedNotifications: InboxNotification[],
     showArchive: boolean
@@ -163,7 +163,7 @@
     isContextsLoaded = true
   })
 
-  async function syncLocation (newLocation: Location): Promise<void> {
+  async function syncLocation(newLocation: Location): Promise<void> {
     const token = ++syncLocationToken
     const loc = await resolveLocation(newLocation)
     if (token !== syncLocationToken) return
@@ -219,7 +219,7 @@
   $: void updateSelectedPanel(selectedContext, urlObjectClass)
   $: void updateTabItems(inboxData, $contextsStore)
 
-  async function updateTabItems (inboxData: InboxData, notifyContexts: DocNotifyContext[]): Promise<void> {
+  async function updateTabItems(inboxData: InboxData, notifyContexts: DocNotifyContext[]): Promise<void> {
     const displayClasses = new Set(
       notifyContexts.filter(({ _id }) => inboxData.has(_id)).map(({ objectClass }) => objectClass)
     )
@@ -255,13 +255,13 @@
     tabItems = [allTab].concat(tabs.sort((a, b) => (a.label ?? '').localeCompare(b.label ?? '')))
   }
 
-  function selectTab (event: CustomEvent): void {
+  function selectTab(event: CustomEvent): void {
     if (event.detail !== undefined) {
       selectedTabId = event.detail.id
     }
   }
 
-  async function selectContext (event?: CustomEvent): Promise<void> {
+  async function selectContext(event?: CustomEvent): Promise<void> {
     closePanel()
     selectedContext = event?.detail?.context
     selectedContextId = selectedContext?._id
@@ -275,7 +275,7 @@
 
     void selectInboxContext(linkProviders, selectedContext, selectedNotification, event?.detail.object)
   }
-  function isChunterChannel (selectedContext: DocNotifyContext, urlObjectClass?: Ref<Class<Doc>>): boolean {
+  function isChunterChannel(selectedContext: DocNotifyContext, urlObjectClass?: Ref<Class<Doc>>): boolean {
     const isActivityMessageContext = hierarchy.isDerived(selectedContext.objectClass, activity.class.ActivityMessage)
     const chunterClass = isActivityMessageContext
       ? (urlObjectClass ?? selectedContext.objectClass)
@@ -283,7 +283,7 @@
     return hierarchy.isDerived(chunterClass, chunter.class.ChunterSpace)
   }
 
-  async function updateSelectedPanel (
+  async function updateSelectedPanel(
     selectedContext?: DocNotifyContext,
     urlObjectClass?: Ref<Class<Doc>>
   ): Promise<void> {
@@ -317,7 +317,7 @@
     }
   }
 
-  function filterData (
+  function filterData(
     filter: InboxNotificationsFilter,
     selectedTabId: string | number,
     inboxData: InboxData
@@ -367,13 +367,13 @@
     { size: 20, minSize: 20, maxSize: 50, float: 'aside' }
   ])
 
-  function onArchiveToggled (): void {
+  function onArchiveToggled(): void {
     showArchive = !showArchive
     selectedTabId = allTab.id
     void selectContext(undefined)
   }
 
-  function onUnreadsToggled (): void {
+  function onUnreadsToggled(): void {
     filter = filter === 'unread' ? 'all' : 'unread'
     localStorage.setItem('inbox-filter', filter)
     void selectContext(undefined)

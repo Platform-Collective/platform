@@ -101,7 +101,7 @@ export class TTypeTestCaseStatus extends TType {}
 export class TTestProject extends TTypedSpace implements TestProject {
   @Prop(TypeMarkup(), testManagement.string.FullDescription)
   @Index(IndexKind.FullText)
-    fullDescription?: string
+  fullDescription?: string
 }
 
 @Mixin(testManagement.mixin.DefaultProjectTypeData, testManagement.class.TestProject)
@@ -118,19 +118,19 @@ export class TDefaultProjectTypeData extends TTestProject implements RolesAssign
 export class TTestSuite extends TDoc implements TestSuite {
   @Prop(TypeString(), testManagement.string.SuiteName)
   @Index(IndexKind.FullText)
-    name!: string
+  name!: string
 
   @Prop(TypeMarkup(), testManagement.string.SuiteDescription)
   @Index(IndexKind.FullText)
-    description?: string
+  description?: string
 
   @Prop(TypeRef(testManagement.class.TestSuite), testManagement.string.TestSuite)
-    parent!: Ref<TestSuite>
+  parent!: Ref<TestSuite>
 
   @Prop(Collection(testManagement.class.TestCase), testManagement.string.TestCases, {
     shortLabel: testManagement.string.TestCase
   })
-    testCases?: CollectionSize<TestCase>
+  testCases?: CollectionSize<TestCase>
 
   declare space: Ref<TestProject>
 }
@@ -161,32 +161,32 @@ export class TTestCase extends TAttachedDoc implements TestCase {
 
   @Prop(TypeString(), testManagement.string.TestName)
   @Index(IndexKind.FullText)
-    name!: string
+  name!: string
 
   @Prop(TypeCollaborativeDoc(), testManagement.string.FullDescription)
   @Index(IndexKind.FullText)
-    description!: MarkupBlobRef | null
+  description!: MarkupBlobRef | null
 
   @Prop(TypeTestCaseType(), testManagement.string.TestType)
   @ReadOnly()
-    type!: TestCaseType
+  type!: TestCaseType
 
   @Prop(TypeTestCasePriority(), testManagement.string.TestPriority)
   @ReadOnly()
-    priority!: TestCasePriority
+  priority!: TestCasePriority
 
   @Prop(TypeTestCaseStatus(), testManagement.string.TestStatus)
   @ReadOnly()
-    status!: TestCaseStatus
+  status!: TestCaseStatus
 
   @Prop(TypeRef(contact.mixin.Employee), testManagement.string.TestAssignee)
-    assignee!: Ref<Employee>
+  assignee!: Ref<Employee>
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-    attachments?: CollectionSize<Attachment>
+  attachments?: CollectionSize<Attachment>
 
   @Prop(Collection(chunter.class.ChatMessage), chunter.string.Comments)
-    comments?: number
+  comments?: number
 }
 
 @Model(testManagement.class.TestRun, core.class.Doc, DOMAIN_TEST_MANAGEMENT)
@@ -194,19 +194,19 @@ export class TTestCase extends TAttachedDoc implements TestCase {
 export class TTestRun extends TDoc implements TestRun {
   @Prop(TypeString(), testManagement.string.TestRunName)
   @Index(IndexKind.FullText)
-    name!: string
+  name!: string
 
   @Prop(TypeCollaborativeDoc(), testManagement.string.FullDescription)
   @Index(IndexKind.FullText)
-    description!: MarkupBlobRef | null
+  description!: MarkupBlobRef | null
 
   @Prop(TypeDate(DateRangeMode.DATETIME), testManagement.string.DueDate)
-    dueDate?: Timestamp
+  dueDate?: Timestamp
 
   @Prop(Collection(testManagement.class.TestResult), testManagement.string.TestResult, {
     shortLabel: testManagement.string.TestResult
   })
-    results?: CollectionSize<TestResult>
+  results?: CollectionSize<TestResult>
 }
 
 /** @public */
@@ -242,32 +242,32 @@ export class TTestResult extends TAttachedDoc implements TestResult {
 
   @Prop(TypeString(), testManagement.string.TestRunName)
   @Index(IndexKind.FullText)
-    name!: string
+  name!: string
 
   @Prop(TypeCollaborativeDoc(), testManagement.string.FullDescription)
   @Index(IndexKind.FullText)
-    description!: MarkupBlobRef | null
+  description!: MarkupBlobRef | null
 
   @Prop(TypeRef(testManagement.class.TestCase), testManagement.string.TestCase)
-    testCase!: Ref<TestCase>
+  testCase!: Ref<TestCase>
 
   @Prop(TypeRef(testManagement.class.TestSuite), testManagement.string.TestSuite)
   @Index(IndexKind.Indexed)
-    testSuite?: Ref<TestSuite>
+  testSuite?: Ref<TestSuite>
 
   @Prop(TypeTestRunStatus(), testManagement.string.TestRunStatus)
   @Index(IndexKind.Indexed)
-    status?: TestRunStatus
+  status?: TestRunStatus
 
   @Prop(TypeRef(contact.mixin.Employee), testManagement.string.TestAssignee)
   @Index(IndexKind.Indexed)
-    assignee?: Ref<Employee>
+  assignee?: Ref<Employee>
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-    attachments?: CollectionSize<Attachment>
+  attachments?: CollectionSize<Attachment>
 
   @Prop(Collection(chunter.class.ChatMessage), chunter.string.Comments)
-    comments?: number
+  comments?: number
 }
 
 @Model(testManagement.class.TestPlan, core.class.Doc, DOMAIN_TEST_MANAGEMENT)
@@ -275,16 +275,16 @@ export class TTestResult extends TAttachedDoc implements TestResult {
 export class TTestPlan extends TDoc implements TestPlan {
   @Prop(TypeString(), testManagement.string.Name)
   @Index(IndexKind.FullText)
-    name!: string
+  name!: string
 
   @Prop(TypeCollaborativeDoc(), testManagement.string.FullDescription)
   @Index(IndexKind.FullText)
-    description!: MarkupBlobRef | null
+  description!: MarkupBlobRef | null
 
   @Prop(Collection(testManagement.class.TestPlanItem), testManagement.string.TestCase, {
     shortLabel: testManagement.string.TestCase
   })
-    results?: CollectionSize<TestPlanItem>
+  results?: CollectionSize<TestPlanItem>
 }
 
 @Model(testManagement.class.TestPlanItem, core.class.AttachedDoc, DOMAIN_TEST_MANAGEMENT)
@@ -309,13 +309,13 @@ export class TTestPlanItem extends TAttachedDoc implements TestPlanItem {
   override collection: 'items' = 'items'
 
   @Prop(TypeRef(testManagement.class.TestCase), testManagement.string.TestCase)
-    testCase!: Ref<TestCase>
+  testCase!: Ref<TestCase>
 
   @Prop(TypeRef(testManagement.class.TestSuite), testManagement.string.TestSuite)
   @Index(IndexKind.Indexed)
-    testSuite?: Ref<TestSuite>
+  testSuite?: Ref<TestSuite>
 
   @Prop(TypeRef(contact.mixin.Employee), testManagement.string.TestAssignee)
   @Index(IndexKind.Indexed)
-    assignee?: Ref<Employee>
+  assignee?: Ref<Employee>
 }

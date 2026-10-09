@@ -25,11 +25,11 @@
   let search = ''
   let resultQuery: DocumentQuery<Category> = {}
 
-  function updateResultQuery (search: string): void {
+  function updateResultQuery(search: string): void {
     resultQuery = search === '' ? {} : { $search: search }
   }
 
-  function showCreateDialog () {
+  function showCreateDialog() {
     showPopup(CreateCategory, { space: core.space.Workspace }, 'top')
   }
 

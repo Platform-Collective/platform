@@ -60,7 +60,7 @@
 
   const limiter = new RateLimiter(10)
 
-  async function move (state: CategoryType): Promise<void> {
+  async function move(state: CategoryType): Promise<void> {
     if (dragCard === undefined) {
       return
     }
@@ -108,7 +108,7 @@
 
   let isDragging = false
 
-  async function updateDone (updateValue: DocumentUpdate<Item>): Promise<void> {
+  async function updateDone(updateValue: DocumentUpdate<Item>): Promise<void> {
     isDragging = false
     if (dragCard === undefined) {
       return
@@ -116,7 +116,7 @@
     await client.update(dragCard, updateValue)
   }
 
-  function panelDragOver (event: Event | undefined, state: CategoryType): void {
+  function panelDragOver(event: Event | undefined, state: CategoryType): void {
     event?.preventDefault()
     if (dragCard !== undefined && dragCardState !== state) {
       const canDrop = !dragCardAvailableCategories || dragCardAvailableCategories.includes(state)
@@ -145,7 +145,7 @@
       groupByDocs = groupByDocs
     }
   }
-  function panelDragLeave (event: Event | undefined, state: CategoryType): void {
+  function panelDragLeave(event: Event | undefined, state: CategoryType): void {
     event?.preventDefault()
     if (dragCard !== undefined && state !== dragCardInitialState) {
       // We need to restore original position
@@ -166,7 +166,7 @@
     }
   }
 
-  function dragswap (ev: MouseEvent, i: number, s: number): boolean {
+  function dragswap(ev: MouseEvent, i: number, s: number): boolean {
     if (s === -1) return false
     if (i < s) {
       return ev.offsetY < (ev.target as HTMLElement).offsetHeight / 2
@@ -185,7 +185,7 @@
 
   let cardOverPos: DragCardOverPos | undefined
 
-  function cardDragOver (evt: CardDragEvent, object: Item, state: CategoryType): void {
+  function cardDragOver(evt: CardDragEvent, object: Item, state: CategoryType): void {
     if (dragCard !== undefined && !dontUpdateRank) {
       const updates = getUpdateProps(dragCard, state)
       if (updates === undefined) {
@@ -230,7 +230,7 @@
     }
   }
 
-  async function cardDrop (evt: CardDragEvent, object: Item, state: CategoryType): Promise<void> {
+  async function cardDrop(evt: CardDragEvent, object: Item, state: CategoryType): Promise<void> {
     if (!dontUpdateRank && dragCard !== undefined) {
       const arr = getGroupByValues(groupByDocs, state) ?? []
       const s = arr.findIndex((p) => p._id === dragCard?._id)
@@ -246,7 +246,7 @@
     isDragging = false
   }
 
-  async function onDragStart (object: Item, state: CategoryType): Promise<void> {
+  async function onDragStart(object: Item, state: CategoryType): Promise<void> {
     dragCardInitialState = state
     dragCardState = state
     dragCardInitialRank = object.rank
@@ -260,7 +260,7 @@
   // eslint-disable-next-line
   let dragged: boolean = false
 
-  function toAny (object: any): any {
+  function toAny(object: any): any {
     return object
   }
 
@@ -270,12 +270,12 @@
   $: stateRefs.length = categories.length
   $: stateRows.length = categories.length
 
-  function scrollInto (statePos: number, obj: Item): void {
+  function scrollInto(statePos: number, obj: Item): void {
     stateRefs[statePos]?.scrollIntoView({ behavior: 'auto', block: 'nearest' })
     stateRows[statePos]?.scroll(obj)
   }
 
-  function getState (doc: Item): number {
+  function getState(doc: Item): number {
     let pos = 0
     for (const st of categories) {
       const stateObjs = getGroupByValues(groupByDocs, st) ?? []
@@ -287,7 +287,7 @@
     return -1
   }
 
-  export function select (offset: 1 | -1 | 0, of?: Doc, dir?: 'vertical' | 'horizontal'): void {
+  export function select(offset: 1 | -1 | 0, of?: Doc, dir?: 'vertical' | 'horizontal'): void {
     let pos = (of != null ? objects.findIndex((it) => it._id === of._id) : selection) ?? -1
     if (pos === -1) {
       for (const st of categories) {
@@ -367,7 +367,7 @@
 
   $: checkedSet = new Set<Ref<Doc>>(checked.map((it) => it._id))
 
-  export function check (docs: Doc[], value: boolean): void {
+  export function check(docs: Doc[], value: boolean): void {
     dispatch('check', { docs, value })
   }
   const showMenu = async (evt: MouseEvent, object: Item): Promise<void> => {

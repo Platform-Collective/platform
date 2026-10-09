@@ -14,4 +14,4 @@
 //
 
 export * from './methods'
-export * from './rpc'
+export type * from './rpc'

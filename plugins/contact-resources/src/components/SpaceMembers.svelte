@@ -50,7 +50,7 @@
   $: isSearch = search.trim().length
   let members: Set<Ref<Person>> = new Set<Ref<Person>>()
 
-  async function getUsers (accounts: AccountUuid[], search: string): Promise<Employee[]> {
+  async function getUsers(accounts: AccountUuid[], search: string): Promise<Employee[]> {
     const employeeRefs = accounts.map((acc) => $employeeRefByAccountUuidStore.get(acc)).filter(notEmpty)
     const query: DocumentQuery<Employee> =
       isSearch > 0 ? { name: { $like: '%' + search + '%' } } : { _id: { $in: employeeRefs } }
@@ -62,7 +62,7 @@
     return employees
   }
 
-  async function add (person: Ref<Employee>): Promise<void> {
+  async function add(person: Ref<Employee>): Promise<void> {
     const pid = initialMembers[person] ?? $employeeByIdStore.get(person)?.personUuid
     if (pid === undefined) return
 
@@ -73,14 +73,14 @@
     })
   }
 
-  async function removeMember (person: Ref<Employee>): Promise<void> {
+  async function removeMember(person: Ref<Employee>): Promise<void> {
     const pid = initialMembers[person] ?? $employeeByIdStore.get(person)?.personUuid
     if (pid === undefined) return
 
     await client.update(space, { $pull: { members: pid } })
   }
 
-  function openAddMembersPopup (): void {
+  function openAddMembersPopup(): void {
     showPopup(AddMembersPopup, { value: space }, undefined, async (accounts: AccountUuid[]) => {
       if (accounts != null) {
         for (const account of accounts) {

@@ -49,7 +49,7 @@ const defaults: Partial<Config> = {
 
 const required: Array<keyof Config> = ['TelegramApiID', 'TelegramApiHash', 'MongoURI', 'AccountsURL', 'Secret']
 
-const mergeConfigs = <T>(defaults: Partial<T>, params: Partial<T>): T => {
+const mergeConfigs = <T> (defaults: Partial<T>, params: Partial<T>): T => {
   const result = { ...defaults }
   for (const key in params) {
     if (params[key] !== undefined) {

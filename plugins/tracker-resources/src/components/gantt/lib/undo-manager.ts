@@ -30,16 +30,16 @@ export interface DateChangeEntry {
   kind: 'date-change'
   issueId: Ref<Issue>
   issueSpace: Ref<Space>
-  before: { startDate: Timestamp | null, dueDate: Timestamp | null }
-  after: { startDate: Timestamp | null, dueDate: Timestamp | null }
+  before: { startDate: Timestamp | null; dueDate: Timestamp | null }
+  after: { startDate: Timestamp | null; dueDate: Timestamp | null }
   description: string
 }
 
 export interface DateBatchChange {
   issueId: Ref<Issue>
   issueSpace: Ref<Space>
-  before: { startDate: Timestamp | null, dueDate: Timestamp | null }
-  after: { startDate: Timestamp | null, dueDate: Timestamp | null }
+  before: { startDate: Timestamp | null; dueDate: Timestamp | null }
+  after: { startDate: Timestamp | null; dueDate: Timestamp | null }
 }
 
 export interface DateBatchEntry {
@@ -64,8 +64,8 @@ export interface RelationEditEntry {
   kind: 'relation-edit'
   relationId: Ref<IssueRelation>
   relationSpace: Ref<Space>
-  before: { kind: DependencyKind, lag: number }
-  after: { kind: DependencyKind, lag: number }
+  before: { kind: DependencyKind; lag: number }
+  after: { kind: DependencyKind; lag: number }
   description: string
 }
 
@@ -93,10 +93,10 @@ export type UndoEntry =
   | AttributeChangeEntry
 
 export type UndoResult =
-  | { kind: 'success', entry: UndoEntry, affectedIds: string[] }
+  | { kind: 'success'; entry: UndoEntry; affectedIds: string[] }
   | { kind: 'empty' }
-  | { kind: 'conflicted', entry: UndoEntry }
-  | { kind: 'error', entry: UndoEntry, error: unknown }
+  | { kind: 'conflicted'; entry: UndoEntry }
+  | { kind: 'error'; entry: UndoEntry; error: unknown }
 
 // ---- Client adapter --------------------------------------------------------
 
@@ -146,21 +146,21 @@ export interface ReadStore<T> {
   get: () => T
 }
 
-function makeStore<T> (initial: T): ReadStore<T> & { set: (v: T) => void } {
+function makeStore<T>(initial: T): ReadStore<T> & { set: (v: T) => void } {
   let value = initial
   const subs = new Set<(value: T) => void>()
   return {
-    subscribe (run) {
+    subscribe(run) {
       subs.add(run)
       run(value)
       return () => {
         subs.delete(run)
       }
     },
-    get () {
+    get() {
       return value
     },
-    set (next) {
+    set(next) {
       value = next
       for (const fn of subs) fn(value)
     }
@@ -189,7 +189,7 @@ export class UndoManager {
   public readonly nextUndoDescription: ReadStore<string | null> = this._nextUndoDescription
   public readonly nextRedoDescription: ReadStore<string | null> = this._nextRedoDescription
 
-  constructor (
+  constructor(
     private readonly client: UndoApplyClient,
     // Class refs are injected rather than hardcoded in the module so the
     // manager never carries a stale copy of the plugin metadata. Production
@@ -199,7 +199,7 @@ export class UndoManager {
     private readonly relationClass: string = 'tracker:class:IssueRelation'
   ) {}
 
-  push (entry: UndoEntry): void {
+  push(entry: UndoEntry): void {
     this.undoStack.push(entry)
     while (this.undoStack.length > LIMIT) this.undoStack.shift()
     // Any new edit invalidates the redo path.
@@ -207,7 +207,7 @@ export class UndoManager {
     this.updateReactive()
   }
 
-  async undo (): Promise<UndoResult> {
+  async undo(): Promise<UndoResult> {
     const entry = this.undoStack.pop()
     if (entry === undefined) {
       this.updateReactive()
@@ -232,7 +232,7 @@ export class UndoManager {
     }
   }
 
-  async redo (): Promise<UndoResult> {
+  async redo(): Promise<UndoResult> {
     const entry = this.redoStack.pop()
     if (entry === undefined) {
       this.updateReactive()
@@ -251,22 +251,22 @@ export class UndoManager {
     }
   }
 
-  clear (): void {
+  clear(): void {
     this.undoStack.length = 0
     this.redoStack.length = 0
     this.updateReactive()
   }
 
   /** Test-only: stack-depth probe. Keeps the production API minimal. */
-  undoStackDepthForTest (): number {
+  undoStackDepthForTest(): number {
     return this.undoStack.length
   }
 
-  redoStackDepthForTest (): number {
+  redoStackDepthForTest(): number {
     return this.redoStack.length
   }
 
-  private updateReactive (): void {
+  private updateReactive(): void {
     this._canUndo.set(this.undoStack.length > 0)
     this._canRedo.set(this.redoStack.length > 0)
     const topU = this.undoStack[this.undoStack.length - 1]
@@ -278,7 +278,7 @@ export class UndoManager {
   // -- Apply paths ----------------------------------------------------------
 
   /** Returns the issue/relation IDs that were touched (for flash feedback). */
-  private async applyInverse (entry: UndoEntry): Promise<string[]> {
+  private async applyInverse(entry: UndoEntry): Promise<string[]> {
     const ops = this.client.apply(UNDO_MARKER)
     const affected: string[] = []
     switch (entry.kind) {
@@ -354,7 +354,7 @@ export class UndoManager {
     return affected
   }
 
-  private async applyForward (entry: UndoEntry): Promise<string[]> {
+  private async applyForward(entry: UndoEntry): Promise<string[]> {
     const ops = this.client.apply(UNDO_MARKER)
     const affected: string[] = []
     switch (entry.kind) {
@@ -436,7 +436,7 @@ export class UndoManager {
    * permissive: when in doubt, prefer false-positive (extra toast) over
    * false-negative (silent overwrite).
    */
-  private async checkConflict (entry: UndoEntry, mode: 'undo' | 'redo'): Promise<boolean> {
+  private async checkConflict(entry: UndoEntry, mode: 'undo' | 'redo'): Promise<boolean> {
     switch (entry.kind) {
       case 'date-change': {
         const expected = mode === 'undo' ? entry.after : entry.before
@@ -499,7 +499,7 @@ export class UndoManager {
 
 // ---- Helpers ---------------------------------------------------------------
 
-function sameDatePair (issue: Issue, expected: { startDate: Timestamp | null, dueDate: Timestamp | null }): boolean {
+function sameDatePair(issue: Issue, expected: { startDate: Timestamp | null; dueDate: Timestamp | null }): boolean {
   return (
     (issue.startDate ?? null) === (expected.startDate ?? null) && (issue.dueDate ?? null) === (expected.dueDate ?? null)
   )

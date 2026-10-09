@@ -15,11 +15,11 @@
 
   const client = getClient()
 
-  function isInlineAttr (hierarchy: Hierarchy, key: KeyedAttribute): boolean {
+  function isInlineAttr(hierarchy: Hierarchy, key: KeyedAttribute): boolean {
     return !isCollectionAttr(hierarchy, key) && !isCollabAttr(hierarchy, key) && !isMarkupAttr(hierarchy, key)
   }
 
-  function updateKeys (_class: Ref<Class<Doc>>, ignoreKeys: string[], to: Ref<Class<Doc>> | undefined): void {
+  function updateKeys(_class: Ref<Class<Doc>>, ignoreKeys: string[], to: Ref<Class<Doc>> | undefined): void {
     const hierarchy = client.getHierarchy()
     const filtredKeys = getFiltredKeys(hierarchy, _class, ignoreKeys, to)
     keys = filtredKeys.filter(

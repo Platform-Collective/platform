@@ -70,7 +70,7 @@
 
   $: void loadObject(selectedData?.id, selectedData?._class)
 
-  async function loadObject (id?: string, _class?: Ref<Class<Doc>>): Promise<void> {
+  async function loadObject(id?: string, _class?: Ref<Class<Doc>>): Promise<void> {
     if (id == null || _class == null || _class === '') {
       object = undefined
       objectQuery.unsubscribe()
@@ -95,7 +95,7 @@
     )
   }
 
-  function syncLocation (loc: Location): void {
+  function syncLocation(loc: Location): void {
     if (loc.path[2] !== chunterId) {
       return
     }
@@ -131,7 +131,7 @@
     }
   }
 
-  async function handleChannelSelected (event: CustomEvent): Promise<void> {
+  async function handleChannelSelected(event: CustomEvent): Promise<void> {
     if (event.detail === null) {
       selectedData = undefined
       return

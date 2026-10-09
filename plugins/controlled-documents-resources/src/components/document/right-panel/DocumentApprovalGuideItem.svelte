@@ -10,7 +10,7 @@
   import documentsRes from '../../../plugin'
   import { TeamPopupData } from '../../../utils'
 
-  function onSendDocRequest (): void {
+  function onSendDocRequest(): void {
     if ($controlledDocument == null) {
       return
     }

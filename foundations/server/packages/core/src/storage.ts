@@ -44,11 +44,11 @@ export class BackupClientOps {
     domain: Domain,
     idx?: number
   ): Promise<{
-      idx: number
-      size?: number
-      docs: DocInfo[]
-      finished: boolean
-    }> {
+    idx: number
+    size?: number
+    docs: DocInfo[]
+    finished: boolean
+  }> {
     return ctx.with('load-chunk', {}, async (ctx) => {
       idx = idx ?? this.idIndex++
       let chunk: ChunkInfo | undefined = this.chunkInfo.get(idx)

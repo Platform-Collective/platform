@@ -52,7 +52,7 @@
   export let actionButtonDataId: string | undefined = undefined
   export let secondaryButtonDataId: string | undefined = undefined
 
-  const validate = makeSequential(async function validateAsync (language: string): Promise<boolean> {
+  const validate = makeSequential(async function validateAsync(language: string): Promise<boolean> {
     if (ignoreInitialValidation || isLoading) return true
 
     for (const field of fields) {
@@ -93,7 +93,7 @@
     return true
   })
 
-  export function invalidate (): void {
+  export function invalidate(): void {
     void validate($themeStore.language)
   }
 
@@ -108,7 +108,7 @@
 
   let inAction = false
 
-  function performAction (action: Action): void {
+  function performAction(action: Action): void {
     if (inAction) return
 
     for (const field of fields) {
@@ -121,7 +121,7 @@
   }
   onMount(() => (ignoreInitialValidation = false))
 
-  function trim (field: string): void {
+  function trim(field: string): void {
     object[field] = (object[field] as string).trim()
   }
 

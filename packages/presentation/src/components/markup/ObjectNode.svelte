@@ -53,7 +53,7 @@
     })
   }
 
-  function onBrokenLinkClick (event: MouseEvent): void {
+  function onBrokenLinkClick(event: MouseEvent): void {
     if (_id !== undefined && withoutDoc.includes(_id)) return
     showPopup(MessageBox, {
       label: presentation.string.UnableToFollowMention,

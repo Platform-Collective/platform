@@ -68,13 +68,13 @@
 
   const client = getClient()
 
-  async function checkTodo (todo: ProcessToDo) {
+  async function checkTodo(todo: ProcessToDo) {
     await client.update(todo, {
       doneOn: new Date().getTime()
     })
   }
 
-  async function performAction (action: EventButton) {
+  async function performAction(action: EventButton) {
     await client.createDoc(process.class.ProcessCustomEvent, action.space, {
       execution: action.execution,
       eventType: action.eventType,
@@ -82,7 +82,7 @@
     })
   }
 
-  async function performRollback (execution: Execution) {
+  async function performRollback(execution: Execution) {
     await client.createDoc(process.class.ProcessCustomEvent, execution.space, {
       execution: execution._id,
       eventType: 'rollback',
@@ -90,7 +90,7 @@
     })
   }
 
-  function getExecutionLabel (execution: Execution): string {
+  function getExecutionLabel(execution: Execution): string {
     const pr = client.getModel().findObject(execution.process)
     if (pr !== undefined) {
       return `${pr.name}: `
@@ -100,7 +100,7 @@
 
   $: rollbacks = docs.filter((d) => d.rollback.length > 0)
 
-  function isRequest (todo: ProcessToDo): todo is ApproveRequest {
+  function isRequest(todo: ProcessToDo): todo is ApproveRequest {
     return todo._class === process.class.ApproveRequest
   }
 </script>

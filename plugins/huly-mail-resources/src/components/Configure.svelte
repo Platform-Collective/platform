@@ -64,7 +64,7 @@
     }
   })
 
-  async function getSocialId (): Promise<PersonId | undefined> {
+  async function getSocialId(): Promise<PersonId | undefined> {
     if (selectedMailbox === undefined) {
       return undefined
     }
@@ -75,7 +75,7 @@
     return await accountClient.findSocialIdBySocialKey(socialKey)
   }
 
-  async function apply (): Promise<void> {
+  async function apply(): Promise<void> {
     if (selectedMailbox === undefined) {
       return
     }
@@ -92,8 +92,8 @@
     integration = isWorkspaceIntegration(integration)
       ? integration
       : await integrationClient.integrate(integration, getCurrentWorkspaceUuid(), {
-        email: selectedMailbox
-      })
+          email: selectedMailbox
+        })
     await integrationClient.updateConfig(integration, {
       spaceId: selectedSpace
     })

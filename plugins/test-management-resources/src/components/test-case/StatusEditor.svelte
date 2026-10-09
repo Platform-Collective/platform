@@ -49,7 +49,7 @@
     ...testCaseStatusAssets[status]
   }))
 
-  function handlePopupOpen (event: MouseEvent): void {
+  function handlePopupOpen(event: MouseEvent): void {
     showPopup(
       SelectPopup,
       { value: itemsInfo, placeholder: testManagement.string.SetStatus },
@@ -58,7 +58,7 @@
     )
   }
 
-  async function changeStatus (newStatus: TestCase['status'] | null | undefined): Promise<void> {
+  async function changeStatus(newStatus: TestCase['status'] | null | undefined): Promise<void> {
     if (disabled || newStatus == null || value === newStatus) {
       return
     }

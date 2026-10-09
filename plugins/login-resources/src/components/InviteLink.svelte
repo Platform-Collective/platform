@@ -59,13 +59,13 @@
       }
     })
 
-  function setToDefault (): void {
+  function setToDefault(): void {
     expHours = defaultValues.expirationTime
     emailMask = defaultValues.emailMask
     limit = defaultValues.limit
   }
 
-  async function getLink (expHours: number, mask: string, limit: number | undefined, role: AccountRole): Promise<void> {
+  async function getLink(expHours: number, mask: string, limit: number | undefined, role: AccountRole): Promise<void> {
     loading = true
     link = await getInviteLink(expHours, mask, limit ?? -1, role)
     loading = false
@@ -78,7 +78,7 @@
     copied = false
   }
 
-  async function copy (): Promise<void> {
+  async function copy(): Promise<void> {
     if (!isSecureContext) return
     if (link === undefined) return
 
@@ -117,7 +117,7 @@
   let link: string | undefined
   let loading = false
 
-  function handleInviteRoleSelected (e: CustomEvent<AccountRole>): void {
+  function handleInviteRoleSelected(e: CustomEvent<AccountRole>): void {
     role = e.detail
     link = undefined
   }

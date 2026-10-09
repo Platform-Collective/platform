@@ -27,9 +27,9 @@ const EMPTY_RESULT: CriticalPathResult = {
   cycle: false
 }
 
-type ScheduledIssue = Issue & { startDate: number, dueDate: number }
+type ScheduledIssue = Issue & { startDate: number; dueDate: number }
 
-function isScheduled (i: Issue): i is ScheduledIssue {
+function isScheduled(i: Issue): i is ScheduledIssue {
   return i.startDate != null && i.dueDate != null
 }
 
@@ -48,7 +48,7 @@ interface Bound {
  * fall back to legacy calendar-day arithmetic when `cfg` is undefined and
  * apply the +1-day FS rule consistently with the cascade scheduler.
  */
-function forwardBound (rel: IssueRelation, predES: number, predEF: number, cfg: WorkingCalendar | undefined): Bound {
+function forwardBound(rel: IssueRelation, predES: number, predEF: number, cfg: WorkingCalendar | undefined): Bound {
   const lag = rel.lag ?? 0
   switch (rel.kind) {
     case 'finish-to-start':
@@ -69,7 +69,7 @@ function forwardBound (rel: IssueRelation, predES: number, predEF: number, cfg: 
  *
  * Mirrors {@link forwardBound} via the reverse anchor helpers.
  */
-function backwardBound (rel: IssueRelation, succLS: number, succLF: number, cfg: WorkingCalendar | undefined): Bound {
+function backwardBound(rel: IssueRelation, succLS: number, succLF: number, cfg: WorkingCalendar | undefined): Bound {
   const lag = rel.lag ?? 0
   switch (rel.kind) {
     case 'finish-to-start':
@@ -84,7 +84,7 @@ function backwardBound (rel: IssueRelation, succLS: number, succLF: number, cfg:
 }
 
 /** Returns issues in a topologically sorted order. Assumes graph is acyclic. */
-function topoSort (issues: ScheduledIssue[], relations: IssueRelation[]): ScheduledIssue[] {
+function topoSort(issues: ScheduledIssue[], relations: IssueRelation[]): ScheduledIssue[] {
   const byRef = new Map<Ref<Issue>, ScheduledIssue>()
   for (const i of issues) byRef.set(i._id, i)
   const inDegree = new Map<Ref<Issue>, number>()
@@ -137,7 +137,7 @@ function topoSort (issues: ScheduledIssue[], relations: IssueRelation[]): Schedu
  * side-effects. Callers memoize the result via 200ms debounce in GanttView's
  * reactive recompute.
  */
-export function computeCriticalPath (
+export function computeCriticalPath(
   issues: Issue[],
   relations: IssueRelation[],
   workingDays?: WorkingCalendar

@@ -43,21 +43,21 @@
     prevActive = active
   }
 
-  export function navigate () {
+  export function navigate() {
     position = 'end'
     list?.scrollDown()
   }
 
-  export function scrollDown (): void {
+  export function scrollDown(): void {
     position = 'end'
     list?.scrollDown()
   }
 
-  export function canScrollDown (): boolean {
+  export function canScrollDown(): boolean {
     return list?.canScrollDown() ?? false
   }
 
-  export function editLastMessage (): void {
+  export function editLastMessage(): void {
     list?.editLastMessage()
   }
 

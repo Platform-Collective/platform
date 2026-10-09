@@ -46,7 +46,7 @@
   }
   $: _class && translate(_class, {}, $themeStore.language).then((res) => (classLabel = res.toLocaleLowerCase()))
 
-  async function move (doc: Doc): Promise<void> {
+  async function move(doc: Doc): Promise<void> {
     const op = client.apply(undefined, 'move-to-space')
     const needRank = currentSpace ? hierarchy.isDerived(currentSpace._class, task.class.Project) : false
     if (needRank) {
@@ -71,11 +71,11 @@
     dispatch('close')
   }
 
-  async function getSpace (): Promise<Space | undefined> {
+  async function getSpace(): Promise<Space | undefined> {
     return await client.findOne(core.class.Space, { _id: space }).then((res) => (currentSpace = res))
   }
 
-  async function invokeValidate (
+  async function invokeValidate(
     doc: Doc,
     action: Resource<<T extends Doc>(doc: T, client: Client) => Promise<Status>>
   ): Promise<Status> {
@@ -83,7 +83,7 @@
     return await impl(doc, client)
   }
 
-  async function validate (doc: Doc, _class: Ref<Class<Doc>>): Promise<void> {
+  async function validate(doc: Doc, _class: Ref<Class<Doc>>): Promise<void> {
     const clazz = hierarchy.getClass(_class)
     const validatorMixin = hierarchy.as(clazz, view.mixin.ObjectValidator)
     if (validatorMixin?.validator != null) {

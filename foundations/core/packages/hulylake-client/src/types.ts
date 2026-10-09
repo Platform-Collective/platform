@@ -77,18 +77,18 @@ export type HulyMeta = Record<string, string>
 
 export type PutOptions =
   | {
-    mergeStrategy?: 'concatenate'
-    contentLength?: number
-    contentType?: string
-    headers?: HulyHeaders
-    meta?: HulyMeta
-  }
+      mergeStrategy?: 'concatenate'
+      contentLength?: number
+      contentType?: string
+      headers?: HulyHeaders
+      meta?: HulyMeta
+    }
   | {
-    mergeStrategy: 'jsonpatch'
-    contentLength?: number
-    headers?: HulyHeaders
-    meta?: HulyMeta
-  }
+      mergeStrategy: 'jsonpatch'
+      contentLength?: number
+      headers?: HulyHeaders
+      meta?: HulyMeta
+    }
 
 export interface PatchOptions {
   contentLength?: number

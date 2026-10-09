@@ -25,11 +25,11 @@
   export let preferences: WidgetPreference[] = []
   export let selected: Ref<Widget> | undefined = undefined
 
-  function handleAddWidget (): void {
+  function handleAddWidget(): void {
     showPopup(AddWidgetsPopup, { widgets })
   }
 
-  function handleSelectWidget (widget: Widget): void {
+  function handleSelectWidget(widget: Widget): void {
     if (selected === widget._id) {
       minimizeSidebar(true)
     } else {

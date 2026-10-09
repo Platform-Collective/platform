@@ -16,7 +16,7 @@
 export * from './client'
 export * from './markup/types'
 export * from './socket'
-export * from './types'
+export type * from './types'
 export * from './rest'
 export * from './config'
 export * from './utils'

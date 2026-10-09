@@ -105,19 +105,19 @@
       canCreateTrainingAttempt(trainingObject, object, latestOwnAttempt)
   }
 
-  async function takeTraining (): Promise<void> {
+  async function takeTraining(): Promise<void> {
     if (trainingObject !== null && object !== null && canTakeTraining) {
       await createTrainingAttempt(trainingObject, object, latestOwnAttempt)
     }
   }
 
-  async function retakeTraining (): Promise<void> {
+  async function retakeTraining(): Promise<void> {
     if (trainingObject !== null && object !== null && canRetakeTraining) {
       await createTrainingAttempt(trainingObject, object, latestOwnAttempt)
     }
   }
 
-  async function openLatestAttempt (): Promise<void> {
+  async function openLatestAttempt(): Promise<void> {
     if (latestOwnAttempt !== null) {
       navigate(
         trainingAttemptRoute.build({
@@ -179,7 +179,7 @@
     }
   }
 
-  function showContextMenu (evt: MouseEvent): void {
+  function showContextMenu(evt: MouseEvent): void {
     if (object !== null) {
       showMenu(evt, {
         object,

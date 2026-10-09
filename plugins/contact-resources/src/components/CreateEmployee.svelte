@@ -53,7 +53,7 @@
 
   const id: Ref<Employee> = generateId()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return firstName === '' && lastName === '' && email === ''
   }
 
@@ -69,7 +69,7 @@
   const client = getClient()
   const accountClient = getAccountClient()
 
-  async function createEmployee (): Promise<void> {
+  async function createEmployee(): Promise<void> {
     try {
       saving = true
       changeEmail()
@@ -161,7 +161,7 @@
 
   const manager = createFocusManager()
 
-  function changeEmail (): void {
+  function changeEmail(): void {
     const index = channels.findIndex((p) => p.provider === contact.channelProvider.Email)
     if (index !== -1) {
       channels[index].value = email.trim().toLowerCase()

@@ -11,10 +11,10 @@ export async function assessAnswers (
   questionsCollection: Array<Question<unknown>>,
   answersCollection: Array<Answer<Question<unknown>, unknown>>
 ): Promise<{
-    assessmentsPassed: number
-    assessmentsTotal: number
-    score: Percentage
-  }> {
+  assessmentsPassed: number
+  assessmentsTotal: number
+  score: Percentage
+}> {
   if (questionsCollection.length === 0) {
     return {
       assessmentsPassed: 0,

@@ -43,14 +43,14 @@
 
   $: ydocCopy = copyYdoc(ydoc)
 
-  function copyYdoc (ydoc: Ydoc): Ydoc {
+  function copyYdoc(ydoc: Ydoc): Ydoc {
     const copy = new Ydoc()
     const update = encodeStateAsUpdate(ydoc)
     applyUpdate(copy, update)
     return copy
   }
 
-  function updateEditor (editor: Editor, ydoc: Ydoc, field?: string): void {
+  function updateEditor(editor: Editor, ydoc: Ydoc, field?: string): void {
     const r = calculateDecorations(editor, oldContent, createYdocDocument(editor.schema, ydoc, field))
     if (r !== undefined) {
       oldContent = r.oldContent
@@ -65,12 +65,12 @@
   }
 
   const DecorationExtension = Extension.create({
-    addProseMirrorPlugins () {
+    addProseMirrorPlugins() {
       return [
         new Plugin({
           key: new PluginKey('diffs'),
           props: {
-            decorations () {
+            decorations() {
               updateDecorations()
               return _decoration
             }

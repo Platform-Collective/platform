@@ -336,11 +336,6 @@
       "reviewCategory": "tools",
       "shouldPublish": true
     },
-    {
-      "packageName": "@hcengineering/ui-test",
-      "projectFolder": "foundations/utils/packages/ui-test",
-      "shouldPublish": false
-    },
 
     /// CORE Modules
 

@@ -6,13 +6,13 @@
   export let focusIndex = 1
   export let readOnly: boolean = false
 
-  function isLink (value?: string | null): boolean {
+  function isLink(value?: string | null): boolean {
     if (value == null) return false
     const url = parseURL(value)
     return url.startsWith('http://') || url.startsWith('https://')
   }
 
-  function open () {
+  function open() {
     if (value == null) return
     const url = parseURL(value)
     if (url.startsWith('http://') || url.startsWith('https://')) {

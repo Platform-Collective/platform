@@ -52,7 +52,7 @@
 
   let parent: Issue | undefined
 
-  async function getParent (attachedTo: Ref<Issue> | undefined): Promise<void> {
+  async function getParent(attachedTo: Ref<Issue> | undefined): Promise<void> {
     if (attachedTo === undefined || attachedTo === tracker.ids.NoParent) {
       parent = undefined
     } else {

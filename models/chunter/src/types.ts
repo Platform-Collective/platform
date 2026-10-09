@@ -60,16 +60,16 @@ export const DOMAIN_CHUNTER = 'chunter' as Domain
 @Model(chunter.class.ChunterSpace, core.class.Space)
 export class TChunterSpace extends TSpace implements ChunterSpace {
   @Prop(PropCollection(activity.class.ActivityMessage), chunter.string.Messages)
-    messages?: number
+  messages?: number
 
   @Hidden()
-    __migratedToCard?: {
+  __migratedToCard?: {
     card: Ref<Doc>
     space: Ref<Space>
   }
 
   @Hidden()
-    __migratedUntil?: Timestamp
+  __migratedUntil?: Timestamp
 }
 
 @Model(chunter.class.Channel, chunter.class.ChunterSpace)
@@ -77,7 +77,7 @@ export class TChunterSpace extends TSpace implements ChunterSpace {
 export class TChannel extends TChunterSpace implements Channel {
   @Prop(TypeString(), chunter.string.Topic)
   @Index(IndexKind.FullText)
-    topic?: string
+  topic?: string
 }
 
 @Model(chunter.class.DirectMessage, chunter.class.ChunterSpace)
@@ -89,15 +89,15 @@ export class TDirectMessage extends TChunterSpace implements DirectMessage {}
 export class TChatMessage extends TActivityMessage implements ChatMessage {
   @Prop(TypeMarkup(), chunter.string.Message)
   @Index(IndexKind.FullText)
-    message!: string
+  message!: string
 
   @Prop(PropCollection(attachment.class.Attachment), attachment.string.Attachments, {
     shortLabel: attachment.string.Files
   })
-    attachments?: number
+  attachments?: number
 
   @Prop(TypeRef(contact.class.ChannelProvider), core.string.Object)
-    provider?: Ref<SocialChannelProvider>
+  provider?: Ref<SocialChannelProvider>
 }
 
 @Model(chunter.class.ThreadMessage, chunter.class.ChatMessage)
@@ -113,22 +113,22 @@ export class TThreadMessage extends TChatMessage implements ThreadMessage {
 
   @Prop(TypeRef(core.class.Doc), core.string.Object)
   @Index(IndexKind.Indexed)
-    objectId!: Ref<Doc>
+  objectId!: Ref<Doc>
 
   @Prop(TypeRef(core.class.Class), core.string.Class)
   @Index(IndexKind.Indexed)
-    objectClass!: Ref<Class<Doc>>
+  objectClass!: Ref<Class<Doc>>
 }
 
 @Model(chunter.class.ChatMessageViewlet, core.class.Doc, DOMAIN_MODEL)
 export class TChatMessageViewlet extends TDoc implements ChatMessageViewlet {
   @Prop(TypeRef(core.class.Doc), core.string.Class)
   @Index(IndexKind.Indexed)
-    objectClass!: Ref<Class<Doc>>
+  objectClass!: Ref<Class<Doc>>
 
   @Prop(TypeRef(core.class.Doc), core.string.Class)
   @Index(IndexKind.Indexed)
-    messageClass!: Ref<Class<Doc>>
+  messageClass!: Ref<Class<Doc>>
 
   label?: IntlString
   onlyWithParent?: boolean

@@ -43,7 +43,7 @@
 
   $: updateOptions(params.options)
 
-  function getErrorMessage (params: PollConfig): IntlString | undefined {
+  function getErrorMessage(params: PollConfig): IntlString | undefined {
     if (params.question.trim() === '') return communication.string.QuestionIsRequired
     if (params.options.filter((it) => it.label.trim() !== '').length === 0) return communication.string.OptionIsRequired
     if (params.quiz === true && params.quizAnswer == null) return communication.string.AnswerIsRequired
@@ -52,7 +52,7 @@
     return undefined
   }
 
-  function canSave (params: PollConfig): boolean {
+  function canSave(params: PollConfig): boolean {
     if (params.question.trim() === '') return false
     if (params.options.filter((it) => it.label.trim() !== '').length === 0) return false
     if (params.quiz === true && params.quizAnswer == null) return false
@@ -61,7 +61,7 @@
     return true
   }
 
-  function okAction (): void {
+  function okAction(): void {
     const saveConfig = {
       ...params,
       options: params.options.filter((it) => it.label.trim() !== '')
@@ -74,11 +74,11 @@
     dispatch('close', saveConfig)
   }
 
-  function handleCancel (): void {
+  function handleCancel(): void {
     dispatch('close')
   }
 
-  function updateOptions (options: PollOption[]): void {
+  function updateOptions(options: PollOption[]): void {
     const lastOption = options[options.length - 1]
     const prevOption = options[options.length - 2]
 
@@ -100,7 +100,7 @@
     }
   }
 
-  function handleKeydown (e: KeyboardEvent, option?: PollOption): void {
+  function handleKeydown(e: KeyboardEvent, option?: PollOption): void {
     if (e.key === 'Enter' || e.key === 'ArrowDown') {
       e.preventDefault()
       e.stopPropagation()
@@ -140,7 +140,7 @@
     }
   }
 
-  function removeOption (option: PollOption): void {
+  function removeOption(option: PollOption): void {
     if (params.options.length === 1) return
     const index = params.options.indexOf(option)
     if (index === -1) return
@@ -149,7 +149,7 @@
       options: params.options.filter((it) => it !== option)
     }
   }
-  function showEmojiPicker (evt: MouseEvent, optionId: string): void {
+  function showEmojiPicker(evt: MouseEvent, optionId: string): void {
     showPopup(
       emoji.component.EmojiPopup,
       {},

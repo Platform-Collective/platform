@@ -86,16 +86,16 @@
   let text: Markup = value?.message ?? EmptyMarkup
   $: if (!isEditing) text = value?.message ?? EmptyMarkup
 
-  async function handleEditAction (): Promise<void> {
+  async function handleEditAction(): Promise<void> {
     isEditing = true
   }
-  async function handleDeleteAction (): Promise<void> {
+  async function handleDeleteAction(): Promise<void> {
     if (value?._id) {
       handleSubmit?.('', value._id)
     }
   }
 
-  async function handleSubmitEvent (event: CustomEvent<string>): Promise<void> {
+  async function handleSubmitEvent(event: CustomEvent<string>): Promise<void> {
     if (value?._id) {
       handleSubmit?.(event.detail, value._id)
     }

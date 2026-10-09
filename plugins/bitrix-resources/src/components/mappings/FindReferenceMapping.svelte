@@ -24,7 +24,7 @@
 
   const client = getClient()
 
-  export async function save (): Promise<void> {
+  export async function save(): Promise<void> {
     if (field !== undefined) {
       await client.update(field, {
         operation: {
@@ -48,7 +48,7 @@
     }
   }
 
-  function getItems (fields: Fields): DropdownTextItem[] {
+  function getItems(fields: Fields): DropdownTextItem[] {
     return Object.entries(fields)
       .filter((it) => it[1].type === 'crm_company' || it[1].type === 'user' || it[1].type === 'crm')
       .map((it) => ({

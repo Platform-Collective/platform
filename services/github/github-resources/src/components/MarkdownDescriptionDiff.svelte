@@ -4,7 +4,7 @@
   import { DocSyncInfo } from '@hcengineering/github'
 
   export let issue: DocSyncInfo
-  function allowEdit (): void {
+  function allowEdit(): void {
     void getClient().update(issue, {
       isDescriptionLocked: false,
       needSync: ''

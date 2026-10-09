@@ -50,14 +50,14 @@
   $: inlineActions = actions.filter(({ inline }) => inline === true)
   $: menuActions = actions.filter(({ inline }) => inline !== true)
 
-  function handleMenuClicked (ev: MouseEvent): void {
+  function handleMenuClicked(ev: MouseEvent): void {
     showPopup(Menu, { actions: menuActions, ctx: _id }, ev.target as HTMLElement, () => {
       menuOpened = false
     })
     menuOpened = true
   }
 
-  async function handleInlineActionClicked (ev: MouseEvent, action: Action): Promise<void> {
+  async function handleInlineActionClicked(ev: MouseEvent, action: Action): Promise<void> {
     await action.action([], ev)
   }
 </script>

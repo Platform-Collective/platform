@@ -25,21 +25,21 @@
   const trimFilename = (fname: string): string =>
     fname.length > maxLength ? fname.substr(0, (maxLength - 1) / 2) + '...' + fname.substr(-(maxLength - 1) / 2) : fname
 
-  function extensionIconLabel (name: string): string {
+  function extensionIconLabel(name: string): string {
     const parts = name.split('.')
     const ext = parts[parts.length - 1]
     return ext.substring(0, 4).toUpperCase()
   }
 
-  function isImage (contentType: string): boolean {
+  function isImage(contentType: string): boolean {
     return getType(contentType) === 'image'
   }
 
-  function isEmbedded (contentType: string): boolean {
+  function isEmbedded(contentType: string): boolean {
     return getType(contentType) !== 'other'
   }
 
-  function openAttachment (): void {
+  function openAttachment(): void {
     showAttachmentPreviewPopup(value)
   }
 

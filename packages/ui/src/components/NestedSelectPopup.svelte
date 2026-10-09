@@ -37,7 +37,7 @@
   const dispatch = createEventDispatcher()
   let search: string = ''
 
-  function filterNodes (nodes: NestedSelectItem[], query: string): NestedSelectItem[] {
+  function filterNodes(nodes: NestedSelectItem[], query: string): NestedSelectItem[] {
     if (!query) return nodes
 
     const q = query.toLowerCase()
@@ -57,7 +57,7 @@
 
   $: displayItems = isTopLevel ? filterNodes(items, search) : items
 
-  function toggle (id: string | number): void {
+  function toggle(id: string | number): void {
     const set = new Set(selectedValues)
     if (set.has(id)) {
       set.delete(id)
@@ -69,7 +69,7 @@
     onChange?.(selectedValues)
   }
 
-  function handleUpdate (values: (string | number)[]): void {
+  function handleUpdate(values: (string | number)[]): void {
     selectedValues = values
     dispatch('update', selectedValues)
     onChange?.(selectedValues)

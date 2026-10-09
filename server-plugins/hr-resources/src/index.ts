@@ -359,7 +359,7 @@ async function sendEmailNotifications (
 
   const notificationControl = await getNotificationProviderControl(control.ctx, control)
   for (const contact of contacts.values()) {
-    const socialStrings = await getSocialStrings(control, contact as Ref<Person>)
+    const socialStrings = await getSocialStrings(control, contact)
     const allowed = isAllowed(control, socialStrings, type, provider, notificationControl)
     if (!allowed) {
       contacts.delete(contact)

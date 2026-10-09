@@ -164,7 +164,7 @@
 
   const queryId = generateId()
 
-  function update (): void {
+  function update(): void {
     void updateTaskKanbanCategories(
       client,
       viewlet,
@@ -196,7 +196,7 @@
     categories = res
   })
 
-  function getHeader (_class: Ref<Class<Doc>>, groupByKey: string): void {
+  function getHeader(_class: Ref<Class<Doc>>, groupByKey: string): void {
     if (groupByKey === noCategory) {
       headerComponent = undefined
     } else {

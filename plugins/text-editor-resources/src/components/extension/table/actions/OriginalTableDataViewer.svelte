@@ -49,7 +49,7 @@
   // Get component from viewlet descriptor lookup
   $: viewletComponent = viewletWithLookup?.$lookup?.descriptor?.component
 
-  function handleClose (): void {
+  function handleClose(): void {
     dispatch('close')
   }
 </script>

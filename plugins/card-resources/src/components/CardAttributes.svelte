@@ -41,7 +41,7 @@
 
   let keys: KeyedAttribute[] = []
 
-  function updateKeys (_class: Ref<Class<Doc>>, ignoreKeys: string[], to: Ref<Class<Doc>> | undefined): void {
+  function updateKeys(_class: Ref<Class<Doc>>, ignoreKeys: string[], to: Ref<Class<Doc>> | undefined): void {
     const filtredKeys = [...hierarchy.getAllAttributes(_class, to).entries()]
       .filter(
         ([key, value]) =>
@@ -66,7 +66,7 @@
     updateKeys(_class, ignoreKeys, to)
   })
 
-  function canChange (attr: AnyAttribute, permissionsStore: PermissionsStore): boolean {
+  function canChange(attr: AnyAttribute, permissionsStore: PermissionsStore): boolean {
     return canChangeAttribute(attr, object.space as Ref<TypedSpace>, permissionsStore, _class)
   }
 </script>

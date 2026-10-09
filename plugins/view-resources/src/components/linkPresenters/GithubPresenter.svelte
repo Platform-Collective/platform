@@ -36,7 +36,7 @@
     labels: Label[]
   }
 
-  async function getData (href: string): Promise<Data> {
+  async function getData(href: string): Promise<Data> {
     let params = href.replace(/(http.:\/\/)?(www.)?github.com\//, '')
     params = params.replace('/pull/', '/pulls/')
     const res = await (await fetch(`https://api.github.com/repos/${params}`)).json()
@@ -54,7 +54,7 @@
     }
   }
 
-  function format (body: string | undefined): string | undefined {
+  function format(body: string | undefined): string | undefined {
     if (!body) return undefined
     return body
       .replace(/[\r?\n]+/g, '<br />')

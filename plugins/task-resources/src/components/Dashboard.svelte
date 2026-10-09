@@ -33,7 +33,7 @@
 
   $: states = getStates(project, $typeStore, $statusStore.byId)
 
-  function updateStates (space: Ref<Project>): void {
+  function updateStates(space: Ref<Project>): void {
     statesQuery.query(task.class.Project, { _id: space }, (result) => {
       project = result[0]
     })
@@ -43,7 +43,7 @@
   let ids: Ref<Task>[] = []
   const txQuery = createQuery()
 
-  function updateTxes (_class: Ref<Class<Task>>, space: Ref<Project>, modified: Timestamp | undefined): void {
+  function updateTxes(_class: Ref<Class<Task>>, space: Ref<Project>, modified: Timestamp | undefined): void {
     if (modified === undefined) {
       ids = []
       return
@@ -77,7 +77,7 @@
 
   $: group(tasks, $statusStore.byId)
 
-  function group (tasks: Task[], statuses: IdMap<Status>): void {
+  function group(tasks: Task[], statuses: IdMap<Status>): void {
     const template = new Map<Ref<Status>, DashboardItem>(
       states.map((p) => {
         return [
@@ -109,7 +109,7 @@
     items = Array.from(template.values())
   }
 
-  function updateDocs (_class: Ref<Class<Task>>, states: Status[], query: DocumentQuery<Task>): void {
+  function updateDocs(_class: Ref<Class<Task>>, states: Status[], query: DocumentQuery<Task>): void {
     if (states.length === 0) {
       return
     }

@@ -289,8 +289,8 @@ function buildCommentDecoratorState (
       meta?.pointer?.focus !== undefined
         ? meta.pointer.focus
         : !isSelectionChanged
-            ? prev.pointer.focus
-            : new Set<string>(),
+          ? prev.pointer.focus
+          : new Set<string>(),
     hover: meta?.pointer?.hover !== undefined ? meta.pointer.hover : prev.pointer.hover
   }
 

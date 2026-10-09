@@ -41,7 +41,7 @@
     })
   }
 
-  function goToCursor (state: AwarenessState): void {
+  function goToCursor(state: AwarenessState): void {
     const cursor = state.cursor
     if (cursor?.head != null) {
       try {

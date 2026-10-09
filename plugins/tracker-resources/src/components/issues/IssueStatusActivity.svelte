@@ -30,7 +30,7 @@
   )
 
   let displaySt: WithTime[] = []
-  function updateStatus (txes: Tx[], statuses: IdMap<IssueStatus>, _: number): void {
+  function updateStatus(txes: Tx[], statuses: IdMap<IssueStatus>, _: number): void {
     const result: WithTime[] = []
 
     let current: Ref<IssueStatus> | undefined

@@ -19,7 +19,7 @@
   let isEditing = false
   let openedContainerRef: HTMLDivElement
 
-  async function onClickOutside (e: any) {
+  async function onClickOutside(e: any) {
     if (openedContainerRef && !openedContainerRef.contains(e.target) && !e.defaultPrevented && isEditing) {
       if (value) {
         submit()

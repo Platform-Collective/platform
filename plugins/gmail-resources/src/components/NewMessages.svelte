@@ -78,7 +78,7 @@
   let copy: string = ''
   let saved = false
 
-  async function sendMsg (): Promise<void> {
+  async function sendMsg(): Promise<void> {
     const templateProvider = (await getResource(templates.function.GetTemplateDataProvider))()
     if (templateProvider === undefined || selectedIntegration === undefined) return
     for (const channel of channels) {
@@ -125,7 +125,7 @@
   const dispatch = createEventDispatcher()
   let inputFile: HTMLInputElement
 
-  function fileSelected () {
+  function fileSelected() {
     const list = inputFile.files
     if (list === null || list.length === 0) return
     for (let index = 0; index < list.length; index++) {
@@ -135,7 +135,7 @@
     inputFile.value = ''
   }
 
-  function fileDrop (e: DragEvent) {
+  function fileDrop(e: DragEvent) {
     const list = e.dataTransfer?.files
     if (list === undefined || list.length === 0) return
     for (let index = 0; index < list.length; index++) {
@@ -144,7 +144,7 @@
     }
   }
 
-  async function createAttachment (file: File) {
+  async function createAttachment(file: File) {
     try {
       const uploadFile = await getResource(attachmentP.helper.UploadFile)
       const { uuid, metadata } = await uploadFile(file)
@@ -170,7 +170,7 @@
 
   const attachmentsQ = createQuery()
 
-  async function removeAttachment (attachment: Attachment): Promise<void> {
+  async function removeAttachment(attachment: Attachment): Promise<void> {
     const deleteFile = await getResource(attachmentP.helper.DeleteFile)
     await client.removeCollection(
       attachment._class,
@@ -195,7 +195,7 @@
     }
   )
 
-  function getName (channel: Channel): string {
+  function getName(channel: Channel): string {
     const contact = contactMap.get(channel.attachedTo as Ref<Contact>)
     if (contact === undefined) return channel.value
     return `${getContactName(client.getHierarchy(), contact)} (${channel.value})`
@@ -228,7 +228,7 @@
       integrations.find((p) => p.createdBy !== undefined && mySocialIds.includes(p.createdBy)) ?? integrations[0]
   })
 
-  function onTemplate (e: CustomEvent<string>): void {
+  function onTemplate(e: CustomEvent<string>): void {
     if (e.detail !== undefined) {
       if (subject.trim() === '') {
         subject = e.detail

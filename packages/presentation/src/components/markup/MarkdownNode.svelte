@@ -19,7 +19,7 @@
   export let node: MarkupNode
   export let preview = false
 
-  function escapeHtml (unsafe: string): string {
+  function escapeHtml(unsafe: string): string {
     return unsafe
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')

@@ -79,7 +79,7 @@
 
   const triggersItems: DropdownIntlItem[] = triggers.map((p) => ({ label: p.label, id: p._id, icon: p.icon }))
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     if (to === undefined || trigger === undefined) {
       return
     }
@@ -100,7 +100,7 @@
     dispatch('close')
   }
 
-  function change (e: CustomEvent<Record<string, any>>): void {
+  function change(e: CustomEvent<Record<string, any>>): void {
     if (e.detail?.params !== undefined) {
       params = e.detail.params
     }

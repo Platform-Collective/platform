@@ -41,7 +41,7 @@
   let decorateFailed = false
   let editorMountFailed = false
 
-  function updateEditor (editor: Editor, comparedVersion?: MarkupNode): void {
+  function updateEditor(editor: Editor, comparedVersion?: MarkupNode): void {
     if (comparedVersion === undefined) {
       return
     }
@@ -68,12 +68,12 @@
 
   // TODO: should be implemented as regular plugin
   const DecorationExtension = Extension.create({
-    addProseMirrorPlugins () {
+    addProseMirrorPlugins() {
       return [
         new Plugin({
           key: new PluginKey('diffs'),
           props: {
-            decorations () {
+            decorations() {
               updateDecorations()
               return _decoration
             }

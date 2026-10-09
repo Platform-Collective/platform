@@ -29,7 +29,7 @@
   $: filterVisibleActions(allowedActions, visibleActions)
   $: filterAllowedActions(actions).catch(() => {})
 
-  function filterVisibleActions (allowed: HeaderButtonAction[], visible: (string | number | null)[]): void {
+  function filterVisibleActions(allowed: HeaderButtonAction[], visible: (string | number | null)[]): void {
     items = allowed.filter((action) => visible.includes(action.id))
     mainAction = items.find((a) => a.id === mainActionId)
     if (mainAction === undefined && items.length > 0) {
@@ -37,7 +37,7 @@
     }
   }
 
-  async function filterAllowedActions (actions: HeaderButtonAction[]): Promise<SelectPopupValueType[]> {
+  async function filterAllowedActions(actions: HeaderButtonAction[]): Promise<SelectPopupValueType[]> {
     const result: HeaderButtonAction[] = []
     for (const action of actions) {
       if (await isActionAllowed(action)) {
@@ -49,7 +49,7 @@
     return result
   }
 
-  async function isActionAllowed (action: HeaderButtonAction): Promise<boolean> {
+  async function isActionAllowed(action: HeaderButtonAction): Promise<boolean> {
     if (action.accountRole === undefined && action.permissions === undefined) return true
     if (action.accountRole !== undefined && hasAccountRole(getCurrentAccount(), action.accountRole)) return true
     if (action.permissions !== undefined) {

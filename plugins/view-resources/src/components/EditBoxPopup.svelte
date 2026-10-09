@@ -29,7 +29,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function _onkeypress (ev: KeyboardEvent) {
+  function _onkeypress(ev: KeyboardEvent) {
     if (ev.key === 'Enter') dispatch('close', value)
   }
 </script>

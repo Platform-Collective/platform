@@ -33,7 +33,7 @@
   export let width: string | undefined = 'max-content'
   export let justify: 'left' | 'center' = 'left'
 
-  async function onClick (evt: Event): Promise<void> {
+  async function onClick(evt: Event): Promise<void> {
     showPopup(
       TrainingRequestRolesEditorPopup,
       {

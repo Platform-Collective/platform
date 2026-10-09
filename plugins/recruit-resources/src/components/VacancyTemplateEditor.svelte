@@ -29,7 +29,7 @@
   const hierarchy = client.getHierarchy()
   const customKeys = getFiltredKeys(hierarchy, type._class, []).filter((key) => key.attr.isCustom)
 
-  async function onDescriptionChange (value: string) {
+  async function onDescriptionChange(value: string) {
     if (disabled) {
       return
     }

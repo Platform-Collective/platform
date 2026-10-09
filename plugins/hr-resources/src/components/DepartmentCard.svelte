@@ -34,7 +34,7 @@
 
   const client = getClient()
 
-  async function changeLead (result: Employee | null | undefined): Promise<void> {
+  async function changeLead(result: Employee | null | undefined): Promise<void> {
     if (result === undefined) {
       return
     }
@@ -45,7 +45,7 @@
     }
   }
 
-  function openLeadEditor (event: MouseEvent) {
+  function openLeadEditor(event: MouseEvent) {
     event?.preventDefault()
     event?.stopPropagation()
     showPopup(
@@ -64,11 +64,11 @@
     )
   }
 
-  function createChild (e: MouseEvent) {
+  function createChild(e: MouseEvent) {
     showPopup(CreateDepartment, { space: value._id }, eventToHTMLElement(e))
   }
 
-  function edit (e: MouseEvent): void {
+  function edit(e: MouseEvent): void {
     openDoc(client.getHierarchy(), value)
   }
 
@@ -83,7 +83,7 @@
 
   $: dragging = value._id === dragOver?._id && dragPersonId !== undefined
 
-  function onContext (e: MouseEvent): void {
+  function onContext(e: MouseEvent): void {
     showMenu(e, { object: value, baseMenuClass: value._class })
   }
 </script>

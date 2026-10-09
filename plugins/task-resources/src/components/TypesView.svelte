@@ -71,7 +71,7 @@
   $: searchQuery = search === '' ? query : { ...query, $search: search }
   $: resultQuery = searchQuery
 
-  function showCreateDialog (): void {
+  function showCreateDialog(): void {
     if (createComponent === undefined) return
     showPopup(createComponent, createComponentProps, 'top')
   }

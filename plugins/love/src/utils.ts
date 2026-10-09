@@ -203,9 +203,9 @@ export function getFreePosition (
   width: number,
   height: number
 ): {
-    x: number
-    y: number
-  } {
+  x: number
+  y: number
+} {
   const map: boolean[][] = getFreeSpace(rooms)
 
   for (let y = 0; y <= map.length; y++) {

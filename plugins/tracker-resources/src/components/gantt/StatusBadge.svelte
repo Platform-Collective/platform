@@ -12,7 +12,7 @@
   $: statusName = (status as { name?: string } | undefined)?.name ?? ''
   $: color = mapColor(category)
 
-  function mapColor (cat: string | undefined): string {
+  function mapColor(cat: string | undefined): string {
     switch (cat) {
       case 'task:statusCategory:UnStarted':
       case 'tracker:statusCategory:Backlog':

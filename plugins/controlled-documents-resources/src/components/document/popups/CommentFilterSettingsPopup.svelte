@@ -56,8 +56,8 @@
   <div class="antiCard-menu__item ordering">
     <span class="overflow-label"><Label label={documents.string.Ordering} /></span>
     <DropdownLabelsIntl
-      kind={'regular'}
-      size={'medium'}
+      kind="regular"
+      size="medium"
       items={sortingOptions}
       selected={$documentCommentsFilter.sortBy}
       justify="left"

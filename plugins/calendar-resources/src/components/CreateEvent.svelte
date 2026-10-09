@@ -99,11 +99,11 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return title !== undefined && title.trim().length === 0 && participants.length === 0
   }
 
-  async function saveEvent () {
+  async function saveEvent() {
     let date: number | undefined
     if (startDate != null) date = startDate
     if (date === undefined) return
@@ -176,7 +176,7 @@
     dispatch('close')
   }
 
-  async function allDayChangeHandler () {
+  async function allDayChangeHandler() {
     if (allDay) {
       startDate = new Date(startDate).setHours(0, 0, 0, 0)
       if (dueDate - startDate < allDayDuration) dueDate = allDayDuration + startDate
@@ -186,7 +186,7 @@
     }
   }
 
-  function setRecurrance () {
+  function setRecurrance() {
     showPopup(ReccurancePopup, { rules, startDate }, undefined, (res) => {
       if (res) {
         rules = res

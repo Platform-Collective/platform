@@ -48,10 +48,10 @@
     keyLabel = v
   })
 
-  async function addRef (tag: TagElement): Promise<void> {
+  async function addRef(tag: TagElement): Promise<void> {
     dispatch('open', tag)
   }
-  async function addTag (evt: Event): Promise<void> {
+  async function addTag(evt: Event): Promise<void> {
     showPopup(
       TagsPopup,
       {
@@ -79,7 +79,7 @@
     )
   }
 
-  async function removeTag (tag: TagElement): Promise<void> {
+  async function removeTag(tag: TagElement): Promise<void> {
     dispatch('delete', tag)
   }
 

@@ -37,7 +37,7 @@
 
   $: void updatePerson(message.creator)
 
-  function getTooltipLabel (message: Message): IntlString {
+  function getTooltipLabel(message: Message): IntlString {
     const text = markupToText(jsonToMarkup(markdownToMarkup(message.content)))
     if (text.length > tooltipLimit) {
       return getEmbeddedLabel(text.substring(0, tooltipLimit) + '...')
@@ -45,7 +45,7 @@
     return getEmbeddedLabel(text)
   }
 
-  async function updatePerson (socialId: SocialID): Promise<void> {
+  async function updatePerson(socialId: SocialID): Promise<void> {
     person = $employeeByPersonIdStore.get(socialId) ?? (await getPersonByPersonId(socialId)) ?? undefined
   }
 </script>

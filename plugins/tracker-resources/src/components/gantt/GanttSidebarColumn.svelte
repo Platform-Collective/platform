@@ -52,7 +52,7 @@
   // GanttSidebar (compact path); `isCritical` above is already reactive.
   $: slackDays = (id: Ref<Issue>): number => Math.round((slack.get(id) ?? 0) / DAY_MS)
 
-  function priorityLabel (p: IssuePriority): string {
+  function priorityLabel(p: IssuePriority): string {
     switch (p) {
       case IssuePriority.Urgent:
         return 'Urgent'
@@ -68,7 +68,7 @@
   }
 
   /** Render a Timestamp as `YYYY-MM-DD` — locale-stable, ISO short form. */
-  function formatDateShort (ts: number | null | undefined): string {
+  function formatDateShort(ts: number | null | undefined): string {
     if (ts === null || ts === undefined) return '—'
     const d = new Date(ts)
     const y = d.getUTCFullYear()
@@ -77,7 +77,7 @@
     return `${y}-${m}-${day}`
   }
 
-  function onTitleClick (): void {
+  function onTitleClick(): void {
     if (issue === null) return
     dispatch('openIssue', { issue: { _id: String(issue._id), _class: String(issue._class) } })
   }

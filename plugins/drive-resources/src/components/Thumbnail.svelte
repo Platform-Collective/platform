@@ -26,7 +26,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function extensionIconLabel (name: string): string {
+  function extensionIconLabel(name: string): string {
     const parts = name.split('.')
     const ext = parts[parts.length - 1]
     return ext.substring(0, 4).toUpperCase()

@@ -85,7 +85,7 @@
   $: permissions =
     role?.permissions !== undefined ? allPermissions.filter((p) => role?.permissions?.includes(p._id)) : []
 
-  function handleEditPermissions (evt: Event): void {
+  function handleEditPermissions(evt: Event): void {
     if (role === undefined || readonly) {
       return
     }
@@ -122,7 +122,7 @@
     )
   }
 
-  async function handleDeleteRole (): Promise<void> {
+  async function handleDeleteRole(): Promise<void> {
     showPopup(
       MessageBox,
       {
@@ -138,7 +138,7 @@
 
   const masterTag = getCurrentLocation().path[4] as Ref<MasterTag>
 
-  async function performDeleteRole (): Promise<void> {
+  async function performDeleteRole(): Promise<void> {
     if (role === undefined) {
       return
     }
@@ -186,15 +186,15 @@
     navigate(loc)
   }
 
-  function isAttributePermission (permission: Permission): permission is AttributePermission {
+  function isAttributePermission(permission: Permission): permission is AttributePermission {
     return permission._class === core.class.AttributePermission
   }
 
-  function isClassPermission (permission: Permission): permission is ClassPermission {
+  function isClassPermission(permission: Permission): permission is ClassPermission {
     return permission._class === core.class.ClassPermission
   }
 
-  function getAttributePermissionLabel (permission: Permission): IntlString | undefined {
+  function getAttributePermissionLabel(permission: Permission): IntlString | undefined {
     const isAttribute = isAttributePermission(permission)
     if (isAttribute) {
       const attr = client.getModel().findObject(permission.attribute) as AnyAttribute

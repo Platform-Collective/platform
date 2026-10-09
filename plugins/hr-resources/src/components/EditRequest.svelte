@@ -25,7 +25,7 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  async function onChangeDescription (): Promise<void> {
+  async function onChangeDescription(): Promise<void> {
     if (object === undefined) return
     await client.update(object, {
       description: object.description

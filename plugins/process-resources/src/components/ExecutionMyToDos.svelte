@@ -47,13 +47,13 @@
     todos = []
   }
 
-  async function checkTodo (todo: ProcessToDo) {
+  async function checkTodo(todo: ProcessToDo) {
     await client.update(todo, {
       doneOn: new Date().getTime()
     })
   }
 
-  function isRequest (todo: ProcessToDo): todo is ApproveRequest {
+  function isRequest(todo: ProcessToDo): todo is ApproveRequest {
     return todo._class === plugin.class.ApproveRequest
   }
 </script>

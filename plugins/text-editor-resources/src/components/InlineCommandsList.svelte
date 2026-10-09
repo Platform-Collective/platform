@@ -52,13 +52,13 @@
     dummyPopup.close()
   })
 
-  export function onKeyDown (ev: KeyboardEvent): boolean {
+  export function onKeyDown(ev: KeyboardEvent): boolean {
     return menuPopup?.onKeydown(ev)
   }
 
-  export function done (): void {}
+  export function done(): void {}
 
-  function updateStyle (): void {
+  function updateStyle(): void {
     const rect = clientRect()
     const wDoc = $deviceInfo.docWidth
     const hDoc = $deviceInfo.docHeight
@@ -87,7 +87,7 @@
 
   let wPopup: number = 0
 
-  function handleSelected (id: any): void {
+  function handleSelected(id: any): void {
     command({ id })
   }
 </script>

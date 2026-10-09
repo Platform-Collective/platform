@@ -14,7 +14,7 @@
   let lineStep = 0
   let valueStep = 0
 
-  function updateValues (stepsCount: number, values: number[]): void {
+  function updateValues(stepsCount: number, values: number[]): void {
     minValue = values[0]
     maxValue = values[values.length - 1]
     valueStep = (maxValue - minValue) / (stepsCount - 1)

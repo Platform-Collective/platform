@@ -46,7 +46,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function addPerson (evt: Event): Promise<void> {
+  async function addPerson(evt: Event): Promise<void> {
     showPopup(
       UsersPopup,
       {
@@ -75,11 +75,11 @@
     )
   }
 
-  function getPersons (employees: Ref<Employee>[], employeeById: IdMap<Employee>): Employee[] {
+  function getPersons(employees: Ref<Employee>[], employeeById: IdMap<Employee>): Employee[] {
     return employees.map((p) => employeeById.get(p)).filter((p) => p !== undefined)
   }
 
-  function removePerson (removed: Employee): void {
+  function removePerson(removed: Employee): void {
     const newItems = items.filter((it) => it !== removed._id)
     dispatch('update', newItems)
   }

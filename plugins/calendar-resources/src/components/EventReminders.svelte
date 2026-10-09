@@ -25,13 +25,13 @@
   const maxReminders: number = 4
   let shown: boolean = false
 
-  function addReminder (e: MouseEvent) {
+  function addReminder(e: MouseEvent) {
     showPopup(ReminderPopup, { value: 0 }, eventToHTMLElement(e), (event) => {
       if (event) reminders = [...reminders, event]
     })
   }
 
-  function edit (e: MouseEvent, value: number, index: number) {
+  function edit(e: MouseEvent, value: number, index: number) {
     showPopup(ReminderPopup, { value }, eventToHTMLElement(e), (event) => {
       if (event) {
         reminders = [...reminders.slice(0, index), event, ...reminders.slice(index + 1)]
@@ -39,7 +39,7 @@
     })
   }
 
-  function remove (index: number) {
+  function remove(index: number) {
     reminders = [...reminders.slice(0, index), ...reminders.slice(index + 1)]
   }
 </script>

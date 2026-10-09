@@ -67,18 +67,18 @@
     isSubmitting = false
   }
 
-  async function onTitleChange (): Promise<void> {
+  async function onTitleChange(): Promise<void> {
     if (readonly) {
       return
     }
     await submit({ title: draft.title })
   }
 
-  async function showContextMenu (evt: MouseEvent): Promise<void> {
+  async function showContextMenu(evt: MouseEvent): Promise<void> {
     showMenu(evt, { object: draft, excludedActions: [view.action.Open] })
   }
 
-  export function focus (): void {
+  export function focus(): void {
     void editorPromise.then(() => ed?.focus())
   }
 </script>

@@ -12,7 +12,7 @@ import type { LayoutRow } from '../types'
 const DAY = 86_400_000
 const start = Date.UTC(2026, 0, 5)
 
-function issue (id: string, identifier: string, title: string, offset: number): Issue {
+function issue(id: string, identifier: string, title: string, offset: number): Issue {
   return {
     _id: id as Ref<Issue>,
     identifier,
@@ -24,7 +24,7 @@ function issue (id: string, identifier: string, title: string, offset: number): 
   } as unknown as Issue
 }
 
-function row (i: Issue, y: number): LayoutRow {
+function row(i: Issue, y: number): LayoutRow {
   return {
     kind: 'issue',
     id: `issue:${String(i._id)}`,

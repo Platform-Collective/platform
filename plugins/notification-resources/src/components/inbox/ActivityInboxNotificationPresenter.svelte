@@ -44,7 +44,7 @@
 
   $: void updateDisplayMessage(value.combinedMessages)
 
-  async function updateDisplayMessage (messages: ActivityMessage[]): Promise<void> {
+  async function updateDisplayMessage(messages: ActivityMessage[]): Promise<void> {
     const combinedMessages = combineActivityMessages(sortActivityMessages(messages))
 
     displayMessage = combinedMessages[0]
@@ -56,7 +56,7 @@
 
   $: updateViewlet(viewlets, displayMessage)
 
-  function matchViewlet (viewlet: ActivityNotificationViewlet, message: DisplayActivityMessage): boolean {
+  function matchViewlet(viewlet: ActivityNotificationViewlet, message: DisplayActivityMessage): boolean {
     const hierarchy = client.getHierarchy()
     const matched = matchQuery([message], viewlet.messageMatch, message._class, hierarchy, true)[0]
     if (matched !== undefined) return true
@@ -74,7 +74,7 @@
     return false
   }
 
-  function updateViewlet (viewlets: ActivityNotificationViewlet[], message?: DisplayActivityMessage): void {
+  function updateViewlet(viewlets: ActivityNotificationViewlet[], message?: DisplayActivityMessage): void {
     if (viewlets.length === 0 || message === undefined) {
       viewlet = undefined
       return
@@ -95,7 +95,7 @@
     viewlet = undefined
   }
 
-  async function getAllActions (value: ActivityInboxNotification): Promise<Action[]> {
+  async function getAllActions(value: ActivityInboxNotification): Promise<Action[]> {
     const notificationActions = await getActions(client, value, notification.class.InboxNotification)
 
     const result: Action[] = []

@@ -2,12 +2,12 @@ import type { RateLimitInfo } from './rpc'
 
 export class SlidingWindowRateLimitter {
   private readonly rateLimits = new Map<
-  string,
-  {
-    requests: number[]
-    rejectedRequests: number // Counter for rejected requests
-    resetTime: number
-  }
+    string,
+    {
+      requests: number[]
+      rejectedRequests: number // Counter for rejected requests
+      resetTime: number
+    }
   >()
 
   constructor (

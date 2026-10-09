@@ -8,7 +8,7 @@ import { GROUP_HEADER_HEIGHT, buildGroupedRows, groupRowsToLayoutRows, type Gant
 
 const ROW_HEIGHT = 32
 
-function makeIssue (id: string, over: Partial<Issue> = {}): Issue {
+function makeIssue(id: string, over: Partial<Issue> = {}): Issue {
   return {
     _id: id,
     _class: 'tracker:class:Issue',

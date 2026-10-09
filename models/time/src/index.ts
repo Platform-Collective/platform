@@ -101,41 +101,41 @@ export class TTypeToDoPriority extends TType {}
 @UX(time.string.ToDo, time.icon.Planned)
 export class TToDo extends TAttachedDoc implements ToDo {
   @Prop(TypeDate(DateRangeMode.DATE), task.string.DueDate)
-    dueDate?: number | null | undefined
+  dueDate?: number | null | undefined
 
   @Prop(TypeToDoPriority(), time.string.Priority)
   @Index(IndexKind.Indexed)
-    priority!: ToDoPriority
+  priority!: ToDoPriority
 
   visibility!: Visibility
 
   @Prop(TypeRef(core.class.Space), core.string.Space)
-    attachedSpace?: Ref<Space> | undefined
+  attachedSpace?: Ref<Space> | undefined
 
   @Prop(TypeString(), calendarPlugin.string.Title)
   @Index(IndexKind.FullText)
-    title!: string
+  title!: string
 
   @Prop(TypeMarkup(), calendarPlugin.string.Description)
   @Index(IndexKind.FullText)
-    description!: Markup
+  description!: Markup
 
   doneOn!: Timestamp | null
 
   @Prop(TypeRef(contactPlugin.mixin.Employee), contactPlugin.string.Employee)
   @Index(IndexKind.Indexed)
-    user!: Ref<Employee>
+  user!: Ref<Employee>
 
   @Prop(Collection(time.class.WorkSlot, time.string.WorkSlot), time.string.WorkSlot)
-    workslots!: number
+  workslots!: number
 
   @Prop(Collection(tags.class.TagReference, tags.string.TagLabel), tags.string.Tags)
-    labels?: number | undefined
+  labels?: number | undefined
 
   @Prop(TypeRank(), core.string.Rank)
   @Index(IndexKind.Indexed)
   @Hidden()
-    rank!: Rank
+  rank!: Rank
 }
 
 @Model(time.class.ProjectToDo, time.class.ToDo)

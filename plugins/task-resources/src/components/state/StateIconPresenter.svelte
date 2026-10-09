@@ -53,7 +53,7 @@
     ? getPlatformColorDef(viewState.color ?? category?.color ?? getColorNumberByText(viewState.name), $themeStore.dark)
     : undefined
 
-  function getViewState (type: ProjectType | undefined, state: Status | undefined): Status | undefined {
+  function getViewState(type: ProjectType | undefined, state: Status | undefined): Status | undefined {
     if (state === undefined) return
     if (type === undefined) return state
     const statusColor = type?.statuses?.find((p) => p._id === state._id)?.color
@@ -66,12 +66,12 @@
     }
   }
 
-  async function updateCategory (value: Status | undefined): Promise<void> {
+  async function updateCategory(value: Status | undefined): Promise<void> {
     if (value === undefined) return
     category = await client.findOne(core.class.StatusCategory, { _id: value.category })
   }
 
-  async function getType (space: Ref<Project>, types: IdMap<ProjectType>): Promise<ProjectType | undefined> {
+  async function getType(space: Ref<Project>, types: IdMap<ProjectType>): Promise<ProjectType | undefined> {
     const _space = await client.findOne(task.class.Project, { _id: space })
     if (_space === undefined) {
       type = undefined

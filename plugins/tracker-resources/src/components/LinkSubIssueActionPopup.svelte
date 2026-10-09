@@ -56,7 +56,7 @@
    * ancestors. Result includes `value._id`. Cycle-protected via a visited
    * set so a buggy outline a->b->a does not infinite-loop.
    */
-  function computeIgnoreSet (root: Issue, all: Issue[]): Ref<Issue>[] {
+  function computeIgnoreSet(root: Issue, all: Issue[]): Ref<Issue>[] {
     const ignored = new Set<Ref<Issue>>([root._id])
     // Ancestors: walk root.parents[] explicitly — that's the breadcrumb chain.
     if (Array.isArray(root.parents)) {
@@ -86,7 +86,7 @@
     return Array.from(ignored)
   }
 
-  async function onClose ({ detail: pickedChild }: CustomEvent<Issue | undefined | null>): Promise<void> {
+  async function onClose({ detail: pickedChild }: CustomEvent<Issue | undefined | null>): Promise<void> {
     if (pickedChild !== undefined && pickedChild !== null && pickedChild._id !== value._id) {
       // Move the picked issue's existing rank to the end of the new parent's
       // children so it sorts after them, matching the SetParentIssueActionPopup

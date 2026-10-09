@@ -46,11 +46,11 @@
   let autoJoin = false
   let autoJoinForRoles: AccountRole[] = []
 
-  function normalizeAutoJoinForRoles (roles: AccountRole[]): AccountRole[] | undefined {
+  function normalizeAutoJoinForRoles(roles: AccountRole[]): AccountRole[] | undefined {
     return roles.length > 0 ? [...roles] : undefined
   }
 
-  function setGuestAutoJoin (enabled: boolean): void {
+  function setGuestAutoJoin(enabled: boolean): void {
     autoJoinForRoles = setWorkspaceGuestAutoJoinRoles(autoJoinForRoles, enabled)
   }
 
@@ -60,7 +60,7 @@
 
   $: canSave = !!channelName
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     const myAcc = getCurrentAccount().uuid
     const employee = getCurrentEmployee()
     const space = await client.findOne(contact.class.PersonSpace, { person: employee }, { projection: { _id: 1 } })
@@ -81,7 +81,7 @@
     openChannel(channelId, chunter.class.Channel)
   }
 
-  function handleCancel (): void {
+  function handleCancel(): void {
     dispatch('close')
   }
 </script>

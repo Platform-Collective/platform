@@ -53,7 +53,7 @@
 
   export let staffDepartmentMap: Map<Ref<Staff>, Department[]>
 
-  function getDateRange (request: Request, staff: Staff): string {
+  function getDateRange(request: Request, staff: Staff): string {
     const ds = getRequestDates(
       request,
       types,
@@ -64,13 +64,13 @@
     return ds.join(' ')
   }
 
-  function getStatRequests (employee: Ref<Staff>, date: Date): Request[] {
+  function getStatRequests(employee: Ref<Staff>, date: Date): Request[] {
     const endDate = getEndDate(date.getFullYear(), date.getMonth())
 
     return getRequests(employeeRequests, date, endDate, employee)
   }
 
-  function getTypeVals (month: Date): Map<string, BuildModelKey> {
+  function getTypeVals(month: Date): Map<string, BuildModelKey> {
     return new Map(
       Array.from(types.values()).map((it) => [
         it.label as string,
@@ -92,7 +92,7 @@
     )
   }
 
-  async function getOverrideConfig (startDate: Date): Promise<Map<string, BuildModelKey>> {
+  async function getOverrideConfig(startDate: Date): Promise<Map<string, BuildModelKey>> {
     const holidays = await getHolidays(startDate)
     const typevals = getTypeVals(startDate)
     const endDate = getEndDate(startDate.getFullYear(), startDate.getMonth())
@@ -297,7 +297,7 @@
     ])
   }
 
-  async function createConfig (
+  async function createConfig(
     descr: Viewlet,
     preference: ViewletPreference | undefined,
     month: Date

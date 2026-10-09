@@ -20,7 +20,7 @@
    */
   export let predecessors: PredecessorEntry[] = []
 
-  function lagSuffix (lag: number): string {
+  function lagSuffix(lag: number): string {
     if (lag === 0) return ''
     return lag > 0 ? ` +${lag}d` : ` ${lag}d`
   }

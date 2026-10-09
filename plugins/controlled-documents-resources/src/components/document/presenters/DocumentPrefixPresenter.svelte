@@ -23,7 +23,7 @@
   export let value: DocumentTemplate
   export let editable: boolean = false
 
-  function handleClick (event: MouseEvent): void {
+  function handleClick(event: MouseEvent): void {
     if (!editable) {
       return
     }

@@ -34,7 +34,7 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  async function fileDrop (e: DragEvent) {
+  async function fileDrop(e: DragEvent) {
     dragover = false
 
     if (canDrop && !canDrop(e)) {

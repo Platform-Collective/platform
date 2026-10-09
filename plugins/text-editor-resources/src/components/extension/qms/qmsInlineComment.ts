@@ -203,10 +203,10 @@ export const QMSInlineCommentExtension: Extension<QMSInlineCommentExtensionOptio
       const result: QMSInlineCommentCommands<Command>[typeof ExtensionName] = {
         updateHighlight:
           () =>
-            ({ view: { dispatch, state } }: CommandProps) => {
-              dispatch(state.tr.setMeta(ExtensionName, ''))
-              return true
-            }
+          ({ view: { dispatch, state } }: CommandProps) => {
+            dispatch(state.tr.setMeta(ExtensionName, ''))
+            return true
+          }
       }
 
       return result

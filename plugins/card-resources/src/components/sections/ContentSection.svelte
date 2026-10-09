@@ -31,12 +31,12 @@
 
   const dispatch = createEventDispatcher()
 
-  export function navigate (id: string): void {
+  export function navigate(id: string): void {
     const element = window.document.getElementById(id)
     element?.scrollIntoView({ behavior: 'instant', block: 'start' })
   }
 
-  function handleHeadings (ev: CustomEvent<Heading[]>): void {
+  function handleHeadings(ev: CustomEvent<Heading[]>): void {
     const headings = ev.detail
     const action: CardSectionAction = { id: 'toc', toc: headings }
     dispatch('action', action)

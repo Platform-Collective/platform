@@ -26,7 +26,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function change (e: CustomEvent<any>, key: string): void {
+  function change(e: CustomEvent<any>, key: string): void {
     if (e.detail?.value != null && e.detail.value !== '') {
       ;(params as any)[key] = e.detail.value
     } else {

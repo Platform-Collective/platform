@@ -38,7 +38,7 @@
   export let showMenu: boolean = false
   export let noDivider: boolean = false
   export let shouldTooltip: boolean = false
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
   export let draggable: boolean = false
 </script>
 
@@ -63,7 +63,7 @@
   {shouldTooltip}
   {showMenu}
   {noDivider}
-  {forciblyСollapsed}
+  {forciblyCollapsed}
   {draggable}
   on:click
   on:dragstart

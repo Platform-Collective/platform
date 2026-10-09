@@ -21,7 +21,7 @@
 
   export let info: ParticipantInfo[]
 
-  async function getPerson (info: Ref<Person> | undefined): Promise<Person | undefined> {
+  async function getPerson(info: Ref<Person> | undefined): Promise<Person | undefined> {
     if (info === undefined) {
       return
     }

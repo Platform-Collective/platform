@@ -29,7 +29,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function isEqual (value: Person, targetEmp: Person, key: string) {
+  function isEqual(value: Person, targetEmp: Person, key: string) {
     if (cast !== undefined) {
       value = hierarchy.as(value, cast)
       targetEmp = hierarchy.as(targetEmp, cast)

@@ -41,7 +41,7 @@ import core, {
   type Tx,
   TxFactory
 } from '@hcengineering/core'
-import contact from '@hcengineering/contact'
+import contact, { type ChannelProvider } from '@hcengineering/contact'
 import type { PipelineContext, TxMiddlewareResult } from '@hcengineering/server-core'
 import { GuestPermissionsMiddleware } from '../guestPermissions'
 
@@ -80,14 +80,14 @@ function makePipelineContext (findAll?: FindAllFn): PipelineContext {
     workspace: { uuid: 'test-workspace' as any, url: 'test', dataId: 'test' as any },
     hierarchy,
     modelDb: model,
-    branding: null as any,
+    branding: null,
     adapterManager: {} as any,
     storageAdapter: {} as any,
     contextVars: {},
     lastTx: '',
     lastHash: '',
     broadcastEvent: async () => {}
-  } as any
+  }
 }
 
 function makeMiddleware (
@@ -191,12 +191,9 @@ describe('GuestPermissionsMiddleware', () => {
       patchContactHierarchy(mw)
 
       const factory = new TxFactory(account.primarySocialId)
-      const tx = factory.createTxUpdateDoc(
-        contact.class.Person as Ref<Class<Doc>>,
-        'core:space:Workspace' as Ref<Space>,
-        otherPersonId,
-        { name: 'Changed' } as any
-      )
+      const tx = factory.createTxUpdateDoc(contact.class.Person, 'core:space:Workspace' as Ref<Space>, otherPersonId, {
+        name: 'Changed'
+      } as any)
 
       await expect(mw.tx(makeCtx(account), [tx])).rejects.toThrow()
     })
@@ -218,12 +215,9 @@ describe('GuestPermissionsMiddleware', () => {
       patchContactHierarchy(mw)
 
       const factory = new TxFactory(account.primarySocialId)
-      const tx = factory.createTxUpdateDoc(
-        contact.class.Person as Ref<Class<Doc>>,
-        'core:space:Workspace' as Ref<Space>,
-        personId,
-        { name: 'Changed' } as any
-      )
+      const tx = factory.createTxUpdateDoc(contact.class.Person, 'core:space:Workspace' as Ref<Space>, personId, {
+        name: 'Changed'
+      } as any)
 
       await mw.tx(makeCtx(account), [tx])
       expect(nextCalled).toBe(true)
@@ -256,12 +250,9 @@ describe('GuestPermissionsMiddleware', () => {
       patchContactHierarchy(mw)
 
       const factory = new TxFactory(account.primarySocialId)
-      const tx = factory.createTxUpdateDoc(
-        contact.class.Channel as Ref<Class<Doc>>,
-        'core:space:Workspace' as Ref<Space>,
-        channelId,
-        { value: 'new@example.com' } as any
-      )
+      const tx = factory.createTxUpdateDoc(contact.class.Channel, 'core:space:Workspace' as Ref<Space>, channelId, {
+        value: 'new@example.com'
+      } as any)
 
       await expect(mw.tx(makeCtx(account), [tx])).rejects.toThrow()
     })
@@ -297,12 +288,9 @@ describe('GuestPermissionsMiddleware', () => {
       patchContactHierarchy(mw)
 
       const factory = new TxFactory(account.primarySocialId)
-      const tx = factory.createTxUpdateDoc(
-        contact.class.Channel as Ref<Class<Doc>>,
-        'core:space:Workspace' as Ref<Space>,
-        channelId,
-        { value: 'new@example.com' } as any
-      )
+      const tx = factory.createTxUpdateDoc(contact.class.Channel, 'core:space:Workspace' as Ref<Space>, channelId, {
+        value: 'new@example.com'
+      } as any)
       tx.attachedTo = ownPersonId
       tx.attachedToClass = contact.class.Person
 
@@ -322,17 +310,13 @@ describe('GuestPermissionsMiddleware', () => {
       patchContactHierarchy(mw)
 
       const factory = new TxFactory(account.primarySocialId)
-      const tx = factory.createTxCreateDoc(
-        contact.class.Channel as Ref<Class<Doc>>,
-        'contact:space:Contacts' as Ref<Space>,
-        {
-          attachedTo: otherPersonId,
-          attachedToClass: contact.class.Person,
-          collection: 'channels',
-          provider: 'contact:channelProvider:Email',
-          value: 'new@example.com'
-        } as any
-      )
+      const tx = factory.createTxCreateDoc(contact.class.Channel, 'contact:space:Contacts' as Ref<Space>, {
+        attachedTo: otherPersonId,
+        attachedToClass: contact.class.Person,
+        collection: 'channels',
+        provider: 'contact:channelProvider:Email' as Ref<ChannelProvider>,
+        value: 'new@example.com'
+      })
 
       await expect(mw.tx(makeCtx(account), [tx])).rejects.toThrow()
     })
@@ -368,12 +352,10 @@ describe('GuestPermissionsMiddleware', () => {
       patchContactHierarchy(mw)
 
       const factory = new TxFactory(account.primarySocialId)
-      const tx = factory.createTxUpdateDoc(
-        contact.class.Channel as Ref<Class<Doc>>,
-        'core:space:Workspace' as Ref<Space>,
-        channelId,
-        { attachedTo: otherPersonId, attachedToClass: contact.class.Person } as any
-      )
+      const tx = factory.createTxUpdateDoc(contact.class.Channel, 'core:space:Workspace' as Ref<Space>, channelId, {
+        attachedTo: otherPersonId,
+        attachedToClass: contact.class.Person
+      } as any)
 
       await expect(mw.tx(makeCtx(account), [tx])).rejects.toThrow()
     })
@@ -397,10 +379,10 @@ describe('GuestPermissionsMiddleware', () => {
       const factory = new TxFactory(account.primarySocialId)
       const tx = factory.createTxMixin(
         personId,
-        contact.class.Person as Ref<Class<Doc>>,
+        contact.class.Person,
         'contact:space:Contacts' as Ref<Space>,
         contact.mixin.Employee,
-        { active: true } as any
+        { active: true }
       )
 
       await mw.tx(makeCtx(account), [tx])
@@ -422,10 +404,10 @@ describe('GuestPermissionsMiddleware', () => {
       const factory = new TxFactory(account.primarySocialId)
       const tx = factory.createTxMixin(
         personId,
-        contact.class.Person as Ref<Class<Doc>>,
+        contact.class.Person,
         'contact:space:Contacts' as Ref<Space>,
         contact.mixin.Employee,
-        { active: true } as any
+        { active: true }
       )
 
       await expect(mw.tx(makeCtx(account), [tx])).rejects.toThrow()
@@ -445,12 +427,9 @@ describe('GuestPermissionsMiddleware', () => {
       patchContactHierarchy(mw)
 
       const factory = new TxFactory(account.primarySocialId)
-      const tx = factory.createTxUpdateDoc(
-        contact.class.Person as Ref<Class<Doc>>,
-        'core:space:Workspace' as Ref<Space>,
-        otherPersonId,
-        { name: 'Changed' } as any
-      )
+      const tx = factory.createTxUpdateDoc(contact.class.Person, 'core:space:Workspace' as Ref<Space>, otherPersonId, {
+        name: 'Changed'
+      } as any)
 
       await mw.tx(makeCtx(account), [tx])
       expect(nextCalled).toBe(true)
@@ -678,7 +657,7 @@ describe('GuestPermissionsMiddleware', () => {
               modifiedOn: Date.now(),
               modifiedBy: GUEST_SOCIAL,
               createdBy: GUEST_SOCIAL
-            } as any
+            }
           ]
         }
         return []
@@ -707,7 +686,7 @@ describe('GuestPermissionsMiddleware', () => {
               modifiedOn: Date.now(),
               modifiedBy: GUEST_SOCIAL,
               createdBy: GUEST_SOCIAL
-            } as any
+            }
           ]
         }
         return []
@@ -737,7 +716,7 @@ describe('GuestPermissionsMiddleware', () => {
               modifiedOn: Date.now(),
               modifiedBy: otherSocial,
               createdBy: otherSocial
-            } as any
+            }
           ]
         }
         return []

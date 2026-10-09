@@ -52,13 +52,13 @@ import core, {
 import { genMinModel } from './minmodel'
 
 export async function connect (handler: (tx: Tx) => void): Promise<
-Client &
-BackupClient &
-FulltextStorage & {
-  isConnected: () => boolean
-  loadModel: (last: Timestamp, hash?: string) => Promise<Tx[] | LoadModelResponse>
-  pushHandler: (handler: TxHandler) => void
-}
+  Client &
+    BackupClient &
+    FulltextStorage & {
+      isConnected: () => boolean
+      loadModel: (last: Timestamp, hash?: string) => Promise<Tx[] | LoadModelResponse>
+      pushHandler: (handler: TxHandler) => void
+    }
 > {
   const txes = genMinModel()
 
@@ -89,7 +89,7 @@ FulltextStorage & {
 
     pushHandler (): void {}
 
-    async findAll<T extends Doc>(
+    async findAll<T extends Doc> (
       _class: Ref<Class<T>>,
       query: DocumentQuery<T>,
       options?: FindOptions<T>
@@ -99,7 +99,7 @@ FulltextStorage & {
       return await this.model.findAll(_class, query, options)
     }
 
-    async findOne<T extends Doc>(
+    async findOne<T extends Doc> (
       _class: Ref<Class<T>>,
       query: DocumentQuery<T>,
       options?: FindOptions<T>
@@ -107,7 +107,7 @@ FulltextStorage & {
       return (await this.findAll(_class, query, { ...options, limit: 1 })).shift()
     }
 
-    async findAllPage<T extends Doc>(
+    async findAllPage<T extends Doc> (
       _class: Ref<Class<T>>,
       query: DocumentQuery<T>,
       options: FindPageOptions<T>
@@ -125,7 +125,7 @@ FulltextStorage & {
       }
     }
 
-    async * iterateAll<T extends Doc>(
+    async *iterateAll<T extends Doc> (
       _class: Ref<Class<T>>,
       query: DocumentQuery<T>,
       options?: IterateOptions<T>
@@ -137,7 +137,7 @@ FulltextStorage & {
           limit: options?.limit ?? 500,
           cursor
         })
-        yield * page.docs
+        yield* page.docs
         cursor = page.nextCursor
       } while (cursor !== undefined)
     }

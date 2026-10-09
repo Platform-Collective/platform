@@ -31,7 +31,7 @@
 
   $: loadObject(_id, value)
 
-  function loadObject (_id?: Ref<Message>, value?: Message): void {
+  function loadObject(_id?: Ref<Message>, value?: Message): void {
     if (value === undefined && _id !== undefined) {
       query.query(gmail.class.Message, { _id }, (res) => {
         doc = res[0]
@@ -42,7 +42,7 @@
     }
   }
 
-  async function click (ev: MouseEvent): Promise<void> {
+  async function click(ev: MouseEvent): Promise<void> {
     ev.stopPropagation()
 
     if (onClick) {

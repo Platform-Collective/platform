@@ -25,7 +25,7 @@
 
   const client = getClient()
 
-  async function getDepartment (staff: Staff): Promise<Department | undefined> {
+  async function getDepartment(staff: Staff): Promise<Department | undefined> {
     return await client.findOne(hr.class.Department, {
       _id: staff.department
     })

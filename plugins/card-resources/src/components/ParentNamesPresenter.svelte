@@ -26,7 +26,7 @@
 
   const MIN_WIDTH = 2 // rem
 
-  function getHref (parentInfo: ParentInfo): string {
+  function getHref(parentInfo: ParentInfo): string {
     const loc = getCurrentLocation()
     loc.path[2] = cardId
     loc.path[3] = parentInfo._id

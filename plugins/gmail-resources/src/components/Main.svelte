@@ -70,14 +70,14 @@
     gmailMessage = message
   }
 
-  function back () {
+  function back() {
     if (newMessage) {
       return (newMessage = false)
     }
     return (currentMessage = undefined)
   }
 
-  async function selectHandler (e: CustomEvent): Promise<void> {
+  async function selectHandler(e: CustomEvent): Promise<void> {
     currentMessage = e.detail
   }
 

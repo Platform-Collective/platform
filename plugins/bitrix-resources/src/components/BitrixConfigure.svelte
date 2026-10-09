@@ -65,7 +65,7 @@
     mappings = res
   })
 
-  function addMapping (evt: MouseEvent): void {
+  function addMapping(evt: MouseEvent): void {
     showPopup(CreateMapping, { integration, mappings, bitrixClient }, eventToHTMLElement(evt))
   }
   const signature = '@#253heyf@'

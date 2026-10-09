@@ -36,7 +36,7 @@
     phTranslate = res
   })
 
-  export function focus () {
+  export function focus() {
     input.focus()
   }
 </script>

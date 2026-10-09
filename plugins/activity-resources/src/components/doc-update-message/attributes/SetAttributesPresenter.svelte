@@ -38,7 +38,7 @@
 
   let isDiffShown = false
 
-  function toggleShowMore (): void {
+  function toggleShowMore(): void {
     isDiffShown = !isDiffShown
   }
 </script>

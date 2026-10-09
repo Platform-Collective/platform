@@ -9,7 +9,7 @@ import { computeBulkDeltaBounds } from '../bulk-boundary'
 
 const DAY_MS = 86_400_000
 
-function issue (id: string, start?: number, due?: number): Issue {
+function issue(id: string, start?: number, due?: number): Issue {
   return {
     _id: id as Ref<Issue>,
     _class: 'tracker:class:Issue' as any,
@@ -24,7 +24,7 @@ function issue (id: string, start?: number, due?: number): Issue {
   } as unknown as Issue
 }
 
-function rel (
+function rel(
   source: string,
   target: string,
   kind: 'finish-to-start' | 'start-to-start' | 'finish-to-finish' | 'start-to-finish' = 'finish-to-start',

@@ -12,7 +12,7 @@
   $: resultQuery = { ...searchQuery }
   let employees: Employee[] = []
 
-  async function updateEmployees (resultQuery: DocumentQuery<Employee>) {
+  async function updateEmployees(resultQuery: DocumentQuery<Employee>) {
     employees = await client.findAll(
       contact.mixin.Employee,
       {

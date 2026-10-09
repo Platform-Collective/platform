@@ -248,7 +248,7 @@ export class LiveQuery implements WithTx, Client {
     return true
   }
 
-  private createDumpQuery<T extends Doc>(
+  private createDumpQuery<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -261,7 +261,7 @@ export class LiveQuery implements WithTx, Client {
     return q
   }
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -296,7 +296,7 @@ export class LiveQuery implements WithTx, Client {
     return toFindResult(q.result.getClone(), q.total)
   }
 
-  findAllPage<T extends Doc>(
+  findAllPage<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options: FindPageOptions<T>
@@ -304,7 +304,7 @@ export class LiveQuery implements WithTx, Client {
     return this.client.findAllPage(_class, query, options)
   }
 
-  iterateAll<T extends Doc>(
+  iterateAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: IterateOptions<T>
@@ -312,7 +312,7 @@ export class LiveQuery implements WithTx, Client {
     return this.client.iterateAll(_class, query, options)
   }
 
-  async domainRequest<T>(
+  async domainRequest<T> (
     domain: OperationDomain,
     params: DomainParams,
     options?: DomainRequestOptions
@@ -324,7 +324,7 @@ export class LiveQuery implements WithTx, Client {
     return this.client.searchFulltext(query, options)
   }
 
-  async findOne<T extends Doc>(
+  async findOne<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -375,7 +375,7 @@ export class LiveQuery implements WithTx, Client {
     return deepEqual(q1, q2)
   }
 
-  private findQuery<T extends Doc>(
+  private findQuery<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -422,7 +422,7 @@ export class LiveQuery implements WithTx, Client {
     }, 0)
   }
 
-  private getQuery<T extends Doc>(
+  private getQuery<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     callback: {
@@ -449,7 +449,7 @@ export class LiveQuery implements WithTx, Client {
     return cq
   }
 
-  private createQuery<T extends Doc>(
+  private createQuery<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     callback: { callback: (result: FindResult<T>) => void, callbackId: string } | undefined,
@@ -464,7 +464,7 @@ export class LiveQuery implements WithTx, Client {
       query: _query,
       result: result.then((docs) => new ResultArray(docs, this.getHierarchy())),
       total: 0,
-      options: options as FindOptions<Doc>,
+      options,
       callbacks: new Map(),
       refresh: reduceCalls(() => this.doRefresh(q)),
       refreshId: 0
@@ -513,7 +513,7 @@ export class LiveQuery implements WithTx, Client {
     }
   }
 
-  query<T extends Doc>(
+  query<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     callback: (result: FindResult<T>) => void,
@@ -547,7 +547,7 @@ export class LiveQuery implements WithTx, Client {
     }
   }
 
-  async queryFind<T extends Doc>(
+  async queryFind<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -1049,7 +1049,7 @@ export class LiveQuery implements WithTx, Client {
     return false
   }
 
-  private async getLookupValue<T extends Doc>(
+  private async getLookupValue<T extends Doc> (
     _class: Ref<Class<T>>,
     doc: T,
     lookup: Lookup<T>,
@@ -1079,7 +1079,7 @@ export class LiveQuery implements WithTx, Client {
     }
   }
 
-  private async getReverseLookupValue<T extends Doc>(
+  private async getReverseLookupValue<T extends Doc> (
     doc: T,
     lookup: ReverseLookups,
     result: LookupData<T>
@@ -1104,7 +1104,7 @@ export class LiveQuery implements WithTx, Client {
     }
   }
 
-  private async lookup<T extends Doc>(_class: Ref<Class<T>>, doc: T, lookup: Lookup<T>): Promise<void> {
+  private async lookup<T extends Doc> (_class: Ref<Class<T>>, doc: T, lookup: Lookup<T>): Promise<void> {
     const result: LookupData<Doc> = {}
     await this.getLookupValue(_class, doc, lookup, result)
     ;(doc as WithLookup<Doc>).$lookup = result
@@ -1433,7 +1433,7 @@ export class LiveQuery implements WithTx, Client {
     const result: [string, string, string?][] = []
     const hierarchy = this.client.getHierarchy()
     if (lookup._id !== undefined) {
-      for (const key in lookup._id) {
+      for (const key of Object.keys(lookup._id)) {
         const value = (lookup._id as any)[key]
         const [valueClass, reverseLookupKey] = Array.isArray(value) ? value : [value, 'attachedTo']
         const clazz = hierarchy.isMixin(valueClass) ? hierarchy.getBaseClass(valueClass) : valueClass

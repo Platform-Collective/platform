@@ -246,7 +246,6 @@
 
     // huly.utils packages:
     // "@hcengineering/platform-rig": "file:../../../huly.utils/packages/platform-rig",
-    // "@hcengineering/ui-test": "file:../../../huly.utils/packages/ui-test"
 
     // huly.communication packages
     // "@hcengineering/communication-types": "file:../../../communication/packages/types",

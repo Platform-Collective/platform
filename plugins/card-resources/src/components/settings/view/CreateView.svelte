@@ -65,7 +65,7 @@
     viewOptions: getViewOptions(descriptor)
   }
 
-  function getViewOptions (descriptor: Ref<ViewletDescriptor> | undefined): ViewOptionsModel | undefined {
+  function getViewOptions(descriptor: Ref<ViewletDescriptor> | undefined): ViewOptionsModel | undefined {
     if (descriptor === undefined || descriptor === view.viewlet.Table) return undefined
     return {
       groupBy: ['_class', 'parent'],
@@ -77,24 +77,24 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     dispatch('close')
     if (descriptor === undefined || viewletConfig === undefined) return
     setMasterDetailConfig()
     await client.createDoc(view.class.Viewlet, core.space.Model, viewletConfig)
   }
 
-  function setMasterDetailConfig (): void {
+  function setMasterDetailConfig(): void {
     if (viewletConfig === undefined || descriptor !== view.viewlet.MasterDetail) return
     viewletConfig.masterDetailOptions = {
       views: viewConfigs
     }
   }
-  function onConfigUpdate (items: (Config | AttributeConfig)[]): void {
+  function onConfigUpdate(items: (Config | AttributeConfig)[]): void {
     if (viewletConfig === undefined) return
     updateViewletConfig(viewletConfig, items)
   }
-  function onMasterDetailUpdate (items: MasterDetailConfig[]): void {
+  function onMasterDetailUpdate(items: MasterDetailConfig[]): void {
     if (viewletConfig === undefined) return
     viewConfigs = items
   }

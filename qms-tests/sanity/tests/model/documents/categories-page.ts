@@ -1,3 +1,4 @@
+/* eslint-disable secure-coding/no-xpath-injection */
 import { type Locator, type Page, expect } from '@playwright/test'
 import { CalendarPage } from '../calendar-page'
 

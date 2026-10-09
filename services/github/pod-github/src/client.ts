@@ -3,7 +3,7 @@
 //
 //
 
-import client, { ClientSocket } from '@hcengineering/client'
+import client from '@hcengineering/client'
 import clientResources from '@hcengineering/client-resources'
 import { Client, ClientConnectEvent, systemAccountUuid, WorkspaceUuid, type MeasureContext } from '@hcengineering/core'
 import { setMetadata } from '@hcengineering/platform'
@@ -26,7 +26,7 @@ export async function createPlatformClient (
       headers: {
         'User-Agent': config.ServiceID
       }
-    }) as never as ClientSocket
+    }) as never
   })
 
   const token = generateToken(systemAccountUuid, workspace, { service: 'github', mode: 'github' })

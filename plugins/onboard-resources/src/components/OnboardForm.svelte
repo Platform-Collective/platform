@@ -33,21 +33,21 @@
   let account: LoginInfo | null | undefined = undefined
   let step: OnboardSteps = OnboardSteps.Workspace
 
-  function handleStepEvent (event: CustomEvent<LoginInfo | WorkspaceLoginInfo | undefined>): void {
+  function handleStepEvent(event: CustomEvent<LoginInfo | WorkspaceLoginInfo | undefined>): void {
     if (event.detail != null) {
       account = event.detail
     }
     handleNext(step)
   }
 
-  function handleNext (current: OnboardSteps): void {
+  function handleNext(current: OnboardSteps): void {
     const next = steps.indexOf(current) + 1
     if (next < steps.length) {
       step = steps[next]
     }
   }
 
-  function isWorkspaceLoginInfo (info: WorkspaceLoginInfo | LoginInfo): info is WorkspaceLoginInfo {
+  function isWorkspaceLoginInfo(info: WorkspaceLoginInfo | LoginInfo): info is WorkspaceLoginInfo {
     return (info as WorkspaceLoginInfo).workspace !== undefined
   }
 

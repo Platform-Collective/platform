@@ -96,8 +96,8 @@ export class NormalizeTxMiddleware extends BaseMiddleware implements Middleware 
       return undefined
     }
     const { _class, _id, space, modifiedBy, modifiedOn, createdBy, createdOn, objectSpace, meta } = source as Record<
-    keyof Tx,
-    unknown
+      keyof Tx,
+      unknown
     >
     const isTxValid =
       typeof _class === 'string' &&
@@ -121,7 +121,7 @@ export class NormalizeTxMiddleware extends BaseMiddleware implements Middleware 
       createdBy: createdBy as PersonId | undefined,
       createdOn,
       objectSpace: objectSpace as Ref<Space>,
-      meta: meta as Record<string, any> | undefined
+      meta
     }
     return baseTx
   }
@@ -156,8 +156,8 @@ export class NormalizeTxMiddleware extends BaseMiddleware implements Middleware 
       return domainEvent
     } else if (baseTx._class === core.class.TxApplyIf) {
       const { scope, match, notMatch, txes, notify, extraNotify, measureName } = source as Record<
-      keyof TxApplyIf,
-      unknown
+        keyof TxApplyIf,
+        unknown
       >
       const isValid =
         (scope === undefined || typeof scope === 'string') &&
@@ -202,8 +202,8 @@ export class NormalizeTxMiddleware extends BaseMiddleware implements Middleware 
 
   private parseTxCUD (source: unknown, base: ExplicitTx<Tx>): ExplicitTx<TxCUD<Doc>> | undefined {
     const { objectId, objectClass, attachedTo, attachedToClass, collection } = source as Record<
-    keyof TxCUD<Doc>,
-    unknown
+      keyof TxCUD<Doc>,
+      unknown
     >
     const isValid =
       typeof objectId === 'string' &&

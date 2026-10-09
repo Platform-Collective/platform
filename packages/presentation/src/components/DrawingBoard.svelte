@@ -68,7 +68,7 @@
   const undoableCommands = document.getArray<DrawingCmd>('drawing-commands')
   const commandProcessor = new DrawingCommandsProcessor(document, undoableCommands)
 
-  function onSavedCommandsChanged (): void {
+  function onSavedCommandsChanged(): void {
     model = commandProcessor.snapshot()
     setTimeout(() => {
       const status = commandProcessor.getUndoRedoAvailability()
@@ -80,7 +80,7 @@
   $: updateToolbarPosition(readonly, board, toolbar)
   $: updateEditableState(drawings, readonly)
 
-  function updateToolbarPosition (readonly: boolean, board: HTMLDivElement, toolbar: HTMLDivElement): void {
+  function updateToolbarPosition(readonly: boolean, board: HTMLDivElement, toolbar: HTMLDivElement): void {
     if (!readonly && board?.offsetTop !== undefined && toolbar?.clientHeight !== undefined) {
       // TODO: There should be a generic solution
       // this only estimates a free room above the picture in FilePreviewPopup
@@ -88,17 +88,17 @@
     }
   }
 
-  function dropTextEditor (): void {
+  function dropTextEditor(): void {
     changingCmdId = undefined
     cmdEditor = undefined
   }
 
-  function handleModification (): void {
+  function handleModification(): void {
     modified = true
     dropTextEditor()
   }
 
-  function updateEditableState (drawings: DrawingData[], readonly: boolean): void {
+  function updateEditableState(drawings: DrawingData[], readonly: boolean): void {
     const readOnlyStatusChanged = readonly !== currentReadonly
     const drawingsChanged = drawings !== currentDrawings
 
@@ -128,7 +128,7 @@
     currentReadonly = readonly
   }
 
-  function parseDrawing (data: DrawingData | undefined): void {
+  function parseDrawing(data: DrawingData | undefined): void {
     if (data?.content !== undefined && data?.content !== null) {
       try {
         const commands: DrawingCmd[] = JSON.parse(data.content)
@@ -143,7 +143,7 @@
     onSavedCommandsChanged()
   }
 
-  function saveDrawing (): void {
+  function saveDrawing(): void {
     if (modified && model !== undefined) {
       const data: DrawingData = {
         content: JSON.stringify(model)
@@ -154,14 +154,14 @@
     }
   }
 
-  function addCommand (command: DrawingCmd): void {
+  function addCommand(command: DrawingCmd): void {
     if (model !== undefined) {
       commandProcessor.addCommand(command)
       handleModification()
     }
   }
 
-  function showCommandProps (id: CommandUid): void {
+  function showCommandProps(id: CommandUid): void {
     changingCmdId = id
     for (const command of model ?? []) {
       if (command.id === id) {
@@ -175,14 +175,14 @@
     }
   }
 
-  function changeCommand (cmd: DrawingCmd): void {
+  function changeCommand(cmd: DrawingCmd): void {
     if (model !== undefined) {
       commandProcessor.changeCommand(cmd)
       handleModification()
     }
   }
 
-  function deleteCommand (id: CommandUid): void {
+  function deleteCommand(id: CommandUid): void {
     if (model !== undefined) {
       commandProcessor.deleteCommand(id)
       handleModification()

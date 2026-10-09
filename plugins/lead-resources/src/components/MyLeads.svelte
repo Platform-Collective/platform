@@ -59,14 +59,14 @@
   $: mode = $resolvedLocationStore.query?.mode ?? undefined
 
   let searchQuery: DocumentQuery<Lead> = { ...(baseQuery ?? {}) }
-  function updateSearchQuery (search: string): void {
+  function updateSearchQuery(search: string): void {
     searchQuery = search === '' ? { ...baseQuery } : { ...baseQuery, $search: search }
   }
   $: if (baseQuery) updateSearchQuery(search)
   $: resultQuery = { ...searchQuery }
 
   const subscribedQuery = createQuery()
-  function getSubscribed () {
+  function getSubscribed() {
     subscribedQuery.query(
       _class,
       { 'notification:mixin:Collaborators.collaborators': myAcc.uuid },

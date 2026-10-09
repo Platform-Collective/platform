@@ -10,7 +10,7 @@
 
   const formatter: AsYouType = new AsYouType()
 
-  function formatPhone (newValue: string | number): string | number {
+  function formatPhone(newValue: string | number): string | number {
     newValue = typeof newValue === 'number' ? newValue.toString() : newValue
 
     // Only allow digits, +, spaces, parentheses, and hyphens

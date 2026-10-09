@@ -35,7 +35,7 @@
     }
   }
 
-  async function formatDueDate (interval: number): Promise<string> {
+  async function formatDueDate(interval: number): Promise<string> {
     let passed = interval
     if (interval < 0) passed = 0
     if (passed < HOUR) {

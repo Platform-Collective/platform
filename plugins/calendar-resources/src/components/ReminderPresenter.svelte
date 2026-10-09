@@ -20,7 +20,7 @@
 
   export let value: Event
 
-  function click (): void {
+  function click(): void {
     showPanel(view.component.EditDoc, value._id, value._class, 'content')
   }
 

@@ -27,7 +27,7 @@
   let inputFile: HTMLInputElement
   let dragover = false
 
-  async function onFileUploaded ({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> {
+  async function onFileUploaded({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> {
     const blobs = doc.blobs ?? {}
     blobs[uuid] = {
       name,
@@ -41,7 +41,7 @@
     })
   }
 
-  async function fileSelected (): Promise<void> {
+  async function fileSelected(): Promise<void> {
     const list = inputFile.files
     if (list === null || list.length === 0) return
 
@@ -56,7 +56,7 @@
     inputFile.value = ''
   }
 
-  async function fileDrop (e: DragEvent): Promise<void> {
+  async function fileDrop(e: DragEvent): Promise<void> {
     dragover = false
     e.preventDefault()
     e.stopPropagation()

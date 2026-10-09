@@ -52,9 +52,9 @@ export function jumpToDate (
   uuid: string,
   scrollDiv?: HTMLElement | null
 ): {
-    scrollOffset?: number
-    dateToJump?: Timestamp
-  } {
+  scrollOffset?: number
+  dateToJump?: Timestamp
+} {
   const date = e.detail.date
 
   if (date === undefined || scrollDiv == null) {

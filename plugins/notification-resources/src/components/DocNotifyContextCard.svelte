@@ -90,7 +90,7 @@
     groupedNotifications = res
   })
 
-  function isTextMessage (_class: Ref<Class<Doc>>): boolean {
+  function isTextMessage(_class: Ref<Class<Doc>>): boolean {
     return hierarchy.isDerived(_class, chunter.class.ChatMessage)
   }
 
@@ -102,7 +102,7 @@
     return isMentionNotification(it) && isTextMessage(it.mentionedInClass)
   }
 
-  async function groupNotificationsByUser (
+  async function groupNotificationsByUser(
     notifications: WithLookup<InboxNotification>[]
   ): Promise<Array<InboxNotification[]>> {
     const result: Array<InboxNotification[]> = []
@@ -142,7 +142,7 @@
     return result
   }
 
-  function showMenu (ev: MouseEvent): void {
+  function showMenu(ev: MouseEvent): void {
     ev.stopPropagation()
     ev.preventDefault()
     showPopup(
@@ -165,15 +165,15 @@
     handleActionMenuOpened()
   }
 
-  function handleActionMenuOpened (): void {
+  function handleActionMenuOpened(): void {
     isActionMenuOpened = true
   }
 
-  function handleActionMenuClosed (): void {
+  function handleActionMenuClosed(): void {
     isActionMenuOpened = false
   }
 
-  async function checkContext (): Promise<void> {
+  async function checkContext(): Promise<void> {
     dispatch('archive')
   }
 
@@ -183,7 +183,7 @@
   //   return canGroup(first)
   // }
 
-  function getKey (group: InboxNotification[]): string {
+  function getKey(group: InboxNotification[]): string {
     return group.map((it) => it._id).join('-')
   }
 </script>

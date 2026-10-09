@@ -15,7 +15,7 @@
 
 import { getMetadata, translate } from '@hcengineering/platform'
 import { type ActionContext, copyTextToClipboard } from '@hcengineering/presentation'
-import { EmbedNode as BaseEmbedNode, type ReferenceNodeProps } from '@hcengineering/text'
+import { EmbedNode as BaseEmbedNode } from '@hcengineering/text'
 import textEditor from '@hcengineering/text-editor'
 import { type Editor, type Range } from '@tiptap/core'
 import { Fragment, type Node, type ResolvedPos, Slice } from '@tiptap/pm/model'
@@ -247,7 +247,7 @@ function getNodeUrl (node?: Node | null): string | undefined {
       return link?.attrs.href ?? undefined
     }
     case 'reference': {
-      return buildReferenceUrl(node.attrs as ReferenceNodeProps)
+      return buildReferenceUrl(node.attrs)
     }
     case 'embed': {
       return node.attrs.src

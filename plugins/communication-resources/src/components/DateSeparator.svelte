@@ -21,7 +21,7 @@
   export let date: Timestamp
   export let sticky: boolean = true
 
-  async function formatDate (timestamp: Timestamp, lang: string): Promise<string> {
+  async function formatDate(timestamp: Timestamp, lang: string): Promise<string> {
     const now = new Date()
     const date = new Date(timestamp)
 

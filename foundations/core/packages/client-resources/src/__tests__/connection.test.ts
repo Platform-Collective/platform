@@ -303,7 +303,7 @@ describe('connect function', () => {
     mockWebSockets.push(mockWs)
 
     const client = connect('ws://localhost:3333', handler, workspaceId, userId, {
-      socketFactory: (url: string) => mockWs as any
+      socketFactory: (url: string) => mockWs
     })
 
     connections.push(client)
@@ -333,7 +333,7 @@ describe('connect function', () => {
 
     const mockWs = new MockWebSocket('ws://localhost:3333')
     const client = connect('ws://localhost:3333', handler, workspaceId, userId, {
-      socketFactory: (url: string) => mockWs as any
+      socketFactory: (url: string) => mockWs
     })
 
     connections.push(client)

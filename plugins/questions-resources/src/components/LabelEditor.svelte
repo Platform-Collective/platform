@@ -9,7 +9,7 @@
   export let readonly = false
 
   let editBox: EditBox | undefined = undefined
-  export function focus (): void {
+  export function focus(): void {
     if (editBox) {
       editBox.focus()
     }

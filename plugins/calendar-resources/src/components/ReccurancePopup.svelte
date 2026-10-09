@@ -75,7 +75,7 @@
     }
   ] as DropdownIntlItem[]
 
-  function save () {
+  function save() {
     const res: RecurringRule = {
       freq: periodType,
       interval
@@ -111,7 +111,7 @@
 
   let selectedWeekdays: string[] = rules[0]?.byDay ?? [getWeekday(new Date(startDate))]
 
-  function weekdayClick (day: string) {
+  function weekdayClick(day: string) {
     const index = selectedWeekdays.findIndex((p) => p === day)
     if (index !== -1) {
       selectedWeekdays.splice(index, 1)
@@ -121,7 +121,7 @@
     selectedWeekdays = selectedWeekdays
   }
 
-  function isActive (day: string, selected: string[]): boolean {
+  function isActive(day: string, selected: string[]): boolean {
     return selectedWeekdays.includes(day)
   }
 

@@ -52,7 +52,7 @@
   $: selectedRoom = $rooms.find((p) => p._id === value)
   $: selected = selectedRoom !== undefined ? makeRoomItem(selectedRoom, true) : undefined
 
-  function makeRoomItem (room: Room, forSelected: boolean): { _id: string, label: string } {
+  function makeRoomItem(room: Room, forSelected: boolean): { _id: string, label: string } {
     const item = { _id: room._id, label: room.name }
     if (isOffice(room)) {
       if (room.person === currentPersonId) {
@@ -102,7 +102,7 @@
     return item
   }
 
-  function change (id: Ref<Room>): void {
+  function change(id: Ref<Room>): void {
     if (value !== id) {
       dispatch('change', id)
       value = id

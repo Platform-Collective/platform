@@ -36,7 +36,7 @@
   $: savedMessages = $savedMessagesStore
   $: savedAttachments = $savedAttachmentsStore
 
-  async function openAttachment (attach?: Attachment): Promise<void> {
+  async function openAttachment(attach?: Attachment): Promise<void> {
     if (attach === undefined) {
       return
     }
@@ -48,7 +48,7 @@
     })
   }
 
-  async function getName (attach: Attachment): Promise<string | undefined> {
+  async function getName(attach: Attachment): Promise<string | undefined> {
     const person = await getPersonByPersonId(attach.modifiedBy)
 
     if (person != null) {
@@ -56,7 +56,7 @@
     }
   }
 
-  function handleMessageClicked (message?: ActivityMessage): void {
+  function handleMessageClicked(message?: ActivityMessage): void {
     void openMessageFromSpecial(message)
   }
 

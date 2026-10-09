@@ -26,7 +26,7 @@
   import drive from '../plugin'
   import { Analytics } from '@hcengineering/analytics'
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return name === ''
   }
 
@@ -43,11 +43,11 @@
   $: if (_space !== space) _parent = undefined
   $: canSave = getTitle(name).length > 0 && _space !== undefined
 
-  function getTitle (value: string): string {
+  function getTitle(value: string): string {
     return value.trim()
   }
 
-  async function create (): Promise<void> {
+  async function create(): Promise<void> {
     if (_space === undefined) {
       return
     }

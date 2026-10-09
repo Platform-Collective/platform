@@ -36,7 +36,7 @@
     rawTitle = object.title
   }
 
-  function change (field: string, value: any) {
+  function change(field: string, value: any) {
     client.updateDoc(object._class, object.space, object._id, { [field]: value })
   }
 

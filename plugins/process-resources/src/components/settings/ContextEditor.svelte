@@ -28,18 +28,18 @@
 
   const client = getClient()
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     await client.update(process, { context: process.context })
     clearSettingsStore()
   }
 
-  function onNameChange (ev: Event, _id: string, ctx: ProcessContext): void {
+  function onNameChange(ev: Event, _id: string, ctx: ProcessContext): void {
     const value = (ev.target as HTMLInputElement).value?.trim()
     ctx.name = value
     process.context[_id as ContextId] = ctx
   }
 
-  async function open (val: ProcessContext): Promise<void> {
+  async function open(val: ProcessContext): Promise<void> {
     const transition = await client.findOne(plugin.class.Transition, { _id: val.producer })
     if (transition === undefined) return
     const step = transition.actions.find((it) => it._id === val.action)

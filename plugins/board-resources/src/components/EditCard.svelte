@@ -45,7 +45,7 @@
   const allowedCollections = ['labels']
   const ignoreKeys = ['isArchived', 'location', 'title', 'description', 'status', 'number', 'assignee', 'identifier']
 
-  function change (field: string, value: any) {
+  function change(field: string, value: any) {
     if (object) {
       updateCard(client, object, field, value)
     }

@@ -25,17 +25,17 @@
 
   const client = getClient()
 
-  async function getType (request: Request): Promise<RequestType | undefined> {
+  async function getType(request: Request): Promise<RequestType | undefined> {
     return await client.findOne(hr.class.RequestType, {
       _id: request.type
     })
   }
 
-  function isAvailable (type: RequestType): boolean {
+  function isAvailable(type: RequestType): boolean {
     return type.value >= 0
   }
 
-  function click (e: MouseEvent, request: Request) {
+  function click(e: MouseEvent, request: Request) {
     if (!editable) return
     closeTooltip()
     showMenu(e, { object: request })

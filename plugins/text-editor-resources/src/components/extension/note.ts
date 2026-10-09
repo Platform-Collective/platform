@@ -24,14 +24,14 @@ export const NoteExtension = NoteBaseExtension.extend({
     return {
       setNote:
         (text: string, kind: NoteKind) =>
-          ({ commands }) => {
-            return commands.setMark(this.name, { title: text, kind })
-          },
+        ({ commands }) => {
+          return commands.setMark(this.name, { title: text, kind })
+        },
       unsetNote:
         () =>
-          ({ commands }) => {
-            return commands.unsetMark(this.name)
-          }
+        ({ commands }) => {
+          return commands.unsetMark(this.name)
+        }
     }
   },
 

@@ -36,7 +36,7 @@
   $: subIssues = sortStatuses(_object?._id !== undefined ? [...($relatedIssues.get(_object?._id) ?? [])] : [])
   let countComplete: number = 0
 
-  function sortStatuses (statuses: IssueRef[]): { _id: Ref<Issue>, status: Ref<Status> }[] {
+  function sortStatuses(statuses: IssueRef[]): { _id: Ref<Issue>, status: Ref<Status> }[] {
     statuses.sort((a, b) => {
       const aStatus = $statusStore.byId.get(a.status)
       const bStatus = $statusStore.byId.get(b.status)

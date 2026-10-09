@@ -29,7 +29,7 @@ export interface PredecessorEntry {
  * the list column wants ONE entry at a time — formatPredecessors joins
  * the full set with ', ' which the column never renders.
  */
-export function formatPredecessorEntry (rel: IssueRelation, source: Issue): string {
+export function formatPredecessorEntry(rel: IssueRelation, source: Issue): string {
   return `${(source as unknown as { identifier: string }).identifier} ${kindCode(rel.kind)}${signedLag(rel.lag)}`
 }
 
@@ -42,7 +42,7 @@ export function formatPredecessorEntry (rel: IssueRelation, source: Issue): stri
  * upstream issue) are silently dropped: the cell still renders the
  * remaining valid predecessors instead of showing a broken '???' row.
  */
-export function sortPredecessorsByIdentifier (
+export function sortPredecessorsByIdentifier(
   rels: IssueRelation[],
   sources: Map<Ref<Issue>, Issue>
 ): PredecessorEntry[] {
@@ -68,7 +68,7 @@ export function sortPredecessorsByIdentifier (
  * even two predecessors get a +1 more badge rather than rendering
  * both inline; the cell would otherwise blow the row height.
  */
-export function splitFirstAndRest (sorted: PredecessorEntry[]): {
+export function splitFirstAndRest(sorted: PredecessorEntry[]): {
   first: PredecessorEntry | null
   rest: PredecessorEntry[]
   extraCount: number

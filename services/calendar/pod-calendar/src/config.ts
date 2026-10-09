@@ -39,7 +39,7 @@ type RequiredKey =
   | 'WorkspaceInactivityInterval'
 
 // GoogleEnabled is derived from Credentials and WATCH_URL and has no environment variable of its own.
-const envMap: { [key in Exclude<keyof Config, 'GoogleEnabled'>]-?: string } = {
+const envMap: Required<Record<Exclude<keyof Config, 'GoogleEnabled'>, string>> = {
   Port: 'PORT',
 
   AccountsURL: 'ACCOUNTS_URL',

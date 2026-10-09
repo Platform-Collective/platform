@@ -72,7 +72,7 @@
 
   $: handleSelectedComponentIdUpdated(value, rawComponents)
 
-  function getComponentInfo (rawComponents: Component[], sp: Component | undefined): SelectPopupValueType[] {
+  function getComponentInfo(rawComponents: Component[], sp: Component | undefined): SelectPopupValueType[] {
     return [
       ...(isAllowUnset
         ? [

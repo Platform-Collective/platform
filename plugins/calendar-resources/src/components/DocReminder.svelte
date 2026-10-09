@@ -30,7 +30,7 @@
 
   $: isEvent = hierarchy.isDerived(value._class, calendar.class.Event)
 
-  async function click (ev: Event): Promise<void> {
+  async function click(ev: Event): Promise<void> {
     if (isEvent) {
       showPopup(SaveEventReminder, { objectId: value._id, objectClass: value._class }, ev.target as HTMLElement)
     } else {

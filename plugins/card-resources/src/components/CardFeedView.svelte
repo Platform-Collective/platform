@@ -67,7 +67,7 @@
 
   $: hasNextPage = total > cards.length
 
-  function onScroll (): void {
+  function onScroll(): void {
     if (divScroll != null && hasNextPage && !isLoading) {
       const isAtBottom = divScroll.scrollTop + divScroll.clientHeight >= divScroll.scrollHeight - 400
       if (isAtBottom) {
@@ -77,7 +77,7 @@
     }
   }
 
-  function getSpaceFromFilter (_query: DocumentQuery<Card>): Ref<CardSpace> | undefined {
+  function getSpaceFromFilter(_query: DocumentQuery<Card>): Ref<CardSpace> | undefined {
     if (_query.space != null) {
       if (typeof _query.space === 'object' && '$in' in _query.space && Array.isArray(_query.space.$in)) {
         return _query.space.$in[0] as Ref<CardSpace>
@@ -87,7 +87,7 @@
     return undefined
   }
 
-  function getFormatDateId (timestamp: number): string {
+  function getFormatDateId(timestamp: number): string {
     const now = new Date()
     const date = new Date(timestamp)
 

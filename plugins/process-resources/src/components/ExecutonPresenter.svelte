@@ -27,7 +27,7 @@
 
   $: process = value?.$lookup?.process ?? client.getModel().findObject(value.process)
 
-  function open (): void {
+  function open(): void {
     showPopup(
       ExecutionDetails,
       {

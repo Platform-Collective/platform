@@ -49,14 +49,14 @@
     loading = false
   })
 
-  function newProject (): void {
+  function newProject(): void {
     closed = false
     showPopup(tracker.component.CreateProject, {}, 'top', () => {
       closed = true
     })
   }
 
-  function newIssue (): void {
+  function newIssue(): void {
     closed = false
     Analytics.handleEvent(TrackerEvents.NewIssueButtonClicked)
     showPopup(CreateIssue, { space: currentSpace, shouldSaveDraft: true }, 'top', () => {
@@ -66,7 +66,7 @@
 
   let mainActionId: string | undefined = undefined
   let visibleActions: string[] = []
-  function updateActions (draft: boolean, project: boolean, closed: boolean): void {
+  function updateActions(draft: boolean, project: boolean, closed: boolean): void {
     mainActionId = draft || !closed ? tracker.string.ResumeDraft : tracker.string.NewIssue
     if (project) {
       visibleActions = [tracker.string.CreateProject, mainActionId, tracker.string.Import]

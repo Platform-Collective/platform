@@ -54,7 +54,7 @@
   selected={selected === undefined}
   empty={root.length === 0}
   {collapsedPrefix}
-  type={'nested-selectable'}
+  type="nested-selectable"
   on:click={() => {
     dispatch('selected', space)
   }}

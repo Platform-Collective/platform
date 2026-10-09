@@ -56,7 +56,7 @@ import {
  * @public
  */
 export const genRanks = (count: number): Generator<string, void, unknown> =>
-  (function * () {
+  (function* () {
     const sys = new LexoNumeralSystem36()
     const base = 36
     const max = base ** 6

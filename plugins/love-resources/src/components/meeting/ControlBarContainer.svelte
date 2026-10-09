@@ -25,7 +25,7 @@
   const HORIZONTAL_PADDING = 60
   const SCALE_CHANGE_THRESHOLD = 0.001
 
-  function measureWidths (): { barWidth: number, rowWidth: number } {
+  function measureWidths(): { barWidth: number, rowWidth: number } {
     if (barContainer === undefined || rowContainer === undefined) {
       return { barWidth: 0, rowWidth: 0 }
     }
@@ -37,7 +37,7 @@
     return { barWidth, rowWidth }
   }
 
-  function updateScale (): void {
+  function updateScale(): void {
     const { barWidth: containerWidth, rowWidth } = measureWidths()
 
     if (containerWidth === 0 || rowWidth === 0) {

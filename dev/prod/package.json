@@ -29,11 +29,19 @@
     "deploy": "cp -p public/* dist && aws s3 sync dist s3://anticrm-platform --delete --acl public-read"
   },
   "devDependencies": {
+    "eslint-plugin-secure-coding": "^5.4.4",
+    "eslint": "^9.39.5",
+    "eslint-plugin-promise": "^7.3.0",
+    "eslint-plugin-n": "^18.3.0",
+    "eslint-config-love": "^157.0.0",
+    "@typescript-eslint/parser": "^8.67.0",
+    "eslint-plugin-svelte": "^3.23.0",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
     "@hcengineering/platform-rig": "workspace:^0.7.21",
     "@types/node": "^24.13.3",
     "autoprefixer": "^10.4.14",
     "browserslist": "^4.28.2",
-    "compression-webpack-plugin": "^10.0.0",
+    "compression-webpack-plugin": "^12.0.0",
     "cross-env": "~7.0.3",
     "css-loader": "^5.2.1",
     "dotenv-webpack": "^8.0.1",
@@ -43,7 +51,7 @@
     "fork-ts-checker-webpack-plugin": "^9.0.2",
     "html-webpack-plugin": "^5.5.0",
     "mini-css-extract-plugin": "^2.2.0",
-    "postcss": "^8.4.20",
+    "postcss": "8.5.28",
     "postcss-load-config": "^4.0.1",
     "postcss-loader": "^7.0.2",
     "sass": "^1.80.0",
@@ -55,10 +63,10 @@
     "ts-loader": "^9.2.5",
     "typescript": "^5.9.3",
     "update-browserslist-db": "^1.2.3",
-    "webpack": "^5.97.1",
+    "webpack": "^5.110.3",
     "webpack-bundle-analyzer": "^4.10.2",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.2"
+    "webpack-dev-server": "^6.0.0"
   },
   "dependencies": {
     "@hcengineering/achievement": "workspace:^0.7.0",

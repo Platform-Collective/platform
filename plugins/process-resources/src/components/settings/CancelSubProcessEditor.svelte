@@ -32,7 +32,7 @@
   const params = step.params
   let _id = params._id as Ref<Process>
 
-  function change (e: CustomEvent): void {
+  function change(e: CustomEvent): void {
     if (e.detail !== undefined) {
       _id = e.detail
       params._id = _id

@@ -41,7 +41,7 @@
   export let isTemplateReadonly: boolean = false
   export let space: Ref<DocumentSpace>
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return object.title === ''
   }
 
@@ -78,7 +78,7 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  async function handleOkAction (): Promise<void> {
+  async function handleOkAction(): Promise<void> {
     if (isTemplateMandatory && !templateId) {
       return
     }

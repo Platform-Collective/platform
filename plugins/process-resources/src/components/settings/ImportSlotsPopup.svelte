@@ -37,12 +37,12 @@
   $: allAssociations = model.findAllSync(core.class.Association, {})
   $: allProcesses = model.findAllSync(processPlugin.class.Process, {})
 
-  function isClassLike (obj: Doc | undefined): boolean {
+  function isClassLike(obj: Doc | undefined): boolean {
     if (!obj || !obj._class) return false
     return obj._class === core.class.Class || hierarchy.isDerived(obj._class, core.class.Class)
   }
 
-  function resolveMemberOf (
+  function resolveMemberOf(
     memberOf: string | undefined,
     currentBindings: Record<string, string>
   ): Ref<Class<Doc>> | undefined {
@@ -76,7 +76,7 @@
     return result
   })()
 
-  function setBinding (slotId: string, e: MouseEvent): void {
+  function setBinding(slotId: string, e: MouseEvent): void {
     const slot = requiredSlots[slotId] as any
     const memberOfTag = resolvedSlots[slotId]?.resolved
     if (!memberOfTag) return
@@ -168,13 +168,13 @@
     )
   }
 
-  function onSave (): void {
+  function onSave(): void {
     dispatch('close', bindings)
   }
 
   $: allBound = Object.keys(requiredSlots).every((id) => bindings[id] !== undefined)
 
-  function getBindingLabel (currentBindings: Record<string, string>, id: string): any {
+  function getBindingLabel(currentBindings: Record<string, string>, id: string): any {
     const value = currentBindings[id]
     if (value === undefined) return presentation.string.NotSelected
 

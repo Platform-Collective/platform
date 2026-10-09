@@ -34,11 +34,11 @@
   let children: Ref<Document>[] = []
   $: void updateChildren(value)
 
-  async function updateChildren (doc: Document): Promise<void> {
+  async function updateChildren(doc: Document): Promise<void> {
     children = await findChildren(doc)
   }
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     const ops = client.apply(value._id)
 
     await moveDocument(value, space, parent ?? document.ids.NoParent)
@@ -55,7 +55,7 @@
     await ops.commit()
   }
 
-  async function findChildren (doc: Document): Promise<Array<Ref<Document>>> {
+  async function findChildren(doc: Document): Promise<Array<Ref<Document>>> {
     const documents = await client.findAll(
       document.class.Document,
       { space: doc.space, parent: { $ne: document.ids.NoParent } },

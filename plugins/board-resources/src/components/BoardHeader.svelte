@@ -18,7 +18,7 @@
     space = result[0]
   })
 
-  function showMenu () {
+  function showMenu() {
     const loc = getCurrentResolvedLocation()
     loc.path[4] = space._id
     navigate(loc)

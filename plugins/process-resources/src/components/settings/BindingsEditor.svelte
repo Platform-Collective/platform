@@ -34,12 +34,12 @@
   $: allAssociations = model.findAllSync(core.class.Association, {})
   $: allProcesses = model.findAllSync(processPlugin.class.Process, {})
 
-  function isClassLike (obj: Doc | undefined): boolean {
+  function isClassLike(obj: Doc | undefined): boolean {
     if (!obj || !obj._class) return false
     return hierarchy.isDerived(obj._class, core.class.Class)
   }
 
-  function resolveMemberOf (memberOf: string | undefined): Ref<Class<Doc>> | undefined {
+  function resolveMemberOf(memberOf: string | undefined): Ref<Class<Doc>> | undefined {
     if (memberOf === undefined) return process.masterTag as any
     let targetId: string | undefined
     if (memberOf.startsWith('__SLOT_')) {
@@ -57,7 +57,7 @@
     return undefined
   }
 
-  async function setBinding (slotId: string, e: MouseEvent): Promise<void> {
+  async function setBinding(slotId: string, e: MouseEvent): Promise<void> {
     const slot = process.requiredSlots?.[slotId]
     if (slot === undefined) return
 
@@ -125,7 +125,7 @@
     )
   }
 
-  function getBindingLabel (
+  function getBindingLabel(
     allAttrs: Map<string, AnyAttribute>,
     bindings: Record<string, string> | undefined,
     id: string

@@ -10,8 +10,8 @@ import type {
 
 /** @public */
 export const SingleChoiceAssessmentAssess: AnswerDataAssessFunction<
-SingleChoiceAssessment,
-SingleChoiceAssessmentAnswer
+  SingleChoiceAssessment,
+  SingleChoiceAssessmentAnswer
 > = async (answerData, assessmentData) => {
   return {
     score: answerData.selectedIndex === assessmentData.correctIndex ? 100 : 0

@@ -70,7 +70,7 @@ describe('server', () => {
         modelDb,
         context: {} as any,
         handleBroadcast: async (ctx) => {},
-        findAll: async <T extends Doc>(
+        findAll: async <T extends Doc> (
           ctx: MeasureContext,
           _class: Ref<Class<T>>,
           query: DocumentQuery<T>,
@@ -177,7 +177,7 @@ describe('server', () => {
           modelDb,
           context: {} as any,
           handleBroadcast: async (ctx) => {},
-          findAll: async <T extends Doc>(
+          findAll: async <T extends Doc> (
             ctx: MeasureContext<SessionData>,
             _class: Ref<Class<T>>,
             query: DocumentQuery<T>,

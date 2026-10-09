@@ -39,11 +39,11 @@
 
   const dispatch = createEventDispatcher()
 
-  function handleOk (): void {
+  function handleOk(): void {
     handleUpdate(text, kind)
   }
 
-  function handleRemoveClick (): void {
+  function handleRemoveClick(): void {
     handleRemove()
     dispatch('close')
   }

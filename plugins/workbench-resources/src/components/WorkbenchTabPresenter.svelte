@@ -43,7 +43,7 @@
   let lastLocUrl: string | undefined = undefined
   let lastLang: string | undefined = undefined
 
-  async function updateTabData (tab: WorkbenchTab, lang: string): Promise<void> {
+  async function updateTabData(tab: WorkbenchTab, lang: string): Promise<void> {
     const tabLoc = $tabIdStore === tab._id ? getCurrentLocation() : getTabLocation(tab)
     const url = locationToUrl(tabLoc)
 
@@ -75,7 +75,7 @@
 
   $: void update(tab, $languageStore)
 
-  function handleClickTab (): void {
+  function handleClickTab(): void {
     selectTab(tab._id)
     const tabLoc = getTabLocation(tab)
     const loc = getCurrentLocation()
@@ -87,11 +87,11 @@
     navigate(tabLoc)
   }
 
-  function handleCloseTab (): void {
+  function handleCloseTab(): void {
     void closeTab(tab)
   }
 
-  function handleMenu (event: CustomEvent<MouseEvent>): void {
+  function handleMenu(event: CustomEvent<MouseEvent>): void {
     event.preventDefault()
     event.stopPropagation()
 

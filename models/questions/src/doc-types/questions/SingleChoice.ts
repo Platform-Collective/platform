@@ -69,7 +69,8 @@ export class TSingleChoiceQuestion extends TQuestion<SingleChoiceQuestionData> i
 @UX(questions.string.SingleChoice)
 export class TSingleChoiceQuestionAnswer
   extends TAnswer<SingleChoiceQuestion, SingleChoiceAnswerData>
-  implements SingleChoiceQuestionAnswer {
+  implements SingleChoiceQuestionAnswer
+{
   @Prop(TypeRef(questions.class.SingleChoiceQuestion), questions.string.Question)
   @Index(IndexKind.Indexed)
   @Hidden()
@@ -84,7 +85,8 @@ export class TSingleChoiceQuestionAnswer
 @UX(questions.string.SingleChoiceAssessment)
 export class TSingleChoiceAssessment
   extends TAssessment<SingleChoiceQuestionData, SingleChoiceAssessmentData>
-  implements SingleChoiceAssessment {
+  implements SingleChoiceAssessment
+{
   @Prop(TypeSingleChoiceAssessmentData(), questions.string.Assessment)
   declare assessmentData: SingleChoiceAssessmentData
 }
@@ -94,7 +96,8 @@ export class TSingleChoiceAssessment
 @UX(questions.string.SingleChoice)
 export class TSingleChoiceAssessmentAnswer
   extends TAnswer<SingleChoiceAssessment, SingleChoiceAnswerData>
-  implements SingleChoiceAssessmentAnswer {
+  implements SingleChoiceAssessmentAnswer
+{
   @Prop(TypeRef(questions.class.SingleChoiceAssessment), questions.string.Question)
   @Index(IndexKind.Indexed)
   @Hidden()

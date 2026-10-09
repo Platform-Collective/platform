@@ -25,7 +25,7 @@
 
   let floorContainer: HTMLDivElement
 
-  function getInfo (room: Ref<Room>, info: ParticipantInfo[]): ParticipantInfo[] {
+  function getInfo(room: Ref<Room>, info: ParticipantInfo[]): ParticipantInfo[] {
     return info.filter((p) => p.room === room)
   }
 

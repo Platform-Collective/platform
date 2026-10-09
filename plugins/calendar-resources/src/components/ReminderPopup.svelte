@@ -18,7 +18,7 @@
 
   export let value: number
 
-  export function canClose () {
+  export function canClose() {
     return true
   }
 

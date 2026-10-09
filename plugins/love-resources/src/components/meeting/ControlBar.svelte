@@ -46,7 +46,7 @@
   // If user is in a meeting, they can leave unless it's their office or reception
   $: allowLeave = $myInfo !== undefined && $myInfo.room !== ($myOffice?._id ?? love.ids.Reception)
 
-  function maximize (): void {
+  function maximize(): void {
     showPopup(RoomModal, { room }, 'full-centered')
   }
 </script>

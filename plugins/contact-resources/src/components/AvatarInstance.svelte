@@ -37,11 +37,11 @@
   export let style: 'modern' | undefined = undefined
   export let clipPath: string | undefined = undefined
 
-  function handleClick (): void {
+  function handleClick(): void {
     dispatch('click')
   }
 
-  export function pulse (): void {
+  export function pulse(): void {
     if (element === undefined) return
     const color: string = $themeStore.dark ? '255, 255, 255' : '50, 50, 50'
     element.animate(
@@ -56,7 +56,7 @@
   let fontSize: number = 16
   let imgError = false
 
-  function handleImgError (): void {
+  function handleImgError(): void {
     imgError = true
   }
 

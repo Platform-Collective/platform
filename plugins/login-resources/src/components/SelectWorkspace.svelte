@@ -61,14 +61,14 @@
 
   let flagToUpdateWorkspaces = false
 
-  async function loadAccount (): Promise<void> {
+  async function loadAccount(): Promise<void> {
     accountPromise = getAccount()
     account = await accountPromise
     isReadOnlyGuest = await isReadOnlyGuestAccount(account)
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const updateWorkspaces = reduceCalls(async function updateWorkspaces (_time?: number): Promise<void> {
+  const updateWorkspaces = reduceCalls(async function updateWorkspaces(_time?: number): Promise<void> {
     try {
       workspaces = await getWorkspaces()
     } catch (e) {
@@ -84,7 +84,7 @@
     void loadAccount()
   })
 
-  async function select (workspaceUrl: string): Promise<void> {
+  async function select(workspaceUrl: string): Promise<void> {
     status = new Status(Severity.INFO, login.status.ConnectingToServer, {})
 
     const [loginStatus, result] = await selectWorkspace(workspaceUrl)
@@ -117,7 +117,7 @@
     navigateToWorkspace(workspaceUrl, result, navigateUrl)
   }
 
-  async function _getWorkspaces (): Promise<void> {
+  async function _getWorkspaces(): Promise<void> {
     try {
       const res = await getWorkspaces()
 

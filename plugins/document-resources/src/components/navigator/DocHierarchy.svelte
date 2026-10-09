@@ -46,11 +46,11 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  function getDescendants (obj: Ref<Document>): Ref<Document>[] {
+  function getDescendants(obj: Ref<Document>): Ref<Document>[] {
     return (descendants.get(obj) ?? []).sort((a, b) => a.rank.localeCompare(b.rank)).map((p) => p._id)
   }
 
-  function getActions (doc: Document): Action[] {
+  function getActions(doc: Document): Action[] {
     return [
       {
         icon: IconAdd,
@@ -68,7 +68,7 @@
     ]
   }
 
-  async function getMoreActions (obj: Document): Promise<Action[]> {
+  async function getMoreActions(obj: Document): Promise<Action[]> {
     const result: Action[] = []
     const extraActions = await getContributedActions(client, obj)
     for (const act of extraActions) {
@@ -84,7 +84,7 @@
     return result
   }
 
-  function handleDocumentSelected (obj: Ref<Document>): void {
+  function handleDocumentSelected(obj: Ref<Document>): void {
     dispatch('selected', obj)
   }
 

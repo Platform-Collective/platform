@@ -33,17 +33,17 @@
   export let level: number = 0
   export let actions: Action[] = []
   export let moreActions: (originalEvent?: MouseEvent) => Promise<Action[]> | undefined = async () => []
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
 
   let hovered: boolean = false
-  async function onMenuClick (ev: MouseEvent): Promise<void> {
+  async function onMenuClick(ev: MouseEvent): Promise<void> {
     showPopup(Menu, { actions: await moreActions(ev), ctx: doc._id }, ev.target as HTMLElement, () => {
       hovered = false
     })
     hovered = true
   }
 
-  function selectDocument (): void {
+  function selectDocument(): void {
     const loc = getDocumentLink(doc)
     navigate(loc)
   }
@@ -63,7 +63,7 @@
   {selected}
   showMenu={hovered}
   {shouldTooltip}
-  {forciblyСollapsed}
+  {forciblyCollapsed}
   draggable
   on:dragstart
   on:dragover

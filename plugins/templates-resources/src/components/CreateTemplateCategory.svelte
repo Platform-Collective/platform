@@ -25,13 +25,13 @@
   const description: string = ''
   let isPrivate: boolean = false
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return name === ''
   }
 
   const client = getClient()
 
-  async function create (): Promise<void> {
+  async function create(): Promise<void> {
     await client.createDoc(templates.class.TemplateCategory, core.space.Space, {
       name,
       description,

@@ -39,7 +39,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function handleClick (event: MouseEvent): void {
+  function handleClick(event: MouseEvent): void {
     if (!canEdit) {
       return
     }

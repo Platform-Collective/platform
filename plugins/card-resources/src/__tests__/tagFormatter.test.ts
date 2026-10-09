@@ -144,7 +144,7 @@ describe('tagFormatter.formatTagValue', () => {
       hasMixin: jest.fn(() => true)
     } as unknown as Hierarchy
 
-    const result = await formatTagValue(attr, card as unknown as Doc, hierarchy, card._class as Ref<Class<Doc>>, 'en')
+    const result = await formatTagValue(attr, card, hierarchy, card._class, 'en')
     expect(result).toBe('Tag A')
   })
 
@@ -167,7 +167,7 @@ describe('tagFormatter.formatTagValue', () => {
       isDerived: jest.fn((cls: Ref<Class<Doc>>, target: Ref<Class<Doc>>) => cls === target)
     } as unknown as Hierarchy
 
-    const result = await formatTagValue(attr, tagDoc, hierarchy, tagDoc._class as any, 'en')
+    const result = await formatTagValue(attr, tagDoc, hierarchy, tagDoc._class, 'en')
     expect(result).toBe('Important')
   })
 })

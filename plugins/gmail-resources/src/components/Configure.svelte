@@ -39,7 +39,7 @@
 
   $: loadSettings(integration)
 
-  async function loadSettings (integration: AccountIntegration): Promise<void> {
+  async function loadSettings(integration: AccountIntegration): Promise<void> {
     const type = await client.findOne(setting.class.IntegrationType, {
       kind: integration.kind
     })
@@ -50,7 +50,7 @@
     shared = (integrationSettings?.shared?.length ?? 0) > 0
   }
 
-  async function change (shared: AccountUuid[]) {
+  async function change(shared: AccountUuid[]) {
     if (integrationSettings == null) {
       Analytics.handleError(
         new Error(`Integrations settings are not found for ${integration.socialId} ${integration.kind}`)
@@ -63,14 +63,14 @@
     })
   }
 
-  async function apply () {
+  async function apply() {
     const integrationClient = await getIntegrationClient()
     integration = isWorkspaceIntegration(integration)
       ? integration
       : await integrationClient.integrate(integration, getCurrentWorkspaceUuid())
   }
 
-  async function disable () {
+  async function disable() {
     if (!shared) {
       await change([])
     }

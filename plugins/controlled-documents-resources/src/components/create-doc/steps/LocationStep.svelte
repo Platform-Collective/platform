@@ -50,19 +50,19 @@
   $: void selectProject(spaceRef)
   $: locationStepUpdated({ project: projectRef })
 
-  async function selectProject (spaceRef: Ref<DocumentSpace> | undefined): Promise<void> {
+  async function selectProject(spaceRef: Ref<DocumentSpace> | undefined): Promise<void> {
     projectRef = spaceRef !== undefined ? await getLatestProjectId(spaceRef) : undefined
   }
 
-  async function fetchSpace (id: Ref<DocumentSpace> | undefined): Promise<void> {
+  async function fetchSpace(id: Ref<DocumentSpace> | undefined): Promise<void> {
     space = id === undefined ? undefined : await client.findOne(documents.class.DocumentSpace, { _id: id })
   }
 
-  async function fetchSpaceType (id: Ref<DocumentSpaceType> | undefined): Promise<void> {
+  async function fetchSpaceType(id: Ref<DocumentSpaceType> | undefined): Promise<void> {
     spaceType = id === undefined ? undefined : await client.findOne(documents.class.DocumentSpaceType, { _id: id }, {})
   }
 
-  function handleParentSelected (doc: Doc): void {
+  function handleParentSelected(doc: Doc): void {
     let parent: Ref<ProjectDocument> | undefined
 
     if (hierarchy.isDerived(doc._class, documents.class.DocumentSpace)) {
@@ -74,7 +74,7 @@
     locationStepUpdated({ parent })
   }
 
-  function handleProjectSelected (value: Ref<Project> | undefined): void {
+  function handleProjectSelected(value: Ref<Project> | undefined): void {
     projectRef = value
   }
 

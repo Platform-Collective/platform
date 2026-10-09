@@ -46,7 +46,7 @@
       title = res
     })
 
-  function asCard (doc: Doc): Card {
+  function asCard(doc: Doc): Card {
     return doc as Card
   }
 </script>

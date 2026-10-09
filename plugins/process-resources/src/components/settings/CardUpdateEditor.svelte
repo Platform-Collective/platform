@@ -32,13 +32,13 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function change (e: CustomEvent<any>): void {
+  function change(e: CustomEvent<any>): void {
     if (readonly || e.detail == null) return
     params = e.detail
     dispatch('change', { params })
   }
 
-  function getKeys (_class: Ref<Class<MasterTag>>): AnyAttribute[] {
+  function getKeys(_class: Ref<Class<MasterTag>>): AnyAttribute[] {
     const ignoreKeys = ['_class', 'content', 'parent', 'attachments', 'todos']
     const attributes = hierarchy.getAllAttributes(_class, core.class.Doc)
     const res: AnyAttribute[] = []
@@ -61,7 +61,7 @@
   const allAttrs = getKeys(process.masterTag)
   $: possibleAttrs = allAttrs.filter((attr) => !keys.includes(attr.name))
 
-  function onAdd (e: MouseEvent): void {
+  function onAdd(e: MouseEvent): void {
     showPopup(
       SelectPopup,
       {
@@ -78,11 +78,11 @@
     )
   }
 
-  function addKey (key: string): void {
+  function addKey(key: string): void {
     keys = [...keys, key]
   }
 
-  function remove (e: CustomEvent<any>): void {
+  function remove(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       const key = e.detail.key
       keys = keys.filter((k) => k !== key)

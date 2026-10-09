@@ -27,11 +27,11 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  function isCommonChannel (channel?: ChunterSpace): channel is Channel {
+  function isCommonChannel(channel?: ChunterSpace): channel is Channel {
     return channel?._class === chunter.class.Channel
   }
 
-  function onTopicChange (ev: Event) {
+  function onTopicChange(ev: Event) {
     if (!isCommonChannel(channel)) {
       return
     }
@@ -39,7 +39,7 @@
     client.update(channel, { topic: newTopic })
   }
 
-  function onDescriptionChange (ev: Event) {
+  function onDescriptionChange(ev: Event) {
     if (channel == null) {
       return
     }
@@ -47,7 +47,7 @@
     client.update(channel, { description: newDescription })
   }
 
-  async function leaveChannel (): Promise<void> {
+  async function leaveChannel(): Promise<void> {
     await client.update(channel, {
       $pull: { members: getCurrentAccount().uuid }
     })

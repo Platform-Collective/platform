@@ -23,10 +23,10 @@
     close: 'predecessor' | 'successor' | undefined
   }>()
 
-  function pickPredecessor (): void {
+  function pickPredecessor(): void {
     dispatch('close', 'predecessor')
   }
-  function pickSuccessor (): void {
+  function pickSuccessor(): void {
     dispatch('close', 'successor')
   }
 </script>

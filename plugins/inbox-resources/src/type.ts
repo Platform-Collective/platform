@@ -18,17 +18,17 @@ import { type DisplayInboxNotification, type DocNotifyContext } from '@hcenginee
 
 export type NavigationItem =
   | {
-    type: 'modern'
-    _id: Ref<Card>
-    _class: Ref<Class<Card>>
-    context: NotificationContext
-    date: Date
-  }
+      type: 'modern'
+      _id: Ref<Card>
+      _class: Ref<Class<Card>>
+      context: NotificationContext
+      date: Date
+    }
   | {
-    type: 'legacy'
-    _id: Ref<Doc>
-    _class: Ref<Class<Doc>>
-    context: DocNotifyContext
-    date: Date
-    notifications: DisplayInboxNotification[]
-  }
+      type: 'legacy'
+      _id: Ref<Doc>
+      _class: Ref<Class<Doc>>
+      context: DocNotifyContext
+      date: Date
+      notifications: DisplayInboxNotification[]
+    }

@@ -44,7 +44,7 @@
   let newItem: boolean = false
   let opened: boolean = false
 
-  async function add () {
+  async function add() {
     if (newValue.trim().length === 0) return
     if (matched) return
     await client.update(value, {
@@ -54,7 +54,7 @@
     newItem = false
   }
 
-  async function remove (target: string) {
+  async function remove(target: string) {
     await client.update(value, {
       $pull: { enumValues: target }
     })
@@ -71,12 +71,12 @@
   // $: filtered = newValue.length > 0 ? value.enumValues.filter((it) => it.includes(newValue)) : []
   $: matched = value.enumValues.includes(newValue.trim())
 
-  async function handleClipboard (): Promise<void> {
+  async function handleClipboard(): Promise<void> {
     const text = await navigator.clipboard.readText()
     processText(text)
   }
 
-  async function processText (text: string): Promise<void> {
+  async function processText(text: string): Promise<void> {
     const newValues = text.split('\n').map((it) => it.trim())
     for (const v of newValues) {
       if (!value.enumValues.includes(v)) {
@@ -88,12 +88,12 @@
     newValue = ''
   }
   let inputFile: HTMLInputElement
-  async function processFile (file: File): Promise<void> {
+  async function processFile(file: File): Promise<void> {
     const text = await file.text()
     processText(text)
   }
 
-  function fileSelected () {
+  function fileSelected() {
     const list = inputFile.files
     if (list === null || list.length === 0) return
     for (let index = 0; index < list.length; index++) {
@@ -124,13 +124,13 @@
   //   )
   // }
 
-  async function update (value: Enum): Promise<void> {
+  async function update(value: Enum): Promise<void> {
     await client.update(value, {
       name: value.name
     })
   }
 
-  async function onDrop () {
+  async function onDrop() {
     await client.update(value, { enumValues: value.enumValues })
   }
 

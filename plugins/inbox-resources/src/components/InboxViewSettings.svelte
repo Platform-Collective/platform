@@ -32,7 +32,7 @@
   let selection = 0
   let list: ListView
 
-  export function onKeydown (key: KeyboardEvent): boolean {
+  export function onKeydown(key: KeyboardEvent): boolean {
     if (key.code === 'Tab') {
       dispatch('close')
       key.preventDefault()
@@ -69,7 +69,7 @@
     popupElement.focus()
   }
 
-  function onToggle (id: string): void {
+  function onToggle(id: string): void {
     updateViewSetting(id, !isViewSettingEnabled($viewSettingsStore, id))
   }
 </script>

@@ -34,7 +34,7 @@
     }
   })
 
-  function change () {
+  function change() {
     dispatch('change', {
       type: TypeBoolean(),
       defaultValue,
@@ -42,7 +42,7 @@
     })
   }
 
-  async function changeShowing () {
+  async function changeShowing() {
     dispatch('change', { extra: { showInPresenter } })
   }
 </script>

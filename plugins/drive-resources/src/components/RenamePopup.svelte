@@ -29,7 +29,7 @@
 
   $: canSave = value !== undefined && value.trim().length > 0
 
-  function handleOkAction (): void {
+  function handleOkAction(): void {
     dispatch('close', value?.trim())
   }
 </script>

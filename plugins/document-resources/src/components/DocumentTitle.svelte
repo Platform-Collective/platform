@@ -30,7 +30,7 @@
   let input: HTMLInputElement
   let placeholderTranslation = ''
 
-  function updatePlaceholderTranslation (ph: IntlString | undefined): void {
+  function updatePlaceholderTranslation(ph: IntlString | undefined): void {
     if (ph) {
       translateCB(ph, {}, $themeStore.language, (res) => {
         placeholderTranslation = res
@@ -63,7 +63,7 @@
     input.addEventListener('focus', updateFocus, { once: true })
   }
 
-  export function focus (): void {
+  export function focus(): void {
     input.focus()
   }
 </script>

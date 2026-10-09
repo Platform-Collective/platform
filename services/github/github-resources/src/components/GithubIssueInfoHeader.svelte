@@ -57,14 +57,14 @@
     selectedRepository = components.find((it) => it._id === newRepositoryId)
   }
 
-  function performOK (repository: Ref<GithubIntegrationRepository> | undefined): void {
+  function performOK(repository: Ref<GithubIntegrationRepository> | undefined): void {
     $state.repository = repository ?? undefined
     handleOkClick()
   }
 
   $: void handleSelectedRepositoryIdUpdated(repository, rawRepositories)
 
-  function getRepositoryInfo (rawComponents: GithubIntegrationRepository[]): SelectPopupValueType[] {
+  function getRepositoryInfo(rawComponents: GithubIntegrationRepository[]): SelectPopupValueType[] {
     return [
       ...rawComponents.map((p) => ({
         id: p._id,
@@ -84,7 +84,7 @@
   let repositories: SelectPopupValueType[] = []
   $: repositories = getRepositoryInfo(rawRepositories)
 
-  function updateProjectPreferences (
+  function updateProjectPreferences(
     space: Ref<Project>,
     spacePreferences: ProjectTargetPreference | undefined,
     repository: Ref<GithubIntegrationRepository> | undefined

@@ -79,12 +79,12 @@ export function platformToTelegram (message: string, limit: number): string {
   let textLength = 0
   let newMessage = ''
   const openedTags = new Map<
-  string,
-  {
-    count: number
-    hasContent: boolean
-    defaultText: string
-  }
+    string,
+    {
+      count: number
+      hasContent: boolean
+      defaultText: string
+    }
   >()
 
   const parser = new Parser({
@@ -254,12 +254,12 @@ export function toMediaGroups (files: PlatformFileInfo[], fullMessage: string, s
 export async function toTelegramFileInfo (
   ctx: Context,
   message:
-  | Message.CommonMessage
-  | Message.PhotoMessage
-  | Message.VideoMessage
-  | Message.VoiceMessage
-  | Message.VideoNoteMessage
-  | Message.DocumentMessage
+    | Message.CommonMessage
+    | Message.PhotoMessage
+    | Message.VideoMessage
+    | Message.VoiceMessage
+    | Message.VideoNoteMessage
+    | Message.DocumentMessage
 ): Promise<TelegramFileInfo | undefined> {
   try {
     if ('photo' in message) {

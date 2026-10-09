@@ -41,7 +41,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function showTimezoneSelector (e: MouseEvent) {
+  function showTimezoneSelector(e: MouseEvent) {
     const timeZones: TimeZone[] = []
     const tzs: string[] = []
     if (!Intl.supportedValuesOf) console.log('Your browser does not support Intl.supportedValuesOf().')

@@ -30,7 +30,7 @@
   let intervalId: any | undefined = undefined
   const dayMs = 1000 * 60 * 60 * 24
 
-  function applyTimer (time: number): void {
+  function applyTimer(time: number): void {
     if (intervalId !== undefined) {
       clearInterval(intervalId)
     }
@@ -47,7 +47,7 @@
     }, 1000)
   }
 
-  export function restart (time: number): void {
+  export function restart(time: number): void {
     applyTimer(time)
   }
 
@@ -59,7 +59,7 @@
     }
   })
 
-  function getDisplayTime (time: number): string {
+  function getDisplayTime(time: number): string {
     const options: Intl.DateTimeFormatOptions = { minute: 'numeric', second: 'numeric' }
     if (showHours) {
       options.timeZone = 'UTC'

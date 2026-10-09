@@ -1,4 +1,4 @@
-import { type Doc, type Domain } from './classes'
+import type { Doc, Domain } from './classes'
 
 /**
  * @public
@@ -8,10 +8,10 @@ export const DOMAIN_BENCHMARK = 'benchmark' as Domain
 export type BenchmarkDocRange =
   | number
   | {
-    // Or random in range
-    from: number
-    to: number
-  }
+      // Or random in range
+      from: number
+      to: number
+    }
 export interface BenchmarkDoc extends Doc {
   source?: string
   // Query fields to perform different set of workload

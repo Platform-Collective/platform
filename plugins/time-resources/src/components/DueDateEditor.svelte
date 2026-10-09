@@ -26,7 +26,7 @@
   $: buttonTitle = value ? new Date(value).toLocaleDateString() : undefined
   $: buttonLabel = buttonTitle === undefined ? ui.string.DueDate : undefined
 
-  function handleClick (e: MouseEvent) {
+  function handleClick(e: MouseEvent) {
     if (!opened) {
       opened = true
       showPopup(

@@ -31,7 +31,7 @@
 
   let descendants = new Map<Ref<Class<Doc>>, MasterTag[]>()
 
-  function getDescendants (_class: Ref<MasterTag>): MasterTag[] {
+  function getDescendants(_class: Ref<MasterTag>): MasterTag[] {
     const hierarchy = client.getHierarchy()
     const result: MasterTag[] = []
     const desc = hierarchy.getDescendants(_class)
@@ -44,7 +44,7 @@
     return result.sort((a, b) => a.label.localeCompare(b.label))
   }
 
-  function fillDescendants (classes: MasterTag[]): void {
+  function fillDescendants(classes: MasterTag[]): void {
     for (const cl of classes) {
       descendants.set(cl._id, getDescendants(cl._id))
     }

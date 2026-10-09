@@ -21,7 +21,7 @@
 
   $: void verifyRoute(object)
 
-  async function verifyRoute (trn: Training): Promise<void> {
+  async function verifyRoute(trn: Training): Promise<void> {
     if (!(await canViewTrainingOverview(trn))) {
       navigate(trainingRoute.build({ id: trn._id, tab: TrainingRouteTab.Overview }), true)
     }
@@ -31,7 +31,7 @@
   const hierarchy = getClient().getHierarchy()
   const descriptionAttr = hierarchy.getAttribute(training.class.Training, 'description')
 
-  function onDescriptionChange (e: CustomEvent<string>): void {
+  function onDescriptionChange(e: CustomEvent<string>): void {
     void getClient().updateDoc(object._class, object.space, object._id, { description: e.detail })
   }
 </script>

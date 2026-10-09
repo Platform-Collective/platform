@@ -53,7 +53,7 @@
   $: displayItems = withSearch ? filteredItems : items
 
   // Prevent resize observer from triggering on initial render and debounce rapid changes
-  function handleResize (): void {
+  function handleResize(): void {
     if (isInitialRender && withSearch) {
       isInitialRender = false
       return
@@ -79,11 +79,11 @@
     }
   }
 
-  function onNestedSelect (val: any): void {
+  function onNestedSelect(val: any): void {
     dispatch('close', val)
   }
 
-  function click (val: DropdownIntlItem): void {
+  function click(val: DropdownIntlItem): void {
     onSelect?.(val)
     dispatch('close', val)
   }

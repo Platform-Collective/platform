@@ -76,7 +76,7 @@
     categories = toIdMap(res)
   })
 
-  function getColor (
+  function getColor(
     state: Status,
     _space: Project | undefined,
     typeStore: IdMap<ProjectType>,

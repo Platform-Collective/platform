@@ -12,6 +12,7 @@
 // limitations under the License.
 //
 
+// eslint-disable-next-line secure-coding/no-hardcoded-credentials -- clipboard marker string, not a credential
 export const TABLE_METADATA_TOKEN = 'huly-table-metadata:'
 export const TABLE_METADATA_MARKER = `<!-- ${TABLE_METADATA_TOKEN}`
 export const TABLE_METADATA_MIME_TYPE = 'application/x-huly-table-metadata'

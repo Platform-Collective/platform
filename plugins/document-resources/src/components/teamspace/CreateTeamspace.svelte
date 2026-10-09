@@ -81,8 +81,8 @@
     spaceType =
       id !== undefined
         ? await client
-          .getModel()
-          .findOne(core.class.SpaceType, { _id: id }, { lookup: { _id: { roles: core.class.Role } } })
+            .getModel()
+            .findOne(core.class.SpaceType, { _id: id }, { lookup: { _id: { roles: core.class.Role } } })
         : undefined
 
     if (teamspace === undefined || spaceType?.targetClass === undefined || spaceType?.$lookup?.roles === undefined) {
@@ -92,7 +92,7 @@
     rolesAssignment = getRolesAssignment()
   })
 
-  function getRolesAssignment (): RolesAssignment {
+  function getRolesAssignment(): RolesAssignment {
     if (teamspace === undefined || spaceType?.targetClass === undefined || spaceType?.$lookup?.roles === undefined) {
       return {}
     }
@@ -106,7 +106,7 @@
     }, {})
   }
 
-  async function handleSave (): Promise<void> {
+  async function handleSave(): Promise<void> {
     if (isNew) {
       await createTeamspace()
     } else {
@@ -114,7 +114,7 @@
     }
   }
 
-  function getTeamspaceData (): Omit<Data<Teamspace>, 'type'> {
+  function getTeamspaceData(): Omit<Data<Teamspace>, 'type'> {
     return {
       name,
       description,
@@ -128,7 +128,7 @@
     }
   }
 
-  async function updateTeamspace (): Promise<void> {
+  async function updateTeamspace(): Promise<void> {
     if (teamspace === undefined || spaceType?.targetClass === undefined) {
       return
     }
@@ -191,7 +191,7 @@
     close()
   }
 
-  async function createTeamspace (): Promise<void> {
+  async function createTeamspace(): Promise<void> {
     if (typeId === undefined || spaceType?.targetClass === undefined) {
       return
     }
@@ -214,7 +214,7 @@
     close(teamspaceId)
   }
 
-  function chooseIcon (ev: MouseEvent): void {
+  function chooseIcon(ev: MouseEvent): void {
     const icons = [document.icon.Document, document.icon.Teamspace]
     const update = (result: any): void => {
       if (result !== undefined && result !== null) {
@@ -226,24 +226,24 @@
     showPopup(IconPicker, { icon, color, icons }, 'top', update, update)
   }
 
-  function close (id?: Ref<Teamspace>): void {
+  function close(id?: Ref<Teamspace>): void {
     dispatch('close', id)
   }
 
-  function handleTypeChange (evt: CustomEvent<Ref<SpaceType>>): void {
+  function handleTypeChange(evt: CustomEvent<Ref<SpaceType>>): void {
     typeId = evt.detail
   }
 
   $: roles = (spaceType?.$lookup?.roles ?? []) as Role[]
 
-  function handleOwnersChanged (newOwners: AccountUuid[]): void {
+  function handleOwnersChanged(newOwners: AccountUuid[]): void {
     owners = newOwners
 
     const newMembersSet = new Set([...members, ...newOwners])
     members = Array.from(newMembersSet)
   }
 
-  function handleMembersChanged (newMembers: AccountUuid[]): void {
+  function handleMembersChanged(newMembers: AccountUuid[]): void {
     membersChanged = true
     // If a member was removed we need to remove it from any roles assignments as well
     const newMembersSet = new Set(newMembers)
@@ -258,7 +258,7 @@
     members = newMembers
   }
 
-  function handleRoleAssignmentChanged (roleId: Ref<Role>, newMembers: AccountUuid[]): void {
+  function handleRoleAssignmentChanged(roleId: Ref<Role>, newMembers: AccountUuid[]): void {
     if (rolesAssignment === undefined) {
       rolesAssignment = {}
     }
@@ -272,7 +272,7 @@
 
   let membersChanged: boolean = false
 
-  function setDefaultMembers (typeType: SpaceType | undefined): void {
+  function setDefaultMembers(typeType: SpaceType | undefined): void {
     if (typeType === undefined) return
     if (membersChanged) return
     if (teamspace !== undefined) return

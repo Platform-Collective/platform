@@ -33,7 +33,7 @@
   $: getOrganization(vacancy, vacancy?.company)
   const client = getClient()
 
-  async function getOrganization (
+  async function getOrganization(
     vacancy: WithLookup<Vacancy> | undefined,
     _id: Ref<Organization> | undefined
   ): Promise<void> {

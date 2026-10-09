@@ -33,7 +33,7 @@
 
   const client = getClient()
 
-  async function update (): Promise<void> {
+  async function update(): Promise<void> {
     if (type == null) {
       result = null
     } else {
@@ -54,7 +54,7 @@
     dispatch('change', result)
   }
 
-  function handleNameChange (): void {
+  function handleNameChange(): void {
     if (result != null) {
       result.name = name
       dispatch('change', result)

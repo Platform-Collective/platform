@@ -26,7 +26,7 @@ export interface CalendarLoadState {
   holidaysLoaded: boolean
 }
 
-export function isCalendarReady (s: CalendarLoadState): boolean {
+export function isCalendarReady(s: CalendarLoadState): boolean {
   if (!s.projectCfgLoaded) return false
   // Legacy mode: no HR data is queried — ready as soon as we KNOW it is legacy.
   if (!s.cfgPresent) return true

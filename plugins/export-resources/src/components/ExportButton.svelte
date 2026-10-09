@@ -25,7 +25,7 @@
   export let visible: boolean = false
   export let config: TransformConfig = {}
 
-  async function handleExport (): Promise<void> {
+  async function handleExport(): Promise<void> {
     try {
       const baseUrl = getMetadata(plugin.metadata.ExportUrl)
       const token = getMetadata(presentation.metadata.Token)

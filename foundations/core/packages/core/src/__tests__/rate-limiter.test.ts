@@ -118,9 +118,7 @@ describe('RateLimiter', () => {
 
     it('should pass arguments to operations', async () => {
       const limiter = new RateLimiter(1)
-      const mockFn = jest.fn().mockImplementation(async (args?: any) => {
-        return args?.value
-      })
+      const mockFn = jest.fn().mockImplementation(async (args?: any) => args?.value)
 
       const result = await limiter.exec(mockFn, { value: 42 })
 

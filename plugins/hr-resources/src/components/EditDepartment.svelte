@@ -32,7 +32,7 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  async function onAvatarDone () {
+  async function onAvatarDone() {
     if (object === undefined) return
 
     if (object.avatar != null) {
@@ -42,7 +42,7 @@
     await client.diffUpdate(object, avatar)
   }
 
-  async function nameChange (): Promise<void> {
+  async function nameChange(): Promise<void> {
     if (object === undefined) return
     await client.update(object, {
       name: object.name

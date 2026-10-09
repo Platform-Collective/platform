@@ -35,7 +35,7 @@
 
   $: void resolve(_id)
 
-  async function resolve (id: Ref<IssueRelation>): Promise<void> {
+  async function resolve(id: Ref<IssueRelation>): Promise<void> {
     if (value !== undefined) return
     value = await getOrBuildObject<IssueRelation>(client, id, tracker.class.IssueRelation)
   }

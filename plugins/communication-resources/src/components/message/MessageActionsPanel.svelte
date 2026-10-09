@@ -33,12 +33,12 @@
   $: menuActions = actions.filter((a) => a.menu)
   $: inlineActions = actions.filter((a) => !(a.menu ?? false))
 
-  async function handleAction (action: MessageAction, ev: MouseEvent): Promise<void> {
+  async function handleAction(action: MessageAction, ev: MouseEvent): Promise<void> {
     const actionFn = await getResource(action.action)
     await actionFn(message, card, ev, onOpen, onClose)
   }
 
-  function showMenu (ev: MouseEvent): void {
+  function showMenu(ev: MouseEvent): void {
     onOpen()
 
     const actions: Action[] = menuActions.map((action) => ({
