@@ -227,9 +227,10 @@ function addNodeContent (builder: NodeBuilder, node?: MarkupNode): void {
     const rawFileId = attrs['file-id']
     const rawSrc = attrs.src
     const imgAttrs: Record<string, string | undefined> = { 'data-type': 'gif' }
+    // A bare blob id is not a resolvable URL, so a library gif carries file-id alone and the
+    // consumer resolves it.
     if (rawFileId != null) {
       imgAttrs['file-id'] = toString(rawFileId)
-      imgAttrs.src = toString(rawFileId)
     } else if (rawSrc != null) {
       imgAttrs.src = toString(rawSrc)
     }

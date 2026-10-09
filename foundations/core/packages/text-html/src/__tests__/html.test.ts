@@ -586,12 +586,19 @@ describe('gif node', () => {
     content: [{ type: 'paragraph' as any, content: [{ type: 'gif' as any, attrs }] }]
   })
 
-  // the one that matters. The image case in this serializer reads attrs.src ONLY, so a
-  // gif case copied from it would emit src="undefined" for a library gif and lose the blob.
-  it('emits a resolvable src for a gif with file-id set and src null', () => {
+  // A bare blob id is not a resolvable URL, so a library gif carries file-id only and the
+  // consumer resolves it. It must not emit src="undefined", src="null" or src="<blob id>".
+  it('emits file-id and no src for a gif with file-id set and src null', () => {
     const html = markupToHtml(gifDoc({ 'file-id': 'blob-1', src: null, width: 320 }))
-    expect(html).toContain('blob-1')
-    expect(html).not.toContain('undefined')
+    expect(html).toContain('file-id="blob-1"')
+    expect(html).not.toContain('src=')
+  })
+
+  it('round-trips a library gif without inventing a src', () => {
+    const back = htmlToMarkup(markupToHtml(gifDoc({ 'file-id': 'blob-1', src: null })))
+    const node = (back.content?.[0] as MarkupNode)?.content?.[0]
+    expect(node?.attrs?.['file-id']).toBe('blob-1')
+    expect(node?.attrs?.src ?? null).toBeNull()
   })
 
   it('emits the external src for a gif with no file-id', () => {

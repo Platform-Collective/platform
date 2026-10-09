@@ -1251,6 +1251,29 @@ describe('normalizeMarkdown', () => {
   })
 })
 
+describe('sized external image', () => {
+  // A sized image without a file-id is written as a raw <img> tag, so its attributes need HTML
+  // escaping, the same as the gif tag.
+  it('round-trips alt text containing a double quote and markdown punctuation', () => {
+    const alt = 'Cat says "hi" *now*'
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.paragraph,
+          content: [{ type: MarkupNodeType.image, attrs: { src: 'https://example.com/a.png', width: 320, alt } }]
+        }
+      ]
+    }
+    const once = markupToMarkdown(doc, options)
+    const back = markdownToMarkup(once, options)
+    const node = (back.content?.[0] as MarkupNode)?.content?.[0]
+    expect(node?.type).toBe(MarkupNodeType.image)
+    expect(node?.attrs?.alt).toBe(alt)
+    expect(markupToMarkdown(back, options)).toEqual(once)
+  })
+})
+
 describe('gif node', () => {
   const gifDoc = (attrs: Record<string, any>): MarkupNode => ({
     type: MarkupNodeType.doc,
@@ -1287,6 +1310,20 @@ describe('gif node', () => {
     const node = (back.content?.[0] as MarkupNode)?.content?.[0]
     expect(node?.type).toBe(MarkupNodeType.gif)
     expect(node?.attrs?.src).toBe(src)
+  })
+
+  // alt text comes from GIF provider titles, which often contain quotes and markdown
+  // punctuation. The tag is raw HTML, so attributes need HTML escaping, not markdown escaping.
+  it.each([
+    ['a double quote', 'Cat says "hi"'],
+    ['markdown punctuation', 'so *excited* [yay]']
+  ])('round-trips alt text containing %s', (_, alt) => {
+    const once = markupToMarkdown(gifDoc({ 'file-id': 'blob-1', alt }), options)
+    const back = markdownToMarkup(once, options)
+    const node = (back.content?.[0] as MarkupNode)?.content?.[0]
+    expect(node?.type).toBe(MarkupNodeType.gif)
+    expect(node?.attrs?.alt).toBe(alt)
+    expect(markupToMarkdown(back, options)).toEqual(once)
   })
 
   // idempotence, so an edit-and-resave cycle cannot corrupt via double escaping.
