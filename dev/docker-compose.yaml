@@ -400,28 +400,6 @@ services:
       - ACCOUNTS_URL=http://huly.local:3000
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318/v1/traces
       - FRONT_URL=http://huly.local:8087
-  gitlab:
-    image: platformcollective/gitlab
-    extra_hosts:
-      - 'huly.local:host-gateway'
-    restart: unless-stopped
-    ports:
-      - 3600:3600
-    environment:
-      - PORT=3600
-      - SERVER_SECRET=secret
-      - ACCOUNTS_URL=http://huly.local:3000
-      - FRONT_URL=http://huly.local:8087
-      - COLLABORATOR_URL=ws://huly.local:3078
-      # Blob storage for merge request diffs (same as the other services); unset = no diffs
-      - STORAGE_CONFIG=${STORAGE_CONFIG}
-      # OAuth callback; register the same URL in the GitLab application. Empty = {FRONT_URL}/gitlab
-      - GITLAB_REDIRECT_URI=${GITLAB_REDIRECT_URI:-}
-      - WEBHOOK_BASE_URL=${GITLAB_WEBHOOK_BASE_URL:-http://huly.local:3600}
-      - WEBHOOK_SECRET=${GITLAB_WEBHOOK_SECRET:-secret}
-      - GITLAB_ALLOW_INSECURE_HOSTS=true
-      - GITLAB_READONLY=${GITLAB_READONLY:-false}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318/v1/traces
   sign:
     image: platformcollective/sign
     extra_hosts:
