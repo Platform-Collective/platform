@@ -86,7 +86,7 @@
     recruit.mixin.Candidate
   )
 
-  function getEmptyCandidate (id: Ref<Candidate> | undefined = undefined): CandidateDraft {
+  function getEmptyCandidate(id: Ref<Candidate> | undefined = undefined): CandidateDraft {
     return {
       _id: id ?? generateId(),
       firstName: '',
@@ -110,7 +110,7 @@
     })
   )
 
-  function objectChange (object: CandidateDraft, empty: any) {
+  function objectChange(object: CandidateDraft, empty: any) {
     if (shouldSaveDraft) {
       draftController.save(object, empty)
     }
@@ -126,7 +126,7 @@
     lastModified: number
   }
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return true
   }
 
@@ -135,7 +135,7 @@
   fillDefaults(hierarchy, empty, recruit.mixin.Candidate)
   fillDefaults(hierarchy, object, recruit.mixin.Candidate)
 
-  function resumeDraft () {
+  function resumeDraft() {
     return {
       uuid: object?.resumeUuid,
       name: object?.resumeName,
@@ -189,7 +189,7 @@
     )
   })
 
-  async function createCandidate (): Promise<void> {
+  async function createCandidate(): Promise<void> {
     const _id: Ref<Person> = generateId()
     const candidate: Data<Person> = {
       name: combineName(object.firstName ?? '', object.lastName ?? ''),
@@ -301,11 +301,11 @@
     resetObject()
   }
 
-  function isUndef (value?: string): boolean {
+  function isUndef(value?: string): boolean {
     return value === undefined || value === ''
   }
 
-  function addChannel (channels: AttachedData<Channel>[], type: Ref<ChannelProvider>, value?: string): void {
+  function addChannel(channels: AttachedData<Channel>[], type: Ref<ChannelProvider>, value?: string): void {
     if (value !== undefined) {
       const provider = channels.find((e) => e.provider === type)
       if (provider === undefined) {
@@ -321,7 +321,7 @@
     }
   }
 
-  async function recognize (file: File): Promise<void> {
+  async function recognize(file: File): Promise<void> {
     const token = getMetadata(presentation.metadata.Token) ?? ''
 
     try {
@@ -460,7 +460,7 @@
     }
   }
 
-  async function deleteResume (): Promise<void> {
+  async function deleteResume(): Promise<void> {
     if (object.resumeUuid) {
       try {
         await deleteFile(object.resumeUuid)
@@ -470,7 +470,7 @@
     }
   }
 
-  async function createAttachment (file: File) {
+  async function createAttachment(file: File) {
     loading = true
     try {
       const uploadFile = await getResource(attachment.helper.UploadFile)
@@ -490,7 +490,7 @@
     }
   }
 
-  function drop (event: DragEvent) {
+  function drop(event: DragEvent) {
     dragover = false
     const droppedFile = event.dataTransfer?.files[0]
     if (droppedFile !== undefined) {
@@ -498,7 +498,7 @@
     }
   }
 
-  function fileSelected () {
+  function fileSelected() {
     const file = inputFile.files?.[0]
     if (file !== undefined) {
       createAttachment(file)
@@ -506,7 +506,7 @@
     manager.setFocusPos(102)
   }
 
-  function addTagRef (tag: TagElement): void {
+  function addTagRef(tag: TagElement): void {
     object.skills = [
       ...object.skills,
       {
@@ -539,18 +539,18 @@
 
   const manager = createFocusManager()
 
-  function resetObject (): void {
+  function resetObject(): void {
     object = getEmptyCandidate()
     fillDefaults(hierarchy, object, recruit.mixin.Candidate)
   }
 
-  export async function onOutsideClick (): Promise<void> {
+  export async function onOutsideClick(): Promise<void> {
     if (shouldSaveDraft) {
       draftController.save(object, empty)
     }
   }
 
-  async function showConfirmationDialog (): Promise<void> {
+  async function showConfirmationDialog(): Promise<void> {
     draftController.save(object, empty)
     const isFormEmpty = draft === undefined
 

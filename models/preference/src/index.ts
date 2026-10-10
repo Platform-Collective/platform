@@ -25,7 +25,7 @@ export { preference as default }
 @Model(preference.class.Preference, core.class.Doc, DOMAIN_PREFERENCE)
 export class TPreference extends TDoc implements Preference {
   @Prop(TypeString(), core.string.AttachedTo)
-    attachedTo!: string
+  attachedTo!: string
 }
 
 @Model(preference.class.SpacePreference, preference.class.Preference)

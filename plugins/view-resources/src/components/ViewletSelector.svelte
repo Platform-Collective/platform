@@ -44,7 +44,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function getActiveViewlet (
+  function getActiveViewlet(
     viewlets: Array<WithLookup<Viewlet>>,
     activeViewlet: Record<string, Ref<Viewlet> | null>,
     key: string

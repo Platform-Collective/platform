@@ -47,7 +47,7 @@
 
   afterUpdate(adjustHeight)
 
-  function adjustHeight (): void {
+  function adjustHeight(): void {
     if (input == null) {
       return
     }
@@ -56,7 +56,7 @@
     input.style.height = `${input.scrollHeight + 2}px`
   }
 
-  export function focus (): void {
+  export function focus(): void {
     input.focus()
   }
 </script>

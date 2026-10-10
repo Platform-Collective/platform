@@ -40,7 +40,7 @@
     meeting: MeetingMinutes
   }
 
-  function getActiveMeetings (rooms: Room[], infos: ParticipantInfo[], meetings: MeetingMinutes[]): ActiveRoom[] {
+  function getActiveMeetings(rooms: Room[], infos: ParticipantInfo[], meetings: MeetingMinutes[]): ActiveRoom[] {
     const roomMap = toIdMap(rooms)
     const map: IdMap<ActiveRoom> = new Map()
     for (const info of infos) {
@@ -80,7 +80,7 @@
 
   $: activeMeetings = getActiveMeetings($rooms, $infos, $meetings)
 
-  function openRoom (room: ActiveRoom): (e: MouseEvent) => void {
+  function openRoom(room: ActiveRoom): (e: MouseEvent) => void {
     return (e: MouseEvent) => {
       closeTooltip()
       showPopup(RoomPopup, { room, meeting: room.meeting }, eventToHTMLElement(e))
@@ -93,7 +93,7 @@
 
   $: receptionParticipants = $infos.filter((p) => p.room === love.ids.Reception)
 
-  function checkActiveMeeting (
+  function checkActiveMeeting(
     loc: Location,
     meetingSessionConnected: boolean,
     room: Ref<Room> | undefined,
@@ -164,13 +164,13 @@
     closeWidget(love.ids.MeetingWidget)
   })
 
-  function participantClickHandler (e: MouseEvent, participant: ParticipantInfo): void {
+  function participantClickHandler(e: MouseEvent, participant: ParticipantInfo): void {
     if ($myInfo !== undefined) {
       showPopup(PersonActionPopup, { room: reception, person: participant.person }, eventToHTMLElement(e))
     }
   }
 
-  function getParticipantClickHandler (participant: ParticipantInfo): (e: MouseEvent) => void {
+  function getParticipantClickHandler(participant: ParticipantInfo): (e: MouseEvent) => void {
     return (e: MouseEvent) => {
       participantClickHandler(e, participant)
     }

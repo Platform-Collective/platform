@@ -46,49 +46,49 @@
 
   const dispatch = createEventDispatcher()
 
-  export function isEditable (): boolean {
+  export function isEditable(): boolean {
     return editor?.isEditable
   }
-  export function setEditable (editable: boolean): void {
+  export function setEditable(editable: boolean): void {
     if (editor !== undefined) {
       editor.setEditable(editable)
     }
   }
-  export function submit (): void {
+  export function submit(): void {
     content = getContent()
     dispatch('content', content)
   }
-  export function getContent (): Markup {
+  export function getContent(): Markup {
     return getMarkup(editor)
   }
-  export function setContent (newContent: Markup): void {
+  export function setContent(newContent: Markup): void {
     if (editor !== undefined && content !== newContent) {
       content = newContent
       editor.commands.setContent(markupToJSON(content))
     }
   }
-  export function clear (): void {
+  export function clear(): void {
     if (editor !== undefined) {
       content = EmptyMarkup
 
       editor.commands.clearContent(true)
     }
   }
-  export function getEditor (): Editor {
+  export function getEditor(): Editor {
     return editor
   }
 
-  export function insertEmoji (text: string, image?: Ref<Blob>): void {
+  export function insertEmoji(text: string, image?: Ref<Blob>): void {
     editor?.commands.insertEmoji(text, image === undefined ? 'unicode' : 'image', image)
   }
 
-  export function insertText (text: string): void {
+  export function insertText(text: string): void {
     editor?.commands.insertContent(text)
   }
-  export function insertTable (options: { rows?: number, cols?: number, withHeaderRow?: boolean }) {
+  export function insertTable(options: { rows?: number, cols?: number, withHeaderRow?: boolean }) {
     editor?.commands.insertTable(options)
   }
-  export function insertCodeBlock (pos?: number): void {
+  export function insertCodeBlock(pos?: number): void {
     editor?.commands.insertContent(
       {
         type: 'codeBlock',
@@ -103,10 +103,10 @@
       editor?.commands.focus(pos, { scrollIntoView: false })
     }
   }
-  export function insertSeparatorLine (): void {
+  export function insertSeparatorLine(): void {
     editor?.commands.setHorizontalRule()
   }
-  export function insertContent (
+  export function insertContent(
     value: Content,
     options?: {
       parseOptions?: ParseOptions
@@ -116,7 +116,7 @@
     editor?.commands.insertContent(value, options)
   }
 
-  export function insertMarkup (markup: Markup): void {
+  export function insertMarkup(markup: Markup): void {
     editor?.commands.insertContent(markupToJSON(markup))
   }
 
@@ -124,7 +124,7 @@
   let focused = false
   let posFocus: FocusPosition | undefined = undefined
 
-  export function focus (position?: FocusPosition): void {
+  export function focus(position?: FocusPosition): void {
     posFocus = position
     needFocus = true
   }
@@ -207,11 +207,11 @@
   /**
    * @public
    */
-  export function removeAttachment (id: string): void {
+  export function removeAttachment(id: string): void {
     editor.commands.command(deleteAttachment(id))
   }
 
-  function handleFocus (): void {
+  function handleFocus(): void {
     needFocus = true
   }
 </script>

@@ -24,7 +24,7 @@
 
   const client = getClient()
 
-  export async function save (): Promise<void> {
+  export async function save(): Promise<void> {
     if (field !== undefined) {
       await client.update(field, {
         operation: {

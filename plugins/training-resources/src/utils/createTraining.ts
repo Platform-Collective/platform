@@ -13,7 +13,7 @@ import { getCurrentEmployeeRef } from './getCurrentEmployeeRef'
 import { getNextTrainingSeqNumber } from './getNextTrainingSeqNumber'
 
 export type CreateTrainingData = Required<
-Omit<Training, keyof Doc | 'code' | 'state' | 'revision' | 'owner' | 'author'>
+  Omit<Training, keyof Doc | 'code' | 'state' | 'revision' | 'owner' | 'author'>
 >
 
 export async function createTraining (data: CreateTrainingData): Promise<Ref<Training>> {

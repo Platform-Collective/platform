@@ -32,7 +32,7 @@
   let author: Person | undefined
   $: void updateAuthor(notification.creator)
 
-  async function updateAuthor (socialId: SocialID): Promise<void> {
+  async function updateAuthor(socialId: SocialID): Promise<void> {
     author = $employeeByPersonIdStore.get(socialId)
 
     if (author === undefined) {

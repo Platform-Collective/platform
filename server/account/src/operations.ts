@@ -163,7 +163,7 @@ export async function loginAsGuest (
   if (process.env.DISABLE_GUEST_LOGIN === 'true') {
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
-  const guestPerson = await db.person.findOne({ uuid: readOnlyGuestAccountUuid as PersonUuid })
+  const guestPerson = await db.person.findOne({ uuid: readOnlyGuestAccountUuid })
   if (guestPerson == null) {
     throw new PlatformError(new Status(Severity.ERROR, platform.status.AccountNotFound, {}))
   }
@@ -201,7 +201,7 @@ export async function getLoginCapabilities (
   if (process.env.DISABLE_GUEST_LOGIN !== 'true') {
     const now = Date.now()
     if (guestPersonCache === undefined || now - guestPersonCache.at > GUEST_PERSON_CACHE_TTL_MS) {
-      const guestPerson = await db.person.findOne({ uuid: readOnlyGuestAccountUuid as PersonUuid })
+      const guestPerson = await db.person.findOne({ uuid: readOnlyGuestAccountUuid })
       guestPersonCache = { value: guestPerson != null, at: now }
     }
     guestLoginAvailable = guestPersonCache.value
@@ -285,10 +285,10 @@ export async function login (
       account: existingAccount.uuid,
       token: isConfirmed
         ? generateToken(
-          existingAccount.tfaSecret != null ? NIL_UUID : existingAccount.uuid,
-          undefined,
-          existingAccount.tfaSecret != null ? { ...extraToken, tfaAccount: existingAccount.uuid } : extraToken
-        )
+            existingAccount.tfaSecret != null ? NIL_UUID : existingAccount.uuid,
+            undefined,
+            existingAccount.tfaSecret != null ? { ...extraToken, tfaAccount: existingAccount.uuid } : extraToken
+          )
         : undefined,
       name: getPersonName(person),
       socialId: emailSocialId._id,
@@ -583,10 +583,10 @@ export async function validateOtp (
 
     const _token = isConfirmed
       ? generateToken(
-        targetAccount?.tfaSecret != null ? NIL_UUID : emailSocialId.personUuid,
-        undefined,
-        targetAccount?.tfaSecret != null ? { ...extraToken, tfaAccount: emailSocialId.personUuid } : extraToken
-      )
+          targetAccount?.tfaSecret != null ? NIL_UUID : emailSocialId.personUuid,
+          undefined,
+          targetAccount?.tfaSecret != null ? { ...extraToken, tfaAccount: emailSocialId.personUuid } : extraToken
+        )
       : undefined
 
     return {
@@ -740,11 +740,11 @@ export async function createInvite (
 
 // TODO: Temporary solution to prevent spam using sendInvite
 const invitesSend = new Map<
-string,
-{
-  lastSend: number
-  totalSend: number
-}
+  string,
+  {
+    lastSend: number
+    totalSend: number
+  }
 >()
 
 export async function sendInvite (
@@ -2370,23 +2370,23 @@ export async function getLoginWithWorkspaceInfo (
       isSystem || isDocGuest
         ? []
         : userWorkspaces.map((it, idx) => [
-          it.uuid,
-          {
-            url: it.url,
-            dataId: it.dataId,
-            mode: it.status.mode,
-            endpoint: getWorkspaceEndpoint(info, it.uuid, it.region),
-            role: roles.get(it.uuid) ?? null,
-            version: {
-              versionMajor: it.status.versionMajor,
-              versionMinor: it.status.versionMinor,
-              versionPatch: it.status.versionPatch
-            },
-            progress: it.status.processingProgress,
-            branding: it.branding,
-            passwordAgingRule: it.passwordAgingRule
-          }
-        ])
+            it.uuid,
+            {
+              url: it.url,
+              dataId: it.dataId,
+              mode: it.status.mode,
+              endpoint: getWorkspaceEndpoint(info, it.uuid, it.region),
+              role: roles.get(it.uuid) ?? null,
+              version: {
+                versionMajor: it.status.versionMajor,
+                versionMinor: it.status.versionMinor,
+                versionPatch: it.status.versionPatch
+              },
+              progress: it.status.processingProgress,
+              branding: it.branding,
+              passwordAgingRule: it.passwordAgingRule
+            }
+          ])
     ),
     socialIds
   }
@@ -2838,13 +2838,13 @@ async function listApiTokens (
     expiresOn: number
     revoked: boolean
   }>
-  > {
+> {
   const { account, extra } = decodeTokenVerbose(ctx, token)
   verifyNotApiToken(extra)
 
   const tokens = await db.apiToken.find({ accountUuid: account })
   const wsUuids = [...new Set(tokens.map((t) => t.workspaceUuid))]
-  const workspaces = await db.workspace.find({ uuid: { $in: wsUuids } as any })
+  const workspaces = await db.workspace.find({ uuid: { $in: wsUuids } })
   const wsMap = new Map(workspaces.map((w) => [w.uuid, w.name ?? w.url]))
 
   return tokens.map((t) => ({

@@ -81,7 +81,7 @@
   $: avatarColor = getAvatarColorForId(userId ?? '', $themeStore.dark)
   $: location = profile != null ? getLocation(profile) : ''
 
-  function handleEdit (): void {
+  function handleEdit(): void {
     if (profile == null || !isMyProfile) return
 
     showPopup(

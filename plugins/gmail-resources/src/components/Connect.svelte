@@ -28,7 +28,7 @@
   const gmailUrl = getMetadata(gmail.metadata.GmailURL) ?? ''
   let error = false
 
-  async function sendRequest (): Promise<void> {
+  async function sendRequest(): Promise<void> {
     try {
       connecting = true
       const link = concatLink(gmailUrl, '/signin')

@@ -37,11 +37,11 @@
 
   let _space = space
 
-  function handleTestSuiteChange (evt: CustomEvent<Ref<TestSuite>>): void {
+  function handleTestSuiteChange(evt: CustomEvent<Ref<TestSuite>>): void {
     object.parent = evt.detail
   }
 
-  async function onSave () {
+  async function onSave() {
     await client.createDoc(testManagement.class.TestSuite, _space, object)
   }
 </script>

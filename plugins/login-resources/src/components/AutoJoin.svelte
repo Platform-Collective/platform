@@ -41,13 +41,13 @@
 
   $: void updateSubtitle(name, $themeStore.language)
 
-  async function updateSubtitle (name: string, language: string): Promise<void> {
+  async function updateSubtitle(name: string, language: string): Promise<void> {
     if (name != null && name !== '') {
       subtitle = await translate(login.string.Hello, { name }, language)
     }
   }
 
-  async function check (): Promise<void> {
+  async function check(): Promise<void> {
     if (location.query?.inviteId == null || (location.query?.firstName == null && location.query?.token == null)) return
 
     if (location.query?.token != null) {
@@ -95,7 +95,7 @@
     }
   }
 
-  async function onLogin (loginInfo: LoginInfo | null): Promise<void> {
+  async function onLogin(loginInfo: LoginInfo | null): Promise<void> {
     if (loginInfo?.token == null) {
       return
     }

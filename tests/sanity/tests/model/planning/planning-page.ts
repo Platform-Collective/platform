@@ -124,16 +124,15 @@ export class PlanningPage extends CalendarPage {
   }
 
   async dragToCalendar (title: string, column: number, time: string, addHalf: boolean = false): Promise<void> {
-    await this.toDosContainer().getByRole('button', { name: title }).hover()
-
     await expect(async () => {
+      await this.toDosContainer().getByRole('button', { name: title }).hover()
       await this.page.mouse.down()
       const boundingBox = await this.selectTimeCell(time, column).boundingBox()
       expect(boundingBox).toBeTruthy()
       if (boundingBox != null) {
-        await this.page.mouse.move(boundingBox.x + 10, boundingBox.y + 10)
-        await this.page.mouse.move(boundingBox.x + 10, boundingBox.y + (addHalf ? 40 : 20))
+        await this.page.mouse.move(boundingBox.x + boundingBox.width / 2, boundingBox.y + (addHalf ? 40 : 20))
         await this.page.mouse.up()
+        await expect(this.eventInSchedule(title)).toBeVisible({ timeout: 5000 })
       }
     }).toPass(retryOptions)
   }

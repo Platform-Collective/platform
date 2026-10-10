@@ -58,7 +58,7 @@
     copied = false
   }
 
-  async function loadWorkspaces (): Promise<void> {
+  async function loadWorkspaces(): Promise<void> {
     try {
       const workspaces = await getAccountClient().getUserWorkspaces()
       wsItems = workspaces.map((w) => ({ _id: w.uuid, label: w.name ?? w.url }))
@@ -71,7 +71,7 @@
     }
   }
 
-  async function create (): Promise<void> {
+  async function create(): Promise<void> {
     if (selectedWs === undefined) return
     loading = true
     error = undefined
@@ -90,7 +90,7 @@
     }
   }
 
-  async function copyToken (): Promise<void> {
+  async function copyToken(): Promise<void> {
     if (createdToken === undefined) return
     if (!window.isSecureContext) {
       // No clipboard API outside a secure context. The token stays selectable above.

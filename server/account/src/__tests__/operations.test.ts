@@ -123,7 +123,7 @@ describe('account operations', () => {
     socialId: {
       findOne: jest.fn()
     },
-    generatePersonUuid: jest.fn().mockResolvedValue('generated-person-uuid' as PersonUuid)
+    generatePersonUuid: jest.fn().mockResolvedValue('generated-person-uuid')
   } as unknown as AccountDB
 
   const mockToken = 'test-token'
@@ -1134,7 +1134,7 @@ describe('account operations', () => {
         return undefined
       })
       // Reset the mock for each test
-      ;(mockDb.generatePersonUuid as jest.Mock).mockResolvedValue('generated-person-uuid' as PersonUuid)
+      ;(mockDb.generatePersonUuid as jest.Mock).mockResolvedValue('generated-person-uuid')
     })
 
     test('should create basic access link', async () => {
@@ -2065,8 +2065,8 @@ describe('account operations', () => {
           email: mockEmail,
           invite: mockInvite,
           workspace: mockWorkspace
-        } as any)
-        jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue(joinResult as any)
+        })
+        jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue(joinResult)
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(mockPerson)
 
         const result = await confirm(mockCtx, mockDb, mockBranding, mockToken)
@@ -2545,7 +2545,7 @@ describe('account operations', () => {
           email: mockEmail,
           invite: mockInvite,
           workspace: mockWorkspace
-        } as any)
+        })
         jest.spyOn(utils, 'signUpByEmail').mockResolvedValue({
           account: mockAccountId,
           socialId: mockSocialId._id
@@ -2607,13 +2607,13 @@ describe('account operations', () => {
           email: mockEmail,
           invite: mockInvite,
           workspace: mockWorkspace
-        } as any)
+        })
         jest.spyOn(utils, 'signUpByEmail').mockResolvedValue({
           account: mockAccountId,
           socialId: mockSocialId._id
         })
         jest.spyOn(utils, 'sendEmailConfirmation').mockResolvedValue()
-        jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue(joinResult as any)
+        jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue(joinResult)
         ;(getMetadata as jest.Mock).mockReturnValue('') // No mail service configured
 
         const result = await signUpJoin(mockCtx, mockDb, mockBranding, mockToken, baseParams)
@@ -3167,7 +3167,7 @@ describe('account operations', () => {
       const mockEmail = 'user@example.com'
       ;(mockDb.socialId.findOne as jest.Mock).mockResolvedValue({ value: mockEmail })
 
-      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(mockInvite as any)
+      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(mockInvite)
       jest.spyOn(utils, 'checkInvite').mockResolvedValue(mockInvite.workspaceUuid)
       jest.spyOn(utils, 'getWorkspaceById').mockResolvedValue(mockWorkspace as any)
       ;(mockDb.getWorkspaceRole as jest.Mock).mockResolvedValue(AccountRole.User)
@@ -3194,7 +3194,7 @@ describe('account operations', () => {
       const mockEmail = 'user@example.com'
       ;(mockDb.socialId.findOne as jest.Mock).mockResolvedValue({ value: mockEmail })
 
-      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(mockInvite as any)
+      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(mockInvite)
       jest.spyOn(utils, 'checkInvite').mockResolvedValue(mockInvite.workspaceUuid)
       jest.spyOn(utils, 'getWorkspaceById').mockResolvedValue(mockWorkspace as any)
       ;(mockDb.getWorkspaceRole as jest.Mock).mockResolvedValue(null)
@@ -3535,7 +3535,7 @@ describe('merge specified persons', () => {
 
       await expect(
         mergeSpecifiedPersons(mockCtx, mockDb, mockBranding, 'test-token', {
-          primaryPerson: readOnlyGuestAccountUuid as PersonUuid,
+          primaryPerson: readOnlyGuestAccountUuid,
           secondaryPerson
         })
       ).rejects.toThrow(PlatformError)

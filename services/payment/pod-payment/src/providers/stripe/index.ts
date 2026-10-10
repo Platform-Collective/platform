@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-export * from './types'
+export type * from './types'
 export * from './client'
 export * from './webhook'
 export { StripeProvider } from './provider'

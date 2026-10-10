@@ -13,7 +13,7 @@
   export let showAssignee: boolean = false
   export let todos: IdMap<ToDo>
 
-  function getTitle (day: Date, now: Timestamp): IntlString {
+  function getTitle(day: Date, now: Timestamp): IntlString {
     const today = new Date(now)
     const tomorrow = new Date(new Date(now).setDate(new Date(now).getDate() + 1))
     const yesterday = new Date(new Date(now).setDate(new Date(now).getDate() - 1))

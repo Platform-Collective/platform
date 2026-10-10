@@ -29,7 +29,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function convertDmToPrivateChannel () {
+  async function convertDmToPrivateChannel() {
     const client = getClient()
 
     await client.updateDoc(dm._class, dm.space, dm._id, {

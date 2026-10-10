@@ -17,7 +17,7 @@ import { buildSocialIdString, SocialIdType } from '@hcengineering/core'
 import type { Metadata, Plugin } from '@hcengineering/platform'
 import { plugin } from '@hcengineering/platform'
 
-export * from './rest'
+export type * from './rest'
 
 export const aiBotId = 'ai-bot' as Plugin
 

@@ -24,9 +24,9 @@ export const DOMAIN_EMOJI = 'emoji' as Domain
 export class TCustomEmoji extends TDoc implements CustomEmoji {
   @Prop(TypeString(), emojiPlugin.string.Shortcode)
   @ReadOnly()
-    shortcode!: string
+  shortcode!: string
 
   @Prop(TypeRef(core.class.Blob), emojiPlugin.string.Image)
   @ReadOnly()
-    image!: Ref<Blob>
+  image!: Ref<Blob>
 }

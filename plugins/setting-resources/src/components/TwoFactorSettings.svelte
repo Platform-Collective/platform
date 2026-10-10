@@ -37,7 +37,7 @@
       tfaEnabled = account.tfaEnabled
     })
 
-  async function toggle2fa () {
+  async function toggle2fa() {
     if (tfaEnabled) {
       // Logic for disabling (needs code)
       showSetup = true
@@ -56,7 +56,7 @@
     }
   }
 
-  async function verifyAndEnable () {
+  async function verifyAndEnable() {
     isLoading = true
     try {
       await getAccountClient().enable2fa(secret, code)
@@ -71,7 +71,7 @@
     }
   }
 
-  async function verifyAndDisable () {
+  async function verifyAndDisable() {
     isLoading = true
     try {
       await getAccountClient().disable2fa(code)

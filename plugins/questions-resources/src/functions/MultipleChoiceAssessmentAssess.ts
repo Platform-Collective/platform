@@ -10,8 +10,8 @@ import type {
 
 /** @public */
 export const MultipleChoiceAssessmentAssess: AnswerDataAssessFunction<
-MultipleChoiceAssessment,
-MultipleChoiceAssessmentAnswer
+  MultipleChoiceAssessment,
+  MultipleChoiceAssessmentAnswer
 > = async (answerData, assessmentData) => {
   return {
     score:

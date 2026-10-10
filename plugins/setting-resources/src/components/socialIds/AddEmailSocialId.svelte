@@ -52,11 +52,11 @@
   let codeForm: CodeForm | undefined
   let canResend = false
 
-  function getCleanEmail (value: string | undefined): string {
+  function getCleanEmail(value: string | undefined): string {
     return value?.trim().toLowerCase() ?? ''
   }
 
-  async function sendConfirmation (): Promise<void> {
+  async function sendConfirmation(): Promise<void> {
     try {
       status = OK
       otpInfo = await accountClient.addEmailSocialId(getCleanEmail(email))
@@ -72,20 +72,20 @@
     }
   }
 
-  async function handleSendConfirmation (): Promise<void> {
+  async function handleSendConfirmation(): Promise<void> {
     if (otpInfo != null) return
 
     await sendConfirmation()
   }
 
-  async function handleResend (): Promise<void> {
+  async function handleResend(): Promise<void> {
     if (codeForm != null) codeForm.clear()
     await sendConfirmation()
 
     if (timer != null) timer.restart(retryOn)
   }
 
-  async function handleCode (event: CustomEvent): Promise<void> {
+  async function handleCode(event: CustomEvent): Promise<void> {
     const code = event.detail
     if (code == null) return
     status = OK

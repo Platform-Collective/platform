@@ -12,7 +12,7 @@ import {
   type PredecessorEntry
 } from '../predecessor-list-format'
 
-function mkRel (from: string, to: string, kind: DependencyKind, lag: number): IssueRelation {
+function mkRel(from: string, to: string, kind: DependencyKind, lag: number): IssueRelation {
   return {
     _id: `${from}->${to}-${kind}` as Ref<IssueRelation>,
     attachedTo: from as Ref<Issue>,
@@ -23,7 +23,7 @@ function mkRel (from: string, to: string, kind: DependencyKind, lag: number): Is
   } as unknown as IssueRelation
 }
 
-function mkIssue (id: string, identifier: string): Issue {
+function mkIssue(id: string, identifier: string): Issue {
   return {
     _id: id as Ref<Issue>,
     identifier
@@ -103,7 +103,7 @@ describe('sortPredecessorsByIdentifier', () => {
 })
 
 describe('splitFirstAndRest', () => {
-  function mkEntry (identifier: string): PredecessorEntry {
+  function mkEntry(identifier: string): PredecessorEntry {
     return {
       rel: mkRel('a', 'b', 'finish-to-start', 0),
       source: mkIssue('a', identifier)

@@ -31,7 +31,7 @@
   let draggingIndex: number | null = null
   let hoveringIndex: number | null = null
 
-  function handleDragStart (ev: DragEvent, itemIndex: number) {
+  function handleDragStart(ev: DragEvent, itemIndex: number) {
     if (ev.dataTransfer) {
       ev.dataTransfer.effectAllowed = 'move'
       ev.dataTransfer.dropEffect = 'move'
@@ -40,7 +40,7 @@
     draggingIndex = itemIndex
   }
 
-  function handleDragOver (ev: DragEvent, itemIndex: number) {
+  function handleDragOver(ev: DragEvent, itemIndex: number) {
     ev.preventDefault()
 
     hoveringIndex = itemIndex
@@ -48,7 +48,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function handleDrop (itemIndex: number) {
+  async function handleDrop(itemIndex: number) {
     if (draggingIndex !== null && draggingIndex !== itemIndex) {
       const item = items[draggingIndex]
       const [prev, next] = [
@@ -64,7 +64,7 @@
     resetDrag()
   }
 
-  function resetDrag () {
+  function resetDrag() {
     draggingIndex = null
     hoveringIndex = null
   }

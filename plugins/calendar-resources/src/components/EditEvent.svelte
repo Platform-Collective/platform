@@ -70,11 +70,11 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return title !== undefined && title.trim().length === 0 && participants.length === 0
   }
 
-  async function saveEvent () {
+  async function saveEvent() {
     if (readOnly) {
       return
     }
@@ -132,7 +132,7 @@
     dispatch('close')
   }
 
-  async function allDayChangeHandler () {
+  async function allDayChangeHandler() {
     if (allDay) {
       startDate = new Date(startDate).setHours(0, 0, 0, 0)
       if (dueDate - startDate < allDayDuration) dueDate = allDayDuration + startDate
@@ -142,7 +142,7 @@
     }
   }
 
-  function setRecurrance () {
+  function setRecurrance() {
     if (readOnly) {
       return
     }

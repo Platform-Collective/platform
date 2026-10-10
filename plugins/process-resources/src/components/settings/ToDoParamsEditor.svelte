@@ -28,14 +28,14 @@
 
   const dispatch = createEventDispatcher()
 
-  function change (e: CustomEvent<string>): void {
+  function change(e: CustomEvent<string>): void {
     if (readonly || e.detail == null) return
     params._id = e.detail
     params.result = {}
     dispatch('change', { params })
   }
 
-  function changeResult (e: CustomEvent<any>): void {
+  function changeResult(e: CustomEvent<any>): void {
     if (readonly) return
     params.result = e.detail
     dispatch('change', { params })

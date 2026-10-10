@@ -57,7 +57,7 @@
   let previewError: IntlString | null = null
   let previewStarting: boolean = false
 
-  async function startLocalPreview (): Promise<void> {
+  async function startLocalPreview(): Promise<void> {
     if (previewStarting || localStream != null) return
     previewStarting = true
     previewError = null
@@ -82,7 +82,7 @@
     }
   }
 
-  function stopLocalPreview (): void {
+  function stopLocalPreview(): void {
     if (localStream != null) {
       for (const t of localStream.getTracks()) {
         try {
@@ -100,7 +100,7 @@
     previewStarting = false
   }
 
-  function setStartWithVideo (value: boolean): void {
+  function setStartWithVideo(value: boolean): void {
     startWithVideo = value
     if (get(lkSessionConnected)) {
       void liveKitClient.setCameraEnabled(startWithVideo)
@@ -111,7 +111,7 @@
     }
   }
 
-  function setStartWithAudio (value: boolean): void {
+  function setStartWithAudio(value: boolean): void {
     startWithAudio = value
     if (get(lkSessionConnected)) {
       void liveKitClient.setMicrophoneEnabled(startWithAudio)
@@ -119,7 +119,7 @@
   }
 
   // Attach element for incoming tracks
-  function handleTrackSubscribed (track: RemoteTrack, publication: RemoteTrackPublication): void {
+  function handleTrackSubscribed(track: RemoteTrack, publication: RemoteTrackPublication): void {
     try {
       const el = track.attach()
       if (el == null) return
@@ -134,7 +134,7 @@
     }
   }
 
-  function handleTrackUnsubscribed (_track: RemoteTrack, publication: RemoteTrackPublication): void {
+  function handleTrackUnsubscribed(_track: RemoteTrack, publication: RemoteTrackPublication): void {
     try {
       const el = document.getElementById(publication.trackSid)
       if (el != null && el.parentElement === videoContainer) {
@@ -145,7 +145,7 @@
     }
   }
 
-  function attachExistingTracks (): void {
+  function attachExistingTracks(): void {
     try {
       // Attach already subscribed remote tracks
       for (const participant of lk.remoteParticipants.values()) {
@@ -173,7 +173,7 @@
     }
   }
 
-  async function join (firstName: string, lastName: string): Promise<void> {
+  async function join(firstName: string, lastName: string): Promise<void> {
     if (guestToken == null || meetingId == null) {
       error = 'Missing invite information'
       return
@@ -256,7 +256,7 @@
     }
   }
 
-  async function toggleMute (): Promise<void> {
+  async function toggleMute(): Promise<void> {
     try {
       await liveKitClient.setMicrophoneEnabled(!micEnabled)
       micEnabled = !micEnabled
@@ -265,7 +265,7 @@
     }
   }
 
-  async function toggleCam (): Promise<void> {
+  async function toggleCam(): Promise<void> {
     try {
       await liveKitClient.setCameraEnabled(!camEnabled)
       camEnabled = !camEnabled
@@ -274,7 +274,7 @@
     }
   }
 
-  async function leave (): Promise<void> {
+  async function leave(): Promise<void> {
     try {
       await liveKitClient.disconnect()
     } catch (err) {

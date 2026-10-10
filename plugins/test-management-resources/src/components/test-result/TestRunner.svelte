@@ -44,7 +44,7 @@
     unsubscribe()
   })
 
-  async function goToNextItem (): Promise<void> {
+  async function goToNextItem(): Promise<void> {
     object = testResultIteratorProvider.getIterator()?.next()
     testCase = object?.$lookup?.testCase as TestCase | undefined
   }

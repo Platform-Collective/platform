@@ -84,7 +84,7 @@
   let departmentStaff: Staff[] = []
   let editableList: Ref<Employee>[] = []
 
-  function update (staffIdsForOpenedDepartments: Ref<Staff>[], startDate: Date, endDate: Date) {
+  function update(staffIdsForOpenedDepartments: Ref<Staff>[], startDate: Date, endDate: Date) {
     lq.query(
       hr.class.Request,
       {
@@ -100,7 +100,7 @@
 
   $: update(staffIdsForOpenedDepartments, startDate, endDate)
 
-  function updateRequest (requests: Request[], startDate: Date, endDate: Date) {
+  function updateRequest(requests: Request[], startDate: Date, endDate: Date) {
     const res = requests.filter(
       (r) => fromTzDate(r.tzDueDate) >= startDate.getTime() && fromTzDate(r.tzDate) <= endDate.getTime()
     )
@@ -117,7 +117,7 @@
 
   $: updateRequest(requests, startDate, endDate)
 
-  function pushChilds (
+  function pushChilds(
     department: Ref<Department>,
     departmentStaff: Staff[],
     departmentById: Map<Ref<Department>, Department>
@@ -127,11 +127,11 @@
     editableList.push(...staff.filter((p) => !editableList.includes(p._id)).map((p) => p._id))
   }
 
-  function isEditable (department: Department): boolean {
+  function isEditable(department: Department): boolean {
     return department.teamLead === currentEmployee || department.managers.includes(currentEmployee)
   }
 
-  function checkDepartmentEditable (
+  function checkDepartmentEditable(
     departmentById: Map<Ref<Department>, Department>,
     department: Ref<Department>,
     departmentStaff: Staff[],
@@ -155,7 +155,7 @@
     }
   }
 
-  function updateEditableList (
+  function updateEditableList(
     departmentById: Map<Ref<Department>, Department>,
     departmentStaff: Staff[],
     descendants: Map<Ref<Department>, Department[]>
@@ -165,7 +165,7 @@
     editableList = editableList
   }
 
-  function updateStaff (
+  function updateStaff(
     staff: Staff[],
     staffIdsForOpenedDepartments: Ref<Staff>[],
     descendants: Map<Ref<Department>, Department[]>,
@@ -228,7 +228,7 @@
     }
   )
 
-  function toHolidaysMap (holidays: PublicHoliday[]): Map<Ref<Department>, Date[]> {
+  function toHolidaysMap(holidays: PublicHoliday[]): Map<Ref<Department>, Date[]> {
     const group = groupBy(holidays, 'department')
     const result = new Map()
     for (const groupKey in group) {
@@ -245,7 +245,7 @@
     return result
   }
 
-  async function getHolidays (month: Date): Promise<Map<Ref<Department>, Date[]>> {
+  async function getHolidays(month: Date): Promise<Map<Ref<Department>, Date[]>> {
     const result = await client.findAll(hr.class.PublicHoliday, {
       'date.month': month.getMonth(),
       'date.year': month.getFullYear()
@@ -255,7 +255,7 @@
 
   const client = getClient()
 
-  async function getDepartmentsForEmployee (departmentStaff: Staff[]): Promise<Map<Ref<Staff>, Department[]>> {
+  async function getDepartmentsForEmployee(departmentStaff: Staff[]): Promise<Map<Ref<Staff>, Department[]>> {
     const map = new Map<Ref<Staff>, Department[]>()
     if (departmentStaff && departmentStaff.length > 0) {
       const staffIds = departmentStaff.map((staff) => staff._id)
@@ -274,7 +274,7 @@
     staffDepartmentMap = res
   })
 
-  function getDepartmentHolidays (department: Ref<Department>): Date[] {
+  function getDepartmentHolidays(department: Ref<Department>): Date[] {
     const parents = ancestors.get(department) ?? []
 
     const result = new Map<string, Date>()

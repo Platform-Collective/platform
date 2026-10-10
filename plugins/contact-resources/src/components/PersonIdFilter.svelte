@@ -51,7 +51,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function getValues (search: string): Promise<void> {
+  async function getValues(search: string): Promise<void> {
     if (socialIdentitiesPromise !== undefined) {
       await socialIdentitiesPromise
     }
@@ -126,13 +126,13 @@
     socialIdentitiesPromise = undefined
   }
 
-  function isPersonSelected (person: Ref<Person>, selectedIds: any[]): boolean {
+  function isPersonSelected(person: Ref<Person>, selectedIds: any[]): boolean {
     const personSocialIds = personToPersonIdsMap[person] ?? []
 
     return includesAny(personSocialIds, selectedIds)
   }
 
-  function handleFilterToggle (person: Ref<Person>): void {
+  function handleFilterToggle(person: Ref<Person>): void {
     const personSocialIds = personToPersonIdsMap[person] ?? []
     if (isPersonSelected(person, filter.value)) {
       filter.value = filter.value.filter((p) => !personSocialIds.includes(p))
@@ -143,7 +143,7 @@
     updateFilter()
   }
 
-  function updateFilter (): void {
+  function updateFilter(): void {
     clearTimeout(filterUpdateTimeout)
 
     filterUpdateTimeout = setTimeout(() => {

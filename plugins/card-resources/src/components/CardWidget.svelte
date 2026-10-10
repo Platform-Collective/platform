@@ -71,7 +71,7 @@
       isContextLoaded = true
     })
 
-  async function saveTitle (ev: Event): Promise<void> {
+  async function saveTitle(ev: Event): Promise<void> {
     ev.preventDefault()
     isTitleEditing = false
     const client = getClient()

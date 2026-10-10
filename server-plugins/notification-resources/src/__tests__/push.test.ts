@@ -44,7 +44,7 @@ describe('OnInboxNotificationCreate', () => {
       notification.class.CommonInboxNotification,
       'space-1' as Ref<Space>,
       { user, isViewed, docNotifyContext: 'ctx', objectId: 'obj', objectClass: core.class.Doc } as any
-    ) as TxCreateDoc<InboxNotification>
+    )
 
   beforeEach(() => {
     send = jest.fn().mockResolvedValue(undefined)

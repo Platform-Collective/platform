@@ -29,7 +29,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function copyFileNameToClipboard (): Promise<void> {
+  async function copyFileNameToClipboard(): Promise<void> {
     const { oldName, newName } = file
 
     const name = isDevNullName(newName) ? newName : oldName

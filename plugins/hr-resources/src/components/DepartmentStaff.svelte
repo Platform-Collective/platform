@@ -42,7 +42,7 @@
       }
     )
 
-  function add (e: MouseEvent): void {
+  function add(e: MouseEvent): void {
     showPopup(
       UsersPopup,
       {

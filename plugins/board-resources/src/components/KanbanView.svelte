@@ -62,7 +62,7 @@
 
   $: states = getStates(_space, $typeStore, $statusStore.byId)
 
-  function castObject (object: any): WithLookup<Card> {
+  function castObject(object: any): WithLookup<Card> {
     return object as WithLookup<Card>
   }
 

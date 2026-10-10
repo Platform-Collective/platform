@@ -17,7 +17,7 @@
 
   export let selected: number[]
 
-  function onSelect (val: number): void {
+  function onSelect(val: number): void {
     if (selected.includes(val)) {
       selected = selected.filter((v) => v !== val)
     } else {

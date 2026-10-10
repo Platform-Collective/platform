@@ -29,27 +29,27 @@ export const GROUP_HEADER_HEIGHT = 28
 
 export type GanttGroupRow =
   | {
-    kind: 'group-header'
-    /** Stable id for keyed each-blocks (e.g. `group:s-backlog`). */
-    id: string
-    groupKey: string
-    label: string
-    count: number
-    collapsed: boolean
-    y: number
-    height: number
-  }
+      kind: 'group-header'
+      /** Stable id for keyed each-blocks (e.g. `group:s-backlog`). */
+      id: string
+      groupKey: string
+      label: string
+      count: number
+      collapsed: boolean
+      y: number
+      height: number
+    }
   | {
-    kind: 'issue'
-    /** Stable id (`issue:<_id>`) for keyed each-blocks. */
-    id: string
-    issue: Issue
-    depth: number
-    y: number
-    height: number
-    /** Group this issue belongs to, so the canvas can tint by lane. */
-    groupKey: string
-  }
+      kind: 'issue'
+      /** Stable id (`issue:<_id>`) for keyed each-blocks. */
+      id: string
+      issue: Issue
+      depth: number
+      y: number
+      height: number
+      /** Group this issue belongs to, so the canvas can tint by lane. */
+      groupKey: string
+    }
 
 export interface BuildGroupedRowsOptions {
   rowHeight: number
@@ -76,7 +76,7 @@ export interface BuildGroupedRowsOptions {
  *   unless the bucket is collapsed. A collapsed bucket still emits its
  *   header (so the user can re-expand) but skips the issues.
  */
-export function buildGroupedRows (
+export function buildGroupedRows(
   issues: readonly Issue[],
   groupBy: GroupByKey,
   opts: BuildGroupedRowsOptions
@@ -158,7 +158,7 @@ export function buildGroupedRows (
  * produced by `buildGroupedRows`, but guards against future callers), the
  * row is skipped to keep the legacy LayoutRow invariants intact.
  */
-export function groupRowsToLayoutRows (rows: readonly GanttGroupRow[]): LayoutRow[] {
+export function groupRowsToLayoutRows(rows: readonly GanttGroupRow[]): LayoutRow[] {
   const out: LayoutRow[] = []
   for (const r of rows) {
     if (r.kind === 'group-header') {

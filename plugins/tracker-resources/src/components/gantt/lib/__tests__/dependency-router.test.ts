@@ -94,7 +94,7 @@ describe('arrowheadPoints', () => {
   })
 })
 
-function mkRel (from: string, to: string): IssueRelation {
+function mkRel(from: string, to: string): IssueRelation {
   return {
     _id: `${from}->${to}` as Ref<IssueRelation>,
     attachedTo: from as Ref<Issue>,
@@ -236,7 +236,7 @@ describe('clippedEndpointPx', () => {
 
 describe('bezierHitPath', () => {
   /** Parse `M x y C c1x c1y, c2x c2y, x2 y2` back into numbers. */
-  function parse (d: string): number[] {
+  function parse(d: string): number[] {
     const nums = d.match(/-?\d+(?:\.\d+)?/g)
     expect(nums).not.toBeNull()
     return (nums as string[]).map(Number)

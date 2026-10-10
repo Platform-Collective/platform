@@ -53,13 +53,13 @@ export const EmojiNode = Node.create<EmojiNodeOptions>({
     return {
       insertEmoji:
         (emoji: string, kind: 'unicode' | 'image', image?: Ref<Blob>) =>
-          ({ commands }) => {
-            if (kind === 'image') emoji = `:${emoji}:`
-            return commands.insertContent({
-              type: this.name,
-              attrs: { emoji, kind, image }
-            })
-          }
+        ({ commands }) => {
+          if (kind === 'image') emoji = `:${emoji}:`
+          return commands.insertContent({
+            type: this.name,
+            attrs: { emoji, kind, image }
+          })
+        }
     }
   },
 

@@ -70,7 +70,7 @@
   $: entries = sortPredecessorsByIdentifier(relations, sources)
   $: split = splitFirstAndRest(entries)
 
-  function lagSuffix (lag: number): string {
+  function lagSuffix(lag: number): string {
     const s = signedLag(lag)
     return s === '' ? '' : ' ' + s
   }

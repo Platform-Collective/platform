@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { clone, type Class, type Client, type Doc, type Ref } from '@hcengineering/core'
+import { clone, type Client, type Doc, type Ref } from '@hcengineering/core'
 import survey, { surveyId, type Poll, type PollData, type Survey } from '@hcengineering/survey'
 import { getClient, MessageBox } from '@hcengineering/presentation'
 import {
@@ -24,7 +24,7 @@ import {
   showPopup
 } from '@hcengineering/ui'
 import { accessDeniedStore } from '@hcengineering/view-resources'
-import view from '@hcengineering/view'
+import view, { type ObjectPanel } from '@hcengineering/view'
 
 export function hasText (value: string | undefined | null): boolean {
   return typeof value === 'string' && value.trim().length > 0
@@ -52,7 +52,7 @@ export async function generateSurveyLocation (loc: Location, id: Ref<Survey>): P
   const appComponent = loc.path[0] ?? ''
   const workspace = loc.path[1] ?? ''
 
-  const objectPanel = client.getHierarchy().classHierarchyMixin(doc._class as Ref<Class<Doc>>, view.mixin.ObjectPanel)
+  const objectPanel = client.getHierarchy().classHierarchyMixin<Doc, ObjectPanel>(doc._class, view.mixin.ObjectPanel)
   const component = objectPanel?.component ?? view.component.EditDoc
 
   return {
@@ -80,7 +80,7 @@ export async function generatePollLocation (loc: Location, id: Ref<Poll>): Promi
   const workspace = loc.path[1] ?? ''
   const appId = loc.path[2] ?? ''
 
-  const objectPanel = client.getHierarchy().classHierarchyMixin(doc._class as Ref<Class<Doc>>, view.mixin.ObjectPanel)
+  const objectPanel = client.getHierarchy().classHierarchyMixin<Doc, ObjectPanel>(doc._class, view.mixin.ObjectPanel)
   const component = objectPanel?.component ?? view.component.EditDoc
 
   return {

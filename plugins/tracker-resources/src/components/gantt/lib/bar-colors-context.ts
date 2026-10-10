@@ -15,7 +15,7 @@ import type { BarColorContext } from './bar-colors'
 
 const DONE_CATS = new Set(['task:statusCategory:Won', 'task:statusCategory:Lost'])
 
-export function buildBarColorContext (
+export function buildBarColorContext(
   issues: Issue[],
   statusCategoryMap: Map<string, string>,
   componentsById: Map<string, Component>,

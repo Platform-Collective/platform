@@ -30,16 +30,16 @@ export type PinchState =
   | { kind: 'idle' }
   | { kind: 'single', id: number, x: number, y: number }
   | {
-    kind: 'pinch'
-    idA: number
-    idB: number
-    a: Point
-    b: Point
-    center: Point
-    initialDistance: number
-    currentDistance: number
-    initialPxPerDay: number
-  }
+      kind: 'pinch'
+      idA: number
+      idB: number
+      a: Point
+      b: Point
+      center: Point
+      initialDistance: number
+      currentDistance: number
+      initialPxPerDay: number
+    }
 
 export type PinchEvent =
   | { type: 'down', id: number, x: number, y: number, pxPerDay: number }

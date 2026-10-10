@@ -1,4 +1,4 @@
-import client, { ClientSocket } from '@hcengineering/client'
+import client from '@hcengineering/client'
 import { Client } from '@hcengineering/core'
 import { setMetadata } from '@hcengineering/platform'
 import { createClient, getTransactorEndpoint } from '@hcengineering/server-client'
@@ -62,7 +62,7 @@ export async function createPlatformClient (token: string): Promise<Client> {
       headers: {
         'User-Agent': config.ServiceID
       }
-    }) as never as ClientSocket
+    }) as never
   })
 
   const endpoint = await getTransactorEndpoint(token)

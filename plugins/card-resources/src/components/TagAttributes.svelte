@@ -49,11 +49,11 @@
 
   let isCollapsed = false
 
-  export function collapse (): void {
+  export function collapse(): void {
     isCollapsed = true
   }
 
-  export function expand (): void {
+  export function expand(): void {
     isCollapsed = false
   }
 
@@ -66,7 +66,7 @@
   $: canUnlock = canUnlockSection(value.space, $permissionsStore)
   $: _readonly = readonly || isLocked
 
-  async function toggleLock (ev: MouseEvent): Promise<void> {
+  async function toggleLock(ev: MouseEvent): Promise<void> {
     ev.stopPropagation()
     const op = isLocked ? '$pull' : '$push'
     await client.update(value, { [op]: { readonlySections: tag._id } })

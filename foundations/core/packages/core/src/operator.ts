@@ -40,17 +40,13 @@ function $push (document: Doc, keyval: Record<string, PropertyType>): void {
       } else {
         arr.push(kvk)
       }
+    } else if (doc[key] === null || doc[key] === undefined) {
+      doc[key] = [kvk]
+    } else if (Array.isArray(doc[key])) {
+      doc[key].push(kvk)
     } else {
-      if (doc[key] === null || doc[key] === undefined) {
-        doc[key] = [kvk]
-      } else {
-        if (Array.isArray(doc[key])) {
-          doc[key].push(kvk)
-        } else {
-          Analytics.handleError(new Error(`invalid array value: ${JSON.stringify(doc[key])} `))
-          doc[key] = [kvk]
-        }
-      }
+      Analytics.handleError(new Error(`invalid array value: ${JSON.stringify(doc[key])} `))
+      doc[key] = [kvk]
     }
   }
 }
@@ -210,6 +206,6 @@ export function isOperator (o: Record<string, any>): boolean {
  */
 export function _getOperator (name: string): _OperatorFunc {
   const operator = operators[name]
-  if (operator === undefined) throw new Error('unknown operator: ' + name)
+  if (operator === undefined) throw new Error(`unknown operator: ${name}`)
   return operator
 }

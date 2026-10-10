@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-import { type IntlString, type Plugin } from '@hcengineering/platform'
+import type { IntlString, Plugin } from '@hcengineering/platform'
 import { ClientConnectEvent, type DocChunk } from '..'
 import type { Class, Data, Doc, Domain, PluginConfiguration, Ref, Space, Timestamp } from '../classes'
 import { ClassifierKind, DOMAIN_MODEL } from '../classes'
@@ -122,8 +122,8 @@ describe('client', () => {
         }
 
         get onConnect ():
-        | ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>)
-        | undefined {
+          | ((event: ClientConnectEvent, lastTx: string | undefined, data: any) => Promise<void>)
+          | undefined {
           return this.handler
         }
 
@@ -135,9 +135,7 @@ describe('client', () => {
           return Promise.resolve({ domain: 'test' as Domain, value: null })
         }
 
-        searchFulltext = async (query: SearchQuery, options: SearchOptions): Promise<SearchResult> => {
-          return { docs: [] }
-        }
+        searchFulltext = async (query: SearchQuery, options: SearchOptions): Promise<SearchResult> => ({ docs: [] })
 
         tx = async (tx: Tx): Promise<TxResult> => {
           if (tx.objectSpace === core.space.Model) {
@@ -243,7 +241,7 @@ describe('client', () => {
     expect(result3[0]._id).toStrictEqual(txCreateDoc2.objectId)
     expect(spyCreate).toHaveBeenLastCalledWith(txCreateDoc2, false)
     expect(spyUpdate.mock.calls[1][1]).toStrictEqual(txUpdateDoc)
-    expect(spyUpdate).toBeCalledTimes(2)
+    expect(spyUpdate).toHaveBeenCalledTimes(2)
     await client3.close()
 
     spyCreate.mockReset()

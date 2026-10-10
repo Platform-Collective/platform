@@ -43,8 +43,8 @@ interface Bridge {
 
 type MobileNSWindow = Window &
   typeof globalThis & {
-  nsWebViewBridge: Bridge
-}
+    nsWebViewBridge: Bridge
+  }
 
 type SetTheme = (theme: string) => void
 

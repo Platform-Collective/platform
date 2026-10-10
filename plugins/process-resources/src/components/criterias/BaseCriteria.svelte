@@ -37,13 +37,13 @@
 
   $: [val, selectedMode] = parseValue(modesValues, value)
 
-  function changeResult (value: any): void {
+  function changeResult(value: any): void {
     const result = buildResult(selectedMode, value)
     value = result
     dispatch('change', result)
   }
 
-  function changeMode (e: CustomEvent): void {
+  function changeMode(e: CustomEvent): void {
     const editorChanged = e.detail
     if (editorChanged) {
       val = undefined

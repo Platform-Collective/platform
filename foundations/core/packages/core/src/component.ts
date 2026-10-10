@@ -70,7 +70,7 @@ import type {
   Version
 } from './classes'
 import { AccountRole, TxAccessLevel } from './classes'
-import { type Status, type StatusCategory } from './status'
+import type { Status, StatusCategory } from './status'
 import type {
   Tx,
   TxApplyIf,

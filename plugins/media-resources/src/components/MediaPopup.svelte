@@ -27,7 +27,7 @@
   let camOpened = false
   let spkOpened = false
 
-  function handleMicExpanded (ev: CustomEvent<boolean>): void {
+  function handleMicExpanded(ev: CustomEvent<boolean>): void {
     micOpened = ev.detail
     if (micOpened) {
       camOpened = false
@@ -35,7 +35,7 @@
     }
   }
 
-  function handleCamExpanded (ev: CustomEvent<boolean>): void {
+  function handleCamExpanded(ev: CustomEvent<boolean>): void {
     camOpened = ev.detail
     if (camOpened) {
       micOpened = false
@@ -43,7 +43,7 @@
     }
   }
 
-  function handleSpkExpanded (ev: CustomEvent<boolean>): void {
+  function handleSpkExpanded(ev: CustomEvent<boolean>): void {
     spkOpened = ev.detail
     if (spkOpened) {
       micOpened = false

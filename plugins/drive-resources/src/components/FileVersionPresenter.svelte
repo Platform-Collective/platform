@@ -33,7 +33,7 @@
 
   $: version = formatFileVersion(value.version)
 
-  function handleClick (): void {
+  function handleClick(): void {
     if (disabled) {
       return
     }

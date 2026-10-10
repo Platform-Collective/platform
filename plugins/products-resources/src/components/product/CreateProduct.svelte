@@ -102,16 +102,16 @@
   }
 
   $: void loadSpaceType(typeId)
-  async function loadSpaceType (id: typeof typeId): Promise<void> {
+  async function loadSpaceType(id: typeof typeId): Promise<void> {
     spaceType =
       id !== undefined
         ? await client
-          .getModel()
-          .findOne(core.class.SpaceType, { _id: id }, { lookup: { _id: { roles: core.class.Role } } })
+            .getModel()
+            .findOne(core.class.SpaceType, { _id: id }, { lookup: { _id: { roles: core.class.Role } } })
         : undefined
   }
 
-  function chooseIcon (): void {
+  function chooseIcon(): void {
     const { icon, color } = object
     const icons = [products.icon.Product]
     showPopup(IconPicker, { icon, color, icons }, 'top', (result) => {
@@ -122,14 +122,14 @@
     })
   }
 
-  function handleOwnersChanged (newOwners: AccountUuid[]): void {
+  function handleOwnersChanged(newOwners: AccountUuid[]): void {
     object.owners = newOwners
 
     const newMembersSet = new Set([...object.owners, ...object.members])
     object.members = Array.from(newMembersSet)
   }
 
-  function handleMembersChanged (newMembers: AccountUuid[]): void {
+  function handleMembersChanged(newMembers: AccountUuid[]): void {
     // If a member was removed we need to remove it from any roles assignments as well
     const newMembersSet = new Set(newMembers)
     const removedMembersSet = new Set(object.members.filter((m) => !newMembersSet.has(m)))
@@ -143,7 +143,7 @@
     object.members = newMembers
   }
 
-  function handleRoleAssignmentChanged (roleId: Ref<Role>, newMembers: AccountUuid[]): void {
+  function handleRoleAssignmentChanged(roleId: Ref<Role>, newMembers: AccountUuid[]): void {
     if (rolesAssignment === undefined) {
       rolesAssignment = {}
     }
@@ -151,7 +151,7 @@
     rolesAssignment[roleId] = newMembers
   }
 
-  async function handleOkAction (): Promise<void> {
+  async function handleOkAction(): Promise<void> {
     if (typeId === undefined || spaceType?.targetClass === undefined) {
       return
     }
@@ -189,7 +189,7 @@
     dispatch('close', productId)
   }
 
-  async function handleClose (): Promise<void> {
+  async function handleClose(): Promise<void> {
     const noChanges = deepEqual(object, createDefaultObject())
     if (noChanges) {
       dispatch('close')
@@ -211,7 +211,7 @@
     }
   }
 
-  function createDefaultObject (): Data<Product> {
+  function createDefaultObject(): Data<Product> {
     return {
       // Space
       name: '',

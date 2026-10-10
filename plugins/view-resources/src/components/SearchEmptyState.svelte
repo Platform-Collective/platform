@@ -32,7 +32,7 @@
   export let broaderScopeLabel: IntlString | undefined = undefined
   export let onBroaderScope: (() => void) | undefined = undefined
 
-  function clearFilters (): void {
+  function clearFilters(): void {
     setFilters([])
   }
 </script>

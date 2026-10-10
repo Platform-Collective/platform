@@ -24,7 +24,7 @@
   export let hideDetails: boolean = false
   export let inline: boolean = false
 
-  function click (): void {
+  function click(): void {
     if (!hideDetails) {
       const client = getClient()
       const hierarchy = client.getHierarchy()

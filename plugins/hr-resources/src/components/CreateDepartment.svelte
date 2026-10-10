@@ -31,13 +31,13 @@
   let name: string = ''
   let lead: Ref<Employee> | null = null
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return name === ''
   }
 
   const client = getClient()
 
-  async function createDepartment () {
+  async function createDepartment() {
     const id = await client.createDoc(hr.class.Department, core.space.Workspace, {
       name,
       description: '',

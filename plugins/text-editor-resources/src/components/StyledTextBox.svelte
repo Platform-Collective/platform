@@ -58,17 +58,17 @@
   }
   export let mode = Mode.View
 
-  export function startEdit (): void {
+  export function startEdit(): void {
     rawValue = content ?? EmptyMarkup
     needFocus = true
     mode = Mode.Edit
   }
-  export function saveEdit (): void {
+  export function saveEdit(): void {
     dispatch('value', rawValue)
     content = rawValue
     mode = Mode.View
   }
-  export function cancelEdit (): void {
+  export function cancelEdit(): void {
     rawValue = content
     mode = Mode.View
   }
@@ -96,23 +96,23 @@
 
   $: editor?.setEditable(!readonly)
 
-  export function submit (): void {
+  export function submit(): void {
     editor.submit()
   }
-  export function focus (): void {
+  export function focus(): void {
     editor.focus()
   }
-  export function isEditable (): boolean {
+  export function isEditable(): boolean {
     return editor.isEditable()
   }
-  export function setEditable (editable: boolean): void {
+  export function setEditable(editable: boolean): void {
     editor.setEditable(editable)
   }
-  export function setContent (data: string): void {
+  export function setContent(data: string): void {
     editor.setContent(data)
   }
 
-  export function isFocused (): boolean {
+  export function isFocused(): boolean {
     return focused
   }
   let needFocus = false
@@ -164,11 +164,11 @@
   /**
    * @public
    */
-  export function removeAttachment (id: string): void {
+  export function removeAttachment(id: string): void {
     editor.removeAttachment(id)
   }
 
-  async function handleCommandSelected (id: string, pos: number, targetItem?: MouseEvent | HTMLElement): Promise<void> {
+  async function handleCommandSelected(id: string, pos: number, targetItem?: MouseEvent | HTMLElement): Promise<void> {
     switch (id) {
       case 'image':
         handleAttachImage()
@@ -197,11 +197,11 @@
 
   let inputImage: HTMLInputElement
 
-  export function handleAttachImage (): void {
+  export function handleAttachImage(): void {
     inputImage.click()
   }
 
-  async function createInlineImage (file: File): Promise<void> {
+  async function createInlineImage(file: File): Promise<void> {
     if (!file.type.startsWith('image/') || attachFile === undefined) {
       return
     }
@@ -227,7 +227,7 @@
     )
   }
 
-  async function fileSelected (): Promise<void> {
+  async function fileSelected(): Promise<void> {
     const list = inputImage.files
     if (list === null || list.length === 0) return
     for (let index = 0; index < list.length; index++) {

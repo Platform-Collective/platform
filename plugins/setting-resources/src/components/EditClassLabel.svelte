@@ -27,7 +27,7 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  async function save (newLabel: IntlString): Promise<void> {
+  async function save(newLabel: IntlString): Promise<void> {
     const update: DocumentUpdate<Class<Doc>> = {}
     if (newLabel !== clazz.label) {
       update.label = newLabel

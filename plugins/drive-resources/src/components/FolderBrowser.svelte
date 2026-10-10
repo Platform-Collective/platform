@@ -56,7 +56,7 @@
   $: if (query !== undefined) updateSearchQuery(search)
   $: resultQuery = { ...searchQuery }
 
-  function updateSearchQuery (search: string): void {
+  function updateSearchQuery(search: string): void {
     searchQuery = search === '' ? { ...query } : { ...query, $search: search }
   }
 

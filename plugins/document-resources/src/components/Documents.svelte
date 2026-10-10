@@ -28,7 +28,7 @@
   let search = ''
   let resultQuery: DocumentQuery<Doc> = query
 
-  function updateResultQuery (search: string, query: DocumentQuery<Document>): void {
+  function updateResultQuery(search: string, query: DocumentQuery<Document>): void {
     resultQuery = search === '' ? { ...query } : { ...query, $search: search }
   }
 

@@ -25,7 +25,7 @@
   export let selected: boolean = false
   export let disabled: boolean = false
   export let indent: boolean = false
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
 </script>
 
 <NavItem
@@ -37,7 +37,7 @@
   {selected}
   {disabled}
   {indent}
-  {forciblyСollapsed}
+  {forciblyCollapsed}
 >
   <svelte:fragment slot="actions">
     {#each actions as action}

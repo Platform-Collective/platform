@@ -59,7 +59,7 @@
     }
   }
 
-  function setValue (
+  function setValue(
     val: number | string | undefined,
     maxValue: number | undefined,
     minValue: number | undefined
@@ -78,7 +78,7 @@
     phTranslate = res
   })
 
-  function computeSize (t: HTMLInputElement | EventTarget | null): void {
+  function computeSize(t: HTMLInputElement | EventTarget | null): void {
     if (t == null) {
       return
     }
@@ -98,7 +98,7 @@
     }
   }
 
-  function handleInput (ev: Event): void {
+  function handleInput(ev: Event): void {
     const t: HTMLInputElement | EventTarget | null = ev.target
     if (t !== null && t !== undefined) {
       computeSize(t)
@@ -123,10 +123,10 @@
     computeSize(input)
   })
 
-  export function focusInput (): void {
+  export function focusInput(): void {
     input?.focus()
   }
-  export function selectInput (): void {
+  export function selectInput(): void {
     input?.select()
   }
 
@@ -146,7 +146,7 @@
     input.addEventListener('focus', updateFocus)
   }
 
-  export function focus (): void {
+  export function focus(): void {
     input.focus()
   }
 </script>

@@ -41,17 +41,17 @@
   $: successCount = results.filter((r) => r.error === undefined).length
   $: failedList = results.filter((r) => r.error !== undefined)
 
-  function cancel (): void {
+  function cancel(): void {
     cancelled = true
     close()
   }
 
-  function openPdf (result: PdfResult): void {
+  function openPdf(result: PdfResult): void {
     if (result.error !== undefined) return
     selectedResult = result
   }
 
-  async function doDownloadAll (): Promise<void> {
+  async function doDownloadAll(): Promise<void> {
     downloadAllLoading = true
     try {
       await downloadAllPdfs(results)
@@ -62,7 +62,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function close (): void {
+  function close(): void {
     dispatch('close')
   }
 

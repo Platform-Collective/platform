@@ -43,7 +43,7 @@ const DAY_MS = 86_400_000
 // working-days calendar (the schedule-day helpers or the effective
 // calendar), it must adopt the ready-gate + generation guard from
 // GanttView.
-export function openSetStartDate (issue: Issue, anchor: PopupAlignment | undefined): void {
+export function openSetStartDate(issue: Issue, anchor: PopupAlignment | undefined): void {
   const client = getClient()
   showPopup(
     DatePopup,
@@ -57,7 +57,7 @@ export function openSetStartDate (issue: Issue, anchor: PopupAlignment | undefin
       if (result === undefined) return // dismissed
       const picked = result.value
       const newStart: Timestamp | null = picked === null ? null : snapToUtcMidnight(picked.getTime())
-      const patch: { startDate: Timestamp | null, dueDate?: Timestamp | null } = { startDate: newStart }
+      const patch: { startDate: Timestamp | null; dueDate?: Timestamp | null } = { startDate: newStart }
       // Auto-fill due-date when both were null and the user is scheduling for the first time.
       if (newStart !== null && issue.startDate == null && issue.dueDate == null) {
         patch.dueDate = newStart + DAY_MS
@@ -85,7 +85,7 @@ export function openSetStartDate (issue: Issue, anchor: PopupAlignment | undefin
  * right-click. The Gantt context-menu trigger captures the right-click
  * position via getEventPositionElement(ev) and passes it through.
  */
-export function ganttExtraActions (issue: Issue, anchor: PopupAlignment | undefined): UiAction[] {
+export function ganttExtraActions(issue: Issue, anchor: PopupAlignment | undefined): UiAction[] {
   return [
     {
       label: tracker.string.SetStartDate,

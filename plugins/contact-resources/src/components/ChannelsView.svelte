@@ -52,7 +52,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function getProvider (
+  function getProvider(
     item: AttachedData<Channel>,
     map: Map<Ref<ChannelProvider>, ChannelProvider>,
     notifyContextByDoc: Map<Ref<Doc>, DocNotifyContext>,
@@ -75,7 +75,7 @@
     }
   }
 
-  function isNew (
+  function isNew(
     item: Channel,
     notifyContextByDoc: Map<Ref<Doc>, DocNotifyContext>,
     inboxNotificationsByContext: Map<Ref<DocNotifyContext>, InboxNotification[]>
@@ -91,7 +91,7 @@
     return inboxNotifications.some(({ isViewed }) => !isViewed)
   }
 
-  async function update (
+  async function update(
     value: AttachedData<Channel>[] | Channel | null,
     notifyContextByDoc: Map<Ref<Doc>, DocNotifyContext>,
     inboxNotificationsByContext: Map<Ref<DocNotifyContext>, InboxNotification[]>,

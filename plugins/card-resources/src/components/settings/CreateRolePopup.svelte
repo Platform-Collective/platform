@@ -27,7 +27,7 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  async function handleSave (): Promise<void> {
+  async function handleSave(): Promise<void> {
     const _id = await client.addCollection(
       card.class.Role,
       core.space.Model,

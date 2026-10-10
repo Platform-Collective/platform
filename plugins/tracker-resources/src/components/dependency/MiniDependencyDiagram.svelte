@@ -50,7 +50,7 @@
     shortText = t
   })
 
-  function onClick (): void {
+  function onClick(): void {
     if (disabled) return
     dispatch('pick', kind)
   }

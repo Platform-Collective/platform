@@ -29,13 +29,13 @@
   $: contentType = tab?.data?.contentType
   $: metadata = tab?.data?.metadata
 
-  async function closeTab (): Promise<void> {
+  async function closeTab(): Promise<void> {
     if (tab === undefined) return
     const fn = await getResource(workbench.function.CloseWidgetTab)
     await fn(widget, tab.id)
   }
 
-  async function close (): Promise<void> {
+  async function close(): Promise<void> {
     const fn = await getResource(workbench.function.CloseWidget)
     await fn(attachment.ids.PreviewWidget)
   }

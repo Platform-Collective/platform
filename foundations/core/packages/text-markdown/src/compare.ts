@@ -1,5 +1,6 @@
 //
 // Copyright © 2025 Hardcore Engineering Inc.
+// Copyright © 2026 TraceX SAS.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -62,11 +63,11 @@ export function isMarkdownsEquals (source1: string, source2: string): boolean {
 export function normalizeMarkdown (source: string): string {
   if (source == null || typeof source !== 'string') return ''
 
-  const tagRegex = /<(\w+)([^>]*?)(\/?)>/g
+  const tagRegex = /<(\w+)(?=[\s/>])([^>]*)>/g
   const attrRegex = /(\w+)(?:=(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g
 
   // Normalize line endings to LF
-  source = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  source = source.replace(/\r\n/gv, '\n').replace(/\r/gv, '\n')
 
   // Remove extra blank lines
   source = source
@@ -115,10 +116,10 @@ export function normalizeMarkdown (source: string): string {
     ]
     const isVoidElement = voidElements.includes(tagName.toLowerCase())
 
-    if (sortedAttrs !== '') {
-      return isVoidElement ? `<${tagName} ${sortedAttrs} />` : `<${tagName} ${sortedAttrs}>`
-    } else {
+    if (sortedAttrs === '') {
       return isVoidElement ? `<${tagName} />` : `<${tagName}>`
+    } else {
+      return isVoidElement ? `<${tagName} ${sortedAttrs} />` : `<${tagName} ${sortedAttrs}>`
     }
   })
 

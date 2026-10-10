@@ -34,7 +34,7 @@
     }
   })
 
-  async function fetchIconAsDataUrl (iconRef: Ref<Blob>): Promise<void> {
+  async function fetchIconAsDataUrl(iconRef: Ref<Blob>): Promise<void> {
     try {
       const url = getPreviewThumbnail(iconRef, logoSize, logoSize, 1)
       const response = await fetch(url)
@@ -91,7 +91,7 @@
   <div style={rowStyle}>
     <span style={logoContainerStyle}>
       {#if iconDataUrl}
-        <img src={iconDataUrl} alt={''} style={logoStyle} />
+        <img src={iconDataUrl} alt="" style={logoStyle} />
       {/if}
       {workspace}
     </span>

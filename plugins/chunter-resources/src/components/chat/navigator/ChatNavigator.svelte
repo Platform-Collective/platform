@@ -55,7 +55,7 @@
 
   const searchValue: string = ''
 
-  async function isSpecialVisible (special: SpecialNavModel, contexts: DocNotifyContext[]): Promise<boolean> {
+  async function isSpecialVisible(special: SpecialNavModel, contexts: DocNotifyContext[]): Promise<boolean> {
     if (special.visibleIf === undefined) {
       return true
     }
@@ -65,7 +65,7 @@
     return await getIsVisible(contexts as any)
   }
 
-  function addButtonClicked (ev: MouseEvent): void {
+  function addButtonClicked(ev: MouseEvent): void {
     pressed = true
     showPopup(Menu, { actions: globalActions }, ev.target as HTMLElement, () => {
       pressed = false

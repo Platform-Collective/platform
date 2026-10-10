@@ -57,10 +57,10 @@
     projects = res
   })
 
-  function save (): void {
+  function save(): void {
     void updateGithubAccountIntegrationLogin(auth?.login ?? '', integration)
   }
-  function onConnect (): void {
+  function onConnect(): void {
     const state = btoa(
       JSON.stringify({
         accountId: getCurrentAccount().primarySocialId,
@@ -124,7 +124,7 @@
             {#if integrations.length === 0}
               <div class="flex-grow flex-col">
                 <div class="">
-                  {#await translate(github.string.NoIntegrationsConfigured, { appName: getMetadata(github.metadata.GithubApplication), title: getMetadata(ui.metadata.PlatformTitle) }) then msg}
+                  {#await translate( github.string.NoIntegrationsConfigured, { appName: getMetadata(github.metadata.GithubApplication), title: getMetadata(ui.metadata.PlatformTitle) } ) then msg}
                     <HTMLViewer value={msg} />
                   {/await}
                   <div class="underline">

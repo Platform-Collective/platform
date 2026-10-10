@@ -29,7 +29,7 @@ const DAY_MS = 86_400_000
  * through the per-kind anchor helpers in `working-days.ts`, which respect
  * the optional WorkingCalendar.
  */
-export function addScheduleDays (t: number, days: number): number {
+export function addScheduleDays(t: number, days: number): number {
   return t + days * DAY_MS
 }
 
@@ -41,7 +41,7 @@ export function addScheduleDays (t: number, days: number): number {
  * Cycle-safe: each issue id is only visited once, so a buggy outline with
  * `a→b→a` is handled without an infinite loop.
  */
-export function descendantsWithDates (issue: Issue, allIssues: Issue[]): Issue[] {
+export function descendantsWithDates(issue: Issue, allIssues: Issue[]): Issue[] {
   const childrenByParent = new Map<Ref<Issue>, Issue[]>()
   for (const i of allIssues) {
     const parent = i.parents?.[0]?.parentId as Ref<Issue> | undefined
@@ -87,7 +87,7 @@ export function descendantsWithDates (issue: Issue, allIssues: Issue[]): Issue[]
  * A cycle would make the cascade diverge, so the caller blocks the edit and
  * surfaces a toast instead of writing it.
  */
-export function wouldCreateCycle (source: Ref<Issue>, target: Ref<Issue>, relations: IssueRelation[]): boolean {
+export function wouldCreateCycle(source: Ref<Issue>, target: Ref<Issue>, relations: IssueRelation[]): boolean {
   if (source === target) return true
 
   // Adjacency: predecessor → successors.
@@ -129,7 +129,7 @@ export function wouldCreateCycle (source: Ref<Issue>, target: Ref<Issue>, relati
  * but if cascade is ever applied to enterprise graphs > 10k linear
  * chains, refactor to an explicit work-stack.
  */
-export function detectCycle (relations: IssueRelation[]): Array<Ref<Issue>> | null {
+export function detectCycle(relations: IssueRelation[]): Array<Ref<Issue>> | null {
   const out = new Map<Ref<Issue>, Array<Ref<Issue>>>()
   const nodes = new Set<Ref<Issue>>()
   for (const r of relations) {
@@ -152,7 +152,7 @@ export function detectCycle (relations: IssueRelation[]): Array<Ref<Issue>> | nu
   const stack: Array<Ref<Issue>> = []
   let cycle: Array<Ref<Issue>> | null = null
 
-  function visit (n: Ref<Issue>): boolean {
+  function visit(n: Ref<Issue>): boolean {
     color.set(n, GREY)
     stack.push(n)
     const succs = out.get(n)
@@ -185,12 +185,12 @@ interface WorkingDates {
   due: number
 }
 
-export function simulateCascade (
+export function simulateCascade(
   primary: PrimaryEdit[],
   allIssues: Issue[],
   relations: IssueRelation[],
   canEdit: (ref: Ref<Issue>) => boolean,
-  options?: { maxIterations?: number, workingDays?: WorkingCalendar }
+  options?: { maxIterations?: number; workingDays?: WorkingCalendar }
 ): SimulateResult {
   const cfg = options?.workingDays
   // Step 0: pre-flight cycle check on the relation graph itself.

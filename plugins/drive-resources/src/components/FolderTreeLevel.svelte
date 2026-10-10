@@ -32,11 +32,11 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  function getDescendants (obj: Ref<Folder>): Ref<Folder>[] {
+  function getDescendants(obj: Ref<Folder>): Ref<Folder>[] {
     return (descendants.get(obj) ?? []).sort((a, b) => a.title.localeCompare(b.title)).map((p) => p._id)
   }
 
-  async function getActions (obj: Folder): Promise<Action[]> {
+  async function getActions(obj: Folder): Promise<Action[]> {
     const result: Action[] = []
     const extraActions = await getContributedActions(client, obj)
     for (const act of extraActions) {
@@ -52,7 +52,7 @@
     return result
   }
 
-  function handleSelected (obj: Ref<Folder>): void {
+  function handleSelected(obj: Ref<Folder>): void {
     dispatch('selected', obj)
   }
 

@@ -103,7 +103,7 @@
 
   let hovered = false
 
-  function onBarContextMenu (evt: MouseEvent): void {
+  function onBarContextMenu(evt: MouseEvent): void {
     // Context-menu is currently issue-only (the menu wires Issue actions);
     // milestone bars don't surface it. This stays gated until the
     // milestone menu is designed.
@@ -128,7 +128,7 @@
   let longPressStartY: number = 0
   let longPressPointerId: number | null = null
 
-  function clearLongPressTimer (): void {
+  function clearLongPressTimer(): void {
     if (longPressTimer !== null) {
       clearTimeout(longPressTimer)
       longPressTimer = null
@@ -142,7 +142,7 @@
    * Dispatch the actual drag-start. Extracted so both the 'allow' and
    * 'long-press' branches can call it with the same payload shape.
    */
-  function dispatchDragStart (
+  function dispatchDragStart(
     edge: 'left' | 'right' | 'body',
     cursorX: number,
     modifiers: { metaKey: boolean, ctrlKey: boolean, shiftKey: boolean }
@@ -159,7 +159,7 @@
    * the previous mouse+pointer double-dispatch issue called out in the
    * Pre-Flight (Item 9).
    */
-  function onBarPointer (edge: 'left' | 'right' | 'body') {
+  function onBarPointer(edge: 'left' | 'right' | 'body') {
     return (evt: PointerEvent): void => {
       // Selected bar swallows the pointerdown so the canvas-pan handler
       // upstream doesn't also grab it. Preserved from the legacy
@@ -200,7 +200,7 @@
     }
   }
 
-  function onBarPointerMove (evt: PointerEvent): void {
+  function onBarPointerMove(evt: PointerEvent): void {
     if (longPressTimer === null) return
     if (longPressPointerId !== null && evt.pointerId !== longPressPointerId) return
     const dx = evt.clientX - longPressStartX
@@ -208,12 +208,12 @@
     if (Math.sqrt(dx * dx + dy * dy) > MOVE_THRESHOLD_PX) clearLongPressTimer()
   }
 
-  function onBarPointerEnd (evt: PointerEvent): void {
+  function onBarPointerEnd(evt: PointerEvent): void {
     if (longPressPointerId !== null && evt.pointerId !== longPressPointerId) return
     clearLongPressTimer()
   }
 
-  function onBarClick (evt: MouseEvent): void {
+  function onBarClick(evt: MouseEvent): void {
     if (!editable || dragTarget === undefined) return
     if (evt.button !== 0) return
     dispatch('barClick', {
@@ -262,22 +262,22 @@
     mode === 'status' &&
     issue._id != null
       ? progressFraction(
-        issue as any,
-        $subsStore?.get(String(issue._id)) ?? [],
-        ctxStore !== undefined ? $ctxStore.statusCategoryFor : () => null
-      )
+          issue as any,
+          $subsStore?.get(String(issue._id)) ?? [],
+          ctxStore !== undefined ? $ctxStore.statusCategoryFor : () => null
+        )
       : null
   $: triple =
     ctxStore !== undefined && modeStore !== undefined
       ? resolveBarColors(issue, mode, $ctxStore)
       : resolveBarColors(issue, 'status', {
-        statusCategoryFor: () => null,
-        priorityFor: (i) => i.priority,
-        assigneeRankFor: () => null,
-        componentColorFor: () => null,
-        milestoneColorFor: () => null,
-        hashFromId: () => 0
-      })
+          statusCategoryFor: () => null,
+          priorityFor: (i) => i.priority,
+          assigneeRankFor: () => null,
+          componentColorFor: () => null,
+          milestoneColorFor: () => null,
+          hashFromId: () => 0
+        })
   $: resolvedFill =
     triple.paletteIndex !== undefined ? getPlatformColor(triple.paletteIndex, $themeStore.dark) : triple.fill
   $: resolvedBorder =

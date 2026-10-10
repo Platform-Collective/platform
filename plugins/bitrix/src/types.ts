@@ -304,12 +304,12 @@ export interface BitrixFieldMapping extends AttachedDoc {
   attributeName: string
 
   operation:
-  | CopyValueOperation
-  | CreateTagOperation
-  | CreateChannelOperation
-  | DownloadAttachmentOperation
-  | FindReferenceOperation
-  | CreateHRApplication
+    | CopyValueOperation
+    | CreateTagOperation
+    | CreateChannelOperation
+    | DownloadAttachmentOperation
+    | FindReferenceOperation
+    | CreateHRApplication
 }
 
 /**
@@ -361,19 +361,19 @@ export interface BitrixActivity {
  * @public
  */
 export type BitrixFiles = Record<
-string,
-{
-  authorId: string
-  authorName: string
-  date: string
-  id: number
-  image: boolean
-  name: string
-  size: number
-  type: string
-  urlDownload: string
-  urlShow: string
-}
+  string,
+  {
+    authorId: string
+    authorName: string
+    date: string
+    id: number
+    image: boolean
+    name: string
+    size: number
+    type: string
+    urlDownload: string
+    urlShow: string
+  }
 >
 
 /**

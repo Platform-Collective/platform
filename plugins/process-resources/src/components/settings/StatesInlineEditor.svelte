@@ -29,7 +29,7 @@
 
   const client = getClient()
 
-  async function addState (): Promise<void> {
+  async function addState(): Promise<void> {
     const rank = makeRank(states.length > 0 ? states[states.length - 1].rank : undefined, undefined)
     await client.createDoc(plugin.class.State, core.space.Model, {
       process: process._id,
@@ -38,7 +38,7 @@
     })
   }
 
-  function toState (doc: Doc): State {
+  function toState(doc: Doc): State {
     return doc as State
   }
 </script>

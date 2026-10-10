@@ -23,7 +23,7 @@
   export let states: State[] = []
   export let transitions: Transition[] = []
 
-  function handleSelect (id: Ref<State | Transition>): void {
+  function handleSelect(id: Ref<State | Transition>): void {
     const loc = getCurrentLocation()
     loc.path[5] = process.component.TransitionEditor
     loc.path[6] = id

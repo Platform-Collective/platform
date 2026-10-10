@@ -40,7 +40,7 @@
     items = result
   })
 
-  async function click (evt: MouseEvent): Promise<void> {
+  async function click(evt: MouseEvent): Promise<void> {
     pressed = true
     showPopup(
       TagsEditorPopup,
@@ -58,7 +58,7 @@
     )
   }
 
-  async function removeTag (tag: TagReference): Promise<void> {
+  async function removeTag(tag: TagReference): Promise<void> {
     if (tag !== undefined) await client.remove(tag)
   }
 

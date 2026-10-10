@@ -47,11 +47,11 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return review === undefined && assignee === undefined
   }
 
-  async function createOpinion () {
+  async function createOpinion() {
     const sequence = await client.findOne(core.class.Sequence, { attachedTo: recruit.class.Review })
     if (sequence === undefined) {
       throw new Error('sequence object not found')

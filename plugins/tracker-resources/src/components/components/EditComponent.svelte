@@ -32,7 +32,7 @@
   $: descriptionKey = client.getHierarchy().getAttribute(tracker.class.Component, 'description')
   let descriptionBox: AttachmentStyleBoxEditor
 
-  function hashFromId (id: string): number {
+  function hashFromId(id: string): number {
     let h = 0
     for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0
     return Math.abs(h)
@@ -42,7 +42,7 @@
   $: swatchCss = getPlatformColor(effectiveColor, $themeStore.dark)
   $: selectedName = getPlatformColors($themeStore.dark)[effectiveColor]?.name
 
-  function pickColor (ev: MouseEvent): void {
+  function pickColor(ev: MouseEvent): void {
     showPopup(
       ColorsPopup,
       { colors: getPlatformColors($themeStore.dark), selected: selectedName, columns: 8 },

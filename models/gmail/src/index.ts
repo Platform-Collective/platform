@@ -60,43 +60,43 @@ export class TMessage extends TAttachedDoc implements Message {
   declare attachedToClass: Ref<Class<Channel>>
 
   @Prop(TypeString(), gmail.string.MessageID)
-    messageId!: string
+  messageId!: string
 
   @Prop(TypeString(), gmail.string.ReplyTo)
   @Index(IndexKind.FullText)
-    replyTo?: string
+  replyTo?: string
 
   @Prop(TypeString(), gmail.string.From)
   @Index(IndexKind.FullText)
-    from!: string
+  from!: string
 
   @Prop(TypeString(), gmail.string.To)
   @Index(IndexKind.FullText)
-    to!: string
+  to!: string
 
   @Prop(TypeString(), gmail.string.Subject)
   @Index(IndexKind.FullText)
-    subject!: string
+  subject!: string
 
   @Prop(TypeString(), gmail.string.Message)
   @Index(IndexKind.FullText)
-    content!: string
+  content!: string
 
   @Prop(TypeString(), gmail.string.Message)
   @Index(IndexKind.FullText)
-    textContent!: string
+  textContent!: string
 
   @Prop(ArrOf(TypeString()), gmail.string.Copy)
-    copy?: string[]
+  copy?: string[]
 
   @Prop(TypeBoolean(), gmail.string.Incoming)
-    incoming!: boolean
+  incoming!: boolean
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-    attachments?: number
+  attachments?: number
 
   @Prop(TypeTimestamp(), core.string.Modified)
-    sendOn!: Timestamp
+  sendOn!: Timestamp
 }
 
 @Model(gmail.class.NewMessage, core.class.Doc, DOMAIN_GMAIL)
@@ -104,37 +104,37 @@ export class TMessage extends TAttachedDoc implements Message {
 export class TNewMessage extends TDoc implements NewMessage {
   @Prop(TypeString(), gmail.string.ReplyTo)
   @Index(IndexKind.FullText)
-    replyTo?: string
+  replyTo?: string
 
   @Prop(TypeString(), gmail.string.To)
   @Index(IndexKind.FullText)
-    to!: string
+  to!: string
 
   @Prop(TypeString(), gmail.string.Subject)
   @Index(IndexKind.FullText)
-    subject!: string
+  subject!: string
 
   @Prop(TypeString(), gmail.string.Message)
   @Index(IndexKind.FullText)
-    content!: string
+  content!: string
 
   @Prop(TypeString(), gmail.string.Status)
-    status!: 'new' | 'sent' | 'error'
+  status!: 'new' | 'sent' | 'error'
 
   @Prop(TypeString(), gmail.string.Status)
-    error?: string
+  error?: string
 
   @Prop(ArrOf(TypeString()), gmail.string.Copy)
-    copy?: string[]
+  copy?: string[]
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-    attachments?: number
+  attachments?: number
 }
 
 @Model(gmail.class.SharedMessages, core.class.AttachedDoc, DOMAIN_GMAIL)
 export class TSharedMessages extends TAttachedDoc implements SharedMessages {
   @Prop(ArrOf(TypeSharedMessage()), gmail.string.Messages)
-    messages!: SharedMessage[]
+  messages!: SharedMessage[]
 }
 
 export function createModel (builder: Builder): void {

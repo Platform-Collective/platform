@@ -14,7 +14,7 @@
 //
 
 import attachment, { type Attachment } from '@hcengineering/attachment'
-import { type Class, type Client, type Ref, SortingOrder } from '@hcengineering/core'
+import { type Client, SortingOrder } from '@hcengineering/core'
 import drive, { type File as DriveFile, type FileVersion } from '@hcengineering/drive'
 
 import { type LargestFileRow, type LargestFileRowRef, mergeBySizeDesc, topBySize } from './largestFilesLogic'
@@ -82,7 +82,7 @@ export async function fetchLargestFiles (client: Client, limit: number): Promise
       {},
       {
         limit,
-        lookup: { file: drive.class.FileVersion as unknown as Ref<Class<FileVersion>> }
+        lookup: { file: drive.class.FileVersion }
       }
     )
   ])

@@ -28,7 +28,7 @@
 
   $: href = locationToUrl(loc)
 
-  function createLocation (
+  function createLocation(
     loc: Location,
     app: string | undefined,
     space: string | undefined,
@@ -66,7 +66,7 @@
     return location
   }
 
-  function clickHandler (e: MouseEvent): void {
+  function clickHandler(e: MouseEvent): void {
     if (e.metaKey || e.ctrlKey) return
     e.preventDefault()
     setFilters([])

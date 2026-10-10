@@ -68,7 +68,7 @@ class RestTxClient implements Client {
     return Promise.resolve()
   }
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -80,7 +80,7 @@ class RestTxClient implements Client {
     return toFindResult(result, data.total)
   }
 
-  async findAllPage<T extends Doc>(
+  async findAllPage<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options: FindPageOptions<T>
@@ -92,7 +92,7 @@ class RestTxClient implements Client {
     }
   }
 
-  async * iterateAll<T extends Doc>(
+  async *iterateAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: IterateOptions<T>
@@ -111,7 +111,7 @@ class RestTxClient implements Client {
     } while (cursor !== undefined)
   }
 
-  async domainRequest<T>(
+  async domainRequest<T> (
     domain: OperationDomain,
     params: DomainParams,
     options?: DomainRequestOptions
@@ -119,7 +119,7 @@ class RestTxClient implements Client {
     return await this.client.domainRequest(domain, params, options)
   }
 
-  async findOne<T extends Doc>(
+  async findOne<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>

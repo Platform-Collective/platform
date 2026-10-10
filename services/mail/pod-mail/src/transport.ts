@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 import nodemailer, { type Transporter } from 'nodemailer'
-import * as aws from '@aws-sdk/client-ses'
+import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2'
 
 import { type Config, type SmtpConfig, type SesConfig, getTlsSettings } from './config'
 
@@ -39,7 +39,7 @@ function smtp (config: SmtpConfig): Transporter {
 
 function ses (config: SesConfig): Transporter {
   console.log('Using AWS SES config')
-  const ses = new aws.SES({
+  const sesClient = new SESv2Client({
     region: config.Region,
     credentials: {
       accessKeyId: config.AccessKey,
@@ -48,7 +48,7 @@ function ses (config: SesConfig): Transporter {
   })
 
   return nodemailer.createTransport({
-    SES: { ses, aws }
+    SES: { sesClient, SendEmailCommand }
   })
 }
 

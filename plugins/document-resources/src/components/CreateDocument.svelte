@@ -36,7 +36,7 @@
   import { createEmptyDocument } from '../utils'
   import TeamspacePresenter from './teamspace/TeamspacePresenter.svelte'
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return object.title === ''
   }
 
@@ -58,7 +58,7 @@
   $: if (_space !== space) _parent = undefined
   $: canSave = getTitle(object.title).length > 0 && _space !== undefined
 
-  function chooseIcon (): void {
+  function chooseIcon(): void {
     const { icon, color } = object
     const icons = [document.icon.Document, document.icon.Teamspace]
     const update = (result: any): void => {
@@ -70,11 +70,11 @@
     showPopup(IconPicker, { icon, color, icons }, 'top', update, update)
   }
 
-  function getTitle (value: string): string {
+  function getTitle(value: string): string {
     return value.trim()
   }
 
-  async function create (): Promise<void> {
+  async function create(): Promise<void> {
     await createEmptyDocument(client, id, _space, _parent, object)
     Analytics.handleEvent(DocumentEvents.DocumentCreated, { id, parent: _parent })
     dispatch('close', id)

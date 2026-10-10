@@ -48,7 +48,7 @@
       use:tooltip={{ label: getEmbeddedLabel(category.title) }}
     >
       <div class="icon category-icon">
-        <Icon icon={documents.icon.Document} size={'small'} />
+        <Icon icon={documents.icon.Document} size="small" />
       </div>
       <span class="label fs-bold whitespace-nowrap">{category.code}</span>
     </div>

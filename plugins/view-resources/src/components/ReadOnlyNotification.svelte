@@ -8,7 +8,7 @@
   export let onRemove: () => void
   export let notification: Notification
 
-  function joinWorkspace (e: MouseEvent): void {
+  function joinWorkspace(e: MouseEvent): void {
     navigate({ path: ['login', 'join'], query: { workspace: getCurrentWorkspaceUrl() } })
   }
 </script>

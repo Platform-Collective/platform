@@ -24,7 +24,7 @@
   export let shouldShowAvatar: boolean = true
   export let inline: boolean = false
 
-  function handleIssueEditorOpened () {
+  function handleIssueEditorOpened() {
     if (disabled) {
       return
     }

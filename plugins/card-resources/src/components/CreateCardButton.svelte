@@ -28,7 +28,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  async function createCard (): Promise<void> {
+  async function createCard(): Promise<void> {
     if (_class === undefined) return
     if (isBaseTypeWithSubtypes(hierarchy, _class as Ref<MasterTag>)) {
       showPopup(

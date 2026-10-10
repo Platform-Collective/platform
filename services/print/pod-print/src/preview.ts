@@ -17,7 +17,7 @@ export function createPreviewQueue (maxPending = 4): {
   let active = false
 
   return {
-    run<T>(key: string, operation: () => Promise<T>): Promise<T> {
+    run<T> (key: string, operation: () => Promise<T>): Promise<T> {
       const existing = results.get(key)
       if (existing !== undefined) return existing as Promise<T>
       if (active && pending.length >= maxPending) {

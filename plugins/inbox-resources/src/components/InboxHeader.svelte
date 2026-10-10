@@ -37,7 +37,7 @@
   let clearing = false
   let reading = false
 
-  async function clearInbox (): Promise<void> {
+  async function clearInbox(): Promise<void> {
     if (clearing || reading) return
     try {
       clearing = true
@@ -53,7 +53,7 @@
     }
   }
 
-  async function readInbox (): Promise<void> {
+  async function readInbox(): Promise<void> {
     if (reading || clearing) return
     try {
       reading = true
@@ -69,11 +69,11 @@
     }
   }
 
-  function click (e: MouseEvent): void {
+  function click(e: MouseEvent): void {
     showPopup(InboxViewSettings, {}, eventToHTMLElement(e))
   }
 
-  async function onSelect (id?: 'clear' | 'read'): Promise<void> {
+  async function onSelect(id?: 'clear' | 'read'): Promise<void> {
     if (id == null) return
 
     if (id === 'clear') {

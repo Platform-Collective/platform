@@ -44,7 +44,7 @@
     })
   }
 
-  async function updateSelected (e: Editor, { isActive }: TextEditorAction): Promise<void> {
+  async function updateSelected(e: Editor, { isActive }: TextEditorAction): Promise<void> {
     if (isActive === undefined) {
       selected = false
       return
@@ -59,7 +59,7 @@
     }
   }
 
-  async function handleClick (event: MouseEvent): Promise<void> {
+  async function handleClick(event: MouseEvent): Promise<void> {
     if (blockMouseEvents) {
       event.preventDefault()
       event.stopPropagation()

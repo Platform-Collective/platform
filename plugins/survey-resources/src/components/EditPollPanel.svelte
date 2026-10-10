@@ -42,7 +42,7 @@
     patch: Partial<Poll>
   }
 
-  function combinedPatch (patches: Patch[]): Partial<Poll> {
+  function combinedPatch(patches: Patch[]): Partial<Poll> {
     return patches.reduce((r, c) => Object.assign(r, c.patch), {})
   }
 
@@ -60,7 +60,7 @@
 
   $: void queryObject(_id)
 
-  async function queryObject (_id: Ref<Poll>): Promise<void> {
+  async function queryObject(_id: Ref<Poll>): Promise<void> {
     await flush()
     objectState = undefined
     patches = []
@@ -69,7 +69,7 @@
     })
   }
 
-  async function submit (): Promise<void> {
+  async function submit(): Promise<void> {
     if (object === undefined) {
       return
     }
@@ -90,14 +90,14 @@
     await getClient().updateDoc(object._class, object.space, object._id, { isCompleted: true })
   }
 
-  function handleChange (patch: Partial<Poll>): void {
+  function handleChange(patch: Partial<Poll>): void {
     patches = [...patches, { id: patchCounter++, patch }]
     throttle.call(() => {
       void flush()
     })
   }
 
-  async function flush (): Promise<void> {
+  async function flush(): Promise<void> {
     if (!object?._id || patches.length < 1) return
 
     const patchesToApply = patches.slice()

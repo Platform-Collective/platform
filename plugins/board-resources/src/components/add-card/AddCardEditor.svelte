@@ -7,7 +7,7 @@
 
   let value = ''
 
-  async function addCard (event: CustomEvent) {
+  async function addCard(event: CustomEvent) {
     const title = event.detail
     if (!title || title.trim().length === 0) {
       return

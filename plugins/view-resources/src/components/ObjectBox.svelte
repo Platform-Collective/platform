@@ -71,7 +71,7 @@
 
   const client = getClient()
 
-  async function updateSelected (
+  async function updateSelected(
     _value: Ref<Doc> | null | undefined,
     docQuery: DocumentQuery<Doc> | undefined = undefined
   ): Promise<void> {

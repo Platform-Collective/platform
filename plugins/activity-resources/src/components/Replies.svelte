@@ -52,7 +52,7 @@
   $: personByRefStore = getPersonByPersonRefStore(Array.from(persons))
   $: updateQuery(persons, $personByRefStore)
 
-  function hasNewReplies (
+  function hasNewReplies(
     message: ActivityMessage,
     notifyContexts?: Map<Ref<Doc>, DocNotifyContext>,
     inboxNotificationsByContext?: Map<Ref<DocNotifyContext>, WithLookup<InboxNotification>[]>
@@ -74,7 +74,7 @@
       .some(({ isViewed }) => !isViewed)
   }
 
-  function updateQuery (personIds: Set<Ref<Person>>, personById: IdMap<Person>): void {
+  function updateQuery(personIds: Set<Ref<Person>>, personById: IdMap<Person>): void {
     displayPersons = Array.from(personIds)
       .map((id) => personById.get(id))
       .filter(notEmpty)
@@ -83,7 +83,7 @@
 
   const replyProvider = client.getModel().findAllSync(activity.class.ReplyProvider, {})[0]
 
-  async function handleReply (e: MouseEvent): Promise<void> {
+  async function handleReply(e: MouseEvent): Promise<void> {
     e.stopPropagation()
     e.preventDefault()
 

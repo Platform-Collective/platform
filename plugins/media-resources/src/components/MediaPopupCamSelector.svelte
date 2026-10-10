@@ -33,7 +33,7 @@
   $: access = $camAccess.state
   $: devices = mediaInfo.devices.filter((device) => device.kind === 'videoinput')
 
-  async function handleSelectCam (device: MediaDeviceInfo | null): Promise<void> {
+  async function handleSelectCam(device: MediaDeviceInfo | null): Promise<void> {
     if (device == null || mediaInfo === undefined) return
     if (mediaInfo.activeCamera?.deviceId === device?.deviceId) return
     const deviceId = device?.deviceId

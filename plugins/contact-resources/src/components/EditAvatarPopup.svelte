@@ -28,7 +28,7 @@
   const CropperP = getResource(imageCropper.component.Cropper)
   let cropper: any
 
-  function onSelect (e: any) {
+  function onSelect(e: any) {
     const newFile = e.target?.files[0] as File | undefined
     if (newFile === undefined || !targetMimes.includes(newFile.type)) {
       return
@@ -38,17 +38,17 @@
     e.target.value = null
   }
 
-  async function onCrop () {
+  async function onCrop() {
     const res = await cropper.crop()
 
     dispatch('close', res)
   }
 
-  async function remove () {
+  async function remove() {
     dispatch('close', null)
   }
 
-  function selectAnother () {
+  function selectAnother() {
     inputRef.click()
   }
 </script>

@@ -65,18 +65,18 @@ export class TBitrixSyncDoc extends TDoc implements BitrixSyncDoc {
   @Prop(TypeString(), getEmbeddedLabel('BitrixId'))
   @ReadOnly()
   @Hidden()
-    bitrixId!: string
+  bitrixId!: string
 }
 
 @Model(bitrix.class.EntityMapping, core.class.Doc, DOMAIN_BITRIX)
 export class TBitrixEntityMapping extends TDoc implements BitrixEntityMapping {
   @Prop(TypeRef(core.class.Attribute), core.string.ClassPropertyLabel)
-    ofClass!: Ref<Class<Doc>>
+  ofClass!: Ref<Class<Doc>>
 
   type!: string
 
   @Prop(Collection(bitrix.class.FieldMapping), bitrix.string.FieldMapping)
-    fields!: number
+  fields!: number
 
   bitrixFields!: Fields
   comments!: boolean
@@ -85,16 +85,16 @@ export class TBitrixEntityMapping extends TDoc implements BitrixEntityMapping {
 
   @Prop(ArrOf(TypeRef(core.class.Mixin)), core.string.Class)
   // If specified, will include this mixins in any case.
-    mixins!: Ref<CoreMixin<Doc>>[]
+  mixins!: Ref<CoreMixin<Doc>>[]
 }
 
 @Model(bitrix.class.FieldMapping, core.class.Doc, DOMAIN_BITRIX)
 export class TBitrixFieldMapping extends TAttachedDoc implements BitrixFieldMapping {
   @Prop(TypeRef(core.class.Attribute), core.string.ClassPropertyLabel)
-    ofClass!: Ref<Class<Doc>>
+  ofClass!: Ref<Class<Doc>>
 
   @Prop(TypeString(), core.string.ClassPropertyLabel)
-    attributeName!: Ref<AnyAttribute>
+  attributeName!: Ref<AnyAttribute>
 
   bitrixTitle!: string
   bitrixType!: string

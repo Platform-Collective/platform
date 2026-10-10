@@ -55,7 +55,7 @@
     }
   }
 
-  function setValue (val: number | undefined, maxValue: number | undefined, minValue: number | undefined): void {
+  function setValue(val: number | undefined, maxValue: number | undefined, minValue: number | undefined): void {
     if (typeof val !== 'number' || Number.isNaN(val)) {
       dispatch('change')
       return
@@ -73,7 +73,7 @@
     phTranslate = res
   })
 
-  function computeSize (t: HTMLInputElement | EventTarget | null) {
+  function computeSize(t: HTMLInputElement | EventTarget | null) {
     if (t == null) {
       return
     }
@@ -103,10 +103,10 @@
     computeSize(input)
   })
 
-  export function focusInput () {
+  export function focusInput() {
     input?.focus()
   }
-  export function selectInput () {
+  export function selectInput() {
     input?.select()
   }
 
@@ -126,7 +126,7 @@
     input.addEventListener('focus', updateFocus, { once: true })
   }
 
-  export function focus (): void {
+  export function focus(): void {
     input.focus()
   }
 </script>

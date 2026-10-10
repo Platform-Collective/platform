@@ -49,7 +49,7 @@
 
   $: uniqueObjects = deduplicate(objects)
 
-  function deduplicate (list: Doc[] | undefined): Doc[] {
+  function deduplicate(list: Doc[] | undefined): Doc[] {
     if (!list) return []
     const seen = new Set<string>()
     return list.filter((item) => {
@@ -64,7 +64,7 @@
 
   $: viewlet = getViewlet(_class)
 
-  function getViewlet (_class: Ref<Class<Doc>>): Viewlet | undefined {
+  function getViewlet(_class: Ref<Class<Doc>>): Viewlet | undefined {
     let clazz: Ref<Class<Doc>> | undefined = _class
     while (true) {
       const res = client.getModel().findAllSync(view.class.Viewlet, { attachTo: clazz })
@@ -91,7 +91,7 @@
     }
   }
 
-  function onRow (object: Doc): void {
+  function onRow(object: Doc): void {
     dispatch('row-focus', object)
   }
 
@@ -117,7 +117,7 @@
     return { ...attribute.props, space: object.space, ...readonlyParams }
   }
 
-  function getValue (attribute: AttributeModel, object: Doc): any {
+  function getValue(attribute: AttributeModel, object: Doc): any {
     if (attribute.castRequest) {
       return getObjectValue(
         attribute.key.substring(attribute.castRequest.length + 1),
@@ -127,11 +127,11 @@
     return getObjectValue(attribute.key, object)
   }
 
-  function onChange (value: any, doc: Doc, key: string, attribute: AnyAttribute) {
+  function onChange(value: any, doc: Doc, key: string, attribute: AnyAttribute) {
     updateAttribute(client, doc, _class, { key, attr: attribute }, value)
   }
 
-  function getOnChange (doc: Doc, attribute: AttributeModel) {
+  function getOnChange(doc: Doc, attribute: AttributeModel) {
     const attr = attribute.attribute
     if (attr === undefined) return
     if (attribute.collectionAttr) return
@@ -147,7 +147,7 @@
   let model: AttributeModel[] | undefined
   let modelOptions: BuildModelOptions | undefined
 
-  const updateModelOptions = reduceCalls(async function updateModelOptions (
+  const updateModelOptions = reduceCalls(async function updateModelOptions(
     client: TxOperations,
     _class: Ref<Class<Doc>>,
     keys: Array<string | BuildModelKey>
@@ -160,14 +160,14 @@
   })
   $: void updateModelOptions(client, _class, config)
 
-  async function build (modelOptions: BuildModelOptions): Promise<void> {
+  async function build(modelOptions: BuildModelOptions): Promise<void> {
     isBuildingModel = true
     const res = await buildModel(modelOptions)
     model = res
     isBuildingModel = false
   }
 
-  function contextHandler (object: Doc, row: number): (ev: MouseEvent) => void {
+  function contextHandler(object: Doc, row: number): (ev: MouseEvent) => void {
     return (ev) => {
       if (!readonly) {
         void showContextMenu(ev, object, row)
@@ -181,7 +181,7 @@
     permissionsStore = await getResource(contact.store.Permissions)
   })
 
-  function canChangeAttr (
+  function canChangeAttr(
     object: Doc,
     attr: AnyAttribute | undefined,
     permissionsStore: PermissionsStore | undefined
@@ -191,7 +191,7 @@
     return canChangeAttribute(attr, object.space as Ref<TypedSpace>, permissionsStore, object._class)
   }
 
-  async function canEdit (object: Doc): Promise<boolean> {
+  async function canEdit(object: Doc): Promise<boolean> {
     if (client.getHierarchy().isDerived(object._class, core.class.Space)) {
       return await canEditSpace(object)
     }

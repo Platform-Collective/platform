@@ -45,13 +45,13 @@
 
   let selectedTimeReportDay = getTimeReportDayType(data.date)
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return true
   }
 
   const client = getClient()
 
-  async function create (): Promise<void> {
+  async function create(): Promise<void> {
     if (value === undefined) {
       if (space && issueId) {
         await client.addCollection(

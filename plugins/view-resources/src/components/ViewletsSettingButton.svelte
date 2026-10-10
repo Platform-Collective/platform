@@ -39,7 +39,7 @@
   let btn: HTMLButtonElement
   let pressed: boolean = false
 
-  function clickHandler (event: MouseEvent) {
+  function clickHandler(event: MouseEvent) {
     pressed = true
     closeTooltip()
     showPopup(ViewletSetting, { viewlet }, btn, () => {

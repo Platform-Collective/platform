@@ -31,7 +31,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function nameChange () {
+  function nameChange() {
     client.updateDoc(object._class, object.space, object._id, { name: object.name })
   }
 

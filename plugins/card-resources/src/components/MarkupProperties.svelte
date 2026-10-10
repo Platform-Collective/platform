@@ -35,7 +35,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function updateKeys (_class: Ref<Class<Doc>>, to: Ref<Class<Doc>> | undefined): void {
+  function updateKeys(_class: Ref<Class<Doc>>, to: Ref<Class<Doc>> | undefined): void {
     const filtredKeys = [...hierarchy.getAllAttributes(_class, to).entries()]
       .filter(([key, value]) => value.hidden !== true && value.type._class === core.class.TypeMarkup)
       .map(([key, attr]) => ({ key, attr }))
@@ -51,12 +51,12 @@
   $: to = tag?.extends
   $: updateKeys(_class, to)
 
-  function getValue (doc: Card, key: string): string {
+  function getValue(doc: Card, key: string): string {
     const target = tag !== undefined ? hierarchy.as(doc, tag._id) : doc
     return (target as any)[key]
   }
 
-  function onChange (value: any, attr: KeyedAttribute): void {
+  function onChange(value: any, attr: KeyedAttribute): void {
     dispatch('update', { key: attr, value })
 
     void updateAttribute(client, doc, doc._class, attr, value, false, {
@@ -64,7 +64,7 @@
     })
   }
 
-  async function attachFile (file: File): Promise<{ file: Ref<Blob>, type: string } | undefined> {
+  async function attachFile(file: File): Promise<{ file: Ref<Blob>, type: string } | undefined> {
     try {
       const uploadFile = await getResource(attachment.helper.UploadFile)
       const { uuid } = await uploadFile(file)

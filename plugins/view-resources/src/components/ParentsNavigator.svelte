@@ -23,23 +23,23 @@
 
   const client = getClient()
 
-  function hasParent (doc: Doc | AttachedDoc): boolean {
+  function hasParent(doc: Doc | AttachedDoc): boolean {
     return 'parent' in doc && doc.parent != null
   }
 
-  function getParentId (doc: Doc | AttachedDoc): Ref<Doc> {
+  function getParentId(doc: Doc | AttachedDoc): Ref<Doc> {
     return isAttachedDoc(doc) ? doc.attachedTo : (doc as any).parent
   }
 
-  function getParentClass (doc: Doc | AttachedDoc): Ref<Class<Doc>> {
+  function getParentClass(doc: Doc | AttachedDoc): Ref<Class<Doc>> {
     return isAttachedDoc(doc) ? doc.attachedToClass : client.getHierarchy().getParentClass(doc._class)
   }
 
-  function withParent (doc: Doc | AttachedDoc): boolean {
+  function withParent(doc: Doc | AttachedDoc): boolean {
     return isAttachedDoc(doc) || hasParent(doc)
   }
 
-  async function getParents (_id: Ref<Doc>, _class: Ref<Class<Doc>>, showParents: boolean): Promise<readonly Doc[]> {
+  async function getParents(_id: Ref<Doc>, _class: Ref<Class<Doc>>, showParents: boolean): Promise<readonly Doc[]> {
     if (!showParents) {
       return []
     }

@@ -46,7 +46,7 @@
     }
   ] as const
 
-  async function createRoom (value: TypeIds): Promise<void> {
+  async function createRoom(value: TypeIds): Promise<void> {
     const val = items.find((i) => i.id === value)
     if (val === undefined) return
     const client = getClient()
@@ -85,7 +85,7 @@
     dispatch('close')
   }
 
-  async function createFloor (): Promise<void> {
+  async function createFloor(): Promise<void> {
     const client = getClient()
     const name = await translate(love.string.Floor, {})
     const _id = await client.createDoc(love.class.Floor, core.space.Workspace, { name })

@@ -84,18 +84,18 @@
     lastEmittedScope = scope
   }
 
-  function emit (): void {
+  function emit(): void {
     const raw = _search.trim()
     const encoded = encodeSearch(raw, scope)
     dispatch('change', { raw, encoded })
   }
 
-  function restart (): void {
+  function restart(): void {
     clearTimeout(timer)
     timer = setTimeout(emit, delay)
   }
 
-  function clearSearch (): void {
+  function clearSearch(): void {
     _search = ''
     clearTimeout(timer)
     emit()

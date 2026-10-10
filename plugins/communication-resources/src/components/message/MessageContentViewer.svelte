@@ -65,7 +65,7 @@
     }
   }
 
-  function getMaxSize (maxHeight: string): number {
+  function getMaxSize(maxHeight: string): number {
     const remValue = parseFloat(maxHeight.replace('rem', ''))
     if (isNaN(remValue) || remValue <= 0) {
       return 480 // 30rem * 16px

@@ -23,7 +23,7 @@
 
   let value: string | undefined = parseIcon(icon)
 
-  function parseIcon (icon: number | number[] | Ref<Blob>): string | undefined {
+  function parseIcon(icon: number | number[] | Ref<Blob>): string | undefined {
     if (typeof icon === 'object' && '__ref' in icon) {
       return undefined
     }
@@ -33,7 +33,7 @@
     return undefined
   }
 
-  function asRef (value: number | number[] | Ref<Blob>): Ref<Blob> {
+  function asRef(value: number | number[] | Ref<Blob>): Ref<Blob> {
     return value as Ref<Blob>
   }
 

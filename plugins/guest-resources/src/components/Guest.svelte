@@ -49,7 +49,7 @@
 
   const client = getClient()
 
-  async function load (): Promise<boolean> {
+  async function load(): Promise<boolean> {
     const token = getMetadata(presentation.metadata.Token)
     if (token == null) return false
     const { extra } = decodeTokenPayload(token)
@@ -73,7 +73,7 @@
     .getModel()
     .findAllSync<Application>(workbench.class.Application, { hidden: false, _id: { $nin: excludedApps } })
 
-  async function resolveShortLink (loc: Location): Promise<ResolvedLocation | undefined> {
+  async function resolveShortLink(loc: Location): Promise<ResolvedLocation | undefined> {
     if (loc.path[2] != null && loc.path[2].trim().length > 0) {
       const app = apps.find((p) => p.alias === loc.path[2])
       if (app?.locationResolver) {
@@ -83,7 +83,7 @@
     }
   }
 
-  function mergeLoc (loc: Location, resolved: ResolvedLocation): Location {
+  function mergeLoc(loc: Location, resolved: ResolvedLocation): Location {
     const resolvedApp = resolved.loc.path[2]
     const resolvedSpace = resolved.loc.path[3]
     const resolvedSpecial = resolved.loc.path[4]
@@ -119,7 +119,7 @@
   let navigatorModel: NavigatorModel | undefined
   let currentView: ViewConfiguration | undefined
 
-  function setSpaceSpecial (spaceSpecial: string | undefined): void {
+  function setSpaceSpecial(spaceSpecial: string | undefined): void {
     if (currentSpecial !== undefined && spaceSpecial === currentSpecial) return
     if (spaceSpecial === undefined) return
     specialComponent = getSpecialComponent(spaceSpecial)
@@ -128,7 +128,7 @@
     }
   }
 
-  function getSpecialComponent (id: string): SpecialNavModel | undefined {
+  function getSpecialComponent(id: string): SpecialNavModel | undefined {
     const sp = navigatorModel?.specials?.find((x) => x.id === id)
     if (sp !== undefined) {
       return sp
@@ -141,7 +141,7 @@
     }
   }
 
-  async function syncLoc (loc: Location): Promise<void> {
+  async function syncLoc(loc: Location): Promise<void> {
     if (loc.path.length > 3 && getSpecialComponent(loc.path[3]) === undefined) {
       // resolve short links
       const resolvedLoc = await resolveShortLink(loc)
@@ -181,7 +181,7 @@
 
   const linkProviders = client.getModel().findAllSync(view.mixin.LinkIdProvider, {})
 
-  async function setOpenPanelFocus (fragment: string): Promise<void> {
+  async function setOpenPanelFocus(fragment: string): Promise<void> {
     const props = decodeURIComponent(fragment).split('|')
 
     if (props.length >= 3) {
@@ -213,12 +213,12 @@
     }
   }
 
-  async function doSyncLoc (loc: Location): Promise<void> {
+  async function doSyncLoc(loc: Location): Promise<void> {
     await syncLoc(loc)
     await updateWindowTitle(loc)
   }
 
-  async function updateSpace (spaceId?: Ref<Space>): Promise<void> {
+  async function updateSpace(spaceId?: Ref<Space>): Promise<void> {
     if (spaceId === currentSpace) return
     if (spaceId === undefined) return
     const space = await client.findOne<Space>(core.class.Space, { _id: spaceId })
@@ -229,7 +229,7 @@
     currentView = view.view
   }
 
-  async function updateWindowTitle (loc: Location): Promise<void> {
+  async function updateWindowTitle(loc: Location): Promise<void> {
     const ws = loc.path[1]
     const docTitle = await getWindowTitle(loc)
     if (docTitle !== undefined && docTitle !== '') {
@@ -240,7 +240,7 @@
     }
   }
 
-  async function getWindowTitle (loc: Location): Promise<string | undefined> {
+  async function getWindowTitle(loc: Location): Promise<string | undefined> {
     if (loc.fragment == null) return
     const hierarchy = client.getHierarchy()
     const [, id, _class] = decodeURIComponent(loc.fragment).split('|')

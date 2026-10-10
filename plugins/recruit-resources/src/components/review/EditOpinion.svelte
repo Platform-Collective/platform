@@ -37,11 +37,11 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return true
   }
 
-  async function editOpinion () {
+  async function editOpinion() {
     const ops: DocumentUpdate<Opinion> = {}
     if (item.value !== value) {
       ops.value = value

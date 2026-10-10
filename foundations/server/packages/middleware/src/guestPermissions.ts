@@ -63,9 +63,10 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
         const allPermissionIds = new Set<Ref<Permission>>()
         for (const group of docs as any[]) {
           if (group.enabled === false) continue
-          const role = ((group.role as AccountRole | undefined) ??
+          const role =
+            (group.role as AccountRole | undefined) ??
             (Array.isArray(group.roles) && group.roles.length > 0 ? (group.roles[0] as AccountRole) : undefined) ??
-            AccountRole.Guest) as AccountRole
+            AccountRole.Guest
           const permissions = (group.permissions ?? []) as Ref<Permission>[]
           const disabled = new Set<Ref<Permission>>((group.disabledPermissions ?? []) as Ref<Permission>[])
           const current = rolePermissions.get(role) ?? new Set<Ref<Permission>>()
@@ -78,11 +79,9 @@ export class GuestPermissionsMiddleware extends BaseMiddleware implements Middle
         }
         const classPermissions =
           allPermissionIds.size > 0
-            ? await this.findAll(
-              ctx,
-              core.class.ClassPermission as Ref<Class<Doc>>,
-              { _id: { $in: Array.from(allPermissionIds) } } as any
-            )
+            ? await this.findAll(ctx, core.class.ClassPermission, {
+                _id: { $in: Array.from(allPermissionIds) as Array<Ref<ClassPermission>> }
+              })
             : []
         const permissionToClass = new Map<Ref<Permission>, Ref<Class<Doc>>>(
           classPermissions

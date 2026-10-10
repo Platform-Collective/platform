@@ -71,7 +71,7 @@
     }
   })
 
-  function handleDragStart (event: MouseEvent): void {
+  function handleDragStart(event: MouseEvent): void {
     dragStartX = event.clientX
     dragStartY = event.clientY
     dragOffsetX = event.clientX - posX
@@ -81,7 +81,7 @@
     window.addEventListener('mouseup', handleDragEnd)
   }
 
-  function handleDragEnd (): void {
+  function handleDragEnd(): void {
     window.removeEventListener('mousemove', handleDrag)
     window.removeEventListener('mouseup', handleDragEnd)
 
@@ -93,7 +93,7 @@
     dragging = false
   }
 
-  function handleDrag (event: MouseEvent): void {
+  function handleDrag(event: MouseEvent): void {
     if (!dragging) {
       if (Math.abs(event.clientX - dragStartX) < 5 && Math.abs(event.clientY - dragStartY) < 5) {
         return

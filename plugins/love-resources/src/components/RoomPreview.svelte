@@ -37,7 +37,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function prepareInfo (info: ParticipantInfo[]): ParticipantInfo[] {
+  function prepareInfo(info: ParticipantInfo[]): ParticipantInfo[] {
     const result: ParticipantInfo[] = []
     const posMap = new Set<string>()
 
@@ -89,7 +89,7 @@
 
   let personPopupVisible: Ref<Person> | undefined = undefined
 
-  async function getPerson (info: Ref<Person> | undefined): Promise<Person | undefined> {
+  async function getPerson(info: Ref<Person> | undefined): Promise<Person | undefined> {
     if (info === undefined) {
       return
     }
@@ -97,20 +97,20 @@
     return (await getPersonByPersonRef(info)) ?? undefined
   }
 
-  function getPersonInfo (y: number, x: number, info: ParticipantInfo[]): Omit<ParticipantInfo, 'meeting'> | undefined {
+  function getPersonInfo(y: number, x: number, info: ParticipantInfo[]): Omit<ParticipantInfo, 'meeting'> | undefined {
     return info.find((p) => p.x === x && p.y === y)
   }
 
-  function mouseEnter (): void {
+  function mouseEnter(): void {
     hovered = true
     dispatch('hover', { name: roomLabel })
   }
 
-  function mouseLeave (): void {
+  function mouseLeave(): void {
     hovered = false
   }
 
-  async function openRoom (x: number, y: number): Promise<void> {
+  async function openRoom(x: number, y: number): Promise<void> {
     const client = getClient()
     const hierarchy = client.getHierarchy()
     if ($lkSessionConnected && $currentRoom?._id === room._id) {
@@ -133,7 +133,7 @@
     }
   }
 
-  async function placeClickHandler (e: MouseEvent, x: number, y: number): Promise<void> {
+  async function placeClickHandler(e: MouseEvent, x: number, y: number): Promise<void> {
     e.stopPropagation()
     e.preventDefault()
 
@@ -170,7 +170,7 @@
 
   $: extraRow = calcExtraRows(hovered, room, _info, $myInfo)
 
-  function calcExtraRows (
+  function calcExtraRows(
     hovered: boolean,
     room: Room,
     info: ParticipantInfo[],
@@ -206,7 +206,7 @@
     return init
   }
 
-  async function handleClick (): Promise<void> {
+  async function handleClick(): Promise<void> {
     await openRoom(0, 0)
   }
 

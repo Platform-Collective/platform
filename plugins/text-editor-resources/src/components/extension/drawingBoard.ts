@@ -102,19 +102,19 @@ export const DrawingBoardExtension = Node.create<DrawingBoardOptions>({
     return {
       showDrawingBoardPopup:
         () =>
-          ({ state }) => {
-            if (state.selection instanceof NodeSelection) {
-              const node = state.selection.node
-              if (node?.type.name === this.name) {
-                const board = this.options.getSavedBoard(node.attrs.id)
-                if (!board.loading) {
-                  showBoardPopup(node.attrs.id, board, this.editor)
-                }
-                return true
+        ({ state }) => {
+          if (state.selection instanceof NodeSelection) {
+            const node = state.selection.node
+            if (node?.type.name === this.name) {
+              const board = this.options.getSavedBoard(node.attrs.id)
+              if (!board.loading) {
+                showBoardPopup(node.attrs.id, board, this.editor)
               }
+              return true
             }
-            return false
           }
+          return false
+        }
     }
   },
 

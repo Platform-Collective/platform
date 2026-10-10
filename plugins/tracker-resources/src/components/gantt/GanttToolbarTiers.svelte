@@ -59,11 +59,11 @@
 
   // Wrapper handlers so template expressions stay assignment-free (Svelte 4
   // does not parse TS casts inside attribute expressions).
-  function onDateInput (e: Event): void {
+  function onDateInput(e: Event): void {
     const v = (e.currentTarget as HTMLInputElement).value
     snap.setDatePickerValue(v)
   }
-  function onDateChange (e: Event): void {
+  function onDateChange(e: Event): void {
     const v = (e.currentTarget as HTMLInputElement).value
     snap.jumpToDate(v)
   }

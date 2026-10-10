@@ -44,7 +44,7 @@
     canPreview = false
   }
 
-  function showPreview (e: MouseEvent): void {
+  function showPreview(e: MouseEvent): void {
     if (!canPreview) {
       return
     }

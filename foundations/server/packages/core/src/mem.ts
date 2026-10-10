@@ -44,7 +44,7 @@ import type { ServerFindOptions } from './types'
 export class DummyDbAdapter implements DbAdapter {
   on?: ((handler: DbAdapterHandler) => void) | undefined
 
-  async traverse<T extends Doc>(
+  async traverse<T extends Doc> (
     domain: Domain,
     query: DocumentQuery<T>,
     options?: Pick<FindOptions<T>, 'sort' | 'limit' | 'projection'>
@@ -55,7 +55,7 @@ export class DummyDbAdapter implements DbAdapter {
     }
   }
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -114,7 +114,7 @@ export class DummyDbAdapter implements DbAdapter {
     return Promise.resolve('')
   }
 
-  async groupBy<T, P extends Doc>(
+  async groupBy<T, P extends Doc> (
     ctx: MeasureContext,
     domain: Domain,
     field: string,
@@ -123,17 +123,17 @@ export class DummyDbAdapter implements DbAdapter {
     return new Map()
   }
 
-  async rawFindAll<T extends Doc>(domain: Domain, query: DocumentQuery<T>, options?: FindOptions<T>): Promise<T[]> {
+  async rawFindAll<T extends Doc> (domain: Domain, query: DocumentQuery<T>, options?: FindOptions<T>): Promise<T[]> {
     return []
   }
 
-  async rawUpdate<T extends Doc>(
+  async rawUpdate<T extends Doc> (
     domain: Domain,
     query: DocumentQuery<T>,
     operations: DocumentUpdate<T>
   ): Promise<void> {}
 
-  async rawDeleteMany<T extends Doc>(domain: Domain, query: DocumentQuery<T>): Promise<void> {}
+  async rawDeleteMany<T extends Doc> (domain: Domain, query: DocumentQuery<T>): Promise<void> {}
 }
 
 class InMemoryAdapter extends DummyDbAdapter implements DbAdapter {
@@ -144,7 +144,7 @@ class InMemoryAdapter extends DummyDbAdapter implements DbAdapter {
     this.modeldb = new ModelDb(hierarchy)
   }
 
-  findAll<T extends Doc>(
+  findAll<T extends Doc> (
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,

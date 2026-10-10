@@ -34,7 +34,7 @@
   export let submit: ((answerData: MultipleChoiceAnswerData) => Promise<void>) | null = null
   export let showDiff: boolean = false
 
-  async function toggleIndex (index: number, on: boolean): Promise<void> {
+  async function toggleIndex(index: number, on: boolean): Promise<void> {
     if (submit === null) {
       return
     }

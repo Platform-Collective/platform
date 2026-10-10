@@ -16,4 +16,4 @@
 export { RestClientAdapter } from './adapter'
 export { createRestClient, connectRest } from './rest'
 export { createRestTxOperations } from './tx'
-export * from './types'
+export type * from './types'

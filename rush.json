@@ -336,11 +336,6 @@
       "reviewCategory": "tools",
       "shouldPublish": true
     },
-    {
-      "packageName": "@hcengineering/ui-test",
-      "projectFolder": "foundations/utils/packages/ui-test",
-      "shouldPublish": false
-    },
 
     /// CORE Modules
 
@@ -2629,6 +2624,11 @@
     {
       "packageName": "@hcengineering/kvs-client",
       "projectFolder": "packages/kvs-client",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/safe-fetch",
+      "projectFolder": "packages/safe-fetch",
       "shouldPublish": false
     },
     {

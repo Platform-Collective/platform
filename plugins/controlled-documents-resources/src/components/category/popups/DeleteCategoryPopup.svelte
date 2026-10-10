@@ -39,7 +39,7 @@
   }
 
   $: void checkDeletePosibility(object)
-  async function checkDeletePosibility (category: DocumentCategory): Promise<void> {
+  async function checkDeletePosibility(category: DocumentCategory): Promise<void> {
     canDelete = await canDeleteDocumentCategory(category)
   }
 </script>

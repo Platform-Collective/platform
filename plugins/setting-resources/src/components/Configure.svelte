@@ -28,7 +28,7 @@
 
   const client = getClient()
 
-  async function change (config: PluginConfiguration, value: boolean): Promise<void> {
+  async function change(config: PluginConfiguration, value: boolean): Promise<void> {
     await client.update(config, {
       enabled: value
     })

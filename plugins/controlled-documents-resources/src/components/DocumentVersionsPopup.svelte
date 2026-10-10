@@ -41,7 +41,7 @@
     }
   }
 
-  function navigateToVersion (doc: ControlledDocument): void {
+  function navigateToVersion(doc: ControlledDocument): void {
     const loc = getDocumentLink(doc)
     navigate(loc)
     dispatch('close')

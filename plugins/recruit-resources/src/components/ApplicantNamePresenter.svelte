@@ -20,7 +20,7 @@
   export let parentName: string | null | undefined = undefined
   export let spaceName: string | null | undefined = undefined
 
-  function getDisplayName (name: string | null | undefined): string {
+  function getDisplayName(name: string | null | undefined): string {
     if (name == null) {
       return ''
     }

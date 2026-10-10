@@ -9,7 +9,7 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  async function setAccess (access: RoomAccess): Promise<void> {
+  async function setAccess(access: RoomAccess): Promise<void> {
     await client.update(room, { access })
     dispatch('close', access)
   }

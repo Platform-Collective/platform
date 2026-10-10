@@ -53,7 +53,7 @@
     closeWidget(love.ids.MeetingWidget)
   }
 
-  function handleClose (): void {
+  function handleClose(): void {
     minimizeSidebar()
   }
 </script>

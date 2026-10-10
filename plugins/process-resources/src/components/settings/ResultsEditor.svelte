@@ -26,7 +26,7 @@
 
   let items: (UserResult | null)[] = result ?? []
 
-  function handleChange (e: CustomEvent<UserResult>, index: number) {
+  function handleChange(e: CustomEvent<UserResult>, index: number) {
     if (e.detail !== undefined) {
       items[index === -1 ? items.length : index] = e.detail
       result = items.filter((r) => r != null)
@@ -34,12 +34,12 @@
     }
   }
 
-  function onAdd (): void {
+  function onAdd(): void {
     items.push(null)
     items = items
   }
 
-  function remove (index: number): void {
+  function remove(index: number): void {
     items.splice(index, 1)
     items = items
     result = items.filter((r) => r != null)

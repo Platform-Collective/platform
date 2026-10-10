@@ -65,7 +65,7 @@
     })
   }
 
-  function handleEditPermissions (evt: Event): void {
+  function handleEditPermissions(evt: Event): void {
     if (role === undefined || descriptor === undefined || readonly) {
       return
     }
@@ -101,7 +101,7 @@
     )
   }
 
-  async function handleDeleteRole (): Promise<void> {
+  async function handleDeleteRole(): Promise<void> {
     showPopup(
       MessageBox,
       {
@@ -115,7 +115,7 @@
     )
   }
 
-  async function performDeleteRole (): Promise<void> {
+  async function performDeleteRole(): Promise<void> {
     if (role === undefined) {
       return
     }

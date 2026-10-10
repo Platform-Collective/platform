@@ -48,11 +48,11 @@
 
   let isCollapsed = false
 
-  export function collapse (): void {
+  export function collapse(): void {
     isCollapsed = true
   }
 
-  export function expand (): void {
+  export function expand(): void {
     isCollapsed = false
   }
 
@@ -61,7 +61,7 @@
   $: canLock = canLockSection(value.space, $permissionsStore)
   $: canUnlock = canUnlockSection(value.space, $permissionsStore)
 
-  async function toggleLock (ev: MouseEvent): Promise<void> {
+  async function toggleLock(ev: MouseEvent): Promise<void> {
     ev.stopPropagation()
     const op = isLocked ? '$pull' : '$push'
     const targets = isLocked

@@ -42,7 +42,7 @@
   $: searchQuery = search === '' ? { space, ...query } : { $search: search, space, ...query }
   $: resultQuery = searchQuery
 
-  function buildQuery (
+  function buildQuery(
     space: Ref<Space>,
     baseQuery: DocumentQuery<Doc> | undefined,
     viewlet: WithLookup<Viewlet> | undefined

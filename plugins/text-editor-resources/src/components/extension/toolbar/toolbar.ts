@@ -545,12 +545,12 @@ function updateCursorFromMouseEvent (view: EditorView, event: MouseEvent): void 
     disableCursor || range === undefined
       ? null
       : resolveCursor({
-        editorState: view.state,
-        state,
-        range,
-        source: CursorSource.Mouse,
-        anchor: anchorElement
-      })
+          editorState: view.state,
+          state,
+          range,
+          source: CursorSource.Mouse,
+          anchor: anchorElement
+        })
 
   if (newCursor?.requireAnchoring === true && anchorElement === undefined) {
     newCursor = null

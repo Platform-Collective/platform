@@ -48,7 +48,7 @@
     }
   )
 
-  async function handler (e: CustomEvent<any>): Promise<void> {
+  async function handler(e: CustomEvent<any>): Promise<void> {
     if (e.detail != null) {
       const currentSet = new Set(selectedObjects)
       const newSet = new Set(Array.isArray(e.detail) ? e.detail : [e.detail])

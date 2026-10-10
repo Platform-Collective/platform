@@ -183,7 +183,7 @@ export async function updateModel (
       for (const op of migrateOperations) {
         const st = platformNow()
         await ctx.with(op[0], {}, async () => {
-          await op[1].upgrade(migrateState, async () => connection as any, mode)
+          await op[1].upgrade(migrateState, async () => connection, mode)
         })
         const tdelta = platformNowDiff(st)
         if (tdelta > 0) {
@@ -400,9 +400,9 @@ async function prepareMigrationClient (
   wsIds: WorkspaceIds,
   queue: PlatformQueueProducer<QueueWorkspaceMessage>
 ): Promise<{
-    migrateClient: MigrateClientImpl
-    migrateState: Map<string, Set<string>>
-  }> {
+  migrateClient: MigrateClientImpl
+  migrateState: Map<string, Set<string>>
+}> {
   const migrateClient = new MigrateClientImpl(
     pipeline,
     hierarchy,

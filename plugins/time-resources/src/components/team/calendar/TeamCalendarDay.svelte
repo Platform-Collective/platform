@@ -43,7 +43,7 @@
     .map((it) => $employeeRefByAccountUuidStore.get(it))
     .filter((it) => it !== undefined)
 
-  function calcHourWidth (events: Event[], totalWidth: number): number[] {
+  function calcHourWidth(events: Event[], totalWidth: number): number[] {
     const hours = new Map<number, number>()
     for (const e of events) {
       const h1 = new Date(e.date).getHours()
@@ -67,7 +67,7 @@
     '1hour': 1,
     '30mins': 2
   }
-  function calcTop (event: Event, prevEvent?: Event): number {
+  function calcTop(event: Event, prevEvent?: Event): number {
     if (prevEvent === undefined) {
       return 0
     }

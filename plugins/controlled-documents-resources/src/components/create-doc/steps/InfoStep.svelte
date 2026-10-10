@@ -128,7 +128,7 @@
     void setInitialCode()
   }
 
-  async function setInitialCode (): Promise<void> {
+  async function setInitialCode(): Promise<void> {
     let newCodeObj: Pick<Document, 'prefix' | 'seqNumber'> | undefined = undefined
 
     if (isTemplate) {
@@ -157,7 +157,7 @@
     }
   }
 
-  function isCodeUnique (code: string): boolean {
+  function isCodeUnique(code: string): boolean {
     return code !== '' && docCodes[code] === undefined
   }
 
@@ -180,11 +180,11 @@
     }
   ]
 
-  function handleSelectedReasonChanged (selected: 'newDoc' | 'custom'): void {
+  function handleSelectedReasonChanged(selected: 'newDoc' | 'custom'): void {
     infoStepUpdated({ ...$infoStep, selectedReason: selected })
   }
 
-  function handleReasonUpdated (value: string): void {
+  function handleReasonUpdated(value: string): void {
     infoStepUpdated({ ...$infoStep, customReason: value })
   }
 

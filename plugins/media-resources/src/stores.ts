@@ -36,8 +36,8 @@ export const state: Readable<MediaState> = derived(sessions, ($sessions) => {
   return { camera, microphone }
 })
 
-export const camAccess = createPermissionStore('camera' as PermissionName)
-export const micAccess = createPermissionStore('microphone' as PermissionName)
+export const camAccess = createPermissionStore('camera')
+export const micAccess = createPermissionStore('microphone')
 
 function createPermissionStore (name: PermissionName): Readable<PermissionStore> {
   return readable<PermissionStore>({ state: 'prompt', ready: Promise.resolve() }, (set) => {

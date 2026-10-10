@@ -15,7 +15,7 @@
     ? getClient().getModel().findAllSync(view.class.Action, { _id: love.action.ToggleMic })?.[0]?.keyBinding
     : ['Alt+D']
 
-  function micSettings (e: MouseEvent): void {
+  function micSettings(e: MouseEvent): void {
     showPopup(MicSettingPopup, {}, eventToHTMLElement(e))
   }
 </script>

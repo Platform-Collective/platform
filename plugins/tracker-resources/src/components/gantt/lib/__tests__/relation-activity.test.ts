@@ -14,7 +14,7 @@ import {
 const ISSUE_CLASS = 'tracker:class:Issue' as Ref<Class<Doc>>
 const RELATION_CLASS = 'tracker:class:IssueRelation' as Ref<Class<Doc>>
 
-function dum (partial: Partial<RelationDum> = {}): RelationDum {
+function dum(partial: Partial<RelationDum> = {}): RelationDum {
   return {
     _id: 'd1' as Ref<Doc>,
     objectId: 'r1' as Ref<IssueRelation>,

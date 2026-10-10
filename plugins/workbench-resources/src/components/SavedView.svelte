@@ -66,7 +66,7 @@
     availableFilteredViews = []
   }
 
-  async function removeAction (filteredView: FilteredView): Promise<Action[]> {
+  async function removeAction(filteredView: FilteredView): Promise<Action[]> {
     return [
       {
         icon: view.icon.Delete,
@@ -78,7 +78,7 @@
     ]
   }
 
-  async function renameAction (object: FilteredView, originalEvent: MouseEvent | undefined): Promise<Action[]> {
+  async function renameAction(object: FilteredView, originalEvent: MouseEvent | undefined): Promise<Action[]> {
     return [
       {
         icon: contact.icon.Edit,
@@ -99,7 +99,7 @@
     ]
   }
 
-  async function switchPublicAction (object: FilteredView, originalEvent: MouseEvent | undefined): Promise<Action[]> {
+  async function switchPublicAction(object: FilteredView, originalEvent: MouseEvent | undefined): Promise<Action[]> {
     return [
       {
         icon: object.sharable ? TodoCheck : TodoUncheck,
@@ -111,7 +111,7 @@
     ]
   }
 
-  async function copyUrlAction (filteredView: FilteredView): Promise<Action[]> {
+  async function copyUrlAction(filteredView: FilteredView): Promise<Action[]> {
     return [
       {
         icon: view.icon.CopyLink,
@@ -134,7 +134,7 @@
     ]
   }
 
-  async function viewAction (filteredView: FilteredView, originalEvent: MouseEvent | undefined): Promise<Action[]> {
+  async function viewAction(filteredView: FilteredView, originalEvent: MouseEvent | undefined): Promise<Action[]> {
     const copyUrl = await copyUrlAction(filteredView)
     const rename = await renameAction(filteredView, originalEvent)
     const setPublic = await switchPublicAction(filteredView, originalEvent)
@@ -147,7 +147,7 @@
     return [...hide, ...copyUrl]
   }
 
-  async function hideAction (object: FilteredView): Promise<Action[]> {
+  async function hideAction(object: FilteredView): Promise<Action[]> {
     return [
       {
         icon: view.icon.Archive,
@@ -161,7 +161,7 @@
 
   let selectedId: Ref<FilteredView> | undefined = undefined
 
-  async function load (fv: FilteredView): Promise<void> {
+  async function load(fv: FilteredView): Promise<void> {
     selectedFilterStore.set(fv)
     navigate({
       path: fv.location.path,
@@ -184,7 +184,7 @@
     dispatch('select', false)
   }
 
-  function checkFilter (
+  function checkFilter(
     fv: FilteredView,
     loc: Location,
     filters: string,
@@ -201,7 +201,7 @@
     return true
   }
 
-  function checkSelected (
+  function checkSelected(
     fs: Filter[],
     loc: Location,
     filteredViews: FilteredView[] | undefined,
@@ -234,7 +234,7 @@
   $: shown = myFilteredViews.length > 0 || availableFilteredViews.length > 0
   $: dispatch('shown', shown)
 
-  async function getActions (availableFilteredViews: FilteredView[]): Promise<Action[]> {
+  async function getActions(availableFilteredViews: FilteredView[]): Promise<Action[]> {
     if (availableFilteredViews.length > 0) {
       const filteredViewsIdMap = toIdMap(availableFilteredViews)
       const pushMeToFV = async (id: Ref<FilteredView>): Promise<void> => {

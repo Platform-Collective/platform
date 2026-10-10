@@ -105,7 +105,7 @@
     applications = _applications
   }
 
-  function showCreateDialog () {
+  function showCreateDialog() {
     showPopup(CreateOrganization, {}, 'top')
   }
   const applicationSorting = (a: Doc, b: Doc) =>
@@ -173,7 +173,7 @@
   let preference: ViewletPreference | undefined
   let viewOptions: ViewOptions | undefined
 
-  function createConfig (
+  function createConfig(
     descr: Viewlet | undefined,
     preference: ViewletPreference | undefined,
     replacedKeys: Map<string, BuildModelKey>

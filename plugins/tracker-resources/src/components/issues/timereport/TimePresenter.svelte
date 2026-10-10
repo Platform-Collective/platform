@@ -33,7 +33,7 @@
 
   $: void getLabel(days, hours, minutes, $themeStore.language)
 
-  async function getLabel (days: number, hours: number, minutes: number, language: string): Promise<void> {
+  async function getLabel(days: number, hours: number, minutes: number, language: string): Promise<void> {
     try {
       const res: string[] = []
       if (days > 0) {

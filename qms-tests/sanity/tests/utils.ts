@@ -83,7 +83,7 @@ export async function getQaraManagerPage (browser: Browser): Promise<Page> {
   return await qaraManagerContext.newPage()
 }
 
-export async function * iterateLocator (locator: Locator): AsyncGenerator<Locator> {
+export async function* iterateLocator (locator: Locator): AsyncGenerator<Locator> {
   for (let index = 0; index < (await locator.count()); index++) {
     yield locator.nth(index)
   }

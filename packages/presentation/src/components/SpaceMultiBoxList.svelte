@@ -33,7 +33,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function addSpace (evt: Event): Promise<void> {
+  async function addSpace(evt: Event): Promise<void> {
     showPopup(
       SpacesMultiPopup,
       {

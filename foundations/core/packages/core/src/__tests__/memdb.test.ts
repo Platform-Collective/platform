@@ -47,7 +47,7 @@ class ClientModel extends ModelDb implements Client {
     return this
   }
 
-  async findOne<T extends Doc>(
+  async findOne<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -55,7 +55,7 @@ class ClientModel extends ModelDb implements Client {
     return (await this.findAll(_class, query, options)).shift()
   }
 
-  async findAllPage<T extends Doc>(
+  async findAllPage<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options: FindPageOptions<T>
@@ -73,7 +73,7 @@ class ClientModel extends ModelDb implements Client {
     }
   }
 
-  async * iterateAll<T extends Doc>(
+  async *iterateAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: IterateOptions<T>
@@ -85,7 +85,7 @@ class ClientModel extends ModelDb implements Client {
         limit: options?.limit ?? 500,
         cursor
       })
-      yield * page.docs
+      yield* page.docs
       cursor = page.nextCursor
     } while (cursor !== undefined)
   }
@@ -94,7 +94,7 @@ class ClientModel extends ModelDb implements Client {
     return { docs: [] }
   }
 
-  async domainRequest<T>(
+  async domainRequest<T> (
     domain: OperationDomain,
     params: DomainParams,
     options?: DomainRequestOptions

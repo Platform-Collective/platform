@@ -22,7 +22,7 @@
     { limit: 5000, sort: { modifiedOn: SortingOrder.Descending } }
   )
 
-  function groupReactions (reactions: DocReaction[]): {
+  function groupReactions(reactions: DocReaction[]): {
     _class: Ref<Class<Doc>>
     objects: {
       _id: Ref<Doc>

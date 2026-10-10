@@ -4,7 +4,7 @@
   export let manager: FocusManager
   export let isEnabled: boolean = true
 
-  function handleKey (evt: KeyboardEvent): void {
+  function handleKey(evt: KeyboardEvent): void {
     if (evt.code === 'Tab' && isEnabled) {
       evt.preventDefault()
       evt.stopPropagation()

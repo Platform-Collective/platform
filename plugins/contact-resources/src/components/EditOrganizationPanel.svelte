@@ -51,7 +51,7 @@
     editors = res.editors
   })
 
-  function getEditorFooter (
+  function getEditorFooter(
     _class: Ref<Class<Doc>>,
     object?: Doc
   ): { footer: AnyComponent, props?: Record<string, any> } | undefined {
@@ -68,7 +68,7 @@
   $: editorFooter = getEditorFooter(contact.class.Organization, object)
   $: updateObject(_id)
 
-  function updateObject (_id: Ref<Organization>): void {
+  function updateObject(_id: Ref<Organization>): void {
     if (lastId !== _id) {
       const prev = lastId
       lastId = _id

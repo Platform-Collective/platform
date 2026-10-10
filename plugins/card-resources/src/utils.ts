@@ -19,7 +19,6 @@ import communication from '@hcengineering/communication'
 import { type PermissionsStore } from '@hcengineering/contact'
 import core, {
   AccountRole,
-  type Class,
   type ClassPermission,
   type Client,
   type Data,
@@ -421,7 +420,7 @@ async function generateLocation (loc: Location, id: string): Promise<ResolvedLoc
   const workspace = loc.path[1] ?? ''
   const special = doc._class
 
-  const objectPanel = client.getHierarchy().classHierarchyMixin(doc._class as Ref<Class<Doc>>, view.mixin.ObjectPanel)
+  const objectPanel = client.getHierarchy().classHierarchyMixin(doc._class, view.mixin.ObjectPanel)
   const component = objectPanel?.component ?? view.component.EditDoc
 
   return {
@@ -503,7 +502,7 @@ export async function cardReferenceObjectProvider<T extends Doc> (
   const baseId = object.baseId ?? object._id
   if (object.isLatest === true) return object
 
-  return (await client.findOne(object._class, { baseId, isLatest: true } as any)) ?? object
+  return (await client.findOne(object._class, { baseId, isLatest: true })) ?? object
 }
 
 export async function getCardLink (doc: Card): Promise<Location> {
@@ -623,13 +622,14 @@ export function isBaseTypeWithSubtypes (hierarchy: Hierarchy, type: Ref<MasterTa
 }
 
 export function getFirstCreatableSubtype (hierarchy: Hierarchy, type: Ref<MasterTag>): Ref<MasterTag> | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   return hierarchy.getDescendants(type).find((descendant) => {
     if (descendant === type || hierarchy.isMixin(descendant)) return false
     const descendantClass = hierarchy.getClass(descendant) as MasterTag | undefined
     return (
       descendantClass?._class === card.class.MasterTag &&
       descendantClass.removed !== true &&
-      !isBaseTypeWithSubtypes(hierarchy, descendant as Ref<MasterTag>)
+      !isBaseTypeWithSubtypes(hierarchy, descendant)
     )
   }) as Ref<MasterTag> | undefined
 }

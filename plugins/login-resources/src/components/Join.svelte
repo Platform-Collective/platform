@@ -95,19 +95,19 @@
       const [loginStatus, result] =
         page === 'login'
           ? await join(
-            object.username,
-            object.password,
-            location.query?.inviteId ?? '',
-            location.query?.workspace ?? ''
-          )
+              object.username,
+              object.password,
+              location.query?.inviteId ?? '',
+              location.query?.workspace ?? ''
+            )
           : await signUpJoin(
-            object.username,
-            object.password,
-            object.first,
-            object.last,
-            location.query?.inviteId ?? '',
-            location.query?.workspace ?? ''
-          )
+              object.username,
+              object.password,
+              object.first,
+              object.last,
+              location.query?.inviteId ?? '',
+              location.query?.workspace ?? ''
+            )
       status = loginStatus
 
       if (result != null) {
@@ -145,7 +145,7 @@
     void check()
   })
 
-  async function check (): Promise<void> {
+  async function check(): Promise<void> {
     if (location.query?.inviteId === undefined || location.query?.inviteId === null) {
       checking = false
       return
@@ -192,7 +192,7 @@
     checking = false
   }
 
-  async function handleJoinWithThisAccount (): Promise<void> {
+  async function handleJoinWithThisAccount(): Promise<void> {
     const inviteId = location.query?.inviteId
     if (inviteId == null) return
     joiningWithAccount = true
@@ -222,13 +222,13 @@
     }
   }
 
-  function handleUseDifferentAccount (): void {
+  function handleUseDifferentAccount(): void {
     setMetadata(presentation.metadata.Token, null)
     showJoinWithAccount = false
     page = 'login'
   }
 
-  async function handleUseCurrentAccountToJoin (): Promise<void> {
+  async function handleUseCurrentAccountToJoin(): Promise<void> {
     try {
       if (currentAccountName == null) {
         console.error('Current account is not found')

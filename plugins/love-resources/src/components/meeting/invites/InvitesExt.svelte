@@ -47,7 +47,7 @@
     }
   )
 
-  function openOutgoingInvites (e: MouseEvent, invite: UserMeetingInvite, person: Person): void {
+  function openOutgoingInvites(e: MouseEvent, invite: UserMeetingInvite, person: Person): void {
     closePopup(invitesCategory)
     showPopup(
       OutgoingInvitePopup,
@@ -65,7 +65,7 @@
     )
   }
 
-  function openIncomingInvites (e: MouseEvent, invite: UserMeetingInvite, person: Person): void {
+  function openIncomingInvites(e: MouseEvent, invite: UserMeetingInvite, person: Person): void {
     closePopup(invitesCategory)
     showPopup(
       IncomingInvitePopup,

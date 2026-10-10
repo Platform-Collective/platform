@@ -21,7 +21,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function handleSubmit (color: { color: string }): void {
+  function handleSubmit(color: { color: string }): void {
     dispatch('close', color)
   }
 </script>

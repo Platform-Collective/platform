@@ -33,7 +33,7 @@
 
   const client = getClient()
 
-  export async function save (): Promise<void> {
+  export async function save(): Promise<void> {
     if (field !== undefined) {
       await client.update(field, {
         operation: {
@@ -53,7 +53,7 @@
     }
   }
 
-  function getItems (fields: Fields): DropdownTextItem[] {
+  function getItems(fields: Fields): DropdownTextItem[] {
     return Object.entries(fields).map((it) => ({
       id: it[0],
       label: `${it[1].formLabel ?? it[1].title}${it[0].startsWith('UF_') ? ' *' : ''} - ${it[0]}`

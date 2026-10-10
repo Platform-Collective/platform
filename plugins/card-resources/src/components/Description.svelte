@@ -35,7 +35,7 @@
 
   let editor: ContentEditor
 
-  async function createEmbedding (file: File): Promise<{ file: Ref<Blob>, type: string } | undefined> {
+  async function createEmbedding(file: File): Promise<{ file: Ref<Blob>, type: string } | undefined> {
     if (doc === undefined) {
       return undefined
     }

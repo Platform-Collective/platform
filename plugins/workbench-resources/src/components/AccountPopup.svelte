@@ -81,7 +81,7 @@
     ? contactResources.string.WorkspaceStatusUpdateYour
     : contactResources.string.WorkspaceStatusSetYour
 
-  function selectCategory (sp?: SettingsCategory): void {
+  function selectCategory(sp?: SettingsCategory): void {
     closePopup()
     const loc = getCurrentResolvedLocation()
     loc.fragment = undefined
@@ -96,27 +96,27 @@
     navigate(loc)
   }
 
-  function inviteWorkspace (): void {
+  function inviteWorkspace(): void {
     showPopup(login.component.InviteLink, {})
   }
 
-  function helpAndSupport (): void {
+  function helpAndSupport(): void {
     showPopup(HelpAndSupport, {}, 'help-center')
   }
 
-  function filterItems (items: SettingsCategory[], keys: string[]): SettingsCategory[] {
+  function filterItems(items: SettingsCategory[], keys: string[]): SettingsCategory[] {
     return items.filter(
       (p) => p._id !== setting.ids.Profile && p._id !== setting.ids.Password && keys.includes(p.group ?? '')
     )
   }
 
-  function editProfile (items: SettingsCategory[]): void {
+  function editProfile(items: SettingsCategory[]): void {
     const profile = items.find((p) => p._id === setting.ids.Profile)
     if (profile === undefined) return
     selectCategory(profile)
   }
 
-  function getURLCategory (sp: SettingsCategory): string {
+  function getURLCategory(sp: SettingsCategory): string {
     const loc = getCurrentResolvedLocation()
     loc.path[2] = settingId
     loc.path[3] = sp.name

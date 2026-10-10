@@ -48,7 +48,7 @@
     }
   )
 
-  function selectProject (project: Ref<Project>): void {
+  function selectProject(project: Ref<Project>): void {
     dispatch('close', project)
   }
 </script>
@@ -59,12 +59,12 @@
       <Label label={documents.string.Projects} />
     </div>
     <div class="header__link">
-      <NavLink {space} special={'projects'}>
+      <NavLink {space} special="projects">
         <Label label={documents.string.ViewAll} />
       </NavLink>
     </div>
   </div>
-  <Scroller padding={'var(--spacing-0_5)'} gap={'flex-gap-0-5'}>
+  <Scroller padding="var(--spacing-0_5)" gap="flex-gap-0-5">
     {#each projects as project}
       <ProjectSelectorPopupItem
         {project}

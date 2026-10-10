@@ -34,7 +34,7 @@
 
   $: void updatePersons(value?.members ?? [], $employeeByIdStore)
 
-  async function updatePersons (members: Ref<Person>[], employeeById: Map<Ref<Employee>, Employee>): Promise<void> {
+  async function updatePersons(members: Ref<Person>[], employeeById: Map<Ref<Employee>, Employee>): Promise<void> {
     const res: Person[] = []
 
     for (const member of members) {

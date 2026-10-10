@@ -31,7 +31,7 @@
   const width: number[] = []
   $: width.length = filtred.length
 
-  function getLeft (width: number[], i: number): number {
+  function getLeft(width: number[], i: number): number {
     let res = 0
     for (let index = 0; index < width.length; index++) {
       if (index === i) break
@@ -40,7 +40,7 @@
     return res
   }
 
-  function getWidth (values: Progress[], i: number): number {
+  function getWidth(values: Progress[], i: number): number {
     let value = values[i].value
     if (value > max) value = max
     if (value < min) value = min

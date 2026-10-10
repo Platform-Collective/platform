@@ -25,7 +25,7 @@
   let parents: Doc[] = []
   $: void updateParents(object)
 
-  async function updateParents (object: Folder): Promise<void> {
+  async function updateParents(object: Folder): Promise<void> {
     parents = await resolveParents(object)
   }
 </script>

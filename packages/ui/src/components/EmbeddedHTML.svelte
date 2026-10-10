@@ -25,7 +25,7 @@
 
   let iframeSrc: string | undefined
 
-  async function loadFile (src: string): Promise<void> {
+  async function loadFile(src: string): Promise<void> {
     if (iframeSrc !== undefined) {
       URL.revokeObjectURL(iframeSrc)
       iframeSrc = undefined

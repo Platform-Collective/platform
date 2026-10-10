@@ -98,10 +98,10 @@ export class ApplyTxMiddleware extends BaseMiddleware implements Middleware {
     ctx: MeasureContext,
     applyIf: TxApplyIf
   ): Promise<{
-      onEnd: () => void
-      passed: boolean
-      reason?: string
-    }> {
+    onEnd: () => void
+    passed: boolean
+    reason?: string
+  }> {
     if (applyIf.scope == null) {
       return { passed: true, onEnd: () => {} }
     }

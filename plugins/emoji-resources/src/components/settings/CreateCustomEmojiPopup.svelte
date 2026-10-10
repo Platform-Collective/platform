@@ -18,7 +18,7 @@
   let inputFile: HTMLInputElement
   let file: File | undefined = undefined
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     if (file === undefined) return
     const { uuid } = await uploadFile(file)
     await client.createDoc(emojiPlugin.class.CustomEmoji, core.space.Workspace, {
@@ -28,7 +28,7 @@
     dispatch('close')
   }
 
-  async function imageSize (imageFile: File): Promise<{ width: number, height: number }> {
+  async function imageSize(imageFile: File): Promise<{ width: number, height: number }> {
     return await new Promise((resolve, reject) => {
       try {
         const fileReader = new FileReader()
@@ -46,7 +46,7 @@
     })
   }
 
-  async function fileSelected (): Promise<void> {
+  async function fileSelected(): Promise<void> {
     if (inputFile?.files === undefined || inputFile.files === null) return
     const newFile = inputFile.files[0] as File | undefined
     if (newFile === undefined || !targetMimes.includes(newFile.type)) {
@@ -62,7 +62,7 @@
     inputFile.value = ''
   }
 
-  function onShortcodeChange (): void {
+  function onShortcodeChange(): void {
     const lowercaseShortcode = shortcode.toLowerCase()
     if (`:${lowercaseShortcode}:`.match(shortcodeRegex) === null) {
       shortcodeError = emojiPlugin.string.ShortcodeMatchError
@@ -75,7 +75,7 @@
     shortcodeError = undefined
   }
 
-  function showConfirmationDialog (): void {
+  function showConfirmationDialog(): void {
     const isEmpty = file === undefined && shortcode.trim().length === 0
     if (isEmpty) {
       dispatch('close')

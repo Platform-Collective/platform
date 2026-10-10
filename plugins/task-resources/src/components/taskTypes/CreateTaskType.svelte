@@ -35,7 +35,7 @@
   export let descriptor: ProjectTypeDescriptor
   export let taskType: TaskType | undefined
 
-  function defaultTaskType (type: ProjectType): Data<TaskType> {
+  function defaultTaskType(type: ProjectType): Data<TaskType> {
     return {
       kind: 'task',
       name: '',
@@ -68,7 +68,7 @@
   let { kind, name, targetClass, statusCategories, statuses, allowedAsChildOf } =
     taskType !== undefined ? { ...taskType } : { ...defaultTaskType(type) }
 
-  function findStatusClass (_class: Ref<Class<Task>>): Ref<Class<Status>> | undefined {
+  function findStatusClass(_class: Ref<Class<Task>>): Ref<Class<Status>> | undefined {
     const h = getClient().getHierarchy()
     const attrs = h.getAllAttributes(_class)
     for (const it of attrs.values()) {
@@ -80,7 +80,7 @@
 
   let taskTypeDescriptor: TaskTypeDescriptor = taskTypeDescriptors[0]
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     if (type === undefined) return
 
     const descr = taskTypeDescriptors.find((it) => it._id === taskTypeDescriptor._id)

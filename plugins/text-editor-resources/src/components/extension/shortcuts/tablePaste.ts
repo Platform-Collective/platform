@@ -34,6 +34,7 @@ export const TableMetadataPasteExtension = Extension.create({
  */
 function extractMetadataFromHtmlComments (text: string): { metadata: TableMetadata | null, cleanedText: string } {
   // Look for HTML comment with pattern: <!-- huly-table-metadata:{json} -->
+  // eslint-disable-next-line secure-coding/no-redos-vulnerable-regex
   const commentRegex = new RegExp(`<!--\\s*${TABLE_METADATA_TOKEN}(.+?)\\s*-->`, 's')
   const match = text.match(commentRegex)
   if (match?.[1] !== undefined) {

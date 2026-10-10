@@ -18,6 +18,7 @@ import {
   type AccessLevel,
   calendarId,
   type PrimaryCalendar,
+  type CalDavCalendar,
   type Calendar,
   type CalendarEventPresenter,
   type Event,
@@ -45,6 +46,7 @@ import {
 import {
   ArrOf,
   Collection,
+  Hidden,
   Index,
   Mixin,
   Model,
@@ -70,6 +72,7 @@ import workbench from '@hcengineering/model-workbench'
 import { WidgetType } from '@hcengineering/workbench'
 import preference, { TPreference } from '@hcengineering/model-preference'
 import { calendarIntegrationKind } from '@hcengineering/calendar'
+import { getEmbeddedLabel } from '@hcengineering/platform'
 
 import calendar from './plugin'
 
@@ -98,50 +101,65 @@ export class TExternalCalendar extends TCalendar implements ExternalCalendar {
   externalUser!: string
 }
 
+@Mixin(calendar.mixin.CalDavCalendar, calendar.class.ExternalCalendar)
+export class TCalDavCalendar extends TExternalCalendar implements CalDavCalendar {
+  @Prop(TypeString(), getEmbeddedLabel('CalDAV account key'))
+  @Hidden()
+  accountKey!: string
+
+  @Prop(TypeString(), getEmbeddedLabel('CalDAV collection href'))
+  @Hidden()
+  href!: string
+
+  @Prop(TypeString(), getEmbeddedLabel('CalDAV collection ctag'))
+  @Hidden()
+  ctag?: string
+}
+
 @Model(calendar.class.Event, core.class.AttachedDoc, DOMAIN_EVENT)
 @UX(calendar.string.Event, calendar.icon.Calendar)
 export class TEvent extends TAttachedDoc implements Event {
   declare space: Ref<SystemSpace>
 
   @Prop(TypeRef(calendar.class.Calendar), calendar.string.Calendar)
-    calendar!: Ref<Calendar>
+  calendar!: Ref<Calendar>
 
   eventId!: string
 
   @Prop(TypeString(), calendar.string.Title)
   @Index(IndexKind.FullText)
-    title!: string
+  title!: string
 
   @Prop(TypeMarkup(), calendar.string.Description)
   @Index(IndexKind.FullText)
-    description!: Markup
+  description!: Markup
 
   @Prop(TypeString(), calendar.string.Location, { icon: calendar.icon.Location })
   @Index(IndexKind.FullText)
-    location?: string
+  location?: string
 
   @Prop(TypeBoolean(), calendar.string.AllDay)
   @ReadOnly()
-    allDay!: boolean
+  allDay!: boolean
 
   @Prop(TypeDate(DateRangeMode.DATETIME), calendar.string.Date)
-    date!: Timestamp
+  date!: Timestamp
 
   @Prop(TypeDate(DateRangeMode.DATETIME), calendar.string.DueTo)
-    dueDate!: Timestamp
+  dueDate!: Timestamp
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-    attachments?: number
+  attachments?: number
 
   @Prop(ArrOf(TypeRef(contact.class.Contact)), calendar.string.Participants)
-    participants!: Ref<Contact>[]
+  participants!: Ref<Contact>[]
 
   @Prop(ArrOf(TypeTimestamp()), calendar.string.Reminders)
-    reminders?: number[]
+  reminders?: number[]
 
   @Prop(ArrOf(TypeString()), calendar.string.ExternalParticipants)
   @Index(IndexKind.Indexed)
-    externalParticipants?: string[]
+  externalParticipants?: string[]
 
   access!: AccessLevel
 
@@ -150,7 +168,7 @@ export class TEvent extends TAttachedDoc implements Event {
   timeZone?: string
 
   @Index(IndexKind.Indexed)
-    user!: PersonId
+  user!: PersonId
 
   blockTime!: boolean
 }
@@ -200,6 +218,7 @@ export function createModel (builder: Builder): void {
   builder.createModel(
     TCalendar,
     TExternalCalendar,
+    TCalDavCalendar,
     TReccuringEvent,
     TReccuringInstance,
     TEvent,

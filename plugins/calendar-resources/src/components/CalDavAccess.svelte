@@ -46,7 +46,7 @@
     ((!wasAccessEnabled && accessEnabled && selectedSocialId != null) || (wasAccessEnabled && !accessEnabled))
   )
 
-  function generateRandomPassword (length = 24): string {
+  function generateRandomPassword(length = 24): string {
     const array = new Uint8Array(length)
     crypto.getRandomValues(array)
     const numbers: number[] = []
@@ -97,7 +97,7 @@
     }
   })
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     loading = true
     try {
       if (selectedSocialId == null) {
@@ -158,7 +158,7 @@
     }
   }
 
-  async function copyServer (): Promise<void> {
+  async function copyServer(): Promise<void> {
     await copyTextToClipboard(serverUrl ?? '')
     isServerUrlCopied = true
     clearTimeout(serverUrlCopyTimeout)
@@ -167,7 +167,7 @@
     }, 2000)
   }
 
-  async function copyAccount (): Promise<void> {
+  async function copyAccount(): Promise<void> {
     await copyTextToClipboard(selectedSocialId?.value ?? '')
     isAccountCopied = true
     clearTimeout(accountCopyTimeout)
@@ -176,7 +176,7 @@
     }, 2000)
   }
 
-  async function copyPassword (): Promise<void> {
+  async function copyPassword(): Promise<void> {
     await copyTextToClipboard(password)
     isPasswordCopied = true
     clearTimeout(passwordCopyTimeout)

@@ -29,14 +29,14 @@
 
   const dispatch = createEventDispatcher()
 
-  function getSpecial (special: 'favorites' | string | undefined): string | undefined {
+  function getSpecial(special: 'favorites' | string | undefined): string | undefined {
     if (special === 'favorites') {
       return 'favorites'
     }
     return undefined
   }
 
-  function handleAllUpdatesClick (): void {
+  function handleAllUpdatesClick(): void {
     dispatch('selectAll')
   }
 </script>

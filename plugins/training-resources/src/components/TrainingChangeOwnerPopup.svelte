@@ -20,7 +20,7 @@
   }
 
   let isSubmitting = false
-  async function okAction (): Promise<void> {
+  async function okAction(): Promise<void> {
     if (draft.owner === undefined) {
       return
     }
@@ -33,7 +33,7 @@
   let canSave = false
   $: canSave = canChangeOwner && !isSubmitting && draft.owner !== undefined && draft.owner !== object.owner
 
-  function onUpdate (key: KeyedAttribute | string, value: any): void {
+  function onUpdate(key: KeyedAttribute | string, value: any): void {
     const attrKey = typeof key === 'string' ? key : key.key
     draft[attrKey as keyof typeof draft] = value
   }

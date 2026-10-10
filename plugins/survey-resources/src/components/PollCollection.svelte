@@ -36,7 +36,7 @@
   let viewlet: Viewlet | undefined
   let preference: ViewletPreference | undefined
 
-  function selectSurvey (ev: MouseEvent): void {
+  function selectSurvey(ev: MouseEvent): void {
     showPopup(SurveyPopup, {}, ev.target as HTMLElement, async (result) => {
       if (result != null) {
         await createPoll(result as Survey)
@@ -44,7 +44,7 @@
     })
   }
 
-  async function createPoll (source: Survey): Promise<void> {
+  async function createPoll(source: Survey): Promise<void> {
     const client = getClient()
     const pollId = await client.addCollection(survey.class.Poll, space, objectId, _class, 'polls', makePollData(source))
 

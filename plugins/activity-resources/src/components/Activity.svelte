@@ -111,13 +111,13 @@
     unsubscribeLocation()
   })
 
-  function restartAnimation (el: HTMLElement): void {
+  function restartAnimation(el: HTMLElement): void {
     el.style.animation = 'none'
     el.focus()
     el.style.animation = ''
   }
 
-  function tryScrollToMessage (delay: number = 100): void {
+  function tryScrollToMessage(delay: number = 100): void {
     if (timer) {
       clearTimeout(timer)
     }
@@ -126,7 +126,7 @@
     }, delay)
   }
 
-  async function scrollToMessage (id?: Ref<ActivityMessage>, withoutAnimation?: boolean): Promise<void> {
+  async function scrollToMessage(id?: Ref<ActivityMessage>, withoutAnimation?: boolean): Promise<void> {
     if (!id || boundary == null || activityBox == null) {
       return
     }
@@ -151,7 +151,7 @@
     msgElement.scrollIntoView({ behavior: 'instant' })
   }
 
-  export function onContainerResized (container: HTMLElement): void {
+  export function onContainerResized(container: HTMLElement): void {
     if (!shouldScroll) return
 
     if (prevContainerWidth > 0 && container.clientWidth !== prevContainerWidth) {
@@ -176,7 +176,7 @@
 
   $: extensions = getExtensions(object._class)
 
-  function getExtensions (_class: Ref<Class<Doc>>): ActivityExtension[] {
+  function getExtensions(_class: Ref<Class<Doc>>): ActivityExtension[] {
     try {
       let clazz: Ref<Class<Doc>> | undefined = _class
       while (clazz !== undefined) {
@@ -215,7 +215,7 @@
 
   $: allMessages = sortActivityMessages(messages.concat(refs))
 
-  function updateActivityMessages (objectId: Ref<Doc>, order: SortingOrder): void {
+  function updateActivityMessages(objectId: Ref<Doc>, order: SortingOrder): void {
     isMessagesLoading = true
 
     const res = activityMessagesQuery.query(
@@ -252,7 +252,7 @@
 
   $: updateActivityMessages(object._id, isNewestFirst ? SortingOrder.Descending : SortingOrder.Ascending)
 
-  export function editLastMessage (): void {
+  export function editLastMessage(): void {
     if (isMessagesLoading) return
 
     const me = getCurrentAccount()
@@ -278,7 +278,7 @@
     void scrollToMessage(lastMessage._id, true)
   }
 
-  function handleKeyDown (e: KeyboardEvent): void {
+  function handleKeyDown(e: KeyboardEvent): void {
     const key = e.key
 
     if ((key === 'ArrowUp' && !isNewestFirst) || (key === 'ArrowDown' && isNewestFirst)) {

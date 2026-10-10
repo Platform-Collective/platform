@@ -68,7 +68,7 @@
 
   let status = OK
 
-  async function submit (): Promise<void> {
+  async function submit(): Promise<void> {
     if (object.email === '' || object.password === '') {
       return
     }
@@ -80,7 +80,7 @@
     }
   }
 
-  async function validateAccount (email: string, password: string): Promise<Status> {
+  async function validateAccount(email: string, password: string): Promise<Status> {
     const accountClient = getAccountClient(accountsUrl)
 
     try {
@@ -96,7 +96,7 @@
     }
   }
 
-  async function validate (): Promise<void> {
+  async function validate(): Promise<void> {
     for (const field of Object.keys(object)) {
       const k = field as keyof LoginInfo
       if (object[k] === '') {
@@ -125,7 +125,7 @@
   on:close
   width="32rem"
   shadow={true}
-  className={'signature-dialog'}
+  className="signature-dialog"
 >
   <div class="flex-col flex-gap-2">
     <StylishEdit

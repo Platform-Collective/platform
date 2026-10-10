@@ -21,7 +21,7 @@
   let pressed: boolean = false
   let element: HTMLElement
 
-  function showSettings (): void {
+  function showSettings(): void {
     pressed = true
     showPopup(SettingsPopup, {}, element, () => {
       pressed = false

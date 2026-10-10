@@ -83,7 +83,7 @@
   const relationsA = associations.filter((it) => targets.has(it.classB))
   const relationsB = associations.filter((it) => targets.has(it.classA))
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     await duplicateCard(value, {
       excludedProperties: [...excludedProperties],
       excludedRelations: [...excludedRelations],
@@ -92,7 +92,7 @@
     dispatch('close')
   }
 
-  function propertiesSelected (event: CustomEvent): void {
+  function propertiesSelected(event: CustomEvent): void {
     const selectedProperties = event.detail as string[]
     allProperties.forEach((it) => {
       if (!selectedProperties.includes(it.id)) {
@@ -104,7 +104,7 @@
     excludedProperties = excludedProperties
   }
 
-  function mixinsSelected (event: CustomEvent): void {
+  function mixinsSelected(event: CustomEvent): void {
     const selectedMixins = event.detail as string[]
     mixins.forEach((it) => {
       if (!selectedMixins.includes(it)) {

@@ -57,7 +57,7 @@
   $: user = $personByRefStore?.get(_id as Ref<Person>)
   $: userName = (user !== undefined ? user.name : activeParticipant?.name) ?? ''
 
-  function attachTrack (track: Track): void {
+  function attachTrack(track: Track): void {
     if (parent == null) return
     detachCurrentTrack()
 
@@ -71,14 +71,14 @@
     videoMuted = !enabled
   }
 
-  function detachCurrentTrack (): void {
+  function detachCurrentTrack(): void {
     if (videoTrackElement !== undefined) {
       videoTrack?.detach(videoTrackElement)
       videoTrackElement.remove()
     }
   }
 
-  function setTrackMuted (value: boolean): void {
+  function setTrackMuted(value: boolean): void {
     if (videoTrackElement !== undefined) {
       if (value) {
         videoTrackElement.classList.add('hidden')
@@ -89,11 +89,11 @@
     videoMuted = value
   }
 
-  function speachHandler (speaking: boolean): void {
+  function speachHandler(speaking: boolean): void {
     isSpeaking = speaking
   }
 
-  function muteHandler (publication: TrackPublication): void {
+  function muteHandler(publication: TrackPublication): void {
     if (publication.kind === Track.Kind.Audio) {
       microphoneMuted = publication.isMuted
     } else if (publication.kind === Track.Kind.Video && publication.source !== Track.Source.ScreenShare) {
@@ -101,11 +101,11 @@
     }
   }
 
-  function onConnectionQualityChanged (quality: ConnectionQuality): void {
+  function onConnectionQualityChanged(quality: ConnectionQuality): void {
     isBadConnection = quality === ConnectionQuality.Lost || quality === ConnectionQuality.Poor
   }
 
-  function onLocalTrackPublished (publication: LocalTrackPublication): void {
+  function onLocalTrackPublished(publication: LocalTrackPublication): void {
     if (publication.track === undefined) return
     if (publication.kind === Track.Kind.Audio) {
       microphoneMuted = publication.isMuted
@@ -114,13 +114,13 @@
     }
   }
 
-  function onLocalTrackUnpublished (publication: LocalTrackPublication): void {
+  function onLocalTrackUnpublished(publication: LocalTrackPublication): void {
     if (videoTrack === publication.track) {
       detachCurrentTrack()
     }
   }
 
-  function onTrackSubscribed (track: RemoteTrack, publication: RemoteTrackPublication): void {
+  function onTrackSubscribed(track: RemoteTrack, publication: RemoteTrackPublication): void {
     if (track.kind === Track.Kind.Audio) {
       microphoneMuted = track.isMuted
     } else if (track.kind === Track.Kind.Video && track.source !== Track.Source.ScreenShare) {
@@ -128,13 +128,13 @@
     }
   }
 
-  function onTrackUnsubscribed (track: RemoteTrack, publication: RemoteTrackPublication): void {
+  function onTrackUnsubscribed(track: RemoteTrack, publication: RemoteTrackPublication): void {
     if (videoTrack === track) {
       detachCurrentTrack()
     }
   }
 
-  function detachParticipant (): void {
+  function detachParticipant(): void {
     if (activeParticipant === undefined) return
     activeParticipant.off(ParticipantEvent.TrackMuted, muteHandler)
     activeParticipant.off(ParticipantEvent.TrackUnmuted, muteHandler)
@@ -149,7 +149,7 @@
     activeParticipant = undefined
   }
 
-  function onChatMessage (message: ChatMessage, participant?: RemoteParticipant | LocalParticipant | undefined): void {
+  function onChatMessage(message: ChatMessage, participant?: RemoteParticipant | LocalParticipant | undefined): void {
     if (activeParticipant !== participant) return
     reactions = [
       ...reactions,
@@ -164,7 +164,7 @@
 
   let reactions: Array<{ id: string, emoji: string, height: number, width: number }> = []
 
-  function setParticipant (p: Participant | undefined): void {
+  function setParticipant(p: Participant | undefined): void {
     if (parent == null) return
     if (activeParticipant === p) return
 

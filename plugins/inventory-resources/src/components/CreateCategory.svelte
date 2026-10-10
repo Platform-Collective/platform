@@ -32,11 +32,11 @@
   const client = getClient()
   const inventoryId = generateId<AttachedDoc>()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return name !== ''
   }
 
-  async function create () {
+  async function create() {
     const value: AttachedData<Category> = {
       name
     }

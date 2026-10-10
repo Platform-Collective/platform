@@ -39,7 +39,7 @@
   let extensions: ActivityExtension[] = []
   $: extensions = getExtensions(object._class)
 
-  function getExtensions (_class: Ref<Class<Doc>>): ActivityExtension[] {
+  function getExtensions(_class: Ref<Class<Doc>>): ActivityExtension[] {
     try {
       let clazz: Ref<Class<Doc>> | undefined = _class
       while (clazz !== undefined) {
@@ -60,7 +60,7 @@
 
   $: void updateIcon(object._class)
 
-  async function updateIcon (_class: Ref<Class<Doc>>): Promise<void> {
+  async function updateIcon(_class: Ref<Class<Doc>>): Promise<void> {
     if (isThread) {
       return
     }
@@ -75,7 +75,7 @@
     icon = result
   }
 
-  async function getName (object: Doc): Promise<{ name: string | undefined, label: IntlString | undefined }> {
+  async function getName(object: Doc): Promise<{ name: string | undefined, label: IntlString | undefined }> {
     const name = await getChannelName(object._id, object._class, object)
     const label = client.getHierarchy().getClass(object._class).label
 

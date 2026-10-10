@@ -80,7 +80,7 @@
 
   export let tool: DrawingTool = 'pen'
 
-  function evaluateToolPresentation (tool: DrawingTool): ToolPresentation {
+  function evaluateToolPresentation(tool: DrawingTool): ToolPresentation {
     const found = tools.find((t) => t.tool === tool)
     if (found == null) {
       return tools[0]
@@ -111,7 +111,7 @@
 
   type PaletteCommandId = 'add-color' | 'remove-color' | 'reset-colors'
 
-  function showPaletteManagementMenu (ev: MouseEvent): void {
+  function showPaletteManagementMenu(ev: MouseEvent): void {
     const items: Array<Omit<SelectPopupValueType, 'id'> & { id: PaletteCommandId }> = []
     if (userSelectedPalette.length < maxColors) {
       items.push({
@@ -173,7 +173,7 @@
     })
   }
 
-  function addColorPreset (): void {
+  function addColorPreset(): void {
     if (!userSelectedPalette.includes(penColor)) {
       userSelectedPalette = [...userSelectedPalette, penColor]
       localStorage.setItem(storageKey.colors, JSON.stringify(userSelectedPalette))
@@ -181,12 +181,12 @@
     focusEditor()
   }
 
-  function selectColor (color: ColorMetaNameOrHex): void {
+  function selectColor(color: ColorMetaNameOrHex): void {
     penColor = color ?? defaultColor
     localStorage.setItem(storageKey.color, penColor)
   }
 
-  function showToolSelectionMenu (ev: MouseEvent): void {
+  function showToolSelectionMenu(ev: MouseEvent): void {
     const items: Array<Omit<SelectPopupValueType, 'id'> & { id: DrawingTool }> = []
     for (const toolPresentation of tools) {
       if (toolPresentation.tool === 'pan' && !showPanTool) {
@@ -221,20 +221,20 @@
     fontSize = parseInt(localStorage.getItem(storageKey.fontSize) ?? '20')
   })
 
-  function updatePenWidth (): void {
+  function updatePenWidth(): void {
     localStorage.setItem(storageKey.penWidth, penWidth.toString())
   }
 
-  function updateEraserWidth (): void {
+  function updateEraserWidth(): void {
     localStorage.setItem(storageKey.eraserWidth, eraserWidth.toString())
   }
 
-  function updateFontSize (): void {
+  function updateFontSize(): void {
     localStorage.setItem(storageKey.fontSize, fontSize.toString())
     focusEditor()
   }
 
-  function focusEditor (): void {
+  function focusEditor(): void {
     setTimeout(() => {
       if (cmdEditor !== undefined) {
         cmdEditor.focus()

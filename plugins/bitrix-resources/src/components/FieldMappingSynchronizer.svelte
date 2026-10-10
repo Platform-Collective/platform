@@ -53,7 +53,7 @@
 
   let docsProcessed = 0
 
-  async function doSync (): Promise<void> {
+  async function doSync(): Promise<void> {
     loading = true
     const frontUrl = getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin
     const token = (getMetadata(presentation.metadata.Token) as string) ?? ''
@@ -104,7 +104,7 @@
 
   $: localStorage.setItem(fieldsKey, JSON.stringify({ limit, filterFields, direction }))
 
-  function addFilter (): void {
+  function addFilter(): void {
     filterFields = [...filterFields, { _id: generateId(), field: '', value: ' ' }]
   }
 
@@ -124,7 +124,7 @@
     label: `${it[1].formLabel ?? it[1].title}${it[0].startsWith('UF_') ? ' *' : ''} - ${it[0]}`
   }))
 
-  function updateFields (fields: Fields, statusList: StatusValue[]): void {
+  function updateFields(fields: Fields, statusList: StatusValue[]): void {
     // Update fields with status valies if missing.
     for (const f of Object.values(fields)) {
       if (f.type === 'crm_status') {

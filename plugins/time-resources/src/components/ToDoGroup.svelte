@@ -35,7 +35,7 @@
   export let showDuration: boolean
   export let projects: IdMap<Project>
 
-  function getAllWorkslots (todos: WithLookup<ToDo>[]): WorkSlot[] {
+  function getAllWorkslots(todos: WithLookup<ToDo>[]): WorkSlot[] {
     const workslots: WorkSlot[] = []
     for (const todo of todos) {
       for (const workslot of (todo.$lookup?.workslots ?? []) as WorkSlot[]) {
@@ -76,7 +76,7 @@
   $: draggingItem = $dragging.item
   $: draggingItemIndex = $dragging.itemIndex
 
-  async function handleDrop (event: CustomEvent<{ event: DragEvent, index: number }>): Promise<void> {
+  async function handleDrop(event: CustomEvent<{ event: DragEvent, index: number }>): Promise<void> {
     if (draggingItem === null || draggingItemIndex === null) return
 
     const droppingIndex = event.detail.index

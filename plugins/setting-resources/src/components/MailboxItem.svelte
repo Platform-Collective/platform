@@ -38,7 +38,7 @@
 
   let opened = false
 
-  function deleteMailboxAction (): void {
+  function deleteMailboxAction(): void {
     showPopup(
       MessageBox,
       {
@@ -61,7 +61,7 @@
     )
   }
 
-  async function deleteMailbox (): Promise<void> {
+  async function deleteMailbox(): Promise<void> {
     await getAccountClient().deleteMailbox(mailbox.mailbox)
     const client = getClient()
     const currentUser = getCurrentEmployee()

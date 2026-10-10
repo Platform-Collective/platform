@@ -42,7 +42,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function addPerson (evt: Event): Promise<void> {
+  async function addPerson(evt: Event): Promise<void> {
     showPopup(
       UsersPopup,
       {

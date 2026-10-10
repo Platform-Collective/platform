@@ -23,7 +23,7 @@
   export let space: Ref<TypedSpace>
   export let docObject: Data<ControlledDocument> | undefined = undefined
 
-  async function handleUpdate ({
+  async function handleUpdate({
     detail
   }: {
     detail: { type: 'reviewers' | 'approvers' | 'coAuthors' | 'externalApprovers', users: Ref<Employee>[] }

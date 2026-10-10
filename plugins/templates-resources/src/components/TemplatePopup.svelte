@@ -48,7 +48,7 @@
   const dispatch = createEventDispatcher()
 
   const provider = getTemplateDataProvider()
-  async function dispatchItem (item: MessageTemplate): Promise<void> {
+  async function dispatchItem(item: MessageTemplate): Promise<void> {
     const message = await provider.fillTemplate(item.message)
     dispatch('template', {
       _id: item._id,
@@ -63,7 +63,7 @@
     closePopup()
   }
 
-  export function onKeyDown (ev: KeyboardEvent) {
+  export function onKeyDown(ev: KeyboardEvent) {
     if (ev.key === 'ArrowDown') {
       if (selected < items.length - 1) selected++
       return true
@@ -88,7 +88,7 @@
     return false
   }
 
-  function getInitIndex (groups: TemplateCategory[], i: number): number {
+  function getInitIndex(groups: TemplateCategory[], i: number): number {
     let res = 0
     for (let index = 0; index < i; index++) {
       const cat = groups[index]

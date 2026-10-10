@@ -52,7 +52,7 @@
     })
   })
 
-  function changeMethod (event: CustomEvent<LoginMethods>): void {
+  function changeMethod(event: CustomEvent<LoginMethods>): void {
     method = event.detail
   }
 
@@ -70,7 +70,7 @@
     }
   }
 
-  async function guestLogin (): Promise<void> {
+  async function guestLogin(): Promise<void> {
     let status = new Status(Severity.INFO, login.status.ConnectingToServer, {})
     const [loginStatus, result] = await doLoginAsGuest()
     status = loginStatus

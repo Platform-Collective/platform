@@ -87,7 +87,7 @@ export class TComponentPointExtension extends TDoc implements ComponentPointExte
 @Model(presentation.class.DocCreateExtension, core.class.Doc, DOMAIN_MODEL)
 export class TDocCreateExtension extends TDoc implements DocCreateExtension {
   @Prop(TypeRef(core.class.Class), core.string.Class)
-    ofClass!: Ref<Class<Doc>>
+  ofClass!: Ref<Class<Doc>>
 
   components!: Record<CreateExtensionKind, AnyComponent>
   apply!: Resource<DocCreateFunction>
@@ -97,7 +97,7 @@ export class TDocCreateExtension extends TDoc implements DocCreateExtension {
 @Model(presentation.class.DocRules, core.class.Doc, DOMAIN_MODEL)
 export class TDocRules extends TDoc implements DocRules {
   @Prop(TypeRef(core.class.Class), core.string.Class)
-    ofClass!: Ref<Class<Doc>>
+  ofClass!: Ref<Class<Doc>>
 
   fieldRules!: DocAttributeRule[]
 }
@@ -105,7 +105,7 @@ export class TDocRules extends TDoc implements DocRules {
 @Model(presentation.class.FilePreviewExtension, presentation.class.ComponentPointExtension)
 export class TFilePreviewExtension extends TComponentPointExtension implements FilePreviewExtension {
   @Prop(TypeString(), presentation.string.ContentType)
-    contentType!: string | string[]
+  contentType!: string | string[]
 
   alignment?: string
   metadataProvider?: Resource<(file: FileOrBlob, blob: Ref<Blob>) => Promise<BlobMetadata | undefined>>

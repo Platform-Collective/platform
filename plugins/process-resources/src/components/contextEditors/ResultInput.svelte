@@ -30,14 +30,14 @@
 
   let values: Record<ContextId, any> = {}
 
-  function fillValues (): void {
+  function fillValues(): void {
     results.forEach((r) => {
       values[r._id] = getVal(r)
     })
     values = values
   }
 
-  function getVal (res: UserResult): any {
+  function getVal(res: UserResult): any {
     if (res.key !== undefined) {
       return getObjectValue(res.key, doc) ?? context[res._id]
     }
@@ -46,15 +46,15 @@
 
   fillValues()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return false
   }
 
-  function save (): void {
+  function save(): void {
     dispatch('close', values)
   }
 
-  function getOnChange (id: ContextId): (val: any) => void {
+  function getOnChange(id: ContextId): (val: any) => void {
     return (val: any) => {
       values[id] = val
       values = values

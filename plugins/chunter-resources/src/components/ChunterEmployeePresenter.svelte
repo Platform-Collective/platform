@@ -17,7 +17,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function canNavigateToDirect (location: Location, person: Person | undefined): boolean {
+  function canNavigateToDirect(location: Location, person: Person | undefined): boolean {
     const app = location.path[2]
     if (app !== chunterId && app !== notificationId) {
       return false
@@ -30,7 +30,7 @@
     return hierarchy.hasMixin(person, contact.mixin.Employee) && (person as Employee).active
   }
 
-  async function openEmployeeDirect (): Promise<void> {
+  async function openEmployeeDirect(): Promise<void> {
     if (person === undefined) return
 
     const dm = await createDirect([person._id as Ref<Employee>])

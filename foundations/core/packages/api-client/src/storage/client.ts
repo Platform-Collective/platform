@@ -173,7 +173,7 @@ async function toBuffer (data: Buffer | string | Readable): Promise<Buffer> {
     for await (const chunk of data) {
       chunks.push(chunk)
     }
-    return Buffer.concat(chunks as any)
+    return Buffer.concat(chunks)
   } else {
     throw new TypeError('Unsupported data type')
   }

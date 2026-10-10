@@ -64,7 +64,7 @@
   let descriptionBox: AttachmentStyledBox
   let attachments: Map<Ref<Attachment>, Attachment> = new Map<Ref<Attachment>, Attachment>()
 
-  async function onSave (): Promise<void> {
+  async function onSave(): Promise<void> {
     try {
       const applyOp = client.apply()
       await applyOp.createDoc(testManagement.class.TestPlan, space, object, id)

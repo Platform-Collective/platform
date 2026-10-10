@@ -25,18 +25,18 @@
   export let process: Process
   export let readonly: boolean
 
-  function addTransition (): void {
+  function addTransition(): void {
     showPopup(AddTransitionPopup, { process }, 'top')
   }
 
-  function handleSelect (id: Ref<Transition>): void {
+  function handleSelect(id: Ref<Transition>): void {
     const loc = getCurrentLocation()
     loc.path[5] = plugin.component.TransitionEditor
     loc.path[6] = id
     navigate(loc, true)
   }
 
-  function toTransition (doc: Doc): Transition {
+  function toTransition(doc: Doc): Transition {
     return doc as Transition
   }
 </script>

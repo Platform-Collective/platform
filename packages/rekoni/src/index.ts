@@ -19,7 +19,7 @@ import plugin from './plugin'
 import { ReconiDocument } from './types'
 
 export { default } from './plugin'
-export * from './types'
+export type * from './types'
 
 /**
  * @public

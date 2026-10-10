@@ -11,7 +11,7 @@
     doUpdate('playSound', false)
   }
 
-  async function doUpdate (propName: PreferenceKey, value: any): Promise<void> {
+  async function doUpdate(propName: PreferenceKey, value: any): Promise<void> {
     if ('_id' in $activePreferences) {
       await client.update($activePreferences, { [propName]: value })
     } else {
@@ -24,7 +24,7 @@
   }
 
   const client = getClient()
-  function updater (propName: PreferenceKey) {
+  function updater(propName: PreferenceKey) {
     return (e: CustomEvent) => {
       doUpdate(propName, e.detail)
     }

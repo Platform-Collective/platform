@@ -85,7 +85,7 @@
   }
 
   let isRemoving = false
-  async function handleToggle (): Promise<void> {
+  async function handleToggle(): Promise<void> {
     isRemoving = true
     try {
       await navClient.remove(navItem)
@@ -94,16 +94,16 @@
     }
   }
 
-  function asCard (doc: Doc): Card {
+  function asCard(doc: Doc): Card {
     return doc as Card
   }
 
-  function onNotification (event: CustomEvent<InboxNotification | Notification>): void {
+  function onNotification(event: CustomEvent<InboxNotification | Notification>): void {
     if (doc == null) return
     dispatch('select', { doc, notification: event.detail })
   }
 
-  function calcHeight (navItem: NavigationItem): number {
+  function calcHeight(navItem: NavigationItem): number {
     const base = 4.125
     const messageHeightPx = 2
     const reactionsHeightPx = 4

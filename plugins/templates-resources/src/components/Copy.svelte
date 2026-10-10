@@ -23,7 +23,7 @@
 
   const client = getClient()
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     await client.createDoc(value._class, space, {
       title: value.title,
       message: value.message

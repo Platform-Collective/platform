@@ -34,7 +34,7 @@
   export let readonly = false
 
   const contextId = generateId()
-  async function onSort (event: CustomEvent<{ key: string, order: SortingOrder }>) {
+  async function onSort(event: CustomEvent<{ key: string, order: SortingOrder }>) {
     const { key, order } = event.detail
     if (viewlet && viewOptions) {
       viewOptions.orderBy = [key, order]

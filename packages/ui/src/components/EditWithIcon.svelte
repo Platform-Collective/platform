@@ -39,7 +39,7 @@
   let textHTML: HTMLInputElement
   let phTranslate: string = ''
 
-  export function focus (): void {
+  export function focus(): void {
     textHTML.focus()
     autoFocus = false
   }

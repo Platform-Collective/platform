@@ -77,13 +77,13 @@
     createdMessageQuery.unsubscribe()
   }
 
-  function clear (): void {
+  function clear(): void {
     currentMessage = getDefault()
     _id = currentMessage._id
     inputRef.removeDraft(false)
   }
 
-  function objectChange (draft: MessageDraft, empty: Partial<MessageDraft>): void {
+  function objectChange(draft: MessageDraft, empty: Partial<MessageDraft>): void {
     if (shouldSaveDraft) {
       draftController.save(draft, empty)
     }
@@ -91,7 +91,7 @@
 
   $: objectChange(currentMessage, emptyMessage)
 
-  function getDefault (): MessageDraft {
+  function getDefault(): MessageDraft {
     return {
       _id: generateId(),
       ...emptyMessage
@@ -101,12 +101,12 @@
   const acc = getCurrentAccount()
   const throttle = new ThrottledCaller(500)
 
-  async function deleteTypingInfo (): Promise<void> {
+  async function deleteTypingInfo(): Promise<void> {
     if (!withTypingInfo) return
     void clearTyping(acc.primarySocialId, object._id)
   }
 
-  async function updateTypingInfo (): Promise<void> {
+  async function updateTypingInfo(): Promise<void> {
     if (!withTypingInfo) return
 
     throttle.call(() => {
@@ -114,7 +114,7 @@
     })
   }
 
-  function onUpdate (event: CustomEvent): void {
+  function onUpdate(event: CustomEvent): void {
     if (!isEmptyMarkup(event.detail.message)) {
       void updateTypingInfo()
     }
@@ -126,7 +126,7 @@
     currentMessage.attachments = attachments
   }
 
-  async function handleCreate (event: CustomEvent, _id: Ref<ChatMessage>): Promise<void> {
+  async function handleCreate(event: CustomEvent, _id: Ref<ChatMessage>): Promise<void> {
     try {
       const res = await createMessage(event, _id, `chunter.create.${_class} ${object._class}`)
 
@@ -140,7 +140,7 @@
     }
   }
 
-  async function handleEdit (event: CustomEvent): Promise<void> {
+  async function handleEdit(event: CustomEvent): Promise<void> {
     try {
       await editMessage(event)
       const objectId = await getObjectId(object, client.getHierarchy())
@@ -152,7 +152,7 @@
     }
   }
 
-  async function onMessage (event: CustomEvent): Promise<void> {
+  async function onMessage(event: CustomEvent): Promise<void> {
     draftController.remove()
     inputRef.removeDraft(false)
 
@@ -170,7 +170,7 @@
     loading = false
   }
 
-  async function createMessage (event: CustomEvent, _id: Ref<ChatMessage>, msg: string): Promise<CommitResult> {
+  async function createMessage(event: CustomEvent, _id: Ref<ChatMessage>, msg: string): Promise<CommitResult> {
     const { message, attachments } = event.detail
     const operations = client.apply(undefined, msg)
 
@@ -205,18 +205,18 @@
     return await operations.commit()
   }
 
-  async function editMessage (event: CustomEvent): Promise<void> {
+  async function editMessage(event: CustomEvent): Promise<void> {
     if (chatMessage === undefined) {
       return
     }
     const { message, attachments } = event.detail
     await client.update(chatMessage, { message, attachments, editedOn: Date.now() })
   }
-  export function submit (): void {
+  export function submit(): void {
     inputRef.submit()
   }
 
-  function handleKeyDown (event: KeyboardEvent): boolean {
+  function handleKeyDown(event: KeyboardEvent): boolean {
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
       if (inputRef.isEmptyDraft() && chatMessage == null) {
         onKeyDown?.(event)

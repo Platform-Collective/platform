@@ -7,7 +7,7 @@
   import { buildFilterKey, setFilters } from '@hcengineering/view-resources'
   import tracker from '../plugin'
 
-  function setFilterTag (tag: TagElement) {
+  function setFilterTag(tag: TagElement) {
     const client = getClient()
     const hierarchy = client.getHierarchy()
     const attribute = hierarchy.getAttribute(tracker.class.Issue, 'labels')
@@ -22,7 +22,7 @@
     } as unknown as Filter
     setFilters([filter])
   }
-  async function onTag (tag: TagElement): Promise<void> {
+  async function onTag(tag: TagElement): Promise<void> {
     selectedTagElements.set([tag._id])
     const loc = getCurrentResolvedLocation()
     loc.path[2] = 'tracker'

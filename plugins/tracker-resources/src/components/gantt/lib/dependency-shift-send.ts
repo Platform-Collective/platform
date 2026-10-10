@@ -68,7 +68,7 @@ export interface DependencyShiftSendArgs {
  * successfully at this point, so a failure here must never surface as an
  * error to the user. The notification is best-effort by design.
  */
-export async function sendDependencyShiftedNotifications (
+export async function sendDependencyShiftedNotifications(
   client: TxOperations,
   args: DependencyShiftSendArgs,
   onError?: (err: unknown) => void

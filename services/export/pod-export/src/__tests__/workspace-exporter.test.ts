@@ -114,7 +114,7 @@ function createMockHierarchy (config: {
 
 function createMockLowLevelStorage (documents: Map<string, Doc[]>): LowLevelStorage {
   return {
-    rawFindAll: jest.fn(async <T extends Doc>(domain: string, query: any): Promise<T[]> => {
+    rawFindAll: jest.fn(async <T extends Doc> (domain: string, query: any): Promise<T[]> => {
       const allDocs = documents.get(domain) ?? []
 
       return allDocs.filter((doc) => {
@@ -155,7 +155,7 @@ function createMockLowLevelStorage (documents: Map<string, Doc[]>): LowLevelStor
         return true
       }) as T[]
     }),
-    traverse: jest.fn(async <T extends Doc>(domain: string, query: any) => {
+    traverse: jest.fn(async <T extends Doc> (domain: string, query: any) => {
       const docs = documents.get(domain) ?? []
       let returned = false
       return {
@@ -183,7 +183,7 @@ function createMockTxOperations (
   const createdDocs: Doc[] = []
 
   return {
-    findAll: jest.fn(async <T extends Doc>(classRef: Ref<Class<T>>, query: any): Promise<T[]> => {
+    findAll: jest.fn(async <T extends Doc> (classRef: Ref<Class<T>>, query: any): Promise<T[]> => {
       if (classRef === core.class.Space || query._class !== undefined) {
         return existingSpaces.filter((s) => {
           if (query.name !== undefined && s.name !== query.name) return false
@@ -200,14 +200,14 @@ function createMockTxOperations (
       return existingDocs.filter((d) => d._class === classRef) as unknown as T[]
     }),
     createDoc: jest.fn(
-      async <T extends Doc>(classRef: Ref<Class<T>>, space: Ref<Space>, data: any, id?: Ref<T>): Promise<Ref<T>> => {
+      async <T extends Doc> (classRef: Ref<Class<T>>, space: Ref<Space>, data: any, id?: Ref<T>): Promise<Ref<T>> => {
         const docId = id ?? generateId<T>()
-        createdDocs.push({ _id: docId, _class: classRef, space, ...data } as unknown as Doc)
+        createdDocs.push({ _id: docId, _class: classRef, space, ...data })
         return docId
       }
     ),
     addCollection: jest.fn(
-      async <T extends Doc, P extends AttachedDoc>(
+      async <T extends Doc, P extends AttachedDoc> (
         classRef: Ref<Class<P>>,
         space: Ref<Space>,
         attachedTo: Ref<T>,
@@ -225,7 +225,7 @@ function createMockTxOperations (
           attachedToClass,
           collection,
           ...data
-        } as unknown as Doc)
+        })
         return docId
       }
     ),
@@ -602,7 +602,7 @@ describe('CrossWorkspaceExporter', () => {
       const result = await exporter.export({
         sourceWorkspace: createWorkspaceIds('source-ws'),
         targetWorkspace: createWorkspaceIds('target-ws'),
-        sourceQuery: { _id: SOURCE_DOC_1 } as any,
+        sourceQuery: { _id: SOURCE_DOC_1 },
         _class: mockDocClass,
         includeChildren: false
       })
@@ -674,7 +674,7 @@ describe('CrossWorkspaceExporter', () => {
       const result = await exporter.export({
         sourceWorkspace: createWorkspaceIds('source-ws'),
         targetWorkspace: createWorkspaceIds('target-ws'),
-        sourceQuery: { _id: SOURCE_DOC_1 } as any,
+        sourceQuery: { _id: SOURCE_DOC_1 },
         _class: mockDocClass,
         includeChildren: true
       })
@@ -738,7 +738,7 @@ describe('CrossWorkspaceExporter', () => {
       const result = await exporter.export({
         sourceWorkspace: createWorkspaceIds('source-ws'),
         targetWorkspace: createWorkspaceIds('target-ws'),
-        sourceQuery: { _id: SOURCE_DOC_2 as any },
+        sourceQuery: { _id: SOURCE_DOC_2 },
         _class: mockDocClass,
         relations
       })

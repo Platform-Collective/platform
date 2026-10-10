@@ -32,7 +32,7 @@
 
   $: contextValue = parseContext(val)
 
-  function selectContext (e: MouseEvent): void {
+  function selectContext(e: MouseEvent): void {
     showPopup(
       ContextSelectorPopup,
       {
@@ -46,12 +46,12 @@
     )
   }
 
-  function onSelect (res: SelectedContext | null): void {
+  function onSelect(res: SelectedContext | null): void {
     val = res === null ? undefined : createContext(res)
     dispatch('change', val)
   }
 
-  function onChange (value: any | undefined): void {
+  function onChange(value: any | undefined): void {
     val = value
     dispatch('change', val)
   }

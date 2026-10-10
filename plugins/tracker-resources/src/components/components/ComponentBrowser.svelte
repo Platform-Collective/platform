@@ -40,7 +40,7 @@
   let searchQuery: DocumentQuery<Component> = { ...query }
   let resultQuery: DocumentQuery<Component> = { ...searchQuery }
 
-  function showCreateDialog (): void {
+  function showCreateDialog(): void {
     showPopup(NewComponent, { space, targetElement: null }, 'top')
   }
 

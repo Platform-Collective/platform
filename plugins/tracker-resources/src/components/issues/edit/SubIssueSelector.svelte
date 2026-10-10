@@ -45,21 +45,21 @@
   let subIssues: WithLookup<Issue>[] | undefined
   let subIssuesElement: Element
 
-  async function openIssue (target: Issue) {
+  async function openIssue(target: Issue) {
     if (target._id !== issue._id) {
       const loc = await issueLinkFragmentProvider(target)
       navigate(loc)
     }
   }
 
-  function openSubIssue (target: Ref<Issue>) {
+  function openSubIssue(target: Ref<Issue>) {
     const subIssue = subIssues?.find((p) => p._id === target)
     if (subIssue !== undefined) {
       openIssue(subIssue)
     }
   }
 
-  function openParentIssue () {
+  function openParentIssue() {
     if (parentIssue) {
       closeTooltip()
       openIssue(parentIssue)

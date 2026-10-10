@@ -240,7 +240,7 @@ export async function updateWorkspaceRoleBySocialKey (
   const { extra } = decodeTokenVerbose(ctx, token)
   verifyAllowedServices(['workspace', 'tool'], extra)
 
-  const socialId = await getSocialIdByKey(db, socialKey.toLowerCase() as PersonId)
+  const socialId = await getSocialIdByKey(db, socialKey.toLowerCase())
   if (socialId == null) {
     throw new PlatformError(new Status(Severity.ERROR, platform.status.AccountNotFound, {}))
   }

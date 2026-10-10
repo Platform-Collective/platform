@@ -33,7 +33,7 @@
     ? getWeekStart(currentDate, $deviceInfo.firstDayOfWeek)
     : new Date(new Date(currentDate).setHours(0, 0, 0, 0))
 
-  function getDate (startDate: Date, dayIndex: number, minutes: number): Date {
+  function getDate(startDate: Date, dayIndex: number, minutes: number): Date {
     const date = getDay(startDate, dayIndex)
     return new Date(date.setMinutes(date.getMinutes() + minutes))
   }

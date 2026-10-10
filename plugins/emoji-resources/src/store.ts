@@ -9,16 +9,16 @@ export const searchEmoji = writable<string>('')
 export const resultEmojis = derived([unicodeEmojiStore, customEmojiStore, searchEmoji], ([unicode, custom, search]) => {
   return search !== ''
     ? unicode.concat(custom).filter((emoji) => {
-      if (isCustomEmoji(emoji)) {
-        return emoji.shortcode.toLowerCase().includes(search.toLowerCase())
-      }
-      return (
-        (emoji.tags?.some((tag: string) => tag.toLowerCase().startsWith(search.toLowerCase())) ?? false) ||
+        if (isCustomEmoji(emoji)) {
+          return emoji.shortcode.toLowerCase().includes(search.toLowerCase())
+        }
+        return (
+          (emoji.tags?.some((tag: string) => tag.toLowerCase().startsWith(search.toLowerCase())) ?? false) ||
           (emoji.shortcodes?.some((shortcode: string) => shortcode.toLowerCase().startsWith(search.toLowerCase())) ??
             false) ||
           emoji.label.toLowerCase().includes(search.toLowerCase())
-      )
-    })
+        )
+      })
     : unicode.concat(custom)
 })
 

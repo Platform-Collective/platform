@@ -26,21 +26,21 @@
   export let hovered: boolean = false
 
   export let attributeMapper:
-  | {
-    component: AnySvelteComponent
-    label: IntlString
-    props: Record<string, any>
-  }
-  | undefined = undefined
+    | {
+        component: AnySvelteComponent
+        label: IntlString
+        props: Record<string, any>
+      }
+    | undefined = undefined
 
   const client = getClient()
 
-  async function getEnumName (type: Type<any>): Promise<string | undefined> {
+  async function getEnumName(type: Type<any>): Promise<string | undefined> {
     const ref = (type as EnumOf).of
     const res = await client.findOne(core.class.Enum, { _id: ref })
     return res?.name
   }
-  function getArrayName (type: Type<any>): IntlString | undefined {
+  function getArrayName(type: Type<any>): IntlString | undefined {
     const ref = (type as ArrOf<any>).of
     if (client.getHierarchy().hasClass((ref as RefTo<Doc>).to)) {
       const res = client.getHierarchy().getClass((ref as RefTo<Doc>).to)

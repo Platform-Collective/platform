@@ -30,11 +30,11 @@ export interface GanttViewOption {
   group: 'mine' | 'shared'
 }
 
-function byNameCaseInsensitive (a: FilteredView, b: FilteredView): number {
+function byNameCaseInsensitive(a: FilteredView, b: FilteredView): number {
   return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
 }
 
-export function filterGanttFilteredViews (
+export function filterGanttFilteredViews(
   all: FilteredView[],
   ganttViewletId: Ref<Viewlet>,
   myAccountUuid: string
@@ -55,7 +55,7 @@ export function filterGanttFilteredViews (
   return { mine, shared }
 }
 
-export function viewSelectionOptions (mine: FilteredView[], shared: FilteredView[]): GanttViewOption[] {
+export function viewSelectionOptions(mine: FilteredView[], shared: FilteredView[]): GanttViewOption[] {
   const out: GanttViewOption[] = []
   for (const v of mine) out.push({ id: v._id, name: v.name, group: 'mine' })
   for (const v of shared) out.push({ id: v._id, name: v.name, group: 'shared' })

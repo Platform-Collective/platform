@@ -52,7 +52,7 @@
   {@const title = getDocumentName(lastDoc)}
   <div class="flex-row-center" use:tooltip={{ label: getEmbeddedLabel(title) }}>
     <div class="icon mr-1">
-      <Icon icon={document.icon.Document} size={'small'} />
+      <Icon icon={document.icon.Document} size="small" />
     </div>
     <span class="label">{title}</span>
   </div>

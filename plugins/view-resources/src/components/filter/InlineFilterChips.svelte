@@ -74,7 +74,7 @@
     }
   }
 
-  async function recompute (): Promise<void> {
+  async function recompute(): Promise<void> {
     await tick()
     // Unconstrained (below-header/list) placement never collapses: keep every
     // chip visible so its div.filter-section stays in the DOM.
@@ -120,7 +120,7 @@
     void recompute()
   }
 
-  function onContainerResize (el: Element): void {
+  function onContainerResize(el: Element): void {
     const w = (el as HTMLElement).clientWidth
     if (w !== containerWidth) containerWidth = w
   }
@@ -134,13 +134,13 @@
   let overflowPopup: PopupResult | undefined
   let unsubOverflow: (() => void) | undefined
 
-  function cleanupOverflow (): void {
+  function cleanupOverflow(): void {
     unsubOverflow?.()
     unsubOverflow = undefined
     overflowPopup = undefined
   }
 
-  function openOverflowPopover (e: MouseEvent): void {
+  function openOverflowPopover(e: MouseEvent): void {
     overflowPopup = showPopup(
       InlineFilterChipsOverflow,
       { hiddenStartIndex: visibleCount, space },

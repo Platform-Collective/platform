@@ -41,7 +41,7 @@
     $permissionsStore
   )
 
-  function showCreateDialog (): void {
+  function showCreateDialog(): void {
     showPopup(documents.component.QmsTemplateWizard, { _class: documents.class.ControlledDocument })
   }
 </script>

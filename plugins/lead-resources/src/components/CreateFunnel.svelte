@@ -58,12 +58,12 @@
   $: membersPersons = members.map((m) => $employeeRefByAccountUuidStore.get(m)).filter(notEmpty)
   $: readOnlyGuestOwnerExcludeItems = getAnonymousRefs($employeeRefByAccountUuidStore, owners)
   $: void loadSpaceType(typeId)
-  async function loadSpaceType (id: typeof typeId): Promise<void> {
+  async function loadSpaceType(id: typeof typeId): Promise<void> {
     spaceType =
       id !== undefined
         ? await client
-          .getModel()
-          .findOne(core.class.SpaceType, { _id: id }, { lookup: { _id: { roles: core.class.Role } } })
+            .getModel()
+            .findOne(core.class.SpaceType, { _id: id }, { lookup: { _id: { roles: core.class.Role } } })
         : undefined
 
     if (spaceType?.targetClass === undefined || spaceType?.$lookup?.roles === undefined) {
@@ -75,7 +75,7 @@
 
   $: roles = (spaceType?.$lookup?.roles ?? []) as Role[]
 
-  function getRolesAssignment (): RolesAssignment {
+  function getRolesAssignment(): RolesAssignment {
     if (funnel === undefined || spaceType?.targetClass === undefined || spaceType?.$lookup?.roles === undefined) {
       return {}
     }
@@ -89,11 +89,11 @@
     }, {})
   }
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return name === '' && typeId !== undefined
   }
 
-  async function createFunnel (): Promise<void> {
+  async function createFunnel(): Promise<void> {
     if (typeId === undefined || spaceType?.targetClass === undefined) {
       return
     }
@@ -114,7 +114,7 @@
     Analytics.handleEvent(LeadEvents.FunnelCreated, { id: funnelId })
   }
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     if (isNew) {
       await createFunnel()
     } else if (funnel !== undefined && spaceType?.targetClass !== undefined) {
@@ -136,14 +136,14 @@
     }
   }
 
-  function handleOwnersChanged (newOwners: AccountUuid[]): void {
+  function handleOwnersChanged(newOwners: AccountUuid[]): void {
     owners = newOwners
 
     const newMembersSet = new Set([...members, ...newOwners])
     members = Array.from(newMembersSet)
   }
 
-  function handleMembersChanged (newMembers: AccountUuid[]): void {
+  function handleMembersChanged(newMembers: AccountUuid[]): void {
     membersChanged = true
     // If a member was removed we need to remove it from any roles assignments as well
     const newMembersSet = new Set(newMembers)
@@ -158,7 +158,7 @@
     members = newMembers
   }
 
-  function handleRoleAssignmentChanged (roleId: Ref<Role>, newMembers: AccountUuid[]): void {
+  function handleRoleAssignmentChanged(roleId: Ref<Role>, newMembers: AccountUuid[]): void {
     if (rolesAssignment === undefined) {
       rolesAssignment = {}
     }
@@ -175,7 +175,7 @@
 
   let membersChanged: boolean = false
 
-  function setDefaultMembers (typeType: SpaceType | undefined): void {
+  function setDefaultMembers(typeType: SpaceType | undefined): void {
     if (typeType === undefined) return
     if (membersChanged) return
     if (funnel !== undefined) return

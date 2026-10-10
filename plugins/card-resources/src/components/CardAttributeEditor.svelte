@@ -51,12 +51,12 @@
 
   let masterTagAttributes: MasterTagAttributes
 
-  function collapseAll (): void {
+  function collapseAll(): void {
     masterTagAttributes.collapse()
     tagAttributes.forEach((tag) => tag.collapse())
   }
 
-  function expandAll (): void {
+  function expandAll(): void {
     masterTagAttributes.expand()
     tagAttributes.forEach((tag) => tag.expand())
   }

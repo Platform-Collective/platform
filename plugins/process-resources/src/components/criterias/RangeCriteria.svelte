@@ -35,7 +35,7 @@
   $: firstContextValue = parseContext(val?.[0])
   $: secondContextValue = parseContext(val?.[1])
 
-  function selectContext (e: MouseEvent, index: number): void {
+  function selectContext(e: MouseEvent, index: number): void {
     showPopup(
       ContextSelectorPopup,
       {
@@ -51,28 +51,28 @@
     )
   }
 
-  function onSelect (res: SelectedContext | null, index: number): void {
+  function onSelect(res: SelectedContext | null, index: number): void {
     val[index] = res === null ? undefined : createContext(res)
     dispatch('change', val)
   }
 
-  function onChange (value: any | undefined, index: number): void {
+  function onChange(value: any | undefined, index: number): void {
     val[index] = value
     dispatch('change', val)
   }
 
-  function setDefaults (value: any) {
+  function setDefaults(value: any) {
     if (!value || !Array.isArray(value)) {
       val = [undefined, undefined]
     }
   }
   $: setDefaults(val)
 
-  function changeFirst (value: any | undefined): void {
+  function changeFirst(value: any | undefined): void {
     onChange(value, 0)
   }
 
-  function changeSecond (value: any | undefined): void {
+  function changeSecond(value: any | undefined): void {
     onChange(value, 1)
   }
 

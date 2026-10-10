@@ -34,7 +34,7 @@ export type Anchor = 'start' | 'finish'
  *   FF — source finish → target finish
  *   SF — source start  → target finish (rare; "as-late-as-possible" cases)
  */
-export function anchorOf (kind: DependencyKind, end: 'source' | 'target'): Anchor {
+export function anchorOf(kind: DependencyKind, end: 'source' | 'target'): Anchor {
   switch (kind) {
     case 'finish-to-start':
       return end === 'source' ? 'finish' : 'start'
@@ -53,7 +53,7 @@ export function anchorOf (kind: DependencyKind, end: 'source' | 'target'): Ancho
  * center. Used by both the arrow-router (renders a bezier) and the
  * connector-dot (anchored on the source bar's right edge).
  */
-export function endpointPx (bar: BarRect, anchor: Anchor): Point {
+export function endpointPx(bar: BarRect, anchor: Anchor): Point {
   const x = anchor === 'start' ? bar.left : bar.right
   const y = (bar.top + bar.bottom) / 2
   return { x, y }
@@ -70,7 +70,7 @@ export function endpointPx (bar: BarRect, anchor: Anchor): Point {
  * longer-distance curves visually balanced (control points at 1/4 and 3/4
  * of the horizontal span).
  */
-export function bezierPath (p1: Point, p2: Point): string {
+export function bezierPath(p1: Point, p2: Point): string {
   const dx = Math.abs(p2.x - p1.x)
   const offset = Math.max(40, dx / 2)
   const c1x = p1.x + offset
@@ -99,12 +99,12 @@ interface Cubic {
   p3: Point
 }
 
-function lerp (a: Point, b: Point, t: number): Point {
+function lerp(a: Point, b: Point, t: number): Point {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
 }
 
 /** de Casteljau split; returns the sub-curve on `[0, t]`. */
-function cubicLeft (c: Cubic, t: number): Cubic {
+function cubicLeft(c: Cubic, t: number): Cubic {
   const a = lerp(c.p0, c.c1, t)
   const b = lerp(c.c1, c.c2, t)
   const d = lerp(c.c2, c.p3, t)
@@ -115,7 +115,7 @@ function cubicLeft (c: Cubic, t: number): Cubic {
 }
 
 /** de Casteljau split; returns the sub-curve on `[t, 1]`. */
-function cubicRight (c: Cubic, t: number): Cubic {
+function cubicRight(c: Cubic, t: number): Cubic {
   const a = lerp(c.p0, c.c1, t)
   const b = lerp(c.c1, c.c2, t)
   const d = lerp(c.c2, c.p3, t)
@@ -125,7 +125,7 @@ function cubicRight (c: Cubic, t: number): Cubic {
   return { p0: g, c1: f, c2: d, p3: c.p3 }
 }
 
-function controlPointsOf (p1: Point, p2: Point): Cubic {
+function controlPointsOf(p1: Point, p2: Point): Cubic {
   const dx = Math.abs(p2.x - p1.x)
   const offset = Math.max(40, dx / 2)
   return { p0: p1, c1: { x: p1.x + offset, y: p1.y }, c2: { x: p2.x - offset, y: p2.y }, p3: p2 }
@@ -147,7 +147,7 @@ function controlPointsOf (p1: Point, p2: Point): Cubic {
  * clamped so a degenerate short curve keeps a usable middle segment instead
  * of collapsing to nothing.
  */
-export function bezierHitPath (p1: Point, p2: Point, clearance: number = ARROW_HIT_CLEARANCE_PX): string {
+export function bezierHitPath(p1: Point, p2: Point, clearance: number = ARROW_HIT_CLEARANCE_PX): string {
   const c = controlPointsOf(p1, p2)
   const polyLen =
     Math.hypot(c.c1.x - c.p0.x, c.c1.y - c.p0.y) +
@@ -168,7 +168,7 @@ export function bezierHitPath (p1: Point, p2: Point, clearance: number = ARROW_H
  *   B(0.5) = 0.125*p1 + 0.375*c1 + 0.375*c2 + 0.125*p2
  * Same control-point convention as bezierPath().
  */
-export function pathMidpoint (p1: Point, p2: Point): Point {
+export function pathMidpoint(p1: Point, p2: Point): Point {
   const dx = Math.abs(p2.x - p1.x)
   const offset = Math.max(40, dx / 2)
   const c1 = { x: p1.x + offset, y: p1.y }
@@ -184,7 +184,7 @@ export function pathMidpoint (p1: Point, p2: Point): Point {
  * tangent at the curve endpoint. With our control-point convention,
  * the tangent at p2 is parallel to (p2 - c2). 8px tip-to-base, 8px wide.
  */
-export function arrowheadPoints (p1: Point, p2: Point): [Point, Point, Point] {
+export function arrowheadPoints(p1: Point, p2: Point): [Point, Point, Point] {
   const dx = Math.abs(p2.x - p1.x)
   const offset = Math.max(40, dx / 2)
   const c2 = { x: p2.x - offset, y: p2.y }
@@ -220,9 +220,9 @@ export interface YBounds {
 /** Possible visibility states of a dependency arrow against the y-viewport. */
 export type ArrowVisibility =
   | { kind: 'both-visible' }
-  | { kind: 'source-only', targetEdge: 'top' | 'bottom' }
-  | { kind: 'target-only', sourceEdge: 'top' | 'bottom' }
-  | { kind: 'both-off', sourceEdge: 'top' | 'bottom', targetEdge: 'top' | 'bottom' }
+  | { kind: 'source-only'; targetEdge: 'top' | 'bottom' }
+  | { kind: 'target-only'; sourceEdge: 'top' | 'bottom' }
+  | { kind: 'both-off'; sourceEdge: 'top' | 'bottom'; targetEdge: 'top' | 'bottom' }
   | { kind: 'none' }
 
 /**
@@ -234,7 +234,7 @@ export type ArrowVisibility =
  * means the arrow path crosses the viewport vertically and must still be
  * drawn (clipped to the top + bottom edges).
  */
-export function classifyArrowVisibility (
+export function classifyArrowVisibility(
   source: BarRect | null,
   target: BarRect | null,
   bounds: YBounds
@@ -270,7 +270,7 @@ export function classifyArrowVisibility (
  * uses this to draw a bezier that ends at the viewport edge instead of at
  * the off-screen bar, with a small triangle indicator on top.
  */
-export function clippedEndpointPx (bar: BarRect, anchor: Anchor, bounds: YBounds, offEdge: 'top' | 'bottom'): Point {
+export function clippedEndpointPx(bar: BarRect, anchor: Anchor, bounds: YBounds, offEdge: 'top' | 'bottom'): Point {
   const x = anchor === 'start' ? bar.left : bar.right
   const y = offEdge === 'top' ? bounds.top : bounds.bottom
   return { x, y }
@@ -287,9 +287,9 @@ export function clippedEndpointPx (bar: BarRect, anchor: Anchor, bounds: YBounds
  * reactive block; the result drives a `dimmed: boolean` prop on every
  * GanttBar and GanttDependencyArrow.
  */
-export function connectedIssueIds (
+export function connectedIssueIds(
   hoveredIssue: Ref<Issue> | null,
-  hoveredEdge: { source: Ref<Issue>, target: Ref<Issue> } | null,
+  hoveredEdge: { source: Ref<Issue>; target: Ref<Issue> } | null,
   relations: IssueRelation[]
 ): Set<Ref<Issue>> {
   const out = new Set<Ref<Issue>>()

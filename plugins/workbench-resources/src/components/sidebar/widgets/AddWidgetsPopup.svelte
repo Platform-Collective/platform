@@ -35,11 +35,11 @@
     preferences = res
   })
 
-  function handleClose (): void {
+  function handleClose(): void {
     dispatch('close')
   }
 
-  function isEnabled (
+  function isEnabled(
     widget: Widget,
     widgetsUpdates: Map<Ref<Widget>, boolean>,
     preference?: WidgetPreference
@@ -47,13 +47,13 @@
     return widgetsUpdates.get(widget._id) ?? preference?.enabled ?? false
   }
 
-  function handleCheck (widget: Widget, preference?: WidgetPreference): void {
+  function handleCheck(widget: Widget, preference?: WidgetPreference): void {
     const newValue = !isEnabled(widget, widgetsUpdates, preference)
 
     widgetsUpdates.set(widget._id, newValue)
   }
 
-  async function handleApply (): Promise<void> {
+  async function handleApply(): Promise<void> {
     for (const [widget, enabled] of widgetsUpdates) {
       const preference = preferences.find((it) => it.attachedTo === widget)
       if (preference !== undefined) {

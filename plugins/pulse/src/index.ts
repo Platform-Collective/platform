@@ -15,6 +15,6 @@
 
 import pulsePlugin, { pulseId } from './plugin'
 
-export * from './types'
+export type * from './types'
 export { pulseId }
 export default pulsePlugin

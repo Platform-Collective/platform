@@ -67,7 +67,7 @@
       categories = toIdMap(res)
     })
 
-  function update (value: WithLookup<Issue>): void {
+  function update(value: WithLookup<Issue>): void {
     if (value.$lookup?.subIssues !== undefined) {
       query.unsubscribe()
       subIssues = value.$lookup.subIssues as Issue[]
@@ -96,7 +96,7 @@
   }
   $: hasSubIssues = (subIssues?.length ?? 0) > 0
 
-  function openIssue (target: Ref<Issue>): void {
+  function openIssue(target: Ref<Issue>): void {
     if (target !== value._id) {
       showPanel(tracker.component.EditIssue, target, value._class, 'content')
     }

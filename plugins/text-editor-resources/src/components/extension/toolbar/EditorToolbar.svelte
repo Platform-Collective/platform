@@ -33,7 +33,7 @@
   let allActions: TextEditorAction[] = []
   let actions: TextEditorAction[] = []
 
-  async function updateActions (newActions: TextEditorAction[], ctx: ActionContext): Promise<void> {
+  async function updateActions(newActions: TextEditorAction[], ctx: ActionContext): Promise<void> {
     const out: TextEditorAction[] = []
     for (const action of newActions) {
       const tester = action.visibilityTester

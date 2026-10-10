@@ -60,11 +60,11 @@ describe('ident', () => {
           MyString: 'xxx' as StatusCode<any>
         }
       })
-    expect(f).toThrowError("'identify' overwrites")
+    expect(f).toThrow("'identify' overwrites")
   })
 
   it('should fail to parse id', () => {
-    expect(() => _parseId('bad id' as Id)).toThrowError('ERROR: platform:status:InvalidId')
+    expect(() => _parseId('bad id' as Id)).toThrow('ERROR: platform:status:InvalidId')
   })
 
   it('should parse id', () => {

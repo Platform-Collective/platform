@@ -59,7 +59,7 @@
     await handleLoginInfo(result)
   })
 
-  async function handleLoginInfo (result: LoginInfoByToken): Promise<void> {
+  async function handleLoginInfo(result: LoginInfoByToken): Promise<void> {
     if (result == null) {
       goTo('login', true)
     } else if (isLoginInfoRequest(result)) {

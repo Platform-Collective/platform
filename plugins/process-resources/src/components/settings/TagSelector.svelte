@@ -29,7 +29,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function open (e: MouseEvent): void {
+  function open(e: MouseEvent): void {
     const res = new Set<Ref<MasterTag>>()
     if (includeBase) res.add(h.getBaseClass(process.masterTag))
     const ancestors = h.getAncestors(process.masterTag)

@@ -57,11 +57,11 @@
     person = undefined
   }
 
-  export function onActionsOpened (): void {
+  export function onActionsOpened(): void {
     isActionsOpened = true
   }
 
-  export function onActionsClosed (): void {
+  export function onActionsClosed(): void {
     isActionsOpened = false
   }
   let tooltipLabel: IntlString | undefined = undefined
@@ -74,7 +74,7 @@
     tooltipLabel = core.string.System
   }
 
-  function getTooltipText (markup: string): string {
+  function getTooltipText(markup: string): string {
     const text = markupToText(markup)
     if (text.length > tooltipLimit) {
       return text.substring(0, tooltipLimit) + '...'

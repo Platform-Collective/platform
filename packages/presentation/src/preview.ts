@@ -31,9 +31,9 @@ export async function getBlobRef (
   width?: number,
   height?: number
 ): Promise<{
-    src: string
-    srcset: string
-  }> {
+  src: string
+  srcset: string
+}> {
   return {
     src: getFileUrl(file, name),
     srcset: getSrcSet(file, width, height)

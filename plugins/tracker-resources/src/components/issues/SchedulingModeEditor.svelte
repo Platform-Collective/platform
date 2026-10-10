@@ -50,7 +50,7 @@
   $: tooltipId =
     effectiveMode === 'manual' ? tracker.string.SchedulingModeTooltipManual : tracker.string.SchedulingModeTooltipAuto
 
-  async function toggle (): Promise<void> {
+  async function toggle(): Promise<void> {
     if (!editable) return
     const next: 'auto' | 'manual' = effectiveMode === 'manual' ? 'auto' : 'manual'
     await client.updateCollection(

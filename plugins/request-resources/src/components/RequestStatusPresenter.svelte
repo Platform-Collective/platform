@@ -20,7 +20,7 @@
 
   export let value: RequestStatus
 
-  function getBooleanLabel (value: RequestStatus): IntlString {
+  function getBooleanLabel(value: RequestStatus): IntlString {
     if (value === RequestStatus.Completed) return request.string.Completed
     if (value === RequestStatus.Rejected) return request.string.Rejected
     return request.string.Cancelled

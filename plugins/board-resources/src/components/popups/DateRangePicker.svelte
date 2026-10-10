@@ -18,7 +18,7 @@
   let startDate = value.startDate
   let dueDate = value.dueDate
 
-  function update () {
+  function update() {
     const date: DocumentUpdate<Card> = {}
     if (startDate !== undefined) date.startDate = startDate
     if (dueDate !== undefined) date.dueDate = dueDate

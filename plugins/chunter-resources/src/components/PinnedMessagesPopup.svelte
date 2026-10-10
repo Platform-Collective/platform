@@ -79,7 +79,7 @@
     dispatch('close', undefined)
   }
 
-  async function unpinMessage (message: ActivityMessage): Promise<void> {
+  async function unpinMessage(message: ActivityMessage): Promise<void> {
     await client.update(message, { isPinned: false })
   }
 

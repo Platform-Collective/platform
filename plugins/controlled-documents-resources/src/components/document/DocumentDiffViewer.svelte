@@ -43,7 +43,7 @@
   }
 
   let translatedStates: Readonly<Record<DocumentState | ControlledDocumentState, string>> | null = null
-  function getTranslatedLabels (lang: string) {
+  function getTranslatedLabels(lang: string) {
     Promise.all([getTranslatedDocumentStates(lang), getTranslatedControlledDocStates(lang)]).then(
       ([states, controlledStates]) => {
         translatedStates = {
@@ -54,7 +54,7 @@
     )
   }
 
-  function isDocument (document: Doc | null): document is Document {
+  function isDocument(document: Doc | null): document is Document {
     if (document == null) {
       return false
     }
