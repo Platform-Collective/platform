@@ -115,8 +115,6 @@ export type TodoDoneTester = (
  */
 export interface TodoAutomationHelper extends Doc {
   onDoneTester: Resource<TodoDoneTester>
-  // False keeps a ToDo open when the automation would complete it (assignee change, Won/Lost status)
-  onAutoCompleteTester?: Resource<TodoDoneTester>
 }
 
 export default plugin(timeId, {

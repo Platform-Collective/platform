@@ -163,9 +163,7 @@ export default plugin(presentationId, {
   },
   extension: {
     FilePreviewExtension: '' as ComponentExtensionId,
-    FilePreviewPopupActions: '' as ComponentExtensionId,
-    // Plugins render links whose href matches props.hrefPattern
-    LinkMark: '' as ComponentExtensionId
+    FilePreviewPopupActions: '' as ComponentExtensionId
   },
   metadata: {
     ModelVersion: '' as Metadata<string>,
