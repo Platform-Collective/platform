@@ -4,14 +4,14 @@
 export const TEXT_CACHE_LIMIT = 8
 
 /**
- * Downloads each blob once and keeps the `limit` most recently used ones. A failed download is forgotten, so the next
+ * Loads each blob once and keeps the `limit` most recently used results. A failed load is forgotten, so the next
  * call tries again.
  */
-export function createTextCache (
-  load: (file: string, name: string) => Promise<string>,
+export function createTextCache<T = string> (
+  load: (file: string, name: string) => Promise<T>,
   limit = TEXT_CACHE_LIMIT
-): (file: string, name: string) => Promise<string> {
-  const cache = new Map<string, Promise<string>>()
+): (file: string, name: string) => Promise<T> {
+  const cache = new Map<string, Promise<T>>()
   return async (file, name) => {
     let text = cache.get(file)
     if (text !== undefined) {

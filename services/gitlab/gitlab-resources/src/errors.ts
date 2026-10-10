@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { PlatformError } from '@hcengineering/platform'
+import { Analytics } from '@hcengineering/analytics'
+import { getEmbeddedLabel, type IntlString, PlatformError, translate, unknownError } from '@hcengineering/platform'
 
 /**
- * Human-readable text of an error for display. sendGLServiceRequest wraps pod errors as
- * PlatformError(unknownError(message)), whose own `message` is a serialized status, so the
- * status `message` param is preferred.
+ * Human-readable text of an error for display. PlatformErrors, GitlabServiceError included, carry the GitLab
+ * service's text in `status.params.message`; their own `message` is a serialized status.
  */
 export function errorText (err: unknown): string {
   if (err instanceof PlatformError) {
@@ -16,9 +16,41 @@ export function errorText (err: unknown): string {
   return String(err)
 }
 
-// Prefix of the pod refusal while members are connected (GitlabService.assertNoConnections).
-export const APP_IN_USE_PREFIX = 'Disconnect GitLab before changing the application'
+/** A GitLab service refusal: a PlatformError (so errorText reads its message) that keeps the service's code. */
+export class GitlabServiceError extends PlatformError<{ message: string }> {
+  constructor (
+    message: string,
+    readonly code?: string
+  ) {
+    super(unknownError(message))
+  }
+}
+
+// Sent by the GitLab service when the application cannot change while members are connected
+export const APP_IN_USE_CODE = 'app-in-use'
 
 export function isAppInUseError (err: unknown): boolean {
-  return errorText(err).startsWith(APP_IN_USE_PREFIX)
+  return err instanceof GitlabServiceError && err.code === APP_IN_USE_CODE
+}
+
+/** An error with its own translated message, for failures the browser detects itself. */
+export class GitlabError extends Error {
+  constructor (readonly label: IntlString) {
+    super(label)
+  }
+}
+
+/** The label to show for an error: a GitlabError's translation, or the text of any other error. */
+export function errorLabel (err: unknown): IntlString {
+  return err instanceof GitlabError ? err.label : getEmbeddedLabel(errorText(err))
+}
+
+/** The text of an error in `language`: a GitlabError's translation, or errorText for any other error. */
+export async function translateError (err: unknown, language?: string): Promise<string> {
+  return err instanceof GitlabError ? await translate(err.label, {}, language) : errorText(err)
+}
+
+/** Reports an error to Analytics; a value that is not an Error is wrapped with its text. */
+export function reportError (err: unknown): void {
+  Analytics.handleError(err instanceof Error ? err : new Error(errorText(err)))
 }

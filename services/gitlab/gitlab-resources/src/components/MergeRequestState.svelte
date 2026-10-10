@@ -1,20 +1,17 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
-  import { type GitlabMergeRequest } from '@hcengineering/gitlab'
   import { getClient } from '@hcengineering/presentation'
   import { type Issue } from '@hcengineering/tracker'
   import { Icon, Label } from '@hcengineering/ui'
-  import { mergeStatusKey } from '../merge-status'
+  import { asMergeRequest } from '../issue-header'
+  import { mergeStatusLabel } from '../merge-status'
   import gitlab from '../plugin'
 
   export let value: Issue | undefined
   export let small = false
 
-  $: mr =
-    value !== undefined && getClient().getHierarchy().isDerived(value._class, gitlab.class.GitlabMergeRequest)
-      ? (value as GitlabMergeRequest)
-      : undefined
-  $: status = mr !== undefined ? mergeStatusKey(mr.mergeStatus, mr.hasConflicts) : undefined
+  $: mr = value !== undefined ? asMergeRequest(getClient().getHierarchy(), value) : undefined
+  $: status = mr !== undefined ? mergeStatusLabel(mr.mergeStatus, mr.hasConflicts) : undefined
 </script>
 
 {#if mr !== undefined}
@@ -35,8 +32,8 @@
       <div class:ml-4={!small}><Label label={gitlab.string.Draft} /></div>
     {/if}
     <!-- In lists only a conflict is worth the space -->
-    {#if status !== undefined && (!small || status === 'Conflict')}
-      <div class:ml-4={!small}><Label label={gitlab.string[status]} /></div>
+    {#if status !== undefined && (!small || status === gitlab.string.Conflict)}
+      <div class:ml-4={!small}><Label label={status} /></div>
     {/if}
   {/if}
 {/if}

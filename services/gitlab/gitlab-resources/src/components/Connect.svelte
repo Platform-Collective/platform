@@ -1,15 +1,13 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
   import type { Integration as AccountIntegration } from '@hcengineering/account-client'
-  import { Analytics } from '@hcengineering/analytics'
-  import { getCurrentAccount } from '@hcengineering/core'
-  import { type GitlabAuthentication, type GitlabIntegration } from '@hcengineering/gitlab'
+  import { type GitlabIntegration } from '@hcengineering/gitlab'
   import { getMetadata } from '@hcengineering/platform'
   import presentation, { Card, createQuery } from '@hcengineering/presentation'
   import tracker, { type Project } from '@hcengineering/tracker'
-  import ui, { Button, Label } from '@hcengineering/ui'
+  import ui, { Button, Label, themeStore } from '@hcengineering/ui'
   import { createEventDispatcher, onDestroy, onMount } from 'svelte'
-  import { errorText } from '../errors'
+  import { errorText, reportError, translateError } from '../errors'
   import gitlab from '../plugin'
   import {
     OAUTH_CHANNEL,
@@ -20,6 +18,8 @@
     type OAuthCallbackMessage
   } from '../state'
   import { onAuthorize, sendGLServiceRequest } from '../utils'
+  import { gitlabAuthentication } from './authentication'
+  import ErrorText from './ErrorText.svelte'
   import GitlabRepositories from './GitlabRepositories.svelte'
   import ImageModeSetting from './ImageModeSetting.svelte'
   import SetupApp from './SetupApp.svelte'
@@ -28,19 +28,15 @@
   export let integration: AccountIntegration | undefined = undefined
 
   const dispatch = createEventDispatcher()
-  const me = getCurrentAccount()
+  const title = getMetadata(ui.metadata.PlatformTitle)
 
-  let auth: GitlabAuthentication | undefined
   let integrations: GitlabIntegration[] = []
   let projects: Project[] = []
   let refreshing = false
-  let error: string | undefined
+  let error: unknown
   // Set by SetupApp once the workspace GitLab application status has loaded.
   let appConfigured = false
 
-  createQuery().query(gitlab.class.GitlabAuthentication, { attachedTo: me.primarySocialId }, (res) => {
-    auth = res[0]
-  })
   createQuery().query(gitlab.class.GitlabIntegration, {}, (res) => {
     integrations = res
   })
@@ -48,9 +44,9 @@
     projects = res
   })
 
-  function reportError (err: unknown): void {
-    error = errorText(err)
-    Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+  function showError (err: unknown): void {
+    error = err
+    reportError(err)
   }
 
   async function refresh (): Promise<void> {
@@ -59,7 +55,7 @@
     try {
       await sendGLServiceRequest('refresh', {})
     } catch (err) {
-      reportError(err)
+      showError(err)
     } finally {
       refreshing = false
     }
@@ -77,8 +73,10 @@
       await sendGLServiceRequest('auth', { code: msg.code, state: msg.state })
       channel?.postMessage(oauthResultMessage(msg.state, true))
     } catch (err) {
-      channel?.postMessage(oauthResultMessage(msg.state, false, errorText(err)))
-      reportError(err)
+      showError(err)
+      // The landing tab always gets a result, even when the translation fails
+      const text = await translateError(err, $themeStore.language).catch(() => errorText(err))
+      channel?.postMessage(oauthResultMessage(msg.state, false, text))
     }
   }
 
@@ -89,7 +87,7 @@
       if (callbacks.accept(msg)) void completeAuth(msg)
     } else if (isOAuthErrorMessage(msg) && awaitingCallback) {
       awaitingCallback = false
-      reportError(new Error(msg.description ?? msg.error))
+      showError(new Error(msg.description ?? msg.error))
     }
   }
 
@@ -109,11 +107,9 @@
       callbacks.expect(await onAuthorize())
       awaitingCallback = true
     } catch (err) {
-      reportError(err)
+      showError(err)
     }
   }
-
-  $: title = getMetadata(ui.metadata.PlatformTitle)
 </script>
 
 <Card
@@ -133,20 +129,22 @@
         appConfigured = ev.detail
       }}
     />
-    {#if auth !== undefined && auth.login !== ''}
-      <Label label={gitlab.string.Authorized} params={{ login: auth.login }} />
+    {#if $gitlabAuthentication !== undefined && $gitlabAuthentication.login !== ''}
+      <Label label={gitlab.string.Authorized} params={{ login: $gitlabAuthentication.login }} />
     {:else}
       <Label label={gitlab.string.NotAuthorized} params={{ title }} />
     {/if}
-    {#if auth?.error != null}
-      <span class="error-color">{auth.error}</span>
+    {#if $gitlabAuthentication?.error != null}
+      <ErrorText error={$gitlabAuthentication.error} />
     {/if}
     {#if error !== undefined}
-      <span class="error-color">{error}</span>
+      <ErrorText {error} />
     {/if}
     {#if appConfigured}
       {#each integrations as gl (gl._id)}
-        <div class="fs-title"><Label label={gitlab.string.Repositories} /> — {gl.host} / {gl.login}</div>
+        <div class="fs-title">
+          <Label label={gitlab.string.IntegrationRepositories} params={{ host: gl.host, login: gl.login }} />
+        </div>
         <ImageModeSetting integration={gl} />
         <GitlabRepositories integration={gl} {projects} {integrations} />
       {/each}
@@ -162,7 +160,7 @@
       />
     {/if}
     <Button
-      label={auth !== undefined ? gitlab.string.ReAuthorize : gitlab.string.Authorize}
+      label={$gitlabAuthentication !== undefined ? gitlab.string.ReAuthorize : gitlab.string.Authorize}
       labelParams={{ title }}
       kind={'primary'}
       size={'large'}

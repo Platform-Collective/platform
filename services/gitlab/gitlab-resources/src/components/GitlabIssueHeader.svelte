@@ -1,13 +1,16 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
-  import { type Hyperlink, type Ref } from '@hcengineering/core'
-  import { type GitlabIntegrationRepository, type GitlabMergeRequest } from '@hcengineering/gitlab'
+  import { type Ref } from '@hcengineering/core'
+  import { type GitlabIntegrationRepository } from '@hcengineering/gitlab'
   import { createQuery, getClient } from '@hcengineering/presentation'
   import tracker, { type Issue, type Project } from '@hcengineering/tracker'
-  import { Button, Icon, Label } from '@hcengineering/ui'
-  import { issueHeaderState } from '../issue-header'
+  import { Button, Icon, Label, showPopup } from '@hcengineering/ui'
+  import { errorText, reportError } from '../errors'
+  import { asMergeRequest, headerImages, issueHeaderState } from '../issue-header'
   import gitlab from '../plugin'
-  import { linkedRepositories } from '../repository-choice'
+  import { issueLinkFor, linkedRepositories } from '../repository-choice'
+  import GitlabImagePopup from './GitlabImagePopup.svelte'
+  import GitlabRefLink from './GitlabRefLink.svelte'
   import { gitlabRepositories } from './repositories'
   import RepositorySelect from './RepositorySelect.svelte'
 
@@ -26,9 +29,7 @@
   // A change this browser could not save (the server refused it)
   let failed: string | null = null
 
-  $: mergeRequest = hierarchy.isDerived(value._class, gitlab.class.GitlabMergeRequest)
-    ? (value as GitlabMergeRequest)
-    : undefined
+  $: mergeRequest = asMergeRequest(hierarchy, value)
   $: link = mergeRequest === undefined ? hierarchy.asIf(value, gitlab.mixin.GitlabIssue) : undefined
   $: repositoryId = mergeRequest?.repository ?? link?.repository ?? undefined
   $: repository = repositoryId != null ? $gitlabRepositories.get(repositoryId) : undefined
@@ -38,16 +39,20 @@
       : []
   $: state = issueHeaderState({ mergeRequest, link, linkedRepositories: linked.length, readonly })
   $: error = state.error ?? failed
+  // Description images left on GitLab; the viewer loads each one with the viewer's own GitLab account
+  $: images = state.kind === 'mergeRequest' || state.kind === 'linked' ? headerImages({ mergeRequest, link }) : []
 
-  function messageOf (err: unknown): string {
-    return err instanceof Error ? err.message : String(err)
+  function openImages (): void {
+    showPopup(GitlabImagePopup, { images, index: 0 }, 'centered')
   }
 
   // Picking a repository is all it takes: the GitLab service creates the GitLab issue
   async function createInGitlab (picked: Ref<GitlabIntegrationRepository> | null): Promise<void> {
     if (picked === null) return
     failed = null
-    const data = { repository: picked, url: '' as Hyperlink, gitlabIid: 0, syncError: null }
+    const issueLink = issueLinkFor({ repository: picked })
+    if (issueLink === undefined) return
+    const data = { ...issueLink, syncError: null }
     try {
       if (link !== undefined) {
         await client.updateMixin(value._id, value._class, value.space, gitlab.mixin.GitlabIssue, data)
@@ -55,7 +60,8 @@
         await client.createMixin(value._id, value._class, value.space, gitlab.mixin.GitlabIssue, data)
       }
     } catch (err: unknown) {
-      failed = messageOf(err)
+      failed = errorText(err)
+      reportError(err)
     }
   }
 
@@ -69,21 +75,30 @@
         await client.updateMixin(value._id, value._class, value.space, gitlab.mixin.GitlabIssue, { syncError: null })
       }
     } catch (err: unknown) {
-      failed = messageOf(err)
+      failed = errorText(err)
+      reportError(err)
     }
   }
 </script>
 
 {#if state.kind === 'mergeRequest' && mergeRequest !== undefined}
-  <a class="ml-2 flex-row-center" href={mergeRequest.url} target="_blank" rel="noreferrer">
-    <Icon icon={gitlab.icon.MergeRequest} size={'small'} />
-    <span class="ml-1">{repository?.pathWithNamespace ?? ''} !{mergeRequest.gitlabIid}</span>
-  </a>
+  <div class="ml-2">
+    <GitlabRefLink
+      icon={gitlab.icon.MergeRequest}
+      url={mergeRequest.url}
+      repository={repository?.pathWithNamespace ?? ''}
+      reference={`!${mergeRequest.gitlabIid}`}
+    />
+  </div>
 {:else if state.kind === 'linked' && link !== undefined}
-  <a class="ml-2 flex-row-center" href={link.url} target="_blank" rel="noreferrer">
-    <Icon icon={gitlab.icon.Gitlab} size={'small'} />
-    <span class="ml-1">{repository?.pathWithNamespace ?? ''} #{link.gitlabIid}</span>
-  </a>
+  <div class="ml-2">
+    <GitlabRefLink
+      icon={gitlab.icon.Gitlab}
+      url={link.url}
+      repository={repository?.pathWithNamespace ?? ''}
+      reference={`#${link.gitlabIid}`}
+    />
+  </div>
 {:else if state.kind === 'creating' || state.kind === 'failed'}
   <!-- Picked: the GitLab issue is being created, or GitLab refused it -->
   <div class="ml-2 flex-row-center">
@@ -103,10 +118,21 @@
     />
   </div>
 {/if}
+{#if images.length > 0}
+  <div class="ml-2">
+    <Button
+      kind={'ghost'}
+      size={'small'}
+      icon={gitlab.icon.Image}
+      label={gitlab.string.GitlabImages}
+      labelParams={{ count: images.length }}
+      on:click={openImages}
+    />
+  </div>
+{/if}
 {#if error !== null}
   <div class="ml-2 flex-row-center sync-error" title={error}>
-    <Label label={gitlab.string.SyncError} />:
-    <span class="ml-1 overflow-label">{error}</span>
+    <span class="overflow-label"><Label label={gitlab.string.SyncErrorMessage} params={{ message: error }} /></span>
     {#if !readonly && state.error !== null}
       <div class="ml-2">
         <Button kind={'link'} size={'small'} label={gitlab.string.Retry} on:click={retry} />

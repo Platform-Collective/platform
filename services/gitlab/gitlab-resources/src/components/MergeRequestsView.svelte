@@ -26,11 +26,14 @@
   }
   $: if (query !== undefined) updateSearchQuery(search)
 
-  $: if (label === '' && title !== undefined) {
+  // The title follows the UI language; a label passed in wins
+  let translatedTitle = ''
+  $: if (title !== undefined) {
     translateCB(title, {}, $themeStore.language, (res) => {
-      label = res
+      translatedTitle = res
     })
   }
+  $: shownLabel = label !== '' ? label : translatedTitle
 </script>
 
 <SpaceHeader
@@ -38,7 +41,7 @@
   bind:search
   _class={gitlab.class.GitlabMergeRequest}
   {viewlets}
-  {label}
+  label={shownLabel}
   {space}
   {modeSelectorProps}
 >

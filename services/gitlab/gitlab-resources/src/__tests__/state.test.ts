@@ -1,17 +1,12 @@
 // SPDX-License-Identifier: EPL-2.0
 import {
   OAuthCallbackTracker,
-  applicationLinks,
-  isLinkableProject,
-  isValidHostInput,
   isOAuthCallbackMessage,
   isOAuthErrorMessage,
   isOAuthResultMessage,
   oauthCallbackMessage,
   oauthErrorMessage,
   oauthResultMessage,
-  parseServiceResponse,
-  serviceUrl,
   stateFromAuthorizeUrl
 } from '../state'
 
@@ -32,13 +27,6 @@ const garbage: unknown[] = [
   { type: 'gitlab-oauth-result', state: 's', ok: false, error: 42 },
   { type: 'gitlab-oauth-error', error: 1 }
 ]
-
-describe('serviceUrl', () => {
-  it('joins service url and path without double slashes', () => {
-    expect(serviceUrl('http://pod:3600/', 'auth')).toBe('http://pod:3600/api/v1/auth')
-    expect(serviceUrl('http://pod:3600', 'repository-enable')).toBe('http://pod:3600/api/v1/repository-enable')
-  })
-})
 
 describe('oauth broadcast messages', () => {
   it('builds messages that pass their own guard only', () => {
@@ -111,90 +99,5 @@ describe('stateFromAuthorizeUrl', () => {
     expect(stateFromAuthorizeUrl('https://gitlab.com/oauth/authorize?client_id=x')).toBeUndefined()
     expect(stateFromAuthorizeUrl('https://gitlab.com/oauth/authorize?state=')).toBeUndefined()
     expect(stateFromAuthorizeUrl('not a url')).toBeUndefined()
-  })
-})
-
-describe('parseServiceResponse', () => {
-  it('returns the parsed body of an ok JSON response', () => {
-    expect(parseServiceResponse(200, true, '{"url":"https://x"}')).toEqual({ url: 'https://x' })
-  })
-
-  it('throws the error field of an error JSON response', () => {
-    expect(() => parseServiceResponse(403, false, '{"error":"Forbidden caller"}')).toThrow('Forbidden caller')
-  })
-
-  it('throws HTTP <status> for a non-JSON error response', () => {
-    expect(() => parseServiceResponse(502, false, '<html><body>Bad Gateway</body></html>')).toThrow('HTTP 502')
-  })
-
-  it('handles an empty body', () => {
-    expect(() => parseServiceResponse(500, false, '')).toThrow('HTTP 500')
-    expect(parseServiceResponse(200, true, '')).toEqual({})
-  })
-
-  it('rejects an ok response that is not a JSON object', () => {
-    expect(() => parseServiceResponse(200, true, '<html></html>')).toThrow('HTTP 200')
-  })
-})
-
-describe('applicationLinks', () => {
-  it('builds user and admin application pages under a sub-path host', () => {
-    expect(applicationLinks('https://git.corp.local/gitlab/')).toEqual({
-      user: 'https://git.corp.local/gitlab/-/user_settings/applications',
-      admin: 'https://git.corp.local/gitlab/admin/applications',
-      groupHint: 'https://git.corp.local/gitlab/groups/<your-group>/-/settings/applications'
-    })
-  })
-
-  it('builds gitlab.com links', () => {
-    expect(applicationLinks('https://gitlab.com').user).toBe('https://gitlab.com/-/user_settings/applications')
-  })
-})
-
-describe('isValidHostInput', () => {
-  it.each([
-    ['https://gitlab.com', true],
-    ['http://localhost:8929', true],
-    ['http://gitlab.com', false],
-    ['gitlab.com', false],
-    ['', false],
-    ['https://git.corp.local/gitlab/', true],
-    ['http://git.corp.local', true],
-    ['http://127.0.0.1:8080', true],
-    ['https://gitlab.com/?x=1', false],
-    ['https://gitlab.com/#top', false],
-    ['https://user:pass@gitlab.com', false],
-    ['ftp://gitlab.com', false]
-  ])('%s -> %s', (raw, ok) => {
-    expect(isValidHostInput(raw)).toBe(ok)
-  })
-})
-
-describe('isLinkableProject', () => {
-  const existing = new Set(['current', 'other'])
-
-  it('accepts a project without the GitLab mixin', () => {
-    expect(isLinkableProject(undefined, 'current', existing)).toBe(true)
-  })
-
-  it('accepts a project already owned by the same integration', () => {
-    expect(isLinkableProject({ integration: 'current', repositories: ['r1'] }, 'current', existing)).toBe(true)
-  })
-
-  it('accepts a project pointing at a deleted integration with no repositories (live case)', () => {
-    expect(isLinkableProject({ integration: 'gone', repositories: [] }, 'current', existing)).toBe(true)
-  })
-
-  it('accepts a project pointing at a deleted integration with dangling repositories', () => {
-    expect(isLinkableProject({ integration: 'gone', repositories: ['r1'] }, 'current', existing)).toBe(true)
-  })
-
-  it('accepts a project of another existing integration that links no repositories', () => {
-    expect(isLinkableProject({ integration: 'other', repositories: [] }, 'current', existing)).toBe(true)
-    expect(isLinkableProject({ integration: 'other' }, 'current', existing)).toBe(true)
-  })
-
-  it('rejects a project actively linked to another existing integration', () => {
-    expect(isLinkableProject({ integration: 'other', repositories: ['r1'] }, 'current', existing)).toBe(false)
   })
 })

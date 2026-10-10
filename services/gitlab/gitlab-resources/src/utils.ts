@@ -1,10 +1,29 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import { getCurrentAccount, type Account } from '@hcengineering/core'
-import { PlatformError, getMetadata, unknownError } from '@hcengineering/platform'
-import presentation from '@hcengineering/presentation'
+import { getMetadata, type IntlString } from '@hcengineering/platform'
+import presentation, { MessageBox } from '@hcengineering/presentation'
+import { showPopup } from '@hcengineering/ui'
+import { GitlabError } from './errors'
+import { type GitlabImageRequest } from './image-link'
 import gitlab from './plugin'
-import { parseServiceResponse, serviceUrl, stateFromAuthorizeUrl } from './state'
+import { parseServiceResponse, serviceUrl } from './service'
+import { stateFromAuthorizeUrl } from './state'
+
+export interface ServiceAuth {
+  token: string | undefined
+  accountId: string | undefined
+}
+
+/** The caller's Huly token and primary social id, sent with every GitLab service request. */
+export function serviceAuth (): ServiceAuth {
+  return {
+    token: getMetadata(presentation.metadata.Token),
+    // The workspace token does not carry the social id. A tab without a session has no account: the pod rejects it,
+    // instead of a TypeError here.
+    accountId: (getCurrentAccount() as Account | undefined)?.primarySocialId
+  }
+}
 
 export async function sendGLServiceRequest (
   path: string,
@@ -12,24 +31,23 @@ export async function sendGLServiceRequest (
 ): Promise<Record<string, unknown>> {
   const base = getMetadata(gitlab.metadata.GitlabURL)
   if (base === undefined || base === '') {
-    throw new PlatformError(unknownError('GitLab integration is not configured'))
+    throw new GitlabError(gitlab.string.NotConfigured)
   }
   const res = await fetch(serviceUrl(base, path), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    // accountId = caller's primary social id; the workspace token does not carry it.
-    // getCurrentAccount() is unset in a tab without a session; let the pod reject instead of throwing a TypeError here.
-    body: JSON.stringify({
-      token: getMetadata(presentation.metadata.Token),
-      accountId: (getCurrentAccount() as Account | undefined)?.primarySocialId,
-      ...args
-    })
+    body: JSON.stringify({ ...serviceAuth(), ...args })
   })
-  const text = await res.text()
-  try {
-    return parseServiceResponse(res.status, res.ok, text)
-  } catch (err: unknown) {
-    throw new PlatformError(unknownError(err instanceof Error ? err.message : String(err)))
+  return parseServiceResponse(res.status, res.ok, await res.text())
+}
+
+/** What the image viewer needs to ask the GitLab service for an image as the viewer. */
+export function gitlabImageRequest (): GitlabImageRequest {
+  return {
+    base: getMetadata(gitlab.metadata.GitlabURL) ?? '',
+    ...serviceAuth(),
+    // Called as request.fetch(...): window.fetch called on another object throws "Illegal invocation"
+    fetch: async (...args) => await fetch(...args)
   }
 }
 
@@ -44,8 +62,20 @@ export async function onAuthorize (): Promise<string> {
   const authorizeUrl = String(url)
   const state = stateFromAuthorizeUrl(authorizeUrl)
   if (state === undefined) {
-    throw new PlatformError(unknownError('GitLab authorize URL has no state'))
+    throw new GitlabError(gitlab.string.AuthorizeLinkInvalid)
   }
   window.open(authorizeUrl)
   return state
+}
+
+/** Asks before a destructive action; runs it only when the user confirms. */
+export function confirmDangerous (
+  label: IntlString,
+  message: IntlString,
+  onConfirm: () => Promise<void>,
+  params?: Record<string, string>
+): void {
+  showPopup(MessageBox, { label, message, params, okLabel: label, dangerous: true }, undefined, (confirmed) => {
+    if (confirmed === true) void onConfirm()
+  })
 }

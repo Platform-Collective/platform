@@ -8,7 +8,6 @@
     "ReAuthorize": "GitLab으로 {title} 다시 인증",
     "Authorized": "{login}(으)로 연결됨",
     "NotAuthorized": "{title}이(가) GitLab 계정에 액세스할 수 있도록 인증하세요. 메인테이너 역할이 있는 프로젝트가 여기에 표시됩니다.",
-    "Repositories": "GitLab 프로젝트",
     "NoRepositories": "이 계정에서 메인테이너 역할이 있는 프로젝트를 찾을 수 없습니다.",
     "RefreshRepositories": "프로젝트 새로고침",
     "ImageMode": "GitLab 이미지",
@@ -19,6 +18,7 @@
     "ImageNoAccess": "이 이미지를 보려면 이 GitLab 프로젝트에 대한 접근 권한이 필요합니다.",
     "ImageNotConnected": "GitLab 이미지를 보려면 GitLab 계정을 연결하세요.",
     "ImageUnavailable": "지금은 이 이미지를 표시할 수 없습니다.",
+    "GitlabImages": "GitLab 이미지 ({count})",
     "OpenInGitlab": "GitLab에서 열기",
     "LinkToProject": "{title} 프로젝트에 연결",
     "Unlink": "연결 해제",
@@ -29,7 +29,6 @@
     "RequestFailed": "요청에 실패했습니다. 다시 시도하세요.",
     "CloseTab": "탭 닫기",
     "KeepSettingsOpen": "GitLab을 연결하는 동안 {title} 설정 탭을 열어 둔 채 다시 시도하세요",
-    "Disconnect": "연결 끊기",
     "Repository": "GitLab 프로젝트",
     "SetupTitle": "GitLab 애플리케이션",
     "SetupWhere": "GitLab에서 애플리케이션을 등록할 위치를 선택하세요.",
@@ -42,7 +41,7 @@
     "SetupCopyCredentials": "아래의 Application ID와 시크릿을 복사하세요. GitLab은 시크릿을 한 번만 표시합니다.",
     "GitlabUrl": "GitLab URL",
     "SelfManaged": "자체 관리형 GitLab",
-    "ApplicationId": "Application ID",
+    "ApplicationId": "애플리케이션 ID",
     "ApplicationSecret": "시크릿",
     "KeepSecretHint": "현재 시크릿을 유지하려면 비워 두세요",
     "Save": "저장",
@@ -108,6 +107,14 @@
     "Outdated": "오래됨",
     "SyncError": "GitLab 동기화 오류",
     "Retry": "다시 시도",
-    "ReviewNotSent": "GitLab으로 전송되지 않음"
+    "ReviewNotSent": "GitLab으로 전송되지 않음",
+    "LinkFailed": "GitLab 프로젝트를 연결하지 못했습니다. 다시 시도하세요.",
+    "UnlinkFailed": "GitLab 프로젝트 연결을 해제하지 못했습니다. 다시 시도하세요.",
+    "NotConfigured": "이 서버에 GitLab 통합이 설정되어 있지 않습니다.",
+    "AuthorizeLinkInvalid": "GitLab이 잘못된 로그인 링크를 반환했습니다. 다시 시도하세요.",
+    "IntegrationRepositories": "GitLab 프로젝트 — {host} / {login}",
+    "SyncErrorMessage": "GitLab 동기화 오류: {message}",
+    "UnlinkConfirm": "{project}에서 {repository} 연결을 해제할까요? 다시 연결할 때까지 변경 사항이 동기화되지 않습니다.",
+    "RemoveAppConfirm": "이 워크스페이스에서 GitLab 애플리케이션을 제거할까요? 새 애플리케이션이 설정될 때까지 멤버는 GitLab을 연결할 수 없습니다."
   }
 }

@@ -8,7 +8,6 @@
     "ReAuthorize": "Volver a autorizar {title} con GitLab",
     "Authorized": "Conectado como {login}",
     "NotAuthorized": "Autoriza {title} para acceder a tu cuenta de GitLab. Aquí se mostrarán los proyectos en los que tengas el rol de Mantenedor.",
-    "Repositories": "Proyectos de GitLab",
     "NoRepositories": "No se encontraron proyectos con el rol de Mantenedor para esta cuenta.",
     "RefreshRepositories": "Actualizar proyectos",
     "ImageMode": "Imágenes de GitLab",
@@ -19,6 +18,7 @@
     "ImageNoAccess": "Necesitas acceso a este proyecto de GitLab para ver esta imagen.",
     "ImageNotConnected": "Conecta tu cuenta de GitLab para ver imágenes de GitLab.",
     "ImageUnavailable": "Esta imagen no se puede mostrar ahora.",
+    "GitlabImages": "Imágenes de GitLab ({count})",
     "OpenInGitlab": "Abrir en GitLab",
     "LinkToProject": "Vincular con el proyecto {title}",
     "Unlink": "Desvincular",
@@ -29,7 +29,6 @@
     "RequestFailed": "La solicitud falló. Inténtalo de nuevo.",
     "CloseTab": "Cerrar pestaña",
     "KeepSettingsOpen": "Mantén abierta la pestaña de configuración de {title} mientras conectas GitLab y vuelve a intentarlo",
-    "Disconnect": "Desconectar",
     "Repository": "Proyecto de GitLab",
     "SetupTitle": "Aplicación de GitLab",
     "SetupWhere": "Elige dónde registrar la aplicación en GitLab:",
@@ -42,7 +41,7 @@
     "SetupCopyCredentials": "Copia el Application ID y el Secret a continuación. GitLab muestra el secreto solo una vez.",
     "GitlabUrl": "URL de GitLab",
     "SelfManaged": "GitLab autogestionado",
-    "ApplicationId": "Application ID",
+    "ApplicationId": "ID de la aplicación",
     "ApplicationSecret": "Secreto",
     "KeepSecretHint": "Déjalo vacío para conservar el secreto actual",
     "Save": "Guardar",
@@ -108,6 +107,14 @@
     "Outdated": "Obsoleto",
     "SyncError": "Error de sincronización de GitLab",
     "Retry": "Reintentar",
-    "ReviewNotSent": "No enviado a GitLab"
+    "ReviewNotSent": "No enviado a GitLab",
+    "LinkFailed": "No se pudo vincular el proyecto de GitLab. Inténtalo de nuevo.",
+    "UnlinkFailed": "No se pudo desvincular el proyecto de GitLab. Inténtalo de nuevo.",
+    "NotConfigured": "La integración con GitLab no está configurada en este servidor.",
+    "AuthorizeLinkInvalid": "GitLab devolvió un enlace de inicio de sesión no válido. Inténtalo de nuevo.",
+    "IntegrationRepositories": "Proyectos de GitLab — {host} / {login}",
+    "SyncErrorMessage": "Error de sincronización de GitLab: {message}",
+    "UnlinkConfirm": "¿Desvincular {repository} de {project}? Los cambios dejarán de sincronizarse hasta que se vuelva a vincular.",
+    "RemoveAppConfirm": "¿Eliminar la aplicación de GitLab de este espacio de trabajo? Los miembros no podrán conectar GitLab hasta que se configure una nueva."
   }
 }

@@ -5,7 +5,6 @@ import { type Resources } from '@hcengineering/platform'
 import Configure from './components/Configure.svelte'
 import Connect from './components/Connect.svelte'
 import ConnectApp from './components/ConnectApp.svelte'
-import GitlabImageLink from './components/GitlabImageLink.svelte'
 import GitlabIcon from './components/GitlabIcon.svelte'
 import IntegrationState from './components/IntegrationState.svelte'
 import EditMergeRequest from './components/EditMergeRequest.svelte'
@@ -41,8 +40,7 @@ export default async (): Promise<Resources> => ({
     GitlabRepositoryPool,
     GitlabIssuePresenter,
     GitlabReviewPresenter,
-    GitlabReviewThreadPresenter,
-    GitlabImageLink
+    GitlabReviewThreadPresenter
   },
   handler: {
     DisconnectHandler: async (_integration: Integration) => {

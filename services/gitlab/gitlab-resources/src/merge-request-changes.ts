@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import { type GitlabMergeRequest } from '@hcengineering/gitlab'
+import { trimTrailingSlashes } from './gitlab-host'
+import { safeHttpUrl } from './safe-url'
 
 /** Merge requests above either limit are not rendered in Huly; the panel points to GitLab. */
 export const MAX_SHOWN_FILES = 50
@@ -11,9 +13,8 @@ export const MAX_SHOWN_LINES = 2000
  * (a mirrored value must never become a javascript: link).
  */
 export function changesUrl (url: string): string | undefined {
-  const base = url.split(/[?#]/)[0].replace(/\/+$/, '')
-  if (!/^https?:\/\/./i.test(base)) return undefined
-  return `${base}/diffs`
+  const base = safeHttpUrl(trimTrailingSlashes(url.split(/[?#]/)[0]))
+  return base === undefined ? undefined : `${base}/diffs`
 }
 
 type ChangeCounts = Pick<GitlabMergeRequest, 'files' | 'additions' | 'deletions'>

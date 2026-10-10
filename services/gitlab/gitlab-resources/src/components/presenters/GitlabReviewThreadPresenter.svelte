@@ -14,10 +14,13 @@
   import { createQuery, getClient } from '@hcengineering/presentation'
   import { ReferenceInput } from '@hcengineering/text-editor-resources'
   import { Button, Component, Label, PaletteColorIndexes, getPlatformColor, themeStore } from '@hcengineering/ui'
-  import { extractHunk } from '../../hunk'
-  import { patchText } from '../../patch-loader'
+  import { reportError } from '../../errors'
+  import { patchFiles } from '../../patch-loader'
   import gitlab from '../../plugin'
+  import { createHunkLoader, resolveChange, threadLocation } from '../../review-thread'
   import { expansionAfter } from '../../thread-expansion'
+  import ErrorText from '../ErrorText.svelte'
+  import ActivityFrame from './ActivityFrame.svelte'
   import ReviewCommentPresenter from './ReviewCommentPresenter.svelte'
 
   export let value: WithLookup<GitlabReviewThread>
@@ -63,29 +66,21 @@
     ;[patch] = res
   })
 
-  // Cut from the stored diff; an outdated thread shows its location only
+  // Cut from the stored diff; an outdated thread shows its location only. Each input is its own reactive value, so
+  // updates to the thread that keep them (resolve, sync, activity) do not cut the hunk again.
+  $: patchFile = patch?.file
+  $: path = value.path
+  $: line = value.line
+  $: oldLine = value.oldLine
+  $: outdated = value.isOutdated
+  const loadHunk = createHunkLoader(async (file) => await patchFiles({ file }))
   let hunk = ''
-  async function loadHunk (file: GitlabPatch | undefined, thread: GitlabReviewThread): Promise<void> {
-    if (file === undefined || thread.isOutdated) {
-      hunk = ''
-      return
-    }
-    try {
-      const text = await patchText(file)
-      // A newer diff may have arrived meanwhile
-      if (patch?.file === file.file) hunk = extractHunk(text, thread.path, thread.line, thread.oldLine)
-    } catch {
-      hunk = ''
-    }
-  }
-  $: void loadHunk(patch, value)
+  $: void loadHunk({ file: patchFile, path, line, oldLine, outdated }).then((next) => {
+    if (next !== undefined) hunk = next
+  })
 
-  $: location =
-    value.line !== null
-      ? `${value.path}:${value.line}`
-      : value.oldLine !== null
-        ? `${value.oldPath}:${value.oldLine}`
-        : value.path
+  $: location = threadLocation(value)
+  $: frameColor = value.isResolved ? undefined : getPlatformColor(PaletteColorIndexes.Orange, $themeStore.dark)
 
   let expansion = { expanded: !value.isResolved, resolved: value.isResolved }
   $: expansion = expansionAfter(expansion, value.isResolved)
@@ -95,31 +90,41 @@
     expansion = { ...expansion, expanded: next }
   }
 
+  let actionError: unknown
+
+  function showActionError (err: unknown): void {
+    actionError = err
+    reportError(err)
+  }
+
   async function reply (event: CustomEvent<Markup>): Promise<void> {
-    await client.addCollection(
-      gitlab.class.GitlabReviewComment,
-      value.space,
-      mergeRequest,
-      value.attachedToClass,
-      'reviewComments',
-      { discussionId: value.discussionId, body: event.detail }
-    )
+    actionError = undefined
+    try {
+      await client.addCollection(
+        gitlab.class.GitlabReviewComment,
+        value.space,
+        mergeRequest,
+        value.attachedToClass,
+        'reviewComments',
+        { discussionId: value.discussionId, body: event.detail }
+      )
+    } catch (err: unknown) {
+      showActionError(err)
+    }
   }
 
   // The GitLab service resolves or reopens the discussion in GitLab
   async function toggleResolved (): Promise<void> {
-    if (value.isResolved) {
-      await client.update(value, { isResolved: false, resolvedBy: null })
-    } else {
-      await client.update(value, { isResolved: true, resolvedBy: getCurrentAccount().primarySocialId })
+    actionError = undefined
+    try {
+      await client.update(value, resolveChange(value.isResolved, getCurrentAccount().primarySocialId))
+    } catch (err: unknown) {
+      showActionError(err)
     }
   }
 </script>
 
-<div
-  class:unresolved={!value.isResolved}
-  style:border-color={!value.isResolved ? getPlatformColor(PaletteColorIndexes.Orange, $themeStore.dark) : undefined}
->
+<ActivityFrame color={frameColor}>
   <ActivityMessageTemplate
     message={value}
     parentMessage={undefined}
@@ -179,6 +184,9 @@
               <div class="ml-2"><EmployeePresenter value={resolver} shouldShowAvatar /></div>
             {/if}
           </div>
+          {#if actionError !== undefined}
+            <div class="p-2"><ErrorText error={actionError} /></div>
+          {/if}
         {:else}
           <div class="p-2">
             <Button
@@ -193,14 +201,9 @@
       </div>
     </svelte:fragment>
   </ActivityMessageTemplate>
-</div>
+</ActivityFrame>
 
 <style lang="scss">
-  .unresolved {
-    border: 1px solid;
-    border-radius: 0.5rem;
-    margin: 0.25rem 0;
-  }
   .thread {
     border: 1px solid var(--theme-divider-color);
     border-radius: 0.25rem;

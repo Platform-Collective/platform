@@ -8,7 +8,6 @@
     "ReAuthorize": "Re-authorize {title} with GitLab",
     "Authorized": "Connected as {login}",
     "NotAuthorized": "Authorize {title} to access your GitLab account. Projects where you have the Maintainer role will be listed here.",
-    "Repositories": "GitLab projects",
     "NoRepositories": "No projects with the Maintainer role were found for this account.",
     "RefreshRepositories": "Refresh projects",
     "ImageMode": "Images from GitLab",
@@ -19,6 +18,7 @@
     "ImageNoAccess": "You need access to this GitLab project to see this image.",
     "ImageNotConnected": "Connect your GitLab account to see images from GitLab.",
     "ImageUnavailable": "This image cannot be shown right now.",
+    "GitlabImages": "GitLab images ({count})",
     "OpenInGitlab": "Open in GitLab",
     "LinkToProject": "Link to {title} project",
     "Unlink": "Unlink",
@@ -29,7 +29,6 @@
     "RequestFailed": "Request failed. Please try again.",
     "CloseTab": "Close tab",
     "KeepSettingsOpen": "Keep the {title} settings tab open while connecting GitLab, then try again",
-    "Disconnect": "Disconnect",
     "Repository": "GitLab project",
     "SetupTitle": "GitLab application",
     "SetupWhere": "Choose where to register the application in GitLab:",
@@ -108,6 +107,14 @@
     "Outdated": "Outdated",
     "SyncError": "GitLab sync error",
     "Retry": "Retry",
-    "ReviewNotSent": "Not sent to GitLab"
+    "ReviewNotSent": "Not sent to GitLab",
+    "LinkFailed": "Could not link the GitLab project. Try again.",
+    "UnlinkFailed": "Could not unlink the GitLab project. Try again.",
+    "NotConfigured": "The GitLab integration is not configured on this server.",
+    "AuthorizeLinkInvalid": "GitLab returned an invalid sign-in link. Try again.",
+    "IntegrationRepositories": "GitLab projects — {host} / {login}",
+    "SyncErrorMessage": "GitLab sync error: {message}",
+    "UnlinkConfirm": "Unlink {repository} from {project}? Changes stop syncing until it is linked again.",
+    "RemoveAppConfirm": "Remove the GitLab application from this workspace? Members cannot connect GitLab until a new one is set up."
   }
 }

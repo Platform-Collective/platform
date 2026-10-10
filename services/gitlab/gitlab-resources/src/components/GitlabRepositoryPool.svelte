@@ -11,10 +11,14 @@
   export let state: Writable<RepositoryChoice>
   export let space: Space | undefined
 
+  function correct (valid: RepositoryChoice): void {
+    if (valid !== $state) $state = valid
+  }
+
   $: isGitlab = space !== undefined && getClient().getHierarchy().hasMixin(space, gitlab.mixin.GitlabProject)
   $: linked = isGitlab ? linkedRepositories($gitlabRepositories.values(), space?._id) : []
   // A pick from a project the user switched away from does not apply here
-  $: if (validChoice($state, linked) !== $state) $state = validChoice($state, linked)
+  $: correct(validChoice($state, linked))
   $: shown = shownRepository($state, linked)
 </script>
 

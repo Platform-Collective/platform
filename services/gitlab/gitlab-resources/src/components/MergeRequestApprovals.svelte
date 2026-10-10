@@ -2,23 +2,21 @@
 <script lang="ts">
   import { getCurrentEmployee } from '@hcengineering/contact'
   import { PersonRefPresenter } from '@hcengineering/contact-resources'
-  import { getCurrentAccount } from '@hcengineering/core'
-  import { type GitlabAuthentication, type GitlabMergeRequest } from '@hcengineering/gitlab'
-  import { createQuery, getClient } from '@hcengineering/presentation'
+  import { type GitlabMergeRequest } from '@hcengineering/gitlab'
+  import { getClient } from '@hcengineering/presentation'
   import { Button, Label } from '@hcengineering/ui'
+  import { reportError } from '../errors'
   import gitlab from '../plugin'
+  import { gitlabAuthentication } from './authentication'
+  import ErrorText from './ErrorText.svelte'
 
   export let mergeRequest: GitlabMergeRequest
 
   const me = getCurrentEmployee()
 
-  let auth: GitlabAuthentication | undefined
-  createQuery().query(gitlab.class.GitlabAuthentication, { attachedTo: getCurrentAccount().primarySocialId }, (res) => {
-    ;[auth] = res
-  })
-
   let sending = false
-  $: connected = auth !== undefined && auth.error == null
+  let error: unknown
+  $: connected = $gitlabAuthentication !== undefined && $gitlabAuthentication.error == null
   $: approvers = mergeRequest.approvedBy ?? []
   $: approved = approvers.includes(me)
   $: open = mergeRequest.state === 'opened' || mergeRequest.state === 'locked'
@@ -26,6 +24,7 @@
   // The GitLab service approves or revokes with this user's own GitLab token
   async function send (state: 'approved' | 'unapproved'): Promise<void> {
     sending = true
+    error = undefined
     try {
       await getClient().addCollection(
         gitlab.class.GitlabReview,
@@ -35,6 +34,9 @@
         'activity',
         { state }
       )
+    } catch (err: unknown) {
+      error = err
+      reportError(err)
     } finally {
       sending = false
     }
@@ -62,3 +64,4 @@
     {/if}
   {/if}
 </div>
+{#if error !== undefined}<ErrorText {error} />{/if}

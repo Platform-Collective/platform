@@ -30,4 +30,12 @@ describe('createTextCache', () => {
     await expect(get('a', 'Patch.diff')).rejects.toThrow('offline')
     expect(await get('a', 'Patch.diff')).toBe('ok')
   })
+
+  it('caches any parsed value per blob', async () => {
+    const load = jest.fn(async (file: string) => file.length)
+    const get = createTextCache<number>(load)
+    expect(await get('abc', 'patch.diff')).toBe(3)
+    expect(await get('abc', 'patch.diff')).toBe(3)
+    expect(load).toHaveBeenCalledTimes(1)
+  })
 })

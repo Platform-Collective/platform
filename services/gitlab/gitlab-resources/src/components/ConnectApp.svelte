@@ -5,6 +5,7 @@
   import ui, { Button, Label, Location, Spinner, location } from '@hcengineering/ui'
   import { onDestroy } from 'svelte'
   import gitlab from '../plugin'
+  import ErrorText from './ErrorText.svelte'
   import {
     OAUTH_CHANNEL,
     OAUTH_RESULT_TIMEOUT_MS,
@@ -15,16 +16,17 @@
 
   // This tab has no Huly session: it never calls the pod. It hands the OAuth callback to the
   // opener (Connect dialog, which has the session) and waits for its result.
+  const title = getMetadata(ui.metadata.PlatformTitle)
+  const AUTO_CLOSE_SECONDS = 3
+
   let phase: 'waiting' | 'success' | 'failed' = 'waiting'
   let failureLabel: IntlString | undefined
   let failureMessage: string | undefined
-  let autoClose = 3
+  let autoClose = AUTO_CLOSE_SECONDS
   let interval: ReturnType<typeof setInterval> | undefined
   let timeout: ReturnType<typeof setTimeout> | undefined
   let channel: BroadcastChannel | undefined
   let started = false
-
-  const title = getMetadata(ui.metadata.PlatformTitle)
 
   function doAutoClose (): void {
     interval = setInterval(() => {
@@ -61,7 +63,9 @@
       started = true
       const description = query.error_description ?? undefined
       // Tell the opener (best effort) and show GitLab's reason here; never close silently.
-      openChannel()?.postMessage(oauthErrorMessage(error, description))
+      const errorChannel = openChannel()
+      errorChannel?.postMessage(oauthErrorMessage(error, description))
+      errorChannel?.close()
       fail(description ?? error)
       return
     }
@@ -116,7 +120,7 @@
       {#if failureLabel !== undefined}
         <span class="error-color"><Label label={failureLabel} params={{ title }} /></span>
       {:else if failureMessage !== undefined}
-        <span class="error-color">{failureMessage}</span>
+        <ErrorText error={failureMessage} />
       {/if}
       <Button
         label={gitlab.string.CloseTab}

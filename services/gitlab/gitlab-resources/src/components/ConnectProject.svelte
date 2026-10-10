@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
   import { Analytics } from '@hcengineering/analytics'
-  import core, { type Ref } from '@hcengineering/core'
-  import { type GitlabIntegration, type GitlabIntegrationRepository, type GitlabProject } from '@hcengineering/gitlab'
+  import { type Ref } from '@hcengineering/core'
+  import { type GitlabIntegration, type GitlabIntegrationRepository } from '@hcengineering/gitlab'
   import { getMetadata, translate } from '@hcengineering/platform'
   import { getClient } from '@hcengineering/presentation'
   import tracker, { type Project } from '@hcengineering/tracker'
@@ -11,12 +11,14 @@
     DropdownLabelsPopup,
     IconChevronDown,
     getEventPopupPositionElement,
-    showPopup
+    showPopup,
+    themeStore
   } from '@hcengineering/ui'
-  import { errorText } from '../errors'
-  import { isLinkableProject } from '../state'
+  import { reportError } from '../errors'
   import gitlab from '../plugin'
+  import { isLinkableProject, linkRepository } from '../project-link'
   import { sendGLServiceRequest } from '../utils'
+  import ErrorText from './ErrorText.svelte'
 
   export let integration: GitlabIntegration
   export let repository: GitlabIntegrationRepository
@@ -28,7 +30,7 @@
 
   const client = getClient()
   let busy = false
-  let error: string | undefined
+  let error: unknown
 
   async function link (projectId: Ref<Project>): Promise<void> {
     const project =
@@ -36,50 +38,12 @@
     if (project === undefined) return
     busy = true
     error = undefined
-    let hookInstalled = false
     try {
-      // Install the webhook first; only link when GitLab accepted it.
-      await sendGLServiceRequest('repository-enable', { repositoryId: repository._id })
-      hookInstalled = true
-      // Link atomically on the Huly side: mixin + repository update in one apply.
-      const ops = client.apply()
-      const glProject = client.getHierarchy().asIf(project, gitlab.mixin.GitlabProject)
-      if (glProject === undefined) {
-        await ops.createMixin(project._id, tracker.class.Project, core.space.Space, gitlab.mixin.GitlabProject, {
-          integration: integration._id,
-          repositories: [repository._id]
-        })
-      } else if (glProject.integration !== integration._id) {
-        // Taken over from another (deleted or idle) integration: drop its possibly dangling repository refs.
-        await ops.updateMixin(project._id, tracker.class.Project, core.space.Space, gitlab.mixin.GitlabProject, {
-          integration: integration._id,
-          repositories: [repository._id]
-        })
-      } else if (!(glProject.repositories ?? []).includes(repository._id)) {
-        await ops.updateMixin(project._id, tracker.class.Project, core.space.Space, gitlab.mixin.GitlabProject, {
-          integration: integration._id,
-          $push: { repositories: repository._id }
-        })
-      } else {
-        await ops.updateMixin(project._id, tracker.class.Project, core.space.Space, gitlab.mixin.GitlabProject, {
-          integration: integration._id
-        })
-      }
-      await ops.update(repository, { gitlabProject: project._id as Ref<GitlabProject>, enabled: true })
-      const { result } = await ops.commit()
-      if (!result) {
-        throw new Error('Failed to link GitLab repository to project')
-      }
+      await linkRepository(client, sendGLServiceRequest, project, integration, repository)
       Analytics.handleEvent('gitlab.project.connected', { project: project.identifier, repository: repository._id })
     } catch (err: unknown) {
-      error = errorText(err)
-      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
-      if (hookInstalled) {
-        // Best effort: remove the webhook installed above so no stray hook remains.
-        await sendGLServiceRequest('repository-disable', { repositoryId: repository._id }).catch((disableErr) => {
-          Analytics.handleError(disableErr)
-        })
-      }
+      error = err
+      reportError(err)
     } finally {
       busy = false
     }
@@ -95,7 +59,7 @@
   )
 
   async function select (event: MouseEvent): Promise<void> {
-    const newProjectLabel = await translate(tracker.string.NewProject, {})
+    const newProjectLabel = await translate(tracker.string.NewProject, {}, $themeStore.language)
     showPopup(
       DropdownLabelsPopup,
       {
@@ -129,4 +93,4 @@
   on:click={select}
   iconRight={IconChevronDown}
 />
-{#if error !== undefined}<span class="error-color ml-2">{error}</span>{/if}
+{#if error !== undefined}<span class="ml-2"><ErrorText {error} /></span>{/if}

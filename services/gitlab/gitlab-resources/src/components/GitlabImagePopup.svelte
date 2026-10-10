@@ -1,43 +1,88 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
-  import { getCurrentAccount, type Account } from '@hcengineering/core'
-  import { getMetadata } from '@hcengineering/platform'
-  import presentation from '@hcengineering/presentation'
-  import { Button, IconClose, Label, Loading } from '@hcengineering/ui'
+  import { Button, IconArrowLeft, IconArrowRight, IconClose, Label, Loading } from '@hcengineering/ui'
   import { createEventDispatcher, onDestroy } from 'svelte'
+  import { stepIndex } from '../image-gallery'
   import { imageNameOf, loadGitlabImage, type GitlabImageResult } from '../image-link'
   import gitlab from '../plugin'
+  import { safeHttpUrl } from '../safe-url'
+  import { gitlabImageRequest } from '../utils'
 
-  export let href: string
+  // Absolute GitLab upload URLs, as the pod records them
+  export let images: string[]
+  export let index = 0
 
   const dispatch = createEventDispatcher()
-  const name = imageNameOf(href)
   let result: GitlabImageResult | undefined
   let objectUrl: string | undefined
   let destroyed = false
+  // Only the answer for the image on screen is shown; a slower earlier answer is dropped
+  let requested = 0
 
-  void loadGitlabImage(href, {
-    base: getMetadata(gitlab.metadata.GitlabURL) ?? '',
-    token: getMetadata(presentation.metadata.Token),
-    accountId: (getCurrentAccount() as Account | undefined)?.primarySocialId,
-    fetch: async (...args) => await fetch(...args)
-  }).then((loaded) => {
-    // The popup may close before the image arrives; then there is nothing to show or to revoke later
-    if (destroyed) return
+  $: href = images[index] ?? ''
+  $: name = imageNameOf(href)
+  $: void load(href)
+
+  function release (): void {
+    if (objectUrl !== undefined) URL.revokeObjectURL(objectUrl)
+    objectUrl = undefined
+  }
+
+  async function load (target: string): Promise<void> {
+    const request = ++requested
+    release()
+    result = undefined
+    const loaded = await loadGitlabImage(target, gitlabImageRequest())
+    // The popup may close, or move on, before the image arrives; then there is nothing to show or to revoke later
+    if (destroyed || request !== requested) return
     result = loaded
     if (loaded.kind === 'image') objectUrl = URL.createObjectURL(loaded.blob)
-  })
+  }
+
+  function step (delta: number): void {
+    index = stepIndex(index, delta, images.length)
+  }
+
+  function onKeydown (event: KeyboardEvent): void {
+    if (event.key === 'ArrowLeft') step(-1)
+    else if (event.key === 'ArrowRight') step(1)
+  }
 
   onDestroy(() => {
     destroyed = true
-    if (objectUrl !== undefined) URL.revokeObjectURL(objectUrl)
+    release()
   })
 </script>
+
+<svelte:window on:keydown={onKeydown} />
 
 <div class="antiPopup gitlab-image-popup">
   <div class="header">
     <span class="overflow-label fs-title">{name}</span>
-    <Button icon={IconClose} kind="ghost" size="small" on:click={() => dispatch('close')} />
+    <div class="flex-row-center flex-gap-1">
+      {#if images.length > 1}
+        <Button
+          icon={IconArrowLeft}
+          kind="ghost"
+          size="small"
+          disabled={index === 0}
+          on:click={() => {
+            step(-1)
+          }}
+        />
+        <span class="content-dark-color">{index + 1} / {images.length}</span>
+        <Button
+          icon={IconArrowRight}
+          kind="ghost"
+          size="small"
+          disabled={index === images.length - 1}
+          on:click={() => {
+            step(1)
+          }}
+        />
+      {/if}
+      <Button icon={IconClose} kind="ghost" size="small" on:click={() => dispatch('close')} />
+    </div>
   </div>
   <div class="body">
     {#if result === undefined}
@@ -57,7 +102,9 @@
     {/if}
   </div>
   <div class="footer">
-    <a {href} target="_blank" rel="noopener noreferrer"><Label label={gitlab.string.OpenInGitlab} /></a>
+    <a href={safeHttpUrl(href)} target="_blank" rel="noopener noreferrer"
+      ><Label label={gitlab.string.OpenInGitlab} /></a
+    >
   </div>
 </div>
 

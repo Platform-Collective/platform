@@ -8,7 +8,6 @@
     "ReAuthorize": "通过 GitLab 重新授权 {title}",
     "Authorized": "已以 {login} 身份连接",
     "NotAuthorized": "授权 {title} 访问您的 GitLab 账户。此处将列出您拥有维护者角色的项目。",
-    "Repositories": "GitLab 项目",
     "NoRepositories": "未找到此账户拥有维护者角色的项目。",
     "RefreshRepositories": "刷新项目",
     "ImageMode": "来自 GitLab 的图片",
@@ -19,6 +18,7 @@
     "ImageNoAccess": "您需要此 GitLab 项目的访问权限才能查看此图片。",
     "ImageNotConnected": "连接您的 GitLab 账户以查看来自 GitLab 的图片。",
     "ImageUnavailable": "暂时无法显示此图片。",
+    "GitlabImages": "GitLab 图片 ({count})",
     "OpenInGitlab": "在 GitLab 中打开",
     "LinkToProject": "关联到 {title} 项目",
     "Unlink": "取消关联",
@@ -29,7 +29,6 @@
     "RequestFailed": "请求失败，请重试。",
     "CloseTab": "关闭标签页",
     "KeepSettingsOpen": "连接 GitLab 时请保持 {title} 设置标签页打开，然后重试",
-    "Disconnect": "断开连接",
     "Repository": "GitLab 项目",
     "SetupTitle": "GitLab 应用程序",
     "SetupWhere": "选择在 GitLab 中注册应用程序的位置：",
@@ -42,7 +41,7 @@
     "SetupCopyCredentials": "复制下方的 Application ID 和密钥。GitLab 只显示一次密钥。",
     "GitlabUrl": "GitLab URL",
     "SelfManaged": "自助管理的 GitLab",
-    "ApplicationId": "Application ID",
+    "ApplicationId": "应用程序 ID",
     "ApplicationSecret": "密钥",
     "KeepSecretHint": "留空以保留当前密钥",
     "Save": "保存",
@@ -108,6 +107,14 @@
     "Outdated": "已过时",
     "SyncError": "GitLab 同步错误",
     "Retry": "重试",
-    "ReviewNotSent": "未发送到 GitLab"
+    "ReviewNotSent": "未发送到 GitLab",
+    "LinkFailed": "无法关联 GitLab 项目，请重试。",
+    "UnlinkFailed": "无法取消关联 GitLab 项目，请重试。",
+    "NotConfigured": "此服务器未配置 GitLab 集成。",
+    "AuthorizeLinkInvalid": "GitLab 返回了无效的登录链接，请重试。",
+    "IntegrationRepositories": "GitLab 项目 — {host} / {login}",
+    "SyncErrorMessage": "GitLab 同步错误：{message}",
+    "UnlinkConfirm": "要取消 {repository} 与 {project} 的关联吗？在重新关联之前，更改将不再同步。",
+    "RemoveAppConfirm": "要从此工作区移除 GitLab 应用程序吗？在设置新的应用程序之前，成员无法连接 GitLab。"
   }
 }

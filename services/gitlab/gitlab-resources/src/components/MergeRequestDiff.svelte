@@ -6,25 +6,43 @@
   import { createQuery, getClient } from '@hcengineering/presentation'
   import { Button, Chevron, Component, ExpandCollapse, Label } from '@hcengineering/ui'
   import view from '@hcengineering/view'
+  import { reportError } from '../errors'
   import { changesUrl, isTooLargeForHuly, showDiffInHuly } from '../merge-request-changes'
   import { patchText } from '../patch-loader'
   import gitlab from '../plugin'
-  import { toggleViewed } from '../viewed-files'
+  import { createSerialQueue, saveViewedFile } from '../viewed-files'
+  import ErrorText from './ErrorText.svelte'
 
   export let mergeRequest: GitlabMergeRequest
 
   const client = getClient()
   const me = getCurrentEmployee()
+  // One toggle at a time: two quick ticks must not both create this user's review doc
+  const serial = createSerialQueue()
 
   let collapsed = true
+  // The diff downloads on the first expand only
+  let opened = false
   let patch: GitlabPatch | undefined
   let text = ''
   let failed = false
+  // Huly only: the files this user marked as viewed
+  let review: GitlabMergeRequestReview | undefined
+  let viewedError: unknown
 
   const patchQuery = createQuery()
   $: patchQuery.query(gitlab.class.GitlabPatch, { attachedTo: mergeRequest._id }, (res) => {
     ;[patch] = res
   })
+  const reviewQuery = createQuery()
+  $: reviewQuery.query(gitlab.class.GitlabMergeRequestReview, { attachedTo: mergeRequest._id, author: me }, (res) => {
+    ;[review] = res
+  })
+
+  // Large merge requests are read in GitLab
+  $: inHuly = showDiffInHuly(mergeRequest, patch !== undefined)
+  $: href = changesUrl(mergeRequest.url)
+  $: if (patch !== undefined && opened && inHuly) void load(patch)
 
   // Only the answer for the current blob is kept: an older download may finish last
   async function load (file: GitlabPatch): Promise<void> {
@@ -32,7 +50,8 @@
     try {
       const loaded = await patchText(file)
       if (patch?.file === file.file) text = loaded
-    } catch {
+    } catch (err: unknown) {
+      reportError(err)
       if (patch?.file === file.file) {
         text = ''
         failed = true
@@ -40,37 +59,14 @@
     }
   }
 
-  // Large merge requests are read in GitLab; the diff downloads on the first expand only
-  $: inHuly = showDiffInHuly(mergeRequest, patch !== undefined)
-  $: href = changesUrl(mergeRequest.url)
-  let opened = false
-  $: if (patch !== undefined && opened && inHuly) void load(patch)
-
-  // Huly only: the files this user marked as viewed
-  let review: GitlabMergeRequestReview | undefined
-  const reviewQuery = createQuery()
-  $: reviewQuery.query(gitlab.class.GitlabMergeRequestReview, { attachedTo: mergeRequest._id, author: me }, (res) => {
-    ;[review] = res
-  })
-
-  async function onViewed (fileName: string, sha: string, viewed: boolean): Promise<void> {
-    const current = await client.findOne(gitlab.class.GitlabMergeRequestReview, {
-      attachedTo: mergeRequest._id,
-      author: me
+  function onViewed (fileName: string, sha: string, viewed: boolean): void {
+    viewedError = undefined
+    serial(async () => {
+      await saveViewedFile(client, mergeRequest, me, { fileName, sha, viewed })
+    }).catch((err: unknown) => {
+      viewedError = err
+      reportError(err)
     })
-    const next = toggleViewed(current?.files ?? [], fileName, sha, viewed)
-    if (current !== undefined) {
-      await client.update(current, { files: next })
-    } else {
-      await client.addCollection(
-        gitlab.class.GitlabMergeRequestReview,
-        mergeRequest.space,
-        mergeRequest._id,
-        mergeRequest._class,
-        'viewedFiles',
-        { author: me, files: next }
-      )
-    }
   }
 </script>
 
@@ -120,18 +116,19 @@
     </div>
     {#if isTooLargeForHuly(mergeRequest)}
       <div class="note"><Label label={gitlab.string.DiffTooLarge} /></div>
-    {:else if inHuly && !collapsed}
+    {:else if inHuly}
       <ExpandCollapse isExpanded={!collapsed}>
         <div class="list">
           {#if failed}
             <Label label={gitlab.string.DiffUnavailable} />
           {:else if text !== ''}
+            {#if viewedError !== undefined}<ErrorText error={viewedError} />{/if}
             <Component
               is={diffview.component.DiffView}
               props={{ patch: text, viewed: review?.files ?? [] }}
               on:change={(evt) => {
                 const { fileName, sha, viewed } = evt.detail
-                void onViewed(fileName, sha, viewed)
+                onViewed(fileName, sha, viewed)
               }}
             />
           {/if}

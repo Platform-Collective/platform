@@ -6,8 +6,8 @@
   import { type WithLookup } from '@hcengineering/core'
   import { type GitlabReview } from '@hcengineering/gitlab'
   import { PaletteColorIndexes, getPlatformColor, themeStore } from '@hcengineering/ui'
-  import gitlab from '../../plugin'
   import { reviewLook } from '../../review-look'
+  import ActivityFrame from './ActivityFrame.svelte'
 
   export let value: WithLookup<GitlabReview>
   export let showNotify = false
@@ -25,7 +25,7 @@
   $: color = look.color !== undefined ? getPlatformColor(PaletteColorIndexes[look.color], $themeStore.dark) : undefined
 </script>
 
-<div class:framed={color !== undefined} style:border-color={color}>
+<ActivityFrame {color}>
   <ActivityMessageTemplate
     message={value}
     parentMessage={undefined}
@@ -45,24 +45,13 @@
         object={undefined}
         parentObject={undefined}
         isEdited={false}
-        label={gitlab.string[look.label]}
+        label={look.label}
       />
     </svelte:fragment>
     <svelte:fragment slot="content">
       {#if value.syncError != null}
-        <div class="sync-error">{value.syncError}</div>
+        <div class="error-color">{value.syncError}</div>
       {/if}
     </svelte:fragment>
   </ActivityMessageTemplate>
-</div>
-
-<style lang="scss">
-  .framed {
-    border: 1px solid;
-    border-radius: 0.5rem;
-    margin: 0.25rem 0;
-  }
-  .sync-error {
-    color: var(--theme-error-color);
-  }
-</style>
+</ActivityFrame>

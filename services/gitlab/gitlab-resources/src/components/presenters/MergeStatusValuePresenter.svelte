@@ -1,17 +1,16 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
   import { Label } from '@hcengineering/ui'
-  import { mergeStatusKey } from '../../merge-status'
-  import gitlab from '../../plugin'
+  import { mergeStatusLabel } from '../../merge-status'
 
   export let value: string | undefined
   export let accent = false
 
-  $: key = value !== undefined ? mergeStatusKey(value, false) : undefined
+  $: label = value !== undefined ? mergeStatusLabel(value, false) : undefined
 </script>
 
-{#if key !== undefined}
+{#if label !== undefined}
   <div class="p-1" class:fs-bold={accent}>
-    <Label label={gitlab.string[key]} />
+    <Label {label} />
   </div>
 {/if}

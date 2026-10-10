@@ -3,8 +3,8 @@
 import { type Doc, type DocData, type Ref, type Space, type TxOperations } from '@hcengineering/core'
 import { type DocCreatePhase, getClient } from '@hcengineering/presentation'
 import tracker, { type Issue } from '@hcengineering/tracker'
-import { issueLinkFor, type RepositoryChoice } from './repository-choice'
 import gitlab from './plugin'
+import { issueLinkFor, type RepositoryChoice } from './repository-choice'
 
 /** The "Merge requests" navigation entry is shown for GitLab-linked projects only. */
 export async function showForRepositoryOnly (spaces: Space[]): Promise<boolean> {

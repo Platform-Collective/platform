@@ -16,7 +16,6 @@ export default mergeIds(gitlabId, gitlab, {
     ReAuthorize: '' as IntlString,
     Authorized: '' as IntlString,
     NotAuthorized: '' as IntlString,
-    Repositories: '' as IntlString,
     NoRepositories: '' as IntlString,
     RefreshRepositories: '' as IntlString,
     ImageMode: '' as IntlString,
@@ -27,6 +26,7 @@ export default mergeIds(gitlabId, gitlab, {
     ImageNoAccess: '' as IntlString,
     ImageNotConnected: '' as IntlString,
     ImageUnavailable: '' as IntlString,
+    GitlabImages: '' as IntlString,
     OpenInGitlab: '' as IntlString,
     LinkToProject: '' as IntlString,
     Unlink: '' as IntlString,
@@ -37,7 +37,6 @@ export default mergeIds(gitlabId, gitlab, {
     RequestFailed: '' as IntlString,
     CloseTab: '' as IntlString,
     KeepSettingsOpen: '' as IntlString,
-    Disconnect: '' as IntlString,
     Repository: '' as IntlString,
     SetupTitle: '' as IntlString,
     SetupWhere: '' as IntlString,
@@ -64,6 +63,14 @@ export default mergeIds(gitlabId, gitlab, {
     SetupEnterUrlFirst: '' as IntlString,
     DisconnectEveryone: '' as IntlString,
     DisconnectEveryoneConfirm: '' as IntlString,
+    LinkFailed: '' as IntlString,
+    UnlinkFailed: '' as IntlString,
+    NotConfigured: '' as IntlString,
+    AuthorizeLinkInvalid: '' as IntlString,
+    IntegrationRepositories: '' as IntlString,
+    SyncErrorMessage: '' as IntlString,
+    UnlinkConfirm: '' as IntlString,
+    RemoveAppConfirm: '' as IntlString,
     Draft: '' as IntlString,
     MergedAt: '' as IntlString,
     ClosedAt: '' as IntlString,
@@ -126,8 +133,7 @@ export default mergeIds(gitlabId, gitlab, {
     GitlabIssuePresenter: '' as AnyComponent,
     GitlabRepositoryPool: '' as AnyComponent,
     GitlabReviewPresenter: '' as AnyComponent,
-    GitlabReviewThreadPresenter: '' as AnyComponent,
-    GitlabImageLink: '' as AnyComponent
+    GitlabReviewThreadPresenter: '' as AnyComponent
   },
   handler: {
     DisconnectHandler: '' as Handler

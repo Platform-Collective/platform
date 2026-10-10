@@ -1,36 +1,29 @@
 // SPDX-License-Identifier: EPL-2.0
 
-/** Names of the `gitlab.string` ids that describe an open merge request's merge status. */
-export type MergeStatusKey =
-  | 'Conflict'
-  | 'ReadyToMerge'
-  | 'Checking'
-  | 'PipelinePending'
-  | 'UnresolvedDiscussions'
-  | 'NeedsApproval'
-  | 'Draft'
+import { type IntlString } from '@hcengineering/platform'
+import gitlab from './plugin'
 
-/** What to show for GitLab's detailed_merge_status; undefined for statuses not worth a badge. */
-export function mergeStatusKey (status: string, hasConflicts: boolean): MergeStatusKey | undefined {
-  if (hasConflicts || status === 'conflict' || status === 'need_rebase') return 'Conflict'
+/** The badge for GitLab's detailed_merge_status; undefined for statuses not worth a badge. */
+export function mergeStatusLabel (status: string, hasConflicts: boolean): IntlString | undefined {
+  if (hasConflicts || status === 'conflict' || status === 'need_rebase') return gitlab.string.Conflict
   switch (status) {
     case 'mergeable':
-      return 'ReadyToMerge'
+      return gitlab.string.ReadyToMerge
     case 'checking':
     case 'unchecked':
     case 'preparing':
     case 'approvals_syncing':
-      return 'Checking'
+      return gitlab.string.Checking
     case 'ci_must_pass':
     case 'ci_still_running':
-      return 'PipelinePending'
+      return gitlab.string.PipelinePending
     case 'discussions_not_resolved':
-      return 'UnresolvedDiscussions'
+      return gitlab.string.UnresolvedDiscussions
     case 'not_approved':
     case 'requested_changes':
-      return 'NeedsApproval'
+      return gitlab.string.NeedsApproval
     case 'draft_status':
-      return 'Draft'
+      return gitlab.string.Draft
     default:
       return undefined
   }

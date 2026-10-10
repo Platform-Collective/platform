@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { serviceUrl } from './state'
+import { serviceUrl } from './service'
 
 /** What the image viewer shows. */
 export type GitlabImageResult =

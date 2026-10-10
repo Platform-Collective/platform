@@ -1,45 +1,76 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
   import type { Integration } from '@hcengineering/account-client'
-  import { Analytics } from '@hcengineering/analytics'
   import { type GitlabIntegration, type GitlabIntegrationRepository } from '@hcengineering/gitlab'
-  import { ERROR, OK, type Status } from '@hcengineering/platform'
-  import { getClient } from '@hcengineering/presentation'
+  import { ERROR, OK } from '@hcengineering/platform'
+  import { createQuery, getClient } from '@hcengineering/presentation'
   import { BaseIntegrationState } from '@hcengineering/setting-resources'
+  import { reportError } from '../errors'
+  import { integrationCardStateOf } from '../integration-card'
   import gitlab from '../plugin'
 
   export let integration: Integration
 
   const client = getClient()
+  const integrationQuery = createQuery()
+  const repositoriesQuery = createQuery()
   let glIntegration: GitlabIntegration | undefined
   let linked: GitlabIntegrationRepository[] = []
-  let status: Status | undefined
-  let isLoading = true
+  let answered = false
+  // A live query never reports a failure; this is set when the probe lookup below fails
+  let loadFailed = false
 
-  $: void load(integration)
-
-  async function load (integration: Integration): Promise<void> {
+  async function probe (id: number): Promise<void> {
     try {
-      const userId = integration?.data?.gitlabUserId as number | undefined
-      glIntegration =
-        userId === undefined
-          ? undefined
-          : await client.findOne(gitlab.class.GitlabIntegration, { gitlabUserId: userId })
-      linked =
-        glIntegration === undefined
-          ? []
-          : await client.findAll(gitlab.class.GitlabIntegrationRepository, {
-            attachedTo: glIntegration._id,
-            enabled: true
-          })
-      status = glIntegration?.error != null ? ERROR : OK
+      await client.findOne(gitlab.class.GitlabIntegration, { gitlabUserId: id })
     } catch (err: unknown) {
-      status = ERROR
-      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
-    } finally {
-      isLoading = false
+      reportError(err)
+      // A failure for an integration the card no longer shows changes nothing
+      if (id === userId) loadFailed = true
     }
   }
+
+  // Live queries: a later answer for another integration never overwrites the current one
+  $: userId = integration?.data?.gitlabUserId as number | undefined
+  $: if (userId === undefined) {
+    integrationQuery.unsubscribe()
+    glIntegration = undefined
+    answered = false
+    loadFailed = false
+  } else {
+    answered = false
+    loadFailed = false
+    void probe(userId)
+    integrationQuery.query(
+      gitlab.class.GitlabIntegration,
+      { gitlabUserId: userId },
+      (res) => {
+        glIntegration = res[0]
+        answered = true
+      },
+      { limit: 1 }
+    )
+  }
+  $: if (glIntegration === undefined) {
+    repositoriesQuery.unsubscribe()
+    linked = []
+  } else {
+    repositoriesQuery.query(
+      gitlab.class.GitlabIntegrationRepository,
+      { attachedTo: glIntegration._id, enabled: true },
+      (res) => {
+        linked = res
+      }
+    )
+  }
+  $: cardState = integrationCardStateOf({
+    hasUser: userId !== undefined,
+    answered,
+    loadFailed,
+    integrationError: glIntegration?.error
+  })
+  $: status = cardState.hasError ? ERROR : OK
+  $: isLoading = cardState.isLoading
 </script>
 
 <BaseIntegrationState {integration} {status} {isLoading} value={glIntegration?.login}>
