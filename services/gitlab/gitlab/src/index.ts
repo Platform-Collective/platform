@@ -150,8 +150,10 @@ export interface DocSyncInfo extends Doc {
   patchSha?: string | null
   // Merge requests: ToDos created so far, 'review:<person>' or 'fix:<person>'; a deleted ToDo is not created again
   todos?: string[]
-  // Merge requests: the review state last seen per GitLab user id, { user, state } (the pod's ReviewRecord)
+  // Merge requests: the GitLab service's last-seen review state per GitLab user id (opaque outside the service)
   reviews?: Record<string, unknown>
+  // Issues and merge requests: GitLab updated_at of the version whose notes were last listed in full
+  notesListed?: string
 }
 
 /**
@@ -167,6 +169,8 @@ export interface GitlabIssue extends Issue {
   repository?: Ref<GitlabIntegrationRepository> | null
   // The last GitLab sync error, for the browser; DocSyncInfo reaches the GitLab service only
   syncError?: string | null
+  // Description images that stay on GitLab (absolute upload URLs), for the header's image viewer; written by the pod
+  images?: string[]
 }
 
 /**
@@ -204,8 +208,14 @@ export interface GitlabMergeRequest extends Issue {
   approvedBy: Array<Ref<Person>> | null
   // Collection of GitlabReviewComment
   reviewComments: number
+  // Collection of the hidden GitlabPatch (the stored diff); absent before the first diff is stored
+  patch?: number
+  // Collection of GitlabMergeRequestReview (files marked as viewed, Huly only)
+  viewedFiles?: number
   // The last GitLab sync error, for the browser; DocSyncInfo reaches the GitLab service only
   syncError?: string | null
+  // Description images that stay on GitLab (absolute upload URLs), for the header's image viewer; written by the pod
+  images?: string[]
 }
 
 /**
@@ -222,10 +232,16 @@ export interface GitlabPatch extends AttachedDoc {
 
 /**
  * @public
+ * Why the GitLab service created a ToDo: a review to do, or review feedback to address.
+ */
+export type GitlabTodoPurpose = 'review' | 'fix'
+
+/**
+ * @public
  * A ToDo the GitLab service created for a merge request.
  */
 export interface GitlabTodo extends ToDo {
-  purpose: 'review' | 'fix'
+  purpose: GitlabTodoPurpose
 }
 
 /**
@@ -309,12 +325,6 @@ export interface GitlabUpload extends Doc {
 export function imageModeOf (integration: Pick<GitlabIntegration, 'imageMode'>): GitlabImageMode {
   return integration.imageMode ?? DEFAULT_IMAGE_MODE
 }
-
-/** @public The fragment that marks a link in Huly as a GitLab image. */
-export const GITLAB_IMAGE_FRAGMENT = 'gitlab-image'
-
-/** @public Matches the href of a GitLab image link, with or without its encoded size. */
-export const GITLAB_IMAGE_HREF_PATTERN = `#${GITLAB_IMAGE_FRAGMENT}(=|$)`
 
 /**
  * @public

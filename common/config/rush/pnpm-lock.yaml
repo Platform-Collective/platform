@@ -39676,9 +39676,6 @@ importers:
       '@hcengineering/activity':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/activity
-      '@hcengineering/attachment':
-        specifier: workspace:^0.7.0
-        version: link:../../../plugins/attachment
       '@hcengineering/contact':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/contact
@@ -39801,9 +39798,6 @@ importers:
       '@hcengineering/account-client':
         specifier: workspace:^0.7.25
         version: link:../../../foundations/core/packages/account-client
-      '@hcengineering/activity':
-        specifier: workspace:^0.7.0
-        version: link:../../../plugins/activity
       '@hcengineering/activity-resources':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/activity-resources
@@ -39825,9 +39819,6 @@ importers:
       '@hcengineering/gitlab':
         specifier: workspace:^0.7.0
         version: link:../gitlab
-      '@hcengineering/login':
-        specifier: workspace:^0.7.0
-        version: link:../../../plugins/login
       '@hcengineering/platform':
         specifier: workspace:^0.7.20
         version: link:../../../foundations/core/packages/platform
@@ -40194,6 +40185,12 @@ importers:
 
   ../../services/gitlab/server-gitlab:
     dependencies:
+      '@hcengineering/core':
+        specifier: workspace:^0.7.26
+        version: link:../../../foundations/core/packages/core
+      '@hcengineering/gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../gitlab
       '@hcengineering/platform':
         specifier: workspace:^0.7.20
         version: link:../../../foundations/core/packages/platform
@@ -40252,6 +40249,9 @@ importers:
       '@hcengineering/core':
         specifier: workspace:^0.7.26
         version: link:../../../foundations/core/packages/core
+      '@hcengineering/gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../gitlab
       '@hcengineering/model':
         specifier: workspace:^0.7.17
         version: link:../../../foundations/core/packages/model
@@ -40325,9 +40325,6 @@ importers:
       '@hcengineering/gitlab':
         specifier: workspace:^0.7.0
         version: link:../gitlab
-      '@hcengineering/platform':
-        specifier: workspace:^0.7.20
-        version: link:../../../foundations/core/packages/platform
       '@hcengineering/server-core':
         specifier: workspace:^0.7.19
         version: link:../../../foundations/server/packages/core
@@ -40347,9 +40344,6 @@ importers:
       '@types/jest':
         specifier: ^29.5.5
         version: 29.5.14
-      '@types/node':
-        specifier: ^24.13.3
-        version: 24.13.6
       '@typescript-eslint/eslint-plugin':
         specifier: ^6.21.0
         version: 6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1)(typescript@5.9.3)
@@ -40379,7 +40373,7 @@ importers:
         version: 3.6.2
       ts-jest:
         specifier: ^29.1.1
-        version: 29.4.5(@babel/core@7.28.5)(@jest/transform@29.7.0)(@jest/types@30.2.0)(babel-jest@29.7.0(@babel/core@7.28.5))(esbuild@0.25.12)(jest-util@30.2.0)(jest@29.7.0(@types/node@24.13.6))(typescript@5.9.3)
+        version: 29.4.5(@babel/core@7.28.5)(@jest/transform@29.7.0)(@jest/types@30.2.0)(babel-jest@29.7.0(@babel/core@7.28.5))(jest-util@30.2.0)(jest@29.7.0)(typescript@5.9.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

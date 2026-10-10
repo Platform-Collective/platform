@@ -19,17 +19,18 @@ import core, {
   systemAccountUuid
 } from '@hcengineering/core'
 import gitlab, { type DocSyncInfo, type GitlabProject } from '@hcengineering/gitlab'
+import { gitlabServiceOnlyClasses } from '@hcengineering/server-gitlab'
 import type { TriggerControl } from '@hcengineering/server-core'
 import type { ToDo } from '@hcengineering/time'
 import tracker from '@hcengineering/tracker'
 
 /**
  * @public
- * Sends DocSyncInfo changes only to the system account (the GitLab service), never to browsers.
+ * Sends DocSyncInfo and GitlabUpload changes only to the system account (the GitLab service), never to browsers.
  */
 export async function OnGitlabBroadcast (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
   control.ctx.contextData.broadcast.targets.gitlab = async (it) => {
-    if (TxProcessor.isExtendsCUD(it._class) && (it as TxCUD<Doc>).objectClass === gitlab.class.DocSyncInfo) {
+    if (TxProcessor.isExtendsCUD(it._class) && gitlabServiceOnlyClasses.includes((it as TxCUD<Doc>).objectClass)) {
       return { target: [systemAccountUuid] }
     }
     return undefined
@@ -61,7 +62,38 @@ function isIssueComment (h: Hierarchy, cud: TxCUD<Doc>): boolean {
 
 interface TriggerCache {
   projects?: Set<Ref<Space>>
+  // Documents whose DocSyncInfo already has a tx in this batch (applied, broadcast or queued here)
+  pending: Set<Ref<Doc>>
+  // DocSyncInfo of the batch's documents, loaded with one query; a missing id was never synced
+  infos: Map<Ref<Doc>, DocSyncInfo>
 }
+
+function syncInfoTxIds (txes: Tx[]): Set<Ref<Doc>> {
+  const ids = new Set<Ref<Doc>>()
+  for (const it of txes) {
+    if (TxProcessor.isExtendsCUD(it._class) && (it as TxCUD<Doc>).objectClass === gitlab.class.DocSyncInfo) {
+      ids.add((it as TxCUD<Doc>).objectId)
+    }
+  }
+  return ids
+}
+
+// One change to queue: a synced document itself, or the comment whose attachment changed
+type QueuedChange =
+  | {
+    kind: 'document'
+    cud: TxCUD<Doc>
+    // The document whose DocSyncInfo is looked up
+    id: Ref<Doc>
+    // The new project of a moved document
+    target?: Ref<Space>
+  }
+  | {
+    kind: 'comment'
+    cud: TxCUD<Doc>
+    // The comment whose DocSyncInfo is looked up
+    id: Ref<Doc>
+  }
 
 /**
  * @public
@@ -69,30 +101,59 @@ interface TriggerCache {
  */
 export async function OnProjectChanges (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
   await OnGitlabBroadcast(txes, control)
-  const cache: TriggerCache = {}
-  const toApply: Tx[] = []
+  const cache: TriggerCache = {
+    pending: syncInfoTxIds([...control.txes, ...control.ctx.contextData.broadcast.txes]),
+    infos: new Map()
+  }
+  const changes: QueuedChange[] = []
   for (const tx of txes) {
-    if (tx._class === core.class.TxMixin && (tx as TxMixin<Doc, Doc>).mixin === gitlab.mixin.GitlabIssue) {
-      await queueSync(control, tx as TxCUD<Doc>, cache, toApply)
-      continue
-    }
-    if (!TxProcessor.isExtendsCUD(tx._class)) continue
-    const cud = tx as TxCUD<Doc>
-    if (
-      control.hierarchy.isDerived(cud.objectClass, attachment.class.Attachment) &&
-      cud.attachedToClass === chunter.class.ChatMessage
-    ) {
-      await queueCommentOfAttachment(control, cud, cache, toApply)
-      continue
-    }
-    if (isSyncedClass(control.hierarchy, cud.objectClass)) {
-      await queueSync(control, cud, cache, toApply)
-    }
+    const change = await queuedChange(control, tx, cache)
+    if (change !== undefined) changes.push(change)
+  }
+  if (changes.length === 0) return []
+  const ids = [...new Set(changes.map((it) => it.id))]
+  for (const info of await control.findAll(control.ctx, gitlab.class.DocSyncInfo, {
+    _id: { $in: ids as Array<Ref<DocSyncInfo>> }
+  })) {
+    cache.infos.set(info._id, info)
+  }
+  // Already loaded by queuedChange; cached, so no second query
+  const linked = await linkedProjects(control, cache)
+  const toApply: Tx[] = []
+  for (const change of changes) {
+    if (change.kind === 'comment') queueCommentOfAttachment(control, change, cache, toApply)
+    else queueSync(control, change, linked, cache, toApply)
   }
   if (toApply.length > 0) {
     await control.apply(control.ctx, toApply)
   }
   return []
+}
+
+// The change a tx asks to queue; undefined for txes of other classes, System writes and unlinked projects
+async function queuedChange (control: TriggerControl, tx: Tx, cache: TriggerCache): Promise<QueuedChange | undefined> {
+  const isGitlabIssueMixin =
+    tx._class === core.class.TxMixin && (tx as TxMixin<Doc, Doc>).mixin === gitlab.mixin.GitlabIssue
+  if (!isGitlabIssueMixin && !TxProcessor.isExtendsCUD(tx._class)) return undefined
+  const cud = tx as TxCUD<Doc>
+  // The GitLab service writes its bookkeeping as System; those changes must not queue another sync.
+  if (cud.modifiedBy === core.account.System) return undefined
+  const linked = await linkedProjects(control, cache)
+  if (
+    !isGitlabIssueMixin &&
+    control.hierarchy.isDerived(cud.objectClass, attachment.class.Attachment) &&
+    cud.attachedToClass === chunter.class.ChatMessage
+  ) {
+    // An attachment added to or removed from a synced comment changes its GitLab note
+    if (cud._class !== core.class.TxCreateDoc && cud._class !== core.class.TxRemoveDoc) return undefined
+    if (cud.attachedTo === undefined || !linked.has(cud.objectSpace)) return undefined
+    return { kind: 'comment', cud, id: cud.attachedTo }
+  }
+  if (!isGitlabIssueMixin && !isSyncedClass(control.hierarchy, cud.objectClass)) return undefined
+  // A move into a GitLab-linked project counts as well
+  const target = movedTo(cud)
+  if (!linked.has(cud.objectSpace) && (target === undefined || !linked.has(target))) return undefined
+  return { kind: 'document', cud, id: cud.objectId, target }
 }
 
 async function linkedProjects (control: TriggerControl, cache: TriggerCache): Promise<Set<Ref<Space>>> {
@@ -110,24 +171,16 @@ function movedTo (cud: TxCUD<Doc>): Ref<Space> | undefined {
   return typeof space === 'string' ? space : undefined
 }
 
-async function queueSync (control: TriggerControl, cud: TxCUD<Doc>, cache: TriggerCache, toApply: Tx[]): Promise<void> {
-  // The GitLab service writes its bookkeeping as System; those changes must not queue another sync.
-  if (cud.modifiedBy === core.account.System) return
-  const pending = [...control.txes, ...control.ctx.contextData.broadcast.txes, ...toApply].some(
-    (it) =>
-      TxProcessor.isExtendsCUD(it._class) &&
-      (it as TxCUD<Doc>).objectClass === gitlab.class.DocSyncInfo &&
-      (it as TxCUD<Doc>).objectId === cud.objectId
-  )
-  if (pending) return
-  const linked = await linkedProjects(control, cache)
-  // A move into a GitLab-linked project counts as well
-  const target = movedTo(cud)
-  if (!linked.has(cud.objectSpace) && (target === undefined || !linked.has(target))) return
-
-  const info = (
-    await control.findAll(control.ctx, gitlab.class.DocSyncInfo, { _id: cud.objectId as Ref<DocSyncInfo> })
-  )[0]
+function queueSync (
+  control: TriggerControl,
+  change: Extract<QueuedChange, { kind: 'document' }>,
+  linked: Set<Ref<Space>>,
+  cache: TriggerCache,
+  toApply: Tx[]
+): void {
+  const { cud, target } = change
+  if (cache.pending.has(cud.objectId)) return
+  const info = cache.infos.get(cud.objectId)
   if (info === undefined) {
     // Removing a document that was never synced needs nothing
     if (cud._class === core.class.TxRemoveDoc) return
@@ -146,35 +199,27 @@ async function queueSync (control: TriggerControl, cud: TxCUD<Doc>, cache: Trigg
     toApply.push(
       control.txFactory.createTxCreateDoc(gitlab.class.DocSyncInfo, space, data, cud.objectId as Ref<DocSyncInfo>)
     )
+    cache.pending.add(cud.objectId)
     return
   }
   const update: DocumentUpdate<DocSyncInfo> =
     cud._class === core.class.TxRemoveDoc ? { needSync: '', deleted: true } : { needSync: '' }
   toApply.push(control.txFactory.createTxUpdateDoc(gitlab.class.DocSyncInfo, info.space, info._id, update))
+  cache.pending.add(cud.objectId)
 }
 
-// An attachment added to or removed from a synced comment changes its GitLab note
-async function queueCommentOfAttachment (
+function queueCommentOfAttachment (
   control: TriggerControl,
-  cud: TxCUD<Doc>,
+  change: Extract<QueuedChange, { kind: 'comment' }>,
   cache: TriggerCache,
   toApply: Tx[]
-): Promise<void> {
-  if (cud.modifiedBy === core.account.System) return
-  if (cud._class !== core.class.TxCreateDoc && cud._class !== core.class.TxRemoveDoc) return
-  if (cud.attachedTo === undefined || !(await linkedProjects(control, cache)).has(cud.objectSpace)) return
-  const commentId = cud.attachedTo as Ref<DocSyncInfo>
-  const pending = [...control.txes, ...control.ctx.contextData.broadcast.txes, ...toApply].some(
-    (it) =>
-      TxProcessor.isExtendsCUD(it._class) &&
-      (it as TxCUD<Doc>).objectClass === gitlab.class.DocSyncInfo &&
-      (it as TxCUD<Doc>).objectId === commentId
-  )
-  if (pending) return
-  const info = (await control.findAll(control.ctx, gitlab.class.DocSyncInfo, { _id: commentId }))[0]
+): void {
+  if (cache.pending.has(change.id)) return
+  const info = cache.infos.get(change.id)
   // A comment not synced yet picks up its attachments when it syncs
   if (info === undefined || info.deleted === true) return
   toApply.push(control.txFactory.createTxUpdateDoc(gitlab.class.DocSyncInfo, info.space, info._id, { needSync: '' }))
+  cache.pending.add(change.id)
 }
 
 /**
@@ -201,9 +246,13 @@ export async function OnProjectRemove (txes: Tx[], control: TriggerControl): Pro
         })
       )
     }
-    for (const info of await control.findAll(control.ctx, gitlab.class.DocSyncInfo, {
-      space: cud.objectId as Ref<Space>
-    })) {
+    // Only what the remove tx needs: a large project has many sync docs
+    for (const info of await control.findAll(
+      control.ctx,
+      gitlab.class.DocSyncInfo,
+      { space: cud.objectId as Ref<Space> },
+      { projection: { _id: 1, _class: 1, space: 1 } }
+    )) {
       result.push(control.txFactory.createTxRemoveDoc(info._class, info.space, info._id))
     }
   }

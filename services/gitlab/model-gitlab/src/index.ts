@@ -52,7 +52,6 @@ import {
   type Timestamp
 } from '@hcengineering/core'
 import {
-  GITLAB_IMAGE_HREF_PATTERN,
   gitlabIntegrationKind,
   type DocSyncInfo,
   type GitlabAuthentication,
@@ -70,6 +69,7 @@ import {
   type GitlabReviewKind,
   type GitlabReviewThread,
   type GitlabTodo,
+  type GitlabTodoPurpose,
   type GitlabUpload,
   type GitlabUploadOrigin,
   type GitlabViewedFile,
@@ -131,6 +131,10 @@ export class TDocSyncInfo extends TDoc implements DocSyncInfo {
   error?: string | null
   retryable?: boolean
   lastGitlabUser?: PersonId | null
+  patchSha?: string | null
+  todos?: string[]
+  reviews?: Record<string, unknown>
+  notesListed?: string
 }
 
 // Bookkeeping of the GitLab service, like DocSyncInfo
@@ -170,7 +174,7 @@ export class TGitlabIssue extends TIssue implements GitlabIssue {
   @Hidden()
     gitlabIid!: number
 
-  @Prop(TypeRef(gitlab.class.GitlabIntegrationRepository), getEmbeddedLabel('Repository'))
+  @Prop(TypeRef(gitlab.class.GitlabIntegrationRepository), gitlab.string.Repository)
   @Hidden()
     repository?: Ref<GitlabIntegrationRepository> | null
 
@@ -178,6 +182,11 @@ export class TGitlabIssue extends TIssue implements GitlabIssue {
   @ReadOnly()
   @Hidden()
     syncError?: string | null
+
+  @Prop(ArrOf(TypeString()), getEmbeddedLabel('Images'))
+  @ReadOnly()
+  @Hidden()
+    images?: string[]
 }
 
 @Model(gitlab.class.GitlabMergeRequest, tracker.class.Issue)
@@ -203,6 +212,11 @@ export class TGitlabMergeRequest extends TIssue implements GitlabMergeRequest {
   @ReadOnly()
   @Hidden()
     syncError?: string | null
+
+  @Prop(ArrOf(TypeString()), getEmbeddedLabel('Images'))
+  @ReadOnly()
+  @Hidden()
+    images?: string[]
 
   @Prop(
     TypeAny(gitlab.component.MergeRequestStateValuePresenter, gitlab.string.MergeRequestState),
@@ -269,6 +283,14 @@ export class TGitlabMergeRequest extends TIssue implements GitlabMergeRequest {
   @Prop(Collection(gitlab.class.GitlabReviewComment), gitlab.string.ReviewComments)
   @Hidden()
     reviewComments!: number
+
+  @Prop(Collection(gitlab.class.GitlabPatch), getEmbeddedLabel('Diff'))
+  @Hidden()
+    patch?: number
+
+  @Prop(Collection(gitlab.class.GitlabMergeRequestReview), getEmbeddedLabel('Viewed files'))
+  @Hidden()
+    viewedFiles?: number
 }
 
 // The stored diff of a merge request; not an attachment
@@ -282,7 +304,7 @@ export class TGitlabPatch extends TAttachedDoc implements GitlabPatch {
 
 @Mixin(gitlab.mixin.GitlabTodo, time.class.ToDo)
 export class TGitlabTodo extends TToDo implements GitlabTodo {
-  purpose!: 'review' | 'fix'
+  purpose!: GitlabTodoPurpose
 }
 
 @Model(gitlab.class.GitlabReview, activity.class.ActivityMessage)
@@ -591,12 +613,6 @@ export function createModel (builder: Builder): void {
     component: gitlab.component.GitlabIssueHeader,
     props: { kind: 'ghost' }
   })
-  // Links to GitLab images open a viewer that loads them as the viewer
-  builder.createDoc(presentation.class.ComponentPointExtension, core.space.Model, {
-    extension: presentation.extension.LinkMark,
-    component: gitlab.component.GitlabImageLink,
-    props: { hrefPattern: GITLAB_IMAGE_HREF_PATTERN }
-  })
 
   builder.createDoc(
     view.class.Viewlet,
@@ -772,10 +788,10 @@ export function createModel (builder: Builder): void {
         'deletions',
         'approvedBy',
         'reviewComments',
-        // Collection of GitlabMergeRequestReview (viewed files); a counter, not a declared attribute
-        'viewedFiles' as keyof GitlabMergeRequest,
-        // Counter of the hidden GitlabPatch collection; not a declared attribute
-        'patch' as keyof GitlabMergeRequest
+        'images',
+        // Counters of the viewed-file marks and of the hidden diff
+        'viewedFiles',
+        'patch'
       ]
     }
   )
