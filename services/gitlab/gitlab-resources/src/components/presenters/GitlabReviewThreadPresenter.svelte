@@ -86,18 +86,18 @@
   $: expansion = expansionAfter(expansion, value.isResolved)
   $: expanded = expansion.expanded
 
-  function onExpand (next: boolean): void {
+  function onExpand(next: boolean): void {
     expansion = { ...expansion, expanded: next }
   }
 
   let actionError: unknown
 
-  function showActionError (err: unknown): void {
+  function showActionError(err: unknown): void {
     actionError = err
     reportError(err)
   }
 
-  async function reply (event: CustomEvent<Markup>): Promise<void> {
+  async function reply(event: CustomEvent<Markup>): Promise<void> {
     actionError = undefined
     try {
       await client.addCollection(
@@ -114,7 +114,7 @@
   }
 
   // The GitLab service resolves or reopens the discussion in GitLab
-  async function toggleResolved (): Promise<void> {
+  async function toggleResolved(): Promise<void> {
     actionError = undefined
     try {
       await client.update(value, resolveChange(value.isResolved, getCurrentAccount().primarySocialId))

@@ -32,18 +32,18 @@
   let clientId = ''
   let clientSecret = ''
 
-  function reportActionError (err: unknown): void {
+  function reportActionError(err: unknown): void {
     blockedByConnections = isAppInUseError(err)
     actionError = err
     reportError(err)
   }
 
-  function clearActionError (): void {
+  function clearActionError(): void {
     actionError = undefined
     blockedByConnections = false
   }
 
-  async function loadStatus (): Promise<void> {
+  async function loadStatus(): Promise<void> {
     loadError = undefined
     try {
       status = appStatusOf(await sendGLServiceRequest('app-status', { origin: window.location.origin }))
@@ -56,22 +56,22 @@
     }
   }
 
-  function resetForm (current: AppStatus | undefined): void {
+  function resetForm(current: AppStatus | undefined): void {
     ;({ selfManaged, host, clientId, clientSecret } = setupFormOf(current))
     clearActionError()
   }
 
-  function startChange (): void {
+  function startChange(): void {
     resetForm(status)
     editing = true
   }
 
-  function cancelChange (): void {
+  function cancelChange(): void {
     editing = false
     clearActionError()
   }
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     clearActionError()
     saving = true
     try {
@@ -86,7 +86,7 @@
     }
   }
 
-  async function remove (): Promise<void> {
+  async function remove(): Promise<void> {
     clearActionError()
     removing = true
     try {
@@ -102,7 +102,7 @@
     }
   }
 
-  async function disconnectEveryone (): Promise<void> {
+  async function disconnectEveryone(): Promise<void> {
     clearActionError()
     disconnectingAll = true
     try {
@@ -115,11 +115,11 @@
     }
   }
 
-  function confirmDisconnectEveryone (): void {
+  function confirmDisconnectEveryone(): void {
     confirmDangerous(gitlab.string.DisconnectEveryone, gitlab.string.DisconnectEveryoneConfirm, disconnectEveryone)
   }
 
-  function confirmRemove (): void {
+  function confirmRemove(): void {
     confirmDangerous(gitlab.string.Remove, gitlab.string.RemoveAppConfirm, remove)
   }
 

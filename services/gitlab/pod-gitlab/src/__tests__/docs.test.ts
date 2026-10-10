@@ -25,8 +25,8 @@ describe('sync docs helpers', () => {
     memory.docs.push({ _id: 'i1', _class: tracker.class.Issue, space: 'p' })
     const client = asTxOperations(memory)
     const issue = (): any => memory.docs.find((d) => d._id === 'i1')
-    await upsertGitlabIssueMixin(client, issue(), { url: 'https://gitlab.example/p/-/issues/1' as any, gitlabIid: 1 })
-    await upsertGitlabIssueMixin(client, issue(), { url: 'https://gitlab.example/p/-/issues/2' as any, gitlabIid: 2 })
+    await upsertGitlabIssueMixin(client, issue(), { url: 'https://gitlab.example/p/-/issues/1', gitlabIid: 1 })
+    await upsertGitlabIssueMixin(client, issue(), { url: 'https://gitlab.example/p/-/issues/2', gitlabIid: 2 })
     expect(client.getHierarchy().as(issue(), gitlab.mixin.GitlabIssue)).toMatchObject({
       url: 'https://gitlab.example/p/-/issues/2',
       gitlabIid: 2

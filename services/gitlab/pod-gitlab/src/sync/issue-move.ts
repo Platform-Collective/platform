@@ -173,7 +173,7 @@ export class IssueMover {
       objectClass: chunter.class.ChatMessage
     })
     const known = synced.flatMap((it) =>
-      it.external === undefined ? [] : [{ id: it._id as string, note: it.external as GitlabNoteInfo }]
+      it.external === undefined ? [] : [{ id: it._id, note: it.external as GitlabNoteInfo }]
     )
     const copies =
       known.length === 0

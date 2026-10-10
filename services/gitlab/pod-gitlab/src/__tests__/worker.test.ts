@@ -138,9 +138,9 @@ function setup (
     client,
     derived: client,
     users: users as any,
-    accounts: { ensurePerson: jest.fn() } as any,
+    accounts: { ensurePerson: jest.fn() },
     persons: fakePersons,
-    collaborator: fakeCollaborator() as any,
+    collaborator: fakeCollaborator(),
     markdown: createMarkdownConverter({ refUrl: 'ref://', imageUrl: 'http://front/files?file=' }),
     createApi: () => asApi(api),
     createManagers: () => managers as unknown as SyncManagers,
@@ -290,7 +290,7 @@ describe('GitlabWorker', () => {
 
   it('still skips the discussions of old merge requests when a failed first import resumes', async () => {
     const env = setup()
-    env.api.listMergeRequestPages.mockImplementation(async function * () {
+    env.api.listMergeRequestPages.mockImplementation(async function* () {
       yield [gitlabMergeRequest(4, { state: 'merged', updated_at: '2025-09-01T00:00:00.000Z' })]
       yield [gitlabMergeRequest(6, { state: 'merged', updated_at: '2025-09-02T00:00:00.000Z' })]
     })
@@ -592,7 +592,7 @@ describe('GitlabWorker', () => {
 
   it('resumes a failed first import after the last issue it processed', async () => {
     const env = setup()
-    env.api.listIssuePages.mockImplementation(async function * () {
+    env.api.listIssuePages.mockImplementation(async function* () {
       yield [gitlabIssue(1, { updated_at: '2026-01-10T00:00:00.000Z' })]
       yield [gitlabIssue(2, { updated_at: '2026-01-11T00:00:00.000Z' })]
     })
@@ -613,7 +613,7 @@ describe('GitlabWorker', () => {
   it('waits for the rate limit reset before the next full sync attempt', async () => {
     const env = setup()
     const retryAt = env.clock.now + 20 * 60 * 1000
-    env.api.listIssuePages.mockImplementation(async function * () {
+    env.api.listIssuePages.mockImplementation(async function* () {
       throw new GitlabApiError(429, 'GitLab GET failed: 429', undefined, retryAt)
     })
     await env.worker.init()
@@ -629,7 +629,7 @@ describe('GitlabWorker', () => {
   it('waits at most one full sync interval for a rate limit reset', async () => {
     const env = setup()
     const retryAt = env.clock.now + 10 * FULL_SYNC_INTERVAL_MS
-    env.api.listIssuePages.mockImplementation(async function * () {
+    env.api.listIssuePages.mockImplementation(async function* () {
       throw new GitlabApiError(429, 'GitLab GET failed: 429', undefined, retryAt)
     })
     await env.worker.init()
@@ -768,7 +768,7 @@ describe('GitlabWorker', () => {
         statuses: ['st-done']
       })
     })
-    const env = setup({ deps: { ensureTaskType } as any })
+    const env = setup({ deps: { ensureTaskType } })
     holder.memory = env.memory
     const project = { type: PROJECT_TYPE } as any
     const [first, second] = await Promise.all([
@@ -792,7 +792,7 @@ describe('GitlabWorker', () => {
     const ensureTaskType = jest.fn(async () => {
       throw new Error('model write refused')
     })
-    const env = setup({ deps: { ensureTaskType } as any })
+    const env = setup({ deps: { ensureTaskType } })
     const project = { type: PROJECT_TYPE } as any
     await expect(env.worker.mergeRequestTaskType(project)).rejects.toThrow('model write refused')
     await expect(env.worker.mergeRequestTaskType(project)).rejects.toThrow('model write refused')
@@ -1170,7 +1170,7 @@ describe('GitlabWorker', () => {
   it('keeps the rate limit wait when a dropped webhook asks for a full sync', async () => {
     const env = setup()
     const retryAt = env.clock.now + 20 * 60 * 1000
-    env.api.listIssuePages.mockImplementation(async function * () {
+    env.api.listIssuePages.mockImplementation(async function* () {
       throw new GitlabApiError(429, 'GitLab GET failed: 429', undefined, retryAt)
     })
     await env.worker.init()
@@ -1202,7 +1202,7 @@ describe('GitlabWorker', () => {
 
   it('retries a failed full sync at once on request, but not before a rate limit resets', async () => {
     const env = setup()
-    env.api.listIssuePages.mockImplementation(async function * () {
+    env.api.listIssuePages.mockImplementation(async function* () {
       throw new GitlabApiError(500, 'GitLab GET failed: 500')
     })
     await env.worker.init()
@@ -1211,7 +1211,7 @@ describe('GitlabWorker', () => {
     await env.worker.runOnce()
     expect(env.api.listIssuePages).toHaveBeenCalledTimes(2)
     const retryAt = env.clock.now + 20 * 60 * 1000
-    env.api.listIssuePages.mockImplementation(async function * () {
+    env.api.listIssuePages.mockImplementation(async function* () {
       throw new GitlabApiError(429, 'GitLab GET failed: 429', undefined, retryAt)
     })
     env.worker.requestFullSync()
@@ -1224,7 +1224,7 @@ describe('GitlabWorker', () => {
 
   it('closes promptly while a GitLab call waits out a rate limit', async () => {
     const fetchFn = jest.fn(async () => new Response('', { status: 429, headers: { 'retry-after': '60' } }))
-    const env = setup({ deps: { createApi: undefined, fetchFn } as any })
+    const env = setup({ deps: { createApi: undefined, fetchFn } })
     await env.worker.init()
     env.worker.start()
     await waitUntil(() => fetchFn.mock.calls.length > 0)

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import contact from '@hcengineering/contact'
-import { type PersonId, type PersonUuid, type Ref, SocialIdType } from '@hcengineering/core'
-import type { Person } from '@hcengineering/contact'
+import { type PersonId, type PersonUuid, SocialIdType } from '@hcengineering/core'
 import { GitlabPersonMapper, linkGitlabIdentity, personName } from '../sync/persons'
 import { asTxOperations, createMemoryClient } from './helpers/memory'
 
@@ -102,8 +101,8 @@ describe('GitlabPersonMapper', () => {
       value: '9@gitlab.example.com',
       attachedTo: 'p1'
     })
-    expect(await mapper.gitlabUserIdFor('p1' as Ref<Person>, host)).toBe(9)
-    expect(await mapper.gitlabUserIdFor('p1' as Ref<Person>, 'https://other.example.com')).toBeUndefined()
+    expect(await mapper.gitlabUserIdFor('p1', host)).toBe(9)
+    expect(await mapper.gitlabUserIdFor('p1', 'https://other.example.com')).toBeUndefined()
     expect(await mapper.gitlabUserIdFor(null, host)).toBeUndefined()
   })
 })
@@ -129,7 +128,7 @@ describe('linkGitlabIdentity', () => {
       value: '7@gitlab.example.com',
       attachedTo: 'person-ghost'
     })
-    await linkGitlabIdentity(asTxOperations(memory), accounts as any, 'acc-1' as PersonUuid, host, user(7), 123)
+    await linkGitlabIdentity(asTxOperations(memory), accounts, 'acc-1' as PersonUuid, host, user(7), 123)
     expect(accounts.addSocialIdToPerson).toHaveBeenCalledWith(
       'acc-1',
       SocialIdType.GITLAB,
@@ -146,7 +145,7 @@ describe('linkGitlabIdentity', () => {
   it('creates the identity when the workspace has none', async () => {
     const memory = createMemoryClient()
     memory.docs.push({ _id: 'person-user', _class: contact.class.Person, personUuid: 'acc-1' })
-    await linkGitlabIdentity(asTxOperations(memory), accounts as any, 'acc-1' as PersonUuid, host, user(7), 123)
+    await linkGitlabIdentity(asTxOperations(memory), accounts, 'acc-1' as PersonUuid, host, user(7), 123)
     expect(memory.docs.find((d: any) => d._id === 'sid-x')).toMatchObject({
       _class: contact.class.SocialIdentity,
       attachedTo: 'person-user',

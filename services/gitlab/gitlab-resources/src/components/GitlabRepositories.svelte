@@ -44,7 +44,7 @@
     (it) => search === '' || it.pathWithNamespace.toLowerCase().includes(search.toLowerCase())
   )
 
-  function confirmUnlink (repository: GitlabIntegrationRepository): void {
+  function confirmUnlink(repository: GitlabIntegrationRepository): void {
     confirmDangerous(
       gitlab.string.Unlink,
       gitlab.string.UnlinkConfirm,
@@ -55,7 +55,7 @@
     )
   }
 
-  async function unlink (repository: GitlabIntegrationRepository): Promise<void> {
+  async function unlink(repository: GitlabIntegrationRepository): Promise<void> {
     error = undefined
     const projectId = repository.gitlabProject as Ref<Project> | null
     try {

@@ -18,17 +18,17 @@ export interface GitlabAppConfig {
 }
 
 export type AppSecretStore = Pick<
-AccountClient,
-| 'listIntegrations'
-| 'getIntegration'
-| 'createIntegration'
-| 'updateIntegration'
-| 'deleteIntegration'
-| 'listIntegrationsSecrets'
-| 'getIntegrationSecret'
-| 'addIntegrationSecret'
-| 'updateIntegrationSecret'
-| 'deleteIntegrationSecret'
+  AccountClient,
+  | 'listIntegrations'
+  | 'getIntegration'
+  | 'createIntegration'
+  | 'updateIntegration'
+  | 'deleteIntegration'
+  | 'listIntegrationsSecrets'
+  | 'getIntegrationSecret'
+  | 'addIntegrationSecret'
+  | 'updateIntegrationSecret'
+  | 'deleteIntegrationSecret'
 >
 
 // Used when a workspace saves an application without a host
@@ -166,10 +166,10 @@ export class GitlabAppStore {
     socialId: PersonId,
     workspace: WorkspaceUuid
   ): {
-      kind: typeof gitlabAppIntegrationKind
-      workspaceUuid: WorkspaceUuid
-      socialId: PersonId
-    } {
+    kind: typeof gitlabAppIntegrationKind
+    workspaceUuid: WorkspaceUuid
+    socialId: PersonId
+  } {
     return { kind: gitlabAppIntegrationKind, workspaceUuid: workspace, socialId }
   }
 

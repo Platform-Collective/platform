@@ -172,13 +172,13 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
 
   const route =
     (name: string, fn: (body: RouteBody) => Promise<unknown>) =>
-      (req: Request, res: Response): void => {
-        fn((req.body ?? {}) as RouteBody)
-          .then((result) => res.status(200).json(result ?? {}))
-          .catch((err: unknown) => {
-            failed(name, res, err)
-          })
-      }
+    (req: Request, res: Response): void => {
+      fn((req.body ?? {}) as RouteBody)
+        .then((result) => res.status(200).json(result ?? {}))
+        .catch((err: unknown) => {
+          failed(name, res, err)
+        })
+    }
 
   app.post(
     '/api/v1/authorize-url',

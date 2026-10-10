@@ -222,7 +222,7 @@ export class GitlabApi {
     }
   }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<{ data: T, headers: Headers }> {
+  private async request<T> (method: string, path: string, body?: unknown): Promise<{ data: T, headers: Headers }> {
     const res = await this.send(method, path, body)
     const raw = await res.text()
     let data: T
@@ -244,7 +244,7 @@ export class GitlabApi {
   }
 
   /** One page of a listing at a time; a caller that stops early stops the paging. */
-  private async * pages<T>(path: string): AsyncGenerator<T[]> {
+  private async *pages<T> (path: string): AsyncGenerator<T[]> {
     const sep = path.includes('?') ? '&' : '?'
     let page: string | null = '1'
     while (page !== null && page !== '') {
@@ -257,7 +257,7 @@ export class GitlabApi {
     }
   }
 
-  private async paginate<T>(path: string): Promise<T[]> {
+  private async paginate<T> (path: string): Promise<T[]> {
     const result: T[] = []
     for await (const page of this.pages<T>(path)) result.push(...page)
     return result
@@ -368,9 +368,9 @@ export class GitlabApi {
   }
 
   /** Issues ordered by update time, oldest first, one page at a time; only those updated at or after `updatedAfter`. */
-  async * listIssuePages (projectId: number, updatedAfter?: string): AsyncGenerator<GitlabIssueInfo[]> {
+  async *listIssuePages (projectId: number, updatedAfter?: string): AsyncGenerator<GitlabIssueInfo[]> {
     const since = updatedAfter !== undefined ? `&updated_after=${encodeURIComponent(updatedAfter)}` : ''
-    yield * this.pages<GitlabIssueInfo>(`/projects/${projectId}/issues?order_by=updated_at&sort=asc${since}`)
+    yield* this.pages<GitlabIssueInfo>(`/projects/${projectId}/issues?order_by=updated_at&sort=asc${since}`)
   }
 
   async createIssue (projectId: number, input: GitlabIssueInput): Promise<GitlabIssueInfo> {
@@ -434,9 +434,9 @@ export class GitlabApi {
   }
 
   /** Merge requests of every state, oldest update first, one page at a time. */
-  async * listMergeRequestPages (projectId: number, updatedAfter?: string): AsyncGenerator<GitlabMergeRequestInfo[]> {
+  async *listMergeRequestPages (projectId: number, updatedAfter?: string): AsyncGenerator<GitlabMergeRequestInfo[]> {
     const since = updatedAfter !== undefined ? `&updated_after=${encodeURIComponent(updatedAfter)}` : ''
-    yield * this.pages<GitlabMergeRequestInfo>(
+    yield* this.pages<GitlabMergeRequestInfo>(
       `/projects/${projectId}/merge_requests?order_by=updated_at&sort=asc&state=all${since}`
     )
   }
@@ -482,8 +482,8 @@ export class GitlabApi {
   }
 
   /** The per-file diffs (`/diffs?unidiff=true`), one page at a time. */
-  async * listMergeRequestDiffPages (projectId: number, iid: number): AsyncGenerator<GitlabMergeRequestDiff[]> {
-    yield * this.pages<GitlabMergeRequestDiff>(`/projects/${projectId}/merge_requests/${iid}/diffs?unidiff=true`)
+  async *listMergeRequestDiffPages (projectId: number, iid: number): AsyncGenerator<GitlabMergeRequestDiff[]> {
+    yield* this.pages<GitlabMergeRequestDiff>(`/projects/${projectId}/merge_requests/${iid}/diffs?unidiff=true`)
   }
 
   async getMergeRequestApprovals (projectId: number, iid: number): Promise<GitlabApprovals> {

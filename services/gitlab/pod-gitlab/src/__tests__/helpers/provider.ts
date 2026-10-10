@@ -70,7 +70,7 @@ export function fakeApi (impl: Partial<Record<ApiMethod, (...args: any[]) => unk
 
 /** A paged listing fake: every item on one page. */
 export function pagesOf<T> (items: T[]): () => AsyncGenerator<T[]> {
-  return async function * () {
+  return async function* () {
     yield items
   }
 }
@@ -136,7 +136,7 @@ export function createTestProvider (
     workspace: 'ws1' as WorkspaceUuid,
     client,
     derived: client,
-    collaborator: collab as any,
+    collaborator: collab,
     collab,
     markdown,
     content: new ContentConverter({

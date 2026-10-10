@@ -134,9 +134,9 @@ describe('PatchReader', () => {
 describe('fetchMergeRequestPatch', () => {
   const streamed =
     (text: string) =>
-      async (_projectId: number, _iid: number, onText: (text: string) => boolean): Promise<void> => {
-        onText(text)
-      }
+    async (_projectId: number, _iid: number, onText: (text: string) => boolean): Promise<void> => {
+      onText(text)
+    }
 
   it('uses the raw diff when GitLab has it', async () => {
     const raw = 'diff --git a/x b/x\n@@ -1 +1 @@\n-a\n+b\n'
@@ -150,7 +150,7 @@ describe('fetchMergeRequestPatch', () => {
       readMergeRequestRawDiffs: jest.fn(async () => {
         throw new GitlabApiError(404, 'not found')
       }),
-      listMergeRequestDiffPages: jest.fn(async function * () {
+      listMergeRequestDiffPages: jest.fn(async function* () {
         yield [file({})]
       })
     }
@@ -165,14 +165,14 @@ describe('fetchMergeRequestPatch', () => {
       readMergeRequestRawDiffs: jest.fn(async () => {
         throw new GitlabApiError(404, 'not found')
       }),
-      listMergeRequestDiffPages: jest.fn(async function * () {
+      listMergeRequestDiffPages: jest.fn(async function* () {
         for (let i = 0; i < 5; i++) {
           pagesRead++
           yield [big]
         }
       })
     }
-    const summary = await fetchMergeRequestPatch(api as any, 42, 3)
+    const summary = await fetchMergeRequestPatch(api, 42, 3)
     expect(summary).toMatchObject({ patch: undefined, truncated: true })
     expect(pagesRead).toBe(2)
   })

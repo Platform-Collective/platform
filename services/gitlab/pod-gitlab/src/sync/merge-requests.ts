@@ -17,7 +17,7 @@ import core, {
 } from '@hcengineering/core'
 import gitlab, { type DocSyncInfo, type GitlabMergeRequest } from '@hcengineering/gitlab'
 import { areEqualMarkups } from '@hcengineering/text'
-import tracker, { type IssueStatus } from '@hcengineering/tracker'
+import tracker from '@hcengineering/tracker'
 import { type GitlabApi, isNotFound } from '../gitlab/api'
 import type { GitlabMergeRequestInfo, GitlabMergeRequestInput } from '../gitlab/types'
 import { requeueSyncDocs } from './docs'
@@ -60,18 +60,18 @@ export interface MergeRequestSnapshot {
 
 /** GitLab-only fields mirrored into Huly as read-only. */
 type MirrorFields = Pick<
-GitlabMergeRequest,
-| 'url'
-| 'gitlabIid'
-| 'repository'
-| 'state'
-| 'draft'
-| 'sourceBranch'
-| 'targetBranch'
-| 'mergeStatus'
-| 'hasConflicts'
-| 'mergedAt'
-| 'closedAt'
+  GitlabMergeRequest,
+  | 'url'
+  | 'gitlabIid'
+  | 'repository'
+  | 'state'
+  | 'draft'
+  | 'sourceBranch'
+  | 'targetBranch'
+  | 'mergeStatus'
+  | 'hasConflicts'
+  | 'mergedAt'
+  | 'closedAt'
 >
 
 function timestamp (value: string | null): number | null {
@@ -261,7 +261,7 @@ export class MergeRequestSyncManager implements DocSyncManager {
       description: makeCollabJsonId(collabId),
       assignee: snapshot.assignee,
       reviewers: snapshot.reviewers,
-      status: statusForMergeRequestState(snapshot.state, type.statuses) as Ref<IssueStatus>,
+      status: statusForMergeRequestState(snapshot.state, type.statuses),
       kind: type.taskType,
       number,
       rank,
@@ -502,7 +502,7 @@ export class MergeRequestSyncManager implements DocSyncManager {
     if (change.reviewers !== undefined) update.reviewers = [...change.reviewers, ...unmapped]
     const state = change.state ?? revert
     if (state !== undefined && mergeRequestStateOfStatus(mr.status, statuses) !== state) {
-      update.status = statusForMergeRequestState(state, statuses) as Ref<IssueStatus>
+      update.status = statusForMergeRequestState(state, statuses)
     }
     const mirror = this.mirror(repo, external)
     for (const key of Object.keys(mirror) as Array<keyof MirrorFields>) {

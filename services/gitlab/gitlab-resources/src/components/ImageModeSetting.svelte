@@ -19,7 +19,7 @@
 
   $: mode = imageModeOf(integration)
 
-  async function choose (selected: GitlabImageMode): Promise<void> {
+  async function choose(selected: GitlabImageMode): Promise<void> {
     if (selected === mode) return
     error = undefined
     try {

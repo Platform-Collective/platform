@@ -20,7 +20,7 @@
   // A live query never reports a failure; this is set when the probe lookup below fails
   let loadFailed = false
 
-  async function probe (id: number): Promise<void> {
+  async function probe(id: number): Promise<void> {
     try {
       await client.findOne(gitlab.class.GitlabIntegration, { gitlabUserId: id })
     } catch (err: unknown) {

@@ -13,7 +13,7 @@ import {
 
 const fixedSecret =
   (secret: string): HookSecretResolver =>
-    () => ({ secret })
+  () => ({ secret })
 
 function fakeRes (): { status: jest.Mock, json: jest.Mock, code?: number } {
   const res: any = {}
@@ -43,7 +43,7 @@ describe('createWebhookHandler', () => {
       router,
       fixedSecret('secret'),
       ctx
-    )({ header: (n: string) => (n === 'x-gitlab-token' ? 'nope' : 'Issue Hook'), body: {} }, res as any)
+    )({ header: (n: string) => (n === 'x-gitlab-token' ? 'nope' : 'Issue Hook'), body: {} }, res)
     expect(res.code).toBe(401)
     expect(handler).not.toHaveBeenCalled()
   })
@@ -58,7 +58,7 @@ describe('createWebhookHandler', () => {
       router,
       fixedSecret('secret'),
       ctx
-    )({ header: (n: string) => headers[n], body: { a: 1 } }, res as any)
+    )({ header: (n: string) => headers[n], body: { a: 1 } }, res)
     expect(res.code).toBe(200)
     await waitUntil(() => handler.mock.calls.length > 0)
     expect(handler).toHaveBeenCalledWith({ a: 1 }, undefined)
@@ -75,7 +75,7 @@ describe('createWebhookHandler', () => {
       router,
       fixedSecret('secret'),
       ctx
-    )({ header: (n: string) => headers[n], body: {} }, res as any)
+    )({ header: (n: string) => headers[n], body: {} }, res)
     expect(res.code).toBe(200)
     await flushPending()
   })

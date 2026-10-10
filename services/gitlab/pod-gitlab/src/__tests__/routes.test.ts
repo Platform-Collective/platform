@@ -25,10 +25,10 @@ function deps (
   role: AccountRole | undefined,
   roleWorkspace: string = ws
 ): OwnerRouteDeps & {
-    service: { saveApp: jest.Mock, removeApp: jest.Mock, disconnectAll: jest.Mock }
-    listSocialIds: jest.Mock
-    loginInfo: jest.Mock
-  } {
+  service: { saveApp: jest.Mock, removeApp: jest.Mock, disconnectAll: jest.Mock }
+  listSocialIds: jest.Mock
+  loginInfo: jest.Mock
+} {
   const listSocialIds = jest.fn(async () => [{ _id: person }])
   return {
     listSocialIds,

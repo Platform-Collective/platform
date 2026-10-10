@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import client, { type ClientSocket } from '@hcengineering/client'
+import client from '@hcengineering/client'
 import clientResources from '@hcengineering/client-resources'
 import {
   systemAccountUuid,
@@ -30,7 +30,7 @@ export async function createPlatformClient (
   onConnect?: (event: ClientConnectEvent) => Promise<void>
 ): Promise<Client> {
   setMetadata(client.metadata.ClientSocketFactory, (url) => {
-    return new WebSocket(url, { headers: { 'User-Agent': config.ServiceID } }) as never as ClientSocket
+    return new WebSocket(url, { headers: { 'User-Agent': config.ServiceID } }) as never
   })
   const token = systemToken(workspace)
   setMetadata(client.metadata.UseBinaryProtocol, true)
@@ -47,7 +47,7 @@ export async function createPlatformClient (
       onConnect === undefined
         ? undefined
         : async (event) => {
-          await onConnect(event)
-        }
+            await onConnect(event)
+          }
   })
 }

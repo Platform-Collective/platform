@@ -28,7 +28,7 @@
   let channel: BroadcastChannel | undefined
   let started = false
 
-  function doAutoClose (): void {
+  function doAutoClose(): void {
     interval = setInterval(() => {
       autoClose = autoClose - 1
       if (autoClose <= 0) {
@@ -38,7 +38,7 @@
     }, 1000)
   }
 
-  function fail (message?: string, label?: IntlString): void {
+  function fail(message?: string, label?: IntlString): void {
     clearTimeout(timeout)
     phase = 'failed'
     failureMessage = message
@@ -48,12 +48,12 @@
     }
   }
 
-  function openChannel (): BroadcastChannel | undefined {
+  function openChannel(): BroadcastChannel | undefined {
     if (typeof BroadcastChannel === 'undefined') return undefined
     return new BroadcastChannel(OAUTH_CHANNEL)
   }
 
-  function handle (loc: Location): void {
+  function handle(loc: Location): void {
     if (started) return
     const query = loc.query ?? {}
     const error = query.error

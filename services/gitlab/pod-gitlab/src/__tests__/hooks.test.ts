@@ -50,9 +50,9 @@ describe('repository hooks', () => {
   it('removes a stored hook and clears its id; nothing to do without one', async () => {
     const client = { update: jest.fn(async () => {}) }
     const api = { deleteProjectHook: jest.fn(async () => {}) }
-    await removeRepositoryHook(client as any, api as any, { projectId: 42, hookId: null } as any)
+    await removeRepositoryHook(client as any, api, { projectId: 42, hookId: null } as any)
     expect(api.deleteProjectHook).not.toHaveBeenCalled()
-    await removeRepositoryHook(client as any, api as any, { projectId: 42, hookId: 9 } as any)
+    await removeRepositoryHook(client as any, api, { projectId: 42, hookId: 9 } as any)
     expect(api.deleteProjectHook).toHaveBeenCalledWith(42, 9)
     expect(client.update).toHaveBeenCalledWith(expect.anything(), { hookId: null })
   })

@@ -11,7 +11,7 @@
   export let state: Writable<RepositoryChoice>
   export let space: Space | undefined
 
-  function correct (valid: RepositoryChoice): void {
+  function correct(valid: RepositoryChoice): void {
     if (valid !== $state) $state = valid
   }
 

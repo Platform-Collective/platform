@@ -25,16 +25,16 @@ export interface GitlabUserRecord {
 }
 
 export type SecretStore = Pick<
-AccountClient,
-| 'getIntegration'
-| 'createIntegration'
-| 'updateIntegration'
-| 'getIntegrationSecret'
-| 'addIntegrationSecret'
-| 'updateIntegrationSecret'
-| 'listIntegrationsSecrets'
-| 'deleteIntegrationSecret'
-| 'deleteIntegration'
+  AccountClient,
+  | 'getIntegration'
+  | 'createIntegration'
+  | 'updateIntegration'
+  | 'getIntegrationSecret'
+  | 'addIntegrationSecret'
+  | 'updateIntegrationSecret'
+  | 'listIntegrationsSecrets'
+  | 'deleteIntegrationSecret'
+  | 'deleteIntegration'
 >
 
 export class GitlabUserManager {

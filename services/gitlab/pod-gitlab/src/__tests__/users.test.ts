@@ -66,7 +66,7 @@ function memoryStore (): SecretStore & { secrets: IntegrationSecret[], integrati
       )
       if (idx >= 0) secrets.splice(idx, 1)
     }
-  } as any
+  }
 }
 
 const record: GitlabUserRecord = {
@@ -109,7 +109,7 @@ describe('GitlabUserManager', () => {
       socialId: person,
       key: '1',
       secret: '{not json'
-    } as any)
+    })
     expect(await users.getByRef(ws, person)).toBeUndefined()
   })
 

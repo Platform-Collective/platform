@@ -16,7 +16,7 @@ import gitlab, {
   type GitlabIntegrationRepository,
   type GitlabProject
 } from '@hcengineering/gitlab'
-import tracker, { type Project } from '@hcengineering/tracker'
+import tracker from '@hcengineering/tracker'
 import { DEFAULT_GITLAB_HOST, normalizeHost, toOAuthConfig, type GitlabAppConfig, type GitlabAppStore } from './apps'
 import { redirectUriFor, type Config, type OAuthConfig } from './config'
 import { GitlabApi, type FetchFn } from './gitlab/api'
@@ -180,7 +180,7 @@ export class GitlabService {
     return toOAuthConfig(await this.appFor(workspace), this.deps.config.RedirectURI)
   }
 
-  private async withClient<T>(
+  private async withClient<T> (
     workspace: WorkspaceUuid,
     accountId: PersonId,
     fn: (client: TxOperations) => Promise<T>
@@ -509,7 +509,7 @@ export class GitlabService {
       const remaining = current.filter((it) => !removedIds.has(it))
       if (remaining.length === current.length) continue
       await client.updateMixin(
-        project._id as Ref<Project>,
+        project._id,
         tracker.class.Project,
         project.space,
         gitlab.mixin.GitlabProject,

@@ -44,12 +44,12 @@
     projects = res
   })
 
-  function showError (err: unknown): void {
+  function showError(err: unknown): void {
     error = err
     reportError(err)
   }
 
-  async function refresh (): Promise<void> {
+  async function refresh(): Promise<void> {
     error = undefined
     refreshing = true
     try {
@@ -66,7 +66,7 @@
   let channel: BroadcastChannel | undefined
   let awaitingCallback = false
 
-  async function completeAuth (msg: OAuthCallbackMessage): Promise<void> {
+  async function completeAuth(msg: OAuthCallbackMessage): Promise<void> {
     awaitingCallback = false
     error = undefined
     try {
@@ -80,7 +80,7 @@
     }
   }
 
-  function onChannelMessage (ev: MessageEvent): void {
+  function onChannelMessage(ev: MessageEvent): void {
     const msg: unknown = ev.data
     if (isOAuthCallbackMessage(msg)) {
       // Only states this dialog requested, each once.
@@ -101,7 +101,7 @@
     channel = undefined
   })
 
-  async function authorize (): Promise<void> {
+  async function authorize(): Promise<void> {
     error = undefined
     try {
       callbacks.expect(await onAuthorize())

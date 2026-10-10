@@ -21,7 +21,7 @@
   let searchQuery: DocumentQuery<GitlabMergeRequest> = { ...query }
   let resultQuery: DocumentQuery<GitlabMergeRequest> = { ...searchQuery }
 
-  function updateSearchQuery (search: string): void {
+  function updateSearchQuery(search: string): void {
     searchQuery = search === '' ? { ...query } : { ...query, $search: search }
   }
   $: if (query !== undefined) updateSearchQuery(search)

@@ -28,7 +28,7 @@
   // SelectPopup ids are strings; this one stands for "Without repository"
   const NONE = '#none'
 
-  function open (event: MouseEvent): void {
+  function open(event: MouseEvent): void {
     const items: SelectPopupValueType[] = repositories.map((it) => ({
       id: it._id,
       icon: gitlab.icon.GitlabRepository,

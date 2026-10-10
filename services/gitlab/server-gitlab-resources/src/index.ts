@@ -81,19 +81,19 @@ function syncInfoTxIds (txes: Tx[]): Set<Ref<Doc>> {
 // One change to queue: a synced document itself, or the comment whose attachment changed
 type QueuedChange =
   | {
-    kind: 'document'
-    cud: TxCUD<Doc>
-    // The document whose DocSyncInfo is looked up
-    id: Ref<Doc>
-    // The new project of a moved document
-    target?: Ref<Space>
-  }
+      kind: 'document'
+      cud: TxCUD<Doc>
+      // The document whose DocSyncInfo is looked up
+      id: Ref<Doc>
+      // The new project of a moved document
+      target?: Ref<Space>
+    }
   | {
-    kind: 'comment'
-    cud: TxCUD<Doc>
-    // The comment whose DocSyncInfo is looked up
-    id: Ref<Doc>
-  }
+      kind: 'comment'
+      cud: TxCUD<Doc>
+      // The comment whose DocSyncInfo is looked up
+      id: Ref<Doc>
+    }
 
 /**
  * @public

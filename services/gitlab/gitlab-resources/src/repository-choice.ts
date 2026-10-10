@@ -48,5 +48,5 @@ export function validChoice (choice: RepositoryChoice, linked: GitlabIntegration
 /** `GitlabIssue` mixin data for a pick; undefined when nothing was picked. */
 export function issueLinkFor (choice: RepositoryChoice): GitlabIssueLink | undefined {
   if (choice.repository === undefined) return undefined
-  return { repository: choice.repository, url: '' as Hyperlink, gitlabIid: 0 }
+  return { repository: choice.repository, url: '', gitlabIid: 0 }
 }

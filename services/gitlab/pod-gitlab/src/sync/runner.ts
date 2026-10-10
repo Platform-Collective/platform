@@ -6,7 +6,7 @@
 export class SyncRunner {
   private readonly tails = new Map<string, Promise<void>>()
 
-  async exec<T>(key: string, op: () => Promise<T>): Promise<T> {
+  async exec<T> (key: string, op: () => Promise<T>): Promise<T> {
     const previous = this.tails.get(key) ?? Promise.resolve()
     const run = previous.then(op)
     const tail = run.then(

@@ -18,7 +18,7 @@ export class Limiter {
     private readonly maxQueued: number
   ) {}
 
-  async run<T>(op: () => Promise<T>): Promise<T> {
+  async run<T> (op: () => Promise<T>): Promise<T> {
     if (this.active < this.concurrency) {
       this.active++
     } else {

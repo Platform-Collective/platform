@@ -66,5 +66,5 @@ export function safeFetch (options: SafeFetchOptions, base: FetchFn = fetch): Fe
       }
       url = next.href
     }
-  }) as FetchFn
+  })
 }

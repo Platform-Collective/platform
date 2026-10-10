@@ -22,7 +22,7 @@
   $: open = mergeRequest.state === 'opened' || mergeRequest.state === 'locked'
 
   // The GitLab service approves or revokes with this user's own GitLab token
-  async function send (state: 'approved' | 'unapproved'): Promise<void> {
+  async function send(state: 'approved' | 'unapproved'): Promise<void> {
     sending = true
     error = undefined
     try {

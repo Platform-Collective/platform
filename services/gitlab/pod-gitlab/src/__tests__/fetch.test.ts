@@ -38,7 +38,7 @@ describe('safeFetch', () => {
 
   it("adds a time limit, and keeps the caller's own signal", async () => {
     const fetchFn = base(200)
-    const call = safeFetch({ guard: allowAll, timeoutMs: 1000 }, fetchFn as unknown as FetchFn)
+    const call = safeFetch({ guard: allowAll, timeoutMs: 1000 }, fetchFn)
     expect((await call('https://gitlab.example.com/a')).status).toBe(200)
     expect(fetchFn.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
     const own = new AbortController().signal
@@ -88,7 +88,7 @@ describe('safeFetch: upload downloads', () => {
   )
 
   function guarded (fetchFn: jest.Mock, hostGuard: HostGuard = guard): FetchFn {
-    return safeFetch({ guard: hostGuard, timeoutMs: 1000 }, fetchFn as unknown as FetchFn)
+    return safeFetch({ guard: hostGuard, timeoutMs: 1000 }, fetchFn)
   }
 
   // Answers each URL with its redirect, or with the image

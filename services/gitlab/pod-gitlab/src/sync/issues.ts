@@ -448,7 +448,7 @@ export class IssueSyncManager implements DocSyncManager {
     if (change.assignee !== undefined) update.assignee = change.assignee
     if (change.state !== undefined && stateOfStatus(issue.status, statuses) !== change.state) {
       // Only a change between open and closed moves the status; a Canceled issue stays Canceled when GitLab closes it
-      update.status = statusForState(change.state, change.state === 'opened', statuses) as Ref<IssueStatus>
+      update.status = statusForState(change.state, change.state === 'opened', statuses)
     }
     if (change.description !== undefined) {
       await this.provider.collaborator.updateMarkup(makeDocCollabId(issue, 'description'), change.description)

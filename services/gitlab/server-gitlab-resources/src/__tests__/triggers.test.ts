@@ -75,7 +75,7 @@ function fakeControl (opts: FakeOptions = {}): {
 }
 
 function createIssueTx (factory: TxFactory, space: Ref<Space>, id: string): Tx {
-  return factory.createTxCreateDoc(tracker.class.Issue, space, { title: 't' } as any, id as Ref<Doc>)
+  return factory.createTxCreateDoc(tracker.class.Issue, space, { title: 't' }, id as Ref<Doc>)
 }
 
 // Collection creates carry the parent on the tx
@@ -104,7 +104,7 @@ function broadcastTarget (control: TriggerControl): (tx: Tx) => Promise<unknown>
 
 describe('OnProjectChanges', () => {
   function moveTx (factory: TxFactory, from: Ref<Space>, to: Ref<Space>, id: string): Tx {
-    return factory.createTxUpdateDoc(tracker.class.Issue, from, id as Ref<Doc>, { space: to } as any)
+    return factory.createTxUpdateDoc(tracker.class.Issue, from, id as Ref<Doc>, { space: to })
   }
 
   it('queues an issue moved into a GitLab-linked project in its new project', async () => {
@@ -260,13 +260,13 @@ describe('OnProjectChanges', () => {
   it('does not queue viewed-file marks, nor review documents the GitLab service writes as System', async () => {
     const viewed = fakeControl()
     await OnProjectChanges(
-      [user.createTxCreateDoc(gitlab.class.GitlabMergeRequestReview, linked, {} as any, 'v-1' as Ref<Doc>)],
+      [user.createTxCreateDoc(gitlab.class.GitlabMergeRequestReview, linked, {}, 'v-1' as Ref<Doc>)],
       viewed.control
     )
     expect(viewed.applied).toEqual([])
     const bySystem = fakeControl()
     await OnProjectChanges(
-      [system.createTxCreateDoc(gitlab.class.GitlabReviewComment, linked, {} as any, 'c-1' as Ref<Doc>)],
+      [system.createTxCreateDoc(gitlab.class.GitlabReviewComment, linked, {}, 'c-1' as Ref<Doc>)],
       bySystem.control
     )
     expect(bySystem.applied).toEqual([])
@@ -275,7 +275,7 @@ describe('OnProjectChanges', () => {
   function attachmentTx (factory: TxFactory, remove = false): Tx {
     const tx = remove
       ? factory.createTxRemoveDoc(attachment.class.Attachment, linked, 'att-1' as Ref<Doc>)
-      : factory.createTxCreateDoc(attachment.class.Attachment, linked, { name: 'a.png' } as any, 'att-1' as Ref<Doc>)
+      : factory.createTxCreateDoc(attachment.class.Attachment, linked, { name: 'a.png' }, 'att-1' as Ref<Doc>)
     return withParent(tx, 'msg-1', chunter.class.ChatMessage)
   }
 
@@ -348,7 +348,7 @@ describe('OnProjectRemove', () => {
       infos: [{ _id: 'issue-1' as Ref<DocSyncInfo>, _class: gitlab.class.DocSyncInfo, space: linked }]
     })
     const result = await OnProjectRemove(
-      [user.createTxRemoveDoc(tracker.class.Project, core.space.Space, linked as unknown as Ref<Doc>)],
+      [user.createTxRemoveDoc(tracker.class.Project, core.space.Space, linked)],
       control
     )
     expect(result.find((tx) => tx._class === core.class.TxUpdateDoc)).toMatchObject({
@@ -364,7 +364,7 @@ describe('OnProjectRemove', () => {
       infos: [{ _id: 'issue-1' as Ref<DocSyncInfo>, _class: gitlab.class.DocSyncInfo, space: linked }]
     })
     await OnProjectRemove(
-      [user.createTxRemoveDoc(tracker.class.Project, core.space.Space, linked as unknown as Ref<Doc>)],
+      [user.createTxRemoveDoc(tracker.class.Project, core.space.Space, linked)],
       control
     )
     const lookup = findAllCalls.find((it) => it._class === gitlab.class.DocSyncInfo)
@@ -386,7 +386,7 @@ describe('OnGitlabBroadcast', () => {
     const { control } = fakeControl()
     await OnGitlabBroadcast([], control)
     const target = broadcastTarget(control)
-    const uploadTx = system.createTxCreateDoc(gitlab.class.GitlabUpload, linked, {} as any, 'u-1' as Ref<Doc>)
+    const uploadTx = system.createTxCreateDoc(gitlab.class.GitlabUpload, linked, {}, 'u-1' as Ref<Doc>)
     expect(await target(uploadTx)).toEqual({ target: [systemAccountUuid] })
   })
 
@@ -402,7 +402,7 @@ describe('OnGitlabBroadcast', () => {
       infos: [{ _id: 'issue-1' as Ref<DocSyncInfo>, _class: gitlab.class.DocSyncInfo, space: linked }]
     })
     await OnProjectRemove(
-      [user.createTxRemoveDoc(tracker.class.Project, core.space.Space, linked as unknown as Ref<Doc>)],
+      [user.createTxRemoveDoc(tracker.class.Project, core.space.Space, linked)],
       control
     )
     expect(broadcastTarget(control)).toBeDefined()

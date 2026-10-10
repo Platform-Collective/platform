@@ -15,8 +15,8 @@ function memoryStore (): MemoryStore {
   const same = (a: any, b: any): boolean => a.key === b.key && sameIntegration(a, b)
   const matches =
     (q: any) =>
-      (s: any): boolean =>
-        Object.entries(q).every(([k, v]) => v === undefined || s[k] === v)
+    (s: any): boolean =>
+      Object.entries(q).every(([k, v]) => v === undefined || s[k] === v)
   const requireIntegration = (k: any): void => {
     if (!integrations.some((i) => sameIntegration(i, k))) throw new Error('IntegrationNotFound')
   }
@@ -237,7 +237,7 @@ describe('GitlabAppStore workspace guard', () => {
       addIntegrationSecret: fail,
       updateIntegrationSecret: fail,
       deleteIntegrationSecret: fail
-    } as unknown as AppSecretStore
+    }
   }
 
   it.each([undefined, ''])(

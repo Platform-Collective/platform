@@ -35,21 +35,21 @@ export async function allocateIssueNumber (
 }
 
 export type EmptyIssueFields = Pick<
-AttachedData<Issue>,
-| 'component'
-| 'milestone'
-| 'priority'
-| 'comments'
-| 'subIssues'
-| 'startDate'
-| 'dueDate'
-| 'parents'
-| 'reportedTime'
-| 'remainingTime'
-| 'estimation'
-| 'reports'
-| 'relations'
-| 'childInfo'
+  AttachedData<Issue>,
+  | 'component'
+  | 'milestone'
+  | 'priority'
+  | 'comments'
+  | 'subIssues'
+  | 'startDate'
+  | 'dueDate'
+  | 'parents'
+  | 'reportedTime'
+  | 'remainingTime'
+  | 'estimation'
+  | 'reports'
+  | 'relations'
+  | 'childInfo'
 >
 
 /** The issue fields GitLab has no counterpart for. */

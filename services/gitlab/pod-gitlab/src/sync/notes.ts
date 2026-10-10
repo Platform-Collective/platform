@@ -170,7 +170,7 @@ export class NoteSyncManager implements DocSyncManager {
 
   /** The Huly issue or merge request of a parent sync doc (both share the sync doc's _id). */
   private async parentDoc (parent: DocSyncInfo): Promise<Doc | undefined> {
-    return await this.provider.client.findOne(parent.objectClass, { _id: parent._id as unknown as Ref<Doc> })
+    return await this.provider.client.findOne(parent.objectClass, { _id: parent._id })
   }
 
   private async upsertExternal (repo: RepositoryContext, parent: string, note: GitlabNoteInfo): Promise<void> {

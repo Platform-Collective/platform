@@ -23,7 +23,7 @@
   $: showLinks = !selfManaged || isValidHostInput(host)
   $: links = applicationLinks(selfManaged ? host : GITLAB_COM)
 
-  async function copyRedirect (): Promise<void> {
+  async function copyRedirect(): Promise<void> {
     try {
       await copyTextToClipboard(redirectUri)
       copied = true

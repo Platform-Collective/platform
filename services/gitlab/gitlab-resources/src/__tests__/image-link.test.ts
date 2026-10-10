@@ -5,7 +5,7 @@ const HREF =
   'https://gitlab.example.com/group/proj/uploads/0123456789abcdef0123456789abcdef/my%20shot.png#gitlab-image=width%3D3'
 
 function respond (status: number, body: BodyInit, type = 'application/json'): typeof fetch {
-  return (async () => new Response(body, { status, headers: { 'Content-Type': type } })) as unknown as typeof fetch
+  return async () => new Response(body, { status, headers: { 'Content-Type': type } })
 }
 
 describe('GitLab image link', () => {

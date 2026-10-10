@@ -89,41 +89,41 @@ export class TDocSyncInfo extends TDoc implements DocSyncInfo {
   @Prop(TypeString(), getEmbeddedLabel('Key'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    key!: string
+  key!: string
 
   @Prop(TypeString(), getEmbeddedLabel('Parent'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    parent?: string
+  parent?: string
 
   @Prop(TypeString(), getEmbeddedLabel('Object class'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    objectClass!: Ref<Class<Doc>>
+  objectClass!: Ref<Class<Doc>>
 
   @Prop(TypeRef(gitlab.class.GitlabIntegrationRepository), getEmbeddedLabel('Repository'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    repository!: Ref<GitlabIntegrationRepository> | null
+  repository!: Ref<GitlabIntegrationRepository> | null
 
   @Prop(TypeNumber(), getEmbeddedLabel('Issue IID'))
   @ReadOnly()
-    gitlabIid!: number
+  gitlabIid!: number
 
   @Prop(TypeString(), getEmbeddedLabel('Sync request'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    needSync!: string
+  needSync!: string
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Deleted'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    deleted?: boolean
+  deleted?: boolean
 
   @Prop(TypeRef(core.class.Doc), getEmbeddedLabel('Attached to'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    attachedTo?: Ref<Doc>
+  attachedTo?: Ref<Doc>
 
   external?: unknown
   current?: unknown
@@ -143,21 +143,21 @@ export class TGitlabUpload extends TDoc implements GitlabUpload {
   @Prop(TypeRef(gitlab.class.GitlabIntegrationRepository), getEmbeddedLabel('Repository'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    repository!: Ref<GitlabIntegrationRepository>
+  repository!: Ref<GitlabIntegrationRepository>
 
   @Prop(TypeString(), getEmbeddedLabel('Path'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    path!: string
+  path!: string
 
   @Prop(TypeRef(core.class.Blob), getEmbeddedLabel('File'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    file!: Ref<Blob>
+  file!: Ref<Blob>
 
   @Prop(TypeString(), getEmbeddedLabel('Origin'))
   @ReadOnly()
-    origin!: GitlabUploadOrigin
+  origin!: GitlabUploadOrigin
 }
 
 @Mixin(gitlab.mixin.GitlabIssue, tracker.class.Issue)
@@ -167,26 +167,26 @@ export class TGitlabIssue extends TIssue implements GitlabIssue {
   @Index(IndexKind.FullText)
   @ReadOnly()
   @Hidden()
-    url!: Hyperlink
+  url!: Hyperlink
 
   @Prop(TypeNumber(), getEmbeddedLabel('GitLab IID'))
   @ReadOnly()
   @Hidden()
-    gitlabIid!: number
+  gitlabIid!: number
 
   @Prop(TypeRef(gitlab.class.GitlabIntegrationRepository), gitlab.string.Repository)
   @Hidden()
-    repository?: Ref<GitlabIntegrationRepository> | null
+  repository?: Ref<GitlabIntegrationRepository> | null
 
   @Prop(TypeString(), gitlab.string.SyncError)
   @ReadOnly()
   @Hidden()
-    syncError?: string | null
+  syncError?: string | null
 
   @Prop(ArrOf(TypeString()), getEmbeddedLabel('Images'))
   @ReadOnly()
   @Hidden()
-    images?: string[]
+  images?: string[]
 }
 
 @Model(gitlab.class.GitlabMergeRequest, tracker.class.Issue)
@@ -196,101 +196,101 @@ export class TGitlabMergeRequest extends TIssue implements GitlabMergeRequest {
   @Index(IndexKind.FullText)
   @ReadOnly()
   @Hidden()
-    url!: Hyperlink
+  url!: Hyperlink
 
   @Prop(TypeNumber(), getEmbeddedLabel('GitLab IID'))
   @ReadOnly()
   @Hidden()
-    gitlabIid!: number
+  gitlabIid!: number
 
   @Prop(TypeRef(gitlab.class.GitlabIntegrationRepository), gitlab.string.Repository)
   @ReadOnly()
   @Hidden()
-    repository!: Ref<GitlabIntegrationRepository>
+  repository!: Ref<GitlabIntegrationRepository>
 
   @Prop(TypeString(), gitlab.string.SyncError)
   @ReadOnly()
   @Hidden()
-    syncError?: string | null
+  syncError?: string | null
 
   @Prop(ArrOf(TypeString()), getEmbeddedLabel('Images'))
   @ReadOnly()
   @Hidden()
-    images?: string[]
+  images?: string[]
 
   @Prop(
     TypeAny(gitlab.component.MergeRequestStateValuePresenter, gitlab.string.MergeRequestState),
     gitlab.string.MergeRequestState
   )
   @ReadOnly()
-    state!: GitlabMergeRequestState
+  state!: GitlabMergeRequestState
 
   @Prop(TypeBoolean(), gitlab.string.Draft)
   @ReadOnly()
-    draft!: boolean
+  draft!: boolean
 
   @Prop(TypeString(), gitlab.string.SourceBranch)
   @ReadOnly()
-    sourceBranch!: string
+  sourceBranch!: string
 
   @Prop(TypeString(), gitlab.string.TargetBranch)
   @ReadOnly()
-    targetBranch!: string
+  targetBranch!: string
 
   @Prop(TypeAny(gitlab.component.MergeStatusValuePresenter, gitlab.string.MergeStatus), gitlab.string.MergeStatus)
   @ReadOnly()
-    mergeStatus!: string
+  mergeStatus!: string
 
   @Prop(TypeBoolean(), gitlab.string.Conflict)
   @ReadOnly()
   @Hidden()
-    hasConflicts!: boolean
+  hasConflicts!: boolean
 
   @Prop(TypeDate(DateRangeMode.DATETIME), gitlab.string.MergedAt)
   @ReadOnly()
-    mergedAt!: Timestamp | null
+  mergedAt!: Timestamp | null
 
   @Prop(TypeDate(DateRangeMode.DATETIME), gitlab.string.ClosedAt)
   @ReadOnly()
-    closedAt!: Timestamp | null
+  closedAt!: Timestamp | null
 
   @Prop(TypeNumber(), gitlab.string.Commits)
   @ReadOnly()
-    commits!: number
+  commits!: number
 
   @Prop(TypeNumber(), gitlab.string.Files)
   @ReadOnly()
   @Hidden()
-    files!: number
+  files!: number
 
   @Prop(TypeNumber(), getEmbeddedLabel('Additions'))
   @ReadOnly()
   @Hidden()
-    additions!: number
+  additions!: number
 
   @Prop(TypeNumber(), getEmbeddedLabel('Deletions'))
   @ReadOnly()
   @Hidden()
-    deletions!: number
+  deletions!: number
 
   @Prop(ArrOf(TypeRef(contact.class.Person)), gitlab.string.Reviewers)
-    reviewers!: Array<Ref<Person>> | null
+  reviewers!: Array<Ref<Person>> | null
 
   @Prop(ArrOf(TypeRef(contact.class.Person)), gitlab.string.ApprovedBy)
   @ReadOnly()
-    approvedBy!: Array<Ref<Person>> | null
+  approvedBy!: Array<Ref<Person>> | null
 
   @Prop(Collection(gitlab.class.GitlabReviewComment), gitlab.string.ReviewComments)
   @Hidden()
-    reviewComments!: number
+  reviewComments!: number
 
   @Prop(Collection(gitlab.class.GitlabPatch), getEmbeddedLabel('Diff'))
   @Hidden()
-    patch?: number
+  patch?: number
 
   @Prop(Collection(gitlab.class.GitlabMergeRequestReview), getEmbeddedLabel('Viewed files'))
   @Hidden()
-    viewedFiles?: number
+  viewedFiles?: number
 }
 
 // The stored diff of a merge request; not an attachment
@@ -312,12 +312,12 @@ export class TGitlabTodo extends TToDo implements GitlabTodo {
 export class TGitlabReview extends TActivityMessage implements GitlabReview {
   @Prop(TypeString(), gitlab.string.Review)
   @ReadOnly()
-    state!: GitlabReviewKind
+  state!: GitlabReviewKind
 
   @Prop(TypeString(), gitlab.string.SyncError)
   @ReadOnly()
   @Hidden()
-    syncError?: string | null
+  syncError?: string | null
 }
 
 @Model(gitlab.class.GitlabReviewThread, activity.class.ActivityMessage)
@@ -340,10 +340,10 @@ export class TGitlabReviewComment extends TAttachedDoc implements GitlabReviewCo
 
   @Prop(TypeString(), getEmbeddedLabel('Discussion'))
   @Index(IndexKind.Indexed)
-    discussionId!: string
+  discussionId!: string
 
   @Prop(TypeMarkup(), gitlab.string.ReviewComment)
-    body!: Markup
+  body!: Markup
 }
 
 // Huly only: which diff files a person marked as viewed
@@ -353,7 +353,7 @@ export class TGitlabMergeRequestReview extends TAttachedDoc implements GitlabMer
 
   @Prop(TypeRef(contact.class.Person), getEmbeddedLabel('Author'))
   @Index(IndexKind.Indexed)
-    author!: Ref<Person>
+  author!: Ref<Person>
 
   files!: GitlabViewedFile[]
 }
@@ -363,38 +363,38 @@ export class TGitlabMergeRequestReview extends TAttachedDoc implements GitlabMer
 export class TGitlabIntegration extends TDoc implements GitlabIntegration {
   @Prop(TypeString(), getEmbeddedLabel('Host'))
   @ReadOnly()
-    host!: string
+  host!: string
 
   @Prop(TypeNumber(), getEmbeddedLabel('GitLab user id'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    gitlabUserId!: number
+  gitlabUserId!: number
 
   @Prop(TypeString(), getEmbeddedLabel('Login'))
   @ReadOnly()
-    login!: string
+  login!: string
 
   @Prop(TypeString(), getEmbeddedLabel('Name'))
   @ReadOnly()
-    name!: string
+  name!: string
 
   @Prop(TypeString(), getEmbeddedLabel('Connected by'))
   @ReadOnly()
   @Hidden()
-    connectedBy!: PersonId
+  connectedBy!: PersonId
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Alive'))
   @ReadOnly()
-    alive!: boolean
+  alive!: boolean
 
   error?: string | null
 
   @Prop(Collection(gitlab.class.GitlabIntegrationRepository), getEmbeddedLabel('Repositories'))
   @ReadOnly()
-    repositories!: number
+  repositories!: number
 
   @Prop(TypeString(), getEmbeddedLabel('Image mode'))
-    imageMode?: GitlabImageMode
+  imageMode?: GitlabImageMode
 }
 
 @Model(gitlab.class.GitlabIntegrationRepository, core.class.AttachedDoc, DOMAIN_GITLAB)
@@ -405,65 +405,65 @@ export class TGitlabIntegrationRepository extends TAttachedDoc implements Gitlab
   @Prop(TypeNumber(), getEmbeddedLabel('Project ID'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    projectId!: number
+  projectId!: number
 
   @Prop(TypeString(), getEmbeddedLabel('Name'))
   @ReadOnly()
-    name!: string
+  name!: string
 
   @Prop(TypeString(), getEmbeddedLabel('Path'))
   @ReadOnly()
-    pathWithNamespace!: string
+  pathWithNamespace!: string
 
   @Prop(TypeString(), getEmbeddedLabel('URL'))
   @ReadOnly()
-    webUrl!: string
+  webUrl!: string
 
   @Prop(TypeString(), getEmbeddedLabel('Description'))
   @ReadOnly()
-    description!: string | null
+  description!: string | null
 
   @Prop(TypeString(), getEmbeddedLabel('Visibility'))
   @ReadOnly()
-    visibility!: GitlabVisibility
+  visibility!: GitlabVisibility
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Archived'))
   @ReadOnly()
-    archived!: boolean
+  archived!: boolean
 
   @Prop(TypeString(), getEmbeddedLabel('Default branch'))
   @ReadOnly()
-    defaultBranch!: string | null
+  defaultBranch!: string | null
 
   @Prop(TypeNumber(), getEmbeddedLabel('Stars'))
   @ReadOnly()
-    starCount!: number
+  starCount!: number
 
   @Prop(TypeNumber(), getEmbeddedLabel('Forks'))
   @ReadOnly()
-    forksCount!: number
+  forksCount!: number
 
   @Prop(TypeNumber(), getEmbeddedLabel('Open issues'))
   @ReadOnly()
-    openIssuesCount!: number
+  openIssuesCount!: number
 
   @Prop(TypeDate(), getEmbeddedLabel('Last activity'))
   @ReadOnly()
-    lastActivityAt!: Timestamp
+  lastActivityAt!: Timestamp
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Enabled'))
   @ReadOnly()
-    enabled!: boolean
+  enabled!: boolean
 
   @Prop(TypeRef(gitlab.mixin.GitlabProject), getEmbeddedLabel('Project'))
   @ReadOnly()
-    gitlabProject!: Ref<GitlabProject> | null
+  gitlabProject!: Ref<GitlabProject> | null
 
   hookId!: number | null
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Deleted'))
   @ReadOnly()
-    deleted!: boolean
+  deleted!: boolean
 }
 
 @Mixin(gitlab.mixin.GitlabProject, tracker.class.Project)
@@ -472,19 +472,19 @@ export class TGitlabProject extends TProject implements GitlabProject {
   @Prop(TypeRef(gitlab.class.GitlabIntegration), getEmbeddedLabel('Integration'))
   @ReadOnly()
   @Hidden()
-    integration!: Ref<GitlabIntegration>
+  integration!: Ref<GitlabIntegration>
 
   @Prop(ArrOf(TypeRef(gitlab.class.GitlabIntegrationRepository)), getEmbeddedLabel('Repositories'))
   @ReadOnly()
   @Hidden()
-    repositories!: Array<Ref<GitlabIntegrationRepository>>
+  repositories!: Array<Ref<GitlabIntegrationRepository>>
 }
 
 @Model(gitlab.class.GitlabAuthentication, core.class.Doc, DOMAIN_PREFERENCE)
 export class TGitlabAuthentication extends TPreference implements GitlabAuthentication {
   @Prop(TypeString(), getEmbeddedLabel('Login'))
   @Index(IndexKind.Indexed)
-    login!: string
+  login!: string
 
   name?: string
   avatar?: string

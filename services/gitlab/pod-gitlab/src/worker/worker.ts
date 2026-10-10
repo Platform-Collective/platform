@@ -575,7 +575,7 @@ export class GitlabWorker implements SyncProvider {
     await running
   }
 
-  private async track<T>(op: Promise<T>): Promise<T> {
+  private async track<T> (op: Promise<T>): Promise<T> {
     this.inFlight.add(op)
     const done = (): void => {
       this.inFlight.delete(op)
@@ -1013,7 +1013,7 @@ export class GitlabWorker implements SyncProvider {
         }
         return
       }
-      existing = await this.client.findOne(info.objectClass, { _id: info._id as unknown as Ref<Doc> })
+      existing = await this.client.findOne(info.objectClass, { _id: info._id })
       if (existing !== undefined && existing.space !== info.space) {
         const fresh = await this.derived.findOne(gitlab.class.DocSyncInfo, { _id: info._id })
         // Removed meanwhile by its parent's move

@@ -168,7 +168,7 @@ function setup (
   const sessions: PersonId[] = []
   const service = new GitlabService({
     config: { ...config, AllowInsecureHosts: opts.allowInsecure === true },
-    users: users as any,
+    users,
     accounts,
     apps: appStore,
     openSession: async (_workspace: WorkspaceUuid, account: PersonId) => {

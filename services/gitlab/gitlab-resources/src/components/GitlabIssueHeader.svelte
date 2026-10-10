@@ -42,12 +42,12 @@
   // Description images left on GitLab; the viewer loads each one with the viewer's own GitLab account
   $: images = state.kind === 'mergeRequest' || state.kind === 'linked' ? headerImages({ mergeRequest, link }) : []
 
-  function openImages (): void {
+  function openImages(): void {
     showPopup(GitlabImagePopup, { images, index: 0 }, 'centered')
   }
 
   // Picking a repository is all it takes: the GitLab service creates the GitLab issue
-  async function createInGitlab (picked: Ref<GitlabIntegrationRepository> | null): Promise<void> {
+  async function createInGitlab(picked: Ref<GitlabIntegrationRepository> | null): Promise<void> {
     if (picked === null) return
     failed = null
     const issueLink = issueLinkFor({ repository: picked })
@@ -66,7 +66,7 @@
   }
 
   // Clearing the error is a Huly change: the GitLab service syncs the issue again
-  async function retry (): Promise<void> {
+  async function retry(): Promise<void> {
     failed = null
     try {
       if (mergeRequest !== undefined) {

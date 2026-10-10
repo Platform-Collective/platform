@@ -45,7 +45,7 @@
   $: if (patch !== undefined && opened && inHuly) void load(patch)
 
   // Only the answer for the current blob is kept: an older download may finish last
-  async function load (file: GitlabPatch): Promise<void> {
+  async function load(file: GitlabPatch): Promise<void> {
     failed = false
     try {
       const loaded = await patchText(file)
@@ -59,7 +59,7 @@
     }
   }
 
-  function onViewed (fileName: string, sha: string, viewed: boolean): void {
+  function onViewed(fileName: string, sha: string, viewed: boolean): void {
     viewedError = undefined
     serial(async () => {
       await saveViewedFile(client, mergeRequest, me, { fileName, sha, viewed })

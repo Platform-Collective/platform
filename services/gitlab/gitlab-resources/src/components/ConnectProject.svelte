@@ -32,7 +32,7 @@
   let busy = false
   let error: unknown
 
-  async function link (projectId: Ref<Project>): Promise<void> {
+  async function link(projectId: Ref<Project>): Promise<void> {
     const project =
       projects.find((it) => it._id === projectId) ?? (await client.findOne(tracker.class.Project, { _id: projectId }))
     if (project === undefined) return
@@ -58,7 +58,7 @@
     )
   )
 
-  async function select (event: MouseEvent): Promise<void> {
+  async function select(event: MouseEvent): Promise<void> {
     const newProjectLabel = await translate(tracker.string.NewProject, {}, $themeStore.language)
     showPopup(
       DropdownLabelsPopup,

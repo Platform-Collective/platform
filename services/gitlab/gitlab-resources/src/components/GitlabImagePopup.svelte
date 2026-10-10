@@ -23,12 +23,12 @@
   $: name = imageNameOf(href)
   $: void load(href)
 
-  function release (): void {
+  function release(): void {
     if (objectUrl !== undefined) URL.revokeObjectURL(objectUrl)
     objectUrl = undefined
   }
 
-  async function load (target: string): Promise<void> {
+  async function load(target: string): Promise<void> {
     const request = ++requested
     release()
     result = undefined
@@ -39,11 +39,11 @@
     if (loaded.kind === 'image') objectUrl = URL.createObjectURL(loaded.blob)
   }
 
-  function step (delta: number): void {
+  function step(delta: number): void {
     index = stepIndex(index, delta, images.length)
   }
 
-  function onKeydown (event: KeyboardEvent): void {
+  function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'ArrowLeft') step(-1)
     else if (event.key === 'ArrowRight') step(1)
   }

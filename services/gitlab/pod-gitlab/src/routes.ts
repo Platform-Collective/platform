@@ -48,9 +48,9 @@ async function repositoryCaller (
   body: RouteBody,
   deps: RepositoryRouteDeps
 ): Promise<{
-    workspace: WorkspaceUuid
-    caller: RepositoryCaller
-  }> {
+  workspace: WorkspaceUuid
+  caller: RepositoryCaller
+}> {
   const { workspace, accountId } = await deps.verify(body)
   return {
     workspace,

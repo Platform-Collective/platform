@@ -11,19 +11,19 @@ import { type GitlabApi, GitlabApiError } from './gitlab/api'
 import type { GitlabProjectInfo } from './gitlab/types'
 
 export type RepositoryFields = Pick<
-GitlabIntegrationRepository,
-| 'projectId'
-| 'name'
-| 'pathWithNamespace'
-| 'webUrl'
-| 'description'
-| 'visibility'
-| 'archived'
-| 'defaultBranch'
-| 'starCount'
-| 'forksCount'
-| 'openIssuesCount'
-| 'lastActivityAt'
+  GitlabIntegrationRepository,
+  | 'projectId'
+  | 'name'
+  | 'pathWithNamespace'
+  | 'webUrl'
+  | 'description'
+  | 'visibility'
+  | 'archived'
+  | 'defaultBranch'
+  | 'starCount'
+  | 'forksCount'
+  | 'openIssuesCount'
+  | 'lastActivityAt'
 >
 
 export interface RepositoryPlan {
