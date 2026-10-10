@@ -40,7 +40,7 @@
   let hideDiffLabel = getHideDiffLabel(file)
 
   function getHideDiffLabel(file: DiffFile): IntlString | undefined {
-    if (diffRenderLimit >= 0 && file.stats.addedLines + file.stats.addedLines > diffRenderLimit) {
+    if (diffRenderLimit >= 0 && file.stats.addedLines + file.stats.deletedLines > diffRenderLimit) {
       return diffview.string.LargeDiffsAreHidden
     }
     if (file.diffType === 'delete') {

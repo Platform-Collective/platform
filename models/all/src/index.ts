@@ -89,6 +89,8 @@ import { serverDocumentId, createModel as serverDocumentModel } from '@hcenginee
 
 import github, { githubId, createModel as githubModel } from '@hcengineering/model-github'
 import { serverGithubId, createModel as serverGithubModel } from '@hcengineering/server-github-model'
+import { serverGitlabId, createModel as serverGitlabModel } from '@hcengineering/server-gitlab-model'
+import gitlab, { gitlabId, createModel as gitlabModel } from '@hcengineering/model-gitlab'
 
 import { analyticsCollectorId, createModel as analyticsCollectorModel } from '@hcengineering/model-analytics-collector'
 import { exportId, createModel as exportModel } from '@hcengineering/model-export'
@@ -388,6 +390,18 @@ export default function buildModel (): Builder {
       }
     ],
     [
+      gitlabModel,
+      gitlabId,
+      {
+        label: gitlab.string.ConfigLabel,
+        description: gitlab.string.ConfigDescription,
+        enabled: false,
+        beta: true,
+        icon: gitlab.icon.Gitlab,
+        classFilter: defaultFilter
+      }
+    ],
+    [
       loveModel,
       loveId,
       {
@@ -561,6 +575,7 @@ export default function buildModel (): Builder {
     [serverActivityModel, serverActivityId],
     [serverDocumentModel, serverDocumentId],
     [serverGithubModel, serverGithubId],
+    [serverGitlabModel, serverGitlabId],
     [serverLoveModel, serverLoveId],
     [serverTimeModel, serverTimeId],
     [serverGuestModel, serverGuestId],

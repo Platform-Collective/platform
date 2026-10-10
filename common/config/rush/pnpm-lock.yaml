@@ -246,6 +246,15 @@ importers:
       '@hcengineering/github-resources':
         specifier: workspace:^0.7.0
         version: link:../services/github/github-resources
+      '@hcengineering/gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../services/gitlab/gitlab
+      '@hcengineering/gitlab-assets':
+        specifier: workspace:^0.7.0
+        version: link:../services/gitlab/gitlab-assets
+      '@hcengineering/gitlab-resources':
+        specifier: workspace:^0.7.0
+        version: link:../services/gitlab/gitlab-resources
       '@hcengineering/global-profile':
         specifier: workspace:^0.7.0
         version: link:../plugins/global-profile
@@ -1315,6 +1324,15 @@ importers:
       '@hcengineering/github-resources':
         specifier: workspace:^0.7.0
         version: link:../../services/github/github-resources
+      '@hcengineering/gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../../services/gitlab/gitlab
+      '@hcengineering/gitlab-assets':
+        specifier: workspace:^0.7.0
+        version: link:../../services/gitlab/gitlab-assets
+      '@hcengineering/gitlab-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../services/gitlab/gitlab-resources
       '@hcengineering/global-profile':
         specifier: workspace:^0.7.0
         version: link:../../plugins/global-profile
@@ -5973,6 +5991,9 @@ importers:
       '@hcengineering/model-github':
         specifier: workspace:^0.7.0
         version: link:../../services/github/model-github
+      '@hcengineering/model-gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../../services/gitlab/model-gitlab
       '@hcengineering/model-gmail':
         specifier: workspace:^0.7.0
         version: link:../gmail
@@ -6189,6 +6210,9 @@ importers:
       '@hcengineering/server-github-model':
         specifier: workspace:^0.7.0
         version: link:../../services/github/server-github-model
+      '@hcengineering/server-gitlab-model':
+        specifier: workspace:^0.7.0
+        version: link:../../services/gitlab/server-gitlab-model
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -36561,6 +36585,12 @@ importers:
       '@hcengineering/github-assets':
         specifier: workspace:^0.7.0
         version: link:../../services/github/github-assets
+      '@hcengineering/gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../../services/gitlab/gitlab
+      '@hcengineering/gitlab-assets':
+        specifier: workspace:^0.7.0
+        version: link:../../services/gitlab/gitlab-assets
       '@hcengineering/gmail':
         specifier: workspace:^0.7.0
         version: link:../../plugins/gmail
@@ -36726,6 +36756,12 @@ importers:
       '@hcengineering/server-github-resources':
         specifier: workspace:^0.7.0
         version: link:../../services/github/server-github-resources
+      '@hcengineering/server-gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../../services/gitlab/server-gitlab
+      '@hcengineering/server-gitlab-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../services/gitlab/server-gitlab-resources
       '@hcengineering/server-gmail':
         specifier: workspace:^0.7.0
         version: link:../../server-plugins/gmail
@@ -39309,6 +39345,710 @@ importers:
       '@hcengineering/server-github':
         specifier: workspace:^0.7.0
         version: link:../server-github
+      '@hcengineering/time':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/time
+      '@hcengineering/tracker':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/tracker
+    devDependencies:
+      '@hcengineering/platform-rig':
+        specifier: workspace:^0.7.21
+        version: link:../../../foundations/utils/packages/platform-rig
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.67.0
+        version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.67.0
+        version: 8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      eslint-config-love:
+        specifier: ^157.0.0
+        version: 157.0.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-n:
+        specifier: ^18.3.0
+        version: 18.4.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-promise:
+        specifier: ^7.3.0
+        version: 7.3.0(eslint@9.39.5(jiti@2.7.0))
+      eslint-plugin-svelte:
+        specifier: ^3.23.0
+        version: 3.23.0(eslint@9.39.5(jiti@2.7.0))(svelte@4.2.20)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest:
+        specifier: ^30.4.2
+        version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
+      ts-jest:
+        specifier: ^29.4.12
+        version: 29.4.14(@babel/core@7.28.5)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.28.5))(esbuild@0.25.12)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3)))(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  ../../services/gitlab/gitlab:
+    dependencies:
+      '@hcengineering/activity':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/activity
+      '@hcengineering/contact':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/contact
+      '@hcengineering/core':
+        specifier: workspace:^0.7.26
+        version: link:../../../foundations/core/packages/core
+      '@hcengineering/platform':
+        specifier: workspace:^0.7.20
+        version: link:../../../foundations/core/packages/platform
+      '@hcengineering/preference':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/preference
+      '@hcengineering/task':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/task
+      '@hcengineering/time':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/time
+      '@hcengineering/tracker':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/tracker
+      '@hcengineering/ui':
+        specifier: workspace:^0.7.0
+        version: link:../../../packages/ui
+    devDependencies:
+      '@hcengineering/platform-rig':
+        specifier: workspace:^0.7.21
+        version: link:../../../foundations/utils/packages/platform-rig
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.67.0
+        version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.67.0
+        version: 8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      eslint-config-love:
+        specifier: ^157.0.0
+        version: 157.0.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-n:
+        specifier: ^18.3.0
+        version: 18.4.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-promise:
+        specifier: ^7.3.0
+        version: 7.3.0(eslint@9.39.5(jiti@2.7.0))
+      eslint-plugin-svelte:
+        specifier: ^3.23.0
+        version: 3.23.0(eslint@9.39.5(jiti@2.7.0))(svelte@4.2.20)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest:
+        specifier: ^30.4.2
+        version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
+      ts-jest:
+        specifier: ^29.4.12
+        version: 29.4.14(@babel/core@7.28.5)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.28.5))(esbuild@0.25.12)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3)))(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  ../../services/gitlab/gitlab-assets:
+    dependencies:
+      '@hcengineering/gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../gitlab
+      '@hcengineering/platform':
+        specifier: workspace:^0.7.20
+        version: link:../../../foundations/core/packages/platform
+    devDependencies:
+      '@hcengineering/platform-rig':
+        specifier: workspace:^0.7.21
+        version: link:../../../foundations/utils/packages/platform-rig
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.6
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.67.0
+        version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.67.0
+        version: 8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      eslint-config-love:
+        specifier: ^157.0.0
+        version: 157.0.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-n:
+        specifier: ^18.3.0
+        version: 18.4.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-promise:
+        specifier: ^7.3.0
+        version: 7.3.0(eslint@9.39.5(jiti@2.7.0))
+      eslint-plugin-svelte:
+        specifier: ^3.23.0
+        version: 3.23.0(eslint@9.39.5(jiti@2.7.0))(svelte@4.2.20)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest:
+        specifier: ^30.4.2
+        version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
+      ts-jest:
+        specifier: ^29.4.12
+        version: 29.4.14(@babel/core@7.28.5)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.28.5))(esbuild@0.25.12)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3)))(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  ../../services/gitlab/gitlab-resources:
+    dependencies:
+      '@hcengineering/account-client':
+        specifier: workspace:^0.7.25
+        version: link:../../../foundations/core/packages/account-client
+      '@hcengineering/activity-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/activity-resources
+      '@hcengineering/analytics':
+        specifier: workspace:^0.7.19
+        version: link:../../../foundations/core/packages/analytics
+      '@hcengineering/contact':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/contact
+      '@hcengineering/contact-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/contact-resources
+      '@hcengineering/core':
+        specifier: workspace:^0.7.26
+        version: link:../../../foundations/core/packages/core
+      '@hcengineering/diffview':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/diffview
+      '@hcengineering/gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../gitlab
+      '@hcengineering/platform':
+        specifier: workspace:^0.7.20
+        version: link:../../../foundations/core/packages/platform
+      '@hcengineering/presentation':
+        specifier: workspace:^0.7.0
+        version: link:../../../packages/presentation
+      '@hcengineering/setting':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/setting
+      '@hcengineering/setting-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/setting-resources
+      '@hcengineering/task':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/task
+      '@hcengineering/text-editor-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/text-editor-resources
+      '@hcengineering/tracker':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/tracker
+      '@hcengineering/tracker-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/tracker-resources
+      '@hcengineering/ui':
+        specifier: workspace:^0.7.0
+        version: link:../../../packages/ui
+      '@hcengineering/view':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/view
+      '@hcengineering/view-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/view-resources
+      svelte:
+        specifier: ^4.2.20
+        version: 4.2.20
+    devDependencies:
+      '@hcengineering/platform-rig':
+        specifier: workspace:^0.7.21
+        version: link:../../../foundations/utils/packages/platform-rig
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.67.0
+        version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.67.0
+        version: 8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      eslint-config-love:
+        specifier: ^157.0.0
+        version: 157.0.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-n:
+        specifier: ^18.3.0
+        version: 18.4.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-promise:
+        specifier: ^7.3.0
+        version: 7.3.0(eslint@9.39.5(jiti@2.7.0))
+      eslint-plugin-svelte:
+        specifier: ^3.23.0
+        version: 3.23.0(eslint@9.39.5(jiti@2.7.0))(svelte@4.2.20)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest:
+        specifier: ^30.4.2
+        version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
+      prettier-plugin-svelte:
+        specifier: ^3.4.0
+        version: 3.4.0(prettier@3.6.2)(svelte@4.2.20)
+      sass:
+        specifier: ^1.80.0
+        version: 1.93.3
+      svelte-check:
+        specifier: ^3.6.9
+        version: 3.8.6(@babel/core@7.28.5)(postcss-load-config@4.0.2(postcss@8.5.28)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3)))(postcss@8.5.28)(sass@1.93.3)(svelte@4.2.20)
+      svelte-eslint-parser:
+        specifier: ^1.8.1
+        version: 1.8.1(svelte@4.2.20)
+      svelte-loader:
+        specifier: ^3.2.0
+        version: 3.2.4(svelte@4.2.20)
+      svelte-preprocess:
+        specifier: ^5.1.4
+        version: 5.1.4(@babel/core@7.28.5)(postcss-load-config@4.0.2(postcss@8.5.28)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3)))(postcss@8.5.28)(sass@1.93.3)(svelte@4.2.20)(typescript@5.9.3)
+      ts-jest:
+        specifier: ^29.4.12
+        version: 29.4.14(@babel/core@7.28.5)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.28.5))(esbuild@0.25.12)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3)))(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  ../../services/gitlab/model-gitlab:
+    dependencies:
+      '@hcengineering/activity':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/activity
+      '@hcengineering/chunter':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/chunter
+      '@hcengineering/contact':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/contact
+      '@hcengineering/core':
+        specifier: workspace:^0.7.26
+        version: link:../../../foundations/core/packages/core
+      '@hcengineering/gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../gitlab
+      '@hcengineering/gitlab-resources':
+        specifier: workspace:^0.7.0
+        version: link:../gitlab-resources
+      '@hcengineering/model':
+        specifier: workspace:^0.7.17
+        version: link:../../../foundations/core/packages/model
+      '@hcengineering/model-activity':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/activity
+      '@hcengineering/model-chunter':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/chunter
+      '@hcengineering/model-contact':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/contact
+      '@hcengineering/model-core':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/core
+      '@hcengineering/model-preference':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/preference
+      '@hcengineering/model-presentation':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/presentation
+      '@hcengineering/model-time':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/time
+      '@hcengineering/model-tracker':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/tracker
+      '@hcengineering/model-view':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/view
+      '@hcengineering/model-workbench':
+        specifier: workspace:^0.7.0
+        version: link:../../../models/workbench
+      '@hcengineering/platform':
+        specifier: workspace:^0.7.20
+        version: link:../../../foundations/core/packages/platform
+      '@hcengineering/preference':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/preference
+      '@hcengineering/setting':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/setting
+      '@hcengineering/tags':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/tags
+      '@hcengineering/task':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/task
+      '@hcengineering/time':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/time
+      '@hcengineering/ui':
+        specifier: workspace:^0.7.0
+        version: link:../../../packages/ui
+      '@hcengineering/view':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/view
+    devDependencies:
+      '@hcengineering/platform-rig':
+        specifier: workspace:^0.7.21
+        version: link:../../../foundations/utils/packages/platform-rig
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.6
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.67.0
+        version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.67.0
+        version: 8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      eslint-config-love:
+        specifier: ^157.0.0
+        version: 157.0.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-n:
+        specifier: ^18.3.0
+        version: 18.4.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-promise:
+        specifier: ^7.3.0
+        version: 7.3.0(eslint@9.39.5(jiti@2.7.0))
+      eslint-plugin-svelte:
+        specifier: ^3.23.0
+        version: 3.23.0(eslint@9.39.5(jiti@2.7.0))(svelte@4.2.20)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest:
+        specifier: ^30.4.2
+        version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
+      ts-jest:
+        specifier: ^29.4.12
+        version: 29.4.14(@babel/core@7.28.5)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.28.5))(esbuild@0.25.12)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3)))(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  ../../services/gitlab/pod-gitlab:
+    dependencies:
+      '@hcengineering/account-client':
+        specifier: workspace:^0.7.25
+        version: link:../../../foundations/core/packages/account-client
+      '@hcengineering/activity':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/activity
+      '@hcengineering/analytics':
+        specifier: workspace:^0.7.19
+        version: link:../../../foundations/core/packages/analytics
+      '@hcengineering/analytics-service':
+        specifier: workspace:^0.7.19
+        version: link:../../../foundations/core/packages/analytics-service
+      '@hcengineering/attachment':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/attachment
+      '@hcengineering/chunter':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/chunter
+      '@hcengineering/client':
+        specifier: workspace:^0.7.19
+        version: link:../../../foundations/core/packages/client
+      '@hcengineering/client-resources':
+        specifier: workspace:^0.7.19
+        version: link:../../../foundations/core/packages/client-resources
+      '@hcengineering/collaborator-client':
+        specifier: workspace:^0.7.18
+        version: link:../../../foundations/core/packages/collaborator-client
+      '@hcengineering/contact':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/contact
+      '@hcengineering/core':
+        specifier: workspace:^0.7.26
+        version: link:../../../foundations/core/packages/core
+      '@hcengineering/gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../gitlab
+      '@hcengineering/platform':
+        specifier: workspace:^0.7.20
+        version: link:../../../foundations/core/packages/platform
+      '@hcengineering/server-client':
+        specifier: workspace:^0.7.16
+        version: link:../../../foundations/server/packages/client
+      '@hcengineering/server-core':
+        specifier: workspace:^0.7.19
+        version: link:../../../foundations/server/packages/core
+      '@hcengineering/server-storage':
+        specifier: workspace:^0.7.16
+        version: link:../../../foundations/server/packages/server-storage
+      '@hcengineering/server-token':
+        specifier: workspace:^0.7.18
+        version: link:../../../foundations/core/packages/token
+      '@hcengineering/task':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/task
+      '@hcengineering/text':
+        specifier: workspace:^0.7.19
+        version: link:../../../foundations/core/packages/text
+      '@hcengineering/text-markdown':
+        specifier: workspace:^0.7.21
+        version: link:../../../foundations/core/packages/text-markdown
+      '@hcengineering/time':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/time
+      '@hcengineering/tracker':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/tracker
+      body-parser:
+        specifier: ^1.20.3
+        version: 1.20.3
+      cors:
+        specifier: ^2.8.5
+        version: 2.8.6
+      express:
+        specifier: ^4.21.2
+        version: 4.21.2
+      ws:
+        specifier: ^8.21.0
+        version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)
+    devDependencies:
+      '@hcengineering/platform-rig':
+        specifier: workspace:^0.7.21
+        version: link:../../../foundations/utils/packages/platform-rig
+      '@types/body-parser':
+        specifier: ~1.19.2
+        version: 1.19.6
+      '@types/cors':
+        specifier: ^2.8.12
+        version: 2.8.19
+      '@types/express':
+        specifier: ^4.17.13
+        version: 4.17.25
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.6
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.67.0
+        version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.67.0
+        version: 8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      cross-env:
+        specifier: ~7.0.3
+        version: 7.0.3
+      esbuild:
+        specifier: ^0.25.10
+        version: 0.25.12
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      eslint-config-love:
+        specifier: ^157.0.0
+        version: 157.0.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-n:
+        specifier: ^18.3.0
+        version: 18.4.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-promise:
+        specifier: ^7.3.0
+        version: 7.3.0(eslint@9.39.5(jiti@2.7.0))
+      eslint-plugin-svelte:
+        specifier: ^3.23.0
+        version: 3.23.0(eslint@9.39.5(jiti@2.7.0))(svelte@4.2.20)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest:
+        specifier: ^30.4.2
+        version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
+      ts-jest:
+        specifier: ^29.4.12
+        version: 29.4.14(@babel/core@7.28.5)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.28.5))(esbuild@0.25.12)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3)))(typescript@5.9.3)
+      ts-node:
+        specifier: ^10.9.2
+        version: 10.9.2(@types/node@24.13.6)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  ../../services/gitlab/server-gitlab:
+    dependencies:
+      '@hcengineering/core':
+        specifier: workspace:^0.7.26
+        version: link:../../../foundations/core/packages/core
+      '@hcengineering/gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../gitlab
+      '@hcengineering/platform':
+        specifier: workspace:^0.7.20
+        version: link:../../../foundations/core/packages/platform
+      '@hcengineering/server-core':
+        specifier: workspace:^0.7.19
+        version: link:../../../foundations/server/packages/core
+      '@hcengineering/time':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/time
+    devDependencies:
+      '@hcengineering/platform-rig':
+        specifier: workspace:^0.7.21
+        version: link:../../../foundations/utils/packages/platform-rig
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.6
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.67.0
+        version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.67.0
+        version: 8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      eslint-config-love:
+        specifier: ^157.0.0
+        version: 157.0.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-n:
+        specifier: ^18.3.0
+        version: 18.4.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-promise:
+        specifier: ^7.3.0
+        version: 7.3.0(eslint@9.39.5(jiti@2.7.0))
+      eslint-plugin-svelte:
+        specifier: ^3.23.0
+        version: 3.23.0(eslint@9.39.5(jiti@2.7.0))(svelte@4.2.20)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest:
+        specifier: ^30.4.2
+        version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
+      ts-jest:
+        specifier: ^29.4.12
+        version: 29.4.14(@babel/core@7.28.5)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.28.5))(esbuild@0.25.12)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3)))(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  ../../services/gitlab/server-gitlab-model:
+    dependencies:
+      '@hcengineering/core':
+        specifier: workspace:^0.7.26
+        version: link:../../../foundations/core/packages/core
+      '@hcengineering/gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../gitlab
+      '@hcengineering/model':
+        specifier: workspace:^0.7.17
+        version: link:../../../foundations/core/packages/model
+      '@hcengineering/server-core':
+        specifier: workspace:^0.7.19
+        version: link:../../../foundations/server/packages/core
+      '@hcengineering/server-gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../server-gitlab
+      '@hcengineering/time':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/time
+      '@hcengineering/tracker':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/tracker
+    devDependencies:
+      '@hcengineering/platform-rig':
+        specifier: workspace:^0.7.21
+        version: link:../../../foundations/utils/packages/platform-rig
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.6
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.67.0
+        version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.67.0
+        version: 8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      eslint-config-love:
+        specifier: ^157.0.0
+        version: 157.0.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-n:
+        specifier: ^18.3.0
+        version: 18.4.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-promise:
+        specifier: ^7.3.0
+        version: 7.3.0(eslint@9.39.5(jiti@2.7.0))
+      eslint-plugin-svelte:
+        specifier: ^3.23.0
+        version: 3.23.0(eslint@9.39.5(jiti@2.7.0))(svelte@4.2.20)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest:
+        specifier: ^30.4.2
+        version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
+      ts-jest:
+        specifier: ^29.4.12
+        version: 29.4.14(@babel/core@7.28.5)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.28.5))(esbuild@0.25.12)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3)))(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  ../../services/gitlab/server-gitlab-resources:
+    dependencies:
+      '@hcengineering/attachment':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/attachment
+      '@hcengineering/chunter':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/chunter
+      '@hcengineering/core':
+        specifier: workspace:^0.7.26
+        version: link:../../../foundations/core/packages/core
+      '@hcengineering/gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../gitlab
+      '@hcengineering/server-core':
+        specifier: workspace:^0.7.19
+        version: link:../../../foundations/server/packages/core
+      '@hcengineering/server-gitlab':
+        specifier: workspace:^0.7.0
+        version: link:../server-gitlab
       '@hcengineering/time':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/time

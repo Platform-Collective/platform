@@ -1,0 +1,36 @@
+# Dev overlay to run the GitLab integration service.
+#
+# Usage from the dev/ directory:
+#   docker compose -f docker-compose.yaml -f docker-compose.gitlab.yaml up -d
+#
+# Build the image first: rush docker:build --to @hcengineering/pod-gitlab
+# front already points GITLAB_URL at http://huly.local:3600 in docker-compose.yaml.
+# GitLab.com cannot reach huly.local: set GITLAB_WEBHOOK_BASE_URL to a tunnel URL (smee, ngrok) to receive webhooks.
+#
+services:
+  gitlab:
+    image: platformcollective/gitlab
+    extra_hosts:
+      - 'huly.local:host-gateway'
+    restart: unless-stopped
+    ports:
+      - 3600:3600
+    environment:
+      - PORT=3600
+      - SERVER_SECRET=secret
+      - ACCOUNTS_URL=http://huly.local:3000
+      - FRONT_URL=http://huly.local:8087
+      - COLLABORATOR_URL=ws://huly.local:3078
+      # Blob storage for merge request diffs (same as the other services); unset = no diffs
+      - STORAGE_CONFIG=${STORAGE_CONFIG}
+      # OAuth callback; register the same URL in the GitLab application. Empty = {FRONT_URL}/gitlab
+      - GITLAB_REDIRECT_URI=${GITLAB_REDIRECT_URI:-}
+      - WEBHOOK_BASE_URL=${GITLAB_WEBHOOK_BASE_URL:-http://huly.local:3600}
+      - WEBHOOK_SECRET=${GITLAB_WEBHOOK_SECRET:-secret}
+      # Dev only: lets a self-managed GitLab on http://localhost or *.local be used
+      - GITLAB_ALLOW_INSECURE_HOSTS=true
+      - GITLAB_READONLY=${GITLAB_READONLY:-false}
+      # Part B: comma list of trusted GitLab hosts (private addresses allowed); per-request timeout
+      - GITLAB_ALLOWED_HOSTS=${GITLAB_ALLOWED_HOSTS:-}
+      - GITLAB_REQUEST_TIMEOUT_MS=${GITLAB_REQUEST_TIMEOUT_MS:-30000}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318/v1/traces

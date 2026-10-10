@@ -56,6 +56,7 @@ import {
   cleanExpiredOtp,
   getWorkspaces,
   verifyAllowedServices,
+  integrationServices,
   getPersonName,
   getInviteEmail,
   getFrontUrl,
@@ -2533,6 +2534,12 @@ describe('account utils', () => {
         // workspace comes from the decoded token, never from caller-supplied params
         expect(mockDb.setWorkspaceMemberUnread).toHaveBeenCalledWith(other, workspace, true)
       })
+    })
+  })
+
+  describe('integrationServices', () => {
+    it('allows the gitlab service to manage integrations', () => {
+      expect(integrationServices).toContain('gitlab')
     })
   })
 })

@@ -21,6 +21,7 @@ import {
   type WorkspaceUuid
 } from '@hcengineering/core'
 import { AccountPostgresDbCollection, PostgresAccountDB, PostgresDbCollection } from '../collections/postgres/postgres'
+import { getMigrations } from '../collections/postgres/migrations'
 import { type Sql } from 'postgres'
 
 interface TestWorkspace {
@@ -1027,5 +1028,15 @@ describe('PostgresAccountDB', () => {
         accountId
       )
     })
+  })
+})
+
+describe('getMigrations', () => {
+  it.each(['postgres', 'cockroach'] as const)('adds the gitlab social id type on %s', (flavor) => {
+    const migration = getMigrations('global_account', flavor).find(
+      ([key]) => key === 'account_db_v30_add_gitlab_social_id_type'
+    )
+    expect(migration).toBeDefined()
+    expect(migration?.[1]).toContain("'gitlab'")
   })
 })

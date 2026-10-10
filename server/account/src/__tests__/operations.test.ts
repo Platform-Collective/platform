@@ -57,7 +57,8 @@ import {
   leaveWorkspace,
   checkJoin,
   mergeSpecifiedPersons,
-  canMergeSpecifiedPersons
+  canMergeSpecifiedPersons,
+  ensurePerson
 } from '../operations'
 import { accountPlugin } from '../plugin'
 
@@ -3637,5 +3638,32 @@ describe('merge specified persons', () => {
       expect(await canMergeSpecifiedPersons(mockCtx, mockDb, mockBranding, 'test-token', params)).toBe(true)
       expect(mockDb.getWorkspaceRole).not.toHaveBeenCalled()
     })
+  })
+})
+
+describe('ensurePerson', () => {
+  const mockCtx = {
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn()
+  } as unknown as MeasureContext
+
+  test('should let the gitlab service ensure a person without a workspace role check', async () => {
+    ;(decodeTokenVerbose as jest.Mock).mockReturnValue({ account: 'svc', extra: { service: 'gitlab' } })
+    const roleSpy = jest.spyOn(utils, 'getWorkspaceRole')
+    const mockDb = {
+      socialId: { findOne: jest.fn(async () => ({ _id: 'sid-1' as PersonId, personUuid: 'p-1' as PersonUuid })) }
+    } as unknown as AccountDB
+
+    const result = await ensurePerson(mockCtx, mockDb, null, 'test-token', {
+      socialType: SocialIdType.GITLAB,
+      socialValue: '42@gitlab.com',
+      firstName: 'Alice',
+      lastName: ''
+    })
+
+    expect(result).toEqual({ uuid: 'p-1', socialId: 'sid-1' })
+    expect(roleSpy).not.toHaveBeenCalled()
+    roleSpy.mockRestore()
   })
 })

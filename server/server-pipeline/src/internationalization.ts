@@ -11,6 +11,7 @@ import { documentId } from '@hcengineering/document'
 import { exportId } from '@hcengineering/export'
 import { driveId } from '@hcengineering/drive'
 import { githubId } from '@hcengineering/github'
+import { gitlabId } from '@hcengineering/gitlab'
 import { gmailId } from '@hcengineering/gmail'
 import { hrId } from '@hcengineering/hr'
 import { inventoryId } from '@hcengineering/inventory'
@@ -54,6 +55,7 @@ import documentEn from '@hcengineering/document-assets/lang/en.json'
 import exportEn from '@hcengineering/export-assets/lang/en.json'
 import driveEn from '@hcengineering/drive-assets/lang/en.json'
 import githubEn from '@hcengineering/github-assets/lang/en.json'
+import gitlabEn from '@hcengineering/gitlab-assets/lang/en.json'
 import gmailEn from '@hcengineering/gmail-assets/lang/en.json'
 import hrEn from '@hcengineering/hr-assets/lang/en.json'
 import inventoryEn from '@hcengineering/inventory-assets/lang/en.json'
@@ -119,6 +121,7 @@ export function registerStringLoaders (): void {
   addStringsLoader(productsId, async (lang: string) => productsEn)
   addStringsLoader(trainingId, async (lang: string) => trainingEn)
   addStringsLoader(githubId, async (lang: string) => githubEn)
+  addStringsLoader(gitlabId, async (lang: string) => gitlabEn)
   addStringsLoader(timeId, async (lang: string) => timeEn)
   addStringsLoader(surveyId, async (lang: string) => surveyEn)
   addStringsLoader(chatId, async (lang: string) => chatEn)

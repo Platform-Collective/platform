@@ -1,0 +1,43 @@
+{
+  "name": "@hcengineering/server-gitlab-model",
+  "version": "0.7.0",
+  "main": "lib/index.js",
+  "svelte": "src/index.ts",
+  "types": "types/index.d.ts",
+  "template": "@hcengineering/model-package",
+  "scripts": {
+    "build": "compile",
+    "build:watch": "compile",
+    "format": "format src",
+    "_phase:build": "compile transpile src",
+    "_phase:format": "format src",
+    "_phase:validate": "compile validate",
+    "_phase:test": "jest --passWithNoTests --silent --forceExit",
+    "test": "jest --passWithNoTests --silent --forceExit"
+  },
+  "devDependencies": {
+    "@hcengineering/platform-rig": "workspace:^0.7.21",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "eslint-plugin-promise": "^7.3.0",
+    "eslint-plugin-n": "^18.3.0",
+    "eslint": "^9.39.5",
+    "@typescript-eslint/parser": "^8.67.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "@types/node": "^24.13.3",
+    "jest": "^30.4.2",
+    "@types/jest": "^30.0.0",
+    "ts-jest": "^29.4.12",
+    "eslint-plugin-svelte": "^3.23.0",
+    "eslint-config-love": "^157.0.0"
+  },
+  "dependencies": {
+    "@hcengineering/time": "workspace:^0.7.0",
+    "@hcengineering/core": "workspace:^0.7.26",
+    "@hcengineering/gitlab": "workspace:^0.7.0",
+    "@hcengineering/model": "workspace:^0.7.17",
+    "@hcengineering/server-core": "workspace:^0.7.19",
+    "@hcengineering/server-gitlab": "workspace:^0.7.0",
+    "@hcengineering/tracker": "workspace:^0.7.0"
+  }
+}
