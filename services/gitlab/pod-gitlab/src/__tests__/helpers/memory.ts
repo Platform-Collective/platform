@@ -55,6 +55,12 @@ function matchValue (value: unknown, cond: unknown): boolean {
   return value === cond
 }
 
+// A query key may be a dotted path into nested objects ('operations.doneOn'), as on the real client
+function valueAt (doc: Row, key: string): unknown {
+  if (key in doc) return doc[key]
+  return key.split('.').reduce<unknown>((value, part) => (value as Row | undefined)?.[part], doc)
+}
+
 // A doc is visible as its class, or as a mixin it carries (merged view, like the real client).
 function view (doc: Row, _class: string): Row | undefined {
   if (doc._class === _class) return { ...doc }
@@ -85,7 +91,9 @@ export function createMemoryClient (): MemoryClient {
     findAll: async (_class, query = {}, options = {}) => {
       let rows = docs
         .map((d) => view(d, _class))
-        .filter((d): d is Row => d !== undefined && Object.entries(query).every(([k, v]) => matchValue(d[k], v)))
+        .filter(
+          (d): d is Row => d !== undefined && Object.entries(query).every(([k, v]) => matchValue(valueAt(d, k), v))
+        )
       if (options.sort !== undefined) {
         const [[key, dir]] = Object.entries(options.sort)
         rows.sort((a, b) => compare(a[key], b[key]) * (dir > 0 ? 1 : -1))

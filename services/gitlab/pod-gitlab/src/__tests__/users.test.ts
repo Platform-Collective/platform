@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { IntegrationSecret } from '@hcengineering/account-client'
+import { gitlabUserIntegrationKind } from '@hcengineering/gitlab'
 import type { PersonId, WorkspaceUuid } from '@hcengineering/core'
 import type { FetchFn } from '../gitlab/api'
 import { GitlabUserManager, type GitlabUserRecord, type SecretStore } from '../users'
@@ -86,7 +87,7 @@ describe('GitlabUserManager', () => {
     const users = new GitlabUserManager(
       store,
       async () => cfg,
-      undefined,
+      jest.fn(),
       () => 0
     )
     await users.save(record)
@@ -96,6 +97,20 @@ describe('GitlabUserManager', () => {
     await users.save({ ...record, token: 'new' })
     expect(store.secrets).toHaveLength(1)
     expect((await users.getByRef(ws, person))?.token).toBe('new')
+  })
+
+  it('skips a corrupt secret instead of failing every lookup', async () => {
+    const store = memoryStore()
+    const users = new GitlabUserManager(store, async () => cfg, jest.fn())
+    await store.createIntegration({ kind: gitlabUserIntegrationKind, workspaceUuid: ws, socialId: person, data: {} })
+    await store.addIntegrationSecret({
+      kind: gitlabUserIntegrationKind,
+      workspaceUuid: ws,
+      socialId: person,
+      key: '1',
+      secret: '{not json'
+    } as any)
+    expect(await users.getByRef(ws, person)).toBeUndefined()
   })
 
   it('returns the stored token when not expired', async () => {
@@ -175,7 +190,7 @@ describe('GitlabUserManager', () => {
     const users = new GitlabUserManager(
       store,
       async () => cfg,
-      undefined,
+      jest.fn(),
       () => 5000
     )
     await users.save({ ...record, refreshToken: null })
@@ -187,7 +202,7 @@ describe('GitlabUserManager', () => {
     const users = new GitlabUserManager(
       store,
       async () => cfg,
-      undefined,
+      jest.fn(),
       () => 0
     )
     await users.save(record)
@@ -204,7 +219,7 @@ describe('GitlabUserManager', () => {
     const users = new GitlabUserManager(
       store,
       async () => cfg,
-      undefined,
+      jest.fn(),
       () => 0
     )
     await expect(users.remove(ws, person)).resolves.toBeUndefined()
@@ -215,7 +230,7 @@ describe('GitlabUserManager', () => {
     const users = new GitlabUserManager(
       store,
       async () => cfg,
-      undefined,
+      jest.fn(),
       () => 0
     )
     await users.save(record)
@@ -230,7 +245,7 @@ describe('GitlabUserManager', () => {
     const users = new GitlabUserManager(
       store,
       async () => cfg,
-      undefined,
+      jest.fn(),
       () => 0
     )
     await users.save(record)
@@ -278,7 +293,7 @@ describe('GitlabUserManager', () => {
     const users = new GitlabUserManager(
       memoryStore(),
       async () => undefined,
-      undefined,
+      jest.fn(),
       () => 5000
     )
     await users.save(record)
@@ -289,7 +304,7 @@ describe('GitlabUserManager', () => {
     const users = new GitlabUserManager(
       memoryStore(),
       async () => cfg,
-      undefined,
+      jest.fn(),
       () => 0
     )
     await users.save(record)
@@ -301,7 +316,7 @@ describe('GitlabUserManager', () => {
     const users = new GitlabUserManager(
       memoryStore(),
       async () => cfg,
-      undefined,
+      jest.fn(),
       () => 0
     )
     const wsB = 'ws-b' as WorkspaceUuid
@@ -323,7 +338,7 @@ describe('GitlabUserManager workspace guard', () => {
       const users = new GitlabUserManager(
         store,
         async () => cfg,
-        undefined,
+        jest.fn(),
         () => 0
       )
       await expect(users.getByRef(workspace as any, person)).rejects.toThrow('workspace is required')

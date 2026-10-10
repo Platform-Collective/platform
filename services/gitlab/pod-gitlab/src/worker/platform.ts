@@ -9,7 +9,7 @@ import { errorMessage } from '../sync/errors'
 import type { GitlabImageAccess } from '../sync/image-access'
 import type { GitlabHookKind, GitlabHookPayload, SessionLease } from './worker'
 
-export const WORKSPACE_CHECK_INTERVAL_MS = 5 * 60 * 1000
+const WORKSPACE_CHECK_INTERVAL_MS = 5 * 60 * 1000
 
 /** The worker surface the platform uses. */
 export interface WorkerHandle {
@@ -24,6 +24,7 @@ export interface WorkerHandle {
     integration?: Ref<GitlabIntegration>
   ) => Promise<void>
   requestFullSync: () => void
+  forgetTokens: () => void
   lease: (accountId: PersonId) => SessionLease | undefined
   gitlabImage: (url: string, actor: PersonId) => Promise<GitlabImageAccess>
 }

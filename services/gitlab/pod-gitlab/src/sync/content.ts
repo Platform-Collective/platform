@@ -10,10 +10,11 @@ import gitlab, {
 } from '@hcengineering/gitlab'
 import type { GitlabApi } from '../gitlab/api'
 import type { MarkdownConverter } from '../markdown'
-import { errorMessage } from './errors'
+import { EXPIRED_ERROR, errorMessage } from './errors'
 import {
   hasHulyImages,
   inboundImagePaths,
+  linkedImageUrls,
   outboundImages,
   rewriteInbound,
   rewriteOutbound,
@@ -24,6 +25,12 @@ import type { ImageStore, RepositoryContext } from './types'
 
 // Larger files are linked, not copied
 export const MAX_IMAGE_BYTES = 20 * 1024 * 1024
+
+/** Huly markup of GitLab markdown, with the images that stay on GitLab (absolute URLs, for the header's viewer). */
+export interface InboundContent {
+  markup: Markup
+  images: string[]
+}
 
 export interface ContentDeps {
   ctx: MeasureContext
@@ -51,14 +58,34 @@ export class ContentConverter {
   }
 
   async toMarkup (repo: RepositoryContext, markdown: string | null | undefined): Promise<Markup> {
-    if (markdown == null || markdown === '') return ''
+    return (await this.toMarkupWithImages(repo, markdown)).markup
+  }
+
+  async toMarkupWithImages (repo: RepositoryContext, markdown: string | null | undefined): Promise<InboundContent> {
+    if (markdown == null || markdown === '') return { markup: '', images: [] }
     const target = targetOf(repo)
     const files = new Map<string, string>()
     for (const path of inboundImagePaths(markdown, target)) {
       const file = await this.importUpload(repo, path)
       if (file !== undefined) files.set(path, file)
     }
-    return this.deps.markdown.toMarkup(rewriteInbound(markdown, target, files, this.imageUrl))
+    const rewritten = rewriteInbound(markdown, target, files, this.imageUrl)
+    return { markup: this.deps.markdown.toMarkup(rewritten), images: linkedImageUrls(rewritten, target) }
+  }
+
+  /**
+   * The images of GitLab markdown that stay on GitLab, judged by the recorded copies alone: nothing is downloaded.
+   * For markdown whose images were already converted, such as the description GitLab holds after a push.
+   */
+  async linkedImages (repo: RepositoryContext, markdown: string | null | undefined): Promise<string[]> {
+    if (markdown == null || markdown === '') return []
+    const target = targetOf(repo)
+    const files = new Map<string, string>()
+    for (const path of inboundImagePaths(markdown, target)) {
+      const file = await this.knownFile(repo, path)
+      if (file !== undefined) files.set(path, file)
+    }
+    return linkedImageUrls(rewriteInbound(markdown, target, files, this.imageUrl), target)
   }
 
   async toMarkdown (repo: RepositoryContext, markup: Markup): Promise<string> {
@@ -110,7 +137,7 @@ export class ContentConverter {
       return undefined
     }
     const api = await this.deps.integrationApi(repo.integration)
-    if (api === undefined) throw new Error('GitLab authorization expired')
+    if (api === undefined) throw new Error(EXPIRED_ERROR)
     const uploaded = await api.uploadFile(
       repo.repository.projectId,
       uploadName(name, blob.contentType),
@@ -121,13 +148,19 @@ export class ContentConverter {
     return uploaded.url
   }
 
+  // The recorded Huly copy of a GitLab upload that stays a Huly image in the repository's image mode
+  private async knownFile (repo: RepositoryContext, path: string): Promise<string | undefined> {
+    const known = await this.deps.derived.findOne(gitlab.class.GitlabUpload, { repository: repo.repository._id, path })
+    // In link mode only Huly's own files stay; downloaded copies give way to GitLab links
+    if (known !== undefined && (imageModeOf(repo.integration) === 'copy' || known.origin === 'huly')) return known.file
+    return undefined
+  }
+
   // The Huly copy of a GitLab upload: recorded, downloaded now, or undefined when it cannot be copied
   private async importUpload (repo: RepositoryContext, path: string): Promise<string | undefined> {
-    const known = await this.deps.derived.findOne(gitlab.class.GitlabUpload, { repository: repo.repository._id, path })
-    const copy = imageModeOf(repo.integration) === 'copy'
-    // In link mode only Huly's own files stay; downloaded copies give way to GitLab links
-    if (known !== undefined && (copy || known.origin === 'huly')) return known.file
-    if (!copy) return undefined
+    const known = await this.knownFile(repo, path)
+    if (known !== undefined) return known
+    if (imageModeOf(repo.integration) !== 'copy') return undefined
     const { images, ctx } = this.deps
     if (images === undefined) return undefined
     try {

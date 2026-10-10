@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import { SyncRunner } from '../sync/runner'
+import { flushPending } from './helpers/sync'
 
 function deferred (): { promise: Promise<void>, resolve: () => void } {
   let resolve!: () => void
@@ -25,7 +26,7 @@ describe('SyncRunner', () => {
     const third = runner.exec('k', async () => {
       order.push('3')
     })
-    await new Promise((resolve) => setImmediate(resolve))
+    await flushPending()
     expect(order).toEqual(['1-start'])
     gate.resolve()
     await Promise.all([first, second, third])

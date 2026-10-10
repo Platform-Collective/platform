@@ -7,10 +7,11 @@ import tracker from '@hcengineering/tracker'
 import { GitlabApiError } from '../gitlab/api'
 import { IssueSyncManager } from '../sync/issues'
 import { issueKey, noteKey } from '../sync/keys'
-import { pairMovedNotes } from '../sync/notes'
+import { pairMovedNotes } from '../sync/issue-move'
 import { GITLAB_SYNC_VERSION } from '../sync/versions'
 import { HOST, PROJECT_ID, gitlabIssue, gitlabNote, gitlabUser, hulyIssue, seedRepository } from './helpers/fixtures'
 import { createMemoryClient, type MemoryClient } from './helpers/memory'
+import { docOf, flushPending, syncDocOf, waitUntil } from './helpers/sync'
 import { createTestProvider, ctx, fakeApi, type FakeApi } from './helpers/provider'
 
 const KEY_1 = issueKey(HOST, PROJECT_ID, 1)
@@ -33,11 +34,6 @@ function setup (api: FakeApi): Env {
   const provider = createTestProvider(memory, [source, target], api)
   return { memory, issues: new IssueSyncManager(provider), api, source }
 }
-
-const infoOf = (memory: MemoryClient, id: string): any =>
-  memory.docs.find((d) => d._id === id && d._class === gitlab.class.DocSyncInfo)
-const issueOf = (memory: MemoryClient, id: string): any =>
-  memory.docs.find((d) => d._id === id && d._class === tracker.class.Issue)
 
 /** Synced issue 1 of project 42, moved in Huly to `space`, with one synced comment and one not sent yet. */
 function movedIssue (memory: MemoryClient, space: string): void {
@@ -85,7 +81,11 @@ function movedIssue (memory: MemoryClient, space: string): void {
 }
 
 async function move (env: Env): Promise<void> {
-  await env.issues.handleMove(ctx, { ...issueOf(env.memory, 'issue-1') }, { ...infoOf(env.memory, 'issue-1') })
+  await env.issues.handleMove(
+    ctx,
+    { ...docOf(env.memory, 'issue-1', tracker.class.Issue) },
+    { ...syncDocOf(env.memory, 'issue-1') }
+  )
 }
 
 describe('pairMovedNotes', () => {
@@ -113,41 +113,41 @@ describe('IssueSyncManager: moved in Huly', () => {
     const api = fakeApi({
       moveIssue: async () =>
         gitlabIssue(8, { project_id: TARGET_PROJECT_ID, web_url: `${HOST}/group/other/-/issues/8` }),
-      listIssueNotes: async () => [gitlabNote(91, { created_at: gitlabNote(11).created_at })]
+      listNotes: async () => [gitlabNote(91, { created_at: gitlabNote(11).created_at })]
     })
     const env = setup(api)
     movedIssue(env.memory, 'prj-2')
     await move(env)
     expect(api.moveIssue).toHaveBeenCalledWith(PROJECT_ID, 1, TARGET_PROJECT_ID)
-    expect(api.listIssueNotes).toHaveBeenCalledWith(TARGET_PROJECT_ID, 8)
-    expect(infoOf(env.memory, 'issue-1')).toMatchObject({
+    expect(api.listNotes).toHaveBeenCalledWith(TARGET_PROJECT_ID, 'issues', 8)
+    expect(syncDocOf(env.memory, 'issue-1')).toMatchObject({
       space: 'prj-2',
       key: NEW_KEY,
       repository: 'repo-2',
       gitlabIid: 8,
       needSync: GITLAB_SYNC_VERSION
     })
-    expect(issueOf(env.memory, 'issue-1')[gitlab.mixin.GitlabIssue]).toMatchObject({
+    expect(docOf(env.memory, 'issue-1', tracker.class.Issue)[gitlab.mixin.GitlabIssue]).toMatchObject({
       url: `${HOST}/group/other/-/issues/8`,
       gitlabIid: 8,
       repository: 'repo-2',
       syncError: null
     })
-    expect(infoOf(env.memory, 'msg-1')).toMatchObject({
+    expect(syncDocOf(env.memory, 'msg-1')).toMatchObject({
       space: 'prj-2',
       parent: NEW_KEY,
       key: noteKey(NEW_KEY, 91),
       repository: 'repo-2'
     })
     // Not in GitLab yet: it goes to the moved issue
-    expect(infoOf(env.memory, 'msg-2')).toMatchObject({ space: 'prj-2', needSync: '' })
+    expect(syncDocOf(env.memory, 'msg-2')).toMatchObject({ space: 'prj-2', needSync: '' })
     expect(api.updateIssue).not.toHaveBeenCalled()
   })
 
   it('never imports the issue GitLab left behind', async () => {
     const api = fakeApi({
       moveIssue: async () => gitlabIssue(8, { project_id: TARGET_PROJECT_ID }),
-      listIssueNotes: async () => []
+      listNotes: async () => []
     })
     const env = setup(api)
     movedIssue(env.memory, 'prj-2')
@@ -166,10 +166,10 @@ describe('IssueSyncManager: moved in Huly', () => {
     movedIssue(env.memory, 'prj-3')
     await move(env)
     expect(api.updateIssue).toHaveBeenCalledWith(PROJECT_ID, 1, { state_event: 'close' })
-    expect(infoOf(env.memory, 'issue-1')).toBeUndefined()
-    expect(infoOf(env.memory, 'msg-1')).toBeUndefined()
-    expect(infoOf(env.memory, 'msg-2')).toBeUndefined()
-    expect(issueOf(env.memory, 'issue-1')[gitlab.mixin.GitlabIssue]).toEqual({
+    expect(syncDocOf(env.memory, 'issue-1')).toBeUndefined()
+    expect(syncDocOf(env.memory, 'msg-1')).toBeUndefined()
+    expect(syncDocOf(env.memory, 'msg-2')).toBeUndefined()
+    expect(docOf(env.memory, 'issue-1', tracker.class.Issue)[gitlab.mixin.GitlabIssue]).toEqual({
       url: '',
       gitlabIid: 0,
       repository: null,
@@ -206,8 +206,12 @@ describe('IssueSyncManager: moved in Huly', () => {
       gitlabIid: 0,
       needSync: ''
     })
-    await env.issues.handleMove(ctx, { ...issueOf(env.memory, 'issue-h') }, { ...infoOf(env.memory, 'issue-h') })
-    expect(infoOf(env.memory, 'issue-h')).toMatchObject({ space: 'prj-2', key: '', needSync: '' })
+    await env.issues.handleMove(
+      ctx,
+      { ...docOf(env.memory, 'issue-h', tracker.class.Issue) },
+      { ...syncDocOf(env.memory, 'issue-h') }
+    )
+    expect(syncDocOf(env.memory, 'issue-h')).toMatchObject({ space: 'prj-2', key: '', needSync: '' })
   })
 
   it("holds the original issue's webhook until the move is stored", async () => {
@@ -220,21 +224,25 @@ describe('IssueSyncManager: moved in Huly', () => {
         await gate
         return gitlabIssue(8, { project_id: TARGET_PROJECT_ID })
       },
-      listIssueNotes: async () => [],
+      listNotes: async () => [],
       getIssue: async () =>
         gitlabIssue(1, { state: 'closed', moved_to_id: 3008, updated_at: '2026-03-01T00:00:00.000Z' })
     })
     const env = setup(api)
     movedIssue(env.memory, 'prj-2')
     const moving = move(env)
-    await new Promise((resolve) => setImmediate(resolve))
+    await waitUntil(() => api.moveIssue.mock.calls.length > 0)
     const webhook = env.issues.handleIssueEvent(ctx, env.source, api as any, 1)
-    await new Promise((resolve) => setImmediate(resolve))
+    await flushPending()
     // The webhook waits for the move: it must not read the sync doc before the move rewrote it
     expect(api.getIssue).not.toHaveBeenCalled()
     release()
     await Promise.all([moving, webhook])
-    expect(infoOf(env.memory, 'issue-1')).toMatchObject({ key: NEW_KEY, gitlabIid: 8, needSync: GITLAB_SYNC_VERSION })
+    expect(syncDocOf(env.memory, 'issue-1')).toMatchObject({
+      key: NEW_KEY,
+      gitlabIid: 8,
+      needSync: GITLAB_SYNC_VERSION
+    })
     expect(env.memory.docs.filter((d) => d._class === gitlab.class.DocSyncInfo && d.key === KEY_1)).toHaveLength(0)
   })
 
@@ -254,14 +262,18 @@ describe('IssueSyncManager: moved in Huly', () => {
         gitlabIid: 0,
         needSync: ''
       })
-      await env.issues.handleMove(ctx, { ...issueOf(env.memory, id) }, { ...infoOf(env.memory, id) })
+      await env.issues.handleMove(
+        ctx,
+        { ...docOf(env.memory, id, tracker.class.Issue) },
+        { ...syncDocOf(env.memory, id) }
+      )
     }
     // The new project's only repository takes over; without one, the header offers the picker again
-    expect(issueOf(env.memory, 'issue-h')[gitlab.mixin.GitlabIssue]).toMatchObject({
+    expect(docOf(env.memory, 'issue-h', tracker.class.Issue)[gitlab.mixin.GitlabIssue]).toMatchObject({
       repository: 'repo-2',
       syncError: null
     })
-    expect(issueOf(env.memory, 'issue-k')[gitlab.mixin.GitlabIssue]).toMatchObject({
+    expect(docOf(env.memory, 'issue-k', tracker.class.Issue)[gitlab.mixin.GitlabIssue]).toMatchObject({
       repository: null,
       syncError: null
     })
@@ -276,7 +288,7 @@ describe('IssueSyncManager: moved in Huly', () => {
     const env = setup(api)
     movedIssue(env.memory, 'prj-2')
     await expect(move(env)).rejects.toThrow('403')
-    expect(infoOf(env.memory, 'issue-1')).toMatchObject({ space: 'prj-1', key: KEY_1 })
-    expect(infoOf(env.memory, 'msg-1')).toMatchObject({ space: 'prj-1' })
+    expect(syncDocOf(env.memory, 'issue-1')).toMatchObject({ space: 'prj-1', key: KEY_1 })
+    expect(syncDocOf(env.memory, 'msg-1')).toMatchObject({ space: 'prj-1' })
   })
 })

@@ -3,6 +3,7 @@ import {
   ATTACHMENT_MARKER,
   attachmentBlock,
   attachmentLink,
+  inlineAttachmentBlock,
   splitAttachmentBlock,
   withAttachments
 } from '../sync/attachments'
@@ -29,5 +30,12 @@ describe('the attachment block of a note', () => {
     expect(withAttachments('', block)).toBe(block)
     expect(withAttachments('Hello', '')).toBe('Hello')
     expect(splitAttachmentBlock('No block')).toEqual({ text: 'No block', block: '' })
+  })
+
+  it('keeps a block written elsewhere as ordinary links, dropping only the marker', () => {
+    const links = '![a](/uploads/s/a.png)\n[b.pdf](/uploads/s/b.pdf)'
+    expect(inlineAttachmentBlock(`Hello\n\n${ATTACHMENT_MARKER}\n${links}`)).toBe(`Hello\n\n${links}`)
+    expect(inlineAttachmentBlock(`${ATTACHMENT_MARKER}\n${links}`)).toBe(links)
+    expect(inlineAttachmentBlock('No block')).toBe('No block')
   })
 })

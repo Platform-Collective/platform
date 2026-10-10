@@ -1,13 +1,27 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import type { Doc, DocumentUpdate, MeasureContext } from '@hcengineering/core'
-import gitlab, { type DocSyncInfo, type GitlabReview, type GitlabReviewKind } from '@hcengineering/gitlab'
+import type { Person } from '@hcengineering/contact'
+import { type Doc, type DocumentUpdate, generateId, type MeasureContext, type Ref } from '@hcengineering/core'
+import gitlab, {
+  type DocSyncInfo,
+  type GitlabMergeRequest,
+  type GitlabReview,
+  type GitlabReviewKind
+} from '@hcengineering/gitlab'
 import { GitlabApiError } from '../gitlab/api'
-import type { GitlabApprovals, GitlabMergeRequestReviewer, GitlabReviewState, GitlabUserRef } from '../gitlab/types'
+import type {
+  GitlabApprovals,
+  GitlabMergeRequestInfo,
+  GitlabMergeRequestReviewer,
+  GitlabReviewState,
+  GitlabUserRef
+} from '../gitlab/types'
+import { removeAttached } from './docs'
 import { errorMessage } from './errors'
 import { reviewKey } from './keys'
-import type { DocSyncManager, SyncProvider } from './types'
-import { GITLAB_SYNC_VERSION } from './versions'
+import { mergeRequestSyncState } from './status'
+import type { DocSyncManager, RepositoryContext, SyncProvider } from './types'
+import { GITLAB_SYNC_VERSION, SYNC_DONE } from './versions'
 
 /** What GitLab reports about the reviews of one merge request. */
 export interface ReviewStatus {
@@ -76,7 +90,175 @@ export function reviewRecord (current: Map<number, UserReviewState>): ReviewReco
   return record
 }
 
-const DONE: DocumentUpdate<DocSyncInfo> = { needSync: GITLAB_SYNC_VERSION }
+/** Set equality, ignoring order and duplicates. */
+export function sameMembers<T> (a: T[] | null | undefined, b: T[] | null | undefined): boolean {
+  const left = new Set(a ?? [])
+  const right = new Set(b ?? [])
+  return left.size === right.size && [...left].every((it) => right.has(it))
+}
+
+/**
+ * Reviewer states and approvals: while the merge request is open, and once on its first import.
+ * Undefined when not needed or not available; reviews, approvers and ToDos then stay as they are.
+ */
+export async function fetchReviewStatus (
+  ctx: MeasureContext,
+  provider: SyncProvider,
+  repo: RepositoryContext,
+  info: DocSyncInfo,
+  external: GitlabMergeRequestInfo
+): Promise<ReviewStatus | undefined> {
+  const open = mergeRequestSyncState(external.state) === 'opened'
+  if (!open && info.reviews !== undefined) return undefined
+  try {
+    const api = await provider.integrationApi(repo.integration)
+    if (api === undefined) return undefined
+    const projectId = repo.repository.projectId
+    const [reviewers, approvals] = await Promise.all([
+      api.listMergeRequestReviewers(projectId, external.iid),
+      api.getMergeRequestApprovals(projectId, external.iid)
+    ])
+    return { reviewers, approvals }
+  } catch (err: unknown) {
+    ctx.warn('gitlab review states unavailable, reviews and ToDos left as they are', {
+      key: info.key,
+      error: errorMessage(err)
+    })
+    return undefined
+  }
+}
+
+/** Review messages for review state changes, and the approvers mirrored on the merge request. */
+export async function syncMergeRequestReviews (
+  provider: SyncProvider,
+  repo: RepositoryContext,
+  mergeRequest: GitlabMergeRequest,
+  info: DocSyncInfo,
+  external: GitlabMergeRequestInfo,
+  status: ReviewStatus
+): Promise<DocumentUpdate<DocSyncInfo>> {
+  const { persons, client } = provider
+  const current = effectiveReviewStates(status)
+  const previous = info.reviews as ReviewRecord | undefined
+  // First import: at the merge request's last update; later: when the change was seen
+  const fallback = previous === undefined ? Date.parse(external.updated_at) : provider.now()
+  for (const event of reviewEvents(previous, current)) {
+    // A time from the sync clock is no identity: two changes of one user may be seen within one millisecond
+    const seenNow = event.at === undefined && previous !== undefined
+    await createReview(
+      provider,
+      repo,
+      mergeRequest,
+      info,
+      event,
+      event.at !== undefined ? Date.parse(event.at) : fallback,
+      seenNow
+    )
+    // Recorded at once: a failure later in this sync must not write the message again
+    await recordSeen(provider, info, event.user.id, current.get(event.user.id))
+  }
+  const approvedBy: Array<Ref<Person>> = []
+  for (const approval of status.approvals.approved_by) {
+    const person = await persons.personRefFor(repo.integration.host, approval.user)
+    if (person !== null) approvedBy.push(person)
+  }
+  if (!sameMembers(approvedBy, mergeRequest.approvedBy)) {
+    await client.update(mergeRequest, { approvedBy: approvedBy.sort() })
+  }
+  return { reviews: reviewRecord(current) }
+}
+
+async function createReview (
+  provider: SyncProvider,
+  repo: RepositoryContext,
+  mergeRequest: GitlabMergeRequest,
+  info: DocSyncInfo,
+  event: ReviewEvent,
+  at: number,
+  seenNow: boolean
+): Promise<void> {
+  const { client, derived } = provider
+  const known = async (time: number): Promise<DocSyncInfo | undefined> =>
+    await derived.findOne(gitlab.class.DocSyncInfo, {
+      space: info.space,
+      key: reviewKey(info.key, event.user.id, time)
+    })
+  if (!seenNow) {
+    // A GitLab time or the first import's time identifies the change: an existing key means it is already written
+    const written = await known(at)
+    if (written !== undefined) {
+      // Its message is missing when an earlier sync failed between the two writes
+      const id = written._id as unknown as Ref<GitlabReview>
+      if (written.deleted !== true && (await client.findOne(gitlab.class.GitlabReview, { _id: id })) === undefined) {
+        await addReviewMessage(provider, repo, mergeRequest, event, at, id)
+      }
+      return
+    }
+  }
+  if (seenNow) {
+    while ((await known(at)) !== undefined) at++
+  }
+  const key = reviewKey(info.key, event.user.id, at)
+  const id = generateId<GitlabReview>()
+  // The sync doc comes first and is done: the trigger then finds it and never sends the review back to GitLab
+  await derived.createDoc(
+    gitlab.class.DocSyncInfo,
+    info.space,
+    {
+      key,
+      parent: info.key,
+      objectClass: gitlab.class.GitlabReview,
+      repository: repo.repository._id,
+      gitlabIid: 0,
+      needSync: GITLAB_SYNC_VERSION,
+      attachedTo: mergeRequest._id
+    },
+    id as unknown as Ref<DocSyncInfo>
+  )
+  await addReviewMessage(provider, repo, mergeRequest, event, at, id)
+}
+
+async function addReviewMessage (
+  provider: SyncProvider,
+  repo: RepositoryContext,
+  mergeRequest: GitlabMergeRequest,
+  event: ReviewEvent,
+  at: number,
+  id: Ref<GitlabReview>
+): Promise<void> {
+  const author = await provider.persons.personIdFor(repo.integration.host, event.user)
+  await provider.client.addCollection(
+    gitlab.class.GitlabReview,
+    mergeRequest.space,
+    mergeRequest._id,
+    mergeRequest._class,
+    'activity',
+    { state: event.state },
+    id,
+    at,
+    author
+  )
+}
+
+/** Stores one user's review state as seen on the merge request's sync doc; undefined drops it (a revoked approver). */
+async function recordSeen (
+  provider: SyncProvider,
+  info: DocSyncInfo,
+  userId: number,
+  state: UserReviewState | undefined
+): Promise<void> {
+  const { derived } = provider
+  const fresh = await derived.findOne(gitlab.class.DocSyncInfo, { _id: info._id })
+  if (fresh === undefined) return
+  const user = String(userId)
+  const reviews: ReviewRecord = Object.fromEntries(
+    Object.entries((fresh.reviews ?? {}) as ReviewRecord).filter(([key]) => key !== user)
+  )
+  if (state !== undefined) {
+    reviews[user] = { user: state.user, state: state.state }
+  }
+  await derived.update(fresh, { reviews })
+}
 
 // GitLab refuses: approving one's own merge request, missing permission, approvals switched off
 const REFUSED = [401, 403, 404, 405, 422]
@@ -91,12 +273,12 @@ export class ReviewSyncManager implements DocSyncManager {
     info: DocSyncInfo,
     parent: DocSyncInfo | undefined
   ): Promise<DocumentUpdate<DocSyncInfo>> {
-    if (info.key !== '') return DONE
+    if (info.key !== '') return SYNC_DONE
     const review = existing as GitlabReview | undefined
-    if (review === undefined || parent === undefined || parent.key === '') return DONE
-    if (parent.objectClass !== gitlab.class.GitlabMergeRequest) return DONE
+    if (review === undefined || parent === undefined || parent.key === '') return SYNC_DONE
+    if (parent.objectClass !== gitlab.class.GitlabMergeRequest) return SYNC_DONE
     const repo = this.provider.repositoryContext(parent.repository)
-    if (repo === undefined) return DONE
+    if (repo === undefined) return SYNC_DONE
     if (review.state !== 'approved' && review.state !== 'unapproved') {
       return await this.refuse(ctx, review, 'Only approvals can be given from Huly')
     }
@@ -126,7 +308,7 @@ export class ReviewSyncManager implements DocSyncManager {
     // A second click, or a state set in GitLab meanwhile: the message would repeat the one already shown
     if (!changed) return await this.reject(ctx, review, 'GitLab already shows this approval state')
     return {
-      ...DONE,
+      ...SYNC_DONE,
       key: reviewKey(parent.key, own.user.id, review.createdOn ?? review.modifiedOn),
       parent: parent.key,
       repository: repo.repository._id,
@@ -157,22 +339,15 @@ export class ReviewSyncManager implements DocSyncManager {
    */
   private async refuse (ctx: MeasureContext, review: GitlabReview, error: string): Promise<DocumentUpdate<DocSyncInfo>> {
     ctx.warn('gitlab review not sent', { review: review._id, error })
-    return { ...DONE, error, retryable: false }
+    return { ...SYNC_DONE, error, retryable: false }
   }
 
   /** Removes a review message that repeats the state GitLab already shows (a double click). */
   private async reject (ctx: MeasureContext, review: GitlabReview, error: string): Promise<DocumentUpdate<DocSyncInfo>> {
     ctx.warn('gitlab review not sent, removed from Huly', { review: review._id, error })
     // Written as System, so the trigger does not queue the removal
-    await this.provider.client.removeCollection(
-      review._class,
-      review.space,
-      review._id,
-      review.attachedTo,
-      review.attachedToClass,
-      review.collection
-    )
+    await removeAttached(this.provider.client, review)
     // The sync doc stays as a tombstone with the error
-    return { ...DONE, deleted: true, error, retryable: false }
+    return { ...SYNC_DONE, deleted: true, error, retryable: false }
   }
 }

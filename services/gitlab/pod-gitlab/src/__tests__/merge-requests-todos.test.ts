@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: EPL-2.0
 /* eslint-disable @typescript-eslint/no-explicit-any -- test doubles */
 
+import core from '@hcengineering/core'
 import gitlab from '@hcengineering/gitlab'
 import time from '@hcengineering/time'
 import { GitlabApiError } from '../gitlab/api'
 import { MergeRequestSyncManager } from '../sync/merge-requests'
 import { employee, gitlabMergeRequest, gitlabUser, seedRepository } from './helpers/fixtures'
 import { createMemoryClient, type MemoryClient } from './helpers/memory'
+import { runSync, syncDocOf } from './helpers/sync'
 import { asApi, createTestProvider, ctx, fakeApi, type FakeApi } from './helpers/provider'
 
 interface Env {
@@ -29,24 +31,13 @@ function setup (): Env {
   return { memory, mergeRequests: new MergeRequestSyncManager(provider), api, repo }
 }
 
-const syncOf = (memory: MemoryClient, id: string): any =>
-  memory.docs.find((d) => d._id === id && d._class === gitlab.class.DocSyncInfo)
 const todos = (memory: MemoryClient): any[] => memory.docs.filter((d) => d._class === time.class.ProjectToDo)
 const reviewer = (id: number, state: string): any => ({ user: gitlabUser(id), state })
 
 let updatedAt = Date.parse('2026-01-02T00:00:00.000Z')
 
-async function syncDoc (env: Env, id: string): Promise<void> {
-  const info = syncOf(env.memory, id)
-  const existing = env.memory.docs.find((d) => d._id === id && d._class === gitlab.class.GitlabMergeRequest)
-  const update = await env.mergeRequests.sync(
-    ctx,
-    existing === undefined ? undefined : ({ ...existing } as any),
-    { ...info },
-    undefined
-  )
-  await env.memory.update(info, update)
-}
+const syncDoc = async (env: Env, id: string): Promise<any> =>
+  await runSync(env.mergeRequests, env.memory, id, gitlab.class.GitlabMergeRequest)
 
 async function imported (env: Env, overrides: any = {}): Promise<string> {
   await env.mergeRequests.receive(ctx, env.repo, gitlabMergeRequest(3, overrides))
@@ -81,7 +72,7 @@ describe('MergeRequestSyncManager: ToDos', () => {
         [gitlab.mixin.GitlabTodo]: { purpose: 'review' }
       })
     ])
-    expect(syncOf(env.memory, id).todos).toEqual(['review:person-8'])
+    expect(syncDocOf(env.memory, id).todos).toEqual(['review:person-8'])
     await gitlabChange(env, id, { reviewers: [gitlabUser(8)], title: 'Renamed' })
     expect(todos(env.memory)).toHaveLength(1)
   })
@@ -93,7 +84,7 @@ describe('MergeRequestSyncManager: ToDos', () => {
     env.api.listMergeRequestReviewers.mockResolvedValue([reviewer(8, 'approved')])
     await gitlabChange(env, id, { reviewers: [gitlabUser(8)] })
     expect(todos(env.memory)[0].doneOn).toEqual(expect.any(Number))
-    expect(syncOf(env.memory, id).todos).toEqual([])
+    expect(syncDocOf(env.memory, id).todos).toEqual([])
   })
 
   it('does not bring back a deleted review ToDo, but asks again after a new review request', async () => {
@@ -145,11 +136,81 @@ describe('MergeRequestSyncManager: ToDos', () => {
     expect(todos(env.memory)).toEqual([])
   })
 
+  // Huly's issue automation completes every ToDo of a merge request on an assignee change, as a server trigger: the
+  // server does not store derived transactions, so the ToDo is done without a stored update
+  const completedByAutomation = (todo: any, at: number): void => {
+    todo.doneOn = at
+  }
+
+  // A person's completion, and this service's, are stored transactions
+  const completedBy = (env: Env, todo: any, account: string, at: number): void => {
+    todo.doneOn = at
+    env.memory.docs.push({
+      _id: `tx-${at}`,
+      _class: core.class.TxUpdateDoc,
+      space: core.space.Tx,
+      objectId: todo._id,
+      objectClass: time.class.ProjectToDo,
+      modifiedOn: at,
+      modifiedBy: account,
+      operations: { doneOn: at }
+    })
+  }
+
+  it('reopens a review ToDo that an automation completed', async () => {
+    const env = setup()
+    env.api.listMergeRequestReviewers.mockResolvedValue([reviewer(8, 'unreviewed')])
+    const id = await imported(env, { reviewers: [gitlabUser(8)] })
+    completedByAutomation(todos(env.memory)[0], 1000)
+    await gitlabChange(env, id, { reviewers: [gitlabUser(8)] })
+    expect(todos(env.memory)).toHaveLength(1)
+    expect(todos(env.memory)[0].doneOn).toBeNull()
+  })
+
+  it('reopens a review ToDo that an automation completed after its reviewer completed it once', async () => {
+    const env = setup()
+    env.api.listMergeRequestReviewers.mockResolvedValue([reviewer(8, 'unreviewed')])
+    const id = await imported(env, { reviewers: [gitlabUser(8)] })
+    completedBy(env, todos(env.memory)[0], 'person-8-account', 1000)
+    todos(env.memory)[0].doneOn = null
+    completedByAutomation(todos(env.memory)[0], 2000)
+    await gitlabChange(env, id, { reviewers: [gitlabUser(8)] })
+    expect(todos(env.memory)[0].doneOn).toBeNull()
+  })
+
+  it('keeps a review ToDo done that its reviewer completed', async () => {
+    const env = setup()
+    env.api.listMergeRequestReviewers.mockResolvedValue([reviewer(8, 'unreviewed')])
+    const id = await imported(env, { reviewers: [gitlabUser(8)] })
+    completedBy(env, todos(env.memory)[0], 'person-8-account', 1000)
+    await gitlabChange(env, id, { reviewers: [gitlabUser(8)] })
+    expect(todos(env.memory)).toHaveLength(1)
+    expect(todos(env.memory)[0].doneOn).toBe(1000)
+  })
+
+  it('keeps a ToDo done that this service completed', async () => {
+    const env = setup()
+    env.api.listMergeRequestReviewers.mockResolvedValue([reviewer(8, 'unreviewed')])
+    const id = await imported(env, { reviewers: [gitlabUser(8)] })
+    completedBy(env, todos(env.memory)[0], core.account.System, 1000)
+    await gitlabChange(env, id, { reviewers: [gitlabUser(8)] })
+    expect(todos(env.memory)[0].doneOn).toBe(1000)
+  })
+
+  it('does not reopen ToDos of a merged merge request', async () => {
+    const env = setup()
+    env.api.listMergeRequestReviewers.mockResolvedValue([reviewer(8, 'unreviewed')])
+    const id = await imported(env, { reviewers: [gitlabUser(8)] })
+    completedByAutomation(todos(env.memory)[0], 1000)
+    await gitlabChange(env, id, { reviewers: [gitlabUser(8)], state: 'merged' })
+    expect(todos(env.memory)[0].doneOn).toBe(1000)
+  })
+
   it('leaves ToDos alone when GitLab does not report review states', async () => {
     const env = setup()
     env.api.listMergeRequestReviewers.mockRejectedValue(new GitlabApiError(404, 'not found'))
     const id = await imported(env, { reviewers: [gitlabUser(8)] })
     expect(todos(env.memory)).toEqual([])
-    expect(syncOf(env.memory, id).todos).toBeUndefined()
+    expect(syncDocOf(env.memory, id).todos).toBeUndefined()
   })
 })

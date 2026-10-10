@@ -2,14 +2,16 @@
 
 import core, { type Doc, type DocumentUpdate, type MeasureContext, type PersonId, type Ref } from '@hcengineering/core'
 import gitlab, { type DocSyncInfo, type GitlabMergeRequest, type GitlabReviewThread } from '@hcengineering/gitlab'
-import { type GitlabApi, GitlabApiError } from '../gitlab/api'
+import { type GitlabApi, isNotFound } from '../gitlab/api'
 import type { GitlabDiffPosition, GitlabDiscussion, GitlabMergeRequestInfo, GitlabUserRef } from '../gitlab/types'
 import { discussionKey, mergeRequestKey } from './keys'
 import { mergeFields } from './merge'
 import { isTombstoned, isVisibleNote } from './notes'
+import { removeAttached, requeueSyncDocs } from './docs'
+import { EXPIRED_ERROR } from './errors'
 import type { ReviewCommentSyncManager } from './review-comments'
 import type { DocSyncManager, RepositoryContext, SyncProvider } from './types'
-import { GITLAB_SYNC_VERSION } from './versions'
+import { SYNC_DONE } from './versions'
 
 /** What the pod keeps of a diff discussion in DocSyncInfo.external. */
 export interface ThreadExternal {
@@ -27,15 +29,13 @@ export interface ThreadSnapshot {
   isResolved: boolean
 }
 
-const DONE: DocumentUpdate<DocSyncInfo> = { needSync: GITLAB_SYNC_VERSION }
-
 /** A discussion on a diff line; other discussions stay plain comments. */
-export function isDiffDiscussion (discussion: GitlabDiscussion): boolean {
+function isDiffDiscussion (discussion: GitlabDiscussion): boolean {
   const first = discussion.notes[0]
   return first !== undefined && isVisibleNote(first) && first.type === 'DiffNote' && first.position != null
 }
 
-export function threadExternal (discussion: GitlabDiscussion, headSha: string | null): ThreadExternal {
+function threadExternal (discussion: GitlabDiscussion, headSha: string | null): ThreadExternal {
   const first = discussion.notes[0]
   const position = first.position as GitlabDiffPosition
   const resolvable = discussion.notes.filter((it) => it.resolvable === true)
@@ -118,7 +118,7 @@ export class ReviewThreadSyncManager implements DocSyncManager {
       try {
         discussion = await api.getMergeRequestDiscussion(repo.repository.projectId, iid, discussionId)
       } catch (err: unknown) {
-        if (err instanceof GitlabApiError && err.status === 404) {
+        if (isNotFound(err)) {
           const info = await this.provider.derived.findOne(gitlab.class.DocSyncInfo, {
             space: repo.project._id,
             key: discussionKey(mrKey, discussionId)
@@ -140,10 +140,10 @@ export class ReviewThreadSyncManager implements DocSyncManager {
     parent: DocSyncInfo | undefined
   ): Promise<DocumentUpdate<DocSyncInfo>> {
     // Threads start in GitLab only
-    if (info.key === '') return DONE
+    if (info.key === '') return SYNC_DONE
     const repo = this.provider.repositoryContext(info.repository)
     const external = info.external as ThreadExternal | undefined
-    if (repo === undefined || external === undefined || parent === undefined) return DONE
+    if (repo === undefined || external === undefined || parent === undefined) return SYNC_DONE
     if (existing === undefined) {
       return await this.createInHuly(repo, info, parent, external)
     }
@@ -181,14 +181,14 @@ export class ReviewThreadSyncManager implements DocSyncManager {
         gitlabIid: 0,
         external,
         needSync: '',
-        lastModified: Date.now()
+        lastModified: this.provider.now()
       })
       this.provider.triggerSync()
     } else if (info.deleted === true) {
       // A thread deleted in Huly keeps its comments out too
       return
     } else if (!sameThread(info.external as ThreadExternal | undefined, external)) {
-      await derived.update(info, { external, needSync: '', lastModified: Date.now(), error: null })
+      await derived.update(info, { external, needSync: '', lastModified: this.provider.now(), error: null })
       this.provider.triggerSync()
     }
     await this.comments.storeNotes(ctx, repo, key, discussion.notes)
@@ -202,14 +202,7 @@ export class ReviewThreadSyncManager implements DocSyncManager {
     })
     if (thread !== undefined) {
       // Written as System, so the trigger does not queue anything back to GitLab
-      await client.removeCollection(
-        thread._class,
-        thread.space,
-        thread._id,
-        thread.attachedTo,
-        thread.attachedToClass,
-        thread.collection
-      )
+      await removeAttached(client, thread)
     }
     await derived.remove(info)
     ctx.info('gitlab discussion gone, Huly review thread removed', { key: info.key })
@@ -226,7 +219,7 @@ export class ReviewThreadSyncManager implements DocSyncManager {
       _id: parent._id as unknown as Ref<GitlabMergeRequest>
     })
     // Created once the merge request exists: its sync re-queues its threads
-    if (mr === undefined) return DONE
+    if (mr === undefined) return SYNC_DONE
     const host = repo.integration.host
     const author = await persons.personIdFor(host, external.author)
     await client.addCollection(
@@ -250,10 +243,8 @@ export class ReviewThreadSyncManager implements DocSyncManager {
       author
     )
     // Comments that arrived before their thread can now be created
-    for (const child of await derived.findAll(gitlab.class.DocSyncInfo, { parent: info.key })) {
-      await derived.update(child, { needSync: '' })
-    }
-    return { ...DONE, current: { isResolved: external.resolved }, error: null }
+    await requeueSyncDocs(derived, { parent: info.key })
+    return { ...SYNC_DONE, current: { isResolved: external.resolved }, error: null }
   }
 
   private async mergeExisting (
@@ -271,7 +262,7 @@ export class ReviewThreadSyncManager implements DocSyncManager {
     if (toGitlab.isResolved !== undefined) {
       const api = await this.provider.apiFor(repo.integration, thread.modifiedBy)
       if (api === undefined) {
-        return { ...DONE, error: 'GitLab authorization expired', retryable: true }
+        return { ...SYNC_DONE, error: EXPIRED_ERROR, retryable: true }
       }
       const resolved = toGitlab.isResolved
       latest = await this.provider.runner.exec(parent.key, async () => {
@@ -282,7 +273,11 @@ export class ReviewThreadSyncManager implements DocSyncManager {
           resolved
         )
         const updated: ThreadExternal = { ...threadExternal(discussion, null), outdated: external.outdated }
-        await this.provider.derived.update(info, { external: updated, current: merged, lastModified: Date.now() })
+        await this.provider.derived.update(info, {
+          external: updated,
+          current: merged,
+          lastModified: this.provider.now()
+        })
         return updated
       })
     }
@@ -301,8 +296,8 @@ export class ReviewThreadSyncManager implements DocSyncManager {
     if (thread.line !== position.new_line) update.line = position.new_line
     if (thread.oldLine !== position.old_line) update.oldLine = position.old_line
     if (Object.keys(update).length > 0) {
-      await this.provider.client.update(thread, update, false, Date.now(), actor)
+      await this.provider.client.update(thread, update, false, this.provider.now(), actor)
     }
-    return { ...DONE, current: merged, external: latest, lastModified: Date.now(), error: null }
+    return { ...SYNC_DONE, current: merged, external: latest, lastModified: this.provider.now(), error: null }
   }
 }

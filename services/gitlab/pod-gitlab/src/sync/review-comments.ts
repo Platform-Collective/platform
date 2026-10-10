@@ -11,9 +11,11 @@ import { areEqualMarkups } from '@hcengineering/text'
 import type { GitlabNoteInfo } from '../gitlab/types'
 import { discussionIdOf, discussionKey, noteKey } from './keys'
 import { compareMarkdown, mergeFields } from './merge'
+import { removeAttached, storeExternalNote } from './docs'
+import { EXPIRED_ERROR } from './errors'
 import { isVisibleNote } from './notes'
 import type { DocSyncManager, RepositoryContext, SyncProvider } from './types'
-import { GITLAB_SYNC_VERSION } from './versions'
+import { GITLAB_SYNC_VERSION, SYNC_DONE } from './versions'
 
 export interface CommentSnapshot {
   body: Markup
@@ -24,8 +26,6 @@ interface CommentContext {
   thread: DocSyncInfo
   mergeRequest: DocSyncInfo
 }
-
-const DONE: DocumentUpdate<DocSyncInfo> = { needSync: GITLAB_SYNC_VERSION }
 
 /** The notes of diff discussions. */
 export class ReviewCommentSyncManager implements DocSyncManager {
@@ -72,14 +72,14 @@ export class ReviewCommentSyncManager implements DocSyncManager {
     info: DocSyncInfo,
     parent: DocSyncInfo | undefined
   ): Promise<DocumentUpdate<DocSyncInfo>> {
-    if (info.objectClass !== gitlab.class.GitlabReviewComment) return DONE
+    if (info.objectClass !== gitlab.class.GitlabReviewComment) return SYNC_DONE
     if (info.key === '') {
       return await this.createInGitlab(existing as GitlabReviewComment | undefined, info, parent)
     }
     const repo = this.provider.repositoryContext(info.repository)
     const external = info.external as GitlabNoteInfo | undefined
     const context = parent === undefined ? undefined : await this.contextOf(parent)
-    if (repo === undefined || external === undefined || context === undefined) return DONE
+    if (repo === undefined || external === undefined || context === undefined) return SYNC_DONE
     if (existing === undefined) {
       return await this.createInHuly(repo, info, context, external)
     }
@@ -97,7 +97,7 @@ export class ReviewCommentSyncManager implements DocSyncManager {
     if ((await this.mergeRequestDoc(context.mergeRequest)) === undefined) return true
     const api = await this.provider.integrationApi(repo.integration)
     if (api === undefined) {
-      throw new Error('GitLab authorization expired')
+      throw new Error(EXPIRED_ERROR)
     }
     await api.deleteMergeRequestDiscussionNote(
       repo.repository.projectId,
@@ -124,27 +124,7 @@ export class ReviewCommentSyncManager implements DocSyncManager {
   }
 
   private async upsertExternal (repo: RepositoryContext, threadKey: string, note: GitlabNoteInfo): Promise<void> {
-    const { derived } = this.provider
-    const key = noteKey(threadKey, note.id)
-    const lastModified = Date.parse(note.updated_at)
-    const info = await derived.findOne(gitlab.class.DocSyncInfo, { space: repo.project._id, key })
-    if (info === undefined) {
-      await derived.createDoc(gitlab.class.DocSyncInfo, repo.project._id, {
-        key,
-        parent: threadKey,
-        objectClass: gitlab.class.GitlabReviewComment,
-        repository: repo.repository._id,
-        gitlabIid: 0,
-        external: note,
-        needSync: '',
-        lastModified
-      })
-    } else {
-      const stored = info.external as GitlabNoteInfo | undefined
-      if (stored !== undefined && Date.parse(stored.updated_at) >= lastModified) return
-      await derived.update(info, { external: note, needSync: '', lastModified, error: null })
-    }
-    this.provider.triggerSync()
+    await storeExternalNote(this.provider, repo, threadKey, gitlab.class.GitlabReviewComment, note)
   }
 
   private async removeComment (ctx: MeasureContext, info: DocSyncInfo): Promise<void> {
@@ -160,14 +140,7 @@ export class ReviewCommentSyncManager implements DocSyncManager {
       _id: info._id as unknown as Ref<GitlabReviewComment>
     })
     if (comment !== undefined) {
-      await client.removeCollection(
-        comment._class,
-        comment.space,
-        comment._id,
-        comment.attachedTo,
-        comment.attachedToClass,
-        comment.collection
-      )
+      await removeAttached(client, comment)
     }
   }
 
@@ -177,20 +150,20 @@ export class ReviewCommentSyncManager implements DocSyncManager {
     info: DocSyncInfo,
     parent: DocSyncInfo | undefined
   ): Promise<DocumentUpdate<DocSyncInfo>> {
-    if (comment === undefined || parent === undefined || parent.key === '') return DONE
-    if (parent.objectClass !== gitlab.class.GitlabMergeRequest) return DONE
+    if (comment === undefined || parent === undefined || parent.key === '') return SYNC_DONE
+    if (parent.objectClass !== gitlab.class.GitlabMergeRequest) return SYNC_DONE
     const repo = this.provider.repositoryContext(parent.repository)
-    if (repo === undefined) return DONE
+    if (repo === undefined) return SYNC_DONE
     const threadKey = discussionKey(parent.key, comment.discussionId)
     const thread = await this.provider.derived.findOne(gitlab.class.DocSyncInfo, { space: info.space, key: threadKey })
     if (thread === undefined || thread.deleted === true) {
-      return { ...DONE, error: 'The GitLab discussion of this comment is unknown', retryable: false }
+      return { ...SYNC_DONE, error: 'The GitLab discussion of this comment is unknown', retryable: false }
     }
     const body = await this.provider.content.toMarkdown(repo, comment.body)
-    if (body.trim() === '') return DONE
+    if (body.trim() === '') return SYNC_DONE
     const api = await this.provider.apiFor(repo.integration, comment.modifiedBy)
     if (api === undefined) {
-      return { ...DONE, error: 'GitLab authorization expired', retryable: true }
+      return { ...SYNC_DONE, error: EXPIRED_ERROR, retryable: true }
     }
     return await this.provider.runner.exec(parent.key, async () => {
       const note = await api.createMergeRequestDiscussionNote(
@@ -222,13 +195,13 @@ export class ReviewCommentSyncManager implements DocSyncManager {
     external: GitlabNoteInfo
   ): Promise<DocumentUpdate<DocSyncInfo>> {
     const { client, persons } = this.provider
-    if (context.thread.deleted === true) return DONE
+    if (context.thread.deleted === true) return SYNC_DONE
     const mr = await this.mergeRequestDoc(context.mergeRequest)
     const thread = await client.findOne(gitlab.class.GitlabReviewThread, {
       _id: context.thread._id as unknown as Ref<GitlabReviewThread>
     })
     // Created once the thread exists: the thread's sync re-queues its comments
-    if (mr === undefined || thread === undefined) return DONE
+    if (mr === undefined || thread === undefined) return SYNC_DONE
     const body = await this.provider.content.toMarkup(repo, external.body)
     const author: PersonId = await persons.personIdFor(repo.integration.host, external.author)
     await client.addCollection(
@@ -242,7 +215,7 @@ export class ReviewCommentSyncManager implements DocSyncManager {
       Date.parse(external.created_at),
       author
     )
-    return { ...DONE, current: { body }, error: null }
+    return { ...SYNC_DONE, current: { body }, error: null }
   }
 
   private async mergeExisting (
@@ -263,7 +236,7 @@ export class ReviewCommentSyncManager implements DocSyncManager {
       if (!compareMarkdown(body, external.body)) {
         const api = await this.provider.apiFor(repo.integration, comment.modifiedBy)
         if (api === undefined) {
-          return { ...DONE, error: 'GitLab authorization expired', retryable: true }
+          return { ...SYNC_DONE, error: EXPIRED_ERROR, retryable: true }
         }
         const { mergeRequest, thread } = context
         latest = await this.provider.runner.exec(mergeRequest.key, async () => {
@@ -293,6 +266,6 @@ export class ReviewCommentSyncManager implements DocSyncManager {
         author
       )
     }
-    return { ...DONE, current: merged, external: latest, lastModified: Date.parse(latest.updated_at), error: null }
+    return { ...SYNC_DONE, current: merged, external: latest, lastModified: Date.parse(latest.updated_at), error: null }
   }
 }

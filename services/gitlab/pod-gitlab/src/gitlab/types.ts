@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { GitlabMergeRequestState } from '@hcengineering/gitlab'
-import type { GitlabIssueState } from '../sync/status'
 
-export type { GitlabIssueState } from '../sync/status'
+export type GitlabIssueState = 'opened' | 'closed'
 
 export type { GitlabMergeRequestState } from '@hcengineering/gitlab'
 

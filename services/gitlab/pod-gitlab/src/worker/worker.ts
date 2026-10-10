@@ -31,14 +31,15 @@ import gitlab, {
 } from '@hcengineering/gitlab'
 import task, { type ProjectType, type Task, type TaskTypeWithFactory, updateProjectType } from '@hcengineering/task'
 import tracker, { type Issue } from '@hcengineering/tracker'
-import { GitlabApi, GitlabApiError } from '../gitlab/api'
+import { abortableSleep, type FetchFn, GitlabApi, GitlabApiError } from '../gitlab/api'
 import type { GitlabMergeRequestInfo, GitlabNoteable, GitlabUserRef } from '../gitlab/types'
-import { hookSecret, hookUrl } from '../hooks'
+import { ensureRepositoryHook, removeRepositoryHook, type HookSettings } from '../hooks'
+import { Limiter, LimiterFullError } from '../limiter'
 import type { MarkdownConverter } from '../markdown'
 import { refreshIntegrationRepositories } from '../repositories'
 import { ContentConverter } from '../sync/content'
 import { ReviewThreadSyncManager } from '../sync/discussions'
-import { errorMessage, isPermanentError } from '../sync/errors'
+import { EXPIRED_ERROR, errorMessage, isPermanentError } from '../sync/errors'
 import { findGitlabImage, type GitlabImageAccess } from '../sync/image-access'
 import { IssueSyncManager } from '../sync/issues'
 import { isHistorical, MergeRequestSyncManager } from '../sync/merge-requests'
@@ -65,10 +66,10 @@ import type { GitlabUserManager, GitlabUserRecord } from '../users'
 export const FULL_SYNC_INTERVAL_MS = 60 * 60 * 1000
 // GitLab timestamps and the pod clock may differ; re-reading a few minutes is harmless
 export const SINCE_MARGIN_MS = 5 * 60 * 1000
-const FAILED_FULL_SYNC_RETRY_MS = 5 * 60 * 1000
+export const FAILED_FULL_SYNC_RETRY_MS = 5 * 60 * 1000
 const IDLE_WAKE_MS = 60 * 1000
 const TOKEN_CACHE_MS = 30 * 1000
-const BATCH = 50
+const SYNC_BATCH_SIZE = 50
 
 // An unlinked repository's hook that nobody saw being unlinked is removed after this long
 export const ORPHAN_HOOK_GRACE_MS = 10 * 60 * 1000
@@ -77,10 +78,12 @@ export const HEALTH_INTERVAL_MS = 60 * 60 * 1000
 const HEALTH_RETRY_MS = 5 * 60 * 1000
 // Open merge requests with an unresolved thread: GitLab may send no event when a thread is resolved there
 export const THREAD_REFRESH_MS = 10 * 60 * 1000
-export const EXPIRED_ERROR = 'GitLab authorization expired, please re-authorize'
-export const MOVED_ERROR = 'Moved to another project; moves are not synchronized with GitLab'
+const MOVED_ERROR = 'Moved to another project; moves are not synchronized with GitLab'
 // Task types change rarely; a minute of staleness saves two queries per synced document
-export const TASK_TYPE_CACHE_MS = 60 * 1000
+const TASK_TYPE_CACHE_MS = 60 * 1000
+// Webhook events processed at once per workspace, and how many more may wait; beyond that a full sync catches up
+export const WEBHOOK_CONCURRENCY = 4
+export const WEBHOOK_QUEUE = 500
 
 export type GitlabHookKind = 'Issue Hook' | 'Note Hook' | 'Merge Request Hook'
 
@@ -152,10 +155,12 @@ export interface WorkerDeps {
   // Blob storage for copied images; optional
   images?: ImageStore
   // Scoped project hooks; unset: hooks are not checked (tests)
-  hooks?: { baseUrl: string, master: string }
+  hooks?: HookSettings
   // A client acting as the given account on the worker's connection (pooled sessions for the HTTP service)
   session?: (accountId: PersonId) => TxOperations
   closeConnection?: () => Promise<void>
+  // Every GitLab call (safeFetch in production)
+  fetchFn: FetchFn
   // Test seams
   persons?: PersonMapping
   createApi?: (host: string, token: string) => GitlabApi
@@ -218,13 +223,19 @@ export class GitlabWorker implements SyncProvider {
   private readonly wasEnabled = new Map<Ref<GitlabIntegrationRepository>, boolean>()
   // Start of the next full sync's window per repository and listing (epoch ms); undefined imports everything
   private readonly fullSyncFrom = new Map<string, number | undefined>()
+  // Windows whose first import has not finished; a checkpoint moves the window but the import stays a first one
+  private readonly firstImport = new Set<string>()
   private readonly nextFullSync = new Map<Ref<GitlabIntegrationRepository>, number>()
+  // After a failed full sync: no retry before `failed`, and never before `rateLimited` (GitLab's RateLimit-Reset)
+  private readonly backoff = new Map<Ref<GitlabIntegrationRepository>, { failed: number, rateLimited: number }>()
   private integrations: GitlabIntegration[] = []
   private readonly nextHealth = new Map<Ref<GitlabIntegration>, number>()
   private readonly nextThreadRefresh = new Map<Ref<GitlabIntegrationRepository>, number>()
   // Linked repositories whose hook was checked since the pod started
   private readonly hooksChecked = new Set<Ref<GitlabIntegrationRepository>>()
   private readonly tokens = new Map<PersonId, { record: GitlabUserRecord | undefined, until: number }>()
+  // Bumped by forgetTokens: a lookup that started before it is not cached
+  private tokensGeneration = 0
   private readonly taskTypes = new Map<string, { value: IssueTaskType, until: number }>()
   private readonly signal = new Signal()
   // First time a repository was seen unlinked with its hook still installed, while nobody saw it being unlinked
@@ -233,7 +244,10 @@ export class GitlabWorker implements SyncProvider {
   private readonly inFlight = new Set<Promise<unknown>>()
   // One task type addition per project type at a time
   private readonly ensuringTaskType = new Map<Ref<ProjectType>, Promise<void>>()
+  private readonly webhooks = new Limiter(WEBHOOK_CONCURRENCY, WEBHOOK_QUEUE)
   private closing = false
+  // Aborted by close(): GitLab calls waiting out a rate limit give up at once
+  private readonly closed = new AbortController()
   private loop: Promise<void> | undefined
 
   constructor (private readonly deps: WorkerDeps) {
@@ -301,6 +315,7 @@ export class GitlabWorker implements SyncProvider {
 
   async close (): Promise<void> {
     this.closing = true
+    this.closed.abort(new Error('GitLab worker closed'))
     this.signal.notify()
     await this.loop
     // Webhook handlers and service requests still using the connection finish first
@@ -314,8 +329,22 @@ export class GitlabWorker implements SyncProvider {
     this.signal.notify()
   }
 
-  requestFullSync (): void {
-    for (const id of this.nextFullSync.keys()) this.nextFullSync.set(id, 0)
+  /** A connection changed (disconnect, re-authorization): cached tokens may be revoked or replaced. */
+  forgetTokens (): void {
+    this.tokens.clear()
+    this.tokensGeneration++
+  }
+
+  /**
+   * Runs the full sync of every repository soon. A change in the workspace may have fixed a failure, so only a rate
+   * limit is waited for; a catch-up after dropped webhooks also keeps the failure backoff.
+   */
+  requestFullSync (reason: 'changed' | 'catch-up' = 'changed'): void {
+    for (const [id, next] of this.nextFullSync) {
+      const backoff = this.backoff.get(id)
+      const notBefore = backoff === undefined ? 0 : reason === 'catch-up' ? backoff.failed : backoff.rateLimited
+      this.nextFullSync.set(id, Math.min(next, notBefore))
+    }
     this.signal.notify()
   }
 
@@ -344,7 +373,20 @@ export class GitlabWorker implements SyncProvider {
   ): Promise<void> {
     // Dropped while closing: the next full sync catches up
     if (this.closing) return
-    await this.track(this.processWebhook(kind, payload, integration))
+    try {
+      await this.track(
+        this.webhooks.run(async () => {
+          if (!this.closing) await this.processWebhook(kind, payload, integration)
+        })
+      )
+    } catch (err: unknown) {
+      if (!(err instanceof LimiterFullError)) throw err
+      this.deps.ctx.warn('gitlab webhook dropped, too many waiting; a full sync catches up', {
+        workspace: this.workspace,
+        kind
+      })
+      this.requestFullSync('catch-up')
+    }
   }
 
   private async processWebhook (
@@ -491,7 +533,10 @@ export class GitlabWorker implements SyncProvider {
   }
 
   private api (host: string, token: string): GitlabApi {
-    return this.deps.createApi?.(host, token) ?? new GitlabApi(host, token)
+    return (
+      this.deps.createApi?.(host, token) ??
+      new GitlabApi(host, token, this.deps.fetchFn, abortableSleep(this.closed.signal))
+    )
   }
 
   private async taskTypeOf (
@@ -574,13 +619,14 @@ export class GitlabWorker implements SyncProvider {
     const now = this.now()
     const cached = this.tokens.get(person)
     if (cached !== undefined && cached.until > now) return cached.record
+    const generation = this.tokensGeneration
     let record: GitlabUserRecord | undefined
     try {
       record = await this.deps.users.getValidRecord(this.workspace, person)
     } catch (err: unknown) {
       this.deps.ctx.warn('gitlab token unavailable', { error: errorMessage(err) })
     }
-    this.tokens.set(person, { record, until: now + TOKEN_CACHE_MS })
+    if (generation === this.tokensGeneration) this.tokens.set(person, { record, until: now + TOKEN_CACHE_MS })
     return record
   }
 
@@ -598,18 +644,23 @@ export class GitlabWorker implements SyncProvider {
         // An unlinked repository's hook would keep firing
         await this.cleanUpHook(integration, repository)
         this.wasEnabled.set(repository._id, false)
-        for (const listing of LISTINGS) this.fullSyncFrom.delete(windowKey(repository._id, listing.kind))
+        for (const listing of LISTINGS) {
+          this.fullSyncFrom.delete(windowKey(repository._id, listing.kind))
+          this.firstImport.delete(windowKey(repository._id, listing.kind))
+        }
         this.nextFullSync.delete(repository._id)
+        this.backoff.delete(repository._id)
         this.nextThreadRefresh.delete(repository._id)
         continue
       }
       const context: RepositoryContext = { integration, repository, project }
       if (this.wasEnabled.get(repository._id) !== true) {
         for (const listing of LISTINGS) {
-          this.fullSyncFrom.set(
-            windowKey(repository._id, listing.kind),
-            await this.storedSince(context, listing.objectClass)
-          )
+          const key = windowKey(repository._id, listing.kind)
+          const since = await this.storedSince(context, listing.objectClass)
+          this.fullSyncFrom.set(key, since)
+          if (since === undefined) this.firstImport.add(key)
+          else this.firstImport.delete(key)
         }
         this.nextFullSync.set(repository._id, 0)
       }
@@ -628,8 +679,7 @@ export class GitlabWorker implements SyncProvider {
         this.deps.ctx.warn('gitlab hook left in place, token unavailable', { projectId: repository.projectId })
         return
       }
-      await api.deleteProjectHook(repository.projectId, repository.hookId)
-      await this.client.update(repository, { hookId: null })
+      await removeRepositoryHook(this.client, api, repository)
     } catch (err: unknown) {
       this.deps.ctx.warn('failed to delete gitlab hook', { projectId: repository.projectId, error: errorMessage(err) })
     }
@@ -653,7 +703,7 @@ export class GitlabWorker implements SyncProvider {
       const api = await this.integrationApi(repo.integration)
       if (api === undefined) {
         // The health job marks the integration
-        this.nextFullSync.set(id, start + FAILED_FULL_SYNC_RETRY_MS)
+        this.backoffFullSync(id, start + FAILED_FULL_SYNC_RETRY_MS, 0)
         continue
       }
       try {
@@ -663,14 +713,23 @@ export class GitlabWorker implements SyncProvider {
           await this.fullSyncListing(repo, api, listing.kind, start)
         }
         this.nextFullSync.set(id, start + FULL_SYNC_INTERVAL_MS)
+        this.backoff.delete(id)
       } catch (err: unknown) {
         this.deps.ctx.error('gitlab full sync failed', {
           repository: repo.repository.pathWithNamespace,
           error: errorMessage(err)
         })
-        this.nextFullSync.set(id, start + FAILED_FULL_SYNC_RETRY_MS)
+        // A rate limit says when GitLab answers again; a far-off reset waits no longer than a regular full sync
+        const resetAt = err instanceof GitlabApiError ? err.retryAt : undefined
+        const retryAt = resetAt === undefined ? 0 : Math.min(resetAt, start + FULL_SYNC_INTERVAL_MS)
+        this.backoffFullSync(id, Math.max(start + FAILED_FULL_SYNC_RETRY_MS, retryAt), retryAt)
       }
     }
+  }
+
+  private backoffFullSync (id: Ref<GitlabIntegrationRepository>, failed: number, rateLimited: number): void {
+    this.nextFullSync.set(id, failed)
+    this.backoff.set(id, { failed, rateLimited })
   }
 
   private async fullSyncListing (
@@ -684,23 +743,36 @@ export class GitlabWorker implements SyncProvider {
     const since = from === undefined ? undefined : new Date(from - SINCE_MARGIN_MS).toISOString()
     const projectId = repo.repository.projectId
     const ctx = this.deps.ctx
+    const firstImport = this.firstImport.has(key)
+    // The listing is oldest first: after each item the window moves to it, so a failure resumes there
+    const checkpoint = (updatedAt: string): void => {
+      const at = Date.parse(updatedAt)
+      const current = this.fullSyncFrom.get(key)
+      if (Number.isFinite(at) && (current === undefined || at > current)) this.fullSyncFrom.set(key, at)
+    }
     if (kind === 'issues') {
-      for (const issue of await api.listIssues(projectId, since)) {
-        if (this.closing) return
-        await this.managers.issues.receive(ctx, repo, issue)
-        await this.managers.notes.refreshNotes(ctx, repo, api, issue)
+      for await (const page of api.listIssuePages(projectId, since)) {
+        for (const issue of page) {
+          if (this.closing) return
+          await this.managers.issues.receive(ctx, repo, issue)
+          await this.managers.notes.refreshNotes(ctx, repo, api, issue, 'issues', { skipIfListed: true })
+          checkpoint(issue.updated_at)
+        }
       }
     } else {
       const listed = new Set<number>()
-      for (const mr of await api.listMergeRequests(projectId, since)) {
-        if (this.closing) return
-        await this.managers.mergeRequests.receive(ctx, repo, mr)
-        await this.managers.notes.refreshNotes(ctx, repo, api, mr, 'merge_requests')
-        // Old history on the first import: no discussion listing; a later event of the merge request loads them
-        if (since !== undefined || !isHistorical(mr, this.now())) {
-          await this.managers.threads.refreshDiscussions(ctx, repo, api, mr.iid)
+      for await (const page of api.listMergeRequestPages(projectId, since)) {
+        for (const mr of page) {
+          if (this.closing) return
+          await this.managers.mergeRequests.receive(ctx, repo, mr)
+          await this.managers.notes.refreshNotes(ctx, repo, api, mr, 'merge_requests', { skipIfListed: true })
+          // Old history on the first import: no discussion listing; a later event of the merge request loads them
+          if (!firstImport || !isHistorical(mr, this.now())) {
+            await this.managers.threads.refreshDiscussions(ctx, repo, api, mr.iid)
+          }
+          listed.add(mr.iid)
+          checkpoint(mr.updated_at)
         }
-        listed.add(mr.iid)
       }
       // Approvals and resolved threads change no updated_at
       for (const iid of await this.managers.mergeRequests.requeueOpen(repo)) {
@@ -709,6 +781,7 @@ export class GitlabWorker implements SyncProvider {
       }
     }
     this.fullSyncFrom.set(key, start)
+    this.firstImport.delete(key)
   }
 
   /** Lists the discussions of open merge requests with an unresolved thread again. */
@@ -749,16 +822,15 @@ export class GitlabWorker implements SyncProvider {
         parents.add(thread.parent)
       }
     }
+    if (parents.size === 0) return []
+    const infos = await this.derived.findAll(gitlab.class.DocSyncInfo, {
+      space: repo.project._id,
+      key: { $in: [...parents] }
+    })
     const iids: number[] = []
-    for (const key of parents) {
-      const info = await this.derived.findOne(gitlab.class.DocSyncInfo, { space: repo.project._id, key })
-      const external = info?.external as GitlabMergeRequestInfo | undefined
-      if (
-        info !== undefined &&
-        info.deleted !== true &&
-        external !== undefined &&
-        mergeRequestSyncState(external.state) === 'opened'
-      ) {
+    for (const info of infos) {
+      const external = info.external as GitlabMergeRequestInfo | undefined
+      if (info.deleted !== true && external !== undefined && mergeRequestSyncState(external.state) === 'opened') {
         iids.push(info.gitlabIid)
       }
     }
@@ -839,12 +911,7 @@ export class GitlabWorker implements SyncProvider {
     for (const repository of linked) {
       if (repository.gitlabProject === null || this.hooksChecked.has(repository._id)) continue
       try {
-        const hook = await api.ensureProjectHook(
-          repository.projectId,
-          hookUrl(hooks.baseUrl, target),
-          hookSecret(hooks.master, target)
-        )
-        if (hook.id !== repository.hookId) await this.client.update(repository, { hookId: hook.id })
+        await ensureRepositoryHook(this.client, api, repository, hooks, target)
         this.hooksChecked.add(repository._id)
       } catch (err: unknown) {
         // Tried again at the next health run; managing hooks needs Maintainer access
@@ -876,7 +943,7 @@ export class GitlabWorker implements SyncProvider {
         space: { $in: projects },
         repository: { $in: [null, ...repositories] }
       },
-      { limit: BATCH }
+      { limit: SYNC_BATCH_SIZE }
     )
     if (docs.length === 0) return false
     // A parent must exist on both sides before its children (threads before their comments)
@@ -966,7 +1033,17 @@ export class GitlabWorker implements SyncProvider {
       await this.derived.update(info, await this.withoutStaleExternal(info, update))
       await this.showError(existing, update.error)
     } catch (err: unknown) {
-      ctx.error('gitlab sync failed', { _id: info._id, objectClass: info.objectClass, error: errorMessage(err) })
+      // Closing ended the sync (a 429 wait): the doc stays pending and the next worker resumes it
+      if (this.closed.signal.aborted) {
+        ctx.info('gitlab sync stopped by close', { _id: info._id, objectClass: info.objectClass })
+        return
+      }
+      ctx.error('gitlab sync failed', {
+        _id: info._id,
+        objectClass: info.objectClass,
+        error: errorMessage(err),
+        detail: err instanceof GitlabApiError ? err.detail : undefined
+      })
       await this.derived.update(info, {
         needSync: GITLAB_SYNC_VERSION,
         error: errorMessage(err),

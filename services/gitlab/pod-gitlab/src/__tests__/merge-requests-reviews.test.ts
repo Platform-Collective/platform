@@ -9,6 +9,7 @@ import { MergeRequestSyncManager } from '../sync/merge-requests'
 import { GITLAB_SYNC_VERSION } from '../sync/versions'
 import { HOST, PROJECT_ID, employee, gitlabMergeRequest, gitlabUser, seedRepository } from './helpers/fixtures'
 import { createMemoryClient, type MemoryClient } from './helpers/memory'
+import { docOf, runSync, syncDocOf } from './helpers/sync'
 import { asApi, createTestProvider, ctx, fakeApi, type FakeApi } from './helpers/provider'
 
 const KEY_3 = mergeRequestKey(HOST, PROJECT_ID, 3)
@@ -33,27 +34,14 @@ function setup (): Env {
   return { memory, mergeRequests: new MergeRequestSyncManager(provider), api, repo }
 }
 
-const syncOf = (memory: MemoryClient, id: string): any =>
-  memory.docs.find((d) => d._id === id && d._class === gitlab.class.DocSyncInfo)
-const mrOf = (memory: MemoryClient, id: string): any =>
-  memory.docs.find((d) => d._id === id && d._class === gitlab.class.GitlabMergeRequest)
 const reviews = (memory: MemoryClient): any[] => memory.docs.filter((d) => d._class === gitlab.class.GitlabReview)
 const todos = (memory: MemoryClient): any[] => memory.docs.filter((d) => d._class === time.class.ProjectToDo)
 const reviewer = (id: number, state: string): any => ({ user: gitlabUser(id), state })
 
 let updatedAt = Date.parse('2026-01-02T00:00:00.000Z')
 
-async function syncDoc (env: Env, id: string): Promise<void> {
-  const info = syncOf(env.memory, id)
-  const existing = mrOf(env.memory, id)
-  const update = await env.mergeRequests.sync(
-    ctx,
-    existing === undefined ? undefined : { ...existing },
-    { ...info },
-    undefined
-  )
-  await env.memory.update(info, update)
-}
+const syncDoc = async (env: Env, id: string): Promise<any> =>
+  await runSync(env.mergeRequests, env.memory, id, gitlab.class.GitlabMergeRequest)
 
 async function imported (env: Env, overrides: any = {}): Promise<string> {
   await env.mergeRequests.receive(ctx, env.repo, gitlabMergeRequest(3, overrides))
@@ -98,8 +86,8 @@ describe('MergeRequestSyncManager: reviews', () => {
     const [message] = reviews(env.memory)
     env.memory.docs.splice(env.memory.docs.indexOf(message), 1)
     // The record of the failed sync was never stored
-    delete syncOf(env.memory, id).reviews
-    syncOf(env.memory, id).needSync = ''
+    delete syncDocOf(env.memory, id).reviews
+    syncDocOf(env.memory, id).needSync = ''
     await syncDoc(env, id)
     expect(reviews(env.memory)).toEqual([
       expect.objectContaining({ _id: message._id, state: 'approved', modifiedBy: 'sid-8' })
@@ -122,8 +110,8 @@ describe('MergeRequestSyncManager: reviews', () => {
         modifiedOn: Date.parse('2026-01-01T12:00:00.000Z')
       })
     ])
-    expect(mrOf(env.memory, id).approvedBy).toEqual(['person-8'])
-    expect(syncOf(env.memory, id).reviews).toEqual({ 8: { user: gitlabUser(8), state: 'approved' } })
+    expect(docOf(env.memory, id, gitlab.class.GitlabMergeRequest).approvedBy).toEqual(['person-8'])
+    expect(syncDocOf(env.memory, id).reviews).toEqual({ 8: { user: gitlabUser(8), state: 'approved' } })
   })
 
   it('gives each review message a done sync doc under the merge request, created before the message', async () => {
@@ -133,7 +121,7 @@ describe('MergeRequestSyncManager: reviews', () => {
     })
     const id = await imported(env)
     const review = reviews(env.memory)[0]
-    const info = syncOf(env.memory, review._id)
+    const info = syncDocOf(env.memory, review._id)
     expect(info).toMatchObject({
       key: `${KEY_3}/reviews/8/${Date.parse('2026-01-01T12:00:00.000Z')}`,
       parent: KEY_3,
@@ -157,7 +145,7 @@ describe('MergeRequestSyncManager: reviews', () => {
     env.api.listMergeRequestReviewers.mockResolvedValue([reviewer(8, 'requested_changes')])
     await gitlabChange(env, id, { reviewers: [gitlabUser(8)] })
     expect(reviews(env.memory).map((it) => it.state)).toEqual(['approved', 'unapproved', 'requested_changes'])
-    expect(mrOf(env.memory, id).approvedBy).toEqual([])
+    expect(docOf(env.memory, id, gitlab.class.GitlabMergeRequest).approvedBy).toEqual([])
   })
 
   it('keeps two changes of one reviewer seen within the same millisecond apart', async () => {
@@ -200,6 +188,6 @@ describe('MergeRequestSyncManager: reviews', () => {
     const id = await imported(env, { reviewers: [gitlabUser(8)] })
     expect(reviews(env.memory)).toEqual([])
     expect(todos(env.memory)).toEqual([])
-    expect(syncOf(env.memory, id).reviews).toBeUndefined()
+    expect(syncDocOf(env.memory, id).reviews).toBeUndefined()
   })
 })

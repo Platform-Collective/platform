@@ -3,9 +3,11 @@ import {
   absoluteUploadPathOf,
   hasHulyImages,
   inboundImagePaths,
+  linkedImageUrls,
   outboundImages,
   rewriteInbound,
   rewriteOutbound,
+  sameImages,
   uploadName,
   uploadPathOf,
   type UploadTarget
@@ -223,5 +225,39 @@ describe('uploadName', () => {
     ['my\\_shot', 'image/png', 'my_shot.png']
   ])('%p as %p is %p', (alt, type, expected) => {
     expect(uploadName(alt, type)).toBe(expected)
+  })
+})
+
+describe('linkedImageUrls', () => {
+  const absolute = `https://gitlab.example.com/-/project/42${PATH}`
+
+  it('lists the images left on GitLab, marked links and plain images, without fragments and once each', () => {
+    const markdown = [
+      `[shot](${absolute}#gitlab-image=width%3D300)`,
+      `![other](https://gitlab.example.com/group/proj/uploads/${S}/b.png "title")`,
+      `[shot again](${absolute}#gitlab-image)`
+    ].join('\n')
+    expect(linkedImageUrls(markdown, target)).toEqual([
+      absolute,
+      `https://gitlab.example.com/group/proj/uploads/${S}/b.png`
+    ])
+  })
+
+  it('skips copied images, plain file links, other projects and code', () => {
+    const markdown = [
+      `![copied](${IMAGE_URL}blob-1)`,
+      `[report.pdf](https://gitlab.example.com/-/project/42/uploads/${S}/report.pdf)`,
+      `![elsewhere](https://gitlab.example.com/-/project/7${PATH})`,
+      '```',
+      `![code](${absolute})`,
+      '```'
+    ].join('\n')
+    expect(linkedImageUrls(markdown, target)).toEqual([])
+  })
+
+  it('compares image lists in order', () => {
+    expect(sameImages(undefined, [])).toBe(true)
+    expect(sameImages(['a', 'b'], ['a', 'b'])).toBe(true)
+    expect(sameImages(['a', 'b'], ['b', 'a'])).toBe(false)
   })
 })

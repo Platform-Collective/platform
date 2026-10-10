@@ -18,6 +18,7 @@ import {
   setImageMode
 } from './helpers/fixtures'
 import { createMemoryClient, type MemoryClient } from './helpers/memory'
+import { docOf, syncDocOf } from './helpers/sync'
 import { createTestProvider, ctx, fakeApi, fakeImages, type FakeApi, type TestProvider } from './helpers/provider'
 
 const KEY_3 = mergeRequestKey(HOST, PROJECT_ID, 3)
@@ -74,8 +75,6 @@ function setup (options: { images?: ImageStore } = {}): Env {
   return { memory, comments: new ReviewCommentSyncManager(provider), api, provider, repo }
 }
 
-const syncOf = (memory: MemoryClient, id: string): any =>
-  memory.docs.find((d) => d._id === id && d._class === gitlab.class.DocSyncInfo)
 const commentDocs = (memory: MemoryClient): any[] =>
   memory.docs.filter((d) => d._class === gitlab.class.GitlabReviewComment)
 const commentInfos = (memory: MemoryClient): any[] =>
@@ -84,7 +83,7 @@ const commentInfos = (memory: MemoryClient): any[] =>
 /** What the worker does for pending comments: sync each with its Huly doc and parent sync doc, store the result. */
 async function syncPending (env: Env): Promise<void> {
   for (const info of commentInfos(env.memory).filter((it) => it.needSync === '')) {
-    const existing = env.memory.docs.find((d) => d._id === info._id && d._class === gitlab.class.GitlabReviewComment)
+    const existing = docOf(env.memory, info._id, gitlab.class.GitlabReviewComment)
     const parent = env.memory.docs.find(
       (d) =>
         d._class === gitlab.class.DocSyncInfo &&
@@ -92,7 +91,7 @@ async function syncPending (env: Env): Promise<void> {
     )
     const update = await env.comments.sync(
       ctx,
-      existing === undefined ? undefined : ({ ...existing } as any),
+      existing === undefined ? undefined : { ...existing },
       { ...info },
       parent === undefined ? undefined : ({ ...parent } as any)
     )
@@ -182,7 +181,7 @@ describe('ReviewCommentSyncManager', () => {
     hulyReply(env)
     await syncPending(env)
     expect(env.api.createMergeRequestDiscussionNote).toHaveBeenCalledWith(PROJECT_ID, 3, 'd1', 'Looks good')
-    expect(syncOf(env.memory, 'c-1')).toMatchObject({
+    expect(syncDocOf(env.memory, 'c-1')).toMatchObject({
       key: `${THREAD}/notes/90`,
       parent: THREAD,
       repository: 'repo-1',
@@ -208,8 +207,8 @@ describe('ReviewCommentSyncManager', () => {
     hulyReply(env, 'zz')
     await syncPending(env)
     expect(env.api.createMergeRequestDiscussionNote).not.toHaveBeenCalled()
-    expect(syncOf(env.memory, 'c-1')).toMatchObject({ key: '', retryable: false })
-    expect(syncOf(env.memory, 'c-1').error).toContain('unknown')
+    expect(syncDocOf(env.memory, 'c-1')).toMatchObject({ key: '', retryable: false })
+    expect(syncDocOf(env.memory, 'c-1').error).toContain('unknown')
   })
 
   it('mirrors a GitLab edit, and pushes a Huly edit', async () => {
@@ -219,7 +218,7 @@ describe('ReviewCommentSyncManager', () => {
     const comment = commentDocs(env.memory)[0]
     expect(comment.body).toBe(env.provider.markdown.toMarkup('Edited'))
     await env.memory.update(comment, { body: env.provider.markdown.toMarkup('Mine') }, false, Date.now(), HULY_USER)
-    await env.memory.update(syncOf(env.memory, comment._id), { needSync: '' })
+    await env.memory.update(syncDocOf(env.memory, comment._id), { needSync: '' })
     await syncPending(env)
     expect(env.api.updateMergeRequestDiscussionNote).toHaveBeenCalledWith(PROJECT_ID, 3, 'd1', 51, 'Mine')
   })

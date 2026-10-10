@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 /* eslint-disable @typescript-eslint/no-explicit-any -- test doubles */
-import { MeasureMetricsContext } from '@hcengineering/core'
+import { ctx } from './helpers/provider'
+import { flushPending, waitUntil } from './helpers/sync'
 import { hookSecret } from '../hooks'
 import {
   createWebhookHandler,
@@ -23,8 +24,6 @@ function fakeRes (): { status: jest.Mock, json: jest.Mock, code?: number } {
   res.json = jest.fn(() => res)
   return res
 }
-
-const ctx = new MeasureMetricsContext('test', {})
 
 describe('verifyGitlabToken', () => {
   it('matches only the exact secret', () => {
@@ -61,7 +60,7 @@ describe('createWebhookHandler', () => {
       ctx
     )({ header: (n: string) => headers[n], body: { a: 1 } }, res as any)
     expect(res.code).toBe(200)
-    await new Promise((resolve) => setImmediate(resolve))
+    await waitUntil(() => handler.mock.calls.length > 0)
     expect(handler).toHaveBeenCalledWith({ a: 1 }, undefined)
   })
 
@@ -78,7 +77,7 @@ describe('createWebhookHandler', () => {
       ctx
     )({ header: (n: string) => headers[n], body: {} }, res as any)
     expect(res.code).toBe(200)
-    await new Promise((resolve) => setImmediate(resolve))
+    await flushPending()
   })
 
   it('dispatch reports whether any handler exists', async () => {
@@ -107,7 +106,7 @@ describe('scoped webhooks', () => {
   it("accepts the integration's derived secret and passes its target on", async () => {
     const { res, handler } = call(hookSecret('master', target as any), target)
     expect(res.code).toBe(200)
-    await new Promise((resolve) => setImmediate(resolve))
+    await waitUntil(() => handler.mock.calls.length > 0)
     expect(handler).toHaveBeenCalledWith({ a: 1 }, target)
   })
 

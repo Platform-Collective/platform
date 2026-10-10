@@ -22,27 +22,22 @@ const API_METHODS = [
   'ensureProjectHook',
   'deleteProjectHook',
   'getIssue',
-  'listIssues',
+  'listIssuePages',
   'createIssue',
   'updateIssue',
   'moveIssue',
-  'listIssueNotes',
-  'getIssueNote',
-  'createIssueNote',
-  'updateIssueNote',
-  'deleteIssueNote',
+  'listNotes',
+  'getNote',
+  'createNote',
+  'updateNote',
+  'deleteNote',
   'getMergeRequest',
-  'listMergeRequests',
+  'listMergeRequestPages',
   'updateMergeRequest',
   'listMergeRequestReviewers',
   'listMergeRequestCommits',
-  'getMergeRequestRawDiffs',
-  'listMergeRequestDiffs',
-  'listMergeRequestNotes',
-  'getMergeRequestNote',
-  'createMergeRequestNote',
-  'updateMergeRequestNote',
-  'deleteMergeRequestNote',
+  'readMergeRequestRawDiffs',
+  'listMergeRequestDiffPages',
   'getMergeRequestApprovals',
   'approveMergeRequest',
   'unapproveMergeRequest',
@@ -60,7 +55,7 @@ export type ApiMethod = (typeof API_METHODS)[number]
 export type FakeApi = Record<ApiMethod, jest.Mock>
 
 /** Every method fails loudly unless given an implementation. */
-export function fakeApi (impl: Partial<Record<ApiMethod, (...args: any[]) => Promise<unknown>>> = {}): FakeApi {
+export function fakeApi (impl: Partial<Record<ApiMethod, (...args: any[]) => unknown>> = {}): FakeApi {
   const api: Partial<FakeApi> = {}
   for (const name of API_METHODS) {
     api[name] = jest.fn(
@@ -71,6 +66,22 @@ export function fakeApi (impl: Partial<Record<ApiMethod, (...args: any[]) => Pro
     )
   }
   return api as FakeApi
+}
+
+/** A paged listing fake: every item on one page. */
+export function pagesOf<T> (items: T[]): () => AsyncGenerator<T[]> {
+  return async function * () {
+    yield items
+  }
+}
+
+/** A readMergeRequestRawDiffs fake that sends `text` as one chunk. */
+export function rawDiffs (
+  text: string
+): (projectId: number, iid: number, onText: (text: string) => boolean) => Promise<void> {
+  return async (_projectId, _iid, onText) => {
+    onText(text)
+  }
 }
 
 export function asApi (api: FakeApi): GitlabApi {

@@ -2,28 +2,32 @@
 
 import { Analytics } from '@hcengineering/analytics'
 import type { LoginInfoByToken } from '@hcengineering/account-client'
-import { systemAccountUuid, TxOperations, type MeasureContext } from '@hcengineering/core'
+import { TxOperations, type MeasureContext } from '@hcengineering/core'
 import { gitlabIntegrationKind } from '@hcengineering/gitlab'
 import { setMetadata } from '@hcengineering/platform'
 import serverClient, { getAccountClient } from '@hcengineering/server-client'
 import { buildStorageFromConfig, storageConfigFromEnv } from '@hcengineering/server-storage'
-import { decodeToken, generateToken } from '@hcengineering/server-token'
+import { decodeToken } from '@hcengineering/server-token'
 import bp from 'body-parser'
 import cors from 'cors'
 import express, { type Request, type Response } from 'express'
 import { GitlabAppStore, toOAuthConfig } from './apps'
 import type { VerifiedCaller } from './caller'
-import { createPlatformClient } from './client'
+import { ACCOUNT_CLIENT_TIMEOUT_MS, createPlatformClient, systemToken } from './client'
 import type { Config } from './config'
-import { isGitlabWriteAllowed } from './gitlab/api'
-import { IMAGE_HEADERS, imageRoute, imageStatus, type ImageRouteDeps } from './image-route'
+import { GitlabApiError, isGitlabWriteAllowed } from './gitlab/api'
+import { safeFetch } from './gitlab/fetch'
+import { cachedImageLoader, IMAGE_HEADERS, imageRoute, imageStatus, type ImageRouteDeps } from './image-route'
 import { WEBHOOK_PATH } from './hooks'
+import { HostGuard } from './host-guard'
+import { errorResponse } from './http-error'
 import {
   appConfigRoute,
   appRemoveRoute,
   disconnectAllRoute,
   repositoryDisableRoute,
   repositoryEnableRoute,
+  requiredString,
   verifyCallerToken,
   type OwnerRouteDeps,
   type RepositoryRouteDeps,
@@ -31,6 +35,7 @@ import {
   type TokenDeps
 } from './routes'
 import { GitlabService } from './service'
+import { errorMessage, toError } from './sync/errors'
 import { linkGitlabIdentity } from './sync/persons'
 import { GitlabUserManager } from './users'
 import { createWebhookHandler, scopedResolver, WebhookRouter } from './webhook'
@@ -39,12 +44,13 @@ import { GitlabPlatform, workspacesWithGitlab } from './worker/platform'
 import { workspaceWorkerState } from './workspace-state'
 import type { GitlabHookPayload } from './worker/worker'
 
-export const webhookRouter = new WebhookRouter()
+// Webhook payloads (merge requests with many changes) are the large bodies
+const MAX_BODY = '10mb'
 
 // decodeToken verifies the signature and throws on an invalid token.
 const tokenDeps: TokenDeps = {
   decode: (token) => decodeToken(token),
-  listSocialIds: async (token) => await getAccountClient(token, 30000).getSocialIds()
+  listSocialIds: async (token) => await getAccountClient(token, ACCOUNT_CLIENT_TIMEOUT_MS).getSocialIds()
 }
 
 async function verifiedCaller (body: RouteBody): Promise<VerifiedCaller> {
@@ -52,7 +58,7 @@ async function verifiedCaller (body: RouteBody): Promise<VerifiedCaller> {
 }
 
 async function loginInfo (body: RouteBody): Promise<LoginInfoByToken | undefined> {
-  return await getAccountClient(String(body.token), 30000).getLoginInfoByToken()
+  return await getAccountClient(String(body.token), ACCOUNT_CLIENT_TIMEOUT_MS).getLoginInfoByToken()
 }
 
 export async function start (ctx: MeasureContext, config: Config): Promise<() => Promise<void>> {
@@ -66,27 +72,40 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
   const storage =
     config.StorageConfig !== undefined ? buildStorageFromConfig(storageConfigFromEnv(config.StorageConfig)) : undefined
 
-  const accountClient = getAccountClient(generateToken(systemAccountUuid, undefined, { service: 'gitlab' }), 30000)
+  const accountClient = getAccountClient(systemToken(), ACCOUNT_CLIENT_TIMEOUT_MS)
   const apps = new GitlabAppStore(accountClient)
-  const users = new GitlabUserManager(accountClient, async (workspace) => {
-    const app = await apps.get(workspace)
-    return app === undefined ? undefined : toOAuthConfig(app, config.RedirectURI)
+  const hostGuard = new HostGuard({
+    allowInsecure: config.AllowInsecureHosts === true,
+    allowedHosts: config.AllowedHosts
   })
+  // Every GitLab call: allowed hosts only, no redirects, a time limit
+  const gitlabFetch = safeFetch({ guard: hostGuard, timeoutMs: config.RequestTimeoutMs })
+  const users = new GitlabUserManager(
+    accountClient,
+    async (workspace) => {
+      const app = await apps.get(workspace)
+      return app === undefined ? undefined : toOAuthConfig(app, config.RedirectURI)
+    },
+    gitlabFetch
+  )
   const platform = new GitlabPlatform({
     ctx,
     listWorkspaces: async () =>
       workspacesWithGitlab(await accountClient.listIntegrations({ kind: gitlabIntegrationKind })),
     createWorker: async (workspace) =>
-      await createWorkspaceWorker(ctx, workspace, config, { users, accounts: accountClient, storage }),
+      await createWorkspaceWorker(ctx, workspace, config, {
+        users,
+        accounts: accountClient,
+        storage,
+        fetchFn: gitlabFetch
+      }),
     workspaceState: async (workspace) => {
-      const info = await getAccountClient(
-        generateToken(systemAccountUuid, workspace, { service: 'gitlab' }),
-        30000
-      ).getWorkspaceInfo()
+      const info = await getAccountClient(systemToken(workspace), ACCOUNT_CLIENT_TIMEOUT_MS).getWorkspaceInfo()
       return workspaceWorkerState(info, config.WorkspaceInactivityDays, Date.now())
     }
   })
   platform.start()
+  const webhookRouter = new WebhookRouter()
   for (const kind of ['Issue Hook', 'Note Hook', 'Merge Request Hook'] as const) {
     webhookRouter.on(kind, async (payload, target) => {
       await platform.dispatch(kind, payload as GitlabHookPayload, target)
@@ -97,6 +116,8 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
     users,
     accounts: accountClient,
     apps,
+    hostGuard,
+    fetchFn: gitlabFetch,
     openSession: async (workspace, accountId) => {
       // Reuse the workspace worker's connection when there is one
       const lease = platform.getWorker(workspace)?.lease(accountId)
@@ -121,6 +142,8 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
       await linkGitlabIdentity(client, accountClient, personUuid, host, user, Date.now())
     },
     onWorkspaceChanged: (workspace) => {
+      // At once: a disconnected member's token must not be used for the rest of the cache period
+      platform.getWorker(workspace)?.forgetTokens()
       void platform.checkWorkspaces().then(() => {
         platform.getWorker(workspace)?.requestFullSync()
       })
@@ -129,22 +152,31 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
 
   const app = express()
   app.use(cors())
-  app.use(bp.json({ limit: '10mb' }))
+  app.use(bp.json({ limit: MAX_BODY }))
 
   const scoped = createWebhookHandler(webhookRouter, scopedResolver(config.WebhookSecret), ctx)
   app.post(`${WEBHOOK_PATH}/:workspace/:integration`, (req: Request, res: Response) => {
     scoped({ header: (name) => req.header(name), body: req.body, params: req.params }, res)
   })
 
+  const failed = (name: string, res: Response, err: unknown): void => {
+    const { status, body } = errorResponse(err)
+    Analytics.handleError(toError(err))
+    ctx.error(`/api/v1/${name} failed`, {
+      status,
+      error: body.error,
+      detail: err instanceof GitlabApiError ? err.detail : undefined
+    })
+    res.status(status).json(body)
+  }
+
   const route =
-    (name: string, fn: (body: Record<string, any>) => Promise<unknown>) =>
+    (name: string, fn: (body: RouteBody) => Promise<unknown>) =>
       (req: Request, res: Response): void => {
-        fn(req.body)
+        fn((req.body ?? {}) as RouteBody)
           .then((result) => res.status(200).json(result ?? {}))
-          .catch((err: Error) => {
-            Analytics.handleError(err)
-            ctx.error(`/api/v1/${name} failed`, { error: err.message })
-            res.status(400).json({ error: err.message })
+          .catch((err: unknown) => {
+            failed(name, res, err)
           })
       }
 
@@ -192,8 +224,8 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
     route('auth', async (body) => {
       const { workspace, account } = await verifiedCaller(body)
       await service.authorize(ctx, {
-        code: String(body.code),
-        state: String(body.state),
+        code: requiredString(body, 'code'),
+        state: requiredString(body, 'state'),
         caller: { workspace, account }
       })
     })
@@ -205,7 +237,7 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
       await service.refresh(ctx, workspace, accountId)
     })
   )
-  const repositoryDeps: RepositoryRouteDeps = { verify: verifiedCaller, service }
+  const repositoryDeps: RepositoryRouteDeps = { verify: verifiedCaller, loginInfo, service }
   app.post(
     '/api/v1/repository-enable',
     route('repository-enable', async (body) => {
@@ -228,11 +260,13 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
 
   const imageDeps: ImageRouteDeps = {
     verify: verifiedCaller,
-    image: async (workspace, actor, url) =>
-      (await platform.getWorker(workspace)?.gitlabImage(url, actor)) ?? { kind: 'unavailable' },
+    image: cachedImageLoader(
+      async (workspace, actor, url) =>
+        (await platform.getWorker(workspace)?.gitlabImage(url, actor)) ?? { kind: 'unavailable' }
+    ),
     onError: (err) => {
-      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
-      ctx.error('/api/v1/image failed', { error: err instanceof Error ? err.message : String(err) })
+      Analytics.handleError(toError(err))
+      ctx.error('/api/v1/image failed', { error: errorMessage(err) })
     }
   }
   app.post('/api/v1/image', (req: Request, res: Response) => {
@@ -247,10 +281,8 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
         }
         res.status(imageStatus(result.kind)).json({ error: result.kind })
       })
-      .catch((err: Error) => {
-        Analytics.handleError(err)
-        ctx.error('/api/v1/image failed', { error: err.message })
-        res.status(400).json({ error: err.message })
+      .catch((err: unknown) => {
+        failed('image', res, err)
       })
   })
 
@@ -258,7 +290,12 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
     ctx.info('GitLab service listening', { port: config.Port })
   })
   return async () => {
-    server.close()
+    // No new requests; the ones running finish (bounded by the shutdown timeout in index.ts)
+    await new Promise<void>((resolve) => {
+      server.close(() => {
+        resolve()
+      })
+    })
     await platform.close()
     await storage?.close()
   }

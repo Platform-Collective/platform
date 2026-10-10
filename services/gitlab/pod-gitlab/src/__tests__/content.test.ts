@@ -270,3 +270,30 @@ describe('ContentConverter: image mode', () => {
     expect(await env.content.toMarkup(env.repo, gitlabText)).toBe(markdown.toMarkup(`![photo](${IMAGE_URL}huly-1)`))
   })
 })
+
+describe('ContentConverter: images left on GitLab', () => {
+  const absolute = `https://gitlab.example.com/-/project/42${PATH}`
+
+  it('returns the markup and the linked images in link mode', async () => {
+    const env = setup()
+    setImageMode(env.repo, 'link')
+    const result = await env.content.toMarkupWithImages(env.repo, `See ![shot](${PATH})`)
+    expect(result.images).toEqual([absolute])
+    expect(result.markup).toBe(await env.content.toMarkup(env.repo, `See ![shot](${PATH})`))
+  })
+
+  it('lists nothing for copied images, or for an empty description', async () => {
+    const env = setup()
+    expect((await env.content.toMarkupWithImages(env.repo, `See ![shot](${PATH})`)).images).toEqual([])
+    expect(await env.content.toMarkupWithImages(env.repo, null)).toEqual({ markup: '', images: [] })
+  })
+
+  it('reads the linked images of converted markdown without downloading', async () => {
+    const env = setup()
+    expect(await env.content.linkedImages(env.repo, `![shot](${PATH})`)).toEqual([absolute])
+    await env.content.toMarkup(env.repo, `![shot](${PATH})`)
+    expect(await env.content.linkedImages(env.repo, `![shot](${PATH})`)).toEqual([])
+    expect(await env.content.linkedImages(env.repo, null)).toEqual([])
+    expect(env.api.downloadUpload).toHaveBeenCalledTimes(1)
+  })
+})

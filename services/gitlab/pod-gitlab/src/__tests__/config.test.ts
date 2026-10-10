@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import { loadConfig, redirectUriFor, trimSlash } from '../config'
+import { loadConfig, parseAllowedHosts, redirectUriFor, trimSlash } from '../config'
 
 const base = {
   ACCOUNTS_URL: 'http://account:3000',
@@ -11,6 +11,14 @@ const base = {
 }
 
 describe('loadConfig', () => {
+  it('reads the GitLab request timeout (default 30 s)', () => {
+    expect(loadConfig(base).RequestTimeoutMs).toBe(30000)
+    expect(loadConfig({ ...base, GITLAB_REQUEST_TIMEOUT_MS: '5000' }).RequestTimeoutMs).toBe(5000)
+    expect(() => loadConfig({ ...base, GITLAB_REQUEST_TIMEOUT_MS: '0' })).toThrow(
+      'GITLAB_REQUEST_TIMEOUT_MS must be a positive number'
+    )
+  })
+
   it('reads the workspace inactivity interval in days (default 3)', () => {
     expect(loadConfig(base).WorkspaceInactivityDays).toBe(3)
     expect(loadConfig({ ...base, WORKSPACE_INACTIVITY_INTERVAL: '0' }).WorkspaceInactivityDays).toBe(0)
@@ -33,6 +41,16 @@ describe('loadConfig', () => {
     expect(loadConfig({ ...base, GITLAB_ALLOW_INSECURE_HOSTS: 'false' }).AllowInsecureHosts).toBe(false)
     expect(loadConfig({ ...base, GITLAB_ALLOW_INSECURE_HOSTS: 'yes' }).AllowInsecureHosts).toBe(false)
     expect(loadConfig({ ...base, GITLAB_ALLOW_INSECURE_HOSTS: 'true' }).AllowInsecureHosts).toBe(true)
+  })
+
+  it('reads the allowed GitLab hosts as lower-case host names', () => {
+    expect(loadConfig(base).AllowedHosts).toEqual([])
+    expect(
+      loadConfig({ ...base, GITLAB_ALLOWED_HOSTS: ' Git.Corp.Example , https://gitlab.com/ ,' }).AllowedHosts
+    ).toEqual(['git.corp.example', 'gitlab.com'])
+    expect(() => loadConfig({ ...base, GITLAB_ALLOWED_HOSTS: 'http://' })).toThrow(
+      'GITLAB_ALLOWED_HOSTS has an invalid host'
+    )
   })
 
   it('reads the collaborator url', () => {
@@ -95,5 +113,17 @@ describe('redirectUriFor', () => {
     'https://user:pw@huly.example'
   ])('falls back to the configured redirect for %p', (origin) => {
     expect(redirectUriFor(origin, 'http://front/gitlab')).toBe('http://front/gitlab')
+  })
+})
+
+describe('parseAllowedHosts', () => {
+  it('trims and lower-cases a comma list, reducing URLs to host names', () => {
+    expect(parseAllowedHosts(' GitLab.Example.com , b.example.com ')).toEqual(['gitlab.example.com', 'b.example.com'])
+    expect(parseAllowedHosts('https://Git.Example.com:8443/path')).toEqual(['git.example.com'])
+  })
+
+  it('is empty for an empty or missing value', () => {
+    expect(parseAllowedHosts('')).toEqual([])
+    expect(parseAllowedHosts(undefined)).toEqual([])
   })
 })

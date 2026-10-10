@@ -3,8 +3,7 @@
 import type { Ref, Status, StatusCategory } from '@hcengineering/core'
 import type { GitlabMergeRequestState } from '@hcengineering/gitlab'
 import task from '@hcengineering/task'
-
-export type GitlabIssueState = 'opened' | 'closed'
+import type { GitlabIssueState } from '../gitlab/types'
 
 const OPEN: Array<Ref<StatusCategory>> = [
   task.statusCategory.UnStarted,

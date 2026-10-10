@@ -33,21 +33,83 @@ const defaultSleep: SleepFn = async (ms) => {
   await new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function retryDelayMs (header: string | null): number {
-  const seconds = Number(header)
-  return header !== null && header !== '' && Number.isFinite(seconds) && seconds >= 0
-    ? Math.min(seconds, 60) * 1000
-    : 1000
+/** A SleepFn that ends early, rejecting with the signal's reason, once `signal` aborts (a worker that closes). */
+export function abortableSleep (signal: AbortSignal): SleepFn {
+  return async (ms) => {
+    signal.throwIfAborted()
+    await new Promise<void>((resolve, reject) => {
+      const onAbort = (): void => {
+        clearTimeout(timer)
+        reject(signal.reason)
+      }
+      const timer = setTimeout(() => {
+        signal.removeEventListener('abort', onAbort)
+        resolve()
+      }, ms)
+      signal.addEventListener('abort', onAbort, { once: true })
+    })
+  }
+}
+
+const MAX_RETRY_DELAY_MS = 60 * 1000
+const DEFAULT_RETRY_DELAY_MS = 1000
+const PAGE_SIZE = 100
+
+/** How long to wait after a 429: Retry-After seconds, else until RateLimit-Reset, else a second. */
+export function retryDelayMs (headers: Headers, nowMs: number): number {
+  const retryAfter = headers.get('retry-after')
+  const seconds = Number(retryAfter)
+  if (retryAfter !== null && retryAfter !== '' && Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(seconds * 1000, MAX_RETRY_DELAY_MS)
+  }
+  const resetAt = resetAtMs(headers, nowMs)
+  if (resetAt !== undefined) return Math.min(Math.max(resetAt - nowMs, 0), MAX_RETRY_DELAY_MS)
+  return DEFAULT_RETRY_DELAY_MS
+}
+
+// Below this a RateLimit-Reset is seconds from now (the IETF draft's form), not epoch seconds (GitLab's)
+const MIN_EPOCH_SECONDS = 1e9
+
+/** When the rate limit resets, in epoch ms: RateLimit-Reset as epoch seconds, or as seconds from now when small. */
+function resetAtMs (headers: Headers, nowMs: number): number | undefined {
+  const reset = Number(headers.get('ratelimit-reset'))
+  if (headers.get('ratelimit-reset') === null || !Number.isFinite(reset) || reset <= 0) return undefined
+  return reset < MIN_EPOCH_SECONDS ? nowMs + reset * 1000 : reset * 1000
 }
 
 export class GitlabApiError extends Error {
   constructor (
     readonly status: number,
-    message: string
+    message: string,
+    // Raw response body (cut to MAX_ERROR_BODY), for logs only: never sent to a browser
+    readonly detail?: string,
+    // Epoch ms when GitLab's rate limit resets (429)
+    readonly retryAt?: number
   ) {
     super(message)
     this.name = 'GitlabApiError'
   }
+}
+
+/** GitLab answered 404: deleted, never existed, or not visible to the token. */
+export function isNotFound (err: unknown): boolean {
+  return err instanceof GitlabApiError && err.status === 404
+}
+
+export const MAX_ERROR_SUMMARY = 200
+
+/** GitLab's own error text from a JSON body ({ message } or { error }); any other body stays out of messages. */
+export function gitlabErrorSummary (body: string): string | undefined {
+  let json: unknown
+  try {
+    json = JSON.parse(body)
+  } catch {
+    return undefined
+  }
+  if (json === null || typeof json !== 'object') return undefined
+  const value = (json as Record<string, unknown>).message ?? (json as Record<string, unknown>).error
+  const text = typeof value === 'string' ? value : value !== undefined && value !== null ? JSON.stringify(value) : ''
+  return text === '' ? undefined : text.slice(0, MAX_ERROR_SUMMARY)
 }
 
 /** GITLAB_READONLY=true: nothing is written to GitLab except the project hooks. Read on every call, like GitHub. */
@@ -119,11 +181,13 @@ export class GitlabApi {
   constructor (
     private readonly host: string,
     private readonly token: string,
-    private readonly fetchFn: FetchFn = fetch,
-    private readonly sleep: SleepFn = defaultSleep
+    private readonly fetchFn: FetchFn,
+    private readonly sleep: SleepFn = defaultSleep,
+    private readonly now: () => number = Date.now
   ) {}
 
-  private async send (method: string, path: string, body?: unknown): Promise<Response> {
+  // followRedirects: upload downloads only (see safeFetch); any other redirect is an error
+  private async send (method: string, path: string, body?: unknown, followRedirects = false): Promise<Response> {
     if (method !== 'GET' && !isHookPath(path) && !isGitlabWriteAllowed()) {
       throw new GitlabReadonlyError(method, path)
     }
@@ -137,15 +201,22 @@ export class GitlabApi {
       const res = await this.fetchFn(`${this.host}/api/v4${path}`, {
         method,
         headers,
-        body: body === undefined ? undefined : form ? body : JSON.stringify(body)
+        body: body === undefined ? undefined : form ? body : JSON.stringify(body),
+        ...(followRedirects ? { redirect: 'follow' as const } : {})
       })
       if (res.status === 429 && attempt < MAX_RETRIES) {
-        await this.sleep(retryDelayMs(res.headers.get('retry-after')))
+        await this.sleep(retryDelayMs(res.headers, this.now()))
         continue
       }
       if (!res.ok) {
-        const text = (await res.text()).slice(0, MAX_ERROR_BODY)
-        throw new GitlabApiError(res.status, `GitLab ${method} ${path} failed: ${res.status} ${text}`)
+        const body = (await res.text()).slice(0, MAX_ERROR_BODY)
+        const summary = gitlabErrorSummary(body)
+        throw new GitlabApiError(
+          res.status,
+          `GitLab ${method} ${path} failed: ${res.status}${summary !== undefined ? ` ${summary}` : ''}`,
+          body,
+          res.status === 429 ? resetAtMs(res.headers, this.now()) : undefined
+        )
       }
       return res
     }
@@ -154,7 +225,17 @@ export class GitlabApi {
   private async request<T>(method: string, path: string, body?: unknown): Promise<{ data: T, headers: Headers }> {
     const res = await this.send(method, path, body)
     const raw = await res.text()
-    const data = (raw === '' ? undefined : JSON.parse(raw)) as T
+    let data: T
+    try {
+      data = (raw === '' ? undefined : JSON.parse(raw)) as T
+    } catch {
+      // The parser's message quotes the body: keep it for logs only
+      throw new GitlabApiError(
+        res.status,
+        `GitLab ${method} ${path} returned an invalid JSON response`,
+        raw.slice(0, MAX_ERROR_BODY)
+      )
+    }
     return { data, headers: res.headers }
   }
 
@@ -162,18 +243,23 @@ export class GitlabApi {
     return (await this.request<GitlabUser>('GET', '/user')).data
   }
 
-  private async paginate<T>(path: string): Promise<T[]> {
-    const result: T[] = []
+  /** One page of a listing at a time; a caller that stops early stops the paging. */
+  private async * pages<T>(path: string): AsyncGenerator<T[]> {
     const sep = path.includes('?') ? '&' : '?'
     let page: string | null = '1'
     while (page !== null && page !== '') {
       const resp: { data: T[], headers: Headers } = await this.request<T[]>(
         'GET',
-        `${path}${sep}per_page=100&page=${page}`
+        `${path}${sep}per_page=${PAGE_SIZE}&page=${page}`
       )
-      result.push(...resp.data)
+      yield resp.data
       page = resp.headers.get('x-next-page')
     }
+  }
+
+  private async paginate<T>(path: string): Promise<T[]> {
+    const result: T[] = []
+    for await (const page of this.pages<T>(path)) result.push(...page)
     return result
   }
 
@@ -207,7 +293,13 @@ export class GitlabApi {
     if (['.', '..'].includes(filename) || ['.', '..'].includes(name)) {
       throw new Error(`Invalid upload file name: ${filename}`)
     }
-    const res = await this.send('GET', `/projects/${projectId}/uploads/${secret}/${encodeURIComponent(name)}`)
+    // GitLab with object storage redirects to the object store
+    const res = await this.send(
+      'GET',
+      `/projects/${projectId}/uploads/${secret}/${encodeURIComponent(name)}`,
+      undefined,
+      true
+    )
     const declared = Number(res.headers.get('content-length'))
     if (declared > maxBytes) {
       await res.body?.cancel()
@@ -254,25 +346,31 @@ export class GitlabApi {
       : (await this.request<GitlabHook>('POST', `/projects/${projectId}/hooks`, payload)).data
   }
 
-  async deleteProjectHook (projectId: number, hookId: number): Promise<void> {
+  // Deleting what is already gone is done
+  private async deleteIgnoringNotFound (path: string): Promise<void> {
+    await this.ignoringNotFound(async () => await this.request<undefined>('DELETE', path))
+  }
+
+  private async ignoringNotFound (action: () => Promise<unknown>): Promise<void> {
     try {
-      await this.request<undefined>('DELETE', `/projects/${projectId}/hooks/${hookId}`)
+      await action()
     } catch (err: unknown) {
-      if (err instanceof GitlabApiError && err.status === 404) {
-        return
-      }
-      throw err
+      if (!isNotFound(err)) throw err
     }
+  }
+
+  async deleteProjectHook (projectId: number, hookId: number): Promise<void> {
+    await this.deleteIgnoringNotFound(`/projects/${projectId}/hooks/${hookId}`)
   }
 
   async getIssue (projectId: number, iid: number): Promise<GitlabIssueInfo> {
     return (await this.request<GitlabIssueInfo>('GET', `/projects/${projectId}/issues/${iid}`)).data
   }
 
-  /** Issues ordered by update time, oldest first; only those updated at or after `updatedAfter` (ISO 8601) when given. */
-  async listIssues (projectId: number, updatedAfter?: string): Promise<GitlabIssueInfo[]> {
+  /** Issues ordered by update time, oldest first, one page at a time; only those updated at or after `updatedAfter`. */
+  async * listIssuePages (projectId: number, updatedAfter?: string): AsyncGenerator<GitlabIssueInfo[]> {
     const since = updatedAfter !== undefined ? `&updated_after=${encodeURIComponent(updatedAfter)}` : ''
-    return await this.paginate<GitlabIssueInfo>(`/projects/${projectId}/issues?order_by=updated_at&sort=asc${since}`)
+    yield * this.pages<GitlabIssueInfo>(`/projects/${projectId}/issues?order_by=updated_at&sort=asc${since}`)
   }
 
   async createIssue (projectId: number, input: GitlabIssueInput): Promise<GitlabIssueInfo> {
@@ -296,31 +394,25 @@ export class GitlabApi {
     return `/projects/${projectId}/${noteable}/${iid}/notes`
   }
 
-  private async listNotes (projectId: number, noteable: GitlabNoteable, iid: number): Promise<GitlabNoteInfo[]> {
+  /** Notes of an issue or a merge request, oldest first. */
+  async listNotes (projectId: number, noteable: GitlabNoteable, iid: number): Promise<GitlabNoteInfo[]> {
     return await this.paginate<GitlabNoteInfo>(
       `${this.notesPath(projectId, noteable, iid)}?order_by=created_at&sort=asc`
     )
   }
 
-  private async getNote (
-    projectId: number,
-    noteable: GitlabNoteable,
-    iid: number,
-    noteId: number
-  ): Promise<GitlabNoteInfo> {
+  /** One note of an issue or a merge request. */
+  async getNote (projectId: number, noteable: GitlabNoteable, iid: number, noteId: number): Promise<GitlabNoteInfo> {
     return (await this.request<GitlabNoteInfo>('GET', `${this.notesPath(projectId, noteable, iid)}/${noteId}`)).data
   }
 
-  private async createNote (
-    projectId: number,
-    noteable: GitlabNoteable,
-    iid: number,
-    body: string
-  ): Promise<GitlabNoteInfo> {
+  /** Adds a note to an issue or a merge request. */
+  async createNote (projectId: number, noteable: GitlabNoteable, iid: number, body: string): Promise<GitlabNoteInfo> {
     return (await this.request<GitlabNoteInfo>('POST', this.notesPath(projectId, noteable, iid), { body })).data
   }
 
-  private async updateNote (
+  /** Edits a note of an issue or a merge request. */
+  async updateNote (
     projectId: number,
     noteable: GitlabNoteable,
     iid: number,
@@ -332,65 +424,19 @@ export class GitlabApi {
     ).data
   }
 
-  private async deleteNote (projectId: number, noteable: GitlabNoteable, iid: number, noteId: number): Promise<void> {
-    try {
-      await this.request<undefined>('DELETE', `${this.notesPath(projectId, noteable, iid)}/${noteId}`)
-    } catch (err: unknown) {
-      if (err instanceof GitlabApiError && err.status === 404) {
-        return
-      }
-      throw err
-    }
-  }
-
-  async listIssueNotes (projectId: number, iid: number): Promise<GitlabNoteInfo[]> {
-    return await this.listNotes(projectId, 'issues', iid)
-  }
-
-  async getIssueNote (projectId: number, iid: number, noteId: number): Promise<GitlabNoteInfo> {
-    return await this.getNote(projectId, 'issues', iid, noteId)
-  }
-
-  async createIssueNote (projectId: number, iid: number, body: string): Promise<GitlabNoteInfo> {
-    return await this.createNote(projectId, 'issues', iid, body)
-  }
-
-  async updateIssueNote (projectId: number, iid: number, noteId: number, body: string): Promise<GitlabNoteInfo> {
-    return await this.updateNote(projectId, 'issues', iid, noteId, body)
-  }
-
-  async deleteIssueNote (projectId: number, iid: number, noteId: number): Promise<void> {
-    await this.deleteNote(projectId, 'issues', iid, noteId)
-  }
-
-  async listMergeRequestNotes (projectId: number, iid: number): Promise<GitlabNoteInfo[]> {
-    return await this.listNotes(projectId, 'merge_requests', iid)
-  }
-
-  async getMergeRequestNote (projectId: number, iid: number, noteId: number): Promise<GitlabNoteInfo> {
-    return await this.getNote(projectId, 'merge_requests', iid, noteId)
-  }
-
-  async createMergeRequestNote (projectId: number, iid: number, body: string): Promise<GitlabNoteInfo> {
-    return await this.createNote(projectId, 'merge_requests', iid, body)
-  }
-
-  async updateMergeRequestNote (projectId: number, iid: number, noteId: number, body: string): Promise<GitlabNoteInfo> {
-    return await this.updateNote(projectId, 'merge_requests', iid, noteId, body)
-  }
-
-  async deleteMergeRequestNote (projectId: number, iid: number, noteId: number): Promise<void> {
-    await this.deleteNote(projectId, 'merge_requests', iid, noteId)
+  /** Deletes a note of an issue or a merge request; a note that is already gone is fine. */
+  async deleteNote (projectId: number, noteable: GitlabNoteable, iid: number, noteId: number): Promise<void> {
+    await this.deleteIgnoringNotFound(`${this.notesPath(projectId, noteable, iid)}/${noteId}`)
   }
 
   async getMergeRequest (projectId: number, iid: number): Promise<GitlabMergeRequestInfo> {
     return (await this.request<GitlabMergeRequestInfo>('GET', `/projects/${projectId}/merge_requests/${iid}`)).data
   }
 
-  /** Merge requests of every state, oldest update first; only those updated at or after `updatedAfter` when given. */
-  async listMergeRequests (projectId: number, updatedAfter?: string): Promise<GitlabMergeRequestInfo[]> {
+  /** Merge requests of every state, oldest update first, one page at a time. */
+  async * listMergeRequestPages (projectId: number, updatedAfter?: string): AsyncGenerator<GitlabMergeRequestInfo[]> {
     const since = updatedAfter !== undefined ? `&updated_after=${encodeURIComponent(updatedAfter)}` : ''
-    return await this.paginate<GitlabMergeRequestInfo>(
+    yield * this.pages<GitlabMergeRequestInfo>(
       `/projects/${projectId}/merge_requests?order_by=updated_at&sort=asc&state=all${since}`
     )
   }
@@ -414,15 +460,30 @@ export class GitlabApi {
     return await this.paginate<GitlabCommitRef>(`/projects/${projectId}/merge_requests/${iid}/commits`)
   }
 
-  /** The whole diff in `git diff` format; GitLab 17.9 and later, 404 before. */
-  async getMergeRequestRawDiffs (projectId: number, iid: number): Promise<string> {
-    return await (await this.send('GET', `/projects/${projectId}/merge_requests/${iid}/raw_diffs`)).text()
+  /**
+   * The whole diff in `git diff` format (GitLab 17.9 and later, 404 before), handed over chunk by chunk; reading stops
+   * when `onText` returns false, so a huge diff is never held in memory.
+   */
+  async readMergeRequestRawDiffs (projectId: number, iid: number, onText: (text: string) => boolean): Promise<void> {
+    const res = await this.send('GET', `/projects/${projectId}/merge_requests/${iid}/raw_diffs`)
+    const reader = res.body?.getReader()
+    if (reader === undefined) return
+    const decoder = new TextDecoder()
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!onText(decoder.decode(value, { stream: true }))) {
+        await reader.cancel()
+        return
+      }
+    }
+    const rest = decoder.decode()
+    if (rest !== '') onText(rest)
   }
 
-  async listMergeRequestDiffs (projectId: number, iid: number): Promise<GitlabMergeRequestDiff[]> {
-    return await this.paginate<GitlabMergeRequestDiff>(
-      `/projects/${projectId}/merge_requests/${iid}/diffs?unidiff=true`
-    )
+  /** The per-file diffs (`/diffs?unidiff=true`), one page at a time. */
+  async * listMergeRequestDiffPages (projectId: number, iid: number): AsyncGenerator<GitlabMergeRequestDiff[]> {
+    yield * this.pages<GitlabMergeRequestDiff>(`/projects/${projectId}/merge_requests/${iid}/diffs?unidiff=true`)
   }
 
   async getMergeRequestApprovals (projectId: number, iid: number): Promise<GitlabApprovals> {
@@ -436,14 +497,9 @@ export class GitlabApi {
 
   /** Revokes the token user's approval; a 404 means there was none. */
   async unapproveMergeRequest (projectId: number, iid: number): Promise<void> {
-    try {
-      await this.request<unknown>('POST', `/projects/${projectId}/merge_requests/${iid}/unapprove`)
-    } catch (err: unknown) {
-      if (err instanceof GitlabApiError && err.status === 404) {
-        return
-      }
-      throw err
-    }
+    await this.ignoringNotFound(
+      async () => await this.request<unknown>('POST', `/projects/${projectId}/merge_requests/${iid}/unapprove`)
+    )
   }
 
   private discussionsPath (projectId: number, iid: number): string {
@@ -490,17 +546,9 @@ export class GitlabApi {
     discussionId: string,
     noteId: number
   ): Promise<void> {
-    try {
-      await this.request<undefined>(
-        'DELETE',
-        `${this.discussionsPath(projectId, iid)}/${encodeURIComponent(discussionId)}/notes/${noteId}`
-      )
-    } catch (err: unknown) {
-      if (err instanceof GitlabApiError && err.status === 404) {
-        return
-      }
-      throw err
-    }
+    await this.deleteIgnoringNotFound(
+      `${this.discussionsPath(projectId, iid)}/${encodeURIComponent(discussionId)}/notes/${noteId}`
+    )
   }
 
   async resolveMergeRequestDiscussion (

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { GITLAB_IMAGE_FRAGMENT } from '@hcengineering/gitlab'
+// The fragment that marks a link in Huly as a GitLab image; GitLab ignores fragments, so the link still opens the image
+const GITLAB_IMAGE_FRAGMENT = 'gitlab-image'
 
 /** Where one GitLab project's uploads live. */
 export interface UploadTarget {
@@ -286,4 +287,35 @@ export function uploadName (alt: string | undefined, contentType: string): strin
   const extension = EXTENSIONS[contentType]
   if (base === '') return extension !== undefined ? `image.${extension}` : 'image'
   return extension === undefined || /\.[A-Za-z0-9]{1,5}$/.test(base) ? base : `${base}.${extension}`
+}
+
+// A link's fragment marks it as a GitLab image, with or without an encoded size
+function isImageFragment (fragment: string): boolean {
+  return fragment === GITLAB_IMAGE_FRAGMENT || fragment.startsWith(`${GITLAB_IMAGE_FRAGMENT}=`)
+}
+
+/**
+ * The images of this project that stay on GitLab in converted markdown (rewriteInbound output): links marked as GitLab
+ * images and images still pointing at GitLab. Absolute URLs without fragment, in order, once each.
+ */
+export function linkedImageUrls (markdown: string, target: UploadTarget): string[] {
+  const urls: string[] = []
+  outsideCode(markdown, (text) => {
+    for (const match of text.matchAll(LINK)) {
+      const url = unwrap(match[3])
+      const hash = url.indexOf('#')
+      const base = hash < 0 ? url : url.slice(0, hash)
+      if (match[1] !== '!' && !isImageFragment(hash < 0 ? '' : url.slice(hash + 1))) continue
+      if (absoluteUploadPathOf(base, target) === undefined || urls.includes(base)) continue
+      urls.push(base)
+    }
+    return text
+  })
+  return urls
+}
+
+/** Image lists are equal when they hold the same URLs in the same order; absent is empty. */
+export function sameImages (a: string[] | undefined, b: string[]): boolean {
+  const left = a ?? []
+  return left.length === b.length && left.every((it, index) => it === b[index])
 }

@@ -3,7 +3,7 @@
 import type { PersonId, WorkspaceUuid } from '@hcengineering/core'
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto'
 
-export const STATE_TTL_MS = 10 * 60 * 1000
+const STATE_TTL_MS = 10 * 60 * 1000
 
 export interface OAuthStatePayload {
   workspace: WorkspaceUuid
@@ -21,8 +21,9 @@ export interface OAuthState extends OAuthStatePayload {
   exp: number
 }
 
+// Domain-separated from other uses of SERVER_SECRET, like the hook secrets in hooks.ts
 function sign (data: string, secret: string): string {
-  return createHmac('sha256', secret).update(data).digest('base64url')
+  return createHmac('sha256', secret).update(`gitlab-oauth-state:v1:${data}`).digest('base64url')
 }
 
 export function signState (payload: OAuthStatePayload, secret: string, nowMs: number): string {

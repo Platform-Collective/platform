@@ -20,6 +20,10 @@ export interface Config {
 
   // Dev only: accept plain-http GitLab hosts (localhost, 127.0.0.1, *.local). Default false.
   AllowInsecureHosts?: boolean
+  // GITLAB_ALLOWED_HOSTS: when not empty, the only GitLab host names the pod calls (private addresses included)
+  AllowedHosts: string[]
+  // GITLAB_REQUEST_TIMEOUT_MS: limit of one GitLab call, body included
+  RequestTimeoutMs: number
 
   // Days without a visit after which a workspace's worker stops; 0 = never
   WorkspaceInactivityDays: number
@@ -63,6 +67,21 @@ export function redirectUriFor (origin: string | undefined, fallback: string): s
   return fallback
 }
 
+/** GITLAB_ALLOWED_HOSTS: comma-separated host names or URLs, as lower-case host names. */
+export function parseAllowedHosts (value: string | undefined): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((it) => it.trim().toLowerCase())
+    .filter((it) => it !== '')
+    .map((it) => {
+      try {
+        return new URL(it.includes('://') ? it : `https://${it}`).hostname
+      } catch {
+        throw new Error(`GITLAB_ALLOWED_HOSTS has an invalid host: ${it}`)
+      }
+    })
+}
+
 export function loadConfig (env: Record<string, string | undefined>): Config {
   const missing = REQUIRED_ENV.filter((key) => env[key] === undefined || env[key] === '')
   if (missing.length > 0) {
@@ -76,6 +95,10 @@ export function loadConfig (env: Record<string, string | undefined>): Config {
   const inactivityDays = parseInt(env.WORKSPACE_INACTIVITY_INTERVAL ?? '3')
   if (Number.isNaN(inactivityDays)) {
     throw new Error('WORKSPACE_INACTIVITY_INTERVAL must be a number')
+  }
+  const requestTimeoutMs = parseInt(env.GITLAB_REQUEST_TIMEOUT_MS ?? '30000')
+  if (Number.isNaN(requestTimeoutMs) || requestTimeoutMs <= 0) {
+    throw new Error('GITLAB_REQUEST_TIMEOUT_MS must be a positive number')
   }
   return {
     AccountsURL: env.ACCOUNTS_URL as string,
@@ -92,6 +115,8 @@ export function loadConfig (env: Record<string, string | undefined>): Config {
     CollaboratorURL: env.COLLABORATOR_URL as string,
     StorageConfig: env.STORAGE_CONFIG !== undefined && env.STORAGE_CONFIG !== '' ? env.STORAGE_CONFIG : undefined,
     AllowInsecureHosts: env.GITLAB_ALLOW_INSECURE_HOSTS === 'true',
+    AllowedHosts: parseAllowedHosts(env.GITLAB_ALLOWED_HOSTS),
+    RequestTimeoutMs: requestTimeoutMs,
     WorkspaceInactivityDays: inactivityDays
   }
 }

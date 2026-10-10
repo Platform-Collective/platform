@@ -24,6 +24,13 @@ export function splitAttachmentBlock (body: string): { text: string, block: stri
   return { text: body.slice(0, at).trimEnd(), block: body.slice(at).trimEnd() }
 }
 
+/** A note body whose attachment block this Huly did not write: its links stay as ordinary text, without the marker. */
+export function inlineAttachmentBlock (body: string): string {
+  const { text, block } = splitAttachmentBlock(body)
+  if (block === '') return body
+  return withAttachments(text, block.slice(ATTACHMENT_MARKER.length).trim())
+}
+
 export function withAttachments (text: string, block: string): string {
   if (block === '') return text
   return text.trim() === '' ? block : `${text.trimEnd()}\n\n${block}`

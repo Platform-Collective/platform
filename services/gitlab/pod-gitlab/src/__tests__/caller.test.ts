@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: EPL-2.0
+import type { LoginInfoByToken } from '@hcengineering/account-client'
 import { AccountRole, type PersonId, type WorkspaceUuid } from '@hcengineering/core'
-import { assertOwner, assertWorkspace, requireTokenWorkspace, resolveCaller, roleInWorkspace } from '../caller'
+import {
+  assertOwner,
+  assertWorkspace,
+  hasWorkspaceRole,
+  requireTokenWorkspace,
+  resolveCaller,
+  roleInWorkspace
+} from '../caller'
+import { HttpError } from '../http-error'
 
 const ws = 'ws1' as WorkspaceUuid
 const decoded = { workspace: ws, account: 'acc1' }
@@ -11,6 +20,14 @@ function loginInfo (role: AccountRole | undefined, workspace: string = ws): any 
 }
 
 describe('resolveCaller', () => {
+  it('answers a missing accountId with a 400 HttpError', async () => {
+    const err = await resolveCaller({ workspace: 'ws1' as WorkspaceUuid, account: 'acc' }, '', async () => []).catch(
+      (e: unknown) => e
+    )
+    expect(err).toBeInstanceOf(HttpError)
+    expect((err as HttpError).status).toBe(400)
+  })
+
   it('accepts a social id owned by the caller', async () => {
     const list = jest.fn(async () => owned)
     await expect(resolveCaller(decoded, 'p2', list)).resolves.toEqual({
@@ -126,5 +143,33 @@ describe('assertOwner', () => {
     const info = jest.fn(async () => loginInfo(AccountRole.Owner, ''))
     await expect(assertOwner('' as WorkspaceUuid, info)).rejects.toThrow('workspace is required')
     expect(info).not.toHaveBeenCalled()
+  })
+})
+
+function thrown (fn: () => unknown): unknown {
+  try {
+    fn()
+  } catch (err: unknown) {
+    return err
+  }
+  return undefined
+}
+
+describe('error statuses', () => {
+  it('uses 401 for a workspace-less token and 403 for a foreign social id or a low role', async () => {
+    expect(thrown(() => requireTokenWorkspace({}))).toMatchObject({ status: 401 })
+    await expect(
+      resolveCaller({ workspace: 'ws1' as WorkspaceUuid, account: 'acc1' }, 'p3', async () => [
+        { _id: 'p1' as PersonId }
+      ])
+    ).rejects.toMatchObject({ status: 403 })
+    await expect(assertOwner('ws1' as WorkspaceUuid, async () => undefined)).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('hasWorkspaceRole counts the role of the same workspace only', () => {
+    const info = { account: 'a', workspace: 'ws1', role: AccountRole.Maintainer } as unknown as LoginInfoByToken
+    expect(hasWorkspaceRole(info, 'ws1' as WorkspaceUuid, AccountRole.Maintainer)).toBe(true)
+    expect(hasWorkspaceRole(info, 'ws1' as WorkspaceUuid, AccountRole.Owner)).toBe(false)
+    expect(hasWorkspaceRole(info, 'ws2' as WorkspaceUuid, AccountRole.User)).toBe(false)
   })
 })

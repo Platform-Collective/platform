@@ -15,15 +15,25 @@ import gitlab, { type DocSyncInfo } from '@hcengineering/gitlab'
 import { areEqualMarkups } from '@hcengineering/text'
 import type { GitlabApi } from '../gitlab/api'
 import type { GitlabNoteable, GitlabNoteInfo } from '../gitlab/types'
-import { attachmentBlock, attachmentLink, splitAttachmentBlock, withAttachments } from './attachments'
-import { errorMessage, isPermanentError } from './errors'
+import {
+  attachmentBlock,
+  attachmentLink,
+  inlineAttachmentBlock,
+  splitAttachmentBlock,
+  withAttachments
+} from './attachments'
+import { removeAttached, storeExternalNote } from './docs'
+import { EXPIRED_ERROR, errorMessage, isPermanentError } from './errors'
 import { noteKey, objectKey } from './keys'
 import { compareMarkdown, mergeFields } from './merge'
 import type { DocSyncManager, RepositoryContext, SyncProvider } from './types'
-import { GITLAB_SYNC_VERSION } from './versions'
+import { GITLAB_SYNC_VERSION, SYNC_DONE } from './versions'
 
 export interface NoteSnapshot {
   message: Markup
+  // The note's attachment block was written by another Huly (or before a reset): it is kept as comment text
+  // until this Huly rewrites the note
+  attachmentsInText?: true
 }
 
 /** What note syncing needs from an issue or merge request. */
@@ -31,45 +41,14 @@ export interface NoteTarget {
   iid: number
   // Issues only
   confidential?: boolean
-}
-
-interface NoteOps {
-  list: (projectId: number, iid: number) => Promise<GitlabNoteInfo[]>
-  get: (projectId: number, iid: number, noteId: number) => Promise<GitlabNoteInfo>
-  create: (projectId: number, iid: number, body: string) => Promise<GitlabNoteInfo>
-  update: (projectId: number, iid: number, noteId: number, body: string) => Promise<GitlabNoteInfo>
-  remove: (projectId: number, iid: number, noteId: number) => Promise<void>
-}
-
-function noteOps (api: GitlabApi, noteable: GitlabNoteable): NoteOps {
-  if (noteable === 'merge_requests') {
-    return {
-      list: async (projectId, iid) => await api.listMergeRequestNotes(projectId, iid),
-      get: async (projectId, iid, noteId) => await api.getMergeRequestNote(projectId, iid, noteId),
-      create: async (projectId, iid, body) => await api.createMergeRequestNote(projectId, iid, body),
-      update: async (projectId, iid, noteId, body) => await api.updateMergeRequestNote(projectId, iid, noteId, body),
-      remove: async (projectId, iid, noteId) => {
-        await api.deleteMergeRequestNote(projectId, iid, noteId)
-      }
-    }
-  }
-  return {
-    list: async (projectId, iid) => await api.listIssueNotes(projectId, iid),
-    get: async (projectId, iid, noteId) => await api.getIssueNote(projectId, iid, noteId),
-    create: async (projectId, iid, body) => await api.createIssueNote(projectId, iid, body),
-    update: async (projectId, iid, noteId, body) => await api.updateIssueNote(projectId, iid, noteId, body),
-    remove: async (projectId, iid, noteId) => {
-      await api.deleteIssueNote(projectId, iid, noteId)
-    }
-  }
+  // GitLab updated_at of the issue or merge request; with skipIfListed, its notes are listed once per version
+  updated_at?: string
 }
 
 /** Which kind of GitLab object a parent sync doc stands for. */
-export function noteableOf (parent: Pick<DocSyncInfo, 'objectClass'>): GitlabNoteable {
+function noteableOf (parent: Pick<DocSyncInfo, 'objectClass'>): GitlabNoteable {
   return parent.objectClass === gitlab.class.GitlabMergeRequest ? 'merge_requests' : 'issues'
 }
-
-const DONE: DocumentUpdate<DocSyncInfo> = { needSync: GITLAB_SYNC_VERSION }
 
 /** Notes written by people and visible to everyone who sees the issue. */
 export function isVisibleNote (note: GitlabNoteInfo): boolean {
@@ -94,33 +73,6 @@ export async function isTombstoned (
   return parent?.deleted === true
 }
 
-/**
- * Pairs an issue's notes with their copies after a GitLab issue move. GitLab copies the author and
- * created_at, so those match first; what is left is paired in order per author. Returns sync doc id → copy.
- */
-export function pairMovedNotes (
-  known: Array<{ id: string, note: GitlabNoteInfo }>,
-  moved: GitlabNoteInfo[]
-): Map<string, GitlabNoteInfo> {
-  const pairs = new Map<string, GitlabNoteInfo>()
-  const free = [...moved]
-  const take = (match: (note: GitlabNoteInfo) => boolean): GitlabNoteInfo | undefined => {
-    const index = free.findIndex(match)
-    return index < 0 ? undefined : free.splice(index, 1)[0]
-  }
-  const rest: Array<{ id: string, note: GitlabNoteInfo }> = []
-  for (const it of known) {
-    const copy = take((note) => note.author.id === it.note.author.id && note.created_at === it.note.created_at)
-    if (copy !== undefined) pairs.set(it.id, copy)
-    else rest.push(it)
-  }
-  for (const it of rest.sort((a, b) => a.note.created_at.localeCompare(b.note.created_at))) {
-    const copy = take((note) => note.author.id === it.note.author.id)
-    if (copy !== undefined) pairs.set(it.id, copy)
-  }
-  return pairs
-}
-
 export class NoteSyncManager implements DocSyncManager {
   constructor (private readonly provider: SyncProvider) {}
 
@@ -136,7 +88,7 @@ export class NoteSyncManager implements DocSyncManager {
     const parent = objectKey(repo.integration.host, repo.repository.projectId, noteable, iid)
     await this.provider.runner.exec(parent, async () => {
       if (await isTombstoned(this.provider, repo, parent)) return
-      const note = await noteOps(api, noteable).get(repo.repository.projectId, iid, noteId)
+      const note = await api.getNote(repo.repository.projectId, noteable, iid, noteId)
       await this.upsertExternal(repo, parent, note)
     })
   }
@@ -147,18 +99,24 @@ export class NoteSyncManager implements DocSyncManager {
     repo: RepositoryContext,
     api: GitlabApi,
     target: NoteTarget,
-    noteable: GitlabNoteable = 'issues'
+    noteable: GitlabNoteable = 'issues',
+    // The full sync: skip a version whose notes were already listed in full (a resumed import re-lists a few items)
+    options: { skipIfListed?: boolean } = {}
   ): Promise<void> {
     if (target.confidential === true) return
     const parent = objectKey(repo.integration.host, repo.repository.projectId, noteable, target.iid)
     await this.provider.runner.exec(parent, async () => {
       if (await isTombstoned(this.provider, repo, parent)) return
-      const notes = (await noteOps(api, noteable).list(repo.repository.projectId, target.iid)).filter(isSyncedNote)
+      const { derived } = this.provider
+      const parentInfo = await derived.findOne(gitlab.class.DocSyncInfo, { space: repo.project._id, key: parent })
+      const version = target.updated_at
+      if (options.skipIfListed === true && version !== undefined && parentInfo?.notesListed === version) return
+      const notes = (await api.listNotes(repo.repository.projectId, noteable, target.iid)).filter(isSyncedNote)
       for (const note of notes) {
         await this.upsertExternal(repo, parent, note)
       }
       const present = new Set(notes.map((it) => noteKey(parent, it.id)))
-      const known = await this.provider.derived.findAll(gitlab.class.DocSyncInfo, {
+      const known = await derived.findAll(gitlab.class.DocSyncInfo, {
         space: repo.project._id,
         parent,
         objectClass: chunter.class.ChatMessage
@@ -167,6 +125,10 @@ export class NoteSyncManager implements DocSyncManager {
         if (info.key !== '' && !present.has(info.key)) {
           await this.removeDeletedNote(ctx, info)
         }
+      }
+      // Only after a complete listing: a failure above lists this version again next time
+      if (parentInfo !== undefined && version !== undefined && parentInfo.notesListed !== version) {
+        await derived.update(parentInfo, { notesListed: version })
       }
     })
   }
@@ -177,13 +139,13 @@ export class NoteSyncManager implements DocSyncManager {
     info: DocSyncInfo,
     parent: DocSyncInfo | undefined
   ): Promise<DocumentUpdate<DocSyncInfo>> {
-    if (info.objectClass !== chunter.class.ChatMessage) return DONE
+    if (info.objectClass !== chunter.class.ChatMessage) return SYNC_DONE
     if (info.key === '') {
       return await this.createInGitlab(existing as ChatMessage | undefined, info, parent)
     }
     const repo = this.provider.repositoryContext(info.repository)
     const external = info.external as GitlabNoteInfo | undefined
-    if (repo === undefined || external === undefined || parent === undefined) return DONE
+    if (repo === undefined || external === undefined || parent === undefined) return SYNC_DONE
     if (existing === undefined) {
       return await this.createInHuly(repo, info, parent, external)
     }
@@ -200,9 +162,9 @@ export class NoteSyncManager implements DocSyncManager {
     if ((await this.parentDoc(parent)) === undefined) return true
     const api = await this.provider.integrationApi(repo.integration)
     if (api === undefined) {
-      throw new Error('GitLab authorization expired')
+      throw new Error(EXPIRED_ERROR)
     }
-    await noteOps(api, noteableOf(parent)).remove(repo.repository.projectId, parent.gitlabIid, external.id)
+    await api.deleteNote(repo.repository.projectId, noteableOf(parent), parent.gitlabIid, external.id)
     return true
   }
 
@@ -213,27 +175,7 @@ export class NoteSyncManager implements DocSyncManager {
 
   private async upsertExternal (repo: RepositoryContext, parent: string, note: GitlabNoteInfo): Promise<void> {
     if (!isSyncedNote(note)) return
-    const { derived } = this.provider
-    const key = noteKey(parent, note.id)
-    const lastModified = Date.parse(note.updated_at)
-    const info = await derived.findOne(gitlab.class.DocSyncInfo, { space: repo.project._id, key })
-    if (info === undefined) {
-      await derived.createDoc(gitlab.class.DocSyncInfo, repo.project._id, {
-        key,
-        parent,
-        objectClass: chunter.class.ChatMessage,
-        repository: repo.repository._id,
-        gitlabIid: 0,
-        external: note,
-        needSync: '',
-        lastModified
-      })
-    } else {
-      const stored = info.external as GitlabNoteInfo | undefined
-      if (stored !== undefined && Date.parse(stored.updated_at) >= lastModified) return
-      await derived.update(info, { external: note, needSync: '', lastModified, error: null })
-    }
-    this.provider.triggerSync()
+    await storeExternalNote(this.provider, repo, parent, chunter.class.ChatMessage, note)
   }
 
   private async removeDeletedNote (ctx: MeasureContext, info: DocSyncInfo): Promise<void> {
@@ -242,14 +184,7 @@ export class NoteSyncManager implements DocSyncManager {
     })
     if (message !== undefined) {
       // Written as System, so the trigger does not queue a deletion back to GitLab
-      await this.provider.client.removeCollection(
-        message._class,
-        message.space,
-        message._id,
-        message.attachedTo,
-        message.attachedToClass,
-        message.collection
-      )
+      await removeAttached(this.provider.client, message)
     }
     await this.provider.derived.remove(info)
     ctx.info('gitlab note deleted, Huly comment removed', { key: info.key })
@@ -277,19 +212,19 @@ export class NoteSyncManager implements DocSyncManager {
     parent: DocSyncInfo | undefined
   ): Promise<DocumentUpdate<DocSyncInfo>> {
     // The issue sync re-queues its comments once the GitLab issue exists
-    if (message === undefined || parent === undefined || parent.key === '') return DONE
+    if (message === undefined || parent === undefined || parent.key === '') return SYNC_DONE
     const repo = this.provider.repositoryContext(parent.repository)
-    if (repo === undefined) return DONE
+    if (repo === undefined) return SYNC_DONE
     const text = await this.provider.content.toMarkdown(repo, message.message)
     const body = withAttachments(text, await this.attachmentBlockFor(repo, message))
-    if (body.trim() === '') return DONE
+    if (body.trim() === '') return SYNC_DONE
     const api = await this.provider.apiFor(repo.integration, message.modifiedBy)
     if (api === undefined) {
-      return { ...DONE, error: 'GitLab authorization expired', retryable: true }
+      return { ...SYNC_DONE, error: EXPIRED_ERROR, retryable: true }
     }
     const parentKey = parent.key
     return await this.provider.runner.exec(parentKey, async () => {
-      const note = await noteOps(api, noteableOf(parent)).create(repo.repository.projectId, parent.gitlabIid, body)
+      const note = await api.createNote(repo.repository.projectId, noteableOf(parent), parent.gitlabIid, body)
       const update: DocumentUpdate<DocSyncInfo> = {
         key: noteKey(parentKey, note.id),
         parent: parentKey,
@@ -314,8 +249,13 @@ export class NoteSyncManager implements DocSyncManager {
   ): Promise<DocumentUpdate<DocSyncInfo>> {
     const target = await this.parentDoc(parent)
     // Created once the issue or merge request arrives: its sync re-queues its notes
-    if (target === undefined) return DONE
-    const message = await this.provider.content.toMarkup(repo, splitAttachmentBlock(external.body).text)
+    if (target === undefined) return SYNC_DONE
+    // A block in a note this Huly never had is not its attachment list: its links stay readable as text
+    const attachmentsInText = splitAttachmentBlock(external.body).block !== ''
+    const message = await this.provider.content.toMarkup(
+      repo,
+      attachmentsInText ? inlineAttachmentBlock(external.body) : external.body
+    )
     const author: PersonId = await this.provider.persons.personIdFor(repo.integration.host, external.author)
     await this.provider.client.addCollection(
       chunter.class.ChatMessage,
@@ -328,7 +268,8 @@ export class NoteSyncManager implements DocSyncManager {
       Date.parse(external.created_at),
       author
     )
-    return { ...DONE, current: { message }, error: null }
+    const current: NoteSnapshot = attachmentsInText ? { message, attachmentsInText } : { message }
+    return { ...SYNC_DONE, current, error: null }
   }
 
   private async mergeExisting (
@@ -338,9 +279,13 @@ export class NoteSyncManager implements DocSyncManager {
     parent: DocSyncInfo,
     external: GitlabNoteInfo
   ): Promise<DocumentUpdate<DocSyncInfo>> {
-    const { text, block } = splitAttachmentBlock(external.body)
+    const snapshot = info.current as NoteSnapshot | undefined
+    const attachmentsInText = snapshot?.attachmentsInText === true
+    const { text, block } = attachmentsInText
+      ? { text: inlineAttachmentBlock(external.body), block: '' }
+      : splitAttachmentBlock(external.body)
     const remote: NoteSnapshot = { message: await this.provider.content.toMarkup(repo, text) }
-    const base = (info.current as NoteSnapshot | undefined) ?? remote
+    const base: NoteSnapshot = snapshot !== undefined ? { message: snapshot.message } : remote
     const { toPlatform, toGitlab, merged } = mergeFields(base, { message: message.message }, remote, {
       message: areEqualMarkups
     })
@@ -365,15 +310,18 @@ export class NoteSyncManager implements DocSyncManager {
     }
     // GitLab refuses an empty note: a text-less comment without attachments leaves the note as it is
     if (body !== undefined && body.trim() === '') body = undefined
+    // Once this Huly rewrites the note, GitLab no longer holds the other block's marker
+    const next: NoteSnapshot = attachmentsInText && body === undefined ? { ...merged, attachmentsInText } : merged
     if (body !== undefined) {
       const api = await this.provider.apiFor(repo.integration, message.modifiedBy)
       if (api === undefined) {
-        return { ...DONE, error: 'GitLab authorization expired', retryable: true }
+        return { ...SYNC_DONE, error: EXPIRED_ERROR, retryable: true }
       }
       const sent = body
       latest = await this.provider.runner.exec(parent.key, async () => {
-        const updated = await noteOps(api, noteableOf(parent)).update(
+        const updated = await api.updateNote(
           repo.repository.projectId,
+          noteableOf(parent),
           parent.gitlabIid,
           external.id,
           sent
@@ -398,9 +346,9 @@ export class NoteSyncManager implements DocSyncManager {
     }
     if (blockError !== undefined) {
       // A Huly edit not sent yet stays pending: the snapshot advances only when nothing was owed to GitLab
-      const pending = toGitlab.message !== undefined ? {} : { current: merged }
-      return { ...DONE, ...pending, error: errorMessage(blockError), retryable: !isPermanentError(blockError) }
+      const pending = toGitlab.message !== undefined ? {} : { current: next }
+      return { ...SYNC_DONE, ...pending, error: errorMessage(blockError), retryable: !isPermanentError(blockError) }
     }
-    return { ...DONE, current: merged, external: latest, lastModified: Date.parse(latest.updated_at), error: null }
+    return { ...SYNC_DONE, current: next, external: latest, lastModified: Date.parse(latest.updated_at), error: null }
   }
 }

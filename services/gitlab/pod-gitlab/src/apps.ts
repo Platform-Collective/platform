@@ -5,6 +5,7 @@ import type { PersonId, WorkspaceUuid } from '@hcengineering/core'
 import { gitlabAppIntegrationKind } from '@hcengineering/gitlab'
 import { assertWorkspace } from './caller'
 import { trimSlash, type OAuthConfig } from './config'
+import { SyncRunner } from './sync/runner'
 
 export interface GitlabAppConfig {
   // Base URL of the GitLab instance, normalised by normalizeHost
@@ -95,7 +96,7 @@ function parseConfig (raw: string): GitlabAppConfig | undefined {
  * The secret is only ever read by the pod.
  */
 export class GitlabAppStore {
-  private readonly locks = new Map<WorkspaceUuid, Promise<void>>()
+  private readonly runner = new SyncRunner()
 
   constructor (private readonly store: AppSecretStore) {}
 
@@ -112,7 +113,7 @@ export class GitlabAppStore {
 
   async save (workspace: WorkspaceUuid, config: GitlabAppConfig): Promise<void> {
     assertWorkspace(workspace)
-    await this.serialize(workspace, async () => {
+    await this.runner.exec(workspace, async () => {
       const integrationKey = { kind: gitlabAppIntegrationKind, workspaceUuid: workspace, socialId: config.updatedBy }
       const data = { host: config.host, clientId: config.clientId }
       const integration = await this.store.getIntegration(integrationKey)
@@ -147,7 +148,7 @@ export class GitlabAppStore {
 
   async remove (workspace: WorkspaceUuid): Promise<void> {
     assertWorkspace(workspace)
-    await this.serialize(workspace, async () => {
+    await this.runner.exec(workspace, async () => {
       for (const old of await this.list(workspace)) {
         await this.deleteSecretAndIntegration(old)
       }
@@ -159,18 +160,6 @@ export class GitlabAppStore {
         await this.store.deleteIntegration(this.integrationKey(row.socialId, workspace))
       }
     })
-  }
-
-  private async serialize (workspace: WorkspaceUuid, op: () => Promise<void>): Promise<void> {
-    const previous = this.locks.get(workspace) ?? Promise.resolve()
-    const run = previous.catch(() => {}).then(op)
-    const tail = run.catch(() => {})
-    this.locks.set(workspace, tail)
-    try {
-      await run
-    } finally {
-      if (this.locks.get(workspace) === tail) this.locks.delete(workspace)
-    }
   }
 
   private integrationKey (

@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: EPL-2.0
-import { buildAuthorizeUrl, exchangeCode, GitlabOAuthError, isTokenExpired, refreshTokens } from '../gitlab/oauth'
+import {
+  buildAuthorizeUrl,
+  exchangeCode,
+  GitlabOAuthError,
+  isTokenExpired,
+  refreshTokens,
+  revokeToken
+} from '../gitlab/oauth'
 import type { FetchFn } from '../gitlab/api'
 import { signState, verifyState } from '../state'
 import { createHmac } from 'crypto'
@@ -48,6 +55,26 @@ describe('oauth', () => {
     expect(sent.get('redirect_uri')).toBe('http://front/gitlab')
   })
 
+  it('revokes a token with the application credentials', async () => {
+    const { fn, bodies } = tokenFetch(200, {})
+    await revokeToken(cfg, 'tok', fn)
+    const sent = new URLSearchParams(bodies[0])
+    expect(sent.get('token')).toBe('tok')
+    expect(sent.get('client_id')).toBe('cid')
+    expect(sent.get('client_secret')).toBe('cs')
+  })
+
+  it('reports a refused revocation', async () => {
+    const { fn } = tokenFetch(500, {})
+    await expect(revokeToken(cfg, 'tok', fn)).rejects.toBeInstanceOf(GitlabOAuthError)
+  })
+
+  it('separates the state signature from other uses of the server secret', () => {
+    const raw = signState({ workspace: 'ws' as any, account: 'a', accountId: 'p' as any }, 'secret', 1000)
+    const [data, signature] = raw.split('.')
+    expect(signature).toBe(createHmac('sha256', 'secret').update(`gitlab-oauth-state:v1:${data}`).digest('base64url'))
+  })
+
   it('refreshes with grant_type refresh_token', async () => {
     const { fn, bodies } = tokenFetch(200, {
       access_token: 'b',
@@ -72,6 +99,12 @@ describe('oauth', () => {
     await expect(exchangeCode(cfg, 'bad', fn)).rejects.toThrow(
       new GitlabOAuthError('The provided authorization grant is invalid')
     )
+  })
+
+  it('cuts a long provider description to 200 characters', async () => {
+    const { fn } = tokenFetch(400, { error: 'invalid_grant', error_description: 'z'.repeat(1000) })
+    const err = (await exchangeCode(cfg, 'bad', fn).catch((e: unknown) => e)) as Error
+    expect(err.message).toBe('z'.repeat(200))
   })
 
   it('isTokenExpired respects skew and null expiry', () => {

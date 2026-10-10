@@ -24,7 +24,7 @@ export function markdownUrls (frontUrl: string, workspace: WorkspaceUuid): Markd
   }
 }
 
-export function parseMessageMarkdown (message: string, urls: MarkdownUrls): MarkupNode {
+function parseMessageMarkdown (message: string, urls: MarkdownUrls): MarkupNode {
   const parser = new MarkdownParser({
     refUrl: urls.refUrl,
     imageUrl: urls.imageUrl,
@@ -33,7 +33,7 @@ export function parseMessageMarkdown (message: string, urls: MarkdownUrls): Mark
   return parser.parse(message)
 }
 
-export function serializeMessage (node: MarkupNode, urls: MarkdownUrls): string {
+function serializeMessage (node: MarkupNode, urls: MarkdownUrls): string {
   const state = new MarkdownState(storeNodes, storeMarks, {
     tightLists: true,
     refUrl: urls.refUrl,

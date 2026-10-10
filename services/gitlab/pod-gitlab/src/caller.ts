@@ -2,6 +2,7 @@
 
 import type { LoginInfoByToken } from '@hcengineering/account-client'
 import { AccountRole, hasAccountRole, type Account, type PersonId, type WorkspaceUuid } from '@hcengineering/core'
+import { HttpError } from './http-error'
 
 export interface VerifiedCaller {
   workspace: WorkspaceUuid
@@ -22,7 +23,7 @@ function isWorkspace (value: unknown): value is WorkspaceUuid {
  */
 export function requireTokenWorkspace (decoded: { workspace?: unknown }): WorkspaceUuid {
   if (!isWorkspace(decoded.workspace)) {
-    throw new Error('A workspace token is required')
+    throw new HttpError(401, 'A workspace token is required')
   }
   return decoded.workspace
 }
@@ -45,11 +46,11 @@ export async function resolveCaller (
 ): Promise<VerifiedCaller> {
   const workspace = requireTokenWorkspace(decoded)
   if (typeof claimed !== 'string' || claimed === '') {
-    throw new Error('accountId is required')
+    throw new HttpError(400, 'accountId is required')
   }
   const ids = await listSocialIds()
   if (!ids.some((it) => it._id === claimed)) {
-    throw new Error('accountId does not belong to the caller')
+    throw new HttpError(403, 'accountId does not belong to the caller')
   }
   return { workspace, account: decoded.account, accountId: claimed as PersonId }
 }
@@ -58,6 +59,16 @@ export async function resolveCaller (
 export function roleInWorkspace (info: LoginInfoByToken | undefined, workspace: WorkspaceUuid): AccountRole | undefined {
   if (info == null || !('role' in info) || !('workspace' in info)) return undefined
   return info.workspace === workspace ? info.role : undefined
+}
+
+/** True when the caller's role in `workspace` is `role` or higher. */
+export function hasWorkspaceRole (
+  info: LoginInfoByToken | undefined,
+  workspace: WorkspaceUuid,
+  role: AccountRole
+): boolean {
+  const actual = roleInWorkspace(info, workspace)
+  return actual !== undefined && hasAccountRole({ role: actual } as unknown as Account, role)
 }
 
 /**
@@ -69,8 +80,7 @@ export async function assertOwner (
   getLoginInfo: () => Promise<LoginInfoByToken | undefined>
 ): Promise<void> {
   assertWorkspace(workspace)
-  const role = roleInWorkspace(await getLoginInfo(), workspace)
-  if (role === undefined || !hasAccountRole({ role } as unknown as Account, AccountRole.Owner)) {
-    throw new Error('Only workspace owners can change the GitLab application')
+  if (!hasWorkspaceRole(await getLoginInfo(), workspace, AccountRole.Owner)) {
+    throw new HttpError(403, 'Only workspace owners can change the GitLab application')
   }
 }

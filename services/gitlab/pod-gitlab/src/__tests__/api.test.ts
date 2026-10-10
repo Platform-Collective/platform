@@ -1,5 +1,14 @@
 // SPDX-License-Identifier: EPL-2.0
-import { GitlabApi, GitlabApiError, GitlabReadonlyError, GitlabUploadTooLargeError, type FetchFn } from '../gitlab/api'
+import {
+  GitlabApi,
+  GitlabApiError,
+  GitlabReadonlyError,
+  GitlabUploadTooLargeError,
+  gitlabErrorSummary,
+  isNotFound,
+  uploadContentType,
+  type FetchFn
+} from '../gitlab/api'
 
 interface Call {
   url: string
@@ -45,6 +54,19 @@ describe('GitlabApi', () => {
     expect(user.username).toBe('u')
     expect(calls[0].url).toBe('https://git.corp.local/gitlab/api/v4/user')
     expect((calls[0].init?.headers as Record<string, string>).Authorization).toBe('Bearer tok')
+  })
+
+  it('keeps a non-JSON 2xx body out of the message, and its first 500 characters in detail', async () => {
+    const body = `<html>login page ${'x'.repeat(2000)}</html>`
+    const { fn } = rawFetch(200, body, { 'content-type': 'text/html' })
+    const err = (await new GitlabApi('https://gitlab.com', 't', fn)
+      .getCurrentUser()
+      .catch((e: unknown) => e)) as GitlabApiError
+    expect(err).toBeInstanceOf(GitlabApiError)
+    expect(err.status).toBe(200)
+    expect(err.message).toBe('GitLab GET /user returned an invalid JSON response')
+    expect(err.message).not.toContain('login page')
+    expect(err.detail).toBe(body.slice(0, 500))
   })
 
   it('follows x-next-page pagination', async () => {
@@ -257,5 +279,40 @@ describe('GITLAB_READONLY', () => {
     const { fn, calls } = fakeFetch([{ status: 200, body: { id: 1001, iid: 1 } }])
     await new GitlabApi('https://gitlab.com', 't', fn).updateIssue(5, 1, { title: 'x' })
     expect(calls).toHaveLength(1)
+  })
+})
+
+describe('isNotFound', () => {
+  it('is true only for a GitLab 404', () => {
+    expect(isNotFound(new GitlabApiError(404, 'x'))).toBe(true)
+    expect(isNotFound(new GitlabApiError(403, 'x'))).toBe(false)
+    expect(isNotFound(new Error('404'))).toBe(false)
+    expect(isNotFound(undefined)).toBe(false)
+  })
+})
+
+describe('gitlabErrorSummary', () => {
+  it('keeps GitLab JSON message/error text and nothing else', () => {
+    expect(gitlabErrorSummary('{"message":"title is too long"}')).toBe('title is too long')
+    expect(gitlabErrorSummary('{"error":{"title":["bad"]}}')).toBe('{"title":["bad"]}')
+    expect(gitlabErrorSummary('<html>boom</html>')).toBeUndefined()
+    expect(gitlabErrorSummary(`{"message":"${'x'.repeat(300)}"}`)).toHaveLength(200)
+  })
+})
+
+describe('uploadContentType', () => {
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0])
+
+  it('keeps a declared specific type', () => {
+    expect(uploadContentType('application/pdf', png)).toBe('application/pdf')
+  })
+
+  it('replaces octet-stream by the image type the bytes show', () => {
+    expect(uploadContentType('application/octet-stream', png)).toBe('image/png')
+    expect(uploadContentType(null, png)).toBe('image/png')
+  })
+
+  it('stays octet-stream for unknown bytes', () => {
+    expect(uploadContentType('application/octet-stream', Buffer.from('plain text'))).toBe('application/octet-stream')
   })
 })

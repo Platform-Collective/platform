@@ -23,6 +23,12 @@ function recorder (replies: Reply[]): { fn: FetchFn, calls: Array<{ method: stri
   return { fn, calls }
 }
 
+async function collect<T> (pages: AsyncIterable<T[]>): Promise<T[]> {
+  const result: T[] = []
+  for await (const page of pages) result.push(...page)
+  return result
+}
+
 const host = 'https://gitlab.example.com'
 const mr = { id: 2003, iid: 3, title: 'T', state: 'opened', updated_at: '2026-01-01T00:00:00.000Z' }
 const base = `${host}/api/v4/projects/42/merge_requests`
@@ -30,7 +36,7 @@ const base = `${host}/api/v4/projects/42/merge_requests`
 describe('GitlabApi merge requests', () => {
   it('lists merge requests of all states updated after a time, oldest first', async () => {
     const { fn, calls } = recorder([{ body: [mr], headers: { 'x-next-page': '' } }])
-    const result = await new GitlabApi(host, 't', fn).listMergeRequests(42, '2026-01-01T00:00:00.000Z')
+    const result = await collect(new GitlabApi(host, 't', fn).listMergeRequestPages(42, '2026-01-01T00:00:00.000Z'))
     expect(result.map((it) => it.iid)).toEqual([3])
     expect(calls[0].url).toBe(
       `${base}?order_by=updated_at&sort=asc&state=all&updated_after=2026-01-01T00%3A00%3A00.000Z&per_page=100&page=1`
@@ -61,7 +67,7 @@ describe('GitlabApi merge requests', () => {
     expect(calls[1].url).toBe(`${base}/3/commits?per_page=100&page=1`)
   })
 
-  it('returns the raw diff as text, and lists per-file diffs in unified format', async () => {
+  it('streams the raw diff, stops when asked, and pages the per-file diffs', async () => {
     const raw = 'diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n'
     const file = {
       old_path: 'x',
@@ -73,17 +79,36 @@ describe('GitlabApi merge requests', () => {
       renamed_file: false,
       deleted_file: false
     }
-    const { fn, calls } = recorder([{ text: raw }, { body: [file], headers: { 'x-next-page': '' } }])
+    const { fn, calls } = recorder([
+      { text: raw },
+      { text: raw },
+      { body: [file], headers: { 'x-next-page': '2' } },
+      { body: [file], headers: { 'x-next-page': '' } }
+    ])
     const api = new GitlabApi(host, 't', fn)
-    expect(await api.getMergeRequestRawDiffs(42, 3)).toBe(raw)
-    expect(await api.listMergeRequestDiffs(42, 3)).toEqual([file])
+    let text = ''
+    await api.readMergeRequestRawDiffs(42, 3, (chunk) => {
+      text += chunk
+      return true
+    })
+    expect(text).toBe(raw)
+    const stopped: string[] = []
+    await api.readMergeRequestRawDiffs(42, 3, (chunk) => {
+      stopped.push(chunk)
+      return false
+    })
+    expect(stopped).toHaveLength(1)
+    const pages: unknown[][] = []
+    for await (const page of api.listMergeRequestDiffPages(42, 3)) pages.push(page)
+    expect(pages).toEqual([[file], [file]])
     expect(calls[0].url).toBe(`${base}/3/raw_diffs`)
-    expect(calls[1].url).toBe(`${base}/3/diffs?unidiff=true&per_page=100&page=1`)
+    expect(calls[2].url).toBe(`${base}/3/diffs?unidiff=true&per_page=100&page=1`)
+    expect(calls[3].url).toContain('page=2')
   })
 
   it('reports a missing raw diff endpoint as a 404 error', async () => {
     const { fn } = recorder([{ status: 404, body: { message: '404 Not found' } }])
-    const err = await new GitlabApi(host, 't', fn).getMergeRequestRawDiffs(42, 3).catch((e: unknown) => e)
+    const err = await new GitlabApi(host, 't', fn).readMergeRequestRawDiffs(42, 3, () => true).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(GitlabApiError)
     expect((err as GitlabApiError).status).toBe(404)
   })
@@ -98,11 +123,11 @@ describe('GitlabApi merge requests', () => {
       { body: {} }
     ])
     const api = new GitlabApi(host, 't', fn)
-    await api.listMergeRequestNotes(42, 3)
-    await api.getMergeRequestNote(42, 3, 9)
-    await api.createMergeRequestNote(42, 3, 'hi')
-    await api.updateMergeRequestNote(42, 3, 9, 'edited')
-    await api.deleteMergeRequestNote(42, 3, 9)
+    await api.listNotes(42, 'merge_requests', 3)
+    await api.getNote(42, 'merge_requests', 3, 9)
+    await api.createNote(42, 'merge_requests', 3, 'hi')
+    await api.updateNote(42, 'merge_requests', 3, 9, 'edited')
+    await api.deleteNote(42, 'merge_requests', 3, 9)
     expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([
       `GET ${base}/3/notes?order_by=created_at&sort=asc&per_page=100&page=1`,
       `GET ${base}/3/notes/9`,
@@ -115,6 +140,6 @@ describe('GitlabApi merge requests', () => {
 
   it('treats deleting an already deleted merge request note as done', async () => {
     const { fn } = recorder([{ status: 404, body: { message: '404 Not found' } }])
-    await expect(new GitlabApi(host, 't', fn).deleteMergeRequestNote(42, 3, 9)).resolves.toBeUndefined()
+    await expect(new GitlabApi(host, 't', fn).deleteNote(42, 'merge_requests', 3, 9)).resolves.toBeUndefined()
   })
 })

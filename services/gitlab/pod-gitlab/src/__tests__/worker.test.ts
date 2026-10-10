@@ -6,11 +6,12 @@ import core, { type PersonId, type Tx, type WorkspaceUuid } from '@hcengineering
 import gitlab from '@hcengineering/gitlab'
 import task from '@hcengineering/task'
 import tracker from '@hcengineering/tracker'
-import { GitlabApiError, GitlabReadonlyError } from '../gitlab/api'
+import { abortableSleep, GitlabApi, GitlabApiError, GitlabReadonlyError } from '../gitlab/api'
 import { GITLAB_SYNC_VERSION } from '../sync/versions'
 import { hookSecret, hookUrl } from '../hooks'
+import { EXPIRED_ERROR } from '../sync/errors'
 import {
-  EXPIRED_ERROR,
+  FAILED_FULL_SYNC_RETRY_MS,
   FULL_SYNC_INTERVAL_MS,
   GitlabWorker,
   HEALTH_INTERVAL_MS,
@@ -19,6 +20,8 @@ import {
   ORPHAN_HOOK_GRACE_MS,
   SINCE_MARGIN_MS,
   type SyncManagers,
+  WEBHOOK_CONCURRENCY,
+  WEBHOOK_QUEUE,
   type WorkerDeps
 } from '../worker/worker'
 import {
@@ -34,12 +37,9 @@ import {
   seedRepository
 } from './helpers/fixtures'
 import { asTxOperations, createMemoryClient, type MemoryClient } from './helpers/memory'
-import { asApi, ctx, fakeApi, fakeCollaborator, fakePersons, type FakeApi } from './helpers/provider'
+import { asApi, ctx, fakeApi, fakeCollaborator, fakePersons, pagesOf, type FakeApi } from './helpers/provider'
 import { createMarkdownConverter } from '../markdown'
-
-async function flush (): Promise<void> {
-  for (let i = 0; i < 20; i++) await new Promise((resolve) => setImmediate(resolve))
-}
+import { flushPending, syncDocOf, waitUntil } from './helpers/sync'
 
 interface Env {
   memory: MemoryClient
@@ -57,8 +57,8 @@ function setup (
   const memory = createMemoryClient()
   options.seed !== undefined ? options.seed(memory) : seedRepository(memory)
   const api = fakeApi({
-    listIssues: async () => [],
-    listMergeRequests: async () => [],
+    listIssuePages: pagesOf([]),
+    listMergeRequestPages: pagesOf([]),
     deleteProjectHook: async () => {},
     getCurrentUser: async () => ({
       id: 9,
@@ -145,6 +145,9 @@ function setup (
     createApi: () => asApi(api),
     createManagers: () => managers as unknown as SyncManagers,
     now: () => clock.now,
+    fetchFn: jest.fn(async () => {
+      throw new Error('unexpected fetch')
+    }) as any,
     ...options.deps
   })
   return { memory, api, worker, managers, calls, clock, users }
@@ -163,9 +166,6 @@ function pending (memory: MemoryClient, id: string, extra: any = {}): void {
     ...extra
   })
 }
-
-const infoOf = (memory: MemoryClient, id: string): any =>
-  memory.docs.find((d) => d._id === id && d._class === gitlab.class.DocSyncInfo)
 
 describe('isRelevantTx', () => {
   it('reacts to sync doc, repository and integration changes, also inside apply', () => {
@@ -238,6 +238,45 @@ describe('GitlabWorker', () => {
     )
   })
 
+  it('asks for fresh tokens after a connection change', async () => {
+    const env = setup()
+    await env.worker.init()
+    await env.worker.runOnce()
+    const calls = env.users.getValidRecord.mock.calls.length
+    await env.worker.handleWebhook('Issue Hook', {
+      project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` },
+      object_attributes: { iid: 1 }
+    })
+    expect(env.users.getValidRecord.mock.calls.length).toBe(calls)
+    env.worker.forgetTokens()
+    await env.worker.handleWebhook('Issue Hook', {
+      project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` },
+      object_attributes: { iid: 1 }
+    })
+    expect(env.users.getValidRecord.mock.calls.length).toBe(calls + 1)
+  })
+
+  it('does not cache a token fetched before a disconnect', async () => {
+    const env = setup()
+    await env.worker.init()
+    env.worker.forgetTokens()
+    let release: (value: unknown) => void = () => {}
+    env.users.getValidRecord.mockImplementationOnce(
+      async () =>
+        await new Promise((resolve) => {
+          release = resolve
+        })
+    )
+    const integration = { connectedBy: CONNECTED_BY, host: HOST } as any
+    const first = env.worker.integrationApi(integration)
+    env.worker.forgetTokens()
+    release({ token: 'old', host: HOST })
+    await first
+    const calls = env.users.getValidRecord.mock.calls.length
+    await env.worker.integrationApi(integration)
+    expect(env.users.getValidRecord.mock.calls.length).toBe(calls + 1)
+  })
+
   it('does not list discussions after a merge request webhook GitLab answers with 404', async () => {
     const env = setup()
     await env.worker.init()
@@ -249,12 +288,40 @@ describe('GitlabWorker', () => {
     expect(env.managers.threads.refreshDiscussions).not.toHaveBeenCalled()
   })
 
+  it('still skips the discussions of old merge requests when a failed first import resumes', async () => {
+    const env = setup()
+    env.api.listMergeRequestPages.mockImplementation(async function * () {
+      yield [gitlabMergeRequest(4, { state: 'merged', updated_at: '2025-09-01T00:00:00.000Z' })]
+      yield [gitlabMergeRequest(6, { state: 'merged', updated_at: '2025-09-02T00:00:00.000Z' })]
+    })
+    env.managers.mergeRequests.receive.mockImplementation(async (_ctx: unknown, _repo: unknown, mr: any) => {
+      if (mr.iid === 6) throw new GitlabApiError(500, 'GitLab GET failed: 500')
+    })
+    await env.worker.init()
+    await env.worker.runOnce()
+    env.managers.mergeRequests.receive.mockImplementation(async () => {})
+    env.clock.now += FAILED_FULL_SYNC_RETRY_MS
+    await env.worker.runOnce()
+    expect(env.api.listMergeRequestPages).toHaveBeenLastCalledWith(
+      PROJECT_ID,
+      new Date(Date.parse('2025-09-01T00:00:00.000Z') - SINCE_MARGIN_MS).toISOString()
+    )
+    expect(env.managers.mergeRequests.receive).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      gitlabMergeRequest(6, { state: 'merged', updated_at: '2025-09-02T00:00:00.000Z' })
+    )
+    expect(env.managers.threads.refreshDiscussions).not.toHaveBeenCalled()
+  })
+
   it('skips the discussions of old merged merge requests on the first full sync', async () => {
     const env = setup()
-    env.api.listMergeRequests.mockResolvedValue([
-      gitlabMergeRequest(4, { state: 'merged', updated_at: '2025-10-01T00:00:00.000Z' }),
-      gitlabMergeRequest(5)
-    ])
+    env.api.listMergeRequestPages.mockImplementation(
+      pagesOf([
+        gitlabMergeRequest(4, { state: 'merged', updated_at: '2025-10-01T00:00:00.000Z' }),
+        gitlabMergeRequest(5)
+      ])
+    )
     await env.worker.init()
     await env.worker.runOnce()
     expect(env.managers.notes.refreshNotes).toHaveBeenCalledTimes(2)
@@ -303,7 +370,7 @@ describe('GitlabWorker', () => {
     pending(env.memory, 'msg-1', { objectClass: chunter.class.ChatMessage, parent: 'k-issue-1' })
     // The issue's move re-homes its comments' sync docs
     env.managers.issues.handleMove.mockImplementation(async () => {
-      infoOf(env.memory, 'msg-1').space = 'prj-2'
+      syncDocOf(env.memory, 'msg-1').space = 'prj-2'
     })
     await env.worker.init()
     await env.worker.runOnce()
@@ -322,7 +389,7 @@ describe('GitlabWorker', () => {
     await env.worker.runOnce()
     const issue = env.memory.docs.find((d) => d._id === 'issue-1' && d._class === tracker.class.Issue) as any
     expect(issue[gitlab.mixin.GitlabIssue]).toEqual({ syncError: expect.stringContaining('403') })
-    infoOf(env.memory, 'issue-1').needSync = ''
+    syncDocOf(env.memory, 'issue-1').needSync = ''
     env.managers.issues.sync.mockResolvedValueOnce({ needSync: GITLAB_SYNC_VERSION, error: null })
     await env.worker.runOnce()
     expect(issue[gitlab.mixin.GitlabIssue].syncError).toBeNull()
@@ -366,7 +433,7 @@ describe('GitlabWorker', () => {
     await env.worker.runOnce()
     expect(integration).toMatchObject({ alive: false, error: EXPIRED_ERROR })
     // The stored token still lists issues; the full sync must not flip the integration back to alive
-    expect(env.api.listIssues).toHaveBeenCalled()
+    expect(env.api.listIssuePages).toHaveBeenCalled()
     env.clock.now += FULL_SYNC_INTERVAL_MS
     await env.worker.runOnce()
     expect(integration).toMatchObject({ alive: false, error: EXPIRED_ERROR })
@@ -393,7 +460,7 @@ describe('GitlabWorker', () => {
     const issue = env.memory.docs.find((d) => d._id === 'issue-1' && d._class === tracker.class.Issue) as any
     expect(issue[gitlab.mixin.GitlabIssue].url).toBe(`${HOST}/other/proj/-/issues/1`)
     // Still synchronized: the next pass lists its issues
-    expect(env.api.listIssues).toHaveBeenCalled()
+    expect(env.api.listIssuePages).toHaveBeenCalled()
   })
 
   it("installs a linked repository's hook at its scoped URL once per pod start", async () => {
@@ -444,8 +511,8 @@ describe('GitlabWorker', () => {
     env.managers.issues.sync.mockRejectedValueOnce(new GitlabReadonlyError('PUT', '/projects/42/issues/1'))
     await env.worker.init()
     await env.worker.runOnce()
-    expect(infoOf(env.memory, 'issue-1')).toMatchObject({ needSync: GITLAB_SYNC_VERSION, retryable: true })
-    expect(infoOf(env.memory, 'issue-1').error).toContain('read-only')
+    expect(syncDocOf(env.memory, 'issue-1')).toMatchObject({ needSync: GITLAB_SYNC_VERSION, retryable: true })
+    expect(syncDocOf(env.memory, 'issue-1').error).toContain('read-only')
     env.clock.now += FULL_SYNC_INTERVAL_MS
     await env.worker.runOnce()
     expect(env.managers.issues.sync).toHaveBeenCalledTimes(2)
@@ -458,7 +525,7 @@ describe('GitlabWorker', () => {
     await env.worker.init()
     expect(await env.worker.runOnce()).toBe(true)
     expect(env.calls).toEqual(['issue:issue-1', 'note:msg-1'])
-    expect(infoOf(env.memory, 'issue-1').needSync).toBe(GITLAB_SYNC_VERSION)
+    expect(syncDocOf(env.memory, 'issue-1').needSync).toBe(GITLAB_SYNC_VERSION)
   })
 
   it('records a permanent error and keeps the Huly issue when GitLab answers 404', async () => {
@@ -468,8 +535,8 @@ describe('GitlabWorker', () => {
     env.managers.issues.sync.mockRejectedValueOnce(new GitlabApiError(404, 'GitLab PUT failed: 404'))
     await env.worker.init()
     await env.worker.runOnce()
-    expect(infoOf(env.memory, 'issue-1')).toMatchObject({ needSync: GITLAB_SYNC_VERSION, retryable: false })
-    expect(infoOf(env.memory, 'issue-1').error).toContain('404')
+    expect(syncDocOf(env.memory, 'issue-1')).toMatchObject({ needSync: GITLAB_SYNC_VERSION, retryable: false })
+    expect(syncDocOf(env.memory, 'issue-1').error).toContain('404')
     expect(env.memory.docs.find((d) => d._class === tracker.class.Issue)).toBeDefined()
     expect(await env.worker.runOnce()).toBe(false)
   })
@@ -478,13 +545,13 @@ describe('GitlabWorker', () => {
     const env = setup()
     pending(env.memory, 'issue-1', {
       needSync: GITLAB_SYNC_VERSION,
-      error: 'GitLab authorization expired',
+      error: EXPIRED_ERROR,
       retryable: true
     })
     await env.worker.init()
     await env.worker.runOnce()
     expect(env.calls).toEqual(['issue:issue-1'])
-    expect(infoOf(env.memory, 'issue-1')).toMatchObject({ error: null, retryable: false })
+    expect(syncDocOf(env.memory, 'issue-1')).toMatchObject({ error: null, retryable: false })
   })
 
   it('records a move as an error for documents whose manager does not handle moves', async () => {
@@ -494,7 +561,7 @@ describe('GitlabWorker', () => {
     await env.worker.init()
     await env.worker.runOnce()
     expect(env.calls).toEqual([])
-    expect(infoOf(env.memory, 'th-1').error).toContain('another project')
+    expect(syncDocOf(env.memory, 'th-1').error).toContain('another project')
   })
 
   it('starts the first full sync from the newest synced GitLab timestamp, then waits for the interval', async () => {
@@ -502,10 +569,10 @@ describe('GitlabWorker', () => {
     const newest = Date.parse('2026-01-20T00:00:00.000Z')
     pending(env.memory, 'issue-1', { needSync: GITLAB_SYNC_VERSION, lastModified: newest })
     pending(env.memory, 'issue-2', { needSync: GITLAB_SYNC_VERSION, lastModified: newest - 1000 })
-    env.api.listIssues.mockResolvedValue([gitlabIssue(3)])
+    env.api.listIssuePages.mockImplementation(pagesOf([gitlabIssue(3)]))
     await env.worker.init()
     await env.worker.runOnce()
-    expect(env.api.listIssues).toHaveBeenCalledWith(PROJECT_ID, new Date(newest - SINCE_MARGIN_MS).toISOString())
+    expect(env.api.listIssuePages).toHaveBeenCalledWith(PROJECT_ID, new Date(newest - SINCE_MARGIN_MS).toISOString())
     expect(env.managers.issues.receive).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ repository: expect.objectContaining({ _id: 'repo-1' }) }),
@@ -514,17 +581,88 @@ describe('GitlabWorker', () => {
     expect(env.managers.notes.refreshNotes).toHaveBeenCalledTimes(1)
     const firstRun = env.clock.now
     await env.worker.runOnce()
-    expect(env.api.listIssues).toHaveBeenCalledTimes(1)
+    expect(env.api.listIssuePages).toHaveBeenCalledTimes(1)
     env.clock.now += FULL_SYNC_INTERVAL_MS
     await env.worker.runOnce()
-    expect(env.api.listIssues).toHaveBeenLastCalledWith(PROJECT_ID, new Date(firstRun - SINCE_MARGIN_MS).toISOString())
+    expect(env.api.listIssuePages).toHaveBeenLastCalledWith(
+      PROJECT_ID,
+      new Date(firstRun - SINCE_MARGIN_MS).toISOString()
+    )
+  })
+
+  it('resumes a failed first import after the last issue it processed', async () => {
+    const env = setup()
+    env.api.listIssuePages.mockImplementation(async function * () {
+      yield [gitlabIssue(1, { updated_at: '2026-01-10T00:00:00.000Z' })]
+      yield [gitlabIssue(2, { updated_at: '2026-01-11T00:00:00.000Z' })]
+    })
+    env.managers.issues.receive.mockImplementation(async (_ctx: unknown, _repo: unknown, issue: any) => {
+      if (issue.iid === 2) throw new GitlabApiError(429, 'GitLab GET failed: 429')
+    })
+    await env.worker.init()
+    await env.worker.runOnce()
+    env.managers.issues.receive.mockImplementation(async () => {})
+    env.clock.now += FAILED_FULL_SYNC_RETRY_MS
+    await env.worker.runOnce()
+    expect(env.api.listIssuePages).toHaveBeenLastCalledWith(
+      PROJECT_ID,
+      new Date(Date.parse('2026-01-10T00:00:00.000Z') - SINCE_MARGIN_MS).toISOString()
+    )
+  })
+
+  it('waits for the rate limit reset before the next full sync attempt', async () => {
+    const env = setup()
+    const retryAt = env.clock.now + 20 * 60 * 1000
+    env.api.listIssuePages.mockImplementation(async function * () {
+      throw new GitlabApiError(429, 'GitLab GET failed: 429', undefined, retryAt)
+    })
+    await env.worker.init()
+    await env.worker.runOnce()
+    env.clock.now += FAILED_FULL_SYNC_RETRY_MS
+    await env.worker.runOnce()
+    expect(env.api.listIssuePages).toHaveBeenCalledTimes(1)
+    env.clock.now = retryAt
+    await env.worker.runOnce()
+    expect(env.api.listIssuePages).toHaveBeenCalledTimes(2)
+  })
+
+  it('waits at most one full sync interval for a rate limit reset', async () => {
+    const env = setup()
+    const retryAt = env.clock.now + 10 * FULL_SYNC_INTERVAL_MS
+    env.api.listIssuePages.mockImplementation(async function * () {
+      throw new GitlabApiError(429, 'GitLab GET failed: 429', undefined, retryAt)
+    })
+    await env.worker.init()
+    const start = env.clock.now
+    await env.worker.runOnce()
+    env.clock.now = start + FULL_SYNC_INTERVAL_MS - 1
+    await env.worker.runOnce()
+    expect(env.api.listIssuePages).toHaveBeenCalledTimes(1)
+    env.clock.now = start + FULL_SYNC_INTERVAL_MS
+    await env.worker.runOnce()
+    expect(env.api.listIssuePages).toHaveBeenCalledTimes(2)
+  })
+
+  it('asks the notes manager to skip notes already listed for the same version', async () => {
+    const env = setup()
+    env.api.listIssuePages.mockImplementation(pagesOf([gitlabIssue(3)]))
+    await env.worker.init()
+    await env.worker.runOnce()
+    expect(env.managers.notes.refreshNotes).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      gitlabIssue(3),
+      'issues',
+      { skipIfListed: true }
+    )
   })
 
   it('imports everything when a repository has no synced issue yet', async () => {
     const env = setup()
     await env.worker.init()
     await env.worker.runOnce()
-    expect(env.api.listIssues).toHaveBeenCalledWith(PROJECT_ID, undefined)
+    expect(env.api.listIssuePages).toHaveBeenCalledWith(PROJECT_ID, undefined)
   })
 
   it('marks the integration not alive and skips the full sync when its token is gone', async () => {
@@ -532,7 +670,7 @@ describe('GitlabWorker', () => {
     await env.worker.init()
     await env.worker.runOnce()
     expect(env.memory.docs.find((d) => d._class === gitlab.class.GitlabIntegration)).toMatchObject({ alive: false })
-    expect(env.api.listIssues).not.toHaveBeenCalled()
+    expect(env.api.listIssuePages).not.toHaveBeenCalled()
   })
 
   it('deletes the hook of a repository unlinked while the worker watched it', async () => {
@@ -606,12 +744,12 @@ describe('GitlabWorker', () => {
     pending(env.memory, 'issue-1', { lastModified: 100, external: { v: 'old' } })
     env.managers.issues.sync.mockImplementationOnce(async () => {
       // A webhook stores a newer GitLab object during the sync
-      Object.assign(infoOf(env.memory, 'issue-1'), { external: { v: 'new' }, lastModified: 200, needSync: '' })
+      Object.assign(syncDocOf(env.memory, 'issue-1'), { external: { v: 'new' }, lastModified: 200, needSync: '' })
       return { needSync: GITLAB_SYNC_VERSION, external: { v: 'old' }, lastModified: 100, current: { v: 'merged' } }
     })
     await env.worker.init()
     await env.worker.runOnce()
-    expect(infoOf(env.memory, 'issue-1')).toMatchObject({
+    expect(syncDocOf(env.memory, 'issue-1')).toMatchObject({
       needSync: '',
       external: { v: 'new' },
       lastModified: 200,
@@ -665,11 +803,11 @@ describe('GitlabWorker', () => {
     const env = setup()
     const newest = Date.parse('2026-01-20T00:00:00.000Z')
     pending(env.memory, 'issue-1', { needSync: GITLAB_SYNC_VERSION, lastModified: newest })
-    env.api.listMergeRequests.mockResolvedValue([gitlabMergeRequest(3)])
+    env.api.listMergeRequestPages.mockImplementation(pagesOf([gitlabMergeRequest(3)]))
     await env.worker.init()
     await env.worker.runOnce()
-    expect(env.api.listIssues).toHaveBeenCalledWith(PROJECT_ID, new Date(newest - SINCE_MARGIN_MS).toISOString())
-    expect(env.api.listMergeRequests).toHaveBeenCalledWith(PROJECT_ID, undefined)
+    expect(env.api.listIssuePages).toHaveBeenCalledWith(PROJECT_ID, new Date(newest - SINCE_MARGIN_MS).toISOString())
+    expect(env.api.listMergeRequestPages).toHaveBeenCalledWith(PROJECT_ID, undefined)
     expect(env.managers.mergeRequests.receive).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -680,7 +818,8 @@ describe('GitlabWorker', () => {
       expect.anything(),
       expect.anything(),
       gitlabMergeRequest(3),
-      'merge_requests'
+      'merge_requests',
+      { skipIfListed: true }
     )
   })
 
@@ -694,12 +833,15 @@ describe('GitlabWorker', () => {
     })
     await env.worker.init()
     await env.worker.runOnce()
-    expect(env.api.listMergeRequests).toHaveBeenCalledWith(PROJECT_ID, new Date(stored - SINCE_MARGIN_MS).toISOString())
-    expect(env.api.listIssues).toHaveBeenCalledWith(PROJECT_ID, undefined)
+    expect(env.api.listMergeRequestPages).toHaveBeenCalledWith(
+      PROJECT_ID,
+      new Date(stored - SINCE_MARGIN_MS).toISOString()
+    )
+    expect(env.api.listIssuePages).toHaveBeenCalledWith(PROJECT_ID, undefined)
     const firstRun = env.clock.now
     env.clock.now += FULL_SYNC_INTERVAL_MS
     await env.worker.runOnce()
-    expect(env.api.listMergeRequests).toHaveBeenLastCalledWith(
+    expect(env.api.listMergeRequestPages).toHaveBeenLastCalledWith(
       PROJECT_ID,
       new Date(firstRun - SINCE_MARGIN_MS).toISOString()
     )
@@ -720,7 +862,7 @@ describe('GitlabWorker', () => {
     await env.worker.init()
     await env.worker.runOnce()
     expect(env.managers.mergeRequests.handleDelete).toHaveBeenCalled()
-    expect(infoOf(env.memory, 'mr-1')).toMatchObject({ deleted: true, needSync: GITLAB_SYNC_VERSION })
+    expect(syncDocOf(env.memory, 'mr-1')).toMatchObject({ deleted: true, needSync: GITLAB_SYNC_VERSION })
   })
 
   it('re-syncs documents done under an older sync version', async () => {
@@ -729,7 +871,7 @@ describe('GitlabWorker', () => {
     await env.worker.init()
     await env.worker.runOnce()
     expect(env.calls).toEqual(['issue:issue-1'])
-    expect(infoOf(env.memory, 'issue-1')).toMatchObject({ needSync: GITLAB_SYNC_VERSION })
+    expect(syncDocOf(env.memory, 'issue-1')).toMatchObject({ needSync: GITLAB_SYNC_VERSION })
   })
 
   it('does not replay a deletion handled under an older sync version', async () => {
@@ -738,7 +880,7 @@ describe('GitlabWorker', () => {
     await env.worker.init()
     await env.worker.runOnce()
     expect(env.managers.issues.handleDelete).not.toHaveBeenCalled()
-    expect(infoOf(env.memory, 'issue-1')).toMatchObject({ deleted: true, needSync: GITLAB_SYNC_VERSION })
+    expect(syncDocOf(env.memory, 'issue-1')).toMatchObject({ deleted: true, needSync: GITLAB_SYNC_VERSION })
   })
 
   it('routes merge request and merge request note webhooks', async () => {
@@ -826,9 +968,9 @@ describe('GitlabWorker', () => {
       project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` },
       object_attributes: { iid: 3 }
     })
-    await flush()
+    await flushPending(20)
     const closing = env.worker.close()
-    await flush()
+    await flushPending(20)
     expect(closeConnection).not.toHaveBeenCalled()
     finish()
     await Promise.all([webhook, closing])
@@ -842,12 +984,35 @@ describe('GitlabWorker', () => {
     const lease = env.worker.lease('sid-huly' as PersonId)
     expect(lease).toBeDefined()
     const closing = env.worker.close()
-    await flush()
+    await flushPending(20)
     expect(closeConnection).not.toHaveBeenCalled()
     expect(env.worker.lease('sid-huly' as PersonId)).toBeUndefined()
     lease?.release()
     await closing
     expect(closeConnection).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves a doc pending without an error when the worker closes during a 429 wait', async () => {
+    const env = setup()
+    hulyIssue(env.memory, 'issue-1')
+    pending(env.memory, 'issue-1')
+    const rateLimited = jest.fn(async () => new Response('', { status: 429, headers: { 'retry-after': '60' } }))
+    env.managers.issues.sync.mockImplementationOnce(async () => {
+      // The API the worker builds itself: its 429 wait ends when the worker closes
+      const closed: AbortSignal = (env.worker as any).closed.signal
+      await new GitlabApi(HOST, 'tok', rateLimited as any, abortableSleep(closed)).getIssue(PROJECT_ID, 1)
+      return { needSync: GITLAB_SYNC_VERSION }
+    })
+    await env.worker.init()
+    const run = env.worker.runOnce()
+    await waitUntil(() => rateLimited.mock.calls.length === 1)
+    await env.worker.close()
+    await run
+    const info = syncDocOf(env.memory, 'issue-1')
+    expect(info.needSync).toBe('')
+    expect(info.error).toBeUndefined()
+    const issue = env.memory.docs.find((d) => d._id === 'issue-1' && d._class === tracker.class.Issue) as any
+    expect(issue[gitlab.mixin.GitlabIssue]?.syncError).toBeUndefined()
   })
 
   it('drops webhooks that arrive while closing', async () => {
@@ -969,10 +1134,102 @@ describe('GitlabWorker', () => {
 
   it('refreshes the discussions of listed and of re-queued open merge requests on a full sync', async () => {
     const env = setup()
-    env.api.listMergeRequests.mockResolvedValue([gitlabMergeRequest(3)])
+    env.api.listMergeRequestPages.mockImplementation(pagesOf([gitlabMergeRequest(3)]))
     env.managers.mergeRequests.requeueOpen.mockResolvedValue([3, 4])
     await env.worker.init()
     await env.worker.runOnce()
     expect(env.managers.threads.refreshDiscussions.mock.calls.map((it: any[]) => it[3])).toEqual([3, 4])
+  })
+
+  it('drops webhooks beyond the queue and asks for a full sync instead', async () => {
+    const env = setup()
+    await env.worker.init()
+    await env.worker.runOnce()
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    env.managers.issues.handleIssueEvent.mockImplementation(async () => {
+      await gate
+    })
+    const warn = jest.spyOn(ctx, 'warn').mockImplementation(() => {})
+    const event = { project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` }, object_attributes: { iid: 1 } }
+    const handled = Array.from({ length: WEBHOOK_CONCURRENCY + WEBHOOK_QUEUE + 1 }, async () => {
+      await env.worker.handleWebhook('Issue Hook', event)
+    })
+    release()
+    await Promise.all(handled)
+    expect(warn).toHaveBeenCalledTimes(1)
+    warn.mockRestore()
+    expect(env.managers.issues.handleIssueEvent).toHaveBeenCalledTimes(WEBHOOK_CONCURRENCY + WEBHOOK_QUEUE)
+    const listings = env.api.listIssuePages.mock.calls.length
+    await env.worker.runOnce()
+    expect(env.api.listIssuePages.mock.calls.length).toBe(listings + 1)
+  })
+
+  it('keeps the rate limit wait when a dropped webhook asks for a full sync', async () => {
+    const env = setup()
+    const retryAt = env.clock.now + 20 * 60 * 1000
+    env.api.listIssuePages.mockImplementation(async function * () {
+      throw new GitlabApiError(429, 'GitLab GET failed: 429', undefined, retryAt)
+    })
+    await env.worker.init()
+    await env.worker.runOnce()
+    expect(env.api.listIssuePages).toHaveBeenCalledTimes(1)
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    env.managers.issues.handleIssueEvent.mockImplementation(async () => {
+      await gate
+    })
+    const warn = jest.spyOn(ctx, 'warn').mockImplementation(() => {})
+    const event = { project: { id: PROJECT_ID, web_url: `${HOST}/group/proj` }, object_attributes: { iid: 1 } }
+    const handled = Array.from({ length: WEBHOOK_CONCURRENCY + WEBHOOK_QUEUE + 1 }, async () => {
+      await env.worker.handleWebhook('Issue Hook', event)
+    })
+    release()
+    await Promise.all(handled)
+    expect(warn).toHaveBeenCalledTimes(1)
+    warn.mockRestore()
+    env.clock.now += 60 * 1000
+    await env.worker.runOnce()
+    expect(env.api.listIssuePages).toHaveBeenCalledTimes(1)
+    env.clock.now = retryAt
+    await env.worker.runOnce()
+    expect(env.api.listIssuePages).toHaveBeenCalledTimes(2)
+  })
+
+  it('retries a failed full sync at once on request, but not before a rate limit resets', async () => {
+    const env = setup()
+    env.api.listIssuePages.mockImplementation(async function * () {
+      throw new GitlabApiError(500, 'GitLab GET failed: 500')
+    })
+    await env.worker.init()
+    await env.worker.runOnce()
+    env.worker.requestFullSync()
+    await env.worker.runOnce()
+    expect(env.api.listIssuePages).toHaveBeenCalledTimes(2)
+    const retryAt = env.clock.now + 20 * 60 * 1000
+    env.api.listIssuePages.mockImplementation(async function * () {
+      throw new GitlabApiError(429, 'GitLab GET failed: 429', undefined, retryAt)
+    })
+    env.worker.requestFullSync()
+    await env.worker.runOnce()
+    expect(env.api.listIssuePages).toHaveBeenCalledTimes(3)
+    env.worker.requestFullSync()
+    await env.worker.runOnce()
+    expect(env.api.listIssuePages).toHaveBeenCalledTimes(3)
+  })
+
+  it('closes promptly while a GitLab call waits out a rate limit', async () => {
+    const fetchFn = jest.fn(async () => new Response('', { status: 429, headers: { 'retry-after': '60' } }))
+    const env = setup({ deps: { createApi: undefined, fetchFn } as any })
+    await env.worker.init()
+    env.worker.start()
+    await waitUntil(() => fetchFn.mock.calls.length > 0)
+    const started = Date.now()
+    await env.worker.close()
+    expect(Date.now() - started).toBeLessThan(1000)
   })
 })

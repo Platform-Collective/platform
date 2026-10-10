@@ -93,7 +93,7 @@ export function planRepositorySync (
   return plan
 }
 
-export async function applyRepositoryPlan (
+async function applyRepositoryPlan (
   client: TxOperations,
   integration: GitlabIntegration,
   existing: GitlabIntegrationRepository[],
@@ -131,9 +131,9 @@ export interface RepositoryUrlChange {
 }
 
 /**
- * Linked repositories that the maintained-projects listing no longer returns are looked up by their stable id
- *. Renamed, transferred, or with access below Maintainer, they stay linked and take the new fields. Gone
- * or unreadable (403, 404), they are marked deleted. Linked repositories marked deleted earlier come back when readable.
+ * Linked repositories that the maintained-projects listing no longer returns are looked up by their stable id.
+ * Renamed, transferred, or with access below Maintainer, they stay linked and take the new fields. Gone or
+ * unreadable (403, 404), they are marked deleted. Linked repositories marked deleted earlier come back when readable.
  */
 export async function confirmMissing (
   api: Pick<GitlabApi, 'getProject'>,

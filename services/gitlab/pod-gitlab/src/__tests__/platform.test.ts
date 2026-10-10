@@ -14,6 +14,7 @@ function handle (owns: boolean): WorkerHandle & Record<string, jest.Mock> {
     ownsProject: jest.fn(() => owns),
     handleWebhook: jest.fn(async () => {}),
     requestFullSync: jest.fn(),
+    forgetTokens: jest.fn(),
     lease: jest.fn(() => undefined),
     gitlabImage: jest.fn(async () => ({ kind: 'not-found' }))
   } as any

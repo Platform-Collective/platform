@@ -9,6 +9,8 @@ import serverToken from '@hcengineering/server-token'
 import { join } from 'path'
 import { loadConfig } from './config'
 import { start } from './server'
+import { errorMessage } from './sync/errors'
+import { createShutdown } from './shutdown'
 
 const config = loadConfig(process.env)
 
@@ -42,9 +44,19 @@ void start(ctx, config)
     process.exit(1)
   })
 
-const onClose = (): void => {
-  void doOnClose().then(() => process.exit(0))
-}
+const SHUTDOWN_TIMEOUT_MS = 30 * 1000
+
+const onClose = createShutdown({
+  // doOnClose is read when the signal comes: start() may still be running
+  close: async () => {
+    await doOnClose()
+  },
+  exit: (code) => process.exit(code),
+  onError: (err) => {
+    ctx.error('GitLab service shutdown failed', { error: errorMessage(err) })
+  },
+  timeoutMs: SHUTDOWN_TIMEOUT_MS
+})
 process.on('uncaughtException', (e) => {
   ctx.error('UncaughtException', { error: e })
 })

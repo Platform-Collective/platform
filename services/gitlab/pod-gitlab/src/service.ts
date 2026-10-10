@@ -20,9 +20,12 @@ import tracker, { type Project } from '@hcengineering/tracker'
 import { DEFAULT_GITLAB_HOST, normalizeHost, toOAuthConfig, type GitlabAppConfig, type GitlabAppStore } from './apps'
 import { redirectUriFor, type Config, type OAuthConfig } from './config'
 import { GitlabApi, type FetchFn } from './gitlab/api'
-import { buildAuthorizeUrl, exchangeCode, GITLAB_SCOPES } from './gitlab/oauth'
+import { buildAuthorizeUrl, exchangeCode, GITLAB_SCOPES, revokeToken } from './gitlab/oauth'
 import type { GitlabUser, GitlabUserRef } from './gitlab/types'
-import { hookSecret, hookUrl } from './hooks'
+import { ensureRepositoryHook, removeRepositoryHook } from './hooks'
+import { APP_IN_USE, HttpError } from './http-error'
+import type { HostGuard } from './host-guard'
+import { EXPIRED_ERROR, errorMessage } from './sync/errors'
 import { refreshIntegrationRepositories } from './repositories'
 import { signState, verifyState, type OAuthStatePayload } from './state'
 import type { GitlabUserManager, GitlabUserRecord } from './users'
@@ -55,6 +58,13 @@ export interface GitlabAppInput {
   clientSecret?: string
 }
 
+/** The caller of a project hook route. */
+export interface RepositoryCaller {
+  accountId: PersonId
+  // Workspace Maintainer or higher; asked only when the caller did not connect the repository's integration
+  isMaintainer: () => Promise<boolean>
+}
+
 export class GitlabNotConfiguredError extends Error {
   constructor () {
     super('GitLab is not configured for this workspace')
@@ -67,21 +77,19 @@ export interface ServiceDeps {
   users: Pick<GitlabUserManager, 'save' | 'getValidRecord' | 'remove'>
   accounts: Pick<AccountClient, 'getIntegration' | 'createIntegration' | 'updateIntegration' | 'deleteIntegration'>
   apps: Pick<GitlabAppStore, 'get' | 'save' | 'remove'>
+  // Self-managed hosts the pod may call (HostGuard)
+  hostGuard: Pick<HostGuard, 'assertAllowed'>
   openSession: (workspace: WorkspaceUuid, accountId: PersonId) => Promise<WorkspaceSession>
   // Attaches the connecting user's GitLab identity to their Huly person (best effort)
   linkIdentity?: (client: TxOperations, personUuid: PersonUuid, host: string, user: GitlabUserRef) => Promise<void>
   // The set of GitLab connections in the workspace changed: start/stop its worker and re-sync
   onWorkspaceChanged?: (workspace: WorkspaceUuid) => void
-  fetchFn?: FetchFn
+  fetchFn: FetchFn
   now?: () => number
 }
 
 export class GitlabService {
   constructor (private readonly deps: ServiceDeps) {}
-
-  private get fetchFn (): FetchFn {
-    return this.deps.fetchFn ?? fetch
-  }
 
   private now (): number {
     return (this.deps.now ?? Date.now)()
@@ -116,6 +124,8 @@ export class GitlabService {
       rawHost === ''
         ? DEFAULT_GITLAB_HOST
         : normalizeHost(rawHost, { allowInsecure: this.deps.config.AllowInsecureHosts === true })
+    // Only public addresses, or the hosts GITLAB_ALLOWED_HOSTS lists: the pod calls this host with server credentials
+    await this.deps.hostGuard.assertAllowed(host)
     const clientId = input.clientId.trim()
     if (clientId === '') {
       throw new Error('Application ID is required')
@@ -150,8 +160,10 @@ export class GitlabService {
       (await client.findAll(gitlab.class.GitlabIntegration, {})).map((it) => it.login)
     )
     if (logins.length > 0) {
-      throw new Error(
-        `Disconnect GitLab before changing the application (connected: ${[...new Set(logins)].join(', ')})`
+      throw new HttpError(
+        409,
+        `Disconnect GitLab before changing the application (connected: ${[...new Set(logins)].join(', ')})`,
+        APP_IN_USE
       )
     }
   }
@@ -198,8 +210,8 @@ export class GitlabService {
       const configured = await this.oauthFor(workspace)
       const oauth = { ...configured, RedirectURI: state.redirectUri ?? configured.RedirectURI }
       host = oauth.GitlabHost
-      const tokens = await exchangeCode(oauth, payload.code, this.fetchFn)
-      user = await new GitlabApi(host, tokens.token, this.fetchFn).getCurrentUser()
+      const tokens = await exchangeCode(oauth, payload.code, this.deps.fetchFn)
+      user = await new GitlabApi(host, tokens.token, this.deps.fetchFn).getCurrentUser()
       record = {
         account: state.accountId,
         workspace,
@@ -214,7 +226,7 @@ export class GitlabService {
       })
       await this.deps.users.save(record)
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
+      const message = errorMessage(err)
       ctx.error('gitlab authorization failed', { workspace, error: message })
       await this.withClient(workspace, state.accountId, async (client) => {
         await this.upsertAuthentication(client, state.accountId, { error: message })
@@ -235,7 +247,7 @@ export class GitlabService {
         await this.deps.linkIdentity?.(client, state.account as PersonUuid, host, user)
       } catch (err: unknown) {
         ctx.warn('gitlab identity not linked to the Huly person', {
-          error: err instanceof Error ? err.message : String(err)
+          error: errorMessage(err)
         })
       }
       await this.syncRepositories(client, host, integration, record.token)
@@ -252,7 +264,7 @@ export class GitlabService {
   }
 
   async refresh (ctx: MeasureContext, workspace: WorkspaceUuid, accountId: PersonId): Promise<void> {
-    const app = await this.appFor(workspace)
+    await this.appFor(workspace)
     ctx.info('gitlab refresh requested', { workspace, accountId })
     // Bookkeeping as System: link rewrites must not queue every issue again or make the caller their author
     await this.withClient(workspace, core.account.System, async (client) => {
@@ -260,16 +272,16 @@ export class GitlabService {
         try {
           const record = await this.deps.users.getValidRecord(workspace, integration.connectedBy)
           if (record === undefined) {
-            await client.update(integration, { alive: false, error: 'Authorization expired, please re-authorize' })
+            await client.update(integration, { alive: false, error: EXPIRED_ERROR })
             continue
           }
-          await this.syncRepositories(client, app.host, integration, record.token)
+          await this.syncRepositories(client, integration.host, integration, record.token)
           if (!integration.alive || (integration.error ?? null) !== null) {
             await client.update(integration, { alive: true, error: null })
           }
         } catch (err: unknown) {
           // One member's broken connection must not stop the others' refresh
-          const message = err instanceof Error ? err.message : String(err)
+          const message = errorMessage(err)
           ctx.warn('gitlab refresh failed for an integration', { login: integration.login, error: message })
           await client.update(integration, { alive: false, error: message })
         }
@@ -280,34 +292,37 @@ export class GitlabService {
   async enableRepository (
     ctx: MeasureContext,
     workspace: WorkspaceUuid,
-    repositoryId: Ref<GitlabIntegrationRepository>
+    repositoryId: Ref<GitlabIntegrationRepository>,
+    caller: RepositoryCaller
   ): Promise<void> {
     await this.withClient(workspace, core.account.System, async (client) => {
-      const { repository, integration, api } = await this.resolveRepository(client, workspace, repositoryId)
-      const base = this.deps.config.WebhookBaseURL
-      const target = { workspace, integration: integration._id }
-      // Scoped URL and secret
-      const hook = await api.ensureProjectHook(
-        repository.projectId,
-        hookUrl(base, target),
-        hookSecret(this.deps.config.WebhookSecret, target)
+      const { repository, integration, api } = await this.resolveRepository(
+        client,
+        workspace,
+        repositoryId,
+        caller,
+        'enable'
       )
-      await client.update(repository, { hookId: hook.id })
-      ctx.info('gitlab hook installed', { workspace, projectId: repository.projectId, hookId: hook.id })
+      const hookId = await ensureRepositoryHook(
+        client,
+        api,
+        repository,
+        { baseUrl: this.deps.config.WebhookBaseURL, master: this.deps.config.WebhookSecret },
+        { workspace, integration: integration._id }
+      )
+      ctx.info('gitlab hook installed', { workspace, projectId: repository.projectId, hookId })
     })
   }
 
   async disableRepository (
     ctx: MeasureContext,
     workspace: WorkspaceUuid,
-    repositoryId: Ref<GitlabIntegrationRepository>
+    repositoryId: Ref<GitlabIntegrationRepository>,
+    caller: RepositoryCaller
   ): Promise<void> {
     await this.withClient(workspace, core.account.System, async (client) => {
-      const { repository, api } = await this.resolveRepository(client, workspace, repositoryId)
-      if (repository.hookId !== null) {
-        await api.deleteProjectHook(repository.projectId, repository.hookId)
-        await client.update(repository, { hookId: null })
-      }
+      const { repository, api } = await this.resolveRepository(client, workspace, repositoryId, caller, 'disable')
+      await removeRepositoryHook(client, api, repository)
     })
   }
 
@@ -316,7 +331,7 @@ export class GitlabService {
     await this.withClient(workspace, accountId, async (client) => {
       await this.removeMemberDocs(ctx, client, workspace, accountId)
     })
-    await this.removeMemberAccountState(workspace, accountId)
+    await this.removeMemberAccountState(ctx, workspace, accountId)
     this.deps.onWorkspaceChanged?.(workspace)
   }
 
@@ -336,11 +351,11 @@ export class GitlabService {
     })
     for (const member of members) {
       try {
-        await this.removeMemberAccountState(workspace, member)
+        await this.removeMemberAccountState(ctx, workspace, member)
       } catch (err: unknown) {
         // A member without an account row (e.g. a half-finished earlier authorization) must not block the rest
         ctx.warn('gitlab account state cleanup failed for a member', {
-          error: err instanceof Error ? err.message : String(err)
+          error: errorMessage(err)
         })
         await this.deps.users.remove(workspace, member).catch(() => {})
       }
@@ -363,7 +378,7 @@ export class GitlabService {
       } catch (err: unknown) {
         // An unrefreshable token must not block disconnecting; the hooks are then left in place.
         ctx.warn('gitlab token unavailable for hook cleanup', {
-          error: err instanceof Error ? err.message : String(err)
+          error: errorMessage(err)
         })
       }
       await this.removeIntegration(ctx, client, integration, token)
@@ -373,13 +388,32 @@ export class GitlabService {
     }
   }
 
-  private async removeMemberAccountState (workspace: WorkspaceUuid, member: PersonId): Promise<void> {
+  /** Best effort: a token deleted only in Huly would stay valid at GitLab. */
+  private async revokeMemberToken (ctx: MeasureContext, workspace: WorkspaceUuid, member: PersonId): Promise<void> {
+    try {
+      const record = await this.deps.users.getValidRecord(workspace, member)
+      const app = await this.deps.apps.get(workspace)
+      // Another application issued it, or nothing to revoke
+      if (record === undefined || app === undefined || app.host !== record.host) return
+      await revokeToken(toOAuthConfig(app, this.deps.config.RedirectURI), record.token, this.deps.fetchFn)
+    } catch (err: unknown) {
+      ctx.warn('gitlab token not revoked', { error: errorMessage(err) })
+    }
+  }
+
+  private async removeMemberAccountState (
+    ctx: MeasureContext,
+    workspace: WorkspaceUuid,
+    member: PersonId
+  ): Promise<void> {
+    // Hook cleanup is done; revoke first (best effort, never throws), so a failing account call cannot skip it.
+    await this.revokeMemberToken(ctx, workspace, member)
     await this.deps.accounts.deleteIntegration({
       kind: gitlabIntegrationKind,
       workspaceUuid: workspace,
       socialId: member
     })
-    // Tokens are workspace-scoped: drop the member's token last, since hook cleanup still needs it.
+    // Tokens are workspace-scoped: drop the member's token last.
     await this.deps.users.remove(workspace, member)
   }
 
@@ -402,7 +436,7 @@ export class GitlabService {
     try {
       previous = await this.deps.users.getValidRecord(workspace, accountId)
     } catch (err: unknown) {
-      ctx.warn('previous gitlab token unavailable', { error: err instanceof Error ? err.message : String(err) })
+      ctx.warn('previous gitlab token unavailable', { error: errorMessage(err) })
     }
     for (const integration of replaced) {
       const token = previous !== undefined && previous.userId === integration.gitlabUserId ? previous.token : undefined
@@ -425,7 +459,7 @@ export class GitlabService {
     integration: GitlabIntegration,
     token: string | undefined
   ): Promise<void> {
-    const api = token !== undefined ? new GitlabApi(integration.host, token, this.fetchFn) : undefined
+    const api = token !== undefined ? new GitlabApi(integration.host, token, this.deps.fetchFn) : undefined
     const repositories = await client.findAll(gitlab.class.GitlabIntegrationRepository, { attachedTo: integration._id })
     const orphanedHooks: number[] = []
     for (const repository of repositories) {
@@ -489,7 +523,9 @@ export class GitlabService {
   private async resolveRepository (
     client: TxOperations,
     workspace: WorkspaceUuid,
-    repositoryId: Ref<GitlabIntegrationRepository>
+    repositoryId: Ref<GitlabIntegrationRepository>,
+    caller: RepositoryCaller,
+    action: 'enable' | 'disable'
   ): Promise<{ repository: GitlabIntegrationRepository, integration: GitlabIntegration, api: GitlabApi }> {
     const repository = await client.findOne(gitlab.class.GitlabIntegrationRepository, { _id: repositoryId })
     if (repository === undefined) {
@@ -499,12 +535,24 @@ export class GitlabService {
     if (integration === undefined) {
       throw new Error('Integration not found')
     }
-    const app = await this.appFor(workspace)
+    // The hook runs with the connecting member's GitLab token. An unlinked repository's hook may always go: the Huly
+    // unlink that left it behind already passed Huly's permission checks.
+    const unlinked = repository.gitlabProject === null || !repository.enabled
+    if (
+      !(action === 'disable' && unlinked) &&
+      integration.connectedBy !== caller.accountId &&
+      !(await caller.isMaintainer())
+    ) {
+      throw new HttpError(
+        403,
+        'Only the member who connected this GitLab account or a workspace maintainer can manage its project hooks'
+      )
+    }
     const record = await this.deps.users.getValidRecord(workspace, integration.connectedBy)
     if (record === undefined) {
-      throw new Error('GitLab authorization expired, please re-authorize')
+      throw new Error(EXPIRED_ERROR)
     }
-    return { repository, integration, api: new GitlabApi(app.host, record.token, this.fetchFn) }
+    return { repository, integration, api: new GitlabApi(integration.host, record.token, this.deps.fetchFn) }
   }
 
   private async upsertAuthentication (
@@ -565,6 +613,6 @@ export class GitlabService {
     integration: GitlabIntegration,
     token: string
   ): Promise<void> {
-    await refreshIntegrationRepositories(client, new GitlabApi(host, token, this.fetchFn), integration)
+    await refreshIntegrationRepositories(client, new GitlabApi(host, token, this.deps.fetchFn), integration)
   }
 }

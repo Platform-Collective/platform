@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: EPL-2.0
-import core, { MeasureMetricsContext, type PersonId, type WorkspaceUuid } from '@hcengineering/core'
+import { EXPIRED_ERROR } from '../sync/errors'
+import core, { type PersonId, type WorkspaceUuid } from '@hcengineering/core'
 import gitlab from '@hcengineering/gitlab'
 import tracker from '@hcengineering/tracker'
 import type { GitlabAppConfig } from '../apps'
 import type { FetchFn } from '../gitlab/api'
 import { hookSecret, hookUrl } from '../hooks'
+import { GitlabHostRefusedError } from '../host-guard'
 import { GitlabService } from '../service'
 import { signState } from '../state'
+import { ctx } from './helpers/provider'
 
-const ctx = new MeasureMetricsContext('test', {})
 const ws = 'ws1' as WorkspaceUuid
 const person = 'p1' as PersonId
 const caller = { workspace: ws, account: 'acc1' }
+const connector = { accountId: person, isMaintainer: async () => false }
 const config = {
   AccountsURL: '',
   ServerSecret: 'srv-secret',
@@ -22,6 +25,8 @@ const config = {
   WebhookBaseURL: 'https://hooks.example.com',
   WebhookSecret: 'whs',
   CollaboratorURL: '',
+  AllowedHosts: [] as string[],
+  RequestTimeoutMs: 30000,
   WorkspaceInactivityDays: 3
 }
 
@@ -121,6 +126,7 @@ function setup (
     allowInsecure?: boolean
     linkIdentity?: jest.Mock
     onWorkspaceChanged?: jest.Mock
+    hostGuard?: { assertAllowed: (url: string) => Promise<void> }
   } = {}
 ): any {
   const client = memoryClient()
@@ -171,6 +177,7 @@ function setup (
     },
     linkIdentity: opts.linkIdentity,
     onWorkspaceChanged: opts.onWorkspaceChanged,
+    hostGuard: opts.hostGuard ?? { assertAllowed: async () => {} },
     fetchFn: fn,
     now: () => 1000
   })
@@ -199,6 +206,21 @@ describe('GitlabService', () => {
     },
     'GET https://gitlab.com/api/v4/projects': [project]
   }
+
+  it('revokes the GitLab token on disconnect, and still disconnects when GitLab refuses', async () => {
+    const live = { ...routes, 'POST https://gitlab.com/oauth/revoke': {} }
+    const { service, requests, users } = setup(live)
+    await service.authorize(ctx, { code: 'c', state, caller })
+    await service.disconnect(ctx, ws, person)
+    const revoke = requests.find((it: any) => it.key === 'POST https://gitlab.com/oauth/revoke')
+    expect(new URLSearchParams(revoke.body).get('token')).toBe('tok')
+    expect(users.remove).toHaveBeenCalled()
+
+    const refused = setup(routes)
+    await refused.service.authorize(ctx, { code: 'c', state, caller })
+    await refused.service.disconnect(ctx, ws, person)
+    expect(refused.users.remove).toHaveBeenCalled()
+  })
 
   it("authorize links the GitLab identity to the caller's person and notifies the platform", async () => {
     const linkIdentity = jest.fn(async () => {})
@@ -237,6 +259,20 @@ describe('GitlabService', () => {
     await service.refresh(ctx, ws, person)
     expect(sessions).toEqual([core.account.System])
     expect(client.docs.find((d: any) => d._id === 'i1')).toMatchObject({ alive: true, error: null })
+  })
+
+  it('refresh marks an integration whose token is gone with the one expired text', async () => {
+    const { service, client, users } = setup({})
+    client.docs.push({
+      _id: 'i1',
+      _class: gitlab.class.GitlabIntegration,
+      connectedBy: 'p-good',
+      host: 'https://gitlab.com',
+      alive: true
+    })
+    users.getValidRecord.mockResolvedValue(undefined)
+    await service.refresh(ctx, ws, person)
+    expect(client.docs.find((d: any) => d._id === 'i1')).toMatchObject({ alive: false, error: EXPIRED_ERROR })
   })
 
   it('refresh continues with the next integration when one fails', async () => {
@@ -325,7 +361,7 @@ describe('GitlabService', () => {
     await service.authorize(ctx, { code: 'c', state, caller })
     const aliceIntegration = client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegration)._id
     const aliceRepo = client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegrationRepository)
-    await service.enableRepository(ctx, ws, aliceRepo._id)
+    await service.enableRepository(ctx, ws, aliceRepo._id, connector)
     expect(aliceRepo.hookId).toBe(77)
 
     // The same Huly person now authorizes as bob (99) with a different project set.
@@ -384,7 +420,7 @@ describe('GitlabService', () => {
     })
     await service.authorize(ctx, { code: 'c', state, caller })
     const aliceRepo = client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegrationRepository)
-    await service.enableRepository(ctx, ws, aliceRepo._id)
+    await service.enableRepository(ctx, ws, aliceRepo._id, connector)
     users.getValidRecord.mockResolvedValueOnce({ account: person, userId: 1234, token: 'someone' })
     Object.assign(live, {
       'GET https://gitlab.com/api/v4/user': {
@@ -417,7 +453,7 @@ describe('GitlabService', () => {
     await service.authorize(ctx, { code: 'c', state, caller })
     const repo = client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegrationRepository)
     const integration = client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegration)
-    await service.enableRepository(ctx, ws, repo._id)
+    await service.enableRepository(ctx, ws, repo._id, connector)
     const target = { workspace: ws, integration: integration._id }
     const post = JSON.parse(
       requests.find((it: any) => it.key === 'POST https://gitlab.com/api/v4/projects/5/hooks').body
@@ -435,7 +471,7 @@ describe('GitlabService', () => {
     })
     await service.authorize(ctx, { code: 'c', state, caller })
     const repo = client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegrationRepository)
-    await service.enableRepository(ctx, ws, repo._id)
+    await service.enableRepository(ctx, ws, repo._id, connector)
     expect(repo.hookId).toBe(77)
     expect(calls).toContain('POST https://gitlab.com/api/v4/projects/5/hooks')
   })
@@ -471,7 +507,7 @@ describe('GitlabService', () => {
   it('enableRepository fails clearly for an unknown repository', async () => {
     const { service } = setup(routes)
     await service.authorize(ctx, { code: 'c', state, caller })
-    await expect(service.enableRepository(ctx, ws, 'missing' as any)).rejects.toThrow('Repository not found')
+    await expect(service.enableRepository(ctx, ws, 'missing' as any, connector)).rejects.toThrow('Repository not found')
   })
 
   it("authorizeUrl and the code exchange use the browser's origin as the redirect", async () => {
@@ -550,6 +586,18 @@ describe('GitlabService', () => {
     expect(dev.apps.get(ws)?.host).toBe('http://localhost:8929')
   })
 
+  it('saveApp refuses a host the guard refuses, before storing anything', async () => {
+    const assertAllowed = jest.fn(async (url: string) => {
+      throw new GitlabHostRefusedError(new URL(url).hostname)
+    })
+    const { service, apps } = setup(routes, { apps: false, hostGuard: { assertAllowed } })
+    await expect(
+      service.saveApp(ctx, ws, person, { host: 'https://10.0.0.1', clientId: 'cid', clientSecret: 'x' })
+    ).rejects.toThrow('GitLab host 10.0.0.1 is not allowed')
+    expect(assertAllowed).toHaveBeenCalledWith('https://10.0.0.1')
+    expect(apps.get(ws)).toBeUndefined()
+  })
+
   it('saveApp defaults to gitlab.com when no host is given', async () => {
     const { service, apps } = setup(routes, { apps: false })
     await service.saveApp(ctx, ws, person, { clientId: 'cid', clientSecret: 's1' })
@@ -617,7 +665,7 @@ describe('GitlabService', () => {
       const env = setup(allRoutes)
       await env.service.authorize(ctx, { code: 'c', state, caller })
       const repo = env.client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegrationRepository)
-      await env.service.enableRepository(ctx, ws, repo._id)
+      await env.service.enableRepository(ctx, ws, repo._id, connector)
       // A second member (bob, p2) connected earlier and has a hooked repository.
       env.client.docs.push({
         _id: 'bob-int',
@@ -656,6 +704,21 @@ describe('GitlabService', () => {
       await service.disconnectAll(ctx, ws)
       expect(users.remove).toHaveBeenCalledWith(ws, 'p1')
       expect(users.remove).toHaveBeenCalledWith(ws, 'p2')
+    })
+
+    it("revokes a member's token even when their account integration row cannot be deleted", async () => {
+      const env = setup({ ...allRoutes, 'POST https://gitlab.com/oauth/revoke': {} })
+      await env.service.authorize(ctx, { code: 'c', state, caller })
+      env.accounts.deleteIntegration.mockImplementation(async () => {
+        throw new Error('IntegrationNotFound')
+      })
+      env.users.remove.mockImplementation(async () => {
+        expect(env.requests.filter((r: any) => r.key === 'POST https://gitlab.com/oauth/revoke')).toHaveLength(1)
+      })
+      await env.service.disconnectAll(ctx, ws)
+      const revoke = env.requests.find((r: any) => r.key === 'POST https://gitlab.com/oauth/revoke')
+      expect(new URLSearchParams(revoke.body).get('token')).toBe('tok')
+      expect(env.users.remove).toHaveBeenCalledWith(ws, person)
     })
 
     it("removes every member's integration, repositories, hooks, auth docs, account rows and tokens", async () => {
@@ -725,7 +788,7 @@ describe('GitlabService', () => {
       const env = setup({ ...disconnectRoutes, ...extra })
       await env.service.authorize(ctx, { code: 'c', state, caller })
       const repo = env.client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegrationRepository)
-      await env.service.enableRepository(ctx, ws, repo._id)
+      await env.service.enableRepository(ctx, ws, repo._id, connector)
       env.client.docs.push({
         _id: 'other-int',
         _class: gitlab.class.GitlabIntegration,
@@ -805,6 +868,46 @@ describe('GitlabService', () => {
       expect(ids).not.toContain(myRepo)
       expect(ids).toContain('other-int')
       expect(calls.filter((c: string) => c.startsWith('DELETE'))).toEqual([])
+    })
+  })
+
+  it('refuses to change the application with a 409 app-in-use answer while members are connected', async () => {
+    const { service } = setup(routes)
+    await service.authorize(ctx, { code: 'c', state, caller })
+    await expect(
+      service.saveApp(ctx, ws, person, { host: 'https://other.example', clientId: 'cid', clientSecret: 'x' })
+    ).rejects.toMatchObject({ status: 409, code: 'app-in-use' })
+  })
+
+  describe('who may manage project hooks', () => {
+    const hookRoutes = {
+      ...routes,
+      'GET https://gitlab.com/api/v4/projects/5/hooks': [],
+      'POST https://gitlab.com/api/v4/projects/5/hooks': { id: 77, url: 'https://hooks.example.com/api/webhook' },
+      'DELETE https://gitlab.com/api/v4/projects/5/hooks/77': {}
+    }
+    const stranger = { accountId: 'p2' as PersonId, isMaintainer: async () => false }
+    const maintainer = { accountId: 'p2' as PersonId, isMaintainer: async () => true }
+
+    it('lets only the connecting member or a maintainer install a hook', async () => {
+      const { service, client } = setup(hookRoutes)
+      await service.authorize(ctx, { code: 'c', state, caller })
+      const repo = client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegrationRepository)
+      await expect(service.enableRepository(ctx, ws, repo._id, stranger)).rejects.toMatchObject({ status: 403 })
+      await service.enableRepository(ctx, ws, repo._id, maintainer)
+      expect(repo.hookId).toBe(77)
+    })
+
+    it('lets anyone remove the hook of an unlinked repository, and only the owner or a maintainer otherwise', async () => {
+      const { service, client } = setup(hookRoutes)
+      await service.authorize(ctx, { code: 'c', state, caller })
+      const repo = client.docs.find((d: any) => d._class === gitlab.class.GitlabIntegrationRepository)
+      await service.enableRepository(ctx, ws, repo._id, connector)
+      Object.assign(repo, { gitlabProject: 'prj-1', enabled: true })
+      await expect(service.disableRepository(ctx, ws, repo._id, stranger)).rejects.toMatchObject({ status: 403 })
+      Object.assign(repo, { gitlabProject: null, enabled: false })
+      await service.disableRepository(ctx, ws, repo._id, stranger)
+      expect(repo.hookId).toBeNull()
     })
   })
 })

@@ -46,7 +46,8 @@ export class GitlabUserManager {
     private readonly store: SecretStore,
     // Resolved on every refresh, so a renewed or removed workspace application takes effect immediately.
     private readonly resolveOAuth: (workspace: WorkspaceUuid) => Promise<OAuthConfig | undefined>,
-    private readonly fetchFn: FetchFn = fetch,
+    // Every GitLab call (safeFetch in production)
+    private readonly fetchFn: FetchFn,
     private readonly nowSec: () => number = () => Math.floor(Date.now() / 1000)
   ) {}
 
@@ -57,10 +58,11 @@ export class GitlabUserManager {
       workspaceUuid: workspace,
       socialId
     })
-    if (secrets.length === 0) {
-      return undefined
+    for (const secret of secrets) {
+      const record = this.parse(secret)
+      if (record !== undefined) return record
     }
-    return this.parse(secrets[0])
+    return undefined
   }
 
   async save (record: GitlabUserRecord): Promise<void> {
@@ -159,7 +161,22 @@ export class GitlabUserManager {
     }
   }
 
-  private parse (secret: IntegrationSecret): GitlabUserRecord {
-    return { ...(JSON.parse(secret.secret) as GitlabUserRecord), account: secret.socialId }
+  // A corrupt secret counts as no token, like a missing one: the member is asked to re-authorize
+  private parse (secret: IntegrationSecret): GitlabUserRecord | undefined {
+    try {
+      const value = JSON.parse(secret.secret)
+      if (
+        value === null ||
+        typeof value !== 'object' ||
+        typeof value.token !== 'string' ||
+        typeof value.host !== 'string' ||
+        typeof value.userId !== 'number'
+      ) {
+        return undefined
+      }
+      return { ...(value as GitlabUserRecord), account: secret.socialId }
+    } catch {
+      return undefined
+    }
   }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { Person } from '@hcengineering/contact'
 import type { Ref } from '@hcengineering/core'
-import { planTodos, type TodoInput } from '../sync/todos'
+import { keptTodos, planTodos, type TodoInput } from '../sync/todos'
 
 const p = (id: string): Ref<Person> => id as Ref<Person>
 
@@ -63,5 +63,27 @@ describe('planTodos', () => {
 
   it('drops keys it does not understand', () => {
     expect(planTodos(input({ keys: ['bogus'] }))).toEqual({ create: [], complete: [], keys: [] })
+  })
+})
+
+describe('keptTodos', () => {
+  it('lists the ToDos already created that are still needed', () => {
+    const keys = ['review:a', 'review:b']
+    const plan = planTodos(
+      input({
+        reviewers: [
+          { person: p('a'), state: 'unreviewed' },
+          { person: p('c'), state: 'unreviewed' }
+        ],
+        keys
+      })
+    )
+    expect(keptTodos(plan, keys)).toEqual([{ purpose: 'review', person: 'a' }])
+  })
+
+  it('keeps nothing once the merge request is no longer open', () => {
+    const keys = ['review:a']
+    const plan = planTodos(input({ open: false, reviewers: [{ person: p('a'), state: 'unreviewed' }], keys }))
+    expect(keptTodos(plan, keys)).toEqual([])
   })
 })

@@ -1,25 +1,22 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { LoginInfoByToken } from '@hcengineering/account-client'
-import {
-  AccountRole,
-  MeasureMetricsContext,
-  type PersonId,
-  type PersonUuid,
-  type WorkspaceUuid
-} from '@hcengineering/core'
+import { AccountRole, type PersonId, type PersonUuid, type WorkspaceUuid } from '@hcengineering/core'
 import { decodeToken, generateToken } from '@hcengineering/server-token'
+import { HttpError } from '../http-error'
+import { ctx } from './helpers/provider'
 import {
   appConfigRoute,
+  appInput,
   appRemoveRoute,
   disconnectAllRoute,
   repositoryDisableRoute,
   repositoryEnableRoute,
+  requiredString,
   verifyCallerToken,
   type OwnerRouteDeps,
   type RepositoryRouteDeps
 } from '../routes'
 
-const ctx = new MeasureMetricsContext('test', {})
 const ws = '11111111-1111-4111-8111-111111111111' as WorkspaceUuid
 const account = '22222222-2222-4222-8222-222222222222' as PersonUuid
 const person = 'p1' as PersonId
@@ -128,14 +125,19 @@ describe('app-config route', () => {
   })
 })
 
-function repositoryDeps (): RepositoryRouteDeps & {
+function repositoryDeps (role: AccountRole | undefined = AccountRole.User): RepositoryRouteDeps & {
   service: { enableRepository: jest.Mock, disableRepository: jest.Mock }
   listSocialIds: jest.Mock
+  loginInfo: jest.Mock
 } {
   const listSocialIds = jest.fn(async () => [{ _id: person }])
   return {
     listSocialIds,
     verify: async (body) => await verifyCallerToken(body, { decode: decodeToken, listSocialIds }),
+    loginInfo: jest.fn(
+      async () =>
+        ({ account, workspace: ws, workspaceUrl: 'w', endpoint: 'e', token: 't', role }) as unknown as LoginInfoByToken
+    ),
     service: { enableRepository: jest.fn(async () => {}), disableRepository: jest.fn(async () => {}) }
   }
 }
@@ -147,7 +149,23 @@ describe.each([
   it("acts in the token's workspace for the verified caller", async () => {
     const d = repositoryDeps()
     await route(ctx, { token: workspaceToken, accountId: person, repositoryId: 'repo-1' }, d)
-    expect(d.service[method]).toHaveBeenCalledWith(ctx, ws, 'repo-1')
+    expect(d.service[method]).toHaveBeenCalledWith(ctx, ws, 'repo-1', expect.objectContaining({ accountId: person }))
+  })
+
+  it('tells the service whether the caller is a maintainer, asking the account service only when needed', async () => {
+    const d = repositoryDeps(AccountRole.Maintainer)
+    await route(ctx, { token: workspaceToken, accountId: person, repositoryId: 'repo-1' }, d)
+    expect(d.loginInfo).not.toHaveBeenCalled()
+    const caller = d.service[method].mock.calls[0][3]
+    expect(await caller.isMaintainer()).toBe(true)
+    expect(d.loginInfo).toHaveBeenCalledTimes(1)
+  })
+
+  it('answers 401 for an invalid token', async () => {
+    const d = repositoryDeps()
+    await expect(
+      route(ctx, { token: `${workspaceToken}x`, accountId: person, repositoryId: 'repo-1' }, d)
+    ).rejects.toMatchObject({ status: 401 })
   })
 
   it("rejects a social id that is not the caller's", async () => {
@@ -172,5 +190,36 @@ describe.each([
       'repositoryId is required'
     )
     expect(d.listSocialIds).not.toHaveBeenCalled()
+  })
+})
+
+function thrown (fn: () => unknown): unknown {
+  try {
+    fn()
+  } catch (err: unknown) {
+    return err
+  }
+  return undefined
+}
+
+describe('requiredString', () => {
+  it('returns a non-empty string and refuses anything else with 400', () => {
+    expect(requiredString({ code: 'abc' }, 'code')).toBe('abc')
+    for (const body of [{}, { code: '' }, { code: 5 }]) {
+      expect(thrown(() => requiredString(body, 'code'))).toMatchObject({ status: 400, message: 'code is required' })
+    }
+  })
+})
+
+describe('appInput', () => {
+  it('answers a malformed app body with a 400 HttpError', () => {
+    for (const body of [{}, { clientId: 5 }, { clientId: 'id', host: 1 }, { clientId: 'id', clientSecret: 2 }]) {
+      expect(() => appInput(body)).toThrow(HttpError)
+      try {
+        appInput(body)
+      } catch (err) {
+        expect((err as HttpError).status).toBe(400)
+      }
+    }
   })
 })

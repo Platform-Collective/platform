@@ -20,6 +20,7 @@ import {
   seedRepository
 } from './helpers/fixtures'
 import { createMemoryClient, type MemoryClient } from './helpers/memory'
+import { syncDocOf } from './helpers/sync'
 import { asApi, createTestProvider, ctx, fakeApi, type FakeApi } from './helpers/provider'
 
 const KEY_3 = mergeRequestKey(HOST, PROJECT_ID, 3)
@@ -49,8 +50,6 @@ function setup (headSha = 'sha-2'): Env {
 
 const d1 = (): GitlabDiscussion =>
   gitlabDiscussion('d1', [gitlabDiffNote(51), gitlabDiffNote(52, { author: gitlabUser(7), body: 'Reply' })])
-const syncOf = (memory: MemoryClient, id: string): any =>
-  memory.docs.find((d) => d._id === id && d._class === gitlab.class.DocSyncInfo)
 const threadDocs = (memory: MemoryClient): any[] =>
   memory.docs.filter((d) => d._class === gitlab.class.GitlabReviewThread)
 const commentDocs = (memory: MemoryClient): any[] =>
@@ -83,6 +82,13 @@ async function refreshed (env: Env, discussions: GitlabDiscussion[]): Promise<vo
 }
 
 describe('ReviewThreadSyncManager', () => {
+  it("stamps sync docs with the provider's clock", async () => {
+    const env = setup()
+    await refreshed(env, [d1()])
+    const [thread] = infosOf(env.memory, gitlab.class.GitlabReviewThread)
+    expect(thread.lastModified).toBe(Date.parse('2026-01-15T00:00:00.000Z'))
+  })
+
   it('does not import a discussion whose first note is internal', async () => {
     const env = setup()
     await refreshed(env, [gitlabDiscussion('d3', [gitlabDiffNote(70, { internal: true }), gitlabDiffNote(71)])])
@@ -112,7 +118,7 @@ describe('ReviewThreadSyncManager', () => {
         modifiedBy: 'sid-2'
       })
     ])
-    expect(syncOf(env.memory, threadDocs(env.memory)[0]._id)).toMatchObject({
+    expect(syncDocOf(env.memory, threadDocs(env.memory)[0]._id)).toMatchObject({
       key: `${KEY_3}/discussions/d1`,
       parent: KEY_3,
       needSync: GITLAB_SYNC_VERSION,
@@ -160,10 +166,10 @@ describe('ReviewThreadSyncManager', () => {
     await refreshed(env, [d1()])
     const thread = threadDocs(env.memory)[0]
     await env.memory.update(thread, { isResolved: true, resolvedBy: HULY_USER }, false, Date.now(), HULY_USER)
-    await env.memory.update(syncOf(env.memory, thread._id), { needSync: '' })
+    await env.memory.update(syncDocOf(env.memory, thread._id), { needSync: '' })
     await syncPending(env)
     expect(env.api.resolveMergeRequestDiscussion).toHaveBeenCalledWith(PROJECT_ID, 3, 'd1', true)
-    expect(syncOf(env.memory, thread._id)).toMatchObject({
+    expect(syncDocOf(env.memory, thread._id)).toMatchObject({
       current: { isResolved: true },
       external: { resolved: true }
     })
@@ -199,13 +205,13 @@ describe('ReviewThreadSyncManager', () => {
     await refreshed(env, [d1()])
     const thread = threadDocs(env.memory)[0]
     env.memory.docs.splice(env.memory.docs.indexOf(thread), 1)
-    const info = syncOf(env.memory, thread._id)
+    const info = syncDocOf(env.memory, thread._id)
     await env.memory.update(info, { deleted: true })
     expect(await env.threads.handleDelete(ctx, { ...info })).toBe(false)
     await env.memory.update(info, { needSync: GITLAB_SYNC_VERSION })
     await refreshed(env, [d1()])
     expect(threadDocs(env.memory)).toEqual([])
-    expect(syncOf(env.memory, thread._id).deleted).toBe(true)
+    expect(syncDocOf(env.memory, thread._id).deleted).toBe(true)
     expect(env.api.resolveMergeRequestDiscussion).not.toHaveBeenCalled()
   })
 
