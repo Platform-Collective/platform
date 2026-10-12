@@ -7,7 +7,7 @@
   let minutes = ''
   let pressed: boolean = false
 
-  function updateTime (): void {
+  function updateTime(): void {
     const date = new Date()
     const h = date.getHours()
     hours = h < 10 ? `0${h}` : h.toString()

@@ -43,7 +43,7 @@
     reactionsPersons = reactionsPersons
   }
 
-  function getClickHandler (emoji: { text: string, image?: Ref<Blob> }): ((e: CustomEvent) => void) | undefined {
+  function getClickHandler(emoji: { text: string, image?: Ref<Blob> }): ((e: CustomEvent) => void) | undefined {
     if (readonly) return
     return (e: CustomEvent) => {
       e.stopPropagation()
@@ -52,7 +52,7 @@
     }
   }
 
-  function openEmojiPalette (ev: Event): void {
+  function openEmojiPalette(ev: Event): void {
     if (readonly) return
     ev.preventDefault()
     ev.stopPropagation()

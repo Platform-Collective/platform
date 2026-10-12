@@ -19,7 +19,7 @@
 
   export let name: string | null | undefined = undefined
 
-  function getDisplayName (name: string | null | undefined): string {
+  function getDisplayName(name: string | null | undefined): string {
     if (name == null) {
       return ''
     }

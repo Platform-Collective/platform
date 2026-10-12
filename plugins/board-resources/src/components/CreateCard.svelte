@@ -35,13 +35,13 @@
   const client = getClient()
   const cardId = generateId<BoardCard>()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return title !== ''
   }
 
   let kind: Ref<TaskType> | undefined = undefined
 
-  async function createCard () {
+  async function createCard() {
     const sp = await client.findOne(board.class.Board, { _id: _space as Ref<Board> })
     if (sp === undefined) {
       throw new Error('Board not found')

@@ -25,7 +25,7 @@
 
   $: drawingAvailable = value?.type?.startsWith('image/') && isAttachment(value)
 
-  async function loadDrawings (): Promise<Drawing[]> {
+  async function loadDrawings(): Promise<Drawing[]> {
     const client = getClient()
     const drawings = await client.findAll(
       attachment.class.Drawing,
@@ -44,7 +44,7 @@
     return Array.from(drawings ?? [])
   }
 
-  async function createDrawing (data: DrawingData): Promise<DrawingData> {
+  async function createDrawing(data: DrawingData): Promise<DrawingData> {
     const client = getClient()
     const newId = await client.createDoc(attachment.class.Drawing, value.space, {
       parent: value.file,

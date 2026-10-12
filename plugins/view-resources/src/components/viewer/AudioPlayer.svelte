@@ -29,7 +29,7 @@
   let duration = Number.POSITIVE_INFINITY
   let paused = true
 
-  function handleClick (): void {
+  function handleClick(): void {
     paused = !paused
   }
 

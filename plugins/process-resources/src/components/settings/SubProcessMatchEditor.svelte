@@ -31,7 +31,7 @@
 
   $: possibleProcesses = getPossibleProcesses(process)
 
-  function getPossibleProcesses (proc: Process): Ref<Process>[] {
+  function getPossibleProcesses(proc: Process): Ref<Process>[] {
     const res = new Set<Ref<Process>>()
     const transitions = client.getModel().findAllSync(plugin.class.Transition, { process: proc._id })
     for (const transition of transitions) {
@@ -58,7 +58,7 @@
 
   $: selected = selectedProcessId !== undefined ? items.find((it) => it.id === selectedProcessId)?.id : undefined
 
-  function changeProcess (e: CustomEvent<any>): void {
+  function changeProcess(e: CustomEvent<any>): void {
     if (readonly || e.detail == null) return
     selectedProcessId = e.detail
     params = {
@@ -67,7 +67,7 @@
     dispatch('change', { params })
   }
 
-  function changeStateCriteria (e: CustomEvent<any>): void {
+  function changeStateCriteria(e: CustomEvent<any>): void {
     if (readonly || e.detail == null) return
     params = {
       ...params,

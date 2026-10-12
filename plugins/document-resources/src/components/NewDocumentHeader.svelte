@@ -46,7 +46,7 @@
 
   $: parent = getDocumentIdFromFragment(currentFragment ?? '')
 
-  async function newDocument (): Promise<void> {
+  async function newDocument(): Promise<void> {
     Analytics.handleEvent(DocumentEvents.CreateDocumentButtonClicked)
     showPopup(CreateDocument, { space: currentSpace, parent }, 'top', async (id) => {
       if (id !== undefined && id !== null) {
@@ -58,13 +58,13 @@
     })
   }
 
-  async function newTeamspace (): Promise<void> {
+  async function newTeamspace(): Promise<void> {
     showPopup(CreateTeamspace, {}, 'top')
   }
 
   let mainActionId: string | undefined = undefined
   let visibleActions: string[] = []
-  function updateActions (teamspace: boolean): void {
+  function updateActions(teamspace: boolean): void {
     mainActionId = document.string.CreateDocument
     if (teamspace) {
       visibleActions = [document.string.CreateTeamspace, document.string.CreateDocument]

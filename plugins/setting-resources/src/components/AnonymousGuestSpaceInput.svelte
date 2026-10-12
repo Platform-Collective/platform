@@ -31,7 +31,7 @@
   let persistedSelectedKeys: string[] = []
   let docById: Map<string, Space> = new Map<string, Space>()
 
-  async function loadSpaces (): Promise<void> {
+  async function loadSpaces(): Promise<void> {
     if (group.spaceClass === undefined) {
       dropdownItems = []
       selectedKeys = []
@@ -63,7 +63,7 @@
     }
   }
 
-  async function handleSelected (e: CustomEvent<string[]>): Promise<void> {
+  async function handleSelected(e: CustomEvent<string[]>): Promise<void> {
     const nextKeys = new Set(e.detail)
     const prevKeys = new Set(persistedSelectedKeys)
     const toEnable = [...nextKeys].filter((k) => !prevKeys.has(k))

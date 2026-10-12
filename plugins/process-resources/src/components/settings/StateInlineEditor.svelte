@@ -21,11 +21,11 @@
   export let value: State
   const client = getClient()
 
-  async function saveTitle (): Promise<void> {
+  async function saveTitle(): Promise<void> {
     await client.update(value, { title: value.title })
   }
 
-  async function handleDelete (): Promise<void> {
+  async function handleDelete(): Promise<void> {
     await client.remove(value)
   }
 </script>

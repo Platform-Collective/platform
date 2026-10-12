@@ -41,7 +41,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function openPopup (): void {
+  function openPopup(): void {
     if (!opened) {
       opened = true
       showPopup(NestedMenu, { items, withIcon, disableFocusOnMouseover, withSearch }, container, (result) => {

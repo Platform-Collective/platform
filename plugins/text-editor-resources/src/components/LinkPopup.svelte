@@ -24,7 +24,7 @@
   const dispatch = createEventDispatcher()
   const linkPlaceholder = getEmbeddedLabel('http://my.link.net')
 
-  function save (): void {
+  function save(): void {
     dispatch('update', link)
   }
 

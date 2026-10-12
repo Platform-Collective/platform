@@ -31,7 +31,7 @@
 
   let persons: WithLookup<Employee>[] = []
   $: persons = Array.isArray(value) ? value : [value]
-  function ondrag (p: Employee): void {
+  function ondrag(p: Employee): void {
     dragPerson = p as WithLookup<Staff>
   }
 </script>

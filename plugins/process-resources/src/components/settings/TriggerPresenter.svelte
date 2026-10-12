@@ -30,7 +30,7 @@
 
   $: validate(params)
 
-  function validate (params: Record<string, any>): void {
+  function validate(params: Record<string, any>): void {
     if (trigger === undefined) {
       error = false
     }

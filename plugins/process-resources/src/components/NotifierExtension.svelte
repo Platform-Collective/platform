@@ -37,14 +37,14 @@
     }
   })
 
-  async function notifyAll (events: ExecutionLog[]): Promise<void> {
+  async function notifyAll(events: ExecutionLog[]): Promise<void> {
     for (const event of events) {
       if (processed.has(event._id)) continue
       await notify(event)
     }
   }
 
-  async function notify (event: ExecutionLog): Promise<void> {
+  async function notify(event: ExecutionLog): Promise<void> {
     processed.add(event._id)
     const _process = client.getModel().findObject(event.process)
     addNotification(

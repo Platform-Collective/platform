@@ -57,16 +57,16 @@ interface ScheduledNotificationMessage {
 
 type TimeMachineMessage =
   | {
-    type: 'schedule'
-    id: string
-    targetDate: number
-    topic: string
-    data: ScheduledNotificationMessage
-  }
+      type: 'schedule'
+      id: string
+      targetDate: number
+      topic: string
+      data: ScheduledNotificationMessage
+    }
   | {
-    type: 'cancel'
-    id: string
-  }
+      type: 'cancel'
+      id: string
+    }
 
 type TimeMachineScheduleMessage = Extract<TimeMachineMessage, { type: 'schedule' }>
 
@@ -294,7 +294,7 @@ async function OnEvent (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
     } else if (ctx._class === core.class.TxUpdateDoc) {
       result.push(...(await onEventUpdate(ctx as TxUpdateDoc<Event>, control)))
     } else if (ctx._class === core.class.TxRemoveDoc) {
-      result.push(...(await onRemoveEvent(ctx as TxRemoveDoc<Event>, control)))
+      result.push(...(await onRemoveEvent(ctx, control)))
     } else if (ctx._class === core.class.TxMixin) {
       result.push(...(await onEventMixin(ctx as TxMixin<Event, Event>, control)))
     }
@@ -499,7 +499,7 @@ async function onEventCreate (ctx: TxCreateDoc<Event>, control: TriggerControl):
   const events = await control.findAll(control.ctx, calendar.class.Event, { eventId: event.eventId })
   const access = AccessLevel.Reader
   for (const part of event.participants) {
-    const socialIds = await getSocialIds(control, part as Ref<Person>)
+    const socialIds = await getSocialIds(control, part)
     if (socialIds.length === 0) continue
     const socialStrings = socialIds.map((si) => si._id)
     if (socialStrings.includes(event.user ?? event.createdBy ?? event.modifiedBy)) continue

@@ -13,7 +13,7 @@ import { descendantsWithDates, wouldCreateCycle } from '../scheduler'
  * direct parent. layout.ts:52 + GanttView.svelte:192 both use this
  * pattern, so the scheduler walks the same edge.
  */
-function mkIssue (id: string, parent: string | null, startDate: number | null, dueDate: number | null): Issue {
+function mkIssue(id: string, parent: string | null, startDate: number | null, dueDate: number | null): Issue {
   return {
     _id: id as Ref<Issue>,
     parents: parent !== null ? [{ parentId: parent as Ref<Issue>, parentTitle: '', space: 'sp' }] : [],
@@ -89,7 +89,7 @@ describe('descendantsWithDates', () => {
   })
 })
 
-function mkRel (from: string, to: string, kind: DependencyKind = 'finish-to-start'): IssueRelation {
+function mkRel(from: string, to: string, kind: DependencyKind = 'finish-to-start'): IssueRelation {
   return {
     _id: `${from}->${to}` as Ref<IssueRelation>,
     attachedTo: from as Ref<Issue>,

@@ -30,7 +30,7 @@ import core, {
 } from '@hcengineering/core'
 import { translate } from '@hcengineering/platform'
 import { BasePresentationMiddleware, type PresentationMiddleware } from '@hcengineering/presentation'
-import { ExecutionStatus, isUpdateTx, type ApproveRequest, type ProcessToDo } from '@hcengineering/process'
+import { ExecutionStatus, type ApproveRequest, type ProcessToDo } from '@hcengineering/process'
 import process from './plugin'
 import { createExecution, getNextStateUserInput, pickTransition, requestResult } from './utils'
 
@@ -108,9 +108,17 @@ export class ProcessMiddleware extends BasePresentationMiddleware implements Pre
         _id: updateTx.objectId
       })
       if (card === undefined) return
-      const updated = isUpdateTx(updateTx)
-        ? TxProcessor.updateDoc2Doc<Card>(hierarchy.clone(card), updateTx)
-        : TxProcessor.updateMixin4Doc<Card, Card>(hierarchy.clone(card), updateTx)
+      let updated: Card
+      let operations: TxUpdateDoc<Card>['operations'] | TxMixin<Card, Card>['attributes']
+      if (etx._class === core.class.TxUpdateDoc) {
+        const documentUpdateTx = etx as TxUpdateDoc<Card>
+        updated = TxProcessor.updateDoc2Doc<Card>(hierarchy.clone(card), documentUpdateTx)
+        operations = documentUpdateTx.operations
+      } else {
+        const mixinUpdateTx = etx as TxMixin<Card, Card>
+        updated = TxProcessor.updateMixin4Doc<Card, Card>(hierarchy.clone(card), mixinUpdateTx)
+        operations = mixinUpdateTx.attributes
+      }
       for (const execution of executions) {
         const transitions = this.client.getModel().findAllSync(
           process.class.Transition,
@@ -125,7 +133,7 @@ export class ProcessMiddleware extends BasePresentationMiddleware implements Pre
         const inputContext = {
           ...execution.context,
           card: updated,
-          operations: isUpdateTx(updateTx) ? updateTx.operations : updateTx.attributes
+          operations
         }
         const transition = await pickTransition(this.client, execution, transitions, inputContext)
         if (transition === undefined) continue

@@ -35,12 +35,12 @@
   $: oldContent = markdownToMarkup(oldMarkdown)
   $: newContent = markdownToMarkup(newMarkdown)
 
-  function handleApply (): void {
+  function handleApply(): void {
     onApply()
     dispatch('close')
   }
 
-  function handleCancel (): void {
+  function handleCancel(): void {
     dispatch('close')
   }
 </script>

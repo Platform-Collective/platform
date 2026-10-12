@@ -37,7 +37,7 @@
     void loadBotInfo()
   })
 
-  async function loadBotInfo (): Promise<void> {
+  async function loadBotInfo(): Promise<void> {
     if (info !== undefined || isLoading) return
     isLoading = true
     try {
@@ -54,7 +54,7 @@
     isLoading = false
   }
 
-  async function handleTestConnection (): Promise<void> {
+  async function handleTestConnection(): Promise<void> {
     isTestingConnection = true
     isConnectionEstablished = false
     connectionError = undefined
@@ -90,7 +90,7 @@
   let isCodeValid = false
   let codeError: IntlString | undefined
 
-  async function handleCode (event: CustomEvent<string>): Promise<void> {
+  async function handleCode(event: CustomEvent<string>): Promise<void> {
     isCodeValid = false
     codeError = undefined
 

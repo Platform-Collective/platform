@@ -145,7 +145,7 @@ export async function performGithubAccountMigrations (
         if (systemAccounts.includes(account._id as any)) {
           ;(socialKeyByAccount as any)[account._id] = account._id
         } else {
-          socialKeyByAccount[account._id] = buildSocialIdString(getSocialKeyByOldEmail(account.email)) as any
+          socialKeyByAccount[account._id] = buildSocialIdString(getSocialKeyByOldEmail(account.email))
         }
       }
 

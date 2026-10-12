@@ -56,7 +56,7 @@ export class ReviewSyncManager implements DocSyncManager {
   eventSync = new Map<string, Promise<void>>()
 
   @withContext('reviews-handleEvent')
-  async handleEvent<T>(
+  async handleEvent<T> (
     ctx: MeasureContext,
     integration: IntegrationContainer,
     derivedClient: TxOperations,
@@ -457,12 +457,12 @@ export class ReviewSyncManager implements DocSyncManager {
 
       if (isGHWriteAllowed()) {
         const response:
-        | {
-          addPullRequestReview: {
-            pullRequestReview: ReviewExternalData
-          }
-        }
-        | undefined = await okit.graphql(q, {
+          | {
+              addPullRequestReview: {
+                pullRequestReview: ReviewExternalData
+              }
+            }
+          | undefined = await okit.graphql(q, {
           prID: (parent.external as PullRequestExternalData).id,
           body: (await this.provider.getMarkdown(existingReview.body)) ?? '',
           state: existingReview.state

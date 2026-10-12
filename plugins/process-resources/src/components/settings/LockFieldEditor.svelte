@@ -31,7 +31,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function getKeys (_class: Ref<Class<MasterTag>>): AnyAttribute[] {
+  function getKeys(_class: Ref<Class<MasterTag>>): AnyAttribute[] {
     const ignoreKeys = ['_class', 'content', 'parent', 'attachments', 'todos']
     const attributes = hierarchy.getAllAttributes(_class, core.class.Doc)
     const res: AnyAttribute[] = []
@@ -43,7 +43,7 @@
     return res
   }
 
-  function change (value: string[]): void {
+  function change(value: string[]): void {
     params.value = value
     step.params = params
     dispatch('change', step)
@@ -54,12 +54,12 @@
   $: allAttrs = getKeys(process.masterTag)
   $: possibleAttrs = allAttrs.filter((attr) => !keys.includes(attr.name))
 
-  function addKey (key: string): void {
+  function addKey(key: string): void {
     keys = [...keys, key]
     change(keys)
   }
 
-  function onAdd (e: MouseEvent): void {
+  function onAdd(e: MouseEvent): void {
     showPopup(
       SelectPopup,
       {
@@ -76,7 +76,7 @@
     )
   }
 
-  function remove (key: string): void {
+  function remove(key: string): void {
     keys = keys.filter((k) => k !== key)
     change(keys)
   }

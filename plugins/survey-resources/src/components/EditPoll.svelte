@@ -31,11 +31,11 @@
 
   $: updateCanSubmit(isAnswered)
 
-  function updateCanSubmit (isAnswered: boolean[]): void {
+  function updateCanSubmit(isAnswered: boolean[]): void {
     canSubmit = isAnswered.every((yes) => yes)
   }
 
-  function isQuestionValid (question: Question): boolean {
+  function isQuestionValid(question: Question): boolean {
     if (!hasText(question.name)) {
       return false
     }
@@ -47,11 +47,11 @@
     return true
   }
 
-  function handleChange (patch: Partial<Poll>): void {
+  function handleChange(patch: Partial<Poll>): void {
     dispatch('change', patch)
   }
 
-  function handleQuestionChange (index: number, patch: Partial<PollQuestion>): Promise<void> | void {
+  function handleQuestionChange(index: number, patch: Partial<PollQuestion>): Promise<void> | void {
     const questions = (object.questions ?? []).slice()
     questions[index] = { ...questions[index], ...patch }
     handleChange({ questions })

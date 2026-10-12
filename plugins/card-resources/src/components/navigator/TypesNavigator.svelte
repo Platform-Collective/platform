@@ -41,11 +41,11 @@
     classes = res.filter((it) => it.removed !== true).sort((a, b) => a.label.localeCompare(b.label))
   })
 
-  function getRootClasses (_classes: MasterTag[]): MasterTag[] {
+  function getRootClasses(_classes: MasterTag[]): MasterTag[] {
     return _classes.filter((it) => it.extends === card.class.Card)
   }
 
-  function getFavoriteClasses (_classes: MasterTag[], _favoriteTypes: Ref<MasterTag>[]): MasterTag[] {
+  function getFavoriteClasses(_classes: MasterTag[], _favoriteTypes: Ref<MasterTag>[]): MasterTag[] {
     const hierarchy = client.getHierarchy()
     const rootClasses = getRootClasses(_classes)
     const rootFavorites = rootClasses.filter((it) => _favoriteTypes.includes(it._id))
@@ -67,11 +67,11 @@
     return [...rootFavorites, ...additionalFavorites].sort((a, b) => a.label.localeCompare(b.label))
   }
 
-  function buildTypePath (currentPath: any[], type: Ref<MasterTag>): any[] {
+  function buildTypePath(currentPath: any[], type: Ref<MasterTag>): any[] {
     return [...currentPath.slice(0, 3), 'type', type]
   }
 
-  function selectType (type: Ref<MasterTag>): void {
+  function selectType(type: Ref<MasterTag>): void {
     const loc = getCurrentLocation()
     loc.path = buildTypePath(loc.path, type)
     setFilters([])
@@ -83,7 +83,7 @@
     favorites = new Map(res.map((fav) => [fav.attachedTo, fav]))
   })
 
-  function toggleFavoriteType (typeId: Ref<MasterTag>): void {
+  function toggleFavoriteType(typeId: Ref<MasterTag>): void {
     const favorite = favorites.get(typeId)
     if (favorite !== undefined) {
       void client.remove(favorite)
@@ -94,7 +94,7 @@
     }
   }
 
-  function getItemActions (typeId: Ref<MasterTag>): Action[] {
+  function getItemActions(typeId: Ref<MasterTag>): Action[] {
     const favorite = favorites.get(typeId)
     const isFavorite = favorite !== undefined
     return [

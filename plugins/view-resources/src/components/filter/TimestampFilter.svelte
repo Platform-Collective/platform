@@ -27,7 +27,7 @@
   filter.modes = [view.filter.FilterBefore, view.filter.FilterAfter]
   filter.mode = filter.mode === undefined ? filter.modes[0] : filter.mode
 
-  function click (value: number): void {
+  function click(value: number): void {
     closeTooltip()
     filter.value = [value]
     onChange(filter)
@@ -35,7 +35,7 @@
   }
 
   const today = new Date().setHours(0, 0, 0, 0)
-  function shiftDays (diff: number): number {
+  function shiftDays(diff: number): number {
     return new Date(today).setDate(new Date(today).getDate() - diff)
   }
 

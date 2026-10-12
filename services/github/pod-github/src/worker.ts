@@ -146,7 +146,7 @@ export class GithubWorker implements IntegrationManager {
     this.closing = true
     this.ctx.warn('Closing', { workspace: this.workspace })
     this.triggerSync()
-    await Promise.all([await this.syncPromise, new Promise<void>((resolve) => setTimeout(resolve, 5000))])
+    await Promise.all([this.syncPromise, new Promise<void>((resolve) => setTimeout(resolve, 5000))])
 
     this.ctx.warn('Closing Done', { workspace: this.workspace })
     await this.client.close()
@@ -202,19 +202,19 @@ export class GithubWorker implements IntegrationManager {
     return compatible
       ? markup
       : jsonToMarkup({
-        type: MarkupNodeType.doc,
-        content: [
-          {
-            type: MarkupNodeType.markdown,
-            content: [
-              {
-                type: MarkupNodeType.text,
-                text
-              }
-            ]
-          }
-        ]
-      })
+          type: MarkupNodeType.doc,
+          content: [
+            {
+              type: MarkupNodeType.markdown,
+              content: [
+                {
+                  type: MarkupNodeType.text,
+                  text
+                }
+              ]
+            }
+          ]
+        })
   }
 
   async getMarkup (
@@ -1434,8 +1434,8 @@ export class GithubWorker implements IntegrationManager {
     const docsMap = new Map<Ref<Doc>, Doc>(externalDocs.map((it) => [it._id as Ref<Doc>, it]))
     const orderedSyncInfo = [...syncInfo]
     orderedSyncInfo.sort((a, b) => {
-      const adoc = docsMap.get(a._id as Ref<Doc>)
-      const bdoc = docsMap.get(a._id as Ref<Doc>)
+      const adoc = docsMap.get(a._id)
+      const bdoc = docsMap.get(a._id)
       return (bdoc?.createdOn ?? 0) - (adoc?.createdOn ?? 0)
     })
 
@@ -1724,7 +1724,7 @@ export class GithubWorker implements IntegrationManager {
     }
   }
 
-  async handleEvent<T>(
+  async handleEvent<T> (
     ctx: MeasureContext,
     requestClass: Ref<Class<Doc>>,
     integrationId: number | undefined,

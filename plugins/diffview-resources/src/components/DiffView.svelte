@@ -25,16 +25,16 @@
 
   let mode: DiffViewMode = getCurrentMode()
 
-  function getCurrentMode (): DiffViewMode {
+  function getCurrentMode(): DiffViewMode {
     return (localStorage.getItem('diffview.mode') as DiffViewMode) ?? 'unified'
   }
 
-  function saveMode (value: DiffViewMode) {
+  function saveMode(value: DiffViewMode) {
     localStorage.setItem('diffview.mode', value)
     mode = value
   }
 
-  function isFileViewed (diffFile: DiffFile): boolean {
+  function isFileViewed(diffFile: DiffFile): boolean {
     const { fileName, sha } = diffFile
 
     return viewed.some((file) => file.fileName === fileName && file.sha === sha)

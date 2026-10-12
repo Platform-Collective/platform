@@ -39,7 +39,7 @@
   const client = getClient()
   const assigneeAttribute = client.getHierarchy().getAttribute(lead.class.Lead, 'assignee')
 
-  function showLead () {
+  function showLead() {
     openDoc(client.getHierarchy(), object)
   }
 

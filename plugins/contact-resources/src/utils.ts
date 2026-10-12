@@ -53,6 +53,7 @@ import {
   type SocialIdentity
 } from '@hcengineering/contact'
 import core, {
+  AccountRole,
   type AccountUuid,
   type AggregateValue,
   type Class,
@@ -60,6 +61,7 @@ import core, {
   type Doc,
   type DocumentQuery,
   getCurrentAccount,
+  hasAccountRole,
   type Hierarchy,
   type IdMap,
   notEmpty,
@@ -92,7 +94,7 @@ import {
   type ResolvedLocation,
   type TabItem
 } from '@hcengineering/ui'
-import view, { type Filter, type GrouppingManager } from '@hcengineering/view'
+import view, { type Filter, type GrouppingManager, type ObjectPanel } from '@hcengineering/view'
 import { accessDeniedStore, FilterQuery } from '@hcengineering/view-resources'
 import { type LocationData } from '@hcengineering/workbench'
 import { derived, get, type Readable, writable } from 'svelte/store'
@@ -108,6 +110,18 @@ export function formatDate (dueDateMs: Timestamp): string {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+export function canEditPersonContactDetails (person: Person): boolean {
+  const currentEmployee = getCurrentEmployee()
+  if (currentEmployee === person._id) return true
+
+  const account = getCurrentAccount()
+  if (person.personUuid === account.uuid) return true
+
+  if (!getClient().getHierarchy().hasMixin(person, contact.mixin.Employee)) return true
+
+  return hasAccountRole(account, AccountRole.Maintainer)
 }
 
 export async function employeeSort (client: TxOperations, value: Array<Ref<Employee>>): Promise<Array<Ref<Employee>>> {
@@ -190,11 +204,11 @@ export async function getRefs (
         const filteredRefs =
           docUpdates !== undefined && inboxNotificationsByContext !== undefined
             ? refs.filter((channel) => {
-              const docUpdate = docUpdates.get(channel._id)
-              return docUpdate != null
-                ? inboxNotificationsByContext.get(docUpdate._id)?.some(({ isViewed }) => !isViewed)
-                : (channel.items ?? 0) > 0
-            })
+                const docUpdate = docUpdates.get(channel._id)
+                return docUpdate != null
+                  ? inboxNotificationsByContext.get(docUpdate._id)?.some(({ isViewed }) => !isViewed)
+                  : (channel.items ?? 0) > 0
+              })
             : refs
         const result = Array.from(new Set(filteredRefs.map((p) => p.attachedTo)))
         FilterQuery.results.set(filter.index, result)
@@ -328,7 +342,7 @@ async function generateLocation (loc: Location, id: Ref<Contact>): Promise<Resol
       ? 'employees'
       : 'persons'
 
-  const objectPanel = client.getHierarchy().classHierarchyMixin(doc._class as Ref<Class<Doc>>, view.mixin.ObjectPanel)
+  const objectPanel = client.getHierarchy().classHierarchyMixin<Doc, ObjectPanel>(doc._class, view.mixin.ObjectPanel)
   const component = objectPanel?.component ?? view.component.EditDoc
 
   return {
@@ -419,7 +433,7 @@ export function getAnonymousRefs (
     return []
   }
   const ref = byAccount.get(readOnlyGuestAccountUuid)
-  return ref !== undefined ? [ref as unknown as Ref<Person>] : []
+  return ref !== undefined ? [ref] : []
 }
 
 /**

@@ -53,13 +53,13 @@ class FakeQuery implements LiveQueryLike {
     this.current = null // clears the comparison state — re-arms identical queries
   }
 
-  get lastCallback (): ((res: any[]) => void) | null {
+  get lastCallback(): ((res: any[]) => void) | null {
     return this.current?.callback ?? null
   }
 
   // Delivery as in the original: queued, never synchronous. `await respond(…)`
   // returns only after the callback has run.
-  async respond (res: any[]): Promise<void> {
+  async respond(res: any[]): Promise<void> {
     const cb = this.current?.callback
     if (cb === undefined) throw new Error('no active subscription')
     await Promise.resolve()
@@ -76,7 +76,7 @@ interface Rig {
   switchCount: () => number
 }
 
-function build (hrModelPresent = true): Rig {
+function build(hrModelPresent = true): Rig {
   const project = new FakeQuery()
   const departments = new FakeQuery()
   const holidays = new FakeQuery()
@@ -207,7 +207,7 @@ describe('load sequencing', () => {
 })
 
 describe('project switch', () => {
-  async function readyOnP1 (): Promise<Rig> {
+  async function readyOnP1(): Promise<Rig> {
     const r = build()
     r.machine.setSpace(sp('p1'))
     await r.project.respond(proj(CFG_TEAM))
@@ -295,7 +295,7 @@ describe('fake faithfulness (LiveQuery dedupe contract)', () => {
 })
 
 describe('mutation tickets (generation guard)', () => {
-  async function readyLegacy (id: string): Promise<Rig> {
+  async function readyLegacy(id: string): Promise<Rig> {
     const r = build()
     r.machine.setSpace(sp(id))
     await r.project.respond(proj(undefined))

@@ -30,12 +30,12 @@
   export let maxWidth = ''
   export let avatarSize: IconSize = 'x-small'
 
-  function isPerson (value: Contact): boolean {
+  function isPerson(value: Contact): boolean {
     const client = getClient()
     const hierarchy = client.getHierarchy()
     return hierarchy.isDerived(value._class, contact.class.Person)
   }
-  function isEmployee (value: Contact): boolean {
+  function isEmployee(value: Contact): boolean {
     const client = getClient()
     const hierarchy = client.getHierarchy()
     return hierarchy.isDerived(value._class, contact.mixin.Employee)

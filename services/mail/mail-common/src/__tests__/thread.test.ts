@@ -48,7 +48,7 @@ describe('ThreadLookupService', () => {
       setValue: jest.fn(),
       deleteKey: jest.fn(),
       listKeys: jest.fn()
-    } as unknown as jest.Mocked<KeyValueClient>
+    }
   })
 
   afterEach(() => {

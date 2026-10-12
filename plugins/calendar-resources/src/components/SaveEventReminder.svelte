@@ -33,11 +33,11 @@
 
   const dispatch = createEventDispatcher()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return true
   }
 
-  async function saveReminder () {
+  async function saveReminder() {
     if (event === undefined || (value.shift === undefined && value.date === undefined)) return
     const shift = value.date !== undefined ? value.date - event.date : value.shift
     if (shift === undefined) {

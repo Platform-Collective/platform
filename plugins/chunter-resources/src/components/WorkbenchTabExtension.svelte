@@ -47,7 +47,7 @@
 
   $: void updateObjectId(tab)
 
-  async function updateObjectId (tab: WorkbenchTab): Promise<void> {
+  async function updateObjectId(tab: WorkbenchTab): Promise<void> {
     const base = `${window.location.protocol}//${window.location.host}`
     const url = new URL(concatLink(base, tab.location))
     const loc = parseLocation(url)

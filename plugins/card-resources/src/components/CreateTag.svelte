@@ -31,7 +31,7 @@
 
   $: isMasterTag = _class === card.class.MasterTag
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     const data: Data<MasterTag> = {
       extends: parent?._id ?? card.class.Card,
       label: getEmbeddedLabel(name),

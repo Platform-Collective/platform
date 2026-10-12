@@ -39,7 +39,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function runProcess (): Promise<void> {
+  async function runProcess(): Promise<void> {
     if (process === undefined || card === undefined) return
     const tx = await createExecution(card._id, process, card.space, client.txFactory)
     if (tx) await client.tx(tx)
@@ -52,7 +52,7 @@
 
   $: void filter(process)
 
-  async function filter (process: Ref<Process> | undefined): Promise<void> {
+  async function filter(process: Ref<Process> | undefined): Promise<void> {
     if (process === undefined) {
       ignoreObjects = []
       return

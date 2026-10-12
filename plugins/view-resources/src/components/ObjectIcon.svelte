@@ -30,7 +30,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function getObjectIcon (value: Doc): Asset | undefined {
+  function getObjectIcon(value: Doc): Asset | undefined {
     if (!withObjectIcon) return undefined
     return (value as any)?.icon
   }

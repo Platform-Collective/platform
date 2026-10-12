@@ -92,7 +92,7 @@ export interface MilestoneMarker {
  * (`{ kind, doc }`): `Issue`/`Milestone._id` are `Ref<…>` and thus assignable
  * to the engine's `GanttItem { _id: string }`.
  */
-export type DragTarget = { kind: 'issue', doc: Issue } | { kind: 'milestone', doc: Milestone }
+export type DragTarget = { kind: 'issue'; doc: Issue } | { kind: 'milestone'; doc: Milestone }
 
 /**
  * Live drag/resize state — the engine reducer's `DragState`, specialised to the
@@ -131,17 +131,17 @@ export interface CascadeShift {
 
 /** Discriminated result of simulateCascade. */
 export type SimulateResult =
-  | { kind: 'no-cascade', primary: PrimaryEdit[] }
-  | { kind: 'cascade', primary: PrimaryEdit[], shifts: CascadeShift[], skippedUnscheduled: number }
-  | { kind: 'cycle', cycleNodes: Array<Ref<Issue>> }
+  | { kind: 'no-cascade'; primary: PrimaryEdit[] }
+  | { kind: 'cascade'; primary: PrimaryEdit[]; shifts: CascadeShift[]; skippedUnscheduled: number }
+  | { kind: 'cycle'; cycleNodes: Array<Ref<Issue>> }
   | { kind: 'iteration-overflow' }
   | {
-    kind: 'permission-denied'
-    lockedIssues: Issue[]
-    primary: PrimaryEdit[]
-    shifts: CascadeShift[]
-    skippedUnscheduled: number
-  }
+      kind: 'permission-denied'
+      lockedIssues: Issue[]
+      primary: PrimaryEdit[]
+      shifts: CascadeShift[]
+      skippedUnscheduled: number
+    }
 
 // ---------------------------------------------------------------------------
 // Critical path types

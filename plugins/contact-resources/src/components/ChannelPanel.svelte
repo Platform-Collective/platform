@@ -35,7 +35,7 @@
     ;[channel] = res
   })
 
-  async function getPresenter (channel: Channel | undefined): Promise<AnyComponent | undefined> {
+  async function getPresenter(channel: Channel | undefined): Promise<AnyComponent | undefined> {
     if (channel === undefined) return
     const provider =
       $channelProviders.find((it) => it._id === channel.provider) ??

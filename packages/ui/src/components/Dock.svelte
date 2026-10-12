@@ -15,7 +15,7 @@
 <script lang="ts">
   import { dockStore, unpin } from '../popups'
 
-  function _close (result: any): void {
+  function _close(result: any): void {
     if ($dockStore?.onClose !== undefined) $dockStore.onClose(result)
     $dockStore?.close()
   }

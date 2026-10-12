@@ -5,7 +5,7 @@
 
   export let size: 'large' | 'medium' | 'small' | 'extra-small' | 'min' = 'large'
 
-  function addReaction (event: MouseEvent): void {
+  function addReaction(event: MouseEvent): void {
     showPopup(
       emojiPlugin.component.EmojiPopup,
       {},

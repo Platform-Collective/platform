@@ -27,7 +27,7 @@
   const attribute = hierarchy.findAttribute(_class, '_class')
 
   const dispatch = createEventDispatcher()
-  function onChange (val: any | undefined): void {
+  function onChange(val: any | undefined): void {
     value = val
     dispatch('change', val)
   }

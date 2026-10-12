@@ -39,7 +39,7 @@
 
   const client = getClient()
 
-  async function onDelete (): Promise<void> {
+  async function onDelete(): Promise<void> {
     await client.removeCollection(
       attachment._class,
       attachment.space,
@@ -72,14 +72,14 @@
   $: imageDimensions =
     metadata?.imageWidth && metadata.imageHeight
       ? getImageDimensions(
-        { width: metadata.imageWidth, height: metadata.imageHeight },
-        {
-          maxWidth: 24.5,
-          minWidth: 4,
-          maxHeight: 15,
-          minHeight: 4
-        }
-      )
+          { width: metadata.imageWidth, height: metadata.imageHeight },
+          {
+            maxWidth: 24.5,
+            minWidth: 4,
+            maxHeight: 15,
+            minHeight: 4
+          }
+        )
       : undefined
 </script>
 

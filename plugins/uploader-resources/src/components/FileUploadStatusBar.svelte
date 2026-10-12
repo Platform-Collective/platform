@@ -23,7 +23,7 @@
 
   export let upload: Upload
 
-  function handleClick (ev: MouseEvent): void {
+  function handleClick(ev: MouseEvent): void {
     showPopup(FileUploadStatusPopup, { uploadId: upload.uuid }, ev.currentTarget as HTMLElement)
   }
 </script>

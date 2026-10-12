@@ -24,9 +24,9 @@ export function calculateAnswersToPass (
   questionsCollection: Array<Question<unknown>>,
   passingScore: Percentage
 ): {
-    assessmentsTotal: number
-    answersNeeded: number
-  } {
+  assessmentsTotal: number
+  answersNeeded: number
+} {
   const assessmentsTotal = questionsCollection.filter(isAssessment).length
   const answersNeeded = Math.ceil((passingScore * assessmentsTotal) / 100)
   return {

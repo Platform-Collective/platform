@@ -37,12 +37,12 @@
   $: canSave = !loading && validateName(name)
   $: domains = mailboxOptions.availableDomains.map((d) => ({ _id: d, label: '@' + d }))
 
-  function validateName (name: string): boolean {
+  function validateName(name: string): boolean {
     const n = name.trim()
     return n.length >= mailboxOptions.minNameLength && n.length <= mailboxOptions.maxNameLength && !name.includes('+')
   }
 
-  async function createMailbox (): Promise<void> {
+  async function createMailbox(): Promise<void> {
     const { mailbox, socialId } = await getAccountClient().createMailbox(name, (domain ?? domains[0])._id)
     console.log('Mailbox created', mailbox, socialId)
     const currentUser = getCurrentEmployee()
@@ -75,7 +75,7 @@
     )
   }
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     loading = true
     try {
       await createMailbox()
@@ -89,7 +89,7 @@
     }
   }
 
-  function formatError (err: any): void {
+  function formatError(err: any): void {
     error = `${err}`
     let errMsg: IntlString | undefined
     const errParams: Record<string, any> = {}

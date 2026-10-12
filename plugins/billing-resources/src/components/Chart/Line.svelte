@@ -3,7 +3,7 @@
   export let width: number
   export let height: number
 
-  function createLines (
+  function createLines(
     data: { date: number, value: number }[],
     width: number,
     height: number

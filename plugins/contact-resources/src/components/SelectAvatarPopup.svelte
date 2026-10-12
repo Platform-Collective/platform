@@ -39,7 +39,7 @@
   import AvatarComponent from './Avatar.svelte'
   import EditAvatarPopup from './EditAvatarPopup.svelte'
 
-  function buildGravatarId (email: string): string {
+  function buildGravatarId(email: string): string {
     return MD5(email.trim().toLowerCase()).toString()
   }
 
@@ -73,14 +73,14 @@
   let selectedFile: Blob | undefined = file
 
   let hasGravatar = false
-  async function updateHasGravatar (email?: string) {
+  async function updateHasGravatar(email?: string) {
     hasGravatar = !!email && (await checkHasGravatar(buildGravatarId(email)))
   }
   $: updateHasGravatar(email)
 
   const dispatch = createEventDispatcher()
 
-  function submit () {
+  function submit() {
     onSubmit(
       selectedAvatarType,
       selectedAvatar,
@@ -91,7 +91,7 @@
   let inputRef: HTMLInputElement
   const targetMimes = ['image/png', 'image/jpg', 'image/jpeg']
 
-  function handleDropdownSelection (e: any) {
+  function handleDropdownSelection(e: any) {
     if (selectedAvatarType === AvatarType.GRAVATAR && email) {
       selectedAvatarProps = { url: buildGravatarId(email) }
     } else if (selectedAvatarType === AvatarType.IMAGE) {
@@ -111,7 +111,7 @@
     }
   }
 
-  async function handleImageAvatarClick (): Promise<void> {
+  async function handleImageAvatarClick(): Promise<void> {
     let editableFile: Blob
 
     if (selectedFile !== undefined) {
@@ -126,7 +126,7 @@
     if (editableFile.size > 0) showCropper(editableFile)
   }
 
-  function showCropper (editableFile: Blob): void {
+  function showCropper(editableFile: Blob): void {
     showPopup(EditAvatarPopup, { file: editableFile, lessCrop }, undefined, (blob) => {
       if (blob === undefined) {
         if (!selectedFile && !initialSelectedAvatar) {
@@ -149,7 +149,7 @@
     })
   }
 
-  function onSelectFile (e: any): void {
+  function onSelectFile(e: any): void {
     const targetFile = e.target?.files[0] as File | undefined
 
     if (targetFile === undefined || !targetMimes.includes(targetFile.type)) {
@@ -160,7 +160,7 @@
     document.body.onfocus = null
   }
 
-  function handleFileSelectionCancel (): void {
+  function handleFileSelectionCancel(): void {
     document.body.onfocus = null
 
     if (!inputRef.value.length) {
@@ -172,7 +172,7 @@
     }
   }
 
-  function handleClearClick (): void {
+  function handleClearClick(): void {
     selectedAvatar = undefined
     selectedAvatarType = AvatarType.COLOR
     selectedAvatarProps = { color: getPlatformAvatarColorForTextDef(name ?? '', $themeStore.dark).name }

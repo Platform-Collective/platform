@@ -30,7 +30,7 @@
     sender = undefined
   }
 
-  async function openChannelInSidebar (): Promise<void> {
+  async function openChannelInSidebar(): Promise<void> {
     if (!value.onClickLocation) return
     const { onClickLocation } = value
     let _id: Ref<Doc> | undefined = value.objectId

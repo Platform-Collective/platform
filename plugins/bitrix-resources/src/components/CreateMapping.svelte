@@ -12,7 +12,7 @@
 
   const client = getClient()
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     await client.createDoc<BitrixEntityMapping>(bitrix.class.EntityMapping, bitrix.space.Mappings, {
       ofClass,
       type,

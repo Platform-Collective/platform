@@ -49,17 +49,17 @@
     void updateInlineActions(message, excludedActions)
   })
 
-  function handleActionMenuOpened (): void {
+  function handleActionMenuOpened(): void {
     isActionMenuOpened = true
     onOpen()
   }
 
-  function handleActionMenuClosed (): void {
+  function handleActionMenuClosed(): void {
     isActionMenuOpened = false
     onClose()
   }
 
-  function showMenu (ev: MouseEvent): void {
+  function showMenu(ev: MouseEvent): void {
     showPopup(
       Menu,
       {
@@ -74,7 +74,7 @@
     handleActionMenuOpened()
   }
 
-  async function updateInlineActions (message?: ActivityMessage, excludedAction: Ref<ViewAction>[] = []): Promise<void> {
+  async function updateInlineActions(message?: ActivityMessage, excludedAction: Ref<ViewAction>[] = []): Promise<void> {
     if (message === undefined) {
       inlineActions = []
       return
@@ -84,7 +84,7 @@
       .filter((action) => !excludedAction.includes(action._id))
   }
 
-  async function handleAction (action: ViewAction, ev?: Event): Promise<void> {
+  async function handleAction(action: ViewAction, ev?: Event): Promise<void> {
     if (message === undefined) return
 
     if (onReply !== undefined && action._id === activity.action.Reply) {

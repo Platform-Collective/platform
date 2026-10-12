@@ -33,7 +33,7 @@
   export let noSelect: boolean = true
   export let maxWidth: string | undefined = undefined
 
-  function clickHandler (e: MouseEvent): void {
+  function clickHandler(e: MouseEvent): void {
     if (disabled) return
 
     if (onClick !== undefined) {

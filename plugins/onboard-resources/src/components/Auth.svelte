@@ -21,7 +21,7 @@
     }
   })
 
-  function isWorkspaceLoginInfo (info: WorkspaceLoginInfo | LoginInfo): info is WorkspaceLoginInfo {
+  function isWorkspaceLoginInfo(info: WorkspaceLoginInfo | LoginInfo): info is WorkspaceLoginInfo {
     return (info as WorkspaceLoginInfo).workspace !== undefined
   }
 </script>

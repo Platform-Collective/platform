@@ -86,16 +86,14 @@ export const mInsertTable = [
   }
 ]
 
-const inlineCommandsIds = [
-  'image',
-  'table',
-  'code-block',
-  'separator-line',
-  'todo-list',
-  'drawing-board',
-  'mermaid'
-] as const
-export type InlineCommandId = (typeof inlineCommandsIds)[number]
+export type InlineCommandId =
+  | 'image'
+  | 'table'
+  | 'code-block'
+  | 'separator-line'
+  | 'todo-list'
+  | 'drawing-board'
+  | 'mermaid'
 
 /**
  * @public

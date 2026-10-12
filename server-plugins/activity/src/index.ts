@@ -17,7 +17,7 @@ import { Plugin, Resource, plugin } from '@hcengineering/platform'
 import type { TriggerFunc } from '@hcengineering/server-core'
 import { Presenter } from '@hcengineering/server-notification'
 
-export * from './types'
+export type * from './types'
 export * from './utils'
 
 /**

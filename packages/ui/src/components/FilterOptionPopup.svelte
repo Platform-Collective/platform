@@ -21,7 +21,7 @@
   export let onFilterChange: (filter: ActiveFilter) => void
   export let onFilterRemove: (categoryId: string) => void
 
-  function selectOption (option: FilterOption): void {
+  function selectOption(option: FilterOption): void {
     const filter: ActiveFilter = {
       categoryId: category.id,
       optionId: option.id,
@@ -31,11 +31,11 @@
     onFilterChange(filter)
   }
 
-  function clearFilter (): void {
+  function clearFilter(): void {
     onFilterRemove(category.id)
   }
 
-  function isSelected (optionId: string): boolean {
+  function isSelected(optionId: string): boolean {
     return activeFilters.some((f) => f.categoryId === category.id && f.optionId === optionId)
   }
 

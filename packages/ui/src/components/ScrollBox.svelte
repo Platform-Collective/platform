@@ -29,7 +29,7 @@
     if (autoscrollable && autoscroll) div.scrollTo(0, div.scrollHeight)
   })
 
-  function setAutoscroll () {
+  function setAutoscroll() {
     closeTooltip()
     autoscroll = div.scrollTop > div.scrollHeight - div.clientHeight - 50
   }

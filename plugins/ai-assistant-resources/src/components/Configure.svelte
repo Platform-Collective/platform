@@ -60,7 +60,7 @@
     }
   })
 
-  async function getSocialId (): Promise<PersonId | undefined> {
+  async function getSocialId(): Promise<PersonId | undefined> {
     const socialKey = buildSocialIdString({
       type: SocialIdType.HULY_ASSISTANT,
       value: account.uuid

@@ -42,7 +42,7 @@
   })
 
   const client = getClient()
-  async function addRef ({ title, color, _id: tag }: TagElement): Promise<void> {
+  async function addRef({ title, color, _id: tag }: TagElement): Promise<void> {
     await Promise.all(
       objects.map(async (object) => {
         if (tagRefs.findIndex((p) => p.attachedTo === object._id && p.tag === tag) !== -1) return
@@ -55,7 +55,7 @@
       })
     )
   }
-  async function removeTag (tag: TagElement): Promise<void> {
+  async function removeTag(tag: TagElement): Promise<void> {
     await Promise.all(
       objects.map(async (object) => {
         const tagRef = await client.findOne(tags.class.TagReference, { attachedTo: object._id, tag: tag._id })
@@ -63,7 +63,7 @@
       })
     )
   }
-  async function onUpdate (event: CustomEvent<{ action: string, tag: TagElement }>) {
+  async function onUpdate(event: CustomEvent<{ action: string, tag: TagElement }>) {
     const result = event.detail
     if (result === undefined) return
     if (result.action === 'add') addRef(result.tag)

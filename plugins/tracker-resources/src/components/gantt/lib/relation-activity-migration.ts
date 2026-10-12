@@ -53,7 +53,7 @@ const TRACKER_ISSUE_CLASS = 'tracker:class:Issue' as Ref<Class<Doc>>
  * symptom: action === 'remove' AND (attachedToClass !== Issue OR no
  * updateCollection).
  */
-export function isBrokenRelationDum (msg: RelationDum): boolean {
+export function isBrokenRelationDum(msg: RelationDum): boolean {
   if (msg.action !== 'remove') return false
   if (msg.attachedToClass !== TRACKER_ISSUE_CLASS) return true
   if (msg.updateCollection !== 'relations') return true
@@ -69,10 +69,10 @@ export function isBrokenRelationDum (msg: RelationDum): boolean {
  * Returns `undefined` when the create-tx is missing — caller writes a
  * placeholder in that case (best-effort migration).
  */
-export function patchFromTxes (
+export function patchFromTxes(
   _dum: RelationDum,
   createTx: RelationCreateTx | undefined
-): { attachedTo: Ref<Issue>, attachedToClass: Ref<Class<Doc>>, updateCollection: string } | undefined {
+): { attachedTo: Ref<Issue>; attachedToClass: Ref<Class<Doc>>; updateCollection: string } | undefined {
   if (createTx === undefined) return undefined
   if (createTx.attachedTo === undefined || createTx.attachedToClass === undefined) return undefined
   return {

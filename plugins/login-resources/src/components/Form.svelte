@@ -52,7 +52,7 @@
   export let actionButtonDataId: string | undefined = undefined
   export let secondaryButtonDataId: string | undefined = undefined
 
-  const validate = makeSequential(async function validateAsync (language: string): Promise<boolean> {
+  const validate = makeSequential(async function validateAsync(language: string): Promise<boolean> {
     if (ignoreInitialValidation || isLoading) return true
 
     for (const field of fields) {
@@ -93,17 +93,22 @@
     return true
   })
 
-  export function invalidate (): void {
+  export function invalidate(): void {
     void validate($themeStore.language)
   }
 
-  $: if ($themeStore.language != null && $themeStore.language !== '') {
+  // Re-validate only when the language actually changes (to re-translate validation messages).
+  // Theme updates with the same language (e.g. after plugin strings are loaded) must not
+  // reset the status, otherwise an action error (like wrong credentials) could be wiped out.
+  let validatedLanguage: string | undefined
+  $: if ($themeStore.language != null && $themeStore.language !== '' && $themeStore.language !== validatedLanguage) {
+    validatedLanguage = $themeStore.language
     void validate($themeStore.language)
   }
 
   let inAction = false
 
-  function performAction (action: Action): void {
+  function performAction(action: Action): void {
     if (inAction) return
 
     for (const field of fields) {
@@ -116,7 +121,7 @@
   }
   onMount(() => (ignoreInitialValidation = false))
 
-  function trim (field: string): void {
+  function trim(field: string): void {
     object[field] = (object[field] as string).trim()
   }
 

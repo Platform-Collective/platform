@@ -34,7 +34,7 @@
 
   let profiling = false
 
-  async function fetchStats (time: number): Promise<void> {
+  async function fetchStats(time: number): Promise<void> {
     await fetch(endpoint + '/api/v1/profiling', {
       method: 'GET',
       keepalive: true,
@@ -55,7 +55,7 @@
 
   $: void fetchStats($ticker)
 
-  function genData (dataSize: number): string {
+  function genData(dataSize: number): string {
     let result = ''
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
     const charactersLength = characters.length
@@ -65,7 +65,7 @@
     return result
   }
 
-  async function doBenchmark (): Promise<void> {
+  async function doBenchmark(): Promise<void> {
     avgTime = 0
     maxTime = 0
     let count = commandsToSend
@@ -112,7 +112,7 @@
     running = false
   }
 
-  async function downloadProfile (): Promise<void> {
+  async function downloadProfile(): Promise<void> {
     const link = document.createElement('a')
     link.style.display = 'none'
     link.setAttribute('target', '_blank')
@@ -134,7 +134,7 @@
 
   let metrics: Metrics | undefined
 
-  function update (tick: number): void {
+  function update(tick: number): void {
     metrics = metricsAggregate(uiContext.metrics)
   }
 

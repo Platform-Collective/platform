@@ -34,7 +34,7 @@
 
   $: filtered = filterAssociations(associations, _classes, exclude)
 
-  function filterAssociations (
+  function filterAssociations(
     associations: Association[],
     _classes: Ref<Class<Doc>>[],
     exclude: Ref<Class<Doc>>[]
@@ -63,7 +63,7 @@
     return res
   }
 
-  function createRelation (): void {
+  function createRelation(): void {
     selected = {
       classA: '' as Ref<Class<Doc>>,
       classB: '' as Ref<Class<Doc>>,
@@ -73,16 +73,16 @@
     }
   }
 
-  function isAssociation (data: Data<Association> | Association | undefined): data is Association {
+  function isAssociation(data: Data<Association> | Association | undefined): data is Association {
     return (data as Association)?._id !== undefined
   }
 
-  function getClassLabel (_class: Ref<Class<Doc>>): IntlString | undefined {
+  function getClassLabel(_class: Ref<Class<Doc>>): IntlString | undefined {
     const _classLabel = client.getModel().findObject(_class)
     return _classLabel?.label
   }
 
-  async function getLabel (association: Association): Promise<string> {
+  async function getLabel(association: Association): Promise<string> {
     const aLabel = getClassLabel(association.classA)
     const bLabel = getClassLabel(association.classB)
     const aClass = aLabel !== undefined ? await translate(aLabel, {}) : undefined
@@ -92,7 +92,7 @@
 
   defineSeparators('workspaceSettings', twoPanelsSeparators)
 
-  async function remove (val: Association | Data<Association> | undefined): Promise<void> {
+  async function remove(val: Association | Data<Association> | undefined): Promise<void> {
     if (isAssociation(val)) {
       showPopup(MessageBox, {
         label: view.string.DeleteObject,

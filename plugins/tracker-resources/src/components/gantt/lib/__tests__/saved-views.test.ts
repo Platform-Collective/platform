@@ -10,7 +10,7 @@ const GANTT = 'gantt-id' as Ref<Viewlet>
 const LIST = 'list-id' as Ref<Viewlet>
 const ME = 'me-uuid'
 
-function fv (over: Partial<FilteredView>): FilteredView {
+function fv(over: Partial<FilteredView>): FilteredView {
   return {
     _id: 'fv1',
     _class: 'fv-class',

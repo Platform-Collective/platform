@@ -149,6 +149,7 @@ export interface AccountClient {
   signUp: (email: string, password: string, first: string, last: string) => Promise<LoginInfo>
   login: (email: string, password: string) => Promise<LoginInfo>
   loginAsGuest: () => Promise<LoginInfo>
+  getLoginCapabilities: () => Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean }>
   isReadOnlyGuest: () => Promise<boolean>
   getPerson: () => Promise<Person>
   getPersonInfo: (account: PersonUuid) => Promise<PersonInfo>
@@ -326,7 +327,7 @@ class AccountClientImpl implements AccountClient {
     })()
   }
 
-  private async _rpc<T>(request: Request): Promise<T> {
+  private async _rpc<T> (request: Request): Promise<T> {
     const timezone = getClientTimezone()
     const meta: Record<string, string> = timezone !== undefined ? { 'x-timezone': timezone } : {}
     const response = await fetch(this.url, {
@@ -722,6 +723,15 @@ class AccountClientImpl implements AccountClient {
   async loginAsGuest (): Promise<LoginInfo> {
     const request = {
       method: 'loginAsGuest' as const,
+      params: {}
+    }
+
+    return await this.rpc(request)
+  }
+
+  async getLoginCapabilities (): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean }> {
+    const request = {
+      method: 'getLoginCapabilities' as const,
       params: {}
     }
 

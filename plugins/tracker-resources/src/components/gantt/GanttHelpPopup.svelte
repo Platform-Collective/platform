@@ -15,7 +15,7 @@
    */
   const dispatch = createEventDispatcher<{ close: undefined }>()
 
-  function onKey (e: KeyboardEvent): void {
+  function onKey(e: KeyboardEvent): void {
     if (e.key === 'Escape' || e.key === '?') {
       e.preventDefault()
       dispatch('close')

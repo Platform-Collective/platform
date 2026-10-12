@@ -49,12 +49,12 @@
   export let isCard: boolean = false
   export let showAll: boolean = false
   export let attributeMapper:
-  | {
-    component: AnySvelteComponent
-    label: IntlString
-    props: Record<string, any>
-  }
-  | undefined = undefined
+    | {
+        component: AnySvelteComponent
+        label: IntlString
+        props: Record<string, any>
+      }
+    | undefined = undefined
 
   const client = getClient()
   const hierarchy = client.getHierarchy()
@@ -78,7 +78,7 @@
     attributes = getCustomAttributes(_class)
   })
 
-  function getCustomAttributes (_class: Ref<Class<Doc>>): AnyAttribute[] {
+  function getCustomAttributes(_class: Ref<Class<Doc>>): AnyAttribute[] {
     const cl = hierarchy.getClass(_class)
     const attributes = Array.from(
       hierarchy.getAllAttributes(_class, _class === ofClass ? core.class.Doc : cl.extends).values()
@@ -90,7 +90,7 @@
     return attributes
   }
 
-  export function createAttribute (ev: MouseEvent): void {
+  export function createAttribute(ev: MouseEvent): void {
     if (disabled) {
       return
     }
@@ -102,7 +102,7 @@
     })
   }
 
-  function editLabel (evt: MouseEvent): void {
+  function editLabel(evt: MouseEvent): void {
     if (disabled) {
       return
     }

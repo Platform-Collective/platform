@@ -35,7 +35,7 @@
   const client = getClient()
   let attachments: Attachment[] = []
 
-  async function resendMessage (): Promise<void> {
+  async function resendMessage(): Promise<void> {
     const messageId = currentMessage._id as string as Ref<NewMessage>
     await client.updateDoc(gmail.class.NewMessage, currentMessage.space, messageId, { status: 'new' })
   }

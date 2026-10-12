@@ -89,30 +89,30 @@ export class TCommonBoardPreference extends TPreference implements CommonBoardPr
 export class TCard extends TTask implements Card {
   @Prop(TypeString(), board.string.Title)
   @Index(IndexKind.FullText)
-    title!: string
+  title!: string
 
   @Prop(TypeBoolean(), board.string.IsArchived)
-    isArchived?: boolean
+  isArchived?: boolean
 
   @Prop(TypeMarkup(), board.string.Description)
   @Index(IndexKind.FullText)
-    description!: Markup
+  description!: Markup
 
   @Prop(TypeString(), board.string.Location)
   @Index(IndexKind.FullText)
-    location?: string
+  location?: string
 
   @Prop(TypeRef(contact.mixin.Employee), board.string.Assignee)
   declare assignee: Ref<Employee> | null
 
   @Prop(ArrOf(TypeRef(contact.mixin.Employee)), board.string.Members)
-    members?: Ref<Employee>[]
+  members?: Ref<Employee>[]
 
   @Prop(TypeCardCover(), board.string.Cover)
-    cover?: CardCover
+  cover?: CardCover
 
   @Prop(TypeDate(), task.string.StartDate)
-    startDate!: Timestamp | null
+  startDate!: Timestamp | null
 
   @Prop(TypeRef(core.class.Status), task.string.TaskState, { _id: board.attribute.State })
   declare status: Ref<Status>

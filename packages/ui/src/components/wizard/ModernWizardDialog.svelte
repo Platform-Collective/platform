@@ -39,11 +39,11 @@
   $: hasNext = selectedIdx < steps.length - 1
   $: hasSubmit = selectedIdx === steps.length - 1
 
-  function hasSelectedStep (): boolean {
+  function hasSelectedStep(): boolean {
     return selectedStep !== undefined && selectedStep !== ''
   }
 
-  function handleBack (): void {
+  function handleBack(): void {
     if (!hasSelectedStep()) {
       return
     }
@@ -54,7 +54,7 @@
     dispatch('stepChanged', steps[newIdx].id)
   }
 
-  function handleNext (): void {
+  function handleNext(): void {
     if (!hasSelectedStep()) {
       return
     }
@@ -65,7 +65,7 @@
     dispatch('stepChanged', steps[newIdx].id)
   }
 
-  function handleSubmit (): void {
+  function handleSubmit(): void {
     dispatch('submit')
   }
 </script>

@@ -24,11 +24,11 @@
   let dragover = false
   let counter = 0
 
-  async function handleDragEnter (): Promise<void> {
+  async function handleDragEnter(): Promise<void> {
     counter++
   }
 
-  async function handleDragLeave (): Promise<void> {
+  async function handleDragLeave(): Promise<void> {
     if (counter > 0) {
       counter--
     }
@@ -37,7 +37,7 @@
     }
   }
 
-  async function handleDragOver (e: DragEvent): Promise<void> {
+  async function handleDragOver(e: DragEvent): Promise<void> {
     if (e.dataTransfer?.files === undefined) {
       return
     }
@@ -51,7 +51,7 @@
     dragover = true
   }
 
-  async function handleDrop (e: DragEvent): Promise<void> {
+  async function handleDrop(e: DragEvent): Promise<void> {
     counter = 0
     dragover = false
 

@@ -51,7 +51,7 @@ class StorageBlobAdapter implements DbAdapter {
     readonly ctx: MeasureContext
   ) {}
 
-  async traverse<T extends Doc>(
+  async traverse<T extends Doc> (
     domain: Domain,
     query: DocumentQuery<T>,
     options?: Pick<FindOptions<T>, 'sort' | 'limit' | 'projection'>
@@ -65,17 +65,17 @@ class StorageBlobAdapter implements DbAdapter {
   }
 
   init?:
-  | ((
-    ctx: MeasureContext,
-    contextVars: Record<string, any>,
-    domains?: string[],
-    excludeDomains?: string[]
-  ) => Promise<void>)
-  | undefined
+    | ((
+        ctx: MeasureContext,
+        contextVars: Record<string, any>,
+        domains?: string[],
+        excludeDomains?: string[]
+      ) => Promise<void>)
+    | undefined
 
   on?: ((handler: DbAdapterHandler) => void) | undefined
 
-  async rawFindAll<T extends Doc>(domain: Domain, query: DocumentQuery<T>, options?: FindOptions<T>): Promise<T[]> {
+  async rawFindAll<T extends Doc> (domain: Domain, query: DocumentQuery<T>, options?: FindOptions<T>): Promise<T[]> {
     return []
   }
 
@@ -86,15 +86,15 @@ class StorageBlobAdapter implements DbAdapter {
     }
   }
 
-  async rawUpdate<T extends Doc>(
+  async rawUpdate<T extends Doc> (
     domain: Domain,
     query: DocumentQuery<T>,
     operations: DocumentUpdate<T>
   ): Promise<void> {}
 
-  async rawDeleteMany<T extends Doc>(domain: Domain, query: DocumentQuery<T>): Promise<void> {}
+  async rawDeleteMany<T extends Doc> (domain: Domain, query: DocumentQuery<T>): Promise<void> {}
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -103,7 +103,7 @@ class StorageBlobAdapter implements DbAdapter {
     return toFindResult([])
   }
 
-  async groupBy<T>(ctx: MeasureContext, domain: Domain, field: string): Promise<Map<T, number>> {
+  async groupBy<T> (ctx: MeasureContext, domain: Domain, field: string): Promise<Map<T, number>> {
     return new Map()
   }
 

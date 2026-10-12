@@ -17,14 +17,14 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  const colorGroups = (function chunk (colors: number[]): number[][] {
+  const colorGroups = (function chunk(colors: number[]): number[][] {
     return colors.length > 0 ? [colors.slice(0, 5), ...chunk(colors.slice(5))] : []
   })(getBoardAvailableColors().map(hexColorToNumber))
 
-  function close () {
+  function close() {
     dispatch('close')
   }
-  function updateCover () {
+  function updateCover() {
     if (!coverColor) {
       return
     }
@@ -33,7 +33,7 @@
     if (object) client.update(object, { cover: newCover })
   }
 
-  function removeCover () {
+  function removeCover() {
     cover = null
     if (onChange) onChange(cover)
     else if (object) client.update(object, { cover })

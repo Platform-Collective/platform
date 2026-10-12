@@ -64,12 +64,12 @@
   let spaceType: WithLookup<DocumentSpaceType> | undefined
 
   $: void loadSpaceType(typeId)
-  async function loadSpaceType (id: typeof typeId): Promise<void> {
+  async function loadSpaceType(id: typeof typeId): Promise<void> {
     spaceType =
       id !== undefined
         ? await client
-          .getModel()
-          .findOne(documents.class.DocumentSpaceType, { _id: id }, { lookup: { _id: { roles: core.class.Role } } })
+            .getModel()
+            .findOne(documents.class.DocumentSpaceType, { _id: id }, { lookup: { _id: { roles: core.class.Role } } })
         : undefined
 
     if (docSpace === undefined || spaceType?.targetClass === undefined || spaceType?.$lookup?.roles === undefined) {
@@ -81,7 +81,7 @@
   $: descriptors =
     spaceType?.descriptor !== undefined ? [spaceType.descriptor] : [documents.descriptor.DocumentSpaceType]
 
-  function getRolesAssignment (): RolesAssignment {
+  function getRolesAssignment(): RolesAssignment {
     if (docSpace === undefined || spaceType?.targetClass === undefined || spaceType?.$lookup?.roles === undefined) {
       return {}
     }
@@ -95,7 +95,7 @@
     }, {})
   }
 
-  async function handleSave (): Promise<void> {
+  async function handleSave(): Promise<void> {
     if (isNew) {
       await createDocumentSpace()
     } else {
@@ -103,7 +103,7 @@
     }
   }
 
-  function getDocSpaceData (): Omit<Data<DocumentSpace>, 'type'> {
+  function getDocSpaceData(): Omit<Data<DocumentSpace>, 'type'> {
     return {
       name,
       description,
@@ -114,7 +114,7 @@
     }
   }
 
-  async function updateDocumentSpace (): Promise<void> {
+  async function updateDocumentSpace(): Promise<void> {
     if (docSpace === undefined || spaceType?.targetClass === undefined) {
       return
     }
@@ -162,7 +162,7 @@
     close()
   }
 
-  async function createDocumentSpace (): Promise<void> {
+  async function createDocumentSpace(): Promise<void> {
     if (typeId === undefined || spaceType?.targetClass === undefined) {
       return
     }
@@ -178,24 +178,24 @@
     close(docSpaceId)
   }
 
-  function close (id?: Ref<DocumentSpace>): void {
+  function close(id?: Ref<DocumentSpace>): void {
     dispatch('close', id)
   }
 
-  function handleTypeChange (evt: CustomEvent<Ref<DocumentSpaceType>>): void {
+  function handleTypeChange(evt: CustomEvent<Ref<DocumentSpaceType>>): void {
     typeId = evt.detail
   }
 
   $: roles = (spaceType?.$lookup?.roles ?? []) as Role[]
 
-  function handleOwnersChanged (newOwners: AccountUuid[]): void {
+  function handleOwnersChanged(newOwners: AccountUuid[]): void {
     owners = newOwners
 
     const newMembersSet = new Set([...members, ...newOwners])
     members = Array.from(newMembersSet)
   }
 
-  function handleMembersChanged (newMembers: AccountUuid[]): void {
+  function handleMembersChanged(newMembers: AccountUuid[]): void {
     // If a member was removed we need to remove it from any roles assignments as well
     const newMembersSet = new Set(newMembers)
     const removedMembersSet = new Set(members.filter((m) => !newMembersSet.has(m)))
@@ -209,7 +209,7 @@
     members = newMembers
   }
 
-  function handleRoleAssignmentChanged (roleId: Ref<Role>, newMembers: AccountUuid[]): void {
+  function handleRoleAssignmentChanged(roleId: Ref<Role>, newMembers: AccountUuid[]): void {
     if (rolesAssignment === undefined) {
       rolesAssignment = {}
     }
@@ -232,8 +232,8 @@
   okAction={handleSave}
   {canSave}
   accentHeader
-  width={'medium'}
-  gap={'gapV-6'}
+  width="medium"
+  gap="gapV-6"
   onCancel={close}
   on:changeContent
 >
@@ -259,7 +259,7 @@
         <Label label={documentsRes.string.Title} />
       </div>
       <div class="padding">
-        <EditBox bind:value={name} placeholder={documentsRes.string.NewDocumentSpace} kind={'large-style'} autoFocus />
+        <EditBox bind:value={name} placeholder={documentsRes.string.NewDocumentSpace} kind="large-style" autoFocus />
       </div>
     </div>
 
@@ -287,8 +287,8 @@
       excludeItems={readOnlyGuestOwnerExcludeItems}
       label={core.string.Owners}
       onChange={handleOwnersChanged}
-      kind={'regular'}
-      size={'large'}
+      kind="regular"
+      size="large"
     />
   </div>
 
@@ -309,8 +309,8 @@
         value={members}
         label={documentsRes.string.Members}
         onChange={handleMembersChanged}
-        kind={'regular'}
-        size={'large'}
+        kind="regular"
+        size="large"
         allowGuests
       />
     </div>
@@ -328,8 +328,8 @@
           onChange={(refs) => {
             handleRoleAssignmentChanged(role._id, refs)
           }}
-          kind={'regular'}
-          size={'large'}
+          kind="regular"
+          size="large"
         />
       </div>
     {/each}

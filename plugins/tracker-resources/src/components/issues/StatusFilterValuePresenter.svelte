@@ -30,7 +30,7 @@
     categories = toIdMap(res)
   })
 
-  function sort (value: Ref<IssueStatus>[], store: IdMap<Status>, categories: IdMap<StatusCategory>): IssueStatus[] {
+  function sort(value: Ref<IssueStatus>[], store: IdMap<Status>, categories: IdMap<StatusCategory>): IssueStatus[] {
     const result: IssueStatus[] = []
     for (const val of new Set(value)) {
       const res = store.get(val)

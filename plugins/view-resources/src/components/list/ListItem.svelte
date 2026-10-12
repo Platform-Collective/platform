@@ -34,7 +34,7 @@
   export let compactMode: boolean = false
   export let readonly: boolean = false
 
-  export function scroll () {
+  export function scroll() {
     elem?.scrollIntoView({ behavior: 'auto', block: 'nearest' })
   }
 
@@ -42,21 +42,21 @@
 
   const dispatch = createEventDispatcher()
 
-  export function getDoc () {
+  export function getDoc() {
     return docObject
   }
 
-  export function getElement () {
+  export function getElement() {
     return elem
   }
 
   const client = getClient()
 
-  function onChange (value: any, doc: Doc, key: string, attribute: AnyAttribute) {
+  function onChange(value: any, doc: Doc, key: string, attribute: AnyAttribute) {
     updateAttribute(client, doc, doc._class, { key, attr: attribute }, value)
   }
 
-  function getOnChange (docObject: Doc, attribute: AttributeModel) {
+  function getOnChange(docObject: Doc, attribute: AttributeModel) {
     const attr = attribute.attribute
     if (attr === undefined) return
     if (attribute.collectionAttr) return

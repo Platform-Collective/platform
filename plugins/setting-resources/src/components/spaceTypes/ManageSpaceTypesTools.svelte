@@ -18,7 +18,7 @@
   import CreateSpaceType from './CreateSpaceType.svelte'
   import { isOwnerOrMaintainer } from '@hcengineering/core'
 
-  function handleAdd (): void {
+  function handleAdd(): void {
     showPopup(CreateSpaceType, {}, 'top')
   }
 </script>

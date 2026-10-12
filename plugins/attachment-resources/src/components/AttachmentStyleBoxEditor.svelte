@@ -66,7 +66,7 @@
 
   let descriptionBox: AttachmentStyledBox
 
-  async function save (object: Doc, description: string) {
+  async function save(object: Doc, description: string) {
     clearTimeout(saveTrigger)
     if (!object) {
       return
@@ -88,7 +88,7 @@
   }
 
   let saveTrigger: any
-  function triggerSave (): void {
+  function triggerSave(): void {
     haveUnsavedChanges = true
     clearTimeout(saveTrigger)
 
@@ -102,11 +102,11 @@
     }, 2500)
   }
 
-  export function isFocused (): boolean {
+  export function isFocused(): boolean {
     return descriptionBox.isFocused()
   }
 
-  export function setEditable (editable: boolean): void {
+  export function setEditable(editable: boolean): void {
     descriptionBox.setEditable(editable)
   }
 

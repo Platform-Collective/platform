@@ -8,7 +8,7 @@ import type { Issue, IssueRelation } from '@hcengineering/tracker'
 import type { Ref } from '@hcengineering/core'
 import type { PrimaryEdit } from '../types'
 
-function issue (id: string, start?: number, due?: number, schedulingMode?: 'auto' | 'manual'): Issue {
+function issue(id: string, start?: number, due?: number, schedulingMode?: 'auto' | 'manual'): Issue {
   return {
     _id: id as Ref<Issue>,
     _class: 'tracker:class:Issue' as any,
@@ -24,7 +24,7 @@ function issue (id: string, start?: number, due?: number, schedulingMode?: 'auto
   } as unknown as Issue
 }
 
-function rel (
+function rel(
   source: string,
   target: string,
   kind: 'finish-to-start' | 'start-to-start' | 'finish-to-finish' | 'start-to-finish' = 'finish-to-start',

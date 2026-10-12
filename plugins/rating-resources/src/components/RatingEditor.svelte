@@ -45,16 +45,16 @@
     _reactions = reactions
   }
 
-  async function addStarReaction (): Promise<void> {
+  async function addStarReaction(): Promise<void> {
     operating = true
     try {
       const r = !loading
         ? _reactions
         : await client.findAll<DocReaction>(ratingPlugin.class.DocReaction, {
-          attachedTo: _id,
-          attachedToClass: _class,
-          reactionType: ReactionKind.Star
-        })
+            attachedTo: _id,
+            attachedToClass: _class,
+            reactionType: ReactionKind.Star
+          })
       const existing = r.filter((it) => it.reactionType === ReactionKind.Star && socialIds.has(it.modifiedBy))
       if (existing.length > 0) {
         for (const e of existing) {
@@ -75,7 +75,7 @@
     }
   }
 
-  async function addEmojiReaction (event: MouseEvent): Promise<void> {
+  async function addEmojiReaction(event: MouseEvent): Promise<void> {
     showPopup(emojiPlugin.component.EmojiPopup, {}, event.target as HTMLElement, async (emoji) => {
       if (emoji?.text === undefined) return
 
@@ -84,11 +84,11 @@
         const r = !loading
           ? _reactions
           : await client.findAll<DocReaction>(ratingPlugin.class.DocReaction, {
-            attachedTo: _id,
-            attachedToClass: _class,
-            reactionType: ReactionKind.Emoji,
-            text: emoji.text
-          })
+              attachedTo: _id,
+              attachedToClass: _class,
+              reactionType: ReactionKind.Emoji,
+              text: emoji.text
+            })
 
         const existing = r.filter(
           (it) => it.reactionType === ReactionKind.Emoji && it.emoji === emoji.text && socialIds.has(it.modifiedBy)
@@ -111,7 +111,7 @@
     })
   }
 
-  async function existingReactionClick (reactions: DocReaction[]): Promise<void> {
+  async function existingReactionClick(reactions: DocReaction[]): Promise<void> {
     let removed = false
     for (const reaction of reactions) {
       if (account.fullSocialIds.some((it) => it._id === reaction.modifiedBy)) {

@@ -23,7 +23,7 @@
 
   let selectedSeparator = items[0].id
 
-  function close (): void {
+  function close(): void {
     dispatch('close', selectedSeparator)
   }
 </script>

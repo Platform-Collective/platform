@@ -5,6 +5,7 @@ import notification from '@hcengineering/notification'
 
 // Raw undecoded audio, survives AudioContext recreation (AudioBuffer does not).
 const sounds = new Map<Asset, ArrayBuffer>()
+const resumeTimeoutMs = 1000
 
 // The AudioContext holds the OS audio session while open. On iOS an open context
 // interrupts CarPlay / background music and competes with the meeting (LiveKit)
@@ -24,6 +25,36 @@ function releaseContext (): void {
   const ctx = context
   context = undefined
   void ctx.close().catch(() => {})
+}
+
+function isAudioContextRunning (context: AudioContext): boolean {
+  return context.state === 'running'
+}
+
+async function resumeAudioContext (context: AudioContext): Promise<boolean> {
+  if (context.state === 'running') return true
+  if (context.state === 'closed') return false
+
+  // Calling resume before the document has received user activation can leave
+  // its promise pending indefinitely because of the browser autoplay policy.
+  if (!navigator.userActivation?.hasBeenActive) return false
+
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  try {
+    const resumed = await Promise.race([
+      context.resume().then(() => true),
+      new Promise<boolean>((resolve) => {
+        timeout = setTimeout(() => {
+          resolve(false)
+        }, resumeTimeoutMs)
+      })
+    ])
+    return resumed && isAudioContextRunning(context)
+  } catch {
+    return false
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout)
+  }
 }
 
 export async function isNotificationAllowed (_class?: Ref<Class<Doc>>): Promise<boolean> {
@@ -79,6 +110,10 @@ export async function playSound (soundKey: string, loop = false): Promise<(() =>
 
   try {
     const ctx = getContext()
+    if (!(await resumeAudioContext(ctx))) {
+      stop()
+      return null
+    }
     // decodeAudioData detaches the ArrayBuffer, decode a copy so the cache stays reusable.
     const buffer = await ctx.decodeAudioData(raw.slice(0))
     const audio = ctx.createBufferSource()

@@ -29,7 +29,7 @@
 
   export let onCreate: ((orgId: Ref<TestCase>, client: TxOperations) => Promise<void>) | undefined = undefined
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return object.name === ''
   }
 
@@ -59,7 +59,7 @@
 
   fillDefaults(hierarchy, object, testManagement.class.TestCase)
 
-  async function createTestCase (): Promise<void> {
+  async function createTestCase(): Promise<void> {
     const op = client.apply()
     if (!isEmptyMarkup(description)) {
       const target = makeCollabId(testManagement.class.TestCase, id, 'description')
@@ -83,7 +83,7 @@
     dispatch('close', id)
   }
 
-  function handleTestSuiteChange (evt: CustomEvent<Ref<TestSuite>>): void {
+  function handleTestSuiteChange(evt: CustomEvent<Ref<TestSuite>>): void {
     object.attachedTo = evt.detail
   }
 

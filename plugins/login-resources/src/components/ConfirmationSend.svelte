@@ -22,7 +22,7 @@
   let checkHandle: number | undefined
   let mounted = false
 
-  async function checkAccountStatus (): Promise<void> {
+  async function checkAccountStatus(): Promise<void> {
     const loginInfo = await getAccount(false)
 
     if (loginInfo?.token != null) {
@@ -30,7 +30,7 @@
     }
   }
 
-  async function check (): Promise<void> {
+  async function check(): Promise<void> {
     try {
       await checkAccountStatus()
     } catch (e) {

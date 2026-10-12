@@ -32,7 +32,7 @@
   $: logoUrl = workspaceSetting?.icon != null ? getFileUrl(workspaceSetting.icon) : undefined
   $: void updatePreview(logoUrl, manualColor, syncLogo, showColor)
 
-  async function updatePreview (
+  async function updatePreview(
     url: string | undefined,
     color: string | undefined,
     syncLogo: boolean,
@@ -53,12 +53,12 @@
     }
   }
 
-  async function saveColor (value: string | null): Promise<void> {
+  async function saveColor(value: string | null): Promise<void> {
     const color = value === null ? null : normalizeIdentityColor(value)
     if (color !== undefined) await save({ identificationColor: color })
   }
 
-  async function save (
+  async function save(
     patch: Partial<Pick<WorkspaceSetting, 'identificationColor' | 'syncWorkspaceLogo' | 'identificationColorEnabled'>>
   ): Promise<void> {
     if (!canEdit || busy) return

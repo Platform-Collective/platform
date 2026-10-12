@@ -98,23 +98,23 @@
     )
   }
 
-  function selectFontSize (size: string): void {
+  function selectFontSize(size: string): void {
     if ($currentFontSize === size) return
     setFontSize(size)
     $modalStore = $modalStore
   }
 
-  function selectTheme (theme: string): void {
+  function selectTheme(theme: string): void {
     if ($currentTheme === theme) return
     setTheme(theme)
   }
 
-  function selectLanguage (language: string): void {
+  function selectLanguage(language: string): void {
     if ($currentLanguage === language) return
     setLanguage(language)
   }
 
-  function selectEmoji (emoji: string): void {
+  function selectEmoji(emoji: string): void {
     if ($currentEmoji === emoji) return
     setEmoji(emoji)
   }

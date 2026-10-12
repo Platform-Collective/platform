@@ -39,10 +39,10 @@ export async function diffWorkspace (mongoUrl: string, dbName: string, rawTxes: 
     const currentModel = await db
       .collection(DOMAIN_TX)
       .find<Tx>({
-      objectSpace: core.space.Model,
-      modifiedBy: core.account.System,
-      objectClass: { $ne: 'contact:class:PersonAccount' } // Note: we may keep these transactions in old workspaces for history purposes
-    })
+        objectSpace: core.space.Model,
+        modifiedBy: core.account.System,
+        objectClass: { $ne: 'contact:class:PersonAccount' } // Note: we may keep these transactions in old workspaces for history purposes
+      })
       .toArray()
 
     const txes = rawTxes.filter((tx) => {

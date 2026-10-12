@@ -63,7 +63,7 @@
 
   $: read(objectId)
 
-  function read (_id?: Ref<Doc>): void {
+  function read(_id?: Ref<Doc>): void {
     if (objectId && lastId && lastId !== _id) {
       const prev = lastId
       lastId = _id
@@ -83,7 +83,7 @@
   const query = createQuery()
   $: updateQuery(objectId, _class)
 
-  function updateQuery (_id?: Ref<Doc>, _class?: Ref<Class<Doc>>): void {
+  function updateQuery(_id?: Ref<Doc>, _class?: Ref<Class<Doc>>): void {
     if (_id && _class) {
       query.query(_class, { _id }, (result) => {
         object = result[0]
@@ -122,7 +122,7 @@
 
   $: mixins = getDocMixins(object, showAllMixins, ignoreMixins, realObjectClass)
   let attr: Promise<any> | undefined
-  async function updateKeys (): Promise<void> {
+  async function updateKeys(): Promise<void> {
     if (attr instanceof Promise) {
       await attr
     }
@@ -138,14 +138,14 @@
     pinned?: boolean
   }
 
-  function getEditor (_class: Ref<Class<Doc>>): MixinEditor {
+  function getEditor(_class: Ref<Class<Doc>>): MixinEditor {
     const clazz = hierarchy.getClass(_class)
     const editorMixin = hierarchy.as(clazz, view.mixin.ObjectEditor)
     if (editorMixin?.editor == null && clazz.extends != null) return getEditor(clazz.extends)
     return { editor: editorMixin.editor, pinned: editorMixin?.pinned }
   }
 
-  function getEditorFooter (
+  function getEditorFooter(
     _class: Ref<Class<Doc>>,
     object?: Doc
   ): { footer: AnyComponent, props?: Record<string, any> } | undefined {
@@ -159,7 +159,7 @@
     return undefined
   }
 
-  function getPanelFooter (
+  function getPanelFooter(
     _class: Ref<Class<Doc>>,
     object?: Doc
   ): { footer: AnyComponent, props?: Record<string, any> } | undefined {
@@ -197,7 +197,7 @@
     })
   }
 
-  function getHeaderEditor (_class: Ref<Class<Doc>>): AnyComponent | undefined {
+  function getHeaderEditor(_class: Ref<Class<Doc>>): AnyComponent | undefined {
     const editorMixin = hierarchy.classHierarchyMixin(
       _class,
       view.mixin.ObjectEditorHeader,
@@ -215,7 +215,7 @@
   let panelWidth: number = 0
   let innerWidth: number = 0
 
-  function handleOpen (ev: CustomEvent): void {
+  function handleOpen(ev: CustomEvent): void {
     ignoreKeys = ev.detail.ignoreKeys
     activityOptions = ev.detail.activityOptions ?? activityOptions
     ignoreMixins = new Set(ev.detail.ignoreMixins)

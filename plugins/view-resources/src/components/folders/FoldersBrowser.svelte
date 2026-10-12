@@ -42,7 +42,7 @@
     return (getLocation()?.query?.attachedTo as Ref<Doc>) ?? noParentId
   }
 
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
 
   const client = getClient()
 
@@ -81,7 +81,7 @@
     }
   )
 
-  async function handleFolderSelected (_id: Ref<Doc>): Promise<void> {
+  async function handleFolderSelected(_id: Ref<Doc>): Promise<void> {
     if (getFolderLink !== undefined) {
       const getFolderLinkFunction = await getResource(getFolderLink)
       navigate(getFolderLinkFunction(_id))
@@ -91,11 +91,11 @@
     dispatch('select', _id)
   }
 
-  async function handleAllItemsSelected (): Promise<void> {
+  async function handleAllItemsSelected(): Promise<void> {
     await handleFolderSelected(noParentId)
   }
 
-  async function getFolderActions (obj: Doc): Promise<Action[]> {
+  async function getFolderActions(obj: Doc): Promise<Action[]> {
     const result: Action[] = []
     const extraActions = await getContributedActions(client, obj)
     for (const act of extraActions) {
@@ -111,7 +111,7 @@
     return result
   }
 
-  async function getRootActions (): Promise<Action[]> {
+  async function getRootActions(): Promise<Action[]> {
     return []
   }
 </script>
@@ -126,7 +126,7 @@
       type={'nested-selectable'}
       empty={foldersState?.folders?.length === 0}
       actions={() => getRootActions()}
-      {forciblyСollapsed}
+      {forciblyCollapsed}
       on:click={handleAllItemsSelected}
     >
       <FolderTreeLevel
@@ -139,7 +139,7 @@
         }}
       />
       <svelte:fragment slot="visible">
-        {#if (selected || forciblyСollapsed) && visibleItem !== undefined}
+        {#if (selected || forciblyCollapsed) && visibleItem !== undefined}
           {@const folder = visibleItem}
           <TreeItem
             _id={folder._id}
@@ -151,7 +151,7 @@
             empty
             actions={async () => await getFolderActions(folder)}
             shouldTooltip
-            forciblyСollapsed
+            forciblyCollapsed
           />
         {/if}
       </svelte:fragment>

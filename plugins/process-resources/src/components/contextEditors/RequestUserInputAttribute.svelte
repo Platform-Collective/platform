@@ -28,7 +28,7 @@
   const hierarchy = client.getHierarchy()
   const attribute = hierarchy.findAttribute(_class, key) ?? (key === '' ? mockAttribute(_class) : undefined)
 
-  function mockAttribute (_class: Ref<Class<Doc>>): AnyAttribute {
+  function mockAttribute(_class: Ref<Class<Doc>>): AnyAttribute {
     const type: RefTo<Doc> = {
       label: core.string.Ref,
       _class: core.class.RefTo,
@@ -49,7 +49,7 @@
 
   let editor: AnyComponent | undefined
 
-  function getEditor (_class: Ref<Class<Doc>>, key: string): void {
+  function getEditor(_class: Ref<Class<Doc>>, key: string): void {
     if (key === '' || key === '_id') {
       const mixin = hierarchy.classHierarchyMixin(_class, view.mixin.AttributeEditor)
       if (mixin?.inlineEditor !== undefined) {
@@ -61,7 +61,7 @@
   }
 
   const dispatch = createEventDispatcher()
-  function onChange (val: any | undefined): void {
+  function onChange(val: any | undefined): void {
     value = val
     dispatch('change', val)
   }

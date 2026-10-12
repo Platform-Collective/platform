@@ -463,8 +463,7 @@ export async function moveAccountDbFromMongoToPG (
   ctx.info('Starting migration of invites...')
   const invitesCursor = mdb.invite.findCursor({})
   try {
-    // eslint-disable-next-line @typescript-eslint/no-loss-of-precision
-    const MAX_INT_8 = 9223372036854775807
+    const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER
     let invitesCount = 0
     let invitesBatch: any[] = []
     while (await invitesCursor.hasNext()) {
@@ -476,11 +475,11 @@ export async function moveAccountDbFromMongoToPG (
 
       delete (invite as any).id
 
-      if (invite.expiresOn > MAX_INT_8 || typeof invite.expiresOn !== 'number') {
+      if (invite.expiresOn > MAX_SAFE_INTEGER || typeof invite.expiresOn !== 'number') {
         invite.expiresOn = -1
       }
 
-      if (["USER'", 'ADMIN'].includes(invite.role as any)) {
+      if (["USER'", 'ADMIN'].includes(invite.role)) {
         invite.role = AccountRole.User
       }
 

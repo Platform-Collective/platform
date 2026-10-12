@@ -47,7 +47,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function handleCodeEdit (event: MouseEvent): void {
+  function handleCodeEdit(event: MouseEvent): void {
     event?.preventDefault()
     event?.stopPropagation()
 
@@ -60,7 +60,7 @@
     )
   }
 
-  function handleCategoryEdit (event: MouseEvent): void {
+  function handleCategoryEdit(event: MouseEvent): void {
     event?.preventDefault()
     event?.stopPropagation()
 

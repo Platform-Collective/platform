@@ -23,7 +23,7 @@
 
   $: tooltipParams = getTooltip(value)
 
-  function getTooltip (value: string | string[] | null | undefined): LabelAndProps | undefined {
+  function getTooltip(value: string | string[] | null | undefined): LabelAndProps | undefined {
     if (value == null) return
     let str = ''
     if (Array.isArray(value)) {

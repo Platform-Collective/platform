@@ -22,7 +22,7 @@
 
   export let mark: MarkupMark
 
-  function handleLink (e: MouseEvent): void {
+  function handleLink(e: MouseEvent): void {
     try {
       const href = mark.attrs?.href
       if (href != null && href !== '') {

@@ -5,9 +5,9 @@ import { mixLogoColor, normalizeIdentityColor, renderWorkspaceIdentity } from '.
 // The UI tsconfig profile does not include Node typings, so the few Node APIs this test needs are declared locally.
 // eslint-disable-next-line @typescript-eslint/naming-convention -- Node.js defines this global name.
 declare const __dirname: string
-declare function require (id: 'fs'): { readFileSync: (path: string, encoding: 'utf8') => string }
-declare function require (id: 'path'): { resolve: (...segments: string[]) => string }
-declare function require (id: 'vm'): { runInNewContext: (code: string, context: Record<string, unknown>) => unknown }
+declare function require(id: 'fs'): { readFileSync: (path: string, encoding: 'utf8') => string }
+declare function require(id: 'path'): { resolve: (...segments: string[]) => string }
+declare function require(id: 'vm'): { runInNewContext: (code: string, context: Record<string, unknown>) => unknown }
 
 const { readFileSync } = require('fs')
 const { resolve } = require('path')

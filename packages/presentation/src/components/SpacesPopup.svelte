@@ -67,7 +67,7 @@
 
   $: getComponent(component)
 
-  async function getComponent (component: AnySvelteComponent | AnyComponent | undefined): Promise<void> {
+  async function getComponent(component: AnySvelteComponent | AnyComponent | undefined): Promise<void> {
     if (typeof component === 'string') {
       is = await getResource(component)
     } else {

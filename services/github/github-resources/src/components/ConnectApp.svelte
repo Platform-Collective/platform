@@ -20,7 +20,7 @@
   let installationId: number | undefined
   let showSelector = false
 
-  async function createIntegration (loc: Location): Promise<void> {
+  async function createIntegration(loc: Location): Promise<void> {
     if (loc.query?.error != null) {
       window.close()
       return
@@ -39,7 +39,7 @@
       return
     }
 
-    function doAutoClose (): void {
+    function doAutoClose(): void {
       autoClose = 3
       clearInterval(interval)
       interval = setInterval(() => {

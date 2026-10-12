@@ -24,7 +24,7 @@
 
   let focused = false
 
-  function handleSelectionUpdate (): void {
+  function handleSelectionUpdate(): void {
     const selection = editor.state.selection
     const pos = selection.$anchor.pos
     const start = getPos()
@@ -58,7 +58,7 @@
     }
   )
 
-  async function syncTodo (todo: ToDo | undefined): Promise<void> {
+  async function syncTodo(todo: ToDo | undefined): Promise<void> {
     if (todo !== undefined && todo.attachedTo === objectId && todo.attachedToClass === objectClass) {
       const todoChecked = todo.doneOn != null
       if (todo._id !== todoId || todo.user !== userId || todoChecked !== checked) {
@@ -78,7 +78,7 @@
     }
   }
 
-  async function markDone (): Promise<void> {
+  async function markDone(): Promise<void> {
     if (todo !== undefined) {
       await client.update(todo, { doneOn: todo.doneOn == null ? Date.now() : null })
     } else {
@@ -86,7 +86,7 @@
     }
   }
 
-  async function assignTodo (user: Ref<Employee>): Promise<void> {
+  async function assignTodo(user: Ref<Employee>): Promise<void> {
     if (todo !== undefined && todo.user === user) return
     if (objectId === undefined || objectClass === undefined || objectSpace === undefined) return
 
@@ -132,7 +132,7 @@
     })
   }
 
-  async function unassignTodo (): Promise<void> {
+  async function unassignTodo(): Promise<void> {
     updateAttributes({
       todoid: null,
       userid: null
@@ -143,7 +143,7 @@
     }
   }
 
-  async function assignTodoConfirm (user: Ref<Employee>): Promise<void> {
+  async function assignTodoConfirm(user: Ref<Employee>): Promise<void> {
     showPopup(
       MessageBox,
       {
@@ -157,7 +157,7 @@
     )
   }
 
-  async function unassignTodoConfirm (): Promise<void> {
+  async function unassignTodoConfirm(): Promise<void> {
     showPopup(
       MessageBox,
       {
@@ -171,7 +171,7 @@
     )
   }
 
-  async function changeAssignee (user: Ref<Employee> | undefined): Promise<void> {
+  async function changeAssignee(user: Ref<Employee> | undefined): Promise<void> {
     const shouldConfirm = todo !== undefined && todo?.workslots > 0
     if (user !== undefined) {
       shouldConfirm ? await assignTodoConfirm(user) : await assignTodo(user)
@@ -182,7 +182,7 @@
 
   let hovered = false
 
-  function handleAssigneeEdit (ev: MouseEvent): void {
+  function handleAssigneeEdit(ev: MouseEvent): void {
     ev.preventDefault()
     ev.stopPropagation()
 

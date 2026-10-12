@@ -5,17 +5,20 @@
   "license": "EPL-2.0",
   "scripts": {
     "_phase:docker-build": "rushx docker:build",
-    "docker:build": "sh bin/build.sh",
-    "docker:push": "sh bin/push.sh",
+    "docker:build": "node ../../common/scripts/bash.js bin/build.sh",
+    "docker:push": "node ../../common/scripts/bash.js bin/push.sh",
+    "format": "node ../../common/scripts/bash.js --script format"
+  },
+  "bashScripts": {
     "format": "true"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "eslint-plugin-import": "^2.26.0",
-    "eslint-plugin-promise": "^6.1.1",
-    "eslint-plugin-n": "^15.4.0",
-    "eslint": "^8.54.0",
-    "@typescript-eslint/parser": "^6.21.0",
-    "eslint-config-standard-with-typescript": "^40.0.0"
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "eslint-plugin-promise": "^7.3.0",
+    "eslint-plugin-n": "^18.3.0",
+    "eslint": "^9.39.5",
+    "@typescript-eslint/parser": "^8.67.0",
+    "eslint-plugin-svelte": "^3.23.0",
+    "eslint-config-love": "^157.0.0"
   }
 }

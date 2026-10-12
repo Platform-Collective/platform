@@ -172,23 +172,23 @@
     (rows.length > 0 ? rows[rows.length - 1].y + rows[rows.length - 1].height : 0)
   $: yViewport = virtualizationOn
     ? computeYViewport({
-      rowCount: rows.length,
-      rowHeight,
-      scrollTop,
-      viewportHeight,
-      overscan
-    })
+        rowCount: rows.length,
+        rowHeight,
+        scrollTop,
+        viewportHeight,
+        overscan
+      })
     : null
   // Slice on the re-stamped vy (so post-sort order matters) and project the
   // result back to `{ row, vy }` pairs the template iterates over.
   $: visibleIndexed =
     virtualizationOn && yViewport !== null
       ? indexedRows.filter((p) => {
-        return (
-          p.vy + (p.row.height ?? rowHeight) > scrollTop - overscan * rowHeight &&
+          return (
+            p.vy + (p.row.height ?? rowHeight) > scrollTop - overscan * rowHeight &&
             p.vy < scrollTop + viewportHeight + overscan * rowHeight
-        )
-      })
+          )
+        })
       : indexedRows
   // When virtualizing, render the slice anchored to its re-stamped vy; the
   // wrapper carries an explicit height so the scroller's scrollHeight
@@ -209,27 +209,27 @@
     widthChange: { column: SidebarColumnKey, width: number, commit: boolean }
   }>()
 
-  function handleSort (evt: CustomEvent<{ column: SidebarColumnKey }>): void {
+  function handleSort(evt: CustomEvent<{ column: SidebarColumnKey }>): void {
     dispatch('sortChange', { column: evt.detail.column })
   }
 
-  function handleResizePreview (evt: CustomEvent<{ column: SidebarColumnKey, width: number }>): void {
+  function handleResizePreview(evt: CustomEvent<{ column: SidebarColumnKey, width: number }>): void {
     dispatch('widthChange', { column: evt.detail.column, width: evt.detail.width, commit: false })
   }
 
-  function handleResizeCommit (evt: CustomEvent<{ column: SidebarColumnKey, width: number }>): void {
+  function handleResizeCommit(evt: CustomEvent<{ column: SidebarColumnKey, width: number }>): void {
     dispatch('widthChange', { column: evt.detail.column, width: evt.detail.width, commit: true })
   }
 
-  function openIssue (issue: { _id: any, _class: any }): void {
+  function openIssue(issue: { _id: any, _class: any }): void {
     dispatch('openIssue', { issue: { _id: issue._id as string, _class: issue._class as string } })
   }
 
-  function openMilestone (milestoneId: Ref<Milestone>): void {
+  function openMilestone(milestoneId: Ref<Milestone>): void {
     dispatch('openMilestone', { milestoneId })
   }
 
-  function onDragGripDown (issue: Issue): (evt: MouseEvent) => void {
+  function onDragGripDown(issue: Issue): (evt: MouseEvent) => void {
     return (evt: MouseEvent): void => {
       dispatch('rowDragStart', { issue, cursorX: evt.clientX })
     }
@@ -242,12 +242,12 @@
    * svelte-check from flattening the surrounding event handlers' parameter
    * types to `any`.
    */
-  function breadcrumbTooltip (row: LayoutRow): { label: IntlString } | undefined {
+  function breadcrumbTooltip(row: LayoutRow): { label: IntlString } | undefined {
     if (row.isBreadcrumb !== true) return undefined
     return { label: tracker.string.GanttTreeBreadcrumb }
   }
 
-  function onRowContextMenu (evt: MouseEvent, row: LayoutRow): void {
+  function onRowContextMenu(evt: MouseEvent, row: LayoutRow): void {
     if (row.issue === null) return
     evt.preventDefault()
     evt.stopPropagation()
@@ -257,7 +257,7 @@
     })
   }
 
-  function jumpDirection (obj: { startDate: number | null, dueDate: number | null }): 'left' | 'right' | null {
+  function jumpDirection(obj: { startDate: number | null, dueDate: number | null }): 'left' | 'right' | null {
     if (timeScale === undefined) return null
     if (viewportRight <= viewportLeft) return null
     if (obj.startDate == null && obj.dueDate == null) return null
@@ -270,7 +270,7 @@
     return null
   }
 
-  function rowJumpTarget (row: LayoutRow): { startDate: number | null, dueDate: number | null } | null {
+  function rowJumpTarget(row: LayoutRow): { startDate: number | null, dueDate: number | null } | null {
     if (row.kind === 'issue' && row.issue !== null) {
       return { startDate: row.issue.startDate, dueDate: row.issue.dueDate }
     }
@@ -280,7 +280,7 @@
     return null
   }
 
-  function rowJumpX (row: LayoutRow): number | null {
+  function rowJumpX(row: LayoutRow): number | null {
     if (timeScale === undefined) return null
     const tgt = rowJumpTarget(row)
     if (tgt === null) return null
@@ -297,7 +297,7 @@
    * that is filtered out, collapsed or in another group lane still shows its
    * number instead of a bare "FS+2d".
    */
-  function issueNumberOf (ref: Ref<Issue>): string {
+  function issueNumberOf(ref: Ref<Issue>): string {
     return resolveIssueNumber(ref, issueIdentifiers, rows)
   }
 </script>

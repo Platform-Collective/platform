@@ -33,7 +33,7 @@ import { type Integration as AccountIntegration } from '@hcengineering/account-c
 
 import { SpaceTypeCreator, SpaceTypeEditor } from './spaceTypeEditor'
 
-export * from './spaceTypeEditor'
+export type * from './spaceTypeEditor'
 export * from './utils'
 export * from './analytics'
 

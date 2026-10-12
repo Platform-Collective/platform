@@ -261,7 +261,7 @@ async function processEmailNotifications (control: TriggerControl, notifications
       // Fallback to regular findAll if lowLevel fails
       control.ctx.warn('processEmailNotifications: Raw find all failed', { employeeId: employee._id, err })
       const emailsResult = await control.findAll(control.ctx, contact.class.SocialIdentity, emailQuery)
-      emails = emailsResult as SocialIdentity[]
+      emails = emailsResult
     }
 
     if (emails.length === 0) {

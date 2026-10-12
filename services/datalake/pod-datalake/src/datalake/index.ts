@@ -15,5 +15,5 @@
 
 export * from './cache'
 export * from './datalake'
-export * from './types'
+export type * from './types'
 export * from './utils'

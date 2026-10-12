@@ -478,6 +478,8 @@ async function getTokenByEvent (
     _id: event.calendar as Ref<ExternalCalendar>
   })
   if (_calendar === undefined) return
+  // CalDAV calendars are written by the CalDAV module, there is no Google token for them
+  if (txOp.getHierarchy().hasMixin(_calendar, calendar.mixin.CalDavCalendar)) return
   const res = await accountClient.getIntegrationSecret({
     socialId: _calendar.user,
     kind: calendarIntegrationKind,

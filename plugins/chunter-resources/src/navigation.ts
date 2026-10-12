@@ -453,11 +453,11 @@ export async function locationDataResolver (loc: Location): Promise<LocationData
   }
 
   const specialsData: Record<
-  string,
-  {
-    label: IntlString
-    icon: Asset
-  }
+    string,
+    {
+      label: IntlString
+      icon: Asset
+    }
   > = {
     threads: {
       label: chunter.string.Threads,

@@ -29,7 +29,7 @@
   $: access = $micAccess.state
   $: devices = mediaInfo.devices.filter((device) => device.kind === 'audiooutput')
 
-  async function handleSelectSpk (device: MediaDeviceInfo | null): Promise<void> {
+  async function handleSelectSpk(device: MediaDeviceInfo | null): Promise<void> {
     if (device == null) return
     if (mediaInfo.activeSpeaker?.deviceId === device?.deviceId) return
     const deviceId = device?.deviceId

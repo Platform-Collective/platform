@@ -59,7 +59,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function openPopup () {
+  function openPopup() {
     if (!opened) {
       opened = true
       showPopup(

@@ -22,7 +22,7 @@
   export let value: Vacancy
   export let applications: Map<Ref<Vacancy>, { count: number, modifiedOn: number }> | undefined
 
-  function click () {
+  function click() {
     closeTooltip()
     const loc = getCurrentResolvedLocation()
     loc.fragment = undefined

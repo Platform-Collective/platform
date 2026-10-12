@@ -16,7 +16,7 @@
     return true
   })
 
-  function createHandler (): void {
+  function createHandler(): void {
     Analytics.handleEvent(CardEvents.RelationCreated)
   }
 </script>

@@ -36,7 +36,7 @@
 
   let keys: KeyedAttribute[] = []
 
-  function updateKeys (_class: Ref<Class<Doc>>, ignoreKeys: string[], to: Ref<Class<Doc>> | undefined): void {
+  function updateKeys(_class: Ref<Class<Doc>>, ignoreKeys: string[], to: Ref<Class<Doc>> | undefined): void {
     const filtredKeys = getFiltredKeys(hierarchy, _class, ignoreKeys, to)
     keys = filtredKeys
       .filter((key) => !isCollectionAttr(hierarchy, key) || allowedCollections.includes(key.key))
@@ -58,7 +58,7 @@
 
   $: label = showLabel ?? hierarchy.getClass(_class).label
 
-  function getCollapsed (_class: Ref<Class<Doc>>, nonEmpty?: KeyedAttribute): boolean {
+  function getCollapsed(_class: Ref<Class<Doc>>, nonEmpty?: KeyedAttribute): boolean {
     return nonEmpty === undefined
   }
 

@@ -41,20 +41,20 @@
 
   const todayDate = new Date()
 
-  function getColumnWidth (gridWidth: number, currentDate: Date, maxDays: number): number {
+  function getColumnWidth(gridWidth: number, currentDate: Date, maxDays: number): number {
     const width = gridWidth / Math.min(daysInMonth(currentDate), maxDays)
     return Math.max(width, minColWidthRem)
   }
 
-  export function getCellStyle (): string {
+  export function getCellStyle(): string {
     return `width: ${columnWidthRem}rem;`
   }
 
-  export function getRowStyle (): string {
+  export function getRowStyle(): string {
     return `height: ${rowHeightRem}rem;`
   }
 
-  export function getHeaderStyle (): string {
+  export function getHeaderStyle(): string {
     return `height: ${headerHeightRem}rem;`
   }
 

@@ -31,7 +31,7 @@
 
   $: void getAssociations(tag)
 
-  async function getAssociations (_tag: MasterTag | Tag): Promise<void> {
+  async function getAssociations(_tag: MasterTag | Tag): Promise<void> {
     const descendants = hierarchy.getDescendants(_tag._id)
     const leftAssociations = await client.findAll(core.class.Association, { classA: { $in: descendants } })
     const rightAssociations = await client.findAll(core.class.Association, { classB: { $in: descendants } })
@@ -41,7 +41,7 @@
       .filter((value, index, self) => index === self.findIndex((obj) => obj._id === value._id))
     associationIds = associations.map((value) => value._id)
   }
-  function onSelect (event: CustomEvent<Ref<Association>>): void {
+  function onSelect(event: CustomEvent<Ref<Association>>): void {
     value = associations.find((value) => value._id === event.detail)
   }
 </script>

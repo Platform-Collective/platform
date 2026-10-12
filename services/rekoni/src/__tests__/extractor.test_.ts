@@ -16,14 +16,17 @@
 import { readFile } from 'fs/promises'
 import { lookup } from 'mime-types'
 import { extract } from '../extractors'
+import { MeasureMetricsContext } from '@hcengineering/core'
 
 describe('extractor-tests', () => {
+  const ctx = new MeasureMetricsContext('test', {})
+
   it('check docx', async () => {
     const fName = './demo/Резюме Власова Анатолия.docx'
     const data = await readFile(fName)
     const type = lookup(fName)
 
-    const { matched, content } = await extract(fName, type, data)
+    const { matched, content } = await extract(ctx, fName, type, data)
 
     expect(matched).toBe(true)
     expect(content).toContain('садовник')
@@ -34,7 +37,7 @@ describe('extractor-tests', () => {
     const data = await readFile(fName)
     const type = lookup(fName)
 
-    const { matched, content } = await extract(fName, type, data)
+    const { matched, content } = await extract(ctx, fName, type, data)
 
     expect(matched).toBe(true)
     expect(content).toContain('kibana')

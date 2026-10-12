@@ -65,7 +65,7 @@
   let externalUsers: Ref<Employee>[] = isReviewRequest ? [] : (controlledDoc.externalApprovers ?? [])
   const existingExternalUsers = externalUsers
 
-  async function submit (): Promise<void> {
+  async function submit(): Promise<void> {
     const complete = async (): Promise<void> => {
       loading = true
 

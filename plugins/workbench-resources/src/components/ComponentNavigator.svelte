@@ -73,12 +73,12 @@
     )
   }
 
-  function onSelected (e: CustomEvent<any>): void {
+  function onSelected(e: CustomEvent<any>): void {
     if (syncWithLocationQuery) return
     parentQuery = { [parentKey]: e.detail }
   }
 
-  function showCreateDialog (): void {
+  function showCreateDialog(): void {
     if (createComponent === undefined) return
     showPopup(createComponent, { ...createComponentProps, space }, 'top')
   }

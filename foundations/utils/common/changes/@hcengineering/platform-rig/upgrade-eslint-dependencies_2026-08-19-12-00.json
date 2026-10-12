@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@hcengineering/platform-rig",
+      "comment": "Upgrade the ESLint toolchain and migrate formatting to flat configuration.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@hcengineering/platform-rig"
+}

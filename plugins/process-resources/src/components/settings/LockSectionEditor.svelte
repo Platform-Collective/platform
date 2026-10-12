@@ -28,7 +28,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function changeTag (e: CustomEvent<{ tag: Ref<Tag> }>): void {
+  function changeTag(e: CustomEvent<{ tag: Ref<Tag> }>): void {
     if (e.detail !== undefined) {
       _id = e.detail.tag
       params._id = _id

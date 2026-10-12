@@ -82,11 +82,11 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return (preserveCandidate || candidate === undefined) && title.length === 0
   }
 
-  async function createReview () {
+  async function createReview() {
     const sequence = await client.findOne(core.class.Sequence, { attachedTo: recruit.class.Review })
     if (sequence === undefined) {
       throw new Error('sequence object not found')
@@ -135,14 +135,14 @@
     Analytics.handleEvent(RecruitEvents.ReviewCreated, { id: ref })
   }
 
-  async function invokeValidate (
+  async function invokeValidate(
     action: Resource<<T extends Doc>(doc: T, client: Client) => Promise<Status>>
   ): Promise<Status> {
     const impl = await getResource(action)
     return await impl(doc, client)
   }
 
-  async function validate (doc: Review, _class: Ref<Class<Doc>>): Promise<void> {
+  async function validate(doc: Review, _class: Ref<Class<Doc>>): Promise<void> {
     const clazz = hierarchy.getClass(_class)
     const validatorMixin = hierarchy.as(clazz, view.mixin.ObjectValidator)
     if (validatorMixin?.validator != null) {

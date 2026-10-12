@@ -23,7 +23,7 @@
 
   $: sortedActions = actions.slice().sort((a, b) => a.order - b.order)
 
-  function handleAction (action: RefAction, evt?: Event): void {
+  function handleAction(action: RefAction, evt?: Event): void {
     if (editorHandler === undefined) {
       console.error('Editor handler is not available')
       return

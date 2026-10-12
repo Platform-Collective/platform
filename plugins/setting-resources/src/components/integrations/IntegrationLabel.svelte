@@ -23,7 +23,7 @@
 
   type IntegrationStatus = 'available' | 'disconnected' | 'connected' | 'integrated'
 
-  function getIntegrationStatus (integration: Integration | undefined): IntegrationStatus {
+  function getIntegrationStatus(integration: Integration | undefined): IntegrationStatus {
     if (integration === undefined) {
       return 'available'
     }
@@ -36,7 +36,7 @@
     return 'integrated'
   }
 
-  function getIntegrationLabel (status: IntegrationStatus): IntlString {
+  function getIntegrationLabel(status: IntegrationStatus): IntlString {
     switch (status) {
       case 'available':
         return setting.string.Available

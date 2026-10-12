@@ -40,12 +40,12 @@
 
   const dispatch = createEventDispatcher()
 
-  function onClick (val: SelectedContext): void {
+  function onClick(val: SelectedContext): void {
     onSelect(val)
     dispatch('close')
   }
 
-  function onAttribute (val: AnyAttribute): void {
+  function onAttribute(val: AnyAttribute): void {
     const valueFunc = getValueReduceFunc(val, attribute)
     onClick({
       type: 'attribute',
@@ -60,7 +60,7 @@
   $: relations = Object.entries(context.relations)
   $: convertible = (context as any).convertible ?? []
 
-  function onUserRequest (): void {
+  function onUserRequest(): void {
     onSelect({
       type: 'userRequest',
       id: generateContextId(),
@@ -70,7 +70,7 @@
     dispatch('close')
   }
 
-  function onFunc (func: Ref<ProcessFunction>): void {
+  function onFunc(func: Ref<ProcessFunction>): void {
     onSelect({
       type: 'function',
       key: attribute.name,
@@ -80,18 +80,18 @@
     dispatch('close')
   }
 
-  function onProcessContext (ctx: ProcessExecutionContext): void {
+  function onProcessContext(ctx: ProcessExecutionContext): void {
     onSelect(ctx.value)
     dispatch('close')
   }
 
-  function getFunc (func: Ref<ProcessFunction>): ProcessFunction {
+  function getFunc(func: Ref<ProcessFunction>): ProcessFunction {
     const client = getClient()
     const f = client.getModel().getObject(func)
     return f
   }
 
-  function onRelation (val: RelatedContext): void {
+  function onRelation(val: RelatedContext): void {
     const client = getClient()
     const reduceFunc = getRelationObjectReduceFunc(client, val.association, val.direction, attribute)
     onSelect({
@@ -106,7 +106,7 @@
     dispatch('close')
   }
 
-  function onConst (e: MouseEvent): void {
+  function onConst(e: MouseEvent): void {
     showPopup(ConstValuePopup, { attribute }, eventToHTMLElement(e), (res) => {
       if (res != null) {
         onSelect({
@@ -119,7 +119,7 @@
     })
   }
 
-  function onConvertSelect (val: SelectedContext | null, func: Ref<ProcessFunction>): void {
+  function onConvertSelect(val: SelectedContext | null, func: Ref<ProcessFunction>): void {
     if (val !== null) {
       onClick({
         ...val,
@@ -144,7 +144,7 @@
     }
   }
 
-  function getOnConvertSelect (func: Ref<ProcessFunction>): (val: SelectedContext | null) => void {
+  function getOnConvertSelect(func: Ref<ProcessFunction>): (val: SelectedContext | null) => void {
     return (val: SelectedContext | null) => {
       onConvertSelect(val, func)
     }

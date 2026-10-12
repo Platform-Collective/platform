@@ -59,11 +59,11 @@
   export let overflowExtra: boolean = false
   export let element: HTMLElement | undefined = undefined
 
-  export function getAside (): string | boolean {
+  export function getAside(): string | boolean {
     if (customAside) return selectedAside
     return asideShown
   }
-  export function setAside (id: string | boolean): void {
+  export function setAside(id: string | boolean): void {
     if (typeof id === 'string' && customAside) {
       const i = customAside.findIndex((as) => as.id === id)
       if (i === -1) return

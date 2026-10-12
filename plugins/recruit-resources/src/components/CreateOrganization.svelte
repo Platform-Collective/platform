@@ -23,11 +23,11 @@
 
   let createOrg: CreateOrganization
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return createOrg.canClose()
   }
 
-  async function onCreate (org: Ref<Organization>, client: TxOperations): Promise<void> {
+  async function onCreate(org: Ref<Organization>, client: TxOperations): Promise<void> {
     await client.createMixin(org, contact.class.Organization, contact.space.Contacts, recruit.mixin.VacancyList, {
       vacancies: 0
     })

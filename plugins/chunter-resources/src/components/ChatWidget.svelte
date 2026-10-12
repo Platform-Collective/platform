@@ -25,7 +25,7 @@
   export let height: string
   export let width: string
 
-  function handleClose (tabId?: string): void {
+  function handleClose(tabId?: string): void {
     if (widget === undefined || tabId === undefined) return
     void closeWidgetTab(widget, tabId)
   }

@@ -1,10 +1,10 @@
-import { type DocumentQuery, type MemDb } from '.'
-import { type Class, type Doc, type Enum, type EnumOf, type Ref } from './classes'
+import type { DocumentQuery, MemDb } from '.'
+import type { Class, Doc, Enum, EnumOf, Ref } from './classes'
 import core from './component'
-import { type Hierarchy } from './hierarchy'
+import type { Hierarchy } from './hierarchy'
 import { getObjectValue } from './objvalue'
 import { createPredicates, isPredicate } from './predicate'
-import { type SortQuerySelector, type SortingOrder, type SortingQuery, type SortingRules } from './storage'
+import type { SortQuerySelector, SortingOrder, SortingQuery, SortingRules } from './storage'
 
 /**
  * @public
@@ -154,7 +154,7 @@ export function matchQuery<T extends Doc> (
   query: DocumentQuery<T>,
   clazz: Ref<Class<T>>,
   hierarchy: Hierarchy,
-  skipLookup: boolean = false
+  skipLookup = false
 ): Doc[] {
   const baseClass = hierarchy.getBaseClass(clazz)
   let result = docs.filter((r) => hierarchy.isDerived(r._class, baseClass))
@@ -184,7 +184,7 @@ export function checkMixinKey<T extends Doc> (key: string, clazz: Ref<Class<T>>,
       const attr = hierarchy.findAttribute(clazz, key)
       if (attr !== undefined && hierarchy.isMixin(attr.attributeOf)) {
         // It is mixin
-        key = attr.attributeOf + '.' + key
+        key = `${attr.attributeOf}.${key}`
       }
     } catch (err: any) {
       // ignore, if

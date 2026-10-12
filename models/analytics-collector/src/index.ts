@@ -38,29 +38,29 @@ export default analyticsCollector
 export class TOnboardingChannel extends TChannel implements OnboardingChannel {
   @Prop(TypeString(), analyticsCollector.string.UserName)
   @ReadOnly()
-    userName!: string
+  userName!: string
 
   @Prop(TypeAccountUuid(), analyticsCollector.string.Account)
   @ReadOnly()
-    account!: AccountUuid
+  account!: AccountUuid
 
   @Prop(TypeString(), analyticsCollector.string.WorkspaceName)
   @ReadOnly()
-    workspaceName!: string
+  workspaceName!: string
 
   @Prop(TypeString(), analyticsCollector.string.WorkspaceUrl)
   @ReadOnly()
-    workspaceUrl!: string
+  workspaceUrl!: string
 
   @Prop(TypeString(), analyticsCollector.string.WorkspaceId)
   @ReadOnly()
-    workspaceId!: WorkspaceUuid
+  workspaceId!: WorkspaceUuid
 
   @Prop(TypeBoolean(), analyticsCollector.string.DisableAIReplies)
-    disableAIReplies!: boolean
+  disableAIReplies!: boolean
 
   @Prop(TypeBoolean(), analyticsCollector.string.ShowAIReplies)
-    showAIReplies!: boolean
+  showAIReplies!: boolean
 }
 
 export function createModel (builder: Builder): void {

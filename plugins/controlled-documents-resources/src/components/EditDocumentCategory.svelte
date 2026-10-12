@@ -34,7 +34,7 @@
   $: canEdit =
     !readonly && checkMyPermission(documents.permission.UpdateDocumentCategory, object.space, $permissionsStore)
 
-  async function saveField (ev: Event, val: string, field: string): Promise<void> {
+  async function saveField(ev: Event, val: string, field: string): Promise<void> {
     ev.preventDefault()
 
     if (object === undefined) {

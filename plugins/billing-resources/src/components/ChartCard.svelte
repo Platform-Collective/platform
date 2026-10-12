@@ -9,7 +9,7 @@
 
   let normalizedData: { date: number, value: number }[] = []
 
-  function normalizeData (data: { date: number, value: number }[]): void {
+  function normalizeData(data: { date: number, value: number }[]): void {
     const startDate = new Date(Date.now())
     startDate.setHours(0, 0, 0, 0)
     startDate.setDate(startDate.getDate() - 29)

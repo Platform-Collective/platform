@@ -30,13 +30,13 @@
   $: resultContext =
     step.results != null
       ? step.results.map((r) => {
-        const exists = process.context[r._id]
-        if (exists != null) return exists
-        return {
-          name: r.name,
-          _class: r.type._class
-        }
-      })
+          const exists = process.context[r._id]
+          if (exists != null) return exists
+          return {
+            name: r.name,
+            _class: r.type._class
+          }
+        })
       : []
 </script>
 

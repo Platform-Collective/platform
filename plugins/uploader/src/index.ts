@@ -15,7 +15,7 @@
 
 import { uploaderId, uploaderPlugin } from './plugin'
 
-export * from './types'
+export type * from './types'
 export * from './utils'
 
 export { uploaderId }

@@ -37,7 +37,7 @@
 
   $: accounts = collaborators.map((c) => c.collaborator)
 
-  async function change (res: AccountUuid[]): Promise<void> {
+  async function change(res: AccountUuid[]): Promise<void> {
     const toAdd: AccountUuid[] = res.filter((a) => !accounts.includes(a))
     const toRemove: Collaborator[] = collaborators.filter((a) => !res.includes(a.collaborator))
     for (const account of toAdd) {

@@ -53,7 +53,7 @@
 
   let selected: any
 
-  function sendSelect (id: SelectPopupValueType['id']): void {
+  function sendSelect(id: SelectPopupValueType['id']): void {
     selected = id
     if (onSelect) {
       onSelect(id)
@@ -62,7 +62,7 @@
     }
   }
 
-  export function onKeydown (key: KeyboardEvent): boolean {
+  export function onKeydown(key: KeyboardEvent): boolean {
     if (key.code === 'Tab') {
       dispatch('close')
       key.preventDefault()
@@ -93,7 +93,7 @@
 
   let itemLabelsTranslation: Map<string, string> = new Map<string, string>()
 
-  async function translateLabels (values: SelectPopupValueType[]): Promise<void> {
+  async function translateLabels(values: SelectPopupValueType[]): Promise<void> {
     const translateValue: (value: SelectPopupValueType) => Promise<[string, string] | null> = async (e) => {
       if (e.label === undefined) {
         return null

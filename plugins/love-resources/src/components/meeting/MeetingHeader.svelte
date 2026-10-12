@@ -20,7 +20,7 @@
       currentMeetingMinutes = res
     })
 
-  function formatElapsedTime (elapsed: number): string {
+  function formatElapsedTime(elapsed: number): string {
     const seconds = Math.floor(elapsed / 1000)
     const minutes = Math.floor(seconds / 60)
     const hours = Math.floor(minutes / 60)

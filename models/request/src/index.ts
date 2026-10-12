@@ -54,11 +54,11 @@ export const DOMAIN_REQUEST = 'request' as Domain
 export class TRequest extends TAttachedDoc implements Request {
   @Prop(ArrOf(TypeRef(contact.class.Person)), request.string.Requested)
   // @Index(IndexKind.Indexed)
-    requested!: Ref<Person>[]
+  requested!: Ref<Person>[]
 
   @Prop(ArrOf(TypeRef(contact.class.Person)), request.string.Approved)
   @ReadOnly()
-    approved!: Ref<Person>[]
+  approved!: Ref<Person>[]
 
   approvedDates?: Timestamp[]
 
@@ -66,17 +66,17 @@ export class TRequest extends TAttachedDoc implements Request {
 
   @Prop(TypeString(), request.string.Status)
   // @Index(IndexKind.Indexed)
-    status!: RequestStatus
+  status!: RequestStatus
 
   tx!: Tx
   rejectedTx?: Tx
 
   @Prop(TypeRef(contact.class.Person), request.string.Rejected)
   @ReadOnly()
-    rejected?: Ref<Person>
+  rejected?: Ref<Person>
 
   @Prop(Collection(chunter.class.ChatMessage), chunter.string.Comments)
-    comments?: number
+  comments?: number
 }
 
 @Mixin(request.mixin.RequestDecisionComment, chunter.class.ChatMessage)

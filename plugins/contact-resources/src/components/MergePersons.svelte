@@ -75,7 +75,7 @@
       }
     })
 
-  function fillUpdate (source: Person, target: Person): DocumentUpdate<Person> {
+  function fillUpdate(source: Person, target: Person): DocumentUpdate<Person> {
     const res: DocumentUpdate<Person> = {}
     const attributes = hierarchy.getOwnAttributes(contact.class.Person)
     for (const attribute of attributes) {
@@ -89,7 +89,7 @@
     return res
   }
 
-  function fillMixinUpdate (source: Person, target: Person): Record<Ref<Mixin<Doc>>, DocumentUpdate<Doc>> {
+  function fillMixinUpdate(source: Person, target: Person): Record<Ref<Mixin<Doc>>, DocumentUpdate<Doc>> {
     const res: Record<Ref<Mixin<Doc>>, DocumentUpdate<Doc>> = {}
     for (const mixin of mixins) {
       if (!hierarchy.hasMixin(source, mixin)) continue
@@ -113,13 +113,13 @@
 
   let result: Person = { ...value }
 
-  function applyUpdate (update: DocumentUpdate<Person>): void {
+  function applyUpdate(update: DocumentUpdate<Person>): void {
     const r = hierarchy.clone(targetPerson)
     TxProcessor.applyUpdate(r, update)
     result = r
   }
 
-  async function merge (): Promise<void> {
+  async function merge(): Promise<void> {
     if (sourcePerson === undefined || targetPerson === undefined) return
     if (!canMergeGlobalPersons) return
 
@@ -178,7 +178,7 @@
     dispatch('close')
   }
 
-  function select (field: string, targetValue: boolean): void {
+  function select(field: string, targetValue: boolean): void {
     if (!targetValue) {
       ;(update as any)[field] = (sourcePerson as any)[field]
     } else {
@@ -189,7 +189,7 @@
     applyUpdate(update)
   }
 
-  function mergeChannels (
+  function mergeChannels(
     oldChannels: Channel[],
     targetChannels: Channel[],
     enabledChannels: Map<Ref<Channel>, boolean>
@@ -253,13 +253,13 @@
     (p) => !p[1].hidden && !ignoreKeys.includes(p[0]) && !isCollectionAttr(hierarchy, { key: p[0], attr: p[1] })
   )
 
-  function getMixinAttributes (mixin: Ref<Mixin<Doc>>): string[] {
+  function getMixinAttributes(mixin: Ref<Mixin<Doc>>): string[] {
     const attr = hierarchy.getOwnAttributes(mixin)
     const res = Array.from(attr.entries()).filter((p) => !isCollectionAttr(hierarchy, { key: p[0], attr: p[1] }))
     return res.map((p) => p[0])
   }
 
-  function selectMixin (mixin: Ref<Mixin<Doc>>, field: string, targetValue: boolean): void {
+  function selectMixin(mixin: Ref<Mixin<Doc>>, field: string, targetValue: boolean): void {
     const upd = mixinUpdate[mixin] ?? {}
     if (!targetValue) {
       ;(upd as any)[field] = (sourcePerson as any)[mixin][field]
@@ -270,7 +270,7 @@
     mixinUpdate[mixin] = upd
   }
 
-  async function updateAllRefs (client: TxOperations, sourceAccount: Person, targetAccount: Person): Promise<Tx[]> {
+  async function updateAllRefs(client: TxOperations, sourceAccount: Person, targetAccount: Person): Promise<Tx[]> {
     const h = client.getHierarchy()
     // Move all possible references to Employee and replace to target one.
     const ancestors = h.getAncestors(contact.class.Person)
@@ -352,7 +352,7 @@
     void checkIfCanMergeGlobalPersons(targetPerson, sourcePerson)
   }
 
-  async function checkIfCanMergeGlobalPersons (primaryPerson: Person, secondaryPerson: Person): Promise<void> {
+  async function checkIfCanMergeGlobalPersons(primaryPerson: Person, secondaryPerson: Person): Promise<void> {
     if (primaryPerson === undefined || secondaryPerson === undefined) {
       return
     }

@@ -66,7 +66,7 @@
 
   $: templateProvider !== undefined && templateProvider.set(contact.class.Contact, object)
 
-  async function sendMsg (): Promise<void> {
+  async function sendMsg(): Promise<void> {
     await client.createDoc(
       plugin.class.NewMessage,
       core.space.Workspace,
@@ -91,7 +91,7 @@
   const dispatch = createEventDispatcher()
   let inputFile: HTMLInputElement
 
-  function fileSelected (): void {
+  function fileSelected(): void {
     progress = true
     const list = inputFile.files
     if (list === null || list.length === 0) return
@@ -103,7 +103,7 @@
     progress = false
   }
 
-  function fileDrop (e: DragEvent): void {
+  function fileDrop(e: DragEvent): void {
     e.preventDefault()
     e.stopPropagation()
     progress = true
@@ -116,7 +116,7 @@
     progress = false
   }
 
-  async function createAttachment (file: File) {
+  async function createAttachment(file: File) {
     try {
       const uploadFile = await getResource(attachmentP.helper.UploadFile)
       const { uuid, metadata } = await uploadFile(file)
@@ -142,7 +142,7 @@
 
   const query = createQuery()
 
-  async function removeAttachment (attachment: Attachment): Promise<void> {
+  async function removeAttachment(attachment: Attachment): Promise<void> {
     const deleteFile = await getResource(attachmentP.helper.DeleteFile)
     await client.removeCollection(
       attachment._class,
@@ -168,7 +168,7 @@
       }
     )
 
-  function onTemplate (e: CustomEvent<string>): void {
+  function onTemplate(e: CustomEvent<string>): void {
     if (e.detail !== undefined) {
       if (obj.subject.trim() === '') {
         obj.subject = e.detail

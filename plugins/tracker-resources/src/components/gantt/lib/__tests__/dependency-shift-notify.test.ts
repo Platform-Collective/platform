@@ -13,7 +13,7 @@ import {
 } from '../dependency-shift-notify'
 import type { CascadeShift, PrimaryEdit } from '../types'
 
-function issue (id: string, identifier: string, title: string, start: number | null, due: number | null): Issue {
+function issue(id: string, identifier: string, title: string, start: number | null, due: number | null): Issue {
   return {
     _id: id as Ref<Issue>,
     _class: 'tracker:class:Issue' as any,

@@ -65,7 +65,7 @@
     }
   }
 
-  async function change (e: CustomEvent<{ startDate: number, dueDate: number, slot: Ref<WorkSlot> }>): Promise<void> {
+  async function change(e: CustomEvent<{ startDate: number, dueDate: number, slot: Ref<WorkSlot> }>): Promise<void> {
     const { startDate, dueDate, slot } = e.detail
     const workslot = slots.find((s) => s._id === slot)
     if (workslot !== undefined) {
@@ -73,7 +73,7 @@
     }
   }
 
-  async function dueChange (e: CustomEvent<{ dueDate: number, slot: Ref<WorkSlot> }>): Promise<void> {
+  async function dueChange(e: CustomEvent<{ dueDate: number, slot: Ref<WorkSlot> }>): Promise<void> {
     const { dueDate, slot } = e.detail
     const workslot = slots.find((s) => s._id === slot)
     if (workslot !== undefined) {
@@ -81,7 +81,7 @@
     }
   }
 
-  async function create (): Promise<void> {
+  async function create(): Promise<void> {
     const defaultDuration = 30 * 60 * 1000
     const now = Date.now()
     const date = Math.ceil(now / (30 * 60 * 1000)) * (30 * 60 * 1000)
@@ -106,7 +106,7 @@
     Analytics.handleEvent(TimeEvents.ToDoScheduled, { id: todo._id })
   }
 
-  async function syncRemindersForSlots (): Promise<void> {
+  async function syncRemindersForSlots(): Promise<void> {
     await Promise.all(
       slots.map(async (slot) => {
         await client.update(slot, { reminders })
@@ -114,7 +114,7 @@
     )
   }
 
-  async function remove (e: CustomEvent<{ _id: Ref<WorkSlot> }>): Promise<void> {
+  async function remove(e: CustomEvent<{ _id: Ref<WorkSlot> }>): Promise<void> {
     const object = slots.find((p) => p._id === e.detail._id)
     if (object !== undefined) {
       showPopup(

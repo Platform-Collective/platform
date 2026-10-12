@@ -28,7 +28,7 @@
   const hierarchy = client.getHierarchy()
   const dispatch = createEventDispatcher()
 
-  function getTypes (): DropdownIntlItem[] {
+  function getTypes(): DropdownIntlItem[] {
     const descendants = hierarchy.getDescendants(core.class.Type)
     const res: DropdownIntlItem[] = []
     for (const descendant of descendants) {
@@ -46,7 +46,7 @@
 
   let selectedType: Ref<Class<Type<PropertyType>>> | undefined = type?._class
   $: selectType(selectedType)
-  function selectType (type: Ref<Class<Type<PropertyType>>> | undefined): void {
+  function selectType(type: Ref<Class<Type<PropertyType>>> | undefined): void {
     if (type == null) return
     const _class = hierarchy.getClass(type)
     const editor = hierarchy.as(_class, view.mixin.ObjectEditor)

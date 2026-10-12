@@ -83,14 +83,14 @@
   const limit = $deviceInfo.isMobile ? 20 : 50
   let queryDef = getBaseQuery()
 
-  export function scrollDown (): void {
+  export function scrollDown(): void {
     shouldScrollToEnd = true
     position = 'end'
     reinit(position, true)
     readAllReactions()
   }
 
-  export function canScrollDown (): boolean {
+  export function canScrollDown(): boolean {
     return window !== undefined && window.hasNextPage()
   }
 
@@ -171,7 +171,7 @@
   let ro: ResizeObserver | undefined = undefined
   let prev: number = -1
 
-  function lastGroupObserver (node: HTMLDivElement): { destroy: () => void } {
+  function lastGroupObserver(node: HTMLDivElement): { destroy: () => void } {
     ro =
       ro ??
       new ResizeObserver(() => {
@@ -192,13 +192,13 @@
     ro.observe(node)
 
     return {
-      destroy () {
+      destroy() {
         ro?.unobserve(node)
       }
     }
   }
 
-  function reinit (position: 'start' | 'end', force = false): void {
+  function reinit(position: 'start' | 'end', force = false): void {
     if (prevPosition === position && !force) return
     prevPosition = position
 
@@ -220,7 +220,7 @@
     }
   }
 
-  function getBaseQuery (): MessageQueryParams {
+  function getBaseQuery(): MessageQueryParams {
     if (position === 'start') {
       return {
         cardId: card._id,
@@ -241,15 +241,15 @@
     }
   }
 
-  function getBottomOffset (): number {
+  function getBottomOffset(): number {
     return Math.max(0, Math.floor(scrollDiv.scrollHeight - scrollDiv.scrollTop - scrollDiv.clientHeight))
   }
 
-  function getTopOffset (): number {
+  function getTopOffset(): number {
     return Math.floor(scrollDiv.scrollTop - contentDiv.offsetTop)
   }
 
-  function updateShouldScrollToNew (): void {
+  function updateShouldScrollToNew(): void {
     if (window === undefined || window.hasNextPage()) {
       shouldScrollToNew = false
       atBottom = false
@@ -260,15 +260,15 @@
     atBottom = bottomOffset < 10
   }
 
-  function shouldLoadPrevPage (): boolean {
+  function shouldLoadPrevPage(): boolean {
     return topOffset <= 10
   }
 
-  function shouldLoadNextPage (): boolean {
+  function shouldLoadNextPage(): boolean {
     return bottomOffset <= 200
   }
 
-  function loadMore (direction: 'up' | 'down'): void {
+  function loadMore(direction: 'up' | 'down'): void {
     if (window === undefined || !isScrollInitialized) return
 
     if (shouldLoadPrevPage() && window.hasPrevPage() && direction === 'up') {
@@ -280,7 +280,7 @@
 
   let shouldRestoreScrollTop = false
 
-  async function loadPrevPage (): Promise<void> {
+  async function loadPrevPage(): Promise<void> {
     if (window === undefined || isPageLoading || scrollDiv == null) return
 
     try {
@@ -294,7 +294,7 @@
     }
   }
 
-  async function loadNextPage (): Promise<void> {
+  async function loadNextPage(): Promise<void> {
     if (window === undefined || isPageLoading) return
     if ((restore?.scrollHeight ?? 0) !== 0) return
 
@@ -308,12 +308,12 @@
     }
   }
 
-  function scrollToBottom (forced = false): void {
+  function scrollToBottom(forced = false): void {
     if (!$isAppFocusedStore && !forced) return
     scrollDiv.scroll({ top: scrollDiv.scrollHeight, behavior: 'instant' })
   }
 
-  function restoreScroll (): void {
+  function restoreScroll(): void {
     if (restore == null) return
     dispatch('action', { id: 'hideScrollBar' })
     const newScrollHeight = scrollDiv.scrollHeight
@@ -324,7 +324,7 @@
   let rafId: any | null = null
   let lastScrollTop: number = 0
 
-  function handleScroll (): void {
+  function handleScroll(): void {
     if (rafId !== null) return
     rafId = requestAnimationFrame(() => {
       const top = scrollDiv.scrollTop
@@ -343,7 +343,7 @@
   $: updateSeparator($isAppFocusedStore, context)
   $: readViewport($isAppFocusedStore)
 
-  function updateSeparator (isAppFocused: boolean, context: NotificationContext | undefined): void {
+  function updateSeparator(isAppFocused: boolean, context: NotificationContext | undefined): void {
     if (isAppFocused || context == null || window == null) return
     const separatorIndex = messages.findIndex(
       ({ created, creator }) => !me.socialIds.includes(creator) && created.getTime() > context.lastView.getTime()
@@ -352,7 +352,7 @@
     separatorDate = messages[separatorIndex].created
   }
 
-  function readAllReactions (): void {
+  function readAllReactions(): void {
     if (reactionNotifications.length === 0) return
     for (const notification of reactionNotifications) {
       void communicationClient.updateNotifications(
@@ -364,7 +364,7 @@
       )
     }
   }
-  function readViewport (isAppFocused: boolean): void {
+  function readViewport(isAppFocused: boolean): void {
     if (!isAppFocused || context == null || window == null) return
 
     const containerRect = scrollDiv.getBoundingClientRect()
@@ -406,7 +406,7 @@
     }
   }
 
-  function scrollToStartOfNew (): void {
+  function scrollToStartOfNew(): void {
     if (!shouldScrollToNew) return
     updateSeparator($isAppFocusedStore, context)
     if (separatorDate == null) {
@@ -436,7 +436,7 @@
     }
   }
 
-  async function readAll (): Promise<void> {
+  async function readAll(): Promise<void> {
     if (window == null || context == null || !isScrollInitialized || window.hasNextPage() || !$isAppFocusedStore) return
 
     if ((newLastView ?? context.lastView).getTime() >= context.lastUpdate.getTime()) {
@@ -447,7 +447,7 @@
     }
   }
 
-  async function onMessagesReceive (res: Message[]): Promise<void> {
+  async function onMessagesReceive(res: Message[]): Promise<void> {
     if (messagesCount === res.length) return
     const prevCount = messagesCount
     messagesCount = res.length
@@ -470,7 +470,7 @@
   let readNotificationsTimer: any | undefined = undefined
   let unsubscribeObserver: (() => void) | undefined = undefined
 
-  function readNotifications (date: Date): void {
+  function readNotifications(date: Date): void {
     if (readNotificationsTimer != null) {
       clearTimeout(readNotificationsTimer)
       readNotificationsTimer = undefined
@@ -483,7 +483,7 @@
 
   $: initMessageObserver(contentDiv, isScrollInitialized, context)
 
-  function initMessageObserver (
+  function initMessageObserver(
     contentDiv: HTMLDivElement,
     isScrollInitialized: boolean,
     context: NotificationContext | undefined
@@ -520,7 +520,7 @@
 
   $: void initializeScroll(isLoading, separatorDiv)
 
-  function scrollToWithOffset (container: HTMLElement, target: HTMLElement, offset: number): void {
+  function scrollToWithOffset(container: HTMLElement, target: HTMLElement, offset: number): void {
     const containerTop = container.getBoundingClientRect().top
     const targetTop = target.getBoundingClientRect().top
     const currentScroll = container.scrollTop
@@ -533,7 +533,7 @@
   $: if (isScrollInitialized) {
     dispatch('loaded')
   }
-  async function initializeScroll (isLoading: boolean, separatorDiv?: HTMLDivElement | null): Promise<void> {
+  async function initializeScroll(isLoading: boolean, separatorDiv?: HTMLDivElement | null): Promise<void> {
     if (isLoading || isScrollInitialized) return
 
     if (position === 'start') {
@@ -549,9 +549,9 @@
     const separatorIndex =
       initialLastView !== undefined
         ? messages.findIndex(
-          ({ created, creator }) =>
-            initialLastView != null && !me.socialIds.includes(creator) && created > initialLastView
-        )
+            ({ created, creator }) =>
+              initialLastView != null && !me.socialIds.includes(creator) && created > initialLastView
+          )
         : -1
 
     if (separatorIndex === -1 || shouldScrollToEnd) {
@@ -594,7 +594,7 @@
     scrollDiv.addEventListener('scroll', handleScroll, { passive: true })
   })
 
-  export function editLastMessage (): void {
+  export function editLastMessage(): void {
     if (window == null || window.hasNextPage()) return
     if (!atBottom) return
 

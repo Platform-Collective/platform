@@ -18,7 +18,7 @@ import type { Asset, IntlString, Plugin, Resource } from '@hcengineering/platfor
 import { plugin, Metadata } from '@hcengineering/platform'
 import { SupportClientFactory, SupportConversation, SupportSystem } from './types'
 
-export * from './types'
+export type * from './types'
 export { deleteSupportConversation, updateSupportConversation } from './utils'
 
 export const supportLink = 'https://link.huly.io/slack'

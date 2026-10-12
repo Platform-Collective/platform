@@ -89,7 +89,7 @@ describe('rest-api-server', () => {
     const person = await accountClient.getPerson()
     const socialIds: SocialId[] = await accountClient.getSocialIds(true)
 
-    // Ensure employee is created
+    // Employee mixin creation is privileged; use the system token only for test setup.
 
     await ensureEmployee(
       testCtx,
@@ -100,7 +100,7 @@ describe('rest-api-server', () => {
         socialIds: socialIds.map((si) => si._id),
         fullSocialIds: socialIds
       },
-      connect(),
+      connect(apiWorkspace1, true),
       socialIds,
       async () => person
     )
@@ -114,7 +114,7 @@ describe('rest-api-server', () => {
         socialIds: socialIds.map((si) => si._id),
         fullSocialIds: socialIds
       },
-      connect(apiWorkspace2),
+      connect(apiWorkspace2, true),
       socialIds,
       async () => person
     )

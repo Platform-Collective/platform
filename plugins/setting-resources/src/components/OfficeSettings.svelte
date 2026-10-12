@@ -35,7 +35,7 @@
     loading = false
   })
 
-  async function toggleDefaultTranscription (e: CustomEvent<boolean>): Promise<void> {
+  async function toggleDefaultTranscription(e: CustomEvent<boolean>): Promise<void> {
     const enabled = e.detail
     defaultStartWithTranscription = enabled
     const newSettings = {
@@ -55,7 +55,7 @@
     }
   }
 
-  async function toggleDefaultRecording (e: CustomEvent<boolean>): Promise<void> {
+  async function toggleDefaultRecording(e: CustomEvent<boolean>): Promise<void> {
     const enabled = e.detail
     defaultStartWithRecording = enabled
     const newSettings = {

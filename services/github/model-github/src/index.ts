@@ -106,78 +106,78 @@ export class TDocSyncInfo extends TDoc implements DocSyncInfo {
   @Prop(TypeNumber(), getEmbeddedLabel('Github number'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    githubNumber!: number
+  githubNumber!: number
 
   @Prop(TypeString(), getEmbeddedLabel('URL'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    url!: string
+  url!: string
 
   @Prop(TypeString(), getEmbeddedLabel('Parent URL'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    parent!: string
+  parent!: string
 
   @Prop(TypeNumber(), getEmbeddedLabel('ID'))
   @ReadOnly()
-    id!: number
+  id!: number
 
   @Prop(TypeString(), getEmbeddedLabel('ObjectClass'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    objectClass!: Ref<Class<Doc>>
+  objectClass!: Ref<Class<Doc>>
 
   external!: Record<string, any>
 
   @Prop(TypeString(), getEmbeddedLabel('Sync request'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    needSync!: string
+  needSync!: string
 
   @Prop(TypeString(), getEmbeddedLabel('External Sync request'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    externalVersion!: string
+  externalVersion!: string
 
   @Prop(TypeString(), getEmbeddedLabel('Derived request'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    derivedVersion!: string
+  derivedVersion!: string
 
   @Prop(TypeRef(github.class.GithubIntegrationRepository), getEmbeddedLabel('Repository'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    repository!: Ref<GithubIntegrationRepository> | null
+  repository!: Ref<GithubIntegrationRepository> | null
 
   @Prop(TypeString(), getEmbeddedLabel('Deleted flag'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    deleted!: boolean
+  deleted!: boolean
 }
 
 @Model(github.class.GithubUserInfo, core.class.Doc, DOMAIN_GITHUB_USER)
 export class TGithubUserInfo extends TDoc implements GithubUserInfo {
   @Prop(TypeString(), getEmbeddedLabel('ID'))
   @ReadOnly()
-    id!: string
+  id!: string
 
   @Prop(TypeString(), getEmbeddedLabel('login'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    login!: string
+  login!: string
 
   @Prop(TypeString(), getEmbeddedLabel('email'))
   @ReadOnly()
   @Index(IndexKind.Indexed)
-    email!: string
+  email!: string
 
   @Prop(TypeString(), getEmbeddedLabel('name'))
   @ReadOnly()
-    name!: string
+  name!: string
 
   @Prop(TypeString(), getEmbeddedLabel('avatarUrl'))
   @ReadOnly()
-    avatarUrl!: string
+  avatarUrl!: string
 }
 
 @Model(github.class.GithubIntegration, core.class.Doc, DOMAIN_GITHUB)
@@ -190,127 +190,127 @@ export class TGithubIntegration extends TDoc implements GithubIntegration {
   // Technical details, will be filled by github integration service.
   @Prop(TypeString(), getEmbeddedLabel('Name'))
   @ReadOnly()
-    name!: string // Organization or individual user name
+  name!: string // Organization or individual user name
 
   nodeId!: string
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Alive'))
   @ReadOnly()
-    alive!: boolean
+  alive!: boolean
 
   @Prop(Collection(github.class.GithubIntegrationRepository), getEmbeddedLabel('Repositories'))
   @ReadOnly()
-    repositories!: number
+  repositories!: number
 
   @Prop(TypeBoolean(), getEmbeddedLabel('User Project'))
-    useProject!: boolean
+  useProject!: boolean
 }
 
 @Model(github.class.GithubIntegrationRepository, core.class.AttachedDoc, DOMAIN_GITHUB)
 export class TGithubIntegrationRepository extends TAttachedDoc implements GithubIntegrationRepository {
   @Prop(TypeString(), getEmbeddedLabel('Name'))
   @ReadOnly()
-    name!: string
+  name!: string
 
   @Prop(TypeNumber(), getEmbeddedLabel('Repository ID'))
   @ReadOnly()
-    repositoryId!: number
+  repositoryId!: number
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Alive'))
   @ReadOnly()
-    enabled!: boolean
+  enabled!: boolean
 
   @Prop(TypeRef(github.mixin.GithubProject), getEmbeddedLabel('Repository'))
   @ReadOnly()
-    githubProject!: Ref<GithubProject> | null
+  githubProject!: Ref<GithubProject> | null
 
   @Prop(TypeNumber(), getEmbeddedLabel('ID'))
   @ReadOnly()
-    id?: number
+  id?: number
 
   @Prop(TypeRecord(), getEmbeddedLabel('Owner'))
   @ReadOnly()
-    owner?: Data<GithubUserInfo>
+  owner?: Data<GithubUserInfo>
 
   @Prop(TypeString(), getEmbeddedLabel('URL'))
   @ReadOnly()
-    url?: string
+  url?: string
 
   @Prop(TypeString(), getEmbeddedLabel('HTMLURL'))
   @ReadOnly()
-    htmlURL?: string
+  htmlURL?: string
 
   @Prop(TypeString(), getEmbeddedLabel('NodeID'))
   @ReadOnly()
-    nodeId?: string
+  nodeId?: string
 
   @Prop(TypeString(), getEmbeddedLabel('Description'))
   @ReadOnly()
-    description?: string
+  description?: string
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Is Fork'))
   @ReadOnly()
-    fork!: boolean
+  fork!: boolean
 
   @Prop(TypeNumber(), getEmbeddedLabel('Forks'))
   @ReadOnly()
-    forks!: number
+  forks!: number
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Private'))
   @ReadOnly()
-    private!: boolean
+  private!: boolean
 
   @Prop(TypeNumber(), getEmbeddedLabel('Stars'))
   @ReadOnly()
-    stargazers!: number
+  stargazers!: number
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Has Issues'))
   @ReadOnly()
-    hasIssues!: boolean
+  hasIssues!: boolean
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Has Projects'))
   @ReadOnly()
-    hasProjects!: boolean
+  hasProjects!: boolean
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Has Downloads'))
   @ReadOnly()
-    hasDownloads!: boolean
+  hasDownloads!: boolean
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Has Pages'))
   @ReadOnly()
-    hasPages!: boolean
+  hasPages!: boolean
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Has Wiki'))
   @ReadOnly()
-    hasWiki!: boolean
+  hasWiki!: boolean
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Has Discussions'))
   @ReadOnly()
-    hasDiscussions!: boolean
+  hasDiscussions!: boolean
 
   @Prop(TypeNumber(), getEmbeddedLabel('Open Issues'))
   @ReadOnly()
-    openIssues!: number
+  openIssues!: number
 
   @Prop(TypeNumber(), getEmbeddedLabel('Watchers'))
   @ReadOnly()
-    watchers!: number
+  watchers!: number
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Archived'))
   @ReadOnly()
-    archived!: boolean
+  archived!: boolean
 
   @Prop(TypeNumber(), getEmbeddedLabel('Size'))
   @ReadOnly()
-    size!: number
+  size!: number
 
   @Prop(TypeString(), getEmbeddedLabel('Language'))
   @ReadOnly()
-    language?: string
+  language?: string
 
   @Prop(TypeString(), getEmbeddedLabel('Visibility'))
   @ReadOnly()
-    visibility?: string
+  visibility?: string
 }
 
 @Model(github.class.GithubAuthentication, core.class.Doc, DOMAIN_PREFERENCE)
@@ -359,22 +359,22 @@ export class TGithubProject extends TProject implements GithubProject {
   @Prop(TypeRef(github.class.GithubIntegration), getEmbeddedLabel('Integration'))
   @ReadOnly()
   @Hidden()
-    integration!: Ref<GithubIntegration>
+  integration!: Ref<GithubIntegration>
 
   @Prop(ArrOf(TypeRef(github.class.GithubIntegrationRepository)), getEmbeddedLabel('Repositories'))
   @ReadOnly()
   @Hidden()
-    repositories!: Ref<GithubIntegrationRepository>[]
+  repositories!: Ref<GithubIntegrationRepository>[]
 
   @Prop(TypeString(), getEmbeddedLabel('NodeID'))
   @ReadOnly()
   @Hidden()
-    projectNodeId!: string
+  projectNodeId!: string
 
   @Prop(TypeNumber(), getEmbeddedLabel('Number'))
   @ReadOnly()
   @Hidden()
-    projectNumber!: number
+  projectNumber!: number
 }
 
 @Mixin(github.mixin.GithubIssue, tracker.class.Issue)
@@ -384,16 +384,16 @@ export class TGithubIssue extends TIssue implements GithubIssue {
   @Index(IndexKind.FullText)
   @ReadOnly()
   @Hidden()
-    url!: Hyperlink
+  url!: Hyperlink
 
   @Prop(TypeNumber(), tracker.string.Number)
   @Index(IndexKind.FullText)
   @ReadOnly()
   @Hidden()
-    githubNumber!: number
+  githubNumber!: number
 
   @Prop(TypeRef(github.class.GithubIntegrationRepository), getEmbeddedLabel('Repository'))
-    repository!: Ref<GithubIntegrationRepository>
+  repository!: Ref<GithubIntegrationRepository>
 }
 
 @Mixin(github.mixin.GithubTodo, time.class.ToDo)
@@ -407,7 +407,7 @@ export class TGithubUser extends TPerson implements GithubUser {
   @Prop(TypeHyperlink(), getEmbeddedLabel('Github URL'))
   @Index(IndexKind.FullText)
   @ReadOnly()
-    url!: Hyperlink
+  url!: Hyperlink
 }
 
 @Mixin(github.mixin.GithubComponent, tracker.class.Component)
@@ -416,19 +416,19 @@ export class TGithubComponent extends TComponent implements GithubComponent {
   @Prop(TypeRef(github.class.GithubIntegrationRepository), getEmbeddedLabel('Repository'))
   @ReadOnly()
   @Hidden()
-    repository!: Ref<GithubIntegrationRepository>
+  repository!: Ref<GithubIntegrationRepository>
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Represent'))
   @ReadOnly()
   @Hidden()
-    represent!: boolean
+  represent!: boolean
 }
 
 @Model(github.class.GithubPullRequest, tracker.class.Issue)
 @UX(github.string.PullRequest, github.icon.PullRequest, undefined, undefined, undefined, github.string.PullRequests)
 export class TGithubPullRequest extends TIssue implements GithubPullRequest {
   @Prop(ArrOf(TypeRef(contact.class.Person)), getEmbeddedLabel('Reviewers'))
-    reviewers!: Ref<Person>[] | null
+  reviewers!: Ref<Person>[] | null
 
   @Prop(TypeRef(tracker.class.Project), tracker.string.Project, { icon: tracker.icon.Issues })
   @Index(IndexKind.Indexed)
@@ -440,35 +440,35 @@ export class TGithubPullRequest extends TIssue implements GithubPullRequest {
 
   @Prop(TypeBoolean(), github.string.PRDraft)
   @ReadOnly()
-    draft!: boolean
+  draft!: boolean
 
   @Prop(TypeDate(DateRangeMode.DATETIME), github.string.PRMergedAt)
   @ReadOnly()
-    mergedAt!: Timestamp | null
+  mergedAt!: Timestamp | null
 
   @Prop(TypeDate(DateRangeMode.DATETIME), github.string.PRClosedAt)
   @ReadOnly()
-    closedAt!: Timestamp | null
+  closedAt!: Timestamp | null
 
   @Prop(TypeNumber(), github.string.PRFile)
   @ReadOnly()
   @Hidden()
-    files!: number
+  files!: number
 
   @Prop(TypeNumber(), github.string.PRCommit)
   @ReadOnly()
-    commits!: number
+  commits!: number
 
   @Prop(TypeAny(github.component.MergeableValuePresenter, github.string.Mergeable), github.string.Mergeable)
   @ReadOnly()
-    mergeable!: PullRequestMergeable
+  mergeable!: PullRequestMergeable
 
   @Prop(
     TypeAny(github.component.PullRequestStateValuePresenter, github.string.PullRequestMergeState),
     github.string.PullRequestMergeState
   )
   @ReadOnly()
-    state!: GithubPullRequestState
+  state!: GithubPullRequestState
 
   @Prop(
     TypeAny(github.component.PullRequestReviewDecisionValuePresenter, github.string.PullRequestReviewDecision),
@@ -476,17 +476,17 @@ export class TGithubPullRequest extends TIssue implements GithubPullRequest {
   )
   @ReadOnly()
   @Hidden()
-    reviewDecision!: GithubReviewDecisionState
+  reviewDecision!: GithubReviewDecisionState
 
   latestReviews!: LastReviewState[]
 
   @Prop(Collection(github.class.GithubPullRequestReview), github.string.PRReview)
   @Hidden()
-    reviews!: number
+  reviews!: number
 
   @Prop(Collection(github.class.GithubReviewComment), getEmbeddedLabel('Review Comments'))
   @Hidden()
-    reviewComments!: number
+  reviewComments!: number
 }
 
 @Model(github.class.GithubPullRequestReview, core.class.AttachedDoc, DOMAIN_GITHUB)
@@ -500,14 +500,14 @@ export class TGithubPullRequestReview extends TAttachedDoc implements GithubPull
 @Model(github.class.GithubReview, activity.class.ActivityMessage)
 export class TGithubReview extends TActivityMessage implements GithubReview {
   @Prop(TypeString(), getEmbeddedLabel('State'))
-    state!: GithubPullRequestReviewState
+  state!: GithubPullRequestReviewState
 
   @Prop(TypeMarkup(), getEmbeddedLabel('Body'))
-    body!: Markup
+  body!: Markup
 
   @Prop(ArrOf(TypeString()), getEmbeddedLabel('Comment refs'))
   // Urls of comments
-    comments!: string[]
+  comments!: string[]
 }
 
 @Model(github.class.GithubReviewThread, activity.class.ActivityMessage)
@@ -535,7 +535,7 @@ export class TGithubReviewComment extends TAttachedDoc implements GithubReviewCo
   reviewUrl!: string // A review url.
 
   @Prop(TypeMarkup(), getEmbeddedLabel('Body'))
-    body!: Markup
+  body!: Markup
 
   outdated!: boolean
 

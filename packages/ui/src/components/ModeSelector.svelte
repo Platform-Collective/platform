@@ -11,15 +11,15 @@
   $: modeList =
     props.config != null
       ? props.config.map((c) => {
-        return {
-          id: c[0],
-          labelIntl: c[1],
-          labelParams: c[2],
-          action: () => {
-            props.onChange(c[0])
+          return {
+            id: c[0],
+            labelIntl: c[1],
+            labelParams: c[2],
+            action: () => {
+              props.onChange(c[0])
+            }
           }
-        }
-      })
+        })
       : []
 </script>
 

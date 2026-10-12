@@ -50,7 +50,7 @@
   const inboxClient = getResource(notification.function.GetInboxNotificationsClient).then((res) => res())
 
   $: read(_id)
-  function read (_id: Ref<Doc>): void {
+  function read(_id: Ref<Doc>): void {
     if (lastId !== _id) {
       const prev = lastId
       lastId = _id
@@ -91,7 +91,7 @@
 
   let saved = false
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     if (template === undefined || !canSave) {
       return
     }
@@ -103,7 +103,7 @@
     }
   }
 
-  function showContextMenu (ev: MouseEvent): void {
+  function showContextMenu(ev: MouseEvent): void {
     if (template !== undefined) {
       showMenu(ev, { object: template, excludedActions: [view.action.Open] })
     }

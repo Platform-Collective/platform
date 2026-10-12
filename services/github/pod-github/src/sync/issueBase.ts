@@ -51,33 +51,33 @@ export type WithMarkup<T extends Issue> = Omit<T, 'description'> & {
  * @public
  */
 export type GithubIssueData = Omit<
-WithMarkup<Issue>,
-| 'commits'
-| 'attachments'
-| 'commits'
-| 'number'
-| 'files'
-| 'space'
-| 'identifier'
-| 'rank'
-| 'status'
-| 'priority'
-| 'subIssues'
-| 'parents'
-| 'estimation'
-| 'reportedTime'
-| 'reports'
-| 'childInfo'
-| 'dueDate'
-| 'startDate'
-| 'kind'
-| 'reviews'
-| 'reviewThreads'
-| 'reviewComments'
-| 'component'
-| keyof AttachedDoc
+  WithMarkup<Issue>,
+  | 'commits'
+  | 'attachments'
+  | 'commits'
+  | 'number'
+  | 'files'
+  | 'space'
+  | 'identifier'
+  | 'rank'
+  | 'status'
+  | 'priority'
+  | 'subIssues'
+  | 'parents'
+  | 'estimation'
+  | 'reportedTime'
+  | 'reports'
+  | 'childInfo'
+  | 'dueDate'
+  | 'startDate'
+  | 'kind'
+  | 'reviews'
+  | 'reviewThreads'
+  | 'reviewComments'
+  | 'component'
+  | keyof AttachedDoc
 > &
-Record<string, any>
+  Record<string, any>
 
 /**
  * @public
@@ -233,7 +233,7 @@ export abstract class IssueSyncManagerBase {
     }
   }
 
-  abstract fillBackChanges (update: DocumentUpdate<Issue>, existing: GithubIssue, external: any): Promise<void>
+  abstract fillBackChanges(update: DocumentUpdate<Issue>, existing: GithubIssue, external: any): Promise<void>
 
   async addConnectToMessage (
     msg: IntlString,
@@ -259,7 +259,7 @@ export abstract class IssueSyncManagerBase {
     await stripGuestLink(data)
   }
 
-  abstract performIssueFieldsUpdate (
+  abstract performIssueFieldsUpdate(
     ctx: MeasureContext,
     info: DocSyncInfo,
     existing: WithMarkup<Issue>,
@@ -271,7 +271,7 @@ export abstract class IssueSyncManagerBase {
     account: PersonId
   ): Promise<boolean>
 
-  abstract afterSync (
+  abstract afterSync(
     ctx: MeasureContext,
     existing: Issue,
     account: PersonId,
@@ -297,7 +297,7 @@ export abstract class IssueSyncManagerBase {
         {},
         async (ctx) => {
           await this.client.createMixin<Issue, GithubIssue>(
-            existing._id as Ref<GithubIssue>,
+            existing._id,
             existing._class,
             existing.space,
             github.mixin.GithubIssue,
@@ -687,7 +687,7 @@ export abstract class IssueSyncManagerBase {
     this.provider.sync()
   }
 
-  abstract deleteGithubDocument (
+  abstract deleteGithubDocument(
     ctx: MeasureContext,
     container: ContainerFocus,
     account: PersonId,

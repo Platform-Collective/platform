@@ -44,7 +44,7 @@
     }
   )
 
-  async function onClick (event: MouseEvent): Promise<void> {
+  async function onClick(event: MouseEvent): Promise<void> {
     if (readonly) {
       return
     }

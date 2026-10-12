@@ -136,7 +136,7 @@
   $: void initializeScroll($isLoadingStore, separatorDiv, separatorIndex)
   $: void handleMessagesUpdated(messages.length)
 
-  function adjustScrollPosition (selectedMessageId?: Ref<ActivityMessage>): void {
+  function adjustScrollPosition(selectedMessageId?: Ref<ActivityMessage>): void {
     if ($isLoadingStore || !isScrollInitialized) {
       return
     }
@@ -151,19 +151,19 @@
     }
   }
 
-  function handleWindowFocus (): void {
+  function handleWindowFocus(): void {
     checkWindowVisibility(false)
   }
 
-  function handleWindowBlur (): void {
+  function handleWindowBlur(): void {
     checkWindowVisibility(true)
   }
 
-  function handleVisibilityChange (): void {
+  function handleVisibilityChange(): void {
     checkWindowVisibility(document.hidden)
   }
 
-  function checkWindowVisibility (hidden: boolean): void {
+  function checkWindowVisibility(hidden: boolean): void {
     if (document.hidden || !document.hasFocus() || hidden) {
       if (isPageHidden) return
       isPageHidden = true
@@ -177,18 +177,18 @@
     }
   }
 
-  function isFreeze (): boolean {
+  function isFreeze(): boolean {
     return freeze || isPageHidden
   }
 
-  function scrollToBottom (): void {
+  function scrollToBottom(): void {
     if (scroller != null && scrollDiv != null && !isFreeze()) {
       scrollDiv.scroll({ top: 0, behavior: 'instant' })
       updateSelectedDate()
     }
   }
 
-  function scrollToSeparator (): void {
+  function scrollToSeparator(): void {
     if (separatorDiv == null || scrollDiv == null || contentDiv == null) {
       return
     }
@@ -208,7 +208,7 @@
     read()
   }
 
-  function scrollToMessage (): void {
+  function scrollToMessage(): void {
     if (selectedMessageId === undefined) return
     if (scrollDiv == null || contentDiv == null) {
       setTimeout(scrollToMessage, 50)
@@ -229,7 +229,7 @@
     read()
   }
 
-  function scrollToStartOfNew (): void {
+  function scrollToStartOfNew(): void {
     if (scrollDiv == null || lastMsgBeforeFreeze === undefined) return
     if (needUpdateTimestamp || $newTimestampStore === undefined) {
       void provider.updateNewTimestamp(notifyContext)
@@ -261,7 +261,7 @@
     }
   }
 
-  function updateShouldScrollToNew (): void {
+  function updateShouldScrollToNew(): void {
     if (scrollDiv != null && contentDiv != null) {
       const { scrollTop } = scrollDiv
       const offset = 100
@@ -270,7 +270,7 @@
     }
   }
 
-  async function wait (): Promise<void> {
+  async function wait(): Promise<void> {
     // One tick is not enough for messages to be rendered,
     // I think this is due to the fact that we are using a Component, which takes some time to load,
     // because after one tick I see spinners from Component
@@ -278,7 +278,7 @@
     await tick() // wait until the DOM is updated
   }
 
-  async function initializeScroll (
+  async function initializeScroll(
     isLoading: boolean,
     separatorElement?: HTMLDivElement | null,
     separatorIndex?: number
@@ -312,12 +312,12 @@
     }
   }
 
-  function reinitializeScroll (): void {
+  function reinitializeScroll(): void {
     isScrollInitialized = false
     void initializeScroll($isLoadingStore, separatorDiv, separatorIndex)
   }
 
-  function handleJumpToDate (e: CustomEvent<{ date?: Timestamp }>): void {
+  function handleJumpToDate(e: CustomEvent<{ date?: Timestamp }>): void {
     const result = jumpToDate(e, provider, uuid, scrollDiv)
 
     dateToJump = result.dateToJump
@@ -327,7 +327,7 @@
     }
   }
 
-  function scrollToDate (date: Timestamp): void {
+  function scrollToDate(date: Timestamp): void {
     const offset = getScrollToDateOffset(date, uuid)
 
     if (offset !== undefined && offset !== 0 && scroller != null) {
@@ -336,24 +336,24 @@
     }
   }
 
-  function updateSelectedDate (): void {
+  function updateSelectedDate(): void {
     if (isThread) return
     selectedDate = getSelectedDate(provider, uuid, scrollDiv, contentDiv)
   }
 
-  function read (): void {
+  function read(): void {
     if (isFreeze() || notifyContext === undefined || !isScrollInitialized) return
     readViewportMessages(messages, notifyContext._id, scrollDiv, contentDiv)
   }
 
-  function updateScrollData (): void {
+  function updateScrollData(): void {
     if (scrollDiv == null) return
     const { scrollTop } = scrollDiv
 
     isScrollAtBottom = Math.abs(scrollTop) < 50
   }
 
-  function canGroupChatMessages (message: ActivityMessage, prevMessage?: ActivityMessage): boolean {
+  function canGroupChatMessages(message: ActivityMessage, prevMessage?: ActivityMessage): boolean {
     let prevMetadata: MessageMetadata | undefined = undefined
 
     if (prevMessage === undefined) {
@@ -366,7 +366,7 @@
 
   $: updateDownButtonVisibility($metadataStore, messages, scrollDiv)
 
-  function updateDownButtonVisibility (
+  function updateDownButtonVisibility(
     metadata: MessageMetadata[],
     messages: ActivityMessage[],
     scrollDiv?: HTMLDivElement | null
@@ -387,7 +387,7 @@
     }
   }
 
-  async function handleScrollToLatestMessage (): Promise<void> {
+  async function handleScrollToLatestMessage(): Promise<void> {
     selectedMessageId = undefined
     messageInFocus.set(undefined)
     clearMessageInLocation()
@@ -410,7 +410,7 @@
   let forceRead = false
   $: void forceReadContext(isScrollAtBottom, notifyContext)
 
-  async function forceReadContext (isScrollAtBottom: boolean, context?: DocNotifyContext): Promise<void> {
+  async function forceReadContext(isScrollAtBottom: boolean, context?: DocNotifyContext): Promise<void> {
     if (context === undefined || !isScrollAtBottom || forceRead || isFreeze()) return
     const { lastUpdateTimestamp = 0, lastViewedTimestamp = 0 } = context
 
@@ -425,20 +425,20 @@
     }
   }
 
-  function shouldLoadMoreUp (): boolean {
+  function shouldLoadMoreUp(): boolean {
     if (scrollDiv == null) return false
     const { scrollHeight, scrollTop, clientHeight } = scrollDiv
 
     return scrollHeight + Math.ceil(scrollTop - clientHeight) <= loadMoreThreshold
   }
 
-  function shouldLoadMoreDown (): boolean {
+  function shouldLoadMoreDown(): boolean {
     if (scrollDiv == null) return false
 
     return Math.abs(scrollDiv.scrollTop) <= loadMoreThreshold
   }
 
-  function loadMore (): void {
+  function loadMore(): void {
     if (!loadMoreAllowed || $isLoadingMoreStore || scrollDiv == null || !isScrollInitialized) {
       return
     }
@@ -470,7 +470,7 @@
     }
   }
 
-  async function restoreScroll (): Promise<void> {
+  async function restoreScroll(): Promise<void> {
     await wait()
 
     if (scrollDiv == null || scroller == null) return
@@ -487,7 +487,7 @@
     dateToJump = 0
   }
 
-  function scrollToNewMessages (): void {
+  function scrollToNewMessages(): void {
     if (scrollDiv == null || !shouldScrollToNew) {
       read()
       return
@@ -497,7 +497,7 @@
     read()
   }
 
-  async function handleMessagesUpdated (newCount: number): Promise<void> {
+  async function handleMessagesUpdated(newCount: number): Promise<void> {
     if (newCount === messagesCount) {
       return
     }
@@ -525,7 +525,7 @@
     }
   }
 
-  async function handleScroll (): Promise<void> {
+  async function handleScroll(): Promise<void> {
     updateScrollData()
     updateDownButtonVisibility($metadataStore, messages, scrollDiv)
     updateShouldScrollToNew()
@@ -534,7 +534,7 @@
     read()
   }
 
-  function handleResize (): void {
+  function handleResize(): void {
     if (!isScrollInitialized) return
     if (shouldScrollToNew) {
       scrollToBottom()
@@ -577,7 +577,7 @@
 
   $: showBlankView = !$isLoadingStore && messages.length === 0 && !isThread
 
-  export function editLastMessage (): void {
+  export function editLastMessage(): void {
     if ($isLoadingStore || !isScrollInitialized || !$isTailLoadedStore || scrollDiv == null) {
       return
     }
@@ -604,7 +604,7 @@
     }
   }
 
-  function handleKeyDown (e: KeyboardEvent): void {
+  function handleKeyDown(e: KeyboardEvent): void {
     const key = e.key
 
     if (key === 'ArrowUp') {
@@ -612,7 +612,7 @@
       editLastMessage()
     }
   }
-  function getKey (messages: ActivityMessage[]): string {
+  function getKey(messages: ActivityMessage[]): string {
     return `${messages.length}-${Math.max(...messages.map((m) => m.modifiedOn))}`
   }
 </script>

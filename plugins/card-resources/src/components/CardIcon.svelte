@@ -44,7 +44,7 @@
     query.unsubscribe()
   }
 
-  async function chooseIcon (): Promise<void> {
+  async function chooseIcon(): Promise<void> {
     if (doc === undefined) return
     const { icon, color } = doc
     const update = async (result: any): Promise<void> => {

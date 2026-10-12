@@ -22,13 +22,13 @@
     (object.dueDate === null || object.dueDate > Date.now()) &&
     (object.maxAttempts === null || object.maxAttempts > 0)
 
-  async function okAction (): Promise<void> {
+  async function okAction(): Promise<void> {
     isSubmitting = true
     await createTrainingRequest(parent, object)
     isSubmitting = false
   }
 
-  function onUpdate (key: KeyedAttribute | string, value: any): void {
+  function onUpdate(key: KeyedAttribute | string, value: any): void {
     const attrKey = typeof key === 'string' ? key : key.key
     object[attrKey as keyof typeof object] = value
   }

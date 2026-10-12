@@ -9,7 +9,7 @@
 
   const client = getClient()
 
-  async function saveMicPreference (myPreferences: DevicesPreference | undefined, value: boolean): Promise<void> {
+  async function saveMicPreference(myPreferences: DevicesPreference | undefined, value: boolean): Promise<void> {
     if (myPreferences !== undefined) {
       await client.update(myPreferences, { micEnabled: !value })
     } else {
@@ -24,7 +24,7 @@
     }
   }
 
-  async function saveCamPreference (myPreferences: DevicesPreference | undefined, value: boolean): Promise<void> {
+  async function saveCamPreference(myPreferences: DevicesPreference | undefined, value: boolean): Promise<void> {
     if (myPreferences !== undefined) {
       await client.update(myPreferences, { camEnabled: !value })
     } else {
@@ -39,7 +39,7 @@
     }
   }
 
-  async function saveNoiseCancellationPreference (
+  async function saveNoiseCancellationPreference(
     myPreferences: DevicesPreference | undefined,
     value: boolean
   ): Promise<void> {
@@ -58,7 +58,7 @@
     await liveKitClient.applyNoiseCancellation(value)
   }
 
-  async function saveSpeakingWhileMutedPreference (
+  async function saveSpeakingWhileMutedPreference(
     myPreferences: DevicesPreference | undefined,
     value: boolean
   ): Promise<void> {

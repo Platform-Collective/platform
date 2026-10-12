@@ -47,7 +47,7 @@
     return { id: p._id, label: p.name }
   })
 
-  function changeFloor (event: CustomEvent<Ref<Floor>>) {
+  function changeFloor(event: CustomEvent<Ref<Floor>>) {
     if (event.detail) {
       selectedFloor.set(event.detail)
     }

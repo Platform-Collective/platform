@@ -61,7 +61,7 @@
   $: isSame = object.docPrefix === prefix
   $: canSubmit = isFilled && isUnique && !isSame
 
-  async function handleSubmit (): Promise<void> {
+  async function handleSubmit(): Promise<void> {
     if (!canSubmit) {
       return
     }

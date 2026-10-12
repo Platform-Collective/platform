@@ -52,46 +52,46 @@ export class Hierarchy {
     return handler
   }
 
-  as<D extends Doc, M extends D>(doc: D, mixin: Ref<Mixin<M>>): M {
+  as<D extends Doc, M extends D> (doc: D, mixin: Ref<Mixin<M>>): M {
     if ((doc as any)[PROXY_MIXIN_CLASS_KEY] === mixin) return doc as M
 
     return new Proxy(Hierarchy.toDoc(doc), this.getMixinProxyHandler(mixin)) as M
   }
 
-  asIf<D extends Doc, M extends D>(doc: D | undefined, mixin: Ref<Mixin<M>>): M | undefined {
+  asIf<D extends Doc, M extends D> (doc: D | undefined, mixin: Ref<Mixin<M>>): M | undefined {
     if (doc === undefined) {
       return undefined
     }
     return this.hasMixin(doc, mixin) ? this.as(doc, mixin) : undefined
   }
 
-  asIfArray<D extends Doc, M extends D>(docs: D[], mixin: Ref<Mixin<M>>): M[] {
+  asIfArray<D extends Doc, M extends D> (docs: D[], mixin: Ref<Mixin<M>>): M[] {
     return docs.map((it) => this.asIf(it, mixin)).filter((it) => it !== undefined)
   }
 
-  static toDoc<D extends Doc>(doc: D): D {
+  static toDoc<D extends Doc> (doc: D): D {
     return _toDoc(doc)
   }
 
-  static mixinClass<D extends Doc, M extends D>(doc: D): Ref<Mixin<M>> | undefined {
+  static mixinClass<D extends Doc, M extends D> (doc: D): Ref<Mixin<M>> | undefined {
     return _mixinClass(doc)
   }
 
-  static mixinOrClass<D extends Doc, M extends D>(doc: D): Ref<Mixin<M> | Class<Doc>> {
+  static mixinOrClass<D extends Doc, M extends D> (doc: D): Ref<Mixin<M> | Class<Doc>> {
     const m = _mixinClass(doc)
     return m ?? doc._class
   }
 
-  static hasMixin<D extends Doc, M extends D>(doc: D, mixin: Ref<Mixin<M>>): boolean {
+  static hasMixin<D extends Doc, M extends D> (doc: D, mixin: Ref<Mixin<M>>): boolean {
     const d = Hierarchy.toDoc(doc)
     return typeof (d as any)[mixin] === 'object'
   }
 
-  hasMixin<D extends Doc, M extends D>(doc: D, mixin: Ref<Mixin<M>>): boolean {
+  hasMixin<D extends Doc, M extends D> (doc: D, mixin: Ref<Mixin<M>>): boolean {
     return Hierarchy.hasMixin(doc, mixin)
   }
 
-  classHierarchyMixin<D extends Doc, M extends D>(
+  classHierarchyMixin<D extends Doc, M extends D> (
     _class: Ref<Class<D>>,
     mixin: Ref<Mixin<M>>,
     filter?: (value: M) => boolean
@@ -109,7 +109,7 @@ export class Hierarchy {
     }
   }
 
-  findClassOrMixinMixin<D extends Doc, M extends D>(doc: Doc, mixin: Ref<Mixin<M>>): M | undefined {
+  findClassOrMixinMixin<D extends Doc, M extends D> (doc: Doc, mixin: Ref<Mixin<M>>): M | undefined {
     const cc = this.classHierarchyMixin(doc._class, mixin)
     if (cc !== undefined) {
       return cc
@@ -127,7 +127,7 @@ export class Hierarchy {
     }
   }
 
-  findMixinMixins<D extends Doc, M extends D>(doc: Doc, mixin: Ref<Mixin<M>>): M[] {
+  findMixinMixins<D extends Doc, M extends D> (doc: Doc, mixin: Ref<Mixin<M>>): M[] {
     const _doc = _toDoc(doc)
     const result: M[] = []
     const resultSet = new Set<string>()
@@ -147,7 +147,7 @@ export class Hierarchy {
     return result
   }
 
-  findAllMixins<D extends Doc, M extends D>(doc: Doc): Ref<Class<M>>[] {
+  findAllMixins<D extends Doc, M extends D> (doc: Doc): Ref<Class<M>>[] {
     const _doc = _toDoc(doc)
     const resultSet = new Set<Ref<Class<M>>>()
     for (const [k, v] of Object.entries(_doc)) {
@@ -192,7 +192,7 @@ export class Hierarchy {
     return result
   }
 
-  getClass<T extends Obj = Obj>(_class: Ref<Class<T>>): Class<T> {
+  getClass<T extends Obj = Obj> (_class: Ref<Class<T>>): Class<T> {
     const data = this.classifiers.get(_class)
     if (data === undefined || this.isInterface(data)) {
       throw new Error('class not found: ' + _class)
@@ -200,7 +200,7 @@ export class Hierarchy {
     return data
   }
 
-  findClass<T extends Obj = Obj>(_class: Ref<Class<T>>): Class<T> | undefined {
+  findClass<T extends Obj = Obj> (_class: Ref<Class<T>>): Class<T> | undefined {
     const data = this.classifiers.get(_class)
     if (data === undefined || this.isInterface(data)) {
       return undefined
@@ -208,7 +208,7 @@ export class Hierarchy {
     return data
   }
 
-  hasClass<T extends Obj = Obj>(_class: Ref<Class<T>>): boolean {
+  hasClass<T extends Obj = Obj> (_class: Ref<Class<T>>): boolean {
     const data = this.classifiers.get(_class)
 
     return !(data === undefined || this.isInterface(data))
@@ -334,14 +334,14 @@ export class Hierarchy {
    * Check if passed _class is derived from `from` class.
    * It will iterate over parents.
    */
-  isDerived<T extends Obj>(_class: Ref<Class<T>>, from: Ref<Class<T>>): boolean {
+  isDerived<T extends Obj> (_class: Ref<Class<T>>, from: Ref<Class<T>>): boolean {
     return this.ancestors.get(_class)?.includes(from) ?? false
   }
 
   /**
    * Return first non interface/mixin parent
    */
-  getBaseClass<T extends Doc>(_class: Ref<Mixin<T>>): Ref<Class<T>> {
+  getBaseClass<T extends Doc> (_class: Ref<Mixin<T>>): Ref<Class<T>> {
     let cl: Ref<Class<T>> | undefined = _class
     while (cl !== undefined) {
       const clz: Class<T> = this.getClass(cl)
@@ -355,7 +355,7 @@ export class Hierarchy {
    * Check if passed _class implements passed interfaces `from`.
    * It will check for class parents and their interfaces.
    */
-  isImplements<T extends Doc>(_class: Ref<Class<T>>, from: Ref<Interface<T>>): boolean {
+  isImplements<T extends Doc> (_class: Ref<Class<T>>, from: Ref<Interface<T>>): boolean {
     let cl: Ref<Class<T>> | undefined = _class
     while (cl !== undefined) {
       const klazz: Class<T> = this.getClass(cl)
@@ -370,7 +370,7 @@ export class Hierarchy {
   /**
    * Check if interface extends passed interface.
    */
-  private isExtends<T extends Doc>(extendsOrImplements: Ref<Interface<Doc>>[], from: Ref<Interface<T>>): boolean {
+  private isExtends<T extends Doc> (extendsOrImplements: Ref<Interface<Doc>>[], from: Ref<Interface<T>>): boolean {
     const result: Ref<Interface<Doc>>[] = []
     const toVisit = [...extendsOrImplements]
     while (toVisit.length > 0) {
@@ -384,7 +384,7 @@ export class Hierarchy {
     return false
   }
 
-  getDescendants<T extends Obj>(_class: Ref<Class<T>>): Ref<Class<Obj>>[] {
+  getDescendants<T extends Obj> (_class: Ref<Class<T>>): Ref<Class<Obj>>[] {
     const data = this.descendants.get(_class)
     if (data === undefined) {
       throw new Error('descendants not found: ' + _class)
@@ -571,7 +571,7 @@ export class Hierarchy {
     }
   }
 
-  updateLookupMixin<T extends Doc>(
+  updateLookupMixin<T extends Doc> (
     _class: Ref<Class<T>>,
     result: WithLookup<T>,
     options?: FindOptions<T>

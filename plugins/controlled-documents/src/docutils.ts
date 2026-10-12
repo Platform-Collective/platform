@@ -206,11 +206,11 @@ export async function createControlledDocMetadata (
   specTitle: string,
   metaId?: Ref<DocumentMeta>
 ): Promise<{
-    success: boolean
-    seqNumber: number
-    documentMetaId: Ref<DocumentMeta>
-    projectDocumentId: Ref<ProjectDocument>
-  }> {
+  success: boolean
+  seqNumber: number
+  documentMetaId: Ref<DocumentMeta>
+  projectDocumentId: Ref<ProjectDocument>
+}> {
   const projectId = project ?? documents.ids.NoProject
 
   const ops = client.apply('create-qms-document')
@@ -370,12 +370,12 @@ export async function createDocumentTemplateMetadata (
   specTitle: string,
   metaId?: Ref<DocumentMeta>
 ): Promise<{
-    success: boolean
-    seqNumber: number
-    code: string
-    documentMetaId: Ref<DocumentMeta>
-    projectDocumentId: Ref<ProjectDocument>
-  }> {
+  success: boolean
+  seqNumber: number
+  code: string
+  documentMetaId: Ref<DocumentMeta>
+  projectDocumentId: Ref<ProjectDocument>
+}> {
   const projectId = project ?? documents.ids.NoProject
 
   const incResult = await client.updateDoc(
@@ -476,10 +476,10 @@ export async function createNewFolder (
   parent: Ref<ProjectDocument> | undefined,
   title: string
 ): Promise<{
-    success: boolean
-    documentMetaId: Ref<DocumentMeta>
-    projectDocumentId: Ref<ProjectDocument>
-  }> {
+  success: boolean
+  documentMetaId: Ref<DocumentMeta>
+  projectDocumentId: Ref<ProjectDocument>
+}> {
   const projectId = project ?? documents.ids.NoProject
 
   const ops = client.apply()

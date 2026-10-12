@@ -28,7 +28,7 @@
   const client = getClient()
   const h = client.getHierarchy()
 
-  function getTooltip (value: string | undefined): LabelAndProps | undefined {
+  function getTooltip(value: string | undefined): LabelAndProps | undefined {
     if (value === undefined) return
     return {
       label: getEmbeddedLabel(value)

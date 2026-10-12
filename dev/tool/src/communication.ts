@@ -70,7 +70,7 @@ import { markupToMarkdown } from '@hcengineering/text-markdown'
 import { markupToJSON, markupToText } from '@hcengineering/text'
 import activity, { type ActivityMessage } from '@hcengineering/activity'
 import communication, { type Direct } from '@hcengineering/communication'
-import { type Employee, formatName, type Person, type PersonSpace } from '@hcengineering/contact'
+import { formatName, type Person, type PersonSpace } from '@hcengineering/contact'
 import { withRetry, DEFAULT_RETRY_OPTIONS } from '@hcengineering/retry'
 import attachment from '@hcengineering/attachment'
 
@@ -304,7 +304,7 @@ async function migrateDirect (
       const createMembers = new Set(persons.map((p) => p._id))
       if (directMembers.size !== createMembers.size) return false
       for (const item of directMembers) {
-        if (!createMembers.has(item as Ref<Employee>)) return false
+        if (!createMembers.has(item)) return false
       }
       return true
     })

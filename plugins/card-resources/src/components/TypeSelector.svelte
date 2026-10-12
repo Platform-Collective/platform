@@ -35,11 +35,11 @@
   const hierarchy = client.getHierarchy()
   const dispatch = createEventDispatcher()
 
-  function isAllowedBySpace (type: Ref<MasterTag>, roots: Ref<MasterTag>[] | undefined): boolean {
+  function isAllowedBySpace(type: Ref<MasterTag>, roots: Ref<MasterTag>[] | undefined): boolean {
     return roots === undefined || roots.includes(getRootType(hierarchy, type))
   }
 
-  function isSelectableClass (_class: Class<Doc>, roots: Ref<MasterTag>[] | undefined, skipBaseTypes: boolean): boolean {
+  function isSelectableClass(_class: Class<Doc>, roots: Ref<MasterTag>[] | undefined, skipBaseTypes: boolean): boolean {
     if (_class.label === undefined) return false
     if (_class.kind !== ClassifierKind.CLASS) return false
     if ((_class as MasterTag).removed === true) return false
@@ -48,7 +48,7 @@
     return true
   }
 
-  function filterClasses (
+  function filterClasses(
     root: Ref<MasterTag>,
     roots: Ref<MasterTag>[] | undefined,
     skipBaseTypes: boolean
@@ -87,7 +87,7 @@
     return result
   }
 
-  function getIconProps (tag: MasterTag): Pick<DropdownIntlItem, 'icon' | 'iconProps'> {
+  function getIconProps(tag: MasterTag): Pick<DropdownIntlItem, 'icon' | 'iconProps'> {
     return {
       icon: tag.icon === view.ids.IconWithEmoji ? IconWithEmoji : (tag.icon ?? card.icon.MasterTag),
       iconProps: tag.icon === view.ids.IconWithEmoji ? { icon: tag.color } : {}

@@ -28,12 +28,12 @@
 
   const dispatch = createEventDispatcher()
 
-  function removeTag (tag: TagReference) {
+  function removeTag(tag: TagReference) {
     tags = tags.filter((t) => t !== tag)
     dispatch('change', tags)
   }
 
-  function click (evt: MouseEvent) {
+  function click(evt: MouseEvent) {
     showPopup(
       DraftTagsPopup,
       { targetClass, tags },

@@ -67,7 +67,7 @@
     )
   }
 
-  function toArray (value: Ref<Card>[] | Ref<Card> | undefined): Ref<Card>[] {
+  function toArray(value: Ref<Card>[] | Ref<Card> | undefined): Ref<Card>[] {
     if (Array.isArray(value)) {
       return value
     }

@@ -69,7 +69,8 @@ export class TMultipleChoiceQuestion extends TQuestion<MultipleChoiceQuestionDat
 @UX(questions.string.MultipleChoice)
 export class TMultipleChoiceQuestionAnswer
   extends TAnswer<MultipleChoiceQuestion, MultipleChoiceAnswerData>
-  implements MultipleChoiceQuestionAnswer {
+  implements MultipleChoiceQuestionAnswer
+{
   @Prop(TypeRef(questions.class.MultipleChoiceQuestion), questions.string.Question)
   @Index(IndexKind.Indexed)
   @Hidden()
@@ -84,7 +85,8 @@ export class TMultipleChoiceQuestionAnswer
 @UX(questions.string.MultipleChoiceAssessment)
 export class TMultipleChoiceAssessment
   extends TAssessment<MultipleChoiceQuestionData, MultipleChoiceAssessmentData>
-  implements MultipleChoiceAssessment {
+  implements MultipleChoiceAssessment
+{
   @Prop(TypeMultipleChoiceAssessmentData(), questions.string.Assessment)
   declare assessmentData: MultipleChoiceAssessmentData
 }
@@ -94,7 +96,8 @@ export class TMultipleChoiceAssessment
 @UX(questions.string.MultipleChoice)
 export class TMultipleChoiceAssessmentAnswer
   extends TAnswer<MultipleChoiceAssessment, MultipleChoiceAnswerData>
-  implements MultipleChoiceAssessmentAnswer {
+  implements MultipleChoiceAssessmentAnswer
+{
   @Prop(TypeRef(questions.class.MultipleChoiceAssessment), questions.string.Question)
   @Index(IndexKind.Indexed)
   @Hidden()

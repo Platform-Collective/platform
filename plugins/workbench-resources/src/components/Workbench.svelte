@@ -188,7 +188,7 @@
   let hiddenAside: boolean = true
   $deviceInfo.navigator.visible = !hiddenNavigator
 
-  async function toggleNav (): Promise<void> {
+  async function toggleNav(): Promise<void> {
     $deviceInfo.navigator.visible = !$deviceInfo.navigator.visible
     if (!$deviceInfo.navigator.float) {
       hiddenNavigator = !$deviceInfo.navigator.visible
@@ -226,7 +226,7 @@
     }
   )
 
-  async function initCurrentTab (tabs: WorkbenchTab[]): Promise<void> {
+  async function initCurrentTab(tabs: WorkbenchTab[]): Promise<void> {
     const tab = tabs.find((t) => t._id === $tabIdStore)
     const loc = getCurrentLocation()
     const tabLoc = tab ? getTabLocation(tab) : undefined
@@ -366,7 +366,7 @@
 
   let windowWorkspaceName = ''
 
-  async function updateWindowTitle (loc: Location): Promise<void> {
+  async function updateWindowTitle(loc: Location): Promise<void> {
     let wsUrl = loc.path[1]
     const ws = $workspacesStore.find((it) => it.url === wsUrl)
     if (ws !== undefined) {
@@ -383,7 +383,7 @@
     void broadcastEvent(workbench.event.NotifyTitle, document.title)
   }
 
-  async function getWindowTitle (loc: Location): Promise<string | undefined> {
+  async function getWindowTitle(loc: Location): Promise<string | undefined> {
     if (loc.fragment == null) return
     const hierarchy = client.getHierarchy()
     const [, id, _class] = decodeURIComponent(loc.fragment).split('|')
@@ -400,7 +400,7 @@
     }
   }
 
-  async function resolveShortLink (loc: Location): Promise<ResolvedLocation | undefined> {
+  async function resolveShortLink(loc: Location): Promise<ResolvedLocation | undefined> {
     let locationResolver = currentApplication?.locationResolver
     if (loc.path[2] != null && loc.path[2].trim().length > 0) {
       const app = apps.find((p) => p.alias === loc.path[2])
@@ -414,7 +414,7 @@
     }
   }
 
-  function mergeLoc (loc: Location, resolved: ResolvedLocation): Location {
+  function mergeLoc(loc: Location, resolved: ResolvedLocation): Location {
     const resolvedApp = resolved.loc.path[2]
     const resolvedSpace = resolved.loc.path[3]
     const resolvedSpecial = resolved.loc.path[4]
@@ -469,7 +469,7 @@
     return loc
   }
 
-  async function syncLoc (loc: Location): Promise<void> {
+  async function syncLoc(loc: Location): Promise<void> {
     accessDeniedStore.set(false)
     const originalLoc = JSON.stringify(loc)
     if ($tabIdStore !== $prevTabIdStore) {
@@ -594,7 +594,7 @@
     }
   }
 
-  async function setOpenPanelFocus (fragment: string): Promise<void> {
+  async function setOpenPanelFocus(fragment: string): Promise<void> {
     const props = decodeURIComponent(fragment).split('|')
 
     if (props.length >= 3) {
@@ -637,7 +637,7 @@
     })
   }
 
-  function clear (level: number): void {
+  function clear(level: number): void {
     switch (level) {
       case 1:
         currentAppAlias = undefined
@@ -659,7 +659,7 @@
     }
   }
 
-  async function updateSpace (spaceId?: Ref<Space>): Promise<void> {
+  async function updateSpace(spaceId?: Ref<Space>): Promise<void> {
     if (spaceId === currentSpace) return
     clear(2)
     currentSpace = spaceId
@@ -673,7 +673,7 @@
     createItemLabel = currentView?.createItemLabel
   }
 
-  function setSpaceSpecial (spaceSpecial: string | undefined): void {
+  function setSpaceSpecial(spaceSpecial: string | undefined): void {
     if (currentSpecial !== undefined && spaceSpecial === currentSpecial) return
     clear(3)
     if (spaceSpecial === undefined) return
@@ -683,7 +683,7 @@
     }
   }
 
-  function getSpecialComponent (id: string): SpecialNavModel | undefined {
+  function getSpecialComponent(id: string): SpecialNavModel | undefined {
     const sp = navigatorModel?.specials?.find((x) => x.id === id)
     if (sp !== undefined) {
       if (sp.accessLevel !== undefined && !hasAccountRole(account, sp.accessLevel)) {
@@ -779,7 +779,7 @@
     subscribeMobile(setTheme)
   })
 
-  function checkInbox (popups: CompAndProps[]) {
+  function checkInbox(popups: CompAndProps[]) {
     if (inboxPopup !== undefined) {
       const exists = popups.find((p) => p.id === inboxPopup?.id)
       if (!exists) {
@@ -789,7 +789,7 @@
   }
 
   let supportStatus: SupportStatus | undefined = undefined
-  function handleSupportStatusChanged (status: SupportStatus) {
+  function handleSupportStatusChanged(status: SupportStatus) {
     supportStatus = status
   }
 
@@ -806,7 +806,7 @@
   })
 
   let supportWidgetLoading = false
-  async function handleToggleSupportWidget (): Promise<void> {
+  async function handleToggleSupportWidget(): Promise<void> {
     const timer = setTimeout(() => {
       supportWidgetLoading = true
     }, 100)
@@ -860,7 +860,7 @@
       ? !client.getHierarchy().as($myEmployeeStore, contact.mixin.Employee).active
       : false
 
-  function isExcludedApp (alias: string): boolean {
+  function isExcludedApp(alias: string): boolean {
     const me = getCurrentAccount()
 
     if (me.role === AccountRole.ReadOnlyGuest || me.role === AccountRole.Guest) {

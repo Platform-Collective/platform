@@ -70,7 +70,7 @@
   export let loading = false
   export let focusIndex: number = -1
   export let autofocus = false
-  export function submit (): void {
+  export function submit(): void {
     refInput.submit()
   }
   export let placeholder: IntlString | undefined = undefined
@@ -129,7 +129,7 @@
     existingAttachmentsQuery.unsubscribe()
   }
 
-  function isValidUrl (s: string): boolean {
+  function isValidUrl(s: string): boolean {
     let url: URL
     try {
       url = new URL(s)
@@ -139,13 +139,13 @@
     return url.protocol.startsWith('http')
   }
 
-  function getUrlKey (s: string): string {
+  function getUrlKey(s: string): string {
     return s
   }
 
   $: objectId && updateAttachments(objectId)
 
-  async function updateAttachments (objectId: Ref<Doc>): Promise<void> {
+  async function updateAttachments(objectId: Ref<Doc>): Promise<void> {
     draftAttachments = $draftsStore[draftKey]
     if (draftAttachments && shouldSaveDraft) {
       attachments = new Map()
@@ -181,14 +181,14 @@
     }
   }
 
-  function saveDraft (): void {
+  function saveDraft(): void {
     if (shouldSaveDraft) {
       draftAttachments = Object.fromEntries(attachments)
       draftController.save(draftAttachments)
     }
   }
 
-  async function createAttachment (file: File, meta?: AttachmentMetadata): Promise<void> {
+  async function createAttachment(file: File, meta?: AttachmentMetadata): Promise<void> {
     try {
       const { uuid, metadata } = await uploadFile(file)
       await _createAttachment(uuid, file.name, file, meta ?? metadata)
@@ -197,7 +197,7 @@
     }
   }
 
-  async function _createAttachment (
+  async function _createAttachment(
     file: Ref<PlatformBlob>,
     name: string,
     blob: File | Blob,
@@ -232,14 +232,14 @@
     }
   }
 
-  async function saveAttachment (doc: Attachment): Promise<void> {
+  async function saveAttachment(doc: Attachment): Promise<void> {
     if (!existingAttachments.includes(doc._id)) {
       await client.addCollection(attachment.class.Attachment, space, objectId, _class, 'attachments', doc, doc._id)
       newAttachments.delete(doc._id)
     }
   }
 
-  async function fileSelected (): Promise<void> {
+  async function fileSelected(): Promise<void> {
     progress = true
     await tick()
     const list = inputFile.files
@@ -256,7 +256,7 @@
     progress = false
   }
 
-  async function fileDrop (e: DragEvent): Promise<void> {
+  async function fileDrop(e: DragEvent): Promise<void> {
     const list = e.dataTransfer?.files
     const limiter = new RateLimiter(10)
 
@@ -272,7 +272,7 @@
     progress = false
   }
 
-  async function removeAttachment (attachment: Attachment): Promise<void> {
+  async function removeAttachment(attachment: Attachment): Promise<void> {
     removedAttachments.add(attachment)
     attachments.delete(attachment._id)
     attachments = attachments
@@ -280,7 +280,7 @@
     dispatch('update', { message: content, attachments: attachments.size })
   }
 
-  async function deleteAttachment (attachment: Attachment): Promise<void> {
+  async function deleteAttachment(attachment: Attachment): Promise<void> {
     if (attachment.type === 'application/link-preview') {
       urlSet.delete(getUrlKey(attachment.name))
     }
@@ -309,7 +309,7 @@
     }
   })
 
-  export function removeDraft (removeFiles: boolean): void {
+  export function removeDraft(removeFiles: boolean): void {
     draftController.remove()
     if (removeFiles) {
       newAttachments.forEach((p) => {
@@ -321,11 +321,11 @@
     }
   }
 
-  export function isEmptyDraft (): boolean {
+  export function isEmptyDraft(): boolean {
     return attachments.size === 0 && isEmptyMarkup(content)
   }
 
-  export async function createAttachments (): Promise<void> {
+  export async function createAttachments(): Promise<void> {
     if (saved) {
       return
     }
@@ -347,14 +347,14 @@
     saveDraft()
   }
 
-  async function onMessage (event: CustomEvent): Promise<void> {
+  async function onMessage(event: CustomEvent): Promise<void> {
     loading = true
     await createAttachments()
     loading = false
     dispatch('message', { message: event.detail, attachments: attachments.size })
   }
 
-  function updateLinkPreview (): void {
+  function updateLinkPreview(): void {
     const hrefs = refContainer.getElementsByTagName('a')
     const newUrls: string[] = []
     for (let i = 0; i < hrefs.length; i++) {
@@ -373,14 +373,14 @@
     }
   }
 
-  function onUpdate (event: CustomEvent): void {
+  function onUpdate(event: CustomEvent): void {
     if (isLinkPreviewEnabled() && !loading && urlSet.size < maxLinkPreviewCount) {
       updateLinkPreview()
     }
     dispatch('update', { message: event.detail, attachments: attachments.size })
   }
 
-  async function loadLinks (urls: string[]): Promise<void> {
+  async function loadLinks(urls: string[]): Promise<void> {
     loadingLinks = true
     for (const url of urls) {
       try {
@@ -405,7 +405,7 @@
     loadingLinks = false
   }
 
-  async function loadFiles (evt: ClipboardEvent): Promise<void> {
+  async function loadFiles(evt: ClipboardEvent): Promise<void> {
     progress = true
     const files = (evt.clipboardData?.files ?? []) as File[]
 
@@ -416,7 +416,7 @@
     progress = false
   }
 
-  function pasteAction (_: any, evt: ClipboardEvent): boolean {
+  function pasteAction(_: any, evt: ClipboardEvent): boolean {
     let target: HTMLElement | null = evt.target as HTMLElement
     let allowed = false
 
@@ -439,7 +439,7 @@
     return false
   }
 
-  async function onFileUploaded ({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> {
+  async function onFileUploaded({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> {
     try {
       await updateAttachments(objectId)
       await _createAttachment(uuid, name, file, metadata)
@@ -448,7 +448,7 @@
     }
   }
 
-  async function uploadWith (uploader: UploadHandlerDefinition): Promise<void> {
+  async function uploadWith(uploader: UploadHandlerDefinition): Promise<void> {
     const upload = await getResource(uploader.handler)
     const target = { objectId: docId ?? objectId, objectClass: docClass ?? _class }
     await upload({ onFileUploaded, target })

@@ -41,7 +41,7 @@
 
   let person: WithLookup<Person> | undefined = undefined
 
-  function getTooltipLabel (message: Message | undefined): IntlString {
+  function getTooltipLabel(message: Message | undefined): IntlString {
     if (message == null) return getEmbeddedLabel('')
     const text = markupToText(jsonToMarkup(markdownToMarkup(message.content)))
     if (text.length > tooltipLimit) {

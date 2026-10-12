@@ -35,12 +35,12 @@
   let [val, selectedMode] = parseValue(modes, value)
   $: [val, selectedMode] = parseValue(modes, value)
 
-  function changeMode (): void {
+  function changeMode(): void {
     value = buildResult(selectedMode, val)
     dispatch('change', value)
   }
 
-  function change (e: CustomEvent): void {
+  function change(e: CustomEvent): void {
     val = e.detail ?? []
     value = buildResult(selectedMode, val)
     dispatch('change', value)

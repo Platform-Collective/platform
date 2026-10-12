@@ -31,15 +31,15 @@
   let messagesSection: MessagesSection | undefined
 
   // Expose scrolling/editing helpers so the parent TOC component can control this section.
-  export function scrollDown (): void {
+  export function scrollDown(): void {
     messagesSection?.scrollDown()
   }
 
-  export function canScrollDown (): boolean {
+  export function canScrollDown(): boolean {
     return messagesSection?.canScrollDown() ?? false
   }
 
-  export function editLastMessage (): void {
+  export function editLastMessage(): void {
     messagesSection?.editLastMessage()
   }
 </script>

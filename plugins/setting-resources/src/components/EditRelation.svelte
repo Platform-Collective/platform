@@ -32,7 +32,7 @@
   let nameB = association.nameB
   let automationOnly = association.automationOnly ?? false
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     await client.diffUpdate(association, {
       nameA,
       nameB,
@@ -58,7 +58,7 @@
 
   const label = items.find((item) => item.id === association?.type)?.label ?? ('' as IntlString)
 
-  async function remove (): Promise<void> {
+  async function remove(): Promise<void> {
     showPopup(MessageBox, {
       label: view.string.DeleteObject,
       message: view.string.DeleteObjectConfirm,

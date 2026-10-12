@@ -280,7 +280,7 @@ async function deleteIssue (issue: Issue | Issue[]): Promise<void> {
       const deletingFromTargetIssuePage = objs.some((obj) => obj._id === target?._id)
 
       try {
-        await deleteObjects(getClient(), objs as unknown as Doc[])
+        await deleteObjects(getClient(), objs)
       } catch (err: any) {
         Analytics.handleError(err)
       }

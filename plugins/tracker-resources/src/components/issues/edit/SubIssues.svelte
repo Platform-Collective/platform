@@ -45,7 +45,7 @@
    * the icon-only LinkExisting button had when collapsed under the
    * `hasSubIssues` slot-gate.
    */
-  function openSubChooser (): void {
+  function openSubChooser(): void {
     showPopup(HierarchyAddPopup, { direction: 'sub' }, 'top', (mode?: 'create' | 'link') => {
       if (mode === 'link') {
         showPopup(LinkSubIssueActionPopup, { value: issue }, 'top')

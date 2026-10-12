@@ -38,7 +38,7 @@
     { sort: { weight: -1, title: 1 } }
   )
 
-  async function addRef (tag: TagElement): Promise<void> {
+  async function addRef(tag: TagElement): Promise<void> {
     await client.addCollection(tags.class.TagReference, object.space, object._id, _class, key.key, {
       title: tag.title,
       tag: tag._id,
@@ -46,11 +46,11 @@
     })
   }
 
-  async function removeTag (id: Ref<TagReference>): Promise<void> {
+  async function removeTag(id: Ref<TagReference>): Promise<void> {
     await client.removeCollection(tags.class.TagReference, object.space, id, object._id, _class, key.key)
   }
 
-  async function updateWeight (tag: TagReference, weight: TagReference['weight']): Promise<void> {
+  async function updateWeight(tag: TagReference, weight: TagReference['weight']): Promise<void> {
     await client.update(tag, { weight })
   }
 </script>

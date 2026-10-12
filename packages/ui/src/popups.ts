@@ -81,6 +81,22 @@ function checkDockPosition (refId: string | undefined): boolean {
 }
 
 let popupId: number = 0
+
+function wrapPopupCallback (
+  callback: ((result: any) => void | Promise<void>) | undefined
+): ((result: any) => void) | undefined {
+  if (callback === undefined) return undefined
+
+  return (result) => {
+    void Promise.resolve()
+      .then(() => callback(result))
+      .catch((err) => {
+        Analytics.handleError(err)
+        console.error(err)
+      })
+  }
+}
+
 export function showPopup (
   component: AnySvelteComponent | AnyComponent | ComponentType,
   props: any,
@@ -118,8 +134,8 @@ export function showPopup (
     id,
     props,
     element: _element,
-    onClose,
-    onUpdate,
+    onClose: wrapPopupCallback(onClose),
+    onUpdate: wrapPopupCallback(onUpdate),
     close: closePopupOp,
     options,
     type: 'popup'

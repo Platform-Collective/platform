@@ -57,10 +57,10 @@ export interface IntegrationClient {
     socialId: PersonId | undefined | null,
     workspaceUuid: WorkspaceUuid | null | undefined
   ) => Promise<
-  | {
-    connectionRemoved: boolean
-  }
-  | undefined
+    | {
+        connectionRemoved: boolean
+      }
+    | undefined
   >
 
   /**

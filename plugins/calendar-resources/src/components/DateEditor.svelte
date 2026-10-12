@@ -46,7 +46,7 @@
   $: currentDate = new Date(date)
   let tib: TimeInputBox
 
-  function timeClick (e: MouseEvent & { currentTarget: EventTarget & HTMLElement }): void {
+  function timeClick(e: MouseEvent & { currentTarget: EventTarget & HTMLElement }): void {
     if (disabled) {
       return
     }
@@ -65,7 +65,7 @@
     } else tib.focused(e.offsetX <= e.currentTarget.clientWidth / 2 ? 'hour' : 'min')
   }
 
-  function dateClick (e: MouseEvent): void {
+  function dateClick(e: MouseEvent): void {
     if (disabled) {
       return
     }

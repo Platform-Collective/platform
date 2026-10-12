@@ -34,11 +34,11 @@
     typeString = s
   })
 
-  async function handleClose (): Promise<void> {
+  async function handleClose(): Promise<void> {
     dispatch('close')
   }
 
-  async function handleSubmit (): Promise<void> {
+  async function handleSubmit(): Promise<void> {
     await onSubmit()
   }
 </script>

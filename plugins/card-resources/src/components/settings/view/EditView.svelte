@@ -34,7 +34,7 @@
 
   const origin = client.getHierarchy().clone(viewlet)
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     await client.diffUpdate(origin, {
       title,
       descriptor: type,
@@ -43,7 +43,7 @@
     clearSettingsStore()
   }
 
-  async function remove (): Promise<void> {
+  async function remove(): Promise<void> {
     showPopup(MessageBox, {
       label: view.string.DeleteObject,
       message: view.string.DeleteObjectConfirm,
@@ -55,7 +55,7 @@
       }
     })
   }
-  function onSave (items: (Config | AttributeConfig)[]): void {
+  function onSave(items: (Config | AttributeConfig)[]): void {
     updateViewletConfig(viewlet, items)
   }
 </script>

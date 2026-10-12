@@ -27,20 +27,20 @@ declare module '@tiptap/core' {
 
 export const deleteAttachment: RawCommands['deleteAttachment'] =
   (id: string) =>
-    ({ tr, dispatch }) => {
-      if (dispatch !== undefined) {
-        const nodeWithPos = findChildren(tr.doc, (node) => {
-          return (
-            (node.type.name === FileNode.name && node.attrs['file-id'] === id) ||
+  ({ tr, dispatch }) => {
+    if (dispatch !== undefined) {
+      const nodeWithPos = findChildren(tr.doc, (node) => {
+        return (
+          (node.type.name === FileNode.name && node.attrs['file-id'] === id) ||
           (node.type.name === ImageNode.name && node.attrs['file-id'] === id)
-          )
+        )
+      })
+      nodeWithPos
+        .sort((a, b) => b.pos - a.pos)
+        .forEach(({ node, pos }) => {
+          tr.delete(pos, pos + node.nodeSize)
         })
-        nodeWithPos
-          .sort((a, b) => b.pos - a.pos)
-          .forEach(({ node, pos }) => {
-            tr.delete(pos, pos + node.nodeSize)
-          })
-      }
-
-      return true
     }
+
+    return true
+  }

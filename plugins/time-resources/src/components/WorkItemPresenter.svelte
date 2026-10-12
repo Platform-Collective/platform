@@ -39,7 +39,7 @@
     doc = res[0]
   })
 
-  async function click (event: MouseEvent): Promise<void> {
+  async function click(event: MouseEvent): Promise<void> {
     event.stopPropagation()
     if (!doc) return
     const panelComponent = hierarchy.classHierarchyMixin<Class<Doc>, ObjectPanel>(doc._class, view.mixin.ObjectPanel)

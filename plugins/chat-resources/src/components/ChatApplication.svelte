@@ -49,15 +49,15 @@
 
   type Selection =
     | {
-      type: 'card'
-      _id: Ref<Card>
-      doc: Card
-    }
+        type: 'card'
+        _id: Ref<Card>
+        doc: Card
+      }
     | {
-      type: 'type'
-      _id: Ref<MasterTag>
-      doc: MasterTag
-    }
+        type: 'type'
+        _id: Ref<MasterTag>
+        doc: MasterTag
+      }
     | { type: 'favorites' }
     | { type: 'all' }
 
@@ -71,7 +71,7 @@
   $: selectedCard = getSelectedCard(selection)
   $: selectedType = getSelectedType(selection)
 
-  async function syncLocation (loc: Location): Promise<void> {
+  async function syncLocation(loc: Location): Promise<void> {
     if (loc.path[2] !== chatId) {
       return
     }
@@ -118,7 +118,7 @@
     }
   }
 
-  function selectCard (event: CustomEvent<Card>): void {
+  function selectCard(event: CustomEvent<Card>): void {
     if (selection?.type === 'card' && selection._id === event.detail._id) return
     closePanel(false)
     const card = event.detail
@@ -126,7 +126,7 @@
     navigateToCard(card._id)
   }
 
-  function selectType (event: CustomEvent<MasterTag>): void {
+  function selectType(event: CustomEvent<MasterTag>): void {
     if (selection?.type === 'type' && selection._id === event.detail._id) return
     closePanel(false)
     const type = event.detail
@@ -134,26 +134,26 @@
     navigateToType(type._id)
   }
 
-  function selectFavorites (): void {
+  function selectFavorites(): void {
     if (selection?.type === 'favorites') return
     closePanel(false)
     selection = { type: 'favorites' }
     navigateToFavorites()
   }
 
-  function selectAll (): void {
+  function selectAll(): void {
     if (selection?.type === 'all') return
     closePanel(false)
     selection = { type: 'all' }
     navigateToAll()
   }
 
-  function getSelectedCard (selection: Selection | undefined): Card | undefined {
+  function getSelectedCard(selection: Selection | undefined): Card | undefined {
     if (selection?.type !== 'card') return undefined
     return selection.doc
   }
 
-  function getSelectedType (selection: Selection | undefined): Ref<MasterTag> | undefined {
+  function getSelectedType(selection: Selection | undefined): Ref<MasterTag> | undefined {
     if (selection?.type !== 'type') return undefined
     return selection._id
   }

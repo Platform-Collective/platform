@@ -21,13 +21,13 @@
 
   const dispatch = createEventDispatcher()
 
-  function click (value: Timestamp | undefined): void {
+  function click(value: Timestamp | undefined): void {
     closeTooltip()
     dispatch('close', value)
   }
 
   const today = new Date().setHours(0, 0, 0, 0)
-  function shiftDays (diff: number): number {
+  function shiftDays(diff: number): number {
     return new Date(today).setDate(new Date(today).getDate() - diff)
   }
 

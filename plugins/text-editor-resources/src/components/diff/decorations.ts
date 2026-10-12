@@ -45,9 +45,9 @@ export function calculateDecorations (
   comparedDoc?: ProseMirrorNode
 ):
   | {
-    decorations: DecorationSet
-    oldContent: MarkupNode
-  }
+      decorations: DecorationSet
+      oldContent: MarkupNode
+    }
   | undefined {
   try {
     if (editor?.schema === undefined) {

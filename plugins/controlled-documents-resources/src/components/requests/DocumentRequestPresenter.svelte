@@ -31,7 +31,7 @@
   let object: Doc | undefined
 
   $: void getObject(value)
-  async function getObject (value: Request): Promise<void> {
+  async function getObject(value: Request): Promise<void> {
     const attachedToClass = value.attachedToClass
     object = await client.findOne(attachedToClass, { _id: value.attachedTo })
   }

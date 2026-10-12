@@ -12,7 +12,7 @@
 
   const client = getClient()
 
-  async function next (evt: Event, pn: boolean): Promise<void> {
+  async function next(evt: Event, pn: boolean): Promise<void> {
     select(evt, pn ? 1 : -1, element, 'vertical')
     await tick()
     if ($focusStore.focus !== undefined) {

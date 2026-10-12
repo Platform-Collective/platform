@@ -1,5 +1,6 @@
 //
 // Copyright © 2020 Anticrm Platform Contributors.
+// Copyright © 2026 TraceX SAS.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -14,6 +15,7 @@
 //
 
 import { addStringsLoader, loadMetadata } from '@hcengineering/platform'
+import { loadLang } from './lang'
 import survey, { surveyId } from '@hcengineering/survey'
 
 const icons = require('../assets/icons.svg') as string // eslint-disable-line
@@ -32,4 +34,4 @@ loadMetadata(survey.icon, {
   ValidateFail: `${icons}#validate-fail`,
   ValidateOk: `${icons}#validate-ok`
 })
-addStringsLoader(surveyId, async (lang: string) => await import(`../lang/${lang}.json`))
+addStringsLoader(surveyId, loadLang)

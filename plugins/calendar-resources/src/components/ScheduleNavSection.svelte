@@ -51,7 +51,7 @@
     }
   )
 
-  async function getScheduleListActions (): Promise<Action[]> {
+  async function getScheduleListActions(): Promise<Action[]> {
     return [
       {
         icon: IconAdd,
@@ -64,7 +64,7 @@
     ]
   }
 
-  function deleteSchedule (schedule: Schedule): void {
+  function deleteSchedule(schedule: Schedule): void {
     showPopup(
       MessageBox,
       {
@@ -83,7 +83,7 @@
     )
   }
 
-  function shareLink (schedule: Schedule): void {
+  function shareLink(schedule: Schedule): void {
     const ws = getCurrentWorkspaceUrl()
     const link = `${scheduleUrl}/${ws}/${schedule._id}`
     showPopup(

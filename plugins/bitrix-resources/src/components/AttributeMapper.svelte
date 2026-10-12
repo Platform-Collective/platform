@@ -28,7 +28,7 @@
     core.class.RefTo
   ])
 
-  function addMapping (evt: MouseEvent, kind: MappingOperation): void {
+  function addMapping(evt: MouseEvent, kind: MappingOperation): void {
     showPopup(
       CreateMappingAttribute,
       {

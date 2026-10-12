@@ -290,10 +290,10 @@ export class IncomingSyncManager {
     if (event.id != null) {
       const _calendar = this.getEventCalendar(calendarId, event)
       if (_calendar !== undefined) {
-        const exists = (await this.client.findOne(calendar.class.Event, {
+        const exists = await this.client.findOne(calendar.class.Event, {
           eventId: event.id,
           calendar: _calendar._id
-        })) as Event | undefined
+        })
         if (exists === undefined) {
           await this.saveExtEvent(event, accessRole, _calendar)
         } else {
@@ -313,7 +313,7 @@ export class IncomingSyncManager {
       const diff = this.getDiff<ReccuringInstance>(
         {
           ...data,
-          recurringEventId: event.recurringEventId as Ref<ReccuringEvent>,
+          recurringEventId: event.recurringEventId,
           originalStartTime: parseEventDate(event.originalStartTime),
           isCancelled: event.status === 'cancelled'
         },
@@ -426,9 +426,9 @@ export class IncomingSyncManager {
     map: Map<string, Ref<Person>>,
     value: string
   ): {
-      contact?: Ref<Contact>
-      extra?: string
-    } {
+    contact?: Ref<Contact>
+    extra?: string
+  } {
     const contact = map.get(value)
     if (contact !== undefined) {
       return {
@@ -467,7 +467,7 @@ export class IncomingSyncManager {
     return [Array.from(contacts), Array.from(extra)]
   }
 
-  private getDiff<T extends Doc>(data: Partial<DocData<T>>, current: T): Partial<DocData<T>> {
+  private getDiff<T extends Doc> (data: Partial<DocData<T>>, current: T): Partial<DocData<T>> {
     const res = {}
     for (const key in data) {
       if (!deepEqual((data as any)[key], (current as any)[key])) {
@@ -599,9 +599,12 @@ export class IncomingSyncManager {
   }
 
   private async getMyCalendars (): Promise<void> {
-    this.calendars = await this.client.findAll(calendar.class.ExternalCalendar, {
+    const calendars = await this.client.findAll(calendar.class.ExternalCalendar, {
       user: this.user.userId
     })
+    // CalDAV calendars are owned by the CalDAV module and must never be queried through the Google API
+    const hierarchy = this.client.getHierarchy()
+    this.calendars = calendars.filter((c) => !hierarchy.hasMixin(c, calendar.mixin.CalDavCalendar))
   }
 
   async syncCalendars (): Promise<void> {

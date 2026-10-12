@@ -58,7 +58,7 @@
       ? '#' + getPanelURI(component, object._id, Hierarchy.mixinOrClass(object), 'content')
       : undefined
 
-  async function getHref (object: Doc): Promise<void> {
+  async function getHref(object: Doc): Promise<void> {
     if (_disabled) {
       href = undefined
       return
@@ -75,7 +75,7 @@
 
   $: if (object !== undefined) getHref(object)
 
-  function onBrokenLinkClick (event: MouseEvent): void {
+  function onBrokenLinkClick(event: MouseEvent): void {
     showPopup(MessageBox, {
       label: presentation.string.UnableToFollowMention,
       message: presentation.string.AccessDenied,

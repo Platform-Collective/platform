@@ -37,13 +37,13 @@ export function compareCompletionMapValueState (a: CompletionMapValueState, b: C
 
 export type CompletionMapValue =
   | {
-    state: CompletionMapValueState.Pending
-  }
+      state: CompletionMapValueState.Pending
+    }
   | {
-    _id: TrainingAttempt['_id']
-    seqNumber: TrainingAttempt['seqNumber']
-    state: Exclude<CompletionMapValueState, CompletionMapValueState.Pending>
-  }
+      _id: TrainingAttempt['_id']
+      seqNumber: TrainingAttempt['seqNumber']
+      state: Exclude<CompletionMapValueState, CompletionMapValueState.Pending>
+    }
 
 export type CompletionMap = Map<Ref<Employee>, CompletionMapValue>
 

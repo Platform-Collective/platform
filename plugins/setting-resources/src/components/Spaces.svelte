@@ -69,7 +69,7 @@
     }
   }
 
-  async function handleRoleAssignmentChanged (roleId: Ref<Role>, newMembers: AccountUuid[]): Promise<void> {
+  async function handleRoleAssignmentChanged(roleId: Ref<Role>, newMembers: AccountUuid[]): Promise<void> {
     await client.updateMixin(space._id, space._class, core.space.Space, spaceType.targetClass, {
       [roleId]: newMembers
     })

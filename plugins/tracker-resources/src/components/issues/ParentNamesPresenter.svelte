@@ -23,7 +23,7 @@
 
   export let maxWidth = ''
 
-  function getHref (parentInfo: IssueParentInfo) {
+  function getHref(parentInfo: IssueParentInfo) {
     const loc = getCurrentLocation()
     loc.path[2] = trackerId
     loc.path[3] = parentInfo.identifier

@@ -35,7 +35,7 @@
   let dragState: Ref<Status>
   let opened: Ref<Status> | undefined
 
-  function dragswap (ev: MouseEvent, i: number, targetCategory: Ref<StatusCategory>): boolean {
+  function dragswap(ev: MouseEvent, i: number, targetCategory: Ref<StatusCategory>): boolean {
     if (readonly) return false
     const s = selected as number
     const sourceState = states[s]
@@ -53,7 +53,7 @@
     return false
   }
 
-  function dragover (ev: MouseEvent, i: number, targetCategory: Ref<StatusCategory>): void {
+  function dragover(ev: MouseEvent, i: number, targetCategory: Ref<StatusCategory>): void {
     if (readonly) return
     const s = selected as number
 
@@ -63,7 +63,7 @@
     }
   }
 
-  function moveState (i: number): void {
+  function moveState(i: number): void {
     if (readonly || selected === undefined || i === selected) return
 
     // Get state to move
@@ -82,7 +82,7 @@
     selected = targetIndex
   }
 
-  function onMove (to: number, targetCategory: Ref<StatusCategory>): void {
+  function onMove(to: number, targetCategory: Ref<StatusCategory>): void {
     if (readonly) return
 
     const state = $statusStore.byId.get(dragState)
@@ -113,11 +113,11 @@
     categoriesMap = toIdMap(res)
   })
 
-  function getProjectStatus (type: ProjectType, state: Status): ProjectStatus | undefined {
+  function getProjectStatus(type: ProjectType, state: Status): ProjectStatus | undefined {
     return type.statuses.find((p) => p._id === state._id)
   }
 
-  function group (categories: StatusCategory[], states: Status[]): Map<Ref<StatusCategory>, Status[]> {
+  function group(categories: StatusCategory[], states: Status[]): Map<Ref<StatusCategory>, Status[]> {
     const map = new Map<Ref<StatusCategory>, Status[]>(categories.map((p) => [p._id, []]))
     for (const state of states) {
       if (state.category === undefined) continue
@@ -134,7 +134,7 @@
 
   $: groups = group(categories, taskTypeStates)
 
-  function getPrevIndex (groups: Map<Ref<StatusCategory>, Status[]>, categories: Ref<StatusCategory>): number {
+  function getPrevIndex(groups: Map<Ref<StatusCategory>, Status[]>, categories: Ref<StatusCategory>): number {
     let index = 0
     for (const [cat, states] of groups) {
       if (cat === categories) {

@@ -63,7 +63,7 @@
 
   $: statuses = getStatuses($statusStore.byId, $typeStore, type)
 
-  function getStatuses (
+  function getStatuses(
     statuses: IdMap<Status>,
     types: IdMap<ProjectType>,
     typeId: Ref<ProjectType> | undefined
@@ -81,7 +81,7 @@
       .filter((p) => p !== undefined) as IssueStatus[]
   }
 
-  function getSelectedStatus (
+  function getSelectedStatus(
     statuses: WithLookup<IssueStatus>[] | undefined,
     val: Ref<IssueStatus> | undefined
   ): WithLookup<IssueStatus> | undefined {

@@ -30,7 +30,7 @@
   let configurationRaw: Viewlet[] = []
   let configurations: Record<Ref<Class<Doc>>, Viewlet['config']> = {}
 
-  function fetchConfigurations (viewlet: Viewlet): void {
+  function fetchConfigurations(viewlet: Viewlet): void {
     configurations = {}
     configurationsLoading = objectConfigurations.query(
       view.class.Viewlet,
@@ -47,7 +47,7 @@
     )
   }
 
-  function fetchPreferences (configurationRaw: Viewlet[]): void {
+  function fetchPreferences(configurationRaw: Viewlet[]): void {
     preferencesLoading = preferenceQuery.query(
       view.class.ViewletPreference,
       {
@@ -62,7 +62,7 @@
     )
   }
 
-  function updateConfiguration (configurationRaw: Viewlet[], preference: ViewletPreference[]): void {
+  function updateConfiguration(configurationRaw: Viewlet[], preference: ViewletPreference[]): void {
     const newConfigurations: Record<Ref<Class<Doc>>, Viewlet['config']> = {}
 
     for (const v of configurationRaw) {

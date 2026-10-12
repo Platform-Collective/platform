@@ -62,11 +62,11 @@
   $: withAside =
     !embedded && !isThreadOpened && !hierarchy.isDerived(object._class, chunter.class.DirectMessage) && !showJoinOverlay
 
-  function toChannel (object: Doc): Channel {
+  function toChannel(object: Doc): Channel {
     return object as Channel
   }
 
-  function shouldShowJoinOverlay (object: Doc): boolean {
+  function shouldShowJoinOverlay(object: Doc): boolean {
     if (hierarchy.isDerived(object._class, core.class.Space)) {
       const space = object as Space
 
@@ -76,13 +76,13 @@
     return false
   }
 
-  async function join (): Promise<void> {
+  async function join(): Promise<void> {
     await client.update(object as Space, { $push: { members: acc.uuid } })
   }
 
   defineSeparators('aside', panelSeparators)
 
-  async function handleMessageSelect (event: CustomEvent<ActivityMessage>): Promise<void> {
+  async function handleMessageSelect(event: CustomEvent<ActivityMessage>): Promise<void> {
     const message = event.detail
 
     if (isThreadMessage(message)) {

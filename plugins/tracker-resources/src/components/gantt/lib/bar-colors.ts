@@ -84,7 +84,7 @@ const NEUTRAL: BarColorTriple = {
   text: 'var(--theme-content-color)'
 }
 
-function statusTriple (cat: string | null): BarColorTriple {
+function statusTriple(cat: string | null): BarColorTriple {
   switch (cat) {
     case 'task:statusCategory:UnStarted':
     case 'tracker:statusCategory:Backlog':
@@ -118,7 +118,7 @@ function statusTriple (cat: string | null): BarColorTriple {
   }
 }
 
-function paletteFill (index: number): BarColorTriple {
+function paletteFill(index: number): BarColorTriple {
   return {
     fill: 'palette',
     border: 'palette',
@@ -127,7 +127,7 @@ function paletteFill (index: number): BarColorTriple {
   }
 }
 
-export function resolveBarColors (issue: GanttBarIssueLike, mode: BarColorMode, ctx: BarColorContext): BarColorTriple {
+export function resolveBarColors(issue: GanttBarIssueLike, mode: BarColorMode, ctx: BarColorContext): BarColorTriple {
   switch (mode) {
     case 'status':
       // status may be missing on synthetic milestone-summary bars

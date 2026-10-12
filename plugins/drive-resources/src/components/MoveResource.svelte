@@ -32,14 +32,14 @@
   let space: Ref<Drive> = value.space
   let parent: Ref<Folder> = value.parent as Ref<Folder>
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     await moveResources([value], space, parent ?? drive.ids.Root)
   }
 
   let children: Ref<Folder>[] = []
   $: void updateChildren(value)
 
-  async function updateChildren (resource: Resource): Promise<void> {
+  async function updateChildren(resource: Resource): Promise<void> {
     children = await findAllChildren(resource)
   }
 

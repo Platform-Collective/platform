@@ -73,7 +73,7 @@
 
   const client = getClient()
 
-  async function updateSelected (value: Ref<Doc> | null | undefined) {
+  async function updateSelected(value: Ref<Doc> | null | undefined) {
     selected = value ? await client.findOne(_class, { _id: value }) : undefined
   }
 

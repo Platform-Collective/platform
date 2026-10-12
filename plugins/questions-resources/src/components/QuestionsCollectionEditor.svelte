@@ -58,7 +58,7 @@
     }
   }
 
-  async function onClickAdd (e: MouseEvent, index: number | null): Promise<void> {
+  async function onClickAdd(e: MouseEvent, index: number | null): Promise<void> {
     if (readonly) {
       return
     }

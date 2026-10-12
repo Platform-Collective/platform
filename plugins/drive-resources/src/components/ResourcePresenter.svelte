@@ -35,11 +35,11 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function isFile (value: Resource): value is File {
+  function isFile(value: Resource): value is File {
     return hierarchy.isDerived(value._class, drive.class.File)
   }
 
-  function isFolder (value: Resource): value is Folder {
+  function isFolder(value: Resource): value is Folder {
     return hierarchy.isDerived(value._class, drive.class.Folder)
   }
 </script>

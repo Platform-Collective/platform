@@ -92,52 +92,38 @@ const predicates: Record<string, PredicateFactory> = {
     const re = new RegExp(o.$regex, o.$options)
     return (docs) => execPredicate(docs, propertyKey, (value) => value.match(re) !== null)
   },
-  $gt: (o, propertyKey) => {
-    return (docs) => execPredicate(docs, propertyKey, (value) => value > o)
-  },
-  $gte: (o, propertyKey) => {
-    return (docs) => execPredicate(docs, propertyKey, (value) => value >= o)
-  },
-  $lt: (o, propertyKey) => {
-    return (docs) => execPredicate(docs, propertyKey, (value) => value < o)
-  },
-  $lte: (o, propertyKey) => {
-    return (docs) => execPredicate(docs, propertyKey, (value) => value <= o)
-  },
-  $exists: (o, propertyKey) => {
-    return (docs) => execPredicate(docs, propertyKey, (value) => (value !== undefined) === o)
-  },
-  $ne: (o, propertyKey) => {
-    // eslint-disable-next-line eqeqeq
-    return (docs) => execPredicate(docs, propertyKey, (value) => (o != null ? !deepEqual(o, value) : value != null))
-  },
-  $size: (o, propertyKey) => {
-    return (docs) =>
-      execPredicate(docs, propertyKey, (value) => {
-        if (value == null) {
-          return false
-        }
-        if (!Array.isArray(value)) {
-          throw new Error('$size predicate requires array')
-        }
-        if (typeof o === 'number') {
-          return value.length === o
-        }
-        if (typeof o === 'object' && o.$gt !== undefined) {
-          return value.length > o.$gt
-        }
-        if (typeof o === 'object' && o.$gte !== undefined) {
-          return value.length >= o.$gte
-        }
-        if (typeof o === 'object' && o.$lt !== undefined) {
-          return value.length < o.$lt
-        }
-        if (typeof o === 'object' && o.$lte !== undefined) {
-          return value.length <= o.$lte
-        }
+  $gt: (o, propertyKey) => (docs) => execPredicate(docs, propertyKey, (value) => value > o),
+  $gte: (o, propertyKey) => (docs) => execPredicate(docs, propertyKey, (value) => value >= o),
+  $lt: (o, propertyKey) => (docs) => execPredicate(docs, propertyKey, (value) => value < o),
+  $lte: (o, propertyKey) => (docs) => execPredicate(docs, propertyKey, (value) => value <= o),
+  $exists: (o, propertyKey) => (docs) => execPredicate(docs, propertyKey, (value) => (value !== undefined) === o),
+  $ne: (o, propertyKey) => (docs) =>
+    execPredicate(docs, propertyKey, (value) => (o != null ? !deepEqual(o, value) : value != null)),
+  $size: (o, propertyKey) => (docs) =>
+    execPredicate(docs, propertyKey, (value) => {
+      if (value == null) {
         return false
-      })
-  }
+      }
+      if (!Array.isArray(value)) {
+        throw new Error('$size predicate requires array')
+      }
+      if (typeof o === 'number') {
+        return value.length === o
+      }
+      if (typeof o === 'object' && o.$gt !== undefined) {
+        return value.length > o.$gt
+      }
+      if (typeof o === 'object' && o.$gte !== undefined) {
+        return value.length >= o.$gte
+      }
+      if (typeof o === 'object' && o.$lt !== undefined) {
+        return value.length < o.$lt
+      }
+      if (typeof o === 'object' && o.$lte !== undefined) {
+        return value.length <= o.$lte
+      }
+      return false
+    })
 }
 
 export function isPredicate (o: Record<string, any>): boolean {
@@ -153,7 +139,7 @@ export function createPredicates (o: Record<string, any>, propertyKey: string): 
   const result: Predicate[] = []
   for (const key of keys) {
     const factory = predicates[key]
-    if (factory === undefined) throw new Error('unknown predicate: ' + keys[0])
+    if (factory === undefined) throw new Error(`unknown predicate: ${keys[0]}`)
     result.push(factory(o[key], propertyKey))
   }
   return result

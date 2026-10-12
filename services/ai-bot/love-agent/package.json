@@ -13,8 +13,8 @@
   "type": "module",
   "scripts": {
     "build": "node esbuild.config.js",
-    "docker:build": "../../../common/scripts/docker_build.sh platformcollective/love-agent",
-    "docker:push": "../../../common/scripts/docker_tag.sh platformcollective/love-agent",
+    "docker:build": "node ../../../common/scripts/bash.js ../../../common/scripts/docker_build.sh platformcollective/love-agent",
+    "docker:push": "node ../../../common/scripts/bash.js ../../../common/scripts/docker_tag.sh platformcollective/love-agent",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint --fix src/**/*.ts",
     "format": "prettier --write src/**/*.ts && pnpm lint:fix"
@@ -26,17 +26,18 @@
     "esbuild": "^0.25.10",
     "eslint": "^8.54.0",
     "eslint-config-prettier": "^8.8.0",
-    "eslint-config-standard-with-typescript": "^40.0.0",
-    "eslint-plugin-import": "^2.26.0",
+    "eslint-config-love": "^157.0.0",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-n": "^15.4.0",
     "eslint-plugin-promise": "^6.1.1",
+    "eslint-plugin-secure-coding": "^5.4.4",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@deepgram/sdk": "^4.11.2",
-    "@livekit/agents": "^0.7.4",
-    "@livekit/rtc-node": "^0.13.11",
+    "@deepgram/sdk": "^5.9.0",
+    "@livekit/agents": "^1.7.1",
+    "@livekit/rtc-node": "^0.13.34",
     "dotenv": "^16.4.5",
     "ws": "^8.21.0"
   },

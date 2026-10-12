@@ -43,7 +43,7 @@
     }
   )
 
-  async function create (file: File): Promise<void> {
+  async function create(file: File): Promise<void> {
     if (!file.type.startsWith('image/')) return
     loading++
     try {
@@ -63,7 +63,7 @@
     }
   }
 
-  function fileSelected (): void {
+  function fileSelected(): void {
     const list = inputFile.files
     if (list === null || list.length === 0) return
     for (let index = 0; index < list.length; index++) {
@@ -75,7 +75,7 @@
     inputFile.value = ''
   }
 
-  function fileDrop (e: DragEvent): void {
+  function fileDrop(e: DragEvent): void {
     const list = e.dataTransfer?.files
     if (list === undefined || list.length === 0) return
     for (let index = 0; index < list.length; index++) {
@@ -88,7 +88,7 @@
 
   let dragover = false
 
-  function click (ev: Event, item?: WithLookup<Photo>): void {
+  function click(ev: Event, item?: WithLookup<Photo>): void {
     const el: HTMLElement = ev.currentTarget as HTMLElement
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
     if (item !== undefined) {

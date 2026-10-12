@@ -52,8 +52,8 @@
     return equal && noTone
       ? (e as Emoji.Emoji)
       : getEmojiSkins(e)?.find((skin) =>
-        equal ? skin.tone === a : Array.isArray(skin.tone) && skin.tone[0] === a && skin.tone[1] === b
-      )
+          equal ? skin.tone === a : Array.isArray(skin.tone) && skin.tone[0] === a && skin.tone[1] === b
+        )
   }
   const getEmojiStringByTone = (e: ExtendedEmoji, [a, b]: number[]): string | undefined => {
     return getEmojiByTone(e, [a, b])?.emoji

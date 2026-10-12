@@ -26,11 +26,11 @@ import { MessageProcessor } from '@hcengineering/communication-shared'
 const COMMUNICATION_DOMAIN = 'communication' as Domain
 
 export function extractCreateMessageData (tx: Tx):
-| {
-  message: Message
-  blobId: BlobID
-}
-| undefined {
+  | {
+      message: Message
+      blobId: BlobID
+    }
+  | undefined {
   if (tx._class !== core.class.TxDomainEvent) return undefined
 
   const domainTx = tx as TxDomainEvent
@@ -52,13 +52,13 @@ export function extractCreateMessageData (tx: Tx):
 }
 
 export function extractUpdateMessageData (tx: Tx):
-| {
-  cardId: CardID
-  messageId: MessageID
-  content: Markdown
-  blobId: BlobID
-}
-| undefined {
+  | {
+      cardId: CardID
+      messageId: MessageID
+      content: Markdown
+      blobId: BlobID
+    }
+  | undefined {
   if (tx._class !== core.class.TxDomainEvent) return undefined
 
   const domainTx = tx as TxDomainEvent
@@ -76,12 +76,12 @@ export function extractUpdateMessageData (tx: Tx):
 }
 
 export function extractRemoveMessageData (tx: Tx):
-| {
-  cardId: CardID
-  messageId: MessageID
-  blobId: BlobID
-}
-| undefined {
+  | {
+      cardId: CardID
+      messageId: MessageID
+      blobId: BlobID
+    }
+  | undefined {
   if (tx._class !== core.class.TxDomainEvent) return undefined
 
   const domainTx = tx as TxDomainEvent

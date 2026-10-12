@@ -25,7 +25,7 @@
 
   $: ids = Array.from(new Set(integrations.map((p) => p.createdBy))).filter(notEmpty)
 
-  function change (e: CustomEvent<PersonId | null>): void {
+  function change(e: CustomEvent<PersonId | null>): void {
     if (e.detail === null) {
       selected = undefined
     } else {

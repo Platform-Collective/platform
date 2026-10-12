@@ -32,7 +32,7 @@
 
   $: method = getMethod(step.methodId)
 
-  function getMethod (_id: Ref<Method<Doc>>): Method<Doc> {
+  function getMethod(_id: Ref<Method<Doc>>): Method<Doc> {
     if (method?._id !== _id) {
       const res = client.getModel().findAllSync(plugin.class.Method, { _id })[0]
       return res
@@ -40,7 +40,7 @@
     return method
   }
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     const doc = client.getModel().findObject(_id)
     if (doc === undefined) return
     const index = doc.actions.findIndex((it) => it._id === step._id)
@@ -50,7 +50,7 @@
     clearSettingsStore()
   }
 
-  async function remove (): Promise<void> {
+  async function remove(): Promise<void> {
     const doc = client.getModel().findObject(_id)
     if (doc === undefined) return
     const index = doc.actions.findIndex((it) => it._id === step._id)
@@ -60,7 +60,7 @@
     clearSettingsStore()
   }
 
-  function change (e: CustomEvent<Step<Doc>>): void {
+  function change(e: CustomEvent<Step<Doc>>): void {
     step = e.detail
   }
 </script>

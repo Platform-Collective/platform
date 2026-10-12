@@ -16,7 +16,7 @@
 import { documentId, documentPlugin } from './plugin'
 
 export * from './analytics'
-export * from './types'
+export type * from './types'
 export * from './utils'
 export { documentId }
 

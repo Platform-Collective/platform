@@ -117,13 +117,13 @@
         ? visibility.targetEdge
         : null
 
-  function onSourceIndicator (evt: MouseEvent): void {
+  function onSourceIndicator(evt: MouseEvent): void {
     if (evt.button !== 0) return
     evt.preventDefault()
     evt.stopPropagation()
     dispatch('scrollToRow', { issue: relation.attachedTo })
   }
-  function onTargetIndicator (evt: MouseEvent): void {
+  function onTargetIndicator(evt: MouseEvent): void {
     if (evt.button !== 0) return
     evt.preventDefault()
     evt.stopPropagation()
@@ -158,16 +158,16 @@
     }
   })()
 
-  function onOpen (evt: MouseEvent): void {
+  function onOpen(evt: MouseEvent): void {
     if (evt.button !== 0) return
     evt.preventDefault()
     evt.stopPropagation()
     dispatch('openEditor', { relation })
   }
-  function onEnter (): void {
+  function onEnter(): void {
     dispatch('hoverEdge', { source: relation.attachedTo, target: relation.target })
   }
-  function onLeave (): void {
+  function onLeave(): void {
     dispatch('hoverEdge', null)
   }
 </script>

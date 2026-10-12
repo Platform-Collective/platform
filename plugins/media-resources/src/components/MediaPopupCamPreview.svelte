@@ -22,7 +22,7 @@
   let stream: MediaStream | null = null
   let video: HTMLVideoElement | null = null
 
-  async function updateStream (device: MediaDeviceInfo): Promise<void> {
+  async function updateStream(device: MediaDeviceInfo): Promise<void> {
     const constraints =
       device !== null
         ? { video: { deviceId: { exact: device.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } }

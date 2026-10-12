@@ -37,7 +37,7 @@
 
   $: defaultTimeReportDay = currentProject?.defaultTimeReportDay
 
-  function addTimeReport (event: MouseEvent): void {
+  function addTimeReport(event: MouseEvent): void {
     if (readonly) return
     showPopup(
       TimeSpendReportPopup,
@@ -53,7 +53,7 @@
       eventToHTMLElement(event)
     )
   }
-  function showReports (event: MouseEvent): void {
+  function showReports(event: MouseEvent): void {
     if (readonly) return
     showPopup(ReportsPopup, { issue: object }, eventToHTMLElement(event))
   }

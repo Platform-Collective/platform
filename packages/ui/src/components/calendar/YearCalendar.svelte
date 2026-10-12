@@ -22,10 +22,10 @@
   export let cellHeight: string | undefined = undefined
   export let minWidth = '18rem'
 
-  function getMonthName (date: Date): string {
+  function getMonthName(date: Date): string {
     return new Intl.DateTimeFormat('default', { month: 'long' }).format(date)
   }
-  function month (date: Date, m: number): Date {
+  function month(date: Date, m: number): Date {
     date = new Date(date)
     date.setDate(1)
     date.setMonth(m)

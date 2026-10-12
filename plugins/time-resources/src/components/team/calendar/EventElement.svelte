@@ -29,7 +29,7 @@
   $: left = (hour / 60) * new Date(event.date).getMinutes()
   $: empty = false
 
-  function click (): void {
+  function click(): void {
     if (visible) {
       const editor = hierarchy.classHierarchyMixin<Doc, ObjectEditor>(event._class, view.mixin.ObjectEditor)
       if (editor?.editor !== undefined) {
@@ -49,7 +49,7 @@
 
   $: visible = isVisible(event, $calendarByIdStore)
 
-  function onContext (e: MouseEvent): void {
+  function onContext(e: MouseEvent): void {
     showMenu(e, { object: event })
   }
 </script>

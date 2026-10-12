@@ -54,7 +54,7 @@
 
   $: fetch(search, selectedSort, selectedFileTypeId, selectedDateId, selectedParticipants, selectedSpaces)
 
-  async function fetch (
+  async function fetch(
     searchQuery_: string,
     selectedSort_: FileBrowserSortMode,
     selectedFileTypeId_: string,

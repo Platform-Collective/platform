@@ -23,7 +23,7 @@
 
   let time: string = ''
 
-  async function formatTime (value: number) {
+  async function formatTime(value: number) {
     if (value > 0) {
       if (exact) {
         const d = Math.floor(value / DAY)

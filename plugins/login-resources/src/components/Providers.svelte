@@ -37,7 +37,7 @@
     })
   })
 
-  function getColumnsCount (providersCount: number): number {
+  function getColumnsCount(providersCount: number): number {
     if ($deviceOptionsStore.isMobile) {
       return 1
     }
@@ -46,7 +46,7 @@
 
   const location = getCurrentLocation()
 
-  function getLink (provider: Provider): string {
+  function getLink(provider: Provider): string {
     const inviteId = location.query?.inviteId
     const autoJoin = location.query?.autoJoin !== undefined
     const navigateUrl = location.query?.navigateUrl
@@ -65,7 +65,7 @@
     return concatLink(accountsUrl, path)
   }
 
-  function handleProviderClick (provider: Provider): void {
+  function handleProviderClick(provider: Provider): void {
     const currentPath = location.path[1]
     const isSignUp = currentPath === 'signup'
     const isJoin = currentPath === 'join'

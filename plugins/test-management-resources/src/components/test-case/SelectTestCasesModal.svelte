@@ -45,7 +45,7 @@
     })
   }
 
-  async function handleSave (): Promise<void> {
+  async function handleSave(): Promise<void> {
     if (onSave !== undefined) {
       const testCases: TestCase[] = ($selectionStore?.docs ?? []) as TestCase[]
       onSave(testCases)
@@ -53,7 +53,7 @@
     handleClose()
   }
 
-  function handleClose (): void {
+  function handleClose(): void {
     dispatch('close')
   }
 </script>

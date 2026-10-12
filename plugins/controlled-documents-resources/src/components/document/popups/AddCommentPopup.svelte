@@ -13,7 +13,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function handleMessage (event: CustomEvent<string>): Promise<void> {
+  async function handleMessage(event: CustomEvent<string>): Promise<void> {
     const messageId: Ref<ChatMessage> = generateId()
     const comment = await addDocumentCommentFx({ content: event.detail, messageId, nodeId })
 
@@ -22,7 +22,7 @@
 
   let popup: HTMLDivElement | undefined
 
-  function isClickInsidePopup (target: Node): boolean {
+  function isClickInsidePopup(target: Node): boolean {
     if (popup !== undefined && popup.contains(target)) return true
     if (!(target instanceof Element)) return false
 
@@ -32,7 +32,7 @@
     return false
   }
 
-  function handleClick (event: MouseEvent): void {
+  function handleClick(event: MouseEvent): void {
     if (event.target instanceof Node) {
       const top = $popups.length > 0 && $popups[$popups.length - 1].id === popupId
       if (top && !isClickInsidePopup(event.target)) {

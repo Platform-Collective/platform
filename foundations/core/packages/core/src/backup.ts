@@ -1,5 +1,5 @@
-import { type Doc, type Domain, type Ref } from './classes'
-import { type DocInfo } from './server'
+import type { Doc, Domain, Ref } from './classes'
+import type { DocInfo } from './server'
 
 /**
  * @public

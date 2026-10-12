@@ -36,7 +36,7 @@
 
   const toProjectId = (ref: Ref<Space>) => ref as Ref<Project>
 
-  function editSpendReport (
+  function editSpendReport(
     event: MouseEvent,
     value: TimeSpendReport,
     defaultTimeReportDay: TimeReportDayType | undefined

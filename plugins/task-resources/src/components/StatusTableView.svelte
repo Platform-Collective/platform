@@ -46,7 +46,7 @@
   let resultQuery: DocumentQuery<Task>
   let divScroll: HTMLElement
 
-  function getItems (doneStates: Status[]): TabItem[] {
+  function getItems(doneStates: Status[]): TabItem[] {
     const itemsDS: TabItem[] = doneStates.map((s) => {
       return {
         id: s._id,
@@ -59,7 +59,7 @@
     return itemsDS
   }
 
-  function updateConfig (config: string[]): string[] {
+  function updateConfig(config: string[]): string[] {
     if (state !== undefined) {
       return config.filter((p) => p !== 'status')
     }
@@ -83,7 +83,7 @@
 
   const client = getClient()
 
-  function updateQuery (query: DocumentQuery<Task>, selectedDoneStates: Set<Ref<Status>>): void {
+  function updateQuery(query: DocumentQuery<Task>, selectedDoneStates: Set<Ref<Status>>): void {
     resConfig = updateConfig(config)
     const result = client.getHierarchy().clone(query)
     if (state) {
@@ -102,7 +102,7 @@
     resultQuery = result
   }
 
-  function doneStateClick (id: Ref<Status>): void {
+  function doneStateClick(id: Ref<Status>): void {
     withoutDone = false
     if (selectedDoneStates.has(id)) selectedDoneStates.delete(id)
     else selectedDoneStates.add(id)
@@ -116,7 +116,7 @@
     updateQuery(query, selectedDoneStates)
   }
 
-  function noDoneClick (): void {
+  function noDoneClick(): void {
     withoutDone = true
     selectedDS = ['NoDoneState']
     selectedDoneStates.clear()

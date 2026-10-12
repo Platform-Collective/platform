@@ -27,7 +27,7 @@ export interface QuestionDataPresenterProps<Q extends Question<any>> {
 }
 
 export type QuestionDataPresenter<Q extends Question<any>> = ComponentType<
-SvelteComponent<QuestionDataPresenterProps<Q>>
+  SvelteComponent<QuestionDataPresenterProps<Q>>
 >
 
 /** @public */
@@ -60,7 +60,7 @@ export interface AnswerDataEditorProps<Q extends Question<any>, A extends Answer
 
 /** @public */
 export type AnswerDataEditor<Q extends Question<any>, A extends Answer<Q, any>> = ComponentType<
-SvelteComponent<AnswerDataEditorProps<Q, A>>
+  SvelteComponent<AnswerDataEditorProps<Q, A>>
 >
 
 /** @public */
@@ -73,7 +73,7 @@ export interface AnswerDataPresenterProps<Q extends Question<any>, A extends Ans
 
 /** @public */
 export type AnswerDataPresenter<Q extends Question<any>, A extends Answer<Q, any>> = ComponentType<
-SvelteComponent<AnswerDataPresenterProps<Q, A>>
+  SvelteComponent<AnswerDataPresenterProps<Q, A>>
 >
 
 /** @public */

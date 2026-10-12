@@ -89,7 +89,7 @@
     modelRefActions = actions
   })
 
-  async function uploadWith (uploader: UploadHandlerDefinition): Promise<void> {
+  async function uploadWith(uploader: UploadHandlerDefinition): Promise<void> {
     const upload = await getResource(uploader.handler)
     const target = { objectId: object._id, objectClass: object._class }
     await upload({ onFileUploaded, target })
@@ -109,10 +109,10 @@
   $: refActions = readonly
     ? []
     : defaultRefActions
-      .concat(extraActions)
-      .concat(modelRefActions)
-      .concat(uploadActions)
-      .sort((a, b) => a.order - b.order)
+        .concat(extraActions)
+        .concat(modelRefActions)
+        .concat(uploadActions)
+        .sort((a, b) => a.order - b.order)
 
   let progress = false
   let attachments: Attachment[] = []
@@ -130,21 +130,21 @@
 
   let inputFile: HTMLInputElement
 
-  export function isFocused (): boolean {
+  export function isFocused(): boolean {
     return editor?.isFocused() ?? false
   }
 
-  export function handleTable (element: HTMLElement, editorHandler: TextEditorHandler, event?: MouseEvent): void {
+  export function handleTable(element: HTMLElement, editorHandler: TextEditorHandler, event?: MouseEvent): void {
     const position = event !== undefined ? getEventPositionElement(event) : getPopupPositionElement(element)
 
     addTableHandler(editorHandler.insertTable, position)
   }
 
-  export function handleAttach (): void {
+  export function handleAttach(): void {
     inputFile.click()
   }
 
-  async function fileSelected (): Promise<void> {
+  async function fileSelected(): Promise<void> {
     if (readonly) return
 
     const list = inputFile.files
@@ -158,7 +158,7 @@
     progress = false
   }
 
-  async function attachFiles (files: File[] | FileList): Promise<void> {
+  async function attachFiles(files: File[] | FileList): Promise<void> {
     progress = true
     if (files.length > 0) {
       await uploadFiles(files, { onFileUploaded })
@@ -166,7 +166,7 @@
     progress = false
   }
 
-  async function attachFile (file: File): Promise<{ file: Ref<Blob>, type: string } | undefined> {
+  async function attachFile(file: File): Promise<{ file: Ref<Blob>, type: string } | undefined> {
     try {
       const { uuid, metadata } = await uploadFile(file)
       await createAttachment(uuid, file.name, file, metadata)
@@ -176,11 +176,11 @@
     }
   }
 
-  async function onFileUploaded ({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> {
+  async function onFileUploaded({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> {
     await createAttachment(uuid, name, file, metadata)
   }
 
-  async function createAttachment (
+  async function createAttachment(
     uuid: Ref<Blob>,
     name: string,
     file: FileOrBlob,
@@ -231,7 +231,7 @@
     }
   }
 
-  function isAllowedPaste (evt: ClipboardEvent): boolean {
+  function isAllowedPaste(evt: ClipboardEvent): boolean {
     let t: HTMLElement | null = evt.target as HTMLElement
 
     if (refContainer === undefined) {
@@ -248,7 +248,7 @@
     return false
   }
 
-  export async function pasteAction (evt: ClipboardEvent): Promise<void> {
+  export async function pasteAction(evt: ClipboardEvent): Promise<void> {
     if (readonly) return
     if (!isAllowedPaste(evt)) {
       return
@@ -275,7 +275,7 @@
     progress = false
   }
 
-  export async function fileDrop (e: DragEvent): Promise<void> {
+  export async function fileDrop(e: DragEvent): Promise<void> {
     if (readonly) return
 
     const list = e.dataTransfer?.files
@@ -284,7 +284,7 @@
     }
   }
 
-  async function removeAttachment (attachment: Attachment): Promise<void> {
+  async function removeAttachment(attachment: Attachment): Promise<void> {
     progressItems.push(attachment._id)
     progressItems = progressItems
 

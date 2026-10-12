@@ -70,7 +70,7 @@
     }
   }
 
-  function updateDisplayData (data: InboxData): void {
+  function updateDisplayData(data: InboxData): void {
     let result: [Ref<DocNotifyContext>, DisplayInboxNotification[]][] = Array.from(data.entries())
     if (archivedContexts.size > 0) {
       result = result.filter(([contextId]) => {
@@ -87,7 +87,7 @@
     )
   }
 
-  async function archiveContext (listSelection: number): Promise<void> {
+  async function archiveContext(listSelection: number): Promise<void> {
     const contextId = displayData[listSelection]?.[0]
     const context = $contextByIdStore.get(contextId)
     if (contextId === undefined || context === undefined) {
@@ -118,7 +118,7 @@
     archivingContexts = archivingContexts
   }
 
-  async function onKeydown (key: KeyboardEvent): Promise<void> {
+  async function onKeydown(key: KeyboardEvent): Promise<void> {
     if (key.code === 'ArrowUp') {
       key.stopPropagation()
       key.preventDefault()
@@ -159,12 +159,12 @@
     element.focus()
   }
 
-  function getContextKey (index: number): string {
+  function getContextKey(index: number): string {
     const contextId = displayData[index][0]
     return contextId ?? index.toString()
   }
 
-  function selectIndex (index: number): void {
+  function selectIndex(index: number): void {
     if (displayData.length === 0) return
 
     list.select(Math.max(0, Math.min(index, displayData.length - 1)))

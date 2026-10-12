@@ -37,7 +37,7 @@
 
   $: dimensions = getDimensions(value, size)
 
-  function getDimensions (value: Attachment | BlobType, size: AttachmentImageSize): Dimensions {
+  function getDimensions(value: Attachment | BlobType, size: AttachmentImageSize): Dimensions {
     const byDefault = { width: 300, height: 300, fit: 'contain' } as const
     if (size === 'auto' || size == null) return byDefault
 
@@ -53,22 +53,22 @@
     )
   }
 
-  function toStyle (size: 'auto' | number): string {
+  function toStyle(size: 'auto' | number): string {
     return size === 'auto' ? 'auto' : `${size}px`
   }
 
   let loading = false
   let error = false
 
-  function handleLoadStart (): void {
+  function handleLoadStart(): void {
     loading = true
   }
 
-  function handleLoad (): void {
+  function handleLoad(): void {
     loading = false
   }
 
-  function handleError (): void {
+  function handleError(): void {
     loading = false
     error = true
   }

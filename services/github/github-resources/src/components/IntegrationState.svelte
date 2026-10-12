@@ -34,7 +34,7 @@
   const client = getClient()
   $: loadIntegration(integration)
 
-  async function loadIntegration (integration: Integration): Promise<void> {
+  async function loadIntegration(integration: Integration): Promise<void> {
     try {
       const installationId = integration?.data?.installationId ?? []
       const installations = Array.isArray(installationId) ? installationId : [installationId]

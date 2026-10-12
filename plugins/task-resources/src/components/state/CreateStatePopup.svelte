@@ -103,7 +103,7 @@
     value.trim() !== '' &&
     !selectableStates.some((it) => it.name === value)
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     if (readonly) return
     if (total > 0 && value.trim() !== status?.name?.trim()) {
       // We should ask for changes approve.
@@ -125,7 +125,7 @@
     }
   }
 
-  async function performSave (): Promise<void> {
+  async function performSave(): Promise<void> {
     if (_taskType === undefined || _class === undefined) return
     if (status === undefined) {
       const _id = await createState(client, _class, {
@@ -229,7 +229,7 @@
     icon: it.icon
   }))
 
-  async function renameStatuses (
+  async function renameStatuses(
     type: ProjectType,
     taskType: TaskType,
     oldStatus: Ref<Status>,
@@ -259,7 +259,7 @@
     }
   }
 
-  function onDelete (): void {
+  function onDelete(): void {
     if (status === undefined || readonly) return
     const estatus = status
     showPopup(
@@ -303,7 +303,7 @@
     )
   }
 
-  function onDuplicate (): void {
+  function onDuplicate(): void {
     if (readonly) return
     let pattern = ''
     let inc = 2

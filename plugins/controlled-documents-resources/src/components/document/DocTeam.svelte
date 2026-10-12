@@ -53,7 +53,7 @@
     $permissionsStore
   ).filter((person) => person !== currentEmployee) as Ref<Employee>[]
 
-  function handleUsersUpdated (
+  function handleUsersUpdated(
     type: 'reviewers' | 'approvers' | 'coAuthors' | 'externalApprovers',
     users: Ref<Employee>[]
   ): void {

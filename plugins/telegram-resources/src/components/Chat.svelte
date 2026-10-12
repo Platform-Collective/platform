@@ -82,7 +82,7 @@
   const messagesQuery = createQuery()
   const settingsQuery = createQuery()
 
-  function updateMessagesQuery (channelId: Ref<Channel>): void {
+  function updateMessagesQuery(channelId: Ref<Channel>): void {
     messagesQuery.query(
       telegram.class.Message,
       { attachedTo: channelId },
@@ -112,7 +112,7 @@
     }
   )
 
-  async function onMessage (event: CustomEvent) {
+  async function onMessage(event: CustomEvent) {
     if (channel === undefined) return
     const { message, attachments } = event.detail
     await client.addCollection(
@@ -137,7 +137,7 @@
   //   return message.incoming ? object.name : accounts.get(message.modifiedBy as PersonId)?.name ?? ''
   // }
 
-  async function share (): Promise<void> {
+  async function share(): Promise<void> {
     // TODO: FIXME
     throw new Error('Not implemented')
     // const selectedMessages = messages.filter((m) => selected.has(m._id as unknown as Ref<SharedTelegramMessage>))
@@ -157,7 +157,7 @@
     // clear()
   }
 
-  function clear (): void {
+  function clear(): void {
     selectable = false
     selected.clear()
     selected = selected
@@ -173,7 +173,7 @@
   //   })
   // }
 
-  async function onConnectClose (res: any): Promise<void> {
+  async function onConnectClose(res: any): Promise<void> {
     if (res?.value) {
       await client.createDoc(setting.class.Integration, core.space.Workspace, {
         type: telegram.integrationType.Telegram,
@@ -183,7 +183,7 @@
     }
   }
 
-  async function onReconnect (res: any): Promise<void> {
+  async function onReconnect(res: any): Promise<void> {
     if (res?.value && integration !== undefined) {
       await client.update(integration, {
         disabled: false

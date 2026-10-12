@@ -35,10 +35,10 @@ export const docxExtractor: DocumentExtractor = {
       }
     )
 
-    const text = convertString(htmlData.value)
-    return text
+    return convertString(htmlData.value)
   }
 }
+
 function isType (type: string): boolean {
   return type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 }

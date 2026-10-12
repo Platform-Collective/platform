@@ -70,7 +70,7 @@
   // monotonic generation and drop the response if a newer call has started.
   let resolveGen = 0
 
-  async function resolveOtherIssues (): Promise<void> {
+  async function resolveOtherIssues(): Promise<void> {
     const gen = ++resolveGen
     const refs = new Set<Ref<Issue>>()
     for (const r of incoming) refs.add(r.attachedTo)
@@ -86,7 +86,7 @@
     otherIssues = next
   }
 
-  async function openEditor (rel: IssueRelation): Promise<void> {
+  async function openEditor(rel: IssueRelation): Promise<void> {
     // canEdit is determined by the source (predecessor) issue, because the
     // relation is stored on it.
     // For outgoing rows the source IS this issue.
@@ -107,7 +107,7 @@
     showPopup(DependencyEditor, { relation: rel, canEdit }, 'middle')
   }
 
-  function onAddDependency (): void {
+  function onAddDependency(): void {
     // Two-step flow: first ask for direction (predecessor vs successor),
     // then open the project-scoped picker. The chooser pattern mirrors
     // HierarchyAddPopup so the "+" affordance is consistent across the
@@ -118,7 +118,7 @@
     })
   }
 
-  function pickAndAttach (direction: 'predecessor' | 'successor'): void {
+  function pickAndAttach(direction: 'predecessor' | 'successor'): void {
     // ignoreObjects must exclude the current issue and any already-existing
     // relations on the chosen side. Outgoing for 'successor', incoming for
     // 'predecessor' — adding an existing edge would just be a duplicate.
@@ -168,7 +168,7 @@
     )
   }
 
-  async function removeDependency (rel: IssueRelation): Promise<void> {
+  async function removeDependency(rel: IssueRelation): Promise<void> {
     // Same permission check as the editor's Delete button: only the
     // source-side editable user can drop the relation.
     const isOutgoing = String(rel.attachedTo) === String(issue._id)
@@ -214,14 +214,14 @@
     )
   }
 
-  function formatLag (lag: number): string {
+  function formatLag(lag: number): string {
     if (lag === 0) return ''
     return lag > 0 ? ` +${lag}d` : ` ${lag}d`
   }
 
   /** Background colour per dependency kind — matches the four FS/SS/FF/SF
    *  badge colours used in the Gantt predecessor column. */
-  function kindClass (kind: IssueRelation['kind']): string {
+  function kindClass(kind: IssueRelation['kind']): string {
     switch (kind) {
       case 'finish-to-start':
         return 'kind-fs'

@@ -31,7 +31,7 @@
   let title: string
   let existingHoliday: PublicHoliday | undefined = undefined
 
-  async function getAncestors (department: Ref<Department>): Promise<Ref<Department>[]> {
+  async function getAncestors(department: Ref<Department>): Promise<Ref<Department>[]> {
     const departments = await client.findAll(hr.class.Department, {})
     const byId = new Map<Ref<Department>, Ref<Department>>()
     for (const doc of departments) {
@@ -49,7 +49,7 @@
     return ancestors
   }
 
-  async function findHoliday (): Promise<void> {
+  async function findHoliday(): Promise<void> {
     const holidays = await client.findAll(hr.class.PublicHoliday, { date: timeToTzDate(date) })
 
     // look into current department first
@@ -68,7 +68,7 @@
     }
   }
 
-  async function saveHoliday (): Promise<void> {
+  async function saveHoliday(): Promise<void> {
     if (existingHoliday !== undefined) {
       await client.updateDoc(hr.class.PublicHoliday, core.space.Workspace, existingHoliday._id, {
         title,
@@ -90,7 +90,7 @@
     loading = false
   })
 
-  function deleteHoliday (): void {
+  function deleteHoliday(): void {
     if (existingHoliday !== undefined) {
       void client.remove(existingHoliday)
     }

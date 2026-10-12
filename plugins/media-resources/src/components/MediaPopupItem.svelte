@@ -28,7 +28,7 @@
   export let selectable: boolean = false
   export let disabled: boolean = false
 
-  function handleClick (): void {
+  function handleClick(): void {
     if (disabled) return
 
     if (expandable) {

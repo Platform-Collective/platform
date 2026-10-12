@@ -21,7 +21,7 @@
 
   export let value: SharedMessages
 
-  function selectHandler (e: CustomEvent) {
+  function selectHandler(e: CustomEvent) {
     const message = e.detail
     showPopup(FullMessagePopup, {
       message

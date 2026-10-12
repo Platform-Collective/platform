@@ -30,7 +30,7 @@
   $: name = value.name
   $: file = value.file
 
-  function getDimensions (value: Attachment | BlobType): { width: number, height: number } {
+  function getDimensions(value: Attachment | BlobType): { width: number, height: number } {
     const fontSize = parseFloat(getComputedStyle(document.documentElement).fontSize)
 
     if (value.metadata?.originalWidth == null || value.metadata.originalHeight == null) {
@@ -58,7 +58,7 @@
     return { width, height }
   }
 
-  function toStyle (size: 'auto' | number): string {
+  function toStyle(size: 'auto' | number): string {
     return size === 'auto' ? 'auto' : `${size}px`
   }
 </script>

@@ -57,7 +57,7 @@
       }
     })
 
-  function selectGrouping (value: string, i: number) {
+  function selectGrouping(value: string, i: number) {
     groups[i] = value
     if (value === noCategory) {
       groups.length = i + 1
@@ -72,7 +72,7 @@
     })
   }
 
-  function getItems (groupBy: DropdownIntlItem[], i: number, current: string[]): DropdownIntlItem[] {
+  function getItems(groupBy: DropdownIntlItem[], i: number, current: string[]): DropdownIntlItem[] {
     const notAllowed = current.slice(0, i)
     return groupBy.filter((p) => !notAllowed.includes(p.id as string))
   }
@@ -82,6 +82,8 @@
     viewOptions[model.key] = value
     dispatch('update', { key: model.key, value })
   }
+
+  type DependentViewOption = ViewOptionModel & { dependsOn?: string }
 
   // checking if selector provides multiple choice options
   const hasMultipleSelections = (varTocheck: any) => {
@@ -95,8 +97,9 @@
   $: visibleOthers = config.other.filter((p) => {
     if (p.hidden?.(viewOptions) === true) return false
     if (hideKeys.includes(p.key)) return false
-    if (p.dependsOn != null) {
-      const parentValue = (viewOptions as Record<string, unknown>)?.[p.dependsOn]
+    const { dependsOn } = p as DependentViewOption
+    if (dependsOn != null) {
+      const parentValue = (viewOptions as Record<string, unknown>)?.[dependsOn]
       if (parentValue !== true) return false
     }
     return true

@@ -107,7 +107,7 @@ test.describe('tracker layout tests', () => {
   // const orders = ['Status', 'Modified', 'Priority'] as const
   const orders = ['Modified', 'Priority'] as const
   const groups = ['Status', 'Assignee', 'Priority', 'Component', 'Milestone', 'No grouping'] as const
-  const groupsLabels: { [key in (typeof groups)[number]]?: string[] } = {
+  const groupsLabels: Partial<Record<(typeof groups)[number], string[]>> = {
     Status: DEFAULT_STATUSES,
     Assignee: [DEFAULT_USER, 'Chen Rosamund'],
     Priority: PRIORITIES,

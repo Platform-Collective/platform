@@ -50,7 +50,7 @@
 
   $: isReadonly = (attribute.readonly ?? false) || !editable
 
-  function onChange (value: any): void {
+  function onChange(value: any): void {
     if (isReadonly) return
     const doc = object as Doc
     void updateAttribute(client, doc, _class, { key: attributeKey, attr: attribute }, value)

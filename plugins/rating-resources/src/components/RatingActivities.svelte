@@ -14,7 +14,7 @@
   const monthMax: number = 500
 
   // Color scale: 0 = #ebedf0, low = #c6e48b, mid = #7bc96f, high = #239a3b, max = #196127
-  function getColor (val: number, max: number): string {
+  function getColor(val: number, max: number): string {
     max = Math.max(max, monthMax)
     const COLORS = [
       'transparent',
@@ -40,7 +40,7 @@
     return COLORS[idx]
   }
 
-  function getMax (year: number, rating?: PersonRating): number {
+  function getMax(year: number, rating?: PersonRating): number {
     const monthData = rating?.months?.filter((it) => Math.floor(it[0] / 100) === year)
     if (monthData === undefined) return monthMax
     return Math.max(...monthData.map((val) => (val[1] ?? 0) + (val[2] ?? 0) + (val[3] ?? 0)))

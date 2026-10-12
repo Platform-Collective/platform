@@ -51,7 +51,7 @@
     updateTabData(widget._id, tab.id, { selectedMessageId: '' })
   }
 
-  async function loadObject (_id?: Ref<Doc>, _class?: Ref<Class<Doc>>): Promise<void> {
+  async function loadObject(_id?: Ref<Doc>, _class?: Ref<Class<Doc>>): Promise<void> {
     if (_id === undefined || _class === undefined) {
       object = undefined
       objectQuery.unsubscribe()

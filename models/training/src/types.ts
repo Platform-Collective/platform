@@ -89,55 +89,55 @@ export class TTraining extends TDoc implements Training {
 
   @Prop(TypeString(), training.string.TrainingTitle)
   @Index(IndexKind.FullText)
-    title!: string
+  title!: string
 
   @Prop(TypeString(), core.string.Id)
   @Index(IndexKind.FullText)
-    code!: string
+  code!: string
 
   @Prop(TypeNumber(), training.string.Revision)
   @Index(IndexKind.Indexed)
-    revision!: number
+  revision!: number
 
   @Prop(TypeRef(contact.mixin.Employee), training.string.TrainingAuthor, {
     editor: training.component.EmployeeEditor
   })
-    author!: Ref<Employee>
+  author!: Ref<Employee>
 
   @Prop(TypeRef(contact.mixin.Employee), training.string.Owner, {
     editor: training.component.EmployeeEditor
   })
-    owner!: Ref<Employee>
+  owner!: Ref<Employee>
 
   @Prop(TypeTrainingState(), training.string.State)
-    state!: TrainingState
+  state!: TrainingState
 
   @Prop(TypeMarkup(), core.string.Description, { defaultValue: 0 })
   @Index(IndexKind.Indexed)
-    description: Markup = ''
+  description: Markup = ''
 
   @Prop(Collection(attachments.class.Attachment), attachments.string.Attachments, { defaultValue: 0 })
-    attachments: CollectionSize<Attachment> = 0
+  attachments: CollectionSize<Attachment> = 0
 
   @Prop(TypePercentage(), training.string.TrainingPassingScore, { defaultValue: 100 })
   @Index(IndexKind.Indexed)
-    passingScore: Percentage = 100
+  passingScore: Percentage = 100
 
   @Prop(TypeTimestamp(), training.string.TrainingReleasedOn, { defaultValue: null })
   @Index(IndexKind.Indexed)
-    releasedOn: Timestamp | null = null
+  releasedOn: Timestamp | null = null
 
   @Prop(TypeRef(contact.mixin.Employee), training.string.TrainingReleasedBy, {
     defaultValue: null,
     editor: training.component.EmployeeEditor
   })
-    releasedBy: Ref<Employee> | null = null
+  releasedBy: Ref<Employee> | null = null
 
   @Prop(Collection(questions.class.Question), training.string.TrainingQuestions, { defaultValue: 0 })
-    questions: CollectionSize<Question<any>> = 0
+  questions: CollectionSize<Question<any>> = 0
 
   @Prop(Collection(training.class.TrainingRequest), training.string.TrainingRequests, { defaultValue: 0 })
-    requests: CollectionSize<TrainingRequest> = 0
+  requests: CollectionSize<TrainingRequest> = 0
 }
 
 @Model(training.class.TrainingRequest, core.class.AttachedDoc, DOMAIN_TRAINING)
@@ -166,37 +166,37 @@ export class TTrainingRequest extends TAttachedDoc implements TrainingRequest {
     editor: training.component.EmployeeEditor
   })
   @Index(IndexKind.Indexed)
-    owner!: Ref<Employee>
+  owner!: Ref<Employee>
 
   @Prop(ArrOf(TypeRef(contact.mixin.Employee)), training.string.TrainingRequestTrainees, {
     editor: training.component.TrainingRequestTraineesEditor
   })
-    trainees: Ref<Employee>[] = []
+  trainees: Ref<Employee>[] = []
 
   @Prop(TypeTimestamp(), training.string.TrainingRequestDueDate, {
     defaultValue: null,
     editor: training.component.TrainingRequestDueDateEditor
   })
   @Index(IndexKind.Indexed)
-    dueDate: Timestamp | null = null
+  dueDate: Timestamp | null = null
 
   @Prop(TypeNumber(), training.string.TrainingRequestMaxAttempts, {
     defaultValue: null,
     editor: training.component.TrainingRequestMaxAttemptsEditor
   })
-    maxAttempts: number | null = null
+  maxAttempts: number | null = null
 
   @Prop(Collection(training.class.TrainingAttempt), training.string.TrainingAttempts, { defaultValue: 0 })
-    attempts: CollectionSize<TrainingAttempt> = 0
+  attempts: CollectionSize<TrainingAttempt> = 0
 
   @Prop(TypeTimestamp(), training.string.TrainingRequestCanceledDate, { defaultValue: null })
-    canceledOn: Timestamp | null = null
+  canceledOn: Timestamp | null = null
 
   @Prop(TypeRef(contact.mixin.Employee), training.string.TrainingRequestCanceledBy, {
     defaultValue: null,
     editor: training.component.EmployeeEditor
   })
-    canceledBy: Ref<Employee> | null = null
+  canceledBy: Ref<Employee> | null = null
 }
 
 @Model(training.class.TrainingAttempt, core.class.AttachedDoc, DOMAIN_TRAINING)
@@ -225,38 +225,38 @@ export class TTrainingAttempt extends TAttachedDoc implements TrainingAttempt {
     editor: training.component.EmployeeEditor
   })
   @Index(IndexKind.Indexed)
-    owner!: Ref<Employee>
+  owner!: Ref<Employee>
 
   @Prop(TypeNumber(), training.string.TrainingAttempt, { defaultValue: 1 })
   @Index(IndexKind.Indexed)
-    seqNumber: number = 1
+  seqNumber: number = 1
 
   @Prop(TypeTrainingAttemptState(), training.string.State)
   @Index(IndexKind.Indexed)
-    state: TrainingAttemptState = TrainingAttemptState.Draft
+  state: TrainingAttemptState = TrainingAttemptState.Draft
 
   @Prop(Collection(questions.class.Answer), questions.string.Answers, { defaultValue: 0 })
-    answers: CollectionSize<Answer<any, any>> = 0
+  answers: CollectionSize<Answer<any, any>> = 0
 
   @Prop(TypeTimestamp(), training.string.TrainingAttemptSubmittedDate, { defaultValue: null })
   @Index(IndexKind.Indexed)
-    submittedOn: Timestamp | null = null
+  submittedOn: Timestamp | null = null
 
   @Prop(TypeRef(contact.mixin.Employee), training.string.TrainingAttemptSubmittedBy, {
     defaultValue: null,
     editor: training.component.EmployeeEditor
   })
-    submittedBy: Ref<Employee> | null = null
+  submittedBy: Ref<Employee> | null = null
 
   @Prop(TypePercentage(), questions.string.Score, { defaultValue: null })
   @Index(IndexKind.Indexed)
-    score: Percentage | null = null
+  score: Percentage | null = null
 
   @Prop(TypeNumber(), training.string.TrainingAttemptAssessmentsTotal, { defaultValue: null })
-    assessmentsTotal: number | null = null
+  assessmentsTotal: number | null = null
 
   @Prop(TypeNumber(), training.string.TrainingAttemptAssessmentsPassed, { defaultValue: null })
-    assessmentsPassed: number | null = null
+  assessmentsPassed: number | null = null
 }
 
 @Mixin(training.mixin.TrainingsTypeData, core.class.TypedSpace)

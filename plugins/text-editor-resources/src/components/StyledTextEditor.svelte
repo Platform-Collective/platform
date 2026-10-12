@@ -44,28 +44,28 @@
 
   let editor: TextEditor | undefined = undefined
 
-  export function submit (): void {
+  export function submit(): void {
     editor?.submit()
   }
-  export function focus (): void {
+  export function focus(): void {
     editor?.focus()
   }
-  export function isEditable (): boolean {
+  export function isEditable(): boolean {
     return editor?.isEditable() ?? false
   }
-  export function setEditable (editable: boolean): void {
+  export function setEditable(editable: boolean): void {
     editor?.setEditable(editable)
   }
-  export function getContent (): Markup {
+  export function getContent(): Markup {
     return content
   }
-  export function setContent (data: Markup): void {
+  export function setContent(data: Markup): void {
     editor?.setContent(data)
   }
-  export function insertText (text: string): void {
+  export function insertText(text: string): void {
     editor?.insertText(text)
   }
-  export function getEditor (): Editor | undefined {
+  export function getEditor(): Editor | undefined {
     return editor?.getEditor()
   }
 
@@ -92,7 +92,7 @@
       editor?.insertMarkup(markup)
       dispatch('template', name)
     },
-    insertTable (options: { rows?: number, cols?: number, withHeaderRow?: boolean }) {
+    insertTable(options: { rows?: number, cols?: number, withHeaderRow?: boolean }) {
       editor?.insertTable(options)
     },
     insertCodeBlock: (pos?: number) => {
@@ -123,7 +123,7 @@
     full ? { class: 'text-editor-view_full-height' } : { class: 'text-editor-view_compact' }
   )
 
-  function handleAction (a: RefAction, evt?: Event): void {
+  function handleAction(a: RefAction, evt?: Event): void {
     a.action(evt?.target as HTMLElement, editorHandler)
   }
 
@@ -147,7 +147,7 @@
   /**
    * @public
    */
-  export function removeAttachment (id: string): void {
+  export function removeAttachment(id: string): void {
     editor?.removeAttachment(id)
   }
 </script>

@@ -48,7 +48,7 @@
       { limit: 1 }
     )
 
-  function getValue (person: Person | undefined, value: Ref<Person> | null | undefined): Person | null | undefined {
+  function getValue(person: Person | undefined, value: Ref<Person> | null | undefined): Person | null | undefined {
     if (value === undefined || value === null) {
       return value
     }

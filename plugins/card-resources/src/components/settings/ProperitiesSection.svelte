@@ -30,11 +30,11 @@
     client.getModel().findObject(getPermissionRef(false)) !== undefined ||
     client.getModel().findObject(getPermissionRef(true)) !== undefined
 
-  function getPermissionRef (forbidden: boolean): Ref<ClassPermission> {
+  function getPermissionRef(forbidden: boolean): Ref<ClassPermission> {
     return `${masterTag._id}_${forbidden ? 'forbidden' : 'allowed'}` as Ref<ClassPermission>
   }
 
-  function changeRestricted (): void {
+  function changeRestricted(): void {
     showPopup(
       MessageBox,
       {

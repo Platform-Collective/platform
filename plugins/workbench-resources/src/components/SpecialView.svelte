@@ -97,7 +97,7 @@
 
   $: viewletActions = viewlet != null ? getViewletSpecialActions(client, viewlet) : []
 
-  async function updateOptions (
+  async function updateOptions(
     _options: FindOptions<Doc> | undefined,
     viewOptions: ViewOptions | undefined,
     viewlet: Viewlet | undefined
@@ -105,7 +105,7 @@
     options = await getResultOptions(_options, viewlet?.viewOptions?.other, viewOptions)
   }
 
-  async function updateQuery (
+  async function updateQuery(
     initialQuery: DocumentQuery<Doc>,
     viewOptions: ViewOptions | undefined,
     viewlet: Viewlet | undefined,
@@ -119,7 +119,7 @@
     isQueryLoaded = true
   }
 
-  async function updateInitialQuery (
+  async function updateInitialQuery(
     initialQuery: DocumentQuery<Doc>,
     builder: Resource<() => Promise<DocumentQuery<Doc>>> | undefined
   ): Promise<DocumentQuery<Doc>> {
@@ -129,7 +129,7 @@
     return mergeQueries(initialQuery ?? {}, q ?? {})
   }
 
-  function showCreateDialog (): void {
+  function showCreateDialog(): void {
     if (createComponent === undefined) return
     showPopup(createComponent, { ...createComponentProps, space }, 'top')
   }

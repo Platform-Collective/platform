@@ -73,7 +73,7 @@
 
   $: canManage = canManageStorage(getCurrentAccount())
 
-  async function showErrorNotification (
+  async function showErrorNotification(
     titleKey = plugin.string.SubscriptionOperationFailed,
     messageKey = plugin.string.SubscriptionErrorMessage
   ): Promise<void> {
@@ -86,7 +86,7 @@
     )
   }
 
-  async function loadUsage (): Promise<void> {
+  async function loadUsage(): Promise<void> {
     try {
       const accountClient = getAccountClient()
       if (accountClient == null) return
@@ -120,7 +120,7 @@
     }
   }
 
-  async function loadFiles (currentLimit: number, isReload: boolean): Promise<void> {
+  async function loadFiles(currentLimit: number, isReload: boolean): Promise<void> {
     if (!canManage) {
       loadingFiles = false
       return
@@ -147,7 +147,7 @@
     }
   }
 
-  async function handleLoadMore (): Promise<void> {
+  async function handleLoadMore(): Promise<void> {
     if (loadingMore || loadingFiles) return
     if (lastFetchedCount < limit) {
       hasMore = false
@@ -157,7 +157,7 @@
     await loadFiles(limit, false)
   }
 
-  function handleSelect (event: CustomEvent<{ id: string, checked: boolean }>): void {
+  function handleSelect(event: CustomEvent<{ id: string, checked: boolean }>): void {
     const { id, checked } = event.detail
     const next = new Set(selected)
     if (checked) next.add(id)
@@ -165,7 +165,7 @@
     selected = next
   }
 
-  function handleSelectAll (event: CustomEvent<{ checked: boolean }>): void {
+  function handleSelectAll(event: CustomEvent<{ checked: boolean }>): void {
     const next = new Set<string>()
     if (event.detail.checked) {
       for (const row of rows) next.add(row.id as unknown as string)
@@ -173,11 +173,11 @@
     selected = next
   }
 
-  function handleClear (): void {
+  function handleClear(): void {
     selected = new Set()
   }
 
-  async function handleDeleteSelected (): Promise<void> {
+  async function handleDeleteSelected(): Promise<void> {
     const targets = rows.filter((r) => selected.has(r.id as unknown as string))
     if (targets.length === 0) return
 
@@ -195,7 +195,7 @@
     })
   }
 
-  async function runDelete (targets: LargestFileRow[], totalSize: number): Promise<void> {
+  async function runDelete(targets: LargestFileRow[], totalSize: number): Promise<void> {
     isDeleting = true
     try {
       const results = await deleteFilesBatch(targets)
@@ -241,7 +241,7 @@
     }
   }
 
-  async function handleRefresh (): Promise<void> {
+  async function handleRefresh(): Promise<void> {
     selected = new Set()
     limit = PAGE_SIZE
     await Promise.all([loadUsage(), loadFiles(limit, true)])

@@ -19,7 +19,7 @@
 
   export let timezone: string | undefined
 
-  function displayTimeInTimezone (timezone: string): string {
+  function displayTimeInTimezone(timezone: string): string {
     const options: Intl.DateTimeFormatOptions = {
       timeZone: timezone,
       hour: '2-digit',

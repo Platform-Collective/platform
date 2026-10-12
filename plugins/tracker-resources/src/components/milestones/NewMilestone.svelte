@@ -38,7 +38,7 @@
     targetDate: Date.now() + 14 * 24 * 60 * 60 * 1000
   }
 
-  async function onSave () {
+  async function onSave() {
     await client.createDoc(tracker.class.Milestone, space, object)
   }
 </script>

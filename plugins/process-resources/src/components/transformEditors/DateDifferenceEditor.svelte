@@ -46,13 +46,13 @@
   const client = getClient()
   const h = client.getHierarchy()
 
-  function save (): void {
+  function save(): void {
     dispatch('close', { otherDate, unit })
   }
 
   let editor: AnySvelteComponent | undefined
 
-  function getEditor (): void {
+  function getEditor(): void {
     try {
       const inlineEditor = h.as(h.getClass(core.class.TypeDate), view.mixin.AttributeEditor).inlineEditor
       void getResource(inlineEditor)

@@ -38,7 +38,7 @@
   let integrationClient: IntegrationClient | undefined
   const unsubscribers: (() => void)[] = []
 
-  async function handleUnauthorized (): Promise<void> {
+  async function handleUnauthorized(): Promise<void> {
     if (isDisabled(integration)) {
       return
     }
@@ -81,11 +81,11 @@
     })
   })
 
-  function subscribe (): void {
+  function subscribe(): void {
     unsubscribers.push(onIntegrationEvent<IntegrationUpdatedData>('integration:updated', onUpdateIntegration))
   }
 
-  function onUpdateIntegration (data: IntegrationUpdatedData): void {
+  function onUpdateIntegration(data: IntegrationUpdatedData): void {
     if (
       data.integration?.socialId === integration.socialId &&
       data.integration?.workspaceUuid === integration.workspaceUuid
@@ -110,7 +110,7 @@
     }
   }
 
-  async function refresh (): Promise<void> {
+  async function refresh(): Promise<void> {
     try {
       if (isDisabled(integration)) {
         return

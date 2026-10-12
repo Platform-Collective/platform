@@ -65,7 +65,7 @@
   let description: Markup = EmptyMarkup
   let initialized = false
 
-  function initializeFromDraft (draft: CardDraft): void {
+  function initializeFromDraft(draft: CardDraft): void {
     title = draft.title
     description = draft.description
     if (draft.type !== undefined) {
@@ -102,12 +102,12 @@
   $: extension =
     type != null
       ? client
-        .getModel()
-        .findAllSync(card.mixin.CreateCardExtension, {})
-        .find((it) => hierarchy.isDerived(type, it._id))
+          .getModel()
+          .findAllSync(card.mixin.CreateCardExtension, {})
+          .find((it) => hierarchy.isDerived(type, it._id))
       : undefined
 
-  async function okAction (): Promise<void> {
+  async function okAction(): Promise<void> {
     if (space === undefined || type == null) return
 
     try {
@@ -156,7 +156,7 @@
     }
   }
 
-  async function createMessage (
+  async function createMessage(
     card: Ref<Card>,
     markup: Markup,
     blobs: (BlobParams & { mimeType: string })[]
@@ -175,14 +175,14 @@
     }
   }
 
-  function clear (): void {
+  function clear(): void {
     title = ''
     description = EmptyMarkup
     _id = generateId<Card>()
     draftController.remove()
   }
 
-  function expand (): void {
+  function expand(): void {
     const prevExpanded = isExpanded
     isExpanded = true
     if (!prevExpanded) {

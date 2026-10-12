@@ -34,7 +34,7 @@
 
   let contexts: SelectedUserRequest[] = []
 
-  function fillParams (initTransition: Transition | undefined): void {
+  function fillParams(initTransition: Transition | undefined): void {
     contexts = []
     for (const action of initTransition?.actions ?? []) {
       for (const key in action.params) {

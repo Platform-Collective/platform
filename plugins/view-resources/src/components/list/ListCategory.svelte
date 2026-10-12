@@ -118,7 +118,7 @@
     }
   }
 
-  function noSearch (query: DocumentQuery<Doc>): DocumentQuery<Doc> {
+  function noSearch(query: DocumentQuery<Doc>): DocumentQuery<Doc> {
     const result = query
     if ('$search' in result) {
       delete result.$search
@@ -129,9 +129,9 @@
   $: finalResultQuery =
     itemProj.length < 20 && resultQuery.$search !== null
       ? noSearch({
-        ...resultQuery,
-        _id: { $in: itemProj.map((it) => it._id) }
-      })
+          ...resultQuery,
+          _id: { $in: itemProj.map((it) => it._id) }
+        })
       : resultQuery
 
   $: if (lastLevel) {
@@ -167,12 +167,12 @@
 
   const dispatch = createEventDispatcher()
 
-  function limitGroup (items: Doc[], limit: number | undefined): Doc[] {
+  function limitGroup(items: Doc[], limit: number | undefined): Doc[] {
     const res = limit !== undefined ? items.slice(0, limit) : items
     return res
   }
 
-  function initCollapsed (singleCat: boolean, lastLevel: boolean, level: number): void {
+  function initCollapsed(singleCat: boolean, lastLevel: boolean, level: number): void {
     if (localStorage.getItem(categoryCollapseKey) === null) {
       collapsed =
         (!disableHeader &&
@@ -215,7 +215,7 @@
     }
   }
 
-  function isSelected (doc: Doc, focusStore: FocusSelection): boolean {
+  function isSelected(doc: Doc, focusStore: FocusSelection): boolean {
     return focusStore.focus?._id === doc._id
   }
 
@@ -225,7 +225,7 @@
 
   let dragItemIndex: number | undefined
 
-  function dragswap (ev: MouseEvent, i: number): boolean {
+  function dragswap(ev: MouseEvent, i: number): boolean {
     if (dragItemIndex === undefined || !byRank) return false
     const s = dragItemIndex
     if (i < s) {
@@ -236,19 +236,19 @@
     return false
   }
 
-  function dragOverCat (ev: MouseEvent): void {
+  function dragOverCat(ev: MouseEvent): void {
     ev.preventDefault()
     ev.stopPropagation()
   }
 
   let div: HTMLDivElement
 
-  function isBorder (ev: MouseEvent, direction: 'top' | 'bottom'): boolean {
+  function isBorder(ev: MouseEvent, direction: 'top' | 'bottom'): boolean {
     const target = ev.target as HTMLDivElement
     return Math.abs(ev.clientY - target.getBoundingClientRect()[direction]) < 5
   }
 
-  function dragEnterCat (ev: MouseEvent): void {
+  function dragEnterCat(ev: MouseEvent): void {
     ev.preventDefault()
     if (dragItemIndex === undefined && dragItem.doc !== undefined) {
       const index = items.findIndex((p) => p._id === dragItem.doc?._id)
@@ -273,7 +273,7 @@
     }
   }
 
-  function dragLeaveCat (ev: MouseEvent): void {
+  function dragLeaveCat(ev: MouseEvent): void {
     ev.stopPropagation()
     if (dragItemIndex !== undefined) {
       items.splice(dragItemIndex, 1)
@@ -282,7 +282,7 @@
     }
   }
 
-  function dragItemLeave (ev: MouseEvent, i: number): void {
+  function dragItemLeave(ev: MouseEvent, i: number): void {
     if (dragItemIndex !== undefined) {
       const isLastItem = i === limited.length - 1
       const isFirstItemWithoutHeader = i === 0 && disableHeader
@@ -297,7 +297,7 @@
     }
   }
 
-  function dragover (ev: MouseEvent, i: number): void {
+  function dragover(ev: MouseEvent, i: number): void {
     if (dragItemIndex === undefined || !lastLevel) return
     ev.preventDefault()
     ev.stopPropagation()
@@ -310,7 +310,7 @@
     }
   }
 
-  function dropItemHandle (ev: MouseEvent): void {
+  function dropItemHandle(ev: MouseEvent): void {
     ev.stopPropagation()
     ev.preventDefault()
     const update: DocumentUpdate<Doc> = {}
@@ -327,7 +327,7 @@
     void drop(update)
   }
 
-  async function drop (update: DocumentUpdate<Doc> = {}): Promise<void> {
+  async function drop(update: DocumentUpdate<Doc> = {}): Promise<void> {
     if (dragItem.doc !== undefined) {
       const props = _newObjectProps(dragItem.doc)
       if (props !== undefined) {
@@ -364,13 +364,13 @@
     }
   }
 
-  function dragStartHandler (e: CustomEvent<any>): void {
+  function dragStartHandler(e: CustomEvent<any>): void {
     const { target, index } = e.detail
     dragItemIndex = index
     ;(target as EventTarget).addEventListener('dragend', (e) => dragEndListener(e, index))
   }
 
-  function dragStart (ev: DragEvent, docObject: Doc, i: number): void {
+  function dragStart(ev: DragEvent, docObject: Doc, i: number): void {
     if (ev.dataTransfer != null) {
       ev.dataTransfer.effectAllowed = 'move'
       ev.dataTransfer.dropEffect = 'move'
@@ -392,11 +392,11 @@
       index: i
     })
   }
-  export function expand (): void {
+  export function expand(): void {
     collapsed = false
     localStorage.setItem(categoryCollapseKey, 'false')
   }
-  export function scroll (item: Doc): void {
+  export function scroll(item: Doc): void {
     const pos = limited.findIndex((it) => it._id === item._id)
     if (pos >= 0) {
       if (collapsed) {
@@ -411,13 +411,13 @@
     }
   }
 
-  export function getLimited (): Doc[] {
+  export function getLimited(): Doc[] {
     return limited
   }
 
   const listItems: ListItem[] = []
 
-  function getDocItemModel (docClass: Ref<Class<Doc>>): AttributeModel[] {
+  function getDocItemModel(docClass: Ref<Class<Doc>>): AttributeModel[] {
     let res = itemModels.get(docClass)
     if (res) {
       return res

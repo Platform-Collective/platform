@@ -39,7 +39,7 @@
 
   $: value = params[key]
 
-  function onChange (e: CustomEvent<any>): void {
+  function onChange(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       dispatch('change', { value: e.detail })
     }

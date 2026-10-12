@@ -50,7 +50,7 @@ export class DomainFindMiddleware extends BaseMiddleware implements Middleware {
     return opt
   }
 
-  findAll<T extends Doc>(
+  findAll<T extends Doc> (
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -79,7 +79,7 @@ export class DomainFindMiddleware extends BaseMiddleware implements Middleware {
     )
   }
 
-  groupBy<T, P extends Doc>(
+  groupBy<T, P extends Doc> (
     ctx: MeasureContext,
     domain: Domain,
     field: string,

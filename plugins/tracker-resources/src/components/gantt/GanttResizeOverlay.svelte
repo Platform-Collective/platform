@@ -18,11 +18,11 @@
 
   const DAY_MS = 86_400_000
 
-  function fmt (ts: number): string {
+  function fmt(ts: number): string {
     return new Date(ts).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
   }
 
-  function originGeometry (state: DragState): { x: number, w: number } | null {
+  function originGeometry(state: DragState): { x: number, w: number } | null {
     if (state.kind === 'dragging-body') {
       const x = timeScale.toX(state.originStart)
       return { x, w: timeScale.toX(state.originEnd) - x + timeScale.pxPerDay }
@@ -41,7 +41,7 @@
     return null
   }
 
-  function guideX (state: DragState): number | null {
+  function guideX(state: DragState): number | null {
     if (state.kind === 'dragging-body') return timeScale.toX(state.previewStart)
     if (state.kind === 'resizing-left') return timeScale.toX(state.previewStart)
     if (state.kind === 'resizing-right') return timeScale.toX(state.previewEnd) + timeScale.pxPerDay
@@ -49,7 +49,7 @@
     return null
   }
 
-  function pillDate (state: DragState): number | null {
+  function pillDate(state: DragState): number | null {
     if (state.kind === 'dragging-body') return state.previewStart
     if (state.kind === 'resizing-left') return state.previewStart
     if (state.kind === 'resizing-right') return state.previewEnd
@@ -64,7 +64,7 @@
    * ({delta} d)`); the sign is part of `delta` because the message renders it
    * inline.
    */
-  function durationTooltipParams (state: DragState): { from: number, to: number, delta: string } | null {
+  function durationTooltipParams(state: DragState): { from: number, to: number, delta: string } | null {
     let before: number
     let after: number
     if (state.kind === 'resizing-left') {

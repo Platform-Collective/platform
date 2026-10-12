@@ -30,6 +30,7 @@ import { MessageExtra, MessageID } from '@hcengineering/communication-types'
 import { CreateMessageEvent } from '@hcengineering/communication-sdk-types'
 import { generateMessageId } from '@hcengineering/communication-shared'
 
+// eslint-disable-next-line secure-coding/no-redos-vulnerable-regex -- applied to short email header values
 const NAME_EMAIL_PATTERN = /^(?:"?([^"<]+)"?\s*)?<([^>]+)>$/
 const NAME_SEGMENT_REGEX = /[\s,;]+/
 

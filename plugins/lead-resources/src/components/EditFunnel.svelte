@@ -39,7 +39,7 @@
 
   const query = createQuery()
 
-  function updateObject (_id: Ref<Funnel>): void {
+  function updateObject(_id: Ref<Funnel>): void {
     query.query(lead.class.Funnel, { _id }, (result) => {
       object = result[0] as Required<Funnel>
       rawName = object.name
@@ -49,7 +49,7 @@
 
   $: updateObject(_id)
 
-  function onChange (key: string, value: any): void {
+  function onChange(key: string, value: any): void {
     client.updateDoc(object._class, object.space, object._id, { [key]: value })
   }
 </script>

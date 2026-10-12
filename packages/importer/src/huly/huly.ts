@@ -34,7 +34,8 @@ import document, { type Document } from '@hcengineering/document'
 import core from '@hcengineering/model-core'
 import tracker, { type Issue, type Project } from '@hcengineering/tracker'
 import * as fs from 'fs'
-import sizeOf from 'image-size'
+import { readFile } from 'fs/promises'
+import { imageSize } from 'image-size'
 import * as yaml from 'js-yaml'
 import { contentType } from 'mime-types'
 import * as path from 'path'
@@ -286,7 +287,8 @@ export class HulyFormatImporter {
 
     if (fileType !== false && fileType?.startsWith('image/')) {
       try {
-        const imageDimensions = sizeOf(attachMeta.path)
+        const imageData = await readFile(attachMeta.path)
+        const imageDimensions = imageSize(imageData)
         attachment.metadata = {
           originalWidth: imageDimensions.width ?? 0,
           originalHeight: imageDimensions.height ?? 0

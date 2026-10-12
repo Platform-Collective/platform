@@ -21,11 +21,11 @@
 
   const shown: boolean = false
 
-  function onEditBoxChange (event: Event): void {
+  function onEditBoxChange(event: Event): void {
     applyValue((event.target as HTMLInputElement).valueAsNumber)
   }
 
-  function applyValue (valueAsNumber: number): void {
+  function applyValue(valueAsNumber: number): void {
     let value: number | null = null
     if (Number.isFinite(valueAsNumber)) {
       value = Math.abs(Math.round(valueAsNumber))

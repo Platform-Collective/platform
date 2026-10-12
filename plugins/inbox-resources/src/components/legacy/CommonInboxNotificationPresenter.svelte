@@ -32,7 +32,7 @@
 
   $: void updateContent(value.message, value.messageHtml)
 
-  async function updateContent (message?: IntlString, messageHtml?: Markup): Promise<void> {
+  async function updateContent(message?: IntlString, messageHtml?: Markup): Promise<void> {
     if (messageHtml !== undefined) {
       content = messageHtml
     } else if (message !== undefined) {

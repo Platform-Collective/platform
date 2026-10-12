@@ -31,7 +31,7 @@ export abstract class BaseMarkdownPreprocessor implements MarkdownPreprocessor {
 
   constructor (protected readonly personsByName: Map<string, Ref<Person>>) {}
 
-  abstract process (json: MarkupNode, id: Ref<Doc>, spaceId: Ref<Space>): MarkupNode
+  abstract process(json: MarkupNode, id: Ref<Doc>, spaceId: Ref<Space>): MarkupNode
 
   protected processMentions (node: MarkupNode): void {
     if (node.type !== MarkupNodeType.paragraph || node.content === undefined) return

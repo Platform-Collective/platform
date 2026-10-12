@@ -29,7 +29,7 @@
     permissions: []
   }
 
-  async function handleRoleCreated (): Promise<void> {
+  async function handleRoleCreated(): Promise<void> {
     const name = roleData.name.trim()
     if (name === '') {
       return

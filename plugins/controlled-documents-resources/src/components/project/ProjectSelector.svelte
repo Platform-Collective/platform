@@ -46,7 +46,7 @@
     ;[project] = res
   })
 
-  function showVersionsPopup (): void {
+  function showVersionsPopup(): void {
     if (disabled) return
 
     pressed = true

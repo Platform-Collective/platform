@@ -35,22 +35,22 @@ export const DOMAIN_EXPORT = 'export' as Domain
 @UX(exportPlugin.string.ImportCompleted, exportPlugin.icon.Export)
 export class TExportResultRecord extends TDoc implements ExportResultRecord {
   @Prop(TypeString(), exportPlugin.string.SourceWorkspace)
-    sourceWorkspace!: string
+  sourceWorkspace!: string
 
   @Prop(TypeString(), exportPlugin.string.TargetWorkspace)
-    targetWorkspace!: string
+  targetWorkspace!: string
 
   @Prop(TypeNumber(), exportPlugin.string.ExportedCount)
-    exportedCount!: number
+  exportedCount!: number
 
   @Prop(ArrOf(TypeRef(core.class.Doc)), exportPlugin.string.ExportedDocumentIds)
-    exportedDocumentIds!: Ref<Doc>[]
+  exportedDocumentIds!: Ref<Doc>[]
 
   @Prop(TypeRef(core.class.Class), exportPlugin.string.ExportedDocumentClass)
-    objectClass!: Ref<Class<Doc>>
+  objectClass!: Ref<Class<Doc>>
 
   @Prop(TypeString(), view.string.Title)
-    title?: string
+  title?: string
 }
 
 export function createModel (builder: Builder): void {

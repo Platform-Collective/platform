@@ -23,21 +23,21 @@
   export let selectable: boolean = false
   export let selected: Set<Ref<SharedTelegramMessage>> = new Set<Ref<SharedTelegramMessage>>()
 
-  function isNewDate (messages: SharedTelegramMessage[], i: number): boolean {
+  function isNewDate(messages: SharedTelegramMessage[], i: number): boolean {
     if (i === 0) return true
     const current = new Date(messages[i].sendOn).toLocaleDateString()
     const prev = new Date(messages[i - 1].sendOn).toLocaleDateString()
     return current !== prev
   }
 
-  function needName (messages: SharedTelegramMessage[], i: number): boolean {
+  function needName(messages: SharedTelegramMessage[], i: number): boolean {
     if (i === 0) return true
     const current = messages[i]
     const prev = messages[i - 1]
     return current.incoming !== prev.incoming || current.modifiedBy !== prev.modifiedBy
   }
 
-  function select (id: Ref<SharedTelegramMessage>): void {
+  function select(id: Ref<SharedTelegramMessage>): void {
     if (!selectable) return
     if (selected.has(id)) {
       selected.delete(id)

@@ -31,7 +31,7 @@
     object = res[0]
   })
 
-  async function getTitle (object: Doc) {
+  async function getTitle(object: Doc) {
     if (object._class === chunter.class.DirectMessage) {
       return await getDocTitle(client, object._id, object._class, object)
     }

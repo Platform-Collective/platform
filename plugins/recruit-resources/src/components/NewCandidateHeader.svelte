@@ -37,14 +37,14 @@
     })
   )
 
-  async function newCandidate (): Promise<void> {
+  async function newCandidate(): Promise<void> {
     showPopup(CreateCandidate, { shouldSaveDraft: true }, 'top')
     Analytics.handleEvent(RecruitEvents.NewTalentButtonClicked)
   }
 
   let mainActionId: string | undefined = undefined
   let visibleActions: string[] = []
-  function updateActions (draft: boolean): void {
+  function updateActions(draft: boolean): void {
     mainActionId = draft ? recruit.string.ResumeDraft : recruit.string.CreateTalent
     visibleActions = [mainActionId]
   }

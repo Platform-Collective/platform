@@ -65,7 +65,7 @@ export async function OnEmployee (txes: Tx[], control: TriggerControl): Promise<
       const createTx = tx as TxCreateDoc<Employee>
       if (createTx.objectClass === contact.mixin.Employee) {
         employee = TxProcessor.createDoc2Doc(createTx)
-        employeeId = createTx.objectId as Ref<Person>
+        employeeId = createTx.objectId
       }
     } else if (tx._class === core.class.TxMixin) {
       // Handle TxMixin (Employee added as mixin to Person) - used by AI bot

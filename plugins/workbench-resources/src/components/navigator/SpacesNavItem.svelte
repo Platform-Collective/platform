@@ -37,11 +37,11 @@
   export let deselect: boolean = false
   export let isChanged: boolean = false
   export let spaceActions: Action[] | undefined
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
 
   const client = getClient()
 
-  async function getActions (space: Space): Promise<Action[]> {
+  async function getActions(space: Space): Promise<Action[]> {
     const result = [...(spaceActions ?? [])]
 
     const extraActions = await getContributedActions(client, space, core.class.Space)
@@ -71,7 +71,7 @@
       {currentFragment}
       {getActions}
       {deselect}
-      {forciblyСollapsed}
+      {forciblyCollapsed}
       selected={deselect ? false : currentSpace === space._id}
     />
   {:else}
@@ -84,7 +84,7 @@
           selected={deselect ? false : currentSpace === space._id}
           actions={async () => await getActions(space)}
           bold={isChanged}
-          {forciblyСollapsed}
+          {forciblyCollapsed}
           indent
         />
       {/await}

@@ -61,7 +61,7 @@
     reactionsQuery.unsubscribe()
   }
 
-  function handleClick (e: MouseEvent): void {
+  function handleClick(e: MouseEvent): void {
     if (readonly) return
 
     e.stopPropagation()

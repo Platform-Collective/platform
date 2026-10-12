@@ -30,7 +30,7 @@
   $: narrow = event.dueDate - event.date < MILLISECONDS_IN_MINUTE * 25
   $: empty = size.width < 44
 
-  function click () {
+  function click() {
     if (visible) {
       const editor = hierarchy.classHierarchyMixin<Doc, ObjectEditor>(event._class, view.mixin.ObjectEditor)
       if (editor?.editor !== undefined) {
@@ -50,7 +50,7 @@
 
   $: visible = isVisible(event, $calendarByIdStore)
 
-  function contextMenu (e: MouseEvent): void {
+  function contextMenu(e: MouseEvent): void {
     showMenu(e, { object: event })
   }
 </script>

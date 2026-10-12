@@ -51,20 +51,20 @@ export default mergeIds(questionsId, questions, {
     MultipleChoiceAssessmentDataEditor: '' as Resource<QuestionDataEditor<MultipleChoiceAssessment>>,
     MultipleChoiceAssessmentDataPresenter: '' as Resource<QuestionDataPresenter<MultipleChoiceAssessment>>,
     MultipleChoiceAssessmentAnswerDataEditor: '' as Resource<
-    AnswerDataEditor<MultipleChoiceAssessment, MultipleChoiceAssessmentAnswer>
+      AnswerDataEditor<MultipleChoiceAssessment, MultipleChoiceAssessmentAnswer>
     >,
     MultipleChoiceAssessmentAnswerDataPresenter: '' as Resource<
-    AnswerDataPresenter<MultipleChoiceAssessment, MultipleChoiceAssessmentAnswer>
+      AnswerDataPresenter<MultipleChoiceAssessment, MultipleChoiceAssessmentAnswer>
     >,
 
     // MultipleChoiceQuestion
     MultipleChoiceQuestionDataEditor: '' as Resource<QuestionDataEditor<MultipleChoiceQuestion>>,
     MultipleChoiceQuestionDataPresenter: '' as Resource<QuestionDataPresenter<MultipleChoiceQuestion>>,
     MultipleChoiceQuestionAnswerDataEditor: '' as Resource<
-    AnswerDataEditor<MultipleChoiceQuestion, MultipleChoiceQuestionAnswer>
+      AnswerDataEditor<MultipleChoiceQuestion, MultipleChoiceQuestionAnswer>
     >,
     MultipleChoiceQuestionAnswerDataPresenter: '' as Resource<
-    AnswerDataPresenter<MultipleChoiceQuestion, MultipleChoiceQuestionAnswer>
+      AnswerDataPresenter<MultipleChoiceQuestion, MultipleChoiceQuestionAnswer>
     >,
 
     // OrderingAssessment
@@ -72,7 +72,7 @@ export default mergeIds(questionsId, questions, {
     OrderingAssessmentDataPresenter: '' as Resource<QuestionDataPresenter<OrderingAssessment>>,
     OrderingAssessmentAnswerDataEditor: '' as Resource<AnswerDataEditor<OrderingAssessment, OrderingAssessmentAnswer>>,
     OrderingAssessmentAnswerDataPresenter: '' as Resource<
-    AnswerDataPresenter<OrderingAssessment, OrderingAssessmentAnswer>
+      AnswerDataPresenter<OrderingAssessment, OrderingAssessmentAnswer>
     >,
 
     // OrderingQuestion
@@ -85,26 +85,26 @@ export default mergeIds(questionsId, questions, {
     SingleChoiceAssessmentDataEditor: '' as Resource<QuestionDataEditor<SingleChoiceAssessment>>,
     SingleChoiceAssessmentDataPresenter: '' as Resource<QuestionDataPresenter<SingleChoiceAssessment>>,
     SingleChoiceAssessmentAnswerDataEditor: '' as Resource<
-    AnswerDataEditor<SingleChoiceAssessment, SingleChoiceAssessmentAnswer>
+      AnswerDataEditor<SingleChoiceAssessment, SingleChoiceAssessmentAnswer>
     >,
     SingleChoiceAssessmentAnswerDataPresenter: '' as Resource<
-    AnswerDataPresenter<SingleChoiceAssessment, SingleChoiceAssessmentAnswer>
+      AnswerDataPresenter<SingleChoiceAssessment, SingleChoiceAssessmentAnswer>
     >,
 
     // SingleChoiceQuestion
     SingleChoiceQuestionDataEditor: '' as Resource<QuestionDataEditor<SingleChoiceQuestion>>,
     SingleChoiceQuestionDataPresenter: '' as Resource<QuestionDataPresenter<SingleChoiceQuestion>>,
     SingleChoiceQuestionAnswerDataEditor: '' as Resource<
-    AnswerDataEditor<SingleChoiceQuestion, SingleChoiceQuestionAnswer>
+      AnswerDataEditor<SingleChoiceQuestion, SingleChoiceQuestionAnswer>
     >,
     SingleChoiceQuestionAnswerDataPresenter: '' as Resource<
-    AnswerDataPresenter<SingleChoiceQuestion, SingleChoiceQuestionAnswer>
+      AnswerDataPresenter<SingleChoiceQuestion, SingleChoiceQuestionAnswer>
     >
   },
   function: {
     // MultipleChoice
     MultipleChoiceAssessmentAssess: '' as Resource<
-    AnswerDataAssessFunction<MultipleChoiceAssessment, MultipleChoiceAssessmentAnswer>
+      AnswerDataAssessFunction<MultipleChoiceAssessment, MultipleChoiceAssessmentAnswer>
     >,
     MultipleChoiceAssessmentInit: '' as Resource<QuestionInitFunction<MultipleChoiceAssessment>>,
     MultipleChoiceQuestionInit: '' as Resource<QuestionInitFunction<MultipleChoiceQuestion>>,
@@ -116,7 +116,7 @@ export default mergeIds(questionsId, questions, {
 
     // SingleChoice
     SingleChoiceAssessmentAssess: '' as Resource<
-    AnswerDataAssessFunction<SingleChoiceAssessment, SingleChoiceAssessmentAnswer>
+      AnswerDataAssessFunction<SingleChoiceAssessment, SingleChoiceAssessmentAnswer>
     >,
     SingleChoiceAssessmentInit: '' as Resource<QuestionInitFunction<SingleChoiceAssessment>>,
     SingleChoiceQuestionInit: '' as Resource<QuestionInitFunction<SingleChoiceQuestion>>

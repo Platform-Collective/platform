@@ -29,7 +29,7 @@
   let docStates: TranslatedDocumentStates | undefined
   let controlledDocStates: TranslatedControlledDocStates | undefined
 
-  async function getTranslatedLabels (lang: string) {
+  async function getTranslatedLabels(lang: string) {
     docStates = await getTranslatedDocumentStates(lang)
     controlledDocStates = await getTranslatedControlledDocStates(lang)
   }

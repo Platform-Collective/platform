@@ -105,7 +105,7 @@
   let breadcrumbs: BreadcrumbItem[] = []
   $: breadcrumbs = showHeader ? getBreadcrumbsItems(channel, channelName) : []
 
-  function getBreadcrumbsItems (channel?: Doc, channelName?: string): BreadcrumbItem[] {
+  function getBreadcrumbsItems(channel?: Doc, channelName?: string): BreadcrumbItem[] {
     if (channel === undefined) {
       return []
     }
@@ -127,7 +127,7 @@
     ]
   }
 
-  function handleBreadcrumbSelect (event: CustomEvent<number>): void {
+  function handleBreadcrumbSelect(event: CustomEvent<number>): void {
     const index = event.detail
     const breadcrumb = breadcrumbs[index]
 

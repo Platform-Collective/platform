@@ -21,7 +21,7 @@
 
   $: repository = ghIssue?.repository !== undefined ? $integrationRepositories.get(ghIssue.repository) : undefined
 
-  async function assignRepository (repository: Ref<GithubIntegrationRepository>): Promise<void> {
+  async function assignRepository(repository: Ref<GithubIntegrationRepository>): Promise<void> {
     if (ghIssue !== undefined) {
       // We just need to assign the repository to the issue
       await getClient().update(ghIssue, { repository })

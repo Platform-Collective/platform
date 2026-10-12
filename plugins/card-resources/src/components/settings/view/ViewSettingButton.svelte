@@ -32,7 +32,7 @@
   let btn: HTMLButtonElement
   let pressed: boolean = false
 
-  function clickHandler (): void {
+  function clickHandler(): void {
     pressed = true
     closeTooltip()
     showPopup(

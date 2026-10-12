@@ -67,7 +67,7 @@ function lowLevelForDocs (...docs: Doc[]): LowLevelStorage {
     byDomain.set(domain, list)
   }
   return {
-    rawFindAll: jest.fn(async <T extends Doc>(_domain: string, query: any): Promise<T[]> => {
+    rawFindAll: jest.fn(async <T extends Doc> (_domain: string, query: any): Promise<T[]> => {
       const domainDocs = byDomain.get(_domain) ?? []
       return domainDocs.filter((d) => {
         if (query._id !== undefined && d._id !== query._id) return false

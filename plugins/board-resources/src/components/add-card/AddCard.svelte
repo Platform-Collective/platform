@@ -27,7 +27,7 @@
   let anchorRef: HTMLDivElement
   const client = getClient()
 
-  async function addCard (title: string) {
+  async function addCard(title: string) {
     const newCardId = generateId()
 
     const sequence = await client.findOne(core.class.Sequence, { attachedTo: board.class.Card })
@@ -53,7 +53,7 @@
     return await client.addCollection(board.class.Card, space, space, board.class.Board, 'cards', value, newCardId)
   }
 
-  async function addCards (title: string, checkNewLine: boolean = false) {
+  async function addCards(title: string, checkNewLine: boolean = false) {
     onClose()
     if (!checkNewLine) {
       return await addCard(title.replace('\n', ' '))

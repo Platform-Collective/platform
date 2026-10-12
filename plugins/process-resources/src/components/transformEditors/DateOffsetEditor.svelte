@@ -37,7 +37,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function save (): void {
+  function save(): void {
     dispatch('close', {
       offset,
       offsetType,

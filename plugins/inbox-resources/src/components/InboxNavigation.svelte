@@ -53,7 +53,7 @@
 
   let isPrevPageLoading = false
 
-  function handleScroll (): void {
+  function handleScroll(): void {
     if (divScroll != null && navClient.hasPrevPage() && !isPrevPageLoading) {
       const isAtBottom = divScroll.scrollTop + divScroll.clientHeight >= divScroll.scrollHeight - 10
       if (isAtBottom) {
@@ -67,7 +67,7 @@
 
   const docById = new Map<Ref<Doc>, Doc>()
 
-  async function onKeydown (key: KeyboardEvent): Promise<void> {
+  async function onKeydown(key: KeyboardEvent): Promise<void> {
     if (key.code === 'ArrowUp') {
       key.stopPropagation()
       key.preventDefault()
@@ -105,7 +105,7 @@
     contentDiv.focus()
   }
 
-  function getContextKey (index: number): string {
+  function getContextKey(index: number): string {
     const item = navItems[index]
     if (item == null) return index.toString()
 

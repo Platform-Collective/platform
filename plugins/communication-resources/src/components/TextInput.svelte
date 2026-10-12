@@ -49,7 +49,7 @@
 
   $: setContent(content)
 
-  function canSubmit (loading: boolean, content: Markup, hasChanges: boolean): boolean {
+  function canSubmit(loading: boolean, content: Markup, hasChanges: boolean): boolean {
     if (loading) return false
 
     const isEmptyContent = isEmpty || isEmptyMarkup(content)
@@ -60,7 +60,7 @@
     return isContentChanged || hasChanges
   }
 
-  function setContent (content: Markup): void {
+  function setContent(content: Markup): void {
     editor?.setContent(content)
   }
 
@@ -77,7 +77,7 @@
     insertTemplate: (name, markup) => {
       editor?.insertMarkup(markup)
     },
-    insertTable (options: { rows?: number, cols?: number, withHeaderRow?: boolean }) {
+    insertTable(options: { rows?: number, cols?: number, withHeaderRow?: boolean }) {
       editor?.insertTable(options)
     },
     insertCodeBlock: () => {
@@ -97,11 +97,11 @@
   let sortedActions: TextInputAction[] = []
   $: sortedActions = actions.sort((a, b) => a.order - b.order)
 
-  export function submit (): void {
+  export function submit(): void {
     editor?.submit()
   }
 
-  function handleAction (action: TextInputAction, evt?: Event): void {
+  function handleAction(action: TextInputAction, evt?: Event): void {
     action.action(evt?.target as HTMLElement, editorHandler)
   }
 

@@ -41,7 +41,7 @@
   let startX = 0
   let startWidth = 0
 
-  function onMouseDown (evt: MouseEvent): void {
+  function onMouseDown(evt: MouseEvent): void {
     evt.preventDefault()
     evt.stopPropagation()
     resizing = true
@@ -51,13 +51,13 @@
     window.addEventListener('mouseup', onWindowUp)
   }
 
-  function onWindowMove (evt: MouseEvent): void {
+  function onWindowMove(evt: MouseEvent): void {
     if (!resizing) return
     const next = clampWidth(startWidth + (evt.clientX - startX))
     dispatch('resizePreview', { column, width: next })
   }
 
-  function onWindowUp (evt: MouseEvent): void {
+  function onWindowUp(evt: MouseEvent): void {
     if (!resizing) return
     const final = clampWidth(startWidth + (evt.clientX - startX))
     resizing = false
@@ -66,12 +66,12 @@
     dispatch('resizeCommit', { column, width: final })
   }
 
-  function onLabelClick (): void {
+  function onLabelClick(): void {
     if (!sortable) return
     dispatch('sort', { column })
   }
 
-  function ariaSort (dir: SortDirection | null): 'ascending' | 'descending' | 'none' {
+  function ariaSort(dir: SortDirection | null): 'ascending' | 'descending' | 'none' {
     if (dir === 'asc') return 'ascending'
     if (dir === 'desc') return 'descending'
     return 'none'

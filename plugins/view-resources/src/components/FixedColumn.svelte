@@ -38,7 +38,7 @@
     }
   })
 
-  function resize (element: Element) {
+  function resize(element: Element) {
     cWidth = element.clientWidth
     if (cWidth > ($fixedWidthStore[key] ?? 0)) $fixedWidthStore[key] = cWidth
   }

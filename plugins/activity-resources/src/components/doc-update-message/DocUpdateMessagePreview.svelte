@@ -68,7 +68,7 @@
 
   $: viewlet?.component && loadObject(value.objectId, value.objectClass, value.space, doc)
 
-  async function loadObject (_id: Ref<Doc>, _class: Ref<Class<Doc>>, space: Ref<Space>, doc?: Doc): Promise<void> {
+  async function loadObject(_id: Ref<Doc>, _class: Ref<Class<Doc>>, space: Ref<Space>, doc?: Doc): Promise<void> {
     if (doc?._id === _id) {
       object = doc
       return
@@ -84,7 +84,7 @@
       })
     }
   }
-  function onClick (event: MouseEvent): void {
+  function onClick(event: MouseEvent): void {
     event.stopPropagation()
     event.preventDefault()
     dispatch('click')

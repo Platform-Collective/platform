@@ -43,7 +43,7 @@
   })
   $: elementsCount = getElementsCount(special, $savedMessagesStore, $savedAttachmentsStore)
 
-  async function getNotificationsCount (
+  async function getNotificationsCount(
     special: SpecialNavModel,
     notificationsByContext: Map<Ref<DocNotifyContext>, InboxNotification[]>
   ): Promise<number> {
@@ -56,7 +56,7 @@
     return providerFn(notificationsByContext)
   }
 
-  function getElementsCount (
+  function getElementsCount(
     special: SpecialNavModel,
     savedMessages: SavedMessage[],
     savedAttachments: SavedAttachments[]

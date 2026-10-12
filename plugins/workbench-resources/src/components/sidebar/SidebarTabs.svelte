@@ -28,7 +28,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function getActions (tab: WidgetTab): Action[] {
+  function getActions(tab: WidgetTab): Action[] {
     const pinAction: Action = {
       label: view.string.Pin,
       icon: view.icon.Pin,

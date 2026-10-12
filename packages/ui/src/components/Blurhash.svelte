@@ -27,7 +27,7 @@
     renderBlurhash(canvas, blurhash)
   }
 
-  function renderBlurhash (canvas: HTMLCanvasElement, blurhash: string): void {
+  function renderBlurhash(canvas: HTMLCanvasElement, blurhash: string): void {
     const ctx = canvas.getContext('2d')
     if (ctx !== null) {
       const pixels = decode(blurhash, width, height, punch)

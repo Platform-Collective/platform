@@ -37,14 +37,14 @@
 
   const dispatch = createEventDispatcher()
 
-  async function generate (object: Doc): Promise<void> {
+  async function generate(object: Doc): Promise<void> {
     const panelComponent = client.getHierarchy().classHierarchyMixin(object._class, view.mixin.ObjectPanel)
     const comp = panelComponent?.component ?? view.component.EditDoc
     const loc = await getObjectLinkFragment(client.getHierarchy(), object, {}, comp)
     await createPublicLink(client, value, loc)
   }
 
-  async function checkNeedGenerate (value: Doc, loading: boolean, link: PublicLink | undefined): Promise<void> {
+  async function checkNeedGenerate(value: Doc, loading: boolean, link: PublicLink | undefined): Promise<void> {
     if (!loading || link !== undefined) return
     await generate(value)
   }
@@ -60,18 +60,18 @@
     { limit: 1 }
   )
 
-  function close () {
+  function close() {
     dispatch('close')
   }
 
-  function copy (): void {
+  function copy(): void {
     if (link?.url === undefined || link.url === '') return
     copyTextToClipboard(link.url)
     copied = true
     copiedTime = Date.now()
   }
 
-  async function revoke (): Promise<void> {
+  async function revoke(): Promise<void> {
     if (!revokable || link === undefined) return
     showPopup(
       MessageBox,
@@ -97,7 +97,7 @@
   let copied = false
   $: checkLabel($ticker)
 
-  function checkLabel (now: number) {
+  function checkLabel(now: number) {
     if (copiedTime) {
       if (copied && now - copiedTime > 1000) {
         copied = false

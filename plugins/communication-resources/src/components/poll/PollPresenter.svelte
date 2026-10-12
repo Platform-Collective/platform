@@ -72,13 +72,13 @@
 
   $: voted = isVotedByMe(result, params.anonymous, privateAnswers)
 
-  function showResults (): void {
+  function showResults(): void {
     showPopup(PollResults, { params, result }, 'center')
   }
 
   let selectedOptions: PollOption[] = []
 
-  function toggleOption (option: PollOption): void {
+  function toggleOption(option: PollOption): void {
     const index = selectedOptions.findIndex((it) => it.id === option.id)
     if (index === -1) {
       selectedOptions = [...selectedOptions, option]
@@ -91,7 +91,7 @@
     void vote()
   }
 
-  async function vote (): Promise<void> {
+  async function vote(): Promise<void> {
     if (result == null || selectedOptions.length === 0 || voted) return
 
     const client = getClient()
@@ -141,17 +141,17 @@
   $: started = params.startAt == null || !isFuture($ticker, params.startAt)
   $: ended = params.endAt != null && !isFuture($ticker, params.endAt)
 
-  function isFuture (now: number, time: number): boolean {
+  function isFuture(now: number, time: number): boolean {
     return time > now
   }
 
-  function isTomorrow (time: Timestamp): boolean {
+  function isTomorrow(time: Timestamp): boolean {
     const todayDay = getDay(Date.now())
     const targetDay = getDay(time)
     return targetDay === todayDay + DAY
   }
 
-  function getFormattedDate (date: number, type: 'start' | 'end'): { label: IntlString, date: string } {
+  function getFormattedDate(date: number, type: 'start' | 'end'): { label: IntlString, date: string } {
     if (!isOtherDay(date, Date.now())) {
       return {
         label: type === 'start' ? communication.string.StartsAt : communication.string.EndsAt,
@@ -183,7 +183,7 @@
     }
   }
 
-  async function retractVote (): Promise<void> {
+  async function retractVote(): Promise<void> {
     if (result == null || !voted || params.quiz === true) return
     const client = getClient()
     const me = getCurrentAccount()
@@ -229,12 +229,12 @@
     voted = false
   }
 
-  function openPoll (): void {
+  function openPoll(): void {
     if (result == null) return
     void openDoc(getClient().getHierarchy(), result)
   }
 
-  function onContextMenu (event: MouseEvent): void {
+  function onContextMenu(event: MouseEvent): void {
     event.preventDefault()
 
     showPopup(

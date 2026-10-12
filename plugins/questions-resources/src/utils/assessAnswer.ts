@@ -12,11 +12,11 @@ export async function assessAnswer<Q extends Question<any>, A extends Answer<Q, 
   answer: A
 ): Promise<
   | {
-    score: Percentage
-    passed: boolean
-  }
+      score: Percentage
+      passed: boolean
+    }
   | undefined
-  > {
+> {
   if (!isAssessment(question)) {
     return undefined
   }

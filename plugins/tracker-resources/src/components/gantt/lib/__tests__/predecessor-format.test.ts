@@ -8,7 +8,7 @@ import type { Ref } from '@hcengineering/core'
 import { kindCode, kindFromCode, signedLag, formatPredecessors, resolveIssueNumber } from '../predecessor-format'
 import type { LayoutRow } from '../types'
 
-function mkRel (from: string, to: string, kind: DependencyKind, lag: number): IssueRelation {
+function mkRel(from: string, to: string, kind: DependencyKind, lag: number): IssueRelation {
   return {
     _id: `${from}->${to}` as Ref<IssueRelation>,
     attachedTo: from as Ref<Issue>,

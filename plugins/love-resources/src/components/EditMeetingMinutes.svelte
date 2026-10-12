@@ -43,7 +43,7 @@
     currentTitle = object.title
   }
 
-  async function changeTitle (): Promise<void> {
+  async function changeTitle(): Promise<void> {
     await client.diffUpdate(object, { title: newTitle })
   }
 
@@ -56,13 +56,13 @@
   $: hasPendingJoinInThisSession =
     $myConnectingSessionId !== null && $myConnectingSessionId === currentSessionId && $lkIsConnecting
 
-  async function connect (): Promise<void> {
+  async function connect(): Promise<void> {
     await joinMeeting(object)
   }
 
   $: connectLabel = object.status !== MeetingStatus.Scheduled ? love.string.JoinMeeting : love.string.StartMeeting
 
-  function showConnectionButton (object: MeetingMinutes, connecting: boolean, isConnected: boolean): boolean {
+  function showConnectionButton(object: MeetingMinutes, connecting: boolean, isConnected: boolean): boolean {
     if (object.status === MeetingStatus.Finished) {
       return false
     }
@@ -74,7 +74,7 @@
     return true
   }
 
-  function getInfo (mm: Ref<MeetingMinutes>, info: ParticipantInfo[]): ParticipantInfo[] {
+  function getInfo(mm: Ref<MeetingMinutes>, info: ParticipantInfo[]): ParticipantInfo[] {
     return info.filter((p) => p.meeting === mm)
   }
 

@@ -11,7 +11,7 @@ export async function SendTimeEvent (
   const SERVICE_NAME = 'time-machine'
   const queue = getPlatformQueue(SERVICE_NAME, config.QueueRegion)
 
-  const producer = queue.getProducer<any>(ctx, topic as any)
+  const producer = queue.getProducer<any>(ctx, topic)
 
   await producer.send(ctx, ws, [data])
 }

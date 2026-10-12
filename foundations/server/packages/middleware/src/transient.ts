@@ -55,7 +55,7 @@ export class TransientMiddleware extends BaseMiddleware implements Middleware {
     // Need to find all classes with TTL enabled
     const classes = context.modelDb.findAllSync(core.mixin.TransientTTL, {})
     for (const cl of classes) {
-      this.ttlValues.set(cl._id as Ref<Class<Doc>>, cl.ttl)
+      this.ttlValues.set(cl._id, cl.ttl)
     }
 
     this.dbProvider = context.adapterManager?.getAdapter?.(DOMAIN_TRANSIENT, true)

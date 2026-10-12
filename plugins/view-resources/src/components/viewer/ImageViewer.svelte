@@ -40,7 +40,7 @@
   $: height = imageHeight != null ? `min(${imageHeight}px, ${fit ? '100%' : '80vh'})` : '100%'
 
   let loading = true
-  function _setLoading (newState: boolean): void {
+  function _setLoading(newState: boolean): void {
     loading = newState
     setLoading?.(loading)
   }

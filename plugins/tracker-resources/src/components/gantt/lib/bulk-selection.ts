@@ -23,7 +23,7 @@ import type { Ref } from '@hcengineering/core'
 /**
  * Toggle the membership of `id` in `set`. The input set is never mutated.
  */
-export function toggleSelection<T> (set: ReadonlySet<T>, id: T): Set<T> {
+export function toggleSelection<T>(set: ReadonlySet<T>, id: T): Set<T> {
   const next = new Set(set)
   if (next.has(id)) next.delete(id)
   else next.add(id)
@@ -34,7 +34,7 @@ export function toggleSelection<T> (set: ReadonlySet<T>, id: T): Set<T> {
  * Return a set containing only `id`. Used for the plain-click branch which
  * discards any prior multi-selection.
  */
-export function selectSingle<T> (id: T): Set<T> {
+export function selectSingle<T>(id: T): Set<T> {
   return new Set([id])
 }
 
@@ -45,7 +45,7 @@ export function selectSingle<T> (id: T): Set<T> {
  * falls back to selecting just the target (matches the behaviour of every
  * file-explorer Shift-Click I have ever used).
  */
-export function selectRange (
+export function selectRange(
   current: ReadonlySet<Ref<Issue>>,
   anchorId: Ref<Issue> | null,
   targetId: Ref<Issue>,
@@ -70,7 +70,7 @@ export function selectRange (
 }
 
 /** Return an empty selection set. Esc / background-click branch. */
-export function clearSelection (): Set<Ref<Issue>> {
+export function clearSelection(): Set<Ref<Issue>> {
   return new Set()
 }
 
@@ -78,6 +78,6 @@ export function clearSelection (): Set<Ref<Issue>> {
  * Return a set with every entry from `orderedIds`. Cmd-A branch. Duplicates
  * in the input are collapsed by the Set constructor.
  */
-export function selectAll (orderedIds: ReadonlyArray<Ref<Issue>>): Set<Ref<Issue>> {
+export function selectAll(orderedIds: ReadonlyArray<Ref<Issue>>): Set<Ref<Issue>> {
   return new Set(orderedIds)
 }

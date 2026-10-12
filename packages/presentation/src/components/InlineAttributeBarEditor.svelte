@@ -40,7 +40,7 @@
   $: editor = getAttributeEditor(client, _class, key)
   $: isReadonly = (attribute.readonly ?? false) || readonly
 
-  function onChange (value: any): void {
+  function onChange(value: any): void {
     const doc = object as Doc
     if (draft) {
       ;(doc as any)[attributeKey] = value

@@ -24,7 +24,7 @@
   })
   $: hasRelation = Object.values(relations).some(({ length }) => length)
 
-  async function updateRelation (
+  async function updateRelation(
     refDocument: Doc,
     type: keyof typeof relations,
     operation: '$push' | '$pull',
@@ -82,7 +82,7 @@
       }
     )
   }
-  async function removeRelation () {
+  async function removeRelation() {
     closePopup('popup')
     showPopup(
       ObjectSearchPopup,

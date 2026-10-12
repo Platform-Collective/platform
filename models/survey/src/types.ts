@@ -38,31 +38,31 @@ export const DOMAIN_SURVEY = 'survey' as Domain
 export class TSurvey extends TDoc implements Survey {
   @Prop(TypeString(), survey.string.Name)
   @Index(IndexKind.FullText)
-    name!: string
+  name!: string
 
   @Prop(TypeString(), survey.string.Prompt)
-    prompt!: string
+  prompt!: string
 
   @Prop(ArrOf(TypeRecord()), survey.string.Questions)
-    questions?: Question[]
+  questions?: Question[]
 }
 
 @Model(survey.class.Poll, core.class.Doc, DOMAIN_SURVEY)
 @UX(survey.string.Poll, survey.icon.Poll, 'POLL', undefined, undefined, survey.string.Polls)
 export class TPoll extends TAttachedDoc implements Poll {
   @Prop(TypeRef(survey.class.Survey), survey.string.Survey)
-    survey!: Ref<Survey>
+  survey!: Ref<Survey>
 
   @Prop(TypeString(), survey.string.Name)
-    name!: string
+  name!: string
 
   @Prop(TypeString(), survey.string.Prompt)
-    prompt!: string
+  prompt!: string
 
   @Prop(ArrOf(TypeRecord()), getEmbeddedLabel('Questions'))
   @Hidden()
-    questions?: Question[]
+  questions?: Question[]
 
   @Prop(TypeBoolean(), survey.string.Completed)
-    isCompleted?: boolean
+  isCompleted?: boolean
 }

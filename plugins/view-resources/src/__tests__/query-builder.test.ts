@@ -58,7 +58,7 @@ describe('makeFilterQuery', () => {
   })
 
   it('preserves base query fields untouched by the filters', async () => {
-    const base: DocumentQuery<Doc> = { space: 'foo' as any, modifiedOn: 123 as any }
+    const base: DocumentQuery<Doc> = { space: 'foo' as any, modifiedOn: 123 }
     const filters: Filter[] = [mockFilter('status', ['x'])]
     const out = await makeFilterQuery(base, filters, async () => mockMode, mockResolveResource as any)
     expect(out).toEqual({ space: 'foo', modifiedOn: 123, status: { $in: ['x'] } })
@@ -78,7 +78,7 @@ describe('makeFilterQuery', () => {
     // composing onto a base that already has a nested object at the filter's
     // target key — the resulting `out` must merge, but `base` must survive
     // unchanged.
-    const base: DocumentQuery<Doc> = { status: { $in: ['initial'] } as any }
+    const base: DocumentQuery<Doc> = { status: { $in: ['initial'] } }
     const baseSnapshot = JSON.parse(JSON.stringify(base))
     const filters: Filter[] = [mockFilter('status', ['x'])]
     await makeFilterQuery(base, filters, async () => mockMode, mockResolveResource as any)
@@ -87,7 +87,7 @@ describe('makeFilterQuery', () => {
   it('ignores prototype-polluting keys in filter results and filter keys', async () => {
     const polluted = JSON.parse('{"$in": ["a"], "__proto__": {"polluted": true}, "constructor": {"x": 1}}')
     const resolvePolluted = jest.fn(async () => async () => polluted)
-    const base: DocumentQuery<Doc> = { status: { $in: ['a', 'b'] } as any }
+    const base: DocumentQuery<Doc> = { status: { $in: ['a', 'b'] } }
     const filters: Filter[] = [mockFilter('status', [], 1), mockFilter('__proto__', [], 2)]
     const out = await makeFilterQuery(base, filters, async () => mockMode, resolvePolluted as any)
     expect(out).toEqual({ status: { $in: ['a'] } })

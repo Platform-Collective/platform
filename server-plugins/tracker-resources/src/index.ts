@@ -396,7 +396,7 @@ async function doIssueUpdate (updateTx: TxUpdateDoc<Issue>, control: TriggerCont
     const [newParent] = await control.findAll(
       control.ctx,
       tracker.class.Issue,
-      { _id: updateTx.operations.attachedTo as Ref<Issue> },
+      { _id: updateTx.operations.attachedTo },
       { limit: 1 }
     )
 
@@ -653,7 +653,7 @@ async function collectShiftCollaborators (
 
   const uniqueIds = issues.map((i) => i._id)
   const collabs = await control.findAll(control.ctx, core.class.Collaborator, {
-    attachedTo: { $in: uniqueIds as Array<Ref<Doc>> }
+    attachedTo: { $in: uniqueIds }
   })
   for (const c of collabs) {
     const target = c.attachedTo as Ref<Issue>
@@ -820,12 +820,7 @@ export async function OnDependencyShiftRequest (txes: Tx[], control: TriggerCont
           lastUpdateTimestamp: Date.now()
         }
         result.push(
-          control.txFactory.createTxCreateDoc(
-            notification.class.DocNotifyContext,
-            space as unknown as Ref<Space>,
-            contextData,
-            contextId
-          )
+          control.txFactory.createTxCreateDoc(notification.class.DocNotifyContext, space, contextData, contextId)
         )
       }
 
@@ -849,13 +844,7 @@ export async function OnDependencyShiftRequest (txes: Tx[], control: TriggerCont
         shiftedIssues: recipientShifts,
         cascadeToken
       }
-      result.push(
-        control.txFactory.createTxCreateDoc(
-          tracker.class.DependencyShiftedNotification,
-          space as unknown as Ref<Space>,
-          notifData
-        )
-      )
+      result.push(control.txFactory.createTxCreateDoc(tracker.class.DependencyShiftedNotification, space, notifData))
     }
   }
   return result

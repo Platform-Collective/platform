@@ -64,8 +64,8 @@ export const trainingRequestRoute: Route<TrainingRequestRouteParams> = {
       loc: {
         ...(isOwner
           ? sentRequestRoute.build({
-            tab: object.canceledOn === null ? SentRequestsRouteTab.Active : SentRequestsRouteTab.Canceled
-          })
+              tab: object.canceledOn === null ? SentRequestsRouteTab.Active : SentRequestsRouteTab.Canceled
+            })
           : incomingRequestRoute.build({})),
         fragment: getPanelFragment(object)
       },

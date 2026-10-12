@@ -119,7 +119,7 @@ export class WorkspaceClient {
     }
 
     if (hierarchy.isDerived(objectClass, core.class.Space)) {
-      const space = await this.client.findOne(objectClass, { _id: objectId as Ref<Space>, members: account })
+      const space = await this.client.findOne(objectClass, { _id: objectId, members: account })
       return space !== undefined
     }
 
@@ -282,7 +282,7 @@ export class WorkspaceClient {
   }
 
   async getPersons (_ids: AccountUuid[]): Promise<Person[]> {
-    return (await this.client.findAll(contact.class.Person, { personUuid: { $in: _ids } })) as Person[]
+    return await this.client.findAll(contact.class.Person, { personUuid: { $in: _ids } })
   }
 
   async sendMessage (

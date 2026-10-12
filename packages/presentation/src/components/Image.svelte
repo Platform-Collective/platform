@@ -38,12 +38,12 @@
 
   let loaded = false
 
-  function handleLoad (): void {
+  function handleLoad(): void {
     loaded = true
     dispatch('load')
   }
 
-  function handleLoadStart (): void {
+  function handleLoadStart(): void {
     loaded = false
     dispatch('loadstart')
   }

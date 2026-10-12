@@ -32,7 +32,7 @@
 
   $: states = getStates($statusStore.byId, type, taskType)
 
-  function getStates (
+  function getStates(
     statusStore: IdMap<Status>,
     type: ProjectType | undefined,
     taskType: TaskType | undefined
@@ -48,7 +48,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function getColor (state: Status, type: ProjectType | undefined, categories: IdMap<StatusCategory>): ColorDefinition {
+  function getColor(state: Status, type: ProjectType | undefined, categories: IdMap<StatusCategory>): ColorDefinition {
     const category = state.category ? categories.get(state.category) : undefined
     const statusColor = type?.statuses?.find((p) => p._id === state._id)?.color
     const targetColor =

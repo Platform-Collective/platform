@@ -41,7 +41,7 @@
     }
   }
 
-  function onAttribute (attr: AnyAttribute): void {
+  function onAttribute(attr: AnyAttribute): void {
     const pathReduce = getValueReduceFunc(context.attribute, target)
     const valueFunc = getValueReduceFunc(attr, target)
     onSelect({

@@ -17,7 +17,7 @@ import {
 import { type Asset, type IntlString, type Resource } from '@hcengineering/platform'
 import { type AnyComponent, type AnySvelteComponent, type ComponentExtensionId } from '@hcengineering/ui/src/types'
 
-export * from './components/breadcrumbs/types'
+export type * from './components/breadcrumbs/types'
 
 /**
  * @public

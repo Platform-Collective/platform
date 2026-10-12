@@ -20,12 +20,12 @@
 
   const dispatch = createEventDispatcher()
 
-  function close (): void {
+  function close(): void {
     currentDate.setSeconds(0, 0)
     dispatch('close', { value: currentDate })
   }
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return true
   }
 </script>

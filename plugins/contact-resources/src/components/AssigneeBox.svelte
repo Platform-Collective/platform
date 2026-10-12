@@ -91,7 +91,7 @@
 
   const mgr = getFocusManager()
 
-  function _click (ev: MouseEvent): void {
+  function _click(ev: MouseEvent): void {
     if (!readonly) {
       ev.preventDefault()
       ev.stopPropagation()

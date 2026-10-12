@@ -70,7 +70,7 @@
 
   $: void updateDataProvider(object._id, selectedMessageId)
 
-  async function updateDataProvider (attachedTo: Ref<Doc>, selectedMessageId?: Ref<ActivityMessage>): Promise<void> {
+  async function updateDataProvider(attachedTo: Ref<Doc>, selectedMessageId?: Ref<ActivityMessage>): Promise<void> {
     if (dataProvider === undefined) {
       const ctx =
         context ??

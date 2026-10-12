@@ -24,7 +24,7 @@
   $: isRestricted = state.mode === 'restricted'
   $: visible = state.mode !== 'ok'
 
-  function handleClick (): void {
+  function handleClick(): void {
     showPopup(LimitsFooterPopup, {}, wrapperEl)
   }
 </script>

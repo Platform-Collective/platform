@@ -60,7 +60,10 @@ export class WorkspaceClient {
   }
 
   async init (): Promise<void> {
-    const calendars = await this.client.findAll(calendar.class.ExternalCalendar, {})
+    const allCalendars = await this.client.findAll(calendar.class.ExternalCalendar, {})
+    // Only Google calendars are pushed through this client; CalDAV calendars carry the CalDavCalendar mixin
+    const hierarchy = this.client.getHierarchy()
+    const calendars = allCalendars.filter((c) => !hierarchy.hasMixin(c, calendar.mixin.CalDavCalendar))
     this.calendarsById.clear()
     this.calendarsByExternal.clear()
     for (const calendar of calendars) {

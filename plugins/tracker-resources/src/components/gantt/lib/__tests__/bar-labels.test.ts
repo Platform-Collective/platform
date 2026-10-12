@@ -6,7 +6,7 @@ import type { Issue } from '@hcengineering/tracker'
 import type { Ref } from '@hcengineering/core'
 import { resolveBarLabel, type BarLabelSlot } from '../bar-labels'
 
-function makeIssue (overrides: Partial<Issue> = {}): Issue {
+function makeIssue(overrides: Partial<Issue> = {}): Issue {
   return {
     _id: 'iss-1' as Ref<Issue>,
     _class: 'tracker:class:Issue',

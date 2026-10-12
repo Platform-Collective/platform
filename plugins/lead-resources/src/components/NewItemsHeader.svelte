@@ -21,7 +21,7 @@
 
   const client = getClient()
 
-  async function newIssue (): Promise<void> {
+  async function newIssue(): Promise<void> {
     showPopup(CreateCustomer, {}, 'top')
   }
 </script>

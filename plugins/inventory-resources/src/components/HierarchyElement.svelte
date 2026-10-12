@@ -29,7 +29,7 @@
   export let parent: Ref<Doc> = inventory.global.Category
   let expanded: Set<Ref<Category>> = new Set<Ref<Category>>()
 
-  function click (id: Ref<Category>): void {
+  function click(id: Ref<Category>): void {
     if (!descendants.has(id)) return
     if (expanded.has(id)) {
       expanded.delete(id)

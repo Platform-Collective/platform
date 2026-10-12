@@ -31,7 +31,7 @@
 
   const id = generateId()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return firstName === '' && lastName === ''
   }
 
@@ -40,7 +40,7 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  async function createPerson () {
+  async function createPerson() {
     const person: Data<Person> = {
       name: combineName(firstName, lastName),
       city: object.city,

@@ -33,7 +33,7 @@
   $: oldContent = markdownToMarkup(oldMarkdown)
   $: newContent = markdownToMarkup(newMarkdown)
 
-  function handleClose (): void {
+  function handleClose(): void {
     dispatch('close')
   }
 </script>

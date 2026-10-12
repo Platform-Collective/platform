@@ -246,7 +246,7 @@ export class DatalakeService implements StorageAdapter {
     return this.client.getObjectUrl(ctx, wsIds.uuid, objectName)
   }
 
-  async retry<T>(ctx: MeasureContext, op: () => Promise<T>): Promise<T> {
+  async retry<T> (ctx: MeasureContext, op: () => Promise<T>): Promise<T> {
     return await withRetry(ctx, this.retryCount, op, this.retryInterval)
   }
 }

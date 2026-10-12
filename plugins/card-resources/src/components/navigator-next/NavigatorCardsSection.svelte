@@ -48,7 +48,7 @@
 
   $: ids = (config.labelFilter?.length ?? 0) > 0 ? labels.map((it) => it.cardId) : undefined
 
-  function parseLookbackDuration (input: string): Timestamp {
+  function parseLookbackDuration(input: string): Timestamp {
     if (input.length < 2) throw new Error('Invalid duration format')
 
     const unit = input.slice(-1)
@@ -127,7 +127,7 @@
   $: sortedCards = filteredCards
   $: empty = sortedCards.length === 0
 
-  function filterCards (cards: Card[], favorites: FavoriteCard[]): Card[] {
+  function filterCards(cards: Card[], favorites: FavoriteCard[]): Card[] {
     return cards.filter((it) => !favorites.some((fav) => fav.attachedTo === it._id))
   }
 </script>

@@ -67,7 +67,7 @@ function isContentValid (body: any[]): boolean {
 }
 
 function getRecordsByType (event: AnalyticEvent): Record<string, any> {
-  switch (event.event as AnalyticEventType) {
+  switch (event.event) {
     case AnalyticEventType.SetTag:
       return {
         event: '$set',
@@ -108,7 +108,7 @@ function getRecordsByType (event: AnalyticEvent): Record<string, any> {
       }
     default:
       return {
-        event: typeof event.event === 'string' && event.event.length > 0 ? event.event : 'unknown_event'
+        event: 'unknown_event'
       }
   }
 }

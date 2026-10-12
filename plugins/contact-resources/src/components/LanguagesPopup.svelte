@@ -32,7 +32,7 @@
     isSelected: selected.includes(lang)
   }))
 
-  function onSelect (lang?: string | null | number): void {
+  function onSelect(lang?: string | null | number): void {
     if (lang == null) return
     items = items.map((it) => {
       if (it.id === lang) {

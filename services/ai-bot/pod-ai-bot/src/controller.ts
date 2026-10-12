@@ -88,9 +88,9 @@ export class AIControl {
     this.openai =
       config.OpenAIKey !== ''
         ? new OpenAI({
-          apiKey: config.OpenAIKey,
-          baseURL: config.OpenAIBaseUrl === '' ? undefined : config.OpenAIBaseUrl
-        })
+            apiKey: config.OpenAIKey,
+            baseURL: config.OpenAIBaseUrl === '' ? undefined : config.OpenAIBaseUrl
+          })
         : undefined
     this.storageAdapter = buildStorageFromConfig(storageConfigFromEnv())
   }

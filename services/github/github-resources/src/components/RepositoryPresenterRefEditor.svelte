@@ -57,7 +57,7 @@
 
   $: void handleSelectedRepositoryIdUpdated(value, rawComponents)
 
-  function getRepositoryInfo (
+  function getRepositoryInfo(
     rawComponents: GithubIntegrationRepository[],
     sp: GithubIntegrationRepository | undefined
   ): SelectPopupValueType[] {

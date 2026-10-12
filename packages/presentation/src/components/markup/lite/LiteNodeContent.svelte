@@ -28,22 +28,22 @@
 
   let parsedTextWithEmojis: ParsedTextWithEmojis | undefined = undefined
 
-  function toRefBlob (blobId: AttrValue): Ref<Blob> {
+  function toRefBlob(blobId: AttrValue): Ref<Blob> {
     return blobId as Ref<Blob>
   }
 
-  function toRef (objectId: string): Ref<Doc> {
+  function toRef(objectId: string): Ref<Doc> {
     return objectId as Ref<Doc>
   }
 
-  function toClassRef (objectClass: string): Ref<Class<Doc>> {
+  function toClassRef(objectClass: string): Ref<Class<Doc>> {
     if (objectClass === 'contact:class:Employee') {
       return 'contact:mixin:Employee' as Ref<Class<Doc>>
     }
     return objectClass as Ref<Class<Doc>>
   }
 
-  function toString (value: AttrValue | undefined): string | undefined {
+  function toString(value: AttrValue | undefined): string | undefined {
     return value != null ? `${value}` : undefined
   }
 

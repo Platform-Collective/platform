@@ -31,11 +31,11 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  function getDescendants (department: Ref<Department>): Ref<Department>[] {
+  function getDescendants(department: Ref<Department>): Ref<Department>[] {
     return (descendants.get(department) ?? []).sort((a, b) => a.name.localeCompare(b.name)).map((p) => p._id)
   }
 
-  async function getActions (obj: Department): Promise<Action[]> {
+  async function getActions(obj: Department): Promise<Action[]> {
     const result: Action[] = []
     const extraActions = await getContributedActions(client, obj, obj._class)
     for (const act of extraActions) {
@@ -51,7 +51,7 @@
     return result
   }
 
-  function handleDepartmentSelected (department: Ref<Department>): void {
+  function handleDepartmentSelected(department: Ref<Department>): void {
     dispatch('selected', department)
   }
 

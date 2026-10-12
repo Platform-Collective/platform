@@ -66,7 +66,7 @@ export async function performCalendarAccountMigrations (db: Db, region: string |
   const oldNewIds = new Map(allWorkpaces.map((it) => [it.dataId ?? it.uuid, it]))
   const workspaceProvider: WorkspaceInfoProvider = {
     getWorkspaceInfo: async (workspaceUuid: WorkspaceUuid) => {
-      const ws = oldNewIds.get(workspaceUuid as any) ?? byId.get(workspaceUuid as any)
+      const ws = oldNewIds.get(workspaceUuid) ?? byId.get(workspaceUuid)
       if (ws == null) {
         console.error('No workspace found for token', workspaceUuid)
         return undefined

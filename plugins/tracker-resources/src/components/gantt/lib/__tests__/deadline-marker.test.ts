@@ -6,7 +6,7 @@ import type { Issue } from '@hcengineering/tracker'
 import type { Ref } from '@hcengineering/core'
 import { isOverdue, hasDeadline } from '../deadline-marker'
 
-function makeIssue (deadline: number | null | undefined, dueDate: number | null = null): Issue {
+function makeIssue(deadline: number | null | undefined, dueDate: number | null = null): Issue {
   return {
     _id: 'i' as Ref<Issue>,
     deadline,

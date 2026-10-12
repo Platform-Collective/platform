@@ -27,7 +27,7 @@
 
   let emojiPopupOpened = false
 
-  function handleAdd (event: MouseEvent): void {
+  function handleAdd(event: MouseEvent): void {
     event.preventDefault()
     event.stopPropagation()
     emojiPopupOpened = true

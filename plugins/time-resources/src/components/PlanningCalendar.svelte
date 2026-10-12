@@ -32,11 +32,11 @@
 
   const q = createQuery()
 
-  function getFrom (date: Date): Timestamp {
+  function getFrom(date: Date): Timestamp {
     return new Date(date).setHours(0, 0, 0, 0)
   }
 
-  function getTo (date: Date, days: number = 3): Timestamp {
+  function getTo(date: Date, days: number = 3): Timestamp {
     return new Date(date).setDate(date.getDate() + days)
   }
 
@@ -63,7 +63,7 @@
   $: from = getFrom(currentDate)
   $: to = getTo(currentDate, displayedDaysCount)
 
-  function update (calendars: Calendar[]): void {
+  function update(calendars: Calendar[]): void {
     q.query<Event>(
       calendar.class.Event,
       { calendar: { $in: [personalCalendar, ...calendars.map((p) => p._id)] } },
@@ -78,7 +78,7 @@
   $: all = getAllEvents(raw, from, to)
   $: objects = hidePrivateEvents(all, $calendarByIdStore)
 
-  function inc (val: number): void {
+  function inc(val: number): void {
     if (val === 0) {
       currentDate = new Date()
       dayCalendar.scrollToTime(currentDate)
@@ -88,7 +88,7 @@
     currentDate = currentDate
   }
 
-  function getTitle (day: Date, now: Timestamp): IntlString {
+  function getTitle(day: Date, now: Timestamp): IntlString {
     const today = new Date(now)
     const tomorrow = new Date(new Date(now).setDate(new Date(now).getDate() + 1))
     const yesterday = new Date(new Date(now).setDate(new Date(now).getDate() - 1))
@@ -106,7 +106,7 @@
   }
 
   const dragItemId = 'drag_item' as Ref<WorkSlot>
-  function dragEnter (e: CustomEvent<any>) {
+  function dragEnter(e: CustomEvent<any>) {
     if (dragItem != null) {
       const current = raw.find((p) => p._id === dragItemId)
       if (current !== undefined) {
@@ -144,20 +144,20 @@
       objects = hidePrivateEvents(all, $calendarByIdStore)
     }
   }
-  function dragLeave (event: DragEvent) {
+  function dragLeave(event: DragEvent) {
     const rect = dayCalendar.getCalendarRect()
     if (!rect) return
     if (event.x < rect.left || event.x > rect.right || event.y < rect.top || event.y > rect.bottom) {
       raw = raw.filter((r) => r._id !== dragItemId)
     }
   }
-  function dragOut () {
+  function dragOut() {
     if (dragItemId != null) {
       raw = raw.filter((r) => r._id !== dragItemId)
     }
   }
 
-  function clear (dragItem: ToDo | null) {
+  function clear(dragItem: ToDo | null) {
     if (dragItem === null) {
       raw = raw.filter((p) => p._id !== dragItemId)
       all = getAllEvents(raw, from, to)
@@ -166,7 +166,7 @@
   }
   $: clear(dragItem)
 
-  function showCreateDialog (date: Date, withTime: boolean) {
+  function showCreateDialog(date: Date, withTime: boolean) {
     if (createComponent === undefined) {
       return
     }

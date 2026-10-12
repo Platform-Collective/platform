@@ -49,7 +49,7 @@
 
   let isShowMoreActive: boolean = false
 
-  function formatDate (date: Date): string {
+  function formatDate(date: Date): string {
     return date.toLocaleTimeString('default', {
       hour: 'numeric',
       minute: 'numeric'

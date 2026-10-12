@@ -28,7 +28,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function onKeydown (key: KeyboardEvent): void {
+  function onKeydown(key: KeyboardEvent): void {
     if (key.code === 'Space') {
       key.preventDefault()
       key.stopPropagation()

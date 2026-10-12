@@ -56,7 +56,7 @@
    * When force is true, bypasses the audioUnlocked flag and checks the actual
    * AudioContext state — needed when Safari suspends audio after initial unlock.
    */
-  async function ensureAudioUnlocked (force: boolean = false): Promise<void> {
+  async function ensureAudioUnlocked(force: boolean = false): Promise<void> {
     if (!force && audioUnlocked) return
     try {
       // Check actual AudioContext state when forcing recovery
@@ -77,7 +77,7 @@
   /**
    * Try to play an audio element with retry on user interaction.
    */
-  function safePlay (element: HTMLAudioElement, trackSid: string): void {
+  function safePlay(element: HTMLAudioElement, trackSid: string): void {
     element.play().catch((err) => {
       console.warn('[WorkbenchExtension] Audio play() failed, will retry on interaction', {
         trackSid,
@@ -100,7 +100,7 @@
   /**
    * Get current audio context state for debugging Safari audio issues.
    */
-  function getAudioContextState (): AudioContextState {
+  function getAudioContextState(): AudioContextState {
     try {
       // @ts-expect-error - accessing internal LiveKit audio context
       const audioCtx = lk.audioContext
@@ -120,7 +120,7 @@
   /**
    * Get current state of all audio elements for debugging.
    */
-  function getAudioElementsState (): Array<{
+  function getAudioElementsState(): Array<{
     id: string
     paused: boolean
     muted: boolean
@@ -147,7 +147,7 @@
    * intercepting the audio element's output pipeline.
    * Returns true if the stream is producing non-silent audio.
    */
-  function hasAudioOutput (element: HTMLAudioElement, trackSid: string): boolean {
+  function hasAudioOutput(element: HTMLAudioElement, trackSid: string): boolean {
     let entry = audioAnalysers.get(trackSid)
     if (entry == null) {
       try {
@@ -175,7 +175,7 @@
     return false
   }
 
-  function cleanupAnalyser (trackSid: string): void {
+  function cleanupAnalyser(trackSid: string): void {
     const entry = audioAnalysers.get(trackSid)
     if (entry != null) {
       try {
@@ -189,7 +189,7 @@
   /**
    * Collect full diagnostics for all remote audio tracks.
    */
-  function collectAudioDiagnostics (): AudioTrackDiagnostics[] {
+  function collectAudioDiagnostics(): AudioTrackDiagnostics[] {
     const result: AudioTrackDiagnostics[] = []
     for (const participant of lk.remoteParticipants.values()) {
       for (const publication of participant.trackPublications.values()) {
@@ -223,7 +223,7 @@
   /**
    * Retry playing all paused audio elements in the container.
    */
-  function retryPausedAudioElements (): void {
+  function retryPausedAudioElements(): void {
     if (parentElement == null) return
     const audioElements = Array.from(parentElement.children) as HTMLAudioElement[]
     for (const el of audioElements) {
@@ -238,7 +238,7 @@
     }
   }
 
-  function attachAudioTrack (
+  function attachAudioTrack(
     track: RemoteTrack,
     publication: RemoteTrackPublication,
     participant?: RemoteParticipant
@@ -260,7 +260,7 @@
     safePlay(element, publication.trackSid)
   }
 
-  function handleTrackSubscribed (
+  function handleTrackSubscribed(
     track: RemoteTrack,
     publication: RemoteTrackPublication,
     participant: RemoteParticipant
@@ -277,7 +277,7 @@
     }
   }
 
-  function handleTrackUnsubscribed (
+  function handleTrackUnsubscribed(
     track: RemoteTrack,
     publication: RemoteTrackPublication,
     participant: RemoteParticipant
@@ -297,7 +297,7 @@
     }
   }
 
-  function handleTrackMuted (publication: TrackPublication, participant: Participant): void {
+  function handleTrackMuted(publication: TrackPublication, participant: Participant): void {
     if (publication.track?.kind !== Track.Kind.Audio) return
 
     console.log('[WorkbenchExtension.handleTrackMuted]', {
@@ -309,7 +309,7 @@
     silentTrackCounts.delete(publication.trackSid)
   }
 
-  function handleTrackUnmuted (publication: TrackPublication, participant: Participant): void {
+  function handleTrackUnmuted(publication: TrackPublication, participant: Participant): void {
     if (publication.track?.kind !== Track.Kind.Audio) return
 
     console.log('[WorkbenchExtension.handleTrackUnmuted]', {
@@ -365,7 +365,7 @@
    * LiveKit signals playback got blocked by the browser (Safari autoplay policy,
    * suspended AudioContext). Canonical recovery point — force unlock and retry.
    */
-  function handleAudioPlaybackStatusChanged (): void {
+  function handleAudioPlaybackStatusChanged(): void {
     const canPlayback = lk.canPlaybackAudio
     console.log(
       `[WorkbenchExtension] AudioPlaybackStatusChanged canPlayback=${canPlayback} ctx=${getAudioContextState().state}`
@@ -382,7 +382,7 @@
    * Safari-specific: detach and re-attach a single audio track
    * to force Safari to re-establish audio routing.
    */
-  async function safariReattachTrack (publication: TrackPublication, participant: Participant): Promise<void> {
+  async function safariReattachTrack(publication: TrackPublication, participant: Participant): Promise<void> {
     await ensureAudioUnlocked(true)
 
     const track = publication.track
@@ -412,7 +412,7 @@
    * Re-attach all remote audio tracks. Called after LiveKit reconnect
    * to ensure audio elements reference the new MediaStreams.
    */
-  async function reattachAllAudioTracks (): Promise<void> {
+  async function reattachAllAudioTracks(): Promise<void> {
     if (parentElement == null) return
 
     console.log('[WorkbenchExtension] Reattaching audio tracks after reconnect')
@@ -473,7 +473,7 @@
   const silentTrackCounts = new Map<string, number>()
   const SILENT_THRESHOLD = 3 // Trigger recovery after 3 consecutive silent checks (~15s)
 
-  function startSafariAudioHealthCheck (): void {
+  function startSafariAudioHealthCheck(): void {
     if (!isSafariBrowser) return
     stopSafariAudioHealthCheck()
 
@@ -593,7 +593,7 @@
     }, AUDIO_CHECK_INTERVAL_MS)
   }
 
-  function stopSafariAudioHealthCheck (): void {
+  function stopSafariAudioHealthCheck(): void {
     if (safariAudioCheckInterval != null) {
       clearInterval(safariAudioCheckInterval)
       safariAudioCheckInterval = undefined
@@ -603,7 +603,7 @@
   /**
    * Attach existing audio tracks from already connected participants.
    */
-  function attachExistingAudioTracks (): void {
+  function attachExistingAudioTracks(): void {
     let attachedCount = 0
     for (const participant of lk.remoteParticipants.values()) {
       for (const publication of participant.trackPublications.values()) {

@@ -26,7 +26,7 @@
   let loading = true
   let text: string | undefined = undefined
 
-  async function fetchFile (value: Ref<Blob>, name: string): Promise<void> {
+  async function fetchFile(value: Ref<Blob>, name: string): Promise<void> {
     loading = true
 
     const src = getFileUrl(value, name)

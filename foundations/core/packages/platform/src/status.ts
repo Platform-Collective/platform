@@ -98,9 +98,9 @@ function isStatusLike (err: unknown): err is Pick<Status, 'severity' | 'code' | 
 
 function unwrapEmbeddedStatus (err: unknown): Status | undefined {
   if (typeof err !== 'object' || err === null || !('status' in err)) return undefined
-  const st = (err as { status: unknown }).status
+  const st = err.status
   if (!isStatusLike(st)) return undefined
-  return new Status(st.severity as Severity, st.code, st.params)
+  return new Status(st.severity, st.code, st.params)
 }
 
 /**
@@ -111,7 +111,7 @@ export function errorToStatus (err: unknown): Status {
   if (err instanceof PlatformError) return err.status
   if (err instanceof Status) return err
   if (isStatusLike(err)) {
-    return new Status(err.severity as Severity, err.code, err.params)
+    return new Status(err.severity, err.code, err.params)
   }
   const status = unwrapEmbeddedStatus(err)
   if (status !== undefined) return status

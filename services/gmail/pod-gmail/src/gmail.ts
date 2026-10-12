@@ -335,7 +335,7 @@ export class GmailClient {
     })
     await this.workspace.subscribeMessages()
     for (const message of newMessages) {
-      await this.createMessage(message as NewMessage)
+      await this.createMessage(message)
     }
   }
 

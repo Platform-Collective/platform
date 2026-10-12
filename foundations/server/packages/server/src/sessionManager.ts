@@ -138,11 +138,11 @@ export class TSessionManager implements SessionManager {
     readonly timeouts: Timeouts,
     readonly brandingMap: BrandingMap,
     readonly profiling:
-    | {
-      start: () => void
-      stop: () => Promise<string | undefined>
-    }
-    | undefined,
+      | {
+          start: () => void
+          stop: () => Promise<string | undefined>
+        }
+      | undefined,
     readonly accountsUrl: string,
     readonly enableCompression: boolean,
     readonly doHandleTick: boolean = true,
@@ -1345,17 +1345,17 @@ export class TSessionManager implements SessionManager {
       accontUuid: AccountUuid
       role: AccountRole
     }
-    > {
+  > {
     const ws = this.workspaces.get(workspace)
     if (ws === undefined) {
       return new Map()
     }
     const res = new Map<
-    PersonId,
-    {
-      accontUuid: AccountUuid
-      role: AccountRole
-    }
+      PersonId,
+      {
+        accontUuid: AccountUuid
+        role: AccountRole
+      }
     >()
     for (const s of [...Array.from(ws.sessions.values()).map((it) => it.session), ...extra]) {
       const sessionAccount = s.getUser()
@@ -1392,7 +1392,7 @@ export class TSessionManager implements SessionManager {
     return this.limitter.checkRateLimit(service.getUser() + (service.token.extra?.service ?? ''))
   }
 
-  async handleRequest<S extends Session>(
+  async handleRequest<S extends Session> (
     requestCtx: MeasureContext,
     service: S,
     ws: ConnectionSocket,
@@ -1528,7 +1528,7 @@ export class TSessionManager implements SessionManager {
     }
   }
 
-  async handleRPC<S extends Session>(
+  async handleRPC<S extends Session> (
     requestCtx: MeasureContext,
     service: S,
     method: string,
@@ -1626,7 +1626,7 @@ export class TSessionManager implements SessionManager {
     return Array.from(this.workspaces.values()).map((it) => this.workspaceToWorkspaceStats(it))
   }
 
-  private async handleHello<S extends Session>(
+  private async handleHello<S extends Session> (
     request: Request<any>,
     service: S,
     ctx: MeasureContext<any>,
@@ -1691,11 +1691,11 @@ export function createSessionManager (
   brandingMap: BrandingMap,
   timeouts: Timeouts,
   profiling:
-  | {
-    start: () => void
-    stop: () => Promise<string | undefined>
-  }
-  | undefined,
+    | {
+        start: () => void
+        stop: () => Promise<string | undefined>
+      }
+    | undefined,
   accountsUrl: string,
   enableCompression: boolean,
   doHandleTick: boolean = true,

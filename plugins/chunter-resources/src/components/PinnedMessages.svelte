@@ -69,7 +69,7 @@
     )
   }
 
-  function openMessagesPopup (ev: MouseEvent): void {
+  function openMessagesPopup(ev: MouseEvent): void {
     showPopup(
       PinnedMessagesPopup,
       { attachedTo: _id, attachedToClass: _class, space: channelSpace, withRefs },

@@ -9,8 +9,8 @@
   export let small = false
 
   const labels: Record<
-  GithubReviewDecisionState,
-  { label: IntlString, color: number, icon: Asset | AnySvelteComponent | ComponentType }
+    GithubReviewDecisionState,
+    { label: IntlString, color: number, icon: Asset | AnySvelteComponent | ComponentType }
   > = {
     [GithubReviewDecisionState.Approved]: {
       icon: github.icon.PullRequest,

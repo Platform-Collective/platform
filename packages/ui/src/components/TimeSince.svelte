@@ -26,7 +26,7 @@
 
   let time: string = ''
 
-  function calculateMonthsPassed (now: number, value: number): number {
+  function calculateMonthsPassed(now: number, value: number): number {
     const startDate: Date = new Date(value)
     const endDate: Date = new Date(now)
     const startYear = startDate.getFullYear()
@@ -37,7 +37,7 @@
     return (endYear - startYear) * 12 + (endMonth - startMonth)
   }
 
-  function formatTime (now: number, value: number): void {
+  function formatTime(now: number, value: number): void {
     let passed = now - value
     if (passed < 0) passed = 0
     if (passed < HOUR) {
@@ -67,12 +67,12 @@
 
   $: tooltipValue = value
     ? new Date(value).toLocaleString('default', {
-      minute: '2-digit',
-      hour: 'numeric',
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    })
+        minute: '2-digit',
+        hour: 'numeric',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      })
     : undefined
 </script>
 

@@ -60,7 +60,7 @@
   $: mode = $resolvedLocationStore.query?.mode ?? undefined
 
   let searchQuery: DocumentQuery<Task> = { baseQuery }
-  function updateSearchQuery (search: string): void {
+  function updateSearchQuery(search: string): void {
     searchQuery = search === '' ? { ...baseQuery } : { ...baseQuery, $search: search }
   }
   $: if (baseQuery) updateSearchQuery(search)
@@ -69,7 +69,7 @@
   let loading = true
   let preference: ViewletPreference | undefined
 
-  function updateResultQuery (search: string, doneStates: Status[], mode: string | undefined): void {
+  function updateResultQuery(search: string, doneStates: Status[], mode: string | undefined): void {
     if (mode === 'assigned') {
       resultQuery.status = { $nin: doneStates.map((it) => it._id) }
     }
@@ -80,7 +80,7 @@
   )
 
   const subscribedQuery = createQuery()
-  function getSubscribed (): void {
+  function getSubscribed(): void {
     subscribedQuery.query(
       _class,
       { 'notification:mixin:Collaborators.collaborators': { $in: getCurrentAccount().socialIds } },

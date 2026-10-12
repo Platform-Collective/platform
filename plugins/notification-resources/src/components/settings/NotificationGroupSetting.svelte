@@ -46,7 +46,7 @@
   $: types = client.getModel().findAllSync(notification.class.NotificationType, { group })
   $: typesMap = toIdMap(types)
 
-  function getStatus (
+  function getStatus(
     settings: Map<Ref<NotificationType>, NotificationTypeSetting[]>,
     type: Ref<NotificationType>,
     provider: Ref<NotificationProvider>
@@ -62,7 +62,7 @@
     return typeValue.defaultEnabled
   }
 
-  async function onToggle (
+  async function onToggle(
     typeId: Ref<NotificationType>,
     providerId: Ref<NotificationProvider>,
     value: boolean
@@ -94,7 +94,7 @@
     }
   }
 
-  function getTypeSetting (
+  function getTypeSetting(
     map: Map<Ref<NotificationType>, NotificationTypeSetting[]>,
     type: Ref<NotificationType>,
     provider: Ref<NotificationProvider>
@@ -108,7 +108,7 @@
     return type._class === notification.class.NotificationType
   }
 
-  function getLabel (type: NotificationType): IntlString {
+  function getLabel(type: NotificationType): IntlString {
     if (isNotificationType(type) && type.attachedToClass !== undefined) {
       return notification.string.AddedRemoved
     }
@@ -116,7 +116,7 @@
     return notification.string.Change
   }
 
-  function isIgnored (type: Ref<NotificationType>, provider: NotificationProvider): boolean {
+  function isIgnored(type: Ref<NotificationType>, provider: NotificationProvider): boolean {
     const ignored = providerDefaults.some((it) => provider._id === it.provider && it.ignoredTypes.includes(type))
 
     if (ignored) return true
@@ -130,7 +130,7 @@
     return false
   }
 
-  async function getFilteredProviders (
+  async function getFilteredProviders(
     providers: NotificationProvider[],
     types: NotificationType[],
     providersSettings: NotificationProviderSetting[]

@@ -22,11 +22,11 @@
   export let iconProps: any | undefined = undefined
   export let fill: string | undefined = 'currentColor'
 
-  function isAsset (icon: Asset | AnySvelteComponent): boolean {
+  function isAsset(icon: Asset | AnySvelteComponent): boolean {
     return typeof icon === 'string'
   }
 
-  function toAsset (icon: AnySvelteComponent | Asset): Asset {
+  function toAsset(icon: AnySvelteComponent | Asset): Asset {
     return icon as Asset
   }
 

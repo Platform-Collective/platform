@@ -75,11 +75,11 @@
     getObjectGroup(object) === model.id &&
     (!$contextByDocStore.has(object._id) || isArchived(object))
 
-  function isArchived (object: Doc): boolean {
+  function isArchived(object: Doc): boolean {
     return hierarchy.isDerived(object._class, core.class.Space) ? (object as Space).archived : false
   }
 
-  function loadObjects (contexts: DocNotifyContext[]): void {
+  function loadObjects(contexts: DocNotifyContext[]): void {
     const contextsByClass = groupByArray(contexts, ({ objectClass }) => objectClass)
 
     for (const [_class, ctx] of contextsByClass.entries()) {
@@ -115,7 +115,7 @@
     objectsByClass = objectsByClass
   }
 
-  function getObjectGroup (object: Doc): ChatGroup {
+  function getObjectGroup(object: Doc): ChatGroup {
     if (hierarchy.isDerived(object._class, chunter.class.Channel)) {
       return 'channels'
     }
@@ -194,7 +194,7 @@
     }
   )
 
-  function getSectionActions (section: Section, contexts: DocNotifyContext[]): Action[] {
+  function getSectionActions(section: Section, contexts: DocNotifyContext[]): Action[] {
     if (model.getActionsFn === undefined) {
       return []
     }

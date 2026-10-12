@@ -39,7 +39,7 @@ import { buildGanttExportSvg, type GanttExportInput } from './export-renderer'
  */
 
 /** Convert an HTMLCanvasElement to a PNG Blob. */
-async function canvasToPngBlob (canvas: HTMLCanvasElement): Promise<Blob> {
+async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob === null) reject(new Error('canvas.toBlob returned null'))
@@ -52,7 +52,7 @@ async function canvasToPngBlob (canvas: HTMLCanvasElement): Promise<Blob> {
  * Trigger a browser download of the Blob under `filename`. Convenience
  * wrapper around URL.createObjectURL + `<a download>` click.
  */
-function downloadBlob (blob: Blob, filename: string): void {
+function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -66,13 +66,13 @@ function downloadBlob (blob: Blob, filename: string): void {
   }, 1000)
 }
 
-function svgSize (svg: string): { width: number, height: number } {
+function svgSize(svg: string): { width: number; height: number } {
   const width = Number(svg.match(/\bwidth="(\d+(?:\.\d+)?)"/)?.[1] ?? 1)
   const height = Number(svg.match(/\bheight="(\d+(?:\.\d+)?)"/)?.[1] ?? 1)
   return { width, height }
 }
 
-async function svgToPngBlob (svg: string, scale = 2): Promise<Blob> {
+async function svgToPngBlob(svg: string, scale = 2): Promise<Blob> {
   const { width, height } = svgSize(svg)
   const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -101,7 +101,7 @@ async function svgToPngBlob (svg: string, scale = 2): Promise<Blob> {
   }
 }
 
-async function blobToDataUrl (blob: Blob): Promise<string> {
+async function blobToDataUrl(blob: Blob): Promise<string> {
   return await new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
@@ -114,7 +114,7 @@ async function blobToDataUrl (blob: Blob): Promise<string> {
   })
 }
 
-export async function exportGanttDataToPng (input: GanttExportInput, filename: string = 'gantt-export'): Promise<void> {
+export async function exportGanttDataToPng(input: GanttExportInput, filename: string = 'gantt-export'): Promise<void> {
   const svg = buildGanttExportSvg(input)
   const blob = await svgToPngBlob(svg, 2)
   downloadBlob(blob, filename.endsWith('.png') ? filename : filename + '.png')
@@ -142,7 +142,7 @@ const MAX_CANVAS_DIM = 30000
 const PDF_TILE_PX = 8000
 
 /** Rasterise an export SVG into a single offscreen canvas at `scale`. */
-async function renderSvgToCanvas (
+async function renderSvgToCanvas(
   svg: string,
   width: number,
   height: number,
@@ -175,7 +175,7 @@ async function renderSvgToCanvas (
   }
 }
 
-export async function exportGanttDataToPdf (input: GanttExportInput, filename: string = 'gantt-export'): Promise<void> {
+export async function exportGanttDataToPdf(input: GanttExportInput, filename: string = 'gantt-export'): Promise<void> {
   const svg = buildGanttExportSvg(input)
   const { width, height } = svgSize(svg)
   const mod = await import('jspdf')

@@ -65,7 +65,7 @@
       editBio.trim() !== bio ||
       editIsPublic !== isPublic)
 
-  function handleSave (): void {
+  function handleSave(): void {
     if (!canSubmit) return
 
     dispatch('update', {
@@ -79,7 +79,7 @@
     dispatch('close')
   }
 
-  function handleCancel (): void {
+  function handleCancel(): void {
     dispatch('close')
   }
 </script>

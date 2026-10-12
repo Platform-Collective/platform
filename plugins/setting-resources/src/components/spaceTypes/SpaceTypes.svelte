@@ -23,7 +23,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function handleSelected (type: SpaceType): void {
+  function handleSelected(type: SpaceType): void {
     selectedTypeId = type._id
 
     dispatch('change', selectedTypeId)

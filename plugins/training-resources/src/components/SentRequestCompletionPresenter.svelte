@@ -53,7 +53,7 @@
     )
   }
 
-  function showDetails (event: Event): void {
+  function showDetails(event: Event): void {
     if (completionMap === null) {
       return
     }

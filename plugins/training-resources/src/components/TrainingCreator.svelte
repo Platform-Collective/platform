@@ -24,7 +24,7 @@
   let canSave = false
   $: canSave = canCreateTraining() && !isSubmitting && object.title.length > 0
 
-  async function okAction (): Promise<void> {
+  async function okAction(): Promise<void> {
     isSubmitting = true
     await createTraining(object)
     isSubmitting = false

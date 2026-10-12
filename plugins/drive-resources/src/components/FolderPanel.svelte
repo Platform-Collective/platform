@@ -24,7 +24,7 @@
   export let readonly: boolean = false
   export let embedded: boolean = false
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return false
   }
 

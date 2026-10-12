@@ -60,7 +60,7 @@
   $: draggingItem = $dragging.item
   $: draggingItemIndex = $dragging.itemIndex
 
-  async function handleDrop (event: CustomEvent<{ event: DragEvent, index: number }>): Promise<void> {
+  async function handleDrop(event: CustomEvent<{ event: DragEvent, index: number }>): Promise<void> {
     if (draggingItem === null || draggingItemIndex === null) return
 
     const droppingIndex = event.detail.index

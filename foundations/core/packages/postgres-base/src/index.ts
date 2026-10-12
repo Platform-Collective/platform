@@ -258,7 +258,7 @@ class ConnectionInfo {
         reserved = await this.client.reserve()
       }
     } else {
-      reserved = this.available.shift() as DBClient
+      reserved = this.available.shift()
     }
 
     try {

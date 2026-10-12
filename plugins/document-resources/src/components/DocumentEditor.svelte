@@ -45,7 +45,7 @@
 
   let collabEditor: CollaboratorEditor
 
-  export function focus (position?: FocusPosition): void {
+  export function focus(position?: FocusPosition): void {
     collabEditor.focus(position)
   }
 

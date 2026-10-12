@@ -137,7 +137,7 @@
       canCreateTrainingAttempt(trainingObject, request, latestOwnAttempt)
   }
 
-  function showContextMenu (evt: MouseEvent): void {
+  function showContextMenu(evt: MouseEvent): void {
     if (object !== null) {
       showMenu(evt, {
         object,
@@ -146,7 +146,7 @@
     }
   }
 
-  async function retakeTraining (): Promise<void> {
+  async function retakeTraining(): Promise<void> {
     if (trainingObject !== null && request !== null && canRetakeTraining) {
       await createTrainingAttempt(trainingObject, request, latestOwnAttempt)
     }

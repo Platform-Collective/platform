@@ -87,9 +87,9 @@ async function exportAttribute (
   m: ModelDb,
   h: Hierarchy
 ): Promise<{
-    docs: Doc[]
-    required: Array<Ref<Class<Doc>>>
-  }> {
+  docs: Doc[]
+  required: Array<Ref<Class<Doc>>>
+}> {
   const client = getClient()
   const docs: Doc[] = []
   const required: Array<Ref<Class<Doc>>> = []

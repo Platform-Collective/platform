@@ -22,7 +22,7 @@
   import Floor from './Floor.svelte'
   import FloorConfigure from './FloorConfigure.svelte'
 
-  function getRooms (rooms: Room[], floor: Ref<FloorType>): Room[] {
+  function getRooms(rooms: Room[], floor: Ref<FloorType>): Room[] {
     return rooms.filter((p) => p.floor === floor)
   }
 

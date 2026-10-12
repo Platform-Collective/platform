@@ -100,7 +100,7 @@
     dispatch('change', { category, elements: selected })
   }
 
-  function selectTag (evt: Event, category: TagCategory): void {
+  function selectTag(evt: Event, category: TagCategory): void {
     showPopup(
       TagsCategoryPopup,
       {

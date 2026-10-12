@@ -33,7 +33,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  async function getAssociations (tagId: Ref<Class<Doc>>): Promise<void> {
+  async function getAssociations(tagId: Ref<Class<Doc>>): Promise<void> {
     try {
       const descendants = parentTag !== undefined ? hierarchy.getDescendants(parentTag) : []
       const children = childTag !== undefined ? hierarchy.getDescendants(childTag) : []

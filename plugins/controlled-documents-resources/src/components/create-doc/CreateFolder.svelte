@@ -28,7 +28,7 @@
   import view from '@hcengineering/view'
   import { createEventDispatcher } from 'svelte'
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return name === ''
   }
 
@@ -44,11 +44,11 @@
 
   $: canSave = getTitle(name).length > 0 && (folder !== undefined || space !== undefined)
 
-  function getTitle (value: string): string {
+  function getTitle(value: string): string {
     return value.trim()
   }
 
-  async function create (): Promise<void> {
+  async function create(): Promise<void> {
     const title = getTitle(name)
     if (title.length < 1) {
       return

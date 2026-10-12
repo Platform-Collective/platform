@@ -33,7 +33,7 @@ export function generateTestData (): TestData {
 
   return {
     workspaceName: faker.lorem.word(),
-    userName: faker.internet.userName(),
+    userName: faker.internet.username(),
     firstName: faker.person.firstName(),
     lastName: faker.person.lastName(),
     channelName: generateWordStartingWithA()
@@ -60,7 +60,7 @@ export function getNextHourTimeForPlanner (): string {
 
 // Consistent data
 export const workspaceName = faker.lorem.word()
-export const userName = faker.internet.userName()
+export const userName = faker.internet.username()
 export const firstName = faker.person.firstName()
 export const lastName = faker.person.lastName()
 export const channelName = faker.lorem.word()
@@ -175,7 +175,7 @@ export function expectToContainsOrdered (val: Locator, text: string[], timeout?:
   return expect(val).toHaveText(origIssuesExp, { timeout })
 }
 
-export async function * iterateLocator (locator: Locator): AsyncGenerator<Locator> {
+export async function* iterateLocator (locator: Locator): AsyncGenerator<Locator> {
   for (let index = 0; index < (await locator.count()); index++) {
     yield locator.nth(index)
   }

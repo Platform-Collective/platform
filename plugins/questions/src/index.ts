@@ -38,7 +38,7 @@ import type {
 /** @public */
 export const questionsId = 'questions' as Plugin
 
-export * from './doc-types'
+export type * from './doc-types'
 
 /** @public */
 export default plugin(questionsId, {

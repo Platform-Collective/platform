@@ -20,7 +20,7 @@ export async function restoreGithubIntegrations (dbUrl: string, dryrun: boolean)
     const accountClient = getAccountClient(token)
 
     const integrationSettings = await pgClient<
-    { workspaceId: WorkspaceUuid, createdBy: PersonId, installationId: number }[]
+      { workspaceId: WorkspaceUuid, createdBy: PersonId, installationId: number }[]
     >`
       SELECT "workspaceId", "createdBy", data -> 'installationId' "installationId"
       FROM github

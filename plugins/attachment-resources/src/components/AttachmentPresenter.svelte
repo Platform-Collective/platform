@@ -53,7 +53,7 @@
 
   $: canRemove = isRemovable(removable, value, $permissionsStore)
 
-  function isRemovable (
+  function isRemovable(
     removable: boolean,
     value: Attachment | BlobType | undefined,
     permissionsStore: PermissionsStore | undefined
@@ -68,13 +68,13 @@
     )
   }
 
-  function iconLabel (name: string): string {
+  function iconLabel(name: string): string {
     const parts = `${name}`.split('.')
     const ext = parts[parts.length - 1]
     return ext.substring(0, 4).toUpperCase()
   }
 
-  function isImage (contentType: string): boolean {
+  function isImage(contentType: string): boolean {
     return getType(contentType) === 'image'
   }
 
@@ -92,7 +92,7 @@
     canPreview = false
   }
 
-  async function clickHandler (e: MouseEvent): Promise<void> {
+  async function clickHandler(e: MouseEvent): Promise<void> {
     if (value === undefined || (!canPreview && !canShowImage)) return
 
     e.preventDefault()
@@ -116,7 +116,7 @@
     }
   }
 
-  function middleClickHandler (e: MouseEvent): void {
+  function middleClickHandler(e: MouseEvent): void {
     if (e.button !== 1) return
     e.preventDefault()
     e.stopPropagation()
@@ -125,7 +125,7 @@
 
   let download: HTMLAnchorElement
 
-  function dragStart (event: DragEvent): void {
+  function dragStart(event: DragEvent): void {
     if (value === undefined) return
     const url = encodeURI(getFileUrl(value.file))
     event.dataTransfer?.setData('application/contentType', value.type)

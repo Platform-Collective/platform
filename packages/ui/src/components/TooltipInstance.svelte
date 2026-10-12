@@ -15,10 +15,10 @@
 <script context="module" lang="ts">
   let fullScreenMode: boolean = false
 
-  export function getFullScreenMode (): boolean {
+  export function getFullScreenMode(): boolean {
     return fullScreenMode
   }
-  function setFullScreenMode (value: boolean): void {
+  function setFullScreenMode(value: boolean): void {
     fullScreenMode = value
   }
 </script>

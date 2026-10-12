@@ -1,5 +1,6 @@
 //
 // Copyright © 2025 Hardcore Engineering Inc.
+// Copyright © 2026 TraceX SAS.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -14,6 +15,7 @@
 //
 
 import { addStringsLoader, loadMetadata } from '@hcengineering/platform'
+import { loadLang } from './lang'
 import achievement, { achievementId } from '@hcengineering/achievement'
 
 const EarliestAdopter = require('../assets/EarliestAdopter.png') as string // eslint-disable-line
@@ -25,4 +27,4 @@ loadMetadata(achievement.image, {
   Epic,
   Legendary
 })
-addStringsLoader(achievementId, async (lang: string) => await import(`../lang/${lang}.json`))
+addStringsLoader(achievementId, loadLang)

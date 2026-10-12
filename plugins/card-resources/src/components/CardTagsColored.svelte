@@ -46,7 +46,7 @@
 
   $: type = hierarchy.getClass(value._class) as MasterTag
 
-  function updateVisibleTags (): void {
+  function updateVisibleTags(): void {
     if (!collapsable || containerRef == null || tags.length === 0) {
       visibleTags = tags
       hiddenTagsCount = 0
@@ -89,7 +89,7 @@
     visibleTags = tags.slice(0, visible)
     hiddenTagsCount = tags.length - visible
   }
-  function setupResizeObserver (): void {
+  function setupResizeObserver(): void {
     if (!collapsable) {
       return
     }

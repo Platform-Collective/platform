@@ -28,7 +28,7 @@
   export let hideAvatar: boolean = false
   export let hideHeader: boolean = false
 
-  function formatDate (date: Date): string {
+  function formatDate(date: Date): string {
     return date.toLocaleTimeString('default', {
       hour: 'numeric',
       minute: 'numeric'

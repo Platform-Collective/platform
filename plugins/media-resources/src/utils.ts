@@ -90,7 +90,8 @@ function toggleDeviceState (kind: 'camera' | 'microphone'): void {
 
 class MediaSessionImpl
   extends (EventEmitter as unknown as new () => TypedEventEmitter<MediaSessionEvents>)
-  implements MediaSession {
+  implements MediaSession
+{
   readonly state: MediaState
 
   constructor (state: MediaState) {

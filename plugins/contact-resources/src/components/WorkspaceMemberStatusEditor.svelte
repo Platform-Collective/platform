@@ -68,21 +68,21 @@
   /** Avoid flipping UI preset to `custom` when we programmatically set `message` from a template */
   let skipMarkCustom = false
 
-  function presetEmoji (value: UiPreset): string {
+  function presetEmoji(value: UiPreset): string {
     if (value === 'away') return '⏳'
     if (value === 'vacation') return '🏖️'
     if (value === 'outSick') return '🤒'
     return '💬'
   }
 
-  function emojiToUiPreset (e: string): UiPreset {
+  function emojiToUiPreset(e: string): UiPreset {
     if (e === '⏳') return 'away'
     if (e === '🏖️') return 'vacation'
     if (e === '🤒') return 'outSick'
     return 'custom'
   }
 
-  function splitStoredMessage (raw: string): { emoji: string, text: string } {
+  function splitStoredMessage(raw: string): { emoji: string, text: string } {
     const t = raw.trim()
     if (t === '') return { emoji: '💬', text: '' }
     const sp = t.indexOf(' ')
@@ -90,12 +90,12 @@
     return { emoji: t.slice(0, sp), text: t.slice(sp + 1).trim() }
   }
 
-  function markCustom (): void {
+  function markCustom(): void {
     if (skipMarkCustom) return
     preset = 'custom'
   }
 
-  async function applyTemplate (template: Exclude<UiPreset, 'custom'>): Promise<void> {
+  async function applyTemplate(template: Exclude<UiPreset, 'custom'>): Promise<void> {
     skipMarkCustom = true
     preset = template
     emojiText = presetEmoji(template)
@@ -141,14 +141,14 @@
       ? '09:00'
       : `${String(new Date(clearAt).getHours()).padStart(2, '0')}:${String(new Date(clearAt).getMinutes()).padStart(2, '0')}`
 
-  function getEndOfDayTimestamp (): number {
+  function getEndOfDayTimestamp(): number {
     const d = new Date()
     d.setHours(23, 59, 59, 999)
     return d.getTime()
   }
 
   /** Best-effort: stored status only has `clearAt`, not which menu option was chosen */
-  function inferClearModeFromTimestamp (ts: number): ClearMode {
+  function inferClearModeFromTimestamp(ts: number): ClearMode {
     const now = Date.now()
     const toleranceMs = 90 * 1000
     if (ts <= now) return 'none'
@@ -168,7 +168,7 @@
     return 'pickDate'
   }
 
-  function applyClearMode (mode: ClearMode): void {
+  function applyClearMode(mode: ClearMode): void {
     clearMode = mode
     const now = Date.now()
     if (mode === 'none') {
@@ -192,7 +192,7 @@
     }
   }
 
-  function syncClearModeFromTimestamp (): void {
+  function syncClearModeFromTimestamp(): void {
     if (clearAt === undefined) {
       clearMode = 'none'
       return
@@ -206,12 +206,12 @@
     clearMode = inferred
   }
 
-  function finishPopup (): void {
+  function finishPopup(): void {
     closePopup()
     dispatch('close')
   }
 
-  function openUntilDatePicker (ev: MouseEvent): void {
+  function openUntilDatePicker(ev: MouseEvent): void {
     showPopup(
       DatePopup,
       {
@@ -230,7 +230,7 @@
     )
   }
 
-  async function openClearModeMenu (ev: MouseEvent): Promise<void> {
+  async function openClearModeMenu(ev: MouseEvent): Promise<void> {
     const lang = getCurrentLanguage()
     const value: SelectPopupValueType[] = await Promise.all(
       CLEAR_MODE_MENU_ORDER.map(async (id) => ({
@@ -261,7 +261,7 @@
     )
   }
 
-  function onTimeChange (ev: Event): void {
+  function onTimeChange(ev: Event): void {
     if (clearAt === undefined) return
     const value = (ev.target as HTMLInputElement).value
     const [h, m] = value.split(':').map((it) => Number(it))
@@ -271,7 +271,7 @@
     clearAt = d.getTime()
   }
 
-  function openEmojiPicker (ev: MouseEvent): void {
+  function openEmojiPicker(ev: MouseEvent): void {
     const target = ev.currentTarget as HTMLElement
     showPopup(EmojiPopup, { selected: emojiText }, target, (result: { text?: string, image?: unknown } | undefined) => {
       if (result?.text === undefined) return
@@ -280,7 +280,7 @@
     })
   }
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     const trimmed = trimWorkspaceMemberStatusMessage(message)
     const chosenEmoji = emojiText.trim() !== '' ? emojiText.trim() : presetEmoji(preset)
     const finalMessage = `${chosenEmoji} ${trimmed}`.trim()
@@ -311,7 +311,7 @@
     finishPopup()
   }
 
-  async function clearAll (): Promise<void> {
+  async function clearAll(): Promise<void> {
     if (existing !== undefined) {
       await client.remove(existing)
     }

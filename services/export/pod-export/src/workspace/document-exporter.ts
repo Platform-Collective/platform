@@ -300,7 +300,7 @@ export class DocumentExporter {
       await this.targetClient.addCollection(
         attachedDoc._class,
         targetSpace,
-        attachedTo as any,
+        attachedTo,
         attachedToClass,
         collection,
         attachedData,

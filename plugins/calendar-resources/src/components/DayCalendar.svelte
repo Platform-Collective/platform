@@ -70,7 +70,7 @@
 
   $: checkToday($ticker)
 
-  function checkToday (now: number): void {
+  function checkToday(now: number): void {
     if (!areDatesEqual(todayDate, new Date())) {
       todayDate = new Date()
     }
@@ -91,7 +91,7 @@
   const rem = (n: number): number => n * fontSize
   const initDisplayedDaysCount = displayedDaysCount
 
-  export function getCalendarRect (): DOMRect | undefined {
+  export function getCalendarRect(): DOMRect | undefined {
     return container ? calendarRect : undefined
   }
 
@@ -641,7 +641,7 @@
   let originDueDate: Timestamp = 0
   let scrollTimer: any = null
 
-  async function updateHandler (event: Event) {
+  async function updateHandler(event: Event) {
     const update: DocumentUpdate<Event> = {}
     if (originDate !== event.date) update.date = event.date
     if (originDueDate !== event.dueDate) update.dueDate = event.dueDate
@@ -662,13 +662,13 @@
       }
     }
   }
-  async function mouseUpElement (e: MouseEvent): Promise<void> {
+  async function mouseUpElement(e: MouseEvent): Promise<void> {
     window.removeEventListener('mouseup', mouseUpElement as any)
     const event = events.find((ev) => ev._id === resizeId)
     if (event !== undefined) await updateHandler(event)
     resizeId = directionResize = null
   }
-  function mouseDownElement (e: MouseEvent, event: Event, direction: 'top' | 'bottom'): void {
+  function mouseDownElement(e: MouseEvent, event: Event, direction: 'top' | 'bottom'): void {
     if (e.buttons !== 1) return
     e.stopPropagation()
     closeTooltip()
@@ -679,7 +679,7 @@
     containerRect = scroller.getBoundingClientRect()
     window.addEventListener('mouseup', mouseUpElement as any)
   }
-  function mouseMoveElement (
+  function mouseMoveElement(
     e: MouseEvent & { currentTarget: EventTarget & HTMLDivElement },
     day: Date,
     hour: number
@@ -719,7 +719,7 @@
   const transparentImage = new Image(1, 1)
   transparentImage.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
 
-  function dragStartElement (e: DragEvent & { currentTarget: EventTarget & HTMLDivElement }, event: Event): void {
+  function dragStartElement(e: DragEvent & { currentTarget: EventTarget & HTMLDivElement }, event: Event): void {
     if (isReadOnly(event) || event.allDay) return
     if (e.dataTransfer) {
       e.dataTransfer.setDragImage(transparentImage, 0, 0)
@@ -733,13 +733,13 @@
     setTimeout(() => (dragId = event._id), 50)
   }
 
-  async function dragEndElement (e: DragEvent) {
+  async function dragEndElement(e: DragEvent) {
     const event = events.find((ev) => ev._id === dragId)
     if (event !== undefined) await updateHandler(event)
     dragId = null
   }
 
-  function dragDrop (e: DragEvent, day: Date, hourOfDay: number): void {
+  function dragDrop(e: DragEvent, day: Date, hourOfDay: number): void {
     const hour = hourOfDay + startHour
     const newTime = new Date(day).setHours(hour, getExactly(e, true), 0, 0)
     if (dragId) {
@@ -778,7 +778,7 @@
     dragOnOld = null
   }
 
-  function dragOver (e: DragEvent, day: Date, hourOfDay: number): void {
+  function dragOver(e: DragEvent, day: Date, hourOfDay: number): void {
     if (e.dataTransfer) {
       e.dataTransfer.setDragImage(transparentImage, 0, 0)
       e.dataTransfer.dropEffect = 'move'

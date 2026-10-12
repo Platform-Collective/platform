@@ -39,9 +39,9 @@
   $: extension =
     type != null
       ? client
-        .getModel()
-        .findAllSync(card.mixin.CreateCardExtension, {})
-        .find((it) => hierarchy.isDerived(type, it._id))
+          .getModel()
+          .findAllSync(card.mixin.CreateCardExtension, {})
+          .find((it) => hierarchy.isDerived(type, it._id))
       : undefined
 </script>
 

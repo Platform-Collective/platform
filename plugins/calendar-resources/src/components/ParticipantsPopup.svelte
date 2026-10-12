@@ -23,14 +23,14 @@
 
   const dispatch = createEventDispatcher()
 
-  function select (participant: Ref<Person>): void {
+  function select(participant: Ref<Person>): void {
     dispatch('close', participant)
   }
 
   let list: ListView
   const selection = 0
 
-  function onKeyDown (key: KeyboardEvent): boolean {
+  function onKeyDown(key: KeyboardEvent): boolean {
     if (key.key === 'ArrowDown') {
       key.stopPropagation()
       key.preventDefault()

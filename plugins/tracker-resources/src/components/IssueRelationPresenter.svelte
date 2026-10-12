@@ -33,12 +33,12 @@
   $: targetIdentifier = (target as unknown as { identifier?: string } | undefined)?.identifier ?? ''
   $: targetTitle = target?.title ?? ''
 
-  function formatLag (lag: number): string {
+  function formatLag(lag: number): string {
     if (lag === 0) return ''
     return lag > 0 ? ` +${lag}d` : ` ${lag}d`
   }
 
-  function kindBg (kind: IssueRelation['kind']): string {
+  function kindBg(kind: IssueRelation['kind']): string {
     switch (kind) {
       case 'finish-to-start':
         return '#6366f1'

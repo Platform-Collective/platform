@@ -107,9 +107,9 @@ export class AttachmentExporter {
         }
 
         try {
-          const blobBuffers = await this.storage.read(this.context, this.sourceWorkspace, blobRef as string)
+          const blobBuffers = await this.storage.read(this.context, this.sourceWorkspace, blobRef)
           if (blobBuffers !== undefined && blobBuffers.length > 0) {
-            const sourceBlob = await this.storage.stat(this.context, this.sourceWorkspace, blobRef as string)
+            const sourceBlob = await this.storage.stat(this.context, this.sourceWorkspace, blobRef)
             if (sourceBlob !== undefined) {
               const totalSize = blobBuffers.reduce((sum, buf) => sum + buf.length, 0)
               const combinedBuffer = Buffer.concat(blobBuffers)
@@ -117,7 +117,7 @@ export class AttachmentExporter {
               await this.storage.put(
                 this.context,
                 this.targetWorkspace,
-                blobRef as string,
+                blobRef,
                 combinedBuffer,
                 sourceBlob.contentType ?? 'application/json',
                 totalSize
@@ -165,9 +165,9 @@ export class AttachmentExporter {
             }
 
             try {
-              const blobBuffers = await this.storage.read(this.context, this.sourceWorkspace, blobRef as string)
+              const blobBuffers = await this.storage.read(this.context, this.sourceWorkspace, blobRef)
               if (blobBuffers !== undefined && blobBuffers.length > 0) {
-                const sourceBlob = await this.storage.stat(this.context, this.sourceWorkspace, blobRef as string)
+                const sourceBlob = await this.storage.stat(this.context, this.sourceWorkspace, blobRef)
                 if (sourceBlob !== undefined) {
                   const totalSize = blobBuffers.reduce((sum, buf) => sum + buf.length, 0)
                   const combinedBuffer = Buffer.concat(blobBuffers)
@@ -175,7 +175,7 @@ export class AttachmentExporter {
                   await this.storage.put(
                     this.context,
                     this.targetWorkspace,
-                    blobRef as string,
+                    blobRef,
                     combinedBuffer,
                     sourceBlob.contentType ?? 'application/json',
                     totalSize
@@ -275,7 +275,7 @@ export class AttachmentExporter {
     await this.targetClient.addCollection(
       attachment._class,
       (attachment as any).space,
-      targetDocId as any,
+      targetDocId,
       targetDocClass,
       'attachments',
       data,

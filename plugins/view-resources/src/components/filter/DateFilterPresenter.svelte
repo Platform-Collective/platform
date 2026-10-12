@@ -26,7 +26,7 @@
 
   $: checkValues(filter.mode)
 
-  function checkValues (mode: Ref<FilterMode>) {
+  function checkValues(mode: Ref<FilterMode>) {
     if (mode !== view.filter.FilterDateBetween && filter.value.length !== 1) {
       showPicker()
     } else if (mode === view.filter.FilterDateBetween && filter.value.length !== 2) {
@@ -34,7 +34,7 @@
     }
   }
 
-  function showPicker () {
+  function showPicker() {
     if (filter.mode === view.filter.FilterDateBetween) {
       showPopup(
         RangeDatePopup,

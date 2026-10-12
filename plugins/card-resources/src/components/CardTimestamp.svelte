@@ -29,7 +29,7 @@
     year: 'numeric'
   })
 
-  function getShortTime (date: Timestamp): string {
+  function getShortTime(date: Timestamp): string {
     const options: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: 'numeric' }
 
     return new Date(date).toLocaleTimeString('default', options).split(' ')[0]

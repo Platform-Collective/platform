@@ -33,7 +33,7 @@
   let searchQuery: DocumentQuery<Doc> = {}
   let resultQuery: DocumentQuery<Doc> = searchQuery
 
-  function updateResultQuery (search: string): void {
+  function updateResultQuery(search: string): void {
     searchQuery = search === '' ? {} : { $search: search }
   }
 
@@ -42,7 +42,7 @@
   let preference: ViewletPreference | undefined = undefined
   let loading = true
 
-  function showCreateDialog (ev: Event) {
+  function showCreateDialog(ev: Event) {
     showPopup(CreateContact, { space: contact.space.Contacts, targetElement: ev.target }, ev.target as HTMLElement)
   }
 </script>

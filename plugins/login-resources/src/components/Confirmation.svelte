@@ -23,7 +23,7 @@
 
   export let status: Status<any> = OK
 
-  async function check (): Promise<void> {
+  async function check(): Promise<void> {
     const location = getCurrentLocation()
     if (location.query?.id === undefined || location.query?.id === null) return
     status = new Status(Severity.INFO, login.status.ConnectingToServer, {})

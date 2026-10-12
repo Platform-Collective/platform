@@ -65,11 +65,11 @@
   let value = new Date(date).getTime()
   $: dueDate = new Date(value).getTime()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return description.length === 0
   }
 
-  async function saveRequest () {
+  async function saveRequest() {
     let date: number | undefined
     if (value != null) date = value
     if (date === undefined) return
@@ -85,11 +85,11 @@
     await descriptionBox.createAttachments()
   }
 
-  function typeSelected (_id: Ref<RequestType>): void {
+  function typeSelected(_id: Ref<RequestType>): void {
     type = types.find((p) => p._id === _id)
   }
 
-  function moreThanLimit (
+  function moreThanLimit(
     employeeRequests: Map<Ref<Staff>, Request[]>,
     staff: Staff,
     startDate: Date,

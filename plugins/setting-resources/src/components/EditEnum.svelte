@@ -50,7 +50,7 @@
 
   $: matched = values.includes(newValue.trim())
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     if (value === undefined) {
       const _id = await client.createDoc(core.class.Enum, core.space.Model, {
         name,
@@ -66,7 +66,7 @@
     }
   }
 
-  function add (): void {
+  function add(): void {
     newValue = newValue.trim()
     if (newValue.length === 0) return
     if (matched) return
@@ -75,7 +75,7 @@
     newValue = ''
   }
 
-  function remove (value: string): void {
+  function remove(value: string): void {
     values = values.filter((p) => p !== value)
   }
 
@@ -94,7 +94,7 @@
   let opened: boolean = false
   let inputFile: HTMLInputElement
 
-  function processText (text: string): void {
+  function processText(text: string): void {
     const newValues = text.split('\n').map((it) => it.trim())
     for (const v of newValues) {
       if (!values.includes(v)) {
@@ -104,12 +104,12 @@
     values = values
     newValue = ''
   }
-  async function processFile (file: File): Promise<void> {
+  async function processFile(file: File): Promise<void> {
     const text = await file.text()
     processText(text)
   }
 
-  function fileSelected (): void {
+  function fileSelected(): void {
     const list = inputFile.files
     if (list === null || list.length === 0) return
     for (let index = 0; index < list.length; index++) {
@@ -121,7 +121,7 @@
     inputFile.value = ''
   }
 
-  function fileDrop (e: DragEvent): void {
+  function fileDrop(e: DragEvent): void {
     dragover = false
     const list = e.dataTransfer?.files
     if (list === undefined || list.length === 0) return
@@ -132,7 +132,7 @@
       }
     }
   }
-  function pasteAction (evt: ClipboardEvent): void {
+  function pasteAction(evt: ClipboardEvent): void {
     const items = evt.clipboardData?.items ?? []
     for (const index in items) {
       const item = items[index]
@@ -144,7 +144,7 @@
       }
     }
   }
-  async function handleClipboard (): Promise<void> {
+  async function handleClipboard(): Promise<void> {
     const text = await navigator.clipboard.readText()
     processText(text)
   }
@@ -179,7 +179,7 @@
     }
   }
 
-  function showConfirmationDialog (): void {
+  function showConfirmationDialog(): void {
     const isEnumEmpty = values.length === 0
     const oldValues = value?.enumValues ?? []
     const isEnumSame = values.length === oldValues.length && values.every((it, i) => it === oldValues[i])

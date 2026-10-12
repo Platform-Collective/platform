@@ -36,13 +36,13 @@
 
   const dispatch = createEventDispatcher()
 
-  function close (value?: string): void {
+  function close(value?: string): void {
     const connected = state.mode === 'Authorized' || state.mode === 'Configured'
     dispatch('close', { value, connected })
   }
 
   // Wrapper for command API with loading state management
-  async function commandWithLoading (phone: string, action: 'start' | 'next', data?: string): Promise<IntegrationState> {
+  async function commandWithLoading(phone: string, action: 'start' | 'next', data?: string): Promise<IntegrationState> {
     if (isLoading) {
       throw new Error('Already processing request')
     }
@@ -69,7 +69,7 @@
   let integrationState: IntegrationState = 'Loading'
   let state: UIState = { mode: 'Loading' }
 
-  function h (handler: () => Promise<IntegrationState>) {
+  function h(handler: () => Promise<IntegrationState>) {
     return () => {
       handler()
         .then((i) => {
@@ -88,7 +88,7 @@
     }
   }
 
-  function getErrorLabel (error: any): IntlString | undefined {
+  function getErrorLabel(error: any): IntlString | undefined {
     if (error instanceof PlatformError) {
       if (error.status.code === platform.status.Unauthorized || error.status.code === platform.status.Forbidden) {
         return telegram.string.IncorrectPhoneOrCode
@@ -190,7 +190,7 @@
     }
   }
 
-  async function init (): Promise<void> {
+  async function init(): Promise<void> {
     try {
       const phoneNumber = integration?.data?.phone
 
@@ -227,7 +227,7 @@
     }
   }
 
-  async function disconnectSession (phoneNumber: string): Promise<void> {
+  async function disconnectSession(phoneNumber: string): Promise<void> {
     try {
       await disconnect(phoneNumber)
     } catch (error: any) {

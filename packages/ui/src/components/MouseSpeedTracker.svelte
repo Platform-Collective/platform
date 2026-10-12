@@ -30,7 +30,7 @@
 
   $: focusSpeed = speedD < 50
 
-  function update (now: number) {
+  function update(now: number) {
     maxSpeedY = 0
     maxSpeedX = 0
     maxSpeedD = 0
@@ -38,7 +38,7 @@
 
   $: update($ticker)
 
-  function trackMouse (evt: MouseEvent): void {
+  function trackMouse(evt: MouseEvent): void {
     if (timestamp === 0) {
       timestamp = Date.now()
       lastMouseX = evt.screenX

@@ -49,14 +49,14 @@
   let search = ''
   let resultQuery: DocumentQuery<TagElement> = { targetClass }
 
-  function updateResultQuery (search: string, category?: Ref<TagCategory>): void {
+  function updateResultQuery(search: string, category?: Ref<TagCategory>): void {
     resultQuery = search === '' ? { targetClass } : { $search: search, targetClass }
     if (category !== undefined) {
       resultQuery.category = category
     }
   }
 
-  function showCreateDialog () {
+  function showCreateDialog() {
     showPopup(CreateTagElement, { targetClass, keyTitle }, 'top')
   }
   const opt: FindOptions<TagElement> = {

@@ -41,8 +41,8 @@
       : $lkSessionConnected && !allowCam && isMicEnabled
         ? love.icon.Mic
         : !allowCam || (!isCamEnabled && isMicEnabled)
-            ? love.icon.Mic
-            : icon}
+          ? love.icon.Mic
+          : icon}
   {selected}
   {size}
   kind={$screenSharingState === ScreenSharingState.Local

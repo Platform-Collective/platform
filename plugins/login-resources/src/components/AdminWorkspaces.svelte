@@ -51,7 +51,7 @@
 
   let search: string = ''
 
-  async function select (workspace: string): Promise<void> {
+  async function select(workspace: string): Promise<void> {
     const url = locationToUrl({ path: [workbenchId, workspace] })
     window.open(url, '_blank')
   }
@@ -95,7 +95,7 @@
   let showSelectedRegionOnly: boolean = false
   let showInactive = false
 
-  function isWorkspaceInactive (it: WorkspaceInfo, stats: WorkspaceStatistics | undefined): boolean {
+  function isWorkspaceInactive(it: WorkspaceInfo, stats: WorkspaceStatistics | undefined): boolean {
     if (stats === undefined) {
       return true
     }
@@ -112,7 +112,7 @@
     return false
   }
 
-  function getBackupSize (workspace: WorkspaceInfo): number {
+  function getBackupSize(workspace: WorkspaceInfo): number {
     return Math.max(
       workspace.backupInfo?.backupSize ?? 0,
       (workspace.backupInfo?.dataSize ?? 0) + (workspace.backupInfo?.blobsSize ?? 0)
@@ -166,7 +166,7 @@
 
   const endpoint = getMetadata(presentation.metadata.StatsUrl)
 
-  async function fetchStats (time: number): Promise<void> {
+  async function fetchStats(time: number): Promise<void> {
     await fetch(endpoint + `/api/v1/overview?token=${token}`, {})
       .then(async (json) => {
         data = await json.json()
@@ -327,11 +327,11 @@
 
   void loadAccounts(accountSearch, accountSkip, accountLimit)
 
-  async function deleteAccount (uuid: AccountUuid): Promise<void> {
+  async function deleteAccount(uuid: AccountUuid): Promise<void> {
     await accountClient.deleteAccount(uuid)
   }
 
-  async function accountSearchChanged (ev: CustomEvent<string>): Promise<void> {
+  async function accountSearchChanged(ev: CustomEvent<string>): Promise<void> {
     accountSkip = 0
     await loadAccounts(ev.detail, accountSkip, accountLimit)
   }

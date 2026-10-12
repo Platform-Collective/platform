@@ -46,7 +46,7 @@
   $: activeTheme = $loginTheme
 
   // themeStyle resolves to override theme vars when override is active, otherwise to store theme vars
-  function onDevThemeChange (e: Event): void {
+  function onDevThemeChange(e: Event): void {
     const v = (e.target as HTMLSelectElement).value as LoginThemeName
     // set local override and apply accent class immediately (no store change)
     setLoginTheme(v)

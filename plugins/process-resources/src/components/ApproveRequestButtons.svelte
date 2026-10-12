@@ -26,7 +26,7 @@
 
   const client = getClient()
 
-  async function changeApprovalRequestState (ev: MouseEvent, isRejection: boolean): Promise<void> {
+  async function changeApprovalRequestState(ev: MouseEvent, isRejection: boolean): Promise<void> {
     showPopup(SignatureDialog, { isRejection }, eventToHTMLElement(ev), async (res) => {
       if (!res) return
 

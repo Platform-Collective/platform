@@ -45,7 +45,7 @@
   let presenter: typeof SvelteComponent | undefined
   let items: Doc[] = []
 
-  async function updatePresenter (classRef: Ref<Class<Doc>>) {
+  async function updatePresenter(classRef: Ref<Class<Doc>>) {
     try {
       isPresenterLoading = true
 
@@ -64,7 +64,7 @@
     }
   }
 
-  function updateItems (newItems: FindResult<Doc>): void {
+  function updateItems(newItems: FindResult<Doc>): void {
     items = newItems
     areItemsloading = false
   }
@@ -78,7 +78,7 @@
 
   $: isSortable = hierarchy.getAllAttributes(_class).has('rank')
 
-  async function handleMove (
+  async function handleMove(
     e: CustomEvent<{ item: DocWithRank, prev: DocWithRank | undefined, next: DocWithRank | undefined }>
   ): Promise<void> {
     if (!isSortable) return

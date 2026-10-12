@@ -145,11 +145,11 @@ function parsePrintOptions (query: Request['query']): PrintOptions {
   const kind = query.kind as PrintOptions['kind']
   const orientation = query.orientation as PrintOptions['orientation']
 
-  if (kind !== undefined && !validKinds.includes(kind as any)) {
+  if (kind !== undefined && !validKinds.includes(kind)) {
     throw new ApiError(400, `Invalid print kind: ${kind}`)
   }
 
-  if (orientation !== undefined && !validPageOrientations.includes(orientation as any)) {
+  if (orientation !== undefined && !validPageOrientations.includes(orientation)) {
     throw new ApiError(400, `Invalid page orientation: ${orientation}`)
   }
 
@@ -279,7 +279,7 @@ export function createServer (
             throw new ApiError(404, `File ${file} not found`)
           }
 
-          const input = Buffer.concat(originalFile as any)
+          const input = Buffer.concat(originalFile)
           if (format === 'pdf' && input.length > maxDocumentBytes) {
             throw new ApiError(413, 'Document exceeds the 25 MiB preview limit')
           }

@@ -31,14 +31,14 @@
   const hierarchy = client.getHierarchy()
   const presenterClass = getAttributePresenterClass(hierarchy, attribute.type)
 
-  function save (): void {
+  function save(): void {
     dispatch('close', {
       ...props,
       _class: presenterClass.attrClass
     })
   }
 
-  function getKeys (): AnyAttribute[] {
+  function getKeys(): AnyAttribute[] {
     const attributes = hierarchy.getAllAttributes(presenterClass.attrClass, core.class.Doc)
     const res: AnyAttribute[] = []
     for (const [key, attr] of attributes) {
@@ -58,7 +58,7 @@
   const allAttrs = getKeys()
   $: possibleAttrs = allAttrs.filter((attr) => !keys.includes(attr.name))
 
-  function onAdd (e: MouseEvent): void {
+  function onAdd(e: MouseEvent): void {
     showPopup(
       SelectPopup,
       {
@@ -75,11 +75,11 @@
     )
   }
 
-  function addKey (key: string): void {
+  function addKey(key: string): void {
     keys = [...keys, key]
   }
 
-  function remove (e: CustomEvent<any>): void {
+  function remove(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       const key = e.detail.key
       keys = keys.filter((k) => k !== key)
@@ -88,7 +88,7 @@
     }
   }
 
-  function change (e: CustomEvent<any>): void {
+  function change(e: CustomEvent<any>): void {
     if (e.detail == null) return
     props = e.detail
   }

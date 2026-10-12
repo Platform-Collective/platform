@@ -37,7 +37,7 @@
   $: selectedAvatar = person?.avatar
   $: selectedAvatarProps = person?.avatarProps
 
-  export async function createAvatar (): Promise<Data<AvatarInfo>> {
+  export async function createAvatar(): Promise<Data<AvatarInfo>> {
     const result: Data<AvatarInfo> = {
       avatarType: selectedAvatarType,
       avatarProps: selectedAvatarProps,
@@ -54,14 +54,14 @@
     return result
   }
 
-  export async function removeAvatar (avatar: string) {
+  export async function removeAvatar(avatar: string) {
     if (!avatar.includes('://')) {
       const deleteFile = await getResource(attachment.helper.DeleteFile)
       await deleteFile(avatar)
     }
   }
 
-  function handlePopupSubmit (
+  function handlePopupSubmit(
     submittedAvatarType: AvatarType,
     submittedAvatar: Ref<PlatformBlob> | undefined | null,
     submittedProps: Record<string, any> | undefined,
@@ -75,7 +75,7 @@
   }
   const dispatch = createEventDispatcher()
 
-  async function showSelectionPopup (e: MouseEvent) {
+  async function showSelectionPopup(e: MouseEvent) {
     if (!disabled) {
       showPopup(SelectAvatarPopup, {
         avatar: selectedAvatar,

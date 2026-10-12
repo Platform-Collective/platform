@@ -24,7 +24,7 @@
   }
 
   $: resolved = isResolved(value)
-  function isResolved (val: DocumentComment | undefined): boolean {
+  function isResolved(val: DocumentComment | undefined): boolean {
     return val?.resolved !== undefined && val.resolved
   }
 </script>

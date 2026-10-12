@@ -24,7 +24,7 @@
 
   export let targetClass: Ref<Class<Doc>>
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return true
   }
 
@@ -78,7 +78,7 @@
     move: number
   }
 
-  function prepareTitle (title: string): string {
+  function prepareTitle(title: string): string {
     // Replace all non letter or digit characters with spaces
     let result = ''
     let last = ''
@@ -107,14 +107,14 @@
     return result.trim()
   }
 
-  function isLetter (c?: string): boolean {
+  function isLetter(c?: string): boolean {
     if (c == null) {
       return false
     }
     return c.toLowerCase() !== c.toUpperCase()
   }
 
-  function isDigit (c?: string): boolean {
+  function isDigit(c?: string): boolean {
     return (
       c === '0' ||
       c === '1' ||
@@ -129,7 +129,7 @@
     )
   }
 
-  function isLetterOrDigit (c?: string): boolean {
+  function isLetterOrDigit(c?: string): boolean {
     if (c == null) {
       return false
     }
@@ -139,7 +139,7 @@
     return c.toLowerCase() !== c.toUpperCase()
   }
 
-  function isForRemove (cc: string): boolean {
+  function isForRemove(cc: string): boolean {
     for (const c of cc) {
       if (isLetter(c)) {
         return false
@@ -197,7 +197,7 @@
   $: titles = Array.from(new Set(expertRefs.map((it) => prepareTitle(it.title.toLocaleLowerCase()))))
 
   // Will return a set of operations over tag elements
-  async function updateTagsList (
+  async function updateTagsList(
     tagElements: TagElement[],
     expertRefs: Pick<TagReference, '_id' | '_class' | 'tag' | 'title'>[]
   ): Promise<void> {
@@ -425,7 +425,7 @@
 
   let doProcessing = false
 
-  function doAnalyse (): void {
+  function doAnalyse(): void {
     doProcessing = true
     if (elements.length > 0 && expertRefs.length > 0) {
       setTimeout(() => {
@@ -454,7 +454,7 @@
 
   let processed: number = 0
 
-  async function applyPlan (): Promise<void> {
+  async function applyPlan(): Promise<void> {
     processed = 0
     const updateClasses = new Set<Ref<Class<Doc>>>()
     const client = getClient()
@@ -549,7 +549,7 @@
     console.log('Apply:done')
     processed = 0
   }
-  function toColor (el: TagUpdatePlan['elements'][0]): string | undefined {
+  function toColor(el: TagUpdatePlan['elements'][0]): string | undefined {
     if (el.total === -1) {
       return 'blue'
     }
@@ -563,7 +563,7 @@
     return undefined
   }
 
-  function exportCSV (name: string, data: string): void {
+  function exportCSV(name: string, data: string): void {
     const filename = name + new Date().toLocaleDateString() + '.csv'
     const link = document.createElement('a')
     link.style.display = 'none'
@@ -575,7 +575,7 @@
     document.body.removeChild(link)
   }
 
-  function exportExpertSkills (): string {
+  function exportExpertSkills(): string {
     // Construct csv
     const csv: string[] = []
     csv.push('title;enabled;references')
@@ -589,7 +589,7 @@
     return csv.join('\n')
   }
 
-  function exportPlan (): string {
+  function exportPlan(): string {
     // Construct csv
     const csv: string[] = []
     csv.push('number; title;total; new refs; new title;to delete;will add tags ')

@@ -32,7 +32,7 @@
       ? gracePeriodEndsAtDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
       : ''
 
-  function handleUpgrade (): void {
+  function handleUpgrade(): void {
     dispatch('close')
     void upgradePlan()
   }

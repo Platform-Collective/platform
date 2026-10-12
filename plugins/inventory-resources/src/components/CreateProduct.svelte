@@ -36,11 +36,11 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return doc.attachedTo.length === 0 && doc.name.length === 0
   }
 
-  async function create () {
+  async function create() {
     const categoryInstance = await client.findOne(inventory.class.Category, { _id: doc.attachedTo as Ref<Category> })
     if (categoryInstance === undefined) {
       throw new Error('category not found')

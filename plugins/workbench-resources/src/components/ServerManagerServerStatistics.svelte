@@ -9,7 +9,7 @@
 
   const endpoint = getMetadata(presentation.metadata.StatsUrl)
 
-  async function fetchStats (time: number): Promise<void> {
+  async function fetchStats(time: number): Promise<void> {
     await fetch(endpoint + `/api/v1/overview?token=${token}`, {})
       .then(async (json) => {
         data = await json.json()

@@ -50,7 +50,7 @@
 
   const client = getClient()
 
-  async function assignRepository (project: Ref<Project>): Promise<void> {
+  async function assignRepository(project: Ref<Project>): Promise<void> {
     if (project === undefined) {
       return
     }
@@ -126,7 +126,7 @@
         (client.getHierarchy().asIf(it, github.mixin.GithubProject)?.integration ?? integration._id) === integration._id
     )
     .concat(orphanProjects)
-  async function selectProject (event: MouseEvent): Promise<void> {
+  async function selectProject(event: MouseEvent): Promise<void> {
     showPopup(
       DropdownLabelsPopup,
       {

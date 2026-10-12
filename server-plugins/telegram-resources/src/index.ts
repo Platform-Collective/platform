@@ -195,11 +195,11 @@ async function getTranslatedData (
   control: TriggerControl,
   message?: ActivityMessage
 ): Promise<{
-    title: string
-    quote: string | undefined
-    body: string
-    link: string
-  }> {
+  title: string
+  quote: string | undefined
+  body: string
+  link: string
+}> {
   const { hierarchy } = control
 
   let { title, body } = await getTranslatedNotificationContent(data, data._class, control)

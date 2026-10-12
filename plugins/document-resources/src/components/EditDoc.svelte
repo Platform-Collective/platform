@@ -77,7 +77,7 @@
   let useMaxWidth = getUseMaxWidth()
   $: saveUseMaxWidth(useMaxWidth)
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return false
   }
 
@@ -100,7 +100,7 @@
   const notificationClient = getResource(notification.function.GetInboxNotificationsClient).then((res) => res())
 
   $: read(_id)
-  function read (_id: Ref<Doc>): void {
+  function read(_id: Ref<Doc>): void {
     if (lastId !== _id) {
       loadedDocumentContent = false
       const prev = lastId
@@ -114,7 +114,7 @@
     clearTimeout(copyTimeout)
   })
 
-  async function createEmbedding (file: File): Promise<{ file: Ref<Blob>, type: string } | undefined> {
+  async function createEmbedding(file: File): Promise<{ file: Ref<Blob>, type: string } | undefined> {
     if (doc === undefined) {
       return undefined
     }
@@ -155,7 +155,7 @@
 
   $: canSave = title.trim().length > 0
 
-  async function saveTitle (ev: Event): Promise<void> {
+  async function saveTitle(ev: Event): Promise<void> {
     ev.preventDefault()
 
     if (doc === undefined || !canSave) {
@@ -169,7 +169,7 @@
     }
   }
 
-  async function chooseIcon (): Promise<void> {
+  async function chooseIcon(): Promise<void> {
     if (doc !== undefined) {
       const { icon, color } = doc
       const icons = [document.icon.Document, document.icon.Teamspace]
@@ -182,24 +182,24 @@
     }
   }
 
-  function showContextMenu (ev: MouseEvent): void {
+  function showContextMenu(ev: MouseEvent): void {
     if (doc !== undefined) {
       showMenu(ev, { object: doc, excludedActions: [view.action.Open] })
     }
   }
 
-  function getUseMaxWidth (): boolean {
+  function getUseMaxWidth(): boolean {
     const useMaxWidth = localStorage.getItem('document.useMaxWidth')
     return useMaxWidth === 'true'
   }
 
-  function saveUseMaxWidth (useMaxWidth: boolean): void {
+  function saveUseMaxWidth(useMaxWidth: boolean): void {
     localStorage.setItem('document.useMaxWidth', useMaxWidth.toString())
   }
 
   let sideContentSpace = 0
 
-  function updateSizeContentSpace (width: number): void {
+  function updateSizeContentSpace(width: number): void {
     sideContentSpace = width
   }
 

@@ -17,7 +17,7 @@ import { type Department, type PublicHoliday, type TzDate } from '@hcengineering
  * UTC day. The `offset` field is ignored — calendar-day semantics, same as
  * hr-resources itself.
  */
-export function tzDateToUtcMidnight (date: TzDate): number {
+export function tzDateToUtcMidnight(date: TzDate): number {
   return Date.UTC(date.year, date.month, date.day)
 }
 
@@ -36,7 +36,7 @@ export function tzDateToUtcMidnight (date: TzDate): number {
  * so this module stays a pure function over plain data — no plugin-id
  * import, trivially unit-testable.
  */
-export function resolveHolidayScope (
+export function resolveHolidayScope(
   target: Ref<Department> | undefined,
   head: Ref<Department>,
   departments: Map<Ref<Department>, Department>
@@ -65,7 +65,7 @@ export function resolveHolidayScope (
  * Resolve HR public holidays to the engine's holiday list: only holidays of
  * departments inside `scope` count, de-duplicated per UTC day.
  */
-export function resolveHrHolidays (holidays: PublicHoliday[], scope: Set<Ref<Department>>): number[] {
+export function resolveHrHolidays(holidays: PublicHoliday[], scope: Set<Ref<Department>>): number[] {
   const days = new Set<number>()
   for (const h of holidays) {
     if (scope.has(h.department)) {

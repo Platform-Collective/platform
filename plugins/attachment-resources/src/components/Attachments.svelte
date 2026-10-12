@@ -52,7 +52,7 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  async function onFileUploaded ({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> {
+  async function onFileUploaded({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> {
     await createAttachment(
       client,
       uuid,
@@ -65,7 +65,7 @@
     )
   }
 
-  async function fileSelected (): Promise<void> {
+  async function fileSelected(): Promise<void> {
     const list = inputFile.files
     if (list === null || list.length === 0) return
 
@@ -87,11 +87,11 @@
     dispatch('attached')
   }
 
-  function openFile (): void {
+  function openFile(): void {
     inputFile.click()
   }
 
-  function updateContent (evt: CustomEvent): void {
+  function updateContent(evt: CustomEvent): void {
     attachments = evt.detail.length
     dispatch('attachments', evt.detail)
   }

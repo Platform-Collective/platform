@@ -28,7 +28,7 @@
   const remFactor = 16
 
   // Function to safely parse maxHeight with fallback
-  function getMaxSize (maxHeight: string): number {
+  function getMaxSize(maxHeight: string): number {
     const remValue = parseFloat(maxHeight.replace('rem', ''))
     if (isNaN(remValue) || remValue <= 0) {
       return 30 * remFactor

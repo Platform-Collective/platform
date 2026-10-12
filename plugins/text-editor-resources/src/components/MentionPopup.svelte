@@ -37,11 +37,11 @@
 
   let items: SearchItem[] = []
 
-  function getReferenceVersionsProvider (doc: SearchResultDoc['doc']): ReferenceVersionsProvider | undefined {
+  function getReferenceVersionsProvider(doc: SearchResultDoc['doc']): ReferenceVersionsProvider | undefined {
     return client.getHierarchy().classHierarchyMixin(doc._class, view.mixin.ReferenceVersionsProvider)
   }
 
-  function getVersionableDoc (doc: SearchResultDoc['doc']): VersionableDoc | undefined {
+  function getVersionableDoc(doc: SearchResultDoc['doc']): VersionableDoc | undefined {
     const enabled = client.getHierarchy().classHierarchyMixin(doc._class, core.mixin.VersionableClass)?.enabled
     if (enabled !== true) return
 
@@ -51,11 +51,11 @@
     return versionedDoc
   }
 
-  function hasReferenceVersions (doc: SearchResultDoc['doc']): boolean {
+  function hasReferenceVersions(doc: SearchResultDoc['doc']): boolean {
     return getReferenceVersionsProvider(doc) !== undefined || getVersionableDoc(doc) !== undefined
   }
 
-  async function getReferenceVersions (doc: SearchResultDoc['doc']): Promise<ReferenceVersion[]> {
+  async function getReferenceVersions(doc: SearchResultDoc['doc']): Promise<ReferenceVersion[]> {
     const provider = getReferenceVersionsProvider(doc)
     if (provider !== undefined) {
       const providerFn = await getResource(provider.provider)
@@ -81,7 +81,7 @@
     )
   }
 
-  async function getLatestReference (item: SearchResultDoc): Promise<ReferenceVersion> {
+  async function getLatestReference(item: SearchResultDoc): Promise<ReferenceVersion> {
     return {
       id: item.doc._id,
       objectclass: item.doc._class,
@@ -89,7 +89,7 @@
     }
   }
 
-  function selectReference (props: ReferenceVersion): void {
+  function selectReference(props: ReferenceVersion): void {
     dispatch('close', props)
   }
 
@@ -104,7 +104,7 @@
     .getModel()
     .findAllSync(presentation.class.ObjectSearchCategory, { classToSearch: contact.mixin.Employee })[0]
 
-  async function getMultipleEmployeeSearchItems (localQuery: string, lastIndex: number): Promise<SearchItem[]> {
+  async function getMultipleEmployeeSearchItems(localQuery: string, lastIndex: number): Promise<SearchItem[]> {
     if (!multipleMentions) return []
     if (employeeSearchCategory === undefined) return []
 
@@ -156,7 +156,7 @@
       .map((it, idx) => ({ ...it, num: lastIndex + 1 + idx }))
   }
 
-  async function handleSelectItem (item: SearchResultDoc): Promise<void> {
+  async function handleSelectItem(item: SearchResultDoc): Promise<void> {
     if ([contact.mention.Here, contact.mention.Everyone].includes(item.id as any)) {
       dispatch('close', {
         id: item.doc._id,
@@ -180,7 +180,7 @@
     })
   }
 
-  export function onKeyDown (key: KeyboardEvent): boolean {
+  export function onKeyDown(key: KeyboardEvent): boolean {
     if (key.key === 'ArrowDown') {
       key.stopPropagation()
       key.preventDefault()

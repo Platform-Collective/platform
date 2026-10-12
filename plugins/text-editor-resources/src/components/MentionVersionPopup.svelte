@@ -25,12 +25,12 @@
 
   const dispatch = createEventDispatcher()
 
-  function selectLatest (): void {
+  function selectLatest(): void {
     onSelect(latest)
     dispatch('close')
   }
 
-  function selectVersion (version: ReferenceVersion): void {
+  function selectVersion(version: ReferenceVersion): void {
     onSelect(version)
     dispatch('close')
   }

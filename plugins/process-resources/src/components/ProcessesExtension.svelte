@@ -67,7 +67,7 @@
     }
   }
 
-  function add (e: MouseEvent): void {
+  function add(e: MouseEvent): void {
     if (readonly) {
       return
     }
@@ -85,7 +85,7 @@
     }
   )
   let docs: Execution[] = []
-  function select () {
+  function select() {
     listProvider.update(docs)
     listProvider.updateFocus(docs[0])
     list?.select(0, undefined)
@@ -125,7 +125,7 @@
 
   let docsProvided = false
 
-  function checkForbiddenPermission (permissionsStore: PermissionsStore): boolean {
+  function checkForbiddenPermission(permissionsStore: PermissionsStore): boolean {
     return checkMyPermission(process.permission.ForbidRunProcess, card.space as Ref<TypedSpace>, permissionsStore)
   }
 </script>

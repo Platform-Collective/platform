@@ -37,6 +37,8 @@ import {
   getLoginInfoByToken,
   releaseSocialId,
   loginAsGuest,
+  getLoginCapabilities,
+  resetGuestPersonCache,
   loginOtp,
   login,
   confirm,
@@ -120,7 +122,7 @@ describe('account operations', () => {
     socialId: {
       findOne: jest.fn()
     },
-    generatePersonUuid: jest.fn().mockResolvedValue('generated-person-uuid' as PersonUuid)
+    generatePersonUuid: jest.fn().mockResolvedValue('generated-person-uuid')
   } as unknown as AccountDB
 
   const mockToken = 'test-token'
@@ -1131,7 +1133,7 @@ describe('account operations', () => {
         return undefined
       })
       // Reset the mock for each test
-      ;(mockDb.generatePersonUuid as jest.Mock).mockResolvedValue('generated-person-uuid' as PersonUuid)
+      ;(mockDb.generatePersonUuid as jest.Mock).mockResolvedValue('generated-person-uuid')
     })
 
     test('should create basic access link', async () => {
@@ -1564,6 +1566,129 @@ describe('account operations', () => {
           new PlatformError(new Status(Severity.ERROR, platform.status.AccountNotFound, {}))
         )
       })
+
+      test('should fail with Forbidden when DISABLE_GUEST_LOGIN=true', async () => {
+        const prev = process.env.DISABLE_GUEST_LOGIN
+        process.env.DISABLE_GUEST_LOGIN = 'true'
+        try {
+          await expect(loginAsGuest(mockCtx, mockDb, mockBranding, mockToken)).rejects.toThrow(
+            new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+          )
+          expect(mockDb.person.findOne).not.toHaveBeenCalled()
+        } finally {
+          if (prev === undefined) {
+            delete process.env.DISABLE_GUEST_LOGIN
+          } else {
+            process.env.DISABLE_GUEST_LOGIN = prev
+          }
+        }
+      })
+    })
+
+    describe('getLoginCapabilities', () => {
+      // L-AUTH-1: the guest-person lookup is cached module-wide; reset before
+      // each test so per-test mock return values are observed deterministically.
+      beforeEach(() => {
+        resetGuestPersonCache()
+      })
+      const restoreEnv = (key: string, prev: string | undefined): void => {
+        if (prev === undefined) {
+          Reflect.deleteProperty(process.env, key)
+        } else {
+          process.env[key] = prev
+        }
+      }
+
+      test('should report both signUp and guest available by default when guest person exists', async () => {
+        const prevSignup = process.env.DISABLE_SIGNUP
+        const prevGuest = process.env.DISABLE_GUEST_LOGIN
+        delete process.env.DISABLE_SIGNUP
+        delete process.env.DISABLE_GUEST_LOGIN
+        try {
+          ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({ uuid: readOnlyGuestAccountUuid })
+
+          const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
+
+          expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: true })
+        } finally {
+          restoreEnv('DISABLE_SIGNUP', prevSignup)
+          restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
+        }
+      })
+
+      test('should report guestLoginAvailable=false when guest person missing', async () => {
+        const prevSignup = process.env.DISABLE_SIGNUP
+        const prevGuest = process.env.DISABLE_GUEST_LOGIN
+        delete process.env.DISABLE_SIGNUP
+        delete process.env.DISABLE_GUEST_LOGIN
+        try {
+          ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(null)
+
+          const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
+
+          expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: false })
+        } finally {
+          restoreEnv('DISABLE_SIGNUP', prevSignup)
+          restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
+        }
+      })
+
+      test('should report signUpEnabled=false when DISABLE_SIGNUP=true', async () => {
+        const prevSignup = process.env.DISABLE_SIGNUP
+        const prevGuest = process.env.DISABLE_GUEST_LOGIN
+        process.env.DISABLE_SIGNUP = 'true'
+        delete process.env.DISABLE_GUEST_LOGIN
+        try {
+          ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({ uuid: readOnlyGuestAccountUuid })
+
+          const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
+
+          expect(result).toEqual({ signUpEnabled: false, guestLoginAvailable: true })
+        } finally {
+          restoreEnv('DISABLE_SIGNUP', prevSignup)
+          restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
+        }
+      })
+
+      test('should report guestLoginAvailable=false when DISABLE_GUEST_LOGIN=true (no DB lookup)', async () => {
+        const prevSignup = process.env.DISABLE_SIGNUP
+        const prevGuest = process.env.DISABLE_GUEST_LOGIN
+        delete process.env.DISABLE_SIGNUP
+        process.env.DISABLE_GUEST_LOGIN = 'true'
+        try {
+          ;(mockDb.person.findOne as jest.Mock).mockClear()
+
+          const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
+
+          expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: false })
+          expect(mockDb.person.findOne).not.toHaveBeenCalled()
+        } finally {
+          restoreEnv('DISABLE_SIGNUP', prevSignup)
+          restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
+        }
+      })
+
+      test('L-AUTH-1: caches the guest-person lookup within TTL (single DB hit)', async () => {
+        const prevSignup = process.env.DISABLE_SIGNUP
+        const prevGuest = process.env.DISABLE_GUEST_LOGIN
+        delete process.env.DISABLE_SIGNUP
+        delete process.env.DISABLE_GUEST_LOGIN
+        try {
+          ;(mockDb.person.findOne as jest.Mock).mockClear()
+          ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({ uuid: readOnlyGuestAccountUuid })
+
+          const r1 = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
+          const r2 = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
+
+          expect(r1).toEqual({ signUpEnabled: true, guestLoginAvailable: true })
+          expect(r2).toEqual({ signUpEnabled: true, guestLoginAvailable: true })
+          // Second call within TTL must be served from cache -> exactly one DB hit.
+          expect(mockDb.person.findOne).toHaveBeenCalledTimes(1)
+        } finally {
+          restoreEnv('DISABLE_SIGNUP', prevSignup)
+          restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
+        }
+      })
     })
   })
 
@@ -1800,6 +1925,29 @@ describe('account operations', () => {
           )
         }
       })
+
+      test('should fail with Forbidden when DISABLE_SIGNUP=true', async () => {
+        const prev = process.env.DISABLE_SIGNUP
+        process.env.DISABLE_SIGNUP = 'true'
+        const signUpByEmailSpy = jest.spyOn(utils, 'signUpByEmail')
+        try {
+          await expect(
+            signUp(mockCtx, mockDb, mockBranding, mockToken, {
+              email: mockEmail,
+              password: mockPassword,
+              firstName: mockFirstName,
+              lastName: mockLastName
+            })
+          ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {})))
+          expect(signUpByEmailSpy).not.toHaveBeenCalled()
+        } finally {
+          if (prev === undefined) {
+            delete process.env.DISABLE_SIGNUP
+          } else {
+            process.env.DISABLE_SIGNUP = prev
+          }
+        }
+      })
     })
 
     describe('confirm', () => {
@@ -1916,8 +2064,8 @@ describe('account operations', () => {
           email: mockEmail,
           invite: mockInvite,
           workspace: mockWorkspace
-        } as any)
-        jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue(joinResult as any)
+        })
+        jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue(joinResult)
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(mockPerson)
 
         const result = await confirm(mockCtx, mockDb, mockBranding, mockToken)
@@ -2022,6 +2170,28 @@ describe('account operations', () => {
           await expect(signUpOtp(mockCtx, mockDb, mockBranding, mockToken, testCase as any)).rejects.toThrow(
             new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
           )
+        }
+      })
+
+      test('should fail with Forbidden when DISABLE_SIGNUP=true', async () => {
+        const prev = process.env.DISABLE_SIGNUP
+        process.env.DISABLE_SIGNUP = 'true'
+        const getEmailSocialIdSpy = jest.spyOn(utils, 'getEmailSocialId')
+        try {
+          await expect(
+            signUpOtp(mockCtx, mockDb, mockBranding, mockToken, {
+              email: mockEmail,
+              firstName: mockFirstName,
+              lastName: mockLastName
+            })
+          ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {})))
+          expect(getEmailSocialIdSpy).not.toHaveBeenCalled()
+        } finally {
+          if (prev === undefined) {
+            delete process.env.DISABLE_SIGNUP
+          } else {
+            process.env.DISABLE_SIGNUP = prev
+          }
         }
       })
     })
@@ -2374,7 +2544,7 @@ describe('account operations', () => {
           email: mockEmail,
           invite: mockInvite,
           workspace: mockWorkspace
-        } as any)
+        })
         jest.spyOn(utils, 'signUpByEmail').mockResolvedValue({
           account: mockAccountId,
           socialId: mockSocialId._id
@@ -2436,13 +2606,13 @@ describe('account operations', () => {
           email: mockEmail,
           invite: mockInvite,
           workspace: mockWorkspace
-        } as any)
+        })
         jest.spyOn(utils, 'signUpByEmail').mockResolvedValue({
           account: mockAccountId,
           socialId: mockSocialId._id
         })
         jest.spyOn(utils, 'sendEmailConfirmation').mockResolvedValue()
-        jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue(joinResult as any)
+        jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue(joinResult)
         ;(getMetadata as jest.Mock).mockReturnValue('') // No mail service configured
 
         const result = await signUpJoin(mockCtx, mockDb, mockBranding, mockToken, baseParams)
@@ -2996,7 +3166,7 @@ describe('account operations', () => {
       const mockEmail = 'user@example.com'
       ;(mockDb.socialId.findOne as jest.Mock).mockResolvedValue({ value: mockEmail })
 
-      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(mockInvite as any)
+      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(mockInvite)
       jest.spyOn(utils, 'checkInvite').mockResolvedValue(mockInvite.workspaceUuid)
       jest.spyOn(utils, 'getWorkspaceById').mockResolvedValue(mockWorkspace as any)
       ;(mockDb.getWorkspaceRole as jest.Mock).mockResolvedValue(AccountRole.User)
@@ -3023,7 +3193,7 @@ describe('account operations', () => {
       const mockEmail = 'user@example.com'
       ;(mockDb.socialId.findOne as jest.Mock).mockResolvedValue({ value: mockEmail })
 
-      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(mockInvite as any)
+      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(mockInvite)
       jest.spyOn(utils, 'checkInvite').mockResolvedValue(mockInvite.workspaceUuid)
       jest.spyOn(utils, 'getWorkspaceById').mockResolvedValue(mockWorkspace as any)
       ;(mockDb.getWorkspaceRole as jest.Mock).mockResolvedValue(null)
@@ -3364,7 +3534,7 @@ describe('merge specified persons', () => {
 
       await expect(
         mergeSpecifiedPersons(mockCtx, mockDb, mockBranding, 'test-token', {
-          primaryPerson: readOnlyGuestAccountUuid as PersonUuid,
+          primaryPerson: readOnlyGuestAccountUuid,
           secondaryPerson
         })
       ).rejects.toThrow(PlatformError)

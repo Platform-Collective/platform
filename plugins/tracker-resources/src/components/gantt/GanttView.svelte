@@ -235,7 +235,7 @@
       })
     }
   }
-  function ariaLabelOf (key: IntlString): string {
+  function ariaLabelOf(key: IntlString): string {
     return ariaLabels[key] ?? ''
   }
 
@@ -246,7 +246,7 @@
     y: 0,
     row: null
   }
-  function onRowHover (e: CustomEvent<{ id: string | null, row?: LayoutRow, mouseX?: number, mouseY?: number }>): void {
+  function onRowHover(e: CustomEvent<{ id: string | null, row?: LayoutRow, mouseX?: number, mouseY?: number }>): void {
     hoveredRowId = e.detail.id
     if (e.detail.id !== null && e.detail.row !== undefined && e.detail.mouseX !== undefined) {
       tooltipState = { visible: true, x: e.detail.mouseX, y: e.detail.mouseY ?? 0, row: e.detail.row }
@@ -332,7 +332,7 @@
    * store write propagates straight back down into our `viewOptions` prop
    * via IssuesView's `getViewOptions(viewlet, $viewOptionStore)`.
    */
-  function persistViewOption (key: string, value: unknown): void {
+  function persistViewOption(key: string, value: unknown): void {
     if (viewlet === undefined) return
     const base = (viewOptions as unknown as Record<string, unknown> | undefined) ?? {}
     setViewOptions(viewlet, { ...base, [key]: value } as unknown as ViewOptions)
@@ -558,7 +558,7 @@
   // the previous mode.
   let ganttGroupBy: GroupByKey = 'none'
   $: applyGroupByFromViewOptions((viewOptions as Record<string, unknown> | undefined)?.ganttGroupBy)
-  function applyGroupByFromViewOptions (raw: unknown): void {
+  function applyGroupByFromViewOptions(raw: unknown): void {
     const next: GroupByKey =
       typeof raw === 'string' && (GROUP_BY_KEYS as readonly string[]).includes(raw) ? (raw as GroupByKey) : 'none'
     if (next === ganttGroupBy) return
@@ -599,7 +599,7 @@
    * was indexed by keys from the previous mode and would either be a no-op
    * or accidentally collapse a same-named bucket in the new mode.
    */
-  function setGroupBy (next: GroupByKey): void {
+  function setGroupBy(next: GroupByKey): void {
     if (next === ganttGroupBy) return
     ganttGroupBy = next
     collapsedGroups = new Set()
@@ -608,13 +608,13 @@
     // viewlet re-mount / route change.
     persistViewOption('ganttGroupBy', next)
   }
-  function toggleGroup (key: string): void {
+  function toggleGroup(key: string): void {
     const next = new Set(collapsedGroups)
     if (next.has(key)) next.delete(key)
     else next.add(key)
     collapsedGroups = next
   }
-  function onGroupBySelectChange (e: Event): void {
+  function onGroupBySelectChange(e: Event): void {
     const target = e.target
     if (target instanceof HTMLSelectElement) {
       setGroupBy(target.value as GroupByKey)
@@ -624,7 +624,7 @@
   // 200 ms debounced recompute on issues / relations / toggle / cfg change.
   $: scheduleCpRecompute(issues, relations, showCriticalPath, showSlackColumn, effectiveCalendar)
 
-  function setZoom (z: ZoomLevel): void {
+  function setZoom(z: ZoomLevel): void {
     zoom = z
     // C — preset button clears any wheel-zoom override so the
     // canonical preset px/day takes over again.
@@ -682,13 +682,13 @@
     lastVisibleDaysOut = visibleDays
   }
 
-  function onZoomDropdownSelected (e: CustomEvent<DropdownSelection | undefined>): void {
+  function onZoomDropdownSelected(e: CustomEvent<DropdownSelection | undefined>): void {
     const id = e.detail
     if (id === undefined || id === 'custom') return
     setZoom(id)
   }
 
-  function applyVisibleDaysInput (): void {
+  function applyVisibleDaysInput(): void {
     const days = Number(visibleDaysInput)
     if (!Number.isFinite(days) || days < MIN_VISIBLE_DAYS) {
       visibleDaysInput = visibleDays
@@ -708,7 +708,7 @@
     queueMicrotask(syncViewport)
   }
 
-  function onVisibleDaysKeyDown (e: KeyboardEvent): void {
+  function onVisibleDaysKeyDown(e: KeyboardEvent): void {
     if (e.key === 'Enter') {
       applyVisibleDaysInput()
       ;(e.target as HTMLElement | null)?.blur?.()
@@ -724,7 +724,7 @@
   // block below. The reverse direction (writing) lives in
   // saveCurrentGanttView() / updateCurrentGanttView() further down.
   let lastAppliedSavedViewId: string | null = null
-  async function applyGanttSavedView (raw: Record<string, unknown> | undefined): Promise<void> {
+  async function applyGanttSavedView(raw: Record<string, unknown> | undefined): Promise<void> {
     const opts = extractGanttSavedView(raw)
     zoom = opts.zoomLevel
     userPxPerDay = null
@@ -779,7 +779,7 @@
     }
   }
 
-  function buildSavedViewOptions (fixTimeWindow: boolean): Record<string, unknown> {
+  function buildSavedViewOptions(fixTimeWindow: boolean): Record<string, unknown> {
     const base = (viewOptions as Record<string, unknown> | undefined) ?? {}
     const payload: GanttSavedViewOptions = {
       zoomLevel: zoom,
@@ -796,7 +796,7 @@
     return mergeGanttSavedView(base, payload)
   }
 
-  async function saveCurrentGanttView (name: string, fixTimeWindow: boolean, sharable: boolean): Promise<void> {
+  async function saveCurrentGanttView(name: string, fixTimeWindow: boolean, sharable: boolean): Promise<void> {
     const loc = getCurrentResolvedLocation()
     loc.fragment = undefined
     const viewletId = viewlet?._id
@@ -820,13 +820,13 @@
     }
   }
 
-  async function updateCurrentGanttView (fv: FilteredView, fixTimeWindow: boolean): Promise<void> {
+  async function updateCurrentGanttView(fv: FilteredView, fixTimeWindow: boolean): Promise<void> {
     const merged = buildSavedViewOptions(fixTimeWindow)
     await getClient().update(fv, { viewOptions: merged as unknown as ViewOptions })
     selectedFilterStore.set({ ...fv, viewOptions: merged as unknown as ViewOptions })
   }
 
-  function openSaveViewPopup (): void {
+  function openSaveViewPopup(): void {
     const cur = $selectedFilterStore
     const currentlyFixed =
       cur?.viewletId === viewlet?._id
@@ -847,7 +847,7 @@
    * picks up and applies via `applyGanttSavedView`. A "__DEFAULT__"
    * sentinel clears the selection.
    */
-  function openLoadViewMenu (anchor: HTMLElement): void {
+  function openLoadViewMenu(anchor: HTMLElement): void {
     const items: SelectPopupValueType[] = []
     items.push({
       id: '__DEFAULT__',
@@ -901,7 +901,7 @@
    * the toolbar (SelectPopup honours `eventToHTMLElement(event)` as
    * anchor). Fullscreen stays in the toolbar as a frequent affordance.
    */
-  function openMoreActionsMenu (event: MouseEvent): void {
+  function openMoreActionsMenu(event: MouseEvent): void {
     const SAVE_ID = '__gantt_save__'
     const LOAD_ID = '__gantt_load__'
     const PNG_ID = '__gantt_png__'
@@ -952,7 +952,7 @@
    * the whole `savedview` toolbar tier — "modified" marker plus update
    * button — was unreachable dead code.
    */
-  function isCurrentGanttViewModified (fv: FilteredView | undefined, current: GanttSavedViewOptions): boolean {
+  function isCurrentGanttViewModified(fv: FilteredView | undefined, current: GanttSavedViewOptions): boolean {
     if (fv === undefined || fv.viewletId !== viewlet?._id) return false
     const saved = (fv.viewOptions as Record<string, unknown> | undefined) ?? {}
     if (saved.ganttZoomLevel !== current.zoomLevel) return true
@@ -974,7 +974,7 @@
   // Inline-extracted handler — keeping the TS cast out of an `on:click={…}`
   // attribute, which the Svelte 4 parser does not tolerate (// build-fix: inline `as Record<…>` inside an attribute value tripped
   // `Unexpected token (ts)` during svelte-check).
-  function onUpdateSavedViewClick (): void {
+  function onUpdateSavedViewClick(): void {
     const cur = $selectedFilterStore
     if (cur === undefined) return
     const opts = cur.viewOptions as Record<string, unknown> | undefined
@@ -1096,7 +1096,7 @@
    * must belong to the currently displayed project (see
    * CalendarStateMachine.isTicketCurrent).
    */
-  function mutationStillCurrent (targetSpace?: Ref<Project>): boolean {
+  function mutationStillCurrent(targetSpace?: Ref<Project>): boolean {
     return activeMutationTicket !== null && calendarState.isTicketCurrent(activeMutationTicket, targetSpace)
   }
 
@@ -1306,7 +1306,7 @@
     subIssuesByParent.set(new Map())
   }
 
-  function paddingDays (z: ZoomLevel): number {
+  function paddingDays(z: ZoomLevel): number {
     switch (z) {
       case 'day':
         return 1
@@ -1321,7 +1321,7 @@
     }
   }
 
-  function computeDateRange (iss: Issue[], ms: Milestone[], z: ZoomLevel): { from: number, to: number } {
+  function computeDateRange(iss: Issue[], ms: Milestone[], z: ZoomLevel): { from: number, to: number } {
     const all: number[] = []
     for (const i of iss) {
       if (i.startDate !== null && i.startDate !== undefined) all.push(i.startDate)
@@ -1370,7 +1370,7 @@
   let collapsedIds = new Set<string>()
   let treeExpandStore: TreeExpandStore | null = null
   let treeExpandUnsub: (() => void) | null = null
-  function bindTreeExpandStore (projectId: string | undefined): void {
+  function bindTreeExpandStore(projectId: string | undefined): void {
     treeExpandUnsub?.()
     treeExpandUnsub = null
     if (projectId === undefined || typeof window === 'undefined') {
@@ -1388,7 +1388,7 @@
     treeExpandUnsub?.()
   })
 
-  function onToggle (e: CustomEvent<{ id: string }>): void {
+  function onToggle(e: CustomEvent<{ id: string }>): void {
     // Group-header rows carry an `id` like "group:<key>". Route
     // those toggles into `collapsedGroups`, leaving the legacy issue and
     // milestone collapse state in the persisted tree-expand store.
@@ -1407,7 +1407,7 @@
   }
 
   /** Toolbar "Expand all" — flush every persisted collapsed entry. */
-  function expandAllTree (): void {
+  function expandAllTree(): void {
     if (treeExpandStore !== null) treeExpandStore.expandAll()
     else collapsedIds = new Set()
   }
@@ -1417,7 +1417,7 @@
    * get re-collapsed (otherwise re-expand would require digging into the
    * store-state to find ghost ids).
    */
-  function collapseAllTree (): void {
+  function collapseAllTree(): void {
     const ids: string[] = []
     for (const r of rows) {
       if (r.collapsible && !r.collapsed) ids.push(r.id)
@@ -1536,7 +1536,7 @@
   // collapsed or in another group lane still resolves to its number.
   $: issueIdentifiers = new Map<Ref<Issue>, string>(issues.map((i) => [i._id, i.identifier]))
   $: statusCategoryMap = buildStatusCategoryMap($statusStore.byId)
-  function buildStatusCategoryMap (byId: Map<any, any>): Map<string, string> {
+  function buildStatusCategoryMap(byId: Map<any, any>): Map<string, string> {
     const out = new Map<string, string>()
     for (const [id, status] of byId.entries()) {
       out.set(String(id), String(status.category ?? ''))
@@ -1548,7 +1548,7 @@
   // componentsById is derived above (near milestonesById).
   $: barColorContextStore.set(buildBarColorContext(issues, statusCategoryMap, componentsById, milestonesById))
 
-  function computeSummaryRanges (layoutRows: LayoutRow[], allIssues: Issue[]): Map<string, SummaryRange> {
+  function computeSummaryRanges(layoutRows: LayoutRow[], allIssues: Issue[]): Map<string, SummaryRange> {
     const result = new Map<string, SummaryRange>()
     const childrenOf = new Map<string, Issue[]>()
     const issuesByMilestone = new Map<string, Issue[]>()
@@ -1607,7 +1607,7 @@
    * at most once per minute so a long-lived cycle doesn't flood the
    * notification tray.
    */
-  function scheduleCpRecompute (
+  function scheduleCpRecompute(
     _issues: Issue[],
     _relations: IssueRelation[],
     _show: boolean,
@@ -1661,7 +1661,7 @@
   // decoupling from the scroll event itself.
   let vScrollRaf: number | null = null
   let hScrollRaf: number | null = null
-  function handleVScroll (e: Event): void {
+  function handleVScroll(e: Event): void {
     const t = e.target as HTMLDivElement
     if (vScrollRaf !== null) return
     vScrollRaf = requestAnimationFrame(() => {
@@ -1670,7 +1670,7 @@
       viewportHeight = t.clientHeight
     })
   }
-  function handleHScroll (e: Event): void {
+  function handleHScroll(e: Event): void {
     const t = e.target as HTMLDivElement
     if (hScrollRaf !== null) return
     hScrollRaf = requestAnimationFrame(() => {
@@ -1680,7 +1680,7 @@
     })
   }
 
-  function onJump (e: CustomEvent<{ x: number }>): void {
+  function onJump(e: CustomEvent<{ x: number }>): void {
     if (hScrollEl != null) {
       hScrollEl.scrollTo({ left: Math.max(0, e.detail.x - 80), behavior: 'smooth' })
       // B — see jumpToToday comment; force viewport resync so the
@@ -1693,11 +1693,11 @@
     if (layoutMode === 'phone') mobileDrawerOpen = false
   }
 
-  function issueCode (i: Issue): string {
+  function issueCode(i: Issue): string {
     return (i as unknown as { identifier?: string }).identifier ?? 'Issue'
   }
 
-  function onIssueOpen (e: CustomEvent<{ issue: { _id: string, _class: string } }>): void {
+  function onIssueOpen(e: CustomEvent<{ issue: { _id: string, _class: string } }>): void {
     showPanel(
       tracker.component.EditIssue,
       e.detail.issue._id as Ref<Doc>,
@@ -1712,13 +1712,13 @@
   // MilestoneMarker, so resolve to the full Milestone from the live query
   // before passing it as the popup's `object` prop (EditMilestone reads
   // object.label / status / dates synchronously).
-  function onMilestoneOpen (e: CustomEvent<{ milestoneId: Ref<Milestone> }>): void {
+  function onMilestoneOpen(e: CustomEvent<{ milestoneId: Ref<Milestone> }>): void {
     const full = milestones.find((m) => m._id === e.detail.milestoneId)
     if (full === undefined) return
     showPopup(EditMilestone, { object: full }, 'middle')
   }
 
-  function newIssue (): void {
+  function newIssue(): void {
     if (space === undefined) return
     showPopup(CreateIssue, { space, shouldSaveDraft: true }, 'top')
   }
@@ -1727,7 +1727,7 @@
   // Edit-mode: bar mousedown → reducer; window mousemove/mouseup; commit.
   // -------------------------------------------------------------------------
 
-  function handleBarMouseDown (
+  function handleBarMouseDown(
     e: CustomEvent<{ target: DragTarget, edge: 'left' | 'right' | 'body', cursorX: number }>
   ): void {
     const id = String(e.detail.target.doc._id)
@@ -1769,12 +1769,12 @@
     // too so the commit loop can iterate members uniformly without
     // special-casing it.
     let coDrag:
-    | {
-      members: Array<{ issueId: Ref<Issue>, originStart: number, originEnd: number }>
-      minDeltaMs: number
-      maxDeltaMs: number
-    }
-    | undefined
+      | {
+          members: Array<{ issueId: Ref<Issue>, originStart: number, originEnd: number }>
+          minDeltaMs: number
+          maxDeltaMs: number
+        }
+      | undefined
     if (isBulkBodyDrag) {
       const memberIssues = issues.filter(
         (i) => multiSelectedIssueIds.has(i._id) && i.startDate != null && i.dueDate != null
@@ -1814,7 +1814,7 @@
     )
   }
 
-  function handleBarClick (
+  function handleBarClick(
     e: CustomEvent<{ target: DragTarget, metaKey: boolean, ctrlKey: boolean, shiftKey: boolean }>
   ): void {
     // Pointer-driven canvas panning may still synthesize a click after
@@ -1876,7 +1876,7 @@
     }
   }
 
-  function handleConnectorDown (e: CustomEvent<{ source: Issue, originPx: { x: number, y: number } }>): void {
+  function handleConnectorDown(e: CustomEvent<{ source: Issue, originPx: { x: number, y: number } }>): void {
     activeDrag.update((s) =>
       reduce(
         s,
@@ -1899,11 +1899,11 @@
   // capture-phase delegation), all of which fired concurrently and
   // produced double mousedown handling. Keep this handler the only one.
 
-  function handleBarHover (e: CustomEvent<{ issue: Issue | null }>): void {
+  function handleBarHover(e: CustomEvent<{ issue: Issue | null }>): void {
     hoveredIssue = e.detail.issue?._id ?? null
   }
 
-  function handleHoverEdge (e: CustomEvent<{ source: Ref<Issue>, target: Ref<Issue> } | null>): void {
+  function handleHoverEdge(e: CustomEvent<{ source: Ref<Issue>, target: Ref<Issue> } | null>): void {
     hoveredEdge = e.detail as { source: Ref<Issue>, target: Ref<Issue> } | null
   }
 
@@ -1914,7 +1914,7 @@
    * and scrolls so the row sits 1/3 down from the top of the viewport
    * (Asana / MS Project pattern — gives breathing room above + below).
    */
-  function handleScrollToRow (e: CustomEvent<{ issue: Ref<Issue> }>): void {
+  function handleScrollToRow(e: CustomEvent<{ issue: Ref<Issue> }>): void {
     if (scrollerEl == null) return
     const targetId = String(e.detail.issue)
     const row = sortedRows.find((r) => r.issue !== null && String(r.issue._id) === targetId)
@@ -1929,7 +1929,7 @@
     queueMicrotask(syncViewport)
   }
 
-  function handleOpenEditor (e: CustomEvent<{ relation: IssueRelation }>): void {
+  function handleOpenEditor(e: CustomEvent<{ relation: IssueRelation }>): void {
     const rel = e.detail.relation
     // Editability follows the source (predecessor) issue: a relation is
     // stored on it, so updating the relation is an update of that issue.
@@ -1945,7 +1945,7 @@
    * canvas background. Bar clicks stopPropagation, so this only fires for
    * clicks that didn't land on a bar.
    */
-  function onBackgroundClick (e: MouseEvent): void {
+  function onBackgroundClick(e: MouseEvent): void {
     const target = e.target as HTMLElement | null
     if (target?.closest('.bar-wrap') !== null) return
     selectedIssueId = null
@@ -1971,7 +1971,7 @@
    *  Missing this offset produces an off-by-5 in unscheduled drag drop. */
   const RESIZE_CELL_W = 5
 
-  function computeCanvasX (e: MouseEvent): number | undefined {
+  function computeCanvasX(e: MouseEvent): number | undefined {
     if (scrollerEl == null) return undefined
     const rect = scrollerEl.getBoundingClientRect()
     const sidebarEdge = rect.left + sidebarWidthPx + RESIZE_CELL_W
@@ -1979,7 +1979,7 @@
     return e.clientX - sidebarEdge + canvasViewportLeft
   }
 
-  function handleCanvasPointerMove (e: MouseEvent): void {
+  function handleCanvasPointerMove(e: MouseEvent): void {
     // once a confirmation popup is open the drag preview must
     // freeze at the position the user released the bar. Without this
     // gate, every pointermove call into the reducer kept moving the
@@ -2017,7 +2017,7 @@
     )
   }
 
-  async function handleCanvasPointerUp (e?: PointerEvent | MouseEvent): Promise<void> {
+  async function handleCanvasPointerUp(e?: PointerEvent | MouseEvent): Promise<void> {
     // when a confirmation popup is up the user's click on the
     // Cancel / Apply button bubbles pointerup to the window. Without this
     // guard we'd re-enter the commit path while activeDrag is still in
@@ -2163,7 +2163,7 @@
   }
 
   /** True when the preview window is different from the origin window. */
-  function previewChangedFromOrigin (state: DragState): boolean {
+  function previewChangedFromOrigin(state: DragState): boolean {
     if (state.kind === 'dragging-body' || state.kind === 'dragging-unscheduled') {
       return state.previewStart !== state.originStart || state.previewEnd !== state.originEnd
     }
@@ -2182,7 +2182,7 @@
    * reads `issue.title` (or `issue.label`) and is already tolerant of
    * either field name — see its component header.
    */
-  async function askConfirm (state: DragState): Promise<boolean> {
+  async function askConfirm(state: DragState): Promise<boolean> {
     // Narrow to drag/resize states that carry a `target` field.
     if (
       state.kind !== 'dragging-body' &&
@@ -2247,7 +2247,7 @@
    * Commit a drag for an Issue target. Mirrors the shared commit path; the
    * cascade walks descendant issues (parent → children shift by delta).
    */
-  async function commitIssueDrag (
+  async function commitIssueDrag(
     state: DragState,
     target: { kind: 'issue', doc: Issue },
     ops: ApplyOperations
@@ -2294,7 +2294,7 @@
    * assigned to it shift by the same delta along with their descendants.
    * No cascade for resize — only the milestone bounds change.
    */
-  async function commitMilestoneDrag (
+  async function commitMilestoneDrag(
     state: DragState,
     target: { kind: 'milestone', doc: Milestone },
     ops: ApplyOperations
@@ -2345,7 +2345,7 @@
     // sidebar for them), so that branch is unreachable.
   }
 
-  async function commitWithCascade (
+  async function commitWithCascade(
     primaryEdits: PrimaryEdit[],
     altKey: boolean,
     space: Issue['space'],
@@ -2596,7 +2596,7 @@
    * Build a single undo-entry for a primary+shifts batch.
    * Returns null when there is nothing to record (zero-issue commit).
    */
-  function buildDateUndoEntry (primary: PrimaryEdit[], shifts: CascadeShift[]): UndoEntry | null {
+  function buildDateUndoEntry(primary: PrimaryEdit[], shifts: CascadeShift[]): UndoEntry | null {
     const changes: Array<{
       issueId: Ref<Issue>
       issueSpace: Ref<Space>
@@ -2638,7 +2638,7 @@
     }
   }
 
-  async function commitCascadeBatch (
+  async function commitCascadeBatch(
     primary: PrimaryEdit[],
     shifts: CascadeShift[],
     /**
@@ -2685,7 +2685,7 @@
    * server). Errors are surfaced as a non-blocking toast so a regression is
    * visible during smoke-tests but the user can keep working.
    */
-  async function emitDependencyShiftBundles (
+  async function emitDependencyShiftBundles(
     primary: PrimaryEdit[],
     shifts: CascadeShift[],
     cascadeToken: string
@@ -2711,7 +2711,7 @@
    * helpers as the scheduler so violation counts agree with cascade
    * decisions in both legacy and working-days mode.
    */
-  function relationSatisfied (r: IssueRelation, pe: PrimaryEdit, otherIssue: Issue): boolean {
+  function relationSatisfied(r: IssueRelation, pe: PrimaryEdit, otherIssue: Issue): boolean {
     const isOutgoing = String(r.attachedTo) === String(pe.issue._id)
     const predStart = isOutgoing ? pe.newStart : (otherIssue.startDate as number)
     const predDue = isOutgoing ? pe.newDue : (otherIssue.dueDate as number)
@@ -2730,7 +2730,7 @@
     }
   }
 
-  async function commitDrag (state: DragState, event?: PointerEvent | MouseEvent): Promise<void> {
+  async function commitDrag(state: DragState, event?: PointerEvent | MouseEvent): Promise<void> {
     // Narrow to drag/resize states that carry a `target` field.
     if (
       state.kind !== 'dragging-body' &&
@@ -2933,7 +2933,7 @@
     void handleCanvasPointerUp(e)
   }
 
-  function attachWindowDragListeners (): void {
+  function attachWindowDragListeners(): void {
     window.addEventListener('pointermove', handleCanvasPointerMove)
     window.addEventListener('pointerup', onWindowPointerUp)
     window.addEventListener('pointercancel', onWindowPointerUp)
@@ -2941,7 +2941,7 @@
     window.addEventListener('mouseup', onWindowPointerUp)
   }
 
-  function detachWindowDragListeners (): void {
+  function detachWindowDragListeners(): void {
     window.removeEventListener('pointermove', handleCanvasPointerMove)
     window.removeEventListener('pointerup', onWindowPointerUp)
     window.removeEventListener('pointercancel', onWindowPointerUp)
@@ -2990,7 +2990,7 @@
     'tracker:action:NewSubIssue'
   ]
 
-  function openGanttMenu (event: MouseEvent, issue: Issue): void {
+  function openGanttMenu(event: MouseEvent, issue: Issue): void {
     const anchor = getEventPositionElement(event)
     const editable = editableIssueIds.has(String(issue._id))
     const extra = editable ? ganttExtraActions(issue, anchor) : []
@@ -3002,11 +3002,11 @@
     })
   }
 
-  function handleBarContextMenu (e: CustomEvent<{ issue: Issue, event: MouseEvent }>): void {
+  function handleBarContextMenu(e: CustomEvent<{ issue: Issue, event: MouseEvent }>): void {
     openGanttMenu(e.detail.event, e.detail.issue)
   }
 
-  function handleRowDragStart (e: CustomEvent<{ issue: Issue, cursorX: number }>): void {
+  function handleRowDragStart(e: CustomEvent<{ issue: Issue, cursorX: number }>): void {
     // Ready-gate: dropping an unscheduled issue writes dates — blocked
     // until the calendar is initially loaded.
     if (!calendarMutable) return
@@ -3024,7 +3024,7 @@
     )
   }
 
-  function handleRowContextMenu (e: CustomEvent<{ issue: { _id: string, _class: string }, event: MouseEvent }>): void {
+  function handleRowContextMenu(e: CustomEvent<{ issue: { _id: string, _class: string }, event: MouseEvent }>): void {
     const found = issues.find((i) => String(i._id) === e.detail.issue._id)
     if (found === undefined) return
     openGanttMenu(e.detail.event, found)
@@ -3039,7 +3039,7 @@
 
   $: scheduledIssues = issues.filter((i) => i.startDate != null && i.dueDate != null)
 
-  function moveFocus (dir: 1 | -1): void {
+  function moveFocus(dir: 1 | -1): void {
     if (scheduledIssues.length === 0) return
     const ids = scheduledIssues.map((i) => String(i._id))
     const cur = focusedIssueId !== null ? ids.indexOf(focusedIssueId) : -1
@@ -3047,7 +3047,7 @@
     focusedIssueId = ids[nextIdx]
   }
 
-  async function shiftFocused (days: number): Promise<void> {
+  async function shiftFocused(days: number): Promise<void> {
     // Ready-gate: keyboard shifts run the cascade scheduler — blocked until
     // the calendar is initially loaded.
     if (!calendarMutable) return
@@ -3095,17 +3095,17 @@
    * toasts; on success flashes the affected bars for 1.5 s so the user sees
    * what just reverted.
    */
-  async function handleUndo (): Promise<void> {
+  async function handleUndo(): Promise<void> {
     const r: UndoResult = await undoManager.undo()
     await showUndoResultToast(r)
   }
 
-  async function handleRedo (): Promise<void> {
+  async function handleRedo(): Promise<void> {
     const r: UndoResult = await undoManager.redo()
     await showUndoResultToast(r)
   }
 
-  async function showUndoResultToast (r: UndoResult): Promise<void> {
+  async function showUndoResultToast(r: UndoResult): Promise<void> {
     if (r.kind === 'success') {
       if (r.affectedIds.length > 0) flashIssues(r.affectedIds, 1500, undoFlashStore)
       return
@@ -3142,7 +3142,7 @@
    * is the browser's native text-undo and we must NOT hijack it. Otherwise
    * the Gantt is the consumer.
    */
-  function isTextInputFocused (): boolean {
+  function isTextInputFocused(): boolean {
     const el = document.activeElement
     if (el === null) return false
     if (el instanceof HTMLInputElement) return el.type !== 'checkbox' && el.type !== 'radio' && el.type !== 'button'
@@ -3151,7 +3151,7 @@
     return el.getAttribute('contenteditable') === 'true'
   }
 
-  function onKey (e: KeyboardEvent): void {
+  function onKey(e: KeyboardEvent): void {
     // Cmd+Z / Ctrl+Z (Undo) and Cmd+Shift+Z / Ctrl+Shift+Z (Redo).
     // Checked FIRST so they win against the Phase-1 zoom/pan shortcuts which
     // share the +/-/Tab/Arrow keyspace. Skip when a text input owns focus so
@@ -3292,7 +3292,7 @@
     // event.
   }
 
-  function cycleZoom (delta: number): void {
+  function cycleZoom(delta: number): void {
     const levels: ZoomLevel[] = ['day', 'week', 'month', 'quarter']
     const idx = levels.indexOf(zoom)
     const next = levels[Math.min(levels.length - 1, Math.max(0, idx + delta))]
@@ -3303,7 +3303,7 @@
   // zoom with cursor-anchored scroll. Without Ctrl we let the wheel pass
   // through to the native scroller (vertical scroll / shift-wheel
   // horizontal). All math lives in lib/zoom.ts for unit-testability.
-  function onScrollerWheel (e: WheelEvent): void {
+  function onScrollerWheel(e: WheelEvent): void {
     if (!(e.ctrlKey || e.metaKey)) return
     // preventDefault FIRST (before any other early-return) so hitting
     // MIN_PPD / MAX_PPD limits or a missing hScrollEl never lets the
@@ -3350,7 +3350,7 @@
   // math reuses cursorAnchoredScrollLeft from the Ctrl+Wheel zoom path so
   // the visual outcome is consistent between desktop wheel-zoom and
   // tablet pinch-zoom.
-  function onScrollerPointerDown (e: PointerEvent): void {
+  function onScrollerPointerDown(e: PointerEvent): void {
     if (e.pointerType !== 'touch') return
     if (scrollerEl == null) return
     const rect = scrollerEl.getBoundingClientRect()
@@ -3363,7 +3363,7 @@
     })
   }
 
-  function onScrollerPointerMove (e: PointerEvent): void {
+  function onScrollerPointerMove(e: PointerEvent): void {
     if (e.pointerType !== 'touch') return
     if (pinchState.kind === 'idle') return
     if (scrollerEl == null) return
@@ -3400,19 +3400,19 @@
     })
   }
 
-  function onScrollerPointerUp (e: PointerEvent): void {
+  function onScrollerPointerUp(e: PointerEvent): void {
     if (e.pointerType !== 'touch') return
     pinchState = reducePinch(pinchState, { type: 'up', id: e.pointerId })
   }
 
-  function onScrollerPointerCancel (_e: PointerEvent): void {
+  function onScrollerPointerCancel(_e: PointerEvent): void {
     // iOS Safari fires pointercancel when scroll-inertia kicks in. Drop
     // the pinch cleanly so a follow-up pointerdown doesn't see a stale
     // half-tracked state.
     pinchState = reducePinch(pinchState, { type: 'cancel' })
   }
 
-  async function exportToPng (): Promise<void> {
+  async function exportToPng(): Promise<void> {
     const stamp = `gantt-${new Date().toISOString().slice(0, 10)}`
     try {
       await exportGanttDataToPng(
@@ -3433,7 +3433,7 @@
     }
   }
 
-  async function exportToPdf (): Promise<void> {
+  async function exportToPdf(): Promise<void> {
     try {
       await exportGanttDataToPdf(
         {
@@ -3469,7 +3469,7 @@
   // rendered subtree. The toolbar/workbench chrome that briefly shows
   // is acceptable; the previous behaviour of "invisible popup forces
   // exit-fullscreen" was strictly worse for the user.
-  function toggleFullscreen (): void {
+  function toggleFullscreen(): void {
     if (document.fullscreenElement != null) {
       void document.exitFullscreen().catch(() => {})
       return
@@ -3483,7 +3483,7 @@
   // window resize. matchMedia would suffice, but resize covers
   // orientation-change on tablets too without listing every breakpoint
   // twice.
-  function onWindowResize (): void {
+  function onWindowResize(): void {
     const next = detectLayoutMode(window.innerWidth)
     if (next !== layoutMode) {
       layoutMode = next
@@ -3516,28 +3516,28 @@
   // hThumbLeft) stay stale until the next pointermove. The explicit
   // queueMicrotask path keeps `canvasViewportLeft` and dependant reactive
   // expressions (including classifyArrowVisibility) in sync.
-  function jumpToToday (): void {
+  function jumpToToday(): void {
     if (hScrollEl == null) return
     const x = timeScale.toX(Date.now())
     hScrollEl.scrollTo({ left: Math.max(0, x - canvasViewportWidth / 2), behavior: 'smooth' })
     queueMicrotask(syncViewport)
   }
-  function pageScroll (dir: -1 | 1): void {
+  function pageScroll(dir: -1 | 1): void {
     if (hScrollEl == null) return
     hScrollEl.scrollBy({ left: dir * canvasViewportWidth * 0.8, behavior: 'smooth' })
     queueMicrotask(syncViewport)
   }
-  function jumpToStart (): void {
+  function jumpToStart(): void {
     if (hScrollEl == null) return
     hScrollEl.scrollTo({ left: 0, behavior: 'smooth' })
     queueMicrotask(syncViewport)
   }
-  function jumpToEnd (): void {
+  function jumpToEnd(): void {
     if (hScrollEl == null) return
     hScrollEl.scrollTo({ left: hScrollEl.scrollWidth, behavior: 'smooth' })
     queueMicrotask(syncViewport)
   }
-  function jumpToDate (iso: string): void {
+  function jumpToDate(iso: string): void {
     if (hScrollEl == null || iso === '') return
     const t = Date.parse(iso)
     if (isNaN(t)) return
@@ -3547,7 +3547,7 @@
   }
   let datePickerValue: string = ''
 
-  function formatRange (ms: number): string {
+  function formatRange(ms: number): string {
     return new Date(ms).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
   }
 
@@ -3573,7 +3573,7 @@
   let dragVThumb = false
   let dragVThumbStartY = 0
   let dragVThumbStartScroll = 0
-  function onVThumbDragStart (e: PointerEvent): void {
+  function onVThumbDragStart(e: PointerEvent): void {
     e.stopPropagation()
     e.preventDefault()
     if (scrollerEl == null) return
@@ -3582,13 +3582,13 @@
     dragVThumbStartScroll = scrollerEl.scrollTop
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   }
-  function onVThumbDragMove (e: PointerEvent): void {
+  function onVThumbDragMove(e: PointerEvent): void {
     if (!dragVThumb || scrollerEl == null) return
     const dy = e.clientY - dragVThumbStartY
     const ratio = vThumbMax > 0 ? dy / vThumbMax : 0
     scrollerEl.scrollTop = dragVThumbStartScroll + ratio * vScrollMax
   }
-  function onVThumbDragEnd (e: PointerEvent): void {
+  function onVThumbDragEnd(e: PointerEvent): void {
     if (!dragVThumb) return
     dragVThumb = false
     ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
@@ -3597,7 +3597,7 @@
   let dragThumb = false
   let dragThumbStartX = 0
   let dragThumbStartScroll = 0
-  function onThumbDragStart (e: PointerEvent): void {
+  function onThumbDragStart(e: PointerEvent): void {
     e.stopPropagation()
     e.preventDefault()
     if (hScrollEl == null) return
@@ -3606,18 +3606,18 @@
     dragThumbStartScroll = hScrollEl.scrollLeft
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   }
-  function onThumbDragMove (e: PointerEvent): void {
+  function onThumbDragMove(e: PointerEvent): void {
     if (!dragThumb || hScrollEl == null) return
     const dx = e.clientX - dragThumbStartX
     const ratio = hThumbMax > 0 ? dx / hThumbMax : 0
     hScrollEl.scrollLeft = dragThumbStartScroll + ratio * hScrollMax
   }
-  function onThumbDragEnd (e: PointerEvent): void {
+  function onThumbDragEnd(e: PointerEvent): void {
     if (!dragThumb) return
     dragThumb = false
     ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
   }
-  function onProxyTrackClick (e: PointerEvent): void {
+  function onProxyTrackClick(e: PointerEvent): void {
     // Click on track (not thumb): page-scroll towards click position.
     if ((e.target as HTMLElement).classList.contains('hscroll-thumb')) return
     if (hScrollEl == null) return
@@ -3639,7 +3639,7 @@
   let panStartY = 0
   let panStartScrollLeft = 0
   let panStartScrollTop = 0
-  function onCanvasPanStart (e: PointerEvent): void {
+  function onCanvasPanStart(e: PointerEvent): void {
     if (scrollerEl == null || hScrollEl == null) return
     const target = e.target as HTMLElement
     if (!shouldStartCanvasPan(target)) return
@@ -3649,7 +3649,7 @@
     panStartScrollLeft = hScrollEl.scrollLeft
     panStartScrollTop = scrollerEl.scrollTop
   }
-  function onCanvasPanMove (e: PointerEvent): void {
+  function onCanvasPanMove(e: PointerEvent): void {
     if ((!pendingPan && !panning) || scrollerEl == null || hScrollEl == null) return
     const dx = e.clientX - panStartX
     const dy = e.clientY - panStartY
@@ -3662,7 +3662,7 @@
     hScrollEl.scrollLeft = panStartScrollLeft - (e.clientX - panStartX)
     scrollerEl.scrollTop = panStartScrollTop - (e.clientY - panStartY)
   }
-  function onCanvasPanEnd (e: PointerEvent): void {
+  function onCanvasPanEnd(e: PointerEvent): void {
     // Guard: only release the pointer if we actually captured it. A pointerup
     // bubbling from a child element that was excluded by the pan-handler
     // exclusion list (e.g. resize-handle, drag-grip) shouldn't reach
@@ -3689,7 +3689,7 @@
   let resizeStartX = 0
   let resizeStartWidth = 0
   let resizeStartColumnWidths: Record<string, number> = {}
-  function onResizeStart (e: PointerEvent): void {
+  function onResizeStart(e: PointerEvent): void {
     e.stopPropagation()
     e.preventDefault()
     resizing = true
@@ -3700,7 +3700,7 @@
     }
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   }
-  function onResizeMove (e: PointerEvent): void {
+  function onResizeMove(e: PointerEvent): void {
     if (!resizing) return
     e.stopPropagation()
     const delta = e.clientX - resizeStartX
@@ -3721,7 +3721,7 @@
       userSidebarWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, next))
     }
   }
-  function onResizeEnd (e: PointerEvent): void {
+  function onResizeEnd(e: PointerEvent): void {
     if (!resizing) return
     e.stopPropagation()
     resizing = false
@@ -3737,7 +3737,7 @@
   let resizeObs: ResizeObserver | undefined
   let observedScrollerEl: HTMLDivElement | null = null
   let observedHScrollEl: HTMLDivElement | null = null
-  function syncViewport (): void {
+  function syncViewport(): void {
     if (scrollerEl != null) {
       scrollTop = scrollerEl.scrollTop
       viewportHeight = scrollerEl.clientHeight
@@ -3839,13 +3839,13 @@
     // `showCriticalPath`, in both paths.
     return cols.filter((c) => (c !== 'slack' || showSlackColumn) && (c !== 'predecessors' || showPredecessors))
   })()
-  function onSidebarSort (evt: CustomEvent<{ column: SidebarColumnKey }>): void {
+  function onSidebarSort(evt: CustomEvent<{ column: SidebarColumnKey }>): void {
     const next = cycleSort(sidebarSort, evt.detail.column)
     sidebarSort = next
     persistViewOption('ganttSidebarSort', next)
   }
 
-  function onSidebarWidthChange (evt: CustomEvent<{ column: SidebarColumnKey, width: number, commit: boolean }>): void {
+  function onSidebarWidthChange(evt: CustomEvent<{ column: SidebarColumnKey, width: number, commit: boolean }>): void {
     const next = { ...sidebarWidths, [evt.detail.column]: clampWidth(evt.detail.width) }
     sidebarWidths = next
     // Only write on `commit` (end-of-drag). Persisting every pointermove

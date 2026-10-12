@@ -42,10 +42,10 @@
   const filterDefaultUndefined = (pnew: any, pold: any): any =>
     pnew != null
       ? Object.fromEntries(
-        Object.entries(clone(pnew, undefined, undefined, 10)).filter(
-          ([k, v]) => v !== undefined || pold?.[k] !== undefined
+          Object.entries(clone(pnew, undefined, undefined, 10)).filter(
+            ([k, v]) => v !== undefined || pold?.[k] !== undefined
+          )
         )
-      )
       : pnew
 
   let _props: any = filterDefaultUndefined(props, props)
@@ -65,7 +65,7 @@
   let error: any
   let counter = 0
 
-  function updateComponent (_is: AnyComponent | AnySvelteComponent): void {
+  function updateComponent(_is: AnyComponent | AnySvelteComponent): void {
     const current = ++counter
     if (_is == null) {
       Ctor = undefined

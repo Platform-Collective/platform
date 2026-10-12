@@ -32,7 +32,7 @@
   let descriptor: SpaceTypeDescriptor | undefined = undefined
   let handleTypeCreated: (() => Promise<void>) | undefined
 
-  async function createType (): Promise<void> {
+  async function createType(): Promise<void> {
     if (descriptor === undefined) {
       return
     }
@@ -62,15 +62,15 @@
   $: typeCreator =
     descriptor !== undefined
       ? hierarchy.classHierarchyMixin<Class<SpaceTypeDescriptor>, SpaceTypeCreator>(
-        descriptor._class,
-        setting.mixin.SpaceTypeCreator
-      )
+          descriptor._class,
+          setting.mixin.SpaceTypeCreator
+        )
       : undefined
 
   let extraComponent: AnySvelteComponent | undefined
   $: loadExtraComponent(typeCreator)
 
-  async function loadExtraComponent (tc: SpaceTypeCreator | undefined): Promise<void> {
+  async function loadExtraComponent(tc: SpaceTypeCreator | undefined): Promise<void> {
     if (tc === undefined) {
       extraComponent = undefined
       handleTypeCreated = undefined
@@ -81,7 +81,7 @@
     extraComponent = await getResource(tc.extraComponent)
   }
 
-  function handleDescriptorSelected (evt: CustomEvent<Ref<SpaceTypeDescriptor>>): void {
+  function handleDescriptorSelected(evt: CustomEvent<Ref<SpaceTypeDescriptor>>): void {
     descriptor = descriptors.find((it) => it._id === evt.detail)
   }
 

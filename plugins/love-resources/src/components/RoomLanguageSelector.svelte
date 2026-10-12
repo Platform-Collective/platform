@@ -39,13 +39,13 @@
     iconProps: { lang }
   }))
 
-  async function handleSelection (newLang?: RoomLanguage): Promise<void> {
+  async function handleSelection(newLang?: RoomLanguage): Promise<void> {
     if (newLang == null) return
 
     await client.diffUpdate(room, { language: newLang })
   }
 
-  function showLanguagesPopup (): void {
+  function showLanguagesPopup(): void {
     showPopup(DropdownLabelsPopupIntl, { items, selected: selectedItem }, container, async (result) => {
       if (result != null && result !== '') {
         selectedItem = result

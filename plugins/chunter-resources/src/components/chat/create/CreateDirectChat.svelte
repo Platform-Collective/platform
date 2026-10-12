@@ -38,11 +38,11 @@
     dmName = r
   })
 
-  async function loadDmName (accs: AccountUuid[]): Promise<string> {
+  async function loadDmName(accs: AccountUuid[]): Promise<string> {
     return await buildDmName(client, accs)
   }
 
-  async function createDirectMessage (): Promise<void> {
+  async function createDirectMessage(): Promise<void> {
     const dmId = await createDirect(employeeIds)
 
     if (dmId !== undefined) {
@@ -51,7 +51,7 @@
     }
   }
 
-  function handleCancel (): void {
+  function handleCancel(): void {
     dispatch('close')
   }
 
@@ -59,11 +59,11 @@
     openSelectUsersPopup(true)
   })
 
-  function addMembersClicked (): void {
+  function addMembersClicked(): void {
     openSelectUsersPopup(false)
   }
 
-  function openSelectUsersPopup (closeOnClose: boolean): void {
+  function openSelectUsersPopup(closeOnClose: boolean): void {
     showPopup(
       SelectUsersPopup,
       {

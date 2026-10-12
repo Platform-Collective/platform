@@ -47,7 +47,7 @@
 
   const client = getClient()
 
-  function navigateToSettings () {
+  function navigateToSettings() {
     closePopup()
     const loc = getCurrentResolvedLocation()
     loc.path[2] = loc.path[3] = settingId
@@ -55,7 +55,7 @@
     navigate(loc)
   }
 
-  async function getActions () {
+  async function getActions() {
     categories = await getClient().findAll(view.class.ActionCategory, [])
     const rawActions = await client.findAll(view.class.Action, [])
 

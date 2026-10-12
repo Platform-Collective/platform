@@ -75,7 +75,7 @@
   $: isEmptyContent = isEmpty || isEmptyMarkup(content)
   $: canSubmit = (haveAttachment || !isEmptyContent) && !loading
 
-  function setContent (content: Markup): void {
+  function setContent(content: Markup): void {
     editor?.setContent(content)
   }
 
@@ -92,7 +92,7 @@
     insertTemplate: (name, markup) => {
       editor?.insertMarkup(markup)
     },
-    insertTable (options: { rows?: number, cols?: number, withHeaderRow?: boolean }) {
+    insertTable(options: { rows?: number, cols?: number, withHeaderRow?: boolean }) {
       editor?.insertTable(options)
     },
     insertCodeBlock: () => {
@@ -121,11 +121,11 @@
     .concat(...modelActions)
     .sort((a, b) => a.order - b.order)
 
-  export function submit (): void {
+  export function submit(): void {
     editor?.submit()
   }
 
-  function handleAction (a: RefAction, evt?: Event): void {
+  function handleAction(a: RefAction, evt?: Event): void {
     a.action(evt?.target as HTMLElement, editorHandler)
   }
 

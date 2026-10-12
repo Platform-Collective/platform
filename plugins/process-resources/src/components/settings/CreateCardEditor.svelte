@@ -46,7 +46,7 @@
     setName(res)
   })
 
-  function setName (name: string): void {
+  function setName(name: string): void {
     if (params.title === undefined || params.title === '') {
       params.title = name
       ;(step.params as any) = params
@@ -54,7 +54,7 @@
     }
   }
 
-  function change (e: CustomEvent<any>): void {
+  function change(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       params = e.detail
       ;(step.params as any) = e.detail
@@ -62,7 +62,7 @@
     }
   }
 
-  function getKeys (_class: Ref<Class<MasterTag>>): AnyAttribute[] {
+  function getKeys(_class: Ref<Class<MasterTag>>): AnyAttribute[] {
     const ignoreKeys = ['_class', 'targetClass', 'parent', 'attachments', 'todos']
     const attributes = h.getAllAttributes(_class, core.class.Doc)
     const res: AnyAttribute[] = []
@@ -81,11 +81,11 @@
   $: allAttrs = getKeys(targetClass)
   $: possibleAttrs = allAttrs.filter((attr) => !keys.includes(attr.name))
 
-  function addKey (key: string): void {
+  function addKey(key: string): void {
     keys = [...keys, key]
   }
 
-  function onAdd (e: MouseEvent): void {
+  function onAdd(e: MouseEvent): void {
     showPopup(
       SelectPopup,
       {
@@ -102,7 +102,7 @@
     )
   }
 
-  function remove (e: CustomEvent<any>): void {
+  function remove(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       const key = e.detail.key
       if (key === 'title') return
@@ -114,7 +114,7 @@
     }
   }
 
-  function typeChange (_id: Ref<Class<MasterTag>>): void {
+  function typeChange(_id: Ref<Class<MasterTag>>): void {
     if (_id === undefined) return
     const attrKeys = ['_class', 'targetClass', 'askRequired', 'requiredFields', ...getKeys(_id).map((p) => p.name)]
     const oldParams = { ...params }
@@ -160,7 +160,7 @@
     setAskSubclass()
   }
 
-  function setAskSubclass (): void {
+  function setAskSubclass(): void {
     const context = createContext({
       type: 'userRequest',
       id: generateContextId(),
@@ -172,7 +172,7 @@
     dispatch('change', step)
   }
 
-  function changeAskSubclass (e: CustomEvent<boolean>): void {
+  function changeAskSubclass(e: CustomEvent<boolean>): void {
     if (e.detail !== undefined) {
       if (!e.detail && baseTargetType) return
       if (e.detail) {
@@ -185,7 +185,7 @@
     }
   }
 
-  function isBaseTypeWithSubtypes (_class: Ref<Class<MasterTag>>): boolean {
+  function isBaseTypeWithSubtypes(_class: Ref<Class<MasterTag>>): boolean {
     const clazz = h.getClass(_class) as MasterTag | undefined
     if (clazz?.baseType !== true) return false
 
@@ -199,7 +199,7 @@
   let askRequired = params.askRequired ?? false
   $: askRequired = params.askRequired ?? false
 
-  function changeAskRequired (e: CustomEvent<boolean>): void {
+  function changeAskRequired(e: CustomEvent<boolean>): void {
     if (e.detail !== undefined) {
       params.askRequired = e.detail
       if (e.detail) {

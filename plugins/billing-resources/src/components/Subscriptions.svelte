@@ -70,7 +70,7 @@
 
   $: isCurrentCanceled = currentSubscription?.canceledAt !== undefined && currentSubscription.canceledAt > 0
 
-  async function subscribe (tierId: Ref<Tier>): Promise<void> {
+  async function subscribe(tierId: Ref<Tier>): Promise<void> {
     if (paymentClient == null) {
       return
     }
@@ -91,7 +91,7 @@
     }
   }
 
-  async function showErrorNotification (): Promise<void> {
+  async function showErrorNotification(): Promise<void> {
     addNotification(
       await translate(plugin.string.SubscriptionOperationFailed, {}, $themeStore.language),
       await translate(plugin.string.SubscriptionErrorMessage, {}, $themeStore.language),
@@ -101,7 +101,7 @@
     )
   }
 
-  async function showPlanChangeConfirmation (newPlan: string, newTier: Tier): Promise<void> {
+  async function showPlanChangeConfirmation(newPlan: string, newTier: Tier): Promise<void> {
     if (currentTier === undefined) {
       return
     }
@@ -122,7 +122,7 @@
     })
   }
 
-  async function handlePlanChange (newTierId: Ref<Tier>): Promise<void> {
+  async function handlePlanChange(newTierId: Ref<Tier>): Promise<void> {
     const { plan: newPlan } = getTypeAndPlan(newTierId)
     const newTier = tierByPlan[newPlan]
 
@@ -152,7 +152,7 @@
     }
   }
 
-  async function executeUpdate (newPlan: string): Promise<void> {
+  async function executeUpdate(newPlan: string): Promise<void> {
     if (paymentClient == null) {
       return
     }
@@ -188,7 +188,7 @@
     }
   }
 
-  async function handleCancel (): Promise<void> {
+  async function handleCancel(): Promise<void> {
     if (currentSubscription?.id === undefined) {
       return
     }
@@ -207,7 +207,7 @@
     })
   }
 
-  async function executeCancel (): Promise<void> {
+  async function executeCancel(): Promise<void> {
     if (paymentClient == null) {
       return
     }
@@ -226,7 +226,7 @@
     }
   }
 
-  async function handleUncancel (): Promise<void> {
+  async function handleUncancel(): Promise<void> {
     if (currentSubscription?.id === undefined) {
       return
     }
@@ -244,7 +244,7 @@
     })
   }
 
-  async function executeUncancel (): Promise<void> {
+  async function executeUncancel(): Promise<void> {
     if (paymentClient == null) {
       return
     }
@@ -266,7 +266,7 @@
     }
   }
 
-  async function fetchSubscriptions (): Promise<void> {
+  async function fetchSubscriptions(): Promise<void> {
     loading = true
 
     try {
@@ -285,7 +285,7 @@
     }
   }
 
-  async function fetchUsageStats (): Promise<void> {
+  async function fetchUsageStats(): Promise<void> {
     try {
       const accountClient = getAccountClient()
       if (accountClient == null) return
@@ -299,11 +299,11 @@
     }
   }
 
-  function formatSize (gb: number): { limit: number, unit: string } {
+  function formatSize(gb: number): { limit: number, unit: string } {
     return gb < 1000 ? { limit: gb, unit: 'GB' } : { limit: Math.floor(gb / 1000), unit: 'TB' }
   }
 
-  async function pollCheckoutStatus (checkoutId: string): Promise<void> {
+  async function pollCheckoutStatus(checkoutId: string): Promise<void> {
     if (paymentClient == null) {
       return
     }
@@ -349,7 +349,7 @@
     }
   }
 
-  function checkForCheckoutParam (): void {
+  function checkForCheckoutParam(): void {
     const loc = getLocation()
     const checkoutId = loc.query?.checkout_id as string | undefined
     const paymentStatus = loc.query?.payment as string | undefined
@@ -373,12 +373,12 @@
 
   $: isCheckoutPolling = pollingCheckoutId !== null
 
-  function formatEndDate (endDate: number): string {
+  function formatEndDate(endDate: number): string {
     const date = new Date(endDate)
     return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
   }
 
-  function getTypeAndPlan (tierId: Ref<Tier>): { type: SubscriptionType, plan: string } {
+  function getTypeAndPlan(tierId: Ref<Tier>): { type: SubscriptionType, plan: string } {
     const parts = tierId.split(':')
     if (parts.length !== 3) {
       throw new Error(`Invalid tier id: ${tierId}`)

@@ -31,7 +31,7 @@
   const client = getClient()
   const rawName = object.name
 
-  async function changeName (value: string): Promise<void> {
+  async function changeName(value: string): Promise<void> {
     if (object) {
       await client.updateDoc(object._class, object.space, object._id, { name: value })
     }

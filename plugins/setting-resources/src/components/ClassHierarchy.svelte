@@ -29,7 +29,7 @@
   const dispatch = createEventDispatcher()
   let descendants = new Map<Ref<Class<Doc>>, Ref<Class<Doc>>[]>()
 
-  function getDescendants (_class: Ref<Class<Doc>>): Ref<Class<Doc>>[] {
+  function getDescendants(_class: Ref<Class<Doc>>): Ref<Class<Doc>>[] {
     const hierarchy = client.getHierarchy()
     const result: Ref<Class<Doc>>[] = []
     const desc = hierarchy.getDescendants(_class)
@@ -52,7 +52,7 @@
     return result
   }
 
-  function fillDescendants (classes: Ref<Class<Doc>>[]): void {
+  function fillDescendants(classes: Ref<Class<Doc>>[]): void {
     for (const cl of classes) {
       descendants.set(cl, getDescendants(cl))
     }

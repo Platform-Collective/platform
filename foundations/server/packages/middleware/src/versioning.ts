@@ -54,7 +54,7 @@ export class VersioningMiddleware extends BaseMiddleware implements Middleware {
     return new VersioningMiddleware(context, next)
   }
 
-  override async findAll<T extends Doc>(
+  override async findAll<T extends Doc> (
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,

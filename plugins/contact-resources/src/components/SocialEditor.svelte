@@ -29,7 +29,7 @@
 
   let providers: ChannelProvider[] = []
 
-  function findValue (provider: Ref<ChannelProvider>): number {
+  function findValue(provider: Ref<ChannelProvider>): number {
     for (let i = 0; i < values.length; i++) {
       if (values[i].provider === provider) return i
     }
@@ -49,7 +49,7 @@
     }
   })
 
-  function filterUndefined (channels: AttachedData<Channel>[]): AttachedData<Channel>[] {
+  function filterUndefined(channels: AttachedData<Channel>[]): AttachedData<Channel>[] {
     return channels.filter((channel) => channel.value !== undefined && channel.value.length > 0)
   }
 </script>

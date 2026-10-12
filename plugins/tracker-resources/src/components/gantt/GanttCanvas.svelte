@@ -37,7 +37,7 @@
     scrollToRow: { issue: Ref<Issue> }
   }>()
 
-  function openIssue (i: { _id: any, _class: any }): void {
+  function openIssue(i: { _id: any, _class: any }): void {
     dispatch('openIssue', { issue: { _id: i._id as string, _class: i._class as string } })
   }
 
@@ -127,7 +127,7 @@
   })()
   $: hasViolation = (issueId: Ref<Issue>): boolean => violatedIssueIds.has(issueId)
 
-  function statusCategoryFor (issue: any): string | null {
+  function statusCategoryFor(issue: any): string | null {
     if (statusCategoryMap === undefined) return null
     const sid = issue?.status as string | undefined
     if (sid === undefined) return null
@@ -155,7 +155,7 @@
   $: activeIssueIdStr = activeDragTargetId(dragState)
   $: anyDragActive = dragState.kind !== 'idle' && dragState.kind !== 'hover-bar'
 
-  function isDimmed (issueId: unknown): boolean {
+  function isDimmed(issueId: unknown): boolean {
     return anyDragActive && activeIssueIdStr !== null && String(issueId) !== activeIssueIdStr
   }
 
@@ -255,15 +255,15 @@
     return null
   })()
 
-  function rowKey (row: LayoutRow): string {
+  function rowKey(row: LayoutRow): string {
     return row.id
   }
 
-  function getDeadline (issue: Issue): number | null {
+  function getDeadline(issue: Issue): number | null {
     return issue.deadline ?? null
   }
 
-  function summaryFor (row: LayoutRow): SummaryRange | null {
+  function summaryFor(row: LayoutRow): SummaryRange | null {
     if (row.kind === 'milestone' && row.milestone !== null) {
       return summaryRanges.get(row.id) ?? null
     }

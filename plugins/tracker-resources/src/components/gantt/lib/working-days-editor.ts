@@ -11,7 +11,7 @@ import { deepEqual } from 'fast-equals'
 /** Mon-Fri — bit 0 = Mon … bit 6 = Sun, see `WorkingDaysConfig.weekdayMask`. */
 export const DEFAULT_WEEKDAY_MASK = 0b0011111
 
-export function isWeekdayActive (mask: number, bit: number): boolean {
+export function isWeekdayActive(mask: number, bit: number): boolean {
   return (mask & (1 << bit)) !== 0
 }
 
@@ -20,13 +20,13 @@ export function isWeekdayActive (mask: number, bit: number): boolean {
  * scheduler needs at least one working day per week, otherwise "next
  * working day" would never terminate.
  */
-export function toggleWeekdayBit (mask: number, bit: number): number {
+export function toggleWeekdayBit(mask: number, bit: number): number {
   const next = mask ^ (1 << bit)
   return next === 0 ? mask : next
 }
 
 /** True when `bit` is the only active day — its toggle renders disabled. */
-export function isLastActiveWeekday (mask: number, bit: number): boolean {
+export function isLastActiveWeekday(mask: number, bit: number): boolean {
   return mask === 1 << bit
 }
 
@@ -36,10 +36,10 @@ export function isLastActiveWeekday (mask: number, bit: number): boolean {
  * entry in the component), sorted by name. Pure so it is unit-testable
  * without a component harness.
  */
-export function departmentItems (
+export function departmentItems(
   departments: Department[],
   head: Ref<Department>
-): Array<{ id: string, label: string }> {
+): Array<{ id: string; label: string }> {
   return departments
     .filter((d) => d._id !== head)
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -47,7 +47,7 @@ export function departmentItems (
 }
 
 /** `undefined` disables working-days mode; enabling starts from Mon-Fri. */
-export function enableWorkingDays (on: boolean): WorkingDaysConfig | undefined {
+export function enableWorkingDays(on: boolean): WorkingDaysConfig | undefined {
   return on ? { weekdayMask: DEFAULT_WEEKDAY_MASK } : undefined
 }
 
@@ -56,7 +56,7 @@ export function enableWorkingDays (on: boolean): WorkingDaysConfig | undefined {
  * REMOVES the key (delete, not an `undefined` assignment): a present-but-
  * undefined key would still surface in serialization and diffing.
  */
-export function applyDepartmentSelection (
+export function applyDepartmentSelection(
   value: WorkingDaysConfig,
   id: string,
   companyWideId: string
@@ -75,7 +75,7 @@ export function applyDepartmentSelection (
  * field — writing `undefined` could be stored as null, which would
  * masquerade as a configured calendar downstream.
  */
-export function workingDaysUpdate (
+export function workingDaysUpdate(
   next: WorkingDaysConfig | undefined,
   previous: WorkingDaysConfig | undefined
 ): { workingDaysConfig: WorkingDaysConfig } | { $unset: { workingDaysConfig: true } } | undefined {

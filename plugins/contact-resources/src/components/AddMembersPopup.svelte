@@ -30,11 +30,11 @@
 
   $: memberAccountsToAdd = membersToAdd.map((m) => $employeeByIdStore.get(m)?.personUuid).filter(notEmpty)
 
-  async function changeMembersToAdd (employees: Ref<Employee>[]): Promise<void> {
+  async function changeMembersToAdd(employees: Ref<Employee>[]): Promise<void> {
     membersToAdd = employees
   }
 
-  function removeMember (_id: Ref<Employee>): void {
+  function removeMember(_id: Ref<Employee>): void {
     membersToAdd = membersToAdd.filter((m) => m !== _id)
   }
 </script>

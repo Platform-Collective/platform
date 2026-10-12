@@ -31,19 +31,19 @@
   let inputRef: HTMLInputElement | undefined
   const itemsRef: Chip[] = []
 
-  function handleBackspace (event: KeyboardEvent) {
+  function handleBackspace(event: KeyboardEvent) {
     if (event.key === 'Backspace' && value === '' && items.length > 0) {
       itemsRef[items.length - 1].focus()
     }
     dispatch('keydown', event)
   }
 
-  function handleItemRemove (id: string) {
+  function handleItemRemove(id: string) {
     dispatch('item-remove', id)
     inputRef?.focus()
   }
 
-  export function focus () {
+  export function focus() {
     inputRef?.focus()
     autoFocus = false
   }

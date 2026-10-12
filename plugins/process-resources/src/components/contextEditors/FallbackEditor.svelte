@@ -27,11 +27,11 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  function save (): void {
+  function save(): void {
     dispatch('close', { value })
   }
 
-  function errorChange (e: CustomEvent<boolean>): void {
+  function errorChange(e: CustomEvent<boolean>): void {
     if (e.detail) {
       value = undefined
     } else {
@@ -41,13 +41,13 @@
 
   let editor: AnySvelteComponent | undefined
 
-  function getBaseEditor (_class: Ref<Class<Doc>>, key: string): void {
+  function getBaseEditor(_class: Ref<Class<Doc>>, key: string): void {
     void getAttributeEditor(client, _class, key).then((p) => {
       editor = p
     })
   }
 
-  function onChange (val: any | undefined): void {
+  function onChange(val: any | undefined): void {
     value = val
   }
 

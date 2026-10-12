@@ -31,7 +31,7 @@
 
   $: void findProject(_id)
 
-  async function findProject (document: Ref<ControlledDocument>): Promise<void> {
+  async function findProject(document: Ref<ControlledDocument>): Promise<void> {
     if (_id === undefined) {
       project = undefined
       return

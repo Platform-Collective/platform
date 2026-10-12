@@ -35,7 +35,7 @@
 
   let inputHeight = 0
 
-  function onInputResize (e: Element): void {
+  function onInputResize(e: Element): void {
     const delta = e.clientHeight - inputHeight
     inputHeight = e.clientHeight
     if (delta === 0) return

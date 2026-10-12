@@ -44,7 +44,7 @@
   $: objectPanel = hierarchy.classHierarchyMixin(objectClass, view.mixin.ObjectPanel)
   $: objectPresenter = hierarchy.classHierarchyMixin(objectClass, view.mixin.ObjectPresenter)
 
-  async function getValue (object: Doc): Promise<string | undefined> {
+  async function getValue(object: Doc): Promise<string | undefined> {
     if (viewlet?.valueAttr) {
       return (object as any)[viewlet.valueAttr]
     }
@@ -52,7 +52,7 @@
     return await getDocLinkTitle(client, object._id, object._class, object)
   }
 
-  async function loadObject (_id: Ref<Doc>, _class: Ref<Class<Doc>>, attachedTo: Ref<Doc>): Promise<void> {
+  async function loadObject(_id: Ref<Doc>, _class: Ref<Class<Doc>>, attachedTo: Ref<Doc>): Promise<void> {
     const isRemoved = attachedTo === _id ? false : await checkIsObjectRemoved(client, _id, _class)
 
     if (isRemoved) {
@@ -67,7 +67,7 @@
 
   $: void loadObject(objectId, objectClass, attachedTo)
 
-  function getPanelComponent (object: Doc, objectPanel?: ObjectPanel): AnyComponent {
+  function getPanelComponent(object: Doc, objectPanel?: ObjectPanel): AnyComponent {
     if (objectPanel !== undefined) {
       return objectPanel.component
     }

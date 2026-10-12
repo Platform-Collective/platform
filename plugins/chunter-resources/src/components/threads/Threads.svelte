@@ -79,7 +79,7 @@
     }
   )
 
-  function handleScroll (): void {
+  function handleScroll(): void {
     if (divScroll != null && hasNextPage && threads.length === limit) {
       const isAtBottom = divScroll.scrollTop + divScroll.clientHeight >= divScroll.scrollHeight - 400
       if (isAtBottom) {

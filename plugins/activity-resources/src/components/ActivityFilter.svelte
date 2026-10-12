@@ -85,7 +85,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function updateFilterActions (
+  async function updateFilterActions(
     messages: ActivityMessage[],
     filters: ActivityMessagesFilter[],
     selected: Ref<Doc>[] | Ref<ActivityMessagesFilter>,

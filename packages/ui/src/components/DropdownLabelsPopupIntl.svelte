@@ -31,7 +31,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function isSelected (
+  function isSelected(
     selected: DropdownIntlItem['id'] | Array<DropdownIntlItem['id']> | undefined,
     item: DropdownIntlItem
   ): boolean {
@@ -60,7 +60,7 @@
   let search: string = ''
   $: lowerSearch = search.toLowerCase()
 
-  async function fillSearchMap (items: DropdownIntlItem[], lang: string): Promise<void> {
+  async function fillSearchMap(items: DropdownIntlItem[], lang: string): Promise<void> {
     const result: Record<IntlString, string> = {}
     for (const item of items) {
       result[item.label] = (await translate(item.label, item.params, lang)).toLowerCase()

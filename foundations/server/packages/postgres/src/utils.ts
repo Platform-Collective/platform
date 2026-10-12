@@ -73,9 +73,9 @@ export async function createTables (
   loadedTables =
     loadedTables.size === 0
       ? new Set(
-        (
-          await ctx.with('load-table', {}, () =>
-            client.unsafe(`
+          (
+            await ctx.with('load-table', {}, () =>
+              client.unsafe(`
     SELECT table_name 
     FROM information_schema.tables
     WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
@@ -83,9 +83,9 @@ export async function createTables (
     AND table_name NOT LIKE 'cluster_%'
     AND table_name NOT LIKE 'kv_%'
     AND table_name NOT LIKE 'node_%'`)
-          )
-        ).map((it) => it.table_name)
-      )
+            )
+          ).map((it) => it.table_name)
+        )
       : loadedTables
   console.log('load-table', platformNowDiff(t))
 
@@ -105,7 +105,7 @@ export async function createTables (
   if (domainsToCreate.length > 0) {
     await retryTxn(client, async (client) => {
       for (const domain of domainsToCreate) {
-        await ctx.with('create-table', {}, () => createTable(client, domain))
+        await ctx.with('create-table', {}, () => createTable(client as unknown as postgres.Sql, domain))
         loadedDomains.add(url + domain)
       }
     })
@@ -273,9 +273,9 @@ export function parseUpdate<T extends Doc> (
   ops: DocumentUpdate<T> | MixinUpdate<Doc, T>,
   schemaFields: SchemaAndFields
 ): {
-    extractedFields: Partial<T>
-    remainingData: Partial<T>
-  } {
+  extractedFields: Partial<T>
+  remainingData: Partial<T>
+} {
   const extractedFields: Partial<T> = {}
   const remainingData: Partial<T> = {}
 
@@ -325,12 +325,39 @@ export class DBCollectionHelper implements DomainHelperOperations {
   async create (domain: Domain): Promise<void> {}
 
   async exists (domain: Domain): Promise<boolean> {
-    // Always exists. We don't need to check for index existence
-    return true
+    // Migrations can reference legacy domains that were removed from the current model,
+    // so this must check the physical table instead of the initialized model-domain set.
+    const tableName = translateDomain(domain)
+    const res = await this.client.execute(
+      `
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = $1
+        LIMIT 1
+      `,
+      [tableName]
+    )
+    return res.length > 0
   }
 
   async listDomains (): Promise<Set<Domain>> {
-    return this.domains
+    const rows = await this.client.execute(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+        AND table_name NOT LIKE 'pg_%'
+        AND table_name NOT LIKE 'cluster_%'
+        AND table_name NOT LIKE 'kv_%'
+        AND table_name NOT LIKE 'node_%'
+    `)
+    const tableNames = new Set(rows.map((it) => it.table_name as Domain))
+    for (const domain of this.domains) {
+      if (tableNames.has(translateDomain(domain) as Domain)) {
+        tableNames.add(domain)
+      }
+    }
+    return tableNames
   }
 
   async createIndex (domain: Domain, value: string | FieldIndexConfig<Doc>, options?: { name: string }): Promise<void> {}
@@ -397,7 +424,7 @@ export function filterProjection<T extends Doc> (data: any, projection: Projecti
   // Determine if this is an inclusion or exclusion projection
   // Exclusion: has any field with value 0
   // Inclusion: has any field with value 1
-  const projectionValues = Object.values(projection as any)
+  const projectionValues = Object.values(projection)
   const hasExclusion = projectionValues.some((v) => v === 0)
   const hasInclusion = projectionValues.some((v) => v === 1 || typeof v === 'object')
 

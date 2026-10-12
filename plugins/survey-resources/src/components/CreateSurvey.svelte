@@ -30,11 +30,11 @@
 
   const id = generateId()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return name === ''
   }
 
-  async function createSurvey (): Promise<void> {
+  async function createSurvey(): Promise<void> {
     const data: Data<Survey> = {
       name,
       prompt: ''

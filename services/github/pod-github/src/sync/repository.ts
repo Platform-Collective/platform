@@ -117,7 +117,7 @@ export class RepositorySyncMapper implements DocSyncManager {
   }
 
   @withContext('repository-handleEvent')
-  async handleEvent<T>(
+  async handleEvent<T> (
     ctx: MeasureContext,
     integration: IntegrationContainer,
     derivedClient: TxOperations,
@@ -291,8 +291,8 @@ export class RepositorySyncMapper implements DocSyncManager {
     let allRepos: GithubIntegrationRepository[] = [...allRepositories]
 
     const githubRepos:
-    | Repository
-    | Endpoints['GET /installation/repositories']['response']['data']['repositories'][0][] = []
+      | Repository
+      | Endpoints['GET /installation/repositories']['response']['data']['repositories'][0][] = []
     for await (const { repository } of iterable) {
       githubRepos.push(repository)
     }

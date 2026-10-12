@@ -130,7 +130,7 @@
     }
   )
 
-  function update (): void {
+  function update(): void {
     void updateCategories(_class, space, docs, groupByKey, viewOptions, viewOptionsConfig)
   }
 
@@ -183,7 +183,7 @@
 
   $: void buildModels(_class, config, configurations)
 
-  function getInitIndex (categories: any, i: number): number {
+  function getInitIndex(categories: any, i: number): number {
     let res = initIndex
     for (let index = 0; index < i; index++) {
       const cat = categories[index]
@@ -196,7 +196,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function getState (doc: Doc): number {
+  function getState(doc: Doc): number {
     let pos = 0
     for (const st of categories) {
       const stateObjs = getGroupByValues(groupByDocs, st) ?? []
@@ -208,7 +208,7 @@
     return -1
   }
 
-  export function select (
+  export function select(
     offset: 2 | 1 | -2 | -1 | 0,
     of?: Doc,
     dir?: 'vertical' | 'horizontal',
@@ -357,14 +357,14 @@
       listCategory[objState]?.select(offset, of, dir, noScroll)
     }
   }
-  function scrollInto (statePos: number, obj: Doc): void {
+  function scrollInto(statePos: number, obj: Doc): void {
     listListCategory[statePos]?.scroll(obj)
     listCategory[statePos]?.scroll(obj)
   }
 
   const listCategory: SvelteComponentTyped[] = []
   const listListCategory: ListCategory[] = []
-  function getGroupByKey (
+  function getGroupByKey(
     docKeys: Partial<DocumentQuery<Doc<Space>>>,
     category: CategoryType,
     resultQuery: DocumentQuery<Doc<Space>>

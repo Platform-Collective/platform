@@ -28,7 +28,7 @@
     sort: { modifiedOn: SortingOrder.Descending }
   }
 
-  async function onClose ({ detail: parent }: CustomEvent<Card | undefined | null>): Promise<void> {
+  async function onClose({ detail: parent }: CustomEvent<Card | undefined | null>): Promise<void> {
     const vv = Array.isArray(value) ? value : [value]
     for (const docValue of vv) {
       if (

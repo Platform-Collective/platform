@@ -46,7 +46,7 @@ export class TTx extends TDoc implements Tx {
   @Prop(TypeRef(core.class.Space), core.string.Space)
   // @Index(IndexKind.Indexed)
   @Hidden()
-    objectSpace!: Ref<Space>
+  objectSpace!: Ref<Space>
 }
 
 @Model(core.class.TxModelUpgrade, core.class.Tx, DOMAIN_TX)
@@ -57,12 +57,12 @@ export class TTxCUD<T extends Doc> extends TTx implements TxCUD<T> {
   @Prop(TypeRef(core.class.Doc), core.string.Object)
   @Index(IndexKind.Indexed)
   @Hidden()
-    objectId!: Ref<T>
+  objectId!: Ref<T>
 
   @Prop(TypeRef(core.class.Class), core.string.ClassLabel)
   // @Index(IndexKind.Indexed)
   @Hidden()
-    objectClass!: Ref<Class<T>>
+  objectClass!: Ref<Class<T>>
 }
 
 @Model(core.class.TxCreateDoc, core.class.TxCUD)

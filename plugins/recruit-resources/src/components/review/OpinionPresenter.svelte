@@ -22,7 +22,7 @@
 
   export let value: Opinion
 
-  function show () {
+  function show() {
     closeTooltip()
     showPopup(EditOpinion, { item: value }, element)
   }

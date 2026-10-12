@@ -25,7 +25,7 @@
 
   const manager = createFocusManager()
 
-  function toEntries (entries: OperationLogEntry[]): OperationLogEntry[] {
+  function toEntries(entries: OperationLogEntry[]): OperationLogEntry[] {
     entries.sort((a, b) => a.start - b.start)
     // make relative times
 

@@ -16,7 +16,7 @@
 
   const BOTH_VISIBLE: ArrowVisibility = { kind: 'both-visible' }
 
-  function resolveVisibility (src: BarRect | null, dst: BarRect | null, bounds: YBounds | undefined): ArrowVisibility {
+  function resolveVisibility(src: BarRect | null, dst: BarRect | null, bounds: YBounds | undefined): ArrowVisibility {
     if (bounds === undefined) return BOTH_VISIBLE
     return classifyArrowVisibility(src, dst, bounds)
   }
@@ -51,7 +51,7 @@
 
   $: dragState = $activeDrag
 
-  function isDimmed (rel: IssueRelation): boolean {
+  function isDimmed(rel: IssueRelation): boolean {
     // Nothing hovered -> no dimming.
     if (hoveredIssue === null && hoveredEdge === null) return false
     return !(connectedIds.has(rel.attachedTo) && connectedIds.has(rel.target))

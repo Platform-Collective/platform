@@ -32,7 +32,7 @@
 
   let keys = Object.keys(result) as ContextId[]
 
-  function getResults (_id: string | undefined): void {
+  function getResults(_id: string | undefined): void {
     results = []
     if (_id == null) return
     const ctx = parseContext(_id)
@@ -48,11 +48,11 @@
 
   $: availableResults = results.filter((r) => !keys.includes(r._id))
 
-  function addKey (key: ContextId): void {
+  function addKey(key: ContextId): void {
     keys = [...keys, key]
   }
 
-  function onAdd (e: MouseEvent): void {
+  function onAdd(e: MouseEvent): void {
     showPopup(
       SelectPopup,
       {
@@ -69,14 +69,14 @@
     )
   }
 
-  function change (e: CustomEvent<any>, key: string): void {
+  function change(e: CustomEvent<any>, key: string): void {
     if (e.detail !== undefined) {
       ;(result as any)[key] = e.detail
       dispatch('change', result)
     }
   }
 
-  function remove (key: string): void {
+  function remove(key: string): void {
     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete (result as any)[key]
     keys = keys.filter((k) => k !== key)

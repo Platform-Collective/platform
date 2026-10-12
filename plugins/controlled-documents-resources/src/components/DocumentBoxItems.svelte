@@ -39,7 +39,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function addPerson (evt: Event): Promise<void> {
+  async function addPerson(evt: Event): Promise<void> {
     showPopup(
       DocumentsPopup,
       {
@@ -107,7 +107,7 @@
       on:click={addPerson}
     >
       <span><Label label={actionLabel} /></span>
-      <Icon icon={IconAdd} size={size === 'inline' ? 'x-small' : 'small'} fill={'var(--theme-dark-color)'} />
+      <Icon icon={IconAdd} size={size === 'inline' ? 'x-small' : 'small'} fill="var(--theme-dark-color)" />
     </div>
   {/if}
 </div>

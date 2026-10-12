@@ -32,7 +32,7 @@
 
   const q = createQuery()
 
-  async function update (_class: Ref<Class<Category>>, query: DocumentQuery<Category>, options?: FindOptions<Category>) {
+  async function update(_class: Ref<Class<Category>>, query: DocumentQuery<Category>, options?: FindOptions<Category>) {
     q.query(
       _class,
       query,
@@ -45,7 +45,7 @@
   }
   $: update(_class, query, options)
 
-  function updateDescendants (): void {
+  function updateDescendants(): void {
     descendants.clear()
     for (const doc of objects) {
       const current = descendants.get(doc.attachedTo)

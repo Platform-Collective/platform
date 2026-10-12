@@ -16,11 +16,11 @@
   $: query.query(board.class.MenuPage, { pageId: currentPageId }, (result) => {
     ;[page] = result
   })
-  function setKey (e: CustomEvent) {
+  function setKey(e: CustomEvent) {
     trace = [currentPageId, ...trace]
     currentPageId = e.detail
   }
-  function onBack () {
+  function onBack() {
     ;[currentPageId = board.menuPageId.Main, ...trace] = trace
   }
 </script>

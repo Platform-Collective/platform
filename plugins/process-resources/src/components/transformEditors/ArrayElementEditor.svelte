@@ -34,7 +34,7 @@
   const client = getClient()
   const h = client.getHierarchy()
 
-  function save (): void {
+  function save(): void {
     dispatch('close', { value })
   }
 

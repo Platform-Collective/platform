@@ -7,7 +7,7 @@ import type { Issue } from '@hcengineering/tracker'
 import { buildLayout, filterVisibleRows } from '../layout'
 import { type LayoutRow, type MilestoneMarker } from '../types'
 
-function fakeIssue (id: string, parentId?: string, hasChildren = false, milestone?: string): Issue {
+function fakeIssue(id: string, parentId?: string, hasChildren = false, milestone?: string): Issue {
   return {
     _id: id as any,
     _class: 'tracker:class:Issue' as any,
@@ -30,7 +30,7 @@ function fakeIssue (id: string, parentId?: string, hasChildren = false, mileston
   } as unknown as Issue
 }
 
-function fakeMilestone (id: string, label = `MS ${id}`): MilestoneMarker {
+function fakeMilestone(id: string, label = `MS ${id}`): MilestoneMarker {
   return { _id: id as any, label, startDate: null, targetDate: 1_700_000_000_000 }
 }
 
@@ -314,7 +314,7 @@ describe('buildLayout — combined breadcrumb + sort + collapse', () => {
 })
 
 describe('filterVisibleRows', () => {
-  function row (y: number): LayoutRow {
+  function row(y: number): LayoutRow {
     return {
       kind: 'issue',
       id: `r-${y}`,

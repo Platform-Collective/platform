@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-/* eslint-env jest */
+/* global describe, expect, it */
 import {
   MarkupMarkType,
   MarkupNode,
@@ -869,7 +869,7 @@ A list of closed updated issues`
       ],
       type: MarkupNodeType.doc
     }
-    expect(() => serializeMessage(node, 'ref://', 'http://')).toThrowError(
+    expect(() => serializeMessage(node, 'ref://', 'http://')).toThrow(
       'Token type `textqwe` not supported by Markdown renderer'
     )
   })

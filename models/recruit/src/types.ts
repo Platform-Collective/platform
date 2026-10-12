@@ -68,33 +68,33 @@ import recruit from './plugin'
 export class TVacancy extends TProject implements Vacancy {
   @Prop(TypeCollaborativeDoc(), recruit.string.FullDescription)
   @Index(IndexKind.FullText)
-    fullDescription!: MarkupBlobRef | null
+  fullDescription!: MarkupBlobRef | null
 
   @Prop(TypeCollection(attachment.class.Attachment), attachment.string.Attachments, {
     shortLabel: attachment.string.Files
   })
-    attachments?: number
+  attachments?: number
 
   @Prop(TypeDate(), recruit.string.Due, recruit.icon.Calendar)
-    dueTo?: Timestamp
+  dueTo?: Timestamp
 
   @Prop(TypeString(), recruit.string.Location, recruit.icon.Location)
   @Index(IndexKind.FullText)
-    location?: string
+  location?: string
 
   @Prop(TypeRef(contact.class.Organization), recruit.string.Company, { icon: contact.icon.Company })
-    company?: Ref<Organization>
+  company?: Ref<Organization>
 
   @Prop(TypeCollection(chunter.class.ChatMessage), chunter.string.Comments)
-    comments?: number
+  comments?: number
 
   @Prop(TypeString(), recruit.string.Vacancy)
   @Index(IndexKind.FullText)
   @Hidden()
-    number!: number
+  number!: number
 
   @Prop(TypeCollection(survey.class.Poll), survey.string.Polls)
-    polls?: Collection<Poll>
+  polls?: Collection<Poll>
 }
 
 @Mixin(recruit.mixin.Candidate, contact.class.Person)
@@ -102,47 +102,47 @@ export class TVacancy extends TProject implements Vacancy {
 export class TCandidate extends TPerson implements Candidate {
   @Prop(TypeString(), recruit.string.Title)
   @Index(IndexKind.FullText)
-    title?: string
+  title?: string
 
   @Prop(TypeCollection(recruit.class.Applicant), recruit.string.Applications, {
     shortLabel: recruit.string.ApplicationsShort
   })
-    applications?: number
+  applications?: number
 
   @Prop(TypeBoolean(), recruit.string.Onsite)
-    onsite?: boolean
+  onsite?: boolean
 
   @Prop(TypeBoolean(), recruit.string.Remote)
-    remote?: boolean
+  remote?: boolean
 
   @Prop(TypeString(), recruit.string.Source)
   @Index(IndexKind.FullText)
-    source?: string
+  source?: string
 
   @Prop(TypeCollection(tags.class.TagReference, recruit.string.SkillLabel), recruit.string.SkillsLabel, {
     icon: recruit.icon.Skills,
     schema: '3'
   })
-    skills?: number
+  skills?: number
 
   @Prop(TypeCollection(recruit.class.Review, recruit.string.Review), recruit.string.Reviews)
-    reviews?: number
+  reviews?: number
 
   @Prop(
     TypeCollection(recruit.class.ApplicantMatch, getEmbeddedLabel('Vacancy match')),
     getEmbeddedLabel('Vacancy Matches')
   )
-    vacancyMatch?: number
+  vacancyMatch?: number
 
   @Prop(TypeCollection(survey.class.Poll), survey.string.Polls)
-    polls?: Collection<Poll>
+  polls?: Collection<Poll>
 }
 
 @Mixin(recruit.mixin.VacancyList, contact.class.Organization)
 @UX(recruit.string.VacancyList, recruit.icon.RecruitApplication, 'CM', 'name')
 export class TVacancyList extends TOrganization implements VacancyList {
   @Prop(TypeCollection(recruit.class.Vacancy), recruit.string.Vacancies)
-    vacancies!: number
+  vacancies!: number
 }
 
 @Model(recruit.class.Applicant, task.class.Task)
@@ -160,7 +160,7 @@ export class TApplicant extends TTask implements Applicant {
   declare space: Ref<Vacancy>
 
   @Prop(TypeDate(), task.string.StartDate)
-    startDate!: Timestamp | null
+  startDate!: Timestamp | null
 
   @Prop(TypeRef(contact.mixin.Employee), recruit.string.AssignedRecruiter)
   @Index(IndexKind.Indexed)
@@ -171,7 +171,7 @@ export class TApplicant extends TTask implements Applicant {
   declare status: Ref<Status>
 
   @Prop(TypeCollection(survey.class.Poll), survey.string.Polls)
-    polls?: Collection<Poll>
+  polls?: Collection<Poll>
 }
 
 @Model(recruit.class.ApplicantMatch, core.class.AttachedDoc, DOMAIN_TASK)
@@ -184,19 +184,19 @@ export class TApplicantMatch extends TAttachedDoc implements ApplicantMatch {
 
   @Prop(TypeBoolean(), getEmbeddedLabel('Complete'))
   @ReadOnly()
-    complete!: boolean
+  complete!: boolean
 
   @Prop(TypeString(), getEmbeddedLabel('Vacancy'))
   @ReadOnly()
-    vacancy!: string
+  vacancy!: string
 
   @Prop(TypeString(), getEmbeddedLabel('Summary'))
   @ReadOnly()
-    summary!: string
+  summary!: string
 
   @Prop(TypeMarkup(), getEmbeddedLabel('Response'))
   @ReadOnly()
-    response!: string
+  response!: string
 }
 
 @Model(recruit.class.Review, calendar.class.Event)
@@ -207,27 +207,27 @@ export class TReview extends TEvent implements Review {
   declare attachedTo: Ref<Candidate>
 
   @Prop(TypeString(), recruit.string.Review)
-    number!: number
+  number!: number
 
   @Prop(TypeString(), recruit.string.Verdict)
   @Index(IndexKind.FullText)
-    verdict!: string
+  verdict!: string
 
   @Prop(TypeRef(recruit.class.Applicant), recruit.string.Application, { icon: recruit.icon.Application })
-    application?: Ref<Applicant>
+  application?: Ref<Applicant>
 
   @Prop(TypeRef(contact.class.Organization), recruit.string.Company, { icon: contact.icon.Company })
-    company?: Ref<Organization>
+  company?: Ref<Organization>
 
   @Prop(TypeCollection(recruit.class.Opinion), recruit.string.Opinions)
-    opinions?: number
+  opinions?: number
 }
 
 @Model(recruit.class.Opinion, core.class.AttachedDoc, 'recruit' as Domain)
 @UX(recruit.string.Opinion, recruit.icon.Opinion, 'OPE')
 export class TOpinion extends TAttachedDoc implements Opinion {
   @Prop(TypeString(), task.string.TaskNumber)
-    number!: number
+  number!: number
 
   // We need to declare, to provide property with label
   @Prop(TypeRef(recruit.class.Review), recruit.string.Review)
@@ -236,16 +236,16 @@ export class TOpinion extends TAttachedDoc implements Opinion {
   @Prop(TypeCollection(attachment.class.Attachment), attachment.string.Attachments, {
     shortLabel: attachment.string.Files
   })
-    attachments?: number
+  attachments?: number
 
   @Prop(TypeCollection(chunter.class.ChatMessage), chunter.string.Comments)
-    comments?: number
+  comments?: number
 
   @Prop(TypeMarkup(), recruit.string.Description)
-    description!: Markup
+  description!: Markup
 
   @Prop(TypeString(), recruit.string.OpinionValue)
-    value!: string
+  value!: string
 }
 
 @Mixin(recruit.mixin.DefaultVacancyTypeData, recruit.class.Vacancy)

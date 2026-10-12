@@ -45,12 +45,12 @@ export async function loadUnicodeEmojis (lang: string): Promise<EmojiWithGroup[]
   const emojis =
     languageEmojis !== null
       ? languageEmojis.map((langEmoji, index) => {
-        return {
-          ...langEmoji,
-          tags: [...(englishEmojis[index]?.tags ?? []), ...(langEmoji?.tags ?? [])],
-          shortcodes: [...(englishEmojis[index]?.shortcodes ?? []), ...(langEmoji?.shortcodes ?? [])]
-        }
-      })
+          return {
+            ...langEmoji,
+            tags: [...(englishEmojis[index]?.tags ?? []), ...(langEmoji?.tags ?? [])],
+            shortcodes: [...(englishEmojis[index]?.shortcodes ?? []), ...(langEmoji?.shortcodes ?? [])]
+          }
+        })
       : (englishEmojis as Emoji.Emoji[])
 
   return emojis

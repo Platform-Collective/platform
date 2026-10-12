@@ -58,7 +58,7 @@ function createMockTxOperations (existingDocs: Array<Record<string, any>> = []):
   }
 
   return {
-    findAll: jest.fn(async <T extends Doc>(classRef: Ref<Class<T>>, query: any, options?: any): Promise<T[]> => {
+    findAll: jest.fn(async <T extends Doc> (classRef: Ref<Class<T>>, query: any, options?: any): Promise<T[]> => {
       const results: T[] = []
       for (const doc of docsMap.values()) {
         if (doc._class !== classRef) continue
@@ -119,7 +119,7 @@ function createMockTxOperations (existingDocs: Array<Record<string, any>> = []):
       }
       return results
     }),
-    findOne: jest.fn(async function <T extends Doc>(
+    findOne: jest.fn(async function <T extends Doc> (
       this: any,
       classRef: Ref<Class<T>>,
       query: any,

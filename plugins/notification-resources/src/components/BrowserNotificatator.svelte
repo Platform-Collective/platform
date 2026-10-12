@@ -26,7 +26,7 @@
   import { checkPermission, pushAllowed, subscribePush } from '../utils'
   import Notification from './Notification.svelte'
 
-  async function check (allowed: boolean): Promise<void> {
+  async function check(allowed: boolean): Promise<void> {
     if (allowed) {
       query.unsubscribe()
       return
@@ -58,7 +58,7 @@
   const client = getClient()
   const linkProviders = client.getModel().findAllSync(view.mixin.LinkIdProvider, {})
 
-  async function getObjectIdFromLocation (loc: Location): Promise<string | undefined> {
+  async function getObjectIdFromLocation(loc: Location): Promise<string | undefined> {
     const appAlias = loc.path[2]
     const application = client.getModel().findAllSync<Application>(workbench.class.Application, { alias: appAlias })[0]
 
@@ -78,7 +78,7 @@
     }
   }
 
-  async function notify (value: BrowserNotification): Promise<void> {
+  async function notify(value: BrowserNotification): Promise<void> {
     const _id: Ref<Doc> | undefined = value.objectId
 
     const getSidebarObject = await getResource(workbench.function.GetSidebarObject)
@@ -106,7 +106,7 @@
     await removeNotification(value)
   }
 
-  async function removeNotification (value: BrowserNotification): Promise<void> {
+  async function removeNotification(value: BrowserNotification): Promise<void> {
     if (account.role !== AccountRole.ReadOnlyGuest) {
       await client.remove(value)
     }

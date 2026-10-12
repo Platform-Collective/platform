@@ -52,13 +52,13 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return true
   }
 
   let loading = false
 
-  async function saveToDo (): Promise<void> {
+  async function saveToDo(): Promise<void> {
     loading = true
     const ops = client.apply(undefined, 'create-todo')
     const latestTodo = await ops.findOne(
@@ -128,7 +128,7 @@
   let slots: WorkSlot[] = []
   let reminders: number[] = []
 
-  function removeSlot (e: CustomEvent<{ _id: Ref<WorkSlot> }>): void {
+  function removeSlot(e: CustomEvent<{ _id: Ref<WorkSlot> }>): void {
     const index = slots.findIndex((p) => p._id === e.detail._id)
     if (index !== -1) {
       slots.splice(index, 1)
@@ -136,7 +136,7 @@
     }
   }
 
-  function createSlot (): void {
+  function createSlot(): void {
     const defaultDuration = 30 * 60 * 1000
     const now = Date.now()
     const date = Math.ceil(now / (30 * 60 * 1000)) * (30 * 60 * 1000)
@@ -167,7 +167,7 @@
     slots = slots
   }
 
-  function changeSlot (e: CustomEvent<{ startDate: number, dueDate: number, slot: Ref<WorkSlot> }>): void {
+  function changeSlot(e: CustomEvent<{ startDate: number, dueDate: number, slot: Ref<WorkSlot> }>): void {
     const { startDate, dueDate, slot } = e.detail
     const workslot = slots.find((s) => s._id === slot)
     if (workslot !== undefined) {
@@ -177,7 +177,7 @@
     }
   }
 
-  function changeDueSlot (e: CustomEvent<{ dueDate: number, slot: Ref<WorkSlot> }>): void {
+  function changeDueSlot(e: CustomEvent<{ dueDate: number, slot: Ref<WorkSlot> }>): void {
     const { dueDate, slot } = e.detail
     const workslot = slots.find((s) => s._id === slot)
     if (workslot !== undefined) {

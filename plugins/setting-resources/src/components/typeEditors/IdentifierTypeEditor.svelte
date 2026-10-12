@@ -43,12 +43,12 @@
 
   $: currentSequence = sequences.find((s) => s._id === seq)
 
-  async function resetSequence () {
+  async function resetSequence() {
     if (!editable || currentSequence === undefined) return
     await client.update(currentSequence, { sequence: 0 })
   }
 
-  async function change () {
+  async function change() {
     if (!editable) return
     if (identifiers.has(identifier.toUpperCase())) return
     if (identifier.toUpperCase() === (currentSequence?.prefix?.toUpperCase() ?? '')) return
@@ -65,7 +65,7 @@
     }
   }
 
-  async function changeShowing () {
+  async function changeShowing() {
     if (seq === undefined) return
     const type = TypeIdentifier(seq)
     dispatch('change', { type, index: IndexKind.FullText, extra: { showInPresenter } })

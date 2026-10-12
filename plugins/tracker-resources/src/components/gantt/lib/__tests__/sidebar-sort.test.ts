@@ -20,7 +20,7 @@ interface IssueOverrides {
   createdOn?: number
 }
 
-function mkIssue (overrides: IssueOverrides): Issue {
+function mkIssue(overrides: IssueOverrides): Issue {
   return {
     _id: overrides._id as Ref<Issue>,
     title: overrides.title ?? '',

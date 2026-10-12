@@ -74,9 +74,9 @@ export class LiveQueryMiddleware extends BaseMiddleware implements Middleware {
           total: options.total === true ? results.length : undefined
         }
       },
-      iterateAll: async function * (_class, query, options) {
+      iterateAll: async function* (_class, query, options) {
         const results = await this.findAll(_class, query, options)
-        yield * results
+        yield* results
       },
       findOne: async (_class, query, options) => {
         const _ctx: MeasureContext = (options as ServerFindOptions<Doc>)?.ctx ?? metrics

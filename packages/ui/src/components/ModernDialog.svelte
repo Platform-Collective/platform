@@ -49,15 +49,15 @@
 
   const dispatch = createEventDispatcher()
 
-  function submit (): void {
+  function submit(): void {
     dispatch('submit')
   }
 
-  function close (): void {
+  function close(): void {
     dispatch('close')
   }
 
-  function cancel (): void {
+  function cancel(): void {
     dispatch('cancel')
 
     if (shouldCloseOnCancel) {

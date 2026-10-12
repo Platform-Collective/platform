@@ -114,7 +114,7 @@ describe('SyncManager', () => {
       mockMessageManager,
       mockGmail,
       workspace,
-      mockKeyValueClient as any,
+      mockKeyValueClient,
       new RateLimiter(100, 100)
     )
   })

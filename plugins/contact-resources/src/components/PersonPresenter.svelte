@@ -53,7 +53,7 @@
   $: personByRefStore = typeof value === 'string' ? getPersonByPersonRefStore([value]) : undefined
   $: personValue = typeof value === 'string' ? $personByRefStore?.get(value) : value
 
-  function getTooltip (
+  function getTooltip(
     tooltipLabels: PersonLabelTooltip | undefined,
     value: Person | null | undefined
   ): LabelAndProps | undefined {

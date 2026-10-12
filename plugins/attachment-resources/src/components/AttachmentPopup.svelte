@@ -49,13 +49,13 @@
     }
   )
 
-  function add () {
+  function add() {
     if (canAdd) {
       inputFile.click()
     }
   }
 
-  async function createAttachment (file: File) {
+  async function createAttachment(file: File) {
     try {
       const { uuid, metadata } = await uploadFile(file)
       const space = client.getHierarchy().isDerived(object._class, core.class.Space)
@@ -75,7 +75,7 @@
     }
   }
 
-  async function fileSelected (): Promise<void> {
+  async function fileSelected(): Promise<void> {
     progress = true
 
     const list = inputFile.files
@@ -92,7 +92,7 @@
 
   let inputFile: HTMLInputElement
 
-  async function remove (doc: Attachment): Promise<void> {
+  async function remove(doc: Attachment): Promise<void> {
     if (canRemove) {
       await client.remove(doc)
     }

@@ -56,7 +56,7 @@
     { sort: { createdOn: SortingOrder.Descending } }
   )
 
-  function updateMessagesQuery (channelId: Ref<Channel>): void {
+  function updateMessagesQuery(channelId: Ref<Channel>): void {
     messagesQuery.query(
       gmail.class.Message,
       { attachedTo: channelId },
@@ -72,7 +72,7 @@
 
   const client = getClient()
 
-  async function share (): Promise<void> {
+  async function share(): Promise<void> {
     const selectedMessages = messages.filter((m) => selected.has(m._id as string as Ref<SharedMessage>))
     await client.addCollection(
       gmail.class.SharedMessages,
@@ -88,7 +88,7 @@
     clear()
   }
 
-  function clear (): void {
+  function clear(): void {
     selectable = false
     selected.clear()
     selected = selected

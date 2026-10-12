@@ -24,7 +24,7 @@
 
   $: updatePersons(persons, $employeeByAccountStore)
 
-  function updatePersons (persons: Record<PersonUuid, number>, employeeByAccount: Map<AccountUuid, Person>): void {
+  function updatePersons(persons: Record<PersonUuid, number>, employeeByAccount: Map<AccountUuid, Person>): void {
     const newPersons: Person[] = []
     for (const [personUuid, count] of Object.entries(persons)) {
       if (count < 1) continue

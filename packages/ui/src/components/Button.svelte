@@ -118,7 +118,7 @@
     input.addEventListener('focus', updateFocus, { once: true })
   }
 
-  function preventHandler (e: MouseEvent) {
+  function preventHandler(e: MouseEvent) {
     if (stopPropagation) {
       e.preventDefault()
       e.stopPropagation()

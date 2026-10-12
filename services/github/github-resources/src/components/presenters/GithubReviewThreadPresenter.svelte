@@ -49,7 +49,7 @@
   )
   let expanded = !value.isResolved
 
-  async function onMessage (event: CustomEvent<string>): Promise<void> {
+  async function onMessage(event: CustomEvent<string>): Promise<void> {
     await getClient().addCollection(
       github.class.GithubReviewComment,
       value.space,
@@ -74,7 +74,7 @@
       }
     )
   }
-  async function changeResolution (): Promise<void> {
+  async function changeResolution(): Promise<void> {
     if (value.isResolved) {
       await getClient().update(value, { isResolved: false, resolvedBy: null })
     } else {
@@ -82,7 +82,7 @@
     }
   }
 
-  function onDiffExpand (nextExpanded: boolean): void {
+  function onDiffExpand(nextExpanded: boolean): void {
     expanded = nextExpanded
   }
 </script>

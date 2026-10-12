@@ -84,17 +84,17 @@
       (el) => element === el
     )
 
-  function _update (result: any): void {
+  function _update(result: any): void {
     if (onUpdate !== undefined) onUpdate(result)
   }
 
-  function _close (result: any): void {
+  function _close(result: any): void {
     if (onClose !== undefined) onClose(result)
     overlay = false
     close()
   }
 
-  function escapeClose (): void {
+  function escapeClose(): void {
     if (componentInstance?.canClose) {
       if (!componentInstance.canClose()) return
     }
@@ -120,7 +120,7 @@
     options.fullSize = fullSize
   }
 
-  function handleKeydown (ev: KeyboardEvent) {
+  function handleKeydown(ev: KeyboardEvent) {
     if (ev.key === 'Escape' && is && top) {
       ev.preventDefault()
       ev.stopPropagation()
@@ -176,7 +176,7 @@
   }
   $: updatedPopupParams(popupParams)
 
-  function mouseDown (e: MouseEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
+  function mouseDown(e: MouseEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
     if (element !== 'movable') return
     const rect = e.currentTarget.getBoundingClientRect()
     popupParams = { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
@@ -187,7 +187,7 @@
     window.addEventListener('mouseup', mouseUp)
   }
 
-  function mouseMove (e: MouseEvent): void {
+  function mouseMove(e: MouseEvent): void {
     if (element !== 'movable' && !drag) return
     let newTop = e.clientY - dragParams.offsetY
     let newLeft = e.clientX - dragParams.offsetX
@@ -202,13 +202,13 @@
     popupParams = { ...popupParams, x: newLeft, y: newTop }
   }
 
-  function mouseUp (): void {
+  function mouseUp(): void {
     drag = false
     window.removeEventListener('mousemove', mouseMove)
     window.removeEventListener('mouseup', mouseUp)
   }
 
-  function checkSize (): void {
+  function checkSize(): void {
     const rect = modalHTML.getBoundingClientRect()
     const newParams: PopupParams = { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
     if (popupParams.width === 0 && popupParams.height === 0) popupParams = newParams
@@ -249,7 +249,7 @@
     locked = false
   }
 
-  export function fitPopupInstance (): void {
+  export function fitPopupInstance(): void {
     if (modalHTML) {
       fitPopup(modalHTML, element, contentPanel)
     }

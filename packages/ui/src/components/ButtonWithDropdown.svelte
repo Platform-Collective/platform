@@ -47,7 +47,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function openDropdown (ev: MouseEvent): void {
+  function openDropdown(ev: MouseEvent): void {
     showPopup(SelectPopup, { value: dropdownItems }, eventToHTMLElement(ev), (res) => {
       dispatch('dropdown-selected', res)
     })

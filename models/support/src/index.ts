@@ -33,7 +33,7 @@ export const DOMAIN_SUPPORT = 'support' as Domain
 @Model(support.class.SupportConversation, preference.class.Preference)
 export class TSupportConversation extends TPreference implements SupportConversation {
   @Index(IndexKind.Indexed)
-    conversationId!: string
+  conversationId!: string
 
   hasUnreadMessages!: boolean
 }

@@ -66,7 +66,7 @@
     { limit: 1 }
   )
 
-  function showCreateDialog (ev: Event) {
+  function showCreateDialog(ev: Event) {
     showPopup(createItemDialog as AnyComponent, { space: spaceId }, 'top')
   }
 
@@ -84,7 +84,7 @@
     description = space.description
   }
 
-  function getEditor (_class: Ref<Class<Doc>>): AnyComponent | undefined {
+  function getEditor(_class: Ref<Class<Doc>>): AnyComponent | undefined {
     const clazz = hierarchy.getClass(_class)
     const editorMixin = hierarchy.as(clazz, view.mixin.ObjectEditor)
     if (editorMixin?.editor == null && clazz.extends != null) return getEditor(clazz.extends)

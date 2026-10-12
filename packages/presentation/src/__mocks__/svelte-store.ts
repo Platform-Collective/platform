@@ -36,7 +36,7 @@ export interface Derived<T> extends Readable<T> {
   _getValue?: () => T
 }
 
-export const writable = <T>(initialValue: T): Writable<T> => {
+export const writable = <T> (initialValue: T): Writable<T> => {
   let value = initialValue
   const subscribers = new Set<Subscriber<T>>()
 
@@ -65,7 +65,7 @@ export const writable = <T>(initialValue: T): Writable<T> => {
   return store
 }
 
-export const derived = <T>(
+export const derived = <T> (
   stores: Readable<any> | Array<Readable<any>>,
   fn: (values: any) => T,
   initialValue?: T
@@ -98,7 +98,7 @@ export const derived = <T>(
   return store
 }
 
-export const readable = <T>(initialValue: T, startStopNotifier?: StartStopNotifier<T>): Readable<T> => {
+export const readable = <T> (initialValue: T, startStopNotifier?: StartStopNotifier<T>): Readable<T> => {
   const store: Readable<T> = {
     subscribe: (callback: Subscriber<T>) => {
       callback(initialValue)
@@ -123,7 +123,7 @@ export const readable = <T>(initialValue: T, startStopNotifier?: StartStopNotifi
   return store
 }
 
-export const get = <T>(store: Readable<T>): T => {
+export const get = <T> (store: Readable<T>): T => {
   if (store?._getValue != null) {
     return store._getValue()
   }

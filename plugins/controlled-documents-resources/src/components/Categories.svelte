@@ -38,7 +38,7 @@
 
   const _class: Ref<Class<DocumentCategory>> = document.class.DocumentCategory
 
-  function showCreateDialog (): void {
+  function showCreateDialog(): void {
     showPopup(CreateDocumentCategory, {}, 'top')
   }
 </script>

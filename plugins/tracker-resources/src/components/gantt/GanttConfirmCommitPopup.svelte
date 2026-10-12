@@ -25,7 +25,7 @@
 
   const dispatch = createEventDispatcher<{ close: boolean }>()
 
-  function fmt (ts: number): string {
+  function fmt(ts: number): string {
     return new Date(ts).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
   }
 </script>

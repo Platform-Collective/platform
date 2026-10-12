@@ -71,7 +71,7 @@
   })
   $: barAreaWidth = POPUP_WIDTH - LABEL_WIDTH - 32
 
-  function labelFor (i: Issue): string {
+  function labelFor(i: Issue): string {
     // Match the predecessor-column / sidebar rendering convention: prefix
     // with identifier (PROJ-12) and append the title for human
     // disambiguation. CSS clip-path on the <text> element keeps it inside
@@ -94,7 +94,7 @@
     return '—'
   }
 
-  function buildRows (p: PrimaryEdit[], s: CascadeShift[]): Row[] {
+  function buildRows(p: PrimaryEdit[], s: CascadeShift[]): Row[] {
     const out: Row[] = []
     for (const pe of p) {
       out.push({
@@ -123,7 +123,7 @@
     return out.sort((a, b) => a.newStart - b.newStart)
   }
 
-  function computeDateRange (rs: Row[]): { min: number, max: number } {
+  function computeDateRange(rs: Row[]): { min: number, max: number } {
     if (rs.length === 0) return { min: Date.now(), max: Date.now() + DAY_MS }
     let min = Infinity
     let max = -Infinity
@@ -135,17 +135,17 @@
     return { min: min - padDays * DAY_MS, max: max + padDays * DAY_MS }
   }
 
-  function xOf (t: number): number {
+  function xOf(t: number): number {
     const span = dateRange.max - dateRange.min
     if (span <= 0) return 0
     return ((t - dateRange.min) / span) * barAreaWidth
   }
 
-  function fmtTick (t: number): string {
+  function fmtTick(t: number): string {
     return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   }
 
-  function ticks (): number[] {
+  function ticks(): number[] {
     const span = dateRange.max - dateRange.min
     const count = 5
     const result: number[] = []
@@ -155,16 +155,16 @@
     return result
   }
 
-  function onConfirm (): void {
+  function onConfirm(): void {
     if (lockedIssues.length > 0) return
     dispatch('close', true)
   }
 
-  function onCancel (): void {
+  function onCancel(): void {
     dispatch('close', false)
   }
 
-  function onKey (e: KeyboardEvent): void {
+  function onKey(e: KeyboardEvent): void {
     if (e.key === 'Escape') {
       e.preventDefault()
       onCancel()

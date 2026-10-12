@@ -31,7 +31,7 @@ type ResultFn = (filter: Filter, refresh: () => void) => Promise<unknown>
  * parameter so unit tests can inject a mock without spinning up the full
  * plugin runtime.
  */
-const defaultResolveResource: ResourceResolver = async <T>(r: Resource<T>) => await getResource(r)
+const defaultResolveResource: ResourceResolver = async <T> (r: Resource<T>) => await getResource(r)
 
 /**
  * Keys that must never be written through dynamic property assignment:
@@ -73,7 +73,7 @@ export async function makeFilterQuery (
     const filter = filters[i]
     const mode = await resolveMode(filter.mode)
     if (mode === undefined) continue
-    const resultFn = await resolveResource<ResultFn>(mode.result as unknown as Resource<ResultFn>)
+    const resultFn = await resolveResource<ResultFn>(mode.result)
     const result: any = await resultFn(filter, refresh)
 
     let filterKey = filter.key.key

@@ -27,7 +27,7 @@
   let activeElement: HTMLElement
   const btns: HTMLElement[] = []
 
-  function focusTarget (target: HTMLElement): void {
+  function focusTarget(target: HTMLElement): void {
     activeElement = target
   }
 
@@ -77,7 +77,7 @@
       !isExcludedApp(it.alias)
   )
 
-  function isExcludedApp (alias: string): boolean {
+  function isExcludedApp(alias: string): boolean {
     const me = getCurrentAccount()
 
     if (me.role === AccountRole.ReadOnlyGuest || me.role === AccountRole.Guest) {

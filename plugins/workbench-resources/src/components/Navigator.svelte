@@ -80,7 +80,7 @@
   })
 
   let requestIndex = 0
-  async function update (model: NavigatorModel, spaces: Space[], preferences: Map<Ref<Doc>, SpacePreference>) {
+  async function update(model: NavigatorModel, spaces: Space[], preferences: Map<Ref<Doc>, SpacePreference>) {
     shownSpaces = spaces.filter((sp) => !sp.archived && (model.hideStarred || !preferences.has(sp._id)))
     starred = model.hideStarred ? [] : spaces.filter((sp) => preferences.has(sp._id))
     if (model.specials !== undefined) {
@@ -106,7 +106,7 @@
 
   $: if (model) update(model, spaces, preferences)
 
-  async function updateSpecials (
+  async function updateSpecials(
     specials: SpecialNavModel[],
     spaces: Space[],
     requestIndex: number
@@ -142,7 +142,7 @@
     return [result, requestIndex]
   }
 
-  async function checkIsDisabled (special: SpecialNavModel) {
+  async function checkIsDisabled(special: SpecialNavModel) {
     return special.checkIsDisabled && (await (await getResource(special.checkIsDisabled))())
   }
 

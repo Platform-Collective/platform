@@ -48,7 +48,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function openPopup () {
+  function openPopup() {
     if (!opened) {
       if (autoSelectionIfOne && items.length === 1) {
         selected = items[0].id

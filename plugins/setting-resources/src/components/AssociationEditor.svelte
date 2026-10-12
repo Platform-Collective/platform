@@ -49,7 +49,7 @@
       .map((p) => p.attachTo)
   )
 
-  function filterClasses (
+  function filterClasses(
     descendants: Set<Ref<Class<Doc>>>,
     viewlets: Set<Ref<Class<Doc>>>,
     exclude: Ref<Class<Doc>>[]
@@ -102,7 +102,7 @@
   $: classA = isEmptyClass(classARef) ? undefined : hierarchy.getClass(classARef as Ref<Class<Doc>>)
   $: classB = isEmptyClass(classBRef) ? undefined : hierarchy.getClass(classBRef as Ref<Class<Doc>>)
 
-  function isEmptyClass (ref: Ref<Class<Doc>> | undefined): boolean {
+  function isEmptyClass(ref: Ref<Class<Doc>> | undefined): boolean {
     return ref === undefined || ref !== ''
   }
 
@@ -110,7 +110,7 @@
 
   $: fill(association)
 
-  function fill (association: Association | Data<Association>): void {
+  function fill(association: Association | Data<Association>): void {
     classBRef = !isEmptyClass(association.classB) ? association.classB : undefined
     classARef = !isEmptyClass(association.classA) ? association.classA : undefined
     nameA = association.nameA
@@ -118,13 +118,13 @@
     automationOnly = association.automationOnly ?? false
   }
 
-  function isAssociation (data: Data<Association> | Association): data is Association {
+  function isAssociation(data: Data<Association> | Association): data is Association {
     return (data as Association)._id !== undefined
   }
 
   const dispatch = createEventDispatcher()
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     if (classBRef === undefined || classARef === undefined) {
       return
     }

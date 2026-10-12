@@ -45,7 +45,7 @@
     }
   )
   let docs: Doc[] = []
-  function select (): void {
+  function select(): void {
     listProvider.update(docs)
     listProvider.updateFocus(docs[0])
     list?.select(0, undefined)

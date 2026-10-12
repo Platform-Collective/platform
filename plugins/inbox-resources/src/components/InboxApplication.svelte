@@ -61,7 +61,7 @@
   let urlObjectId: Ref<Doc> | undefined = undefined
   let urlObjectClass: Ref<Class<Doc>> | undefined = undefined
 
-  async function syncLocation (loc: Location): Promise<void> {
+  async function syncLocation(loc: Location): Promise<void> {
     if (loc.path[2] !== inboxId) {
       return
     }
@@ -123,7 +123,7 @@
 
   let selectedNotificationId: string | undefined = undefined
 
-  function select (
+  function select(
     event: CustomEvent<{
       navItem: NavigationItem
       doc: Doc
@@ -158,7 +158,7 @@
     navigateToDoc(navItem, ddoc, notification)
   }
 
-  function handleClose (): void {
+  function handleClose(): void {
     closePanel()
     doc = undefined
     legacyContext = undefined
@@ -166,14 +166,14 @@
     closeDoc()
   }
 
-  function isChunterChannel (_class: Ref<Class<Doc>>, urlObjectClass?: Ref<Class<Doc>>): boolean {
+  function isChunterChannel(_class: Ref<Class<Doc>>, urlObjectClass?: Ref<Class<Doc>>): boolean {
     const isActivityMessageContext = hierarchy.isDerived(_class, activity.class.ActivityMessage)
     const chunterClass = isActivityMessageContext ? (urlObjectClass ?? _class) : _class
     return hierarchy.isDerived(chunterClass, chunter.class.ChunterSpace)
   }
 
   $: void readLegacyDoc(doc, legacyContext, urlObjectClass)
-  async function readLegacyDoc (
+  async function readLegacyDoc(
     doc: Doc | undefined,
     selectedContext?: DocNotifyContext,
     urlObjectClass?: Ref<Class<Doc>>

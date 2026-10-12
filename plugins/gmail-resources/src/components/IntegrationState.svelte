@@ -59,11 +59,11 @@
     })
   })
 
-  function subscribe (): void {
+  function subscribe(): void {
     unsubscribers.push(onIntegrationEvent<IntegrationEventData>('integration:updated', onUpdateIntegration))
   }
 
-  function onUpdateIntegration (data: IntegrationEventData): void {
+  function onUpdateIntegration(data: IntegrationEventData): void {
     if (
       data.integration?.socialId === integration.socialId &&
       data.integration?.workspaceUuid === integration.workspaceUuid
@@ -72,7 +72,7 @@
     }
   }
 
-  async function refresh (): Promise<void> {
+  async function refresh(): Promise<void> {
     try {
       state = await getState(integration.socialId)
     } catch (err: any) {

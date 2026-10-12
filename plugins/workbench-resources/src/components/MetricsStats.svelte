@@ -10,7 +10,7 @@
   const endpoint = getMetadata(presentation.metadata.StatsUrl)
   const token: string = getMetadata(presentation.metadata.Token) ?? ''
 
-  async function fetchStats (time: number): Promise<void> {
+  async function fetchStats(time: number): Promise<void> {
     await fetch(endpoint + `/api/v1/statistics?token=${token}&name=${serviceName}`, {})
       .then(async (json) => {
         data = await json.json()

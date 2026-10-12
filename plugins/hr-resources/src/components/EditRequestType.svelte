@@ -31,11 +31,11 @@
 
   let newType: RequestType | undefined = type
 
-  function typeSelected (_id: Ref<RequestType>): void {
+  function typeSelected(_id: Ref<RequestType>): void {
     newType = types.find((p) => p._id === _id)
   }
 
-  async function changeType (): Promise<void> {
+  async function changeType(): Promise<void> {
     if (newType !== undefined && newType._id !== type?._id) {
       await client.update(object, {
         type: newType._id

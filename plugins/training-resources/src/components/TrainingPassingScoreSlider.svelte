@@ -14,7 +14,7 @@
   let score: HTMLElement
   let isDragging = false
 
-  function onDragStart (event: DragEvent): void {
+  function onDragStart(event: DragEvent): void {
     if (readonly || event.dataTransfer === null) {
       return
     }
@@ -22,7 +22,7 @@
     event.dataTransfer.setDragImage(event.target as HTMLElement, 0, 0)
   }
 
-  function onDrag (event: MouseEvent): void {
+  function onDrag(event: MouseEvent): void {
     if (readonly) {
       return
     }
@@ -33,7 +33,7 @@
     object.passingScore = Math.round(Math.max(0, Math.min(100, ((event.clientX - rect.x) / rect.width) * 100)))
   }
 
-  function onDragEnd (event: MouseEvent): void {
+  function onDragEnd(event: MouseEvent): void {
     if (readonly) {
       return
     }
@@ -42,7 +42,7 @@
     void getClient().updateDoc(object._class, object.space, object._id, { passingScore: object.passingScore })
   }
 
-  function onClick (event: MouseEvent): void {
+  function onClick(event: MouseEvent): void {
     if (readonly) {
       return
     }

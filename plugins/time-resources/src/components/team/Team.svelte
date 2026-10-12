@@ -49,7 +49,7 @@
   let items: BreadcrumbItem[]
   let replacedPanel: HTMLElement
 
-  async function updateSpace (space?: Ref<Project>): Promise<void> {
+  async function updateSpace(space?: Ref<Project>): Promise<void> {
     if (space === undefined) {
       items = [teamBreadcrumb]
       return
@@ -72,7 +72,7 @@
   }
   $: updateSpace(space)
 
-  function changeMode (_mode: string): void {
+  function changeMode(_mode: string): void {
     mode = _mode
 
     Analytics.handleEvent(TimeEvents.TeamOpenTab, { tab: _mode })

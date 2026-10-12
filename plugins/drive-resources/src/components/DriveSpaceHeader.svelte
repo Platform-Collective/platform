@@ -95,16 +95,16 @@
   $: filteredBasicActions = [basicActions[0], ...(canCreateFolder ? [basicActions[1]] : [])]
   $: filteredUploadActions = canUpload ? uploadActions : []
 
-  function handleCreateDrive (): void {
+  function handleCreateDrive(): void {
     void showCreateDrivePopup()
   }
 
-  function handleCreateFolder (): void {
+  function handleCreateFolder(): void {
     void showCreateFolderPopup(currentSpace, parent, true)
   }
 
   let visibleActions: (string | number | null)[] = []
-  function updateActions (
+  function updateActions(
     hasSpace: boolean,
     uploadActions: HeaderButtonAction[],
     basicActions: HeaderButtonAction[]

@@ -43,7 +43,7 @@
     await client.update(object, { [field]: value })
   }
 
-  async function changeStartDate (value: number | null | undefined): Promise<void> {
+  async function changeStartDate(value: number | null | undefined): Promise<void> {
     const startDate = value ?? null
     // Never persist an inverted range. If the new start is past the
     // current target, pull the target forward to match (start === target).
@@ -53,7 +53,7 @@
     }
     await client.update(object, { startDate })
   }
-  async function changeTargetDate (value: number | null | undefined): Promise<void> {
+  async function changeTargetDate(value: number | null | undefined): Promise<void> {
     if (value === null || value === undefined) return
     // Keep the range non-inverted — clamp the start back if it now sits
     // after the target.
@@ -80,7 +80,7 @@
   $: descriptionKey = client.getHierarchy().getAttribute(tracker.class.Component, 'description')
   let descriptionBox: AttachmentStyleBoxEditor
 
-  function hashFromId (id: string): number {
+  function hashFromId(id: string): number {
     let h = 0
     for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0
     return Math.abs(h)
@@ -90,7 +90,7 @@
   $: swatchCss = getPlatformColor(effectiveColor, $themeStore.dark)
   $: selectedName = getPlatformColors($themeStore.dark)[effectiveColor]?.name
 
-  function pickColor (ev: MouseEvent): void {
+  function pickColor(ev: MouseEvent): void {
     showPopup(
       ColorsPopup,
       { colors: getPlatformColors($themeStore.dark), selected: selectedName, columns: 8 },

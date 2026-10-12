@@ -41,7 +41,7 @@
 
   let editor: AnySvelteComponent | undefined
 
-  function getEditor (): void {
+  function getEditor(): void {
     try {
       const inlineEditor = h.as(h.getClass(core.class.TypeDate), view.mixin.AttributeEditor).inlineEditor
       void getResource(inlineEditor)

@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { MeasureMetricsContext } from '@hcengineering/core'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { extract } from '../extractors'
@@ -18,11 +19,13 @@ import { extract } from '../extractors'
 const DOCX_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 describe('docx extractor smoke', () => {
+  const ctx = new MeasureMetricsContext('test', {})
+
   it('extracts plain text from a minimal docx', async () => {
     const fName = join(__dirname, 'fixtures', 'minimal-smoke.docx')
     const data = await readFile(fName)
 
-    const { matched, content, error } = await extract('minimal-smoke.docx', DOCX_TYPE, data)
+    const { matched, content, error } = await extract(ctx, 'minimal-smoke.docx', DOCX_TYPE, data)
 
     expect(error).toBeUndefined()
     expect(matched).toBe(true)

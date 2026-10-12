@@ -62,11 +62,11 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return true
   }
 
-  async function saveEvent () {
+  async function saveEvent() {
     if (readOnly) {
       return
     }

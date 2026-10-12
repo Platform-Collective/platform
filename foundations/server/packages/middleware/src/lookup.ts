@@ -45,7 +45,7 @@ export class LookupMiddleware extends BaseMiddleware implements Middleware {
     return new LookupMiddleware(context, next)
   }
 
-  override async findAll<T extends Doc>(
+  override async findAll<T extends Doc> (
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -99,7 +99,7 @@ export class LookupMiddleware extends BaseMiddleware implements Middleware {
     return this.cleanQuery<T>(result, query, undefined, new Set(options?.pagination?.fields.map(({ field }) => field)))
   }
 
-  private cleanQuery<T extends Doc>(
+  private cleanQuery<T extends Doc> (
     result: FindResult<T>,
     query: DocumentQuery<T>,
     lookupMap?: Record<string, Doc>,
@@ -116,7 +116,7 @@ export class LookupMiddleware extends BaseMiddleware implements Middleware {
         if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
           if ((_doc as any)[k] === v) {
             if (!cloned) {
-              _doc = { ...doc } as any
+              _doc = { ...doc }
               cloned = true
             }
             // eslint-disable-next-line @typescript-eslint/no-dynamic-delete

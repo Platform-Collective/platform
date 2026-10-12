@@ -26,7 +26,7 @@
   let connecting = false
   const calendarUrl = getMetadata(calendar.metadata.CalendarServiceURL) ?? ''
 
-  async function sendRequest (): Promise<void> {
+  async function sendRequest(): Promise<void> {
     connecting = true
     const link = concatLink(calendarUrl, '/signin')
     const url = new URL(link)

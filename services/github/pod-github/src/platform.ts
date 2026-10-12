@@ -996,11 +996,11 @@ export class PlatformWorker {
     const rechecks: string[] = []
     let idx = 0
     const connecting = new Map<
-    string,
-    {
-      time: number
-      version: string
-    }
+      string,
+      {
+        time: number
+        version: string
+      }
     >()
     const st = Date.now()
     const connectingInfo = setInterval(() => {

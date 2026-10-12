@@ -43,7 +43,7 @@
     dispatch('open', { ignoreKeys: ['name'] })
   })
 
-  async function connect (): Promise<void> {
+  async function connect(): Promise<void> {
     const mm = get(meetings).find((it) => it.attachedTo === object._id)
     if (mm !== undefined) {
       await joinMeeting(mm)
@@ -54,7 +54,7 @@
 
   let connectLabel: IntlString | undefined
 
-  async function updateConnecting (object: Room, infos: ParticipantInfo[], isLocalConnecting: boolean): Promise<void> {
+  async function updateConnecting(object: Room, infos: ParticipantInfo[], isLocalConnecting: boolean): Promise<void> {
     connecting = isLocalConnecting || ($currentRoom?._id === object._id && !$lkSessionConnected)
 
     let _connectLabel: IntlString = infos.some(({ room }) => room === object._id)
@@ -75,7 +75,7 @@
 
   $: void updateConnecting(object, $infos, hasPendingJoinInThisSession)
 
-  function showConnectionButton (
+  function showConnectionButton(
     object: Room,
     connecting: boolean,
     isConnected: boolean,
@@ -102,7 +102,7 @@
 
     return true
   }
-  function getInfo (room: Ref<Room>, info: ParticipantInfo[]): ParticipantInfo[] {
+  function getInfo(room: Ref<Room>, info: ParticipantInfo[]): ParticipantInfo[] {
     return info.filter((p) => p.room === room)
   }
 

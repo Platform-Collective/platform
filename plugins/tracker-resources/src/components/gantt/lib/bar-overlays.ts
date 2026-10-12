@@ -34,7 +34,7 @@ export type StatusCategoryLookup = (id: Ref<IssueStatus>) => string | null
  * field, and an old milestone is not a past-due issue. When `status`
  * is undefined we return false.
  */
-export function isPastDue (issue: GanttBarIssueLike, statusCategoryFor: StatusCategoryLookup, now: number): boolean {
+export function isPastDue(issue: GanttBarIssueLike, statusCategoryFor: StatusCategoryLookup, now: number): boolean {
   if (issue.dueDate == null) return false
   if (issue.dueDate >= now) return false
   if (issue.status === undefined) return false // synthetic milestone-summary bar
@@ -50,7 +50,7 @@ export function isPastDue (issue: GanttBarIssueLike, statusCategoryFor: StatusCa
  * Map keys are stringified Refs to dodge symbol-identity flakiness across
  * Svelte rerenders — all callers stringify on the way in.
  */
-export function isBlocked (
+export function isBlocked(
   _issue: GanttBarIssueLike,
   predecessorIds: ReadonlyArray<Ref<Issue>>,
   predStatusOf: ReadonlyMap<string, Ref<IssueStatus>>,

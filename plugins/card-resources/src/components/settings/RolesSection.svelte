@@ -34,7 +34,7 @@
     roles = res
   })
 
-  function addRole (): void {
+  function addRole(): void {
     showPopup(
       RolesPopup,
       {

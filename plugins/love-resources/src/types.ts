@@ -43,9 +43,7 @@ export const shadowError: RGBAColor = { r: 249, g: 110, b: 80, a: 1 }
 
 export const loveSeparators: DefSeparators = [{ minSize: 17.5, size: 25, maxSize: 30, float: 'navigator' }, null]
 
-export const languagesDisplayData: {
-  [key in RoomLanguage]: { emoji: string, label: string }
-} = {
+export const languagesDisplayData: Record<RoomLanguage, { emoji: string, label: string }> = {
   bg: { emoji: '🇧🇬', label: 'Български' },
   ca: { emoji: '🇨🇦', label: 'Català' },
   zh: { emoji: '🇨🇳', label: '简体中文' },

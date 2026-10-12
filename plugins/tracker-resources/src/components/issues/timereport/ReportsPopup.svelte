@@ -28,7 +28,7 @@
 
   $: defaultTimeReportDay = currentProject?.defaultTimeReportDay
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return true
   }
   const options: FindOptions<TimeSpendReport> = {
@@ -37,7 +37,7 @@
       employee: contact.mixin.Employee
     }
   }
-  function addReport (event: MouseEvent): void {
+  function addReport(event: MouseEvent): void {
     showPopup(
       TimeSpendReportPopup,
       {

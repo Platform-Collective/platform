@@ -53,11 +53,11 @@
   const dispatch = createEventDispatcher()
   const client = getClient()
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return true
   }
 
-  async function updateApplication () {
+  async function updateApplication() {
     if (selectedState === undefined) {
       throw new Error(`Please select initial state:${_space}`)
     }

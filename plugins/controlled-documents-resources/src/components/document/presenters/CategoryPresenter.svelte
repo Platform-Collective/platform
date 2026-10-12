@@ -21,7 +21,7 @@
     })
   }
 
-  function handleClick (event: MouseEvent): void {
+  function handleClick(event: MouseEvent): void {
     if (!editable) {
       return
     }

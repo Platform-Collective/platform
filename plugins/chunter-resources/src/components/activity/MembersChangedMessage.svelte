@@ -35,7 +35,7 @@
   $: addedPersons = getPersons(value.added.length > 0 ? value.added : value.set, $employeeByAccountStore)
   $: removedPersons = getPersons(value.removed, $employeeByAccountStore)
 
-  function getPersons (
+  function getPersons(
     accounts: DocAttributeUpdates['removed' | 'added' | 'set'],
     employeeByAccountStore: Map<AccountUuid, Employee>
   ): Person[] {

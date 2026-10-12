@@ -42,14 +42,14 @@
   let selectedType: Ref<MasterTag> | undefined
   let inProgress = false
 
-  function getDefaultTitle (message: Message): string {
+  function getDefaultTitle(message: Message): string {
     const markup = toMarkup(message.content)
     const messageText = markupToText(markup).trim()
 
     return messageText.length > 0 ? messageText : ''
   }
 
-  async function attachCard (): Promise<void> {
+  async function attachCard(): Promise<void> {
     if (selectedType === undefined || title.trim() === '') return
     try {
       inProgress = true
@@ -60,7 +60,7 @@
     }
   }
 
-  function filterClasses (): [DropdownIntlItem, DropdownIntlItem[]][] {
+  function filterClasses(): [DropdownIntlItem, DropdownIntlItem[]][] {
     const descendants = hierarchy.getDescendants(cardPlugin.class.Card).filter((p) => p !== cardPlugin.class.Card)
     const added = new Set<Ref<Class<Doc>>>()
     const base = new Map<Ref<Class<Doc>>, Class<Doc>[]>()

@@ -15,7 +15,7 @@
 
 import { ClientConnectEvent, type DocChunk, generateId } from '..'
 import type { Class, Doc, Domain, Ref, Timestamp } from '../classes'
-import { type ClientConnection } from '../client'
+import type { ClientConnection } from '../client'
 import core from '../component'
 import { Hierarchy } from '../hierarchy'
 import { ModelDb, TxDb } from '../memdb'
@@ -46,7 +46,7 @@ export async function connect (handler: (tx: Tx) => void): Promise<ClientConnect
   }
 
   async function findAll<T extends Doc> (_class: Ref<Class<T>>, query: DocumentQuery<T>): Promise<FindResult<T>> {
-    const domain = hierarchy.getClass(_class).domain
+    const { domain } = hierarchy.getClass(_class)
     if (domain === DOMAIN_TX) return await transactions.findAll(_class, query)
     return await model.findAll(_class, query)
   }

@@ -75,7 +75,7 @@
     spaces = []
   }
 
-  function selectType (event: CustomEvent<MasterTag>): void {
+  function selectType(event: CustomEvent<MasterTag>): void {
     selectedType = event.detail._id
     selectedCard = undefined
     selectedSpecial = undefined
@@ -83,14 +83,14 @@
     dispatch('selectType', event.detail)
   }
 
-  function selectCard (event: CustomEvent<Card>): void {
+  function selectCard(event: CustomEvent<Card>): void {
     selectedCard = event.detail._id
     selectedType = undefined
     selectedSpecial = undefined
 
     dispatch('selectCard', event.detail)
   }
-  function favorites (): void {
+  function favorites(): void {
     selectedCard = undefined
     selectedType = undefined
     selectedSpecial = 'favorites'

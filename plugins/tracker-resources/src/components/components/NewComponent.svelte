@@ -38,7 +38,7 @@
 
   let _space = space
 
-  async function onSave () {
+  async function onSave() {
     await client.createDoc(tracker.class.Component, _space, object)
   }
 </script>

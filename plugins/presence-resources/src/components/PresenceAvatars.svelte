@@ -37,7 +37,7 @@
   $: overLimit = persons.length > limit
   $: adaptive = checkAdaptiveMatching($deviceInfo.size, 'md') || overLimit
 
-  async function updatePresence (presenceInfo: Map<string, Ref<Person>>): Promise<void> {
+  async function updatePresence(presenceInfo: Map<string, Ref<Person>>): Promise<void> {
     const personByRef = await getPersonsByPersonRefs(Array.from(presenceInfo.values()))
     persons = presenceInfo
       .values()
@@ -46,7 +46,7 @@
       .toArray()
   }
 
-  function onPresence (presence: Map<string, Ref<Person>>): void {
+  function onPresence(presence: Map<string, Ref<Person>>): void {
     presenceInfo = presence
   }
 

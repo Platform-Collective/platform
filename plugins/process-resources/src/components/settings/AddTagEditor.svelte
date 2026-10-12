@@ -36,7 +36,7 @@
 
   let keys = Object.keys(props || {})
 
-  function changeTag (e: CustomEvent<{ tag: Ref<Tag> }>): void {
+  function changeTag(e: CustomEvent<{ tag: Ref<Tag> }>): void {
     if (e.detail !== undefined) {
       _id = e.detail.tag
       keys = []
@@ -61,7 +61,7 @@
     }
   }
 
-  function removeParam (e: CustomEvent<{ key: string }>): void {
+  function removeParam(e: CustomEvent<{ key: string }>): void {
     if (e.detail !== undefined) {
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete props[e.detail.key]
@@ -75,7 +75,7 @@
   $: allAttrs = _id !== undefined ? Array.from(client.getHierarchy().getOwnAttributes(_id).values()) : []
   $: possibleAttrs = allAttrs.filter((attr) => !keys.includes(attr.name))
 
-  function onAdd (e: MouseEvent): void {
+  function onAdd(e: MouseEvent): void {
     showPopup(
       SelectPopup,
       {
@@ -92,11 +92,11 @@
     )
   }
 
-  function addKey (key: string): void {
+  function addKey(key: string): void {
     keys = [...keys, key]
   }
 
-  function change (e: CustomEvent<any>): void {
+  function change(e: CustomEvent<any>): void {
     if (e.detail == null) return
     props = e.detail
     params.props = props
@@ -107,7 +107,7 @@
   let askRequired = params.askRequired ?? false
   $: askRequired = params.askRequired ?? false
 
-  function changeAskRequired (e: CustomEvent<boolean>): void {
+  function changeAskRequired(e: CustomEvent<boolean>): void {
     if (e.detail !== undefined) {
       params.askRequired = e.detail
       if (e.detail) {

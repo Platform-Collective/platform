@@ -52,7 +52,7 @@
     }
   })
 
-  async function apply (): Promise<void> {
+  async function apply(): Promise<void> {
     const integrationClient = await getIntegrationClient()
     integration = isWorkspaceIntegration(integration)
       ? integration

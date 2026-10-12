@@ -61,11 +61,11 @@
     })
   })
 
-  function subscribe (): void {
+  function subscribe(): void {
     unsubscribers.push(onIntegrationEvent<IntegrationUpdatedData>('integration:updated', onUpdateIntegration))
   }
 
-  function onUpdateIntegration (data: IntegrationUpdatedData): void {
+  function onUpdateIntegration(data: IntegrationUpdatedData): void {
     if (
       integration !== undefined &&
       data.integration?.socialId === integration.socialId &&
@@ -75,7 +75,7 @@
     }
   }
 
-  async function close (res: any): Promise<void> {
+  async function close(res: any): Promise<void> {
     /* TODO: if (res?.value && integration !== undefined) {
       await client.update(integration, {
         value: res.value,
@@ -84,13 +84,13 @@
     } */
   }
 
-  async function reconnect (res: any): Promise<void> {
+  async function reconnect(res: any): Promise<void> {
     if (res?.connected === true && integration !== undefined) {
       await integrationClient?.setIntegrationEnabled(integration, true)
     }
   }
 
-  async function disconnect (): Promise<void> {
+  async function disconnect(): Promise<void> {
     try {
       isDisconnecting = true
       if (integration !== undefined && integrationType.onDisconnect !== undefined) {
@@ -116,7 +116,7 @@
     }
   }
 
-  async function disconnectAll (): Promise<void> {
+  async function disconnectAll(): Promise<void> {
     try {
       isDisconnecting = true
       if (integration !== undefined && integrationType.onDisconnectAll !== undefined) {

@@ -70,7 +70,7 @@
   {defaultName}
   value={_id ?? value?._id}
   disabled={!canChangeOwner}
-  avatarSize={'x-small'}
+  avatarSize="x-small"
   shouldShowPlaceholder={true}
   shouldShowName={shouldShowLabel}
   tooltipLabels={{ personLabel: document.string.AssignedTo, placeholderLabel: document.string.Unassigned }}

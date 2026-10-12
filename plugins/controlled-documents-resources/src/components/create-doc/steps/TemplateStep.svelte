@@ -100,7 +100,7 @@
         )
       : []
 
-  function handleExpanderToggled (id: Ref<DocumentCategory>): void {
+  function handleExpanderToggled(id: Ref<DocumentCategory>): void {
     const categories = { ...$templateStep.collapsedCategories }
 
     if (categories[id] === undefined) {
@@ -113,7 +113,7 @@
     templateStepUpdated({ ...$templateStep, collapsedCategories: categories })
   }
 
-  function handleTemplateSelected (tmp: Ref<DocumentTemplate>, prefix: string, seqNumber: number): void {
+  function handleTemplateSelected(tmp: Ref<DocumentTemplate>, prefix: string, seqNumber: number): void {
     if (docObject === undefined) {
       return
     }

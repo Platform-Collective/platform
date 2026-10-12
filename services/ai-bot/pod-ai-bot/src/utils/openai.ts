@@ -196,11 +196,11 @@ export async function createChatCompletionWithTools (
   reason = 'chat'
 ): Promise<
   | {
-    completion: string | undefined
-    usage: number
-  }
+      completion: string | undefined
+      usage: number
+    }
   | undefined
-  > {
+> {
   const opt: OpenAI.RequestOptions = {}
   const date = new Date()
   if (skipCache) {
@@ -256,9 +256,9 @@ export async function requestSummary (
   encoding: Tiktoken,
   history: HistoryRecord[]
 ): Promise<{
-    summary?: string
-    tokens: number
-  }> {
+  summary?: string
+  tokens: number
+}> {
   const summaryPrompt: OpenAI.ChatCompletionMessageParam = {
     content: `Summarize the following messages, keeping the key points:  ${history.map((msg) => `${msg.role}: ${msg.message}`).join('\n')}`,
     role: 'user'

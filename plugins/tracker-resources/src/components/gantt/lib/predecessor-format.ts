@@ -26,11 +26,11 @@ const CODE_TO_KIND: Record<'FS' | 'SS' | 'FF' | 'SF', DependencyKind> = {
   SF: 'start-to-finish'
 }
 
-export function kindCode (kind: DependencyKind): 'FS' | 'SS' | 'FF' | 'SF' {
+export function kindCode(kind: DependencyKind): 'FS' | 'SS' | 'FF' | 'SF' {
   return KIND_TO_CODE[kind]
 }
 
-export function kindFromCode (code: 'FS' | 'SS' | 'FF' | 'SF'): DependencyKind {
+export function kindFromCode(code: 'FS' | 'SS' | 'FF' | 'SF'): DependencyKind {
   return CODE_TO_KIND[code]
 }
 
@@ -38,7 +38,7 @@ export function kindFromCode (code: 'FS' | 'SS' | 'FF' | 'SF'): DependencyKind {
  * "+2d" for positive lag, "-1d" for negative, "" for zero (the column
  * gets unreadable if every entry has a +0d).
  */
-export function signedLag (lag: number): string {
+export function signedLag(lag: number): string {
   if (lag === 0) return ''
   if (lag > 0) return `+${lag}d`
   return `${lag}d`
@@ -49,7 +49,7 @@ export function signedLag (lag: number): string {
  * prefix is stripped so the notation stays short, matching MS Project / Asana
  * conventions ("PROJ-12" → "12").
  */
-export function compactIssueNumber (identifier: string | undefined): string {
+export function compactIssueNumber(identifier: string | undefined): string {
   return (identifier ?? '').replace(/^[A-Z]+-/, '')
 }
 
@@ -64,7 +64,7 @@ export function compactIssueNumber (identifier: string | undefined): string {
  * visible `rows` — the fallback matters for callers such as fixtures and tests
  * that render rows without supplying the map.
  */
-export function resolveIssueNumber (
+export function resolveIssueNumber(
   ref: Ref<Issue>,
   identifiers: ReadonlyMap<Ref<Issue>, string>,
   rows: readonly LayoutRow[]
@@ -85,7 +85,7 @@ export function resolveIssueNumber (
  * displayed identifier is the source (`relation.attachedTo`), not the
  * target — predecessor identifier is the upstream side of the edge.
  */
-export function formatPredecessors (
+export function formatPredecessors(
   issue: Issue,
   relations: IssueRelation[],
   issueNumberOf: (ref: Ref<Issue>) => string

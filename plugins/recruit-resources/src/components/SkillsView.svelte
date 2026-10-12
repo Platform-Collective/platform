@@ -9,7 +9,7 @@
   import OptimizeSkills from './OptimizeSkills.svelte'
   import { selectedTagElements } from '@hcengineering/tags-resources'
 
-  function setFilterTag (tag: TagElement) {
+  function setFilterTag(tag: TagElement) {
     const client = getClient()
     const hierarchy = client.getHierarchy()
     const attribute = hierarchy.getAttribute(recruit.mixin.Candidate, 'skills')
@@ -24,7 +24,7 @@
     } as unknown as Filter
     setFilters([filter])
   }
-  async function onTag (tag: TagElement): Promise<void> {
+  async function onTag(tag: TagElement): Promise<void> {
     selectedTagElements.set([tag._id])
     const loc = getCurrentResolvedLocation()
     loc.path[2] = 'recruit'

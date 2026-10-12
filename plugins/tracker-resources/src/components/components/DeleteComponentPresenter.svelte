@@ -30,7 +30,7 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
 
-  async function showConfirmationDialog (): Promise<void> {
+  async function showConfirmationDialog(): Promise<void> {
     showPopup(
       MessageBox,
       {
@@ -49,7 +49,7 @@
     )
   }
 
-  async function removeComponent (): Promise<void> {
+  async function removeComponent(): Promise<void> {
     await client.remove(value)
   }
 </script>

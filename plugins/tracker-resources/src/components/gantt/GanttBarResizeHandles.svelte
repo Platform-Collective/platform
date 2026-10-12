@@ -51,7 +51,7 @@
   let longPressStartY = 0
   let longPressPointerId: number | null = null
 
-  function clearLongPressTimer (): void {
+  function clearLongPressTimer(): void {
     if (longPressTimer !== null) {
       clearTimeout(longPressTimer)
       longPressTimer = null
@@ -61,7 +61,7 @@
 
   onDestroy(clearLongPressTimer)
 
-  function onHandlePointer (edge: 'left' | 'right') {
+  function onHandlePointer(edge: 'left' | 'right') {
     return (evt: PointerEvent): void => {
       // Swallow the pointerdown so the canvas-pan handler upstream does not
       // also grab it — same guard the selected bar body applies.
@@ -87,7 +87,7 @@
     }
   }
 
-  function onHandlePointerMove (evt: PointerEvent): void {
+  function onHandlePointerMove(evt: PointerEvent): void {
     if (longPressTimer === null) return
     if (longPressPointerId !== null && evt.pointerId !== longPressPointerId) return
     const dx = evt.clientX - longPressStartX
@@ -95,7 +95,7 @@
     if (Math.sqrt(dx * dx + dy * dy) > MOVE_THRESHOLD_PX) clearLongPressTimer()
   }
 
-  function onHandlePointerEnd (evt: PointerEvent): void {
+  function onHandlePointerEnd(evt: PointerEvent): void {
     if (longPressPointerId !== null && evt.pointerId !== longPressPointerId) return
     clearLongPressTimer()
   }

@@ -33,7 +33,7 @@
     categories = res
   })
 
-  async function handleSubmit (category: Ref<DocumentCategory>): Promise<void> {
+  async function handleSubmit(category: Ref<DocumentCategory>): Promise<void> {
     await client.update(object, { category })
     dispatch('close')
   }

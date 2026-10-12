@@ -19,7 +19,7 @@
   import notification from '../../plugin'
   import { archiveAll, readAll, unreadAll } from '../../utils'
 
-  async function onSelect (id?: 'archive' | 'read' | 'unread'): Promise<void> {
+  async function onSelect(id?: 'archive' | 'read' | 'unread'): Promise<void> {
     if (id == null) return
 
     if (id === 'archive') {

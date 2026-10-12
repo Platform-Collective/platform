@@ -41,7 +41,7 @@
   export let holidaysMap: Map<Ref<Department>, Date[]>
   export let staffDepartmentMap: Map<Ref<Staff>, Department[]>
 
-  function getTooltip (requests: Request[]): LabelAndProps | undefined {
+  function getTooltip(requests: Request[]): LabelAndProps | undefined {
     if (requests.length === 0) return
     return {
       component: RequestsPopup,
@@ -51,7 +51,7 @@
 
   $: values = [...Array(12).keys()]
 
-  function getMonthName (date: Date): string {
+  function getMonthName(date: Date): string {
     return new Intl.DateTimeFormat('default', { month: 'long' }).format(date)
   }
 

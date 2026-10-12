@@ -25,11 +25,11 @@
   let search = ''
   let resultQuery: DocumentQuery<Department> = {}
 
-  function updateResultQuery (search: string): void {
+  function updateResultQuery(search: string): void {
     resultQuery = search === '' ? {} : { $search: search }
   }
 
-  function showCreateDialog (ev: MouseEvent) {
+  function showCreateDialog(ev: MouseEvent) {
     showPopup(CreateDepartment, {}, eventToHTMLElement(ev))
   }
 

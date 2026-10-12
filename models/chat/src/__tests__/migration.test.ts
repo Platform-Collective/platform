@@ -41,7 +41,7 @@ function createMockCard (id: string, parentInfo?: ParentInfo[]): Card {
     _class: 'card:class:Card' as any,
     title: `Card ${id}`,
     content: { __ref: 'blob1' } as any,
-    blobs: {} as any,
+    blobs: {},
     rank: '1',
     space: 'space1' as any,
     modifiedBy: 'user1' as any,

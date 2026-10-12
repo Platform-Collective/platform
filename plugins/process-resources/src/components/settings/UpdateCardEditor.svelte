@@ -31,7 +31,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function change (e: CustomEvent<any>): void {
+  function change(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       params = e.detail
       ;(step.params as any) = e.detail
@@ -39,7 +39,7 @@
     }
   }
 
-  function getKeys (_class: Ref<Class<MasterTag>>): AnyAttribute[] {
+  function getKeys(_class: Ref<Class<MasterTag>>): AnyAttribute[] {
     const ignoreKeys = ['_class', 'content', 'parent', 'attachments', 'todos']
     const attributes = hierarchy.getAllAttributes(_class, core.class.Doc)
     const res: AnyAttribute[] = []
@@ -61,11 +61,11 @@
   }))
   $: possibleAttrs = [...allAttrs, ...slots].filter((attr) => !keys.includes(attr.name))
 
-  function addKey (key: string): void {
+  function addKey(key: string): void {
     keys = [...keys, key]
   }
 
-  function onAdd (e: MouseEvent): void {
+  function onAdd(e: MouseEvent): void {
     showPopup(
       SelectPopup,
       {
@@ -82,7 +82,7 @@
     )
   }
 
-  function remove (e: CustomEvent<any>): void {
+  function remove(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       const key = e.detail.key
       keys = keys.filter((k) => k !== key)

@@ -38,7 +38,7 @@
   export let level: number = 0
   export let shouldTooltip: boolean = false
   export let showNotify: boolean = false
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
   export let collapsedPrefix: string = ''
   export let draggable: boolean = false
 </script>
@@ -64,7 +64,7 @@
   {level}
   {showMenu}
   {noDivider}
-  {forciblyСollapsed}
+  {forciblyCollapsed}
   {draggable}
   on:click
   on:dragstart

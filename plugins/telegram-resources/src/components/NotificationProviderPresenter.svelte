@@ -21,7 +21,7 @@
 
   export let enabled: boolean
 
-  function configureBot (): void {
+  function configureBot(): void {
     showPopup(ConfigureBotPopup, {})
   }
 </script>

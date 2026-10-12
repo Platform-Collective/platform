@@ -57,7 +57,7 @@
 
   const client = getClient()
 
-  async function handleFileViewed (fileName: string, sha: string, viewed: boolean): Promise<void> {
+  async function handleFileViewed(fileName: string, sha: string, viewed: boolean): Promise<void> {
     const current = await client.findOne(github.class.GithubPullRequestReview, {
       attachedTo: pullRequest._id,
       author: me

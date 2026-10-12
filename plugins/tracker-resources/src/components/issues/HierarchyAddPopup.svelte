@@ -36,10 +36,10 @@
   $: createLabel = direction === 'parent' ? tracker.string.CreateNewParentIssue : tracker.string.CreateNewSubIssue
   $: linkLabel = direction === 'parent' ? tracker.string.LinkExistingParentIssue : tracker.string.LinkExistingSubIssue
 
-  function onCreate (): void {
+  function onCreate(): void {
     dispatch('close', 'create')
   }
-  function onLink (): void {
+  function onLink(): void {
     dispatch('close', 'link')
   }
 </script>

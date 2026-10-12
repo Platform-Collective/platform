@@ -41,19 +41,19 @@
     duration = res
   })
 
-  function handleKeyDown (event: KeyboardEvent): void {
+  function handleKeyDown(event: KeyboardEvent): void {
     if (!shortcuts) return
     if (event.shiftKey && event.key === 'Enter') {
       dispatch('create')
     }
   }
 
-  async function change (e: CustomEvent<{ startDate: number, dueDate: number }>, slot: WorkSlot): Promise<void> {
+  async function change(e: CustomEvent<{ startDate: number, dueDate: number }>, slot: WorkSlot): Promise<void> {
     const { startDate, dueDate } = e.detail
     dispatch('change', { startDate, dueDate, slot: slot._id })
   }
 
-  async function dueChange (e: CustomEvent<{ dueDate: number }>, slot: WorkSlot): Promise<void> {
+  async function dueChange(e: CustomEvent<{ dueDate: number }>, slot: WorkSlot): Promise<void> {
     const { dueDate } = e.detail
     dispatch('dueChange', { dueDate, slot: slot._id })
   }

@@ -247,7 +247,7 @@ export async function findContacts (
  */
 export async function findPerson (client: Client, name: string, channels: AttachedData<Channel>[]): Promise<Person[]> {
   const result = await findContacts(client, contact.class.Person, name, channels)
-  return result.contacts as Person[]
+  return result.contacts
 }
 
 const SEP = ','

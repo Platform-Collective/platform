@@ -88,10 +88,10 @@
     }, 500)
   })
 
-  function findCategory (name: string): SettingsCategory | undefined {
+  function findCategory(name: string): SettingsCategory | undefined {
     return categories.find((x) => x.name === name)
   }
-  function selectCategory (id: string): void {
+  function selectCategory(id: string): void {
     clearSettingsStore()
     const loc = getCurrentResolvedLocation()
     if (loc.path[3] === id) {
@@ -102,17 +102,17 @@
     }
     navigate(loc)
   }
-  function signOut (): void {
+  function signOut(): void {
     void logOut()
     navigate({ path: [loginId] })
     Analytics.handleEvent(SettingsEvents.SignOut)
     Analytics.logout()
   }
-  function selectWorkspace (): void {
+  function selectWorkspace(): void {
     Analytics.handleEvent(SettingsEvents.SelectWorkspace)
     navigate({ path: [loginId, 'selectWorkspace'] })
   }
-  function inviteWorkspace (): void {
+  function inviteWorkspace(): void {
     Analytics.handleEvent(SettingsEvents.InviteToWorkspace)
     showPopup(login.component.InviteLink, {})
   }

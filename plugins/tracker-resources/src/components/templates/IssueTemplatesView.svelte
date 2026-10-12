@@ -20,7 +20,7 @@
 
   let search = ''
   let searchQuery: DocumentQuery<IssueTemplate> = { ...query }
-  function updateSearchQuery (search: string): void {
+  function updateSearchQuery(search: string): void {
     searchQuery = search === '' ? { ...query } : { ...query, $search: search }
   }
   $: updateSearchQuery(search)

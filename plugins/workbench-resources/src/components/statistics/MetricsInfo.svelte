@@ -17,7 +17,7 @@
 
   const toTime = (value: number, digits = 10): number => Math.round(value * digits) / digits
 
-  function showAvg (name: string, time: number, ops: number): string {
+  function showAvg(name: string, time: number, ops: number): string {
     if (name.startsWith('#')) {
       return `➿ ${toTime(time)}`
     }
@@ -36,7 +36,7 @@
     }
   }
 
-  function getSortedMeasurements (
+  function getSortedMeasurements(
     m: Record<string, Metrics>,
     sortingOrder: 'avg' | 'ops' | 'total'
   ): [string, Metrics][] {

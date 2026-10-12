@@ -115,7 +115,7 @@ export class MongoDbCollection<T extends Record<string, any>> implements DbColle
     return await this.collection.findOne<T>(query as Filter<T>)
   }
 
-  async insertOne<K extends keyof T>(data: Partial<T>, idKey?: K): Promise<any> {
+  async insertOne<K extends keyof T> (data: Partial<T>, idKey?: K): Promise<any> {
     const res = await this.collection.insertOne(data as OptionalUnlessRequiredId<T>)
 
     return res.insertedId
@@ -179,7 +179,7 @@ export class WorkspaceMongoDbCollection extends MongoDbCollection<Workspace> imp
     super('workspace', db)
   }
 
-  async insertOne<K extends keyof Workspace>(data: Partial<Workspace>, idKey?: K): Promise<any> {
+  async insertOne<K extends keyof Workspace> (data: Partial<Workspace>, idKey?: K): Promise<any> {
     if (data.uuid === undefined) {
       data.uuid = new UUID().toJSON() as WorkspaceUuid
     }

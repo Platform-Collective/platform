@@ -87,7 +87,7 @@
   let supportedActions: Array<WithLookup<Action>> = []
   let filteredActions: Array<WithLookup<Action>> = []
 
-  async function filterVisibleActions (
+  async function filterVisibleActions(
     actions: Array<WithLookup<Action>>,
     docs: Doc[]
   ): Promise<Array<WithLookup<Action>>> {
@@ -166,7 +166,7 @@
 
   let activeAction: Action | undefined
 
-  async function handleSelection (evt: Event, selection: number): Promise<void> {
+  async function handleSelection(evt: Event, selection: number): Promise<void> {
     const item = items[selection]
     if (item == null) {
       return
@@ -202,7 +202,7 @@
     }
   }
 
-  function onKeydown (key: KeyboardEvent): void {
+  function onKeydown(key: KeyboardEvent): void {
     if (key.code === 'ArrowUp') {
       key.stopPropagation()
       key.preventDefault()
@@ -230,7 +230,7 @@
     actionCategory?: ActionCategory | WithLookup<ActionCategory>
   }
 
-  function packSearchAndActions (
+  function packSearchAndActions(
     searchItems: SearchItem[],
     filteredActions: Array<WithLookup<Action>>
   ): SearchActionItem[] {
@@ -262,7 +262,7 @@
 
   $: void updateItems(search, filteredActions)
 
-  function txListener (txes: Tx[]): void {
+  function txListener(txes: Tx[]): void {
     if (
       txes.some(
         (it) =>
@@ -284,7 +284,7 @@
   let phTraslate: string = ''
   let autoFocus = !$deviceOptionsStore.isMobile
 
-  export function focus (): void {
+  export function focus(): void {
     textHTML.focus()
     autoFocus = false
   }
@@ -297,7 +297,7 @@
   })
   let timer: any
   $: _search = search
-  function restartTimer (): void {
+  function restartTimer(): void {
     clearTimeout(timer)
     timer = setTimeout(() => {
       search = _search

@@ -68,7 +68,7 @@
     removeEventListener(workbench.event.NotifyConnection, connectionListener)
   })
 
-  function handleClick (): void {
+  function handleClick(): void {
     void upgradePlan()
   }
 </script>

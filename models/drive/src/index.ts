@@ -92,23 +92,23 @@ export class TResource extends TDoc implements Resource {
 
   @Prop(TypeString(), drive.string.Name)
   @Index(IndexKind.FullText)
-    title!: string
+  title!: string
 
   @Prop(TypeRef(drive.class.Resource), drive.string.Parent)
   @Index(IndexKind.Indexed)
   @ReadOnly()
-    parent!: Ref<Resource>
+  parent!: Ref<Resource>
 
   @Prop(TypeRef(drive.class.Resource), drive.string.Path)
   @ReadOnly()
-    path!: Ref<Resource>[]
+  path!: Ref<Resource>[]
 
   @Prop(Collection(chunter.class.ChatMessage), chunter.string.Comments)
-    comments?: number
+  comments?: number
 
   @Prop(TypeRef(drive.class.FileVersion), drive.string.Version)
   @ReadOnly()
-    file?: Ref<FileVersion>
+  file?: Ref<FileVersion>
 }
 
 @Model(drive.class.Folder, drive.class.Resource, DOMAIN_DRIVE)
@@ -144,11 +144,11 @@ export class TFile extends TResource implements File {
 
   @Prop(Collection(drive.class.FileVersion), drive.string.FileVersion)
   @ReadOnly()
-    versions!: CollectionSize<FileVersion>
+  versions!: CollectionSize<FileVersion>
 
   @Prop(TypeFileVersion(), drive.string.Version)
   @ReadOnly()
-    version!: number
+  version!: number
 }
 
 @Model(drive.class.FileVersion, core.class.AttachedDoc, DOMAIN_DRIVE)
@@ -170,31 +170,31 @@ export class TFileVersion extends TAttachedDoc implements FileVersion {
 
   @Prop(TypeString(), drive.string.Name)
   @Index(IndexKind.FullText)
-    title!: string
+  title!: string
 
   @Prop(TypeRef(core.class.Blob), drive.string.File)
   @ReadOnly()
-    file!: Ref<Blob>
+  file!: Ref<Blob>
 
   @Prop(TypeFileSize(), drive.string.Size)
   @ReadOnly()
-    size!: number
+  size!: number
 
   @Prop(TypeString(), drive.string.ContentType)
   @ReadOnly()
-    type!: string
+  type!: string
 
   @Prop(TypeTimestamp(), drive.string.LastModified)
   @ReadOnly()
-    lastModified!: number
+  lastModified!: number
 
   @Prop(TypeRecord(), drive.string.Metadata)
   @ReadOnly()
-    metadata?: Record<string, any>
+  metadata?: Record<string, any>
 
   @Prop(TypeFileVersion(), drive.string.Version)
   @ReadOnly()
-    version!: number
+  version!: number
 }
 
 function defineTypes (builder: Builder): void {

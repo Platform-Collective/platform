@@ -36,7 +36,7 @@ export const DOMAIN_INVENTORY = 'inventory' as Domain
 export class TCategory extends TAttachedDoc implements Category {
   @Prop(TypeString(), core.string.Name)
   @Index(IndexKind.FullText)
-    name!: string
+  name!: string
 }
 
 @Model(inventory.class.Product, core.class.AttachedDoc, DOMAIN_INVENTORY)
@@ -48,16 +48,16 @@ export class TProduct extends TAttachedDoc implements Product {
 
   @Prop(TypeString(), core.string.Name)
   @Index(IndexKind.FullText)
-    name!: string
+  name!: string
 
   @Prop(Collection(attachment.class.Photo), attachment.string.Photos)
-    photos?: number
+  photos?: number
 
   @Prop(Collection(inventory.class.Variant), inventory.string.Variants)
-    variants?: number
+  variants?: number
 
   @Prop(Collection(attachment.class.Attachment), attachment.string.Attachments, { shortLabel: attachment.string.Files })
-    attachments?: number
+  attachments?: number
 }
 
 @Model(inventory.class.Variant, core.class.AttachedDoc, DOMAIN_INVENTORY)
@@ -69,11 +69,11 @@ export class TVariant extends TAttachedDoc implements Variant {
 
   @Prop(TypeString(), core.string.Name)
   @Index(IndexKind.FullText)
-    name!: string
+  name!: string
 
   @Prop(TypeString(), inventory.string.SKU)
   @Index(IndexKind.FullText)
-    sku!: string
+  sku!: string
 }
 
 export function createModel (builder: Builder): void {

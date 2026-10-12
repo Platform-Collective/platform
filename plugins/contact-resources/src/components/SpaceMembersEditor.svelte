@@ -32,7 +32,7 @@
 
   $: joined = value.includes(myAccUuid)
 
-  function join (): void {
+  function join(): void {
     if (value.includes(myAccUuid)) return
     if (onChange === undefined) return
 

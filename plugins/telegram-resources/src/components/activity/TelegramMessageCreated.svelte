@@ -29,7 +29,7 @@
 
   $: value === undefined && _id && loadObject(_id)
 
-  async function loadObject (_id: Ref<TelegramMessage>): Promise<void> {
+  async function loadObject(_id: Ref<TelegramMessage>): Promise<void> {
     const isRemoved = await checkIsObjectRemoved(client, _id, telegram.class.Message)
 
     if (isRemoved) {

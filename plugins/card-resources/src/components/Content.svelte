@@ -36,7 +36,7 @@
 
   $: isFile = hierarchy.isDerived(doc._class, card.types.File)
 
-  async function showContextMenu (blob: BlobType, ev: MouseEvent) {
+  async function showContextMenu(blob: BlobType, ev: MouseEvent) {
     ev.preventDefault()
     ev.stopPropagation()
     const actions: Action[] = [

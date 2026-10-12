@@ -18,7 +18,7 @@ import {
 
 const head = 'head' as Ref<Department>
 
-function dept (id: string, name: string): Department {
+function dept(id: string, name: string): Department {
   return { _id: id, name } as unknown as Department
 }
 

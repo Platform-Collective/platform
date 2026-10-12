@@ -40,7 +40,7 @@
 
   $: showPersonName = clientWidth > 300 && !hidePersonName
   $: updatePerson(socialId)
-  async function updatePerson (socialId: SocialID): Promise<void> {
+  async function updatePerson(socialId: SocialID): Promise<void> {
     person = $employeeByPersonIdStore.get(socialId) ?? (await getPersonByPersonId(socialId)) ?? undefined
   }
 </script>

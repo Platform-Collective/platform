@@ -39,7 +39,7 @@
     Analytics.handleEvent('task.SetStatus', { status: newStatus, objects: ids })
   }
 
-  async function getAnalyticsIds (docs: Task[]): Promise<string[]> {
+  async function getAnalyticsIds(docs: Task[]): Promise<string[]> {
     const result: string[] = []
 
     for (const doc of docs) {
@@ -61,7 +61,7 @@
       : undefined
     : value.kind
 
-  function updateStatuses (taskTypes: IdMap<TaskType>, store: IdMap<Status>, kind: Ref<TaskType> | undefined): void {
+  function updateStatuses(taskTypes: IdMap<TaskType>, store: IdMap<Status>, kind: Ref<TaskType> | undefined): void {
     if (kind === undefined) {
       statuses = []
     } else {

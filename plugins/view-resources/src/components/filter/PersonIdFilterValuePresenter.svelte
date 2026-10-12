@@ -24,7 +24,7 @@
   let persons: Ref<Person>[] = []
   $: void getPersons(value)
 
-  async function getPersons (ids: PersonId[]): Promise<void> {
+  async function getPersons(ids: PersonId[]): Promise<void> {
     if (ids !== undefined) {
       if (ids.length === 0) {
         persons = []

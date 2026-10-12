@@ -129,12 +129,12 @@
   $: sortingFunction = (config.find((it) => typeof it !== 'string' && it.sortingKey === _sortKey) as BuildModelKey)
     ?.sortingFunction
 
-  function getSort (sortKey: string | string[]) {
+  function getSort(sortKey: string | string[]) {
     return Array.isArray(sortKey)
       ? sortKey.reduce((acc: Record<string, SortingOrder>, val) => {
-        acc[val] = sortOrder
-        return acc
-      }, {})
+          acc[val] = sortOrder
+          return acc
+        }, {})
       : { ...(options?.sort ?? {}), [sortKey]: sortOrder }
   }
 
@@ -241,7 +241,7 @@
     showMenu(ev, { object: items, baseMenuClass })
   }
 
-  function changeSorting (key: string | string[]): void {
+  function changeSorting(key: string | string[]): void {
     if (key === '') {
       return
     }
@@ -258,22 +258,22 @@
   $: checkedSet = new Set<Ref<Doc>>(checked.map((it) => it._id))
   $: allItemsSelected = objects?.length === checkedSet.size && objects?.length > 0
 
-  export function check (docs: Doc[], value: boolean) {
+  export function check(docs: Doc[], value: boolean) {
     if (!enableChecking) return
     dispatch('check', { docs, value })
   }
 
-  function getLoadingLength (props: LoadingProps, options?: FindOptions<Doc>): number {
+  function getLoadingLength(props: LoadingProps, options?: FindOptions<Doc>): number {
     if (options?.limit !== undefined && options?.limit > 0) {
       return Math.min(options?.limit, props.length)
     }
     return props.length
   }
-  function onRow (object: Doc): void {
+  function onRow(object: Doc): void {
     dispatch('row-focus', object)
   }
 
-  export function select (offset: 1 | -1 | 0, of?: Doc, noScroll?: boolean): void {
+  export function select(offset: 1 | -1 | 0, of?: Doc, noScroll?: boolean): void {
     let pos = (of !== undefined ? objects.findIndex((it) => it._id === of._id) : selection) ?? -1
     pos += offset
     if (pos < 0) {
@@ -310,7 +310,7 @@
     }
     return { ...attribute.props, space: object.space, ...readonlyParams }
   }
-  function getValue (attribute: AttributeModel, object: Doc): any {
+  function getValue(attribute: AttributeModel, object: Doc): any {
     if (attribute.castRequest) {
       return getObjectValue(
         attribute.key.substring(attribute.castRequest.length + 1),
@@ -320,11 +320,11 @@
     return getObjectValue(attribute.key, object)
   }
 
-  function onChange (value: any, doc: Doc, key: string, attribute: AnyAttribute): void {
+  function onChange(value: any, doc: Doc, key: string, attribute: AnyAttribute): void {
     updateAttribute(client, doc, _class, { key, attr: attribute }, value)
   }
 
-  function getOnChange (doc: Doc, attribute: AttributeModel) {
+  function getOnChange(doc: Doc, attribute: AttributeModel) {
     const attr = attribute.attribute
     if (attr === undefined) return
     if (attribute.collectionAttr) return
@@ -342,7 +342,7 @@
   let model: AttributeModel[] | undefined
   let modelOptions: BuildModelOptions | undefined
 
-  const updateModelOptions = reduceCalls(async function updateModelOptions (
+  const updateModelOptions = reduceCalls(async function updateModelOptions(
     client: TxOperations,
     _class: Ref<Class<Doc>>,
     config: Array<string | BuildModelKey>,
@@ -356,14 +356,14 @@
   })
   $: void updateModelOptions(client, _class, config, lookup)
 
-  async function build (modelOptions: BuildModelOptions): Promise<void> {
+  async function build(modelOptions: BuildModelOptions): Promise<void> {
     isBuildingModel = true
     const res = await buildModel(modelOptions)
     model = res
     isBuildingModel = false
   }
 
-  function contextHandler (object: Doc, row: number): (ev: MouseEvent) => void {
+  function contextHandler(object: Doc, row: number): (ev: MouseEvent) => void {
     return (ev) => {
       if (!readonly) {
         void showContextMenu(ev, object, row)
@@ -377,7 +377,7 @@
     permissionsStore = await getResource(contact.store.Permissions)
   })
 
-  function canChangeAttr (
+  function canChangeAttr(
     object: Doc,
     attr: AnyAttribute | undefined,
     permissionsStore: PermissionsStore | undefined
@@ -387,7 +387,7 @@
     return canChangeAttribute(attr, object.space as Ref<TypedSpace>, permissionsStore, object._class)
   }
 
-  async function canEdit (object: Doc): Promise<boolean> {
+  async function canEdit(object: Doc): Promise<boolean> {
     if (client.getHierarchy().isDerived(object._class, core.class.Space)) {
       return await canEditSpace(object)
     }

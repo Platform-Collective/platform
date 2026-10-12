@@ -69,7 +69,8 @@ export class TOrderingQuestion extends TQuestion<OrderingQuestionData> implement
 @UX(questions.string.Ordering)
 export class TOrderingQuestionAnswer
   extends TAnswer<OrderingQuestion, OrderingAnswerData>
-  implements OrderingQuestionAnswer {
+  implements OrderingQuestionAnswer
+{
   @Prop(TypeRef(questions.class.OrderingQuestion), questions.string.Question)
   @Index(IndexKind.Indexed)
   @Hidden()
@@ -84,7 +85,8 @@ export class TOrderingQuestionAnswer
 @UX(questions.string.OrderingAssessment)
 export class TOrderingAssessment
   extends TAssessment<OrderingQuestionData, OrderingAssessmentData>
-  implements OrderingAssessment {
+  implements OrderingAssessment
+{
   @Prop(TypeOrderingAssessmentData(), questions.string.Assessment)
   declare assessmentData: OrderingAssessmentData
 }
@@ -94,7 +96,8 @@ export class TOrderingAssessment
 @UX(questions.string.Ordering)
 export class TOrderingAssessmentAnswer
   extends TAnswer<OrderingAssessment, OrderingAnswerData>
-  implements OrderingAssessmentAnswer {
+  implements OrderingAssessmentAnswer
+{
   @Prop(TypeRef(questions.class.OrderingAssessment), questions.string.Question)
   @Index(IndexKind.Indexed)
   @Hidden()

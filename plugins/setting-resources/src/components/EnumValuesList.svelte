@@ -34,7 +34,7 @@
   let opened: number | undefined = undefined
   const elements: HTMLElement[] = []
 
-  function dragswap (ev: MouseEvent, item: string): boolean {
+  function dragswap(ev: MouseEvent, item: string): boolean {
     const s = values.findIndex((p) => p === selected)
     const i = values.findIndex((p) => p === item)
     if (i < s) {
@@ -45,7 +45,7 @@
     return false
   }
 
-  function dragover (ev: MouseEvent, item: string): void {
+  function dragover(ev: MouseEvent, item: string): void {
     const s = values.findIndex((p) => p === selected)
     const i = values.findIndex((p) => p === item)
     if (dragswap(ev, item)) {
@@ -55,11 +55,11 @@
 
   const dispatch = createEventDispatcher()
 
-  async function remove (target: string): Promise<void> {
+  async function remove(target: string): Promise<void> {
     dispatch('remove', target)
   }
 
-  async function onDrop (): Promise<void> {
+  async function onDrop(): Promise<void> {
     dispatch('drop')
   }
 
@@ -77,7 +77,7 @@
     }
   ]
 
-  function openPopup (ev: MouseEvent, n: number) {
+  function openPopup(ev: MouseEvent, n: number) {
     if (opened === undefined) {
       opened = n
       showPopup(ModernPopup, { items }, eventToHTMLElement(ev), (result) => {
@@ -102,7 +102,7 @@
     }
   }
 
-  function update (): void {
+  function update(): void {
     dispatch('update', values)
   }
 </script>

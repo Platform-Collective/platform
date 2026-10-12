@@ -58,13 +58,13 @@
   }
   let mode = Mode.View
 
-  async function addTemplate (): Promise<void> {
+  async function addTemplate(): Promise<void> {
     title = ''
     message = ''
     newTemplate = true
     mode = Mode.Create
   }
-  async function saveNewTemplate (): Promise<void> {
+  async function saveNewTemplate(): Promise<void> {
     if (!newTemplate) {
       return
     }
@@ -87,14 +87,14 @@
 
   let textEditor: StyledTextEditor
 
-  export function submit (): void {
+  export function submit(): void {
     textEditor.submit()
   }
   const updateTemplate = (evt: any) => {
     message = evt.detail
   }
 
-  function addField (ev: MouseEvent) {
+  function addField(ev: MouseEvent) {
     showPopup(FieldPopup, {}, eventToHTMLElement(ev), (res) => {
       if (res !== undefined) {
         textEditor.insertText(`\${${res._id}}`)
@@ -102,11 +102,11 @@
     })
   }
 
-  function getTemplates (templates: MessageTemplate[], space: Ref<TemplateCategory>): MessageTemplate[] {
+  function getTemplates(templates: MessageTemplate[], space: Ref<TemplateCategory>): MessageTemplate[] {
     return templates.filter((p) => p.space === space)
   }
 
-  async function getActions (t: MessageTemplate): Promise<Action[]> {
+  async function getActions(t: MessageTemplate): Promise<Action[]> {
     const result: Action[] = []
     const extraActions = await getContributedActions(client, t)
     for (const act of extraActions) {
@@ -130,7 +130,7 @@
     }
   }
 
-  async function getSpaceActions (space: TemplateCategory): Promise<Action[]> {
+  async function getSpaceActions(space: TemplateCategory): Promise<Action[]> {
     const result: Action[] = [addSpace]
     const extraActions = await getContributedActions(client, space, core.class.Space)
     for (const act of extraActions) {

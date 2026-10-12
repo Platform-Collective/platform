@@ -104,9 +104,7 @@ export async function formatControlledDocumentValue (
     // Translate label to determine which field to extract
     let labelText = ''
     if (typeof attr.label === 'string') {
-      labelText = isIntlString(attr.label)
-        ? await translate(attr.label as unknown as IntlString, {}, language)
-        : attr.label
+      labelText = isIntlString(attr.label) ? await translate(attr.label, {}, language) : attr.label
     } else {
       labelText = await translate(attr.label, {}, language)
     }
@@ -210,9 +208,7 @@ export async function formatControlledDocumentValue (
       // Translate label to determine which field to extract for template
       let labelText = ''
       if (typeof attr.label === 'string') {
-        labelText = isIntlString(attr.label)
-          ? await translate(attr.label as unknown as IntlString, {}, language)
-          : attr.label
+        labelText = isIntlString(attr.label) ? await translate(attr.label, {}, language) : attr.label
       } else {
         labelText = await translate(attr.label, {}, language)
       }

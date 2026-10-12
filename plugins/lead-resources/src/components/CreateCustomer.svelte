@@ -50,7 +50,7 @@
   let lastName = ''
   let description = EmptyMarkup
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return firstName === '' && lastName === ''
   }
 
@@ -67,11 +67,11 @@
   let channels: AttachedData<Channel>[] = []
   let avatar: File | undefined
 
-  function formatName (targetClass: Ref<Class<Doc>>, firstName: string, lastName: string, objectName: string): string {
+  function formatName(targetClass: Ref<Class<Doc>>, firstName: string, lastName: string, objectName: string): string {
     return targetClass === contact.class.Person ? combineName(firstName.trim(), lastName.trim()) : objectName
   }
 
-  async function createCustomer (): Promise<void> {
+  async function createCustomer(): Promise<void> {
     const candidate: Data<Contact> = {
       name,
       city: object.city,
@@ -128,7 +128,7 @@
   ]
   let targetClass = targets[0]
 
-  function selectTarget (evt: MouseEvent): void {
+  function selectTarget(evt: MouseEvent): void {
     showPopup(
       SelectPopup,
       {

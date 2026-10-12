@@ -16,7 +16,7 @@
   const client = getClient()
   const me = getCurrentEmployee()
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     let [name, description] = value.split('//')
     name = name.trim()
     if (name.length === 0) return
@@ -54,11 +54,11 @@
     clear()
   }
 
-  function clear (): void {
+  function clear(): void {
     value = ''
   }
 
-  function openPopup (): void {
+  function openPopup(): void {
     showPopup(CreateToDoPopup, { value }, 'top')
   }
 </script>

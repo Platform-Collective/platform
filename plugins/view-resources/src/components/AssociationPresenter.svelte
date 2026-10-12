@@ -23,7 +23,7 @@
 
   const client = getClient()
   const hierarchy = client.getHierarchy()
-  function getClassLabel (_class: Ref<Class<Doc>>): IntlString {
+  function getClassLabel(_class: Ref<Class<Doc>>): IntlString {
     try {
       const _classLabel = hierarchy.getClass(_class)
       return _classLabel.label

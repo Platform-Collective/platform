@@ -896,7 +896,7 @@ class Connection implements ClientConnection {
     return this.sendRequest({ method: 'getAccount', params: [] })
   }
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options?: FindOptions<T>
@@ -959,7 +959,7 @@ class Connection implements ClientConnection {
     return result
   }
 
-  async findAllPage<T extends Doc>(
+  async findAllPage<T extends Doc> (
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
     options: FindPageOptions<T>

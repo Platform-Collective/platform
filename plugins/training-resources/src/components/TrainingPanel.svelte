@@ -61,7 +61,7 @@
   let modes: IModeSelector<TrainingRouteTab>
   $: void setModes(object, _id)
 
-  async function setModes (trn: Training | null, id: Ref<Training>): Promise<void> {
+  async function setModes(trn: Training | null, id: Ref<Training>): Promise<void> {
     const config: IModeSelector<TrainingRouteTab>['config'] = []
     if (trn !== null) {
       if (await canViewTrainingOverview(trn)) {
@@ -110,7 +110,7 @@
     }
   }
 
-  function showContextMenu (evt: MouseEvent): void {
+  function showContextMenu(evt: MouseEvent): void {
     if (object !== null) {
       showMenu(evt, {
         object,

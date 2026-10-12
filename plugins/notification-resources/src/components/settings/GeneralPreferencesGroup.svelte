@@ -28,7 +28,7 @@
     .findAllSync(notification.class.NotificationProvider, {})
     .sort((provider1, provider2) => provider1.order - provider2.order)
 
-  function getProviderStatus (ref: Ref<NotificationProvider>): boolean {
+  function getProviderStatus(ref: Ref<NotificationProvider>): boolean {
     const provider = providers.find(({ _id }) => _id === ref)
 
     if (provider === undefined) return false
@@ -37,7 +37,7 @@
     return setting?.enabled ?? provider.defaultEnabled
   }
 
-  async function updateStatus (ref: Ref<NotificationProvider>, enabled: boolean): Promise<void> {
+  async function updateStatus(ref: Ref<NotificationProvider>, enabled: boolean): Promise<void> {
     const setting = $providersSettings.find(({ attachedTo }) => attachedTo === ref)
     if (setting !== undefined) {
       await client.update(setting, { enabled })
@@ -50,7 +50,7 @@
     }
   }
 
-  async function onToggle (event: CustomEvent): Promise<void> {
+  async function onToggle(event: CustomEvent): Promise<void> {
     const provider = event.detail
     if (provider == null) return
 

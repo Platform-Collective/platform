@@ -9,7 +9,7 @@
     "strictNullChecks": true,
     "sourceMap": true,
     "skipLibCheck": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "lib": ["es2023", "dom", "ES2021.String", "ESNext.Array"]
   },

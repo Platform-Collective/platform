@@ -17,7 +17,7 @@
 import type { Issue } from '@hcengineering/tracker'
 import type { Ref } from '@hcengineering/core'
 
-function computeIgnoreSet (root: Issue, all: Issue[]): Set<Ref<Issue>> {
+function computeIgnoreSet(root: Issue, all: Issue[]): Set<Ref<Issue>> {
   const ignored = new Set<Ref<Issue>>([root._id])
   if (Array.isArray(root.parents)) {
     for (const p of root.parents as Array<{ parentId: Ref<Issue> }>) {
@@ -45,7 +45,7 @@ function computeIgnoreSet (root: Issue, all: Issue[]): Set<Ref<Issue>> {
   return ignored
 }
 
-function mk (id: string, parents: string[] = []): Issue {
+function mk(id: string, parents: string[] = []): Issue {
   return {
     _id: id as Ref<Issue>,
     parents: parents.map((p) => ({ parentId: p as Ref<Issue>, parentTitle: '', space: 'sp' }))

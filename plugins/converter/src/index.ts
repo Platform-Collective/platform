@@ -15,7 +15,7 @@
 
 import { converterPlugin, converterId } from './plugin'
 
-export * from './types'
+export type * from './types'
 
 export { converterId }
 

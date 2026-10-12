@@ -30,7 +30,7 @@
 
   $: firstDayOfCurrentMonth = firstDay(currentDate, $deviceInfo.firstDayOfWeek)
 
-  function onSelect (date: Date): void {
+  function onSelect(date: Date): void {
     dispatch('change', date)
   }
 

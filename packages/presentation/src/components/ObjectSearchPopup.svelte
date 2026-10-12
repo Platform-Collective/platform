@@ -67,11 +67,11 @@
   let list: ListView
   let selection = 0
 
-  function dispatchItem (item: ObjectSearchResult): void {
+  function dispatchItem(item: ObjectSearchResult): void {
     dispatch('close', item)
   }
 
-  export function onKeyDown (key: KeyboardEvent): boolean {
+  export function onKeyDown(key: KeyboardEvent): boolean {
     if (key.key === 'ArrowDown') {
       key.stopPropagation()
       key.preventDefault()
@@ -107,9 +107,9 @@
     return false
   }
 
-  export function done (): void {}
+  export function done(): void {}
 
-  const updateItems = reduceCalls(async function updateItems (
+  const updateItems = reduceCalls(async function updateItems(
     cat: ObjectSearchCategory | undefined,
     query: string,
     relatedDocuments?: RelatedDocument[]

@@ -40,7 +40,7 @@
     docSpaces = res.map((s) => s._id)
   })
 
-  async function handleFieldUpdated (field: keyof ChangeControl, ev: UIEvent): Promise<void> {
+  async function handleFieldUpdated(field: keyof ChangeControl, ev: UIEvent): Promise<void> {
     if (ev == null) {
       return
     }

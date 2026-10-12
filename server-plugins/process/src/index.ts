@@ -5,7 +5,7 @@ import { Execution, Method, ProcessFunction, Trigger } from '@hcengineering/proc
 import { TriggerFunc } from '@hcengineering/server-core'
 import { ExecuteFunc, ProcessControl, RollbackFunc, TransformFunc } from './types'
 
-export * from './types'
+export type * from './types'
 
 /**
  * @public

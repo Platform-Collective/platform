@@ -25,7 +25,7 @@ export interface GanttExportInput {
   title?: string
 }
 
-function esc (s: unknown): string {
+function esc(s: unknown): string {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -33,21 +33,21 @@ function esc (s: unknown): string {
     .replace(/"/g, '&quot;')
 }
 
-function issueCode (issue: Issue): string {
+function issueCode(issue: Issue): string {
   return (issue as unknown as { identifier?: string }).identifier ?? String(issue._id)
 }
 
-function issueTitle (issue: Issue): string {
+function issueTitle(issue: Issue): string {
   return (issue as unknown as { title?: string }).title ?? ''
 }
 
-function rowBottom (rows: LayoutRow[]): number {
+function rowBottom(rows: LayoutRow[]): number {
   let bottom = 0
   for (const r of rows) bottom = Math.max(bottom, r.y + r.height)
   return bottom
 }
 
-function barRange (row: LayoutRow, summaryRanges: Map<string, SummaryRange>): { start: number, end: number } | null {
+function barRange(row: LayoutRow, summaryRanges: Map<string, SummaryRange>): { start: number; end: number } | null {
   if (row.kind === 'milestone' && row.milestone !== null) {
     return { start: row.milestone.startDate ?? row.milestone.targetDate, end: row.milestone.targetDate }
   }
@@ -60,7 +60,7 @@ function barRange (row: LayoutRow, summaryRanges: Map<string, SummaryRange>): { 
   return { start: row.issue.startDate, end: row.issue.dueDate }
 }
 
-function renderIssueList (rows: LayoutRow[]): string {
+function renderIssueList(rows: LayoutRow[]): string {
   const out: string[] = []
   out.push(`<rect x="0" y="0" width="${SIDEBAR_WIDTH}" height="${HEADER_HEIGHT + rowBottom(rows)}" fill="#f8fafc"/>`)
   out.push(`<text x="${LEFT_PAD}" y="25" font-size="14" font-weight="700" fill="#0f172a">Issues</text>`)
@@ -94,7 +94,7 @@ function renderIssueList (rows: LayoutRow[]): string {
   return out.join('')
 }
 
-function renderHeader (input: GanttExportInput, chartWidth: number): string {
+function renderHeader(input: GanttExportInput, chartWidth: number): string {
   const out: string[] = []
   out.push(
     `<rect class="chart-bg" x="${SIDEBAR_WIDTH}" y="0" width="${chartWidth}" height="${HEADER_HEIGHT}" fill="#ffffff"/>`
@@ -117,7 +117,7 @@ function renderHeader (input: GanttExportInput, chartWidth: number): string {
   return out.join('')
 }
 
-function renderRowsAndBars (input: GanttExportInput): { svg: string, rects: Map<string, BarRect> } {
+function renderRowsAndBars(input: GanttExportInput): { svg: string; rects: Map<string, BarRect> } {
   const out: string[] = []
   const rects = new Map<string, BarRect>()
   for (const row of input.rows) {
@@ -152,7 +152,7 @@ function renderRowsAndBars (input: GanttExportInput): { svg: string, rects: Map<
   return { svg: out.join(''), rects }
 }
 
-function renderDependencies (relations: IssueRelation[], rects: Map<string, BarRect>): string {
+function renderDependencies(relations: IssueRelation[], rects: Map<string, BarRect>): string {
   const out: string[] = []
   for (const rel of relations) {
     const source = rects.get(String(rel.attachedTo))
@@ -178,7 +178,7 @@ function renderDependencies (relations: IssueRelation[], rects: Map<string, BarR
   return out.join('')
 }
 
-export function buildGanttExportSvg (input: GanttExportInput): string {
+export function buildGanttExportSvg(input: GanttExportInput): string {
   const chartWidth = Math.max(1, Math.ceil(input.chartWidth + CHART_PAD_RIGHT))
   const height = HEADER_HEIGHT + rowBottom(input.rows)
   const width = SIDEBAR_WIDTH + chartWidth

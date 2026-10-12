@@ -41,11 +41,11 @@
   const SHADOW_BLUR = 2
   const SHADOW_SPREAD = -1
 
-  async function updateName (): Promise<void> {
+  async function updateName(): Promise<void> {
     await client.update(room, { name: room.name })
   }
 
-  async function changePerson (e: CustomEvent<Ref<Person> | null>): Promise<void> {
+  async function changePerson(e: CustomEvent<Ref<Person> | null>): Promise<void> {
     if (isOffice(room)) {
       const value = e.detail
       const prevValue = room.person
@@ -65,7 +65,7 @@
     }
   }
 
-  async function remove (): Promise<void> {
+  async function remove(): Promise<void> {
     await client.remove(room)
   }
 
@@ -84,26 +84,26 @@
   const shadow = tweened({ x: 0, y: 0, r: 0, s: 0 }, { duration: 150, easing: cubicOut })
   const shadowColor = tweened(shadowNormal, { duration: 300, easing: cubicOut })
 
-  export function setShadow (x: number, y: number, r: number, s?: number) {
+  export function setShadow(x: number, y: number, r: number, s?: number) {
     shadow.set({ x, y, r, s: s ?? 0 })
   }
-  export function setShadowColor (r: number, g: number, b: number, a: number) {
+  export function setShadowColor(r: number, g: number, b: number, a: number) {
     shadowColor.set({ r, g, b, a })
   }
-  export function clearShadow () {
+  export function clearShadow() {
     shadow.set({ x: 0, y: 0, r: 1, s: 0 })
     shadowColor.set({ ...shadowNormal, a: 0 })
   }
-  export function getRect (): DOMRect {
+  export function getRect(): DOMRect {
     return container ? container.getBoundingClientRect() : new DOMRect()
   }
-  function checkLeave () {
+  function checkLeave() {
     if ($lockedRoom !== '') return
     cursor = ''
     clearShadow()
   }
 
-  function mouseDown (e: MouseEvent): void {
+  function mouseDown(e: MouseEvent): void {
     if (container === undefined || $lockedRoom !== '') return
     roomRect = container.getBoundingClientRect()
     if (roomSide.top || roomSide.bottom || roomSide.left || roomSide.right) {
@@ -121,7 +121,7 @@
     lockedRoom.set(room._id)
   }
 
-  function changeCursor (e: MouseEvent): void {
+  function changeCursor(e: MouseEvent): void {
     if ($lockedRoom !== '') return
     roomRect = container.getBoundingClientRect()
     const offsetX = e.clientX - roomRect.x + cellSize / 5

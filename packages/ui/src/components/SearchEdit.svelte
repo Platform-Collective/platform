@@ -12,7 +12,7 @@
   const dispatch = createEventDispatcher()
   let timer: any
 
-  function restartTimer (): void {
+  function restartTimer(): void {
     clearTimeout(timer)
     timer = setTimeout(() => {
       value = _search

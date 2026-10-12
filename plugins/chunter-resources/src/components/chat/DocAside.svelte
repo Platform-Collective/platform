@@ -35,7 +35,7 @@
 
   $: mixins = getDocMixins(object)
 
-  function getMixinKeys (mixin: Ref<Mixin<Doc>>): KeyedAttribute[] {
+  function getMixinKeys(mixin: Ref<Mixin<Doc>>): KeyedAttribute[] {
     if (object === undefined) return []
 
     const mixinClass = hierarchy.getClass(mixin)

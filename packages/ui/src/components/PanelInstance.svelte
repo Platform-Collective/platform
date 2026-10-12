@@ -51,7 +51,7 @@
   let keepSize: boolean = false
 
   let props: PanelProps | undefined
-  function _close (): void {
+  function _close(): void {
     closePanel()
   }
 
@@ -69,7 +69,7 @@
     props = undefined
   }
 
-  function escapeClose (): void {
+  function escapeClose(): void {
     // Check if there is popup visible, then ignore
     if ($popupstore.length > 0) {
       return
@@ -107,13 +107,13 @@
     }
   }
 
-  function handleKeydown (ev: KeyboardEvent): void {
+  function handleKeydown(ev: KeyboardEvent): void {
     if (ev.key === 'Escape') {
       escapeClose()
     }
   }
 
-  function _open (): void {
+  function _open(): void {
     if (modalHTML != null && props != null) {
       if (props.element === 'content') {
         modalHTML.classList.add('bg')
@@ -154,7 +154,7 @@
     }
   }
 
-  export function fitPopupInstance (): void {
+  export function fitPopupInstance(): void {
     if (props != null && contentPanel != null) fitPopup(props, contentPanel)
   }
 </script>

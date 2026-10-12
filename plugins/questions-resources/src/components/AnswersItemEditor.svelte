@@ -64,7 +64,7 @@
     }
   }
 
-  async function submit (answerData: AnswerDataOf<A>): Promise<void> {
+  async function submit(answerData: AnswerDataOf<A>): Promise<void> {
     if (answer === null) {
       await createAnswer(answerClassRef, answerData)
     } else {

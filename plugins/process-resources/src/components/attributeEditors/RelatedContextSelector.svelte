@@ -44,7 +44,7 @@
     }
   }
 
-  function onAttribute (attr: AnyAttribute): void {
+  function onAttribute(attr: AnyAttribute): void {
     const reduceFunc = getRelationReduceFunc(client, context.association, context.direction)
     const valueFunc = getValueReduceFunc(attr, target)
     onSelect({

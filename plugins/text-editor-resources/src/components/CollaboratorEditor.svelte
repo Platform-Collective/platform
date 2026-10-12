@@ -49,19 +49,19 @@
 
   let collaborativeEditor: CollaborativeTextEditor
 
-  export function commands (): TextEditorCommandHandler | undefined {
+  export function commands(): TextEditorCommandHandler | undefined {
     return collaborativeEditor?.commands()
   }
 
-  export function focus (position?: FocusPosition): void {
+  export function focus(position?: FocusPosition): void {
     collaborativeEditor?.focus(position)
   }
 
-  export function isFocused (): boolean {
+  export function isFocused(): boolean {
     return collaborativeEditor?.isFocused() ?? false
   }
 
-  export function removeAttachment (id: string): void {
+  export function removeAttachment(id: string): void {
     collaborativeEditor?.removeAttachment(id)
   }
 
@@ -80,7 +80,7 @@
     }
   }
 
-  function handleFocus (): void {
+  function handleFocus(): void {
     updateFocus()
   }
 </script>

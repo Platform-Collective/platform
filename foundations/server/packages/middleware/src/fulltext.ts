@@ -74,7 +74,7 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
     )
   }
 
-  async search<T extends Doc>(
+  async search<T extends Doc> (
     _classes: Ref<Class<T>>[],
     query: DocumentQuery<T>,
     fullTextLimit: number
@@ -108,7 +108,7 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
 
   addExtraFind?: (_class: Ref<Class<Doc>>, childs: Set<Ref<Class<Doc>>>) => void
 
-  async findAll<T extends Doc>(
+  async findAll<T extends Doc> (
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -218,11 +218,11 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
     let result =
       resultIds.length > 0
         ? await this.provideFindAll(
-          ctx,
-          _class,
-          { _id: { $in: Array.from(new Set(resultIds)) }, ...mainQuery },
-          options
-        )
+            ctx,
+            _class,
+            { _id: { $in: Array.from(new Set(resultIds)) }, ...mainQuery },
+            options
+          )
         : toFindResult([])
 
     // Just assign scores based on idex
@@ -245,7 +245,7 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
     return result
   }
 
-  private async findDocuments<T extends Doc>(
+  private async findDocuments<T extends Doc> (
     classes: Ref<Class<Doc>>[],
     findQuery: DocumentQuery<Doc>,
     fullTextLimit: number,
@@ -277,7 +277,7 @@ export class FullTextMiddleware extends BaseMiddleware implements Middleware {
     return { docs, indexedDocMap }
   }
 
-  private async findChildDocuments<T extends Doc>(
+  private async findChildDocuments<T extends Doc> (
     classes: Ref<Class<Doc>>[],
     findQuery: DocumentQuery<Doc>,
     fullTextLimit: number,

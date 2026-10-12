@@ -35,7 +35,7 @@
   export let readonly: boolean = false
   export let embedded: boolean = false
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return false
   }
 
@@ -61,13 +61,13 @@
   )
   $: canUploadVersion = object !== undefined && canChangeDoc(drive.class.File, object.space, $permissionsStore)
 
-  function handleDownloadFile (): void {
+  function handleDownloadFile(): void {
     if (object != null && download != null) {
       download.click()
     }
   }
 
-  function handleUploadFile (): void {
+  function handleUploadFile(): void {
     if (object != null && canUploadVersion) {
       const target = { objectId: object._id, objectClass: object._class }
       void showFilesUploadPopup(
@@ -85,7 +85,7 @@
     }
   }
 
-  async function onFileUploaded ({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> {
+  async function onFileUploaded({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> {
     const data = {
       file: uuid,
       title: name,

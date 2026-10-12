@@ -63,7 +63,7 @@
     }
   }
 
-  function getComponent (selected: Class<Type<Doc>>): AnyComponent {
+  function getComponent(selected: Class<Type<Doc>>): AnyComponent {
     const editor = hierarchy.as(selected, view.mixin.ObjectEditor)
     return editor.editor
   }

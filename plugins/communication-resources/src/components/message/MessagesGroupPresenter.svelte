@@ -38,13 +38,13 @@
   $: separatorIndex =
     separatorDate != null
       ? messages.findIndex(
-        ({ created, creator }) => separatorDate != null && !me.socialIds.includes(creator) && created >= separatorDate
-      )
+          ({ created, creator }) => separatorDate != null && !me.socialIds.includes(creator) && created >= separatorDate
+        )
       : -1
 
   $: mergedMessages = mergeMessages(messages)
 
-  function mergeMessages (messages: Message[]): Message[] {
+  function mergeMessages(messages: Message[]): Message[] {
     const result: Message[] = []
     for (let i = 0; i < messages.length; i++) {
       const currentMessage = messages[i]

@@ -55,7 +55,7 @@
   let lkitParticipants = new Map<Ref<Person>, ParticipantData>()
 
   // Attach or update a participant entry (using LiveKit identity as key).
-  function attachParticipant (participant: Participant): void {
+  function attachParticipant(participant: Participant): void {
     // Add new participant
     const value: ParticipantData = {
       _id: participant.identity,
@@ -66,12 +66,12 @@
     lkitParticipants = lkitParticipants
   }
 
-  function handleParticipantDisconnected (participant: RemoteParticipant): void {
+  function handleParticipantDisconnected(participant: RemoteParticipant): void {
     lkitParticipants.delete(participant.identity as Ref<Person>)
     lkitParticipants = lkitParticipants
   }
 
-  function updateParticipants (
+  function updateParticipants(
     data: ParticipantInfo[],
     currentMeeting: MeetingMinutes | undefined,
     room: Ref<Room>,

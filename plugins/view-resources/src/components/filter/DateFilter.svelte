@@ -64,7 +64,7 @@
     modes = res
   })
 
-  function showPicker () {
+  function showPicker() {
     if (filter.mode === view.filter.FilterDateBetween) {
       showPopup(
         RangeDatePopup,

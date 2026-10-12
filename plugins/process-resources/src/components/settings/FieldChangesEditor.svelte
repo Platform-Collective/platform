@@ -33,13 +33,13 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  function change (e: CustomEvent<any>): void {
+  function change(e: CustomEvent<any>): void {
     if (readonly || e.detail == null) return
     params = e.detail
     dispatch('change', { params })
   }
 
-  function getKeys (_class: Ref<Class<MasterTag>>): AnyAttribute[] {
+  function getKeys(_class: Ref<Class<MasterTag>>): AnyAttribute[] {
     const ignoreKeys = ['_class', 'content', 'parent', 'attachments', 'todos']
     const attributes = hierarchy.getAllAttributes(_class, core.class.Doc)
     const res: AnyAttribute[] = []
@@ -59,7 +59,7 @@
 
   const allAttrs = getKeys(process.masterTag)
 
-  function onSelect (e: MouseEvent): void {
+  function onSelect(e: MouseEvent): void {
     const possibleAttrs = allAttrs.filter((attr) => key !== attr.name)
     showPopup(
       SelectPopup,
@@ -77,7 +77,7 @@
     )
   }
 
-  function remove (e: CustomEvent<any>): void {
+  function remove(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       if (key !== undefined) {
         // eslint-disable-next-line @typescript-eslint/no-dynamic-delete

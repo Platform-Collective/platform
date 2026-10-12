@@ -45,7 +45,7 @@
 
   $: buildQuery(attribute, space)
 
-  async function buildQuery (attribute: AnyAttribute | undefined, space: Ref<Space> | undefined): Promise<void> {
+  async function buildQuery(attribute: AnyAttribute | undefined, space: Ref<Space> | undefined): Promise<void> {
     const baseQuery = {
       active: true
     }

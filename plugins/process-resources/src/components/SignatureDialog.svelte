@@ -66,7 +66,7 @@
 
   let status = OK
 
-  async function submit (): Promise<void> {
+  async function submit(): Promise<void> {
     if (object.email === '' || object.password === '') {
       return
     }
@@ -78,7 +78,7 @@
     }
   }
 
-  async function validateAccount (email: string, password: string): Promise<Status> {
+  async function validateAccount(email: string, password: string): Promise<Status> {
     const accountClient = getAccountClient(accountsUrl)
 
     try {
@@ -104,7 +104,7 @@
     password: login.string.Password
   }
 
-  async function validate (): Promise<void> {
+  async function validate(): Promise<void> {
     for (const field of Object.keys(object)) {
       const k = field as keyof LoginInfo
       if (object[k] === '') {

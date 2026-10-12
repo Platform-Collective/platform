@@ -30,7 +30,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function createType (): Promise<void> {
+  async function createType(): Promise<void> {
     if (docDescriptor === undefined) {
       return
     }

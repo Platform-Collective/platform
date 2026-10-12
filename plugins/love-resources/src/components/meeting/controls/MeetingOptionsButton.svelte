@@ -27,14 +27,14 @@
     icon: action.icon
   }))
 
-  async function handleMenuOption (e: CustomEvent<DropdownIntlItem['id']>): Promise<void> {
+  async function handleMenuOption(e: CustomEvent<DropdownIntlItem['id']>): Promise<void> {
     const action = actions.find((action) => action._id === e.detail)
     if (action !== undefined) {
       await handleAction(action)
     }
   }
 
-  async function handleAction (action: Action): Promise<void> {
+  async function handleAction(action: Action): Promise<void> {
     const fn = await getResource(action.action)
     await fn(room)
   }

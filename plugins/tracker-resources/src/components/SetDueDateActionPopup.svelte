@@ -24,7 +24,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function onUpdate ({ detail }: CustomEvent<Date | null | undefined>) {
+  async function onUpdate({ detail }: CustomEvent<Date | null | undefined>) {
     const newDueDate = detail?.getTime()
 
     const vv = Array.isArray(value) ? value : [value]

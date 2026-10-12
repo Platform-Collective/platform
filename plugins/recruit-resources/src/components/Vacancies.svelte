@@ -78,7 +78,7 @@
     }
   )
 
-  function showCreateDialog () {
+  function showCreateDialog() {
     showPopup(CreateVacancy, {}, 'top')
   }
   const applicationSorting = (a: Doc, b: Doc) =>
@@ -118,7 +118,7 @@
   let preference: ViewletPreference | undefined
   let viewOptions: ViewOptions | undefined
 
-  function createConfig (
+  function createConfig(
     descr: Viewlet,
     preference: ViewletPreference | undefined,
     applications: Map<Ref<Vacancy>, ApplicationInfo>,

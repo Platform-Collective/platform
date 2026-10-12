@@ -35,7 +35,7 @@
   import GanttToolbarBar from '../gantt/GanttToolbarBar.svelte'
   import SearchEmptyState from '../SearchEmptyState.svelte'
 
-  function newIssue (): void {
+  function newIssue(): void {
     showPopup(CreateIssue, { space, shouldSaveDraft: true }, 'top')
   }
 
@@ -74,7 +74,7 @@
   let searchRaw = ''
   let searchEncoded = ''
 
-  function onSearchChange (e: CustomEvent<{ raw: string, encoded: string }>): void {
+  function onSearchChange(e: CustomEvent<{ raw: string, encoded: string }>): void {
     searchRaw = e.detail.raw
     searchEncoded = e.detail.encoded
   }
@@ -92,7 +92,7 @@
   })
 
   let searchQuery: DocumentQuery<Issue> = { ...query }
-  function updateSearchQuery (eff: string): void {
+  function updateSearchQuery(eff: string): void {
     searchQuery = eff === '' ? { ...query } : { ...query, $search: eff }
   }
   $: if (query !== undefined) updateSearchQuery(searchEncoded)

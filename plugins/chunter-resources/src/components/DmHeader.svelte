@@ -43,7 +43,7 @@
   $: dmPersons = dm !== undefined ? dm.members.map((m) => $employeeRefByAccountUuidStore.get(m)).filter(notEmpty) : []
   $: dmPersonsToDisplay = dmPersons.length === 1 ? dmPersons : dmPersons.filter((p) => p !== me)
 
-  async function onSpaceEdit (): Promise<void> {
+  async function onSpaceEdit(): Promise<void> {
     if (dm === undefined) return
     openDoc(client.getHierarchy(), dm)
   }

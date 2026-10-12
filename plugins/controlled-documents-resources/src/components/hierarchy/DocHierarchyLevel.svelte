@@ -48,7 +48,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function getDocMoreActions (obj: Doc): Promise<Action[]> {
+  async function getDocMoreActions(obj: Doc): Promise<Action[]> {
     return getMoreActions !== undefined ? await getMoreActions(obj) : []
   }
 </script>

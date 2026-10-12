@@ -28,7 +28,7 @@
 
   let searchQuery: DocumentQuery<ChatMessage> = { $search: search }
 
-  function updateSearchQuery (search: string): void {
+  function updateSearchQuery(search: string): void {
     searchQuery = { $search: search }
   }
 
@@ -39,7 +39,7 @@
 
   let resultQuery: DocumentQuery<ChatMessage> = { ...searchQuery }
 
-  async function updateMessages (resultQuery: DocumentQuery<ChatMessage>) {
+  async function updateMessages(resultQuery: DocumentQuery<ChatMessage>) {
     messages = await client.findAll(
       chunter.class.ChatMessage,
       {

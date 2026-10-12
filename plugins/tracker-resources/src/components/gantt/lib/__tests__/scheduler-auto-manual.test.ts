@@ -9,7 +9,7 @@ import type { Issue, IssueRelation } from '@hcengineering/tracker'
 import type { Ref } from '@hcengineering/core'
 import type { PrimaryEdit } from '../types'
 
-function issue (
+function issue(
   id: string,
   start?: number,
   due?: number,
@@ -31,7 +31,7 @@ function issue (
   } as unknown as Issue
 }
 
-function rel (
+function rel(
   source: string,
   target: string,
   kind: 'finish-to-start' | 'start-to-start' | 'finish-to-finish' | 'start-to-finish' = 'finish-to-start',

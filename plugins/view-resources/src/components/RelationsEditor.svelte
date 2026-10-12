@@ -31,7 +31,7 @@
   let associationsA: Association[] = []
   let associationsB: Association[] = []
 
-  function getAssociations (object: Doc): void {
+  function getAssociations(object: Doc): void {
     const parents = h.getAncestors(object._class)
     const mixins = h.findAllMixins(object)
     associationsB = client

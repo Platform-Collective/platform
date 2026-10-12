@@ -33,19 +33,19 @@
 
   const client = getClient()
 
-  function getTitle (doc: Doc): string {
+  function getTitle(doc: Doc): string {
     return (doc as any)?.title || ''
   }
 
-  function getDescendants (obj: Ref<Doc>): Ref<Doc>[] {
+  function getDescendants(obj: Ref<Doc>): Ref<Doc>[] {
     return (descendants.get(obj) ?? []).sort((a, b) => getTitle(a).localeCompare(getTitle(b))).map((p) => p._id)
   }
 
-  function handleSelected (obj: Ref<Doc>): void {
+  function handleSelected(obj: Ref<Doc>): void {
     dispatch('selected', obj)
   }
 
-  async function getActions (obj: Doc): Promise<Action[]> {
+  async function getActions(obj: Doc): Promise<Action[]> {
     const result: Action[] = []
     const extraActions = await getContributedActions(client, obj)
     for (const act of extraActions) {

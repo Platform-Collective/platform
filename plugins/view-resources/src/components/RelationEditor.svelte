@@ -25,7 +25,7 @@
 
   $: uniqueDocs = deduplicate(docs)
 
-  function deduplicate (list: Doc[] | undefined): Doc[] {
+  function deduplicate(list: Doc[] | undefined): Doc[] {
     if (!list) return []
     const seen = new Set<string>()
     return list.filter((item) => {
@@ -36,7 +36,7 @@
     })
   }
 
-  function getCreate (): ObjectCreate | undefined {
+  function getCreate(): ObjectCreate | undefined {
     const factory = client.getHierarchy().classHierarchyMixin(_class, view.mixin.ObjectFactory)
     if (factory) {
       const usePopup = isBaseCardTypeWithSubtypes()
@@ -49,7 +49,7 @@
     }
   }
 
-  function isBaseCardTypeWithSubtypes (): boolean {
+  function isBaseCardTypeWithSubtypes(): boolean {
     const hierarchy = client.getHierarchy()
     if (!hierarchy.isDerived(_class, card.class.Card)) return false
 
@@ -63,7 +63,7 @@
     })
   }
 
-  function add (): void {
+  function add(): void {
     const create = getCreate()
     const isVersionable = client.getHierarchy().classHierarchyMixin(_class, core.mixin.VersionableClass) !== undefined
     const baseQuery = { _id: { $nin: uniqueDocs.map((p) => p._id) } }
@@ -104,7 +104,7 @@
       : !p.key.includes('$lookup') && !p.key.startsWith('@')
   )
 
-  async function onContextMenu (ev: MouseEvent, doc: Doc): Promise<void> {
+  async function onContextMenu(ev: MouseEvent, doc: Doc): Promise<void> {
     const q =
       direction === 'B'
         ? { docA: object._id, docB: doc._id, association: association._id }
@@ -126,7 +126,7 @@
     showMenu(ev, { object: doc, overrides, excludedActions })
   }
 
-  function isAllowedToCreate (association: Association, docs: Doc[], direction: 'A' | 'B'): boolean {
+  function isAllowedToCreate(association: Association, docs: Doc[], direction: 'A' | 'B'): boolean {
     if (association.automationOnly) return false
     if (docs.length === 0 || association.type === 'N:N') return true
     if (association.type === '1:1') return false

@@ -20,7 +20,7 @@
 
   let time: string = ''
 
-  function formatTime (passed: number): void {
+  function formatTime(passed: number): void {
     if (passed < 0) passed = 0
     if (passed < HOUR) {
       translateCB(ui.string.Minutes, { minutes: Math.floor(passed / MINUTE) }, $themeStore.language, (res) => {

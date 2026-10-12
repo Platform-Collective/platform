@@ -44,7 +44,7 @@ export default mergeIds(chunterId, chunter, {
     ChannelTitleProvider: '' as Resource<(client: Client, id: Ref<Doc>) => Promise<string>>,
     ChunterBrowserVisible: '' as Resource<(spaces: Space[]) => Promise<boolean>>,
     GetUnreadThreadsCount: '' as Resource<
-    (inboxNotificationsByContext: Map<Ref<DocNotifyContext>, InboxNotification[]>) => number
+      (inboxNotificationsByContext: Map<Ref<DocNotifyContext>, InboxNotification[]>) => number
     >
   },
   actionImpl: {

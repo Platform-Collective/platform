@@ -18,7 +18,7 @@
     ? getClient().getModel().findAllSync(view.class.Action, { _id: love.action.ToggleVideo })?.[0]?.keyBinding
     : []
 
-  function camSettings (e: MouseEvent): void {
+  function camSettings(e: MouseEvent): void {
     showPopup(CamSettingPopup, {}, eventToHTMLElement(e))
   }
 </script>

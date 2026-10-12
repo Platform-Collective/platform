@@ -76,18 +76,18 @@
   // All decision logic lives in the unit-tested lib helpers — the component
   // only maps events to assignments (kept trivially thin on purpose, since
   // there is no component test harness in this repo).
-  function setEnabled (on: boolean): void {
+  function setEnabled(on: boolean): void {
     value = enableWorkingDays(on)
   }
 
-  function onWeekday (bit: number): void {
+  function onWeekday(bit: number): void {
     if (value === undefined) return
     // toggleWeekdayBit keeps the last active day — at least one working day
     // must stay active (validated in the pure helper, disabled in the UI).
     value = { ...value, weekdayMask: toggleWeekdayBit(value.weekdayMask, bit) }
   }
 
-  function onDepartment (id: string): void {
+  function onDepartment(id: string): void {
     if (value === undefined) return
     value = applyDepartmentSelection(value, id, COMPANY_WIDE)
   }

@@ -35,7 +35,7 @@
 
   let selectedGroup = groups[0]
 
-  function selectGroup (group: Group): void {
+  function selectGroup(group: Group): void {
     selectedGroup = group
   }
 </script>

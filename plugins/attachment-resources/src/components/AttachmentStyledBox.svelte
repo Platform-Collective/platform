@@ -77,26 +77,26 @@
 
   const dispatch = createEventDispatcher()
 
-  export function focus (): void {
+  export function focus(): void {
     refInput.focus()
   }
-  export function isFocused (): boolean {
+  export function isFocused(): boolean {
     return refInput.isFocused()
   }
-  export function isEditable (): boolean {
+  export function isEditable(): boolean {
     return refInput.isEditable()
   }
-  export function setEditable (editable: boolean): void {
+  export function setEditable(editable: boolean): void {
     refInput.setEditable(editable)
   }
-  export function setContent (data: string): void {
+  export function setContent(data: string): void {
     refInput.setContent(data)
   }
-  export function handleAttach (): void {
+  export function handleAttach(): void {
     inputFile.click()
   }
 
-  export function submit (): void {
+  export function submit(): void {
     refInput.submit()
   }
   let refInput: StyledTextBox
@@ -114,7 +114,7 @@
 
   $: draftKey && updateAttachments(objectId, $draftsStore[draftKey])
 
-  async function updateAttachments (
+  async function updateAttachments(
     objectId: Ref<Doc> | undefined,
     draftAttachments: Record<Ref<Attachment>, Attachment> | undefined
   ) {
@@ -146,14 +146,14 @@
     }
   }
 
-  async function saveDraft () {
+  async function saveDraft() {
     if (draftKey && shouldSaveDraft) {
       const draftAttachments = Object.fromEntries(attachments)
       DraftController.save(draftKey, draftAttachments)
     }
   }
 
-  async function attachFile (file: File): Promise<{ file: Ref<Blob>, type: string } | undefined> {
+  async function attachFile(file: File): Promise<{ file: Ref<Blob>, type: string } | undefined> {
     try {
       const { uuid, metadata } = await uploadFile(file)
       await createAttachment(uuid, file.name, file, metadata)
@@ -163,11 +163,11 @@
     }
   }
 
-  async function onFileUploaded ({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> {
+  async function onFileUploaded({ uuid, name, file, metadata }: FileUploadCallbackParams): Promise<void> {
     await createAttachment(uuid, name, file, metadata)
   }
 
-  async function createAttachment (
+  async function createAttachment(
     uuid: Ref<Blob>,
     name: string,
     file: FileOrBlob,
@@ -209,7 +209,7 @@
     }
   }
 
-  async function saveAttachment (doc: Attachment, objectId: Ref<Doc> | undefined, op?: TxOperations): Promise<void> {
+  async function saveAttachment(doc: Attachment, objectId: Ref<Doc> | undefined, op?: TxOperations): Promise<void> {
     if (space === undefined || objectId === undefined || _class === undefined) return
     newAttachments.delete(doc._id)
     await (op ?? client).addCollection(
@@ -223,7 +223,7 @@
     )
   }
 
-  async function fileSelected (): Promise<void> {
+  async function fileSelected(): Promise<void> {
     progress = true
     const list = inputFile.files
     if (list === null || list.length === 0) return
@@ -232,7 +232,7 @@
     progress = false
   }
 
-  export async function fileDrop (e: DragEvent): Promise<void> {
+  export async function fileDrop(e: DragEvent): Promise<void> {
     progress = true
     const list = e.dataTransfer?.files
     if (list === undefined || list.length === 0) return
@@ -240,7 +240,7 @@
     progress = false
   }
 
-  async function removeAttachment (attachment: Attachment): Promise<void> {
+  async function removeAttachment(attachment: Attachment): Promise<void> {
     if (useDirectAttachDelete) {
       progressItems.push(attachment._id)
       progressItems = progressItems
@@ -256,7 +256,7 @@
     progressItems = progressItems.filter((it) => it !== attachment._id)
   }
 
-  async function deleteAttachment (attachment: Attachment): Promise<void> {
+  async function deleteAttachment(attachment: Attachment): Promise<void> {
     removedAttachments.delete(attachment)
     if (originalAttachments.has(attachment._id)) {
       await client.removeCollection(
@@ -284,7 +284,7 @@
     }
   })
 
-  export function removeDraft (removeFiles: boolean) {
+  export function removeDraft(removeFiles: boolean) {
     if (draftKey) {
       DraftController.remove(draftKey)
     }
@@ -298,21 +298,21 @@
     }
   }
 
-  export async function saveNewAttachment (_id: Ref<Attachment>): Promise<void> {
+  export async function saveNewAttachment(_id: Ref<Attachment>): Promise<void> {
     const attachment = attachments.get(_id)
     if (attachment !== undefined) {
       await saveAttachment(attachment, objectId)
     }
   }
 
-  export async function removeAttachmentById (_id: Ref<Attachment>): Promise<void> {
+  export async function removeAttachmentById(_id: Ref<Attachment>): Promise<void> {
     const attachment = attachments.get(_id)
     if (attachment !== undefined) {
       await removeAttachment(attachment)
     }
   }
 
-  export async function createAttachments (_id: Ref<Doc> | undefined = objectId, op?: TxOperations): Promise<void> {
+  export async function createAttachments(_id: Ref<Doc> | undefined = objectId, op?: TxOperations): Promise<void> {
     if (saved) {
       return
     }
@@ -333,7 +333,7 @@
     removedAttachments.clear()
   }
 
-  function isAllowedPaste (evt: ClipboardEvent) {
+  function isAllowedPaste(evt: ClipboardEvent) {
     let t: HTMLElement | null = evt.target as HTMLElement
 
     if (!refContainer) {
@@ -350,7 +350,7 @@
     return false
   }
 
-  export async function pasteAction (evt: ClipboardEvent): Promise<void> {
+  export async function pasteAction(evt: ClipboardEvent): Promise<void> {
     if (!isAllowedPaste(evt)) {
       return
     }
@@ -372,7 +372,7 @@
     }
   }
 
-  export function getAttachments (): Attachment[] {
+  export function getAttachments(): Attachment[] {
     return Array.from(attachments.values())
   }
 

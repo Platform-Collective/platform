@@ -33,17 +33,17 @@
       states = res
     })
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     await client.update(transition, { triggerParams: params, trigger: selectedTrigger })
     clearSettingsStore()
   }
 
-  async function remove (): Promise<void> {
+  async function remove(): Promise<void> {
     await client.remove(transition)
     clearSettingsStore()
   }
 
-  function change (e: CustomEvent<Record<string, any>>): void {
+  function change(e: CustomEvent<Record<string, any>>): void {
     if (e.detail?.params !== undefined) {
       params = e.detail.params
     }
@@ -69,13 +69,13 @@
     process &&
     client.getModel().findAllSync(plugin.class.Transition, { from: null, process: process._id })[0] === undefined
 
-  async function updateFrom (e: CustomEvent<ListItem>): Promise<void> {
+  async function updateFrom(e: CustomEvent<ListItem>): Promise<void> {
     if (transition === undefined) return
     const from = (e.detail?._id as Ref<State>) ?? null
     await client.update(transition, { from })
   }
 
-  async function updateTo (e: CustomEvent<ListItem>): Promise<void> {
+  async function updateTo(e: CustomEvent<ListItem>): Promise<void> {
     if (transition === undefined) return
     const to = e.detail?._id as Ref<State>
     if (to === undefined) return

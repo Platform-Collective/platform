@@ -109,24 +109,24 @@ export default plugin(loginId, {
     SendInvite: '' as Resource<(email: string, role: AccountRole) => Promise<void>>,
     ResendInvite: '' as Resource<(email: string, role: AccountRole) => Promise<void>>,
     GetInviteLink: '' as Resource<
-    (
-      expHours: number,
-      mask: string,
-      limit: number | undefined,
-      role: AccountRole,
-      navigateUrl?: string
-    ) => Promise<string>
+      (
+        expHours: number,
+        mask: string,
+        limit: number | undefined,
+        role: AccountRole,
+        navigateUrl?: string
+      ) => Promise<string>
     >,
     LeaveWorkspace: '' as Resource<(account: string) => Promise<LoginInfo | null>>,
     CheckHasPassword: '' as Resource<() => Promise<boolean>>,
     ChangePassword: '' as Resource<(oldPassword: string, password: string) => Promise<void>>,
     RequestPasswordSetup: '' as Resource<() => Promise<void>>,
     SelectWorkspace: '' as Resource<
-    (
-      workspace: string,
-      token: string | null | undefined,
-      doNavigate?: boolean | undefined // Default to true
-    ) => Promise<[Status, WorkspaceLoginInfo | undefined, boolean]>
+      (
+        workspace: string,
+        token: string | null | undefined,
+        doNavigate?: boolean | undefined // Default to true
+      ) => Promise<[Status, WorkspaceLoginInfo | undefined, boolean]>
     >,
     ExchangeGuestToken: '' as Resource<(token: string) => Promise<string>>,
     FetchWorkspace: '' as Resource<() => Promise<[Status, WorkspaceInfoWithStatus | undefined, boolean]>>,

@@ -327,7 +327,7 @@ export async function OnExecutionDone (txes: Tx[], control: TriggerControl): Pro
     const todosWithWorkslots = new Set(workslots.map((workslot) => workslot.attachedTo as string))
 
     for (const todo of todos) {
-      if (todosWithWorkslots.has(todo._id as string)) continue
+      if (todosWithWorkslots.has(todo._id)) continue
       res.push(control.txFactory.createTxRemoveDoc(todo._class, todo.space, todo._id))
     }
   }

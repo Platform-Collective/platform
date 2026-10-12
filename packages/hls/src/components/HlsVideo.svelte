@@ -36,12 +36,12 @@
   const token = getMetadata(presentation.metadata.Token) ?? ''
 
   class loader extends HLS.DefaultConfig.loader {
-    constructor (config: HlsConfig) {
+    constructor(config: HlsConfig) {
       super(config)
       this.load = this.load.bind(this)
     }
 
-    load (context: LoaderContext, config: LoaderConfiguration, callbacks: LoaderCallbacks<LoaderContext>): void {
+    load(context: LoaderContext, config: LoaderConfiguration, callbacks: LoaderCallbacks<LoaderContext>): void {
       const url = new URL(context.url)
       const pathname = url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname
       const blobId = pathname.split('/').pop()
@@ -63,7 +63,7 @@
     controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'settings', 'fullscreen']
   }
 
-  function initialize (src: string): void {
+  function initialize(src: string): void {
     if (video === null) {
       return
     }
@@ -152,7 +152,7 @@
     player?.destroy()
   })
 
-  function updateQuality (newQuality: number): void {
+  function updateQuality(newQuality: number): void {
     if (hls === null) {
       return
     }

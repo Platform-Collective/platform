@@ -69,7 +69,7 @@
     objects = newElements.concat(result)
   })
 
-  async function onCreateTagElement (res: Ref<TagElement> | undefined | null): Promise<void> {
+  async function onCreateTagElement(res: Ref<TagElement> | undefined | null): Promise<void> {
     if (res == null) return
     const tag = await getClient().findOne(tags.class.TagElement, { _id: res })
     dispatch('update', { action: 'add', tag })
@@ -77,11 +77,11 @@
     inProcess = false
   }
 
-  async function createTagElementPopup (): Promise<void> {
+  async function createTagElementPopup(): Promise<void> {
     showPopup(CreateTagElement, { targetClass, title: search }, 'top', onCreateTagElement)
   }
 
-  async function createTagElementQuick (): Promise<void> {
+  async function createTagElementQuick(): Promise<void> {
     const res = await createTagElement(
       search,
       targetClass,
@@ -124,7 +124,7 @@
     return r
   }
 
-  async function onSearchKeydown (ev: KeyboardEvent): Promise<void> {
+  async function onSearchKeydown(ev: KeyboardEvent): Promise<void> {
     if (ev.code !== 'Enter') return
     if (!inProcess && !hideAdd && objects.length < 1) {
       inProcess = true

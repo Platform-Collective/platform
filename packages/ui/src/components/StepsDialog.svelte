@@ -49,7 +49,7 @@
   let isStepValid = false
   let isSaving = false
 
-  async function handleStepSelect (index: number) {
+  async function handleStepSelect(index: number) {
     const newStepIndex = index < steps.length ? Math.max(0, index) : Math.max(0, steps.length - 1)
 
     if (newStepIndex > currentStepIndex) {
@@ -60,17 +60,17 @@
     isStepValid = false
   }
 
-  function handleComponentChange (ev: CustomEvent<{ isValid?: boolean }>) {
+  function handleComponentChange(ev: CustomEvent<{ isValid?: boolean }>) {
     isStepValid = !!ev.detail.isValid
   }
 
-  async function handleDone () {
+  async function handleDone() {
     await completeCurrentStep()
 
     dispatch('close')
   }
 
-  async function completeCurrentStep () {
+  async function completeCurrentStep() {
     if (!step?.done) {
       return
     }
@@ -124,8 +124,8 @@
       on:click={isDone
         ? handleDone
         : async () => {
-          await handleStepSelect(currentStepIndex + 1)
-        }}
+            await handleStepSelect(currentStepIndex + 1)
+          }}
     />
   </svelte:fragment>
 
@@ -162,8 +162,8 @@
               on:click={disabled || selected
                 ? undefined
                 : async () => {
-                  await handleStepSelect(index)
-                }}
+                    await handleStepSelect(index)
+                  }}
             >
               <Label label={step.name} />
             </li>

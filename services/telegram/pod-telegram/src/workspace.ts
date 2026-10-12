@@ -35,11 +35,11 @@ import { createPlatformClient, getFiles, normalizeValue } from './utils'
 
 export class WorkspaceWorker {
   private readonly clients = new Map<
-  string,
-  {
-    conn: TelegramConnectionInterface
-    queue?: MsgQueue
-  }
+    string,
+    {
+      conn: TelegramConnectionInterface
+      queue?: MsgQueue
+    }
   >()
 
   private channels: Map<string, Channel[]> = new Map<string, Channel[]>()
@@ -639,7 +639,7 @@ export class WorkspaceWorker {
     const res: Buffer[] = []
     for (const attachment of attachments) {
       const chunks = await this.storageAdapter.read(this.ctx, this.workspace as any, attachment.file) // TODO: FIXME <--WorkspaceIds
-      const buffer = Buffer.concat(chunks as unknown as Uint8Array[])
+      const buffer = Buffer.concat(chunks)
       if (buffer.length > 0) {
         res.push(
           Object.assign(buffer, {

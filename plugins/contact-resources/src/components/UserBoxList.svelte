@@ -43,7 +43,7 @@
 
   export let sort: ((a: Person, b: Person) => number) | undefined = undefined
 
-  function filter (items: Ref<Person>[] | undefined): Ref<Person>[] {
+  function filter(items: Ref<Person>[] | undefined): Ref<Person>[] {
     return (items ?? []).filter((it, idx, arr) => arr.indexOf(it) === idx)
   }
 
@@ -55,7 +55,7 @@
 
   const dispatch = createEventDispatcher()
 
-  async function addPerson (evt: Event): Promise<void> {
+  async function addPerson(evt: Event): Promise<void> {
     const popupProps: any = {
       _class,
       label,

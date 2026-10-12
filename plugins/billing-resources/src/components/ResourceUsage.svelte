@@ -38,7 +38,7 @@
   let totalTranscriptDuration = 0
   let totalTokensCount = 0
 
-  async function loadBillingData (): Promise<void> {
+  async function loadBillingData(): Promise<void> {
     if (billingClient == null) return
     const billingStats = await billingClient.getBillingStats(getCurrentWorkspaceUuid())
     totalDatalakeSize = billingStats.datalakeStats.size

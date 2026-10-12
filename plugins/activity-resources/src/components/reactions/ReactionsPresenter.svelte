@@ -32,7 +32,7 @@
 
   $: updateReactions(hasReactions, object, lookupReactions)
 
-  function updateReactions (hasReactions: boolean, object?: ActivityMessage, lookupReaction?: Reaction[]): void {
+  function updateReactions(hasReactions: boolean, object?: ActivityMessage, lookupReaction?: Reaction[]): void {
     if (lookupReaction !== undefined) {
       reactions = lookupReaction
     } else if (object && hasReactions) {

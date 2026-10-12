@@ -256,7 +256,7 @@ export function preparePageProjection<T extends Doc> (
       added.add(field)
     }
   }
-  return { projection: patched as FindOptions<T>['projection'], added }
+  return { projection: patched, added }
 }
 
 /**

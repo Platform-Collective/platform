@@ -40,7 +40,7 @@
     associations = res
   })
 
-  function getClassLabel (_class: Ref<Class<Doc>>): IntlString {
+  function getClassLabel(_class: Ref<Class<Doc>>): IntlString {
     try {
       const _classLabel = hierarchy.getClass(_class)
       return _classLabel.label
@@ -50,7 +50,7 @@
     }
   }
 
-  function addRelation (): void {
+  function addRelation(): void {
     showPopup(
       CreateRelation,
       {

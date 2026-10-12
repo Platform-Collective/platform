@@ -140,7 +140,7 @@ export function groupComponentValuesWithEmpty (
       resQuery._id = st
     }
     componentsList = matchQuery<Doc>(componentsList, resQuery, _class, hierarchy) as unknown as Array<
-    WithLookup<Component>
+      WithLookup<Component>
     >
   }
   return componentsList.map((it) => it._id)

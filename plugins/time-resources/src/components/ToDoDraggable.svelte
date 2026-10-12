@@ -56,7 +56,7 @@
     }
   }
 
-  function handleDragStart (event: DragEvent): void {
+  function handleDragStart(event: DragEvent): void {
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move'
     }
@@ -70,7 +70,7 @@
     }))
   }
 
-  function handleDragEnd (): void {
+  function handleDragEnd(): void {
     isDragging = false
     dragging.set({
       item: null,
@@ -83,7 +83,7 @@
     })
   }
 
-  function handleDragOver (): void {
+  function handleDragOver(): void {
     if (!isDraggable) return
     dragging.update((state) => ({
       ...state,
@@ -93,7 +93,7 @@
     }))
   }
 
-  function handleDrop (event: DragEvent): void {
+  function handleDrop(event: DragEvent): void {
     if (!isDraggable) return
     dispatch('drop', { event, index })
   }

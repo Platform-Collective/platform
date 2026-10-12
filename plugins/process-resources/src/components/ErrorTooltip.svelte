@@ -20,7 +20,7 @@
 
   export let value: ExecutionError[]
 
-  async function fillProps (value: ExecutionError[]): Promise<ExecutionError[]> {
+  async function fillProps(value: ExecutionError[]): Promise<ExecutionError[]> {
     for (const val of value) {
       for (const key in val.intlProps) {
         try {

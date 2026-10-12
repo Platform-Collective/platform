@@ -57,11 +57,11 @@ export function getDocInfoFromLocation (loc: Location): Pick<Doc, '_id' | '_clas
 }
 
 export function getMessageInfoFromLocation (loc: Location):
-| {
-  id: Ref<ActivityMessage> | MessageID
-  date?: Date
-}
-| undefined {
+  | {
+      id: Ref<ActivityMessage> | MessageID
+      date?: Date
+    }
+  | undefined {
   if (loc.path[2] !== inboxId) return undefined
   if (loc.query?.message == null || loc.query.message === '') return undefined
 
@@ -207,12 +207,12 @@ export async function selectInboxContext (
         doc?._id === objectId
           ? (doc as ThreadMessage)
           : await client.findOne(
-            chunter.class.ThreadMessage,
-            {
-              _id: objectId as Ref<ThreadMessage>
-            },
-            { projection: { _id: 1, attachedTo: 1 } }
-          )
+              chunter.class.ThreadMessage,
+              {
+                _id: objectId as Ref<ThreadMessage>
+              },
+              { projection: { _id: 1, attachedTo: 1 } }
+            )
 
       void navigateToInboxDoc(
         context._id,

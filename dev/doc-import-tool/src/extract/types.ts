@@ -103,9 +103,7 @@ const tocSection = z.object({
   node: tocParagraphSequence
 })
 
-const section = z.union([tocSection, genericSection])
-
-export type SectionSpec = z.infer<typeof section>
+export type SectionSpec = z.infer<typeof tocSection> | z.infer<typeof genericSection>
 export type TocSectionSpec = z.infer<typeof tocSection>
 
 // #endregion

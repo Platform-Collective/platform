@@ -38,7 +38,7 @@
 
   export let onCreate: ((orgId: Ref<Organization>, client: TxOperations) => Promise<void>) | undefined = undefined
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return object.name === ''
   }
 
@@ -57,7 +57,7 @@
 
   fillDefaults(hierarchy, object, contact.class.Organization)
 
-  async function createOrganization (): Promise<void> {
+  async function createOrganization(): Promise<void> {
     if (!isEmptyMarkup(description)) {
       const target = makeCollabId(contact.class.Organization, id, 'description')
       object.description = await createMarkup(target, description)

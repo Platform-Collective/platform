@@ -50,7 +50,7 @@
     }
   }
 
-  async function readCard (ref: Ref<Card>): Promise<void> {
+  async function readCard(ref: Ref<Card>): Promise<void> {
     cardObj = await client.findOne(card.class.Card, { _id: ref })
   }
 

@@ -31,24 +31,24 @@
   const dispatch = createEventDispatcher()
   let upload: Upload | undefined = undefined
 
-  function updateState (state: Map<string, Upload>): void {
+  function updateState(state: Map<string, Upload>): void {
     upload = state.get(uploadId)
     if (upload === undefined) {
       dispatch('close')
     }
   }
 
-  function handleCancelAll (): void {
+  function handleCancelAll(): void {
     upload?.files.forEach((element) => {
       element.cancel?.()
     })
   }
 
-  function handleCancelFile (file: FileUpload): void {
+  function handleCancelFile(file: FileUpload): void {
     file.cancel?.()
   }
 
-  function handleRetryFile (file: FileUpload): void {
+  function handleRetryFile(file: FileUpload): void {
     void file.retry?.()
   }
   onMount(() => {

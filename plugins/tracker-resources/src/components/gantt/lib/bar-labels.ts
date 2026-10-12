@@ -29,7 +29,7 @@ export type BarLabelSlot =
  * Intentionally synchronous and non-reactive — the Svelte caller resolves
  * once per `(issue, slot)` change and passes the result to <text>.
  */
-export function resolveBarLabel (issue: Issue, slot: BarLabelSlot): string {
+export function resolveBarLabel(issue: Issue, slot: BarLabelSlot): string {
   switch (slot) {
     case 'none':
       return ''

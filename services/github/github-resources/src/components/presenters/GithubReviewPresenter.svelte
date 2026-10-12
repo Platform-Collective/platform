@@ -33,7 +33,7 @@
     person = undefined
   }
 
-  function getCommentFromState (value?: GithubPullRequestReviewState): {
+  function getCommentFromState(value?: GithubPullRequestReviewState): {
     label: IntlString
     color?: number
   } {

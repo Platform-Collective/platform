@@ -64,8 +64,8 @@
     spaceType =
       id !== undefined
         ? await client
-          .getModel()
-          .findOne(core.class.SpaceType, { _id: id }, { lookup: { _id: { roles: core.class.Role } } })
+            .getModel()
+            .findOne(core.class.SpaceType, { _id: id }, { lookup: { _id: { roles: core.class.Role } } })
         : undefined
 
     if (drive === undefined || spaceType?.targetClass === undefined || spaceType?.$lookup?.roles === undefined) {
@@ -75,7 +75,7 @@
     rolesAssignment = getRolesAssignment()
   })
 
-  function getRolesAssignment (): RolesAssignment {
+  function getRolesAssignment(): RolesAssignment {
     if (drive === undefined || spaceType?.targetClass === undefined || spaceType?.$lookup?.roles === undefined) {
       return {}
     }
@@ -89,7 +89,7 @@
     }, {})
   }
 
-  async function handleSave (): Promise<void> {
+  async function handleSave(): Promise<void> {
     if (drive === undefined) {
       await createDrive()
     } else {
@@ -97,7 +97,7 @@
     }
   }
 
-  function getDriveData (): Omit<Data<Drive>, 'type'> {
+  function getDriveData(): Omit<Data<Drive>, 'type'> {
     return {
       name,
       description,
@@ -110,7 +110,7 @@
     }
   }
 
-  async function updateDrive (): Promise<void> {
+  async function updateDrive(): Promise<void> {
     if (drive === undefined || spaceType?.targetClass === undefined) {
       return
     }
@@ -131,7 +131,7 @@
     close()
   }
 
-  async function createDrive (): Promise<void> {
+  async function createDrive(): Promise<void> {
     if (typeId === undefined || spaceType?.targetClass === undefined) {
       return
     }
@@ -147,24 +147,24 @@
     close(driveId)
   }
 
-  function close (id?: Ref<Drive>): void {
+  function close(id?: Ref<Drive>): void {
     dispatch('close', id)
   }
 
-  function handleTypeChange (evt: CustomEvent<Ref<SpaceType>>): void {
+  function handleTypeChange(evt: CustomEvent<Ref<SpaceType>>): void {
     typeId = evt.detail
   }
 
   $: roles = (spaceType?.$lookup?.roles ?? []) as Role[]
 
-  function handleOwnersChanged (newOwners: AccountUuid[]): void {
+  function handleOwnersChanged(newOwners: AccountUuid[]): void {
     owners = newOwners
 
     const newMembersSet = new Set([...members, ...newOwners])
     members = Array.from(newMembersSet)
   }
 
-  function handleMembersChanged (newMembers: AccountUuid[]): void {
+  function handleMembersChanged(newMembers: AccountUuid[]): void {
     // If a member was removed we need to remove it from any roles assignments as well
     const newMembersSet = new Set(newMembers)
     const removedMembersSet = new Set(members.filter((m) => !newMembersSet.has(m)))
@@ -178,7 +178,7 @@
     members = newMembers
   }
 
-  function handleRoleAssignmentChanged (roleId: Ref<Role>, newMembers: AccountUuid[]): void {
+  function handleRoleAssignmentChanged(roleId: Ref<Role>, newMembers: AccountUuid[]): void {
     if (rolesAssignment === undefined) {
       rolesAssignment = {}
     }

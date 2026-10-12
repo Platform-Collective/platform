@@ -32,7 +32,7 @@
 
   let played = false
 
-  async function getData (href: string): Promise<Data> {
+  async function getData(href: string): Promise<Data> {
     const res = await (
       await fetch(`https://www.youtube.com/oembed?url=${href}&format=json&maxwidth=${maxWidth}&maxheight=${maxHeight}`)
     ).json()
@@ -46,7 +46,7 @@
     }
   }
 
-  function setHeigh (emb: HTMLElement): void {
+  function setHeigh(emb: HTMLElement): void {
     const child = emb.firstElementChild as HTMLElement
     child.style.height = `${height}px`
     child.setAttribute('height', `${height}px`)

@@ -88,67 +88,123 @@ import { ratingId } from '@hcengineering/rating'
 import billingPlugin, { billingId } from '@hcengineering/billing'
 
 import '@hcengineering/activity-assets'
+import * as ActivityLang from '@hcengineering/activity-assets/lang'
 import '@hcengineering/analytics-collector-assets'
 import '@hcengineering/attachment-assets'
+import * as AttachmentLang from '@hcengineering/attachment-assets/lang'
 import '@hcengineering/bitrix-assets'
+import * as BitrixLang from '@hcengineering/bitrix-assets/lang'
 import '@hcengineering/board-assets'
+import * as BoardLang from '@hcengineering/board-assets/lang'
 import '@hcengineering/calendar-assets'
+import * as CalendarLang from '@hcengineering/calendar-assets/lang'
 import '@hcengineering/card-assets'
+import * as CardLang from '@hcengineering/card-assets/lang'
 import '@hcengineering/chunter-assets'
+import * as ChunterLang from '@hcengineering/chunter-assets/lang'
 import '@hcengineering/contact-assets'
+import * as ContactLang from '@hcengineering/contact-assets/lang'
 import '@hcengineering/controlled-documents-assets'
+import * as ControlledDocumentsLang from '@hcengineering/controlled-documents-assets/lang'
 import '@hcengineering/desktop-preferences-assets'
+import * as DesktopPreferencesLang from '@hcengineering/desktop-preferences-assets/lang'
 import '@hcengineering/desktop-downloads-assets'
+import * as DesktopDownloadsLang from '@hcengineering/desktop-downloads-assets/lang'
 import '@hcengineering/diffview-assets'
+import * as DiffviewLang from '@hcengineering/diffview-assets/lang'
 import '@hcengineering/document-assets'
+import * as DocumentLang from '@hcengineering/document-assets/lang'
 import '@hcengineering/drive-assets'
+import * as DriveLang from '@hcengineering/drive-assets/lang'
 import '@hcengineering/export-assets'
+import * as ExportLang from '@hcengineering/export-assets/lang'
 import '@hcengineering/gmail-assets'
+import * as GmailLang from '@hcengineering/gmail-assets/lang'
 import '@hcengineering/guest-assets'
+import * as GuestLang from '@hcengineering/guest-assets/lang'
 import '@hcengineering/global-profile-assets'
+import * as GlobalProfileLang from '@hcengineering/global-profile-assets/lang'
 import '@hcengineering/hr-assets'
+import * as HrLang from '@hcengineering/hr-assets/lang'
 import '@hcengineering/inventory-assets'
+import * as InventoryLang from '@hcengineering/inventory-assets/lang'
 import '@hcengineering/lead-assets'
+import * as LeadLang from '@hcengineering/lead-assets/lang'
 import '@hcengineering/login-assets'
+import * as LoginLang from '@hcengineering/login-assets/lang'
 import '@hcengineering/love-assets'
+import * as LoveLang from '@hcengineering/love-assets/lang'
 import '@hcengineering/notification-assets'
+import * as NotificationLang from '@hcengineering/notification-assets/lang'
+import '@hcengineering/onboard-assets'
+import * as OnboardLang from '@hcengineering/onboard-assets/lang'
 import '@hcengineering/preference-assets'
+import * as PreferenceLang from '@hcengineering/preference-assets/lang'
 import '@hcengineering/print-assets'
+import * as PrintLang from '@hcengineering/print-assets/lang'
 import '@hcengineering/process-assets'
+import * as ProcessLang from '@hcengineering/process-assets/lang'
 import '@hcengineering/products-assets'
+import * as ProductsLang from '@hcengineering/products-assets/lang'
 import '@hcengineering/questions-assets'
+import * as QuestionsLang from '@hcengineering/questions-assets/lang'
 import '@hcengineering/recruit-assets'
+import * as RecruitLang from '@hcengineering/recruit-assets/lang'
 import '@hcengineering/request-assets'
+import * as RequestLang from '@hcengineering/request-assets/lang'
 import '@hcengineering/setting-assets'
+import * as SettingLang from '@hcengineering/setting-assets/lang'
 import '@hcengineering/support-assets'
+import * as SupportLang from '@hcengineering/support-assets/lang'
 import '@hcengineering/survey-assets'
+import * as SurveyLang from '@hcengineering/survey-assets/lang'
 import '@hcengineering/tags-assets'
+import * as TagsLang from '@hcengineering/tags-assets/lang'
 import '@hcengineering/task-assets'
+import * as TaskLang from '@hcengineering/task-assets/lang'
 import '@hcengineering/telegram-assets'
+import * as TelegramLang from '@hcengineering/telegram-assets/lang'
 import '@hcengineering/templates-assets'
+import * as TemplatesLang from '@hcengineering/templates-assets/lang'
 import '@hcengineering/test-management-assets'
+import * as TestManagementLang from '@hcengineering/test-management-assets/lang'
 import '@hcengineering/text-editor-assets'
+import * as TextEditorLang from '@hcengineering/text-editor-assets/lang'
 import '@hcengineering/time-assets'
+import * as TimeLang from '@hcengineering/time-assets/lang'
 import '@hcengineering/tracker-assets'
+import * as TrackerLang from '@hcengineering/tracker-assets/lang'
 import '@hcengineering/training-assets'
+import * as TrainingLang from '@hcengineering/training-assets/lang'
 import '@hcengineering/uploader-assets'
+import * as UploaderLang from '@hcengineering/uploader-assets/lang'
 import '@hcengineering/recorder-assets'
+import * as RecorderLang from '@hcengineering/recorder-assets/lang'
 import '@hcengineering/view-assets'
+import * as ViewLang from '@hcengineering/view-assets/lang'
 import '@hcengineering/workbench-assets'
+import * as WorkbenchLang from '@hcengineering/workbench-assets/lang'
 import '@hcengineering/mail-assets'
 import '@hcengineering/chat-assets'
 import '@hcengineering/inbox-assets'
 import '@hcengineering/achievement-assets'
+import * as AchievementLang from '@hcengineering/achievement-assets/lang'
 import '@hcengineering/emoji-assets'
+import * as EmojiLang from '@hcengineering/emoji-assets/lang'
 import '@hcengineering/media-assets'
 import '@hcengineering/communication-assets'
 import '@hcengineering/billing-assets'
+import * as BillingLang from '@hcengineering/billing-assets/lang'
 import '@hcengineering/huly-mail-assets'
+import * as HulyMailLang from '@hcengineering/huly-mail-assets/lang'
 import '@hcengineering/ai-assistant-assets'
+import * as AiAssistantLang from '@hcengineering/ai-assistant-assets/lang'
 import '@hcengineering/rating-assets'
 
 import analyticsCollector, { analyticsCollectorId } from '@hcengineering/analytics-collector'
 import { coreId } from '@hcengineering/core'
+import * as CoreLang from '@hcengineering/core/lang'
+import * as PlatformLang from '@hcengineering/platform/lang'
 import love, { loveId } from '@hcengineering/love'
 import presentation, { createFileStorage, presentationId } from '@hcengineering/presentation'
 import print, { printId } from '@hcengineering/print'
@@ -163,39 +219,19 @@ import { ipcMainExposed } from './typesUtils'
 
 import github, { githubId } from '@hcengineering/github'
 import '@hcengineering/github-assets'
+import * as GithubLang from '@hcengineering/github-assets/lang'
 import { preferenceId } from '@hcengineering/preference'
 import { uiId } from '@hcengineering/ui/src/plugin'
 
 function configureI18n (): void {
   // Add localization
-  addStringsLoader(
-    platformId,
-    async (lang: string) =>
-      await import(
-        /* webpackInclude: /\.json$/ */
-        /* webpackMode: "lazy" */
-        /* webpackChunkName: "lang-[request]" */
-        `@hcengineering/platform/lang/${lang}.json`
-      )
-  )
-  addStringsLoader(
-    coreId,
-    async (lang: string) =>
-      await import(
-        /* webpackInclude: /\.json$/ */
-        /* webpackMode: "lazy" */
-        /* webpackChunkName: "lang-[request]" */
-        `@hcengineering/core/lang/${lang}.json`
-      )
-  )
+  addStringsLoader(platformId, PlatformLang.loadLang)
+  addStringsLoader(coreId, CoreLang.loadLang)
   addStringsLoader(
     presentationId,
     async (lang: string) => await import(`@hcengineering/presentation/lang/${lang}.json`)
   )
-  addStringsLoader(
-    textEditorId,
-    async (lang: string) => await import(`@hcengineering/text-editor-assets/lang/${lang}.json`)
-  )
+  addStringsLoader(textEditorId, TextEditorLang.loadLang)
   addStringsLoader(uiId, async (lang: string) => await import(`@hcengineering/ui/lang/${lang}.json`))
   addStringsLoader(mediaId, async (lang: string) => await import(`@hcengineering/media-assets/lang/${lang}.json`))
   addStringsLoader(uploaderId, async (lang: string) => await import(`@hcengineering/uploader-assets/lang/${lang}.json`))

@@ -112,9 +112,10 @@ export const main = async (): Promise<void> => {
         try {
           ctx.info('Signin code request received')
           const code = req.query.code as string
-          state = JSON.parse(decode64(req.query.state as string)) as unknown as State
-          await gmailController.createClient(state, code)
-          res.redirect(state.redirectURL)
+          const parsedState: State = JSON.parse(decode64(req.query.state as string))
+          state = parsedState
+          await gmailController.createClient(parsedState, code)
+          res.redirect(parsedState.redirectURL)
         } catch (err: any) {
           ctx.error('Failed to process signin code', { message: err.message })
           if (state !== undefined) {

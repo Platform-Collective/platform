@@ -48,7 +48,7 @@
     dummyPopup.close()
   })
 
-  function dispatchItem (item: { id: string, label: string, objectclass: string }): void {
+  function dispatchItem(item: { id: string, label: string, objectclass: string }): void {
     if (item == null) {
       close()
     } else {
@@ -58,13 +58,13 @@
 
   let searchPopup: MentionPopup
 
-  export function onKeyDown (ev: KeyboardEvent): boolean {
+  export function onKeyDown(ev: KeyboardEvent): boolean {
     return searchPopup?.onKeyDown(ev)
   }
 
-  export function done (): void {}
+  export function done(): void {}
 
-  function updateStyle (): void {
+  function updateStyle(): void {
     const rect = clientRect()
     const wDoc = $deviceInfo.docWidth
     const hDoc = $deviceInfo.docHeight

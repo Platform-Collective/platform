@@ -35,7 +35,7 @@
     (transactorEndpoint.endsWith('/') ? transactorEndpoint.slice(0, -1) : transactorEndpoint) + '/api/v1'
   $: curlExample = `curl -H "Authorization: Bearer YOUR_TOKEN" \\\n  "${baseApiUrl}/find-all/WORKSPACE_ID?class=tracker:class:Project"`
 
-  async function copySnippet (text: string): Promise<void> {
+  async function copySnippet(text: string): Promise<void> {
     await copyTextToClipboard(text)
   }
 </script>

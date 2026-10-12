@@ -47,11 +47,11 @@
     }
   }
 
-  function newDocument (): void {
+  function newDocument(): void {
     showPopup(documents.component.QmsDocumentWizard, { _class: documents.class.ControlledDocument })
   }
 
-  function dropdownItemSelected (res?: SelectPopupValueType['id']): void {
+  function dropdownItemSelected(res?: SelectPopupValueType['id']): void {
     if (res == null) return
 
     if (res === documents.string.DocumentTemplate) {

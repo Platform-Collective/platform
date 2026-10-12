@@ -102,7 +102,7 @@
 
   let remove: any = null
 
-  function checkSystemTheme (): void {
+  function checkSystemTheme(): void {
     const theme = $currentTheme
     if (remove !== null || theme !== 'theme-system') {
       remove()

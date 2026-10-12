@@ -37,14 +37,14 @@
   $: imageDimensions =
     linkPreview.imageWidth && linkPreview.imageHeight
       ? getImageDimensions(
-        { width: linkPreview.imageWidth, height: linkPreview.imageHeight },
-        {
-          maxWidth: 23.5,
-          minWidth: 4,
-          maxHeight: 15,
-          minHeight: 4
-        }
-      )
+          { width: linkPreview.imageWidth, height: linkPreview.imageHeight },
+          {
+            maxWidth: 23.5,
+            minWidth: 4,
+            maxHeight: 15,
+            minHeight: 4
+          }
+        )
       : undefined
 </script>
 

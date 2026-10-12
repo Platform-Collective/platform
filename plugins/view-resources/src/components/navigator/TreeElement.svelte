@@ -53,7 +53,7 @@
   export let showMenu: boolean = false
   export let noDivider: boolean = false
   export let showNotify: boolean = false
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
   export let actions: (originalEvent?: MouseEvent) => Promise<Action[]> = async () => []
   export let draggable: boolean = false
 
@@ -68,7 +68,7 @@
     })
   }
 
-  async function onMenuClick (ev: MouseEvent): Promise<void> {
+  async function onMenuClick(ev: MouseEvent): Promise<void> {
     // Read actual popup actions on open as visibility might have been changed
     pressed = true
     popupMenuActions = await actions().then((res) => res.filter((action) => action.inline !== true))
@@ -77,7 +77,7 @@
     })
   }
 
-  async function onInlineClick (ev: MouseEvent, action: Action): Promise<void> {
+  async function onInlineClick(ev: MouseEvent, action: Action): Promise<void> {
     action.action([], ev)
   }
 </script>
@@ -100,7 +100,7 @@
     {isFold}
     {empty}
     {visible}
-    {forciblyСollapsed}
+    {forciblyCollapsed}
     {shouldTooltip}
     showMenu={showMenu || pressed}
     {noDivider}
@@ -169,7 +169,7 @@
     {isFold}
     {empty}
     {visible}
-    {forciblyСollapsed}
+    {forciblyCollapsed}
     {level}
     {shouldTooltip}
     {draggable}

@@ -50,7 +50,7 @@
   export let empty: boolean = false
   export let collapsedPrefix: string = ''
   export let visible: boolean = false
-  export let forciblyСollapsed: boolean = false
+  export let forciblyCollapsed: boolean = false
   export let level: number = 0
   export let _id: any = undefined
 
@@ -159,9 +159,9 @@
   {/if}
   <slot name="notify" />
 </button>
-{#if (isFold && (isOpen || (!isOpen && visible)) && !empty) || forciblyСollapsed}
+{#if (isFold && (isOpen || (!isOpen && visible)) && !empty) || forciblyCollapsed}
   <div class="hulyNavItem-dropbox">
-    {#if (!isOpen && visible) || forciblyСollapsed}
+    {#if (!isOpen && visible) || forciblyCollapsed}
       <slot name="visible" {isOpen} />
     {:else}
       <slot name="dropbox" />

@@ -59,7 +59,7 @@
     levelQuery.unsubscribe()
   }
 
-  async function viewProfile (): Promise<void> {
+  async function viewProfile(): Promise<void> {
     if (employee === undefined) return
     const panelComponent = hierarchy.classHierarchyMixin(employee._class as Ref<Class<Doc>>, view.mixin.ObjectPanel)
     const comp = panelComponent?.component ?? view.component.EditDoc

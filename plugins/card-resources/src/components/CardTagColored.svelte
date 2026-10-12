@@ -31,7 +31,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function getTagStyle (color: ColorDefinition): string {
+  function getTagStyle(color: ColorDefinition): string {
     return `
     background: ${color.color + '33'};
     border: 1px solid ${color.color + '66'};

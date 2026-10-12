@@ -15,7 +15,7 @@
 
 import { presenceId, presencePlugin } from './plugin'
 
-export * from './types'
+export type * from './types'
 
 export { presenceId }
 export default presencePlugin

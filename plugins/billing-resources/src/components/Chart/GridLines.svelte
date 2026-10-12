@@ -11,7 +11,7 @@
   let lineStep = 0
   let valueStep = 0
 
-  function updateValues (values: number[], height: number, minDistance: number): void {
+  function updateValues(values: number[], height: number, minDistance: number): void {
     stepsCount = Math.floor(height / minDistance)
     minValue = Math.min.apply(Math, values)
     maxValue = Math.max.apply(Math, values)

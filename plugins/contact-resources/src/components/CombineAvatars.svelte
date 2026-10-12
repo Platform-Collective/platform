@@ -40,7 +40,7 @@
     { limit: includeEmpty ? limit - 1 : limit }
   )
 
-  function getDataOver (last: boolean, items: (Ref<Contact> | undefined | null)[]): string | undefined {
+  function getDataOver(last: boolean, items: (Ref<Contact> | undefined | null)[]): string | undefined {
     if (hideLimit) return
     if (items.length > limit && last) {
       return `+${items.length - limit + 1}`

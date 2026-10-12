@@ -41,7 +41,7 @@
     }
   }
 
-  function onAttribute (attr: AnyAttribute): void {
+  function onAttribute(attr: AnyAttribute): void {
     const valueFunc = getValueReduceFunc(attr, target)
     onSelect({
       type: 'context',

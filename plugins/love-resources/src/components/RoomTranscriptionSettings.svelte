@@ -21,11 +21,11 @@
 
   const client = getClient()
 
-  async function toggleTranscribing (): Promise<void> {
+  async function toggleTranscribing(): Promise<void> {
     await client.diffUpdate(room, { startWithTranscription: !room.startWithTranscription })
   }
 
-  async function toggleRecording (): Promise<void> {
+  async function toggleRecording(): Promise<void> {
     await client.diffUpdate(room, { startWithRecording: !room.startWithRecording })
   }
 </script>

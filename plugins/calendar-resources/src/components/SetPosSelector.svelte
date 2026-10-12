@@ -96,7 +96,7 @@
 
   $: selectedByDay = byDayItems.find((p) => p.id === setPos.byDay.join(','))?.id ?? 'SU,MO,TU,WE,TH,FR,SA'
 
-  function byDaySelect (e: CustomEvent<string | undefined>) {
+  function byDaySelect(e: CustomEvent<string | undefined>) {
     const val = e.detail
     if (val !== undefined) {
       setPos.byDay = val.split(',')

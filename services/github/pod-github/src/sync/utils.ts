@@ -215,7 +215,7 @@ export async function guessStatus (
 export class SyncRunner {
   eventSync = new Map<string, Promise<void>>()
 
-  async exec<T>(id: string, op: () => Promise<T>): Promise<T> {
+  async exec<T> (id: string, op: () => Promise<T>): Promise<T> {
     await this.eventSync.get(id)
     const promise = op()
     this.eventSync.set(

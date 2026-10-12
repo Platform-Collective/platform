@@ -63,7 +63,7 @@
     integrationTypes = res
   })
 
-  function getIntegrations (type: IntegrationType, integrations: Integration[]): Integration[] {
+  function getIntegrations(type: IntegrationType, integrations: Integration[]): Integration[] {
     return integrations.filter((p) => p.kind === type.kind)
   }
 
@@ -110,7 +110,7 @@
     }
   })
 
-  function subscribe (): void {
+  function subscribe(): void {
     unsubscribers.push(
       onIntegrationEvent('integration:updated', onRefreshIntegrations),
       onIntegrationEvent('integration:created', onRefreshIntegrations),
@@ -118,12 +118,12 @@
     )
   }
 
-  function onRefreshIntegrations (data: any): void {
+  function onRefreshIntegrations(data: any): void {
     lastEventTime = Date.now()
     void refreshIntegrations()
   }
 
-  function startRefreshTimer (): void {
+  function startRefreshTimer(): void {
     if (refreshTimer !== null) {
       clearInterval(refreshTimer)
     }
@@ -138,7 +138,7 @@
     }, 10000)
   }
 
-  async function refreshIntegrations (): Promise<void> {
+  async function refreshIntegrations(): Promise<void> {
     // If there's already a promise, return it to avoid concurrent calls
     if (loadIntegrationsPromise !== null) {
       await loadIntegrationsPromise
@@ -160,7 +160,7 @@
     loadIntegrationsPromise = null
   }
 
-  async function showErrorNotification (error: string): Promise<void> {
+  async function showErrorNotification(error: string): Promise<void> {
     const errorMessage =
       error === IntegrationError.EMAIL_IS_ALREADY_USED
         ? await translate(setting.string.EmailIsUsed, {}, $themeStore.language)
@@ -174,7 +174,7 @@
     )
   }
 
-  async function showLoadErrorNotification (): Promise<void> {
+  async function showLoadErrorNotification(): Promise<void> {
     addNotification(
       await translate(setting.string.FailedToLoadIntegrations, {}, $themeStore.language),
       await translate(setting.string.IntegrationError, {}, $themeStore.language),
@@ -188,7 +188,7 @@
     integration?: Integration
   }
 
-  function getFilteredIntegrationTypes (
+  function getFilteredIntegrationTypes(
     mode: string,
     integrationTypes: IntegrationType[],
     integrations: Integration[]
@@ -236,7 +236,7 @@
   // Reactive statement to get filtered integration types
   $: filteredIntegrationTypes = getFilteredIntegrationTypes(mode, integrationTypes, integrations)
 
-  function getIntegrationKey (integrationInfo: IntegrationInfo): string {
+  function getIntegrationKey(integrationInfo: IntegrationInfo): string {
     const { integration, integrationType } = integrationInfo
     if (integration === undefined && integrationType !== undefined) {
       return integrationType._id

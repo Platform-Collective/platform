@@ -38,7 +38,7 @@
 
   const dispatch = createEventDispatcher()
 
-  function change (e: CustomEvent<any>): void {
+  function change(e: CustomEvent<any>): void {
     if (e.detail !== undefined) {
       ;(step.params as any)._id = e.detail
       _id = e.detail
@@ -62,16 +62,16 @@
 
   $: processes = client.getModel().findAllSync(plugin.class.Process, { masterTag: { $in: ancestors } })
 
-  function changeThis (): void {
+  function changeThis(): void {
     step.params = {}
     dispatch('change', step)
   }
 
-  function changeTarget (e: CustomEvent<any>): void {
+  function changeTarget(e: CustomEvent<any>): void {
     step.params.card = e.detail.value
   }
 
-  function changeContext (e: CustomEvent<ExecutionContext>): void {
+  function changeContext(e: CustomEvent<ExecutionContext>): void {
     if (e.detail !== undefined) {
       step.params.context = e.detail
       dispatch('change', step)

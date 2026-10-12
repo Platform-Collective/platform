@@ -79,7 +79,7 @@
     })
   }
 
-  function applyInviteSettings (set: InviteSettings[]): void {
+  function applyInviteSettings(set: InviteSettings[]): void {
     existingInviteSettings = set
     const state = resolveInviteSettings(set[0])
     expTime = state.expirationTime
@@ -93,12 +93,12 @@
 
   $: query.query(setting.class.InviteSettings, {}, applyInviteSettings)
 
-  function normalizeValues (): void {
+  function normalizeValues(): void {
     expTime = Math.max(1, expTime)
     limit = noLimit ? -1 : Math.max(1, limit ?? 1)
   }
 
-  async function setInviteSettings (): Promise<void> {
+  async function setInviteSettings(): Promise<void> {
     if (inviteLimitInvalid) return
     normalizeValues()
     const savedLimit = limit ?? -1
@@ -138,12 +138,12 @@
     }
   }
 
-  async function autoSaveIfValid (): Promise<void> {
+  async function autoSaveIfValid(): Promise<void> {
     if (loading || inviteLimitInvalid) return
     await setInviteSettings()
   }
 
-  function handleNoLimitChange (e: CustomEvent<boolean>): void {
+  function handleNoLimitChange(e: CustomEvent<boolean>): void {
     noLimit = e.detail
     if (noLimit) {
       limit = -1
@@ -153,20 +153,20 @@
     void autoSaveIfValid()
   }
 
-  function handleExpTimeChange (): void {
+  function handleExpTimeChange(): void {
     void autoSaveIfValid()
   }
 
-  function handleLimitChange (): void {
+  function handleLimitChange(): void {
     void autoSaveIfValid()
   }
 
-  function handleDefaultInviteRoleSelected (e: CustomEvent<AccountRole>): void {
+  function handleDefaultInviteRoleSelected(e: CustomEvent<AccountRole>): void {
     defaultInviteRole = e.detail
     void autoSaveIfValid()
   }
 
-  function handleGeneratorRolesSelected (e: CustomEvent<AccountRole[] | undefined>): void {
+  function handleGeneratorRolesSelected(e: CustomEvent<AccountRole[] | undefined>): void {
     if (e.detail != null) {
       inviteLinkGeneratorRoles = [...e.detail]
     }

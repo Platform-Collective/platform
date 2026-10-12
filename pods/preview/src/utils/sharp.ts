@@ -13,33 +13,33 @@
 // limitations under the License.
 //
 
-import sharp from 'sharp'
+import sharp, { AvifOptions, JpegOptions, HeifOptions, PngOptions, WebpOptions, Sharp } from 'sharp'
 
 const QualityConfig = {
   jpeg: {
     quality: 85, // default + 5
     progressive: true,
     chromaSubsampling: '4:4:4'
-  } satisfies sharp.JpegOptions,
+  } satisfies JpegOptions,
   avif: {
     quality: 60, // default + 10
     effort: 5, // default + 1
     chromaSubsampling: '4:4:4' // default
-  } satisfies sharp.AvifOptions,
+  } satisfies AvifOptions,
   webp: {
     quality: 80, // default
     alphaQuality: 100, // default
     smartSubsample: true, // Better sharpness
     effort: 5 // default + 1
-  } satisfies sharp.WebpOptions,
+  } satisfies WebpOptions,
   heif: {
     quality: 80, // default + 30
     effort: 5 // default + 1
-  } satisfies sharp.HeifOptions,
+  } satisfies HeifOptions,
   png: {
     quality: 100, // default
     effort: 7 // default
-  } satisfies sharp.PngOptions
+  } satisfies PngOptions
 }
 
 export interface ImageTransformParams {
@@ -56,7 +56,7 @@ export async function transformImage (
 ): Promise<{ contentType: string, size: number }> {
   const { format, width, height, fit } = params
 
-  let pipeline: sharp.Sharp | undefined
+  let pipeline: Sharp | undefined
 
   try {
     pipeline = sharp(srcFile, { sequentialRead: true })

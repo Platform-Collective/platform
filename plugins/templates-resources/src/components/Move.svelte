@@ -24,7 +24,7 @@
 
   const client = getClient()
 
-  async function save (): Promise<void> {
+  async function save(): Promise<void> {
     await client.update(value, {
       space
     })

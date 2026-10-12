@@ -25,7 +25,7 @@
   import card from '../../plugin'
   import CreateTag from '../CreateTag.svelte'
 
-  function handleAdd (): void {
+  function handleAdd(): void {
     showPopup(
       CreateTag,
       {
@@ -46,7 +46,7 @@
     )
   }
 
-  async function handleImprot (): Promise<void> {
+  async function handleImprot(): Promise<void> {
     const { importModule } = await import('../../exporter')
     const input = document.createElement('input')
     input.type = 'file'

@@ -58,7 +58,7 @@
     }
   )
 
-  function createMasterTag (): void {
+  function createMasterTag(): void {
     showPopup(CreateTag, {
       parent: undefined,
       _class: card.class.MasterTag

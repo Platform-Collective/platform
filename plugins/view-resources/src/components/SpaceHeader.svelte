@@ -41,7 +41,7 @@
 
   $: viewletActions = viewlet != null ? getViewletSpecialActions(getClient(), viewlet) : []
 
-  function setSearchProp (v: string): void {
+  function setSearchProp(v: string): void {
     search = v
   }
 </script>

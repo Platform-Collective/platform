@@ -55,7 +55,7 @@
 
   $: active = $activeViewlet[key]
 
-  const update = reduceCalls(async function update (
+  const update = reduceCalls(async function update(
     active: Ref<Viewlet> | null,
     currentSpace?: Ref<Space>,
     attachTo?: Ref<Class<Doc>>
@@ -91,13 +91,13 @@
   $: void update(active, currentSpace, currentView?.class)
 
   const hierarchy = client.getHierarchy()
-  async function getHeader (_class: Ref<Class<Space>>): Promise<AnyComponent | undefined> {
+  async function getHeader(_class: Ref<Class<Space>>): Promise<AnyComponent | undefined> {
     const clazz = hierarchy.getClass(_class)
     const headerMixin = hierarchy.as(clazz, view.mixin.SpaceHeader)
     if (headerMixin?.header == null && clazz.extends != null) return await getHeader(clazz.extends)
     return headerMixin.header
   }
-  function setViewlet (e: CustomEvent<WithLookup<Viewlet>>): void {
+  function setViewlet(e: CustomEvent<WithLookup<Viewlet>>): void {
     viewlet = e.detail
   }
 </script>

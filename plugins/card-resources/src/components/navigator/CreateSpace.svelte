@@ -66,7 +66,7 @@
   let rolesAssignment = getRolesAssignment(roles)
   $: rolesAssignment = getRolesAssignment(roles)
 
-  function getRolesAssignment (roles: Role[]): RolesAssignment {
+  function getRolesAssignment(roles: Role[]): RolesAssignment {
     if (space === undefined || roles === undefined) {
       return {}
     }
@@ -81,7 +81,7 @@
     return res
   }
 
-  function getCurrentRolesAssignment (): RolesAssignment {
+  function getCurrentRolesAssignment(): RolesAssignment {
     if (space === undefined) {
       return {}
     }
@@ -101,7 +101,7 @@
     return res
   }
 
-  async function handleSave (): Promise<void> {
+  async function handleSave(): Promise<void> {
     if (isNew) {
       await create()
     } else {
@@ -109,17 +109,17 @@
     }
   }
 
-  function normalizeAutoJoinForRoles (roles: AccountRole[]): AccountRole[] | undefined {
+  function normalizeAutoJoinForRoles(roles: AccountRole[]): AccountRole[] | undefined {
     return roles.length > 0 ? [...roles] : undefined
   }
 
   let autoJoinForRoles: AccountRole[] = space?.autoJoinForRoles != null ? hierarchy.clone(space.autoJoinForRoles) : []
 
-  function setGuestAutoJoin (enabled: boolean): void {
+  function setGuestAutoJoin(enabled: boolean): void {
     autoJoinForRoles = setWorkspaceGuestAutoJoinRoles(autoJoinForRoles, enabled)
   }
 
-  function getData (): Data<CardSpace> {
+  function getData(): Data<CardSpace> {
     return {
       name,
       description: '',
@@ -135,7 +135,7 @@
     }
   }
 
-  async function update (): Promise<void> {
+  async function update(): Promise<void> {
     if (space === undefined) {
       return
     }
@@ -150,7 +150,7 @@
     close()
   }
 
-  async function create (): Promise<void> {
+  async function create(): Promise<void> {
     const data = getData()
 
     const id = await client.createDoc(card.class.CardSpace, core.space.Space, data)
@@ -162,18 +162,18 @@
     close(id)
   }
 
-  function close (id?: Ref<CardSpace>): void {
+  function close(id?: Ref<CardSpace>): void {
     dispatch('close', id)
   }
 
-  function handleOwnersChanged (newOwners: AccountUuid[]): void {
+  function handleOwnersChanged(newOwners: AccountUuid[]): void {
     owners = newOwners
 
     const newMembersSet = new Set([...members, ...newOwners])
     members = Array.from(newMembersSet)
   }
 
-  function handleMembersChanged (newMembers: AccountUuid[]): void {
+  function handleMembersChanged(newMembers: AccountUuid[]): void {
     const newMembersSet = new Set(newMembers)
     const removedMembersSet = new Set(members.filter((m) => !newMembersSet.has(m)))
 
@@ -196,7 +196,7 @@
 
   $: membersPersons = members.map((m) => $employeeRefByAccountUuidStore.get(m)).filter(notEmpty)
 
-  function handleRoleAssignmentChanged (roleId: Ref<Role>, newMembers: AccountUuid[]): void {
+  function handleRoleAssignmentChanged(roleId: Ref<Role>, newMembers: AccountUuid[]): void {
     if (rolesAssignment === undefined) {
       rolesAssignment = {}
     }

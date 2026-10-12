@@ -40,7 +40,7 @@ export class ConfigurationManager {
     return configuration !== undefined && configuration.enabled
   }
 
-  hasResource<T>(resource?: Resource<T> | null): boolean | undefined {
+  hasResource<T> (resource?: Resource<T> | null): boolean | undefined {
     if (resource == null) {
       return false
     }

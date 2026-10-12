@@ -33,7 +33,7 @@
     status = $statusStore.byId.get(issue.status)
   }
 
-  function handleIssueOpened (): void {
+  function handleIssueOpened(): void {
     if (params?.issueUrl) {
       const url = new URL(params?.issueUrl)
       const frontUrl = getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin
@@ -46,7 +46,7 @@
     onRemove()
   }
 
-  function handleCopyUrl (): void {
+  function handleCopyUrl(): void {
     if (issue !== undefined) {
       void copyTextToClipboard(params?.issueUrl)
     }

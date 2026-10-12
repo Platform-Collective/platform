@@ -33,13 +33,13 @@
   const client = getClient()
   const model = client.getModel()
 
-  function save (): void {
+  function save(): void {
     dispatch('close', { value: values })
   }
 
   $: canSaveValue = inputs.every((input) => values[input.id] != null)
 
-  export function canClose (): boolean {
+  export function canClose(): boolean {
     return false
   }
 

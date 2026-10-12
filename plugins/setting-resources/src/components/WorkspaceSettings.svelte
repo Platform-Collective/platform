@@ -52,7 +52,7 @@
     { sort: { order: 1 } }
   )
 
-  function findCategory (name: string): SettingsCategory | undefined {
+  function findCategory(name: string): SettingsCategory | undefined {
     return categories.find((x) => x.name === name)
   }
 
@@ -70,7 +70,7 @@
     }, 500)
   })
 
-  function selectCategory (id: string): void {
+  function selectCategory(id: string): void {
     clearSettingsStore()
     const loc = getCurrentResolvedLocation()
     loc.path[3] = categoryName

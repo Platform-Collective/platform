@@ -21,7 +21,7 @@
 
   const client = getClient()
 
-  async function getPresenter (href: string): Promise<AnyComponent | undefined> {
+  async function getPresenter(href: string): Promise<AnyComponent | undefined> {
     const presenters = await client.findAll(view.class.LinkPresenter, {})
     for (const presenter of presenters) {
       if (new RegExp(presenter.pattern).test(href)) {

@@ -56,20 +56,20 @@
 
   const client = getClient()
 
-  function getContext (value: string): SelectedExecutionContext | undefined {
+  function getContext(value: string): SelectedExecutionContext | undefined {
     const context = parseContext(value)
     if (context !== undefined && isExecutionContext(context)) {
       return context
     }
   }
 
-  function isExecutionContext (context: SelectedContext): context is SelectedExecutionContext {
+  function isExecutionContext(context: SelectedContext): context is SelectedExecutionContext {
     return context.type === 'context'
   }
 
   const dispatch = createEventDispatcher()
 
-  async function getPossibleContext (): Promise<SelectPopupValueType[]> {
+  async function getPossibleContext(): Promise<SelectPopupValueType[]> {
     // todo filter to only possible todos, for now allow all...
     const res: SelectPopupValueType[] = []
     for (const key in process.context) {
@@ -106,7 +106,7 @@
     return res
   }
 
-  async function click (ev: MouseEvent): Promise<void> {
+  async function click(ev: MouseEvent): Promise<void> {
     if (readonly) {
       return
     }

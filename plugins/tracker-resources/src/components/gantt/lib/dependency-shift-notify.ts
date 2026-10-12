@@ -33,7 +33,7 @@ export { groupShiftsByRecipient }
  * gets the full picture (the bundle filters out the trigger entry on the
  * recipient side when needed).
  */
-export function buildPayloadFromPrimary (pe: PrimaryEdit): ShiftedIssuePayload {
+export function buildPayloadFromPrimary(pe: PrimaryEdit): ShiftedIssuePayload {
   return {
     issueId: pe.issue._id,
     identifier: pe.issue.identifier,
@@ -45,7 +45,7 @@ export function buildPayloadFromPrimary (pe: PrimaryEdit): ShiftedIssuePayload {
  * Build a `ShiftedIssuePayload` entry from a cascade shift. As with the primary
  * builder, only the issue identity travels — no date or delta.
  */
-export function buildPayloadFromShift (sh: CascadeShift): ShiftedIssuePayload {
+export function buildPayloadFromShift(sh: CascadeShift): ShiftedIssuePayload {
   return {
     issueId: sh.issue._id,
     identifier: sh.issue.identifier,
@@ -57,7 +57,7 @@ export function buildPayloadFromShift (sh: CascadeShift): ShiftedIssuePayload {
  * Convenience: combine the two builders + grouping into one call. Returns the
  * per-recipient bundle map ready for `dependency-shift-send.ts` to dispatch.
  */
-export function buildRecipientBundles (
+export function buildRecipientBundles(
   triggerUserId: AccountUuid | undefined,
   primaries: PrimaryEdit[],
   shifts: CascadeShift[],

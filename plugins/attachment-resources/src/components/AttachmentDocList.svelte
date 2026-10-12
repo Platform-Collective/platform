@@ -38,7 +38,7 @@
 
   $: updateQuery(value, attachments)
 
-  function updateQuery (value: Doc & { attachments?: number }, attachments?: Attachment[]): void {
+  function updateQuery(value: Doc & { attachments?: number }, attachments?: Attachment[]): void {
     if (attachments !== undefined && attachments.length > 0) {
       resAttachments = attachments
       return

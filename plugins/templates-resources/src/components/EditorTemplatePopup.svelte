@@ -18,7 +18,7 @@
 
   export let editor: TextEditorHandler
 
-  async function dispatchItem (e: CustomEvent): Promise<void> {
+  async function dispatchItem(e: CustomEvent): Promise<void> {
     editor.insertTemplate(e.detail.title, e.detail.message)
   }
 </script>

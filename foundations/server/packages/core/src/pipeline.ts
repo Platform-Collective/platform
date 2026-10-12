@@ -102,7 +102,7 @@ class PipelineImpl implements Pipeline {
     return current
   }
 
-  findAll<T extends Doc>(
+  findAll<T extends Doc> (
     ctx: MeasureContext,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -115,7 +115,7 @@ class PipelineImpl implements Pipeline {
     return this.head?.loadModel(ctx, lastModelTx, hash) ?? Promise.resolve([])
   }
 
-  groupBy<T, P extends Doc>(
+  groupBy<T, P extends Doc> (
     ctx: MeasureContext,
     domain: Domain,
     field: string,
@@ -136,7 +136,7 @@ class PipelineImpl implements Pipeline {
     return this.head?.handleBroadcast(ctx) ?? emptyBroadcastResult
   }
 
-  domainRequest<T>(
+  domainRequest<T> (
     ctx: MeasureContext<SessionData>,
     domain: OperationDomain,
     params: DomainParams

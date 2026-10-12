@@ -35,7 +35,7 @@
   let isCollapsed = false
   let isCreating = false
 
-  function handleIssueSwap (ev: CustomEvent<{ id: Ref<Issue>, toIndex: number }>): void {
+  function handleIssueSwap(ev: CustomEvent<{ id: Ref<Issue>, toIndex: number }>): void {
     const { id, toIndex } = ev.detail
     const index = children.findIndex((p) => p.id === id)
     if (index !== -1 && index !== toIndex) {

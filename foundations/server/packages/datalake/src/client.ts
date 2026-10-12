@@ -490,13 +490,13 @@ async function toBuffer (data: Buffer | string | Readable): Promise<Buffer> {
     for await (const chunk of data) {
       chunks.push(chunk)
     }
-    return Buffer.concat(chunks as any)
+    return Buffer.concat(chunks)
   } else {
     throw new TypeError('Unsupported data type')
   }
 }
 
-async function * getChunks (data: Buffer | string | Readable, chunkSize: number): AsyncGenerator<Buffer> {
+async function* getChunks (data: Buffer | string | Readable, chunkSize: number): AsyncGenerator<Buffer> {
   if (Buffer.isBuffer(data)) {
     let offset = 0
     while (offset < data.length) {
@@ -505,7 +505,7 @@ async function * getChunks (data: Buffer | string | Readable, chunkSize: number)
     }
   } else if (typeof data === 'string') {
     const buffer = Buffer.from(data)
-    yield * getChunks(buffer, chunkSize)
+    yield* getChunks(buffer, chunkSize)
   } else if (data instanceof Readable) {
     let buffer = Buffer.alloc(0)
 

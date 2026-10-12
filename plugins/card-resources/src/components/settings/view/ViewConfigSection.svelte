@@ -32,7 +32,7 @@
   const dispatch = createEventDispatcher()
 
   // Function to add a new view configuration
-  function addViewConfig (): void {
+  function addViewConfig(): void {
     // Create a new ViewConfig with default empty values and unique ID
     const newViewConfig: MasterDetailConfig = {
       class: tag._id,
@@ -45,19 +45,19 @@
     dispatch('change', viewConfigs)
   }
 
-  function updateViewClass (index: number, value: Ref<Class<Doc>>): void {
+  function updateViewClass(index: number, value: Ref<Class<Doc>>): void {
     viewConfigs[index].class = value
     viewConfigs = [...viewConfigs] // Trigger reactivity
     dispatch('change', viewConfigs)
   }
 
-  function updateViewConfig (index: number, value: Ref<ViewletDescriptor>): void {
+  function updateViewConfig(index: number, value: Ref<ViewletDescriptor>): void {
     viewConfigs[index].view = value
     viewConfigs = [...viewConfigs] // Trigger reactivity
     dispatch('change', viewConfigs)
   }
 
-  function removeViewConfig (index: number): void {
+  function removeViewConfig(index: number): void {
     viewConfigs = viewConfigs.filter((_, i) => i !== index)
     dispatch('change', viewConfigs)
   }

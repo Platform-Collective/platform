@@ -74,10 +74,10 @@
     { items: initial, label: tags.string.Initial }
   ]
 
-  async function addRef (tag: TagElement): Promise<void> {
+  async function addRef(tag: TagElement): Promise<void> {
     dispatch('open', tag)
   }
-  async function addTag (evt: Event): Promise<void> {
+  async function addTag(evt: Event): Promise<void> {
     showPopup(
       TagsPopup,
       {
@@ -102,7 +102,7 @@
     )
   }
 
-  async function removeTag (id: Ref<TagReference>): Promise<void> {
+  async function removeTag(id: Ref<TagReference>): Promise<void> {
     dispatch('delete', id)
   }
 </script>

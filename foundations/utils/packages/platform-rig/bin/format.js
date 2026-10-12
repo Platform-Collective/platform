@@ -13,12 +13,142 @@ const {
 const crypto = require('crypto')
 const prettier = require('prettier')
 const { ESLint } = require('eslint')
+const LEGACY_COMPATIBILITY_RULES = Object.fromEntries(
+  require('../profiles/legacy-compatibility-rules.json').map((rule) => [rule, 'off'])
+)
+const LEGACY_FORMATTING_PLUGIN = {
+  rules: {
+    'space-before-generic-function-paren': {
+      meta: {
+        type: 'layout',
+        fixable: 'whitespace',
+        schema: [],
+        messages: {
+          missingSpace: 'Missing space before generic function parentheses.'
+        }
+      },
+      create (context) {
+        const sourceCode = context.sourceCode
+        const checkFunction = (node) => {
+          if (node.typeParameters == null) return
+
+          const leftToken = sourceCode.getLastToken(node.typeParameters)
+          const rightToken = sourceCode.getTokenAfter(leftToken)
+          if (rightToken == null || rightToken.value !== '(' || sourceCode.isSpaceBetween(leftToken, rightToken)) return
+
+          context.report({
+            node,
+            loc: rightToken.loc,
+            messageId: 'missingSpace',
+            fix: (fixer) => fixer.insertTextAfter(leftToken, ' ')
+          })
+        }
+
+        return {
+          ArrowFunctionExpression: checkFunction,
+          FunctionDeclaration: checkFunction,
+          FunctionExpression: checkFunction
+        }
+      }
+    }
+  }
+}
 
 let pluginSvelte
 try {
   pluginSvelte = require('prettier-plugin-svelte')
 } catch (e) {
   console.warn('prettier-plugin-svelte not available')
+}
+
+async function loadEslintConfig() {
+  const [{ default: love }, { default: stylistic }, svelte, secureCoding, { default: tsParser }, svelteParser] = await Promise.all([
+    import('eslint-config-love'),
+    import('@stylistic/eslint-plugin'),
+    import('eslint-plugin-svelte'),
+    import('eslint-plugin-secure-coding'),
+    import('@typescript-eslint/parser'),
+    import('svelte-eslint-parser')
+  ])
+
+  return [
+    {
+      ignores: [
+        '**/*.json',
+        '**/node_modules/**',
+        '**/.eslintrc.js',
+        '**/eslint.config.mjs',
+        '**/dist/**',
+        '**/lib/**',
+        '**/types/**',
+        '**/.build/**'
+      ]
+    },
+    secureCoding.configs.recommended,
+    {
+      ...love,
+      files: ['**/*.{js,cjs,mjs,ts,cts,mts}'],
+      plugins: {
+        ...love.plugins,
+        '@stylistic': stylistic,
+        'legacy-formatting': LEGACY_FORMATTING_PLUGIN
+      },
+      rules: {
+        ...love.rules,
+        ...LEGACY_COMPATIBILITY_RULES,
+        '@typescript-eslint/array-type': 'off',
+        '@typescript-eslint/promise-function-async': 'off',
+        '@typescript-eslint/consistent-type-imports': 'off',
+        'space-before-function-paren': ['error', 'always'],
+        'legacy-formatting/space-before-generic-function-paren': 'error',
+        '@stylistic/member-delimiter-style': [
+          'error',
+          {
+            multiline: { delimiter: 'none' },
+            singleline: { delimiter: 'comma', requireLast: false }
+          }
+        ],
+        '@stylistic/type-annotation-spacing': 'error'
+      }
+    },
+    {
+      linterOptions: {
+        reportUnusedDisableDirectives: 'off'
+      }
+    },
+    ...svelte.configs.base,
+    {
+      files: ['**/*.svelte'],
+      plugins: {
+        ...love.plugins,
+        '@stylistic': stylistic,
+        'legacy-formatting': LEGACY_FORMATTING_PLUGIN
+      },
+      languageOptions: {
+        parser: svelteParser,
+        parserOptions: {
+          extraFileExtensions: ['.svelte'],
+          parser: tsParser,
+          projectService: true
+        }
+      },
+      rules: {
+        '@typescript-eslint/array-type': 'off',
+        '@typescript-eslint/promise-function-async': 'off',
+        '@typescript-eslint/consistent-type-imports': 'off',
+        'legacy-formatting/space-before-generic-function-paren': 'error',
+        '@stylistic/member-delimiter-style': [
+          'error',
+          {
+            multiline: { delimiter: 'none' },
+            singleline: { delimiter: 'comma', requireLast: false }
+          }
+        ],
+        '@stylistic/type-annotation-spacing': 'error',
+        'svelte/no-at-html-tags': 'error'
+      }
+    }
+  ]
 }
 
 if (!existsSync('.format')) {
@@ -33,6 +163,7 @@ if (existsSync('.format/format.json')) {
 
 let filesToCheck = []
 let allFiles = []
+let formattingConfigurationChanged = false
 
 let newHash = {}
 
@@ -43,6 +174,8 @@ function calcFileHash(sourceFile, msg, addCheck) {
   if (hash[sourceFile] !== digest) {
     if (addCheck) {
       filesToCheck.push(sourceFile)
+    } else {
+      formattingConfigurationChanged = true
     }
     console.log(msg, relative(process.cwd(), sourceFile))
   }
@@ -80,8 +213,8 @@ for (const v of process.argv.slice(2)) {
   }
 }
 
-// Add package.json,  .eslintrc.js and node_modules/@hcengineering/platform-rig/ as hash roots.
-for (const f of ['package.json', '.eslintrc.js']) {
+// Add package.json, ESLint configs and node_modules/@hcengineering/platform-rig/ as hash roots.
+for (const f of ['package.json', '.eslintrc.js', 'eslint.config.mjs']) {
   const fFile = join(process.cwd(), f)
   if (existsSync(fFile)) {
     calcFileHash(fFile, 'changed', false)
@@ -91,6 +224,11 @@ for (const f of ['package.json', '.eslintrc.js']) {
 const rigPackage = 'node_modules/@hcengineering/platform-rig/'
 if (existsSync(rigPackage)) {
   calcHash(join(process.cwd(), rigPackage), 'changed', false)
+}
+
+if (formattingConfigurationChanged) {
+  console.log('format configuration changed')
+  filesToCheck = allFiles
 }
 
 if (process.argv.includes('-f') || process.argv.includes('--force')) {
@@ -156,10 +294,12 @@ if (filesToCheck.length > 0) {
       console.log(`running eslint ${filesToCheck.length}`)
 
       // Run ESLint
-      const eslint = new ESLint({ fix: true })
+      const eslint = new ESLint({
+        fix: true,
+        overrideConfigFile: true,
+        overrideConfig: await loadEslintConfig()
+      })
       const results = await eslint.lintFiles(filesToCheck)
-
-      // Apply fixes
       await ESLint.outputFixes(results)
 
       const formatter = await eslint.loadFormatter('stylish')

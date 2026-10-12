@@ -43,7 +43,7 @@
     }
   )
 
-  async function takeSnapshot (): Promise<void> {
+  async function takeSnapshot(): Promise<void> {
     showPopup(CreateSnapshot, { doc: value }, 'top')
   }
 </script>

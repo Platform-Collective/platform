@@ -13,7 +13,6 @@
 // limitations under the License.
 //
 
-import { type TypedArray } from 'pdfjs-dist/types/src/display/api'
 import { extractData } from './extractpdf'
 import { parseGenericResume } from './generic'
 import { isHeadHunter, parseHeadHunter } from './headhunter'
@@ -23,7 +22,7 @@ import { isLinkedin, parseLinkedin } from './linkedin'
 import { capitalizeName } from './utils'
 
 export async function extractDocument (
-  data: string | TypedArray
+  data: string | Uint8Array
 ): Promise<{ resume: ReconiDocument, model: RekoniModel }> {
   const resume: ReconiDocument = {
     format: 'unknown',

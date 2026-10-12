@@ -20,20 +20,20 @@
   $: allowLeave = $myInfo !== undefined && !isMyOffice && $myInfo.room !== love.ids.Reception
 
   let leaving = false
-  async function handleLeaveClick (): Promise<void> {
+  async function handleLeaveClick(): Promise<void> {
     leaving = true
     await leaveMeeting()
     dispatch('close')
   }
 
   let ending = false
-  async function handleEndMeetingClick (): Promise<void> {
+  async function handleEndMeetingClick(): Promise<void> {
     ending = true
     await leaveMeeting()
     dispatch('close')
   }
 
-  async function stopShare (): Promise<void> {
+  async function stopShare(): Promise<void> {
     await liveKitClient.setScreenShareEnabled(false)
   }
 

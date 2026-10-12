@@ -48,7 +48,7 @@
     }
   ] satisfies DropdownIntlItem[]
 
-  function nextPrintRequest (): number {
+  function nextPrintRequest(): number {
     printRequest += 1
     return printRequest
   }
@@ -116,14 +116,14 @@
     void createLinkIfMissing(object)
   }
 
-  async function getObjectLocation (obj: Doc): Promise<Location> {
+  async function getObjectLocation(obj: Doc): Promise<Location> {
     const panelComponent = client.getHierarchy().classHierarchyMixin(obj._class, view.mixin.ObjectPanel)
     const comp = panelComponent?.component ?? view.component.EditDoc
 
     return await getObjectLinkFragment(client.getHierarchy(), obj, {}, comp)
   }
 
-  async function createLinkIfMissing (obj: Doc): Promise<void> {
+  async function createLinkIfMissing(obj: Doc): Promise<void> {
     if (link?.attachedTo === obj._id) {
       return
     }
@@ -135,25 +135,25 @@
     }
   }
 
-  async function updateDocTitle (obj: Doc): Promise<void> {
+  async function updateDocTitle(obj: Doc): Promise<void> {
     const value = (await getDocTitle(client, obj._id, obj._class, obj)) ?? ''
     title = value !== '' ? value + '.pdf' : ''
   }
 
-  function toggleOrientation (): void {
+  function toggleOrientation(): void {
     nextPrintRequest()
     orientation = orientation === 'landscape' ? 'portrait' : 'landscape'
     file = undefined
     isLoading = true
   }
 
-  function handlePrintSetting (id: 'landscape' | 'contentOnly'): void {
+  function handlePrintSetting(id: 'landscape' | 'contentOnly'): void {
     if (id === 'landscape') {
       toggleOrientation()
     }
   }
 
-  function openPrintSettings (event: MouseEvent): void {
+  function openPrintSettings(event: MouseEvent): void {
     showPopup(
       ModernPopup,
       { items: printSettingsItems },

@@ -40,7 +40,7 @@
     }
   )
 
-  function click (ev: MouseEvent): void {
+  function click(ev: MouseEvent): void {
     showPopup(CreateReminder, { attachedTo, attachedToClass, title }, ev.target as HTMLElement)
   }
 

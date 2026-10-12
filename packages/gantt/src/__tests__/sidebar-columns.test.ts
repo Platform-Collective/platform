@@ -91,7 +91,7 @@ describe('sidebar-columns: constants', () => {
 
   it('DEFAULT_COLUMNS is a subset of ALL_COLUMN_KEYS', () => {
     for (const k of DEFAULT_COLUMNS) {
-      expect(ALL_COLUMN_KEYS).toContain(k as SidebarColumnKey)
+      expect(ALL_COLUMN_KEYS).toContain(k)
     }
   })
 

@@ -38,12 +38,12 @@
   let selection = 0
   let list: ListView
 
-  async function handleSelection (_: Event | undefined, selection: number): Promise<void> {
+  async function handleSelection(_: Event | undefined, selection: number): Promise<void> {
     const space = objects[selection]
     dispatch('close', space)
   }
 
-  function onKeydown (key: KeyboardEvent): void {
+  function onKeydown(key: KeyboardEvent): void {
     if (key.code === 'ArrowUp') {
       key.stopPropagation()
       key.preventDefault()

@@ -59,7 +59,7 @@
   let canDrag: boolean = false
   $: canDrag = submit !== null && answerData !== null && questionData.options.length > 1
 
-  function onDrop (event: OptionsListDropEvent): void {
+  function onDrop(event: OptionsListDropEvent): void {
     if (submit === null) {
       return
     }

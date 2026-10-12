@@ -73,7 +73,7 @@
   let visible: Event[] = []
   let objects: Event[] = []
 
-  function getFrom (date: Date, mode: CalendarMode): Timestamp {
+  function getFrom(date: Date, mode: CalendarMode): Timestamp {
     switch (mode) {
       case CalendarMode.Days: {
         return new Date(date).setHours(0, 0, 0, 0)
@@ -93,7 +93,7 @@
     }
   }
 
-  function getTo (date: Date, mode: CalendarMode): Timestamp {
+  function getTo(date: Date, mode: CalendarMode): Timestamp {
     switch (mode) {
       case CalendarMode.Days: {
         return new Date(date).setDate(date.getDate() + 4)
@@ -127,7 +127,7 @@
 
   const q = createQuery()
 
-  function update (
+  function update(
     _class: Ref<Class<Event>>,
     query: DocumentQuery<Event> | undefined,
     calendars: Calendar[],
@@ -146,7 +146,7 @@
   $: visible = hidePrivateEvents(raw, $calendarByIdStore)
   $: objects = getAllEvents(visible, from, to)
 
-  function inRange (start: Date, end: Date, startPeriod: Date, period: 'day' | 'hour'): boolean {
+  function inRange(start: Date, end: Date, startPeriod: Date, period: 'day' | 'hour'): boolean {
     const endPeriod =
       period === 'day'
         ? new Date(startPeriod).setDate(startPeriod.getDate() + 1)
@@ -157,7 +157,7 @@
     return true
   }
 
-  function findEvents (events: Event[], date: Date, minutes = false): Event[] {
+  function findEvents(events: Event[], date: Date, minutes = false): Event[] {
     return events.filter((it) => {
       let d1 = new Date(it.date)
       let d2 = new Date(it.dueDate ?? it.date)
@@ -171,7 +171,7 @@
     })
   }
 
-  function inc (val: number): void {
+  function inc(val: number): void {
     if (val === 0) {
       currentDate = new Date()
       dayCalendar.scrollToTime(currentDate)
@@ -202,20 +202,20 @@
     }
     currentDate = currentDate
   }
-  function getMonthName (date: Date): string {
+  function getMonthName(date: Date): string {
     return new Intl.DateTimeFormat('default', {
       month: 'long'
     }).format(date)
   }
 
-  function showCreateDialog (date: Date, withTime: boolean) {
+  function showCreateDialog(date: Date, withTime: boolean) {
     if (createComponent === undefined) {
       return
     }
     showPopup(createComponent, { date, withTime }, 'top')
   }
 
-  function getDdItem (mode: CalendarMode) {
+  function getDdItem(mode: CalendarMode) {
     switch (mode) {
       case CalendarMode.Day:
         return { id: 'day', label: calendar.string.ModeDay, mode: CalendarMode.Day }
@@ -230,7 +230,7 @@
     }
   }
 
-  function getDdItems (allowedModes: CalendarMode[]): void {
+  function getDdItems(allowedModes: CalendarMode[]): void {
     ddItems = []
     for (const mode of allowedModes) {
       ddItems.push(getDdItem(mode))
@@ -240,7 +240,7 @@
 
   const dragItemId = 'drag_item' as Ref<Event>
 
-  function dragEnter (e: CustomEvent<any>): void {
+  function dragEnter(e: CustomEvent<any>): void {
     if (dragItem !== undefined) {
       const current = raw.find((p) => p._id === dragItemId)
       if (current !== undefined) {
@@ -278,7 +278,7 @@
 
   $: clear(dragItem)
 
-  function clear (dragItem: Doc | undefined) {
+  function clear(dragItem: Doc | undefined) {
     if (dragItem === undefined) {
       raw = raw.filter((p) => p._id !== dragItemId)
       visible = hidePrivateEvents(raw, $calendarByIdStore)
@@ -301,15 +301,15 @@
     { id: 'year', label: calendar.string.ModeYear, mode: CalendarMode.Year }
   ]
 
-  function handleToday (): void {
+  function handleToday(): void {
     inc(0)
   }
 
-  function handleBack (): void {
+  function handleBack(): void {
     inc(-1)
   }
 
-  function handleForward (): void {
+  function handleForward(): void {
     inc(1)
   }
 </script>
