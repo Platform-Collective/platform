@@ -23,6 +23,7 @@
     "LinkToProject": "Połącz z projektem {title}",
     "Unlink": "Odłącz",
     "LinkedTo": "Połączono z",
+    "LinkRequiresConnector": "Połączyć może tylko członek, który podłączył to konto, lub opiekun",
     "Unavailable": "Niedostępne",
     "Processing": "Przetwarzanie...",
     "AutoClose": "Ta karta zostanie zamknięta za {time} s",

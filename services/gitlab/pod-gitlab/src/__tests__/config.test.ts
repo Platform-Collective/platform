@@ -122,6 +122,10 @@ describe('parseAllowedHosts', () => {
     expect(parseAllowedHosts('https://Git.Example.com:8443/path')).toEqual(['git.example.com'])
   })
 
+  it('normalizes like the request check: no trailing dot, no IPv6 brackets', () => {
+    expect(parseAllowedHosts('gitlab.example.com.,[::1]')).toEqual(['gitlab.example.com', '::1'])
+  })
+
   it('is empty for an empty or missing value', () => {
     expect(parseAllowedHosts('')).toEqual([])
     expect(parseAllowedHosts(undefined)).toEqual([])

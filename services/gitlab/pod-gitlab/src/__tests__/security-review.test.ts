@@ -2,10 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- test doubles */
 import type { LoginInfoByToken } from '@hcengineering/account-client'
 import { AccountRole, type PersonId, type WorkspaceUuid } from '@hcengineering/core'
-import type { LookupAddress } from 'dns'
 import { parseCorsOrigins, weakSecrets } from '../config'
 import { hookSecret } from '../hooks'
-import { HostGuard, type LookupFn } from '../host-guard'
 import { HttpError } from '../http-error'
 import { refreshRoute, type RefreshRouteDeps } from '../routes'
 import { signState, UsedStates, verifyState } from '../state'
@@ -92,53 +90,6 @@ describe('OAuth state', () => {
     used.consume(state, 0)
     // Past its expiry verifyState refuses it anyway; the record is pruned
     used.consume(state, state.exp + 1)
-  })
-})
-
-describe('HostGuard.connectLookup', () => {
-  function resolves (map: Record<string, string[]>): LookupFn {
-    return async (hostname) =>
-      (map[hostname] ?? []).map((address) => ({ address, family: address.includes(':') ? 6 : 4 }))
-  }
-
-  async function lookup (guard: HostGuard, hostname: string, options: any = {}): Promise<{ err: any, address: any }> {
-    return await new Promise((resolve) => {
-      guard.connectLookup(hostname, options, (err: any, address: string | LookupAddress[]) => {
-        resolve({ err, address })
-      })
-    })
-  }
-
-  it('connects to the checked public address', async () => {
-    const guard = new HostGuard({ allowInsecure: false, allowedHosts: [] }, resolves({ 'gitlab.com': ['8.8.8.8'] }))
-    expect(await lookup(guard, 'GitLab.com')).toEqual({ err: null, address: '8.8.8.8' })
-    expect(await lookup(guard, 'gitlab.com', { all: true })).toEqual({
-      err: null,
-      address: [{ address: '8.8.8.8', family: 4 }]
-    })
-  })
-
-  it('refuses a host that resolves to a private address at connection time (DNS rebinding)', async () => {
-    let calls = 0
-    const rebinding: LookupFn = async () => [{ address: calls++ === 0 ? '8.8.8.8' : '127.0.0.1', family: 4 }]
-    const guard = new HostGuard({ allowInsecure: false, allowedHosts: [] }, rebinding)
-    await guard.assertAllowed('https://rebind.example')
-    const { err } = await lookup(guard, 'rebind.example')
-    expect(err?.name).toBe('GitlabHostRefusedError')
-  })
-
-  it('lets GITLAB_ALLOWED_HOSTS and dev mode reach private addresses', async () => {
-    const map = resolves({ 'git.corp': ['10.0.0.5'] })
-    const allowed = new HostGuard({ allowInsecure: false, allowedHosts: ['git.corp'] }, map)
-    expect((await lookup(allowed, 'git.corp')).address).toBe('10.0.0.5')
-    const dev = new HostGuard({ allowInsecure: true, allowedHosts: [] }, map)
-    expect((await lookup(dev, 'git.corp')).address).toBe('10.0.0.5')
-  })
-
-  it('answers ENOTFOUND when no address of the asked family is allowed', async () => {
-    const guard = new HostGuard({ allowInsecure: false, allowedHosts: [] }, resolves({ 'gitlab.com': ['8.8.8.8'] }))
-    const { err } = await lookup(guard, 'gitlab.com', { family: 6 })
-    expect(err?.code).toBe('ENOTFOUND')
   })
 })
 

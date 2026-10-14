@@ -21,7 +21,7 @@ export interface FactoryDeps {
   accounts: Pick<AccountClient, 'ensurePerson'>
   // Blob storage for merge request diffs and copied images; undefined when STORAGE_CONFIG is not set
   storage?: StorageAdapter
-  // Every GitLab call (safeFetch)
+  // Every GitLab call (createGitlabFetch)
   fetchFn: FetchFn
 }
 

@@ -1,35 +1,26 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import { LRUCache } from 'lru-cache'
+
 // A diff may be a few MB; a tab keeps this many
 export const TEXT_CACHE_LIMIT = 8
 
 /**
- * Loads each blob once and keeps the `limit` most recently used results. A failed load is forgotten, so the next
- * call tries again.
+ * Loads each blob once and keeps the `limit` most recently used results. Concurrent calls for one blob share its
+ * load; a failed load is forgotten, so the next call tries again.
  */
-export function createTextCache<T = string> (
+export function createTextCache<T extends {} = string> (
   load: (file: string, name: string) => Promise<T>,
   limit = TEXT_CACHE_LIMIT
 ): (file: string, name: string) => Promise<T> {
-  const cache = new Map<string, Promise<T>>()
+  const cache = new LRUCache<string, T, string>({
+    max: limit,
+    fetchMethod: async (file, _stale, { context: name }) => await load(file, name)
+  })
   return async (file, name) => {
-    let text = cache.get(file)
-    if (text !== undefined) {
-      // Map order is insertion order: re-inserting marks it most recently used
-      cache.delete(file)
-    } else {
-      const loading = load(file, name)
-      loading.catch(() => {
-        if (cache.get(file) === loading) cache.delete(file)
-      })
-      text = loading
-    }
-    cache.set(file, text)
-    while (cache.size > limit) {
-      const oldest = cache.keys().next().value
-      if (oldest === undefined) break
-      cache.delete(oldest)
-    }
-    return await text
+    const value = await cache.fetch(file, { context: name })
+    // Only an aborted fetch resolves to undefined; nothing here aborts one
+    if (value === undefined) throw new Error(`Failed to load ${name}`)
+    return value
   }
 }

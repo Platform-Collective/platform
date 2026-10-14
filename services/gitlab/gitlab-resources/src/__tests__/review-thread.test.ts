@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 import { type Blob, type PersonId, type Ref } from '@hcengineering/core'
-import { type PatchFile, splitPatchFiles } from '../hunk'
+import { type DiffFile } from '@hcengineering/diffview'
+import { parseDiff } from '@hcengineering/diffview-resources'
 import { createHunkLoader, resolveChange, threadLocation } from '../review-thread'
 
 const PATCH = ['diff --git a/a.ts b/a.ts', '--- a/a.ts', '+++ b/a.ts', '@@ -1 +1 @@', '-x', '+y'].join('\n')
@@ -8,13 +9,13 @@ const FILE = 'blob' as Ref<Blob>
 const request = { file: FILE, path: 'a.ts', line: 1, oldLine: null, outdated: false }
 
 function deferred (): {
-  promise: Promise<PatchFile[]>
-  resolve: (files: PatchFile[]) => void
+  promise: Promise<DiffFile[]>
+  resolve: (files: DiffFile[]) => void
   reject: (err: Error) => void
 } {
-  let release: (files: PatchFile[]) => void = () => {}
+  let release: (files: DiffFile[]) => void = () => {}
   let fail: (err: Error) => void = () => {}
-  const promise = new Promise<PatchFile[]>((resolve, reject) => {
+  const promise = new Promise<DiffFile[]>((resolve, reject) => {
     release = resolve
     fail = reject
   })
@@ -38,12 +39,12 @@ describe('resolveChange', () => {
 
 describe('createHunkLoader', () => {
   it('cuts the hunk for the newest request', async () => {
-    const load = createHunkLoader(async () => splitPatchFiles(PATCH))
+    const load = createHunkLoader(async () => parseDiff(PATCH))
     expect(await load(request)).toBe(['@@ -1 +1 @@', '-x', '+y'].join('\n'))
   })
 
   it('shows nothing for an outdated thread or a missing diff', async () => {
-    const load = createHunkLoader(async () => splitPatchFiles(PATCH))
+    const load = createHunkLoader(async () => parseDiff(PATCH))
     expect(await load({ ...request, outdated: true })).toBe('')
     expect(await load({ ...request, file: undefined })).toBe('')
   })
@@ -53,14 +54,14 @@ describe('createHunkLoader', () => {
     const load = createHunkLoader(async () => await files.promise)
     const first = load(request)
     expect(await load({ ...request, outdated: true })).toBe('')
-    files.resolve(splitPatchFiles(PATCH))
+    files.resolve(parseDiff(PATCH))
     expect(await first).toBeUndefined()
   })
 
   it('drops a slower failure, so it cannot clear a newer hunk', async () => {
     const failing = deferred()
     let calls = 0
-    const load = createHunkLoader(async () => (++calls === 1 ? await failing.promise : splitPatchFiles(PATCH)))
+    const load = createHunkLoader(async () => (++calls === 1 ? await failing.promise : parseDiff(PATCH)))
     const first = load(request)
     expect(await load({ ...request, line: 1 })).not.toBe('')
     failing.reject(new Error('HTTP 500'))

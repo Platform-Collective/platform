@@ -23,6 +23,7 @@
     "LinkToProject": "Mit {title}-Projekt verknüpfen",
     "Unlink": "Verknüpfung aufheben",
     "LinkedTo": "Verknüpft mit",
+    "LinkRequiresConnector": "Nur das Mitglied, das dieses Konto verbunden hat, oder ein Maintainer kann es verknüpfen",
     "Unavailable": "Nicht verfügbar",
     "Processing": "Wird verarbeitet...",
     "AutoClose": "Dieser Tab wird in {time} Sekunden geschlossen",

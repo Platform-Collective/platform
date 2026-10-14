@@ -23,6 +23,7 @@
     "LinkToProject": "Associar ao projeto {title}",
     "Unlink": "Desassociar",
     "LinkedTo": "Associado a",
+    "LinkRequiresConnector": "Apenas o membro que ligou esta conta ou um responsável pode associá-lo",
     "Unavailable": "Indisponível",
     "Processing": "A processar...",
     "AutoClose": "Este separador será fechado dentro de {time} segundos",

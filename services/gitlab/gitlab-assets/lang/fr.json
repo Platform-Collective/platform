@@ -23,6 +23,7 @@
     "LinkToProject": "Lier au projet {title}",
     "Unlink": "Dissocier",
     "LinkedTo": "Lié à",
+    "LinkRequiresConnector": "Seul le membre qui a connecté ce compte ou un mainteneur peut le lier",
     "Unavailable": "Indisponible",
     "Processing": "Traitement en cours...",
     "AutoClose": "Cet onglet se fermera dans {time} secondes",

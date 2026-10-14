@@ -52,7 +52,7 @@
   },
   "dependencies": {
     "@hcengineering/time": "workspace:^0.7.0",
-    "undici": "^7.18.2",
+    "@hcengineering/safe-fetch": "workspace:^0.7.0",
     "@hcengineering/activity": "workspace:^0.7.0",
     "@hcengineering/attachment": "workspace:^0.7.0",
     "@hcengineering/chunter": "workspace:^0.7.0",
@@ -75,6 +75,7 @@
     "@hcengineering/analytics": "workspace:^0.7.19",
     "@hcengineering/analytics-service": "workspace:^0.7.19",
     "express": "^4.21.2",
+    "lru-cache": "^11.1.0",
     "cors": "^2.8.6",
     "body-parser": "^1.20.3",
     "ws": "^8.21.0"

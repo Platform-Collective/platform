@@ -23,6 +23,7 @@
     "LinkToProject": "Link to {title} project",
     "Unlink": "Unlink",
     "LinkedTo": "Linked to",
+    "LinkRequiresConnector": "Only the member who connected this account or a maintainer can link it",
     "Unavailable": "Unavailable",
     "Processing": "Processing...",
     "AutoClose": "This tab will close in {time} seconds",

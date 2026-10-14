@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import { type DiffFile } from '@hcengineering/diffview'
 import { type GitlabPatch } from '@hcengineering/gitlab'
 import { getFileUrl } from '@hcengineering/presentation'
-import { type PatchFile, splitPatchFiles } from './hunk'
+import { parsePatch } from './hunk'
 import { createTextCache } from './patch-text'
 
 const cached = createTextCache(async (file, name) => {
@@ -16,10 +17,10 @@ export async function patchText (patch: Pick<GitlabPatch, 'file'>): Promise<stri
   return await cached(patch.file, 'patch.diff')
 }
 
-// Thread snippets read the split diff; split once per blob, not once per thread
-const cachedFiles = createTextCache<PatchFile[]>(async (file, name) => splitPatchFiles(await cached(file, name)))
+// Thread snippets read the parsed diff; parsed once per blob, not once per thread
+const cachedFiles = createTextCache<DiffFile[]>(async (file, name) => parsePatch(await cached(file, name)))
 
-/** The files of a stored diff, split once per blob. */
-export async function patchFiles (patch: Pick<GitlabPatch, 'file'>): Promise<PatchFile[]> {
+/** The files of a stored diff, parsed once per blob. */
+export async function patchFiles (patch: Pick<GitlabPatch, 'file'>): Promise<DiffFile[]> {
   return await cachedFiles(patch.file, 'patch.diff')
 }

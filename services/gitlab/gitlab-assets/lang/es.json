@@ -23,6 +23,7 @@
     "LinkToProject": "Vincular con el proyecto {title}",
     "Unlink": "Desvincular",
     "LinkedTo": "Vinculado a",
+    "LinkRequiresConnector": "Solo el miembro que conectó esta cuenta o un mantenedor puede vincularlo",
     "Unavailable": "No disponible",
     "Processing": "Procesando...",
     "AutoClose": "Esta pestaña se cerrará en {time} segundos",

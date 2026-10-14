@@ -31,6 +31,7 @@ export default mergeIds(gitlabId, gitlab, {
     LinkToProject: '' as IntlString,
     Unlink: '' as IntlString,
     LinkedTo: '' as IntlString,
+    LinkRequiresConnector: '' as IntlString,
     Unavailable: '' as IntlString,
     Processing: '' as IntlString,
     AutoClose: '' as IntlString,

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import { normalizeHostname } from '@hcengineering/safe-fetch'
+
 export interface Config {
   AccountsURL: string
   ServerSecret: string
@@ -69,15 +71,15 @@ export function redirectUriFor (origin: string | undefined, fallback: string): s
   return fallback
 }
 
-/** GITLAB_ALLOWED_HOSTS: comma-separated host names or URLs, as lower-case host names. */
+/** GITLAB_ALLOWED_HOSTS: comma-separated host names or URLs, as normalized host names (safe-fetch's normalizeHostname). */
 export function parseAllowedHosts (value: string | undefined): string[] {
   return (value ?? '')
     .split(',')
-    .map((it) => it.trim().toLowerCase())
+    .map((it) => it.trim())
     .filter((it) => it !== '')
     .map((it) => {
       try {
-        return new URL(it.includes('://') ? it : `https://${it}`).hostname
+        return normalizeHostname(new URL(it.includes('://') ? it : `https://${it}`).hostname)
       } catch {
         throw new Error(`GITLAB_ALLOWED_HOSTS has an invalid host: ${it}`)
       }

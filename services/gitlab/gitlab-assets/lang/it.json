@@ -23,6 +23,7 @@
     "LinkToProject": "Collega al progetto {title}",
     "Unlink": "Scollega",
     "LinkedTo": "Collegato a",
+    "LinkRequiresConnector": "Solo il membro che ha connesso questo account o un maintainer può collegarlo",
     "Unavailable": "Non disponibile",
     "Processing": "Elaborazione in corso...",
     "AutoClose": "Questa scheda verrà chiusa tra {time} secondi",

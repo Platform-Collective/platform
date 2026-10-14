@@ -23,6 +23,7 @@
     "LinkToProject": "关联到 {title} 项目",
     "Unlink": "取消关联",
     "LinkedTo": "已关联到",
+    "LinkRequiresConnector": "只有连接此账户的成员或维护者可以关联",
     "Unavailable": "不可用",
     "Processing": "处理中...",
     "AutoClose": "此标签页将在 {time} 秒后关闭",

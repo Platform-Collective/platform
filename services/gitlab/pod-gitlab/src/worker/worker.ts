@@ -159,7 +159,7 @@ export interface WorkerDeps {
   // A client acting as the given account on the worker's connection (pooled sessions for the HTTP service)
   session?: (accountId: PersonId) => TxOperations
   closeConnection?: () => Promise<void>
-  // Every GitLab call (safeFetch in production)
+  // Every GitLab call (createGitlabFetch in production)
   fetchFn: FetchFn
   // Test seams
   persons?: PersonMapping

@@ -10,17 +10,15 @@ import { buildStorageFromConfig, storageConfigFromEnv } from '@hcengineering/ser
 import { decodeToken } from '@hcengineering/server-token'
 import bp from 'body-parser'
 import cors from 'cors'
-import { Agent } from 'undici'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { GitlabAppStore, toOAuthConfig } from './apps'
 import type { VerifiedCaller } from './caller'
 import { ACCOUNT_CLIENT_TIMEOUT_MS, createPlatformClient, systemToken } from './client'
 import { weakSecrets, type Config } from './config'
 import { GitlabApiError, isGitlabWriteAllowed } from './gitlab/api'
-import { dispatcherFetch, safeFetch } from './gitlab/fetch'
+import { assertGitlabHostAllowed, createGitlabFetch, type GitlabHostPolicy } from './gitlab/fetch'
 import { cachedImageLoader, IMAGE_HEADERS, imageRoute, imageStatus, type ImageRouteDeps } from './image-route'
 import { WEBHOOK_PATH } from './hooks'
-import { HostGuard } from './host-guard'
 import { errorResponse } from './http-error'
 import {
   appConfigRoute,
@@ -83,13 +81,13 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
 
   const accountClient = getAccountClient(systemToken(), ACCOUNT_CLIENT_TIMEOUT_MS)
   const apps = new GitlabAppStore(accountClient)
-  const hostGuard = new HostGuard({
+  const hostPolicy: GitlabHostPolicy = {
     allowInsecure: config.AllowInsecureHosts === true,
     allowedHosts: config.AllowedHosts
-  })
-  // Every GitLab call: allowed hosts only (checked again on the connection's own DNS lookup), no redirects, a time limit
-  const gitlabAgent = new Agent({ connect: { lookup: hostGuard.connectLookup } })
-  const gitlabFetch = safeFetch({ guard: hostGuard, timeoutMs: config.RequestTimeoutMs }, dispatcherFetch(gitlabAgent))
+  }
+  // Every GitLab call: allowed hosts and addresses only (safe-fetch pins the checked addresses), no redirects unless
+  // asked for, a time limit
+  const gitlabFetch = createGitlabFetch(hostPolicy, config.RequestTimeoutMs)
   const users = new GitlabUserManager(
     accountClient,
     async (workspace) => {
@@ -126,7 +124,9 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
     users,
     accounts: accountClient,
     apps,
-    hostGuard,
+    assertHostAllowed: async (url) => {
+      await assertGitlabHostAllowed(url, hostPolicy)
+    },
     fetchFn: gitlabFetch,
     openSession: async (workspace, accountId) => {
       // Reuse the workspace worker's connection when there is one
@@ -324,6 +324,5 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
     })
     await platform.close()
     await storage?.close()
-    await gitlabAgent.close()
   }
 }

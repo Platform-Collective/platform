@@ -23,6 +23,7 @@
     "LinkToProject": "{title} projesine bağla",
     "Unlink": "Bağlantıyı kaldır",
     "LinkedTo": "Bağlı olduğu proje",
+    "LinkRequiresConnector": "Yalnızca bu hesabı bağlayan üye veya bir yönetici bağlayabilir",
     "Unavailable": "Kullanılamıyor",
     "Processing": "İşleniyor...",
     "AutoClose": "Bu sekme {time} saniye içinde kapanacak",

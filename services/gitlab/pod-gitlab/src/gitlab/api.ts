@@ -186,7 +186,7 @@ export class GitlabApi {
     private readonly now: () => number = Date.now
   ) {}
 
-  // followRedirects: upload downloads only (see safeFetch); any other redirect is an error
+  // followRedirects: upload downloads only (see createGitlabFetch); any other redirect is an error
   private async send (method: string, path: string, body?: unknown, followRedirects = false): Promise<Response> {
     if (method !== 'GET' && !isHookPath(path) && !isGitlabWriteAllowed()) {
       throw new GitlabReadonlyError(method, path)
@@ -202,7 +202,7 @@ export class GitlabApi {
         method,
         headers,
         body: body === undefined ? undefined : form ? body : JSON.stringify(body),
-        ...(followRedirects ? { redirect: 'follow' as const } : {})
+        redirect: followRedirects ? 'follow' : 'error'
       })
       if (res.status === 429 && attempt < MAX_RETRIES) {
         await this.sleep(retryDelayMs(res.headers, this.now()))

@@ -39537,6 +39537,9 @@ importers:
       '@hcengineering/diffview':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/diffview
+      '@hcengineering/diffview-resources':
+        specifier: workspace:^0.7.0
+        version: link:../../../plugins/diffview-resources
       '@hcengineering/gitlab':
         specifier: workspace:^0.7.0
         version: link:../gitlab
@@ -39573,6 +39576,9 @@ importers:
       '@hcengineering/view-resources':
         specifier: workspace:^0.7.0
         version: link:../../../plugins/view-resources
+      lru-cache:
+        specifier: ^11.1.0
+        version: 11.2.2
       svelte:
         specifier: ^4.2.20
         version: 4.2.20
@@ -39797,6 +39803,9 @@ importers:
       '@hcengineering/platform':
         specifier: workspace:^0.7.20
         version: link:../../../foundations/core/packages/platform
+      '@hcengineering/safe-fetch':
+        specifier: workspace:^0.7.0
+        version: link:../../../packages/safe-fetch
       '@hcengineering/server-client':
         specifier: workspace:^0.7.16
         version: link:../../../foundations/server/packages/client
@@ -39833,9 +39842,9 @@ importers:
       express:
         specifier: ^4.21.2
         version: 4.21.2
-      undici:
-        specifier: ^7.18.2
-        version: 7.30.0
+      lru-cache:
+        specifier: ^11.1.0
+        version: 11.2.2
       ws:
         specifier: ^8.21.0
         version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)

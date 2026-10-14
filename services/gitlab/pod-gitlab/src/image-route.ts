@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { PersonId, WorkspaceUuid } from '@hcengineering/core'
+import { LRUCache } from 'lru-cache'
 import type { VerifiedCaller } from './caller'
 import type { RouteBody } from './routes'
 import type { GitlabImageAccess } from './sync/image-access'
 import { Limiter, LimiterFullError } from './limiter'
-import { TtlCache } from './ttl-cache'
 
 export interface ImageRouteDeps {
   verify: (body: RouteBody) => Promise<VerifiedCaller>
@@ -79,12 +79,14 @@ export function cachedImageLoader (
   options: ImageLoaderOptions = IMAGE_LOADER_DEFAULTS
 ): ImageRouteDeps['image'] {
   const limiter = new Limiter(options.concurrency, options.queue)
-  const cache = new TtlCache<{ data: Buffer, contentType: string }>({
-    ttlMs: options.cacheTtlMs,
-    maxEntries: options.cacheEntries,
+  const cache = new LRUCache<string, { data: Buffer, contentType: string }>({
+    ttl: options.cacheTtlMs,
+    max: options.cacheEntries,
     maxSize: options.cacheBytes,
-    sizeOf: (it) => it.data.length,
-    now: options.now
+    // Must be positive; an image larger than maxSize is not cached
+    sizeCalculation: (it) => Math.max(it.data.length, 1),
+    // A test clock is read on every check
+    ...(options.now !== undefined ? { perf: { now: options.now }, ttlResolution: 0 } : {})
   })
   return async (workspace, actor, url) => {
     // The fragment only carries the size

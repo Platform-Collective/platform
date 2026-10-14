@@ -6,7 +6,6 @@ import tracker from '@hcengineering/tracker'
 import type { GitlabAppConfig } from '../apps'
 import type { FetchFn } from '../gitlab/api'
 import { hookSecret, hookUrl } from '../hooks'
-import { GitlabHostRefusedError } from '../host-guard'
 import { GitlabService } from '../service'
 import { signState } from '../state'
 import { ctx } from './helpers/provider'
@@ -127,7 +126,7 @@ function setup (
     allowInsecure?: boolean
     linkIdentity?: jest.Mock
     onWorkspaceChanged?: jest.Mock
-    hostGuard?: { assertAllowed: (url: string) => Promise<void> }
+    assertHostAllowed?: (url: string) => Promise<void>
   } = {}
 ): any {
   const client = memoryClient()
@@ -178,7 +177,7 @@ function setup (
     },
     linkIdentity: opts.linkIdentity,
     onWorkspaceChanged: opts.onWorkspaceChanged,
-    hostGuard: opts.hostGuard ?? { assertAllowed: async () => {} },
+    assertHostAllowed: opts.assertHostAllowed ?? (async () => {}),
     fetchFn: fn,
     now: () => 1000
   })
@@ -625,15 +624,15 @@ describe('GitlabService', () => {
     expect(dev.apps.get(ws)?.host).toBe('http://localhost:8929')
   })
 
-  it('saveApp refuses a host the guard refuses, before storing anything', async () => {
-    const assertAllowed = jest.fn(async (url: string) => {
-      throw new GitlabHostRefusedError(new URL(url).hostname)
+  it('saveApp refuses a host the pod may not call, before storing anything', async () => {
+    const assertHostAllowed = jest.fn(async (url: string) => {
+      throw new Error(`GitLab host ${new URL(url).hostname} is not allowed`)
     })
-    const { service, apps } = setup(routes, { apps: false, hostGuard: { assertAllowed } })
+    const { service, apps } = setup(routes, { apps: false, assertHostAllowed })
     await expect(
       service.saveApp(ctx, ws, person, { host: 'https://10.0.0.1', clientId: 'cid', clientSecret: 'x' })
     ).rejects.toThrow('GitLab host 10.0.0.1 is not allowed')
-    expect(assertAllowed).toHaveBeenCalledWith('https://10.0.0.1')
+    expect(assertHostAllowed).toHaveBeenCalledWith('https://10.0.0.1')
     expect(apps.get(ws)).toBeUndefined()
   })
 

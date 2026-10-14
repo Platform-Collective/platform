@@ -24,7 +24,6 @@ import { buildAuthorizeUrl, exchangeCode, GITLAB_SCOPES, revokeToken } from './g
 import type { GitlabUser, GitlabUserRef } from './gitlab/types'
 import { ensureRepositoryHook, removeRepositoryHook } from './hooks'
 import { APP_IN_USE, HttpError } from './http-error'
-import type { HostGuard } from './host-guard'
 import { EXPIRED_ERROR, errorMessage } from './sync/errors'
 import { refreshIntegrationRepositories } from './repositories'
 import { signState, UsedStates, verifyState, type OAuthStatePayload } from './state'
@@ -81,8 +80,8 @@ export interface ServiceDeps {
   users: Pick<GitlabUserManager, 'save' | 'getValidRecord' | 'remove'>
   accounts: Pick<AccountClient, 'getIntegration' | 'createIntegration' | 'updateIntegration' | 'deleteIntegration'>
   apps: Pick<GitlabAppStore, 'get' | 'save' | 'remove'>
-  // Self-managed hosts the pod may call (HostGuard)
-  hostGuard: Pick<HostGuard, 'assertAllowed'>
+  // Throws unless the pod may call this self-managed GitLab host (assertGitlabHostAllowed)
+  assertHostAllowed: (url: string) => Promise<void>
   openSession: (workspace: WorkspaceUuid, accountId: PersonId) => Promise<WorkspaceSession>
   // Attaches the connecting user's GitLab identity to their Huly person (best effort)
   linkIdentity?: (client: TxOperations, personUuid: PersonUuid, host: string, user: GitlabUserRef) => Promise<void>
@@ -133,7 +132,7 @@ export class GitlabService {
         ? DEFAULT_GITLAB_HOST
         : normalizeHost(rawHost, { allowInsecure: this.deps.config.AllowInsecureHosts === true })
     // Only public addresses, or the hosts GITLAB_ALLOWED_HOSTS lists: the pod calls this host with server credentials
-    await this.deps.hostGuard.assertAllowed(host)
+    await this.deps.assertHostAllowed(host)
     const clientId = input.clientId.trim()
     if (clientId === '') {
       throw new Error('Application ID is required')

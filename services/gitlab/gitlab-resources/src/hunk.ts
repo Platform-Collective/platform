@@ -1,64 +1,37 @@
 // SPDX-License-Identifier: EPL-2.0
 
-const HUNK_HEADER = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/
+import { type DiffFile, type DiffHunk, DiffLineType } from '@hcengineering/diffview'
+import { parseDiff } from '@hcengineering/diffview-resources'
 
-/** One file of a unified diff: its 'diff --git' line and the lines up to the next file. */
-export interface PatchFile {
-  header: string
-  lines: string[]
+/** Parses a stored diff for thread snippets. No change limit, so a file too large for the diff view keeps its hunks. */
+export function parsePatch (patch: string): DiffFile[] {
+  return parseDiff(patch, { maxChanges: null })
 }
 
-/** The files of a unified diff, in order; lines before the first 'diff --git' are dropped. */
-export function splitPatchFiles (patch: string): PatchFile[] {
-  const files: PatchFile[] = []
-  let current: PatchFile | undefined
-  for (const text of patch.split('\n')) {
-    if (text.startsWith('diff --git ')) {
-      current = { header: text, lines: [] }
-      files.push(current)
-      continue
-    }
-    current?.lines.push(text)
-  }
-  return files
-}
-
-// The hunk of one file's lines that holds the commented line, cut after it; '' when it is not there
-function hunkIn (lines: string[], line: number | null, oldLine: number | null): string {
-  let hunk: string[] = []
-  let oldNo = 0
-  let newNo = 0
-  for (const text of lines) {
-    const header = HUNK_HEADER.exec(text)
-    if (header !== null) {
-      hunk = [text]
-      oldNo = Number(header[1])
-      newNo = Number(header[2])
-      continue
-    }
-    // File headers ('index', '---', '+++') come before the first hunk
-    if (hunk.length === 0) continue
-    hunk.push(text)
-    const kind = text[0]
-    // '\ No newline at end of file'
-    if (kind === '\\') continue
-    if (line !== null && kind !== '-' && newNo === line) return hunk.join('\n')
-    if (line === null && oldLine !== null && kind !== '+' && oldNo === oldLine) return hunk.join('\n')
-    if (kind !== '+') oldNo++
-    if (kind !== '-') newNo++
+// The hunk's text cut after the commented line; '' when the hunk does not hold it
+function hunkIn (hunk: DiffHunk, line: number | null, oldLine: number | null): string {
+  const text = [hunk.header]
+  for (const diffLine of hunk.lines) {
+    text.push(diffLine.prefix + diffLine.content)
+    const isNewLine = line !== null && diffLine.type !== DiffLineType.DELETE && diffLine.newNumber === line
+    const isOldLine =
+      line === null && oldLine !== null && diffLine.type !== DiffLineType.INSERT && diffLine.oldNumber === oldLine
+    if (isNewLine || isOldLine) return text.join('\n')
   }
   return ''
 }
 
 /**
- * The hunk of a split diff that holds a commented line, cut after that line. `line` counts on the new
- * side; `oldLine` finds removed lines, which have no new number. '' when the diff does not hold the line.
+ * The hunk of a parsed diff (parsePatch) that holds a commented line, cut after that line. `line` counts
+ * on the new side; `oldLine` finds removed lines, which have no new number. '' when the diff does not hold the line.
  */
-export function findHunk (files: PatchFile[], path: string, line: number | null, oldLine: number | null): string {
+export function findHunk (files: DiffFile[], path: string, line: number | null, oldLine: number | null): string {
   for (const file of files) {
-    if (!file.header.endsWith(` b/${path}`)) continue
-    const hunk = hunkIn(file.lines, line, oldLine)
-    if (hunk !== '') return hunk
+    if (file.fileName !== path) continue
+    for (const hunk of file.hunks) {
+      const text = hunkIn(hunk, line, oldLine)
+      if (text !== '') return text
+    }
   }
   return ''
 }

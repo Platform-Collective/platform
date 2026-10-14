@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import { type Blob, type PersonId, type Ref } from '@hcengineering/core'
+import { type DiffFile } from '@hcengineering/diffview'
 import { type GitlabReviewThread } from '@hcengineering/gitlab'
-import { findHunk, type PatchFile } from './hunk'
+import { findHunk } from './hunk'
 
 /** Where a thread points: the new line, else the removed (old) line, else the file. */
 export function threadLocation (thread: Pick<GitlabReviewThread, 'path' | 'oldPath' | 'line' | 'oldLine'>): string {
@@ -30,7 +31,7 @@ export interface HunkRequest {
  * thread turning outdated).
  */
 export function createHunkLoader (
-  loadFiles: (file: Ref<Blob>) => Promise<PatchFile[]>
+  loadFiles: (file: Ref<Blob>) => Promise<DiffFile[]>
 ): (request: HunkRequest) => Promise<string | undefined> {
   let latest = 0
   return async (request) => {

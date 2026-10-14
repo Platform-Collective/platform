@@ -1,85 +1,130 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { fetch as undiciFetch, type Dispatcher } from 'undici'
-import type { HostGuard } from '../host-guard'
+import {
+  BLOCKED_IPV4_RANGES,
+  BLOCKED_IPV6_RANGES,
+  createSafeFetch,
+  normalizeHostname,
+  resolveAndCheck,
+  SafeFetchError,
+  type SafeFetchOptions,
+  validateUrl
+} from '@hcengineering/safe-fetch'
 import type { FetchFn } from './api'
 
-export interface SafeFetchOptions {
-  // Unset: no host check (tests)
-  guard?: Pick<HostGuard, 'assertAllowed' | 'assertRedirectAllowed'>
-  // Per request, body and redirects included; a caller's own signal replaces it
-  timeoutMs: number
+export interface GitlabHostPolicy {
+  // Dev only (GITLAB_ALLOW_INSECURE_HOSTS): plain http and private addresses
+  allowInsecure: boolean
+  // GITLAB_ALLOWED_HOSTS, normalized host names (parseAllowedHosts): when not empty, the only GitLab hosts accepted, private ones included
+  allowedHosts: string[]
 }
 
-// Redirects followed for a request that asks for them (upload downloads); the next one is refused
-const MAX_REDIRECTS = 3
+// Redirects followed for a request that asks for them (upload downloads)
+export const MAX_REDIRECTS = 3
+// Merge request diffs can be large; uploads have their own, lower limit (MAX_IMAGE_BYTES)
+export const MAX_BODY_BYTES = 100 * 1024 * 1024
 
-/** GitLab answered with a redirect; following it could reach a host the guard never saw. */
-export class GitlabRedirectError extends Error {
-  constructor (readonly status: number) {
-    super(`GitLab answered with a redirect (HTTP ${status}); redirects are not followed`)
-    this.name = 'GitlabRedirectError'
+/**
+ * The safe-fetch host options of a policy. safe-fetch's allowlist only grants exceptions to the blocked ranges:
+ * GITLAB_ALLOWED_HOSTS may be private, and dev mode allows every private range and localhost.
+ */
+function hostOptions (policy: GitlabHostPolicy): Pick<SafeFetchOptions, 'allowHttp' | 'allowlist'> {
+  return {
+    allowHttp: policy.allowInsecure,
+    allowlist: policy.allowInsecure
+      ? [...BLOCKED_IPV4_RANGES, ...BLOCKED_IPV6_RANGES, 'localhost', '*.localhost', ...policy.allowedHosts]
+      : policy.allowedHosts
   }
 }
 
-function isRedirect (res: Response): boolean {
-  return res.status >= 300 && res.status < 400
+/** safe-fetch options of every GitLab call for a host policy. */
+export function gitlabSafeFetchOptions (policy: GitlabHostPolicy, timeoutMs: number): SafeFetchOptions {
+  return { ...hostOptions(policy), timeoutMs, maxRedirects: MAX_REDIRECTS, maxBodyBytes: MAX_BODY_BYTES }
+}
+
+/** The normalized host name of a GitLab URL; throws INVALID_URL for anything that is not a URL. */
+function gitlabHostname (url: string): string {
+  try {
+    return normalizeHostname(new URL(url).hostname)
+  } catch {
+    // The input may hold credentials: never echo it
+    throw new SafeFetchError('INVALID_URL', 'Invalid GitLab URL')
+  }
+}
+
+/** With GITLAB_ALLOWED_HOSTS, throws BLOCKED_HOST for any other GitLab host. */
+function assertListed (host: string, policy: GitlabHostPolicy): void {
+  if (policy.allowedHosts.length > 0 && !policy.allowedHosts.includes(host)) {
+    throw new SafeFetchError('BLOCKED_HOST', `GitLab host ${host} is not allowed`)
+  }
 }
 
 /**
- * The FetchFn of every GitLab call: an allowed host, no redirects followed, and a time limit.
- *
- * A request with an explicit `redirect: 'follow'` (upload downloads, which GitLab with object storage answers with a
- * redirect) follows at most MAX_REDIRECTS redirects by hand. A target on GitLab's own origin passes the usual host
- * check; any other target passes the guard's redirect check (https, public addresses), and the Authorization header
- * is dropped from then on.
+ * Throws SafeFetchError unless the pod may call the GitLab host of `url`: checked before a host is saved, since the
+ * pod calls it with server credentials. Every refusal has the same message, naming the host only: safe-fetch's own
+ * name resolved addresses, and telling a blocked address from an unknown host would let the caller probe internal
+ * DNS. `lookup` is a test seam.
  */
-export function safeFetch (options: SafeFetchOptions, base: FetchFn = fetch): FetchFn {
+export async function assertGitlabHostAllowed (
+  url: string,
+  policy: GitlabHostPolicy,
+  lookup?: SafeFetchOptions['lookup']
+): Promise<void> {
+  const host = gitlabHostname(url)
+  assertListed(host, policy)
+  const options = { ...hostOptions(policy), lookup }
+  try {
+    await resolveAndCheck(validateUrl(url, options).hostname, options)
+  } catch (err) {
+    if (!(err instanceof SafeFetchError)) throw err
+    const message = host === '' ? 'Invalid GitLab URL' : `GitLab host ${host} is not allowed`
+    throw new SafeFetchError(err.code, message)
+  }
+}
+
+/**
+ * The same error with a message that names the GitLab host only, and without `url`: safe-fetch's messages name
+ * resolved addresses and redirect targets, and its `url` may be a signed object-store link. These errors reach the
+ * caller's HTTP response and the sync errors members see.
+ */
+function withoutDetails (err: unknown, host: string): unknown {
+  if (!(err instanceof SafeFetchError)) return err
+  switch (err.code) {
+    case 'INVALID_URL':
+    case 'INVALID_PROTOCOL':
+    case 'BLOCKED_HOST':
+    case 'BLOCKED_ADDRESS':
+      return new SafeFetchError(err.code, `GitLab host ${host}, or a host it redirected to, is not allowed`)
+    case 'REDIRECT_NOT_ALLOWED':
+      return new SafeFetchError(err.code, `GitLab host ${host} answered with a redirect; redirects are not followed`)
+    case 'FETCH_FAILED':
+      // The network error may name the address the host resolved to
+      return new SafeFetchError(err.code, `Request to GitLab host ${host} failed`)
+    default:
+      // Timeouts, size limits and redirect counts name no address
+      return new SafeFetchError(err.code, err.message)
+  }
+}
+
+/**
+ * The FetchFn of every GitLab call. GITLAB_ALLOWED_HOSTS applies to the GitLab host itself; each redirect hop of an
+ * upload download (`redirect: 'follow'`, e.g. to an object store) passes safe-fetch's own checks, and the
+ * Authorization header is dropped when it leaves GitLab's origin. A request without an explicit redirect mode never
+ * follows one.
+ */
+export function createGitlabFetch (
+  policy: GitlabHostPolicy,
+  timeoutMs: number,
+  // Test seam: a fetch with other safe-fetch options
+  safeFetch: FetchFn = createSafeFetch(gitlabSafeFetchOptions(policy, timeoutMs))
+): FetchFn {
   return async (input: Parameters<FetchFn>[0], init?: RequestInit): Promise<Response> => {
-    // A Request object is never passed by the pod; String() of one is not a URL, so the guard refuses it
-    let url = String(input)
-    await options.guard?.assertAllowed(url)
-    const gitlabOrigin = URL.canParse(url) ? new URL(url).origin : undefined
-    const follow = init?.redirect === 'follow'
-    const signal = init?.signal ?? AbortSignal.timeout(options.timeoutMs)
-    let headers = new Headers(init?.headers)
-    for (let redirects = 0; ; redirects++) {
-      const res = await base(url, { ...init, headers, redirect: 'manual', signal })
-      if (!isRedirect(res)) return res
-      await res.body?.cancel().catch(() => {})
-      const location = res.headers.get('location')
-      if (!follow || redirects >= MAX_REDIRECTS || location === null) {
-        throw new GitlabRedirectError(res.status)
-      }
-      let next: URL
-      try {
-        next = new URL(location, url)
-      } catch {
-        throw new GitlabRedirectError(res.status)
-      }
-      if (next.origin === gitlabOrigin) {
-        // Back on GitLab itself, where GITLAB_ALLOWED_HOSTS applies
-        await options.guard?.assertAllowed(next.href)
-      } else {
-        await options.guard?.assertRedirectAllowed(next.href)
-        headers = new Headers(headers)
-        headers.delete('authorization')
-      }
-      url = next.href
+    const host = gitlabHostname(String(input))
+    assertListed(host, policy)
+    try {
+      return await safeFetch(input, { ...init, redirect: init?.redirect ?? 'error' })
+    } catch (err) {
+      throw withoutDetails(err, host)
     }
-  }
-}
-
-/**
- * A FetchFn that sends every request through `dispatcher` (an Agent whose `connect.lookup` is
- * HostGuard.connectLookup). It uses undici's own fetch: the global one may come from another undici version than the
- * Agent and would not accept it.
- */
-export function dispatcherFetch (dispatcher: Dispatcher): FetchFn {
-  return async (input: Parameters<FetchFn>[0], init?: RequestInit): Promise<Response> => {
-    const options = { ...(init as object), dispatcher }
-    const response = await undiciFetch(String(input), options)
-    // undici's Response has the same shape as the global one; only the TypeScript declarations differ
-    return response as unknown as Response
   }
 }

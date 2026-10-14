@@ -1,177 +1,227 @@
 // SPDX-License-Identifier: EPL-2.0
+import { createSafeFetch, SafeFetchError, type Lookup, type SafeFetchErrorCode } from '@hcengineering/safe-fetch'
+import http from 'http'
+import { type AddressInfo } from 'net'
 import { type FetchFn, GitlabApi } from '../gitlab/api'
-import { GitlabRedirectError, safeFetch } from '../gitlab/fetch'
-import { GitlabHostRefusedError, HostGuard, type LookupFn } from '../host-guard'
+import {
+  assertGitlabHostAllowed,
+  createGitlabFetch,
+  gitlabSafeFetchOptions,
+  MAX_REDIRECTS,
+  type GitlabHostPolicy
+} from '../gitlab/fetch'
 
-function base (status: number, headers: Record<string, string> = {}): jest.Mock {
-  return jest.fn(async (_url: string, _init?: RequestInit) => new Response('body', { status, headers }))
+const strict: GitlabHostPolicy = { allowInsecure: false, allowedHosts: [] }
+const dev: GitlabHostPolicy = { allowInsecure: true, allowedHosts: [] }
+
+function resolves (map: Record<string, string[]>): Lookup {
+  return async (hostname) => {
+    const addresses = map[hostname]
+    if (addresses === undefined) throw new Error(`ENOTFOUND ${hostname}`)
+    return addresses.map((address) => ({ address, family: address.includes(':') ? 6 : 4 }))
+  }
 }
 
-const allowAll = { assertAllowed: async () => {}, assertRedirectAllowed: async () => {} }
+async function codeOf (promise: Promise<unknown>): Promise<SafeFetchErrorCode | undefined> {
+  try {
+    await promise
+  } catch (err) {
+    if (err instanceof SafeFetchError) return err.code
+    throw err
+  }
+  return undefined
+}
 
-describe('safeFetch', () => {
-  it('asks the guard before calling GitLab', async () => {
-    const fetchFn = base(200)
-    const guard = {
-      assertAllowed: jest.fn(async () => {
-        throw new GitlabHostRefusedError('10.0.0.1')
-      }),
-      assertRedirectAllowed: jest.fn(async () => {})
-    }
-    await expect(
-      safeFetch({ guard, timeoutMs: 1000 }, fetchFn as unknown as FetchFn)('https://10.0.0.1/api/v4/user')
-    ).rejects.toBeInstanceOf(GitlabHostRefusedError)
-    expect(guard.assertAllowed).toHaveBeenCalledWith('https://10.0.0.1/api/v4/user')
-    expect(fetchFn).not.toHaveBeenCalled()
+describe('createGitlabFetch', () => {
+  function base (): jest.Mock {
+    return jest.fn(async (_url: string, _init?: RequestInit) => new Response('body', { status: 200 }))
+  }
+
+  it('with GITLAB_ALLOWED_HOSTS calls only the listed hosts', async () => {
+    const policy = { allowInsecure: false, allowedHosts: ['git.corp.example'] }
+    const fetchFn = base()
+    const call = createGitlabFetch(policy, 1000, fetchFn)
+    expect((await call('https://Git.Corp.Example/api/v4/user')).status).toBe(200)
+    expect(await codeOf(call('https://gitlab.com/api/v4/user'))).toBe('BLOCKED_HOST')
+    expect(fetchFn).toHaveBeenCalledTimes(1)
   })
 
-  it('never follows a redirect', async () => {
-    const fetchFn = base(302, { location: 'http://169.254.169.254/latest' })
-    const err = await safeFetch({ guard: allowAll, timeoutMs: 1000 }, fetchFn as unknown as FetchFn)(
-      'https://gitlab.example.com/oauth/token',
-      { method: 'POST' }
-    ).catch((e: unknown) => e)
-    expect(err).toBeInstanceOf(GitlabRedirectError)
-    expect((err as GitlabRedirectError).status).toBe(302)
-    expect(fetchFn.mock.calls[0][1]).toMatchObject({ method: 'POST', redirect: 'manual' })
+  it('never follows a redirect unless the call asks for it', async () => {
+    const fetchFn = base()
+    const call = createGitlabFetch(strict, 1000, fetchFn)
+    await call('https://gitlab.example.com/oauth/token', { method: 'POST' })
+    await call('https://gitlab.example.com/uploads/x', { redirect: 'follow' })
+    expect(fetchFn.mock.calls[0][1]).toMatchObject({ method: 'POST', redirect: 'error' })
+    expect(fetchFn.mock.calls[1][1]).toMatchObject({ redirect: 'follow' })
   })
 
-  it("adds a time limit, and keeps the caller's own signal", async () => {
-    const fetchFn = base(200)
-    const call = safeFetch({ guard: allowAll, timeoutMs: 1000 }, fetchFn)
-    expect((await call('https://gitlab.example.com/a')).status).toBe(200)
-    expect(fetchFn.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
-    const own = new AbortController().signal
-    await call('https://gitlab.example.com/b', { signal: own })
-    expect(fetchFn.mock.calls[1][1].signal).toBe(own)
+  it('names the GitLab host, not its address, when the connection fails', async () => {
+    const fetchFn = jest.fn(async () => {
+      throw new SafeFetchError('FETCH_FAILED', 'Request failed: connect ECONNREFUSED 10.0.0.5:443', 'https://x')
+    })
+    const err = await createGitlabFetch(
+      strict,
+      1000,
+      fetchFn
+    )('https://gitlab.example.com/api/v4/user').catch((e: unknown) => e)
+    expect((err as SafeFetchError).code).toBe('FETCH_FAILED')
+    expect((err as SafeFetchError).message).toBe('Request to GitLab host gitlab.example.com failed')
+    expect((err as SafeFetchError).url).toBeUndefined()
+  })
+})
+
+describe('assertGitlabHostAllowed', () => {
+  const lookup = resolves({
+    'gitlab.example.com': ['93.184.216.34'],
+    'git.corp.example': ['10.0.0.5'],
+    'mixed.example.com': ['93.184.216.36', '127.0.0.1'],
+    localhost: ['127.0.0.1']
   })
 
-  it('aborts a call that takes longer than the limit', async () => {
-    const hanging = jest.fn(
-      async (_url: string, init?: RequestInit) =>
-        await new Promise<Response>((_resolve, reject) => {
-          init?.signal?.addEventListener('abort', () => {
-            reject(init.signal?.reason)
-          })
-        })
+  async function check (url: string, policy: GitlabHostPolicy): Promise<SafeFetchErrorCode | undefined> {
+    return await codeOf(assertGitlabHostAllowed(url, policy, lookup))
+  }
+
+  it('accepts a host whose every address is public', async () => {
+    expect(await check('https://gitlab.example.com', strict)).toBeUndefined()
+  })
+
+  it.each([
+    ['a private address', 'https://git.corp.example', 'BLOCKED_ADDRESS'],
+    ['a host with one private address', 'https://mixed.example.com', 'BLOCKED_ADDRESS'],
+    ['a private IP literal', 'https://169.254.169.254', 'BLOCKED_ADDRESS'],
+    ['localhost', 'https://localhost', 'BLOCKED_HOST'],
+    ['plain http', 'http://gitlab.example.com', 'INVALID_PROTOCOL']
+  ])('refuses %s', async (_name, url, code) => {
+    expect(await check(url, strict)).toBe(code)
+  })
+
+  it('names the refused host, never the addresses it resolves to', async () => {
+    const err = await assertGitlabHostAllowed('https://mixed.example.com', strict, lookup).catch((e: unknown) => e)
+    expect((err as Error).message).toBe('GitLab host mixed.example.com is not allowed')
+  })
+
+  it('names the host of a valid URL that safe-fetch refuses before resolving it', async () => {
+    await expect(assertGitlabHostAllowed('https://10.0.0.1', strict, lookup)).rejects.toThrow(
+      'GitLab host 10.0.0.1 is not allowed'
     )
-    const err = await safeFetch(
-      { guard: allowAll, timeoutMs: 10 },
-      hanging as unknown as FetchFn
-    )('https://gitlab.example.com/slow').catch((e: unknown) => e)
-    expect((err as Error).name).toBe('TimeoutError')
+    await expect(assertGitlabHostAllowed('http://gitlab.example.com', strict, lookup)).rejects.toThrow(
+      'GitLab host gitlab.example.com is not allowed'
+    )
+    await expect(assertGitlabHostAllowed('not a url', strict, lookup)).rejects.toThrow('Invalid GitLab URL')
+    expect(await codeOf(assertGitlabHostAllowed('ftp://x', strict))).toBe('INVALID_PROTOCOL')
+  })
+
+  it('with GITLAB_ALLOWED_HOSTS accepts only the listed hosts, private ones included', async () => {
+    const policy = { allowInsecure: false, allowedHosts: ['git.corp.example'] }
+    expect(await check('https://git.corp.example', policy)).toBeUndefined()
+    expect(await check('https://gitlab.example.com', policy)).toBe('BLOCKED_HOST')
+  })
+
+  it('accepts plain http and private hosts in dev mode (GITLAB_ALLOW_INSECURE_HOSTS)', async () => {
+    expect(await check('http://git.corp.example', dev)).toBeUndefined()
+    expect(await check('http://localhost', dev)).toBeUndefined()
   })
 })
 
 // GitLab with object storage answers an upload download with a redirect to the object store
-describe('safeFetch: upload downloads', () => {
-  const GITLAB = 'https://gitlab.internal'
-  const UPLOAD = `${GITLAB}/api/v4/projects/5/uploads/abc/shot.png`
+describe('createGitlabFetch: upload downloads', () => {
+  interface Server {
+    origin: string
+    authorization: Array<string | undefined>
+    close: () => Promise<void>
+  }
 
-  function resolves (map: Record<string, string[]>): LookupFn {
-    return async (hostname) => {
-      const addresses = map[hostname]
-      if (addresses === undefined) throw new Error(`ENOTFOUND ${hostname}`)
-      return addresses.map((address) => ({ address, family: address.includes(':') ? 6 : 4 }))
+  // Answers each path with its redirect, or with the image
+  async function serve (redirects: Record<string, string>): Promise<Server> {
+    const authorization: Array<string | undefined> = []
+    const server = http.createServer((req, res) => {
+      authorization.push(req.headers.authorization)
+      const location = redirects[req.url ?? '']
+      if (location !== undefined) {
+        res.writeHead(302, { location }).end()
+      } else {
+        res.writeHead(200, { 'content-type': 'image/png' }).end('img')
+      }
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    return {
+      origin: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
+      authorization,
+      close: async () => {
+        await new Promise((resolve) => server.close(resolve))
+      }
     }
   }
 
-  // The GitLab host is trusted by the allow-list; the object store hosts are not on it
-  const guard = new HostGuard(
-    { allowInsecure: false, allowedHosts: ['gitlab.internal'] },
-    resolves({
-      'objects.example.com': ['93.184.216.34'],
-      'cdn.example.com': ['93.184.216.35'],
-      'minio.internal': ['10.0.0.5'],
-      'mixed.example.com': ['93.184.216.36', '127.0.0.1']
-    })
-  )
+  const UPLOAD = '/api/v4/projects/5/uploads/abc/shot.png'
+  const servers: Server[] = []
+  afterEach(async () => {
+    await Promise.all(
+      servers.splice(0).map(async (it) => {
+        await it.close()
+      })
+    )
+  })
 
-  function guarded (fetchFn: jest.Mock, hostGuard: HostGuard = guard): FetchFn {
-    return safeFetch({ guard: hostGuard, timeoutMs: 1000 }, fetchFn)
+  async function start (redirects: Record<string, string>): Promise<Server> {
+    const server = await serve(redirects)
+    servers.push(server)
+    return server
   }
 
-  // Answers each URL with its redirect, or with the image
-  function chain (redirects: Record<string, string>): jest.Mock {
-    return jest.fn(async (url: string, _init?: RequestInit) => {
-      const location = redirects[url]
-      return location !== undefined
-        ? new Response(null, { status: 302, headers: { location } })
-        : new Response('img', { status: 200, headers: { 'content-type': 'image/png' } })
-    })
+  // Local test servers are private addresses over http: dev mode lets the pod reach them
+  function api (gitlab: Server, policy: GitlabHostPolicy = dev): GitlabApi {
+    const fetchFn: FetchFn = createGitlabFetch(policy, 1000)
+    return new GitlabApi(gitlab.origin, 'secret-token', fetchFn)
   }
 
-  function authorizationOf (call: unknown[]): string | null {
-    return new Headers((call[1] as RequestInit).headers).get('authorization')
-  }
-
-  it('follows a redirect to a public object store, without the Authorization header', async () => {
-    const store = 'https://objects.example.com/bucket/shot.png?X-Amz-Signature=s'
-    const fetchFn = chain({ [UPLOAD]: store })
-    const api = new GitlabApi(GITLAB, 'secret-token', guarded(fetchFn))
-    const got = await api.downloadUpload(5, 'abc', 'shot.png', 100)
+  it('follows a redirect to another origin, without the Authorization header', async () => {
+    const store = await start({})
+    const gitlab = await start({ [UPLOAD]: `${store.origin}/bucket/shot.png` })
+    const got = await api(gitlab).downloadUpload(5, 'abc', 'shot.png', 100)
     expect(got).toEqual({ data: Buffer.from('img'), contentType: 'image/png' })
-    expect(fetchFn.mock.calls.map((it) => it[0])).toEqual([UPLOAD, store])
-    expect(authorizationOf(fetchFn.mock.calls[0])).toBe('Bearer secret-token')
-    expect(authorizationOf(fetchFn.mock.calls[1])).toBeNull()
-    expect(fetchFn.mock.calls[1][1]).toMatchObject({ redirect: 'manual' })
+    expect(gitlab.authorization).toEqual(['Bearer secret-token'])
+    expect(store.authorization).toEqual([undefined])
   })
 
   it('keeps the Authorization header on a same-origin redirect', async () => {
-    const moved = `${GITLAB}/api/v4/projects/6/uploads/abc/shot.png`
-    const fetchFn = chain({ [UPLOAD]: '/api/v4/projects/6/uploads/abc/shot.png' })
-    const api = new GitlabApi(GITLAB, 'secret-token', guarded(fetchFn))
-    await api.downloadUpload(5, 'abc', 'shot.png', 100)
-    expect(fetchFn.mock.calls[1][0]).toBe(moved)
-    expect(authorizationOf(fetchFn.mock.calls[1])).toBe('Bearer secret-token')
+    const gitlab = await start({ [UPLOAD]: '/api/v4/projects/6/uploads/abc/shot.png' })
+    await api(gitlab).downloadUpload(5, 'abc', 'shot.png', 100)
+    expect(gitlab.authorization).toEqual(['Bearer secret-token', 'Bearer secret-token'])
   })
 
-  it.each([
-    ['a private address', 'https://minio.internal/bucket/shot.png'],
-    ['a host with one private address', 'https://mixed.example.com/shot.png'],
-    ['a private IP literal', 'https://169.254.169.254/latest'],
-    ['plain http', 'http://objects.example.com/shot.png'],
-    ['an unknown host', 'https://nowhere.example.com/shot.png']
-  ])('refuses a redirect to %s', async (_name, location) => {
-    const fetchFn = chain({ [UPLOAD]: location })
-    const api = new GitlabApi(GITLAB, 't', guarded(fetchFn))
-    await expect(api.downloadUpload(5, 'abc', 'shot.png', 100)).rejects.toBeInstanceOf(GitlabHostRefusedError)
-    expect(fetchFn).toHaveBeenCalledTimes(1)
+  it('refuses a redirect to a private address outside dev mode', async () => {
+    const gitlab = await start({ [UPLOAD]: 'https://169.254.169.254/latest' })
+    // The listed GitLab host may be private; the object store it redirects to may not
+    const policy = { allowInsecure: false, allowedHosts: ['127.0.0.1'] }
+    const options = { ...gitlabSafeFetchOptions(policy, 1000), allowHttp: true }
+    const call = new GitlabApi(gitlab.origin, 't', createGitlabFetch(policy, 1000, createSafeFetch(options)))
+    const err = await call.downloadUpload(5, 'abc', 'shot.png', 100).catch((e: unknown) => e)
+    expect((err as SafeFetchError).code).toBe('BLOCKED_ADDRESS')
+    // Neither the redirect target nor its address reaches the caller
+    expect((err as SafeFetchError).message).toBe('GitLab host 127.0.0.1, or a host it redirected to, is not allowed')
+    expect((err as SafeFetchError).url).toBeUndefined()
   })
 
-  it('follows at most three redirects', async () => {
-    const hop = (n: number): string => `https://cdn.example.com/hop${n}`
-    const three = chain({ [UPLOAD]: hop(1), [hop(1)]: hop(2), [hop(2)]: hop(3) })
-    const viaThree = await new GitlabApi(GITLAB, 't', guarded(three)).downloadUpload(5, 'abc', 'shot.png', 100)
-    expect(viaThree.data).toEqual(Buffer.from('img'))
-    const four = chain({ [UPLOAD]: hop(1), [hop(1)]: hop(2), [hop(2)]: hop(3), [hop(3)]: hop(4) })
-    const err = await new GitlabApi(GITLAB, 't', guarded(four))
-      .downloadUpload(5, 'abc', 'shot.png', 100)
+  it(`follows at most ${MAX_REDIRECTS} redirects`, async () => {
+    const hops = (count: number): Record<string, string> =>
+      Object.fromEntries(
+        Array.from({ length: count }, (_, n) => [n === 0 ? UPLOAD : `/hop${n}`, `/hop${n + 1}`] as const)
+      )
+    const three = await start(hops(MAX_REDIRECTS))
+    expect((await api(three).downloadUpload(5, 'abc', 'shot.png', 100)).data).toEqual(Buffer.from('img'))
+    const four = await start(hops(MAX_REDIRECTS + 1))
+    expect(await codeOf(api(four).downloadUpload(5, 'abc', 'shot.png', 100))).toBe('TOO_MANY_REDIRECTS')
+  })
+
+  it('refuses a redirect on every other GitLab call', async () => {
+    const gitlab = await start({ '/api/v4/projects/5/issues/1': '/elsewhere' })
+    const err = await api(gitlab)
+      .getIssue(5, 1)
       .catch((e: unknown) => e)
-    expect(err).toBeInstanceOf(GitlabRedirectError)
-    expect(four).toHaveBeenCalledTimes(4)
-  })
-
-  it('refuses a redirect without a location', async () => {
-    const fetchFn = jest.fn(async () => new Response(null, { status: 302 }))
-    const err = await safeFetch({ guard, timeoutMs: 1000 }, fetchFn as unknown as FetchFn)(UPLOAD, {
-      redirect: 'follow'
-    }).catch((e: unknown) => e)
-    expect(err).toBeInstanceOf(GitlabRedirectError)
-  })
-
-  it('accepts any redirect target in dev mode (GITLAB_ALLOW_INSECURE_HOSTS)', async () => {
-    const dev = new HostGuard({ allowInsecure: true, allowedHosts: [] }, resolves({}))
-    const upload = 'http://gitlab.local/api/v4/projects/5/uploads/abc/shot.png'
-    const fetchFn = chain({ [upload]: 'http://minio.local/shot.png' })
-    const api = new GitlabApi('http://gitlab.local', 't', guarded(fetchFn, dev))
-    expect((await api.downloadUpload(5, 'abc', 'shot.png', 100)).data).toEqual(Buffer.from('img'))
-  })
-
-  it('keeps redirect = error for every other GitLab call', async () => {
-    const fetchFn = chain({ [`${GITLAB}/api/v4/projects/5/issues/1`]: 'https://objects.example.com/x' })
-    const api = new GitlabApi(GITLAB, 't', guarded(fetchFn))
-    await expect(api.getIssue(5, 1)).rejects.toBeInstanceOf(GitlabRedirectError)
-    expect(fetchFn).toHaveBeenCalledTimes(1)
+    expect((err as SafeFetchError).code).toBe('REDIRECT_NOT_ALLOWED')
+    expect((err as SafeFetchError).message).not.toContain('/elsewhere')
+    expect(gitlab.authorization).toHaveLength(1)
   })
 })

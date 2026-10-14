@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
-  import { type Ref } from '@hcengineering/core'
+  import { AccountRole, getCurrentAccount, hasAccountRole, type Ref } from '@hcengineering/core'
   import { type GitlabIntegration, type GitlabIntegrationRepository } from '@hcengineering/gitlab'
   import { createQuery, getClient } from '@hcengineering/presentation'
   import tracker, { type Project } from '@hcengineering/tracker'
@@ -19,6 +19,9 @@
   export let integrations: GitlabIntegration[] = []
 
   const client = getClient()
+  const account = getCurrentAccount()
+  // The server's rule for linking and unlinking (GitlabIntegrationMiddleware, repository-enable)
+  $: canManage = hasAccountRole(account, AccountRole.Maintainer) || account.primarySocialId === integration.connectedBy
   const query = createQuery()
   const linkedProjectsQuery = createQuery()
   let repositories: GitlabIntegrationRepository[] = []
@@ -89,15 +92,19 @@
       {:else if repository.enabled && repository.gitlabProject !== null}
         <div class="flex-row-center flex-gap-2">
           <span><Label label={gitlab.string.LinkedTo} /> <b>{linkedProjectName(repository, linkedProjects)}</b></span>
-          <Button
-            label={gitlab.string.Unlink}
-            on:click={() => {
-              confirmUnlink(repository)
-            }}
-          />
+          {#if canManage}
+            <Button
+              label={gitlab.string.Unlink}
+              on:click={() => {
+                confirmUnlink(repository)
+              }}
+            />
+          {/if}
         </div>
-      {:else}
+      {:else if canManage}
         <ConnectProject {integration} {repository} {projects} {integrations} />
+      {:else}
+        <span class="content-dark-color"><Label label={gitlab.string.LinkRequiresConnector} /></span>
       {/if}
     </div>
   {/each}

@@ -23,6 +23,7 @@
     "LinkToProject": "Propojit s projektem {title}",
     "Unlink": "Odpojit",
     "LinkedTo": "Propojeno s",
+    "LinkRequiresConnector": "Propojit může jen člen, který tento účet připojil, nebo správce",
     "Unavailable": "Nedostupné",
     "Processing": "Zpracování...",
     "AutoClose": "Tato záložka se zavře za {time} s",

@@ -24,6 +24,13 @@ describe('createTextCache', () => {
     expect(load).toHaveBeenCalledTimes(2)
   })
 
+  it('shares one download between concurrent calls', async () => {
+    const load = jest.fn(async (file: string) => `text of ${file}`)
+    const get = createTextCache(load)
+    expect(await Promise.all([get('a', 'Patch.diff'), get('a', 'Patch.diff')])).toEqual(['text of a', 'text of a'])
+    expect(load).toHaveBeenCalledTimes(1)
+  })
+
   it('tries a failed download again', async () => {
     const load = jest.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue('ok')
     const get = createTextCache(load)

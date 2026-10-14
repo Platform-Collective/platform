@@ -96,6 +96,29 @@ describe('cachedImageLoader', () => {
     expect(load).toHaveBeenCalledTimes(2)
   })
 
+  it('loads an image again once its cache entry expires', async () => {
+    // lru-cache reads a start time of 0 as "no time limit"
+    const now = { value: 1 }
+    const load = jest.fn(async () => image)
+    const loader = cachedImageLoader(load, { ...options, now: () => now.value })
+    await loader('ws-1' as WorkspaceUuid, 'person-1' as PersonId, 'u')
+    now.value = 1001
+    await loader('ws-1' as WorkspaceUuid, 'person-1' as PersonId, 'u')
+    expect(load).toHaveBeenCalledTimes(1)
+    now.value = 1002
+    await loader('ws-1' as WorkspaceUuid, 'person-1' as PersonId, 'u')
+    expect(load).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not cache an image larger than the cache', async () => {
+    const large = { ...image, data: Buffer.alloc(2048) }
+    const load = jest.fn(async () => large)
+    const loader = cachedImageLoader(load, options)
+    await loader('ws-1' as WorkspaceUuid, 'person-1' as PersonId, 'u')
+    expect(await loader('ws-1' as WorkspaceUuid, 'person-1' as PersonId, 'u')).toEqual(large)
+    expect(load).toHaveBeenCalledTimes(2)
+  })
+
   it('does not cache refusals', async () => {
     const load = jest.fn(async () => ({ kind: 'no-access' as const }))
     const loader = cachedImageLoader(load, options)

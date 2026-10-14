@@ -58,7 +58,7 @@ export class GitlabUserManager {
     private readonly store: SecretStore,
     // Resolved on every refresh, so a renewed or removed workspace application takes effect immediately.
     private readonly resolveOAuth: (workspace: WorkspaceUuid) => Promise<OAuthConfig | undefined>,
-    // Every GitLab call (safeFetch in production)
+    // Every GitLab call (createGitlabFetch in production)
     private readonly fetchFn: FetchFn,
     private readonly nowSec: () => number = () => Math.floor(Date.now() / 1000)
   ) {}
