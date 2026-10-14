@@ -54,11 +54,7 @@ describe('createWebhookHandler', () => {
     router.on('Issue Hook', handler)
     const res = fakeRes()
     const headers: Record<string, string> = { 'x-gitlab-token': 'secret', 'x-gitlab-event': 'Issue Hook' }
-    createWebhookHandler(
-      router,
-      fixedSecret('secret'),
-      ctx
-    )({ header: (n: string) => headers[n], body: { a: 1 } }, res)
+    createWebhookHandler(router, fixedSecret('secret'), ctx)({ header: (n: string) => headers[n], body: { a: 1 } }, res)
     expect(res.code).toBe(200)
     await waitUntil(() => handler.mock.calls.length > 0)
     expect(handler).toHaveBeenCalledWith({ a: 1 }, undefined)
@@ -71,11 +67,7 @@ describe('createWebhookHandler', () => {
     })
     const res = fakeRes()
     const headers: Record<string, string> = { 'x-gitlab-token': 'secret', 'x-gitlab-event': 'Note Hook' }
-    createWebhookHandler(
-      router,
-      fixedSecret('secret'),
-      ctx
-    )({ header: (n: string) => headers[n], body: {} }, res)
+    createWebhookHandler(router, fixedSecret('secret'), ctx)({ header: (n: string) => headers[n], body: {} }, res)
     expect(res.code).toBe(200)
     await flushPending()
   })

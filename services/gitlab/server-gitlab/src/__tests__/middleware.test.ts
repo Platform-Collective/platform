@@ -65,15 +65,17 @@ describe('isGitlabTransactionAllowed', () => {
 
   it('lets only an owner change the image mode', () => {
     expect(isGitlabTransactionAllowed(account(AccountRole.Owner), updateIntegration({ imageMode: 'proxy' }))).toBe(true)
-    expect(isGitlabTransactionAllowed(account(AccountRole.Maintainer), updateIntegration({ imageMode: 'proxy' }))).toBe(false)
+    expect(isGitlabTransactionAllowed(account(AccountRole.Maintainer), updateIntegration({ imageMode: 'proxy' }))).toBe(
+      false
+    )
   })
 
   it('lets the GitLab service and server-derived transactions change anything', () => {
     const service = account(AccountRole.User, systemAccountUuid)
     expect(isGitlabTransactionAllowed(service, updateIntegration({ host: 'https://gitlab.com' }))).toBe(true)
-    expect(isGitlabTransactionAllowed(account(AccountRole.User), updateIntegration({ $inc: { repositories: 1 } }, system))).toBe(
-      true
-    )
+    expect(
+      isGitlabTransactionAllowed(account(AccountRole.User), updateIntegration({ $inc: { repositories: 1 } }, system))
+    ).toBe(true)
   })
 
   it('ignores other classes', () => {

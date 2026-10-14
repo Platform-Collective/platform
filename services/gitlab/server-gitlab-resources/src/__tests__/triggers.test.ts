@@ -363,10 +363,7 @@ describe('OnProjectRemove', () => {
       removed: [removedGitlabProject()],
       infos: [{ _id: 'issue-1' as Ref<DocSyncInfo>, _class: gitlab.class.DocSyncInfo, space: linked }]
     })
-    await OnProjectRemove(
-      [user.createTxRemoveDoc(tracker.class.Project, core.space.Space, linked)],
-      control
-    )
+    await OnProjectRemove([user.createTxRemoveDoc(tracker.class.Project, core.space.Space, linked)], control)
     const lookup = findAllCalls.find((it) => it._class === gitlab.class.DocSyncInfo)
     expect(lookup?.options).toEqual({ projection: { _id: 1, _class: 1, space: 1 } })
   })
@@ -401,10 +398,7 @@ describe('OnGitlabBroadcast', () => {
       removed: [removedGitlabProject()],
       infos: [{ _id: 'issue-1' as Ref<DocSyncInfo>, _class: gitlab.class.DocSyncInfo, space: linked }]
     })
-    await OnProjectRemove(
-      [user.createTxRemoveDoc(tracker.class.Project, core.space.Space, linked)],
-      control
-    )
+    await OnProjectRemove([user.createTxRemoveDoc(tracker.class.Project, core.space.Space, linked)], control)
     expect(broadcastTarget(control)).toBeDefined()
   })
 })

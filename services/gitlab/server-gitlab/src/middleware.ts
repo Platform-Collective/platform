@@ -58,7 +58,8 @@ export function isGitlabTransactionAllowed (account: Account, transaction: Tx): 
   if (fields === undefined) return true
   // The GitLab service itself, or a transaction the server derived (e.g. a repository counter): IdentityMiddleware
   // already refused a transaction from a browser that claims to be System
-  const isServiceTransaction = account.uuid === systemAccountUuid || documentTransaction.modifiedBy === core.account.System
+  const isServiceTransaction =
+    account.uuid === systemAccountUuid || documentTransaction.modifiedBy === core.account.System
   if (isServiceTransaction) return true
   // Members never create or remove these documents
   if (documentTransaction._class !== core.class.TxUpdateDoc) return false
