@@ -7,6 +7,7 @@ import { showPopup } from '@hcengineering/ui'
 import { GitlabError } from './errors'
 import { type GitlabImageRequest } from './image-link'
 import gitlab from './plugin'
+import { safeHttpUrl } from './safe-url'
 import { parseServiceResponse, serviceUrl } from './service'
 import { stateFromAuthorizeUrl } from './state'
 
@@ -59,12 +60,16 @@ export async function onAuthorize (): Promise<string> {
   // The pod signs the OAuth state from the caller's token; no Huly token goes to GitLab.
   // GitLab redirects back to the front the user is on (its URL must be registered in the GitLab application)
   const { url } = await sendGLServiceRequest('authorize-url', { origin: window.location.origin })
-  const authorizeUrl = String(url)
+  // Only an http(s) link is opened, without window.opener: the landing tab reports back through OAUTH_CHANNEL
+  const authorizeUrl = safeHttpUrl(String(url))
+  if (authorizeUrl === undefined) {
+    throw new GitlabError(gitlab.string.AuthorizeLinkInvalid)
+  }
   const state = stateFromAuthorizeUrl(authorizeUrl)
   if (state === undefined) {
     throw new GitlabError(gitlab.string.AuthorizeLinkInvalid)
   }
-  window.open(authorizeUrl)
+  window.open(authorizeUrl, '_blank', 'noopener,noreferrer')
   return state
 }
 

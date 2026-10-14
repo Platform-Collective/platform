@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import { fetch as undiciFetch, type Dispatcher } from 'undici'
 import type { HostGuard } from '../host-guard'
 import type { FetchFn } from './api'
 
@@ -34,7 +35,7 @@ function isRedirect (res: Response): boolean {
  * is dropped from then on.
  */
 export function safeFetch (options: SafeFetchOptions, base: FetchFn = fetch): FetchFn {
-  return (async (input: Parameters<FetchFn>[0], init?: RequestInit): Promise<Response> => {
+  return async (input: Parameters<FetchFn>[0], init?: RequestInit): Promise<Response> => {
     // A Request object is never passed by the pod; String() of one is not a URL, so the guard refuses it
     let url = String(input)
     await options.guard?.assertAllowed(url)
@@ -66,5 +67,19 @@ export function safeFetch (options: SafeFetchOptions, base: FetchFn = fetch): Fe
       }
       url = next.href
     }
-  })
+  }
+}
+
+/**
+ * A FetchFn that sends every request through `dispatcher` (an Agent whose `connect.lookup` is
+ * HostGuard.connectLookup). It uses undici's own fetch: the global one may come from another undici version than the
+ * Agent and would not accept it.
+ */
+export function dispatcherFetch (dispatcher: Dispatcher): FetchFn {
+  return async (input: Parameters<FetchFn>[0], init?: RequestInit): Promise<Response> => {
+    const options = { ...(init as object), dispatcher }
+    const response = await undiciFetch(String(input), options)
+    // undici's Response has the same shape as the global one; only the TypeScript declarations differ
+    return response as unknown as Response
+  }
 }

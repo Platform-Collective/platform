@@ -16,7 +16,9 @@ import {
 describe('keys', () => {
   it('normalises hosts with sub-paths, schemes and case', () => {
     expect(hostKey('https://GitLab.com')).toBe('gitlab.com')
-    expect(hostKey('http://git.corp.local/gitlab/')).toBe('git.corp.local/gitlab')
+    expect(hostKey('https://git.corp.local/gitlab/')).toBe('git.corp.local/gitlab')
+    // A plain-http host (dev only) is not the same identity as the https one
+    expect(hostKey('http://git.corp.local/gitlab/')).toBe('http://git.corp.local/gitlab')
   })
 
   it('builds stable issue and note keys', () => {

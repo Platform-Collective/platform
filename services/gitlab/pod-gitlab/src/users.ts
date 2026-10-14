@@ -2,7 +2,7 @@
 
 import type { AccountClient, IntegrationSecret } from '@hcengineering/account-client'
 import type { PersonId, WorkspaceUuid } from '@hcengineering/core'
-import { gitlabUserIntegrationKind } from '@hcengineering/gitlab'
+import { gitlabUserIntegrationKind, type GitlabIntegration } from '@hcengineering/gitlab'
 import { assertWorkspace } from './caller'
 import type { OAuthConfig } from './config'
 import type { FetchFn } from './gitlab/api'
@@ -22,6 +22,18 @@ export interface GitlabUserRecord {
   // Epoch seconds
   expiresAt: number | null
   scope: string
+}
+
+/**
+ * True when `record` is the token the integration was connected with: same GitLab instance and user. The record comes
+ * from the account service; host and gitlabUserId come from a workspace document, so a token is never used for an
+ * integration that names another host or GitLab user. A missing record is not.
+ */
+export function isIntegrationToken (
+  record: GitlabUserRecord | undefined,
+  integration: Pick<GitlabIntegration, 'host' | 'gitlabUserId'>
+): record is GitlabUserRecord {
+  return record !== undefined && record.host === integration.host && record.userId === integration.gitlabUserId
 }
 
 export type SecretStore = Pick<

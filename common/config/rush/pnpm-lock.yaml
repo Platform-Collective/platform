@@ -39833,6 +39833,9 @@ importers:
       express:
         specifier: ^4.21.2
         version: 4.21.2
+      undici:
+        specifier: ^7.18.2
+        version: 7.30.0
       ws:
         specifier: ^8.21.0
         version: 8.21.3(bufferutil@4.0.9)(utf-8-validate@6.0.5)

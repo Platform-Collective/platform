@@ -95,6 +95,23 @@ export function appInput (body: RouteBody): GitlabAppInput {
   return { host: body.host, clientId: body.clientId, clientSecret: body.clientSecret }
 }
 
+export interface RefreshRouteDeps {
+  verify: (body: RouteBody) => Promise<VerifiedCaller>
+  // Login info of the posted token; its role counts only for the verified workspace
+  loginInfo: (body: RouteBody) => Promise<LoginInfoByToken | undefined>
+  service: Pick<GitlabService, 'refresh'>
+}
+
+/** Maintainers only: a refresh calls GitLab with every connected member's token. */
+export async function refreshRoute (ctx: MeasureContext, body: RouteBody, deps: RefreshRouteDeps): Promise<void> {
+  const { workspace, accountId } = await deps.verify(body)
+  const isMaintainer = hasWorkspaceRole(await deps.loginInfo(body), workspace, AccountRole.Maintainer)
+  if (!isMaintainer) {
+    throw new HttpError(403, 'Only workspace maintainers can refresh GitLab repositories')
+  }
+  await deps.service.refresh(ctx, workspace, accountId)
+}
+
 export interface OwnerRouteDeps {
   verify: (body: RouteBody) => Promise<VerifiedCaller>
   // Login info of the posted token (getLoginInfoByToken in production); its role counts only for the verified workspace.

@@ -4,10 +4,14 @@ import type { GitlabNoteable } from '../gitlab/types'
 
 /** GitLab host without scheme or trailing slash, lower case: 'gitlab.com', 'git.corp.local/gitlab'. */
 export function hostKey (host: string): string {
-  return host
+  const bare = host
     .replace(/^https?:\/\//i, '')
     .replace(/\/+$/, '')
     .toLowerCase()
+  // https keys stay bare (existing keys unchanged); a plain-http host (GITLAB_ALLOW_INSECURE_HOSTS) is a different
+  // identity than the https one on the same name
+  const isPlainHttp = /^http:\/\//i.test(host)
+  return isPlainHttp ? `http://${bare}` : bare
 }
 
 /** Stable key of a GitLab issue or merge request. Project ids and iids survive project renames and transfers. */

@@ -52,6 +52,7 @@ export function verifyState (raw: string, secret: string, nowMs: number): OAuthS
     typeof parsed?.workspace !== 'string' ||
     typeof parsed?.account !== 'string' ||
     typeof parsed?.accountId !== 'string' ||
+    typeof parsed?.nonce !== 'string' ||
     typeof parsed?.exp !== 'number' ||
     (parsed.redirectUri !== undefined && typeof parsed.redirectUri !== 'string')
   ) {
@@ -61,4 +62,24 @@ export function verifyState (raw: string, secret: string, nowMs: number): OAuthS
     throw new Error('OAuth state expired')
   }
   return parsed as OAuthState
+}
+
+/** Nonces of OAuth states already used, until they expire: a state completes one authorization only. */
+export class UsedStates {
+  // nonce -> expiry, epoch milliseconds
+  private readonly used = new Map<string, number>()
+
+  /** Throws when `state` was already used; otherwise records it. */
+  consume (state: OAuthState, nowMs: number): void {
+    // Expired states are refused by verifyState anyway: forget them
+    for (const [nonce, exp] of this.used) {
+      const expired = exp <= nowMs
+      if (expired) this.used.delete(nonce)
+    }
+    const alreadyUsed = this.used.has(state.nonce)
+    if (alreadyUsed) {
+      throw new Error('OAuth state already used')
+    }
+    this.used.set(state.nonce, state.exp)
+  }
 }

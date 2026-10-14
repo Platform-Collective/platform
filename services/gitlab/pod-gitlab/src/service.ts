@@ -27,8 +27,8 @@ import { APP_IN_USE, HttpError } from './http-error'
 import type { HostGuard } from './host-guard'
 import { EXPIRED_ERROR, errorMessage } from './sync/errors'
 import { refreshIntegrationRepositories } from './repositories'
-import { signState, verifyState, type OAuthStatePayload } from './state'
-import type { GitlabUserManager, GitlabUserRecord } from './users'
+import { signState, UsedStates, verifyState, type OAuthStatePayload } from './state'
+import { isIntegrationToken, type GitlabUserManager, type GitlabUserRecord } from './users'
 
 export interface CallerIdentity {
   workspace: WorkspaceUuid
@@ -65,6 +65,10 @@ export interface RepositoryCaller {
   isMaintainer: () => Promise<boolean>
 }
 
+// A refresh calls GitLab with every connected member's token: at most one per workspace in this interval
+export const REFRESH_INTERVAL_MS = 60 * 1000
+const MAX_TRACKED_REFRESHES = 1000
+
 export class GitlabNotConfiguredError extends Error {
   constructor () {
     super('GitLab is not configured for this workspace')
@@ -89,6 +93,10 @@ export interface ServiceDeps {
 }
 
 export class GitlabService {
+  // Start of each workspace's last refresh
+  private readonly refreshedAt = new Map<WorkspaceUuid, number>()
+  private readonly usedStates = new UsedStates()
+
   constructor (private readonly deps: ServiceDeps) {}
 
   private now (): number {
@@ -202,6 +210,8 @@ export class GitlabService {
     if (state.workspace !== payload.caller.workspace || state.account !== payload.caller.account) {
       throw new Error('OAuth state does not match the current user')
     }
+    // GitLab's code is single-use as well; this also refuses a replayed callback before any GitLab call
+    this.usedStates.consume(state, this.now())
     const workspace = state.workspace
     let user: GitlabUser
     let record: GitlabUserRecord
@@ -265,13 +275,14 @@ export class GitlabService {
 
   async refresh (ctx: MeasureContext, workspace: WorkspaceUuid, accountId: PersonId): Promise<void> {
     await this.appFor(workspace)
+    this.claimRefresh(workspace)
     ctx.info('gitlab refresh requested', { workspace, accountId })
     // Bookkeeping as System: link rewrites must not queue every issue again or make the caller their author
     await this.withClient(workspace, core.account.System, async (client) => {
       for (const integration of await client.findAll(gitlab.class.GitlabIntegration, {})) {
         try {
           const record = await this.deps.users.getValidRecord(workspace, integration.connectedBy)
-          if (record === undefined) {
+          if (!isIntegrationToken(record, integration)) {
             await client.update(integration, { alive: false, error: EXPIRED_ERROR })
             continue
           }
@@ -287,6 +298,24 @@ export class GitlabService {
         }
       }
     })
+  }
+
+  /** Throws 429 while the workspace's previous refresh started less than REFRESH_INTERVAL_MS ago. */
+  private claimRefresh (workspace: WorkspaceUuid): void {
+    const now = this.now()
+    const last = this.refreshedAt.get(workspace)
+    const refreshedRecently = last !== undefined && now - last < REFRESH_INTERVAL_MS
+    if (refreshedRecently) {
+      throw new HttpError(429, 'GitLab repositories were refreshed less than a minute ago, try again later')
+    }
+    // Bounded memory: drop workspaces whose cooldown is over once the map is full
+    if (this.refreshedAt.size >= MAX_TRACKED_REFRESHES) {
+      for (const [key, at] of this.refreshedAt) {
+        const cooldownOver = now - at >= REFRESH_INTERVAL_MS
+        if (cooldownOver) this.refreshedAt.delete(key)
+      }
+    }
+    this.refreshedAt.set(workspace, now)
   }
 
   async enableRepository (
@@ -374,7 +403,8 @@ export class GitlabService {
     for (const integration of await client.findAll(gitlab.class.GitlabIntegration, { connectedBy: member })) {
       let token: string | undefined
       try {
-        token = (await this.deps.users.getValidRecord(workspace, member))?.token
+        const record = await this.deps.users.getValidRecord(workspace, member)
+        token = isIntegrationToken(record, integration) ? record.token : undefined
       } catch (err: unknown) {
         // An unrefreshable token must not block disconnecting; the hooks are then left in place.
         ctx.warn('gitlab token unavailable for hook cleanup', {
@@ -439,7 +469,7 @@ export class GitlabService {
       ctx.warn('previous gitlab token unavailable', { error: errorMessage(err) })
     }
     for (const integration of replaced) {
-      const token = previous !== undefined && previous.userId === integration.gitlabUserId ? previous.token : undefined
+      const token = isIntegrationToken(previous, integration) ? previous.token : undefined
       if (token === undefined) {
         ctx.warn('previous gitlab token unavailable or belongs to another user, hooks not deleted', {
           gitlabUserId: integration.gitlabUserId
@@ -508,15 +538,9 @@ export class GitlabService {
       const current = project.repositories ?? []
       const remaining = current.filter((it) => !removedIds.has(it))
       if (remaining.length === current.length) continue
-      await client.updateMixin(
-        project._id,
-        tracker.class.Project,
-        project.space,
-        gitlab.mixin.GitlabProject,
-        {
-          repositories: remaining
-        }
-      )
+      await client.updateMixin(project._id, tracker.class.Project, project.space, gitlab.mixin.GitlabProject, {
+        repositories: remaining
+      })
     }
   }
 
@@ -549,7 +573,7 @@ export class GitlabService {
       )
     }
     const record = await this.deps.users.getValidRecord(workspace, integration.connectedBy)
-    if (record === undefined) {
+    if (!isIntegrationToken(record, integration)) {
       throw new Error(EXPIRED_ERROR)
     }
     return { repository, integration, api: new GitlabApi(integration.host, record.token, this.deps.fetchFn) }

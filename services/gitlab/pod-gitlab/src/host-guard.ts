@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import type { LookupAddress, LookupOptions } from 'dns'
 import { lookup as dnsLookup } from 'dns/promises'
-import { BlockList, isIP } from 'net'
+import { BlockList, isIP, type LookupFunction } from 'net'
 
 /** A GitLab host the pod refuses to call. */
 export class GitlabHostRefusedError extends Error {
@@ -118,6 +119,13 @@ export function isPublicAddress (address: string): boolean {
   return !BLOCKED.check(bare, 'ipv6')
 }
 
+/** The IP family a socket asks its lookup for; undefined means any. */
+function requestedFamily (options: LookupOptions): 4 | 6 | undefined {
+  if (options.family === 4 || options.family === 'IPv4') return 4
+  if (options.family === 6 || options.family === 'IPv6') return 6
+  return undefined
+}
+
 /**
  * Decides which GitLab hosts the pod may call: by default, hosts whose every address is public; with
  * GITLAB_ALLOWED_HOSTS, exactly the listed hosts; in dev mode (GITLAB_ALLOW_INSECURE_HOSTS), any host.
@@ -164,6 +172,47 @@ export class HostGuard {
     if (!(await this.isPublicHost(hostname))) {
       throw new GitlabHostRefusedError(hostname)
     }
+  }
+
+  /**
+   * DNS lookup for the GitLab connections themselves, used as an undici Agent's `connect.lookup`. It applies the
+   * host policy to the addresses a socket actually opens to: a private address is refused unless the host is in
+   * GITLAB_ALLOWED_HOSTS or dev mode is on.
+   *
+   * assertAllowed() alone is not enough, because the connection resolves the name again, and a DNS server may answer
+   * differently the second time (DNS rebinding). URLs with an IP address never come here: there is nothing to
+   * resolve, and assertAllowed() checks the address itself.
+   */
+  readonly connectLookup: LookupFunction = (hostname: string, options: LookupOptions, callback) => {
+    const refuse = (err: NodeJS.ErrnoException): void => {
+      callback(err, '', 4)
+    }
+    this.connectAddresses(hostname.toLowerCase()).then((addresses) => {
+      const family = requestedFamily(options)
+      const matching = family === undefined ? addresses : addresses.filter((it) => it.family === family)
+      if (matching.length === 0) {
+        const err: NodeJS.ErrnoException = new Error(`No allowed address for ${hostname}`)
+        err.code = 'ENOTFOUND'
+        refuse(err)
+        return
+      }
+      // Node asks for every address (all: true) or for one
+      if (options.all === true) {
+        callback(null, matching)
+      } else {
+        callback(null, matching[0].address, matching[0].family)
+      }
+    }, refuse)
+  }
+
+  private async connectAddresses (hostname: string): Promise<LookupAddress[]> {
+    const addresses = await this.lookup(hostname)
+    const mayUsePrivateAddresses = this.policy.allowInsecure || this.policy.allowedHosts.includes(hostname)
+    if (mayUsePrivateAddresses) return addresses
+    // Not cached: this is the resolution the connection uses
+    const allPublic = addresses.length > 0 && addresses.every((it) => isPublicAddress(it.address))
+    if (!allPublic) throw new GitlabHostRefusedError(hostname)
+    return addresses
   }
 
   private async allowed (hostname: string): Promise<boolean> {

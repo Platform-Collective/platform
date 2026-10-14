@@ -32,3 +32,5 @@ export default plugin(serverGitlabId, {
     TodoDoneTester: '' as Resource<TodoDoneTester>
   }
 })
+
+export { GitlabIntegrationMiddleware, isGitlabTransactionAllowed } from './middleware'

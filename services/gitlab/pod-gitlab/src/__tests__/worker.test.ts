@@ -128,7 +128,7 @@ function setup (
   const clock = { now: Date.parse('2026-02-01T00:00:00.000Z') }
   const users = {
     getValidRecord: jest.fn(async (_ws: WorkspaceUuid, person: PersonId) =>
-      options.token !== false && person === CONNECTED_BY ? { token: 'tok', host: HOST } : undefined
+      options.token !== false && person === CONNECTED_BY ? { token: 'tok', host: HOST, userId: 9 } : undefined
     )
   }
   const client = asTxOperations(memory)
@@ -267,10 +267,10 @@ describe('GitlabWorker', () => {
           release = resolve
         })
     )
-    const integration = { connectedBy: CONNECTED_BY, host: HOST } as any
+    const integration = { connectedBy: CONNECTED_BY, host: HOST, gitlabUserId: 9 } as any
     const first = env.worker.integrationApi(integration)
     env.worker.forgetTokens()
-    release({ token: 'old', host: HOST })
+    release({ token: 'old', host: HOST, userId: 9 })
     await first
     const calls = env.users.getValidRecord.mock.calls.length
     await env.worker.integrationApi(integration)

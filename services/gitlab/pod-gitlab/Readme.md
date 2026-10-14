@@ -27,7 +27,12 @@ Required: `ACCOUNTS_URL`, `SERVER_SECRET`, `FRONT_URL`, `WEBHOOK_BASE_URL` (publ
 Optional: `PORT` (3600), `SERVICE_ID` (default `gitlab-service`), `GITLAB_REDIRECT_URI` (default `{FRONT_URL}/gitlab`),
 `STORAGE_CONFIG` (blob storage, same format as the other services; needed to show merge request diffs, which are skipped without it),
 `ENABLE_CONSOLE` (default `true`; log to the console as well as to files),
-`GITLAB_REQUEST_TIMEOUT_MS` (default `30000`): limit of one GitLab call, response body included.
+`GITLAB_REQUEST_TIMEOUT_MS` (default `30000`): limit of one GitLab call, response body included,
+`GITLAB_CORS_ORIGINS` (comma-separated origins): browser origins the API answers besides the `FRONT_URL` origin, for a
+Huly front served from other hosts.
+
+Use long random values for `SERVER_SECRET` and `WEBHOOK_SECRET`; outside dev mode the pod logs a warning at start for a
+value shorter than 16 characters or a placeholder like `secret`.
 
 `GITLAB_READONLY` (default `false`): when `true`, nothing is written to GitLab except the project webhooks. Changes made in
 Huly stay queued (the sync doc shows a read-only error) and are sent once the variable is unset.
@@ -48,8 +53,9 @@ Self-managed hosts: the pod calls only hosts whose every DNS address is public (
 metadata ranges, IPv4-in-IPv6 forms included), checked when the application is saved and before every GitLab call.
 Optional `GITLAB_ALLOWED_HOSTS` (comma-separated host names): when set, exactly these hosts are accepted, private ones
 included — use it for a GitLab on an internal network. `GITLAB_ALLOW_INSECURE_HOSTS=true` (dev) skips the check.
-Known limit: the address is checked before the call, and `fetch` resolves the name again; a DNS rebinding within one minute
-is not prevented.
+The connection itself resolves the name through the same check (the HTTP agent's DNS lookup), so a host that answers
+with a public address for the check and a private one for the connection (DNS rebinding) is refused. Setting
+`GITLAB_ALLOWED_HOSTS` in production is still recommended: it limits the pod to the GitLab instances you expect.
 
 Redirects: the pod never follows a redirect from GitLab, with one exception. Upload downloads (copied images and
 `POST /api/v1/image`) follow at most 3 redirects, because a GitLab with object storage (`proxy_download` off) answers

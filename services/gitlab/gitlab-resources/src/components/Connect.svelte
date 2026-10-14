@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
   import type { Integration as AccountIntegration } from '@hcengineering/account-client'
+  import { AccountRole, getCurrentAccount, hasAccountRole } from '@hcengineering/core'
   import { type GitlabIntegration } from '@hcengineering/gitlab'
   import { getMetadata } from '@hcengineering/platform'
   import presentation, { Card, createQuery } from '@hcengineering/presentation'
@@ -29,6 +30,8 @@
 
   const dispatch = createEventDispatcher()
   const title = getMetadata(ui.metadata.PlatformTitle)
+  // The service refreshes for maintainers only: a refresh calls GitLab with every member's token
+  const isMaintainer = hasAccountRole(getCurrentAccount(), AccountRole.Maintainer)
 
   let integrations: GitlabIntegration[] = []
   let projects: Project[] = []
@@ -151,7 +154,7 @@
     {/if}
   </div>
   <svelte:fragment slot="footer">
-    {#if integrations.length > 0}
+    {#if integrations.length > 0 && isMaintainer}
       <Button
         label={gitlab.string.RefreshRepositories}
         loading={refreshing}

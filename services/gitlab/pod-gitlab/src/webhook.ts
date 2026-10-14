@@ -57,14 +57,29 @@ export class WebhookRouter {
   }
 }
 
+/**
+ * The target of a request whose X-Gitlab-Token is right, `{}` for one without a target; undefined rejects it.
+ * Reads headers and route parameters only, so it runs before the body is parsed.
+ */
+export function authorizeHook (
+  resolve: HookSecretResolver,
+  req: Omit<WebhookRequest, 'body'>
+): { target?: HookTarget } | undefined {
+  // Undefined when the URL names no workspace and integration to derive a secret from
+  const expected = resolve({ ...req, body: undefined })
+  const hasValidToken = expected !== undefined && verifyGitlabToken(req.header('x-gitlab-token'), expected.secret)
+  if (!hasValidToken) return undefined
+  return { target: expected.target }
+}
+
 export function createWebhookHandler (
   router: WebhookRouter,
   resolve: HookSecretResolver,
   ctx: MeasureContext
 ): (req: WebhookRequest, res: WebhookResponse) => void {
   return (req, res) => {
-    const expected = resolve(req)
-    if (expected === undefined || !verifyGitlabToken(req.header('x-gitlab-token'), expected.secret)) {
+    const expected = authorizeHook(resolve, req)
+    if (expected === undefined) {
       res.status(401).json({ error: 'invalid token' })
       return
     }

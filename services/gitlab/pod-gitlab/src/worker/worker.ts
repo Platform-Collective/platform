@@ -61,7 +61,7 @@ import type {
   UserApi
 } from '../sync/types'
 import { GITLAB_SYNC_VERSION } from '../sync/versions'
-import type { GitlabUserManager, GitlabUserRecord } from '../users'
+import { isIntegrationToken, type GitlabUserManager, type GitlabUserRecord } from '../users'
 
 export const FULL_SYNC_INTERVAL_MS = 60 * 60 * 1000
 // GitLab timestamps and the pod clock may differ; re-reading a few minutes is harmless
@@ -476,7 +476,8 @@ export class GitlabWorker implements SyncProvider {
 
   async integrationApi (integration: GitlabIntegration): Promise<GitlabApi | undefined> {
     const record = await this.userRecord(integration.connectedBy)
-    return record === undefined ? undefined : this.api(integration.host, record.token)
+    if (!isIntegrationToken(record, integration)) return undefined
+    return this.api(integration.host, record.token)
   }
 
   async apiFor (integration: GitlabIntegration, actor: PersonId): Promise<GitlabApi | undefined> {
@@ -861,7 +862,7 @@ export class GitlabWorker implements SyncProvider {
       })
       return false
     }
-    if (record === undefined) {
+    if (!isIntegrationToken(record, integration)) {
       await this.setHealth(integration, false, EXPIRED_ERROR)
       return false
     }

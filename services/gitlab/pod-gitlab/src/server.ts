@@ -10,13 +10,14 @@ import { buildStorageFromConfig, storageConfigFromEnv } from '@hcengineering/ser
 import { decodeToken } from '@hcengineering/server-token'
 import bp from 'body-parser'
 import cors from 'cors'
-import express, { type Request, type Response } from 'express'
+import { Agent } from 'undici'
+import express, { type NextFunction, type Request, type Response } from 'express'
 import { GitlabAppStore, toOAuthConfig } from './apps'
 import type { VerifiedCaller } from './caller'
 import { ACCOUNT_CLIENT_TIMEOUT_MS, createPlatformClient, systemToken } from './client'
-import type { Config } from './config'
+import { weakSecrets, type Config } from './config'
 import { GitlabApiError, isGitlabWriteAllowed } from './gitlab/api'
-import { safeFetch } from './gitlab/fetch'
+import { dispatcherFetch, safeFetch } from './gitlab/fetch'
 import { cachedImageLoader, IMAGE_HEADERS, imageRoute, imageStatus, type ImageRouteDeps } from './image-route'
 import { WEBHOOK_PATH } from './hooks'
 import { HostGuard } from './host-guard'
@@ -25,11 +26,13 @@ import {
   appConfigRoute,
   appRemoveRoute,
   disconnectAllRoute,
+  refreshRoute,
   repositoryDisableRoute,
   repositoryEnableRoute,
   requiredString,
   verifyCallerToken,
   type OwnerRouteDeps,
+  type RefreshRouteDeps,
   type RepositoryRouteDeps,
   type RouteBody,
   type TokenDeps
@@ -38,14 +41,16 @@ import { GitlabService } from './service'
 import { errorMessage, toError } from './sync/errors'
 import { linkGitlabIdentity } from './sync/persons'
 import { GitlabUserManager } from './users'
-import { createWebhookHandler, scopedResolver, WebhookRouter } from './webhook'
+import { authorizeHook, createWebhookHandler, scopedResolver, WebhookRouter } from './webhook'
 import { createWorkspaceWorker } from './worker/factory'
 import { GitlabPlatform, workspacesWithGitlab } from './worker/platform'
 import { workspaceWorkerState } from './workspace-state'
 import type { GitlabHookPayload } from './worker/worker'
 
-// Webhook payloads (merge requests with many changes) are the large bodies
-const MAX_BODY = '10mb'
+// Webhook payloads (merge requests with many changes) are the large bodies; parsed only once the hook token is checked
+const MAX_WEBHOOK_BODY = '10mb'
+// Every other route posts a token and a few small fields
+const MAX_BODY = '1mb'
 
 // decodeToken verifies the signature and throws on an invalid token.
 const tokenDeps: TokenDeps = {
@@ -64,6 +69,10 @@ async function loginInfo (body: RouteBody): Promise<LoginInfoByToken | undefined
 export async function start (ctx: MeasureContext, config: Config): Promise<() => Promise<void>> {
   setMetadata(serverClient.metadata.Endpoint, config.AccountsURL)
   setMetadata(serverClient.metadata.UserAgent, config.ServiceID)
+  const weak = weakSecrets(config)
+  if (weak.length > 0) {
+    ctx.warn('Weak GitLab service secrets: use long random values in production', { secrets: weak })
+  }
   if (!isGitlabWriteAllowed()) {
     ctx.warn('GitLab is read-only (GITLAB_READONLY=true): changes made in Huly are kept and not sent to GitLab')
   }
@@ -78,8 +87,9 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
     allowInsecure: config.AllowInsecureHosts === true,
     allowedHosts: config.AllowedHosts
   })
-  // Every GitLab call: allowed hosts only, no redirects, a time limit
-  const gitlabFetch = safeFetch({ guard: hostGuard, timeoutMs: config.RequestTimeoutMs })
+  // Every GitLab call: allowed hosts only (checked again on the connection's own DNS lookup), no redirects, a time limit
+  const gitlabAgent = new Agent({ connect: { lookup: hostGuard.connectLookup } })
+  const gitlabFetch = safeFetch({ guard: hostGuard, timeoutMs: config.RequestTimeoutMs }, dispatcherFetch(gitlabAgent))
   const users = new GitlabUserManager(
     accountClient,
     async (workspace) => {
@@ -151,13 +161,29 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
   })
 
   const app = express()
-  app.use(cors())
-  app.use(bp.json({ limit: MAX_BODY }))
 
-  const scoped = createWebhookHandler(webhookRouter, scopedResolver(config.WebhookSecret), ctx)
-  app.post(`${WEBHOOK_PATH}/:workspace/:integration`, (req: Request, res: Response) => {
-    scoped({ header: (name) => req.header(name), body: req.body, params: req.params }, res)
-  })
+  // Registered before the global body parser: an unauthenticated request is refused before its body is read
+  const hookResolver = scopedResolver(config.WebhookSecret)
+  const scoped = createWebhookHandler(webhookRouter, hookResolver, ctx)
+  app.post(
+    `${WEBHOOK_PATH}/:workspace/:integration`,
+    (req: Request, res: Response, next: NextFunction) => {
+      const hasValidToken =
+        authorizeHook(hookResolver, { header: (name) => req.header(name), params: req.params }) !== undefined
+      if (!hasValidToken) {
+        res.status(401).json({ error: 'invalid token' })
+        return
+      }
+      next()
+    },
+    bp.json({ limit: MAX_WEBHOOK_BODY }),
+    (req: Request, res: Response) => {
+      scoped({ header: (name) => req.header(name), body: req.body, params: req.params }, res)
+    }
+  )
+
+  app.use(cors({ origin: config.CorsOrigins }))
+  app.use(bp.json({ limit: MAX_BODY }))
 
   const failed = (name: string, res: Response, err: unknown): void => {
     const { status, body } = errorResponse(err)
@@ -230,11 +256,11 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
       })
     })
   )
+  const refreshDeps: RefreshRouteDeps = { verify: verifiedCaller, loginInfo, service }
   app.post(
     '/api/v1/refresh',
     route('refresh', async (body) => {
-      const { workspace, accountId } = await verifiedCaller(body)
-      await service.refresh(ctx, workspace, accountId)
+      await refreshRoute(ctx, body, refreshDeps)
     })
   )
   const repositoryDeps: RepositoryRouteDeps = { verify: verifiedCaller, loginInfo, service }
@@ -298,5 +324,6 @@ export async function start (ctx: MeasureContext, config: Config): Promise<() =>
     })
     await platform.close()
     await storage?.close()
+    await gitlabAgent.close()
   }
 }

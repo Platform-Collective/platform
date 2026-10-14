@@ -5,6 +5,8 @@ export interface Config {
   ServerSecret: string
   ServiceID: string
   FrontURL: string
+  // Browser origins the API answers (CORS): the FRONT_URL origin and GITLAB_CORS_ORIGINS
+  CorsOrigins: string[]
   Port: number
 
   RedirectURI: string
@@ -82,6 +84,39 @@ export function parseAllowedHosts (value: string | undefined): string[] {
     })
 }
 
+/** The FRONT_URL origin and GITLAB_CORS_ORIGINS (comma-separated, for fronts served from other hosts) as origins. */
+export function parseCorsOrigins (frontUrl: string, value: string | undefined): string[] {
+  const toOrigin = (url: string): string => {
+    try {
+      return new URL(url).origin
+    } catch {
+      throw new Error(`GITLAB_CORS_ORIGINS has an invalid origin: ${url}`)
+    }
+  }
+  const listed = (value ?? '')
+    .split(',')
+    .map((it) => it.trim())
+    .filter((it) => it !== '')
+  const origins = [frontUrl, ...listed].map(toOrigin)
+  return [...new Set(origins)]
+}
+
+// Shorter secrets, or these well-known placeholders (the dev compose defaults), are reported as weak
+const MIN_SECRET_LENGTH = 16
+const PLACEHOLDER_SECRETS = new Set(['secret', 'changeme', 'password'])
+
+/** Names of the configured secrets that look weak; empty in dev mode (GITLAB_ALLOW_INSECURE_HOSTS). */
+export function weakSecrets (config: Pick<Config, 'ServerSecret' | 'WebhookSecret' | 'AllowInsecureHosts'>): string[] {
+  if (config.AllowInsecureHosts === true) return []
+  const secrets: Array<[string, string]> = [
+    ['SERVER_SECRET', config.ServerSecret],
+    ['WEBHOOK_SECRET', config.WebhookSecret]
+  ]
+  const isWeak = (value: string): boolean =>
+    value.length < MIN_SECRET_LENGTH || PLACEHOLDER_SECRETS.has(value.toLowerCase())
+  return secrets.filter(([, value]) => isWeak(value)).map(([name]) => name)
+}
+
 export function loadConfig (env: Record<string, string | undefined>): Config {
   const missing = REQUIRED_ENV.filter((key) => env[key] === undefined || env[key] === '')
   if (missing.length > 0) {
@@ -105,6 +140,7 @@ export function loadConfig (env: Record<string, string | undefined>): Config {
     ServerSecret: env.SERVER_SECRET as string,
     ServiceID: env.SERVICE_ID ?? 'gitlab-service',
     FrontURL: frontUrl,
+    CorsOrigins: parseCorsOrigins(frontUrl, env.GITLAB_CORS_ORIGINS),
     Port: port,
     RedirectURI:
       env.GITLAB_REDIRECT_URI !== undefined && env.GITLAB_REDIRECT_URI !== ''
