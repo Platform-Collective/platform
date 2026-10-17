@@ -33,7 +33,14 @@
   import contact from '@hcengineering/contact'
   import { issuePriorities } from '../../types'
   import { connectedIssueIds } from './lib/dependency-router'
-  import { wouldCreateCycle, simulateCascade, addScheduleDays, descendantsWithDates } from './lib/scheduler'
+  import {
+    wouldCreateCycle,
+    simulateCascade,
+    descendantsWithDates,
+    shiftScheduleDays,
+    shiftWithPrimary,
+    keyboardWeekStep
+  } from './lib/scheduler'
   import {
     newCascadeToken,
     fsAnchor,
@@ -46,6 +53,8 @@
     createFlashStore,
     flashIssues,
     reduce,
+    dragCalendar,
+    modifierSyncMove,
     shouldPromoteCanvasPan,
     shouldStartCanvasPan,
     createTimeScale,
@@ -155,6 +164,7 @@
   import { GROUP_BY_KEYS, type GroupByKey } from './lib/group-by'
   import { buildGroupedRows, groupRowsToLayoutRows } from './lib/build-rows'
   import { ganttToolbarSnapshot } from './ganttToolbarStore'
+  import { pageTimeline, restorePanOffsetDays, withPinnedPanOffset } from './lib/timeline-navigation'
   // E — GanttFilter / applyFilter removed in favour of the standard
   // FilterBar (FilterButton in IssuesView.svelte). The standard filter
   // flows into `query` via `resultQuery`, so the issue-side filtering is
@@ -179,10 +189,10 @@
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   export let viewOptions: ViewOptions
 
-  const ROW_HEIGHT = 36
+  const ROW_HEIGHT = 40
   const MIN_SIDEBAR_WIDTH = 120
   const MAX_SIDEBAR_WIDTH = 1200
-  const DEFAULT_SIDEBAR_WIDTH = 280
+  const DEFAULT_SIDEBAR_WIDTH = 420
   const HEADER_HEIGHT = 56
   const MILESTONE_STRIP_HEIGHT = 0
   // Toolbar lives outside GanttView (hoisted into IssuesView's SpaceHeader
@@ -221,7 +231,8 @@
     tracker.string.GanttMoreActions,
     tracker.string.GanttGroupBy,
     tracker.string.GanttColorBy,
-    tracker.string.GanttToolbarMore
+    tracker.string.GanttToolbarMore,
+    tracker.string.GanttZoomLabel
   ]
   let ariaLabels: Record<string, string> = {}
   $: {
@@ -238,6 +249,19 @@
   function ariaLabelOf(key: IntlString): string {
     return ariaLabels[key] ?? ''
   }
+
+  let weekLabel = (week: number): string => `W${week}`
+  let quarterLabel = (quarter: number): string => `Q${quarter}`
+  $: {
+    const lang = $themeStore.language
+    translateCB(tracker.string.GanttWeekLabel, { week: '{week}' }, lang, (label) => {
+      if (lang === $themeStore.language) weekLabel = (week) => label.replace('{week}', String(week))
+    })
+    translateCB(tracker.string.GanttQuarterLabel, { quarter: '{quarter}' }, lang, (label) => {
+      if (lang === $themeStore.language) quarterLabel = (quarter) => label.replace('{quarter}', String(quarter))
+    })
+  }
+  $: timeScaleLocale = { locale: $themeStore.language, weekLabel, quarterLabel }
 
   let hoveredRowId: string | null = null
   let tooltipState: { visible: boolean, x: number, y: number, row: LayoutRow | null } = {
@@ -614,11 +638,8 @@
     else next.add(key)
     collapsedGroups = next
   }
-  function onGroupBySelectChange(e: Event): void {
-    const target = e.target
-    if (target instanceof HTMLSelectElement) {
-      setGroupBy(target.value as GroupByKey)
-    }
+  function onGroupBySelectChange(e: CustomEvent<string>): void {
+    if (GROUP_BY_KEYS.some((key) => key === e.detail)) setGroupBy(e.detail as GroupByKey)
   }
 
   // 200 ms debounced recompute on issues / relations / toggle / cfg change.
@@ -743,13 +764,15 @@
     ganttShowSubIssueProgress.set(
       typeof raw?.ganttShowSubIssueProgress === 'boolean' ? raw.ganttShowSubIssueProgress : false
     )
-    // Wait one tick so the new zoom propagates into `timeScale` before we
-    // scroll — otherwise toX() uses the previous pxPerDay and the anchor
-    // lands at the wrong column when the mount is slow.
+    // Reset unpinned views, then let the new zoom update the base range.
+    if (opts.panAnchorDate === undefined) navigationOffsetDays = 0
     await tick()
     if (opts.panAnchorDate !== undefined) {
       const t = timestampForIsoDate(opts.panAnchorDate)
       if (Number.isFinite(t) && hScrollEl != null) {
+        navigationOffsetDays = restorePanOffsetDays(t, raw?.ganttPanOffsetDays, baseDateRange.from, baseDateRange.to)
+        // The time scale must reflect the restored offset before toX().
+        await tick()
         const x = timeScale.toX(t)
         hScrollEl.scrollTo({ left: Math.max(0, x), behavior: 'auto' })
         queueMicrotask(syncViewport)
@@ -793,7 +816,11 @@
       const t = timeScale.fromX(hScrollEl.scrollLeft)
       payload.panAnchorDate = isoDateForTimestamp(t)
     }
-    return mergeGanttSavedView(base, payload)
+    return withPinnedPanOffset(
+      mergeGanttSavedView(base, payload),
+      payload.panAnchorDate !== undefined,
+      navigationOffsetDays
+    )
   }
 
   async function saveCurrentGanttView(name: string, fixTimeWindow: boolean, sharable: boolean): Promise<void> {
@@ -1071,6 +1098,7 @@
       activeDrag.set({ kind: 'idle' })
     }
   )
+  // IssuesView supplies a project ref, but its shared viewlet prop is typed as Space.
   $: calendarState.setSpace(space as Ref<Project> | undefined)
   // Calendar-dependent mutations may only START when a concrete project's
   // calendar is loaded. The all-projects view is read-only for
@@ -1219,7 +1247,40 @@
 
   // C — padding follows the active tick granularity, so a
   // wheel-zoomed view also gets sensible left/right padding.
-  $: dateRange = computeDateRange(issues, milestones, tickZoomLevel)
+  let navigationOffsetDays = 0
+  $: baseDateRange = computeDateRange(issues, milestones, tickZoomLevel)
+  $: dateRange = {
+    from: baseDateRange.from + navigationOffsetDays * 86_400_000,
+    to: baseDateRange.to + navigationOffsetDays * 86_400_000
+  }
+  $: missingStartCount = issues.filter((issue) => issue.startDate == null).length
+  $: scheduledDates = [
+    ...issues.flatMap((issue) => [issue.startDate, issue.dueDate].filter((date): date is number => date != null)),
+    ...milestones.filter((milestone) => milestone.targetDate != null).map((milestone) => milestone.targetDate)
+  ]
+  $: hasScheduledTasks = scheduledDates.length > 0
+  $: navigationMax = Math.max(0, totalCanvasWidth - canvasViewportWidth)
+  $: todayX = timeScale.toX(Date.now())
+  $: todayTarget = Math.max(0, Math.min(navigationMax, todayX - canvasViewportWidth / 2))
+  $: canJumpToToday = todayX < 0 || todayX > totalCanvasWidth || Math.abs(todayTarget - canvasViewportLeft) > 1
+  $: canJumpToStart =
+    hasScheduledTasks &&
+    canCenterOnDate(Math.min(...scheduledDates), timeScale, navigationMax, canvasViewportLeft, canvasViewportWidth)
+  $: canJumpToEnd =
+    hasScheduledTasks &&
+    canCenterOnDate(Math.max(...scheduledDates), timeScale, navigationMax, canvasViewportLeft, canvasViewportWidth)
+
+  function canCenterOnDate(
+    timestamp: number,
+    scale: { toX: (date: number) => number },
+    maxScroll: number,
+    left: number,
+    width: number
+  ): boolean {
+    const x = scale.toX(timestamp)
+    const target = Math.max(0, Math.min(maxScroll, x - width / 2))
+    return x < 0 || x > maxScroll + width || Math.abs(target - left) > 1
+  }
 
   // Maximum-zoom-out floor: bars must always occupy at least
   // BAR_COVERAGE_MIN of the canvas viewport, so the user can't pan into
@@ -1348,13 +1409,13 @@
   // override) and `tickZoomLevel` for tick granularity. When the user has
   // an explicit override (Ctrl+Wheel), we skip the adaptive widen-to-fill
   // pass so the user's chosen scale is respected literally.
-  $: baseTimeScale = createTimeScale(tickZoomLevel, dateRange.from, effectivePxPerDay)
+  $: baseTimeScale = createTimeScale(tickZoomLevel, dateRange.from, effectivePxPerDay, timeScaleLocale)
   $: baseDataCanvasWidth = Math.max(1, Math.ceil(baseTimeScale.toX(dateRange.to) - baseTimeScale.toX(dateRange.from)))
   $: adaptivePxPerDay =
     userPxPerDay !== null
       ? effectivePxPerDay
       : computeAdaptivePxPerDay(baseTimeScale.pxPerDay, baseDataCanvasWidth, canvasViewportWidth)
-  $: timeScale = createTimeScale(tickZoomLevel, dateRange.from, adaptivePxPerDay)
+  $: timeScale = createTimeScale(tickZoomLevel, dateRange.from, adaptivePxPerDay, timeScaleLocale)
   $: milestoneMarkers = milestones.map<MilestoneMarker>((m) => ({
     _id: m._id,
     label: m.label,
@@ -1465,7 +1526,7 @@
     const next = new Map<string, string>()
     for (const [p, meta] of Object.entries(issuePriorities)) {
       try {
-        const label = await translate(meta.label, {}, undefined)
+        const label = await translate(meta.label, {}, $themeStore.language)
         next.set(String(p), label)
       } catch {
         next.set(String(p), String(meta.label))
@@ -1645,7 +1706,7 @@
       if (cpResult.cycle && Date.now() - lastCpCycleNotifiedAt > 60_000) {
         lastCpCycleNotifiedAt = Date.now()
         void (async () => {
-          const t = await translate(tracker.string.CriticalPathCycle, {}, undefined)
+          const t = await translate(tracker.string.CriticalPathCycle, {}, $themeStore.language)
           addNotification(t, '', undefined as any, undefined, NotificationSeverity.Warning)
         })()
       }
@@ -1979,6 +2040,64 @@
     return e.clientX - sidebarEdge + canvasViewportLeft
   }
 
+  /**
+   * Working-days snapping applies to single issue bars only: milestones keep
+   * plain calendar-day drags and a bulk co-drag keeps its shared raw delta
+   * (its hard-stop window is a millisecond window).
+   */
+  function snapCalendarFor(s: DragState): WorkingCalendar | undefined {
+    if (
+      s.kind !== 'dragging-body' &&
+      s.kind !== 'dragging-unscheduled' &&
+      s.kind !== 'resizing-left' &&
+      s.kind !== 'resizing-right'
+    ) {
+      return undefined
+    }
+    if (s.target.kind !== 'issue') return undefined
+    if (s.kind === 'dragging-body' && s.coDrag !== undefined) return undefined
+    return effectiveCalendar
+  }
+
+  /**
+   * Per-drag override of working-day snapping: holding Shift while a bar is
+   * dragged, resized or dropped previews it in calendar days. Shift is free
+   * once a drag is running (it only range-selects on a click, Alt is the
+   * cascade bypass at release, Cmd/Ctrl toggle the selection). The last
+   * pointer position is kept so pressing or releasing Shift without moving
+   * the pointer updates the preview right away.
+   */
+  let lastDragMove: { cursorX: number, canvasX: number | undefined } | undefined = undefined
+
+  function dispatchDragMove(cursorX: number, canvasX: number | undefined, calendarDays: boolean): void {
+    lastDragMove = { cursorX, canvasX }
+    activeDrag.update((s) =>
+      reduce(s, { type: 'mousemove', cursorX, canvasX, calendarDays }, timeScale, snapCalendarFor(s))
+    )
+  }
+
+  /**
+   * Re-sync the running drag with the modifier state at the last pointer
+   * position. Called on Shift key changes, on pointer release (from the
+   * event's `shiftKey`) and on window blur (as released): a Shift released
+   * outside the window must not leave the drag committing calendar days.
+   */
+  function syncDragModifier(calendarDays: boolean): void {
+    if (confirmGate.isConfirming()) return
+    const move = modifierSyncMove($activeDrag, calendarDays, lastDragMove)
+    if (move === undefined) return
+    dispatchDragMove(move.cursorX, move.canvasX, calendarDays)
+  }
+
+  function onDragModifierKey(e: KeyboardEvent): void {
+    if (e.key !== 'Shift') return
+    syncDragModifier(e.shiftKey)
+  }
+
+  function onDragWindowBlur(): void {
+    syncDragModifier(false)
+  }
+
   function handleCanvasPointerMove(e: MouseEvent): void {
     // once a confirmation popup is open the drag preview must
     // freeze at the position the user released the bar. Without this
@@ -2012,9 +2131,7 @@
       )
       return // Don't also fire mousemove for bar drag
     }
-    activeDrag.update((s) =>
-      reduce(s, { type: 'mousemove', cursorX: e.clientX, canvasX: computeCanvasX(e) }, timeScale)
-    )
+    dispatchDragMove(e.clientX, computeCanvasX(e), e.shiftKey)
   }
 
   async function handleCanvasPointerUp(e?: PointerEvent | MouseEvent): Promise<void> {
@@ -2025,6 +2142,9 @@
     // (double-popup bug). The popup's own resolve handler is the single
     // exit point that releases the gate and decides commit/cancel.
     if (confirmGate.isConfirming()) return
+    // Commit with the modifier state of the release itself, not of the last
+    // key event the window saw (Shift may have been released elsewhere).
+    if (e !== undefined) syncDragModifier(e.shiftKey)
     const state = $activeDrag
     if (state.kind === 'connector-drawing') {
       activeDrag.set({ kind: 'idle' })
@@ -2038,7 +2158,7 @@
       // the scheduler diverge, so block the edit and explain it via a toast
       // rather than silently dropping it.
       if (wouldCreateCycle(src._id, tgt._id, relations)) {
-        const title = await translate(tracker.string.DependencyCycle, {}, undefined)
+        const title = await translate(tracker.string.DependencyCycle, {}, $themeStore.language)
         addNotification(title, '', undefined as any, undefined, NotificationSeverity.Error)
         return
       }
@@ -2156,7 +2276,7 @@
       // popup's preview the instant commitDrag returned (popup still open,
       // bar already springing back.
     } catch (err) {
-      const title = await translate(tracker.string.GanttDragFailed, {}, undefined)
+      const title = await translate(tracker.string.GanttDragFailed, {}, $themeStore.language)
       addNotification(title, String(err), undefined as any, undefined, NotificationSeverity.Error)
       activeDrag.set({ kind: 'idle' })
     }
@@ -2395,7 +2515,7 @@
       }
       const result = await ops.commit()
       if (!result.result) {
-        const t = await translate(tracker.string.GanttDragFailed, {}, undefined)
+        const t = await translate(tracker.string.GanttDragFailed, {}, $themeStore.language)
         addNotification(t, '', undefined as any, undefined, NotificationSeverity.Error)
         activeDrag.set({ kind: 'idle' })
         return
@@ -2422,7 +2542,7 @@
         }
       }
       if (violations > 0) {
-        const t = await translate(tracker.string.CascadeBannerBypass, { count: violations }, undefined)
+        const t = await translate(tracker.string.CascadeBannerBypass, { count: violations }, $themeStore.language)
         addNotification(t, '', undefined as any, undefined, NotificationSeverity.Warning)
       }
       activeDrag.set({ kind: 'idle' })
@@ -2525,7 +2645,7 @@
         }
         const r = await ops.commit()
         if (!r.result) {
-          const t = await translate(tracker.string.GanttDragFailed, {}, undefined)
+          const t = await translate(tracker.string.GanttDragFailed, {}, $themeStore.language)
           addNotification(t, '', undefined as any, undefined, NotificationSeverity.Error)
         } else {
           if (undoEntry !== null) undoManager.push(undoEntry)
@@ -2580,13 +2700,13 @@
       }
       case 'cycle': {
         activeDrag.set({ kind: 'idle' })
-        const t = await translate(tracker.string.CascadeBannerCycle, {}, undefined)
+        const t = await translate(tracker.string.CascadeBannerCycle, {}, $themeStore.language)
         addNotification(t, '', undefined as any, undefined, NotificationSeverity.Error)
         return
       }
       case 'iteration-overflow': {
         activeDrag.set({ kind: 'idle' })
-        const t = await translate(tracker.string.CascadeBannerOverflow, { max: 1000 }, undefined)
+        const t = await translate(tracker.string.CascadeBannerOverflow, { max: 1000 }, $themeStore.language)
         addNotification(t, '', undefined as any, undefined, NotificationSeverity.Error)
       }
     }
@@ -2668,7 +2788,7 @@
     if (!mutationStillCurrent(primary[0]?.issue.space)) return
     const r = await ops.commit()
     if (!r.result) {
-      const t = await translate(tracker.string.GanttDragFailed, {}, undefined)
+      const t = await translate(tracker.string.GanttDragFailed, {}, $themeStore.language)
       addNotification(t, '', undefined as any, undefined, NotificationSeverity.Error)
       return
     }
@@ -2772,7 +2892,7 @@
       }
       const r = await ops.commit()
       if (!r.result) {
-        const t = await translate(tracker.string.GanttDragFailed, {}, undefined)
+        const t = await translate(tracker.string.GanttDragFailed, {}, $themeStore.language)
         addNotification(t, '', undefined as any, undefined, NotificationSeverity.Error)
       }
       // Legacy path manages its own preview lifecycle.
@@ -2795,7 +2915,7 @@
       }
       const r = await ops.commit()
       if (!r.result) {
-        const t = await translate(tracker.string.GanttDragFailed, {}, undefined)
+        const t = await translate(tracker.string.GanttDragFailed, {}, $themeStore.language)
         addNotification(t, '', undefined as any, undefined, NotificationSeverity.Error)
       } else {
         // Schedule-from-unscheduled produces exactly one date-change entry.
@@ -2862,7 +2982,6 @@
       )
       const isParent = allInSpace.some((i) => i.parents?.[0]?.parentId === parent._id)
       if (isParent) {
-        const delta = (state as any).previewStart - (state as any).originStart
         const primaryEdits: PrimaryEdit[] = [
           {
             issue: parent,
@@ -2870,11 +2989,14 @@
             newDue: (state as any).previewEnd
           }
         ]
+        // Children move like the parent: by working days, or by calendar
+        // days when this drag suspended the snapping (Shift held).
+        const childCalendar = dragCalendar(state, effectiveCalendar)
         for (const child of descendantsWithDates(parent, allInSpace)) {
           primaryEdits.push({
             issue: child,
-            newStart: (child.startDate as number) + delta,
-            newDue: (child.dueDate as number) + delta
+            newStart: shiftWithPrimary(child.startDate as number, state.originStart, state.previewStart, childCalendar),
+            newDue: shiftWithPrimary(child.dueDate as number, state.originStart, state.previewStart, childCalendar)
           })
         }
         // Parent-drag fans out → primaryEdits.length > 1, so commitWithCascade
@@ -2939,6 +3061,9 @@
     window.addEventListener('pointercancel', onWindowPointerUp)
     window.addEventListener('mousemove', handleCanvasPointerMove)
     window.addEventListener('mouseup', onWindowPointerUp)
+    window.addEventListener('keydown', onDragModifierKey)
+    window.addEventListener('keyup', onDragModifierKey)
+    window.addEventListener('blur', onDragWindowBlur)
   }
 
   function detachWindowDragListeners(): void {
@@ -2947,6 +3072,10 @@
     window.removeEventListener('pointercancel', onWindowPointerUp)
     window.removeEventListener('mousemove', handleCanvasPointerMove)
     window.removeEventListener('mouseup', onWindowPointerUp)
+    window.removeEventListener('keydown', onDragModifierKey)
+    window.removeEventListener('keyup', onDragModifierKey)
+    window.removeEventListener('blur', onDragWindowBlur)
+    lastDragMove = undefined
   }
 
   // Attach/detach window-level pointer listeners only while a drag is active.
@@ -3066,21 +3195,21 @@
     )
     // Stale-mutation guard after the await — before any edit is built.
     if (!mutationStillCurrent(i.space)) return
-    // All date arithmetic routes through addScheduleDays so the Phase-2
-    // working-calendar swap stays a single integration point.
+    // All date arithmetic routes through shiftScheduleDays: calendar days in
+    // legacy mode, working days with a project calendar.
     const primaryEdits: PrimaryEdit[] = [
       {
         issue: i,
-        newStart: addScheduleDays(i.startDate, days),
-        newDue: addScheduleDays(i.dueDate, days)
+        newStart: shiftScheduleDays(i.startDate, days, effectiveCalendar),
+        newDue: shiftScheduleDays(i.dueDate, days, effectiveCalendar)
       }
     ]
     // Include descendants (matches drag behaviour for parent shifts).
     for (const child of descendantsWithDates(i, allInSpace)) {
       primaryEdits.push({
         issue: child,
-        newStart: addScheduleDays(child.startDate as number, days),
-        newDue: addScheduleDays(child.dueDate as number, days)
+        newStart: shiftScheduleDays(child.startDate as number, days, effectiveCalendar),
+        newDue: shiftScheduleDays(child.dueDate as number, days, effectiveCalendar)
       })
     }
     // Keyboard shift has no Alt-modifier path and no legacy-confirm UX
@@ -3115,8 +3244,8 @@
       // D — add a hint sub-line explaining why this frame was
       // dropped from the stack (instead of re-queued) so users don't keep
       // mashing Ctrl-Z and seeing the same toast.
-      const title = await translate(tracker.string.GanttUndoConflict, {}, undefined)
-      const hint = await translate(tracker.string.GanttUndoConflictHint, {}, undefined)
+      const title = await translate(tracker.string.GanttUndoConflict, {}, $themeStore.language)
+      const hint = await translate(tracker.string.GanttUndoConflictHint, {}, $themeStore.language)
       addNotification(title, hint, undefined as any, undefined, NotificationSeverity.Warning)
       // Surface the frame details in DevTools — invaluable for debugging
       // intermittent "undo did nothing" reports because the manager's
@@ -3128,7 +3257,7 @@
       return
     }
     if (r.kind === 'error') {
-      const title = await translate(tracker.string.GanttUndoFailed, {}, undefined)
+      const title = await translate(tracker.string.GanttUndoFailed, {}, $themeStore.language)
       addNotification(title, String(r.error), undefined as any, undefined, NotificationSeverity.Error)
       console.warn('[gantt-undo] error — frame dropped', {
         entry: r.entry,
@@ -3188,13 +3317,13 @@
     }
     if (e.key === 'ArrowRight') {
       if (isTextInputFocused()) return
-      void shiftFocused(e.shiftKey ? 7 : 1)
+      void shiftFocused(e.shiftKey ? keyboardWeekStep(effectiveCalendar) : 1)
       e.preventDefault()
       return
     }
     if (e.key === 'ArrowLeft') {
       if (isTextInputFocused()) return
-      void shiftFocused(e.shiftKey ? -7 : -1)
+      void shiftFocused(e.shiftKey ? -keyboardWeekStep(effectiveCalendar) : -1)
       e.preventDefault()
       return
     }
@@ -3428,7 +3557,7 @@
         stamp
       )
     } catch (err) {
-      const title = await translate(tracker.string.GanttExportFailed, {}, undefined)
+      const title = await translate(tracker.string.GanttExportFailed, {}, $themeStore.language)
       addNotification(title, String(err), undefined as any, undefined, NotificationSeverity.Error)
     }
   }
@@ -3448,7 +3577,7 @@
         `gantt-${new Date().toISOString().slice(0, 10)}`
       )
     } catch (err) {
-      const title = await translate(tracker.string.GanttExportFailed, {}, undefined)
+      const title = await translate(tracker.string.GanttExportFailed, {}, $themeStore.language)
       addNotification(title, String(err), undefined as any, undefined, NotificationSeverity.Error)
     }
   }
@@ -3516,39 +3645,46 @@
   // hThumbLeft) stay stale until the next pointermove. The explicit
   // queueMicrotask path keeps `canvasViewportLeft` and dependant reactive
   // expressions (including classifyArrowVisibility) in sync.
-  function jumpToToday(): void {
-    if (hScrollEl == null) return
-    const x = timeScale.toX(Date.now())
-    hScrollEl.scrollTo({ left: Math.max(0, x - canvasViewportWidth / 2), behavior: 'smooth' })
+  async function centerOnDate(timestamp: number): Promise<void> {
+    if (timestamp < dateRange.from || timestamp > dateRange.to) {
+      navigationOffsetDays = (timestamp - (baseDateRange.from + baseDateRange.to) / 2) / 86_400_000
+      await tick()
+    }
+    const x = timeScale.toX(timestamp)
+    hScrollEl?.scrollTo({ left: Math.max(0, x - canvasViewportWidth / 2), behavior: 'smooth' })
     queueMicrotask(syncViewport)
   }
+  function jumpToToday(): void {
+    void centerOnDate(Date.now())
+  }
   function pageScroll(dir: -1 | 1): void {
-    if (hScrollEl == null) return
-    hScrollEl.scrollBy({ left: dir * canvasViewportWidth * 0.8, behavior: 'smooth' })
+    const next = pageTimeline(
+      dir,
+      canvasViewportLeft,
+      canvasViewportWidth,
+      navigationMax,
+      timeScale.pxPerDay,
+      navigationOffsetDays
+    )
+    navigationOffsetDays = next.offsetDays
+    hScrollEl?.scrollTo({ left: next.scrollLeft, behavior: 'smooth' })
     queueMicrotask(syncViewport)
   }
   function jumpToStart(): void {
-    if (hScrollEl == null) return
-    hScrollEl.scrollTo({ left: 0, behavior: 'smooth' })
-    queueMicrotask(syncViewport)
+    if (hasScheduledTasks) void centerOnDate(Math.min(...scheduledDates))
   }
   function jumpToEnd(): void {
-    if (hScrollEl == null) return
-    hScrollEl.scrollTo({ left: hScrollEl.scrollWidth, behavior: 'smooth' })
-    queueMicrotask(syncViewport)
+    if (hasScheduledTasks) void centerOnDate(Math.max(...scheduledDates))
   }
   function jumpToDate(iso: string): void {
-    if (hScrollEl == null || iso === '') return
-    const t = Date.parse(iso)
-    if (isNaN(t)) return
-    const x = timeScale.toX(t)
-    hScrollEl.scrollTo({ left: Math.max(0, x - canvasViewportWidth / 2), behavior: 'smooth' })
-    queueMicrotask(syncViewport)
+    if (iso === '') return
+    const timestamp = timestampForIsoDate(iso)
+    if (Number.isFinite(timestamp)) void centerOnDate(timestamp)
   }
   let datePickerValue: string = ''
 
   function formatRange(ms: number): string {
-    return new Date(ms).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+    return new Date(ms).toLocaleDateString($themeStore.language, { month: 'short', year: 'numeric', timeZone: 'UTC' })
   }
 
   // Custom horizontal scrollbar thumb geometry (proxy for hScrollEl).
@@ -3563,7 +3699,7 @@
   // gantt-scroller native scrollTop — Huly globally hides native bars
   // so we render our own in DOM and let the native bar drive scrollTop).
   $: vTrackHeight = viewportHeight > 0 ? viewportHeight : 1
-  $: vTotalHeight = ROW_HEIGHT * rows.length + HEADER_HEIGHT
+  $: vTotalHeight = (rows.length > 0 ? rows[rows.length - 1].y + rows[rows.length - 1].height : 0) + HEADER_HEIGHT
   $: vThumbHeight = vTotalHeight > 0 ? Math.max(40, (vTrackHeight * vTrackHeight) / vTotalHeight) : vTrackHeight
   $: vThumbMax = Math.max(0, vTrackHeight - vThumbHeight)
   $: vScrollMax = Math.max(1, vTotalHeight - vTrackHeight)
@@ -3804,7 +3940,9 @@
   $: sidebarWidthPx = extendedColumns
     ? computeTotalWidth(sidebarColumns, sidebarWidths)
     : showIssueCode || showTitle || showStatus
-      ? userSidebarWidth
+      ? layoutMode === 'phone'
+        ? Math.min(userSidebarWidth, 320)
+        : userSidebarWidth
       : 60
 
   // Sidebar column state. The default set (identifier + title + predecessors +
@@ -3902,6 +4040,10 @@
     toggleMobileDrawer: () => {
       mobileDrawerOpen = !mobileDrawerOpen
     },
+    hasScheduledTasks,
+    canJumpToStart,
+    canJumpToEnd,
+    canJumpToToday,
     datePickerValue,
     setDatePickerValue: (v) => {
       datePickerValue = v
@@ -3945,8 +4087,9 @@
     openMoreActionsMenu,
     ariaLabels,
     ganttBarColorBy: $ganttBarColorBy,
-    onColorBySelectChange: (ev: Event) => {
-      const v = (ev.target as HTMLSelectElement).value as BarColorMode
+    onColorBySelectChange: (ev: CustomEvent<string>) => {
+      if (!isBarColorMode(ev.detail)) return
+      const v = ev.detail
       ganttBarColorBy.set(v)
       // Persist so the choice survives a viewlet re-mount / route change.
       // The write echoes back through the ViewOptions store into the
@@ -3964,6 +4107,19 @@
   {#if loading}
     <Loading />
   {:else}
+    {#if missingStartCount > 0 && layoutMode !== 'desktop'}
+      <div class="gantt-scheduling-hint" role="status">
+        <Label label={tracker.string.GanttMissingStartDates} params={{ count: missingStartCount }} />
+        <span><Label label={tracker.string.GanttSetDatesHint} /></span>
+        <button
+          type="button"
+          on:click|stopPropagation={() => {
+            const issue = issues.find((issue) => issue.startDate == null)
+            if (issue !== undefined) showPanel(tracker.component.EditIssue, issue._id, issue._class, 'content')
+          }}><Label label={tracker.string.GanttSetDates} /></button
+        >
+      </div>
+    {/if}
     <!-- Plane-style two-axis scrolling: gantt-scroller handles vertical only,
          while a separate sticky-bottom proxy bar handles horizontal so the
          user always sees the time-scale scrollbar at the bottom of the
@@ -4016,6 +4172,7 @@
               {#if showStatus}<span class="col-status" />{/if}
               {#if showIssueCode}<span class="col-id"><Label label={tracker.string.Issue} /></span>{/if}
               {#if showTitle}<span class="col-title"><Label label={tracker.string.Title} /></span>{/if}
+              <span class="col-dates"><Label label={tracker.string.GanttDates} /></span>
               <span class="col-jump" />
             </div>
           {/if}
@@ -4063,6 +4220,7 @@
           >
             <GanttHeader
               {timeScale}
+              zoom={tickZoomLevel}
               {viewport}
               totalWidth={totalCanvasWidth}
               dataWidth={dataCanvasWidth}
@@ -4130,6 +4288,7 @@
               {rows}
               milestones={milestoneMarkers}
               {timeScale}
+              zoom={tickZoomLevel}
               {summaryRanges}
               {scrollTop}
               {viewportHeight}
@@ -4281,6 +4440,29 @@
 </div>
 
 <style lang="scss">
+  .gantt-scheduling-hint {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    padding: 0.625rem 1rem;
+    border-bottom: 1px solid var(--theme-divider-color);
+    color: var(--theme-content-color);
+    font-size: 0.8125rem;
+    span {
+      color: var(--theme-dark-color);
+    }
+    button {
+      margin-left: auto;
+      border: none;
+      background: transparent;
+      color: var(--theme-caption-color);
+      cursor: pointer;
+      font: inherit;
+      text-decoration: underline;
+    }
+  }
+
   .gantt-root {
     display: flex;
     flex-direction: column;
@@ -4730,6 +4912,10 @@
   }
   .corner .col-title {
     flex: 1 1 auto;
+  }
+  .corner .col-dates {
+    flex: 0 0 110px;
+    text-align: left;
   }
   .corner .col-jump {
     flex: 0 0 28px;

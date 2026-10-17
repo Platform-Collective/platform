@@ -135,7 +135,9 @@ import {
   checkPasswordAging,
   generateTotpSecret,
   verifyTotpCode,
-  getTotpUrl
+  getTotpUrl,
+  reportInvalidToken,
+  tokenFingerprint
 } from './utils'
 
 const NIL_UUID = '00000000-0000-0000-0000-000000000000' as AccountUuid
@@ -2015,7 +2017,7 @@ export async function getWorkspacesInfo (
   const { account } = decodeTokenVerbose(ctx, token)
 
   if (account !== systemAccountUuid) {
-    ctx.error('getWorkspaceInfos with wrong user', { account, token })
+    ctx.error('getWorkspaceInfos with wrong user', { account, token: tokenFingerprint(token) })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
@@ -2044,7 +2046,7 @@ export async function updateLastVisit (
   const { account } = decodeTokenVerbose(ctx, token)
 
   if (account !== systemAccountUuid) {
-    ctx.error('updateLastVisit with wrong user', { account, token })
+    ctx.error('updateLastVisit with wrong user', { account, token: tokenFingerprint(token) })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
@@ -2126,8 +2128,7 @@ export async function getLoginInfoByToken (
   } catch (err: any) {
     if (token !== undefined) {
       // do not spam errors as this is expected when we issue request with no token
-      Analytics.handleError(err)
-      ctx.error('Invalid token', { token, errMsg: err.message })
+      reportInvalidToken(ctx, token, err)
     }
     switch (err.message) {
       case 'Token not yet active': {
@@ -2311,8 +2312,7 @@ export async function getLoginWithWorkspaceInfo (
   try {
     ;({ account: accountUuid, extra, workspace } = decodeTokenVerbose(ctx, token))
   } catch (err: any) {
-    Analytics.handleError(err)
-    ctx.error('Invalid token', { token })
+    reportInvalidToken(ctx, token, err)
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Unauthorized, {}))
   }
 

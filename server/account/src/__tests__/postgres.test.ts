@@ -1040,3 +1040,21 @@ describe('getMigrations', () => {
     expect(migration?.[1]).toContain("'gitlab'")
   })
 })
+
+describe('PostgresAccountDB.hasWorkspacePermission', () => {
+  function createDb (rows: any[]): PostgresAccountDB {
+    const mock: any = Object.assign(jest.fn(), { unsafe: jest.fn().mockResolvedValue(rows) })
+    mock.begin = jest.fn().mockImplementation((callback: (client: any) => Promise<any>) => callback(mock))
+    return new PostgresAccountDB(mock as Sql)
+  }
+
+  it('returns false when no permission row exists', async () => {
+    const db = createDb([])
+    expect(await db.hasWorkspacePermission('acc' as AccountUuid, 'ws' as WorkspaceUuid, 'perm')).toBe(false)
+  })
+
+  it('returns true when a permission row exists', async () => {
+    const db = createDb([{ workspace_uuid: 'ws', account_uuid: 'acc', permission: 'perm' }])
+    expect(await db.hasWorkspacePermission('acc' as AccountUuid, 'ws' as WorkspaceUuid, 'perm')).toBe(true)
+  })
+})

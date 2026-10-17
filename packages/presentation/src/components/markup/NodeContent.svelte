@@ -141,6 +141,23 @@
     </svelte:element>
   {:else if node.type === MarkupNodeType.code_block}
     <CodeBlockNode {node} {preview} />
+  {:else if node.type === MarkupNodeType.gif}
+    <!-- 'file-id' wins over 'src' and they are independent: a library gif carries the blob and no
+    src, an external one carries a src that must be used verbatim. Same precedence as the editor
+    node view in text-editor-resources/src/components/extension/gifExt.ts, or a gif renders here
+    differently from how it renders while being composed. -->
+    {@const alt = toString(attrs.alt)}
+    {@const width = toString(attrs.width)}
+    {@const height = toString(attrs.height)}
+    <div class="imgContainer max-h-60 max-w-60">
+      {#if attrs['file-id'] != null}
+        {#await getBlobRef(toRefBlob(attrs['file-id'])) then blobSrc}
+          <img src={blobSrc.src} srcset={blobSrc.srcset} {alt} {width} {height} />
+        {/await}
+      {:else if attrs.src != null}
+        <img src={toString(attrs.src)} {alt} {width} {height} />
+      {/if}
+    </div>
   {:else if node.type === MarkupNodeType.image}
     {@const src = toString(attrs.src)}
     {@const alt = toString(attrs.alt)}

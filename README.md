@@ -28,6 +28,9 @@ The platform uses two types of version tags to distinguish between production-re
   - May contain experimental features or bug fixes
   - Not recommended for production use
 
+## Activity
+![Alt](https://repobeats.axiom.co/api/embed/c786b1f60ed65782ecce3f9584ea9fc505684715.svg "Repobeats analytics image")
+
 ## Architecture
 
 For detailed information about the platform architecture, services, and their interactions, see our [Architecture Overview](./ARCHITECTURE_OVERVIEW.md).

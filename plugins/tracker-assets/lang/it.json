@@ -296,6 +296,8 @@
     "GanttExpand": "Expand",
     "GanttCollapse": "Collapse",
     "GanttCornerNoOpInSwimlane": "No effect in group-by mode",
+    "GanttHelpCalendarDaysDrag": "Tieni premuto durante il trascinamento per ignorare i giorni lavorativi (giorni di calendario)",
+    "GanttDragCalendarDays": "Giorni di calendario",
     "ModeSelectorDisabledByFilter": "Lo stato è controllato da un filtro attivo. Rimuovi il filtro di stato per usare questa scorciatoia.",
     "ShowQuickModeSelector": "Filtro rapido: Tutti / Attivi / Backlog",
     "SearchScopeLabel": "Cerca in…",
@@ -306,7 +308,19 @@
     "SearchEmptyTitle": "Nessuna issue trovata per \"{query}\"",
     "SearchEmptyActiveFilters": "Filtri attivi: {filters}",
     "SearchEmptyClearFilters": "Cerca senza filtri",
-    "SearchEmptyAllProjects": "Cerca in tutti i progetti"
+    "SearchEmptyAllProjects": "Cerca in tutti i progetti",
+    "GanttWeekLabel": "S{week}",
+    "GanttQuarterLabel": "T{quarter}",
+    "GanttWithoutDates": "{count} senza date",
+    "GanttDates": "Date",
+    "GanttZoomLabel": "Zoom",
+    "GanttSetDates": "Imposta le date",
+    "GanttNoScheduledTasks": "Nessuna attività pianificata",
+    "GanttTodayAlreadyVisible": "Oggi è già visibile",
+    "GanttVisibleRange": "Intervallo",
+    "GanttNotScheduled": "Non pianificato",
+    "GanttMissingStartDates": "{count} attività non hanno una data di inizio.",
+    "GanttSetDatesHint": "Imposta le date di inizio e scadenza di un'attività per mostrarla nella cronologia."
   },
   "status": {}
 }
