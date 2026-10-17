@@ -17,6 +17,7 @@
 import core, {
   TxFactory,
   TxProcessor,
+  clone,
   groupByArray,
   matchQuery,
   type Class,
@@ -64,7 +65,8 @@ export class Triggers {
     const func = getResource(trigger)
     const isAsync = t.isAsync === true
     this.triggers.push({
-      query: match,
+      // addDerived expands the query in place, and the document belongs to a model shared across workspaces.
+      query: match !== undefined ? clone(match) : undefined,
       trigger: { op: func, resource: trigger, isAsync }
     })
   }

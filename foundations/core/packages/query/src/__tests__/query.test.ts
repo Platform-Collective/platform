@@ -1,5 +1,6 @@
 //
 // Copyright © 2021 Anticrm Platform Contributors.
+// Copyright © 2026 Intabia Fusion.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -51,6 +52,27 @@ describe('query', () => {
     const { liveQuery } = await getClient()
     const result = await liveQuery.findAll<Space>(core.class.Space, {})
     expect(result).toHaveLength(2)
+  })
+
+  it('leaves the caller options untouched', async () => {
+    const { liveQuery } = await getClient()
+    const options = { projection: { name: 1 } } as const
+    const unsubscribe = await new Promise<() => void>((resolve) => {
+      const unsub = liveQuery.query<Space>(
+        core.class.Space,
+        {},
+        () => {
+          resolve(unsub)
+        },
+        options
+      )
+    })
+    unsubscribe()
+    await liveQuery.queryFind<Space>(core.class.Space, { private: false }, options)
+    const findOneOptions = { projection: { name: 1 } } as const
+    await liveQuery.findOne<Space>(core.class.Space, {}, findOneOptions)
+    expect(options).toEqual({ projection: { name: 1 } })
+    expect(findOneOptions).toEqual({ projection: { name: 1 } })
   })
 
   it('query with param', async () => {
@@ -105,11 +127,6 @@ describe('query', () => {
       })
     })
 
-    // TODO: fixme!
-    // await factory.createDoc(core.class.Account, core.space.Model, {
-    //   email: 'user1@site.com',
-    //   role: AccountRole.User
-    // })
     await factory.createDoc<Channel>(core.class.Space, core.space.Model, {
       private: true,
       name: '#0',
@@ -884,29 +901,6 @@ describe('query', () => {
   // it('update with over limit', async () => {
   //   const { liveQuery, factory } = await getClient()
 
-  //   const spaces = await liveQuery.findAll(core.class.Space, {})
-  //   let attempt = 0
-  //   const pp = new Promise((resolve) => {
-  //     liveQuery.query<Space>(
-  //       core.class.Space,
-  //       {},
-  //       (result) => {
-  //         expect(result[0].name).toEqual(`Sp${++attempt}`)
-  //         if (attempt === spaces.length + 1) resolve(null)
-  //       },
-  //       { sort: { name: SortingOrder.Ascending }, limit: 1 }
-  //     )
-  //   })
-
-  //   for (let index = 0; index < spaces.length; index++) {
-  //     const space = spaces[index]
-  //     await factory.updateDoc(space._class, space.space, space._id, {
-  //       name: `Sp${index + spaces.length + 1}`
-  //     })
-  //   }
-  //   await pp
-  // })
-
   it('update-array-value', async () => {
     const { liveQuery, factory } = await getClient()
 
@@ -1019,5 +1013,62 @@ describe('query', () => {
     }
     expect(data.length).toBe(counter)
     await pp
+  })
+
+  it('updates query when document starts to match due to $inc operator in transaction with other operators', async () => {
+    const { liveQuery, factory } = await getClient()
+
+    const space = await factory.createDoc<Channel>(core.class.Space, core.space.Model, {
+      archived: false,
+      description: '',
+      members: [],
+      private: false,
+      name: 'inc-test-space',
+      x: 0
+    })
+
+    const results: any[] = []
+    let onUpdate: (() => void) | undefined
+
+    const unsub = liveQuery.query<Space>(
+      core.class.Space,
+      {
+        name: 'inc-test-space',
+        x: { $gt: 0 }
+      },
+      (res) => {
+        results.push(res)
+        if (onUpdate !== undefined) {
+          onUpdate()
+        }
+      }
+    )
+
+    // Wait for initial results callback
+    await new Promise<void>((resolve) => {
+      onUpdate = resolve
+    })
+
+    expect(results[results.length - 1]).toHaveLength(0)
+
+    // Set up a promise for the update callback
+    const updatePromise = new Promise<void>((resolve) => {
+      onUpdate = resolve
+    })
+
+    // Apply transaction with both $push (unrelated) and $inc (updates x to 1)
+    await factory.updateDoc<Channel>(core.class.Space, core.space.Model, space, {
+      $inc: { x: 1 },
+      $push: { members: 'some-member' as any }
+    })
+
+    // Wait for the query update callback to be called
+    await updatePromise
+
+    // Now it should have 1 item since x is 1
+    expect(results[results.length - 1]).toHaveLength(1)
+    expect(results[results.length - 1][0].x).toBe(1)
+
+    unsub()
   })
 })

@@ -111,14 +111,19 @@ export class ModelMiddleware extends BaseMiddleware implements Middleware {
 
     const userTx = await this.getUserTx(ctx, txAdapter)
     const model = this.systemTx.concat(userTx)
-    for (const tx of model) {
-      try {
-        this.context.hierarchy.tx(tx)
-      } catch (err: any) {
-        ctx.warn('failed to apply model transaction, skipping', { tx: JSON.stringify(tx), err })
+    let fmodel = model
+    if (this.filter !== undefined) {
+      // Hierarchy must see every class even when matching documents are dropped from ModelDb.
+      for (const tx of model) {
+        try {
+          this.context.hierarchy.tx(tx)
+        } catch (err: any) {
+          ctx.warn('failed to apply model transaction, skipping', { tx: JSON.stringify(tx), err })
+        }
       }
+      fmodel = this.filter(this.context.hierarchy, model)
     }
-    const fmodel = this.filter !== undefined ? this.filter(this.context.hierarchy, model) : model
+    // addTxes feeds the hierarchy itself, so an extra pass would just deserialize everything twice.
     this.context.modelDb.addTxes(ctx, fmodel, true)
 
     this.setModel(fmodel)
@@ -173,9 +178,9 @@ export class ModelMiddleware extends BaseMiddleware implements Middleware {
     const modelTxes = tx.filter((it) => it.objectSpace === core.space.Model)
     if (modelTxes.length > 0) {
       for (const t of modelTxes) {
-        this.context.hierarchy.tx(t)
         this.addModelTx(t)
       }
+      // addTxes keeps the hierarchy in step; applying it here too would double the update.
       this.context.modelDb.addTxes(ctx, modelTxes, true)
     }
     return this.provideTx(ctx, tx)

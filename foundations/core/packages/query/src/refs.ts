@@ -14,7 +14,9 @@ import type { Query, QueryId } from './types'
 
 export interface DocumentRef {
   doc: Doc
-  queries: QueryId[]
+  // A Set, not an array: with N subscribers on one class every tx re-registers the whole
+  // result N times, so membership has to be O(1).
+  queries: Set<QueryId>
   lastUsed: Timestamp
 }
 
@@ -40,17 +42,29 @@ export class Refs {
         docMap = new Map()
         this.documentRefs.set(classKey, docMap)
       }
-      const queries = (docMap.get(d._id)?.queries ?? []).filter((it) => it !== q.id)
-      if (!clean) {
-        queries.push(q.id)
-      }
-      if (queries.length === 0) {
-        docMap.delete(d._id)
-      } else {
-        const q = docMap.get(d._id)
-        if ((q?.lastUsed ?? 0) < d.modifiedOn) {
-          docMap.set(d._id, { ...(q ?? {}), doc: d, queries, lastUsed: d.modifiedOn })
+      const existing = docMap.get(d._id)
+      if (existing === undefined) {
+        if (!clean) {
+          docMap.set(d._id, { doc: d, queries: new Set([q.id]), lastUsed: d.modifiedOn })
         }
+        continue
+      }
+      if (clean) {
+        // We need to remove query if it doesn't contains element anymore
+        existing.queries.delete(q.id)
+        if (existing.queries.size === 0) {
+          docMap.delete(d._id)
+          continue
+        }
+      }
+      if (!clean) {
+        // Membership does not depend on the revision: a query holding a copy another query has
+        // already moved past still holds the document, and must keep it alive when that one leaves.
+        existing.queries.add(q.id)
+      }
+      if (existing.lastUsed <= d.modifiedOn) {
+        existing.doc = d
+        existing.lastUsed = d.modifiedOn
       }
     }
   }

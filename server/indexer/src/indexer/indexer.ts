@@ -660,11 +660,12 @@ export class FullTextIndexPipeline implements FullTextPipeline {
     // We need to update hierarchy and local model if required.
     for (const tx of docEvents) {
       try {
-        this.hierarchy.tx(tx)
         const domain = this.hierarchy.findDomain(tx.objectClass)
         if (domain === DOMAIN_MODEL) {
           await this.model.tx(tx)
         }
+        // After the model: hierarchy skips updates of model-owned docs and indexes by the new state.
+        this.hierarchy.tx(tx)
       } catch (err: any) {
         ctx.error('failed to process tx', { err, tx })
         Analytics.handleError(err)

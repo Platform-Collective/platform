@@ -15,7 +15,18 @@
 //
 import type { IntlString, Plugin } from '@hcengineering/platform'
 import { ClientConnectEvent, type DocChunk } from '..'
-import type { Class, Data, Doc, Domain, PluginConfiguration, Ref, Space, Timestamp } from '../classes'
+import type {
+  AnyAttribute,
+  Class,
+  Data,
+  Doc,
+  Domain,
+  Obj,
+  PluginConfiguration,
+  Ref,
+  Space,
+  Timestamp
+} from '../classes'
 import { ClassifierKind, DOMAIN_MODEL } from '../classes'
 import { type ClientConnection, createClient } from '../client'
 import core from '../component'
@@ -248,5 +259,91 @@ describe('client', () => {
     spyCreate.mockRestore()
     spyUpdate.mockReset()
     spyUpdate.mockRestore()
+  })
+})
+
+describe('client model transactions', () => {
+  it('renames an attribute of the loaded model via client.tx and via remote txes', async () => {
+    const factory = new TxFactory(core.account.System)
+    const attrId = 'attr-1' as Ref<AnyAttribute>
+    // Attribute comes with the model, so the hierarchy references the ModelDb instance and skips its updates.
+    const extra: Tx[] = [
+      factory.createTxCreateDoc(
+        core.class.Class,
+        core.space.Model,
+        { kind: ClassifierKind.CLASS, extends: core.class.Doc, label: 'Attribute' as IntlString, domain: DOMAIN_MODEL },
+        core.class.Attribute
+      ),
+      factory.createTxCreateDoc(
+        core.class.Attribute,
+        core.space.Model,
+        {
+          attributeOf: core.class.Space,
+          name: 'a',
+          type: { _class: core.class.TypeString },
+          label: 'l' as IntlString
+        },
+        attrId
+      )
+    ]
+    const client = await createClient(async (handler) => {
+      const conn = await connect(handler)
+      const loadModel = conn.loadModel.bind(conn)
+      conn.loadModel = async (last) => [...((await loadModel(last)) as Tx[]), ...extra]
+      // The mock applies txes to its own minimal model, which lacks the Attribute class.
+      conn.tx = async () => ({})
+      return conn
+    })
+    const rename = (name: string): Tx =>
+      factory.createTxUpdateDoc(core.class.Attribute, core.space.Model, attrId, { name })
+    const hierarchy = client.getHierarchy()
+    expect(hierarchy.findAttribute(core.class.Space, 'a')).toBe(client.getModel().findObject(attrId))
+
+    await client.tx(rename('b'))
+    expect(hierarchy.findAttribute(core.class.Space, 'a')).toBeUndefined()
+    expect(hierarchy.findAttribute(core.class.Space, 'b')).toBe(client.getModel().findObject(attrId))
+
+    await (client as unknown as { updateFromRemote: (...tx: Tx[]) => Promise<void> }).updateFromRemote(rename('c'))
+    expect(hierarchy.findAttribute(core.class.Space, 'b')).toBeUndefined()
+    expect(hierarchy.findAttribute(core.class.Space, 'c')).toBe(client.getModel().findObject(attrId))
+
+    // Created at runtime: still one instance shared by model and hierarchy.
+    const runtimeId = 'attr-2' as Ref<AnyAttribute>
+    await client.tx(
+      factory.createTxCreateDoc(
+        core.class.Attribute,
+        core.space.Model,
+        {
+          attributeOf: core.class.Space,
+          name: 'r',
+          type: { _class: core.class.TypeString }
+        },
+        runtimeId
+      )
+    )
+    expect(hierarchy.findAttribute(core.class.Space, 'r')).toBe(client.getModel().findObject(runtimeId))
+    await client.tx(factory.createTxUpdateDoc(core.class.Attribute, core.space.Model, runtimeId, { name: 's' }))
+    expect(hierarchy.findAttribute(core.class.Space, 'r')).toBeUndefined()
+    expect(hierarchy.findAttribute(core.class.Space, 's')).toBe(client.getModel().findObject(runtimeId))
+  })
+
+  it('applies model and hierarchy synchronously: unawaited class create followed by a doc of that class', async () => {
+    const client = await createClient(connect)
+    const factory = new TxFactory(core.account.System)
+    const cls = 'x:class:A' as Ref<Class<Obj>>
+    const results = await Promise.allSettled([
+      client.tx(
+        factory.createTxCreateDoc(
+          core.class.Class,
+          core.space.Model,
+          { kind: ClassifierKind.CLASS, extends: core.class.Doc, label: 'A' as IntlString, domain: DOMAIN_MODEL },
+          cls
+        )
+      ),
+      client.tx(factory.createTxCreateDoc(cls, core.space.Model, {}, 'x:doc:1' as Ref<Doc>))
+    ])
+    expect(results.map((it) => it.status)).toEqual(['fulfilled', 'fulfilled'])
+    expect(await client.findAll(cls, {})).toHaveLength(1)
+    expect(client.getHierarchy().getDescendants(core.class.Doc)).toContain(cls)
   })
 })

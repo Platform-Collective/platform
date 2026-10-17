@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import type { AnyAttribute, Class, Doc, Obj, Ref } from '../classes'
+import type { AnyAttribute, Class, Doc, Interface, Mixin, Obj, Ref } from '../classes'
 import { ClassifierKind, DOMAIN_MODEL } from '../classes'
 import type { MixinUpdate, TxCreateDoc } from '../tx'
 import { TxFactory } from '../tx'
@@ -331,7 +331,7 @@ describe('hierarchy', () => {
     expect(endTime - startTime).toBeLessThan(100)
   })
 
-  // Additional comprehensive tests for better coverage
+  // More coverage
 
   it('should handle findClass and hasClass correctly', async () => {
     const hierarchy = prepare()
@@ -590,6 +590,24 @@ describe('hierarchy', () => {
     expect(cloned.nested).not.toBe(obj.nested)
   })
 
+  it('should keep the mixin on a cloned document', async () => {
+    const hierarchy = prepare()
+    const doc = {
+      _id: 'doc1' as any,
+      _class: test.class.Task,
+      space: 'space1' as any,
+      modifiedOn: 0,
+      modifiedBy: 'user1' as any,
+      [test.mixin.TestMixin]: { arr: ['a'] }
+    } as any
+
+    const cloned = hierarchy.clone(hierarchy.as(doc, test.mixin.TestMixin))
+
+    expect(Hierarchy.mixinClass(cloned)).toBe(test.mixin.TestMixin)
+    expect(cloned.arr).toEqual(['a'])
+    expect(Hierarchy.toDoc(cloned)).not.toBe(doc)
+  })
+
   it('should handle domains correctly', async () => {
     const hierarchy = prepare()
 
@@ -610,13 +628,11 @@ describe('hierarchy', () => {
     expect(() => hierarchy.getAncestors('class:NonExistent' as any)).toThrow('ancestors not found: class:NonExistent')
   })
 
-  it('should handle getDescendants error case', async () => {
+  it('should handle getDescendants unknown class', async () => {
     const hierarchy = prepare()
 
-    // Should throw for non-existent class
-    expect(() => hierarchy.getDescendants('class:NonExistent' as any)).toThrow(
-      'descendants not found: class:NonExistent'
-    )
+    // Trigger match rules keep referencing classes removed at runtime, so this must not throw
+    expect(hierarchy.getDescendants('class:NonExistent' as any)).toEqual([])
   })
 
   it('should handle getDomain error case', async () => {
@@ -863,6 +879,10 @@ describe('hierarchy', () => {
     // Verify the attribute was updated
     const attr = hierarchy.findAttribute(core.class.Space, 'updatedAttr')
     expect(attr).toBeDefined()
+    // and is no longer reachable under the name it had before
+    expect(hierarchy.findAttribute(core.class.Space, 'testAttr')).toBeUndefined()
+    expect(hierarchy.getAllAttributes(core.class.Space).has('testAttr')).toBe(false)
+    expect(hierarchy.getOwnAttributes(core.class.Space).has('testAttr')).toBe(false)
   })
 
   it('should handle txRemoveDoc with Attribute', async () => {
@@ -1115,5 +1135,311 @@ describe('hierarchy', () => {
     // This should not throw, just handle gracefully
     hierarchy.tx(spaceTx)
     expect(true).toBeTruthy()
+  })
+
+  // Additional tests targeting remaining uncovered branches
+
+  it('should return the mixin instance when found in the class hierarchy', async () => {
+    const hierarchy = new Hierarchy()
+    for (const tx of txes) hierarchy.tx(tx)
+    const txFactory = new TxFactory(core.account.System)
+    hierarchy.tx(
+      txFactory.createTxMixin(test.class.Task, core.class.Class, core.space.Model, test.mixin.TestMixin, {
+        arr: ['found']
+      } as any)
+    )
+
+    // Direct hit on the requested class
+    const direct = hierarchy.classHierarchyMixin(test.class.Task, test.mixin.TestMixin)
+    expect((direct as any)?.arr).toEqual(['found'])
+
+    // Found while walking up from a descendant (TaskMixinTodos extends Task)
+    const inherited = hierarchy.classHierarchyMixin(test.mixin.TaskMixinTodos, test.mixin.TestMixin)
+    expect((inherited as any)?.arr).toEqual(['found'])
+  })
+
+  it('should find mixin via classHierarchyMixin on the document own class', async () => {
+    const hierarchy = new Hierarchy()
+    for (const tx of txes) hierarchy.tx(tx)
+    const txFactory = new TxFactory(core.account.System)
+    hierarchy.tx(
+      txFactory.createTxMixin(test.class.Task, core.class.Class, core.space.Model, test.mixin.TestMixin, {
+        arr: ['cls']
+      } as any)
+    )
+
+    const doc = {
+      _id: 'd1' as any,
+      _class: test.class.Task,
+      space: 's1' as any,
+      modifiedOn: 0,
+      modifiedBy: 'u1' as any
+    }
+    const result = hierarchy.findClassOrMixinMixin(doc, test.mixin.TestMixin)
+    expect((result as any)?.arr).toEqual(['cls'])
+  })
+
+  it('should find mixin via one of the document own mixin fields', async () => {
+    const hierarchy = new Hierarchy()
+    for (const tx of txes) hierarchy.tx(tx)
+    const txFactory = new TxFactory(core.account.System)
+    // TestMixin attached to Task at class level; TaskMixinTodos inherits it via the ancestor chain
+    hierarchy.tx(
+      txFactory.createTxMixin(test.class.Task, core.class.Class, core.space.Model, test.mixin.TestMixin, {
+        arr: ['viaField']
+      } as any)
+    )
+
+    const doc = {
+      _id: 'd1' as any,
+      _class: core.class.Doc, // doc's own class carries no TestMixin
+      space: 's1' as any,
+      modifiedOn: 0,
+      modifiedBy: 'u1' as any,
+      [test.mixin.TaskMixinTodos]: { todos: 0 } // doc carries this mixin field, whose class chain leads to Task
+    }
+    const result = hierarchy.findClassOrMixinMixin(doc, test.mixin.TestMixin)
+    expect((result as any)?.arr).toEqual(['viaField'])
+  })
+
+  it('should collect mixins found on the document own mixin fields via findMixinMixins', async () => {
+    const hierarchy = new Hierarchy()
+    for (const tx of txes) hierarchy.tx(tx)
+    const txFactory = new TxFactory(core.account.System)
+    hierarchy.tx(
+      txFactory.createTxMixin(test.mixin.TaskMixinTodos, core.class.Class, core.space.Model, test.mixin.TestMixin, {
+        arr: ['y']
+      } as any)
+    )
+
+    const doc = {
+      _id: 'd1' as any,
+      _class: core.class.Doc,
+      space: 's1' as any,
+      modifiedOn: 0,
+      modifiedBy: 'u1' as any,
+      [test.mixin.TaskMixinTodos]: { todos: 0 }
+    }
+    const results = hierarchy.findMixinMixins(doc, test.mixin.TestMixin)
+    expect(results).toHaveLength(1)
+    expect(results[0]._id).toBe(test.mixin.TaskMixinTodos)
+  })
+
+  it('should list all possible mixins for a class walking up to core.class.Doc', async () => {
+    const hierarchy = prepare()
+    const mixins = hierarchy.getAllPossibleMixins(test.class.Task)
+    expect(mixins).toContain(test.mixin.TaskMixinTodos)
+  })
+
+  it('should cache inherited domain lookups on the second call', async () => {
+    const hierarchy = prepare()
+    // TxCreateDoc has no own domain, it is inherited from its ancestor Tx
+    const first = hierarchy.findDomain(core.class.TxCreateDoc)
+    expect(first).toBe('tx')
+    const second = hierarchy.findDomain(core.class.TxCreateDoc)
+    expect(second).toBe('tx')
+  })
+
+  it('should list classes carrying a mixin and skip interfaces via the catch branch', async () => {
+    const hierarchy = new Hierarchy()
+    for (const tx of txes) hierarchy.tx(tx)
+
+    // No class carries the mixin yet; interfaces in the model throw internally and get caught
+    const withoutMixin = hierarchy.getMixinClasses(test.mixin.TestMixin)
+    expect(withoutMixin).toEqual([])
+
+    const txFactory = new TxFactory(core.account.System)
+    hierarchy.tx(
+      txFactory.createTxMixin(test.class.Task, core.class.Class, core.space.Model, test.mixin.TestMixin, {
+        arr: ['x']
+      } as any)
+    )
+
+    const withMixin = hierarchy.getMixinClasses(test.mixin.TestMixin)
+    expect(withMixin).toContain(test.class.Task)
+    expect(withMixin).toContain(test.mixin.TaskMixinTodos)
+  })
+
+  it('should fall back to core.class.Doc when a mixin chain never reaches a class', async () => {
+    const hierarchy = new Hierarchy()
+    for (const tx of txes) hierarchy.tx(tx)
+    const txFactory = new TxFactory(core.account.System)
+    const orphanMixin = 'mixin:test.OrphanMixin' as Ref<Mixin<Doc>>
+    hierarchy.tx(
+      txFactory.createTxCreateDoc(
+        core.class.Class,
+        core.space.Model,
+        {
+          label: 'Orphan' as any,
+          kind: ClassifierKind.MIXIN
+          // no `extends`: the chain ends without ever finding a CLASS kind classifier
+        },
+        orphanMixin
+      )
+    )
+
+    expect(hierarchy.getBaseClass(orphanMixin)).toBe(core.class.Doc)
+  })
+
+  it('should return the same cached descendants array on repeated calls', async () => {
+    const hierarchy = prepare()
+    const first = hierarchy.getDescendants(core.class.Doc)
+    const second = hierarchy.getDescendants(core.class.Doc)
+    expect(second).toBe(first) // identity check proves the cache branch was hit, not a recompute
+  })
+
+  it('should return own attributes and resolve them via getAttribute', async () => {
+    const hierarchy = new Hierarchy()
+    for (const tx of txes) hierarchy.tx(tx)
+    const txFactory = new TxFactory(core.account.System)
+    const attrId = 'attr:test.spaceAttr' as Ref<AnyAttribute>
+    hierarchy.tx(
+      txFactory.createTxCreateDoc(
+        core.class.Attribute,
+        core.space.Model,
+        {
+          attributeOf: core.class.Space,
+          name: 'ownedAttr',
+          type: { _class: 'class:core.Type' as any }
+        } as any,
+        attrId
+      )
+    )
+
+    const owned = hierarchy.getOwnAttributes(core.class.Space)
+    expect(owned.size).toBe(1)
+    expect(owned.get('ownedAttr')?._id).toBe(attrId)
+
+    const attr = hierarchy.getAttribute(core.class.Space, 'ownedAttr')
+    expect(attr._id).toBe(attrId)
+  })
+
+  it('should recast reverse-lookup array values through the mixin proxy', async () => {
+    const hierarchy = prepare()
+    const doc = {
+      _id: 'doc1' as any,
+      _class: test.class.Task,
+      space: 'space1' as any,
+      modifiedOn: 0,
+      modifiedBy: 'user1' as any,
+      $lookup: {
+        comments: [
+          {
+            _id: 'c1' as any,
+            _class: core.class.Doc,
+            space: 'space1' as any,
+            modifiedOn: 0,
+            modifiedBy: 'user1' as any
+          }
+        ]
+      }
+    }
+    const options = { lookup: { _id: { comments: test.mixin.TestMixin } } }
+
+    const result = hierarchy.updateLookupMixin(test.class.Task, doc as any, options)
+    const comments = (result.$lookup as any)?.comments
+    expect(Array.isArray(comments)).toBeTruthy()
+    expect(Hierarchy.mixinOrClass(comments[0])).toBe(test.mixin.TestMixin)
+  })
+
+  it('should recast a single reverse-lookup value through the mixin proxy', async () => {
+    const hierarchy = prepare()
+    const doc = {
+      _id: 'doc1' as any,
+      _class: test.class.Task,
+      space: 'space1' as any,
+      modifiedOn: 0,
+      modifiedBy: 'user1' as any,
+      $lookup: {
+        comments: {
+          _id: 'c1' as any,
+          _class: core.class.Doc,
+          space: 'space1' as any,
+          modifiedOn: 0,
+          modifiedBy: 'user1' as any
+        }
+      }
+    }
+    const options = { lookup: { _id: { comments: test.mixin.TestMixin } } }
+
+    const result = hierarchy.updateLookupMixin(test.class.Task, doc as any, options)
+    const comment = (result.$lookup as any)?.comments
+    expect(Hierarchy.mixinOrClass(comment)).toBe(test.mixin.TestMixin)
+  })
+
+  it('should collapse diamond ancestor visits (addNew dedup)', async () => {
+    const hierarchy = new Hierarchy()
+    for (const tx of txes) hierarchy.tx(tx)
+    const txFactory = new TxFactory(core.account.System)
+
+    const ifaceA = 'interface:test.DiamondA' as Ref<Interface<Doc>>
+    const ifaceB = 'interface:test.DiamondB' as Ref<Interface<Doc>>
+    const classC = 'class:test.DiamondC' as Ref<Class<Obj>>
+
+    hierarchy.tx(
+      txFactory.createTxCreateDoc(
+        core.class.Interface,
+        core.space.Model,
+        { label: 'DiamondA' as any, extends: [], kind: ClassifierKind.INTERFACE },
+        ifaceA
+      )
+    )
+    hierarchy.tx(
+      txFactory.createTxCreateDoc(
+        core.class.Interface,
+        core.space.Model,
+        { label: 'DiamondB' as any, extends: [ifaceA], kind: ClassifierKind.INTERFACE },
+        ifaceB
+      )
+    )
+    hierarchy.tx(
+      txFactory.createTxCreateDoc(
+        core.class.Class,
+        core.space.Model,
+        {
+          label: 'DiamondC' as any,
+          extends: core.class.Doc,
+          implements: [ifaceA, ifaceB],
+          kind: ClassifierKind.CLASS,
+          domain: DOMAIN_MODEL
+        },
+        classC
+      )
+    )
+
+    const ancestors = hierarchy.getAncestors(classC)
+    // ifaceA is reachable both directly and through ifaceB; dedup must keep a single entry
+    expect(ancestors.filter((a) => a === ifaceA)).toHaveLength(1)
+  })
+})
+
+describe('mixin proxies', () => {
+  it('chains proxy handlers when a mixin extends another mixin', async () => {
+    const hierarchy = new Hierarchy()
+    for (const tx of txes) hierarchy.tx(tx)
+    const txFactory = new TxFactory(core.account.System)
+    const nested = 'test:mixin:Nested' as Ref<Mixin<Doc>>
+
+    hierarchy.tx(
+      txFactory.createTxCreateDoc(
+        core.class.Mixin,
+        core.space.Model,
+        { kind: ClassifierKind.MIXIN, extends: test.mixin.TestMixin, label: 'Nested' as any },
+        nested
+      )
+    )
+
+    const doc: Doc = {
+      _id: 'd1' as Ref<Doc>,
+      _class: core.class.Doc,
+      space: 's1' as any,
+      modifiedOn: 0,
+      modifiedBy: 'u1' as any,
+      [nested]: { value: 'nested' }
+    }
+
+    expect((hierarchy.as(doc, nested) as any).value).toBe('nested')
+    expect((hierarchy.asIf(doc, nested) as any)?.value).toBe('nested')
+    expect(hierarchy.asIf(doc, test.mixin.TestMixin)).toBeUndefined()
   })
 })

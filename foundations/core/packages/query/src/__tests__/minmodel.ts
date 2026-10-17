@@ -16,6 +16,7 @@
 import type {
   PersonId,
   Arr,
+  Association,
   Class,
   Data,
   Doc,
@@ -28,7 +29,14 @@ import type {
   TxCUD,
   AccountUuid
 } from '@hcengineering/core'
-import core, { AttachedDoc, ClassifierKind, DOMAIN_MODEL, DOMAIN_TX, TxFactory } from '@hcengineering/core'
+import core, {
+  AttachedDoc,
+  ClassifierKind,
+  DOMAIN_MODEL,
+  DOMAIN_RELATION,
+  DOMAIN_TX,
+  TxFactory
+} from '@hcengineering/core'
 import type { IntlString, Plugin } from '@hcengineering/platform'
 import { plugin } from '@hcengineering/platform'
 
@@ -88,6 +96,10 @@ export const test = plugin('test' as Plugin, {
     TestComment: '' as Ref<Class<AttachedComment>>,
     ParticipantsHolder: '' as Ref<Class<ParticipantsHolder>>,
     TestProject: '' as Ref<Class<TestProject>>
+  },
+  association: {
+    ProjectHolder: '' as Ref<Association>,
+    HolderProject: '' as Ref<Association>
   }
 })
 
@@ -143,15 +155,6 @@ export function genMinModel (): TxCUD<Doc>[] {
       domain: DOMAIN_MODEL
     })
   )
-  // TODO: fixme!
-  // txes.push(
-  //   createClass(core.class.Account, {
-  //     label: 'Account' as IntlString,
-  //     extends: core.class.Doc,
-  //     kind: ClassifierKind.CLASS,
-  //     domain: DOMAIN_MODEL
-  //   })
-  // )
 
   txes.push(
     createClass(core.class.Tx, {
@@ -239,6 +242,51 @@ export function genMinModel (): TxCUD<Doc>[] {
       kind: ClassifierKind.CLASS,
       domain: DOMAIN_TEST
     })
+  )
+
+  // Association / Relation model, for LiveQuery's options.associations tests.
+  txes.push(
+    createClass(core.class.Association, {
+      label: 'Association' as IntlString,
+      extends: core.class.Doc,
+      kind: ClassifierKind.CLASS,
+      domain: DOMAIN_MODEL
+    })
+  )
+  txes.push(
+    createClass(core.class.Relation, {
+      label: 'Relation' as IntlString,
+      extends: core.class.Doc,
+      kind: ClassifierKind.CLASS,
+      domain: DOMAIN_RELATION
+    })
+  )
+
+  txes.push(
+    createDoc<Association>(
+      core.class.Association,
+      {
+        classA: test.class.TestProject,
+        classB: test.class.ParticipantsHolder,
+        nameA: 'holders',
+        nameB: 'projects',
+        type: 'N:N'
+      },
+      test.association.ProjectHolder
+    )
+  )
+  txes.push(
+    createDoc<Association>(
+      core.class.Association,
+      {
+        classA: test.class.ParticipantsHolder,
+        classB: test.class.TestProject,
+        nameA: 'projects2',
+        nameB: 'holders2',
+        type: 'N:N'
+      },
+      test.association.HolderProject
+    )
   )
 
   const u1 = 'User1' as AccountUuid

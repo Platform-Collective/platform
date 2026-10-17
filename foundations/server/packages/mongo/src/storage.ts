@@ -519,7 +519,10 @@ abstract class MongoAdapterBase implements DbAdapter {
         }
       }
     } else {
-      targetObject.$lookup[key] = this.modelDb.findAllSync(_class, { _id: targetObject[key] })[0]
+      // Clone: a nested lookup writes $lookup into the parent doc, and model instances are shared.
+      // hierarchy.clone keeps the mixin proxy findAllSync puts on a mixin class.
+      const found = this.modelDb.findAllSync(_class, { _id: targetObject[key] })[0]
+      targetObject.$lookup[key] = found !== undefined ? this.hierarchy.clone(found) : undefined
     }
   }
 
@@ -617,7 +620,9 @@ abstract class MongoAdapterBase implements DbAdapter {
         targetObject.$lookup[key] = arr
       } else {
         const arr = this.modelDb.findAllSync(_class, { [attr]: targetObject._id })
-        targetObject.$lookup[key] = arr
+        // Clone: a nested lookup writes $lookup into these docs, and model instances are shared.
+        // hierarchy.clone keeps the mixin proxy findAllSync puts on a mixin class.
+        targetObject.$lookup[key] = arr.map((d) => this.hierarchy.clone(d))
       }
     }
   }

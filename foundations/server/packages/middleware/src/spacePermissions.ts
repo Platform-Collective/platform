@@ -345,7 +345,8 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     // And it's not currently possible to delete a role
     const updateTx = actualTx as TxUpdateDoc<Role>
 
-    if (updateTx.operations.permissions === undefined) {
+    const newPermissions = updateTx.operations.permissions
+    if (newPermissions === undefined) {
       return
     }
 
@@ -362,14 +363,13 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
       }
 
       const assignment: RolesAssignment = this.assignmentBySpace[spaceId]
-      const roles = this.getRoles(spaceTypeId)
-      const targetRole = roles.find((r) => r._id === updateTx.objectId)
+      const allRoles = this.getRoles(spaceTypeId)
 
-      if (targetRole === undefined) {
+      if (!allRoles.some((r) => r._id === updateTx.objectId)) {
         continue
       }
-
-      targetRole.permissions = updateTx.operations.permissions
+      // The role belongs to a model shared across workspaces, patch a copy instead of writing into it.
+      const roles = allRoles.map((r) => (r._id === updateTx.objectId ? { ...r, permissions: newPermissions } : r))
 
       this.permissionsBySpace[spaceId] = {}
       this.setPermissions(spaceId, roles, assignment, this.getPermissions())

@@ -19,8 +19,11 @@ export async function buildModel (existingTxes: Tx[]): Promise<{ hierarchy: Hier
   const dropTx: Tx[] = []
   const hierarchy = new Hierarchy()
   const model = new ModelDb(hierarchy)
-  // Construct existing model
-  existingTxes.forEach(hierarchy.tx.bind(hierarchy))
+  // Construct existing model. Hierarchy first: indexing a doc needs its full ancestor chain,
+  // and a doc may appear before its own class is created.
+  for (const tx of existingTxes) {
+    hierarchy.tx(tx)
+  }
   for (const tx of existingTxes) {
     await applyTx(model, tx, dropTx)
   }
