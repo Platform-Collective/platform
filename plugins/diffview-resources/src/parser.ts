@@ -36,8 +36,19 @@ const diff2htmlConfig: Diff2HtmlConfig = {
 /**
  * @public
  */
-export function parseDiff (diff: Diff): DiffFile[] {
-  const files = parse(diff, diff2htmlConfig)
+export interface ParseDiffOptions {
+  /** Files with more changed lines come back without hunks (isTooBig); null: no limit. Default 10000 */
+  maxChanges?: number | null
+}
+
+/**
+ * @public
+ */
+export function parseDiff (diff: Diff, options: ParseDiffOptions = {}): DiffFile[] {
+  // diff2html reads an undefined diffMaxChanges as no limit
+  const diffMaxChanges =
+    options.maxChanges === null ? undefined : (options.maxChanges ?? diff2htmlConfig.diffMaxChanges)
+  const files = parse(diff, { ...diff2htmlConfig, diffMaxChanges })
   return files.map(mapFile)
 }
 
