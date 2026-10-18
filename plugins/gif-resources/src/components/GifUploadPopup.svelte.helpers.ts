@@ -39,13 +39,13 @@ export function rejectionLabel (reason: UploadRejection): IntlString {
 export type GifRead =
   | { ok: false, reason: UploadRejection }
   | {
-    ok: true
-    title: string
-    keywords: string[]
-    width: number
-    height: number
-    sha256: string
-  }
+      ok: true
+      title: string
+      keywords: string[]
+      width: number
+      height: number
+      sha256: string
+    }
 
 /** @public */
 export async function sha256Hex (bytes: ArrayBuffer): Promise<string> {

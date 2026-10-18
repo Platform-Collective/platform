@@ -47,12 +47,12 @@
   // fetch but does not stop an already-resolved promise from continuing into its own `then`.
   let generation = 0
 
-  function abort (): void {
+  function abort(): void {
     controller?.abort()
     controller = undefined
   }
 
-  async function run (q: string, nextOffset: number, append: boolean): Promise<void> {
+  async function run(q: string, nextOffset: number, append: boolean): Promise<void> {
     abort()
     const mine = ++generation
     controller = new AbortController()
@@ -85,7 +85,7 @@
     }
   }
 
-  function schedule (q: string): void {
+  function schedule(q: string): void {
     clearTimeout(timer)
     // Once GIPHY has said 429, stop asking. Every retry is another counted call against an
     // hourly budget that is already exhausted, and it cannot succeed until the hour rolls.
@@ -123,7 +123,7 @@
     abort()
   })
 
-  function pick (g: GiphyGif): void {
+  function pick(g: GiphyGif): void {
     // Hot-link via `src`. The library tab sends `file-id` instead, and the gif node already
     // accepts either (text-editor/src/types.ts insertGif), so no node change is needed.
     // Nothing is uploaded to workspace storage, because GIPHY forbid storing copies.

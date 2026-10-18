@@ -46,8 +46,9 @@ describe('platform registration parity', () => {
   // files existing proves nothing about whether anything loads them.
   it.each([WEB, DESKTOP])('registers the gif plugin at all four points in %s', (file) => {
     const src = read(file)
-    expect(src).toContain("import { gifId } from '@hcengineering/gif'")
+    expect(src).toMatch(/import \{[^}]*\bgifId\b[^}]*\} from '@hcengineering\/gif'/)
     expect(src).toContain("import '@hcengineering/gif-assets'")
+    expect(src).toContain("import * as GifLang from '@hcengineering/gif-assets/lang'")
     expect(src).toContain('addStringsLoader(gifId')
     expect(src).toContain('addLocation(gifId')
   })

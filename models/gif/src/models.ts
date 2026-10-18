@@ -23,30 +23,30 @@ export const DOMAIN_GIF = 'gif' as Domain
 @Model(gifPlugin.class.WorkspaceGif, core.class.Doc, DOMAIN_GIF)
 export class TWorkspaceGif extends TDoc implements WorkspaceGif {
   @Prop(TypeString(), gifPlugin.string.Title)
-    title!: string
+  title!: string
 
   @Prop(ArrOf(TypeString()), gifPlugin.string.Keywords)
-    keywords!: string[]
+  keywords!: string[]
 
   @Prop(TypeRef(core.class.Blob), gifPlugin.string.GifLibrary)
   @ReadOnly()
-    blob!: Ref<Blob>
+  blob!: Ref<Blob>
 
   @Prop(TypeNumber(), gifPlugin.string.Width)
   @ReadOnly()
-    width!: number
+  width!: number
 
   @Prop(TypeNumber(), gifPlugin.string.Height)
   @ReadOnly()
-    height!: number
+  height!: number
 
   @Prop(TypeNumber(), gifPlugin.string.Size)
   @ReadOnly()
-    size!: number
+  size!: number
 
   // Dedup key: uploading the same bytes twice returns the existing row rather than adding a
   // second one and a second blob.
   @Prop(TypeString(), gifPlugin.string.Sha256)
   @ReadOnly()
-    sha256!: string
+  sha256!: string
 }
