@@ -423,7 +423,7 @@ export async function setClient (_client: Client): Promise<void> {
     txQueue.push(...tx)
     void notifyCaller()
   }
-  if (needRefresh || globalQueries.length > 0) {
+  if (needRefresh || globalQueries.size > 0) {
     await refreshClient(true)
   }
   const acc = getCurrentAccount()
@@ -481,28 +481,44 @@ export async function closeClient (): Promise<void> {
   await client?.close()
 }
 
-const globalQueries: LiveQuery[] = []
+const globalQueries = new Set<LiveQuery>()
+
+interface QueryRequest {
+  _class: Ref<Class<Doc>>
+  query: DocumentQuery<Doc>
+  callback: (result: FindResult<any>) => void | Promise<void>
+  options: FindOptions<Doc> | undefined
+}
+
+interface ActiveQuery {
+  request: QueryRequest
+  release: () => void
+}
 
 /**
  * @public
  */
 export class LiveQuery {
-  private oldClass: Ref<Class<Doc>> | undefined
-  private oldQuery: DocumentQuery<Doc> | undefined
-  private oldOptions: FindOptions<Doc> | undefined
-  private oldCallback: ((result: FindResult<any>) => void | Promise<void>) | undefined
-  private reqId = 0
-  unsubscribe: () => void = () => {}
-  clientRecreated = false
+  // Calls within one microtask are coalesced: only the last pending request gets subscribed.
+  private pending: QueryRequest | undefined
+  private scheduled = false
+  private active: ActiveQuery | undefined
+  private closed = false
 
-  constructor (noDestroy: boolean = false) {
+  constructor (private readonly noDestroy: boolean = false) {
     if (!noDestroy) {
       onDestroy(() => {
+        this.closed = true
         this.unsubscribe()
       })
-    } else {
-      globalQueries.push(this)
     }
+  }
+
+  unsubscribe = (): void => {
+    this.pending = undefined
+    this.active?.release()
+    this.active = undefined
+    globalQueries.delete(this)
   }
 
   query<T extends Doc> (
@@ -511,95 +527,74 @@ export class LiveQuery {
     callback: (result: FindResult<T>) => void | Promise<void>,
     options?: FindOptions<T>
   ): boolean {
-    if (!this.needUpdate(_class, query, callback, options) && !this.clientRecreated) {
+    // Components may query from async code that finishes after destroy; such a subscription would never be released.
+    if (this.closed) {
       return false
     }
-    // We need to prevent callback with old values to be happening
-    // One time refresh in case of client recreation
-    this.clientRecreated = false
-    void this.reducedDoQuery(++this.reqId, _class, query, callback as any, options)
+    if (!this.needUpdate(_class, query, callback, options)) {
+      return false
+    }
+    this.pending = { _class, query, callback, options } satisfies QueryRequest
+    if (this.noDestroy) {
+      globalQueries.add(this)
+    }
+    if (!this.scheduled) {
+      this.scheduled = true
+      queueMicrotask(() => {
+        this.flush()
+      })
+    }
     return true
   }
 
-  reducedDoQuery = reduceCalls(
-    async (
-      id: number,
-      _class: Ref<Class<Doc>>,
-      query: DocumentQuery<Doc>,
-      callback: (result: FindResult<Doc>) => void | Promise<void>,
-      options: FindOptions<Doc> | undefined
-    ) => {
-      this.doQuery(id, _class, query, callback, options)
-    }
-  )
-
-  private doQuery<T extends Doc> (
-    id: number,
-    _class: Ref<Class<T>>,
-    query: DocumentQuery<T>,
-    callback: (result: FindResult<T>) => void | Promise<void>,
-    options: FindOptions<T> | undefined
-  ): void {
-    if (pipeline === undefined) {
-      // We need remember values to perform refresh.
-      this.oldCallback = callback
-      this.oldClass = _class
-      this.oldOptions = options
-      this.oldQuery = query
-
+  private flush (): void {
+    this.scheduled = false
+    // Without a pipeline the request stays pending: refreshClient subscribes it once the client is set.
+    if (this.pending === undefined || this.closed || pipeline === undefined) {
       return
     }
-    const piplineQuery = pipeline.subscribe(_class, query, options, () => {
+    const request = this.pending
+    this.pending = undefined
+    this.subscribe(request)
+  }
+
+  private subscribe (request: QueryRequest): void {
+    this.active?.release()
+    this.active = undefined
+    // Becomes this.active after both subscriptions exist; until then, and after release, their callbacks are ignored.
+    const active: ActiveQuery = { request, release: () => {} }
+    const pipelineQuery = pipeline.subscribe(request._class, request.query, request.options, () => {
       // Refresh query if pipeline decide it is required.
-      this.refreshClient()
+      if (this.active === active) {
+        this.refreshClient()
+      }
     })
-    if (id !== this.reqId) {
-      // If we have one more request after this one, no need to do something.
-      void piplineQuery.then((res) => {
-        res.unsubscribe()
-      })
-      return
-    }
-
-    this.unsubscribe()
-    this.oldCallback = callback
-    this.oldClass = _class
-    this.oldOptions = options
-    this.oldQuery = query
-
     const unsub = liveQuery.query(
-      _class,
-      query,
+      request._class,
+      request.query,
       (result) => {
-        // If we have one more request after this one, no need to do something.
-        if (id === this.reqId) {
-          void callback(result)
+        if (this.active === active) {
+          void request.callback(result)
         }
       },
-      options
+      request.options
     )
-    this.unsubscribe = () => {
+    active.release = () => {
       unsub()
-      void piplineQuery.then((res) => {
+      void pipelineQuery.then((res) => {
         res.unsubscribe()
       })
-      this.oldCallback = undefined
-      this.oldClass = undefined
-      this.oldOptions = undefined
-      this.oldQuery = undefined
-      this.unsubscribe = () => {}
     }
+    this.active = active
   }
 
   refreshClient (): void {
-    this.clientRecreated = true
-    if (this.oldClass !== undefined && this.oldQuery !== undefined && this.oldCallback !== undefined) {
-      const _class = this.oldClass
-      const query = this.oldQuery
-      const callback = this.oldCallback
-      const options = this.oldOptions
-      this.doQuery(++this.reqId, _class, query, callback, options)
+    const request = this.pending ?? this.active?.request
+    if (request === undefined || this.closed || pipeline === undefined) {
+      return
     }
+    this.pending = undefined
+    this.subscribe(request)
   }
 
   private needUpdate<T extends Doc> (
@@ -608,10 +603,12 @@ export class LiveQuery {
     callback: (result: FindResult<T>) => void | Promise<void>,
     options?: FindOptions<T>
   ): boolean {
-    if (!deepEqual(_class, this.oldClass)) return true
-    if (!deepEqual(query, this.oldQuery)) return true
-    if (!deepEqual(callback.toString(), this.oldCallback?.toString())) return true
-    if (!deepEqual(options, this.oldOptions)) return true
+    const current = this.pending ?? this.active?.request
+    if (current === undefined) return true
+    if (!deepEqual(_class, current._class)) return true
+    if (!deepEqual(query, current.query)) return true
+    if (!deepEqual(callback.toString(), current.callback.toString())) return true
+    if (!deepEqual(options, current.options)) return true
     return false
   }
 }

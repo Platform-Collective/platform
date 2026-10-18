@@ -296,6 +296,8 @@
     "GanttExpand": "Expand",
     "GanttCollapse": "Collapse",
     "GanttCornerNoOpInSwimlane": "No effect in group-by mode",
+    "GanttHelpCalendarDaysDrag": "ドラッグ中に押し続けると稼働日を無視（暦日）",
+    "GanttDragCalendarDays": "暦日",
     "ModeSelectorDisabledByFilter": "ステータスはアクティブなフィルターで制御されています。このショートカットを使用するにはステータスフィルターを解除してください。",
     "ShowQuickModeSelector": "クイックフィルター：すべて / アクティブ / バックログ",
     "SearchScopeLabel": "検索対象…",
@@ -306,7 +308,19 @@
     "SearchEmptyTitle": "\"{query}\" に一致するイシューが見つかりません",
     "SearchEmptyActiveFilters": "アクティブなフィルター：{filters}",
     "SearchEmptyClearFilters": "フィルターなしで検索",
-    "SearchEmptyAllProjects": "すべてのプロジェクトを検索"
+    "SearchEmptyAllProjects": "すべてのプロジェクトを検索",
+    "GanttWeekLabel": "第{week}週",
+    "GanttQuarterLabel": "第{quarter}四半期",
+    "GanttWithoutDates": "日付なし: {count}",
+    "GanttDates": "日付",
+    "GanttZoomLabel": "ズーム",
+    "GanttSetDates": "日付を設定",
+    "GanttNoScheduledTasks": "予定されたタスクはありません",
+    "GanttTodayAlreadyVisible": "今日の日付はすでに表示されています",
+    "GanttVisibleRange": "表示範囲",
+    "GanttNotScheduled": "未予定",
+    "GanttMissingStartDates": "{count} 件の課題に開始日が設定されていません。",
+    "GanttSetDatesHint": "課題に開始日と期限を設定すると、タイムラインに表示されます。"
   },
   "status": {}
 }

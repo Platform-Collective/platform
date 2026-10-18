@@ -435,12 +435,8 @@ export async function buildModel (
   const hierarchy = new Hierarchy()
   const modelDb = new ModelDb(hierarchy)
 
+  // addTxes feeds the hierarchy itself, a separate pass would just deserialize everything twice.
   ctx.withSync('build local model', {}, () => {
-    for (const tx of model ?? []) {
-      try {
-        hierarchy.tx(tx)
-      } catch (err: any) {}
-    }
     modelDb.addTxes(ctx, model, false)
   })
   return { hierarchy, modelDb, model: model ?? [] }

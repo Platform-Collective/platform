@@ -3,6 +3,9 @@ import { type Ref } from '@hcengineering/core'
 import { type ChatMessage } from '@hcengineering/chunter'
 import { type EditorMode, DocumentState } from '@hcengineering/controlled-documents'
 import { isDocumentCommentAttachedTo } from '../../utils'
+// Side-effect only: query.ts exports nothing and registers the effector subscriptions that
+// fill $controlledDocument. `export type *` here would be erased and never load it.
+import './document/query'
 import {
   RightPanelTab,
   documentCommentsDisplayRequested,
@@ -41,7 +44,6 @@ export * from './document/canSendForReview'
 export * from './document/documentComments'
 export * from './document/comparison'
 export * from './document/editor'
-export type * from './document/query'
 
 export const addDocumentCommentFx = attach({
   source: { document: $controlledDocument },

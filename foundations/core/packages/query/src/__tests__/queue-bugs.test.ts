@@ -42,7 +42,7 @@ describe('LiveQuery - Queue Management Bugs', () => {
       })
 
       // Both callbacks should share the same query
-      // Let's verify internal state
+      // verify internal state
       const queriesMap = (liveQuery as any).queries.get(core.class.Space)
       expect(queriesMap?.size).toBe(1)
 
@@ -414,9 +414,8 @@ describe('LiveQuery - Queue Management Bugs', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 150))
 
-      // Both callbacks should have received updates after document creation
-      // Note: Due to setTimeout(0) in pushCallback, timing may vary slightly
-      // but both should see at least 2 updates (initial + after create)
+      // Timing can vary (pushCallback's setTimeout(0)), but both callbacks should see at least
+      // 2 updates: initial + after create.
       expect(callback1Results.length).toBeGreaterThanOrEqual(2)
       expect(callback2Results.length).toBeGreaterThanOrEqual(2)
 

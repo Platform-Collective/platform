@@ -5,13 +5,14 @@ import core, {
   type Data,
   type Doc,
   type Domain,
+  DOMAIN_MODEL,
   type PersonId,
   type Ref,
   type Space,
   type Tx
 } from '@hcengineering/core'
 import { type IntlString, plugin, type Plugin } from '@hcengineering/platform'
-import { createAttribute, createClass } from './minmodel'
+import { createAttribute, createClass, createDoc } from './minmodel'
 
 export interface TaskComment extends AttachedDoc {
   message: string
@@ -39,6 +40,16 @@ export interface Task extends Doc {
   reproduce?: TaskReproduce
   eta?: TaskEstimate | null
   arr?: number[]
+  stat?: Ref<TStat>
+}
+
+export interface TStatCat extends Doc {
+  label: string
+}
+
+export interface TStat extends Doc {
+  name: string
+  category: Ref<TStatCat>
 }
 
 /**
@@ -63,7 +74,15 @@ export const taskPlugin = plugin(taskIds, {
   class: {
     Task: '' as Ref<Class<Task>>,
     TaskEstimate: '' as Ref<Class<TaskEstimate>>,
-    TaskComment: '' as Ref<Class<TaskComment>>
+    TaskComment: '' as Ref<Class<TaskComment>>,
+    TStat: '' as Ref<Class<TStat>>,
+    TStatCat: '' as Ref<Class<TStatCat>>
+  },
+  ids: {
+    StatCatA: '' as Ref<TStatCat>,
+    StatCatB: '' as Ref<TStatCat>,
+    StatA: '' as Ref<TStat>,
+    StatB: '' as Ref<TStat>
   }
 })
 
@@ -108,6 +127,16 @@ export function createTaskModel (txes: Tx[]): void {
       label: 'Comment' as IntlString,
       domain: 'test-task' as Domain
     }),
+    createClass(taskPlugin.class.TStatCat, {
+      kind: ClassifierKind.CLASS,
+      label: 'TStatCat' as IntlString,
+      domain: DOMAIN_MODEL
+    }),
+    createClass(taskPlugin.class.TStat, {
+      kind: ClassifierKind.CLASS,
+      label: 'TStat' as IntlString,
+      domain: DOMAIN_MODEL
+    }),
     createAttribute({
       attributeOf: taskPlugin.class.Task,
       name: 'arr',
@@ -116,6 +145,10 @@ export function createTaskModel (txes: Tx[]): void {
         label: 'arr' as IntlString,
         type: core.class.TypeNumber
       }
-    })
+    }),
+    createDoc(taskPlugin.class.TStatCat, { label: 'cat-a' }, taskPlugin.ids.StatCatA),
+    createDoc(taskPlugin.class.TStatCat, { label: 'cat-b' }, taskPlugin.ids.StatCatB),
+    createDoc(taskPlugin.class.TStat, { name: 'stat-a', category: taskPlugin.ids.StatCatA }, taskPlugin.ids.StatA),
+    createDoc(taskPlugin.class.TStat, { name: 'stat-b', category: taskPlugin.ids.StatCatB }, taskPlugin.ids.StatB)
   )
 }

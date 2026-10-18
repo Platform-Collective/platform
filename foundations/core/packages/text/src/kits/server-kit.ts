@@ -17,6 +17,7 @@ import { NoteBaseExtension } from '../marks/noteBase'
 import { QMSInlineCommentMark } from '../marks/qmsInlineCommentMark'
 
 import { EmojiNode } from '../nodes/emoji'
+import { GifNode } from '../nodes/gif'
 import { FileNode } from '../nodes/file'
 import { ImageNode } from '../nodes/image'
 import { ReferenceNode } from '../nodes/reference'
@@ -47,6 +48,7 @@ export const ServerKitFactory = (e: ExtensionFactory) =>
     image: e(ImageNode),
     embed: e(EmbedNode),
     emoji: e(EmojiNode),
+    gif: e(GifNode),
 
     inlineNote: e(NoteBaseExtension), // Semi-deprecated, should be removed in the future
     qmsInlineCommentMark: e(QMSInlineCommentMark) // Semi-deprecated, should be removed in the future

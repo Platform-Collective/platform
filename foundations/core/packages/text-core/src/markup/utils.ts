@@ -94,6 +94,7 @@ const nonEmptyNodes = [
   MarkupNodeType.image,
   MarkupNodeType.reference,
   MarkupNodeType.emoji,
+  MarkupNodeType.gif,
   MarkupNodeType.subLink,
   MarkupNodeType.table
 ]

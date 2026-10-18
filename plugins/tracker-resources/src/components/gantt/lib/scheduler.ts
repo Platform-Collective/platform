@@ -10,6 +10,11 @@ import {
   type WorkingCalendar,
   addWorkingDays,
   workingDayDelta,
+  workingDaysPerWeek,
+  MAX_WORKING_SPAN_DAYS,
+  workingDaySpan,
+  dueForSpan,
+  startForSpan,
   utcMidnight,
   fsAnchor,
   ssAnchor,
@@ -33,6 +38,35 @@ export function addScheduleDays(t: number, days: number): number {
   return t + days * DAY_MS
 }
 
+/** `days` as calendar days (legacy) or working days (calendar active). */
+export function shiftScheduleDays(t: number, days: number, cfg: WorkingCalendar | undefined): number {
+  return cfg === undefined ? addScheduleDays(t, days) : addWorkingDays(t, days, cfg)
+}
+
+/**
+ * Moves `t` by the same amount as a primary bar whose start went from
+ * `originStart` to `previewStart`: the raw delta in legacy mode, the move
+ * measured in working days when a calendar is active, so a child bar lands on
+ * working days like its parent. A move that is not a finite distance of at
+ * most MAX_WORKING_SPAN_DAYS days falls back to the raw delta, which keeps the
+ * day-stepping working-day count bounded.
+ */
+export function shiftWithPrimary(
+  t: number,
+  originStart: number,
+  previewStart: number,
+  cfg: WorkingCalendar | undefined
+): number {
+  const delta = previewStart - originStart
+  if (cfg === undefined || !(Math.abs(delta) <= MAX_WORKING_SPAN_DAYS * DAY_MS)) return t + delta
+  return addWorkingDays(t, workingDayDelta(originStart, previewStart, cfg), cfg)
+}
+
+/** Step of Shift+Arrow: seven calendar days (legacy) or the active weekdays of the mask. */
+export function keyboardWeekStep(cfg: WorkingCalendar | undefined): number {
+  return cfg === undefined ? 7 : workingDaysPerWeek(cfg)
+}
+
 /**
  * Return every descendant of `issue` that has both `startDate` and `dueDate`
  * concretely set. Children/grandchildren are walked recursively via the
@@ -44,7 +78,7 @@ export function addScheduleDays(t: number, days: number): number {
 export function descendantsWithDates(issue: Issue, allIssues: Issue[]): Issue[] {
   const childrenByParent = new Map<Ref<Issue>, Issue[]>()
   for (const i of allIssues) {
-    const parent = i.parents?.[0]?.parentId as Ref<Issue> | undefined
+    const parent = i.parents?.[0]?.parentId
     if (parent === undefined) continue
     const bucket = childrenByParent.get(parent)
     if (bucket === undefined) {
@@ -183,6 +217,35 @@ const DEFAULT_MAX_ITERATIONS = 1000
 interface WorkingDates {
   start: number
   due: number
+}
+
+/**
+ * Keep an oversized bar's calendar length rather than feeding its truncated
+ * working span back through the bounded day-stepping helpers.
+ */
+function shiftedWorkingDates(
+  dates: WorkingDates,
+  newAnchor: number,
+  anchorIsStart: boolean,
+  cfg: WorkingCalendar
+): WorkingDates {
+  // workingDaySpan only inspects this many calendar days. For a longer bar,
+  // retain its exact calendar-day length: silently shortening it is worse
+  // than foregoing working-day normalisation for this safety-boundary case.
+  if (
+    Number.isFinite(dates.start) &&
+    Number.isFinite(dates.due) &&
+    dates.due - dates.start > (MAX_WORKING_SPAN_DAYS - 1) * DAY_MS
+  ) {
+    const oldAnchor = anchorIsStart ? dates.start : dates.due
+    const delta = newAnchor - oldAnchor
+    return { start: dates.start + delta, due: dates.due + delta }
+  }
+
+  const span = workingDaySpan(dates.start, dates.due, cfg)
+  return anchorIsStart
+    ? { start: newAnchor, due: dueForSpan(newAnchor, span, cfg) }
+    : { start: startForSpan(newAnchor, span, cfg), due: newAnchor }
 }
 
 export function simulateCascade(
@@ -329,9 +392,20 @@ export function simulateCascade(
             ? targetAnchor + curStartDelta
             : addWorkingDays(utcMidnight(targetAnchor), curDueDeltaWd, cfg)
         const newAnchor = r.kind === 'finish-to-start' ? Math.max(snap, gapFloor) : snap
-        const delta = newAnchor - targetAnchor
-        const newStart = targetAnchorIsStart ? newAnchor : targetDates.start + delta
-        const newDue = targetAnchorIsStart ? targetDates.due + delta : newAnchor
+        let newStart: number
+        let newDue: number
+        if (cfg === undefined) {
+          const delta = newAnchor - targetAnchor
+          newStart = targetAnchorIsStart ? newAnchor : targetDates.start + delta
+          newDue = targetAnchorIsStart ? targetDates.due + delta : newAnchor
+        } else {
+          // Working-days mode: the shifted issue keeps its length in working
+          // days. Oversized bars retain their calendar-day length because the
+          // bounded span helpers cannot represent them.
+          const shifted = shiftedWorkingDates(targetDates, newAnchor, targetAnchorIsStart, cfg)
+          newStart = shifted.start
+          newDue = shifted.due
+        }
         current.set(r.target, { start: newStart, due: newDue })
         shifts.set(r.target, {
           issue: targetIssue,
@@ -379,10 +453,43 @@ export function simulateCascade(
         predAnchorIsDue = false
       }
       const predAnchor = predAnchorIsDue ? predDates.due : predDates.start
-      if (requiredAnchor < predAnchor) {
-        const delta = predAnchor - requiredAnchor
-        const newStart = predAnchorIsDue ? predDates.start - delta : requiredAnchor
-        const newDue = predAnchorIsDue ? requiredAnchor : predDates.due - delta
+      // Test the violation with the FORWARD anchor — the same predicate the
+      // outgoing pass uses. In working-days mode the reverse anchor is not the
+      // inverse of the forward one when the predecessor's anchor sits on a
+      // non-working day (fsAnchor(Sat) = Mon, but fsReverseAnchor(Mon) = Fri),
+      // so `reverse < predAnchor` alone pulls predecessors whose constraint is
+      // already satisfied — and breaks their own upstream links, which are
+      // never re-checked (primaries are guarded above). Legacy mode is
+      // unaffected: calendar-day anchors are exact inverses.
+      let forwardRequired: number
+      let succAnchor: number
+      if (r.kind === 'finish-to-start') {
+        forwardRequired = fsAnchor(predDates.due, lag, cfg)
+        succAnchor = curDates.start
+      } else if (r.kind === 'start-to-start') {
+        forwardRequired = ssAnchor(predDates.start, lag, cfg)
+        succAnchor = curDates.start
+      } else if (r.kind === 'finish-to-finish') {
+        forwardRequired = ffAnchor(predDates.due, lag, cfg)
+        succAnchor = curDates.due
+      } /* start-to-finish */ else {
+        forwardRequired = sfAnchor(predDates.start, lag, cfg)
+        succAnchor = curDates.due
+      }
+      if (forwardRequired > succAnchor && requiredAnchor < predAnchor) {
+        let newStart: number
+        let newDue: number
+        if (cfg === undefined) {
+          const delta = predAnchor - requiredAnchor
+          newStart = predAnchorIsDue ? predDates.start - delta : requiredAnchor
+          newDue = predAnchorIsDue ? requiredAnchor : predDates.due - delta
+        } else {
+          // Working-days mode: the pulled predecessor keeps its working-day
+          // span, except oversized bars, whose calendar-day length is kept.
+          const shifted = shiftedWorkingDates(predDates, requiredAnchor, !predAnchorIsDue, cfg)
+          newStart = shifted.start
+          newDue = shifted.due
+        }
         current.set(r.attachedTo, { start: newStart, due: newDue })
         shifts.set(r.attachedTo, {
           issue: predIssue,

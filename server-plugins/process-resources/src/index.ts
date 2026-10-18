@@ -684,6 +684,8 @@ function getName (current: ProcessContext | undefined, method: Method<Doc>, acti
 
 async function syncContext (control: TriggerControl, _process: Process): Promise<Tx | undefined> {
   const transitions = control.modelDb.findAllSync(process.class.Transition, { process: _process._id })
+  // _process belongs to a model shared across workspaces, build the new context aside.
+  const context: Record<ContextId, ProcessContext> = { ..._process.context }
   const exists = new Set<ContextId>()
   let changed = false
   let index = 1
@@ -692,7 +694,7 @@ async function syncContext (control: TriggerControl, _process: Process): Promise
       if (action.context != null) {
         exists.add(action.context._id)
         const method = control.modelDb.findObject(action.methodId)
-        const current = _process.context[action.context._id]
+        const current = context[action.context._id]
         if (method?.createdContext != null) {
           changed = true
           const ctx: SelectedExecutionContext = {
@@ -700,7 +702,7 @@ async function syncContext (control: TriggerControl, _process: Process): Promise
             id: action.context._id,
             key: ''
           }
-          _process.context[action.context._id] = {
+          context[action.context._id] = {
             name: getName(current, method, action),
             _class: action.context._class ?? method.createdContext._class,
             action: action._id,
@@ -721,7 +723,7 @@ async function syncContext (control: TriggerControl, _process: Process): Promise
           }
           const parentType = result.type._class === core.class.ArrOf ? (result.type as ArrOf<Doc>).of : result.type
           const _class = parentType._class === core.class.RefTo ? (parentType as RefTo<Doc>).to : parentType._class
-          _process.context[result._id] = {
+          context[result._id] = {
             name: result.name,
             isResult: true,
             type: result.type,
@@ -736,9 +738,9 @@ async function syncContext (control: TriggerControl, _process: Process): Promise
     }
   }
   const newContext: Record<ContextId, ProcessContext> = {}
-  for (const key of Object.keys(_process.context) as ContextId[]) {
+  for (const key of Object.keys(context) as ContextId[]) {
     if (exists.has(key)) {
-      newContext[key] = _process.context[key]
+      newContext[key] = context[key]
       continue
     }
     changed = true

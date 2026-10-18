@@ -123,6 +123,21 @@
         {node.attrs?.emoji}
       {/if}
     </span>
+  {:else if node.type === MarkupNodeType.gif}
+    <!-- A gif is a leaf, so the children-only fallback at the bottom of this file renders nothing
+    and a gif-only message previews as an empty line. Note MarkupNodeType.image is not handled here
+    either, so image-only messages have always previewed blank; gif is called out because a message
+    whose whole content is one gif is ordinary, where an image usually rides with an attachment. -->
+    {@const alt = toString(attrs.alt)}
+    <span class="emoji">
+      {#if attrs['file-id'] != null}
+        {#await getBlobRef(toRefBlob(attrs['file-id'])) then blobSrc}
+          <img src={blobSrc.src} {alt} />
+        {/await}
+      {:else if attrs.src != null}
+        <img src={toString(attrs.src)} {alt} />
+      {/if}
+    </span>
   {:else if node.type === MarkupNodeType.taskList}
     <!-- TODO not implemented -->
   {:else if node.type === MarkupNodeType.taskItem}

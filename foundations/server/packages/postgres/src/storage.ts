@@ -17,6 +17,7 @@ import core, {
   AccountRole,
   type AnyAttribute,
   type AssociationQuery,
+  clone,
   type Class,
   type Doc,
   type DocInfo,
@@ -692,7 +693,13 @@ abstract class PostgresAdapterBase implements DbAdapter {
           const res2 = this.modelDb.findAllSync(modelJoin.toClass, {
             [modelJoin.toField]: val
           })
-          obj[key] = modelJoin.isReverse ? res2 : res2[0]
+          // Clone to avoid mutating shared ModelDb instances when nested lookup
+          // populates $lookup on the parent doc (e.g. status.category).
+          obj[key] = modelJoin.isReverse
+            ? res2.map((d) => clone(d))
+            : res2[0] !== undefined
+              ? clone(res2[0])
+              : undefined
         }
       }
 

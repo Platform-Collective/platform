@@ -83,6 +83,9 @@
     insertText: (text) => {
       editor?.insertText(text)
     },
+    insertGif: (attrs: { 'file-id'?: Ref<Blob>, src?: string, width?: number, height?: number, alt?: string }) => {
+      editor?.insertGif(attrs)
+    },
     insertEmoji: (text: string, image?: Ref<Blob>) => {
       editor?.insertEmoji(text, image)
     },

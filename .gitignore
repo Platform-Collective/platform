@@ -128,3 +128,6 @@ CLAUDE.md
 /dev/prod/public/config-local.json
 /dev/prod/public/config-prod.json
 /dev/prod/public/config-staging.json
+
+.agents/
+skills-lock.json

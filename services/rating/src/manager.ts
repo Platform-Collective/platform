@@ -74,9 +74,7 @@ export class WorkspaceManager {
       accountsUrl: string
     }
   ) {
-    for (const tx of model) {
-      this.sysHierarchy.tx(tx)
-    }
+    // addTxes feeds sysHierarchy itself, a separate pass would just deserialize everything twice.
     this.sysModel.addTxes(ctx, model, true)
 
     this.supportedVersion = TxProcessor.createDoc2Doc(

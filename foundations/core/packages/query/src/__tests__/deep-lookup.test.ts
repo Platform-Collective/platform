@@ -499,4 +499,60 @@ describe('Deep Lookup Tests', () => {
       await close()
     })
   })
+
+  describe('Lookup with undefined reference property', () => {
+    it('should not attach random document when lookup reference field is undefined or null', async () => {
+      const { liveQuery, factory, close } = await getClient()
+
+      const space = await factory.createDoc(core.class.Space, core.space.Model, {
+        name: 'undefined-ref-test',
+        description: 'test',
+        private: false,
+        members: [],
+        archived: false
+      })
+
+      // Subscribe to all comments to populate QueryMaster cache
+      const allCommentsCb = jest.fn()
+      liveQuery.query(test.class.TestComment, {}, allCommentsCb)
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      // Create a comment that exists in QueryMaster cache
+      await factory.addCollection(test.class.TestComment, space, space, core.class.Space, 'comments', {
+        message: 'first-cached-comment'
+      })
+
+      // Create a comment where forwardedMessage reference is undefined
+      const targetComment = await factory.addCollection(
+        test.class.TestComment,
+        space,
+        space,
+        core.class.Space,
+        'comments',
+        {
+          message: 'target-comment'
+        }
+      )
+
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      const callback = jest.fn()
+
+      liveQuery.query(test.class.TestComment, { _id: targetComment }, callback, {
+        lookup: {
+          forwardedMessage: test.class.TestComment
+        } as any
+      })
+
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      expect(callback).toHaveBeenCalled()
+      const result = callback.mock.calls[callback.mock.calls.length - 1][0]
+      expect(result).toHaveLength(1)
+      // Must be undefined, NOT attaching first cached comment
+      expect(result[0].$lookup?.forwardedMessage).toBeUndefined()
+
+      await close()
+    })
+  })
 })

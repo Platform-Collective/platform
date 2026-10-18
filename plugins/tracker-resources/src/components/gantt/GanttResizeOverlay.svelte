@@ -18,8 +18,8 @@
 
   const DAY_MS = 86_400_000
 
-  function fmt(ts: number): string {
-    return new Date(ts).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  function fmt(ts: number, locale: string): string {
+    return new Date(ts).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
   }
 
   function originGeometry(state: DragState): { x: number, w: number } | null {
@@ -94,6 +94,16 @@
     tip =
       tipParams === null ? null : await translate(tracker.string.GanttResizingTooltip, tipParams, $themeStore.language)
   })()
+
+  // Shown under the date pill while the user holds Shift to suspend
+  // working-day snapping for this drag (the reducer only sets the flag when a
+  // calendar would otherwise apply).
+  $: suspended = 'snapSuspended' in state && state.snapSuspended === true
+  let suspendedHint = ''
+  $: void (async () => {
+    suspendedHint = suspended ? await translate(tracker.string.GanttDragCalendarDays, {}, $themeStore.language) : ''
+  })()
+  $: hintWidth = Math.max(88, suspendedHint.length * 6.5 + 16)
 </script>
 
 {#if state.kind !== 'idle' && state.kind !== 'hover-bar' && geom !== null}
@@ -130,7 +140,25 @@
 {#if pd !== null && gx !== null}
   <g transform="translate({gx}, 0)" class="date-pill" pointer-events="none">
     <rect x={-44} y={2} width={88} height={18} rx={9} ry={9} fill="var(--theme-state-info-color, #6366f1)" />
-    <text x={0} y={15} text-anchor="middle" fill="white" class="date-pill-text">{fmt(pd)}</text>
+    <text x={0} y={15} text-anchor="middle" fill="white" class="date-pill-text">{fmt(pd, $themeStore.language)}</text>
+  </g>
+{/if}
+
+{#if suspended && suspendedHint !== '' && pd !== null && gx !== null}
+  <g transform="translate({gx}, 0)" class="snap-hint" pointer-events="none">
+    <rect
+      x={-hintWidth / 2}
+      y={23}
+      width={hintWidth}
+      height={18}
+      rx={9}
+      ry={9}
+      fill="var(--theme-bg-color)"
+      stroke="var(--theme-state-info-color, #6366f1)"
+    />
+    <text x={0} y={36} text-anchor="middle" fill="var(--theme-content-color)" class="snap-hint-text"
+      >{suspendedHint}</text
+    >
   </g>
 {/if}
 
@@ -154,6 +182,10 @@
   .date-pill-text {
     font-size: 11px;
     font-weight: 600;
+    user-select: none;
+  }
+  .snap-hint-text {
+    font-size: 11px;
     user-select: none;
   }
   .duration-tip-text {

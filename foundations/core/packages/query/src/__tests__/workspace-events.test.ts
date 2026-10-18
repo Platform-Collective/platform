@@ -16,8 +16,16 @@ import { LiveQuery } from '..'
 import { connect } from './connection'
 import { test } from './minmodel'
 
+// A refresh that finds nothing new does not call the subscriber, so refreshes are counted at the client.
+let findAllCalls = 0
+
 async function getClient (): Promise<{ liveQuery: LiveQuery, factory: TxOperations, close: () => Promise<void> }> {
   const storage = await createClient(connect)
+  const rawFindAll = storage.findAll.bind(storage)
+  storage.findAll = (async (...args: Parameters<typeof rawFindAll>) => {
+    findAllCalls++
+    return await rawFindAll(...args)
+  }) as typeof storage.findAll
   const liveQuery = new LiveQuery(storage)
   storage.notify = (...tx) => {
     void liveQuery.tx(...tx)
@@ -55,7 +63,7 @@ describe('Workspace Events', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 100))
 
-      const initialCalls = callback.mock.calls.length
+      const initialCalls = findAllCalls
 
       // Send IndexingUpdate event
       const params: IndexingUpdateEvent = {
@@ -77,7 +85,7 @@ describe('Workspace Events', () => {
       await new Promise((resolve) => setTimeout(resolve, 150))
 
       // Should have triggered a refresh
-      expect(callback.mock.calls.length).toBeGreaterThan(initialCalls)
+      expect(findAllCalls).toBeGreaterThan(initialCalls)
 
       await close()
     })
@@ -153,7 +161,7 @@ describe('Workspace Events', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 100))
 
-      const initialCalls = callback.mock.calls.length
+      const initialCalls = findAllCalls
 
       // Send BulkUpdate event
       const params: BulkUpdateEvent = {
@@ -175,7 +183,7 @@ describe('Workspace Events', () => {
       await new Promise((resolve) => setTimeout(resolve, 150))
 
       // Should have triggered a refresh
-      expect(callback.mock.calls.length).toBeGreaterThan(initialCalls)
+      expect(findAllCalls).toBeGreaterThan(initialCalls)
 
       await close()
     })
@@ -250,7 +258,7 @@ describe('Workspace Events', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 100))
 
-      const initialCalls = callback.mock.calls.length
+      const initialCalls = findAllCalls
 
       // Send SecurityChange event
       const securityEvent: TxWorkspaceEvent = {
@@ -269,7 +277,7 @@ describe('Workspace Events', () => {
       await new Promise((resolve) => setTimeout(resolve, 150))
 
       // Should have triggered a refresh
-      expect(callback.mock.calls.length).toBeGreaterThan(initialCalls)
+      expect(findAllCalls).toBeGreaterThan(initialCalls)
 
       await close()
     })
@@ -300,7 +308,7 @@ describe('Workspace Events', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 100))
 
-      const initialCalls = callback.mock.calls.length
+      const initialCalls = findAllCalls
 
       // Send SecurityChange event
       const securityEvent: TxWorkspaceEvent = {
@@ -319,7 +327,7 @@ describe('Workspace Events', () => {
       await new Promise((resolve) => setTimeout(resolve, 150))
 
       // Should have triggered a refresh since space query is non-string
-      expect(callback.mock.calls.length).toBeGreaterThan(initialCalls)
+      expect(findAllCalls).toBeGreaterThan(initialCalls)
 
       await close()
     })

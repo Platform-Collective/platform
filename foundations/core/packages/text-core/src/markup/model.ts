@@ -26,6 +26,7 @@ export enum MarkupNodeType {
   file = 'file',
   reference = 'reference',
   emoji = 'emoji',
+  gif = 'gif',
   hard_break = 'hardBreak',
   ordered_list = 'orderedList',
   bullet_list = 'bulletList',

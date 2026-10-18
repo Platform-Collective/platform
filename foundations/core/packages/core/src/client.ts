@@ -138,7 +138,10 @@ class ClientImpl implements Client, BackupClient {
   hierarchy!: Hierarchy
   model!: ModelDb
   private readonly appliedModelTransactions = new Set<Ref<Tx>>()
-  constructor (private readonly conn: ClientConnection) {}
+  constructor (
+    private readonly conn: ClientConnection,
+    private readonly ctx: MeasureContext
+  ) {}
 
   getConnection (): ClientConnection {
     return this.conn
@@ -272,12 +275,17 @@ class ClientImpl implements Client, BackupClient {
 
   async tx (tx: Tx): Promise<TxResult> {
     if (tx.objectSpace === core.space.Model) {
-      this.hierarchy.tx(tx)
-      await this.model.tx(tx)
+      // Synchronous and one shared instance for model and hierarchy, as ModelMiddleware.tx on the server.
+      this.model.addTxes(this.ctx, [tx], true)
       this.appliedModelTransactions.add(tx._id)
     }
     // We need to handle it on server, before performing local live query updates.
-    return await this.conn.tx(tx)
+    const result = await this.conn.tx(tx)
+    // The connection notifies local tx handlers (live queries) without awaiting them.
+    // Give them a turn before the caller issues the next tx, or their updates are coalesced.
+    // One microtask only: the synchronous part of the handlers runs, their awaits may still be pending.
+    await Promise.resolve()
+    return result
   }
 
   async updateFromRemote (...tx: Tx[]): Promise<void> {
@@ -286,8 +294,7 @@ class ClientImpl implements Client, BackupClient {
         if (t.objectSpace === core.space.Model) {
           const hasTx = this.appliedModelTransactions.has(t._id)
           if (!hasTx) {
-            this.hierarchy.tx(t)
-            await this.model.tx(t)
+            this.model.addTxes(this.ctx, [t], true)
           } else {
             this.appliedModelTransactions.delete(t._id)
           }
@@ -400,7 +407,7 @@ export async function createClient (
 
   txBuffer = txBuffer.filter((tx) => tx.space !== core.space.Model)
 
-  client = new ClientImpl(conn)
+  client = new ClientImpl(conn, ctx)
   client.setModel(hierarchy, model)
 
   txHandler(...txBuffer)
@@ -527,19 +534,7 @@ export function buildModel (
     txes = modelFilter(txes)
   }
 
-  ctx.withSync('build hierarchy', {}, () => {
-    for (const tx of txes) {
-      try {
-        hierarchy.tx(tx)
-      } catch (err: any) {
-        ctx.warn('failed to apply model transaction, skipping', {
-          _id: tx._id,
-          _class: tx._class,
-          message: err?.message
-        })
-      }
-    }
-  })
+  // addTxes feeds the hierarchy itself, a separate pass would just deserialize everything twice.
   ctx.withSync('build model', {}, (ctx) => {
     model.addTxes(ctx, txes, false)
   })

@@ -327,6 +327,8 @@
     "GanttJumpToDate": "Jump to date",
     "GanttZoomDay": "Gün",
     "GanttZoomWeek": "Hafta",
+    "GanttWeekLabel": "H{week}",
+    "GanttQuarterLabel": "Ç{quarter}",
     "GanttZoomMonth": "Ay",
     "GanttZoomQuarter": "Çeyrek",
     "GanttZoomCustom": "Özel",
@@ -426,6 +428,8 @@
     "CriticalPathBadge": "KY",
     "GanttHelpTitle": "Klavye kısayolları",
     "GanttHelpEsc": "Kapatmak için Esc veya ? tuşuna basın",
+    "GanttHelpCalendarDaysDrag": "Sürüklerken basılı tutun: iş günlerini yok say (takvim günleri)",
+    "GanttDragCalendarDays": "Takvim günleri",
     "GanttExport": "PNG olarak dışa aktar",
     "GanttExportFailed": "Dışa aktarma başarısız",
     "GanttSidebarColumnsExtended": "Genişletilmiş kenar çubuğu sütunları",
@@ -544,7 +548,16 @@
     "SearchEmptyTitle": "\"{query}\" için sorun bulunamadı",
     "SearchEmptyActiveFilters": "Aktif filtreler: {filters}",
     "SearchEmptyClearFilters": "Filtresiz ara",
-    "SearchEmptyAllProjects": "Tüm projelerde ara"
+    "SearchEmptyAllProjects": "Tüm projelerde ara",
+    "GanttWithoutDates": "Tarihsiz: {count}",
+    "GanttDates": "Tarihler",
+    "GanttSetDates": "Tarihleri ayarla",
+    "GanttNoScheduledTasks": "Planlanmış görev yok",
+    "GanttTodayAlreadyVisible": "Bugün zaten görünür durumda",
+    "GanttVisibleRange": "Aralık",
+    "GanttNotScheduled": "Planlanmadı",
+    "GanttMissingStartDates": "{count} görevin başlangıç tarihi yok.",
+    "GanttSetDatesHint": "Zaman çizelgesinde görmek için bir göreve başlangıç ve bitiş tarihleri ekleyin."
   },
   "status": {}
 }

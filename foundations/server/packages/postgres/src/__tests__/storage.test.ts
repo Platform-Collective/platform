@@ -33,7 +33,7 @@ import {
   type PostgresClientReference
 } from '..'
 import { genMinModel } from './minmodel'
-import { createTaskModel, type Task, type TaskComment, taskPlugin } from './tasks'
+import { createTaskModel, type Task, type TaskComment, type TStat, taskPlugin } from './tasks'
 
 const txes = genMinModel()
 
@@ -351,6 +351,49 @@ describe('postgres operations', () => {
     )
     expect((r4[0].$lookup?.attachedTo as TaskComment)?._id).toEqual(commentId)
     expect(((r4[0].$lookup?.attachedTo as any)?.$lookup.attachedTo as Task)?._id).toEqual(docId)
+  })
+
+  it('nested lookup on model docs does not mutate ModelDb instances', async () => {
+    // Reproduces the bug where parseLookup mutates shared ModelDb objects when
+    // resolving nested lookups (e.g. status -> category). After such a query the
+    // model doc would carry $lookup permanently and subsequent findAll on that
+    // class would emit $lookup with no lookupMap, crashing REST clients.
+    await operations.createDoc(taskPlugin.class.Task, '' as Ref<Space>, {
+      name: 'task-with-stat-a',
+      description: '',
+      rate: 1,
+      stat: taskPlugin.ids.StatA
+    })
+    await operations.createDoc(taskPlugin.class.Task, '' as Ref<Space>, {
+      name: 'task-with-stat-b',
+      description: '',
+      rate: 2,
+      stat: taskPlugin.ids.StatB
+    })
+
+    const tasks = await client.findAll<Task>(
+      taskPlugin.class.Task,
+      {},
+      {
+        lookup: { stat: [taskPlugin.class.TStat, { category: taskPlugin.class.TStatCat }] }
+      }
+    )
+    expect(tasks).toHaveLength(2)
+    const stat = tasks[0].$lookup?.stat as any
+    expect(stat).toBeDefined()
+    expect(stat.$lookup?.category).toBeDefined()
+
+    // The shared in-memory TStat doc must NOT be polluted with $lookup.
+    const pristine = (await client.findAll<TStat>(taskPlugin.class.TStat, {})) as Array<TStat & { $lookup?: any }>
+    for (const s of pristine) {
+      expect(s.$lookup).toBeUndefined()
+    }
+
+    // And a follow-up findAll without lookup options must not return $lookup.
+    const tasksNoLookup = (await client.findAll<Task>(taskPlugin.class.Task, {})) as Array<Task & { $lookup?: any }>
+    for (const t of tasksNoLookup) {
+      expect(t.$lookup).toBeUndefined()
+    }
   })
 
   it('check associations', async () => {

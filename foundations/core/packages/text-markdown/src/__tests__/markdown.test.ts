@@ -1251,3 +1251,86 @@ describe('markdownToMarkup -> markupToMarkdown', () => {
     })
   })
 })
+
+describe('sized external image', () => {
+  // A sized image without a file-id is written as a raw <img> tag, so its attributes need HTML
+  // escaping, the same as the gif tag.
+  it('round-trips alt text containing a double quote and markdown punctuation', () => {
+    const alt = 'Cat says "hi" *now*'
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.paragraph,
+          content: [{ type: MarkupNodeType.image, attrs: { src: 'https://example.com/a.png', width: 320, alt } }]
+        }
+      ]
+    }
+    const once = markupToMarkdown(doc, options)
+    const back = markdownToMarkup(once, options)
+    const node = (back.content?.[0] as MarkupNode)?.content?.[0]
+    expect(node?.type).toBe(MarkupNodeType.image)
+    expect(node?.attrs?.alt).toBe(alt)
+    expect(markupToMarkdown(back, options)).toEqual(once)
+  })
+})
+
+describe('gif node', () => {
+  const gifDoc = (attrs: Record<string, any>): MarkupNode => ({
+    type: MarkupNodeType.doc,
+    content: [{ type: MarkupNodeType.paragraph, content: [{ type: MarkupNodeType.gif, attrs }] }]
+  })
+
+  // a missing serializer case is NOT silent here. serializer.ts render() throws for an
+  // unregistered type, which fails the WHOLE message, not just the GIF.
+  it('serializes without throwing', () => {
+    expect(() => markupToMarkdown(gifDoc({ 'file-id': 'blob-1' }), options)).not.toThrow()
+  })
+
+  // serialize direction on its own, so a failure localises.
+  it('serializes a library gif carrying its file-id', () => {
+    const md = markupToMarkdown(gifDoc({ 'file-id': 'blob-1', width: 320, height: 240 }), options)
+    expect(md).toContain('blob-1')
+  })
+
+  // parse direction on its own. The emoji node fails exactly here: it has no parser
+  // token at all, so markdown never reconstructs it and the content is lost for good.
+  it('round-trips a library gif back to a gif node, not an image node', () => {
+    const md = markupToMarkdown(gifDoc({ 'file-id': 'blob-1', width: 320, height: 240 }), options)
+    const back = markdownToMarkup(md, options)
+    const node = (back.content?.[0] as MarkupNode)?.content?.[0]
+    expect(node?.type).toBe(MarkupNodeType.gif)
+    expect(node?.attrs?.['file-id']).toBe('blob-1')
+  })
+
+  // an external src must survive unmodified, query params included. This is what lets a
+  // third-party source reuse the node later without a schema change.
+  it('round-trips an external src without rewriting the url', () => {
+    const src = 'https://media.example.com/x.gif?cid=abc&ct=g'
+    const back = markdownToMarkup(markupToMarkdown(gifDoc({ src }), options), options)
+    const node = (back.content?.[0] as MarkupNode)?.content?.[0]
+    expect(node?.type).toBe(MarkupNodeType.gif)
+    expect(node?.attrs?.src).toBe(src)
+  })
+
+  // alt text comes from GIF provider titles, which often contain quotes and markdown
+  // punctuation. The tag is raw HTML, so attributes need HTML escaping, not markdown escaping.
+  it.each([
+    ['a double quote', 'Cat says "hi"'],
+    ['markdown punctuation', 'so *excited* [yay]']
+  ])('round-trips alt text containing %s', (_, alt) => {
+    const once = markupToMarkdown(gifDoc({ 'file-id': 'blob-1', alt }), options)
+    const back = markdownToMarkup(once, options)
+    const node = (back.content?.[0] as MarkupNode)?.content?.[0]
+    expect(node?.type).toBe(MarkupNodeType.gif)
+    expect(node?.attrs?.alt).toBe(alt)
+    expect(markupToMarkdown(back, options)).toEqual(once)
+  })
+
+  // idempotence, so an edit-and-resave cycle cannot corrupt via double escaping.
+  it('is stable across two serializations', () => {
+    const once = markupToMarkdown(gifDoc({ 'file-id': 'blob-1' }), options)
+    const twice = markupToMarkdown(markdownToMarkup(once, options), options)
+    expect(normalizeMarkdown(twice)).toEqual(normalizeMarkdown(once))
+  })
+})
