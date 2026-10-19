@@ -335,7 +335,7 @@ function getDocUpdateMessageKey (message: DocUpdateMessage): string {
       message.attachedTo,
       message.action,
       message.createdBy,
-      getAttributeUpdatesKey(message)
+      message._id
     ].join('_')
   }
 
@@ -343,6 +343,7 @@ function getDocUpdateMessageKey (message: DocUpdateMessage): string {
     message._class,
     message.attachedTo,
     message.createdBy,
+    message.action,
     message.updateCollection,
     message.objectId === message.attachedTo
   ].join('_')
@@ -447,16 +448,6 @@ function mergeAttributeUpdates (
     removed,
     isMixin
   }
-}
-
-function getAttributeUpdatesKey (message: DocUpdateMessage): string {
-  if (message.attributeUpdates === undefined) {
-    return ''
-  }
-
-  const { attrKey, attrClass, isMixin } = message.attributeUpdates
-
-  return [attrKey, attrClass, isMixin].join('-')
 }
 
 export function referencesFilter (message: ActivityMessage, _class?: Ref<Doc>): boolean {
