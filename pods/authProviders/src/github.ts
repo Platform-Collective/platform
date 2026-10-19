@@ -4,7 +4,15 @@ import { BrandingMap, concatLink, MeasureContext, getBranding, SocialIdType } fr
 import Router from 'koa-router'
 import { Strategy as GitHubStrategy } from 'passport-github2'
 import { Passport } from '.'
-import { encodeState, handleProviderAuth, safeParseAuthState } from './utils'
+import {
+  createAuthStateNonce,
+  encodeState,
+  handleProviderAuth,
+  safeParseAuthState,
+  setAuthStateTokenCookie,
+  shouldUseSecureAuthStateCookie,
+  validateAuthStateTokenCookie
+} from './utils'
 
 export function registerGithub (
   measureCtx: MeasureContext,
@@ -23,6 +31,7 @@ export function registerGithub (
 
   const redirectURL = '/auth/github/callback'
   if (GITHUB_CLIENT_ID === undefined || GITHUB_CLIENT_SECRET === undefined) return
+  const secureStateCookie = shouldUseSecureAuthStateCookie(accountsUrl)
   passport.use(
     new GitHubStrategy(
       {
@@ -42,7 +51,9 @@ export function registerGithub (
 
   router.get('/auth/github', async (ctx, next) => {
     measureCtx.info('try auth via', { provider: 'github' })
-    const state = encodeState(ctx, brandings)
+    const nonce = createAuthStateNonce()
+    setAuthStateTokenCookie(ctx, nonce, secureStateCookie)
+    const state = encodeState(ctx, brandings, nonce)
 
     passport.authenticate('github', { scope: ['user:email'], session: true, state })(ctx, next)
   })
@@ -52,9 +63,16 @@ export function registerGithub (
     async (ctx, next) => {
       const state = safeParseAuthState(ctx.query?.state)
       const branding = getBranding(brandings, state?.branding)
+      const loginUrl = concatLink(branding?.front ?? frontUrl, '/login')
+      const validation = validateAuthStateTokenCookie(ctx, state.nonce, secureStateCookie)
+      if (!validation.valid) {
+        measureCtx.warn('auth state rejected', { provider: 'github', reason: validation.reason })
+        ctx.redirect(loginUrl)
+        return
+      }
 
       await passport.authenticate('github', {
-        failureRedirect: concatLink(branding?.front ?? frontUrl, '/login'),
+        failureRedirect: loginUrl,
         session: true
       })(ctx, next)
     },

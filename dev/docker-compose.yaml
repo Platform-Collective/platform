@@ -198,6 +198,8 @@ services:
       - LAST_NAME_FIRST=true
       # - WS_LIVENESS_DAYS=1
       - ACCOUNTS_URL=http://huly.local:3000
+      # Override the auth-state cookie Secure attribute (default follows ACCOUNTS_URL protocol).
+      # - SESSION_COOKIE_SECURE=true
       - BRANDING_PATH=/var/cfg/branding.json
       # - DISABLE_SIGNUP=true
       # Keep sign-up via Google/GitHub/OpenID Connect enabled when DISABLE_SIGNUP=true

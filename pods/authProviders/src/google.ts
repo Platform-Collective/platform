@@ -4,7 +4,15 @@ import { BrandingMap, concatLink, MeasureContext, getBranding, SocialIdType } fr
 import Router from 'koa-router'
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
 import { Passport } from '.'
-import { encodeState, handleProviderAuth, safeParseAuthState } from './utils'
+import {
+  createAuthStateNonce,
+  encodeState,
+  handleProviderAuth,
+  safeParseAuthState,
+  setAuthStateTokenCookie,
+  shouldUseSecureAuthStateCookie,
+  validateAuthStateTokenCookie
+} from './utils'
 
 export function registerGoogle (
   measureCtx: MeasureContext,
@@ -23,6 +31,7 @@ export function registerGoogle (
 
   const redirectURL = '/auth/google/callback'
   if (GOOGLE_CLIENT_ID === undefined || GOOGLE_CLIENT_SECRET === undefined) return
+  const secureStateCookie = shouldUseSecureAuthStateCookie(accountsUrl)
   passport.use(
     new GoogleStrategy(
       {
@@ -39,7 +48,9 @@ export function registerGoogle (
 
   router.get('/auth/google', async (ctx, next) => {
     measureCtx.info('try auth via', { provider: 'google' })
-    const state = encodeState(ctx, brandings)
+    const nonce = createAuthStateNonce()
+    setAuthStateTokenCookie(ctx, nonce, secureStateCookie)
+    const state = encodeState(ctx, brandings, nonce)
 
     passport.authenticate('google', { scope: ['profile', 'email'], session: true, state })(ctx, next)
   })
@@ -48,13 +59,16 @@ export function registerGoogle (
     redirectURL,
     async (ctx, next) => {
       const state = safeParseAuthState(ctx.query?.state)
-      measureCtx.info('Auth state', { state })
       const branding = getBranding(brandings, state?.branding)
-      measureCtx.info('With branding', { branding })
-      const failureRedirect = concatLink(branding?.front ?? frontUrl, '/login')
-      measureCtx.info('With failure redirect', { failureRedirect })
+      const loginUrl = concatLink(branding?.front ?? frontUrl, '/login')
+      const validation = validateAuthStateTokenCookie(ctx, state.nonce, secureStateCookie)
+      if (!validation.valid) {
+        measureCtx.warn('auth state rejected', { provider: 'google', reason: validation.reason })
+        ctx.redirect(loginUrl)
+        return
+      }
       await passport.authenticate('google', {
-        failureRedirect,
+        failureRedirect: loginUrl,
         session: true
       })(ctx, next)
     },
