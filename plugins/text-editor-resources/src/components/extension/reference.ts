@@ -21,7 +21,7 @@ import { SvelteRenderer } from '../node-view'
 import { ReferenceNode, type ReferenceNodeProps, type ReferenceOptions } from '@hcengineering/text'
 import Suggestion, { type SuggestionKeyDownProps, type SuggestionOptions, type SuggestionProps } from './suggestion'
 
-import { type Blob, type Class, type Doc, type Ref } from '@hcengineering/core'
+import { type Blob, type Class, type Doc, type Ref, type Space } from '@hcengineering/core'
 import { getMetadata, getResource, translate } from '@hcengineering/platform'
 import presentation, { createQuery, getBlobRef, getClient, MessageBox } from '@hcengineering/presentation'
 import view, { type ObjectTooltip, type ReferenceObjectProvider } from '@hcengineering/view'
@@ -33,6 +33,8 @@ import workbench, { type Application } from '@hcengineering/workbench'
 export interface ReferenceExtensionOptions extends ReferenceOptions {
   suggestion: Omit<SuggestionOptions, 'editor'>
   docClass?: Ref<Class<Doc>>
+  objectSpace?: Ref<Space>
+  getObjectSpace?: () => Ref<Space> | undefined
   multipleMentions?: boolean
   openDocument?: (_class: Ref<Class<Doc>>, _id: Ref<Doc>, event?: MouseEvent) => void | Promise<void>
 }
@@ -268,6 +270,8 @@ export const ReferenceExtension = ReferenceNode.extend<ReferenceExtensionOptions
       Suggestion({
         editor: this.editor,
         docClass: this.options.docClass,
+        objectSpace: this.options.objectSpace,
+        getObjectSpace: this.options.getObjectSpace,
         multipleMentions: this.options.multipleMentions,
         ...this.options.suggestion
       }),

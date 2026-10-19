@@ -13,7 +13,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { Blob, Class, Doc, Markup, Ref } from '@hcengineering/core'
+  import { Blob, Class, Doc, Markup, Ref, Space } from '@hcengineering/core'
   import { Asset, IntlString } from '@hcengineering/platform'
   import { EmptyMarkup, isEmptyMarkup, mergeKitOptions } from '@hcengineering/text'
   import textEditor, { RefAction, TextEditorHandler } from '@hcengineering/text-editor'
@@ -58,6 +58,7 @@
   export let onPaste: ((view: EditorView, event: ClipboardEvent) => boolean) | undefined = undefined
   export let onCancel: (() => void) | undefined = undefined
   export let docClass: Ref<Class<Doc>> | undefined = undefined
+  export let objectSpace: Ref<Space> | undefined = undefined
   export let kitOptions: Partial<EditorKitOptions> = {}
   export let onKeyDown: ((view: EditorView, event: KeyboardEvent) => boolean) | undefined = undefined
 
@@ -190,6 +191,8 @@
           dropcursor: false,
           reference: {
             docClass,
+            objectSpace,
+            getObjectSpace: () => objectSpace,
             multipleMentions: true
           },
           hooks: {

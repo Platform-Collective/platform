@@ -15,7 +15,7 @@
 -->
 <script lang="ts">
   import contact from '@hcengineering/contact'
-  import core, { Class, Doc, Ref, SearchResultDoc, SortingOrder, type VersionableDoc } from '@hcengineering/core'
+  import core, { Class, Doc, Ref, SearchResultDoc, SortingOrder, Space, type VersionableDoc } from '@hcengineering/core'
   import { getResource, translate } from '@hcengineering/platform'
   import presentation, {
     getClient,
@@ -30,10 +30,12 @@
   import { getReferenceLabel, getReferenceObject } from './extension/reference'
 
   import MentionVersionPopup from './MentionVersionPopup.svelte'
+  import { prependUniqueMentionResults } from './mention-search'
 
   export let query: string = ''
   export let multipleMentions: boolean = false
   export let docClass: Ref<Class<Doc>> | undefined = undefined
+  export let objectSpace: Ref<Space> | undefined = undefined
 
   let items: SearchItem[] = []
 
@@ -103,6 +105,25 @@
   const employeeSearchCategory = client
     .getModel()
     .findAllSync(presentation.class.ObjectSearchCategory, { classToSearch: contact.mixin.Employee })[0]
+
+  async function getMemberSearchItems(localQuery: string, space: Ref<Space> | undefined): Promise<SearchItem[]> {
+    if (space === undefined || employeeSearchCategory === undefined) return []
+
+    const searchEmployees = await getResource(employeeSearchCategory.query)
+    return (await searchEmployees(client, localQuery, { memberOf: space })).map((item, num) => ({
+      num,
+      category: employeeSearchCategory,
+      item: {
+        id: item.doc._id,
+        title: item.title,
+        iconComponent: {
+          component: contact.component.AvatarRef,
+          props: { _id: item.doc._id }
+        },
+        doc: item.doc
+      }
+    }))
+  }
 
   async function getMultipleEmployeeSearchItems(localQuery: string, lastIndex: number): Promise<SearchItem[]> {
     if (!multipleMentions) return []
@@ -211,15 +232,26 @@
   }
 
   const updateItems = reduceCalls(async function (localQuery: string): Promise<void> {
-    const r = await searchFor('mention', localQuery)
-    if (r.query === query) {
-      const latestIndex = r.items.findLastIndex((it) => it.category.classToSearch === contact.mixin.Employee)
+    const space = objectSpace
+    const [r, memberItems] = await Promise.all([
+      searchFor('mention', localQuery),
+      getMemberSearchItems(localQuery, space)
+    ])
+    if (r.query === query && space === objectSpace) {
+      const fulltextItems = r.items.map((item) => ({ id: item.item.doc._id, item }))
+      const memberSearchItems = memberItems.map((item) => ({ id: item.item.doc._id, item }))
+      const searchItems = prependUniqueMentionResults(memberSearchItems, fulltextItems).map(({ item }) => item)
+      const latestIndex = searchItems.findLastIndex((it) => it.category.classToSearch === contact.mixin.Employee)
       const multipleEmployeeSearchItems = await getMultipleEmployeeSearchItems(localQuery, latestIndex)
 
       items =
         latestIndex === -1
-          ? [...multipleEmployeeSearchItems, ...r.items]
-          : [...r.items.slice(0, latestIndex + 1), ...multipleEmployeeSearchItems, ...r.items.slice(latestIndex + 1)]
+          ? [...multipleEmployeeSearchItems, ...searchItems]
+          : [
+              ...searchItems.slice(0, latestIndex + 1),
+              ...multipleEmployeeSearchItems,
+              ...searchItems.slice(latestIndex + 1)
+            ]
     }
   })
   $: void updateItems(query)
