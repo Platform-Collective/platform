@@ -496,6 +496,7 @@
       loading={loading || progress || loadingLinks}
       {boundary}
       {docClass}
+      objectSpace={space}
       extraActions={[
         ...extraActions,
         {

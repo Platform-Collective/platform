@@ -22,7 +22,7 @@ import {
   type Contact,
   type Person
 } from '@hcengineering/contact'
-import {
+import core, {
   AccountRole,
   SocialIdType,
   type AccountUuid,
@@ -36,7 +36,13 @@ import {
 } from '@hcengineering/core'
 import login from '@hcengineering/login'
 import { getResource, type IntlString, type Resources } from '@hcengineering/platform'
-import { MessageBox, getBlobRef, getClient, type ObjectSearchResult } from '@hcengineering/presentation'
+import {
+  MessageBox,
+  getBlobRef,
+  getClient,
+  type ObjectSearchOptions,
+  type ObjectSearchResult
+} from '@hcengineering/presentation'
 import {
   getPlatformAvatarColorByName,
   getPlatformAvatarColorForTextDef,
@@ -237,24 +243,28 @@ async function queryContact (
 async function queryEmployee (
   client: Client,
   search: string,
-  filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
+  filter?: ObjectSearchOptions
 ): Promise<ObjectSearchResult[]> {
+  const members =
+    filter?.memberOf === undefined
+      ? undefined
+      : ((await client.findOne(core.class.Space, { _id: filter.memberOf }))?.members ?? [])
+  const memberFilter = members === undefined ? {} : { personUuid: { $in: members } }
   const q1 = await doContactQuery(
     contact.mixin.Employee,
-    { name: { $like: `%${search}%` }, active: true },
+    { name: { $like: `%${search}%` }, active: true, ...memberFilter },
     filter,
     client
   )
   const q2 = await doContactQuery(
     contact.mixin.Employee,
-    { displayName: { $like: `%${search}%` }, active: true },
+    { displayName: { $like: `%${search}%` }, active: true, ...memberFilter },
     {
       in: filter?.in,
       nin: [...(filter?.nin ?? []), ...Array.from(q1.map((it) => ({ _id: it.doc._id, _class: it.doc._class })))]
     },
     client
   )
-
   return q1.concat(q2)
 }
 
@@ -411,11 +421,8 @@ export default async (): Promise<Resources> => ({
     WorkspaceMemberStatusEditor
   },
   completion: {
-    EmployeeQuery: async (
-      client: Client,
-      query: string,
-      filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
-    ) => await queryEmployee(client, query, filter),
+    EmployeeQuery: async (client: Client, query: string, filter?: ObjectSearchOptions) =>
+      await queryEmployee(client, query, filter),
     PersonQuery: async (client: Client, query: string, filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }) =>
       await queryContact(contact.class.Person, client, query, filter),
     OrganizationQuery: async (

@@ -3,7 +3,7 @@ import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/p
 import { ReplaceStep } from '@tiptap/pm/transform'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import { type ResolvedPos } from '@tiptap/pm/model'
-import { type Class, type Doc, type Ref } from '@hcengineering/core'
+import { type Class, type Doc, type Ref, type Space } from '@hcengineering/core'
 
 export interface Trigger {
   char: string
@@ -131,6 +131,8 @@ export interface SuggestionOptions<I = any> {
   decorationClass?: string
   multipleMentions?: boolean
   docClass?: Ref<Class<Doc>>
+  objectSpace?: Ref<Space>
+  getObjectSpace?: () => Ref<Space> | undefined
   command?: (props: { editor: Editor, range: Range, props: I }) => void
   items?: (props: { query: string, editor: Editor }) => I[] | Promise<I[]>
   render?: () => {
@@ -151,6 +153,7 @@ export interface SuggestionProps<I = any> {
   text: string
   multipleMentions: boolean
   docClass?: Ref<Class<Doc>>
+  objectSpace?: Ref<Space>
   items: I[]
   command: (props: I) => void
   decorationNode: Element | null
@@ -178,6 +181,8 @@ export default function Suggestion<I = any> ({
   decorationClass = 'suggestion',
   multipleMentions = false,
   docClass,
+  objectSpace,
+  getObjectSpace,
   command = () => null,
   items = () => [],
   render = () => ({}),
@@ -233,6 +238,7 @@ export default function Suggestion<I = any> ({
             query: state.query,
             text: state.text,
             docClass,
+            objectSpace: getObjectSpace?.() ?? objectSpace,
             items: [],
             multipleMentions,
             command: (commandProps) => {

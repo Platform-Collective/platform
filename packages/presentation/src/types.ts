@@ -34,6 +34,15 @@ export interface ObjectSearchResult {
 /**
  * @public
  */
+export interface ObjectSearchOptions {
+  in?: RelatedDocument[]
+  nin?: RelatedDocument[]
+  memberOf?: Ref<Space>
+}
+
+/**
+ * @public
+ */
 export interface ObjectCreate {
   component: AnyComponent | undefined
   props?: Record<string, any>
@@ -50,10 +59,7 @@ export interface ObjectCreate {
 export type ObjectSearchFactory = (
   client: Client,
   query: string,
-  options?: {
-    in?: RelatedDocument[]
-    nin?: RelatedDocument[]
-  }
+  options?: ObjectSearchOptions
 ) => Promise<ObjectSearchResult[]>
 
 /**
