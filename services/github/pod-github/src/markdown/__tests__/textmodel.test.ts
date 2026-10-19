@@ -19,6 +19,7 @@ import {
   MarkupNode,
   MarkupNodeType,
   jsonToMarkup,
+  markupToJSON,
   traverseAllMarks,
   traverseNode
 } from '@hcengineering/text'
@@ -173,9 +174,67 @@ A list of closed updated issues`
       ]
     })
     const data2 =
-      '[Sobolev Andrey](https://front.hc.engineering/open/?workspace=workspace&_class=contact%3Aclass%3APerson&_id=629d8b615bdc96430ced15a0&label=Sobolev%20Andrey) [UBERF-16](https://front.hc.engineering/open/?workspace=workspace&_class=github%3Aclass%3AGithubPullRequest&_id=64db123e602161ac4482475c&label=UBERF-16) link test'
+      '<!--huly-person-reference:id=629d8b615bdc96430ced15a0&label=Sobolev%20Andrey-->Sobolev Andrey<!--/huly-person-reference--> [UBERF-16](https://front.hc.engineering/open/?workspace=workspace&_class=github%3Aclass%3AGithubPullRequest&_id=64db123e602161ac4482475c&label=UBERF-16) link test'
     const html = await markupToMarkdown(data, 'https://front.hc.engineering/open/?workspace=workspace')
     expect(html).toEqual(data2)
+  })
+
+  it('preserves person references after a GitHub body edit', async () => {
+    const markup = jsonToMarkup({
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.paragraph,
+          content: [
+            {
+              type: MarkupNodeType.text,
+              text: 'Assigned to '
+            },
+            {
+              type: MarkupNodeType.reference,
+              attrs: {
+                id: '629d8b615bdc96430ced15a0',
+                objectclass: 'contact:class:Person',
+                label: 'John_Doe *x*'
+              }
+            },
+            {
+              type: MarkupNodeType.text,
+              text: ' today'
+            }
+          ]
+        }
+      ]
+    })
+
+    const markdown = await markupToMarkdown(markup, 'https://front.hc.engineering/open/?workspace=workspace')
+    expect(markdown).toBe(
+      'Assigned to <!--huly-person-reference:id=629d8b615bdc96430ced15a0&label=John_Doe%20%2Ax%2A-->John_Doe \\*x\\*<!--/huly-person-reference--> today'
+    )
+
+    const editedMarkdown = `${markdown}\n\nEdited on GitHub`
+    const editedMarkupText = markdownToMarkup(editedMarkdown, 'https://front.hc.engineering/open/?workspace=workspace')
+    const editedMarkup = markupToJSON(editedMarkupText)
+    let personReference: MarkupNode | undefined
+    traverseNode(editedMarkup, (node) => {
+      if (node.type === MarkupNodeType.reference && node.attrs?.objectclass === 'contact:class:Person') {
+        personReference = node
+      }
+      return true
+    })
+
+    expect(personReference).toMatchObject({
+      type: MarkupNodeType.reference,
+      attrs: {
+        id: '629d8b615bdc96430ced15a0',
+        objectclass: 'contact:class:Person',
+        label: 'John_Doe *x*'
+      }
+    })
+    expect(editedMarkup.content?.[1]?.content?.[0]?.text).toBe('Edited on GitHub')
+    expect(await markupToMarkdown(editedMarkupText, 'https://front.hc.engineering/open/?workspace=workspace')).toBe(
+      editedMarkdown
+    )
   })
 
   it('markdown to markup', () => {
