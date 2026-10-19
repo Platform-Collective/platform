@@ -25,6 +25,11 @@ interface MailpitSearchResult {
   messages: MailpitMessage[] | null
 }
 
+interface MailpitMessageContent {
+  HTML?: string
+  Text?: string
+}
+
 /**
  * Minimal client for the Mailpit REST API used to read emails sent by the mail service.
  */
@@ -47,6 +52,12 @@ export class Mailpit {
     return new Set((await this.listMessages(to)).map((m) => m.ID))
   }
 
+  async readMessage (id: string): Promise<MailpitMessageContent> {
+    const response = await this.request.get(`${this.baseUrl}/api/v1/message/${id}`)
+    expect(response.ok(), `Mailpit message request failed: ${response.status()}`).toBe(true)
+    return (await response.json()) as MailpitMessageContent
+  }
+
   /**
    * Waits for a new email (not in `knownIds`) addressed to `to` and returns the
    * 6-digit OTP code from its subject ("<app> confirmation code: 123456").
@@ -64,5 +75,27 @@ export class Mailpit {
       )
       .toBeDefined()
     return code as string
+  }
+
+  /**
+   * Waits for a new account-confirmation email and returns its confirmation URL.
+   */
+  async waitForConfirmationLink (to: string, knownIds = new Set<string>()): Promise<string> {
+    let link: string | undefined
+    await expect
+      .poll(
+        async () => {
+          const fresh = (await this.listMessages(to)).filter((m) => !knownIds.has(m.ID))
+          const messages = await Promise.all(fresh.map(async (message) => await this.readMessage(message.ID)))
+          link = messages
+            .map((message) => `${message.HTML ?? ''}\n${message.Text ?? ''}`)
+            .map((content) => /https?:\/\/[^\s"'<>]+\/login\/confirm\?id=[^\s"'<>]+/.exec(content)?.[0])
+            .find((url) => url !== undefined)
+          return link
+        },
+        { message: `Confirmation email for ${to} was not received`, timeout: 30_000, intervals: [500, 1000, 2000] }
+      )
+      .toBeDefined()
+    return link as string
   }
 }

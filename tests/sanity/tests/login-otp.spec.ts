@@ -18,8 +18,9 @@ import { Mailpit } from './model/mailpit'
 import { OtpPage } from './model/otp-page'
 import { LoginPage } from './model/login-page'
 import { SignUpPage } from './model/signup-page'
+import { SignInJoinPage } from './model/signin-page'
 import { SelectWorkspacePage } from './model/select-workspace-page'
-import { MailpitURL, PlatformOtpURI } from './utils'
+import { MailpitURL, PlatformOtpURI, PlatformSetting, PlatformURI, getInviteLink } from './utils'
 
 // Runs against the OTP contour (front-otp + account-otp + mail + mailpit) from tests/docker-compose.yaml
 test.describe('OTP login', () => {
@@ -94,5 +95,38 @@ test.describe('OTP login', () => {
 
     await expect(page.getByText('Invalid code')).toBeVisible()
     await expect(new SelectWorkspacePage(page).buttonCreateWorkspace()).toBeHidden()
+  })
+
+  test('confirms email and joins an existing workspace for a new account', async ({ browser, request }) => {
+    const mailpit = new Mailpit(request, MailpitURL as string)
+    const email = `otp-join-${Date.now()}-${Math.floor(Math.random() * 1e6)}@tracex.local`
+    const ownerContext = await browser.newContext({ storageState: PlatformSetting })
+    const joinContext = await browser.newContext()
+
+    try {
+      const ownerPage = await ownerContext.newPage()
+      await (await ownerPage.goto(`${PlatformURI}/workbench/sanity-ws`))?.finished()
+      const inviteUrl = new URL(await getInviteLink(ownerPage))
+      const joinUrl = new URL('/login/join', PlatformOtpURI)
+      joinUrl.search = inviteUrl.search
+
+      const joinPage = await joinContext.newPage()
+      const known = await mailpit.messageIds(email)
+      await (await joinPage.goto(joinUrl.toString()))?.finished()
+
+      const signInJoinPage = new SignInJoinPage(joinPage)
+      await signInJoinPage.signUpAndJoin({
+        firstName: 'Otp',
+        lastName: 'Joiner',
+        email,
+        password: '1234'
+      })
+
+      await expect(joinPage).toHaveURL(/\/login\/confirmationSend/)
+      await joinPage.goto(await mailpit.waitForConfirmationLink(email, known))
+      await expect(joinPage).toHaveURL(/\/workbench\/sanity-ws\//)
+    } finally {
+      await Promise.all([ownerContext.close(), joinContext.close()])
+    }
   })
 })
