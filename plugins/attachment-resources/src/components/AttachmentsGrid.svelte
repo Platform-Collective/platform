@@ -14,8 +14,7 @@
 -->
 <script lang="ts">
   import { Attachment } from '@hcengineering/attachment'
-  import { Loading, updatePopup, Scroller } from '@hcengineering/ui'
-  import { ListSelectionProvider } from '@hcengineering/view-resources'
+  import { Loading, Scroller } from '@hcengineering/ui'
   import AttachmentPresenter from './AttachmentPresenter.svelte'
   import AttachmentPreview from './AttachmentPreview.svelte'
 
@@ -25,19 +24,7 @@
   export let readonly: boolean = false
 
   let element: HTMLElement
-  let attachmentPopupId: string = ''
-
-  const listProvider = new ListSelectionProvider((offset: 1 | -1 | 0) => {
-    const currentAttachmentIndex = listProvider.current()
-    if (currentAttachmentIndex === undefined) return
-    const selected = currentAttachmentIndex + offset
-    const sel = listProvider.docs()[selected] as Attachment
-    if (sel !== undefined && attachmentPopupId !== '') {
-      listProvider.updateFocus(sel)
-      updatePopup(attachmentPopupId, { props: { value: sel } })
-    }
-  })
-  $: listProvider.update(attachments.filter((p) => p.type.startsWith('image/')))
+  $: images = attachments.filter((attachment) => attachment.type.startsWith('image/'))
 </script>
 
 <div class="attachment-grid-container">
@@ -48,17 +35,11 @@
           <AttachmentPreview
             value={attachment}
             removable={!readonly}
-            {listProvider}
-            on:open={(res) => (attachmentPopupId = res.detail)}
+            images={attachment.type.startsWith('image/') ? images : undefined}
+            imageIndex={attachment.type.startsWith('image/') ? images.indexOf(attachment) : undefined}
           />
         {:else}
-          <AttachmentPresenter
-            value={attachment}
-            removable={!readonly}
-            showPreview
-            on:remove
-            on:open={(res) => (attachmentPopupId = res.detail)}
-          />
+          <AttachmentPresenter value={attachment} removable={!readonly} showPreview on:remove />
         {/if}
       {/each}
       {#if progress}

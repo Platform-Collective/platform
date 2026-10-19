@@ -8,14 +8,14 @@ module.exports = {
       preset: 'ts-jest',
       testEnvironment: 'node',
       testMatch: ['**/?(*.)+(spec|test).[jt]s?(x)'],
-      testPathIgnorePatterns: ['.*drawing\\.test\\.ts$']
+      testPathIgnorePatterns: ['.*drawing\\.test\\.ts$', '.*file-preview-navigation\\.test\\.ts$']
     },
-    // configuration for drawing tests (jsdom environment)
+    // configuration for DOM tests
     {
       displayName: 'jsdom',
       preset: 'ts-jest',
       testEnvironment: 'jsdom',
-      testMatch: ['**/drawing.test.ts'],
+      testMatch: ['**/{drawing,file-preview-navigation}.test.ts'],
       moduleNameMapper: {
         '^@hcengineering/platform-rig/profiles/ui/svelte$': `${SVELTE_MOCKS_PATH}/svelte-runtime.ts`,
         '^svelte/store$': `${SVELTE_MOCKS_PATH}/svelte-store.ts`,

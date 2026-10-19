@@ -16,10 +16,8 @@
 <script lang="ts">
   import { Attachment } from '@hcengineering/attachment'
   import { BlobType, WithLookup } from '@hcengineering/core'
-  import { ListSelectionProvider } from '@hcengineering/view-resources'
-  import { createEventDispatcher } from 'svelte'
   import { AttachmentImageSize } from '../types'
-  import { getType, isAttachment, showAttachmentPreviewPopup } from '../utils'
+  import { getType, showAttachmentPreviewPopup } from '../utils'
   import AttachmentActions from './AttachmentActions.svelte'
   import AttachmentImagePreview from './AttachmentImagePreview.svelte'
   import AttachmentPresenter from './AttachmentPresenter.svelte'
@@ -28,12 +26,11 @@
 
   export let value: WithLookup<Attachment> | BlobType
   export let isSaved: boolean = false
-  export let listProvider: ListSelectionProvider | undefined = undefined
+  export let images: Array<WithLookup<Attachment> | BlobType> | undefined = undefined
+  export let imageIndex: number | undefined = undefined
   export let imageSize: AttachmentImageSize = 'auto'
   export let removable: boolean = false
   export let videoPreload = false
-
-  const dispatch = createEventDispatcher()
 
   let hovered = false
 
@@ -54,9 +51,7 @@
     class="content flex-center buttonContainer cursor-pointer"
     class:hovered
     on:click={() => {
-      if (listProvider !== undefined && isAttachment(value)) listProvider.updateFocus(value)
-      const popupInfo = showAttachmentPreviewPopup(value)
-      dispatch('open', popupInfo.id)
+      showAttachmentPreviewPopup(value, true, images, imageIndex)
     }}
   >
     <AttachmentImagePreview {value} size={imageSize} />

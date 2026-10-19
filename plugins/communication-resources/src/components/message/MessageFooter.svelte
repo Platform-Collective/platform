@@ -84,6 +84,15 @@
 
   const appletsModels = client.getModel().findAllSync(communication.class.Applet, {})
   $: blobs = message.attachments.filter(isBlobAttachment) ?? []
+  $: blobPreviews = blobs.map((blob) => ({
+    id: blob.id,
+    file: blob.params.blobId,
+    type: blob.mimeType,
+    name: blob.params.fileName,
+    size: blob.params.size,
+    metadata: blob.params.metadata
+  }))
+  $: images = blobPreviews.filter((blob) => blob.type.startsWith('image/'))
   $: links = message.attachments.filter(isLinkPreviewAttachment) ?? []
   $: applets = message.attachments.filter(isAppletAttachment) ?? []
 </script>
@@ -107,16 +116,12 @@
 
 {#if blobs.length > 0}
   <div class="message__files">
-    {#each blobs as blob (blob.id)}
+    {#each blobPreviews as blob (blob.id)}
       <AttachmentPreview
-        value={{
-          file: blob.params.blobId,
-          type: blob.mimeType,
-          name: blob.params.fileName,
-          size: blob.params.size,
-          metadata: blob.params.metadata
-        }}
+        value={blob}
         imageSize="x-large"
+        images={blob.type.startsWith('image/') ? images : undefined}
+        imageIndex={blob.type.startsWith('image/') ? images.indexOf(blob) : undefined}
       />
     {/each}
   </div>

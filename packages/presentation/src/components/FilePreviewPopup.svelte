@@ -37,6 +37,7 @@
   import { ComponentExtensions } from '../index'
   import presentation from '../plugin'
   import FileTypeIcon from './FileTypeIcon.svelte'
+  import { handleFilePreviewNavigation } from '../file-preview-navigation'
 
   export let file: Ref<Blob> | undefined
   export let name: string
@@ -52,6 +53,7 @@
 
   export let fullSize = false
   export let showIcon = true
+  export let navigable = false
 
   let drawingLoading = false
   let createDrawing: (data: any) => Promise<any>
@@ -129,9 +131,14 @@
       }
     )
   }
+
+  function handleKeyDown(event: KeyboardEvent): void {
+    handleFilePreviewNavigation(event, navigable, (offset) => dispatch('navigate', offset))
+  }
 </script>
 
 <ActionContext context={{ mode: 'browser' }} />
+<svelte:window on:keydown={handleKeyDown} />
 <Modal
   type={'type-component'}
   padding={'0.5rem'}

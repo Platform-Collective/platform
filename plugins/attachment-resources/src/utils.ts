@@ -172,10 +172,16 @@ export function isAttachment (value: Attachment | BlobType): value is WithLookup
 
 export function showAttachmentPreviewPopup (
   value: WithLookup<Attachment> | BlobType,
-  fullSize: boolean = true
+  fullSize: boolean = true,
+  images: Array<WithLookup<Attachment> | BlobType> = [value],
+  imageIndex: number = 0
 ): PopupResult {
   closeTooltip()
-  return showPopup(AttachmentPreviewPopup, { value, fullSize }, getPreviewAlignment(value.type ?? ''))
+  return showPopup(
+    AttachmentPreviewPopup,
+    { value, fullSize, images, imageIndex },
+    getPreviewAlignment(value.type ?? '')
+  )
 }
 
 interface ImageDimensions {
