@@ -108,7 +108,7 @@
       return {
         id: s._id,
         component: StatusPresenter,
-        props: { value: s, size: 'small' },
+        props: { value: s, size: 'small', projectType: type, taskType },
         isSelected: selectedStatus?._id === s._id,
         category: category !== undefined ? { label: category.label, icon: category.icon } : undefined
       }
@@ -149,7 +149,7 @@
   >
     <svelte:fragment slot="icon">
       {#if selectedStatus}
-        <IssueStatusIcon value={selectedStatus} {taskType} size={iconSize} space={undefined} />
+        <IssueStatusIcon value={selectedStatus} projectType={type} {taskType} size={iconSize} space={undefined} />
       {/if}
     </svelte:fragment>
     <svelte:fragment slot="content">
