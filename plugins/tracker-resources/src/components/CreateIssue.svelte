@@ -84,6 +84,7 @@
   import { createEventDispatcher, onDestroy } from 'svelte'
 
   import { fillIssueDefaults } from '../issue-defaults'
+  import { handleIssueTitleKeyDown, normalizeIssueTitle } from '../issue-title'
   import { activeComponent, activeMilestone, generateIssueShortLink, updateIssueRelation } from '../issues'
   import tracker from '../plugin'
   import SetParentIssueActionPopup from './SetParentIssueActionPopup.svelte'
@@ -243,7 +244,7 @@
   $: updateAssigneeId(object, currentProject)
   $: canSave =
     descriptionBox != null &&
-    getTitle(object.title ?? '').length > 0 &&
+    normalizeIssueTitle(object.title ?? '').length > 0 &&
     object.status !== undefined &&
     kind !== undefined &&
     currentProject !== undefined
@@ -412,10 +413,6 @@
     parentIssue = undefined
   }
 
-  function getTitle(value: string): string {
-    return value.trim()
-  }
-
   let subIssuesComponent: SubIssues
 
   export function canClose(): boolean {
@@ -490,7 +487,7 @@
 
       const value: DocData<Issue> = {
         ...customFields.attributes,
-        title: getTitle(object.title),
+        title: normalizeIssueTitle(object.title),
         description: null,
         assignee: object.assignee,
         component: object.component,
@@ -585,7 +582,7 @@
       await subIssuesComponent.save(parents, _id)
       addNotification(
         await translate(tracker.string.IssueCreated, {}, $themeStore.language),
-        getTitle(object.title),
+        normalizeIssueTitle(object.title),
         IssueNotification,
         {
           issueId: _id,
@@ -881,6 +878,8 @@
       focusIndex={1}
       bind:value={object.title}
       placeholder={tracker.string.IssueTitlePlaceholder}
+      format="text-multiline"
+      on:keydown={handleIssueTitleKeyDown}
       kind={'large-style'}
       autoFocus
       fullSize
