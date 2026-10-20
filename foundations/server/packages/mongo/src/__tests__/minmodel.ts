@@ -97,6 +97,13 @@ export function genMinModel (): TxCUD<Doc>[] {
     createClass(core.class.Doc, { label: 'Doc' as IntlString, extends: core.class.Obj, kind: ClassifierKind.CLASS })
   )
   txes.push(
+    createClass(core.class.Attribute, {
+      label: 'Attribute' as IntlString,
+      extends: core.class.Doc,
+      kind: ClassifierKind.CLASS
+    })
+  )
+  txes.push(
     createClass(core.class.Relation, {
       label: 'Relation' as IntlString,
       extends: core.class.Doc,
