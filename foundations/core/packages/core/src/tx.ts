@@ -37,6 +37,20 @@ import type { DocumentQuery, TxResult } from './storage'
 import { generateId, type KeysByType } from './utils'
 
 /**
+ * Meta keys with this prefix are reserved for server-side transaction
+ * processing. Client input carrying them is removed by NormalizeTxMiddleware.
+ * @public
+ */
+export const SERVER_ONLY_META_PREFIX = 'server:'
+
+/**
+ * @public
+ */
+export function isServerOnlyMetaKey (key: string): boolean {
+  return key.startsWith(SERVER_ONLY_META_PREFIX)
+}
+
+/**
  * @public
  */
 export interface Tx extends Doc {

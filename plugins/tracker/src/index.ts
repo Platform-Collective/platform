@@ -34,7 +34,7 @@ import {
   type AccountUuid
 } from '@hcengineering/core'
 import { Asset, IntlString, Plugin, Resource, plugin } from '@hcengineering/platform'
-import { CommonInboxNotification } from '@hcengineering/notification'
+import { CommonInboxNotification, type NotificationType } from '@hcengineering/notification'
 import { Preference } from '@hcengineering/preference'
 import { TagCategory, TagElement, TagReference } from '@hcengineering/tags'
 import { ToDo } from '@hcengineering/time'
@@ -51,6 +51,13 @@ import { AnyComponent, ComponentExtensionId, Location, ResolvedLocation } from '
 import { Action, ActionCategory, IconProps } from '@hcengineering/view'
 
 export * from './analytics'
+
+/**
+ * Server-only meta key listing recipients whose due-date email is covered by
+ * a dependency-shift summary in the same apply batch.
+ * @public
+ */
+export const dependencyShiftEmailRecipientsMeta = 'server:dependency-shift-email-recipients'
 
 /**
  * @public
@@ -593,7 +600,9 @@ const pluginState = plugin(trackerId, {
     NoParent: '' as Ref<Issue>,
     IssueDraft: '',
     IssueDraftChild: '',
-    ClassingProjectType: '' as Ref<ProjectType>
+    ClassingProjectType: '' as Ref<ProjectType>,
+    // Declared here (not only in the model) so server triggers can reference it.
+    DependencyShiftedNotification: '' as Ref<NotificationType>
   },
   status: {
     Backlog: '' as Ref<Status>,

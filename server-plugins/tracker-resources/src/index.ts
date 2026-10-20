@@ -40,6 +40,7 @@ import { NOTIFICATION_BODY_SIZE } from '@hcengineering/server-notification'
 import { stripTags } from '@hcengineering/text-core'
 import tracker, {
   Component,
+  dependencyShiftEmailRecipientsMeta,
   type DependencyShiftedNotification,
   type DependencyShiftRequest,
   groupShiftsByRecipient,
@@ -788,6 +789,8 @@ export async function OnDependencyShiftRequest (txes: Tx[], control: TriggerCont
     const spaces = await resolveShiftRecipientSpaces(control, Array.from(bundles.keys()))
     if (spaces.size === 0) continue
 
+    const recipientsByIssue = new Map<Ref<Issue>, Set<AccountUuid>>()
+
     for (const [recipient, recipientShifts] of bundles) {
       const space = spaces.get(recipient)
       if (space === undefined) continue
@@ -827,6 +830,7 @@ export async function OnDependencyShiftRequest (txes: Tx[], control: TriggerCont
       const notifData: Data<DependencyShiftedNotification> = {
         user: recipient,
         isViewed: false,
+        types: [tracker.ids.DependencyShiftedNotification],
         docNotifyContext: contextId,
         objectId: req.triggerIssueId,
         objectClass: tracker.class.Issue,
@@ -845,6 +849,29 @@ export async function OnDependencyShiftRequest (txes: Tx[], control: TriggerCont
         cascadeToken
       }
       result.push(control.txFactory.createTxCreateDoc(tracker.class.DependencyShiftedNotification, space, notifData))
+
+      for (const shifted of recipientShifts) {
+        const recipients = recipientsByIssue.get(shifted.issueId) ?? new Set<AccountUuid>()
+        recipients.add(recipient)
+        recipientsByIssue.set(shifted.issueId, recipients)
+      }
+    }
+
+    for (const tx of control.txes) {
+      if (
+        tx._class !== core.class.TxUpdateDoc ||
+        (tx as TxUpdateDoc<Issue>).objectClass !== tracker.class.Issue ||
+        !('dueDate' in (tx as TxUpdateDoc<Issue>).operations)
+      ) {
+        continue
+      }
+      const recipients = recipientsByIssue.get((tx as TxUpdateDoc<Issue>).objectId)
+      if (recipients === undefined) continue
+
+      tx.meta = {
+        ...tx.meta,
+        [dependencyShiftEmailRecipientsMeta]: JSON.stringify(Array.from(recipients))
+      }
     }
   }
   return result

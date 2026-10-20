@@ -46,6 +46,7 @@ import core, {
   TxProcessor,
   TxUpdateDoc
 } from '@hcengineering/core'
+import gmail from '@hcengineering/gmail'
 import notification, {
   NotificationContent,
   notificationId,
@@ -55,6 +56,7 @@ import notification, {
   type NotificationTypeSetting
 } from '@hcengineering/notification'
 import { getMetadata, getResource, IntlString, translate } from '@hcengineering/platform'
+import tracker, { dependencyShiftEmailRecipientsMeta } from '@hcengineering/tracker'
 import { getPersonSpaces } from '@hcengineering/server-contact'
 import serverCore, { TriggerControl } from '@hcengineering/server-core'
 import serverNotification, {
@@ -211,6 +213,45 @@ export function isAllowed (
   return type.defaultEnabled
 }
 
+/**
+ * Returns whether a server-marked cascade summary covers this recipient. The
+ * marker is only accepted from transaction meta because client input cannot
+ * retain `server:` keys through NormalizeTxMiddleware.
+ * @public
+ */
+export function hasDependencyShiftEmailRecipient (tx: Tx, recipient: AccountUuid): boolean {
+  const value = tx.meta?.[dependencyShiftEmailRecipientsMeta]
+  if (typeof value !== 'string') return false
+
+  try {
+    const recipients: unknown = JSON.parse(value)
+    return Array.isArray(recipients) && recipients.some((item) => item === recipient)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * The generated Issue due-date email is redundant only when the same
+ * recipient is allowed to receive the typed dependency-shift summary by
+ * email. Inbox delivery remains unchanged.
+ * @public
+ */
+export function shouldSuppressDependencyShiftDueDateEmail (
+  tx: Tx,
+  recipient: AccountUuid,
+  type: NotificationType,
+  provider: NotificationProvider,
+  summaryEmailAllowed: boolean
+): boolean {
+  return (
+    provider._id === gmail.providers.EmailNotificationProvider &&
+    type.field === 'dueDate' &&
+    summaryEmailAllowed &&
+    hasDependencyShiftEmailRecipient(tx, recipient)
+  )
+}
+
 export async function isShouldNotifyTx (
   control: TriggerControl,
   tx: TxCUD<Doc>,
@@ -225,6 +266,9 @@ export async function isShouldNotifyTx (
   const modifiedByPersonId = tx.modifiedBy
   const result = new Map<Ref<NotificationProvider>, NotificationType[]>()
   let providers: NotificationProvider[] = control.modelDb.findAllSync(notification.class.NotificationProvider, {})
+  const dependencyShiftType = control.modelDb.findAllSync(notification.class.NotificationType, {
+    objectClass: tracker.class.DependencyShiftedNotification
+  })[0]
 
   if (getMetadata(serverNotification.metadata.InboxOnlyNotifications) === true) {
     providers = providers.filter((it) => it._id === notification.providers.InboxNotificationProvider)
@@ -249,7 +293,14 @@ export async function isShouldNotifyTx (
     for (const provider of providers) {
       const allowed = isAllowed(control, receiver.socialIds, type, provider, notificationControl)
 
-      if (allowed) {
+      const summaryEmailAllowed =
+        dependencyShiftType !== undefined &&
+        isAllowed(control, receiver.socialIds, dependencyShiftType, provider, notificationControl)
+
+      if (
+        allowed &&
+        !shouldSuppressDependencyShiftDueDateEmail(tx, receiver.account, type, provider, summaryEmailAllowed)
+      ) {
         const cur = result.get(provider._id) ?? []
         result.set(provider._id, [...cur, type])
       }

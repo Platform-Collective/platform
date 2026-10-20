@@ -293,6 +293,10 @@ function hasEmailProvider (n: InboxNotification, availableProviders: AvailablePr
   return providers?.find((p) => p === gmail.providers.EmailNotificationProvider) !== undefined
 }
 
+function hasProviderDecision (n: InboxNotification, availableProviders: AvailableProvidersCache): boolean {
+  return availableProviders.has(n._id) || availableProviders.has(n.objectId as Ref<InboxNotification>)
+}
+
 async function NotificationsHandler (txes: TxCreateDoc<InboxNotification>[], control: TriggerControl): Promise<Tx[]> {
   control.ctx.info('NotificationsHandler: received InboxNotification txes', {
     count: txes.length,
@@ -319,6 +323,9 @@ async function NotificationsHandler (txes: TxCreateDoc<InboxNotification>[], con
     const receiverByAccount = new Map(receivers.map((r) => [r.account, r]))
     for (const n of all) {
       if (hasEmailProvider(n, availableProviders)) continue
+      // A cached provider list was calculated by the notification trigger and
+      // may intentionally omit email (for example, a cascade summary covers it).
+      if (hasProviderDecision(n, availableProviders)) continue
       const type = (n.types ?? [])[0]
       if (type === undefined) {
         control.ctx.info('NotificationsHandler: skipping notification without type', { notificationId: n._id })
