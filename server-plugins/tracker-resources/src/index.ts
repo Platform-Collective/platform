@@ -51,6 +51,7 @@ import tracker, {
 } from '@hcengineering/tracker'
 import { workbenchId } from '@hcengineering/workbench'
 import { buildParentInfo, parentInfoEquals } from './utils'
+import { updateIssueIdentifierAliases } from './issue-identifiers'
 
 /**
  * Re-syncs the denormalised `parents` info of the given issues and of all
@@ -219,7 +220,7 @@ export async function OnProjectRemove (txes: Tx[], control: TriggerControl): Pro
     const ctx = tx as TxRemoveDoc<Project>
     const classes = [tracker.class.Issue, tracker.class.Component, tracker.class.Milestone, tracker.class.IssueTemplate]
     for (const cls of classes) {
-      const docs = await control.findAll(control.ctx, cls, { space: ctx.objectId })
+      const docs = await control.findAll(control.ctx, cls, { space: ctx.objectId }, { showArchived: true })
       for (const doc of docs) {
         const tx = control.txFactory.createTxRemoveDoc(cls, doc.space, doc._id)
         result.push(tx)
@@ -264,7 +265,7 @@ export async function OnComponentRemove (txes: Tx[], control: TriggerControl): P
  * @public
  */
 export async function OnIssueUpdate (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
-  const result: Tx[] = []
+  const result: Tx[] = await updateIssueIdentifierAliases(txes, control)
   // Issues whose parents info, or that of their descendants, may be stale:
   // title, identifier and space are denormalised into the descendants'
   // parents info (identifier and space change when an issue tree is moved to
@@ -310,6 +311,15 @@ export async function OnIssueUpdate (txes: Tx[], control: TriggerControl): Promi
     if (actualTx._class === core.class.TxRemoveDoc) {
       const removeTx = actualTx as TxRemoveDoc<Issue>
       if (control.hierarchy.isDerived(removeTx.objectClass, tracker.class.Issue)) {
+        const aliases = await control.findAll(
+          control.ctx,
+          tracker.class.IssueIdentifierAlias,
+          { issue: removeTx.objectId },
+          { showArchived: true }
+        )
+        result.push(
+          ...aliases.map((alias) => control.txFactory.createTxRemoveDoc(alias._class, alias.space, alias._id))
+        )
         const parents = await findRemovedIssueParents(removeTx, control)
         updateIssueParentEstimations(
           {
