@@ -14,7 +14,7 @@
 //
 
 import { Analytics } from '@hcengineering/analytics'
-import { type Markup, MeasureContext } from '@hcengineering/core'
+import { generateId, type Markup, MeasureContext } from '@hcengineering/core'
 import {
   Document,
   Extension,
@@ -27,9 +27,10 @@ import {
   onStoreDocumentPayload
 } from '@hocuspocus/server'
 import { Transformer } from '@hocuspocus/transformer'
-import { Doc as YDoc } from 'yjs'
+import { Doc as YDoc, applyUpdate, encodeStateAsUpdate } from 'yjs'
 import { Context, withContext } from '../context'
-import { CollabStorageAdapter } from '../storage/adapter'
+import { CollabStorageAdapter, type DocumentSaveBatch } from '../storage/adapter'
+import { AuthorRuns } from './author-runs'
 
 export interface StorageConfiguration {
   ctx: MeasureContext
@@ -51,6 +52,8 @@ export class StorageExtension implements Extension {
   private readonly configuration: StorageConfiguration
   private readonly updates = new Map<DocumentName, DocumentUpdates>()
   private readonly markups = new Map<DocumentName, Record<Markup, Markup>>()
+  private readonly runs = new Map<DocumentName, AuthorRuns>()
+  private readonly saving = new Set<DocumentName>()
   private readonly promises = new Map<DocumentName, Promise<void>>()
 
   private readonly saveRetryInterval: number
@@ -114,6 +117,17 @@ export class StorageExtension implements Extension {
       ctx.warn('document is not of a markup type', { documentName, connectionId })
       this.markups.set(documentName, {})
     }
+    this.runs.get(documentName)?.destroy()
+    this.runs.set(
+      documentName,
+      new AuthorRuns(
+        document,
+        () => this.configuration.transformer.fromYdoc(document),
+        (error) => {
+          ctx.warn('failed to capture author boundary', { documentName, error })
+        }
+      )
+    )
   }
 
   async onStoreDocument ({ context, documentName, document }: withContext<onStoreDocumentPayload>): Promise<void> {
@@ -159,7 +173,17 @@ export class StorageExtension implements Extension {
   }
 
   async afterUnloadDocument ({ documentName }: afterUnloadDocumentPayload): Promise<any> {
-    this.configuration.ctx.info('unload document', { documentName })
+    const { ctx } = this.configuration
+    const runs = this.runs.get(documentName)
+    try {
+      await this.promises.get(documentName)
+    } catch (error) {
+      ctx.error('error while waiting for unloaded document save', { documentName, error })
+    }
+    if (this.runs.get(documentName) !== runs) return
+    ctx.info('unload document', { documentName })
+    runs?.destroy()
+    this.runs.delete(documentName)
     this.updates.delete(documentName)
     this.markups.delete(documentName)
     this.promises.delete(documentName)
@@ -222,56 +246,83 @@ export class StorageExtension implements Extension {
   private async performStoreDocument (documentName: string, document: Document, context: Context): Promise<void> {
     const { ctx, adapter } = this.configuration
 
-    let attempt = 0
-    while (true) {
-      attempt++
-      const now = Date.now()
-
-      try {
-        const currMarkup = await ctx.with(
-          'save-document',
-          {},
-          (ctx) =>
-            adapter.saveDocument(ctx, documentName, document, context, {
-              prev: () => this.markups.get(documentName) ?? {},
-              curr: () => this.configuration.transformer.fromYdoc(document)
-            }),
-          {
-            workspace: context.wsIds.uuid,
-            documentName
-          }
-        )
-
-        this.markups.set(documentName, currMarkup ?? {})
-        this.clearUpdates(documentName, now)
-
-        return
-      } catch (err: any) {
-        Analytics.handleError(err)
-        ctx.error('failed to save document', { documentName, attempt, error: err })
-
-        if (this.stopped) {
-          ctx.info('storage extension stopped, skipping document save', { documentName })
-          throw new Error('Aborted')
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, this.saveRetryInterval))
-      }
+    // Freeze bytes, markups and provenance together before any asynchronous work. New edits
+    // start a separate pending batch, including edits made in the same millisecond.
+    // This temporary copy briefly doubles Yjs memory to keep retries isolated from new edits.
+    const frozen = new YDoc({ gc: false })
+    applyUpdate(frozen, encodeStateAsUpdate(document))
+    const prev = this.markups.get(documentName) ?? {}
+    const runs = this.runs.get(documentName)
+    let curr = prev
+    let markupFailed = false
+    try {
+      curr = this.configuration.transformer.fromYdoc(document)
+    } catch (error) {
+      // Persist the Yjs bytes even when this document cannot be converted to markup.
+      markupFailed = true
+      ctx.warn('document is not of a markup type', { documentName, error })
     }
-  }
+    const segments = runs?.drain(prev, curr) ?? []
+    if (markupFailed) segments.length = 0
+    if (segments.length === 0) {
+      segments.push({
+        context: this.updates.get(documentName)?.context ?? context,
+        prev,
+        curr,
+        id: generateId(),
+        timestamp: Date.now()
+      })
+    }
+    const batch: DocumentSaveBatch = { segments }
+    const lastContext = segments[segments.length - 1].context
+    this.updates.delete(documentName)
+    this.saving.add(documentName)
 
-  private clearUpdates (documentName: string, timestamp: number): void {
-    const updates = this.updates.get(documentName)
-    if (updates !== undefined) {
-      for (const [connectionId, updatedAt] of updates.collaborators.entries()) {
-        if (updatedAt < timestamp) {
-          updates.collaborators.delete(connectionId)
+    let attempt = 0
+    try {
+      while (true) {
+        attempt++
+        try {
+          await ctx.with(
+            'save-document',
+            {},
+            (ctx) =>
+              adapter.saveDocument(
+                ctx,
+                documentName,
+                frozen,
+                lastContext,
+                { prev: () => prev, curr: () => curr },
+                batch
+              ),
+            {
+              workspace: context.wsIds.uuid,
+              documentName
+            }
+          )
+
+          if (this.runs.get(documentName) === runs) this.markups.set(documentName, curr)
+          return
+        } catch (err: any) {
+          Analytics.handleError(err)
+          ctx.error('failed to save document', { documentName, attempt, error: err })
+
+          if (this.stopped) {
+            ctx.info('storage extension stopped, skipping document save', { documentName })
+            throw new Error('Aborted')
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, this.saveRetryInterval))
         }
       }
+    } finally {
+      this.saving.delete(documentName)
+      frozen.destroy()
     }
   }
 
   private hasNoUpdates (documentName: string, connectionId?: string): boolean {
+    if (this.saving.has(documentName)) return false
     const updates = this.updates.get(documentName)
     if (updates === undefined) {
       return true
