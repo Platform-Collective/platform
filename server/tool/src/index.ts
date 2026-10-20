@@ -126,6 +126,8 @@ export async function initModel (
   }
 
   try {
+    await buildModel(ctx, txes, txes)
+
     logger.log('creating database...', { workspaceId })
     const firstTx: Tx = {
       _class: core.class.Tx,
@@ -272,7 +274,7 @@ export async function upgradeModel (
   const newModelRes = await ctx.with('load-model', {}, (ctx) => pipeline.loadModel(ctx, 0))
   const newModel = Array.isArray(newModelRes) ? newModelRes : newModelRes.transactions
 
-  const { hierarchy, modelDb, model } = await buildModel(ctx, newModel)
+  const { hierarchy, modelDb, model } = await buildModel(ctx, newModel, txes)
   const { migrateClient: preMigrateClient } = await prepareMigrationClient(
     ctx,
     pipeline,
@@ -430,14 +432,16 @@ async function prepareMigrationClient (
 
 export async function buildModel (
   ctx: MeasureContext,
-  model: Tx[]
+  model: Tx[],
+  requiredTxes?: Tx[]
 ): Promise<{ hierarchy: Hierarchy, modelDb: ModelDb, model: Tx[] }> {
   const hierarchy = new Hierarchy()
   const modelDb = new ModelDb(hierarchy)
 
   // addTxes feeds the hierarchy itself, a separate pass would just deserialize everything twice.
   ctx.withSync('build local model', {}, () => {
-    modelDb.addTxes(ctx, model, false)
+    const requiredTxIds = requiredTxes === undefined ? undefined : new Set(requiredTxes.map((tx) => tx._id))
+    modelDb.addTxes(ctx, model, false, requiredTxIds)
   })
   return { hierarchy, modelDb, model: model ?? [] }
 }
