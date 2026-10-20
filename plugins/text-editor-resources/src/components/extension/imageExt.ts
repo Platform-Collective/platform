@@ -21,6 +21,7 @@ import { getEventPositionElement, SelectPopup, showPopup } from '@hcengineering/
 import { type Editor, mergeAttributes, nodeInputRule } from '@tiptap/core'
 import { type Node, type ResolvedPos } from '@tiptap/pm/model'
 import { type EditorState, Plugin, PluginKey } from '@tiptap/pm/state'
+import { moveCursorBeforeSelectedLeadingImage } from './image-cursor'
 import {
   CursorSource,
   getToolbarCursor,
@@ -111,6 +112,17 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
         }
       })
     ]
+  },
+
+  addKeyboardShortcuts () {
+    const moveCursorBeforeImage = (): boolean =>
+      moveCursorBeforeSelectedLeadingImage(this.editor.state, (transaction) => {
+        this.editor.view.dispatch(transaction)
+      })
+
+    return {
+      ArrowUp: moveCursorBeforeImage
+    }
   },
 
   addProseMirrorPlugins () {
