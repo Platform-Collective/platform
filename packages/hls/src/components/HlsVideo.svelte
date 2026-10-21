@@ -26,12 +26,50 @@
   export let preload = true
 
   let video: HTMLVideoElement | null = null
+  let videoWidth = 0
+  let videoHeight = 0
+  let manifestWidth = 0
+  let manifestHeight = 0
+  let posterWidth = 0
+  let posterHeight = 0
   let hls: HLS | null = null
   let player: Plyr | null = null
 
   $: src = getFileUrl(src, '')
   $: hlsSrc = hlsSrc !== '' ? getFileUrl(hlsSrc, '') : ''
   $: hlsThumbnail = hlsThumbnail !== '' ? getFileUrl(hlsThumbnail, '') : ''
+
+  // Portrait videos get the controls below the video instead of on top of it. The intrinsic size is known only
+  // once metadata is loaded, which with preload disabled happens at the first play. Until then use the size of
+  // the first HLS level from the manifest (loaded even with autoStartLoad disabled), then the poster image.
+  // Without either (e.g. native HLS without a thumbnail) the layout adjusts once, when metadata arrives.
+  $: loadPosterSize(hlsThumbnail)
+  $: portrait =
+    isPortrait(videoWidth, videoHeight) ??
+    isPortrait(manifestWidth, manifestHeight) ??
+    isPortrait(posterWidth, posterHeight) ??
+    false
+
+  function isPortrait(width: number, height: number): boolean | undefined {
+    return width > 0 && height > 0 ? height > width : undefined
+  }
+
+  function loadPosterSize(url: string): void {
+    posterWidth = 0
+    posterHeight = 0
+    if (url === '') {
+      return
+    }
+    const img = new Image()
+    img.onload = () => {
+      if (hlsThumbnail !== url) {
+        return
+      }
+      posterWidth = img.naturalWidth
+      posterHeight = img.naturalHeight
+    }
+    img.src = url
+  }
 
   const token = getMetadata(presentation.metadata.Token) ?? ''
 
@@ -75,6 +113,8 @@
     }
     hls?.destroy()
     player?.destroy()
+    manifestWidth = 0
+    manifestHeight = 0
     const loadPolicy: LoadPolicy = {
       default: {
         maxTimeToFirstByteMs: Infinity,
@@ -114,6 +154,10 @@
       if (hls === null) {
         return
       }
+      const sizedLevel = hls.levels.find((l) => l.width > 0 && l.height > 0)
+      manifestWidth = sizedLevel?.width ?? 0
+      manifestHeight = sizedLevel?.height ?? 0
+
       const availableQualities = hls?.levels.map((l) => l.height)
       availableQualities.unshift(0)
 
@@ -169,7 +213,16 @@
 </script>
 
 <!-- svelte-ignore a11y-media-has-caption -->
-<video bind:this={video} width="100%" height="100%" preload={preload ? 'auto' : 'none'} disablepictureinpicture />
+<video
+  bind:this={video}
+  bind:videoWidth
+  bind:videoHeight
+  class:portrait
+  width="100%"
+  height="100%"
+  preload={preload ? 'auto' : 'none'}
+  disablepictureinpicture
+/>
 
 <style lang="scss">
   video {
@@ -195,8 +248,39 @@
     --plyr-video-background: transparent;
   }
 
-  // Hide controls when video is stopped and not hovered
-  :global(.plyr.plyr--stopped:not(:hover) .plyr__controls) {
+  // Portrait videos: the controls sit in a fixed-height strip below the video instead of overlaying it.
+  // Strip height = control icon + control button padding (2 * 0.7 spacing) + strip padding (2 * spacing).
+  :global(.plyr:has(video.portrait)) {
+    --portrait-controls-height: calc(var(--plyr-control-icon-size) + var(--plyr-control-spacing) * 3.4);
+    height: 100%;
+  }
+
+  :global(.plyr:has(video.portrait) .plyr__video-wrapper) {
+    flex: 1;
+    min-height: 0;
+  }
+
+  // The strip is always visible: override plyr's .plyr--hide-controls slide-out (it would leave an empty strip
+  // below the video and make the bar pop in on hover). Selector is more specific than plyr's on purpose.
+  :global(.plyr.plyr--video:has(video.portrait) .plyr__controls) {
+    position: static;
+    flex-shrink: 0;
+    width: 100%;
+    height: var(--portrait-controls-height);
+    padding: var(--plyr-control-spacing);
+    background: #000;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  // Center the big play button over the video area, not over video + controls strip
+  :global(.plyr:has(video.portrait) .plyr__control--overlaid) {
+    top: calc(50% - var(--portrait-controls-height) / 2);
+  }
+
+  // Hide controls when video is stopped and not hovered (overlay layout only, see portrait rules above)
+  :global(.plyr.plyr--stopped:not(:hover):not(:has(video.portrait)) .plyr__controls) {
     opacity: 0;
     pointer-events: none;
     transform: translateY(100%);
