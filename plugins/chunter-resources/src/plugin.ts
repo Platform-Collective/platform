@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import chunter, { chunterId } from '@hcengineering/chunter'
+import chunter, { chunterId, type ChatMessage } from '@hcengineering/chunter'
 import type { Client, Doc, Ref, Space } from '@hcengineering/core'
 import type { IntlString, Resource } from '@hcengineering/platform'
 import { mergeIds } from '@hcengineering/platform'
@@ -39,6 +39,7 @@ export default mergeIds(chunterId, chunter, {
     ChannelIcon: '' as AnyComponent
   },
   function: {
+    CanQuoteMessage: '' as Resource<(doc?: ChatMessage | ChatMessage[]) => Promise<boolean>>,
     GetDmName: '' as Resource<(client: Client, space: Space) => Promise<string>>,
     DirectTitleProvider: '' as Resource<(client: Client, id: Ref<Doc>) => Promise<string>>,
     ChannelTitleProvider: '' as Resource<(client: Client, id: Ref<Doc>) => Promise<string>>,
@@ -48,6 +49,7 @@ export default mergeIds(chunterId, chunter, {
     >
   },
   actionImpl: {
+    QuoteMessage: '' as ViewAction,
     SubscribeMessage: '' as ViewAction,
     UnsubscribeMessage: '' as ViewAction,
     SubscribeComment: '' as ViewAction,
@@ -56,6 +58,7 @@ export default mergeIds(chunterId, chunter, {
     RemoveChannel: '' as ViewAction
   },
   string: {
+    Quote: '' as IntlString,
     Channel: '' as IntlString,
     DirectMessage: '' as IntlString,
     DirectMessages: '' as IntlString,

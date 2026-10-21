@@ -61,6 +61,21 @@ export function defineActions (builder: Builder): void {
 }
 
 function defineMessageActions (builder: Builder): void {
+  createAction(builder, {
+    action: chunter.actionImpl.QuoteMessage,
+    label: chunter.string.Quote,
+    icon: view.icon.Bubble,
+    input: 'focus',
+    category: chunter.category.Chunter,
+    target: chunter.class.ChatMessage,
+    visibilityTester: chunter.function.CanQuoteMessage,
+    inline: true,
+    context: {
+      mode: 'context',
+      group: 'edit'
+    }
+  })
+
   createAction(
     builder,
     {

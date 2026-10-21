@@ -15,7 +15,7 @@
 
 import { writable } from 'svelte/store'
 import { type ChatMessage } from '@hcengineering/chunter'
-import { type Markup, type Ref } from '@hcengineering/core'
+import { type Doc, type Markup, type Ref } from '@hcengineering/core'
 import { languageStore } from '@hcengineering/ui'
 import { type ActivityMessage } from '@hcengineering/activity'
 
@@ -24,6 +24,16 @@ export const translatedMessagesStore = writable<Map<Ref<ChatMessage>, Markup>>(n
 export const shownTranslatedMessagesStore = writable<Set<Ref<ChatMessage>>>(new Set())
 
 export const threadMessagesStore = writable<ActivityMessage | undefined>(undefined)
+
+export interface QuoteInput {
+  objectId: Ref<Doc>
+  isSidebar: boolean
+  element?: HTMLElement
+  appendMarkup: (markup: Markup) => void
+}
+
+export const quoteInputsStore = writable<Set<QuoteInput>>(new Set())
+export const activeQuoteInputStore = writable<QuoteInput | undefined>(undefined)
 
 languageStore.subscribe(() => {
   translatedMessagesStore.set(new Map())
