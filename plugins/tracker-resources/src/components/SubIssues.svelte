@@ -14,14 +14,13 @@
  -->
 <script lang="ts">
   import attachment, { Attachment } from '@hcengineering/attachment'
-  import core, { AttachedData, Doc, makeCollabId, Ref } from '@hcengineering/core'
-  import { DraftController, draftsStore, getClient, deleteFile, createMarkup } from '@hcengineering/presentation'
-  import tags from '@hcengineering/tags'
-  import { isEmptyMarkup } from '@hcengineering/text'
+  import { Doc, Ref } from '@hcengineering/core'
+  import { DraftController, draftsStore, getClient, deleteFile } from '@hcengineering/presentation'
   import { Component, Issue, IssueDraft, IssueParentInfo, Milestone, Project } from '@hcengineering/tracker'
   import { Button, ExpandCollapse, Scroller } from '@hcengineering/ui'
   import { onDestroy } from 'svelte'
   import tracker from '../plugin'
+  import { saveSubIssues } from '../save-sub-issues'
   import Collapsed from './icons/Collapsed.svelte'
   import Expanded from './icons/Expanded.svelte'
   import DraftIssueChildList from './templates/DraftIssueChildList.svelte'
@@ -62,67 +61,9 @@
     if (project === undefined) return
     saved = true
     const statuses = subIssues.length > 0 ? getTaskTypeStates(subIssues[0].kind, $taskTypeStore, $statusStore.byId) : []
+    await saveSubIssues(client, project, subIssues, parents, _id, statuses)
     for (const subIssue of subIssues) {
-      const incResult = await client.updateDoc(
-        tracker.class.Project,
-        core.space.Space,
-        project._id,
-        {
-          $inc: { sequence: 1 }
-        },
-        true
-      )
-      const number = (incResult as any).object.sequence
-      const childId = subIssue._id
-      const cvalue: AttachedData<Issue> = {
-        title: subIssue.title.trim(),
-        description: null,
-        assignee: subIssue.assignee,
-        component: subIssue.component,
-        milestone: subIssue.milestone,
-        number,
-        status: subIssue.status ?? project.defaultIssueStatus ?? statuses[0]?._id,
-        priority: subIssue.priority,
-        rank: '',
-        comments: 0,
-        subIssues: 0,
-        startDate: subIssue.startDate ?? null,
-        dueDate: null,
-        parents,
-        reportedTime: 0,
-        remainingTime: 0,
-        estimation: subIssue.estimation,
-        reports: 0,
-        relations: [],
-        childInfo: [],
-        kind: subIssue.kind,
-        identifier: `${project.identifier}-${number}`
-      }
-
-      if (!isEmptyMarkup(subIssue.description)) {
-        const collabId = makeCollabId(tracker.class.Issue, childId, 'description')
-        cvalue.description = await createMarkup(collabId, subIssue.description)
-      }
-
-      await client.addCollection(
-        tracker.class.Issue,
-        project._id,
-        _id,
-        tracker.class.Issue,
-        'subIssues',
-        cvalue,
-        childId
-      )
-      if ((subIssue.labels?.length ?? 0) > 0) {
-        for (const label of subIssue.labels) {
-          await client.addCollection(tags.class.TagReference, project._id, childId, tracker.class.Issue, 'labels', {
-            title: label.title,
-            color: label.color,
-            tag: label.tag
-          })
-        }
-      }
-      saveAttachments(childId)
+      saveAttachments(subIssue._id)
     }
   }
   async function saveAttachments(issue: Ref<Issue>) {
