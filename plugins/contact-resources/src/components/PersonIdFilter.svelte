@@ -32,7 +32,7 @@
 
   import PersonPresenter from './PersonPresenter.svelte'
   import SystemAvatar from './SystemAvatar.svelte'
-  import { getUnresolvedPersonIds } from './person-id-filter'
+  import { getUnresolvedPersonIds, isSystemPersonId } from './person-id-filter'
 
   export let filter: Filter
   export let space: Ref<Space> | undefined = undefined
@@ -232,7 +232,7 @@
             }}
           >
             <div class="clear-mins flex-grow">
-              {#if personId === core.account.System}
+              {#if isSystemPersonId(personId)}
                 <div class="flex-row-center flex-gap-2">
                   <SystemAvatar size="x-small" />
                   <Label label={core.string.System} />

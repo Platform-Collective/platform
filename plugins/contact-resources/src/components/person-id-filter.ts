@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import type { PersonId } from '@hcengineering/core'
+import core, { type PersonId } from '@hcengineering/core'
 
 export interface SocialIdentityReference {
   _id: PersonId
@@ -31,4 +31,12 @@ export function getUnresolvedPersonIds (
   }
 
   return Array.from(unresolvedPersonIds)
+}
+
+/**
+ * Built-in system accounts have no social identity; show them as "System"
+ * instead of their raw id.
+ */
+export function isSystemPersonId (personId: PersonId): boolean {
+  return personId === core.account.System || personId === core.account.ConfigUser
 }
