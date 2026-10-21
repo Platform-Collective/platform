@@ -324,7 +324,9 @@
         "GanttVisibleRange": "표시 범위",
         "GanttNotScheduled": "일정 없음",
         "GanttMissingStartDates": "{count}개 이슈에 시작일이 없습니다.",
-        "GanttSetDatesHint": "이슈의 시작일과 마감일을 설정하면 타임라인에 표시됩니다."
+        "GanttSetDatesHint": "이슈의 시작일과 마감일을 설정하면 타임라인에 표시됩니다.",
+    "CreateIssueFromMessage": "이슈 만들기",
+    "SourceMessage": "원본 메시지"
     },
     "status": {}
 }

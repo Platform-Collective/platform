@@ -324,7 +324,9 @@
     "GanttVisibleRange": "Intervallo",
     "GanttNotScheduled": "Non pianificato",
     "GanttMissingStartDates": "{count} attività non hanno una data di inizio.",
-    "GanttSetDatesHint": "Imposta le date di inizio e scadenza di un'attività per mostrarla nella cronologia."
+    "GanttSetDatesHint": "Imposta le date di inizio e scadenza di un'attività per mostrarla nella cronologia.",
+    "CreateIssueFromMessage": "Crea issue",
+    "SourceMessage": "Messaggio originale"
   },
   "status": {}
 }

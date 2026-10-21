@@ -324,7 +324,9 @@
     "GanttVisibleRange": "Période",
     "GanttNotScheduled": "Non planifié",
     "GanttMissingStartDates": "{count} tâches n'ont pas de date de début.",
-    "GanttSetDatesHint": "Définissez les dates de début et d'échéance d'une tâche pour l'afficher sur la chronologie."
+    "GanttSetDatesHint": "Définissez les dates de début et d'échéance d'une tâche pour l'afficher sur la chronologie.",
+    "CreateIssueFromMessage": "Créer une issue",
+    "SourceMessage": "Message d’origine"
   },
   "status": {}
 }

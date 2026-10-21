@@ -324,7 +324,9 @@
     "GanttVisibleRange": "表示範囲",
     "GanttNotScheduled": "未予定",
     "GanttMissingStartDates": "{count} 件の課題に開始日が設定されていません。",
-    "GanttSetDatesHint": "課題に開始日と期限を設定すると、タイムラインに表示されます。"
+    "GanttSetDatesHint": "課題に開始日と期限を設定すると、タイムラインに表示されます。",
+    "CreateIssueFromMessage": "イシューを作成",
+    "SourceMessage": "元のメッセージ"
   },
   "status": {}
 }
