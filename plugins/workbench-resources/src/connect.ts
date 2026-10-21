@@ -237,6 +237,19 @@ export async function connect (title: string): Promise<Client | undefined> {
   }
   _token = token
 
+  async function checkEndpoint (): Promise<boolean> {
+    const newLoginInfo = await ctx.with('select-workspace', {}, async () => (await selectWorkspace(wsUrl, token))[1])
+    if (
+      newLoginInfo != null &&
+      (getMetadata(login.metadata.TransactorOverride) ?? newLoginInfo.endpoint) !== endpoint
+    ) {
+      console.log('endpoint changed, reloading')
+      location.reload()
+      return true
+    }
+    return false
+  }
+
   const clientFactory = await getResource(client.function.GetClient)
   let version: Version | undefined
   const newClient = await ctx.with(
@@ -367,6 +380,15 @@ export async function connect (title: string): Promise<Client | undefined> {
             return
           }
           try {
+            // Core may report a reconnect as Refresh when transactions changed.
+            if (
+              ((_clientSet && event === ClientConnectEvent.Connected) ||
+                event === ClientConnectEvent.Reconnected ||
+                event === ClientConnectEvent.Refresh) &&
+              (await checkEndpoint())
+            ) {
+              return
+            }
             if (event === ClientConnectEvent.Connected || event === ClientConnectEvent.Reconnected) {
               setMetadata(presentation.metadata.SessionId, data)
             }
@@ -390,7 +412,8 @@ export async function connect (title: string): Promise<Client | undefined> {
             }
 
             void (async () => {
-              if (_client !== undefined) {
+              // Without a baseline version (initial connect still in progress) there is nothing to compare.
+              if (_client !== undefined && version !== undefined) {
                 const client = _client
                 const newVersion = await ctx.with(
                   'find-version',
@@ -451,15 +474,7 @@ export async function connect (title: string): Promise<Client | undefined> {
         },
         ctx,
         onDialTimeout: async () => {
-          const newLoginInfo = await ctx.with(
-            'select-workspace',
-            {},
-            async () => (await selectWorkspace(wsUrl, token))[1]
-          )
-          if (newLoginInfo?.endpoint !== endpoint) {
-            console.log('endpoint changed, reloading')
-            location.reload()
-          }
+          await checkEndpoint()
         }
       })
   )
