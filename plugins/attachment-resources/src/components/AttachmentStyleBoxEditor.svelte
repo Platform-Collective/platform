@@ -22,6 +22,7 @@
   import { EditorKitOptions } from '@hcengineering/text-editor-resources'
 
   export let object: Doc
+  export let enableTodoList: boolean = false
   export let key: KeyedAttribute
   export let placeholder: IntlString
   export let focusIndex = -1
@@ -117,6 +118,7 @@
 
 {#key object?._id}
   <AttachmentStyledBox
+    {enableTodoList}
     {focusIndex}
     kitOptions={{ reference: true }}
     bind:this={descriptionBox}
