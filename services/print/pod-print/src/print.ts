@@ -44,72 +44,91 @@ export async function print (ctx: MeasureContext, url: string, options?: PrintOp
       ...config.PuppeteerArgs
     ]
   })
-  const page = await browser.newPage()
+  let failed = false
+  let result: Buffer | undefined
+  let closeFailure: { error: unknown } | undefined
+  try {
+    const page = await browser.newPage()
 
-  page
-    .on('pageerror', (err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err)
-      ctx.warn('pageerror', { message })
-    })
-    .on('requestfailed', (request) => {
-      ctx.warn('requestfailed', { url: request.url(), errorText: request.failure()?.errorText })
-    })
-
-  await page.setViewport(viewport)
-
-  // NOTE: Issues opened with a guest link worked fine only with networkidle0 here and
-  // waitForNetworkIdle 1000 afterwards. Also tried 700 but sometimes it was not enough.
-  await page.goto(url, {
-    waitUntil: ['domcontentloaded', 'networkidle0']
-  })
-  await page.waitForNetworkIdle({ idleTime: 1000 })
-
-  let res: Uint8Array | undefined
-
-  if (kind === 'pdf') {
-    await page.emulateMediaType('print')
-    // Scroll throught the page to render all the content (e.g. as images are only rendered
-    // when they are visible in the viewport)
-    await scrollThrough(page)
-
-    // Read page header and footer if defined
-    const pageHeader = await page.evaluate(() => {
-      const header = document.querySelector('#page-header')
-      return header?.innerHTML ?? ''
-    })
-
-    const pageFooter = await page.evaluate(() => {
-      const footer = document.querySelector('#page-footer')
-      return footer?.innerHTML ?? ''
-    })
-
-    const displayHeaderFooter = pageHeader !== '' || pageFooter !== ''
-
-    res = await ctx.with('pdf', {}, () =>
-      page.pdf({
-        format: 'A4',
-        landscape: orientation === 'landscape',
-        timeout: 0,
-        headerTemplate: pageHeader,
-        footerTemplate: pageFooter,
-        displayHeaderFooter,
-        margin: {
-          top: '1.5cm',
-          right: '1cm',
-          bottom: '1.5cm',
-          left: '1cm'
-        }
+    page
+      .on('pageerror', (err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err)
+        ctx.warn('pageerror', { message })
       })
-    )
-  } else {
-    // Note: currently we do not take the full page screenshot - only the viewport
-    // might make it configurable in the future
-    res = await ctx.with('screenshot', { kind }, () => page.screenshot({ type: kind }))
+      .on('requestfailed', (request) => {
+        ctx.warn('requestfailed', { url: request.url(), errorText: request.failure()?.errorText })
+      })
+
+    await page.setViewport(viewport)
+
+    // NOTE: Issues opened with a guest link worked fine only with networkidle0 here and
+    // waitForNetworkIdle 1000 afterwards. Also tried 700 but sometimes it was not enough.
+    await page.goto(url, {
+      waitUntil: ['domcontentloaded', 'networkidle0']
+    })
+    await page.waitForNetworkIdle({ idleTime: 1000 })
+
+    let res: Uint8Array | undefined
+
+    if (kind === 'pdf') {
+      await page.emulateMediaType('print')
+      // Scroll throught the page to render all the content (e.g. as images are only rendered
+      // when they are visible in the viewport)
+      await scrollThrough(page)
+
+      // Read page header and footer if defined
+      const pageHeader = await page.evaluate(() => {
+        const header = document.querySelector('#page-header')
+        return header?.innerHTML ?? ''
+      })
+
+      const pageFooter = await page.evaluate(() => {
+        const footer = document.querySelector('#page-footer')
+        return footer?.innerHTML ?? ''
+      })
+
+      const displayHeaderFooter = pageHeader !== '' || pageFooter !== ''
+
+      res = await ctx.with('pdf', {}, () =>
+        page.pdf({
+          format: 'A4',
+          landscape: orientation === 'landscape',
+          timeout: 0,
+          headerTemplate: pageHeader,
+          footerTemplate: pageFooter,
+          displayHeaderFooter,
+          margin: {
+            top: '1.5cm',
+            right: '1cm',
+            bottom: '1.5cm',
+            left: '1cm'
+          }
+        })
+      )
+    } else {
+      // Note: currently we do not take the full page screenshot - only the viewport
+      // might make it configurable in the future
+      res = await ctx.with('screenshot', { kind }, () => page.screenshot({ type: kind }))
+    }
+
+    result = res !== undefined ? Buffer.from(res) : undefined
+  } catch (err) {
+    failed = true
+    throw err
+  } finally {
+    try {
+      await browser.close()
+    } catch (err) {
+      if (failed) {
+        const message = err instanceof Error ? err.message : String(err)
+        ctx.warn('browser.close', { message })
+      } else {
+        closeFailure = { error: err }
+      }
+    }
   }
-
-  await browser.close()
-
-  return res !== undefined ? Buffer.from(res) : undefined
+  if (closeFailure !== undefined) throw closeFailure.error
+  return result
 }
 
 async function scrollThrough (page: Page): Promise<void> {
