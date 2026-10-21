@@ -179,11 +179,11 @@ export function formatDate (date: Date, showYear: boolean): string {
 export const getTimeZoneName = (
   val: string = Intl.DateTimeFormat().resolvedOptions().timeZoneName ?? Intl.DateTimeFormat().resolvedOptions().timeZone
 ): string => {
-  return val.replace('_', ' ').split('/')[1] ?? ''
+  return (val === 'Europe/Kiev' ? 'Europe/Kyiv' : val).replace('_', ' ').split('/')[1] ?? ''
 }
 
 export const convertTimeZone = (tz: string): TimeZone => {
-  const tzSpace = tz.replace(/_/gi, ' ')
+  const tzSpace = (tz === 'Europe/Kiev' ? 'Europe/Kyiv' : tz).replace(/_/gi, ' ')
   const parts = tzSpace.split('/')
   if (tz === '' || parts.length === 1) return { id: tz, continent: tzSpace, city: tzSpace, short: tzSpace }
   return {
