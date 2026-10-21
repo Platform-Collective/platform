@@ -352,6 +352,15 @@ function defineResource (builder: Builder): void {
     {
       attachTo: drive.class.Resource,
       descriptor: view.viewlet.Table,
+      viewOptions: {
+        groupBy: [],
+        orderBy: [
+          ['title', SortingOrder.Ascending],
+          ['$lookup.file.size', SortingOrder.Ascending],
+          ['$lookup.file.lastModified', SortingOrder.Descending]
+        ],
+        other: []
+      },
       config: [
         {
           key: '',
