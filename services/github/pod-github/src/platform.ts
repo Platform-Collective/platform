@@ -40,6 +40,7 @@ import { App, Octokit } from 'octokit'
 import { Analytics } from '@hcengineering/analytics'
 import { SplitLogger } from '@hcengineering/analytics-service'
 import contact, { type Employee, type SocialIdentityRef } from '@hcengineering/contact'
+import { getTransactorEndpoint } from '@hcengineering/server-client'
 import { type StorageAdapter } from '@hcengineering/server-core'
 import { join } from 'path'
 import { createPlatformClient } from './client'
@@ -961,7 +962,15 @@ export class PlatformWorker {
 
   checkedWorkspaces = new Set<string>()
 
-  checkReconnect (workspace: WorkspaceUuid, event: ClientConnectEvent, worker: GithubWorker): void {
+  checkReconnect (
+    workspace: WorkspaceUuid,
+    event: ClientConnectEvent | undefined,
+    worker: GithubWorker,
+    endpoint: string
+  ): Promise<void> {
+    if (this.clients.get(workspace) !== worker) {
+      return Promise.resolve()
+    }
     if (event === ClientConnectEvent.Refresh || event === ClientConnectEvent.Upgraded) {
       void this.clients
         .get(workspace)
@@ -971,11 +980,14 @@ export class PlatformWorker {
         })
     }
 
-    // We need to check if workspace is inactive
+    // Check workspace activity and routing after reconnects and dial timeouts.
     const token = generateToken(systemAccountUuid, workspace, { service: 'github', mode: 'github' })
-    getAccountClient(config.AccountsURL, token)
+    return getAccountClient(config.AccountsURL, token)
       .getWorkspaceInfo()
-      .then((wsInfo) => {
+      .then(async (wsInfo) => {
+        if (this.clients.get(workspace) !== worker) {
+          return
+        }
         const state = getGithubWorkerState(
           this.ctx,
           workspace,
@@ -989,10 +1001,21 @@ export class PlatformWorker {
           void worker?.close().catch((err) => {
             this.ctx.error('Failed to close workspace', { workspace, error: err })
           })
+          return
+        }
+
+        const newEndpoint = await getTransactorEndpoint(token)
+        if (newEndpoint !== endpoint && this.clients.get(workspace) === worker) {
+          this.ctx.info('Github worker endpoint changed, reconnecting', { workspace, endpoint, newEndpoint })
+          this.clients.delete(workspace)
+          void worker.close().catch((err) => {
+            this.ctx.error('Failed to close workspace', { workspace, error: err })
+          })
+          this.triggerCheckWorkspaces()
         }
       })
       .catch((err) => {
-        this.ctx.error('Failed to check workspace is active', { workspace, error: err })
+        this.ctx.error('Failed to check workspace connection', { workspace, error: err })
       })
   }
 

@@ -1778,22 +1778,18 @@ export class GithubWorker implements IntegrationManager {
     let endpoint: string | undefined
     let maitenanceState = false
     let worker: GithubWorker | undefined
+    const reconnect = async (event?: ClientConnectEvent): Promise<void> => {
+      if (event === ClientConnectEvent.Maintenance) {
+        await client?.close()
+        maitenanceState = true
+        throw new Error('Workspace in maintenance')
+      }
+      if (worker !== undefined && endpoint !== undefined) {
+        await platformWorker.checkReconnect(workspace.uuid, event, worker, endpoint)
+      }
+    }
     try {
-      ;({ client, endpoint } = await createPlatformClient(
-        ctx,
-        workspace.uuid,
-        30000,
-        async (event: ClientConnectEvent) => {
-          if (event === ClientConnectEvent.Maintenance) {
-            await client?.close()
-            maitenanceState = true
-            throw new Error('Workspace in maintenance')
-          }
-          if (worker !== undefined) {
-            platformWorker.checkReconnect(workspace.uuid, event, worker)
-          }
-        }
-      ))
+      ;({ client, endpoint } = await createPlatformClient(ctx, workspace.uuid, 30000, reconnect, reconnect))
       ctx.info('connected to github', { workspace: workspace.uuid, endpoint })
 
       const githubEnabled = (await client.findOne(core.class.PluginConfiguration, { pluginId: githubId }))?.enabled
