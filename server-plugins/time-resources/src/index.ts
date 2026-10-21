@@ -477,13 +477,11 @@ async function generateChangeStatusTx (
   if (await isClassic(control, issue.space)) {
     const taskType = (await control.modelDb.findAll(task.class.TaskType, { _id: issue.kind }))[0]
     if (taskType !== undefined) {
-      const index = taskType.statuses.findIndex((p) => p === issue.status)
-      const nextStatus = taskType.statuses[index + 1]
-      const currentStatus = taskType.statuses[index]
-
-      const current = await getStatus(control, currentStatus)
-      const next = await getStatus(control, nextStatus)
-      if (isValidStatusChange(current, next)) {
+      const statuses = await control.modelDb.findAll(core.class.Status, { _id: { $in: taskType.statuses } })
+      const statusMap = toIdMap(statuses)
+      const current = taskType.statuses.includes(issue.status) ? statusMap.get(issue.status) : undefined
+      const next = taskType.statuses.map((p) => statusMap.get(p)).find((p) => p?.category === task.statusCategory.Won)
+      if (next !== undefined && isValidStatusChange(current, next)) {
         const unfinished = await getUnfinishedTodos(control, issue._id)
         if (unfinished.length > 0) return
 
@@ -494,7 +492,7 @@ async function generateChangeStatusTx (
           }
         }
 
-        return createStatusChangeTx(factory, issue, nextStatus)
+        return createStatusChangeTx(factory, issue, next._id)
       }
     }
   }
@@ -515,11 +513,6 @@ async function getTesters (
 ): Promise<((control: TriggerControl, todo: ToDo) => Promise<boolean>)[]> {
   const helpers = await control.modelDb.findAll<TodoAutomationHelper>(time.class.TodoAutomationHelper, {})
   return await Promise.all(helpers.map((it) => getResource(it.onDoneTester)))
-}
-
-async function getStatus (control: TriggerControl, statusId: Ref<Status> | undefined): Promise<Status | undefined> {
-  if (statusId === undefined) return
-  return (await control.modelDb.findAll(core.class.Status, { _id: statusId }))[0]
 }
 
 function isValidStatusChange (current: Status | undefined, next: Status | undefined): boolean {
