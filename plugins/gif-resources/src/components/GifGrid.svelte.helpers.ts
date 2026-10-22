@@ -45,7 +45,7 @@ export function aspectRatio (gif: Pick<WorkspaceGif, 'width' | 'height'>): numbe
  */
 export function packColumns<T extends Pick<WorkspaceGif, 'width' | 'height'>> (items: T[], columns: number): T[][] {
   const n = Math.max(1, columns)
-  const result: T[][] = Array.from({ length: n }, () => [])
+  const result: T[][] = Array.from({ length: n }, (): T[] => [])
   const heights = new Array<number>(n).fill(0)
 
   for (const item of items) {

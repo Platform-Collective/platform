@@ -18,7 +18,7 @@
   import { Button, Label, Spinner } from '@hcengineering/ui'
   import { getClient, uploadFile } from '@hcengineering/presentation'
   import gifPlugin, { type UploadRejection } from '@hcengineering/gif'
-  import { readGif, rejectionLabel } from './GifUploadPopup.svelte.helpers'
+  import { addToLibrary, readGif, rejectionLabel } from './GifUploadPopup.svelte.helpers'
 
   const dispatch = createEventDispatcher()
   const client = getClient()
@@ -36,40 +36,34 @@
     rejection = undefined
     failed = false
     duplicate = false
+    busy = true
 
     // Validation lives in one place and this component calls it, rather than re-implementing
-    // the checks inline the way the custom-emoji popup does. Nothing here re-derives a limit.
-    const read = await readGif(file)
-    if (!read.ok) {
-      rejection = read.reason
-      return
-    }
+    // the checks inline the way the custom-emoji popup does. Every step, including the read,
+    // runs inside addToLibrary so a failure always ends in a message.
+    const outcome = await addToLibrary(file, {
+      read: readGif,
+      exists: async (id) => (await client.findOne(gifPlugin.class.WorkspaceGif, { _id: id })) !== undefined,
+      upload: async (f) => (await uploadFile(f)).uuid,
+      create: async (attrs, id) => {
+        await client.createDoc(gifPlugin.class.WorkspaceGif, core.space.Workspace, attrs, id)
+      }
+    })
+    busy = false
 
-    const existing = await client.findOne(gifPlugin.class.WorkspaceGif, { sha256: read.sha256 })
-    if (existing !== undefined) {
-      duplicate = true
-      return
-    }
-
-    busy = true
-    try {
-      const { uuid } = await uploadFile(file)
-      await client.createDoc(gifPlugin.class.WorkspaceGif, core.space.Workspace, {
-        title: read.title,
-        keywords: read.keywords,
-        blob: uuid,
-        width: read.width,
-        height: read.height,
-        size: file.size,
-        sha256: read.sha256
-      })
-      dispatch('close')
-    } catch {
-      // The upload and the doc are two steps. If the second fails the user gets told rather
-      // than watching a spinner end in nothing.
-      failed = true
-    } finally {
-      busy = false
+    switch (outcome.kind) {
+      case 'added':
+        dispatch('close')
+        break
+      case 'rejected':
+        rejection = outcome.reason
+        break
+      case 'duplicate':
+        duplicate = true
+        break
+      case 'failed':
+        failed = true
+        break
     }
   }
 </script>

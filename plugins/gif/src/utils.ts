@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+import type { Ref } from '@hcengineering/core'
 import type { GifGridPage, GifPickerResult, UploadValidation, WorkspaceGif } from './types'
 
 /** Uploads above this are rejected client-side. The repo enforces no upload limit at any
@@ -121,4 +122,49 @@ export function libraryViewState (opts: {
   if (opts.total === 0) return 'empty'
   if (opts.matched === 0) return 'no-results'
   return 'populated'
+}
+
+/**
+ * The row id is derived from the file's checksum, so the database primary key is the dedup
+ * constraint. A find-then-create check leaves a gap in which two uploads of the same bytes both
+ * pass; with a derived id the second create collides instead of adding a second row.
+ * @public
+ */
+export function gifIdFor (sha256: string): Ref<WorkspaceGif> {
+  return `gif-${sha256}` as Ref<WorkspaceGif>
+}
+
+/**
+ * A substring pattern for a server-side $like. The user's term is data: "%" and the escape
+ * character are dropped so that "100%" does not match everything. The server (ILIKE) and the
+ * client's live-query matcher treat escapes differently, so stripping is the only form both
+ * read the same. "_" is left alone; on the server it matches any one character, which only
+ * widens a result slightly.
+ * @public
+ */
+export function likeContains (term: string): string {
+  return `%${term.trim().replace(/[\\%]/g, '')}%`
+}
+
+/**
+ * One window of the library as the server returned it. hasMore comes from the server's total for
+ * the same query, not from what was loaded, so an entry older than the window stays reachable.
+ * @public
+ */
+export function libraryPage (items: WorkspaceGif[], total: number): GifGridPage {
+  return { items, hasMore: total > items.length }
+}
+
+/**
+ * Removing a library entry takes the gif out of every member's picker, so it is limited to the
+ * member who uploaded it and workspace admins. Same rule chat applies to messages.
+ * @public
+ */
+export function canRemoveGif (
+  gif: Pick<WorkspaceGif, 'createdBy'>,
+  mySocialIds: readonly string[],
+  isAdmin: boolean
+): boolean {
+  if (isAdmin) return true
+  return gif.createdBy !== undefined && mySocialIds.includes(gif.createdBy)
 }

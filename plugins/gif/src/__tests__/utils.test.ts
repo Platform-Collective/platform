@@ -15,6 +15,10 @@
 
 import {
   GIF_PAGE_SIZE,
+  canRemoveGif,
+  gifIdFor,
+  libraryPage,
+  likeContains,
   MAX_GIF_BYTES,
   MAX_GIF_DIMENSION,
   filenameToKeywords,
@@ -27,6 +31,7 @@ import {
   selectFirst,
   validateUpload
 } from '../utils'
+import type { PersonId } from '@hcengineering/core'
 import type { WorkspaceGif } from '../types'
 
 const gif = (title: string, keywords: string[] = []): WorkspaceGif => ({ title, keywords }) as unknown as WorkspaceGif
@@ -193,5 +198,63 @@ describe('libraryViewState', () => {
 
   it('reports populated when there are matches', () => {
     expect(libraryViewState({ loaded: true, query: '', total: 12, matched: 12 })).toBe('populated')
+  })
+})
+
+describe('gifIdFor', () => {
+  // T-60: the id is the dedup key. Two uploads of the same bytes must target the same row, so
+  // the database primary key rejects the second one instead of a find-then-create gap.
+  it('is deterministic per checksum and differs between checksums', () => {
+    expect(gifIdFor('ab12')).toBe(gifIdFor('ab12'))
+    expect(gifIdFor('ab12')).not.toBe(gifIdFor('ab13'))
+  })
+})
+
+describe('likeContains', () => {
+  // T-61: the query goes into a LIKE, where % is a wildcard. Typed raw, "100%" would match
+  // everything, and an escape character would change the meaning of the next one.
+  it('wraps the term and drops the wildcard and escape characters', () => {
+    expect(likeContains('parrot')).toBe('%parrot%')
+    expect(likeContains('100%')).toBe('%100%')
+    expect(likeContains('%')).toBe('%%')
+    expect(likeContains('a\\b')).toBe('%ab%')
+  })
+
+  it('trims the term', () => {
+    expect(likeContains('  parrot ')).toBe('%parrot%')
+  })
+})
+
+describe('libraryPage', () => {
+  // T-62: hasMore comes from the server total, not from the window we loaded, so older
+  // uploads past the window are reachable.
+  it('has more while the server reports more matches than are loaded', () => {
+    expect(libraryPage(many(24), 60)).toEqual({ items: many(24), hasMore: true })
+    expect(libraryPage(many(24), 24).hasMore).toBe(false)
+    expect(libraryPage([], 0).hasMore).toBe(false)
+  })
+})
+
+describe('canRemoveGif', () => {
+  const author = (id: string | undefined): { createdBy: PersonId | undefined } => ({
+    createdBy: id as PersonId | undefined
+  })
+  const mine = author('me-1')
+  // T-63: removing a catalog row takes the gif out of everyone's picker, so it is limited to
+  // the uploader and workspace admins, the same rule chunter applies to messages.
+  it('lets the uploader remove their own gif', () => {
+    expect(canRemoveGif(mine, ['me-1', 'me-2'], false)).toBe(true)
+  })
+
+  it('refuses a regular member removing someone else’s gif', () => {
+    expect(canRemoveGif(author('other'), ['me-1'], false)).toBe(false)
+  })
+
+  it('lets an admin remove anyone’s gif', () => {
+    expect(canRemoveGif(author('other'), ['me-1'], true)).toBe(true)
+  })
+
+  it('refuses when the author is unknown and the caller is not an admin', () => {
+    expect(canRemoveGif(author(undefined), ['me-1'], false)).toBe(false)
   })
 })

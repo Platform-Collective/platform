@@ -13,9 +13,10 @@
 // limitations under the License.
 -->
 <script lang="ts">
+  import { getCurrentAccount, isOwnerOrMaintainer } from '@hcengineering/core'
   import { Button, Label, Scroller, showPopup } from '@hcengineering/ui'
-  import { createQuery, getClient } from '@hcengineering/presentation'
-  import gifPlugin, { type WorkspaceGif } from '@hcengineering/gif'
+  import { MessageBox, createQuery, getClient } from '@hcengineering/presentation'
+  import gifPlugin, { type WorkspaceGif, canRemoveGif } from '@hcengineering/gif'
   import GifCell from '../GifCell.svelte'
   import GifUploadPopup from '../GifUploadPopup.svelte'
 
@@ -35,8 +36,20 @@
   // The cost is an orphan blob per removal. That is deliberate: an accumulating datalake is a
   // housekeeping problem, a broken message history is not recoverable. A sweep that deletes blobs
   // no live message references is the correct fix and belongs server-side, not behind this button.
-  async function remove(gif: WorkspaceGif): Promise<void> {
-    await client.removeDoc(gif._class, gif.space, gif._id)
+  // Who may remove: the member who uploaded the entry, or a workspace admin (owner or
+  // maintainer). Removal takes the gif out of every member's picker, so it asks first.
+  const me = getCurrentAccount()
+  const isAdmin = isOwnerOrMaintainer()
+
+  function confirmRemove(gif: WorkspaceGif): void {
+    showPopup(MessageBox, {
+      label: gifPlugin.string.ConfirmRemoveGif,
+      message: gifPlugin.string.RemoveGifDescription,
+      dangerous: true,
+      action: async () => {
+        await client.removeDoc(gif._class, gif.space, gif._id)
+      }
+    })
   }
 </script>
 
@@ -72,8 +85,12 @@
               kind={'ghost'}
               size={'small'}
               label={gifPlugin.string.Remove}
+              disabled={!canRemoveGif(gif, me.socialIds, isAdmin)}
+              showTooltip={canRemoveGif(gif, me.socialIds, isAdmin)
+                ? undefined
+                : { label: gifPlugin.string.RemoveNotAllowed }}
               on:click={() => {
-                void remove(gif)
+                confirmRemove(gif)
               }}
             />
           </div>

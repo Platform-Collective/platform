@@ -16,11 +16,13 @@
   import { createEventDispatcher, onMount } from 'svelte'
   import { Button, Label, Scroller, SearchInput, Spinner, showPopup } from '@hcengineering/ui'
   import { createQuery } from '@hcengineering/presentation'
+  import type { Ref } from '@hcengineering/core'
   import gifPlugin, {
+    GIF_PAGE_SIZE,
     type WorkspaceGif,
-    gridPage,
+    libraryPage,
     libraryViewState,
-    matchesQuery,
+    likeContains,
     selectFirst
   } from '@hcengineering/gif'
   import { orderByRecents, parseRecents, pushRecent } from './GifGrid.svelte.helpers'
@@ -32,33 +34,59 @@
   const dispatch = createEventDispatcher()
   const RECENTS_KEY = 'gif.recents'
 
-  let all: WorkspaceGif[] = []
+  let items: WorkspaceGif[] = []
+  let matchedTotal = 0
+  let libraryTotal = 0
   let loaded = false
   let query = ''
   let page = 0
   let recents: string[] = []
+  let recentGifs: WorkspaceGif[] = []
 
-  // Scoped to this component's lifetime with a bounded result, rather than the emoji plugin's
-  // load-everything-at-workbench-start store. A library grows to hundreds of blob-backed docs.
+  // Search and paging run on the server. A library grows to hundreds of blob-backed docs, so
+  // this asks for one window at a time instead of loading everything and filtering here, and
+  // an entry older than any fixed window stays reachable. Scoped to this component's lifetime,
+  // unlike the emoji plugin's load-everything-at-workbench-start store.
   const gifQuery = createQuery()
+  $: term = query.trim()
   $: gifQuery.query(
+    gifPlugin.class.WorkspaceGif,
+    term === '' ? {} : { title: { $like: likeContains(term) } },
+    (res) => {
+      items = res
+      matchedTotal = res.total
+      loaded = true
+    },
+    { limit: (page + 1) * GIF_PAGE_SIZE, sort: { modifiedOn: -1 }, total: true }
+  )
+
+  // Whether the library is empty at all, so a search with no hits is not reported as an empty
+  // library.
+  const totalQuery = createQuery()
+  $: totalQuery.query(
     gifPlugin.class.WorkspaceGif,
     {},
     (res) => {
-      all = res
-      loaded = true
+      libraryTotal = res.total
     },
-    { limit: 500, sort: { modifiedOn: -1 } }
+    { limit: 1, total: true }
   )
+
+  // Recently used entries lead the unfiltered view, fetched by id so they are found however
+  // old the upload is.
+  const recentsQuery = createQuery()
+  $: recentsQuery.query(gifPlugin.class.WorkspaceGif, { _id: { $in: recents as Array<Ref<WorkspaceGif>> } }, (res) => {
+    recentGifs = res
+  })
 
   onMount(() => {
     recents = parseRecents(localStorage.getItem(RECENTS_KEY))
   })
 
-  $: matched = all.filter((g) => matchesQuery(g, query))
-  $: ordered = query.trim() === '' ? orderByRecents(matched, recents) : matched
-  $: pageResult = gridPage(ordered, 0, (page + 1) * 12)
-  $: state = libraryViewState({ loaded, query, total: all.length, matched: matched.length })
+  $: leading = term === '' ? orderByRecents(recentGifs, recents) : []
+  $: ordered = [...leading, ...items.filter((g) => !leading.some((r) => r._id === g._id))]
+  $: pageResult = { items: ordered, hasMore: libraryPage(items, matchedTotal).hasMore }
+  $: state = libraryViewState({ loaded, query: term, total: libraryTotal, matched: matchedTotal })
 
   function pick(gif: WorkspaceGif): void {
     recents = pushRecent(recents, gif._id)
