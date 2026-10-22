@@ -106,6 +106,13 @@ describe('addToLibrary', () => {
     expect(d.created).toEqual([{ id: gifIdFor('ab12') }])
   })
 
+  // T-69: rows created before ids were derived have random ids, so the lookup needs the checksum.
+  it('passes the checksum to the lookup so pre-existing rows are found', async () => {
+    const exists = jest.fn(async () => true)
+    await addToLibrary(file, deps({ exists }))
+    expect(exists).toHaveBeenCalledWith(gifIdFor('ab12'), 'ab12')
+  })
+
   it('reports a rejection without uploading', async () => {
     const upload = jest.fn()
     const out = await addToLibrary(file, deps({ read: async () => ({ ok: false, reason: 'too-large' }), upload }))

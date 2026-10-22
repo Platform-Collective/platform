@@ -135,15 +135,19 @@ export function gifIdFor (sha256: string): Ref<WorkspaceGif> {
 }
 
 /**
- * A substring pattern for a server-side $like. The user's term is data: "%" and the escape
- * character are dropped so that "100%" does not match everything. The server (ILIKE) and the
- * client's live-query matcher treat escapes differently, so stripping is the only form both
- * read the same. "_" is left alone; on the server it matches any one character, which only
- * widens a result slightly.
+ * A substring pattern for a server-side $like. The user's term is data. "%" and the escape
+ * character are dropped, and the separators that titles are built from (see filenameToTitle)
+ * become one space, which is a literal on both sides. That also removes "_", a one-character
+ * wildcard on the server (ILIKE) but a literal in the client's live-query matcher, so both read
+ * the same pattern and "party_parrot" finds "Party Parrot".
  * @public
  */
 export function likeContains (term: string): string {
-  return `%${term.trim().replace(/[\\%]/g, '')}%`
+  const words = term
+    .replace(/[\\%]/g, '')
+    .split(/[\s._\-+()[\]{}]+/)
+    .filter((w) => w.length > 0)
+  return `%${words.join(' ')}%`
 }
 
 /**

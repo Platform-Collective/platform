@@ -30,8 +30,11 @@
   let duplicate = false
 
   async function onSelected(e: Event): Promise<void> {
-    const file = (e.target as HTMLInputElement).files?.[0]
+    const target = e.target as HTMLInputElement
+    const file = target.files?.[0]
     if (file === undefined) return
+    // Cleared so choosing the same file again after an error fires another change event.
+    target.value = ''
 
     rejection = undefined
     failed = false
@@ -43,7 +46,9 @@
     // runs inside addToLibrary so a failure always ends in a message.
     const outcome = await addToLibrary(file, {
       read: readGif,
-      exists: async (id) => (await client.findOne(gifPlugin.class.WorkspaceGif, { _id: id })) !== undefined,
+      exists: async (id, sha256) =>
+        (await client.findOne(gifPlugin.class.WorkspaceGif, { _id: id })) !== undefined ||
+        (await client.findOne(gifPlugin.class.WorkspaceGif, { sha256 })) !== undefined,
       upload: async (f) => (await uploadFile(f)).uuid,
       create: async (attrs, id) => {
         await client.createDoc(gifPlugin.class.WorkspaceGif, core.space.Workspace, attrs, id)

@@ -176,7 +176,7 @@ export type UploadOutcome =
  * @public */
 export interface UploadDeps {
   read: (file: File) => Promise<GifRead>
-  exists: (id: Ref<WorkspaceGif>) => Promise<boolean>
+  exists: (id: Ref<WorkspaceGif>, sha256: string) => Promise<boolean>
   upload: (file: File) => Promise<Ref<CoreBlob>>
   create: (
     attrs: {
@@ -197,7 +197,8 @@ export interface UploadDeps {
  * failure ends as 'failed' instead of escaping with no message. The row is created under an id
  * derived from the checksum, so two uploads that both pass the lookup collide on the primary
  * key; the loser is told it is a duplicate. Its blob is left behind, the same accepted orphan
- * as a removed entry.
+ * as a removed entry. The lookup checks the checksum as well as the id, because rows created
+ * before ids were derived carry a random id.
  * @public
  */
 export async function addToLibrary (file: File, deps: UploadDeps): Promise<UploadOutcome> {
@@ -206,7 +207,7 @@ export async function addToLibrary (file: File, deps: UploadDeps): Promise<Uploa
     if (!read.ok) return { kind: 'rejected', reason: read.reason }
 
     const id = gifIdFor(read.sha256)
-    if (await deps.exists(id)) return { kind: 'duplicate' }
+    if (await deps.exists(id, read.sha256)) return { kind: 'duplicate' }
 
     const blob = await deps.upload(file)
     try {
@@ -223,7 +224,7 @@ export async function addToLibrary (file: File, deps: UploadDeps): Promise<Uploa
         id
       )
     } catch (err) {
-      if (await deps.exists(id)) return { kind: 'duplicate' }
+      if (await deps.exists(id, read.sha256)) return { kind: 'duplicate' }
       throw err
     }
     return { kind: 'added' }

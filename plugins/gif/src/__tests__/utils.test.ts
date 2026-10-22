@@ -211,17 +211,22 @@ describe('gifIdFor', () => {
 })
 
 describe('likeContains', () => {
-  // T-61: the query goes into a LIKE, where % is a wildcard. Typed raw, "100%" would match
-  // everything, and an escape character would change the meaning of the next one.
-  it('wraps the term and drops the wildcard and escape characters', () => {
+  // T-61: the query goes into a LIKE. Typed raw, "100%" or "_" would match everything, and the
+  // server and the live-query matcher disagree about "_" and the escape character.
+  it('wraps the term', () => {
     expect(likeContains('parrot')).toBe('%parrot%')
+    expect(likeContains('  parrot ')).toBe('%parrot%')
+  })
+
+  it('drops the wildcard and escape characters', () => {
     expect(likeContains('100%')).toBe('%100%')
-    expect(likeContains('%')).toBe('%%')
     expect(likeContains('a\\b')).toBe('%ab%')
   })
 
-  it('trims the term', () => {
-    expect(likeContains('  parrot ')).toBe('%parrot%')
+  it('turns title separators into a single space, so an underscore is never a wildcard', () => {
+    expect(likeContains('party_parrot')).toBe('%party parrot%')
+    expect(likeContains('party-parrot')).toBe('%party parrot%')
+    expect(likeContains('_')).toBe('%%')
   })
 })
 

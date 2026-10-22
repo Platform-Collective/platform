@@ -37,6 +37,7 @@
   let items: WorkspaceGif[] = []
   let matchedTotal = 0
   let libraryTotal = 0
+  let totalLoaded = false
   let loaded = false
   let query = ''
   let page = 0
@@ -68,6 +69,7 @@
     {},
     (res) => {
       libraryTotal = res.total
+      totalLoaded = true
     },
     { limit: 1, total: true }
   )
@@ -86,7 +88,12 @@
   $: leading = term === '' ? orderByRecents(recentGifs, recents) : []
   $: ordered = [...leading, ...items.filter((g) => !leading.some((r) => r._id === g._id))]
   $: pageResult = { items: ordered, hasMore: libraryPage(items, matchedTotal).hasMore }
-  $: state = libraryViewState({ loaded, query: term, total: libraryTotal, matched: matchedTotal })
+  $: state = libraryViewState({
+    loaded: loaded && totalLoaded,
+    query: term,
+    total: libraryTotal,
+    matched: matchedTotal
+  })
 
   function pick(gif: WorkspaceGif): void {
     recents = pushRecent(recents, gif._id)
