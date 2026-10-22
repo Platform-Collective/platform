@@ -72,6 +72,8 @@
     "AlreadySubscribed": "Ce navigateur est déjà abonné",
     "PushNotConfigured": "Les notifications push ne sont pas configurées sur ce serveur",
     "PushNotSupported": "Non pris en charge par ce navigateur",
-    "PushDenied": "Les notifications sont bloquées dans les paramètres du navigateur"
+    "PushDenied": "Les notifications sont bloquées dans les paramètres du navigateur",
+    "WorkspaceDefaults": "Paramètres par défaut de l'espace de travail",
+    "WorkspaceDefaultsDescription": "Ces paramètres s'appliquent à tous les utilisateurs de l'espace de travail qui ne les ont pas modifiés eux-mêmes. Les utilisateurs peuvent toujours les remplacer dans leurs propres paramètres."
   }
 }
