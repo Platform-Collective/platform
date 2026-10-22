@@ -16,6 +16,7 @@
 <script lang="ts">
   import { getMetadata } from '@hcengineering/platform'
   import presentation, { getFileUrl } from '@hcengineering/presentation'
+  import { isPortraitSize, loadImageSize } from '@hcengineering/ui'
   import HLS, { HlsConfig, LoaderConfiguration, LoaderContext, LoaderCallbacks, LoadPolicy } from 'hls.js'
   import { onDestroy, onMount } from 'svelte'
   import Plyr from 'plyr'
@@ -30,8 +31,6 @@
   let videoHeight = 0
   let manifestWidth = 0
   let manifestHeight = 0
-  let posterWidth = 0
-  let posterHeight = 0
   let hls: HLS | null = null
   let player: Plyr | null = null
 
@@ -43,33 +42,12 @@
   // once metadata is loaded, which with preload disabled happens at the first play. Until then use the size of
   // the first HLS level from the manifest (loaded even with autoStartLoad disabled), then the poster image.
   // Without either (e.g. native HLS without a thumbnail) the layout adjusts once, when metadata arrives.
-  $: loadPosterSize(hlsThumbnail)
+  $: posterSize = loadImageSize(hlsThumbnail)
   $: portrait =
-    isPortrait(videoWidth, videoHeight) ??
-    isPortrait(manifestWidth, manifestHeight) ??
-    isPortrait(posterWidth, posterHeight) ??
+    isPortraitSize(videoWidth, videoHeight) ??
+    isPortraitSize(manifestWidth, manifestHeight) ??
+    isPortraitSize($posterSize?.width ?? 0, $posterSize?.height ?? 0) ??
     false
-
-  function isPortrait(width: number, height: number): boolean | undefined {
-    return width > 0 && height > 0 ? height > width : undefined
-  }
-
-  function loadPosterSize(url: string): void {
-    posterWidth = 0
-    posterHeight = 0
-    if (url === '') {
-      return
-    }
-    const img = new Image()
-    img.onload = () => {
-      if (hlsThumbnail !== url) {
-        return
-      }
-      posterWidth = img.naturalWidth
-      posterHeight = img.naturalHeight
-    }
-    img.src = url
-  }
 
   const token = getMetadata(presentation.metadata.Token) ?? ''
 

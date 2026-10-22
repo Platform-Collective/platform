@@ -15,6 +15,7 @@
 <script lang="ts">
   import Plyr from 'plyr'
   import { onDestroy } from 'svelte'
+  import { isPortraitSize, loadImageSize } from '../media'
 
   export let src: string
   export let name: string | undefined = undefined
@@ -24,8 +25,6 @@
   let video: HTMLVideoElement
   let videoWidth = 0
   let videoHeight = 0
-  let posterWidth = 0
-  let posterHeight = 0
   let player: Plyr | null = null
 
   const options: Plyr.Options = {
@@ -37,29 +36,11 @@
   // Portrait videos get the controls below the video instead of on top of it. The intrinsic size is known only
   // once metadata is loaded, which with preload disabled happens at the first play. Until then use the poster
   // image size; without a poster the layout adjusts once, when metadata arrives.
-  $: loadPosterSize(poster)
-  $: portrait = isPortrait(videoWidth, videoHeight) ?? isPortrait(posterWidth, posterHeight) ?? false
-
-  function isPortrait(width: number, height: number): boolean | undefined {
-    return width > 0 && height > 0 ? height > width : undefined
-  }
-
-  function loadPosterSize(url: string | undefined): void {
-    posterWidth = 0
-    posterHeight = 0
-    if (url === undefined || url === '') {
-      return
-    }
-    const img = new Image()
-    img.onload = () => {
-      if (poster !== url) {
-        return
-      }
-      posterWidth = img.naturalWidth
-      posterHeight = img.naturalHeight
-    }
-    img.src = url
-  }
+  $: posterSize = loadImageSize(poster)
+  $: portrait =
+    isPortraitSize(videoWidth, videoHeight) ??
+    isPortraitSize($posterSize?.width ?? 0, $posterSize?.height ?? 0) ??
+    false
 
   $: if (video != null) {
     player?.destroy()
