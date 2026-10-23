@@ -163,6 +163,12 @@
     "ComponentMembersSearchPlaceholder": "Change component members\u2026",
     "MoveToProject": "Move to project",
     "Duplicate": "Duplicate",
+    "MarkAsDuplicate": "Mark as duplicate of…",
+    "DuplicateOf": "Duplicate of {issue}",
+    "MarkedAsDuplicateOfThis": "{issue} was marked as duplicate of this issue",
+    "DuplicateEditRequired": "You must be able to edit both issues.",
+    "DuplicateNoCanceledStatus": "This issue’s task type has no canceled status.",
+    "MarkDuplicateFailed": "Could not mark the issue as duplicate. Refresh and try again.",
 
     "GotoIssues": "Go to issues",
     "GotoActive": "Go to active issues",
