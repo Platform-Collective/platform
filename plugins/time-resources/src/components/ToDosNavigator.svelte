@@ -6,7 +6,7 @@
   import { Asset, getMetadata, getResource, IntlString } from '@hcengineering/platform'
   import { createQuery } from '@hcengineering/presentation'
   import type { ToDo, WorkSlot } from '@hcengineering/time'
-  import tracker, { type Issue } from '@hcengineering/tracker'
+  import tracker, { type Issue, type Project } from '@hcengineering/tracker'
   import { NavFooter } from '@hcengineering/workbench-resources'
   import tagsPlugin, { TagElement as TagElementType } from '@hcengineering/tags'
   import ui, {
@@ -29,6 +29,7 @@
   import { ToDosMode } from '..'
   import time from '../plugin'
   import { getPlannerMarkers, getPlannerMonthRange } from './planner-markers'
+  import { getArchivedToDoQuery } from '../to-do-query'
 
   export let mode: ToDosMode
   export let tag: Ref<TagElementType> | undefined
@@ -93,6 +94,7 @@
   $: tags = allTags.filter((p) => myTags.has(p._id))
 
   const unplannedQuery = createQuery()
+  let unplannedTotal = 0
 
   unplannedQuery.query(
     time.class.ToDo,
@@ -102,13 +104,43 @@
       workslots: 0
     },
     (res) => {
-      counters.unplanned = res.total
+      unplannedTotal = res.total
     },
     {
       total: true,
       limit: 1
     }
   )
+
+  // Todos of archived projects are hidden in the planner, so they must not be counted either
+  const archivedProjectsQuery = createQuery()
+  const archivedUnplannedQuery = createQuery()
+  let archivedUnplannedTotal = 0
+  let archivedProjects: Ref<Project>[] = []
+  archivedProjectsQuery.query(
+    tracker.class.Project,
+    { archived: true },
+    (result) => {
+      archivedProjects = result.map((project) => project._id)
+    },
+    { projection: { _id: 1 } }
+  )
+
+  $: if (archivedProjects.length > 0) {
+    archivedUnplannedQuery.query(
+      time.class.ToDo,
+      getArchivedToDoQuery({ user: currentUser, doneOn: null, workslots: 0 }, archivedProjects),
+      (res) => {
+        archivedUnplannedTotal = res.total
+      },
+      { total: true, limit: 1 }
+    )
+  } else {
+    archivedUnplannedQuery.unsubscribe()
+    archivedUnplannedTotal = 0
+  }
+
+  $: counters.unplanned = Math.max(0, unplannedTotal - archivedUnplannedTotal)
 
   const counters: Record<string, number> = {}
   let viewDate = new Date(mode === 'date' ? currentDate : new Date())
