@@ -47,6 +47,7 @@
     "Connect": "Połącz",
     "RedirectGoogle": "Zostaniesz przekierowany do strony uwierzytelniania Google. Upewnij się, że zaznaczysz wszystkie uprawnienia.",
     "ConnectCalendar": "Połącz konto kalendarza Google",
+    "ConnectionFailed": "Nie można połączyć się z Kalendarzem Google. Spróbuj ponownie.",
     "EditRecEvent": "Edytuj powtarzające się wydarzenie",
     "RemoveRecEvent": "Usuń powtarzające się wydarzenie",
     "ThisEvent": "To wydarzenie",

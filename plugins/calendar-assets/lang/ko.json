@@ -47,6 +47,7 @@
         "Connect": "연결",
         "RedirectGoogle": "Google 인증 페이지로 이동합니다. 모든 권한을 선택하세요.",
         "ConnectCalendar": "Google 캘린더 계정 연결",
+    "ConnectionFailed": "Google Calendar에 연결할 수 없습니다. 다시 시도해 주세요.",
         "EditRecEvent": "반복 일정 편집",
         "RemoveRecEvent": "반복 일정 삭제",
         "ThisEvent": "이 일정",

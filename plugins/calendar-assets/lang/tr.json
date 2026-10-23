@@ -47,6 +47,7 @@
     "Connect": "Bağlan",
     "RedirectGoogle": "Google kimlik doğrulama sayfasına yönlendirileceksiniz. Lütfen tüm izinleri seçtiğinizden emin olun.",
     "ConnectCalendar": "Google Takvim hesabını bağla",
+    "ConnectionFailed": "Google Takvim’e bağlanılamadı. Lütfen tekrar deneyin.",
     "EditRecEvent": "Tekrarlanan etkinliği düzenle",
     "RemoveRecEvent": "Tekrarlanan etkinliği kaldır",
     "ThisEvent": "Bu etkinlik",

@@ -47,6 +47,7 @@
     "Connect": "Verbinden",
     "RedirectGoogle": "Sie werden zur Google-Authentifizierungsseite weitergeleitet. Bitte wählen Sie alle Berechtigungen aus.",
     "ConnectCalendar": "Google Kalender-Konto verbinden",
+    "ConnectionFailed": "Die Verbindung zu Google Kalender konnte nicht hergestellt werden. Bitte versuchen Sie es erneut.",
     "EditRecEvent": "Wiederkehrenden Termin bearbeiten",
     "RemoveRecEvent": "Wiederkehrenden Termin entfernen",
     "ThisEvent": "Dieser Termin",

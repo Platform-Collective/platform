@@ -47,6 +47,7 @@
     "Connect": "接続",
     "RedirectGoogle": "Googleの認証ページにリダイレクトされます。すべての権限を選択してください。",
     "ConnectCalendar": "Google カレンダーアカウントと接続",
+    "ConnectionFailed": "Google カレンダーに接続できませんでした。もう一度お試しください。",
     "EditRecEvent": "繰り返しイベントを編集",
     "RemoveRecEvent": "繰り返しイベントを削除",
     "ThisEvent": "このイベント",

@@ -47,6 +47,7 @@
     "Connect": "连接",
     "RedirectGoogle": "您将被重定向到 Google 身份验证页面。请确保选择所有权限。",
     "ConnectCalendar": "连接 Google 日历帐户",
+    "ConnectionFailed": "无法连接到 Google 日历。请重试。",
     "EditRecEvent": "编辑重复事件",
     "RemoveRecEvent": "移除重复事件",
     "ThisEvent": "此事件",
