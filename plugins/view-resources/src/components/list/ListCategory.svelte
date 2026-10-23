@@ -46,6 +46,7 @@
   import { FocusSelection, SelectionFocusProvider, focusStore } from '../../selection'
   import ListHeader from './ListHeader.svelte'
   import ListItem from './ListItem.svelte'
+  import { getListSortOptions } from './sort-options'
 
   export let category: PrimitiveType | AggregateValue
   export let headerComponent: AttributeModel | undefined
@@ -134,6 +135,8 @@
         })
       : resultQuery
 
+  $: rowOptions = getListSortOptions(client.getHierarchy(), _class, resultOptions)
+
   $: if (lastLevel) {
     void limiter.add(async () => {
       try {
@@ -148,7 +151,7 @@
               handleRowFocused(focusDoc)
             }
           },
-          { ...resultOptions, limit: limit ?? 200 }
+          { ...rowOptions, limit: limit ?? 200 }
         )
       } catch (e) {
         console.error(e)
