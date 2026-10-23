@@ -44,6 +44,7 @@
   import EditPerson from './EditPerson.svelte'
   import { getAccountClient } from '../utils'
   import SocialIdentityPresenter from './SocialIdentityPresenter.svelte'
+  import { isPersonMergePermissionCached } from './person-merge-permission'
 
   export let value: Person
   const dispatch = createEventDispatcher()
@@ -357,7 +358,14 @@
       return
     }
 
-    if (primaryPerson.personUuid === previousPrimaryUuid && secondaryPerson.personUuid === previousSecondaryUuid) {
+    if (
+      isPersonMergePermissionCached(
+        primaryPerson.personUuid,
+        secondaryPerson.personUuid,
+        previousPrimaryUuid,
+        previousSecondaryUuid
+      )
+    ) {
       return
     }
 
