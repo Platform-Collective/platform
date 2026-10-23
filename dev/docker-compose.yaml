@@ -282,6 +282,7 @@ services:
       - COLLABORATOR_URL=ws://huly.local:3078
       - STORAGE_CONFIG=${STORAGE_CONFIG}
       - GITHUB_URL=http://huly.local:3500
+      - GITLAB_URL=http://huly.local:3600
       - PRINT_URL=http://huly.local:4005
       - SIGN_URL=http://huly.local:4006
       #      - ANALYTICS_COLLECTOR_URL=http://huly.local:4017

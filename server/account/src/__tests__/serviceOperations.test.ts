@@ -116,6 +116,34 @@ describe('addSocialIdToPerson', () => {
     )
   })
 
+  test('should allow gitlab service to add social id', async () => {
+    ;(decodeTokenVerbose as jest.Mock).mockReturnValue({
+      extra: { service: 'gitlab' }
+    })
+    const newSocialId = 'new-social-id' as PersonId
+    addSocialIdSpy.mockResolvedValue(newSocialId)
+
+    const params = {
+      person: 'test-person' as PersonUuid,
+      type: SocialIdType.GITLAB,
+      value: '42@gitlab.com',
+      confirmed: true,
+      displayValue: 'alice'
+    }
+
+    const result = await addSocialIdToPerson(mockCtx, mockDb, mockBranding, mockToken, params)
+
+    expect(result).toBe(newSocialId)
+    expect(addSocialIdSpy).toHaveBeenCalledWith(
+      mockDb,
+      params.person,
+      params.type,
+      params.value,
+      params.confirmed,
+      params.displayValue
+    )
+  })
+
   test('should allow admin to add social id', async () => {
     ;(decodeTokenVerbose as jest.Mock).mockReturnValue({
       extra: { admin: 'true' }
