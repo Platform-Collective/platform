@@ -31,6 +31,7 @@ import { calendar_v3, google } from 'googleapis'
 
 import { encode64 } from './base64'
 import { getClient } from './client'
+import { ApiError } from './error'
 import { setSyncHistory } from './kvsUtils'
 import { lock } from './mutex'
 import { IncomingSyncManager } from './sync'
@@ -138,6 +139,9 @@ export class AuthController {
 
   private async process (code: string, state: State): Promise<void> {
     const authRes = await this.authorize(code, state)
+    if (!authRes.success) {
+      throw new ApiError(calendar.string.NotAllPermissions, 'Not all permissions were granted')
+    }
     if (authRes.success && authRes.personId !== undefined) {
       const client = await getClient(this.user.workspace)
       const txOp = new TxOperations(client, authRes.personId)
