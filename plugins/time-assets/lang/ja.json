@@ -26,6 +26,8 @@
     "ToDos": "アクションアイテム",
     "Done": "完了",
     "EditToDo": "アクションアイテムを編集",
+    "BlockedBy": "{issues} によりブロックされています",
+    "StartsOn": "{date} に開始",
     "Unplanned": "未計画",
     "Planned": "計画済み",
     "AddSlot": "時間枠を追加",

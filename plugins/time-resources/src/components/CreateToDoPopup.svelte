@@ -24,12 +24,14 @@
   import task, { makeRank } from '@hcengineering/task'
   import { StyledTextBox } from '@hcengineering/text-editor-resources'
   import { TimeEvents, ToDo, ToDoPriority, WorkSlot } from '@hcengineering/time'
+  import tracker, { type Issue } from '@hcengineering/tracker'
   import { Button, Component, EditBox, IconClose, Label, Scroller } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import time from '../plugin'
   import DueDateEditor from './DueDateEditor.svelte'
   import PriorityEditor from './PriorityEditor.svelte'
   import Workslots from './Workslots.svelte'
+  import { getIssueSlotDuration } from '../issue-planning'
 
   export let object: Doc | undefined
   export let value: string = ''
@@ -137,7 +139,11 @@
   }
 
   function createSlot(): void {
-    const defaultDuration = 30 * 60 * 1000
+    const issue =
+      object !== undefined && client.getHierarchy().isDerived(object._class, tracker.class.Issue)
+        ? (object as Issue)
+        : undefined
+    const defaultDuration = getIssueSlotDuration(issue)
     const now = Date.now()
     const date = Math.ceil(now / (30 * 60 * 1000)) * (30 * 60 * 1000)
     const dueDate = date + defaultDuration

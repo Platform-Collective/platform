@@ -25,7 +25,7 @@
   import PlanningCalendar from './PlanningCalendar.svelte'
   import ToDosNavigator from './ToDosNavigator.svelte'
   import ToDos from './ToDos.svelte'
-  import { findPrimaryCalendar, timeSeparators } from '../utils'
+  import { findPrimaryCalendar, getToDoSlotDuration, timeSeparators } from '../utils'
   import { dragging } from '../dragging'
   import time from '../plugin'
   import { Analytics } from '@hcengineering/analytics'
@@ -33,7 +33,6 @@
 
   const dispatch = createEventDispatcher()
 
-  const defaultDuration = 30 * 60 * 1000
   let mainPanel: HTMLElement
   let replacedPanel: HTMLElement
 
@@ -50,7 +49,7 @@
     const date = e.detail.date.getTime()
     const currentAccount = getCurrentAccount()
     const _calendar = await findPrimaryCalendar()
-    const dueDate = date + defaultDuration
+    const dueDate = date + (await getToDoSlotDuration(client, doc))
     await client.addCollection(time.class.WorkSlot, calendar.space.Calendar, doc._id, doc._class, 'workslots', {
       calendar: _calendar,
       eventId: generateEventId(),

@@ -28,6 +28,8 @@
     deviceOptionsStore as deviceInfo
   } from '@hcengineering/ui'
   import { ToDo, WorkSlot } from '@hcengineering/time'
+  import tracker, { type Issue } from '@hcengineering/tracker'
+  import { getIssueSlotDuration } from '../issue-planning'
   import time from '../plugin'
   import { filterVisibleWorkSlots } from '../to-do-query'
   import IconSun from './icons/Sun.svelte'
@@ -51,6 +53,26 @@
     },
     { projection: { _id: 1 }, showArchived: true }
   )
+
+  const issueQuery = createQuery()
+  let dragIssue: Issue | undefined
+
+  function updateDragIssue(todo: ToDo | null): void {
+    if (todo !== null && getClient().getHierarchy().isDerived(todo.attachedToClass, tracker.class.Issue)) {
+      if (
+        issueQuery.query(tracker.class.Issue, { _id: todo.attachedTo as Ref<Issue> }, (res) => {
+          dragIssue = res[0]
+        })
+      ) {
+        dragIssue = undefined
+      }
+    } else {
+      issueQuery.unsubscribe()
+      dragIssue = undefined
+    }
+  }
+
+  $: updateDragIssue(dragItem)
 
   function getFrom(date: Date): Timestamp {
     return new Date(date).setHours(0, 0, 0, 0)
@@ -126,6 +148,17 @@
   }
 
   const dragItemId = 'drag_item' as Ref<WorkSlot>
+
+  function updateDragDuration(duration: number): void {
+    const current = raw.find((p) => p._id === dragItemId)
+    if (current !== undefined && current.dueDate !== current.date + duration) {
+      current.dueDate = current.date + duration
+      raw = raw
+    }
+  }
+
+  $: updateDragDuration(getIssueSlotDuration(dragIssue))
+
   function dragEnter(e: CustomEvent<any>) {
     if (dragItem != null) {
       const current = raw.find((p) => p._id === dragItemId)
@@ -134,7 +167,7 @@
         current.$lookup = { ...current.$lookup, attachedTo: dragItem }
         current.attachedToClass = dragItem._class
         current.date = e.detail.date.getTime()
-        current.dueDate = new Date(e.detail.date).setMinutes(new Date(e.detail.date).getMinutes() + 30)
+        current.dueDate = current.date + getIssueSlotDuration(dragIssue)
       } else {
         const ev: WithLookup<WorkSlot> = {
           $lookup: { attachedTo: dragItem },
@@ -156,7 +189,7 @@
           participants: [getCurrentEmployee()],
           modifiedOn: Date.now(),
           date: e.detail.date.getTime(),
-          dueDate: new Date(e.detail.date).setMinutes(new Date(e.detail.date).getMinutes() + 30),
+          dueDate: e.detail.date.getTime() + getIssueSlotDuration(dragIssue),
           user: myAcc.primarySocialId
         }
         raw.push(ev)

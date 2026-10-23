@@ -26,6 +26,8 @@
         "ToDos": "액션 아이템",
         "Done": "완료",
         "EditToDo": "액션 아이템 편집",
+        "BlockedBy": "{issues}에 의해 차단됨",
+        "StartsOn": "{date}에 시작",
         "Unplanned": "미계획",
         "Planned": "계획됨",
         "AddSlot": "시간대 추가",
