@@ -18,6 +18,7 @@ export enum MarkupNodeType {
   doc = 'doc',
   paragraph = 'paragraph',
   blockquote = 'blockquote',
+  callout = 'callout',
   horizontal_rule = 'horizontalRule',
   heading = 'heading',
   code_block = 'codeBlock',

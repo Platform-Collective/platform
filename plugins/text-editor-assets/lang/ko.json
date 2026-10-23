@@ -13,6 +13,7 @@
         "OrderedList": "번호 매기기 목록",
         "BulletedList": "글머리 기호 목록",
         "Blockquote": "인용",
+    "Callout": "콜아웃",
         "Code": "코드",
         "CodeBlock": "코드 블록",
         "Note": "메모",

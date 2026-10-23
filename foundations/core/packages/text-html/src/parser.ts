@@ -14,6 +14,7 @@
 //
 
 import {
+  getCalloutKind,
   getOrderedListStart,
   type AttrValue,
   type MarkupMark,
@@ -78,6 +79,20 @@ class HtmlParseState {
     const top = this.top()
     if (top === undefined || text.length === 0) {
       return
+    }
+
+    // Entity decoding can split one callout text node across several parser callbacks.
+    if (this.stack.some((node) => node.type === MarkupNodeType.callout)) {
+      const previous = top.content?.[top.content.length - 1]
+      const marks = previous?.marks ?? []
+      if (
+        previous?.type === MarkupNodeType.text &&
+        marks.length === this.marks.length &&
+        marks.every((mark, index) => mark === this.marks[index])
+      ) {
+        previous.text = (previous.text ?? '') + text
+        return
+      }
     }
 
     // Auto-wrap text in paragraph if we're at the doc level
@@ -296,6 +311,13 @@ const nodeRules: Record<string, HtmlNodeRule> = {
         textAlign: attributes.textAlign ?? null
       }
     }
+  },
+  div: {
+    node: MarkupNodeType.callout,
+    getAttrs: (attributes) => ({
+      kind: getCalloutKind(attributes['data-kind']),
+      emoji: attributes['data-emoji'] ?? null
+    })
   },
   blockquote: {
     node: MarkupNodeType.blockquote
@@ -540,7 +562,8 @@ export class HtmlParser {
             }
           }
 
-          const handler = state.handlers[tag]
+          // Only tagged callout divs are nodes; preserve other divs as raw HTML as before.
+          const handler = tag === 'div' && attributes['data-type'] !== 'callout' ? undefined : state.handlers[tag]
           if (handler !== undefined) {
             handler.handleOpenTag(state, tag, attributes)
           } else {
@@ -555,6 +578,16 @@ export class HtmlParser {
           }
 
           if (text.length === 0) {
+            return
+          }
+
+          const top = state.top()
+          if (
+            text.trim().length === 0 &&
+            (top?.type === MarkupNodeType.callout ||
+              (top?.type === MarkupNodeType.doc &&
+                top.content?.[top.content.length - 1]?.type === MarkupNodeType.callout))
+          ) {
             return
           }
 
