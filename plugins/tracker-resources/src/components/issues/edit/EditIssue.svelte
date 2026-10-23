@@ -58,6 +58,7 @@
   import CopyToClipboard from './CopyToClipboard.svelte'
   import SubIssueSelector from './SubIssueSelector.svelte'
   import SubIssues from './SubIssues.svelte'
+  import { canCloseIssue } from './can-close-issue'
 
   export let _id: Ref<Issue> | string
   export let _class: Ref<Class<Issue>>
@@ -75,7 +76,7 @@
   let issueLoaded = false
   let title = ''
   let innerWidth: number
-  let descriptionBox: AttachmentStyleBoxCollabEditor
+  let descriptionBox: AttachmentStyleBoxCollabEditor | null | undefined
   let showAllMixins: boolean
 
   let effectiveReadonly = true
@@ -168,10 +169,7 @@
 
   const manager = createFocusManager()
   export function canClose(): boolean {
-    if (descriptionBox?.isFocused()) {
-      return false
-    }
-    return true
+    return canCloseIssue(issue, descriptionBox)
   }
 
   // If it is embedded
