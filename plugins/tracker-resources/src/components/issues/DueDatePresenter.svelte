@@ -15,9 +15,10 @@
 <script lang="ts">
   import { WithLookup } from '@hcengineering/core'
   import { getClient } from '@hcengineering/presentation'
-  import task from '@hcengineering/task'
   import { Issue } from '@hcengineering/tracker'
   import { ButtonKind, ButtonSize, DueDatePresenter } from '@hcengineering/ui'
+  import { statusStore } from '@hcengineering/view-resources'
+  import { shouldIgnoreIssueOverdue } from './due-date'
 
   export let value: WithLookup<Issue>
   export let kind: ButtonKind = 'link'
@@ -42,9 +43,7 @@
 
   $: shouldRenderPresenter = dueDateMs != null
 
-  $: ignoreOverDue =
-    value.$lookup?.status?.category === task.statusCategory.Won ||
-    value.$lookup?.status?.category === task.statusCategory.Lost
+  $: ignoreOverDue = shouldIgnoreIssueOverdue(value, $statusStore.byId)
 </script>
 
 <DueDatePresenter
