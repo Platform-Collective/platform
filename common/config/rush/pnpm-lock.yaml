@@ -26332,6 +26332,9 @@ importers:
       '@hcengineering/chat':
         specifier: workspace:^0.7.0
         version: link:../chat
+      '@hcengineering/chunter':
+        specifier: workspace:^0.7.0
+        version: link:../chunter
       '@hcengineering/communication':
         specifier: workspace:^0.7.0
         version: link:../communication
