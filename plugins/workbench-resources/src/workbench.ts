@@ -23,7 +23,7 @@ import core, {
 } from '@hcengineering/core'
 import notification, { notificationId } from '@hcengineering/notification'
 import { type Asset, getMetadata, getResource, type IntlString, setMetadata, translate } from '@hcengineering/platform'
-import presentation, { configurationStore, getClient } from '@hcengineering/presentation'
+import presentation, { configurationStore, createQuery, getClient, type LiveQuery } from '@hcengineering/presentation'
 import {
   type AnyComponent,
   getCurrentLocation,
@@ -37,7 +37,7 @@ import {
 } from '@hcengineering/ui'
 import view from '@hcengineering/view'
 import { parseLinkId } from '@hcengineering/view-resources'
-import { type Application, workbenchId, type WorkbenchTab } from '@hcengineering/workbench'
+import { type Application, type LocationData, workbenchId, type WorkbenchTab } from '@hcengineering/workbench'
 import { derived, get, writable } from 'svelte/store'
 
 import setting from '@hcengineering/setting'
@@ -194,6 +194,10 @@ export async function closeTab (tab: WorkbenchTab): Promise<void> {
   const index = tabs.findIndex((t) => t._id === tab._id)
   if (index === -1) return
 
+  if (tabs.length === 1) {
+    await createTab()
+  }
+
   tabsStore.update((tabs) => tabs.filter((t) => t._id !== tab._id))
   if (get(tabIdStore) === tab._id) {
     const newTab = tabs[index - 1] ?? tabs[index + 1]
@@ -259,7 +263,52 @@ export async function unpinTab (tab: WorkbenchTab): Promise<void> {
   await client.update(tab, { isPinned: false })
 }
 
+interface TabDocumentQuery {
+  location: string
+  query: LiveQuery
+}
+
+/** Watch all tabs, including those without a rendered tab presenter. */
+export function watchTabDocuments (): () => void {
+  const queries = new Map<Ref<WorkbenchTab>, TabDocumentQuery>()
+  const unsubscribe = tabsStore.subscribe((tabs) => {
+    for (const [id, entry] of queries) {
+      if (!tabs.some((tab) => tab._id === id && tab.location === entry.location)) {
+        entry.query.unsubscribe()
+        queries.delete(id)
+      }
+    }
+    for (const tab of tabs) {
+      if (queries.has(tab._id)) continue
+      const entry = { location: tab.location, query: createQuery(true) }
+      queries.set(tab._id, entry)
+      void getTabDataByLocation(getTabLocation(tab))
+        .then((data) => {
+          if (queries.get(tab._id) !== entry || data.objectId === undefined || data.objectClass === undefined) return
+          let existed = false
+          entry.query.query(data.objectClass, { _id: data.objectId }, (docs) => {
+            if (queries.get(tab._id) !== entry) return
+            if (docs.length > 0) {
+              existed = true
+            } else if (existed) {
+              existed = false
+              void closeTab(tab).catch(console.error)
+            }
+          })
+        })
+        .catch(console.error)
+    }
+  })
+  return () => {
+    unsubscribe()
+    for (const entry of queries.values()) entry.query.unsubscribe()
+    queries.clear()
+  }
+}
+
 export async function getTabDataByLocation (loc: Location): Promise<{
+  objectId?: Ref<Doc>
+  objectClass?: Ref<Class<Doc>>
   name?: string
   label: IntlString
   icon?: Asset
@@ -275,10 +324,14 @@ export async function getTabDataByLocation (loc: Location): Promise<{
   let icon: Asset | undefined
   let iconComponent: AnyComponent | undefined
   let iconProps: Record<string, any> | undefined
+  let objectId: Ref<Doc> | undefined
+  let objectClass: Ref<Class<Doc>> | undefined
 
   if (application?.locationDataResolver != null) {
     const resolver = await getResource(application.locationDataResolver)
     const data = await resolver(loc)
+    objectId = data.objectId
+    objectClass = data.objectClass
     name = data.name
     label = data.nameIntl ?? application.label ?? workbench.string.Tab
     iconComponent = data.iconComponent
@@ -288,12 +341,15 @@ export async function getTabDataByLocation (loc: Location): Promise<{
     const special = loc.path[3]
     const specialLabel = application?.navigatorModel?.specials?.find((s) => s.id === special)?.label
     const resolvedLoc = await getResolvedLocation(loc, application)
-    name = await getDefaultTabName(resolvedLoc)
+    const data = await getDefaultTabData(resolvedLoc)
+    name = data.name
+    objectId = data.objectId
+    objectClass = data.objectClass
     label = specialLabel ?? application?.label ?? workbench.string.Tab
     icon = application?.icon
   }
 
-  return { name, label, icon, iconComponent, iconProps }
+  return { name, label, icon, iconComponent, iconProps, objectId, objectClass }
 }
 
 async function getResolvedLocation (loc: Location, app?: Application): Promise<Location> {
@@ -303,23 +359,24 @@ async function getResolvedLocation (loc: Location, app?: Application): Promise<L
   return (await resolver(loc))?.loc ?? loc
 }
 
-async function getDefaultTabName (loc: Location): Promise<string | undefined> {
-  if (loc.fragment == null) return
+async function getDefaultTabData (loc: Location): Promise<LocationData> {
+  if (loc.fragment == null) return {}
   const client = getClient()
   const hierarchy = client.getHierarchy()
   const [, id, _class] = decodeURIComponent(loc.fragment).split('|')
-  if (_class == null) return
+  if (_class == null || !hierarchy.hasClass(_class as Ref<Class<Doc>>)) return {}
 
   const mixin = hierarchy.classHierarchyMixin(_class as Ref<Class<Doc>>, view.mixin.ObjectTitle)
-  if (mixin === undefined) return
-  const titleProvider = await getResource(mixin.titleProvider)
   try {
     const linkProviders = client.getModel().findAllSync(view.mixin.LinkIdProvider, {})
     const _id = await parseLinkId(linkProviders, id, _class as Ref<Class<Doc>>)
-    return await titleProvider(client, _id)
+    const titleProvider = mixin === undefined ? undefined : await getResource(mixin.titleProvider)
+    const name = await titleProvider?.(client, _id)
+    return { name, objectId: _id, objectClass: _class as Ref<Class<Doc>> }
   } catch (err: any) {
     console.error(err)
   }
+  return {}
 }
 
 configurationStore.subscribe((config) => {
