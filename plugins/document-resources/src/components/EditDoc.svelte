@@ -88,6 +88,7 @@
 
   let doc: WithLookup<Document> | undefined
   let title = ''
+  let lastTitleSync: { _id: Ref<Document> | undefined, title: string } | undefined
   let innerWidth: number
 
   let isCopied = false
@@ -150,7 +151,13 @@
   $: _id !== undefined &&
     query.query(document.class.Document, { _id }, async (result) => {
       ;[doc] = result
-      title = doc?.title ?? ''
+      // Sync the input only when the stored title changes, so that unrelated updates of the document
+      // (e.g. a new backlink) do not overwrite a title that is being edited and not saved yet
+      const docTitle = doc?.title ?? ''
+      if (doc?._id !== lastTitleSync?._id || docTitle !== lastTitleSync?.title) {
+        title = docTitle
+        lastTitleSync = { _id: doc?._id, title: docTitle }
+      }
     })
 
   $: canSave = title.trim().length > 0
