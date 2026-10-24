@@ -110,6 +110,7 @@ export async function start (ctx: MeasureContext, config: Config, storageAdapter
     const wsIds = await getWorkspaceIds(rawToken)
 
     return {
+      account: token.account,
       connectionId: generateId(),
       wsIds,
       clientFactory: simpleClientFactory(token)
