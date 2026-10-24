@@ -48,6 +48,7 @@ export default mergeIds(timeId, time, {
     WorkSlotElement: '' as AnyComponent,
     EditWorkSlot: '' as AnyComponent,
     CreateToDoPopup: '' as AnyComponent,
+    PlanMessagePopup: '' as AnyComponent,
     NotificationToDoPresenter: '' as AnyComponent,
     PriorityEditor: '' as AnyComponent
   },

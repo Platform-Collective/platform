@@ -13279,6 +13279,9 @@ importers:
       '@hcengineering/calendar':
         specifier: workspace:^0.7.0
         version: link:../../plugins/calendar
+      '@hcengineering/chunter':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/chunter
       '@hcengineering/contact':
         specifier: workspace:^0.7.0
         version: link:../../plugins/contact
@@ -28667,6 +28670,9 @@ importers:
       '@hcengineering/task-resources':
         specifier: workspace:^0.7.0
         version: link:../task-resources
+      '@hcengineering/text-core':
+        specifier: workspace:^0.7.19
+        version: link:../../foundations/core/packages/text-core
       '@hcengineering/text-editor':
         specifier: workspace:^0.7.0
         version: link:../text-editor
