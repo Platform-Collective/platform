@@ -25,16 +25,22 @@
   import ModernNotifications from './ModernNotifications.svelte'
   import LegacyNotifications from './legacy/LegacyNotifications.svelte'
   import { NavigationItem } from '../type'
-  import { NavigationClient } from '../client'
   import { isReactionNotification } from '@hcengineering/notification-resources'
 
-  export let navClient: NavigationClient
   export let navItem: NavigationItem
   export let selected: boolean = false
+  export let isRemoving: boolean = false
   export let viewlets: ActivityNotificationViewlet[] = []
 
   const account = getCurrentAccount()
-  const dispatch = createEventDispatcher()
+  const dispatch = createEventDispatcher<{
+    doc: Doc | undefined
+    select: {
+      doc: Doc
+      notification?: InboxNotification | Notification
+    }
+    remove: void
+  }>()
 
   let total = 0
 
@@ -82,16 +88,6 @@
         limit: 1
       }
     )
-  }
-
-  let isRemoving = false
-  async function handleToggle(): Promise<void> {
-    isRemoving = true
-    try {
-      await navClient.remove(navItem)
-    } finally {
-      isRemoving = false
-    }
   }
 
   function asCard(doc: Doc): Card {
@@ -155,7 +151,7 @@
           {#if isRemoving}
             <Spinner size="small" />
           {:else}
-            <CheckBox kind="todo" size="medium" on:value={handleToggle} />
+            <CheckBox kind="todo" size="medium" on:value={() => dispatch('remove')} />
           {/if}
         </div>
       {/if}
@@ -178,7 +174,7 @@
           {#if isRemoving}
             <Spinner size="small" />
           {:else}
-            <CheckBox kind="todo" size="medium" on:value={handleToggle} />
+            <CheckBox kind="todo" size="medium" on:value={() => dispatch('remove')} />
           {/if}
         </div>
       {/if}
