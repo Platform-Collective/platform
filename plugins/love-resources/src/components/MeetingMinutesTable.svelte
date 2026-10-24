@@ -6,6 +6,7 @@
   import { createQuery, getClient } from '@hcengineering/presentation'
 
   import lovePlg from '../plugin'
+  import { getMeetingMinutesQuery } from '../meeting-minutes'
 
   export let floor: Floor
   export let rooms: Room[] = []
@@ -47,7 +48,7 @@
       _class: lovePlg.class.MeetingMinutes,
       config: preference?.config ?? viewlet.config,
       options: viewlet.options,
-      query: { attachedTo: { $in: rooms.map((p) => p._id) } },
+      query: getMeetingMinutesQuery(floor, rooms),
       viewlet,
       viewOptions,
       viewOptionsConfig: viewlet.viewOptions?.other,
