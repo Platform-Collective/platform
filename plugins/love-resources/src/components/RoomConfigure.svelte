@@ -26,7 +26,8 @@
   import { infos, lockedRoom } from '../stores'
   import { RoomSide, shadowNormal } from '../types'
   import { getRoomLabel } from '../utils'
-  import { IntlString } from '@hcengineering/platform'
+  import { IntlString, setPlatformStatus, unknownError } from '@hcengineering/platform'
+  import { removeRoom } from '../meeting-minutes'
 
   export let room: Room
   export let cellSize: number
@@ -66,7 +67,11 @@
   }
 
   async function remove(): Promise<void> {
-    await client.remove(room)
+    try {
+      await removeRoom(client, room)
+    } catch (err) {
+      await setPlatformStatus(unknownError(err))
+    }
   }
 
   $: removable = $infos.filter((i) => i.room === room._id).length === 0
