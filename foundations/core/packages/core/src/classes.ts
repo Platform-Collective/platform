@@ -635,6 +635,8 @@ export interface TxAccessLevel extends Class<Doc> {
   removeAccessLevel?: AccountRole
   updateAccessLevel?: AccountRole
   isIdentity?: boolean
+  /** Allow mutations only through the trusted server pipeline or the system account. */
+  serverOnly?: boolean
 }
 
 /**

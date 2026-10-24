@@ -37,6 +37,7 @@
     Label,
     createFocusManager,
     getCurrentResolvedLocation,
+    getPanelURI,
     navigate,
     showPopup
   } from '@hcengineering/ui'
@@ -50,7 +51,7 @@
   import { Analytics } from '@hcengineering/analytics'
 
   import { createEventDispatcher, onDestroy } from 'svelte'
-  import { generateIssueShortLink, getIssueIdByIdentifier } from '../../../issues'
+  import { generateIssuePanelUri, generateIssueShortLink, getIssueIdByIdentifier } from '../../../issues'
   import { canEditIssue } from '../../../utils'
   import tracker from '../../../plugin'
   import IssueStatusActivity from '../IssueStatusActivity.svelte'
@@ -127,10 +128,18 @@
         ;[issue] = result
         if (issue !== undefined) {
           title = issue.title
+          if (!embedded && _id !== issue.identifier) {
+            const loc = getCurrentResolvedLocation()
+            if (loc.fragment === getPanelURI(tracker.component.EditIssue, _id, _class, 'content')) {
+              loc.fragment = generateIssuePanelUri(issue)
+              navigate(loc, true)
+            }
+          }
         }
       },
       {
-        limit: 1
+        limit: 1,
+        showArchived: true
       }
     )
   }
