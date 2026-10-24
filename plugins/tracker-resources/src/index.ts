@@ -392,7 +392,7 @@ async function openIssuesOfTaskType (taskType: TaskType): Promise<void> {
       mode: view.filter.FilterObjectIn,
       index: 1
     } as unknown as Filter
-    setFilters([filter])
+    setFilters([filter], loc, tracker.class.Issue)
   }
   if (taskType === undefined) return
   const loc = getCurrentResolvedLocation()
@@ -400,9 +400,7 @@ async function openIssuesOfTaskType (taskType: TaskType): Promise<void> {
   loc.path[3] = 'all-issues'
   loc.path.length = 4
   navigate(loc)
-  setTimeout(() => {
-    setFilterTag(taskType)
-  }, 200)
+  setFilterTag(taskType)
 }
 
 export default async (): Promise<Resources> => ({

@@ -12,10 +12,11 @@ import core, {
 } from '@hcengineering/core'
 import { getResource } from '@hcengineering/platform'
 import { createQuery, getClient, type LiveQuery } from '@hcengineering/presentation'
-import { getCurrentResolvedLocation, locationToUrl, type AnyComponent } from '@hcengineering/ui'
+import { getCurrentResolvedLocation, type AnyComponent, type Location } from '@hcengineering/ui'
 import { type Filter, type FilterMode, type FilteredView, type KeyFilter } from '@hcengineering/view'
 import { get, writable } from 'svelte/store'
 import view from './plugin'
+import { makeFilterStorageKey } from './filter-persistence'
 
 /**
  * @public
@@ -27,7 +28,21 @@ export const filterStore = writable<Filter[]>([])
  */
 export const selectedFilterStore = writable<FilteredView | undefined>()
 
-export function setFilters (filters: Filter[]): void {
+/** Filters requested by navigation are applied when the destination view is ready. */
+export interface NavigationFilters {
+  location: Location
+  filters: Filter[]
+  _class?: Ref<Class<Doc>>
+}
+
+export const navigationFilterStore = writable<NavigationFilters | undefined>()
+
+/** Applies filters immediately, or queues them for the destination location and class. */
+export function setFilters (filters: Filter[], location?: Location, _class?: Ref<Class<Doc>>): void {
+  if (location !== undefined) {
+    navigationFilterStore.set({ location, filters, _class })
+    return
+  }
   const old = get(filterStore)
   old.forEach((p) => p.onRemove?.())
   filterStore.set(filters)
@@ -316,16 +331,11 @@ export function createFilter (_class: Ref<Class<Doc>>, key: string, value: any[]
   }
 }
 
-export function getFilterKey (_class: Ref<Class<Doc>> | undefined): string {
-  const loc = getCurrentResolvedLocation()
-  loc.path.length = 3
-  loc.fragment = undefined
-  loc.query = undefined
-  let res = 'filter' + locationToUrl(loc)
-  if (_class !== undefined) {
-    res = res + _class
-  }
-  return res
+export function getFilterKey (
+  _class: Ref<Class<Doc>> | undefined,
+  location: Location = getCurrentResolvedLocation()
+): string {
+  return makeFilterStorageKey(location, _class)
 }
 
 /**
