@@ -44,6 +44,7 @@
   import { fade } from 'svelte/transition'
   import { showMenu } from '../../actions'
   import { FocusSelection, SelectionFocusProvider, focusStore } from '../../selection'
+  import { getCategoryDropIndex, isDragAtBorder } from './category-drag'
   import ListHeader from './ListHeader.svelte'
   import ListItem from './ListItem.svelte'
 
@@ -243,11 +244,6 @@
 
   let div: HTMLDivElement
 
-  function isBorder(ev: MouseEvent, direction: 'top' | 'bottom'): boolean {
-    const target = ev.target as HTMLDivElement
-    return Math.abs(ev.clientY - target.getBoundingClientRect()[direction]) < 5
-  }
-
   function dragEnterCat(ev: MouseEvent): void {
     ev.preventDefault()
     if (dragItemIndex === undefined && dragItem.doc !== undefined) {
@@ -258,14 +254,10 @@
       }
       const props = _newObjectProps(dragItem.doc)
       if (props !== undefined) {
-        if (isBorder(ev, 'top')) {
-          items.unshift(dragItem.doc)
-          dragItemIndex = 0
-          items = items
-          dispatch('row-focus', dragItem)
-        } else if (isBorder(ev, 'bottom')) {
-          items.push(dragItem.doc)
-          dragItemIndex = items.length - 1
+        const index = getCategoryDropIndex(ev, items.length, collapsed)
+        if (index !== undefined) {
+          items.splice(index, 0, dragItem.doc)
+          dragItemIndex = index
           items = items
           dispatch('row-focus', dragItem)
         }
@@ -274,6 +266,7 @@
   }
 
   function dragLeaveCat(ev: MouseEvent): void {
+    if (ev.relatedTarget instanceof Node && (ev.currentTarget as HTMLElement).contains(ev.relatedTarget)) return
     ev.stopPropagation()
     if (dragItemIndex !== undefined) {
       items.splice(dragItemIndex, 1)
@@ -286,10 +279,10 @@
     if (dragItemIndex !== undefined) {
       const isLastItem = i === limited.length - 1
       const isFirstItemWithoutHeader = i === 0 && disableHeader
-      if (isFirstItemWithoutHeader && isBorder(ev, 'top')) {
+      if (isFirstItemWithoutHeader && isDragAtBorder(ev, 'top')) {
         return
       }
-      if (isLastItem && isBorder(ev, 'bottom')) {
+      if (isLastItem && isDragAtBorder(ev, 'bottom')) {
         return
       }
       ev.stopPropagation()
@@ -449,7 +442,7 @@
   class:category-one={oneCat}
   class:category-last={lastCat}
   class:disableHeader
-  on:drop|preventDefault={drop}
+  on:drop|preventDefault|stopPropagation={() => drop()}
   on:dragover={dragOverCat}
   on:dragenter={dragEnterCat}
   on:dragleave={dragLeaveCat}
@@ -494,6 +487,9 @@
   {/if}
   <Scroller horizontal shrink noFade={false} showOverflowArrows>
     <ExpandCollapse isExpanded={!collapsed || dragItemIndex !== undefined}>
+      {#if lastLevel && itemProj.length === 0 && items.length === 0}
+        <div class="empty-drop-area" />
+      {/if}
       {#if !lastLevel}
         <slot
           name="category"
@@ -597,3 +593,9 @@
     </ExpandCollapse>
   </Scroller>
 </div>
+
+<style lang="scss">
+  .empty-drop-area {
+    min-height: 2.75rem;
+  }
+</style>
