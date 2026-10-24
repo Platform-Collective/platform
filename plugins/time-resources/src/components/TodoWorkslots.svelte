@@ -24,7 +24,7 @@
   import time from '../plugin'
   import Workslots from './Workslots.svelte'
   import { Analytics } from '@hcengineering/analytics'
-  import { findPrimaryCalendar } from '../utils'
+  import { findPrimaryCalendar, getToDoSlotDuration } from '../utils'
 
   export let todo: ToDo
 
@@ -82,7 +82,7 @@
   }
 
   async function create(): Promise<void> {
-    const defaultDuration = 30 * 60 * 1000
+    const defaultDuration = await getToDoSlotDuration(client, todo)
     const now = Date.now()
     const date = Math.ceil(now / (30 * 60 * 1000)) * (30 * 60 * 1000)
     const currentAccount = getCurrentAccount()
