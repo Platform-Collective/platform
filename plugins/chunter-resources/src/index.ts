@@ -56,6 +56,7 @@ import WorkbenchTabExtension from './components/WorkbenchTabExtension.svelte'
 import DirectMessageButton from './components/DirectMessageButton.svelte'
 import EmployeePresenter from './components/ChunterEmployeePresenter.svelte'
 import InlineCommentThread from './components/inline-comment/InlineCommentThread.svelte'
+import { canQuoteMessage, quoteMessage } from './quote-action'
 
 import {
   chunterSpaceLinkFragmentProvider,
@@ -206,6 +207,7 @@ export default async (): Promise<Resources> => ({
     DmIdentifierProvider: dmIdentifierProvider,
     CanDeleteMessage: canDeleteMessage,
     CanCopyMessageLink: canCopyMessageLink,
+    CanQuoteMessage: canQuoteMessage,
     GetChunterSpaceLinkFragment: chunterSpaceLinkFragmentProvider,
     GetUnreadThreadsCount: getUnreadThreadsCount,
     GetThreadLink: getThreadLink,
@@ -228,6 +230,7 @@ export default async (): Promise<Resources> => ({
     RemoveChannel: removeChannelAction,
     ReplyToThread: replyToThread,
     OpenInSidebar: openChannelInSidebarAction,
+    QuoteMessage: quoteMessage,
     TranslateMessage: translateMessage,
     SummarizeMessages: summarizeMessages,
     ShowOriginalMessage: showOriginalMessage,
