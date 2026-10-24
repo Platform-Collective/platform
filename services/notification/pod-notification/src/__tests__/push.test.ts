@@ -93,13 +93,16 @@ describe('sendPushToSubscription', () => {
     sendNotificationMock.mockReset()
   })
 
-  it('returns empty when all sends succeed', async () => {
+  it('sends each notification with a five-minute TTL and returns empty when all sends succeed', async () => {
     sendNotificationMock.mockResolvedValue({ statusCode: 201, body: '', headers: {} })
     const ctx = createMockMeasureContext()
     const subs = [mkSubscription('s1'), mkSubscription('s2')]
     const result = await sendPushToSubscription(ctx, subs, sampleData)
     expect(result).toEqual([])
     expect(sendNotificationMock).toHaveBeenCalledTimes(2)
+    for (let i = 0; i < subs.length; i++) {
+      expect(sendNotificationMock).toHaveBeenNthCalledWith(i + 1, subs[i], JSON.stringify(sampleData), { TTL: 300 })
+    }
     expect(ctx.warn).not.toHaveBeenCalled()
     expect(ctx.error).not.toHaveBeenCalled()
   })
