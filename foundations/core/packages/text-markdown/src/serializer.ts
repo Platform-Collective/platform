@@ -282,6 +282,11 @@ export const storeNodes: Record<string, NodeProcessor> = {
   emoji: (state, node) => {
     state.text(node.attrs?.emoji as string)
   },
+  callout: (state, node) => {
+    // Blank lines would terminate the Markdown HTML block, including inside code blocks.
+    state.write(state.renderHtml(node).replace(/\n/g, '&#10;'))
+    state.closeBlock(node)
+  },
   table: (state, node) => {
     state.write(state.renderHtml(node))
     state.closeBlock(node)

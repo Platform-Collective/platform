@@ -43,7 +43,15 @@ import {
 import { ExtensionFactory, extensionKit } from '../kit'
 import { BackgroundColor, TextColor } from '../marks/colors'
 import { InlineCommentMark } from '../marks/inlineComment'
-import { CodeBlockExtension, codeBlockOptions, CommentNode, MarkdownNode, TodoItemNode, TodoListNode } from '../nodes'
+import {
+  CalloutNode,
+  CodeBlockExtension,
+  codeBlockOptions,
+  CommentNode,
+  MarkdownNode,
+  TodoItemNode,
+  TodoListNode
+} from '../nodes'
 
 import { CodeExtension, codeOptions } from '../marks/code'
 import { MermaidExtension, mermaidOptions } from '../nodes/mermaid'
@@ -66,6 +74,7 @@ export const CommonKitFactory = (e: ExtensionFactory) =>
     horizontalRule: e(HorizontalRule),
     heading: e(Heading),
     underline: e(Underline),
+    callout: e(CalloutNode),
     blockquote: e(Blockquote, { HTMLAttributes: { class: 'proseBlockQuote' } }),
     link: e(Link.extend({ inclusive: false }), {
       openOnClick: false,

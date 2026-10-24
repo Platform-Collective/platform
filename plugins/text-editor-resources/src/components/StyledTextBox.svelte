@@ -183,6 +183,9 @@
         void addTableHandler(editor.editorHandler.insertTable, position)
         break
       }
+      case 'callout':
+        editor.getEditor()?.chain().focus(pos).setCallout().run()
+        break
       case 'code-block':
         editor.editorHandler.insertCodeBlock(pos)
         break
@@ -314,6 +317,7 @@
           items: [
             { id: 'image', label: textEditor.string.Image, icon: view.icon.Image },
             { id: 'table', label: textEditor.string.Table, icon: view.icon.Table2 },
+            { id: 'callout', label: textEditor.string.Callout, icon: view.icon.Bubble },
             { id: 'code-block', label: textEditor.string.CodeBlock, icon: view.icon.CodeBlock },
             { id: 'separator-line', label: textEditor.string.SeparatorLine, icon: view.icon.SeparatorLine },
             { id: 'mermaid', label: textEditor.string.MermaidDiargram, icon: view.icon.Model }
