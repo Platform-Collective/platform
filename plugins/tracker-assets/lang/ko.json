@@ -1,5 +1,7 @@
 {
     "string": {
+        "CreateIssueFromMessage": "이슈 만들기",
+        "SourceMessage": "원본 메시지",
         "TrackerApplication": "트래커",
         "Projects": "내 프로젝트",
         "More": "더 보기",

@@ -1,5 +1,7 @@
 {
   "string": {
+    "CreateIssueFromMessage": "Vytvořit úkol",
+    "SourceMessage": "Původní zpráva",
     "TrackerApplication": "Přehled",
     "Projects": "Vaše projekty",
     "More": "Více",

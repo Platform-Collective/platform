@@ -13397,6 +13397,9 @@ importers:
       '@hcengineering/chunter':
         specifier: workspace:^0.7.0
         version: link:../../plugins/chunter
+      '@hcengineering/communication':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/communication
       '@hcengineering/contact':
         specifier: workspace:^0.7.0
         version: link:../../plugins/contact
@@ -28922,6 +28925,15 @@ importers:
       '@hcengineering/client':
         specifier: workspace:^0.7.19
         version: link:../../foundations/core/packages/client
+      '@hcengineering/communication':
+        specifier: workspace:^0.7.0
+        version: link:../communication
+      '@hcengineering/communication-shared':
+        specifier: workspace:^0.7.11
+        version: link:../../foundations/communication/packages/shared
+      '@hcengineering/communication-types':
+        specifier: workspace:^0.7.12
+        version: link:../../foundations/communication/packages/types
       '@hcengineering/contact':
         specifier: workspace:^0.7.0
         version: link:../contact
@@ -28943,6 +28955,9 @@ importers:
       '@hcengineering/hr':
         specifier: workspace:^0.7.0
         version: link:../hr
+      '@hcengineering/inbox':
+        specifier: workspace:^0.7.0
+        version: link:../inbox
       '@hcengineering/kanban':
         specifier: workspace:^0.7.0
         version: link:../../packages/kanban
@@ -28991,6 +29006,9 @@ importers:
       '@hcengineering/text-editor-resources':
         specifier: workspace:^0.7.0
         version: link:../text-editor-resources
+      '@hcengineering/text-markdown':
+        specifier: workspace:^0.7.21
+        version: link:../../foundations/core/packages/text-markdown
       '@hcengineering/tracker':
         specifier: workspace:^0.7.0
         version: link:../tracker
