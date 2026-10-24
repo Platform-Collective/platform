@@ -20,6 +20,7 @@ import { Node, type Schema } from '@tiptap/pm/model'
 import { NodeSelection, Plugin } from '@tiptap/pm/state'
 import { CodeBlockHighlighExtension } from '../codeSnippets/codeblock'
 import { hasTableMetadataMarker } from './tableMetadata'
+import { normalizeWordPastedHTML } from './word-paste'
 
 export const SmartPasteExtension = Extension.create({
   name: 'transformPastedContent',
@@ -32,7 +33,7 @@ export const SmartPasteExtension = Extension.create({
 export function PasteTextAsMarkdownPlugin (): Plugin {
   return new Plugin({
     props: {
-      transformPastedHTML: normalizeSlackPastedHTML,
+      transformPastedHTML: (html) => normalizeWordPastedHTML(normalizeSlackPastedHTML(html)),
 
       handlePaste (view, event, slice) {
         const clipboardData = event.clipboardData
