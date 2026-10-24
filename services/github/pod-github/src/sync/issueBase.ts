@@ -114,6 +114,25 @@ export abstract class IssueSyncManagerBase {
     return socialIds.map((it) => it.attachedTo)
   }
 
+  private async reconcileAssignee (
+    data: Partial<Pick<Issue, 'assignee'>>,
+    existing: Issue,
+    external: IssueExternalData,
+    container?: ContainerFocus
+  ): Promise<void> {
+    if (data.assignee != null || existing.assignee == null || (external.assignees?.nodes ?? []).length > 0) {
+      return
+    }
+    container = container ?? (await this.provider.getContainer(existing.space))
+    if (
+      container !== undefined &&
+      (await this.provider.getGithubLogin(container.container, existing.assignee)) === undefined
+    ) {
+      // GitHub cannot represent an assignee without a linked GitHub identity.
+      data.assignee = existing.assignee
+    }
+  }
+
   @withContext('issues-handleUpdate')
   async handleUpdate (
     ctx: MeasureContext,
@@ -153,6 +172,9 @@ export abstract class IssueSyncManagerBase {
       const lastModified = new Date().getTime()
 
       if (doc !== undefined && ((await verifyUpdate?.(syncData, doc, external, update)) ?? true)) {
+        if (update.assignee === null) {
+          await this.reconcileAssignee(update, doc, external)
+        }
         const issueData: DocumentUpdate<Issue> = { ...update, description: doc.description }
         if (
           update.description !== undefined &&
@@ -330,6 +352,7 @@ export abstract class IssueSyncManagerBase {
     }
 
     const existingIssue = this.client.getHierarchy().as(existing, github.mixin.GithubIssue)
+    await this.reconcileAssignee(issueData, existingIssue, issueExternal, container)
     const previousData: GithubIssueData = info.current ?? ({} as unknown as GithubIssueData)
     // const type = await this.provider.getTaskTypeOf(container.project.type, existing._class)
     // const stst = await this.provider.getStatuses(type?._id)
