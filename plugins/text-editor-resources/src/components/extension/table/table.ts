@@ -15,7 +15,7 @@
 
 import textEditor, { type ActionContext } from '@hcengineering/text-editor'
 import { getEventPositionElement, SelectPopup, showPopup } from '@hcengineering/ui'
-import { type Editor } from '@tiptap/core'
+import { type Editor, findParentNodeClosestToPos } from '@tiptap/core'
 import TiptapTable from '@tiptap/extension-table'
 import { CellSelection, TableMap } from '@tiptap/pm/tables'
 
@@ -66,6 +66,25 @@ export const Table = TiptapTable.extend({
 
   addKeyboardShortcuts () {
     return {
+      'Mod-a': () => {
+        const { selection, doc } = this.editor.state
+        if (selection instanceof CellSelection) return false
+
+        const cell = findParentNodeClosestToPos(
+          selection.$from,
+          (node) => node.type.name === 'tableCell' || node.type.name === 'tableHeader'
+        )
+        const endCell = findParentNodeClosestToPos(
+          selection.$to,
+          (node) => node.type.name === 'tableCell' || node.type.name === 'tableHeader'
+        )
+        if (cell === undefined || cell.pos !== endCell?.pos) return false
+
+        const content = TextSelection.between(doc.resolve(cell.start), doc.resolve(cell.start + cell.node.content.size))
+        if (selection.from === content.from && selection.to === content.to) return false
+
+        return this.editor.commands.setTextSelection(content)
+      },
       Tab: () => {
         if (this.editor.commands.goToNextCell()) {
           return true
