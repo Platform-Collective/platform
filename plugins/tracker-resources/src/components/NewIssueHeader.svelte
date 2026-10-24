@@ -23,6 +23,7 @@
   import { onDestroy } from 'svelte'
   import tracker from '../plugin'
   import CreateIssue from './CreateIssue.svelte'
+  import { getNewIssueHeaderActions } from './new-issue-header-actions'
 
   export let currentSpace: Ref<Space> | undefined
 
@@ -66,16 +67,7 @@
 
   let mainActionId: string | undefined = undefined
   let visibleActions: string[] = []
-  function updateActions(draft: boolean, project: boolean, closed: boolean): void {
-    mainActionId = draft || !closed ? tracker.string.ResumeDraft : tracker.string.NewIssue
-    if (project) {
-      visibleActions = [tracker.string.CreateProject, mainActionId, tracker.string.Import]
-    } else {
-      visibleActions = [tracker.string.CreateProject]
-    }
-  }
-
-  $: updateActions(draftExists, projectExists, closed)
+  $: ({ mainActionId, visibleActions } = getNewIssueHeaderActions(draftExists, projectExists, closed))
 </script>
 
 <HeaderButton
@@ -101,12 +93,6 @@
       id: tracker.string.NewIssue,
       label: tracker.string.NewIssue,
       keyBindingPromise: newIssueKeyBindingPromise,
-      callback: newIssue
-    },
-    {
-      id: tracker.string.Import,
-      label: tracker.string.Import,
-      accountRole: AccountRole.User,
       callback: newIssue
     }
   ]}
