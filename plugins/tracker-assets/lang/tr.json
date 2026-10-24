@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Takvim",
+    "CalendarWithoutDueDate": "Bitiş tarihi olmayan sorunlar: {count}",
+    "CalendarUpdateFailed": "Sorun tarihleri güncellenemedi. Lütfen tekrar deneyin.",
     "TrackerApplication": "Tracker",
     "Projects": "Projeleriniz",
     "More": "Daha fazla",

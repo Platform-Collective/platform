@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "日历",
+    "CalendarWithoutDueDate": "没有截止日期的问题：{count}",
+    "CalendarUpdateFailed": "无法更新问题日期。请重试。",
     "TrackerApplication": "追踪器",
     "Projects": "您的项目",
     "More": "更多",

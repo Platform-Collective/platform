@@ -20,6 +20,7 @@ import core from '@hcengineering/model-core'
 import task from '@hcengineering/model-task'
 import view, { showColorsViewOption } from '@hcengineering/model-view'
 import tags from '@hcengineering/tags'
+import time from '@hcengineering/time'
 import { type ViewOptionModel, type BuildModelKey, type ViewOptionsModel } from '@hcengineering/view'
 import tracker from './plugin'
 
@@ -564,6 +565,17 @@ export function defineViewlets (builder: Builder): void {
     view.class.ViewletDescriptor,
     core.space.Model,
     {
+      label: tracker.string.Calendar,
+      icon: time.icon.Calendar,
+      component: tracker.component.CalendarView
+    },
+    tracker.viewlet.Calendar
+  )
+
+  builder.createDoc(
+    view.class.ViewletDescriptor,
+    core.space.Model,
+    {
       label: tracker.string.Board,
       icon: task.icon.Kanban,
       component: tracker.component.KanbanView
@@ -861,7 +873,7 @@ export function defineViewlets (builder: Builder): void {
 
   // Gantt is registered AFTER List + Kanban so List remains the default
   // viewlet (ViewletSelector falls back to viewlets[0] when no preference
-  // is saved). Putting Gantt last avoids surprising users with an empty
+  // is saved). Putting Gantt after List avoids surprising users with an empty
   // canvas on first visit.
   builder.createDoc(
     view.class.Viewlet,
@@ -874,6 +886,19 @@ export function defineViewlets (builder: Builder): void {
       config: ganttConfig()
     },
     tracker.viewlet.IssueGantt
+  )
+
+  builder.createDoc(
+    view.class.Viewlet,
+    core.space.Model,
+    {
+      attachTo: tracker.class.Issue,
+      descriptor: tracker.viewlet.Calendar,
+      viewOptions: { groupBy: [], orderBy: [], other: SEARCH_VIEW_OPTIONS },
+      configOptions: { strict: true },
+      config: []
+    },
+    tracker.viewlet.IssueCalendar
   )
 
   const componentListViewOptions: ViewOptionsModel = {
