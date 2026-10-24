@@ -28,7 +28,7 @@ on:
         required: false
         default: 'refs/heads/develop'
       skip_publish:
-        description: 'Skip all publishing (npm, Docker, R2) when testing release flow'
+        description: 'Skip publishing (Docker, R2) when testing release flow'
         required: false
         default: false
         type: boolean
@@ -942,45 +942,3 @@ jobs:
         with:
           name: TraceX-Linux
           path: ./qms-desktop-package/deploy/TraceX-linux-*.zip
-
-  publish-npm:
-    if: startsWith(github.event.inputs.ref || github.ref, 'refs/tags/v') && (github.event_name != 'workflow_dispatch' || github.event.inputs.skip_publish != 'true')
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
-          fetch-depth: 0
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: '.nvmrc'
-      - name: Cache node modules
-        uses: actions/cache@v6
-        env:
-          cache-name: cache-node-platform
-        with:
-          path: common/temp
-          key: ${{ runner.os }}-build-cache-node-platform-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: ${{ runner.os }}-build-cache-node-platform-
-      - name: Installing...
-        run: node common/scripts/install-run-rush.js install
-      - name: Building...
-        run: node common/scripts/install-run-rush.js build
-      - name: Emit TypeScript declarations
-        run: node common/scripts/install-run-rush.js validate
-      - name: Publish to npm
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_USERCONFIG: ${{ github.workspace }}/common/config/rush/.npmrc-publish
-        run: |
-          if [ -z "$NPM_TOKEN" ]; then
-            echo "::error::NPM_TOKEN secret is not set. Add it in repository Settings > Secrets and variables > Actions."
-            exit 1
-          fi
-          REF="${{ github.event.inputs.ref || github.ref }}"
-          VERSION="${REF#refs/tags/v}"
-          VERSION="${VERSION#v}"
-          node common/scripts/bump.js --check "$VERSION"
-          node common/scripts/safe-publish.js
