@@ -38,7 +38,7 @@ import {
 } from '../toolbar/toolbar'
 import TableNodeView from './TableNodeView.svelte'
 import { TableSelection } from './types'
-import { findTable, isTableSelected, selectTable as selectTableNode } from './utils'
+import { findTable, findTableToolbarAnchor, isTableSelected, selectTable as selectTableNode } from './utils'
 import { getTableMetadata } from './tableMetadata'
 import { refreshTable, showTableDiff, seeOriginalTableData } from './actions'
 
@@ -118,8 +118,8 @@ export function getTableCursor (state: EditorState): TableCursor | null {
 
 function resolveCursor (props: ResolveCursorProps): TableCursor | null {
   const selection = props.editorState.selection
-  const table = findTable(selection)
-  if (table === undefined) return null
+  const anchor = findTableToolbarAnchor(selection)
+  if (anchor === undefined) return null
 
   if (selection instanceof TextSelection && !selection.empty) {
     return null
@@ -128,9 +128,9 @@ function resolveCursor (props: ResolveCursorProps): TableCursor | null {
   const range =
     selection instanceof CellSelection
       ? { from: selection.from, to: selection.to }
-      : { from: table.pos, to: table.pos + table.node.nodeSize }
+      : { from: anchor.pos, to: anchor.pos + anchor.node.nodeSize }
 
-  let nodes: NodeWithPos[] = [{ node: table.node, pos: table.pos }]
+  let nodes: NodeWithPos[] = [{ node: anchor.node, pos: anchor.pos }]
   if (selection instanceof CellSelection) {
     nodes = []
     selection.forEachCell((node, pos) => {
