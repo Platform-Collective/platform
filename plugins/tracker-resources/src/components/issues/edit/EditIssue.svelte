@@ -50,6 +50,7 @@
   import { Analytics } from '@hcengineering/analytics'
 
   import { createEventDispatcher, onDestroy } from 'svelte'
+  import { handleIssueTitleKeyDown, normalizeIssueTitle } from '../../../issue-title'
   import { generateIssueShortLink, getIssueIdByIdentifier } from '../../../issues'
   import { canEditIssue } from '../../../utils'
   import tracker from '../../../plugin'
@@ -144,7 +145,7 @@
       return
     }
 
-    const trimmedTitle = title.trim()
+    const trimmedTitle = normalizeIssueTitle(title)
 
     if (trimmedTitle.length > 0 && trimmedTitle !== issue.title?.trim()) {
       await client.update(issue, { title: trimmedTitle })
@@ -378,7 +379,9 @@
       bind:value={title}
       disabled={effectiveReadonly}
       placeholder={tracker.string.IssueTitlePlaceholder}
+      format="text-multiline"
       kind="large-style"
+      on:keydown={handleIssueTitleKeyDown}
       on:blur={save}
     />
     <div class="w-full mt-6">

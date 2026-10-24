@@ -46,6 +46,44 @@ test.describe('Tracker issue tests', () => {
     await issuesDetailsPage.checkIssue(newIssue)
   })
 
+  test('Long issue titles wrap without accepting line breaks', async ({ page }) => {
+    const title = `Long issue title-${generateId()} ${'Keep the full title visible when editing. '.repeat(8)}`.trim()
+    await issuesPage.linkSidebarAll().click()
+    await issuesPage.clickModelSelectorAll()
+    await issuesPage.buttonCreateNewIssue().click()
+    await issuesPage.fillNewIssueForm({ title, description: '', projectName: 'Default' })
+
+    const createTitle = issuesPage.issueNameInput()
+    for (const key of ['Enter', 'Shift+Enter']) {
+      await createTitle.press(key)
+      await expect(createTitle).toHaveValue(title)
+    }
+    await expect(createTitle).toBeVisible()
+    expect(
+      await createTitle.evaluate((editor) => editor.clientHeight > parseFloat(getComputedStyle(editor).fontSize) * 2)
+    ).toBe(true)
+    await issuesPage.clickButtonCreateIssue()
+    await issuesPage.searchIssueByName(title)
+    await issuesPage.openIssueByName(title)
+
+    const editTitle = issuesDetailsPage.inputTitle()
+    await expect(editTitle).toHaveValue(title)
+    const updatedTitle = `${title} Updated`
+    await editTitle.fill(updatedTitle)
+    for (const key of ['Enter', 'Shift+Enter']) {
+      await editTitle.press(key)
+      await expect(editTitle).toHaveValue(updatedTitle)
+    }
+    expect(
+      await editTitle.evaluate((editor) => editor.clientHeight > parseFloat(getComputedStyle(editor).fontSize) * 2)
+    ).toBe(true)
+    await editTitle.press('Tab')
+    await issuesDetailsPage.clickCloseIssueButton()
+    await issuesPage.searchIssueByName(updatedTitle)
+    await issuesPage.openIssueByName(updatedTitle)
+    await expect(issuesDetailsPage.inputTitle()).toHaveValue(updatedTitle)
+  })
+
   test('Edit an issue', async ({ page }) => {
     const newIssue: NewIssue = {
       title: `Issue with all parameters and attachments-${generateId()}`,
