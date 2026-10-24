@@ -54,6 +54,7 @@
   export let showIcon = true
 
   let drawingLoading = false
+  let preview: HTMLDivElement
   let createDrawing: (data: any) => Promise<any>
 
   const dispatch = createEventDispatcher()
@@ -79,6 +80,7 @@
   }
 
   onMount(() => {
+    preview.focus({ preventScroll: true })
     if (props.drawingAvailable === true) {
       if (props.createDrawing !== undefined) {
         createDrawing = props.createDrawing
@@ -160,13 +162,14 @@
       on:click={() => {
         fullSize = !fullSize
         dispatch('fullsize', fullSize)
+        preview.focus({ preventScroll: true })
       }}
     />
     <div class="hulyHeader-divider short no-print" />
   </svelte:fragment>
 
   <svelte:fragment slot="title">
-    <div class="antiTitle icon-wrapper">
+    <div class="antiTitle icon-wrapper" tabindex="-1" bind:this={preview}>
       {#if showIcon}
         <div class="wrapped-icon">
           <FileTypeIcon {name} />
