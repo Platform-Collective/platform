@@ -12,7 +12,7 @@ import {
   type TrackPublication,
   type Participant
 } from 'livekit-client'
-import { translate } from '@hcengineering/platform'
+import { setPlatformStatus, translate, unknownError } from '@hcengineering/platform'
 import { getMediaDevices, getSelectedSpeakerId, type MediaSession } from '@hcengineering/media'
 import { LoveEvents } from '@hcengineering/love'
 import { useMedia } from '@hcengineering/media-resources'
@@ -553,7 +553,15 @@ export class LiveKitClient {
     try {
       await this.liveKitRoom.localParticipant.setScreenShareEnabled(value, { audio: withAudio })
     } catch (e) {
-      console.log(e)
+      console.error(e)
+      // A cancelled source picker is not an error worth reporting
+      if (isScreenShareCancelled(e)) return
+      await setPlatformStatus(unknownError(e))
     }
   }
+}
+
+function isScreenShareCancelled (e: unknown): boolean {
+  if (e instanceof Error && e.message === 'No source selected') return true
+  return typeof DOMException !== 'undefined' && e instanceof DOMException && e.name === 'NotAllowedError'
 }

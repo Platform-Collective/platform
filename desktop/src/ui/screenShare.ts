@@ -70,7 +70,7 @@ export function defineGetDisplayMedia (): void {
             } as any
             void window.navigator.mediaDevices.getUserMedia(opts).then((stream) => {
               resolve(stream)
-            })
+            }).catch(reject)
           }
         }
       )
@@ -162,7 +162,7 @@ export function defineScreenShare (): void {
                 localTracks.push(screenAudio)
               }
               resolve(localTracks)
-            })
+            }).catch(reject)
           }
         }
       )
