@@ -72,6 +72,8 @@
     "AlreadySubscribed": "Ta przeglądarka jest już zasubskrybowana",
     "PushNotConfigured": "Powiadomienia push nie są skonfigurowane na tym serwerze",
     "PushNotSupported": "Nieobsługiwane przez tę przeglądarkę",
-    "PushDenied": "Powiadomienia są zablokowane w ustawieniach przeglądarki"
+    "PushDenied": "Powiadomienia są zablokowane w ustawieniach przeglądarki",
+    "WorkspaceDefaults": "Domyślne ustawienia obszaru roboczego",
+    "WorkspaceDefaultsDescription": "Te ustawienia dotyczą wszystkich użytkowników obszaru roboczego, którzy sami ich nie zmienili. Użytkownicy nadal mogą je zastąpić we własnych ustawieniach."
   }
 }

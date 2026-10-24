@@ -72,6 +72,8 @@
     "AlreadySubscribed": "このブラウザはすでに登録されています",
     "PushNotConfigured": "このサーバーではプッシュ通知が設定されていません",
     "PushNotSupported": "このブラウザでは対応していません",
-    "PushDenied": "ブラウザの設定で通知がブロックされています"
+    "PushDenied": "ブラウザの設定で通知がブロックされています",
+    "WorkspaceDefaults": "ワークスペースのデフォルト",
+    "WorkspaceDefaultsDescription": "これらの設定は、自分で変更していないワークスペースのすべてのユーザーに適用されます。ユーザーは自分の設定で引き続き上書きできます。"
   }
 }

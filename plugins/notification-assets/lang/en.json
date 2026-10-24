@@ -72,6 +72,8 @@
     "AlreadySubscribed": "This browser is already subscribed",
     "PushNotConfigured": "Push notifications are not configured on this server",
     "PushNotSupported": "Not supported by this browser",
-    "PushDenied": "Notifications are blocked in browser settings"
+    "PushDenied": "Notifications are blocked in browser settings",
+    "WorkspaceDefaults": "Workspace defaults",
+    "WorkspaceDefaultsDescription": "These settings apply to all users of the workspace who have not changed them themselves. Users can still override them in their own settings."
   }
 }

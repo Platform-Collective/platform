@@ -14,12 +14,13 @@
 -->
 <script lang="ts">
   import { onDestroy } from 'svelte'
-  import { Ref } from '@hcengineering/core'
+  import { AccountRole, getCurrentAccount, hasAccountRole, Ref } from '@hcengineering/core'
   import type {
     NotificationType,
     NotificationGroup,
     NotificationPreferencesGroup,
-    NotificationTypeSetting
+    NotificationTypeSetting,
+    WorkspaceNotificationTypeSetting
   } from '@hcengineering/notification'
   import { getResource } from '@hcengineering/platform'
   import { getClient, isDisabled } from '@hcengineering/presentation'
@@ -28,8 +29,10 @@
     defineSeparators,
     getCurrentResolvedLocation,
     Header,
+    Label,
     Loading,
     Location,
+    ModernToggle,
     navigate,
     NavItem,
     resolvedLocationStore,
@@ -40,7 +43,7 @@
 
   import notification from '../../plugin'
   import NotificationGroupSetting from './NotificationGroupSetting.svelte'
-  import { providersSettings, typesSettings } from '../../utils'
+  import { providersSettings, typesSettings, workspaceTypesSettings } from '../../utils'
 
   const client = getClient()
   const groups: NotificationGroup[] = client.getModel().findAllSync(notification.class.NotificationGroup, {})
@@ -49,6 +52,11 @@
     .findAllSync(notification.class.NotificationPreferencesGroup, {})
 
   let settings = new Map<Ref<NotificationType>, NotificationTypeSetting[]>()
+  let workspaceSettings = new Map<Ref<NotificationType>, WorkspaceNotificationTypeSetting[]>()
+
+  // Only workspace owners may edit workspace-wide defaults (enforced on the server as well)
+  const isOwner = hasAccountRole(getCurrentAccount(), AccountRole.Owner)
+  let workspaceMode = false
 
   let isProviderSettingLoading = true
   let isTypeSettingLoading = true
@@ -70,11 +78,38 @@
     isProviderSettingLoading = false
   })
 
+  const unsubscribeWorkspaceTypeSetting = workspaceTypesSettings.subscribe((res) => {
+    const result = new Map<Ref<NotificationType>, WorkspaceNotificationTypeSetting[]>()
+    for (const value of res) {
+      const arr = result.get(value.type) ?? []
+      arr.push(value)
+      result.set(value.type, arr)
+    }
+    workspaceSettings = result
+  })
+
+  function selectGroup(gr: Ref<NotificationGroup>): void {
+    group = gr
+    currentPreferenceGroup = undefined
+    const loc = getCurrentResolvedLocation()
+    loc.path[4] = group
+    loc.path.length = 5
+    navigate(loc)
+  }
+
+  function toggleWorkspaceMode(): void {
+    workspaceMode = !workspaceMode
+    // Workspace defaults are only available for the notification types matrix
+    if (workspaceMode && group === undefined && groups.length > 0) {
+      selectGroup(groups[0]._id)
+    }
+  }
+
   let group: Ref<NotificationGroup> | undefined = undefined
   let currentPreferenceGroup: NotificationPreferencesGroup | undefined = undefined
 
   $: if (!group && !currentPreferenceGroup) {
-    if (preferencesGroups.length > 0) {
+    if (preferencesGroups.length > 0 && !workspaceMode) {
       currentPreferenceGroup = preferencesGroups[0]
     } else if (groups.length > 0) {
       group = groups[0]._id
@@ -92,6 +127,7 @@
     unsubscribeLocation()
     unsubscribeTypeSetting()
     unsubscribeProviderSetting()
+    unsubscribeWorkspaceTypeSetting()
   })
   defineSeparators('notificationSettings', twoPanelsSeparators)
 </script>
@@ -104,11 +140,21 @@
       size={'large'}
       isCurrent
     />
+    <svelte:fragment slot="actions">
+      {#if isOwner}
+        <ModernToggle
+          size="small"
+          label={notification.string.WorkspaceDefaults}
+          checked={workspaceMode}
+          on:change={toggleWorkspaceMode}
+        />
+      {/if}
+    </svelte:fragment>
   </Header>
   <div class="hulyComponent-content__container columns">
     <div class="hulyComponent-content__column navigation py-2">
       <Scroller shrink>
-        {#each preferencesGroups as preferenceGroup}
+        {#each workspaceMode ? [] : preferencesGroups as preferenceGroup}
           <NavItem
             icon={preferenceGroup.icon}
             label={preferenceGroup.label}
@@ -122,7 +168,7 @@
             }}
           />
         {/each}
-        {#if preferencesGroups.length > 0 && groups.length > 0}
+        {#if !workspaceMode && preferencesGroups.length > 0 && groups.length > 0}
           <div class="antiNav-divider line" />
         {/if}
         {#each groups as gr}
@@ -132,12 +178,7 @@
               label={gr.label}
               selected={gr._id === group}
               on:click={() => {
-                group = gr._id
-                currentPreferenceGroup = undefined
-                const loc = getCurrentResolvedLocation()
-                loc.path[4] = group
-                loc.path.length = 5
-                navigate(loc)
+                selectGroup(gr._id)
               }}
             />
           {/if}
@@ -152,10 +193,15 @@
           {#if loading}
             <Loading />
           {:else}
-            {#if group}
-              <NotificationGroupSetting {group} {settings} />
+            {#if workspaceMode}
+              <div class="mb-4">
+                <Label label={notification.string.WorkspaceDefaultsDescription} />
+              </div>
             {/if}
-            {#if currentPreferenceGroup}
+            {#if group}
+              <NotificationGroupSetting {group} {settings} {workspaceSettings} {workspaceMode} />
+            {/if}
+            {#if currentPreferenceGroup && !workspaceMode}
               {#await getResource(currentPreferenceGroup.presenter) then presenter}
                 <svelte:component this={presenter} />
               {/await}
