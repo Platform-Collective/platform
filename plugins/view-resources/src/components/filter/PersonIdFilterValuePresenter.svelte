@@ -13,26 +13,22 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { PersonId, Ref } from '@hcengineering/core'
+  import { Ref } from '@hcengineering/core'
   import { Component } from '@hcengineering/ui'
   import { getClient } from '@hcengineering/presentation'
-  import contact, { getPersonRefsBySocialIds, Person } from '@hcengineering/contact'
+  import contact, { Person } from '@hcengineering/contact'
+  import type { Filter } from '@hcengineering/view'
+  import { getFilterPersonRefs } from './person-filter'
 
-  export let value: PersonId[]
+  export let value: unknown[]
+  export let filter: Filter
 
   const client = getClient()
   let persons: Ref<Person>[] = []
-  $: void getPersons(value)
+  $: void getPersons(value, filter).catch(console.error)
 
-  async function getPersons(ids: PersonId[]): Promise<void> {
-    if (ids !== undefined) {
-      if (ids.length === 0) {
-        persons = []
-      } else {
-        const personsMap = await getPersonRefsBySocialIds(client, ids)
-        persons = Object.values(personsMap)
-      }
-    }
+  async function getPersons(values: unknown[], filter: Filter): Promise<void> {
+    persons = await getFilterPersonRefs(client, values ?? [], filter.key.attribute.type)
   }
 </script>
 
