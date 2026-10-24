@@ -36,6 +36,7 @@
   import { AssigneeCategory } from '../assignee'
   import contact from '../plugin'
   import UserInfo from './UserInfo.svelte'
+  import { resolveAssigneeSelection } from './assignee-selection'
 
   export let options: FindOptions<Contact> | undefined = undefined
   export let selected: Ref<Person> | undefined
@@ -134,9 +135,10 @@
   let list: ListView
 
   async function handleSelection(evt: Event | undefined, selection: number): Promise<void> {
-    const person = contacts[selection]
-    selected = allowDeselect && person?._id === selected ? undefined : person?._id
-    dispatch('close', selected !== undefined ? person : undefined)
+    // null clears the assignee, undefined means "cancelled"
+    const result = resolveAssigneeSelection(contacts[selection], selected, allowDeselect)
+    selected = result?._id
+    dispatch('close', result)
   }
 
   function onKeydown(key: KeyboardEvent): void {
