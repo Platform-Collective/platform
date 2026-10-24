@@ -18,6 +18,7 @@
   import { getEmbeddedLabel } from '@hcengineering/platform'
   import { Card } from '@hcengineering/presentation'
   import { EditBox } from '@hcengineering/ui'
+  import { canSaveLink } from './link-validation'
 
   export let link = ''
 
@@ -28,7 +29,7 @@
     dispatch('update', link)
   }
 
-  $: canSave = link === '' || URL.canParse(link)
+  $: canSave = canSaveLink(link)
 </script>
 
 <Card
