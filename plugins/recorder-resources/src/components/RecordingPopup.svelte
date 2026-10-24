@@ -421,13 +421,16 @@
           noFocus
         />
       {:else if state.state === 'stopped'}
+        {#if state.result === null}
+          <Label label={plugin.string.UploadFailed} />
+        {/if}
         <ModernButton
           size={'small'}
           kind={'primary'}
           label={view.string.Save}
           noFocus
           on:click={handleCompleteRecording}
-          disabled={name.length === 0 || space == null}
+          disabled={state.result === null || name.length === 0 || space == null}
         />
 
         <div class="flex-grow" />

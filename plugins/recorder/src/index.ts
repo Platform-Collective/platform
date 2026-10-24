@@ -29,7 +29,8 @@ const recordPlugin = plugin(recorderId, {
     Record: '' as Asset
   },
   metadata: {
-    StreamUrl: '' as Metadata<string>
+    StreamUrl: '' as Metadata<string>,
+    RecoveryEnabled: '' as Metadata<boolean>
   },
   space: {
     Drive: '' as Ref<Drive>

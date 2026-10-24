@@ -22,6 +22,7 @@ export default mergeIds(recorderId, plugin, {
     RecorderExt: '' as AnyComponent
   },
   string: {
+    UploadFailed: '' as IntlString,
     Done: '' as IntlString,
     Pause: '' as IntlString,
     Stop: '' as IntlString,

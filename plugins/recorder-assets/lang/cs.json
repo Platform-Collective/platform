@@ -1,5 +1,6 @@
 {
   "string": {
+    "UploadFailed": "Nahrávku se nepodařilo nahrát. Zkuste to prosím znovu.",
     "Cancel": "Zrušit",
     "Pause": "Pozastavit",
     "Stop": "Zastavit",
