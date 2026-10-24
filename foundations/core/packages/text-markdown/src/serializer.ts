@@ -13,10 +13,10 @@
 // limitations under the License.
 //
 
-import { MarkupMark, MarkupNode, MarkupNodeType } from '@hcengineering/text-core'
+import { MarkupMark, MarkupMarkType, MarkupNode, MarkupNodeType } from '@hcengineering/text-core'
 import { markupToHtml } from '@hcengineering/text-html'
 
-import { isInSet, markEq } from './marks'
+import { isInSet, markEq, sameSet } from './marks'
 import { nodeContent, nodeAttrs } from './node'
 
 type FirstDelim = (i: number, attrs?: Record<string, any>, parentAttrs?: Record<string, any>) => string
@@ -56,8 +56,19 @@ interface InlineState {
 
 // *************************************************************
 
-function backticksFor (side: boolean): string {
-  return side ? '`' : '`'
+function backtickFence (text: string, minimum: number): string {
+  let length = minimum
+  for (const match of text.matchAll(/`+/g)) {
+    length = Math.max(length, match[0].length + 1)
+  }
+  return '`'.repeat(length)
+}
+
+function backticksFor (node: MarkupNode | undefined, side: boolean): string {
+  const text = node?.text ?? ''
+  const fence = backtickFence(text, 1)
+  const padding = /^`|`$/.test(text) || (text.startsWith(' ') && text.endsWith(' ') && /[^ ]/.test(text)) ? ' ' : ''
+  return side ? padding + fence : fence + padding
 }
 
 function isPlainURL (link: MarkupMark, parent: MarkupNode, index: number): boolean {
@@ -95,19 +106,31 @@ export const storeNodes: Record<string, NodeProcessor> = {
     })
   },
   codeBlock: (state, node) => {
-    state.write('```' + `${nodeAttrs(node).language ?? ''}` + '\n')
+    const fence = backtickFence(
+      nodeContent(node)
+        .map((child) => child.text ?? '')
+        .join(''),
+      3
+    )
+    state.write(fence + `${nodeAttrs(node).language ?? ''}` + '\n')
     // TODO: Check for node.textContent
     state.renderInline(node)
     // state.text(node.text ?? '', false)
     state.ensureNewLine()
-    state.write('```')
+    state.write(fence)
     state.closeBlock(node)
   },
   mermaid: (state, node) => {
-    state.write('```mermaid\n')
+    const fence = backtickFence(
+      nodeContent(node)
+        .map((child) => child.text ?? '')
+        .join(''),
+      3
+    )
+    state.write(fence + 'mermaid\n')
     state.renderInline(node)
     state.ensureNewLine()
-    state.write('```')
+    state.write(fence)
     state.closeBlock(node)
   },
   heading: (state, node) => {
@@ -382,10 +405,10 @@ export const storeMarks: Record<string, MarkProcessor> = {
   },
   code: {
     open: (state, mark, parent, index) => {
-      return backticksFor(false)
+      return backticksFor(parent.content?.[index], false)
     },
     close: (state, mark, parent, index) => {
-      return backticksFor(true)
+      return backticksFor(parent.content?.[index - 1], true)
     },
     mixable: false,
     expelEnclosingWhitespace: false,
@@ -786,8 +809,24 @@ export class MarkdownState implements IState {
   // :: (Node)
   // Render the contents of `parent` as inline content.
   renderInline (parent: MarkupNode): void {
+    // Adjacent code text nodes must share a delimiter pair to avoid merging backtick runs.
+    const content: MarkupNode[] = []
+    for (const node of nodeContent(parent)) {
+      const previous = content[content.length - 1]
+      if (
+        previous?.type === MarkupNodeType.text &&
+        node.type === MarkupNodeType.text &&
+        node.marks?.some((mark) => mark.type === MarkupMarkType.code) === true &&
+        sameSet(previous.marks, node.marks)
+      ) {
+        content[content.length - 1] = { ...previous, text: (previous.text ?? '') + (node.text ?? '') }
+      } else {
+        content.push(node)
+      }
+    }
+    parent = { ...parent, content }
     const state: InlineState = { active: [], trailing: '', parent, marks: [] }
-    nodeContent(parent).forEach((nde, index) => {
+    content.forEach((nde, index) => {
       state.node = nde
       this.renderNodeInline(state, index)
     })
