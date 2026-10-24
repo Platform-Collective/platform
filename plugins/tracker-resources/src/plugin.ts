@@ -25,6 +25,7 @@ import {
   type GrouppingManagerResource,
   type KeyFilter,
   type SortFunc,
+  type ViewAction,
   type ViewQueryAction,
   type Viewlet,
   type ViewletDescriptor
@@ -618,6 +619,9 @@ export default mergeIds(trackerId, tracker, {
   },
   metadata: {
     CreateIssueDraft: '' as Metadata<IssueDraft>
+  },
+  actionImpl: {
+    CopyIssueBranch: '' as ViewAction
   },
   function: {
     IssueTitleProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,

@@ -619,6 +619,24 @@ export function createActions (builder: Builder, issuesId: string, componentsId:
   createAction(
     builder,
     {
+      action: tracker.actionImpl.CopyIssueBranch,
+      label: tracker.string.CopyIssueBranch,
+      icon: tracker.icon.CopyBranch,
+      input: 'focus',
+      category: tracker.category.Tracker,
+      target: tracker.class.Issue,
+      visibilityTester: view.function.IsClipboardAvailable,
+      context: {
+        mode: ['context', 'browser'],
+        application: tracker.app.Tracker,
+        group: 'copy'
+      }
+    },
+    tracker.action.CopyIssueBranch
+  )
+  createAction(
+    builder,
+    {
       action: view.actionImpl.CopyTextToClipboard,
       actionProps: {
         textProvider: tracker.function.GetIssueLink

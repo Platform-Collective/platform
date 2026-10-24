@@ -695,6 +695,7 @@ const pluginState = plugin(trackerId, {
     SetComponent: '' as Ref<Action<Doc, any>>,
     CopyIssueId: '' as Ref<Action<Doc, any>>,
     CopyIssueTitle: '' as Ref<Action<Doc, any>>,
+    CopyIssueBranch: '' as Ref<Action<Doc, any>>,
     CopyIssueLink: '' as Ref<Action<Doc, any>>,
     MoveToProject: '' as Ref<Action>,
     Duplicate: '' as Ref<Action<Doc, any>>,
