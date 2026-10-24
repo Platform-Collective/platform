@@ -15,7 +15,15 @@
 //
 
 import { createRestTxOperations } from '@hcengineering/api-client'
-import { type Class, type Doc, generateId, newMetrics, type Ref, type WorkspaceIds } from '@hcengineering/core'
+import {
+  type Class,
+  type Doc,
+  generateId,
+  type MeasureContext,
+  newMetrics,
+  type Ref,
+  type WorkspaceIds
+} from '@hcengineering/core'
 import { StorageConfiguration, initStatisticsContext } from '@hcengineering/server-core'
 import { buildStorageFromConfig } from '@hcengineering/server-storage'
 import {
@@ -35,6 +43,7 @@ import config from './config'
 import { convertToHtml } from './convert'
 import { convertToPdf, createPreviewQueue, getPreviewId, maxDocumentBytes } from './preview'
 import { ApiError } from './error'
+import { maxComposedRequestBytes, parseComposedRequest, printComposed } from './composed'
 import { PrintBrowserManager } from './browser'
 import { PrintOptions, print, validKinds, validPageOrientations } from './print'
 import { withMeasureContext } from './middleware'
@@ -196,9 +205,36 @@ export function createServer (
   })
   const whitelistedHostnames = allowedHostnames.length > 0 ? new Set(allowedHostnames) : null
 
+  // Verify that link is from the same host and protocol is among the allowed
+  const verifyLink = (ctx: MeasureContext, link: string): URL => {
+    let url: URL
+    try {
+      url = new URL(link)
+    } catch {
+      throw new ApiError(400, 'Invalid link')
+    }
+    if (
+      !['http:', 'https:'].includes(url.protocol) ||
+      (whitelistedHostnames != null && !whitelistedHostnames.has(url.hostname))
+    ) {
+      ctx.error('Rejected processing unexpected link', { link })
+      throw new ApiError(403, 'Cannot process provided link')
+    }
+    return url
+  }
+
   const app = express()
   app.use(cors())
-  app.use(express.json())
+  const defaultJsonParser = express.json()
+  // Composed prints carry template pages with inlined assets, they get their own larger limit
+  const composedJsonParser = express.json({ limit: maxComposedRequestBytes })
+  app.use((req, res, next) => {
+    if (req.method === 'POST' && req.path === '/print/composed') {
+      composedJsonParser(req, res, next)
+    } else {
+      defaultJsonParser(req, res, next)
+    }
+  })
   app.use(withMeasureContext({ ctx: measureCtx }))
 
   app.get('/health', (_req, res) => {
@@ -212,16 +248,7 @@ export function createServer (
       const ctx = req.ctx
       const rawlink = req.query.link as string
       const link = decodeURIComponent(rawlink)
-
-      // Verify that link is from the same host and protocol is among the allowed
-      const url = new URL(link)
-      if (
-        !['http:', 'https:'].includes(url.protocol) ||
-        (whitelistedHostnames != null && !whitelistedHostnames.has(url.hostname))
-      ) {
-        ctx.error('Rejected processing unexpected link', { link })
-        throw new ApiError(403, 'Cannot process provided link')
-      }
+      const url = verifyLink(ctx, link)
 
       const options = parsePrintOptions(req.query)
 
@@ -242,6 +269,40 @@ export function createServer (
       const printId = `print-${generateId()}`
 
       await storageAdapter.put(ctx, wsIds, printId, printRes, `application/${options.kind}`, printRes.length)
+
+      res.contentType('application/json')
+      res.send({ id: printId })
+    })
+  )
+
+  app.post(
+    '/print/composed',
+    wrapRequest(async (req, res, wsIds) => {
+      const ctx = req.ctx
+      const request = parseComposedRequest(req.body)
+      if (request.link !== undefined) {
+        verifyLink(ctx, request.link)
+      }
+
+      const readFile = async (file: string): Promise<Buffer | undefined> => {
+        const stat = await storageAdapter.stat(ctx, wsIds, file)
+        if (stat === undefined) return undefined
+        if (stat.contentType !== 'application/pdf') {
+          throw new ApiError(400, `File of this type (${stat.contentType}) cannot be used as document body`)
+        }
+        const data = await storageAdapter.read(ctx, wsIds, file)
+        return Buffer.concat(data)
+      }
+
+      const printRes = await ctx.with(
+        'printComposed',
+        { body: request.link !== undefined ? 'link' : 'file' },
+        (ctx) => printComposed(ctx, request, browserManager, readFile),
+        { pages: request.before.length + request.after.length }
+      )
+
+      const printId = `print-${generateId()}`
+      await storageAdapter.put(ctx, wsIds, printId, printRes, 'application/pdf', printRes.length)
 
       res.contentType('application/json')
       res.send({ id: printId })
