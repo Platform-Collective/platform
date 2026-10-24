@@ -149,6 +149,16 @@ const NIL_UUID = '00000000-0000-0000-0000-000000000000' as AccountUuid
 const workspaceLimitPerUser =
   process.env.WORKSPACE_LIMIT_PER_USER != null ? parseInt(process.env.WORKSPACE_LIMIT_PER_USER) : 10
 
+function isWorkspaceCreationAllowed (extra?: Record<string, unknown>): boolean {
+  return (process.env.WORKSPACE_CREATION?.toLowerCase() ?? 'all') === 'all' || extra?.admin === 'true'
+}
+
+if (!isWorkspaceCreationAllowed() && process.env.WORKSPACE_CREATION?.toLowerCase() !== 'admin') {
+  console.warn('Unknown WORKSPACE_CREATION value; only platform admins can create workspaces', {
+    value: process.env.WORKSPACE_CREATION
+  })
+}
+
 /* =================================== */
 /* ============OPERATIONS============= */
 /* =================================== */
@@ -176,8 +186,8 @@ export async function loginAsGuest (
 }
 
 /**
- * Returns login affordance flags so clients can hide sign-up and guest-login
- * controls when they are disabled by env vars or unavailable (no guest person).
+ * Returns login affordance flags, including workspace creation permission for
+ * the supplied token. Anonymous callers can still query sign-up and guest login.
  */
 // L-AUTH-1: getLoginCapabilities is unauthenticated; without caching every
 // anonymous call hits the DB (db.person.findOne on the guest account) and lets
@@ -196,8 +206,11 @@ export async function getLoginCapabilities (
   db: AccountDB,
   branding: Branding | null,
   token: string
-): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean }> {
+): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean, workspaceCreationAllowed: boolean }> {
   const signUpEnabled = process.env.DISABLE_SIGNUP !== 'true'
+  const workspaceCreationAllowed =
+    isWorkspaceCreationAllowed() ||
+    (token != null && token !== '' && isWorkspaceCreationAllowed(decodeTokenVerbose(ctx, token).extra))
 
   let guestLoginAvailable = false
   if (process.env.DISABLE_GUEST_LOGIN !== 'true') {
@@ -209,7 +222,7 @@ export async function getLoginCapabilities (
     guestLoginAvailable = guestPersonCache.value
   }
 
-  return { signUpEnabled, guestLoginAvailable }
+  return { signUpEnabled, guestLoginAvailable, workspaceCreationAllowed }
 }
 
 /**
@@ -623,6 +636,10 @@ export async function createWorkspace (
   }
 
   const { account, extra } = decodeTokenVerbose(ctx, token)
+
+  if (!isWorkspaceCreationAllowed(extra)) {
+    throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+  }
 
   checkRateLimit(account, workspaceName)
 

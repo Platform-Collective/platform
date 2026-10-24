@@ -474,6 +474,11 @@ sequenceDiagram
 ### Workspace Configuration
 - `WS_OPERATION`: `all+backup` - Operation mode
 - `WORKSPACE_LIMIT_PER_USER`: `10000`
+- `WORKSPACE_CREATION`: `all` (default) or `admin` - Set on the account service. With `admin`, only platform admins
+  (the signed token's `extra.admin` flag, issued for `ADMIN_EMAILS`) can create workspaces, including after SSO login.
+  Other users can still sign in and join existing workspaces by invitation. The login UI hides workspace creation
+  controls using the account service capabilities; no frontend environment variable is needed.
+  Values are case-insensitive; unknown values restrict creation to admins and emit a startup warning.
 - `REGION_INFO`: `cockroach|CockroachDB` - Available regions
 
 ### Backup Configuration
