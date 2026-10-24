@@ -47,7 +47,16 @@ import {
 } from '../types'
 import { IssueExternalData, issueDetails } from './githubTypes'
 import { GithubIssueData, IssueSyncManagerBase, IssueUpdate, WithMarkup } from './issueBase'
-import { ensureGraphQLOctokit, getSince, gqlp, guessStatus, isGHWriteAllowed, syncRunner } from './utils'
+import {
+  ensureGraphQLOctokit,
+  getSince,
+  githubTime,
+  gqlp,
+  guessStatus,
+  isGHWriteAllowed,
+  isGithubTimestampPreservationEnabled,
+  syncRunner
+} from './utils'
 
 export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncManager {
   createPromise: Promise<IssueExternalData | undefined> | undefined
@@ -851,6 +860,9 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
     const number = (incResult as any).object.sequence
 
     const issueId = info._id as unknown as Ref<Issue>
+    const createdOn = isGithubTimestampPreservationEnabled()
+      ? githubTime(issueExternal.createdAt)
+      : new Date(issueExternal.createdAt).getTime()
 
     const { description, ...update } = issueData
 
@@ -890,18 +902,25 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
       'subIssues',
       value,
       issueId,
-      new Date(issueExternal.createdAt).getTime(),
+      createdOn,
       account
     )
 
     // Compare description and our markdown and mark issue as description locked in case they are not match.
 
-    await this.client.createMixin(issueId, tracker.class.Issue, prj._id, github.mixin.GithubIssue, {
-      githubNumber: issueExternal.number,
-      url: issueExternal.url,
-      repository: repo,
-      descriptionLocked: isDescriptionLocked
-    })
+    await this.client.createMixin(
+      issueId,
+      tracker.class.Issue,
+      prj._id,
+      github.mixin.GithubIssue,
+      {
+        githubNumber: issueExternal.number,
+        url: issueExternal.url,
+        repository: repo,
+        descriptionLocked: isDescriptionLocked
+      },
+      isGithubTimestampPreservationEnabled() ? createdOn : undefined
+    )
 
     await this.addConnectToMessage(
       github.string.IssueConnectedActivityInfo,
@@ -909,7 +928,8 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
       issueId,
       tracker.class.Issue,
       issueExternal,
-      repository
+      repository,
+      isGithubTimestampPreservationEnabled() ? createdOn : undefined
     )
   }
 
