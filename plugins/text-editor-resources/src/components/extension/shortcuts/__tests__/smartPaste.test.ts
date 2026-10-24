@@ -214,6 +214,7 @@ describe('SmartPaste handlePaste transform scenarios', () => {
 
     expect(handled).toBe(true)
     expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ scrolledIntoView: true }))
   })
 
   it('transforms when explicit markdown is present even with rich clipboard types', () => {
@@ -241,6 +242,7 @@ describe('SmartPaste handlePaste transform scenarios', () => {
 
     expect(handled).toBe(true)
     expect(dispatch).toHaveBeenCalledTimes(1)
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ scrolledIntoView: true }))
   })
 })
 
