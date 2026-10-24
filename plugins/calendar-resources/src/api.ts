@@ -25,14 +25,12 @@ import {
 import calendar from './plugin'
 import { calendarIntegrationKind } from '@hcengineering/calendar'
 
-export async function signout (integration: Integration, client: IntegrationClient): Promise<void> {
+export async function signout (email: string | undefined): Promise<void> {
   const url = getMetadata(calendar.metadata.CalendarServiceURL)
   const token = getMetadata(presentation.metadata.Token)
   if (url === undefined || token === undefined) {
     throw new Error('Calendar service URL or token is not defined')
   }
-  const connection = await client.getConnection(integration)
-  const email = integration.data?.email ?? connection?.data?.email
   if (email === undefined) {
     throw new Error('Email is not defined in integration')
   }
@@ -46,16 +44,20 @@ export async function signout (integration: Integration, client: IntegrationClie
 
 export async function disconnect (integration: Integration): Promise<void> {
   const integrationClient = await getIntegrationClient()
+  const connection = await integrationClient.getConnection(integration)
+  const email = integration.data?.email ?? connection?.data?.email
   const result = await integrationClient.removeIntegration(integration.socialId, integration.workspaceUuid)
   if (result !== undefined && result.connectionRemoved) {
-    await signout(integration, integrationClient)
+    await signout(email)
   }
 }
 
 export async function disconnectAll (integration: Integration): Promise<void> {
   const integrationClient = await getIntegrationClient()
+  const connection = await integrationClient.getConnection(integration)
+  const email = integration.data?.email ?? connection?.data?.email
   await integrationClient.removeConnection(integration)
-  await signout(integration, integrationClient)
+  await signout(email)
 }
 
 export async function getIntegrationClient (): Promise<IntegrationClient> {
