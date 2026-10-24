@@ -561,14 +561,20 @@ export const isEnum =
     return typeof token === 'string' && Object.values(e as Record<string, any>).includes(token)
   }
 
+/**
+ * Check a role permission, optionally enforcing it even when optional permissions are disabled.
+ * @param enforce - Keep server-enforced administration checks active in the UI.
+ */
 export async function checkPermission (
   client: TxOperations,
   _id: Ref<Permission>,
   _space: Ref<TypedSpace>,
-  space?: TypedSpace
+  space?: TypedSpace,
+  enforce = false
 ): Promise<boolean> {
   const arePermissionsDisabled = getMetadata(core.metadata.DisablePermissions) ?? false
-  if (arePermissionsDisabled) return true
+  // Space administration remains protected when optional object permissions are disabled.
+  if (arePermissionsDisabled && !enforce) return true
 
   return await hasPermission(client, _id, _space, space)
 }
