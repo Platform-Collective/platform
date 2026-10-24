@@ -83,6 +83,7 @@
   import { ObjectBox } from '@hcengineering/view-resources'
   import { createEventDispatcher, onDestroy } from 'svelte'
 
+  import { fillIssueDefaults } from '../issue-defaults'
   import { activeComponent, activeMilestone, generateIssueShortLink, updateIssueRelation } from '../issues'
   import tracker from '../plugin'
   import SetParentIssueActionPopup from './SetParentIssueActionPopup.svelte'
@@ -518,6 +519,7 @@
         kind,
         identifier
       }
+      fillIssueDefaults(hierarchy, object, value)
 
       if (!isEmptyMarkup(object.description)) {
         const collabId = makeCollabId(tracker.class.Issue, _id, 'description')
