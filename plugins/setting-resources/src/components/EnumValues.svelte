@@ -130,7 +130,7 @@
     })
   }
 
-  async function onDrop() {
+  async function updateValues(): Promise<void> {
     await client.update(value, { enumValues: value.enumValues })
   }
 
@@ -226,7 +226,8 @@
         bind:values={value.enumValues}
         disableMouseOver={newItem}
         on:remove={(e) => remove(e.detail)}
-        on:drop={onDrop}
+        on:drop={updateValues}
+        on:update={updateValues}
       />
       {#if newItem}
         <div class="hulyTableAttr-content__row hovered">
