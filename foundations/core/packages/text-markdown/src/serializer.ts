@@ -305,6 +305,13 @@ interface MarkProcessor {
 }
 
 export const storeMarks: Record<string, MarkProcessor> = {
+  'inline-comment': {
+    open: '',
+    close: '',
+    mixable: true,
+    expelEnclosingWhitespace: false,
+    escape: true
+  },
   em: {
     open: '*',
     close: '*',
