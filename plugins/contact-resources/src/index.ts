@@ -42,7 +42,6 @@ import {
   getPlatformAvatarColorForTextDef,
   getPlatformColorDef,
   hexColorToNumber,
-  parseURL,
   showPopup,
   themeStore,
   type AnyComponent,
@@ -130,6 +129,7 @@ import PersonPreviewProvider from './components/person/PersonPreviewProvider.sve
 import TranslationSettings from './components/TranslationSettings.svelte'
 
 import { get } from 'svelte/store'
+import { getChannelURL } from './channel-url'
 import { canMergePersons, canResendInvitation } from './visibilityTester'
 import contact from './plugin'
 import {
@@ -319,8 +319,8 @@ async function kickEmployee (doc: Person): Promise<void> {
 }
 
 async function openChannelURL (doc: Channel): Promise<void> {
-  const url = parseURL(doc.value)
-  if (url.startsWith('http://') || url.startsWith('https://')) {
+  const url = getChannelURL(doc)
+  if (url !== undefined) {
     window.open(url)
   }
 }

@@ -38,6 +38,7 @@
   import { ContextMenu, invokeAction } from '@hcengineering/view-resources'
   import { createEventDispatcher, tick } from 'svelte'
   import { readable, Readable, Writable, writable } from 'svelte/store'
+  import { getChannelURL } from '../channel-url'
   import { channelProviders } from '../utils'
   import ChannelEditor from './ChannelEditor.svelte'
 
@@ -81,7 +82,8 @@
     item: AttachedData<Channel>,
     map: Map<Ref<ChannelProvider>, ChannelProvider>,
     notifyContextByDoc: Map<Ref<Doc>, DocNotifyContext>,
-    inboxNotificationsByContext: Map<Ref<DocNotifyContext>, InboxNotification[]>
+    inboxNotificationsByContext: Map<Ref<DocNotifyContext>, InboxNotification[]>,
+    integrations: Set<Ref<Doc>>
   ): Item | undefined {
     const provider = map.get(item.provider)
     if (provider) {
@@ -126,7 +128,8 @@
     value: AttachedData<Channel>[] | Channel | null,
     notifyContextByDoc: Map<Ref<Doc>, DocNotifyContext>,
     inboxNotificationsByContext: Map<Ref<DocNotifyContext>, InboxNotification[]>,
-    channelProviders: ChannelProvider[]
+    channelProviders: ChannelProvider[],
+    integrations: Set<Ref<Doc>>
   ) {
     if (value == null) {
       displayItems = []
@@ -137,13 +140,13 @@
     const map = toIdMap(channelProviders)
     if (Array.isArray(value)) {
       for (const item of value) {
-        const provider = getProvider(item, map, notifyContextByDoc, inboxNotificationsByContext)
+        const provider = getProvider(item, map, notifyContextByDoc, inboxNotificationsByContext, integrations)
         if (provider !== undefined) {
           result.push(provider)
         }
       }
     } else {
-      const provider = getProvider(value, map, notifyContextByDoc, inboxNotificationsByContext)
+      const provider = getProvider(value, map, notifyContextByDoc, inboxNotificationsByContext, integrations)
       if (provider !== undefined) {
         result.push(provider)
       }
@@ -152,7 +155,7 @@
     updateMenu(displayItems, channelProviders)
   }
 
-  $: if (value) update(value, $contextByDocStore, $inboxNotificationsByContextStore, $channelProviders)
+  $: if (value) update(value, $contextByDocStore, $inboxNotificationsByContextStore, $channelProviders, integrations)
 
   let displayItems: Item[] = []
   let actions: Action[] = []
@@ -175,7 +178,8 @@
             { provider: pr._id, value: '' },
             toIdMap(providers),
             $contextByDocStore,
-            $inboxNotificationsByContextStore
+            $inboxNotificationsByContextStore,
+            integrations
           )
           if (provider !== undefined) {
             displayItems = [..._displayItems, provider]
@@ -216,6 +220,28 @@
 
   const client = getClient()
 
+  const openChannel = (item: Item, event: Event): void => {
+    if (item.action) {
+      const doc = item.channel as Channel
+      const action = client.getModel().findAllSync(view.class.Action, { _id: item.action })[0]
+      invokeAction(doc, event, action)
+      return
+    }
+    if (
+      !item.integration &&
+      (item.presenter === undefined ||
+        item.provider === contact.channelProvider.Email ||
+        item.provider === contact.channelProvider.Telegram)
+    ) {
+      const url = getChannelURL(item.channel)
+      if (url !== undefined) {
+        window.open(url)
+        return
+      }
+    }
+    dispatch('open', item)
+  }
+
   const editChannel = (el: HTMLElement, n: number, item: Item): void => {
     if (opened !== n) {
       opened = n
@@ -225,7 +251,7 @@
           value: item.value,
           placeholder: item.placeholder,
           editable,
-          openable: item.presenter ?? item.action ?? false,
+          openable: Boolean(item.presenter ?? item.action ?? getChannelURL(item.channel)),
           channel: item.channel
         },
         el,
@@ -234,13 +260,7 @@
             remove(n)
           }
           if (result === 'open') {
-            if (item.action) {
-              const doc = item.channel as Channel
-              const action = client.getModel().findAllSync(view.class.Action, { _id: item.action })[0]
-              invokeAction(doc, result, action)
-            } else {
-              dispatch('open', item)
-            }
+            openChannel(item, new Event('open'))
           } else if (result != null) {
             if (result === '') {
               remove(n)
@@ -276,13 +296,7 @@
   const updateTooltip = (result: CustomEvent, item: Item, i: number): void => {
     if (result.detail === 'open') {
       closeTooltip()
-      if (item.action) {
-        const doc = item.channel as Channel
-        const action = client.getModel().findAllSync(view.class.Action, { _id: item.action })[0]
-        invokeAction(doc, result, action)
-      } else {
-        dispatch('open', item)
-      }
+      openChannel(item, result)
     } else if (result.detail === 'edit') {
       closeTooltip()
       editChannel(btns[i], i, item)
@@ -307,7 +321,7 @@
             closeTooltip()
             editChannel(eventToHTMLElement(ev), i, item)
           } else {
-            dispatch('open', item)
+            openChannel(item, ev)
           }
         }}
         showTooltip={{
@@ -316,7 +330,7 @@
             value: item.value,
             placeholder: item.placeholder,
             editable: editable !== undefined ? false : undefined,
-            openable: item.presenter ?? item.action ?? false
+            openable: Boolean(item.presenter ?? item.action ?? getChannelURL(item.channel))
           },
           onUpdate: (result) => {
             updateTooltip(result, item, i)
@@ -348,7 +362,7 @@
             closeTooltip()
             editChannel(eventToHTMLElement(ev), i, item)
           } else {
-            dispatch('open', item)
+            openChannel(item, ev)
           }
         }}
         showTooltip={{
@@ -357,7 +371,7 @@
             value: item.value,
             placeholder: item.placeholder,
             editable: editable !== undefined ? false : undefined,
-            openable: item.presenter ?? item.action ?? false
+            openable: Boolean(item.presenter ?? item.action ?? getChannelURL(item.channel))
           },
           onUpdate: (result) => {
             updateTooltip(result, item, i)
