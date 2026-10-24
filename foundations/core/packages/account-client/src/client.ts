@@ -107,7 +107,13 @@ export interface AccountClient {
     workspaceUrl: string
   ) => Promise<WorkspaceLoginInfo>
   join: (email: string, password: string, inviteId: string, workspaceUrl: string) => Promise<WorkspaceLoginInfo>
-  createInvite: (exp: number, emailMask: string, limit: number, role: AccountRole) => Promise<string>
+  createInvite: (
+    exp: number,
+    emailMask: string,
+    limit: number,
+    role: AccountRole,
+    allowedDomains?: string
+  ) => Promise<string>
   /**
    * @param options.personalized
    * If true, will generate a link with a personalized token for one person access
@@ -600,10 +606,16 @@ class AccountClientImpl implements AccountClient {
     return await this.rpc(request)
   }
 
-  async createInvite (exp: number, emailMask: string, limit: number, role: AccountRole): Promise<string> {
+  async createInvite (
+    exp: number,
+    emailMask: string,
+    limit: number,
+    role: AccountRole,
+    allowedDomains?: string
+  ): Promise<string> {
     const request = {
       method: 'createInvite' as const,
-      params: { exp, emailMask, limit, role }
+      params: { exp, emailMask, limit, role, ...(allowedDomains !== undefined ? { allowedDomains } : {}) }
     }
 
     return await this.rpc(request)

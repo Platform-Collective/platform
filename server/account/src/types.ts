@@ -140,7 +140,10 @@ export interface WorkspaceInvite {
   migratedFrom?: string // old invite id to be able to find migrated invites
   workspaceUuid: WorkspaceUuid
   expiresOn: Timestamp
-  emailPattern?: string
+  emailPattern?: string // Legacy regex mask, not enforced (see allowedDomains)
+  // Comma separated, normalized list of e-mail domains allowed to use the invite (exact match).
+  // Empty or missing means no domain restriction.
+  allowedDomains?: string
   email?: string
   remainingUses?: number
   role: AccountRole
