@@ -121,7 +121,7 @@ class UIClient extends TxOperations implements Client {
   async doNotify (...tx: Tx[]): Promise<void> {
     const pending = get(pendingCreatedDocs)
     let pendingUpdated = false
-    tx.forEach((t) => {
+    const confirmedTxes = tx.map((t) => {
       if (this.pendingTxes.has(t._id)) {
         this.pendingTxes.delete(t._id)
 
@@ -132,8 +132,10 @@ class UIClient extends TxOperations implements Client {
           // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
           delete pending[innerTx.objectId]
           pendingUpdated = true
+          return { ...t, meta: { ...t.meta, isCreateConfirmation: true } }
         }
       }
+      return t
     })
     if (pendingUpdated) {
       pendingCreatedDocs.set(pending)
@@ -141,8 +143,8 @@ class UIClient extends TxOperations implements Client {
 
     // We still want to notify about all transactions because there might be queries created after
     // the early applied transaction
-    // For old queries there's a check anyway that prevents the same document from being added twice
-    await this.provideNotify(...tx)
+    // Existing queries must reconcile confirmed creates with their optimistic documents.
+    await this.provideNotify(...confirmedTxes)
   }
 
   private async provideNotify (...tx: Tx[]): Promise<void> {

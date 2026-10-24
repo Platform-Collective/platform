@@ -13,8 +13,18 @@
 // limitations under the License.
 //
 
-import core, { type Client, type Doc, type FindResult, setCurrentAccount } from '@hcengineering/core'
-import { createQuery, refreshClient, setClient } from '../utils'
+import core, {
+  Hierarchy,
+  TxFactory,
+  type Client,
+  type Doc,
+  type FindResult,
+  type Tx,
+  setCurrentAccount
+} from '@hcengineering/core'
+import { createQuery, getClient, pendingCreatedDocs, refreshClient, setClient } from '../utils'
+import { get } from 'svelte/store'
+import type { InstantTransactions } from '../types'
 
 interface Subscription {
   query: Record<string, any>
@@ -23,6 +33,7 @@ interface Subscription {
 }
 
 const mockDestroyHandlers: Array<() => void> = []
+const mockNotifications: Tx[][] = []
 jest.mock('svelte', () => ({ onDestroy: (fn: () => void) => mockDestroyHandlers.push(fn) }))
 jest.mock('svelte/store', () => {
   const writable = (value: any): any => {
@@ -56,6 +67,9 @@ jest.mock('@hcengineering/ui', () => ({ getRawCurrentLocation: () => ({ path: []
 jest.mock('@hcengineering/query', () => ({
   LiveQuery: class {
     static subscriptions: Subscription[] = []
+    async tx (...tx: Tx[]): Promise<void> {
+      mockNotifications.push(tx)
+    }
 
     query (_class: any, query: Record<string, any>, onResult: (res: any) => void): () => void {
       const sub: Subscription = { query, active: true, onResult }
@@ -192,5 +206,49 @@ describe('LiveQuery', () => {
     const released = subscriptions().find((it) => it.query.name === 'L1')
     released?.onResult([{ query: { name: 'L1' } }])
     expect(received).toEqual(['L1', 'L2'])
+  })
+
+  it('marks only a pending optimistic create confirmation for both query clients', async () => {
+    const hierarchy = new Hierarchy()
+    const instantTransactions = { txClasses: [core.class.TxCreateDoc] } as unknown as InstantTransactions
+    jest.spyOn(hierarchy, 'classHierarchyMixin').mockReturnValue(instantTransactions)
+    const storage = {
+      findAll: async () => [],
+      getHierarchy: () => hierarchy,
+      notify: (..._tx: Tx[]) => {},
+      tx: jest.fn(async () => ({})),
+      close: async () => {}
+    } as unknown as Client
+    await setClient(storage)
+    const notifications = mockNotifications
+    notifications.length = 0
+    const tx = new TxFactory(core.account.System).createTxCreateDoc(core.class.Space, core.space.Model, {
+      name: 'chat',
+      description: '',
+      private: true,
+      members: [],
+      archived: false
+    })
+    await getClient().tx(tx)
+    await settle()
+    expect(get(pendingCreatedDocs)[tx.objectId]).toBe(true)
+    expect(notifications).toHaveLength(2)
+    expect(notifications.every(([t]) => t.meta?.isCreateConfirmation !== true)).toBe(true)
+    notifications.length = 0
+
+    const confirmed = { ...tx, createdOn: tx.modifiedOn + 100, modifiedOn: tx.modifiedOn + 100 }
+    storage.notify?.(confirmed)
+    await settle()
+    expect(get(pendingCreatedDocs)[tx.objectId]).toBeUndefined()
+    expect(notifications).toHaveLength(2)
+    expect(notifications.every(([t]) => t.meta?.isCreateConfirmation === true)).toBe(true)
+    expect(confirmed.meta?.isCreateConfirmation).toBeUndefined()
+    expect(storage.tx).toHaveBeenCalledWith(tx)
+    notifications.length = 0
+
+    storage.notify?.(confirmed)
+    await settle()
+    expect(notifications).toHaveLength(2)
+    expect(notifications.every(([t]) => t.meta?.isCreateConfirmation !== true)).toBe(true)
   })
 })

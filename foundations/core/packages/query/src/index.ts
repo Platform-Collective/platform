@@ -62,6 +62,7 @@ import core, {
   platformNow,
   RateLimiter,
   reduceCalls,
+  resultSort,
   shouldShowArchived,
   toFindResult,
   type DomainParams,
@@ -990,7 +991,7 @@ export class LiveQuery implements WithTx, Client {
     await q.refresh()
   }
 
-  private async doRefresh (q: Query): Promise<void> {
+  private async doRefresh (q: Query, authoritative = false): Promise<void> {
     const qid = ++q.refreshId
     const res = await this.client.findAll(q._class, q.query, q.options)
     const current = q.result instanceof Promise ? await q.result : q.result
@@ -998,9 +999,16 @@ export class LiveQuery implements WithTx, Client {
       q.refreshId === qid &&
       (!deepEqual(res, current.getDocs()) || (res.total !== q.total && q.options?.total === true))
     ) {
+      if (authoritative) {
+        this.refs.updateDocuments(q, current.getDocs(), true)
+      }
       q.result = new ResultArray(res, this.getHierarchy())
       q.refsRegistered = false
       q.total = res.total
+      if (authoritative) {
+        this.refs.updateDocuments(q, q.result.getDocs(), false, true)
+        q.refsRegistered = true
+      }
       await this.callback(q)
     }
   }
@@ -1164,7 +1172,9 @@ export class LiveQuery implements WithTx, Client {
     for (const queries of this.queries.entries()) {
       const doc = this.client.getHierarchy().isDerived(queries[0], core.class.Tx) ? tx : docTx
       for (const q of queries[1].values()) {
-        if (this.match(q, doc, q.options?.lookup !== undefined)) {
+        if (tx.meta?.isCreateConfirmation === true && this.getHierarchy().isDerived(doc._class, q._class)) {
+          await this.reconcileCreate(q, doc, docCache)
+        } else if (this.match(q, doc, q.options?.lookup !== undefined)) {
           await this.handleDocAdd(q, doc, true, docCache)
         }
 
@@ -1173,6 +1183,79 @@ export class LiveQuery implements WithTx, Client {
       }
     }
     return {}
+  }
+
+  private async reconcileCreate (q: Query, doc: Doc, docCache: Map<string, Doc>): Promise<void> {
+    if (q.result instanceof Promise) {
+      q.result = await q.result
+    }
+    const existing = q.result.findDoc(doc._id)
+    const matches = this.match(q, doc, q.options?.lookup !== undefined)
+    if (existing === undefined && !matches) return
+    if (q.query.$search != null) {
+      this.queriesToUpdate.delete(q.id)
+      await this.doRefresh(q, true)
+      return
+    }
+    if (existing === undefined) {
+      if (q.options?.limit !== undefined && q.result.length >= q.options.limit) {
+        const boundary = q.result.getDocs()[q.result.length - 1]
+        if (boundary !== undefined && q.options.sort !== undefined) {
+          const pair = [doc, boundary]
+          resultSort(pair, q.options.sort, q._class, this.getHierarchy(), this.client.getModel())
+          // The optimistic create was already counted, even if it was popped from the window.
+          if (pair[0] === boundary) return
+        }
+        this.queriesToUpdate.delete(q.id)
+        await this.doRefresh(q, true)
+        return
+      }
+      if (matches) {
+        await this.handleDocAdd(q, doc, true, docCache)
+      }
+      return
+    }
+    // An untouched optimistic create has the same createdOn and modifiedOn. Keep lookup data,
+    // and only read the server document if a later edit or a projection makes its revision uncertain.
+    const optimistic = existing.createdOn !== undefined && existing.modifiedOn <= existing.createdOn
+    const current = optimistic
+      ? { ...existing, createdOn: doc.createdOn, modifiedOn: doc.modifiedOn }
+      : await this.getDocFromCache(docCache, doc._id, doc._class, doc.space, q)
+    const currentMatches = current !== undefined && this.match(q, current)
+    const sort = q.options?.sort
+    if (q.options?.limit === q.result.length && (q.options?.total !== true || q.total > q.result.length)) {
+      // A document that stays before the old window edge cannot displace an unseen document.
+      const boundary = q.result.getDocs()[q.result.length - 1]
+      let staysInWindow = currentMatches
+      if (current !== undefined && sort !== undefined) {
+        const pair = [current, boundary]
+        resultSort(pair, sort, q._class, this.getHierarchy(), this.client.getModel())
+        staysInWindow = staysInWindow && pair[0] === current
+      }
+      if (!staysInWindow) {
+        this.queriesToUpdate.delete(q.id)
+        await this.doRefresh(q, true)
+        return
+      }
+    }
+    if (current !== undefined && currentMatches) {
+      const stored = q.result.updateDoc(current)
+      if (!optimistic) {
+        q.result.setLoadedModifiedOn(doc._id, current.modifiedOn)
+      }
+      // The client's optimistic timestamp may be ahead of the server's clock.
+      this.refs.updateDocuments(q, [stored], false, true)
+      if (sort !== undefined) {
+        q.result.sort(q._class, sort, this.getHierarchy(), this.client.getModel())
+      }
+    } else {
+      q.result.delete(doc._id)
+      this.refs.updateDocuments(q, [existing], true)
+      if (q.options?.total === true) {
+        q.total--
+      }
+    }
+    await this.callback(q, true)
   }
 
   private async handleDocAdd (q: Query, doc: Doc, handleLookup = true, docCache: Map<string, Doc>): Promise<void> {

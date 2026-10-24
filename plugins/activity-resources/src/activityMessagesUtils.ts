@@ -188,6 +188,7 @@ export function activityMessagesComparator (message1: ActivityMessage, message2:
   const time1 = getMessageTime(message1)
   const time2 = getMessageTime(message2)
 
+  // Concurrent messages can share a timestamp, so use the ID to keep their order stable across clients and reloads.
   return time1 - time2 || (message1._id < message2._id ? -1 : message1._id > message2._id ? 1 : 0)
 }
 

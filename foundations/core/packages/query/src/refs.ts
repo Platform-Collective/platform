@@ -26,7 +26,7 @@ export class Refs {
 
   constructor (readonly getHierarchy: () => Hierarchy) {}
 
-  public updateDocuments (q: Query, docs: Doc[], clean: boolean = false): void {
+  public updateDocuments (q: Query, docs: Doc[], clean: boolean = false, authoritative: boolean = false): void {
     if (q.options?.projection !== undefined) {
       return
     }
@@ -62,7 +62,7 @@ export class Refs {
         // already moved past still holds the document, and must keep it alive when that one leaves.
         existing.queries.add(q.id)
       }
-      if (existing.lastUsed <= d.modifiedOn) {
+      if (authoritative || existing.lastUsed <= d.modifiedOn) {
         existing.doc = d
         existing.lastUsed = d.modifiedOn
       }
