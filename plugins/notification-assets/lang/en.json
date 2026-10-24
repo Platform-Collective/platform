@@ -72,6 +72,9 @@
     "AlreadySubscribed": "This browser is already subscribed",
     "PushNotConfigured": "Push notifications are not configured on this server",
     "PushNotSupported": "Not supported by this browser",
-    "PushDenied": "Notifications are blocked in browser settings"
+    "PushDenied": "Notifications are blocked in browser settings",
+    "NotifyLevelAll": "All messages",
+    "NotifyLevelMentions": "Only mentions",
+    "NotifyLevelNone": "Nothing"
   }
 }
