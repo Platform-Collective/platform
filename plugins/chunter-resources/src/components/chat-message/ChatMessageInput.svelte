@@ -80,6 +80,7 @@
   function clear(): void {
     currentMessage = getDefault()
     _id = currentMessage._id
+    inputContent = EmptyMarkup
     inputRef.removeDraft(false)
   }
 
