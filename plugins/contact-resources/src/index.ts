@@ -132,6 +132,7 @@ import TranslationSettings from './components/TranslationSettings.svelte'
 import { get } from 'svelte/store'
 import { canMergePersons, canResendInvitation } from './visibilityTester'
 import contact from './plugin'
+import { getPersonNameQueries } from './person-name-query'
 import {
   channelIdentifierProvider,
   channelTitleProvider,
@@ -230,8 +231,10 @@ async function queryContact (
   search: string,
   filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
 ): Promise<ObjectSearchResult[]> {
-  const q: DocumentQuery<Contact> = { name: { $like: `%${search}%` } }
-  return await doContactQuery(_class, q, filter, client)
+  const queries: Array<DocumentQuery<Contact>> =
+    _class === contact.class.Organization ? [{ name: { $like: `%${search}%` } }] : getPersonNameQueries(search)
+  const results = await Promise.all(queries.map(async (q) => await doContactQuery(_class, q, filter, client)))
+  return Array.from(new Map(results.flat().map((result) => [result.doc._id, result])).values()).slice(0, 200)
 }
 
 async function queryEmployee (
@@ -239,12 +242,7 @@ async function queryEmployee (
   search: string,
   filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
 ): Promise<ObjectSearchResult[]> {
-  const q1 = await doContactQuery(
-    contact.mixin.Employee,
-    { name: { $like: `%${search}%` }, active: true },
-    filter,
-    client
-  )
+  const q1 = await queryContact(contact.mixin.Employee, client, search, filter)
   const q2 = await doContactQuery(
     contact.mixin.Employee,
     { displayName: { $like: `%${search}%` }, active: true },
