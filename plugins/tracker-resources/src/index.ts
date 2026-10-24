@@ -87,6 +87,8 @@ import NopeComponent from './components/NopeComponent.svelte'
 import MembersArrayEditor from './components/projects/MembersArrayEditor.svelte'
 import ProjectFilterValuePresenter from './components/projects/ProjectFilterValuePresenter.svelte'
 import RelationsPopup from './components/RelationsPopup.svelte'
+import MarkIssueDuplicatePopup from './components/MarkIssueDuplicatePopup.svelte'
+import { canShowMarkIssueDuplicate } from './duplicate-issue'
 import SetDueDateActionPopup from './components/SetDueDateActionPopup.svelte'
 import SetParentIssueActionPopup from './components/SetParentIssueActionPopup.svelte'
 import LinkSubIssueActionPopup from './components/LinkSubIssueActionPopup.svelte'
@@ -459,6 +461,7 @@ export default async (): Promise<Resources> => ({
     TimeSpendReport,
     EstimationEditor,
     SubIssuesSelector,
+    MarkIssueDuplicatePopup,
     RelatedIssues,
     RelatedIssueTemplates,
     IssueRelationPresenter,
@@ -529,6 +532,7 @@ export default async (): Promise<Resources> => ({
     ) => await getAllStates(query, onUpdate, queryId, attr, false),
     GetVisibleFilters: getVisibleFilters,
     IssueChatTitleProvider: getIssueChatTitle,
+    CanMarkIssueDuplicate: canShowMarkIssueDuplicate,
     IsProjectJoined: async (project: Project) => project.members.includes(getCurrentAccount().uuid),
     GetIssueStatusCategories: getIssueStatusCategories,
     SetComponentStore: setStore,

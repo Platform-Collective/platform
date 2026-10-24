@@ -107,6 +107,7 @@ export default mergeIds(trackerId, tracker, {
     DeleteMilestone: '' as ViewAction
   },
   action: {
+    MarkAsDuplicate: '' as Ref<Action<Doc, { component: AnyComponent }>>,
     NewRelatedIssue: '' as Ref<Action<Doc, any>>,
     DeleteMilestone: '' as Ref<Action<Doc, Record<string, any>>>,
     DeleteProject: '' as Ref<Action<Doc, Record<string, any>>>,

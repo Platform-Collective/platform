@@ -188,6 +188,12 @@ export default mergeIds(trackerId, tracker, {
     NumberLabels: '' as IntlString,
     MoveToProject: '' as IntlString,
     Duplicate: '' as IntlString,
+    MarkAsDuplicate: '' as IntlString,
+    DuplicateOf: '' as IntlString,
+    MarkedAsDuplicateOfThis: '' as IntlString,
+    DuplicateEditRequired: '' as IntlString,
+    DuplicateNoCanceledStatus: '' as IntlString,
+    MarkDuplicateFailed: '' as IntlString,
     MoveIssues: '' as IntlString,
     MoveIssuesDescription: '' as IntlString,
     ManageAttributes: '' as IntlString,
@@ -585,6 +591,7 @@ export default mergeIds(trackerId, tracker, {
     ProjectComponents: '' as AnyComponent,
     IssuePreview: '' as AnyComponent,
     RelationsPopup: '' as AnyComponent,
+    MarkIssueDuplicatePopup: '' as AnyComponent,
     MilestoneRefPresenter: '' as AnyComponent,
     Milestones: '' as AnyComponent,
     MilestonePresenter: '' as AnyComponent,
@@ -620,6 +627,7 @@ export default mergeIds(trackerId, tracker, {
     CreateIssueDraft: '' as Metadata<IssueDraft>
   },
   function: {
+    CanMarkIssueDuplicate: '' as Resource<(doc?: Doc | Doc[]) => Promise<boolean>>,
     IssueTitleProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,
     IssueIdentifierProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,
     ComponentTitleProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,
