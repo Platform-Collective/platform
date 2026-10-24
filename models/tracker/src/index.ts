@@ -850,7 +850,8 @@ function defineSpaceType (builder: Builder): void {
         core.permission.ForbidDeleteObject
       ],
       allowedClassic: true,
-      allowedTaskTypeDescriptors: [tracker.descriptors.Issue]
+      allowedTaskTypeDescriptors: [tracker.descriptors.Issue],
+      defaultTaskType: tracker.taskTypes.Issue
     },
     tracker.descriptors.ProjectType
   )

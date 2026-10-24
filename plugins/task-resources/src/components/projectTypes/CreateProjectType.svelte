@@ -20,6 +20,7 @@
   import { ToggleWithLabel } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import task from '../../plugin'
+  import { getDefaultTaskTypes } from './default-task-types'
 
   const client = getClient()
 
@@ -46,7 +47,7 @@
         roles: 0,
         classic: projDescriptor.allowedClassic === true ? classic : false
       },
-      [],
+      getDefaultTaskTypes(client, projDescriptor),
       generateId()
     )
     dispatch('close')
