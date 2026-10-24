@@ -22,10 +22,13 @@ import {
   type MeasureContext,
   type WorkspaceUuid
 } from '@hcengineering/core'
+import type { Session, ConnectionSocket } from '@hcengineering/server-core'
+import type { Workspace } from '../workspace'
 import type { Token } from '@hcengineering/server-token'
 
 // Import the module under test after mocks are set up
 import { TSessionManager, type Timeouts } from '../sessionManager'
+import { sendResponse } from '../utils'
 
 // Mock modules before importing the module under test
 jest.mock('@hcengineering/account-client', () => ({
@@ -1708,6 +1711,164 @@ describe('TSessionManager', () => {
   })
 
   describe('session tick handling', () => {
+    function handleSessionTick (now: number): void {
+      const manager = sessionManager as unknown as { handleSessionTick: (now: number) => void }
+      manager.handleSessionTick(now)
+    }
+
+    function addExpiringSession (
+      exp?: number,
+      extra = { authMethod: 'oidc' },
+      tickHash = 0
+    ): {
+      session: Session
+      socket: ConnectionSocket
+      workspace: Workspace
+    } {
+      const wsId = 'expiry-workspace' as WorkspaceUuid
+      const session = {
+        token: { account: 'oidc-account', workspace: wsId, exp, extra },
+        sessionId: 'expiry-session',
+        getUser: jest.fn().mockReturnValue('oidc-account'),
+        getSocialIds: jest.fn().mockReturnValue([]),
+        getUserSocialIds: jest.fn().mockReturnValue([]),
+        broadcast: jest.fn(),
+        workspace: { uuid: wsId },
+        lastRequest: Date.now(),
+        lastPing: Date.now(),
+        requests: new Map(),
+        binaryMode: true,
+        useCompression: true
+      } as unknown as Session
+      const socket = {
+        id: 'expiry-socket',
+        send: jest.fn().mockResolvedValue(undefined),
+        close: jest.fn(),
+        checkState: jest.fn().mockReturnValue(true)
+      } as unknown as ConnectionSocket
+      const ref = { session, socket, tickHash }
+      const workspace = {
+        wsId: { uuid: wsId },
+        sessions: new Map([[session.sessionId, ref]]),
+        tickHandlers: new Map()
+      } as unknown as Workspace
+      sessionManager.sessions.set(socket.id, ref)
+      sessionManager.workspaces.set(wsId, workspace)
+      return { session, socket, workspace }
+    }
+
+    beforeEach(() => {
+      jest.useFakeTimers()
+    })
+    afterEach(() => {
+      jest.useRealTimers()
+    })
+
+    test.each(Array.from({ length: 20 }, (_, i) => i))('expires tick hash %s within one cycle', async (tickHash) => {
+      const now = Date.now()
+      const { socket, workspace } = addExpiringSession(Math.floor(now / 1000), undefined, tickHash)
+      for (let tick = 0; tick < 20; tick++) {
+        sessionManager.ticks = tick
+        handleSessionTick(now)
+      }
+      expect(workspace.sessions.size).toBe(0)
+      expect(sessionManager.sessions.size).toBe(0)
+      await jest.advanceTimersByTimeAsync(0)
+      expect(socket.send).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ terminate: true }),
+        true,
+        true
+      )
+      expect(socket.close).toHaveBeenCalledTimes(1)
+      expect(mockUsersProducer.send).toHaveBeenCalledTimes(1)
+    })
+
+    test.each(['pending', 'rejected'])('logout queue %s cannot block shutdown', async (queueState) => {
+      if (queueState === 'pending') mockUsersProducer.send.mockReturnValue(new Promise(() => {}))
+      else mockUsersProducer.send.mockRejectedValue(new Error('queue unavailable'))
+      const { socket, workspace } = addExpiringSession(Math.floor(Date.now() / 1000) - 1)
+      sessionManager.ticks = 0
+      handleSessionTick(Date.now())
+      expect(workspace.sessions.size).toBe(0)
+      expect(sessionManager.sessions.size).toBe(0)
+      await jest.advanceTimersByTimeAsync(0)
+      expect(socket.close).toHaveBeenCalledTimes(1)
+    })
+
+    test.each(['pending', 'delayed', 'rejected'])('send %s respects shutdown deadline', async (sendState) => {
+      const { session, socket, workspace } = addExpiringSession(Math.floor(Date.now() / 1000) - 1)
+      const send = socket.send as jest.Mock
+      if (sendState === 'pending') send.mockReturnValue(new Promise(() => {}))
+      if (sendState === 'delayed') {
+        send.mockImplementation(async () => {
+          await new Promise<void>((resolve) => setTimeout(resolve, 100))
+        })
+      }
+      if (sendState === 'rejected') send.mockRejectedValue(new Error('compression failed'))
+      await sessionManager.handleRequest(
+        mockContext,
+        session,
+        socket,
+        { id: 10, method: 'tx', params: [] },
+        session.workspace.uuid
+      )
+      expect(workspace.sessions.size).toBe(0)
+      expect(session.requests.size).toBe(0)
+      sessionManager.broadcast(mockContext, null, session.workspace.uuid, [], undefined)
+      sessionManager.broadcastAll(mockContext, session.workspace.uuid, [])
+      sessionManager.broadcastSessions(mockContext, { [session.sessionId]: [] })
+      expect(session.broadcast).not.toHaveBeenCalled()
+      expect(sendResponse).not.toHaveBeenCalled()
+      await jest.advanceTimersByTimeAsync(250)
+      expect(socket.close).toHaveBeenCalledTimes(1)
+      // A transport can still dispatch a buffered message after detachment.
+      await sessionManager.handleRequest(
+        mockContext,
+        session,
+        socket,
+        { id: 11, method: 'tx', params: [] },
+        session.workspace.uuid
+      )
+      expect(send).toHaveBeenCalledTimes(1)
+      expect(mockUsersProducer.send).toHaveBeenCalledTimes(1)
+    })
+
+    test('a delayed frame is flushed before transport shutdown', async () => {
+      const { socket } = addExpiringSession(Math.floor(Date.now() / 1000) - 1)
+      let flush: () => void = () => {}
+      ;(socket.send as jest.Mock).mockImplementation(async () => {
+        await new Promise<void>((resolve) => {
+          flush = resolve
+        })
+      })
+      sessionManager.ticks = 0
+      handleSessionTick(Date.now())
+      await jest.advanceTimersByTimeAsync(0)
+      expect(socket.close).not.toHaveBeenCalled()
+      flush()
+      await jest.advanceTimersByTimeAsync(0)
+      expect(socket.close).toHaveBeenCalledTimes(1)
+    })
+
+    test('future, unbounded, system, API and grant sessions retain existing behavior', () => {
+      for (const token of [
+        { exp: Math.floor(Date.now() / 1000) + 60, extra: { authMethod: 'oidc' } },
+        { exp: undefined, extra: {} },
+        { exp: undefined, extra: { service: 'system' } },
+        { exp: 1, extra: { apiTokenId: 'api' } },
+        { exp: 1, extra: { guest: 'true' } }
+      ]) {
+        sessionManager.sessions.clear()
+        const { socket } = addExpiringSession(token.exp, token.extra as { authMethod: string })
+        sessionManager.ticks = 0
+        handleSessionTick(Date.now())
+        expect(socket.send).not.toHaveBeenCalled()
+        expect(socket.close).not.toHaveBeenCalled()
+        expect(sessionManager.sessions.size).toBe(1)
+      }
+    })
+
     it('should detect hung sessions and close them', () => {
       const now = Date.now()
       const longTimeAgo = now - 120000 // 120 seconds ago
