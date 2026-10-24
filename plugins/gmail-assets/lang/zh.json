@@ -18,6 +18,7 @@
     "Subject": "主题",
     "Send": "发送",
     "Resend": "重新发送",
+    "IntegrationUnavailable": "Gmail 集成不可用。请在设置中重新连接 Gmail，然后重新发送此邮件。",
     "NewMessage": "新消息",
     "NewMessageTo": "新消息至",
     "Cancel": "取消",

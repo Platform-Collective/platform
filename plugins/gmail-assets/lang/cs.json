@@ -18,6 +18,7 @@
     "Subject": "Předmět",
     "Send": "Odeslat",
     "Resend": "Znovu odeslat",
+    "IntegrationUnavailable": "Integrace Gmailu není dostupná. Znovu připojte Gmail v nastavení a odešlete tuto zprávu znovu.",
     "NewMessage": "Nová zpráva",
     "NewMessageTo": "Nová zpráva pro",
     "Cancel": "Zrušit",

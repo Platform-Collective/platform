@@ -18,6 +18,7 @@
     "Subject": "Oggetto",
     "Send": "Invia",
     "Resend": "Reinvia",
+    "IntegrationUnavailable": "L’integrazione Gmail non è disponibile. Ricollega Gmail nelle impostazioni e invia nuovamente questo messaggio.",
     "NewMessage": "Nuovo messaggio",
     "NewMessageTo": "Nuovo messaggio a",
     "Cancel": "Annulla",

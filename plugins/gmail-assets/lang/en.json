@@ -18,6 +18,7 @@
     "Subject": "Subject",
     "Send": "Send",
     "Resend": "Resend",
+    "IntegrationUnavailable": "Gmail integration is unavailable. Reconnect Gmail in Settings and resend this message.",
     "NewMessage": "New message",
     "NewMessageTo": "New message to",
     "Cancel": "Cancel",
