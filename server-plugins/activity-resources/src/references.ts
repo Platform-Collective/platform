@@ -496,11 +496,10 @@ async function getReferencesTxes (
     const ref = references[refIndex]
 
     if (refIndex !== -1) {
-      const alreadyProcessed = areEqualJson(JSON.parse(mention.content), JSON.parse(ref.message))
-
-      if (alreadyProcessed) {
-        references.splice(refIndex, 1)
+      if (!areEqualJson(JSON.parse(mention.content), JSON.parse(ref.message))) {
+        txes.push(getUpdateMentionInfoTx(control, ref, space, mention))
       }
+      references.splice(refIndex, 1)
     } else {
       const removeTxes = await getRemoveMentionTxes(control, mention, originTx)
       txes.push(...removeTxes)
