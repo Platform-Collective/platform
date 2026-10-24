@@ -14119,6 +14119,9 @@ importers:
       '@hcengineering/presentation':
         specifier: workspace:^0.7.0
         version: link:../presentation
+      '@hcengineering/ui':
+        specifier: workspace:^0.7.0
+        version: link:../ui
       hls.js:
         specifier: ^1.5.20
         version: 1.6.14
