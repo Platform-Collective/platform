@@ -236,9 +236,36 @@
     </style>
   <% } %>
 
+  <style>
+    #desktop-startup {
+      position: fixed;
+      inset: var(--huly-top-indent, 0px) 0 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: var(--text-primary, #333333);
+      background-color: var(--bg-body, #ffffff);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    #desktop-startup-retry {
+      padding: 8px 16px;
+      cursor: pointer;
+    }
+  </style>
+
 </head>
 
 <body style="margin: 0; overflow: hidden;">
+
+  <div id="desktop-startup">
+    <h1 id="desktop-startup-title">Huly</h1>
+    <progress id="desktop-startup-progress" aria-labelledby="desktop-startup-title"></progress>
+    <p id="desktop-startup-status" role="status" hidden></p>
+    <button id="desktop-startup-retry" type="button" hidden disabled>↻</button>
+  </div>
 
   <% if (typeof isWindows !== 'undefined' && isWindows) { %>
     <div id="desktop-app-titlebar-root">
