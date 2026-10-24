@@ -15,7 +15,12 @@
   import { Label, ListView, Loading, Scroller } from '@hcengineering/ui'
   import { Doc, Ref } from '@hcengineering/core'
   import { createEventDispatcher } from 'svelte'
-  import notification, { ActivityNotificationViewlet, DocNotifyContext } from '@hcengineering/notification'
+  import notification, {
+    ActivityNotificationViewlet,
+    DocNotifyContext,
+    InboxNotification
+  } from '@hcengineering/notification'
+  import { Notification } from '@hcengineering/communication-types'
   import { getClient } from '@hcengineering/presentation'
   import { InboxNotificationsClientImpl } from '@hcengineering/notification-resources'
   import view from '@hcengineering/view'
@@ -23,12 +28,15 @@
   import inbox from '../plugin'
   import { NavigationItem } from '../type'
   import { NavigationClient } from '../client'
+  import { getSelectionAfterRemoval } from '../navigation'
   import InboxCard from './InboxCard.svelte'
 
   export let doc: Doc | undefined = undefined
   export let legacyContext: DocNotifyContext | undefined = undefined
 
-  const dispatch = createEventDispatcher()
+  const dispatch = createEventDispatcher<{
+    select: { navItem: NavigationItem, doc: Doc, notification?: InboxNotification | Notification } | null
+  }>()
   const client = getClient()
 
   const navClient: NavigationClient = new NavigationClient(InboxNotificationsClientImpl.getClient())
@@ -67,6 +75,31 @@
 
   const docById = new Map<Ref<Doc>, Doc>()
 
+  async function remove(navItem: NavigationItem, fromKeyboard = false): Promise<void> {
+    const shouldReselect =
+      fromKeyboard ||
+      (navItem.type === 'legacy' ? navItem.context._id === legacyContext?._id : navItem._id === doc?._id)
+    const selection = listSelection - (navItems.indexOf(navItem) < listSelection ? 1 : 0)
+    const next = getSelectionAfterRemoval(navItems, navItem)
+    await navClient.remove(navItem)
+    if (!shouldReselect) {
+      listSelection = selection
+      return
+    }
+    listSelection = next.selection
+
+    if (next.navItem == null) {
+      dispatch('select')
+      return
+    }
+
+    const nextDoc =
+      docById.get(next.navItem._id) ?? (await client.findOne(next.navItem._class, { _id: next.navItem._id }))
+    if (nextDoc != null) {
+      dispatch('select', { navItem: next.navItem, doc: nextDoc })
+    }
+  }
+
   async function onKeydown(key: KeyboardEvent): Promise<void> {
     if (key.code === 'ArrowUp') {
       key.stopPropagation()
@@ -83,7 +116,7 @@
       key.stopPropagation()
       const navItem = navItems[listSelection]
       if (navItem != null) {
-        await navClient.remove(navItem)
+        await remove(navItem, true)
       }
     }
     if (key.code === 'Enter') {
@@ -142,14 +175,14 @@
           {@const navItem = navItems[itemIndex]}
           {#if navItem}
             <InboxCard
-              {navClient}
+              {remove}
               {navItem}
               {viewlets}
               selected={navItem._id === legacyContext?.objectId || navItem._id === doc?._id}
               on:doc={(e) => {
                 const d = e.detail
                 if (d == null) return
-                docById.set(d._id, e.detail)
+                docById.set(d._id, d)
               }}
               on:select={(e) => {
                 dispatch('select', { navItem, doc: e.detail.doc, notification: e.detail.notification })

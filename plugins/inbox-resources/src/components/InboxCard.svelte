@@ -25,16 +25,18 @@
   import ModernNotifications from './ModernNotifications.svelte'
   import LegacyNotifications from './legacy/LegacyNotifications.svelte'
   import { NavigationItem } from '../type'
-  import { NavigationClient } from '../client'
   import { isReactionNotification } from '@hcengineering/notification-resources'
 
-  export let navClient: NavigationClient
+  export let remove: (navItem: NavigationItem) => Promise<void>
   export let navItem: NavigationItem
   export let selected: boolean = false
   export let viewlets: ActivityNotificationViewlet[] = []
 
   const account = getCurrentAccount()
-  const dispatch = createEventDispatcher()
+  const dispatch = createEventDispatcher<{
+    doc: Doc | undefined
+    select: { doc: Doc, notification?: InboxNotification | Notification }
+  }>()
 
   let total = 0
 
@@ -88,7 +90,7 @@
   async function handleToggle(): Promise<void> {
     isRemoving = true
     try {
-      await navClient.remove(navItem)
+      await remove(navItem)
     } finally {
       isRemoving = false
     }

@@ -128,8 +128,12 @@
       navItem: NavigationItem
       doc: Doc
       notification?: InboxNotification | Notification
-    }>
+    } | null>
   ): void {
+    if (event.detail == null) {
+      handleClose()
+      return
+    }
     const { navItem, notification, doc: ddoc } = event.detail
     if (ddoc == null) return
 
