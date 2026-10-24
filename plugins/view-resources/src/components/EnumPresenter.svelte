@@ -17,6 +17,7 @@
   import { getEmbeddedLabel } from '@hcengineering/platform'
   import { createQuery } from '@hcengineering/presentation'
   import { DropdownLabels, DropdownTextItem, tooltip } from '@hcengineering/ui'
+  import { getEnumTooltipLabel } from './enum-presenter'
   import StringPresenter from './StringPresenter.svelte'
 
   export let value: string
@@ -27,6 +28,8 @@
   let items: DropdownTextItem[] = []
 
   const query = createQuery()
+
+  $: tooltipLabel = getEnumTooltipLabel(items, value)
 
   $: type &&
     query.query(
@@ -44,7 +47,7 @@
 </script>
 
 {#if onChange !== undefined && type !== undefined && !readonly}
-  <span use:tooltip={value ? { label: getEmbeddedLabel(value) } : undefined}>
+  <span use:tooltip={tooltipLabel !== undefined ? { label: getEmbeddedLabel(tooltipLabel) } : undefined}>
     <DropdownLabels
       bind:selected={value}
       {items}
