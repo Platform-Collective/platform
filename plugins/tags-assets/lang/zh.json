@@ -5,6 +5,7 @@
     "DescriptionLabel": "描述",
     "ColorLabel": "颜色",
     "CategoryLabel": "类别",
+    "Usage": "使用情况",
     "TagReferenceLabel": "标签",
     "TagLabel": "标签",
     "TagName": "请输入{word}标题",
