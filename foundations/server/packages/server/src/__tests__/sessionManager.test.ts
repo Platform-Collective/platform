@@ -22,6 +22,9 @@ import {
   type MeasureContext,
   type WorkspaceUuid
 } from '@hcengineering/core'
+import type { LoginInfoWorkspace } from '@hcengineering/account-client'
+import type { ConnectionSocket } from '@hcengineering/server-core'
+import platform from '@hcengineering/platform'
 import type { Token } from '@hcengineering/server-token'
 
 // Import the module under test after mocks are set up
@@ -165,6 +168,39 @@ describe('TSessionManager', () => {
     if (sessionManager.maintenanceTimer !== undefined) {
       clearTimeout(sessionManager.maintenanceTimer)
     }
+  })
+
+  test('rejects direct access to a failed restore before opening its database', async () => {
+    const workspaceUuid = 'c43e12ce-867f-422e-a6ac-23af72af4636' as WorkspaceUuid
+    const workspaceFactory = sessionManager as unknown as {
+      createWorkspace: () => { maintenance: boolean, wsId: { uuid: WorkspaceUuid } }
+    }
+    const createWorkspace = jest.spyOn(workspaceFactory, 'createWorkspace').mockReturnValue({
+      maintenance: false,
+      wsId: { uuid: workspaceUuid }
+    })
+    const response = await sessionManager.getWorkspace(
+      mockContext,
+      workspaceUuid,
+      {
+        mode: 'restore-failed',
+        url: 'failed-restore',
+        version: { versionMajor: 1, versionMinor: 0, versionPatch: 0 },
+        endpoint: { internalUrl: '', externalUrl: '', region: '' },
+        role: AccountRole.User
+      } satisfies LoginInfoWorkspace,
+      { account: systemAccountUuid, workspace: workspaceUuid, extra: {} },
+      {} as unknown as ConnectionSocket
+    )
+    expect(response.resp).toMatchObject({
+      terminate: true,
+      specialError: 'archived',
+      error: { code: platform.status.WorkspaceArchived }
+    })
+    expect(createWorkspace).not.toHaveBeenCalled()
+    expect(mockPipelineFactory).not.toHaveBeenCalled()
+    expect(sessionManager.workspaces.size).toBe(0)
+    createWorkspace.mockRestore()
   })
 
   describe('constructor', () => {

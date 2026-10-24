@@ -457,6 +457,7 @@ export type WorkspaceEvent =
   | 'migrate-backup-started' // -> state = 'migration-backup'
   | 'restore-started'
   | 'restore-done'
+  | 'restore-failed'
   | 'migrate-backup-done' // -> state = 'migration-pending-cleaning'
   | 'migrate-clean-started' // -> state = 'migration-cleaning'
   | 'migrate-clean-done' // -> state = 'pending-restoring'
