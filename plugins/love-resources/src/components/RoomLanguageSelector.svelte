@@ -16,9 +16,9 @@
   import { getClient } from '@hcengineering/presentation'
   import { getEmbeddedLabel } from '@hcengineering/platform'
   import { DropdownIntlItem, DropdownLabelsIntl, DropdownLabelsPopupIntl, showPopup } from '@hcengineering/ui'
-  import view from '@hcengineering/view'
   import { Room, RoomLanguage } from '@hcengineering/love'
 
+  import love from '../plugin'
   import { languagesDisplayData } from '../types'
   import LanguageIcon from './LanguageIcon.svelte'
 
@@ -63,7 +63,7 @@
     icon={LanguageIcon}
     iconProps={{ lang: selectedItem }}
     bind:selected={selectedItem}
-    label={view.string.AddSavedView}
+    label={love.string.Language}
     on:selected={(e) => handleSelection(e.detail)}
   />
 {:else}
