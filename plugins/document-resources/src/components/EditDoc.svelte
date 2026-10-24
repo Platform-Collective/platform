@@ -209,6 +209,11 @@
 
   const aside: ButtonItem[] = [
     {
+      id: 'history',
+      icon: document.icon.History,
+      showTooltip: { label: document.string.History, direction: 'bottom' }
+    },
+    {
       id: 'references',
       icon: document.icon.References,
       showTooltip: { label: document.string.Backlinks, direction: 'bottom' }
