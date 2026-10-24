@@ -25,7 +25,7 @@
   } from '@hcengineering/presentation'
   import setting, { settingId } from '@hcengineering/setting'
   import { taskTypeStore, typeStore } from '@hcengineering/task-resources'
-  import { Issue, TrackerEvents } from '@hcengineering/tracker'
+  import { Issue, trackerId, TrackerEvents } from '@hcengineering/tracker'
   import {
     AnyComponent,
     Button,
@@ -72,6 +72,7 @@
   const hierarchy = client.getHierarchy()
 
   let issue: WithLookup<Issue> | undefined
+  let issueLoaded = false
   let title = ''
   let innerWidth: number
   let descriptionBox: AttachmentStyleBoxCollabEditor
@@ -93,13 +94,16 @@
 
   let issueId: Ref<Issue> | undefined
 
-  $: void getIssueIdByIdentifier(_id).then((res) => {
-    issueId = res ?? (_id as Ref<Issue>)
+  $: {
+    issueLoaded = false
+    void getIssueIdByIdentifier(_id).then((res) => {
+      issueId = res ?? (_id as Ref<Issue>)
 
-    if (lastId === undefined) {
-      lastId = issueId
-    }
-  })
+      if (lastId === undefined) {
+        lastId = issueId
+      }
+    })
+  }
 
   $: read(issueId)
 
@@ -117,7 +121,7 @@
   })
 
   $: if (issueId !== undefined && _class !== undefined) {
-    queryClient.query<Issue>(
+    const changed = queryClient.query<Issue>(
       _class,
       { _id: issueId },
       async (result) => {
@@ -125,6 +129,7 @@
           await save()
         }
         ;[issue] = result
+        issueLoaded = true
         if (issue !== undefined) {
           title = issue.title
         }
@@ -133,6 +138,9 @@
         limit: 1
       }
     )
+    if (changed) {
+      issueLoaded = false
+    }
   }
 
   $: canSave = title.trim().length > 0
@@ -160,7 +168,7 @@
 
   const manager = createFocusManager()
   export function canClose(): boolean {
-    if (descriptionBox.isFocused()) {
+    if (descriptionBox?.isFocused()) {
       return false
     }
     return true
@@ -429,6 +437,21 @@
       </div>
     </svelte:fragment>
   </Panel>
+{:else if issueLoaded}
+  <div class="flex-col-center h-full">
+    <h2><Label label={presentation.string.AccessDenied} /></h2>
+    <Button
+      label={tracker.string.AllIssues}
+      kind={'ghost'}
+      on:click={() => {
+        const loc = getCurrentResolvedLocation()
+        loc.path = [...loc.path.slice(0, 2), trackerId, 'all-issues']
+        loc.query = undefined
+        loc.fragment = undefined
+        navigate(loc)
+      }}
+    />
+  </div>
 {/if}
 
 <style>
