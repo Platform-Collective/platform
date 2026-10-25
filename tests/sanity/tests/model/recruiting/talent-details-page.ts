@@ -23,8 +23,8 @@ export class TalentDetailsPage extends CommonRecruitingPage {
 
   readonly buttonFinalContact = (): Locator => this.formMergeContacts().locator('button', { hasText: 'Final contact' })
 
-  readonly buttonMergeRow = (hasText: string): Locator =>
-    this.formMergeContacts().locator('div.box.flex-row-center div.antiRadio', { hasText }).locator('label')
+  readonly buttonMergeRow = (text: string): Locator =>
+    this.formMergeContacts().locator('div.box.flex-row-center div.antiRadio').getByText(text, { exact: true })
 
   readonly buttonPopupMergeContacts = (): Locator =>
     this.formMergeContacts().locator('button:has-text("Merge contacts")')
