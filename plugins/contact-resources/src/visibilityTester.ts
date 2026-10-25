@@ -25,5 +25,5 @@ export async function canMergePersons (person: Person): Promise<boolean> {
   const client = getClient()
   const hierarchy = client.getHierarchy()
 
-  return hierarchy.hasMixin(person, contact.mixin.Employee)
+  return !hierarchy.hasMixin(person, contact.mixin.Employee)
 }
