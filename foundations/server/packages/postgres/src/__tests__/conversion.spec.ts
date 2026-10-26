@@ -1,19 +1,25 @@
 /* eslint-disable secure-coding/no-homoglyph-identifiers */
 import core, {
+  ClassifierKind,
+  DOMAIN_SPACE,
   Hierarchy,
   MeasureMetricsContext,
   ModelDb,
+  SortingOrder,
   TxFactory,
+  type Class,
   type DocumentUpdate,
+  type MeasureContext,
   type PersonId,
   type Ref,
+  type SessionData,
   type Space,
   type Tx,
   type WorkspaceUuid
 } from '@hcengineering/core'
 import { PostgresAdapter } from '../storage'
 import { convertArrayParams, decodeArray, filterProjection } from '../utils'
-import { genMinModel, test, type ComplexClass } from './minmodel'
+import { createAttribute, createClass, genMinModel, test, type ComplexClass } from './minmodel'
 import { createDummyClient, type TypedQuery } from './utils'
 import { ConnectionMgr } from '@hcengineering/postgres-base'
 
@@ -74,6 +80,7 @@ describe('array decoding', () => {
 })
 
 const factory = new TxFactory('email:test' as PersonId)
+const testSpace = 'test:class:Space' as Ref<Class<Space>>
 function upd (id: string, partial: DocumentUpdate<ComplexClass>): Tx {
   return factory.createTxUpdateDoc<ComplexClass>(
     test.class.ComplexClass,
@@ -137,12 +144,30 @@ describe('query to sql conversion tests', () => {
     )
   })
 })
-function createTestContext (): { adapter: PostgresAdapter, ctx: MeasureMetricsContext, queries: TypedQuery[] } {
-  const ctx = new MeasureMetricsContext('test', {})
+function createTestContext (): { adapter: PostgresAdapter, ctx: MeasureContext<SessionData>, queries: TypedQuery[] } {
+  const ctx = new MeasureMetricsContext('test', {}) as MeasureContext<SessionData>
   const queries: TypedQuery[] = []
   const c = createDummyClient(queries)
 
   const minModel = genMinModel()
+  minModel.push(
+    createClass(testSpace, {
+      label: core.string.Class,
+      extends: core.class.Space,
+      kind: ClassifierKind.CLASS,
+      domain: DOMAIN_SPACE
+    })
+  )
+  for (const attributeOf of [core.class.Space, test.class.ComplexClass, test.mixin.ComplexMixin]) {
+    minModel.push(
+      createAttribute({
+        attributeOf,
+        name: 'members',
+        label: core.string.Class,
+        type: { _class: core.class.ArrOf, of: { _class: core.class.TypeString } }
+      })
+    )
+  }
   const hierarchy = new Hierarchy()
   for (const tx of minModel) {
     hierarchy.tx(tx)
@@ -163,6 +188,47 @@ function createTestContext (): { adapter: PostgresAdapter, ctx: MeasureMetricsCo
   )
   return { adapter, ctx, queries }
 }
+
+describe('array length sorting', () => {
+  it.each([SortingOrder.Ascending, SortingOrder.Descending])('sorts SQL arrays before limiting (%s)', async (order) => {
+    const { adapter, ctx, queries } = createTestContext()
+    await adapter.findAll(ctx, testSpace, {}, { sort: { 'members.length': order, name: 1 }, limit: 1 })
+
+    const length = 'COALESCE(cardinality(space."members"), 0)'
+    const direction = order === SortingOrder.Ascending ? 'ASC' : 'DESC'
+    expect(queries[0].query).toContain(`ORDER BY ${length} ${direction}, space.data#>>'{name}' ASC LIMIT 1`)
+  })
+
+  it.each([SortingOrder.Ascending, SortingOrder.Descending])('sorts JSON arrays as counts (%s)', async (order) => {
+    const { adapter, ctx, queries } = createTestContext()
+    await adapter.findAll(ctx, test.class.ComplexClass, {}, { sort: { 'members.length': order }, limit: 2 })
+
+    const length = "COALESCE(jsonb_array_length(NULLIF(pg_testing.data->'members', 'null'::jsonb)), 0)"
+    expect(queries[0].query).toContain(`ORDER BY ${length} ${order === 1 ? 'ASC' : 'DESC'} LIMIT 2`)
+  })
+
+  it('resolves mixin arrays', async () => {
+    const { adapter, ctx, queries } = createTestContext()
+    await adapter.findAll(
+      ctx,
+      test.class.ComplexClass,
+      {},
+      {
+        sort: { [`${test.mixin.ComplexMixin}.members.length`]: 1 }
+      }
+    )
+
+    const array = `pg_testing.data->'${test.mixin.ComplexMixin}'->'members'`
+    expect(queries[0].query).toContain(`ORDER BY COALESCE(jsonb_array_length(NULLIF(${array}, 'null'::jsonb)), 0) ASC`)
+  })
+
+  it('preserves ordinary length fields', async () => {
+    const { adapter, ctx, queries } = createTestContext()
+    await adapter.findAll(ctx, test.class.ComplexClass, {}, { sort: { 'description.length': 1 } })
+
+    expect(queries[0].query).toContain("ORDER BY pg_testing.data#>>'{description,length}' ASC")
+  })
+})
 
 describe('projection', () => {
   it('mixin query projection', () => {

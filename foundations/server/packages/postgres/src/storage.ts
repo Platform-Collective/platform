@@ -1064,7 +1064,14 @@ abstract class PostgresAdapterBase implements DbAdapter {
       }
       if (typeof val === 'number') {
         const key = escape(_key)
-        if (attr !== undefined && NumericTypes.includes(attr.type._class)) {
+        const arrayKey = _key.endsWith('.length') ? _key.slice(0, -7) : undefined
+        const arrayType = arrayKey !== undefined ? this.getValueType(_class, arrayKey) : 'common'
+        if (arrayKey !== undefined && (arrayType === 'array' || arrayType === 'dataArray')) {
+          const array = this.getKey(_class, baseDomain, escape(arrayKey), joins, true)
+          const length =
+            arrayType === 'array' ? `cardinality(${array})` : `jsonb_array_length(NULLIF(${array}, 'null'::jsonb))`
+          res.push(`COALESCE(${length}, 0) ${val === 1 ? 'ASC' : 'DESC'}`)
+        } else if (attr !== undefined && NumericTypes.includes(attr.type._class)) {
           res.push(
             `(${this.getKey(_class, baseDomain, key, joins)})::numeric ${val === 1 ? 'ASC' : 'DESC'}${
               pagination ? (val === 1 ? ' NULLS FIRST' : ' NULLS LAST') : ''
