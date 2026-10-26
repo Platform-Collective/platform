@@ -18,6 +18,7 @@ import { IconScribble } from '@hcengineering/ui'
 import view from '@hcengineering/view'
 import { type Editor, type Range } from '@tiptap/core'
 
+import { type InlineCommandItem, mergeInlineCommandItems } from './extension/inlineCommandItems'
 import { type InlineCommandsOptions } from './extension/inlineCommands'
 import type { SuggestionKeyDownProps, SuggestionProps } from './extension/suggestion'
 import InlineCommandsList from './InlineCommandsList.svelte'
@@ -100,20 +101,25 @@ export type InlineCommandId =
  */
 export function inlineCommandsConfig (
   handleSelect: (id: string, pos: number, targetItem?: MouseEvent | HTMLElement) => Promise<void>,
-  excludedCommands: InlineCommandId[] = []
+  excludedCommands: InlineCommandId[] = [],
+  extraCommands: InlineCommandItem[] = []
 ): Partial<InlineCommandsOptions> {
   return {
     suggestion: {
       items: () => {
-        return [
-          { id: 'image', label: textEditor.string.Image, icon: view.icon.Image },
-          { id: 'table', label: textEditor.string.Table, icon: view.icon.Table2 },
-          { id: 'code-block', label: textEditor.string.CodeBlock, icon: view.icon.CodeBlock },
-          { id: 'separator-line', label: textEditor.string.SeparatorLine, icon: view.icon.SeparatorLine },
-          { id: 'todo-list', label: textEditor.string.TodoItem, icon: view.icon.TodoList },
-          { id: 'drawing-board', label: textEditor.string.DrawingBoard, icon: IconScribble as any },
-          { id: 'mermaid', label: textEditor.string.MermaidDiargram, icon: view.icon.Model }
-        ].filter(({ id }) => !excludedCommands.includes(id as InlineCommandId))
+        return mergeInlineCommandItems(
+          [
+            { id: 'image', label: textEditor.string.Image, icon: view.icon.Image },
+            { id: 'table', label: textEditor.string.Table, icon: view.icon.Table2 },
+            { id: 'code-block', label: textEditor.string.CodeBlock, icon: view.icon.CodeBlock },
+            { id: 'separator-line', label: textEditor.string.SeparatorLine, icon: view.icon.SeparatorLine },
+            { id: 'todo-list', label: textEditor.string.TodoItem, icon: view.icon.TodoList },
+            { id: 'drawing-board', label: textEditor.string.DrawingBoard, icon: IconScribble as any },
+            { id: 'mermaid', label: textEditor.string.MermaidDiargram, icon: view.icon.Model }
+          ],
+          extraCommands.map(({ id, label, icon }) => ({ id, label, icon })),
+          excludedCommands
+        )
       },
       command: ({ editor, range, props }: { editor: Editor, range: Range, props: any }) => {
         editor.commands.deleteRange(range)

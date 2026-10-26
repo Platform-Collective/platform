@@ -16,14 +16,19 @@
 -->
 <script lang="ts">
   import contact from '@hcengineering/contact'
-  import document, { Document } from '@hcengineering/document'
+  import { getCurrentAccount } from '@hcengineering/core'
+  import { Document } from '@hcengineering/document'
   import { getResource } from '@hcengineering/platform'
   import { getClient } from '@hcengineering/presentation'
-  import { CollaboratorEditor, ImageUploadOptions } from '@hcengineering/text-editor-resources'
+  import { CollaboratorEditor, ImageUploadOptions, InlineCommandItem } from '@hcengineering/text-editor-resources'
   import { AnySvelteComponent } from '@hcengineering/ui'
   import { getCollaborationUser } from '@hcengineering/view-resources'
   import { FocusPosition } from '@tiptap/core'
   import { createEventDispatcher } from 'svelte'
+
+  import document from '../plugin'
+  import { canCreateSubpage, SubpageCommandId } from '../subpage'
+  import { createSubpage } from '../utils'
 
   export let object: Document
   export let readonly = false
@@ -49,6 +54,20 @@
     collabEditor.focus(position)
   }
 
+  // Read-only and locked documents are handled by the editor itself: it does not accept commands then.
+  const extraInlineCommands: InlineCommandItem[] = canCreateSubpage(getCurrentAccount())
+    ? [
+        {
+          id: SubpageCommandId,
+          label: document.string.Subpage,
+          icon: document.icon.Document,
+          action: async (editor, pos) => {
+            await createSubpage(editor, pos, object)
+          }
+        }
+      ]
+    : []
+
   $: attribute = {
     key: 'content',
     attr: client.getHierarchy().getAttribute(document.class.Document, 'content')
@@ -67,6 +86,7 @@
   {overflow}
   {editorAttributes}
   {requestSideSpace}
+  {extraInlineCommands}
   on:update
   on:loaded
   kitOptions={{
