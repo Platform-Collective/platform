@@ -443,7 +443,9 @@ function mergeAttributeUpdates (
     attrKey,
     attrClass,
     prevValue,
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     set: prevValue ? set.filter((value) => value !== prevValue) : set,
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     added: prevValue ? added.filter((value) => value !== prevValue) : added,
     removed,
     isMixin

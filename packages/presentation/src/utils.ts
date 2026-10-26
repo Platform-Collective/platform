@@ -223,7 +223,11 @@ class UIClient extends TxOperations implements Client {
     }
 
     this.pendingTxes.add(tx._id)
-    await this.provideNotify(tx)
+    // Local-only contract with LiveQuery: mark the early create, then isCreateConfirmation
+    // on its server echo. Neither marker is sent to storage or applied to ordinary replays.
+    const earlyTx =
+      innerTx._class === core.class.TxCreateDoc ? { ...tx, meta: { ...tx.meta, isOptimisticCreate: true } } : tx
+    await this.provideNotify(earlyTx)
   }
 
   async searchFulltext (query: SearchQuery, options: SearchOptions): Promise<SearchResult> {

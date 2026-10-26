@@ -4,11 +4,14 @@ import core, {
   createClient,
   SortingOrder,
   TxFactory,
+  TxProcessor,
+  toFindResult,
   type Doc,
   type DocumentQuery,
   type FindOptions,
   type FindResult,
-  type TxCreateDoc
+  type TxCreateDoc,
+  type TxCUD
 } from '@hcengineering/core'
 import { LiveQuery } from '..'
 import { connect } from './connection'
@@ -32,6 +35,10 @@ function message (text: string, time: number): TxCreateDoc<AttachedComment> {
 
 function confirmation<T extends Doc> (tx: TxCreateDoc<T>, time: number): TxCreateDoc<T> {
   return { ...tx, createdOn: time, modifiedOn: time, meta: { isCreateConfirmation: true } }
+}
+
+function optimistic<T extends Doc> (tx: TxCreateDoc<T>): TxCreateDoc<T> {
+  return { ...tx, meta: { ...tx.meta, isOptimisticCreate: true } }
 }
 
 async function subscribe (
@@ -73,8 +80,8 @@ describe('optimistic create confirmation', () => {
       const remote = await subscribe(peer)
       const own = message('own', localTime)
       const other = message('peer', peerTime)
-      await sender.tx(own)
-      await peer.tx({ ...other, createdOn: localTime + 10, modifiedOn: localTime + 10 })
+      await sender.tx(optimistic(own))
+      await peer.tx(optimistic({ ...other, createdOn: localTime + 10, modifiedOn: localTime + 10 }))
       await storage.tx(other)
       await sender.tx(other)
       await peer.tx(confirmation(other, peerTime))
@@ -116,7 +123,7 @@ describe('optimistic create confirmation', () => {
       const before = await subscribe(liveQuery, { createdOn: { $lt: 200 } })
       const after = await subscribe(liveQuery, { createdOn: { $gte: 200 } })
       const own = message('own', 100)
-      await liveQuery.tx(own)
+      await liveQuery.tx(optimistic(own))
       expect(before.result()).toHaveLength(1)
       const confirmed = confirmation(own, 300)
       await storage.tx(confirmed)
@@ -130,13 +137,39 @@ describe('optimistic create confirmation', () => {
     }
   })
 
+  it('refreshes search membership from the server instead of assuming a local match', async () => {
+    const storage = await createClient(connect)
+    const liveQuery = new LiveQuery(storage)
+    try {
+      const findAll = jest.spyOn(storage, 'findAll').mockResolvedValueOnce(toFindResult([], 0))
+      const query = await subscribe(liveQuery, { $search: 'own' })
+      const own = message('own', 500)
+      const findOne = jest.spyOn(storage, 'findOne').mockResolvedValueOnce(TxProcessor.createDoc2Doc(own))
+      await liveQuery.tx(optimistic(own))
+      expect(query.result().map((doc) => doc._id)).toEqual([own.objectId])
+      const confirmed = confirmation(own, 100)
+      await storage.tx(confirmed)
+      findAll.mockClear()
+      findOne.mockClear()
+      findAll.mockResolvedValueOnce(toFindResult([], 0))
+      await liveQuery.tx(confirmed)
+      expect(query.result()).toHaveLength(0)
+      expect(query.result().total).toBe(0)
+      expect(findAll).toHaveBeenCalledTimes(1)
+      expect(findAll).toHaveBeenCalledWith(test.class.TestComment, { $search: 'own' }, expect.anything())
+      expect(findOne).not.toHaveBeenCalled()
+    } finally {
+      await liveQuery.close()
+    }
+  })
+
   it('does not refresh unrelated limited queries with totals', async () => {
     const storage = await createClient(connect)
     const liveQuery = new LiveQuery(storage)
     try {
       const unrelated = await subscribe(liveQuery, { message: 'unrelated' }, { limit: 1, total: true })
       const own = message('own', 500)
-      await liveQuery.tx(own)
+      await liveQuery.tx(optimistic(own))
       const confirmed = confirmation(own, 100)
       await storage.tx(confirmed)
       const findAll = jest.spyOn(storage, 'findAll')
@@ -161,7 +194,7 @@ describe('optimistic create confirmation', () => {
       const descending = await subscribe(liveQuery, {}, { sort: { createdOn: SortingOrder.Descending } })
       const projected = await subscribe(liveQuery, {}, { projection: { createdOn: 1, modifiedOn: 1 } })
       const own = message('own', 500)
-      await liveQuery.tx(own)
+      await liveQuery.tx(optimistic(own))
       const confirmed = confirmation(own, 100)
       await storage.tx(confirmed)
       const findAll = jest.spyOn(storage, 'findAll')
@@ -197,7 +230,7 @@ describe('optimistic create confirmation', () => {
         const sort = { createdOn: order, _id: order }
         const window = await subscribe(liveQuery, {}, { sort, limit: 2, total: true })
         const own = message('own', localTime)
-        await liveQuery.tx(own)
+        await liveQuery.tx(optimistic(own))
         const confirmed = confirmation(own, serverTime)
         await storage.tx(confirmed)
         const reloaded = await storage.findAll(test.class.TestComment, {}, { sort, limit: 2, total: true })
@@ -227,7 +260,7 @@ describe('optimistic create confirmation', () => {
         }
       )
       const own = message('own', 100)
-      await liveQuery.tx(own)
+      await liveQuery.tx(optimistic(own))
       const confirmed = confirmation(own, 300)
       await storage.tx(confirmed)
       const findAll = jest.spyOn(storage, 'findAll')
@@ -252,7 +285,7 @@ describe('optimistic create confirmation', () => {
     ['message', SortingOrder.Ascending, 100, 500, true],
     ['message', SortingOrder.Descending, 500, 100, false]
   ] as const)(
-    'does not refresh an absent doc that stays outside a full window (%s, sort %i, client %i, server %i, total %s)',
+    'keeps an already counted optimistic create counted after it is popped from the window (%s, %i, %i, %i, %s)',
     async (field, order, localTime, serverTime, total) => {
       const storage = await createClient(connect)
       const liveQuery = new LiveQuery(storage)
@@ -263,7 +296,7 @@ describe('optimistic create confirmation', () => {
         const sort = { [field]: order, message: order, _id: order }
         const window = await subscribe(liveQuery, {}, { sort, limit: 2, total })
         const own = message(order === SortingOrder.Ascending ? 'z-own' : 'a-own', localTime)
-        await liveQuery.tx(own)
+        await liveQuery.tx(optimistic(own))
         expect(window.result().some((doc) => doc._id === own.objectId)).toBe(false)
         const confirmed = confirmation(own, serverTime)
         await storage.tx(confirmed)
@@ -292,7 +325,7 @@ describe('optimistic create confirmation', () => {
       const options = { sort: { createdOn: SortingOrder.Ascending }, limit: 3, total }
       const window = await subscribe(liveQuery, query, options)
       const own = message('own', 500)
-      await liveQuery.tx(own)
+      await liveQuery.tx(optimistic(own))
       expect(window.result()).toHaveLength(1)
       const confirmed = confirmation(own, 100)
       await storage.tx(confirmed)
@@ -329,7 +362,7 @@ describe('optimistic create confirmation', () => {
         }
       )
       const own = message('own', localTime)
-      await liveQuery.tx(own)
+      await liveQuery.tx(optimistic(own))
       expect(window.result()[0]._id).toBe(localTime < 200 ? own.objectId : other.objectId)
       const confirmed = confirmation(own, serverTime)
       await storage.tx(confirmed)
@@ -345,13 +378,143 @@ describe('optimistic create confirmation', () => {
     }
   })
 
+  it('keeps TxCUD queries on the immutable transaction add path', async () => {
+    const storage = await createClient(connect)
+    const liveQuery = new LiveQuery(storage)
+    try {
+      const own = message('own', 500)
+      let result: FindResult<TxCUD<Doc>> | undefined
+      const callback = jest.fn((docs: FindResult<TxCUD<Doc>>) => {
+        result = docs
+      })
+      await new Promise<void>((resolve) => {
+        liveQuery.query(
+          core.class.TxCUD,
+          { objectId: own.objectId },
+          (docs) => {
+            callback(docs)
+            resolve()
+          },
+          { limit: 1, total: true }
+        )
+      })
+      await liveQuery.tx(optimistic(own))
+      const calls = callback.mock.calls.length
+      const confirmed = confirmation(own, 100)
+      await storage.tx(confirmed)
+      const findAll = jest.spyOn(storage, 'findAll')
+      const findOne = jest.spyOn(storage, 'findOne')
+      await liveQuery.tx(confirmed)
+      expect(result?.map((doc) => doc._id)).toEqual([own._id])
+      expect(result?.total).toBe(1)
+      expect(result?.[0].modifiedOn).toBe(500)
+      expect(callback).toHaveBeenCalledTimes(calls)
+      expect(findAll).not.toHaveBeenCalled()
+      expect(findOne).not.toHaveBeenCalled()
+    } finally {
+      await liveQuery.close()
+    }
+  })
+
+  it('preserves an edit below createdOn when the client clock is ahead', async () => {
+    const storage = await createClient(connect)
+    const liveQuery = new LiveQuery(storage)
+    try {
+      const query = await subscribe(liveQuery)
+      const own = message('original', 500)
+      await liveQuery.tx(optimistic(own))
+      const confirmed = confirmation(own, 100)
+      await storage.tx(confirmed)
+      const update = factory.createTxUpdateDoc(test.class.TestComment, own.objectSpace, own.objectId, {
+        message: 'edited'
+      })
+      update.modifiedOn = 200
+      await storage.tx(update)
+      // An early-applied edit can be below the optimistic create's timestamp under skew.
+      await liveQuery.tx({ ...update, meta: { forceApply: true } })
+      expect(query.result()[0]).toMatchObject({ createdOn: 500, modifiedOn: 200, message: 'edited' })
+      const findOne = jest.spyOn(storage, 'findOne')
+      await liveQuery.tx(confirmed)
+      expect(query.result()[0]).toMatchObject({ createdOn: 100, modifiedOn: 200, message: 'edited' })
+      expect(await liveQuery.findOne(test.class.TestComment, { _id: own.objectId })).toMatchObject({
+        createdOn: 100,
+        modifiedOn: 200,
+        message: 'edited'
+      })
+      expect(query.result().total).toBe(1)
+      expect(findOne).toHaveBeenCalledTimes(1)
+    } finally {
+      await liveQuery.close()
+    }
+  })
+
+  it('reads server-loaded never-edited copies instead of treating them as optimistic', async () => {
+    const storage = await createClient(connect)
+    const liveQuery = new LiveQuery(storage)
+    try {
+      const own = message('original', 100)
+      await storage.tx(own)
+      const query = await subscribe(liveQuery)
+      const update = factory.createTxUpdateDoc(test.class.TestComment, own.objectSpace, own.objectId, {
+        message: 'edited on server'
+      })
+      update.modifiedOn = 200
+      await storage.tx(update)
+      const findOne = jest.spyOn(storage, 'findOne')
+      await liveQuery.tx(confirmation(own, 100))
+      expect(query.result()[0]).toMatchObject({ createdOn: 100, modifiedOn: 200, message: 'edited on server' })
+      expect(findOne).toHaveBeenCalledTimes(1)
+    } finally {
+      await liveQuery.close()
+    }
+  })
+
+  it('does not downgrade an unrelated shared document during a confirmation refresh', async () => {
+    const storage = await createClient(connect)
+    const liveQuery = new LiveQuery(storage)
+    try {
+      const other = message('peer', 200)
+      await storage.tx(other)
+      await storage.tx(message('peer', 300))
+      await storage.tx(message('peer', 400))
+      const all = await subscribe(liveQuery)
+      const sort = { createdOn: SortingOrder.Ascending }
+      const options = { sort, limit: 2, total: true }
+      await subscribe(liveQuery, {}, options)
+      const own = message('own', 50)
+      await liveQuery.tx(optimistic(own))
+      const confirmed = confirmation(own, 500)
+      await storage.tx(confirmed)
+      const stale = await storage.findAll(test.class.TestComment, {}, options)
+      const update = factory.createTxUpdateDoc(test.class.TestComment, other.objectSpace, other.objectId, {
+        message: 'newer edit'
+      })
+      update.modifiedOn = 600
+      await storage.tx(update)
+      const findAll = jest.spyOn(storage, 'findAll').mockImplementationOnce(async () => {
+        // Another query updates Refs while this refresh response is in flight.
+        await liveQuery.tx(update)
+        return stale
+      })
+      await liveQuery.tx(confirmed)
+      expect(findAll).toHaveBeenCalledTimes(1)
+      expect(all.result().find((doc) => doc._id === other.objectId)?.message).toBe('newer edit')
+      expect(await liveQuery.findOne(test.class.TestComment, { _id: other.objectId })).toMatchObject({
+        modifiedOn: 600,
+        message: 'newer edit'
+      })
+    } finally {
+      await liveQuery.close()
+    }
+  })
+
   it('preserves a later edit when a create confirmation arrives', async () => {
     const storage = await createClient(connect)
     const liveQuery = new LiveQuery(storage)
     try {
       const query = await subscribe(liveQuery)
       const own = message('original', 500)
-      await liveQuery.tx(own)
+      await liveQuery.tx(optimistic(own))
       const confirmed = confirmation(own, 100)
       await storage.tx(confirmed)
       const update = factory.createTxUpdateDoc(test.class.TestComment, own.objectSpace, own.objectId, {
@@ -375,7 +538,7 @@ describe('optimistic create confirmation', () => {
       const tx = message('own', 500)
       const own: TxCreateDoc<CountedComment> = { ...tx, attributes: { ...tx.attributes, count: 0 } }
       const optimisticQuery = loaded ? undefined : await subscribe(liveQuery)
-      if (!loaded) await liveQuery.tx(own)
+      if (!loaded) await liveQuery.tx(optimistic(own))
       const confirmed = confirmation(own, 100)
       await storage.tx(confirmed)
       const increment = factory.createTxUpdateDoc<CountedComment>(

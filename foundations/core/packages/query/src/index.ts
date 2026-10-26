@@ -72,6 +72,7 @@ import core, {
   type OperationDomain
 } from '@hcengineering/core'
 import { deepEqual } from 'fast-equals'
+import { clearOptimisticCreate, isOptimisticCreate, markOptimisticCreate } from './optimistic'
 import { Refs } from './refs'
 import { ResultArray } from './results'
 import { Callback, Query, type QueryId } from './types'
@@ -690,6 +691,7 @@ export class LiveQuery implements WithTx, Client {
   }
 
   private async __updateMixinDoc (q: Query, updatedDoc: WithLookup<Doc>, tx: TxMixin<Doc, Doc>): Promise<void> {
+    clearOptimisticCreate(updatedDoc)
     updatedDoc = TxProcessor.updateMixin4Doc(updatedDoc, tx)
 
     const ops = {
@@ -991,7 +993,7 @@ export class LiveQuery implements WithTx, Client {
     await q.refresh()
   }
 
-  private async doRefresh (q: Query, authoritative = false): Promise<void> {
+  private async doRefresh (q: Query, reconciledId?: Ref<Doc>): Promise<void> {
     const qid = ++q.refreshId
     const res = await this.client.findAll(q._class, q.query, q.options)
     const current = q.result instanceof Promise ? await q.result : q.result
@@ -999,14 +1001,14 @@ export class LiveQuery implements WithTx, Client {
       q.refreshId === qid &&
       (!deepEqual(res, current.getDocs()) || (res.total !== q.total && q.options?.total === true))
     ) {
-      if (authoritative) {
+      if (reconciledId !== undefined) {
         this.refs.updateDocuments(q, current.getDocs(), true)
       }
       q.result = new ResultArray(res, this.getHierarchy())
       q.refsRegistered = false
       q.total = res.total
-      if (authoritative) {
-        this.refs.updateDocuments(q, q.result.getDocs(), false, true)
+      if (reconciledId !== undefined) {
+        this.refs.updateDocuments(q, q.result.getDocs(), false, reconciledId)
         q.refsRegistered = true
       }
       await this.callback(q)
@@ -1172,10 +1174,14 @@ export class LiveQuery implements WithTx, Client {
     for (const queries of this.queries.entries()) {
       const doc = this.client.getHierarchy().isDerived(queries[0], core.class.Tx) ? tx : docTx
       for (const q of queries[1].values()) {
-        if (tx.meta?.isCreateConfirmation === true && this.getHierarchy().isDerived(doc._class, q._class)) {
+        if (
+          doc !== tx &&
+          tx.meta?.isCreateConfirmation === true &&
+          this.getHierarchy().isDerived(doc._class, q._class)
+        ) {
           await this.reconcileCreate(q, doc, docCache)
         } else if (this.match(q, doc, q.options?.lookup !== undefined)) {
-          await this.handleDocAdd(q, doc, true, docCache)
+          await this.handleDocAdd(q, doc, true, docCache, doc !== tx && tx.meta?.isOptimisticCreate === true)
         }
 
         await this.handleDocAddLookup(q, doc)
@@ -1194,7 +1200,7 @@ export class LiveQuery implements WithTx, Client {
     if (existing === undefined && !matches) return
     if (q.query.$search != null) {
       this.queriesToUpdate.delete(q.id)
-      await this.doRefresh(q, true)
+      await this.doRefresh(q, doc._id)
       return
     }
     if (existing === undefined) {
@@ -1207,7 +1213,7 @@ export class LiveQuery implements WithTx, Client {
           if (pair[0] === boundary) return
         }
         this.queriesToUpdate.delete(q.id)
-        await this.doRefresh(q, true)
+        await this.doRefresh(q, doc._id)
         return
       }
       if (matches) {
@@ -1215,9 +1221,9 @@ export class LiveQuery implements WithTx, Client {
       }
       return
     }
-    // An untouched optimistic create has the same createdOn and modifiedOn. Keep lookup data,
-    // and only read the server document if a later edit or a projection makes its revision uncertain.
-    const optimistic = existing.createdOn !== undefined && existing.modifiedOn <= existing.createdOn
+    // Only explicitly marked, untouched local copies can be patched without a server read.
+    // Server-loaded copies and later edits remain uncertain regardless of clock skew.
+    const optimistic = isOptimisticCreate(existing)
     const current = optimistic
       ? { ...existing, createdOn: doc.createdOn, modifiedOn: doc.modifiedOn }
       : await this.getDocFromCache(docCache, doc._id, doc._class, doc.space, q)
@@ -1234,7 +1240,7 @@ export class LiveQuery implements WithTx, Client {
       }
       if (!staysInWindow) {
         this.queriesToUpdate.delete(q.id)
-        await this.doRefresh(q, true)
+        await this.doRefresh(q, doc._id)
         return
       }
     }
@@ -1244,7 +1250,7 @@ export class LiveQuery implements WithTx, Client {
         q.result.setLoadedModifiedOn(doc._id, current.modifiedOn)
       }
       // The client's optimistic timestamp may be ahead of the server's clock.
-      this.refs.updateDocuments(q, [stored], false, true)
+      this.refs.updateDocuments(q, [stored], false, doc._id)
       if (sort !== undefined) {
         q.result.sort(q._class, sort, this.getHierarchy(), this.client.getModel())
       }
@@ -1258,7 +1264,13 @@ export class LiveQuery implements WithTx, Client {
     await this.callback(q, true)
   }
 
-  private async handleDocAdd (q: Query, doc: Doc, handleLookup = true, docCache: Map<string, Doc>): Promise<void> {
+  private async handleDocAdd (
+    q: Query,
+    doc: Doc,
+    handleLookup = true,
+    docCache: Map<string, Doc>,
+    optimistic = false
+  ): Promise<void> {
     let needPush = true
     if (q.result instanceof Promise) {
       q.result = await q.result
@@ -1289,6 +1301,9 @@ export class LiveQuery implements WithTx, Client {
       }
 
       const stored = q.result.push(doc)
+      if (optimistic) {
+        markOptimisticCreate(stored)
+      }
       if (q.options?.total === true) {
         q.total++
       }
@@ -1835,6 +1850,7 @@ export class LiveQuery implements WithTx, Client {
     if (q.result instanceof ResultArray) {
       q.result.clearLoadedModifiedOn(tx.objectId)
     }
+    clearOptimisticCreate(updatedDoc)
     TxProcessor.updateDoc2Doc(updatedDoc, tx)
 
     const ops = {

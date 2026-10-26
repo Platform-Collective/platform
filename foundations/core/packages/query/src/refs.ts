@@ -10,6 +10,7 @@ import {
   type Ref,
   type Timestamp
 } from '@hcengineering/core'
+import { isOptimisticCreate } from './optimistic'
 import type { Query, QueryId } from './types'
 
 export interface DocumentRef {
@@ -26,7 +27,7 @@ export class Refs {
 
   constructor (readonly getHierarchy: () => Hierarchy) {}
 
-  public updateDocuments (q: Query, docs: Doc[], clean: boolean = false, authoritative: boolean = false): void {
+  public updateDocuments (q: Query, docs: Doc[], clean: boolean = false, reconciledId?: Ref<Doc>): void {
     if (q.options?.projection !== undefined) {
       return
     }
@@ -62,7 +63,12 @@ export class Refs {
         // already moved past still holds the document, and must keep it alive when that one leaves.
         existing.queries.add(q.id)
       }
-      if (authoritative || existing.lastUsed <= d.modifiedOn) {
+      // Only the confirmed document's untouched local copy may move backwards in time.
+      // A stale refresh must not replace newer server copies, including other documents.
+      const confirmsOptimistic = !clean && d._id === reconciledId && isOptimisticCreate(existing.doc)
+      // In-place edits already changed this cached object, possibly under clock skew.
+      // Keep its revision guard in sync with the object it actually protects.
+      if (existing.doc === d || confirmsOptimistic || existing.lastUsed <= d.modifiedOn) {
         existing.doc = d
         existing.lastUsed = d.modifiedOn
       }

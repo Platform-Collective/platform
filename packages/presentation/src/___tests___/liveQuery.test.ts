@@ -212,11 +212,12 @@ describe('LiveQuery', () => {
     const hierarchy = new Hierarchy()
     const instantTransactions = { txClasses: [core.class.TxCreateDoc] } as unknown as InstantTransactions
     jest.spyOn(hierarchy, 'classHierarchyMixin').mockReturnValue(instantTransactions)
+    const send = jest.fn(async () => ({}))
     const storage = {
       findAll: async () => [],
       getHierarchy: () => hierarchy,
       notify: (..._tx: Tx[]) => {},
-      tx: jest.fn(async () => ({})),
+      tx: send,
       close: async () => {}
     } as unknown as Client
     await setClient(storage)
@@ -234,6 +235,8 @@ describe('LiveQuery', () => {
     expect(get(pendingCreatedDocs)[tx.objectId]).toBe(true)
     expect(notifications).toHaveLength(2)
     expect(notifications.every(([t]) => t.meta?.isCreateConfirmation !== true)).toBe(true)
+    expect(notifications.every(([t]) => t.meta?.isOptimisticCreate === true)).toBe(true)
+    expect(tx.meta?.isOptimisticCreate).toBeUndefined()
     notifications.length = 0
 
     const confirmed = { ...tx, createdOn: tx.modifiedOn + 100, modifiedOn: tx.modifiedOn + 100 }
@@ -242,8 +245,9 @@ describe('LiveQuery', () => {
     expect(get(pendingCreatedDocs)[tx.objectId]).toBeUndefined()
     expect(notifications).toHaveLength(2)
     expect(notifications.every(([t]) => t.meta?.isCreateConfirmation === true)).toBe(true)
+    expect(notifications.every(([t]) => t.meta?.isOptimisticCreate !== true)).toBe(true)
     expect(confirmed.meta?.isCreateConfirmation).toBeUndefined()
-    expect(storage.tx).toHaveBeenCalledWith(tx)
+    expect(send).toHaveBeenCalledWith(tx)
     notifications.length = 0
 
     storage.notify?.(confirmed)

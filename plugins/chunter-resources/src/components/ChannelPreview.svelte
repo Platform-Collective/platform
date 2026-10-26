@@ -17,7 +17,7 @@
   import { createQuery } from '@hcengineering/presentation'
   import chunter, { ChatMessage, DirectMessage } from '@hcengineering/chunter'
   import { Label } from '@hcengineering/ui'
-  import { ActivityMessagePresenter } from '@hcengineering/activity-resources'
+  import { ActivityMessagePresenter, sortActivityMessages } from '@hcengineering/activity-resources'
 
   import chunterResources from '../plugin'
   import { getChannelSpace } from '../utils'
@@ -33,13 +33,14 @@
     { attachedTo: object._id, space: getChannelSpace(object._class, object._id, object.space) },
     (res) => {
       if (res !== undefined) {
-        messages = res.sort((a, b) => (a.createdOn ?? 0) - (b.createdOn ?? 0))
+        messages = sortActivityMessages(res)
       }
     },
     {
       limit: NUM_OF_RECENT_MESSAGES,
       sort: {
-        createdOn: SortingOrder.Descending
+        createdOn: SortingOrder.Descending,
+        _id: SortingOrder.Descending
       }
     }
   )

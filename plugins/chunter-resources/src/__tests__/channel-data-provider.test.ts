@@ -1,6 +1,8 @@
+/** @jest-environment jsdom */
 // SPDX-License-Identifier: EPL-2.0
 
 import activity, { type ActivityMessage } from '@hcengineering/activity'
+import chunter from '@hcengineering/chunter'
 import type * as activityResources from '@hcengineering/activity-resources'
 import { type Doc, type PersonId, type Ref, SortingOrder, type Space } from '@hcengineering/core'
 import { createQuery, getClient } from '@hcengineering/presentation'
@@ -13,7 +15,7 @@ jest.mock('@hcengineering/presentation', () => ({
 }))
 jest.mock('@hcengineering/view-resources', () => ({}))
 jest.mock('@hcengineering/activity-resources', () =>
-  jest.requireActual('../../../activity-resources/src/activityMessagesUtils')
+  jest.requireActual('@hcengineering/activity-resources/src/activityMessagesUtils')
 )
 
 interface QueryMock {
@@ -45,23 +47,9 @@ describe('channel message ordering', () => {
   let provider: ChannelDataProvider
   let queries: QueryMock[]
   const findAll = jest.fn()
-  const localStorageDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
-
   beforeAll(async () => {
-    Object.defineProperty(globalThis, 'localStorage', {
-      configurable: true,
-      value: { getItem: () => null }
-    })
     utils = await import('@hcengineering/activity-resources')
     Provider = (await import('../channelDataProvider')).ChannelDataProvider
-  })
-
-  afterAll(() => {
-    if (localStorageDescriptor !== undefined) {
-      Object.defineProperty(globalThis, 'localStorage', localStorageDescriptor)
-    } else {
-      Reflect.deleteProperty(globalThis, 'localStorage')
-    }
   })
 
   beforeEach(() => {
@@ -156,6 +144,40 @@ describe('channel message ordering', () => {
       _id: SortingOrder.Ascending
     })
     expect(queries[1].query.mock.calls[0][3].sort).toEqual({
+      createdOn: SortingOrder.Descending,
+      _id: SortingOrder.Descending
+    })
+  })
+
+  it('uses the same timestamp and ID order for thread replies', async () => {
+    provider.destroy()
+    queries = []
+    provider = new Provider(
+      undefined,
+      'space' as Ref<Space>,
+      'thread' as Ref<Doc>,
+      chunter.class.ThreadMessage,
+      undefined,
+      true,
+      true
+    )
+    await queries[0].query.mock.calls[0][2]([])
+    await Promise.resolve()
+    for (const index of [0, 1]) {
+      const call = queries[index].query.mock.calls[0]
+      const order = index === 0 ? SortingOrder.Ascending : SortingOrder.Descending
+      expect(call[0]).toBe(chunter.class.ThreadMessage)
+      expect(call[3].sort).toEqual({ createdOn: order, _id: order })
+    }
+    await queries[1].query.mock.calls[0][2]([
+      { ...message('b'), _class: chunter.class.ThreadMessage },
+      { ...message('a'), _class: chunter.class.ThreadMessage }
+    ])
+    expect(ids(get(provider.messagesStore))).toEqual(['a', 'b'])
+    findAll.mockResolvedValue([])
+    await provider.loadChunk(true, 100)
+    expect(findAll.mock.calls[0][0]).toBe(chunter.class.ThreadMessage)
+    expect(findAll.mock.calls[0][2].sort).toEqual({
       createdOn: SortingOrder.Descending,
       _id: SortingOrder.Descending
     })
