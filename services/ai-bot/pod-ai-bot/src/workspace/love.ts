@@ -37,8 +37,7 @@ import love, {
   MeetingStatus,
   ParticipantInfo,
   Room,
-  RoomLanguage,
-  TranscriptionState
+  RoomLanguage
 } from '@hcengineering/love'
 import { jsonToMarkup, MarkupNodeType } from '@hcengineering/text'
 
@@ -53,7 +52,7 @@ export class LoveController {
   private meetingMinutes: MeetingMinutes[] = []
 
   constructor (
-    private readonly workspace: WorkspaceUuid,
+    _workspace: WorkspaceUuid,
     private readonly ctx: MeasureContext,
     private readonly token: string,
     private readonly client: TxOperations,
@@ -146,24 +145,23 @@ export class LoveController {
     this.ctx.info('Connecting', { room: room.name, roomId: room._id })
 
     if (request.transcription) {
-      await this.requestTranscription(room, request.language)
+      await this.requestTranscription(request.meetingId, room.language ?? request.language)
     }
 
     await this.createAiParticipant(room, request.meetingId)
   }
 
-  async requestTranscription (room: Room, language: RoomLanguage): Promise<void> {
-    const roomTokenName = getTokenRoomName(this.workspace, room.name, room._id)
-    await startTranscription(this.token, roomTokenName, room.name, language)
+  async requestTranscription (meetingId: Ref<MeetingMinutes>, language: RoomLanguage): Promise<void> {
+    await startTranscription(this.token, meetingId, language)
   }
 
   async disconnectMeeting (meetingId: Ref<MeetingMinutes>): Promise<void> {
     const meeting = await this.client.findOne(love.class.MeetingMinutes, { _id: meetingId })
     if (meeting === undefined) return
-    await this.disconnect(meeting.attachedTo as Ref<Room>)
+    await this.disconnect(meeting.attachedTo as Ref<Room>, meetingId)
   }
 
-  async disconnect (roomId: Ref<Room>): Promise<void> {
+  async disconnect (roomId: Ref<Room>, meetingId?: Ref<MeetingMinutes>): Promise<void> {
     this.ctx.info('Disconnecting', { roomId })
 
     const participant = await this.getRoomParticipant(roomId, this.currentPerson._id)
@@ -174,7 +172,10 @@ export class LoveController {
     const room = await this.getRoom(roomId)
 
     if (room !== undefined) {
-      await stopTranscription(this.token, getTokenRoomName(this.workspace, room.name, room._id), room.name)
+      const transcriptionMeetingId = meetingId ?? (await this.getMeetingMinutes(room))?._id
+      if (transcriptionMeetingId !== undefined) {
+        await stopTranscription(this.token, transcriptionMeetingId)
+      }
     }
 
     this.meetingMinutes = this.meetingMinutes.filter((m) => m.attachedTo !== roomId)
@@ -305,14 +306,9 @@ export class LoveController {
   }
 }
 
-function getTokenRoomName (workspace: WorkspaceUuid, roomName: string, roomId: Ref<Room>): string {
-  return `${workspace}_${roomName}_${roomId}`
-}
-
 async function startTranscription (
   token: string,
-  roomTokenName: string,
-  roomName: string,
+  meetingId: Ref<MeetingMinutes>,
   language: RoomLanguage
 ): Promise<boolean> {
   try {
@@ -324,10 +320,9 @@ async function startTranscription (
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        roomName: roomTokenName,
-        room: roomName,
+        meetingId,
         language,
-        transcription: TranscriptionState.Transcribing
+        transcription: true
       })
     })
     return res.ok
@@ -337,7 +332,7 @@ async function startTranscription (
   }
 }
 
-async function stopTranscription (token: string, roomTokenName: string, roomName: string): Promise<boolean> {
+async function stopTranscription (token: string, meetingId: Ref<MeetingMinutes>): Promise<boolean> {
   try {
     const endpoint = config.LoveEndpoint
     const res = await fetch(concatLink(endpoint, '/transcription'), {
@@ -346,7 +341,7 @@ async function stopTranscription (token: string, roomTokenName: string, roomName
         Authorization: 'Bearer ' + token,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ roomName: roomTokenName, room: roomName, transcription: TranscriptionState.NotStarted })
+      body: JSON.stringify({ meetingId, transcription: false })
     })
     return res.ok
   } catch (err: any) {
