@@ -24,7 +24,10 @@ export class TalentDetailsPage extends CommonRecruitingPage {
   readonly buttonFinalContact = (): Locator => this.formMergeContacts().locator('button', { hasText: 'Final contact' })
 
   readonly buttonMergeRow = (text: string): Locator =>
-    this.formMergeContacts().locator('div.box.flex-row-center div.antiRadio').getByText(text, { exact: true })
+    // The plain-text option label; the sibling option renders a cropped person presenter with the same text.
+    this.formMergeContacts()
+      .locator('div.box.flex-row-center div.antiRadio label:not(:has(.cropped-text-presenter))')
+      .getByText(text, { exact: true })
 
   readonly buttonPopupMergeContacts = (): Locator =>
     this.formMergeContacts().locator('button:has-text("Merge contacts")')
