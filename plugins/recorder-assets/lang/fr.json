@@ -1,5 +1,6 @@
 {
   "string": {
+    "UploadFailed": "Impossible de téléverser l’enregistrement. Veuillez réessayer.",
     "Cancel": "Annuler",
     "Pause": "Pause",
     "Stop": "Arrêter",

@@ -22,6 +22,12 @@ import { composer } from '../stores/composer'
 import { camStream, manager, screenStream } from '../stores/manager'
 import type { RecordingResult } from '../types'
 import { deleteFile } from '@hcengineering/presentation'
+import { translate } from '@hcengineering/platform'
+import { getCurrentLanguage } from '@hcengineering/theme'
+import { addNotification, NotificationSeverity } from '@hcengineering/ui'
+import UploadFailedNotification from '../components/UploadFailedNotification.svelte'
+import plugin from '../plugin'
+import { UploadCancelledError } from '../uploader'
 
 export type RecorderState = 'idle' | 'ready' | 'recording' | 'paused' | 'stopping' | 'stopped'
 
@@ -67,6 +73,7 @@ function createRecorder (): Readable<RecorderStore> & Recorder {
 
   let elapsedTimeInterval: number | undefined
   let screenRecorder: ScreenRecorder | null = null
+  let generation = 0
 
   function updateStore (updates: Partial<RecorderStore>): void {
     store.update((current) => ({ ...current, ...updates }))
@@ -131,13 +138,14 @@ function createRecorder (): Readable<RecorderStore> & Recorder {
       const canvasStream = composer.getStream()
       const stream = combineStreams(canvasStream, micStream, screenStream)
 
+      generation++
       // Create and start screen recorder
       screenRecorder = await createScreenRecorder(stream)
 
       await screenRecorder.start()
 
       startElapsedTimer()
-      updateStore({ state: 'recording' })
+      updateStore({ state: 'recording', result: null })
     },
 
     async stop (): Promise<void> {
@@ -154,13 +162,33 @@ function createRecorder (): Readable<RecorderStore> & Recorder {
       updateStore({ state: 'stopping' })
       stopElapsedTimer()
 
-      const result = await screenRecorder.stop()
-      updateStore({ state: 'stopped', result })
-
-      manager.cleanup()
-      composer.cleanup()
-
-      screenRecorder = null
+      const active = screenRecorder
+      const currentGeneration = generation
+      try {
+        const result = await active.stop()
+        if (generation === currentGeneration) {
+          updateStore({ state: 'stopped', result })
+        } else {
+          await deleteFile(result.uuid)
+        }
+      } catch (error) {
+        if (generation === currentGeneration) {
+          updateStore({ state: 'stopped', result: null })
+          if (!(error instanceof UploadCancelledError)) {
+            console.error('Recorder: upload failed', error)
+            const message = await translate(plugin.string.UploadFailed, {}, getCurrentLanguage())
+            if (generation === currentGeneration) {
+              addNotification(message, '', UploadFailedNotification, undefined, NotificationSeverity.Error)
+            }
+          }
+        }
+      } finally {
+        if (generation === currentGeneration) {
+          manager.cleanup()
+          composer.cleanup()
+          screenRecorder = null
+        }
+      }
     },
 
     async pause (): Promise<void> {
@@ -195,6 +223,7 @@ function createRecorder (): Readable<RecorderStore> & Recorder {
     },
 
     async cancel (): Promise<void> {
+      generation++
       if (screenRecorder !== null) {
         await screenRecorder?.cancel()
         screenRecorder = null
@@ -209,6 +238,7 @@ function createRecorder (): Readable<RecorderStore> & Recorder {
     },
 
     async cleanup (): Promise<void> {
+      generation++
       if (screenRecorder !== null) {
         await screenRecorder?.cancel()
         screenRecorder = null

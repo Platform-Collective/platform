@@ -45,7 +45,8 @@ export async function createScreenRecorder (
   const workspace = getMetadata(presentation.metadata.WorkspaceUuid) ?? ''
   const endpoint = getMetadata(plugin.metadata.StreamUrl) ?? ''
 
-  const recorder = new Recorder(stream, { chunkIntervalMs, audioBps, videoBps })
+  const recoveryEnabled = getMetadata(plugin.metadata.RecoveryEnabled) === true
+  const recorder = new Recorder(stream, { chunkIntervalMs, audioBps, videoBps, recoveryEnabled })
   const contentType = recorder.mimeType
   const uploader = new TusUploader(recorder.asStream(), {
     token,
@@ -53,7 +54,8 @@ export async function createScreenRecorder (
     endpoint,
     width,
     height,
-    contentType
+    contentType,
+    recoveryEnabled
   })
   return new ScreenRecorder(stream, recorder, uploader)
 }
@@ -83,12 +85,17 @@ export class ScreenRecorder {
   }
 
   public async stop (): Promise<RecordingResult> {
-    await this.recorder.stop()
+    try {
+      await this.recorder.stop()
+    } catch (error) {
+      await this.uploader.cancel()
+      throw error
+    }
     return await this.uploader.wait()
   }
 
   public async cancel (): Promise<void> {
-    await this.recorder.stop()
     await this.uploader.cancel()
+    await this.recorder.stop()
   }
 }

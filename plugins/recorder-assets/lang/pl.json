@@ -1,5 +1,6 @@
 {
   "string": {
+    "UploadFailed": "Nie udało się przesłać nagrania. Spróbuj ponownie.",
     "Cancel": "Anuluj",
     "Pause": "Pauza",
     "Stop": "Zatrzymaj",

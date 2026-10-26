@@ -31,7 +31,6 @@ import (
 	"github.com/hcengineering/stream/internal/pkg/config"
 	"github.com/hcengineering/stream/internal/pkg/log"
 	"github.com/hcengineering/stream/internal/pkg/manifest"
-	"github.com/hcengineering/stream/internal/pkg/sharedpipe"
 	"github.com/hcengineering/stream/internal/pkg/storage"
 	"github.com/hcengineering/stream/internal/pkg/uploader"
 	"github.com/tus/tusd/v2/pkg/handler"
@@ -50,7 +49,6 @@ type StreamCoordinator struct {
 	logger      *zap.Logger
 
 	streams sync.Map
-	cancels sync.Map
 }
 
 var _ handler.DataStore = (*StreamCoordinator)(nil)
@@ -87,10 +85,11 @@ func (s *StreamCoordinator) NewUpload(ctx context.Context, info handler.FileInfo
 	s.logger.Debug("NewUpload", zap.String("ID", info.ID))
 
 	var stream = &Stream{
-		writer: sharedpipe.NewWriter(),
-		info:   info,
-		logger: log.FromContext(s.mainContext).With(zap.String("stream", info.ID)),
-		done:   make(chan struct{}),
+		info:         info,
+		logger:       log.FromContext(s.mainContext).With(zap.String("stream", info.ID)),
+		done:         make(chan struct{}),
+		lastActivity: time.Now(),
+		legacy:       !s.conf.RecordingRecoveryEnabled,
 	}
 
 	width, err := strconv.Atoi(info.MetaData["width"])
@@ -110,6 +109,9 @@ func (s *StreamCoordinator) NewUpload(ctx context.Context, info handler.FileInfo
 		ContentType: extractContentType(info.MetaData["contentType"]),
 	}
 
+	if s.conf.RecordingRecoveryEnabled && (s.conf.EndpointURL == nil || s.conf.EndpointURL.Scheme != "datalake") {
+		return nil, errors.New("recording requires a multipart-capable storage backend (datalake)")
+	}
 	if s.conf.EndpointURL != nil {
 		s.logger.Sugar().Debugf("initializing uploader for %v", info)
 
@@ -128,19 +130,24 @@ func (s *StreamCoordinator) NewUpload(ctx context.Context, info handler.FileInfo
 
 		// if storage supports multipart, initialize raw upload
 		if ms, ok := stg.(storage.MultipartStorage); ok {
-			multipart, err := NewMultipartUpload(s.mainContext, ms, info, meta.ContentType)
+			startCtx := ctx
+			cancel := func() {}
+			if s.conf.RecordingRecoveryEnabled {
+				startCtx, cancel = context.WithTimeout(ctx, time.Minute)
+			}
+			multipart, err := NewMultipartUpload(startCtx, ms, info, meta.ContentType, s.mainContext)
+			cancel()
 			if err != nil {
 				s.logger.Error("multipart upload failed", zap.Error(err))
 				return nil, errors.Wrapf(err, "multipart upload failed")
 			}
 			stream.multipart = multipart
+		} else if s.conf.RecordingRecoveryEnabled {
+			return nil, errors.New("recording requires a multipart-capable storage backend (datalake)")
 		}
 	}
 
 	s.streams.Store(stream.info.ID, stream)
-	if err := stream.start(); err != nil {
-		return nil, err
-	}
 
 	s.manageTimeout(stream)
 
@@ -155,12 +162,20 @@ func (s *StreamCoordinator) GetUpload(ctx context.Context, id string) (upload ha
 	if v, ok := s.streams.Load(id); ok {
 		logger.Debug("found stream")
 		var w = v.(*Stream)
-		s.manageTimeout(w)
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		if w.terminated || w.completionFailed {
+			return nil, handler.ErrNotFound
+		}
+		w.lastActivity = time.Now()
 		return w, nil
 	}
 
 	logger.Warn("stream not found")
-	return nil, fmt.Errorf("stream not found: %v", id)
+	if !s.conf.RecordingRecoveryEnabled {
+		return nil, fmt.Errorf("stream not found: %v", id)
+	}
+	return nil, handler.ErrNotFound
 }
 
 // AsTerminatableUpload returns tusd handler.TerminatableUpload
@@ -174,28 +189,42 @@ func (s *StreamCoordinator) AsLengthDeclarableUpload(upload handler.Upload) hand
 }
 
 func (s *StreamCoordinator) manageTimeout(w *Stream) {
-	var cancelCtx, cancel = context.WithCancel(context.Background())
-	if v, ok := s.cancels.Load(w.info.ID); ok {
-		v.(context.CancelFunc)()
-	}
-	s.cancels.Store(w.info.ID, cancel)
 	go func() {
-		select {
-		case <-w.done:
-			w.logger.Debug("stream has finished")
-			s.cancels.Delete(w.info.ID)
-			s.streams.Delete(w.info.ID)
-			return
-		case <-cancelCtx.Done():
-			w.logger.Debug("stream timeout has refreshed")
-			return
-		case <-time.After(s.conf.Timeout):
-			w.logger.Error("stream timeout")
-			s.cancels.Delete(w.info.ID)
-			var terminateCtx, terminateCancel = context.WithTimeout(context.Background(), s.conf.Timeout)
-			defer terminateCancel()
-			_ = w.Terminate(terminateCtx)
-			s.streams.Delete(w.info.ID)
+		done := w.done
+		for {
+			w.mu.Lock()
+			activity := w.lastActivity
+			if w.completed {
+				activity = w.completedAt
+				if w.legacy {
+					activity = time.Time{}
+				}
+			}
+			remaining := time.Until(activity.Add(s.conf.Timeout))
+			// Check expiry and invalidate under the same lock used to refresh activity.
+			if w.terminated || remaining <= 0 {
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				if err := w.terminateLocked(ctx); err != nil {
+					w.logger.Warn("recording timeout cleanup failed", zap.Error(err))
+				}
+				cancel()
+				s.streams.Delete(w.info.ID)
+				w.mu.Unlock()
+				return
+			}
+			w.mu.Unlock()
+			timer := time.NewTimer(remaining)
+			select {
+			case <-done:
+				// Retain successful uploads for Timeout to handle a lost final response without duplicating the blob.
+				done = nil
+			case <-timer.C:
+			case <-s.mainContext.Done():
+				// HTTP shutdown still drains active PATCHes; leave their uploads available to finish.
+				timer.Stop()
+				return
+			}
+			timer.Stop()
 		}
 	}()
 }

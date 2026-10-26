@@ -1,5 +1,6 @@
 {
   "string": {
+    "UploadFailed": "Recording upload failed. Please try recording again.",
     "Cancel": "Cancel",
     "Pause": "Pause",
     "Stop": "Stop",

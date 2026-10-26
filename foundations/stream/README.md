@@ -99,6 +99,61 @@ if you're working with S3 storage type, these envs must be provided:
 **AWS_ACCESS_KEY_ID**
 **AWS_SECRET_ACCESS_KEY**
 
+### Recording recovery (opt-in)
+
+Enable `RECORDING_RECOVERY_ENABLED=true` on the front service (or set that string in its
+public config), and `STREAM_RECORDING_RECOVERY_ENABLED=true` on the stream service. Both
+default to disabled. Web and desktop clients read the same public configuration. The
+server switch enables the in-process tus locker, 404 responses for missing uploads, and
+completed-upload retention for `STREAM_TIMEOUT` (default 5 minutes). It also rejects
+recording creation without a multipart-capable backend. Use
+`STREAM_ENDPOINT_URL=datalake://<datalake-host>:<port>`; the recorded workspace and token
+must be accepted by that Datalake. `STREAM_INSECURE=true` selects HTTP for a local
+Datalake test setup. The documented S3 default and the root `tests/docker-compose.yaml` S3
+configuration do not support recording multipart uploads. With recovery enabled those
+POSTs fail explicitly; S3 multipart support is outside this recovery mode. Without the
+switch the legacy protocol/backend behavior is preserved. Multipart accounting and
+lifecycle safety fixes apply to both modes.
+
+Recovery requires the same browser session to remain open. The client retains
+MediaRecorder chunks in memory, up to 512 MiB per recording (roughly 17 minutes at the
+default 4 Mbit/s video rate, less with audio or higher bitrates). This is a retention
+limit, not a total browser-memory limit. Exceeding it logs a warning, disables recovery
+for that recording, and lets the original live upload continue. If that upload has already
+failed, queued data is discarded and the failure is reported promptly. Cancel and terminal
+failure discard future chunks as well.
+
+On any terminal upload error, the client best-effort terminates that upload, continues
+capturing within the cap, and waits for the final data/stop event before one fresh upload
+of the complete seekable Blob. A MediaRecorder error preserves its final dataavailable
+event and lets the healthy live upload finish after stop, including when recovery is
+disabled or the cap was exceeded. Only an upload failure starts replay. Uploading
+preserves emitted bytes but cannot repair missing/corrupt media from the capture failure.
+A missing recorder stop event fails after 5 seconds and releases capture resources. The
+client waits up to 10 minutes when explicitly offline after capture closes. An online
+browser does not prove the endpoint is reachable. Requests time out after 6 minutes,
+allowing the final PATCH to flush and complete large recordings; retries have a 3-minute
+outage watchdog after the first error, reset only by accepted chunk progress. Keep this
+budget below `STREAM_TIMEOUT`; expiry of the original server upload still permits fresh
+replay. The replay has its own retry budget. Best-effort DELETE has a separate 5-second
+deadline and never blocks local cancellation or replay. With server recovery enabled,
+Datalake upload start and each PATCH's part writes are bounded to 1 minute, completion
+retries to 3 minutes, and a final reconciliation stat to 1 additional minute if completion
+timed out. Legacy completion has no new deadline. Cancellation is bounded to 30 seconds.
+Failed completion is hidden from HEAD; ambiguous backend operations are left for expiry
+cleanup rather than aborted immediately.
+
+This implementation assumes a **single stream-service instance**. Upload state, locks, and
+successful-completion markers are process-local. A restart requires a fresh client replay.
+No schema migration, checkpoint, token on disk, or writable recording volume is
+introduced. Server restarts and failed aborts can orphan backend multipart uploads:
+operators must configure backend lifecycle cleanup. The service does not sweep or
+guarantee cleanup of those orphans. Successful objects whose response was lost are
+reconciled by stat and size within the surviving process. A restart or a backend
+completion that succeeds after reconciliation can still require replay and create a
+duplicate completed blob. Token expiry can prevent replay. Existing upload-URL
+capability/authentication semantics are unchanged.
+
 ## Usage
 
 The service exposes an HTTP API.

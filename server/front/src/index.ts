@@ -272,6 +272,7 @@ export function start (
     disableSignUp?: string
     hideLocalLogin?: string
     streamUrl?: string
+    recordingRecoveryEnabled?: string
     mailUrl?: string
     billingUrl?: string
     paymentUrl?: string
@@ -344,6 +345,7 @@ export function start (
       COLLABORATOR: config.collaborator,
       LINK_PREVIEW_URL: config.linkPreviewUrl,
       STREAM_URL: config.streamUrl,
+      RECORDING_RECOVERY_ENABLED: config.recordingRecoveryEnabled,
       COLLABORATOR_URL: config.collaboratorUrl,
       BRANDING_URL: config.brandingUrl,
       PREVIEW_URL: config.previewUrl,

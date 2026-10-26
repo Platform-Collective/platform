@@ -105,6 +105,7 @@ export function startFront (ctx: MeasureContext, extraConfig?: Record<string, st
   const linkPreviewUrl = process.env.LINK_PREVIEW_URL
 
   const streamUrl = process.env.STREAM_URL
+  const recordingRecoveryEnabled = process.env.RECORDING_RECOVERY_ENABLED
 
   const disableSignUp = process.env.DISABLE_SIGNUP
 
@@ -147,6 +148,7 @@ export function startFront (ctx: MeasureContext, extraConfig?: Record<string, st
     hideLocalLogin,
     linkPreviewUrl,
     streamUrl,
+    recordingRecoveryEnabled,
     mailUrl,
     billingUrl,
     paymentUrl,
