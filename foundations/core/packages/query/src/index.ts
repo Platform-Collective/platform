@@ -104,6 +104,7 @@ export class LiveQuery implements WithTx, Client {
   private readonly queue = new Map<QueryId, Query & { lastUsed: number }>()
   private queryCounter: number = 0
   private closed: boolean = false
+  private transactionRevision = 0
 
   private readonly queriesToUpdate = new Map<number, Query>()
 
@@ -218,13 +219,9 @@ export class LiveQuery implements WithTx, Client {
     q.total = -1
   }
 
-  private match (q: Query, doc: Doc, skipLookup = false): boolean {
+  private matchClass (q: Query, doc: Doc): boolean {
     if (this.getHierarchy().isMixin(q._class)) {
-      if (this.getHierarchy().hasMixin(doc, q._class)) {
-        doc = this.getHierarchy().as(doc, q._class)
-      } else {
-        return false
-      }
+      return this.getHierarchy().hasMixin(doc, q._class)
     }
     if (!this.getHierarchy().isDerived(doc._class, q._class)) {
       // Check if it is not a mixin and not match class
@@ -233,6 +230,12 @@ export class LiveQuery implements WithTx, Client {
         return false
       }
     }
+    return true
+  }
+
+  private match (q: Query, doc: Doc, skipLookup = false): boolean {
+    if (!this.matchClass(q, doc)) return false
+    doc = this.asMixin(doc, q._class)
     const query = q.query
     for (const key in query) {
       if (key === '$search') continue
@@ -469,6 +472,7 @@ export class LiveQuery implements WithTx, Client {
       callbacks: new Map(),
       refresh: reduceCalls(() => this.doRefresh(q)),
       refreshId: 0,
+      pendingCreates: new Map(),
       refsRegistered: false
     }
     if (callback !== undefined) {
@@ -736,6 +740,7 @@ export class LiveQuery implements WithTx, Client {
           await this.handleDocAddLookup(q, tx)
           continue
         }
+        q.pendingCreates.delete(tx.objectId)
         if (q.result instanceof Promise) {
           q.result = await q.result
         }
@@ -802,6 +807,9 @@ export class LiveQuery implements WithTx, Client {
   }
 
   private async handleDocUpdate (q: Query, tx: TxUpdateDoc<Doc>, docCache: Map<string, Doc>): Promise<void> {
+    // An edit may change membership while a create is pending. An absent copy then
+    // needs authoritative membership/counts instead of reusing its original contribution.
+    q.pendingCreates.delete(tx.objectId)
     if (q.result instanceof Promise) {
       q.result = await q.result
     }
@@ -995,23 +1003,29 @@ export class LiveQuery implements WithTx, Client {
 
   private async doRefresh (q: Query, reconciledId?: Ref<Doc>): Promise<void> {
     const qid = ++q.refreshId
-    const res = await this.client.findAll(q._class, q.query, q.options)
-    const current = q.result instanceof Promise ? await q.result : q.result
-    if (
-      q.refreshId === qid &&
-      (!deepEqual(res, current.getDocs()) || (res.total !== q.total && q.options?.total === true))
-    ) {
-      if (reconciledId !== undefined) {
-        this.refs.updateDocuments(q, current.getDocs(), true)
+    while (q.refreshId === qid) {
+      const revision = this.transactionRevision
+      const res = await this.client.findAll(q._class, q.query, q.options)
+      const current = q.result instanceof Promise ? await q.result : q.result
+      if (q.refreshId !== qid) return
+      // Retry before unregistering Refs or publishing: a transaction can change revisions,
+      // membership or totals while the read is pending, even with only one subscriber.
+      if (revision !== this.transactionRevision) continue
+      q.pendingCreates.clear()
+      if (!deepEqual(res, current.getDocs()) || (res.total !== q.total && q.options?.total === true)) {
+        if (reconciledId !== undefined) {
+          this.refs.updateDocuments(q, current.getDocs(), true)
+        }
+        q.result = new ResultArray(res, this.getHierarchy())
+        q.refsRegistered = false
+        q.total = res.total
+        if (reconciledId !== undefined) {
+          this.refs.updateDocuments(q, q.result.getDocs(), false, reconciledId)
+          q.refsRegistered = true
+        }
+        await this.callback(q)
       }
-      q.result = new ResultArray(res, this.getHierarchy())
-      q.refsRegistered = false
-      q.total = res.total
-      if (reconciledId !== undefined) {
-        this.refs.updateDocuments(q, q.result.getDocs(), false, reconciledId)
-        q.refsRegistered = true
-      }
-      await this.callback(q)
+      return
     }
   }
 
@@ -1171,17 +1185,34 @@ export class LiveQuery implements WithTx, Client {
 
   protected async txCreateDoc (tx: TxCreateDoc<Doc>, docCache: Map<string, Doc>): Promise<TxResult> {
     const docTx = TxProcessor.createDoc2Doc(tx)
+    let revision = this.transactionRevision
     for (const queries of this.queries.entries()) {
       const doc = this.client.getHierarchy().isDerived(queries[0], core.class.Tx) ? tx : docTx
       for (const q of queries[1].values()) {
         if (
           doc !== tx &&
-          tx.meta?.isCreateConfirmation === true &&
-          this.getHierarchy().isDerived(doc._class, q._class)
+          tx.meta?.isOptimisticCreate === true &&
+          this.matchClass(q, doc) &&
+          !q.pendingCreates.has(doc._id)
         ) {
+          q.pendingCreates.set(doc._id, false)
+        }
+        if (doc !== tx && tx.meta?.isCreateConfirmation === true && this.matchClass(q, doc)) {
+          // Earlier queries in this transaction may have read before an intervening edit.
+          if (revision !== this.transactionRevision) {
+            docCache.clear()
+            revision = this.transactionRevision
+          }
           await this.reconcileCreate(q, doc, docCache)
+          q.pendingCreates.delete(doc._id)
         } else if (this.match(q, doc, q.options?.lookup !== undefined)) {
-          await this.handleDocAdd(q, doc, true, docCache, doc !== tx && tx.meta?.isOptimisticCreate === true)
+          await this.handleDocAdd(
+            q,
+            this.asMixin(doc, q._class),
+            true,
+            docCache,
+            doc !== tx && tx.meta?.isOptimisticCreate === true
+          )
         }
 
         await this.handleDocAddLookup(q, doc)
@@ -1192,12 +1223,39 @@ export class LiveQuery implements WithTx, Client {
   }
 
   private async reconcileCreate (q: Query, doc: Doc, docCache: Map<string, Doc>): Promise<void> {
+    doc = this.asMixin(doc, q._class)
     if (q.result instanceof Promise) {
       q.result = await q.result
     }
     const existing = q.result.findDoc(doc._id)
-    const matches = this.match(q, doc, q.options?.lookup !== undefined)
-    if (existing === undefined && !matches) return
+    const contributed = q.pendingCreates.get(doc._id) ?? (existing !== undefined ? true : undefined)
+    // Edits/removals invalidate the early-create snapshot even when totals are not requested.
+    // An absent document with unknown provenance must never be re-added from its create payload.
+    if (existing === undefined && contributed === undefined) {
+      await this.doRefresh(q, doc._id)
+      return
+    }
+    const revision = this.transactionRevision
+    if (existing === undefined && q.options?.lookup !== undefined) {
+      // Resolve complete membership and sort keys before changing counts or choosing a window.
+      await this.lookup(q._class, doc, q.options.lookup)
+      // A later edit/removal invalidates the create snapshot while its lookup is pending.
+      // Refresh before mutating results, totals or Refs, even when totals are not requested.
+      if (revision !== this.transactionRevision) {
+        docCache.clear()
+        this.queriesToUpdate.delete(q.id)
+        await this.doRefresh(q, doc._id)
+        return
+      }
+    }
+    const matches = this.match(q, doc)
+    if (existing === undefined && !matches) {
+      if (q.options?.total === true && contributed === true) {
+        q.total--
+        await this.callback(q, true)
+      }
+      return
+    }
     if (q.query.$search != null) {
       this.queriesToUpdate.delete(q.id)
       await this.doRefresh(q, doc._id)
@@ -1209,15 +1267,20 @@ export class LiveQuery implements WithTx, Client {
         if (boundary !== undefined && q.options.sort !== undefined) {
           const pair = [doc, boundary]
           resultSort(pair, q.options.sort, q._class, this.getHierarchy(), this.client.getModel())
-          // The optimistic create was already counted, even if it was popped from the window.
-          if (pair[0] === boundary) return
+          if (pair[0] === boundary) {
+            if (q.options.total === true && contributed === false) {
+              q.total++
+              await this.callback(q, true)
+            }
+            return
+          }
         }
         this.queriesToUpdate.delete(q.id)
         await this.doRefresh(q, doc._id)
         return
       }
       if (matches) {
-        await this.handleDocAdd(q, doc, true, docCache)
+        await this.handleDocAdd(q, doc, false, docCache, false, contributed !== true)
       }
       return
     }
@@ -1225,8 +1288,14 @@ export class LiveQuery implements WithTx, Client {
     // Server-loaded copies and later edits remain uncertain regardless of clock skew.
     const optimistic = isOptimisticCreate(existing)
     const current = optimistic
-      ? { ...existing, createdOn: doc.createdOn, modifiedOn: doc.modifiedOn }
+      ? this.asMixin({ ...existing, createdOn: doc.createdOn, modifiedOn: doc.modifiedOn }, q._class)
       : await this.getDocFromCache(docCache, doc._id, doc._class, doc.space, q)
+    if (revision !== this.transactionRevision) {
+      docCache.clear()
+      this.queriesToUpdate.delete(q.id)
+      await this.doRefresh(q, doc._id)
+      return
+    }
     const currentMatches = current !== undefined && this.match(q, current)
     const sort = q.options?.sort
     if (q.options?.limit === q.result.length && (q.options?.total !== true || q.total > q.result.length)) {
@@ -1269,7 +1338,8 @@ export class LiveQuery implements WithTx, Client {
     doc: Doc,
     handleLookup = true,
     docCache: Map<string, Doc>,
-    optimistic = false
+    optimistic = false,
+    count = true
   ): Promise<void> {
     let needPush = true
     if (q.result instanceof Promise) {
@@ -1284,6 +1354,9 @@ export class LiveQuery implements WithTx, Client {
       // We could already have document inside results, if query is created during processing of document create transaction and not yet handled on client.
       const pos = q.result.findDoc(doc._id)
       if (pos !== undefined) {
+        if (optimistic) {
+          q.pendingCreates.set(doc._id, true)
+        }
         // No need to update, document already in results.
         needPush = false
       }
@@ -1303,8 +1376,9 @@ export class LiveQuery implements WithTx, Client {
       const stored = q.result.push(doc)
       if (optimistic) {
         markOptimisticCreate(stored)
+        q.pendingCreates.set(doc._id, true)
       }
-      if (q.options?.total === true) {
+      if (count && q.options?.total === true) {
         q.total++
       }
 
@@ -1518,6 +1592,7 @@ export class LiveQuery implements WithTx, Client {
   }
 
   private async handleDocRemove (q: Query, tx: TxRemoveDoc<Doc>): Promise<void> {
+    q.pendingCreates.delete(tx.objectId)
     const h = this.client.getHierarchy()
     if (q._class === tx.objectClass || h.isDerived(q._class, tx.objectClass) || h.isDerived(tx.objectClass, q._class)) {
       if (q.result instanceof Promise) {
@@ -1646,6 +1721,8 @@ export class LiveQuery implements WithTx, Client {
   }
 
   async tx (...txes: Tx[]): Promise<TxResult[]> {
+    // Conservative across classes: lookups and predicates can depend on other documents.
+    this.transactionRevision++
     const result: TxResult[] = []
     const docCache = new Map<string, Doc>()
     for (const tx of txes) {

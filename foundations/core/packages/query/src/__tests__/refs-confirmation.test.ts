@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import core, { Hierarchy, type Doc, type Ref } from '@hcengineering/core'
-import { clearOptimisticCreate, markOptimisticCreate } from '../optimistic'
+import { clearOptimisticCreate, isOptimisticCreate, markOptimisticCreate } from '../optimistic'
 import { Refs } from '../refs'
 import { ResultArray } from '../results'
 import type { Query } from '../types'
@@ -27,6 +27,7 @@ function query (hierarchy: Hierarchy, id: number): Query {
     callbacks: new Map(),
     refresh: async () => {},
     refreshId: 0,
+    pendingCreates: new Map(),
     refsRegistered: false
   }
 }
@@ -74,6 +75,41 @@ describe('create confirmation cache revisions', () => {
       createdOn: 100,
       modifiedOn: 200
     })
+  })
+
+  it('only releases membership when cleaning a discarded optimistic copy', () => {
+    const own = document('own', 500)
+    markOptimisticCreate(own)
+    const retained = query(hierarchy, 1)
+    const departing = query(hierarchy, 2)
+    refs.updateDocuments(retained, [own])
+    refs.updateDocuments(departing, [own])
+    refs.updateDocuments(retained, [document('own', 100)], false, own._id)
+
+    refs.updateDocuments(departing, [own], true)
+
+    const cached = refs.findFromDocs(core.class.Doc, { _id: own._id })?.[0]
+    expect(cached?.modifiedOn).toBe(100)
+    if (cached === undefined) throw new Error('Expected a retained authoritative cache copy')
+    expect(isOptimisticCreate(cached)).toBe(false)
+    refs.updateDocuments(retained, [cached], true)
+    expect(refs.findFromDocs(core.class.Doc, { _id: own._id })).toBeNull()
+  })
+
+  it('preserves provenance when stripping lookup data from a cached copy', () => {
+    const own = { ...document('own', 500), $lookup: {} }
+    markOptimisticCreate(own)
+    const first = query(hierarchy, 1)
+    first.options = { lookup: { space: core.class.Space } }
+    refs.updateDocuments(first, [own])
+
+    const copy = refs.findFromDocs(core.class.Doc, {}, { limit: 1 })?.[0]
+    expect(copy).toBeDefined()
+    if (copy === undefined) throw new Error('Expected an optimistic cache copy')
+    expect(copy).not.toBe(own)
+    expect(copy.$lookup).toBeUndefined()
+    expect(isOptimisticCreate(copy)).toBe(true)
+    expect(isOptimisticCreate(document('own', 500))).toBe(false)
   })
 
   it('does not downgrade a newer server copy of the reconciled document', () => {

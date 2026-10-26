@@ -8,6 +8,7 @@ import { type Doc, type PersonId, type Ref, SortingOrder, type Space } from '@hc
 import { createQuery, getClient } from '@hcengineering/presentation'
 import { get } from 'svelte/store'
 import type { ChannelDataProvider } from '../channelDataProvider'
+import { comparePopupMessages } from '../message-order'
 
 jest.mock('@hcengineering/presentation', () => ({
   createQuery: jest.fn(),
@@ -21,8 +22,12 @@ jest.mock('@hcengineering/activity-resources', () =>
 interface QueryMock {
   query: jest.Mock
   unsubscribe: jest.Mock
+  subscribed: Promise<void>
 }
 
+// Synthetic IDs and generic ActivityMessage payloads isolate the ordering contract.
+// The hierarchy double deliberately does not model DocUpdate merging. These tests do not
+// establish deployed SQL collation, real model merging or end-to-end pagination behavior.
 function message (id: string, createdOn: number | undefined = 100, modifiedOn = 100): ActivityMessage {
   return {
     _id: id as Ref<ActivityMessage>,
@@ -55,7 +60,17 @@ describe('channel message ordering', () => {
   beforeEach(() => {
     queries = []
     jest.mocked(createQuery).mockImplementation(() => {
-      const query = { query: jest.fn(), unsubscribe: jest.fn() }
+      let subscribed: () => void = () => {}
+      const completion = new Promise<void>((resolve) => {
+        subscribed = resolve
+      })
+      const query = {
+        query: jest.fn(() => {
+          subscribed()
+        }),
+        unsubscribe: jest.fn(),
+        subscribed: completion
+      }
       queries.push(query)
       return query as unknown as ReturnType<typeof createQuery>
     })
@@ -111,11 +126,30 @@ describe('channel message ordering', () => {
     expect(utils.activityMessagesComparator(messages[0], messages[0])).toBe(0)
   })
 
+  it.each([SortingOrder.Ascending, SortingOrder.Descending])(
+    'orders popup ties within pinned and unpinned groups (direction: %i)',
+    (order) => {
+      const pinnedA = { ...message('a'), isPinned: true }
+      const pinnedB = { ...message('b'), isPinned: true }
+      const regularA = message('c')
+      const regularB = { ...message('d'), isPinned: false }
+      const older = message('z', 50)
+      const expected = order === SortingOrder.Ascending ? ['a', 'b', 'z', 'c', 'd'] : ['b', 'a', 'd', 'c', 'z']
+      for (const values of [
+        [regularB, pinnedA, older, pinnedB, regularA],
+        [pinnedB, regularA, pinnedA, regularB, older]
+      ]) {
+        expect(ids(values.sort((first, second) => comparePopupMessages(first, second, order)))).toEqual(expected)
+      }
+      expect(comparePopupMessages(pinnedA, pinnedA, order)).toBe(0)
+      expect(comparePopupMessages(regularA, regularA, order)).toBe(0)
+    }
+  )
+
   it('keeps live tail order and IDs stable when the query refreshes after reconnect', async () => {
     const metadataCallback = queries[0].query.mock.calls[0][2]
     await metadataCallback([])
-    // Initial loading awaits the unread-message lookup before subscribing to the tail.
-    await Promise.resolve()
+    await queries[1].subscribed
     const tailCallback = queries[1].query.mock.calls[0][2]
     const a = message('a')
     const b = message('b')
@@ -133,7 +167,7 @@ describe('channel message ordering', () => {
 
   it('requests the same tie-breaker for metadata, references and the live tail', async () => {
     await queries[0].query.mock.calls[0][2]([])
-    await Promise.resolve()
+    await queries[1].subscribed
 
     expect(queries[0].query.mock.calls[0][3].sort).toEqual({
       createdOn: SortingOrder.Ascending,
@@ -162,7 +196,7 @@ describe('channel message ordering', () => {
       true
     )
     await queries[0].query.mock.calls[0][2]([])
-    await Promise.resolve()
+    await queries[1].subscribed
     for (const index of [0, 1]) {
       const call = queries[index].query.mock.calls[0]
       const order = index === 0 ? SortingOrder.Ascending : SortingOrder.Descending
@@ -185,11 +219,28 @@ describe('channel message ordering', () => {
 
   it('uses the same tie-breaker when merging references with messages', async () => {
     await queries[0].query.mock.calls[0][2]([])
-    await Promise.resolve()
+    await queries[1].subscribed
     await queries[1].query.mock.calls[0][2]([message('c'), message('a')])
     await queries[2].query.mock.calls[0][2]([{ ...message('b'), _class: activity.class.ActivityReference }])
 
     expect(ids(get(provider.messagesStore))).toEqual(['a', 'b', 'c'])
+  })
+
+  it.each([false, true])('excludes loaded timestamp ties before the page limit (backward: %s)', async (isBackward) => {
+    await queries[0].query.mock.calls[0][2]([])
+    await queries[1].subscribed
+    // More than one page shares the boundary timestamp. The server must see the exclusions.
+    const tied = Array.from({ length: provider.limit + 10 }, (_, index) =>
+      message(index.toString(16).padStart(24, '0'))
+    )
+    const loaded = isBackward ? tied.slice(10) : tied.slice(0, provider.limit)
+    const remaining = isBackward ? tied.slice(0, 10) : tied.slice(provider.limit)
+    await queries[1].query.mock.calls[0][2]([...loaded].reverse())
+    findAll.mockResolvedValue(isBackward ? [...remaining].reverse() : remaining)
+    const chunk = await provider.loadChunk(isBackward, 100)
+    expect(findAll.mock.calls[0][1]._id).toEqual({ $nin: ids(loaded) })
+    expect(findAll.mock.calls[0][2].limit).toBe(provider.limit)
+    expect(ids(chunk?.data ?? [])).toEqual(ids(remaining))
   })
 
   it.each([false, true])('uses the same order for historical chunks (backward: %s)', async (isBackward) => {

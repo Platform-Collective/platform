@@ -10,7 +10,7 @@ import {
   type Ref,
   type Timestamp
 } from '@hcengineering/core'
-import { isOptimisticCreate } from './optimistic'
+import { isOptimisticCreate, markOptimisticCreate } from './optimistic'
 import type { Query, QueryId } from './types'
 
 export interface DocumentRef {
@@ -26,6 +26,15 @@ export class Refs {
   private readonly documentRefs = new Map<string, Map<Ref<Doc>, DocumentRef>>()
 
   constructor (readonly getHierarchy: () => Hierarchy) {}
+
+  private cloneDocument<T extends Doc> (doc: T): T {
+    const copy = this.getHierarchy().clone(doc)
+    // A cache-derived copy is still the same pending create, unlike a server-loaded copy.
+    if (isOptimisticCreate(doc)) {
+      markOptimisticCreate(copy)
+    }
+    return copy
+  }
 
   public updateDocuments (q: Query, docs: Doc[], clean: boolean = false, reconciledId?: Ref<Doc>): void {
     if (q.options?.projection !== undefined) {
@@ -51,21 +60,20 @@ export class Refs {
         continue
       }
       if (clean) {
-        // We need to remove query if it doesn't contains element anymore
+        // Cleanup only releases membership. The departing query may hold a discarded optimistic
+        // copy whose timestamp is ahead of the authoritative copy retained by another query.
         existing.queries.delete(q.id)
         if (existing.queries.size === 0) {
           docMap.delete(d._id)
-          continue
         }
+        continue
       }
-      if (!clean) {
-        // Membership does not depend on the revision: a query holding a copy another query has
-        // already moved past still holds the document, and must keep it alive when that one leaves.
-        existing.queries.add(q.id)
-      }
+      // Membership does not depend on the revision: a query holding a copy another query has
+      // already moved past still holds the document, and must keep it alive when that one leaves.
+      existing.queries.add(q.id)
       // Only the confirmed document's untouched local copy may move backwards in time.
       // A stale refresh must not replace newer server copies, including other documents.
-      const confirmsOptimistic = !clean && d._id === reconciledId && isOptimisticCreate(existing.doc)
+      const confirmsOptimistic = d._id === reconciledId && isOptimisticCreate(existing.doc)
       // In-place edits already changed this cached object, possibly under clock skew.
       // Keep its revision guard in sync with the object it actually protects.
       if (existing.doc === d || confirmsOptimistic || existing.lastUsed <= d.modifiedOn) {
@@ -90,7 +98,7 @@ export class Refs {
         if (doc !== undefined) {
           const q = matchQuery([doc], query, _class, this.getHierarchy())
           if (q.length > 0) {
-            return toFindResult(this.getHierarchy().clone([doc]), 1)
+            return toFindResult([this.cloneDocument(doc)] as T[], 1)
           }
         }
       }
@@ -109,7 +117,7 @@ export class Refs {
 
         const q = matchQuery(_docs, query, _class, this.getHierarchy())
         if (q.length > 0) {
-          return toFindResult(this.getHierarchy().clone([q[0]]), 1)
+          return toFindResult([this.cloneDocument(q[0])] as T[], 1)
         }
       }
       if (options.lookup === undefined && options.associations === undefined) {
@@ -122,12 +130,13 @@ export class Refs {
 
               const q = matchQuery(_docs, query, _class, this.getHierarchy())
               if (q.length > 0) {
-                const clonedDoc = this.getHierarchy().clone(q[0])
+                const clonedDoc = this.cloneDocument(q[0])
                 const { $lookup, $associations, ...clean } = clonedDoc
-                if (this.getHierarchy().isMixin(_class)) {
-                  return toFindResult([this.getHierarchy().as(clean, _class)] as T[], 1)
+                const result = this.getHierarchy().isMixin(_class) ? this.getHierarchy().as(clean, _class) : clean
+                if (isOptimisticCreate(clonedDoc)) {
+                  markOptimisticCreate(result)
                 }
-                return toFindResult([clean], 1)
+                return toFindResult([result] as T[], 1)
               }
             }
           }

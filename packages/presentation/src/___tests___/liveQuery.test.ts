@@ -22,8 +22,16 @@ import core, {
   type Tx,
   setCurrentAccount
 } from '@hcengineering/core'
-import { createQuery, getClient, pendingCreatedDocs, refreshClient, setClient } from '../utils'
 import { get } from 'svelte/store'
+import {
+  addTxListener,
+  createQuery,
+  getClient,
+  pendingCreatedDocs,
+  refreshClient,
+  removeTxListener,
+  setClient
+} from '../utils'
 import type { InstantTransactions } from '../types'
 
 interface Subscription {
@@ -33,7 +41,8 @@ interface Subscription {
 }
 
 const mockDestroyHandlers: Array<() => void> = []
-const mockNotifications: Tx[][] = []
+const mockNotifications: Array<{ client: object, txes: Tx[] }> = []
+const mockScheduledQueries: Array<() => void> = []
 jest.mock('svelte', () => ({ onDestroy: (fn: () => void) => mockDestroyHandlers.push(fn) }))
 jest.mock('svelte/store', () => {
   const writable = (value: any): any => {
@@ -68,13 +77,13 @@ jest.mock('@hcengineering/query', () => ({
   LiveQuery: class {
     static subscriptions: Subscription[] = []
     async tx (...tx: Tx[]): Promise<void> {
-      mockNotifications.push(tx)
+      mockNotifications.push({ client: this, txes: tx })
     }
 
     query (_class: any, query: Record<string, any>, onResult: (res: any) => void): () => void {
       const sub: Subscription = { query, active: true, onResult }
       ;(this.constructor as any).subscriptions.push(sub)
-      void Promise.resolve().then(() => {
+      mockScheduledQueries.push(() => {
         if (sub.active) onResult([{ query }])
       })
       return () => {
@@ -94,19 +103,39 @@ jest.mock('@hcengineering/query', () => ({
 
 const subscriptions = (): Subscription[] => jest.requireMock('@hcengineering/query').LiveQuery.subscriptions
 
-async function settle (): Promise<void> {
-  for (let i = 0; i < 5; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 0))
+function deferred (): { promise: Promise<void>, resolve: () => void } {
+  let complete: () => void = () => {
+    throw new Error('Deferred promise is not initialized')
+  }
+  const promise = new Promise<void>((resolve) => {
+    complete = resolve
+  })
+  return { promise, resolve: complete }
+}
+
+// Run the actual scheduled query work and its mock result deliveries to completion.
+// This also makes assertions about cancelled requests independent of timer speed.
+function flushQueries (): void {
+  while (mockScheduledQueries.length > 0) {
+    const run = mockScheduledQueries.shift()
+    run?.()
   }
 }
 
 describe('LiveQuery', () => {
   beforeAll(async () => {
+    jest.spyOn(globalThis, 'queueMicrotask').mockImplementation((callback) => {
+      mockScheduledQueries.push(callback)
+    })
     setCurrentAccount({ uuid: 'test', role: 'USER', primarySocialId: 'test', socialIds: ['test'] } as any)
     await setClient({ findAll: async () => [], notify: () => {}, close: async () => {} } as unknown as Client)
   })
 
-  it('resubscribes to A after A -> B -> A within one tick', async () => {
+  afterAll(() => {
+    jest.restoreAllMocks()
+  })
+
+  it('resubscribes to A after A -> B -> A within one tick', () => {
     const q = createQuery(true)
     const received: string[] = []
     const callback = (res: FindResult<Doc>): void => {
@@ -114,64 +143,64 @@ describe('LiveQuery', () => {
     }
 
     q.query(core.class.Doc, { name: 'A' }, callback)
-    await settle()
+    flushQueries()
     expect(received).toEqual(['A'])
 
     expect(q.query(core.class.Doc, { name: 'B' } as any, callback)).toBe(true)
     expect(q.query(core.class.Doc, { name: 'A' } as any, callback)).toBe(true)
-    await settle()
+    flushQueries()
 
     const active = subscriptions().filter((it) => it.active)
     expect(active.map((it) => it.query.name)).toEqual(['A'])
     expect(received[received.length - 1]).toBe('A')
   })
 
-  it('does not requery the same request', async () => {
+  it('does not requery the same request', () => {
     const q = createQuery(true)
     const callback = (): void => {}
     expect(q.query(core.class.Doc, { name: 'C' } as any, callback)).toBe(true)
     expect(q.query(core.class.Doc, { name: 'C' } as any, callback)).toBe(false)
-    await settle()
+    flushQueries()
     expect(q.query(core.class.Doc, { name: 'C' } as any, callback)).toBe(false)
   })
 
-  it('does not subscribe when unsubscribed before the deferred query runs', async () => {
+  it('does not subscribe when unsubscribed before the deferred query runs', () => {
     const q = createQuery(true)
     q.query(core.class.Doc, { name: 'D' }, () => {})
     q.unsubscribe()
-    await settle()
+    flushQueries()
 
     expect(subscriptions().filter((it) => it.query.name === 'D')).toEqual([])
   })
 
-  it('ignores query() after component destroy', async () => {
+  it('ignores query() after component destroy', () => {
     mockDestroyHandlers.length = 0
     const q = createQuery()
     for (const destroy of mockDestroyHandlers) destroy()
 
     expect(q.query(core.class.Doc, { name: 'E' } as any, () => {})).toBe(false)
-    await settle()
+    flushQueries()
     expect(subscriptions().filter((it) => it.query.name === 'E')).toEqual([])
   })
 
   it('does not resubscribe an unsubscribed global query on client refresh', async () => {
     const q = createQuery(true)
     q.query(core.class.Doc, { name: 'F' }, () => {})
-    await settle()
+    flushQueries()
     q.unsubscribe()
     await refreshClient(true)
-    await settle()
+    flushQueries()
 
     expect(subscriptions().filter((it) => it.query.name === 'F' && it.active)).toEqual([])
   })
 
-  it('subscribes only the last of several requests made in one tick', async () => {
+  it('subscribes only the last of several requests made in one tick', () => {
     const q = createQuery(true)
     const callback = (): void => {}
     q.query(core.class.Doc, { name: 'J1' }, callback)
     q.query(core.class.Doc, { name: 'J2' }, callback)
     q.query(core.class.Doc, { name: 'J3' }, callback)
-    await settle()
+    flushQueries()
 
     expect(
       subscriptions()
@@ -180,28 +209,28 @@ describe('LiveQuery', () => {
     ).toEqual(['J3'])
   })
 
-  it('subscribes again after unsubscribe', async () => {
+  it('subscribes again after unsubscribe', () => {
     const q = createQuery(true)
     const callback = (): void => {}
     q.query(core.class.Doc, { name: 'K' }, callback)
-    await settle()
+    flushQueries()
     q.unsubscribe()
     expect(q.query(core.class.Doc, { name: 'K' } as any, callback)).toBe(true)
-    await settle()
+    flushQueries()
 
     expect(subscriptions().filter((it) => it.query.name === 'K' && it.active)).toHaveLength(1)
   })
 
-  it('drops results that a released subscription still delivers', async () => {
+  it('drops results that a released subscription still delivers', () => {
     const q = createQuery(true)
     const received: string[] = []
     const callback = (res: FindResult<Doc>): void => {
       received.push((res[0] as any).query.name)
     }
     q.query(core.class.Doc, { name: 'L1' }, callback)
-    await settle()
+    flushQueries()
     q.query(core.class.Doc, { name: 'L2' }, callback)
-    await settle()
+    flushQueries()
 
     const released = subscriptions().find((it) => it.query.name === 'L1')
     released?.onResult([{ query: { name: 'L1' } }])
@@ -230,29 +259,44 @@ describe('LiveQuery', () => {
       members: [],
       archived: false
     })
-    await getClient().tx(tx)
-    await settle()
-    expect(get(pendingCreatedDocs)[tx.objectId]).toBe(true)
-    expect(notifications).toHaveLength(2)
-    expect(notifications.every(([t]) => t.meta?.isCreateConfirmation !== true)).toBe(true)
-    expect(notifications.every(([t]) => t.meta?.isOptimisticCreate === true)).toBe(true)
-    expect(tx.meta?.isOptimisticCreate).toBeUndefined()
-    notifications.length = 0
+    let completed = deferred()
+    const listener = (): void => {
+      completed.resolve()
+    }
+    addTxListener(listener)
+    try {
+      await getClient().tx(tx)
+      await completed.promise
+      expect(get(pendingCreatedDocs)[tx.objectId]).toBe(true)
+      expect(notifications).toHaveLength(2)
+      expect(new Set(notifications.map(({ client }) => client)).size).toBe(2)
+      expect(notifications.every(({ txes: [t] }) => t.meta?.isCreateConfirmation !== true)).toBe(true)
+      expect(notifications.every(({ txes: [t] }) => t.meta?.isOptimisticCreate === true)).toBe(true)
+      expect(tx.meta?.isOptimisticCreate).toBeUndefined()
+      const clients = notifications.map(({ client }) => client)
+      notifications.length = 0
 
-    const confirmed = { ...tx, createdOn: tx.modifiedOn + 100, modifiedOn: tx.modifiedOn + 100 }
-    storage.notify?.(confirmed)
-    await settle()
-    expect(get(pendingCreatedDocs)[tx.objectId]).toBeUndefined()
-    expect(notifications).toHaveLength(2)
-    expect(notifications.every(([t]) => t.meta?.isCreateConfirmation === true)).toBe(true)
-    expect(notifications.every(([t]) => t.meta?.isOptimisticCreate !== true)).toBe(true)
-    expect(confirmed.meta?.isCreateConfirmation).toBeUndefined()
-    expect(send).toHaveBeenCalledWith(tx)
-    notifications.length = 0
+      completed = deferred()
+      const confirmed = { ...tx, createdOn: tx.modifiedOn + 100, modifiedOn: tx.modifiedOn + 100 }
+      storage.notify?.(confirmed)
+      await completed.promise
+      expect(get(pendingCreatedDocs)[tx.objectId]).toBeUndefined()
+      expect(notifications).toHaveLength(2)
+      expect(notifications.map(({ client }) => client)).toEqual(clients)
+      expect(notifications.every(({ txes: [t] }) => t.meta?.isCreateConfirmation === true)).toBe(true)
+      expect(notifications.every(({ txes: [t] }) => t.meta?.isOptimisticCreate !== true)).toBe(true)
+      expect(confirmed.meta?.isCreateConfirmation).toBeUndefined()
+      expect(send).toHaveBeenCalledWith(tx)
+      notifications.length = 0
 
-    storage.notify?.(confirmed)
-    await settle()
-    expect(notifications).toHaveLength(2)
-    expect(notifications.every(([t]) => t.meta?.isCreateConfirmation !== true)).toBe(true)
+      completed = deferred()
+      storage.notify?.(confirmed)
+      await completed.promise
+      expect(notifications).toHaveLength(2)
+      expect(notifications.map(({ client }) => client)).toEqual(clients)
+      expect(notifications.every(({ txes: [t] }) => t.meta?.isCreateConfirmation !== true)).toBe(true)
+    } finally {
+      removeTxListener(listener)
+    }
   })
 })
