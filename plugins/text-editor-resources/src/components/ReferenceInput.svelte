@@ -15,7 +15,7 @@
 <script lang="ts">
   import { Blob, Class, Doc, Markup, Ref } from '@hcengineering/core'
   import { Asset, IntlString } from '@hcengineering/platform'
-  import { EmptyMarkup, isEmptyMarkup, mergeKitOptions } from '@hcengineering/text'
+  import { EmptyMarkup, isEmptyMarkup, markupToJSON, mergeKitOptions } from '@hcengineering/text'
   import textEditor, { RefAction, TextEditorHandler } from '@hcengineering/text-editor'
   import {
     AnySvelteComponent,
@@ -126,6 +126,10 @@
 
   export function submit(): void {
     editor?.submit()
+  }
+
+  export function appendMarkup(markup: Markup): void {
+    editor?.getEditor()?.chain().focus('end').insertContent(markupToJSON(markup)).run()
   }
 
   function handleAction(a: RefAction, evt?: Event): void {

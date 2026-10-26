@@ -20,12 +20,14 @@
   import { Class, Doc, generateId, getCurrentAccount, Ref, type CommitResult } from '@hcengineering/core'
   import { createQuery, DraftController, draftsStore, getClient } from '@hcengineering/presentation'
   import { EmptyMarkup, isEmptyMarkup } from '@hcengineering/text'
-  import { createEventDispatcher } from 'svelte'
+  import { createEventDispatcher, onMount } from 'svelte'
   import { getObjectId } from '@hcengineering/view-resources'
   import { ThrottledCaller } from '@hcengineering/ui'
   import { getSpace, editingMessageStore } from '@hcengineering/activity-resources'
+  import { isElementFromSidebar } from '@hcengineering/workbench-resources'
 
   import { getChannelSpace } from '../../utils'
+  import { registerQuoteInput } from '../../quote-action'
   import ChannelTypingInfo from '../ChannelTypingInfo.svelte'
 
   export let object: Doc
@@ -65,6 +67,17 @@
   let currentMessage: MessageDraft = chatMessage ?? currentDraft ?? getDefault()
   let _id = currentMessage._id
   let inputContent = currentMessage.message
+
+  onMount(() => {
+    if (chatMessage !== undefined || _class === chunter.class.ThreadMessage) return
+
+    return registerQuoteInput({
+      objectId: object._id,
+      isSidebar: boundary !== undefined && isElementFromSidebar(boundary),
+      element: boundary,
+      appendMarkup: (markup) => inputRef.appendMarkup(markup)
+    })
+  })
 
   $: if (currentDraft != null) {
     createdMessageQuery.query(_class, { _id, space: getSpace(object) }, (result: ChatMessage[]) => {
