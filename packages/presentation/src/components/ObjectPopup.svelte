@@ -13,6 +13,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
+  import { Analytics } from '@hcengineering/analytics'
   import {
     getObjectValue,
     type Class,
@@ -23,8 +24,8 @@
   } from '@hcengineering/core'
   import type { IntlString } from '@hcengineering/platform'
   import { Label } from '@hcengineering/ui'
-  import { createEventDispatcher } from 'svelte'
-  import presentation, { searchFor, type SearchItem } from '..'
+  import { createEventDispatcher, onDestroy } from 'svelte'
+  import presentation, { searchFor } from '..'
   import { ObjectCreate, type ObjectSearchCategory } from '../types'
   import { createQuery } from '../utils'
   import DocPopup from './DocPopup.svelte'
@@ -82,19 +83,20 @@
   let resObjects: Doc[] = []
 
   let extraItems: Ref<Doc>[] = []
+  let searchGeneration = 0
+  let spotlightPending = false
+  let searchPending = false
 
   const query = createQuery()
   const sQuery = createQuery() // Query for selected objects
 
+  onDestroy(() => {
+    searchGeneration++
+  })
+
   $: noSearchField = searchMode === 'disabled'
   $: _idExtra = typeof docQuery?._id === 'object' ? docQuery?._id : {}
-  $: if (searchMode === 'spotlight' && search !== '') {
-    void searchSpotlight(search).then((items) => {
-      extraItems = items.map((it) => it.item.id)
-    })
-  } else {
-    extraItems = []
-  }
+  $: updateSearch(search, searchMode, category)
 
   $: fquery = {
     ...(docQuery ?? {}),
@@ -107,7 +109,7 @@
             ? { $search: search, _id: { $nin: ignoreObjects, ..._idExtra } }
             : { _id: { $nin: ignoreObjects, ..._idExtra } }
         case 'spotlight':
-          return extraItems.length > 0
+          return search !== ''
             ? { _id: { $in: extraItems, $nin: ignoreObjects } }
             : { _id: { $nin: ignoreObjects, ..._idExtra } }
         default:
@@ -118,15 +120,20 @@
     })()
   }
 
-  $: query.query<Doc>(
-    _class,
-    fquery,
-    (result) => {
-      result.sort(sort)
-      resObjects = result
-    },
-    { ...(options ?? {}), limit: 200 }
-  )
+  $: if (!spotlightPending) {
+    const generation = searchGeneration
+    query.query<Doc>(
+      _class,
+      fquery,
+      (result) => {
+        if (generation !== searchGeneration) return
+        result.sort(sort)
+        resObjects = result
+        searchPending = false
+      },
+      { ...(options ?? {}), limit: 200 }
+    )
+  }
 
   $: if (selectedObjects.length > 0) {
     sQuery.query<Doc>(
@@ -146,7 +153,9 @@
   }
 
   $: {
-    if (created.length > 0 || selObjects.length > 0) {
+    if (searchPending) {
+      objects = []
+    } else if (created.length > 0 || selObjects.length > 0) {
       const docIds = new Set(resObjects.map((it) => it._id))
       const selectedOb = forceShowSelected ? selObjects : selObjects.filter((p) => docIds.has(p._id))
       const cmap = new Set(created.map((it) => it._id))
@@ -160,8 +169,36 @@
     }
   }
 
-  async function searchSpotlight(search: string): Promise<SearchItem[]> {
-    return (await searchFor('spotlight', search, category, 50)).items
+  function updateSearch(
+    search: string,
+    mode: typeof searchMode,
+    category: Ref<ObjectSearchCategory> | undefined
+  ): void {
+    const generation = ++searchGeneration
+    extraItems = []
+    spotlightPending = mode === 'spotlight' && search !== ''
+    searchPending = mode === 'spotlight'
+    // A new search must also reload documents when spotlight returns the same IDs.
+    query.unsubscribe()
+    if (spotlightPending) {
+      void searchSpotlight(search, category, generation)
+    }
+  }
+
+  async function searchSpotlight(
+    search: string,
+    category: Ref<ObjectSearchCategory> | undefined,
+    generation: number
+  ): Promise<void> {
+    try {
+      const { items } = await searchFor('spotlight', search, category, 50)
+      if (generation !== searchGeneration) return
+      extraItems = items.map((it) => it.item.id)
+    } catch (err) {
+      Analytics.handleError(err as Error)
+    } finally {
+      if (generation === searchGeneration) spotlightPending = false
+    }
   }
 </script>
 
@@ -184,7 +221,7 @@
   {readonly}
   {disallowDeselect}
   {embedded}
-  {loading}
+  loading={loading || searchPending}
   {type}
   {showVersions}
   {onSelect}
