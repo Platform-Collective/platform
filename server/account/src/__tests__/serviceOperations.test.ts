@@ -32,7 +32,10 @@ import {
   type IntegrationSecret,
   type IntegrationSecretKey,
   SubscriptionStatus,
-  SubscriptionType
+  SubscriptionType,
+  type WorkspaceStatus,
+  type WorkspaceInfoWithStatus,
+  type WorkspaceEvent
 } from '../types'
 import * as utils from '../utils'
 import {
@@ -47,7 +50,9 @@ import {
   updateIntegration,
   updateIntegrationSecret,
   addIntegrationSecret,
-  upsertSubscription
+  upsertSubscription,
+  updateWorkspaceInfo,
+  performWorkspaceOperation
 } from '../serviceOperations'
 
 // Mock platform
@@ -1601,5 +1606,213 @@ describe('upsertSubscription', () => {
         providerData: subscriptionData.providerData
       })
     )
+  })
+})
+
+describe('restore lifecycle', () => {
+  const workspaceUuid = 'restore-workspace' as WorkspaceUuid
+  const version = { major: 1, minor: 0, patch: 0 }
+  const ctx = { info: jest.fn() } as unknown as MeasureContext
+  let status: WorkspaceStatus
+  let db: AccountDB
+
+  async function event (event: WorkspaceEvent, message?: string): Promise<void> {
+    await updateWorkspaceInfo(ctx, db, null, 'worker', { workspaceUuid, version, event, progress: 0, message })
+  }
+
+  async function retry (admin = true, tokenWorkspace = workspaceUuid): Promise<void> {
+    jest.mocked(decodeTokenVerbose).mockReturnValue({
+      account: 'test-account' as AccountUuid,
+      workspace: tokenWorkspace,
+      extra: admin ? { admin: 'true' } : {}
+    })
+    await performWorkspaceOperation(ctx, db, null, 'user', {
+      workspaceId: workspaceUuid,
+      event: 'unarchive',
+      params: []
+    })
+    jest.mocked(decodeTokenVerbose).mockReturnValue({
+      account: 'test-account' as AccountUuid,
+      workspace: workspaceUuid,
+      extra: { service: 'workspace' }
+    })
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    status = {
+      workspaceUuid,
+      mode: 'pending-restore',
+      processingAttempts: 0,
+      isDisabled: false,
+      versionMajor: 1,
+      versionMinor: 0,
+      versionPatch: 0
+    }
+    const update = jest.fn(async (query: Record<string, unknown>, changes: Partial<WorkspaceStatus>) => {
+      const matches = Object.entries(query).every(([key, expected]) => {
+        const actual = status[key as keyof WorkspaceStatus]
+        if (expected != null && typeof expected === 'object') {
+          const op = expected as { $in?: unknown[], $ne?: unknown, $lte?: number }
+          if (op.$in !== undefined) return op.$in.includes(actual)
+          if ('$ne' in op) return actual !== op.$ne
+          if (op.$lte !== undefined) return actual == null || Number(actual) <= op.$lte
+        }
+        return actual === expected
+      })
+      if (matches) Object.assign(status, changes)
+    })
+    db = {
+      workspace: { exists: jest.fn().mockResolvedValue(true), update: jest.fn() },
+      workspaceStatus: { findOne: jest.fn(async () => ({ ...status })), update }
+    } as unknown as AccountDB
+    jest.mocked(decodeTokenVerbose).mockReturnValue({
+      account: 'test-account' as AccountUuid,
+      workspace: workspaceUuid,
+      extra: { service: 'workspace' }
+    })
+    jest
+      .spyOn(utils, 'getWorkspacesInfoWithStatusByIds')
+      .mockImplementation(async () => [{ uuid: workspaceUuid, status } as unknown as WorkspaceInfoWithStatus])
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  test.each(['unarchive', 'migration'] as const)('%s fails after exactly three claimed attempts', async (entry) => {
+    status.processingAttempts = 12
+    if (entry === 'unarchive') {
+      status.mode = 'archived'
+      await retry()
+    } else {
+      status.mode = 'migration-clean'
+      await event('migrate-clean-done')
+    }
+    expect(status.processingAttempts).toBe(0)
+    for (let claim = 1; claim <= 3; claim++) {
+      status.processingAttempts = (status.processingAttempts ?? 0) + 1
+      await event('restore-started')
+      await event('restore-started') // A duplicate start must not erase the claim.
+      expect(status.processingAttempts).toBe(claim)
+      await event('restore-failed', 'secret storage endpoint and credentials')
+      expect(status.mode).toBe(claim === 3 ? 'restore-failed' : 'restoring')
+      expect(status.processingMessage).toBe('Restore failed. Retry or contact support.')
+    }
+    const failed = { ...status }
+    await event('restore-started')
+    await event('restore-done')
+    await event('restore-failed')
+    expect(status).toEqual(failed)
+    await event('ping')
+    await event('progress')
+    expect(status).toMatchObject({ mode: 'restore-failed', processingMessage: failed.processingMessage })
+  })
+
+  test('late failures and starts cannot change a successful restore', async () => {
+    status.processingAttempts = 3
+    await event('restore-started')
+    await event('restore-done')
+    await event('restore-failed')
+    await event('restore-started')
+    expect(status.mode).toBe('active')
+  })
+
+  test('an old failure cannot change pending retry or a retry racing the status update', async () => {
+    status.mode = 'restore-failed'
+    await retry()
+    await event('restore-failed')
+    expect(status.mode).toBe('pending-restore')
+    status.mode = 'restoring'
+    status.processingAttempts = 3
+    jest.mocked(db.workspaceStatus.findOne).mockImplementationOnce(async () => {
+      const previous = { ...status }
+      status.mode = 'pending-restore'
+      status.processingAttempts = 0
+      return previous
+    })
+    await event('restore-failed')
+    expect(status.mode).toBe('pending-restore')
+    expect(status.processingAttempts).toBe(0)
+  })
+
+  test('a failure cannot terminate a newer claim racing the status update', async () => {
+    status.mode = 'restoring'
+    status.processingAttempts = 3
+    jest.mocked(db.workspaceStatus.findOne).mockImplementationOnce(async () => {
+      const previous = { ...status }
+      status.processingAttempts = 4
+      return previous
+    })
+    await event('restore-failed')
+    expect(status.mode).toBe('restoring')
+    expect(status.processingAttempts).toBe(4)
+  })
+
+  test('lease expiry preserves claims and a heartbeat without a message preserves the failure reason', async () => {
+    status.processingAttempts = 2
+    await event('restore-started')
+    await event('restore-failed')
+    await event('ping')
+    expect(status.processingMessage).toBe('Restore failed. Retry or contact support.')
+    status.lastProcessingTime = 0
+    status.processingAttempts++
+    await event('restore-started')
+    await event('restore-failed')
+    expect(status.mode).toBe('restore-failed')
+  })
+
+  test.each(['ping', 'progress'] as const)('%s without a message preserves the failure reason', async (name) => {
+    status.mode = 'restoring'
+    await event('restore-failed')
+    await event(name)
+    expect(status.processingMessage).toBe('Restore failed. Retry or contact support.')
+  })
+
+  test.each(['creating', 'upgrading', 'archiving-backup'] as const)(
+    'empty ping and progress messages clear stale messages while %s',
+    async (mode) => {
+      status.mode = mode
+      for (const name of ['ping', 'progress'] as const) {
+        status.processingMessage = 'Previous step failed'
+        await event(name, '')
+        expect(status.processingMessage).toBe('')
+      }
+    }
+  )
+
+  test('restore events pass mode and attempt guards to the status collection', async () => {
+    await event('restore-started')
+    expect(db.workspaceStatus.update).toHaveBeenLastCalledWith(
+      { workspaceUuid, mode: { $in: ['pending-restore', 'restoring'] } },
+      expect.objectContaining({ mode: 'restoring' })
+    )
+    status.processingAttempts = 3
+    await event('restore-failed')
+    expect(db.workspaceStatus.update).toHaveBeenLastCalledWith(
+      { workspaceUuid, mode: 'restoring', processingAttempts: 3 },
+      expect.objectContaining({ mode: 'restore-failed' })
+    )
+    status.mode = 'restoring'
+    await event('restore-done')
+    expect(db.workspaceStatus.update).toHaveBeenLastCalledWith(
+      { workspaceUuid, mode: 'restoring' },
+      expect.objectContaining({ mode: 'active' })
+    )
+  })
+
+  test.each([true, false])('failed restore can be retried with admin=%s', async (admin) => {
+    status.mode = 'restore-failed'
+    status.processingAttempts = 3
+    await retry(admin, admin ? ('another-workspace' as WorkspaceUuid) : workspaceUuid)
+    expect(status).toMatchObject({ mode: 'pending-restore', processingAttempts: 0, processingProgress: 0 })
+    expect(status.lastProcessingTime).toBeLessThanOrEqual(Date.now() - 30000)
+  })
+
+  test('retry keeps existing permission and mode restrictions', async () => {
+    status.mode = 'restore-failed'
+    await expect(retry(false, 'another-workspace' as WorkspaceUuid)).rejects.toThrow()
+    status.mode = 'active'
+    await expect(retry()).rejects.toThrow()
   })
 })

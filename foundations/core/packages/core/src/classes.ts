@@ -876,6 +876,7 @@ export type WorkspaceMode =
   | 'migration-clean' // -> 'pending-restoring'
   | 'pending-restore' // -> 'restoring'
   | 'restoring' // -> 'active'
+  | 'restore-failed' // Retry via unarchive
 
 export type WorkspaceUserOperation = 'archive' | 'migrate-to' | 'unarchive' | 'delete' | 'reset-attempts'
 
@@ -907,6 +908,10 @@ export function isRestoringMode (mode?: WorkspaceMode): boolean {
   return mode === 'restoring' || mode === 'pending-restore'
 }
 
+export function isRestoreFailedMode (mode?: WorkspaceMode): boolean {
+  return mode === 'restore-failed'
+}
+
 export function isUpgradingMode (mode?: WorkspaceMode): boolean {
   return mode === 'upgrading'
 }
@@ -919,6 +924,7 @@ export type WorkspaceUpdateEvent =
   | 'upgrade-done'
   | 'restore-started'
   | 'restore-done'
+  | 'restore-failed'
   | 'progress'
   | 'migrate-backup-started' // -> state = 'migration-backup'
   | 'migrate-backup-done' // -> state = 'migration-pending-cleaning'

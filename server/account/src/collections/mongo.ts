@@ -268,18 +268,14 @@ export class WorkspaceStatusMongoDbCollection implements DbCollection<WorkspaceS
   constructor (private readonly wsCollection: MongoDbCollection<WorkspaceInfoWithStatus, 'uuid'>) {}
 
   private toWsQuery (query: Query<WorkspaceStatus>): Query<WorkspaceInfoWithStatus> {
-    const res: Query<WorkspaceInfoWithStatus> = {}
+    const res: Query<WorkspaceInfoWithStatus> & Record<string, unknown> = {}
 
     for (const key of Object.keys(getFilteredQuery(query))) {
       const qVal = (query as any)[key]
       if (key === 'workspaceUuid') {
         res.uuid = qVal
       } else {
-        if (res.status === undefined) {
-          res.status = {}
-        }
-
-        ;(res.status as any)[key] = qVal
+        res[`status.${key}`] = qVal
       }
     }
 
