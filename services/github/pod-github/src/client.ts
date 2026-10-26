@@ -19,7 +19,8 @@ export async function createPlatformClient (
   ctx: MeasureContext,
   workspace: WorkspaceUuid,
   timeout: number,
-  reconnect?: (event: ClientConnectEvent, data: any) => Promise<void>
+  reconnect?: (event: ClientConnectEvent, data: any) => Promise<void>,
+  onDialTimeout?: () => Promise<void>
 ): Promise<{ client: Client, endpoint: string }> {
   setMetadata(client.metadata.ClientSocketFactory, (url) => {
     return new WebSocket(url, {
@@ -40,6 +41,7 @@ export async function createPlatformClient (
   ).function.GetClient(token, endpoint, {
     ctx,
     onConnect: reconnect,
+    onDialTimeout,
     useGlobalRPCHandler: true
   })
 
