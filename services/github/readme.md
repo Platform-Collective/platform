@@ -15,3 +15,23 @@
    https://github.com/orgs/community/discussions/61457
 5. Enum values could be mapped to Github single_select values, but they could be created only from Github platform to prevent API limitations.
 6. Text/number fields could be created from both sides.
+
+## Source timestamps
+
+Set `GITHUB_PRESERVE_SOURCE_TIMESTAMPS=true` to enable source dates for issue/PR import mixins, connection
+activity, field updates, reviews and review comments. Unset, `false` and other values retain the existing
+timestamp policy. Imports use `createdAt`; existing-document writes re-read the stored date and use the
+maximum of that date, the sync snapshot and GitHub `updatedAt` to preserve newer local edits. Imported
+connection messages appear at the GitHub creation date. Missing or invalid source dates fall back to
+processing time, including review-thread date conversion. Authorship stays unchanged.
+
+Automatic review/fix todos keep processing-time creation, modification and notification dates in both
+modes. Their collection counters still advance the parent PR to processing time; protecting the parent
+independently of todo notification dates is deferred.
+
+This does not repair existing data, change sync versions, reconcile out-of-order historical children,
+or propagate dates through collaborator description updates. An edited import without children/todos
+can remain at `createdAt`. Re-reads do not provide atomic concurrency control across services. Deletion
+and thread resolution dates remain processing-time approximations when no event timestamp exists.
+When enabled, webhook scheduling metadata uses source time; polling takes its maximum plus 1 ms. Replacing
+a legacy processing-time maximum can replay records, while an untouched legacy row can keep the cursor ahead.

@@ -40,7 +40,9 @@ import {
   deleteObjects,
   ensureGraphQLOctokit,
   errorToObj,
+  githubTime,
   isGHWriteAllowed,
+  isGithubTimestampPreservationEnabled,
   syncChilds,
   syncDerivedDocuments
 } from './utils'
@@ -433,7 +435,9 @@ export class ReviewThreadSyncManager implements DocSyncManager {
       'activity',
       value,
       _id,
-      new Date(review.comments.nodes[0].createdAt ?? Date.now()).getTime(),
+      isGithubTimestampPreservationEnabled()
+        ? githubTime(review.comments.nodes[0].createdAt)
+        : new Date(review.comments.nodes[0].createdAt ?? Date.now()).getTime(),
       account
     )
   }
