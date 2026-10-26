@@ -14,7 +14,7 @@
 //
 
 import { type Editor, findParentNode } from '@tiptap/core'
-import { type EditorState, type Selection, type Transaction } from '@tiptap/pm/state'
+import { type EditorState, type Selection, TextSelection, type Transaction } from '@tiptap/pm/state'
 import { CellSelection, type Rect, TableMap, addColumn, addRow } from '@tiptap/pm/tables'
 
 import { type TableNodeLocation, TableSelection } from './types'
@@ -137,6 +137,18 @@ export const isRectSelected = (rect: Rect, selection: CellSelection): boolean =>
 
 export const findTable = (selection: Selection): TableNodeLocation | undefined => {
   return findParentNode((node) => node.type.spec.tableRole === 'table')(selection)
+}
+
+/** Find the node whose bounds position the table toolbar for the current selection. */
+export function findTableToolbarAnchor (selection: Selection): TableNodeLocation | undefined {
+  const table = findTable(selection)
+  if (table === undefined || !(selection instanceof TextSelection) || !selection.empty) return table
+
+  return (
+    findParentNode((node) => node.type.spec.tableRole === 'cell' || node.type.spec.tableRole === 'header_cell')(
+      selection
+    ) ?? table
+  )
 }
 
 export function haveTableRelatedChanges (
