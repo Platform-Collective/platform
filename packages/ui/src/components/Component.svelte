@@ -87,6 +87,7 @@
           })
           .catch((err) => {
             if (current === counter) {
+              loading = false
               error = err
             }
           })
@@ -96,6 +97,8 @@
         _props = filterDefaultUndefined(props, props)
       }
     } else {
+      loading = false
+      error = undefined
       Ctor = _is
       _props = filterDefaultUndefined(props, props)
     }
