@@ -282,7 +282,10 @@ const pasteSchema = getSchema([StarterKit, Underline])
 function parseWordHTML (html: string): ReturnType<DOMParser['parse']> {
   const container = document.createElement('div')
   const plugin = PasteTextAsMarkdownPlugin()
-  container.innerHTML = plugin.props.transformPastedHTML!.call(plugin, html, {} as unknown as EditorView)
+  if (plugin.props.transformPastedHTML === undefined) {
+    throw new Error('Missing HTML paste transform')
+  }
+  container.innerHTML = plugin.props.transformPastedHTML.call(plugin, html, {} as unknown as EditorView)
   return DOMParser.fromSchema(pasteSchema).parse(container)
 }
 
@@ -363,7 +366,7 @@ describe('Word clipboard HTML', () => {
   it('groups Word bullet paragraphs and nests lists by their Word level', () => {
     const doc = parseWordHTML(listParagraph('<b>First</b>') + listParagraph('Nested', 2, 'o') + listParagraph('Second'))
     expect(doc.childCount).toBe(1)
-    const list = doc.firstChild!
+    const list = doc.child(0)
     expect(list.type.name).toBe('bulletList')
     expect(list.childCount).toBe(2)
     expect(list.child(0).child(0).textContent).toBe('First')
@@ -373,7 +376,7 @@ describe('Word clipboard HTML', () => {
     expect(list.child(1).textContent).toBe('Second')
     doc.check()
 
-    // The persisted schema content must retain the same lists when reopened.
+    // Schema serialization and reparse must retain the lists; this does not exercise application storage.
     const container = document.createElement('div')
     container.appendChild(DOMSerializer.fromSchema(pasteSchema).serializeFragment(doc.content))
     expect(parseWordHTML(container.innerHTML).toJSON()).toEqual(doc.toJSON())
@@ -400,7 +403,7 @@ describe('Word clipboard HTML', () => {
         listParagraph('Deeper', 3, '1.') +
         listParagraph('Second', 1, '2.')
     )
-    const list = doc.firstChild!
+    const list = doc.child(0)
     expect(list.type.name).toBe('orderedList')
     expect(list.childCount).toBe(2)
     expect(list.child(1).textContent).toBe('Second')
@@ -439,16 +442,13 @@ describe('Word clipboard HTML', () => {
     doc.check()
   })
 
-  it.each(['c.', 'C)', 'iii)', 'IV.'])(
-    'documents the default start for an explicit nondecimal marker %s',
-    (marker) => {
-      const doc = parseWordHTML(listParagraph('Item', 1, marker))
-      expect(doc.child(0).type.name).toBe('orderedList')
-      expect(doc.child(0).attrs.start).toBe(1)
-      expect(doc.textContent).toBe('Item')
-      doc.check()
-    }
-  )
+  it.each(['c.', 'C)', 'iii)', 'IV.'])('documents the default start for an explicit nondecimal marker %s', (marker) => {
+    const doc = parseWordHTML(listParagraph('Item', 1, marker))
+    expect(doc.child(0).type.name).toBe('orderedList')
+    expect(doc.child(0).attrs.start).toBe(1)
+    expect(doc.textContent).toBe('Item')
+    doc.check()
+  })
 
   it('retains Slack line breaks through the combined HTML paste hook', () => {
     const doc = parseWordHTML('<div data-stringify-type="paragraph">First line\nSecond line</div>')

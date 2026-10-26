@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { MarkupMark, MarkupMarkType, MarkupNode, MarkupNodeType } from '@hcengineering/text-core'
+import { getOrderedListStart, MarkupMark, MarkupMarkType, MarkupNode, MarkupNodeType } from '@hcengineering/text-core'
 import { markupToHtml } from '@hcengineering/text-html'
 
 import { isInSet, markEq } from './marks'
@@ -195,11 +195,10 @@ export const storeNodes: Record<string, NodeProcessor> = {
     state.renderList(node, '  ', formatTodoItem)
   },
   orderedList: (state, node) => {
-    let start = 1
-    if (nodeAttrs(node).order !== undefined) {
-      start = Number(nodeAttrs(node).order)
-    }
-    const maxW = String(start + nodeContent(node).length - 1).length
+    const attrs = nodeAttrs(node)
+    // Editor lists use start; keep order as a fallback for existing Markdown data.
+    const start = getOrderedListStart(attrs)
+    const maxW = Math.max(String(start).length, String(start + nodeContent(node).length - 1).length)
     const space = state.repeat(' ', maxW + 2)
     state.renderList(node, space, (i: number) => {
       const nStr = String(start + i)

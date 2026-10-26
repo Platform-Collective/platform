@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@hcengineering/platform-rig": "workspace:^0.7.21",
+    "@hcengineering/text-html": "workspace:^0.7.19",
     "svelte-loader": "^3.2.0",
     "sass": "^1.80.0",
     "svelte-preprocess": "^5.1.4",
