@@ -36108,6 +36108,9 @@ importers:
       '@hcengineering/communication-sdk-types':
         specifier: workspace:^0.7.12
         version: link:../../foundations/communication/packages/sdk-types
+      '@hcengineering/communication-shared':
+        specifier: workspace:^0.7.11
+        version: link:../../foundations/communication/packages/shared
       '@hcengineering/communication-types':
         specifier: workspace:^0.7.12
         version: link:../../foundations/communication/packages/types
