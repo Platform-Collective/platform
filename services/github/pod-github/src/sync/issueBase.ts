@@ -6,7 +6,6 @@
   TODO:
   * Add since to synchronization
 */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import activity from '@hcengineering/activity'
 import { Analytics } from '@hcengineering/analytics'
 import { CollaboratorClient } from '@hcengineering/collaborator-client'
@@ -38,7 +37,16 @@ import { Octokit } from 'octokit'
 import { ContainerFocus, IntegrationManager, githubExternalSyncVersion, githubSyncVersion } from '../types'
 import { IssueExternalData } from './githubTypes'
 import { stripGuestLink } from './guest'
-import { collectUpdate, compareMarkdown, deleteObjects, ensureGraphQLOctokit, errorToObj, guessStatus } from './utils'
+import {
+  collectUpdate,
+  compareMarkdown,
+  deleteObjects,
+  ensureGraphQLOctokit,
+  errorToObj,
+  guessStatus,
+  isGithubIssueDataStale,
+  shouldUpdateGithubIssueStatus
+} from './utils'
 
 /**
  * @public
@@ -152,7 +160,8 @@ export abstract class IssueSyncManagerBase {
       // Use now as modified date for events.
       const lastModified = new Date().getTime()
 
-      if (doc !== undefined && ((await verifyUpdate?.(syncData, doc, external, update)) ?? true)) {
+      const canUpdate = doc !== undefined && ((await verifyUpdate?.(syncData, doc, external, update)) ?? true)
+      if (canUpdate && doc !== undefined) {
         const issueData: DocumentUpdate<Issue> = { ...update, description: doc.description }
         if (
           update.description !== undefined &&
@@ -219,6 +228,23 @@ export abstract class IssueSyncManagerBase {
               externalVersion: githubExternalSyncVersion,
               needSync: '',
               derivedVersion: '', // Check derived changes
+              lastModified,
+              lastGithubUser: account,
+              ...extraSyncUpdate
+            },
+            lastModified
+          )
+        )
+      } else {
+        // The platform update was intentionally rejected, but the webhook's
+        // external state is still authoritative. Persist it so a later poll
+        // does not replay the same external transition.
+        await ctx.with('diffUpdate rejected syncData', {}, (ctx) =>
+          derivedClient.diffUpdate(
+            syncData,
+            {
+              external,
+              externalVersion: githubExternalSyncVersion,
               lastModified,
               lastGithubUser: account,
               ...extraSyncUpdate
@@ -330,7 +356,7 @@ export abstract class IssueSyncManagerBase {
     }
 
     const existingIssue = this.client.getHierarchy().as(existing, github.mixin.GithubIssue)
-    const previousData: GithubIssueData = info.current ?? ({} as unknown as GithubIssueData)
+    const previousData: GithubIssueData = info.current ?? {}
     // const type = await this.provider.getTaskTypeOf(container.project.type, existing._class)
     // const stst = await this.provider.getStatuses(type?._id)
 
@@ -569,9 +595,18 @@ export abstract class IssueSyncManagerBase {
     const statuses = await this.provider.getStatuses(type?._id)
 
     if (previousExternal.state !== issueExternal.state) {
-      update.status = (
-        await guessStatus({ state: issueExternal.state, stateReason: issueExternal.stateReason }, statuses)
-      )._id
+      const guessedStatus = await guessStatus(
+        { state: issueExternal.state, stateReason: issueExternal.stateReason },
+        statuses
+      )
+      const current = await this.client.findOne<Issue>(info.objectClass, {
+        _id: info._id as unknown as Ref<Issue>
+      })
+      const currentStatus = statuses.find((status) => status._id === current?.status)
+
+      if (shouldUpdateGithubIssueStatus(currentStatus, guessedStatus)) {
+        update.status = guessedStatus._id
+      }
     }
     if (previousExternal.title !== issueExternal.title) {
       update.title = issueExternal.title
@@ -641,6 +676,9 @@ export abstract class IssueSyncManagerBase {
         } else if (existing !== undefined) {
           if (syncDocs !== undefined) {
             syncDocs = syncDocs.filter((it) => it._id !== existing._id)
+          }
+          if (isGithubIssueDataStale(existing.external as IssueExternalData, issue)) {
+            continue
           }
           const externalEqual = deepEqual(existing.external, issue) && existing.repository === repo._id
           if (!externalEqual || existing.externalVersion !== githubExternalSyncVersion) {
