@@ -12,17 +12,20 @@ interface WordList {
 export function normalizeWordPastedHTML (html: string): string {
   if (!/mso-list\s*:|\bMsoTitle\b/i.test(html)) return html
 
-  const document = new DOMParser().parseFromString(html, 'text/html')
+  // Parse into an inert document. ProseMirror still applies the editor schema afterwards.
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  let changed = false
 
-  for (const paragraph of Array.from(document.querySelectorAll('p'))) {
+  for (const paragraph of Array.from(doc.querySelectorAll('p'))) {
     if (!Array.from(paragraph.classList).some((name) => name.toLowerCase() === 'msotitle')) continue
 
-    const heading = document.createElement('h1')
+    const heading = doc.createElement('h1')
     for (const attribute of Array.from(paragraph.attributes)) {
       heading.setAttribute(attribute.name, attribute.value)
     }
     heading.append(...Array.from(paragraph.childNodes))
     paragraph.replaceWith(heading)
+    changed = true
   }
 
   const normalizeLists = (parent: HTMLElement): void => {
@@ -51,13 +54,29 @@ export function normalizeWordPastedHTML (html: string): string {
       )
       let marker = markerSpan?.textContent?.trim() ?? ''
       if (markerSpan !== undefined) {
+        let wrapper = markerSpan.parentElement
         markerSpan.remove()
+        // Desktop Word can wrap the marker in an otherwise empty Symbol-font span.
+        while (
+          wrapper?.tagName === 'SPAN' &&
+          Array.from(wrapper.childNodes).every(
+            (child) =>
+              child.nodeType === Node.COMMENT_NODE ||
+              (child.nodeType === Node.TEXT_NODE && child.textContent?.trim() === '')
+          )
+        ) {
+          const outer: HTMLElement | null = wrapper.parentElement
+          wrapper.remove()
+          wrapper = outer
+        }
       } else {
         // Some clipboard producers emit the marker as text rather than an mso-list:Ignore span.
-        const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT)
+        // Keep ambiguous o/dash bullets without that explicit marker metadata. Letter markers
+        // such as A. remain indistinguishable from content in these mso-list paragraphs.
+        const walker = doc.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT)
         let text = walker.nextNode()
         while (text !== null && text.textContent?.trim() === '') text = walker.nextNode()
-        const prefix = /^\s*([·•\uf0b7○▪■o-]|(?:\d+|[a-z])[.)])(?:\s+|$)/i.exec(text?.textContent ?? '')
+        const prefix = /^\s*([·•\uf0b7○▪■]|(?:\d+|[a-z])[.)])(?:\s+|$)/i.exec(text?.textContent ?? '')
         if (text !== null && prefix !== null) {
           marker = prefix[1]
           text.textContent = (text.textContent ?? '').slice(prefix[0].length)
@@ -71,13 +90,16 @@ export function normalizeWordPastedHTML (html: string): string {
       while (lists.length > 0) {
         const previous = lists[lists.length - 1]
         if (previous.id === id && previous.level <= level && (previous.level < level || previous.tag === tag)) break
+        // A type change closes this level; its replacement is a sibling under the retained parent.
         lists.pop()
       }
 
-      const item = document.createElement('li')
+      const item = doc.createElement('li')
       let list = lists[lists.length - 1]
       if (list === undefined || list.level < level) {
-        const element = document.createElement(tag)
+        const element = doc.createElement(tag)
+        // Only decimal markers have an unambiguous start without Word's list definitions.
+        // Alphabetic/Roman lists use the schema's default start of 1.
         if (tag === 'ol' && /^\d+[.)]/.test(marker)) {
           element.setAttribute('start', String(parseInt(marker, 10)))
         }
@@ -93,9 +115,12 @@ export function normalizeWordPastedHTML (html: string): string {
       list.element.appendChild(item)
       item.appendChild(paragraph)
       list.item = item
+      changed = true
     }
   }
 
-  normalizeLists(document.body)
-  return document.body.innerHTML
+  normalizeLists(doc.body)
+  // A converted clipboard fragment is serialized from the body, omitting head metadata and its styles.
+  // Preserve the original bytes when the fast-path matched only text or unsupported structures.
+  return changed ? doc.body.innerHTML : html
 }

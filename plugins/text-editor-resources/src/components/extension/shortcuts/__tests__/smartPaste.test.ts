@@ -23,6 +23,7 @@ import StarterKit from '@tiptap/starter-kit'
 
 import { normalizeSlackPastedHTML, PasteTextAsMarkdownPlugin } from '../smartPaste'
 import { normalizeWordPastedHTML } from '../word-paste'
+import { wordDesktopHTML } from './fixtures/word-desktop'
 
 jest.mock('@hcengineering/text', () => ({
   __esModule: true,
@@ -292,6 +293,38 @@ function listParagraph (text: string, level = 1, marker = '·', list = 'l0', ins
 }
 
 describe('Word clipboard HTML', () => {
+  it('handles revealed conditionals, Symbol wrappers, private-use bullets and Office paragraph tags', () => {
+    const container = document.createElement('div')
+    container.innerHTML = normalizeWordPastedHTML(wordDesktopHTML)
+    expect(container.querySelector('span[style*="Symbol"]')).toBeNull()
+    expect(container.querySelector('[style*="Ignore"]')).toBeNull()
+
+    const doc = parseWordHTML(wordDesktopHTML)
+    expect(doc.childCount).toBe(1)
+    const list = doc.child(0)
+    expect(list.type.name).toBe('bulletList')
+    expect(list.childCount).toBe(2)
+    expect(list.child(0).child(0).textContent).toBe('First')
+    expect(list.child(0).child(0).firstChild?.marks[0].type.name).toBe('bold')
+    expect(list.child(0).child(1).type.name).toBe('bulletList')
+    expect(list.child(0).child(1).textContent).toBe('Nested')
+    expect(list.child(0).child(1).child(0).child(0).firstChild?.marks[0].type.name).toBe('italic')
+    expect(list.child(1).textContent).toBe('Last')
+    doc.check()
+
+    container.replaceChildren(DOMSerializer.fromSchema(pasteSchema).serializeFragment(doc.content))
+    expect(parseWordHTML(container.innerHTML).toJSON()).toEqual(doc.toJSON())
+  })
+
+  it('keeps content beside a marker inside a Symbol wrapper', () => {
+    const html = `<p style="mso-list:l0 level1 lfo1"><span style="font-family:Symbol">
+      <span style="mso-list:Ignore">·</span><b>Keep</b></span> content</p>`
+    const doc = parseWordHTML(html)
+    expect(doc.textContent).toBe('Keep content')
+    expect(doc.child(0).child(0).child(0).firstChild?.marks[0].type.name).toBe('bold')
+    doc.check()
+  })
+
   it('keeps Google Docs headings, styled text and semantic lists', () => {
     const html = `<b id="docs-internal-guid-8608" style="font-weight:normal">
       <h2>Section</h2><p><span style="font-weight:700">Bold</span>
@@ -379,6 +412,44 @@ describe('Word clipboard HTML', () => {
     doc.check()
   })
 
+  it.each([1, 2, 3])('keeps same-level marker changes as sibling lists at level %s', (level) => {
+    const ancestors = Array.from({ length: level - 1 }, (_, i) => listParagraph(`Parent ${i + 1}`, i + 1, '1.'))
+    const doc = parseWordHTML(
+      ancestors.join('') +
+        listParagraph('Bullet', level) +
+        listParagraph('Ordered', level, '3.') +
+        listParagraph('Bullet again', level) +
+        (level > 1 ? listParagraph('Back to parent', 1, '2.') : '')
+    )
+    let parent = doc
+    for (let i = 1; i < level; i++) {
+      const listIndex = i === 1 ? 0 : 1
+      parent = parent.child(listIndex).child(0)
+    }
+    const offset = level === 1 ? 0 : 1
+    expect(parent.childCount).toBe(offset + 3)
+    expect(parent.child(offset).type.name).toBe('bulletList')
+    expect(parent.child(offset).textContent).toBe('Bullet')
+    expect(parent.child(offset + 1).type.name).toBe('orderedList')
+    expect(parent.child(offset + 1).attrs.start).toBe(3)
+    expect(parent.child(offset + 1).textContent).toBe('Ordered')
+    expect(parent.child(offset + 2).type.name).toBe('bulletList')
+    expect(parent.child(offset + 2).textContent).toBe('Bullet again')
+    if (level > 1) expect(doc.child(0).child(1).textContent).toBe('Back to parent')
+    doc.check()
+  })
+
+  it.each(['c.', 'C)', 'iii)', 'IV.'])(
+    'documents the default start for an explicit nondecimal marker %s',
+    (marker) => {
+      const doc = parseWordHTML(listParagraph('Item', 1, marker))
+      expect(doc.child(0).type.name).toBe('orderedList')
+      expect(doc.child(0).attrs.start).toBe(1)
+      expect(doc.textContent).toBe('Item')
+      doc.check()
+    }
+  )
+
   it('retains Slack line breaks through the combined HTML paste hook', () => {
     const doc = parseWordHTML('<div data-stringify-type="paragraph">First line\nSecond line</div>')
     expect(doc.firstChild?.child(1).type.name).toBe('hardBreak')
@@ -394,6 +465,23 @@ describe('Word clipboard HTML', () => {
   it.each(['Note.', 'Note)'])('preserves a leading word %s when there is no marker span', (word) => {
     const doc = parseWordHTML(`<p style="mso-list:l1 level1 lfo1">${word} Keep this text</p>`)
     expect(doc.textContent).toBe(`${word} Keep this text`)
+  })
+
+  it.each(['o', '-', 'o content', '- content'])(
+    'preserves ambiguous literal content %s without marker metadata',
+    (text) => {
+      const doc = parseWordHTML(`<p style="mso-list:l1 level1 lfo1">${text}</p>`)
+      expect(doc.child(0).type.name).toBe('bulletList')
+      expect(doc.textContent).toBe(text)
+      doc.check()
+    }
+  )
+
+  it.each(['o', '-'])('removes an ambiguous bullet %s with explicit marker metadata', (marker) => {
+    const doc = parseWordHTML(listParagraph('Item', 1, marker))
+    expect(doc.child(0).type.name).toBe('bulletList')
+    expect(doc.textContent).toBe('Item')
+    doc.check()
   })
 
   it.each(['3.', '3)', 'a.', 'A)'])('removes the literal ordered marker %s', (marker) => {
@@ -420,6 +508,29 @@ describe('Word clipboard HTML', () => {
   it('leaves ordinary web HTML, lists, tables and literal bullets unchanged', () => {
     const html = '<h1>Web</h1><p>· Text</p><ul><li><p>Item</p></li></ul><table><tr><td>Cell</td></tr></table>'
     expect(normalizeWordPastedHTML(html)).toBe(html)
+  })
+
+  it.each([
+    '<html><head><style>p { color:red }</style></head><body><p>MsoTitle is text</p></body></html>',
+    '<div data-label="MsoTitle"><p>Keep attribute values</p></div>',
+    '<p>mso-list: is literal text</p>',
+    '<h1 style="mso-list:l0 level1 lfo1"><span style="mso-list:Ignore">1.</span>Heading</h1>'
+  ])('preserves the original HTML when no supported Word structure changes: %s', (html) => {
+    expect(normalizeWordPastedHTML(html)).toBe(html)
+  })
+
+  it('serializes converted fragments from the body and leaves schema parsing to ProseMirror', () => {
+    const html = `<html><head><style>.MsoTitle { color:red }</style></head><body>
+      <p class="MsoTitle"><b>Title</b><unknown> text</unknown></p></body></html>`
+    const normalized = normalizeWordPastedHTML(html)
+    expect(normalized).not.toContain('<head>')
+    expect(normalized).not.toContain('<style>')
+    expect(normalized).toContain('<unknown> text</unknown>')
+    const doc = parseWordHTML(html)
+    expect(doc.childCount).toBe(1)
+    expect(doc.child(0).type.name).toBe('heading')
+    expect(doc.textContent).toBe('Title text')
+    doc.check()
   })
 
   it('does not wrap paragraphs already in semantic list items in another list', () => {

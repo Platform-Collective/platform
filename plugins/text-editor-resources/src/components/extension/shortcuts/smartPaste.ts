@@ -33,6 +33,7 @@ export const SmartPasteExtension = Extension.create({
 export function PasteTextAsMarkdownPlugin (): Plugin {
   return new Plugin({
     props: {
+      // Preserve Slack's text line breaks before Word normalization parses and serializes the HTML.
       transformPastedHTML: (html) => normalizeWordPastedHTML(normalizeSlackPastedHTML(html)),
 
       handlePaste (view, event, slice) {
