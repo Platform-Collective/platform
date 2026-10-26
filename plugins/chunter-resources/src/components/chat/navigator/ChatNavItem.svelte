@@ -29,6 +29,7 @@
   import { Doc } from '@hcengineering/core'
 
   import NavItem from './NavItem.svelte'
+  import { getChannelArchiveActions } from './channel-actions'
   import { ChatNavItemModel } from '../types'
   import { openChannel } from '../../../navigation'
   import chunter from '../../../plugin'
@@ -115,6 +116,7 @@
         }
       })
     }
+    result.push(...(await getChannelArchiveActions(object, hierarchy)))
     return result
   }
 </script>
