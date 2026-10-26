@@ -19,11 +19,11 @@ describe('copyIssueBranch', () => {
   it('copies the generated name and then shows a success notification without changing the issue', async () => {
     const issue = Object.freeze({ identifier: 'TSK-123', title: 'Fix login redirect', status: 'open' }) as Issue
     let finishCopy: (() => void) | undefined
-    jest.mocked(copyTextToClipboard).mockImplementationOnce(
-      async () => { await new Promise<void>((resolve) => {
-          finishCopy = resolve
-        }); }
-    )
+    jest.mocked(copyTextToClipboard).mockImplementationOnce(async () => {
+      await new Promise<void>((resolve) => {
+        finishCopy = resolve
+      })
+    })
 
     const result = copyIssueBranch(issue)
     expect(copyTextToClipboard).toHaveBeenCalledWith('tsk-123-fix-login-redirect')
