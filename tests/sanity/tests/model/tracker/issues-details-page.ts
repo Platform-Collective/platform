@@ -227,8 +227,19 @@ export class IssuesDetailsPage extends CommonTrackerPage {
 
   async moreActionOnIssueWithSecondLevel (actionFirst: string, actionSecond: string): Promise<void> {
     await this.buttonMoreActions().click()
-    await this.antiPopupSubMenueBtn(actionFirst).hover()
-    await this.antiPopupSubMenueBtn(actionFirst).click()
+    // The menu opens a submenu only for a slow pointer move (MouseSpeedTracker), so a single fast hover
+    // can be ignored, and a click on the already active item does nothing. Move the pointer a bit within
+    // the item until the submenu is shown instead of clicking it.
+    const submenuButton = this.antiPopupSubMenueBtn(actionFirst)
+    let attempt = 0
+    await expect(async () => {
+      const box = await submenuButton.boundingBox()
+      expect(box).not.toBeNull()
+      const x = Math.min(10 + attempt * 3, Math.max((box?.width ?? 20) - 10, 10))
+      attempt++
+      await submenuButton.hover({ position: { x, y: (box?.height ?? 20) / 2 } })
+      await expect(this.popupSpanLabel(actionSecond)).toBeVisible({ timeout: 1000 })
+    }).toPass({ intervals: [100], timeout: 15000 })
     await this.selectFromDropdown(this.page, actionSecond)
   }
 

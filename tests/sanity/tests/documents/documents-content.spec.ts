@@ -351,6 +351,9 @@ test.describe('Content in the Documents tests', () => {
     await documentContentPage.applyNote('Line 19', 'warning', testNote)
     await documentContentPage.addImage('Line 20')
     // await page.keyboard.type('Cat')
+    // Wait for the upload to finish and hide the text toolbar, it would cover "Get invite link"
+    await documentContentPage.checkImage()
+    await documentContentPage.hideFloatingToolbar()
 
     newUser2 = generateUser()
     await createAccount(request, newUser2)
