@@ -26,3 +26,28 @@ Please set a DISABLED_FEATURES environment variable for front service container,
 - testManagement - Will disable test management
 - process - Will disable process module
 - cards - Will disable cards
+
+## Per-branding disabled features
+
+When serving multiple brands/hosts from one installation (see `BRANDING_URL`),
+features can also be disabled per host by adding a `disabledFeatures` key
+(same comma-separated format) to a branding entry. The lists from
+`DISABLED_FEATURES` and the matched branding are merged, so the environment
+variable acts as the installation-wide baseline and brandings can only extend
+it:
+
+```json
+{
+  "tracker.example-client.com": {
+    "title": "Example Client Tracker",
+    "disabledFeatures": "recruit,lead,inventory,training"
+  }
+}
+```
+
+Note that per-branding `disabledFeatures` only affect the client: they hide
+UI surfaces and filter the model loaded by the browser or desktop client
+for that host. They are not an access control: server-side services do
+not read this setting, and users of one brand can reach the same
+workspaces and data through any other host of the installation. Use
+separate installations when features must be enforced on the server.
