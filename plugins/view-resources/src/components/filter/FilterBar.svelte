@@ -147,7 +147,7 @@
 {#if showChipRow}
   <div class="filterbar-container">
     <div class="filters">
-      {#each $filterStore as filter, i}
+      {#each $filterStore as filter, i (filter.index)}
         <FilterSection
           {space}
           {filter}
