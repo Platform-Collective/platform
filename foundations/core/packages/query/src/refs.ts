@@ -8,7 +8,8 @@ import {
   type FindOptions,
   type FindResult,
   type Ref,
-  type Timestamp
+  type Timestamp,
+  type WithLookup
 } from '@hcengineering/core'
 import { isOptimisticCreate, markOptimisticCreate } from './optimistic'
 import type { Query, QueryId } from './types'
@@ -130,7 +131,7 @@ export class Refs {
 
               const q = matchQuery(_docs, query, _class, this.getHierarchy())
               if (q.length > 0) {
-                const clonedDoc = this.cloneDocument(q[0])
+                const clonedDoc: WithLookup<Doc> = this.cloneDocument(q[0])
                 const { $lookup, $associations, ...clean } = clonedDoc
                 const result = this.getHierarchy().isMixin(_class) ? this.getHierarchy().as(clean, _class) : clean
                 if (isOptimisticCreate(clonedDoc)) {

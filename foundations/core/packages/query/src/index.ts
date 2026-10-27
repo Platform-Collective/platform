@@ -1216,60 +1216,53 @@ export class LiveQuery implements WithTx, Client {
     if (early !== undefined) {
       this.earlyCreates.set(docTx._id, early)
     }
+    // Kept inline rather than in a helper: each extra async call delays a plain create's
+    // notification, and creates notified without being awaited would get their updates coalesced.
     try {
-      await this.applyCreateDoc(tx, docTx, docCache, early)
+      let revision = this.transactionRevision
+      for (const queries of this.queries.entries()) {
+        const doc = this.client.getHierarchy().isDerived(queries[0], core.class.Tx) ? tx : docTx
+        // Once settled, the early create payload must not reach further queries or their lookups.
+        const settled = (): boolean => doc !== tx && early?.settled === true
+        for (const q of queries[1].values()) {
+          if (settled()) continue
+          if (
+            doc !== tx &&
+            tx.meta?.isOptimisticCreate === true &&
+            this.matchClass(q, doc) &&
+            !q.pendingCreates.has(doc._id)
+          ) {
+            q.pendingCreates.set(doc._id, false)
+          }
+          if (doc !== tx && tx.meta?.isCreateConfirmation === true && this.matchClass(q, doc)) {
+            // Earlier queries in this transaction may have read before an intervening edit.
+            if (revision !== this.transactionRevision) {
+              docCache.clear()
+              revision = this.transactionRevision
+            }
+            await this.reconcileCreate(q, doc, docCache)
+            q.pendingCreates.delete(doc._id)
+          } else if (this.match(q, doc, q.options?.lookup !== undefined)) {
+            await this.handleDocAdd(
+              q,
+              this.asMixin(doc, q._class),
+              true,
+              docCache,
+              doc !== tx && tx.meta?.isOptimisticCreate === true
+            )
+          }
+          if (settled()) continue
+
+          await this.handleDocAddLookup(q, doc)
+          await this.handleDocAddRelation(q, doc)
+        }
+      }
     } finally {
       if (early !== undefined && this.earlyCreates.get(docTx._id) === early) {
         this.earlyCreates.delete(docTx._id)
       }
     }
     return {}
-  }
-
-  private async applyCreateDoc (
-    tx: TxCreateDoc<Doc>,
-    docTx: Doc,
-    docCache: Map<string, Doc>,
-    early: { settled: boolean } | undefined
-  ): Promise<void> {
-    let revision = this.transactionRevision
-    for (const queries of this.queries.entries()) {
-      const doc = this.client.getHierarchy().isDerived(queries[0], core.class.Tx) ? tx : docTx
-      // Once settled, the early create payload must not reach further queries or their lookups.
-      const settled = (): boolean => doc !== tx && early?.settled === true
-      for (const q of queries[1].values()) {
-        if (settled()) continue
-        if (
-          doc !== tx &&
-          tx.meta?.isOptimisticCreate === true &&
-          this.matchClass(q, doc) &&
-          !q.pendingCreates.has(doc._id)
-        ) {
-          q.pendingCreates.set(doc._id, false)
-        }
-        if (doc !== tx && tx.meta?.isCreateConfirmation === true && this.matchClass(q, doc)) {
-          // Earlier queries in this transaction may have read before an intervening edit.
-          if (revision !== this.transactionRevision) {
-            docCache.clear()
-            revision = this.transactionRevision
-          }
-          await this.reconcileCreate(q, doc, docCache)
-          q.pendingCreates.delete(doc._id)
-        } else if (this.match(q, doc, q.options?.lookup !== undefined)) {
-          await this.handleDocAdd(
-            q,
-            this.asMixin(doc, q._class),
-            true,
-            docCache,
-            doc !== tx && tx.meta?.isOptimisticCreate === true
-          )
-        }
-        if (settled()) continue
-
-        await this.handleDocAddLookup(q, doc)
-        await this.handleDocAddRelation(q, doc)
-      }
-    }
   }
 
   private async reconcileCreate (q: Query, doc: Doc, docCache: Map<string, Doc>): Promise<void> {

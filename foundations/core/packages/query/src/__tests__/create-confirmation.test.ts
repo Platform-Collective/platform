@@ -44,6 +44,12 @@ function optimistic<T extends Doc> (tx: TxCreateDoc<T>): TxCreateDoc<T> {
   return { ...tx, meta: { ...tx.meta, isOptimisticCreate: true } }
 }
 
+// Mixin results are proxies: mixin attributes are readable through them but are not own
+// properties, which toMatchObject requires. Read the asserted fields through the proxy instead.
+function mixinFields (doc: { createdOn?: number, someField?: string } | undefined): Record<string, unknown> {
+  return { createdOn: doc?.createdOn, someField: doc?.someField }
+}
+
 // A transaction no test query depends on, as arrives continuously in a busy workspace.
 function unrelatedCreate (): Tx {
   return factory.createTxCreateDoc(test.class.TestProject, core.space.Model, {
@@ -635,13 +641,12 @@ describe('optimistic create confirmation', () => {
       expect(mixed.result()).toHaveLength(membership === 'leaving' ? 0 : 1)
       expect(mixed.result().total).toBe(membership === 'leaving' ? 0 : 1)
       if (membership !== 'leaving') {
-        expect(mixed.result()[0]).toMatchObject({ createdOn: serverTime, someField: 'included' })
-        expect(await liveQuery.findOne(test.mixin.TestProjectMixin, { _id: own.objectId })).toMatchObject({
-          createdOn: serverTime,
-          someField: 'included'
-        })
+        const expected = { createdOn: serverTime, someField: 'included' }
+        expect(mixinFields(mixed.result()[0])).toEqual(expected)
+        const found = await liveQuery.findOne(test.mixin.TestProjectMixin, { _id: own.objectId })
+        expect(mixinFields(found)).toEqual(expected)
         const cached = await subscribeClass(liveQuery, test.mixin.TestProjectMixin, {}, { limit: 1 })
-        expect(cached.result()[0]).toMatchObject({ createdOn: serverTime, someField: 'included' })
+        expect(mixinFields(cached.result()[0])).toEqual(expected)
       }
       expect(await liveQuery.findOne(test.class.TestProject, { _id: own.objectId })).toMatchObject({
         createdOn: serverTime,
