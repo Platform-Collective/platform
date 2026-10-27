@@ -131,6 +131,8 @@ const workflowRules = plugin(workflowRulesId, {
   },
   string: {
     WorkflowRules: '' as IntlString,
+    ConfigLabel: '' as IntlString,
+    ConfigDescription: '' as IntlString,
     AddRule: '' as IntlString,
     EditRule: '' as IntlString,
     PairProjects: '' as IntlString,

@@ -10,21 +10,6 @@ import type { IssueStatus } from '@hcengineering/tracker'
 import type { WorkflowRule } from '@hcengineering/workflow-rules'
 
 /**
- * Pure helper: given a rule and a source status change, return the mirror
- * target status, or `undefined` if the rule has no mapping for this status.
- * Does not consult the current counterpart status; the trigger does that
- * separately so it can distinguish "no mapping" from "same as current".
- *
- * @public
- */
-export function applyRuleToUpdate (
-  rule: Pick<WorkflowRule, 'forwardMap'>,
-  newStatus: Ref<IssueStatus>
-): Ref<IssueStatus> | undefined {
-  return rule.forwardMap[newStatus]
-}
-
-/**
  * Pure helper: decide whether a transition `from -> to` on the TARGET side
  * is a regression that is NOT in `allowedLoops`. Takes just the status ids
  * and rank table (`statuses` array from the counterpart's TaskType) so the

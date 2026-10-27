@@ -126,11 +126,12 @@ The trigger body:
 1. Short-circuit on `tx.operations.status === undefined`. The vast majority of
    issue updates have no status change - bailing early keeps the trigger cheap
    on the hot path.
-2. Short-circuit on a cascade token the trigger stamps on its own outputs
-   (`TxApplyIf.scope = 'workflow-rule-mirror:<ruleId>'`). This is the same
-   mechanism `OnDependencyShiftRequest` already uses to correlate cascades,
-   and it is what prevents infinite echo when both sides of a rule pair are
-   configured.
+2. Short-circuit on any update whose own `tx.space` is `core.space.DerivedTx`.
+   The trigger's own outputs are emitted via `control.txFactory` which marks
+   derived updates with that space, so a mirror update cannot start another
+   mirror. For v1 this is the deliberate one-hop semantics; it also means
+   status writes emitted by other server triggers are not mirrored. Multi-hop
+   would want a cascade-scoped visited set and a hard depth bound instead.
 3. Load any `WorkflowRule` doc with `space = tx.objectSpace` AND `enabled =
    true`. For a workspace with a handful of rules this is a single bounded
    read; if a workspace scales up we add an index on `(space, enabled)` to
@@ -154,11 +155,22 @@ The trigger body:
    `allowedLoops`, do nothing. Log via the trigger's standard
    `control.ctx.contextData` channel so operators can see suppressed moves
    in the trace UI.
-8. Emit `TxUpdateDoc<Issue>` under the cascade scope, with
+8. Enforce target-side authorization before emitting a write. The derived
+   mirror update bypasses the ordinary space permission middleware, so the
+   trigger stands in for it: the acting account (resolved from
+   `tx.modifiedBy` via `socialStringsToUsers`) must be the system account,
+   an `AccountRole.Admin`, or a member or owner of the target Space.
+   Source-project membership alone is not sufficient.
+9. Emit `TxUpdateDoc<Issue>` via
    `control.txFactory.createTxUpdateDoc(..., tx.modifiedOn)`. Passing the
    source tx's `modifiedOn` lines up with how `OnIssueUpdate` already builds
    its chained updates (see `doTimeReportUpdate` in `server-plugins/tracker-resources/src/index.ts`),
    so the mirror does not look like it happened in the future.
+10. Transactions in a single invocation are evaluated in `modifiedOn` order,
+    matching the derived-tx sort in `foundations/server/packages/middleware/src/triggers.ts`.
+    A pending-status map retains the latest target status per counterpart
+    issue across the whole batch, so equality and regression checks see the
+    effective pending state rather than the stale persisted one.
 
 The server has no notion of "which side moved last" - arbitration-by-mtime,
 which the daemon does today, is a workaround for polling. The trigger reacts

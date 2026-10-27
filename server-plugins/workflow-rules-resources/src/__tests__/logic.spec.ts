@@ -2,14 +2,13 @@
 //
 // Copyright © 2026 Platform Collective Contributors
 //
-// Unit tests for the pure helpers. The trigger's control-plane interaction
-// is covered by integration tests under tests/sanity when the UI lands.
+// Unit tests for the pure regression-guard helper.
 
 import type { Ref } from '@hcengineering/core'
 import type { IssueStatus } from '@hcengineering/tracker'
 import type { WorkflowRule } from '@hcengineering/workflow-rules'
 
-import { applyRuleToUpdate, isRegression } from '../logic'
+import { isRegression } from '../logic'
 
 const s = {
   backlog: 'status:backlog' as Ref<IssueStatus>,
@@ -17,28 +16,6 @@ const s = {
   review: 'status:review' as Ref<IssueStatus>,
   done: 'status:done' as Ref<IssueStatus>
 }
-
-describe('applyRuleToUpdate', () => {
-  const map: Pick<WorkflowRule, 'forwardMap'> = {
-    forwardMap: {
-      [s.backlog]: s.backlog,
-      [s.inProgress]: s.inProgress,
-      [s.review]: s.done
-    }
-  }
-
-  it('returns the mapped target when the status is in the map', () => {
-    expect(applyRuleToUpdate(map, s.review)).toBe(s.done)
-  })
-
-  it('returns undefined when the source status has no mapping', () => {
-    expect(applyRuleToUpdate(map, s.done)).toBeUndefined()
-  })
-
-  it('does not fall back to any default', () => {
-    expect(applyRuleToUpdate({ forwardMap: {} }, s.backlog)).toBeUndefined()
-  })
-})
 
 describe('isRegression', () => {
   const rank = [s.backlog, s.inProgress, s.review, s.done]
