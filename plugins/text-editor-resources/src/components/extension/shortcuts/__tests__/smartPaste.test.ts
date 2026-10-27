@@ -450,6 +450,61 @@ describe('Word clipboard HTML', () => {
     doc.check()
   })
 
+  it('uses the last number of multi-level decimal markers for nested list starts', () => {
+    const doc = parseWordHTML(
+      listParagraph('One', 1, '1.') +
+        listParagraph('One one', 2, '1.1.') +
+        listParagraph('One two', 2, '1.2.') +
+        listParagraph('Two', 1, '2.') +
+        listParagraph('Two one', 2, '2.1.')
+    )
+    expect(doc.childCount).toBe(1)
+    const list = doc.child(0)
+    expect(list.type.name).toBe('orderedList')
+    expect(list.attrs.start).toBe(1)
+    expect(list.childCount).toBe(2)
+    const first = list.child(0).child(1)
+    expect(first.type.name).toBe('orderedList')
+    expect(first.attrs.start).toBe(1)
+    expect(first.childCount).toBe(2)
+    expect(first.textContent).toBe('One oneOne two')
+    const second = list.child(1).child(1)
+    expect(second.type.name).toBe('orderedList')
+    expect(second.attrs.start).toBe(1)
+    expect(second.textContent).toBe('Two one')
+    doc.check()
+  })
+
+  it.each([
+    ['1.2.', 2],
+    ['1.2', 2],
+    ['2.1.3', 3],
+    ['(1)', 1],
+    ['(4)', 4]
+  ])('starts an ordered list at the marker %s with %s', (marker, start) => {
+    const doc = parseWordHTML(listParagraph('Item', 1, marker))
+    expect(doc.child(0).type.name).toBe('orderedList')
+    expect(doc.child(0).attrs.start).toBe(start)
+    expect(doc.textContent).toBe('Item')
+    doc.check()
+  })
+
+  it.each(['(a)', '(A)', '(i)', '(iv)'])('keeps a bracketed nondecimal marker %s as an ordered list', (marker) => {
+    const doc = parseWordHTML(listParagraph('Item', 1, marker))
+    expect(doc.child(0).type.name).toBe('orderedList')
+    expect(doc.child(0).attrs.start).toBe(1)
+    expect(doc.textContent).toBe('Item')
+    doc.check()
+  })
+
+  it('converts a Word title whose attributes cannot be copied', () => {
+    const doc = parseWordHTML('<p class="MsoTitle" =x>Title</p>')
+    expect(doc.childCount).toBe(1)
+    expect(doc.child(0).type.name).toBe('heading')
+    expect(doc.child(0).attrs.level).toBe(1)
+    expect(doc.textContent).toBe('Title')
+  })
+
   it('retains Slack line breaks through the combined HTML paste hook', () => {
     const doc = parseWordHTML('<div data-stringify-type="paragraph">First line\nSecond line</div>')
     expect(doc.firstChild?.child(1).type.name).toBe('hardBreak')

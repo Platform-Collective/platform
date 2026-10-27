@@ -21,7 +21,11 @@ export function normalizeWordPastedHTML (html: string): string {
 
     const heading = doc.createElement('h1')
     for (const attribute of Array.from(paragraph.attributes)) {
-      heading.setAttribute(attribute.name, attribute.value)
+      try {
+        heading.setAttribute(attribute.name, attribute.value)
+      } catch {
+        // The HTML parser accepts some attribute names (e.g. "=x") that setAttribute rejects; skip them.
+      }
     }
     heading.append(...Array.from(paragraph.childNodes))
     paragraph.replaceWith(heading)
@@ -85,7 +89,8 @@ export function normalizeWordPastedHTML (html: string): string {
 
       const id = `${match[1]}:${match[3]}`
       const level = Number(match[2])
-      const tag = /^(?:\d+|[a-z]+)[.)]/i.test(marker) ? 'ol' : 'ul'
+      // Ordered markers: 1. 1) (1) a. (a) iii) and multi-level decimal markers such as 2.1. or 1.2.
+      const tag = /^\(?(?:\d+|[a-z]+)[.)]/i.test(marker) ? 'ol' : 'ul'
 
       while (lists.length > 0) {
         const previous = lists[lists.length - 1]
@@ -99,9 +104,11 @@ export function normalizeWordPastedHTML (html: string): string {
       if (list === undefined || list.level < level) {
         const element = doc.createElement(tag)
         // Only decimal markers have an unambiguous start without Word's list definitions.
-        // Alphabetic/Roman lists use the schema's default start of 1.
-        if (tag === 'ol' && /^\d+[.)]/.test(marker)) {
-          element.setAttribute('start', String(parseInt(marker, 10)))
+        // Alphabetic/Roman lists use the schema's default start of 1. In multi-level markers
+        // such as 2.1. the last number belongs to this level.
+        const decimal = tag === 'ol' ? /^\(?(?:\d+\.)*(\d+)[.)]?$/.exec(marker) : null
+        if (decimal !== null) {
+          element.setAttribute('start', String(parseInt(decimal[1], 10)))
         }
         if (list === undefined) {
           parent.insertBefore(element, paragraph)
