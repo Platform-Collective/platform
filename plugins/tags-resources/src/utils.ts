@@ -7,6 +7,7 @@ import core, {
   type Doc,
   type DocumentQuery,
   type FindResult,
+  type ObjQueryType,
   type Ref
 } from '@hcengineering/core'
 import { type Asset } from '@hcengineering/platform'
@@ -27,8 +28,9 @@ export function getTagStyle (color: ColorDefinition, selected = false): string {
 }
 
 export async function getRefs (filter: Filter, onUpdate: () => void): Promise<Array<Ref<Doc>>> {
+  const lifetime = FilterQuery.getLifetime(filter.index)
   const lq = FilterQuery.getLiveQuery(filter.index)
-  const promise = new Promise<Array<Ref<Doc>>>((resolve, reject) => {
+  const promise = new Promise<Array<Ref<Doc>>>((resolve) => {
     const level = filter.props?.level ?? 0
     const q: DocumentQuery<TagReference> = {
       tag: { $in: filter.value }
@@ -37,6 +39,11 @@ export async function getRefs (filter: Filter, onUpdate: () => void): Promise<Ar
       q.weight = { $gte: level as TagReference['weight'] }
     }
     const refresh = lq.query(tags.class.TagReference, q, (refs: FindResult<TagReference>) => {
+      if (!FilterQuery.isActive(filter.index, 'value', lq)) {
+        lq.unsubscribe()
+        resolve([])
+        return
+      }
       const result = Array.from(new Set(refs.map((p) => p.attachedTo)))
       FilterQuery.results.set(filter.index, result)
       resolve(result)
@@ -46,7 +53,17 @@ export async function getRefs (filter: Filter, onUpdate: () => void): Promise<Ar
       resolve(FilterQuery.results.get(filter.index) ?? [])
     }
   })
-  return await promise
+  return (await lifetime.waitFor(promise)) ?? []
+}
+
+export async function tagsInResult (filter: Filter, onUpdate: () => void): Promise<ObjQueryType<any>> {
+  const result = await getRefs(filter, onUpdate)
+  return { $in: result }
+}
+
+export async function tagsNinResult (filter: Filter, onUpdate: () => void): Promise<ObjQueryType<any>> {
+  const result = await getRefs(filter, onUpdate)
+  return { $nin: result }
 }
 
 export const tagLevel: Record<0 | 1 | 2 | 3, Asset> = {

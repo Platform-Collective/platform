@@ -6,17 +6,21 @@ import type { Doc, DocumentQuery, Hierarchy, Ref } from '@hcengineering/core'
 import { getResource } from '@hcengineering/platform'
 import type { Resource } from '@hcengineering/platform'
 import type { Filter, FilterMode } from '@hcengineering/view'
+import { FilterQueryLifetime } from './lifecycle'
 
 /**
- * Pure (no Svelte) helper extracted from FilterBar.svelte:81-142. Composes
+ * Helper without Svelte dependencies, extracted from FilterBar. Composes
  * `filters` into a `DocumentQuery<Doc>` by chaining each filter's mode-result
- * onto the existing `base`. Used by InlineFilterChips and the slim FilterBar
- * SaveAs container so both render-paths share a single source of truth.
+ * onto the existing `base`. FilterBar uses it through createFilterQueryComposer,
+ * including when Tracker renders its chips separately from the SaveAs container.
  *
  * NOTE: `mode.result` is a `Resource<>` (platform registry id), NOT a
  * callable function. We resolve it via `getResource(mode.result)` before
- * invocation. This mirrors FilterBar.svelte:87 exactly. Calling
+ * invocation. Calling
  * `mode.result(filter)` directly would throw at runtime.
+ *
+ * Cancellation returns undefined; callers must check the captured lifetime again
+ * before dispatching, since removal can also happen after this promise settles.
  *
  * AND-semantics across filters on the same key: when two filters target the
  * same attribute, their result-operators are merged (intersection on $in,
@@ -51,8 +55,7 @@ function isPlainObject (value: unknown): value is Record<string, any> {
  * domain model and may preserve special types); falls back to
  * `structuredClone` (Node 17+, all modern browsers), and finally to a
  * JSON-roundtrip for the simple `DocumentQuery` shape that filters
- * actually compose against. This mirrors `FilterBar.svelte:83` which
- * always did `hierarchy.clone(query)` before mutating.
+ * actually compose against. FilterBar supplies its client's hierarchy.
  */
 function cloneQuery (base: DocumentQuery<Doc>, hierarchy?: Hierarchy): DocumentQuery<Doc> {
   if (hierarchy !== undefined) return hierarchy.clone(base)
@@ -66,15 +69,27 @@ export async function makeFilterQuery (
   resolveMode: FilterModeResolver,
   resolveResource: ResourceResolver = defaultResolveResource,
   hierarchy?: Hierarchy,
-  refresh: () => void = () => {}
-): Promise<DocumentQuery<Doc>> {
+  refresh: () => void = (): void => {},
+  lifetime = new FilterQueryLifetime(filters.map((filter) => filter.index))
+): Promise<DocumentQuery<Doc> | undefined> {
+  // Composition cancellation includes siblings, but a retained subscription's
+  // refresh belongs only to its own generation. Capture both before any await.
+  const filterLifetimes = filters.map((filter) => new FilterQueryLifetime([filter.index]))
   const out: DocumentQuery<Doc> = cloneQuery(base, hierarchy)
   for (let i = 0; i < filters.length; i++) {
     const filter = filters[i]
-    const mode = await resolveMode(filter.mode)
+    if (!lifetime.isActive()) return undefined
+    const mode = await lifetime.waitFor(resolveMode(filter.mode))
+    if (!lifetime.isActive()) return undefined
     if (mode === undefined) continue
-    const resultFn = await resolveResource<ResultFn>(mode.result)
-    const result: any = await resultFn(filter, refresh)
+    const resultFn = await lifetime.waitFor(resolveResource<ResultFn>(mode.result))
+    if (resultFn === undefined || !lifetime.isActive()) return undefined
+    const result: any = await lifetime.waitFor(
+      resultFn(filter, () => {
+        if (filterLifetimes[i].isActive()) refresh()
+      })
+    )
+    if (!lifetime.isActive()) return undefined
 
     let filterKey = filter.key.key
     if (hierarchy !== undefined) {
@@ -133,5 +148,5 @@ export async function makeFilterQuery (
       }
     }
   }
-  return out
+  return lifetime.isActive() ? out : undefined
 }
