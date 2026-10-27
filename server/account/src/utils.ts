@@ -710,29 +710,35 @@ export async function sendOtpEmail (
   }
 }
 
-function parseIntEnv (name: string, defaultValue: number): number {
-  const value = process.env[name] != null ? parseInt(process.env[name]) : NaN
-  return Number.isNaN(value) ? defaultValue : value
+interface OtpLimits {
+  // Per code. 0 or negative value means no limit
+  maxAttempts: number
+  // Per social id; also blocks issuing new codes. 0 or negative value means no limit
+  maxFailedAttemptsPerWindow: number
+  lockWindowMs: number
 }
 
-// 0 or negative value means no limit
-const otpMaxAttempts = parseIntEnv('OTP_MAX_ATTEMPTS', 5)
-// Per social id; also blocks issuing new codes. 0 or negative value means no limit
-const otpMaxFailedAttemptsPerWindow = parseIntEnv('OTP_MAX_FAILED_ATTEMPTS_PER_WINDOW', 15)
-const otpLockWindowMs = Math.max(parseIntEnv('OTP_LOCK_WINDOW_SEC', 3600), 0) * 1000
+function getOtpLimits (): OtpLimits {
+  return {
+    maxAttempts: getMetadata(accountPlugin.metadata.OtpMaxAttempts) ?? 5,
+    maxFailedAttemptsPerWindow: getMetadata(accountPlugin.metadata.OtpMaxFailedAttemptsPerWindow) ?? 15,
+    lockWindowMs: Math.max(getMetadata(accountPlugin.metadata.OtpLockWindowSec) ?? 3600, 0) * 1000
+  }
+}
 
-function sumOtpAttempts (otps: OTP[], now: number): number {
-  return otps.filter((it) => it.createdOn > now - otpLockWindowMs).reduce((sum, it) => sum + (it.attempts ?? 0), 0)
+function sumOtpAttempts (otps: OTP[], now: number, lockWindowMs: number): number {
+  return otps.filter((it) => it.createdOn > now - lockWindowMs).reduce((sum, it) => sum + (it.attempts ?? 0), 0)
 }
 
 export async function isOtpLocked (db: AccountDB, socialId: PersonId, now: number = Date.now()): Promise<boolean> {
-  if (otpMaxFailedAttemptsPerWindow <= 0) {
+  const { maxFailedAttemptsPerWindow, lockWindowMs } = getOtpLimits()
+  if (maxFailedAttemptsPerWindow <= 0) {
     return false
   }
 
   const otps = await db.otp.find({ socialId })
 
-  return sumOtpAttempts(otps, now) >= otpMaxFailedAttemptsPerWindow
+  return sumOtpAttempts(otps, now, lockWindowMs) >= maxFailedAttemptsPerWindow
 }
 
 export type OtpVerificationResult = 'valid' | 'invalid' | 'locked'
@@ -743,16 +749,22 @@ export async function verifyOtpAttempt (
   code: string
 ): Promise<OtpVerificationResult> {
   const now = Date.now()
+  const { maxAttempts, maxFailedAttemptsPerWindow, lockWindowMs } = getOtpLimits()
 
-  // Count the attempt before checking the code, so concurrent requests cannot exceed the limit
-  await db.otp.update({ socialId, expiresOn: { $gt: now } }, { $inc: { attempts: 1 } })
+  // Count the attempt before checking the code, so concurrent requests cannot exceed the limit.
+  // Each attempt is counted once, on the newest active code only: counting it on every active code
+  // would make a single mistyped code consume the budget several times after a resend.
+  const [latestActive] = await db.otp.find({ socialId, expiresOn: { $gt: now } }, { createdOn: 'descending' }, 1)
+  if (latestActive !== undefined) {
+    await db.otp.update({ socialId, code: latestActive.code }, { $inc: { attempts: 1 } })
+  }
 
   const otps = await db.otp.find({ socialId })
   const otpData = otps.find((it) => it.code === code)
 
-  const isExhausted = (it: OTP): boolean => otpMaxAttempts > 0 && (it.attempts ?? 0) > otpMaxAttempts
+  const isExhausted = (it: OTP): boolean => maxAttempts > 0 && (it.attempts ?? 0) > maxAttempts
 
-  if (otpMaxFailedAttemptsPerWindow > 0 && sumOtpAttempts(otps, now) > otpMaxFailedAttemptsPerWindow) {
+  if (maxFailedAttemptsPerWindow > 0 && sumOtpAttempts(otps, now, lockWindowMs) > maxFailedAttemptsPerWindow) {
     return 'locked'
   }
 
@@ -1888,7 +1900,8 @@ export function flattenStatus (ws: WorkspaceInfoWithStatus): WorkspaceInfoWithSt
 export async function cleanExpiredOtp (db: AccountDB): Promise<void> {
   const now = Date.now()
   // Keep expired codes for the lock window: their attempt counters drive the lockout
-  await db.otp.deleteMany({ expiresOn: { $lte: now }, createdOn: { $lte: now - otpLockWindowMs } })
+  const { lockWindowMs } = getOtpLimits()
+  await db.otp.deleteMany({ expiresOn: { $lte: now }, createdOn: { $lte: now - lockWindowMs } })
 }
 
 export async function getWorkspaces (

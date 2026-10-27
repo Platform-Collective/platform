@@ -127,6 +127,12 @@ export function serveAccount (measureCtx: MeasureContext, brandings: BrandingMap
   setMetadata(account.metadata.ProductName, productName)
   setMetadata(account.metadata.OtpTimeToLiveSec, parseInt(process.env.OTP_TIME_TO_LIVE ?? '60'))
   setMetadata(account.metadata.OtpRetryDelaySec, parseInt(process.env.OTP_RETRY_DELAY ?? '60'))
+  setMetadata(account.metadata.OtpMaxAttempts, parseInt(process.env.OTP_MAX_ATTEMPTS ?? '5'))
+  setMetadata(
+    account.metadata.OtpMaxFailedAttemptsPerWindow,
+    parseInt(process.env.OTP_MAX_FAILED_ATTEMPTS_PER_WINDOW ?? '15')
+  )
+  setMetadata(account.metadata.OtpLockWindowSec, parseInt(process.env.OTP_LOCK_WINDOW_SEC ?? '3600'))
   setMetadata(account.metadata.MAIL_URL, mailUrl)
   setMetadata(account.metadata.MAIL_AUTH_TOKEN, mailAuthToken)
 
