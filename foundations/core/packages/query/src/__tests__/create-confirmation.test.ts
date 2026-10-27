@@ -12,6 +12,7 @@ import core, {
   type FindOptions,
   type FindResult,
   type Ref,
+  type Tx,
   type TxCreateDoc,
   type TxCUD
 } from '@hcengineering/core'
@@ -41,6 +42,18 @@ function confirmation<T extends Doc> (tx: TxCreateDoc<T>, time: number): TxCreat
 
 function optimistic<T extends Doc> (tx: TxCreateDoc<T>): TxCreateDoc<T> {
   return { ...tx, meta: { ...tx.meta, isOptimisticCreate: true } }
+}
+
+// A transaction no test query depends on, as arrives continuously in a busy workspace.
+function unrelatedCreate (): Tx {
+  return factory.createTxCreateDoc(test.class.TestProject, core.space.Model, {
+    name: 'busy',
+    description: '',
+    private: false,
+    archived: false,
+    members: [],
+    prjName: 'busy'
+  })
 }
 
 function deferred<T> (): { promise: Promise<T>, resolve: (value: T) => void } {
@@ -699,6 +712,57 @@ describe('optimistic create confirmation', () => {
     }
   })
 
+  it('skips lookups and reads for queries a confirmed create cannot match', async () => {
+    const storage = await createClient(connect)
+    const liveQuery = new LiveQuery(storage)
+    try {
+      const project = factory.createTxCreateDoc(test.class.TestProject, core.space.Model, {
+        name: 'project',
+        description: '',
+        private: false,
+        archived: false,
+        members: [],
+        prjName: 'project'
+      })
+      await storage.tx(project)
+      const options: FindOptions<AttachedComment> = {
+        sort: { createdOn: SortingOrder.Ascending },
+        limit: 1,
+        total: true
+      }
+      const withLookup = await subscribe(
+        liveQuery,
+        { message: 'other' },
+        { ...options, lookup: { attachedTo: test.class.TestProject } }
+      )
+      const own = message('own', 500)
+      own.attributes.attachedTo = project.objectId
+      own.attributes.attachedToClass = test.class.TestProject
+      await liveQuery.tx(optimistic(own))
+      // Opened while the create is pending, so this query has no record of it.
+      const openedLater = await subscribe(liveQuery, { message: 'other' }, options)
+      const confirmed = confirmation(own, 100)
+      await storage.tx(confirmed)
+      const lookupCalls = withLookup.callback.mock.calls.length
+      const laterCalls = openedLater.callback.mock.calls.length
+      const findAll = jest.spyOn(storage, 'findAll')
+      const findOne = jest.spyOn(storage, 'findOne')
+      const lookupRead = jest.spyOn(liveQuery, 'findOne')
+      await liveQuery.tx(confirmed)
+      expect(findAll).not.toHaveBeenCalled()
+      expect(findOne).not.toHaveBeenCalled()
+      expect(lookupRead).not.toHaveBeenCalled()
+      expect(withLookup.callback).toHaveBeenCalledTimes(lookupCalls)
+      expect(openedLater.callback).toHaveBeenCalledTimes(laterCalls)
+      for (const query of [withLookup, openedLater]) {
+        expect(query.result()).toHaveLength(0)
+        expect(query.result().total).toBe(0)
+      }
+    } finally {
+      await liveQuery.close()
+    }
+  })
+
   it('keeps an excluded lookup create out of a full window and its total on confirmation', async () => {
     const storage = await createClient(connect)
     const liveQuery = new LiveQuery(storage)
@@ -827,6 +891,58 @@ describe('optimistic create confirmation', () => {
     }
   )
 
+  it('does not restore an early create whose lookup finishes after its confirmation', async () => {
+    const storage = await createClient(connect)
+    const liveQuery = new LiveQuery(storage)
+    try {
+      const project = factory.createTxCreateDoc(test.class.TestProject, core.space.Model, {
+        name: 'project',
+        description: '',
+        private: false,
+        archived: false,
+        members: [],
+        prjName: 'project'
+      })
+      await storage.tx(project)
+      const predicate = { createdOn: { $gt: 300 } }
+      const options: FindOptions<AttachedComment> = {
+        lookup: { attachedTo: test.class.TestProject },
+        sort: { createdOn: SortingOrder.Ascending },
+        total: true
+      }
+      const query = await subscribe(liveQuery, predicate, options)
+      const calls = query.callback.mock.calls.length
+      const own = message('own', 500)
+      own.attributes.attachedTo = project.objectId
+      own.attributes.attachedToClass = test.class.TestProject
+      const started = deferred<undefined>()
+      const response = deferred<undefined>()
+      const lookupRead = liveQuery.findOne.bind(liveQuery)
+      const findOne = jest.spyOn(liveQuery, 'findOne').mockImplementationOnce(async (...args) => {
+        const result = await lookupRead(...args)
+        started.resolve(undefined)
+        await response.promise
+        return result
+      })
+      const early = liveQuery.tx(optimistic(own))
+      await started.promise
+      expect(findOne).toHaveBeenNthCalledWith(1, test.class.TestProject, { _id: project.objectId })
+      // The server time moves the create out of the query before its early lookup completes.
+      const confirmed = confirmation(own, 100)
+      await storage.tx(confirmed)
+      await liveQuery.tx(confirmed)
+      response.resolve(undefined)
+      await early
+      expect(query.result()).toHaveLength(0)
+      expect(query.result().total).toBe(0)
+      expect(query.callback).toHaveBeenCalledTimes(calls)
+      expect(query.result()).toEqual(await storage.findAll(test.class.TestComment, predicate, options))
+      expect((await liveQuery.findOne(test.class.TestComment, { _id: own.objectId }))?.createdOn).toBe(100)
+    } finally {
+      await liveQuery.close()
+    }
+  })
+
   it.each(
     [undefined, false, true].flatMap((total) =>
       [undefined, 3].flatMap((limit) => ['edit', 'delete'].map((change) => ({ total, limit, change })))
@@ -936,6 +1052,59 @@ describe('optimistic create confirmation', () => {
         message: 'newer edit'
       })
       if (!leaves) expect(findAll).toHaveBeenCalledTimes(reads)
+    } finally {
+      await liveQuery.close()
+    }
+  })
+
+  it('bounds confirmation refresh reads while transactions keep arriving', async () => {
+    const storage = await createClient(connect)
+    const liveQuery = new LiveQuery(storage)
+    try {
+      const own = message('own', 500)
+      await liveQuery.tx(optimistic(own))
+      // Opened while the create is pending, so its confirmation needs an authoritative refresh.
+      const query = await subscribe(liveQuery)
+      const confirmed = confirmation(own, 100)
+      await storage.tx(confirmed)
+      const read = storage.findAll.bind(storage)
+      let reads = 0
+      const findAll = jest.spyOn(storage, 'findAll').mockImplementation(async (...args) => {
+        reads++
+        // Another transaction crosses every read, as in a busy workspace. The cap only keeps an
+        // unbounded retry from hanging the test; the read count below then reports it.
+        if (reads <= 10) await liveQuery.tx(unrelatedCreate())
+        return await read(...args)
+      })
+      await liveQuery.tx(confirmed)
+      expect(reads).toBe(LiveQuery.CONFIRMATION_REFRESH_ATTEMPTS)
+      findAll.mockRestore()
+      const sort = { createdOn: SortingOrder.Ascending }
+      expect(query.result()).toEqual(await storage.findAll(test.class.TestComment, {}, { sort, total: true }))
+      expect(query.result()[0]).toMatchObject({ createdOn: 100 })
+      expect(query.result().total).toBe(1)
+    } finally {
+      await liveQuery.close()
+    }
+  })
+
+  it('reads once for ordinary refreshes while transactions keep arriving', async () => {
+    const storage = await createClient(connect)
+    const liveQuery = new LiveQuery(storage)
+    try {
+      await storage.tx(message('peer', 100))
+      const query = await subscribe(liveQuery)
+      const read = storage.findAll.bind(storage)
+      let reads = 0
+      jest.spyOn(storage, 'findAll').mockImplementation(async (...args) => {
+        reads++
+        if (reads <= 10) await liveQuery.tx(unrelatedCreate())
+        return await read(...args)
+      })
+      await liveQuery.refreshConnect(false)
+      expect(reads).toBe(1)
+      expect(query.result()).toHaveLength(1)
+      expect(query.result().total).toBe(1)
     } finally {
       await liveQuery.close()
     }

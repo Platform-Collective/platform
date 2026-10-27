@@ -140,6 +140,9 @@ export class LiveQuery implements WithTx, Client {
   // Concurrency cap for parallel refresh after reconnect — avoid request storm.
   static readonly REFRESH_CONCURRENCY = 4
 
+  // Reads a create confirmation refresh may make while transactions keep crossing them.
+  static readonly CONFIRMATION_REFRESH_ATTEMPTS = 3
+
   // Perform refresh of content since connection established.
   // `lastReconnectGapMs` — ms since previous successful connection. When the
   // gap is large, drop idle queries instead of refreshing them.
@@ -1003,29 +1006,35 @@ export class LiveQuery implements WithTx, Client {
 
   private async doRefresh (q: Query, reconciledId?: Ref<Doc>): Promise<void> {
     const qid = ++q.refreshId
-    while (q.refreshId === qid) {
-      const revision = this.transactionRevision
-      const res = await this.client.findAll(q._class, q.query, q.options)
-      const current = q.result instanceof Promise ? await q.result : q.result
+    // A transaction can change revisions, membership or totals while the read is pending.
+    // Only create confirmation refreshes read again then, and only a bounded number of times,
+    // so a steady stream of transactions cannot keep them reading. Other refreshes, and a
+    // confirmation refresh without attempts left, publish their last response as before.
+    const attempts = reconciledId !== undefined ? LiveQuery.CONFIRMATION_REFRESH_ATTEMPTS : 1
+    let attempt = 0
+    let revision: number
+    let res: FindResult<Doc>
+    let current: ResultArray
+    do {
+      attempt++
+      revision = this.transactionRevision
+      res = await this.client.findAll(q._class, q.query, q.options)
+      current = q.result instanceof Promise ? await q.result : q.result
       if (q.refreshId !== qid) return
-      // Retry before unregistering Refs or publishing: a transaction can change revisions,
-      // membership or totals while the read is pending, even with only one subscriber.
-      if (revision !== this.transactionRevision) continue
-      q.pendingCreates.clear()
-      if (!deepEqual(res, current.getDocs()) || (res.total !== q.total && q.options?.total === true)) {
-        if (reconciledId !== undefined) {
-          this.refs.updateDocuments(q, current.getDocs(), true)
-        }
-        q.result = new ResultArray(res, this.getHierarchy())
-        q.refsRegistered = false
-        q.total = res.total
-        if (reconciledId !== undefined) {
-          this.refs.updateDocuments(q, q.result.getDocs(), false, reconciledId)
-          q.refsRegistered = true
-        }
-        await this.callback(q)
+    } while (revision !== this.transactionRevision && attempt < attempts)
+    q.pendingCreates.clear()
+    if (!deepEqual(res, current.getDocs()) || (res.total !== q.total && q.options?.total === true)) {
+      if (reconciledId !== undefined) {
+        this.refs.updateDocuments(q, current.getDocs(), true)
       }
-      return
+      q.result = new ResultArray(res, this.getHierarchy())
+      q.refsRegistered = false
+      q.total = res.total
+      if (reconciledId !== undefined) {
+        this.refs.updateDocuments(q, q.result.getDocs(), false, reconciledId)
+        q.refsRegistered = true
+      }
+      await this.callback(q)
     }
   }
 
@@ -1229,6 +1238,15 @@ export class LiveQuery implements WithTx, Client {
     }
     const existing = q.result.findDoc(doc._id)
     const contributed = q.pendingCreates.get(doc._id) ?? (existing !== undefined ? true : undefined)
+    if (existing === undefined && !this.match(q, doc, true)) {
+      // The confirmed create is authoritative for its own fields. A document that fails them
+      // cannot join this query, so skip lookups and reads and only release an earlier count.
+      if (q.options?.total === true && contributed === true) {
+        q.total--
+        await this.callback(q, true)
+      }
+      return
+    }
     // Edits/removals invalidate the early-create snapshot even when totals are not requested.
     // An absent document with unknown provenance must never be re-added from its create payload.
     if (existing === undefined && contributed === undefined) {
@@ -1347,6 +1365,9 @@ export class LiveQuery implements WithTx, Client {
     }
     if (q.options?.lookup !== undefined && handleLookup) {
       await this.lookup(q._class, doc, q.options.lookup)
+      // Confirmation, an edit, a removal or a refresh may have settled this early create while
+      // its lookup was pending. Its create payload must not restore outdated membership now.
+      if (optimistic && !q.pendingCreates.has(doc._id)) return
       const matched = this.match(q, doc)
       if (!matched) needPush = false
     }
@@ -1366,6 +1387,7 @@ export class LiveQuery implements WithTx, Client {
       if (q.query.$search != null && q.query.$search.length > 0) {
         const match = await this.client.findOne(q._class, { $search: q.query.$search, _id: doc._id }, q.options)
         if (match === undefined) return
+        if (optimistic && !q.pendingCreates.has(doc._id)) return
         // Copy: the tx doc is shared between queries
         const source = match.$source
         if (source != null) {

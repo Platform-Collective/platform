@@ -42,7 +42,6 @@ interface Subscription {
 
 const mockDestroyHandlers: Array<() => void> = []
 const mockNotifications: Array<{ client: object, txes: Tx[] }> = []
-const mockScheduledQueries: Array<() => void> = []
 jest.mock('svelte', () => ({ onDestroy: (fn: () => void) => mockDestroyHandlers.push(fn) }))
 jest.mock('svelte/store', () => {
   const writable = (value: any): any => {
@@ -83,7 +82,7 @@ jest.mock('@hcengineering/query', () => ({
     query (_class: any, query: Record<string, any>, onResult: (res: any) => void): () => void {
       const sub: Subscription = { query, active: true, onResult }
       ;(this.constructor as any).subscriptions.push(sub)
-      mockScheduledQueries.push(() => {
+      void Promise.resolve().then(() => {
         if (sub.active) onResult([{ query }])
       })
       return () => {
@@ -103,6 +102,12 @@ jest.mock('@hcengineering/query', () => ({
 
 const subscriptions = (): Subscription[] => jest.requireMock('@hcengineering/query').LiveQuery.subscriptions
 
+async function settle (): Promise<void> {
+  for (let i = 0; i < 5; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  }
+}
+
 function deferred (): { promise: Promise<void>, resolve: () => void } {
   let complete: () => void = () => {
     throw new Error('Deferred promise is not initialized')
@@ -113,29 +118,13 @@ function deferred (): { promise: Promise<void>, resolve: () => void } {
   return { promise, resolve: complete }
 }
 
-// Run the actual scheduled query work and its mock result deliveries to completion.
-// This also makes assertions about cancelled requests independent of timer speed.
-function flushQueries (): void {
-  while (mockScheduledQueries.length > 0) {
-    const run = mockScheduledQueries.shift()
-    run?.()
-  }
-}
-
 describe('LiveQuery', () => {
   beforeAll(async () => {
-    jest.spyOn(globalThis, 'queueMicrotask').mockImplementation((callback) => {
-      mockScheduledQueries.push(callback)
-    })
     setCurrentAccount({ uuid: 'test', role: 'USER', primarySocialId: 'test', socialIds: ['test'] } as any)
     await setClient({ findAll: async () => [], notify: () => {}, close: async () => {} } as unknown as Client)
   })
 
-  afterAll(() => {
-    jest.restoreAllMocks()
-  })
-
-  it('resubscribes to A after A -> B -> A within one tick', () => {
+  it('resubscribes to A after A -> B -> A within one tick', async () => {
     const q = createQuery(true)
     const received: string[] = []
     const callback = (res: FindResult<Doc>): void => {
@@ -143,64 +132,64 @@ describe('LiveQuery', () => {
     }
 
     q.query(core.class.Doc, { name: 'A' }, callback)
-    flushQueries()
+    await settle()
     expect(received).toEqual(['A'])
 
     expect(q.query(core.class.Doc, { name: 'B' } as any, callback)).toBe(true)
     expect(q.query(core.class.Doc, { name: 'A' } as any, callback)).toBe(true)
-    flushQueries()
+    await settle()
 
     const active = subscriptions().filter((it) => it.active)
     expect(active.map((it) => it.query.name)).toEqual(['A'])
     expect(received[received.length - 1]).toBe('A')
   })
 
-  it('does not requery the same request', () => {
+  it('does not requery the same request', async () => {
     const q = createQuery(true)
     const callback = (): void => {}
     expect(q.query(core.class.Doc, { name: 'C' } as any, callback)).toBe(true)
     expect(q.query(core.class.Doc, { name: 'C' } as any, callback)).toBe(false)
-    flushQueries()
+    await settle()
     expect(q.query(core.class.Doc, { name: 'C' } as any, callback)).toBe(false)
   })
 
-  it('does not subscribe when unsubscribed before the deferred query runs', () => {
+  it('does not subscribe when unsubscribed before the deferred query runs', async () => {
     const q = createQuery(true)
     q.query(core.class.Doc, { name: 'D' }, () => {})
     q.unsubscribe()
-    flushQueries()
+    await settle()
 
     expect(subscriptions().filter((it) => it.query.name === 'D')).toEqual([])
   })
 
-  it('ignores query() after component destroy', () => {
+  it('ignores query() after component destroy', async () => {
     mockDestroyHandlers.length = 0
     const q = createQuery()
     for (const destroy of mockDestroyHandlers) destroy()
 
     expect(q.query(core.class.Doc, { name: 'E' } as any, () => {})).toBe(false)
-    flushQueries()
+    await settle()
     expect(subscriptions().filter((it) => it.query.name === 'E')).toEqual([])
   })
 
   it('does not resubscribe an unsubscribed global query on client refresh', async () => {
     const q = createQuery(true)
     q.query(core.class.Doc, { name: 'F' }, () => {})
-    flushQueries()
+    await settle()
     q.unsubscribe()
     await refreshClient(true)
-    flushQueries()
+    await settle()
 
     expect(subscriptions().filter((it) => it.query.name === 'F' && it.active)).toEqual([])
   })
 
-  it('subscribes only the last of several requests made in one tick', () => {
+  it('subscribes only the last of several requests made in one tick', async () => {
     const q = createQuery(true)
     const callback = (): void => {}
     q.query(core.class.Doc, { name: 'J1' }, callback)
     q.query(core.class.Doc, { name: 'J2' }, callback)
     q.query(core.class.Doc, { name: 'J3' }, callback)
-    flushQueries()
+    await settle()
 
     expect(
       subscriptions()
@@ -209,28 +198,28 @@ describe('LiveQuery', () => {
     ).toEqual(['J3'])
   })
 
-  it('subscribes again after unsubscribe', () => {
+  it('subscribes again after unsubscribe', async () => {
     const q = createQuery(true)
     const callback = (): void => {}
     q.query(core.class.Doc, { name: 'K' }, callback)
-    flushQueries()
+    await settle()
     q.unsubscribe()
     expect(q.query(core.class.Doc, { name: 'K' } as any, callback)).toBe(true)
-    flushQueries()
+    await settle()
 
     expect(subscriptions().filter((it) => it.query.name === 'K' && it.active)).toHaveLength(1)
   })
 
-  it('drops results that a released subscription still delivers', () => {
+  it('drops results that a released subscription still delivers', async () => {
     const q = createQuery(true)
     const received: string[] = []
     const callback = (res: FindResult<Doc>): void => {
       received.push((res[0] as any).query.name)
     }
     q.query(core.class.Doc, { name: 'L1' }, callback)
-    flushQueries()
+    await settle()
     q.query(core.class.Doc, { name: 'L2' }, callback)
-    flushQueries()
+    await settle()
 
     const released = subscriptions().find((it) => it.query.name === 'L1')
     released?.onResult([{ query: { name: 'L1' } }])
