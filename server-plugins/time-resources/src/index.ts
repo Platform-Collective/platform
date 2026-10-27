@@ -705,6 +705,17 @@ async function changeIssueStatusHandler (
         }
       }
     }
+  } else if (status.category === task.statusCategory.UnStarted) {
+    const issue = (await control.findAll(control.ctx, tracker.class.Issue, { _id: issueId }))[0]
+    if (issue?.assignee != null) {
+      const todos = await control.findAll(control.ctx, time.class.ProjectToDo, {
+        attachedTo: issueId,
+        user: issue.assignee as Ref<Employee>,
+        doneOn: null,
+        workslots: 0
+      })
+      return todos.map((todo) => control.txFactory.createTxRemoveDoc(todo._class, todo.space, todo._id))
+    }
   } else if (status.category === task.statusCategory.Won || status.category === task.statusCategory.Lost) {
     const issue = (await control.findAll(control.ctx, tracker.class.Issue, { _id: issueId }))[0]
     if (issue !== undefined) {
