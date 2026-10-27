@@ -7,9 +7,10 @@
 // obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
 
 import type { Class, Doc, Ref } from '@hcengineering/core'
-import type { Asset, IntlString, Plugin } from '@hcengineering/platform'
+import type { Asset, IntlString, Plugin, Resource } from '@hcengineering/platform'
 import { plugin } from '@hcengineering/platform'
 import type { Component, IssueStatus, Project } from '@hcengineering/tracker'
+import type { AnyComponent } from '@hcengineering/ui'
 
 /**
  * @public
@@ -95,6 +96,8 @@ export interface WorkflowRuleAutoCreate {
  */
 export interface WorkflowRule extends Doc {
   space: Ref<Project>
+  /** Optional human-readable label shown in the list and editor. */
+  name?: string
   linkedProject: Ref<Project>
   linkKind: WorkflowRuleLinkKind
 
@@ -129,10 +132,30 @@ const workflowRules = plugin(workflowRulesId, {
   string: {
     WorkflowRules: '' as IntlString,
     AddRule: '' as IntlString,
+    EditRule: '' as IntlString,
+    PairProjects: '' as IntlString,
+    EditPair: '' as IntlString,
+    PairedWith: '' as IntlString,
+    Name: '' as IntlString,
+    NamePlaceholder: '' as IntlString,
+    SyncBothWays: '' as IntlString,
+    Bidirectional: '' as IntlString,
+    OneWay: '' as IntlString,
+    AutoLoopsHint: '' as IntlString,
+    EmptyHint: '' as IntlString,
+    Advanced: '' as IntlString,
     LinkedProject: '' as IntlString,
+    SelectProject: '' as IntlString,
     LinkKind: '' as IntlString,
     StatusMatrix: '' as IntlString,
+    PickTargetFirst: '' as IntlString,
     AllowedLoops: '' as IntlString,
+    AllowedLoopsHint: '' as IntlString,
+    AddLoop: '' as IntlString,
+    NoLoopsYet: '' as IntlString,
+    NoRulesYet: '' as IntlString,
+    Remove: '' as IntlString,
+    Save: '' as IntlString,
     AutoCreate: '' as IntlString,
     ComponentMap: '' as IntlString,
     DefaultComponent: '' as IntlString,
@@ -143,6 +166,11 @@ const workflowRules = plugin(workflowRulesId, {
   },
   icon: {
     WorkflowRule: '' as Asset
+  },
+  component: {
+    WorkflowRulesPanel: '' as AnyComponent,
+    EditWorkflowRule: '' as AnyComponent,
+    PairProjectEditor: '' as AnyComponent
   }
 })
 

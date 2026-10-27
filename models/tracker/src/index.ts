@@ -31,6 +31,7 @@ import pluginState, { type Issue, trackerId } from '@hcengineering/tracker'
 import type { TaskStatusFactory } from '@hcengineering/task'
 import { PaletteColorIndexes } from '@hcengineering/ui/src/colors'
 import { createActions as defineActions } from './actions'
+import workflowRules from '@hcengineering/workflow-rules'
 import tracker from './plugin'
 import { definePresenters } from './presenters'
 import { definePermissions } from './permissions'
@@ -452,6 +453,12 @@ function defineApplication (
                 label: tracker.string.Milestones,
                 icon: tracker.icon.Milestone,
                 component: tracker.component.Milestones
+              },
+              {
+                id: 'workflow-rules',
+                label: workflowRules.string.WorkflowRules,
+                icon: workflowRules.icon.WorkflowRule,
+                component: workflowRules.component.WorkflowRulesPanel
               },
               {
                 id: opt.templatesId,

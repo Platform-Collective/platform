@@ -56,6 +56,9 @@ export class TWorkflowRule extends TDoc implements WorkflowRule {
   // Ref<Project>; refined by the interface declaration in plugins/workflow-rules.
   declare space: Ref<Project>
 
+  @Prop(TypeString(), workflowRules.string.Name)
+  name?: string
+
   @Prop(TypeRef(core.class.Space), workflowRules.string.LinkedProject)
   linkedProject!: Ref<Project>
 
