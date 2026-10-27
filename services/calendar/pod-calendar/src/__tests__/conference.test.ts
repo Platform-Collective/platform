@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { getConferenceLink, getEventLocation } from '../conference'
+import { getConferenceLink, getEventLocation, isLocationInSync } from '../conference'
 
 const meet = 'https://meet.google.com/abc-defg-hij'
 
@@ -63,5 +63,41 @@ describe('getEventLocation', () => {
     expect(getEventLocation({})).toBeUndefined()
     expect(getEventLocation({ location: null })).toBeUndefined()
     expect(getEventLocation({ location: '' })).toBe('')
+  })
+})
+
+describe('isLocationInSync', () => {
+  it('treats the conference link stored as location as in sync with an empty Google location', () => {
+    expect(isLocationInSync(meet, { hangoutLink: meet })).toBe(true)
+    expect(isLocationInSync(meet, { location: '', hangoutLink: meet })).toBe(true)
+  })
+
+  it('keeps a location cleared in Huly cleared (no diff, no restore of the link)', () => {
+    // Huly cleared the location, Google was updated to '' while hangoutLink stays
+    const google = { location: '', hangoutLink: meet }
+    expect(isLocationInSync('', google)).toBe(true)
+    expect(isLocationInSync(undefined, google)).toBe(true)
+  })
+
+  it('detects clearing a real Google location', () => {
+    expect(isLocationInSync('', { location: 'Room 1', hangoutLink: meet })).toBe(false)
+    expect(isLocationInSync(undefined, { location: 'Room 1' })).toBe(false)
+  })
+
+  it('detects a changed location', () => {
+    expect(isLocationInSync('Room 2', { location: 'Room 1', hangoutLink: meet })).toBe(false)
+    expect(isLocationInSync('Room 2', { hangoutLink: meet })).toBe(false)
+  })
+
+  it('round trip: link imported on create, cleared by user, stays cleared', () => {
+    const google: { location?: string, hangoutLink: string } = { hangoutLink: meet }
+    let huly: string | undefined = getEventLocation(google) // import on create
+    expect(huly).toBe(meet)
+    expect(isLocationInSync(huly, google)).toBe(true)
+    huly = '' // user clears the location in Huly
+    expect(isLocationInSync(huly, google)).toBe(true)
+    // incoming update uses the raw Google location, so nothing restores the link
+    const imported = google.location ?? huly
+    expect(imported).toBe('')
   })
 })

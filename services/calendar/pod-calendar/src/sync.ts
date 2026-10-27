@@ -487,9 +487,8 @@ export class IncomingSyncManager {
         res.externalParticipants = participants[1]
       }
     }
-    const location = getEventLocation(event)
-    if (location != null) {
-      res.location = location
+    if (event.location != null) {
+      res.location = event.location
     }
     if (event.description != null) {
       res.description = htmlToMarkup(event.description)

@@ -38,7 +38,7 @@ export function getChannelProviderUrl (provider: Ref<ChannelProvider>, value: st
 
   if (provider === contact.channelProvider.Email) {
     const email = text.replace(/^mailto:/i, '')
-    return /^[^\s@/]+@[^\s@/]+$/.test(email) ? `mailto:${email}` : undefined
+    return /^[^\s@/?&#]+@[^\s@/?&#]+$/.test(email) ? `mailto:${email}` : undefined
   }
 
   const profileUrl = nicknameProfileUrls.get(provider)

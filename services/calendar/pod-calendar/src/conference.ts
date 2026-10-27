@@ -29,12 +29,26 @@ export function getConferenceLink (event: calendar_v3.Schema$Event): string | un
 }
 
 /**
- * Returns the location to store in Huly for a Google event.
+ * Returns the location to store in Huly when a Google event is first imported.
  * An explicit location always wins; the conference link is used only when the location is empty.
+ * It must not be used for updates of an already imported event: otherwise a location cleared by the user
+ * would be restored from the conference link on the next incoming sync.
  */
 export function getEventLocation (event: calendar_v3.Schema$Event): string | undefined {
   if (event.location != null && event.location.trim() !== '') {
     return event.location
   }
   return getConferenceLink(event) ?? event.location ?? undefined
+}
+
+/**
+ * Checks whether the Huly location of an event is already reflected in the Google event.
+ * A conference link stored in Huly as a fallback location is not a real Google location,
+ * so it is in sync with an empty Google location, and so is a cleared Huly location.
+ */
+export function isLocationInSync (hulyLocation: string | undefined, event: calendar_v3.Schema$Event): boolean {
+  const current = hulyLocation ?? ''
+  const google = event.location ?? ''
+  if (current === google) return true
+  return google.trim() === '' && (current.trim() === '' || current === getConferenceLink(event))
 }

@@ -45,6 +45,13 @@ describe('getChannelProviderUrl', () => {
     expect(getChannelProviderUrl(provider('Email'), 'not an email')).toBeUndefined()
   })
 
+  it('does not allow extra mailto: fields in e-mail values', () => {
+    expect(getChannelProviderUrl(provider('Email'), 'a@b.com?bcc=other@x.com&body=hi')).toBeUndefined()
+    expect(getChannelProviderUrl(provider('Email'), 'a@b.com&cc=other@x.com')).toBeUndefined()
+    expect(getChannelProviderUrl(provider('Email'), 'a@b.com#frag')).toBeUndefined()
+    expect(getChannelProviderUrl(provider('Email'), 'a?b@c.com')).toBeUndefined()
+  })
+
   it('builds profile links for nicknames', () => {
     expect(getChannelProviderUrl(provider('GitHub'), '@appleseed')).toBe('https://github.com/appleseed')
     expect(getChannelProviderUrl(provider('GitHub'), 'apple-seed')).toBe('https://github.com/apple-seed')
