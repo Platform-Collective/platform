@@ -20,6 +20,7 @@
     "AccountAlreadyConfirmed": "Hesap zaten doğrulandı",
     "WorkspaceAlreadyExists": "Çalışma alanı zaten mevcut",
         "InvalidOtp": "Geçersiz kod",
+    "OtpLocked": "Çok fazla hatalı kod girildi. Lütfen bir süre bekleyin ve yeni bir kod isteyin.",
     "PasswordLoginLocked": "Çok fazla başarısız deneme nedeniyle parola girişi kilitlendi. Hesabınızın kilidini açmak için OTP giriş yöntemini kullanın.",
     "InviteNotFound": "E-mail:{email} ile ilgili davet bulunamadı.",
     "WorkspaceLimitReached": "Çalışma alanı limitine ulaştınız. Lütfen bizimle iletişime geçin...",
