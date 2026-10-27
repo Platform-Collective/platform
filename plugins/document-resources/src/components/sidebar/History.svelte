@@ -15,25 +15,46 @@
 //
 -->
 <script lang="ts">
+  import contact, { type PermissionsStore } from '@hcengineering/contact'
   import { Document, DocumentSnapshot } from '@hcengineering/document'
-  import { createQuery } from '@hcengineering/presentation'
-  import { Button, Label, Lazy, Scroller, showPopup } from '@hcengineering/ui'
+  import { getResource, setPlatformStatus, translate, unknownError } from '@hcengineering/platform'
+  import { createQuery, getClient, MessageBox } from '@hcengineering/presentation'
+  import { addNotification, Button, Label, Lazy, Scroller, showPopup } from '@hcengineering/ui'
+  import { SimpleNotification } from '@hcengineering/view-resources'
+  import { onMount } from 'svelte'
+  import type { Readable } from 'svelte/store'
 
   import document from '../../plugin'
-  import HistoryView from './HistoryView.svelte'
+  import { canEditDocumentContent, canRestoreSnapshot, restoreDocumentSnapshot } from '../../snapshots'
   import CreateSnapshot from '../CreateSnapshot.svelte'
+  import HistoryView from './HistoryView.svelte'
 
   export let value: Document
   export let readonly: boolean = false
 
   const query = createQuery()
+  const client = getClient()
+  let permissionsStore: Readable<PermissionsStore> | undefined
+  let restoring = false
+
+  onMount(() => {
+    void getResource(contact.store.Permissions)
+      .then((store) => {
+        permissionsStore = store
+      })
+      .catch((err) => {
+        void setPlatformStatus(unknownError(err))
+      })
+  })
+
+  $: canEdit = !readonly && canEditDocumentContent(client, value, $permissionsStore)
 
   let snapshots: DocumentSnapshot[] = []
 
   $: query.query(
     document.class.DocumentSnapshot,
     {
-      attachedTo: value._id
+      parent: value._id
     },
     (res) => {
       snapshots = res
@@ -43,20 +64,48 @@
     }
   )
 
-  async function takeSnapshot(): Promise<void> {
-    showPopup(CreateSnapshot, { doc: value }, 'top')
+  function takeSnapshot(): void {
+    if (canEdit) showPopup(CreateSnapshot, { doc: value }, 'top')
+  }
+
+  function restore(snapshot: DocumentSnapshot): void {
+    if (restoring || !canRestoreSnapshot(value, snapshot, !canEdit)) return
+    const doc = value
+    showPopup(
+      MessageBox,
+      {
+        label: document.string.RestoreVersion,
+        message: document.string.RestoreVersionConfirm,
+        okLabel: document.string.RestoreVersion
+      },
+      undefined,
+      async (result?: boolean) => {
+        if (result !== true || restoring || !canRestoreSnapshot(value, snapshot, !canEdit)) return
+        restoring = true
+        try {
+          const title = await translate(document.string.BeforeVersionRestore, { title: snapshot.title })
+          await restoreDocumentSnapshot(client, doc, snapshot, title)
+          addNotification(await translate(document.string.VersionRestored, {}), '', SimpleNotification)
+        } catch (err) {
+          await setPlatformStatus(unknownError(err))
+        } finally {
+          restoring = false
+        }
+      }
+    )
   }
 </script>
 
 <div class="h-full flex-col clear-mins">
   <div class="header">
     <div class="title"><Label label={document.string.History} /></div>
-    {#if !readonly}
+    {#if canEdit}
       <Button
         icon={document.icon.Add}
         iconProps={{ size: 'medium' }}
         kind={'ghost'}
         showTooltip={{ label: document.string.Snapshot, direction: 'bottom' }}
+        disabled={restoring}
         on:click={takeSnapshot}
       />
     {/if}
@@ -68,7 +117,7 @@
     <Scroller>
       {#each snapshots as snapshot}
         <Lazy>
-          <HistoryView value={snapshot} />
+          <HistoryView value={snapshot} readonly={!canEdit} disabled={restoring} on:restore={() => restore(snapshot)} />
         </Lazy>
       {/each}
     </Scroller>
