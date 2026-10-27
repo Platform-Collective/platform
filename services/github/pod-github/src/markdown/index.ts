@@ -13,10 +13,50 @@
 // limitations under the License.
 //
 
+import contact from '@hcengineering/contact'
 import { MarkupNode, jsonToMarkup, markupToJSON, htmlToJSON } from '@hcengineering/text'
 import { MarkdownParser, storeNodes, storeMarks, MarkdownState } from '@hcengineering/text-markdown'
 import { GithubKit } from './extensions'
 import { hasHulyLink, hasHulyLinkText } from '../sync/guest'
+
+function encodeCommentValue (value: string): string {
+  return encodeURIComponent(value).replace(/[-!~*'()]/g, (character) => {
+    return `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+  })
+}
+
+function restorePersonReferenceMarkdown (message: string, refUrl: string): string {
+  return message.replace(
+    /<!--huly-person-reference:id=([A-Za-z0-9%._~]+)&label=([A-Za-z0-9%._~]*)-->([\s\S]*?)<!--\/huly-person-reference-->/g,
+    (match, encodedId: string, encodedLabel: string, renderedLabel: string) => {
+      try {
+        const id = decodeURIComponent(encodedId)
+        const label = decodeURIComponent(encodedLabel)
+        const separator = refUrl.includes('?') ? '&' : '?'
+        const url = `${refUrl}${separator}_class=${encodeCommentValue(contact.class.Person)}&_id=${encodeCommentValue(id)}&label=${encodeCommentValue(label)}`
+        return `[${renderedLabel}](${url})`
+      } catch {
+        return match
+      }
+    }
+  )
+}
+
+const githubStoreNodes = {
+  ...storeNodes,
+  reference: (...args: Parameters<typeof storeNodes.reference>): void => {
+    const [state, node] = args
+    if (node.attrs?.objectclass === contact.class.Person) {
+      const id = String(node.attrs?.id ?? '')
+      const label = String(node.attrs?.label ?? '')
+      state.write(`<!--huly-person-reference:id=${encodeCommentValue(id)}&label=${encodeCommentValue(label)}-->`)
+      state.text(label, true)
+      state.write('<!--/huly-person-reference-->')
+      return
+    }
+    storeNodes.reference(...args)
+  }
+}
 
 /**
  * @public
@@ -41,7 +81,7 @@ export function parseMessageMarkdown (
   const parser = new MarkdownParser({ refUrl, imageUrl, htmlParser })
   parser.tokenizer.set({ linkify: true })
   parser.tokenizer.linkify.set({ fuzzyLink: false, fuzzyEmail: false })
-  const json = parser.parse(message ?? '')
+  const json = parser.parse(restorePersonReferenceMarkdown(message ?? '', refUrl))
   return json
 }
 
@@ -49,7 +89,7 @@ export function parseMessageMarkdown (
  * @public
  */
 export function serializeMessage (node: MarkupNode, refUrl: string, imageUrl: string): string {
-  const state = new MarkdownState(storeNodes, storeMarks, { tightLists: true, refUrl, imageUrl })
+  const state = new MarkdownState(githubStoreNodes, storeMarks, { tightLists: true, refUrl, imageUrl })
   state.renderContent(node)
   return state.out
 }
