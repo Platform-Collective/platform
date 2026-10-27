@@ -943,6 +943,79 @@ describe('optimistic create confirmation', () => {
     }
   })
 
+  it.each(['confirmation', 'edit'])(
+    'does not apply an early create to later queries after its %s while an earlier lookup is pending',
+    async (change) => {
+      const storage = await createClient(connect)
+      const liveQuery = new LiveQuery(storage)
+      try {
+        const project = factory.createTxCreateDoc(test.class.TestProject, core.space.Model, {
+          name: 'project',
+          description: '',
+          private: false,
+          archived: false,
+          members: [],
+          prjName: 'project'
+        })
+        await storage.tx(project)
+        const predicate = { createdOn: { $gt: 300 } }
+        const lookupOptions: FindOptions<AttachedComment> = {
+          lookup: { attachedTo: test.class.TestProject },
+          sort: { createdOn: SortingOrder.Ascending },
+          total: true
+        }
+        const plainOptions: FindOptions<AttachedComment> = { sort: { createdOn: SortingOrder.Ascending }, total: true }
+        // Registration order: the early create waits for the first query's lookup before the second query.
+        const withLookup = await subscribe(liveQuery, predicate, lookupOptions)
+        const plain = await subscribe(liveQuery, predicate, plainOptions)
+        const calls = [withLookup, plain].map((query) => query.callback.mock.calls.length)
+        const own = message('own', 500)
+        own.attributes.attachedTo = project.objectId
+        own.attributes.attachedToClass = test.class.TestProject
+        const started = deferred<undefined>()
+        const response = deferred<undefined>()
+        const lookupRead = liveQuery.findOne.bind(liveQuery)
+        const findOne = jest.spyOn(liveQuery, 'findOne').mockImplementationOnce(async (...args) => {
+          const result = await lookupRead(...args)
+          started.resolve(undefined)
+          await response.promise
+          return result
+        })
+        const early = liveQuery.tx(optimistic(own))
+        await started.promise
+        expect(findOne).toHaveBeenNthCalledWith(1, test.class.TestProject, { _id: project.objectId })
+        // The server time moves the create out of both queries.
+        const confirmed = confirmation(own, 100)
+        await storage.tx(confirmed)
+        if (change === 'confirmation') {
+          await liveQuery.tx(confirmed)
+        } else {
+          const edit = factory.createTxUpdateDoc(test.class.TestComment, own.objectSpace, own.objectId, {
+            message: 'edited'
+          })
+          edit.modifiedOn = 600
+          await storage.tx(edit)
+          await liveQuery.tx(edit)
+        }
+        response.resolve(undefined)
+        await early
+        for (const query of [withLookup, plain]) {
+          expect(query.result()).toHaveLength(0)
+          expect(query.result().total).toBe(0)
+        }
+        if (change === 'edit') {
+          await liveQuery.tx(confirmed)
+        }
+        expect(withLookup.result()).toEqual(await storage.findAll(test.class.TestComment, predicate, lookupOptions))
+        expect(plain.result()).toEqual(await storage.findAll(test.class.TestComment, predicate, plainOptions))
+        expect(withLookup.callback).toHaveBeenCalledTimes(calls[0])
+        expect(plain.callback).toHaveBeenCalledTimes(calls[1])
+      } finally {
+        await liveQuery.close()
+      }
+    }
+  )
+
   it.each(
     [undefined, false, true].flatMap((total) =>
       [undefined, 3].flatMap((limit) => ['edit', 'delete'].map((change) => ({ total, limit, change })))

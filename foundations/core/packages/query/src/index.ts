@@ -108,6 +108,11 @@ export class LiveQuery implements WithTx, Client {
 
   private readonly queriesToUpdate = new Map<number, Query>()
 
+  // Early creates still being applied to the registered queries, by document. A confirmation,
+  // an edit, a mixin or a removal settles one for every query, including queries it has not
+  // reached yet because an earlier query's lookup or search check was still pending.
+  private readonly earlyCreates = new Map<Ref<Doc>, { settled: boolean }>()
+
   private readonly refs = new Refs(() => this.getHierarchy())
 
   constructor (client: Client) {
@@ -729,6 +734,7 @@ export class LiveQuery implements WithTx, Client {
   }
 
   protected async txMixin (tx: TxMixin<Doc, Doc>, docCache: Map<string, Doc>): Promise<TxResult> {
+    this.settleEarlyCreate(tx.objectId)
     const hierarchy = this.client.getHierarchy()
 
     for (const queries of this.queries.entries()) {
@@ -791,6 +797,7 @@ export class LiveQuery implements WithTx, Client {
   }
 
   async txUpdateDoc (tx: TxUpdateDoc<Doc>, docCache: Map<string, Doc>): Promise<TxResult> {
+    this.settleEarlyCreate(tx.objectId)
     for (const queries of this.queries.entries()) {
       const isTx = this.client.getHierarchy().isDerived(queries[0], core.class.Tx)
       for (const q of queries[1].values()) {
@@ -1192,12 +1199,46 @@ export class LiveQuery implements WithTx, Client {
     ;(doc as WithLookup<Doc>).$lookup = result
   }
 
+  private settleEarlyCreate (_id: Ref<Doc>): void {
+    const early = this.earlyCreates.get(_id)
+    if (early !== undefined) {
+      early.settled = true
+      this.earlyCreates.delete(_id)
+    }
+  }
+
   protected async txCreateDoc (tx: TxCreateDoc<Doc>, docCache: Map<string, Doc>): Promise<TxResult> {
     const docTx = TxProcessor.createDoc2Doc(tx)
+    if (tx.meta?.isCreateConfirmation === true) {
+      this.settleEarlyCreate(docTx._id)
+    }
+    const early = tx.meta?.isOptimisticCreate === true ? { settled: false } : undefined
+    if (early !== undefined) {
+      this.earlyCreates.set(docTx._id, early)
+    }
+    try {
+      await this.applyCreateDoc(tx, docTx, docCache, early)
+    } finally {
+      if (early !== undefined && this.earlyCreates.get(docTx._id) === early) {
+        this.earlyCreates.delete(docTx._id)
+      }
+    }
+    return {}
+  }
+
+  private async applyCreateDoc (
+    tx: TxCreateDoc<Doc>,
+    docTx: Doc,
+    docCache: Map<string, Doc>,
+    early: { settled: boolean } | undefined
+  ): Promise<void> {
     let revision = this.transactionRevision
     for (const queries of this.queries.entries()) {
       const doc = this.client.getHierarchy().isDerived(queries[0], core.class.Tx) ? tx : docTx
+      // Once settled, the early create payload must not reach further queries or their lookups.
+      const settled = (): boolean => doc !== tx && early?.settled === true
       for (const q of queries[1].values()) {
+        if (settled()) continue
         if (
           doc !== tx &&
           tx.meta?.isOptimisticCreate === true &&
@@ -1223,12 +1264,12 @@ export class LiveQuery implements WithTx, Client {
             doc !== tx && tx.meta?.isOptimisticCreate === true
           )
         }
+        if (settled()) continue
 
         await this.handleDocAddLookup(q, doc)
         await this.handleDocAddRelation(q, doc)
       }
     }
-    return {}
   }
 
   private async reconcileCreate (q: Query, doc: Doc, docCache: Map<string, Doc>): Promise<void> {
@@ -1594,6 +1635,7 @@ export class LiveQuery implements WithTx, Client {
   }
 
   protected async txRemoveDoc (tx: TxRemoveDoc<Doc>, docCache: Map<string, Doc>): Promise<TxResult> {
+    this.settleEarlyCreate(tx.objectId)
     for (const queries of this.queries.entries()) {
       const isTx = this.client.getHierarchy().isDerived(queries[0], core.class.Tx)
       for (const q of queries[1].values()) {
