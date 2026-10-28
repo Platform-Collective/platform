@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import unicodeEmoji from 'emojibase-data/meta/unicode.json'
+import { emojiPresentationGroups } from './presentation-data'
 
 const emojiPresentation = new Map<string, string>()
-for (const emoji of unicodeEmoji) {
-  if (!emoji.includes('\uFE0F')) continue
-  const key = emoji.replace(/\uFE0F/g, '')
-  const current = emojiPresentation.get(key)
-  if (current === undefined || emoji.length > current.length) {
-    emojiPresentation.set(key, emoji)
+for (const [prefixes, suffixes] of emojiPresentationGroups) {
+  for (const prefix of prefixes.split(' ')) {
+    for (const suffix of suffixes) {
+      const emoji = prefix + suffix
+      emojiPresentation.set(emoji.replace(/\uFE0F/g, ''), emoji)
+    }
   }
 }
 
@@ -21,7 +21,7 @@ export function getEmojiCodePoints (emoji: string): number[] {
 }
 
 /**
- * Restore emoji presentation for legacy icon codepoints using the picker's emoji dataset.
+ * Restore emoji presentation for legacy icon codepoints using a compact lookup generated from the picker's emoji dataset.
  * Unknown sequences and explicit text presentation are preserved.
  * @public
  */

@@ -30,14 +30,13 @@
     ModernEditbox,
     TextArea,
     closePopup,
-    fromCodePoint,
     getPlatformColorDef,
     showPopup,
     themeStore
   } from '@hcengineering/ui'
   import { ColorsPopup, statusStore } from '@hcengineering/view-resources'
   import view from '@hcengineering/view-resources/src/plugin'
-  import emojiPlugin from '@hcengineering/emoji'
+  import emojiPlugin, { getEmojiFromCodePoints } from '@hcengineering/emoji'
   import { taskTypeStore, typeStore } from '../..'
   import task from '../../plugin'
   import ApproveStatusRenamePopup from './ApproveStatusRenamePopup.svelte'
@@ -442,7 +441,7 @@
           <Component
             is={emojiPlugin.component.EmojiPopup}
             props={{
-              selected: Array.isArray(color) ? fromCodePoint(...color) : color ? fromCodePoint(color) : undefined,
+              selected: icon === iconWithEmoji && color !== undefined ? getEmojiFromCodePoints(color) : undefined,
               disabled: readonly,
               kind: 'default'
             }}
