@@ -512,29 +512,31 @@ describe('OnWorkflowRuleMirror', () => {
     expect(res).toHaveLength(0)
   })
 
-  it('cross-group dispatcher scenario: pending map and modifiedOn refuse the older source', async () => {
+  it('cross-group dispatcher scenario: pending map + bumped emit modifiedOn end at the later target', async () => {
     // Michael's P1 scenario, reproduced exactly. Same single ruleset
     // (review -> done, inProgress -> inProgress). Starting counterpart
     // status is Backlog. Two social ids in one request. Whichever group
-    // the dispatcher runs first, the final sort-by-modifiedOn applied
-    // order must not perform Done -> InProgress regression.
+    // the dispatcher runs first, the final stable sort-by-modifiedOn
+    // applied order must not perform Done -> InProgress regression.
     //
     //  t=1000  social A  unmapped (no mapping entry)
     //  t=1001  social B  review -> done
     //  t=1002  social A  inProgress -> inProgress
     //
-    // Group-A-first: A emits at t=1002 with target InProgress, pending
-    // becomes {InProgress, 1002}. B then arrives with source modifiedOn
-    // 1001 which is < 1002, REFUSED. Final result: one emit, applied
-    // order Backlog -> InProgress.
+    // Group-A-first: A at t=1002 emits InProgress, pending becomes
+    // {InProgress, 1002}. B at t=1001 arrives older; emit modifiedOn is
+    // bumped to 1002, effective = InProgress, target = Done, forward
+    // (InProgress -> Done), emit at 1002, pending becomes {Done, 1002}.
+    // Combined emits (stable sorted by modifiedOn): [InProgress@1002,
+    // Done@1002]. Applied in insertion order: Backlog -> InProgress -> Done.
     //
-    // Group-B-first: B emits at t=1001 with target Done, pending becomes
-    // {Done, 1001}. A then arrives with t=1002 >= 1001, so A proceeds.
-    // Effective status is now Done; forwardMap[InProgress]=InProgress is
-    // a backward move Done -> InProgress with no allowedLoops. Regression
-    // guard blocks it. Final result: one emit, applied order Backlog -> Done.
+    // Group-B-first: B at t=1001 emits Done, pending becomes {Done, 1001}.
+    // A at t=1002 arrives newer; effective = Done; target = InProgress is
+    // a backward Done -> InProgress with no allowedLoops, regression
+    // guard blocks it. Only Done at 1001 emits. Applied: Backlog -> Done.
     //
-    // Either way, no Done -> InProgress regression ever applies.
+    // Either way, final counterpart status is Done; no Done -> InProgress
+    // regression ever applies.
     const r = rule({
       forwardMap: { [S.review]: S.done, [S.inProgress]: S.inProgress }
     })
@@ -569,12 +571,12 @@ describe('OnWorkflowRuleMirror', () => {
       controlTxes: sharedTxes
     })
     const resB = await OnWorkflowRuleMirror([txB], ctrlB1)
+    // Combine in dispatcher-visit order (A then B) and stable-sort by
+    // modifiedOn so equal-timestamp writes keep that order.
     const combined = [...resA, ...resB].sort((a: any, b: any) => a.modifiedOn - b.modifiedOn)
-    // After final sort by modifiedOn the applied sequence must be
-    // monotonic. If both InProgress (at 1002) and Done (at 1001) were
-    // emitted, the applied order would be [Done, InProgress] -> regression.
-    expect(combined).toHaveLength(1)
-    expect(combined[0]).toMatchObject({ operations: { status: S.inProgress } })
+    expect(combined).toHaveLength(2)
+    expect(combined[0]).toMatchObject({ operations: { status: S.inProgress }, modifiedOn: 1002 })
+    expect(combined[1]).toMatchObject({ operations: { status: S.done }, modifiedOn: 1002 })
 
     // Group-B-first
     const sharedCache2 = new Map<string, any>()
@@ -593,7 +595,7 @@ describe('OnWorkflowRuleMirror', () => {
       controlTxes: sharedTxes2
     })
     const resA2 = await OnWorkflowRuleMirror([txA1, txA2], ctrlA2)
-    const combined2 = [...resA2, ...resB2].sort((a: any, b: any) => a.modifiedOn - b.modifiedOn)
+    const combined2 = [...resB2, ...resA2].sort((a: any, b: any) => a.modifiedOn - b.modifiedOn)
     expect(combined2).toHaveLength(1)
     expect(combined2[0]).toMatchObject({ operations: { status: S.done } })
   })

@@ -96,11 +96,15 @@ interface PendingEntry {
  * holds `{status, modifiedOn}` entries so that:
  *   (a) equality and regression checks run against the queued target
  *       status rather than the stale persisted one, and
- *   (b) a source whose `modifiedOn` is less than or equal to the queued
- *       entry's `modifiedOn` is refused outright. Final application
- *       sorts derived writes by `modifiedOn`, so refusing an older
- *       source after a newer mirror is queued is what stops the sort
- *       from reversing the writes into a forbidden regression.
+ *   (b) when an older source arrives after a newer mirror is already
+ *       queued for the same counterpart, the emitted `modifiedOn` is
+ *       bumped up to the queued entry's `modifiedOn`. Final application
+ *       sorts derived writes by `modifiedOn` (stable), so the bump
+ *       keeps the applied order aligned with the order we checked, and
+ *       no forward move is silently dropped. A backward move against
+ *       the queued target is still refused by the regression guard,
+ *       which runs against the pending status rather than the stale
+ *       persisted one.
  * The map lives in `control.contextCache`, which the server pipeline
  * normally scopes to one root transaction (one request). Workspace
  * maintenance paths (notably `wrapPipeline()`) can share one
@@ -204,22 +208,18 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
       // stale persisted one. The pending map carries forward updates we
       // already queued for later application against the same target.
       const pending = pendingStatuses.get(counterpart._id)
-      // If a later mirror is already queued for this counterpart, refuse
-      // this one. The downstream derived-tx sort by `modifiedOn` would
-      // otherwise reorder the applied writes and let a regression through.
-      if (pending !== undefined && pending.modifiedOn >= updateTx.modifiedOn) {
-        control.ctx.info(
-          '[workflow-rules] mirror suppressed: later mirror already queued for counterpart',
-          {
-            ruleId: rule._id,
-            source: source._id,
-            counterpart: counterpart._id,
-            sourceModifiedOn: updateTx.modifiedOn,
-            pendingModifiedOn: pending.modifiedOn
-          }
-        )
-        continue
-      }
+      // Never emit earlier than the queued mirror. If an older source
+      // comes in after a newer one has been queued (dispatcher groups
+      // can arrive in any order), bump the emitted `modifiedOn` to the
+      // queued one. The downstream stable sort by `modifiedOn` then
+      // applies the writes in the order we checked, and no forward move
+      // is silently dropped. The equality + regression checks still run
+      // against `effectiveStatus = pending.status`, so an older source
+      // that would move backward from the queued target is still
+      // refused by the regression guard.
+      const emitOn = pending !== undefined && pending.modifiedOn > updateTx.modifiedOn
+        ? pending.modifiedOn
+        : updateTx.modifiedOn
       const effectiveStatus = pending?.status ?? counterpart.status
       if (effectiveStatus === target) continue
 
@@ -266,10 +266,10 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
           counterpart._id,
           { status: target },
           false,
-          updateTx.modifiedOn
+          emitOn
         )
       )
-      pendingStatuses.set(counterpart._id, { status: target, modifiedOn: updateTx.modifiedOn })
+      pendingStatuses.set(counterpart._id, { status: target, modifiedOn: emitOn })
     }
   }
   return result
