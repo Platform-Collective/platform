@@ -35,15 +35,17 @@ describe('emoji icon presentation', () => {
     }
   )
 
-  it.each([
-    [0x1f44d, 0x1f3fd],
-    [0x1f468, 0x200d, 0x1f469, 0x200d, 0x1f467],
-    [0x1f1ec, 0x1f1e7],
-    [0x1f3f4, 0xe0067, 0xe0062, 0xe0065, 0xe006e, 0xe0067, 0xe007f],
-    [0x2600, 0xfe0e],
-    [0x41],
-    []
-  ].map((codes) => ({ codes })))('preserves sequences without a matching emoji presentation: $codes', ({ codes }) => {
+  it.each(
+    [
+      [0x1f44d, 0x1f3fd],
+      [0x1f468, 0x200d, 0x1f469, 0x200d, 0x1f467],
+      [0x1f1ec, 0x1f1e7],
+      [0x1f3f4, 0xe0067, 0xe0062, 0xe0065, 0xe006e, 0xe0067, 0xe007f],
+      [0x2600, 0xfe0e],
+      [0x41],
+      []
+    ].map((codes) => ({ codes }))
+  )('preserves sequences without a matching emoji presentation: $codes', ({ codes }) => {
     const original = [...codes]
     expect(getEmojiFromCodePoints(codes)).toBe(String.fromCodePoint(...codes))
     expect(codes).toEqual(original)
@@ -52,8 +54,6 @@ describe('emoji icon presentation', () => {
   it('restores selectors inside legacy ZWJ and keycap sequences', () => {
     expect(getEmojiFromCodePoints([0x1f3f3, 0x200d, 0x1f308])).toBe('\u{1F3F3}\uFE0F\u200D\u{1F308}')
     expect(getEmojiFromCodePoints([0x31, 0x20e3])).toBe('1\uFE0F\u20E3')
-    expect(getEmojiFromCodePoints([0x1f3cb, 0x1f3fd, 0x200d, 0x2642])).toBe(
-      '\u{1F3CB}\u{1F3FD}\u200D\u2642\uFE0F'
-    )
+    expect(getEmojiFromCodePoints([0x1f3cb, 0x1f3fd, 0x200d, 0x2642])).toBe('\u{1F3CB}\u{1F3FD}\u200D\u2642\uFE0F')
   })
 })
