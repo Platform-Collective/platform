@@ -158,39 +158,52 @@ The trigger body:
    `control.ctx.contextData` channel so operators can see suppressed moves
    in the trace UI.
 8. Enforce target-side authorization before emitting a write. The derived
-   mirror update bypasses the ordinary space permission middleware, so the
-   trigger stands in for it:
-   - `tx.modifiedBy === core.account.System` is allowed up front
-     (server-authored writes, integrations). The session-level
-     `socialStringsToUsers` map omits system sessions, so this explicit
-     check runs before the role-based path or the branch is dead.
+   mirror update bypasses the ordinary space permission middleware, so
+   the trigger stands in for it. **Target-level checks run first and
+   apply to every caller including the system account and workspace
+   admins**: a missing target, an archived target, or a `restricted`
+   `TypedSpace` is refused unconditionally. After those pass, actor-level
+   allowance is checked:
+   - `tx.modifiedBy === core.account.System` is allowed (server-authored
+     writes, integrations). The session-level `socialStringsToUsers` map
+     omits system sessions, so this explicit check is needed.
    - Otherwise the acting account resolved from `socialStringsToUsers`
      must hold `AccountRole.Admin` or higher, OR be present in the target
      project's `members` or `owners`. Source-project membership alone is
      not sufficient.
    - The member/owner check is a strict first step. It is not identical
-     to the platform's full write rule (public spaces, restricted spaces,
-     per-role forbid permissions, archived targets). Tightening to the
-     full permission pipeline is a follow-up; the current rule refuses to
-     emit a cross-project write unless the actor is already in the
-     target's membership list.
-   - Rule management (who may create a rule on A that writes to B) has no
-     dedicated permission yet; the plugin ships disabled by default so an
-     Owner has to opt in via Settings > Configure before any rule fires.
+     to the platform's full write rule (public spaces where non-members
+     can write, role grants, role forbids). Tightening to the full
+     permission pipeline is a follow-up; the current rule refuses to
+     emit a cross-project write unless the actor is in the target's
+     membership list.
+   - Rule management (who may create a rule on A that writes to B) has
+     no dedicated permission yet; the plugin ships disabled by default
+     so an Owner has to opt in via Settings > Configure before any rule
+     fires.
 9. Emit `TxUpdateDoc<Issue>` via
    `control.txFactory.createTxUpdateDoc(..., tx.modifiedOn)`. Passing the
    source tx's `modifiedOn` lines up with how `OnIssueUpdate` already builds
    its chained updates (see `doTimeReportUpdate` in `server-plugins/tracker-resources/src/index.ts`),
    so the mirror does not look like it happened in the future.
-10. Transactions in a single invocation are evaluated in `modifiedOn` order,
-    matching the derived-tx sort in `foundations/server/packages/middleware/src/triggers.ts`.
-    A pending-status map retains the latest target status per counterpart
-    issue; equality and regression checks see the effective pending state
-    rather than the stale persisted one. The map lives in
-    `control.contextCache`, which the server pipeline scopes to one root
-    transaction (one request), so it survives across the per-group
-    invocations the trigger dispatcher produces when a single request
-    carries changes under more than one `modifiedBy`.
+10. Transactions in a single invocation are evaluated in `modifiedOn` order.
+    A pending-status map keyed by counterpart holds `{status, modifiedOn}`
+    entries so that:
+    (a) equality and regression checks run against the queued target
+        status rather than the stale persisted one, and
+    (b) a source whose `modifiedOn` is less than or equal to the queued
+        entry's `modifiedOn` is refused outright. Final application sorts
+        derived writes by `modifiedOn` in
+        `foundations/server/packages/middleware/src/triggers.ts`, so
+        refusing an older source after a newer mirror is queued is what
+        stops the sort from reversing the applied order into a forbidden
+        regression.
+    The map lives in `control.contextCache`, which the server pipeline
+    normally scopes to one root transaction (one request). Workspace
+    paths (notably `wrapPipeline()`) can share one `SessionData` across
+    successive `pipeline.tx()` calls, so the trigger stamps a sentinel
+    with the current `control.txes` reference on entry and clears the
+    per-request maps when that identity has changed.
 11. The whole trigger is a no-op unless the plugin's `PluginConfiguration`
     row has `enabled: true`. Missing, malformed, or unreadable config
     fails closed. The feature ships disabled in `models/all`; an Owner

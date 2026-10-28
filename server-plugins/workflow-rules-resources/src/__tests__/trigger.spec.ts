@@ -91,6 +91,16 @@ function project (over: Any = {}): Any {
   }
 }
 
+function projectA (over: Any = {}): Any {
+  return {
+    _id: PROJ_A,
+    _class: tracker.class.Project,
+    members: [ACC_MEMBER],
+    owners: [],
+    ...over
+  }
+}
+
 /** Compact helper for the common "parent in A + child in B linked to it" fixture. */
 function linkedPair (childOver: Any = {}): Any[] {
   return [
@@ -115,6 +125,11 @@ interface WorldOptions {
   pluginEnabled?: boolean
   pluginConfigs?: Any[]
   contextCache?: Map<string, any>
+  // Identity for `control.txes`. Two makeControl calls that pass the
+  // SAME array simulate the dispatcher calling the trigger twice within
+  // one request; two calls with different arrays simulate a wrapPipeline
+  // reuse across two requests.
+  controlTxes?: any[]
   authAccount?: AccountUuid
   authRole?: AccountRole
   modifiedBySocial?: string
@@ -178,6 +193,11 @@ function makeControl (opts: WorldOptions = {}): any {
     }
   }
 
+  // Factory stamp. The real TxFactory is constructed per invocation with
+  // the group's modifiedBy, and the real control.txes may change across
+  // invocations. For tests we pin modifiedBy to SOC_MEMBER so replays
+  // through the trigger reach the DerivedTx space check (and are stopped
+  // there) rather than being incidentally blocked by authorization.
   const txFactory = {
     createTxUpdateDoc: (
       _cls: any,
@@ -188,12 +208,14 @@ function makeControl (opts: WorldOptions = {}): any {
       modifiedOn: number
     ): any => ({
       _class: core.class.TxUpdateDoc,
+      _id: `derived-${objectId}-${modifiedOn}`,
       space: core.space.DerivedTx,
       objectClass: _cls,
       objectSpace: space,
       objectId,
       operations,
-      modifiedOn
+      modifiedOn,
+      modifiedBy: SOC_MEMBER
     })
   }
 
@@ -210,8 +232,11 @@ function makeControl (opts: WorldOptions = {}): any {
   // Per-root-tx (per-request) store. Shared across invocations within one
   // request by passing the same Map in via opts.contextCache.
   const contextCache = opts.contextCache ?? new Map<string, any>()
+  // Request identity. The trigger uses `control.txes` reference equality
+  // to detect a new request on a reused `SessionData` (wrapPipeline case).
+  const txes = opts.controlTxes ?? []
 
-  return { ctx, findAll, modelDb, txFactory, hierarchy, contextCache }
+  return { ctx, findAll, modelDb, txFactory, hierarchy, contextCache, txes }
 }
 
 describe('OnWorkflowRuleMirror', () => {
@@ -396,6 +421,48 @@ describe('OnWorkflowRuleMirror', () => {
     expect(res).toHaveLength(0)
   })
 
+  it('refuses to mirror onto an archived target even for an Admin', async () => {
+    const control = makeControl({
+      issues: linkedPair(),
+      rules: [rule()],
+      projects: [project({ archived: true })]
+    })
+
+    const res = await OnWorkflowRuleMirror(
+      [updateTx(S.review, { modifiedBy: SOC_ADMIN })],
+      control
+    )
+    expect(res).toHaveLength(0)
+  })
+
+  it('refuses to mirror onto an archived target even for the system account', async () => {
+    const control = makeControl({
+      issues: linkedPair(),
+      rules: [rule()],
+      projects: [project({ archived: true })]
+    })
+
+    const res = await OnWorkflowRuleMirror(
+      [updateTx(S.review, { modifiedBy: core.account.System })],
+      control
+    )
+    expect(res).toHaveLength(0)
+  })
+
+  it('refuses to mirror onto a restricted TypedSpace', async () => {
+    const control = makeControl({
+      issues: linkedPair(),
+      rules: [rule()],
+      projects: [project({ restricted: true })]
+    })
+
+    const res = await OnWorkflowRuleMirror(
+      [updateTx(S.review, { modifiedBy: SOC_ADMIN })],
+      control
+    )
+    expect(res).toHaveLength(0)
+  })
+
   it('is a no-op when the plugin is disabled via PluginConfiguration', async () => {
     const control = makeControl({
       issues: linkedPair(),
@@ -418,38 +485,158 @@ describe('OnWorkflowRuleMirror', () => {
     expect(res).toHaveLength(0)
   })
 
-  it('pending map carries across two invocations in one request (dispatcher grouping)', async () => {
-    // Simulates how the server dispatcher groups by modifiedBy: one request,
-    // one shared contextCache, but two invocations - one for each social id.
-    // The first invocation queues Done; the second must see that queued state
-    // and refuse the backward InProgress mirror.
-    const r1 = rule({ _id: 'rule:to-done', forwardMap: { [S.review]: S.done } })
-    const r2 = rule({ _id: 'rule:to-ip', forwardMap: { [S.review]: S.inProgress } })
+  it('is a no-op when more than one PluginConfiguration row is present', async () => {
+    const control = makeControl({
+      issues: linkedPair(),
+      rules: [rule()],
+      pluginConfigs: [
+        { _id: 'pc:1', _class: core.class.PluginConfiguration, pluginId: workflowRulesId, enabled: true },
+        { _id: 'pc:2', _class: core.class.PluginConfiguration, pluginId: workflowRulesId, enabled: true }
+      ]
+    })
+
+    const res = await OnWorkflowRuleMirror([updateTx(S.review)], control)
+    expect(res).toHaveLength(0)
+  })
+
+  it('is a no-op when the enabled field is not strictly boolean true', async () => {
+    const control = makeControl({
+      issues: linkedPair(),
+      rules: [rule()],
+      pluginConfigs: [
+        { _id: 'pc:1', _class: core.class.PluginConfiguration, pluginId: workflowRulesId, enabled: 'yes' as any }
+      ]
+    })
+
+    const res = await OnWorkflowRuleMirror([updateTx(S.review)], control)
+    expect(res).toHaveLength(0)
+  })
+
+  it('cross-group dispatcher scenario: pending map and modifiedOn refuse the older source', async () => {
+    // Michael's P1 scenario, reproduced exactly. Same single ruleset
+    // (review -> done, inProgress -> inProgress). Starting counterpart
+    // status is Backlog. Two social ids in one request. Whichever group
+    // the dispatcher runs first, the final sort-by-modifiedOn applied
+    // order must not perform Done -> InProgress regression.
+    //
+    //  t=1000  social A  unmapped (no mapping entry)
+    //  t=1001  social B  review -> done
+    //  t=1002  social A  inProgress -> inProgress
+    //
+    // Group-A-first: A emits at t=1002 with target InProgress, pending
+    // becomes {InProgress, 1002}. B then arrives with source modifiedOn
+    // 1001 which is < 1002, REFUSED. Final result: one emit, applied
+    // order Backlog -> InProgress.
+    //
+    // Group-B-first: B emits at t=1001 with target Done, pending becomes
+    // {Done, 1001}. A then arrives with t=1002 >= 1001, so A proceeds.
+    // Effective status is now Done; forwardMap[InProgress]=InProgress is
+    // a backward move Done -> InProgress with no allowedLoops. Regression
+    // guard blocks it. Final result: one emit, applied order Backlog -> Done.
+    //
+    // Either way, no Done -> InProgress regression ever applies.
+    const r = rule({
+      forwardMap: { [S.review]: S.done, [S.inProgress]: S.inProgress }
+    })
+    const sharedCache = new Map<string, any>()
+    const sharedTxes: any[] = []
+
+    const txA1 = updateTx('status:unmapped' as any, {
+      modifiedBy: SOC_MEMBER,
+      modifiedOn: 1000
+    })
+    const txA2 = updateTx(S.inProgress, {
+      modifiedBy: SOC_MEMBER,
+      modifiedOn: 1002
+    })
+    const txB = updateTx(S.review, {
+      modifiedBy: SOC_ADMIN,
+      modifiedOn: 1001
+    })
+
+    // Group-A-first
+    const ctrlA1 = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [r],
+      contextCache: sharedCache,
+      controlTxes: sharedTxes
+    })
+    const resA = await OnWorkflowRuleMirror([txA1, txA2], ctrlA1)
+    const ctrlB1 = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [r],
+      contextCache: sharedCache,
+      controlTxes: sharedTxes
+    })
+    const resB = await OnWorkflowRuleMirror([txB], ctrlB1)
+    const combined = [...resA, ...resB].sort((a: any, b: any) => a.modifiedOn - b.modifiedOn)
+    // After final sort by modifiedOn the applied sequence must be
+    // monotonic. If both InProgress (at 1002) and Done (at 1001) were
+    // emitted, the applied order would be [Done, InProgress] -> regression.
+    expect(combined).toHaveLength(1)
+    expect(combined[0]).toMatchObject({ operations: { status: S.inProgress } })
+
+    // Group-B-first
+    const sharedCache2 = new Map<string, any>()
+    const sharedTxes2: any[] = []
+    const ctrlB2 = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [r],
+      contextCache: sharedCache2,
+      controlTxes: sharedTxes2
+    })
+    const resB2 = await OnWorkflowRuleMirror([txB], ctrlB2)
+    const ctrlA2 = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [r],
+      contextCache: sharedCache2,
+      controlTxes: sharedTxes2
+    })
+    const resA2 = await OnWorkflowRuleMirror([txA1, txA2], ctrlA2)
+    const combined2 = [...resA2, ...resB2].sort((a: any, b: any) => a.modifiedOn - b.modifiedOn)
+    expect(combined2).toHaveLength(1)
+    expect(combined2[0]).toMatchObject({ operations: { status: S.done } })
+  })
+
+  it('resets its per-request maps when control.txes identity changes (wrapPipeline reuse)', async () => {
+    // wrapPipeline reuses one SessionData across successive pipeline.tx()
+    // calls, so the contextCache is reused too. The trigger must reset
+    // its per-request maps when the request identity changes, or a
+    // mirror queued in request 1 would still block an unrelated move in
+    // request 2.
+    const r = rule({ forwardMap: { [S.review]: S.done, [S.todo]: S.todo } })
     const sharedCache = new Map<string, any>()
 
-    const controlA = makeControl({
+    // Request 1: different `txes` array. Queues Done at t=1000.
+    const req1Txes: any[] = []
+    const ctrl1 = makeControl({
       issues: linkedPair({ status: S.backlog }),
-      rules: [r1],
-      contextCache: sharedCache
+      rules: [r],
+      contextCache: sharedCache,
+      controlTxes: req1Txes
     })
-    const resA = await OnWorkflowRuleMirror(
-      [updateTx(S.review, { modifiedBy: SOC_MEMBER, modifiedOn: 1000 })],
-      controlA
+    const res1 = await OnWorkflowRuleMirror(
+      [updateTx(S.review, { modifiedOn: 1000 })],
+      ctrl1
     )
-    expect(resA).toHaveLength(1)
-    expect(resA[0]).toMatchObject({ operations: { status: S.done } })
+    expect(res1).toHaveLength(1)
 
-    // Second invocation (different social id, same request) reuses the cache.
-    const controlB = makeControl({
+    // Request 2: NEW `txes` array. The pending map from request 1 would
+    // otherwise force the comparison "pending.modifiedOn 1000 >= source
+    // 500" and refuse this unrelated move. The trigger must reset.
+    const req2Txes: any[] = []
+    const ctrl2 = makeControl({
       issues: linkedPair({ status: S.backlog }),
-      rules: [r2],
-      contextCache: sharedCache
+      rules: [r],
+      contextCache: sharedCache,
+      controlTxes: req2Txes
     })
-    const resB = await OnWorkflowRuleMirror(
-      [updateTx(S.review, { modifiedBy: SOC_ADMIN, modifiedOn: 1001 })],
-      controlB
+    const res2 = await OnWorkflowRuleMirror(
+      [updateTx(S.todo, { modifiedOn: 500 })],
+      ctrl2
     )
-    expect(resB).toHaveLength(0)
+    expect(res2).toHaveLength(1)
+    expect(res2[0]).toMatchObject({ operations: { status: S.todo } })
   })
 
   it('sorts input by modifiedOn even when supplied in reverse order', async () => {
@@ -478,8 +665,12 @@ describe('OnWorkflowRuleMirror', () => {
   it('reciprocal non-convergent rules terminate because the mirror is a DerivedTx', async () => {
     // A->B maps review -> done, B->A maps done -> review. Without the
     // DerivedTx-space check, the mirror onto B would fire the trigger on
-    // the mirror onto A and back forever. With it, each invocation sees
-    // exactly its own source and the derived output never re-enters.
+    // the mirror onto A and back forever. The fixture is deliberately
+    // generous so every OTHER guard would pass on a replay: Project A
+    // exists with SOC_MEMBER in members, the mock txFactory stamps
+    // modifiedBy = SOC_MEMBER on derived outputs, and the counterpart
+    // resolver has a valid parentIssue path. The ONLY thing that stops
+    // the loop is the DerivedTx-space short circuit.
     const forward = rule({ _id: 'rule:a-to-b', forwardMap: { [S.review]: S.done } })
     const reverse = rule({
       _id: 'rule:b-to-a',
@@ -490,16 +681,35 @@ describe('OnWorkflowRuleMirror', () => {
     })
     const control = makeControl({
       issues: linkedPair({ status: S.backlog }),
-      rules: [forward, reverse]
+      rules: [forward, reverse],
+      // Both target projects exist with SOC_MEMBER membership so authz
+      // on the replay would otherwise succeed.
+      projects: [projectA(), project()]
     })
 
     const res = await OnWorkflowRuleMirror([updateTx(S.review)], control)
-    // Only the forward mirror fires. The derived update space is DerivedTx
-    // so a replay through the trigger emits nothing.
     expect(res).toHaveLength(1)
     expect(res[0]).toMatchObject({ operations: { status: S.done } })
+    // Replay the derived output through the trigger. Only the DerivedTx
+    // space short-circuit should stop it; everything else is set up to
+    // pass.
     const replay = await OnWorkflowRuleMirror(res, control)
     expect(replay).toHaveLength(0)
+
+    // Sanity: if we strip the DerivedTx space from the "mirror" and
+    // feed it as if it were an ordinary user write, the reverse rule
+    // DOES fire. That proves the fixture would otherwise cascade and
+    // the only reason it does not is the trigger's own DerivedTx check.
+    const asOrdinary = res.map((t: any) => ({ ...t, space: core.space.Tx }))
+    const sharedCache = new Map<string, any>()
+    const freshCtrl = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [forward, reverse],
+      projects: [projectA(), project()],
+      contextCache: sharedCache
+    })
+    const forcedReplay = await OnWorkflowRuleMirror(asOrdinary, freshCtrl)
+    expect(forcedReplay).toHaveLength(1)
   })
 
   it('an allowedLoops entry naming a status not in the TaskType is still blocked', async () => {

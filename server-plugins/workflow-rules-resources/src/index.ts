@@ -28,14 +28,33 @@ import { isRegression } from './logic'
 export { isRegression } from './logic'
 
 /**
- * Cache keys for `control.contextCache` (scoped to one root tx = one
- * request). The dispatcher groups txes by `modifiedBy` and calls the
- * trigger once per group, so stashing per-request state here lets a
- * later invocation see what an earlier one queued, which the
- * cross-group regression guard relies on.
+ * Cache keys for `control.contextCache`. The pipeline normally scopes
+ * this map to one root transaction (one request), so stashing
+ * per-request state here lets a later invocation see what an earlier
+ * one queued. Some workspace maintenance paths (notably
+ * `wrapPipeline()`) deliberately reuse the `SessionData` across
+ * successive `pipeline.tx()` calls; to stay correct on those paths the
+ * trigger also stamps a sentinel at `REQUEST_SENTINEL_KEY` with the
+ * current `control.txes` reference and clears the maps on entry when
+ * that identity changes.
  */
 const PENDING_STATUS_CACHE_KEY = 'workflow-rules.pendingStatuses'
 const AUTHZ_CACHE_KEY = 'workflow-rules.targetSpaceAuthz'
+const REQUEST_SENTINEL_KEY = 'workflow-rules.requestSentinel'
+
+/**
+ * One entry in the pending-status map. `modifiedOn` is the source tx
+ * `modifiedOn` under which the queued mirror was emitted. A later
+ * decision for the same counterpart compares its own `modifiedOn`
+ * against this; a source whose `modifiedOn` is less than or equal to
+ * the queued one is refused, because the downstream derived-tx sort by
+ * `modifiedOn` would otherwise reorder the applied writes and let a
+ * regression through.
+ */
+interface PendingEntry {
+  status: Ref<IssueStatus>
+  modifiedOn: number
+}
 
 /**
  * Trigger body for `OnWorkflowRuleMirror`. Fires on `TxUpdateDoc` whose
@@ -57,28 +76,37 @@ const AUTHZ_CACHE_KEY = 'workflow-rules.targetSpaceAuthz'
  *
  * Authorization. The derived mirror update bypasses the ordinary space
  * permission middleware, so this trigger enforces authorization itself
- * before emitting a write. The tx must have been authored by the system
- * account, OR the acting account resolved from `socialStringsToUsers`
- * must hold `AccountRole.Admin`, OR be a member or owner of the target
- * project. Source-project membership alone is not sufficient. The rule
- * management side (who may create a rule on project A that writes to B)
- * is out of scope for the trigger today: the kill switch in
- * `models/all/src/index.ts` ships the plugin disabled, so an Owner has to
- * opt in via Settings > Configure before any rule fires. A dedicated
- * rule-management permission is tracked as a follow-up.
+ * before emitting a write. Target-level checks run first and apply to
+ * every caller including the system account and workspace admins: a
+ * missing target, an archived target, or a `restricted` TypedSpace is
+ * refused unconditionally. After those pass, the actor is accepted when
+ * the tx was authored by the system account, OR the acting account
+ * resolved from `socialStringsToUsers` holds `AccountRole.Admin` or
+ * higher, OR is a member or owner of the target. Source-project
+ * membership alone is not sufficient. The rule management side (who may
+ * create a rule on project A that writes to B) is out of scope for the
+ * trigger today: the kill switch in `models/all/src/index.ts` ships the
+ * plugin disabled, so an Owner has to opt in via Settings > Configure
+ * before any rule fires. A dedicated rule-management permission and
+ * full permission-pipeline integration (role grants, forbids) are
+ * tracked as a follow-up.
  *
- * Conflict ordering. Transactions in a single invocation are evaluated in
- * `modifiedOn` order, matching the derived-tx sort downstream in
- * `triggers.ts`. A pending-status map retains the latest target status per
- * counterpart issue so equality and regression checks see the effective
- * pending state rather than the stale persisted one. The map lives in
- * `control.contextCache`, which is scoped to one root transaction (one
- * request) by the server pipeline, so it survives across the per-group
- * invocations the trigger dispatcher produces when transactions in one
- * request are authored by different social ids. A request with changes
- * under two social ids targeting the same counterpart can no longer slip
- * a forbidden regression past the guard: the second invocation reads the
- * queued target status written by the first.
+ * Conflict ordering. Transactions in a single invocation are evaluated
+ * in `modifiedOn` order. A pending-status map keyed by counterpart
+ * holds `{status, modifiedOn}` entries so that:
+ *   (a) equality and regression checks run against the queued target
+ *       status rather than the stale persisted one, and
+ *   (b) a source whose `modifiedOn` is less than or equal to the queued
+ *       entry's `modifiedOn` is refused outright. Final application
+ *       sorts derived writes by `modifiedOn`, so refusing an older
+ *       source after a newer mirror is queued is what stops the sort
+ *       from reversing the writes into a forbidden regression.
+ * The map lives in `control.contextCache`, which the server pipeline
+ * normally scopes to one root transaction (one request). Workspace
+ * maintenance paths (notably `wrapPipeline()`) can share one
+ * `SessionData` across successive `pipeline.tx()` calls, so on entry
+ * the trigger stamps the current `control.txes` reference as a sentinel
+ * and clears the per-request maps if that identity has changed.
  *
  * Plugin enable. If the `PluginConfiguration` row for this plugin is
  * disabled in the workspace model, the whole trigger is a no-op. The
@@ -90,13 +118,23 @@ const AUTHZ_CACHE_KEY = 'workflow-rules.targetSpaceAuthz'
 export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
   if (!isPluginEnabled(control)) return []
 
+  // The context cache is normally per-root-tx. Some workspace paths
+  // reuse the SessionData across pipeline.tx() calls, so reset the
+  // request-scoped maps when the `control.txes` identity changes.
+  const requestSentinel = control.txes
+  if (control.contextCache.get(REQUEST_SENTINEL_KEY) !== requestSentinel) {
+    control.contextCache.delete(PENDING_STATUS_CACHE_KEY)
+    control.contextCache.delete(AUTHZ_CACHE_KEY)
+    control.contextCache.set(REQUEST_SENTINEL_KEY, requestSentinel)
+  }
+
   const sorted = [...txes].sort((a, b) => a.modifiedOn - b.modifiedOn)
   const result: Tx[] = []
-  // `control.contextCache` is per root tx (per request); the dispatcher
-  // calls this trigger once per `modifiedBy` group but all groups within
-  // one request share the same cache, so queueing a pending target
-  // status here is seen by every subsequent invocation.
-  const pendingStatuses: Map<Ref<Issue>, Ref<IssueStatus>> =
+  // Per-request pending-status map. The dispatcher calls this trigger
+  // once per `modifiedBy` group but all groups within one request share
+  // this cache, so queueing a pending target here is seen by every
+  // subsequent invocation.
+  const pendingStatuses: Map<Ref<Issue>, PendingEntry> =
     control.contextCache.get(PENDING_STATUS_CACHE_KEY) ?? new Map()
   control.contextCache.set(PENDING_STATUS_CACHE_KEY, pendingStatuses)
   // Keyed by actor+space on purpose. Upstream groups txes by modifiedBy
@@ -165,7 +203,24 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
       // Evaluate against the pending status for this counterpart, not the
       // stale persisted one. The pending map carries forward updates we
       // already queued for later application against the same target.
-      const effectiveStatus = pendingStatuses.get(counterpart._id) ?? counterpart.status
+      const pending = pendingStatuses.get(counterpart._id)
+      // If a later mirror is already queued for this counterpart, refuse
+      // this one. The downstream derived-tx sort by `modifiedOn` would
+      // otherwise reorder the applied writes and let a regression through.
+      if (pending !== undefined && pending.modifiedOn >= updateTx.modifiedOn) {
+        control.ctx.info(
+          '[workflow-rules] mirror suppressed: later mirror already queued for counterpart',
+          {
+            ruleId: rule._id,
+            source: source._id,
+            counterpart: counterpart._id,
+            sourceModifiedOn: updateTx.modifiedOn,
+            pendingModifiedOn: pending.modifiedOn
+          }
+        )
+        continue
+      }
+      const effectiveStatus = pending?.status ?? counterpart.status
       if (effectiveStatus === target) continue
 
       const regressed = await checkRegressionGuard(
@@ -214,7 +269,7 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
           updateTx.modifiedOn
         )
       )
-      pendingStatuses.set(counterpart._id, target)
+      pendingStatuses.set(counterpart._id, { status: target, modifiedOn: updateTx.modifiedOn })
     }
   }
   return result
@@ -227,19 +282,20 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
  * also creates one at model-build time, so a healthy workspace always
  * has exactly one row for this plugin.
  *
- * Fails closed. Missing row, zero rows, any row with `enabled !== true`,
- * malformed data, or a lookup error all return `false` and the trigger
- * emits nothing. The feature ships disabled in `models/all` and a
- * workspace Owner has to opt in via Configure; a safeguard that treated
- * "no row" as "enabled" would weaken that default.
+ * Fails closed. Returns `false` unless the lookup finds exactly one row
+ * for this plugin and that row's `enabled` is strictly `true`. Zero
+ * rows, more than one row, any row where `enabled !== true`, malformed
+ * data, or a lookup error all return `false` and the trigger emits
+ * nothing. The feature ships disabled in `models/all` and a workspace
+ * Owner has to opt in via Configure.
  */
 function isPluginEnabled (control: TriggerControl): boolean {
   try {
     const configs = control.modelDb.findAllSync(core.class.PluginConfiguration, {
       pluginId: workflowRulesId
     }) as PluginConfiguration[]
-    if (configs.length === 0) return false
-    return configs.every((c) => c.enabled === true)
+    if (configs.length !== 1) return false
+    return configs[0].enabled === true
   } catch (e) {
     control.ctx.warn('[workflow-rules] could not read PluginConfiguration, failing closed', { error: String(e) })
     return false
@@ -251,29 +307,35 @@ function isPluginEnabled (control: TriggerControl): boolean {
  * derived mirror update does not go through the ordinary space permission
  * middleware, so this check stands in for it.
  *
- * Allowed when:
- *  - the tx was authored by the system account (server-side writes,
- *    integrations). `tx.modifiedBy === core.account.System` is the
- *    authoritative check; the session-level `socialStringsToUsers` map
- *    skips system sessions so a role-based check never fires for them.
- *  - the acting account holds `AccountRole.Admin` or higher.
- *  - the acting account is a member or owner of the target Space.
+ * Target-first order. The target space is looked up before any actor
+ * shortcut, so these refusals apply to every caller including the system
+ * account and workspace admins:
+ *  - target does not exist,
+ *  - `archived === true` (nobody writes to an archived project),
+ *  - `restricted === true` on a `TypedSpace` (this trigger does not yet
+ *    evaluate role grants or forbids; a restricted target is refused
+ *    until the full permission pipeline integration lands in the
+ *    follow-up PR).
+ *
+ * Actor-level allowance (only reached after the target checks pass):
+ *  - `tx.modifiedBy === core.account.System` (server-side writes,
+ *    integrations). This is checked explicitly because the session map
+ *    skips system sessions.
+ *  - the acting account resolved from `socialStringsToUsers` holds
+ *    `AccountRole.Admin` or higher.
+ *  - the acting account is a member or owner of the target.
  *
  * Fails closed when a non-system acting account cannot be resolved from
- * the social id. Results are memoized by `actor + space` for the duration
- * of one invocation so a batch of transactions on one source does not
- * re-fetch the same Space document per rule.
+ * the social id. Results are memoized by `actor + space`; the target
+ * lookup is memoized by `space` so a batch of transactions on one source
+ * does not re-fetch the same Space document per rule.
  *
- * The member/owner check is deliberately a strict first step. Archived
- * targets are refused outright. For a public Space a non-member could
- * normally write; this trigger still refuses because the actor is not
- * in the target's membership list. For a `restricted` TypedSpace or a
- * role with a forbid permission the member list can be looser than the
- * actual write rule; this trigger does not consult role grants or
- * forbids, so a non-admin member of a restricted target still passes
- * here even if the real pipeline would refuse the write. Tightening the
- * match to the full permission pipeline (role grants, forbids) is a
- * follow-up tracked alongside the dedicated rule-management permission.
+ * The member/owner check is deliberately a strict first step. For a
+ * public Space a non-member could normally write; this trigger still
+ * refuses because the actor is not in the target's membership list.
+ * Full permission-pipeline integration (role grants, forbids, non-member
+ * writes to public spaces) is a follow-up tracked alongside the
+ * dedicated rule-management permission.
  */
 async function isAuthorizedForTarget (
   control: TriggerControl,
@@ -281,10 +343,32 @@ async function isAuthorizedForTarget (
   targetSpace: Ref<Space>,
   cache: Map<string, boolean>
 ): Promise<boolean> {
-  // System-authored writes (server integrations) are allowed before
-  // consulting the session map because the session map builder omits
-  // system sessions, so this check must come first or the branch is
-  // dead.
+  // Target-first checks. Any caller - system, admin, or ordinary user -
+  // is refused if the target doesn't exist, is archived, or is a
+  // restricted TypedSpace that this trigger isn't yet equipped to
+  // authorize fully. Cache by space so the lookup only runs once per
+  // target per request.
+  const targetKey = `__space:${targetSpace}`
+  const cachedTarget = cache.get(targetKey)
+  if (cachedTarget === false) return false
+  if (cachedTarget === undefined) {
+    const [target] = await control.findAll(
+      control.ctx,
+      tracker.class.Project,
+      { _id: targetSpace as Ref<Project> },
+      { limit: 1 }
+    )
+    const targetOk =
+      target !== undefined &&
+      target.archived !== true &&
+      (target as unknown as { restricted?: boolean }).restricted !== true
+    cache.set(targetKey, targetOk)
+    if (!targetOk) return false
+  }
+
+  // Fetch target details for the member/owner check. One extra findAll
+  // in the uncached-member path is tolerable; the cache key above guards
+  // against re-querying for every rule within one request.
   if (modifiedBy === core.account.System) return true
 
   const sessionData = control.ctx.contextData
@@ -312,11 +396,6 @@ async function isAuthorizedForTarget (
     { limit: 1 }
   )
   if (target === undefined) {
-    cache.set(cacheKey, false)
-    return false
-  }
-  // Archived target: nobody writes.
-  if (target.archived === true) {
     cache.set(cacheKey, false)
     return false
   }
