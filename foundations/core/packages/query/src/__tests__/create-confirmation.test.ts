@@ -17,6 +17,7 @@ import core, {
   type TxCUD
 } from '@hcengineering/core'
 import { LiveQuery } from '..'
+import { isOptimisticCreate } from '../optimistic'
 import { connect } from './connection'
 import { type AttachedComment, test } from './minmodel'
 
@@ -1015,6 +1016,99 @@ describe('optimistic create confirmation', () => {
         expect(plain.result()).toEqual(await storage.findAll(test.class.TestComment, predicate, plainOptions))
         expect(withLookup.callback).toHaveBeenCalledTimes(calls[0])
         expect(plain.callback).toHaveBeenCalledTimes(calls[1])
+      } finally {
+        await liveQuery.close()
+      }
+    }
+  )
+
+  it.each([
+    { change: 'still matches', rename: false },
+    { change: 'no longer matches', rename: true }
+  ])(
+    'applies the server copy when the early lookup finishes during the confirmation lookup ($change)',
+    async ({ rename }) => {
+      const storage = await createClient(connect)
+      const liveQuery = new LiveQuery(storage)
+      try {
+        const [ownProject, peerProject] = ['own', 'peer'].map((name) =>
+          factory.createTxCreateDoc(test.class.TestProject, core.space.Model, {
+            name,
+            description: '',
+            private: false,
+            archived: false,
+            members: [],
+            prjName: 'shown'
+          })
+        )
+        await storage.tx(ownProject)
+        await storage.tx(peerProject)
+        const peer = message('peer', 450)
+        peer.attributes.attachedTo = peerProject.objectId
+        peer.attributes.attachedToClass = test.class.TestProject
+        await storage.tx(peer)
+        const predicate = { '$lookup.attachedTo.prjName': 'shown' }
+        const options: FindOptions<AttachedComment> = {
+          lookup: { attachedTo: test.class.TestProject },
+          sort: { createdOn: SortingOrder.Ascending },
+          total: true
+        }
+        const query = await subscribe(liveQuery, predicate, options)
+        const own = message('own', 500)
+        own.attributes.attachedTo = ownProject.objectId
+        own.attributes.attachedToClass = test.class.TestProject
+        // Hold the early lookup and the confirmation lookup independently, each after its read.
+        const holds = [0, 1].map(() => ({ started: deferred<undefined>(), response: deferred<undefined>() }))
+        let held = 0
+        const lookupRead = liveQuery.findOne.bind(liveQuery)
+        jest.spyOn(liveQuery, 'findOne').mockImplementation(async (...args) => {
+          const result = await lookupRead(...args)
+          const hold = args[1]._id === ownProject.objectId ? holds[held++] : undefined
+          if (hold !== undefined) {
+            hold.started.resolve(undefined)
+            await hold.response.promise
+          }
+          return result
+        })
+        const early = liveQuery.tx(optimistic(own))
+        await holds[0].started.promise
+        if (rename) {
+          // The project leaves the query predicate after the early lookup has read it.
+          const renamed = factory.createTxUpdateDoc(test.class.TestProject, core.space.Model, ownProject.objectId, {
+            prjName: 'hidden'
+          })
+          await storage.tx(renamed)
+          await liveQuery.tx(renamed)
+        }
+        const calls = query.callback.mock.calls.length
+        const confirmed = confirmation(own, 400)
+        await storage.tx(confirmed)
+        const confirming = liveQuery.tx(confirmed)
+        await holds[1].started.promise
+        // The early lookup completes first, while the confirmation still waits for its own lookup.
+        holds[0].response.resolve(undefined)
+        await early
+        holds[1].response.resolve(undefined)
+        await confirming
+
+        const expected = await storage.findAll(test.class.TestComment, predicate, options)
+        expect(expected.map((doc) => [doc.message, doc.createdOn])).toEqual(
+          rename
+            ? [['peer', 450]]
+            : [
+                ['own', 400],
+                ['peer', 450]
+              ]
+        )
+        expect(query.result()).toEqual(expected)
+        expect(query.result().total).toBe(rename ? 1 : 2)
+        expect(query.callback).toHaveBeenCalledTimes(calls + (rename ? 0 : 1))
+        // The stored copy must not keep the early marker, or a later path could patch it without a read.
+        const [internal] = [...(liveQuery as any).queries.get(test.class.TestComment).values()]
+        const stored = internal.result.findDoc(own.objectId)
+        expect(stored === undefined ? false : isOptimisticCreate(stored)).toBe(false)
+        expect(internal.pendingCreates.has(own.objectId)).toBe(false)
+        expect((await liveQuery.findOne(test.class.TestComment, { _id: own.objectId }))?.createdOn).toBe(400)
       } finally {
         await liveQuery.close()
       }

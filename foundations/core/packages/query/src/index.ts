@@ -95,6 +95,11 @@ export interface RefreshConnectStats {
   activeByClass: Map<string, { count: number, docs: number }>
 }
 
+// An early create in flight. Settled once a confirmation, edit, mixin or removal arrives.
+interface EarlyCreate {
+  settled: boolean
+}
+
 /**
  * @public
  */
@@ -111,7 +116,7 @@ export class LiveQuery implements WithTx, Client {
   // Early creates still being applied to the registered queries, by document. A confirmation,
   // an edit, a mixin or a removal settles one for every query, including queries it has not
   // reached yet because an earlier query's lookup or search check was still pending.
-  private readonly earlyCreates = new Map<Ref<Doc>, { settled: boolean }>()
+  private readonly earlyCreates = new Map<Ref<Doc>, EarlyCreate>()
 
   private readonly refs = new Refs(() => this.getHierarchy())
 
@@ -1212,7 +1217,7 @@ export class LiveQuery implements WithTx, Client {
     if (tx.meta?.isCreateConfirmation === true) {
       this.settleEarlyCreate(docTx._id)
     }
-    const early = tx.meta?.isOptimisticCreate === true ? { settled: false } : undefined
+    const early: EarlyCreate | undefined = tx.meta?.isOptimisticCreate === true ? { settled: false } : undefined
     if (early !== undefined) {
       this.earlyCreates.set(docTx._id, early)
     }
@@ -1243,13 +1248,7 @@ export class LiveQuery implements WithTx, Client {
             await this.reconcileCreate(q, doc, docCache)
             q.pendingCreates.delete(doc._id)
           } else if (this.match(q, doc, q.options?.lookup !== undefined)) {
-            await this.handleDocAdd(
-              q,
-              this.asMixin(doc, q._class),
-              true,
-              docCache,
-              doc !== tx && tx.meta?.isOptimisticCreate === true
-            )
+            await this.handleDocAdd(q, this.asMixin(doc, q._class), true, docCache, doc !== tx ? early : undefined)
           }
           if (settled()) continue
 
@@ -1332,7 +1331,7 @@ export class LiveQuery implements WithTx, Client {
         return
       }
       if (matches) {
-        await this.handleDocAdd(q, doc, false, docCache, false, contributed !== true)
+        await this.handleDocAdd(q, doc, false, docCache, undefined, contributed !== true)
       }
       return
     }
@@ -1390,18 +1389,23 @@ export class LiveQuery implements WithTx, Client {
     doc: Doc,
     handleLookup = true,
     docCache: Map<string, Doc>,
-    optimistic = false,
+    early?: EarlyCreate,
     count = true
   ): Promise<void> {
+    const optimistic = early !== undefined
+    // A confirmation, an edit, a mixin, a removal or a refresh can settle an early create during
+    // any await below, also while its own processing of this query still waits. Its create payload
+    // must then leave results, totals and Refs alone. Its pending entry stays as it is, so a waiting
+    // confirmation still knows that this query has not counted the document.
+    const dropped = (): boolean => early !== undefined && (early.settled || !q.pendingCreates.has(doc._id))
     let needPush = true
     if (q.result instanceof Promise) {
       q.result = await q.result
+      if (dropped()) return
     }
     if (q.options?.lookup !== undefined && handleLookup) {
       await this.lookup(q._class, doc, q.options.lookup)
-      // Confirmation, an edit, a removal or a refresh may have settled this early create while
-      // its lookup was pending. Its create payload must not restore outdated membership now.
-      if (optimistic && !q.pendingCreates.has(doc._id)) return
+      if (dropped()) return
       const matched = this.match(q, doc)
       if (!matched) needPush = false
     }
@@ -1421,7 +1425,7 @@ export class LiveQuery implements WithTx, Client {
       if (q.query.$search != null && q.query.$search.length > 0) {
         const match = await this.client.findOne(q._class, { $search: q.query.$search, _id: doc._id }, q.options)
         if (match === undefined) return
-        if (optimistic && !q.pendingCreates.has(doc._id)) return
+        if (dropped()) return
         // Copy: the tx doc is shared between queries
         const source = match.$source
         if (source != null) {
