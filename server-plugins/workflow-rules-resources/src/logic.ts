@@ -15,11 +15,12 @@ import type { WorkflowRule } from '@hcengineering/workflow-rules'
  * and rank table (`statuses` array from the counterpart's TaskType) so the
  * regression-guard tests don't need a Huly control plane.
  *
- * Fails closed. Returns `true` (BLOCK) when either `from` or `to` is not a
- * member of the rank table. The trigger validates TaskType membership
- * upstream and should not call this helper with unknown statuses, but if
- * it does the result refuses to apply the write rather than silently
- * letting a stale, deleted or foreign status reference through.
+ * Fails closed on an unknown status. Rank-table membership is checked
+ * before the loop allow-list so a stale or foreign status reference can
+ * never be waved through by an `allowedLoops` entry that names it. The
+ * trigger validates TaskType membership upstream and should not call this
+ * helper with unknown statuses, but if it does the result refuses to
+ * apply the write rather than silently letting the reference through.
  *
  * @public
  */
@@ -29,11 +30,11 @@ export function isRegression (
   rank: Array<Ref<IssueStatus>>,
   allowedLoops: WorkflowRule['allowedLoops']
 ): boolean {
-  for (const loop of allowedLoops) {
-    if (loop.from === from && loop.to === to) return false
-  }
   const fromIdx = rank.indexOf(from)
   const toIdx = rank.indexOf(to)
   if (fromIdx === -1 || toIdx === -1) return true
+  for (const loop of allowedLoops) {
+    if (loop.from === from && loop.to === to) return false
+  }
   return toIdx < fromIdx
 }

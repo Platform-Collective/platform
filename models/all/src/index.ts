@@ -70,7 +70,10 @@ import { serverTelegramId, createModel as serverTelegramModel } from '@hcenginee
 import { serverTemplatesId, createModel as serverTemplatesModel } from '@hcengineering/model-server-templates'
 import { serverTrackerId, createModel as serverTrackerModel } from '@hcengineering/model-server-tracker'
 import { serverViewId, createModel as serverViewModel } from '@hcengineering/model-server-view'
-import { serverWorkflowRulesId, createModel as serverWorkflowRulesModel } from '@hcengineering/model-server-workflow-rules'
+import {
+  serverWorkflowRulesId,
+  createModel as serverWorkflowRulesModel
+} from '@hcengineering/model-server-workflow-rules'
 import workflowRules, { workflowRulesId, createModel as workflowRulesModel } from '@hcengineering/model-workflow-rules'
 import setting, { settingId, createModel as settingModel } from '@hcengineering/model-setting'
 import { supportId, createModel as supportModel } from '@hcengineering/model-support'
@@ -328,7 +331,13 @@ export default function buildModel (): Builder {
       {
         label: workflowRules.string.ConfigLabel,
         description: workflowRules.string.ConfigDescription,
-        enabled: true,
+        // Ships disabled. An Owner opts in via Settings > Configure. The
+        // trigger has no rule-management permission yet, so the first
+        // iteration leaves the kill switch off so a workspace that
+        // installs this release does not get cross-project writes they
+        // did not ask for. Follow-up adds a dedicated rule-management
+        // permission; after that lands the default can flip to true.
+        enabled: false,
         beta: true,
         icon: workflowRules.icon.WorkflowRule,
         classFilter: defaultFilter

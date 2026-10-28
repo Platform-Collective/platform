@@ -47,13 +47,15 @@ export { isRegression } from './logic'
  *
  * Authorization. The derived mirror update bypasses the ordinary space
  * permission middleware, so this trigger enforces authorization itself
- * before emitting a write. The acting account must either be the system
- * account, hold `AccountRole.Admin`, or be a member or owner of the target
+ * before emitting a write. The tx must have been authored by the system
+ * account, OR the acting account resolved from `socialStringsToUsers`
+ * must hold `AccountRole.Admin`, OR be a member or owner of the target
  * project. Source-project membership alone is not sufficient. The rule
- * management side (who may create a rule on project A that writes to B) is
- * out of scope for the trigger: it is enforced by the space permission
- * middleware on the rule document itself via its `space` tie-in to the
- * source project.
+ * management side (who may create a rule on project A that writes to B)
+ * is out of scope for the trigger today: the kill switch in
+ * `models/all/src/index.ts` ships the plugin disabled, so an Owner has to
+ * opt in via Settings > Configure before any rule fires. A dedicated
+ * rule-management permission is tracked as a follow-up.
  *
  * Conflict ordering. Transactions in a single invocation are evaluated in
  * `modifiedOn` order, matching the derived-tx sort downstream in
@@ -62,6 +64,15 @@ export { isRegression } from './logic'
  * checks see the effective pending state rather than the stale persisted
  * one. Two rules or two source transactions targeting the same counterpart
  * in one request can no longer slip a forbidden regression past the guard.
+ *
+ * The pending-status map is scoped to one trigger invocation. The upstream
+ * dispatcher groups transactions by `modifiedBy` and calls the trigger
+ * once per group, so a single request with changes under two social ids
+ * (e.g. a service acting for two users) still sees two separate pending
+ * maps. The regression guard still fails closed on each individual move,
+ * so the cross-group risk is a stale read of the same counterpart, not an
+ * unchecked write; a shared cache keyed on tx group would be a follow-up
+ * if that pattern becomes common.
  *
  * Plugin enable. If the `PluginConfiguration` row for this plugin is
  * disabled in the workspace model, the whole trigger is a no-op. The
@@ -76,7 +87,10 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
   const sorted = [...txes].sort((a, b) => a.modifiedOn - b.modifiedOn)
   const result: Tx[] = []
   const pendingStatuses = new Map<Ref<Issue>, Ref<IssueStatus>>()
-  const targetSpaceAuthz = new Map<Ref<Space>, boolean>()
+  // Keyed by actor+space on purpose. Upstream groups txes by modifiedBy
+  // so one invocation sees a single actor today, but keying both makes
+  // the memoization correct independently of that invariant.
+  const targetSpaceAuthz = new Map<string, boolean>()
 
   for (const actualTx of sorted) {
     if (actualTx._class !== core.class.TxUpdateDoc) continue
@@ -221,37 +235,55 @@ function isPluginEnabled (control: TriggerControl): boolean {
  * middleware, so this check stands in for it.
  *
  * Allowed when:
- *  - the account is the system account (server-side writes),
- *  - the account holds `AccountRole.Admin` (workspace admins),
- *  - the account is a member or owner of the target Space.
+ *  - the tx was authored by the system account (server-side writes,
+ *    integrations). `tx.modifiedBy === core.account.System` is the
+ *    authoritative check; the session-level `socialStringsToUsers` map
+ *    skips system sessions so a role-based check never fires for them.
+ *  - the acting account holds `AccountRole.Admin` or higher.
+ *  - the acting account is a member or owner of the target Space.
  *
- * Fails closed when the acting account cannot be resolved from the social
- * id. Results are memoized per target space for the duration of one
- * invocation so a batch of transactions on one source does not re-fetch
- * the same Space document per rule.
+ * Fails closed when a non-system acting account cannot be resolved from
+ * the social id. Results are memoized by `actor + space` for the duration
+ * of one invocation so a batch of transactions on one source does not
+ * re-fetch the same Space document per rule.
+ *
+ * The member/owner check is deliberately a strict first step. It is not
+ * identical to the platform's full write rule: for a public Space a
+ * non-member can still write without being in `members`; for a
+ * `restricted` TypedSpace or a role with a forbid permission the member
+ * list can be looser than the actual write rule; and an archived target
+ * is not checked here. Tightening the match to the full permission
+ * pipeline is a follow-up; this version refuses to emit a cross-project
+ * write unless the actor is already in the target's membership list,
+ * which is the strictest safe default.
  */
 async function isAuthorizedForTarget (
   control: TriggerControl,
   modifiedBy: PersonId,
   targetSpace: Ref<Space>,
-  cache: Map<Ref<Space>, boolean>
+  cache: Map<string, boolean>
 ): Promise<boolean> {
-  const cached = cache.get(targetSpace)
-  if (cached !== undefined) return cached
+  // System-authored writes (server integrations) are allowed before
+  // consulting the session map because the session map builder omits
+  // system sessions, so this check must come first or the branch is
+  // dead.
+  if (modifiedBy === core.account.System) return true
 
   const sessionData = control.ctx.contextData
   const resolved = sessionData?.socialStringsToUsers?.get(modifiedBy)
-  if (resolved === undefined) {
-    cache.set(targetSpace, false)
-    return false
-  }
+  if (resolved === undefined) return false
   const accountUuid: AccountUuid = resolved.accontUuid
+
+  const cacheKey = `${accountUuid}:${targetSpace}`
+  const cached = cache.get(cacheKey)
+  if (cached !== undefined) return cached
+
   if (accountUuid === systemAccountUuid) {
-    cache.set(targetSpace, true)
+    cache.set(cacheKey, true)
     return true
   }
   if (roleOrder[resolved.role] >= roleOrder[AccountRole.Admin]) {
-    cache.set(targetSpace, true)
+    cache.set(cacheKey, true)
     return true
   }
 
@@ -262,13 +294,13 @@ async function isAuthorizedForTarget (
     { limit: 1 }
   )
   if (target === undefined) {
-    cache.set(targetSpace, false)
+    cache.set(cacheKey, false)
     return false
   }
   const members = Array.isArray(target.members) ? target.members : []
   const owners = Array.isArray(target.owners) ? target.owners : []
   const ok = members.includes(accountUuid) || owners.includes(accountUuid)
-  cache.set(targetSpace, ok)
+  cache.set(cacheKey, ok)
   return ok
 }
 

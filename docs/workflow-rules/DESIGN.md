@@ -143,10 +143,12 @@ The trigger body:
    - `parentIssue`: this issue's own `attachedTo`, scoped to
      `rule.linkedProject`.
 5. If no counterpart exists AND the new status is in `autoCreate.triggerStatuses`,
-   emit a `TxCreateDoc<Issue>` instead of an update. Fields come from the
-   source issue restricted to the `inherit` whitelist; component is resolved
-   via `componentMap`. If `componentMap` says `null` for this source
-   component, skip creation (not a failure).
+   the v1 trigger logs an info line and does nothing. Emitting a
+   `TxCreateDoc<Issue>` here (sequence allocation, rank, parent/sub-issue
+   count backfill) is deferred to a dedicated follow-up PR so its creation
+   path gets its own review surface. The design still carries the auto-create
+   shape (`triggerStatuses`, `componentMap`, `defaultComponent`, `inherit`)
+   so no schema change is needed when that PR lands.
 6. If a counterpart exists, compute the target status via `forwardMap[new
    status]`. If the map has no entry, do nothing (not a failure - it is how
    you say "this status does not move the mirror").
@@ -157,10 +159,24 @@ The trigger body:
    in the trace UI.
 8. Enforce target-side authorization before emitting a write. The derived
    mirror update bypasses the ordinary space permission middleware, so the
-   trigger stands in for it: the acting account (resolved from
-   `tx.modifiedBy` via `socialStringsToUsers`) must be the system account,
-   an `AccountRole.Admin`, or a member or owner of the target Space.
-   Source-project membership alone is not sufficient.
+   trigger stands in for it:
+   - `tx.modifiedBy === core.account.System` is allowed up front
+     (server-authored writes, integrations). The session-level
+     `socialStringsToUsers` map omits system sessions, so this explicit
+     check runs before the role-based path or the branch is dead.
+   - Otherwise the acting account resolved from `socialStringsToUsers`
+     must hold `AccountRole.Admin` or higher, OR be present in the target
+     project's `members` or `owners`. Source-project membership alone is
+     not sufficient.
+   - The member/owner check is a strict first step. It is not identical
+     to the platform's full write rule (public spaces, restricted spaces,
+     per-role forbid permissions, archived targets). Tightening to the
+     full permission pipeline is a follow-up; the current rule refuses to
+     emit a cross-project write unless the actor is already in the
+     target's membership list.
+   - Rule management (who may create a rule on A that writes to B) has no
+     dedicated permission yet; the plugin ships disabled by default so an
+     Owner has to opt in via Settings > Configure before any rule fires.
 9. Emit `TxUpdateDoc<Issue>` via
    `control.txFactory.createTxUpdateDoc(..., tx.modifiedOn)`. Passing the
    source tx's `modifiedOn` lines up with how `OnIssueUpdate` already builds
@@ -179,26 +195,16 @@ is already the correct answer.
 
 ## UI
 
-A new tab "Workflow rules" lives under Project Settings, alongside the
-existing project-settings components (`components`, `labels`, `milestones`,
-etc. in `plugins/tracker-resources/src/components/settings/`). Follows the
-same `*.svelte` layout and uses the same `TxOperations` to write.
-
-The tab lists rules attached to this project. Each row expands to a status
-matrix editor: rows are this project's statuses, columns are the linked
-project's statuses, cells are `<select>` dropdowns picking the forward target.
-Allowed loops render as a two-column list with "add" / "remove" buttons.
-Auto-create is a separate collapsible panel with the component map and
-inherit-field checkboxes.
-
-Writing the rule produces an ordinary `TxCreateDoc(WorkflowRule, ...)` via
-the normal `TxOperations.createDoc` surface, so the usual permission check
-applies: only members of `space` who can write to it can define rules on it.
-
-No bulk editor and no "copy from another project" button in v1 - a workspace
-with many client projects pairing to many design projects should write a
-small admin script, which can use the normal `TxOperations` path and avoid
-needing special UI.
+The admin surface is intentionally not in this PR; the data model is
+editable via the standard `TxOperations` surface, which is enough to prove
+the mechanism end-to-end. The follow-up PR adds a "Workflow rules" tab on
+every tracker project with a pairing wizard (pick a linked project, name
+the pair, toggle bidirectional, review the status map) and an "Advanced"
+per-rule matrix editor. Writes still go through `TxOperations.createDoc` /
+`updateDoc`, so the usual space permission applies to the rule document
+itself. Rule management (who may create a rule on A whose counterpart
+lands in B) does not have a dedicated permission yet, which is why the
+plugin ships disabled by default.
 
 ## What is NOT in v1
 

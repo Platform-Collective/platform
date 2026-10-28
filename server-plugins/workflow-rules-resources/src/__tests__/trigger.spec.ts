@@ -91,6 +91,14 @@ function project (over: Any = {}): Any {
   }
 }
 
+/** Compact helper for the common "parent in A + child in B linked to it" fixture. */
+function linkedPair (childOver: Any = {}): Any[] {
+  return [
+    issue({ _id: 'issue:a1' }),
+    issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1', ...childOver })
+  ]
+}
+
 function matches (value: unknown, criteria: any): boolean {
   if (criteria !== null && typeof criteria === 'object') {
     if (Array.isArray(criteria.$in)) return criteria.$in.includes(value)
@@ -197,7 +205,7 @@ function makeControl (opts: WorldOptions = {}): any {
 describe('OnWorkflowRuleMirror', () => {
   it('mirrors a status change to the counterpart on the linked project', async () => {
     const control = makeControl({
-      issues: [issue({ _id: 'issue:a1', space: PROJ_A }), issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1' })],
+      issues: linkedPair(),
       rules: [rule()]
     })
 
@@ -211,10 +219,7 @@ describe('OnWorkflowRuleMirror', () => {
   })
 
   it('skips updates whose own space is DerivedTx so a mirror cannot cascade', async () => {
-    const control = makeControl({
-      issues: [issue({ _id: 'issue:a1' }), issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1' })],
-      rules: [rule()]
-    })
+    const control = makeControl({ issues: linkedPair(), rules: [rule()] })
 
     const derived = updateTx(S.review, { space: core.space.DerivedTx })
     const res = await OnWorkflowRuleMirror([derived], control)
@@ -225,10 +230,7 @@ describe('OnWorkflowRuleMirror', () => {
   it('skips a rule whose stored shape is malformed and keeps processing the rest', async () => {
     const bad = rule({ _id: 'rule:bad', forwardMap: null as any })
     const good = rule({ _id: 'rule:good', forwardMap: { [S.review]: S.done } })
-    const control = makeControl({
-      issues: [issue({ _id: 'issue:a1' }), issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1' })],
-      rules: [bad, good]
-    })
+    const control = makeControl({ issues: linkedPair(), rules: [bad, good] })
 
     const res = await OnWorkflowRuleMirror([updateTx(S.review)], control)
     expect(res).toHaveLength(1)
@@ -238,10 +240,7 @@ describe('OnWorkflowRuleMirror', () => {
   it('ignores inherited forwardMap keys (prototype pollution guard)', async () => {
     const r = rule({ forwardMap: Object.create({ constructor: 'status:injected' }) })
     r.forwardMap[S.review] = S.done
-    const control = makeControl({
-      issues: [issue({ _id: 'issue:a1' }), issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1' })],
-      rules: [r]
-    })
+    const control = makeControl({ issues: linkedPair(), rules: [r] })
 
     // A real tracker never emits status 'constructor', but if it did, the
     // trigger must not reach the inherited key and write 'status:injected'.
@@ -251,7 +250,7 @@ describe('OnWorkflowRuleMirror', () => {
 
   it('refuses to mirror when the counterpart TaskType is unknown', async () => {
     const control = makeControl({
-      issues: [issue({ _id: 'issue:a1' }), issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1', kind: 'task-type:gone' })],
+      issues: linkedPair({ kind: 'task-type:gone' }),
       rules: [rule()],
       taskTypes: [] // missing on purpose
     })
@@ -280,7 +279,7 @@ describe('OnWorkflowRuleMirror', () => {
       allowedLoops: [{ from: S.review, to: S.inProgress }]
     })
     const control = makeControl({
-      issues: [issue({ _id: 'issue:a1' }), issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1', status: S.review })],
+      issues: linkedPair({ status: S.review }),
       rules: [r]
     })
 
@@ -289,22 +288,67 @@ describe('OnWorkflowRuleMirror', () => {
     expect(res[0]).toMatchObject({ operations: { status: S.inProgress } })
   })
 
-  it('batches by modifiedOn and uses the pending status for the regression check', async () => {
+  it('blocks a backward move when no allowedLoops entry matches', async () => {
+    const r = rule({ forwardMap: { [S.review]: S.inProgress } })
+    const control = makeControl({
+      issues: linkedPair({ status: S.review }),
+      rules: [r]
+    })
+
+    const res = await OnWorkflowRuleMirror([updateTx(S.review)], control)
+    expect(res).toHaveLength(0)
+  })
+
+  it('pending map blocks a regression across two source transactions on one counterpart', async () => {
+    // Two source transactions on the same source issue in one invocation,
+    // the first maps the counterpart to Done, the second to InProgress.
+    // Against the persisted Backlog both would pass. With the pending map,
+    // the second read sees the queued Done and the backward move is blocked.
+    const r1 = rule({ _id: 'rule:to-done', forwardMap: { [S.review]: S.done } })
+    const r2 = rule({ _id: 'rule:to-ip', forwardMap: { [S.todo]: S.inProgress } })
+    const control = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [r1, r2]
+    })
+
+    const txA = updateTx(S.review, { modifiedOn: 1000 })
+    const txB = updateTx(S.todo, { modifiedOn: 1001 })
+    const res = await OnWorkflowRuleMirror([txA, txB], control)
+    expect(res).toHaveLength(1)
+    expect(res[0]).toMatchObject({ operations: { status: S.done } })
+  })
+
+  it('batches two rules on one source and pending map blocks the second regression', async () => {
     // Two rules both triggered by one source status change, mapping the
     // same counterpart to Done then to InProgress. Without the pending
-    // map both reads the stale Backlog and both pass; the result is a
-    // forbidden backward move. With the pending map, the second rule
-    // sees the queued Done and blocks the InProgress move.
+    // map both read the stale Backlog and both pass. With it, the second
+    // sees the queued Done and the InProgress move is blocked.
     const r1 = rule({ _id: 'rule:to-done', forwardMap: { [S.review]: S.done } })
     const r2 = rule({ _id: 'rule:to-ip', forwardMap: { [S.review]: S.inProgress } })
     const control = makeControl({
-      issues: [issue({ _id: 'issue:a1' }), issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1', status: S.backlog })],
+      issues: linkedPair({ status: S.backlog }),
       rules: [r1, r2]
     })
 
     const res = await OnWorkflowRuleMirror([updateTx(S.review)], control)
     expect(res).toHaveLength(1)
     expect(res[0]).toMatchObject({ operations: { status: S.done } })
+  })
+
+  it('fails closed when the acting account cannot be resolved', async () => {
+    const control = makeControl({ issues: linkedPair(), rules: [rule()] })
+    // 'social:ghost' is not in the socialStringsToUsers map.
+    const res = await OnWorkflowRuleMirror([updateTx(S.review, { modifiedBy: 'social:ghost' })], control)
+    expect(res).toHaveLength(0)
+  })
+
+  it('allows a mirror authored by the system account even without a resolvable session', async () => {
+    const control = makeControl({ issues: linkedPair(), rules: [rule()] })
+    // core.account.System is not present in socialStringsToUsers; the
+    // explicit modifiedBy check must allow this write anyway.
+    const tx = updateTx(S.review, { modifiedBy: core.account.System })
+    const res = await OnWorkflowRuleMirror([tx], control)
+    expect(res).toHaveLength(1)
   })
 
   it('refuses to mirror when the acting user is not authorized on the target project', async () => {
