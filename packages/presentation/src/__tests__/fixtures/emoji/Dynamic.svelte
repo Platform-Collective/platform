@@ -1,6 +1,9 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
-  import Popup from '../../../../../../plugins/emoji-resources/src/components/EmojiPopup.svelte'
+  import type { SvelteComponent } from 'svelte'
+
+  const Popup: typeof SvelteComponent =
+    require('../../../../../../plugins/emoji-resources/src/components/EmojiPopup.svelte').default
 
   export let props: { selected?: string, disabled?: boolean } = {}
 </script>

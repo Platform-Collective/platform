@@ -4,10 +4,11 @@ import assert from 'node:assert/strict'
 import { tick } from 'svelte'
 import type { SvelteComponent } from 'svelte'
 import Icon from '../components/IconWithEmoji.svelte'
-import Picker from '../../../../plugins/view-resources/src/components/IconPicker.svelte'
-import State from '../../../../plugins/task-resources/src/components/state/CreateStatePopup.svelte'
 
-type ComponentConstructor = new (options: { target: HTMLElement, props?: Record<string, unknown> }) => SvelteComponent
+type ComponentConstructor<Props extends Record<string, unknown> = Record<string, unknown>> = new (options: {
+  target: HTMLElement
+  props?: Props
+}) => SvelteComponent
 
 interface ReferenceNodeView {
   addNodeView: (
@@ -173,9 +174,14 @@ const taskType = { _id: 'task-type', statuses: [], statusCategories: [] }
 const type = { _id: 'project-type', statuses: [] }
 const mounted: SvelteComponent[] = []
 
-function mount (
-  Component: ComponentConstructor,
-  props: Record<string, unknown>
+// Load cross-package components through Jest without extending this package's Svelte type-checking root.
+const Picker: ComponentConstructor = require('../../../../plugins/view-resources/src/components/IconPicker.svelte').default
+const State: ComponentConstructor =
+  require('../../../../plugins/task-resources/src/components/state/CreateStatePopup.svelte').default
+
+function mount<Props extends Record<string, unknown>> (
+  Component: ComponentConstructor<Props>,
+  props: Props
 ): { target: HTMLElement, instance: SvelteComponent } {
   const target = document.createElement('div')
   document.body.append(target)
@@ -269,9 +275,9 @@ test('reference node view renders legacy scalar and array emoji icons with FE0F'
     require('@hcengineering/presentation').getClient.mockReturnValue({
       getHierarchy: () => ({ isDerived: () => false, findClass: () => ({ icon: iconId, color }) })
     })
-    const reference: { ReferenceExtension: ReferenceNodeView } = require(
-      '../../../../plugins/text-editor-resources/src/components/extension/reference'
-    )
+    const reference: {
+      ReferenceExtension: ReferenceNodeView
+    } = require('../../../../plugins/text-editor-resources/src/components/extension/reference')
     const view = reference.ReferenceExtension.addNodeView.call({
       name: 'reference',
       options: { HTMLAttributes: {}, suggestion: { char: '@' } }
