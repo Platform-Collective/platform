@@ -185,8 +185,17 @@ The trigger body:
 10. Transactions in a single invocation are evaluated in `modifiedOn` order,
     matching the derived-tx sort in `foundations/server/packages/middleware/src/triggers.ts`.
     A pending-status map retains the latest target status per counterpart
-    issue across the whole batch, so equality and regression checks see the
-    effective pending state rather than the stale persisted one.
+    issue; equality and regression checks see the effective pending state
+    rather than the stale persisted one. The map lives in
+    `control.contextCache`, which the server pipeline scopes to one root
+    transaction (one request), so it survives across the per-group
+    invocations the trigger dispatcher produces when a single request
+    carries changes under more than one `modifiedBy`.
+11. The whole trigger is a no-op unless the plugin's `PluginConfiguration`
+    row has `enabled: true`. Missing, malformed, or unreadable config
+    fails closed. The feature ships disabled in `models/all`; an Owner
+    opts in via Settings > Configure, and the toggle takes effect without
+    a server restart because this check runs on every invocation.
 
 The server has no notion of "which side moved last" - arbitration-by-mtime,
 which the daemon does today, is a workaround for polling. The trigger reacts

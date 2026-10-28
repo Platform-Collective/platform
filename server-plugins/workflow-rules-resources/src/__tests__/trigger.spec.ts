@@ -113,6 +113,8 @@ interface WorldOptions {
   projects?: Any[]
   taskTypes?: Any[]
   pluginEnabled?: boolean
+  pluginConfigs?: Any[]
+  contextCache?: Map<string, any>
   authAccount?: AccountUuid
   authRole?: AccountRole
   modifiedBySocial?: string
@@ -126,9 +128,15 @@ function makeControl (opts: WorldOptions = {}): any {
     { _id: 'task-type:a', _class: task.class.TaskType, statuses: [S.backlog, S.todo, S.inProgress, S.review, S.done] },
     { _id: 'task-type:b', _class: task.class.TaskType, statuses: [S.backlog, S.todo, S.inProgress, S.review, S.done] }
   ]
+  // Default: an explicitly enabled PluginConfiguration row exists. This
+  // mirrors what the Configure page writes when an Owner opts in. The
+  // trigger fails closed when the row is missing or disabled, so the
+  // positive tests need the row to be present.
   const configs = opts.pluginEnabled === false
     ? [{ _id: 'pc:1', _class: core.class.PluginConfiguration, pluginId: workflowRulesId, enabled: false }]
-    : []
+    : opts.pluginEnabled === undefined && opts.pluginConfigs !== undefined
+      ? opts.pluginConfigs
+      : [{ _id: 'pc:1', _class: core.class.PluginConfiguration, pluginId: workflowRulesId, enabled: true }]
 
   const socialStringsToUsers = new Map<string, { accontUuid: AccountUuid, role: AccountRole }>()
   socialStringsToUsers.set(SOC_ADMIN, { accontUuid: ACC_ADMIN, role: AccountRole.Admin })
@@ -199,7 +207,11 @@ function makeControl (opts: WorldOptions = {}): any {
     info: jest.fn()
   }
 
-  return { ctx, findAll, modelDb, txFactory, hierarchy }
+  // Per-root-tx (per-request) store. Shared across invocations within one
+  // request by passing the same Map in via opts.contextCache.
+  const contextCache = opts.contextCache ?? new Map<string, any>()
+
+  return { ctx, findAll, modelDb, txFactory, hierarchy, contextCache }
 }
 
 describe('OnWorkflowRuleMirror', () => {
@@ -353,7 +365,7 @@ describe('OnWorkflowRuleMirror', () => {
 
   it('refuses to mirror when the acting user is not authorized on the target project', async () => {
     const control = makeControl({
-      issues: [issue({ _id: 'issue:a1' }), issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1' })],
+      issues: linkedPair(),
       rules: [rule()],
       projects: [project({ members: [], owners: [] })]
     })
@@ -364,7 +376,7 @@ describe('OnWorkflowRuleMirror', () => {
 
   it('allows the mirror when the acting user is an Admin even without membership', async () => {
     const control = makeControl({
-      issues: [issue({ _id: 'issue:a1' }), issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1' })],
+      issues: linkedPair(),
       rules: [rule()],
       projects: [project({ members: [], owners: [] })]
     })
@@ -373,11 +385,134 @@ describe('OnWorkflowRuleMirror', () => {
     expect(res).toHaveLength(1)
   })
 
+  it('refuses to mirror onto an archived target project', async () => {
+    const control = makeControl({
+      issues: linkedPair(),
+      rules: [rule()],
+      projects: [project({ archived: true })]
+    })
+
+    const res = await OnWorkflowRuleMirror([updateTx(S.review)], control)
+    expect(res).toHaveLength(0)
+  })
+
   it('is a no-op when the plugin is disabled via PluginConfiguration', async () => {
     const control = makeControl({
-      issues: [issue({ _id: 'issue:a1' }), issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1' })],
+      issues: linkedPair(),
       rules: [rule()],
       pluginEnabled: false
+    })
+
+    const res = await OnWorkflowRuleMirror([updateTx(S.review)], control)
+    expect(res).toHaveLength(0)
+  })
+
+  it('is a no-op when no PluginConfiguration row exists (fail closed)', async () => {
+    const control = makeControl({
+      issues: linkedPair(),
+      rules: [rule()],
+      pluginConfigs: [] // no row at all - matches a workspace that never opted in
+    })
+
+    const res = await OnWorkflowRuleMirror([updateTx(S.review)], control)
+    expect(res).toHaveLength(0)
+  })
+
+  it('pending map carries across two invocations in one request (dispatcher grouping)', async () => {
+    // Simulates how the server dispatcher groups by modifiedBy: one request,
+    // one shared contextCache, but two invocations - one for each social id.
+    // The first invocation queues Done; the second must see that queued state
+    // and refuse the backward InProgress mirror.
+    const r1 = rule({ _id: 'rule:to-done', forwardMap: { [S.review]: S.done } })
+    const r2 = rule({ _id: 'rule:to-ip', forwardMap: { [S.review]: S.inProgress } })
+    const sharedCache = new Map<string, any>()
+
+    const controlA = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [r1],
+      contextCache: sharedCache
+    })
+    const resA = await OnWorkflowRuleMirror(
+      [updateTx(S.review, { modifiedBy: SOC_MEMBER, modifiedOn: 1000 })],
+      controlA
+    )
+    expect(resA).toHaveLength(1)
+    expect(resA[0]).toMatchObject({ operations: { status: S.done } })
+
+    // Second invocation (different social id, same request) reuses the cache.
+    const controlB = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [r2],
+      contextCache: sharedCache
+    })
+    const resB = await OnWorkflowRuleMirror(
+      [updateTx(S.review, { modifiedBy: SOC_ADMIN, modifiedOn: 1001 })],
+      controlB
+    )
+    expect(resB).toHaveLength(0)
+  })
+
+  it('sorts input by modifiedOn even when supplied in reverse order', async () => {
+    // The dispatcher does not guarantee the order of transactions inside
+    // one group. The trigger must sort by modifiedOn itself so the pending
+    // map reflects causal order.
+    const r1 = rule({ _id: 'rule:to-done', forwardMap: { [S.review]: S.done } })
+    const r2 = rule({ _id: 'rule:to-ip', forwardMap: { [S.todo]: S.inProgress } })
+    const control = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [r1, r2]
+    })
+
+    // Supplied in reverse (t=1001 then t=1000). If the trigger used the
+    // supplied order, the InProgress move would be queued first and the
+    // Done move would then be refused as a forward move over InProgress -
+    // wrong answer. Sorted by modifiedOn, Done lands first and InProgress
+    // is refused as the backward move.
+    const txLater = updateTx(S.todo, { modifiedOn: 1001 })
+    const txEarlier = updateTx(S.review, { modifiedOn: 1000 })
+    const res = await OnWorkflowRuleMirror([txLater, txEarlier], control)
+    expect(res).toHaveLength(1)
+    expect(res[0]).toMatchObject({ operations: { status: S.done } })
+  })
+
+  it('reciprocal non-convergent rules terminate because the mirror is a DerivedTx', async () => {
+    // A->B maps review -> done, B->A maps done -> review. Without the
+    // DerivedTx-space check, the mirror onto B would fire the trigger on
+    // the mirror onto A and back forever. With it, each invocation sees
+    // exactly its own source and the derived output never re-enters.
+    const forward = rule({ _id: 'rule:a-to-b', forwardMap: { [S.review]: S.done } })
+    const reverse = rule({
+      _id: 'rule:b-to-a',
+      space: PROJ_B,
+      linkedProject: PROJ_A,
+      linkKind: 'parentIssue',
+      forwardMap: { [S.done]: S.review }
+    })
+    const control = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [forward, reverse]
+    })
+
+    const res = await OnWorkflowRuleMirror([updateTx(S.review)], control)
+    // Only the forward mirror fires. The derived update space is DerivedTx
+    // so a replay through the trigger emits nothing.
+    expect(res).toHaveLength(1)
+    expect(res[0]).toMatchObject({ operations: { status: S.done } })
+    const replay = await OnWorkflowRuleMirror(res, control)
+    expect(replay).toHaveLength(0)
+  })
+
+  it('an allowedLoops entry naming a status not in the TaskType is still blocked', async () => {
+    // Rank check runs before loop allow-list, so an attacker-authored
+    // loop pointing at a stale or foreign status does not wave the move.
+    const unknown = 'status:unknown-to-task-type' as any
+    const r = rule({
+      forwardMap: { [S.review]: unknown },
+      allowedLoops: [{ from: S.review, to: unknown }]
+    })
+    const control = makeControl({
+      issues: linkedPair({ status: S.review }),
+      rules: [r]
     })
 
     const res = await OnWorkflowRuleMirror([updateTx(S.review)], control)
