@@ -1,110 +1,39 @@
 // SPDX-License-Identifier: EPL-2.0
 
-// Compile production components in memory; mock only app services/layout.
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { resolve } from 'node:path'
-import vm from 'node:vm'
-import * as ts from 'typescript'
-import { compile } from 'svelte/compiler'
-import * as svelte from 'svelte'
+import { tick } from 'svelte'
 import type { SvelteComponent } from 'svelte'
-import * as stores from 'svelte/store'
+import Icon from '../components/IconWithEmoji.svelte'
+import Picker from '../../../../plugins/view-resources/src/components/IconPicker.svelte'
+import State from '../../../../plugins/task-resources/src/components/state/CreateStatePopup.svelte'
 
-interface ComponentConstructor {
-  new (options: { target: HTMLElement, props?: Record<string, unknown> }): SvelteComponent
-}
+type ComponentConstructor = new (options: { target: HTMLElement, props?: Record<string, unknown> }) => SvelteComponent
 
-interface Presentation {
-  getEmojiFromCodePoints: (icon: number | number[]) => string
-}
-
-interface DesktopEmoji {
-  hexcode: string
-  emoji: string
-}
-
-interface ReferenceExtension {
-  addNodeView: (this: unknown) => (options: {
+interface ReferenceNodeView {
+  addNodeView: (
+    this: unknown
+  ) => (options: {
     node: { attrs: { id: string, objectclass: string, label: string } }
     HTMLAttributes: Record<string, unknown>
-  }) => { dom: HTMLElement }
+  }) => { dom: HTMLElement, destroy: () => void }
 }
 
-const root = resolve(__dirname, '../../../..')
-const sourceRoot = process.env.EMOJI_SOURCE_ROOT ?? root
-const emojiDeps = createRequire(resolve(root, 'plugins/emoji/package.json'))
-const desktop = (emojiDeps('emojibase-data/en/data.json') as DesktopEmoji[]).find((emoji) => emoji.hexcode === '1F5A5')
-assert.ok(desktop)
-const iconId = 'view:icon-with-emoji'
-const runtime = require('svelte/internal')
-let mounted: SvelteComponent[] = []
+// The drawing suite supplies a manual Svelte mock with a no-op dispatcher.
+jest.unmock('svelte')
 
-function source (path: string): string {
-  return readFileSync(resolve(sourceRoot, path), 'utf8')
-}
+jest.mock('@hcengineering/emoji', () => ({
+  __esModule: true,
+  default: { component: { EmojiPopup: 'emoji-popup' }, string: {}, icon: {} },
+  ...jest.requireActual('../../../../plugins/emoji/src/presentation'),
+  isCustomEmoji: (value: { image?: string }) => value.image !== undefined
+}))
 
-function evaluate<T> (code: string, filename: string, imports: Record<string, unknown>): T {
-  const output = ts.transpileModule(code, {
-    fileName: filename,
-    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
-  }).outputText
-  const module = { exports: {} }
-  const requireMock = (name: string): unknown => {
-    if (!(name in imports)) throw new Error(`Unmocked import ${name} in ${filename}`)
-    return imports[name]
-  }
-  // Pass Jest's DOM into the compiled source's lexical scope.
-  vm.runInThisContext(`(function(require, module, exports, window, document) {${output}\n})`, { filename })(
-    requireMock,
-    module,
-    module.exports,
-    window,
-    document
-  )
-  return module.exports as T
-}
-
-function loadPresentation (): Presentation {
-  const path = 'plugins/emoji/src/presentation.ts'
-  return evaluate<Presentation>(source(path), path, {
-    './presentation-data': evaluate(source('plugins/emoji/src/presentation-data.ts'), 'presentation-data.ts', {})
-    // Intentionally no emojibase-data import: synchronous rendering must not load the full dataset.
-  })
-}
-
-function component (code: string, filename: string, imports: Record<string, unknown>): ComponentConstructor {
-  const withoutStyles = code.replace(/<style[\s\S]*?<\/style>/g, '')
-  const prepared = withoutStyles.replace(/<script lang="ts">([\s\S]*?)<\/script>/g, (_, script: string) => {
-    const output = ts.transpileModule(script, {
-      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, verbatimModuleSyntax: true }
-    }).outputText
-    return `<script>${output}</script>`
-  })
-  const compiled = compile(prepared, { filename, generate: 'dom', css: 'external' }).js.code
-  return evaluate<{ default: ComponentConstructor }>(compiled, filename, {
-    'svelte/internal': runtime,
-    svelte,
-    'svelte/store': stores,
-    'svelte/internal/disclose-version': {},
-    ...Object.fromEntries(
-      Object.entries(imports).map(([name, value]) => [name, typeof value === 'function' ? { default: value } : value])
-    )
-  }).default
-}
-
-function fixture () {
-  const presentation = loadPresentation()
-  const emoji = {
-    default: { component: { EmojiPopup: 'emoji-popup' }, string: {}, icon: {} },
-    ...presentation,
-    isCustomEmoji: (value: { image?: string }) => value.image !== undefined
-  }
-  const Slot = component('<slot />', 'Slot.svelte', {})
-  const Empty = component('', 'Empty.svelte', {})
-  const blob = async () => ({ src: '/custom.png', srcset: '/custom@2x.png 2x' })
-  const ui: Record<string, unknown> = {
+jest.mock('@hcengineering/ui', () => {
+  const { writable } = jest.requireActual('svelte/store')
+  const Slot = require('./fixtures/emoji/Slot.svelte').default
+  const Empty = require('./fixtures/emoji/Empty.svelte').default
+  return {
+    __esModule: true,
     default: { string: {} },
     Scroller: Slot,
     Lazy: Slot,
@@ -116,146 +45,133 @@ function fixture () {
     ButtonIcon: Empty,
     ModernEditbox: Empty,
     TextArea: Empty,
-    ButtonMenu: component(
-      `<script>import { createEventDispatcher } from 'svelte'
-      const dispatch = createEventDispatcher()</script>
-      <button class="choose-emoji" on:click={() => dispatch('selected', 'emoji')}>Emoji</button>`,
-      'Menu.svelte',
-      {}
-    ),
+    ButtonMenu: require('./fixtures/emoji/Menu.svelte').default,
+    get Component (): ComponentConstructor {
+      return require('./fixtures/emoji/Dynamic.svelte').default
+    },
     tooltip: () => ({}),
-    capitalizeFirstLetter: (s: string) => s,
-    deviceOptionsStore: stores.writable({ fontSize: 16, isMobile: false }),
-    themeStore: stores.writable({ dark: false }),
+    capitalizeFirstLetter: (value: string) => value,
+    deviceOptionsStore: writable({ fontSize: 16, isMobile: false }),
+    themeStore: writable({ dark: false }),
     getPlatformColorDef: () => ({ name: 'blue' }),
-    closeTooltip: () => {},
-    // Match the old UI decoder when checking pre-fix production wiring.
-    fromCodePoint: (...codes: number[]) => String.fromCodePoint(...codes.map((code) => Math.min(code, 0x10ffff)))
+    closeTooltip: () => {}
   }
-  const platform = { getEmbeddedLabel: (s: string) => s }
-  const utils = { getEmojiSkins: () => undefined, getUnicodeEmojiByShortCode: () => desktop }
-  const store = {
-    searchEmoji: stores.writable(''),
-    unicodeEmojiStore: stores.writable([desktop]),
-    customEmojiStore: stores.writable([]),
-    resultEmojis: stores.writable([desktop]),
+})
+
+jest.mock('@hcengineering/core', () => ({ __esModule: true, default: { class: {} } }))
+jest.mock('@hcengineering/platform', () => ({ getEmbeddedLabel: (value: string) => value }))
+jest.mock(
+  '@hcengineering/presentation',
+  () => ({
+    __esModule: true,
+    default: { string: {} },
+    get IconWithEmoji (): ComponentConstructor {
+      return require('../components/IconWithEmoji.svelte').default
+    },
+    getBlobRef: jest.fn(),
+    getClient: jest.fn(),
+    createQuery: () => ({ query: jest.fn(), unsubscribe: jest.fn() })
+  }),
+  { virtual: true }
+)
+jest.mock('../preview', () => ({ getBlobRef: jest.fn() }))
+jest.mock('@hcengineering/setting-resources', () => ({ settingsStore: require('svelte/store').writable({}) }), {
+  virtual: true
+})
+jest.mock('@hcengineering/task', () => ({ __esModule: true, default: {} }), { virtual: true })
+jest.mock(
+  '@hcengineering/view-resources',
+  () => ({
+    ColorsPopup: require('./fixtures/emoji/Empty.svelte').default,
+    statusStore: require('svelte/store').writable({})
+  }),
+  { virtual: true }
+)
+jest.mock(
+  '@hcengineering/view-resources/src/plugin',
+  () => ({
+    __esModule: true,
+    default: { ids: { IconWithEmoji: 'view:icon-with-emoji' }, string: {} }
+  }),
+  { virtual: true }
+)
+jest.mock('@hcengineering/view', () => ({
+  __esModule: true,
+  default: { ids: { IconWithEmoji: 'view:icon-with-emoji' }, string: {} }
+}))
+jest.mock('@hcengineering/contact', () => ({
+  __esModule: true,
+  default: { mention: { Here: 'here', Everyone: 'everyone' }, class: { Contact: 'contact' } }
+}))
+jest.mock('@hcengineering/activity', () => ({}), { virtual: true })
+jest.mock('@hcengineering/workbench', () => ({}), { virtual: true })
+jest.mock('@hcengineering/text', () => ({ ReferenceNode: { extend: (options: unknown) => options } }))
+jest.mock('@tiptap/core', () => ({ mergeAttributes: Object.assign }), { virtual: true })
+jest.mock('@tiptap/pm/state', () => ({ PluginKey: jest.fn() }), { virtual: true })
+
+jest.mock('../../../../plugins/emoji-resources/src/utils', () => ({
+  getEmojiSkins: () => undefined,
+  getUnicodeEmojiByShortCode: () => ({ emoji: '✋' })
+}))
+jest.mock('../../../../plugins/emoji-resources/src/store', () => {
+  const { writable } = jest.requireActual('svelte/store')
+  const desktop = require('emojibase-data/en/data.json').find((emoji: { hexcode: string }) => emoji.hexcode === '1F5A5')
+  return {
+    searchEmoji: writable(''),
+    unicodeEmojiStore: writable([desktop]),
+    customEmojiStore: writable([]),
+    resultEmojis: writable([desktop]),
     getSkinTone: () => 0,
     getFrequentlyEmojis: () => [desktop],
-    addFrequentlyEmojis: () => {}
+    addFrequentlyEmojis: jest.fn()
   }
-  const categories = [{ id: 'frequently-used', emojis: [desktop] }]
-  const common = {
-    '@hcengineering/core': { default: { class: {} } },
-    '@hcengineering/emoji': emoji,
-    '@hcengineering/platform': platform,
-    '@hcengineering/ui': ui,
-    '@hcengineering/presentation': { getBlobRef: blob },
-    '../utils': utils,
-    '../store': store,
-    '../types': { emojiCategories: categories },
-    './ActionsPopup.svelte': Empty,
-    './SkinTonePopup.svelte': Empty
-  }
-  const resources = 'plugins/emoji-resources/src/components/'
-  const Button = component(source(resources + 'EmojiButton.svelte'), 'EmojiButton.svelte', common)
-  const Palette = component(source(resources + 'EmojiGroupPalette.svelte'), 'EmojiGroupPalette.svelte', {
-    ...common,
-    './EmojiButton.svelte': Button
-  })
-  const Group = component(source(resources + 'EmojiGroup.svelte'), 'EmojiGroup.svelte', {
-    ...common,
-    './EmojiGroupPalette.svelte': Palette
-  })
-  const Popup = component(source(resources + 'EmojiPopup.svelte'), 'EmojiPopup.svelte', {
-    ...common,
-    './EmojiGroup.svelte': Group
-  })
-  // The actual dynamic resource host forwards props and events to the real popup.
-  const Dynamic = component(
-    `<script>import Popup from 'Popup'
-    export let props = {}</script><Popup {...props} on:close />`,
-    'Dynamic.svelte',
-    { Popup }
-  )
-  ui.Component = Dynamic
-  const Icon = component(source('packages/presentation/src/components/IconWithEmoji.svelte'), 'IconWithEmoji.svelte', {
-    ...common,
-    '../preview': { getBlobRef: blob }
-  })
-  const view = { default: { ids: { IconWithEmoji: iconId }, string: {} } }
-  const Picker = component(source('plugins/view-resources/src/components/IconPicker.svelte'), 'IconPicker.svelte', {
-    ...common,
-    '../icons': { iconsLibrary: [] },
-    '../plugin': view,
-    './ColorsPopup.svelte': Empty
-  })
-  const taskType = { _id: 'task-type', statuses: [], statusCategories: [] }
-  const type = { _id: 'project-type', statuses: [] }
-  const client = { getModel: () => ({ findAllSync: () => [] }) }
-  const query = { query: () => {}, unsubscribe: () => {} }
-  const State = component(
-    source('plugins/task-resources/src/components/state/CreateStatePopup.svelte'),
-    'CreateStatePopup.svelte',
+})
+jest.mock('../../../../plugins/emoji-resources/src/types', () => ({
+  emojiCategories: [
     {
-      ...common,
-      '@hcengineering/presentation': {
-        default: { string: {} },
-        IconWithEmoji: Icon,
-        getClient: () => client,
-        createQuery: () => query
-      },
-      '@hcengineering/setting-resources': { settingsStore: stores.writable({}) },
-      '@hcengineering/task': { default: {}, createState: () => {} },
-      '@hcengineering/view-resources': { ColorsPopup: Empty, statusStore: stores.writable({}) },
-      '@hcengineering/view-resources/src/plugin': view,
-      '../..': {
-        taskTypeStore: stores.writable(new Map([[taskType._id, taskType]])),
-        typeStore: stores.writable(new Map([[type._id, type]]))
-      },
-      '../../plugin': { default: { string: {} } },
-      './ApproveStatusRenamePopup.svelte': Empty,
-      './DeleteStateConfirmationPopup.svelte': Empty
+      id: 'frequently-used',
+      emojis: [require('emojibase-data/en/data.json').find((emoji: { hexcode: string }) => emoji.hexcode === '1F5A5')]
     }
-  )
-  function reference (color: number | number[]): HTMLSpanElement {
-    const hierarchy = { isDerived: () => false, findClass: () => ({ icon: iconId, color }) }
-    const module = evaluate<{ ReferenceExtension: ReferenceExtension }>(
-      source('plugins/text-editor-resources/src/components/extension/reference.ts'),
-      'reference.ts',
-      {
-        ...common,
-        '@tiptap/core': { mergeAttributes: Object.assign },
-        '@tiptap/pm/state': { PluginKey: class {} },
-        '@hcengineering/text': { ReferenceNode: { extend: (options: unknown) => options } },
-        '@hcengineering/presentation': {
-          getClient: () => ({ getHierarchy: () => hierarchy }),
-          createQuery: () => query,
-          getBlobRef: blob
-        },
-        '@hcengineering/view': view,
-        '@hcengineering/contact': {
-          default: { mention: { Here: 'here', Everyone: 'everyone' }, class: { Contact: 'contact' } }
-        },
-        '@hcengineering/activity': {},
-        '@hcengineering/workbench': {},
-        '../MentionList.svelte': Empty,
-        '../node-view': {},
-        './suggestion': {}
-      }
-    )
-    const extension = module.ReferenceExtension
-    const viewInstance = extension.addNodeView.call({
-      name: 'reference',
-      options: { HTMLAttributes: {}, suggestion: { char: '@' } }
-    })({
-      node: { attrs: { id: 'doc', objectclass: 'class', label: 'Document' } },
-      HTMLAttributes: {}
-    })
-    document.body.append(viewInstance.dom)
-    return element<HTMLSpanElement>(viewInstance.dom, 'span')
-  }
-  return { Popup, Picker, State, Icon, reference, taskType, type }
-}
+  ]
+}))
+jest.mock('../../../../plugins/emoji-resources/src/components/ActionsPopup.svelte', () =>
+  require('./fixtures/emoji/Empty.svelte')
+)
+jest.mock('../../../../plugins/emoji-resources/src/components/SkinTonePopup.svelte', () =>
+  require('./fixtures/emoji/Empty.svelte')
+)
+jest.mock('../../../../plugins/view-resources/src/icons', () => ({ iconsLibrary: [] }))
+jest.mock('../../../../plugins/view-resources/src/plugin', () => ({
+  __esModule: true,
+  default: { ids: { IconWithEmoji: 'view:icon-with-emoji' }, string: {} }
+}))
+jest.mock('../../../../plugins/view-resources/src/components/ColorsPopup.svelte', () =>
+  require('./fixtures/emoji/Empty.svelte')
+)
+jest.mock('../../../../plugins/task-resources/src', () => ({
+  taskTypeStore: require('svelte/store').writable(
+    new Map([['task-type', { _id: 'task-type', statuses: [], statusCategories: [] }]])
+  ),
+  typeStore: require('svelte/store').writable(new Map([['project-type', { _id: 'project-type', statuses: [] }]]))
+}))
+jest.mock('../../../../plugins/task-resources/src/plugin', () => ({ __esModule: true, default: { string: {} } }))
+jest.mock('../../../../plugins/task-resources/src/components/state/ApproveStatusRenamePopup.svelte', () =>
+  require('./fixtures/emoji/Empty.svelte')
+)
+jest.mock('../../../../plugins/task-resources/src/components/state/DeleteStateConfirmationPopup.svelte', () =>
+  require('./fixtures/emoji/Empty.svelte')
+)
+jest.mock('../../../../plugins/text-editor-resources/src/components/MentionList.svelte', () =>
+  require('./fixtures/emoji/Empty.svelte')
+)
+jest.mock('../../../../plugins/text-editor-resources/src/components/node-view', () => ({}))
+jest.mock('../../../../plugins/text-editor-resources/src/components/extension/suggestion', () => ({}))
+
+const iconId = 'view:icon-with-emoji'
+const desktopEmoji = String.fromCodePoint(0x1f5a5, 0xfe0f)
+const taskType = { _id: 'task-type', statuses: [], statusCategories: [] }
+const type = { _id: 'project-type', statuses: [] }
+const mounted: SvelteComponent[] = []
 
 function mount (
   Component: ComponentConstructor,
@@ -274,74 +190,99 @@ function element<T extends Element> (target: ParentNode, selector: string): T {
   return found
 }
 
+beforeEach(() => {
+  jest.useFakeTimers()
+  require('@hcengineering/presentation').getClient.mockReturnValue({ getModel: () => ({ findAllSync: () => [] }) })
+})
+
 afterEach(() => {
-  for (const component of mounted) component.$destroy()
-  mounted = []
+  for (const component of mounted.splice(0)) component.$destroy()
+  jest.clearAllTimers()
+  jest.useRealTimers()
   document.body.replaceChildren()
 })
 
 test('shared rendering loads only the compact lookup and preserves every Unicode qualification', () => {
-  const { getEmojiFromCodePoints } = loadPresentation()
-  const unicode = emojiDeps('emojibase-data/meta/unicode.json') as string[]
-  const expected = new Map<string, string>()
-  for (const emoji of unicode) {
-    if (!emoji.includes('\uFE0F')) continue
-    const key = emoji.replace(/\uFE0F/g, '')
-    if (emoji.length > (expected.get(key)?.length ?? 0)) expected.set(key, emoji)
-  }
-  for (const emoji of unicode) {
-    const key = emoji.replace(/\uFE0F/g, '')
-    const codepoints = Array.from(key, (character) => character.codePointAt(0) ?? 0)
-    assert.equal(getEmojiFromCodePoints(codepoints), expected.get(key) ?? key)
+  const unicode = jest.requireActual<string[]>('emojibase-data/meta/unicode.json')
+  jest.doMock('emojibase-data/meta/unicode.json', () => {
+    throw new Error('Synchronous rendering must not import the full Unicode dataset')
+  })
+  try {
+    jest.isolateModules(() => {
+      const { getEmojiFromCodePoints } = require('../../../../plugins/emoji/src/presentation')
+      const expected = new Map<string, string>()
+      for (const emoji of unicode) {
+        if (!emoji.includes('\uFE0F')) continue
+        const key = emoji.replace(/\uFE0F/g, '')
+        if (emoji.length > (expected.get(key)?.length ?? 0)) expected.set(key, emoji)
+      }
+      for (const emoji of unicode) {
+        const key = emoji.replace(/\uFE0F/g, '')
+        const codepoints = Array.from(key, (character) => character.codePointAt(0) ?? 0)
+        assert.equal(getEmojiFromCodePoints(codepoints), expected.get(key) ?? key)
+      }
+    })
+  } finally {
+    jest.dontMock('emojibase-data/meta/unicode.json')
   }
 })
 
 test('Desktop click traverses the production button, palette, popup and icon picker close events', async () => {
-  const { Picker } = fixture()
   const { target, instance } = mount(Picker, { icon: 'ordinary', color: 0xdeadbeef })
   let result: unknown
   instance.$on('close', (event) => {
     result = event.detail
   })
   element<HTMLButtonElement>(target, '.hulyPopupEmoji-button').click()
-  await svelte.tick()
+  await tick()
   expect(result).toEqual({ icon: iconId, color: [0x1f5a5, 0xfe0f] })
 })
 
 test('IconWithEmoji renders legacy scalar and array codepoints with FE0F', () => {
-  const { Icon } = fixture()
   for (const icon of [0x1f5a5, [0x1f5a5]]) {
     const { target } = mount(Icon, { icon, size: 'small' })
-    assert.equal(element(target, '.value').textContent?.trim(), desktop?.emoji)
+    assert.equal(element(target, '.value').textContent?.trim(), desktopEmoji)
   }
 })
 
 test('IconPicker highlights legacy scalar and array desktop icons', () => {
-  const { Picker } = fixture()
   for (const color of [0x1f5a5, [0x1f5a5]]) {
     const { target } = mount(Picker, { icon: iconId, color })
-    assert.equal(element(target, '.hulyPopupEmoji-button.selected').textContent?.trim(), desktop?.emoji)
+    assert.equal(element(target, '.hulyPopupEmoji-button.selected').textContent?.trim(), desktopEmoji)
   }
 })
 
 test('CreateStatePopup highlights legacy icons and safely opens the emoji tab for ordinary colour hashes', async () => {
-  const { State, taskType, type } = fixture()
   for (const color of [0x1f5a5, [0x1f5a5]]) {
     const { target } = mount(State, { taskType, type, icons: [], icon: iconId, color })
-    assert.equal(element(target, '.hulyPopupEmoji-button.selected').textContent?.trim(), desktop?.emoji)
+    assert.equal(element(target, '.hulyPopupEmoji-button.selected').textContent?.trim(), desktopEmoji)
   }
-  const { target } = mount(State, { taskType, type, icons: [], icon: 'ordinary', color: 0xdeadbeef })
-  target.querySelectorAll<HTMLButtonElement>('.choose-emoji')[1].click()
-  await svelte.tick()
+  const { target } = mount(State, { taskType, type, icons: [], icon: 'ordinary', color: 0xdeadbeef, readonly: false })
+  element<HTMLButtonElement>(target, '[data-menu-item="emoji"]').click()
+  await tick()
   assert.ok(target.querySelector('.hulyPopupEmoji-button'))
   assert.equal(target.querySelector('.hulyPopupEmoji-button.selected'), null)
 })
 
 test('reference node view renders legacy scalar and array emoji icons with FE0F', () => {
-  const { reference } = fixture()
   for (const color of [0x1f5a5, [0x1f5a5]]) {
-    const icon = reference(color)
-    assert.equal(icon.textContent, desktop?.emoji)
+    require('@hcengineering/presentation').getClient.mockReturnValue({
+      getHierarchy: () => ({ isDerived: () => false, findClass: () => ({ icon: iconId, color }) })
+    })
+    const reference: { ReferenceExtension: ReferenceNodeView } = require(
+      '../../../../plugins/text-editor-resources/src/components/extension/reference'
+    )
+    const view = reference.ReferenceExtension.addNodeView.call({
+      name: 'reference',
+      options: { HTMLAttributes: {}, suggestion: { char: '@' } }
+    })({
+      node: { attrs: { id: 'doc', objectclass: 'class', label: 'Document' } },
+      HTMLAttributes: {}
+    })
+    document.body.append(view.dom)
+    const icon = element<HTMLSpanElement>(view.dom, 'span')
+    assert.equal(icon.textContent, desktopEmoji)
     assert.ok(icon.classList.contains('emoji'))
+    view.destroy()
   }
 })
