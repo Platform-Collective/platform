@@ -159,6 +159,15 @@ export interface RelatedIssueTarget extends Doc {
 }
 
 /**
+ * A former identifier, maintained by the server in the issue's current space.
+ * @public
+ */
+export interface IssueIdentifierAlias extends Doc {
+  identifier: string
+  issue: Ref<Issue>
+}
+
+/**
  * @public
  */
 export enum TimeReportDayType {
@@ -569,6 +578,7 @@ const pluginState = plugin(trackerId, {
   class: {
     Project: '' as Ref<Class<Project>>,
     Issue: '' as Ref<Class<Issue>>,
+    IssueIdentifierAlias: '' as Ref<Class<IssueIdentifierAlias>>,
     IssueRelation: '' as Ref<Class<IssueRelation>>,
     IssueTemplate: '' as Ref<Class<IssueTemplate>>,
     Component: '' as Ref<Class<Component>>,
