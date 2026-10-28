@@ -76,6 +76,7 @@ import {
   type InviteInfo
 } from './types'
 import {
+  reissueToken,
   addSocialIdBase,
   checkInvite,
   cleanEmail,
@@ -622,7 +623,8 @@ export async function createWorkspace (
     throw new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
   }
 
-  const { account, extra } = decodeTokenVerbose(ctx, token)
+  const decoded = decodeTokenVerbose(ctx, token)
+  const { account } = decoded
 
   checkRateLimit(account, workspaceName)
 
@@ -680,7 +682,7 @@ export async function createWorkspace (
     account,
     socialId: socialId._id,
     name: getPersonName(person),
-    token: generateToken(account, workspaceUuid, extra),
+    token: reissueToken(decoded, workspaceUuid),
     endpoint: getEndpoint(workspaceUuid, region, EndpointKind.External),
     workspace: workspaceUuid,
     workspaceUrl,
@@ -1726,7 +1728,8 @@ export async function leaveWorkspace (
     throw new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
   }
 
-  const { account, workspace, extra } = decodeTokenVerbose(ctx, token)
+  const decoded = decodeTokenVerbose(ctx, token)
+  const { account, workspace } = decoded
   ctx.info('Removing account from workspace', { account, workspace })
 
   if (account == null || workspace == null) {
@@ -1784,7 +1787,7 @@ export async function leaveWorkspace (
     return {
       account,
       name: getPersonName(person),
-      token: generateToken(account, undefined, extra)
+      token: reissueToken(decoded)
     }
   }
 
@@ -1966,7 +1969,7 @@ export async function verify2fa (
 
   return {
     account: accountUuid,
-    token: generateToken(accountUuid, undefined, filteredExtra),
+    token: reissueToken(decoded, undefined, filteredExtra, accountUuid),
     name: getPersonName(person),
     socialId: socialId?._id
   }
@@ -3004,6 +3007,7 @@ export async function refreshHulyAssistantToken (
     key
   }
 
+  // This service integration secret has an independent lifetime from the caller's login session.
   const secret = generateToken(account, undefined, { userAiAssistant: 'true' })
 
   const existingToken = await db.integrationSecret.findOne(integrationSecretKey)

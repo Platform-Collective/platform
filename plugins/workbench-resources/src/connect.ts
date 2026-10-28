@@ -37,6 +37,7 @@ import platform, {
   translateCB
 } from '@hcengineering/platform'
 import presentation, {
+  decodeTokenPayload,
   loadServerConfig,
   purgeClient,
   purgeCommunicationClient,
@@ -340,7 +341,9 @@ export async function connect (title: string): Promise<Client | undefined> {
               break
             }
             case platform.status.Unauthorized: {
-              void logOut().then(() => {
+              const payload = decodeTokenPayload(token)
+              const cookieTimeout = payload.extra?.authMethod === 'oidc' && payload.exp !== undefined ? 1000 : undefined
+              void logOut(cookieTimeout).then(() => {
                 navigate({
                   path: [loginId],
                   query: {}
