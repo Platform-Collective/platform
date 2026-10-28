@@ -52,6 +52,7 @@ jest.mock('@hcengineering/ui', () => {
     },
     tooltip: () => ({}),
     capitalizeFirstLetter: (value: string) => value,
+    fromCodePoint: (...vals: number[]) => String.fromCodePoint(...vals.map((p) => Math.abs(p) % 0x10ffff)),
     deviceOptionsStore: writable({ fontSize: 16, isMobile: false }),
     themeStore: writable({ dark: false }),
     getPlatformColorDef: () => ({ name: 'blue' }),
