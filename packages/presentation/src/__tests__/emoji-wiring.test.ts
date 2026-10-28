@@ -175,7 +175,8 @@ const type = { _id: 'project-type', statuses: [] }
 const mounted: SvelteComponent[] = []
 
 // Load cross-package components through Jest without extending this package's Svelte type-checking root.
-const Picker: ComponentConstructor = require('../../../../plugins/view-resources/src/components/IconPicker.svelte').default
+const Picker: ComponentConstructor =
+  require('../../../../plugins/view-resources/src/components/IconPicker.svelte').default
 const State: ComponentConstructor =
   require('../../../../plugins/task-resources/src/components/state/CreateStatePopup.svelte').default
 
