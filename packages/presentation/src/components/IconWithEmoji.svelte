@@ -14,7 +14,8 @@
 -->
 <script lang="ts">
   import { Ref, Blob } from '@hcengineering/core'
-  import { IconSize, fromCodePoint } from '@hcengineering/ui'
+  import { IconSize } from '@hcengineering/ui'
+  import { getEmojiFromCodePoints } from '@hcengineering/emoji'
   import { getBlobRef } from '../preview'
 
   export let icon: number | number[] | Ref<Blob>
@@ -24,11 +25,11 @@
   let value: string | undefined = parseIcon(icon)
 
   function parseIcon(icon: number | number[] | Ref<Blob>): string | undefined {
-    if (typeof icon === 'object' && '__ref' in icon) {
+    if (typeof icon !== 'number' && !Array.isArray(icon)) {
       return undefined
     }
     try {
-      return Array.isArray(icon) ? fromCodePoint(...icon) : fromCodePoint(icon as number)
+      return getEmojiFromCodePoints(icon)
     } catch (err) {}
     return undefined
   }

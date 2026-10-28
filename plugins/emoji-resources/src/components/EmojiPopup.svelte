@@ -30,7 +30,7 @@
   import ActionsPopup from './ActionsPopup.svelte'
   import SkinTonePopup from './SkinTonePopup.svelte'
   import EmojiGroup from './EmojiGroup.svelte'
-  import emojiPlugin, { isCustomEmoji } from '@hcengineering/emoji'
+  import emojiPlugin, { getEmojiCodePoints, isCustomEmoji } from '@hcengineering/emoji'
   import { emojiCategories, EmojiCategory } from '../types'
   import { Ref, Blob } from '@hcengineering/core'
 
@@ -113,7 +113,7 @@
       selected = emoji.emoji
       dispatch('close', {
         text: emoji.emoji,
-        codes: emoji.hexcode.split('-').map((hc) => parseInt(hc, 16)),
+        codes: getEmojiCodePoints(emoji.emoji),
         image: undefined
       })
     }
