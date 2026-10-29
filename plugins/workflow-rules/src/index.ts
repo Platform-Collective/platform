@@ -32,13 +32,7 @@ export type WorkflowRuleLinkKind = 'subIssue' | 'parentIssue'
  * ask the server to copy arbitrary nested paths; adding a new inheritable
  * field is a deliberate model change.
  */
-export type WorkflowRuleInheritField =
-  | 'title'
-  | 'description'
-  | 'priority'
-  | 'dueDate'
-  | 'milestone'
-  | 'assignee'
+export type WorkflowRuleInheritField = 'title' | 'description' | 'priority' | 'dueDate' | 'milestone' | 'assignee'
 
 /**
  * @public

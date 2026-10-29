@@ -182,44 +182,40 @@ The trigger body:
      so an Owner has to opt in via Settings > Configure before any rule
      fires.
 9. Emit `TxUpdateDoc<Issue>` via
-   `control.txFactory.createTxUpdateDoc(..., tx.modifiedOn)`. Passing the
+   `control.txFactory.createTxUpdateDoc(..., tx.modifiedOn, tx.modifiedBy)`. Passing the
    source tx's `modifiedOn` lines up with how `OnIssueUpdate` already builds
    its chained updates (see `doTimeReportUpdate` in `server-plugins/tracker-resources/src/index.ts`),
-   so the mirror does not look like it happened in the future.
-10. Transactions in a single invocation are evaluated in `modifiedOn` order.
-    A pending-status map keyed by counterpart holds `{status, modifiedOn}`
-    entries so that:
-    (a) equality and regression checks run against the queued target
-        status rather than the stale persisted one, and
-    (b) when an older source arrives after a newer mirror is already
-        queued for the same counterpart (dispatcher groups can arrive
-        in any order), the trigger re-tests the newer queued move from
-        the older's target. If the newer move is still legal after the
-        older (ordinary forward move, or allowedLoops lets it through),
-        the older is skipped: the newer dominates in time order and
-        the older's state would just be an intermediate the newer
-        overwrites. Otherwise the older is applied at the queued
-        timestamp so the downstream stable sort in
-        `foundations/server/packages/middleware/src/triggers.ts` keeps
-        the applied order aligned with the check order. A backward
-        move against the queued target is still refused by the
-        regression guard.
+   so the mirror does not look like it happened in the future. The explicit
+   actor preserves attribution when a request contains several actor groups.
+10. The first invocation evaluates the complete request (`control.txes`),
+    including candidates from every dispatcher actor group, once in
+    `modifiedOn` order. Equal timestamps retain their order in the request
+    array via the stable sort. A local pending-status map keyed by counterpart
+    starts from the stored (post-request) status. For each candidate, equality,
+    regression/`allowedLoops`, and actor authorization checks run against the
+    effective status; only an emitted move advances that status. No-op and
+    refused candidates are considered at their chronological position rather
+    than discarded during an earlier group visit. This retains intermediate
+    moves that can make a later loop legal, and emits exactly the legal
+    sequence with original source timestamps and actors. The final status and
+    emitted sequence are independent of dispatcher group order, with or
+    without `allowedLoops`; no forbidden regression is emitted. The downstream
+    stable sort in `foundations/server/packages/middleware/src/triggers.ts`
+    preserves that sequence, including timestamp ties.
 
-    Limit: with `allowedLoops` and several actors in one request, the
-    final status can still depend on dispatch order when a move is a
-    no-op, is refused against the persisted status, or is dropped
-    between two other moves. The pairwise check against the single
-    queued entry cannot see a dropped middle move; a no-op or refused
-    move leaves no pending entry at all. No illegal step is ever
-    applied. A follow-up PR could evaluate all moves for a counterpart
-    once in `modifiedOn` order, independent of dispatcher visit order,
-    at the cost of extra bookkeeping.
-    The map lives in `control.contextCache`, which the server pipeline
-    normally scopes to one root transaction (one request). Workspace
-    paths (notably `wrapPipeline()`) can share one `SessionData` across
-    successive `pipeline.tx()` calls, so the trigger stamps a sentinel
-    with the current `control.txes` reference on entry and clears the
-    per-request maps when that identity has changed.
+    A WeakSet in `control.contextCache` records each `control.txes` array only
+    after successful evaluation, just before returning the result, so later
+    group visits skip the request even if it emitted nothing, while a thrown
+    evaluation can be retried by the next group. Workspace paths (notably
+    `wrapPipeline()`) can share one `SessionData` across concurrent
+    `pipeline.tx()` calls; tracking each array independently prevents those
+    requests from resetting each other's markers without retaining finished
+    arrays. Appending derived outputs to the same array does not reset its
+    marker. The authorization memo is local to each evaluation and keyed by
+    actor and target project. Derived updates remain excluded from mirroring.
+    Non-derived outputs of earlier triggers in `control.txes` are evaluated
+    in this pass, and their later derived pass is then a no-op because the
+    counterpart already has the target status.
 11. The whole trigger is a no-op unless the plugin's `PluginConfiguration`
     row has `enabled: true`. Missing, malformed, or unreadable config
     fails closed. The feature ships disabled in `models/all`; an Owner

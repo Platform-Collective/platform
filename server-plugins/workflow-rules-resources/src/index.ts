@@ -12,7 +12,6 @@ import core, {
   systemAccountUuid,
   type AccountUuid,
   type PersonId,
-  type PluginConfiguration,
   type Ref,
   type Space,
   type Tx,
@@ -28,33 +27,13 @@ import { isRegression } from './logic'
 export { isRegression } from './logic'
 
 /**
- * Cache keys for `control.contextCache`. The pipeline normally scopes
- * this map to one root transaction (one request), so stashing
- * per-request state here lets a later invocation see what an earlier
- * one queued. Some workspace maintenance paths (notably
- * `wrapPipeline()`) deliberately reuse the `SessionData` across
- * successive `pipeline.tx()` calls; to stay correct on those paths the
- * trigger also stamps a sentinel at `REQUEST_SENTINEL_KEY` with the
- * current `control.txes` reference and clears the maps on entry when
- * that identity changes.
+ * Cache key for processed request arrays in `control.contextCache`.
+ * The pipeline normally scopes this map to one root transaction (one
+ * request), but `wrapPipeline()` can reuse the `SessionData` across
+ * concurrent `pipeline.tx()` calls. A WeakSet tracks each request's
+ * `control.txes` identity independently without retaining finished arrays.
  */
-const PENDING_STATUS_CACHE_KEY = 'workflow-rules.pendingStatuses'
-const AUTHZ_CACHE_KEY = 'workflow-rules.targetSpaceAuthz'
-const REQUEST_SENTINEL_KEY = 'workflow-rules.requestSentinel'
-
-/**
- * One entry in the pending-status map. `modifiedOn` is the emitted
- * timestamp of the queued mirror, which may have been raised above the
- * source tx's own `modifiedOn` so the downstream stable sort keeps the
- * check order. A later decision for the same counterpart compares its
- * own `modifiedOn` against this and decides whether to drop the older
- * move, apply it at the queued timestamp, or emit normally. See the
- * cross-group handling block in `OnWorkflowRuleMirror`.
- */
-interface PendingEntry {
-  status: Ref<IssueStatus>
-  modifiedOn: number
-}
+const PROCESSED_CACHE_KEY = 'workflow-rules.processed'
 
 /**
  * Trigger body for `OnWorkflowRuleMirror`. Fires on `TxUpdateDoc` whose
@@ -64,8 +43,8 @@ interface PendingEntry {
  *
  * Cascade behavior (one hop). The trigger skips updates whose own tx `space`
  * is `core.space.DerivedTx`, so a mirror update produced by this trigger
- * cannot trigger another mirror. That also means status writes emitted by
- * any other server trigger are not mirrored. For v1 this is the intended
+ * cannot trigger another mirror. Derived status writes emitted by other
+ * server triggers are also excluded. For v1 this is the intended
  * one hop semantics; multi hop would want a cascade-scoped visited set and
  * a hard depth bound instead. See `docs/workflow-rules/DESIGN.md`.
  *
@@ -91,37 +70,20 @@ interface PendingEntry {
  * full permission-pipeline integration (role grants, forbids) are
  * tracked as a follow-up.
  *
- * Conflict ordering. Transactions in a single invocation are evaluated
- * in `modifiedOn` order. A pending-status map keyed by counterpart
- * holds `{status, modifiedOn}` entries so that:
- *   (a) equality and regression checks run against the queued target
- *       status rather than the stale persisted one, and
- *   (b) when an older source arrives after a newer mirror is already
- *       queued for the same counterpart, the trigger re-tests the newer
- *       queued move from the older's target. If the newer is still
- *       legal after the older, the older is skipped (newer dominates
- *       in time order). Otherwise the older is applied at the queued
- *       timestamp so the downstream stable sort keeps the applied
- *       order aligned with the check order. A backward move against
- *       the queued target is still refused by the regression guard,
- *       which runs against the pending status rather than the stale
- *       persisted one.
+ * Conflict ordering. The first invocation evaluates the complete request
+ * (`control.txes`) in `modifiedOn` order, with request-array order breaking
+ * ties. A local pending-status map keyed by counterpart starts from the
+ * stored (post-request) status and advances only after an authorized, legal
+ * mirror is emitted. No-op and refused candidates are evaluated at their
+ * place in that sequence, so allowedLoops and intermediate moves have the same
+ * result regardless of the dispatcher's actor-group visit order. Each
+ * emitted update retains its source actor and timestamp.
  *
- * Ordering limit. With `allowedLoops` and several actors in one
- * request, the final status can still depend on dispatch order when a
- * move is a no-op, is refused against the persisted status, or is
- * dropped between two other moves: the pairwise check against the
- * single queued entry cannot see a dropped middle move, and a no-op
- * or refused move leaves no pending entry at all. No illegal step is
- * ever applied. A follow-up PR could evaluate all moves for a
- * counterpart once in `modifiedOn` order, independent of dispatcher
- * visit order.
- * The map lives in `control.contextCache`, which the server pipeline
- * normally scopes to one root transaction (one request). Workspace
- * maintenance paths (notably `wrapPipeline()`) can share one
- * `SessionData` across successive `pipeline.tx()` calls, so on entry
- * the trigger stamps the current `control.txes` reference as a sentinel
- * and clears the per-request maps if that identity has changed.
+ * A WeakSet in `control.contextCache` makes later actor groups skip each
+ * successfully evaluated request. Request arrays are tracked independently
+ * even when concurrent `pipeline.tx()` calls share a `SessionData` through
+ * `wrapPipeline()`. A failed evaluation leaves the request unmarked so a
+ * later group can retry it. Authorization is memoized within each evaluation.
  *
  * Plugin enable. If the `PluginConfiguration` row for this plugin is
  * disabled in the workspace model, the whole trigger is a no-op. The
@@ -130,34 +92,20 @@ interface PendingEntry {
  *
  * @public
  */
-export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
+export async function OnWorkflowRuleMirror (_txes: Tx[], control: TriggerControl): Promise<Tx[]> {
   if (!isPluginEnabled(control)) return []
 
-  // The context cache is normally per-root-tx. Some workspace paths
-  // reuse the SessionData across pipeline.tx() calls, so reset the
-  // request-scoped maps when the `control.txes` identity changes.
-  const requestSentinel = control.txes
-  if (control.contextCache.get(REQUEST_SENTINEL_KEY) !== requestSentinel) {
-    control.contextCache.delete(PENDING_STATUS_CACHE_KEY)
-    control.contextCache.delete(AUTHZ_CACHE_KEY)
-    control.contextCache.set(REQUEST_SENTINEL_KEY, requestSentinel)
-  }
+  const processed: WeakSet<Tx[]> = control.contextCache.get(PROCESSED_CACHE_KEY) ?? new WeakSet()
+  control.contextCache.set(PROCESSED_CACHE_KEY, processed)
+  if (processed.has(control.txes)) return []
 
-  const sorted = [...txes].sort((a, b) => a.modifiedOn - b.modifiedOn)
+  // Snapshot the full request across actor groups. Stable sort preserves
+  // request-array order for equal timestamps, independently of group order.
+  const sorted = [...control.txes].sort((a, b) => a.modifiedOn - b.modifiedOn)
   const result: Tx[] = []
-  // Per-request pending-status map. The dispatcher calls this trigger
-  // once per `modifiedBy` group but all groups within one request share
-  // this cache, so queueing a pending target here is seen by every
-  // subsequent invocation.
-  const pendingStatuses: Map<Ref<Issue>, PendingEntry> =
-    control.contextCache.get(PENDING_STATUS_CACHE_KEY) ?? new Map()
-  control.contextCache.set(PENDING_STATUS_CACHE_KEY, pendingStatuses)
-  // Keyed by actor+space on purpose. Upstream groups txes by modifiedBy
-  // so one invocation sees a single actor today, but keying both makes
-  // the memoization correct independently of that invariant.
-  const targetSpaceAuthz: Map<string, boolean> =
-    control.contextCache.get(AUTHZ_CACHE_KEY) ?? new Map()
-  control.contextCache.set(AUTHZ_CACHE_KEY, targetSpaceAuthz)
+  const pendingStatuses = new Map<Ref<Issue>, Ref<IssueStatus>>()
+  // A request can contain multiple actors, so memoize by actor+space.
+  const targetSpaceAuthz = new Map<string, boolean>()
 
   for (const actualTx of sorted) {
     if (actualTx._class !== core.class.TxUpdateDoc) continue
@@ -169,19 +117,13 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
     const newStatus = updateTx.operations.status
     if (newStatus == null) continue
 
-    const [source] = await control.findAll(
-      control.ctx,
-      tracker.class.Issue,
-      { _id: updateTx.objectId },
-      { limit: 1 }
-    )
+    const [source] = await control.findAll(control.ctx, tracker.class.Issue, { _id: updateTx.objectId }, { limit: 1 })
     if (source === undefined) continue
 
-    const rules = (await control.findAll(
-      control.ctx,
-      workflowRules.class.WorkflowRule,
-      { space: source.space, enabled: true }
-    )) as unknown as WorkflowRule[]
+    const rules = (await control.findAll(control.ctx, workflowRules.class.WorkflowRule, {
+      space: source.space,
+      enabled: true
+    })) as unknown as WorkflowRule[]
     if (rules.length === 0) continue
 
     for (const rule of rules) {
@@ -200,10 +142,11 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
         // TxCreateDoc<Issue> with attachedTo pointing at `source`. Deferred
         // from the first PR because sequence allocation needs its own review.
         if (rule.autoCreate != null && rule.autoCreate.triggerStatuses.includes(newStatus)) {
-          control.ctx.info(
-            '[workflow-rules] auto-create requested but not yet implemented',
-            { ruleId: rule._id, sourceIssue: source._id, status: newStatus }
-          )
+          control.ctx.info('[workflow-rules] auto-create requested but not yet implemented', {
+            ruleId: rule._id,
+            sourceIssue: source._id,
+            status: newStatus
+          })
         }
         continue
       }
@@ -218,79 +161,30 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
       // Evaluate against the pending status for this counterpart, not the
       // stale persisted one. The pending map carries forward updates we
       // already queued for later application against the same target.
-      const pending = pendingStatuses.get(counterpart._id)
-      const effectiveStatus = pending?.status ?? counterpart.status
+      const effectiveStatus = pendingStatuses.get(counterpart._id) ?? counterpart.status
       if (effectiveStatus === target) continue
 
-      const regressed = await checkRegressionGuard(
-        control,
-        counterpart,
-        effectiveStatus,
-        target,
-        rule
-      )
+      const regressed = await checkRegressionGuard(control, counterpart, effectiveStatus, target, rule)
       if (regressed) {
-        control.ctx.info(
-          '[workflow-rules] mirror suppressed by regression guard',
-          {
-            ruleId: rule._id,
-            source: source._id,
-            counterpart: counterpart._id,
-            from: effectiveStatus,
-            to: target
-          }
-        )
+        control.ctx.info('[workflow-rules] mirror suppressed by regression guard', {
+          ruleId: rule._id,
+          source: source._id,
+          counterpart: counterpart._id,
+          from: effectiveStatus,
+          to: target
+        })
         continue
-      }
-
-      // Cross-group ordering. If a NEWER mirror is already queued for this
-      // counterpart (dispatcher groups can be visited in either order), ask
-      // whether the newer queued move would still be legal AFTER this older
-      // one. If yes, the newer dominates in time order and this older write
-      // would just produce a short-lived intermediate state the newer
-      // overwrites - skip it. If no (an `allowedLoops` entry would be
-      // needed and is absent, or regression check otherwise blocks it),
-      // apply this older move and emit it at the queued timestamp so the
-      // downstream stable sort keeps the check order.
-      let emitOn = updateTx.modifiedOn
-      if (pending !== undefined && pending.modifiedOn > updateTx.modifiedOn) {
-        const newerBlocked = await checkRegressionGuard(
-          control,
-          counterpart,
-          target,
-          pending.status,
-          rule
-        )
-        if (!newerBlocked) {
-          control.ctx.info(
-            '[workflow-rules] older mirror skipped: newer queued move still legal from this target',
-            {
-              ruleId: rule._id,
-              source: source._id,
-              counterpart: counterpart._id,
-              sourceModifiedOn: updateTx.modifiedOn,
-              pendingModifiedOn: pending.modifiedOn,
-              olderTarget: target,
-              newerTarget: pending.status
-            }
-          )
-          continue
-        }
-        emitOn = pending.modifiedOn
       }
 
       const authorized = await isAuthorizedForTarget(control, updateTx.modifiedBy, counterpart.space, targetSpaceAuthz)
       if (!authorized) {
-        control.ctx.warn(
-          '[workflow-rules] mirror suppressed: actor not authorized on target project',
-          {
-            ruleId: rule._id,
-            source: source._id,
-            counterpart: counterpart._id,
-            targetSpace: counterpart.space,
-            modifiedBy: updateTx.modifiedBy
-          }
-        )
+        control.ctx.warn('[workflow-rules] mirror suppressed: actor not authorized on target project', {
+          ruleId: rule._id,
+          source: source._id,
+          counterpart: counterpart._id,
+          targetSpace: counterpart.space,
+          modifiedBy: updateTx.modifiedBy
+        })
         continue
       }
 
@@ -301,12 +195,14 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
           counterpart._id,
           { status: target },
           false,
-          emitOn
+          updateTx.modifiedOn,
+          updateTx.modifiedBy
         )
       )
-      pendingStatuses.set(counterpart._id, { status: target, modifiedOn: emitOn })
+      pendingStatuses.set(counterpart._id, target)
     }
   }
+  processed.add(control.txes)
   return result
 }
 
@@ -326,9 +222,10 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
  */
 function isPluginEnabled (control: TriggerControl): boolean {
   try {
+    // Persisted model data can be malformed despite the declared schema.
     const configs = control.modelDb.findAllSync(core.class.PluginConfiguration, {
       pluginId: workflowRulesId
-    }) as PluginConfiguration[]
+    }) as Array<{ enabled?: unknown }>
     if (configs.length !== 1) return false
     return configs[0].enabled === true
   } catch (e) {
@@ -393,10 +290,9 @@ async function isAuthorizedForTarget (
       { _id: targetSpace as Ref<Project> },
       { limit: 1 }
     )
-    const targetOk =
-      target !== undefined &&
-      target.archived !== true &&
-      (target as unknown as { restricted?: boolean }).restricted !== true
+    // Compare as unknown so lint autofixes cannot loosen the strict checks.
+    const flags = target as unknown as { archived?: unknown, restricted?: unknown } | undefined
+    const targetOk = target !== undefined && flags?.archived !== true && flags?.restricted !== true
     cache.set(targetKey, targetOk)
     if (!targetOk) return false
   }
@@ -511,7 +407,7 @@ export async function resolveCounterpart (
         control.ctx,
         tracker.class.Issue,
         {
-          _id: source.attachedTo as Ref<Issue>,
+          _id: source.attachedTo,
           space: rule.linkedProject
         },
         { limit: 1 }
@@ -519,7 +415,6 @@ export async function resolveCounterpart (
       return found
     }
     default: {
-      const _exhaustive: never = rule.linkKind
       return undefined
     }
   }
@@ -553,15 +448,10 @@ export async function checkRegressionGuard (
   target: Ref<IssueStatus>,
   rule: WorkflowRule
 ): Promise<boolean> {
-  const [tt] = await control.findAll(
-    control.ctx,
-    task.class.TaskType,
-    { _id: counterpart.kind },
-    { limit: 1 }
-  )
+  const [tt] = await control.findAll(control.ctx, task.class.TaskType, { _id: counterpart.kind }, { limit: 1 })
   if (tt === undefined || !Array.isArray(tt.statuses)) return true
 
-  const statuses: Array<Ref<IssueStatus>> = tt.statuses as Array<Ref<IssueStatus>>
+  const statuses: Array<Ref<IssueStatus>> = tt.statuses
   if (!statuses.includes(effectiveFrom) || !statuses.includes(target)) return true
   if (!Array.isArray(rule.allowedLoops)) return true
   for (const loop of rule.allowedLoops) {

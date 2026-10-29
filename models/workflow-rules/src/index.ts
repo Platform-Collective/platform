@@ -7,23 +7,14 @@
 // obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
 
 import { type Domain, type Ref } from '@hcengineering/core'
-import {
-  Model,
-  Prop,
-  TypeBoolean,
-  TypeRef,
-  TypeString,
-  UX,
-  type Builder
-} from '@hcengineering/model'
+import { Model, Prop, TypeBoolean, TypeRef, TypeString, UX, type Builder } from '@hcengineering/model'
 import core, { TDoc } from '@hcengineering/model-core'
 import type { Project } from '@hcengineering/tracker'
 import workflowRules, {
   type WorkflowRule,
   type WorkflowRuleAllowedLoop,
   type WorkflowRuleAutoCreate,
-  type WorkflowRuleLinkKind,
-  workflowRulesId
+  type WorkflowRuleLinkKind
 } from '@hcengineering/workflow-rules'
 
 export { workflowRulesId } from '@hcengineering/workflow-rules'
