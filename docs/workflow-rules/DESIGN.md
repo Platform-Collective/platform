@@ -204,6 +204,16 @@ The trigger body:
         the applied order aligned with the check order. A backward
         move against the queued target is still refused by the
         regression guard.
+
+    Limit: with `allowedLoops` and several actors in one request, the
+    final status can still depend on dispatch order when a move is a
+    no-op, is refused against the persisted status, or is dropped
+    between two other moves. The pairwise check against the single
+    queued entry cannot see a dropped middle move; a no-op or refused
+    move leaves no pending entry at all. No illegal step is ever
+    applied. A follow-up PR could evaluate all moves for a counterpart
+    once in `modifiedOn` order, independent of dispatcher visit order,
+    at the cost of extra bookkeeping.
     The map lives in `control.contextCache`, which the server pipeline
     normally scopes to one root transaction (one request). Workspace
     paths (notably `wrapPipeline()`) can share one `SessionData` across

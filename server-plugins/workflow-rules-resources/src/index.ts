@@ -106,6 +106,16 @@ interface PendingEntry {
  *       the queued target is still refused by the regression guard,
  *       which runs against the pending status rather than the stale
  *       persisted one.
+ *
+ * Ordering limit. With `allowedLoops` and several actors in one
+ * request, the final status can still depend on dispatch order when a
+ * move is a no-op, is refused against the persisted status, or is
+ * dropped between two other moves: the pairwise check against the
+ * single queued entry cannot see a dropped middle move, and a no-op
+ * or refused move leaves no pending entry at all. No illegal step is
+ * ever applied. A follow-up PR could evaluate all moves for a
+ * counterpart once in `modifiedOn` order, independent of dispatcher
+ * visit order.
  * The map lives in `control.contextCache`, which the server pipeline
  * normally scopes to one root transaction (one request). Workspace
  * maintenance paths (notably `wrapPipeline()`) can share one

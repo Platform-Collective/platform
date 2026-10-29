@@ -512,7 +512,7 @@ describe('OnWorkflowRuleMirror', () => {
     expect(res).toHaveLength(0)
   })
 
-  it('cross-group dispatcher scenario: without allowedLoops, both orderings end at the newer target (Done)', async () => {
+  it('cross-group dispatcher scenario: without allowedLoops, both orderings end at Done (older move kept, newer blocked after it)', async () => {
     // Michael's P1 scenario. Same single ruleset
     // (review -> done, inProgress -> inProgress). Counterpart starts
     // at Backlog. Three txes across two social ids in one request.
