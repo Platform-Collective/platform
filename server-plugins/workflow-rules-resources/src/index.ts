@@ -43,13 +43,13 @@ const AUTHZ_CACHE_KEY = 'workflow-rules.targetSpaceAuthz'
 const REQUEST_SENTINEL_KEY = 'workflow-rules.requestSentinel'
 
 /**
- * One entry in the pending-status map. `modifiedOn` is the source tx
- * `modifiedOn` under which the queued mirror was emitted. A later
- * decision for the same counterpart compares its own `modifiedOn`
- * against this; a source whose `modifiedOn` is less than or equal to
- * the queued one is refused, because the downstream derived-tx sort by
- * `modifiedOn` would otherwise reorder the applied writes and let a
- * regression through.
+ * One entry in the pending-status map. `modifiedOn` is the emitted
+ * timestamp of the queued mirror, which may have been raised above the
+ * source tx's own `modifiedOn` so the downstream stable sort keeps the
+ * check order. A later decision for the same counterpart compares its
+ * own `modifiedOn` against this and decides whether to drop the older
+ * move, apply it at the queued timestamp, or emit normally. See the
+ * cross-group handling block in `OnWorkflowRuleMirror`.
  */
 interface PendingEntry {
   status: Ref<IssueStatus>
@@ -97,11 +97,12 @@ interface PendingEntry {
  *   (a) equality and regression checks run against the queued target
  *       status rather than the stale persisted one, and
  *   (b) when an older source arrives after a newer mirror is already
- *       queued for the same counterpart, the emitted `modifiedOn` is
- *       bumped up to the queued entry's `modifiedOn`. Final application
- *       sorts derived writes by `modifiedOn` (stable), so the bump
- *       keeps the applied order aligned with the order we checked, and
- *       no forward move is silently dropped. A backward move against
+ *       queued for the same counterpart, the trigger re-tests the newer
+ *       queued move from the older's target. If the newer is still
+ *       legal after the older, the older is skipped (newer dominates
+ *       in time order). Otherwise the older is applied at the queued
+ *       timestamp so the downstream stable sort keeps the applied
+ *       order aligned with the check order. A backward move against
  *       the queued target is still refused by the regression guard,
  *       which runs against the pending status rather than the stale
  *       persisted one.
@@ -208,18 +209,6 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
       // stale persisted one. The pending map carries forward updates we
       // already queued for later application against the same target.
       const pending = pendingStatuses.get(counterpart._id)
-      // Never emit earlier than the queued mirror. If an older source
-      // comes in after a newer one has been queued (dispatcher groups
-      // can arrive in any order), bump the emitted `modifiedOn` to the
-      // queued one. The downstream stable sort by `modifiedOn` then
-      // applies the writes in the order we checked, and no forward move
-      // is silently dropped. The equality + regression checks still run
-      // against `effectiveStatus = pending.status`, so an older source
-      // that would move backward from the queued target is still
-      // refused by the regression guard.
-      const emitOn = pending !== undefined && pending.modifiedOn > updateTx.modifiedOn
-        ? pending.modifiedOn
-        : updateTx.modifiedOn
       const effectiveStatus = pending?.status ?? counterpart.status
       if (effectiveStatus === target) continue
 
@@ -242,6 +231,42 @@ export async function OnWorkflowRuleMirror (txes: Tx[], control: TriggerControl)
           }
         )
         continue
+      }
+
+      // Cross-group ordering. If a NEWER mirror is already queued for this
+      // counterpart (dispatcher groups can be visited in either order), ask
+      // whether the newer queued move would still be legal AFTER this older
+      // one. If yes, the newer dominates in time order and this older write
+      // would just produce a short-lived intermediate state the newer
+      // overwrites - skip it. If no (an `allowedLoops` entry would be
+      // needed and is absent, or regression check otherwise blocks it),
+      // apply this older move and emit it at the queued timestamp so the
+      // downstream stable sort keeps the check order.
+      let emitOn = updateTx.modifiedOn
+      if (pending !== undefined && pending.modifiedOn > updateTx.modifiedOn) {
+        const newerBlocked = await checkRegressionGuard(
+          control,
+          counterpart,
+          target,
+          pending.status,
+          rule
+        )
+        if (!newerBlocked) {
+          control.ctx.info(
+            '[workflow-rules] older mirror skipped: newer queued move still legal from this target',
+            {
+              ruleId: rule._id,
+              source: source._id,
+              counterpart: counterpart._id,
+              sourceModifiedOn: updateTx.modifiedOn,
+              pendingModifiedOn: pending.modifiedOn,
+              olderTarget: target,
+              newerTarget: pending.status
+            }
+          )
+          continue
+        }
+        emitOn = pending.modifiedOn
       }
 
       const authorized = await isAuthorizedForTarget(control, updateTx.modifiedBy, counterpart.space, targetSpaceAuthz)

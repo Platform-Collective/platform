@@ -512,31 +512,32 @@ describe('OnWorkflowRuleMirror', () => {
     expect(res).toHaveLength(0)
   })
 
-  it('cross-group dispatcher scenario: pending map + bumped emit modifiedOn end at the later target', async () => {
-    // Michael's P1 scenario, reproduced exactly. Same single ruleset
-    // (review -> done, inProgress -> inProgress). Starting counterpart
-    // status is Backlog. Two social ids in one request. Whichever group
-    // the dispatcher runs first, the final stable sort-by-modifiedOn
-    // applied order must not perform Done -> InProgress regression.
+  it('cross-group dispatcher scenario: without allowedLoops, both orderings end at the newer target (Done)', async () => {
+    // Michael's P1 scenario. Same single ruleset
+    // (review -> done, inProgress -> inProgress). Counterpart starts
+    // at Backlog. Three txes across two social ids in one request.
     //
     //  t=1000  social A  unmapped (no mapping entry)
     //  t=1001  social B  review -> done
     //  t=1002  social A  inProgress -> inProgress
     //
-    // Group-A-first: A at t=1002 emits InProgress, pending becomes
-    // {InProgress, 1002}. B at t=1001 arrives older; emit modifiedOn is
-    // bumped to 1002, effective = InProgress, target = Done, forward
-    // (InProgress -> Done), emit at 1002, pending becomes {Done, 1002}.
-    // Combined emits (stable sorted by modifiedOn): [InProgress@1002,
-    // Done@1002]. Applied in insertion order: Backlog -> InProgress -> Done.
+    // Group-A-first: A at t=1002 emits InProgress. B at t=1001 is
+    // older than the queued InProgress. The newer-still-legal check
+    // asks: would the queued InProgress -> Done be legal AFTER B's
+    // target (Done)? That rewrites to Done -> InProgress, which is a
+    // BACKWARD move with no allowedLoops - blocked. So B is kept
+    // with emitOn bumped to 1002. Combined emits applied in insertion
+    // order: Backlog -> InProgress -> Done. Final: Done.
     //
-    // Group-B-first: B at t=1001 emits Done, pending becomes {Done, 1001}.
-    // A at t=1002 arrives newer; effective = Done; target = InProgress is
-    // a backward Done -> InProgress with no allowedLoops, regression
-    // guard blocks it. Only Done at 1001 emits. Applied: Backlog -> Done.
+    // Group-B-first: B at t=1001 emits Done. A at t=1002 is newer
+    // than pending; effective = Done; target = InProgress; backward
+    // Done -> InProgress with no allowedLoops - regression guard
+    // blocks it. Only Done at 1001 emits.
     //
-    // Either way, final counterpart status is Done; no Done -> InProgress
-    // regression ever applies.
+    // Final counterpart status is Done in both orderings; no
+    // Done -> InProgress regression is ever applied. The orderings
+    // disagree on final status only when an allowedLoops entry lets
+    // the backward move through; see the next test for that case.
     const r = rule({
       forwardMap: { [S.review]: S.done, [S.inProgress]: S.inProgress }
     })
@@ -571,8 +572,6 @@ describe('OnWorkflowRuleMirror', () => {
       controlTxes: sharedTxes
     })
     const resB = await OnWorkflowRuleMirror([txB], ctrlB1)
-    // Combine in dispatcher-visit order (A then B) and stable-sort by
-    // modifiedOn so equal-timestamp writes keep that order.
     const combined = [...resA, ...resB].sort((a: any, b: any) => a.modifiedOn - b.modifiedOn)
     expect(combined).toHaveLength(2)
     expect(combined[0]).toMatchObject({ operations: { status: S.inProgress }, modifiedOn: 1002 })
@@ -598,6 +597,80 @@ describe('OnWorkflowRuleMirror', () => {
     const combined2 = [...resB2, ...resA2].sort((a: any, b: any) => a.modifiedOn - b.modifiedOn)
     expect(combined2).toHaveLength(1)
     expect(combined2[0]).toMatchObject({ operations: { status: S.done } })
+  })
+
+  it('cross-group dispatcher scenario WITH allowedLoops: both orderings agree on the newer target (InProgress)', async () => {
+    // Same three-tx layout but the rule carries an allowedLoops entry
+    // that lets Done -> InProgress through. The two orderings must now
+    // AGREE on the final counterpart state (whichever source is newer
+    // in modifiedOn wins). Without the newer-still-legal check, group
+    // A-first would end at Done and group B-first at InProgress - the
+    // dispatcher's visit order would leak into user-visible state.
+    const r = rule({
+      forwardMap: { [S.review]: S.done, [S.inProgress]: S.inProgress },
+      allowedLoops: [{ from: S.done, to: S.inProgress }]
+    })
+    const txA1 = updateTx('status:unmapped' as any, {
+      modifiedBy: SOC_MEMBER,
+      modifiedOn: 1000
+    })
+    const txA2 = updateTx(S.inProgress, {
+      modifiedBy: SOC_MEMBER,
+      modifiedOn: 1002
+    })
+    const txB = updateTx(S.review, {
+      modifiedBy: SOC_ADMIN,
+      modifiedOn: 1001
+    })
+
+    // Group-A-first: A emits InProgress@1002, pending={InProgress, 1002}.
+    // B@1001 arrives older. Newer queued move InProgress -> Done is a
+    // forward move (not blocked after B's target). So B is skipped.
+    // Final: InProgress.
+    const sharedCache = new Map<string, any>()
+    const sharedTxes: any[] = []
+    const ctrlA1 = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [r],
+      contextCache: sharedCache,
+      controlTxes: sharedTxes
+    })
+    const resA = await OnWorkflowRuleMirror([txA1, txA2], ctrlA1)
+    const ctrlB1 = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [r],
+      contextCache: sharedCache,
+      controlTxes: sharedTxes
+    })
+    const resB = await OnWorkflowRuleMirror([txB], ctrlB1)
+    const combined = [...resA, ...resB].sort((a: any, b: any) => a.modifiedOn - b.modifiedOn)
+    expect(combined.map((t: any) => t.operations.status)).toEqual([S.inProgress])
+
+    // Group-B-first: B emits Done@1001, pending={Done, 1001}.
+    // A@1002 arrives newer. Effective=Done, target=InProgress. The
+    // allowedLoops entry lets this backward move through. Emit
+    // InProgress@1002. Applied: Backlog -> Done -> InProgress.
+    // Final: InProgress.
+    const sharedCache2 = new Map<string, any>()
+    const sharedTxes2: any[] = []
+    const ctrlB2 = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [r],
+      contextCache: sharedCache2,
+      controlTxes: sharedTxes2
+    })
+    const resB2 = await OnWorkflowRuleMirror([txB], ctrlB2)
+    const ctrlA2 = makeControl({
+      issues: linkedPair({ status: S.backlog }),
+      rules: [r],
+      contextCache: sharedCache2,
+      controlTxes: sharedTxes2
+    })
+    const resA2 = await OnWorkflowRuleMirror([txA1, txA2], ctrlA2)
+    const combined2 = [...resB2, ...resA2].sort((a: any, b: any) => a.modifiedOn - b.modifiedOn)
+    // Final applied status is the LAST write by modifiedOn.
+    const final = combined2[combined2.length - 1]
+    expect(final).toMatchObject({ operations: { status: S.inProgress } })
   })
 
   it('resets its per-request maps when control.txes identity changes (wrapPipeline reuse)', async () => {

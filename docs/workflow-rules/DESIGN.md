@@ -192,14 +192,18 @@ The trigger body:
     (a) equality and regression checks run against the queued target
         status rather than the stale persisted one, and
     (b) when an older source arrives after a newer mirror is already
-        queued for the same counterpart (dispatcher groups can arrive in
-        any order), the emitted `modifiedOn` is bumped up to the queued
-        entry's `modifiedOn`. Final application in
-        `foundations/server/packages/middleware/src/triggers.ts` sorts
-        derived writes by `modifiedOn` (stable), so the bump keeps the
-        applied order aligned with the order we checked and no forward
-        move is silently dropped. A backward move against the queued
-        target is still refused by the regression guard.
+        queued for the same counterpart (dispatcher groups can arrive
+        in any order), the trigger re-tests the newer queued move from
+        the older's target. If the newer move is still legal after the
+        older (ordinary forward move, or allowedLoops lets it through),
+        the older is skipped: the newer dominates in time order and
+        the older's state would just be an intermediate the newer
+        overwrites. Otherwise the older is applied at the queued
+        timestamp so the downstream stable sort in
+        `foundations/server/packages/middleware/src/triggers.ts` keeps
+        the applied order aligned with the check order. A backward
+        move against the queued target is still refused by the
+        regression guard.
     The map lives in `control.contextCache`, which the server pipeline
     normally scopes to one root transaction (one request). Workspace
     paths (notably `wrapPipeline()`) can share one `SessionData` across
