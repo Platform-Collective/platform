@@ -41,6 +41,7 @@ import { TableSelection } from './types'
 import { findTable, isTableSelected, selectTable as selectTableNode } from './utils'
 import { getTableMetadata } from './tableMetadata'
 import { refreshTable, showTableDiff, seeOriginalTableData } from './actions'
+import { canHandleListItemShortcut } from './list-item-keymap'
 
 export const Table = TiptapTable.extend({
   draggable: true,
@@ -67,6 +68,10 @@ export const Table = TiptapTable.extend({
   addKeyboardShortcuts () {
     return {
       Tab: () => {
+        if (canHandleListItemShortcut(this.editor, 'sink')) {
+          return false
+        }
+
         if (this.editor.commands.goToNextCell()) {
           return true
         }
@@ -77,7 +82,13 @@ export const Table = TiptapTable.extend({
 
         return this.editor.chain().addRowAfter().goToNextCell().run()
       },
-      'Shift-Tab': () => this.editor.commands.goToPreviousCell(),
+      'Shift-Tab': () => {
+        if (canHandleListItemShortcut(this.editor, 'lift')) {
+          return false
+        }
+
+        return this.editor.commands.goToPreviousCell()
+      },
       Backspace: () => handleDelete(this.editor),
       Delete: () => handleDelete(this.editor),
       'Mod-Backspace': () => handleModDelete(this.editor),
