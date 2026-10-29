@@ -279,16 +279,11 @@
   }
 }
 
-@supports (selector(:has(.text-editor-image-container))) {
-  p:has(> .text-editor-image-container) {
-    -webkit-user-select: none;
-    user-select: none;
-  }
-}
-
 .text-editor-image-container {
   display: flex;
   flex-direction: row;
+  -webkit-user-select: none;
+  user-select: none;
 
   &[data-align="center"] {
     justify-content: center;
