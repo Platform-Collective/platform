@@ -74,11 +74,25 @@ describe('ordered list serialization', () => {
     }
   })
 
-  it('aligns integer markers across a negative start and zero', () => {
-    expect(markupToMarkdown(listDocument({ start: '-1' }))).toBe('-1. First\n 0. Second')
+  it.each([-1, '-1', Number.MIN_SAFE_INTEGER])('clamps negative start/order to zero: %s', (value) => {
+    for (const attrs of [{ start: value }, { order: value }, { start: null, order: value }]) {
+      expect(markupToMarkdown(listDocument(attrs))).toBe('0. First\n1. Second')
+    }
   })
 
-  it.each([0, 3, 10])('preserves start %s in a table through Markdown HTML export/import', (start) => {
+  it.each([
+    { value: 999999998, markdown: '999999998. First\n999999999. Second' },
+    { value: 999999999, markdown: '999999999. First\n999999999. Second' },
+    { value: 1000000000, markdown: '999999999. First\n999999999. Second' },
+    { value: '1000000000', markdown: '999999999. First\n999999999. Second' },
+    { value: Number.MAX_SAFE_INTEGER, markdown: '999999999. First\n999999999. Second' }
+  ])('caps every start/order marker at nine digits: %j', ({ value, markdown }) => {
+    for (const attrs of [{ start: value }, { order: value }, { start: null, order: value }]) {
+      expect(markupToMarkdown(listDocument(attrs))).toBe(markdown)
+    }
+  })
+
+  it.each([-1, 0, 3, 10, 1000000000])('preserves start %s in a table through Markdown HTML export/import', (start) => {
     const list = listDocument({ start }).content?.[0]
     if (list === undefined) {
       throw new Error('Missing ordered list fixture')

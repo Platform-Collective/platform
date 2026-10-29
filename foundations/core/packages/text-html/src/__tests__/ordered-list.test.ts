@@ -52,6 +52,9 @@ describe('ordered list serialization', () => {
     { attrs: { start: 1 }, startAttribute: '' },
     { attrs: { start: 3 }, startAttribute: ' start="3"' },
     { attrs: { start: '3' }, startAttribute: ' start="3"' },
+    { attrs: { start: -1 }, startAttribute: ' start="-1"' },
+    { attrs: { start: '-1' }, startAttribute: ' start="-1"' },
+    { attrs: { start: 1000000000 }, startAttribute: ' start="1000000000"' },
     { attrs: { start: 1, order: 8 }, startAttribute: '' },
     { attrs: { order: 4 }, startAttribute: ' start="4"' },
     { attrs: { order: '4' }, startAttribute: ' start="4"' },
@@ -74,7 +77,7 @@ describe('ordered list serialization', () => {
     }
   })
 
-  it.each([0, 1, 3, 10, -1])('preserves start %s through the shared HTML parser', (start) => {
+  it.each([0, 1, 3, 10, -1, 1000000000])('preserves start %s through the shared HTML parser', (start) => {
     const markup = listDocument({ start })
     expect(htmlToMarkup(markupToHtml(markup))).toEqual(markup)
   })

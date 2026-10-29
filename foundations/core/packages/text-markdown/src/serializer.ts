@@ -19,6 +19,8 @@ import { markupToHtml } from '@hcengineering/text-html'
 import { isInSet, markEq } from './marks'
 import { nodeContent, nodeAttrs } from './node'
 
+const MAX_ORDERED_LIST_NUMBER = 999999999
+
 type FirstDelim = (i: number, attrs?: Record<string, any>, parentAttrs?: Record<string, any>) => string
 interface IState {
   wrapBlock: (delim: string, firstDelim: string | null, node: MarkupNode, f: () => void) => void
@@ -197,11 +199,13 @@ export const storeNodes: Record<string, NodeProcessor> = {
   orderedList: (state, node) => {
     const attrs = nodeAttrs(node)
     // Editor lists use start; keep order as a fallback for existing Markdown data.
-    const start = getOrderedListStart(attrs)
-    const maxW = Math.max(String(start).length, String(start + nodeContent(node).length - 1).length)
+    // CommonMark markers must be non-negative and contain at most nine digits.
+    const start = Math.max(0, Math.min(getOrderedListStart(attrs), MAX_ORDERED_LIST_NUMBER))
+    const last = Math.min(start + nodeContent(node).length - 1, MAX_ORDERED_LIST_NUMBER)
+    const maxW = Math.max(String(start).length, String(last).length)
     const space = state.repeat(' ', maxW + 2)
     state.renderList(node, space, (i: number) => {
-      const nStr = String(start + i)
+      const nStr = String(Math.min(start + i, MAX_ORDERED_LIST_NUMBER))
       return state.repeat(' ', maxW - nStr.length) + nStr + '. '
     })
   },
