@@ -18,8 +18,10 @@
   import { Analytics } from '@hcengineering/analytics'
   import { Card, CardEvents } from '@hcengineering/card'
   import { Ref } from '@hcengineering/core'
+  import { getCurrentLocation, navigate } from '@hcengineering/ui'
   import { onMount } from 'svelte'
 
+  import { cardPanelHistory } from '../card-panel-history'
   import EditCardNew from './EditCardNew.svelte'
 
   export let _id: Ref<Card>
@@ -29,6 +31,16 @@
 
   export function canClose(): boolean {
     return false
+  }
+
+  export function handlePanelClose(): boolean {
+    const previousFragment = cardPanelHistory.back()
+    if (previousFragment === undefined) return false
+
+    const loc = getCurrentLocation()
+    loc.fragment = previousFragment
+    navigate(loc)
+    return true
   }
 
   onMount(() => {
