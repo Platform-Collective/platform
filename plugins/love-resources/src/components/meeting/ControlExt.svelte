@@ -14,7 +14,7 @@
 -->
 <script lang="ts">
   import { IdMap, Ref, toIdMap } from '@hcengineering/core'
-  import { isOffice, ParticipantInfo, Room, MeetingMinutes } from '@hcengineering/love'
+  import { getMeetingRoomId, isOffice, ParticipantInfo, Room, MeetingMinutes } from '@hcengineering/love'
   import { getMetadata } from '@hcengineering/platform'
   import presentation, { getClient } from '@hcengineering/presentation'
   import { closePopup, eventToHTMLElement, location, showPopup, closeTooltip } from '@hcengineering/ui'
@@ -55,7 +55,7 @@
       if (info.meeting !== undefined) {
         meeting = meetings.find((m) => m._id === info.meeting)
         if (meeting === undefined) continue
-        attachedRoom = meeting.attachedTo as Ref<Room> | undefined
+        attachedRoom = getMeetingRoomId(meeting)
         if (attachedRoom === undefined || attachedRoom === love.ids.Reception) continue
       }
 
@@ -146,7 +146,7 @@
   let myRoomAttached: Ref<Room> | undefined = undefined
   $: myRoomAttached =
     $myInfo?.meeting !== undefined
-      ? ($meetings.find((m) => m._id === $myInfo.meeting)?.attachedTo as Ref<Room>)
+      ? getMeetingRoomId($meetings.find((m) => m._id === $myInfo.meeting))
       : $myInfo?.room
   $: joined = activeMeetings.filter((r) => myRoomAttached === r._id)
 

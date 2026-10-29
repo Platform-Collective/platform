@@ -1,6 +1,7 @@
 import core, { AccountRole, getCurrentAccount, type Ref } from '@hcengineering/core'
 import love, {
   getFreeRoomPlace,
+  getMeetingRoomId,
   MeetingStatus,
   TranscriptionState,
   RecordingState,
@@ -106,7 +107,9 @@ export async function leaveMeeting (): Promise<void> {
 }
 
 export async function joinMeeting (meeting: MeetingMinutes): Promise<void> {
-  const room = getRoomById(meeting.attachedTo as Ref<Room>)
+  const roomId = getMeetingRoomId(meeting)
+  if (roomId === undefined || meeting.status === MeetingStatus.Finished) return
+  const room = getRoomById(roomId)
   if (meeting.access === RoomAccess.DND) return
 
   const isGuest = getCurrentAccount().role === AccountRole.Guest
@@ -167,6 +170,7 @@ export async function kick (person: Ref<Person>): Promise<void> {
 }
 
 async function connectToMeeting (mm: MeetingMinutes, room?: Room): Promise<void> {
+  if (getMeetingRoomId(mm) === undefined || mm.status === MeetingStatus.Finished) return
   if (getCurrentAccount().role === AccountRole.ReadOnlyGuest) {
     return
   }

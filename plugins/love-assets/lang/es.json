@@ -2,6 +2,8 @@
   "string": {
     "Office": "Oficina",
     "Room": "Sala",
+    "RoomHasUnfinishedMeetings": "No se puede eliminar esta sala mientras tenga reuniones programadas, pendientes o activas. Finalice o elimine esas reuniones primero.",
+    "RoomRemovalFailed": "La sala o sus reuniones han cambiado. Recargue la página e intente eliminar la sala de nuevo.",
     "RoomType": "Tipo de sala",
     "Share": "Compartir",
     "StopShare": "Detener compartir",
