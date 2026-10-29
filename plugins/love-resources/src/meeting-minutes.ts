@@ -5,10 +5,7 @@ import love, { MeetingStatus, type Floor, type MeetingMinutes, type Room } from 
 import { PlatformError, Severity, Status } from '@hcengineering/platform'
 
 /** Remove a room while preserving its meeting minutes on the floor. */
-export async function removeRoom (
-  client: Pick<TxOperations, 'findAll' | 'apply'>,
-  room: Room
-): Promise<void> {
+export async function removeRoom (client: Pick<TxOperations, 'findAll' | 'apply'>, room: Room): Promise<void> {
   const minutes = await client.findAll(love.class.MeetingMinutes, { attachedTo: room._id })
   if (minutes.some((minute) => minute.status !== MeetingStatus.Finished)) {
     throw new PlatformError(new Status(Severity.ERROR, love.string.RoomHasUnfinishedMeetings, {}))

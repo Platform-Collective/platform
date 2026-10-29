@@ -20,6 +20,7 @@ import love, {
   MeetingStatus,
   RecordingState,
   RoomAccess,
+  RoomType,
   TranscriptionState,
   type Floor,
   type MeetingMinutes,
@@ -37,7 +38,22 @@ const floor: Floor = {
   name: 'Floor',
   meetings: 0
 }
-const room = { ...floor, _id: 'room' as Ref<Room>, floor: floor._id, _class: love.class.Room } as Room
+const room: Room = {
+  ...floor,
+  _id: 'room' as Ref<Room>,
+  _class: love.class.Room,
+  floor: floor._id,
+  type: RoomType.Video,
+  access: RoomAccess.Open,
+  width: 1,
+  height: 1,
+  x: 0,
+  y: 0,
+  language: 'en',
+  startWithTranscription: false,
+  startWithRecording: false,
+  description: null
+}
 const completedMinutes: MeetingMinutes = {
   _id: 'minutes-1' as Ref<MeetingMinutes>,
   _class: love.class.MeetingMinutes,
@@ -63,6 +79,7 @@ function createClient (initialMinutes: MeetingMinutes[] = minutes): {
   client: TxOperations
   ops: ReturnType<TxOperations['apply']>
   findAll: jest.Mock
+  apply: jest.SpyInstance
   tx: jest.Mock
   docs: Map<Ref<Doc>, Doc>
 } {
@@ -72,12 +89,14 @@ function createClient (initialMinutes: MeetingMinutes[] = minutes): {
   const hierarchy = new Hierarchy()
   jest.spyOn(hierarchy, 'isMixin').mockReturnValue(false)
   jest.spyOn(hierarchy, 'getBaseClass').mockImplementation((_class) => _class)
-  jest.spyOn(hierarchy, 'isDerived').mockImplementation((_class, base) =>
-    _class === base || (_class === love.class.MeetingMinutes && base === core.class.AttachedDoc)
-  )
-  const findAll = jest.fn().mockImplementation(async (_class, query) =>
-    toFindResult(matchQuery([...docs.values()], query, _class, hierarchy))
-  )
+  jest
+    .spyOn(hierarchy, 'isDerived')
+    .mockImplementation(
+      (_class, base) => _class === base || (_class === love.class.MeetingMinutes && base === core.class.AttachedDoc)
+    )
+  const findAll = jest
+    .fn()
+    .mockImplementation(async (_class, query) => toFindResult(matchQuery([...docs.values()], query, _class, hierarchy)))
   // Exercise real ApplyOperations/TxOperations. This transport accepts a batch only after its preconditions pass.
   const tx = jest.fn().mockImplementation(async (tx: Tx) => {
     if (tx._class !== core.class.TxApplyIf) throw new Error('Expected one atomic apply')
@@ -98,20 +117,23 @@ function createClient (initialMinutes: MeetingMinutes[] = minutes): {
     }
     return { success: true }
   })
-  const client = new TxOperations({ getHierarchy: () => hierarchy, findAll, tx } as unknown as Client, core.account.System)
+  const client = new TxOperations(
+    { getHierarchy: () => hierarchy, findAll, tx } as unknown as Client,
+    core.account.System
+  )
   const ops = client.apply(`create_meeting_${room._id}`)
-  jest.spyOn(client, 'apply').mockReturnValue(ops)
-  return { client, ops, findAll, tx, docs }
+  const apply = jest.spyOn(client, 'apply').mockReturnValue(ops)
+  return { client, ops, findAll, apply, tx, docs }
 }
 
 describe('removeRoom', () => {
   it('preserves finished minutes in one apply with collection metadata and all content intact', async () => {
-    const { client, tx, docs, findAll } = createClient()
+    const { client, tx, docs, findAll, apply } = createClient()
 
     await removeRoom(client, room)
 
     expect(findAll).toHaveBeenCalledWith(love.class.MeetingMinutes, { attachedTo: room._id }, undefined)
-    expect(client.apply).toHaveBeenCalledWith(`create_meeting_${room._id}`)
+    expect(apply).toHaveBeenCalledWith(`create_meeting_${room._id}`)
     expect(tx).toHaveBeenCalledTimes(1)
     const batch = tx.mock.calls[0][0] as TxApplyIf
     expect(batch.txes).toHaveLength(3)
@@ -125,7 +147,10 @@ describe('removeRoom', () => {
         operations: { attachedTo: floor._id, attachedToClass: love.class.Floor, collection: 'meetings' }
       })
       expect(docs.get(minute._id)).toEqual({
-        ...minute, attachedTo: floor._id, attachedToClass: love.class.Floor, collection: 'meetings'
+        ...minute,
+        attachedTo: floor._id,
+        attachedToClass: love.class.Floor,
+        collection: 'meetings'
       })
     }
     expect(batch.txes[2]).toMatchObject({ _class: core.class.TxRemoveDoc, objectId: room._id })
@@ -136,15 +161,17 @@ describe('removeRoom', () => {
     const { client, ops, tx, docs } = createClient()
     const update = ops.updateCollection.bind(ops)
     let resume: () => void = () => {}
-    const pending = new Promise<void>((resolve) => { resume = resolve })
-    jest.spyOn(ops, 'updateCollection').mockImplementationOnce(async (...args) => {
+    const pending = new Promise<void>((resolve) => {
+      resume = resolve
+    })
+    const updateCollection = jest.spyOn(ops, 'updateCollection').mockImplementationOnce(async (...args) => {
       await pending
       return await update(...args)
     })
 
     const removal = removeRoom(client, room)
     await Promise.resolve()
-    expect(ops.updateCollection).toHaveBeenCalledTimes(1)
+    expect(updateCollection).toHaveBeenCalledTimes(1)
     expect(tx).not.toHaveBeenCalled()
     expect(docs.get(completedMinutes._id)).toEqual(completedMinutes)
     expect(docs.has(room._id)).toBe(true)
@@ -156,13 +183,13 @@ describe('removeRoom', () => {
   })
 
   it('keeps the room and all minutes if finding its minutes fails', async () => {
-    const { client, findAll, tx, docs } = createClient()
+    const { client, findAll, apply, tx, docs } = createClient()
     const before = new Map([...docs].map(([id, doc]) => [id, { ...doc }]))
     const error = new Error('Unable to load minutes')
     findAll.mockRejectedValue(error)
 
     await expect(removeRoom(client, room)).rejects.toThrow(error)
-    expect(client.apply).not.toHaveBeenCalled()
+    expect(apply).not.toHaveBeenCalled()
     expect(tx).not.toHaveBeenCalled()
     expect(docs).toEqual(before)
   })
@@ -172,10 +199,13 @@ describe('removeRoom', () => {
     const before = new Map([...docs].map(([id, doc]) => [id, { ...doc }]))
     const error = new Error('Unable to move minutes')
     const update = ops.updateCollection.bind(ops)
-    jest.spyOn(ops, 'updateCollection').mockImplementationOnce(update).mockRejectedValueOnce(error)
+    const updateCollection = jest
+      .spyOn(ops, 'updateCollection')
+      .mockImplementationOnce(update)
+      .mockRejectedValueOnce(error)
 
     await expect(removeRoom(client, room)).rejects.toThrow(error)
-    expect(ops.updateCollection).toHaveBeenCalledTimes(2)
+    expect(updateCollection).toHaveBeenCalledTimes(2)
     expect(ops.txes).toHaveLength(1)
     expect(tx).not.toHaveBeenCalled()
     expect(docs).toEqual(before)
@@ -206,14 +236,15 @@ describe('removeRoom', () => {
   })
 
   it.each([MeetingStatus.Scheduled, MeetingStatus.Active, MeetingStatus.Pending])(
-    'blocks deletion before moving any minutes when status %s remains, with a localized error', async (status) => {
-      const { client, tx, docs } = createClient([completedMinutes, { ...minutes[1], status }])
+    'blocks deletion before moving any minutes when status %s remains, with a localized error',
+    async (status) => {
+      const { client, apply, tx, docs } = createClient([completedMinutes, { ...minutes[1], status }])
       const before = new Map([...docs].map(([id, doc]) => [id, { ...doc }]))
 
       await expect(removeRoom(client, room)).rejects.toMatchObject({
         status: { code: love.string.RoomHasUnfinishedMeetings }
       })
-      expect(client.apply).not.toHaveBeenCalled()
+      expect(apply).not.toHaveBeenCalled()
       expect(tx).not.toHaveBeenCalled()
       expect(docs).toEqual(before)
     }
@@ -233,7 +264,8 @@ describe('removeRoom', () => {
   })
 
   it.each([MeetingStatus.Finished, MeetingStatus.Scheduled, MeetingStatus.Active, MeetingStatus.Pending])(
-    'rejects deletion if a new minute with status %s appears before commit', async (status) => {
+    'rejects deletion if a new minute with status %s appears before commit',
+    async (status) => {
       const { client, ops, docs } = createClient()
       const commit = ops.commit.bind(ops)
       const concurrent = { ...completedMinutes, _id: 'concurrent' as Ref<MeetingMinutes>, status }
@@ -243,7 +275,9 @@ describe('removeRoom', () => {
       })
       const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
       try {
-        await expect(removeRoom(client, room)).rejects.toMatchObject({ status: { code: love.string.RoomRemovalFailed } })
+        await expect(removeRoom(client, room)).rejects.toMatchObject({
+          status: { code: love.string.RoomRemovalFailed }
+        })
         expect(docs.get(completedMinutes._id)).toEqual(completedMinutes)
         expect(docs.get(concurrent._id)).toEqual(concurrent)
         expect(docs.has(room._id)).toBe(true)
@@ -294,9 +328,9 @@ describe('getMeetingMinutesQuery', () => {
     const query = getMeetingMinutesQuery({ ...floor }, [])
 
     expect(query).toEqual({ attachedTo: { $in: [floor._id] } })
-    expect(await client.findAll(love.class.MeetingMinutes, query)).toEqual(toFindResult(
-      minutes.map((minute) => ({ ...minute, attachedTo: floor._id, attachedToClass: love.class.Floor }))
-    ))
+    expect(await client.findAll(love.class.MeetingMinutes, query)).toEqual(
+      toFindResult(minutes.map((minute) => ({ ...minute, attachedTo: floor._id, attachedToClass: love.class.Floor })))
+    )
   })
 })
 
@@ -306,10 +340,12 @@ describe('getMeetingRoomId', () => {
   })
 
   it.each([MeetingStatus.Finished, MeetingStatus.Scheduled, MeetingStatus.Active, MeetingStatus.Pending])(
-    'never interprets a floor as a room, even with stale status %s', (status) => {
+    'never interprets a floor as a room, even with stale status %s',
+    (status) => {
       expect(getMeetingRoomId({ ...completedMinutes, status })).toBe(room._id)
-      expect(getMeetingRoomId({ ...completedMinutes, status, attachedTo: floor._id, attachedToClass: love.class.Floor }))
-        .toBeUndefined()
+      expect(
+        getMeetingRoomId({ ...completedMinutes, status, attachedTo: floor._id, attachedToClass: love.class.Floor })
+      ).toBeUndefined()
     }
   )
 

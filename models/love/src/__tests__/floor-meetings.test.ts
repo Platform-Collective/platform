@@ -27,7 +27,10 @@ it('keeps generic updates and deletion of floor minutes collection-aware', async
   const builder = new Builder()
   builder.createModel(TObj, TDoc, TClass, TAttribute, TType, TAttachedDoc, TCollection, TFloor, TMeetingMinutes)
   const tx = jest.fn().mockResolvedValue({})
-  const client = new TxOperations({ getHierarchy: () => builder.hierarchy, tx } as unknown as Client, core.account.System)
+  const client = new TxOperations(
+    { getHierarchy: () => builder.hierarchy, tx } as unknown as Client,
+    core.account.System
+  )
   const minute: MeetingMinutes = {
     _id: 'minute' as Ref<MeetingMinutes>,
     _class: love.class.MeetingMinutes,

@@ -145,9 +145,7 @@
 
   let myRoomAttached: Ref<Room> | undefined = undefined
   $: myRoomAttached =
-    $myInfo?.meeting !== undefined
-      ? getMeetingRoomId($meetings.find((m) => m._id === $myInfo.meeting))
-      : $myInfo?.room
+    $myInfo?.meeting !== undefined ? getMeetingRoomId($meetings.find((m) => m._id === $myInfo.meeting)) : $myInfo?.room
   $: joined = activeMeetings.filter((r) => myRoomAttached === r._id)
 
   const beforeUnloadListener = (): void => {
