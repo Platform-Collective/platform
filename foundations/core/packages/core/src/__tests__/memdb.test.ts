@@ -910,6 +910,40 @@ describe('memdb', () => {
     spy.mockRestore()
   })
 
+  it('addTxes applies an update after its create transaction when loading an unordered model', async () => {
+    const hierarchy = new Hierarchy()
+    for (const tx of txes) hierarchy.tx(tx)
+    const model = new ModelDb(hierarchy)
+    for (const tx of txes) await model.tx(tx)
+    const ctx = { warn: jest.fn(), info: jest.fn() } as any
+
+    const space = createDoc(core.class.Space, {
+      name: 'Original',
+      description: '',
+      private: false,
+      members: [],
+      archived: false
+    })
+    const update = updateDoc<Space>(core.class.Space, core.space.Model, space.objectId, {
+      name: 'Updated'
+    })
+
+    model.addTxes(ctx, [update, space], false)
+
+    expect(model.getObject<Space>(space.objectId).name).toBe('Updated')
+    expect(ctx.info).not.toHaveBeenCalled()
+  })
+
+  it('addTxes fails when a required model transaction is skipped', async () => {
+    const { model } = await createModel()
+    const ctx = { warn: jest.fn(), info: jest.fn() } as any
+    const unknown = createDoc<Doc>('test:class:Unknown' as Ref<Class<Doc>>, {})
+
+    expect(() => {
+      model.addTxes(ctx, [unknown], false, new Set([unknown._id]))
+    }).toThrow(`Failed to apply required model transactions: ${unknown._id}`)
+  })
+
   it('txUpdateDoc via tx() should swallow errors for a missing document', async () => {
     const { model } = await createModel()
 
