@@ -33,6 +33,7 @@
   } from './internal/DateUtils'
 
   export let currentDate: Date | null
+  export let viewDate: Date = new Date(currentDate ?? new Date())
   export let timeZone: string = getUserTimezone()
   export let hideNavigator: boolean = false
   export let replacementDay: boolean = false
@@ -41,7 +42,6 @@
 
   let monthYear: string
   const today: Date = new Date()
-  const viewDate: Date = new Date(currentDate ?? today)
   let selectedDate: Date = new Date(currentDate ?? today)
   $: firstDayOfCurrentMonth = firstDay(viewDate, $deviceInfo.firstDayOfWeek)
   const isToday = (n: number): boolean => {
@@ -73,8 +73,7 @@
   $: days = renderCellStyles(viewDate, $deviceInfo.firstDayOfWeek)
 
   const changeMonth = (offset: number): void => {
-    viewDate.setMonth(viewDate.getMonth() + offset)
-    days = renderCellStyles(viewDate, $deviceInfo.firstDayOfWeek)
+    viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1)
   }
 </script>
 
@@ -91,7 +90,6 @@
             size={'extra-small'}
             inheritColor
             on:click={() => {
-              viewDate.setDate(1)
               changeMonth(-1)
             }}
           />
@@ -101,7 +99,6 @@
             size={'extra-small'}
             inheritColor
             on:click={() => {
-              viewDate.setDate(1)
               changeMonth(1)
             }}
           />
