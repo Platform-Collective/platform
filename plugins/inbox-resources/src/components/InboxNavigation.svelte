@@ -82,31 +82,41 @@
 
   let removingItem: NavigationItem | undefined = undefined
 
-  async function handleRemove(navItem: NavigationItem): Promise<void> {
+  function getContextId(item: NavigationItem): string {
+    return item.type === 'modern' ? item.context.id : item.context._id
+  }
+
+  async function handleRemove(navItem: NavigationItem, fromKeyboard = false): Promise<void> {
     if (removingItem != null) return
     const index = navItems.indexOf(navItem)
     if (index < 0) return
+
+    const shouldReselect =
+      fromKeyboard ||
+      (navItem.type === 'legacy' && legacyContext != null
+        ? navItem.context._id === legacyContext._id
+        : navItem._id === doc?._id)
+    const adjacentItem = navItems[index + 1] ?? navItems[index - 1]
 
     removingItem = navItem
     try {
       await navClient.remove(navItem)
 
       // Live queries may report the removal before or after the request completes.
-      const contextId = navItem.type === 'modern' ? navItem.context.id : navItem.context._id
-      navItems = navItems.filter((item) => {
-        const itemContextId = item.type === 'modern' ? item.context.id : item.context._id
-        return item.type !== navItem.type || itemContextId !== contextId
-      })
-      const selected =
-        navItem.type === 'legacy' && legacyContext != null
-          ? navItem.context._id === legacyContext._id
-          : navItem._id === doc?._id
-      if (!selected) {
+      const contextId = getContextId(navItem)
+      navItems = navItems.filter((item) => item.type !== navItem.type || getContextId(item) !== contextId)
+      if (!shouldReselect) {
         if (index < listSelection) listSelection--
         listSelection = Math.max(0, Math.min(listSelection, navItems.length - 1))
         return
       }
-      listSelection = Math.max(0, Math.min(index, navItems.length - 1))
+      const adjacentIndex =
+        adjacentItem == null
+          ? -1
+          : navItems.findIndex(
+              (item) => item.type === adjacentItem.type && getContextId(item) === getContextId(adjacentItem)
+            )
+      listSelection = Math.max(0, Math.min(adjacentIndex < 0 ? index : adjacentIndex, navItems.length - 1))
       const nextItem = navItems[listSelection]
 
       await tick()
@@ -146,7 +156,7 @@
       key.stopPropagation()
       const navItem = navItems[listSelection]
       if (navItem != null) {
-        await handleRemove(navItem)
+        await handleRemove(navItem, true)
       }
     }
     if (key.code === 'Enter') {
