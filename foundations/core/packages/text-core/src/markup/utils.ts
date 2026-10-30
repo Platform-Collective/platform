@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { Markup } from '@hcengineering/core'
+import { type Blob, type Ref, Markup } from '@hcengineering/core'
 
 import { deepEqual } from 'fast-equals'
 import hashIt from 'hash-it'
@@ -24,6 +24,11 @@ import { traverseAllMarks, traverseNode } from './traverse'
 
 /** @public */
 export const EmptyMarkup: Markup = jsonToMarkup(emptyMarkupNode())
+
+/** Whether a markup attribute identifies a stored file rather than an empty or invalid ID. */
+export function isFileId (value: unknown): value is Ref<Blob> {
+  return typeof value === 'string' && value !== ''
+}
 
 /** @public */
 export function isEmptyMarkup (markup: Markup | undefined): boolean {

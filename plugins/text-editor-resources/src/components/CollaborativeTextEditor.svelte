@@ -34,8 +34,7 @@
     getAttribute,
     getClient,
     getFileUrl,
-    getImageSize,
-    imageSizeToRatio,
+    getImageWidth,
     KeyedAttribute
   } from '@hcengineering/presentation'
   import { isDocCreatedByAccount } from '@hcengineering/contact'
@@ -245,14 +244,14 @@
       return
     }
 
-    const size = await getImageSize(file)
+    const width = await getImageWidth(file)
 
     editor.commands.insertContent(
       {
         type: 'image',
         attrs: {
           'file-id': attached.file,
-          width: imageSizeToRatio(size.width, size.pixelRatio)
+          width
         }
       },
       {

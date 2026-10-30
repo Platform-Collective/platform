@@ -37,11 +37,25 @@ export async function getImageSize (file: Blob): Promise<{ width: number, height
       })
     }
 
-    img.onerror = reject
+    img.onerror = () => {
+      URL.revokeObjectURL(src)
+      reject(new Error(`Unable to decode image (${file.type || 'unknown type'}, ${file.size} bytes)`))
+    }
     img.src = src
   })
 
   return await promise
+}
+
+/** Image dimensions are optional metadata and must not prevent attachment insertion. @public */
+export async function getImageWidth (file: Blob): Promise<number | undefined> {
+  try {
+    const size = await getImageSize(file)
+    return imageSizeToRatio(size.width, size.pixelRatio)
+  } catch (err) {
+    console.warn('Unable to determine image dimensions', err)
+    return undefined
+  }
 }
 
 function isPng (file: Blob): boolean {

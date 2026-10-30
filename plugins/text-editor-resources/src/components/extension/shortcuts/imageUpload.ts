@@ -14,7 +14,7 @@
 //
 import { generateId, type Blob, type Ref } from '@hcengineering/core'
 import { setPlatformStatus, unknownError } from '@hcengineering/platform'
-import { imageSizeToRatio, getImageSize } from '@hcengineering/presentation'
+import { getImageWidth } from '@hcengineering/presentation'
 import { Extension } from '@tiptap/core'
 import { type Node } from '@tiptap/pm/model'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
@@ -81,14 +81,14 @@ export const ImageUploadExtension = Extension.create<ImageUploadExtensionOptions
         const attached = await attachFile(file)
         if (attached === undefined) return
 
-        const size = await getImageSize(file)
+        const width = await getImageWidth(file)
         const node = view.state.schema.nodes.image.create({
           'file-id': attached.file,
           'data-file-type': file.type,
           src: getFileUrl(attached.file),
           alt: alt || file.name,
           title: alt || file.name,
-          width: imageSizeToRatio(size.width, size.pixelRatio)
+          width
         })
 
         replacePendingInlineImage(view, placeholder, node)
@@ -216,26 +216,19 @@ async function handleImageUpload (
   attachFile: FileAttachFunction,
   getFileUrl: (fileId: Ref<Blob>) => string
 ): Promise<void> {
-  const attached = await attachFile(file)
-
-  if (attached === undefined) {
-    return
-  }
-
-  if (!attached.type.includes('image')) {
-    return
-  }
-
   try {
+    const attached = await attachFile(file)
+    if (attached === undefined || !attached.type.startsWith('image/')) return
+
     const url = getFileUrl(attached.file)
-    const size = await getImageSize(file)
+    const width = await getImageWidth(file)
     const node = view.state.schema.nodes.image.create({
       'file-id': attached.file,
       'data-file-type': file.type,
       src: url,
       alt: file.name,
       title: file.name,
-      width: imageSizeToRatio(size.width, size.pixelRatio)
+      width
     })
 
     const transaction = view.state.tr.insert(pos?.pos ?? 0, node)

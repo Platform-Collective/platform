@@ -166,10 +166,13 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
       const setImageProps = (src: string | null, srcset: string | null): void => {
         if (src != null) imgElement.src = src
         if (srcset != null) imgElement.srcset = srcset
-        void imgElement.decode().finally(() => {
-          const pos = typeof getPos === 'function' ? getPos() : 0
-          setLoadingState(view, pos, false)
-        })
+        void imgElement
+          .decode()
+          .catch(() => {})
+          .finally(() => {
+            const pos = typeof getPos === 'function' ? getPos() : 0
+            setLoadingState(view, pos, false)
+          })
       }
 
       for (const [k, v] of Object.entries(divAttributes)) {
@@ -190,8 +193,8 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
           imgElement.setAttribute(k, v)
         }
       }
-      const fileId = imgAttributes['file-id'] ?? getPlatformFileId(imgAttributes.src ?? '')
-      if (fileId !== null && imageSrcCache.has(fileId)) {
+      const fileId = imgAttributes['file-id'] || getPlatformFileId(imgAttributes.src ?? '')
+      if (fileId != null && imageSrcCache.has(fileId)) {
         const cached = imageSrcCache.get(fileId)
         setImageProps(cached?.src ?? null, cached?.srcset ?? null)
       }
@@ -200,12 +203,18 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
           imgElement.src = this.options.loadingImgSrc ?? `platform://platform/files/workspace/?file=${fileId}`
         }, 500)
         if (fileId != null) {
-          void this.options.getBlobRef(fileId).then((val) => {
-            clearTimeout(setBrokenImg)
+          void this.options
+            .getBlobRef(fileId)
+            .then((val) => {
+              clearTimeout(setBrokenImg)
 
-            setImageProps(val.src, val.srcset)
-            imageSrcCache.set(fileId, { src: val.src, srcset: val.srcset })
-          })
+              setImageProps(val.src, val.srcset)
+              imageSrcCache.set(fileId, { src: val.src, srcset: val.srcset })
+            })
+            .catch(() => {
+              clearTimeout(setBrokenImg)
+              setImageProps(imgAttributes.src || null, null)
+            })
         }
       } else {
         setImageProps(imgAttributes.src ?? null, imgAttributes.srcset ?? null)

@@ -124,6 +124,11 @@
     .concat(...modelActions)
     .sort((a, b) => a.order - b.order)
 
+  /** Insert markup at the current editor selection. */
+  export function insertMarkup(markup: Markup): void {
+    editor?.insertMarkup(markup)
+  }
+
   export function submit(): void {
     editor?.submit()
   }

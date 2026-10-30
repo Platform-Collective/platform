@@ -50,7 +50,7 @@ export function getFileStorage (): FileStorage {
   return storage
 }
 
-/** @public */
+/** Resolve a legacy editor placeholder to its durable blob identity. @public */
 export function getPlatformFileId (url: string): string | undefined {
   if (!url.startsWith('platform://platform/files/workspace/?')) {
     return undefined

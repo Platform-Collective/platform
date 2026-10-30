@@ -219,11 +219,6 @@ function addNodeContent (builder: NodeBuilder, node?: MarkupNode): void {
   } else if (node.type === MarkupNodeType.text) {
     builder.addText(node.text ?? '')
   } else if (node.type === MarkupNodeType.gif) {
-    // Deliberately not modelled on the image case below: that one reads attrs.src only, so a
-    // library gif (file-id set, src null) would serialize to src="undefined" and lose the blob
-    // reference. file-id wins, src is the fallback for an external source.
-    // Null-check the raw attrs: toString(null) yields the string 'null', so comparing the
-    // stringified value would treat an absent file-id as present and emit src="null".
     const rawFileId = attrs['file-id']
     const rawSrc = attrs.src
     const imgAttrs: Record<string, string | undefined> = { 'data-type': 'gif' }
@@ -239,11 +234,22 @@ function addNodeContent (builder: NodeBuilder, node?: MarkupNode): void {
     if (attrs.height != null) imgAttrs.height = toString(attrs.height)
     builder.openTag('img', imgAttrs, { selfClosing: true })
   } else if (node.type === MarkupNodeType.image) {
-    const src = toString(attrs.src)
-    const alt = toString(attrs.alt)
-    const width = toString(attrs.width)
-    const height = toString(attrs.height)
-    builder.openTag('img', { src, alt, width, height }, { selfClosing: true })
+    // Keep durable identity for downstream HTML consumers (notifications, email and editors).
+    // A bare blob id is not a URL; the consumer must resolve it in its workspace.
+    const fileId = attrs['file-id'] != null && attrs['file-id'] !== '' ? toString(attrs['file-id']) : undefined
+    builder.openTag(
+      'img',
+      {
+        'data-type': 'image',
+        'file-id': fileId,
+        src: attrs.src != null && attrs.src !== '' ? toString(attrs.src) : undefined,
+        alt: attrs.alt != null ? toString(attrs.alt) : undefined,
+        title: attrs.title != null ? toString(attrs.title) : undefined,
+        width: attrs.width != null ? toString(attrs.width) : undefined,
+        height: attrs.height != null ? toString(attrs.height) : undefined
+      },
+      { selfClosing: true }
+    )
   } else if (node.type === MarkupNodeType.reference) {
     const label = toString(attrs.label)
     builder.openTag('span', {

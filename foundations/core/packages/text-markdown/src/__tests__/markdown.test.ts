@@ -857,7 +857,7 @@ Lorem ipsum dolor sit amet.
     {
       name: 'image in a table cell',
       markdown:
-        '<table><tbody><tr><td><p>Some text</p><p> <img src="files/image_1.png" alt="image-alt"/></p></td></tr></tbody></table>',
+        '<table><tbody><tr><td><p>Some text</p><p> <img data-type="image" src="files/image_1.png" alt="image-alt"/></p></td></tr></tbody></table>',
       markup: {
         type: 'doc',
         content: [

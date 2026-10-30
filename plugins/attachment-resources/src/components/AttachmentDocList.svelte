@@ -14,11 +14,12 @@
 -->
 <script lang="ts">
   import { Attachment } from '@hcengineering/attachment'
-  import { type Doc, type Ref, type WithLookup } from '@hcengineering/core'
+  import { type Doc, type Markup, type Ref, type WithLookup } from '@hcengineering/core'
   import { createQuery } from '@hcengineering/presentation'
   import { onMount } from 'svelte'
 
   import attachment from '../plugin'
+  import { getInlineImageFiles, getVisibleAttachments } from '../attachment-files'
   import { AttachmentImageSize } from '../types'
   import AttachmentGroup from './AttachmentGroup.svelte'
   import { loadSavedAttachments, savedAttachmentsStore } from '../stores'
@@ -27,7 +28,9 @@
   export let attachments: Attachment[] | undefined = undefined
   export let imageSize: AttachmentImageSize = 'x-large'
   export let videoPreload = false
+  export let showSeparator = false
   export let isOwn = false
+  export let inlineContent: Markup | undefined = undefined
 
   const query = createQuery()
 
@@ -37,6 +40,8 @@
   $: savedAttachmentsIds = $savedAttachmentsStore.map((it) => it.attachedTo)
 
   $: updateQuery(value, attachments)
+  $: inlineFiles = getInlineImageFiles(inlineContent ?? '')
+  $: visibleAttachments = getVisibleAttachments(resAttachments, inlineFiles)
 
   function updateQuery(value: Doc & { attachments?: number }, attachments?: Attachment[]): void {
     if (attachments !== undefined && attachments.length > 0) {
@@ -66,4 +71,7 @@
   })
 </script>
 
-<AttachmentGroup attachments={resAttachments} {savedAttachmentsIds} {imageSize} {videoPreload} {isOwn} />
+{#if showSeparator && visibleAttachments.length > 0}
+  <div class="mt-2" />
+{/if}
+<AttachmentGroup attachments={visibleAttachments} {savedAttachmentsIds} {imageSize} {videoPreload} {isOwn} />
