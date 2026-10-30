@@ -47,6 +47,7 @@ import { maxComposedRequestBytes, parseComposedRequest, printComposed } from './
 import { PrintBrowserManager } from './browser'
 import { PrintOptions, print, validKinds, validPageOrientations } from './print'
 import { withMeasureContext } from './middleware'
+import { isAllowedPrintUrl } from './print-url'
 
 function getAccountClient (token: string): AccountClient {
   return getAccountClientRaw(config.AccountsUrl, token)
@@ -203,24 +204,14 @@ export function createServer (
         })
       )
   })
-  const whitelistedHostnames = allowedHostnames.length > 0 ? new Set(allowedHostnames) : null
 
-  // Verify that link is from the same host and protocol is among the allowed
+  // Only HTTP(S) links to allowed hosts are printed; an empty allowlist denies every link
   const verifyLink = (ctx: MeasureContext, link: string): URL => {
-    let url: URL
-    try {
-      url = new URL(link)
-    } catch {
-      throw new ApiError(400, 'Invalid link')
-    }
-    if (
-      !['http:', 'https:'].includes(url.protocol) ||
-      (whitelistedHostnames != null && !whitelistedHostnames.has(url.hostname))
-    ) {
+    if (!isAllowedPrintUrl(link, allowedHostnames)) {
       ctx.error('Rejected processing unexpected link', { link })
       throw new ApiError(403, 'Cannot process provided link')
     }
-    return url
+    return new URL(link)
   }
 
   const app = express()
@@ -255,7 +246,7 @@ export function createServer (
       const printRes = await ctx.with(
         'print',
         { kind: options.kind, orientation: options.orientation },
-        (ctx) => print(ctx, link, options, browserManager),
+        (ctx) => print(ctx, link, options, browserManager, allowedHostnames),
         {
           url,
           viewport: options.viewport
@@ -297,7 +288,7 @@ export function createServer (
       const printRes = await ctx.with(
         'printComposed',
         { body: request.link !== undefined ? 'link' : 'file' },
-        (ctx) => printComposed(ctx, request, browserManager, readFile),
+        (ctx) => printComposed(ctx, request, browserManager, readFile, allowedHostnames),
         { pages: request.before.length + request.after.length }
       )
 
@@ -392,7 +383,7 @@ export function createServer (
         const printRes = await ctx.with(
           'print',
           { kind: options.kind, orientation: options.orientation },
-          (ctx) => print(ctx, link, options, browserManager),
+          (ctx) => print(ctx, link, options, browserManager, allowedHostnames),
           {
             link,
             viewport: options.viewport

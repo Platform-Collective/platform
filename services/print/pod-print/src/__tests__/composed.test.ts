@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: EPL-2.0
+import { type MeasureContext } from '@hcengineering/core'
 import { PDFDict, PDFDocument, PDFName } from 'pdf-lib'
 
-import { mergePdfs, parseComposedRequest } from '../composed'
+import { type PrintBrowserManager } from '../browser'
+import { mergePdfs, parseComposedRequest, printComposed } from '../composed'
+import { getPrintHostnames } from '../print-url'
 
-// Rendering is not exercised here, only request validation and merging
+// Link rendering runs against mocked pages, puppeteer itself is never launched
 jest.mock('puppeteer', () => ({ __esModule: true, default: {} }))
 jest.mock('../config', () => ({
   __esModule: true,
@@ -132,5 +135,132 @@ describe('composed print request', () => {
 
   it('reports invalid pdf parts', async () => {
     await expect(mergePdfs([new Uint8Array([1, 2, 3])])).rejects.toMatchObject({ code: 400 })
+  })
+})
+
+describe('composed link rendering', () => {
+  function createCtx (): MeasureContext {
+    const ctx: any = {
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      with: jest.fn(async (_name: string, _attrs: object, fn: (ctx: MeasureContext) => Promise<unknown>) => await fn(ctx))
+    }
+    return ctx
+  }
+
+  function createPage (): any {
+    return {
+      on: jest.fn().mockReturnThis(),
+      setRequestInterception: jest.fn().mockResolvedValue(undefined),
+      setBypassServiceWorker: jest.fn().mockResolvedValue(undefined),
+      setJavaScriptEnabled: jest.fn().mockResolvedValue(undefined),
+      setViewport: jest.fn().mockResolvedValue(undefined),
+      setContent: jest.fn().mockResolvedValue(undefined),
+      goto: jest.fn().mockResolvedValue(undefined),
+      waitForNetworkIdle: jest.fn().mockResolvedValue(undefined),
+      emulateMediaType: jest.fn().mockResolvedValue(undefined),
+      addStyleTag: jest.fn().mockResolvedValue(undefined),
+      evaluate: jest.fn().mockResolvedValue(''),
+      pdf: jest.fn(async () => await pdfWithPages(1))
+    }
+  }
+
+  function createBrowserManager (pages: any[]): { manager: PrintBrowserManager, createPage: jest.Mock } {
+    const createPage = jest.fn(async () => {
+      const page = pages.shift()
+      if (page === undefined) throw new Error('No page left')
+      return { page, release: jest.fn().mockResolvedValue(undefined) }
+    })
+    return { manager: { createPage } as unknown as PrintBrowserManager, createPage }
+  }
+
+  function navigation (url: string): { url: () => string, isNavigationRequest: () => boolean, continue: jest.Mock, abort: jest.Mock } {
+    return {
+      url: () => url,
+      isNavigationRequest: () => true,
+      continue: jest.fn().mockResolvedValue(undefined),
+      abort: jest.fn().mockResolvedValue(undefined)
+    }
+  }
+
+  const readFile = async (): Promise<Buffer | undefined> => undefined
+
+  it.each<[string[], string]>([
+    [[], 'https://front.example.com/guest/doc'],
+    [['front.example.com'], 'http://169.254.169.254/latest/meta-data/'],
+    [['front.example.com'], 'http://localhost/'],
+    [['front.example.com'], 'https://front.example.com.evil.example/'],
+    [['front.example.com'], 'file:///etc/passwd']
+  ])('rejects %p / %s before opening a browser page', async (allowedHostnames, link) => {
+    const { manager, createPage } = createBrowserManager([])
+    const request = { ...parseComposedRequest(valid), link }
+    await expect(printComposed(createCtx(), request, manager, readFile, allowedHostnames)).rejects.toMatchObject({
+      code: 403
+    })
+    expect(createPage).not.toHaveBeenCalled()
+  })
+
+  describe('with ALLOWED_HOSTNAMES unset', () => {
+    // Resolved the same way as in main.ts: only the FRONT_URL host is allowed
+    const allowedHostnames = getPrintHostnames([], 'https://Front.Example.com:8443/')
+
+    it.each(['http://169.254.169.254/latest/meta-data/', 'https://other.example.com/guest/doc'])(
+      'rejects %s instead of allowing every host',
+      async (link) => {
+        const { manager, createPage } = createBrowserManager([])
+        const request = { ...parseComposedRequest(valid), link }
+        await expect(printComposed(createCtx(), request, manager, readFile, allowedHostnames)).rejects.toMatchObject({
+          code: 403
+        })
+        expect(createPage).not.toHaveBeenCalled()
+      }
+    )
+
+    it('renders a link on the FRONT_URL host', async () => {
+      const body = createPage()
+      const { manager } = createBrowserManager([body, createPage()])
+      await printComposed(createCtx(), parseComposedRequest(valid), manager, readFile, allowedHostnames)
+      expect(body.goto).toHaveBeenCalledWith('https://front.example.com/guest/doc', expect.any(Object))
+    })
+  })
+
+  it.each([
+    ['a redirect', 'http://169.254.169.254/latest/meta-data/'],
+    ['a frame navigation', 'http://127.0.0.1/']
+  ])('blocks %s to a disallowed host before printing the body', async (_kind, target) => {
+    const page = createPage()
+    const { manager } = createBrowserManager([page])
+    page.goto.mockImplementation(async () => {
+      expect(page.setRequestInterception).toHaveBeenCalledWith(true)
+      expect(page.setBypassServiceWorker).toHaveBeenCalledWith(true)
+      const listener = page.on.mock.calls.find(([event]: [string]) => event === 'request')?.[1]
+      expect(listener).toBeDefined()
+      const allowed = navigation('https://front.example.com/guest/doc')
+      listener(allowed)
+      const blocked = navigation(target)
+      listener(blocked)
+      await new Promise<void>((resolve) => setImmediate(resolve))
+      expect(allowed.continue).toHaveBeenCalledTimes(1)
+      expect(blocked.abort).toHaveBeenCalledWith('blockedbyclient')
+      expect(blocked.continue).not.toHaveBeenCalled()
+      throw new Error('net::ERR_BLOCKED_BY_CLIENT')
+    })
+
+    await expect(
+      printComposed(createCtx(), parseComposedRequest(valid), manager, readFile, ['front.example.com'])
+    ).rejects.toThrow('net::ERR_BLOCKED_BY_CLIENT')
+    expect(page.pdf).not.toHaveBeenCalled()
+  })
+
+  it('renders an allowed link through the checked opener', async () => {
+    const body = createPage()
+    const { manager } = createBrowserManager([body, createPage()])
+    const result = await printComposed(createCtx(), parseComposedRequest(valid), manager, readFile, [
+      ' FRONT.EXAMPLE.COM. '
+    ])
+    expect(body.goto).toHaveBeenCalledWith('https://front.example.com/guest/doc', expect.any(Object))
+    expect(body.setRequestInterception).toHaveBeenCalledWith(true)
+    expect((await PDFDocument.load(result)).getPageCount()).toBe(2)
   })
 })

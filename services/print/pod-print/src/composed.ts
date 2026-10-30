@@ -9,6 +9,7 @@ import { type PrintBrowserManager, type PrintBrowserPage, withTimeout } from './
 import config from './config'
 import { ApiError } from './error'
 import { printSemaphore, renderPdf } from './print'
+import { isAllowedPrintUrl } from './print-url'
 
 export const maxComposedRequestBytes = 60 * 1024 * 1024
 const maxPartBytes = 20 * 1024 * 1024
@@ -237,7 +238,8 @@ async function compose (
   ctx: MeasureContext,
   request: ComposedPrintRequest,
   pages: JobPages,
-  readFile: (file: string) => Promise<Buffer | undefined>
+  readFile: (file: string) => Promise<Buffer | undefined>,
+  allowedHostnames: readonly string[]
 ): Promise<Buffer> {
   const mm = (v: number): string => `${v}mm`
   const margin = {
@@ -251,15 +253,21 @@ async function compose (
     const browserPage = await pages.create()
     try {
       body = await ctx.with('body', {}, (ctx) =>
-        renderPdf(ctx, browserPage.page, request.link as string, {
-          width: mm(request.page.width),
-          height: mm(request.page.height),
-          margin,
-          headerTemplate: request.decorations !== undefined ? '' : request.headerTemplate,
-          footerTemplate: request.decorations !== undefined ? '' : request.footerTemplate,
-          contentCss: request.contentCss,
-          printBackground: true
-        })
+        renderPdf(
+          ctx,
+          browserPage.page,
+          request.link as string,
+          {
+            width: mm(request.page.width),
+            height: mm(request.page.height),
+            margin,
+            headerTemplate: request.decorations !== undefined ? '' : request.headerTemplate,
+            footerTemplate: request.decorations !== undefined ? '' : request.footerTemplate,
+            contentCss: request.contentCss,
+            printBackground: true
+          },
+          allowedHostnames
+        )
       )
     } finally {
       await browserPage.release()
@@ -426,12 +434,17 @@ export async function printComposed (
   ctx: MeasureContext,
   request: ComposedPrintRequest,
   browserManager: PrintBrowserManager,
-  readFile: (file: string) => Promise<Buffer | undefined>
+  readFile: (file: string) => Promise<Buffer | undefined>,
+  allowedHostnames: readonly string[]
 ): Promise<Buffer> {
+  if (request.link !== undefined && !isAllowedPrintUrl(request.link, allowedHostnames)) {
+    throw new ApiError(403, 'Cannot process provided link')
+  }
+
   const release = await printSemaphore.acquire()
   const pages = new JobPages(browserManager)
   try {
-    const job = compose(ctx, request, pages, readFile)
+    const job = compose(ctx, request, pages, readFile, allowedHostnames)
     // After a timeout the job is abandoned; closing its pages makes pending puppeteer calls reject,
     // which must not surface as an unhandled rejection
     job.catch(() => {})
