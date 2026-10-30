@@ -2,7 +2,7 @@
 // Copyright © 2026 Hardcore Engineering Inc.
 //
 
-import puppeteer, { type Browser, type BrowserContext, type Page } from 'puppeteer'
+import puppeteer, { type Browser, type BrowserContext, type CDPSession, type Page } from 'puppeteer'
 
 import config from './config'
 
@@ -19,10 +19,28 @@ export interface PrintBrowserPage {
 }
 
 export interface PrintBrowserOptions {
-  /** Timeout for creating a browser context, a page or closing a context */
+  /** Timeout for initializing the guard, creating a context/page or closing a context */
   pageInitTimeoutMs: number
   /** Retire the browser after this many pages; 0 disables recycling */
   maxPagesPerBrowser: number
+}
+
+/** Delay before a blocked popup target is closed, see PrintBrowserManager.holdPopup */
+export const POPUP_CLOSE_DELAY_MS = 1500
+
+interface PrintPopupGuard {
+  session: CDPSession
+  contexts: Map<string, string>
+}
+
+async function getMainTargetId (page: Page): Promise<string> {
+  const session = await page.createCDPSession()
+  try {
+    const { targetInfo } = await session.send('Target.getTargetInfo')
+    return targetInfo.targetId
+  } finally {
+    await session.detach()
+  }
 }
 
 function getLaunchOptions (): Parameters<typeof puppeteer.launch>[0] {
@@ -74,6 +92,7 @@ export class PrintBrowserManager {
   private readonly activePages = new Map<Browser, number>()
   private readonly pagesServed = new Map<Browser, number>()
   private readonly retired = new Set<Browser>()
+  private readonly popupGuards = new Map<Browser, PrintPopupGuard>()
 
   constructor (
     private readonly options: PrintBrowserOptions = {
@@ -102,7 +121,19 @@ export class PrintBrowserManager {
     if (this.launchPromise === undefined) {
       const launchPromise = puppeteer
         .launch(getLaunchOptions())
-        .then((launchedBrowser) => {
+        .then(async (launchedBrowser) => {
+          try {
+            // Publish the browser only after its single guard is ready for all jobs.
+            await withTimeout(
+              this.installPopupGuard(launchedBrowser),
+              this.options.pageInitTimeoutMs,
+              'Browser popup guard creation timed out'
+            )
+          } catch (err) {
+            await this.closeBrowser(launchedBrowser)
+            this.forget(launchedBrowser)
+            throw err
+          }
           if (this.launchPromise === launchPromise) {
             this.browser = launchedBrowser
           } else {
@@ -164,6 +195,83 @@ export class PrintBrowserManager {
     )
   }
 
+  private async installPopupGuard (browser: Browser): Promise<void> {
+    const session = await browser.target().createCDPSession()
+    if (!browser.connected) {
+      await session.detach().catch(() => {})
+      throw new Error('Browser disconnected while creating popup guard')
+    }
+    const contexts = new Map<string, string>()
+    this.popupGuards.set(browser, { session, contexts })
+    session.on('Target.attachedToTarget', ({ sessionId, targetInfo, waitingForDebugger }) => {
+      void (async () => {
+        try {
+          const mainTargetId = targetInfo.browserContextId === undefined
+            ? undefined
+            : contexts.get(targetInfo.browserContextId)
+          if (mainTargetId !== undefined && targetInfo.targetId !== mainTargetId) {
+            // Never resume an extra target, even if holding or closing it fails.
+            await this.holdPopup(session, sessionId, targetInfo.targetId)
+          } else if (waitingForDebugger) {
+            const targetSession = session.connection()?.session(sessionId)
+            if (targetSession === undefined || targetSession === null) throw new Error('Missing attached target session')
+            await targetSession.send('Runtime.runIfWaitingForDebugger')
+          }
+        } catch (err: unknown) {
+          console.warn('Failed to handle print popup target', { targetId: targetInfo.targetId, err })
+        }
+      })()
+    })
+    // A browser-level guard pauses popups before their first script runs.
+    await session.send('Target.setAutoAttach', {
+      autoAttach: true,
+      waitForDebuggerOnStart: true,
+      flatten: true,
+      // Chrome rejects 'tab' and 'page' together; page targets cover popups, links and form targets (verified live).
+      filter: [{ type: 'page' }]
+    })
+  }
+
+  /**
+   * Neutralizes an extra target of a print context: it stays paused (never resumed)
+   * and every request it could still make is failed before it leaves the browser.
+   * Closing is deferred: closing a popup while its opener is still inside the
+   * synchronous popup creation (window.open, link or form target) leaves the opener
+   * blocked, so concurrent popups of different jobs would hang Runtime/PDF calls.
+   */
+  private async holdPopup (session: CDPSession, sessionId: string, targetId: string): Promise<void> {
+    const close = async (): Promise<void> => {
+      await session.send('Target.closeTarget', { targetId })
+    }
+    try {
+      const targetSession = session.connection()?.session(sessionId)
+      if (targetSession === undefined || targetSession === null) throw new Error('Missing attached target session')
+      targetSession.on('Fetch.requestPaused', ({ requestId }) => {
+        void targetSession.send('Fetch.failRequest', { requestId, errorReason: 'BlockedByClient' }).catch(() => {})
+      })
+      await targetSession.send('Fetch.enable', { patterns: [{ urlPattern: '*' }] })
+    } catch (err: unknown) {
+      // Cannot intercept requests: closing right away is the only safe option.
+      console.warn('Failed to block print popup requests, closing it immediately', { targetId, err })
+      await close()
+      return
+    }
+    const timer = setTimeout(() => {
+      close().catch((err: unknown) => {
+        // The popup is already gone when its context or reused named window was closed first
+        if (err instanceof Error && err.message.includes('No target with given id')) return
+        console.warn('Failed to close print popup target', { targetId, err })
+      })
+    }, POPUP_CLOSE_DELAY_MS)
+    timer.unref()
+  }
+
+  private async closeContext (browser: Browser, context: BrowserContext): Promise<void> {
+    await context.close()
+    // Keep the registration until closure actually completes, even after a timeout.
+    if (context.id !== undefined) this.popupGuards.get(browser)?.contexts.delete(context.id)
+  }
+
   private async createPageInBrowser (browser: Browser): Promise<PrintBrowserPage> {
     let context: BrowserContext | undefined
     const timeoutMs = this.options.pageInitTimeoutMs
@@ -172,10 +280,16 @@ export class PrintBrowserManager {
     try {
       context = await withTimeout(browser.createBrowserContext(), timeoutMs, 'Browser context creation timed out')
       const page = await withTimeout(context.newPage(), timeoutMs, 'Browser page creation timed out')
+      const mainTargetId = await withTimeout(getMainTargetId(page), timeoutMs, 'Browser page target lookup timed out')
+      const guard = this.popupGuards.get(browser)
+      if (context.id === undefined || guard === undefined) throw new Error('Missing isolated print context or popup guard')
+      // The initial blank page/tab is resumed while unregistered. Register before
+      // handing the page to a job so every subsequent target in this context is guarded.
+      guard.contexts.set(context.id, mainTargetId)
       return { context, page, release: this.createRelease(browser, context) }
     } catch (err) {
       if (context !== undefined) {
-        await withTimeout(context.close(), timeoutMs, 'Browser context close timed out').catch(() => {})
+        await withTimeout(this.closeContext(browser, context), timeoutMs, 'Browser context close timed out').catch(() => {})
       }
       await this.releaseBrowser(browser)
       throw new Error(`Failed to create browser page: ${err instanceof Error ? err.message : String(err)}`)
@@ -189,7 +303,7 @@ export class PrintBrowserManager {
       released = true
 
       try {
-        await withTimeout(context.close(), this.options.pageInitTimeoutMs, 'Browser context close timed out')
+        await withTimeout(this.closeContext(browser, context), this.options.pageInitTimeoutMs, 'Browser context close timed out')
       } catch {
         // A context that cannot be closed means the browser is unhealthy
         this.retired.add(browser)
@@ -248,6 +362,7 @@ export class PrintBrowserManager {
     this.retired.delete(browser)
     this.activePages.delete(browser)
     this.pagesServed.delete(browser)
+    this.popupGuards.delete(browser)
   }
 
   private async closeBrowser (browser: Browser): Promise<void> {
