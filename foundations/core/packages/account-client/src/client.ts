@@ -149,7 +149,11 @@ export interface AccountClient {
   signUp: (email: string, password: string, first: string, last: string) => Promise<LoginInfo>
   login: (email: string, password: string) => Promise<LoginInfo>
   loginAsGuest: () => Promise<LoginInfo>
-  getLoginCapabilities: () => Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean }>
+  getLoginCapabilities: () => Promise<{
+    signUpEnabled: boolean
+    guestLoginAvailable: boolean
+    workspaceCreationAllowed?: boolean
+  }>
   isReadOnlyGuest: () => Promise<boolean>
   getPerson: () => Promise<Person>
   getPersonInfo: (account: PersonUuid) => Promise<PersonInfo>
@@ -729,7 +733,11 @@ class AccountClientImpl implements AccountClient {
     return await this.rpc(request)
   }
 
-  async getLoginCapabilities (): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean }> {
+  async getLoginCapabilities (): Promise<{
+    signUpEnabled: boolean
+    guestLoginAvailable: boolean
+    workspaceCreationAllowed?: boolean
+  }> {
     const request = {
       method: 'getLoginCapabilities' as const,
       params: {}
