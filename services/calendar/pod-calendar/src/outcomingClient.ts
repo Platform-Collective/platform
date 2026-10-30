@@ -28,7 +28,7 @@ import { deepEqual } from 'fast-equals'
 import { OAuth2Client } from 'google-auth-library'
 import { calendar_v3 } from 'googleapis'
 import { getClient } from './client'
-import { isLocationInSync } from './conference'
+import { getOutgoingLocation, isLocationInSync } from './conference'
 import { shouldPushDescriptionUpdate } from './description'
 import { setSyncHistory } from './kvsUtils'
 import { lock, synced } from './mutex'
@@ -97,8 +97,9 @@ export class OutcomingClient {
       description: jsonToHTML(markupToJSON(event.description)),
       summary: event.title
     }
-    if (event.location != null) {
-      res.location = event.location
+    const location = getOutgoingLocation(event)
+    if (location != null) {
+      res.location = location
     }
     if (event.visibility !== undefined) {
       res.visibility = event.visibility === 'public' ? 'public' : 'private'
@@ -275,7 +276,7 @@ export class OutcomingClient {
       })
       event.description = description
     }
-    if (!isLocationInSync(current.location, event)) {
+    if (!isLocationInSync(current, event)) {
       res = true
       this.ctx.info('Update event diff: location', {
         calendarId: current.calendar,
