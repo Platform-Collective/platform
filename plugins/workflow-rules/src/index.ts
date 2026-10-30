@@ -7,7 +7,7 @@
 // obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
 
 import type { Class, Doc, Ref } from '@hcengineering/core'
-import type { Asset, IntlString, Plugin, Resource } from '@hcengineering/platform'
+import type { Asset, IntlString, Plugin } from '@hcengineering/platform'
 import { plugin } from '@hcengineering/platform'
 import type { Component, IssueStatus, Project } from '@hcengineering/tracker'
 import type { AnyComponent } from '@hcengineering/ui'
@@ -158,7 +158,36 @@ const workflowRules = plugin(workflowRulesId, {
     InheritFields: '' as IntlString,
     Enabled: '' as IntlString,
     SubIssueLink: '' as IntlString,
-    ParentIssueLink: '' as IntlString
+    ParentIssueLink: '' as IntlString,
+    // Added in review-round #244 UI pass.
+    PairsFromHere: '' as IntlString,
+    IncomingPairs: '' as IntlString,
+    EditFromPrimary: '' as IntlString,
+    OpenPrimary: '' as IntlString,
+    NotMemberHere: '' as IntlString,
+    NotMemberOfTarget: '' as IntlString,
+    PluginDisabled: '' as IntlString,
+    PluginDisabledHint: '' as IntlString,
+    DeleteConfirmTitle: '' as IntlString,
+    DeleteConfirmMessage: '' as IntlString,
+    StatusMapping: '' as IntlString,
+    StatusMappingHint: '' as IntlString,
+    ReverseMapping: '' as IntlString,
+    ReverseMappingHint: '' as IntlString,
+    NoMirror: '' as IntlString,
+    Final: '' as IntlString,
+    Active: '' as IntlString,
+    Paused: '' as IntlString,
+    Statuses: '' as IntlString,
+    Direction: '' as IntlString,
+    Status: '' as IntlString,
+    LoadingStatuses: '' as IntlString,
+    ResetMapping: '' as IntlString,
+    PairAlreadyExists: '' as IntlString,
+    LoopFromToSame: '' as IntlString,
+    LoopInvalid: '' as IntlString,
+    SubIssue: '' as IntlString,
+    ParentIssue: '' as IntlString
   },
   icon: {
     WorkflowRule: '' as Asset

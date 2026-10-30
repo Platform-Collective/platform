@@ -624,6 +624,15 @@ importers:
       '@hcengineering/workbench-resources':
         specifier: workspace:^0.7.0
         version: link:../plugins/workbench-resources
+      '@hcengineering/workflow-rules':
+        specifier: workspace:^0.7.0
+        version: link:../plugins/workflow-rules
+      '@hcengineering/workflow-rules-assets':
+        specifier: workspace:^0.7.0
+        version: link:../plugins/workflow-rules-assets
+      '@hcengineering/workflow-rules-resources':
+        specifier: workspace:^0.7.0
+        version: link:../plugins/workflow-rules-resources
       commander:
         specifier: ^14.0.0
         version: 14.0.2

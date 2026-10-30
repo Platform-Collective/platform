@@ -69,6 +69,7 @@ import { templatesId } from '@hcengineering/templates'
 import { testManagementId } from '@hcengineering/test-management'
 import { timeId } from '@hcengineering/time'
 import tracker, { trackerId } from '@hcengineering/tracker'
+import { workflowRulesId } from '@hcengineering/workflow-rules'
 import { trainingId } from '@hcengineering/training'
 import uiPlugin, { getCurrentLocation, locationStorageKeyId, navigate, setLocationStorageKey } from '@hcengineering/ui'
 import { mediaId } from '@hcengineering/media'
@@ -175,6 +176,8 @@ import '@hcengineering/time-assets'
 import * as TimeLang from '@hcengineering/time-assets/lang'
 import '@hcengineering/tracker-assets'
 import * as TrackerLang from '@hcengineering/tracker-assets/lang'
+import '@hcengineering/workflow-rules-assets'
+import * as WorkflowRulesLang from '@hcengineering/workflow-rules-assets/lang'
 import '@hcengineering/training-assets'
 import * as TrainingLang from '@hcengineering/training-assets/lang'
 import '@hcengineering/uploader-assets'
@@ -267,6 +270,7 @@ function configureI18n (): void {
   addStringsLoader(telegramId, TelegramLang.loadLang)
   addStringsLoader(templatesId, TemplatesLang.loadLang)
   addStringsLoader(trackerId, TrackerLang.loadLang)
+  addStringsLoader(workflowRulesId, WorkflowRulesLang.loadLang)
   addStringsLoader(viewId, ViewLang.loadLang)
   addStringsLoader(workbenchId, WorkbenchLang.loadLang)
 
@@ -451,6 +455,7 @@ export async function configurePlatform (onWorkbenchConnect?: () => Promise<void
   addLocation(aiBotId, async () => await import('@hcengineering/ai-bot-resources'))
 
   addLocation(trackerId, async () => await import('@hcengineering/tracker-resources'))
+  addLocation(workflowRulesId, async () => await import('@hcengineering/workflow-rules-resources'))
   addLocation(boardId, async () => await import('@hcengineering/board-resources'))
   addLocation(hrId, async () => await import('@hcengineering/hr-resources'))
   addLocation(bitrixId, async () => await import('@hcengineering/bitrix-resources'))

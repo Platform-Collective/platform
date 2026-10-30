@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <!-- Copyright © 2026 Platform Collective Contributors -->
 <script lang="ts">
-  import { generateId, type Ref } from '@hcengineering/core'
-  import { Card, getClient } from '@hcengineering/presentation'
+  import { generateId, getCurrentAccount, type Ref } from '@hcengineering/core'
+  import { Card, createQuery, getClient } from '@hcengineering/presentation'
   import task, { type ProjectType, type TaskType } from '@hcengineering/task'
   import tracker, { type IssueStatus, type Project } from '@hcengineering/tracker'
   import { IssueStatusIcon } from '@hcengineering/tracker-resources'
-  import { DropdownLabels, EditBox, Icon, Label, Toggle, IconArrowRight, type DropdownTextItem } from '@hcengineering/ui'
+  import { Button, DropdownLabels, EditBox, Icon, Label, Toggle, IconArrowRight, type DropdownTextItem } from '@hcengineering/ui'
   import { type WorkflowRule } from '@hcengineering/workflow-rules'
   import { createEventDispatcher } from 'svelte'
 
@@ -20,70 +20,128 @@
   const dispatch = createEventDispatcher()
 
   const TERMINAL = new Set([task.statusCategory.Won, task.statusCategory.Lost])
+  const RESTRICTED_KEY = 'restricted' as const
 
-  type StatusEntry = { id: Ref<IssueStatus>, name: string, category: string | undefined, status: IssueStatus }
+  interface StatusEntry {
+    id: Ref<IssueStatus>
+    name: string
+    category: string | undefined
+    status: IssueStatus
+  }
 
-  let projects: Project[] = []
+  const projectsQ = createQuery()
+  const pairedQ = createQuery()
+  let allProjects: Project[] = []
   let projectsById: Record<string, Project> = {}
+
+  // Rules already defined in currentSpace: used to prevent two pairings
+  // against the same linked project.
+  let siblingRules: WorkflowRule[] = []
+
+  $: projectsQ.query(tracker.class.Project, {}, (res) => {
+    allProjects = res as Project[]
+    const map: Record<string, Project> = {}
+    for (const p of res) map[p._id] = p
+    projectsById = map
+  })
+
+  $: pairedQ.query(workflowRules.class.WorkflowRule, { space: currentSpace }, (res) => {
+    siblingRules = res as unknown as WorkflowRule[]
+  })
+
+  const isEditing = existingForward !== undefined
+  // Defensive: the panel should only open this editor from the primary side,
+  // but if a stale caller passes a non-primary forward rule, refuse to show
+  // a destructive save by disabling the OK button.
+  const primaryMismatch = isEditing && existingForward !== undefined && existingForward.space !== currentSpace
+
   let linkedProject: Ref<Project> | undefined = existingForward?.linkedProject
   let name: string = existingForward?.name ?? ''
-  let nameDirty: boolean = existingForward !== undefined && (existingForward.name ?? '').length > 0
-  let bidirectional = !(existingForward !== undefined && existingReverse === undefined)
+  let bidirectional = !(isEditing && existingReverse === undefined)
 
   let sourceStatuses: StatusEntry[] = []
   let targetStatuses: StatusEntry[] = []
   let forwardMap: Record<string, string> = {}
   let reverseMap: Record<string, string> = {}
+  let loadingStatuses = false
+  let loadToken = 0
 
-  async function loadProjects (): Promise<void> {
-    const all = await client.findAll(tracker.class.Project, {})
-    projects = all.filter((p) => p._id !== currentSpace)
-    const map: Record<string, Project> = {}
-    for (const p of all) map[p._id] = p
-    projectsById = map
-  }
-  loadProjects()
-
-  function defaultNameFor (linkedId: Ref<Project> | undefined): string {
-    if (linkedId === undefined) return ''
-    const p = projectsById[linkedId]
-    if (p === undefined) return ''
-    return `Pairing with ${p.name}`
+  function currentUserMemberOf(p: Project): boolean {
+    const me = getCurrentAccount().uuid
+    const members = Array.isArray(p.members) ? p.members : []
+    const owners = Array.isArray(p.owners) ? p.owners : []
+    return members.includes(me) || owners.includes(me)
   }
 
-  $: if (!nameDirty && linkedProject !== undefined) {
-    const auto = defaultNameFor(linkedProject)
-    if (auto.length > 0) name = auto
+  function isWritable(p: Project): boolean {
+    if (p.archived === true) return false
+    if ((p as unknown as Record<string, unknown>)[RESTRICTED_KEY] === true) return false
+    return currentUserMemberOf(p)
   }
 
-  async function statusesOf (projId: Ref<Project> | undefined): Promise<StatusEntry[]> {
+  // Projects offered as a pairing target. Excludes:
+  //  - the current project (would be self-pairing),
+  //  - archived / restricted targets (server would refuse to mirror anyway),
+  //  - projects the current user is not a member/owner of (the reverse rule
+  //    is written into THAT project's space, which the server authz check
+  //    would refuse for a non-member),
+  //  - projects already paired with current (prevents duplicate pairings).
+  //  In edit mode the linked project is also excluded from the picker since
+  //  the picker is disabled - but it would be filtered out by the
+  //  already-paired rule anyway.
+  $: candidateProjects = allProjects.filter((p) => {
+    if (p._id === currentSpace) return false
+    if (!isWritable(p)) return false
+    const already = siblingRules.find((r) => r.linkedProject === p._id)
+    if (already !== undefined) {
+      // Allow the current pairing's target to stay in the list in edit
+      // mode (even though the picker is disabled, the Dropdown still needs
+      // to resolve the selected id's label).
+      if (isEditing && already._id === existingForward?._id) return true
+      return false
+    }
+    return true
+  })
+
+  $: projectItems = candidateProjects.map(
+    (p) => ({ id: p._id, label: `${p.identifier}  ${p.name}` }) as DropdownTextItem
+  )
+
+  async function statusesOf(projId: Ref<Project> | undefined, token: number): Promise<StatusEntry[]> {
     if (projId === undefined) return []
     const proj = await client.findOne(tracker.class.Project, { _id: projId })
-    if (proj === undefined) return []
+    if (proj === undefined || token !== loadToken) return []
     const ptype = await client.findOne<ProjectType>(task.class.ProjectType, { _id: proj.type })
-    if (ptype === undefined) return []
+    if (ptype === undefined || token !== loadToken) return []
     const ttId = ptype.tasks?.[0]
     if (ttId === undefined) return []
     const tt = await client.findOne<TaskType>(task.class.TaskType, { _id: ttId })
-    if (tt === undefined) return []
+    if (tt === undefined || token !== loadToken) return []
     const out: StatusEntry[] = []
     const statusIds = (tt.statuses ?? []) as Array<Ref<IssueStatus>>
     for (const sid of statusIds) {
       const s = await client.findOne(tracker.class.IssueStatus, { _id: sid })
+      if (token !== loadToken) return []
       if (s !== undefined) out.push({ id: sid, name: s.name, category: s.category, status: s })
     }
     return out
   }
 
-  function autoMatch (src: StatusEntry, targets: StatusEntry[]): Ref<IssueStatus> | undefined {
-    const sameName = targets.find((t) => t.name.toLowerCase() === src.name.toLowerCase())
-    if (sameName !== undefined) return sameName.id
+  // Prefer category match over name match: category is a semantic hint from
+  // the status model and survives renames; a name match that disagrees with
+  // the category can be a false positive (e.g. two different "Review"
+  // statuses in different categories).
+  function autoMatch(src: StatusEntry, targets: StatusEntry[]): Ref<IssueStatus> | undefined {
     const sameCategory = targets.filter((t) => t.category === src.category)
-    if (sameCategory.length > 0) return sameCategory[0].id
-    return undefined
+    if (sameCategory.length > 0) {
+      const sameName = sameCategory.find((t) => t.name.toLowerCase() === src.name.toLowerCase())
+      return (sameName ?? sameCategory[0]).id
+    }
+    const nameOnly = targets.find((t) => t.name.toLowerCase() === src.name.toLowerCase())
+    return nameOnly?.id
   }
 
-  function buildAutoMap (src: StatusEntry[], dst: StatusEntry[]): Record<string, string> {
+  function buildAutoMap(src: StatusEntry[], dst: StatusEntry[]): Record<string, string> {
     const out: Record<string, string> = {}
     for (const s of src) {
       const t = autoMatch(s, dst)
@@ -92,7 +150,7 @@
     return out
   }
 
-  function buildAllowedLoops (dstStatuses: StatusEntry[]): Array<{ from: Ref<IssueStatus>, to: Ref<IssueStatus> }> {
+  function buildAllowedLoops(dstStatuses: StatusEntry[]): Array<{ from: Ref<IssueStatus>, to: Ref<IssueStatus> }> {
     const nonTerminal = dstStatuses.filter((s) => s.category === undefined || !TERMINAL.has(s.category as any))
     const loops: Array<{ from: Ref<IssueStatus>, to: Ref<IssueStatus> }> = []
     for (let i = 0; i < nonTerminal.length; i++) {
@@ -103,112 +161,154 @@
     return loops
   }
 
-  async function onLinkedChange (): Promise<void> {
-    sourceStatuses = await statusesOf(currentSpace)
-    targetStatuses = await statusesOf(linkedProject)
+  async function onLinkedChange(target: Ref<Project> | undefined): Promise<void> {
+    loadToken++
+    const token = loadToken
+    if (target === undefined) {
+      sourceStatuses = []
+      targetStatuses = []
+      forwardMap = {}
+      reverseMap = {}
+      loadingStatuses = false
+      return
+    }
+    loadingStatuses = true
+    const src = await statusesOf(currentSpace, token)
+    const dst = await statusesOf(target, token)
+    if (token !== loadToken) return
+    sourceStatuses = src
+    targetStatuses = dst
     const seedForward = existingForward?.forwardMap
     const seedReverse = existingReverse?.forwardMap
-    if (seedForward !== undefined && Object.keys(seedForward).length > 0) {
-      forwardMap = { ...seedForward } as Record<string, string>
-    } else {
-      forwardMap = buildAutoMap(sourceStatuses, targetStatuses)
-    }
-    if (seedReverse !== undefined && Object.keys(seedReverse).length > 0) {
-      reverseMap = { ...seedReverse } as Record<string, string>
-    } else {
-      reverseMap = buildAutoMap(targetStatuses, sourceStatuses)
-    }
+    forwardMap =
+      seedForward !== undefined && Object.keys(seedForward).length > 0
+        ? ({ ...seedForward } as Record<string, string>)
+        : buildAutoMap(src, dst)
+    reverseMap =
+      seedReverse !== undefined && Object.keys(seedReverse).length > 0
+        ? ({ ...seedReverse } as Record<string, string>)
+        : buildAutoMap(dst, src)
+    loadingStatuses = false
   }
 
-  $: if (linkedProject !== undefined) void onLinkedChange()
+  // Only one place changes linkedProject: the picker. In edit mode the
+  // picker is disabled so this never fires from user action.
+  $: void onLinkedChange(linkedProject)
 
-  $: projectItems = projects.map((p) => ({ id: p._id, label: p.identifier + '  ' + p.name } as DropdownTextItem))
   $: targetMapItems = [
-    { id: '', label: 'No mirror' } as DropdownTextItem,
-    ...targetStatuses.map((s) => ({ id: s.id, label: s.name } as DropdownTextItem))
+    { id: '', label: '' } as DropdownTextItem,
+    ...targetStatuses.map((s) => ({ id: s.id, label: s.name }) as DropdownTextItem)
   ]
   $: sourceMapItems = [
-    { id: '', label: 'No mirror' } as DropdownTextItem,
-    ...sourceStatuses.map((s) => ({ id: s.id, label: s.name } as DropdownTextItem))
+    { id: '', label: '' } as DropdownTextItem,
+    ...sourceStatuses.map((s) => ({ id: s.id, label: s.name }) as DropdownTextItem)
   ]
 
-  function onPickLinked (detail: unknown): void {
+  function onPickLinked(detail: unknown): void {
+    if (isEditing) return
     linkedProject = detail as Ref<Project>
   }
-  function setForward (sourceId: string, detail: unknown): void {
+
+  function setForward(sourceId: string, detail: unknown): void {
     const t = (detail ?? '') as string
     const next = { ...forwardMap }
     if (t === '') { delete next[sourceId] } else { next[sourceId] = t }
     forwardMap = next
   }
-  function setReverse (sourceId: string, detail: unknown): void {
+
+  function setReverse(sourceId: string, detail: unknown): void {
     const t = (detail ?? '') as string
     const next = { ...reverseMap }
     if (t === '') { delete next[sourceId] } else { next[sourceId] = t }
     reverseMap = next
   }
 
-  function mappedTarget (sourceId: string, targets: StatusEntry[]): StatusEntry | undefined {
+  function resetMappings(): void {
+    forwardMap = buildAutoMap(sourceStatuses, targetStatuses)
+    reverseMap = buildAutoMap(targetStatuses, sourceStatuses)
+  }
+
+  function mappedTarget(sourceId: string, targets: StatusEntry[]): StatusEntry | undefined {
     const tid = forwardMap[sourceId]
     if (tid === undefined) return undefined
     return targets.find((t) => t.id === tid)
   }
-  function mappedReverse (sourceId: string, sources: StatusEntry[]): StatusEntry | undefined {
+
+  function mappedReverse(sourceId: string, sources: StatusEntry[]): StatusEntry | undefined {
     const tid = reverseMap[sourceId]
     if (tid === undefined) return undefined
     return sources.find((t) => t.id === tid)
   }
 
-  function isTerminal (s: StatusEntry): boolean {
+  function isTerminal(s: StatusEntry): boolean {
     return s.category !== undefined && TERMINAL.has(s.category as any)
   }
 
-  $: canSave = linkedProject !== undefined && Object.keys(forwardMap).length > 0
+  // Linked project the user is actually authorized against. In edit mode
+  // this is the saved target; in create mode it's whatever they picked.
+  $: linkedProjectDoc = linkedProject !== undefined ? projectsById[linkedProject as string] : undefined
+  $: targetWritable = linkedProjectDoc !== undefined && isWritable(linkedProjectDoc)
 
-  async function save (): Promise<void> {
+  $: canSave =
+    !primaryMismatch &&
+    linkedProject !== undefined &&
+    targetWritable &&
+    Object.keys(forwardMap).length > 0 &&
+    !loadingStatuses
+
+  async function save(): Promise<void> {
     if (!canSave || linkedProject === undefined) return
+    const trimmedName = name.trim()
     const forwardLoops = buildAllowedLoops(targetStatuses)
     const reverseLoops = buildAllowedLoops(sourceStatuses)
 
-    const trimmedName = name.trim()
-    const forwardData = {
+    const ops = client.apply()
+    // Preserve `enabled` on edit (don't force-resume a paused pair);
+    // default to true on create.
+    const forwardEnabled = existingForward?.enabled ?? true
+    const forwardData: Partial<WorkflowRule> = {
       linkedProject,
-      linkKind: 'subIssue',
+      // In edit mode we keep the stored `linkKind` instead of hardcoding
+      // a side; the panel only opens this editor from the primary side so
+      // `subIssue` is the correct create-time default.
+      linkKind: existingForward?.linkKind ?? 'subIssue',
       name: trimmedName.length > 0 ? trimmedName : undefined,
       forwardMap,
       allowedLoops: forwardLoops,
-      enabled: true
+      enabled: forwardEnabled
     }
     if (existingForward !== undefined) {
-      await client.updateDoc(workflowRules.class.WorkflowRule, existingForward.space, existingForward._id, forwardData)
+      ops.updateDoc(workflowRules.class.WorkflowRule, existingForward.space, existingForward._id, forwardData)
     } else {
-      await client.createDoc(workflowRules.class.WorkflowRule, currentSpace, forwardData as any, generateId() as any)
+      ops.createDoc(workflowRules.class.WorkflowRule, currentSpace, forwardData as any, generateId() as any)
     }
 
     if (bidirectional) {
-      const reverseData = {
+      const reverseEnabled = existingReverse?.enabled ?? true
+      const reverseData: Partial<WorkflowRule> = {
         linkedProject: currentSpace,
-        linkKind: 'parentIssue',
+        linkKind: existingReverse?.linkKind ?? 'parentIssue',
         name: trimmedName.length > 0 ? trimmedName : undefined,
         forwardMap: reverseMap,
         allowedLoops: reverseLoops,
-        enabled: true
+        enabled: reverseEnabled
       }
       if (existingReverse !== undefined) {
-        await client.updateDoc(workflowRules.class.WorkflowRule, existingReverse.space, existingReverse._id, reverseData)
+        ops.updateDoc(workflowRules.class.WorkflowRule, existingReverse.space, existingReverse._id, reverseData)
       } else {
-        await client.createDoc(workflowRules.class.WorkflowRule, linkedProject, reverseData as any, generateId() as any)
+        ops.createDoc(workflowRules.class.WorkflowRule, linkedProject, reverseData as any, generateId() as any)
       }
     } else if (existingReverse !== undefined) {
-      await client.removeDoc(workflowRules.class.WorkflowRule, existingReverse.space, existingReverse._id)
+      ops.removeDoc(workflowRules.class.WorkflowRule, existingReverse.space, existingReverse._id)
     }
 
+    await ops.commit()
     dispatch('close')
   }
 </script>
 
 <Card
-  label={existingForward !== undefined ? workflowRules.string.EditPair : workflowRules.string.PairProjects}
+  label={isEditing ? workflowRules.string.EditPair : workflowRules.string.PairProjects}
   canSave={canSave}
   okLabel={workflowRules.string.Save}
   okAction={save}
@@ -219,12 +319,7 @@
     <section class="wfr-top">
       <div class="wfr-field grow">
         <div class="wfr-field-label"><Label label={workflowRules.string.Name} /></div>
-        <EditBox
-          bind:value={name}
-          placeholder={workflowRules.string.NamePlaceholder}
-          kind={'editbox'}
-          on:change={() => { nameDirty = true }}
-        />
+        <EditBox bind:value={name} placeholder={workflowRules.string.NamePlaceholder} kind={'editbox'} />
       </div>
       <div class="wfr-field grow">
         <div class="wfr-field-label"><Label label={workflowRules.string.PairedWith} /></div>
@@ -232,6 +327,8 @@
           items={projectItems}
           selected={linkedProject}
           placeholder={workflowRules.string.SelectProject}
+          disabled={isEditing}
+          autoSelect={false}
           on:selected={(e) => onPickLinked(e.detail)}
         />
       </div>
@@ -241,7 +338,11 @@
       </div>
     </section>
 
-    {#if linkedProject === undefined}
+    {#if primaryMismatch}
+      <div class="wfr-placeholder">
+        <div class="wfr-placeholder-title"><Label label={workflowRules.string.EditFromPrimary} /></div>
+      </div>
+    {:else if linkedProject === undefined}
       <div class="wfr-placeholder">
         <div class="wfr-placeholder-icon">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -252,15 +353,25 @@
         </div>
         <div class="wfr-placeholder-title"><Label label={workflowRules.string.PickTargetFirst} /></div>
       </div>
-    {:else if sourceStatuses.length === 0 || targetStatuses.length === 0}
+    {:else if linkedProjectDoc !== undefined && !targetWritable}
       <div class="wfr-placeholder">
-        <div class="wfr-placeholder-sub">Loading statuses...</div>
+        <div class="wfr-placeholder-title"><Label label={workflowRules.string.NotMemberOfTarget} /></div>
+      </div>
+    {:else if loadingStatuses || sourceStatuses.length === 0 || targetStatuses.length === 0}
+      <div class="wfr-placeholder">
+        <div class="wfr-placeholder-sub"><Label label={workflowRules.string.LoadingStatuses} /></div>
       </div>
     {:else}
       <section class="wfr-section">
         <div class="wfr-section-head">
-          <div class="wfr-section-title">Status mapping</div>
-          <div class="wfr-section-caption">Pre-matched by category. Adjust any row.</div>
+          <div class="wfr-section-title"><Label label={workflowRules.string.StatusMapping} /></div>
+          <div class="wfr-section-caption"><Label label={workflowRules.string.StatusMappingHint} /></div>
+          <Button
+            label={workflowRules.string.ResetMapping}
+            kind="ghost"
+            size="small"
+            on:click={resetMappings}
+          />
         </div>
         <div class="wfr-map">
           {#each sourceStatuses as src (src.id)}
@@ -269,7 +380,9 @@
               <div class="wfr-slot src">
                 <IssueStatusIcon value={src.status} size="small" />
                 <span class="wfr-slot-label">{src.name}</span>
-                {#if isTerminal(src)}<span class="wfr-slot-tag">final</span>{/if}
+                {#if isTerminal(src)}
+                  <span class="wfr-slot-tag"><Label label={workflowRules.string.Final} /></span>
+                {/if}
               </div>
               <div class="wfr-connector">
                 <Icon icon={IconArrowRight} size="small" />
@@ -279,6 +392,8 @@
                   items={targetMapItems}
                   selected={forwardMap[src.id] ?? ''}
                   width={'100%'}
+                  placeholder={workflowRules.string.NoMirror}
+                  autoSelect={false}
                   on:selected={(e) => setForward(src.id, e.detail)}
                 />
                 {#if target !== undefined}
@@ -296,8 +411,8 @@
       {#if bidirectional}
         <section class="wfr-section">
           <div class="wfr-section-head">
-            <div class="wfr-section-title">Reverse mapping</div>
-            <div class="wfr-section-caption">What happens when a status changes on the linked side.</div>
+            <div class="wfr-section-title"><Label label={workflowRules.string.ReverseMapping} /></div>
+            <div class="wfr-section-caption"><Label label={workflowRules.string.ReverseMappingHint} /></div>
           </div>
           <div class="wfr-map">
             {#each targetStatuses as t (t.id)}
@@ -306,7 +421,9 @@
                 <div class="wfr-slot src">
                   <IssueStatusIcon value={t.status} size="small" />
                   <span class="wfr-slot-label">{t.name}</span>
-                  {#if isTerminal(t)}<span class="wfr-slot-tag">final</span>{/if}
+                  {#if isTerminal(t)}
+                    <span class="wfr-slot-tag"><Label label={workflowRules.string.Final} /></span>
+                  {/if}
                 </div>
                 <div class="wfr-connector">
                   <Icon icon={IconArrowRight} size="small" />
@@ -316,6 +433,8 @@
                     items={sourceMapItems}
                     selected={reverseMap[t.id] ?? ''}
                     width={'100%'}
+                    placeholder={workflowRules.string.NoMirror}
+                    autoSelect={false}
                     on:selected={(e) => setReverse(t.id, e.detail)}
                   />
                   {#if back !== undefined}
@@ -387,10 +506,7 @@
     color: var(--theme-caption-color);
     letter-spacing: -0.01em;
   }
-  .wfr-section-caption {
-    font-size: 0.8125rem;
-    color: var(--theme-dark-color);
-  }
+  .wfr-section-caption { font-size: 0.8125rem; color: var(--theme-dark-color); }
   .wfr-map {
     display: flex;
     flex-direction: column;

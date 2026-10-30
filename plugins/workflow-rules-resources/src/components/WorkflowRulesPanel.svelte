@@ -1,11 +1,22 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <!-- Copyright © 2026 Platform Collective Contributors -->
 <script lang="ts">
-  import { type Ref } from '@hcengineering/core'
-  import { createQuery, getClient } from '@hcengineering/presentation'
+  import { getCurrentAccount, type Ref } from '@hcengineering/core'
+  import { createQuery, getClient, MessageBox, pluginConfigurationStore } from '@hcengineering/presentation'
   import tracker, { type Project } from '@hcengineering/tracker'
-  import { Breadcrumbs, Button, Header, IconAdd, IconDelete, Label, Scroller, Toggle, ButtonIcon, showPopup } from '@hcengineering/ui'
-  import { type WorkflowRule } from '@hcengineering/workflow-rules'
+  import {
+    Breadcrumbs,
+    Button,
+    ButtonIcon,
+    Header,
+    IconAdd,
+    IconDelete,
+    Label,
+    Scroller,
+    Toggle,
+    showPopup
+  } from '@hcengineering/ui'
+  import { workflowRulesId, type WorkflowRule } from '@hcengineering/workflow-rules'
 
   import workflowRules from '../plugin'
   import PairProjectEditor from './PairProjectEditor.svelte'
@@ -15,99 +26,218 @@
 
   const client = getClient()
   const localRulesQ = createQuery()
-  const reverseRulesQ = createQuery()
+  const incomingRulesQ = createQuery()
   const projectsQ = createQuery()
 
   let localRules: WorkflowRule[] = []
-  let reverseRules: WorkflowRule[] = []
+  let incomingRules: WorkflowRule[] = []
   let projectsById: Record<string, Project> = {}
 
-  $: localRulesQ.query(
-    workflowRules.class.WorkflowRule,
-    { space: currentSpace },
-    (res) => { localRules = res as unknown as WorkflowRule[] }
-  )
+  // The currentSpace's own Project doc, used for the member/owner gate on
+  // this project's actions.
+  let currentProject: Project | undefined
 
-  $: reverseRulesQ.query(
-    workflowRules.class.WorkflowRule,
-    { linkedProject: currentSpace },
-    (res) => { reverseRules = res as unknown as WorkflowRule[] }
-  )
+  $: localRulesQ.query(workflowRules.class.WorkflowRule, { space: currentSpace }, (res) => {
+    localRules = res as unknown as WorkflowRule[]
+  })
+
+  $: incomingRulesQ.query(workflowRules.class.WorkflowRule, { linkedProject: currentSpace }, (res) => {
+    incomingRules = res as unknown as WorkflowRule[]
+  })
 
   $: projectsQ.query(tracker.class.Project, {}, (res) => {
     const next: Record<string, Project> = {}
     for (const p of res) next[p._id] = p
     projectsById = next
+    currentProject = next[currentSpace as string]
   })
 
-  type Pairing = {
+  // Plugin enablement. The server trigger is a no-op when disabled, so a
+  // rule saved from here would silently never fire. Mirror that in the UI.
+  $: pluginEnabled = $pluginConfigurationStore.has(workflowRulesId)
+
+  // Member/owner on the current (primary-side) project. Edits here write
+  // the forward rule into currentSpace; actions are hidden otherwise.
+  $: canEditHere = currentProject !== undefined && isMemberOf(currentProject)
+
+  function isMemberOf(p: Project | undefined): boolean {
+    if (p === undefined) return false
+    const me = getCurrentAccount().uuid
+    const members = Array.isArray(p.members) ? p.members : []
+    const owners = Array.isArray(p.owners) ? p.owners : []
+    return members.includes(me) || owners.includes(me)
+  }
+
+  // A pair "from here" has its forward rule in currentSpace. The reverse
+  // rule, if the pair is bidirectional, lives in the linked project.
+  interface PrimaryPairing {
+    kind: 'primary'
     other: Ref<Project>
     forward: WorkflowRule
     reverse: WorkflowRule | undefined
   }
 
-  $: pairings = (() => {
-    const out: Pairing[] = []
+  interface IncomingPairing {
+    kind: 'incoming'
+    other: Ref<Project>
+    inbound: WorkflowRule
+    hasReverseHere: boolean
+  }
+
+  // Primary pairings: each forward rule in currentSpace is one; the reverse
+  // rule is the one in the linked project whose `linkedProject` is us.
+  $: primaryPairings = (() => {
+    const out: PrimaryPairing[] = []
     for (const r of localRules) {
-      const rev = reverseRules.find((rr) => rr.space === r.linkedProject && rr.linkedProject === currentSpace)
-      out.push({ other: r.linkedProject, forward: r, reverse: rev })
+      const reverse = incomingRules.find((rr) => rr.space === r.linkedProject && rr.linkedProject === currentSpace)
+      out.push({ kind: 'primary', other: r.linkedProject, forward: r, reverse })
     }
     return out
   })()
 
-  function openCreate (): void {
+  // Incoming pairings: a rule whose linkedProject is us AND whose space is
+  // NOT already covered by a primary pairing (i.e. the local side is a pure
+  // target). The user has to open the other project to edit it.
+  $: incomingPairings = (() => {
+    const out: IncomingPairing[] = []
+    const primaryOthers = new Set(primaryPairings.map((p) => p.other as string))
+    for (const r of incomingRules) {
+      if (primaryOthers.has(r.space as string)) continue
+      // See if there is a reverse rule (we'd be the primary side), but that
+      // case is already covered by primaryPairings above. This path is just
+      // "incoming only", one-way into this project.
+      out.push({ kind: 'incoming', other: r.space, inbound: r, hasReverseHere: false })
+    }
+    return out
+  })()
+
+  function openCreate(): void {
+    if (!pluginEnabled || !canEditHere) return
     showPopup(PairProjectEditor, { currentSpace }, 'center')
   }
-  function openEditPair (p: Pairing): void {
-    showPopup(PairProjectEditor, {
-      currentSpace,
-      existingForward: p.forward,
-      existingReverse: p.reverse
-    }, 'center')
+
+  function openEditPair(p: PrimaryPairing): void {
+    if (!pluginEnabled || !canEditHere) return
+    showPopup(
+      PairProjectEditor,
+      {
+        currentSpace,
+        existingForward: p.forward,
+        existingReverse: p.reverse
+      },
+      'center'
+    )
   }
-  function openAdvanced (rule: WorkflowRule): void {
-    showPopup(EditWorkflowRule, { currentSpace, rule }, 'center')
+
+  function openAdvanced(p: PrimaryPairing): void {
+    if (!pluginEnabled || !canEditHere) return
+    showPopup(EditWorkflowRule, { currentSpace, rule: p.forward, partner: p.reverse }, 'center')
   }
-  async function toggleEnabled (p: Pairing): Promise<void> {
+
+  function navigateToPrimary(p: IncomingPairing): void {
+    // The primary lives in p.other project. We can only link to its settings
+    // tab from here; the user has to be a member there to actually edit.
+    // For now this is a best-effort info dialog since the workbench navigator
+    // model does not expose a stable "open project special" API; a follow-up
+    // can add deep linking.
+    showPopup(
+      MessageBox,
+      {
+        label: workflowRules.string.EditFromPrimary,
+        message: workflowRules.string.EditFromPrimary,
+        canSubmit: false
+      },
+      'center'
+    )
+  }
+
+  async function toggleEnabled(p: PrimaryPairing): Promise<void> {
+    if (!pluginEnabled || !canEditHere) return
     const now = !p.forward.enabled
-    await client.updateDoc(workflowRules.class.WorkflowRule, p.forward.space, p.forward._id, { enabled: now })
+    const ops = client.apply()
+    ops.updateDoc(workflowRules.class.WorkflowRule, p.forward.space, p.forward._id, { enabled: now })
     if (p.reverse !== undefined) {
-      await client.updateDoc(workflowRules.class.WorkflowRule, p.reverse.space, p.reverse._id, { enabled: now })
+      ops.updateDoc(workflowRules.class.WorkflowRule, p.reverse.space, p.reverse._id, { enabled: now })
     }
+    await ops.commit()
   }
-  async function remove (p: Pairing): Promise<void> {
-    await client.removeDoc(workflowRules.class.WorkflowRule, p.forward.space, p.forward._id)
+
+  function confirmRemove(p: PrimaryPairing): void {
+    if (!pluginEnabled || !canEditHere) return
+    showPopup(
+      MessageBox,
+      {
+        label: workflowRules.string.DeleteConfirmTitle,
+        message: workflowRules.string.DeleteConfirmMessage,
+        action: async () => {
+          await remove(p)
+        }
+      },
+      'center'
+    )
+  }
+
+  async function remove(p: PrimaryPairing): Promise<void> {
+    const ops = client.apply()
+    ops.removeDoc(workflowRules.class.WorkflowRule, p.forward.space, p.forward._id)
     if (p.reverse !== undefined) {
-      await client.removeDoc(workflowRules.class.WorkflowRule, p.reverse.space, p.reverse._id)
+      ops.removeDoc(workflowRules.class.WorkflowRule, p.reverse.space, p.reverse._id)
     }
+    await ops.commit()
   }
-  function otherName (id: Ref<Project>): string {
+
+  function otherName(id: Ref<Project>): string {
     const p = projectsById[id]
     return p !== undefined ? p.name : String(id)
   }
-  function otherIdent (id: Ref<Project>): string {
+
+  function otherIdent(id: Ref<Project>): string {
     const p = projectsById[id]
     return p !== undefined ? p.identifier : ''
   }
-  function fwdMappings (p: Pairing): number { return Object.keys(p.forward.forwardMap ?? {}).length }
-  function revMappings (p: Pairing): number { return p.reverse !== undefined ? Object.keys(p.reverse.forwardMap ?? {}).length : 0 }
+
+  function fwdMappings(p: PrimaryPairing): number {
+    return Object.keys(p.forward.forwardMap ?? {}).length
+  }
+
+  function revMappings(p: PrimaryPairing): number {
+    return p.reverse !== undefined ? Object.keys(p.reverse.forwardMap ?? {}).length : 0
+  }
+
+  function cardKeydown(event: KeyboardEvent, action: () => void): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      action()
+    }
+  }
 </script>
 
 <Header adaptive={'doubleRow'}>
   <Breadcrumbs items={[{ icon: workflowRules.icon.WorkflowRule, label: workflowRules.string.WorkflowRules }]} />
   <svelte:fragment slot="actions">
-    <Button
-      icon={IconAdd}
-      label={workflowRules.string.PairProjects}
-      kind={'primary'}
-      on:click={openCreate}
-    />
+    {#if pluginEnabled && canEditHere}
+      <Button
+        icon={IconAdd}
+        label={workflowRules.string.PairProjects}
+        kind={'primary'}
+        on:click={openCreate}
+      />
+    {/if}
   </svelte:fragment>
 </Header>
 
 <Scroller>
   <div class="wfr-panel">
-    {#if pairings.length === 0}
+    {#if !pluginEnabled}
+      <div class="wfr-notice">
+        <div class="wfr-notice-title"><Label label={workflowRules.string.PluginDisabled} /></div>
+        <div class="wfr-notice-sub"><Label label={workflowRules.string.PluginDisabledHint} /></div>
+      </div>
+    {:else if !canEditHere && primaryPairings.length === 0 && incomingPairings.length === 0}
+      <div class="wfr-notice">
+        <div class="wfr-notice-sub"><Label label={workflowRules.string.NotMemberHere} /></div>
+      </div>
+    {:else if primaryPairings.length === 0 && incomingPairings.length === 0}
       <div class="wfr-empty">
         <div class="wfr-empty-icon">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
@@ -119,68 +249,128 @@
         <div class="wfr-empty-title"><Label label={workflowRules.string.NoRulesYet} /></div>
         <div class="wfr-empty-sub"><Label label={workflowRules.string.EmptyHint} /></div>
         <div class="wfr-empty-cta">
-          <Button
-            icon={IconAdd}
-            label={workflowRules.string.PairProjects}
-            kind="primary"
-            on:click={openCreate}
-          />
+          <Button icon={IconAdd} label={workflowRules.string.PairProjects} kind="primary" on:click={openCreate} />
         </div>
       </div>
     {:else}
-      <div class="wfr-list-head">
-        <span>Linked project</span>
-        <span>Direction</span>
-        <span>Mappings</span>
-        <span>Status</span>
-        <span />
-      </div>
-      {#each pairings as pair (pair.forward._id)}
-        <article class="wfr-card" class:disabled={!pair.forward.enabled}>
-          <div class="wfr-card-main" on:click={() => openEditPair(pair)} on:keydown role="button" tabindex="0">
-            <div class="wfr-cell project">
-              <div class="wfr-proj-badge">{otherIdent(pair.other) || '•'}</div>
-              <div class="wfr-proj-text">
-                {#if pair.forward.name !== undefined && pair.forward.name.length > 0}
-                  <div class="wfr-proj-name">{pair.forward.name}</div>
-                  <div class="wfr-proj-sub">{otherName(pair.other)}</div>
-                {:else}
-                  <div class="wfr-proj-name">{otherName(pair.other)}</div>
-                {/if}
+      {#if primaryPairings.length > 0}
+        <section class="wfr-section">
+          <div class="wfr-section-head"><Label label={workflowRules.string.PairsFromHere} /></div>
+          <div class="wfr-list-head">
+            <span><Label label={workflowRules.string.LinkedProject} /></span>
+            <span><Label label={workflowRules.string.Direction} /></span>
+            <span><Label label={workflowRules.string.Statuses} /></span>
+            <span><Label label={workflowRules.string.Status} /></span>
+            <span />
+          </div>
+          {#each primaryPairings as pair (pair.forward._id)}
+            <article class="wfr-card" class:disabled={!pair.forward.enabled}>
+              <div
+                class="wfr-card-main"
+                on:click={() => openEditPair(pair)}
+                on:keydown={(e) => cardKeydown(e, () => openEditPair(pair))}
+                role="button"
+                tabindex="0"
+                aria-disabled={!canEditHere}
+              >
+                <div class="wfr-cell project">
+                  <div class="wfr-proj-badge">{otherIdent(pair.other) || '•'}</div>
+                  <div class="wfr-proj-text">
+                    {#if pair.forward.name !== undefined && pair.forward.name.length > 0}
+                      <div class="wfr-proj-name">{pair.forward.name}</div>
+                      <div class="wfr-proj-sub">{otherName(pair.other)}</div>
+                    {:else}
+                      <div class="wfr-proj-name">{otherName(pair.other)}</div>
+                    {/if}
+                  </div>
+                </div>
+                <div class="wfr-cell direction">
+                  {#if pair.reverse !== undefined}
+                    <span class="wfr-direction two-way"><Label label={workflowRules.string.Bidirectional} /></span>
+                  {:else}
+                    <span class="wfr-direction one-way"><Label label={workflowRules.string.OneWay} /></span>
+                  {/if}
+                </div>
+                <div class="wfr-cell mapping-count">
+                  <span class="wfr-count">{fwdMappings(pair)}</span>
+                  {#if pair.reverse !== undefined}
+                    <span class="wfr-count-sep">+</span>
+                    <span class="wfr-count">{revMappings(pair)}</span>
+                  {/if}
+                  <span class="wfr-count-label"><Label label={workflowRules.string.Statuses} /></span>
+                </div>
+                <div class="wfr-cell state">
+                  <div class="wfr-dot" class:on={pair.forward.enabled} />
+                  <span>
+                    <Label label={pair.forward.enabled ? workflowRules.string.Active : workflowRules.string.Paused} />
+                  </span>
+                </div>
               </div>
-            </div>
-            <div class="wfr-cell direction">
-              {#if pair.reverse !== undefined}
-                <span class="wfr-direction two-way"><Label label={workflowRules.string.Bidirectional} /></span>
-              {:else}
-                <span class="wfr-direction one-way"><Label label={workflowRules.string.OneWay} /></span>
-              {/if}
-            </div>
-            <div class="wfr-cell mapping-count">
-              <span class="wfr-count">{fwdMappings(pair)}</span>
-              {#if pair.reverse !== undefined}
-                <span class="wfr-count-sep">+</span>
-                <span class="wfr-count">{revMappings(pair)}</span>
-              {/if}
-              <span class="wfr-count-label">statuses</span>
-            </div>
-            <div class="wfr-cell state">
-              <div class="wfr-dot" class:on={pair.forward.enabled} />
-              <span>{pair.forward.enabled ? 'Active' : 'Paused'}</span>
-            </div>
-          </div>
-          <div class="wfr-card-actions" on:click|stopPropagation>
-            <Toggle on={pair.forward.enabled} on:change={() => toggleEnabled(pair)} />
-            <Button
-              label={workflowRules.string.Advanced}
-              kind="ghost"
-              size="small"
-              on:click={() => openAdvanced(pair.forward)}
-            />
-            <ButtonIcon icon={IconDelete} size="small" kind="ghost" on:click={() => remove(pair)} />
-          </div>
-        </article>
-      {/each}
+              <div class="wfr-card-actions" on:click|stopPropagation on:keydown|stopPropagation role="toolbar">
+                <Toggle on={pair.forward.enabled} disabled={!canEditHere} on:change={() => toggleEnabled(pair)} />
+                <Button
+                  label={workflowRules.string.Advanced}
+                  kind="ghost"
+                  size="small"
+                  disabled={!canEditHere}
+                  on:click={() => openAdvanced(pair)}
+                />
+                <ButtonIcon
+                  icon={IconDelete}
+                  size="small"
+                  kind="ghost"
+                  disabled={!canEditHere}
+                  on:click={() => confirmRemove(pair)}
+                />
+              </div>
+            </article>
+          {/each}
+        </section>
+      {/if}
+
+      {#if incomingPairings.length > 0}
+        <section class="wfr-section">
+          <div class="wfr-section-head"><Label label={workflowRules.string.IncomingPairs} /></div>
+          {#each incomingPairings as pair (pair.inbound._id)}
+            <article class="wfr-card incoming">
+              <div class="wfr-card-main readonly">
+                <div class="wfr-cell project">
+                  <div class="wfr-proj-badge">{otherIdent(pair.other) || '•'}</div>
+                  <div class="wfr-proj-text">
+                    {#if pair.inbound.name !== undefined && pair.inbound.name.length > 0}
+                      <div class="wfr-proj-name">{pair.inbound.name}</div>
+                      <div class="wfr-proj-sub">{otherName(pair.other)}</div>
+                    {:else}
+                      <div class="wfr-proj-name">{otherName(pair.other)}</div>
+                    {/if}
+                  </div>
+                </div>
+                <div class="wfr-cell direction">
+                  <span class="wfr-direction one-way"><Label label={workflowRules.string.OneWay} /></span>
+                </div>
+                <div class="wfr-cell mapping-count">
+                  <span class="wfr-count">{Object.keys(pair.inbound.forwardMap ?? {}).length}</span>
+                  <span class="wfr-count-label"><Label label={workflowRules.string.Statuses} /></span>
+                </div>
+                <div class="wfr-cell state">
+                  <div class="wfr-dot" class:on={pair.inbound.enabled} />
+                  <span>
+                    <Label label={pair.inbound.enabled ? workflowRules.string.Active : workflowRules.string.Paused} />
+                  </span>
+                </div>
+              </div>
+              <div class="wfr-card-actions" on:click|stopPropagation on:keydown|stopPropagation role="toolbar">
+                <Button
+                  label={workflowRules.string.OpenPrimary}
+                  kind="ghost"
+                  size="small"
+                  on:click={() => navigateToPrimary(pair)}
+                />
+              </div>
+            </article>
+          {/each}
+        </section>
+      {/if}
     {/if}
   </div>
 </Scroller>
@@ -190,11 +380,20 @@
     padding: 1.5rem 1.75rem 2rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 1.25rem;
     max-width: 72rem;
     margin: 0 auto;
     width: 100%;
     box-sizing: border-box;
+  }
+  .wfr-section { display: flex; flex-direction: column; gap: 0.5rem; }
+  .wfr-section-head {
+    font-size: 0.75rem;
+    color: var(--theme-dark-color);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    padding: 0 0.25rem;
   }
   .wfr-list-head {
     display: grid;
@@ -216,11 +415,9 @@
     border-radius: 0.75rem;
     transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
   }
-  .wfr-card:hover {
-    border-color: var(--theme-caret-color);
-    background: var(--theme-bg-accent-color);
-  }
+  .wfr-card:hover { border-color: var(--theme-caret-color); background: var(--theme-bg-accent-color); }
   .wfr-card.disabled { opacity: 0.6; }
+  .wfr-card.incoming { opacity: 0.9; border-style: dashed; }
   .wfr-card-main {
     display: grid;
     grid-template-columns: minmax(14rem, 2fr) 7rem 10rem 7rem;
@@ -229,6 +426,7 @@
     cursor: pointer;
     align-items: center;
   }
+  .wfr-card-main.readonly { cursor: default; }
   .wfr-cell { display: flex; align-items: center; gap: 0.625rem; min-width: 0; }
   .wfr-cell.project { gap: 0.75rem; }
   .wfr-proj-badge {
@@ -278,22 +476,10 @@
     color: var(--theme-caption-color);
     border-color: transparent;
   }
-  .wfr-direction.one-way {
-    background: transparent;
-    color: var(--theme-dark-color);
-  }
-  .wfr-count {
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    color: var(--theme-caption-color);
-    font-size: 0.9375rem;
-  }
+  .wfr-direction.one-way { background: transparent; color: var(--theme-dark-color); }
+  .wfr-count { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--theme-caption-color); font-size: 0.9375rem; }
   .wfr-count-sep { color: var(--theme-dark-color); font-size: 0.875rem; }
-  .wfr-count-label {
-    color: var(--theme-dark-color);
-    font-size: 0.75rem;
-    margin-left: 0.25rem;
-  }
+  .wfr-count-label { color: var(--theme-dark-color); font-size: 0.75rem; margin-left: 0.25rem; }
   .wfr-dot {
     width: 0.5rem;
     height: 0.5rem;
@@ -326,15 +512,18 @@
     background: var(--theme-list-row-color);
   }
   .wfr-empty-icon { color: var(--theme-dark-color); opacity: 0.55; }
-  .wfr-empty-title {
-    color: var(--theme-caption-color);
-    font-size: 1rem;
-    font-weight: 600;
-  }
-  .wfr-empty-sub {
-    color: var(--theme-dark-color);
-    font-size: 0.875rem;
-    max-width: 28rem;
-  }
+  .wfr-empty-title { color: var(--theme-caption-color); font-size: 1rem; font-weight: 600; }
+  .wfr-empty-sub { color: var(--theme-dark-color); font-size: 0.875rem; max-width: 28rem; }
   .wfr-empty-cta { margin-top: 0.75rem; }
+  .wfr-notice {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--theme-divider-color);
+    border-radius: 0.75rem;
+    background: var(--theme-list-row-color);
+  }
+  .wfr-notice-title { color: var(--theme-caption-color); font-weight: 600; font-size: 0.9375rem; }
+  .wfr-notice-sub { color: var(--theme-dark-color); font-size: 0.875rem; }
 </style>
