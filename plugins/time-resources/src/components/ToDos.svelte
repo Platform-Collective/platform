@@ -39,6 +39,7 @@
   import view from '@hcengineering/view-resources/src/plugin'
   import type { ToDosMode } from '..'
   import time from '../plugin'
+  import { filterVisibleToDos } from '../to-do-query'
   import { getNearest } from '../utils'
   import CreateToDo from './CreateToDo.svelte'
   import ToDoGroup from './ToDoGroup.svelte'
@@ -54,6 +55,17 @@
   const activeQuery = createQuery()
   const tagsQuery = createQuery()
   const projectsQuery = createQuery()
+  const archivedProjectsQuery = createQuery()
+
+  let archivedProjects = new Set<Ref<Project>>()
+  archivedProjectsQuery.query(
+    tracker.class.Project,
+    { archived: true },
+    (result) => {
+      archivedProjects = new Set(result.map((project) => project._id))
+    },
+    { projection: { _id: 1 } }
+  )
 
   let projects: IdMap<Project> = new Map()
   projectsQuery.query(tracker.class.Project, { archived: false }, (result) => {
@@ -199,9 +211,14 @@
   let rawActive: WithLookup<ToDo>[] = []
   let todoValue: string = ''
 
-  $: active = filterActive(mode, rawActive, currentDate)
+  $: active = filterActive(mode, filterVisibleToDos(rawActive, archivedProjects), currentDate)
 
-  $: groups = group(inbox, done, active, todoValue)
+  $: groups = group(
+    filterVisibleToDos(inbox, archivedProjects),
+    filterVisibleToDos(done, archivedProjects),
+    active,
+    todoValue
+  )
 
   function filterActive(mode: ToDosMode, raw: WithLookup<ToDo>[], currentDate: Date): WithLookup<ToDo>[] {
     if (mode === 'planned') {
