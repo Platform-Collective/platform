@@ -17,8 +17,7 @@
   import { Class, Doc, Ref } from '@hcengineering/core'
   import { createQuery, getClient } from '@hcengineering/presentation'
   import tags, { TagReference } from '@hcengineering/tags'
-  import { ButtonBase, ButtonKind, Icon, Label, getEventPopupPositionElement, showPopup } from '@hcengineering/ui'
-  import tagsPlugin from '../plugin'
+  import { ButtonBase, getEventPopupPositionElement, showPopup } from '@hcengineering/ui'
   import TagReferencePresenter from './TagReferencePresenter.svelte'
   import TagsEditorPopup from './TagsEditorPopup.svelte'
   import TagIcon from './icons/TagIcon.svelte'
@@ -36,9 +35,13 @@
   const query = createQuery()
   const client = getClient()
 
-  $: query.query(tags.class.TagReference, { attachedTo: object._id }, (result) => {
-    items = result
-  })
+  $: query.query(
+    tags.class.TagReference,
+    { attachedTo: object._id, attachedToClass: object._class, collection: 'labels' },
+    (result) => {
+      items = result
+    }
+  )
 
   async function click(evt: MouseEvent): Promise<void> {
     pressed = true

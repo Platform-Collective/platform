@@ -13,61 +13,67 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { Doc, Ref } from '@hcengineering/core'
+  import { Analytics } from '@hcengineering/analytics'
+  import type { Doc, Ref } from '@hcengineering/core'
   import { createQuery, getClient } from '@hcengineering/presentation'
-  import tags, { TagElement, TagReference } from '@hcengineering/tags'
+  import tags from '@hcengineering/tags'
+  import type { TagElement } from '@hcengineering/tags'
   import TagsPopup from './TagsPopup.svelte'
+  import { addTagReference } from '../tag-reference'
 
   export let value: Doc | Doc[]
   $: objects = Array.isArray(value) ? value : [value]
 
   let selected: Ref<TagElement>[] = []
-  let tagRefs: TagReference[] = []
   const query = createQuery()
-  $: query.query(tags.class.TagReference, { attachedTo: { $in: objects.map((p) => p._id) } }, (result) => {
-    tagRefs = result
-    const res: Record<Ref<TagElement>, TagReference> = {}
-    for (const value of result) {
-      const arr = (res as any)[value.tag] ?? []
-      arr.push(value)
-      ;(res as any)[value.tag] = arr
-    }
-    const sel: Ref<TagElement>[] = []
-    for (const value in res) {
-      if ((res as any)[value].length === objects.length) {
-        sel.push(value as Ref<TagElement>)
+  $: query.query(
+    tags.class.TagReference,
+    {
+      attachedTo: { $in: objects.map((object) => object._id) },
+      attachedToClass: { $in: objects.map((object) => object._class) },
+      collection: 'labels'
+    },
+    (result) => {
+      const classesByDocument = new Map(objects.map((object) => [object._id, object._class]))
+      const documentsByTag = new Map<Ref<TagElement>, Set<Ref<Doc>>>()
+      for (const reference of result) {
+        if (classesByDocument.get(reference.attachedTo) !== reference.attachedToClass) continue
+        const documents = documentsByTag.get(reference.tag) ?? new Set<Ref<Doc>>()
+        documents.add(reference.attachedTo)
+        documentsByTag.set(reference.tag, documents)
       }
+      selected = Array.from(documentsByTag)
+        .filter(([, documents]) => objects.every((object) => documents.has(object._id)))
+        .map(([tag]) => tag)
     }
-    selected = sel
-  })
+  )
 
   const client = getClient()
-  async function addRef({ title, color, _id: tag }: TagElement): Promise<void> {
-    await Promise.all(
-      objects.map(async (object) => {
-        if (tagRefs.findIndex((p) => p.attachedTo === object._id && p.tag === tag) !== -1) return
-
-        await client.addCollection(tags.class.TagReference, object.space, object._id, object._class, 'labels', {
-          title,
-          color,
-          tag
-        })
-      })
-    )
+  async function addRef(tag: TagElement): Promise<void> {
+    await Promise.all(objects.map((object) => addTagReference(client, object, tag)))
   }
   async function removeTag(tag: TagElement): Promise<void> {
     await Promise.all(
       objects.map(async (object) => {
-        const tagRef = await client.findOne(tags.class.TagReference, { attachedTo: object._id, tag: tag._id })
+        const tagRef = await client.findOne(tags.class.TagReference, {
+          attachedTo: object._id,
+          attachedToClass: object._class,
+          collection: 'labels',
+          tag: tag._id
+        })
         if (tagRef) await client.remove(tagRef)
       })
     )
   }
-  async function onUpdate(event: CustomEvent<{ action: string, tag: TagElement }>) {
+  function onUpdate(event: CustomEvent<{ action: string, tag: TagElement }>): void {
     const result = event.detail
     if (result === undefined) return
-    if (result.action === 'add') addRef(result.tag)
-    else if (result.action === 'remove') removeTag(result.tag)
+    const operation = result.action === 'add' ? addRef : result.action === 'remove' ? removeTag : undefined
+    if (operation !== undefined) {
+      void operation(result.tag).catch((error: unknown) => {
+        Analytics.handleError(error instanceof Error ? error : new Error(String(error)))
+      })
+    }
   }
 </script>
 

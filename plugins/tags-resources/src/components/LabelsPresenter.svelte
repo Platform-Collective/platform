@@ -28,11 +28,15 @@
 
   $: update(object, value)
 
-  function update(object: WithLookup<Doc>, value: number) {
+  function update(object: WithLookup<Doc>, value: number): void {
     if (value > 0) {
-      query.query(tags.class.TagReference, { attachedTo: object._id }, (result) => {
-        items = result.slice(ignoreFirst ? 1 : 0)
-      })
+      query.query(
+        tags.class.TagReference,
+        { attachedTo: object._id, attachedToClass: object._class, collection: 'labels' },
+        (result) => {
+          items = result.slice(ignoreFirst ? 1 : 0)
+        }
+      )
     } else {
       query.unsubscribe()
       items = []

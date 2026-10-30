@@ -7,11 +7,13 @@
   "scripts": {
     "build": "compile ui",
     "build:docs": "api-extractor run --local",
+    "test": "jest --passWithNoTests --silent",
     "format": "format src",
     "svelte-check": "do-svelte-check",
     "_phase:svelte-check": "do-svelte-check",
     "build:watch": "compile ui",
     "_phase:build": "compile ui",
+    "_phase:test": "jest --passWithNoTests --silent",
     "_phase:format": "format src",
     "_phase:validate": "compile validate"
   },
@@ -31,6 +33,7 @@
     "svelte-check": "^3.6.9",
     "typescript": "^5.9.3",
     "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
     "ts-jest": "^29.4.12",
     "@types/jest": "^30.0.0",
     "svelte-eslint-parser": "^1.8.1",
