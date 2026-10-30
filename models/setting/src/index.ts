@@ -319,6 +319,19 @@ export function createModel (builder: Builder): void {
     setting.class.WorkspaceSettingCategory,
     core.space.Model,
     {
+      name: 'accessOverview',
+      label: setting.string.AccessOverview,
+      icon: setting.icon.Members,
+      component: setting.component.AccessOverview,
+      order: 1025,
+      role: AccountRole.Owner
+    },
+    'setting:ids:AccessOverview' as Ref<SettingsCategory>
+  )
+  builder.createDoc(
+    setting.class.WorkspaceSettingCategory,
+    core.space.Model,
+    {
       name: 'guestPermissions',
       label: setting.string.GuestPermissionsSettings,
       icon: setting.icon.GuestPermissions,

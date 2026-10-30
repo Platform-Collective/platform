@@ -26,6 +26,7 @@ import Integrations from './components/integrations/Integrations.svelte'
 import General from './components/General.svelte'
 import Backup from './components/Backup.svelte'
 import Members from './components/Members.svelte'
+import AccessOverview from './components/AccessOverview.svelte'
 import Password from './components/Password.svelte'
 import Privacy from './components/Privacy.svelte'
 import Profile from './components/Profile.svelte'
@@ -147,6 +148,7 @@ export default async (): Promise<Resources> => ({
     General,
     Backup,
     Members,
+    AccessOverview,
     CreateMixin,
     InviteSetting,
     Configure,
