@@ -60,6 +60,7 @@ import {
   getSubscriptions,
   leaveWorkspace,
   checkJoin,
+  joinByToken,
   mergeSpecifiedPersons,
   canMergeSpecifiedPersons
 } from '../operations'
@@ -2814,6 +2815,39 @@ describe('account operations', () => {
         expect(result).toEqual(joinResult)
       })
 
+      test('rejects a recipient list for a domain restricted invite before signing up or sending mail', async () => {
+        const restrictedInvite = {
+          id: mockInviteId,
+          workspaceUuid: mockWorkspaceUuid,
+          remainingUses: 5,
+          expiresOn: -1,
+          role: AccountRole.User,
+          allowedDomains: 'example.com'
+        }
+        const db = {
+          ...mockDb,
+          invite: { findOne: jest.fn().mockResolvedValue(restrictedInvite) }
+        } as unknown as AccountDB
+        jest.spyOn(utils, 'getWorkspaceJoinInfo').mockRestore()
+        jest.spyOn(utils, 'signUpByEmail').mockResolvedValue({ account: mockAccountId, socialId: 'social-id' as any })
+        jest.spyOn(utils, 'sendEmailConfirmation').mockResolvedValue()
+        jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue({} as any)
+        ;(getMetadata as jest.Mock).mockReturnValue('http://mail-service.com')
+
+        for (const email of [
+          'other@evil.test,employee@example.com',
+          'other@evil.test; employee@example.com',
+          'Other <other@evil.test>, employee@example.com'
+        ]) {
+          await expect(signUpJoin(mockCtx, db, mockBranding, mockToken, { ...baseParams, email })).rejects.toThrow(
+            new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+          )
+        }
+        expect(utils.signUpByEmail).not.toHaveBeenCalled()
+        expect(utils.sendEmailConfirmation).not.toHaveBeenCalled()
+        expect(utils.doJoinByInvite).not.toHaveBeenCalled()
+      })
+
       test('should fail with missing required fields', async () => {
         const testCases = [
           { ...baseParams, password: '' },
@@ -3397,6 +3431,92 @@ describe('account operations', () => {
       expect(mockDb.getWorkspaceRole).toHaveBeenCalledWith(mockAccount.uuid, mockWorkspace.uuid)
     })
   })
+
+  describe('invite email selection for checkJoin and joinByToken', () => {
+    const restrictedInvite = {
+      id: 'invite-uuid',
+      workspaceUuid: 'workspace-uuid' as WorkspaceUuid,
+      role: AccountRole.User,
+      expiresOn: -1,
+      remainingUses: -1,
+      allowedDomains: 'example.com'
+    }
+    const loginInfo = { account: mockAccount.uuid, role: AccountRole.User, token: 'workspace-token' }
+    let db: AccountDB
+
+    function setVerifiedEmails (values: string[]): void {
+      ;(db.socialId.find as jest.Mock).mockResolvedValue(values.map((value) => ({ value })))
+    }
+
+    beforeEach(() => {
+      db = {
+        ...mockDb,
+        socialId: { findOne: jest.fn(), find: jest.fn() }
+      } as unknown as AccountDB
+      jest.spyOn(utils, 'checkInvite').mockRestore()
+      jest.spyOn(utils, 'checkInvite')
+      jest.spyOn(utils, 'getWorkspaceById').mockResolvedValue(mockWorkspace as any)
+      jest.spyOn(utils, 'selectWorkspace').mockResolvedValue(loginInfo as any)
+      jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue(loginInfo as any)
+      ;(mockDb.getWorkspaceRole as jest.Mock).mockResolvedValue(AccountRole.User)
+    })
+
+    afterEach(() => {
+      jest.spyOn(utils, 'checkInvite').mockRestore()
+    })
+
+    test('checkJoin uses a verified email from an allowed domain', async () => {
+      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(restrictedInvite)
+      setVerifiedEmails(['me@other.test', 'me@example.com'])
+
+      await expect(checkJoin(mockCtx, db, mockBranding, mockToken, { inviteId: 'invite-uuid' })).resolves.toEqual({
+        ...loginInfo,
+        role: AccountRole.User
+      })
+      expect(utils.checkInvite).toHaveBeenCalledWith(mockCtx, restrictedInvite, 'me@example.com')
+    })
+
+    test('checkJoin picks the address matching both invite.email and the allowed domains', async () => {
+      const invite = { ...restrictedInvite, email: 'me@example.com' }
+      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(invite)
+      setVerifiedEmails(['other@example.com', 'me@other.test', 'me@example.com'])
+
+      await checkJoin(mockCtx, db, mockBranding, mockToken, { inviteId: 'invite-uuid' })
+      expect(utils.checkInvite).toHaveBeenCalledWith(mockCtx, invite, 'me@example.com')
+    })
+
+    test('joinByToken picks the address matching invite.email without a domain restriction', async () => {
+      const invite = { ...restrictedInvite, allowedDomains: undefined, email: 'me@example.com' }
+      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(invite)
+      setVerifiedEmails(['first@other.test', 'me@example.com'])
+
+      await expect(joinByToken(mockCtx, db, mockBranding, mockToken, { inviteId: 'invite-uuid' })).resolves.toEqual(
+        loginInfo
+      )
+      expect(utils.checkInvite).toHaveBeenCalledWith(mockCtx, invite, 'me@example.com')
+    })
+
+    test('joinByToken rejects when no verified email satisfies the invite', async () => {
+      const invite = { ...restrictedInvite, email: 'me@example.com' }
+      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(invite)
+      setVerifiedEmails(['other@example.com', 'me@other.test'])
+
+      await expect(joinByToken(mockCtx, db, mockBranding, mockToken, { inviteId: 'invite-uuid' })).rejects.toThrow(
+        new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+      )
+      expect(utils.doJoinByInvite).not.toHaveBeenCalled()
+    })
+
+    test('joinByToken rejects an account without verified email for a restricted invite', async () => {
+      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(restrictedInvite)
+      setVerifiedEmails([])
+
+      await expect(joinByToken(mockCtx, db, mockBranding, mockToken, { inviteId: 'invite-uuid' })).rejects.toThrow(
+        new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+      )
+      expect(utils.doJoinByInvite).not.toHaveBeenCalled()
+    })
+  })
 })
 
 describe('getSubscriptions', () => {
@@ -3690,7 +3810,7 @@ describe('merge specified persons', () => {
       mockDb.account.findOne.mockImplementation(async ({ uuid }: { uuid: AccountUuid }) =>
         uuid === primaryPerson ? { uuid } : null
       )
-      mockDb.socialId.find.mockResolvedValue([{ _id: 'attacker-email', type: SocialIdType.EMAIL }])
+      mockDb.socialId.find.mockResolvedValue([{ _id: 'other-email', type: SocialIdType.EMAIL }])
       const spy = jest.spyOn(utils, 'doMergePersons').mockResolvedValue()
 
       await expect(mergeSpecifiedPersons(mockCtx, mockDb, mockBranding, 'test-token', params)).rejects.toThrow(

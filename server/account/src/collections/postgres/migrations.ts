@@ -86,7 +86,8 @@ export function getMigrations (ns: string, flavor: DBFlavor): [string, string][]
     getV26Migration(ns, flavor),
     getV27Migration(ns, flavor),
     getV28Migration(ns, flavor),
-    getV29Migration(ns, flavor)
+    getV29Migration(ns, flavor),
+    getV30Migration(ns, flavor)
   ]
 }
 
@@ -882,6 +883,19 @@ function getV29Migration (ns: string, flavor: DBFlavor): [string, string] {
 
     CREATE INDEX IF NOT EXISTS api_tokens_expires_on_idx
     ON ${ns}.api_tokens (expires_on);
+    `
+  ]
+}
+
+function getV30Migration (ns: string, flavor: DBFlavor): [string, string] {
+  const types = dbTypes[flavor]
+  return [
+    'account_db_v30_add_invite_allowed_domains',
+    `
+    -- Comma separated list of e-mail domains allowed to use an invite.
+    -- NULL means the invite is not restricted by domain.
+    ALTER TABLE ${ns}.invite
+    ADD COLUMN IF NOT EXISTS allowed_domains ${types.string};
     `
   ]
 }
