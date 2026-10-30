@@ -130,6 +130,7 @@ import TranslationSettings from './components/TranslationSettings.svelte'
 
 import { get } from 'svelte/store'
 import { getChannelURL } from './channel-url'
+import { canKickEmployee, kickEmployee } from './kick-employee'
 import { canMergePersons, canResendInvitation } from './visibilityTester'
 import contact from './plugin'
 import { getPersonNameQueries } from './person-name-query'
@@ -298,24 +299,6 @@ async function resendInvite (doc: Person): Promise<void> {
   })
 }
 
-async function kickEmployee (doc: Person): Promise<void> {
-  showPopup(MessageBox, {
-    label: contact.string.KickEmployee,
-    message: contact.string.KickEmployeeDescr,
-    action: async () => {
-      const client = getClient()
-
-      const employee = client.getHierarchy().as(doc, contact.mixin.Employee)
-      await client.update(employee, { active: false })
-
-      if (doc.personUuid != null) {
-        const leaveWorkspace = await getResource(login.function.LeaveWorkspace)
-        await leaveWorkspace(doc.personUuid)
-      }
-    }
-  })
-}
-
 async function openChannelURL (doc: Channel): Promise<void> {
   const url = getChannelURL(doc)
   if (url !== undefined) {
@@ -468,6 +451,7 @@ export default async (): Promise<Resources> => ({
     ChannelTitleProvider: channelTitleProvider,
     ChannelIdentifierProvider: channelIdentifierProvider,
     CanResendInvitation: canResendInvitation,
+    CanKickEmployee: canKickEmployee,
     CanMergePersons: canMergePersons,
     HideInactive: hideInactive
   },
