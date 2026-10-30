@@ -1,13 +1,96 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import core, { ClassifierKind, fillDefaults, Hierarchy, TxFactory } from '@hcengineering/core'
-import type { AnyAttribute, DocData, Ref } from '@hcengineering/core'
+import type { AnyAttribute, Doc, DocData, Ref } from '@hcengineering/core'
 import type { IntlString } from '@hcengineering/platform'
 import task from '@hcengineering/task'
 import type { TaskType } from '@hcengineering/task'
 import tracker, { IssuePriority } from '@hcengineering/tracker'
-import type { Issue, IssueDraft, IssueTemplate, Project } from '@hcengineering/tracker'
+import type { Issue, IssueDraft, IssueParentInfo, IssueTemplate, Project } from '@hcengineering/tracker'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+import { compile, preprocess } from 'svelte/compiler'
+import ts from 'typescript'
+import { runInNewContext } from 'vm'
 import { fillIssueDefaults } from '../issue-defaults'
+
+interface SubIssuesMethods {
+  save: (parents: IssueParentInfo[], id: Ref<Doc>) => Promise<void>
+  load: (drafts: IssueDraft[]) => void
+}
+
+/** Compile the real component and bind its public methods without rendering its child components. */
+async function loadSubIssues (client: object): Promise<SubIssuesMethods> {
+  const filename = join(__dirname, '../components/SubIssues.svelte')
+  const source = await preprocess(
+    readFileSync(filename, 'utf8'),
+    {
+      script: ({ content }) => ({
+        code: ts.transpileModule(content, {
+          compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, verbatimModuleSyntax: true }
+        }).outputText
+      }),
+      style: () => ({ code: '' })
+    },
+    { filename }
+  )
+  const compiled = compile(source.code, { filename, generate: 'ssr' })
+  const methods = {} as SubIssuesMethods
+  const props = { projectId: 'project', project: { _id: 'project', identifier: 'TEST' } }
+  const bindings = {
+    save: (save: SubIssuesMethods['save']) => {
+      methods.save = save
+    },
+    load: (load: SubIssuesMethods['load']) => {
+      methods.load = load
+    }
+  }
+  const modules: Record<string, unknown> = {
+    'svelte/internal': {
+      create_ssr_component: (render: (result: object, props: object, bindings: object, slots: object) => string) =>
+        render({ head: '' }, props, bindings, {}),
+      subscribe: (value: unknown, callback: (value: unknown) => void) => {
+        callback(value)
+        return () => {}
+      }
+    },
+    svelte: { onDestroy: () => {} },
+    '@hcengineering/core': jest.requireActual('@hcengineering/core'),
+    '@hcengineering/attachment': {},
+    '@hcengineering/presentation': {
+      getClient: () => client,
+      draftsStore: {},
+      DraftController: { remove: jest.fn() }
+    },
+    '@hcengineering/tags': {},
+    '@hcengineering/text': { isEmptyMarkup: () => true },
+    '@hcengineering/tracker': {},
+    '@hcengineering/ui': {},
+    '@hcengineering/task': { getTaskTypeStates: () => [] },
+    '@hcengineering/task-resources': { taskTypeStore: new Map() },
+    '@hcengineering/view-resources': { statusStore: { byId: new Map() } },
+    '../plugin': { __esModule: true, default: tracker },
+    '../issue-defaults': { fillIssueDefaults },
+    './icons/Collapsed.svelte': {},
+    './icons/Expanded.svelte': {},
+    './templates/DraftIssueChildList.svelte': {}
+  }
+  const code = ts.transpileModule(compiled.js.code, {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
+  }).outputText
+  runInNewContext(
+    code,
+    {
+      exports: {},
+      require: (name: string) => {
+        if (!(name in modules)) throw new Error(`Unexpected component import: ${name}`)
+        return modules[name]
+      }
+    },
+    { filename }
+  )
+  return methods
+}
 
 function createHierarchy (): Hierarchy {
   const hierarchy = new Hierarchy()
@@ -66,18 +149,62 @@ function createDraft (): IssueDraft {
 }
 
 describe('issue creation defaults', () => {
+  it('persists defaults and explicit custom values for sub-issues created in the same dialog', async () => {
+    const hierarchy = createHierarchy()
+    addAttribute(hierarchy, 'customEnum')
+    const subIssues: IssueDraft[] = [
+      { ...createDraft(), _id: 'child-default' as Ref<Issue> },
+      { ...createDraft(), _id: 'child-explicit' as Ref<Issue>, customEnum: 'Closed' } as IssueDraft
+    ]
+    const parent = { ...createDraft(), subIssues }
+    const reloadedParent: IssueDraft = JSON.parse(JSON.stringify(parent))
+    const client = {
+      getHierarchy: () => hierarchy,
+      updateDoc: jest.fn().mockResolvedValue({ object: { sequence: 1 } }),
+      addCollection: jest.fn().mockResolvedValue(undefined)
+    }
+    const component = await loadSubIssues(client)
+    const parents: IssueParentInfo[] = [
+      {
+        parentId: parent._id,
+        parentTitle: parent.title,
+        space: parent.space,
+        identifier: 'TEST-0'
+      }
+    ]
+
+    component.load(reloadedParent.subIssues)
+    await component.save(parents, parent._id)
+
+    expect(client.addCollection).toHaveBeenCalledTimes(2)
+    for (const [index, customEnum] of ['Open', 'Closed'].entries()) {
+      expect(client.addCollection).toHaveBeenNthCalledWith(
+        index + 1,
+        tracker.class.Issue,
+        parent.space,
+        parent._id,
+        tracker.class.Issue,
+        'subIssues',
+        expect.objectContaining({ customEnum, description: null, subIssues: 0, parents }),
+        subIssues[index]._id
+      )
+    }
+  })
+
   it('persists a custom enum default for first and subsequent issues after a draft reload', () => {
+    const hierarchy = createHierarchy()
+    addAttribute(hierarchy, 'customEnum')
+    const draft = createDraft()
+    fillDefaults(hierarchy, draft, tracker.class.Issue)
+    const reloadedDraft: IssueDraft = JSON.parse(JSON.stringify(draft))
+
     for (let index = 0; index < 2; index++) {
-      const hierarchy = createHierarchy()
-      addAttribute(hierarchy, 'customEnum')
-      const draft = createDraft()
-      fillDefaults(hierarchy, draft, tracker.class.Issue)
-      const reloadedDraft: IssueDraft = JSON.parse(JSON.stringify(draft))
-      const value = { title: draft.title, description: null, subIssues: 0 } as unknown as DocData<Issue>
+      reloadedDraft.title = `Issue ${index + 1}`
+      const value = { title: reloadedDraft.title, description: null, subIssues: 0 } as unknown as DocData<Issue>
 
       fillIssueDefaults(hierarchy, reloadedDraft, value)
 
-      expect(JSON.parse(JSON.stringify(value))).toMatchObject({ customEnum: 'Open' })
+      expect(JSON.parse(JSON.stringify(value))).toMatchObject({ title: `Issue ${index + 1}`, customEnum: 'Open' })
     }
   })
 
