@@ -2,10 +2,12 @@
 // Copyright © 2024 Hardcore Engineering Inc.
 //
 import { MeasureContext } from '@hcengineering/core'
-import { type Page, type Viewport } from 'puppeteer'
+import { type PDFMargin, type Page, type PaperFormat, type Viewport } from 'puppeteer'
 
 import { type PrintBrowserManager, type PrintBrowserPage, withTimeout } from './browser'
 import config from './config'
+import { ApiError } from './error'
+import { isAllowedPrintUrl } from './print-url'
 import { Semaphore } from './semaphore'
 
 export interface PrintOptions {
@@ -20,7 +22,31 @@ export const validPageOrientations = ['portrait', 'landscape'] as const
 export type ExportKind = (typeof validKinds)[number]
 export type PageOrientation = (typeof validPageOrientations)[number]
 
-const printSemaphore = new Semaphore(config.PrintConcurrency)
+export const printSemaphore = new Semaphore(config.PrintConcurrency)
+
+/**
+ * Paper and decorations of a printed document.
+ */
+export interface PdfLayout {
+  format?: PaperFormat
+  width?: string
+  height?: string
+  landscape?: boolean
+  margin: PDFMargin
+  // Override the #page-header / #page-footer provided by the page itself
+  headerTemplate?: string
+  footerTemplate?: string
+  // Stylesheet injected into the page before printing
+  contentCss?: string
+  printBackground?: boolean
+}
+
+const defaultMargin: PDFMargin = {
+  top: '1.5cm',
+  right: '1cm',
+  bottom: '1.5cm',
+  left: '1cm'
+}
 
 /**
  * Prints a webpage with the specified options
@@ -33,8 +59,13 @@ export async function print (
   ctx: MeasureContext,
   url: string,
   options: PrintOptions | undefined,
-  browserManager: PrintBrowserManager
+  browserManager: PrintBrowserManager,
+  allowedHostnames: readonly string[]
 ): Promise<Buffer | undefined> {
+  if (!isAllowedPrintUrl(url, allowedHostnames)) {
+    throw new ApiError(403, 'Cannot process provided link')
+  }
+
   const kind = options?.kind ?? 'pdf'
   const orientation = options?.orientation ?? 'portrait'
   const viewport = options?.viewport ?? { width: 1440, height: 900 }
@@ -45,7 +76,7 @@ export async function print (
     ctx.info('print', { url, kind, orientation, viewport })
 
     browserPage = await browserManager.createPage()
-    const job = render(ctx, browserPage.page, url, kind, orientation, viewport)
+    const job = render(ctx, browserPage.page, url, kind, orientation, viewport, allowedHostnames)
     // After a timeout the job is abandoned; closing its context makes the pending
     // puppeteer calls reject, which must not surface as an unhandled rejection.
     job.catch(() => {})
@@ -66,8 +97,54 @@ async function render (
   url: string,
   kind: ExportKind,
   orientation: PageOrientation,
-  viewport: Viewport
+  viewport: Viewport,
+  allowedHostnames: readonly string[]
 ): Promise<Buffer | undefined> {
+  await openPage(ctx, page, url, viewport, allowedHostnames)
+
+  let res: Uint8Array | undefined
+
+  if (kind === 'pdf') {
+    res = await printOpenedPage(ctx, page, {
+      format: 'A4',
+      landscape: orientation === 'landscape',
+      margin: defaultMargin
+    })
+  } else {
+    // Note: currently we do not take the full page screenshot - only the viewport
+    // might make it configurable in the future
+    res = await ctx.with('screenshot', { kind }, () => page.screenshot({ type: kind }))
+  }
+
+  return res !== undefined ? Buffer.from(res) : undefined
+}
+
+/**
+ * Open the URL and print it to PDF with the given layout.
+ */
+export async function renderPdf (
+  ctx: MeasureContext,
+  page: Page,
+  url: string,
+  layout: PdfLayout,
+  allowedHostnames: readonly string[],
+  viewport: Viewport = { width: 1440, height: 900 }
+): Promise<Uint8Array> {
+  await openPage(ctx, page, url, viewport, allowedHostnames)
+  return await printOpenedPage(ctx, page, layout)
+}
+
+async function openPage (
+  ctx: MeasureContext,
+  page: Page,
+  url: string,
+  viewport: Viewport,
+  allowedHostnames: readonly string[]
+): Promise<void> {
+  if (!isAllowedPrintUrl(url, allowedHostnames)) {
+    throw new ApiError(403, 'Cannot process provided link')
+  }
+
   page
     .on('pageerror', (err: unknown) => {
       const message = err instanceof Error ? err.message : String(err)
@@ -76,7 +153,24 @@ async function render (
     .on('requestfailed', (request) => {
       ctx.warn('requestfailed', { url: request.url(), errorText: request.failure()?.errorText })
     })
+    .on('request', (request) => {
+      void (async () => {
+        try {
+          // Navigations (including redirects and frames) must stay on allowed hosts. Subresources of the
+          // allowed page are not restricted, so external images and other service hosts keep rendering.
+          if (!request.isNavigationRequest() || isAllowedPrintUrl(request.url(), allowedHostnames)) {
+            await request.continue()
+          } else {
+            await request.abort('blockedbyclient')
+          }
+        } catch (err: unknown) {
+          ctx.warn('Failed to handle print request', { url: request.url(), err })
+        }
+      })()
+    })
 
+  await page.setBypassServiceWorker(true)
+  await page.setRequestInterception(true)
   await page.setViewport(viewport)
 
   // NOTE: Issues opened with a guest link worked fine only with networkidle0 here and
@@ -85,52 +179,49 @@ async function render (
     waitUntil: ['domcontentloaded', 'networkidle0']
   })
   await page.waitForNetworkIdle({ idleTime: 1000 })
+}
 
-  let res: Uint8Array | undefined
+async function printOpenedPage (ctx: MeasureContext, page: Page, layout: PdfLayout): Promise<Uint8Array> {
+  await page.emulateMediaType('print')
+  if (layout.contentCss !== undefined && layout.contentCss !== '') {
+    await page.addStyleTag({ content: layout.contentCss })
+  }
+  // Scroll throught the page to render all the content (e.g. as images are only rendered
+  // when they are visible in the viewport)
+  await scrollThrough(page)
 
-  if (kind === 'pdf') {
-    await page.emulateMediaType('print')
-    // Scroll throught the page to render all the content (e.g. as images are only rendered
-    // when they are visible in the viewport)
-    await scrollThrough(page)
-
-    // Read page header and footer if defined
-    const pageHeader = await page.evaluate(() => {
+  // Read page header and footer if defined
+  const pageHeader =
+    layout.headerTemplate ??
+    (await page.evaluate(() => {
       const header = document.querySelector('#page-header')
       return header?.innerHTML ?? ''
-    })
+    }))
 
-    const pageFooter = await page.evaluate(() => {
+  const pageFooter =
+    layout.footerTemplate ??
+    (await page.evaluate(() => {
       const footer = document.querySelector('#page-footer')
       return footer?.innerHTML ?? ''
+    }))
+
+  const displayHeaderFooter = pageHeader !== '' || pageFooter !== ''
+
+  // No own pdf timeout: the whole job is bounded by PrintTimeoutMs
+  return await ctx.with('pdf', {}, () =>
+    page.pdf({
+      format: layout.format,
+      width: layout.width,
+      height: layout.height,
+      landscape: layout.landscape,
+      timeout: 0,
+      headerTemplate: pageHeader,
+      footerTemplate: pageFooter,
+      displayHeaderFooter,
+      printBackground: layout.printBackground,
+      margin: layout.margin
     })
-
-    const displayHeaderFooter = pageHeader !== '' || pageFooter !== ''
-
-    // No own pdf timeout: the whole job is bounded by PrintTimeoutMs
-    res = await ctx.with('pdf', {}, () =>
-      page.pdf({
-        format: 'A4',
-        landscape: orientation === 'landscape',
-        timeout: 0,
-        headerTemplate: pageHeader,
-        footerTemplate: pageFooter,
-        displayHeaderFooter,
-        margin: {
-          top: '1.5cm',
-          right: '1cm',
-          bottom: '1.5cm',
-          left: '1cm'
-        }
-      })
-    )
-  } else {
-    // Note: currently we do not take the full page screenshot - only the viewport
-    // might make it configurable in the future
-    res = await ctx.with('screenshot', { kind }, () => page.screenshot({ type: kind }))
-  }
-
-  return res !== undefined ? Buffer.from(res) : undefined
+  )
 }
 
 async function scrollThrough (page: Page): Promise<void> {

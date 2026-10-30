@@ -17,7 +17,8 @@ import { Analytics } from '@hcengineering/analytics'
 import guest, { type PublicLink, createPublicLink } from '@hcengineering/guest'
 import view from '@hcengineering/view'
 import { getDocTitle, getObjectLinkFragment } from '@hcengineering/view-resources'
-import { getMetadata } from '@hcengineering/platform'
+import { getMetadata, getResource } from '@hcengineering/platform'
+import branding, { type PrintTemplate } from '@hcengineering/branding'
 import presentation, { getFileUrl } from '@hcengineering/presentation'
 import { printToPDF } from '@hcengineering/print'
 import { signPDF } from '@hcengineering/sign'
@@ -31,6 +32,8 @@ export interface PdfResult {
 export interface PrintAllOptions {
   onProgress: (current: number, total?: number) => void
   getCancelled: () => boolean
+  // Print template applied to every document
+  template?: Ref<PrintTemplate>
 }
 
 const PUBLIC_LINK_RETRY_COUNT = 10
@@ -104,11 +107,21 @@ export async function printAll (
 ): Promise<PdfResult[]> {
   const token = getMetadata(presentation.metadata.Token) ?? ''
   const results: PdfResult[] = []
+  const compose = options.template !== undefined ? await getResource(branding.function.ComposeDocument) : undefined
   for (let i = 0; i < docs.length; i++) {
     if (options.getCancelled()) break
     options.onProgress(i + 1, docs.length)
     const doc = docs[i]
     try {
+      if (compose !== undefined && options.template !== undefined) {
+        let blobId = await compose(doc, options.template)
+        if (signed) {
+          blobId = await signPDF(blobId, token)
+        }
+        const title = await getDocTitleForPdf(client, doc._id, doc._class, doc)
+        results.push({ blobId, title, error: undefined })
+        continue
+      }
       const link = await ensurePublicLink(client, doc)
       if (link?.url === undefined || link.url === '') {
         const title = await getDocTitleForPdf(client, doc._id, doc._class, doc).catch(() => 'document.pdf')
