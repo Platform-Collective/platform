@@ -109,6 +109,8 @@
   // The strip is always visible: override plyr's .plyr--hide-controls slide-out (it would leave an empty strip
   // below the video and make the bar pop in on hover). Selector is more specific than plyr's on purpose.
   :global(.plyr.plyr--video:has(video.portrait) .plyr__controls) {
+    // Plyr inserts controls before the video wrapper; render the strip after it.
+    order: 1;
     position: static;
     flex-shrink: 0;
     width: 100%;
