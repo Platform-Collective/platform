@@ -65,6 +65,7 @@ import { testManagementId } from '@hcengineering/test-management'
 import textEditor, { textEditorId } from '@hcengineering/text-editor'
 import { timeId } from '@hcengineering/time'
 import tracker, { trackerId } from '@hcengineering/tracker'
+import { workflowRulesId } from '@hcengineering/workflow-rules'
 import { trainingId } from '@hcengineering/training'
 import uiPlugin from '@hcengineering/ui'
 import { uploaderId } from '@hcengineering/uploader'
@@ -171,6 +172,8 @@ import '@hcengineering/time-assets'
 import * as TimeLang from '@hcengineering/time-assets/lang'
 import '@hcengineering/tracker-assets'
 import * as TrackerLang from '@hcengineering/tracker-assets/lang'
+import '@hcengineering/workflow-rules-assets'
+import * as WorkflowRulesLang from '@hcengineering/workflow-rules-assets/lang'
 import '@hcengineering/training-assets'
 import * as TrainingLang from '@hcengineering/training-assets/lang'
 import '@hcengineering/uploader-assets'
@@ -376,6 +379,7 @@ function configureI18n(): void {
   addStringsLoader(telegramId, TelegramLang.loadLang)
   addStringsLoader(templatesId, TemplatesLang.loadLang)
   addStringsLoader(trackerId, TrackerLang.loadLang)
+  addStringsLoader(workflowRulesId, WorkflowRulesLang.loadLang)
   addStringsLoader(viewId, ViewLang.loadLang)
   addStringsLoader(workbenchId, WorkbenchLang.loadLang)
 

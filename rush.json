@@ -1530,6 +1530,36 @@
       "projectFolder": "models/tracker",
       "shouldPublish": false
     },
+    {
+      "packageName": "@hcengineering/workflow-rules",
+      "projectFolder": "plugins/workflow-rules",
+      "shouldPublish": true
+    },
+    {
+      "packageName": "@hcengineering/workflow-rules-assets",
+      "projectFolder": "plugins/workflow-rules-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/model-workflow-rules",
+      "projectFolder": "models/workflow-rules",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/server-workflow-rules",
+      "projectFolder": "server-plugins/workflow-rules",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/server-workflow-rules-resources",
+      "projectFolder": "server-plugins/workflow-rules-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/model-server-workflow-rules",
+      "projectFolder": "models/server-workflow-rules",
+      "shouldPublish": false
+    },
 
     {
       "packageName": "@hcengineering/board",
