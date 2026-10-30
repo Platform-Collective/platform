@@ -15,16 +15,19 @@
 <script lang="ts">
   import contact, { Employee, getCurrentEmployee } from '@hcengineering/contact'
   import { AttachedData, Class, DocumentUpdate, Ref, Space } from '@hcengineering/core'
+  import { translate } from '@hcengineering/platform'
   import type { IntlString } from '@hcengineering/platform'
   import presentation, { Card, getClient } from '@hcengineering/presentation'
   import { UserBox } from '@hcengineering/contact-resources'
   import { Issue, TimeReportDayType, TimeSpendReport, TrackerEvents } from '@hcengineering/tracker'
-  import { Button, DatePresenter, EditBox, Label } from '@hcengineering/ui'
+  import { addNotification, Button, DatePresenter, EditBox, Label, NotificationSeverity } from '@hcengineering/ui'
   import tracker from '../../../plugin'
   import { getTimeReportDate, getTimeReportDayType } from '../../../utils'
   import TitlePresenter from '../TitlePresenter.svelte'
   import TimeReportDayDropdown from './TimeReportDayDropdown.svelte'
   import { Analytics } from '@hcengineering/analytics'
+  import { createTimeSpendReport, createTimeSpendReportOnce } from './create-time-spend-report'
+  import { saveReportOnce } from './issue-timer'
 
   export let issue: Issue | undefined = undefined
   export let issueId: Ref<Issue> | undefined = issue?._id
@@ -35,11 +38,14 @@
   export let value: TimeSpendReport | undefined
   export let placeholder: IntlString = tracker.string.TimeSpendReportValue
   export let defaultTimeReportDay: TimeReportDayType = TimeReportDayType.PreviousWorkDay
+  // Prefill a new report, e.g. with the time measured by an issue timer, and reuse its ID so retries cannot duplicate it.
+  export let initialValue: Partial<Pick<TimeSpendReport, 'date' | 'value' | 'description'>> | undefined = undefined
+  export let reportId: Ref<TimeSpendReport> | undefined = undefined
 
   const data = {
-    date: value?.date ?? getTimeReportDate(defaultTimeReportDay),
-    description: value?.description ?? '',
-    value: value?.value,
+    date: value?.date ?? initialValue?.date ?? getTimeReportDate(defaultTimeReportDay),
+    description: value?.description ?? initialValue?.description ?? '',
+    value: value?.value ?? initialValue?.value,
     employee: value?.employee ?? getCurrentEmployee() ?? assignee ?? null
   }
 
@@ -51,18 +57,35 @@
 
   const client = getClient()
 
+  async function notify(label: IntlString, severity: NotificationSeverity): Promise<void> {
+    addNotification(await translate(label, {}), '', undefined as any, undefined, severity)
+  }
+
   async function create(): Promise<void> {
+    try {
+      await save()
+    } catch (err) {
+      await notify(tracker.string.TimeReportSaveFailed, NotificationSeverity.Error)
+      // With a stable report ID (timer path) saving is idempotent, so Card keeps the dialog open for a retry.
+      throw err
+    }
+  }
+
+  async function save(): Promise<void> {
     if (value === undefined) {
       if (space && issueId) {
-        await client.addCollection(
-          tracker.class.TimeSpendReport,
-          space,
-          issueId,
-          issueClass,
-          'reports',
-          data as AttachedData<TimeSpendReport>
+        const target = { _id: issueId, _class: issueClass, space, identifier: issue?.identifier }
+        const id = reportId
+        if (id === undefined) {
+          await createTimeSpendReport(client, target, data as AttachedData<TimeSpendReport>)
+          return
+        }
+        // Another dialog or tab may submit the same timer report.
+        const result = await saveReportOnce(
+          async () => (await client.findOne(tracker.class.TimeSpendReport, { _id: id })) !== undefined,
+          async () => await createTimeSpendReportOnce(client, target, data as AttachedData<TimeSpendReport>, id)
         )
-        Analytics.handleEvent(TrackerEvents.IssueTimeSpentAdded, { issue: issue?.identifier ?? issueId })
+        if (result === 'exists') await notify(tracker.string.TimeReportAlreadySaved, NotificationSeverity.Info)
       }
     } else {
       const ops: DocumentUpdate<TimeSpendReport> = {}
@@ -92,6 +115,7 @@
   label={value === undefined ? tracker.string.TimeSpendReportAdd : tracker.string.TimeSpendReportValue}
   {canSave}
   okAction={create}
+  retryOnError={value === undefined && reportId !== undefined}
   gap={'gapV-4'}
   on:close
   okLabel={value === undefined ? presentation.string.Create : presentation.string.Save}
