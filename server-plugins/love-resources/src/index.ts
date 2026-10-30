@@ -31,12 +31,12 @@ import core, {
   TxUpdateDoc
 } from '@hcengineering/core'
 import love, {
+  getMeetingRoomId,
   isOffice,
   loveId,
   MeetingMinutes,
   MeetingStatus,
   ParticipantInfo,
-  Room,
   RoomAccess,
   RoomInfo,
   UserMeetingInvite
@@ -153,8 +153,9 @@ async function roomJoinHandler (info: ParticipantInfo, control: TriggerControl):
   let targetRoom = info.room
   if (info.meeting !== undefined) {
     const meeting = (await control.findAll(control.ctx, love.class.MeetingMinutes, { _id: info.meeting }))[0]
-    if (meeting?.attachedTo !== undefined) {
-      targetRoom = meeting.attachedTo as Ref<Room>
+    if (meeting !== undefined) {
+      targetRoom = getMeetingRoomId(meeting)
+      if (targetRoom === undefined) return res
     }
   }
 

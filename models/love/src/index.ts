@@ -149,6 +149,9 @@ export class TOffice extends TRoom implements Office {
 @Model(love.class.Floor, core.class.Doc, DOMAIN_LOVE)
 export class TFloor extends TDoc implements Floor {
   name!: string
+
+  @Prop(PropCollection(love.class.MeetingMinutes), love.string.MeetingMinutes)
+  meetings?: number
 }
 
 @Model(love.class.ParticipantInfo, core.class.Doc, DOMAIN_TRANSIENT)
@@ -222,7 +225,7 @@ export class TMeeting extends TEvent implements MeetingEventLink {
   meetingId!: Ref<MeetingMinutes>
 }
 
-@Model(love.class.MeetingMinutes, core.class.Doc, DOMAIN_MEETING_MINUTES)
+@Model(love.class.MeetingMinutes, core.class.AttachedDoc, DOMAIN_MEETING_MINUTES)
 @UX(
   love.string.MeetingMinutes,
   love.icon.MeetingMinutes,

@@ -15,16 +15,15 @@
 <script lang="ts">
   import presentation, { getClient } from '@hcengineering/presentation'
   import { EditBox, ModernButton } from '@hcengineering/ui'
-  import { MeetingMinutes, MeetingStatus, ParticipantInfo, Room } from '@hcengineering/love'
+  import { getMeetingRoomId, MeetingMinutes, MeetingStatus, ParticipantInfo } from '@hcengineering/love'
   import { createEventDispatcher, onMount } from 'svelte'
 
   import love from '../plugin'
   import { joinMeeting, leaveMeeting } from '../meetings'
-  import { currentMeetingMinutes, currentRoom, infos, myConnectingSessionId, rooms } from '../stores'
+  import { currentMeetingMinutes, infos, myConnectingSessionId, rooms } from '../stores'
   import { lkIsConnecting, lkSessionConnected } from '../liveKitClient'
   import { getMetadata } from '@hcengineering/platform'
   import { Ref } from '@hcengineering/core'
-  import RoomPreview from './RoomPreview.svelte'
   import ParticipantsPreview from './ParticipantsPreview.svelte'
   import { openWidgetTab } from '@hcengineering/workbench-resources'
   import { videoVisible } from '../utils'
@@ -63,7 +62,7 @@
   $: connectLabel = object.status !== MeetingStatus.Scheduled ? love.string.JoinMeeting : love.string.StartMeeting
 
   function showConnectionButton(object: MeetingMinutes, connecting: boolean, isConnected: boolean): boolean {
-    if (object.status === MeetingStatus.Finished) {
+    if (getMeetingRoomId(object) === undefined || object.status === MeetingStatus.Finished) {
       return false
     }
     // Show during connecting with spinner
@@ -80,7 +79,7 @@
 
   $: roomInfos = getInfo(object._id, $infos)
 
-  $: room = $rooms.find((it) => it._id === object.attachedTo)
+  $: room = $rooms.find((it) => it._id === getMeetingRoomId(object))
 </script>
 
 <div class="flex flex-col">

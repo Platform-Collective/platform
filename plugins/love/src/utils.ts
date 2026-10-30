@@ -12,6 +12,14 @@ export interface ParsedRoomName {
   meetingId: Ref<MeetingMinutes>
 }
 
+/** Return the room attachment of a meeting, excluding minutes preserved on a floor. */
+export function getMeetingRoomId (meeting: MeetingMinutes | undefined): Ref<Room> | undefined {
+  if (meeting?.attachedToClass !== love.class.Room && meeting?.attachedToClass !== love.class.Office) {
+    return undefined
+  }
+  return meeting.attachedTo as Ref<Room>
+}
+
 /**
  * Parse LiveKit room name to extract workspace and meeting ID.
  * Room name format: workspaceUuid_meetingMinutesId (2 non-empty parts separated by underscore)

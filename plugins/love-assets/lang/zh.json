@@ -2,6 +2,8 @@
   "string": {
     "Office": "办公室",
     "Room": "房间",
+    "RoomHasUnfinishedMeetings": "此房间有已安排、等待中或进行中的会议，无法删除。请先结束或移除这些会议。",
+    "RoomRemovalFailed": "房间或其会议已更改。请刷新页面后再次尝试删除房间。",
     "RoomType": "房间类型",
     "Share": "共享",
     "StopShare": "停止共享",

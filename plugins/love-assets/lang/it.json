@@ -2,6 +2,8 @@
   "string": {
     "Office": "Ufficio",
     "Room": "Stanza",
+    "RoomHasUnfinishedMeetings": "Impossibile eliminare questa stanza mentre contiene riunioni programmate, in attesa o attive. Prima termina o rimuovi queste riunioni.",
+    "RoomRemovalFailed": "La stanza o le sue riunioni sono cambiate. Ricarica la pagina e riprova a eliminare la stanza.",
     "RoomType": "Tipo di stanza",
     "Share": "Condividi",
     "StopShare": "Interrompi condivisione",
