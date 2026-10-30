@@ -26,6 +26,8 @@
     "ToDos": "À faire",
     "Done": "Terminé",
     "EditToDo": "Modifier la tâche",
+    "BlockedBy": "Bloqué par {issues}",
+    "StartsOn": "Commence le {date}",
     "Unplanned": "Non planifié",
     "Planned": "Planifié",
     "AddSlot": "Ajouter un créneau",

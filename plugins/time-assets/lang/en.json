@@ -26,6 +26,8 @@
     "ToDos": "Action Items",
     "Done": "Done",
     "EditToDo": "Edit Action Item",
+    "BlockedBy": "Blocked by {issues}",
+    "StartsOn": "Starts on {date}",
     "Unplanned": "Unplanned",
     "Planned": "Planned",
     "AddSlot": "Add Slot",
