@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Календарь",
+    "CalendarWithoutDueDate": "Задач без срока выполнения: {count}",
+    "CalendarUpdateFailed": "Не удалось обновить даты задачи. Попробуйте ещё раз.",
     "TrackerApplication": "Трекер",
     "Projects": "Проекты",
     "More": "Больше",

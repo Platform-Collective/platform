@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Kalendarz",
+    "CalendarWithoutDueDate": "Zgłoszenia bez terminu: {count}",
+    "CalendarUpdateFailed": "Nie udało się zaktualizować dat zgłoszenia. Spróbuj ponownie.",
     "TrackerApplication": "Zarządzanie zadaniami",
     "Projects": "Twoje projekty",
     "More": "Więcej",

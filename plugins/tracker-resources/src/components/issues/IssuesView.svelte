@@ -60,6 +60,7 @@
   // resolve a viewOptions object inline so ViewletContentView mounts
   // (without it the Gantt component never renders).
   $: isGanttMode = viewlet?.descriptor === tracker.viewlet.Gantt
+  $: isCalendarMode = viewlet?.descriptor === tracker.viewlet.Calendar
   $: if (isGanttMode && viewlet !== undefined) {
     viewOptions = getViewOptions(viewlet, $viewOptionStore)
   }
@@ -162,8 +163,8 @@
     <ViewletSettingButton
       bind:viewOptions
       bind:viewlet
-      hideGroupingAndOrdering={isGanttMode}
-      showConfigureColumns={!isGanttMode}
+      hideGroupingAndOrdering={isGanttMode || isCalendarMode}
+      showConfigureColumns={!isGanttMode && !isCalendarMode}
       hideKeys={isGanttMode ? ['ganttGroupBy'] : []}
     />
   </svelte:fragment>
