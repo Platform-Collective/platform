@@ -86,7 +86,8 @@ export function getMigrations (ns: string, flavor: DBFlavor): [string, string][]
     getV26Migration(ns, flavor),
     getV27Migration(ns, flavor),
     getV28Migration(ns, flavor),
-    getV29Migration(ns, flavor)
+    getV29Migration(ns, flavor),
+    getV30Migration(ns, flavor)
   ]
 }
 
@@ -884,4 +885,29 @@ function getV29Migration (ns: string, flavor: DBFlavor): [string, string] {
     ON ${ns}.api_tokens (expires_on);
     `
   ]
+}
+
+function getV30Migration (ns: string, flavor: DBFlavor): [string, string] {
+  // For PostgreSQL, we need to check if the value exists before adding it
+  const addValueSql =
+    flavor === 'postgres'
+      ? `
+    -- Add gitlab value to social_id_type enum (PostgreSQL)
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_enum
+            WHERE enumlabel = 'gitlab'
+            AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'social_id_type' AND typnamespace = (SELECT oid FROM pg_namespace WHERE nspname = '${ns}'))
+        ) THEN
+            ALTER TYPE ${ns}.social_id_type ADD VALUE 'gitlab';
+        END IF;
+    END $$;
+    `
+      : `
+    -- Add gitlab value to social_id_type enum (CockroachDB)
+    ALTER TYPE ${ns}.social_id_type ADD VALUE IF NOT EXISTS 'gitlab';
+    `
+
+  return ['account_db_v30_add_gitlab_social_id_type', addValueSql]
 }
