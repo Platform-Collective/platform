@@ -46,7 +46,7 @@
         ...resultQuery
       },
       {
-        sort: { createdOn: SortingOrder.Descending },
+        sort: { createdOn: SortingOrder.Descending, _id: SortingOrder.Descending },
         limit: 100
       }
     )

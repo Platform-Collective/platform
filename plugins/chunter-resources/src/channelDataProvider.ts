@@ -181,7 +181,7 @@ export class ChannelDataProvider implements IChannelDataProvider {
         this.refsStore.set(res)
         this.isRefsLoading.set(false)
       },
-      { sort: { createdOn: SortingOrder.Ascending } }
+      { sort: { createdOn: SortingOrder.Ascending, _id: SortingOrder.Ascending } }
     )
   }
 
@@ -209,7 +209,7 @@ export class ChannelDataProvider implements IChannelDataProvider {
       },
       {
         projection: { _id: 1, _class: 1, space: 1, createdOn: 1, createdBy: 1, attachedTo: 1, modifiedOn: 1 },
-        sort: { createdOn: SortingOrder.Ascending }
+        sort: { createdOn: SortingOrder.Ascending, _id: SortingOrder.Ascending }
       }
     )
   }
@@ -298,7 +298,7 @@ export class ChannelDataProvider implements IChannelDataProvider {
         this.isTailLoading.set(false)
       },
       {
-        sort: { createdOn: SortingOrder.Descending },
+        sort: { createdOn: SortingOrder.Descending, _id: SortingOrder.Descending },
         lookup: this.getLookup()
       }
     )
@@ -335,12 +335,14 @@ export class ChannelDataProvider implements IChannelDataProvider {
     const client = getClient()
     const skipIds = this.getChunkSkipIds(loadAfter)
 
-    let messages: ActivityMessage[] = await client.findAll(
+    const messages: ActivityMessage[] = await client.findAll(
       this.msgClass,
       {
         attachedTo: this.chatId,
         space: this.space,
         ...(this.collection != null ? { collection: this.collection } : {}),
+        // Exclude loaded boundary documents before the server applies its page limit.
+        ...(skipIds.length > 0 ? { _id: { $nin: skipIds } } : {}),
         createdOn: equal
           ? isBackward
             ? { $lte: loadAfter }
@@ -351,12 +353,13 @@ export class ChannelDataProvider implements IChannelDataProvider {
       },
       {
         limit: limit ?? this.limit,
-        sort: { createdOn: isBackward ? SortingOrder.Descending : SortingOrder.Ascending },
+        sort: {
+          createdOn: isBackward ? SortingOrder.Descending : SortingOrder.Ascending,
+          _id: isBackward ? SortingOrder.Descending : SortingOrder.Ascending
+        },
         lookup: this.getLookup()
       }
     )
-
-    messages = messages.filter(({ _id }) => !skipIds.includes(_id))
 
     if (messages.length === 0) {
       return
