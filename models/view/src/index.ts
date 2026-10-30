@@ -295,6 +295,7 @@ export class TListHeaderExtra extends TClass implements ListHeaderExtra {
 @Mixin(view.mixin.SortFuncs, core.class.Class)
 export class TSortFuncs extends TClass implements ClassSortFuncs {
   func!: SortFunc
+  sortingRules?: ClassSortFuncs['sortingRules']
 }
 
 @Mixin(view.mixin.AllValuesFunc, core.class.Class)

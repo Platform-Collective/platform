@@ -94,6 +94,7 @@ import {
   translateDomain
 } from './schemas'
 import { type ValueType } from './types'
+import { buildSortingRules } from './sorting'
 import {
   convertArrayParams,
   convertDoc,
@@ -251,7 +252,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     const sqlChunks: string[] = [`SELECT * FROM ${tdomain}`]
     sqlChunks.push(`WHERE ${this.buildRawQuery(vars, tdomain, query, options)}`)
     if (options?.sort !== undefined) {
-      sqlChunks.push(this.buildRawOrder(tdomain, options.sort))
+      sqlChunks.push(this.buildRawOrder(tdomain, options.sort, vars))
     }
     if (options?.limit !== undefined) {
       sqlChunks.push(`LIMIT ${options.limit}`)
@@ -301,7 +302,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     const sqlChunks: string[] = []
     sqlChunks.push(`WHERE ${this.buildRawQuery(vars, domain, query, options)}`)
     if (options?.sort !== undefined) {
-      sqlChunks.push(this.buildRawOrder(domain, options.sort))
+      sqlChunks.push(this.buildRawOrder(domain, options.sort, vars))
     }
     if (options?.limit !== undefined) {
       sqlChunks.push(`LIMIT ${options.limit}`)
@@ -313,7 +314,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return result.map((p) => parseDocWithProjection(p, domain, options?.projection))
   }
 
-  buildRawOrder<T extends Doc> (domain: string, sort: SortingQuery<T>): string {
+  buildRawOrder<T extends Doc> (domain: string, sort: SortingQuery<T>, vars: ValuesVariables): string {
     const res: string[] = []
     for (const key in sort) {
       const val = sort[key]
@@ -323,7 +324,14 @@ abstract class PostgresAdapterBase implements DbAdapter {
       if (typeof val === 'number') {
         res.push(`${this.transformKey(domain, core.class.Doc, key, false)} ${val === 1 ? 'ASC' : 'DESC'}`)
       } else {
-        // todo handle custom sorting
+        const expression = this.transformKey(domain, core.class.Doc, key, false)
+        res.push(
+          buildSortingRules(
+            val,
+            (query) => this.translateQueryValue(vars, expression, query, 'common'),
+            (v) => vars.add(v, inferType(v))
+          )
+        )
       }
     }
     if (res.length > 0) {
@@ -488,7 +496,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
             sqlChunks.push(secJoin)
           }
           if (options?.sort !== undefined) {
-            sqlChunks.push(this.buildOrder(_class, domain, options.sort, joins, options.pagination !== undefined))
+            sqlChunks.push(this.buildOrder(vars, _class, domain, options.sort, joins, options.pagination !== undefined))
           }
           if (options?.limit !== undefined) {
             sqlChunks.push(`LIMIT ${escape(options.limit)}`)
@@ -1049,6 +1057,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
   }
 
   private buildOrder<T extends Doc> (
+    vars: ValuesVariables,
     _class: Ref<Class<T>>,
     baseDomain: string,
     sort: SortingQuery<T>,
@@ -1094,7 +1103,14 @@ abstract class PostgresAdapterBase implements DbAdapter {
           )
         }
       } else {
-        // todo handle custom sorting
+        const expression = this.getKey(_class, baseDomain, escape(_key), joins)
+        res.push(
+          buildSortingRules(
+            val,
+            (query) => this.translateQueryValue(vars, expression, query, 'common'),
+            (v) => vars.add(v, inferType(v))
+          )
+        )
       }
     }
     if (res.length > 0) {
