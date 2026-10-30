@@ -47,7 +47,7 @@
     showPopup,
     themeStore
   } from '@hcengineering/ui'
-  import view from '@hcengineering/view'
+  import view, { type IconProps } from '@hcengineering/view'
   import {
     ClassAttributeBar,
     IconPicker,
@@ -59,6 +59,7 @@
   import { createEventDispatcher, onDestroy, onMount } from 'svelte'
 
   import { unlockContent } from '..'
+  import { getDocumentIconUpdate } from '../document-icon'
   import document from '../plugin'
   import { getDocumentUrl } from '../utils'
   import DocumentEditor from './DocumentEditor.svelte'
@@ -173,12 +174,13 @@
     if (doc !== undefined) {
       const { icon, color } = doc
       const icons = [document.icon.Document, document.icon.Teamspace]
-      const update = async (result: any): Promise<void> => {
-        if (result !== undefined && result !== null && doc !== undefined) {
-          await client.update(doc, { icon: result.icon, color: result.color })
+      const update = async (result: IconProps | null | undefined): Promise<void> => {
+        const operations = getDocumentIconUpdate(result)
+        if (operations !== undefined && doc !== undefined) {
+          await client.update(doc, operations)
         }
       }
-      showPopup(IconPicker, { icon, color, icons }, 'top', update, update)
+      showPopup(IconPicker, { icon, color, icons, showReset: true }, 'top', update, update)
     }
   }
 

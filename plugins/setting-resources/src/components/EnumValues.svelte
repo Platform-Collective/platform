@@ -13,6 +13,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
+  import { Analytics } from '@hcengineering/analytics'
   import { Enum } from '@hcengineering/core'
   import presentation, { getClient, MessageBox } from '@hcengineering/presentation'
   import {
@@ -31,6 +32,7 @@
   } from '@hcengineering/ui'
   import type { DropdownIntlItem } from '@hcengineering/ui'
   import setting from '../plugin'
+  import { createEnumValueAdder } from '../utils/enum-values'
   import EnumValuesList from './EnumValuesList.svelte'
   import IconCrossedArrows from './icons/CrossedArrows.svelte'
   import IconBulletList from './icons/BulletList.svelte'
@@ -39,19 +41,21 @@
   export let value: Enum
 
   const client = getClient()
+  const addEnumValue = createEnumValueAdder(client)
 
   let newValue: string = ''
   let newItem: boolean = false
   let opened: boolean = false
 
   async function add() {
-    if (newValue.trim().length === 0) return
-    if (matched) return
-    await client.update(value, {
-      $push: { enumValues: newValue }
-    })
-    newValue = ''
-    newItem = false
+    try {
+      if (await addEnumValue(value, newValue)) {
+        newValue = ''
+        newItem = false
+      }
+    } catch (err) {
+      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+    }
   }
 
   async function remove(target: string) {

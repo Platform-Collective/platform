@@ -515,7 +515,7 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
         }
       }
 
-      const spaceTargets = space.members.length === 0 ? [] : this.getTargets(space?.members)
+      const spaceTargets = space.members.length === 0 && !space.private ? [] : this.getTargets(space.members)
       const target = [...collabTargets, ...spaceTargets]
 
       return target.length === 0 ? undefined : { target }

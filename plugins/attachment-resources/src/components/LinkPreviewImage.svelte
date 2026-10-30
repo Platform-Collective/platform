@@ -16,6 +16,8 @@
 <script lang="ts">
   import { onMount } from 'svelte'
 
+  import { shouldAnchorImageTop } from '../image'
+
   export let url: string | undefined = undefined
   export let src: string
   export let width: number
@@ -51,9 +53,11 @@
         loading="lazy"
         class="link-preview__image"
         alt="link-preview"
-        width={`${width}px`}
-        height={`${height}px`}
+        {width}
+        {height}
+        style:aspect-ratio={height !== undefined ? `${width} / ${height}` : undefined}
         style:object-fit={fit}
+        style:object-position={shouldAnchorImageTop(fit) ? 'top' : undefined}
         on:error={() => {
           refreshPreviewSrc()
         }}
@@ -65,9 +69,11 @@
       loading="lazy"
       class="link-preview__image"
       alt="link-preview"
-      width={`${width}px`}
-      height={`${height}px`}
+      {width}
+      {height}
+      style:aspect-ratio={height !== undefined ? `${width} / ${height}` : undefined}
       style:object-fit={fit}
+      style:object-position={shouldAnchorImageTop(fit) ? 'top' : undefined}
       on:error={() => {
         refreshPreviewSrc()
       }}
@@ -79,7 +85,8 @@
   .link-preview__image {
     margin-top: 0.5rem;
     border-radius: 0.375rem;
-    max-width: 24.5rem;
+    max-width: min(24.5rem, 100%);
     max-height: 15rem;
+    height: auto;
   }
 </style>

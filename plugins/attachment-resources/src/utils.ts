@@ -42,6 +42,7 @@ import view from '@hcengineering/view'
 import attachment from './plugin'
 import AttachmentPreviewPopup from './components/AttachmentPreviewPopup.svelte'
 import { Analytics } from '@hcengineering/analytics'
+import { getBoundedImageDimensions, type ImageDimensions } from './image'
 
 const UPLOAD_RESTRICTED_EVENT = 'attachment.UploadRestricted'
 
@@ -178,37 +179,15 @@ export function showAttachmentPreviewPopup (
   return showPopup(AttachmentPreviewPopup, { value, fullSize }, getPreviewAlignment(value.type ?? ''))
 }
 
-interface ImageDimensions {
-  width: number
-  height: number
-  fit: 'cover' | 'contain'
-}
-
 export function getImageDimensions (
   size: { width: number, height: number },
   maxRem: { maxWidth: number, minWidth: number, maxHeight: number, minHeight: number }
 ): ImageDimensions {
-  const originalWidth = size.width
-  const originalHeight = size.height
   const fontSize = parseFloat(getComputedStyle(document.documentElement).fontSize)
-  const maxWidthPx = maxRem.maxWidth * fontSize
-  const minWidthPx = maxRem.minWidth * fontSize
-  const maxHeightPx = maxRem.maxHeight * fontSize
-  const minHeightPx = maxRem.minHeight * fontSize
-
-  const ratio = originalHeight / originalWidth
-
-  let width = Math.min(originalWidth, maxWidthPx)
-  let height = Math.ceil(width * ratio)
-
-  const fit = width < minWidthPx || height < minHeightPx ? 'cover' : 'contain'
-
-  if (height > maxHeightPx) {
-    width = maxHeightPx / ratio
-    height = maxHeightPx
-  } else if (height < minHeightPx) {
-    height = minHeightPx
-  }
-
-  return { width: Math.round(width), height: Math.round(height), fit }
+  return getBoundedImageDimensions(size, {
+    maxWidth: maxRem.maxWidth * fontSize,
+    minWidth: maxRem.minWidth * fontSize,
+    maxHeight: maxRem.maxHeight * fontSize,
+    minHeight: maxRem.minHeight * fontSize
+  })
 }

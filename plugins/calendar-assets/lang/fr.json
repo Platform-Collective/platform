@@ -47,6 +47,7 @@
     "Connect": "Connecter",
     "RedirectGoogle": "Vous serez redirigé vers la page d'authentification Google. Veuillez vous assurer de sélectionner toutes les autorisations.",
     "ConnectCalendar": "Connecter le compte Google Calendar",
+    "FailedToConnect": "Impossible de se connecter à Google Agenda. Veuillez réessayer plus tard.",
     "EditRecEvent": "Modifier l'événement récurrent",
     "RemoveRecEvent": "Supprimer l'événement récurrent",
     "ThisEvent": "Cet événement",

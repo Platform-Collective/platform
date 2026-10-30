@@ -147,6 +147,10 @@ export async function resolveLocation (loc: Location): Promise<ResolvedLocation 
   }
 
   const shortLink = loc.path[3]
+  if (['categories', 'library', 'templates', 'my-documents', 'space-browser'].includes(shortLink)) {
+    return undefined
+  }
+
   const id = parseDocumentId(shortLink)
   const projectId = loc.path[4] as Ref<Project>
 

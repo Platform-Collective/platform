@@ -42,7 +42,6 @@ import {
   getPlatformAvatarColorForTextDef,
   getPlatformColorDef,
   hexColorToNumber,
-  parseURL,
   showPopup,
   themeStore,
   type AnyComponent,
@@ -51,7 +50,6 @@ import {
   type TooltipAlignment
 } from '@hcengineering/ui'
 import { AggregationManager } from '@hcengineering/view-resources'
-import { getChannelProviderUrl } from './channelUrl'
 import PersonIdArrayEditor from './components/PersonIdArrayEditor.svelte'
 import AccountArrayEditor from './components/AccountArrayEditor.svelte'
 import AccountBox from './components/AccountBox.svelte'
@@ -131,8 +129,10 @@ import PersonPreviewProvider from './components/person/PersonPreviewProvider.sve
 import TranslationSettings from './components/TranslationSettings.svelte'
 
 import { get } from 'svelte/store'
+import { getChannelURL, openChannelLink } from './channel-url'
 import { canMergePersons, canResendInvitation } from './visibilityTester'
 import contact from './plugin'
+import { getPersonNameQueries } from './person-name-query'
 import {
   channelIdentifierProvider,
   channelTitleProvider,
@@ -231,8 +231,10 @@ async function queryContact (
   search: string,
   filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
 ): Promise<ObjectSearchResult[]> {
-  const q: DocumentQuery<Contact> = { name: { $like: `%${search}%` } }
-  return await doContactQuery(_class, q, filter, client)
+  const queries: Array<DocumentQuery<Contact>> =
+    _class === contact.class.Organization ? [{ name: { $like: `%${search}%` } }] : getPersonNameQueries(search)
+  const results = await Promise.all(queries.map(async (q) => await doContactQuery(_class, q, filter, client)))
+  return Array.from(new Map(results.flat().map((result) => [result.doc._id, result])).values()).slice(0, 200)
 }
 
 async function queryEmployee (
@@ -240,12 +242,7 @@ async function queryEmployee (
   search: string,
   filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
 ): Promise<ObjectSearchResult[]> {
-  const q1 = await doContactQuery(
-    contact.mixin.Employee,
-    { name: { $like: `%${search}%` }, active: true },
-    filter,
-    client
-  )
+  const q1 = await queryContact(contact.mixin.Employee, client, search, filter)
   const q2 = await doContactQuery(
     contact.mixin.Employee,
     { displayName: { $like: `%${search}%` }, active: true },
@@ -320,15 +317,9 @@ async function kickEmployee (doc: Person): Promise<void> {
 }
 
 async function openChannelURL (doc: Channel): Promise<void> {
-  const providerUrl = getChannelProviderUrl(doc.provider, doc.value)
-  if (providerUrl !== undefined && !providerUrl.startsWith('https://')) {
-    // tel: and mailto: links are handed over to the system handler without opening a new tab
-    window.open(providerUrl, '_self')
-    return
-  }
-  const url = providerUrl ?? parseURL(doc.value)
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    window.open(url)
+  const url = getChannelURL(doc)
+  if (url !== undefined) {
+    openChannelLink(url)
   }
 }
 

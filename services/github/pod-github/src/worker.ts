@@ -230,7 +230,8 @@ export class GithubWorker implements IntegrationManager {
     // TODO storage URL
     const imageUrl = concatLink(frontUrl ?? config.FrontURL, `/files?workspace=${this.workspace.uuid}&file=`)
     const guestUrl = getPublicLinkUrl(this.workspace, frontUrl)
-    const json = parseMessageMarkdown(text ?? '', refUrl, imageUrl, guestUrl)
+    const personUrl = concatLink(frontUrl, `/workbench/${this.workspace.url}/contact/`)
+    const json = parseMessageMarkdown(text ?? '', refUrl, imageUrl, guestUrl, personUrl)
     await preprocessor?.(json)
     return jsonToMarkup(json)
   }
@@ -239,15 +240,17 @@ export class GithubWorker implements IntegrationManager {
     if (text == null) {
       return ''
     }
+    const frontUrl = this.getBranding()?.front ?? config.FrontURL
     return await markupToMarkdown(
       text ?? '',
-      concatLink(this.getBranding()?.front ?? config.FrontURL, `/browse/?workspace=${this.workspace.uuid}`),
+      concatLink(frontUrl, `/browse/?workspace=${this.workspace.uuid}`),
       // TODO storage URL
-      concatLink(this.getBranding()?.front ?? config.FrontURL, `/files/${this.workspace.uuid}/`),
+      concatLink(frontUrl, `/files/${this.workspace.uuid}/`),
       preprocessor ??
         (async (nodes) => {
           appendGuestLinkToImage(nodes, this.workspace.uuid)
-        })
+        }),
+      concatLink(frontUrl, `/workbench/${this.workspace.url}/contact/`)
     )
   }
 

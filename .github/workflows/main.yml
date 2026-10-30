@@ -70,7 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
+          ref: ${{ github.event.inputs.ref || github.sha }}
           fetch-depth: 0
           filter: tree:0
           submodules: recursive
@@ -126,14 +126,13 @@ jobs:
       - name: Validate...
         run: node common/scripts/install-run-rush.js validate
 
-      - name: Cache build results
-        uses: actions/cache@v6
+      - name: Save build results
+        uses: actions/cache/save@v6
         env:
           cache-name: cache-build-results
         with:
           path: ${{ env.CacheFolders}}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.sha }}
-          restore-keys: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.sha }}
   svelte-check:
     needs: build
     runs-on: ubuntu-latest
@@ -141,6 +140,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.inputs.ref || github.sha }}
           fetch-depth: 0
           filter: tree:0
           submodules: recursive
@@ -149,14 +149,22 @@ jobs:
         with:
           node-version-file: '.nvmrc'
 
-      - name: Cache build results
-        uses: actions/cache@v6
+      - name: Restore build results
+        id: build-cache
+        uses: actions/cache/restore@v6
         env:
           cache-name: cache-build-results
         with:
           path: ${{ env.CacheFolders}}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.sha }}
+
+      - name: Rebuild on cache miss
+        if: steps.build-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "::warning::Build cache was missing; reinstalling dependencies and rebuilding."
+          node common/scripts/install-run-rush.js install
+          node common/scripts/install-run-rush.js build
 
       - name: Checking svelte sources...
         run: node common/scripts/install-run-rush.js svelte-check -v
@@ -167,19 +175,28 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.inputs.ref || github.sha }}
           fetch-depth: 0
           submodules: recursive
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
-      - name: Cache build results
-        uses: actions/cache@v6
+      - name: Restore build results
+        id: build-cache
+        uses: actions/cache/restore@v6
         env:
           cache-name: cache-build-results
         with:
           path: ${{ env.CacheFolders}}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.sha }}
+
+      - name: Rebuild on cache miss
+        if: steps.build-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "::warning::Build cache was missing; reinstalling dependencies and rebuilding."
+          node common/scripts/install-run-rush.js install
+          node common/scripts/install-run-rush.js build
 
       - name: Formatting...
         run: node common/scripts/install-run-rush.js fast-format --branch ${{ github.base_ref || 'develop' }}
@@ -198,20 +215,29 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.inputs.ref || github.sha }}
           fetch-depth: 0
           filter: tree:0
           submodules: recursive
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
-      - name: Cache build results
-        uses: actions/cache@v6
+      - name: Restore build results
+        id: build-cache
+        uses: actions/cache/restore@v6
         env:
           cache-name: cache-build-results
         with:
           path: ${{ env.CacheFolders}}
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.sha }}
           restore-keys: ${{ runner.os }}-build-${{ env.cache-name }}-${{ github.sha }}
+
+      - name: Rebuild on cache miss
+        if: steps.build-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "::warning::Build cache was missing; reinstalling dependencies and rebuilding."
+          node common/scripts/install-run-rush.js install
+          node common/scripts/install-run-rush.js build
       - name: Login to Docker Hub
         if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         continue-on-error: true

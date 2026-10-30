@@ -13,7 +13,16 @@
 // limitations under the License.
 //
 
-import { MarkupNode, jsonToMarkup, markupToJSON, htmlToJSON } from '@hcengineering/text'
+import contact from '@hcengineering/contact'
+import {
+  MarkupMarkType,
+  MarkupNodeType,
+  jsonToMarkup,
+  markupToJSON,
+  htmlToJSON,
+  traverseNode
+} from '@hcengineering/text'
+import type { MarkupNode } from '@hcengineering/text'
 import { MarkdownParser, storeNodes, storeMarks, MarkdownState } from '@hcengineering/text-markdown'
 import { GithubKit } from './extensions'
 import { hasHulyLink, hasHulyLinkText } from '../sync/guest'
@@ -25,7 +34,8 @@ export function parseMessageMarkdown (
   message: string | undefined,
   refUrl: string,
   imageUrl: string,
-  guestUrl: string
+  guestUrl: string,
+  personUrl?: string
 ): MarkupNode {
   const extensions = [
     GithubKit.configure({
@@ -42,6 +52,28 @@ export function parseMessageMarkdown (
   parser.tokenizer.set({ linkify: true })
   parser.tokenizer.linkify.set({ fuzzyLink: false, fuzzyEmail: false })
   const json = parser.parse(message ?? '')
+  if (personUrl !== undefined) {
+    traverseNode(json, (node) => {
+      const link = node.marks?.find((mark) => mark.type === MarkupMarkType.link)
+      const href = link?.attrs?.href
+      if (node.type !== MarkupNodeType.text || typeof href !== 'string' || !href.startsWith(personUrl)) return
+      const id = href.slice(personUrl.length)
+      if (id.length === 0 || /[/?#]/.test(id)) return
+      let personId: string
+      try {
+        personId = decodeURIComponent(id)
+      } catch {
+        return
+      }
+      const label = node.text ?? ''
+      node.type = MarkupNodeType.reference
+      node.attrs = { id: personId, objectclass: contact.class.Person, label }
+      node.content = [{ type: MarkupNodeType.text, text: label, marks: [] }]
+      node.marks = node.marks?.filter((mark) => mark !== link)
+      delete node.text
+      return false
+    })
+  }
   return json
 }
 
@@ -61,10 +93,27 @@ export async function markupToMarkdown (
   markup: string,
   refUrl: string = 'ref://',
   imageUrl: string = 'http://localhost',
-  preprocessor?: (nodes: MarkupNode) => Promise<void>
+  preprocessor?: (nodes: MarkupNode) => Promise<void>,
+  personUrl?: string
 ): Promise<string> {
   const json = markupToJSON(markup)
   await preprocessor?.(json)
+  if (personUrl !== undefined) {
+    traverseNode(json, (node) => {
+      const attrs = node.attrs
+      if (node.type !== MarkupNodeType.reference || attrs?.objectclass !== contact.class.Person) return
+      if (typeof attrs.id !== 'string' || attrs.id.length === 0) return
+      node.type = MarkupNodeType.text
+      node.text = String(attrs.label ?? '')
+      node.marks = [
+        ...(node.marks ?? []),
+        { type: MarkupMarkType.link, attrs: { href: personUrl + encodeURIComponent(attrs.id), title: attrs.title } }
+      ]
+      delete node.attrs
+      delete node.content
+      return false
+    })
+  }
   return serializeMessage(json, refUrl, imageUrl)
 }
 
