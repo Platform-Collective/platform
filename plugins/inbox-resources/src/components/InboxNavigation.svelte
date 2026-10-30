@@ -14,8 +14,14 @@
 <script lang="ts">
   import { Label, ListView, Loading, Scroller } from '@hcengineering/ui'
   import { Doc, Ref } from '@hcengineering/core'
-  import { createEventDispatcher } from 'svelte'
-  import notification, { ActivityNotificationViewlet, DocNotifyContext } from '@hcengineering/notification'
+  import { createEventDispatcher, tick } from 'svelte'
+  import { Analytics } from '@hcengineering/analytics'
+  import notification, {
+    ActivityNotificationViewlet,
+    DocNotifyContext,
+    InboxNotification
+  } from '@hcengineering/notification'
+  import { Notification } from '@hcengineering/communication-types'
   import { getClient } from '@hcengineering/presentation'
   import { InboxNotificationsClientImpl } from '@hcengineering/notification-resources'
   import view from '@hcengineering/view'
@@ -28,7 +34,14 @@
   export let doc: Doc | undefined = undefined
   export let legacyContext: DocNotifyContext | undefined = undefined
 
-  const dispatch = createEventDispatcher()
+  const dispatch = createEventDispatcher<{
+    select: {
+      navItem: NavigationItem
+      doc: Doc
+      notification?: InboxNotification | Notification
+    }
+    clear: void
+  }>()
   const client = getClient()
 
   const navClient: NavigationClient = new NavigationClient(InboxNotificationsClientImpl.getClient())
@@ -67,6 +80,56 @@
 
   const docById = new Map<Ref<Doc>, Doc>()
 
+  let removingItem: NavigationItem | undefined = undefined
+
+  async function handleRemove(navItem: NavigationItem): Promise<void> {
+    if (removingItem != null) return
+    const index = navItems.indexOf(navItem)
+    if (index < 0) return
+
+    removingItem = navItem
+    try {
+      await navClient.remove(navItem)
+
+      // Live queries may report the removal before or after the request completes.
+      const contextId = navItem.type === 'modern' ? navItem.context.id : navItem.context._id
+      navItems = navItems.filter((item) => {
+        const itemContextId = item.type === 'modern' ? item.context.id : item.context._id
+        return item.type !== navItem.type || itemContextId !== contextId
+      })
+      const selected =
+        navItem.type === 'legacy' && legacyContext != null
+          ? navItem.context._id === legacyContext._id
+          : navItem._id === doc?._id
+      if (!selected) {
+        if (index < listSelection) listSelection--
+        listSelection = Math.max(0, Math.min(listSelection, navItems.length - 1))
+        return
+      }
+      listSelection = Math.max(0, Math.min(index, navItems.length - 1))
+      const nextItem = navItems[listSelection]
+
+      await tick()
+      if (nextItem == null) {
+        dispatch('clear')
+        return
+      }
+
+      list.select(listSelection)
+      const nextDoc = docById.get(nextItem._id) ?? (await client.findOne(nextItem._class, { _id: nextItem._id }))
+      if (nextDoc != null) {
+        dispatch('select', { navItem: nextItem, doc: nextDoc })
+      } else {
+        dispatch('clear')
+      }
+      contentDiv?.focus()
+    } catch (err) {
+      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+    } finally {
+      removingItem = undefined
+    }
+  }
+
   async function onKeydown(key: KeyboardEvent): Promise<void> {
     if (key.code === 'ArrowUp') {
       key.stopPropagation()
@@ -83,7 +146,7 @@
       key.stopPropagation()
       const navItem = navItems[listSelection]
       if (navItem != null) {
-        await navClient.remove(navItem)
+        await handleRemove(navItem)
       }
     }
     if (key.code === 'Enter') {
@@ -142,14 +205,15 @@
           {@const navItem = navItems[itemIndex]}
           {#if navItem}
             <InboxCard
-              {navClient}
               {navItem}
               {viewlets}
+              isRemoving={removingItem === navItem}
               selected={navItem._id === legacyContext?.objectId || navItem._id === doc?._id}
+              on:remove={() => handleRemove(navItem)}
               on:doc={(e) => {
                 const d = e.detail
                 if (d == null) return
-                docById.set(d._id, e.detail)
+                docById.set(d._id, d)
               }}
               on:select={(e) => {
                 dispatch('select', { navItem, doc: e.detail.doc, notification: e.detail.notification })

@@ -224,7 +224,7 @@
       <div class="antiPanel-wrap__content hulyNavPanel-container">
         <InboxHeader />
         <div class="antiPanel-wrap__content hulyNavPanel-container">
-          <InboxNavigation {doc} {legacyContext} on:select={select} />
+          <InboxNavigation {doc} {legacyContext} on:select={select} on:clear={handleClose} />
         </div>
       </div>
       {#if !($deviceInfo.isMobile && $deviceInfo.isPortrait && $deviceInfo.minWidth)}
