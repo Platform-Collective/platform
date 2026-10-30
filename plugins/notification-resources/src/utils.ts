@@ -41,6 +41,7 @@ import notification, {
   type ActivityInboxNotification,
   type DisplayInboxNotification,
   type DocNotifyContext,
+  type DocNotifyLevel,
   type InboxNotification,
   type MentionInboxNotification,
   notificationId,
@@ -50,7 +51,7 @@ import notification, {
   type NotificationTypeSetting,
   type ReactionInboxNotification
 } from '@hcengineering/notification'
-import { getMetadata, getResource } from '@hcengineering/platform'
+import { getMetadata, getResource, type IntlString } from '@hcengineering/platform'
 import { createQuery, getClient, MessageBox } from '@hcengineering/presentation'
 import {
   getCurrentLocation,
@@ -60,6 +61,8 @@ import {
   navigate,
   parseLocation,
   type ResolvedLocation,
+  SelectPopup,
+  type SelectPopupValueType,
   showPopup
 } from '@hcengineering/ui'
 import view, { decodeObjectURI, encodeObjectURI, type LinkIdProvider } from '@hcengineering/view'
@@ -306,6 +309,27 @@ export async function unpinDocNotifyContext (object: DocNotifyContext): Promise<
 
   await client.updateDoc(object._class, object.space, object._id, {
     isPinned: false
+  })
+}
+
+const docNotifyLevels: Array<{ level: DocNotifyLevel, label: IntlString }> = [
+  { level: 'all', label: notification.string.NotifyLevelAll },
+  { level: 'mentions', label: notification.string.NotifyLevelMentions },
+  { level: 'none', label: notification.string.NotifyLevelNone }
+]
+
+export async function setDocNotifyLevel (object: DocNotifyContext): Promise<void> {
+  const current = object.notifyLevel ?? 'all'
+  const value: SelectPopupValueType[] = docNotifyLevels.map(({ level, label }) => ({
+    id: level,
+    label,
+    isSelected: level === current
+  }))
+
+  showPopup(SelectPopup, { value }, undefined, async (result?: DocNotifyLevel) => {
+    if (result === undefined || result === current) return
+    const client = getClient()
+    await client.updateDoc(object._class, object.space, object._id, { notifyLevel: result })
   })
 }
 

@@ -72,6 +72,9 @@
     "AlreadySubscribed": "このブラウザはすでに登録されています",
     "PushNotConfigured": "このサーバーではプッシュ通知が設定されていません",
     "PushNotSupported": "このブラウザでは対応していません",
-    "PushDenied": "ブラウザの設定で通知がブロックされています"
+    "PushDenied": "ブラウザの設定で通知がブロックされています",
+    "NotifyLevelAll": "すべてのメッセージ",
+    "NotifyLevelMentions": "メンションのみ",
+    "NotifyLevelNone": "なし"
   }
 }
