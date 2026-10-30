@@ -72,6 +72,8 @@
     "AlreadySubscribed": "Tento prohlížeč je již přihlášen k odběru",
     "PushNotConfigured": "Push oznámení nejsou na tomto serveru nakonfigurována",
     "PushNotSupported": "Tento prohlížeč to nepodporuje",
-    "PushDenied": "Oznámení jsou blokována v nastavení prohlížeče"
+    "PushDenied": "Oznámení jsou blokována v nastavení prohlížeče",
+    "WorkspaceDefaults": "Výchozí nastavení pracovního prostoru",
+    "WorkspaceDefaultsDescription": "Tato nastavení platí pro všechny uživatele pracovního prostoru, kteří je sami nezměnili. Uživatelé je mohou ve svém nastavení stále přepsat."
   }
 }

@@ -72,6 +72,8 @@
     "AlreadySubscribed": "이 브라우저는 이미 구독되어 있습니다",
     "PushNotConfigured": "이 서버에는 푸시 알림이 구성되어 있지 않습니다",
     "PushNotSupported": "이 브라우저에서 지원되지 않습니다",
-    "PushDenied": "브라우저 설정에서 알림이 차단되어 있습니다"
+    "PushDenied": "브라우저 설정에서 알림이 차단되어 있습니다",
+    "WorkspaceDefaults": "워크스페이스 기본값",
+    "WorkspaceDefaultsDescription": "이 설정은 직접 변경하지 않은 워크스페이스의 모든 사용자에게 적용됩니다. 사용자는 자신의 설정에서 여전히 재정의할 수 있습니다."
     }
 }

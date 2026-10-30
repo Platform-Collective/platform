@@ -72,6 +72,8 @@
     "AlreadySubscribed": "Bu tarayıcı zaten abone",
     "PushNotConfigured": "Anlık bildirimler bu sunucuda yapılandırılmamış",
     "PushNotSupported": "Bu tarayıcı tarafından desteklenmiyor",
-    "PushDenied": "Bildirimler tarayıcı ayarlarında engellenmiş"
+    "PushDenied": "Bildirimler tarayıcı ayarlarında engellenmiş",
+    "WorkspaceDefaults": "Çalışma alanı varsayılanları",
+    "WorkspaceDefaultsDescription": "Bu ayarlar, bunları kendisi değiştirmemiş olan tüm çalışma alanı kullanıcılarına uygulanır. Kullanıcılar bunları kendi ayarlarında yine de geçersiz kılabilir."
   }
 }

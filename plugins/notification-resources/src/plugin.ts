@@ -37,6 +37,8 @@ export default mergeIds(notificationId, notification, {
     Unread: '' as IntlString,
     Unreads: '' as IntlString,
     EnablePush: '' as IntlString,
-    NotificationBlockedInBrowser: '' as IntlString
+    NotificationBlockedInBrowser: '' as IntlString,
+    WorkspaceDefaults: '' as IntlString,
+    WorkspaceDefaultsDescription: '' as IntlString
   }
 })

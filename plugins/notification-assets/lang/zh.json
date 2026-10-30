@@ -72,6 +72,8 @@
     "AlreadySubscribed": "此浏览器已订阅",
     "PushNotConfigured": "此服务器未配置推送通知",
     "PushNotSupported": "此浏览器不支持",
-    "PushDenied": "通知已在浏览器设置中被屏蔽"
+    "PushDenied": "通知已在浏览器设置中被屏蔽",
+    "WorkspaceDefaults": "工作区默认设置",
+    "WorkspaceDefaultsDescription": "这些设置适用于工作区中所有未自行更改它们的用户。用户仍可在自己的设置中覆盖它们。"
   }
 }

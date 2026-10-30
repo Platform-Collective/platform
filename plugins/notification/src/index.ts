@@ -194,6 +194,36 @@ export interface NotificationTypeSetting extends Preference {
 }
 
 /**
+ * Workspace-wide default for a notification type and provider.
+ * Applies to every user who has no own NotificationTypeSetting for the same type and provider.
+ * Only workspace owners are allowed to create, update or remove it.
+ * @public
+ */
+export interface WorkspaceNotificationTypeSetting extends Doc {
+  attachedTo: Ref<NotificationProvider>
+  type: Ref<NotificationType>
+  enabled: boolean
+}
+
+/**
+ * Resolve whether a notification type is enabled for a provider.
+ * Precedence: user setting, then workspace default, then model defaults.
+ * @public
+ */
+export function resolveNotificationTypeEnabled (
+  type: Pick<NotificationType, '_id' | 'defaultEnabled'>,
+  provider: Ref<NotificationProvider>,
+  userSetting: Pick<NotificationTypeSetting, 'enabled'> | undefined,
+  workspaceSetting: Pick<WorkspaceNotificationTypeSetting, 'enabled'> | undefined,
+  providerDefaults: Array<Pick<NotificationProviderDefaults, 'provider' | 'enabledTypes'>>
+): boolean {
+  if (userSetting !== undefined) return userSetting.enabled
+  if (workspaceSetting !== undefined) return workspaceSetting.enabled
+  if (providerDefaults.some((it) => it.provider === provider && it.enabledTypes.includes(type._id))) return true
+  return type.defaultEnabled
+}
+
+/**
  * @public
  */
 export interface NotificationObjectPresenter extends Class<Doc> {
@@ -377,6 +407,7 @@ const notification = plugin(notificationId, {
     MentionInboxNotification: '' as Ref<Class<MentionInboxNotification>>,
     NotificationProvider: '' as Ref<Class<NotificationProvider>>,
     NotificationTypeSetting: '' as Ref<Class<NotificationTypeSetting>>,
+    WorkspaceNotificationTypeSetting: '' as Ref<Class<WorkspaceNotificationTypeSetting>>,
     NotificationProviderSetting: '' as Ref<Class<NotificationProviderSetting>>,
     NotificationProviderDefaults: '' as Ref<Mixin<NotificationProviderDefaults>>,
     ReactionInboxNotification: '' as Ref<Class<ReactionInboxNotification>>
