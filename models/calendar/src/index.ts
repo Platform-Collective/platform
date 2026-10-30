@@ -138,6 +138,8 @@ export class TEvent extends TAttachedDoc implements Event {
   @Index(IndexKind.FullText)
   location?: string
 
+  importedConferenceLink?: string
+
   @Prop(TypeBoolean(), calendar.string.AllDay)
   @ReadOnly()
   allDay!: boolean

@@ -121,6 +121,10 @@ export interface Event extends AttachedDoc {
 
   location?: string
 
+  // Conference link (e.g. Google Meet) that the calendar sync stored as the location.
+  // While location equals it, the location was not entered by a user and is not written back to the provider.
+  importedConferenceLink?: string
+
   allDay: boolean
 
   // Event scheduled date

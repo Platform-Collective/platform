@@ -2,7 +2,7 @@
 
 import contact from '@hcengineering/contact'
 import { parseURL } from '@hcengineering/ui'
-import { getChannelURL } from './channel-url'
+import { getChannelURL, openChannelLink } from './channel-url'
 
 jest.mock('@hcengineering/ui', () => ({ parseURL: jest.fn() }))
 
@@ -14,7 +14,7 @@ describe('getChannelURL', () => {
 
   it.each([
     [contact.channelProvider.GitHub, 'https://github.com/huly'],
-    [contact.channelProvider.Twitter, 'https://twitter.com/huly'],
+    [contact.channelProvider.Twitter, 'https://x.com/huly'],
     [contact.channelProvider.Telegram, 'https://t.me/huly']
   ])('opens nicknames for %s', (provider, expected) => {
     for (const value of ['huly', '@huly', ' @huly ']) {
@@ -79,5 +79,38 @@ describe('getChannelURL', () => {
   it('does not open unsupported URL schemes from the URL parser', () => {
     jest.mocked(parseURL).mockReturnValue('ftp://example.com')
     expect(getChannelURL({ provider: contact.channelProvider.Homepage, value: 'ftp://example.com' })).toBeUndefined()
+  })
+
+  it.each(['a@b.com?bcc=other@x.com&body=hi', 'a@b.com&cc=other@x.com', 'a@b.com#frag', 'not an email'])(
+    'does not build a mailto link for %s',
+    (value) => {
+      expect(getChannelURL({ provider: contact.channelProvider.Email, value })).toBeUndefined()
+    }
+  )
+
+  it('ignores phone values that are not numbers', () => {
+    expect(getChannelURL({ provider: contact.channelProvider.Phone, value: 'call me' })).toBeUndefined()
+    expect(getChannelURL({ provider: contact.channelProvider.Phone, value: '(555) 333-77.77' })).toBe('tel:5553337777')
+  })
+})
+
+describe('openChannelLink', () => {
+  const open = jest.fn()
+  beforeEach(() => {
+    open.mockReset()
+    ;(globalThis as any).window = { open }
+  })
+  afterAll(() => {
+    delete (globalThis as any).window
+  })
+
+  it('opens web links in a new tab', () => {
+    openChannelLink('https://t.me/huly')
+    expect(open).toHaveBeenCalledWith('https://t.me/huly')
+  })
+
+  it.each(['mailto:person@example.com', 'tel:+123456789'])('hands %s to the system handler', (url) => {
+    openChannelLink(url)
+    expect(open).toHaveBeenCalledWith(url, '_self')
   })
 })

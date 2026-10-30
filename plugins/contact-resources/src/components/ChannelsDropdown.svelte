@@ -38,7 +38,7 @@
   import { ContextMenu, invokeAction } from '@hcengineering/view-resources'
   import { createEventDispatcher, tick } from 'svelte'
   import { readable, Readable, Writable, writable } from 'svelte/store'
-  import { getChannelURL } from '../channel-url'
+  import { getChannelURL, openChannelLink } from '../channel-url'
   import { channelProviders } from '../utils'
   import ChannelEditor from './ChannelEditor.svelte'
 
@@ -235,7 +235,7 @@
     ) {
       const url = getChannelURL(item.channel)
       if (url !== undefined) {
-        window.open(url)
+        openChannelLink(url)
         return
       }
     }
