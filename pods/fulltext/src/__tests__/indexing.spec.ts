@@ -222,5 +222,5 @@ describe('full-text-indexing', () => {
       await queue.close()
       await pipeline.close()
     }
-  })
+  }, 120000) // Includes 1000 sequential writes, queue delivery and full reindexing on slow CI runners.
 })

@@ -130,20 +130,38 @@ describe('performance', () => {
       // NoMetricsContext should have minimal overhead
       const noMetricsCtx = new NoMetricsContext(noParamsLogger)
 
-      const start = performance.now()
-      for (let i = 0; i < iterations; i++) {
-        await noMetricsCtx.with('operation', { iteration: i }, async () => {
-          await simulateWork(1)
-        })
+      async function measure (withContext: boolean): Promise<number> {
+        const start = performance.now()
+        for (let i = 0; i < iterations; i++) {
+          if (withContext) {
+            await noMetricsCtx.with('operation', { iteration: i }, async () => {
+              await simulateWork(1)
+            })
+          } else {
+            await simulateWork(1)
+          }
+        }
+        return performance.now() - start
       }
-      const noMetricsTime = performance.now() - start
 
-      // Compare with raw execution
-      const rawStart = performance.now()
-      for (let i = 0; i < iterations; i++) {
-        await simulateWork(1)
+      // Warm both paths before sampling; alternate their order to reduce shared-runner timing bias.
+      await measure(false)
+      await measure(true)
+      const rawTimes: number[] = []
+      const noMetricsTimes: number[] = []
+      for (let sample = 0; sample < 5; sample++) {
+        if (sample % 2 === 0) {
+          rawTimes.push(await measure(false))
+          noMetricsTimes.push(await measure(true))
+        } else {
+          noMetricsTimes.push(await measure(true))
+          rawTimes.push(await measure(false))
+        }
       }
-      const rawTime = performance.now() - rawStart
+
+      // Compare medians so an isolated scheduling pause does not determine the overhead.
+      const noMetricsTime = noMetricsTimes.sort((a, b) => a - b)[2]
+      const rawTime = rawTimes.sort((a, b) => a - b)[2]
 
       const overhead = noMetricsTime - rawTime
       const overheadPercentage = (overhead / rawTime) * 100
