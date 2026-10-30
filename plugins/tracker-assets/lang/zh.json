@@ -146,6 +146,12 @@
     "ComponentMembersSearchPlaceholder": "更改组件成员…",
     "MoveToProject": "移动到项目",
     "Duplicate": "复制",
+    "MarkAsDuplicate": "标记为以下问题的重复项…",
+    "DuplicateOf": "{issue} 的重复项",
+    "MarkedAsDuplicateOfThis": "{issue} 已被标记为此问题的重复项",
+    "DuplicateEditRequired": "您必须有权编辑这两个问题。",
+    "DuplicateNoCanceledStatus": "此问题的任务类型没有已取消状态。",
+    "MarkDuplicateFailed": "无法将问题标记为重复项。请刷新后重试。",
 
     "GotoIssues": "前往问题",
     "GotoActive": "前往活跃问题",

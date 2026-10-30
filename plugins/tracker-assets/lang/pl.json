@@ -143,6 +143,12 @@
     "ComponentMembersSearchPlaceholder": "Zmień elementy komponentu\u2026",
     "MoveToProject": "Przenieś do projektu",
     "Duplicate": "Duplikuj",
+    "MarkAsDuplicate": "Oznacz jako duplikat…",
+    "DuplicateOf": "Duplikat {issue}",
+    "MarkedAsDuplicateOfThis": "{issue} oznaczono jako duplikat tego zgłoszenia",
+    "DuplicateEditRequired": "Musisz mieć możliwość edytowania obu zgłoszeń.",
+    "DuplicateNoCanceledStatus": "Typ zadania tego zgłoszenia nie ma statusu anulowania.",
+    "MarkDuplicateFailed": "Nie udało się oznaczyć zgłoszenia jako duplikatu. Odśwież stronę i spróbuj ponownie.",
 
     "GotoIssues": "Przejdź do zadań",
     "GotoActive": "Przejdź do aktywnych zadań",
