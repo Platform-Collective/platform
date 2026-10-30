@@ -15,11 +15,12 @@
 <script lang="ts">
   import activity from '@hcengineering/activity'
   import { Analytics } from '@hcengineering/analytics'
-  import { Attachment } from '@hcengineering/attachment'
+  import attachment, { Attachment } from '@hcengineering/attachment'
   import { AttachmentPresenter, AttachmentStyledBox } from '@hcengineering/attachment-resources'
   import { Employee } from '@hcengineering/contact'
   import core, {
     AccountRole,
+    type AttachedData,
     Class,
     Doc,
     DocData,
@@ -39,6 +40,7 @@
     Card,
     createMarkup,
     createQuery,
+    deleteFile,
     DocCreateExtComponent,
     DocCreateExtensionManager,
     DraftController,
@@ -85,6 +87,7 @@
 
   import { activeComponent, activeMilestone, generateIssueShortLink, updateIssueRelation } from '../issues'
   import tracker from '../plugin'
+  import { copyMessageAttachments } from '../message-issue'
   import SetParentIssueActionPopup from './SetParentIssueActionPopup.svelte'
   import SubIssues from './SubIssues.svelte'
   import ComponentSelector from './components/ComponentSelector.svelte'
@@ -108,6 +111,9 @@
   export let shouldSaveDraft: boolean = true
   export let parentIssue: Issue | undefined
   export let originalIssue: Issue | undefined
+  export let initialData: Pick<IssueDraft, 'title' | 'description'> | undefined = undefined
+  export let initialAttachments: AttachedData<Attachment>[] = []
+  const sourceMessageAttachments = initialAttachments
 
   const mDraftController = new MultipleDraftController(tracker.ids.IssueDraft)
   // Stored across the function/dispatch boundary so the success-path close
@@ -187,8 +193,8 @@
   function getDefaultObject(id: Ref<Issue> | undefined = undefined, ignoreOriginal = false): IssueDraft {
     const base: IssueDraft = {
       _id: id ?? generateId(),
-      title: '',
-      description: EmptyMarkup,
+      title: initialData?.title ?? '',
+      description: initialData?.description ?? EmptyMarkup,
       kind: '' as Ref<TaskType>,
       priority: priority ?? IssuePriority.NoPriority,
       space: _space as Ref<Project>,
@@ -457,6 +463,8 @@
 
   async function createIssue(): Promise<void> {
     const _id: Ref<Issue> = generateId()
+    let copiedAttachments: AttachedData<Attachment>[] = []
+    let committed = false
     if (
       !canSave ||
       object.status === undefined ||
@@ -470,6 +478,8 @@
     // TODO: We need a measure client and mark all operations with it as measure under one root,
     // to prevent other operations to infer our measurement.
     try {
+      const copied = await copyMessageAttachments(initialAttachments, object.description, sourceMessageAttachments)
+      copiedAttachments = copied.attachments
       const operations = client.apply(undefined, 'tracker.createIssue')
 
       const incResult = await client.updateDoc(
@@ -526,7 +536,7 @@
 
       if (!isEmptyMarkup(object.description)) {
         const collabId = makeCollabId(tracker.class.Issue, _id, 'description')
-        value.description = await createMarkup(collabId, object.description)
+        value.description = await createMarkup(collabId, copied.description)
       }
 
       await docCreateManager.commit(operations, _id, currentProject, value, 'pre')
@@ -565,7 +575,18 @@
       }
 
       await descriptionBox?.createAttachments(_id, operations)
+      for (const file of copiedAttachments) {
+        await operations.addCollection(
+          attachment.class.Attachment,
+          _space,
+          _id,
+          tracker.class.Issue,
+          'attachments',
+          file
+        )
+      }
       const result = await operations.commit()
+      committed = true
 
       const parents: IssueParentInfo[] =
         parentIssue != null
@@ -611,6 +632,9 @@
       // handler reads this variable as the close payload.
       createdIssueId = _id
     } catch (err: any) {
+      if (!committed) {
+        await Promise.allSettled(copiedAttachments.map((attachment) => deleteFile(attachment.file)))
+      }
       resetObject()
       draftController.remove()
       descriptionBox?.removeDraft(false)
@@ -795,7 +819,7 @@
   okLabel={tracker.string.SaveIssue}
   on:close={() => dispatch('close', createdIssueId)}
   onCancel={showConfirmationDialog}
-  hideAttachments={attachments.size === 0}
+  hideAttachments={attachments.size === 0 && initialAttachments.length === 0}
   hideSubheader={parentIssue == null}
   headerNoPadding
   noFade={true}
@@ -1050,6 +1074,16 @@
     <DocCreateExtComponent manager={docCreateManager} kind={'pool'} space={currentProject} props={extraProps} />
   </svelte:fragment>
   <svelte:fragment slot="attachments">
+    {#each initialAttachments as file}
+      <AttachmentPresenter
+        value={file}
+        showPreview
+        removable
+        on:remove={() => {
+          initialAttachments = initialAttachments.filter((it) => it !== file)
+        }}
+      />
+    {/each}
     {#if attachments.size > 0}
       {#each Array.from(attachments.values()) as attachment}
         <AttachmentPresenter

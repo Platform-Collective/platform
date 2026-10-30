@@ -25,11 +25,19 @@ import {
   type GrouppingManagerResource,
   type KeyFilter,
   type SortFunc,
+  type ViewAction,
+  type ViewActionAvailabilityFunction,
   type ViewQueryAction,
   type Viewlet,
   type ViewletDescriptor
 } from '@hcengineering/view'
 import type { ValueFormatter } from '@hcengineering/converter'
+import type { ActivityMessage } from '@hcengineering/activity'
+import type {
+  MessageAction,
+  MessageActionFunctionResource,
+  MessageActionVisibilityTesterResource
+} from '@hcengineering/communication'
 
 export default mergeIds(trackerId, tracker, {
   viewlet: {
@@ -45,6 +53,8 @@ export default mergeIds(trackerId, tracker, {
     IssueCategory: '' as Ref<ObjectSearchCategory>
   },
   string: {
+    CreateIssueFromMessage: '' as IntlString,
+    SourceMessage: '' as IntlString,
     More: '' as IntlString,
     Delete: '' as IntlString,
     Open: '' as IntlString,
@@ -619,7 +629,18 @@ export default mergeIds(trackerId, tracker, {
   metadata: {
     CreateIssueDraft: '' as Metadata<IssueDraft>
   },
+  actionImpl: {
+    CreateIssueFromMessage: '' as ViewAction
+  },
+  messageAction: {
+    CreateIssue: '' as Ref<MessageAction>
+  },
+  messageActionImpl: {
+    CreateIssue: '' as MessageActionFunctionResource
+  },
   function: {
+    CanCreateIssueFromMessage: '' as Resource<ViewActionAvailabilityFunction<ActivityMessage>>,
+    CanCreateIssueFromCommunicationMessage: '' as MessageActionVisibilityTesterResource,
     IssueTitleProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,
     IssueIdentifierProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,
     ComponentTitleProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,

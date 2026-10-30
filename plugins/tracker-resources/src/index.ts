@@ -104,6 +104,12 @@ import {
 } from './issues'
 import tracker from './plugin'
 import { formatIssueValue } from './issueTableFormatter'
+import {
+  canCreateIssueFromMessage,
+  canCreateIssueFromCommunicationMessage,
+  createIssueFromMessage,
+  createIssueFromCommunicationMessage
+} from './message-actions'
 
 import MilestoneEditor from './components/milestones/MilestoneEditor.svelte'
 import MilestonePresenter from './components/milestones/MilestonePresenter.svelte'
@@ -505,6 +511,8 @@ export default async (): Promise<Resources> => ({
       await queryIssue(tracker.class.Issue, client, query, filter)
   },
   function: {
+    CanCreateIssueFromMessage: canCreateIssueFromMessage,
+    CanCreateIssueFromCommunicationMessage: canCreateIssueFromCommunicationMessage,
     IssueIdentifierProvider: issueIdentifierProvider,
     IssueTitleProvider: issueTitleProvider,
     ComponentTitleProvider: getComponentTitle,
@@ -537,12 +545,16 @@ export default async (): Promise<Resources> => ({
     FormatIssueMarkdownValue: formatIssueValue
   },
   actionImpl: {
+    CreateIssueFromMessage: createIssueFromMessage,
     Move: move,
     EditWorkflowStatuses: editWorkflowStatuses,
     EditProject: editProject,
     DeleteMilestone: deleteMilestone,
     DeleteProject: deleteProject,
     DeleteIssue: deleteIssue
+  },
+  messageActionImpl: {
+    CreateIssue: createIssueFromCommunicationMessage
   },
   resolver: {
     Location: resolveLocation
