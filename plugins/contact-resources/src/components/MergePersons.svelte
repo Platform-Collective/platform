@@ -44,6 +44,8 @@
   import EditPerson from './EditPerson.svelte'
   import { getAccountClient } from '../utils'
   import SocialIdentityPresenter from './SocialIdentityPresenter.svelte'
+  import { finishPersonMerge } from './finish-person-merge'
+  import { isPersonMergePermissionCached } from './person-merge-permission'
 
   export let value: Person
   const dispatch = createEventDispatcher()
@@ -121,6 +123,7 @@
 
   async function merge(): Promise<void> {
     if (sourcePerson === undefined || targetPerson === undefined) return
+    if (sourcePerson._id === targetPerson._id) return
     if (!canMergeGlobalPersons) return
 
     if (Object.keys(update).length > 0) {
@@ -171,9 +174,7 @@
     }
     await ops.commit()
     await updateAllRefs(client, sourcePerson, targetPerson)
-    if (targetPerson.personUuid !== undefined && sourcePerson.personUuid !== undefined) {
-      await accountClient.mergeSpecifiedPersons(targetPerson.personUuid, sourcePerson.personUuid)
-    }
+    await finishPersonMerge(client, accountClient, sourcePerson, targetPerson)
 
     dispatch('close')
   }
@@ -308,6 +309,7 @@
         }
       } catch (err: any) {
         Analytics.handleError(err)
+        throw err
       }
     }
     const arrs = (await client.findAll(core.class.Attribute, { 'type._class': core.class.ArrOf })).filter((it) => {
@@ -357,7 +359,14 @@
       return
     }
 
-    if (primaryPerson.personUuid === previousPrimaryUuid && secondaryPerson.personUuid === previousSecondaryUuid) {
+    if (
+      isPersonMergePermissionCached(
+        primaryPerson.personUuid,
+        secondaryPerson.personUuid,
+        previousPrimaryUuid,
+        previousSecondaryUuid
+      )
+    ) {
       return
     }
 
