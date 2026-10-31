@@ -188,7 +188,7 @@ export function activityMessagesComparator (message1: ActivityMessage, message2:
   const time1 = getMessageTime(message1)
   const time2 = getMessageTime(message2)
 
-  return time1 - time2
+  return time1 - time2 || message1._id.localeCompare(message2._id)
 }
 
 function getMessageTime (message: ActivityMessage): number {
@@ -442,9 +442,7 @@ function mergeAttributeUpdates (
     attrKey,
     attrClass,
     prevValue,
-    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     set: prevValue ? set.filter((value) => value !== prevValue) : set,
-    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     added: prevValue ? added.filter((value) => value !== prevValue) : added,
     removed,
     isMixin
