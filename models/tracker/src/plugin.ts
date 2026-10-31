@@ -80,8 +80,6 @@ export default mergeIds(trackerId, tracker, {
   ids: {
     TrackerNotificationGroup: '' as Ref<NotificationGroup>,
     AssigneeNotification: '' as Ref<NotificationType>,
-    // Notification on Dependency-Shift.
-    DependencyShiftedNotification: '' as Ref<NotificationType>,
     BaseProjectType: '' as Ref<ProjectType>,
     GuestIssueClassPermission: '' as Ref<Doc>,
     ModulePermissionGroup: '' as Ref<Doc>,

@@ -91,7 +91,7 @@
     computePxPerDayFromRatio,
     type PinchState
   } from '@hcengineering/gantt'
-  import { sendDependencyShiftedNotifications } from './lib/dependency-shift-send'
+  import { queueDependencyShiftRequest, type DependencyShiftSendArgs } from './lib/dependency-shift-send'
   import { toggleSelection, selectRange, selectAll, clearSelection } from './lib/bulk-selection'
   import { computeBulkDeltaBounds } from './lib/bulk-boundary'
   import { computeCriticalPath } from './lib/critical-path'
@@ -2505,6 +2505,8 @@
       for (const pe of primaryEdits) {
         await ops.update(pe.issue, { startDate: pe.newStart, dueDate: pe.newDue })
       }
+      const request = dependencyShiftArgs(primaryEdits, [], cascadeToken)
+      if (request !== undefined) await queueDependencyShiftRequest(ops, request)
       const undoEntry = buildDateUndoEntry(primaryEdits, [])
       // Commit-point guard: the awaited ops.update() calls above are the
       // last suspension points before the write — a project switch while
@@ -2521,11 +2523,6 @@
         return
       }
       if (undoEntry !== null) undoManager.push(undoEntry)
-      // send dependency-shift bundle notifications. Bypass
-      // path: the user explicitly chose to ignore violations, so we still
-      // notify watchers/assignees of the primary moves but skip cascade
-      // shifts (there are none on the bypass branch).
-      void emitDependencyShiftBundles(primaryEdits, [], cascadeToken)
       // Count direct violations against full-space relations + full-space issue dates.
       let violations = 0
       const primarySet = new Set(primaryEdits.map((p) => String(p.issue._id)))
@@ -2637,6 +2634,8 @@
         for (const pe of result.primary) {
           await ops.update(pe.issue, { startDate: pe.newStart, dueDate: pe.newDue })
         }
+        const request = dependencyShiftArgs(result.primary, [], cascadeToken)
+        if (request !== undefined) await queueDependencyShiftRequest(ops, request)
         const undoEntry = buildDateUndoEntry(result.primary, [])
         // Commit-point guard after the awaited update loop.
         if (!mutationStillCurrent(space)) {
@@ -2649,9 +2648,6 @@
           addNotification(t, '', undefined as any, undefined, NotificationSeverity.Error)
         } else {
           if (undoEntry !== null) undoManager.push(undoEntry)
-          // single-issue / parent-drag with no cascade: still
-          // notify collaborators of the primary move.
-          void emitDependencyShiftBundles(result.primary, [], cascadeToken)
         }
         // No popup, no further async — release the preview now that the
         // server-state has caught up (or failed). The bar transitions from
@@ -2780,6 +2776,8 @@
     for (const sh of shifts) {
       await ops.update(sh.issue, { startDate: sh.newStart, dueDate: sh.newDue })
     }
+    const request = dependencyShiftArgs(primary, shifts, cascadeToken)
+    if (request !== undefined) await queueDependencyShiftRequest(ops, request)
     const undoEntry = buildDateUndoEntry(primary, shifts)
     // Commit-point guard (pairs with the early abort at the top of this
     // function): the update loops above are awaited — re-check right
@@ -2793,35 +2791,20 @@
       return
     }
     if (undoEntry !== null) undoManager.push(undoEntry)
-    // full cascade with shifts: emit one bundle per recipient
-    // covering both the primary moves and the cascade fanout.
-    void emitDependencyShiftBundles(primary, shifts, cascadeToken)
   }
 
   /**
-   * emit `DependencyShiftedNotification` bundles for the
-   * collaborators of every shifted issue. Fire-and-forget: notification
-   * failure must never roll back the commit (the dates are already on the
-   * server). Errors are surfaced as a non-blocking toast so a regression is
-   * visible during smoke-tests but the user can keep working.
+   * Builds the request shared by the apply-batch paths above. The server
+   * derives recipients and notification content from the committed issues.
    */
-  async function emitDependencyShiftBundles(
+  function dependencyShiftArgs(
     primary: PrimaryEdit[],
     shifts: CascadeShift[],
     cascadeToken: string
-  ): Promise<void> {
-    if (primary.length === 0 && shifts.length === 0) return
-    const client = getClient()
+  ): DependencyShiftSendArgs | undefined {
     const triggerIssue = primary[0]?.issue ?? shifts[0]?.issue
-    if (triggerIssue === undefined) return
-    const triggerUser = getCurrentAccount().uuid
-    await sendDependencyShiftedNotifications(
-      client,
-      { triggerIssue, triggerUser, primaries: primary, shifts, cascadeToken },
-      (err) => {
-        console.warn('gantt: dependency-shift notification dispatch failed', err)
-      }
-    )
+    if (triggerIssue === undefined) return undefined
+    return { triggerIssue, triggerUser: getCurrentAccount().uuid, primaries: primary, shifts, cascadeToken }
   }
 
   /**

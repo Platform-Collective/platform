@@ -5,7 +5,7 @@
 
 import type { Ref, TxOperations } from '@hcengineering/core'
 import tracker, { type Issue } from '@hcengineering/tracker'
-import { sendDependencyShiftedNotifications, type DependencyShiftSendArgs } from '../dependency-shift-send'
+import { queueDependencyShiftRequest, type DependencyShiftSendArgs } from '../dependency-shift-send'
 import type { CascadeShift, PrimaryEdit } from '../types'
 
 // NOTE: the client no longer resolves collaborators / recipient
@@ -73,17 +73,17 @@ function args(primaries: PrimaryEdit[] = [], shifts: CascadeShift[] = []): Depen
   }
 }
 
-describe('sendDependencyShiftedNotifications — client emits request doc', () => {
+describe('queueDependencyShiftRequest — client queues request doc', () => {
   it('returns 0 and creates nothing when no primaries and no shifts are supplied', async () => {
     const { client, createDoc } = makeClient()
-    const created = await sendDependencyShiftedNotifications(client, args([], []))
+    const created = await queueDependencyShiftRequest(client, args([], []))
     expect(created).toBe(0)
     expect(createDoc).not.toHaveBeenCalled()
   })
 
   it('writes one DependencyShiftRequest into the trigger-issue space and returns 1', async () => {
     const { client, createDoc } = makeClient()
-    const created = await sendDependencyShiftedNotifications(client, args([], [SHIFT]))
+    const created = await queueDependencyShiftRequest(client, args([], [SHIFT]))
     expect(created).toBe(1)
     expect(createDoc).toHaveBeenCalledTimes(1)
     const [clazz, space, payload] = (createDoc.mock.calls[0] ?? []) as [unknown, unknown, any]
@@ -97,33 +97,33 @@ describe('sendDependencyShiftedNotifications — client emits request doc', () =
   })
 })
 
-describe('sendDependencyShiftedNotifications — un-migrated workspace', () => {
+describe('queueDependencyShiftRequest — un-migrated workspace', () => {
   it('returns 0 and creates nothing when the model does not know DependencyShiftRequest', async () => {
     const { client, createDoc, hasClassMock } = makeClient(undefined, false)
-    const created = await sendDependencyShiftedNotifications(client, args([], [SHIFT]))
+    const created = await queueDependencyShiftRequest(client, args([], [SHIFT]))
     expect(created).toBe(0)
     expect(hasClassMock).toHaveBeenCalledWith(tracker.class.DependencyShiftRequest)
-    // The date shift itself already committed — the notification must degrade
-    // silently instead of throwing an error at the user.
+    // The date updates may still commit — the notification request must
+    // degrade silently instead of throwing an error at the user.
     expect(createDoc).not.toHaveBeenCalled()
   })
 
   it('does not report the missing class through onError', async () => {
     const { client } = makeClient(undefined, false)
     const errors: unknown[] = []
-    await sendDependencyShiftedNotifications(client, args([], [SHIFT]), (e) => errors.push(e))
+    await queueDependencyShiftRequest(client, args([], [SHIFT]), (e) => errors.push(e))
     expect(errors).toEqual([])
   })
 })
 
-describe('sendDependencyShiftedNotifications — error handling', () => {
+describe('queueDependencyShiftRequest — error handling', () => {
   it('returns 0 and forwards thrown createDoc errors to onError without throwing', async () => {
     const boom = new Error('db down')
     const { client } = makeClient(async () => {
       throw boom
     })
     const errors: unknown[] = []
-    const created = await sendDependencyShiftedNotifications(client, args([], [SHIFT]), (e) => errors.push(e))
+    const created = await queueDependencyShiftRequest(client, args([], [SHIFT]), (e) => errors.push(e))
     expect(created).toBe(0)
     expect(errors).toEqual([boom])
   })
@@ -132,6 +132,6 @@ describe('sendDependencyShiftedNotifications — error handling', () => {
     const { client } = makeClient(async () => {
       throw new Error('db down')
     })
-    await expect(sendDependencyShiftedNotifications(client, args([], [SHIFT]))).resolves.toBe(0)
+    await expect(queueDependencyShiftRequest(client, args([], [SHIFT]))).resolves.toBe(0)
   })
 })

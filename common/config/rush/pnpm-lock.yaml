@@ -35364,6 +35364,9 @@ importers:
       '@hcengineering/core':
         specifier: workspace:^0.7.26
         version: link:../../foundations/core/packages/core
+      '@hcengineering/gmail':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/gmail
       '@hcengineering/login':
         specifier: workspace:^0.7.0
         version: link:../../plugins/login
@@ -35401,9 +35404,18 @@ importers:
         specifier: workspace:^0.7.0
         version: link:../../plugins/workbench
     devDependencies:
+      '@hcengineering/middleware':
+        specifier: workspace:^0.7.21
+        version: link:../../foundations/server/packages/middleware
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
         version: link:../../foundations/utils/packages/platform-rig
+      '@hcengineering/server-gmail-resources':
+        specifier: workspace:^0.7.0
+        version: link:../gmail-resources
+      '@hcengineering/server-notification-resources':
+        specifier: workspace:^0.7.0
+        version: link:../notification-resources
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
