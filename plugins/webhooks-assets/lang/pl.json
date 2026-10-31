@@ -1,0 +1,7 @@
+{
+  "string": {
+    "Webhooks": "Webhooks",
+    "ConfigLabel": "Webhooks",
+    "ConfigDescription": "Outbound webhook subscriptions for Tx events"
+  }
+}
