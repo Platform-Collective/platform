@@ -93,7 +93,9 @@ const integrationClient = {
 }
 const client = {
   findAll: jest.fn().mockResolvedValue([]),
-  createDoc: jest.fn()
+  createDoc: jest.fn(),
+  update: jest.fn(),
+  remove: jest.fn()
 }
 
 beforeEach(() => {
@@ -149,6 +151,42 @@ describe('Google Calendar authorization', () => {
     })
     expect(setSyncHistory).toHaveBeenCalledTimes(1)
     expect(mockInitSync).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-enables the matching disabled integration after full consent', async () => {
+    const integration = {
+      _id: 'disabled-integration',
+      disabled: true,
+      error: calendar.string.NotAllPermissions,
+      value: 'user@example.com'
+    }
+    const otherIntegration = { _id: 'other-integration', disabled: true, value: 'other@example.com' }
+    client.findAll.mockResolvedValueOnce([otherIntegration, integration])
+
+    await expect(authorize()).resolves.toBeUndefined()
+
+    expect(client.update).toHaveBeenCalledTimes(1)
+    expect(client.update).toHaveBeenCalledWith(integration, { disabled: false, error: null })
+    expect(client.createDoc).not.toHaveBeenCalled()
+    expect(client.remove).not.toHaveBeenCalled()
+    expect(setSyncHistory).toHaveBeenCalledTimes(1)
+    expect(mockInitSync).toHaveBeenCalledTimes(1)
+  })
+
+  it('removes empty integration placeholders before creating the connected integration', async () => {
+    const placeholder = { _id: 'placeholder', disabled: true, value: '' }
+    client.findAll.mockResolvedValueOnce([placeholder])
+
+    await expect(authorize()).resolves.toBeUndefined()
+
+    expect(client.remove).toHaveBeenCalledTimes(1)
+    expect(client.remove).toHaveBeenCalledWith(placeholder)
+    expect(client.update).not.toHaveBeenCalled()
+    expect(client.createDoc).toHaveBeenCalledWith('integration', 'workspace', {
+      type: 'calendar',
+      disabled: false,
+      value: 'user@example.com'
+    })
   })
 })
 
