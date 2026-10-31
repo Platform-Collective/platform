@@ -326,8 +326,8 @@ describe('inbox removal navigation (#7335 and #7350)', () => {
     expect(navigation.items).toEqual([items[0], items[2]])
   })
 
-  test('removing consecutive legacy contexts for the same document updates the parent and clears the final entry', async () => {
-    const items = [legacy('shared', 'context-a'), legacy('shared', 'context-b')]
+  test.each([2, 3])('removing %i legacy contexts for the same document advances and clears the final entry', async (count) => {
+    const items = Array.from({ length: count }, (_, index) => legacy('shared', `context-${index}`))
     const { application, navigateToDoc, closeDoc, findOne } = mountApplication(items)
     const sync = async (item: (typeof items)[number]): Promise<void> => {
       await application.syncLocation({ path: ['', '', 'inbox', item._id], query: { context: item.context._id } })
@@ -338,17 +338,23 @@ describe('inbox removal navigation (#7335 and #7350)', () => {
       if (event.type === 'clear') application.close()
     })
 
-    await navigation.remove(items[0])
-    expect(navigateToDoc).toHaveBeenCalledWith(items[1], documentFor(items[1]), undefined)
-    await sync(items[1])
-    expect(application.doc?._id).toBe('shared')
-    expect(application.context).toEqual(items[1].context)
+    for (let index = 0; index < items.length - 1; index++) {
+      await navigation.remove(items[index])
+      expect(events[index]).toEqual({
+        type: 'select',
+        detail: { navItem: items[index + 1], doc: documentFor(items[index + 1]) }
+      })
+      expect(navigateToDoc).toHaveBeenLastCalledWith(items[index + 1], documentFor(items[index + 1]), undefined)
+      await sync(items[index + 1])
+      expect(application.doc?._id).toBe('shared')
+      expect(application.context).toEqual(items[index + 1].context)
+      navigation.setOpened(application.doc, application.context)
+    }
     expect(findOne).toHaveBeenCalledTimes(1)
 
-    navigation.setOpened(application.doc, application.context)
-    await navigation.remove(items[1])
+    await navigation.remove(items[items.length - 1])
     expect(navigation.items).toEqual([])
-    expect(events.map(({ type }) => type)).toEqual(['select', 'clear'])
+    expect(events.map(({ type }) => type)).toEqual([...items.slice(1).map(() => 'select'), 'clear'])
     expect(closeDoc).toHaveBeenCalledTimes(1)
     expect(application.doc).toBeUndefined()
     expect(application.context).toBeUndefined()
