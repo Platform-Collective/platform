@@ -49,6 +49,19 @@ describe('activity message ordering', () => {
     ])
   })
 
+  it.each([SortingOrder.Ascending, SortingOrder.Descending])(
+    'compares equal-time IDs by code unit order (direction: %s)',
+    (direction) => {
+      const ids = ['a', 'B', 'a_', 'A', 'b', 'a-']
+      const expected = ['A', 'B', 'a', 'a-', 'a_', 'b']
+      if (direction === SortingOrder.Descending) expected.reverse()
+
+      expect(sortActivityMessages(ids.map((id) => message(id, 100)), direction).map(({ _id }) => _id)).toEqual(
+        expected
+      )
+    }
+  )
+
   it('preserves the modifiedOn fallback and compares identical messages equally', () => {
     expect(activityMessagesComparator(message('a'), message('b', 100))).toBeLessThan(0)
     expect(activityMessagesComparator(message('a', 0), message('b', 1))).toBeLessThan(0)

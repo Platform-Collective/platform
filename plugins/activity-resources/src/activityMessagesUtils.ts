@@ -188,7 +188,7 @@ export function activityMessagesComparator (message1: ActivityMessage, message2:
   const time1 = getMessageTime(message1)
   const time2 = getMessageTime(message2)
 
-  return time1 - time2 || message1._id.localeCompare(message2._id)
+  return time1 - time2 || (message1._id < message2._id ? -1 : message1._id > message2._id ? 1 : 0)
 }
 
 function getMessageTime (message: ActivityMessage): number {
