@@ -26,6 +26,7 @@ import { serverTelegramId } from '@hcengineering/server-telegram'
 import { serverTimeId } from '@hcengineering/server-time'
 import { serverTrackerId } from '@hcengineering/server-tracker'
 import { serverTrainingId } from '@hcengineering/server-training'
+import { serverWorkflowRulesId } from '@hcengineering/server-workflow-rules'
 import { serverViewId } from '@hcengineering/server-view'
 import { serverAiBotId } from '@hcengineering/server-ai-bot'
 import { serverProcessId } from '@hcengineering/server-process'
@@ -43,6 +44,7 @@ export function registerServerPlugins (): void {
   addLocation(serverRecruitId, () => import('@hcengineering/server-recruit-resources'))
   addLocation(serverTaskId, () => import('@hcengineering/server-task-resources'))
   addLocation(serverTrackerId, () => import('@hcengineering/server-tracker-resources'))
+  addLocation(serverWorkflowRulesId, () => import('@hcengineering/server-workflow-rules-resources'))
   addLocation(serverTagsId, () => import('@hcengineering/server-tags-resources'))
   addLocation(serverCardId, () => import('@hcengineering/server-card-resources'))
   addLocation(serverCalendarId, () => import('@hcengineering/server-calendar-resources'))
