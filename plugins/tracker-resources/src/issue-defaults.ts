@@ -5,7 +5,10 @@ import type { DocData, Hierarchy } from '@hcengineering/core'
 import tracker from '@hcengineering/tracker'
 import type { Issue, IssueDraft } from '@hcengineering/tracker'
 
-/** Preserves custom draft values and fills missing defaults in the issue creation payload. */
+/**
+ * Preserves custom Issue-class draft values and fills missing defaults, including inherited attributes.
+ * Task-type custom fields belong to separate mixins and are outside this Issue payload helper's scope.
+ */
 export function fillIssueDefaults (hierarchy: Hierarchy, draft: IssueDraft, value: DocData<Issue>): void {
   const draftValues = draft as unknown as Record<string, unknown>
   const values = value as unknown as Record<string, unknown>

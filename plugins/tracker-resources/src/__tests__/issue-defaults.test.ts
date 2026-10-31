@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import core, { ClassifierKind, fillDefaults, Hierarchy, TxFactory } from '@hcengineering/core'
-import type { AnyAttribute, Doc, DocData, Ref } from '@hcengineering/core'
+import type { AnyAttribute, Doc, DocData, Mixin, Ref } from '@hcengineering/core'
 import type { IntlString } from '@hcengineering/platform'
 import task from '@hcengineering/task'
 import type { TaskType } from '@hcengineering/task'
@@ -264,6 +264,33 @@ describe('issue creation defaults', () => {
       customEnum: 'Closed',
       customInherited: 'Inherited value'
     })
+  })
+
+  it('keeps task-type mixin fields outside the Issue-class payload', () => {
+    const hierarchy = createHierarchy()
+    const targetClass = 'test:mixin:TaskType' as Ref<Mixin<Issue>>
+    const factory = new TxFactory(core.account.System)
+    hierarchy.tx(
+      factory.createTxCreateDoc(
+        core.class.Mixin,
+        core.space.Model,
+        { label: 'Task type' as IntlString, kind: ClassifierKind.MIXIN, extends: tracker.class.Issue },
+        targetClass
+      )
+    )
+    addAttribute(hierarchy, 'customEnum')
+    addAttribute(hierarchy, 'taskTypeEnum', { attributeOf: targetClass })
+    addAttribute(hierarchy, 'taskTypeDefault', { attributeOf: targetClass })
+    const draft = {
+      ...createDraft(),
+      [targetClass]: { taskTypeEnum: 'Closed' },
+      taskTypeEnum: 'Closed'
+    }
+    const value = {} as unknown as DocData<Issue>
+
+    fillIssueDefaults(hierarchy, draft, value)
+
+    expect(value).toEqual({ customEnum: 'Open' })
   })
 
   it('keeps values already set on the persistence payload', () => {
