@@ -157,10 +157,7 @@ describe('issue creation defaults', () => {
       _id: 'child-explicit' as Ref<Issue>,
       customEnum: 'Closed'
     }
-    const subIssues: IssueDraft[] = [
-      { ...createDraft(), _id: 'child-default' as Ref<Issue> },
-      explicitChild
-    ]
+    const subIssues: IssueDraft[] = [{ ...createDraft(), _id: 'child-default' as Ref<Issue> }, explicitChild]
     const parent = { ...createDraft(), subIssues }
     const reloadedParent: IssueDraft = JSON.parse(JSON.stringify(parent))
     const client = {
