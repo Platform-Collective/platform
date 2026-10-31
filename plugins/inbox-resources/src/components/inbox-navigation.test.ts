@@ -326,39 +326,42 @@ describe('inbox removal navigation (#7335 and #7350)', () => {
     expect(navigation.items).toEqual([items[0], items[2]])
   })
 
-  test.each([2, 3])('removing %i legacy contexts for the same document advances and clears the final entry', async (count) => {
-    const items = Array.from({ length: count }, (_, index) => legacy('shared', `context-${index}`))
-    const { application, navigateToDoc, closeDoc, findOne } = mountApplication(items)
-    const sync = async (item: (typeof items)[number]): Promise<void> => {
-      await application.syncLocation({ path: ['', '', 'inbox', item._id], query: { context: item.context._id } })
-    }
-    await sync(items[0])
-    const { navigation, events } = mountNavigation(items, 0, items[0], (event) => {
-      if (event.type === 'select' && event.detail != null) application.select({ detail: event.detail })
-      if (event.type === 'clear') application.close()
-    })
-
-    for (let index = 0; index < items.length - 1; index++) {
-      await navigation.remove(items[index])
-      expect(events[index]).toEqual({
-        type: 'select',
-        detail: { navItem: items[index + 1], doc: documentFor(items[index + 1]) }
+  test.each([2, 3])(
+    'removing %i legacy contexts for the same document advances and clears the final entry',
+    async (count) => {
+      const items = Array.from({ length: count }, (_, index) => legacy('shared', `context-${index}`))
+      const { application, navigateToDoc, closeDoc, findOne } = mountApplication(items)
+      const sync = async (item: (typeof items)[number]): Promise<void> => {
+        await application.syncLocation({ path: ['', '', 'inbox', item._id], query: { context: item.context._id } })
+      }
+      await sync(items[0])
+      const { navigation, events } = mountNavigation(items, 0, items[0], (event) => {
+        if (event.type === 'select' && event.detail != null) application.select({ detail: event.detail })
+        if (event.type === 'clear') application.close()
       })
-      expect(navigateToDoc).toHaveBeenLastCalledWith(items[index + 1], documentFor(items[index + 1]), undefined)
-      await sync(items[index + 1])
-      expect(application.doc?._id).toBe('shared')
-      expect(application.context).toEqual(items[index + 1].context)
-      navigation.setOpened(application.doc, application.context)
-    }
-    expect(findOne).toHaveBeenCalledTimes(1)
 
-    await navigation.remove(items[items.length - 1])
-    expect(navigation.items).toEqual([])
-    expect(events.map(({ type }) => type)).toEqual([...items.slice(1).map(() => 'select'), 'clear'])
-    expect(closeDoc).toHaveBeenCalledTimes(1)
-    expect(application.doc).toBeUndefined()
-    expect(application.context).toBeUndefined()
-  })
+      for (let index = 0; index < items.length - 1; index++) {
+        await navigation.remove(items[index])
+        expect(events[index]).toEqual({
+          type: 'select',
+          detail: { navItem: items[index + 1], doc: documentFor(items[index + 1]) }
+        })
+        expect(navigateToDoc).toHaveBeenLastCalledWith(items[index + 1], documentFor(items[index + 1]), undefined)
+        await sync(items[index + 1])
+        expect(application.doc?._id).toBe('shared')
+        expect(application.context).toEqual(items[index + 1].context)
+        navigation.setOpened(application.doc, application.context)
+      }
+      expect(findOne).toHaveBeenCalledTimes(1)
+
+      await navigation.remove(items[items.length - 1])
+      expect(navigation.items).toEqual([])
+      expect(events.map(({ type }) => type)).toEqual([...items.slice(1).map(() => 'select'), 'clear'])
+      expect(closeDoc).toHaveBeenCalledTimes(1)
+      expect(application.doc).toBeUndefined()
+      expect(application.context).toBeUndefined()
+    }
+  )
 
   test('a legacy context matches independently of the opened document ID', async () => {
     const items = [legacy('message'), modern('card')]
@@ -402,13 +405,14 @@ describe('inbox removal navigation (#7335 and #7350)', () => {
     const nextDoc = documentFor(items[1])
     let resolveDocument: (doc: Doc) => void = () => {}
     if (cached) navigation.cache(nextDoc)
-    else
-      {findOne.mockImplementation(
+    else {
+      findOne.mockImplementation(
         async () =>
           await new Promise((resolve) => {
             resolveDocument = resolve
           })
-      )}
+      )
+    }
     const pending = navigation.remove(items[0])
     await new Promise((resolve) =>
       setTimeout(() => {
@@ -428,10 +432,11 @@ describe('inbox removal navigation (#7335 and #7350)', () => {
   test.each([false, true])('selects once when live queries update before/after removal (early: %s)', async (early) => {
     const items = [modern('a'), legacy('b'), modern('c')]
     const { navigation, events, remove } = mountNavigation(items, 1, items[1])
-    if (early)
-      {remove.mockImplementation(async () => {
+    if (early) {
+      remove.mockImplementation(async () => {
         navigation.setItems([{ ...items[0] }, { ...items[2] }])
-      })}
+      })
+    }
     await navigation.remove(items[1])
     if (!early) navigation.setItems([items[0], items[2]])
     expect(events).toEqual([{ type: 'select', detail: { navItem: items[2], doc: documentFor(items[2]) } }])
