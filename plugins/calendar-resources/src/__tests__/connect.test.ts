@@ -31,30 +31,33 @@ describe('connectCalendar', () => {
     }
   })
 
-  it.each([null, { closed: false }])('opens the authentication URL and returns the popup reference (%p)', async (popup) => {
-    openMock.mockReturnValue(popup)
-    fetchMock.mockResolvedValue({
-      ok: true,
-      status: 200,
-      text: async () => 'https://accounts.google.com/oauth'
-    } as unknown as Response)
+  it.each([null, { closed: false }])(
+    'opens the authentication URL and returns the popup reference (%p)',
+    async (popup) => {
+      openMock.mockReturnValue(popup)
+      fetchMock.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => 'https://accounts.google.com/oauth'
+      } as unknown as Response)
 
-    const result = await connectCalendar(url, 'token')
+      const result = await connectCalendar(url, 'token')
 
-    expect(result).toBe(popup)
+      expect(result).toBe(popup)
 
-    expect(fetchMock).toHaveBeenCalledWith(url.toString(), {
-      method: 'GET',
-      headers: { Authorization: 'Bearer token', 'Content-Type': 'application/json' },
-      signal: expect.any(AbortSignal)
-    })
-    expect(openMock).toHaveBeenCalledWith(
-      'https://accounts.google.com/oauth',
-      '_blank',
-      'location=yes,height=870,width=720,scrollbars=yes,status=yes'
-    )
-    expect(jest.getTimerCount()).toBe(0)
-  })
+      expect(fetchMock).toHaveBeenCalledWith(url.toString(), {
+        method: 'GET',
+        headers: { Authorization: 'Bearer token', 'Content-Type': 'application/json' },
+        signal: expect.any(AbortSignal)
+      })
+      expect(openMock).toHaveBeenCalledWith(
+        'https://accounts.google.com/oauth',
+        '_blank',
+        'location=yes,height=870,width=720,scrollbars=yes,status=yes'
+      )
+      expect(jest.getTimerCount()).toBe(0)
+    }
+  )
 
   it('rejects when the calendar service is unreachable', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))

@@ -9,11 +9,12 @@
   import calendar from '../plugin'
 
   const integrationError = new URLSearchParams(window.location.search).get('integrationError')
-  const error = integrationError === null
-    ? null
-    : integrationError === calendar.string.NotAllPermissions
-      ? calendar.string.NotAllPermissions
-      : calendar.string.IntegrationFailed
+  const error =
+    integrationError === null
+      ? null
+      : integrationError === calendar.string.NotAllPermissions
+        ? calendar.string.NotAllPermissions
+        : calendar.string.IntegrationFailed
 
   onMount(() => {
     if (window.opener !== null && !window.opener.closed) {
