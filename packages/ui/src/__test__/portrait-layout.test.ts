@@ -15,7 +15,7 @@ describe.each([
 
   beforeAll(() => {
     jest.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
-    Object.defineProperty(window, 'TextTrack', { configurable: true, value: class {} })
+    Object.defineProperty(window, 'TextTrack', { configurable: true, value: jest.fn() })
   })
 
   afterEach(() => {
