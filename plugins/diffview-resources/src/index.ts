@@ -19,6 +19,8 @@ import DiffView from './components/DiffView.svelte'
 import Highlight from './components/Highlight.svelte'
 import InlineDiffView from './components/InlineDiffView.svelte'
 
+export { parseDiff, type ParseDiffOptions } from './parser'
+
 export default async (): Promise<Resources> => ({
   component: {
     DiffView,

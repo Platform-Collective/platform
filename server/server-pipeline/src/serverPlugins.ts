@@ -10,6 +10,7 @@ import { serverDocumentsId } from '@hcengineering/server-controlled-documents'
 import { serverDocumentId } from '@hcengineering/server-document'
 import { serverDriveId } from '@hcengineering/server-drive'
 import { serverGithubId } from '@hcengineering/server-github'
+import { serverGitlabId } from '@hcengineering/server-gitlab'
 import { serverGmailId } from '@hcengineering/server-gmail'
 import { serverGuestId } from '@hcengineering/server-guest'
 import { serverHrId } from '@hcengineering/server-hr'
@@ -59,6 +60,7 @@ export function registerServerPlugins (): void {
   addLocation(serverDocumentsId, () => import('@hcengineering/server-controlled-documents-resources'))
   addLocation(serverTrainingId, () => import('@hcengineering/server-training-resources'))
   addLocation(serverGithubId, () => import('@hcengineering/server-github-resources'))
+  addLocation(serverGitlabId, () => import('@hcengineering/server-gitlab-resources'))
   addLocation(serverAiBotId, () => import('@hcengineering/server-ai-bot-resources'))
   addLocation(serverProcessId, () => import('@hcengineering/server-process-resources'))
 }

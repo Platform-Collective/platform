@@ -40,6 +40,7 @@ export interface Config {
   GITHUB_APP: string
   GITHUB_CLIENTID: string
   GITHUB_URL: string
+  GITLAB_URL?: string
   GMAIL_URL: string
   INITIAL_URL: string
   LINK_PREVIEW_URL?: string

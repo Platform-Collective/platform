@@ -30,6 +30,7 @@ export const BLOCKED_IPV6_RANGES: readonly string[] = [
   '::1/128', // loopback
   '64:ff9b::/96', // NAT64 well-known prefix, blocked as a whole
   '64:ff9b:1::/48', // NAT64 local-use prefix (RFC 8215), blocked as a whole
+  '100::/64', // discard-only (RFC 6666)
   '2001::/32', // Teredo, blocked as a whole
   '2002::/16', // 6to4, blocked as a whole
   'fc00::/7', // unique local
