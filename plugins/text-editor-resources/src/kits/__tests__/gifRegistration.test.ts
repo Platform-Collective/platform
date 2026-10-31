@@ -83,8 +83,9 @@ describe('package registration', () => {
     }
   })
 
-  // T-48: this half of the feature talks to nothing outside the workspace, which is what
-  // makes it safe to contribute and what keeps it working on a LAN with no egress.
+  // T-48: the workspace library talks to nothing outside the workspace, which keeps it working on
+  // a LAN with no egress. The optional GIPHY tab is the exception: it calls GIPHY from the
+  // browser and its GIFs are hot-linked, so only deployments that set GIPHY_API_KEY reach GIPHY.
   it('depends on no third-party network library', () => {
     for (const p of ['plugins/gif/package.json', 'plugins/gif-resources/package.json']) {
       const deps = Object.keys(JSON.parse(read(p)).dependencies ?? {})

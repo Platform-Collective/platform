@@ -2757,6 +2757,11 @@
       "shouldPublish": false
     },
     {
+      "packageName": "@hcengineering/server-gif",
+      "projectFolder": "server-plugins/gif",
+      "shouldPublish": false
+    },
+    {
       "packageName": "@hcengineering/server-rating",
       "projectFolder": "server-plugins/rating",
       "shouldPublish": false

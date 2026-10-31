@@ -172,9 +172,10 @@ export function libraryPage (items: WorkspaceGif[], total: number): GifGridPage 
  * Removing a library entry takes the gif out of every member's picker, so it is limited to the
  * member who uploaded it and workspace admins. Same rule chat applies to messages.
  *
- * This is a UI rule only. Nothing on the server checks it, so a member who calls removeDoc on a
- * WorkspaceGif directly can still remove an entry. Removal only drops the catalog row and keeps
- * the blob, which bounds the damage to the picker listing.
+ * The server enforces the same rule (GifMiddleware in @hcengineering/server-gif calls this
+ * function) for removals, updates and mixins, so a direct removeDoc or updateDoc on someone
+ * else's WorkspaceGif is rejected as Forbidden. The settings table uses it only to disable the
+ * button. Removal drops the catalog row and keeps the blob.
  * @public
  */
 export function canRemoveGif (

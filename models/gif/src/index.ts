@@ -31,9 +31,10 @@ export function createModel (builder: Builder): void {
   builder.createModel(TWorkspaceGif)
 
   // A library holds tens of rows, not millions. Without this it inherits full indexing.
+  // modifiedOn stays indexed because the picker's library query sorts by it.
   builder.createDoc(core.class.DomainIndexConfiguration, core.space.Model, {
     domain: DOMAIN_GIF,
-    disabled: [{ space: 1 }, { modifiedOn: 1 }, { modifiedBy: 1 }, { createdBy: 1 }, { createdOn: -1 }]
+    disabled: [{ space: 1 }, { modifiedBy: 1 }, { createdBy: 1 }, { createdOn: -1 }]
   })
 
   builder.createDoc(setting.class.WorkspaceSettingCategory, core.space.Model, {

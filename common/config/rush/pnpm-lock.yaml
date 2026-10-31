@@ -33442,6 +33442,64 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  ../../server-plugins/gif:
+    dependencies:
+      '@hcengineering/core':
+        specifier: workspace:^0.7.26
+        version: link:../../foundations/core/packages/core
+      '@hcengineering/gif':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/gif
+      '@hcengineering/platform':
+        specifier: workspace:^0.7.20
+        version: link:../../foundations/core/packages/platform
+      '@hcengineering/server-core':
+        specifier: workspace:^0.7.19
+        version: link:../../foundations/server/packages/core
+    devDependencies:
+      '@hcengineering/platform-rig':
+        specifier: workspace:^0.7.21
+        version: link:../../foundations/utils/packages/platform-rig
+      '@types/jest':
+        specifier: ^30.0.0
+        version: 30.0.0
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.6
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.67.0
+        version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.67.0
+        version: 8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint:
+        specifier: ^9.39.5
+        version: 9.39.5(jiti@2.7.0)
+      eslint-config-love:
+        specifier: ^157.0.0
+        version: 157.0.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-n:
+        specifier: ^18.3.0
+        version: 18.4.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+      eslint-plugin-promise:
+        specifier: ^7.3.0
+        version: 7.3.0(eslint@9.39.5(jiti@2.7.0))
+      eslint-plugin-svelte:
+        specifier: ^3.23.0
+        version: 3.23.0(eslint@9.39.5(jiti@2.7.0))(svelte@4.2.20)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest:
+        specifier: ^30.4.2
+        version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
+      ts-jest:
+        specifier: ^29.4.12
+        version: 29.4.14(@babel/core@7.28.5)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.28.5))(esbuild@0.25.12)(jest-util@30.5.1)(jest@30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3)))(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   ../../server-plugins/gmail:
     dependencies:
       '@hcengineering/core':
@@ -37030,6 +37088,9 @@ importers:
       '@hcengineering/server-drive-resources':
         specifier: workspace:^0.7.0
         version: link:../../server-plugins/drive-resources
+      '@hcengineering/server-gif':
+        specifier: workspace:^0.7.0
+        version: link:../../server-plugins/gif
       '@hcengineering/server-github':
         specifier: workspace:^0.7.0
         version: link:../../services/github/server-github

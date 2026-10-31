@@ -69,6 +69,7 @@ export function startFront (ctx: MeasureContext, extraConfig?: Record<string, st
   }
 
   // No exit on absence, unlike the urls above: a missing key just means no Giphy tab.
+  // Setting it makes members' browsers contact GIPHY directly, since GIPHY GIFs are hot-linked.
   const giphyApiKey = process.env.GIPHY_API_KEY
 
   const collaborator = process.env.COLLABORATOR

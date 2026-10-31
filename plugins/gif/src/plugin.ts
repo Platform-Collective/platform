@@ -81,6 +81,10 @@ export const gifPlugin = plugin(gifId, {
     // be made directly from the client side" and "Do not proxy requests to GIPHY, either API
     // calls or media URL loads". A beta key is rate limited rather than billed, so exposure
     // costs throughput, not money.
+    //
+    // Privacy, for operators: GIPHY GIFs are hot-linked, also by GIPHY's terms, so every member who
+    // searches GIPHY or reads a message containing a GIPHY GIF contacts GIPHY from their browser.
+    // Leave GIPHY_API_KEY unset to keep the picker inside the workspace.
     GiphyApiKey: '' as Metadata<string>
   }
 })

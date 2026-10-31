@@ -33,7 +33,7 @@
     "SearchGiphy": "Search GIPHY",
     "PoweredByGiphy": "Powered By GIPHY",
     "GiphyRateLimited": "GIPHY search paused",
-    "GiphyRateLimitedHint": "The hourly search limit was reached. Try again shortly, or pick from your workspace library.",
+    "GiphyRateLimitedHint": "The hourly search limit was reached. Close and reopen the picker to search again later, or pick from your workspace library.",
     "GiphyUnavailable": "GIPHY is unreachable",
     "GiphyUnavailableHint": "Check your connection, or pick from your workspace library."
   }
