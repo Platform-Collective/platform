@@ -21,7 +21,10 @@ import { getGoogleClient } from '../utils'
 jest.mock('@hcengineering/calendar', () => ({
   __esModule: true,
   default: {
-    string: { NotAllPermissions: 'calendar:string:NotAllPermissions' },
+    string: {
+      NotAllPermissions: 'calendar:string:NotAllPermissions',
+      IntegrationFailed: 'calendar:string:IntegrationFailed'
+    },
     integrationType: { Calendar: 'calendar' }
   },
   calendarIntegrationKind: 'calendar'
@@ -183,7 +186,28 @@ describe('Google Calendar callback', () => {
     auth.getToken.mockRejectedValueOnce(new Error('Authorization failed: invalid code'))
     const res = await callCallback({ code: 'invalid', state: encode64(JSON.stringify(state)) })
     const redirect = new URL(res.redirect.mock.calls[0][0])
-    expect(redirect.searchParams.get('integrationError')).toBe('Authorization failed: invalid code')
+    expect(redirect.searchParams.get('integrationError')).toBe(calendar.string.IntegrationFailed)
+    expect(redirect.toString()).not.toContain('invalid')
+    expect(mockContext.error).toHaveBeenCalledWith('signin code error', {
+      message: 'Authorization failed: invalid code'
+    })
+  })
+
+  it('does not expose unknown API error codes or messages', async () => {
+    auth.getToken.mockRejectedValueOnce(new ApiError('private-error-code', 'Private service details'))
+    const res = await callCallback({ code: 'code', state: encode64(JSON.stringify(state)) })
+    const redirect = new URL(res.redirect.mock.calls[0][0])
+    expect(redirect.searchParams.get('integrationError')).toBe(calendar.string.IntegrationFailed)
+    expect(redirect.toString()).not.toContain('private')
+    expect(mockContext.error).toHaveBeenCalledWith('signin code error', { message: 'Private service details' })
+  })
+
+  it.each([null, 'Private service details'])('handles non-Error rejections (%s)', async (error) => {
+    auth.getToken.mockRejectedValueOnce(error)
+    const res = await callCallback({ code: 'code', state: encode64(JSON.stringify(state)) })
+    const redirect = new URL(res.redirect.mock.calls[0][0])
+    expect(redirect.searchParams.get('integrationError')).toBe(calendar.string.IntegrationFailed)
+    expect(mockContext.error).toHaveBeenCalledWith('signin code error', { message: String(error) })
   })
 
   it('keeps the successful return URL unchanged', async () => {

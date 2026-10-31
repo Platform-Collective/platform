@@ -86,6 +86,7 @@
     "FreeBusy": "予定の有無のみ",
     "DefaultVisibility": "デフォルトの公開範囲",
     "NotAllPermissions": "一部の権限が許可されていません",
+    "IntegrationFailed": "Google カレンダーに接続できませんでした。もう一度お試しください。",
     "GooglePrivacy": "Huly が Google API から受信した情報の使用および転送は、<a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">Google API サービス ユーザーデータポリシー</a>に準拠して行われます（限定的な使用要件を含む）。",
     "Value": "{value}",
     "Schedule": "公開スケジュール",

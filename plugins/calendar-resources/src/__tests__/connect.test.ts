@@ -31,14 +31,17 @@ describe('connectCalendar', () => {
     }
   })
 
-  it('opens the authentication URL returned by the calendar service', async () => {
+  it.each([null, { closed: false }])('opens the authentication URL and returns the popup reference (%p)', async (popup) => {
+    openMock.mockReturnValue(popup)
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
       text: async () => 'https://accounts.google.com/oauth'
     } as unknown as Response)
 
-    await connectCalendar(url, 'token')
+    const result = await connectCalendar(url, 'token')
+
+    expect(result).toBe(popup)
 
     expect(fetchMock).toHaveBeenCalledWith(url.toString(), {
       method: 'GET',
