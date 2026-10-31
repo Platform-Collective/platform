@@ -16,6 +16,7 @@
 import { type DocUpdateMessageViewlet } from '@hcengineering/activity'
 import { type ChatMessageViewlet } from '@hcengineering/chunter'
 import type { Client, Doc, Ref, Status } from '@hcengineering/core'
+import { type TagCategory } from '@hcengineering/model-tags'
 import { type NotificationGroup, type NotificationType } from '@hcengineering/notification'
 import type { IntlString, Status as OperationStatus, Resource } from '@hcengineering/platform'
 import { mergeIds } from '@hcengineering/platform'
@@ -50,7 +51,8 @@ export default mergeIds(recruitId, recruit, {
     MoveApplicant: '' as ViewAction
   },
   category: {
-    Recruit: '' as Ref<ActionCategory>
+    Recruit: '' as Ref<ActionCategory>,
+    ApplicantLabels: '' as Ref<TagCategory>
   },
   function: {
     GetObjectLinkFragment: '' as Resource<(doc: Doc, props: Record<string, any>) => Promise<Location>>,
