@@ -79,12 +79,45 @@ function toGif (item: GiphyItem): GiphyGif | undefined {
   }
 }
 
+/**
+ * One page as GIPHY returned it. count is the raw item count, which can exceed gifs.length when
+ * an item lacks a usable rendition. Paging has to follow count, or the offset drifts and a short
+ * page reads as the last one.
+ * @public
+ */
+export interface GiphyPage {
+  gifs: GiphyGif[]
+  count: number
+}
+
+/** @public */
+export function parsePage (body: any): GiphyPage {
+  const data: GiphyItem[] = Array.isArray(body?.data) ? body.data : []
+  return { gifs: data.map(toGif).filter((g): g is GiphyGif => g !== undefined), count: data.length }
+}
+
+/**
+ * Appends a page without repeating an id. Trending shifts between calls, so page 2 can repeat
+ * page 1, and a keyed each block with duplicate keys renders wrongly in a production build.
+ * @public
+ */
+export function mergeGifs (existing: GiphyGif[], incoming: GiphyGif[]): GiphyGif[] {
+  const seen = new Set(existing.map((g) => g.id))
+  const merged = [...existing]
+  for (const g of incoming) {
+    if (seen.has(g.id)) continue
+    seen.add(g.id)
+    merged.push(g)
+  }
+  return merged
+}
+
 /** @public */
 export class GiphyRateLimited extends Error {}
 
-async function call (path: string, params: Record<string, string>, signal?: AbortSignal): Promise<GiphyGif[]> {
+async function call (path: string, params: Record<string, string>, signal?: AbortSignal): Promise<GiphyPage> {
   const key = getMetadata(gifPlugin.metadata.GiphyApiKey)
-  if (key === undefined || key === '') return []
+  if (key === undefined || key === '') return { gifs: [], count: 0 }
   const qs = new URLSearchParams({
     api_key: key,
     // 'g' keeps the workplace safe for work. Raising this is a policy decision, not a tuning knob.
@@ -97,13 +130,11 @@ async function call (path: string, params: Record<string, string>, signal?: Abor
   const res = await fetch(`${GIPHY_API}/${path}?${qs.toString()}`, { signal })
   if (res.status === 429) throw new GiphyRateLimited('giphy rate limit reached')
   if (!res.ok) throw new Error(`giphy ${path} failed: ${res.status}`)
-  const body = await res.json()
-  const data: GiphyItem[] = Array.isArray(body?.data) ? body.data : []
-  return data.map(toGif).filter((g): g is GiphyGif => g !== undefined)
+  return parsePage(await res.json())
 }
 
 /** @public */
-export async function giphyTrending (limit: number, offset: number, signal?: AbortSignal): Promise<GiphyGif[]> {
+export async function giphyTrending (limit: number, offset: number, signal?: AbortSignal): Promise<GiphyPage> {
   return await call('trending', { limit: String(limit), offset: String(offset) }, signal)
 }
 
@@ -113,10 +144,10 @@ export async function giphySearch (
   limit: number,
   offset: number,
   signal?: AbortSignal
-): Promise<GiphyGif[]> {
+): Promise<GiphyPage> {
   const q = query.trim()
   // An empty search burns a call and returns GIPHY's own idea of nothing. Callers show
   // trending instead.
-  if (q === '') return []
+  if (q === '') return { gifs: [], count: 0 }
   return await call('search', { q, limit: String(limit), offset: String(offset) }, signal)
 }

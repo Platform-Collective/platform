@@ -104,6 +104,15 @@ export function selectFirst (items: WorkspaceGif[]): WorkspaceGif | undefined {
   return items.length > 0 ? items[0] : undefined
 }
 
+/**
+ * Enter picks the first result only when it is typed in the search box. The grid cells and the
+ * Upload button are buttons, and Enter on one of those has to keep activating that button.
+ * @public
+ */
+export function isSearchEnter (e: { key: string, target: object | null }): boolean {
+  return e.key === 'Enter' && (e.target as { tagName?: string } | null)?.tagName === 'INPUT'
+}
+
 /** @public */
 export type LibraryViewState = 'loading' | 'empty' | 'no-results' | 'populated'
 
@@ -162,6 +171,10 @@ export function libraryPage (items: WorkspaceGif[], total: number): GifGridPage 
 /**
  * Removing a library entry takes the gif out of every member's picker, so it is limited to the
  * member who uploaded it and workspace admins. Same rule chat applies to messages.
+ *
+ * This is a UI rule only. Nothing on the server checks it, so a member who calls removeDoc on a
+ * WorkspaceGif directly can still remove an entry. Removal only drops the catalog row and keeps
+ * the blob, which bounds the damage to the picker listing.
  * @public
  */
 export function canRemoveGif (

@@ -26,6 +26,7 @@ import {
   gridPage,
   isEmojiResult,
   isGifResult,
+  isSearchEnter,
   libraryViewState,
   matchesQuery,
   selectFirst,
@@ -261,5 +262,25 @@ describe('canRemoveGif', () => {
 
   it('refuses when the author is unknown and the caller is not an admin', () => {
     expect(canRemoveGif(author(undefined), ['me-1'], false)).toBe(false)
+  })
+})
+
+describe('isSearchEnter', () => {
+  // The library tab's Enter-to-pick must fire only from the search box. A focused grid cell or
+  // the Upload button also sits under the same container, and Enter there means "activate me".
+  it('accepts Enter typed in a text input', () => {
+    expect(isSearchEnter({ key: 'Enter', target: { tagName: 'INPUT' } })).toBe(true)
+  })
+
+  it('refuses Enter on a button, so a focused cell keeps its own click', () => {
+    expect(isSearchEnter({ key: 'Enter', target: { tagName: 'BUTTON' } })).toBe(false)
+  })
+
+  it('refuses other keys in the input', () => {
+    expect(isSearchEnter({ key: 'a', target: { tagName: 'INPUT' } })).toBe(false)
+  })
+
+  it('refuses an event with no target', () => {
+    expect(isSearchEnter({ key: 'Enter', target: null })).toBe(false)
   })
 })

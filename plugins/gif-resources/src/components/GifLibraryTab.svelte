@@ -23,6 +23,7 @@
     libraryPage,
     libraryViewState,
     likeContains,
+    isSearchEnter,
     selectFirst
   } from '@hcengineering/gif'
   import { orderByRecents, parseRecents, pushRecent } from './GifGrid.svelte.helpers'
@@ -107,8 +108,9 @@
   }
 
   function onSearchKeydown(e: KeyboardEvent): void {
-    // Enter picks the first result of what is on screen. Type, Enter, sent.
-    if (e.key !== 'Enter') return
+    // Enter picks the first result of what is on screen. Type, Enter, sent. Only from the
+    // search box: Enter on a grid cell or the Upload button has to keep activating that button.
+    if (!isSearchEnter(e)) return
     const first = selectFirst(pageResult.items)
     if (first !== undefined) {
       pick(first)
@@ -122,7 +124,8 @@
 </script>
 
 <div class="gifLibrary">
-  <div class="gifLibrary-tools">
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div class="gifLibrary-tools" on:keydown={onSearchKeydown}>
     <SearchInput
       value={query}
       placeholder={gifPlugin.string.SearchGifs}
@@ -143,8 +146,7 @@
     />
   </div>
 
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="gifLibrary-body" on:keydown={onSearchKeydown}>
+  <div class="gifLibrary-body">
     {#if state === 'loading'}
       <div class="gifLibrary-placeholder"><Spinner size={'small'} /></div>
     {:else if state === 'empty'}

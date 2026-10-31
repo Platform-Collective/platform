@@ -37,7 +37,8 @@
   // housekeeping problem, a broken message history is not recoverable. A sweep that deletes blobs
   // no live message references is the correct fix and belongs server-side, not behind this button.
   // Who may remove: the member who uploaded the entry, or a workspace admin (owner or
-  // maintainer). Removal takes the gif out of every member's picker, so it asks first.
+  // maintainer). Removal takes the gif out of every member's picker, so it asks first. This is a
+  // UI rule only: the server does not check it (see canRemoveGif).
   const me = getCurrentAccount()
   const isAdmin = isOwnerOrMaintainer()
 

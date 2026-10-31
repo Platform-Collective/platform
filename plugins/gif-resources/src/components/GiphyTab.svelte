@@ -16,7 +16,7 @@
   import { createEventDispatcher, onDestroy } from 'svelte'
   import { Label, Spinner, EditBox, IconSearch } from '@hcengineering/ui'
   import gifPlugin from '@hcengineering/gif'
-  import { giphySearch, giphyTrending, GiphyRateLimited, type GiphyGif } from '../giphy'
+  import { giphySearch, giphyTrending, GiphyRateLimited, mergeGifs, type GiphyGif } from '../giphy'
 
   export let active: boolean = false
 
@@ -61,7 +61,7 @@
     // NOT cleared here. Clearing on every attempt meant a 429 lasted exactly until the next
     // keystroke, and then every retry spent another call while the workspace was already dry.
     try {
-      const batch =
+      const page =
         q.trim() === ''
           ? await giphyTrending(PAGE, nextOffset, controller.signal)
           : await giphySearch(q, PAGE, nextOffset, controller.signal)
@@ -69,10 +69,12 @@
       // rather than appending page 2 of an old query onto a new result set.
       if (mine !== generation) return
       rateLimited = false
-      gifs = append ? [...gifs, ...batch] : batch
-      offset = nextOffset + batch.length
+      gifs = append ? mergeGifs(gifs, page.gifs) : mergeGifs([], page.gifs)
+      // Paging follows what GIPHY returned, not what survived filtering out items without a
+      // usable rendition, or the offset drifts and the next page overlaps.
+      offset = nextOffset + page.count
       // GIPHY returns a short page at the end of a result set, so a full page implies more.
-      more = batch.length === PAGE
+      more = page.count === PAGE
     } catch (err: any) {
       if (err?.name === 'AbortError') return
       if (mine !== generation) return
