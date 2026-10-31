@@ -142,7 +142,7 @@ export class AuthController {
     if (!authRes.success) {
       throw new ApiError(calendar.string.NotAllPermissions, 'Not all permissions were granted')
     }
-    if (authRes.success && authRes.personId !== undefined) {
+    if (authRes.personId !== undefined) {
       const client = await getClient(this.user.workspace)
       const txOp = new TxOperations(client, authRes.personId)
       await this.setWorkspaceIntegration(authRes, authRes.personId, txOp)
@@ -204,34 +204,17 @@ export class AuthController {
         for (const integration of integrations.filter((p) => p.value === '')) {
           await client.remove(integration)
         }
-        if (!res.success) {
-          if (updated !== undefined) {
-            await client.update(updated, {
-              disabled: true,
-              error: calendar.string.NotAllPermissions
-            })
-          } else {
-            await client.createDoc(setting.class.Integration, core.space.Workspace, {
-              type: calendar.integrationType.Calendar,
-              disabled: true,
-              error: calendar.string.NotAllPermissions,
-              value: res.email
-            })
-          }
-          throw new Error('Not all scopes provided')
+        if (updated !== undefined) {
+          await client.update(updated, {
+            disabled: false,
+            error: null
+          })
         } else {
-          if (updated !== undefined) {
-            await client.update(updated, {
-              disabled: false,
-              error: null
-            })
-          } else {
-            await client.createDoc(setting.class.Integration, core.space.Workspace, {
-              type: calendar.integrationType.Calendar,
-              disabled: false,
-              value: res.email
-            })
-          }
+          await client.createDoc(setting.class.Integration, core.space.Workspace, {
+            type: calendar.integrationType.Calendar,
+            disabled: false,
+            value: res.email
+          })
         }
       },
       {
