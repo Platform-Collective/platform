@@ -6,6 +6,8 @@ import { type Page, type Viewport } from 'puppeteer'
 
 import { type PrintBrowserManager, type PrintBrowserPage, withTimeout } from './browser'
 import config from './config'
+import { ApiError } from './error'
+import { isAllowedPrintUrl } from './print-url'
 import { Semaphore } from './semaphore'
 
 export interface PrintOptions {
@@ -33,8 +35,13 @@ export async function print (
   ctx: MeasureContext,
   url: string,
   options: PrintOptions | undefined,
-  browserManager: PrintBrowserManager
+  browserManager: PrintBrowserManager,
+  allowedHostnames: readonly string[]
 ): Promise<Buffer | undefined> {
+  if (!isAllowedPrintUrl(url, allowedHostnames)) {
+    throw new ApiError(403, 'Cannot process provided link')
+  }
+
   const kind = options?.kind ?? 'pdf'
   const orientation = options?.orientation ?? 'portrait'
   const viewport = options?.viewport ?? { width: 1440, height: 900 }
@@ -45,7 +52,7 @@ export async function print (
     ctx.info('print', { url, kind, orientation, viewport })
 
     browserPage = await browserManager.createPage()
-    const job = render(ctx, browserPage.page, url, kind, orientation, viewport)
+    const job = render(ctx, browserPage.page, url, kind, orientation, viewport, allowedHostnames)
     // After a timeout the job is abandoned; closing its context makes the pending
     // puppeteer calls reject, which must not surface as an unhandled rejection.
     job.catch(() => {})
@@ -66,7 +73,8 @@ async function render (
   url: string,
   kind: ExportKind,
   orientation: PageOrientation,
-  viewport: Viewport
+  viewport: Viewport,
+  allowedHostnames: readonly string[]
 ): Promise<Buffer | undefined> {
   page
     .on('pageerror', (err: unknown) => {
@@ -76,7 +84,24 @@ async function render (
     .on('requestfailed', (request) => {
       ctx.warn('requestfailed', { url: request.url(), errorText: request.failure()?.errorText })
     })
+    .on('request', (request) => {
+      void (async () => {
+        try {
+          // Navigations (including redirects and frames) must stay on allowed hosts. Subresources of the
+          // allowed page are not restricted, so external images and other service hosts keep rendering.
+          if (!request.isNavigationRequest() || isAllowedPrintUrl(request.url(), allowedHostnames)) {
+            await request.continue()
+          } else {
+            await request.abort('blockedbyclient')
+          }
+        } catch (err: unknown) {
+          ctx.warn('Failed to handle print request', { url: request.url(), err })
+        }
+      })()
+    })
 
+  await page.setBypassServiceWorker(true)
+  await page.setRequestInterception(true)
   await page.setViewport(viewport)
 
   // NOTE: Issues opened with a guest link worked fine only with networkidle0 here and
