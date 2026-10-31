@@ -39,6 +39,7 @@ import notification, { notificationId, createModel as notificationModel } from '
 import { preferenceId, createModel as preferenceModel } from '@hcengineering/model-preference'
 import presentation, { presentationId, createModel as presentationModel } from '@hcengineering/model-presentation'
 import rating, { ratingId, createModel as ratingModel } from '@hcengineering/model-rating'
+import webhooks, { webhooksId, createModel as webhooksModel } from '@hcengineering/model-webhooks'
 import { recorderId, createModel as recorderModel } from '@hcengineering/model-recorder'
 import recruit, { recruitId, createModel as recruitModel } from '@hcengineering/model-recruit'
 import { requestId, createModel as requestModel } from '@hcengineering/model-request'
@@ -529,6 +530,22 @@ export default function buildModel (): Builder {
         label: rating.string.Rating,
         description: rating.string.Rating,
         icon: rating.icon.Rating,
+        hidden: false,
+        enabled: false,
+        beta: true,
+        classFilter: defaultFilter
+      }
+    ],
+    [
+      webhooksModel,
+      webhooksId,
+      {
+        // Ships disabled by default; a workspace Owner opts the plugin
+        // in through the Configure dialog. See the shipped-disabled
+        // pattern used by cross-project workflow rules (#238 r3).
+        label: webhooks.string.ConfigLabel,
+        description: webhooks.string.ConfigDescription,
+        icon: webhooks.icon.Webhooks,
         hidden: false,
         enabled: false,
         beta: true,

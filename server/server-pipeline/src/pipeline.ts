@@ -74,6 +74,7 @@ import { createStorageDataAdapter } from './blobStorage'
 import { CommunicationMiddleware, type CommunicationApiFactory } from './communication'
 
 import { RatingMiddleware } from '@hcengineering/server-rating'
+import { WebhookPermissionsMiddleware } from '@hcengineering/server-webhooks'
 
 /**
  * @public
@@ -153,6 +154,12 @@ export function createServerPipeline (
         SpaceSecurityMiddleware.create(opt.adapterSecurity ?? false, ctx, context, next),
       SpacePermissionsMiddleware.create,
       GuestPermissionsMiddleware.create,
+      // Webhook authorization: refuse non-Owner Tx on TWebhookSubscription,
+      // all client Tx on service-internal webhook classes, and
+      // destination-changing updates from anyone but the stored owner.
+      // Placed BEFORE ApplyTxMiddleware so the middleware sees TxApplyIf
+      // wrappers and can walk them recursively; see docs/webhooks/DESIGN.md.
+      WebhookPermissionsMiddleware.create,
       ConfigurationMiddleware.create,
       ContextNameMiddleware.create,
       MarkDerivedEntryMiddleware.create,
