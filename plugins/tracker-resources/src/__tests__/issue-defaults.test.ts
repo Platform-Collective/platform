@@ -35,7 +35,7 @@ async function loadSubIssues (client: object): Promise<SubIssuesMethods> {
     { filename }
   )
   const compiled = compile(source.code, { filename, generate: 'ssr' })
-  const methods = {} as SubIssuesMethods
+  const methods: Partial<SubIssuesMethods> = {}
   const props = { projectId: 'project', project: { _id: 'project', identifier: 'TEST' } }
   const bindings = {
     save: (save: SubIssuesMethods['save']) => {
@@ -89,7 +89,7 @@ async function loadSubIssues (client: object): Promise<SubIssuesMethods> {
     },
     { filename }
   )
-  return methods
+  return methods as SubIssuesMethods
 }
 
 function createHierarchy (): Hierarchy {
@@ -152,9 +152,14 @@ describe('issue creation defaults', () => {
   it('persists defaults and explicit custom values for sub-issues created in the same dialog', async () => {
     const hierarchy = createHierarchy()
     addAttribute(hierarchy, 'customEnum')
+    const explicitChild: IssueDraft & { customEnum: string } = {
+      ...createDraft(),
+      _id: 'child-explicit' as Ref<Issue>,
+      customEnum: 'Closed'
+    }
     const subIssues: IssueDraft[] = [
       { ...createDraft(), _id: 'child-default' as Ref<Issue> },
-      { ...createDraft(), _id: 'child-explicit' as Ref<Issue>, customEnum: 'Closed' } as IssueDraft
+      explicitChild
     ]
     const parent = { ...createDraft(), subIssues }
     const reloadedParent: IssueDraft = JSON.parse(JSON.stringify(parent))
