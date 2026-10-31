@@ -23,6 +23,7 @@ import { getMetadata, translate } from '@hcengineering/platform'
 import { addNotification, languageStore, NotificationSeverity, showPopup } from '@hcengineering/ui'
 import { type Emoji, type LinkPreviewParams, type Message } from '@hcengineering/communication-types'
 import emoji from '@hcengineering/emoji'
+import gifPlugin, { isGifResult } from '@hcengineering/gif'
 import { markdownToMarkup, markupToMarkdown } from '@hcengineering/text-markdown'
 import { jsonToMarkup, markupToJSON } from '@hcengineering/text'
 
@@ -66,15 +67,19 @@ export const defaultMessageInputActions: TextInputAction[] = [
     icon: emoji.icon.Emoji,
     action: (element, editorHandler) => {
       showPopup(
-        emoji.component.EmojiPopup,
+        gifPlugin.component.GifPickerPopup,
         {},
         element,
-        (emoji) => {
-          if (emoji === null || emoji === undefined) {
+        (result) => {
+          if (result === null || result === undefined) {
             return
           }
 
-          editorHandler.insertEmoji(emoji.text, emoji.image)
+          if (isGifResult(result)) {
+            editorHandler.insertGif(result)
+          } else {
+            editorHandler.insertEmoji(result.text, result.image)
+          }
           editorHandler.focus()
         },
         () => {}

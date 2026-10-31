@@ -51,6 +51,7 @@ export interface Config {
   PRINT_URL?: string
   PUSH_PUBLIC_KEY: string
   REKONI_URL: string
+  GIPHY_API_KEY?: string
   SIGN_URL?: string
   STATS_URL?: string
   TELEGRAM_BOT_URL?: string
