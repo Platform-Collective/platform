@@ -13,6 +13,7 @@
     "OrderedList": "番号付きリスト",
     "BulletedList": "箇条書きリスト",
     "Blockquote": "引用",
+    "Callout": "コールアウト",
     "Code": "コード",
     "CodeBlock": "コードブロック",
     "Note": "メモ",

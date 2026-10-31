@@ -14,7 +14,7 @@
 -->
 <script lang="ts">
   import { Class, Doc, Ref, Blob } from '@hcengineering/core'
-  import { AttrValue, MarkupNode, MarkupNodeType } from '@hcengineering/text'
+  import { AttrValue, getCalloutKind, MarkupNode, MarkupNodeType } from '@hcengineering/text'
 
   import CodeBlockNode from './CodeBlockNode.svelte'
   import ObjectNode from './ObjectNode.svelte'
@@ -127,6 +127,18 @@
         {/each}
       {/if}
     </blockquote>
+  {:else if node.type === MarkupNodeType.callout}
+    <div
+      data-type="callout"
+      data-kind={getCalloutKind(attrs.kind)}
+      data-emoji={typeof attrs.emoji === 'string' ? attrs.emoji : undefined}
+    >
+      {#if nodes.length > 0}
+        {#each nodes as node}
+          <Node {parseEmojisFunction} {node} {preview} />
+        {/each}
+      {/if}
+    </div>
   {:else if node.type === MarkupNodeType.horizontal_rule}
     <hr />
   {:else if node.type === MarkupNodeType.heading}

@@ -13,6 +13,7 @@
     "OrderedList": "有序列表",
     "BulletedList": "无序列表",
     "Blockquote": "引用",
+    "Callout": "提示框",
     "Code": "代码",
     "CodeBlock": "代码块",
     "Note": "注释",

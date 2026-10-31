@@ -58,6 +58,7 @@ export default plugin(textEditorId, {
     OrderedList: '' as IntlString,
     BulletedList: '' as IntlString,
     Blockquote: '' as IntlString,
+    Callout: '' as IntlString,
     Code: '' as IntlString,
     CodeBlock: '' as IntlString,
     Note: '' as IntlString,

@@ -179,7 +179,8 @@ export function stripTags (markup: Markup, textLimit = 0): string {
       node.type === MarkupNodeType.paragraph ||
       node.type === MarkupNodeType.table ||
       node.type === MarkupNodeType.doc ||
-      node.type === MarkupNodeType.blockquote
+      node.type === MarkupNodeType.blockquote ||
+      node.type === MarkupNodeType.callout
     ) {
       if (textParts.length > 0 && textParts[textParts.length - 1] !== WHITESPACE) {
         textParts.push(WHITESPACE)
