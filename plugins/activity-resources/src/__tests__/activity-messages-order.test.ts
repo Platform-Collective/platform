@@ -56,9 +56,12 @@ describe('activity message ordering', () => {
       const expected = ['A', 'B', 'a', 'a-', 'a_', 'b']
       if (direction === SortingOrder.Descending) expected.reverse()
 
-      expect(sortActivityMessages(ids.map((id) => message(id, 100)), direction).map(({ _id }) => _id)).toEqual(
-        expected
-      )
+      expect(
+        sortActivityMessages(
+          ids.map((id) => message(id, 100)),
+          direction
+        ).map(({ _id }) => _id)
+      ).toEqual(expected)
     }
   )
 
