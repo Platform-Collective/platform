@@ -37,28 +37,33 @@
   const redirectURL = (getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin) + `/${calendarId}`
   const callbackOrigin = new URL(redirectURL).origin
 
-  function stopWaiting (): void {
+  function stopWaiting(): void {
     connecting = false
     clearInterval(popupCheck)
     popupCheck = undefined
   }
 
-  function handleAuthResult (event: MessageEvent<unknown>): void {
+  function handleAuthResult(event: MessageEvent<unknown>): void {
     if (!connecting || authWindow === null || event.source !== authWindow || event.origin !== callbackOrigin) return
     const result = event.data
     if (
-      result === null || typeof result !== 'object' ||
-      !('type' in result) || result.type !== 'calendar-auth-result' ||
-      !('error' in result) || (result.error !== null && typeof result.error !== 'string')
-    ) return
+      result === null ||
+      typeof result !== 'object' ||
+      !('type' in result) ||
+      result.type !== 'calendar-auth-result' ||
+      !('error' in result) ||
+      (result.error !== null && typeof result.error !== 'string')
+    )
+      return
 
     stopWaiting()
     if (result.error === null) {
       dispatch('close')
     } else {
-      error = result.error === calendar.string.NotAllPermissions
-        ? calendar.string.NotAllPermissions
-        : calendar.string.FailedToConnect
+      error =
+        result.error === calendar.string.NotAllPermissions
+          ? calendar.string.NotAllPermissions
+          : calendar.string.FailedToConnect
     }
   }
 
