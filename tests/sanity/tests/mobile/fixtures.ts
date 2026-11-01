@@ -14,9 +14,10 @@ import activity from '@hcengineering/activity'
 import notification from '@hcengineering/notification'
 import workbench from '@hcengineering/workbench'
 import { writeFile } from 'node:fs/promises'
+import { randomBytes } from 'node:crypto'
 import { LoginPage } from '../model/login-page'
 import { SelectWorkspacePage } from '../model/select-workspace-page'
-import { isTask1Accepted, NAVIGATOR_GAP_REASON, resolveIssueViewlets } from './contracts'
+import { isSurveyComplete, NAVIGATOR_GAP_REASON, resolveIssueViewlets } from './contracts'
 import type { MobileStepResult } from './contracts'
 
 export type { MobileStepResult } from './contracts'
@@ -44,7 +45,8 @@ function required (name: string): string {
   return value
 }
 
-class NavigatorGapError extends Error {
+/** A measured obstruction by the floating navigator. */
+export class NavigatorGapError extends Error {
   constructor (readonly target: Locator) {
     super(NAVIGATOR_GAP_REASON)
     this.name = 'NavigatorGapError'
@@ -247,7 +249,8 @@ export async function capture (page: Page, info: TestInfo, name: string): Promis
   })
 }
 
-async function seed (
+/** Create isolated fixtures using the default tracker project for model settings. */
+export async function seed (
   client: PlatformClient,
   owned: Set<Ref<Doc>>,
   projects: Set<Ref<Project>>
@@ -263,8 +266,10 @@ async function seed (
   })
   if (boardDescriptor === undefined) throw new Error('Tracker Kanban descriptor is missing')
   const viewlets = resolveIssueViewlets(modelViewlets, tracker.class.Issue, view.viewlet.List, boardDescriptor._id)
-  const sourceIssue = await client.findOne(tracker.class.Issue, {})
-  if (sourceIssue === undefined) throw new Error('An existing sanity Issue is required for status/kind setup')
+  const sourceIssue = await client.findOne(tracker.class.Issue, { space: tracker.project.DefaultProject })
+  if (sourceIssue === undefined) {
+    throw new Error('An existing Issue in the default sanity project is required for status/kind setup')
+  }
   const sourceProject = await client.findOne(tracker.class.Project, { _id: sourceIssue.space })
   if (sourceProject === undefined) throw new Error('Sanity project is missing')
   const projectType = await client.findOne(task.class.ProjectType, { _id: sourceProject.type })
@@ -290,11 +295,20 @@ async function seed (
   const account = await client.getAccount()
   const projectId = generateId<Project>()
   const issueId = generateId<Issue>()
-  const identifier = `M${projectId.slice(-10).toUpperCase()}`
+  let identifier = ''
   // Track fixture IDs before the first write so a lost response cannot escape cleanup.
   owned.add(projectId)
   projects.add(projectId)
   owned.add(issueId)
+  const identifiers = new Set<string>()
+  for (let attempt = 0; attempt < 10; attempt++) {
+    do {
+      identifier = `M${randomBytes(2).toString('hex').toUpperCase()}`
+    } while (identifiers.has(identifier))
+    identifiers.add(identifier)
+    if ((await client.findOne(tracker.class.Project, { identifier })) === undefined) break
+    if (attempt === 9) throw new Error('Could not find a unique mobile project identifier')
+  }
   await client.createDoc(
     tracker.class.Project,
     core.space.Space,
@@ -355,11 +369,10 @@ async function seed (
 }
 
 /** Sweep only this run's IDs and private project, including asynchronous trigger children. */
-async function cleanup (
+export async function cleanup (
   client: PlatformClient,
   owned: Set<Ref<Doc>>,
-  projects: Set<Ref<Project>>,
-  workspaceRoot: string
+  projects: Set<Ref<Project>>
 ): Promise<{
   outcome: 'ok' | 'failed'
   remaining: string[]
@@ -368,7 +381,6 @@ async function cleanup (
   const errors: string[] = []
   const found = new Map<Ref<Doc>, Doc>()
   const locationTokens = new Set<string>([...owned])
-  for (const id of projects) locationTokens.add(`M${id.slice(-10).toUpperCase()}`)
   const collect = (docs: Doc[]): void => {
     for (const doc of docs) {
       found.set(doc._id, doc)
@@ -453,10 +465,7 @@ async function cleanup (
     const account = await client.getAccount()
     for (const tab of await client.findAll(workbench.class.WorkbenchTab, { attachedTo: account.uuid })) {
       if (![...locationTokens].some((id) => decodeURIComponent(tab.location).includes(id))) continue
-      await client.updateDoc(tab._class, tab.space, tab._id, {
-        location: `${workspaceRoot}/tracker/all-issues`,
-        name: 'All issues'
-      })
+      await client.removeDoc(tab._class, tab.space, tab._id)
     }
     const tabs = await client.findAll(workbench.class.WorkbenchTab, { attachedTo: account.uuid })
     if (tabs.some((tab) => [...locationTokens].some((id) => decodeURIComponent(tab.location).includes(id)))) {
@@ -466,6 +475,52 @@ async function cleanup (
     errors.push('Cleanup tab verification failed')
   }
   return { outcome: errors.length === 0 && found.size === 0 ? 'ok' : 'failed', remaining: [...found.keys()], errors }
+}
+
+/** Run an independent UI path and retain its diagnostic recovery outcome. */
+export async function runSurveyStep (
+  page: Page,
+  info: TestInfo,
+  result: MobileStepResult,
+  phase: () => string,
+  action: () => Promise<void>,
+  recovery?: () => Promise<void>
+): Promise<void> {
+  try {
+    await action()
+    result.outcome = 'ui'
+  } catch (error) {
+    const knownGap = error instanceof NavigatorGapError && ['iphone-15', 'pixel-7'].includes(info.project.name)
+    result.failure = {
+      kind: 'harness',
+      phase: phase(),
+      reason: error instanceof Error ? error.message : String(error),
+      ...(error instanceof Error ? { stack: error.stack } : {})
+    }
+    if (knownGap) {
+      const screenshot = `${result.name.replace(/[^a-z]+/g, '-')}-navigator-gap`
+      try {
+        // Keep the overlay footprint visible while masking private navigator entries.
+        await page.getByTestId('contentPanel').screenshot({
+          path: info.outputPath(`${screenshot}.png`),
+          mask: [page.locator('.antiPanel-navigator > *, .activityMessage, .avatar')]
+        })
+        result.gapEvidence = `${screenshot}.png`
+        result.failure = { ...result.failure, kind: 'known-product-gap', reason: NAVIGATOR_GAP_REASON }
+        info.annotations.push({ type: 'known-product-gap', description: `${result.name}: ${NAVIGATOR_GAP_REASON}` })
+      } catch {
+        result.failure.reason = 'Navigator obstruction observed, but required masked evidence capture failed'
+      }
+    }
+    if (recovery !== undefined) {
+      try {
+        await recovery()
+        result.outcome = 'url-recovery'
+      } catch {
+        /* Remains untested. */
+      }
+    }
+  }
 }
 
 export const test = base.extend<MobileFixtures>({
@@ -538,45 +593,8 @@ export const test = base.extend<MobileFixtures>({
           const result: MobileStepResult = { name, outcome: 'not-tested', cleanup: 'failed' }
           steps.push(result)
           phase = 'reset and authenticated workbench readiness'
-          try {
-            await action()
-            result.outcome = 'ui'
-          } catch (error) {
-            const knownGap = error instanceof NavigatorGapError && ['iphone-15', 'pixel-7'].includes(info.project.name)
-            result.failure = {
-              kind: 'harness',
-              phase,
-              reason:
-                error instanceof BrowserSessionError
-                  ? error.message
-                  : error instanceof Error && error.name === 'TimeoutError'
-                    ? 'Action timed out; no product cause established'
-                    : 'Action or assertion failed; no product cause established'
-            }
-            if (knownGap) {
-              const screenshot = `${name.replace(/[^a-z]+/g, '-')}-navigator-gap`
-              try {
-                // Crop to the synthetic/static control, never the home list or private navigator entries.
-                await error.target.screenshot({
-                  path: info.outputPath(`${screenshot}.png`),
-                  mask: [page.locator('.antiPanel-navigator, .activityMessage, .avatar')]
-                })
-                result.gapEvidence = `${screenshot}.png`
-                result.failure = { kind: 'known-product-gap', phase, reason: NAVIGATOR_GAP_REASON }
-              } catch {
-                result.failure.reason = 'Navigator obstruction observed, but required masked evidence capture failed'
-              }
-            }
-            if (result.failure.kind === 'harness') failures.push(name)
-            if (recovery !== undefined) {
-              try {
-                await recovery()
-                result.outcome = 'url-recovery'
-              } catch {
-                /* Remains untested. */
-              }
-            }
-          }
+          await runSurveyStep(page, info, result, () => phase, action, recovery)
+          if (result.failure?.kind === 'harness') failures.push(name)
         }
       }
       await use(survey)
@@ -597,7 +615,7 @@ export const test = base.extend<MobileFixtures>({
         } catch {
           failures.push('leave fixture page')
         }
-        cleanupResult = await cleanup(client, owned, projects, `/workbench/${encodeURIComponent(workspace)}`)
+        cleanupResult = await cleanup(client, owned, projects)
         try {
           await client.close()
         } catch {
@@ -611,13 +629,9 @@ export const test = base.extend<MobileFixtures>({
         info.outputPath('mobile-result.json'),
         JSON.stringify(
           {
-            schemaVersion: 2,
             project: info.project.name,
             test: info.title,
             target: process.env.MOBILE_PWA_TARGET,
-            adapter: process.env.MOBILE_PWA_ADAPTER,
-            baselineCommit: process.env.PC_DEVELOP_COMMIT,
-            candidateCommit: process.env.MOBILE_PWA_COMMIT,
             behaviorStarted: survey?.behaviorStarted ?? false,
             input: {
               mode: info.project.use.hasTouch === true || info.project.use.isMobile === true ? 'touch' : 'mouse',
@@ -641,8 +655,8 @@ export const test = base.extend<MobileFixtures>({
       })
       if (survey !== undefined && info.status === 'passed') {
         expect(
-          isTask1Accepted(info.project.name, steps),
-          'Task 1 requires UI evidence or confirmed phone gaps, plus verified cleanup'
+          isSurveyComplete(info.project.name, steps),
+          'Every UI path and fixture cleanup must complete'
         ).toBe(true)
       }
     }

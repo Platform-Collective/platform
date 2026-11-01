@@ -3,7 +3,7 @@ import tracker from '@hcengineering/tracker'
 import type { Ref } from '@hcengineering/core'
 import type { Viewlet } from '@hcengineering/view'
 import { activate, capture, expect, issueEditors, openNavigator, resetOverlays, test } from './fixtures'
-import { isTask1Accepted } from './contracts'
+import { isSurveyComplete } from './contracts'
 import type { MobileSurvey } from './fixtures'
 import { TrackerNavigationMenuPage } from '../model/tracker/tracker-navigation-menu-page'
 import { IssuesPage } from '../model/tracker/issues-page'
@@ -53,24 +53,6 @@ test('survey reaches real list board and create', async ({ page, survey }, info)
   const orientations = phone ? ['portrait', 'landscape'] : ['desktop']
   const projectURL = `${survey.root}/tracker/${survey.project._id}/issues`
   const home = `${survey.root}/tracker/all-issues`
-
-  // This adapter reproduces the old survey's plugin lookup after successful setup.
-  // Browser, import or login failures cannot establish a regression in UI behavior.
-  if (process.env.MOBILE_PWA_ADAPTER === 'legacy') {
-    for (const name of ['list', 'board', 'create', 'separate editors']) {
-      survey.steps.push({ name: `legacy: ${name}`, outcome: 'not-tested', cleanup: 'failed' })
-    }
-    await resetOverlays(page, projectURL)
-    await activate(page, new IssuesPage(page).modelSelectorAll())
-    await expect(new IssuesPage(page).issuesList()).toContainText(survey.issue.title)
-    await capture(page, info, 'legacy-viewlet-lookup')
-    const legacy = tracker as unknown as { viewlet?: { IssueList?: string, IssueKanban?: string } }
-    survey.behaviorStarted = true
-    expect(
-      { list: legacy.viewlet?.IssueList, board: legacy.viewlet?.IssueKanban },
-      'Legacy survey must resolve concrete Issue viewlets'
-    ).toEqual(survey.viewlets)
-  }
 
   survey.behaviorStarted = true
   for (const orientation of orientations) {
@@ -159,10 +141,10 @@ test('survey reaches real list board and create', async ({ page, survey }, info)
   }
   // Cleanup is asserted by the fixture teardown, independently from these UI outcomes.
   expect(
-    isTask1Accepted(
+    isSurveyComplete(
       info.project.name,
       survey.steps.map((step) => ({ ...step, cleanup: 'ok' }))
     ),
-    'Desktop requires every UI path; phones allow only evidenced navigator gaps, never unexplained recovery'
+    'Every UI path must complete; annotated navigator gaps represent missing coverage'
   ).toBe(true)
 })

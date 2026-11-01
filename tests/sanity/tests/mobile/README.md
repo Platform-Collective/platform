@@ -8,10 +8,11 @@ Synthetic navigation tests also cover readiness, session handling and input sele
 
 `MobileStepResult.outcome` is `ui` (UI assertions passed), `url-recovery` (a direct URL
 recovered the diagnostic check), or `not-tested` (the UI path did not complete).
-Recovery never counts as acceptance; confirmed phone gaps represent missing coverage.
+Recovery never counts as acceptance. Confirmed phone gaps are annotated in the report
+and fail acceptance because their UI paths remain untested.
 Fixtures are created and read back via API, then deleted with their generated descendants;
 cleanup is verified independently. Use a dedicated synthetic workspace and account with
-an existing sanity Issue and project to supply fixture model settings.
+an existing Issue in the default tracker project to supply fixture model settings.
 
 The default sanity config (`tests/playwright.config.ts`) excludes `mobile/**`.
 Run these tests only via `tests/mobile-pwa.config.ts`, after installing sanity dependencies
@@ -25,10 +26,7 @@ and Playwright browsers and starting the application.
 - `MOBILE_PWA_PASSWORD`: Required password for the synthetic account.
 - `MOBILE_PWA_OUTPUT`: Optional Playwright output directory for test artifacts.
 - `MOBILE_PWA_REPORT`: Optional JSON reporter output file; unset writes to standard output.
-- `MOBILE_PWA_ADAPTER`: Optional `legacy` mode reproduces the old viewlet lookup; leave unset for acceptance.
 - `MOBILE_PWA_TARGET`: Optional target label recorded in test results.
-- `PC_DEVELOP_COMMIT`: Optional baseline revision recorded in test results, without verification.
-- `MOBILE_PWA_COMMIT`: Optional candidate revision recorded in test results, without verification.
 
 ## Example
 

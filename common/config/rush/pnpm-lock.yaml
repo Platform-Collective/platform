@@ -41556,18 +41556,30 @@ importers:
 
   ../../tests/sanity:
     dependencies:
+      '@hcengineering/account':
+        specifier: workspace:^0.7.0
+        version: link:../../server/account
+      '@hcengineering/account-client':
+        specifier: workspace:^0.7.25
+        version: link:../../foundations/core/packages/account-client
       '@hcengineering/activity':
         specifier: workspace:^0.7.0
         version: link:../../plugins/activity
       '@hcengineering/api-client':
         specifier: workspace:^0.7.25
         version: link:../../foundations/core/packages/api-client
+      '@hcengineering/client-resources':
+        specifier: workspace:^0.7.19
+        version: link:../../foundations/core/packages/client-resources
+      '@hcengineering/core':
+        specifier: workspace:^0.7.26
+        version: link:../../foundations/core/packages/core
       '@hcengineering/notification':
         specifier: workspace:^0.7.0
         version: link:../../plugins/notification
-      '@hcengineering/platform':
-        specifier: workspace:^0.7.20
-        version: link:../../foundations/core/packages/platform
+      '@hcengineering/server-token':
+        specifier: workspace:^0.7.18
+        version: link:../../foundations/core/packages/token
       '@hcengineering/task':
         specifier: workspace:^0.7.0
         version: link:../../plugins/task
@@ -41580,21 +41592,6 @@ importers:
       '@hcengineering/workbench':
         specifier: workspace:^0.7.0
         version: link:../../plugins/workbench
-      '@hcengineering/account':
-        specifier: workspace:^0.7.0
-        version: link:../../server/account
-      '@hcengineering/account-client':
-        specifier: workspace:^0.7.25
-        version: link:../../foundations/core/packages/account-client
-      '@hcengineering/client-resources':
-        specifier: workspace:^0.7.19
-        version: link:../../foundations/core/packages/client-resources
-      '@hcengineering/core':
-        specifier: workspace:^0.7.26
-        version: link:../../foundations/core/packages/core
-      '@hcengineering/server-token':
-        specifier: workspace:^0.7.18
-        version: link:../../foundations/core/packages/token
       cross-env:
         specifier: ~7.0.3
         version: 7.0.3
