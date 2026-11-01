@@ -6,20 +6,33 @@
 // you may not use this file except in compliance with the License. You may
 // obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
 
-import { AccountRole, type AccountUuid, type Domain, type Ref, type Timestamp, type Tx } from '@hcengineering/core'
+import {
+  AccountRole,
+  DOMAIN_MODEL,
+  type AccountUuid,
+  type Class,
+  type Doc,
+  type Domain,
+  type Ref,
+  type Space,
+  type Timestamp,
+  type Tx
+} from '@hcengineering/core'
 import { Model, Prop, TypeBoolean, TypeNumber, TypeRef, TypeString, UX, type Builder } from '@hcengineering/model'
 import core, { TDoc } from '@hcengineering/model-core'
 import setting from '@hcengineering/model-setting'
 import webhooks, {
+  CoreEventKinds,
   type WebhookAuditBlob,
   type WebhookCleanupTask,
   type WebhookDeliveryAttempt,
-  type WebhookEvent,
+  type WebhookEventSource,
   type WebhookJournal,
   type WebhookOutboxJob,
   type WebhookRetryPolicy,
   type WebhookSecret,
   type WebhookSecretMeta,
+  type WebhookSourceChange,
   type WebhookSubscription,
   type WebhookSubscriptionLease,
   type WebhookTarget,
@@ -31,6 +44,23 @@ export { default } from '@hcengineering/webhooks'
 
 /** @public */
 export const DOMAIN_WEBHOOKS = 'webhooks' as Domain
+
+/**
+ * @public
+ *
+ * Plugin-contributed event source. Lives in `DOMAIN_MODEL` so sources
+ * ship with the model build and the webhooks service can resolve them
+ * without a model query. See `docs/webhooks/DESIGN.md` section "Event
+ * sources".
+ */
+@Model(webhooks.class.WebhookEventSource, core.class.Doc, DOMAIN_MODEL)
+export class TWebhookEventSource extends TDoc implements WebhookEventSource {
+  kind!: string
+  sourceClass!: Ref<Class<Doc>>
+  label!: WebhookEventSource['label']
+  icon?: WebhookEventSource['icon']
+  hidden?: boolean
+}
 
 /**
  * @public
@@ -66,7 +96,9 @@ export class TWebhookSubscription extends TDoc implements WebhookSubscription {
   // Nested JSON; service-maintained.
   secretsMeta!: WebhookSecretMeta[]
 
-  // Nested JSON.
+  // Nested JSON. Each trigger is {eventKind, scope, classFilter?,
+  // attributeFilter?}; the service joins eventKind + sourceClass +
+  // scope + filters at match time.
   triggers!: WebhookTrigger[]
 
   // Nested JSON; optional per-subscription override of the delivery
@@ -92,11 +124,6 @@ export class TWebhookSubscription extends TDoc implements WebhookSubscription {
  * and the key identifiers; the AAD is reconstructed from the
  * authenticated context at decrypt time (NOT read from this row). See
  * `docs/webhooks/DESIGN.md` section "Secrets" for the full scheme.
- *
- * No per-field `@Prop` on the ciphertext/nonce/tag buffers - they are
- * opaque to the model layer and the permission middleware refuses any
- * client Tx that targets this class, so there is no editor UX to
- * attach labels to.
  */
 @Model(webhooks.class.WebhookSecret, core.class.Doc, DOMAIN_WEBHOOKS)
 export class TWebhookSecret extends TDoc implements WebhookSecret {
@@ -114,10 +141,12 @@ export class TWebhookSecret extends TDoc implements WebhookSecret {
  * @public
  *
  * Pre-image + matched subscriptions captured in the Tx middleware for
- * every eligible source Tx. A sweeper realizes journal entries into
- * outbox rows idempotently. See `docs/webhooks/DESIGN.md` section
- * "Durable outbox" for why rev 4 replaced the cross-domain batching
- * approach with this journal.
+ * every eligible source Tx. Generic over source class: `sourceClass`,
+ * `sourceDoc`, `sourceSpace`, and a `changes` array in place of the
+ * earlier Issue-specific `issueRef` / `projectRef` / status refs.
+ * `sourceEventId` is the stable dedup component - a single
+ * `TxApplyIf` can contain several transitions, so dedup is NOT on
+ * `txId` alone. See `docs/webhooks/DESIGN.md` section "Durable outbox".
  */
 @Model(webhooks.class.WebhookJournal, core.class.Doc, DOMAIN_WEBHOOKS)
 export class TWebhookJournal extends TDoc implements WebhookJournal {
@@ -132,17 +161,17 @@ export class TWebhookJournal extends TDoc implements WebhookJournal {
 /**
  * @public
  *
- * One outbox row per `(subscriptionId, event, txId)`. Service-write
- * only. The rendered request bytes are frozen at realize time; retries
- * reuse those exact bytes and only the signature header is regenerated
- * per attempt (see `docs/webhooks/DESIGN.md`, section "Payload
- * immutability per delivery").
+ * One outbox row per `(subscription, eventKind, sourceEventId)`. The
+ * dedup key allows one source Tx to produce multiple events (e.g. a
+ * `TxApplyIf` with several status changes) and still land as separate,
+ * independently-tracked outbox rows. Service-write only.
  */
 @Model(webhooks.class.WebhookOutboxJob, core.class.Doc, DOMAIN_WEBHOOKS)
 export class TWebhookOutboxJob extends TDoc implements WebhookOutboxJob {
   subscription!: Ref<WebhookSubscription>
   revision!: number
-  event!: WebhookEvent
+  eventKind!: string
+  sourceEventId!: string
   deliveryId!: string
   journal!: Ref<WebhookJournal>
   txId!: Ref<Tx>
@@ -159,19 +188,19 @@ export class TWebhookOutboxJob extends TDoc implements WebhookOutboxJob {
  *
  * Audit metadata row. Carries identifiers + outcome + error reason.
  * Sensitive rendered content lives in `TWebhookAuditBlob`, read-gated
- * per-row on current source access to the referenced issue.
+ * per-row on current source access to the referenced source doc.
+ * Generic over source class via `sourceClass` + `sourceDoc`.
  */
 @Model(webhooks.class.WebhookDeliveryAttempt, core.class.Doc, DOMAIN_WEBHOOKS)
 export class TWebhookDeliveryAttempt extends TDoc implements WebhookDeliveryAttempt {
   subscription!: Ref<WebhookSubscription>
   deliveryId!: string
   attempt!: number
-  event!: WebhookEvent | 'test' | 'skipped' | 'rotated' | 'bindingChanged'
+  eventKind!: string | 'test' | 'skipped' | 'rotated' | 'bindingChanged'
   txId!: Ref<Tx>
-  // Ref<Issue>; typed as Ref<core.class.Doc> to avoid a tracker plugin
-  // cycle at the model layer. The delivery service re-resolves to the
-  // concrete Issue when it needs to check source access.
-  issueRef!: WebhookDeliveryAttempt['issueRef']
+  sourceClass!: Ref<Class<Doc>>
+  sourceDoc!: Ref<Doc>
+  sourceSpace!: Ref<Space>
   at!: Timestamp
   outcome!: 'ok' | 'error' | 'skipped' | 'denied'
   httpCode?: number
@@ -237,6 +266,7 @@ export class TWebhookCleanupTask extends TDoc implements WebhookCleanupTask {
 
 export function createModel (builder: Builder): void {
   builder.createModel(
+    TWebhookEventSource,
     TWebhookSubscription,
     TWebhookSecret,
     TWebhookJournal,
@@ -245,6 +275,41 @@ export function createModel (builder: Builder): void {
     TWebhookAuditBlob,
     TWebhookSubscriptionLease,
     TWebhookCleanupTask
+  )
+
+  // Generic CUD event sources. Plugins contribute semantic sources
+  // (e.g. tracker's IssueStatusChange, card's CardArchived) through
+  // their own model packages. The generic three cover every Doc class
+  // whose author wires in webhooks without defining a new eventKind.
+  builder.createDoc(
+    webhooks.class.WebhookEventSource,
+    core.space.Model,
+    {
+      kind: CoreEventKinds.Create,
+      sourceClass: core.class.Doc,
+      label: webhooks.string.Webhooks
+    },
+    ('webhooks:eventSource:Create' as unknown) as Ref<Doc>
+  )
+  builder.createDoc(
+    webhooks.class.WebhookEventSource,
+    core.space.Model,
+    {
+      kind: CoreEventKinds.Update,
+      sourceClass: core.class.Doc,
+      label: webhooks.string.Webhooks
+    },
+    ('webhooks:eventSource:Update' as unknown) as Ref<Doc>
+  )
+  builder.createDoc(
+    webhooks.class.WebhookEventSource,
+    core.space.Model,
+    {
+      kind: CoreEventKinds.Remove,
+      sourceClass: core.class.Doc,
+      label: webhooks.string.Webhooks
+    },
+    ('webhooks:eventSource:Remove' as unknown) as Ref<Doc>
   )
 
   // Workspace Settings navigator entry. Only workspace Owners see it;
