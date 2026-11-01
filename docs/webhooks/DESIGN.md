@@ -1,6 +1,6 @@
 # Outbound webhook subscriptions
 
-## Status: Design (rev 5)
+## Status: Design (rev 6)
 
 This document is the design proposal for the outbound webhook feature
 discussed in Platform-Collective/platform discussion #236 and issue #33.
@@ -12,25 +12,46 @@ templated; named secrets go through a dedicated `{{ secrets.<name> }}`
 namespace that never renders into logs, previews or audit rows. One
 target kind (`generic`) handles every receiver via templates plus
 built-in presets for `apprise`, `slack`, `discord` and bare `generic`.
-Events are plugin-contributed through a `WebhookEventSource` registry
-that lets any `Doc` class fire webhooks, with the tracker, card and
-process plugins contributing their semantic events; the core webhooks
-plugin ships three generic CUD sources so a Doc class works out of the
-box without a dedicated event kind. Authorization is enforced in a
-permission middleware wired into the pipeline BEFORE storage writes,
-same slot as `guestPermissions`.
-Destination / filter changes are co-signed by the subscription's
-stored owner, not any current workspace Owner. Secrets live in an
-AEAD-encrypted blob store whose AAD is reconstructed from the
-authenticated context on every decrypt, not read from the stored row.
-A durable outbox is written in the SAME storage transaction as the
-source mutation, with an explicit journal recovery design when a single
-cross-domain transaction is not available. Audit payloads live outside
-ordinary Tx history. Signatures use a formal versioned header grammar
-with repeated headers during key rotation and an immutable per-
-delivery payload. Test events return status + metadata only by
-default; body opt-in is an explicit credential-disclosure
-authorization.
+
+Events are plugin-contributed through a `WebhookEventSource` registry.
+A Doc class must opt in by applying the `WebhookSubscribable` mixin;
+by default no Doc is subscribable, so the subscription registry does
+NOT silently expose derived docs, notifications, user statuses, or
+preference / credential rows. The core webhooks plugin ships three
+generic CUD source kinds; a semantic event (tracker's
+`IssueStatusChange`, card's `CardArchived`, process's
+`StageTransition`) is a server-plugin profile with a `match` hook that
+reads the Tx + pre-image and returns zero or more source events,
+plus a `variables` schema and a `renderMinimalBody` function.
+
+All webhook docs live in a dedicated private space
+(`webhooks.space.Webhooks`, `SystemSpace`, `private: true`, members =
+current workspace Owners + the webhooks service). Reads, Tx-history
+queries, and live broadcast are all gated by the existing space
+security; the permission middleware adds a defence-in-depth
+class-level gate on top. Destination-level writes go only through a
+service-owned management RPC — the middleware refuses them from any
+client, including the stored owner. The RPC recomputes
+`revision` + `configDigest` and enforces secret re-entry in one
+atomic step, closing the "direct Tx leaves `configDigest` stale"
+hole.
+
+Delivery is driven by a Tx-log sweeper. `TxMiddleware` persists the
+source Tx to `DOMAIN_TX` before the domain apply; the sweeper reads
+Tx log tail-forward, resolves each Tx through the registered match
+hooks, and writes idempotent outbox rows keyed by
+`(subscription, eventKind, sourceEventId)`. This closes the
+cross-domain atomicity gap in rev 4's "same storage transaction"
+story. Pre-image values live in a separate encrypted journal payload,
+NOT inline in the journal row.
+
+Secrets live in an AEAD-encrypted blob store whose AAD is
+reconstructed from the authenticated context on every decrypt. The
+frozen request stores a diagnostic form with `[SECRET:<name>]`
+placeholders; secrets are substituted at send time, so secret
+values never reach `DOMAIN_TX`, Kafka or backups. Signatures use a
+formal versioned header grammar with repeated headers during key
+rotation.
 
 ### Revision history
 
@@ -49,22 +70,54 @@ authorization.
   8 must-fix items and 9 should-clarify items reshape Authorization,
   Secrets, Delivery, Signing, Audit and Restore. Three new open
   questions settled with his answers.
-- **Rev 5** (this revision): addresses ArtyomSavchenko's review. Two
+- **Rev 5** (`2366d2f270`): addresses ArtyomSavchenko's review. Two
   blocking authz-bypass items (dotted keys + operators bypass the
   stored-owner / service-only guard; no read-side gating) are fixed in
-  the middleware shape (see "Authorization" below). The model
-  generalises off Issue-specific references: closed `WebhookEvent`
-  union replaced with a plugin-contributed `WebhookEventSource`
-  registry; `issueRef` / `projectRef` / `previousStatusRef` /
-  `newStatusRef` replaced with `sourceClass` + `sourceDoc` +
-  `sourceSpace` + a `changes` array; dedup key moved from `txId`-based
-  to `(subscription, eventKind, sourceEventId)`;
+  the middleware shape. The model generalises off Issue-specific
+  references: closed `WebhookEvent` union replaced with a plugin-
+  contributed `WebhookEventSource` registry; `issueRef` /
+  `projectRef` / `previousStatusRef` / `newStatusRef` replaced with
+  `sourceClass` + `sourceDoc` + `sourceSpace` + a `changes` array;
+  dedup key moved to `(subscription, eventKind, sourceEventId)`;
   `projectScope`/`statusFilter` replaced with a generic
   `scope` + `classFilter` + `attributeFilter` triple.
-  `storeResponseBody` now treated as destination-changing by the
-  middleware. The system-account bypass is narrowed to the webhooks
-  service token (not any `systemAccountUuid` caller). `TxMixin` on
-  `TWebhookSubscription` refused unconditionally.
+- **Rev 6** (this revision): addresses ArtyomSavchenko's rev-5
+  review. The subscribable scope is narrowed from "any `Doc` by
+  default" to an opt-in `WebhookSubscribable` mixin plugins apply
+  per class; webhook classes, `DOMAIN_MODEL`, `DOMAIN_TRANSIENT`
+  and `DOMAIN_TX` are hard-excluded regardless. All webhook docs
+  move into a dedicated private space
+  (`webhooks.space.Webhooks`), so Tx-history reads and live
+  broadcast are gated by existing space security — the "non-
+  broadcast domain" invention is dropped. The event-source registry
+  gains server-side `match` + `variables` + `renderMinimalBody` +
+  `eligibility` hooks (plugin-contributed through `server-plugins/*`);
+  the Doc `_id` is the kind (no separate `kind` field). The journal
+  stores attribute **names** only, values are re-read at realize
+  time, so plain values never land in `DOMAIN_TX` / Kafka / backups.
+  `frozenRequest` stores the diagnostic `[SECRET:<name>]` form;
+  secrets substitute at send time only. Destination-level writes
+  now go through the management RPC only — the middleware refuses
+  them from every client including the stored owner, closing the
+  stale-`configDigest` + skipped-secret-re-entry hole. Delivery is
+  driven by a Tx-log sweeper on `DOMAIN_TX`, not a journal written
+  in the pipeline. SSRF tables add NAT64 (`64:ff9b::/96`,
+  `64:ff9b:1::/48`), `ff00::/8`, `2001:db8::/32`, `100::/64`, and
+  switch to `ipaddr.js` `range() === 'unicast'`; `224.0.0.0/4`
+  relabelled multicast. Ordering is by capture-time sequence
+  rather than `nextAttemptAt`. Fan-out cap enforced at save, not
+  at realize. Loop protection for automation-authored Txes
+  (triggers, inbound webhook service, process service) is
+  specified explicitly. Remaining Issue-specific sections (minimal
+  body, template variables, "where previousStatus comes from",
+  UI, Apprise preset) rewritten against a generic
+  `{{ source.* }}` / `{{ doc.<attr> }}` / `{{ changes }}` namespace,
+  with the tracker variables shipped as the tracker source's
+  profile. `TWebhookAuditBlob` moves to an object-storage blob
+  (`blobId` only, no inline ciphertext). Ownership transfer
+  requires pausing + re-confirming destination + re-entering
+  secrets. Replica agreement on active key before encrypt;
+  retired keys stay decrypt-only.
 
 ## Open questions, settled
 
@@ -89,10 +142,16 @@ maintain it from workspace settings.
 
 In scope for v1:
 
-- Issue events only: `IssueCreated`, `IssueUpdated`, `IssueStatusChange`.
+- Opt-in events on any Doc class a plugin applies the
+  `WebhookSubscribable` mixin to. The core plugin applies no
+  mixins; tracker, card, and process each ship their own in
+  follow-up PRs. The generic CUD event kinds
+  (`webhooks:eventSource:Create`, `Update`, `Remove`) plus any
+  semantic sources those plugins contribute.
 - Workspace Owner-managed subscriptions, per-workspace.
-- Project and status filters per subscription (explicit project OR
-  explicit all-projects marker).
+- Space and attribute filters per subscription (specific space OR
+  explicit all-spaces marker, with hierarchy-aware `classFilter`
+  and `attributeFilter`).
 - One target kind `generic` (templated method / URL / headers / body)
   with built-in presets for `apprise`, `slack`, `discord` and bare
   `generic`.
@@ -144,10 +203,14 @@ Shared conventions (open to counter-proposal from @thomas-bouvier):
 
 ```ts
 interface WebhookSubscription extends Doc {
-  // Workspace-scoped. Doc.space is Ref<Space> per Platform's typing;
-  // the subscription's space is the workspace's dedicated settings
-  // space. The service NEVER routes by this field; routing is by
-  // authenticated WorkspaceUuid in the service context.
+  // Pinned to `webhooks.space.Webhooks`, a dedicated private
+  // SystemSpace that holds every webhook doc (subscriptions,
+  // secrets, journal, outbox, delivery attempts, audit blob rows,
+  // lease, cleanup tasks). Members = current workspace Owners +
+  // the webhooks service. The permission middleware refuses any
+  // client Tx that tries to move a subscription out of this
+  // space, in any form. Space-security covers Tx history reads
+  // and live broadcast as a result (A2).
   space: Ref<Space>
 
   name: string
@@ -266,74 +329,219 @@ interface WebhookRetryPolicy {
 }
 ```
 
-## Event sources (fixing ArtyomSavchenko's model asks)
+## Event sources
 
-Events are no longer baked into a closed `WebhookEvent` union. Each
-plugin that wants to fire webhooks contributes a `WebhookEventSource`
-Doc at model-build time:
+Events are plugin-contributed. Nothing fires out of the box: a Doc
+class is NOT subscribable until a plugin applies the
+`WebhookSubscribable` mixin to it. Rev 5 made the registry generic
+by having the core plugin ship CUD sources on `core.class.Doc`,
+which was too broad — it would stream webhook classes themselves
+(feedback loop), high-volume derived docs (activity messages,
+notifications, user statuses), and sensitive docs (preferences,
+credential-bearing integrations, account identity rows), and
+would force a pre-image read on every workspace CUD. Rev 6 drops
+that default.
+
+### `WebhookSubscribable` mixin (A1)
+
+A plugin opts a class in through a model-time mixin on
+`core.class.Class`:
 
 ```ts
-// Example contribution from tracker (lands in a tracker-side PR).
+// tracker contributes its own subscription surface in a follow-up PR.
+builder.mixin(tracker.class.Issue, core.class.Class, webhooks.mixin.WebhookSubscribable, {
+  events: ['Create', 'Update', 'Remove'],
+  // Attributes excluded from `changes` / `attributeFilter` because
+  // they are large (markup), opaque (blobs), or sensitive even to a
+  // reader of the class.
+  excludedAttributes: ['description', 'contentPreview'],
+  // Semantic sources this class carries, in addition to the three
+  // generic CUD kinds. Each name resolves to a server-side profile
+  // Resource registered by the owning plugin.
+  semanticSources: ['tracker:event:IssueStatusChange']
+})
+```
+
+A Tx on a class without the mixin matches no subscription, so
+nothing is read, journalled or delivered. The core webhooks plugin
+applies NO mixins; tracker, card and process each ship their own in
+follow-up PRs.
+
+Hard-excluded regardless of the mixin: every webhook class
+(`TWebhookSubscription`, `TWebhookSecret`, `TWebhookJournal`,
+`TWebhookOutboxJob`, `TWebhookDeliveryAttempt`, `TWebhookAuditBlob`,
+`TWebhookSubscriptionLease`, `TWebhookCleanupTask`), and anything in
+`DOMAIN_MODEL`, `DOMAIN_TRANSIENT` or `DOMAIN_TX`. The sweeper
+refuses to resolve these at match time even if a stray mixin lands.
+
+### Event-source registry (A3)
+
+A `WebhookEventSource` doc is identified BY ITS `_id` — there is no
+separate `kind` field. The id is the kind. Plugins contribute an
+event source as:
+
+```ts
+// Core plugin: generic CUD sources (apply to any class with the
+// WebhookSubscribable mixin; `semantic: false`).
 builder.createDoc(webhooks.class.WebhookEventSource, core.space.Model, {
-  kind: 'tracker:event:IssueStatusChange',
+  semantic: false,
+  // No sourceClass: generic sources match wherever the subscribable
+  // mixin is applied.
+  label: webhooks.string.CreateEvent,
+  // Server-side profile: the sweeper calls `match(tx, preImage)` to
+  // decide whether this source fires on a given Tx. Resource lives in
+  // server-plugins/webhooks so no code lands in the client bundle.
+  match: webhooks.resource.MatchCreate,
+  variables: webhooks.resource.VariablesCreate,
+  renderMinimalBody: webhooks.resource.RenderMinimalBodyCreate
+}, 'webhooks:eventSource:Create' as Ref<WebhookEventSource>)
+```
+
+A SEMANTIC source (`semantic: true`) is contributed by the owning
+plugin, same shape plus a `sourceClass` ref:
+
+```ts
+builder.createDoc(webhooks.class.WebhookEventSource, core.space.Model, {
+  semantic: true,
   sourceClass: tracker.class.Issue,
-  label: tracker.string.IssueStatusChanged
+  label: tracker.string.IssueStatusChanged,
+  // Process events do not come from a CUD on the source class - they
+  // come from an `ExecutionLog` create in DOMAIN_PROCESS_LOG. The
+  // `match` hook sees every Tx on every subscribable class the
+  // registered mixin covers PLUS the class the hook explicitly asks
+  // for via `detectOn` (optional; defaults to `sourceClass`).
+  detectOn: tracker.class.Issue,
+  match: trackerServer.resource.MatchIssueStatusChange,
+  variables: trackerServer.resource.VariablesIssue,
+  renderMinimalBody: trackerServer.resource.RenderMinimalBodyIssue
 }, 'tracker:eventSource:IssueStatusChange' as Ref<WebhookEventSource>)
 ```
 
-The core webhooks plugin ships three generic CUD sources
-(`webhooks:event:Create`, `webhooks:event:Update`,
-`webhooks:event:Remove`) rooted on `core.class.Doc`, so any Doc class
-can fire webhooks without a plugin-specific contribution. Semantic
-sources - `tracker:event:IssueStatusChange`, `card:event:CardArchived`,
-`process:event:StageTransition` and similar - add richer predicates on
-top. Classes extending `Doc` match through hierarchy: a trigger on
-`sourceClass = core.class.Doc` fires for any Doc the subscription
-owner can read, while a trigger on `sourceClass = tracker.class.Issue`
-with `classFilter = tracker.class.Subissue` narrows further.
+The `WebhookEventSource` interface:
 
-Internal event kinds (`test`, `skipped`, `rotated`, `bindingChanged`)
-are reserved; they appear only on `TWebhookDeliveryAttempt`, never on
-a bindable `WebhookTrigger`. The event-source registry marks them
-`hidden: true` or omits them entirely so the UI picker filters them
-out.
+```ts
+interface WebhookEventSource extends Doc {
+  semantic: boolean
+  // Required for semantic sources. For generic sources the match
+  // function receives the Tx's objectClass as its source class.
+  sourceClass?: Ref<Class<Doc>>
+  // Optional override: the class on whose Tx the match hook runs
+  // (e.g. ExecutionLog for process events). Defaults to sourceClass.
+  detectOn?: Ref<Class<Doc>>
+  label: IntlString
+  icon?: Asset
+  hidden?: boolean
+  // Server-side resource references (Resource<FunctionType>). The
+  // sweeper looks them up through the plugin resource registry.
+  match: Resource<WebhookMatchFn>
+  variables: Resource<WebhookVariablesFn>
+  renderMinimalBody: Resource<WebhookRenderBodyFn>
+  // Optional per-event eligibility - e.g. "subscription owner must
+  // currently be a tracker lead on the issue's project". Default:
+  // the subscription owner has read access to the source doc, which
+  // the sweeper checks regardless.
+  eligibility?: Resource<WebhookEligibilityFn>
+}
 
-### Scope + filters
+// Server-side resource types (lib/server-webhooks exports). Pure
+// server surface; no client bundle dependency.
+type WebhookMatchFn = (
+  ctx: MatchContext,
+  tx: TxCUD<Doc>,
+  preImage: Doc | undefined
+) => SourceEvent[]
+
+interface SourceEvent {
+  // Stable id for dedup. Composed as `${txId}:${sourceDoc}:${suffix?}`.
+  sourceEventId: string
+  eventKind: Ref<WebhookEventSource>   // the kind IS the source _id
+  sourceClass: Ref<Class<Doc>>
+  sourceDoc: Ref<Doc>
+  sourceSpace: Ref<Space>
+  // Attribute names only (A4). Values are re-read at realize time.
+  changedAttrs: string[]
+  actorPersonId: PersonId
+  capturedAt: Timestamp
+}
+```
+
+Internal attempt kinds (`test`, `skipped`, `rotated`, `bindingChanged`)
+are not `WebhookEventSource` ids; they are reserved string values on
+`TWebhookDeliveryAttempt.eventKind` only, never bindable to a trigger.
+
+### Scope + filters (A5)
 
 A trigger has three selectors:
 
 - `scope`: `{ kind: 'space', space }` OR `{ kind: 'allSpaces' }`.
   `allSpaces` matches every space the subscription's stored owner
-  can currently read.
-- `classFilter?`: a `Ref<Class<Doc>>` that MUST be a subclass or
-  mixin of the registered source's `sourceClass`. The save step
-  refuses an incoherent pair.
-- `attributeFilter?`: `{ attr, on, values }`. Fire only when the
-  named attribute (dotted path, hierarchy-aware) has one of
-  `values` on the pre-image (`on: 'previous'`) or post-image
-  (`on: 'new'`). The save step refuses an attribute path that is
-  not on the trigger's resolved class, and the delivery service
-  re-checks at match time so a schema change does not fire a
-  trigger for a path that no longer exists.
+  can currently read. The visible-spaces set is cached per
+  `(ownerUuid, workspaceRev)` with a 5-second TTL and invalidated
+  on membership change; the sweeper reads from that cache rather
+  than reconstructing per event.
+- `classFilter?`: a `Ref<Class<Doc>>` that MUST be the source's
+  `sourceClass`, a subclass, or a mixin of either. The save step
+  refuses an incoherent pair. `classFilter = <Mixin>` means **the
+  doc currently has that mixin applied**. Adding or removing a
+  mixin (a `TxMixin`, e.g. a card tag) fires the generic `Update`
+  with `changedAttrs = ['<MixinRef>']`.
+- `attributeFilter?`: `{ attr, on, values }`. Fires only when the
+  named attribute has one of `values`. `attr` is a dotted path;
+  mixin attributes are addressed as `<MixinRef>.<attr>`.
 
-### Journal + outbox fields (generic over source class)
+Filter semantics:
 
-Rev 4 carried `issueRef`, `projectRef`, `previousStatusRef`,
-`newStatusRef` on `TWebhookJournal` and `TWebhookDeliveryAttempt`.
-Rev 5 replaces those with:
+- Equality is strict `===` for primitives and refs. For arrays
+  `contains` (any `values` element appears in the attribute);
+  equality on arrays is not supported in v1.
+- Markup and blob attributes are refused in `attributeFilter` at
+  save time (they are also in `excludedAttributes` by convention).
+- `null` matches `null`; it does NOT match `undefined` / missing.
+- `on: 'previous'` on a **Create** does NOT match — the predicate
+  evaluates to false (NOT skipped). Rev 5 wrote "skipped" which
+  reads as "matches"; rev 6 pins it.
+- `on: 'new'` on a **Remove** does NOT match either, for the same
+  reason.
 
-- `sourceClass: Ref<Class<Doc>>`
-- `sourceDoc: Ref<Doc>`
-- `sourceSpace: Ref<Space>`
-- `changes: Array<{ attr: string, prev: unknown, next: unknown }>`
+### Journal shape (A4)
 
-A trigger-matched Create records every pre-populated attribute of the
-new doc with `prev = undefined` and the applied value as `next`. A
-Remove records the last-known value with `next = undefined`. An
-Update records only the attributes that actually changed.
-`attributeFilter` reads this `changes` array (and the pre-image /
-post-image reconstruction) rather than taking a dependency on any
-Issue-specific status refs.
+The journal stores identifiers and attribute NAMES only, never
+values. Values are re-read from the stored doc at realize time
+with the subscription owner's effective permissions.
+
+```ts
+interface WebhookJournal extends Doc {
+  space: Ref<Space>          // webhooks.space.Webhooks
+  state: 'pending' | 'in_realization' | 'realized' | 'failed'
+  sourceEvent: {
+    sourceEventId: string    // dedup component
+    txId: Ref<Tx>
+    eventKind: Ref<WebhookEventSource>
+    sourceClass: Ref<Class<Doc>>
+    sourceDoc: Ref<Doc>
+    sourceSpace: Ref<Space>
+    actorPersonId: PersonId
+    changedAttrs: string[]   // names only
+    capturedAt: Timestamp    // ordering key, assigned by the sweeper
+    txModifiedOn: Timestamp
+  }
+  matchedSubscriptions: Array<{ subscriptionId: Ref<WebhookSubscription>, revision: number }>
+  attemptCount: number
+  lastAttemptAt: Timestamp | null
+  createdAt: Timestamp
+}
+```
+
+Rev 4's inline `changes: Array<{attr, prev, next}>` is dropped:
+putting plain pre/post values into a Tx-written doc meant plain
+issue titles, markup and custom fields reached `DOMAIN_TX`, Kafka
+and backups — the same content the audit store is supposed to
+encrypt. Reading at realize time keeps the plain values on the
+delivery path only.
+
+The attempt row drops `issueRef` / `previousStatusRef` /
+`newStatusRef`; the identifiers it carries are `sourceClass`,
+`sourceDoc`, `sourceSpace`, and the attempt's own `eventKind`.
 
 ## Authorization
 
@@ -427,22 +635,54 @@ any kind lands. The service's own management RPC is the only write
 path. This includes `TxCreateDoc` wrapped inside `TxApplyIf` or any
 other compound Tx.
 
-### Read-side gating (fixing ArtyomSavchenko's blocking #2)
+### Read-side gating via dedicated private space (A2)
 
-Rev 4 defined only write-side authorization. Rev 5 adds a `findAll`
-override on the same middleware:
+Rev 5's class-level `findAll` override covered direct queries on
+webhook classes, but not:
 
-- **`TWebhookSubscription`** - visible to the workspace Owner only.
-  Users see nothing even if they can read the subscription's space.
-  URL templates, header templates, trigger scopes stay inside the
-  Owner band.
-- **All service-internal classes** - visible to the webhooks service
-  only. Non-service callers get an empty `FindResult`, not an error.
+- `findAll(core.class.Tx, { objectClass: webhooks.class.WebhookSubscription })`
+  returns the create / update Txes themselves, with URL and header
+  templates. `SpaceSecurityMiddleware` filters Txes by `objectSpace`,
+  not by the targeted class.
+- Live broadcast: `SpaceSecurityMiddleware` broadcasts Txes in
+  system / main spaces to every workspace member.
+- `$lookup`, full-text search, `loadDocs` and backup paths.
 
-The write-side `space` pin and the read-side gate together close the
-"move the sub to a broadly readable space" vector: an Owner cannot
-rewrite `space`, and even if they could, the read gate stops
-non-service callers from seeing any webhook class.
+Rev 6 moves every webhook doc into a dedicated private space
+`webhooks.space.Webhooks`:
+
+- `SystemSpace`, `private: true`, created once per workspace at model
+  init time.
+- `members` = current workspace Owners plus the webhooks service's
+  system account. A member-maintenance trigger syncs the list on
+  `AccountRole` changes (joins add, demotions remove).
+- `TWebhookSubscription` lives here, as do all service-internal
+  classes (`TWebhookSecret`, `TWebhookJournal`, `TWebhookOutboxJob`,
+  `TWebhookDeliveryAttempt`, `TWebhookAuditBlob`,
+  `TWebhookSubscriptionLease`, `TWebhookCleanupTask`).
+- Webhook classes are also excluded from fulltext indexing.
+- The permission middleware pins the subscription's `space` to this
+  ref: no client Tx may change it, even in operator form.
+
+With the private space in place, every existing read path is covered
+by `SpaceSecurityMiddleware`:
+
+- Direct `findAll` on a webhook class: filtered to members (Owners
+  only).
+- `findAll(core.class.Tx, {...})`: Txes `objectSpace === webhooks.space.Webhooks`,
+  filtered to members.
+- Live broadcast: a Tx in a private space fans out only to its
+  members, not to all workspace users.
+- `$lookup` from another class: the join hop runs under the space
+  filter.
+
+The class-level `findAll` override from rev 5 stays as defence in
+depth; a mis-space-ed webhook doc (should not happen, since the
+middleware pins the space) is still refused for non-Owners.
+
+Dropped as a result: the "non-broadcast domain" invention from rev
+4. Platform's `broadcast.ts` has no such concept, and the private-
+space story covers the same goal.
 
 ### System-account bypass is narrow
 
@@ -494,29 +734,50 @@ pin which Owner could authorize the change. A second workspace Owner
 without source access to the subscription's source project could
 redirect that subscription's delivery to their own receiver.
 
-Rev 4 pins destination-changing saves to the subscription's **stored
-owner**:
+Rev 4 pinned destination-changing saves to the subscription's
+stored owner, but allowed them to land as direct Txes AND through
+the management RPC — two write paths for the same bytes. A direct-
+Tx edit leaves `configDigest` stale (next job fails with
+`bindingDrift`) and sidesteps the secret-re-entry rule the RPC
+enforces (B3). Rev 6 collapses this to one path:
 
-- The management RPC accepts a destination-changing save ONLY when
-  the authenticated caller is the subscription's stored `owner`.
-  Any current Owner can disable or delete a subscription (that is
-  containment, not configuration), but only the stored owner can
-  modify its destination/filter/body/secrets.
+- The **middleware refuses ALL destination-level writes** from any
+  client caller, including the stored owner. The destination-level
+  set is `target`, `triggers`, `retryPolicy`, `storeResponseBody`,
+  and `secretsMeta`. These writes are visible to the storage layer
+  only from the webhooks service's own system token.
+- A client Owner that wants to change a destination calls the
+  **webhooks management RPC**. The RPC validates the stored-owner
+  check, re-renders the target against submitted secrets, computes
+  the new `configDigest`, bumps `revision`, resets
+  `storeResponseBody` to `false`, and writes everything in one
+  service-authored Tx atomically. The RPC is the only entry point
+  that can both re-enter secrets AND recompute the digest; the
+  middleware's blanket refusal of client destination writes
+  guarantees the digest can never drift.
+- Containment writes (`enabled`, `name`) land as direct client Txes
+  through the middleware, same as rev 5.
+- A stored owner who loses workspace Owner role can no longer
+  destination-save; the RPC refuses with
+  `errorReason: 'ownerIneligible'`. Any current Owner can still
+  enable, disable or delete a subscription (containment).
+- Ownership transfer is a dedicated RPC that pauses the
+  subscription, requires re-confirming the destination, re-entering
+  secrets and the new owner's acknowledgement BEFORE unpausing.
+  If the stored owner leaves the workspace entirely, the
+  subscription is paused; any current Owner can resume it only by
+  going through the ownership-transfer flow.
 - A workspace that wants a second-Owner co-sign enables the
   `requireSecondOwnerForDestinationChanges` policy (opt-in; off by
-  default per rev-3 open question #4). With the policy on, a
-  destination-changing save must carry a short-lived authorization
-  token issued by a different current Owner for that exact
+  default per rev-3 open question #4). With the policy on, the RPC
+  additionally requires a short-lived authorization token issued by
+  a different current Owner for that exact
   `(subscriptionId, proposedRevision, proposedConfigDigest)` triple.
-- A stored owner who loses workspace membership can no longer save
-  a destination change; the management RPC refuses with
-  `errorReason: 'ownerIneligible'`. Enable/disable/delete still
-  work for current Owners because they do not require source
-  access.
 
-Transferring ownership is a one-time management action gated on
-BOTH the current stored owner AND the target account being a
-current workspace Owner.
+The management RPC itself ships in PR 2. PR 1 lands only the
+middleware's blanket refusal — before the RPC exists there is NO
+way to change a destination through any client path, which is the
+intended state for the authorization gate landing in isolation.
 
 ### Delivery eligibility (per attempt and per retry)
 
@@ -677,72 +938,98 @@ A subscription with `useMinimalBody: true` and no `bodyTemplate`
 sends the minimal JSON body with no template to write. Default when
 the user picks the bare `generic` preset without customization.
 
-### Minimal body
+### Minimal body (generic shape)
+
+Every delivery, regardless of event kind, carries a common
+envelope. The variable namespace is generic over source class; a
+semantic source profile (tracker, card, process) adds its own
+variables under `source.<classProfileKey>`.
 
 ```json
 {
-  "event": "IssueStatusChange",
+  "event": "<Ref<WebhookEventSource>>",
+  "eventLabel": "Issue status changed",
   "txId": "<Ref<Tx>>",
   "deliveryId": "<uuid>",
   "timestamp": 1793235782113,
   "timestampIso": "2026-10-31T06:00:00.000Z",
   "workspace": { "uuid": "<WorkspaceUuid>", "name": "Pixelique" },
-  "project": {
-    "id": "<Ref<Project>>",
-    "identifier": "CAL",
-    "name": "Content Calendar"
-  },
-  "issue": {
-    "id": "<Ref<Issue>>",
-    "identifier": "CAL-14",
-    "title": "Green Friday",
-    "url": "<workspace URL>/#tracker/<project>/<issue>"
-  },
   "actor": {
     "accountUuid": "<AccountUuid>",
     "displayName": "Ahmad Ismail"
   },
-  "previousStatus": {
-    "id": "<Ref<IssueStatus>>", "name": "Design",
-    "categoryRef": "<Ref<StatusCategory>>", "categoryName": "Active"
+  "source": {
+    "class": "<Ref<Class<Doc>>>",
+    "id": "<Ref<Doc>>",
+    "space": "<Ref<Space>>",
+    "url": "<workspace URL>/<deep link resolved by the source profile>"
   },
-  "newStatus": {
-    "id": "<Ref<IssueStatus>>", "name": "Review",
-    "categoryRef": "<Ref<StatusCategory>>", "categoryName": "Active"
+  "changes": [
+    { "attr": "status", "prev": "<Ref<IssueStatus>>", "next": "<Ref<IssueStatus>>" }
+  ],
+  "profile": {
+    // Shape owned by the source's `renderMinimalBody` function. For
+    // the tracker's issue profile this is where `project`, `issue`,
+    // `previousStatus`, `newStatus` go. For a card source, this is
+    // where `card`, `space`, `tag` go.
   }
 }
 ```
 
-Issue title and `actor.displayName` are sensitive data; see
-[Audit](#audit).
+Values in `changes` and `profile` are read at RENDER time (A4),
+NOT frozen in the journal. If the source doc has been removed
+between capture and render, the outbox row terminates as `skipped`
+with reason `source_removed_before_render` and no HTTP call fires.
+Markup, blob and other `excludedAttributes` from the
+`WebhookSubscribable` mixin are redacted (name retained, value
+replaced with `[REDACTED]` or omitted per the source profile).
 
-### Where `previousStatus` comes from
+### Where pre-image values come from
 
-See [Durable outbox](#durable-outbox-fixing-point-2). The pre-image
-is captured inside the same storage transaction as the source
-mutation; a crash before capture produces no outbox row and no event.
-`null` means "unknown" (schema migration, pre-rollout history), not
-"unchanged".
+The sweeper reconstructs the pre-image by replaying the Tx stream
+for the source doc up to and NOT including the current Tx. For a
+Create event the pre-image is empty; `on: 'previous'` filters do
+not match (A5). For a Remove, the pre-image is the last applied
+state. `null` in a `changes.prev` or `changes.next` means the
+attribute was `null`; "field was missing" is distinguished by the
+attribute NOT appearing in the `changes` array at all.
 
 ### Templates and variables
 
-Variable set (fixed, documented, filled under the owner's current
-permissions):
+Variable set (generic namespace; the common envelope above):
 
 | Variable | Value |
 |---|---|
-| `{{ event }}` | `IssueCreated` / `IssueUpdated` / `IssueStatusChange` |
+| `{{ event }}` | `Ref<WebhookEventSource>` (the kind id, e.g. `tracker:eventSource:IssueStatusChange`) |
+| `{{ eventLabel }}` | the source's `label` resolved to the subscription locale |
 | `{{ txId }}` | triggering Tx id |
 | `{{ deliveryId }}` | delivery uuid |
 | `{{ timestamp }}` | ms since epoch |
 | `{{ timestampIso }}` | ISO-8601 UTC |
 | `{{ workspace.uuid }}`, `{{ workspace.name }}` | workspace facts |
-| `{{ project.id }}`, `{{ project.identifier }}`, `{{ project.name }}` | project facts |
-| `{{ issue.id }}`, `{{ issue.identifier }}`, `{{ issue.title }}`, `{{ issue.url }}` | issue facts |
 | `{{ actor.accountUuid }}`, `{{ actor.displayName }}` | the Tx author |
-| `{{ previousStatus.id }}`, `{{ previousStatus.name }}`, `{{ previousStatus.categoryRef }}`, `{{ previousStatus.categoryName }}` | prior status |
-| `{{ newStatus.id }}`, `{{ newStatus.name }}`, `{{ newStatus.categoryRef }}`, `{{ newStatus.categoryName }}` | new status |
+| `{{ source.class }}`, `{{ source.id }}`, `{{ source.space }}`, `{{ source.url }}` | generic source identifiers |
+| `{{ doc.<attr> }}` | current (post-image) value of a doc attribute; resolved by the sweeper under the owner's permissions, markup / blob attributes redacted |
+| `{{ changes }}` | iterable of `{attr, prev, next}` records; v1 does NOT support iteration (see "Rules" below) — use `{{ changes.<attr>.prev }}` and `{{ changes.<attr>.next }}` instead |
+| `{{ changes.<attr>.prev }}`, `{{ changes.<attr>.next }}` | pre / post-image for a specific attribute; empty string if the attribute did not change in this event |
+| `{{ profile.<...> }}` | source-profile-defined fields (see below) |
 | `{{ secrets.<name> }}` | named secret |
+
+Source profiles may add their own namespace. The tracker source
+profile ships with:
+
+| Variable | Value |
+|---|---|
+| `{{ profile.project.id }}`, `{{ profile.project.identifier }}`, `{{ profile.project.name }}` | project facts (same values rev 4 called `{{ project.* }}`) |
+| `{{ profile.issue.id }}`, `{{ profile.issue.identifier }}`, `{{ profile.issue.title }}`, `{{ profile.issue.url }}` | issue facts (`{{ issue.* }}` in rev 4) |
+| `{{ profile.previousStatus.id }}`, `{{ profile.previousStatus.name }}`, `{{ profile.previousStatus.categoryRef }}`, `{{ profile.previousStatus.categoryName }}` | prior status |
+| `{{ profile.newStatus.id }}`, `{{ profile.newStatus.name }}`, `{{ profile.newStatus.categoryRef }}`, `{{ profile.newStatus.categoryName }}` | new status |
+
+Rev 4's `{{ issue.* }}`, `{{ project.* }}`, `{{ previousStatus.* }}`,
+`{{ newStatus.* }}` keep working as aliases of the tracker profile
+variables above, for a release so existing receiver configurations
+can migrate. Card and process profiles ship similar namespaces when
+those plugins add their `WebhookSubscribable` mixins (follow-up PRs).
 
 Rules (v1):
 
@@ -905,16 +1192,31 @@ steer the destination.
 
 ### Address and transport policy
 
-- **Public-only by default.** Reject if any resolved address falls in
-  a non-public range. Explicit tables for IPv4 (including `127.0.0.0/8`,
-  `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`,
-  `100.64.0.0/10` CGNAT, `0.0.0.0/8`, `224.0.0.0/4` broadcast,
-  `240.0.0.0/4` reserved, `192.0.0.0/24`, `192.0.2.0/24`,
-  `198.18.0.0/15`, `198.51.100.0/24`, `203.0.113.0/24`) and IPv6
-  (`::1/128`, `fc00::/7`, `fe80::/10`, `::/128`, IPv4-mapped
-  `::ffff:0:0/96` with embedded IPv4 re-checked against the IPv4
-  table, IPv4-compatible `::0.0.0.0/96`, 6to4 `2002::/16`,
-  Teredo `2001::/32`).
+- **Public-only by default.** The authoritative check is
+  `ipaddr.js`'s `range()` function: a resolved address passes only
+  when `range() === 'unicast'`. The explicit tables below are
+  documented defence in depth; `ipaddr.js` adds coverage for
+  ranges IANA may update later.
+  - IPv4 non-public ranges (rejected): `127.0.0.0/8`,
+    `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`,
+    `169.254.0.0/16`, `100.64.0.0/10` (CGNAT), `0.0.0.0/8`,
+    `224.0.0.0/4` (**multicast** — rev 5 labelled this
+    "broadcast", which is incorrect; multicast is the correct
+    name and the behaviour is the same, reject),
+    `255.255.255.255/32` (limited broadcast), `240.0.0.0/4`
+    (reserved), `192.0.0.0/24`, `192.0.2.0/24`, `198.18.0.0/15`,
+    `198.51.100.0/24`, `203.0.113.0/24`.
+  - IPv6 non-public ranges (rejected): `::1/128`, `fc00::/7`,
+    `fe80::/10`, `::/128`, `100::/64` (discard prefix, RFC 6666),
+    `2001:db8::/32` (documentation), `ff00::/8` (multicast),
+    `64:ff9b::/96` and `64:ff9b:1::/48` (NAT64 well-known
+    prefixes — reach IPv4 ranges after translation, so an NAT64
+    reachable attacker-controlled dual-stack router could proxy
+    the request into the internal IPv4 space; reject at the IPv6
+    layer),
+    IPv4-mapped `::ffff:0:0/96` with embedded IPv4 re-checked
+    against the IPv4 table, IPv4-compatible `::0.0.0.0/96`,
+    6to4 `2002::/16`, Teredo `2001::/32`.
 - **IPv4-literal normalization.** `127.1`, `0x7f.0.0.1`, octal
   forms, and any other `net.isIP` representation are normalized
   before the range check.
@@ -950,40 +1252,79 @@ steer the destination.
   `WEBHOOK_ALLOW_HTTP=true` AND the host is in the allowlist.
 - Timeout default 10 s, hard cap 30 s. Response body cap 8 KB.
 
-## Durable outbox (fixing point #2)
+## Durable delivery (B1, platform assumptions)
 
-Rev 3 proposed writing the outbox row in the same Tx as the apply
-and relied on cross-domain atomicity. Michael pointed out that
-Postgres processes domains separately in the existing
-`foundations/server/packages/postgres/src/storage.ts` so a cross-
-domain batch is not actually atomic.
+Rev 3 wrote the outbox in the same Tx as the apply and relied on
+cross-domain atomicity. Rev 4 moved to a journal written in the Tx
+middleware pipeline, which still crosses a commit boundary against
+the source-domain apply: journal written before `provideTx` and
+apply fails leaves a phantom journal; journal written after and a
+crash in between loses the event. `tx.meta` is stripped before
+persist, so the pre-image cannot ride on the Tx either.
 
-Rev 4 uses a **journal-based recovery** design:
+Rev 6 drops in-pipeline journalling. Delivery is driven by a
+**Tx-log sweeper**:
 
-### Journal
+- `TxMiddleware` writes every applied Tx to `DOMAIN_TX` BEFORE the
+  domain apply (`txPush.ts:L51-L97`). The sweeper tails `DOMAIN_TX`
+  from a persisted cursor and only ever sees Txes whose write has
+  already succeeded. A crash before apply means neither a stored
+  Tx nor a delivered event; a crash after apply has a stored Tx the
+  sweeper picks up on restart.
+- For each Tx, the sweeper resolves the applicable
+  `WebhookEventSource` set by: (a) looking up the Tx's `objectClass`
+  in the `WebhookSubscribable` mixin index; (b) running every
+  registered match hook whose `detectOn` matches the Tx's class or
+  one of its hierarchy. Each match hook returns zero or more
+  `SourceEvent` records (`sourceEventId`, `changedAttrs`, ...).
+- For each `SourceEvent`, the sweeper joins against subscriptions
+  for the workspace, writes a journal row (attribute names only,
+  per A4), then one outbox row per matched subscription. All writes
+  live in the webhooks domain (`DOMAIN_WEBHOOKS`), a single-domain
+  storage transaction, so atomicity on this side is normal.
+- Writes are keyed by `(subscription, eventKind, sourceEventId)`
+  with a UNIQUE constraint, so a sweeper restart that reprocesses a
+  Tx inserts no duplicates.
+- The pre-image is reconstructed by replaying the Tx stream for the
+  source doc up to and including the Tx under consideration. For
+  common cases (Create / Update) the Tx itself carries the post-
+  image diff and the sweeper reads the stored doc one tick earlier
+  from `DOMAIN_TX` reverse replay. The journal records attribute
+  NAMES only; values are read from the stored source doc at realize
+  time (A4), under the subscription owner's effective permissions.
 
-A single `TWebhookJournal` entry is written AT THE END of the Tx
-middleware pipeline for every eligible source Tx:
+The platform assumptions rev 4 relied on are dropped:
+
+- "The journal is written in the same storage transaction as the
+  source mutation" — not needed any more. The Tx log IS the single
+  source of truth; the sweeper picks up only committed Txes.
+- "Non-broadcast domain" — not needed; webhook docs live in the
+  private webhooks space (A2) and `SpaceSecurityMiddleware` already
+  limits broadcast to space members.
+- "Outside the transactor hot path" — now literally true: the
+  sweeper is a background worker, not a middleware. The in-
+  pipeline matching that rev 4 implied is removed. The sweeper
+  caches a per-workspace, per-class subscription index keyed on the
+  workspace config revision.
+
+### Journal row
 
 ```ts
-TWebhookJournal extends TDoc {
-  space: Ref<Space>
-  // State machine. 'pending' = captured, outbox rows not yet written.
-  // 'realized' = all outbox rows written. 'failed' = outbox write
-  // failed terminally.
-  state: 'pending' | 'realized' | 'failed'
-  // Full capture of what the outbox needs to realize.
-  sourceTx: {
+interface WebhookJournal extends Doc {
+  space: Ref<Space>          // webhooks.space.Webhooks
+  state: 'pending' | 'in_realization' | 'realized' | 'failed'
+  sourceEvent: {
+    sourceEventId: string    // dedup component
     txId: Ref<Tx>
-    event: 'IssueCreated' | 'IssueUpdated' | 'IssueStatusChange'
-    issueRef: Ref<Issue>
-    projectRef: Ref<Project>
+    eventKind: Ref<WebhookEventSource>
+    sourceClass: Ref<Class<Doc>>
+    sourceDoc: Ref<Doc>
+    sourceSpace: Ref<Space>
     actorPersonId: PersonId
-    previousStatusRef: Ref<IssueStatus> | null
-    newStatusRef: Ref<IssueStatus> | null
+    changedAttrs: string[]   // names only (A4)
+    capturedAt: Timestamp    // ordering key, monotonic per subscription
     txModifiedOn: Timestamp
   }
-  // Matching subscriptions resolved at capture time.
   matchedSubscriptions: Array<{ subscriptionId: Ref<WebhookSubscription>, revision: number }>
   attemptCount: number
   lastAttemptAt: Timestamp | null
@@ -991,42 +1332,41 @@ TWebhookJournal extends TDoc {
 }
 ```
 
-The journal is in the **same domain** as the subscription docs, so a
-single-domain storage transaction suffices for its write. The pre-
-image (`previousStatusRef`) is captured by reading the issue state
-INSIDE the Tx middleware before `provideTx` is called, matching the
-same slot where a trigger would read it, but WITHOUT relying on a
-cross-domain commit boundary.
-
-### Realization
-
-A worker sweeps `state: 'pending'` journal entries and realizes them
-into outbox rows:
+### Outbox row
 
 ```ts
-TWebhookOutboxJob extends TDoc {
-  space: Ref<Space>
+interface WebhookOutboxJob extends Doc {
+  space: Ref<Space>          // webhooks.space.Webhooks
   subscription: Ref<WebhookSubscription>
   revision: number                 // frozen at realize time
-  event: WebhookTrigger['event']
+  eventKind: Ref<WebhookEventSource>
+  sourceEventId: string
   deliveryId: string               // uuid; minted at realize time
-  journal: Ref<TWebhookJournal>
+  journal: Ref<WebhookJournal>
   txId: Ref<Tx>
+  // Diagnostic form only. Secret values are substituted at send
+  // time, so plain secret values never reach DOMAIN_TX, Kafka or
+  // backups (B2).
   frozenRequest: {
     method: 'POST' | 'PUT'
-    url: string                    // final rendered
-    headers: Array<{ name: string, value: string }>
-    bodyBytes: Buffer
-    bodyBytesHash: string          // sha256; used for audit integrity
+    url: string              // rendered with [SECRET:<name>] placeholders
+    headers: Array<{ name: string, value: string }>  // same placeholders
+    bodyBytes: Buffer        // body template rendered with [SECRET:<name>]
+    bodyBytesHash: string    // sha256 of body AFTER secret substitution,
+                             //   NOT of the diagnostic form; computed at
+                             //   send time once per attempt and stored on
+                             //   the audit row, not here
     configDigestAtRealize: string  // for bindingDrift re-check
     renderedAt: Timestamp
+    // Capture-time sequence number; outbox ordering reads this,
+    // NOT `nextAttemptAt`, so a job in backoff is not overtaken by a
+    // newer job for the same subscription.
+    captureSeq: number
   }
   state: 'pending' | 'in_flight' | 'done' | 'failed' | 'quarantined'
   attempts: number
   nextAttemptAt: Timestamp | null
   terminalReason: string | null
-  // Set when a worker claims the subscription-wide lease (not this row).
-  // See "Ordering".
   claimedUnderLease: string | null
 }
 ```
@@ -1034,54 +1374,65 @@ TWebhookOutboxJob extends TDoc {
 Realization steps for one journal entry:
 
 1. Mark journal `in_realization` with an optimistic lock.
-2. For each matched subscription, resolve the owner's current source
-   access. If revoked, write a `denied` audit row directly (no
-   outbox row) and move on.
-3. Compute the final rendered request bytes (URL / headers / body)
-   under the current secret values. Store those in `frozenRequest`.
-4. Insert the outbox row.
-5. When all outbox rows for the journal entry are inserted, mark the
-   journal `realized`.
+2. For each matched subscription, resolve the owner's current
+   source access against the LIVE source doc. If revoked, write a
+   `denied` audit row directly (no outbox row) and move on.
+3. Read the source doc as it stands now, under the subscription
+   owner's effective permissions. Render URL, headers and body
+   templates with `[SECRET:<name>]` placeholders substituted into
+   the secret slots (not the actual secret values). Compute
+   `configDigestAtRealize` from the APPROVED CONFIG as before.
+4. Insert the outbox row (`UNIQUE(subscription, eventKind, sourceEventId)`).
+5. When all outbox rows for the journal entry are inserted, mark
+   the journal `realized`.
+6. A crash during realization leaves the journal `pending` /
+   `in_realization`; another sweeper worker retries after lease
+   expiry. The unique index makes re-insertion idempotent.
 
-A crash during realization leaves the journal `pending` /
-`in_realization`; the sweeper retries after lease expiry. Realization
-is idempotent: a journal entry with partial outbox rows will complete
-on the next sweep (unique index on `(journal, subscription)` prevents
-duplicate outbox rows for the same realization).
-
-A journal entry that fails realization repeatedly (default 5
-attempts over bounded time) is marked `failed` and listed in the
-quarantine UI; it does not block other journal entries.
+The delivery worker reads the outbox row, substitutes secrets just
+before the HTTP call (B2), signs the final body hash, sends. On a
+retry, the worker re-reads the secret store so a rotation that
+happened between attempts picks up the new value; a secret marked
+compromised and rotated is NEVER replayed with the old value.
 
 ### Dedup key
 
 `(subscription, eventKind, sourceEventId)` is the full dedup key.
-`sourceEventId` is the service-assigned stable identifier for the
-event; for a plain Tx-sourced event it is `${txId}:${sourceDoc}`, so
-a single `TxApplyIf` holding several inner CUDs against distinct
-source docs produces several outbox rows that share a `txId` but
-differ on `sourceEventId`. A `TxUpdateDoc` that satisfies multiple
-registered event kinds (e.g. a generic `Update` plus a semantic
-`IssueStatusChange`) produces one outbox row per `eventKind`.
+`sourceEventId` is composed as `${txId}:${sourceDoc}` for a plain
+Tx-sourced event; a hook that generates several events from one
+Tx (e.g. a `TxApplyIf` with multiple transitions, or a process
+`ExecutionLog` carrying several stage changes) appends a suffix.
+Rev 4's `(subscriptionId, event, txId)` collapsed batched
+transitions into a single row — rev 6 keeps rev 5's fix.
 
-Dedup was keyed on `(subscriptionId, event, txId)` in rev 4, which
-collapsed a batched process-service apply with multiple transitions
-into a single row - rev 5 fixes that.
+### Kafka role
 
-### Kafka role (fixing point #11)
+Kafka is the **wake-up signal** only. The sweeper is the source of
+truth and runs on a short interval regardless of Kafka. Each Kafka
+message carries one `(workspace, txId)` wake-up; the sweeper's work
+on that message is to advance its cursor past `txId` if it was
+behind. **Kafka ack happens immediately on receipt**, not after any
+journal or HTTP step — a slow receiver on one subscription cannot
+stall workspaces sharing a partition. Rev 4 described two
+inconsistent ack points; rev 6 pins one.
 
-Kafka is the **wake-up signal**, not the source of truth. The
-delivery service subscribes to the Tx stream to notice journal
-entries promptly; the sweeper is the authoritative worker and runs
-on an interval regardless of Kafka. **Kafka ack happens after the
-journal write succeeds** — NOT after HTTP terminal — so a slow
-receiver on one subscription cannot stall unrelated workspaces
-sharing a partition.
+### Automation-authored Txes (loop protection)
 
-Subscription-key routing is NOT done through Kafka. Rev 3 implied
-Kafka could route per `(workspaceUuid, subscriptionId)`; it cannot
-on the existing topic. Rev 4 does subscription routing in the outbox
-layer via a subscription-wide lease (see Ordering).
+`TxMiddleware` does not persist `DerivedTx`-space Txes, so changes
+authored by server-side triggers (the #238 workflow-rules mirror,
+server-plugins' own triggers) do NOT normally fire webhooks. Rev
+6 confirms that behaviour: a `DerivedTx` is NOT a sweeper input.
+
+A **non-derived** Tx authored by an automation service (the
+process service, the inbound-webhook service in #33) IS a Tx the
+sweeper sees. To prevent `outbound → external → inbound → change
+→ outbound` loops, the sweeper refuses to generate events on a Tx
+whose `modifiedBy` resolves to a known service account (identified
+by the same `ctx.contextData.service` convention used in the
+authz middleware). The webhooks service itself writes under its
+own token too; its Txes are also exempt. A subscription that
+wants automation events opts in explicitly through a
+`WebhookTrigger.includeAutomation` flag, defaulting to `false`.
 
 ## Ordering, claiming, backlog (fixing points #12, #13)
 
@@ -1150,64 +1501,77 @@ Rev 4 moves sensitive audit content **out of ordinary Tx history**:
 
 ### Audit blob store
 
+Rev 4's `TWebhookAuditBlob` carried both `blobId` and an inline
+`ciphertext`. Rev 6 picks **object storage**: the audit payload
+lives in the workspace's blob adapter (same storage layer as
+attachments), encrypted with the same AEAD scheme as secrets, and
+the audit row carries only the identifiers:
+
 ```ts
-TWebhookAuditBlob extends TDoc {
-  space: Ref<Space>              // workspace settings space
+interface WebhookAuditBlob extends Doc {
+  space: Ref<Space>              // webhooks.space.Webhooks
   subscription: Ref<WebhookSubscription>
   deliveryId: string
   attempt: number
-  blobId: string                 // reference into the dedicated store
+  blobId: string                 // key into the blob storage adapter
+  blobBytes: number              // for quota accounting
   masterKeyId: string
   dekVersion: number
-  ciphertext: Buffer             // audit JSON encrypted with same AEAD as secrets
-  nonce: Buffer
-  tag: Buffer
+  nonce: Buffer                  // 96-bit, random per blob
+  tag: Buffer                    // 128-bit GCM auth tag
   at: Timestamp
 }
 ```
 
-The audit JSON holds the rendered URL (diagnostic form with
-`[SECRET:*]`), header names + diagnostic values, body (if the
-subscription opts in via `storeResponseBody`), HTTP code, response
-headers (if opted in), response body (if opted in, first 2 KB),
-`templateWarnings`, and the error reason.
+The audit JSON (stored in the blob) holds the rendered URL
+(diagnostic form with `[SECRET:*]`), header names + diagnostic
+values, body (diagnostic form with `[SECRET:*]`), HTTP code,
+response headers (if the subscription opts in via
+`storeResponseBody`), response body (if opted in, first 2 KB),
+`templateWarnings`, and the error reason. Secret values are
+NEVER inside; the diagnostic form is written at render time.
 
-The blob is written in the subscription's workspace settings space,
-same as the subscription doc, so space-security normally applies. On
-every read, the service additionally verifies the **current reader
-has source access to the referenced issue**, using the issue ref
-captured in the parent `TWebhookDeliveryAttempt` row. A reader without
-source access gets back a `redacted` row that only shows outcome +
-error reason + timestamp — no identifiers, no title, no displayed
-name.
+The audit row lives in `webhooks.space.Webhooks`, so
+`SpaceSecurityMiddleware` limits reads to Owners (and the service)
+automatically. On every blob read, the service additionally
+verifies the **current reader has source access to the referenced
+source doc**, using `sourceClass` + `sourceDoc` captured in the
+parent `TWebhookDeliveryAttempt` row. A reader without source
+access gets back a `redacted` row that only shows outcome + error
+reason + timestamp.
 
-Audit **client broadcasts are suppressed**: the audit blob store is
-flagged as a non-broadcast domain so a workspace with 100 Owners
-does not fan out every delivery event. Clients query the audit UI
-through a dedicated RPC that re-authorizes on each read.
+Clients query the audit UI through a dedicated service RPC; the
+RPC re-authorises on each read. Rev 4's "non-broadcast domain"
+flag is dropped — the private webhooks space already covers
+broadcast.
 
 ### Attempt metadata row
 
 ```ts
-TWebhookDeliveryAttempt extends TDoc {
-  space: Ref<Space>
+interface WebhookDeliveryAttempt extends Doc {
+  space: Ref<Space>              // webhooks.space.Webhooks
   subscription: Ref<WebhookSubscription>
   deliveryId: string
   attempt: number
-  event: WebhookTrigger['event'] | 'test' | 'skipped' | 'rotated' | 'bindingChanged'
+  eventKind: Ref<WebhookEventSource> | 'test' | 'skipped' | 'rotated' | 'bindingChanged'
   txId: Ref<Tx>
-  issueRef: Ref<Issue>           // for current-source-access gating
+  sourceClass: Ref<Class<Doc>>   // for current-source-access gating
+  sourceDoc: Ref<Doc>
+  sourceSpace: Ref<Space>
   at: Timestamp
   outcome: 'ok' | 'error' | 'skipped' | 'denied'
   httpCode?: number
   errorReason?: string
-  blobId?: string                // reference to TWebhookAuditBlob when outcome allows one
+  blobId?: string                // key into blob store when outcome allows one
   omittedHeaders?: string[]
+  // Rev 5 fix: body hash is computed at send time (after secret
+  // substitution) and stored here, NOT in the outbox row.
+  bodyBytesHash?: string
 }
 ```
 
 The row carries identifiers + outcome + error reason. The sensitive
-rendered-content lives in `TWebhookAuditBlob` and is read-gated.
+rendered-content lives in the blob store and is read-gated.
 
 ### Retention per layer
 
@@ -1306,9 +1670,9 @@ Per subscription row:
 - Enabled toggle (atomic apply).
 - Last delivery: timestamp, status, HTTP code, diagnostic body
   preview with `[SECRET:*]` (only when `storeResponseBody` is on
-  and the reader has source access to the referenced issue).
-- Actions: Edit (stored owner only), Send test event (stored owner
-  only), Delete (current Owner).
+  and the reader has source access to the referenced source doc).
+- Actions: Edit (stored owner only, through the management RPC),
+  Send test event (stored owner only), Delete (current Owner).
 
 Editor:
 
@@ -1320,17 +1684,21 @@ Editor:
 - Content type + body template OR "Use minimal body"
 - Named secrets panel: add / rotate / remove (service RPC;
   write-only; `lastRotatedAt` shown).
-- Triggers: event + `projectScope` + `statusFilter.on`.
+- Triggers: `eventKind` picker (filled from the
+  `WebhookEventSource` registry, hidden sources excluded) +
+  `scope` (specific space OR all-spaces) + optional
+  `classFilter` (narrowed to subclasses or mixins of the picked
+  source's class) + optional `attributeFilter`.
 - Retry policy (collapsed).
-- **Render preview**: picks a recent matching issue the caller can
-  read; renders the diagnostic URL / headers / body with
-  `[SECRET:*]`; shows what will be POSTed. Preview requires caller +
-  stored owner source-access.
+- **Render preview**: picks a recent matching source doc the
+  caller can read; renders the diagnostic URL / headers / body
+  with `[SECRET:*]`; shows what will be POSTed. Preview requires
+  caller + stored owner source-access.
 
 ### Send test event (fixing point #5)
 
-- Picks a recent matching Issue the caller + stored owner can both
-  read.
+- Picks a recent matching source doc the caller + stored owner can
+  both read.
 - Builds the payload with real values and sends with the live
   signed body.
 - **Response display defaults to status + headers metadata only**.
