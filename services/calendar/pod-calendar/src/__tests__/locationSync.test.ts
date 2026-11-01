@@ -15,7 +15,7 @@
 
 // Round trips through the real incoming (IncomingSyncManager) and outgoing (OutcomingClient, CalendarClient) sync code.
 
-import { type Event, type ExternalCalendar } from '@hcengineering/calendar'
+import { type Event, type ExternalCalendar, getRecurringInstanceLocation } from '@hcengineering/calendar'
 import { type Ref } from '@hcengineering/core'
 import { type calendar_v3 } from 'googleapis'
 import { CalendarClient } from '../calendar'
@@ -137,6 +137,40 @@ class Harness {
     }
   }
 
+  /**
+   * The user edits "this occurrence" of a recurring event in Huly: the virtual occurrence is stored as a separate
+   * instance built from an explicit list of fields, as in updateReccuringInstance of calendar-resources.
+   */
+  materializeOccurrence (): void {
+    if (this.huly === undefined) throw new Error('not imported')
+    const occurrence = this.huly
+    this.huly = {
+      _id: occurrence._id,
+      _class: occurrence._class,
+      space: occurrence.space,
+      attachedTo: occurrence.attachedTo,
+      attachedToClass: occurrence.attachedToClass,
+      collection: occurrence.collection,
+      modifiedOn: occurrence.modifiedOn,
+      modifiedBy: occurrence.modifiedBy,
+      eventId: occurrence.eventId,
+      calendar: occurrence.calendar,
+      title: occurrence.title,
+      description: occurrence.description,
+      date: occurrence.date,
+      dueDate: occurrence.dueDate,
+      allDay: occurrence.allDay,
+      participants: occurrence.participants,
+      externalParticipants: occurrence.externalParticipants,
+      reminders: occurrence.reminders,
+      access: occurrence.access,
+      user: occurrence.user,
+      blockTime: occurrence.blockTime,
+      timeZone: occurrence.timeZone,
+      ...getRecurringInstanceLocation(occurrence)
+    }
+  }
+
   /** The body sent to Google when the event is (re)created from Huly, e.g. after a 404 on update. */
   async createBody (legacy = false): Promise<Google> {
     return legacy
@@ -223,6 +257,26 @@ describe.each([false, true])('conference link round trip (legacy client: %s)', (
     await h.syncIncoming()
     expect(h.huly?.location).toBe(meetA)
     await h.editInHuly({ title: 'Renamed' }, legacy)
+    expect(h.google.location).toBeUndefined()
+  })
+
+  it('keeps the link of an edited single occurrence of an imported recurring event', async () => {
+    // The Google occurrence of a recurring event with a conference link.
+    const h = new Harness({ hangoutLink: meetA, recurringEventId: 'rec1', originalStartTime: { dateTime: start } })
+    await h.syncIncoming()
+    expect(h.huly?.location).toBe(meetA)
+
+    h.materializeOccurrence()
+    await h.editInHuly({ title: 'This occurrence only' }, legacy)
+    expect(h.google.summary).toBe('This occurrence only')
+    expect(h.google.location).toBeUndefined()
+    expect((await h.createBody(legacy)).location).toBeUndefined()
+
+    // A later link change in Google still reaches the occurrence.
+    h.editInGoogle({ hangoutLink: meetB })
+    await h.syncIncoming()
+    expect(h.huly?.location).toBe(meetB)
+    await h.editInHuly({ title: 'Renamed again' }, legacy)
     expect(h.google.location).toBeUndefined()
   })
 
