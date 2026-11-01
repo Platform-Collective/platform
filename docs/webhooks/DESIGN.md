@@ -1,6 +1,6 @@
 # Outbound webhook subscriptions
 
-## Status: Design (rev 4)
+## Status: Design (rev 5)
 
 This document is the design proposal for the outbound webhook feature
 discussed in Platform-Collective/platform discussion #236 and issue #33.
@@ -12,8 +12,13 @@ templated; named secrets go through a dedicated `{{ secrets.<name> }}`
 namespace that never renders into logs, previews or audit rows. One
 target kind (`generic`) handles every receiver via templates plus
 built-in presets for `apprise`, `slack`, `discord` and bare `generic`.
-Authorization is enforced in a plugin-contributed permission middleware
-placed BEFORE storage writes, same slot as `guestPermissions`.
+Events are plugin-contributed through a `WebhookEventSource` registry
+that lets any `Doc` class fire webhooks, with the tracker, card and
+process plugins contributing their semantic events; the core webhooks
+plugin ships three generic CUD sources so a Doc class works out of the
+box without a dedicated event kind. Authorization is enforced in a
+permission middleware wired into the pipeline BEFORE storage writes,
+same slot as `guestPermissions`.
 Destination / filter changes are co-signed by the subscription's
 stored owner, not any current workspace Owner. Secrets live in an
 AEAD-encrypted blob store whose AAD is reconstructed from the
@@ -40,10 +45,26 @@ authorization.
   replacing single-host comparison; per-attempt eligibility re-check;
   outbox job collection with full dedup key; placeholder-first
   redaction.
-- **Rev 4** (this revision): addresses MichaelUray's rev-3 review.
+- **Rev 4** (`ac6f39f48a`): addresses MichaelUray's rev-3 review.
   8 must-fix items and 9 should-clarify items reshape Authorization,
   Secrets, Delivery, Signing, Audit and Restore. Three new open
   questions settled with his answers.
+- **Rev 5** (this revision): addresses ArtyomSavchenko's review. Two
+  blocking authz-bypass items (dotted keys + operators bypass the
+  stored-owner / service-only guard; no read-side gating) are fixed in
+  the middleware shape (see "Authorization" below). The model
+  generalises off Issue-specific references: closed `WebhookEvent`
+  union replaced with a plugin-contributed `WebhookEventSource`
+  registry; `issueRef` / `projectRef` / `previousStatusRef` /
+  `newStatusRef` replaced with `sourceClass` + `sourceDoc` +
+  `sourceSpace` + a `changes` array; dedup key moved from `txId`-based
+  to `(subscription, eventKind, sourceEventId)`;
+  `projectScope`/`statusFilter` replaced with a generic
+  `scope` + `classFilter` + `attributeFilter` triple.
+  `storeResponseBody` now treated as destination-changing by the
+  middleware. The system-account bypass is narrowed to the webhooks
+  service token (not any `systemAccountUuid` caller). `TxMixin` on
+  `TWebhookSubscription` refused unconditionally.
 
 ## Open questions, settled
 
@@ -186,17 +207,47 @@ interface WebhookTarget {
   boundAt: Timestamp
 }
 
+// Plugin-contributed event source. See "Event sources" below. Lives
+// in DOMAIN_MODEL; plugins register their sources at model-build time
+// with `builder.createDoc(webhooks.class.WebhookEventSource, ...)`.
+interface WebhookEventSource extends Doc {
+  // Namespaced identifier, e.g. 'tracker:event:IssueStatusChange',
+  // 'card:event:CardArchived', 'webhooks:event:Update'.
+  kind: string
+  // The Doc class this event is about. Hierarchy honoured at match
+  // time, so a `tracker.class.Issue` source also fires for subclasses
+  // unless a trigger's `classFilter` narrows further.
+  sourceClass: Ref<Class<Doc>>
+  label: IntlString
+  icon?: Asset
+  // Internal kinds (used only in audit attempts) stay hidden.
+  hidden?: boolean
+}
+
 interface WebhookTrigger {
-  event: 'IssueCreated' | 'IssueUpdated' | 'IssueStatusChange'
+  // Matches a registered `WebhookEventSource.kind`. If no matching
+  // source is registered at delivery time, the trigger is treated as
+  // if disabled and audited as `skipped`.
+  eventKind: string
 
-  // Explicit project selection OR explicit all-projects marker.
-  // Rev 3 made this explicit; rev 4 keeps it.
-  projectScope: { kind: 'project', projectId: Ref<Project> }
-                | { kind: 'allProjects' }
+  // Explicit space selection OR explicit all-spaces marker. A single
+  // space OR every space the subscription's owner can read.
+  scope:
+    | { kind: 'space', space: Ref<Space> }
+    | { kind: 'allSpaces' }
 
-  statusFilter?: {
+  // Narrow the source class to this subclass or mixin.
+  classFilter?: Ref<Class<Doc>>
+
+  // Attribute predicate: fire only when the named attribute on the
+  // source doc has one of `values`. `attr` is a dotted path into the
+  // source doc; `on` chooses pre-image or post-image. For a Create
+  // event, `previous` is empty and the predicate is skipped on that
+  // side.
+  attributeFilter?: {
+    attr: string
     on: 'previous' | 'new'
-    statuses: Ref<IssueStatus>[]
+    values: unknown[]
   }
 }
 
@@ -215,48 +266,226 @@ interface WebhookRetryPolicy {
 }
 ```
 
+## Event sources (fixing ArtyomSavchenko's model asks)
+
+Events are no longer baked into a closed `WebhookEvent` union. Each
+plugin that wants to fire webhooks contributes a `WebhookEventSource`
+Doc at model-build time:
+
+```ts
+// Example contribution from tracker (lands in a tracker-side PR).
+builder.createDoc(webhooks.class.WebhookEventSource, core.space.Model, {
+  kind: 'tracker:event:IssueStatusChange',
+  sourceClass: tracker.class.Issue,
+  label: tracker.string.IssueStatusChanged
+}, 'tracker:eventSource:IssueStatusChange' as Ref<WebhookEventSource>)
+```
+
+The core webhooks plugin ships three generic CUD sources
+(`webhooks:event:Create`, `webhooks:event:Update`,
+`webhooks:event:Remove`) rooted on `core.class.Doc`, so any Doc class
+can fire webhooks without a plugin-specific contribution. Semantic
+sources - `tracker:event:IssueStatusChange`, `card:event:CardArchived`,
+`process:event:StageTransition` and similar - add richer predicates on
+top. Classes extending `Doc` match through hierarchy: a trigger on
+`sourceClass = core.class.Doc` fires for any Doc the subscription
+owner can read, while a trigger on `sourceClass = tracker.class.Issue`
+with `classFilter = tracker.class.Subissue` narrows further.
+
+Internal event kinds (`test`, `skipped`, `rotated`, `bindingChanged`)
+are reserved; they appear only on `TWebhookDeliveryAttempt`, never on
+a bindable `WebhookTrigger`. The event-source registry marks them
+`hidden: true` or omits them entirely so the UI picker filters them
+out.
+
+### Scope + filters
+
+A trigger has three selectors:
+
+- `scope`: `{ kind: 'space', space }` OR `{ kind: 'allSpaces' }`.
+  `allSpaces` matches every space the subscription's stored owner
+  can currently read.
+- `classFilter?`: a `Ref<Class<Doc>>` that MUST be a subclass or
+  mixin of the registered source's `sourceClass`. The save step
+  refuses an incoherent pair.
+- `attributeFilter?`: `{ attr, on, values }`. Fire only when the
+  named attribute (dotted path, hierarchy-aware) has one of
+  `values` on the pre-image (`on: 'previous'`) or post-image
+  (`on: 'new'`). The save step refuses an attribute path that is
+  not on the trigger's resolved class, and the delivery service
+  re-checks at match time so a schema change does not fire a
+  trigger for a path that no longer exists.
+
+### Journal + outbox fields (generic over source class)
+
+Rev 4 carried `issueRef`, `projectRef`, `previousStatusRef`,
+`newStatusRef` on `TWebhookJournal` and `TWebhookDeliveryAttempt`.
+Rev 5 replaces those with:
+
+- `sourceClass: Ref<Class<Doc>>`
+- `sourceDoc: Ref<Doc>`
+- `sourceSpace: Ref<Space>`
+- `changes: Array<{ attr: string, prev: unknown, next: unknown }>`
+
+A trigger-matched Create records every pre-populated attribute of the
+new doc with `prev = undefined` and the applied value as `next`. A
+Remove records the last-known value with `next = undefined`. An
+Update records only the attributes that actually changed.
+`attributeFilter` reads this `changes` array (and the pre-image /
+post-image reconstruction) rather than taking a dependency on any
+Issue-specific status refs.
+
 ## Authorization
 
 ### Placement (fixing MichaelUray's point #1)
 
-Rev 3 proposed a trigger. Rev 4 contributes a plugin **permission
-middleware** that runs BEFORE storage writes, same slot as
-`guestPermissions` in `foundations/server/packages/middleware/`.
-Rationale: `TriggersMiddleware.tx` calls `provideTx` BEFORE
-`processDerived`, and trigger exceptions are caught, so a direct
-`TxUpdateDoc` from a non-Owner lands in storage even if a trigger
-would have rejected it. A permission middleware refuses the Tx before
-`provideTx` and nothing is persisted.
+Rev 3 proposed a trigger. Rev 4 moved the enforcement into a
+**permission middleware** wired into the pipeline BEFORE storage
+writes, same slot as `guestPermissions` in
+`foundations/server/packages/middleware/`. Rationale:
+`TriggersMiddleware.tx` calls `provideTx` BEFORE `processDerived`, and
+trigger exceptions are caught, so a direct `TxUpdateDoc` from a
+non-Owner lands in storage even if a trigger would have rejected it.
+A permission middleware refuses the Tx before `provideTx` and nothing
+is persisted. The middleware is **core**, not plugin-contributed; it
+is inserted into the pipeline alongside `GuestPermissionsMiddleware`
+and lives at `server-plugins/webhooks` for packaging only.
 
-The middleware's intercept list:
+### Allowlist shape (fixing ArtyomSavchenko's blocking #1)
 
-- **Create / update / remove `TWebhookSubscription`**: requires
-  current `AccountRole.Owner` on the workspace of the targeted doc.
-  Compound transactions (TxApplyIf, TxCreateDoc wrapping other CUD
-  via `collection`) are walked recursively so a non-Owner cannot
-  smuggle a subscription edit through a collection write.
-- **Changes to the subscription's `owner` field**: rejected
-  unconditionally. `owner` is set at create and never mutated.
-- **Changes to `revision`, `target.configDigest`, `target.boundAt`,
-  `lastDelivery*`, `secretsMeta`**: rejected from any client Tx;
-  service-maintained only.
-- **Destination-changing fields** (`target.method`, `target.urlTemplate`,
-  `target.headerTemplates`, `target.bodyTemplate`,
-  `target.useMinimalBody`, `target.contentType`): must come from the
-  **stored owner** of the subscription OR carry a second-Owner
-  authorization token when the workspace policy requires it. See
-  "Owner-authorized destination changes" below. Fixes point #3.
-- **Create / update / remove of `TWebhookSecret`**: rejected from
-  any direct client Tx. The service's management RPC is the only
-  write path (see [Secrets](#secrets)).
-- **Query `TWebhookDeliveryAttempt`**: filtered by the middleware
-  so a caller sees only rows whose referenced source doc the caller
-  can currently read AND whose subscription owner is still eligible.
-  Rows that fail either check surface as `{reason, count}` buckets,
-  no identifiers. Fixes point #4.
+A naive check that inspects the top-level `target` key or a `$set`
+operator can be bypassed in several ways `core/tx` and the Postgres
+adapter accept at write time:
 
-The middleware is unit-tested with the same shape as
-`guestPermissions`.
+- **Dotted keys** - `setObjectValue` splits non-`$` keys on `.`, so
+  `{ 'target.urlTemplate': 'https://attacker/' }` retargets a
+  subscription without ever naming the `target` object. The same
+  trick writes `target.configDigest`, `target.boundAt`, `space`, or
+  any nested service-only field.
+- **Update operators** - this codebase accepts `$push`, `$pull`,
+  `$update`, `$inc`, `$unset`, `$rename` (not `$set`). Each operator
+  payload is `{ field: ... }` keyed by the top-level field name, so
+  `{ $unset: { owner: '' } }`, `{ $rename: { owner: 'formerOwner' } }`,
+  `{ $inc: { revision: 1 } }`, `{ $push: { secretsMeta: {...} } }`
+  all land as mutations on service-maintained fields.
+- **Empty whole-object replace** - `{ target: {} }` is a key the
+  middleware sees but with no sub-keys, so a top-of-tree replace
+  gets through if the check hangs off the sub-key list.
+
+Rev 5 flips the middleware to an **allowlist**:
+
+- **Service-only fields** - `space`, `owner`, `revision`,
+  `secretsMeta`, `lastDeliveryAt`, `lastDeliveryStatus`,
+  `lastDeliveryHttpCode`, `lastDeliveryError`, `target.configDigest`,
+  `target.configDigestAlg`, `target.boundAt` - refused for every
+  non-service caller, in every form: top-level, dotted path, inside
+  any operator payload, as the source OR destination of a `$rename`.
+- **Containment-writable fields** - `enabled`, `name` - may be
+  changed by any current workspace Owner, but only as plain
+  top-level keys. Any `$`-operator or dotted key moves the update
+  out of the containment allowlist, so even an `{ $inc: { enabled: 1 } }`
+  (nonsense but technically a mutation) is refused for a
+  non-stored-owner.
+- **Destination-level fields** - `target` (whole or any sub-key),
+  `triggers`, `retryPolicy`, `storeResponseBody` - require the
+  subscription's stored owner. `storeResponseBody` sits here
+  because it opts into persisting receiver responses that may echo
+  credentials and the design doc already resets it on destination
+  change (rev 4); it is NOT containment.
+- **Unknown fields** - refused (closed-world); a future bypass
+  through a mis-typed attribute is excluded by construction.
+- **Empty operations payload** - refused. A no-op update has no
+  business being a Tx; letting it pass means a bypass vector that
+  "writes nothing" is treated as success.
+
+The middleware walks every form that reaches storage:
+
+1. For each top-level key of `operations`, split on `.` and record
+   the resulting path.
+2. For each `$`-key, confirm it is one of the six accepted
+   operators and walk its payload keys the same way. For
+   `$rename`, record BOTH source and destination.
+3. Classify every recorded path. Service-only in any form -
+   refuse. Unknown top-level field - refuse. Destination-level -
+   requires stored owner.
+4. If the touched set is purely top-level `enabled` / `name` with
+   no operator and no dotted key - allow for any current Owner.
+   Otherwise require the stored owner.
+
+### TxMixin refused
+
+`TxMixin` on `TWebhookSubscription` is refused unconditionally. The
+subscription class has no mixin surface and refusing it costs nothing;
+it removes an unreviewed write path on a security-sensitive class.
+
+### Service-internal classes refused for every client
+
+`TWebhookSecret`, `TWebhookJournal`, `TWebhookOutboxJob`,
+`TWebhookDeliveryAttempt`, `TWebhookAuditBlob`,
+`TWebhookSubscriptionLease`, `TWebhookCleanupTask` - no client Tx of
+any kind lands. The service's own management RPC is the only write
+path. This includes `TxCreateDoc` wrapped inside `TxApplyIf` or any
+other compound Tx.
+
+### Read-side gating (fixing ArtyomSavchenko's blocking #2)
+
+Rev 4 defined only write-side authorization. Rev 5 adds a `findAll`
+override on the same middleware:
+
+- **`TWebhookSubscription`** - visible to the workspace Owner only.
+  Users see nothing even if they can read the subscription's space.
+  URL templates, header templates, trigger scopes stay inside the
+  Owner band.
+- **All service-internal classes** - visible to the webhooks service
+  only. Non-service callers get an empty `FindResult`, not an error.
+
+The write-side `space` pin and the read-side gate together close the
+"move the sub to a broadly readable space" vector: an Owner cannot
+rewrite `space`, and even if they could, the read gate stops
+non-service callers from seeing any webhook class.
+
+### System-account bypass is narrow
+
+The system-account bypass requires BOTH
+`account.uuid === systemAccountUuid` AND
+`ctx.contextData.service === 'webhooks'`. Other internal services
+(github, gmail, telegram, process, ...) all run under
+`systemAccountUuid` for their own purposes; they do not inherit
+webhooks authority. The service clause stops a cross-service token
+from writing webhook state.
+
+### Create-time rules
+
+- `attributes.owner` must equal the authenticated caller. A
+  workspace Owner cannot create a subscription owned by someone
+  else; ownership transfer is a separate RPC (not in PR 1).
+- `attributes` is also an allowlist: `owner` plus the containment /
+  destination-writable set. Service-only fields pre-populated by a
+  client are refused. Unknown attributes are refused.
+- `attributes.target.configDigest`, `attributes.target.boundAt`,
+  `attributes.target.configDigestAlg` are refused as sub-fields of
+  `target` even in create; the service seeds them during the first
+  realize pass.
+
+### Compound transactions
+
+`TxApplyIf` is walked recursively; a forbidden inner Tx inside an
+`applyIf` is refused the same as if it had been submitted alone.
+`collection`-wrapped CUD is handled identically because the
+middleware classifies by the inner `TxCUD._class` and `objectClass`.
+
+### Testing
+
+The middleware ships with ~55 Jest unit tests. Coverage includes the
+role gate, system-account bypass with the right AND the wrong service
+token, each of the seven service-internal classes, each
+service-only field in top-level / dotted / each-operator form,
+`$rename` with service-only on either side, `target: {}` whole-object
+replace, destination-change with the stored owner / with a different
+current Owner / with no stored row, containment toggles from a
+non-stored-owner Owner, `TxMixin` refusal, read gating for both the
+subscription class and every service-internal class, and `TxApplyIf`
+walking.
 
 ### Owner-authorized destination changes (fixing point #3)
 
@@ -826,9 +1055,18 @@ quarantine UI; it does not block other journal entries.
 
 ### Dedup key
 
-`(subscriptionId, event, txId)` is the full dedup key. A single Tx
-firing both `IssueUpdated` and `IssueStatusChange` produces TWO
-outbox rows (distinct `event`), matching rev 3.
+`(subscription, eventKind, sourceEventId)` is the full dedup key.
+`sourceEventId` is the service-assigned stable identifier for the
+event; for a plain Tx-sourced event it is `${txId}:${sourceDoc}`, so
+a single `TxApplyIf` holding several inner CUDs against distinct
+source docs produces several outbox rows that share a `txId` but
+differ on `sourceEventId`. A `TxUpdateDoc` that satisfies multiple
+registered event kinds (e.g. a generic `Update` plus a semantic
+`IssueStatusChange`) produces one outbox row per `eventKind`.
+
+Dedup was keyed on `(subscriptionId, event, txId)` in rev 4, which
+collapsed a batched process-service apply with multiple transitions
+into a single row - rev 5 fixes that.
 
 ### Kafka role (fixing point #11)
 
