@@ -18,6 +18,7 @@
         "Subject": "제목",
         "Send": "전송",
         "Resend": "재전송",
+        "IntegrationUnavailable": "Gmail 연동을 사용할 수 없습니다. 설정에서 Gmail을 다시 연결하고 이 메시지를 다시 보내세요.",
         "NewMessage": "새 메시지",
         "NewMessageTo": "새 메시지 받는 사람",
         "Cancel": "취소",

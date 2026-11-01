@@ -35,6 +35,7 @@
   export let canChangeEmail = true
   export let password: string | undefined = undefined
   export let onLogin: ((loginInfo: LoginInfo | null, status: Status) => void | Promise<void>) | undefined = undefined
+  export let onResend: typeof loginOtp = loginOtp
 
   const dispatch = createEventDispatcher()
 
@@ -205,7 +206,7 @@
 
   async function resendCode(): Promise<void> {
     status = new Status(Severity.INFO, login.status.ConnectingToServer, {})
-    const [otpStatus, result] = await loginOtp(email)
+    const [otpStatus, result] = await onResend(email)
     status = otpStatus
 
     if (result?.sent === true && otpStatus === OK) {

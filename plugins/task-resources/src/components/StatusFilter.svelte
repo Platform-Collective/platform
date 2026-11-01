@@ -41,6 +41,7 @@
   import { createEventDispatcher } from 'svelte'
   import { typesOfJoinedProjectsStore, selectedTaskTypeStore, selectedTypeStore, taskTypeStore, typeStore } from '..'
   import { getStatusProjectType } from '../statusProjectType'
+  import { getTaskTypeStatuses } from './status-filter'
 
   export let filter: Filter
   export let space: Ref<Space> | undefined = undefined
@@ -81,7 +82,7 @@
     }
     const type = selectedType !== undefined ? typeStore.get(selectedType) : undefined
     if (type !== undefined) {
-      values = type?.statuses?.map((p) => statusStore.get(p))
+      values = getTaskTypeStatuses(type.statuses, statusStore)
       for (const value of values) {
         targets.add(value?._id)
       }
@@ -119,7 +120,7 @@
       statuses = statuses.filter((it, idx, arr) => arr.findIndex((q) => q._id === it._id) === idx)
       values = await sort(statuses)
     }
-    if (targets.has(undefined)) {
+    if (filter.value.includes(undefined)) {
       values.unshift(undefined)
     }
     if (values.length !== targets.size) {

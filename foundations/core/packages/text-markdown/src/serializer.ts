@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { MarkupMark, MarkupNode, MarkupNodeType } from '@hcengineering/text-core'
+import { MarkupMark, MarkupMarkType, MarkupNode, MarkupNodeType } from '@hcengineering/text-core'
 import { markupToHtml } from '@hcengineering/text-html'
 
 import { isInSet, markEq } from './marks'
@@ -52,12 +52,55 @@ interface InlineState {
   parent: MarkupNode
   node?: MarkupNode
   marks: MarkupMark[]
+  code?: InlineCodeSpan
+}
+
+interface InlineCodeSpan {
+  end: number
+  marks: MarkupMark[]
+  open: string
+  close: string
 }
 
 // *************************************************************
 
-function backticksFor (side: boolean): string {
-  return side ? '`' : '`'
+function backtickFence (text: string, minimum: number): string {
+  let length = minimum
+  for (const match of text.matchAll(/`+/g)) {
+    length = Math.max(length, match[0].length + 1)
+  }
+  return '`'.repeat(length)
+}
+
+function inlineCodeSpan (parent: MarkupNode, index: number): InlineCodeSpan | undefined {
+  const content = nodeContent(parent)
+  const hasCode = (node: MarkupNode | undefined): boolean =>
+    node?.type === MarkupNodeType.text && node.marks?.some((mark) => mark.type === MarkupMarkType.code) === true
+  if (!hasCode(content[index])) return undefined
+
+  let start = index
+  let end = index
+  while (start > 0 && hasCode(content[start - 1])) start--
+  while (end < content.length && hasCode(content[end])) end++
+
+  const marks = content[start].marks ?? []
+  const codeIndex = marks.findIndex((mark) => mark.type === MarkupMarkType.code)
+  let outer = marks.slice(0, codeIndex)
+  // Mark order defines nesting. Keep only outer marks shared by the whole span;
+  // marks inside code cannot be represented in Markdown.
+  for (let i = start + 1; i < end; i++) {
+    const next = content[i].marks ?? []
+    let keep = 0
+    while (keep < outer.length && keep < next.length && markEq(outer[keep], next[keep])) keep++
+    outer = outer.slice(0, keep)
+  }
+  const text = content
+    .slice(start, end)
+    .map((node) => node.text ?? '')
+    .join('')
+  const fence = backtickFence(text, 1)
+  const padding = /^`|`$/.test(text) || (text.startsWith(' ') && text.endsWith(' ') && /[^ ]/.test(text)) ? ' ' : ''
+  return { end, marks: [...outer, marks[codeIndex]], open: fence + padding, close: padding + fence }
 }
 
 function isPlainURL (link: MarkupMark, parent: MarkupNode, index: number): boolean {
@@ -95,19 +138,31 @@ export const storeNodes: Record<string, NodeProcessor> = {
     })
   },
   codeBlock: (state, node) => {
-    state.write('```' + `${nodeAttrs(node).language ?? ''}` + '\n')
+    const fence = backtickFence(
+      nodeContent(node)
+        .map((child) => child.text ?? '')
+        .join(''),
+      3
+    )
+    state.write(fence + `${nodeAttrs(node).language ?? ''}` + '\n')
     // TODO: Check for node.textContent
     state.renderInline(node)
     // state.text(node.text ?? '', false)
     state.ensureNewLine()
-    state.write('```')
+    state.write(fence)
     state.closeBlock(node)
   },
   mermaid: (state, node) => {
-    state.write('```mermaid\n')
+    const fence = backtickFence(
+      nodeContent(node)
+        .map((child) => child.text ?? '')
+        .join(''),
+      3
+    )
+    state.write(fence + 'mermaid\n')
     state.renderInline(node)
     state.ensureNewLine()
-    state.write('```')
+    state.write(fence)
     state.closeBlock(node)
   },
   heading: (state, node) => {
@@ -382,10 +437,10 @@ export const storeMarks: Record<string, MarkProcessor> = {
   },
   code: {
     open: (state, mark, parent, index) => {
-      return backticksFor(false)
+      return inlineCodeSpan(parent, index)?.open ?? '`'
     },
     close: (state, mark, parent, index) => {
-      return backticksFor(true)
+      return inlineCodeSpan(parent, index - 1)?.close ?? '`'
     },
     mixable: false,
     expelEnclosingWhitespace: false,
@@ -640,11 +695,24 @@ export class MarkdownState implements IState {
   renderNodeInline (state: InlineState, index: number): void {
     state.marks = state.node?.marks ?? []
     this.updateHardBreakMarks(state, index)
+    if (state.node !== undefined && state.node.type !== MarkupNodeType.text) {
+      state.marks = state.marks.filter((mark) => mark.type !== MarkupMarkType.code)
+    }
+
+    if (state.node?.type === MarkupNodeType.text && state.marks.some((mark) => mark.type === MarkupMarkType.code)) {
+      if (state.code === undefined || index >= state.code.end) {
+        state.code = inlineCodeSpan(state.parent, index)
+      }
+      state.marks = state.code?.marks ?? state.marks
+    }
 
     const leading = this.adjustLeading(state)
 
     const inner: MarkupMark | undefined = state.marks.length > 0 ? state.marks[state.marks.length - 1] : undefined
-    const noEsc = inner !== undefined && !(this.marks[inner.type]?.escape ?? false)
+    // Code participates in active marks so a run is closed only once, even when
+    // the source nodes have different marks. Its text is rendered without escaping.
+    const noEsc =
+      inner !== undefined && inner.type !== MarkupMarkType.code && !(this.marks[inner.type]?.escape ?? false)
     const len = state.marks.length - (noEsc ? 1 : 0)
 
     this.reorderMixableMarks(state, len)
@@ -701,7 +769,8 @@ export class MarkdownState implements IState {
     while (state.active.length < len) {
       const add = state.marks[state.active.length]
       state.active.push(add)
-      this.text(this.markString(add, true, state.parent, index), false)
+      const delimiter = add.type === MarkupMarkType.code ? state.code?.open : undefined
+      this.text(delimiter ?? this.markString(add, true, state.parent, index), false)
     }
   }
 
@@ -715,7 +784,8 @@ export class MarkdownState implements IState {
     while (keep < state.active.length) {
       const mark = state.active.pop()
       if (mark !== undefined) {
-        this.text(this.markString(mark, false, state.parent, index), false)
+        const delimiter = mark.type === MarkupMarkType.code ? state.code?.close : undefined
+        this.text(delimiter ?? this.markString(mark, false, state.parent, index), false)
       }
     }
   }
@@ -740,7 +810,10 @@ export class MarkdownState implements IState {
   }
 
   private isMarksHasExpelEnclosingWhitespace (state: InlineState): boolean {
-    return state.marks.some((mark) => this.marks[mark.type]?.expelEnclosingWhitespace)
+    return (
+      !state.marks.some((mark) => mark.type === MarkupMarkType.code) &&
+      state.marks.some((mark) => this.marks[mark.type]?.expelEnclosingWhitespace)
+    )
   }
 
   private adjustLeadingTextNode (
@@ -786,13 +859,14 @@ export class MarkdownState implements IState {
   // :: (Node)
   // Render the contents of `parent` as inline content.
   renderInline (parent: MarkupNode): void {
+    const content = nodeContent(parent)
     const state: InlineState = { active: [], trailing: '', parent, marks: [] }
-    nodeContent(parent).forEach((nde, index) => {
+    content.forEach((nde, index) => {
       state.node = nde
       this.renderNodeInline(state, index)
     })
     state.node = undefined
-    this.renderNodeInline(state, 0)
+    this.renderNodeInline(state, content.length)
   }
 
   // :: (Node, string, (number) → string)

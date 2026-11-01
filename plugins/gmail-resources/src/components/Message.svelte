@@ -26,6 +26,7 @@
   export let selectable: boolean = false
   const isError = (message as unknown as NewMessage)?.status === 'error'
   const errorMessage = isError ? (message as unknown as NewMessage) : undefined
+  const error = errorMessage?.error ? JSON.parse(errorMessage.error) : undefined
 
   const dispatch = createEventDispatcher()
 </script>
@@ -63,8 +64,12 @@
     {/if}
     {#if isError}
       <div class="error-color top-divider mt-2 pt-2">
-        Error: {(errorMessage?.error ? JSON.parse(errorMessage.error)?.data?.error_description : undefined) ??
-          'unknown error'}
+        Error:
+        {#if error?.data?.error === 'integration_unavailable'}
+          <Label label={gmail.string.IntegrationUnavailable} />
+        {:else}
+          {error?.data?.error_description ?? 'unknown error'}
+        {/if}
       </div>
     {/if}
   </div>

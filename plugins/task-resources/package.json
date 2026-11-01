@@ -7,6 +7,7 @@
   "scripts": {
     "build": "compile ui",
     "build:docs": "api-extractor run --local",
+    "test": "jest --passWithNoTests --silent",
     "format": "format src",
     "test": "jest --passWithNoTests --silent",
     "svelte-check": "do-svelte-check",
