@@ -271,12 +271,36 @@ export function createModel (builder: Builder): void {
   )
 
   // Dedicated private space for every webhook doc (rev 6, A2).
-  // `SpaceSecurityMiddleware` filters reads, Tx-history queries and
-  // live broadcast on membership of this space. Members are seeded
-  // empty here; the member-maintenance trigger (PR 2) syncs
-  // workspace Owners into this list on `AccountRole` changes.
+  //
+  // Must be `core.class.Space` with `private: true`, NOT
+  // `core.class.SystemSpace`: `SpaceSecurityMiddleware` puts
+  // SystemSpaces into its `systemSpaces` set and adds them to every
+  // member's allowed-spaces list, so `private: true` has no effect
+  // on a SystemSpace. Michael caught this in review of e5f9650 - a
+  // regular workspace member could then read the webhook Tx history
+  // (`findAll(core.class.Tx, { objectSpace: webhooks.space.Webhooks })`)
+  // and receive the create/update Txes live over broadcast.
+  //
+  // With `core.class.Space` + `private: true`:
+  //  - `SpaceSecurityMiddleware` filters findAll by membership
+  //  - Tx-history queries on `objectSpace: webhooks.space.Webhooks`
+  //    are filtered the same way
+  //  - Live broadcast only reaches members
+  //  - The webhooks service's system token bypasses the filter
+  //    via `isSystem(account, ctx)` short-circuit
+  //
+  // Members are seeded empty here. In PR 1 the Settings UI is a
+  // placeholder and no subscriptions exist, so no reads need to
+  // succeed yet. PR 2 ships:
+  //  (a) a server-side trigger on `TxUpdateDoc<Account>` that syncs
+  //      workspace Owners into this space's members list on role
+  //      changes
+  //  (b) a migration that seeds existing workspace Owners at
+  //      install time
+  //  (c) the management RPC also adds its caller to the members
+  //      list as a side effect of creating a subscription
   builder.createDoc(
-    core.class.SystemSpace,
+    core.class.Space,
     core.space.Model,
     {
       name: 'Webhooks',
