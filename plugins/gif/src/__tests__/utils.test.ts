@@ -1,5 +1,6 @@
 //
 // Copyright © 2026 Hardcore Engineering Inc.
+// Copyright © 2026 Exaviz
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -28,7 +29,9 @@ import {
   isGifResult,
   isSearchEnter,
   libraryViewState,
+  librarySearchKey,
   matchesQuery,
+  searchEnterPick,
   selectFirst,
   validateUpload
 } from '../utils'
@@ -282,5 +285,60 @@ describe('isSearchEnter', () => {
 
   it('refuses an event with no target', () => {
     expect(isSearchEnter({ key: 'Enter', target: null })).toBe(false)
+  })
+})
+
+describe('librarySearchKey', () => {
+  it('is empty for an empty or blank box, which queries the whole library', () => {
+    expect(librarySearchKey('')).toBe('')
+    expect(librarySearchKey('   ')).toBe('')
+  })
+
+  it('is the $like pattern otherwise', () => {
+    expect(librarySearchKey(' dog ')).toBe(likeContains('dog'))
+  })
+
+  it('is the same for texts that differ only in separators, since they run the same query', () => {
+    expect(librarySearchKey('party_parrot')).toBe(librarySearchKey('party  parrot'))
+  })
+
+  it('tells a text of separators only apart from an empty box, since they run different queries', () => {
+    expect(librarySearchKey('...')).not.toBe(librarySearchKey(''))
+  })
+})
+
+describe('searchEnterPick', () => {
+  // Enter in the search box dispatches the new query synchronously, but its results arrive
+  // later. Until they do, the grid still shows the previous search, so Enter must not pick
+  // from it. shownFor is the key of the search the results on screen were loaded for.
+  const dogs = [gif('dog 1'), gif('dog 2')]
+  const dog = librarySearchKey('dog')
+
+  it('picks the first result when the results on screen are for what is typed', () => {
+    expect(searchEnterPick(dogs, 'dog', dog)?.title).toBe('dog 1')
+  })
+
+  it('picks nothing while the results on screen are still for the previous search', () => {
+    expect(searchEnterPick(dogs, 'cat', dog)).toBeUndefined()
+  })
+
+  it('picks nothing before the first results have loaded', () => {
+    expect(searchEnterPick([], '', undefined)).toBeUndefined()
+    expect(searchEnterPick(dogs, 'dog', undefined)).toBeUndefined()
+  })
+
+  it('picks when the typed text runs the same query as the one on screen', () => {
+    expect(searchEnterPick(dogs, '  dog ', dog)?.title).toBe('dog 1')
+    const parrots = [gif('party parrot')]
+    expect(searchEnterPick(parrots, 'party_parrot', librarySearchKey('party parrot'))?.title).toBe('party parrot')
+  })
+
+  it('picks from the unfiltered view when the box is empty, but not for a text of separators', () => {
+    expect(searchEnterPick(dogs, '', '')?.title).toBe('dog 1')
+    expect(searchEnterPick(dogs, '...', '')).toBeUndefined()
+  })
+
+  it('picks nothing when the current search has no results', () => {
+    expect(searchEnterPick([], 'cat', librarySearchKey('cat'))).toBeUndefined()
   })
 })

@@ -54,6 +54,9 @@ const GUARDED = new Set<Ref<Class<Tx>>>([core.class.TxRemoveDoc, core.class.TxUp
  * here unwrapped, and before TxMiddleware, so a rejected batch is never stored. A batch with one
  * disallowed change is rejected as a whole.
  *
+ * A change to an id with no stored row is rejected for non-admins too: the id may belong to an
+ * upload that is still in flight.
+ *
  * @public
  */
 export class GifMiddleware extends BaseMiddleware {
@@ -82,11 +85,16 @@ export class GifMiddleware extends BaseMiddleware {
     const current = (
       await this.provideFindAll(ctx, gif.class.WorkspaceGif, { _id: cud.objectId as Ref<WorkspaceGif> }, { limit: 1 })
     ).shift()
-    // Nothing stored under this id, so there is no entry to protect; the pipeline handles it as usual.
-    if (current === undefined) return
-
-    if (!canRemoveGif(current, account.socialIds, false)) {
-      ctx.warn('Changing a GIF library entry uploaded by another member is not allowed', {
+    // No row is not the same as nothing to protect. Library ids are derived from the file
+    // (gif-<sha256>), so the id of an upload that is still being stored is known in advance. A
+    // removal let through now would be applied once that create lands and delete another
+    // member's entry. Only an admin, who may remove any entry anyway, gets past a missing row.
+    if (current === undefined || !canRemoveGif(current, account.socialIds, false)) {
+      const reason =
+        current === undefined
+          ? 'Changing a GIF library entry that is not stored (yet) is not allowed'
+          : 'Changing a GIF library entry uploaded by another member is not allowed'
+      ctx.warn(reason, {
         objectId: cud.objectId,
         txClass: cud._class
       })

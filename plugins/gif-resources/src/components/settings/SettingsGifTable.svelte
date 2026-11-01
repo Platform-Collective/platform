@@ -1,5 +1,6 @@
 <!--
 // Copyright © 2026 Hardcore Engineering Inc.
+// Copyright © 2026 Exaviz
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -16,6 +17,7 @@
   import { getCurrentAccount, isOwnerOrMaintainer } from '@hcengineering/core'
   import { Button, Label, Scroller, showPopup } from '@hcengineering/ui'
   import { MessageBox, createQuery, getClient } from '@hcengineering/presentation'
+  import { setPlatformStatus, unknownError } from '@hcengineering/platform'
   import gifPlugin, { type WorkspaceGif, canRemoveGif } from '@hcengineering/gif'
   import GifCell from '../GifCell.svelte'
   import GifUploadPopup from '../GifUploadPopup.svelte'
@@ -49,7 +51,19 @@
       message: gifPlugin.string.RemoveGifDescription,
       dangerous: true,
       action: async () => {
-        await client.removeDoc(gif._class, gif.space, gif._id)
+        // MessageBox has no error path: a rejected action leaves the dialog spinning. The server
+        // refuses a removal of an entry it no longer holds (GifMiddleware), which happens when it
+        // was already removed, e.g. from another tab. Then there is nothing left to do. Any other
+        // failure is reported.
+        try {
+          await client.removeDoc(gif._class, gif.space, gif._id)
+        } catch (err: any) {
+          const gone = await client.findOne(gif._class, { _id: gif._id }).then(
+            (doc) => doc === undefined,
+            () => false
+          )
+          if (!gone) await setPlatformStatus(unknownError(err))
+        }
       }
     })
   }

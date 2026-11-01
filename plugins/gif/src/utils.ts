@@ -1,5 +1,6 @@
 //
 // Copyright © 2026 Hardcore Engineering Inc.
+// Copyright © 2026 Exaviz
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -102,6 +103,34 @@ export function gridPage (items: WorkspaceGif[], page: number, pageSize: number 
  * @public */
 export function selectFirst (items: WorkspaceGif[]): WorkspaceGif | undefined {
   return items.length > 0 ? items[0] : undefined
+}
+
+/**
+ * The library query a search box text stands for: '' for the unfiltered library, otherwise the
+ * $like pattern. Texts that differ only in spacing or separators ("party parrot", "party_parrot")
+ * give the same key, and so the same query and the same results.
+ * @public
+ */
+export function librarySearchKey (text: string): string {
+  const term = text.trim()
+  return term === '' ? '' : likeContains(term)
+}
+
+/**
+ * What Enter in the library search box picks: the first result, but only when the results on
+ * screen were loaded for the text in the box. Enter hands the new query over synchronously and
+ * its results arrive later, so until then the grid still shows the previous search and picking
+ * from it would insert a GIF the user never searched for. shownFor is the librarySearchKey the
+ * results on screen were loaded for, undefined before the first results load.
+ * @public
+ */
+export function searchEnterPick (
+  items: WorkspaceGif[],
+  typed: string,
+  shownFor: string | undefined
+): WorkspaceGif | undefined {
+  if (shownFor === undefined || librarySearchKey(typed) !== shownFor) return undefined
+  return selectFirst(items)
 }
 
 /**

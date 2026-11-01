@@ -1,5 +1,6 @@
 <!--
 // Copyright © 2026 Hardcore Engineering Inc.
+// Copyright © 2026 Exaviz
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -22,9 +23,9 @@
     type WorkspaceGif,
     libraryPage,
     libraryViewState,
-    likeContains,
     isSearchEnter,
-    selectFirst
+    librarySearchKey,
+    searchEnterPick
   } from '@hcengineering/gif'
   import { orderByRecents, parseRecents, pushRecent } from './GifGrid.svelte.helpers'
   import GifGrid from './GifGrid.svelte'
@@ -40,6 +41,8 @@
   let libraryTotal = 0
   let totalLoaded = false
   let loaded = false
+  // The search key the items on screen were loaded for. It lags query until the new results arrive.
+  let resultsFor: string | undefined = undefined
   let query = ''
   let page = 0
   let recents: string[] = []
@@ -51,16 +54,22 @@
   // unlike the emoji plugin's load-everything-at-workbench-start store.
   const gifQuery = createQuery()
   $: term = query.trim()
-  $: gifQuery.query(
-    gifPlugin.class.WorkspaceGif,
-    term === '' ? {} : { title: { $like: likeContains(term) } },
-    (res) => {
-      items = res
-      matchedTotal = res.total
-      loaded = true
-    },
-    { limit: (page + 1) * GIF_PAGE_SIZE, sort: { modifiedOn: -1 }, total: true }
-  )
+  $: searchKey = librarySearchKey(query)
+  $: queryLibrary(searchKey, page)
+
+  function queryLibrary(forKey: string, forPage: number): void {
+    gifQuery.query(
+      gifPlugin.class.WorkspaceGif,
+      forKey === '' ? {} : { title: { $like: forKey } },
+      (res) => {
+        items = res
+        matchedTotal = res.total
+        resultsFor = forKey
+        loaded = true
+      },
+      { limit: (forPage + 1) * GIF_PAGE_SIZE, sort: { modifiedOn: -1 }, total: true }
+    )
+  }
 
   // Whether the library is empty at all, so a search with no hits is not reported as an empty
   // library.
@@ -110,8 +119,10 @@
   function onSearchKeydown(e: KeyboardEvent): void {
     // Enter picks the first result of what is on screen. Type, Enter, sent. Only from the
     // search box: Enter on a grid cell or the Upload button has to keep activating that button.
+    // And only once the results on screen are for what is typed: Enter right after typing a new
+    // search would otherwise pick from the previous one while the new results are on their way.
     if (!isSearchEnter(e)) return
-    const first = selectFirst(pageResult.items)
+    const first = searchEnterPick(pageResult.items, (e.target as HTMLInputElement).value, resultsFor)
     if (first !== undefined) {
       pick(first)
       e.preventDefault()

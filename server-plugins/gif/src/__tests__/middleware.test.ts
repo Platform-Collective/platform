@@ -111,6 +111,9 @@ async function expectForbidden (p: Promise<unknown>): Promise<void> {
 }
 
 describe('GifMiddleware: removal rule enforced on the server', () => {
+  const updateTx = (objectId: Ref<Doc>, operations: Record<string, unknown>): TxUpdateDoc<Doc> =>
+    ({ ...removeTx(objectId), _class: core.class.TxUpdateDoc, operations }) as unknown as TxUpdateDoc<Doc>
+
   it('lets the uploader remove their own library entry', async () => {
     const h = await harness()
     const tx = removeTx(stored._id)
@@ -148,11 +151,31 @@ describe('GifMiddleware: removal rule enforced on the server', () => {
     await expectForbidden(h.mw.tx(ctxFor(account(AccountRole.User, [uploader])), [removeTx(orphan._id)]))
   })
 
-  it('passes a removal of an entry that is already gone (idempotent remove)', async () => {
+  // Library ids are deterministic (gif-<sha256>). While another member's upload of the same file
+  // is still being stored, its row is not there yet. A removal let through at that moment would be
+  // applied once the create lands and delete the other member's entry.
+  it('rejects a member removing an entry that is not stored yet (upload still in flight)', async () => {
     const h = await harness([])
-    await h.mw.tx(ctxFor(account(AccountRole.User, [other])), [removeTx('gif-missing' as Ref<Doc>)])
-    expect(h.forwarded).toHaveLength(1)
+    await expectForbidden(h.mw.tx(ctxFor(account(AccountRole.User, [other])), [removeTx(stored._id)]))
+    expect(h.forwarded).toHaveLength(0)
   })
+
+  it('rejects a member updating an entry that is not stored yet', async () => {
+    const h = await harness([])
+    await expectForbidden(
+      h.mw.tx(ctxFor(account(AccountRole.User, [other])), [updateTx(stored._id, { createdBy: other })])
+    )
+    expect(h.forwarded).toHaveLength(0)
+  })
+
+  it.each([AccountRole.Maintainer, AccountRole.Owner])(
+    'lets a workspace %s remove an entry that is already gone',
+    async (role) => {
+      const h = await harness([])
+      await h.mw.tx(ctxFor(account(role, [other])), [removeTx('gif-missing' as Ref<Doc>)])
+      expect(h.forwarded).toHaveLength(1)
+    }
+  )
 
   it('does not look at removals of other classes', async () => {
     const h = await harness()
@@ -160,9 +183,6 @@ describe('GifMiddleware: removal rule enforced on the server', () => {
     expect(h.forwarded).toHaveLength(1)
     expect(h.finds).toBe(0)
   })
-
-  const updateTx = (objectId: Ref<Doc>, operations: Record<string, unknown>): TxUpdateDoc<Doc> =>
-    ({ ...removeTx(objectId), _class: core.class.TxUpdateDoc, operations }) as unknown as TxUpdateDoc<Doc>
 
   it('leaves creating a library entry alone', async () => {
     const h = await harness()
