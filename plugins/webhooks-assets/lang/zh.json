@@ -2,6 +2,9 @@
   "string": {
     "Webhooks": "Webhooks",
     "ConfigLabel": "Webhooks",
-    "ConfigDescription": "Outbound webhook subscriptions for Tx events"
+    "ConfigDescription": "Outbound webhook subscriptions for Tx events",
+    "CreateEvent": "Created",
+    "UpdateEvent": "Updated",
+    "RemoveEvent": "Removed"
   }
 }
