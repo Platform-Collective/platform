@@ -7,13 +7,15 @@
   "scripts": {
     "build": "compile ui",
     "build:docs": "api-extractor run --local",
+    "test": "jest --passWithNoTests --silent",
     "format": "format src",
     "svelte-check": "do-svelte-check",
     "_phase:svelte-check": "do-svelte-check",
     "build:watch": "compile ui",
     "_phase:build": "compile ui",
     "_phase:format": "format src",
-    "_phase:validate": "compile validate"
+    "_phase:validate": "compile validate",
+    "_phase:test": "jest --passWithNoTests --silent"
   },
   "devDependencies": {
     "svelte-loader": "^3.2.0",

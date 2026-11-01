@@ -405,9 +405,10 @@
     />
 
     <AccountArrayEditor
-      bind:value={members}
+      value={members}
       label={contact.string.Members}
-      onChange={() => {
+      onChange={(refs) => {
+        members = refs
         membersChanged = true
       }}
       allowGuests
