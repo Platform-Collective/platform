@@ -110,6 +110,53 @@ export async function createTables (
       }
     })
   }
+
+  if (domainsToLoad.length > 0) {
+    await ctx.with('create-missing-indexes', {}, () => createMissingIndexes(ctx, client, domainsToLoad))
+  }
+}
+
+function getIndexName (domain: string, key: string): string {
+  // `_idx` suffix: indexes and tables share a namespace (index notification(user) vs table notification_user).
+  return `${domain}_${key}_idx`
+}
+
+/**
+ * Existing tables never got their declared indexes (the old `count > 0` check never fired),
+ * so create the missing ones. `CONCURRENTLY` avoids blocking writes on populated tables;
+ * it must run outside a transaction. CockroachDB accepts it (all its index builds are online).
+ */
+async function createMissingIndexes (ctx: MeasureContext, client: postgres.Sql, domains: string[]): Promise<void> {
+  const rows =
+    await client.unsafe(`SELECT t.relname::text AS table_name, i.relname::text AS index_name, x.indisvalid AS valid
+    FROM pg_catalog.pg_index x
+    JOIN pg_catalog.pg_class i ON i.oid = x.indexrelid
+    JOIN pg_catalog.pg_class t ON t.oid = x.indrelid
+    WHERE t.relname IN (${domains.map((it) => `'${it}'`).join(', ')})`)
+  const existing = new Map<string, boolean>()
+  for (const row of rows) {
+    existing.set(row.index_name, row.valid !== false)
+  }
+
+  for (const domain of domains) {
+    const schema = getSchema(domain)
+    for (const key in schema) {
+      const val = schema[key]
+      if (!val.index) continue
+      const name = getIndexName(domain, key)
+      const valid = existing.get(name)
+      if (valid === true) continue
+      try {
+        if (valid === false) {
+          // A failed CONCURRENTLY build leaves an invalid index behind, which IF NOT EXISTS would skip.
+          await client.unsafe(`DROP INDEX CONCURRENTLY IF EXISTS ${name}`)
+        }
+        await client.unsafe(`CREATE INDEX CONCURRENTLY IF NOT EXISTS ${name} ON ${domain}${getIndex(val)} ("${key}")`)
+      } catch (err: any) {
+        ctx.error('failed to create index', { domain, key, name, err })
+      }
+    }
+  }
 }
 
 async function getTableSchema (client: postgres.Sql, domains: string[]): Promise<void> {
@@ -127,10 +174,13 @@ async function getTableSchema (client: postgres.Sql, domains: string[]): Promise
     const schema = schemas[column.table_name] ?? {}
     schemas[column.table_name] = schema
 
+    // information_schema has no index info: keep the declared one, so missing indexes can be created.
+    const declared = getSchema(column.table_name)[column.column_name]
     schema[column.column_name] = {
       type: parseDataType(column.data_type),
       notNull: column.is_nullable === 'NO',
-      index: false
+      index: declared?.index ?? false,
+      ...(declared?.indexType !== undefined ? { indexType: declared.indexType } : {})
     }
   }
   for (const [domain, schema] of Object.entries(schemas)) {
@@ -167,12 +217,11 @@ async function createTable (client: postgres.Sql, domain: string): Promise<void>
       PRIMARY KEY("workspaceId", _id)
     )`)
   // postgres.js reports count = null for DDL, so it can't tell whether the table was created.
-  // `_idx` suffix: indexes and tables share a namespace (index notification(user) vs table notification_user).
   for (const key in schema) {
     const val = schema[key]
     if (val.index) {
       await client.unsafe(`
-        CREATE INDEX IF NOT EXISTS ${domain}_${key}_idx ON ${domain} ${getIndex(val)} ("${key}")
+        CREATE INDEX IF NOT EXISTS ${getIndexName(domain, key)} ON ${domain} ${getIndex(val)} ("${key}")
       `)
     }
   }

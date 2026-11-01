@@ -242,7 +242,8 @@ const eventSchema: Schema = {
   participants: {
     type: 'text[]',
     notNull: true,
-    index: true
+    index: true,
+    indexType: 'gin'
   }
 }
 
