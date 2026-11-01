@@ -654,10 +654,7 @@ export const test = base.extend<MobileFixtures>({
         errors: []
       })
       if (survey !== undefined && info.status === 'passed') {
-        expect(
-          isSurveyComplete(info.project.name, steps),
-          'Every UI path and fixture cleanup must complete'
-        ).toBe(true)
+        expect(isSurveyComplete(info.project.name, steps), 'Every UI path and fixture cleanup must complete').toBe(true)
       }
     }
   }
