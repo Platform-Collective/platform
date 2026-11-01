@@ -13,8 +13,12 @@ import core, {
   TxProcessor,
   type Account,
   type AccountUuid,
+  type Class,
   type Doc,
+  type DocumentQuery,
   type DocumentUpdate,
+  type FindOptions,
+  type FindResult,
   type MeasureContext,
   type Ref,
   type SessionData,
@@ -30,6 +34,7 @@ import {
   BaseMiddleware,
   type Middleware,
   type PipelineContext,
+  type ServerFindOptions,
   type TxMiddlewareResult
 } from '@hcengineering/server-core'
 import webhooks, { type WebhookSubscription } from '@hcengineering/webhooks'
@@ -38,92 +43,121 @@ import webhooks, { type WebhookSubscription } from '@hcengineering/webhooks'
 export const serverWebhooksId = 'server-webhooks' as Plugin
 
 /**
- * Fields the service maintains on `TWebhookSubscription`. A client Tx
- * targeting any of these is refused regardless of role, because they
- * are not user-editable; the service writes them through its own
- * token.
+ * The service identifier the webhook delivery service puts in its token
+ * extras (`generateToken(systemAccountUuid, workspace, { service: 'webhooks' })`).
+ * The system-account bypass requires this match so a token belonging to
+ * another internal service (github, gmail, process, ...) does NOT inherit
+ * webhook authority.
  */
-const SERVICE_MAINTAINED_FIELDS = new Set<string>([
+const WEBHOOKS_SERVICE_TOKEN: string = 'webhooks'
+
+/**
+ * Service-only fields on `TWebhookSubscription`. Writes to any of these
+ * are refused for every non-service caller - in every form, top-level,
+ * dotted, or inside any operator payload. The service writes them under
+ * its own token.
+ *
+ * Dotted paths are matched exactly; a prefix match covers nested fields
+ * (e.g. `target.configDigest` is service-only, but `target` as a whole
+ * is NOT - stored owners can replace the target object).
+ */
+const SERVICE_ONLY_PATHS = new Set<string>([
+  // Pinned at the top level
+  'space',
   'owner',
   'revision',
   'secretsMeta',
   'lastDeliveryAt',
   'lastDeliveryStatus',
   'lastDeliveryHttpCode',
-  'lastDeliveryError'
+  'lastDeliveryError',
+  // Pinned inside `target`
+  'target.configDigest',
+  'target.configDigestAlg',
+  'target.boundAt'
 ])
 
 /**
- * Fields nested under `target` that the service maintains. The
- * `target` object is nested JSON so the middleware walks it when
- * `target` appears in an update's operations.
+ * Fields a NON-STORED-OWNER current workspace Owner may change. This is
+ * the containment-only allowlist (enable/disable + rename). Anything
+ * else - including any `$`-operator, any dotted key, any sub-object -
+ * requires the subscription's stored owner.
  */
-const SERVICE_MAINTAINED_TARGET_FIELDS = new Set<string>([
-  'configDigest',
-  'configDigestAlg',
-  'boundAt'
-])
+const CONTAINMENT_WRITABLE_TOP_FIELDS = new Set<string>(['enabled', 'name'])
 
 /**
- * Fields nested under `target` that are destination-changing. A
- * client-authored change to any of these must come from the
- * subscription's stored owner, not just any current workspace Owner.
- * See `docs/webhooks/DESIGN.md` section "Owner-authorized destination
- * changes" for the rationale.
+ * The complete set of top-level attribute keys a client Tx may ever
+ * touch, in any form, on a `TWebhookSubscription`. An attribute not in
+ * this set is unknown and the write is refused.
+ *
+ * (`space`, `owner`, service-maintained fields are in `SERVICE_ONLY_PATHS`
+ * and so are refused independently of this list.)
  */
-const DESTINATION_CHANGING_TARGET_FIELDS = new Set<string>([
-  'method',
-  'urlTemplate',
-  'headerTemplates',
-  'bodyTemplate',
-  'useMinimalBody',
-  'contentType',
-  'preset'
+const KNOWN_CLIENT_WRITABLE_TOP_FIELDS = new Set<string>([
+  'name',
+  'target',
+  'triggers',
+  'retryPolicy',
+  'enabled',
+  'storeResponseBody'
 ])
 
 /**
- * @public
+ * Top-level TWebhookSubscription attributes whose MODIFICATION is a
+ * destination change. A client Tx must come from the stored owner.
+ * `space` is not listed here because it is pinned entirely
+ * (service-only).
+ */
+const DESTINATION_LEVEL_TOP_FIELDS = new Set<string>([
+  'target',
+  'triggers',
+  'retryPolicy',
+  'storeResponseBody'
+])
+
+/**
+ * `WebhookPermissionsMiddleware`
  *
- * Plugin-contributed permission middleware. Enforces the authorization
- * rules in `docs/webhooks/DESIGN.md` BEFORE the storage write
- * (`provideTx`), same slot as `GuestPermissionsMiddleware` in the
- * pipeline. A trigger would be too late: `TriggersMiddleware.tx` calls
- * `provideTx` first and catches trigger exceptions, so a non-Owner Tx
- * that a trigger would reject would still land in storage.
+ * This is a core authorization middleware wired into the pipeline (same
+ * slot as `GuestPermissionsMiddleware`) - NOT a plugin-contributed
+ * trigger. A trigger would be too late: `TriggersMiddleware.tx` runs
+ * `provideTx` first and catches trigger exceptions, so a non-authorized
+ * Tx a trigger would reject still lands in storage.
  *
- * Rules:
+ * The authorization contract (see `docs/webhooks/DESIGN.md` section
+ * "Authorization"):
  *
- *  - **Owner-only management of `TWebhookSubscription`.** Create, update
- *    and remove require the caller to be `AccountRole.Owner` in the
- *    current workspace. A caller below Owner is refused with
- *    `platform.status.Forbidden`.
- *  - **No direct `TWebhookSecret` CUD.** The service's management RPC
- *    is the only write path; a client-authored Tx on this class is
- *    refused regardless of role, so plaintext never reaches a
- *    persisted Tx body.
- *  - **Service-maintained fields are read-only to clients.** `owner`,
- *    `revision`, `secretsMeta`, `lastDelivery*` and the service-side
- *    `target.configDigest` / `boundAt` are refused in any client
- *    update.
- *  - **Destination-changing fields require the STORED owner.** Any
- *    current Owner can enable, disable, or delete a subscription
- *    (containment), but only the subscription's own stored `owner`
- *    may change its destination, headers, body, filter, or secret
- *    layout. The middleware looks up the stored subscription for
- *    every update that touches a destination-changing field; if the
- *    caller's resolved `AccountUuid` does not match
- *    `subscription.owner`, the update is refused.
- *  - **Service-internal classes.** `TWebhookJournal`, `TWebhookOutboxJob`,
- *    `TWebhookDeliveryAttempt`, `TWebhookAuditBlob`,
- *    `TWebhookSubscriptionLease`, and `TWebhookCleanupTask` are all
- *    service-write only; a client Tx on any of them is refused.
- *  - **Compound Txes walked recursively.** A `TxApplyIf` cannot
- *    smuggle a forbidden write through a collection.
+ *  - Only workspace Owners can act on `TWebhookSubscription`.
+ *  - A non-stored-owner Owner can enable/disable or rename a sub
+ *    (containment); a destination change needs the subscription's own
+ *    stored owner.
+ *  - The service-maintained fields (owner, revision, secretsMeta,
+ *    lastDelivery*, space, target.configDigest, target.boundAt,
+ *    target.configDigestAlg) are refused in any client form - top
+ *    level, dotted path, or inside any update operator (`$push`,
+ *    `$pull`, `$update`, `$inc`, `$unset`, `$rename`).
+ *  - Dotted keys and `$`-operators are also refused from a
+ *    non-stored-owner caller even on destination-level fields (the
+ *    non-stored-owner allowlist is top-level `enabled` and `name` only).
+ *  - `TxCreateDoc` requires the attributes' `owner` to equal the
+ *    caller.
+ *  - `TxApplyIf` is walked recursively.
+ *  - `TxMixin` on any webhook class is refused unconditionally.
+ *  - The internal classes (secret, journal, outbox, delivery attempt,
+ *    audit blob, lease, cleanup task) accept no client Tx of any kind.
  *
- * The system account (`core.account.System` by `modifiedBy`, or
- * `systemAccountUuid` by resolved account) bypasses all checks; that
- * is how the service writes service-maintained fields and manages the
- * secret / journal / outbox / audit / lease / cleanup collections.
+ * Reads are gated separately via `findAll`:
+ *
+ *  - `TWebhookSubscription`: visible only to workspace Owners (or the
+ *    service).
+ *  - All service-internal classes: visible only to the service.
+ *
+ * System-account bypass is narrow: the caller must have
+ * `account.uuid === systemAccountUuid` AND the request must carry the
+ * webhooks service token (`ctx.contextData.service === 'webhooks'`).
+ * This stops other system services (github, gmail, telegram, process,
+ * ...) from inheriting webhook authority through their own system
+ * tokens.
  */
 export class WebhookPermissionsMiddleware extends BaseMiddleware implements Middleware {
   static async create (
@@ -135,16 +169,62 @@ export class WebhookPermissionsMiddleware extends BaseMiddleware implements Midd
   }
 
   async tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
-    const account = ctx.contextData.account
-    // System account bypass: the webhooks service runs as the system
-    // account and this is how it maintains the service-only fields and
-    // the service-only collections.
-    if (account.uuid !== systemAccountUuid) {
+    if (!this.isService(ctx)) {
+      const account = ctx.contextData.account
       for (const tx of txes) {
         await this.processTx(ctx, tx, account)
       }
     }
     return await this.provideTx(ctx, txes)
+  }
+
+  override async findAll<T extends Doc>(
+    ctx: MeasureContext<SessionData>,
+    _class: Ref<Class<T>>,
+    query: DocumentQuery<T>,
+    options?: ServerFindOptions<T>
+  ): Promise<FindResult<T>> {
+    if (this.isWebhookClass(_class)) {
+      if (!this.canRead(ctx, _class)) {
+        // Caller lacks read authority - return an empty, well-shaped
+        // FindResult so the client sees "no rows" rather than an error.
+        return this.emptyResult<T>(options)
+      }
+    }
+    return await this.provideFindAll(ctx, _class, query, options)
+  }
+
+  private isService (ctx: MeasureContext<SessionData>): boolean {
+    const account = ctx.contextData.account
+    const service = ctx.contextData.service
+    return account.uuid === systemAccountUuid && service === WEBHOOKS_SERVICE_TOKEN
+  }
+
+  private canRead (ctx: MeasureContext<SessionData>, _class: Ref<Class<Doc>>): boolean {
+    if (this.isService(ctx)) return true
+    // Only the subscription class is readable by non-service callers,
+    // and only by Owners. Every other webhook class is service-only.
+    if (_class !== webhooks.class.WebhookSubscription) return false
+    return hasAccountRole(ctx.contextData.account, AccountRole.Owner)
+  }
+
+  private isWebhookClass (_class: Ref<Class<Doc>>): boolean {
+    const h = this.context.hierarchy
+    return (
+      h.isDerived(_class, webhooks.class.WebhookSubscription) ||
+      h.isDerived(_class, webhooks.class.WebhookSecret) ||
+      h.isDerived(_class, webhooks.class.WebhookJournal) ||
+      h.isDerived(_class, webhooks.class.WebhookOutboxJob) ||
+      h.isDerived(_class, webhooks.class.WebhookDeliveryAttempt) ||
+      h.isDerived(_class, webhooks.class.WebhookAuditBlob) ||
+      h.isDerived(_class, webhooks.class.WebhookSubscriptionLease) ||
+      h.isDerived(_class, webhooks.class.WebhookCleanupTask)
+    )
+  }
+
+  private emptyResult<T extends Doc>(options?: FindOptions<T>): FindResult<T> {
+    const empty = Object.assign([] as T[], { total: options?.total === true ? 0 : -1 }) as FindResult<T>
+    return empty
   }
 
   private async processTx (
@@ -164,7 +244,7 @@ export class WebhookPermissionsMiddleware extends BaseMiddleware implements Midd
     const cud = tx as TxCUD<Doc>
     const h = this.context.hierarchy
 
-    // Service-internal classes: no client Tx is ever allowed.
+    // Service-internal classes: no client Tx of any kind.
     if (
       h.isDerived(cud.objectClass, webhooks.class.WebhookSecret) ||
       h.isDerived(cud.objectClass, webhooks.class.WebhookJournal) ||
@@ -179,10 +259,13 @@ export class WebhookPermissionsMiddleware extends BaseMiddleware implements Midd
 
     if (!h.isDerived(cud.objectClass, webhooks.class.WebhookSubscription)) return
 
-    // Any management action on a subscription requires Owner. Enable,
-    // disable, delete all pass through this check (containment); the
-    // STORED-owner check below adds a per-field refinement for
-    // destination-changing updates.
+    // Mixin writes on a subscription: refused. The subscription class is
+    // security-sensitive and has no mixin surface.
+    if (cud._class === core.class.TxMixin) {
+      throw forbidden()
+    }
+
+    // Any management action requires Owner.
     if (!hasAccountRole(account, AccountRole.Owner)) {
       throw forbidden()
     }
@@ -195,9 +278,7 @@ export class WebhookPermissionsMiddleware extends BaseMiddleware implements Midd
       await this.processUpdate(ctx, cud as TxUpdateDoc<WebhookSubscription>, account)
       return
     }
-    // TxRemoveDoc + TxMixin: Owner role is enough. The stored-owner
-    // refinement does not apply because destruction / mixin are not
-    // destination changes.
+    // TxRemoveDoc: Owner role is enough. Removal is containment.
   }
 
   private async processCreate (
@@ -205,34 +286,33 @@ export class WebhookPermissionsMiddleware extends BaseMiddleware implements Midd
     tx: TxCreateDoc<WebhookSubscription>,
     account: Account
   ): Promise<void> {
-    const attrs = tx.attributes as Partial<WebhookSubscription>
-    // `owner` must be set at create and must match the caller. A
-    // workspace Owner cannot create a subscription owned by someone
-    // else; ownership transfer is a separate RPC. Also stops a
-    // second Owner from creating a sub owned by a first Owner they do
-    // not want targeted.
+    const attrs = tx.attributes as Partial<WebhookSubscription> & Record<string, unknown>
+    // `owner` must be the caller: a workspace Owner cannot create a
+    // subscription owned by someone else, and ownership transfer is not
+    // part of create.
     if (attrs.owner === undefined) throw forbidden()
     if (attrs.owner !== account.uuid) throw forbidden()
-    // `revision`, `configDigest`, `boundAt`, `lastDelivery*`,
-    // `secretsMeta` are service-maintained; a client-authored create
-    // that tries to set them to a non-default value is refused. The
-    // service seeds them when it processes the create.
-    if ((attrs as any).revision !== undefined && (attrs as any).revision !== 0) throw forbidden()
-    if (attrs.secretsMeta !== undefined && attrs.secretsMeta.length !== 0) throw forbidden()
-    if (
-      attrs.lastDeliveryAt !== undefined ||
-      attrs.lastDeliveryStatus !== undefined ||
-      attrs.lastDeliveryHttpCode !== undefined ||
-      attrs.lastDeliveryError !== undefined
-    ) {
-      throw forbidden()
+
+    // Closed-world allowlist on the attribute set itself: only known
+    // client-writable keys plus `owner` are accepted. Service-only
+    // fields and unknown fields are both refused.
+    for (const key of Object.keys(attrs)) {
+      if (key === 'owner') continue
+      if (!KNOWN_CLIENT_WRITABLE_TOP_FIELDS.has(key)) {
+        throw forbidden()
+      }
     }
-    const target: any = attrs.target
-    if (
-      target !== undefined &&
-      (target.configDigest !== undefined || target.boundAt !== undefined)
-    ) {
-      throw forbidden()
+    // Nested check on `target`: service-only subfields are refused.
+    // Unknown target keys are accepted at this layer; the delivery
+    // service is responsible for shape validation at bind time (see
+    // DESIGN.md section "Target binding").
+    const target = attrs.target as Record<string, unknown> | undefined
+    if (target !== undefined) {
+      for (const key of Object.keys(target)) {
+        if (SERVICE_ONLY_PATHS.has('target.' + key)) {
+          throw forbidden()
+        }
+      }
     }
   }
 
@@ -241,61 +321,128 @@ export class WebhookPermissionsMiddleware extends BaseMiddleware implements Midd
     tx: TxUpdateDoc<WebhookSubscription>,
     account: Account
   ): Promise<void> {
-    const ops = tx.operations as DocumentUpdate<WebhookSubscription> & Record<string, any>
+    const ops = tx.operations as DocumentUpdate<WebhookSubscription> & Record<string, unknown>
 
-    // Service-maintained top-level fields are refused in any client
-    // update.
-    for (const key of Object.keys(ops)) {
-      if (SERVICE_MAINTAINED_FIELDS.has(key)) throw forbidden()
-    }
+    // Collect the set of top-level fields this update touches, by
+    // walking every form the storage layer accepts: top-level keys,
+    // dotted-path keys (`setObjectValue` splits on `.`), and the keys
+    // inside every known operator payload.
+    const touched = new Set<string>()
 
-    // If `target` is in the update, walk its keys. Service-maintained
-    // nested fields are refused. Destination-changing nested fields
-    // trigger the STORED-owner check.
-    let hasDestinationChange = false
-    const target = ops.target as Record<string, unknown> | undefined
-    if (target !== undefined) {
-      for (const key of Object.keys(target)) {
-        if (SERVICE_MAINTAINED_TARGET_FIELDS.has(key)) throw forbidden()
-        if (DESTINATION_CHANGING_TARGET_FIELDS.has(key)) hasDestinationChange = true
-      }
-    }
-    // $set on nested target.* is also valid; walk it too.
-    const nestedSet = (ops as any).$set as Record<string, unknown> | undefined
-    if (nestedSet !== undefined) {
-      for (const key of Object.keys(nestedSet)) {
-        if (key === 'owner' || SERVICE_MAINTAINED_FIELDS.has(key)) throw forbidden()
-        if (key.startsWith('target.')) {
-          const nested = key.slice('target.'.length)
-          if (SERVICE_MAINTAINED_TARGET_FIELDS.has(nested)) throw forbidden()
-          if (DESTINATION_CHANGING_TARGET_FIELDS.has(nested)) hasDestinationChange = true
+    for (const [key, value] of Object.entries(ops)) {
+      if (key.startsWith('$')) {
+        if (!KNOWN_OPERATORS.has(key)) {
+          // An unknown `$`-operator is a bug or a bypass attempt;
+          // refuse rather than silently ignore.
+          throw forbidden()
         }
+        // Operator payload shape (`{ field: ... }`) always keys by
+        // top-level field name. `$rename` targets both the source and
+        // the destination.
+        if (!isPlainObject(value)) throw forbidden()
+        const payload = value as Record<string, unknown>
+        for (const payloadKey of Object.keys(payload)) {
+          this.registerPath(touched, payloadKey)
+          if (key === '$rename') {
+            const renameTo = payload[payloadKey]
+            if (typeof renameTo !== 'string') throw forbidden()
+            this.registerPath(touched, renameTo)
+          }
+        }
+      } else {
+        this.registerPath(touched, key)
       }
     }
-    // `triggers` is destination-changing shape as well: a filter change
-    // decides what fires, which the stored owner must co-sign.
-    if ('triggers' in ops) hasDestinationChange = true
 
-    // `enabled`, `storeResponseBody`, `name` and `retryPolicy` are the
-    // only containment-level fields a current Owner can change
-    // without being the stored owner. Everything else routes through
-    // the stored-owner check.
-    if (hasDestinationChange) {
-      const stored = await this.loadSubscription(ctx, tx.objectId as Ref<WebhookSubscription>)
-      if (stored === undefined) throw forbidden()
-      if (stored.owner !== (account.uuid as AccountUuid)) {
+    if (touched.size === 0) {
+      // An empty operations payload is a no-op; refuse rather than let
+      // it pass as "nothing to do". An intentional no-op has no
+      // business being a Tx.
+      throw forbidden()
+    }
+
+    // Classify the fields.
+    let hasDestinationChange = false
+    for (const path of touched) {
+      // Rule 1: unknown field - refuse (closed-world allowlist).
+      const topField = topLevel(path)
+      if (!KNOWN_CLIENT_WRITABLE_TOP_FIELDS.has(topField) && !SERVICE_ONLY_PATHS.has(topField)) {
         throw forbidden()
       }
+
+      // Rule 2: service-only field in any form - refuse.
+      if (SERVICE_ONLY_PATHS.has(path) || SERVICE_ONLY_PATHS.has(topField)) {
+        throw forbidden()
+      }
+      // A nested service-only path reached via `target.` + something
+      // not in SERVICE_ONLY_PATHS does not slip past rule 2; the exact
+      // membership test above catches it. But a wild dotted path like
+      // `target` alone, replacing the entire object, is not
+      // service-only - rule 3 catches that case because `target` is
+      // destination-level.
+
+      // Rule 3: destination-level field - requires stored owner.
+      if (DESTINATION_LEVEL_TOP_FIELDS.has(topField)) {
+        hasDestinationChange = true
+      }
     }
+
+    // Rule 4: non-stored-owner caller - must have touched ONLY the
+    // containment-allowlist, and only in top-level form (no operators,
+    // no dotted keys).
+    //
+    // A touched set containing a destination-level field falls into
+    // the stored-owner gate below. A touched set that is pure
+    // containment-allowlist in top-level form is allowed for any
+    // Owner.
+    const containmentOnly =
+      !hasDestinationChange &&
+      Array.from(touched).every(
+        (path) => path === topLevel(path) && CONTAINMENT_WRITABLE_TOP_FIELDS.has(path)
+      )
+
+    const hasOperator = Object.keys(ops).some((key) => key.startsWith('$'))
+    const hasDottedKey = Array.from(touched).some((path) => path.includes('.'))
+
+    if (containmentOnly && !hasOperator && !hasDottedKey) {
+      // Any Owner, containment update - allowed.
+      return
+    }
+
+    // Otherwise, the update needs the stored owner.
+    const stored = await this.loadSubscription(ctx, tx.objectId as Ref<WebhookSubscription>)
+    if (stored === undefined) throw forbidden()
+    if (stored.owner !== (account.uuid as AccountUuid)) throw forbidden()
+  }
+
+  private registerPath (touched: Set<string>, raw: string): void {
+    if (raw.length === 0) throw forbidden()
+    touched.add(raw)
   }
 
   private async loadSubscription (
     ctx: MeasureContext<SessionData>,
     id: Ref<WebhookSubscription>
   ): Promise<WebhookSubscription | undefined> {
-    const found = await this.findAll<WebhookSubscription>(ctx, webhooks.class.WebhookSubscription, { _id: id }, {})
+    const found = await this.findAll<WebhookSubscription>(
+      ctx,
+      webhooks.class.WebhookSubscription,
+      { _id: id },
+      {}
+    )
     return found[0]
   }
+}
+
+const KNOWN_OPERATORS = new Set<string>(['$push', '$pull', '$update', '$inc', '$unset', '$rename'])
+
+function topLevel (path: string): string {
+  const i = path.indexOf('.')
+  return i === -1 ? path : path.slice(0, i)
+}
+
+function isPlainObject (v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === 'object' && !Array.isArray(v)
 }
 
 function forbidden (): PlatformError {

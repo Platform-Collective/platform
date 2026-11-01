@@ -14,11 +14,39 @@ import type { AnyComponent } from '@hcengineering/ui'
 /**
  * @public
  *
- * One of three issue events v1 supports. See `docs/webhooks/DESIGN.md`
- * for the full event roster planned for v2 (Doc, Membership) and the
- * variable set each event ships.
+ * Plugin-contributed event source descriptor. Each registered source
+ * declares a semantic event (its `kind`) that fires on a particular
+ * Doc class. Plugins register sources at model-build time with
+ * `builder.createDoc(webhooks.class.WebhookEventSource, ...)`. The
+ * webhooks service matches a source Tx against subscriptions by
+ * joining on `kind` + hierarchy check on `sourceClass`.
+ *
+ * The core webhooks plugin ships three generic CUD sources
+ * (`webhooks:event:Create`, `webhooks:event:Update`, `webhooks:event:Remove`)
+ * that fire for ANY Doc class a subscription's `classFilter` matches.
+ * Semantic sources (e.g. `tracker:event:IssueStatusChange`,
+ * `card:event:CardArchived`) are contributed by the owning plugin
+ * when they land.
+ *
+ * See `docs/webhooks/DESIGN.md` section "Event sources" for the full
+ * contract.
  */
-export type WebhookEvent = 'IssueCreated' | 'IssueUpdated' | 'IssueStatusChange'
+export interface WebhookEventSource extends Doc {
+  // Stable identifier the subscription references. Namespaced by the
+  // contributing plugin, e.g. `tracker:event:IssueStatusChange`.
+  kind: string
+  // The Doc class this event is about. The service enforces hierarchy
+  // at match time, so a `tracker.class.Issue` source also fires for a
+  // subclass unless `classFilter` on the trigger narrows further.
+  sourceClass: Ref<Class<Doc>>
+  // Human-friendly label for the subscription UI.
+  label: IntlString
+  // Optional icon in the UI picker.
+  icon?: Asset
+  // Hidden sources are reserved for service-internal use (e.g. test
+  // events); the UI picker filters them out.
+  hidden?: boolean
+}
 
 /**
  * @public
@@ -33,27 +61,36 @@ export type WebhookPreset = 'apprise' | 'slack' | 'discord' | 'generic'
 /**
  * @public
  *
- * Which status side a `statusFilter` matches against. The issue carries
- * both at delivery time, so the filter is explicit.
- */
-export type WebhookStatusSide = 'previous' | 'new'
-
-/**
- * @public
- *
- * One trigger rule on a subscription. `projectScope` is explicit: either
- * a specific project OR the all-projects marker. The design doc refuses
- * `allProjects` + a `statusFilter` at save because status refs are
- * per-TaskType and cannot be matched consistently across TaskTypes.
+ * One trigger rule on a subscription. Generic over source class via
+ * `classFilter`; status / enum / membership filters are expressed via
+ * `attributeFilter`.
  */
 export interface WebhookTrigger {
-  event: WebhookEvent
-  projectScope:
-  | { kind: 'project', projectId: Ref<Doc> } // Ref<Project>; typed via Doc to avoid a plugin cycle
-  | { kind: 'allProjects' }
-  statusFilter?: {
-    on: WebhookStatusSide
-    statuses: Array<Ref<Doc>> // Ref<IssueStatus>; see above
+  // Must match a registered `WebhookEventSource.kind`. If no matching
+  // source is registered at delivery time, the trigger is treated as
+  // if disabled and audited as `skipped`.
+  eventKind: string
+  // Scope: a specific space, or "all spaces the service can see for the
+  // subscription owner". `allSpaces` on a kind that has a space-local
+  // meaning (e.g. tracker issue status changes) must be paired with a
+  // `classFilter` that narrows to a class whose status model is stable
+  // across spaces, OR must drop any `attributeFilter` on status - the
+  // save step refuses incoherent combinations.
+  scope:
+  | { kind: 'space', space: Ref<Space> }
+  | { kind: 'allSpaces' }
+  // Narrow the source class to this subclass or mixin. Hierarchy and
+  // mixins are honoured by the match step.
+  classFilter?: Ref<Class<Doc>>
+  // Attribute predicate: fire only when the named attribute on the
+  // source doc has one of `values`. The `on` side chooses pre-image or
+  // post-image. For CUD events the pre-image is the stored doc and the
+  // post-image is the applied doc; for a Create event, `previous` is
+  // empty and the predicate is skipped on that side.
+  attributeFilter?: {
+    attr: string
+    on: 'previous' | 'new'
+    values: unknown[]
   }
 }
 
@@ -147,14 +184,14 @@ export interface WebhookSecretMeta {
  * writes before storage), the destination binding, and the delivery
  * pipeline (journal + outbox + lease).
  *
- * Immutable fields enforced by the permission middleware: `owner`,
- * `revision`, `target.configDigest`, `target.boundAt`, `secretsMeta`,
- * `lastDelivery*`. Those are service-maintained.
+ * Immutable fields enforced by the permission middleware: `space`,
+ * `owner`, `revision`, `target.configDigest`, `target.boundAt`,
+ * `secretsMeta`, `lastDelivery*`. Those are service-maintained.
  */
 export interface WebhookSubscription extends Doc {
-  // Doc.space is Ref<Space> by Platform's typing. The subscription's
-  // space is the workspace's dedicated settings space. The service
-  // NEVER routes by this field; routing uses the authenticated
+  // The subscription lives in the workspace's dedicated settings
+  // space. The space itself is pinned (service-only writable); the
+  // service never routes by this field, routing uses the authenticated
   // WorkspaceUuid.
   space: Ref<Space>
 
@@ -162,9 +199,9 @@ export interface WebhookSubscription extends Doc {
 
   /**
    * The account whose source-read permissions gate every delivery and
-   * every management action that targets this subscription. Immutable
-   * after create. Owner B without source access to A's project cannot
-   * mutate A's destination; see the design doc section
+   * every destination-changing management action on this subscription.
+   * Immutable after create. Owner B without source access to A's
+   * project cannot change A's destination; see the design doc section
    * "Owner-authorized destination changes".
    */
   owner: AccountUuid
@@ -190,6 +227,8 @@ export interface WebhookSubscription extends Doc {
    * Opt-in: receiver response body persisted in audit (default false).
    * Reset to false on every destination-changing save so a URL swap
    * does not accidentally start retaining credential-echo responses.
+   * Permission middleware treats this as destination-changing (stored
+   * owner required) to match that semantic.
    */
   storeResponseBody: boolean
 
@@ -221,22 +260,45 @@ export interface WebhookSecret extends Doc {
 /**
  * @public
  *
+ * One field change observed in a source Tx. `attr` is a dotted path
+ * into the source doc; `prev` is the pre-image value and `next` is the
+ * post-image. For a Create event, every observed attribute has an
+ * undefined `prev`; for a Remove event, every attribute has an
+ * undefined `next`. For an Update event, only the attributes that
+ * actually changed appear here.
+ */
+export interface WebhookSourceChange {
+  attr: string
+  prev: unknown
+  next: unknown
+}
+
+/**
+ * @public
+ *
  * Captured in the Tx middleware for every eligible source Tx. The
  * pre-image is read inside the pipeline before the apply, so a crash
  * before realization still leaves the journal entry visible to the
  * sweeper. See the design doc section "Durable outbox".
+ *
+ * `sourceEventId` is the service-assigned stable identifier for this
+ * event. For a plain Tx-sourced event it is `${txId}:${sourceDoc}` so
+ * a single process-service `TxApplyIf` holding multiple inner CUDs
+ * generates distinct sourceEventIds even though they share a `txId`.
+ * The delivery dedup key is `(subscription, eventKind, sourceEventId)`.
  */
 export interface WebhookJournal extends Doc {
   space: Ref<Space>
   state: 'pending' | 'in_realization' | 'realized' | 'failed'
   sourceTx: {
+    sourceEventId: string
     txId: Ref<Tx>
-    event: WebhookEvent
-    issueRef: Ref<Doc>
-    projectRef: Ref<Doc>
+    eventKind: string
+    sourceClass: Ref<Class<Doc>>
+    sourceDoc: Ref<Doc>
+    sourceSpace: Ref<Space>
     actorPersonId: string
-    previousStatusRef: Ref<Doc> | null
-    newStatusRef: Ref<Doc> | null
+    changes: WebhookSourceChange[]
     txModifiedOn: Timestamp
   }
   matchedSubscriptions: Array<{ subscriptionId: Ref<WebhookSubscription>, revision: number }>
@@ -248,17 +310,19 @@ export interface WebhookJournal extends Doc {
 /**
  * @public
  *
- * One outbox row per `(subscriptionId, event, txId)`. Dedup key is the
- * full triple so a Tx firing both `IssueUpdated` and
- * `IssueStatusChange` produces two distinct jobs. The rendered request
- * bytes are frozen here at realize time; retries reuse those exact
- * bytes.
+ * One outbox row per `(subscription, eventKind, sourceEventId)`. Dedup
+ * is on the triple so a Tx that generates two eventKinds for the same
+ * source doc produces two rows, and a `TxApplyIf` that applies several
+ * inner Txes against the same source class produces one row per inner
+ * Tx. The rendered request bytes are frozen here at realize time;
+ * retries reuse those exact bytes.
  */
 export interface WebhookOutboxJob extends Doc {
   space: Ref<Space>
   subscription: Ref<WebhookSubscription>
   revision: number
-  event: WebhookEvent
+  eventKind: string
+  sourceEventId: string
   deliveryId: string
   journal: Ref<WebhookJournal>
   txId: Ref<Tx>
@@ -283,16 +347,22 @@ export interface WebhookOutboxJob extends Doc {
  *
  * Audit metadata row. Carries identifiers + outcome + error reason.
  * The sensitive rendered content lives in `WebhookAuditBlob`, read-
- * gated on current source access to the referenced issue.
+ * gated on current source access to the referenced source doc.
+ *
+ * Generic over source class: `sourceClass` + `sourceDoc` identify what
+ * fired. The delivery service re-resolves to the concrete class when
+ * it needs to check current source access.
  */
 export interface WebhookDeliveryAttempt extends Doc {
   space: Ref<Space>
   subscription: Ref<WebhookSubscription>
   deliveryId: string
   attempt: number
-  event: WebhookEvent | 'test' | 'skipped' | 'rotated' | 'bindingChanged'
+  eventKind: string | 'test' | 'skipped' | 'rotated' | 'bindingChanged'
   txId: Ref<Tx>
-  issueRef: Ref<Doc>
+  sourceClass: Ref<Class<Doc>>
+  sourceDoc: Ref<Doc>
+  sourceSpace: Ref<Space>
   at: Timestamp
   outcome: 'ok' | 'error' | 'skipped' | 'denied'
   httpCode?: number
@@ -305,9 +375,9 @@ export interface WebhookDeliveryAttempt extends Doc {
  * @public
  *
  * Encrypted blob holding rendered-request + rendered-response audit
- * payloads. Non-broadcast; AEAD-encrypted with AAD reconstructed from
- * the authenticated context on every decrypt. See the design doc
- * section "Audit".
+ * payloads. Non-broadcast domain; the AAD is reconstructed from the
+ * authenticated context on every decrypt. See the design doc section
+ * "Audit".
  */
 export interface WebhookAuditBlob extends Doc {
   space: Ref<Space>
@@ -327,10 +397,10 @@ export interface WebhookAuditBlob extends Doc {
  * @public
  *
  * Subscription-wide lease for ordered delivery. Only the lease-holder
- * processes outbox rows for that subscription. The lease has a short
- * TTL (default 30 s) and is renewed while the worker is actively
- * processing. See the design doc section "Ordering, claiming,
- * backlog".
+ * processes outbox rows for that subscription (see
+ * `docs/webhooks/DESIGN.md` section "Ordering, claiming, backlog").
+ * Lease TTL is renewed while the worker is actively processing; a
+ * crashed worker's lease expires and another worker takes over.
  */
 export interface WebhookSubscriptionLease extends Doc {
   space: Ref<Space>
@@ -360,6 +430,27 @@ export interface WebhookCleanupTask extends Doc {
 /** @public */
 export const webhooksId = 'webhooks' as Plugin
 
+/**
+ * @public
+ *
+ * Reserved event kinds the core webhooks plugin ships. Plugin-
+ * contributed sources use their own namespaced kinds
+ * (e.g. `'tracker:event:IssueStatusChange'`).
+ */
+export const CoreEventKinds = {
+  // Generic CUD; fires on any Doc class a trigger's `classFilter`
+  // selects.
+  Create: 'webhooks:event:Create',
+  Update: 'webhooks:event:Update',
+  Remove: 'webhooks:event:Remove',
+  // Reserved internal kinds used in audit attempts (never bound to a
+  // trigger).
+  Test: 'test',
+  Skipped: 'skipped',
+  Rotated: 'rotated',
+  BindingChanged: 'bindingChanged'
+} as const
+
 /** @public */
 const webhooks = plugin(webhooksId, {
   class: {
@@ -370,7 +461,8 @@ const webhooks = plugin(webhooksId, {
     WebhookDeliveryAttempt: '' as Ref<Class<WebhookDeliveryAttempt>>,
     WebhookAuditBlob: '' as Ref<Class<WebhookAuditBlob>>,
     WebhookSubscriptionLease: '' as Ref<Class<WebhookSubscriptionLease>>,
-    WebhookCleanupTask: '' as Ref<Class<WebhookCleanupTask>>
+    WebhookCleanupTask: '' as Ref<Class<WebhookCleanupTask>>,
+    WebhookEventSource: '' as Ref<Class<WebhookEventSource>>
   },
   string: {
     Webhooks: '' as IntlString,
