@@ -15028,8 +15028,8 @@ importers:
         specifier: ^2.0.0
         version: 2.0.1(date-fns@2.30.0)
       dompurify:
-        specifier: ^3.4.15
-        version: 3.4.16
+        specifier: ^3.4.17
+        version: 3.4.17
       fast-equals:
         specifier: ^5.2.2
         version: 5.3.2
@@ -44393,20 +44393,17 @@ packages:
   '@protobufjs/base64@1.1.2':
     resolution: {integrity: sha512-AZkcAA5vnN/v4PDqKyMR5lx7hZttPDgClv83E//FMNhR2TMcLUhfRUBHCmSl0oi9zMgDDqRUJkSxO3wm85+XLg==}
 
-  '@protobufjs/codegen@2.0.4':
-    resolution: {integrity: sha512-YyFaikqM5sH0ziFZCN3xDC7zeGaB/d0IUb9CATugHWbd1FRFwWwt4ld4OYMPWu5a3Xe01mGAULCdqhMlPl29Jg==}
+  '@protobufjs/codegen@2.0.5':
+    resolution: {integrity: sha512-zgXFLzW3Ap33e6d0Wlj4MGIm6Ce8O89n/apUaGNB/jx+hw+ruWEp7EwGUshdLKVRCxZW12fp9r40E1mQrf/34g==}
 
-  '@protobufjs/eventemitter@1.1.0':
-    resolution: {integrity: sha512-j9ednRT81vYJ9OfVuXG6ERSTdEL1xVsNgqpkxMsbIabzSo3goCjDIveeGv5d03om39ML71RdmrGNjG5SReBP/Q==}
+  '@protobufjs/eventemitter@1.1.1':
+    resolution: {integrity: sha512-vW1GmwMZNnL+gMRaovlh9yZX74kc+TTU3FObkkurpMaRtBfLP3ldjS9KQWlwZgraRE0+dheEEoAxdzcJQ8eXZg==}
 
-  '@protobufjs/fetch@1.1.0':
-    resolution: {integrity: sha512-lljVXpqXebpsijW71PZaCYeIcE5on1w5DlQy5WH6GLbFryLUrBD4932W/E2BSpfRJWseIL4v/KPgBFxDOIdKpQ==}
+  '@protobufjs/fetch@1.1.1':
+    resolution: {integrity: sha512-GpptLrs57adMSuHi3VNj0mAF8dwh36LMaYF6XyJ6JMWlVsc+t42tm1HSEDmOs3A8fC9yyeisgLhsTVQokOZ0zw==}
 
   '@protobufjs/float@1.0.2':
     resolution: {integrity: sha512-Ddb+kVXlXst9d+R9PfTIxh1EdNkgoRe5tOX6t01f1lYWOvJnSPDBlG241QLzcyPdoNTsblLUdujGSE4RzrTZGQ==}
-
-  '@protobufjs/inquire@1.1.0':
-    resolution: {integrity: sha512-kdSefcPdruJiFMVSbn801t4vFK7KB/5gd2fYvrxhuJYg8ILrmn9SKSX2tZdV6V+ksulWqS7aXjBcRXl3wHoD9Q==}
 
   '@protobufjs/path@1.1.2':
     resolution: {integrity: sha512-6JOcJ5Tm08dOHAbdR3GrvP+yUUfkjG5ePsHYczMFLq3ZmMkAD98cDgcT2iA1lJ9NVwFd4tH/iSSoe44YWkltEA==}
@@ -44414,8 +44411,8 @@ packages:
   '@protobufjs/pool@1.1.0':
     resolution: {integrity: sha512-0kELaGSIDBKvcgS4zkjz1PeddatrjYcmMWOlAuAPwAeccUrPHdUqo/J6LiymHHEiJT5NrF1UVwxY14f+fy4WQw==}
 
-  '@protobufjs/utf8@1.1.0':
-    resolution: {integrity: sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==}
+  '@protobufjs/utf8@1.1.2':
+    resolution: {integrity: sha512-b1UQwcEZ4yCnMCD8DAL1VlbvBJE9/IX4FTIp7BG1xYpf29SLazLSrqUkj4w7Y5y7cCVP6E5tcqqcI0xemPkHug==}
 
   '@puppeteer/browsers@3.2.2':
     resolution: {integrity: sha512-q2BU4YfO9h/Wt7IcWPcggpOOqLk2Tbs1hDwolvKZrweRjy751OJBKMN9zO5bfD0pzU7X/tvKw/exQds4pM/LOg==}
@@ -47069,8 +47066,8 @@ packages:
   dompurify@2.5.9:
     resolution: {integrity: sha512-i6mvVmWN4xo9LrhCOZrDgSs9noW6nOahbrmzjRbPF36YPyj5Ue5lgok0MHDWkG7xzpWFO2OYttXdzM7rJxHvNA==}
 
-  dompurify@3.4.16:
-    resolution: {integrity: sha512-sqo+pNp3qRhCIpbgRi1y8Tgk27Bo2Ry7w0dC1NBeNTdZChWjz9Xb/KOoZbRP/R6pQZ80Qw8YhXw13hWWBbMRnQ==}
+  dompurify@3.4.17:
+    resolution: {integrity: sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==}
 
   domutils@1.5.1:
     resolution: {integrity: sha512-gSu5Oi/I+3wDENBsOWBiRK1eoGxcywYSqg3rR960/+EfY0CF4EX1VPkgHOZ3WiS/Jg2DtliF6BhWcHlfpYUcGw==}
@@ -50474,12 +50471,12 @@ packages:
   prosemirror-view@1.41.3:
     resolution: {integrity: sha512-SqMiYMUQNNBP9kfPhLO8WXEk/fon47vc52FQsUiJzTBuyjKgEcoAwMyF04eQ4WZ2ArMn7+ReypYL60aKngbACQ==}
 
-  protobufjs@7.5.4:
-    resolution: {integrity: sha512-CvexbZtbov6jW2eXAvLukXjXUW1TzFaivC46BpWc/3BpcCysb5Vffu+B3XHMm8lVEuy2Mm4XGex8hBSg1yapPg==}
+  protobufjs@7.6.6:
+    resolution: {integrity: sha512-dYDWdjSl5RNb7SgPxGQcRU+GtvP7s2fpkrY0r432PcOIaZ0/rBcxEZnQN67iJhFuQiVw754JDoPruPCNdGsbjg==}
     engines: {node: '>=12.0.0'}
 
-  proxy-addr@2.0.7:
-    resolution: {integrity: sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==}
+  proxy-addr@2.0.8:
+    resolution: {integrity: sha512-5nnx0yGyVUcY6t9RnWcARWtwT9F1D8O9rt08htPvnd49W1IgZtmLkhu9WfMzQj1cFxjHIO6connUNVW5k7AVyQ==}
     engines: {node: '>= 0.10'}
 
   pump@3.0.3:
@@ -53244,7 +53241,7 @@ snapshots:
     dependencies:
       lodash.camelcase: 4.3.0
       long: 5.3.2
-      protobufjs: 7.5.4
+      protobufjs: 7.6.6
       yargs: 17.7.2
 
   '@hapi/bourne@3.0.0': {}
@@ -55484,24 +55481,21 @@ snapshots:
 
   '@protobufjs/base64@1.1.2': {}
 
-  '@protobufjs/codegen@2.0.4': {}
+  '@protobufjs/codegen@2.0.5': {}
 
-  '@protobufjs/eventemitter@1.1.0': {}
+  '@protobufjs/eventemitter@1.1.1': {}
 
-  '@protobufjs/fetch@1.1.0':
+  '@protobufjs/fetch@1.1.1':
     dependencies:
       '@protobufjs/aspromise': 1.1.2
-      '@protobufjs/inquire': 1.1.0
 
   '@protobufjs/float@1.0.2': {}
-
-  '@protobufjs/inquire@1.1.0': {}
 
   '@protobufjs/path@1.1.2': {}
 
   '@protobufjs/pool@1.1.0': {}
 
-  '@protobufjs/utf8@1.1.0': {}
+  '@protobufjs/utf8@1.1.2': {}
 
   '@puppeteer/browsers@3.2.2':
     dependencies:
@@ -58455,7 +58449,7 @@ snapshots:
   dompurify@2.5.9:
     optional: true
 
-  dompurify@3.4.16:
+  dompurify@3.4.17:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
@@ -59180,7 +59174,7 @@ snapshots:
       on-finished: 2.4.1
       parseurl: 1.3.3
       path-to-regexp: 0.1.12
-      proxy-addr: 2.0.7
+      proxy-addr: 2.0.8
       qs: 6.13.0
       range-parser: 1.2.1
       safe-buffer: 5.2.1
@@ -59213,7 +59207,7 @@ snapshots:
       on-finished: 2.4.1
       once: 1.4.0
       parseurl: 1.3.3
-      proxy-addr: 2.0.7
+      proxy-addr: 2.0.8
       qs: 6.16.0
       range-parser: 1.2.1
       router: 2.2.0
@@ -61389,7 +61383,7 @@ snapshots:
       d3-sankey: 0.12.3
       dagre-d3-es: 7.0.14
       dayjs: 1.11.23
-      dompurify: 3.4.16
+      dompurify: 3.4.17
       es-toolkit: 1.52.0
       fastdom: 1.0.12
       katex: 0.16.47
@@ -62466,22 +62460,21 @@ snapshots:
       prosemirror-state: 1.4.4
       prosemirror-transform: 1.10.4
 
-  protobufjs@7.5.4:
+  protobufjs@7.6.6:
     dependencies:
       '@protobufjs/aspromise': 1.1.2
       '@protobufjs/base64': 1.1.2
-      '@protobufjs/codegen': 2.0.4
-      '@protobufjs/eventemitter': 1.1.0
-      '@protobufjs/fetch': 1.1.0
+      '@protobufjs/codegen': 2.0.5
+      '@protobufjs/eventemitter': 1.1.1
+      '@protobufjs/fetch': 1.1.1
       '@protobufjs/float': 1.0.2
-      '@protobufjs/inquire': 1.1.0
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
-      '@protobufjs/utf8': 1.1.0
+      '@protobufjs/utf8': 1.1.2
       '@types/node': 24.13.6
       long: 5.3.2
 
-  proxy-addr@2.0.7:
+  proxy-addr@2.0.8:
     dependencies:
       forwarded: 0.2.0
       ipaddr.js: 1.9.1
