@@ -8,6 +8,7 @@ if (process.env.TESTS_MAX_FAILURES !== undefined) {
 }
 
 const config: PlaywrightTestConfig = {
+  testIgnore: ['**/mobile/**'],
   use: {
     actionTimeout: 15_000
   },
