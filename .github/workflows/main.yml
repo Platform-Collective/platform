@@ -265,6 +265,8 @@ jobs:
           fetch-depth: 0
           filter: tree:0
           submodules: recursive
+      - name: Free space
+        uses: ./.github/actions/free-disk-space
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
@@ -295,10 +297,11 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
-      - name: Free space
-        uses: ./.github/actions/free-disk-space
       - name: Docker Build
-        run: node common/scripts/install-run-rush.js docker
+        run: |
+          command -v node
+          node --version
+          node common/scripts/install-run-rush.js docker
         env:
           DOCKER_CLI_HINTS: false
           DOCKER_BUILDKIT: 1
@@ -397,6 +400,8 @@ jobs:
           fetch-depth: 0
           filter: tree:0
           submodules: recursive
+      - name: Free space
+        uses: ./.github/actions/free-disk-space
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
@@ -427,10 +432,11 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
-      - name: Free space
-        uses: ./.github/actions/free-disk-space
       - name: Docker Build
-        run: node common/scripts/install-run-rush.js docker
+        run: |
+          command -v node
+          node --version
+          node common/scripts/install-run-rush.js docker
         env:
           DOCKER_CLI_HINTS: false
           DOCKER_BUILDKIT: 1
@@ -494,6 +500,8 @@ jobs:
           fetch-depth: 0
           filter: tree:0
           submodules: recursive
+      - name: Free space
+        uses: ./.github/actions/free-disk-space
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
@@ -524,10 +532,11 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
-      - name: Free space
-        uses: ./.github/actions/free-disk-space
       - name: Docker Build
-        run: node common/scripts/install-run-rush.js docker
+        run: |
+          command -v node
+          node --version
+          node common/scripts/install-run-rush.js docker
         env:
           DOCKER_CLI_HINTS: false
           DOCKER_BUILDKIT: 1
@@ -575,6 +584,8 @@ jobs:
           fetch-depth: 0
           filter: tree:0
           submodules: recursive
+      - name: Free space
+        uses: ./.github/actions/free-disk-space
       - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
@@ -608,10 +619,11 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
-      - name: Free space
-        uses: ./.github/actions/free-disk-space
       - name: Docker Build
-        run: node common/scripts/install-run-rush.js docker
+        run: |
+          command -v node
+          node --version
+          node common/scripts/install-run-rush.js docker
         env:
           DOCKER_CLI_HINTS: false
           DOCKER_BUILDKIT: 1
