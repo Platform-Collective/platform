@@ -1,22 +1,39 @@
-# Basic set up for three package managers
+# Dependabot version updates.
+#
+# - Docker: only the upstream Node images used to build our own base images
+#   (dev/base-image). Service/pod Dockerfiles use platformcollective/* images,
+#   which are built manually via the "Docker base image" workflow.
+# - GitHub Actions: workflows and composite actions.
+# - npm is intentionally not configured: this is a Rush monorepo without a root
+#   package.json, so Dependabot version updates do not work here. Use `rush update`.
 
 version: 2
 updates:
 
-  # Maintain dependencies for GitHub Actions
+  # Upstream Node image for our base images
+  - package-ecosystem: "docker"
+    directory: "/dev/base-image"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    ignore:
+      # Node major upgrades are a deliberate, manual decision
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+    groups:
+      node:
+        patterns: ["node"]
+
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
-
-  # Maintain dependencies for npm
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "daily"
-
-  # Maintain dependencies for Docker
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "daily"
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    groups:
+      # Minor/patch bumps in one PR; majors get individual PRs
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
