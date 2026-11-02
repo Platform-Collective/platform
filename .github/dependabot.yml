@@ -1,18 +1,25 @@
 # Dependabot version updates.
 #
-# - Docker: only the upstream Node images used to build our own base images
-#   (dev/base-image). Service/pod Dockerfiles use platformcollective/* images,
-#   which are built manually via the "Docker base image" workflow.
-# - GitHub Actions: workflows and composite actions.
+# - Docker: upstream images that are not built by us:
+#   - dev/base-image: Node images used to build the platformcollective/* base
+#     images. Service/pod Dockerfiles use those platformcollective/* images,
+#     which are built manually via the "Docker base image" workflow.
+#   - foundations/hulylake (rust, debian) and foundations/stream (golang, alpine).
+#     Note: `alpine` without a tag is not updated by Dependabot.
+# - GitHub Actions: workflows in .github/workflows and composite actions in
+#   .github/actions/*.
 # - npm is intentionally not configured: this is a Rush monorepo without a root
 #   package.json, so Dependabot version updates do not work here. Use `rush update`.
 
 version: 2
 updates:
 
-  # Upstream Node image for our base images
+  # Upstream images
   - package-ecosystem: "docker"
-    directory: "/dev/base-image"
+    directories:
+      - "/dev/base-image"
+      - "/foundations/hulylake"
+      - "/foundations/stream"
     schedule:
       interval: "weekly"
     cooldown:
@@ -27,7 +34,9 @@ updates:
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
-    directory: "/"
+    directories:
+      - "/"
+      - "/.github/actions/*"
     schedule:
       interval: "weekly"
     cooldown:
