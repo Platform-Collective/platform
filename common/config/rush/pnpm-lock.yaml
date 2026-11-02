@@ -686,8 +686,8 @@ importers:
         specifier: ^10.4.14
         version: 10.4.21(postcss@8.5.28)
       browserslist:
-        specifier: ^4.28.2
-        version: 4.28.2
+        specifier: ^4.29.5
+        version: 4.29.5
       compression-webpack-plugin:
         specifier: ^12.0.0
         version: 12.0.0(webpack@5.111.1)
@@ -704,8 +704,8 @@ importers:
         specifier: ^8.0.1
         version: 8.1.1(webpack@5.111.1)
       electron:
-        specifier: ^43.4.1
-        version: 43.7.8
+        specifier: ^43.8.6
+        version: 43.8.6
       esbuild:
         specifier: ^0.25.10
         version: 0.25.12
@@ -798,7 +798,7 @@ importers:
         version: 5.9.3
       update-browserslist-db:
         specifier: ^1.2.3
-        version: 1.2.3(browserslist@4.28.2)
+        version: 1.2.3(browserslist@4.29.5)
       webpack:
         specifier: ^5.110.3
         version: 5.111.1(esbuild@0.25.12)(postcss@8.5.28)(webpack-cli@5.1.4)
@@ -846,8 +846,8 @@ importers:
         specifier: ~7.0.3
         version: 7.0.3
       electron:
-        specifier: ^43.4.1
-        version: 43.7.8
+        specifier: ^43.8.6
+        version: 43.8.6
       electron-builder:
         specifier: ^26.15.3
         version: 26.15.3
@@ -1827,8 +1827,8 @@ importers:
         specifier: ^10.4.14
         version: 10.4.21(postcss@8.5.28)
       browserslist:
-        specifier: ^4.28.2
-        version: 4.28.2
+        specifier: ^4.29.5
+        version: 4.29.5
       compression-webpack-plugin:
         specifier: ^12.0.0
         version: 12.0.0(webpack@5.111.1)
@@ -1912,7 +1912,7 @@ importers:
         version: 5.9.3
       update-browserslist-db:
         specifier: ^1.2.3
-        version: 1.2.3(browserslist@4.28.2)
+        version: 1.2.3(browserslist@4.29.5)
       webpack:
         specifier: ^5.110.3
         version: 5.111.1(esbuild@0.25.12)(postcss@8.5.28)(webpack-cli@5.1.4)
@@ -4411,8 +4411,8 @@ importers:
         specifier: ^5.2.2
         version: 5.3.2
       markdown-it:
-        specifier: ^14.0.0
-        version: 14.1.0
+        specifier: ^14.3.3
+        version: 14.3.3
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -14882,8 +14882,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0
       undici:
-        specifier: ^7.18.2
-        version: 7.30.0
+        specifier: ^7.30.1
+        version: 7.30.1
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
@@ -30079,8 +30079,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0
       koa:
-        specifier: ^2.15.4
-        version: 2.16.3
+        specifier: ^2.16.4
+        version: 2.16.4
       koa-bodyparser:
         specifier: ^4.4.1
         version: 4.4.1
@@ -30167,8 +30167,8 @@ importers:
         specifier: workspace:^0.7.26
         version: link:../../foundations/core/packages/core
       koa:
-        specifier: ^2.15.4
-        version: 2.16.3
+        specifier: ^2.16.4
+        version: 2.16.4
       koa-passport:
         specifier: ^6.0.0
         version: 6.0.0
@@ -30485,8 +30485,8 @@ importers:
         specifier: workspace:^0.7.18
         version: link:../../foundations/core/packages/token
       body-parser:
-        specifier: ^1.20.3
-        version: 1.20.3
+        specifier: ^1.20.9
+        version: 1.20.9
       cors:
         specifier: ^2.8.6
         version: 2.8.6
@@ -30642,8 +30642,8 @@ importers:
         specifier: ^16.4.5
         version: 16.6.1
       koa:
-        specifier: ^2.15.4
-        version: 2.16.3
+        specifier: ^2.16.4
+        version: 2.16.4
       koa-bodyparser:
         specifier: ^4.4.1
         version: 4.4.1
@@ -31135,8 +31135,8 @@ importers:
         specifier: workspace:^0.7.18
         version: link:../../foundations/core/packages/token
       body-parser:
-        specifier: ^1.20.3
-        version: 1.20.3
+        specifier: ^1.20.9
+        version: 1.20.9
       bufferutil:
         specifier: ^4.0.8
         version: 4.0.9
@@ -31265,8 +31265,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0
       koa:
-        specifier: ^2.15.4
-        version: 2.16.3
+        specifier: ^2.16.4
+        version: 2.16.4
       koa-bodyparser:
         specifier: ^4.4.1
         version: 4.4.1
@@ -31457,8 +31457,8 @@ importers:
         specifier: ~7.0.3
         version: 7.0.3
       electron:
-        specifier: ^43.4.1
-        version: 43.7.8
+        specifier: ^43.8.6
+        version: 43.8.6
       electron-builder:
         specifier: ^26.15.3
         version: 26.15.3
@@ -35818,8 +35818,8 @@ importers:
         specifier: ^0.9.1
         version: 0.9.1
       koa:
-        specifier: ^2.15.4
-        version: 2.16.3
+        specifier: ^2.16.4
+        version: 2.16.4
       koa-bodyparser:
         specifier: ^4.4.1
         version: 4.4.1
@@ -36157,8 +36157,8 @@ importers:
         specifier: ^2.11.7
         version: 2.27.1(@tiptap/core@2.27.1(@tiptap/pm@2.27.1))(@tiptap/pm@2.27.1)
       body-parser:
-        specifier: ^1.20.3
-        version: 1.20.3
+        specifier: ^1.20.9
+        version: 1.20.9
       cors:
         specifier: ^2.8.6
         version: 2.8.6
@@ -36278,8 +36278,8 @@ importers:
         specifier: workspace:^0.7.18
         version: link:../../foundations/core/packages/storage
       body-parser:
-        specifier: ^1.20.3
-        version: 1.20.3
+        specifier: ^1.20.9
+        version: 1.20.9
       cors:
         specifier: ^2.8.6
         version: 2.8.6
@@ -37143,8 +37143,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0
       koa:
-        specifier: ^2.15.4
-        version: 2.16.3
+        specifier: ^2.16.4
+        version: 2.16.4
       koa-bodyparser:
         specifier: ^4.4.1
         version: 4.4.1
@@ -39034,8 +39034,8 @@ importers:
         specifier: ^2.11.7
         version: 2.27.1(@tiptap/core@2.27.1(@tiptap/pm@2.27.1))(@tiptap/pm@2.27.1)
       body-parser:
-        specifier: ^1.20.3
-        version: 1.20.3
+        specifier: ^1.20.9
+        version: 1.20.9
       cors:
         specifier: ^2.8.6
         version: 2.8.6
@@ -39052,8 +39052,8 @@ importers:
         specifier: ^16.8.0
         version: 16.12.0
       markdown-it:
-        specifier: ^14.0.0
-        version: 14.1.0
+        specifier: ^14.3.3
+        version: 14.3.3
       mongodb:
         specifier: ^6.16.0
         version: 6.20.0(gcp-metadata@5.3.0)(snappy@7.3.3)(socks@2.8.7)
@@ -39739,8 +39739,8 @@ importers:
         specifier: ^2.2.4
         version: 2.2.4
       markdown-it:
-        specifier: ^14.0.0
-        version: 14.1.0
+        specifier: ^14.3.3
+        version: 14.3.3
       sanitize-html:
         specifier: 2.17.5
         version: 2.17.5
@@ -40689,8 +40689,8 @@ importers:
         specifier: ^16.4.5
         version: 16.6.1
       koa:
-        specifier: ^2.15.4
-        version: 2.16.3
+        specifier: ^2.16.4
+        version: 2.16.4
       koa-bodyparser:
         specifier: ^4.4.1
         version: 4.4.1
@@ -40792,8 +40792,8 @@ importers:
         specifier: workspace:^0.7.18
         version: link:../../foundations/core/packages/token
       body-parser:
-        specifier: ^1.20.3
-        version: 1.20.3
+        specifier: ^1.20.9
+        version: 1.20.9
       cors:
         specifier: ^2.8.6
         version: 2.8.6
@@ -40956,7 +40956,7 @@ importers:
         version: 3.3.0(pdf-lib@1.17.1)
       '@signpdf/signer-p12':
         specifier: ^3.3.0
-        version: 3.3.0(node-forge@1.4.0)
+        version: 3.3.0(node-forge@1.4.2)
       '@signpdf/signpdf':
         specifier: ^3.3.0
         version: 3.3.0
@@ -40976,8 +40976,8 @@ importers:
         specifier: ^6.16.0
         version: 6.20.0(gcp-metadata@5.3.0)(snappy@7.3.3)(socks@2.8.7)
       node-forge:
-        specifier: ^1.3.3
-        version: 1.4.0
+        specifier: ^1.4.2
+        version: 1.4.2
       pdf-lib:
         specifier: ^1.17.1
         version: 1.17.1
@@ -45975,8 +45975,8 @@ packages:
     resolution: {integrity: sha512-ir1UPr3dkwexU7FdV8qBBbNDRUhMmIekYMFZfi+C/sLNnRESKPl23nB9b2pltqfOQNnGzsDdId90AEtG5tCx4A==}
     engines: {node: '>=6.0.0'}
 
-  baseline-browser-mapping@2.10.33:
-    resolution: {integrity: sha512-bA6+tcSLpz2tIEdDXZPpPTIuxBcC4+w6SieaYyfigIa4h8GlFxbA17v22Vx3JUtuZQj9SgOsnbK+aTBzyDyEuw==}
+  baseline-browser-mapping@2.11.34:
+    resolution: {integrity: sha512-Aqr8mA1kIvyJ3UY5YAY7ib8LSo1DmDMbMnVqGPtsKW1LxaFQFwn9Eb3yvq2fUKJsRvaXjnAV7R5osqETapzNiA==}
     engines: {node: '>=6.0.0'}
     hasBin: true
 
@@ -46032,6 +46032,10 @@ packages:
     resolution: {integrity: sha512-7rAxByjUMqQ3/bHJy7D6OGXvx/MMc4IqBn/X0fcM1QUcAItpZrBEYhWGem+tzXH90c+G01ypMcYJBO9Y30203g==}
     engines: {node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16}
 
+  body-parser@1.20.9:
+    resolution: {integrity: sha512-FISIQxV5u91Y9gvuFq3q/tA/qTqLJn3AhRcEvyozyhJTh5OBFFtv827AdHU7Rbyct4r+Ba1/99oFa1Y3yuFsdw==}
+    engines: {node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16}
+
   body-parser@2.3.0:
     resolution: {integrity: sha512-2cGmJupaNgg+QUwVLAucDuWuoMZ6EX9iHDRswZ5lsNYEmwPaRknMPCLZz07yTzVq/83p4o/wzbDZbBrTvGGTIw==}
     engines: {node: '>=18'}
@@ -46069,8 +46073,8 @@ packages:
   browser-or-node@2.1.1:
     resolution: {integrity: sha512-8CVjaLJGuSKMVTxJ2DpBl5XnlNDiT4cQFeuCJJrvJmts9YrTZDizTX7PjC2s6W4x+MBGZeEY6dGMrF04/6Hgqg==}
 
-  browserslist@4.28.2:
-    resolution: {integrity: sha512-48xSriZYYg+8qXna9kwqjIVzuQxi+KYWp2+5nCYnYKPTr0LvD89Jqk2Or5ogxz0NUMfIjhh2lIUX/LyX9B4oIg==}
+  browserslist@4.29.5:
+    resolution: {integrity: sha512-khTmKu5NGYTotqcYo8Bew2k4RAE9PuXRSFRXG2lQBrCEQHyeQ/vX6gKMxfokwywBsLiXZMnHsmWMG1pnO8J7uQ==}
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
 
@@ -47192,8 +47196,8 @@ packages:
   electron-store@8.2.0:
     resolution: {integrity: sha512-ukLL5Bevdil6oieAOXz3CMy+OgaItMiVBg701MNlG6W5RaC0AHN7rvlqTCmeb6O7jP0Qa1KKYTE0xV0xbhF4Hw==}
 
-  electron-to-chromium@1.5.366:
-    resolution: {integrity: sha512-OlRuhb688YTCzzU3gXPLn6nGyd+F+53INE1qaKKlu6kETErE8FYsyDh0XqXEU+uBRn0MpCzz2vfNwORhkap8qg==}
+  electron-to-chromium@1.5.472:
+    resolution: {integrity: sha512-s4+nfT29b0FKpVKoaIxl2pWsoNcn7A/nMPSrxayw4T3BsmPeV2lF9Y06BsAQeMGhCTQ4nYJ5XST7jkqe4ZEqFw==}
 
   electron-updater@6.8.9:
     resolution: {integrity: sha512-ZhVxM9iGONUpZGI1FxdMRgJjUFXi7AYGVa5PwKlO1tV1/4zDxQmfKpXOHVztKrd6L9rLcFjERvi1Mf2vxyTkig==}
@@ -47201,8 +47205,8 @@ packages:
   electron-windows-badge@1.1.0:
     resolution: {integrity: sha512-hWFbUk9u3fQHcKzTAcjZAN7XH9bL9oH9g20RRDU/DVDNqdMI03GzlBZfR/R8R1krYu9AT4biLqSCAxnt9LMAfA==}
 
-  electron@43.7.8:
-    resolution: {integrity: sha512-h9qnttBn9b+pmnJjagrpjvK97Wb9WbsyIB03BV6NnhnPqSq1Jw7500hNkqHPkosHCE0zL/806v4zf9d3VrII0w==}
+  electron@43.8.6:
+    resolution: {integrity: sha512-2k3n5cjPHZqYTOn8iaJrm4fmb/QsvciomLD7PG9IECd0N/jr8Hxcu6Z/3mvMRrtXWCOp/i8qm5ZAcSnUzAa5Mw==}
     engines: {node: '>= 22.12.0'}
     hasBin: true
 
@@ -49011,8 +49015,8 @@ packages:
     resolution: {integrity: sha512-h/dxmSOvNEXpHQPRs4TV03TZVFyZIjmYQiTAW5JBFTYBOZ0VdpZ8QEE6Dud75g8z9JNGXi3m++VqRmqToB+c2A==}
     engines: {node: '>=8.0.0'}
 
-  koa@2.16.3:
-    resolution: {integrity: sha512-zPPuIt+ku1iCpFBRwseMcPYQ1cJL8l60rSmKeOuGfOXyE6YnTBmf2aEFNL2HQGrD0cPcLO/t+v9RTgC+fwEh/g==}
+  koa@2.16.4:
+    resolution: {integrity: sha512-3An0GCLDSR34tsCO4H8Tef8Pp2ngtaZDAZnsWJYelqXUK5wyiHvGItgK/xcSkmHLSTn1Jcho1mRQs2ehRzvKKw==}
     engines: {node: ^4.8.4 || ^6.10.1 || ^7.10.1 || >= 8.1.4}
 
   kolorist@1.8.0:
@@ -49084,8 +49088,8 @@ packages:
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
-  linkify-it@5.0.0:
-    resolution: {integrity: sha512-5aHCbzQRADcdP+ATqnDuhhJ/MRIqDkZX5pyjFHRRysS8vZ5AbqGEoFIb6pYHPZ+L/OC2Lc+xT8uHVVR5CAK/wQ==}
+  linkify-it@5.0.2:
+    resolution: {integrity: sha512-ONTm2jCMAVZjgQa/Fy1kScXsuOoF5NPTsoFBdE1KVIZ2vAh/r9+Bqo+0jINCBYnavTPQZz38QzFTme79ENoN3Q==}
 
   linkifyjs@4.3.2:
     resolution: {integrity: sha512-NT1CJtq3hHIreOianA8aSXn6Cw0JzYOuDQbOrSPe7gqFnCpKP++MQe3ODgO3oh2GJFORkAAdqredOa60z63GbA==}
@@ -49301,8 +49305,8 @@ packages:
     resolution: {integrity: sha512-2L3MIgJynYrZ3TYMriLDLWocz15okFakV6J12HXvMXDHui2x/zgChzg1u9mFFGbbGWE+GsLpQByt4POb9Or+uA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  markdown-it@14.1.0:
-    resolution: {integrity: sha512-a54IwgWPaeBCAAsv13YgmALOF1elABB08FxO9i+r4VFk5Vl4pKokRPeX8u5TCgSsPi6ec1otfLjdOpVcgbpshg==}
+  markdown-it@14.3.3:
+    resolution: {integrity: sha512-L//tDAkjTjJCU6pBUSBTgs3Kg4InVaZuUZog/b6V12UKhcDQ7S78877ibbCanRExwPuYP1CZD7Gd2dxSy1GXRg==}
     hasBin: true
 
   marked@16.4.2:
@@ -49703,8 +49707,8 @@ packages:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  node-forge@1.4.0:
-    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+  node-forge@1.4.2:
+    resolution: {integrity: sha512-rRtAR5XLJ8gCKd9du4qrKAsgCG1ObGP4gLeNJMa4vYSeq4bmBMOJk5IHkrviBV0q7uoAJlVd8HEQYQSVUb4FGQ==}
     engines: {node: '>= 6.13.0'}
 
   node-gyp-build-optional-packages@5.2.2:
@@ -49737,8 +49741,8 @@ packages:
     resolution: {integrity: sha512-8bp200rELOX72mHv0cfnuDs7LWmd3jr3Y9pxgaysjeSxnUiZxhTA0Pg+SaXkTplIK+r4CfIVAfrla4omNq6UtA==}
     engines: {node: '>=20'}
 
-  node-releases@2.0.47:
-    resolution: {integrity: sha512-Uzmd6LXpouKo8EUK68IjH4+E01w/hXyV3R3g/geCJo+rXLNfh1xucB+LOzYEOQPSiUK3h/xZf0cQGcSsmyL2Og==}
+  node-releases@2.0.63:
+    resolution: {integrity: sha512-6li2QanLsAXpIH2R6j77MzRyvOyrvdTqlKtO4CgBdHGNvN99ZZfyxszHc5o5+IZBWD5u6Hzwg83JoGXmqZNG9Q==}
     engines: {node: '>=18'}
 
   nodemailer@9.1.1:
@@ -50588,6 +50592,10 @@ packages:
 
   raw-body@2.5.2:
     resolution: {integrity: sha512-8zGqypfENjCIqGhgXToC8aB2r7YrBX+AQAfIPs/Mlk+BtPTztOvTS01NRW/3Eh60J+a48lt8qsCzirQ6loCVfA==}
+    engines: {node: '>= 0.8'}
+
+  raw-body@2.5.3:
+    resolution: {integrity: sha512-s4VSOf6yN0rvbRZGxs8Om5CWj6seneMwK3oDb4lWDH0UPhWcxwOWw5+qk24bxq87szX1ydrwylIOp2uG1ojUpA==}
     engines: {node: '>= 0.8'}
 
   raw-body@3.0.2:
@@ -51836,8 +51844,8 @@ packages:
     resolution: {integrity: sha512-R+RODBqp6i2pPflGdq+xIOUkl+RNfGgHwoinecKu/JCuf2uO06cOKoDbI2P7Dn6KcswdKwrczbU6IYJ6K8X+wg==}
     engines: {node: '>=18.17'}
 
-  undici@7.30.0:
-    resolution: {integrity: sha512-dkrQXeHSaoamnItlYbmzG0wFYrM0ZwDxCIg0A7aKjTyyhh9svRzCNFEzV+Vm05/yehjCzjDZ31KXfGEjYSztDQ==}
+  undici@7.30.1:
+    resolution: {integrity: sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg==}
     engines: {node: '>=20.18.1'}
 
   universal-github-app-jwt@1.2.0:
@@ -51879,6 +51887,12 @@ packages:
 
   update-browserslist-db@1.2.3:
     resolution: {integrity: sha512-Js0m9cx+qOgDxo0eMiFGEueWztz+d4+M3rGlmKPT+T4IS/jP4ylw3Nwpu6cpTTP8R1MAC1kF4VbdLt3ARf209w==}
+    hasBin: true
+    peerDependencies:
+      browserslist: '>= 4.21.0'
+
+  update-browserslist-db@1.3.4:
+    resolution: {integrity: sha512-t8wonIOdQyOjtPd2VktlBu6QjTVTks6v8bSi7kd0r2Vll8TK1JYDZtRRdbmCHOAMphkZgrzK+L+vXK4pyZ8t4A==}
     hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
@@ -52768,7 +52782,7 @@ snapshots:
     dependencies:
       '@babel/compat-data': 7.28.5
       '@babel/helper-validator-option': 7.27.1
-      browserslist: 4.28.2
+      browserslist: 4.29.5
       lru-cache: 5.1.1
       semver: 6.3.1
 
@@ -53006,10 +53020,10 @@ snapshots:
       env-paths: 3.0.0
       graceful-fs: 4.2.11
       progress: 2.0.3
-      semver: 7.7.3
+      semver: 7.8.5
       sumchecker: 3.0.1
     optionalDependencies:
-      undici: 7.30.0
+      undici: 7.30.1
     transitivePeerDependencies:
       - supports-color
 
@@ -55539,10 +55553,10 @@ snapshots:
       '@signpdf/utils': 3.3.0
       pdf-lib: 1.17.1
 
-  '@signpdf/signer-p12@3.3.0(node-forge@1.4.0)':
+  '@signpdf/signer-p12@3.3.0(node-forge@1.4.2)':
     dependencies:
       '@signpdf/utils': 3.3.0
-      node-forge: 1.4.0
+      node-forge: 1.4.2
 
   '@signpdf/signpdf@3.3.0':
     dependencies:
@@ -57194,7 +57208,7 @@ snapshots:
 
   autoprefixer@10.4.21(postcss@8.5.28):
     dependencies:
-      browserslist: 4.28.2
+      browserslist: 4.29.5
       caniuse-lite: 1.0.30001820
       fraction.js: 4.3.7
       normalize-range: 0.1.2
@@ -57277,7 +57291,7 @@ snapshots:
 
   base64url@3.0.1: {}
 
-  baseline-browser-mapping@2.10.33: {}
+  baseline-browser-mapping@2.11.34: {}
 
   basic-auth@2.0.1:
     dependencies:
@@ -57330,6 +57344,21 @@ snapshots:
       type-is: 1.6.18
       unpipe: 1.0.0
 
+  body-parser@1.20.9:
+    dependencies:
+      bytes: 3.1.2
+      content-type: 1.0.5
+      debug: 2.6.9
+      depd: 2.0.0
+      destroy: 1.2.0
+      http-errors: 2.0.1
+      iconv-lite: 0.4.24
+      on-finished: 2.4.1
+      qs: 6.16.0
+      raw-body: 2.5.3
+      type-is: 1.6.18
+      unpipe: 1.0.0
+
   body-parser@2.3.0:
     dependencies:
       bytes: 3.1.2
@@ -57377,13 +57406,13 @@ snapshots:
 
   browser-or-node@2.1.1: {}
 
-  browserslist@4.28.2:
+  browserslist@4.29.5:
     dependencies:
-      baseline-browser-mapping: 2.10.33
+      baseline-browser-mapping: 2.11.34
       caniuse-lite: 1.0.30001820
-      electron-to-chromium: 1.5.366
-      node-releases: 2.0.47
-      update-browserslist-db: 1.2.3(browserslist@4.28.2)
+      electron-to-chromium: 1.5.472
+      node-releases: 2.0.63
+      update-browserslist-db: 1.3.4(browserslist@4.29.5)
 
   bs-logger@0.2.6:
     dependencies:
@@ -57604,7 +57633,7 @@ snapshots:
       parse5: 7.3.0
       parse5-htmlparser2-tree-adapter: 7.1.0
       parse5-parser-stream: 7.1.2
-      undici: 7.30.0
+      undici: 7.30.1
       whatwg-mimetype: 4.0.0
 
   chokidar@3.6.0:
@@ -58614,7 +58643,7 @@ snapshots:
       conf: 10.2.0
       type-fest: 2.19.0
 
-  electron-to-chromium@1.5.366: {}
+  electron-to-chromium@1.5.472: {}
 
   electron-updater@6.8.9:
     dependencies:
@@ -58631,7 +58660,7 @@ snapshots:
 
   electron-windows-badge@1.1.0: {}
 
-  electron@43.7.8:
+  electron@43.8.6:
     dependencies:
       '@electron-internal/extract-zip': 1.0.5
       '@electron/get': 5.1.0
@@ -59754,7 +59783,7 @@ snapshots:
 
   google-p12-pem@4.0.1:
     dependencies:
-      node-forge: 1.4.0
+      node-forge: 1.4.2
 
   googleapis-common@6.0.4:
     dependencies:
@@ -61006,7 +61035,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  koa@2.16.3:
+  koa@2.16.4:
     dependencies:
       accepts: 1.3.8
       cache-content-type: 1.0.1
@@ -61090,7 +61119,7 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
-  linkify-it@5.0.0:
+  linkify-it@5.0.2:
     dependencies:
       uc.micro: 2.1.0
 
@@ -61318,11 +61347,11 @@ snapshots:
 
   map-obj@5.0.0: {}
 
-  markdown-it@14.1.0:
+  markdown-it@14.3.3:
     dependencies:
       argparse: 2.0.1
       entities: 4.5.0
-      linkify-it: 5.0.0
+      linkify-it: 5.0.2
       mdurl: 2.0.0
       punycode.js: 2.3.1
       uc.micro: 2.1.0
@@ -61683,7 +61712,7 @@ snapshots:
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
 
-  node-forge@1.4.0: {}
+  node-forge@1.4.2: {}
 
   node-gyp-build-optional-packages@5.2.2:
     dependencies:
@@ -61725,7 +61754,7 @@ snapshots:
       camelcase: 6.3.0
       semver: 7.7.3
 
-  node-releases@2.0.47: {}
+  node-releases@2.0.63: {}
 
   nodemailer@9.1.1: {}
 
@@ -62429,7 +62458,7 @@ snapshots:
   prosemirror-markdown@1.13.2:
     dependencies:
       '@types/markdown-it': 14.1.2
-      markdown-it: 14.1.0
+      markdown-it: 14.3.3
       prosemirror-model: 1.25.4
 
   prosemirror-menu@1.2.5:
@@ -62602,6 +62631,13 @@ snapshots:
     dependencies:
       bytes: 3.1.2
       http-errors: 2.0.0
+      iconv-lite: 0.4.24
+      unpipe: 1.0.0
+
+  raw-body@2.5.3:
+    dependencies:
+      bytes: 3.1.2
+      http-errors: 2.0.1
       iconv-lite: 0.4.24
       unpipe: 1.0.0
 
@@ -64083,7 +64119,7 @@ snapshots:
 
   undici@6.29.0: {}
 
-  undici@7.30.0: {}
+  undici@7.30.1: {}
 
   universal-github-app-jwt@1.2.0:
     dependencies:
@@ -64142,9 +64178,15 @@ snapshots:
       graceful-fs: 4.2.11
       node-int64: 0.4.0
 
-  update-browserslist-db@1.2.3(browserslist@4.28.2):
+  update-browserslist-db@1.2.3(browserslist@4.29.5):
     dependencies:
-      browserslist: 4.28.2
+      browserslist: 4.29.5
+      escalade: 3.2.0
+      picocolors: 1.1.1
+
+  update-browserslist-db@1.3.4(browserslist@4.29.5):
+    dependencies:
+      browserslist: 4.29.5
       escalade: 3.2.0
       picocolors: 1.1.1
 
@@ -64356,7 +64398,7 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@webassemblyjs/wasm-edit': 1.14.1
       '@webassemblyjs/wasm-parser': 1.14.1
-      browserslist: 4.28.2
+      browserslist: 4.29.5
       chrome-trace-event: 1.0.4
       enhanced-resolve: 5.26.0
       es-module-lexer: 2.3.2
@@ -64395,7 +64437,7 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@webassemblyjs/wasm-edit': 1.14.1
       '@webassemblyjs/wasm-parser': 1.14.1
-      browserslist: 4.28.2
+      browserslist: 4.29.5
       chrome-trace-event: 1.0.4
       enhanced-resolve: 5.26.0
       es-module-lexer: 2.3.2
@@ -64432,7 +64474,7 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@webassemblyjs/wasm-edit': 1.14.1
       '@webassemblyjs/wasm-parser': 1.14.1
-      browserslist: 4.28.2
+      browserslist: 4.29.5
       chrome-trace-event: 1.0.4
       enhanced-resolve: 5.26.0
       es-module-lexer: 2.3.2
