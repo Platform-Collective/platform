@@ -993,7 +993,11 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
   const spaceMixin = test.mixin.TestMixin as Ref<Mixin<ReplaySpace>>
 
   function fixture (): {
-    db: ModelDb, h: Hierarchy, ctx: MeasureMetricsContext, info: jest.SpyInstance, warn: jest.SpyInstance
+    db: ModelDb
+    h: Hierarchy
+    ctx: MeasureMetricsContext
+    info: jest.SpyInstance
+    warn: jest.SpyInstance
   } {
     const h = new Hierarchy()
     const db = new ModelDb(h)
@@ -1011,15 +1015,25 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
 
   function spaceTx (): TxCreateDoc<ReplaySpace> {
     return createDoc<ReplaySpace>(core.class.Space, {
-      name: 'original', description: '', private: false, members: [], archived: false, count: 0, arr: []
+      name: 'original',
+      description: '',
+      private: false,
+      members: [],
+      archived: false,
+      count: 0,
+      arr: []
     })
   }
 
-  function mutation (create: TxCreateDoc<ReplaySpace>, mixin: boolean, value: string): TxUpdateDoc<Space> | TxMixin<Space, ReplaySpace> {
+  function mutation (
+    create: TxCreateDoc<ReplaySpace>,
+    mixin: boolean,
+    value: string
+  ): TxUpdateDoc<Space> | TxMixin<Space, ReplaySpace> {
     return mixin
       ? factory.createTxMixin<Space, ReplaySpace>(create.objectId, core.class.Space, core.space.Model, spaceMixin, {
-        arr: [value]
-      })
+          arr: [value]
+        })
       : factory.createTxUpdateDoc<ReplaySpace>(core.class.Space, core.space.Model, create.objectId, { name: value })
   }
 
@@ -1036,15 +1050,22 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
       newer.modifiedOn = 20
       newer.modifiedBy = 'account:new' as PersonId
       const input = { C: create, O: old, N: newer }
-      db.addTxes(ctx, [...order].map((key) => input[key as keyof typeof input]), doClone, new Set([old._id, newer._id]))
+      db.addTxes(
+        ctx,
+        [...order].map((key) => input[key as keyof typeof input]),
+        doClone,
+        new Set([old._id, newer._id])
+      )
       const last = order.indexOf('O') > order.indexOf('N') ? old : newer
       const doc = db.getObject(create.objectId)
       expect(doc.modifiedOn).toBe(last.modifiedOn)
       expect(doc.modifiedBy).toBe(last.modifiedBy)
-      expect(doc.name).toBe(oldMixin && newMixin ? 'original' : oldMixin ? 'new' : newMixin ? 'old' : last === old ? 'old' : 'new')
+      expect(doc.name).toBe(
+        oldMixin && newMixin ? 'original' : oldMixin ? 'new' : newMixin ? 'old' : last === old ? 'old' : 'new'
+      )
       if (oldMixin || newMixin) {
         expect(h.as(doc, spaceMixin).arr).toEqual([
-          oldMixin && newMixin ? last === old ? 'old' : 'new' : oldMixin ? 'old' : 'new'
+          oldMixin && newMixin ? (last === old ? 'old' : 'new') : oldMixin ? 'old' : 'new'
         ])
         expect(db.findAllSync(spaceMixin, {}).map((it) => it._id)).toEqual([create.objectId])
       }
@@ -1057,9 +1078,16 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
   it.each([false, true])('preserves disjoint fields and applies operators once (mixin=%s)', (mixin) => {
     const { db, h, ctx, info } = fixture()
     const create = spaceTx()
-    const ops = (attributes: DocumentUpdate<ReplaySpace>): Tx => mixin
-      ? factory.createTxMixin<Space, ReplaySpace>(create.objectId, core.class.Space, core.space.Model, spaceMixin, attributes)
-      : factory.createTxUpdateDoc<ReplaySpace>(core.class.Space, core.space.Model, create.objectId, attributes)
+    const ops = (attributes: DocumentUpdate<ReplaySpace>): Tx =>
+      mixin
+        ? factory.createTxMixin<Space, ReplaySpace>(
+            create.objectId,
+            core.class.Space,
+            core.space.Model,
+            spaceMixin,
+            attributes
+          )
+        : factory.createTxUpdateDoc<ReplaySpace>(core.class.Space, core.space.Model, create.objectId, attributes)
     const old = ops({ $inc: { count: 1 }, $push: { arr: 'old' }, description: 'retained' })
     const newer = ops({ $inc: { count: 2 }, $push: { arr: 'new' }, name: 'later' })
     old.modifiedOn = 10
@@ -1093,7 +1121,12 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
       const remove = factory.createTxRemoveDoc(core.class.Space, core.space.Model, create.objectId)
       const input = { C: create, U: update, R: remove }
       const apply = (): void => {
-        db.addTxes(ctx, [...order].map((key) => input[key as keyof typeof input]), doClone, new Set([update._id]))
+        db.addTxes(
+          ctx,
+          [...order].map((key) => input[key as keyof typeof input]),
+          doClone,
+          new Set([update._id])
+        )
       }
       if (applied) {
         expect(apply).not.toThrow()
@@ -1113,7 +1146,10 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
         expect(info).toHaveBeenCalledTimes(1)
         expect(info).toHaveBeenCalledWith('skipped model transactions for orphan documents', {
           total: orphans,
-          byClass: { ...(applied ? {} : { [update._class]: 1 }), ...(orphans > (applied ? 0 : 1) ? { [remove._class]: 1 } : {}) }
+          byClass: {
+            ...(applied ? {} : { [update._class]: 1 }),
+            ...(orphans > (applied ? 0 : 1) ? { [remove._class]: 1 } : {})
+          }
         })
       }
     }
@@ -1130,7 +1166,8 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
     expect(doc.name).toBe(mixin ? 'after' : 'original')
     expect(h.hasMixin(doc, spaceMixin)).toBe(!mixin)
     expect(info).toHaveBeenCalledWith('skipped model transactions for orphan documents', {
-      total: 2, byClass: { [before._class]: 1, [remove._class]: 1 }
+      total: 2,
+      byClass: { [before._class]: 1, [remove._class]: 1 }
     })
     const second = spaceTx()
     second.objectId = create.objectId
@@ -1142,7 +1179,9 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
     db.addTxes(ctx, [before, replacement], doClone)
     expect(db.getObject(create.objectId).name).toBe('original')
     expect(h.hasMixin(db.getObject(create.objectId), spaceMixin)).toBe(false)
-    expect(db.findAllSync(core.class.Space, {}).find((it) => it._id === create.objectId)).toBe(db.getObject(create.objectId))
+    expect(db.findAllSync(core.class.Space, {}).find((it) => it._id === create.objectId)).toBe(
+      db.getObject(create.objectId)
+    )
   })
 
   it('waits for each object independently and preserves the update hook order', () => {
@@ -1163,12 +1202,22 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
   it.each([false, true])('does not mutate a hierarchy-only target while pending (mixin=%s)', (mixin) => {
     const { db, h, ctx } = fixture()
     const create = factory.createTxCreateDoc(core.class.Class, core.space.Model, {
-      label: 'original' as IntlString, kind: ClassifierKind.CLASS, extends: core.class.Doc
+      label: 'original' as IntlString,
+      kind: ClassifierKind.CLASS,
+      extends: core.class.Doc
     })
     h.tx(create)
     const update = mixin
-      ? factory.createTxMixin<Doc, TestMixin>(create.objectId, core.class.Class, core.space.Model, test.mixin.TestMixin, { arr: ['pending'] })
-      : factory.createTxUpdateDoc(core.class.Class, core.space.Model, create.objectId, { label: 'pending' as IntlString })
+      ? factory.createTxMixin<Doc, TestMixin>(
+          create.objectId,
+          core.class.Class,
+          core.space.Model,
+          test.mixin.TestMixin,
+          { arr: ['pending'] }
+        )
+      : factory.createTxUpdateDoc(core.class.Class, core.space.Model, create.objectId, {
+          label: 'pending' as IntlString
+        })
     const before = JSON.stringify(h.getClass(create.objectId))
     db.addTxes(ctx, [update], doClone)
     expect(JSON.stringify(h.getClass(create.objectId))).toBe(before)
@@ -1197,7 +1246,8 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
     db.addTxes(ctx, [update, mixin, remove], doClone, required)
     expect(info).toHaveBeenCalledTimes(1)
     expect(info).toHaveBeenCalledWith('skipped model transactions for orphan documents', {
-      total: 3, byClass: { [update._class]: 1, [mixin._class]: 1, [remove._class]: 1 }
+      total: 3,
+      byClass: { [update._class]: 1, [mixin._class]: 1, [remove._class]: 1 }
     })
     expect(warn).not.toHaveBeenCalled()
     expect(db.findObject(create.objectId)).toBeUndefined()
@@ -1213,8 +1263,7 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
     const remove = factory.createTxRemoveDoc(core.class.Space, core.space.Model, create.objectId)
     expect(() => {
       db.addTxes(ctx, [update, remove, create, update], doClone, new Set([update._id]))
-    })
-      .toThrow(`Failed to apply required model transactions: ${update._id}`)
+    }).toThrow(`Failed to apply required model transactions: ${update._id}`)
     expect(db.getObject(create.objectId).name).toBe('changed')
   })
 
@@ -1229,8 +1278,7 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
     })
     expect(() => {
       db.addTxes(ctx, deferred ? [update, create] : [create, update], doClone, new Set([update._id]))
-    })
-      .toThrow(`Failed to apply required model transactions: ${update._id}`)
+    }).toThrow(`Failed to apply required model transactions: ${update._id}`)
     expect(db.getObject(create.objectId).name).toBe('changed')
     expect(warn).toHaveBeenCalledTimes(1)
     expect(info).not.toHaveBeenCalled()
@@ -1241,15 +1289,13 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
     const unknown = createDoc('test:class:Unknown' as Ref<Class<Doc>>, {})
     expect(() => {
       db.addTxes(ctx, [unknown], doClone, new Set([unknown._id]))
-    })
-      .toThrow(`Failed to apply required model transactions: ${unknown._id}`)
+    }).toThrow(`Failed to apply required model transactions: ${unknown._id}`)
     expect(db.findObject(unknown.objectId)).toBeDefined()
     const create = spaceTx()
     const remove = factory.createTxRemoveDoc(core.class.Space, core.space.Model, create.objectId)
     expect(() => {
       db.addTxes(ctx, [remove, create], doClone, new Set([remove._id]))
-    })
-      .toThrow(`Failed to apply required model transactions: ${remove._id}`)
+    }).toThrow(`Failed to apply required model transactions: ${remove._id}`)
     expect(db.getObject(create.objectId).name).toBe('original')
   })
 
@@ -1257,8 +1303,12 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
     const { db, ctx, info } = fixture()
     const create = spaceTx()
     const invalid = mixin
-      ? factory.createTxMixin<Space, ReplaySpace>(create.objectId, core.class.Space, core.space.Model, spaceMixin, { $invalid: {} } as unknown as DocumentUpdate<ReplaySpace>)
-      : factory.createTxUpdateDoc<ReplaySpace>(core.class.Space, core.space.Model, create.objectId, { $invalid: {} } as unknown as DocumentUpdate<ReplaySpace>)
+      ? factory.createTxMixin<Space, ReplaySpace>(create.objectId, core.class.Space, core.space.Model, spaceMixin, {
+          $invalid: {}
+        } as unknown as DocumentUpdate<ReplaySpace>)
+      : factory.createTxUpdateDoc<ReplaySpace>(core.class.Space, core.space.Model, create.objectId, {
+          $invalid: {}
+        } as unknown as DocumentUpdate<ReplaySpace>)
     expect(() => {
       db.addTxes(ctx, [invalid, create], doClone)
     }).toThrow()
@@ -1272,23 +1322,44 @@ describe.each([true, false])('model transaction replay (clone=%s)', (doClone) =>
     const child = 'test:class:Child' as Ref<Class<Doc>>
     const parent = 'test:class:Parent' as Ref<Class<Doc>>
     const classTx = (id: Ref<Class<Obj>>, ext: Ref<Class<Obj>>): TxCreateDoc<Class<Obj>> =>
-      factory.createTxCreateDoc(core.class.Class, core.space.Model, {
-        kind: ClassifierKind.CLASS, extends: ext, label: 'class' as IntlString
-      }, id)
+      factory.createTxCreateDoc(
+        core.class.Class,
+        core.space.Model,
+        {
+          kind: ClassifierKind.CLASS,
+          extends: ext,
+          label: 'class' as IntlString
+        },
+        id
+      )
     const create = classTx(child, core.class.Doc)
     const old = factory.createTxUpdateDoc(core.class.Class, core.space.Model, child, {
-      extends: parent, $push: { implements: test.interface.DummyWithState }
+      extends: parent,
+      $push: { implements: test.interface.DummyWithState }
     })
     const newer = factory.createTxUpdateDoc(core.class.Class, core.space.Model, child, { label: 'later' as IntlString })
     const attr = factory.createTxCreateDoc(core.class.Attribute, core.space.Model, {
-      attributeOf: child, name: 'initial', label: 'attribute' as IntlString, type: { _class: core.class.TypeString }
+      attributeOf: child,
+      name: 'initial',
+      label: 'attribute' as IntlString,
+      type: { _class: core.class.TypeString }
     })
     const rename = factory.createTxUpdateDoc(core.class.Attribute, core.space.Model, attr.objectId, { name: 'middle' })
-    const finalRename = factory.createTxUpdateDoc(core.class.Attribute, core.space.Model, attr.objectId, { name: 'final' })
+    const finalRename = factory.createTxUpdateDoc(core.class.Attribute, core.space.Model, attr.objectId, {
+      name: 'final'
+    })
     const doc = factory.createTxCreateDoc(child, core.space.Model, {})
     const batch = [
-      ...genMinModel(), classTx(core.class.Attribute, core.class.Doc), doc,
-      old, create, newer, rename, attr, finalRename, classTx(parent, core.class.Doc)
+      ...genMinModel(),
+      classTx(core.class.Attribute, core.class.Doc),
+      doc,
+      old,
+      create,
+      newer,
+      rename,
+      attr,
+      finalRename,
+      classTx(parent, core.class.Doc)
     ]
     db.addTxes(ctx, batch, doClone, new Set(batch.map((tx) => tx._id)))
     expect(h.getClass(child)).toBe(db.getObject(child))
