@@ -412,50 +412,11 @@ export class ModelDb extends MemDb {
     // Orphan-targeted txes are reported as one summary line at the end, not one warning each.
     const orphans: Tx[] = []
     const skipped = new Map<Ref<Tx>, Tx>()
-    for (const tx of txes) {
-      // Hierarchy references the created instance instead of deserializing its own copy.
-      let ownDoc: Doc | undefined
-      switch (tx._class) {
-        case core.class.TxCreateDoc: {
-          const doc = TxProcessor.createDoc2Doc(tx as TxCreateDoc<Doc>, doClone)
-          this.objectById.set(doc._id, doc)
-          created.push({ doc, tx })
-          ownDoc = doc
-          break
-        }
-        case core.class.TxUpdateDoc: {
-          const cud = tx as TxUpdateDoc<Doc>
-          const doc = this.ownDoc(cud.objectId)
-          if (doc !== undefined) {
-            this.updateDoc(cud.objectId, doc, cud)
-            TxProcessor.updateDoc2Doc(doc, cud)
-          } else {
-            orphans.push(tx)
-          }
-          break
-        }
-        case core.class.TxRemoveDoc:
-          try {
-            this.delDoc((tx as TxRemoveDoc<Doc>).objectId)
-          } catch (err: any) {
-            orphans.push(tx)
-          }
-          break
-        case core.class.TxMixin: {
-          const mix = tx as TxMixin<Doc, Doc>
-          const doc = this.ownDoc(mix.objectId)
-          if (doc !== undefined) {
-            this.updateDoc(mix.objectId, doc, mix)
-            TxProcessor.updateMixin4Doc(doc, mix)
-          } else {
-            orphans.push(tx)
-          }
-          break
-        }
-      }
+    const pending = new Map<Ref<Doc>, Array<TxUpdateDoc<Doc> | TxMixin<Doc, Doc>>>()
+    const applyHierarchy = (tx: Tx, doc?: Doc): void => {
       try {
-        this.hierarchy.tx(tx, ownDoc)
-      } catch (err: any) {
+        this.hierarchy.tx(tx, doc)
+      } catch (err: unknown) {
         skipped.set(tx._id, tx)
         ctx.warn('failed to apply model transaction to hierarchy, skipping', {
           _id: tx._id,
@@ -464,55 +425,63 @@ export class ModelDb extends MemDb {
         })
       }
     }
-    // Database snapshots may return related model transactions in an arbitrary order. Retry updates and mixins after
-    // their create transaction has been seen; removes still follow their original ordering and remain skipped.
-    for (const tx of orphans.splice(0)) {
+    const applyMutation = (tx: TxUpdateDoc<Doc> | TxMixin<Doc, Doc>): boolean => {
+      const doc = this.ownDoc(tx.objectId)
+      if (doc === undefined) return false
+      this.updateDoc(tx.objectId, doc, tx)
+      if (tx._class === core.class.TxUpdateDoc) {
+        TxProcessor.updateDoc2Doc(doc, tx as TxUpdateDoc<Doc>)
+      } else {
+        TxProcessor.updateMixin4Doc(doc, tx as TxMixin<Doc, Doc>)
+      }
+      applyHierarchy(tx)
+      return true
+    }
+    for (const tx of txes) {
       switch (tx._class) {
-        case core.class.TxUpdateDoc: {
-          const update = tx as TxUpdateDoc<Doc>
-          const doc = this.ownDoc(update.objectId)
-          if (doc === undefined) {
-            orphans.push(tx)
-            break
-          }
-          this.updateDoc(update.objectId, doc, update)
-          TxProcessor.updateDoc2Doc(doc, update)
-          try {
-            this.hierarchy.tx(tx)
-          } catch (err: any) {
-            skipped.set(tx._id, tx)
-            ctx.warn('failed to apply model transaction to hierarchy, skipping', {
-              _id: tx._id,
-              _class: tx._class,
-              err
-            })
+        case core.class.TxCreateDoc: {
+          const doc = TxProcessor.createDoc2Doc(tx as TxCreateDoc<Doc>, doClone)
+          this.objectById.set(doc._id, doc)
+          created.push({ doc, tx })
+          // Register ownership before applying mutations, so hierarchy operators are not applied twice.
+          applyHierarchy(tx, doc)
+          const waiting = pending.get(doc._id)
+          pending.delete(doc._id)
+          // Replay only this object's current generation, before any later input mutation.
+          for (const mutation of waiting ?? []) {
+            if (!applyMutation(mutation)) orphans.push(mutation)
           }
           break
         }
+        case core.class.TxUpdateDoc:
         case core.class.TxMixin: {
-          const mixin = tx as TxMixin<Doc, Doc>
-          const doc = this.ownDoc(mixin.objectId)
-          if (doc === undefined) {
-            orphans.push(tx)
-            break
+          const mutation = tx as TxUpdateDoc<Doc> | TxMixin<Doc, Doc>
+          if (!applyMutation(mutation)) {
+            const waiting = pending.get(mutation.objectId) ?? []
+            waiting.push(mutation)
+            pending.set(mutation.objectId, waiting)
           }
-          this.updateDoc(mixin.objectId, doc, mixin)
-          TxProcessor.updateMixin4Doc(doc, mixin)
+          break
+        }
+        case core.class.TxRemoveDoc: {
+          const objectId = (tx as TxRemoveDoc<Doc>).objectId
+          // A remove closes the pending generation even when its document never arrived.
+          for (const mutation of pending.get(objectId) ?? []) orphans.push(mutation)
+          pending.delete(objectId)
           try {
-            this.hierarchy.tx(tx)
-          } catch (err: any) {
-            skipped.set(tx._id, tx)
-            ctx.warn('failed to apply model transaction to hierarchy, skipping', {
-              _id: tx._id,
-              _class: tx._class,
-              err
-            })
+            this.delDoc(objectId)
+          } catch (err: unknown) {
+            orphans.push(tx)
           }
+          applyHierarchy(tx)
           break
         }
         default:
-          orphans.push(tx)
+          applyHierarchy(tx)
       }
+    }
+    for (const waiting of pending.values()) {
+      for (const mutation of waiting) orphans.push(mutation)
     }
     for (const { doc, tx } of created) {
       // Skip what a later tx of the same batch removed or replaced.
