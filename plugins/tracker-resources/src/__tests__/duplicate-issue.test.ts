@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import chunter from '@hcengineering/chunter'
+import activity from '@hcengineering/activity'
 import core, { type Account, AccountRole, setCurrentAccount } from '@hcengineering/core'
 import { getClient } from '@hcengineering/presentation'
 import task from '@hcengineering/task'
@@ -21,7 +22,7 @@ jest.mock('@hcengineering/platform', () => ({
   ...jest.requireActual('@hcengineering/platform'),
   translate: async (key: string, params: Record<string, string>) => {
     const { string: strings } = jest.requireActual('../../../tracker-assets/lang/en.json')
-    return strings[key.split(':').pop() ?? ''].replace('{issue}', () => params.issue)
+    return strings[key.split(':').pop() ?? ''].replaceAll('{issue}', () => params.issue)
   }
 }))
 
@@ -81,7 +82,7 @@ beforeEach(() => {
   jest.mocked(canEditIssue).mockResolvedValue(true)
 })
 
-it('links both issues, comments on both, cancels the duplicate and unions subscribers in one batch', async () => {
+it('links both issues, records activity, cancels the duplicate and unions subscribers in one batch', async () => {
   await markIssueDuplicate(duplicate._id, original._id)
 
   expect(canEditIssue).toHaveBeenCalledWith(duplicate)
@@ -90,19 +91,12 @@ it('links both issues, comments on both, cancels the duplicate and unions subscr
   expect(updateIssueRelation).toHaveBeenCalledWith(ops, original, duplicate, 'relations', '$push')
   expect(ops.update).toHaveBeenCalledWith(duplicate, { status: 'canceled' })
   expect(ops.update).toHaveBeenCalledTimes(1)
-  const comments = ops.addCollection.mock.calls.filter((call) => call[0] === chunter.class.ChatMessage)
-  const reference = (issue: Issue): unknown => ({
-    type: 'reference',
-    attrs: { id: issue._id, label: issue.identifier, objectclass: issue._class }
-  })
-  expect(comments.map((call) => [call[1], call[2], call[4], JSON.parse(call[5].message).content[0].content])).toEqual([
-    ['project', duplicate._id, 'comments', [{ type: 'text', text: 'Duplicate of ' }, reference(original)]],
-    [
-      'other-project',
-      original._id,
-      'comments',
-      [reference(duplicate), { type: 'text', text: ' was marked as duplicate of this issue' }]
-    ]
+  const messages = ops.addCollection.mock.calls.filter((call) => call[0] === activity.class.ActivityInfoMessage)
+  expect(messages.map((call) => [call[1], call[2], call[4], call[5].message, call[5].props.issue])).toEqual([
+    ['project', duplicate._id, 'activity', tracker.string.DuplicateOf,
+      '<span data-type="reference" data-id="original" data-objectclass="tracker:class:Issue" data-label="OTHER-42">@OTHER-42</span>'],
+    ['other-project', original._id, 'activity', tracker.string.MarkedAsDuplicateOfThis,
+      '<span data-type="reference" data-id="duplicate" data-objectclass="tracker:class:Issue" data-label="TEST-7">@TEST-7</span>']
   ])
   expect(ops.addCollection).toHaveBeenCalledWith(
     core.class.Collaborator,
@@ -181,4 +175,50 @@ it.each([
 it('hides the action when the issue cannot be edited', async () => {
   jest.mocked(canEditIssue).mockResolvedValue(false)
   expect(await canShowMarkIssueDuplicate(duplicate)).toBe(false)
+})
+
+it('rejects an original that has already been canceled', async () => {
+  documents.set(original._id, { ...original, status: 'canceled' })
+  await expect(markIssueDuplicate(duplicate._id, original._id)).rejects.toThrow()
+  expect(client.apply).not.toHaveBeenCalled()
+})
+
+it('rejects a duplicate that was canceled while the picker was open', async () => {
+  documents.set(duplicate._id, { ...duplicate, status: 'canceled' })
+  await expect(markIssueDuplicate(duplicate._id, original._id)).rejects.toThrow()
+  expect(client.apply).not.toHaveBeenCalled()
+})
+
+it('hides the action when the workflow has no canceled status', async () => {
+  documents.set('kind', { parent: 'workflow', statuses: ['open'] })
+  client.findAll.mockResolvedValue([])
+  expect(await canShowMarkIssueDuplicate(duplicate)).toBe(false)
+})
+
+it('limits the canceled status query to the task type', async () => {
+  await markIssueDuplicate(duplicate._id, original._id)
+  expect(client.findAll).toHaveBeenCalledWith(core.class.Status, {
+    _id: { $in: ['canceled'] },
+    category: task.statusCategory.Lost
+  })
+})
+
+it('stores a translatable activity message instead of the actor language', async () => {
+  await markIssueDuplicate(duplicate._id, original._id)
+  expect(ops.addCollection).toHaveBeenCalledWith(
+    activity.class.ActivityInfoMessage,
+    duplicate.space,
+    duplicate._id,
+    duplicate._class,
+    'activity',
+    expect.objectContaining({ message: tracker.string.DuplicateOf })
+  )
+  expect(ops.addCollection).not.toHaveBeenCalledWith(
+    chunter.class.ChatMessage,
+    expect.anything(),
+    expect.anything(),
+    expect.anything(),
+    expect.anything(),
+    expect.anything()
+  )
 })

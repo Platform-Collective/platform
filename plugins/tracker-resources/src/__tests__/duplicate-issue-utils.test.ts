@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { Class, Doc, Ref, Status, StatusCategory } from '@hcengineering/core'
-import { createDuplicateComment, DUPLICATE_ISSUE_PLACEHOLDER, selectCanceledStatus } from '../duplicate-issue-utils'
+import { createDuplicateReference, selectCanceledStatus } from '../duplicate-issue-utils'
+
+const ru = jest.requireActual<{ string: { DuplicateOf: string } }>('../../../tracker-assets/lang/ru.json')
 
 const lost = 'lost' as Ref<StatusCategory>
 const active = 'active' as Ref<StatusCategory>
@@ -38,32 +40,15 @@ describe('selectCanceledStatus', () => {
   })
 })
 
-describe('createDuplicateComment', () => {
+it('encodes issue references safely for translated activity messages', () => {
+  expect(createDuplicateReference({
+    _id: 'id"<script>' as Ref<Doc>,
+    _class: 'tracker:class:Issue' as Ref<Class<Doc>>,
+    identifier: 'T<&-42'
+  })).toBe('<span data-type="reference" data-id="id&quot;&lt;script&gt;" data-objectclass="tracker:class:Issue" data-label="T&lt;&amp;-42">@T&lt;&amp;-42</span>')
+})
+
+it('inserts an issue reference into the actual Russian locale string', () => {
   const issue = { _id: 'issue-id' as Ref<Doc>, _class: 'tracker:class:Issue' as Ref<Class<Doc>>, identifier: 'TEST-42' }
-  const reference = {
-    type: 'reference',
-    attrs: { id: 'issue-id', label: 'TEST-42', objectclass: 'tracker:class:Issue' }
-  }
-  const content = (text: string): unknown => JSON.parse(createDuplicateComment(text, issue)).content[0].content
-
-  it('replaces the placeholder with a clickable issue reference', () => {
-    expect(content(`Duplicate of ${DUPLICATE_ISSUE_PLACEHOLDER}`)).toEqual([
-      { type: 'text', text: 'Duplicate of ' },
-      reference
-    ])
-    expect(content(`${DUPLICATE_ISSUE_PLACEHOLDER} was marked as duplicate of this issue`)).toEqual([
-      reference,
-      { type: 'text', text: ' was marked as duplicate of this issue' }
-    ])
-    expect(content(`Дубликат ${DUPLICATE_ISSUE_PLACEHOLDER} задачи`)).toEqual([
-      { type: 'text', text: 'Дубликат ' },
-      reference,
-      { type: 'text', text: ' задачи' }
-    ])
-  })
-
-  it('keeps quotes, newlines and HTML as plain text without injecting markup nodes', () => {
-    const text = 'Duplicate of <b>TEST-42</b> "quoted"\n{issue}'
-    expect(content(text)).toEqual([{ type: 'text', text }])
-  })
+  expect(ru.string.DuplicateOf.replace('{issue}', createDuplicateReference(issue))).toContain('Дубликат <span data-type="reference"')
 })
