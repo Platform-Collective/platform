@@ -190,6 +190,16 @@
   --theme-caption-color: #FFF;
   --theme-link-color: #377AE6;
 
+  // RelyFrame brand accent (login pages, brand surfaces)
+  --theme-brand-color: #B3A6D6;
+  --theme-brand-hovered: #C3B8E3;
+  --theme-brand-pressed: #A396C8;
+  --theme-brand-on-color: #1C1A2B;
+  --theme-brand-link-color: #C3B8E3;
+  --theme-brand-disabled: #2A2839;
+  --theme-brand-disabled-color: #8E89A3;
+  --theme-brand-bg-color: var(--theme-bg-color);
+
   --theme-list-border-color: rgba(255, 255, 255, .05);
   --theme-list-header-color: #C88C65;
   --theme-list-subheader-color: #22242A;
@@ -525,6 +535,16 @@
   --theme-caption-color: #000;
   --theme-link-color: #377AE6;
 
+  // RelyFrame brand accent (login pages, brand surfaces)
+  --theme-brand-color: #4E3F80;
+  --theme-brand-hovered: #433670;
+  --theme-brand-pressed: #3A2F61;
+  --theme-brand-on-color: #FFFFFF;
+  --theme-brand-link-color: #4E3F80;
+  --theme-brand-disabled: #E6E3EE;
+  --theme-brand-disabled-color: #6F6A84;
+  --theme-brand-bg-color: #E9E7EF;
+
   --theme-list-border-color: rgba(0, 0, 0, .09);
   --theme-list-header-color: red; //#ECD4CA;
   --theme-list-subheader-color: #EEEEF0;
@@ -766,4 +786,17 @@
   --theme-label-gray-color: rgba(0, 0, 0, .6);
   --theme-label-gray-bg-color: rgba(0, 0, 0, .02);
   --theme-label-gray-border-color: rgba(0, 0, 0, .09);
+}
+
+/* Remaps generic link/contrast-button variables to the brand accent inside a scope. */
+.theme-brand-scope {
+  --theme-link-color: var(--theme-brand-link-color);
+  --theme-button-contrast-color: var(--theme-brand-on-color);
+  --theme-button-contrast-enabled: var(--theme-brand-color);
+  --theme-button-contrast-hovered: var(--theme-brand-hovered);
+  --theme-button-contrast-pressed: var(--theme-brand-pressed);
+  --theme-button-contrast-border: transparent;
+  --theme-button-contrast-disabled: var(--theme-brand-disabled);
+  --theme-button-contrast-disabled-color: var(--theme-brand-disabled-color);
+  --button-disabled-LabelColor: var(--theme-brand-disabled-color);
 }

@@ -118,7 +118,7 @@
 {#if page === 'admin'}
   <AdminWorkspaces />
 {:else}
-  <div class="login w-full h-full">
+  <div class="login theme-brand-scope w-full h-full">
     <div class="login-column">
       <div class="login-logo">
         <RelyFrameLogo />
@@ -179,7 +179,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--theme-bg-color);
+    background-color: var(--theme-brand-bg-color);
     padding: 2rem 1rem;
     box-sizing: border-box;
   }

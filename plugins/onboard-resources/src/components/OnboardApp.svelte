@@ -32,7 +32,7 @@
   import { onDestroy, onMount } from 'svelte'
 
   import Auth from './Auth.svelte'
-  import LoginIcon from './icons/OnboardIcon.svelte'
+  import OnboardIcon from './icons/OnboardIcon.svelte'
   import OnboardForm from './OnboardForm.svelte'
 
   import loginBack from '../../img/login_back.png'
@@ -107,7 +107,7 @@
       style:top={'3rem'}
       class="flex-row-center"
     >
-      <LoginIcon /><span class="fs-title ml-2">{getMetadata(workbench.metadata.PlatformTitle)}</span>
+      <OnboardIcon /><span class="fs-title ml-2">{getMetadata(workbench.metadata.PlatformTitle)}</span>
     </div>
 
     <div class="panel-base" class:panel={$deviceInfo.docWidth > 768} class:white={!$themeStore.dark}>

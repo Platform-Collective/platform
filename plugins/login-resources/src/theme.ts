@@ -13,13 +13,13 @@
 // limitations under the License.
 //
 import { type AnySvelteComponent } from '@hcengineering/ui'
-import { writable, derived, get, type Readable } from 'svelte/store'
+import { writable, derived, type Readable } from 'svelte/store'
 import RelyFrameLogo from './components/icons/RelyFrameLogo.svelte'
 
 /**
  * Names of supported login themes.
  */
-export type LoginThemeName = 'huly'
+export type LoginThemeName = 'relyframe'
 
 /**
  * Theme description for login UI.
@@ -31,29 +31,26 @@ export interface LoginTheme {
   showLoginTitle: boolean
   backgroundComponent?: AnySvelteComponent
   logoComponent?: AnySvelteComponent
-  // optional html accent class (corresponds to classes in _accent-colors.scss)
-  accentClass?: string
 }
 
 /**
  * Built-in themes for login-resources.
  */
 export const themes: Record<LoginThemeName, LoginTheme> = {
-  huly: {
-    name: 'huly',
+  relyframe: {
+    name: 'relyframe',
     alignment: 'center',
     backgroundComponent: undefined,
     logoComponent: RelyFrameLogo,
     showTitle: false,
-    showLoginTitle: false,
-    accentClass: 'accent-huly'
+    showLoginTitle: false
   }
 }
 
 /**
  * Default theme name used on startup.
  */
-export const DEFAULT_THEME_NAME: LoginThemeName = 'huly'
+export const DEFAULT_THEME_NAME: LoginThemeName = 'relyframe'
 
 /**
  * Writable store that holds current theme name.
@@ -76,34 +73,3 @@ export function setLoginTheme (name: LoginThemeName): void {
   }
   loginThemeName.set(name)
 }
-
-/**
- * Apply accent class to the document <html> element for the provided theme.
- */
-export function applyHtmlAccent (arg?: LoginThemeName | LoginTheme): void {
-  if (typeof document === 'undefined') return
-
-  let name: LoginThemeName
-  if (typeof arg === 'string') {
-    name = arg
-  } else if (arg?.name !== undefined) {
-    name = arg.name
-  } else {
-    name = get(loginThemeName)
-  }
-
-  const docCls = document.documentElement.classList
-  for (const c of Array.from(docCls)) {
-    if (c.startsWith('accent-')) docCls.remove(c)
-  }
-
-  const accent = themes[name]?.accentClass
-  if (accent !== undefined && accent !== null && accent !== '') {
-    docCls.add(accent)
-  }
-}
-
-// Automatically apply accent class when theme changes
-loginThemeName.subscribe((n) => {
-  applyHtmlAccent(n)
-})

@@ -22,12 +22,12 @@
 
   export let wide: boolean = false
 
-  import { loginTheme, setLoginTheme, type LoginThemeName } from '../theme'
+  import { loginTheme, setLoginTheme, themes, type LoginThemeName } from '../theme'
 
   onMount(() => {
     // Initialize login theme from platform metadata if provided
     const lTheme = getMetadata(login.metadata.LoginTheme) as LoginThemeName | undefined
-    if (lTheme === 'huly') {
+    if (lTheme !== undefined && lTheme in themes) {
       setLoginTheme(lTheme)
     }
   })
@@ -38,21 +38,22 @@
   // themeStyle resolves to override theme vars when override is active, otherwise to store theme vars
   function onDevThemeChange(e: Event): void {
     const v = (e.target as HTMLSelectElement).value as LoginThemeName
-    // set local override and apply accent class immediately (no store change)
+    // dev-only switch between registered login themes
     setLoginTheme(v)
   }
 </script>
 
 <div
-  class="w-full h-full backd"
+  class="w-full h-full backd theme-brand-scope"
   class:paneld={$deviceInfo.docWidth <= 768}
-  class:login-theme-huly={activeTheme.name === 'huly'}
 >
   <div class="bg-image clear-mins p-4">
     {#if getMetadata(platform.metadata.DevModel)}
       <div style:position="fixed" style:left={'0px'} style:top={'0px'} style:z-index={10000} class="flex-row-center">
         <select class="select small" value={$loginTheme.name} on:change={onDevThemeChange}>
-          <option value="huly">Huly</option>
+          {#each Object.values(themes) as t}
+            <option value={t.name}>{t.name}</option>
+          {/each}
         </select>
       </div>
     {/if}
@@ -111,7 +112,7 @@
     align-items: center;
     width: 100%;
     height: 100%;
-    background-color: var(--theme-bg-color);
+    background-color: var(--theme-brand-bg-color);
   }
 
   .fs-title {

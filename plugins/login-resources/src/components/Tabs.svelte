@@ -62,7 +62,7 @@
   }
   .caption a {
     padding-bottom: 0.375rem;
-    border-bottom: 2px solid var(--theme-caption-color);
+    border-bottom: 2px solid var(--theme-brand-color);
 
     &:not(.selected) {
       color: var(--theme-dark-color);
