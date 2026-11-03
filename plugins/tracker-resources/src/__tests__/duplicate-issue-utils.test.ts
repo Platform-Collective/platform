@@ -41,14 +41,20 @@ describe('selectCanceledStatus', () => {
 })
 
 it('encodes issue references safely for translated activity messages', () => {
-  expect(createDuplicateReference({
-    _id: 'id"<script>' as Ref<Doc>,
-    _class: 'tracker:class:Issue' as Ref<Class<Doc>>,
-    identifier: 'T<&-42'
-  })).toBe('<span data-type="reference" data-id="id&quot;&lt;script&gt;" data-objectclass="tracker:class:Issue" data-label="T&lt;&amp;-42">@T&lt;&amp;-42</span>')
+  expect(
+    createDuplicateReference({
+      _id: 'id"<script>' as Ref<Doc>,
+      _class: 'tracker:class:Issue' as Ref<Class<Doc>>,
+      identifier: 'T<&-42'
+    })
+  ).toBe(
+    '<span data-type="reference" data-id="id&quot;&lt;script&gt;" data-objectclass="tracker:class:Issue" data-label="T&lt;&amp;-42">@T&lt;&amp;-42</span>'
+  )
 })
 
 it('inserts an issue reference into the actual Russian locale string', () => {
   const issue = { _id: 'issue-id' as Ref<Doc>, _class: 'tracker:class:Issue' as Ref<Class<Doc>>, identifier: 'TEST-42' }
-  expect(ru.string.DuplicateOf.replace('{issue}', createDuplicateReference(issue))).toContain('Дубликат <span data-type="reference"')
+  expect(ru.string.DuplicateOf.replace('{issue}', createDuplicateReference(issue))).toContain(
+    'Дубликат <span data-type="reference"'
+  )
 })

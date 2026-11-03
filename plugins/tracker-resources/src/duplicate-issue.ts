@@ -68,8 +68,12 @@ export async function markIssueDuplicate (duplicateId: Ref<Issue>, originalId: R
     client.findOne(core.class.Status, { _id: original.status }),
     client.findAll(core.class.Collaborator, { attachedTo: { $in: [duplicateId, originalId] } })
   ])
-  if (duplicateStatus === undefined || originalStatus === undefined ||
-      duplicateStatus.category === task.statusCategory.Lost || originalStatus.category === task.statusCategory.Lost) {
+  if (
+    duplicateStatus === undefined ||
+    originalStatus === undefined ||
+    duplicateStatus.category === task.statusCategory.Lost ||
+    originalStatus.category === task.statusCategory.Lost
+  ) {
     throw new Error(await translate(tracker.string.MarkDuplicateFailed, {}))
   }
   if (canceled === undefined) {

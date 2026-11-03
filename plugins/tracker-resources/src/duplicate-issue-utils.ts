@@ -18,9 +18,18 @@ export function selectCanceledStatus (
 }
 
 /** Encode an issue reference for use as a parameter in an activity message. */
-export function createDuplicateReference (issue: { _id: Ref<Doc>, _class: Ref<Class<Doc>>, identifier: string }): string {
-  const escape = (value: string): string => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;')
+export function createDuplicateReference (issue: {
+  _id: Ref<Doc>
+  _class: Ref<Class<Doc>>
+  identifier: string
+}): string {
+  const escape = (value: string): string =>
+    value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;')
   const id = escape(issue._id)
   const objectClass = escape(issue._class)
   const label = escape(issue.identifier)

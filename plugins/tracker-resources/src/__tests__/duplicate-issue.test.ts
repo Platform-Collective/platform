@@ -93,10 +93,20 @@ it('links both issues, records activity, cancels the duplicate and unions subscr
   expect(ops.update).toHaveBeenCalledTimes(1)
   const messages = ops.addCollection.mock.calls.filter((call) => call[0] === activity.class.ActivityInfoMessage)
   expect(messages.map((call) => [call[1], call[2], call[4], call[5].message, call[5].props.issue])).toEqual([
-    ['project', duplicate._id, 'activity', tracker.string.DuplicateOf,
-      '<span data-type="reference" data-id="original" data-objectclass="tracker:class:Issue" data-label="OTHER-42">@OTHER-42</span>'],
-    ['other-project', original._id, 'activity', tracker.string.MarkedAsDuplicateOfThis,
-      '<span data-type="reference" data-id="duplicate" data-objectclass="tracker:class:Issue" data-label="TEST-7">@TEST-7</span>']
+    [
+      'project',
+      duplicate._id,
+      'activity',
+      tracker.string.DuplicateOf,
+      '<span data-type="reference" data-id="original" data-objectclass="tracker:class:Issue" data-label="OTHER-42">@OTHER-42</span>'
+    ],
+    [
+      'other-project',
+      original._id,
+      'activity',
+      tracker.string.MarkedAsDuplicateOfThis,
+      '<span data-type="reference" data-id="duplicate" data-objectclass="tracker:class:Issue" data-label="TEST-7">@TEST-7</span>'
+    ]
   ])
   expect(ops.addCollection).toHaveBeenCalledWith(
     core.class.Collaborator,
