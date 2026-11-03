@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM rust:1.88 AS builder
+FROM --platform=$BUILDPLATFORM rust:1.98 AS builder
 ARG TARGETPLATFORM
 
 WORKDIR /tmp/build
