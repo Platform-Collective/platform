@@ -26,7 +26,7 @@ import { systemAccountUuid, generateUuid, type Ref, type Blob } from '@hcenginee
 import { generateToken } from '@hcengineering/server-token'
 
 describe('storage-api-server', () => {
-  const frontUrl = 'http://huly.local:8083'
+  const frontUrl = 'http://relyframe.local:8083'
   const wsName = 'api-tests'
   let config: ServerConfig
   let apiWorkspace1: WorkspaceToken
@@ -35,7 +35,7 @@ describe('storage-api-server', () => {
     config = await loadServerConfig(frontUrl)
 
     apiWorkspace1 = await getWorkspaceToken(
-      'http://huly.local:8083',
+      'http://relyframe.local:8083',
       {
         email: 'user1',
         password: '1234',

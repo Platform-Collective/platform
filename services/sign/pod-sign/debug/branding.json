@@ -1,17 +1,17 @@
 {
-  "huly.local:8080": {
+  "relyframe.local:8080": {
     "title": "Huly",
     "language": "en"
   },
-  "huly.local:8087": {
+  "relyframe.local:8087": {
     "title": "Huly",
     "language": "en"
   },
-  "huly.local:8081": {
+  "relyframe.local:8081": {
     "title": "TraceX",
     "language": "en"
   },
-  "huly.local:8088": {
+  "relyframe.local:8088": {
     "title": "TraceX",
     "language": "en"
   }

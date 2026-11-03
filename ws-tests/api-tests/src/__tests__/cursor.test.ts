@@ -42,7 +42,7 @@ interface CollectedPages {
 }
 
 describe('cursor-api', () => {
-  const frontUrl = process.env.FRONT_URL ?? 'http://huly.local:8083'
+  const frontUrl = process.env.FRONT_URL ?? 'http://relyframe.local:8083'
   const workspaceName = 'api-tests'
   const runId = generateId()
   const prefix = `cursor-${runId}`

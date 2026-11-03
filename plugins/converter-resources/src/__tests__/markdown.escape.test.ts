@@ -88,7 +88,7 @@ describe('markdown/escape', () => {
 
   describe('escapeMarkdownTableCellContent', () => {
     it('leaves http markdown link from formatValue/createMarkdownLink intact', () => {
-      const cell = '[Suite A](http://huly.local:8080/workbench/test/card/69d3cfb2a78c161c977dd6a0)'
+      const cell = '[Suite A](http://relyframe.local:8080/workbench/test/card/69d3cfb2a78c161c977dd6a0)'
       expect(escapeMarkdownTableCellContent(cell)).toBe(cell)
     })
 

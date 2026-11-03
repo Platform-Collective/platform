@@ -304,7 +304,7 @@ jobs:
           DOCKER_BUILDKIT: 1
       - name: Configure /etc/hosts
         run: |
-          sudo echo "127.0.0.1 huly.local" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 relyframe.local" | sudo tee -a /etc/hosts
       - name: Prepare server
         run: |
           cd ./tests
@@ -436,7 +436,7 @@ jobs:
           DOCKER_BUILDKIT: 1
       - name: Configure /etc/hosts
         run: |
-          sudo echo "127.0.0.1 huly.local" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 relyframe.local" | sudo tee -a /etc/hosts
       - name: Prepare server
         run: |
           cd ./tests
@@ -533,7 +533,7 @@ jobs:
           DOCKER_BUILDKIT: 1
       - name: Configure /etc/hosts
         run: |
-          sudo echo "127.0.0.1 huly.local" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 relyframe.local" | sudo tee -a /etc/hosts
       - name: Prepare server
         run: |
           cd ./qms-tests
@@ -617,7 +617,7 @@ jobs:
           DOCKER_BUILDKIT: 1
       - name: Configure /etc/hosts
         run: |
-          sudo echo "127.0.0.1 huly.local" | sudo tee -a /etc/hosts
+          sudo echo "127.0.0.1 relyframe.local" | sudo tee -a /etc/hosts
       - name: Prepare server
         run: |
           cd ./ws-tests

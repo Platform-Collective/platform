@@ -46,10 +46,10 @@
     "dotenv": "^16.4.5"
   },
   "homepage": "https://huly.io/",
-  "productName": "Huly Desktop",
-  "description": "Huly Desktop experience",
+  "productName": "RelyFrame Desktop",
+  "description": "RelyFrame Desktop experience",
   "build": {
-    "productName": "Huly",
+    "productName": "RelyFrame",
     "appId": "hc.hcengineering.Huly",
     "directories": {
       "output": "deploy"
@@ -59,7 +59,7 @@
     ],
     "mac": {
       "category": "public.app-category.utilities",
-      "artifactName": "Huly-macos-${version}-${arch}.${ext}",
+      "artifactName": "RelyFrame-macos-${version}-${arch}.${ext}",
       "target": "default",
       "icon": "./src/AppIcon.icns",
       "hardenedRuntime": true,
@@ -77,7 +77,7 @@
         "zip",
         "nsis"
       ],
-      "artifactName": "Huly-windows-${version}.${ext}",
+      "artifactName": "RelyFrame-windows-${version}.${ext}",
       "verifyUpdateCodeSignature": false,
       "icon": "./src/AppIcon.ico",
       "publish": {
@@ -101,7 +101,7 @@
       "uninstallerIcon": "./src/AppIcon.ico"
     },
     "linux": {
-      "artifactName": "Huly-linux-${version}.${ext}",
+      "artifactName": "RelyFrame-linux-${version}.${ext}",
       "target": [
         "AppImage",
         "deb",

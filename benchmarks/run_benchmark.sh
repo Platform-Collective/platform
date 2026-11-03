@@ -30,18 +30,18 @@ NGINX_PORT=8092
 # Common environment variables (from dev/docker-compose.yaml)
 ENV_ARGS=(
   -e SERVER_SECRET=secret
-  -e ACCOUNTS_URL=http://huly.local:3000
+  -e ACCOUNTS_URL=http://relyframe.local:3000
   -e UPLOAD_URL=/files
-  -e "FILES_URL=http://huly.local:4030/blob/:workspace/:blobId/:filename"
+  -e "FILES_URL=http://relyframe.local:4030/blob/:workspace/:blobId/:filename"
   -e MODEL_VERSION=test
-  -e REKONI_URL=http://huly.local:4004
-  -e GMAIL_URL=http://huly.local:8093
-  -e CALENDAR_URL=http://huly.local:8095
-  -e TELEGRAM_URL=http://huly.local:8086
+  -e REKONI_URL=http://relyframe.local:4004
+  -e GMAIL_URL=http://relyframe.local:8093
+  -e CALENDAR_URL=http://relyframe.local:8095
+  -e TELEGRAM_URL=http://relyframe.local:8086
   -e "STORAGE_CONFIG=minio|localhost?accessKey=minioadmin&secretKey=minioadmin"
-  -e BRANDING_URL=http://huly.local:8087/branding.json
-  -e DATALAKE_URL=http://huly.local:4030
-  -e LINK_PREVIEW_URL=http://huly.local:4042
+  -e BRANDING_URL=http://relyframe.local:8087/branding.json
+  -e DATALAKE_URL=http://relyframe.local:4030
+  -e LINK_PREVIEW_URL=http://relyframe.local:4042
 )
 
 # Parse arguments

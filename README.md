@@ -202,11 +202,11 @@ Add the following lines to your hosts file:
 - **Windows:** `C:\Windows\System32\drivers\etc\hosts`
 
 ```plain
-127.0.0.1 huly.local
-::1 huly.local
+127.0.0.1 relyframe.local
+::1 relyframe.local
 ```
 
-Accessing the URL <http://huly.local:8087> will lead you to the app in development mode.
+Accessing the URL <http://relyframe.local:8087> will lead you to the app in development mode.
 
 Limitations:
 

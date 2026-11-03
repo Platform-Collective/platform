@@ -68,7 +68,11 @@
       </div>
     {:else}
       <div class="login-column">
-        <!-- TODO(rebranding): the logo is intentionally not shown for now -->
+        {#if activeTheme.logoComponent !== undefined}
+          <div class="login-logo">
+            <svelte:component this={activeTheme.logoComponent} />
+          </div>
+        {/if}
         <div class="panel">
           <Scroller padding={'1rem 0'}>
             <div class="form-content">
@@ -125,6 +129,12 @@
     gap: 1.75rem;
     padding: 2rem 1rem;
     box-sizing: border-box;
+  }
+
+  .login-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   /* Flat themed panel, used both for the compact card and the wide

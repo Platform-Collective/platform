@@ -38,7 +38,7 @@
         "NewIncomingMessage": "새 이메일을 보냈습니다",
         "ConfigLabel": "이메일",
         "ConfigDescription": "Gmail 이메일 연동 확장 기능",
-        "GooglePrivacy": "Huly가 Google API에서 받은 정보를 다른 앱에 사용하거나 전송할 때는 <a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">Google API Services User Data Policy</a>(제한적 사용 요건 포함)를 준수합니다.",
+        "GooglePrivacy": "RelyFrame가 Google API에서 받은 정보를 다른 앱에 사용하거나 전송할 때는 <a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">Google API Services User Data Policy</a>(제한적 사용 요건 포함)를 준수합니다.",
         "EmailNotificationsDescription": "이메일로 개인 알림을 받습니다.",
         "FailedToConnect": "Gmail 서비스를 사용할 수 없습니다",
         "TotalMessages": "전체 메시지:",

@@ -12,7 +12,7 @@
         "ExportFormat": "내보내기 형식",
         "ExportJSON": "JSON",
         "ExportCSV": "CSV",
-        "ExportUnifiedFormat": "Huly 통합 형식",
+        "ExportUnifiedFormat": "RelyFrame 통합 형식",
         "ExportIncludeContent": "콘텐츠 포함",
         "ExportEverything": "전체",
         "ExportAttributesOnly": "속성만",

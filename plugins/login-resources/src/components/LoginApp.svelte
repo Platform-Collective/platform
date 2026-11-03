@@ -46,6 +46,7 @@
 
   import AdminWorkspaces from './AdminWorkspaces.svelte'
   import ChangePassword from './ChangePassword.svelte'
+  import RelyFrameLogo from './icons/RelyFrameLogo.svelte'
 
   export let page: Pages = 'signup'
 
@@ -119,7 +120,9 @@
 {:else}
   <div class="login w-full h-full">
     <div class="login-column">
-      <!-- TODO(rebranding): the logo is intentionally not shown on the login page for now -->
+      <div class="login-logo">
+        <RelyFrameLogo />
+      </div>
       <div class="login-card">
         <Scroller padding={'1rem 0'}>
           <div class="form-content">
@@ -189,6 +192,12 @@
     max-width: 30rem;
     min-width: 0;
     gap: 1.75rem;
+  }
+
+  .login-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .login-card {

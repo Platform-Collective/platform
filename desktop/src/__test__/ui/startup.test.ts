@@ -85,7 +85,7 @@ describe('desktop startup shell', () => {
   test.each([false, true])('renders a loading shell before configuration (Windows: %s)', (isWindows) => {
     document.body.innerHTML = render(template, { isWindows })
 
-    expect(document.getElementById('desktop-startup')?.textContent).toContain('Huly')
+    expect(document.getElementById('desktop-startup')?.textContent).toContain('RelyFrame')
     expect(document.getElementById('desktop-startup-progress')).not.toBeNull()
     expect(document.getElementById('desktop-app-titlebar-root') !== null).toBe(isWindows)
   })

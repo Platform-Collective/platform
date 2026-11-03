@@ -50,7 +50,7 @@
         "EnablePush": "푸시 알림 사용",
         "NotificationBlockedInBrowser": "브라우저에서 알림이 차단되어 있습니다. 브라우저 설정에서 알림을 허용해 주세요.",
         "General": "일반",
-        "InboxNotificationsDescription": "Huly 수신함에서 개인 알림을 받습니다.",
+        "InboxNotificationsDescription": "RelyFrame 수신함에서 개인 알림을 받습니다.",
         "PushNotificationsDescription": "데스크톱에서 개인 알림을 받습니다.",
         "CommonNotificationCollectionAdded": "{senderName}님이 {collection}을(를) 추가했습니다",
         "CommonNotificationCollectionRemoved": "{senderName}님이 {collection}을(를) 제거했습니다",

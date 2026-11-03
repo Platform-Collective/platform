@@ -102,7 +102,7 @@ function runTheApp (): void {
     quitApplication()
   }
 
-  console.log('Running Huly', process.env.MODEL_VERSION, process.env.VERSION, isMac, isDev, process.env.NODE_ENV)
+  console.log('Running RelyFrame', process.env.MODEL_VERSION, process.env.VERSION, isMac, isDev, process.env.NODE_ENV)
 
   // Fix screen-sharing thumbnails being missing sometimes
   // See https://github.com/electron/electron/issues/44504

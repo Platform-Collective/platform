@@ -391,7 +391,7 @@ class PlatformQueueConsumerImpl implements ConsumerHandle {
  * Constructs a platform queue.
  */
 export function getPlatformQueue (serviceId: string, region?: string): PlatformQueue {
-  const queueConfig = process.env.QUEUE_CONFIG ?? 'huly.local:9092'
+  const queueConfig = process.env.QUEUE_CONFIG ?? 'relyframe.local:9092'
   if (queueConfig === undefined) {
     throw new Error('Please provide queue config')
   }

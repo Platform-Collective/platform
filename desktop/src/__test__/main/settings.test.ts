@@ -50,7 +50,7 @@ describe('Settings', () => {
 
       const actualUrl = systemUnderTest.readServerUrl()
 
-      expect(actualUrl).toBe('http://huly.local:8087')
+      expect(actualUrl).toBe('http://relyframe.local:8087')
     })
 
     test('isDev is true and FRONT_URL is set', () => {

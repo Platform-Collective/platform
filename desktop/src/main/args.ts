@@ -16,7 +16,7 @@
 import { OptionValues, program } from 'commander'
 
 program
-  .name('Huly')
+  .name('RelyFrame')
   .allowUnknownOption()
   .allowExcessArguments(true)
   .option('-s, --server <url>', 'Remote server URL (front). E.g. https://huly.app')

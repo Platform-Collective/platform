@@ -42,7 +42,7 @@
     "ProjectsInSync": "- repositorios ({of}/{sync})",
     "ProjectsConfig": "Proyectos de Github (nuevo)",
     "AuthorizeAs": "como {login}",
-    "Integrations": "Integraciones de la aplicación de Github de Huly",
+    "Integrations": "Integraciones de la aplicación de Github de RelyFrame",
     "Options": "Opciones",
     "Projects": "Proyectos ({count})",
     "GithubIssue": "Problema de Github",

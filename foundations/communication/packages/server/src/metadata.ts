@@ -19,7 +19,7 @@ export function getMetadata (): Metadata {
   return {
     accountsUrl: process.env.ACCOUNTS_URL ?? '',
     secret: process.env.SERVER_SECRET ?? 'secret',
-    hulylakeUrl: process.env.HULYLAKE_URL ?? 'http://huly.local:8096',
+    hulylakeUrl: process.env.HULYLAKE_URL ?? 'http://relyframe.local:8096',
     messagesPerBlob: Number(process.env.MESSAGES_PER_BLOB ?? '200')
   }
 }

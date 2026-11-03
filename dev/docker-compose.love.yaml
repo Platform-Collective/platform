@@ -13,7 +13,7 @@ services:
     image: platformcollective/love
     container_name: love
     extra_hosts:
-      - 'huly.local:host-gateway'
+      - 'relyframe.local:host-gateway'
     depends_on:
       redpanda:
         condition: service_started
@@ -27,12 +27,12 @@ services:
       - PORT=8097
       - SERVICE_ID=love-service
       - SECRET=secret
-      - ACCOUNTS_URL=http://huly.local:3000
-      - STATS_URL=http://huly.local:4900
+      - ACCOUNTS_URL=http://relyframe.local:3000
+      - STATS_URL=http://relyframe.local:4900
       - REGION=cockroach
       - QUEUE_CONFIG=${QUEUE_CONFIG}
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - LIVEKIT_HOST=http://huly.local:7880
+      - LIVEKIT_HOST=http://relyframe.local:7880
       - LIVEKIT_PROJECT=dev
       - LIVEKIT_API_KEY=devkey
       - LIVEKIT_API_SECRET=secret
@@ -43,5 +43,5 @@ services:
 
   front:
     environment:
-      - LOVE_ENDPOINT=http://huly.local:8097
-      - LIVEKIT_WS=ws://huly.local:7880
+      - LOVE_ENDPOINT=http://relyframe.local:8097
+      - LIVEKIT_WS=ws://relyframe.local:7880
