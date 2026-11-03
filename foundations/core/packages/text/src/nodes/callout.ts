@@ -69,7 +69,10 @@ export const CalloutNode = Node.create({
     }
     return {
       Enter: liftEmptyCallout,
-      Backspace: liftEmptyCallout
+      Backspace: () => {
+        const { $from } = this.editor.state.selection
+        return $from.depth > 1 && $from.index(-1) === 0 && liftEmptyCallout()
+      }
     }
   }
 })

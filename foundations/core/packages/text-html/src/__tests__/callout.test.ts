@@ -56,4 +56,25 @@ describe('callout HTML conversion', () => {
     expect(doc.content?.[0].content?.[0].text).toContain('<div>')
     expect(doc.content?.[0].type).toBe(MarkupNodeType.paragraph)
   })
+
+  it('preserves a complete plain div and the paragraph after it', () => {
+    const doc = htmlToMarkup('<div><p>Raw</p></div><p>After</p>')
+    expect(doc.content?.map((node) => node.content?.[0]?.text)).toEqual(['<div><p>Raw</p></div>', 'After'])
+  })
+
+  it('keeps a plain div inside a callout and preserves following paragraphs', () => {
+    const doc = htmlToMarkup(
+      '<div data-type="callout"><div><p>x</p></div><p>after</p></div><p>outside</p>'
+    )
+    expect(doc.content?.map((node) => node.type)).toEqual([MarkupNodeType.callout, MarkupNodeType.paragraph])
+    expect(doc.content?.[0].content?.map((node) => node.type)).toEqual([
+      MarkupNodeType.paragraph,
+      MarkupNodeType.paragraph
+    ])
+    expect(doc.content?.[0].content?.map((node) => node.content?.[0]?.text)).toEqual([
+      '<div><p>x</p></div>',
+      'after'
+    ])
+    expect(doc.content?.[1].content?.[0].text).toBe('outside')
+  })
 })

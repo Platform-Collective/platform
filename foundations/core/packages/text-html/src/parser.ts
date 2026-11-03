@@ -94,8 +94,8 @@ class HtmlParseState {
       }
     }
 
-    // Auto-wrap text in paragraph if we're at the doc level
-    if (top.type === MarkupNodeType.doc) {
+    // Both documents and callouts require block children.
+    if (top.type === MarkupNodeType.doc || top.type === MarkupNodeType.callout) {
       this.openNode(MarkupNodeType.paragraph)
       const node: MarkupNode =
         this.marks.length > 0
@@ -566,7 +566,7 @@ export class HtmlParser {
             handler.handleOpenTag(state, tag, attributes)
           } else {
             rawPos = parser.startIndex
-            rawDepth = 0
+            rawDepth = 1
           }
         },
 
@@ -608,7 +608,7 @@ export class HtmlParser {
 
             if (rawDepth === 0) {
               const start = rawPos ?? 0
-              const end = parser.endIndex
+              const end = parser.endIndex + 1
               const text = html.substring(start, end)
               state.addText(text)
               rawPos = undefined

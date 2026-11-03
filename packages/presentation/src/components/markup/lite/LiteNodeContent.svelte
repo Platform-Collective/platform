@@ -14,7 +14,7 @@
 -->
 <script lang="ts">
   import { Blob, Class, Doc, Ref } from '@hcengineering/core'
-  import { AttrValue, MarkupNode, MarkupNodeType, MarkupMarkType } from '@hcengineering/text'
+  import { AttrValue, getCalloutKind, MarkupNode, MarkupNodeType, MarkupMarkType } from '@hcengineering/text'
 
   import LiteNodes from './LiteNodes.svelte'
   import ObjectNode from '../ObjectNode.svelte'
@@ -86,6 +86,19 @@
     </p>
   {:else if node.type === MarkupNodeType.blockquote}
     <LiteNodes {nodes} {parseEmojisFunction} {colorInherit} />
+  {:else if node.type === MarkupNodeType.callout}
+    <div class="callout" data-kind={getCalloutKind(attrs.kind)}>
+      {#if typeof attrs.emoji === 'string' && attrs.emoji.length > 0}
+        {attrs.emoji}
+      {:else if getCalloutKind(attrs.kind) === 'warning'}
+        ⚠️
+      {:else if getCalloutKind(attrs.kind) === 'success'}
+        ✅
+      {:else}
+        ℹ️
+      {/if}
+      <LiteNodes {nodes} {parseEmojisFunction} {colorInherit} />
+    </div>
   {:else if node.type === MarkupNodeType.horizontal_rule}
     <!--  nothing-->
   {:else if node.type === MarkupNodeType.code_block}
@@ -152,6 +165,19 @@
 {/if}
 
 <style lang="scss">
+  .callout {
+    border-left: 3px solid var(--theme-link-color);
+    background: var(--theme-text-editor-note-anchor-bg-primary-light);
+    padding: 0 0.25rem;
+  }
+  .callout[data-kind='warning'] {
+    border-left-color: var(--theme-text-editor-note-anchor-bg-warning);
+    background: var(--theme-text-editor-note-anchor-bg-warning-light);
+  }
+  .callout[data-kind='success'] {
+    border-left-color: var(--theme-text-editor-note-anchor-bg-positive);
+    background: var(--theme-text-editor-note-anchor-bg-positive-light);
+  }
   .colorInherit {
     color: inherit;
   }
