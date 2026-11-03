@@ -2117,11 +2117,6 @@
       "shouldPublish": false
     },
     {
-      "packageName": "qms-desktop",
-      "projectFolder": "qms-desktop-package",
-      "shouldPublish": false
-    },
-    {
       "packageName": "@hcengineering/diffview",
       "projectFolder": "plugins/diffview",
       "shouldPublish": true
