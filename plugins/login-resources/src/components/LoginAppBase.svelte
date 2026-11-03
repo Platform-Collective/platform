@@ -43,10 +43,7 @@
   }
 </script>
 
-<div
-  class="w-full h-full backd theme-brand-scope"
-  class:paneld={$deviceInfo.docWidth <= 768}
->
+<div class="w-full h-full backd theme-brand-scope" class:paneld={$deviceInfo.docWidth <= 768}>
   <div class="bg-image clear-mins p-4">
     {#if getMetadata(platform.metadata.DevModel)}
       <div style:position="fixed" style:left={'0px'} style:top={'0px'} style:z-index={10000} class="flex-row-center">
