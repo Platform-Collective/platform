@@ -14,7 +14,6 @@
     "dev-worker": "cross-env USE_CACHE=false CLIENT_TYPE=dev-worker webpack serve",
     "dev-worker-local": "cross-env USE_CACHE=false CLIENT_TYPE=dev-worker-local webpack serve",
     "dev-server-cache": "cross-env USE_CACHE=true CLIENT_TYPE=dev-server webpack serve",
-    "tunnel-qms": "socat tcp-listen:8081,reuseaddr,fork,bind=localhost tcp:localhost:8080",
     "dev-production": "cross-env CLIENT_TYPE=dev-production webpack serve",
     "dev-huly": "cross-env CLIENT_TYPE=dev-huly webpack serve",
     "dev-bold": "cross-env CLIENT_TYPE=dev-bold webpack serve",
