@@ -34,7 +34,7 @@
   },
   "host.docker.internal:8088": {
     "key": "tracex-docker",
-    "title": "TraceX",
+    "title": "Huly",
     "protocol": "http",
     "language": "en",
     "lastNameFirst": "true"
