@@ -284,7 +284,7 @@ rush build --to @hcengineering/pod-export
 
 ```bash
 cd services/export/pod-export
-ACCOUNTS_URL="http://127.0.0.1:3000" SECRET="secret" DB_URL=postgresql://root@relyframe.local:26257/defaultdb?sslmode=disable SERVICE_ID="export" STORAGE_CONFIG="datalake|http://relyframe.local:4030" rushx run-local
+ACCOUNTS_URL="http://127.0.0.1:3000" SECRET="secret" DB_URL=postgresql://root@huly.local:26257/defaultdb?sslmode=disable SERVICE_ID="export" STORAGE_CONFIG="datalake|http://huly.local:4030" rushx run-local
 ```
 
 ### Testing

@@ -411,15 +411,15 @@ sequenceDiagram
 ### Common Configuration (Shared by Most Services)
 - `SERVER_SECRET` / `SECRET`: `secret` - Shared authentication secret
 - `REGION`: `cockroach` - Deployment region identifier
-- `ACCOUNTS_URL`: `http://relyframe.local:3000` - Account service URL
-- `STATS_URL`: `http://relyframe.local:4900` - Metrics collection URL
+- `ACCOUNTS_URL`: `http://huly.local:3000` - Account service URL
+- `STATS_URL`: `http://huly.local:4900` - Metrics collection URL
 - `OTEL_EXPORTER_OTLP_ENDPOINT`: `http://jaeger:4318/v1/traces` - Tracing endpoint
 - `STORAGE_CONFIG`: `${STORAGE_CONFIG}` - MinIO connection string
 - `QUEUE_CONFIG`: `${QUEUE_CONFIG}` - Redpanda/Kafka configuration
 
 ### Database Configuration
 - `DB_URL` / `DB_CR_URL`: CockroachDB connection string
-- `FULLTEXT_DB_URL`: `http://relyframe.local:9200` - Elasticsearch URL
+- `FULLTEXT_DB_URL`: `http://huly.local:9200` - Elasticsearch URL
 - `HULY_DB_CONNECTION`: CockroachDB connection for Huly* services
 
 ### Storage Configuration
@@ -434,26 +434,26 @@ sequenceDiagram
 - `HULY_KAFKA_BOOTSTRAP`: `redpanda:9092` - Kafka bootstrap servers
 
 ### Service URLs (Internal)
-- `ACCOUNTS_URL`: `http://relyframe.local:3000`
-- `TRANSACTOR_URL`: `ws://relyframe.local:3332`
-- `FULLTEXT_URL`: `http://relyframe.local:4702`
-- `REKONI_URL`: `http://relyframe.local:4004`
-- `COLLABORATOR_URL`: `ws://relyframe.local:3078`
-- `DATALAKE_URL`: `http://relyframe.local:4030`
-- `HULYLAKE_URL`: `http://relyframe.local:8096`
-- `PULSE_URL`: `ws://relyframe.local:8099/ws`
-- `PREVIEW_URL`: `http://relyframe.local:4040`
-- `STREAM_URL`: `http://relyframe.local:1080/recording`
-- `PAYMENT_URL`: `http://relyframe.local:3040`
-- `PRINT_URL`: `http://relyframe.local:4005`
-- `SIGN_URL`: `http://relyframe.local:4006`
-- `BACKUP_URL`: `http://relyframe.local:4039/api/backup`
-- `AI_BOT_URL`: `http://relyframe.local:4010`
+- `ACCOUNTS_URL`: `http://huly.local:3000`
+- `TRANSACTOR_URL`: `ws://huly.local:3332`
+- `FULLTEXT_URL`: `http://huly.local:4702`
+- `REKONI_URL`: `http://huly.local:4004`
+- `COLLABORATOR_URL`: `ws://huly.local:3078`
+- `DATALAKE_URL`: `http://huly.local:4030`
+- `HULYLAKE_URL`: `http://huly.local:8096`
+- `PULSE_URL`: `ws://huly.local:8099/ws`
+- `PREVIEW_URL`: `http://huly.local:4040`
+- `STREAM_URL`: `http://huly.local:1080/recording`
+- `PAYMENT_URL`: `http://huly.local:3040`
+- `PRINT_URL`: `http://huly.local:4005`
+- `SIGN_URL`: `http://huly.local:4006`
+- `BACKUP_URL`: `http://huly.local:4039/api/backup`
+- `AI_BOT_URL`: `http://huly.local:4010`
 
 ### Frontend Configuration
-- `FILES_URL`: `http://relyframe.local:4030/blob/:workspace/:blobId/:filename` - File download URL pattern
-- `FRONT_URL`: `http://relyframe.local:8087` - Frontend base URL
-- `BRANDING_URL`: `http://relyframe.local:8087/branding.json`
+- `FILES_URL`: `http://huly.local:4030/blob/:workspace/:blobId/:filename` - File download URL pattern
+- `FRONT_URL`: `http://huly.local:8087` - Frontend base URL
+- `BRANDING_URL`: `http://huly.local:8087/branding.json`
 - `DESKTOP_UPDATES_URL`: `https://dist.huly.io`
 
 ### Authentication & Security
@@ -486,7 +486,7 @@ sequenceDiagram
 - `HULY_BIND_PORT`: `8099`
 
 ### Stream Service
-- `STREAM_ENDPOINT_URL`: `datalake://relyframe.local:4030`
+- `STREAM_ENDPOINT_URL`: `datalake://huly.local:4030`
 - `STREAM_INSECURE`: `true`
 - `STREAM_MAX_PARALLEL_SCALING_COUNT`: `6`
 

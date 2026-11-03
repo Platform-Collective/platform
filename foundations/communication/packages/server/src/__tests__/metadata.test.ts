@@ -40,7 +40,7 @@ describe('metadata', () => {
       expect(metadata).toEqual({
         accountsUrl: '',
         secret: 'secret',
-        hulylakeUrl: 'http://relyframe.local:8096',
+        hulylakeUrl: 'http://huly.local:8096',
         messagesPerBlob: 200
       })
     })

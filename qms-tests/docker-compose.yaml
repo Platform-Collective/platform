@@ -3,7 +3,7 @@ services:
   cockroach:
     image: cockroachdb/cockroach:v24.1.2
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     ports:
       - '26258:26257'
       - '18089:8080'
@@ -12,7 +12,7 @@ services:
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.6
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     command:
       - redpanda
       - start
@@ -39,7 +39,7 @@ services:
   redpanda_console:
     image: docker.redpanda.com/redpandadata/console:v2.8.3
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     entrypoint: /bin/sh
     command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
     environment:
@@ -88,7 +88,7 @@ services:
   account:
     image: platformcollective/account
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     pull_policy: never
     links:
       - cockroach
@@ -103,13 +103,13 @@ services:
       - SERVER_SECRET=secret
       - WORKSPACE_LIMIT_PER_USER=100
       - DB_URL=${DB_PG_URL}
-      - TRANSACTOR_URL=ws://transactor:3334;ws://relyframe.local:3334
+      - TRANSACTOR_URL=ws://transactor:3334;ws://huly.local:3334
       - STORAGE_CONFIG=${STORAGE_CONFIG}
       - BRANDING_PATH=/var/cfg/branding-test.json
   workspace:
     image: platformcollective/workspace
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     links:
       - cockroach
       - minio
@@ -119,7 +119,7 @@ services:
       - QUEUE_CONFIG=${QUEUE_CONFIG}
       - SERVER_SECRET=secret
       - DB_URL=${DB_PG_URL}
-      - TRANSACTOR_URL=ws://transactor:3334;ws://relyframe.local:3334
+      - TRANSACTOR_URL=ws://transactor:3334;ws://huly.local:3334
       - STORAGE_CONFIG=${STORAGE_CONFIG}
       - ACCOUNTS_URL=http://account:3003
       - ACCOUNTS_DB_URL=${DB_PG_URL}
@@ -128,7 +128,7 @@ services:
   front:
     image: platformcollective/front
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     pull_policy: never
     links:
       - account
@@ -144,21 +144,21 @@ services:
     environment:
       - SERVER_PORT=8083
       - SERVER_SECRET=secret
-      - ACCOUNTS_URL=http://relyframe.local:3003
+      - ACCOUNTS_URL=http://huly.local:3003
       - UPLOAD_URL=/files
-      - GMAIL_URL=http://relyframe.local:8088
-      - CALENDAR_URL=http://relyframe.local:8095
+      - GMAIL_URL=http://huly.local:8088
+      - CALENDAR_URL=http://huly.local:8095
       - REKONI_URL=http://rekoni:4007
-      - TELEGRAM_URL=http://relyframe.local:8086
-      - COLLABORATOR_URL=ws://relyframe.local:3079
+      - TELEGRAM_URL=http://huly.local:8086
+      - COLLABORATOR_URL=ws://huly.local:3079
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - BRANDING_URL=http://relyframe.local:8083/branding-test.json
-      - PRINT_URL=http://relyframe.local:4003
-      - SIGN_URL=http://relyframe.local:4008
+      - BRANDING_URL=http://huly.local:8083/branding-test.json
+      - PRINT_URL=http://huly.local:4003
+      - SIGN_URL=http://huly.local:4008
   transactor:
     image: platformcollective/transactor
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     pull_policy: never
     links:
       - cockroach
@@ -178,8 +178,8 @@ services:
       - METRICS_CONSOLE=false
       - METRICS_FILE=metrics.txt
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - FRONT_URL=http://relyframe.local:8083
-      - UPLOAD_URL=http://relyframe.local:8083/files
+      - FRONT_URL=http://huly.local:8083
+      - UPLOAD_URL=http://huly.local:8083/files
       - ACCOUNTS_URL=http://account:3003
       - LAST_NAME_FIRST=true
       - FULLTEXT_URL=http://fulltext:4710
@@ -189,7 +189,7 @@ services:
   collaborator:
     image: platformcollective/collaborator
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     links:
       - cockroach
       - minio
@@ -211,7 +211,7 @@ services:
   print:
     image: platformcollective/print
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     restart: unless-stopped
     ports:
       - 4003:4005
@@ -219,7 +219,7 @@ services:
       - SECRET=secret
       - STORAGE_CONFIG=${STORAGE_CONFIG}
       - ACCOUNTS_URL=http://account:3003
-      - FRONT_URL=http://relyframe.local:8087
+      - FRONT_URL=http://huly.local:8087
     deploy:
       resources:
         limits:
@@ -227,7 +227,7 @@ services:
   sign:
     image: platformcollective/sign
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     restart: unless-stopped
     ports:
       - 4008:4006

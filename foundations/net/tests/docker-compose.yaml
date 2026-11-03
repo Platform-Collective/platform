@@ -3,7 +3,7 @@ services:
     image: platformcollective/network-pod
     pull_policy: never
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     environment:
       - PORT=3737
       - HOST=*

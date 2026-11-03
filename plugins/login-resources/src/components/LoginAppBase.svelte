@@ -17,20 +17,10 @@
 <script lang="ts">
   import platform, { getMetadata } from '@hcengineering/platform'
   import { Popup, Scroller, deviceOptionsStore as deviceInfo } from '@hcengineering/ui'
-  import { onMount } from 'svelte'
-  import login from '../plugin'
 
   export let wide: boolean = false
 
   import { loginTheme, setLoginTheme, themes, type LoginThemeName } from '../theme'
-
-  onMount(() => {
-    // Initialize login theme from platform metadata if provided
-    const lTheme = getMetadata(login.metadata.LoginTheme) as LoginThemeName | undefined
-    if (lTheme !== undefined && lTheme in themes) {
-      setLoginTheme(lTheme)
-    }
-  })
 
   // activeTheme is used everywhere for rendering (prefers override if set)
   $: activeTheme = $loginTheme
@@ -43,7 +33,11 @@
   }
 </script>
 
-<div class="w-full h-full backd theme-brand-scope" class:paneld={$deviceInfo.docWidth <= 768}>
+<div
+  class="w-full h-full backd"
+  class:theme-brand-scope={activeTheme.brandAccent}
+  class:paneld={$deviceInfo.docWidth <= 768}
+>
   <div class="bg-image clear-mins p-4">
     {#if getMetadata(platform.metadata.DevModel)}
       <div style:position="fixed" style:left={'0px'} style:top={'0px'} style:z-index={10000} class="flex-row-center">
@@ -109,7 +103,7 @@
     align-items: center;
     width: 100%;
     height: 100%;
-    background-color: var(--theme-brand-bg-color);
+    background-color: var(--login-bg-color, var(--theme-bg-color));
   }
 
   .fs-title {

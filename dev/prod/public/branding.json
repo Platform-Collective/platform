@@ -1,5 +1,5 @@
 {
-  "relyframe.local:8080": {
+  "huly.local:8080": {
     "title": "RelyFrame",
     "languages": "en,ru,pl,pt,pt-br,es,zh,fr,de,ja,ko,tr",
     "defaultLanguage": "en",
@@ -28,7 +28,7 @@
       }
     ]
   },
-  "relyframe.local:8087": {
+  "huly.local:8087": {
     "title": "RelyFrame",
     "languages": "en,ru,pl,pt,pt-br,es,zh,fr,de,ja,ko,tr",
     "defaultLanguage": "en",
@@ -57,8 +57,9 @@
       }
     ]
   },
-  "relyframe.local:8081": {
+  "huly.local:8081": {
     "title": "TraceX",
+    "loginTheme": "plain",
     "languages": "en",
     "defaultLanguage": "en",
     "defaultApplication": "documents",
@@ -97,8 +98,9 @@
       }
     ]
   },
-  "relyframe.local:8088": {
+  "huly.local:8088": {
     "title": "TraceX",
+    "loginTheme": "plain",
     "languages": "en",
     "defaultLanguage": "en",
     "defaultApplication": "documents",

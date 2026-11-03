@@ -292,6 +292,8 @@ export interface Branding {
   initWorkspace?: string
   defaultInviteRole?: string
   inviteLinkGeneratorRoles?: string[]
+  // Login page look: 'relyframe' (default) or 'plain' for hosts with their own brand
+  loginTheme?: string
 }
 
 export type BrandingMap = Record<string, Branding>
@@ -477,6 +479,7 @@ export async function configurePlatform() {
   setMetadata(login.metadata.AccountsUrl, config.ACCOUNTS_URL)
   setMetadata(login.metadata.DisableSignUp, config.DISABLE_SIGNUP === 'true')
   setMetadata(login.metadata.HideLocalLogin, config.HIDE_LOCAL_LOGIN === 'true')
+  setMetadata(login.metadata.LoginTheme, myBranding.loginTheme)
 
   setMetadata(login.metadata.PasswordValidations, PASSWORD_REQUIREMENTS[config.PASSWORD_STRICTNESS ?? 'none'])
 
@@ -511,7 +514,7 @@ export async function configurePlatform() {
     setMetadata(presentation.metadata.FrontVersion, config.VERSION)
   }
   setMetadata(telegram.metadata.TelegramURL, config.TELEGRAM_URL ?? 'http://localhost:8086')
-  setMetadata(telegram.metadata.BotUrl, config.TELEGRAM_BOT_URL ?? 'http://relyframe.local:4020')
+  setMetadata(telegram.metadata.BotUrl, config.TELEGRAM_BOT_URL ?? 'http://huly.local:4020')
   setMetadata(gmail.metadata.GmailURL, config.GMAIL_URL ?? 'http://localhost:8087')
   setMetadata(calendar.metadata.CalendarServiceURL, config.CALENDAR_URL ?? 'http://localhost:8095')
   setMetadata(calendar.metadata.PublicScheduleURL, config.PUBLIC_SCHEDULE_URL)

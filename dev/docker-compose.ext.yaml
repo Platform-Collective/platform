@@ -5,7 +5,7 @@
 # (or: docker compose -f docker-compose.yaml -f docker-compose.min.yaml -f docker-compose.ext.yaml up
 #  if you want to keep the small footprint and just add billing/payment on top.)
 #
-# The base docker-compose.yaml already advertises PAYMENT_URL=http://relyframe.local:3040
+# The base docker-compose.yaml already advertises PAYMENT_URL=http://huly.local:3040
 # to the front. This overlay materialises the matching `payment` and `billing`
 # services and adds BILLING_URL to the front so the client picks them up.
 #
@@ -23,7 +23,7 @@ services:
     # whenever this overlay is included, even alongside `min`.
     profiles: !override []
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     depends_on:
       account:
         condition: service_started
@@ -32,8 +32,8 @@ services:
     environment:
       - PORT=3040
       - SECRET=secret
-      - ACCOUNTS_URL=http://relyframe.local:3000
-      - FRONT_URL=http://relyframe.local:8087
+      - ACCOUNTS_URL=http://huly.local:3000
+      - FRONT_URL=http://huly.local:8087
       - USE_SANDBOX=${PAYMENT_USE_SANDBOX:-true}
       # Provider credentials — supply via .env / shell env. Empty values keep
       # the service running in safe "sandbox" mode without making outbound calls.
@@ -51,7 +51,7 @@ services:
     image: platformcollective/billing
     profiles: !override []
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     depends_on:
       cockroach:
         condition: service_started
@@ -64,7 +64,7 @@ services:
     environment:
       - PORT=4042
       - SECRET=secret
-      - ACCOUNTS_URL=http://relyframe.local:3000
+      - ACCOUNTS_URL=http://huly.local:3000
       - DB_URL=${DB_CR_URL}
       - STORAGE_CONFIG=${STORAGE_CONFIG}
       # Recheck workspace usage every 10 minutes in dev (default is 1 hour).
@@ -77,4 +77,4 @@ services:
   # are merged additively.
   front:
     environment:
-      - BILLING_URL=http://relyframe.local:4042
+      - BILLING_URL=http://huly.local:4042

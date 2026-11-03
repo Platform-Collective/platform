@@ -133,7 +133,7 @@ describe('markup-in-cell round-trip', () => {
                           marks: [
                             {
                               type: 'link',
-                              attrs: { href: 'http://relyframe.local:8080/workbench/t4/card/6a05579937207bd342d60ff8' }
+                              attrs: { href: 'http://huly.local:8080/workbench/t4/card/6a05579937207bd342d60ff8' }
                             }
                           ]
                         }
@@ -157,13 +157,13 @@ describe('markup-in-cell round-trip', () => {
     expect(cellValue).not.toContain('\n') // no embedded newlines
     expect(cellValue).toContain('test') // header text preserved
     // The inner link should still carry its URL.
-    expect(cellValue).toContain('http://relyframe.local:8080/workbench/t4/card/6a05579937207bd342d60ff8')
+    expect(cellValue).toContain('http://huly.local:8080/workbench/t4/card/6a05579937207bd342d60ff8')
 
     const escaped = escapeMarkdownTableCellContent(cellValue)
     const outerTable =
       '| test | Type | Tags | TM 2 |\n' +
       '| --- | --- | --- | --- |\n' +
-      `| [new](http://relyframe.local:8087/workbench/t4/card/6a05606432d68883381bbeb6) | test |  | ${escaped} |\n`
+      `| [new](http://huly.local:8087/workbench/t4/card/6a05606432d68883381bbeb6) | test |  | ${escaped} |\n`
 
     const parsed = markdownToMarkup(outerTable)
     expect(() => {

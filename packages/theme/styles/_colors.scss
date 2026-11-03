@@ -790,6 +790,8 @@
 
 /* Remaps generic link/contrast-button variables to the brand accent inside a scope. */
 .theme-brand-scope {
+  --login-bg-color: var(--theme-brand-bg-color);
+  --login-accent-color: var(--theme-brand-color);
   --theme-link-color: var(--theme-brand-link-color);
   --theme-button-contrast-color: var(--theme-brand-on-color);
   --theme-button-contrast-enabled: var(--theme-brand-color);

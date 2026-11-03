@@ -10,6 +10,6 @@ export ACCOUNT_DB_URL=postgresql://root@localhost:26258/defaultdb?sslmode=disabl
 export DB_URL=postgresql://root@localhost:26258/defaultdb?sslmode=disable
 export SERVER_SECRET=secret
 export STORAGE_CONFIG="minio|localhost:9002?accessKey=minioadmin&secretKey=minioadmin"
-export QUEUE_CONFIG=relyframe.local:19093
+export QUEUE_CONFIG=huly.local:19093
 
 node ../dev/tool/bundle/bundle.js $@

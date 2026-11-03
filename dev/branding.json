@@ -1,32 +1,32 @@
 {
-  "relyframe.local:8080": {
-    "key": "relyframe-dev",
+  "huly.local:8080": {
+    "key": "huly-dev",
     "title": "RelyFrame",
     "protocol": "http",
     "language": "en",
     "lastNameFirst": "true"
   },
-  "relyframe.local:8087": {
-    "key": "relyframe",
+  "huly.local:8087": {
+    "key": "huly",
     "title": "RelyFrame",
     "protocol": "http",
     "language": "en",
     "lastNameFirst": "true"
   },
   "host.docker.internal:8087": {
-    "key": "relyframe-docker",
+    "key": "huly-docker",
     "title": "RelyFrame",
     "protocol": "http",
     "language": "en",
     "lastNameFirst": "true"
   },
-  "relyframe.local:8081": {
+  "huly.local:8081": {
     "key": "tracex-dev",
     "title": "TraceX",
     "protocol": "http",
     "language": "en"
   },
-  "relyframe.local:8088": {
+  "huly.local:8088": {
     "key": "tracex",
     "title": "TraceX",
     "protocol": "http",
@@ -34,7 +34,7 @@
   },
   "host.docker.internal:8088": {
     "key": "tracex-docker",
-    "title": "RelyFrame",
+    "title": "TraceX",
     "protocol": "http",
     "language": "en",
     "lastNameFirst": "true"

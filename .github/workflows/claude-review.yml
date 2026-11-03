@@ -9,6 +9,7 @@ on:
     # Skip PRs that only touch non-code files
     paths-ignore:
       - 'docs/**'
+      - 'branding/**'
       - '**/*.md'
 
 concurrency:

@@ -8,7 +8,7 @@ export ACCOUNT_DB_URL=postgresql://root@localhost:26257/defaultdb?sslmode=disabl
 export ACCOUNTS_URL=http://localhost:3000
 export TRANSACTOR_URL=ws://localhost:3333
 export SERVER_SECRET=secret
-export QUEUE_CONFIG=relyframe.local:19092
+export QUEUE_CONFIG=huly.local:19092
 
 # Restore workspace contents in mongo/elastic
 node ../dev/tool/bundle/bundle.js $@

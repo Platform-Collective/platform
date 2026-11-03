@@ -98,7 +98,7 @@ export class TrayController {
   }
 }
 
-const BASE_TITLE = 'RelyFrame'
+const BASE_TITLE = 'Huly'
 
 function createTray (activateWindow: WindowAction, quitApplication: WindowAction, icon: NativeImage): Tray {
   const tray = new Tray(icon)

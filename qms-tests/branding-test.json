@@ -42,7 +42,7 @@
       }
     ]
   },
-  "relyframe.local:8083": {
+  "huly.local:8083": {
     "key": "tracex-docker",
     "title": "TraceX",
     "protocol": "http",

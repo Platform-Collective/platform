@@ -3,9 +3,9 @@ services:
     image: 'platformcollective/stream'
     pull_policy: never
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     environment:
-      - STREAM_ENDPOINT_URL=datalake://relyframe.local:4031
+      - STREAM_ENDPOINT_URL=datalake://huly.local:4031
       - STREAM_INSECURE=true
       - STREAM_SERVER_SECRET=secret
     ports:
@@ -15,7 +15,7 @@ services:
     image: 'mongo:7-jammy'
     command: mongod --port 27018
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     healthcheck:
       test: echo "try { db.currentOp().ok } catch (err) { }" | mongosh --port 27018 --quiet
       interval: 5s
@@ -32,7 +32,7 @@ services:
   cockroach:
     image: cockroachdb/cockroach:v24.1.2
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     ports:
       - '26258:26257'
       - '18089:8080'
@@ -41,14 +41,14 @@ services:
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.6
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     command:
       - redpanda
       - start
       - --kafka-addr internal://0.0.0.0:9093,external://0.0.0.0:19093
-      - --advertise-kafka-addr internal://redpanda:9093,external://relyframe.local:19093
+      - --advertise-kafka-addr internal://redpanda:9093,external://huly.local:19093
       - --pandaproxy-addr internal://0.0.0.0:8084,external://0.0.0.0:18084
-      - --advertise-pandaproxy-addr internal://redpanda:8084,external://relyframe.local:18084
+      - --advertise-pandaproxy-addr internal://redpanda:8084,external://huly.local:18084
       - --schema-registry-addr internal://0.0.0.0:8083,external://0.0.0.0:18083
       - --rpc-addr redpanda:33145
       - --advertise-rpc-addr redpanda:33145
@@ -68,7 +68,7 @@ services:
   redpanda_console:
     image: docker.redpanda.com/redpandadata/console:v2.8.3
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     entrypoint: /bin/sh
     command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
     environment:
@@ -91,7 +91,7 @@ services:
     image: 'pgsty/silo'
     command: server /data --address ":9000" --console-address ":9001"
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     expose:
       - 9000
       - 9001
@@ -130,7 +130,7 @@ services:
     expose:
       - 9201
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     ports:
       - 9201:9200
     environment:
@@ -141,12 +141,12 @@ services:
     healthcheck:
       interval: 20s
       retries: 10
-      test: curl -s http://relyframe.local:9200/_cluster/health | grep -vq '"status":"red"'
+      test: curl -s http://huly.local:9200/_cluster/health | grep -vq '"status":"red"'
   account:
     image: platformcollective/account
     pull_policy: never
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     depends_on:
       cockroach:
         condition: service_started
@@ -163,24 +163,24 @@ services:
       - QUEUE_CONFIG=${QUEUE_CONFIG}
       - SERVER_SECRET=secret
       - ADMIN_EMAILS=admin,${PLATFORM_ADMIN_EMAILS}
-      - STATS_URL=http://relyframe.local:4901
+      - STATS_URL=http://huly.local:4901
       - WORKSPACE_LIMIT_PER_USER=100
       - DB_URL=${DB_EU_URL}
       # - REGION_INFO=|America;europe| # Europe without name will not be available for creation of new workspaces.
       - REGION_INFO=|America;europe|Europe
-      - TRANSACTOR_URL=ws://relyframe.local:3334;ws://relyframe.local:3334,ws://relyframe.local:3335;ws://relyframe.local:3335;europe
+      - TRANSACTOR_URL=ws://huly.local:3334;ws://huly.local:3334,ws://huly.local:3335;ws://huly.local:3335;europe
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - FRONT_URL=http://relyframe.local:8083
+      - FRONT_URL=http://huly.local:8083
       # - LAST_NAME_FIRST=true
       # - WS_LIVENESS_DAYS=1
-      - ACCOUNTS_URL=http://relyframe.local:3003
+      - ACCOUNTS_URL=http://huly.local:3003
       - BRANDING_PATH=/var/cfg/branding.json
       # - DISABLE_SIGNUP=true
     restart: unless-stopped
   stats:
     image: platformcollective/stats
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     ports:
       - 4901:4901
     environment:
@@ -190,7 +190,7 @@ services:
   workspace:
     image: platformcollective/workspace
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     links:
       - mongodb
       - minio
@@ -202,10 +202,10 @@ services:
       - SERVER_SECRET=secret
       - QUEUE_CONFIG=${QUEUE_CONFIG}
       - DB_URL=${DB_URL}
-      - STATS_URL=http://relyframe.local:4901
+      - STATS_URL=http://huly.local:4901
       - STORAGE_CONFIG=${STORAGE_CONFIG}
       - REGION=
-      - ACCOUNTS_URL=http://relyframe.local:3003
+      - ACCOUNTS_URL=http://huly.local:3003
       - ACCOUNTS_DB_URL=${DB_EU_URL}
       - BRANDING_PATH=/var/cfg/branding.json
       - BACKUP_STORAGE=${BACKUP_STORAGE_CONFIG}
@@ -215,7 +215,7 @@ services:
   workspace_europe:
     image: platformcollective/workspace
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     links:
       - cockroach
       - minio
@@ -228,9 +228,9 @@ services:
       - SERVER_SECRET=secret
       - QUEUE_CONFIG=${QUEUE_CONFIG}
       - DB_URL=${DB_EU_URL}
-      - STATS_URL=http://relyframe.local:4901
+      - STATS_URL=http://huly.local:4901
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - ACCOUNTS_URL=http://relyframe.local:3003
+      - ACCOUNTS_URL=http://huly.local:3003
       - ACCOUNTS_DB_URL=${DB_EU_URL}
       - BRANDING_PATH=/var/cfg/branding.json
       - BACKUP_STORAGE=${BACKUP_STORAGE_CONFIG}
@@ -240,7 +240,7 @@ services:
   collaborator:
     image: platformcollective/collaborator
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     links:
       - mongodb
       - minio
@@ -251,14 +251,14 @@ services:
     environment:
       - COLLABORATOR_PORT=3079
       - SECRET=secret
-      - ACCOUNTS_URL=http://relyframe.local:3003
+      - ACCOUNTS_URL=http://huly.local:3003
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - STATS_URL=http://relyframe.local:4901
+      - STATS_URL=http://huly.local:4901
     restart: unless-stopped
   front:
     image: platformcollective/front
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     links:
       - account
       - mongodb
@@ -274,28 +274,28 @@ services:
     environment:
       - SERVER_PORT=8083
       - SERVER_SECRET=secret
-      - ACCOUNTS_URL_INTERNAL=http://relyframe.local:3003
-      - ACCOUNTS_URL=http://relyframe.local:3003
-      - STATS_URL=http://relyframe.local:4901
+      - ACCOUNTS_URL_INTERNAL=http://huly.local:3003
+      - ACCOUNTS_URL=http://huly.local:3003
+      - STATS_URL=http://huly.local:4901
       - UPLOAD_URL=/files
-      - GMAIL_URL=http://relyframe.local:8088
-      - CALENDAR_URL=http://relyframe.local:8095
-      - TELEGRAM_URL=http://relyframe.local:8086
-      - REKONI_URL=http://relyframe.local:4007
-      - COLLABORATOR_URL=ws://relyframe.local:3079
+      - GMAIL_URL=http://huly.local:8088
+      - CALENDAR_URL=http://huly.local:8095
+      - TELEGRAM_URL=http://huly.local:8086
+      - REKONI_URL=http://huly.local:4007
+      - COLLABORATOR_URL=ws://huly.local:3079
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - GITHUB_URL=http://relyframe.local:3501
-      - PRINT_URL=http://relyframe.local:4006
-      - SIGN_URL=http://relyframe.local:4007
-      - BRANDING_URL=http://relyframe.local:8083/branding-test.json
-      - STATS_API=http://relyframe.local:4901
-      - STREAM_URL=http://relyframe.local:1081/recording
+      - GITHUB_URL=http://huly.local:3501
+      - PRINT_URL=http://huly.local:4006
+      - SIGN_URL=http://huly.local:4007
+      - BRANDING_URL=http://huly.local:8083/branding-test.json
+      - STATS_API=http://huly.local:4901
+      - STREAM_URL=http://huly.local:1081/recording
       # - DISABLE_SIGNUP=true
     restart: unless-stopped
   transactor:
     image: platformcollective/transactor
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     links:
       - mongodb
       - minio
@@ -311,23 +311,23 @@ services:
       - SERVER_PORT=3334
       - SERVER_SECRET=secret
       - ENABLE_COMPRESSION=true
-      - STATS_URL=http://relyframe.local:4901
-      - FULLTEXT_URL=http://relyframe.local:4710
+      - STATS_URL=http://huly.local:4901
+      - FULLTEXT_URL=http://huly.local:4710
       - DB_URL=${DB_URL}
       - METRICS_CONSOLE=false
       - METRICS_FILE=metrics.txt
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - FRONT_URL=http://relyframe.local:8083
-      - ACCOUNTS_URL=http://relyframe.local:3003
+      - FRONT_URL=http://huly.local:8083
+      - ACCOUNTS_URL=http://huly.local:3003
       - LAST_NAME_FIRST=true
       - BRANDING_PATH=/var/cfg/branding.json
-      - AI_BOT_URL=http://relyframe.local:4011
+      - AI_BOT_URL=http://huly.local:4011
       - RATE_LIMIT_MAX=25000
       - RATE_LIMIT_WINDOW=1000
   transactor-europe:
     image: platformcollective/transactor
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     pull_policy: never
     links:
       - cockroach
@@ -344,33 +344,33 @@ services:
       - REGION=europe
       - SERVER_SECRET=secret
       - ENABLE_COMPRESSION=true
-      - FULLTEXT_URL=http://relyframe.local:4710
-      - STATS_URL=http://relyframe.local:4901
+      - FULLTEXT_URL=http://huly.local:4710
+      - STATS_URL=http://huly.local:4901
       - DB_URL=${DB_EU_URL}
       - METRICS_CONSOLE=false
       - METRICS_FILE=metrics.txt
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - FRONT_URL=http://relyframe.local:8083
-      - ACCOUNTS_URL=http://relyframe.local:3003
+      - FRONT_URL=http://huly.local:8083
+      - ACCOUNTS_URL=http://huly.local:3003
       - LAST_NAME_FIRST=true
       - BRANDING_PATH=/var/cfg/branding.json
-      - AI_BOT_URL=http://relyframe.local:4011
+      - AI_BOT_URL=http://huly.local:4011
       - RATE_LIMIT_MAX=25000
       - RATE_LIMIT_WINDOW=1000
     restart: unless-stopped
   rekoni:
     image: platformcollective/rekoni-service
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     restart: unless-stopped
     ports:
       - 4007:4004
     environment:
-      - STATS_URL=http://relyframe.local:4901
+      - STATS_URL=http://huly.local:4901
   fulltext:
     image: platformcollective/fulltext
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     restart: unless-stopped
     links:
       - elastic
@@ -383,16 +383,16 @@ services:
       - SERVER_SECRET=secret
       - QUEUE_CONFIG=${QUEUE_CONFIG}
       - DB_URL=${DB_URL}
-      - FULLTEXT_DB_URL=http://relyframe.local:9201
+      - FULLTEXT_DB_URL=http://huly.local:9201
       - ELASTIC_INDEX_NAME=local_storage_index
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - STATS_URL=http://relyframe.local:4901
-      - REKONI_URL=http://relyframe.local:4007
-      - ACCOUNTS_URL=http://relyframe.local:3003
+      - STATS_URL=http://huly.local:4901
+      - REKONI_URL=http://huly.local:4007
+      - ACCOUNTS_URL=http://huly.local:3003
   fulltext-europe:
     image: platformcollective/fulltext
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     links:
       - elastic
       - cockroach
@@ -405,29 +405,29 @@ services:
       - SERVER_SECRET=secret
       - QUEUE_CONFIG=${QUEUE_CONFIG}
       - DB_URL=${DB_EU_URL}
-      - FULLTEXT_DB_URL=http://relyframe.local:9201
+      - FULLTEXT_DB_URL=http://huly.local:9201
       - ELASTIC_INDEX_NAME=local_eu_storage_index # Use different one to be able to check migration is working
       - STORAGE_CONFIG=${STORAGE_CONFIG}
-      - STATS_URL=http://relyframe.local:4901
-      - REKONI_URL=http://relyframe.local:4007
-      - ACCOUNTS_URL=http://relyframe.local:3003
+      - STATS_URL=http://huly.local:4901
+      - REKONI_URL=http://huly.local:4007
+      - ACCOUNTS_URL=http://huly.local:3003
     restart: unless-stopped
   aiBot:
     image: platformcollective/ai-bot
     ports:
       - 4011:4010
     extra_hosts:
-      - 'relyframe.local:host-gateway'
+      - 'huly.local:host-gateway'
     restart: unless-stopped
     environment:
       - SERVER_SECRET=secret
       - MONGO_URL=${MONGO_URL}
       - QUEUE_CONFIG=${QUEUE_CONFIG}
-      - ACCOUNTS_URL=http://relyframe.local:3000
+      - ACCOUNTS_URL=http://huly.local:3000
       - STORAGE_CONFIG=${STORAGE_CONFIG}
       - FIRST_NAME=Jolie
       - LAST_NAME=AI
       - PASSWORD=password
       - AVATAR_PATH=./avatar.png
       - AVATAR_CONTENT_TYPE=.png
-      - STATS_URL=http://relyframe.local:4901
+      - STATS_URL=http://huly.local:4901

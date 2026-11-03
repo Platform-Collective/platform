@@ -69,7 +69,7 @@ export class Settings {
 
   private extractUrl (): string {
     if (this.isDev) {
-      return process.env.FRONT_URL ?? 'http://relyframe.local:8087'
+      return process.env.FRONT_URL ?? 'http://huly.local:8087'
     }
     return (
       (this.store as any).get(Settings.SETTINGS_KEY_SERVER) as string ??

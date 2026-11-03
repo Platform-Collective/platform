@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+import { getMetadata } from '@hcengineering/platform'
 import { type AnySvelteComponent } from '@hcengineering/ui'
 import { writable, derived, type Readable } from 'svelte/store'
 import RelyFrameLogo from './components/icons/RelyFrameLogo.svelte'
+import login from './plugin'
 
 /**
  * Names of supported login themes.
+ * Selected per host through the `loginTheme` field of branding.json.
  */
-export type LoginThemeName = 'relyframe'
+export type LoginThemeName = 'relyframe' | 'plain'
 
 /**
  * Theme description for login UI.
@@ -27,10 +30,11 @@ export type LoginThemeName = 'relyframe'
 export interface LoginTheme {
   name: LoginThemeName
   alignment: 'left' | 'center' | 'right'
-  showTitle: boolean
   showLoginTitle: boolean
   backgroundComponent?: AnySvelteComponent
   logoComponent?: AnySvelteComponent
+  // Apply the brand accent colours (`.theme-brand-scope` from the theme package)
+  brandAccent: boolean
 }
 
 /**
@@ -42,20 +46,41 @@ export const themes: Record<LoginThemeName, LoginTheme> = {
     alignment: 'center',
     backgroundComponent: undefined,
     logoComponent: RelyFrameLogo,
-    showTitle: false,
-    showLoginTitle: false
+    showLoginTitle: false,
+    brandAccent: true
+  },
+  // Neutral look without platform logo or accent, for hosts that carry their own brand (e.g. TraceX)
+  plain: {
+    name: 'plain',
+    alignment: 'center',
+    backgroundComponent: undefined,
+    logoComponent: undefined,
+    showLoginTitle: false,
+    brandAccent: false
   }
 }
 
 /**
- * Default theme name used on startup.
+ * Default theme name used when branding does not specify one.
  */
 export const DEFAULT_THEME_NAME: LoginThemeName = 'relyframe'
 
 /**
+ * Checks that a value is the name of a registered theme (own keys only).
+ */
+export function isLoginThemeName (value: unknown): value is LoginThemeName {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(themes, value)
+}
+
+function initialThemeName (): LoginThemeName {
+  const fromBranding = getMetadata(login.metadata.LoginTheme)
+  return isLoginThemeName(fromBranding) ? fromBranding : DEFAULT_THEME_NAME
+}
+
+/**
  * Writable store that holds current theme name.
  */
-export const loginThemeName = writable<LoginThemeName>(DEFAULT_THEME_NAME)
+export const loginThemeName = writable<LoginThemeName>(initialThemeName())
 
 /**
  * Readable store that resolves to the active theme object.
@@ -68,7 +93,7 @@ export const loginTheme: Readable<LoginTheme> = derived(loginThemeName, ($name) 
  * Set the current login theme by name. Throws on unknown theme name.
  */
 export function setLoginTheme (name: LoginThemeName): void {
-  if (!(name in themes)) {
+  if (!isLoginThemeName(name)) {
     throw new Error(`Unknown login theme: ${String(name)}`)
   }
   loginThemeName.set(name)

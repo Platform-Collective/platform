@@ -46,7 +46,7 @@
 
   import AdminWorkspaces from './AdminWorkspaces.svelte'
   import ChangePassword from './ChangePassword.svelte'
-  import RelyFrameLogo from './icons/RelyFrameLogo.svelte'
+  import { loginTheme } from '../theme'
 
   export let page: Pages = 'signup'
 
@@ -118,11 +118,13 @@
 {#if page === 'admin'}
   <AdminWorkspaces />
 {:else}
-  <div class="login theme-brand-scope w-full h-full">
+  <div class="login w-full h-full" class:theme-brand-scope={$loginTheme.brandAccent}>
     <div class="login-column">
-      <div class="login-logo">
-        <RelyFrameLogo />
-      </div>
+      {#if $loginTheme.logoComponent !== undefined}
+        <div class="login-logo">
+          <svelte:component this={$loginTheme.logoComponent} />
+        </div>
+      {/if}
       <div class="login-card">
         <Scroller padding={'1rem 0'}>
           <div class="form-content">
@@ -179,7 +181,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--theme-brand-bg-color);
+    background-color: var(--login-bg-color, var(--theme-bg-color));
     padding: 2rem 1rem;
     box-sizing: border-box;
   }
