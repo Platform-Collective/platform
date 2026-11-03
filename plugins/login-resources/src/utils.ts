@@ -81,20 +81,22 @@ export function getAccountClient (
 
 /**
  * Queries the account service for login affordance flags. Used by the login UI
- * to hide the Sign Up tab and "Continue as guest" button when those flows are
- * disabled server-side. Falls back to both available on any error to preserve
+ * to hide controls when those flows are disabled server-side. Pass the account
+ * token to query workspace creation permission. Falls back to available on error to preserve
  * backwards compatibility with account services that do not implement this
  * endpoint yet.
  */
-export async function fetchLoginCapabilities (): Promise<{
+export async function fetchLoginCapabilities (token: string | null = null): Promise<{
   signUpEnabled: boolean
   guestLoginAvailable: boolean
+  workspaceCreationAllowed: boolean
 }> {
   try {
-    const accountClient = getAccountClient(null)
-    return await accountClient.getLoginCapabilities()
+    const accountClient = getAccountClient(token)
+    const capabilities = await accountClient.getLoginCapabilities()
+    return { ...capabilities, workspaceCreationAllowed: capabilities.workspaceCreationAllowed ?? true }
   } catch {
-    return { signUpEnabled: true, guestLoginAvailable: true }
+    return { signUpEnabled: true, guestLoginAvailable: true, workspaceCreationAllowed: true }
   }
 }
 
@@ -913,7 +915,8 @@ export function getHref (path: Pages): string {
 export async function afterConfirm (clearQuery = false): Promise<void> {
   const joinedWS = await getWorkspaces()
   if (joinedWS.length === 0) {
-    goTo('createWorkspace', clearQuery)
+    const { workspaceCreationAllowed } = await fetchLoginCapabilities(getMetadata(presentation.metadata.Token))
+    goTo(workspaceCreationAllowed ? 'createWorkspace' : 'selectWorkspace', clearQuery)
   } else if (joinedWS.length === 1) {
     const result = (await selectWorkspace(joinedWS[0].url, null))[1]
     if (result != null) {
