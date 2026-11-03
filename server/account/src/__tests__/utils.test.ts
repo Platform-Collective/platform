@@ -71,7 +71,8 @@ import {
   setWorkspaceMemberUnread,
   reportInvalidToken,
   tokenErrorReason,
-  tokenFingerprint
+  tokenFingerprint,
+  getProductName
 } from '../utils'
 import platform, { getMetadata, PlatformError, Severity, Status } from '@hcengineering/platform'
 import serverToken, { decodeTokenVerbose, generateToken, TokenError } from '@hcengineering/server-token'
@@ -2730,5 +2731,29 @@ describe('token log redaction', () => {
       })
       expect(allLogged()).not.toContain(token)
     })
+  })
+})
+
+describe('getProductName', () => {
+  afterEach(() => {
+    ;(getMetadata as jest.Mock).mockReset()
+  })
+
+  test('prefers the host branding title', () => {
+    ;(getMetadata as jest.Mock).mockReturnValue('Configured Product')
+    expect(getProductName({ title: 'Acme' } as any)).toBe('Acme')
+  })
+
+  test('falls back to PRODUCT_NAME metadata', () => {
+    ;(getMetadata as jest.Mock).mockImplementation((key) =>
+      key === accountPlugin.metadata.ProductName ? 'Configured Product' : undefined
+    )
+    expect(getProductName(null)).toBe('Configured Product')
+    expect(getProductName({} as any)).toBe('Configured Product')
+  })
+
+  test('defaults to the platform name', () => {
+    ;(getMetadata as jest.Mock).mockReturnValue(undefined)
+    expect(getProductName(null)).toBe('RelyFrame')
   })
 })

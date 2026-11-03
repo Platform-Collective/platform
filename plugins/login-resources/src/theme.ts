@@ -15,6 +15,7 @@
 import { getMetadata } from '@hcengineering/platform'
 import { type AnySvelteComponent } from '@hcengineering/ui'
 import { writable, derived, type Readable } from 'svelte/store'
+import BrandingLogo from './components/icons/BrandingLogo.svelte'
 import RelyFrameLogo from './components/icons/RelyFrameLogo.svelte'
 import login from './plugin'
 
@@ -35,6 +36,8 @@ export interface LoginTheme {
   logoComponent?: AnySvelteComponent
   // Apply the brand accent colours (`.theme-brand-scope` from the theme package)
   brandAccent: boolean
+  // True when logoComponent is the host's own logo from branding.json (`loginLogo`)
+  customLogo: boolean
 }
 
 /**
@@ -47,16 +50,18 @@ export const themes: Record<LoginThemeName, LoginTheme> = {
     backgroundComponent: undefined,
     logoComponent: RelyFrameLogo,
     showLoginTitle: false,
-    brandAccent: true
+    brandAccent: true,
+    customLogo: false
   },
-  // Neutral look without platform logo or accent, for hosts that carry their own brand (e.g. TraceX)
+  // Neutral look without platform logo or accent, for hosts that carry their own brand (see docs/branding.md)
   plain: {
     name: 'plain',
     alignment: 'center',
     backgroundComponent: undefined,
     logoComponent: undefined,
     showLoginTitle: false,
-    brandAccent: false
+    brandAccent: false,
+    customLogo: false
   }
 }
 
@@ -86,8 +91,15 @@ export const loginThemeName = writable<LoginThemeName>(initialThemeName())
  * Readable store that resolves to the active theme object.
  */
 export const loginTheme: Readable<LoginTheme> = derived(loginThemeName, ($name) => {
-  return themes[$name]
+  const theme = themes[$name]
+  // A logo configured for the host (branding.json `loginLogo`) replaces the theme logo
+  return hasCustomLogo() ? { ...theme, logoComponent: BrandingLogo, customLogo: true } : theme
 })
+
+function hasCustomLogo (): boolean {
+  const logo = getMetadata(login.metadata.LoginLogo)
+  return typeof logo?.light === 'string' && logo.light !== ''
+}
 
 /**
  * Set the current login theme by name. Throws on unknown theme name.

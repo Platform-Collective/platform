@@ -137,7 +137,8 @@ import {
   verifyTotpCode,
   getTotpUrl,
   reportInvalidToken,
-  tokenFingerprint
+  tokenFingerprint,
+  getProductName
 } from './utils'
 
 const NIL_UUID = '00000000-0000-0000-0000-000000000000' as AccountUuid
@@ -1579,9 +1580,10 @@ export async function requestPasswordReset (
 
   const link = concatLink(front, `/login/recovery?id=${token}`)
   const lang = branding?.language
-  const text = await translate(accountPlugin.string.RecoveryText, { link }, lang)
-  const html = await translate(accountPlugin.string.RecoveryHTML, { link }, lang)
-  const subject = await translate(accountPlugin.string.RecoverySubject, {}, lang)
+  const app = getProductName(branding)
+  const text = await translate(accountPlugin.string.RecoveryText, { link, app }, lang)
+  const html = await translate(accountPlugin.string.RecoveryHTML, { link, app }, lang)
+  const subject = await translate(accountPlugin.string.RecoverySubject, { app }, lang)
 
   const response = await fetch(concatLink(mailURL, '/send'), {
     method: 'post',
@@ -1649,9 +1651,10 @@ export async function requestPasswordSetup (
   const resetToken = generateToken(accountUuid, undefined, { restoreEmail: emailSocialId.value })
   const link = concatLink(front, `/login/recovery?id=${resetToken}`)
   const lang = branding?.language
-  const text = await translate(accountPlugin.string.PasswordSetupText, { link }, lang)
-  const html = await translate(accountPlugin.string.PasswordSetupHTML, { link }, lang)
-  const subject = await translate(accountPlugin.string.PasswordSetupSubject, {}, lang)
+  const app = getProductName(branding)
+  const text = await translate(accountPlugin.string.PasswordSetupText, { link, app }, lang)
+  const html = await translate(accountPlugin.string.PasswordSetupHTML, { link, app }, lang)
+  const subject = await translate(accountPlugin.string.PasswordSetupSubject, { app }, lang)
 
   const response = await fetch(concatLink(mailURL, '/send'), {
     method: 'post',
@@ -1884,7 +1887,7 @@ export async function generate2faSecret (
   }
 
   const secret = generateTotpSecret()
-  const app = branding?.title ?? getMetadata(accountPlugin.metadata.ProductName) ?? 'Huly'
+  const app = getProductName(branding)
   const url = getTotpUrl(emailSocialId.value, app, secret)
 
   return { secret, url }

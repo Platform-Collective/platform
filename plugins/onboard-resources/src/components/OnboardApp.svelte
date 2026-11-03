@@ -14,7 +14,7 @@
 -->
 <script lang="ts">
   import login from '@hcengineering/login'
-  import { getAccount } from '@hcengineering/login-resources'
+  import { getAccount, loginTheme } from '@hcengineering/login-resources'
   import { getMetadata, setMetadata } from '@hcengineering/platform'
   import presentation from '@hcengineering/presentation'
   import {
@@ -107,7 +107,17 @@
       style:top={'3rem'}
       class="flex-row-center"
     >
-      <OnboardIcon /><span class="fs-title ml-2">{getMetadata(workbench.metadata.PlatformTitle)}</span>
+      {#if $loginTheme.customLogo}
+        <!-- the host's own logo from branding.json already carries the product name -->
+        <svelte:component this={$loginTheme.logoComponent} size="small" />
+      {:else}
+        {#if $loginTheme.logoComponent !== undefined}
+          <OnboardIcon />
+        {/if}
+        <span class="fs-title" class:ml-2={$loginTheme.logoComponent !== undefined}
+          >{getMetadata(workbench.metadata.PlatformTitle)}</span
+        >
+      {/if}
     </div>
 
     <div class="panel-base" class:panel={$deviceInfo.docWidth > 768} class:white={!$themeStore.dark}>
