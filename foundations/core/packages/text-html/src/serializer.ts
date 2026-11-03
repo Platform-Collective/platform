@@ -231,7 +231,8 @@ function addNodeContent (builder: NodeBuilder, node?: MarkupNode): void {
     builder.closeTag('code')
     builder.closeTag('pre')
   } else if (node.type === MarkupNodeType.text) {
-    // Callouts contain literal editor text, including HTML-looking text and code.
+    // Callouts contain literal editor text, including HTML-looking text and code. Outside
+    // callouts, preserve the legacy raw-HTML serialization behavior for existing content.
     const text = node.text ?? ''
     builder.addText(builder.inCallout ? escapeHtml(text) : text)
   } else if (node.type === MarkupNodeType.gif) {
