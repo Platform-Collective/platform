@@ -245,6 +245,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+      - name: Check Docker Hub login
+        continue-on-error: true
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: docker info | grep Username
 
       - name: Prepare server
         run: |
@@ -297,6 +301,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+      - name: Check Docker Hub login
+        continue-on-error: true
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: docker info | grep Username
       - name: Docker Build
         run: |
           command -v node
@@ -432,6 +440,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+      - name: Check Docker Hub login
+        continue-on-error: true
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: docker info | grep Username
       - name: Docker Build
         run: |
           command -v node
@@ -532,6 +544,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+      - name: Check Docker Hub login
+        continue-on-error: true
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: docker info | grep Username
       - name: Docker Build
         run: |
           command -v node
@@ -619,6 +635,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+      - name: Check Docker Hub login
+        continue-on-error: true
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: docker info | grep Username
       - name: Docker Build
         run: |
           command -v node
@@ -735,6 +755,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+      - name: Check Docker Hub login
+        continue-on-error: true
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: docker info | grep Username
 
       - name: Docker build
         run: |
@@ -760,6 +784,10 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+      - name: Check Docker Hub login
+        continue-on-error: true
+        if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/s') }}
+        run: docker info | grep Username
       # - name: Docker push staging
       #   if: ${{ github.ref == 'refs/heads/main' }}
       #   run: node common/scripts/install-run-rush.js docker:staging -v
