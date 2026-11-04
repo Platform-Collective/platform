@@ -296,6 +296,10 @@ async function getLocationWithoutDocument (loc: Location, objectId: Ref<Doc>): P
     const below = known ?? (await getTabDataByLocation(location).catch((): undefined => undefined))?.objectId
     if (below !== objectId) return location
   }
+  return getApplicationLocation(loc)
+}
+
+function getApplicationLocation (loc: Location): Location {
   if (loc.path[2] == null || loc.path[2] === '') {
     return { path: [workbenchId, loc.path[1], notificationId] }
   }
@@ -356,7 +360,14 @@ function onTabShown (tabId: Ref<WorkbenchTab> | undefined): void {
   const tab = get(tabsStore).find((t) => t._id === tabId)
   // Another window may have moved the tab already.
   if (tab === undefined || tab.isPinned || tab.location !== removed.location) return
-  void leaveRemovedDocument(tab, getTabLocation(tab), removed.objectId).catch(console.error)
+  const loc = getTabLocation(tab)
+  if (loc.fragment == null || loc.fragment === '') {
+    // Move the tab right away, so the tab bar opens the application instead of the removed document.
+    const target = getApplicationLocation(loc)
+    forgetApplicationLocation(loc)
+    tabsStore.update((tabs) => tabs.map((t) => (t._id === tab._id ? { ...t, location: locationToUrl(target) } : t)))
+  }
+  void leaveRemovedDocument(tab, loc, removed.objectId).catch(console.error)
 }
 
 /**

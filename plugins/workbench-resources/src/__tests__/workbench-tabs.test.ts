@@ -273,6 +273,22 @@ describe('tabs of removed documents', () => {
     expect(client.update).toHaveBeenCalledTimes(1)
   })
 
+  it('moves a background tab to its application as soon as it is selected, before the click navigates', async () => {
+    resolver.mockImplementation(async (loc) => (loc.path.length === 3 ? { name: 'Home' } : documentData))
+    const tab = makeTab('background')
+    const active = makeTab('active', 'workbench/workspace/app/other')
+    tabsStore.set([tab, active])
+    tabIdStore.set(active._id)
+    await resolveTab(tab)
+    removeDocs(objectId)
+    await flush()
+
+    tabIdStore.set(tab._id)
+
+    // The tab bar reads the tab location right after selecting it.
+    expect(get(tabsStore).find((t) => t._id === tab._id)?.location).toBe('workbench/workspace/app')
+  })
+
   it('does not change a background tab that moved to another location before it is opened', async () => {
     const tab = makeTab('background')
     const active = makeTab('active', 'workbench/workspace/app/other')
