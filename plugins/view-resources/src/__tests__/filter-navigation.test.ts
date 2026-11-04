@@ -10,11 +10,10 @@ import { filterStore, navigationFilterStore, setFilters, takeNavigationFilters }
 jest.mock('@hcengineering/core', () => ({}))
 jest.mock('@hcengineering/platform', () => ({}))
 jest.mock('@hcengineering/presentation', () => ({}))
-jest.mock('@hcengineering/ui', () => ({
-  resolvedLocationStore: jest.requireActual<typeof import('svelte/store')>('svelte/store').writable({
-    path: ['workbench', 'workspace']
-  })
-}))
+jest.mock('@hcengineering/ui', () => {
+  const { writable } = jest.requireActual('svelte/store')
+  return { resolvedLocationStore: writable({ path: ['workbench', 'workspace'] }) }
+})
 jest.mock('../plugin', () => ({}))
 
 const location: Location = { path: ['workbench', 'workspace', 'tracker', 'all-issues'] }
