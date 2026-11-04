@@ -67,7 +67,7 @@ jest.mock('@hcengineering/presentation', () => ({
   },
   uiContext: {
     newChild: () => ({
-      async with(_name: string, _params: unknown, fn: (ctx: unknown) => unknown): Promise<unknown> {
+      async with (_name: string, _params: unknown, fn: (ctx: unknown) => unknown): Promise<unknown> {
         return await fn(this)
       }
     })
@@ -88,7 +88,7 @@ jest.mock('svelte/store', () => ({ writable: () => ({ set: jest.fn() }) }))
 jest.mock('../plugin', () => ({ __esModule: true, default: { event: { NotifyConnection: 'connected' } } }))
 jest.mock('../utils', () => ({}))
 
-async function never<T>(): Promise<T> {
+async function never<T> (): Promise<T> {
   return await new Promise<T>(() => {})
 }
 const sleep = async (ms: number): Promise<void> => {
@@ -125,7 +125,7 @@ describe('workspace endpoint revalidation', () => {
     jest.spyOn(Math, 'random').mockReturnValue(0)
     selectWorkspace.mockResolvedValue([{}, loginInfo, true])
     mockAccountSelectWorkspace.mockResolvedValue(loginInfo)
-    jest.mocked(getResource).mockImplementation(async <T>(resource: Resource<T>): Promise<T> => {
+    jest.mocked(getResource).mockImplementation(async <T> (resource: Resource<T>): Promise<T> => {
       let result: unknown
       switch (resource as string) {
         case 'select-workspace':
