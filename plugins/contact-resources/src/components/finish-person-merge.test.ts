@@ -66,7 +66,9 @@ describe('finishPersonMerge', () => {
       throw error
     })
 
-    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true })).rejects.toThrow(error)
+    await expect(
+      finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true })
+    ).rejects.toThrow(error)
 
     expect(remove).not.toHaveBeenCalled()
   })
@@ -86,7 +88,9 @@ describe('finishPersonMerge', () => {
     })
     const mergeSpecifiedPersons = jest.fn<Promise<void>, []>().mockResolvedValue(undefined)
     const completed = jest.fn()
-    const merge = finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true }).then(completed)
+    const merge = finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true }).then(
+      completed
+    )
 
     await Promise.resolve()
     expect(remove).toHaveBeenCalledWith(source)
@@ -106,7 +110,9 @@ describe('finishPersonMerge', () => {
     })
     const mergeSpecifiedPersons = jest.fn<Promise<void>, []>().mockResolvedValue(undefined)
 
-    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true })).rejects.toThrow(error)
+    await expect(
+      finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true })
+    ).rejects.toThrow(error)
   })
 
   it('rejects a self merge without changing either service', async () => {
@@ -114,9 +120,9 @@ describe('finishPersonMerge', () => {
     const remove = jest.fn(async () => ({}))
     const mergeSpecifiedPersons = jest.fn<Promise<void>, []>().mockResolvedValue(undefined)
 
-    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, source, { removeSource: true })).rejects.toThrow(
-      'Cannot merge a person with itself'
-    )
+    await expect(
+      finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, source, { removeSource: true })
+    ).rejects.toThrow('Cannot merge a person with itself')
 
     expect(remove).not.toHaveBeenCalled()
     expect(mergeSpecifiedPersons).not.toHaveBeenCalled()
