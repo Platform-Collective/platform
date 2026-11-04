@@ -19,11 +19,18 @@ import core, {
   generateId,
   getCurrentAccount,
   reduceCalls,
-  type Ref
+  type Ref,
+  type Tx,
+  type TxRemoveDoc
 } from '@hcengineering/core'
 import notification, { notificationId } from '@hcengineering/notification'
 import { type Asset, getMetadata, getResource, type IntlString, setMetadata, translate } from '@hcengineering/platform'
-import presentation, { configurationStore, createQuery, getClient, type LiveQuery } from '@hcengineering/presentation'
+import presentation, {
+  addTxListener,
+  configurationStore,
+  getClient,
+  removeTxListener
+} from '@hcengineering/presentation'
 import {
   type AnyComponent,
   getCurrentLocation,
@@ -194,10 +201,6 @@ export async function closeTab (tab: WorkbenchTab): Promise<void> {
   const index = tabs.findIndex((t) => t._id === tab._id)
   if (index === -1) return
 
-  if (tabs.length === 1) {
-    await createTab()
-  }
-
   tabsStore.update((tabs) => tabs.filter((t) => t._id !== tab._id))
   if (get(tabIdStore) === tab._id) {
     const newTab = tabs[index - 1] ?? tabs[index + 1]
@@ -263,97 +266,102 @@ export async function unpinTab (tab: WorkbenchTab): Promise<void> {
   await client.update(tab, { isPinned: false })
 }
 
-async function updateTabLocation (
-  tab: WorkbenchTab,
-  loc: Location,
-  name: string,
-  navigateActiveTab: boolean
-): Promise<void> {
-  const location = locationToUrl(loc)
+// Documents opened by tab locations, remembered whenever a location is resolved for the
+// tab bar or the location sync. Matching removals against them needs no extra queries.
+const tabDocuments = new Map<string, Ref<Doc>>()
+const maxTabDocuments = 200
+
+// Tabs of this window whose document was removed while they were in the background:
+// they are only changed once this window shows them again.
+const removedTabDocuments = new Map<Ref<WorkbenchTab>, { location: string, objectId: Ref<Doc> }>()
+
+function rememberTabDocument (loc: Location, objectId: Ref<Doc> | undefined): void {
+  const url = locationToUrl(loc)
+  if (objectId === undefined) return
+  tabDocuments.set(url, objectId)
+  if (tabDocuments.size <= maxTabDocuments) return
+  const used = new Set(get(tabsStore).map((tab) => locationToUrl(getTabLocation(tab))))
+  used.add(locationToUrl(getCurrentLocation()))
+  for (const key of tabDocuments.keys()) {
+    if (!used.has(key)) tabDocuments.delete(key)
+  }
+}
+
+async function getLocationWithoutDocument (loc: Location, objectId: Ref<Doc>): Promise<Location> {
+  if (loc.fragment != null && loc.fragment !== '' && loc.path[2] != null && loc.path[2] !== '') {
+    // The document is open in a panel: keep the view below it unless that shows the same document.
+    const location: Location = { ...loc, fragment: undefined }
+    const known = tabDocuments.get(locationToUrl(location))
+    const below = known ?? (await getTabDataByLocation(location).catch((): undefined => undefined))?.objectId
+    if (below !== objectId) return location
+  }
+  if (loc.path[2] == null || loc.path[2] === '') {
+    return { path: [workbenchId, loc.path[1], notificationId] }
+  }
+  return { path: loc.path.slice(0, 3) }
+}
+
+/** Move a tab shown in this window away from its removed document. */
+async function leaveRemovedDocument (tab: WorkbenchTab, loc: Location, objectId: Ref<Doc>): Promise<void> {
+  const target = await getLocationWithoutDocument(loc, objectId)
+  const data = await getTabDataByLocation(target)
+  const name = data.name ?? (await translate(data.label, {}, get(languageStore)))
+  const location = locationToUrl(target)
   tabsStore.update((tabs) => tabs.map((t) => (t._id === tab._id ? { ...t, location, name } : t)))
-  if (get(tabIdStore) === tab._id && navigateActiveTab) {
-    navigate(loc)
+  if (get(tabIdStore) === tab._id) {
+    navigate(target)
   }
   await getClient().update(tab, { location, name })
 }
 
-interface TabDocumentQuery {
-  location: string
-  query: LiveQuery
+function onRemovedDocuments (removed: Set<Ref<Doc>>): void {
+  const currentTabId = get(tabIdStore)
+  for (const tab of get(tabsStore)) {
+    if (tab.isPinned) continue
+    const active = tab._id === currentTabId
+    const loc = active ? getCurrentLocation() : getTabLocation(tab)
+    const objectId = tabDocuments.get(locationToUrl(loc))
+    if (objectId === undefined || !removed.has(objectId)) continue
+    if (active) {
+      void leaveRemovedDocument(tab, loc, objectId).catch(console.error)
+    } else {
+      removedTabDocuments.set(tab._id, { location: tab.location, objectId })
+    }
+  }
 }
 
-interface TabLocation {
-  location: Location
-  name: string
+function onTabShown (tabId: Ref<WorkbenchTab> | undefined): void {
+  if (tabId === undefined) return
+  const removed = removedTabDocuments.get(tabId)
+  if (removed === undefined) return
+  removedTabDocuments.delete(tabId)
+  const tab = get(tabsStore).find((t) => t._id === tabId)
+  // Another window may have moved the tab already.
+  if (tab === undefined || tab.isPinned || tab.location !== removed.location) return
+  void leaveRemovedDocument(tab, getTabLocation(tab), removed.objectId).catch(console.error)
 }
 
-/** Watch all tabs, including those without a rendered tab presenter. */
+/**
+ * Handle tabs whose document is removed, e.g. from another tab or by another user.
+ * Tabs are stored per account and shared by all windows, so a window only changes a tab
+ * it shows: the active tab right away, a background tab once it is opened here. Such a
+ * tab returns to the view it was opened from instead of being deleted, and pinned tabs
+ * are left alone.
+ */
 export function watchTabDocuments (): () => void {
-  const queries = new Map<Ref<WorkbenchTab>, TabDocumentQuery>()
-  const unsubscribe = tabsStore.subscribe((tabs) => {
-    for (const [id, entry] of queries) {
-      if (!tabs.some((tab) => tab._id === id && tab.location === entry.location)) {
-        entry.query.unsubscribe()
-        queries.delete(id)
-      }
+  const listener = (txes: Tx[]): void => {
+    const removed = new Set<Ref<Doc>>()
+    for (const tx of txes) {
+      if (tx._class === core.class.TxRemoveDoc) removed.add((tx as TxRemoveDoc<Doc>).objectId)
     }
-    for (const tab of tabs) {
-      if (queries.has(tab._id)) continue
-      const entry: TabDocumentQuery = { location: tab.location, query: createQuery(true) }
-      queries.set(tab._id, entry)
-      const loc = getTabLocation(tab)
-      void getTabDataByLocation(loc)
-        .then(async (data) => {
-          if (queries.get(tab._id) !== entry || data.objectId === undefined || data.objectClass === undefined) return
-          let panel: TabLocation | undefined
-          if (loc.fragment != null && loc.fragment !== '' && loc.path[2] != null && loc.path[2] !== '') {
-            const location: Location = { ...loc, fragment: undefined }
-            // Resolve before deletion: document-backed resolvers may return nothing once the document is gone.
-            const pathData = await getTabDataByLocation(location)
-            if (pathData.objectId !== data.objectId) {
-              panel = {
-                location,
-                name: pathData.name ?? (await translate(pathData.label, {}, get(languageStore)))
-              }
-            }
-          }
-          let appRoot: TabLocation | undefined
-          if (panel === undefined && loc.path[2] != null && loc.path[2] !== '') {
-            // Enter through the app root, just like the application navigator.
-            const location: Location = { path: loc.path.slice(0, 3) }
-            const appData = await getTabDataByLocation(location)
-            appRoot = {
-              location,
-              name: appData.name ?? (await translate(appData.label, {}, get(languageStore)))
-            }
-          }
-          if (queries.get(tab._id) !== entry) return
-          let existed = false
-          let handled = false
-          entry.query.query(data.objectClass, { _id: data.objectId }, (docs) => {
-            if (queries.get(tab._id) !== entry || handled) return
-            if (docs.length > 0) {
-              existed = true
-            } else if (existed) {
-              handled = true
-              if (panel !== undefined) {
-                const matchesLocation = locationToUrl(getCurrentLocation()) === locationToUrl(loc)
-                void updateTabLocation(tab, panel.location, panel.name, matchesLocation).catch(console.error)
-              } else if (get(tabIdStore) === tab._id && appRoot !== undefined) {
-                void updateTabLocation(tab, appRoot.location, appRoot.name, true).catch(console.error)
-              } else {
-                void closeTab(tab).catch(console.error)
-              }
-            }
-          })
-        })
-        .catch(console.error)
-    }
-  })
+    if (removed.size > 0) onRemovedDocuments(removed)
+  }
+  addTxListener(listener)
+  const unsubscribe = tabIdStore.subscribe(onTabShown)
   return () => {
+    removeTxListener(listener)
     unsubscribe()
-    for (const entry of queries.values()) entry.query.unsubscribe()
-    queries.clear()
+    removedTabDocuments.clear()
   }
 }
 
@@ -400,6 +408,7 @@ export async function getTabDataByLocation (loc: Location): Promise<{
     icon = application?.icon
   }
 
+  rememberTabDocument(loc, objectId)
   return { name, label, icon, iconComponent, iconProps, objectId, objectClass }
 }
 
