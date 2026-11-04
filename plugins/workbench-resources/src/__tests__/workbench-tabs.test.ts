@@ -145,6 +145,12 @@ async function flush (): Promise<void> {
   })
 }
 
+const storage = {
+  getItem: jest.fn<string | null, [string]>(() => null),
+  setItem: jest.fn(),
+  removeItem: jest.fn()
+}
+
 beforeAll(() => {
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
@@ -152,7 +158,7 @@ beforeAll(() => {
   })
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
-    value: { getItem: jest.fn(() => null), setItem: jest.fn(), removeItem: jest.fn() }
+    value: storage
   })
 })
 
@@ -385,14 +391,12 @@ describe('tabs of removed documents', () => {
     jest.mocked(getCurrentLocation).mockReturnValue(current)
     await getTabDataByLocation(current)
     // Opening the application restores its last location, which would lead back to the document.
-    jest.mocked(localStorage.getItem).mockImplementation((key: string) =>
-      key === 'location_app' ? JSON.stringify(current) : null
-    )
+    storage.getItem.mockImplementation((key) => (key === 'location_app' ? JSON.stringify(current) : null))
 
     removeDocs(objectId)
     await flush()
 
-    expect(localStorage.removeItem).toHaveBeenCalledWith('location_app')
+    expect(storage.removeItem).toHaveBeenCalledWith('location_app')
     expect(navigate).toHaveBeenCalledWith({ path: ['workbench', 'workspace', 'app'] })
   })
 
@@ -404,14 +408,13 @@ describe('tabs of removed documents', () => {
     const current = { path: ['workbench', 'workspace', 'app', 'document'] }
     jest.mocked(getCurrentLocation).mockReturnValue(current)
     await getTabDataByLocation(current)
-    jest.mocked(localStorage.getItem).mockImplementation((key: string) =>
-      key === 'location_app' ? JSON.stringify({ path: ['workbench', 'workspace', 'app', 'other'] }) : null
-    )
+    const other = JSON.stringify({ path: ['workbench', 'workspace', 'app', 'other'] })
+    storage.getItem.mockImplementation((key) => (key === 'location_app' ? other : null))
 
     removeDocs(objectId)
     await flush()
 
-    expect(localStorage.removeItem).not.toHaveBeenCalled()
+    expect(storage.removeItem).not.toHaveBeenCalled()
   })
 
   it('sees removals made through apply()', async () => {
