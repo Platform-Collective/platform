@@ -83,6 +83,25 @@ export async function disconnect (): Promise<void> {
   }
 }
 
+const endpointCheckMaxDelayMs = 5000
+const endpointCheckTimeoutMs = 10000
+
+async function withTimeout<T> (promise: Promise<T>, ms: number): Promise<T | undefined> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<undefined>((resolve) => {
+        timer = setTimeout(() => {
+          resolve(undefined)
+        }, ms)
+      })
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function connect (title: string): Promise<Client | undefined> {
   const ctx = uiContext.newChild('connect', {})
   const loc = getCurrentLocation()
@@ -237,17 +256,33 @@ export async function connect (title: string): Promise<Client | undefined> {
   }
   _token = token
 
-  async function checkEndpoint (): Promise<boolean> {
-    const newLoginInfo = await ctx.with('select-workspace', {}, async () => (await selectWorkspace(wsUrl, token))[1])
-    if (
-      newLoginInfo != null &&
-      (getMetadata(login.metadata.TransactorOverride) ?? newLoginInfo.endpoint) !== endpoint
-    ) {
-      console.log('endpoint changed, reloading')
-      location.reload()
-      return true
-    }
-    return false
+  const endpointChanged = (info: WorkspaceLoginInfo): boolean =>
+    (getMetadata(login.metadata.TransactorOverride) ?? info.endpoint) !== endpoint
+
+  // Re-check the workspace endpoint after a reconnect, next to the normal refresh: the old
+  // server may still accept connections after the workspace moved to another region.
+  // A random delay spreads the account service load when many clients reconnect at once
+  // (e.g. after a transactor restart), a time limit drops slow checks, and only one check
+  // runs at a time. It uses the account client directly, so a failure never navigates or
+  // shows anything; the next reconnect simply checks again.
+  let endpointCheck: Promise<void> | undefined
+  function recheckEndpoint (): void {
+    if (endpointCheck !== undefined) return
+    endpointCheck = (async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * endpointCheckMaxDelayMs))
+        const accountClient = getAccountClient(getMetadata(login.metadata.AccountsUrl), token, endpointCheckTimeoutMs)
+        const info = await withTimeout(accountClient.selectWorkspace(wsUrl), endpointCheckTimeoutMs)
+        if (info != null && endpointChanged(info) && wsUrl === getCurrentLocation().path[1]) {
+          console.log('endpoint changed, reloading')
+          location.reload()
+        }
+      } catch (err: any) {
+        console.warn('Workspace endpoint check failed', err?.message ?? err)
+      } finally {
+        endpointCheck = undefined
+      }
+    })()
   }
 
   const clientFactory = await getResource(client.function.GetClient)
@@ -382,12 +417,11 @@ export async function connect (title: string): Promise<Client | undefined> {
           try {
             // Core may report a reconnect as Refresh when transactions changed.
             if (
-              ((_clientSet && event === ClientConnectEvent.Connected) ||
-                event === ClientConnectEvent.Reconnected ||
-                event === ClientConnectEvent.Refresh) &&
-              (await checkEndpoint())
+              (_clientSet && event === ClientConnectEvent.Connected) ||
+              event === ClientConnectEvent.Reconnected ||
+              event === ClientConnectEvent.Refresh
             ) {
-              return
+              recheckEndpoint()
             }
             if (event === ClientConnectEvent.Connected || event === ClientConnectEvent.Reconnected) {
               setMetadata(presentation.metadata.SessionId, data)
@@ -474,7 +508,16 @@ export async function connect (title: string): Promise<Client | undefined> {
         },
         ctx,
         onDialTimeout: async () => {
-          await checkEndpoint()
+          const newLoginInfo = await ctx.with(
+            'select-workspace',
+            {},
+            async () => (await selectWorkspace(wsUrl, token))[1]
+          )
+          // As before, also reload when no login info comes back.
+          if (newLoginInfo == null || endpointChanged(newLoginInfo)) {
+            console.log('endpoint changed, reloading')
+            location.reload()
+          }
         }
       })
   )
