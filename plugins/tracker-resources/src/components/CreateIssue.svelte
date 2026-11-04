@@ -881,7 +881,10 @@
       format="text-multiline"
       on:keydown={(event) => {
         handleIssueTitleKeyDown(event, () => {
-          manager.next(1)
+          // Focus the description directly; moving to the next focus manager element kept the
+          // focus on the title in the browser checks.
+          if (descriptionBox != null) descriptionBox.focus()
+          else manager.next(1)
         })
       }}
       kind={'large-style'}
