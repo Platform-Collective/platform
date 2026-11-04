@@ -81,13 +81,17 @@ export function groupIssuesByCalendarDay<T extends IssueCalendarDates> (
   for (const issue of issues) {
     const range = getIssueCalendarRange(issue)
     if (range === undefined) continue
-    const day = new Date(Math.max(range.start, startOfDay(window.start)))
-    while (day.getTime() <= range.end && day.getTime() < window.end) {
-      const key = day.getTime()
+    // Step on a noon anchor and key each day by its own start: where DST begins at midnight, that day starts
+    // at 01:00, and stepping from it would otherwise keep 01:00 for the following days.
+    const cursor = new Date(Math.max(range.start, startOfDay(window.start)))
+    cursor.setHours(12, 0, 0, 0)
+    let key = startOfDay(cursor.getTime())
+    while (key <= range.end && key < window.end) {
       const list = result.get(key)
       if (list === undefined) result.set(key, [issue])
       else list.push(issue)
-      day.setDate(day.getDate() + 1)
+      cursor.setDate(cursor.getDate() + 1)
+      key = startOfDay(cursor.getTime())
     }
   }
   return result

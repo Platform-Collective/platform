@@ -36,8 +36,6 @@
   let spanningIssues: Issue[] = []
   let issues: Issue[] = []
   let withoutDueDate = 0
-  // -1 until measured, so the search empty state cannot flash while loading.
-  let matchingTotal = -1
   let editable = new Map<Ref<Issue>, boolean>()
   let permissionGeneration = 0
   let draggedIssue: Ref<Issue> | undefined
@@ -83,13 +81,15 @@
     tracker.class.Issue,
     baseQuery,
     (result) => {
-      matchingTotal = result.total
+      // Report on every answer, not via a reactive copy: a second search with no hits keeps the total at 0,
+      // and the view resets the count to "not measured" on each search change. Until the first answer the
+      // count stays unmeasured, so the empty state cannot flash while loading.
+      setResultCount(resultCountOwner, result.total)
     },
     { limit: 1, total: true }
   )
   $: issues = [...windowIssues, ...spanningIssues]
   $: issuesByDay = groupIssuesByCalendarDay(issues, calendarWindow)
-  $: if (matchingTotal >= 0) setResultCount(resultCountOwner, matchingTotal)
   $: void updatePermissions(issues)
   $: monthLabel = currentDate.toLocaleDateString($themeStore.language, { month: 'long', year: 'numeric' })
 
