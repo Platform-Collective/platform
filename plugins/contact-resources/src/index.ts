@@ -258,7 +258,7 @@ function searchMemberEmployees (search: string, filter: ObjectSearchOptions): Ob
   for (const account of filter.members ?? []) {
     const ref = refByAccount.get(account)
     const employee = ref === undefined ? undefined : employeeById.get(ref)
-    if (employee === undefined || employee.active !== true) continue
+    if (employee === undefined || !employee.active) continue
     if (excluded.has(employee._id) || (included !== undefined && !included.has(employee._id))) continue
     employees.push(employee)
   }
