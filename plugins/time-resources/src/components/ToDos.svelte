@@ -18,11 +18,12 @@
   import type { DocumentQuery, IdMap, Ref, WithLookup } from '@hcengineering/core'
   import { SortingOrder, toIdMap } from '@hcengineering/core'
   import type { IntlString } from '@hcengineering/platform'
-  import { createQuery } from '@hcengineering/presentation'
+  import { createQuery, getClient } from '@hcengineering/presentation'
   import type { TagElement } from '@hcengineering/tags'
   import tags from '@hcengineering/tags'
   import type { ToDo, WorkSlot } from '@hcengineering/time'
-  import type { Project } from '@hcengineering/tracker'
+  import task from '@hcengineering/task'
+  import type { Issue, Project } from '@hcengineering/tracker'
   import tracker from '@hcengineering/tracker'
   import {
     ButtonIcon,
@@ -34,12 +35,15 @@
     areDatesEqual,
     defaultSP,
     deviceOptionsStore as deviceInfo,
+    ticker,
     todosSP
   } from '@hcengineering/ui'
+  import { statusStore } from '@hcengineering/view-resources'
   import view from '@hcengineering/view-resources/src/plugin'
   import type { ToDosMode } from '..'
   import time from '../plugin'
   import { getNearest } from '../utils'
+  import { getBlockerIds, getToDoPlanningConstraints } from '../issue-planning'
   import CreateToDo from './CreateToDo.svelte'
   import ToDoGroup from './ToDoGroup.svelte'
 
@@ -201,6 +205,62 @@
 
   $: active = filterActive(mode, rawActive, currentDate)
 
+  // Planning hints for unplanned ToDos: one query for all attached issues and one for all their
+  // blockers, shared by every row instead of a query pair per row.
+  const hierarchy = getClient().getHierarchy()
+  const planningIssuesQuery = createQuery()
+  const planningBlockersQuery = createQuery()
+  let planningIssues: IdMap<Issue> = new Map()
+  let planningBlockers: IdMap<Issue> = new Map()
+
+  function queryIssues(
+    query: ReturnType<typeof createQuery>,
+    ids: Array<Ref<Issue>>,
+    set: (value: IdMap<Issue>) => void
+  ): void {
+    if (ids.length === 0) {
+      query.unsubscribe()
+      set(new Map())
+      return
+    }
+    if (
+      query.query(tracker.class.Issue, { _id: { $in: ids } }, (res) => {
+        set(toIdMap(res))
+      })
+    ) {
+      set(new Map())
+    }
+  }
+
+  function getPlanningIssueIds(todos: ToDo[]): Array<Ref<Issue>> {
+    const ids = new Set<Ref<Issue>>()
+    for (const todo of todos) {
+      if (hierarchy.isDerived(todo.attachedToClass, tracker.class.Issue)) {
+        ids.add(todo.attachedTo as Ref<Issue>)
+      }
+    }
+    return Array.from(ids).sort()
+  }
+
+  $: queryIssues(planningIssuesQuery, getPlanningIssueIds(inbox), (value) => (planningIssues = value))
+  $: queryIssues(
+    planningBlockersQuery,
+    getBlockerIds(Array.from(planningIssues.values())).sort(),
+    (value) => (planningBlockers = value)
+  )
+  $: resolvedStatuses = new Set(
+    $statusStore.array
+      .filter((status) => status.category === task.statusCategory.Won || status.category === task.statusCategory.Lost)
+      .map((status) => status._id)
+  )
+  $: planningConstraints = getToDoPlanningConstraints(
+    inbox,
+    planningIssues,
+    planningBlockers,
+    resolvedStatuses,
+    $ticker
+  )
+
   $: groups = group(inbox, done, active, todoValue)
 
   function filterActive(mode: ToDosMode, raw: WithLookup<ToDo>[], currentDate: Date): WithLookup<ToDo>[] {
@@ -337,6 +397,7 @@
         showDuration={group[0] !== time.string.Unplanned}
         {mode}
         {projects}
+        {planningConstraints}
       />
     {/each}
   </Scroller>

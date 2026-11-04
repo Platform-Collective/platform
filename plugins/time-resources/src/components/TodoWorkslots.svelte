@@ -82,9 +82,9 @@
   }
 
   async function create(): Promise<void> {
-    const defaultDuration = await getToDoSlotDuration(client, todo)
     const now = Date.now()
     const date = Math.ceil(now / (30 * 60 * 1000)) * (30 * 60 * 1000)
+    const defaultDuration = await getToDoSlotDuration(client, todo, date)
     const currentAccount = getCurrentAccount()
     const _calendar = await findPrimaryCalendar()
     const dueDate = date + defaultDuration

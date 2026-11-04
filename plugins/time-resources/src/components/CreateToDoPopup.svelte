@@ -143,9 +143,9 @@
       object !== undefined && client.getHierarchy().isDerived(object._class, tracker.class.Issue)
         ? (object as Issue)
         : undefined
-    const defaultDuration = getIssueSlotDuration(issue)
     const now = Date.now()
     const date = Math.ceil(now / (30 * 60 * 1000)) * (30 * 60 * 1000)
+    const defaultDuration = getIssueSlotDuration(issue, date)
     const dueDate = date + defaultDuration
     slots.push({
       eventId: generateEventId(),

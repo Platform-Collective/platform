@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { Ref, RelatedDocument, Status } from '@hcengineering/core'
+import type { ToDo } from '@hcengineering/time'
 import type { Issue } from '@hcengineering/tracker'
-import { getIssuePlanningConstraints, getIssueSlotDuration } from '../issue-planning'
+import {
+  getBlockerIds,
+  getIssuePlanningConstraints,
+  getIssueSlotDuration,
+  getToDoPlanningConstraints
+} from '../issue-planning'
 
 const NOW = Date.UTC(2026, 9, 23, 12)
 const HOUR = 60 * 60 * 1000
+const MORNING = new Date(2026, 9, 23, 9).getTime()
 const DONE = 'done' as Ref<Status>
 const CANCELED = 'canceled' as Ref<Status>
 const RESOLVED = new Set([DONE, CANCELED])
@@ -20,6 +27,10 @@ function blocker (id: string, status: string): Issue {
   return issue as Issue
 }
 
+function byId (issues: Issue[]): Map<Ref<Issue>, Issue> {
+  return new Map(issues.map((issue) => [issue._id, issue]))
+}
+
 function relation (id: string): RelatedDocument {
   const document: RelatedDocument = {
     _id: id as RelatedDocument['_id'],
@@ -30,8 +41,8 @@ function relation (id: string): RelatedDocument {
 
 describe('issue slot duration', () => {
   it('converts positive remaining estimation from hours to milliseconds', () => {
-    expect(getIssueSlotDuration({ estimation: 4, reportedTime: 1.5 })).toBe(2.5 * HOUR)
-    expect(getIssueSlotDuration({ estimation: 0.25, reportedTime: 0 })).toBe(HOUR / 4)
+    expect(getIssueSlotDuration({ estimation: 4, reportedTime: 1.5 }, MORNING)).toBe(2.5 * HOUR)
+    expect(getIssueSlotDuration({ estimation: 0.25, reportedTime: 0 }, MORNING)).toBe(HOUR / 4)
   })
 
   it.each([
@@ -44,26 +55,39 @@ describe('issue slot duration', () => {
     { estimation: Infinity, reportedTime: 0 },
     { estimation: 2, reportedTime: NaN }
   ])('preserves the existing default for missing or non-positive remaining time: %p', (issue) => {
-    expect(getIssueSlotDuration(issue)).toBe(HOUR / 2)
-    expect(getIssueSlotDuration(issue, HOUR)).toBe(HOUR)
+    expect(getIssueSlotDuration(issue, MORNING)).toBe(HOUR / 2)
+    expect(getIssueSlotDuration(issue, MORNING, HOUR)).toBe(HOUR)
   })
 
   it('caps the default slot at one working day', () => {
-    expect(getIssueSlotDuration({ estimation: 8, reportedTime: 0 })).toBe(8 * HOUR)
-    expect(getIssueSlotDuration({ estimation: 40, reportedTime: 1 })).toBe(8 * HOUR)
+    expect(getIssueSlotDuration({ estimation: 8, reportedTime: 0 }, MORNING)).toBe(8 * HOUR)
+    expect(getIssueSlotDuration({ estimation: 40, reportedTime: 1 }, MORNING)).toBe(8 * HOUR)
+  })
+
+  it('never runs past midnight of the start day', () => {
+    const evening = new Date(2026, 9, 23, 18).getTime()
+    const midnight = new Date(2026, 9, 24).getTime()
+    expect(evening + getIssueSlotDuration({ estimation: 8, reportedTime: 0 }, evening)).toBe(midnight)
+    const late = new Date(2026, 9, 23, 23, 30).getTime()
+    expect(getIssueSlotDuration({ estimation: 2, reportedTime: 0 }, late)).toBe(HOUR / 2)
+    const startOfDay = new Date(2026, 9, 23).getTime()
+    expect(getIssueSlotDuration({ estimation: 4, reportedTime: 0 }, startOfDay)).toBe(4 * HOUR)
   })
 
   it('tolerates legacy issue data without reported time', () => {
     const issue: Partial<Issue> = { estimation: 2 }
-    expect(getIssueSlotDuration(issue as Issue)).toBe(2 * HOUR)
+    expect(getIssueSlotDuration(issue as Issue, MORNING)).toBe(2 * HOUR)
   })
 })
 
 describe('issue planning constraints', () => {
   it('leaves standalone ToDos and legacy issues unrestricted', () => {
     const issue: Partial<Issue> = {}
-    expect(getIssuePlanningConstraints(undefined, [], RESOLVED, NOW)).toEqual({ blockers: [], startDate: undefined })
-    expect(getIssuePlanningConstraints(issue as Issue, [], RESOLVED, NOW)).toEqual({
+    expect(getIssuePlanningConstraints(undefined, new Map(), RESOLVED, NOW)).toEqual({
+      blockers: [],
+      startDate: undefined
+    })
+    expect(getIssuePlanningConstraints(issue as Issue, new Map(), RESOLVED, NOW)).toEqual({
       blockers: [],
       startDate: undefined
     })
@@ -71,7 +95,7 @@ describe('issue planning constraints', () => {
 
   it('lists only related unresolved blockers in relation order', () => {
     const issue = { blockedBy: [relation('1'), relation('2'), relation('3')], startDate: null }
-    const blockers = [blocker('3', 'active'), blocker('2', 'done'), blocker('1', 'todo'), blocker('4', 'active')]
+    const blockers = byId([blocker('3', 'active'), blocker('2', 'done'), blocker('1', 'todo'), blocker('4', 'active')])
     expect(getIssuePlanningConstraints(issue, blockers, RESOLVED, NOW)).toEqual({
       blockers: ['TEST-1: Blocker 1', 'TEST-3: Blocker 3'],
       startDate: undefined
@@ -81,30 +105,72 @@ describe('issue planning constraints', () => {
   it('clears blockers when their status becomes completed or canceled and restores reopened blockers', () => {
     const issue = { blockedBy: [relation('1')], startDate: null }
     for (const status of ['done', 'canceled']) {
-      expect(getIssuePlanningConstraints(issue, [blocker('1', status)], RESOLVED, NOW).blockers).toEqual([])
+      expect(getIssuePlanningConstraints(issue, byId([blocker('1', status)]), RESOLVED, NOW).blockers).toEqual([])
     }
-    expect(getIssuePlanningConstraints(issue, [blocker('1', 'active')], RESOLVED, NOW).blockers).toHaveLength(1)
+    expect(getIssuePlanningConstraints(issue, byId([blocker('1', 'active')]), RESOLVED, NOW).blockers).toHaveLength(1)
   })
 
   it('keeps unknown statuses unresolved and skips blocker references that are not loaded', () => {
     const issue = { blockedBy: [relation('1'), relation('2')], startDate: null }
-    expect(getIssuePlanningConstraints(issue, [blocker('1', 'unknown')], RESOLVED, NOW).blockers).toEqual([
+    expect(getIssuePlanningConstraints(issue, byId([blocker('1', 'unknown')]), RESOLVED, NOW).blockers).toEqual([
       'TEST-1: Blocker 1'
     ])
-    expect(getIssuePlanningConstraints(issue, [], RESOLVED, NOW).blockers).toEqual([])
+    expect(getIssuePlanningConstraints(issue, new Map(), RESOLVED, NOW).blockers).toEqual([])
   })
 
   it.each([null, NOW - 1, NOW])('does not flag a missing, past, or current start date: %p', (startDate) => {
-    expect(getIssuePlanningConstraints({ startDate }, [], RESOLVED, NOW).startDate).toBeUndefined()
+    expect(
+      getIssuePlanningConstraints({ blockedBy: [], startDate }, new Map(), RESOLVED, NOW).startDate
+    ).toBeUndefined()
   })
 
   it('reports future start dates alongside blockers and clears the date when it arrives', () => {
     const issue = { blockedBy: [relation('1')], startDate: NOW + HOUR }
-    const blockers = [blocker('1', 'active')]
+    const blockers = byId([blocker('1', 'active')])
     expect(getIssuePlanningConstraints(issue, blockers, RESOLVED, NOW)).toEqual({
       blockers: ['TEST-1: Blocker 1'],
       startDate: NOW + HOUR
     })
     expect(getIssuePlanningConstraints(issue, blockers, RESOLVED, NOW + HOUR).startDate).toBeUndefined()
+  })
+})
+
+describe('list-level planning constraints', () => {
+  function issue (id: string, data: Partial<Issue>): Issue {
+    return { _id: id as Ref<Issue>, blockedBy: [], startDate: null, ...data } as unknown as Issue
+  }
+
+  function todo (id: string, attachedTo: string, data: Partial<ToDo> = {}): ToDo {
+    return { _id: id as Ref<ToDo>, attachedTo, workslots: 0, doneOn: null, ...data } as unknown as ToDo
+  }
+
+  it('collects each blocker id once across all issues of the list', () => {
+    const issues = [
+      issue('a', { blockedBy: [relation('1'), relation('2')] }),
+      issue('b', { blockedBy: [relation('2'), relation('3')] }),
+      issue('c', {})
+    ]
+    expect(getBlockerIds(issues)).toEqual(['1', '2', '3'])
+  })
+
+  it('returns entries only for unplanned open ToDos whose issue has a constraint', () => {
+    const issues = byId([
+      issue('blocked', { blockedBy: [relation('1')] }),
+      issue('later', { startDate: NOW + HOUR }),
+      issue('free', { blockedBy: [relation('2')] })
+    ])
+    const blockers = byId([blocker('1', 'active'), blocker('2', 'done')])
+    const todos = [
+      todo('t1', 'blocked'),
+      todo('t2', 'later'),
+      todo('t3', 'free'),
+      todo('t4', 'blocked', { workslots: 1 }),
+      todo('t5', 'blocked', { doneOn: NOW }),
+      todo('t6', 'not-loaded')
+    ]
+    const result = getToDoPlanningConstraints(todos, issues, blockers, RESOLVED, NOW)
+    expect(Array.from(result.keys())).toEqual(['t1', 't2'])
+    expect(result.get('t1' as Ref<ToDo>)).toEqual({ blockers: ['TEST-1: Blocker 1'], startDate: undefined })
+    expect(result.get('t2' as Ref<ToDo>)).toEqual({ blockers: [], startDate: NOW + HOUR })
   })
 })

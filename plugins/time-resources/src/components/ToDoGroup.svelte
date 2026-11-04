@@ -19,6 +19,7 @@
   import type { IntlString } from '@hcengineering/platform'
   import type { Project } from '@hcengineering/tracker'
   import type { ToDosMode } from '..'
+  import type { IssuePlanningConstraints } from '../issue-planning'
   import { AccordionItem } from '@hcengineering/ui'
   import { getClient } from '@hcengineering/presentation'
   import { makeRank } from '@hcengineering/task'
@@ -34,6 +35,7 @@
   export let showTitle: boolean
   export let showDuration: boolean
   export let projects: IdMap<Project>
+  export let planningConstraints: Map<Ref<ToDo>, IssuePlanningConstraints> = new Map()
 
   function getAllWorkslots(todos: WithLookup<ToDo>[]): WorkSlot[] {
     const workslots: WorkSlot[] = []
@@ -111,6 +113,7 @@
           project={group}
           groupName={title}
           {mode}
+          {planningConstraints}
         />
       {/each}
     {/if}
@@ -120,6 +123,7 @@
         project={false}
         groupName={title}
         {mode}
+        {planningConstraints}
       />
     {/if}
   </AccordionItem>
@@ -127,7 +131,7 @@
   <div class="flex-col p-4 w-full">
     {#each todos as todo, index}
       <ToDoDraggable {todo} {index} groupName={title} projectId={false} on:drop={handleDrop}>
-        <ToDoElement {todo} planned={mode !== 'unplanned'} />
+        <ToDoElement {todo} planned={mode !== 'unplanned'} constraints={planningConstraints.get(todo._id)} />
       </ToDoDraggable>
     {/each}
   </div>

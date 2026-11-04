@@ -49,7 +49,8 @@
     const date = e.detail.date.getTime()
     const currentAccount = getCurrentAccount()
     const _calendar = await findPrimaryCalendar()
-    const dueDate = date + (await getToDoSlotDuration(client, doc))
+    const duration: number | undefined = e.detail.duration
+    const dueDate = date + (duration ?? (await getToDoSlotDuration(client, doc, date)))
     await client.addCollection(time.class.WorkSlot, calendar.space.Calendar, doc._id, doc._class, 'workslots', {
       calendar: _calendar,
       eventId: generateEventId(),
