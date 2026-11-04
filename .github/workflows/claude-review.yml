@@ -1,16 +1,22 @@
 name: Claude PR Review
 
+# Automatic reviews are disabled. To re-enable them, restore this trigger:
+#
+#   pull_request:
+#     # No 'synchronize': new pushes are not reviewed automatically.
+#     # To re-review, use "Re-run jobs" on the workflow run in the Actions tab.
+#     types: [opened, ready_for_review, reopened]
+#     branches: [develop, staging, staging-new, main]
+#     # Skip PRs that only touch non-code files
+#     paths-ignore:
+#       - 'docs/**'
+#       - 'branding/**'
+#       - '**/*.md'
+#
+# A workflow needs at least one trigger; manual runs are skipped by the job
+# condition because they have no pull request to review.
 on:
-  pull_request:
-    # No 'synchronize': new pushes are not reviewed automatically.
-    # To re-review, use "Re-run jobs" on the workflow run in the Actions tab.
-    types: [opened, ready_for_review, reopened]
-    branches: [develop, staging, staging-new, main]
-    # Skip PRs that only touch non-code files
-    paths-ignore:
-      - 'docs/**'
-      - 'branding/**'
-      - '**/*.md'
+  workflow_dispatch:
 
 concurrency:
   group: claude-review-${{ github.event.pull_request.number }}
@@ -20,6 +26,7 @@ jobs:
   review:
     # Skip drafts, PRs from forks and Dependabot (secrets are not available there)
     if: >-
+      github.event_name == 'pull_request' &&
       github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.actor != 'dependabot[bot]'
