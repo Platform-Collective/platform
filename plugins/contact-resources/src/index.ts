@@ -20,9 +20,10 @@ import {
   type AvatarInfo,
   type Channel,
   type Contact,
+  type Employee,
   type Person
 } from '@hcengineering/contact'
-import core, {
+import {
   AccountRole,
   SocialIdType,
   type AccountUuid,
@@ -139,10 +140,13 @@ import { getChannelURL, openChannelLink } from './channel-url'
 import { canMergePersons, canResendInvitation } from './visibilityTester'
 import contact from './plugin'
 import { getPersonNameQueries } from './person-name-query'
+import { rankByName } from './member-search'
 import {
   channelIdentifierProvider,
   channelTitleProvider,
   contactTitleProvider,
+  employeeByIdStore,
+  employeeRefByAccountUuidStore,
   employeeSort,
   filterChannelHasMessagesResult,
   filterChannelHasNewMessagesResult,
@@ -243,31 +247,48 @@ async function queryContact (
   return Array.from(new Map(results.flat().map((result) => [result.doc._id, result])).values()).slice(0, 200)
 }
 
+const memberSearchLimit = 5
+
+function searchMemberEmployees (search: string, filter: ObjectSearchOptions): ObjectSearchResult[] {
+  const refByAccount = get(employeeRefByAccountUuidStore)
+  const employeeById = get(employeeByIdStore)
+  const included = filter.in === undefined ? undefined : new Set(filter.in.map((it) => it._id))
+  const excluded = new Set((filter.nin ?? []).map((it) => it._id))
+  const employees: Employee[] = []
+  for (const account of filter.members ?? []) {
+    const ref = refByAccount.get(account)
+    const employee = ref === undefined ? undefined : employeeById.get(ref)
+    if (employee === undefined || employee.active !== true) continue
+    if (excluded.has(employee._id) || (included !== undefined && !included.has(employee._id))) continue
+    employees.push(employee)
+  }
+  const hierarchy = getClient().getHierarchy()
+  return rankByName(
+    employees,
+    search,
+    (it) => [getName(hierarchy, it), it.name, it.displayName ?? ''],
+    memberSearchLimit
+  ).map(toObjectSearchResult)
+}
+
 async function queryEmployee (
   client: Client,
   search: string,
   filter?: ObjectSearchOptions
 ): Promise<ObjectSearchResult[]> {
-  const members =
-    filter?.memberOf === undefined
-      ? undefined
-      : ((await client.findOne(core.class.Space, { _id: filter.memberOf }))?.members ?? [])
-  const memberFilter = members === undefined ? {} : { personUuid: { $in: members } }
-  const q1 = await doContactQuery(
-    contact.mixin.Employee,
-    { name: { $like: `%${search}%` }, active: true, ...memberFilter },
-    filter,
-    client
-  )
+  // Members are resolved from the employees already loaded on the client: no server queries.
+  if (filter?.members !== undefined) return searchMemberEmployees(search, filter)
+  const q1 = await queryContact(contact.mixin.Employee, client, search, filter)
   const q2 = await doContactQuery(
     contact.mixin.Employee,
-    { displayName: { $like: `%${search}%` }, active: true, ...memberFilter },
+    { displayName: { $like: `%${search}%` }, active: true },
     {
       in: filter?.in,
       nin: [...(filter?.nin ?? []), ...Array.from(q1.map((it) => ({ _id: it.doc._id, _class: it.doc._class })))]
     },
     client
   )
+
   return q1.concat(q2)
 }
 

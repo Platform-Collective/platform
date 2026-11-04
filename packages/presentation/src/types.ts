@@ -1,4 +1,5 @@
 import {
+  type AccountUuid,
   type Tx,
   type Blob as PlatformBlob,
   type Class,
@@ -37,7 +38,8 @@ export interface ObjectSearchResult {
 export interface ObjectSearchOptions {
   in?: RelatedDocument[]
   nin?: RelatedDocument[]
-  memberOf?: Ref<Space>
+  /** Search only among these accounts (for example space members), using already loaded data. */
+  members?: AccountUuid[]
 }
 
 /**

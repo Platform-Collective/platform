@@ -15,9 +15,19 @@
 -->
 <script lang="ts">
   import contact from '@hcengineering/contact'
-  import core, { Class, Doc, Ref, SearchResultDoc, SortingOrder, Space, type VersionableDoc } from '@hcengineering/core'
+  import core, {
+    AccountUuid,
+    Class,
+    Doc,
+    Ref,
+    SearchResultDoc,
+    SortingOrder,
+    Space,
+    type VersionableDoc
+  } from '@hcengineering/core'
   import { getResource, translate } from '@hcengineering/platform'
   import presentation, {
+    createQuery,
     getClient,
     reduceCalls,
     searchFor,
@@ -30,7 +40,7 @@
   import { getReferenceLabel, getReferenceObject } from './extension/reference'
 
   import MentionVersionPopup from './MentionVersionPopup.svelte'
-  import { prependUniqueMentionResults } from './mention-search'
+  import { mergeMemberResults } from './mention-search'
 
   export let query: string = ''
   export let multipleMentions: boolean = false
@@ -106,11 +116,32 @@
     .getModel()
     .findAllSync(presentation.class.ObjectSearchCategory, { classToSearch: contact.mixin.Employee })[0]
 
-  async function getMemberSearchItems(localQuery: string, space: Ref<Space> | undefined): Promise<SearchItem[]> {
-    if (space === undefined || employeeSearchCategory === undefined) return []
+  // Members of the space the text belongs to; kept up to date by a single live query.
+  let members: AccountUuid[] | undefined = undefined
+  const spaceQuery = createQuery()
+  $: if (objectSpace !== undefined) {
+    spaceQuery.query(
+      core.class.Space,
+      { _id: objectSpace },
+      (res) => {
+        members = res[0]?.members ?? []
+      },
+      { limit: 1 }
+    )
+  } else {
+    spaceQuery.unsubscribe()
+    members = undefined
+  }
 
+  async function getMemberSearchItems(
+    localQuery: string,
+    members: AccountUuid[] | undefined
+  ): Promise<SearchItem[]> {
+    if (members === undefined || members.length === 0 || employeeSearchCategory === undefined) return []
+
+    // Resolved from the employees already loaded on the client, without server queries.
     const searchEmployees = await getResource(employeeSearchCategory.query)
-    return (await searchEmployees(client, localQuery, { memberOf: space })).map((item, num) => ({
+    return (await searchEmployees(client, localQuery, { members })).map((item, num) => ({
       num,
       category: employeeSearchCategory,
       item: {
@@ -231,16 +262,20 @@
     return false
   }
 
-  const updateItems = reduceCalls(async function (localQuery: string): Promise<void> {
-    const space = objectSpace
+  const updateItems = reduceCalls(async function (
+    localQuery: string,
+    members: AccountUuid[] | undefined
+  ): Promise<void> {
     const [r, memberItems] = await Promise.all([
       searchFor('mention', localQuery),
-      getMemberSearchItems(localQuery, space)
+      getMemberSearchItems(localQuery, members)
     ])
-    if (r.query === query && space === objectSpace) {
-      const fulltextItems = r.items.map((item) => ({ id: item.item.doc._id, item }))
-      const memberSearchItems = memberItems.map((item) => ({ id: item.item.doc._id, item }))
-      const searchItems = prependUniqueMentionResults(memberSearchItems, fulltextItems).map(({ item }) => item)
+    if (r.query === query) {
+      const searchItems = mergeMemberResults(
+        memberItems,
+        r.items,
+        (it) => it.category.classToSearch === contact.mixin.Employee
+      )
       const latestIndex = searchItems.findLastIndex((it) => it.category.classToSearch === contact.mixin.Employee)
       const multipleEmployeeSearchItems = await getMultipleEmployeeSearchItems(localQuery, latestIndex)
 
@@ -254,7 +289,8 @@
             ]
     }
   })
-  $: void updateItems(query)
+  // Runs again when the members of the space change, so the list does not stay stale.
+  $: void updateItems(query, members)
 </script>
 
 {#if (items.length === 0 && query !== '') || items.length > 0}
