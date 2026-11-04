@@ -879,7 +879,11 @@
       bind:value={object.title}
       placeholder={tracker.string.IssueTitlePlaceholder}
       format="text-multiline"
-      on:keydown={handleIssueTitleKeyDown}
+      on:keydown={(event) => {
+        handleIssueTitleKeyDown(event, () => {
+          manager.next(1)
+        })
+      }}
       kind={'large-style'}
       autoFocus
       fullSize

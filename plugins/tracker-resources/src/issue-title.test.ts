@@ -38,3 +38,52 @@ describe('handleIssueTitleKeyDown', () => {
     expect(preventDefault).toHaveBeenCalledTimes(prevented ? 1 : 0)
   })
 })
+
+describe('handleIssueTitleKeyDown with an Enter callback', () => {
+  it.each([
+    [{ key: 'Enter' }, true],
+    [{ key: 'Enter', isComposing: true }, false],
+    [{ key: 'Enter', ctrlKey: true }, false],
+    [{ key: 'Enter', metaKey: true }, false],
+    [{ key: 'Enter', shiftKey: true }, false],
+    [{ key: 'Enter', altKey: true }, false],
+    [{ key: 'a' }, false],
+    [{ key: 'Tab' }, false]
+  ])('calls the callback for %j: %s', (init, called) => {
+    const onEnter = jest.fn()
+
+    handleIssueTitleKeyDown(
+      {
+        isComposing: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+        altKey: false,
+        preventDefault: jest.fn(),
+        ...init
+      },
+      onEnter
+    )
+
+    expect(onEnter).toHaveBeenCalledTimes(called ? 1 : 0)
+  })
+
+  it('still blocks the line break when a modifier is held', () => {
+    const preventDefault = jest.fn()
+
+    handleIssueTitleKeyDown(
+      {
+        key: 'Enter',
+        isComposing: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: true,
+        altKey: false,
+        preventDefault
+      },
+      jest.fn()
+    )
+
+    expect(preventDefault).toHaveBeenCalledTimes(1)
+  })
+})

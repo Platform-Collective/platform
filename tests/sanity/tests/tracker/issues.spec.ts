@@ -54,10 +54,12 @@ test.describe('Tracker issue tests', () => {
     await issuesPage.fillNewIssueForm({ title, description: '', projectName: 'Default' })
 
     const createTitle = issuesPage.issueNameInput()
-    for (const key of ['Enter', 'Shift+Enter']) {
-      await createTitle.press(key)
-      await expect(createTitle).toHaveValue(title)
-    }
+    // Enter keeps the title on one line and moves on to the description, like a single-line input.
+    await createTitle.press('Enter')
+    await expect(createTitle).toHaveValue(title)
+    await expect(issuesPage.issueDescriptionInput()).toBeFocused()
+    await createTitle.press('Shift+Enter')
+    await expect(createTitle).toHaveValue(title)
     await expect(createTitle).toBeVisible()
     expect(
       await createTitle.evaluate((editor) => editor.clientHeight > parseFloat(getComputedStyle(editor).fontSize) * 2)
