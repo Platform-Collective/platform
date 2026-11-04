@@ -152,7 +152,7 @@ beforeAll(() => {
   })
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
-    value: { getItem: jest.fn(() => null), setItem: jest.fn() }
+    value: { getItem: jest.fn(() => null), setItem: jest.fn(), removeItem: jest.fn() }
   })
 })
 
@@ -374,6 +374,44 @@ describe('tabs of removed documents', () => {
     expect(client.update).not.toHaveBeenCalled()
     expect(client.remove).not.toHaveBeenCalled()
     expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('forgets the remembered application location of the removed document', async () => {
+    resolver.mockImplementation(async (loc) => (loc.path.length === 3 ? { name: 'Home' } : documentData))
+    const tab = makeTab('active')
+    tabsStore.set([tab])
+    tabIdStore.set(tab._id)
+    const current = { path: ['workbench', 'workspace', 'app', 'document'] }
+    jest.mocked(getCurrentLocation).mockReturnValue(current)
+    await getTabDataByLocation(current)
+    // Opening the application restores its last location, which would lead back to the document.
+    jest.mocked(localStorage.getItem).mockImplementation((key: string) =>
+      key === 'location_app' ? JSON.stringify(current) : null
+    )
+
+    removeDocs(objectId)
+    await flush()
+
+    expect(localStorage.removeItem).toHaveBeenCalledWith('location_app')
+    expect(navigate).toHaveBeenCalledWith({ path: ['workbench', 'workspace', 'app'] })
+  })
+
+  it('keeps the remembered application location of another document', async () => {
+    resolver.mockImplementation(async (loc) => (loc.path.length === 3 ? { name: 'Home' } : documentData))
+    const tab = makeTab('active')
+    tabsStore.set([tab])
+    tabIdStore.set(tab._id)
+    const current = { path: ['workbench', 'workspace', 'app', 'document'] }
+    jest.mocked(getCurrentLocation).mockReturnValue(current)
+    await getTabDataByLocation(current)
+    jest.mocked(localStorage.getItem).mockImplementation((key: string) =>
+      key === 'location_app' ? JSON.stringify({ path: ['workbench', 'workspace', 'app', 'other'] }) : null
+    )
+
+    removeDocs(objectId)
+    await flush()
+
+    expect(localStorage.removeItem).not.toHaveBeenCalled()
   })
 
   it('sees removals made through apply()', async () => {

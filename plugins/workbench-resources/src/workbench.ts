@@ -302,9 +302,26 @@ async function getLocationWithoutDocument (loc: Location, objectId: Ref<Doc>): P
   return { path: loc.path.slice(0, 3) }
 }
 
+// Opening an application restores its last location, which may still be the removed document.
+function forgetApplicationLocation (loc: Location): void {
+  const app = loc.path[2]
+  if (app == null || app === '' || loc.path[3] == null) return
+  const key = `${locationStorageKeyId}_${app}`
+  try {
+    const last = localStorage.getItem(key)
+    const stored: Location | undefined = last != null ? JSON.parse(last) : undefined
+    if (stored?.path?.[1] === loc.path[1] && stored?.path?.[3] === loc.path[3]) {
+      localStorage.removeItem(key)
+    }
+  } catch {
+    // ignore unreadable entries
+  }
+}
+
 /** Move a tab shown in this window away from its removed document. */
 async function leaveRemovedDocument (tab: WorkbenchTab, loc: Location, objectId: Ref<Doc>): Promise<void> {
   const target = await getLocationWithoutDocument(loc, objectId)
+  if (target.path.length <= 3) forgetApplicationLocation(loc)
   const data = await getTabDataByLocation(target)
   const name = data.name ?? (await translate(data.label, {}, get(languageStore)))
   const location = locationToUrl(target)
