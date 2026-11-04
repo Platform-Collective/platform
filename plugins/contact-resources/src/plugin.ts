@@ -87,6 +87,7 @@ export default mergeIds(contactId, contact, {
     HasMessagesIn: '' as IntlString,
     HasNewMessagesIn: '' as IntlString,
     CannotMerge: '' as IntlString,
+    MergeFailed: '' as IntlString,
     AutoTranslation: '' as IntlString,
     TranslateTo: '' as IntlString,
     DontTranslate: '' as IntlString,

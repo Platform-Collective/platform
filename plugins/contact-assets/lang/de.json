@@ -126,6 +126,7 @@
     "Guest": "Gast",
     "Deleted": "Gelöscht",
     "CannotMerge": "Fehler: Globale Personen können nicht zusammengeführt werden",
+    "MergeFailed": "Die Zusammenführung wurde nicht abgeschlossen, der Quellkontakt wurde behalten: {error}",
     "AutoTranslation": "Automatische Übersetzung",
     "TranslateTo": "Übersetzen in",
     "DontTranslate": "Nicht übersetzen",

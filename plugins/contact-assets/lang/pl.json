@@ -125,6 +125,7 @@
     "Guest": "Gość",
     "Deleted": "Usunięto",
     "CannotMerge": "Błąd: Nie można scalić osób dostępnych globalnie",
+    "MergeFailed": "Scalanie nie zostało ukończone, a kontakt źródłowy został zachowany: {error}",
     "AutoTranslation": "Automatyczne tłumaczenie",
     "TranslateTo": "Przetłumacz na",
     "DontTranslate": "Nie tłumacz",

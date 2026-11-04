@@ -126,6 +126,7 @@
     "Guest": "Convidado",
     "Deleted": "Excluído",
     "CannotMerge": "Erro: Não é possível mesclar pessoas globais",
+    "MergeFailed": "A fusão não foi concluída e o contacto de origem foi mantido: {error}",
     "AutoTranslation": "Tradução automática",
     "TranslateTo": "Traduzir para",
     "DontTranslate": "Não traduzir",

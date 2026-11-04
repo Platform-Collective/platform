@@ -126,6 +126,7 @@
     "Guest": "Invité",
     "Deleted": "Supprimé",
     "CannotMerge": "Erreur : Impossible de fusionner les personnes globales",
+    "MergeFailed": "La fusion n'a pas abouti et le contact source a été conservé : {error}",
     "AutoTranslation": "Traduction automatique",
     "TranslateTo": "Traduire en",
     "DontTranslate": "Ne pas traduire",

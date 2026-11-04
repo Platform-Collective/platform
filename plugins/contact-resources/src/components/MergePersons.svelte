@@ -44,7 +44,7 @@
   import EditPerson from './EditPerson.svelte'
   import { getAccountClient } from '../utils'
   import SocialIdentityPresenter from './SocialIdentityPresenter.svelte'
-  import { finishPersonMerge } from './finish-person-merge'
+  import { finishPersonMerge, runPersonMerge } from './finish-person-merge'
   import { isPersonMergePermissionCached } from './person-merge-permission'
 
   export let value: Person
@@ -121,11 +121,30 @@
     result = r
   }
 
+  let mergeError: string | undefined = undefined
+
   async function merge(): Promise<void> {
-    if (sourcePerson === undefined || targetPerson === undefined) return
-    if (sourcePerson._id === targetPerson._id) return
+    const source = sourcePerson
+    const target = targetPerson
+    if (source === undefined || target === undefined) return
+    if (source._id === target._id) return
     if (!canMergeGlobalPersons) return
 
+    mergeError = undefined
+    const err = await runPersonMerge(async () => {
+      await mergeInto(source, target)
+    })
+    if (err !== undefined) {
+      // The source is kept, so the merge can be retried after the cause is fixed.
+      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+      mergeError = err instanceof Error ? err.message : String(err)
+      return
+    }
+
+    dispatch('close')
+  }
+
+  async function mergeInto(sourcePerson: Person, targetPerson: Person): Promise<void> {
     if (Object.keys(update).length > 0) {
       const _update = { ...update }
       if (_update.avatar !== undefined || sourcePerson.avatar === targetPerson.avatar) {
@@ -174,9 +193,9 @@
     }
     await ops.commit()
     await updateAllRefs(client, sourcePerson, targetPerson)
-    await finishPersonMerge(client, accountClient, sourcePerson, targetPerson)
-
-    dispatch('close')
+    await finishPersonMerge(client, accountClient, sourcePerson, targetPerson, {
+      removeSource: !hierarchy.hasMixin(sourcePerson, contact.mixin.Employee)
+    })
   }
 
   function select(field: string, targetValue: boolean): void {
@@ -284,32 +303,28 @@
       if (attr.name === '_id') {
         continue
       }
-      try {
-        const descendants = h.getDescendants(attr.attributeOf)
-        for (const d of descendants) {
-          if (h.isDerived(d, core.class.Tx) || h.isDerived(d, core.class.BenchmarkDoc)) {
-            continue
-          }
-          if (h.findDomain(d) !== undefined) {
-            while (true) {
-              const values = await client.findAll(d, { [attr.name]: sourceAccount._id }, { limit: 100 })
-              if (values.length === 0) {
-                break
-              }
+      // A failure stops the merge before the source is removed; merge() reports it.
+      const descendants = h.getDescendants(attr.attributeOf)
+      for (const d of descendants) {
+        if (h.isDerived(d, core.class.Tx) || h.isDerived(d, core.class.BenchmarkDoc)) {
+          continue
+        }
+        if (h.findDomain(d) !== undefined) {
+          while (true) {
+            const values = await client.findAll(d, { [attr.name]: sourceAccount._id }, { limit: 100 })
+            if (values.length === 0) {
+              break
+            }
 
-              const builder = client.apply(sourceAccount._id)
-              for (const v of values) {
-                await updateAttribute(builder, v, d, { key: attr.name, attr }, targetAccount._id)
-              }
-              if (builder.txes.length > 0) {
-                await builder.commit()
-              }
+            const builder = client.apply(sourceAccount._id)
+            for (const v of values) {
+              await updateAttribute(builder, v, d, { key: attr.name, attr }, targetAccount._id)
+            }
+            if (builder.txes.length > 0) {
+              await builder.commit()
             }
           }
         }
-      } catch (err: any) {
-        Analytics.handleError(err)
-        throw err
       }
     }
     const arrs = (await client.findAll(core.class.Attribute, { 'type._class': core.class.ArrOf })).filter((it) => {
@@ -508,6 +523,8 @@
         <Spinner size="medium" />
       {:else if !canMergeGlobalPersons}
         <span class="error"><Label label={contact.string.CannotMerge} /></span>
+      {:else if mergeError !== undefined}
+        <span class="error"><Label label={contact.string.MergeFailed} params={{ error: mergeError }} /></span>
       {:else if visibleResultSocialIdentities.length > 0}
         <span class="label"><Label label={contact.string.SocialIds} /></span>
         {#each visibleResultSocialIdentities as socialIdentity}

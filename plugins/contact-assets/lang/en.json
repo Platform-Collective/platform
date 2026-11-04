@@ -126,6 +126,7 @@
     "Guest": "Guest",
     "Deleted": "Deleted",
     "CannotMerge": "Error: Cannot merge global persons",
+    "MergeFailed": "The merge did not complete and the source contact was kept: {error}",
     "AutoTranslation": "Auto translation",
     "TranslateTo": "Translate to",
     "DontTranslate": "Don't translate",

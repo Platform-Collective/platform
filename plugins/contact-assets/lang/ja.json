@@ -126,6 +126,7 @@
     "Guest": "ゲスト",
     "Deleted": "削除済み",
     "CannotMerge": "エラー：グローバル個人は統合できません",
+    "MergeFailed": "統合は完了せず、統合元の連絡先は保持されました: {error}",
     "AutoTranslation": "自動翻訳",
     "TranslateTo": "翻訳先",
     "DontTranslate": "翻訳しない",

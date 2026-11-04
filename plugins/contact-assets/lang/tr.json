@@ -126,6 +126,7 @@
     "Guest": "Misafir",
     "Deleted": "Silindi",
     "CannotMerge": "Hata: Global kişiler birleştirilemez",
+    "MergeFailed": "Birleştirme tamamlanmadı ve kaynak kişi korundu: {error}",
     "AutoTranslation": "Otomatik çeviri",
     "TranslateTo": "Şuna çevir",
     "DontTranslate": "Çevirme",

@@ -126,6 +126,7 @@
     "Guest": "访客",
     "Deleted": "已删除",
     "CannotMerge": "错误：无法合并全局人员",
+    "MergeFailed": "合并未完成，已保留源联系人：{error}",
     "AutoTranslation": "自动翻译",
     "TranslateTo": "翻译为",
     "DontTranslate": "不翻译",

@@ -3,7 +3,7 @@
 import type { AccountClient } from '@hcengineering/account-client'
 import type { AvatarType, Person } from '@hcengineering/contact'
 import type { Class, Doc, PersonId, PersonUuid, Ref, Space, TxOperations } from '@hcengineering/core'
-import { finishPersonMerge } from './finish-person-merge'
+import { finishPersonMerge, runPersonMerge } from './finish-person-merge'
 
 function createPerson (id: string, personUuid?: PersonUuid): Person {
   return {
@@ -44,7 +44,7 @@ describe('finishPersonMerge', () => {
     const client: Pick<TxOperations, 'remove'> = { remove }
     const accountClient: Pick<AccountClient, 'mergeSpecifiedPersons'> = { mergeSpecifiedPersons }
 
-    await finishPersonMerge(client, accountClient, source, target)
+    await finishPersonMerge(client, accountClient, source, target, { removeSource: true })
 
     expect([...persons.values()]).toEqual([target])
     expect(persons.get(target._id)?.city).toBe('Merged location')
@@ -66,7 +66,7 @@ describe('finishPersonMerge', () => {
       throw error
     })
 
-    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target)).rejects.toThrow(error)
+    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true })).rejects.toThrow(error)
 
     expect(remove).not.toHaveBeenCalled()
   })
@@ -86,7 +86,7 @@ describe('finishPersonMerge', () => {
     })
     const mergeSpecifiedPersons = jest.fn<Promise<void>, []>().mockResolvedValue(undefined)
     const completed = jest.fn()
-    const merge = finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target).then(completed)
+    const merge = finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true }).then(completed)
 
     await Promise.resolve()
     expect(remove).toHaveBeenCalledWith(source)
@@ -106,7 +106,7 @@ describe('finishPersonMerge', () => {
     })
     const mergeSpecifiedPersons = jest.fn<Promise<void>, []>().mockResolvedValue(undefined)
 
-    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target)).rejects.toThrow(error)
+    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true })).rejects.toThrow(error)
   })
 
   it('rejects a self merge without changing either service', async () => {
@@ -114,11 +114,45 @@ describe('finishPersonMerge', () => {
     const remove = jest.fn(async () => ({}))
     const mergeSpecifiedPersons = jest.fn<Promise<void>, []>().mockResolvedValue(undefined)
 
-    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, source)).rejects.toThrow(
+    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, source, { removeSource: true })).rejects.toThrow(
       'Cannot merge a person with itself'
     )
 
     expect(remove).not.toHaveBeenCalled()
     expect(mergeSpecifiedPersons).not.toHaveBeenCalled()
+  })
+
+  it('keeps an employee source after the global merge', async () => {
+    const source = createPerson('source', sourceUuid)
+    const target = createPerson('target', targetUuid)
+    const remove = jest.fn(async () => ({}))
+    const mergeSpecifiedPersons = jest.fn<Promise<void>, []>().mockResolvedValue(undefined)
+
+    await finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: false })
+
+    expect(mergeSpecifiedPersons).toHaveBeenCalledWith(targetUuid, sourceUuid)
+    expect(remove).not.toHaveBeenCalled()
+  })
+})
+
+describe('runPersonMerge', () => {
+  it('reports a failed step instead of rejecting', async () => {
+    const error = new Error('Reference update failed')
+    const later = jest.fn()
+
+    const result = await runPersonMerge(async () => {
+      throw error
+    })
+    later()
+
+    expect(result).toBe(error)
+    expect(later).toHaveBeenCalled()
+  })
+
+  it('reports success as undefined', async () => {
+    const steps = jest.fn(async () => {})
+
+    expect(await runPersonMerge(steps)).toBeUndefined()
+    expect(steps).toHaveBeenCalledTimes(1)
   })
 })
