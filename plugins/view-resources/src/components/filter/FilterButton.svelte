@@ -23,6 +23,7 @@
     navigationFilterStore,
     selectedFilterStore,
     setFilters,
+    takeNavigationFilters,
     updateFilter
   } from '../../filter'
   import { createFilterPersistence } from '../../filter-persistence'
@@ -42,14 +43,8 @@
 
   $: if (_class !== undefined) {
     const pending = $navigationFilterStore
-    const override =
-      pending !== undefined &&
-      (pending._class === undefined || pending._class === _class) &&
-      pending.location.path.every((segment, index) => segment === $resolvedLocationStore.path[index])
-        ? pending.filters
-        : undefined
+    const override = pending === undefined ? undefined : takeNavigationFilters($resolvedLocationStore, _class)
     if (override !== undefined) {
-      navigationFilterStore.set(undefined)
       selectedFilterStore.set(undefined)
     }
     persistence.load(

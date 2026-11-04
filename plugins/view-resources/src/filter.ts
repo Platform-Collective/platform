@@ -12,7 +12,7 @@ import core, {
 } from '@hcengineering/core'
 import { getResource } from '@hcengineering/platform'
 import { createQuery, getClient, type LiveQuery } from '@hcengineering/presentation'
-import { getCurrentResolvedLocation, type AnyComponent, type Location } from '@hcengineering/ui'
+import { getCurrentResolvedLocation, resolvedLocationStore, type AnyComponent, type Location } from '@hcengineering/ui'
 import { type Filter, type FilterMode, type FilteredView, type KeyFilter } from '@hcengineering/view'
 import { get, writable } from 'svelte/store'
 import view from './plugin'
@@ -37,9 +37,42 @@ export interface NavigationFilters {
 
 export const navigationFilterStore = writable<NavigationFilters | undefined>()
 
-/** Applies filters immediately, or queues them for the destination location and class. */
+// Whether the destination of the queued navigation filters has been shown.
+let navigationTargetReached = false
+
+function isNavigationTarget (target: Location, current: Location): boolean {
+  return target.path.every((segment, index) => segment === current.path[index])
+}
+
+/** Takes the queued navigation filters if they are meant for this view and class. */
+export function takeNavigationFilters (location: Location, _class: Ref<Class<Doc>>): Filter[] | undefined {
+  const pending = get(navigationFilterStore)
+  if (pending === undefined) return undefined
+  if (pending._class !== undefined && pending._class !== _class) return undefined
+  if (!isNavigationTarget(pending.location, location)) return undefined
+  navigationFilterStore.set(undefined)
+  return pending.filters
+}
+
+// Navigation filters that no view picked up are dropped once their destination is left,
+// so they cannot surface on a later visit.
+resolvedLocationStore.subscribe((location) => {
+  const pending = get(navigationFilterStore)
+  if (pending === undefined) return
+  if (isNavigationTarget(pending.location, location)) {
+    navigationTargetReached = true
+  } else if (navigationTargetReached) {
+    navigationFilterStore.set(undefined)
+  }
+})
+
+/**
+ * Applies filters immediately, or queues them for the destination location and class.
+ * Queued filters are shown once by that view and do not replace its saved draft.
+ */
 export function setFilters (filters: Filter[], location?: Location, _class?: Ref<Class<Doc>>): void {
   if (location !== undefined) {
+    navigationTargetReached = isNavigationTarget(location, get(resolvedLocationStore))
     navigationFilterStore.set({ location, filters, _class })
     return
   }

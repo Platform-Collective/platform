@@ -23,17 +23,26 @@ function createStorage (): {
 }
 
 describe('filter persistence', () => {
-  it('reuses legacy workspace/application/class keys without growing per visited path', () => {
-    expect(key).toBe('filter/workbench/workspace/trackerissue')
-    expect(makeFilterStorageKey(location)).toBe('filter/workbench/workspace/tracker')
+  it('keeps a separate draft per view, workspace and class', () => {
+    expect(key).toBe('filter/workbench/workspace/tracker/all-issuesissue')
     expect(otherKey).not.toBe(key)
+    expect(makeFilterStorageKey({ path: [...location.path.slice(0, 3), 'my-issues'] }, 'issue')).not.toBe(key)
+    expect(makeFilterStorageKey({ path: [...location.path.slice(0, 3), 'project', 'issues'] }, 'issue')).not.toBe(
+      makeFilterStorageKey({ path: [...location.path.slice(0, 3), 'other-project', 'issues'] }, 'issue')
+    )
     expect(makeFilterStorageKey({ path: ['workbench', 'other', 'tracker', 'all-issues'] }, 'issue')).not.toBe(key)
     expect(makeFilterStorageKey(location, 'task')).not.toBe(key)
-    expect(makeFilterStorageKey({ path: [...location.path, 'child'] }, 'issue')).toBe(key)
-    expect(makeFilterStorageKey({ path: [...location.path.slice(0, 3), 'my-issues'] }, 'issue')).toBe(key)
     expect(makeFilterStorageKey({ path: ['workbench', 'a/b', 'tracker'] }, 'issue')).toBe(
       'filter/workbench/a%2Fb/trackerissue'
     )
+  })
+
+  it('does not create a draft entry for a view that never had filters', () => {
+    const storage = createStorage()
+    const persistence = createFilterPersistence(storage, jest.fn())
+    persistence.load(key, false)
+    persistence.save(key, [], false)
+    expect(storage.setItem).not.toHaveBeenCalled()
   })
 
   it('ignores transient query and fragment without mutating the location', () => {
@@ -131,34 +140,37 @@ describe('filter persistence', () => {
     expect(restore).toHaveBeenLastCalledWith(filters)
   })
 
-  it.each(['before restore', 'after restore', 'after remount'])('applies navigation filters %s', (timing) => {
-    const storage = createStorage()
-    const restore = jest.fn()
-    let persistence = createFilterPersistence(storage, restore)
-    persistence.load(otherKey, false)
-    if (timing !== 'before restore') persistence.load(key, false)
-    if (timing === 'after remount') persistence = createFilterPersistence(storage, restore)
-    persistence.load(key, false, filters)
-    expect(restore).toHaveBeenLastCalledWith(filters)
-    expect(storage.getItem(key)).toBe(JSON.stringify(filters))
-    restore.mockClear()
-    persistence.load(key, false)
-    expect(restore).not.toHaveBeenCalled()
-    createFilterPersistence(storage, restore).load(key, false)
-    expect(restore).toHaveBeenLastCalledWith(filters)
-  })
+  it.each(['before restore', 'after restore', 'after remount'])(
+    'applies navigation filters %s without replacing the saved draft',
+    (timing) => {
+      const storage = createStorage()
+      const draft = [{ ...filters[0], value: ['draft'] }] as unknown as Filter[]
+      storage.setItem(key, JSON.stringify(draft))
+      storage.setItem.mockClear()
+      const restore = jest.fn()
+      let persistence = createFilterPersistence(storage, restore)
+      persistence.load(otherKey, false)
+      if (timing !== 'before restore') persistence.load(key, false)
+      if (timing === 'after remount') persistence = createFilterPersistence(storage, restore)
+      persistence.load(key, false, filters)
+      expect(restore).toHaveBeenLastCalledWith(filters)
+      expect(storage.setItem).not.toHaveBeenCalled()
+      restore.mockClear()
+      persistence.load(key, false)
+      expect(restore).not.toHaveBeenCalled()
+      createFilterPersistence(storage, restore).load(key, false)
+      expect(restore).toHaveBeenLastCalledWith(draft)
+    }
+  )
 
-  it('lets navigation override a saved view and persists an explicit navigation reset', () => {
+  it('lets navigation override a saved view without touching the saved draft', () => {
     const storage = createStorage()
     const restore = jest.fn()
     const persistence = createFilterPersistence(storage, restore)
     persistence.load(key, true)
     persistence.load(key, true, filters)
     expect(restore).toHaveBeenLastCalledWith(filters)
-    expect(storage.getItem(key)).toBe(JSON.stringify(filters))
-    persistence.load(key, false, [])
-    createFilterPersistence(storage, restore).load(key, false)
-    expect(restore).toHaveBeenLastCalledWith([])
+    expect(storage.getItem(key)).toBeNull()
   })
 
   it.each(['{invalid', '{}', 'null'])('falls back to no filters for invalid storage: %s', (value) => {

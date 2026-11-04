@@ -3,8 +3,9 @@
 import type { Location } from '@hcengineering/ui'
 import type { Filter } from '@hcengineering/view'
 
+/** Unsaved filters are kept per view: the whole location path (without query and fragment) and class. */
 export function makeFilterStorageKey (location: Location, filterClass?: string): string {
-  return `filter/${location.path.slice(0, 3).map(encodeURIComponent).join('/')}${filterClass ?? ''}`
+  return `filter/${location.path.map(encodeURIComponent).join('/')}${filterClass ?? ''}`
 }
 
 export interface FilterPersistence {
@@ -12,7 +13,7 @@ export interface FilterPersistence {
   save: (key: string, filters: Filter[], savedView: boolean) => void
 }
 
-/** Keeps unsaved filters scoped to the current application and class. */
+/** Keeps unsaved filters scoped to the current view and class. */
 export function createFilterPersistence (
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   restore: (filters: Filter[]) => void
@@ -43,12 +44,13 @@ export function createFilterPersistence (
       } finally {
         restoring = false
       }
-      if (override !== undefined) this.save(key, override, false)
     },
     save (key, filters, savedView) {
       // Location changes can arrive before the component restores its new filters.
       if (restoring || key !== activeKey || savedView) return
       try {
+        // Views that never had filters do not need an entry.
+        if (filters.length === 0 && storage.getItem(key) === null) return
         storage.setItem(key, JSON.stringify(filters))
       } catch {
         // Filtering still works when storage is unavailable or its quota is exceeded.
