@@ -4,7 +4,7 @@ import type { Class, Doc, Ref } from '@hcengineering/core'
 import type { Location } from '@hcengineering/ui'
 import type { Filter } from '@hcengineering/view'
 import { resolvedLocationStore } from '@hcengineering/ui'
-import { get, type Writable } from 'svelte/store'
+import { get } from 'svelte/store'
 import { filterStore, navigationFilterStore, setFilters, takeNavigationFilters } from '../filter'
 
 jest.mock('@hcengineering/core', () => ({}))
@@ -24,7 +24,7 @@ const filters = [
 ] as unknown as Filter[]
 
 describe('navigation filter requests', () => {
-  const resolved = resolvedLocationStore as unknown as Writable<Location>
+  const resolved = resolvedLocationStore
 
   beforeEach(() => {
     filterStore.set([])
