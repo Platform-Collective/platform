@@ -21,6 +21,7 @@ import core, {
   reduceCalls,
   type Ref,
   type Tx,
+  type TxApplyIf,
   type TxRemoveDoc
 } from '@hcengineering/core'
 import notification, { notificationId } from '@hcengineering/notification'
@@ -351,9 +352,12 @@ function onTabShown (tabId: Ref<WorkbenchTab> | undefined): void {
 export function watchTabDocuments (): () => void {
   const listener = (txes: Tx[]): void => {
     const removed = new Set<Ref<Doc>>()
-    for (const tx of txes) {
+    const collect = (tx: Tx): void => {
       if (tx._class === core.class.TxRemoveDoc) removed.add((tx as TxRemoveDoc<Doc>).objectId)
+      // Deletions made through apply() arrive wrapped.
+      if (tx._class === core.class.TxApplyIf) (tx as TxApplyIf).txes.forEach(collect)
     }
+    txes.forEach(collect)
     if (removed.size > 0) onRemovedDocuments(removed)
   }
   addTxListener(listener)

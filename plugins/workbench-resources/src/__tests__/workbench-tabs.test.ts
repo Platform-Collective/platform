@@ -17,7 +17,7 @@ jest.mock(
     default: {
       space: { Workspace: 'workspace' },
       metadata: { DisablePermissions: 'permissions' },
-      class: { TxRemoveDoc: 'core:class:TxRemoveDoc' }
+      class: { TxRemoveDoc: 'core:class:TxRemoveDoc', TxApplyIf: 'core:class:TxApplyIf' }
     },
     concatLink: (base: string, path: string) => `${base}/${path}`,
     getCurrentAccount: () => ({ uuid: 'account' }),
@@ -374,6 +374,21 @@ describe('tabs of removed documents', () => {
     expect(client.update).not.toHaveBeenCalled()
     expect(client.remove).not.toHaveBeenCalled()
     expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('sees removals made through apply()', async () => {
+    resolver.mockImplementation(async (loc) => (loc.path.length === 3 ? { name: 'Home' } : documentData))
+    const tab = makeTab('active')
+    tabsStore.set([tab])
+    tabIdStore.set(tab._id)
+    jest.mocked(getCurrentLocation).mockReturnValue({ path: ['workbench', 'workspace', 'app', 'document'] })
+    await getTabDataByLocation(getCurrentLocation())
+
+    const inner = { _class: 'core:class:TxRemoveDoc', objectId }
+    must(listener)([{ _class: 'core:class:TxApplyIf', txes: [inner] } as unknown as Tx])
+    await flush()
+
+    expect(client.update).toHaveBeenCalledWith(tab, { location: 'workbench/workspace/app', name: 'Home' })
   })
 
   it('stops listening when the workbench is destroyed', () => {
