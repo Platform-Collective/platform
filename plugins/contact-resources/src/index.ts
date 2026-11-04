@@ -263,12 +263,9 @@ function searchMemberEmployees (search: string, filter: ObjectSearchOptions): Ob
     employees.push(employee)
   }
   const hierarchy = getClient().getHierarchy()
-  return rankByName(
-    employees,
-    search,
-    (it) => [getName(hierarchy, it), it.name, it.displayName ?? ''],
-    memberSearchLimit
-  ).map(toObjectSearchResult)
+  return rankByName(employees, search, (it) => [getName(hierarchy, it), it.name], memberSearchLimit).map(
+    toObjectSearchResult
+  )
 }
 
 async function queryEmployee (

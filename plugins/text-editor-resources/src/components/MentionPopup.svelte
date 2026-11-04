@@ -133,10 +133,7 @@
     members = undefined
   }
 
-  async function getMemberSearchItems(
-    localQuery: string,
-    members: AccountUuid[] | undefined
-  ): Promise<SearchItem[]> {
+  async function getMemberSearchItems(localQuery: string, members: AccountUuid[] | undefined): Promise<SearchItem[]> {
     if (members === undefined || members.length === 0 || employeeSearchCategory === undefined) return []
 
     // Resolved from the employees already loaded on the client, without server queries.
