@@ -23,6 +23,7 @@
     getCurrentAccount,
     hasAccountRole,
     Ref,
+    type RefTo,
     SortingOrder,
     Space
   } from '@hcengineering/core'
@@ -111,6 +112,7 @@
   import workbench from '../plugin'
   import {
     buildNavModel,
+    currentWorkspaceHasInboxUnread,
     hasCrossWorkspaceUnread,
     isAllowedToRole,
     logOut,
@@ -319,26 +321,102 @@
     hasNotificationsFn = f
   })
 
+  let checkingWorkspaceUnread = false
+  let recheckWorkspaceUnread = false
+  let isDestroyed = false
+
+  // Same criteria as the Inbox: the notification context must exist, activity notifications
+  // need their message and must be among the activity notifications the Inbox has loaded.
+  async function hasUnreadVisibleInInbox (): Promise<boolean> {
+    const query = {
+      user: account.uuid,
+      isViewed: false,
+      archived: false,
+      '$lookup.docNotifyContext._id': { $exists: true }
+    } as any
+    const common = await client.findOne(notification.class.CommonInboxNotification, query, {
+      lookup: { docNotifyContext: notification.class.DocNotifyContext },
+      projection: { _id: 1 }
+    })
+    if (common !== undefined) return true
+
+    const loaded = get(inboxClient.activityInboxNotifications)
+    const oldestLoaded =
+      get(inboxClient.hasMoreInboxNotifications) && loaded.length > 0 ? loaded[loaded.length - 1].createdOn : undefined
+    const attachedTo = client.getHierarchy().getAttribute(notification.class.ActivityInboxNotification, 'attachedTo')
+    const messageClass = (attachedTo.type as RefTo<Doc>).to
+    const activity = await client.findOne(
+      notification.class.ActivityInboxNotification,
+      {
+        ...query,
+        '$lookup.attachedTo._id': { $exists: true },
+        ...(oldestLoaded !== undefined ? { createdOn: { $gte: oldestLoaded } } : {})
+      },
+      {
+        lookup: { attachedTo: messageClass, docNotifyContext: notification.class.DocNotifyContext },
+        projection: { _id: 1 }
+      }
+    )
+    return activity !== undefined
+  }
+
+  // The local inbox may be briefly empty while loading; confirm in the DB before clearing.
+  async function clearWorkspaceUnreadIfNoneInDb (): Promise<void> {
+    if (checkingWorkspaceUnread) {
+      recheckWorkspaceUnread = true
+      return
+    }
+    checkingWorkspaceUnread = true
+    try {
+      const hasUnread = await hasUnreadVisibleInInbox()
+      // A notification may have arrived while the check was in flight.
+      if (isDestroyed || hasUnread || hasInboxNotifications) return
+      clearedWorkspaceUnread = true
+      await reportWorkspaceRead()
+    } catch (err) {
+      console.error('Failed to check unread inbox notifications', err)
+    } finally {
+      checkingWorkspaceUnread = false
+      // Re-run once for a trigger that arrived during the check.
+      if (recheckWorkspaceUnread) {
+        recheckWorkspaceUnread = false
+        if (!isDestroyed && !hasInboxNotifications) void clearWorkspaceUnreadIfNoneInDb()
+      }
+    }
+  }
+
   // Wait for the initial inbox sync ($inboxLoadedStore) before acting on the result:
   // right after opening a workspace inboxNotificationsByContextStore starts out empty,
-  // which is indistinguishable from "confirmed no unread" and would otherwise clear the
-  // cross-workspace unread flag before the real data has even loaded.
-  $: if ($inboxLoadedStore) {
-    void hasNotificationsFn?.($inboxNotificationsByContextStore).then((res) => {
-      if (!res && !clearedWorkspaceUnread) {
-        // Local inbox is fully read: clear this workspace's cross-workspace unread
-        // flag. Fires both on the has-unread -> all-read transition and once on
-        // load when the inbox is already read (e.g. the items were read on another
-        // device and the server flag is stale-true). Raising it back to true is
-        // handled server-side when a new notification arrives.
-        clearedWorkspaceUnread = true
-        void reportWorkspaceRead()
-      } else if (res) {
-        clearedWorkspaceUnread = false
-      }
-      hasInboxNotifications = res
-    })
+  // which is indistinguishable from "confirmed no unread".
+  // Kept out of the reactive statement below, so the flags it updates don't re-trigger it.
+  function onInboxUnreadState (res: boolean): void {
+    if (isDestroyed) return
+    hasInboxNotifications = res
+    currentWorkspaceHasInboxUnread.set(res)
+    if (res) {
+      clearedWorkspaceUnread = false
+    } else if (!clearedWorkspaceUnread) {
+      // Raising the flag back to true is handled server-side when a new notification arrives.
+      void clearWorkspaceUnreadIfNoneInDb()
+    }
   }
+
+  $: if ($inboxLoadedStore) {
+    void hasNotificationsFn?.($inboxNotificationsByContextStore).then(onInboxUnreadState)
+  }
+
+  // The server may raise hasUnread after we cleared it; re-check on workspace list refresh.
+  const unsubscribeWorkspacesUnread = workspacesStore.subscribe((wss) => {
+    const serverUnread = wss.find((ws) => ws.url === workspaceId)?.hasUnread === true
+    if (!serverUnread || !get(inboxLoadedStore) || hasInboxNotifications || isDestroyed) return
+    void clearWorkspaceUnreadIfNoneInDb()
+  })
+
+  onDestroy(() => {
+    isDestroyed = true
+    unsubscribeWorkspacesUnread()
+    currentWorkspaceHasInboxUnread.set(false)
+  })
 
   let hasNewInboxNotifications = false
 

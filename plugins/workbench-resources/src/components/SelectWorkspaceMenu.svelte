@@ -43,7 +43,7 @@
   import { NotifyMarker } from '@hcengineering/notification-resources'
   import type { PersonRating } from '@hcengineering/rating'
   import ratingPlugin from '@hcengineering/rating'
-  import { workspacesStore } from '../utils'
+  import { currentWorkspaceHasInboxUnread, workspacesStore } from '../utils'
   // import Drag from './icons/Drag.svelte'
 
   onMount(() => {
@@ -224,7 +224,7 @@
                 <span class="label overflow-label flex flex-grow flex-between">
                   <span class="flex-row-center">
                     {wsName}
-                    {#if ws.hasUnread === true && $resolvedLocationStore.path[1] !== ws.url}
+                    {#if $resolvedLocationStore.path[1] === ws.url ? $currentWorkspaceHasInboxUnread : ws.hasUnread === true}
                       <div class="ml-1">
                         <NotifyMarker kind={'simple'} size={'xx-small'} />
                       </div>
