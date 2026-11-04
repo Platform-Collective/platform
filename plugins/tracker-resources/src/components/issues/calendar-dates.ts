@@ -63,3 +63,32 @@ export function getCalendarQueryWindow (date: Date): IssueCalendarRange {
   const month = date.getMonth()
   return { start: new Date(year, month, 1 - 7).getTime(), end: new Date(year, month, 1 + 42).getTime() }
 }
+
+/** Key of the local day that contains `date`, as used by {@link groupIssuesByCalendarDay}. */
+export function getCalendarDayKey (date: Date): number {
+  return startOfDay(date.getTime())
+}
+
+/**
+ * Issues per local day inside `window`, keyed by {@link getCalendarDayKey}. Built once per issue list so
+ * the grid cells do not each filter the whole list. Ranges are clipped to the window; order is kept.
+ */
+export function groupIssuesByCalendarDay<T extends IssueCalendarDates> (
+  issues: readonly T[],
+  window: IssueCalendarRange
+): Map<number, T[]> {
+  const result = new Map<number, T[]>()
+  for (const issue of issues) {
+    const range = getIssueCalendarRange(issue)
+    if (range === undefined) continue
+    const day = new Date(Math.max(range.start, startOfDay(window.start)))
+    while (day.getTime() <= range.end && day.getTime() < window.end) {
+      const key = day.getTime()
+      const list = result.get(key)
+      if (list === undefined) result.set(key, [issue])
+      else list.push(issue)
+      day.setDate(day.getDate() + 1)
+    }
+  }
+  return result
+}

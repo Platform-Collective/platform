@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import {
+  getCalendarDayKey,
   getCalendarQueryWindow,
+  groupIssuesByCalendarDay,
   getIssueCalendarRange,
   isIssueOnCalendarDay,
   moveCalendarMonth,
@@ -114,5 +116,40 @@ describe('calendar query window', () => {
       start: date(2026, 2, 22, 0).getTime(),
       end: date(2026, 4, 12, 0).getTime()
     })
+  })
+})
+
+describe('issues grouped by calendar day', () => {
+  const window = getCalendarQueryWindow(date(2026, 3, 15))
+
+  function issuesOn (groups: Map<number, Array<{ id: string }>>, day: Date): string[] {
+    return (groups.get(getCalendarDayKey(day)) ?? []).map((issue) => issue.id)
+  }
+
+  it('matches isIssueOnCalendarDay for every cell of the grid, including a DST change', () => {
+    const issues = [
+      { id: 'due', dueDate: date(2026, 3, 10, 18).getTime() },
+      { id: 'range', startDate: date(2026, 3, 27).getTime(), dueDate: date(2026, 4, 2).getTime() },
+      { id: 'reversed', startDate: date(2026, 3, 20).getTime(), dueDate: date(2026, 3, 18).getTime() },
+      { id: 'undated', dueDate: null }
+    ]
+    const groups = groupIssuesByCalendarDay(issues, window)
+    for (let i = 0; i < 49; i++) {
+      const day = new Date(window.start)
+      day.setDate(day.getDate() + i)
+      const expected = issues.filter((issue) => isIssueOnCalendarDay(issue, day)).map((issue) => issue.id)
+      expect(issuesOn(groups, day)).toEqual(expected)
+    }
+  })
+
+  it('clips long ranges to the visible window and keeps the input order per day', () => {
+    const issues = [
+      { id: 'b', startDate: date(2025, 1, 1).getTime(), dueDate: date(2027, 1, 1).getTime() },
+      { id: 'a', dueDate: date(2026, 3, 15).getTime() }
+    ]
+    const groups = groupIssuesByCalendarDay(issues, window)
+    expect(issuesOn(groups, date(2026, 3, 15))).toEqual(['b', 'a'])
+    expect(groups.size).toBe(49)
+    expect(groups.has(getCalendarDayKey(new Date(window.end)))).toBe(false)
   })
 })

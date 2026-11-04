@@ -4,7 +4,7 @@
   import { mergeQueries, SortingOrder, type DocumentQuery, type Ref } from '@hcengineering/core'
   import { createQuery, getClient } from '@hcengineering/presentation'
   import type { Issue, Project } from '@hcengineering/tracker'
-  import ui, { Button, IconBack, IconForward, Label, MonthCalendar, showPanel } from '@hcengineering/ui'
+  import ui, { Button, IconBack, IconForward, Label, MonthCalendar, showPanel, themeStore } from '@hcengineering/ui'
   import {
     claimResultCountOwner,
     releaseResultCountOwner,
@@ -15,8 +15,9 @@
   import tracker from '../../plugin'
   import { canEditIssue, canEditIssuesBatch } from '../../utils'
   import {
+    getCalendarDayKey,
     getCalendarQueryWindow,
-    isIssueOnCalendarDay,
+    groupIssuesByCalendarDay,
     moveCalendarMonth,
     moveIssueToCalendarDay
   } from './calendar-dates'
@@ -28,15 +29,19 @@
   const issueQuery = createQuery()
   const spanningQuery = createQuery()
   const withoutDueDateQuery = createQuery()
+  const totalQuery = createQuery()
   const resultCountOwner = claimResultCountOwner()
   let currentDate = new Date()
   let windowIssues: Issue[] = []
   let spanningIssues: Issue[] = []
   let issues: Issue[] = []
   let withoutDueDate = 0
+  // -1 until measured, so the search empty state cannot flash while loading.
+  let matchingTotal = -1
   let editable = new Map<Ref<Issue>, boolean>()
   let permissionGeneration = 0
   let draggedIssue: Ref<Issue> | undefined
+  let dropTargetDay: number | undefined
   let saving = false
   let updateFailed = false
 
@@ -72,10 +77,42 @@
     },
     { limit: 1, total: true }
   )
+  // The search empty state must reflect every matching issue, not only those in the visible grid: a match
+  // in another month or without a due date is still a result, and the grid itself always renders.
+  $: totalQuery.query(
+    tracker.class.Issue,
+    baseQuery,
+    (result) => {
+      matchingTotal = result.total
+    },
+    { limit: 1, total: true }
+  )
   $: issues = [...windowIssues, ...spanningIssues]
-  $: setResultCount(resultCountOwner, issues.length)
+  $: issuesByDay = groupIssuesByCalendarDay(issues, calendarWindow)
+  $: if (matchingTotal >= 0) setResultCount(resultCountOwner, matchingTotal)
   $: void updatePermissions(issues)
-  $: monthLabel = currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  $: monthLabel = currentDate.toLocaleDateString($themeStore.language, { month: 'long', year: 'numeric' })
+
+  function navigate(date: Date): void {
+    currentDate = date
+    updateFailed = false
+  }
+
+  function openIssue(issue: Issue): void {
+    if ($restrictionStore.disableNavigation) return
+    showPanel(tracker.component.EditIssue, issue._id, issue._class, 'content')
+  }
+
+  function dragLeave(event: DragEvent, date: Date): void {
+    const target = event.currentTarget as HTMLElement
+    if (event.relatedTarget instanceof Node && target.contains(event.relatedTarget)) return
+    if (dropTargetDay === getCalendarDayKey(date)) dropTargetDay = undefined
+  }
+
+  function endDrag(): void {
+    draggedIssue = undefined
+    dropTargetDay = undefined
+  }
 
   async function updatePermissions(values: Issue[]): Promise<void> {
     const generation = ++permissionGeneration
@@ -98,16 +135,17 @@
     event.dataTransfer.setData('text/plain', issue._id)
   }
 
-  function dragOver(event: DragEvent): void {
+  function dragOver(event: DragEvent, date: Date): void {
     if (draggedIssue === undefined || saving || $restrictionStore.readonly) return
     event.preventDefault()
+    dropTargetDay = getCalendarDayKey(date)
     if (event.dataTransfer !== null) event.dataTransfer.dropEffect = 'move'
   }
 
   async function dropIssue(event: DragEvent, date: Date): Promise<void> {
     event.preventDefault()
     const id = draggedIssue
-    draggedIssue = undefined
+    endDrag()
     if (id === undefined || saving || $restrictionStore.readonly) return
     const issue = issues.find((value) => value._id === id)
     if (issue === undefined) return
@@ -143,16 +181,25 @@
       icon={IconBack}
       kind="ghost"
       label={ui.string.Back}
-      on:click={() => (currentDate = moveCalendarMonth(currentDate, -1))}
+      on:click={() => {
+        navigate(moveCalendarMonth(currentDate, -1))
+      }}
     />
     <span class="month-label">{monthLabel}</span>
     <Button
       icon={IconForward}
       kind="ghost"
       label={ui.string.Next}
-      on:click={() => (currentDate = moveCalendarMonth(currentDate, 1))}
+      on:click={() => {
+        navigate(moveCalendarMonth(currentDate, 1))
+      }}
     />
-    <Button label={ui.string.Today} on:click={() => (currentDate = new Date())} />
+    <Button
+      label={ui.string.Today}
+      on:click={() => {
+        navigate(new Date())
+      }}
+    />
     {#if withoutDueDate > 0}
       <span class="without-dates">
         <Label label={tracker.string.CalendarWithoutDueDate} params={{ count: withoutDueDate }} />
@@ -167,24 +214,33 @@
       <div
         class="calendar-day"
         class:wrong-month={wrongMonth}
+        class:drop-target={draggedIssue !== undefined && dropTargetDay === getCalendarDayKey(date)}
         role="region"
-        aria-label={date.toLocaleDateString()}
-        on:dragover={dragOver}
+        aria-label={date.toLocaleDateString($themeStore.language)}
+        on:dragover={(event) => {
+          dragOver(event, date)
+        }}
+        on:dragleave={(event) => {
+          dragLeave(event, date)
+        }}
         on:drop={(event) => void dropIssue(event, date)}
       >
         <span class="day-number" class:today>{date.getDate()}</span>
         <div class="day-issues">
-          {#each issues.filter((issue) => isIssueOnCalendarDay(issue, date)) as issue (issue._id)}
+          {#each issuesByDay.get(getCalendarDayKey(date)) ?? [] as issue (issue._id)}
             <button
               class="calendar-issue"
               type="button"
               title={`${issue.identifier} ${issue.title}`}
               draggable={!saving && !$restrictionStore.readonly && editable.get(issue._id) === true}
-              disabled={$restrictionStore.disableNavigation}
-              on:dragstart={(event) => startDrag(event, issue)}
-              on:dragend={() => (draggedIssue = undefined)}
-              on:click|stopPropagation={() =>
-                showPanel(tracker.component.EditIssue, issue._id, issue._class, 'content')}
+              aria-disabled={$restrictionStore.disableNavigation}
+              on:dragstart={(event) => {
+                startDrag(event, issue)
+              }}
+              on:dragend={endDrag}
+              on:click|stopPropagation={() => {
+                openIssue(issue)
+              }}
             >
               <span class="issue-code">{issue.identifier}</span>
               {issue.title}
@@ -238,6 +294,12 @@
     opacity: 0.6;
   }
 
+  .drop-target {
+    outline: 2px dashed var(--primary-button-outline);
+    outline-offset: -2px;
+    background: var(--theme-button-hovered);
+  }
+
   .day-number {
     align-self: flex-end;
     padding: 0.125rem 0.375rem;
@@ -268,6 +330,10 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     cursor: pointer;
+
+    &[aria-disabled='true'] {
+      cursor: default;
+    }
 
     &:focus-visible {
       outline: 2px solid currentColor;

@@ -888,6 +888,8 @@ export function defineViewlets (builder: Builder): void {
     tracker.viewlet.IssueGantt
   )
 
+  // Calendar is registered after List for the same reason as Gantt: List stays
+  // the default viewlet when no preference is saved.
   builder.createDoc(
     view.class.Viewlet,
     core.space.Model,
