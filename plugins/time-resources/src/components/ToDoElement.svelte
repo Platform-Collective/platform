@@ -13,13 +13,11 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { Ref, SortingOrder, WithLookup } from '@hcengineering/core'
+  import { SortingOrder, WithLookup } from '@hcengineering/core'
   import { createQuery, getClient } from '@hcengineering/presentation'
   import tags from '@hcengineering/tags'
-  import { Component, IconMoreV2, Spinner, showPanel, Icon, ticker, tooltip } from '@hcengineering/ui'
-  import { showMenu, statusStore } from '@hcengineering/view-resources'
-  import task from '@hcengineering/task'
-  import tracker, { type Issue } from '@hcengineering/tracker'
+  import { Component, IconMoreV2, Spinner, showPanel, Icon, tooltip } from '@hcengineering/ui'
+  import { showMenu } from '@hcengineering/view-resources'
   import time, { ToDo, ToDoPriority, WorkSlot } from '@hcengineering/time'
   import plugin from '../plugin'
   import ToDoDuration from './ToDoDuration.svelte'
@@ -27,62 +25,16 @@
   import ToDoCheckbox from './ToDoCheckbox.svelte'
   import ToDoPriorityPresenter from './ToDoPriorityPresenter.svelte'
   import IssuePlanningTooltip from './IssuePlanningTooltip.svelte'
-  import { getIssuePlanningConstraints } from '../issue-planning'
+  import type { IssuePlanningConstraints } from '../issue-planning'
 
   export let todo: WithLookup<ToDo>
   export let planned: boolean = true
   export let isNew: boolean = false
+  /** Advisory blockers and start date of the attached issue, computed once for the whole list. */
+  export let constraints: IssuePlanningConstraints | undefined = undefined
 
   const client = getClient()
-  const issueQuery = createQuery()
-  const blockersQuery = createQuery()
-  let issue: Issue | undefined
-  let blockers: Issue[] = []
-
-  function updateIssue(value: ToDo): void {
-    if (
-      value.workslots === 0 &&
-      value.doneOn == null &&
-      client.getHierarchy().isDerived(value.attachedToClass, tracker.class.Issue)
-    ) {
-      if (
-        issueQuery.query(tracker.class.Issue, { _id: value.attachedTo as Ref<Issue> }, (res) => {
-          issue = res[0]
-        })
-      ) {
-        issue = undefined
-      }
-    } else {
-      issueQuery.unsubscribe()
-      issue = undefined
-    }
-  }
-
-  function updateBlockers(value: Issue | undefined): void {
-    const ids = (value?.blockedBy ?? []).map((relation) => relation._id as Ref<Issue>)
-    if (ids.length > 0) {
-      if (
-        blockersQuery.query(tracker.class.Issue, { _id: { $in: ids } }, (res) => {
-          blockers = res
-        })
-      ) {
-        blockers = []
-      }
-    } else {
-      blockersQuery.unsubscribe()
-      blockers = []
-    }
-  }
-
-  $: updateIssue(todo)
-  $: updateBlockers(issue)
-  $: resolvedStatuses = new Set(
-    $statusStore.array
-      .filter((status) => status.category === task.statusCategory.Won || status.category === task.statusCategory.Lost)
-      .map((status) => status._id)
-  )
-  $: constraints = getIssuePlanningConstraints(issue, blockers, resolvedStatuses, $ticker)
-  $: isUnavailable = constraints.blockers.length > 0 || constraints.startDate !== undefined
+  $: isUnavailable = constraints !== undefined
 
   let updating: Promise<any> | undefined = undefined
 
@@ -129,8 +81,7 @@
   class="hulyToDoLine-container"
   class:hovered
   class:isDone
-  class:isUnavailable
-  use:tooltip={{ component: isUnavailable ? IssuePlanningTooltip : undefined, props: constraints }}
+  use:tooltip={{ component: isUnavailable ? IssuePlanningTooltip : undefined, props: constraints ?? {} }}
   on:click|stopPropagation={open}
   on:contextmenu={onContextMenu}
 >
@@ -146,7 +97,10 @@
       {/if}
     </div>
     <WorkItemPresenter {todo} kind={'todo-line'} withoutSpace />
-    <div class="hulyToDoLine-title text-left font-regular-14 line-height-auto overflow-label">
+    <div
+      class="hulyToDoLine-title text-left font-regular-14 line-height-auto overflow-label"
+      class:unavailableTitle={isUnavailable}
+    >
       {todo.title}
     </div>
   </div>
@@ -176,8 +130,8 @@
 </button>
 
 <style lang="scss">
-  .isUnavailable {
+  /* Only the title is dimmed: the hint is advisory and the checkbox and menu stay fully usable. */
+  .unavailableTitle {
     opacity: 0.55;
-    filter: grayscale(1);
   }
 </style>
