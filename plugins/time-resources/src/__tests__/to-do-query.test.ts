@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import { findProperty } from '@hcengineering/core'
-import type { DocumentQuery, Ref, Space } from '@hcengineering/core'
+import type { DocumentQuery, Ref, Space, WithLookup } from '@hcengineering/core'
+import type { Event } from '@hcengineering/calendar'
 import type { ToDo } from '@hcengineering/time'
-import { filterVisibleToDos, getArchivedToDoQuery } from '../to-do-query'
+import { filterVisibleToDos, filterVisibleWorkSlots, getArchivedToDoQuery } from '../to-do-query'
 
 const ARCHIVED_PROJECT = 'archived-project' as Ref<Space>
 const ACTIVE_PROJECT = 'active-project' as Ref<Space>
@@ -54,5 +55,35 @@ describe('Planner archived project filtering', () => {
     getArchivedToDoQuery(query, [ARCHIVED_PROJECT])
 
     expect(query).toEqual({ doneOn: null, workslots: 0 })
+  })
+})
+
+describe('Planner calendar archived space filtering', () => {
+  function event (id: string, attachedSpace?: Ref<Space>, workSlot = true): WithLookup<Event> {
+    return {
+      _id: id,
+      _class: workSlot ? 'work-slot' : 'calendar-event',
+      $lookup: { attachedTo: todo(`todo-${id}`, { attachedSpace }) }
+    } as unknown as WithLookup<Event>
+  }
+
+  const archived = 'archived-document-space' as Ref<Space>
+  const slot = event('hidden-slot', archived)
+  const active = event('active-slot', ACTIVE_PROJECT)
+  const standalone = event('no-space-slot')
+  const regular = event('regular-event', archived, false)
+  const missing = { _id: 'missing-todo', _class: 'work-slot' } as unknown as WithLookup<Event>
+  const events = [slot, active, standalone, regular, missing]
+  const isWorkSlot = (value: Event): boolean => String(value._class) === 'work-slot'
+
+  it('hides slots whose todo belongs to any archived space, keeping ordinary calendar events', () => {
+    expect(filterVisibleWorkSlots(events, new Set([archived]), isWorkSlot)).toEqual([
+      active, standalone, regular, missing
+    ])
+  })
+
+  it('restores the original slots on unarchive without changing the events', () => {
+    expect(filterVisibleWorkSlots(events, new Set(), isWorkSlot)).toEqual(events)
+    expect(events[0]).toBe(slot)
   })
 })
