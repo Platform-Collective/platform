@@ -105,7 +105,9 @@ it('drops an unclaimed request when the router resolves a different destination'
   expect(takeNavigationFilters(location, issueClass)).toBeUndefined()
 })
 
-it.each([filters, []])('preserves navigation filters across destination controller handoff', (override) => {
+it.each([{ override: filters }, { override: [] }])(
+  'preserves navigation filters across destination controller handoff: %p',
+  ({ override }) => {
   navigationFilterStore.set(undefined)
   resolvedLocationStore.set({ path: ['workbench', 'workspace', 'tracker', 'my-issues'] })
   const key = makeFilterStorageKey(location, issueClass)
@@ -139,4 +141,5 @@ it.each([filters, []])('preserves navigation filters across destination controll
   resolvedLocationStore.set(location)
   createFilterPersistence(storage, restore).load(key, false, takeNavigationFilters(location, issueClass))
   expect(restore).toHaveBeenLastCalledWith(draft)
-})
+  }
+)
