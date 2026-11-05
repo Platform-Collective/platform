@@ -8,7 +8,7 @@ import type { Location } from '@hcengineering/ui'
 import { parseLinkId } from '@hcengineering/view-resources'
 import type { LocationData, WorkbenchTab } from '@hcengineering/workbench'
 import { get } from 'svelte/store'
-import { closeTab, getTabDataByLocation, getTabLocation, tabIdStore, tabsStore, watchTabDocuments } from '../workbench'
+import { currentTabStore, closeTab, getTabDataByLocation, getTabLocation, tabIdStore, tabsStore, watchTabDocuments } from '../workbench'
 import { locationWorkspaceStore } from '../utils'
 
 jest.mock(
@@ -156,6 +156,11 @@ const storage = {
 }
 
 beforeAll(() => {
+  // The shared mock snapshots derived stores. Keep this one live for location-sync assertions.
+  Object.defineProperty(currentTabStore, '_getValue', {
+    configurable: true,
+    value: () => get(tabsStore).find((tab) => tab._id === get(tabIdStore))
+  })
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
     value: { location: { protocol: 'https:', host: 'localhost' } }
