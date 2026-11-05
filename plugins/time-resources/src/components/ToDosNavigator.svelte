@@ -2,11 +2,11 @@
   import calendar from '@hcengineering/calendar'
   import { ScheduleNavSection } from '@hcengineering/calendar-resources'
   import { getCurrentEmployee } from '@hcengineering/contact'
-  import { Ref, getCurrentAccount } from '@hcengineering/core'
+  import core, { Ref, type Space, getCurrentAccount } from '@hcengineering/core'
   import { Asset, getMetadata, getResource, IntlString } from '@hcengineering/platform'
   import { createQuery } from '@hcengineering/presentation'
   import type { ToDo, WorkSlot } from '@hcengineering/time'
-  import tracker, { type Issue, type Project } from '@hcengineering/tracker'
+  import tracker, { type Issue } from '@hcengineering/tracker'
   import { NavFooter } from '@hcengineering/workbench-resources'
   import tagsPlugin, { TagElement as TagElementType } from '@hcengineering/tags'
   import ui, {
@@ -112,24 +112,24 @@
     }
   )
 
-  // Todos of archived projects are hidden in the planner, so they must not be counted either
-  const archivedProjectsQuery = createQuery()
+  // Todos of archived spaces are hidden in the planner, so they must not be counted either
+  const archivedSpacesQuery = createQuery()
   const archivedUnplannedQuery = createQuery()
   let archivedUnplannedTotal = 0
-  let archivedProjects: Ref<Project>[] = []
-  archivedProjectsQuery.query(
-    tracker.class.Project,
+  let archivedSpaces: Ref<Space>[] = []
+  archivedSpacesQuery.query(
+    core.class.Space,
     { archived: true },
     (result) => {
-      archivedProjects = result.map((project) => project._id)
+      archivedSpaces = result.map((project) => project._id)
     },
     { projection: { _id: 1 } }
   )
 
-  $: if (archivedProjects.length > 0) {
+  $: if (archivedSpaces.length > 0) {
     archivedUnplannedQuery.query(
       time.class.ToDo,
-      getArchivedToDoQuery({ user: currentUser, doneOn: null, workslots: 0 }, archivedProjects),
+      getArchivedToDoQuery({ user: currentUser, doneOn: null, workslots: 0 }, archivedSpaces),
       (res) => {
         archivedUnplannedTotal = res.total
       },
@@ -140,9 +140,8 @@
     archivedUnplannedTotal = 0
   }
 
-  $: counters.unplanned = Math.max(0, unplannedTotal - archivedUnplannedTotal)
-
   const counters: Record<string, number> = {}
+  $: counters.unplanned = Math.max(0, unplannedTotal - archivedUnplannedTotal)
   let viewDate = new Date(mode === 'date' ? currentDate : new Date())
   let todos: ToDo[] = []
   let issues: Issue[] = []

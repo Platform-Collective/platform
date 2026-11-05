@@ -15,8 +15,8 @@
 
 <script lang="ts">
   import { getCurrentEmployee } from '@hcengineering/contact'
-  import type { DocumentQuery, IdMap, Ref, WithLookup } from '@hcengineering/core'
-  import { SortingOrder, toIdMap } from '@hcengineering/core'
+  import type { DocumentQuery, IdMap, Ref, Space, WithLookup } from '@hcengineering/core'
+  import core, { SortingOrder, toIdMap } from '@hcengineering/core'
   import type { IntlString } from '@hcengineering/platform'
   import { createQuery } from '@hcengineering/presentation'
   import type { TagElement } from '@hcengineering/tags'
@@ -55,14 +55,14 @@
   const activeQuery = createQuery()
   const tagsQuery = createQuery()
   const projectsQuery = createQuery()
-  const archivedProjectsQuery = createQuery()
+  const archivedSpacesQuery = createQuery()
 
-  let archivedProjects = new Set<Ref<Project>>()
-  archivedProjectsQuery.query(
-    tracker.class.Project,
+  let archivedSpaces = new Set<Ref<Space>>()
+  archivedSpacesQuery.query(
+    core.class.Space,
     { archived: true },
     (result) => {
-      archivedProjects = new Set(result.map((project) => project._id))
+      archivedSpaces = new Set(result.map((project) => project._id))
     },
     { projection: { _id: 1 } }
   )
@@ -211,11 +211,11 @@
   let rawActive: WithLookup<ToDo>[] = []
   let todoValue: string = ''
 
-  $: active = filterActive(mode, filterVisibleToDos(rawActive, archivedProjects), currentDate)
+  $: active = filterActive(mode, filterVisibleToDos(rawActive, archivedSpaces), currentDate)
 
   $: groups = group(
-    filterVisibleToDos(inbox, archivedProjects),
-    filterVisibleToDos(done, archivedProjects),
+    filterVisibleToDos(inbox, archivedSpaces),
+    filterVisibleToDos(done, archivedSpaces),
     active,
     todoValue
   )
