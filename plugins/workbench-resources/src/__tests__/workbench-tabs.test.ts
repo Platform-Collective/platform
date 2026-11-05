@@ -8,7 +8,15 @@ import type { Location } from '@hcengineering/ui'
 import { parseLinkId } from '@hcengineering/view-resources'
 import type { LocationData, WorkbenchTab } from '@hcengineering/workbench'
 import { get } from 'svelte/store'
-import { currentTabStore, closeTab, getTabDataByLocation, getTabLocation, tabIdStore, tabsStore, watchTabDocuments } from '../workbench'
+import {
+  currentTabStore,
+  closeTab,
+  getTabDataByLocation,
+  getTabLocation,
+  tabIdStore,
+  tabsStore,
+  watchTabDocuments
+} from '../workbench'
 import { locationWorkspaceStore } from '../utils'
 
 jest.mock(
