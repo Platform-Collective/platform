@@ -115,6 +115,18 @@ describe('finishPersonMerge', () => {
     ).rejects.toThrow(error)
   })
 
+  it('can retry source removal after a successful global merge', async () => {
+    const source = createPerson('source', sourceUuid)
+    const target = createPerson('target', targetUuid)
+    const remove = jest.fn().mockRejectedValueOnce(new Error('Denied')).mockResolvedValueOnce({})
+    // The service preserves the source person and rewires any remaining social IDs on each call.
+    const mergeSpecifiedPersons = jest.fn<Promise<void>, []>().mockResolvedValue(undefined)
+    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true })).rejects.toThrow('Denied')
+    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true })).resolves.toBeUndefined()
+    expect(remove).toHaveBeenCalledTimes(2)
+    expect(mergeSpecifiedPersons).toHaveBeenCalledTimes(2)
+  })
+
   it('rejects a self merge without changing either service', async () => {
     const source = createPerson('source', sourceUuid)
     const remove = jest.fn(async () => ({}))
