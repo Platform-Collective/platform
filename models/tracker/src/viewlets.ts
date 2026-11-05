@@ -889,14 +889,29 @@ export function defineViewlets (builder: Builder): void {
   )
 
   // Calendar is registered after List for the same reason as Gantt: List stays
-  // the default viewlet when no preference is saved.
+  // the default viewlet when no preference is saved. Calendar always includes sub-issues;
+  // grouping and empty-group options do not apply to its fixed day grid.
   builder.createDoc(
     view.class.Viewlet,
     core.space.Model,
     {
       attachTo: tracker.class.Issue,
       descriptor: tracker.viewlet.Calendar,
-      viewOptions: { groupBy: [], orderBy: [], other: SEARCH_VIEW_OPTIONS },
+      viewOptions: {
+        groupBy: [],
+        orderBy: [],
+        other: [
+          {
+            key: 'hideArchived',
+            type: 'toggle',
+            defaultValue: true,
+            actionTarget: 'options',
+            action: view.function.HideArchived,
+            label: view.string.HideArchived
+          },
+          ...SEARCH_VIEW_OPTIONS
+        ]
+      },
       configOptions: { strict: true },
       config: []
     },

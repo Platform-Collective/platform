@@ -11,6 +11,7 @@
     restrictionStore,
     setResultCount
   } from '@hcengineering/view-resources'
+  import type { ViewOptions } from '@hcengineering/view'
   import { onDestroy } from 'svelte'
   import tracker from '../../plugin'
   import { canEditIssue, canEditIssuesBatch } from '../../utils'
@@ -24,6 +25,7 @@
 
   export let space: Ref<Project> | undefined = undefined
   export let query: DocumentQuery<Issue> = {}
+  export let viewOptions: ViewOptions | undefined = undefined
 
   const client = getClient()
   const issueQuery = createQuery()
@@ -48,8 +50,11 @@
     releaseResultCountOwner(resultCountOwner)
   })
 
+  // Load every matching range in the visible grid so days and totals remain complete. The grid
+  // clips ranges to its window and scrolls busy days; a cap would need a separate overflow query.
   // Load only the visible grid: issues due inside it, plus ranges that start in or before it and end after it.
   $: baseQuery = mergeQueries(query, space === undefined ? {} : { space })
+  $: showArchived = viewOptions?.hideArchived === false
   $: calendarWindow = getCalendarQueryWindow(currentDate)
   $: issueQuery.query(
     tracker.class.Issue,
@@ -57,7 +62,7 @@
     (result) => {
       windowIssues = result
     },
-    { sort: { dueDate: SortingOrder.Ascending, rank: SortingOrder.Ascending } }
+    { showArchived, sort: { dueDate: SortingOrder.Ascending, rank: SortingOrder.Ascending } }
   )
   $: spanningQuery.query(
     tracker.class.Issue,
@@ -65,7 +70,7 @@
     (result) => {
       spanningIssues = result
     },
-    { sort: { dueDate: SortingOrder.Ascending, rank: SortingOrder.Ascending } }
+    { showArchived, sort: { dueDate: SortingOrder.Ascending, rank: SortingOrder.Ascending } }
   )
   $: withoutDueDateQuery.query(
     tracker.class.Issue,
@@ -73,7 +78,7 @@
     (result) => {
       withoutDueDate = result.total
     },
-    { limit: 1, total: true }
+    { showArchived, limit: 1, total: true }
   )
   // The search empty state must reflect every matching issue, not only those in the visible grid: a match
   // in another month or without a due date is still a result, and the grid itself always renders.
@@ -86,7 +91,7 @@
       // count stays unmeasured, so the empty state cannot flash while loading.
       setResultCount(resultCountOwner, result.total)
     },
-    { limit: 1, total: true }
+    { showArchived, limit: 1, total: true }
   )
   $: issues = [...windowIssues, ...spanningIssues]
   $: issuesByDay = groupIssuesByCalendarDay(issues, calendarWindow)
@@ -116,11 +121,13 @@
 
   async function updatePermissions(values: Issue[]): Promise<void> {
     const generation = ++permissionGeneration
-    editable = new Map()
+    // Keep existing rights during live refetches. Recheck all issues because permissions can change
+    // without changing the issue's space; the drop handler also checks current rights before writing.
     try {
       const result = await canEditIssuesBatch(values)
       if (generation === permissionGeneration) editable = result
     } catch (error) {
+      if (generation === permissionGeneration) editable = new Map()
       Analytics.handleError(error instanceof Error ? error : new Error(String(error)))
     }
   }

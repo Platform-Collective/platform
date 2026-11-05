@@ -38,17 +38,21 @@ export function isIssueOnCalendarDay (issue: IssueCalendarDates, date: Date): bo
   return range !== undefined && day >= range.start && day <= range.end
 }
 
-/** Move the due date to a local day, preserving its time and shifting both timestamps equally. */
+/** Move the due date to a local day, preserving both local times and the number of calendar days between them. */
 export function moveIssueToCalendarDay (issue: IssueCalendarDates, date: Date): IssueCalendarDateUpdate | undefined {
   if (!isValidDate(issue.dueDate) || !Number.isFinite(date.getTime())) return undefined
   const due = new Date(issue.dueDate)
   due.setFullYear(date.getFullYear(), date.getMonth(), date.getDate())
   const dueDate = due.getTime()
   if (dueDate === issue.dueDate) return undefined
-  const delta = dueDate - issue.dueDate
+  const originalDue = new Date(issue.dueDate)
+  const dayNumber = (value: Date): number => Date.UTC(value.getFullYear(), value.getMonth(), value.getDate()) / 86400000
+  const days = dayNumber(due) - dayNumber(originalDue)
+  const start = isValidDate(issue.startDate) ? new Date(issue.startDate) : undefined
+  start?.setDate(start.getDate() + days)
   return {
     dueDate,
-    ...(isValidDate(issue.startDate) ? { startDate: issue.startDate + delta } : {})
+    ...(isValidDate(issue.startDate) ? { startDate: start?.getTime() } : {})
   }
 }
 

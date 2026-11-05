@@ -65,14 +65,16 @@ describe('moving calendar dates', () => {
   })
 
   it.each([date(2026, 3, 9), date(2026, 3, 30), date(2026, 10, 26), date(2026, 11, 2)])(
-    'lands on the target local day and shifts start by the exact same delta around DST (%s)',
+    'lands on the target local day and shifts start by the same calendar days around DST (%s)',
     (target) => {
       const issue = { startDate: date(2026, 2, 25).getTime(), dueDate: date(2026, 3, 1).getTime() }
       const original = { ...issue }
       const result = moveIssueToCalendarDay(issue, target)
       expect(result).toBeDefined()
       expect(result?.dueDate).toBe(target.getTime())
-      expect((result?.startDate ?? 0) - issue.startDate).toBe((result?.dueDate ?? 0) - issue.dueDate)
+      const expectedStart = new Date(target)
+      expectedStart.setDate(expectedStart.getDate() - 4)
+      expect(result?.startDate).toBe(expectedStart.getTime())
       expect(issue).toEqual(original)
     }
   )
