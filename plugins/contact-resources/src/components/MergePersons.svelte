@@ -17,19 +17,15 @@
   import { Analytics } from '@hcengineering/analytics'
   import { Channel, Person, SocialIdentity, getName } from '@hcengineering/contact'
   import core, {
-    ArrOf,
     Doc,
     DocumentUpdate,
     Mixin,
     PersonUuid,
     Ref,
-    RefTo,
     SocialIdType,
-    Tx,
-    TxOperations,
     TxProcessor
   } from '@hcengineering/core'
-  import { Card, createQuery, getClient, updateAttribute } from '@hcengineering/presentation'
+  import { Card, createQuery, getClient } from '@hcengineering/presentation'
   import { Label, Spinner, Toggle } from '@hcengineering/ui'
   import { isCollectionAttr } from '@hcengineering/view-resources'
   import { createEventDispatcher } from 'svelte'
@@ -46,7 +42,7 @@
   import SocialIdentityPresenter from './SocialIdentityPresenter.svelte'
   import { finishPersonMerge, runPersonMerge } from './finish-person-merge'
   import { updateAllRefs } from './update-person-refs'
-  import { isPersonMergePermissionCached } from './person-merge-permission'
+  import { isPersonMergePermissionCached, canMergePersonTypes } from './person-merge-permission'
 
   export let value: Person
   const dispatch = createEventDispatcher()
@@ -128,7 +124,7 @@
     const source = sourcePerson
     const target = targetPerson
     if (source === undefined || target === undefined) return
-    if (source._id === target._id) return
+    if (source._id === target._id || !allowedPersonTypes(source, target)) return
     if (!canMergeGlobalPersons) return
 
     mergeError = undefined
@@ -292,6 +288,15 @@
   }
 
 
+  function allowedPersonTypes(source: Person, target: Person): boolean {
+    return canMergePersonTypes(
+      hierarchy.hasMixin(source, contact.mixin.Employee),
+      hierarchy.hasMixin(target, contact.mixin.Employee)
+    )
+  }
+
+  $: employeeMergeBlocked = sourcePerson !== undefined && targetPerson !== undefined && !allowedPersonTypes(sourcePerson, targetPerson)
+
   let canMergeGlobalPersons = false
   let previousPrimaryUuid: PersonUuid | undefined
   let previousSecondaryUuid: PersonUuid | undefined
@@ -301,6 +306,11 @@
 
   async function checkIfCanMergeGlobalPersons(primaryPerson: Person, secondaryPerson: Person): Promise<void> {
     if (primaryPerson === undefined || secondaryPerson === undefined) {
+      return
+    }
+
+    if (!allowedPersonTypes(secondaryPerson, primaryPerson)) {
+      loading = false
       return
     }
 
@@ -332,7 +342,7 @@
     loading = false
   }
 
-  $: canSave = targetPerson !== undefined && !loading && canMergeGlobalPersons
+  $: canSave = targetPerson !== undefined && sourcePerson !== undefined && !employeeMergeBlocked && !loading && canMergeGlobalPersons
 </script>
 
 <Card
@@ -384,6 +394,11 @@
   </div>
   {#key [targetPersonRef, sourcePersonRef]}
     {#if targetPerson != null && sourcePerson != null}
+      {#if !hierarchy.hasMixin(sourcePerson, contact.mixin.Employee)}
+        <div class="mt-4">
+          <Label label={contact.string.MergeSourceWillBeDeleted} params={{ source: getName(hierarchy, sourcePerson) }} />
+        </div>
+      {/if}
       <div class="flex-col flex-grow mt-4">
         <MergeComparer
           key="avatar"
@@ -449,12 +464,14 @@
   {/key}
   {#if targetPersonRef != null}
     <div class="mt-4">
-      {#if loading}
+      {#if employeeMergeBlocked}
+        <span class="error"><Label label={contact.string.CannotMergeEmployeeIntoLocal} /></span>
+      {:else if loading}
         <Spinner size="medium" />
       {:else if !canMergeGlobalPersons}
         <span class="error"><Label label={contact.string.CannotMerge} /></span>
       {:else if mergeError !== undefined}
-        <span class="error"><Label label={contact.string.MergeFailed} params={{ error: mergeError }} /></span>
+        <span class="error"><Label label={contact.string.MergeFailed} params={{ target: targetPerson !== undefined ? getName(hierarchy, targetPerson) : '', error: mergeError }} /></span>
       {:else if visibleResultSocialIdentities.length > 0}
         <span class="label"><Label label={contact.string.SocialIds} /></span>
         {#each visibleResultSocialIdentities as socialIdentity}

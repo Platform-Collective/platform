@@ -16,3 +16,8 @@ export function isPersonMergePermissionCached (
     secondaryUuid === previousSecondaryUuid
   )
 }
+
+/** An employee must keep an employee target for login identities and employee references. */
+export function canMergePersonTypes (sourceIsEmployee: boolean, targetIsEmployee: boolean): boolean {
+  return !sourceIsEmployee || targetIsEmployee
+}
