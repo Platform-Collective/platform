@@ -289,6 +289,59 @@ describe('tabs of removed documents', () => {
     expect(get(tabsStore).find((t) => t._id === tab._id)?.location).toBe('workbench/workspace/app')
   })
 
+  it('strips a background panel synchronously when selecting it', async () => {
+    resolver.mockResolvedValue(documentData)
+    const tab = makeTab('background-panel', 'workbench/workspace/app/list#panel|document|document-class')
+    const active = makeTab('active')
+    tabsStore.set([tab, active])
+    tabIdStore.set(active._id)
+    await resolveTab(tab)
+    removeDocs(objectId)
+
+    tabIdStore.set(tab._id)
+
+    expect(get(tabsStore).find((t) => t._id === tab._id)?.location).toBe('workbench/workspace/app/list')
+  })
+
+  it('re-reads the corrected adjacent tab when closing the active tab', async () => {
+    resolver.mockImplementation(async (loc) => (loc.path.length === 3 ? { name: 'Home' } : documentData))
+    const previous = makeTab('previous-removed')
+    const active = makeTab('active')
+    tabsStore.set([previous, active])
+    tabIdStore.set(active._id)
+    await resolveTab(previous)
+    removeDocs(objectId)
+
+    await closeTab(active)
+
+    expect(navigate).not.toHaveBeenCalledWith(expect.objectContaining({
+      path: ['workbench', 'workspace', 'app', 'document']
+    }))
+    expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ path: ['workbench', 'workspace', 'app'] }))
+  })
+
+  it('does not override navigation while the destination title is loading', async () => {
+    const tab = makeTab('slow-active')
+    tabsStore.set([tab])
+    tabIdStore.set(tab._id)
+    jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
+    await resolveTab(tab)
+    let complete: (data: LocationData) => void = () => {}
+    resolver.mockImplementation(async () => await new Promise<LocationData>((resolve) => { complete = resolve }))
+
+    removeDocs(objectId)
+    await flush()
+    const elsewhere = { path: ['workbench', 'workspace', 'app', 'elsewhere'] }
+    jest.mocked(getCurrentLocation).mockReturnValue(elsewhere)
+    tabsStore.set([{ ...tab, location: 'workbench/workspace/app/elsewhere' }])
+    complete({ name: 'Home' })
+    await flush()
+
+    expect(navigate).not.toHaveBeenCalled()
+    expect(client.update).not.toHaveBeenCalled()
+    expect(get(tabsStore)[0].location).toBe('workbench/workspace/app/elsewhere')
+  })
+
   it('does not change a background tab that moved to another location before it is opened', async () => {
     const tab = makeTab('background')
     const active = makeTab('active', 'workbench/workspace/app/other')
@@ -457,6 +510,13 @@ describe('tabs of removed documents', () => {
 describe('tab document resolution', () => {
   it('preserves the document identity returned by an application resolver', async () => {
     expect(await getTabDataByLocation({ path: ['workbench', 'workspace', 'app'] })).toMatchObject(documentData)
+  })
+
+  it('identifies a panel when the application resolver only returns its view label', async () => {
+    resolver.mockResolvedValue({ name: 'Inbox' })
+    const loc = { path: ['workbench', 'workspace', 'app', 'list'], fragment: 'panel|LINK-1|document-class' }
+    expect(await getTabDataByLocation(loc)).toMatchObject({ name: 'Inbox', objectId, objectClass })
+    expect(parseLinkId).toHaveBeenCalledWith([], 'LINK-1', objectClass)
   })
 
   it('uses the resolved location to identify documents behind application routes', async () => {
