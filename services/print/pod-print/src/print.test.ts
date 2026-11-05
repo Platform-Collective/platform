@@ -692,8 +692,9 @@ describe('print', () => {
       const guard = browser.guardSessions[0]
       guard.send.mockImplementation(async (method: string, params: { targetId?: string }) => {
         if (method !== 'Target.closeTarget') return undefined
-        if (params.targetId === 'gone')
-          {throw new Error('Protocol error (Target.closeTarget): No target with given id found')}
+        if (params.targetId === 'gone') {
+          throw new Error('Protocol error (Target.closeTarget): No target with given id found')
+        }
         throw new Error('close failed')
       })
       await attachTarget(browser, guard, 'gone', browser.contexts[0].id)

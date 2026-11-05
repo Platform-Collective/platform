@@ -36,7 +36,9 @@ function parsePrintHost (entry: string): PrintHost {
   const explicitPort = authority.match(/:(\d+)$/)?.[1]
   const port = origin
     ? url.port || (url.protocol === 'https:' ? '443' : '80')
-    : explicitPort === undefined ? '' : String(Number(explicitPort))
+    : explicitPort === undefined
+      ? ''
+      : String(Number(explicitPort))
   return { hostname, port, protocol: origin ? url.protocol : undefined }
 }
 
@@ -75,8 +77,9 @@ export function getPrintHostnames (configured: readonly string[], frontUrl: stri
     })
   try {
     const front = new URL(frontUrl)
-    if (!['http:', 'https:'].includes(front.protocol) || front.username !== '' || front.password !== '')
-      {return hostnames}
+    if (!['http:', 'https:'].includes(front.protocol) || front.username !== '' || front.password !== '') {
+      return hostnames
+    }
     front.hostname = normalizeHostname(front.hostname).includes(':')
       ? `[${normalizeHostname(front.hostname)}]`
       : normalizeHostname(front.hostname)
