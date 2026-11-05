@@ -3,12 +3,13 @@
 import type { Class, Doc, Ref, Tx } from '@hcengineering/core'
 import { getResource } from '@hcengineering/platform'
 import { addTxListener, createQuery, getClient, removeTxListener } from '@hcengineering/presentation'
-import { getCurrentLocation, navigate } from '@hcengineering/ui'
+import { getCurrentLocation, location as locationStore, navigate } from '@hcengineering/ui'
 import type { Location } from '@hcengineering/ui'
 import { parseLinkId } from '@hcengineering/view-resources'
 import type { LocationData, WorkbenchTab } from '@hcengineering/workbench'
 import { get } from 'svelte/store'
 import { closeTab, getTabDataByLocation, getTabLocation, tabIdStore, tabsStore, watchTabDocuments } from '../workbench'
+import { locationWorkspaceStore } from '../utils'
 
 jest.mock(
   '@hcengineering/core',
@@ -129,9 +130,12 @@ const application = {
 }
 const client = {
   getModel: () => ({ findAllSync: (cls: string) => (cls === 'application' ? [application] : []) }),
-  getHierarchy: () => ({ hasClass: () => true, classHierarchyMixin: () => undefined }),
+  getHierarchy: () => ({ hasClass: (cls: string) => cls === objectClass, classHierarchyMixin: () => undefined }),
   createDoc: jest.fn(async () => 'new-tab'),
   update: jest.fn(async () => {}),
+  apply: () => ({ diffUpdate: client.diffUpdate, commit: client.commit }),
+  diffUpdate: jest.fn(async () => {}),
+  commit: jest.fn(async () => {}),
   remove: jest.fn(async () => {})
 }
 
@@ -166,6 +170,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   queries.length = 0
   tabsStore.set([])
+  locationWorkspaceStore.set(undefined)
   tabIdStore.set(undefined)
   application.locationDataResolver = resolver
   application.locationResolver = undefined
@@ -261,8 +266,8 @@ describe('tabs of removed documents', () => {
     tabIdStore.set(tab._id)
     await flush()
 
-    expect(client.update).toHaveBeenCalledTimes(1)
-    expect(client.update).toHaveBeenCalledWith(tab, { location: 'workbench/workspace/app', name: 'Home' })
+    expect(client.update).not.toHaveBeenCalled()
+    expect(client.update).not.toHaveBeenCalled()
     expect(get(tabsStore)).toEqual([{ ...tab, location: 'workbench/workspace/app', name: 'Home' }, active])
     expect(navigate).toHaveBeenCalledWith({ path: ['workbench', 'workspace', 'app'] })
     expect(client.remove).not.toHaveBeenCalled()
@@ -270,7 +275,7 @@ describe('tabs of removed documents', () => {
     tabIdStore.set(active._id)
     tabIdStore.set(tab._id)
     await flush()
-    expect(client.update).toHaveBeenCalledTimes(1)
+    expect(client.update).not.toHaveBeenCalled()
   })
 
   it('moves a background tab to its application as soon as it is selected, before the click navigates', async () => {
@@ -370,11 +375,36 @@ describe('tabs of removed documents', () => {
     removeDocs(objectId)
     await flush()
 
-    expect(client.update).toHaveBeenCalledWith(tab, { location: 'workbench/workspace/app', name: 'Home' })
+    expect(client.update).not.toHaveBeenCalled()
     expect(navigate).toHaveBeenCalledWith({ path: ['workbench', 'workspace', 'app'] })
     expect(get(tabIdStore)).toBe(tab._id)
     expect(client.remove).not.toHaveBeenCalled()
     expect(client.createDoc).not.toHaveBeenCalled()
+  })
+
+  it('persists the active tab through location sync without an extra update', async () => {
+    locationWorkspaceStore.set('workspace')
+    const tab = makeTab('sync-active')
+    tabsStore.set([tab])
+    tabIdStore.set(tab._id)
+    jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
+    await resolveTab(tab)
+    resolver.mockResolvedValue({ name: 'Home' })
+    jest.mocked(navigate).mockImplementation((loc) => {
+      jest.mocked(getCurrentLocation).mockReturnValue(loc)
+      locationStore.set(loc)
+    })
+
+    removeDocs(objectId)
+    await flush()
+
+    expect(client.update).not.toHaveBeenCalled()
+    expect(client.diffUpdate).toHaveBeenCalledTimes(1)
+    expect(client.diffUpdate).toHaveBeenCalledWith(expect.objectContaining({ _id: tab._id }), {
+      location: 'workbench/workspace/app', name: 'Home'
+    })
+    expect(client.commit).toHaveBeenCalledTimes(1)
+    jest.mocked(navigate).mockReset()
   })
 
   it('keeps the list of the active tab when the document of its panel is removed', async () => {
@@ -395,7 +425,8 @@ describe('tabs of removed documents', () => {
     removeDocs(objectId)
     await flush()
 
-    expect(client.update).toHaveBeenCalledWith(tab, { location, name: 'App' })
+    expect(client.update).not.toHaveBeenCalled()
+    expect(get(tabsStore)[0]).toMatchObject({ location, name: 'App' })
     expect(navigate).toHaveBeenCalledWith({ ...current, fragment: undefined })
     expect(client.remove).not.toHaveBeenCalled()
   })
@@ -414,7 +445,8 @@ describe('tabs of removed documents', () => {
     removeDocs(objectId)
     await flush()
 
-    expect(client.update).toHaveBeenCalledWith(tab, { location, name: 'Underlying' })
+    expect(client.update).not.toHaveBeenCalled()
+    expect(get(tabsStore)[0]).toMatchObject({ location, name: 'Underlying' })
     expect(navigate).toHaveBeenCalledWith({ ...current, fragment: undefined })
   })
 
@@ -498,7 +530,7 @@ describe('tabs of removed documents', () => {
     must(listener)([{ _class: 'core:class:TxApplyIf', txes: [inner] } as unknown as Tx])
     await flush()
 
-    expect(client.update).toHaveBeenCalledWith(tab, { location: 'workbench/workspace/app', name: 'Home' })
+    expect(client.update).not.toHaveBeenCalled()
   })
 
   it('stops listening when the workbench is destroyed', () => {

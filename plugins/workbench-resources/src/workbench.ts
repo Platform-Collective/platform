@@ -204,8 +204,9 @@ export async function closeTab (tab: WorkbenchTab): Promise<void> {
 
   tabsStore.update((tabs) => tabs.filter((t) => t._id !== tab._id))
   if (get(tabIdStore) === tab._id) {
-    const newTab = tabs[index - 1] ?? tabs[index + 1]
+    let newTab = tabs[index - 1] ?? tabs[index + 1]
     tabIdStore.set(newTab?._id)
+    newTab = get(tabsStore).find((t) => t._id === newTab?._id)
     if (newTab !== undefined) {
       navigate(getTabLocation(newTab))
     }
@@ -277,8 +278,9 @@ const maxTabDocuments = 200
 const removedTabDocuments = new Map<Ref<WorkbenchTab>, { location: string, objectId: Ref<Doc> }>()
 
 function rememberTabDocument (loc: Location, objectId: Ref<Doc> | undefined): void {
-  const url = locationToUrl(loc)
+  // Keep the last known identity when the resolver stops finding a deleted document.
   if (objectId === undefined) return
+  const url = locationToUrl(loc)
   tabDocuments.set(url, objectId)
   if (tabDocuments.size <= maxTabDocuments) return
   const used = new Set(get(tabsStore).map((tab) => locationToUrl(getTabLocation(tab))))
@@ -323,17 +325,30 @@ function forgetApplicationLocation (loc: Location): void {
 }
 
 /** Move a tab shown in this window away from its removed document. */
-async function leaveRemovedDocument (tab: WorkbenchTab, loc: Location, objectId: Ref<Doc>): Promise<void> {
+async function leaveRemovedDocument (
+  tab: WorkbenchTab,
+  loc: Location,
+  objectId: Ref<Doc>,
+  expectedLocation = loc
+): Promise<void> {
+  const currentUrl = locationToUrl(getCurrentLocation())
+  const expectedUrl = locationToUrl(expectedLocation)
+  const tabLocation = get(tabsStore).find((t) => t._id === tab._id)?.location
   const target = await getLocationWithoutDocument(loc, objectId)
-  if (target.path.length <= 3) forgetApplicationLocation(loc)
   const data = await getTabDataByLocation(target)
   const name = data.name ?? (await translate(data.label, {}, get(languageStore)))
+  // A location resolver or title provider can finish after the user has moved on.
+  const shownUrl = locationToUrl(getCurrentLocation())
+  const currentTab = get(tabsStore).find((t) => t._id === tab._id)
+  if (get(tabIdStore) !== tab._id || currentTab?.isPinned !== false || currentTab.location !== tabLocation) return
+  if (shownUrl !== currentUrl && shownUrl !== expectedUrl) return
+  if (target.path.length <= 3) forgetApplicationLocation(loc)
   const location = locationToUrl(target)
   tabsStore.update((tabs) => tabs.map((t) => (t._id === tab._id ? { ...t, location, name } : t)))
   if (get(tabIdStore) === tab._id) {
     navigate(target)
   }
-  await getClient().update(tab, { location, name })
+  // navigate() triggers syncTabLoc, which persists the active tab's location and name.
 }
 
 function onRemovedDocuments (removed: Set<Ref<Doc>>): void {
@@ -361,13 +376,11 @@ function onTabShown (tabId: Ref<WorkbenchTab> | undefined): void {
   // Another window may have moved the tab already.
   if (tab === undefined || tab.isPinned || tab.location !== removed.location) return
   const loc = getTabLocation(tab)
-  if (loc.fragment == null || loc.fragment === '') {
-    // Move the tab right away, so the tab bar opens the application instead of the removed document.
-    const target = getApplicationLocation(loc)
-    forgetApplicationLocation(loc)
-    tabsStore.update((tabs) => tabs.map((t) => (t._id === tab._id ? { ...t, location: locationToUrl(target) } : t)))
-  }
-  void leaveRemovedDocument(tab, loc, removed.objectId).catch(console.error)
+  // Move synchronously before the tab bar or closeTab reads the destination.
+  const target = loc.fragment != null && loc.fragment !== '' ? { ...loc, fragment: undefined } : getApplicationLocation(loc)
+  if (target.path.length <= 3) forgetApplicationLocation(loc)
+  tabsStore.update((tabs) => tabs.map((t) => (t._id === tab._id ? { ...t, location: locationToUrl(target) } : t)))
+  void leaveRemovedDocument(tab, loc, removed.objectId, target).catch(console.error)
 }
 
 /**
@@ -375,7 +388,7 @@ function onTabShown (tabId: Ref<WorkbenchTab> | undefined): void {
  * Tabs are stored per account and shared by all windows, so a window only changes a tab
  * it shows: the active tab right away, a background tab once it is opened here. Such a
  * tab returns to the view it was opened from instead of being deleted, and pinned tabs
- * are left alone.
+ * are left alone, so a pinned location can still point at a deleted document.
  */
 export function watchTabDocuments (): () => void {
   const listener = (txes: Tx[]): void => {
@@ -423,6 +436,11 @@ export async function getTabDataByLocation (loc: Location): Promise<{
     const data = await resolver(loc)
     objectId = data.objectId
     objectClass = data.objectClass
+    if (objectId === undefined && loc.fragment != null && loc.fragment !== '') {
+      const panel = await getDefaultTabData(loc)
+      objectId = panel.objectId
+      objectClass = panel.objectClass
+    }
     name = data.name
     label = data.nameIntl ?? application.label ?? workbench.string.Tab
     iconComponent = data.iconComponent

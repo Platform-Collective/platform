@@ -453,7 +453,7 @@ export async function resolveLocationData (loc: Location): Promise<LocationData>
     return base
   }
 
-  return { name: object.title }
+  return { name: object.title, objectId: object._id, objectClass: object._class }
 }
 
 export async function getCardTitle (client: TxOperations, ref: Ref<Card>, doc?: Card): Promise<string> {
