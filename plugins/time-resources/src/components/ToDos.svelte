@@ -44,7 +44,8 @@
   import time from '../plugin'
   import { filterVisibleToDos } from '../to-do-query'
   import { getNearest } from '../utils'
-  import { getBlockerIds, getToDoPlanningConstraints } from '../issue-planning'
+  import { getBlockerIds, getPlanningIssueIds, getToDoPlanningConstraints } from '../issue-planning'
+  import { queryPlanningIssues } from '../planning-query'
   import CreateToDo from './CreateToDo.svelte'
   import ToDoGroup from './ToDoGroup.svelte'
 
@@ -227,38 +228,15 @@
   let planningIssues: IdMap<Issue> = new Map()
   let planningBlockers: IdMap<Issue> = new Map()
 
-  function queryIssues(
-    query: ReturnType<typeof createQuery>,
-    ids: Array<Ref<Issue>>,
-    set: (value: IdMap<Issue>) => void
-  ): void {
-    if (ids.length === 0) {
-      query.unsubscribe()
-      set(new Map())
-      return
-    }
-    if (
-      query.query(tracker.class.Issue, { _id: { $in: ids } }, (res) => {
-        set(toIdMap(res))
-      })
-    ) {
-      set(new Map())
-    }
-  }
-
-  function getPlanningIssueIds(todos: ToDo[]): Array<Ref<Issue>> {
-    const ids = new Set<Ref<Issue>>()
-    for (const todo of todos) {
-      if (hierarchy.isDerived(todo.attachedToClass, tracker.class.Issue)) {
-        ids.add(todo.attachedTo as Ref<Issue>)
-      }
-    }
-    return Array.from(ids).sort()
-  }
-
-  $: queryIssues(planningIssuesQuery, getPlanningIssueIds(inbox), (value) => (planningIssues = value))
-  $: queryIssues(
+  $: queryPlanningIssues(
+    planningIssuesQuery,
+    tracker.class.Issue,
+    getPlanningIssueIds(inbox, (clazz) => hierarchy.isDerived(clazz, tracker.class.Issue)),
+    (value) => (planningIssues = value)
+  )
+  $: queryPlanningIssues(
     planningBlockersQuery,
+    tracker.class.Issue,
     getBlockerIds(Array.from(planningIssues.values())).sort(),
     (value) => (planningBlockers = value)
   )
