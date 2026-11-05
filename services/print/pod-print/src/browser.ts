@@ -213,8 +213,9 @@ export class PrintBrowserManager {
             await this.holdPopup(session, sessionId, targetInfo.targetId)
           } else if (waitingForDebugger) {
             const targetSession = session.connection()?.session(sessionId)
-            if (targetSession === undefined || targetSession === null)
-              {throw new Error('Missing attached target session')}
+            if (targetSession === undefined || targetSession === null) {
+              throw new Error('Missing attached target session')
+            }
             await targetSession.send('Runtime.runIfWaitingForDebugger')
           }
         } catch (err: unknown) {
@@ -282,8 +283,9 @@ export class PrintBrowserManager {
       const page = await withTimeout(context.newPage(), timeoutMs, 'Browser page creation timed out')
       const mainTargetId = await withTimeout(getMainTargetId(page), timeoutMs, 'Browser page target lookup timed out')
       const guard = this.popupGuards.get(browser)
-      if (context.id === undefined || guard === undefined)
-        {throw new Error('Missing isolated print context or popup guard')}
+      if (context.id === undefined || guard === undefined) {
+        throw new Error('Missing isolated print context or popup guard')
+      }
       // The initial blank page/tab is resumed while unregistered. Register before
       // handing the page to a job so every subsequent target in this context is guarded.
       guard.contexts.set(context.id, mainTargetId)
