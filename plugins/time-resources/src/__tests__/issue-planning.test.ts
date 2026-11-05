@@ -5,6 +5,7 @@ import type { ToDo } from '@hcengineering/time'
 import type { Issue } from '@hcengineering/tracker'
 import {
   getBlockerIds,
+  getPlanningIssueIds,
   getIssuePlanningConstraints,
   getIssueSlotDuration,
   getToDoPlanningConstraints
@@ -173,4 +174,33 @@ describe('list-level planning constraints', () => {
     expect(result.get('t1' as Ref<ToDo>)).toEqual({ blockers: ['TEST-1: Blocker 1'], startDate: undefined })
     expect(result.get('t2' as Ref<ToDo>)).toEqual({ blockers: [], startDate: NOW + HOUR })
   })
+})
+
+
+it('queries only unique issues of open unplanned rows', () => {
+  const todos = [
+    { attachedTo: 'a', attachedToClass: 'issue', workslots: 0, doneOn: null },
+    { attachedTo: 'a', attachedToClass: 'issue', workslots: 0, doneOn: null },
+    { attachedTo: 'b', attachedToClass: 'issue', workslots: 1, doneOn: null },
+    { attachedTo: 'c', attachedToClass: 'issue', workslots: 0, doneOn: NOW },
+    { attachedTo: 'd', attachedToClass: 'document', workslots: 0, doneOn: null }
+  ] as unknown as ToDo[]
+  expect(getPlanningIssueIds(todos, (clazz) => clazz === 'issue')).toEqual(['a'])
+})
+
+it('reuses unchanged constraints on ticks and clears a start hint at its boundary', () => {
+  const issue = { _id: 'issue', startDate: NOW + HOUR, blockedBy: [relation('1')] } as unknown as Issue
+  const todo = { _id: 'todo', attachedTo: 'issue', workslots: 0, doneOn: null } as unknown as ToDo
+  const issues = byId([issue])
+  const blockers = byId([blocker('1', 'active')])
+  const previous = getToDoPlanningConstraints([todo], issues, blockers, RESOLVED, NOW)
+  const next = getToDoPlanningConstraints([todo], issues, blockers, RESOLVED, NOW + 1, previous)
+  expect(next).toBe(previous)
+  expect(next.get(todo._id)).toBe(previous.get(todo._id))
+  const reached = getToDoPlanningConstraints([todo], issues, blockers, RESOLVED, NOW + HOUR, next)
+  expect(reached.get(todo._id)?.startDate).toBeUndefined()
+  expect(reached.get(todo._id)?.blockers).toEqual(['TEST-1: Blocker 1'])
+  expect(reached.get(todo._id)).not.toBe(next.get(todo._id))
+  const resolved = getToDoPlanningConstraints([todo], issues, byId([blocker('1', 'done')]), RESOLVED, NOW + HOUR, reached)
+  expect(resolved.size).toBe(0)
 })

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import type { Ref, Status } from '@hcengineering/core'
+import type { Class, Doc, Ref, Status } from '@hcengineering/core'
 import type { ToDo } from '@hcengineering/time'
 import type { Issue } from '@hcengineering/tracker'
 
@@ -77,7 +77,8 @@ export function getToDoPlanningConstraints (
   issues: ReadonlyMap<Ref<Issue>, Issue>,
   blockers: ReadonlyMap<Ref<Issue>, Issue>,
   resolvedStatuses: ReadonlySet<Ref<Status>>,
-  now: number
+  now: number,
+  previous: ReadonlyMap<Ref<ToDo>, IssuePlanningConstraints> = new Map()
 ): Map<Ref<ToDo>, IssuePlanningConstraints> {
   const result = new Map<Ref<ToDo>, IssuePlanningConstraints>()
   for (const todo of todos) {
@@ -90,4 +91,15 @@ export function getToDoPlanningConstraints (
     }
   }
   return result
+}
+
+
+/** Sorted, unique issue IDs for rows that can show planning hints. */
+export function getPlanningIssueIds (
+  todos: ReadonlyArray<Pick<ToDo, 'attachedTo' | 'attachedToClass' | 'workslots' | 'doneOn'>>,
+  isIssue: (clazz: Ref<Class<Doc>>) => boolean
+): Array<Ref<Issue>> {
+  return Array.from(new Set(todos
+    .filter((todo) => isIssue(todo.attachedToClass))
+    .map((todo) => todo.attachedTo as Ref<Issue>))).sort()
 }
