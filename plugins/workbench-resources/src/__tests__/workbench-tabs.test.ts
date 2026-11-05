@@ -7,7 +7,7 @@ import { getCurrentLocation, location as locationStore, navigate } from '@hcengi
 import type { Location } from '@hcengineering/ui'
 import { parseLinkId } from '@hcengineering/view-resources'
 import type { LocationData, WorkbenchTab } from '@hcengineering/workbench'
-import { get } from 'svelte/store'
+import { get, type Writable } from 'svelte/store'
 import {
   currentTabStore,
   closeTab,
@@ -130,6 +130,8 @@ const objectClass = 'document-class' as Ref<Class<Doc>>
 const documentData: LocationData = { objectId, objectClass, name: 'Document' }
 const resolver = jest.fn<Promise<LocationData>, [Location]>()
 const queries: TestQuery[] = []
+const workspaceStore = locationWorkspaceStore as Writable<string | undefined>
+const testLocationStore = locationStore as Writable<Location>
 const application = {
   alias: 'app',
   label: 'App',
@@ -183,7 +185,7 @@ beforeEach(() => {
   jest.clearAllMocks()
   queries.length = 0
   tabsStore.set([])
-  locationWorkspaceStore.set(undefined)
+  workspaceStore.set(undefined)
   tabIdStore.set(undefined)
   application.locationDataResolver = resolver
   application.locationResolver = undefined
@@ -403,7 +405,7 @@ describe('tabs of removed documents', () => {
   })
 
   it('persists the active tab through location sync without an extra update', async () => {
-    locationWorkspaceStore.set('workspace')
+    workspaceStore.set('workspace')
     const tab = makeTab('sync-active')
     tabsStore.set([tab])
     tabIdStore.set(tab._id)
@@ -412,7 +414,8 @@ describe('tabs of removed documents', () => {
     resolver.mockResolvedValue({ name: 'Home' })
     jest.mocked(navigate).mockImplementation((loc) => {
       jest.mocked(getCurrentLocation).mockReturnValue(loc)
-      locationStore.set(loc)
+      testLocationStore.set(loc)
+      return true
     })
 
     removeDocs(objectId)

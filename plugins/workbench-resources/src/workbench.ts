@@ -204,7 +204,7 @@ export async function closeTab (tab: WorkbenchTab): Promise<void> {
 
   tabsStore.update((tabs) => tabs.filter((t) => t._id !== tab._id))
   if (get(tabIdStore) === tab._id) {
-    let newTab = tabs[index - 1] ?? tabs[index + 1]
+    let newTab: WorkbenchTab | undefined = tabs[index - 1] ?? tabs[index + 1]
     tabIdStore.set(newTab?._id)
     newTab = get(tabsStore).find((t) => t._id === newTab?._id)
     if (newTab !== undefined) {
