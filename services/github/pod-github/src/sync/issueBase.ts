@@ -19,6 +19,7 @@ import core, {
   MeasureContext,
   PersonId,
   Ref,
+  SocialIdType,
   Space,
   TxOperations,
   makeDocCollabId,
@@ -116,20 +117,25 @@ export abstract class IssueSyncManagerBase {
   private async reconcileAssignee (
     data: Partial<Pick<Issue, 'assignee'>>,
     existing: Issue,
-    external: IssueExternalData,
-    container?: ContainerFocus
+    external: IssueExternalData
   ): Promise<void> {
     if (data.assignee != null || existing.assignee == null || (external.assignees?.nodes ?? []).length > 0) {
       return
     }
-    container = container ?? (await this.provider.getContainer(existing.space))
-    if (
-      container !== undefined &&
-      (await this.provider.getGithubLogin(container.container, existing.assignee)) === undefined
-    ) {
-      // GitHub cannot represent an assignee without a linked GitHub identity.
+    if (!(await this.hasGithubIdentity(existing.assignee))) {
+      // GitHub cannot distinguish its empty-assignee echo from an intentional unassign.
+      // Unlinked assignees can only be changed in Huly.
       data.assignee = existing.assignee
     }
+  }
+
+  private async hasGithubIdentity (person: Ref<Person>): Promise<boolean> {
+    const identity = await this.client.findOne(
+      contact.class.SocialIdentity,
+      { attachedTo: person, type: SocialIdType.GITHUB },
+      { projection: { _id: 1 } }
+    )
+    return identity !== undefined
   }
 
   @withContext('issues-handleUpdate')
@@ -351,7 +357,7 @@ export abstract class IssueSyncManagerBase {
     }
 
     const existingIssue = this.client.getHierarchy().as(existing, github.mixin.GithubIssue)
-    await this.reconcileAssignee(issueData, existingIssue, issueExternal, container)
+    await this.reconcileAssignee(issueData, existingIssue, issueExternal)
     const previousData: GithubIssueData = info.current ?? {}
     // const type = await this.provider.getTaskTypeOf(container.project.type, existing._class)
     // const stst = await this.provider.getStatuses(type?._id)
