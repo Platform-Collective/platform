@@ -144,10 +144,13 @@ rotation.
   the restore proceeds, then the guard is released
   subscription-by-subscription as each is verified. (M7 L1465)
   Fan-out cap enforced at **subscription-save time**: the RPC
-  rejects a create / update whose matching cardinality + event
-  rate would exceed `maxFanoutPerTx` for any triggered event
-  kind, with error code `fanout_cap_exceeded`; the realize-time
-  fallback stays as a safety net.
+  rejects a create / update whose projected AGGREGATE matching
+  cardinality (summed across every event kind the save's
+  triggers could co-emit from a single source Tx, not per-kind
+  in isolation) would exceed `maxFanoutPerTx`, with error code
+  `fanout_cap_exceeded`; the realize-time fallback stays as a
+  safety net and also sums across all kinds matched for the
+  current Tx (M7, M7').
 
 ## Open questions, settled
 
@@ -1152,10 +1155,19 @@ headers:
 - `X-Huly-Event: <event>`
 - `X-Huly-Delivery: <deliveryId>`
 - `X-Huly-Subscription: <subscriptionId>`
-- `X-Huly-Replay-Window: <replayHorizonSeconds>` — advertises the
-  receiver's required dedup retention window; a receiver that holds
-  `X-Huly-Delivery` for at least this many seconds rejects exact
-  replays. Fixes point #14 (receiver dedup window advertised).
+- `X-Huly-Replay-Window: <replayHorizonSeconds>` - SIGNATURE
+  FRESHNESS window. Advertises how old the signature's `t` value
+  may be before a conforming receiver MUST reject the request as
+  an HMAC replay. This is NOT the receiver's dedup retention
+  window; see `X-Huly-Idempotency-Retention` below. Rev 6 called
+  this header "receiver dedup retention"; rev 8 fixes the label.
+- `X-Huly-Idempotency-Retention: <idempotencyIdRetentionSeconds>`
+  - RECEIVER DEDUP window. Advertises how long the receiver MUST
+  remember a seen `X-Huly-Delivery` value before treating the next
+  sighting as a new event rather than a retry. Must cover the full
+  retry+reactivation lifetime the service may use; see "Replay
+  horizon and idempotency retention" below. Fixes point #14
+  (receiver dedup window advertised).
 - One or more `X-Huly-Signature` headers (grammar below).
 
 ## Signatures (fixing points #15, #14)
@@ -1237,22 +1249,42 @@ multi-hour receiver outage. Rev 7 pins them separately.
   value before declaring the next sighting a new event rather
   than a retry. This is NOT about signature freshness; it is
   about the receiver's dedup table lifespan.
-- The service's retry policy sets the maximum retry lifetime
-  (default 24 h with exponential backoff, capped at
-  `maxOutboxAgeSeconds` default 7 days before the row is
-  quarantined). The retention window MUST be at least that
-  lifetime plus a safety buffer, or a retry at hour 23 can look
-  like a brand-new event to a receiver whose dedup entry has
-  already aged out.
-- Default **25 h** (24 h retry lifetime + 1 h buffer).
-  Subscription-level override (`idempotencyIdRetentionHours`)
-  can only RAISE the window; the ceiling tracks
-  `maxOutboxAgeSeconds` so a quarantined row that is manually
-  reactivated by an admin is still inside the window.
-- Service advertises `X-Huly-Idempotency-Retention: <seconds>`
-  alongside `X-Huly-Replay-Window`. Receivers that persist
-  `X-Huly-Delivery` for at least the advertised retention
-  value reject repeated deliveryIds within it.
+- The retention window MUST cover the FULL possible
+  retry+reactivation lifetime, or a late delivery can look like
+  a brand-new event to a receiver whose dedup entry has already
+  aged out and the receiver double-processes. MichaelUray flagged
+  rev 7's phrasing (M4'): a higher ceiling value does not extend
+  what the service ACTUALLY advertises, so a manual reactivation
+  past the advertised value duplicates. Rev 8 aligns the advertised
+  value with the fully-bounded retry+reactivation lifetime.
+- **Default** `idempotencyIdRetentionHours` is **25 h**
+  (`maxRetryLifetime` default 24 h + 1 h safety buffer). Automatic
+  retries are hard-bounded by `maxRetryLifetime`; a row that
+  reaches `maxRetryLifetime` without a 2xx is marked `failed`
+  (not quarantined for retry) with `terminalReason:
+  'retryBudgetExhausted'` and the audit chain closes.
+- **Manual reactivation** of a quarantined or failed row is
+  bounded by the SAME advertised window. The reactivation RPC
+  (`reactivateOutboxRow(subscription, deliveryId)`):
+  - If `now - renderedAt <= idempotencyIdRetentionHours`,
+    reactivation is permitted and the row re-enters the claim
+    set with its original `deliveryId`.
+  - Otherwise the RPC rejects with error code
+    **`beyond_idempotency_retention`**. The operator's only
+    options are (a) fire a fresh test event (new
+    `sourceEventId`, new `deliveryId`), or (b) raise the
+    advertised retention workspace-wide and ensure the receiver's
+    dedup table is sized to match BEFORE the next publish.
+- **Advertising.** The service emits
+  `X-Huly-Idempotency-Retention: <seconds>` on every attempt.
+  The advertised value is the workspace-effective
+  `idempotencyIdRetentionHours`. Subscription-level overrides
+  RAISE the workspace default (not the retry budget); the retry
+  budget is set by `maxRetryLifetime` separately. A receiver that
+  persists `X-Huly-Delivery` for at least the advertised value
+  rejects repeated deliveryIds within it and will not see a
+  duplicate from any service-initiated retry or operator-initiated
+  reactivation.
 
 ### Payload immutability per delivery (fixing point #14)
 
@@ -1268,7 +1300,7 @@ multi-hour receiver outage. Rev 7 pins them separately.
   signature freshness is purely for replay protection.
 - A worker crash between a successful 2xx and the state write is
   retried with the same frozen payload; the receiver's dedup
-  (within `X-Huly-Replay-Window`) absorbs the duplicate.
+  (within `X-Huly-Idempotency-Retention`) absorbs the duplicate.
 
 The rendered-request store is a service-local blob in the audit
 blob store (same AEAD scheme as secrets), scoped by workspace +
@@ -1355,50 +1387,70 @@ persist, so the pre-image cannot ride on the Tx either.
 Rev 6 drops in-pipeline journalling. Delivery is driven by a
 **Tx-log sweeper**:
 
-- `TxMiddleware` writes every Tx to `DOMAIN_TX` BEFORE the domain
-  apply (`txPush.ts:L51-L97`). Rev 6's note "every applied Tx"
-  was imprecise and MichaelUray flagged it (M1): logging precedes
-  apply, so a stored Tx does not by itself prove the source
-  mutation succeeded. Rev 7 pins the delivery contract and the
-  platform assumption that make the design sound.
+- `TxMiddleware` writes every CUD Tx to `DOMAIN_TX` BEFORE the
+  domain apply (`foundations/server/packages/middleware/src/txPush.ts`:
+  the `tx-push` await completes before `provideTx` returns, with
+  no shared storage transaction and no rollback hook if `provideTx`
+  then rejects). Rev 7's claim of a "single storage transaction"
+  across the two was wrong and MichaelUray flagged it (M1'). Rev 8
+  drops the apply-success invariant and narrows the delivery
+  contract honestly.
 
-  **Platform assumption (DOMAIN_TX apply-success invariant).**
-  `TxMiddleware` rolls back the `DOMAIN_TX` row when the domain
-  apply fails: `provideTx` is wrapped in a single storage
-  transaction with the apply, so an aborted apply aborts the Tx
-  insert too. The sweeper therefore sees only Txes whose apply
-  committed. This is the same invariant the broadcast pipeline
-  already relies on; the implementation PR will add a regression
-  test proving `provideTx` is observable only after the apply
-  commits.
+  **Delivery contract (at-least-once after Tx-log durability).**
+  The sweeper fires on every Tx that durably reached `DOMAIN_TX`.
+  That is a WEAKER guarantee than "the mutation committed". Two
+  gaps are explicit and documented:
 
-  **Delivery contract (capture-at-realize fidelity).** The Tx log
-  is the TRIGGER, not the authoritative payload. The sweeper
-  reads a Tx, resolves the matching `WebhookEventSource` set, and
-  writes an outbox row; the delivery worker then reads the LIVE
-  source doc at realize time and renders the payload from that
-  doc under the subscription owner's effective permissions
-  (step 3 of realization, below). Consequence: the payload
-  reflects the stored source state when realize ran, not the
-  intermediate state the Tx would have described; a reader who
-  wants the exact post-Tx intent must consult the Tx itself via
-  `txId` + the workspace API.
+  1. **Phantom Tx.** A crash or an exception between the Tx-log
+     write and the end of `provideTx` leaves a stored Tx whose
+     apply never committed. The sweeper picks it up on restart
+     and attempts to realize it; see realize-time mismatch
+     detection below for how such events terminate.
+  2. **Stale rendered payload.** The payload the receiver sees
+     reflects the LIVE source doc at realize time, not the
+     intermediate state the Tx described. A later Tx that
+     overwrites the touched attributes shifts the rendered body
+     away from the triggering Tx's intent.
 
-  **Realize-time mismatch detection.** The sweeper + delivery
-  worker check that the Tx's intent is reflected in the live
-  doc before firing. If the Tx was a `TxCreateDoc` but the doc
-  no longer exists at realize time, OR a `TxUpdateDoc` whose
-  touched attributes have been overwritten by a later Tx so the
-  rendered body would be misleading, the outbox row is
-  terminated with `terminalReason: 'source_mismatch'` and a
-  `skipped` audit row recorded. Removes are the one case where
-  "live doc missing" is the *expected* state; rev 7 excludes
-  Removes from v1 (see M2 below), so this check does not fire
-  on them.
+  A subscriber that needs apply-success semantics must consult
+  the source doc via `txId` + the workspace API and treat a
+  webhook as a hint, not a ledger entry. The delivery contract
+  is "at-least-once delivery of a trigger notification keyed on
+  `(workspace, txId, sourceEventId)`; the attached payload is a
+  best-effort live snapshot and MAY disagree with the Tx that
+  triggered it". Receiver code that tolerates the two gaps above
+  is safe; receiver code that assumes "every webhook corresponds
+  to a committed mutation that produced exactly this payload" is
+  not.
 
-  A crash before Tx insert means neither a stored Tx nor a
-  delivered event; a crash after Tx insert + apply commit has a
-  stored Tx the sweeper picks up on restart.
+  Closing either gap requires an after-apply hook in
+  platform-core (a successful-commit signal the sweeper can
+  subscribe to) and a shared storage transaction between
+  `tx-push` and `provideTx`. Both are platform-level changes
+  outside the scope of this docs-only PR; they are tracked as a
+  follow-up in [Open questions for review](#open-questions-for-review).
+
+  **Realize-time mismatch detection narrows (does not close) the
+  gap.** The sweeper + delivery worker check that the Tx's intent
+  is reflected in the live doc before firing. If the Tx was a
+  `TxCreateDoc` but the doc no longer exists at realize time, OR
+  a `TxUpdateDoc` whose touched attributes have been overwritten
+  by a later Tx so the rendered body would be misleading, the
+  outbox row is terminated with `terminalReason: 'source_mismatch'`
+  and a `skipped` audit row recorded. This catches most phantom
+  Txes before they reach the receiver, but a phantom whose live
+  state coincidentally matches the (failed) Tx's intent is
+  indistinguishable from a real event and WILL be delivered.
+  Removes are the one case where "live doc missing" is the
+  *expected* state; rev 7 excludes Removes from v1 (see M2), so
+  this check does not fire on them.
+
+  A crash before Tx-log insert means neither a stored Tx nor a
+  delivered event; a crash after Tx-log insert and before apply
+  commit has a stored Tx the sweeper picks up on restart and
+  realize-time mismatch detection catches most of those; a crash
+  after a successful commit has a stored Tx the sweeper picks up
+  on restart and realizes normally.
 - For each Tx, the sweeper resolves the applicable
   `WebhookEventSource` set by: (a) looking up the Tx's `objectClass`
   in the `WebhookSubscribable` mixin index; (b) running every
@@ -1496,6 +1548,14 @@ interface WebhookOutboxJob extends Doc {
   nextAttemptAt: Timestamp | null
   terminalReason: string | null
   claimedUnderLease: string | null
+  // Monotonic per `(subscription, eventKind, sourceEventId)`. First
+  // insert from the sweeper is 0; each cancel-and-reissue under
+  // secret rotation bumps the counter. See M3' below for how this
+  // separates event-dedup from delivery-generation under the
+  // `UNIQUE(subscription, eventKind, sourceEventId, generation)`
+  // constraint, so a replacement row can actually be inserted while
+  // the cancelled row's seven-day retention still holds.
+  generation: number
 }
 ```
 
@@ -1510,7 +1570,11 @@ Realization steps for one journal entry:
    templates with `[SECRET:<name>]` placeholders substituted into
    the secret slots (not the actual secret values). Compute
    `configDigestAtRealize` from the APPROVED CONFIG as before.
-4. Insert the outbox row (`UNIQUE(subscription, eventKind, sourceEventId)`).
+4. Insert the outbox row with `generation = 0`
+   (`UNIQUE(subscription, eventKind, sourceEventId, generation)`).
+   The sweeper inserts generation 0 for every new source event; the
+   same tuple cannot be re-inserted at generation 0, which is what
+   makes the sweeper idempotent on restart.
 5. When all outbox rows for the journal entry are inserted, mark
    the journal `realized`.
 6. A crash during realization leaves the journal `pending` /
@@ -1520,35 +1584,56 @@ Realization steps for one journal entry:
 The delivery worker reads the outbox row and substitutes secrets
 just before the HTTP call (B2), signs the final body hash, sends.
 
-**Secret rotation vs delivery-id immutability (M3).** The L1167
-invariant ("the same `deliveryId` always carries the same frozen
-request bytes") prohibits re-rendering mid-retry. Rev 6's wording
-"the worker re-reads the secret store so a rotation picks up the
-new value" directly contradicted that invariant. Rev 7 resolves
-it with a **cancel-and-reissue** flow driven by the rotation RPC:
+**Secret rotation vs delivery-id immutability (M3, M3').** The
+L1180 invariant ("the same `deliveryId` always carries the same
+frozen request bytes") prohibits re-rendering mid-retry. Rev 6's
+wording "the worker re-reads the secret store so a rotation picks
+up the new value" directly contradicted that invariant. Rev 7
+resolved it with a cancel-and-reissue flow but left the dedup
+primary key at `(subscription, eventKind, sourceEventId)`, so the
+cancelled row's seven-day retention blocked the replacement INSERT
+(MichaelUray flagged this as M3'). Rev 8 separates event-dedup
+from delivery-generation:
 
-1. `rotateSecret(subscription, name)` writes the new ciphertext +
-   bumps `secretsMeta[name].lastRotatedAt` and
-   `subscription.revision`.
-2. In the same storage transaction, the service finds every
-   outbox row in `state in ('pending', 'in_flight')` whose
+- **Primary key** becomes
+  `UNIQUE(subscription, eventKind, sourceEventId, generation)`.
+  `sourceEventId` continues to be the event-dedup key (one real
+  source event gets one `(subscription, eventKind, sourceEventId)`
+  identity); `generation` is a monotonic counter inside that
+  identity that bumps on every replacement issued by the rotation
+  RPC. Sweeper inserts for new source events always use
+  `generation = 0`, so sweeper restart idempotency is unchanged.
+- **`deliveryId`** stays a uuid, minted per OUTBOX ROW (not per
+  source event), so each generation carries a distinct deliveryId
+  the receiver's dedup table sees as a new attempt stream. The
+  audit chain binds `sourceEventId` + `generation` + `deliveryId`
+  so an operator tracing a flow sees the full lineage.
+
+The rotation RPC (`rotateSecret(subscription, name)`) then:
+
+1. Writes the new ciphertext and bumps `secretsMeta[name].lastRotatedAt`
+   plus `subscription.revision`.
+2. In the same storage transaction, finds every outbox row in
+   `state in ('pending', 'in_flight')` whose
    `frozenRequest.{url,headers,bodyBytes}` contains the
    `[SECRET:<name>]` placeholder for the rotated secret.
-3. Each matched row flips to `state = 'failed'` with
-   `terminalReason: 'secretRotated'` and a `rotatedSecret` audit
-   row is written. A row in `in_flight` is left for its worker to
+3. Flips each matched row to `state = 'failed'` with
+   `terminalReason: 'secretRotated'` and writes a `rotatedSecret`
+   audit row. A row in `in_flight` is left for its worker to
    observe the terminal state at write-back time; the receiver
    may double-process the old payload (acceptable: receiver dedup
-   on `deliveryId` + replay window absorbs it).
+   on `deliveryId` within `idempotencyIdRetentionHours` absorbs
+   it).
 4. For every cancelled row that still has `attempts == 0` AND the
-   subscription is still `enabled`, the sweeper enqueues a FRESH
-   outbox row (new `deliveryId`, new `captureSeq`, same
-   `journal` + `sourceEventId`). Cancelled rows with
-   `attempts > 0` are NOT re-queued: the receiver already saw at
-   least one attempt under the old deliveryId, and generating a
-   second deliveryId for the same source event would double-fire
-   past the receiver's dedup window. The audit chain records the
-   cancellation + the new deliveryId when applicable.
+   subscription is still `enabled`, inserts a FRESH outbox row with
+   `generation = previous.generation + 1`, a new `deliveryId`, a
+   new `captureSeq`, same `journal` + `sourceEventId`. The INSERT
+   succeeds under the new UNIQUE constraint because
+   `(subscription, eventKind, sourceEventId, generation)` is
+   distinct. Cancelled rows with `attempts > 0` are NOT re-queued:
+   the receiver already saw at least one attempt under the old
+   deliveryId, and a second deliveryId for the same source event
+   past the receiver's retention window would double-fire.
 5. Master-key succession (`WEBHOOKS_MASTER_KEY_NEXT` ring, section
    [Key succession](#key-succession-fixing-point-9)) re-encrypts
    ciphertext under a new master key but does NOT change the
@@ -1559,11 +1644,19 @@ it with a **cancel-and-reissue** flow driven by the rotation RPC:
 
 A secret marked compromised and rotated is NEVER replayed with
 the old value because every pending deliveryId that was holding
-a placeholder for it is already terminal.
+a placeholder for it is already terminal, and the replacement
+row at the next generation is rendered with the new secret.
 
 ### Dedup key
 
-`(subscription, eventKind, sourceEventId)` is the full dedup key.
+`(subscription, eventKind, sourceEventId)` is the full **event**
+dedup key; the outbox row's primary key is
+`(subscription, eventKind, sourceEventId, generation)` so that
+cancel-and-reissue under secret rotation can insert a replacement
+row while the cancelled row is still held in retention (M3'). A
+receiver that dedups on `deliveryId` within
+`idempotencyIdRetentionHours` is unaffected by the generation bump
+because each generation mints its own `deliveryId`.
 `sourceEventId` is composed as `${txId}:${sourceDoc}` for a plain
 Tx-sourced event; a hook that generates several events from one
 Tx (e.g. a `TxApplyIf` with multiple transitions, or a process
@@ -1612,27 +1705,37 @@ worker renews it while actively processing; crash + no renewal =
 lease expires and another worker claims.
 
 Within a lease the worker processes outbox rows for S in strict
-`(captureSeq ASC, attempt ASC)` order (M5). Rev 6's wording made
-`nextAttemptAt` the sort key, which still lets a newly captured
-job sail past a job in exponential backoff whose `nextAttemptAt`
-has drifted later than the newer job's immediate availability.
-Rev 7 pins the invariant:
+`(captureSeq ASC, attempt ASC)` order (M5, M5'). Rev 6 used
+`nextAttemptAt` as the sort key, which let a newly captured job
+sail past a job in exponential backoff. Rev 7 promoted
+`captureSeq` to the primary sort key but filtered out
+`nextAttemptAt > now()` BEFORE the sort, which still let a newer
+due row overtake an older row still in backoff (MichaelUray
+flagged this as M5'). Rev 8 removes the pre-sort filter:
 
 - **`captureSeq` is authoritative for ordering.** A monotonic
   per-subscription counter minted at outbox-insert time (part of
-  `frozenRequest.captureSeq`, already present in the schema; rev
-  7 just promotes it from a tiebreaker to the primary sort key).
-- **`nextAttemptAt` is only an admission gate.** A row is
-  CLAIMABLE when `nextAttemptAt IS NULL OR nextAttemptAt <= now()`.
-  Rows that are not yet claimable are skipped by the claim query,
-  but the sort order over claimable rows is still
-  `(captureSeq ASC, attempt ASC)`. The worker therefore blocks on
-  the oldest retrying job rather than racing past it with a newer
-  pending one.
+  `frozenRequest.captureSeq`, already present in the schema).
+- **The claim query does NOT filter on `nextAttemptAt`.** It
+  selects the oldest outstanding row in S by
+  `(captureSeq ASC, attempt ASC)` over the set
+  `state in ('pending', 'in_flight') AND terminalReason IS NULL`.
+  `nextAttemptAt` is read from the selected row and inspected by
+  the worker AFTER the claim query returns.
+- **`nextAttemptAt` is a per-row admission gate.** If the
+  selected row's `nextAttemptAt IS NULL OR nextAttemptAt <= now()`,
+  the worker processes it. Otherwise the worker yields: it
+  releases the claim without marking the row processed, waits
+  `min(nextAttemptAt - now, pollInterval)`, and re-runs the claim
+  query. The next run returns the same oldest row (because
+  `captureSeq` is immutable), so the worker blocks on the oldest
+  retrying job rather than racing past it with a newer `pending`
+  one.
 - A newer `pending` job in S cannot overtake an older job that is
   between retries unless the older job is `quarantined` (which
   removes it from the claim set explicitly). Fixes point #13: no
-  row-level race, no retry overtaking without quarantine.
+  row-level race, no retry overtaking without quarantine, strict
+  captureSeq ordering even across the retry/backoff window.
 
 ### Backlog quotas (fixing point #12)
 
@@ -1645,35 +1748,63 @@ Rev 7 pins the invariant:
 - **Age cap:** an outbox row older than
   `maxOutboxAgeSeconds` default 7 days is marked `quarantined`;
   the admin triages.
-- **Fan-out cap (admission at save time, M7):** the hard limit on
-  how many subscriptions a single matching Tx may fan out to is
-  `maxFanoutPerTx` default 50. Rev 6 enforced it only at
-  realize time, so a save that would guarantee breaches was still
-  allowed and the breach surfaced only after the first offending
-  Tx. Rev 7 moves enforcement to the management RPC:
-  - On every `createSubscription` and `updateSubscription`, the
-    RPC computes the projected per-event-kind fan-out: for each
-    event kind the sub's triggers listen to, the service queries
-    the matching subscription set as the sub would be after save
-    (including this sub, including the current revision of every
-    other sub) and verifies the count stays within
-    `maxFanoutPerTx`.
-  - If any event kind projects over the cap, the RPC rejects
-    with error code **`fanout_cap_exceeded`** and a response
-    body naming the event kind, the projected count, the limit,
-    and the subscriptions already counting against it (the
-    operator needs the list to triage).
+- **Fan-out cap (admission at save time, M7 + M7'):** the hard
+  limit on how many subscriptions a single matching Tx may fan
+  out to is `maxFanoutPerTx` default 50. Rev 6 enforced it only
+  at realize time, so a save that would guarantee breaches was
+  still allowed. Rev 7 moved enforcement to the management RPC
+  but computed the projection per event kind in isolation, which
+  MichaelUray flagged (M7'): a single Tx often co-emits several
+  event kinds (e.g., `card.updated` plus `card.status.changed`
+  from the same status mutation), so three kinds each sitting at
+  40 matching subs individually pass a per-kind cap of 50 while
+  the real fan-out for that one Tx is 120. Rev 8 enforces the
+  cap on AGGREGATE cardinality across all co-triggered kinds:
+  - **Co-triggered-kind set.** For each (Tx shape) the save
+    might match, the service enumerates the set of event kinds
+    its triggers could emit from a single source Tx. In
+    practice this is the union over every trigger in the sub,
+    projected against the event-kind taxonomy (the realizer's
+    emit table is authoritative). Kinds that cannot be emitted
+    from the same Tx (because their classes or modifiers
+    disagree) are kept in separate sets; kinds that can
+    co-emit (e.g., a "generic update" kind and a "specific
+    attribute changed" kind triggered by the same CUD) form
+    one co-triggered set each.
+  - **Save-time projection.** On every `createSubscription` and
+    `updateSubscription`, the RPC computes, for each
+    co-triggered set, the projected aggregate fan-out: the
+    service sums `matchingSubscriptionCount(kind)` across every
+    kind in the set, using the subscription set as it would be
+    after save (including this sub, including the current
+    revision of every other sub). The projection takes the MAX
+    across all co-triggered sets the save could produce. If
+    that max exceeds `maxFanoutPerTx`, the RPC rejects with
+    error code **`fanout_cap_exceeded`** and a response body
+    naming the co-triggered kind set, the projected aggregate
+    count, the limit, and the subscriptions already counting
+    against it (the operator needs the list to triage).
+  - **Realize-time check.** The realize-time fallback is also
+    aggregate: for the current source Tx, the realizer first
+    enumerates every event kind that matches, then sums the
+    matching subscriptions across that entire set, and only
+    then compares the sum against `maxFanoutPerTx`. It does
+    not short-circuit on a per-kind pass, and never drops an
+    event kind from the sum to try to fit under the cap. If
+    the sum exceeds the cap, every subscription in the sum is
+    marked `failed:fanoutExceeded` for this Tx and auto-paused
+    (same behaviour as rev 7, just with the correct sum).
   - Operator remediation: narrow this sub's `scope` /
-    `classFilter` / `attributeFilter`; delete a conflicting
-    sub; or request the limit be raised via a
-    service-config change (`maxFanoutPerTx` is read from
+    `classFilter` / `attributeFilter`; split triggers so a
+    single sub no longer joins a saturated co-triggered set;
+    delete a conflicting sub; or request the limit be raised
+    via a service-config change (`maxFanoutPerTx` is read from
     workspace config at RPC time, no restart needed).
-  - The realize-time check from rev 6 stays as a safety net: if
-    a save-time check misses a case (e.g., a plugin ships a new
-    `WebhookSubscribable` after save), the journal is marked
-    `failed:fanoutExceeded` and the subscription auto-pauses.
-    The save-time check is the normal gate; the realize-time
-    check is the fallback.
+  - The save-time check is the normal gate; the realize-time
+    check is the fallback for cases save-time can miss (e.g.,
+    a plugin ships a new `WebhookSubscribable` after save, or a
+    newly emitted event kind joins an existing co-triggered
+    set).
 - **Retry budget:** retries + test events + initial attempts all
   draw from the same per-subscription + per-workspace sliding-window
   budgets.
