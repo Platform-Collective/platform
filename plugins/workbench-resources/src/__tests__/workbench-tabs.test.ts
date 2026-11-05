@@ -144,7 +144,7 @@ const client = {
   createDoc: jest.fn(async () => 'new-tab'),
   update: jest.fn(async () => {}),
   apply: () => ({ diffUpdate: client.diffUpdate, commit: client.commit }),
-  diffUpdate: jest.fn(async () => {}),
+  diffUpdate: jest.fn<Promise<void>, [WorkbenchTab, Partial<WorkbenchTab>]>(async () => {}),
   commit: jest.fn(async () => {}),
   remove: jest.fn(async () => {})
 }
@@ -431,6 +431,53 @@ describe('tabs of removed documents', () => {
     jest.mocked(navigate).mockReset()
   })
 
+  it.each([false, true])('diffs against the persisted location after an optimistic correction (background=%s)', async (background) => {
+    workspaceStore.set('workspace')
+    const tab = makeTab(`persisted-${String(background)}`)
+    const active = makeTab('persisted-other', 'workbench/workspace/app/other')
+    tabsStore.set([tab, active])
+    tabIdStore.set(background ? active._id : tab._id)
+    jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(background ? active : tab))
+    await resolveTab(tab)
+    resolver.mockResolvedValue({ name: 'Home' })
+    jest.mocked(navigate).mockImplementation((loc) => {
+      jest.mocked(getCurrentLocation).mockReturnValue(loc)
+      testLocationStore.set(loc)
+      return true
+    })
+
+    try {
+      removeDocs(objectId)
+      if (background) tabIdStore.set(tab._id)
+      await flush()
+
+      // TxOperations.diffUpdate skips fields equal to its input document. The
+      // optimistic store must not make the persisted old location look current.
+      const write = client.diffUpdate.mock.calls.find(([doc, update]) =>
+        doc._id === tab._id && update.location === 'workbench/workspace/app' && doc.location !== update.location
+      )
+      expect(write).toBeDefined()
+      expect(get(tabsStore).find((doc) => doc._id === tab._id)?.location).toBe('workbench/workspace/app')
+    } finally {
+      jest.mocked(navigate).mockReset()
+    }
+  })
+
+  it('returns to the application when the deleted panel document also occupied the canonical path', async () => {
+    const tab = makeTab('same-panel', 'workbench/workspace/app/document#panel|document|document-class')
+    tabsStore.set([tab])
+    tabIdStore.set(tab._id)
+    jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
+    await resolveTab(tab)
+    // The real resolver cannot return an identity for the document after deletion.
+    resolver.mockResolvedValue({ name: 'App' })
+
+    removeDocs(objectId)
+    await flush()
+
+    expect(navigate).toHaveBeenCalledWith({ path: ['workbench', 'workspace', 'app'] })
+  })
+
   it('keeps the list of the active tab when the document of its panel is removed', async () => {
     application.locationDataResolver = undefined
     const location = 'workbench/workspace/recruit/talents?filter=mine'
@@ -573,6 +620,12 @@ describe('tab document resolution', () => {
     const loc = { path: ['workbench', 'workspace', 'app', 'list'], fragment: 'panel|LINK-1|document-class' }
     expect(await getTabDataByLocation(loc)).toMatchObject({ name: 'Inbox', objectId, objectClass })
     expect(parseLinkId).toHaveBeenCalledWith([], 'LINK-1', objectClass)
+  })
+
+  it('identifies the panel when its application resolver identifies a different document underneath', async () => {
+    resolver.mockResolvedValue({ name: 'Underlying', objectId: 'underlying' as Ref<Doc>, objectClass })
+    const loc = { path: ['workbench', 'workspace', 'app', 'underlying'], fragment: 'panel|LINK-1|document-class' }
+    expect(await getTabDataByLocation(loc)).toMatchObject({ name: 'Underlying', objectId, objectClass })
   })
 
   it('uses the resolved location to identify documents behind application routes', async () => {
