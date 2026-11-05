@@ -169,30 +169,6 @@ describe('filter persistence', () => {
     }
   )
 
-  it.each([filters, []])('keeps a navigation override when the destination controller mounts', (override) => {
-    const storage = createStorage()
-    const draft = [{ ...filters[0], value: ['draft'] }] as unknown as Filter[]
-    storage.setItem(key, JSON.stringify(draft))
-    storage.setItem.mockClear()
-    const restore = jest.fn()
-    const outgoing = createFilterPersistence(storage, restore)
-    outgoing.load(otherKey, false)
-    // The outgoing component sees the resolved destination before it is destroyed.
-    outgoing.load(key, false, override)
-    const destination = createFilterPersistence(storage, restore)
-    destination.load(key, false)
-    expect(restore).toHaveBeenLastCalledWith(override)
-    // Svelte can deliver the store subscriber after load() has returned.
-    outgoing.save(key, override, false)
-    destination.save(key, override, false)
-    expect(storage.getItem(key)).toBe(JSON.stringify(draft))
-    expect(storage.setItem).not.toHaveBeenCalled()
-
-    destination.load(otherKey, false)
-    createFilterPersistence(storage, restore).load(key, false)
-    expect(restore).toHaveBeenLastCalledWith(draft)
-  })
-
   it('lets navigation override a saved view without touching the saved draft', () => {
     const storage = createStorage()
     const restore = jest.fn()

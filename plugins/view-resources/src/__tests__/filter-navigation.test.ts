@@ -5,6 +5,7 @@ import type { Location } from '@hcengineering/ui'
 import type { Filter } from '@hcengineering/view'
 import { resolvedLocationStore } from '@hcengineering/ui'
 import { get } from 'svelte/store'
+import { createFilterPersistence, makeFilterStorageKey } from '../filter-persistence'
 import { filterStore, navigationFilterStore, setFilters, takeNavigationFilters } from '../filter'
 
 jest.mock('@hcengineering/core', () => ({}))
@@ -102,4 +103,40 @@ it('drops an unclaimed request when the router resolves a different destination'
   expect(get(navigationFilterStore)).toBeUndefined()
   resolvedLocationStore.set(location)
   expect(takeNavigationFilters(location, issueClass)).toBeUndefined()
+})
+
+it.each([filters, []])('preserves navigation filters across destination controller handoff', (override) => {
+  navigationFilterStore.set(undefined)
+  resolvedLocationStore.set({ path: ['workbench', 'workspace', 'tracker', 'my-issues'] })
+  const key = makeFilterStorageKey(location, issueClass)
+  const draft = [{ ...filters[0], value: ['draft'] }] as unknown as Filter[]
+  const values = new Map([[key, JSON.stringify(draft)]])
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: jest.fn((key: string, value: string) => values.set(key, value)),
+    removeItem: jest.fn((key: string) => values.delete(key))
+  }
+  const restore = jest.fn(setFilters)
+  const outgoing = createFilterPersistence(storage, restore)
+  outgoing.load('origin', false)
+  setFilters(override, location, issueClass)
+  resolvedLocationStore.set(location)
+  // The outgoing component sees the resolved target before the new one mounts.
+  outgoing.load(key, false, takeNavigationFilters(location, issueClass))
+  const destination = createFilterPersistence(storage, restore)
+  destination.load(key, false, takeNavigationFilters(location, issueClass))
+  expect(restore).toHaveBeenLastCalledWith(override)
+  expect(get(navigationFilterStore)).toBeUndefined()
+  // Svelte can deliver these subscribers after load() has returned.
+  outgoing.save(key, override, false)
+  destination.save(key, override, false)
+  expect(values.get(key)).toBe(JSON.stringify(draft))
+  expect(storage.setItem).not.toHaveBeenCalled()
+  expect(storage.removeItem).not.toHaveBeenCalled()
+
+  // Even a destination without a filter component expires the one-visit override.
+  resolvedLocationStore.set({ path: ['workbench', 'workspace', 'time'] })
+  resolvedLocationStore.set(location)
+  createFilterPersistence(storage, restore).load(key, false, takeNavigationFilters(location, issueClass))
+  expect(restore).toHaveBeenLastCalledWith(draft)
 })
