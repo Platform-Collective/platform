@@ -46,3 +46,23 @@ describe('issues grouped by calendar day across a DST change at midnight', () =>
     )
   })
 })
+
+
+describe('moving ranges across DST', () => {
+  it.each([
+    ['Europe/Amsterdam', [2026, 3, 1], [2026, 3, 10], [2026, 3, 3], [2026, 2, 25]],
+    ['Europe/Amsterdam', [2026, 9, 20], [2026, 9, 23], [2026, 9, 30], [2026, 9, 27]],
+    ['America/Santiago', [2026, 8, 8], [2026, 8, 15], [2026, 8, 8], [2026, 8, 1]]
+  ])('preserves both local times in %s', (zone, start, due, target, expectedStart) => {
+    const result = runInZone(
+      zone as string,
+      `const start = new Date(...${JSON.stringify(start)})
+      const due = new Date(...${JSON.stringify(due)})
+      const target = new Date(...${JSON.stringify(target)})
+      const expected = new Date(...${JSON.stringify(expectedStart)})
+      const moved = m.moveIssueToCalendarDay({ startDate: +start, dueDate: +due }, target)
+      return { actual: moved, expected: { startDate: +expected, dueDate: +target } }`
+    )
+    expect(result.actual).toEqual(result.expected)
+  })
+})
