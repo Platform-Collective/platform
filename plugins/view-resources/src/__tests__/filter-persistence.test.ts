@@ -17,7 +17,9 @@ function createStorage (): {
   const values = new Map<string, string>()
   return {
     getItem: jest.fn((key: string) => values.get(key) ?? null),
-    removeItem: jest.fn((key: string) => { values.delete(key) }),
+    removeItem: jest.fn((key: string) => {
+      values.delete(key)
+    }),
     setItem: jest.fn((key: string, value: string) => {
       values.set(key, value)
     })
@@ -192,7 +194,9 @@ describe('filter persistence', () => {
       getItem: () => {
         throw new Error('Storage unavailable')
       },
-      removeItem: () => { throw new Error('Storage unavailable') },
+      removeItem: () => {
+        throw new Error('Storage unavailable')
+      },
       setItem: () => {
         throw new Error('Storage full')
       }
@@ -212,7 +216,6 @@ describe('filter persistence', () => {
     expect(restore).toHaveBeenLastCalledWith(filters)
   })
 })
-
 
 describe('saved filter locations', () => {
   it('only protects the draft at the selected saved view path', () => {

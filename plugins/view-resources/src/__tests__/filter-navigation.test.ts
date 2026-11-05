@@ -94,7 +94,6 @@ describe('navigation filter requests', () => {
   })
 })
 
-
 it('drops an unclaimed request when the router resolves a different destination', () => {
   navigationFilterStore.set(undefined)
   resolvedLocationStore.set({ path: ['workbench', 'workspace', 'tracker', 'origin'] })
