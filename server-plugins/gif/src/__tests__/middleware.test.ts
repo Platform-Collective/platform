@@ -366,7 +366,11 @@ describe('GifMiddleware: GIF writes are checked against what is stored', () => {
     const context = { hierarchy: { isDerived: (a: Ref<any>, b: Ref<any>) => a === b } } as unknown as PipelineContext
     h.mw = (await GifMiddleware.create({} as any, context, next)) as GifMiddleware
     const done = h.mw.tx(owner, [removeTx(stored._id)]).then(() => 'done')
-    const timeout = new Promise((resolve) => setTimeout(() => { resolve('stuck'); }, 200))
+    const timeout = new Promise((resolve) =>
+      setTimeout(() => {
+        resolve('stuck')
+      }, 200)
+    )
     expect(await Promise.race([done, timeout])).toBe('done')
     expect(depth).toBe(2)
   })
