@@ -13,6 +13,7 @@ import tracker from '@hcengineering/tracker'
 import { DOMAIN_TRACKER } from '../types'
 import view, { type Viewlet } from '@hcengineering/view'
 import {
+  addGanttPhase1ViewOptions,
   addSearchViewOptions,
   ensureDefaultLabelCategory,
   migrateAddStartDate,
@@ -189,5 +190,38 @@ describe('addSearchViewOptions', () => {
     await addSearchViewOptions(client)
 
     expect(txes).toEqual([])
+  })
+})
+
+describe('addGanttPhase1ViewOptions', () => {
+  it('uses the known id and preserves custom options on repeated runs', async () => {
+    const custom = { key: 'ganttBarLabelLeft', type: 'toggle', defaultValue: 'custom' }
+    const stored: any = { viewOptions: { groupBy: ['status'], orderBy: [['rank', 1]], other: [custom] } }
+    const txes: any[] = []
+    const client: any = {
+      getHierarchy: () => new Hierarchy(),
+      getModel: () => undefined,
+      findAll: jest.fn(async () => [stored]),
+      findOne: jest.fn(async () => undefined),
+      tx: jest.fn(async (tx: any) => {
+        txes.push(tx)
+        Object.assign(stored, tx.operations)
+        return {}
+      })
+    }
+    await addGanttPhase1ViewOptions(client)
+    await addGanttPhase1ViewOptions(client)
+    expect(txes).toHaveLength(1)
+    expect(txes[0]).toMatchObject({
+      objectId: trackerModel.viewlet.IssueGantt,
+      objectClass: view.class.Viewlet,
+      objectSpace: core.space.Model
+    })
+    expect(stored.viewOptions.groupBy).toEqual(['status'])
+    expect(stored.viewOptions.orderBy).toEqual([['rank', 1]])
+    expect(stored.viewOptions.other[0]).toEqual(custom)
+    expect(stored.viewOptions.other.map((o: { key: string }) => o.key)).toEqual(
+      expect.arrayContaining(['ganttBarLabelLeft', 'ganttBarLabelInside', 'ganttBarLabelRight', 'ganttQuickInfoOnClick'])
+    )
   })
 })

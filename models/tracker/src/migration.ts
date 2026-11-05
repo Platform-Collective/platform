@@ -216,7 +216,7 @@ export async function migrateAddStartDate (client: MigrationClient): Promise<voi
 // already-stored entries. Idempotent — a re-run is a no-op.
 //
 // Mirrors models/card/src/migration.ts:addShowAllVersionsViewOption.
-async function addGanttPhase1ViewOptions (client: MigrationUpgradeClient): Promise<void> {
+export async function addGanttPhase1ViewOptions (client: MigrationUpgradeClient): Promise<void> {
   const txOp = new TxOperations(client, core.account.System)
 
   const viewlets = await client.findAll(view.class.Viewlet, {
