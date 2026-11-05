@@ -464,7 +464,11 @@ describe('tabs of removed documents', () => {
   })
 
   it('returns to the application when the deleted panel document also occupied the canonical path', async () => {
-    const tab = makeTab('same-panel', 'workbench/workspace/app/document#panel|document|document-class')
+    // Use a fresh identity: other tests have already remembered the plain document path.
+    const removedId = 'canonical-deleted-document' as Ref<Doc>
+    resolver.mockResolvedValue({ ...documentData, objectId: removedId })
+    jest.mocked(parseLinkId).mockResolvedValue(removedId)
+    const tab = makeTab('same-panel', `workbench/workspace/app/${removedId}#panel|${removedId}|document-class`)
     tabsStore.set([tab])
     tabIdStore.set(tab._id)
     jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
@@ -472,7 +476,7 @@ describe('tabs of removed documents', () => {
     // The real resolver cannot return an identity for the document after deletion.
     resolver.mockResolvedValue({ name: 'App' })
 
-    removeDocs(objectId)
+    removeDocs(removedId)
     await flush()
 
     expect(navigate).toHaveBeenCalledWith({ path: ['workbench', 'workspace', 'app'] })
