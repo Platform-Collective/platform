@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import type { Ref, Space } from '@hcengineering/core'
 import type { ToDo, WorkSlot } from '@hcengineering/time'
 import type { Issue } from '@hcengineering/tracker'
 
@@ -19,10 +20,12 @@ export function getPlannerMonthRange (month: Date): { start: number, end: number
 /** Build local day markers from the current user's action items and their deadlines and workslots. */
 export function getPlannerMarkers (
   month: Date,
-  todos: Pick<ToDo, '_id' | 'attachedTo' | 'dueDate'>[],
+  todos: Array<Pick<ToDo, '_id' | 'attachedTo' | 'dueDate'> & Partial<Pick<ToDo, 'attachedSpace'>>>,
   issues: Pick<Issue, '_id' | 'dueDate'>[],
-  workslots: Pick<WorkSlot, 'attachedTo' | 'date' | 'dueDate'>[]
+  workslots: Pick<WorkSlot, 'attachedTo' | 'date' | 'dueDate'>[],
+  archivedSpaces: Set<Ref<Space>> = new Set()
 ): PlannerMarkers {
+  todos = todos.filter((todo) => todo.attachedSpace == null || !archivedSpaces.has(todo.attachedSpace))
   const { start, end } = getPlannerMonthRange(month)
   const due = new Set<number>()
   const scheduled = new Set<number>()

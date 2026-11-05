@@ -176,7 +176,7 @@
       workslots = result
     }
   )
-  $: markers = getPlannerMarkers(viewDate, todos, issues, workslots)
+  $: markers = getPlannerMarkers(viewDate, todos, issues, workslots, new Set(archivedSpaces))
 
   let pressed: boolean = false
 
