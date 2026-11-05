@@ -47,7 +47,7 @@ import {
   TimeReportDayType,
   trackerId
 } from '@hcengineering/tracker'
-import view, { type ViewOptionModel } from '@hcengineering/view'
+import view, { type ViewOptionModel, type Viewlet } from '@hcengineering/view'
 
 import { classicIssueTaskStatuses } from '.'
 import tracker from './plugin'
@@ -227,19 +227,36 @@ async function addGanttPhase1ViewOptions (client: MigrationUpgradeClient): Promi
   const desiredOther = ganttViewOptions().other ?? []
 
   for (const v of viewlets) {
-    const current = v.viewOptions ?? { groupBy: [], orderBy: [], other: [] }
-    const currentOther: ViewOptionModel[] = current.other ?? []
-    const existingKeys = new Set(currentOther.map((o) => o.key))
-    const missing = desiredOther.filter((o) => !existingKeys.has(o.key))
-    if (missing.length === 0) continue
-
-    await txOp.update(v, {
-      viewOptions: {
-        ...current,
-        other: [...currentOther, ...missing]
-      }
-    })
+    await mergeViewletOptions(txOp, tracker.viewlet.IssueGantt, v, desiredOther)
   }
+}
+
+/**
+ * Appends the missing `other` view options (by key) to a stored viewlet.
+ * The update addresses the viewlet by its known id: right after a backup restore
+ * the upgrade client can return the stored viewlet without `_id`, and an update
+ * built from `v._id` is rejected by NormalizeTxMiddleware (objectId undefined,
+ * BadRequest), which failed the whole migration state.
+ * @internal
+ */
+export async function mergeViewletOptions (
+  txOp: TxOperations,
+  id: Ref<Viewlet>,
+  v: Pick<Viewlet, 'viewOptions'>,
+  desired: ViewOptionModel[]
+): Promise<boolean> {
+  const current = v.viewOptions ?? { groupBy: [], orderBy: [], other: [] }
+  const currentOther: ViewOptionModel[] = current.other ?? []
+  const existingKeys = new Set(currentOther.map((o) => o.key))
+  const missing = desired.filter((o) => !existingKeys.has(o.key))
+  if (missing.length === 0) return false
+  await txOp.updateDoc(view.class.Viewlet, core.space.Model, id, {
+    viewOptions: {
+      ...current,
+      other: [...currentOther, ...missing]
+    }
+  })
+  return true
 }
 
 // SEARCH_VIEW_OPTIONS (showQuickModeSelector / searchScope /
@@ -249,7 +266,7 @@ async function addGanttPhase1ViewOptions (client: MigrationUpgradeClient): Promi
 // up the new `other` entries on upgrade. Merge the missing keys into both
 // viewlets by `key` — mirrors addGanttPhase1ViewOptions and is idempotent, so
 // a re-run (or a partially-migrated workspace) is a no-op.
-async function addSearchViewOptions (client: MigrationUpgradeClient): Promise<void> {
+export async function addSearchViewOptions (client: MigrationUpgradeClient): Promise<void> {
   const txOp = new TxOperations(client, core.account.System)
 
   const targets = [
@@ -260,18 +277,7 @@ async function addSearchViewOptions (client: MigrationUpgradeClient): Promise<vo
   for (const t of targets) {
     const viewlets = await client.findAll(view.class.Viewlet, { _id: t.id })
     for (const v of viewlets) {
-      const current = v.viewOptions ?? { groupBy: [], orderBy: [], other: [] }
-      const currentOther: ViewOptionModel[] = current.other ?? []
-      const existingKeys = new Set(currentOther.map((o) => o.key))
-      const missing = t.desired.filter((o) => !existingKeys.has(o.key))
-      if (missing.length === 0) continue
-
-      await txOp.update(v, {
-        viewOptions: {
-          ...current,
-          other: [...currentOther, ...missing]
-        }
-      })
+      await mergeViewletOptions(txOp, t.id, v, t.desired)
     }
   }
 }

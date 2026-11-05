@@ -5,13 +5,21 @@
 // you may not use this file except in compliance with the License.
 //
 
-import core, { DOMAIN_TX } from '@hcengineering/core'
+import core, { DOMAIN_TX, Hierarchy } from '@hcengineering/core'
 import { DOMAIN_TASK } from '@hcengineering/model-task'
 import tags from '@hcengineering/tags'
 import tracker from '@hcengineering/tracker'
 
 import { DOMAIN_TRACKER } from '../types'
-import { ensureDefaultLabelCategory, migrateAddStartDate, migrateRelationActivityAttachment } from '../migration'
+import view, { type Viewlet } from '@hcengineering/view'
+import {
+  addSearchViewOptions,
+  ensureDefaultLabelCategory,
+  migrateAddStartDate,
+  migrateRelationActivityAttachment
+} from '../migration'
+import { issuesOptions } from '../viewlets'
+import trackerModel from '../plugin'
 
 describe('migrateAddStartDate', () => {
   it('sets startDate=null on every Issue lacking the field (DOMAIN_TASK)', async () => {
@@ -100,5 +108,58 @@ describe('ensureDefaultLabelCategory', () => {
 
     expect(tx.createDoc).not.toHaveBeenCalled()
     expect(tx.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('addSearchViewOptions', () => {
+  // Right after `backup-restore --upgrade` of an older workspace the upgrade client returned the stored
+  // IssueList/IssueKanban viewlets without `_id`; `txOp.update(v, ...)` then sent a TxUpdateDoc with
+  // objectId undefined, NormalizeTxMiddleware rejected it (BadRequest) and the state failed (2026-11-05 dk5).
+  function upgradeClient (viewlets: Array<Partial<Viewlet>>): { client: any, txes: any[] } {
+    const txes: any[] = []
+    const client: any = {
+      getHierarchy: () => new Hierarchy(),
+      getModel: () => undefined,
+      findAll: jest.fn(async (_class: unknown, query: { _id: string }) =>
+        viewlets.filter((v) => (v as any).$id === query._id).map(({ $id, ...rest }: any) => rest)
+      ),
+      findOne: jest.fn(async () => undefined),
+      tx: jest.fn(async (tx: unknown) => {
+        txes.push(tx)
+        return {}
+      })
+    }
+    return { client, txes }
+  }
+
+  it('addresses the viewlet by its known id even when the stored doc comes back without _id', async () => {
+    const old = { groupBy: ['status'], orderBy: [], other: [{ key: 'shouldShowSubIssues', type: 'toggle', defaultValue: true }] }
+    const { client, txes } = upgradeClient([
+      { $id: trackerModel.viewlet.IssueList, _class: view.class.Viewlet, space: core.space.Model, viewOptions: old } as any,
+      { $id: trackerModel.viewlet.IssueKanban, _class: view.class.Viewlet, space: core.space.Model, viewOptions: old } as any
+    ])
+
+    await addSearchViewOptions(client)
+
+    expect(txes.map((tx) => tx.objectId)).toEqual([trackerModel.viewlet.IssueList, trackerModel.viewlet.IssueKanban])
+    for (const tx of txes) {
+      expect(tx.objectClass).toBe(view.class.Viewlet)
+      expect(tx.objectSpace).toBe(core.space.Model)
+      const keys = tx.operations.viewOptions.other.map((o: { key: string }) => o.key)
+      expect(keys).toEqual(expect.arrayContaining(['shouldShowSubIssues', 'showQuickModeSelector', 'searchScope', 'searchHighlight']))
+      expect(tx.operations.viewOptions.groupBy).toEqual(['status'])
+    }
+  })
+
+  it('is a no-op when the stored viewlets already carry every option', async () => {
+    const full = (kanban: boolean): any => ({ groupBy: [], orderBy: [], other: issuesOptions(kanban).other })
+    const { client, txes } = upgradeClient([
+      { $id: trackerModel.viewlet.IssueList, _id: trackerModel.viewlet.IssueList, _class: view.class.Viewlet, space: core.space.Model, viewOptions: full(false) } as any,
+      { $id: trackerModel.viewlet.IssueKanban, _id: trackerModel.viewlet.IssueKanban, _class: view.class.Viewlet, space: core.space.Model, viewOptions: full(true) } as any
+    ])
+
+    await addSearchViewOptions(client)
+
+    expect(txes).toEqual([])
   })
 })
