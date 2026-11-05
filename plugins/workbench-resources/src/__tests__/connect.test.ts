@@ -187,7 +187,7 @@ describe('workspace endpoint revalidation', () => {
       await options.onConnect?.(event, 'session', undefined)
       await flush()
 
-      expect(mockGetAccountClient).toHaveBeenLastCalledWith('https://accounts', 'token', expect.any(Number))
+      expect(mockGetAccountClient).toHaveBeenLastCalledWith('https://accounts', 'token', 0)
       expect(mockAccountSelectWorkspace).toHaveBeenLastCalledWith('workspace')
       expect(reload).toHaveBeenCalledTimes(1)
     }

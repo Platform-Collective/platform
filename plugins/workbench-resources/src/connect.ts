@@ -85,8 +85,19 @@ export async function disconnect (): Promise<void> {
 
 const endpointCheckMaxDelayMs = 5000
 const endpointCheckTimeoutMs = 10000
+const endpointCheckCooldownMs = 30000
+
+function normalizeEndpoint (endpoint: string): string {
+  try {
+    // URL canonicalizes host casing, default ports and the empty root path, preserving path casing.
+    return new URL(endpoint).href
+  } catch {
+    return endpoint
+  }
+}
 
 async function withTimeout<T> (promise: Promise<T>, ms: number): Promise<T | undefined> {
+  // This only bounds waiting; it does not cancel the underlying request.
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([
@@ -257,21 +268,28 @@ export async function connect (title: string): Promise<Client | undefined> {
   _token = token
 
   const endpointChanged = (info: WorkspaceLoginInfo): boolean =>
-    (getMetadata(login.metadata.TransactorOverride) ?? info.endpoint) !== endpoint
+    normalizeEndpoint(getMetadata(login.metadata.TransactorOverride) ?? info.endpoint) !== normalizeEndpoint(endpoint)
 
   // Re-check the workspace endpoint after a reconnect, next to the normal refresh: the old
   // server may still accept connections after the workspace moved to another region.
   // A random delay spreads the account service load when many clients reconnect at once
   // (e.g. after a transactor restart), a time limit drops slow checks, and only one check
   // runs at a time. It uses the account client directly, so a failure never navigates or
-  // shows anything; the next reconnect simply checks again.
+  // shows anything. A cooldown after success, failure or timeout bounds repeated checks.
   let endpointCheck: Promise<void> | undefined
+  let lastEndpointCheckFinishedAt: number | undefined
   function recheckEndpoint (): void {
-    if (endpointCheck !== undefined) return
+    if (
+      endpointCheck !== undefined ||
+      (lastEndpointCheckFinishedAt !== undefined && Date.now() - lastEndpointCheckFinishedAt < endpointCheckCooldownMs)
+    ) return
     endpointCheck = (async () => {
       try {
         await new Promise((resolve) => setTimeout(resolve, Math.random() * endpointCheckMaxDelayMs))
-        const accountClient = getAccountClient(getMetadata(login.metadata.AccountsUrl), token, endpointCheckTimeoutMs)
+        const currentToken = getMetadata(presentation.metadata.Token)
+        if (currentToken == null) return
+        // Disable the retry window; the outer timeout is the only waiting deadline.
+        const accountClient = getAccountClient(getMetadata(login.metadata.AccountsUrl), currentToken, 0)
         const info = await withTimeout(accountClient.selectWorkspace(wsUrl), endpointCheckTimeoutMs)
         if (info != null && endpointChanged(info) && wsUrl === getCurrentLocation().path[1]) {
           console.log('endpoint changed, reloading')
@@ -280,6 +298,7 @@ export async function connect (title: string): Promise<Client | undefined> {
       } catch (err: any) {
         console.warn('Workspace endpoint check failed', err?.message ?? err)
       } finally {
+        lastEndpointCheckFinishedAt = Date.now()
         endpointCheck = undefined
       }
     })()
