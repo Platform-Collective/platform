@@ -282,6 +282,29 @@ describe('print', () => {
     await closePrintBrowser()
   })
 
+  it('blocks private image requests even when the page is on an allowed default port', async () => {
+    const page = createPage()
+    const { closePrintBrowser, print } = await loadPrintModule(jest.fn().mockResolvedValue(createBrowser(() => page)))
+    const ctx = createCtx()
+    page.goto.mockImplementation(async () => {
+      const listener = page.on.mock.calls.find(([event]: [string]) => event === 'request')?.[1]
+      const request = {
+        url: () => 'http://169.254.169.254/image?credential=hidden',
+        isNavigationRequest: () => false,
+        continue: jest.fn().mockResolvedValue(undefined),
+        abort: jest.fn().mockResolvedValue(undefined)
+      }
+      await listener(request)
+      expect(request.abort).toHaveBeenCalledWith('blockedbyclient')
+      expect(request.continue).not.toHaveBeenCalled()
+    })
+    await print(ctx, 'http://example.com/')
+    expect(ctx.warn).toHaveBeenCalledWith('Blocked print request', {
+      origin: 'http://169.254.169.254', navigation: false
+    })
+    await closePrintBrowser()
+  })
+
   it('blocks window.open before a blank popup can be navigated', async () => {
     const page = createPage()
     const browser = createBrowser(() => page)
