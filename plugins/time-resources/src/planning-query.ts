@@ -16,9 +16,9 @@ export function queryPlanningIssues (
     set(new Map())
     return
   }
-  if (query.query(issueClass, { _id: { $in: ids } }, (res) => {
+  // Preserve the last answer while the replacement query loads. This also keeps blocker
+  // subscriptions alive; an empty ID set still explicitly unsubscribes and clears above.
+  query.query(issueClass, { _id: { $in: ids } }, (res) => {
     set(new Map(res.map((issue) => [issue._id, issue])))
-  })) {
-    set(new Map())
-  }
+  })
 }

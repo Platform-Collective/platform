@@ -65,7 +65,7 @@ describe('issue slot duration', () => {
     expect(getIssueSlotDuration({ estimation: 40, reportedTime: 1 }, MORNING)).toBe(8 * HOUR)
   })
 
-  it('never runs past midnight of the start day', () => {
+  it('caps positive estimates at midnight of the start day', () => {
     const evening = new Date(2026, 9, 23, 18).getTime()
     const midnight = new Date(2026, 9, 24).getTime()
     expect(evening + getIssueSlotDuration({ estimation: 8, reportedTime: 0 }, evening)).toBe(midnight)
@@ -176,7 +176,6 @@ describe('list-level planning constraints', () => {
   })
 })
 
-
 it('queries only unique issues of open unplanned rows', () => {
   const todos = [
     { attachedTo: 'a', attachedToClass: 'issue', workslots: 0, doneOn: null },
@@ -201,6 +200,19 @@ it('reuses unchanged constraints on ticks and clears a start hint at its boundar
   expect(reached.get(todo._id)?.startDate).toBeUndefined()
   expect(reached.get(todo._id)?.blockers).toEqual(['TEST-1: Blocker 1'])
   expect(reached.get(todo._id)).not.toBe(next.get(todo._id))
-  const resolved = getToDoPlanningConstraints([todo], issues, byId([blocker('1', 'done')]), RESOLVED, NOW + HOUR, reached)
+  const resolved = getToDoPlanningConstraints(
+    [todo],
+    issues,
+    byId([blocker('1', 'done')]),
+    RESOLVED,
+    NOW + HOUR,
+    reached
+  )
   expect(resolved.size).toBe(0)
+})
+
+it('keeps the uncapped legacy fallback without a positive estimate', () => {
+  const late = new Date(2026, 9, 23, 23, 45).getTime()
+  expect(getIssueSlotDuration(undefined, late)).toBe(HOUR / 2)
+  expect(getIssueSlotDuration({ estimation: 0, reportedTime: 0 }, late)).toBe(HOUR / 2)
 })
