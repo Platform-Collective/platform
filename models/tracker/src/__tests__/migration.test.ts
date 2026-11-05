@@ -133,10 +133,24 @@ describe('addSearchViewOptions', () => {
   }
 
   it('addresses the viewlet by its known id even when the stored doc comes back without _id', async () => {
-    const old = { groupBy: ['status'], orderBy: [], other: [{ key: 'shouldShowSubIssues', type: 'toggle', defaultValue: true }] }
+    const old = {
+      groupBy: ['status'],
+      orderBy: [],
+      other: [{ key: 'shouldShowSubIssues', type: 'toggle', defaultValue: true }]
+    }
     const { client, txes } = upgradeClient([
-      { $id: trackerModel.viewlet.IssueList, _class: view.class.Viewlet, space: core.space.Model, viewOptions: old } as any,
-      { $id: trackerModel.viewlet.IssueKanban, _class: view.class.Viewlet, space: core.space.Model, viewOptions: old } as any
+      {
+        $id: trackerModel.viewlet.IssueList,
+        _class: view.class.Viewlet,
+        space: core.space.Model,
+        viewOptions: old
+      } as any,
+      {
+        $id: trackerModel.viewlet.IssueKanban,
+        _class: view.class.Viewlet,
+        space: core.space.Model,
+        viewOptions: old
+      } as any
     ])
 
     await addSearchViewOptions(client)
@@ -146,7 +160,9 @@ describe('addSearchViewOptions', () => {
       expect(tx.objectClass).toBe(view.class.Viewlet)
       expect(tx.objectSpace).toBe(core.space.Model)
       const keys = tx.operations.viewOptions.other.map((o: { key: string }) => o.key)
-      expect(keys).toEqual(expect.arrayContaining(['shouldShowSubIssues', 'showQuickModeSelector', 'searchScope', 'searchHighlight']))
+      expect(keys).toEqual(
+        expect.arrayContaining(['shouldShowSubIssues', 'showQuickModeSelector', 'searchScope', 'searchHighlight'])
+      )
       expect(tx.operations.viewOptions.groupBy).toEqual(['status'])
     }
   })
@@ -154,8 +170,20 @@ describe('addSearchViewOptions', () => {
   it('is a no-op when the stored viewlets already carry every option', async () => {
     const full = (kanban: boolean): any => ({ groupBy: [], orderBy: [], other: issuesOptions(kanban).other })
     const { client, txes } = upgradeClient([
-      { $id: trackerModel.viewlet.IssueList, _id: trackerModel.viewlet.IssueList, _class: view.class.Viewlet, space: core.space.Model, viewOptions: full(false) } as any,
-      { $id: trackerModel.viewlet.IssueKanban, _id: trackerModel.viewlet.IssueKanban, _class: view.class.Viewlet, space: core.space.Model, viewOptions: full(true) } as any
+      {
+        $id: trackerModel.viewlet.IssueList,
+        _id: trackerModel.viewlet.IssueList,
+        _class: view.class.Viewlet,
+        space: core.space.Model,
+        viewOptions: full(false)
+      } as any,
+      {
+        $id: trackerModel.viewlet.IssueKanban,
+        _id: trackerModel.viewlet.IssueKanban,
+        _class: view.class.Viewlet,
+        space: core.space.Model,
+        viewOptions: full(true)
+      } as any
     ])
 
     await addSearchViewOptions(client)
