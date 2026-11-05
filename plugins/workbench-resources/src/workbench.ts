@@ -70,6 +70,9 @@ locationWorkspaceStore.subscribe((workspace) => {
   tabIdStore.set(getTabFromLocalStorage(workspace ?? ''))
 })
 
+// Keep the persisted input for diffUpdate while a deletion correction is shown optimistically.
+const optimisticTabSources = new Map<Ref<WorkbenchTab>, WorkbenchTab>()
+
 const syncTabLoc = reduceCalls(async (): Promise<void> => {
   const loc = getCurrentLocation()
   const workspace = get(locationWorkspaceStore)
@@ -133,8 +136,13 @@ const syncTabLoc = reduceCalls(async (): Promise<void> => {
     // }
 
     const op = getClient().apply(undefined, undefined, true)
-    await op.diffUpdate(tab, { location: url, name })
+    const source = optimisticTabSources.get(tab._id) ?? tab
+    await op.diffUpdate(source, { location: url, name })
     await op.commit()
+    // An older sync must leave the comparison available for the queued current location.
+    if (optimisticTabSources.get(tab._id) === source && locationToUrl(getCurrentLocation()) === url) {
+      optimisticTabSources.delete(tab._id)
+    }
   }
 })
 
@@ -295,7 +303,10 @@ async function getLocationWithoutDocument (loc: Location, objectId: Ref<Doc>): P
     // The document is open in a panel: keep the view below it unless that shows the same document.
     const location: Location = { ...loc, fragment: undefined }
     const known = tabDocuments.get(locationToUrl(location))
-    const below = known ?? (await getTabDataByLocation(location).catch((): undefined => undefined))?.objectId
+    const below =
+      loc.path[3] === objectId
+        ? objectId
+        : known ?? (await getTabDataByLocation(location).catch((): undefined => undefined))?.objectId
     if (below !== objectId) return location
   }
   return getApplicationLocation(loc)
@@ -344,11 +355,13 @@ async function leaveRemovedDocument (
   if (shownUrl !== currentUrl && shownUrl !== expectedUrl) return
   if (target.path.length <= 3) forgetApplicationLocation(loc)
   const location = locationToUrl(target)
+  if (!optimisticTabSources.has(tab._id)) optimisticTabSources.set(tab._id, tab)
   tabsStore.update((tabs) => tabs.map((t) => (t._id === tab._id ? { ...t, location, name } : t)))
-  if (get(tabIdStore) === tab._id) {
-    navigate(target)
+  if (get(tabIdStore) === tab._id && !navigate(target)) {
+    // Selecting another tab can keep the same URL, so no location event is emitted.
+    void syncTabLoc()
   }
-  // navigate() triggers syncTabLoc, which persists the active tab's location and name.
+  // The location event, or the explicit sync above, persists the active tab's location and name.
 }
 
 function onRemovedDocuments (removed: Set<Ref<Doc>>): void {
@@ -380,6 +393,7 @@ function onTabShown (tabId: Ref<WorkbenchTab> | undefined): void {
   const target =
     loc.fragment != null && loc.fragment !== '' ? { ...loc, fragment: undefined } : getApplicationLocation(loc)
   if (target.path.length <= 3) forgetApplicationLocation(loc)
+  if (!optimisticTabSources.has(tab._id)) optimisticTabSources.set(tab._id, tab)
   tabsStore.update((tabs) => tabs.map((t) => (t._id === tab._id ? { ...t, location: locationToUrl(target) } : t)))
   void leaveRemovedDocument(tab, loc, removed.objectId, target).catch(console.error)
 }
@@ -408,6 +422,7 @@ export function watchTabDocuments (): () => void {
     removeTxListener(listener)
     unsubscribe()
     removedTabDocuments.clear()
+    optimisticTabSources.clear()
   }
 }
 
@@ -437,10 +452,12 @@ export async function getTabDataByLocation (loc: Location): Promise<{
     const data = await resolver(loc)
     objectId = data.objectId
     objectClass = data.objectClass
-    if (objectId === undefined && loc.fragment != null && loc.fragment !== '') {
+    if (loc.fragment != null && loc.fragment !== '') {
       const panel = await getDefaultTabData(loc)
-      objectId = panel.objectId
-      objectClass = panel.objectClass
+      if (panel.objectId !== undefined) {
+        objectId = panel.objectId
+        objectClass = panel.objectClass
+      }
     }
     name = data.name
     label = data.nameIntl ?? application.label ?? workbench.string.Tab
