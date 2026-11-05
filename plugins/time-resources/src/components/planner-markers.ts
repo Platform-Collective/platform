@@ -23,7 +23,7 @@ export function getPlannerMarkers (
   todos: Array<Pick<ToDo, '_id' | 'attachedTo' | 'dueDate'> & Partial<Pick<ToDo, 'attachedSpace'>>>,
   issues: Pick<Issue, '_id' | 'dueDate'>[],
   workslots: Pick<WorkSlot, 'attachedTo' | 'date' | 'dueDate'>[],
-  archivedSpaces: Set<Ref<Space>> = new Set()
+  archivedSpaces = new Set<Ref<Space>>()
 ): PlannerMarkers {
   todos = todos.filter((todo) => todo.attachedSpace == null || !archivedSpaces.has(todo.attachedSpace))
   const { start, end } = getPlannerMonthRange(month)
