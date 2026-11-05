@@ -39,6 +39,7 @@ export const navigationFilterStore = writable<NavigationFilters | undefined>()
 
 // Whether the destination of the queued navigation filters has been shown.
 let navigationTargetReached = false
+let navigationOrigin: string[] = []
 
 function isNavigationTarget (target: Location, current: Location): boolean {
   return target.path.every((segment, index) => segment === current.path[index])
@@ -54,14 +55,14 @@ export function takeNavigationFilters (location: Location, _class: Ref<Class<Doc
   return pending.filters
 }
 
-// Navigation filters that no view picked up are dropped once their destination is left,
-// so they cannot surface on a later visit.
+// Drop unclaimed filters when leaving the destination or resolving a different path (e.g. a router rewrite).
+// Query and fragment changes at the origin do not cancel navigation that is still pending.
 resolvedLocationStore.subscribe((location) => {
   const pending = get(navigationFilterStore)
   if (pending === undefined) return
   if (isNavigationTarget(pending.location, location)) {
     navigationTargetReached = true
-  } else if (navigationTargetReached) {
+  } else if (navigationTargetReached || JSON.stringify(location.path) !== JSON.stringify(navigationOrigin)) {
     navigationFilterStore.set(undefined)
   }
 })
@@ -72,6 +73,7 @@ resolvedLocationStore.subscribe((location) => {
  */
 export function setFilters (filters: Filter[], location?: Location, _class?: Ref<Class<Doc>>): void {
   if (location !== undefined) {
+    navigationOrigin = [...get(resolvedLocationStore).path]
     navigationTargetReached = isNavigationTarget(location, get(resolvedLocationStore))
     navigationFilterStore.set({ location, filters, _class })
     return

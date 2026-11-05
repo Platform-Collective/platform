@@ -26,7 +26,7 @@
     takeNavigationFilters,
     updateFilter
   } from '../../filter'
-  import { createFilterPersistence } from '../../filter-persistence'
+  import { createFilterPersistence, isSavedFilterLocation } from '../../filter-persistence'
   import view from '../../plugin'
   import FilterTypePopup from './FilterTypePopup.svelte'
   import { onDestroy } from 'svelte'
@@ -49,8 +49,7 @@
     }
     persistence.load(
       getFilterKey(_class, $resolvedLocationStore),
-      $selectedFilterStore !== undefined &&
-        JSON.stringify($selectedFilterStore.location.path) === JSON.stringify($resolvedLocationStore.path),
+      isSavedFilterLocation($selectedFilterStore, $resolvedLocationStore),
       override,
       JSON.stringify($resolvedLocationStore.path)
     )
@@ -58,7 +57,11 @@
 
   onDestroy(
     filterStore.subscribe((filters) => {
-      persistence.save(getFilterKey(_class), filters, $selectedFilterStore !== undefined)
+      persistence.save(
+        getFilterKey(_class),
+        filters,
+        isSavedFilterLocation($selectedFilterStore, $resolvedLocationStore)
+      )
     })
   )
 

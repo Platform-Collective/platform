@@ -15,7 +15,7 @@ export interface FilterPersistence {
 
 /** Keeps unsaved filters scoped to the current view and class. */
 export function createFilterPersistence (
-  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>,
   restore: (filters: Filter[]) => void
 ): FilterPersistence {
   let activeKey: string | undefined
@@ -49,9 +49,8 @@ export function createFilterPersistence (
       // Location changes can arrive before the component restores its new filters.
       if (restoring || key !== activeKey || savedView) return
       try {
-        // Views that never had filters do not need an entry.
-        if (filters.length === 0 && storage.getItem(key) === null) return
-        storage.setItem(key, JSON.stringify(filters))
+        if (filters.length === 0) storage.removeItem(key)
+        else storage.setItem(key, JSON.stringify(filters))
       } catch {
         // Filtering still works when storage is unavailable or its quota is exceeded.
       }
@@ -65,5 +64,5 @@ export function isSavedFilterLocation (
   selected: { location: Location } | undefined,
   location: Location
 ): boolean {
-  return selected !== undefined
+  return selected !== undefined && JSON.stringify(selected.location.path) === JSON.stringify(location.path)
 }
