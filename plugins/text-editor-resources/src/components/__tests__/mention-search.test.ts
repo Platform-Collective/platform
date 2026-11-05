@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { mergeMemberResults } from '../mention-search'
+import { createMentionSearch, mergeMemberResults } from '../mention-search'
 
 interface Item {
   num: number
@@ -58,5 +58,35 @@ describe('mergeMemberResults', () => {
 
     expect(merged.findLastIndex(isEmployee)).toBe(3)
     expect(merged[4].category).toBe('issue')
+  })
+})
+
+
+describe('popup full-text requests', () => {
+  it('shares an in-flight request and its result across member updates', async () => {
+    let resolve: (value: string[]) => void = () => {}
+    const request = new Promise<string[]>((done) => { resolve = done })
+    const search = jest.fn(() => request)
+    const cached = createMentionSearch(search)
+    const initial = cached('ann')
+    const membersLoaded = cached('ann')
+    expect(search).toHaveBeenCalledTimes(1)
+    resolve(['ann'])
+    await expect(initial).resolves.toEqual(['ann'])
+    await expect(membersLoaded).resolves.toEqual(['ann'])
+    await expect(cached('ann')).resolves.toEqual(['ann'])
+    expect(search).toHaveBeenCalledTimes(1)
+  })
+
+  it('starts a new request for changed text and retries a rejected request', async () => {
+    const search = jest.fn(async (query: string) => query)
+    const cached = createMentionSearch(search)
+    await cached('a')
+    await cached('b')
+    expect(search).toHaveBeenCalledTimes(2)
+    search.mockRejectedValueOnce(new Error('offline'))
+    await expect(cached('c')).rejects.toThrow('offline')
+    await expect(cached('c')).resolves.toBe('c')
+    expect(search).toHaveBeenCalledTimes(4)
   })
 })

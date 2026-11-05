@@ -40,7 +40,7 @@
   import { getReferenceLabel, getReferenceObject } from './extension/reference'
 
   import MentionVersionPopup from './MentionVersionPopup.svelte'
-  import { mergeMemberResults } from './mention-search'
+  import { createMentionSearch, mergeMemberResults } from './mention-search'
 
   export let query: string = ''
   export let multipleMentions: boolean = false
@@ -259,12 +259,14 @@
     return false
   }
 
+  const fullTextSearch = createMentionSearch((query: string) => searchFor('mention', query))
+
   const updateItems = reduceCalls(async function (
     localQuery: string,
     members: AccountUuid[] | undefined
   ): Promise<void> {
     const [r, memberItems] = await Promise.all([
-      searchFor('mention', localQuery),
+      fullTextSearch(localQuery),
       getMemberSearchItems(localQuery, members)
     ])
     if (r.query === query) {

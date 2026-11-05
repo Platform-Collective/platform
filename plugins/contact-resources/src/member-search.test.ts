@@ -36,3 +36,11 @@ describe('rankByName', () => {
     expect(rankByName(people, 'a', names, 2)).toHaveLength(2)
   })
 })
+
+
+it('matches composed and decomposed accents with or without accents in the query', () => {
+  const people = [{ id: 'jose', names: ['José García'] }, { id: 'zoe', names: ['Zoe\u0308 Martin'] }]
+  expect(rankByName(people, 'jose', names, 5).map((person) => person.id)).toEqual(['jose'])
+  expect(rankByName(people, 'GARCÍA', names, 5).map((person) => person.id)).toEqual(['jose'])
+  expect(rankByName(people, 'zoë', names, 5).map((person) => person.id)).toEqual(['zoe'])
+})
