@@ -2,7 +2,7 @@
 
 import type { Location } from '@hcengineering/ui'
 import type { Filter } from '@hcengineering/view'
-import { createFilterPersistence, makeFilterStorageKey } from '../filter-persistence'
+import { createFilterPersistence, makeFilterStorageKey, isSavedFilterLocation } from '../filter-persistence'
 
 const location: Location = { path: ['workbench', 'workspace', 'tracker', 'all-issues'] }
 const key = makeFilterStorageKey(location, 'issue')
@@ -12,10 +12,12 @@ const filters = [{ index: 1, key: { key: 'status' }, value: ['open'], modes: [],
 function createStorage (): {
   getItem: jest.Mock<string | null, [string]>
   setItem: jest.Mock<void, [string, string]>
+  removeItem: jest.Mock<void, [string]>
 } {
   const values = new Map<string, string>()
   return {
     getItem: jest.fn((key: string) => values.get(key) ?? null),
+    removeItem: jest.fn((key: string) => { values.delete(key) }),
     setItem: jest.fn((key: string, value: string) => {
       values.set(key, value)
     })
@@ -116,6 +118,8 @@ describe('filter persistence', () => {
     persistence.save(key, [], false)
     createFilterPersistence(storage, restore).load(key, false)
     expect(restore).toHaveBeenLastCalledWith([])
+    expect(storage.getItem(key)).toBeNull()
+    expect(storage.removeItem).toHaveBeenCalledWith(key)
   })
 
   it('leaves saved-view filters alone and preserves the unsaved draft', () => {
@@ -188,6 +192,7 @@ describe('filter persistence', () => {
       getItem: () => {
         throw new Error('Storage unavailable')
       },
+      removeItem: () => { throw new Error('Storage unavailable') },
       setItem: () => {
         throw new Error('Storage full')
       }
@@ -205,5 +210,16 @@ describe('filter persistence', () => {
       persistence.load(key, false, filters)
     }).not.toThrow()
     expect(restore).toHaveBeenLastCalledWith(filters)
+  })
+})
+
+
+describe('saved filter locations', () => {
+  it('only protects the draft at the selected saved view path', () => {
+    const selected = { location }
+    expect(isSavedFilterLocation(selected, location)).toBe(true)
+    expect(isSavedFilterLocation(selected, { ...location, query: { mode: 'list' }, fragment: 'panel' })).toBe(true)
+    expect(isSavedFilterLocation(selected, { path: [...location.path, 'other'] })).toBe(false)
+    expect(isSavedFilterLocation(undefined, location)).toBe(false)
   })
 })

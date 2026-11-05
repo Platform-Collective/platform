@@ -58,3 +58,12 @@ export function createFilterPersistence (
     }
   }
 }
+
+
+/** Whether the selected saved view owns the current location's filters. */
+export function isSavedFilterLocation (
+  selected: { location: Location } | undefined,
+  location: Location
+): boolean {
+  return selected !== undefined
+}

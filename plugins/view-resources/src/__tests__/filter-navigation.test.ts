@@ -93,3 +93,14 @@ describe('navigation filter requests', () => {
     expect(takeNavigationFilters(location, issueClass)).toBe(filters)
   })
 })
+
+
+it('drops an unclaimed request when the router resolves a different destination', () => {
+  navigationFilterStore.set(undefined)
+  resolvedLocationStore.set({ path: ['workbench', 'workspace', 'tracker', 'origin'] })
+  setFilters(filters, location, issueClass)
+  resolvedLocationStore.set({ path: ['workbench', 'workspace', 'tracker', 'resolved-id'] })
+  expect(get(navigationFilterStore)).toBeUndefined()
+  resolvedLocationStore.set(location)
+  expect(takeNavigationFilters(location, issueClass)).toBeUndefined()
+})
