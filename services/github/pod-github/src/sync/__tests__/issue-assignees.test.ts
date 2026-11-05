@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
-import type { Person } from '@hcengineering/contact'
-import core, { type MeasureContext, type Ref, type TxOperations } from '@hcengineering/core'
+import contact, { type Person } from '@hcengineering/contact'
+import core, { type MeasureContext, type Ref, SocialIdType, type TxOperations } from '@hcengineering/core'
 import github, { type DocSyncInfo, type GithubProject } from '@hcengineering/github'
 import tracker, { type Issue } from '@hcengineering/tracker'
 import type { ContainerFocus, IntegrationContainer, IntegrationManager, UserInfo } from '../../types'
@@ -33,6 +33,7 @@ describe.each([
   const diffUpdate = jest.fn()
   const update = jest.fn()
   const getGithubLogin = jest.fn()
+  const findIdentity = jest.fn()
 
   beforeEach(async () => {
     jest.clearAllMocks()
@@ -87,7 +88,10 @@ describe.each([
       findAttribute: () => undefined
     }
     client = {
-      findOne: jest.fn(async (cls: string) => (cls === github.class.DocSyncInfo ? syncData : existing)),
+      findOne: jest.fn(async (cls: string, query: unknown, options: unknown) => {
+        if (cls === contact.class.SocialIdentity) return await findIdentity(query, options)
+        return cls === github.class.DocSyncInfo ? syncData : existing
+      }),
       findAll: jest.fn(async (_cls: string, query: { _id: { $in: string[] } }) =>
         query._id.$in.length > 0 ? [{ attachedTo: GITHUB_PERSON }] : []
       ),
@@ -101,6 +105,7 @@ describe.each([
       error: jest.fn()
     } as unknown as MeasureContext
     getGithubLogin.mockResolvedValue(undefined)
+    findIdentity.mockReset().mockResolvedValue(undefined)
     manager = new Manager(client, null!, null!)
     await manager.init({
       getContainer: jest.fn(async () => container),
@@ -180,11 +185,17 @@ describe.each([
         )
         expect(diffUpdate.mock.calls[0][1].current.assignee).toBe(LOCAL_PERSON)
       }
-      expect(getGithubLogin).toHaveBeenCalledWith(container.container, LOCAL_PERSON)
+      expect(getGithubLogin).not.toHaveBeenCalled()
+      expect(findIdentity).toHaveBeenCalledWith(
+        { attachedTo: LOCAL_PERSON, type: SocialIdType.GITHUB },
+        { projection: { _id: 1 } }
+      )
     })
 
     it('clears a Huly assignee linked to GitHub when GitHub is unassigned', async () => {
-      getGithubLogin.mockResolvedValue(GITHUB_USER)
+      // A stored identity is authoritative even when resolving a GitHub user would fail.
+      findIdentity.mockResolvedValue({ _id: 'github-identity', attachedTo: LOCAL_PERSON, type: SocialIdType.GITHUB })
+      getGithubLogin.mockRejectedValue(new Error('GitHub user resolution is unavailable'))
       if (path === 'diff sync') {
         await sync()
         expect(incomingData.assignee).toBe(kind === 'issue' ? undefined : null)
@@ -230,6 +241,13 @@ describe.each([
       expect(getGithubLogin).not.toHaveBeenCalled()
     })
 
+    it('does not perform identity lookups when GitHub supplies an assignee', async () => {
+      external.assignees.nodes = [external.author]
+      await sync()
+      expect(findIdentity).not.toHaveBeenCalled()
+      expect(getGithubLogin).not.toHaveBeenCalled()
+    })
+
     it('keeps an explicit Huly unassignment when GitHub is unassigned', async () => {
       existing.assignee = null
       await sync()
@@ -246,6 +264,7 @@ describe.each([
         )
       }
       expect(getGithubLogin).not.toHaveBeenCalled()
+      expect(findIdentity).not.toHaveBeenCalled()
     })
   })
 
