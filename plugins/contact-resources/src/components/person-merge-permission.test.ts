@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { PersonUuid } from '@hcengineering/core'
-import { isPersonMergePermissionCached } from './person-merge-permission'
+import { isPersonMergePermissionCached, canMergePersonTypes } from './person-merge-permission'
 
 describe('isPersonMergePermissionCached', () => {
   const primaryUuid = 'primary' as PersonUuid
@@ -28,5 +28,14 @@ describe('isPersonMergePermissionCached', () => {
     expect(isPersonMergePermissionCached(primaryUuid, secondaryUuid, secondaryUuid, secondaryUuid)).toBe(false)
     expect(isPersonMergePermissionCached(primaryUuid, secondaryUuid, primaryUuid, primaryUuid)).toBe(false)
     expect(isPersonMergePermissionCached(secondaryUuid, primaryUuid, primaryUuid, secondaryUuid)).toBe(false)
+  })
+})
+
+describe('canMergePersonTypes', () => {
+  it.each([[false, false], [false, true], [true, true]])('allows source employee %s into target employee %s', (source, target) => {
+    expect(canMergePersonTypes(source, target)).toBe(true)
+  })
+  it('blocks an employee into a local person before moving identities or references', () => {
+    expect(canMergePersonTypes(true, false)).toBe(false)
   })
 })
