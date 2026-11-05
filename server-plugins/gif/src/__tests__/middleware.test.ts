@@ -228,3 +228,200 @@ describe('GifMiddleware: removal rule enforced on the server', () => {
     expect(h.forwarded).toHaveLength(0)
   })
 })
+
+// The ownership check above runs before TxMiddleware and TxOrderingMiddleware, so the stored row
+// can change between the check and the write. These tests hold each forwarded batch, the way
+// persistence further down the pipeline would, until the test releases it, and apply its effect
+// to a small in-memory store only then.
+describe('GifMiddleware: GIF writes are checked against what is stored', () => {
+  interface Held {
+    txes: Tx[]
+    release: () => void
+  }
+
+  interface StoreHarness {
+    mw: GifMiddleware
+    rows: Map<Ref<Doc>, WorkspaceGif>
+    held: Held[]
+  }
+
+  async function storeHarness (docs: WorkspaceGif[]): Promise<StoreHarness> {
+    const h: StoreHarness = { mw: undefined as any, rows: new Map(docs.map((d) => [d._id, d])), held: [] }
+    const apply = (tx: Tx): void => {
+      const cud = tx as TxRemoveDoc<Doc> & { attributes?: Partial<WorkspaceGif> }
+      if (tx._class === core.class.TxRemoveDoc) h.rows.delete(cud.objectId)
+      if (tx._class === core.class.TxCreateDoc) {
+        h.rows.set(cud.objectId, { ...stored, ...cud.attributes, _id: cud.objectId as Ref<WorkspaceGif> })
+      }
+    }
+    const next = {
+      tx: async (_ctx: MeasureContext, txes: Tx[]) => {
+        await new Promise<void>((resolve) => {
+          h.held.push({
+            txes,
+            release: () => {
+              txes.forEach(apply)
+              resolve()
+            }
+          })
+        })
+        return {}
+      },
+      findAll: async (_ctx: MeasureContext, _class: Ref<any>, query: any) => {
+        const row = h.rows.get(query._id)
+        return row !== undefined && row._class === _class ? [row] : []
+      }
+    } as unknown as Middleware
+    const context = { hierarchy: { isDerived: (a: Ref<any>, b: Ref<any>) => a === b } } as unknown as PipelineContext
+    h.mw = (await GifMiddleware.create({} as any, context, next)) as GifMiddleware
+    return h
+  }
+
+  // Lets every pending promise callback run, so whatever can reach the store has done so.
+  const settle = async (): Promise<void> => {
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  }
+
+  // Releases the first held batch whose first tx has the given class.
+  const releaseHeld = (h: StoreHarness, txClass: Ref<any>): boolean => {
+    const i = h.held.findIndex((it) => it.txes[0]._class === txClass)
+    if (i < 0) return false
+    h.held.splice(i, 1)[0].release()
+    return true
+  }
+
+  const createTx = (objectId: Ref<Doc>, by: PersonId): Tx =>
+    ({
+      ...removeTx(objectId),
+      _class: core.class.TxCreateDoc,
+      modifiedBy: by,
+      attributes: { ...stored, createdBy: by }
+    }) as unknown as Tx
+
+  // Michael Uray's sequence on PR #58: a member sends two removals of their own entry (two open
+  // settings dialogs), both would pass the check, the first is stored, another member uploads the
+  // same file (same gif-<sha256> id, new owner), and only then is the second removal applied. The
+  // second removal must be checked against the row as it is after the first one is stored, so it
+  // is rejected as "not stored" and the new upload survives.
+  it('does not let a delayed second removal delete the entry another member re-uploaded', async () => {
+    const h = await storeHarness([stored])
+    const owner = ctxFor(account(AccountRole.User, [uploader]))
+    const first = h.mw.tx(owner, [removeTx(stored._id)])
+    const second = h.mw.tx(owner, [removeTx(stored._id)]).then(
+      () => 'applied',
+      (err: PlatformError<any>) => err.status.code
+    )
+    await settle()
+
+    expect(releaseHeld(h, core.class.TxRemoveDoc)).toBe(true)
+    await first
+    await settle()
+    expect(h.rows.has(stored._id)).toBe(false)
+
+    const reupload = h.mw.tx(ctxFor(account(AccountRole.User, [other])), [createTx(stored._id, other)])
+    await settle()
+    // The second removal was checked once the first was stored, found no row and was rejected,
+    // before the re-upload is stored. Had it been forwarded, the loop below would apply it after
+    // the re-upload and delete the new member's entry.
+    expect(await second).toBe(platform.status.Forbidden)
+    expect(releaseHeld(h, core.class.TxCreateDoc)).toBe(true)
+    await reupload
+    await settle()
+    while (releaseHeld(h, core.class.TxRemoveDoc)) await settle()
+
+    expect(h.rows.get(stored._id)?.createdBy).toBe(other)
+  })
+
+  // The other half of the same race: a removal that has passed its check but is not stored yet,
+  // and a re-upload of the same file. The create must wait, or the removal would land after it.
+  it('holds a re-upload until an earlier removal of the same id has been stored', async () => {
+    const h = await storeHarness([stored])
+    const removal = h.mw.tx(ctxFor(account(AccountRole.User, [uploader])), [removeTx(stored._id)])
+    await settle()
+    const reupload = h.mw.tx(ctxFor(account(AccountRole.User, [other])), [createTx(stored._id, other)])
+    await settle()
+    expect(h.held.map((it) => it.txes[0]._class)).toEqual([core.class.TxRemoveDoc])
+
+    releaseHeld(h, core.class.TxRemoveDoc)
+    await removal
+    await settle()
+    expect(releaseHeld(h, core.class.TxCreateDoc)).toBe(true)
+    await reupload
+    expect(h.rows.get(stored._id)?.createdBy).toBe(other)
+  })
+
+  // Sync triggers send derived transactions back in above this middleware, with the same request
+  // context, while the batch that caused them still holds the queue.
+  it('lets a derived GIF batch from the same request through instead of waiting on itself', async () => {
+    const h: { mw: GifMiddleware } = { mw: undefined as any }
+    const owner = ctxFor(account(AccountRole.User, [uploader]))
+    let depth = 0
+    const next = {
+      tx: async (ctx: MeasureContext<SessionData>, txes: Tx[]) => {
+        if (depth++ === 0) await h.mw.tx(ctx, [createTx('gif-derived' as Ref<Doc>, uploader)])
+        return {}
+      },
+      findAll: async () => [stored]
+    } as unknown as Middleware
+    const context = { hierarchy: { isDerived: (a: Ref<any>, b: Ref<any>) => a === b } } as unknown as PipelineContext
+    h.mw = (await GifMiddleware.create({} as any, context, next)) as GifMiddleware
+    const done = h.mw.tx(owner, [removeTx(stored._id)]).then(() => 'done')
+    const timeout = new Promise((resolve) => setTimeout(() => { resolve('stuck'); }, 200))
+    expect(await Promise.race([done, timeout])).toBe('done')
+    expect(depth).toBe(2)
+  })
+
+  it('checks a GIF write only after the previous GIF write has been stored', async () => {
+    const h = await storeHarness([stored])
+    const owner = ctxFor(account(AccountRole.User, [uploader]))
+    const first = h.mw.tx(owner, [removeTx(stored._id)])
+    const second = h.mw.tx(owner, [removeTx(stored._id)]).catch(() => undefined)
+    await settle()
+    // Only the first removal has gone downstream; the second waits for it to be stored.
+    expect(h.held).toHaveLength(1)
+    releaseHeld(h, core.class.TxRemoveDoc)
+    await first
+    await second
+    expect(h.held).toHaveLength(0)
+  })
+
+  it('does not hold writes to other classes behind a pending GIF write', async () => {
+    const h = await storeHarness([stored])
+    const owner = ctxFor(account(AccountRole.User, [uploader]))
+    const gifWrite = h.mw.tx(owner, [removeTx(stored._id)])
+    const otherWrite = h.mw.tx(owner, [removeTx('space-1' as Ref<Doc>, core.class.Space)])
+    await settle()
+    // The Space removal reached the store while the GIF removal is still held there.
+    const i = h.held.findIndex((it) => (it.txes[0] as TxRemoveDoc<Doc>).objectClass === core.class.Space)
+    expect(i).toBeGreaterThanOrEqual(0)
+    h.held.splice(i, 1)[0].release()
+    await otherWrite
+    releaseHeld(h, core.class.TxRemoveDoc)
+    await gifWrite
+  })
+
+  it('keeps processing GIF writes after one is rejected', async () => {
+    const h = await storeHarness([stored])
+    await expectForbidden(h.mw.tx(ctxFor(account(AccountRole.User, [other])), [removeTx(stored._id)]))
+    const next = h.mw.tx(ctxFor(account(AccountRole.User, [uploader])), [removeTx(stored._id)])
+    await settle()
+    expect(releaseHeld(h, core.class.TxRemoveDoc)).toBe(true)
+    await next
+    expect(h.rows.has(stored._id)).toBe(false)
+  })
+
+  it('keeps processing GIF writes after the store fails one', async () => {
+    const failing = {
+      tx: jest.fn(async () => {
+        throw new Error('db down')
+      }),
+      findAll: async () => [stored]
+    } as unknown as Middleware
+    const context = { hierarchy: { isDerived: (a: Ref<any>, b: Ref<any>) => a === b } } as unknown as PipelineContext
+    const mw = (await GifMiddleware.create({} as any, context, failing)) as GifMiddleware
+    const owner = ctxFor(account(AccountRole.User, [uploader]))
+    await expect(mw.tx(owner, [removeTx(stored._id)])).rejects.toThrow('db down')
+    await expect(mw.tx(owner, [removeTx(stored._id)])).rejects.toThrow('db down')
+    expect((failing as any).tx).toHaveBeenCalledTimes(2)
+  })
+})

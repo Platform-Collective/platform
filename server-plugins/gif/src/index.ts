@@ -57,6 +57,11 @@ const GUARDED = new Set<Ref<Class<Tx>>>([core.class.TxRemoveDoc, core.class.TxUp
  * A change to an id with no stored row is rejected for non-admins too: the id may belong to an
  * upload that is still in flight.
  *
+ * The check reads the stored row before TxMiddleware and TxOrderingMiddleware, so batches that
+ * touch the library are run one at a time here: each is checked only after the previous one has
+ * been stored. Otherwise two removals of the same entry could both pass, and the second could land
+ * after another member has re-uploaded the file under the same id.
+ *
  * @public
  */
 export class GifMiddleware extends BaseMiddleware {
@@ -64,16 +69,51 @@ export class GifMiddleware extends BaseMiddleware {
     return new GifMiddleware(context, next)
   }
 
+  // Tail of the queue of batches that touch the library. It always resolves, also when a batch
+  // is rejected or fails to store, so one failure never blocks the next write.
+  private gifWrites: Promise<void> = Promise.resolve()
+  // Requests whose batch currently holds the queue. Sync triggers send derived transactions back
+  // through MarkDerivedEntryMiddleware, above this one, with the same request context, before the
+  // holding batch has finished. Such a batch must not wait for the queue it is already inside.
+  private readonly holders = new WeakSet<SessionData>()
+
   async tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
+    // Routing is by objectClass, and DOMAIN_GIF holds only WorkspaceGif, so a tx that names
+    // another class cannot reach a library row. Creates are queued too: a re-upload must not be
+    // stored while an earlier removal of the same id is still on its way down.
+    const touchesGif = txes.some((tx) => this.isGifTx(tx))
+    if (!touchesGif) return await this.provideTx(ctx, txes)
+
+    if (this.holders.has(ctx.contextData)) return await this.checkAndForward(ctx, txes)
+
+    const previous = this.gifWrites
+    let release = (): void => {}
+    this.gifWrites = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await previous
+    this.holders.add(ctx.contextData)
+    try {
+      // Waits for the rest of the pipeline, including storage, before the next library write is
+      // checked.
+      return await this.checkAndForward(ctx, txes)
+    } finally {
+      this.holders.delete(ctx.contextData)
+      release()
+    }
+  }
+
+  private async checkAndForward (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     for (const tx of txes) {
-      if (!GUARDED.has(tx._class)) continue
-      const cud = tx as TxCUD<Doc>
-      // Routing is by objectClass, and DOMAIN_GIF holds only WorkspaceGif, so a tx that names
-      // another class cannot reach a library row.
-      if (!this.context.hierarchy.isDerived(cud.objectClass, gif.class.WorkspaceGif)) continue
-      await this.checkChange(ctx, cud)
+      if (!GUARDED.has(tx._class) || !this.isGifTx(tx)) continue
+      await this.checkChange(ctx, tx as TxCUD<Doc>)
     }
     return await this.provideTx(ctx, txes)
+  }
+
+  private isGifTx (tx: Tx): boolean {
+    const objectClass = (tx as Partial<TxCUD<Doc>>).objectClass
+    return objectClass !== undefined && this.context.hierarchy.isDerived(objectClass, gif.class.WorkspaceGif)
   }
 
   private async checkChange (ctx: MeasureContext<SessionData>, cud: TxCUD<Doc>): Promise<void> {
