@@ -49,7 +49,7 @@
     (spaces) => {
       archivedSpaces = new Set(spaces.map((space) => space._id))
     },
-    { projection: { _id: 1 } }
+    { projection: { _id: 1 }, showArchived: true }
   )
 
   function getFrom(date: Date): Timestamp {

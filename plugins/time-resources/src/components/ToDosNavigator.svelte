@@ -123,7 +123,7 @@
     (result) => {
       archivedSpaces = result.map((project) => project._id)
     },
-    { projection: { _id: 1 } }
+    { projection: { _id: 1 }, showArchived: true }
   )
 
   $: if (archivedSpaces.length > 0) {

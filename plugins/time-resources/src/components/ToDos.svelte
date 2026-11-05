@@ -64,7 +64,7 @@
     (result) => {
       archivedSpaces = new Set(result.map((project) => project._id))
     },
-    { projection: { _id: 1 } }
+    { projection: { _id: 1 }, showArchived: true }
   )
 
   let projects: IdMap<Project> = new Map()
