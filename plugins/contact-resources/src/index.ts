@@ -247,6 +247,7 @@ async function queryContact (
   return Array.from(new Map(results.flat().map((result) => [result.doc._id, result])).values()).slice(0, 200)
 }
 
+// Promote at most five matching members; additional members can still appear in full-text order.
 const memberSearchLimit = 5
 
 function searchMemberEmployees (search: string, filter: ObjectSearchOptions): ObjectSearchResult[] {

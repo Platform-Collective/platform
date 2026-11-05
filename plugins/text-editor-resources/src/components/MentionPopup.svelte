@@ -120,6 +120,7 @@
   let members: AccountUuid[] | undefined = undefined
   const spaceQuery = createQuery()
   $: if (objectSpace !== undefined) {
+    members = undefined
     spaceQuery.query(
       core.class.Space,
       { _id: objectSpace },
@@ -265,10 +266,7 @@
     localQuery: string,
     members: AccountUuid[] | undefined
   ): Promise<void> {
-    const [r, memberItems] = await Promise.all([
-      fullTextSearch(localQuery),
-      getMemberSearchItems(localQuery, members)
-    ])
+    const [r, memberItems] = await Promise.all([fullTextSearch(localQuery), getMemberSearchItems(localQuery, members)])
     if (r.query === query) {
       const searchItems = mergeMemberResults(
         memberItems,

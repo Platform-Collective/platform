@@ -33,7 +33,6 @@ import workbench, { type Application } from '@hcengineering/workbench'
 export interface ReferenceExtensionOptions extends ReferenceOptions {
   suggestion: Omit<SuggestionOptions, 'editor'>
   docClass?: Ref<Class<Doc>>
-  objectSpace?: Ref<Space>
   getObjectSpace?: () => Ref<Space> | undefined
   multipleMentions?: boolean
   openDocument?: (_class: Ref<Class<Doc>>, _id: Ref<Doc>, event?: MouseEvent) => void | Promise<void>
@@ -270,7 +269,6 @@ export const ReferenceExtension = ReferenceNode.extend<ReferenceExtensionOptions
       Suggestion({
         editor: this.editor,
         docClass: this.options.docClass,
-        objectSpace: this.options.objectSpace,
         getObjectSpace: this.options.getObjectSpace,
         multipleMentions: this.options.multipleMentions,
         ...this.options.suggestion

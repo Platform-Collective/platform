@@ -38,7 +38,10 @@ export interface ObjectSearchResult {
 export interface ObjectSearchOptions {
   in?: RelatedDocument[]
   nin?: RelatedDocument[]
-  /** Search only among these accounts (for example space members), using already loaded data. */
+  /**
+   * Supported by EmployeeQuery only: replaces full-text search with an in-memory search among these
+   * accounts (for example space members). Other search factories ignore this option.
+   */
   members?: AccountUuid[]
 }
 

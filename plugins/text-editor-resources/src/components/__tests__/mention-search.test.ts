@@ -61,17 +61,18 @@ describe('mergeMemberResults', () => {
   })
 })
 
-
 describe('popup full-text requests', () => {
   it('shares an in-flight request and its result across member updates', async () => {
-    let resolve: (value: string[]) => void = () => {}
-    const request = new Promise<string[]>((done) => { resolve = done })
+    let finish: (value: string[]) => void = () => {}
+    const request = new Promise<string[]>((resolve) => {
+      finish = resolve
+    })
     const search = jest.fn(() => request)
     const cached = createMentionSearch(search)
     const initial = cached('ann')
     const membersLoaded = cached('ann')
     expect(search).toHaveBeenCalledTimes(1)
-    resolve(['ann'])
+    finish(['ann'])
     await expect(initial).resolves.toEqual(['ann'])
     await expect(membersLoaded).resolves.toEqual(['ann'])
     await expect(cached('ann')).resolves.toEqual(['ann'])

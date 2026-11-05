@@ -26,8 +26,18 @@ export function mergeMemberResults<T extends MentionSearchItem> (
   return [...section, ...results.filter((it) => !isEmployee(it))]
 }
 
-
 /** Reuses the last full-text request while member ranking changes inside one popup. */
 export function createMentionSearch<T> (search: (query: string) => Promise<T>): (query: string) => Promise<T> {
-  return search
+  let lastQuery: string | undefined
+  let lastResult: Promise<T> | undefined
+  return (query) => {
+    if (query === lastQuery && lastResult !== undefined) return lastResult
+    lastQuery = query
+    const request = search(query).catch((error) => {
+      if (lastResult === request) lastResult = undefined
+      throw error
+    })
+    lastResult = request
+    return request
+  }
 }

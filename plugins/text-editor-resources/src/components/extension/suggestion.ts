@@ -131,7 +131,6 @@ export interface SuggestionOptions<I = any> {
   decorationClass?: string
   multipleMentions?: boolean
   docClass?: Ref<Class<Doc>>
-  objectSpace?: Ref<Space>
   getObjectSpace?: () => Ref<Space> | undefined
   command?: (props: { editor: Editor, range: Range, props: I }) => void
   items?: (props: { query: string, editor: Editor }) => I[] | Promise<I[]>
@@ -181,7 +180,6 @@ export default function Suggestion<I = any> ({
   decorationClass = 'suggestion',
   multipleMentions = false,
   docClass,
-  objectSpace,
   getObjectSpace,
   command = () => null,
   items = () => [],
@@ -238,7 +236,7 @@ export default function Suggestion<I = any> ({
             query: state.query,
             text: state.text,
             docClass,
-            objectSpace: getObjectSpace?.() ?? objectSpace,
+            objectSpace: getObjectSpace?.(),
             items: [],
             multipleMentions,
             command: (commandProps) => {

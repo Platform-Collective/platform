@@ -191,7 +191,6 @@
           dropcursor: false,
           reference: {
             docClass,
-            objectSpace,
             getObjectSpace: () => objectSpace,
             multipleMentions: true
           },
