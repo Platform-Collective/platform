@@ -163,7 +163,7 @@ beforeAll(() => {
   })
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
-    value: { location: { protocol: 'https:', host: 'localhost' } }
+    value: { location: { protocol: 'https:', host: 'localhost' }, localStorage: storage }
   })
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
@@ -324,9 +324,11 @@ describe('tabs of removed documents', () => {
 
     await closeTab(active)
 
-    expect(navigate).not.toHaveBeenCalledWith(expect.objectContaining({
-      path: ['workbench', 'workspace', 'app', 'document']
-    }))
+    expect(navigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: ['workbench', 'workspace', 'app', 'document']
+      })
+    )
     expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ path: ['workbench', 'workspace', 'app'] }))
   })
 
@@ -337,7 +339,12 @@ describe('tabs of removed documents', () => {
     jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
     await resolveTab(tab)
     let complete: (data: LocationData) => void = () => {}
-    resolver.mockImplementation(async () => await new Promise<LocationData>((resolve) => { complete = resolve }))
+    resolver.mockImplementation(
+      async () =>
+        await new Promise<LocationData>((resolve) => {
+          complete = resolve
+        })
+    )
 
     removeDocs(objectId)
     await flush()
@@ -406,7 +413,8 @@ describe('tabs of removed documents', () => {
     expect(client.update).not.toHaveBeenCalled()
     expect(client.diffUpdate).toHaveBeenCalledTimes(1)
     expect(client.diffUpdate).toHaveBeenCalledWith(expect.objectContaining({ _id: tab._id }), {
-      location: 'workbench/workspace/app', name: 'Home'
+      location: 'workbench/workspace/app',
+      name: 'Home'
     })
     expect(client.commit).toHaveBeenCalledTimes(1)
     jest.mocked(navigate).mockReset()

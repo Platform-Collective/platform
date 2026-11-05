@@ -377,7 +377,8 @@ function onTabShown (tabId: Ref<WorkbenchTab> | undefined): void {
   if (tab === undefined || tab.isPinned || tab.location !== removed.location) return
   const loc = getTabLocation(tab)
   // Move synchronously before the tab bar or closeTab reads the destination.
-  const target = loc.fragment != null && loc.fragment !== '' ? { ...loc, fragment: undefined } : getApplicationLocation(loc)
+  const target =
+    loc.fragment != null && loc.fragment !== '' ? { ...loc, fragment: undefined } : getApplicationLocation(loc)
   if (target.path.length <= 3) forgetApplicationLocation(loc)
   tabsStore.update((tabs) => tabs.map((t) => (t._id === tab._id ? { ...t, location: locationToUrl(target) } : t)))
   void leaveRemovedDocument(tab, loc, removed.objectId, target).catch(console.error)
