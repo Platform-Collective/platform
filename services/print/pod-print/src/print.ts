@@ -94,7 +94,8 @@ async function render (
     .on('requestfailed', (request) => {
       ctx.warn('requestfailed', { url: request.url(), errorText: request.failure()?.errorText })
     })
-    .on('request', async (request) => {
+    .on('request', (request) => {
+      void (async () => {
       try {
         const allowed = request.isNavigationRequest()
           ? isAllowedPrintUrl(request.url(), allowedHostnames)
@@ -111,6 +112,7 @@ async function render (
       } catch (err: unknown) {
         ctx.warn('Failed to handle print request', { err })
       }
+      })()
     })
 
   await page.setBypassServiceWorker(true)

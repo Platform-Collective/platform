@@ -268,6 +268,7 @@ describe('print', () => {
           abort: jest.fn().mockResolvedValue(undefined)
         }
         await listener(request)
+        await flush()
         if (allowed) {
           expect(request.continue).toHaveBeenCalledTimes(1)
           expect(request.abort).not.toHaveBeenCalled()
@@ -295,6 +296,7 @@ describe('print', () => {
         abort: jest.fn().mockResolvedValue(undefined)
       }
       await listener(request)
+        await flush()
       expect(request.abort).toHaveBeenCalledWith('blockedbyclient')
       expect(request.continue).not.toHaveBeenCalled()
     })
@@ -716,6 +718,7 @@ describe('print', () => {
           abort: jest.fn().mockResolvedValue(undefined)
         }
         await listener(request)
+        await flush()
         expect(request.abort).toHaveBeenCalledWith('blockedbyclient')
         expect(request.continue).not.toHaveBeenCalled()
         throw new Error('net::ERR_BLOCKED_BY_CLIENT')
