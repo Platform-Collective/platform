@@ -121,8 +121,12 @@ describe('finishPersonMerge', () => {
     const remove = jest.fn().mockRejectedValueOnce(new Error('Denied')).mockResolvedValueOnce({})
     // The service preserves the source person and rewires any remaining social IDs on each call.
     const mergeSpecifiedPersons = jest.fn<Promise<void>, []>().mockResolvedValue(undefined)
-    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true })).rejects.toThrow('Denied')
-    await expect(finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true })).resolves.toBeUndefined()
+    await expect(
+      finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true })
+    ).rejects.toThrow('Denied')
+    await expect(
+      finishPersonMerge({ remove }, { mergeSpecifiedPersons }, source, target, { removeSource: true })
+    ).resolves.toBeUndefined()
     expect(remove).toHaveBeenCalledTimes(2)
     expect(mergeSpecifiedPersons).toHaveBeenCalledTimes(2)
   })

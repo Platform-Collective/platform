@@ -16,15 +16,7 @@
   /* eslint-disable @typescript-eslint/no-unused-vars */
   import { Analytics } from '@hcengineering/analytics'
   import { Channel, Person, SocialIdentity, getName } from '@hcengineering/contact'
-  import core, {
-    Doc,
-    DocumentUpdate,
-    Mixin,
-    PersonUuid,
-    Ref,
-    SocialIdType,
-    TxProcessor
-  } from '@hcengineering/core'
+  import core, { Doc, DocumentUpdate, Mixin, PersonUuid, Ref, SocialIdType, TxProcessor } from '@hcengineering/core'
   import { Card, createQuery, getClient } from '@hcengineering/presentation'
   import { Label, Spinner, Toggle } from '@hcengineering/ui'
   import { isCollectionAttr } from '@hcengineering/view-resources'
@@ -287,7 +279,6 @@
     mixinUpdate[mixin] = upd
   }
 
-
   function allowedPersonTypes(source: Person, target: Person): boolean {
     return canMergePersonTypes(
       hierarchy.hasMixin(source, contact.mixin.Employee),
@@ -295,7 +286,8 @@
     )
   }
 
-  $: employeeMergeBlocked = sourcePerson !== undefined && targetPerson !== undefined && !allowedPersonTypes(sourcePerson, targetPerson)
+  $: employeeMergeBlocked =
+    sourcePerson !== undefined && targetPerson !== undefined && !allowedPersonTypes(sourcePerson, targetPerson)
 
   let canMergeGlobalPersons = false
   let previousPrimaryUuid: PersonUuid | undefined
@@ -342,7 +334,12 @@
     loading = false
   }
 
-  $: canSave = targetPerson !== undefined && sourcePerson !== undefined && !employeeMergeBlocked && !loading && canMergeGlobalPersons
+  $: canSave =
+    targetPerson !== undefined &&
+    sourcePerson !== undefined &&
+    !employeeMergeBlocked &&
+    !loading &&
+    canMergeGlobalPersons
 </script>
 
 <Card
@@ -396,7 +393,10 @@
     {#if targetPerson != null && sourcePerson != null}
       {#if !hierarchy.hasMixin(sourcePerson, contact.mixin.Employee)}
         <div class="mt-4">
-          <Label label={contact.string.MergeSourceWillBeDeleted} params={{ source: getName(hierarchy, sourcePerson) }} />
+          <Label
+            label={contact.string.MergeSourceWillBeDeleted}
+            params={{ source: getName(hierarchy, sourcePerson) }}
+          />
         </div>
       {/if}
       <div class="flex-col flex-grow mt-4">
@@ -471,7 +471,12 @@
       {:else if !canMergeGlobalPersons}
         <span class="error"><Label label={contact.string.CannotMerge} /></span>
       {:else if mergeError !== undefined}
-        <span class="error"><Label label={contact.string.MergeFailed} params={{ target: targetPerson !== undefined ? getName(hierarchy, targetPerson) : '', error: mergeError }} /></span>
+        <span class="error"
+          ><Label
+            label={contact.string.MergeFailed}
+            params={{ target: targetPerson !== undefined ? getName(hierarchy, targetPerson) : '', error: mergeError }}
+          /></span
+        >
       {:else if visibleResultSocialIdentities.length > 0}
         <span class="label"><Label label={contact.string.SocialIds} /></span>
         {#each visibleResultSocialIdentities as socialIdentity}

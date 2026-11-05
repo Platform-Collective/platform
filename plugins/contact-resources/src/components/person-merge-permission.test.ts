@@ -32,7 +32,11 @@ describe('isPersonMergePermissionCached', () => {
 })
 
 describe('canMergePersonTypes', () => {
-  it.each([[false, false], [false, true], [true, true]])('allows source employee %s into target employee %s', (source, target) => {
+  it.each([
+    [false, false],
+    [false, true],
+    [true, true]
+  ])('allows source employee %s into target employee %s', (source, target) => {
     expect(canMergePersonTypes(source, target)).toBe(true)
   })
   it('blocks an employee into a local person before moving identities or references', () => {
