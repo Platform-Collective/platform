@@ -206,15 +206,15 @@ export class PrintBrowserManager {
     session.on('Target.attachedToTarget', ({ sessionId, targetInfo, waitingForDebugger }) => {
       void (async () => {
         try {
-          const mainTargetId = targetInfo.browserContextId === undefined
-            ? undefined
-            : contexts.get(targetInfo.browserContextId)
+          const mainTargetId =
+            targetInfo.browserContextId === undefined ? undefined : contexts.get(targetInfo.browserContextId)
           if (mainTargetId !== undefined && targetInfo.targetId !== mainTargetId) {
             // Never resume an extra target, even if holding or closing it fails.
             await this.holdPopup(session, sessionId, targetInfo.targetId)
           } else if (waitingForDebugger) {
             const targetSession = session.connection()?.session(sessionId)
-            if (targetSession === undefined || targetSession === null) throw new Error('Missing attached target session')
+            if (targetSession === undefined || targetSession === null)
+              {throw new Error('Missing attached target session')}
             await targetSession.send('Runtime.runIfWaitingForDebugger')
           }
         } catch (err: unknown) {
@@ -282,14 +282,17 @@ export class PrintBrowserManager {
       const page = await withTimeout(context.newPage(), timeoutMs, 'Browser page creation timed out')
       const mainTargetId = await withTimeout(getMainTargetId(page), timeoutMs, 'Browser page target lookup timed out')
       const guard = this.popupGuards.get(browser)
-      if (context.id === undefined || guard === undefined) throw new Error('Missing isolated print context or popup guard')
+      if (context.id === undefined || guard === undefined)
+        {throw new Error('Missing isolated print context or popup guard')}
       // The initial blank page/tab is resumed while unregistered. Register before
       // handing the page to a job so every subsequent target in this context is guarded.
       guard.contexts.set(context.id, mainTargetId)
       return { context, page, release: this.createRelease(browser, context) }
     } catch (err) {
       if (context !== undefined) {
-        await withTimeout(this.closeContext(browser, context), timeoutMs, 'Browser context close timed out').catch(() => {})
+        await withTimeout(this.closeContext(browser, context), timeoutMs, 'Browser context close timed out').catch(
+          () => {}
+        )
       }
       await this.releaseBrowser(browser)
       throw new Error(`Failed to create browser page: ${err instanceof Error ? err.message : String(err)}`)
@@ -303,7 +306,11 @@ export class PrintBrowserManager {
       released = true
 
       try {
-        await withTimeout(this.closeContext(browser, context), this.options.pageInitTimeoutMs, 'Browser context close timed out')
+        await withTimeout(
+          this.closeContext(browser, context),
+          this.options.pageInitTimeoutMs,
+          'Browser context close timed out'
+        )
       } catch {
         // A context that cannot be closed means the browser is unhealthy
         this.retired.add(browser)
