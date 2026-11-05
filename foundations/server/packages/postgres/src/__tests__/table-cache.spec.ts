@@ -15,7 +15,12 @@ function connection (tables: string[]): { client: postgres.Sql, unsafe: jest.Moc
       { count: 0 }
     )
   )
-  const client = { unsafe, begin: async (work: (client: unknown) => Promise<void>) => { await work(client) } }
+  const client = {
+    unsafe,
+    begin: async (work: (client: unknown) => Promise<void>) => {
+      await work(client)
+    }
+  }
   return { client: client as unknown as postgres.Sql, unsafe }
 }
 

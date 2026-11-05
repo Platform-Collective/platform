@@ -31,7 +31,11 @@ describe('table cache database isolation (real database)', () => {
 
   afterAll(async () => {
     try {
-      await Promise.all(clients.map(async (client) => { await client.end({ timeout: 1 }) }))
+      await Promise.all(
+        clients.map(async (client) => {
+          await client.end({ timeout: 1 })
+        })
+      )
       // All test connections are closed, so plain DROP works on both engines.
       for (const name of databases) await admin`DROP DATABASE IF EXISTS ${admin(name)}`
     } finally {
