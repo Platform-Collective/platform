@@ -7,7 +7,7 @@ import { type Page, type Viewport } from 'puppeteer'
 import { type PrintBrowserManager, type PrintBrowserPage, withTimeout } from './browser'
 import config from './config'
 import { ApiError } from './error'
-import { isAllowedPrintUrl } from './print-url'
+import { createPrintRequestChecker, isAllowedPrintUrl } from './print-url'
 import { Semaphore } from './semaphore'
 
 export interface PrintOptions {
@@ -85,6 +85,7 @@ async function render (
   viewport: Viewport,
   allowedHostnames: readonly string[]
 ): Promise<Buffer | undefined> {
+  const isSafeRequest = createPrintRequestChecker(allowedHostnames)
   page
     .on('pageerror', (err: unknown) => {
       const message = err instanceof Error ? err.message : String(err)
@@ -93,20 +94,23 @@ async function render (
     .on('requestfailed', (request) => {
       ctx.warn('requestfailed', { url: request.url(), errorText: request.failure()?.errorText })
     })
-    .on('request', (request) => {
-      void (async () => {
-        try {
-          // Navigations (including redirects and frames) must stay on allowed hosts. Subresources of the
-          // allowed page are not restricted, so external images and other service hosts keep rendering.
-          if (!request.isNavigationRequest() || isAllowedPrintUrl(request.url(), allowedHostnames)) {
-            await request.continue()
-          } else {
-            await request.abort('blockedbyclient')
-          }
-        } catch (err: unknown) {
-          ctx.warn('Failed to handle print request', { url: request.url(), err })
+    .on('request', async (request) => {
+      try {
+        const allowed = request.isNavigationRequest()
+          ? isAllowedPrintUrl(request.url(), allowedHostnames)
+          : await isSafeRequest(request.url())
+        if (allowed) {
+          await request.continue()
+        } else {
+          // Do not log query strings, fragments or credentials from user-supplied links.
+          let origin: string | undefined
+          try { origin = new URL(request.url()).origin } catch {}
+          ctx.warn('Blocked print request', { origin, navigation: request.isNavigationRequest() })
+          await request.abort('blockedbyclient')
         }
-      })()
+      } catch (err: unknown) {
+        ctx.warn('Failed to handle print request', { err })
+      }
     })
 
   await page.setBypassServiceWorker(true)
