@@ -16,10 +16,10 @@ const mockGetAccountClient = jest.fn((_url?: string, _token?: string, _retryTime
 const mockLocation = { path: ['workbench', 'workspace'] }
 jest.mock('@hcengineering/account-client', () => ({
   getClient: (url?: string, token?: string, retryTimeoutMs?: number) => mockGetAccountClient(url, token, retryTimeoutMs)
-})), { virtual: true }
+}), { virtual: true })
 jest.mock('@hcengineering/analytics', () => ({
   Analytics: { setUser: jest.fn(), setWorkspace: jest.fn(), handleEvent: jest.fn() }
-})), { virtual: true }
+}), { virtual: true })
 jest.mock('@hcengineering/client', () => ({ __esModule: true, default: { function: { GetClient: 'get-client' } } }), { virtual: true })
 jest.mock('@hcengineering/contact', () => ({ setCurrentEmployee: jest.fn() }), { virtual: true })
 jest.mock('@hcengineering/core', () => ({
@@ -34,14 +34,14 @@ jest.mock('@hcengineering/core', () => ({
   metricsToString: () => '',
   platformNow: () => Date.now(),
   versionToString: () => '1.0.0'
-})), { virtual: true }
+}), { virtual: true })
 jest.mock('@hcengineering/login', () => ({
   __esModule: true,
   default: {
     function: { SelectWorkspace: 'select-workspace', FetchWorkspace: 'fetch-workspace' },
     metadata: { TransactorOverride: 'override', AccountsUrl: 'accounts-url', LoginEndpoint: 'login-endpoint' }
   }
-})), { virtual: true }
+}), { virtual: true })
 jest.mock('@hcengineering/platform', () => {
   const metadata = new Map<string, unknown>()
   return {
@@ -55,7 +55,7 @@ jest.mock('@hcengineering/platform', () => {
     __esModule: true,
     default: { status: { SystemAccount: 'system-account', RegularAccount: 'regular-account' } }
   }
-})
+}, { virtual: true })
 jest.mock('@hcengineering/presentation', () => ({
   __esModule: true,
   default: {
@@ -77,11 +77,11 @@ jest.mock('@hcengineering/presentation', () => ({
   setPresentationCookie: jest.fn(),
   setClient: jest.fn(),
   setCommunicationClient: jest.fn()
-})), { virtual: true }
+}), { virtual: true })
 jest.mock('@hcengineering/ui', () => ({
   getCurrentLocation: () => ({ path: [...mockLocation.path] }),
   setMetadataLocalStorage: jest.fn()
-})), { virtual: true }
+}), { virtual: true })
 jest.mock('@hcengineering/workbench', () => ({ WorkbenchEvents: { Connect: 'connect' } }), { virtual: true })
 jest.mock('@hcengineering/view-resources', () => ({ allowGuestSignUpStore: { set: jest.fn() } }), { virtual: true })
 jest.mock('svelte/store', () => ({ writable: () => ({ set: jest.fn() }) }))
