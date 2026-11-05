@@ -4,6 +4,13 @@ import contact, { type Person } from '@hcengineering/contact'
 import core, { type ArrOf, type Doc, type RefTo, type TxOperations } from '@hcengineering/core'
 import { updateAttribute } from '@hcengineering/presentation'
 
+export class PersonReferenceUpdateError extends Error {
+  constructor (readonly failures: ReadonlyMap<string, unknown>) {
+    super(`Failed to update references for: ${Array.from(failures.keys()).join(', ')}`)
+    this.name = 'PersonReferenceUpdateError'
+  }
+}
+
 /** Move all reachable references, but prevent finalizing the merge if any class failed. */
 export async function updateAllRefs (client: TxOperations, source: Person, target: Person): Promise<void> {
   const h = client.getHierarchy()
@@ -18,7 +25,7 @@ export async function updateAllRefs (client: TxOperations, source: Person, targe
     const refTo = to.of as RefTo<Doc>
     return h.getBaseClass(refTo.to) === contact.class.Person || ancestors.includes(refTo.to)
   })
-  const failedClasses = new Set<string>()
+  const failures = new Map<string, unknown>()
   for (const attr of [...reftos, ...arrays]) {
     if (attr.name === '_id') continue
     for (const cls of h.getDescendants(attr.attributeOf)) {
@@ -34,12 +41,12 @@ export async function updateAllRefs (client: TxOperations, source: Person, targe
           if (builder.txes.length === 0) throw new Error('No reference updates generated')
           await builder.commit()
         }
-      } catch {
-        failedClasses.add(cls)
+      } catch (error: unknown) {
+        failures.set(cls, error)
       }
     }
   }
-  if (failedClasses.size > 0) {
-    throw new Error(`Failed to update references for: ${Array.from(failedClasses).join(', ')}`)
+  if (failures.size > 0) {
+    throw new PersonReferenceUpdateError(failures)
   }
 }
