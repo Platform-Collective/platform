@@ -234,11 +234,11 @@ describe('print', () => {
     expect(launch).not.toHaveBeenCalled()
   })
 
-  it('allows navigations to the front page and any subresources while blocking other navigations', async () => {
+  it('allows safe subresources while blocking private requests and disallowed navigations', async () => {
     const page = createPage()
     const browser = createBrowser(() => page)
     const launch = jest.fn().mockResolvedValue(browser)
-    const { closePrintBrowser, print } = await loadPrintModule(launch, '1', { ALLOWED_HOSTNAMES: ' HULY.LOCAL. ' })
+    const { closePrintBrowser, print } = await loadPrintModule(launch, '1', { ALLOWED_HOSTNAMES: ' HULY.LOCAL.:8087 ' })
 
     page.goto.mockImplementation(async () => {
       expect(page.setRequestInterception).toHaveBeenCalledWith(true)
@@ -248,7 +248,13 @@ describe('print', () => {
       for (const [url, navigation, allowed] of [
         ['http://huly.local:8087/', true, true],
         ['http://huly.local:8087/app.js', false, true],
-        ['https://images.example.com/avatar.png', false, true],
+        ['https://93.184.216.34/avatar.png', false, true],
+        ['data:image/png;base64,aGVsbG8=', false, true],
+        ['blob:https://huly.local/image', false, true],
+        ['http://169.254.169.254/image.png', false, false],
+        ['http://127.0.0.1/image.png', false, false],
+        ['http://localhost:9200/image.png', false, false],
+        ['http://huly.local:6379/', true, false],
         ['http://169.254.169.254/latest/meta-data/', true, false],
         ['http://127.0.0.1/', true, false],
         ['http://localhost/', true, false],

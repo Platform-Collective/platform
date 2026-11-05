@@ -83,7 +83,8 @@ describe('authenticated print route', () => {
     [['huly.local'], 'http://127.0.0.1/'],
     [['huly.local'], 'http://localhost/'],
     [['huly.local'], 'http://huly.local.evil.example/'],
-    [['huly.local'], 'file:///etc/passwd']
+    [['huly.local'], 'file:///etc/passwd'],
+    [['huly.local'], 'http://huly.local:6379/']
   ])('denies %s / %s before printing or storing content', async (allowedHostnames, url) => {
     expect(await requestPrint(url, allowedHostnames)).toBe(403)
     expect(print).not.toHaveBeenCalled()
@@ -91,7 +92,7 @@ describe('authenticated print route', () => {
   })
 
   it('prints the front page using the normalized exact hostname policy', async () => {
-    const allowedHostnames = [' HULY.LOCAL. ']
+    const allowedHostnames = [' HULY.LOCAL.:8087 ']
     expect(await requestPrint('http://huly.local:8087/', allowedHostnames)).toBe(200)
     expect(print).toHaveBeenCalledWith(
       mockContext,
