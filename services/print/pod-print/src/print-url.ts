@@ -33,11 +33,10 @@ function parsePrintHost (entry: string): PrintHost {
     throw new Error('Invalid print host configuration')
   }
   // A bare host allows only default HTTP/HTTPS ports. An explicit port applies to either scheme.
+  const explicitPort = authority.match(/:(\d+)$/)?.[1]
   const port = origin
     ? url.port || (url.protocol === 'https:' ? '443' : '80')
-    : authority.endsWith(':443')
-      ? '443'
-      : url.port
+    : explicitPort === undefined ? '' : String(Number(explicitPort))
   return { hostname, port, protocol: origin ? url.protocol : undefined }
 }
 

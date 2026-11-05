@@ -73,6 +73,8 @@ describe('print origin and port restrictions', () => {
 
   it('matches explicit ports, wildcards and IPv6 hosts', () => {
     expect(isAllowedPrintUrl('http://huly.local:8087/', ['huly.local:8087'])).toBe(true)
+    expect(isAllowedPrintUrl('https://huly.local/', ['huly.local:0443'])).toBe(true)
+    expect(isAllowedPrintUrl('http://huly.local/', ['huly.local:0443'])).toBe(false)
     expect(isAllowedPrintUrl('https://team.example.com:8443/', ['*.example.com:8443'])).toBe(true)
     expect(isAllowedPrintUrl('https://example.com:8443/', ['*.example.com:8443'])).toBe(false)
     expect(isAllowedPrintUrl('http://[::1]/', ['::1'])).toBe(true)
