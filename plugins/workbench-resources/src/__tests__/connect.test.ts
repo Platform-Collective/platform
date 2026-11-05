@@ -14,74 +14,105 @@ const mockGetAccountClient = jest.fn((_url?: string, _token?: string, _retryTime
   selectWorkspace: async (workspaceUrl: string) => await mockAccountSelectWorkspace(workspaceUrl)
 }))
 const mockLocation = { path: ['workbench', 'workspace'] }
-jest.mock('@hcengineering/account-client', () => ({
-  getClient: (url?: string, token?: string, retryTimeoutMs?: number) => mockGetAccountClient(url, token, retryTimeoutMs)
-}), { virtual: true })
-jest.mock('@hcengineering/analytics', () => ({
-  Analytics: { setUser: jest.fn(), setWorkspace: jest.fn(), handleEvent: jest.fn() }
-}), { virtual: true })
-jest.mock('@hcengineering/client', () => ({ __esModule: true, default: { function: { GetClient: 'get-client' } } }), { virtual: true })
+jest.mock(
+  '@hcengineering/account-client',
+  () => ({
+    getClient: (url?: string, token?: string, retryTimeoutMs?: number) =>
+      mockGetAccountClient(url, token, retryTimeoutMs)
+  }),
+  { virtual: true }
+)
+jest.mock(
+  '@hcengineering/analytics',
+  () => ({
+    Analytics: { setUser: jest.fn(), setWorkspace: jest.fn(), handleEvent: jest.fn() }
+  }),
+  { virtual: true }
+)
+jest.mock('@hcengineering/client', () => ({ __esModule: true, default: { function: { GetClient: 'get-client' } } }), {
+  virtual: true
+})
 jest.mock('@hcengineering/contact', () => ({ setCurrentEmployee: jest.fn() }), { virtual: true })
-jest.mock('@hcengineering/core', () => ({
-  __esModule: true,
-  default: { employee: { System: 'system' }, class: { Version: 'version' } },
-  AccountRole: { Admin: 'admin' },
-  ClientConnectEvent: { Connected: 0, Reconnected: 1, Upgraded: 2, Refresh: 3, Maintenance: 4 },
-  SocialIdType: { EMAIL: 'email' },
-  isWorkspaceCreating: () => false,
-  pickPrimarySocialId: (ids: unknown[]) => ids[0],
-  setCurrentAccount: jest.fn(),
-  metricsToString: () => '',
-  platformNow: () => Date.now(),
-  versionToString: () => '1.0.0'
-}), { virtual: true })
-jest.mock('@hcengineering/login', () => ({
-  __esModule: true,
-  default: {
-    function: { SelectWorkspace: 'select-workspace', FetchWorkspace: 'fetch-workspace' },
-    metadata: { TransactorOverride: 'override', AccountsUrl: 'accounts-url', LoginEndpoint: 'login-endpoint' }
-  }
-}), { virtual: true })
-jest.mock('@hcengineering/platform', () => {
-  const metadata = new Map<string, unknown>()
-  return {
-    getResource: jest.fn(),
-    getMetadata: (key: string) => metadata.get(key),
-    setMetadata: (key: string, value: unknown) => metadata.set(key, value),
-    setPlatformStatus: jest.fn(),
-    broadcastEvent: jest.fn(),
-    Severity: { INFO: 'info' },
-    Status: jest.fn(),
+jest.mock(
+  '@hcengineering/core',
+  () => ({
     __esModule: true,
-    default: { status: { SystemAccount: 'system-account', RegularAccount: 'regular-account' } }
-  }
-}, { virtual: true })
-jest.mock('@hcengineering/presentation', () => ({
-  __esModule: true,
-  default: {
-    metadata: Object.fromEntries(
-      ['Token', 'WorkspaceUuid', 'WorkspaceName', 'Endpoint', 'WorkspaceDataId', 'ModelVersion', 'FrontVersion'].map(
-        (key) => [key, key]
+    default: { employee: { System: 'system' }, class: { Version: 'version' } },
+    AccountRole: { Admin: 'admin' },
+    ClientConnectEvent: { Connected: 0, Reconnected: 1, Upgraded: 2, Refresh: 3, Maintenance: 4 },
+    SocialIdType: { EMAIL: 'email' },
+    isWorkspaceCreating: () => false,
+    pickPrimarySocialId: (ids: unknown[]) => ids[0],
+    setCurrentAccount: jest.fn(),
+    metricsToString: () => '',
+    platformNow: () => Date.now(),
+    versionToString: () => '1.0.0'
+  }),
+  { virtual: true }
+)
+jest.mock(
+  '@hcengineering/login',
+  () => ({
+    __esModule: true,
+    default: {
+      function: { SelectWorkspace: 'select-workspace', FetchWorkspace: 'fetch-workspace' },
+      metadata: { TransactorOverride: 'override', AccountsUrl: 'accounts-url', LoginEndpoint: 'login-endpoint' }
+    }
+  }),
+  { virtual: true }
+)
+jest.mock(
+  '@hcengineering/platform',
+  () => {
+    const metadata = new Map<string, unknown>()
+    return {
+      getResource: jest.fn(),
+      getMetadata: (key: string) => metadata.get(key),
+      setMetadata: (key: string, value: unknown) => metadata.set(key, value),
+      setPlatformStatus: jest.fn(),
+      broadcastEvent: jest.fn(),
+      Severity: { INFO: 'info' },
+      Status: jest.fn(),
+      __esModule: true,
+      default: { status: { SystemAccount: 'system-account', RegularAccount: 'regular-account' } }
+    }
+  },
+  { virtual: true }
+)
+jest.mock(
+  '@hcengineering/presentation',
+  () => ({
+    __esModule: true,
+    default: {
+      metadata: Object.fromEntries(
+        ['Token', 'WorkspaceUuid', 'WorkspaceName', 'Endpoint', 'WorkspaceDataId', 'ModelVersion', 'FrontVersion'].map(
+          (key) => [key, key]
+        )
       )
-    )
-  },
-  uiContext: {
-    newChild: () => ({
-      async with (_name: string, _params: unknown, fn: (ctx: unknown) => unknown): Promise<unknown> {
-        return await fn(this)
-      }
-    })
-  },
-  refreshClient: jest.fn(),
-  refreshCommunicationClient: jest.fn(),
-  setPresentationCookie: jest.fn(),
-  setClient: jest.fn(),
-  setCommunicationClient: jest.fn()
-}), { virtual: true })
-jest.mock('@hcengineering/ui', () => ({
-  getCurrentLocation: () => ({ path: [...mockLocation.path] }),
-  setMetadataLocalStorage: jest.fn()
-}), { virtual: true })
+    },
+    uiContext: {
+      newChild: () => ({
+        async with (_name: string, _params: unknown, fn: (ctx: unknown) => unknown): Promise<unknown> {
+          return await fn(this)
+        }
+      })
+    },
+    refreshClient: jest.fn(),
+    refreshCommunicationClient: jest.fn(),
+    setPresentationCookie: jest.fn(),
+    setClient: jest.fn(),
+    setCommunicationClient: jest.fn()
+  }),
+  { virtual: true }
+)
+jest.mock(
+  '@hcengineering/ui',
+  () => ({
+    getCurrentLocation: () => ({ path: [...mockLocation.path] }),
+    setMetadataLocalStorage: jest.fn()
+  }),
+  { virtual: true }
+)
 jest.mock('@hcengineering/workbench', () => ({ WorkbenchEvents: { Connect: 'connect' } }), { virtual: true })
 jest.mock('@hcengineering/view-resources', () => ({ allowGuestSignUpStore: { set: jest.fn() } }), { virtual: true })
 jest.mock('svelte/store', () => ({ writable: () => ({ set: jest.fn() }) }))

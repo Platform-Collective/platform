@@ -282,7 +282,9 @@ export async function connect (title: string): Promise<Client | undefined> {
     if (
       endpointCheck !== undefined ||
       (lastEndpointCheckFinishedAt !== undefined && Date.now() - lastEndpointCheckFinishedAt < endpointCheckCooldownMs)
-    ) return
+    ) {
+      return
+    }
     endpointCheck = (async () => {
       try {
         await new Promise((resolve) => setTimeout(resolve, Math.random() * endpointCheckMaxDelayMs))
