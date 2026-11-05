@@ -78,7 +78,10 @@ describe('Planner calendar archived space filtering', () => {
 
   it('hides slots whose todo belongs to any archived space, keeping ordinary calendar events', () => {
     expect(filterVisibleWorkSlots(events, new Set([archived]), isWorkSlot)).toEqual([
-      active, standalone, regular, missing
+      active,
+      standalone,
+      regular,
+      missing
     ])
   })
 

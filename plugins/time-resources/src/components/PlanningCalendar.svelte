@@ -2,7 +2,14 @@
   import calendar, { AccessLevel, Calendar, Event, generateEventId, getAllEvents } from '@hcengineering/calendar'
   import { DayCalendar, calendarByIdStore, hidePrivateEvents } from '@hcengineering/calendar-resources'
   import { getCurrentEmployee } from '@hcengineering/contact'
-  import core, { Ref, type Space, type WithLookup, SortingOrder, Timestamp, getCurrentAccount } from '@hcengineering/core'
+  import core, {
+    Ref,
+    type Space,
+    type WithLookup,
+    SortingOrder,
+    Timestamp,
+    getCurrentAccount
+  } from '@hcengineering/core'
   import { IntlString, getEmbeddedLabel } from '@hcengineering/platform'
   import { createQuery, getClient } from '@hcengineering/presentation'
   import {
@@ -39,7 +46,9 @@
   archivedSpacesQuery.query(
     core.class.Space,
     { archived: true },
-    (spaces) => { archivedSpaces = new Set(spaces.map((space) => space._id)) },
+    (spaces) => {
+      archivedSpaces = new Set(spaces.map((space) => space._id))
+    },
     { projection: { _id: 1 } }
   )
 
