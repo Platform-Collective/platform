@@ -40,24 +40,46 @@ export const navigationFilterStore = writable<NavigationFilters | undefined>()
 // Whether the destination of the queued navigation filters has been shown.
 let navigationTargetReached = false
 let navigationOrigin: string[] = []
+// A route change can reach the outgoing controller before its replacement mounts.
+// Keep the applied override for every controller participating in this visit.
+let activeNavigationFilters: NavigationFilters | undefined
+
+filterStore.subscribe((filters) => {
+  if (activeNavigationFilters !== undefined && filters !== activeNavigationFilters.filters) {
+    activeNavigationFilters = undefined
+  }
+})
 
 function isNavigationTarget (target: Location, current: Location): boolean {
   return target.path.every((segment, index) => segment === current.path[index])
 }
 
-/** Takes the queued navigation filters if they are meant for this view and class. */
-export function takeNavigationFilters (location: Location, _class: Ref<Class<Doc>>): Filter[] | undefined {
-  const pending = get(navigationFilterStore)
-  if (pending === undefined) return undefined
-  if (pending._class !== undefined && pending._class !== _class) return undefined
-  if (!isNavigationTarget(pending.location, location)) return undefined
-  navigationFilterStore.set(undefined)
-  return pending.filters
+/** Applies the queued request to all matching controllers during this destination visit. */
+export function takeNavigationFilters (
+  location: Location,
+  _class: Ref<Class<Doc>>,
+  pending: NavigationFilters | undefined = get(navigationFilterStore)
+): Filter[] | undefined {
+  const requested = pending ?? activeNavigationFilters
+  if (requested === undefined) return undefined
+  if (requested._class !== undefined && requested._class !== _class) return undefined
+  if (!isNavigationTarget(requested.location, location)) return undefined
+  if (pending !== undefined) {
+    activeNavigationFilters = { location: { ...location, path: [...location.path] }, filters: pending.filters, _class }
+    navigationFilterStore.set(undefined)
+  }
+  return requested.filters
 }
 
 // Drop unclaimed filters when leaving the destination or resolving a different path (e.g. a router rewrite).
 // Query and fragment changes at the origin do not cancel navigation that is still pending.
 resolvedLocationStore.subscribe((location) => {
+  if (
+    activeNavigationFilters !== undefined &&
+    JSON.stringify(activeNavigationFilters.location.path) !== JSON.stringify(location.path)
+  ) {
+    activeNavigationFilters = undefined
+  }
   const pending = get(navigationFilterStore)
   if (pending === undefined) return
   if (isNavigationTarget(pending.location, location)) {
@@ -73,6 +95,7 @@ resolvedLocationStore.subscribe((location) => {
  */
 export function setFilters (filters: Filter[], location?: Location, _class?: Ref<Class<Doc>>): void {
   if (location !== undefined) {
+    activeNavigationFilters = undefined
     navigationOrigin = [...get(resolvedLocationStore).path]
     navigationTargetReached = isNavigationTarget(location, get(resolvedLocationStore))
     navigationFilterStore.set({ location, filters, _class })

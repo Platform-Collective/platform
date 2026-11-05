@@ -62,11 +62,12 @@ describe('navigation filter requests', () => {
     expect(get(navigationFilterStore)).toBeUndefined()
   })
 
-  it('hands the filters to the destination view once', () => {
+  it('shares the one-visit override between destination controllers', () => {
     setFilters(filters, location, issueClass)
     resolved.set(location)
     expect(takeNavigationFilters(location, issueClass)).toBe(filters)
-    expect(takeNavigationFilters(location, issueClass)).toBeUndefined()
+    expect(get(navigationFilterStore)).toBeUndefined()
+    expect(takeNavigationFilters(location, issueClass)).toBe(filters)
   })
 
   it('does not hand the filters to a view of another location or class', () => {
@@ -143,3 +144,23 @@ it.each([{ override: filters }, { override: [] }])(
   expect(restore).toHaveBeenLastCalledWith(draft)
   }
 )
+
+it('does not replay the navigation override after a user edit or a new navigation request', () => {
+  navigationFilterStore.set(undefined)
+  resolvedLocationStore.set({ path: ['workbench', 'workspace', 'tracker', 'my-issues'] })
+  setFilters(filters, location, issueClass)
+  resolvedLocationStore.set(location)
+  expect(takeNavigationFilters(location, issueClass)).toBe(filters)
+  setFilters(filters)
+  const edited = [{ ...filters[0], value: ['edited'] }]
+  setFilters(edited)
+  expect(takeNavigationFilters(location, issueClass)).toBeUndefined()
+  resolvedLocationStore.set({ ...location, fragment: 'panel' })
+  expect(takeNavigationFilters(location, issueClass)).toBeUndefined()
+  expect(get(filterStore)).toBe(edited)
+
+  setFilters([], location, issueClass)
+  expect(takeNavigationFilters(location, issueClass)).toEqual([])
+  setFilters(filters, { path: ['workbench', 'workspace', 'tracker', 'other'] }, issueClass)
+  expect(takeNavigationFilters(location, issueClass)).toBeUndefined()
+})

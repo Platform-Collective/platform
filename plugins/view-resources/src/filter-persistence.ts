@@ -21,12 +21,14 @@ export function createFilterPersistence (
   let activeKey: string | undefined
   let activeLocation: string | undefined
   let restoring = false
+  let navigationFilters: Filter[] | undefined
 
   return {
     load (key, savedView, override, location = key) {
       if (activeKey === key && activeLocation === location && override === undefined) return
       activeKey = key
       activeLocation = location
+      navigationFilters = override
       if (savedView && override === undefined) return
 
       let filters: Filter[] = []
@@ -47,7 +49,8 @@ export function createFilterPersistence (
     },
     save (key, filters, savedView) {
       // Location changes can arrive before the component restores its new filters.
-      if (restoring || key !== activeKey || savedView) return
+      if (restoring || key !== activeKey || savedView || filters === navigationFilters) return
+      navigationFilters = undefined
       try {
         if (filters.length === 0) storage.removeItem(key)
         else storage.setItem(key, JSON.stringify(filters))

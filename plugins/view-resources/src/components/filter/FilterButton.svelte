@@ -42,8 +42,7 @@
   const persistence = createFilterPersistence(localStorage, setFilters)
 
   $: if (_class !== undefined) {
-    const pending = $navigationFilterStore
-    const override = pending === undefined ? undefined : takeNavigationFilters($resolvedLocationStore, _class)
+    const override = takeNavigationFilters($resolvedLocationStore, _class, $navigationFilterStore)
     if (override !== undefined) {
       selectedFilterStore.set(undefined)
     }
