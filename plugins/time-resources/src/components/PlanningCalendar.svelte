@@ -131,11 +131,13 @@
       const current = raw.find((p) => p._id === dragItemId)
       if (current !== undefined) {
         current.attachedTo = dragItem._id
+        current.$lookup = { ...current.$lookup, attachedTo: dragItem }
         current.attachedToClass = dragItem._class
         current.date = e.detail.date.getTime()
         current.dueDate = new Date(e.detail.date).setMinutes(new Date(e.detail.date).getMinutes() + 30)
       } else {
-        const ev: WorkSlot = {
+        const ev: WithLookup<WorkSlot> = {
+          $lookup: { attachedTo: dragItem },
           _id: dragItemId,
           allDay: false,
           eventId: generateEventId(),
