@@ -40404,6 +40404,9 @@ importers:
 
   ../../services/print/pod-print:
     dependencies:
+      '@hcengineering/safe-fetch':
+        specifier: workspace:^0.7.0
+        version: link:../../../packages/safe-fetch
       '@hcengineering/account-client':
         specifier: workspace:^0.7.25
         version: link:../../../foundations/core/packages/account-client
