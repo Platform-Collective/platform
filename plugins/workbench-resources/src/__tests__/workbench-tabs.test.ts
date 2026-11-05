@@ -463,6 +463,77 @@ describe('tabs of removed documents', () => {
     }
   })
 
+  it('persists a selected background panel when its destination URL is already shown', async () => {
+    workspaceStore.set('workspace')
+    application.locationDataResolver = undefined
+    const tab = makeTab('same-url-panel', 'workbench/workspace/app#panel|document|document-class')
+    const active = makeTab('same-url-active', 'workbench/workspace/app')
+    tabsStore.set([tab, active])
+    tabIdStore.set(active._id)
+    jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(active))
+    await resolveTab(tab)
+    jest.mocked(navigate).mockReturnValue(false)
+
+    try {
+      removeDocs(objectId)
+      tabIdStore.set(tab._id)
+      await flush()
+
+      const write = client.diffUpdate.mock.calls.find(([doc, update]) =>
+        doc._id === tab._id && update.location === active.location && doc.location !== update.location
+      )
+      expect(write).toBeDefined()
+    } finally {
+      jest.mocked(navigate).mockReset()
+    }
+  })
+
+  it('retains the persisted comparison until an older location sync finishes', async () => {
+    workspaceStore.set('workspace')
+    const tab = makeTab('older-sync')
+    tabsStore.set([tab])
+    tabIdStore.set(tab._id)
+    const current = getTabLocation(tab)
+    jest.mocked(getCurrentLocation).mockReturnValue(current)
+    await resolveTab(tab)
+    let completeOld: ((data: LocationData) => void) | undefined
+    let completeNew: ((data: LocationData) => void) | undefined
+    let homeReads = 0
+    resolver.mockImplementation(async (loc) => {
+      if (loc.path[3] === objectId) {
+        return await new Promise<LocationData>((resolve) => {
+          completeOld = resolve
+        })
+      }
+      if (++homeReads === 1) return { name: 'Home' }
+      return await new Promise<LocationData>((resolve) => {
+        completeNew = resolve
+      })
+    })
+    jest.mocked(navigate).mockImplementation((loc) => {
+      jest.mocked(getCurrentLocation).mockReturnValue(loc)
+      testLocationStore.set(loc)
+      return true
+    })
+
+    try {
+      testLocationStore.set(current)
+      removeDocs(objectId)
+      await flush()
+      must(completeOld)(documentData)
+      await flush()
+      must(completeNew)({ name: 'Home' })
+      await flush()
+
+      const write = client.diffUpdate.mock.calls.find(([doc, update]) =>
+        doc._id === tab._id && update.location === 'workbench/workspace/app' && doc.location !== update.location
+      )
+      expect(write).toBeDefined()
+    } finally {
+      jest.mocked(navigate).mockReset()
+    }
+  })
+
   it('returns to the application when the deleted panel document also occupied the canonical path', async () => {
     // Use a fresh identity: other tests have already remembered the plain document path.
     const removedId = 'canonical-deleted-document' as Ref<Doc>
