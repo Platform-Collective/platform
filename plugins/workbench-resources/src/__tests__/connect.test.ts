@@ -4,7 +4,7 @@ import type { ClientFactoryOptions } from '@hcengineering/client'
 import { ClientConnectEvent } from '@hcengineering/core'
 import login from '@hcengineering/login'
 import { getResource, setMetadata, type Resource } from '@hcengineering/platform'
-import { refreshClient, refreshCommunicationClient } from '@hcengineering/presentation'
+import presentation, { refreshClient, refreshCommunicationClient } from '@hcengineering/presentation'
 
 import { connect, disconnect } from '../connect'
 
@@ -241,12 +241,57 @@ describe('workspace endpoint revalidation', () => {
     await jest.advanceTimersByTimeAsync(5_000)
     expect(mockAccountSelectWorkspace).toHaveBeenCalledTimes(1)
 
-    // After the time limit the check is dropped without a reload and the next reconnect checks again.
+    // A timeout also starts the cooldown; the underlying request is not cancelled.
     await jest.advanceTimersByTimeAsync(10_000)
+    await options.onConnect?.(ClientConnectEvent.Reconnected, 'session', undefined)
+    await jest.advanceTimersByTimeAsync(2_500)
+    expect(mockAccountSelectWorkspace).toHaveBeenCalledTimes(1)
+    await jest.advanceTimersByTimeAsync(30_000)
     await options.onConnect?.(ClientConnectEvent.Reconnected, 'session', undefined)
     await jest.advanceTimersByTimeAsync(2_500)
     expect(mockAccountSelectWorkspace).toHaveBeenCalledTimes(2)
     expect(reload).not.toHaveBeenCalled()
+  })
+
+  it.each([false, true])('waits 30 seconds after a completed check (failure: %s)', async (failure) => {
+    jest.useFakeTimers()
+    if (failure) mockAccountSelectWorkspace.mockRejectedValue(new Error('Unavailable'))
+    await options.onConnect?.(ClientConnectEvent.Reconnected, 'session', undefined)
+    await jest.advanceTimersByTimeAsync(0)
+    await jest.advanceTimersByTimeAsync(29_999)
+    await options.onConnect?.(ClientConnectEvent.Reconnected, 'session', undefined)
+    await jest.advanceTimersByTimeAsync(0)
+    expect(mockAccountSelectWorkspace).toHaveBeenCalledTimes(1)
+    await jest.advanceTimersByTimeAsync(1)
+    await options.onConnect?.(ClientConnectEvent.Reconnected, 'session', undefined)
+    await jest.advanceTimersByTimeAsync(0)
+    expect(mockAccountSelectWorkspace).toHaveBeenCalledTimes(2)
+  })
+
+  it('reads the refreshed token after the random delay', async () => {
+    jest.useFakeTimers()
+    jest.mocked(Math.random).mockReturnValue(0.5)
+    await options.onConnect?.(ClientConnectEvent.Reconnected, 'session', undefined)
+    setMetadata(presentation.metadata.Token, 'refreshed-token')
+    await jest.advanceTimersByTimeAsync(2_500)
+    expect(mockGetAccountClient).toHaveBeenLastCalledWith('https://accounts', 'refreshed-token', 0)
+  })
+
+  it.each(['wss://OLD-REGION/', 'wss://old-region:443'])('accepts equivalent endpoint %s', async (endpoint) => {
+    const equivalent = { ...loginInfo, endpoint }
+    selectWorkspace.mockResolvedValue([{}, equivalent, true])
+    mockAccountSelectWorkspace.mockResolvedValue(equivalent)
+    await options.onDialTimeout?.()
+    await options.onConnect?.(ClientConnectEvent.Reconnected, 'session', undefined)
+    await flush()
+    expect(reload).not.toHaveBeenCalled()
+  })
+
+  it('preserves case-sensitive paths when comparing endpoints', async () => {
+    mockAccountSelectWorkspace.mockResolvedValue({ ...loginInfo, endpoint: 'wss://old-region/Workspace' })
+    await options.onConnect?.(ClientConnectEvent.Reconnected, 'session', undefined)
+    await flush()
+    expect(reload).toHaveBeenCalledTimes(1)
   })
 
   it('does not reload when the user has left the workspace before the check finished', async () => {
