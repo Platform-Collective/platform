@@ -12,7 +12,11 @@ export class PersonReferenceUpdateError extends Error {
 }
 
 /** Move all reachable references, but prevent finalizing the merge if any class failed. */
-export async function updateAllRefs (client: TxOperations, source: Pick<Person, '_id'>, target: Pick<Person, '_id'>): Promise<void> {
+export async function updateAllRefs (
+  client: TxOperations,
+  source: Pick<Person, '_id'>,
+  target: Pick<Person, '_id'>
+): Promise<void> {
   const h = client.getHierarchy()
   const ancestors = h.getAncestors(contact.class.Person)
   const reftos = (await client.findAll(core.class.Attribute, { 'type._class': core.class.RefTo })).filter((it) => {
