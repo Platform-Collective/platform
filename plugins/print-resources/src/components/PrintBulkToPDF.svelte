@@ -15,10 +15,12 @@
 
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte'
+  import { translate } from '@hcengineering/platform'
   import type { Blob, Doc, Ref } from '@hcengineering/core'
   import presentation, { Card, getClient, PDFViewer } from '@hcengineering/presentation'
   import view from '@hcengineering/view'
-  import { Button, Label, Loading, Scroller } from '@hcengineering/ui'
+  import { Button, DropdownLabels, Label, Loading, Scroller, languageStore } from '@hcengineering/ui'
+  import branding, { type PrintTemplate } from '@hcengineering/branding'
 
   import print from '../plugin'
   import { type PdfResult, printAll, downloadPdf, downloadAllPdfs } from '../printUtils'
@@ -66,22 +68,54 @@
     dispatch('close')
   }
 
+  const NO_TEMPLATE = ''
+  let templates: PrintTemplate[] = []
+  let selectedTemplate: string = NO_TEMPLATE
+  // When print templates exist the user picks one before printing starts
+  let choosingTemplate = false
+
+  let noTemplateLabel = '—'
+  $: templateItems = [
+    { id: NO_TEMPLATE, label: noTemplateLabel },
+    ...templates.map((t) => ({ id: t._id, label: t.name }))
+  ]
+
+  function start(): void {
+    choosingTemplate = false
+    results = []
+    currentIndex = 0
+    cancelled = false
+    processing = true
+    void printAll(client, objects, signed, {
+      onProgress: (current) => {
+        currentIndex = current
+      },
+      getCancelled: () => cancelled,
+      template: selectedTemplate !== NO_TEMPLATE ? (selectedTemplate as Ref<PrintTemplate>) : undefined
+    }).then((r) => {
+      results = r
+      processing = false
+    })
+  }
+
   onMount(() => {
-    if (objects.length > 0) {
-      results = []
-      currentIndex = 0
-      cancelled = false
-      processing = true
-      void printAll(client, objects, signed, {
-        onProgress: (current) => {
-          currentIndex = current
-        },
-        getCancelled: () => cancelled
-      }).then((r) => {
-        results = r
+    if (objects.length === 0) return
+    void (async () => {
+      try {
+        templates = await client.findAll(branding.class.PrintTemplate, {}, { sort: { name: 1 } })
+        noTemplateLabel = await translate(branding.string.NoTemplate, {}, $languageStore)
+      } catch {
+        // Templates are optional, print without them
+        templates = []
+      }
+      if (templates.length > 0) {
+        selectedTemplate = templates.find((t) => t.isDefault === true)?._id ?? NO_TEMPLATE
+        choosingTemplate = true
         processing = false
-      })
-    }
+      } else {
+        start()
+      }
+    })()
   })
 </script>
 
@@ -108,7 +142,22 @@
       on:close={close}
     >
       <div class="flex flex-col gap-2">
-        {#if processing && currentIndex <= total}
+        {#if choosingTemplate}
+          <div class="flex items-center justify-between gap-2 py-2">
+            <Label label={branding.string.Template} />
+            <DropdownLabels
+              items={templateItems}
+              selected={selectedTemplate}
+              kind={'regular'}
+              size={'medium'}
+              on:selected={(e) => (selectedTemplate = e.detail)}
+            />
+          </div>
+          <div class="flex justify-end gap-2">
+            <Button kind="secondary" label={presentation.string.Cancel} on:click={cancel} />
+            <Button kind="primary" label={print.string.PrintToPDF} on:click={start} />
+          </div>
+        {:else if processing && currentIndex <= total}
           <div class="flex flex-col gap-2 py-2">
             <div class="flex items-start gap-2">
               <Label label={print.string.PrintingDocumentOf} params={{ current: currentIndex, total }} />

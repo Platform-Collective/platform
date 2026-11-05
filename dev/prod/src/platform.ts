@@ -47,6 +47,7 @@ import onboard, { onboardId } from '@hcengineering/onboard'
 import presence, { presenceId } from '@hcengineering/presence'
 import { pulseId } from '@hcengineering/pulse'
 import print, { printId } from '@hcengineering/print'
+import { brandingId } from '@hcengineering/branding'
 import { processId } from '@hcengineering/process'
 import { productsId } from '@hcengineering/products'
 import { questionsId } from '@hcengineering/questions'
@@ -139,6 +140,8 @@ import '@hcengineering/onboard-assets'
 import * as PreferenceLang from '@hcengineering/preference-assets/lang'
 import '@hcengineering/print-assets'
 import * as PrintLang from '@hcengineering/print-assets/lang'
+import '@hcengineering/branding-assets'
+import * as BrandingLang from '@hcengineering/branding-assets/lang'
 import '@hcengineering/process-assets'
 import * as ProcessLang from '@hcengineering/process-assets/lang'
 import '@hcengineering/products-assets'
@@ -392,6 +395,7 @@ function configureI18n(): void {
   addStringsLoader(globalProfileId, GlobalProfileLang.loadLang)
   addStringsLoader(loveId, LoveLang.loadLang)
   addStringsLoader(printId, PrintLang.loadLang)
+  addStringsLoader(brandingId, BrandingLang.loadLang)
   addStringsLoader(exportId, ExportLang.loadLang)
   addStringsLoader(analyticsCollectorId, AnalyticsCollectorLang.loadLang)
   addStringsLoader(testManagementId, TestManagementLang.loadLang)
@@ -666,6 +670,10 @@ export async function configurePlatform() {
   )
   addLocation(loveId, async () => await import(/* webpackChunkName: "love" */ '@hcengineering/love-resources'))
   addLocation(printId, async () => await import(/* webpackChunkName: "print" */ '@hcengineering/print-resources'))
+  addLocation(
+    brandingId,
+    async () => await import(/* webpackChunkName: "branding" */ '@hcengineering/branding-resources')
+  )
   addLocation(exportId, async () => await import(/* webpackChunkName: "export" */ '@hcengineering/export-resources'))
   addLocation(
     textEditorId,

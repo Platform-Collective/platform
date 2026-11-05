@@ -37,6 +37,8 @@ function createCtx (): MeasureContext {
 function createPage (overrides: Partial<Record<string, jest.Mock>> = {}): any {
   const page = {
     on: jest.fn().mockReturnThis(),
+    setRequestInterception: jest.fn().mockResolvedValue(undefined),
+    setBypassServiceWorker: jest.fn().mockResolvedValue(undefined),
     setViewport: jest.fn().mockResolvedValue(undefined),
     goto: jest.fn().mockResolvedValue(undefined),
     waitForNetworkIdle: jest.fn().mockResolvedValue(undefined),
@@ -96,6 +98,7 @@ async function loadPrintModule (
   process.env.ACCOUNTS_URL = 'http://accounts'
   process.env.FRONT_URL = 'http://front'
   process.env.PRINT_CONCURRENCY = printConcurrency
+  process.env.ALLOWED_HOSTNAMES = 'example.com'
   for (const [key, value] of Object.entries(env)) {
     process.env[key] = value
   }
@@ -108,11 +111,13 @@ async function loadPrintModule (
   }))
 
   const printModule = await import('./print')
+  const config = (await import('./config')).default
   const { PrintBrowserManager } = await import('./browser')
   const browserManager = new PrintBrowserManager()
 
   return {
-    print: async (ctx, url, options) => await printModule.print(ctx, url, options, browserManager),
+    print: async (ctx, url, options) =>
+      await printModule.print(ctx, url, options, browserManager, config.AllowedHostnames),
     closePrintBrowser: async () => {
       await browserManager.close()
     }
@@ -126,7 +131,91 @@ describe('print', () => {
     delete process.env.PRINT_TIMEOUT_MS
     delete process.env.PRINT_PAGE_INIT_TIMEOUT_MS
     delete process.env.PRINT_BROWSER_MAX_PAGES
+    delete process.env.ALLOWED_HOSTNAMES
   })
+
+  it.each([
+    ['', 'http://example.com/'],
+    ['example.com', 'http://169.254.169.254/latest/meta-data/'],
+    ['example.com', 'http://127.0.0.1/'],
+    ['example.com', 'http://localhost/']
+  ])('rejects %s / %s before launching a browser', async (allowedHostnames, url) => {
+    const launch = jest.fn().mockResolvedValue(createBrowser())
+    const { print } = await loadPrintModule(launch, '1', { ALLOWED_HOSTNAMES: allowedHostnames })
+
+    await expect(print(createCtx(), url)).rejects.toMatchObject({ code: 403 })
+    expect(launch).not.toHaveBeenCalled()
+  })
+
+  it('allows navigations to the front page and any subresources while blocking other navigations', async () => {
+    const page = createPage()
+    const browser = createBrowser(() => page)
+    const launch = jest.fn().mockResolvedValue(browser)
+    const { closePrintBrowser, print } = await loadPrintModule(launch, '1', { ALLOWED_HOSTNAMES: ' HULY.LOCAL. ' })
+
+    page.goto.mockImplementation(async () => {
+      expect(page.setRequestInterception).toHaveBeenCalledWith(true)
+      expect(page.setBypassServiceWorker).toHaveBeenCalledWith(true)
+      const listener = page.on.mock.calls.find(([event]: [string]) => event === 'request')?.[1]
+      expect(listener).toBeDefined()
+      for (const [url, navigation, allowed] of [
+        ['http://huly.local:8087/', true, true],
+        ['http://huly.local:8087/app.js', false, true],
+        ['https://images.example.com/avatar.png', false, true],
+        ['http://169.254.169.254/latest/meta-data/', true, false],
+        ['http://127.0.0.1/', true, false],
+        ['http://localhost/', true, false],
+        ['https://huly.local.evil.example/', true, false],
+        ['file:///etc/passwd', true, false]
+      ] as const) {
+        const request = {
+          url: () => url,
+          isNavigationRequest: () => navigation,
+          continue: jest.fn().mockResolvedValue(undefined),
+          abort: jest.fn().mockResolvedValue(undefined)
+        }
+        await listener(request)
+        if (allowed) {
+          expect(request.continue).toHaveBeenCalledTimes(1)
+          expect(request.abort).not.toHaveBeenCalled()
+        } else {
+          expect(request.abort).toHaveBeenCalledTimes(1)
+          expect(request.continue).not.toHaveBeenCalled()
+        }
+      }
+    })
+
+    await expect(print(createCtx(), 'http://huly.local:8087/')).resolves.toEqual(Buffer.from('pdf'))
+    await closePrintBrowser()
+  })
+
+  it.each(['http://169.254.169.254/latest/meta-data/', 'http://127.0.0.1/'])(
+    'blocks a front-page redirect to %s before rendering',
+    async (target) => {
+      const page = createPage()
+      const browser = createBrowser(() => page)
+      const { closePrintBrowser, print } = await loadPrintModule(jest.fn().mockResolvedValue(browser))
+      page.goto.mockImplementation(async () => {
+        const listener = page.on.mock.calls.find(([event]: [string]) => event === 'request')?.[1]
+        expect(listener).toBeDefined()
+        const request = {
+          url: () => target,
+          isNavigationRequest: () => true,
+          continue: jest.fn().mockResolvedValue(undefined),
+          abort: jest.fn().mockResolvedValue(undefined)
+        }
+        await listener(request)
+        expect(request.abort).toHaveBeenCalledWith('blockedbyclient')
+        expect(request.continue).not.toHaveBeenCalled()
+        throw new Error('net::ERR_BLOCKED_BY_CLIENT')
+      })
+
+      await expect(print(createCtx(), 'http://example.com/redirect')).rejects.toThrow('net::ERR_BLOCKED_BY_CLIENT')
+      expect(page.pdf).not.toHaveBeenCalled()
+      expect(browser.contexts[0].close).toHaveBeenCalledTimes(1)
+      await closePrintBrowser()
+    }
+  )
 
   it('reuses the same browser for sequential print jobs', async () => {
     const browser = createBrowser()

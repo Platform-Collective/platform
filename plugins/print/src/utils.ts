@@ -51,6 +51,74 @@ export async function printToPDF (link: string, token: string, options?: PrintTo
   return res.id
 }
 
+export interface PrintPageMargins {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+/**
+ * Document print with extra pages, header/footer and content stylesheet, all geometry in millimetres.
+ * Pages are standalone HTML documents; their resources must be inlined (data URIs) as the renderer
+ * does not load external resources for them.
+ */
+export interface ComposedPrintRequest {
+  // Public link to the document body
+  link?: string
+  // Existing PDF blob used as document body
+  file?: string
+  // Standalone HTML document used as document body, rendered offline like the template pages
+  html?: string
+  page: { width: number, height: number }
+  margins: PrintPageMargins
+  before: string[]
+  after: string[]
+  headerTemplate?: string
+  footerTemplate?: string
+  contentCss?: string
+  // Transparent page stamped over every document page (watermarks, logos, borders)
+  overlay?: string
+  overlayOnTemplatePages?: boolean
+  // Headers, footers and overlays stamped per page following page rules; replaces the templates above
+  decorations?: ComposedDecorations
+}
+
+export interface ComposedDecorations {
+  // Absolutely positioned page markup with the page rules it is shown on
+  layers: Array<{ html: string, match: object[], exclude: object[] }>
+  numbering: { countTemplatePages: boolean, start: number }
+  // Shared stylesheet, e.g. inlined fonts
+  css: string
+}
+
+export async function printComposedToPDF (request: ComposedPrintRequest, token: string): Promise<string> {
+  if (token === '') {
+    throw new Error('Missing authentication token')
+  }
+
+  const response = await fetch(`${getPrintBaseURL()}/print/composed`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(request)
+  })
+
+  const res = await response.json().catch(() => undefined)
+
+  if (!response.ok) {
+    throw new Error(res?.message ?? `Composed print failed with status ${response.status}`)
+  }
+  if (typeof res?.id !== 'string' || res.id === '') {
+    throw new Error('Invalid composed print response')
+  }
+
+  return res.id
+}
+
 export interface ConvertedPreview {
   id: string
   contentType: 'application/pdf' | 'text/html'

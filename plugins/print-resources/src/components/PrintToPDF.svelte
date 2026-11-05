@@ -23,6 +23,7 @@
   import { printToPDF, type PrintPageOrientation } from '@hcengineering/print'
   import { signPDF } from '@hcengineering/sign'
   import { getMetadata } from '@hcengineering/platform'
+  import branding from '@hcengineering/branding'
 
   import print from '../plugin'
 
@@ -167,10 +168,40 @@
   }
 
   $: void updateDocTitle(object)
+
+  let hasTemplates = false
+  const templatesQuery = createQuery()
+  templatesQuery.query(
+    branding.class.PrintTemplate,
+    {},
+    (res) => {
+      hasTemplates = res.length > 0
+    },
+    { limit: 1, projection: { _id: 1 } }
+  )
+
+  function printWithTemplate(): void {
+    showPopup(branding.component.PrintPreview, { object, signed }, 'content', (result: string | undefined) => {
+      if (result === undefined) return
+      // Invalidate the plain print in flight, the composed PDF replaces it
+      nextPrintRequest()
+      file = result as Ref<Blob>
+      isLoading = false
+    })
+  }
 </script>
 
 <PDFViewer {file} name={title} contentType="application/pdf" showIcon={false} {isLoading} on:close on:fullsize>
   <svelte:fragment slot="utils">
+    {#if hasTemplates}
+      <Button
+        icon={branding.icon.Template}
+        kind="ghost"
+        label={branding.string.PrintWithTemplate}
+        disabled={isLinkLoading}
+        on:click={printWithTemplate}
+      />
+    {/if}
     <Button
       icon={IconMoreH}
       kind="ghost"

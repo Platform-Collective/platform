@@ -48,6 +48,7 @@
     "@hcengineering/view-resources": "workspace:^0.7.0",
     "@hcengineering/ui": "workspace:^0.7.0",
     "@hcengineering/print": "workspace:^0.7.0",
-    "@hcengineering/sign": "workspace:^0.7.0"
+    "@hcengineering/sign": "workspace:^0.7.0",
+    "@hcengineering/branding": "workspace:^0.7.0"
   }
 }

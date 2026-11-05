@@ -143,6 +143,8 @@ import '@hcengineering/preference-assets'
 import * as PreferenceLang from '@hcengineering/preference-assets/lang'
 import '@hcengineering/print-assets'
 import * as PrintLang from '@hcengineering/print-assets/lang'
+import '@hcengineering/branding-assets'
+import * as BrandingLang from '@hcengineering/branding-assets/lang'
 import '@hcengineering/process-assets'
 import * as ProcessLang from '@hcengineering/process-assets/lang'
 import '@hcengineering/products-assets'
@@ -214,6 +216,7 @@ import * as PlatformLang from '@hcengineering/platform/lang'
 import love, { loveId } from '@hcengineering/love'
 import presentation, { createFileStorage, presentationId } from '@hcengineering/presentation'
 import print, { printId } from '@hcengineering/print'
+import { brandingId } from '@hcengineering/branding'
 import sign from '@hcengineering/sign'
 import textEditor, { textEditorId } from '@hcengineering/text-editor'
 
@@ -284,6 +287,7 @@ function configureI18n (): void {
   addStringsLoader(globalProfileId, GlobalProfileLang.loadLang)
   addStringsLoader(loveId, LoveLang.loadLang)
   addStringsLoader(printId, PrintLang.loadLang)
+  addStringsLoader(brandingId, BrandingLang.loadLang)
   addStringsLoader(exportId, ExportLang.loadLang)
   addStringsLoader(analyticsCollectorId, AnalyticsCollectorLang.loadLang)
   addStringsLoader(testManagementId, TestManagementLang.loadLang)
@@ -485,6 +489,7 @@ export async function configurePlatform (onWorkbenchConnect?: () => Promise<void
   )
   addLocation(loveId, () => import(/* webpackChunkName: "love" */ '@hcengineering/love-resources'))
   addLocation(printId, () => import(/* webpackChunkName: "print" */ '@hcengineering/print-resources'))
+  addLocation(brandingId, () => import(/* webpackChunkName: "branding" */ '@hcengineering/branding-resources'))
   addLocation(exportId, () => import(/* webpackChunkName: "export" */ '@hcengineering/export-resources'))
   addLocation(textEditorId, () => import(/* webpackChunkName: "text-editor" */ '@hcengineering/text-editor-resources'))
   addLocation(
