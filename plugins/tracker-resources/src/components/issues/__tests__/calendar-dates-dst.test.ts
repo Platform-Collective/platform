@@ -47,7 +47,6 @@ describe('issues grouped by calendar day across a DST change at midnight', () =>
   })
 })
 
-
 describe('moving ranges across DST', () => {
   it.each([
     ['Europe/Amsterdam', [2026, 3, 1], [2026, 3, 10], [2026, 3, 3], [2026, 2, 25]],
@@ -55,7 +54,7 @@ describe('moving ranges across DST', () => {
     ['America/Santiago', [2026, 8, 8], [2026, 8, 15], [2026, 8, 8], [2026, 8, 1]]
   ])('preserves both local times in %s', (zone, start, due, target, expectedStart) => {
     const result = runInZone(
-      zone as string,
+      zone,
       `const start = new Date(...${JSON.stringify(start)})
       const due = new Date(...${JSON.stringify(due)})
       const target = new Date(...${JSON.stringify(target)})
