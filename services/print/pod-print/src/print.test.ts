@@ -142,7 +142,9 @@ function capturePopupCloseTimers (): { fire: () => Promise<void>, pending: () =>
   return {
     pending: () => callbacks.length,
     fire: async () => {
-      callbacks.splice(0).forEach((callback) => { callback() })
+      callbacks.splice(0).forEach((callback) => {
+        callback()
+      })
       await flush()
     }
   }
@@ -296,13 +298,14 @@ describe('print', () => {
         abort: jest.fn().mockResolvedValue(undefined)
       }
       await listener(request)
-        await flush()
+      await flush()
       expect(request.abort).toHaveBeenCalledWith('blockedbyclient')
       expect(request.continue).not.toHaveBeenCalled()
     })
     await print(ctx, 'http://example.com/')
     expect(ctx.warn).toHaveBeenCalledWith('Blocked print request', {
-      origin: 'http://169.254.169.254', navigation: false
+      origin: 'http://169.254.169.254',
+      navigation: false
     })
     await closePrintBrowser()
   })
@@ -313,8 +316,12 @@ describe('print', () => {
     const { closePrintBrowser, print } = await loadPrintModule(jest.fn().mockResolvedValue(browser))
     const request = jest.fn()
     const popup = {
-      get location (): string { return 'about:blank' },
-      set location (url: string) { request(url) }
+      get location (): string {
+        return 'about:blank'
+      },
+      set location (url: string) {
+        request(url)
+      }
     }
     const window = { open: jest.fn((_url: string) => popup) }
 
@@ -323,10 +330,13 @@ describe('print', () => {
       for (const [script] of page.evaluateOnNewDocument.mock.calls) {
         runInNewContext(`(${script.toString()})()`, { window })
       }
-      runInNewContext(`
+      runInNewContext(
+        `
         const popup = window.open('about:blank')
         if (popup) popup.location = 'http://169.254.169.254/latest/meta-data/'
-      `, { window })
+      `,
+        { window }
+      )
       expect(window.open('about:blank')).toBeNull()
       expect(request).not.toHaveBeenCalled()
     })
@@ -339,72 +349,76 @@ describe('print', () => {
     ['target=_blank link', 'http://169.254.169.254/latest/meta-data/'],
     ['named form', 'http://127.0.0.1/'],
     ['native window.open followed by navigation', 'about:blank']
-  ])(
-    'blocks the requests of a %s target and closes it later without resuming it',
-    async (_source, targetUrl) => {
-      const page = createPage()
-      const browser = createBrowser(() => page)
-      const { closePrintBrowser, print } = await loadPrintModule(jest.fn().mockResolvedValue(browser))
-      const timers = capturePopupCloseTimers()
-      const request = jest.fn()
-      let closed = false
+  ])('blocks the requests of a %s target and closes it later without resuming it', async (_source, targetUrl) => {
+    const page = createPage()
+    const browser = createBrowser(() => page)
+    const { closePrintBrowser, print } = await loadPrintModule(jest.fn().mockResolvedValue(browser))
+    const timers = capturePopupCloseTimers()
+    const request = jest.fn()
+    let closed = false
 
-      page.goto.mockImplementation(async () => {
-        const session = browser.sessions[0]
-        const paused = session?.send.mock.calls.some(([method, params]: [string, Record<string, unknown>]) =>
-          method === 'Target.setAutoAttach' && params.autoAttach === true && params.waitForDebuggerOnStart === true &&
-          params.flatten === true && JSON.stringify(params.filter) === JSON.stringify([{ type: 'page' }])
-        )
-        if (!paused) request('http://169.254.169.254/latest/meta-data/')
-        expect(request).not.toHaveBeenCalled()
+    page.goto.mockImplementation(async () => {
+      const session = browser.sessions[0]
+      const paused = session?.send.mock.calls.some(
+        ([method, params]: [string, Record<string, unknown>]) =>
+          method === 'Target.setAutoAttach' &&
+          params.autoAttach === true &&
+          params.waitForDebuggerOnStart === true &&
+          params.flatten === true &&
+          JSON.stringify(params.filter) === JSON.stringify([{ type: 'page' }])
+      )
+      if (!paused) request('http://169.254.169.254/latest/meta-data/')
+      expect(request).not.toHaveBeenCalled()
 
-        const listener = session.on.mock.calls.find(([event]: [string]) => event === 'Target.attachedToTarget')?.[1]
-        const requestPaused: Array<(event: { requestId: string }) => void> = []
-        const targetSession = {
-          id: 'popup-session',
-          on: jest.fn((event: string, handler: (event: { requestId: string }) => void) => {
-            if (event === 'Fetch.requestPaused') requestPaused.push(handler)
-          }),
-          send: jest.fn(async (method: string, params?: { requestId?: string, errorReason?: string }) => {
-            if (method === 'Runtime.runIfWaitingForDebugger' && !closed) request(targetUrl)
-            // A request that is not failed by the Fetch domain reaches the network.
-            if (method === 'Fetch.failRequest') failed.push(params?.requestId ?? '')
-          })
-        }
-        const failed: string[] = []
-        browser.sessions.push(targetSession)
-        session.send.mockImplementation(async (method: string, params: { targetId?: string }) => {
-          if (method === 'Target.closeTarget' && params.targetId === 'popup') closed = true
-          return { success: true }
+      const listener = session.on.mock.calls.find(([event]: [string]) => event === 'Target.attachedToTarget')?.[1]
+      const requestPaused: Array<(event: { requestId: string }) => void> = []
+      const targetSession = {
+        id: 'popup-session',
+        on: jest.fn((event: string, handler: (event: { requestId: string }) => void) => {
+          if (event === 'Fetch.requestPaused') requestPaused.push(handler)
+        }),
+        send: jest.fn(async (method: string, params?: { requestId?: string, errorReason?: string }) => {
+          if (method === 'Runtime.runIfWaitingForDebugger' && !closed) request(targetUrl)
+          // A request that is not failed by the Fetch domain reaches the network.
+          if (method === 'Fetch.failRequest') failed.push(params?.requestId ?? '')
         })
-        // An implicit noopener link has no usable opener; scope by browser context instead.
-        listener({
-          sessionId: 'popup-session',
-          targetInfo: { type: 'page', targetId: 'popup', browserContextId: browser.contexts[0].id, url: targetUrl },
-          waitingForDebugger: true
-        })
-        await flush()
-        // The popup is held, not closed, while its opener may still be inside popup creation.
-        expect(targetSession.send).toHaveBeenCalledWith('Fetch.enable', { patterns: [{ urlPattern: '*' }] })
-        expect(closed).toBe(false)
-        requestPaused.forEach((handler) => { handler({ requestId: 'first-request' }) })
-        await flush()
-        expect(failed).toEqual(['first-request'])
-        expect(targetSession.send).toHaveBeenCalledWith(
-          'Fetch.failRequest', { requestId: 'first-request', errorReason: 'BlockedByClient' }
-        )
-        await timers.fire()
-        expect(closed).toBe(true)
-        expect(request).not.toHaveBeenCalled()
-        expect(targetSession.send).not.toHaveBeenCalledWith('Runtime.runIfWaitingForDebugger')
-        expect(session.detach).not.toHaveBeenCalled()
+      }
+      const failed: string[] = []
+      browser.sessions.push(targetSession)
+      session.send.mockImplementation(async (method: string, params: { targetId?: string }) => {
+        if (method === 'Target.closeTarget' && params.targetId === 'popup') closed = true
+        return { success: true }
       })
+      // An implicit noopener link has no usable opener; scope by browser context instead.
+      listener({
+        sessionId: 'popup-session',
+        targetInfo: { type: 'page', targetId: 'popup', browserContextId: browser.contexts[0].id, url: targetUrl },
+        waitingForDebugger: true
+      })
+      await flush()
+      // The popup is held, not closed, while its opener may still be inside popup creation.
+      expect(targetSession.send).toHaveBeenCalledWith('Fetch.enable', { patterns: [{ urlPattern: '*' }] })
+      expect(closed).toBe(false)
+      requestPaused.forEach((handler) => {
+        handler({ requestId: 'first-request' })
+      })
+      await flush()
+      expect(failed).toEqual(['first-request'])
+      expect(targetSession.send).toHaveBeenCalledWith('Fetch.failRequest', {
+        requestId: 'first-request',
+        errorReason: 'BlockedByClient'
+      })
+      await timers.fire()
+      expect(closed).toBe(true)
+      expect(request).not.toHaveBeenCalled()
+      expect(targetSession.send).not.toHaveBeenCalledWith('Runtime.runIfWaitingForDebugger')
+      expect(session.detach).not.toHaveBeenCalled()
+    })
 
-      await expect(print(createCtx(), 'http://example.com/')).resolves.toEqual(Buffer.from('pdf'))
-      expect(browser.sessions[0].detach).not.toHaveBeenCalled()
-      await closePrintBrowser()
-    }
-  )
+    await expect(print(createCtx(), 'http://example.com/')).resolves.toEqual(Buffer.from('pdf'))
+    expect(browser.sessions[0].detach).not.toHaveBeenCalled()
+    await closePrintBrowser()
+  })
 
   it('resumes the main page and other contexts without closing their targets', async () => {
     const page = createPage()
@@ -414,10 +428,17 @@ describe('print', () => {
     page.goto.mockImplementation(async () => {
       const session = browser.sessions[0]
       const listener = session.on.mock.calls.find(([event]: [string]) => event === 'Target.attachedToTarget')?.[1]
-      for (const [targetId, browserContextId] of [['page-0', 'context-0'], ['other-page', 'other-context']]) {
+      for (const [targetId, browserContextId] of [
+        ['page-0', 'context-0'],
+        ['other-page', 'other-context']
+      ]) {
         const targetSession = { id: targetId, send: jest.fn().mockResolvedValue(undefined) }
         browser.sessions.push(targetSession)
-        listener({ sessionId: targetId, targetInfo: { type: 'page', targetId, browserContextId }, waitingForDebugger: true })
+        listener({
+          sessionId: targetId,
+          targetInfo: { type: 'page', targetId, browserContextId },
+          waitingForDebugger: true
+        })
         await flush()
         expect(targetSession.send).toHaveBeenCalledWith('Runtime.runIfWaitingForDebugger')
       }
@@ -465,7 +486,10 @@ describe('print', () => {
     expect(contextsBeforeGuard).toBe(0)
     expect(browser.guardSessions).toHaveLength(1)
     expect(session.send).toHaveBeenCalledWith('Target.setAutoAttach', {
-      autoAttach: true, waitForDebuggerOnStart: true, flatten: true, filter: [{ type: 'page' }]
+      autoAttach: true,
+      waitForDebuggerOnStart: true,
+      flatten: true,
+      filter: [{ type: 'page' }]
     })
     expect(session.detach).not.toHaveBeenCalled()
     await closePrintBrowser()
@@ -479,7 +503,8 @@ describe('print', () => {
     browser.target = () => ({ createCDPSession: () => pendingSession.promise })
     const launch = jest.fn().mockResolvedValueOnce(browser).mockResolvedValueOnce(nextBrowser)
     const { closePrintBrowser, print } = await loadPrintModule(launch, '1', {
-      PRINT_PAGE_INIT_TIMEOUT_MS: '20', PRINT_TIMEOUT_MS: '100'
+      PRINT_PAGE_INIT_TIMEOUT_MS: '20',
+      PRINT_TIMEOUT_MS: '100'
     })
 
     const error = await print(createCtx(), 'http://example.com/').catch((err: unknown) => err)
@@ -499,9 +524,11 @@ describe('print', () => {
     const firstPdf = deferred<Buffer>()
     const secondPdf = deferred<Buffer>()
     let pageCount = 0
-    const browser = createBrowser(() => createPage({
-      pdf: jest.fn(() => pageCount++ === 0 ? firstPdf.promise : secondPdf.promise)
-    }))
+    const browser = createBrowser(() =>
+      createPage({
+        pdf: jest.fn(() => (pageCount++ === 0 ? firstPdf.promise : secondPdf.promise))
+      })
+    )
     const { closePrintBrowser, print } = await loadPrintModule(jest.fn().mockResolvedValue(browser), '2')
     const timers = capturePopupCloseTimers()
     const first = print(createCtx(), 'http://example.com/one')
@@ -557,14 +584,17 @@ describe('print', () => {
 
   it.each(['success', 'error', 'timeout'])('unregisters only after context closure on %s', async (outcome) => {
     const closing = deferred()
-    const page = createPage({ pdf: jest.fn(async () => {
-      if (outcome === 'error') throw new Error('pdf failed')
-      if (outcome === 'timeout') return await new Promise<Buffer>(() => {})
-      return Buffer.from('pdf')
-    }) })
+    const page = createPage({
+      pdf: jest.fn(async () => {
+        if (outcome === 'error') throw new Error('pdf failed')
+        if (outcome === 'timeout') return await new Promise<Buffer>(() => {})
+        return Buffer.from('pdf')
+      })
+    })
     const browser = createBrowser(() => page)
     const { closePrintBrowser, print } = await loadPrintModule(jest.fn().mockResolvedValue(browser), '1', {
-      PRINT_TIMEOUT_MS: '30', PRINT_PAGE_INIT_TIMEOUT_MS: '1000'
+      PRINT_TIMEOUT_MS: '30',
+      PRINT_PAGE_INIT_TIMEOUT_MS: '1000'
     })
     const createContext = browser.createBrowserContext.getMockImplementation()
     browser.createBrowserContext.mockImplementation(async () => {
@@ -576,7 +606,10 @@ describe('print', () => {
       return context
     })
     const timers = capturePopupCloseTimers()
-    const result = print(createCtx(), 'http://example.com/').then(() => 'success', (err: Error) => err.message)
+    const result = print(createCtx(), 'http://example.com/').then(
+      () => 'success',
+      (err: Error) => err.message
+    )
     await flush()
     if (outcome === 'timeout') await new Promise((resolve) => setTimeout(resolve, 50))
     expect(browser.contexts[0].close).toHaveBeenCalledTimes(1)
@@ -588,7 +621,9 @@ describe('print', () => {
       expect(guard.send).toHaveBeenCalledWith('Target.closeTarget', { targetId: 'during-close' })
       guard.send.mockClear()
       closing.resolve()
-      expect(await result).toBe(outcome === 'error' ? 'pdf failed' : outcome === 'timeout' ? 'Print timed out after 30 ms' : 'success')
+      expect(await result).toBe(
+        outcome === 'error' ? 'pdf failed' : outcome === 'timeout' ? 'Print timed out after 30 ms' : 'success'
+      )
       const resumed = await attachTarget(browser, guard, 'after-close', browser.contexts[0].id)
       expect(resumed).toHaveBeenCalledWith('Runtime.runIfWaitingForDebugger')
       expect(guard.send).not.toHaveBeenCalledWith('Target.closeTarget', expect.anything())
@@ -657,7 +692,8 @@ describe('print', () => {
       const guard = browser.guardSessions[0]
       guard.send.mockImplementation(async (method: string, params: { targetId?: string }) => {
         if (method !== 'Target.closeTarget') return undefined
-        if (params.targetId === 'gone') throw new Error('Protocol error (Target.closeTarget): No target with given id found')
+        if (params.targetId === 'gone')
+          {throw new Error('Protocol error (Target.closeTarget): No target with given id found')}
         throw new Error('close failed')
       })
       await attachTarget(browser, guard, 'gone', browser.contexts[0].id)
@@ -667,8 +703,14 @@ describe('print', () => {
     })
 
     await expect(print(createCtx(), 'http://example.com/')).resolves.toEqual(Buffer.from('pdf'))
-    expect(warn).toHaveBeenCalledWith('Failed to close print popup target', expect.objectContaining({ targetId: 'failing' }))
-    expect(warn).not.toHaveBeenCalledWith('Failed to close print popup target', expect.objectContaining({ targetId: 'gone' }))
+    expect(warn).toHaveBeenCalledWith(
+      'Failed to close print popup target',
+      expect.objectContaining({ targetId: 'failing' })
+    )
+    expect(warn).not.toHaveBeenCalledWith(
+      'Failed to close print popup target',
+      expect.objectContaining({ targetId: 'gone' })
+    )
     await closePrintBrowser()
   })
 
@@ -682,7 +724,11 @@ describe('print', () => {
     page.goto.mockImplementation(async () => {
       const session = browser.sessions[0]
       // Request blocking is unavailable, so the fallback closes the popup right away; that fails too.
-      const targetSession = { id: 'popup-session', on: jest.fn(), send: jest.fn().mockRejectedValue(new Error('fetch failed')) }
+      const targetSession = {
+        id: 'popup-session',
+        on: jest.fn(),
+        send: jest.fn().mockRejectedValue(new Error('fetch failed'))
+      }
       browser.sessions.push(targetSession)
       session.send.mockRejectedValue(new Error('close failed'))
       const listener = session.on.mock.calls.find(([event]: [string]) => event === 'Target.attachedToTarget')?.[1]

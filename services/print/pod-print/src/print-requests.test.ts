@@ -8,11 +8,16 @@ function mockDns (addresses: Array<{ address: string, family: number }>): jest.S
   return jest.spyOn(dns.promises, 'lookup').mockResolvedValue(addresses as unknown as dns.LookupAddress)
 }
 
-afterEach(() => { jest.restoreAllMocks() })
+afterEach(() => {
+  jest.restoreAllMocks()
+})
 
 describe('print subresource policy', () => {
   it('rejects a hostname if any DNS address is private', async () => {
-    const lookup = mockDns([{ address: '93.184.216.34', family: 4 }, { address: '10.0.0.1', family: 4 }])
+    const lookup = mockDns([
+      { address: '93.184.216.34', family: 4 },
+      { address: '10.0.0.1', family: 4 }
+    ])
     const check = createPrintRequestChecker(['https://front.example:8443'])
     expect(await check('https://images.example/image.png')).toBe(false)
     expect(await check('https://images.example/another.png')).toBe(false)
@@ -38,14 +43,18 @@ describe('print subresource policy', () => {
     expect(await check('https://front:8080/image')).toBe(false)
   })
 
-  it.each(['http://169.254.169.254/image', 'http://[::1]/image', 'http://localhost:9200/image',
-    'http://user:pass@images.example/image', 'file:///etc/passwd', 'invalid'])(
-    'blocks unsafe URLs before DNS: %s', async (url) => {
-      const lookup = mockDns([{ address: '93.184.216.34', family: 4 }])
-      expect(await createPrintRequestChecker([])(url)).toBe(false)
-      expect(lookup).not.toHaveBeenCalled()
-    }
-  )
+  it.each([
+    'http://169.254.169.254/image',
+    'http://[::1]/image',
+    'http://localhost:9200/image',
+    'http://user:pass@images.example/image',
+    'file:///etc/passwd',
+    'invalid'
+  ])('blocks unsafe URLs before DNS: %s', async (url) => {
+    const lookup = mockDns([{ address: '93.184.216.34', family: 4 }])
+    expect(await createPrintRequestChecker([])(url)).toBe(false)
+    expect(lookup).not.toHaveBeenCalled()
+  })
 
   it('fails closed when DNS fails', async () => {
     mockDns([]).mockRejectedValue(new Error('lookup failed'))

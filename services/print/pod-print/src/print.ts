@@ -96,22 +96,24 @@ async function render (
     })
     .on('request', (request) => {
       void (async () => {
-      try {
-        const allowed = request.isNavigationRequest()
-          ? isAllowedPrintUrl(request.url(), allowedHostnames)
-          : await isSafeRequest(request.url())
-        if (allowed) {
-          await request.continue()
-        } else {
-          // Do not log query strings, fragments or credentials from user-supplied links.
-          let origin: string | undefined
-          try { origin = new URL(request.url()).origin } catch {}
-          ctx.warn('Blocked print request', { origin, navigation: request.isNavigationRequest() })
-          await request.abort('blockedbyclient')
+        try {
+          const allowed = request.isNavigationRequest()
+            ? isAllowedPrintUrl(request.url(), allowedHostnames)
+            : await isSafeRequest(request.url())
+          if (allowed) {
+            await request.continue()
+          } else {
+            // Do not log query strings, fragments or credentials from user-supplied links.
+            let origin: string | undefined
+            try {
+              origin = new URL(request.url()).origin
+            } catch {}
+            ctx.warn('Blocked print request', { origin, navigation: request.isNavigationRequest() })
+            await request.abort('blockedbyclient')
+          }
+        } catch (err: unknown) {
+          ctx.warn('Failed to handle print request', { err })
         }
-      } catch (err: unknown) {
-        ctx.warn('Failed to handle print request', { err })
-      }
       })()
     })
 

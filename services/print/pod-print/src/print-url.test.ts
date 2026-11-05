@@ -46,7 +46,9 @@ describe('print hostnames', () => {
   })
 
   it.each([[[]], [['']], [[' ', '']]])('falls back to the FRONT_URL host for %p', (configured) => {
-    expect(getPrintHostnames(configured, 'https://Huly.Example.com:8443/path')).toEqual(['https://huly.example.com:8443'])
+    expect(getPrintHostnames(configured, 'https://Huly.Example.com:8443/path')).toEqual([
+      'https://huly.example.com:8443'
+    ])
   })
 
   it('denies everything when neither the allowlist nor FRONT_URL yields a host', () => {
@@ -56,7 +58,8 @@ describe('print hostnames', () => {
 
 describe('print origin and port restrictions', () => {
   it.each(['http://huly.local:6379/', 'https://huly.local:9200/', 'https://user:pass@huly.local/'])(
-    'does not allow arbitrary ports or credentials: %s', (url) => {
+    'does not allow arbitrary ports or credentials: %s',
+    (url) => {
       expect(isAllowedPrintUrl(url, ['huly.local'])).toBe(false)
     }
   )
@@ -77,7 +80,8 @@ describe('print origin and port restrictions', () => {
   })
 
   it.each(['host/path', 'user@host', 'host:bad', '*.com/path', '*', 'https://host/path'])(
-    'rejects malformed configuration at startup: %s', (entry) => {
+    'rejects malformed configuration at startup: %s',
+    (entry) => {
       expect(() => getPrintHostnames([entry], 'https://front.example')).toThrow()
     }
   )

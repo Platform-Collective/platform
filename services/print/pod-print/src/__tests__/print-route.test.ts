@@ -64,7 +64,9 @@ describe('authenticated print route', () => {
         } as unknown as Request
         const res = {
           contentType: jest.fn(),
-          send: () => { resolve(200); }
+          send: () => {
+            resolve(200)
+          }
         } as unknown as Response
         handler(req, res, (error: unknown) => {
           if (error instanceof ApiError) resolve(error.code)
