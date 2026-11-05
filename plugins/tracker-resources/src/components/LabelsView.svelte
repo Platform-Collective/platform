@@ -2,12 +2,12 @@
   import { getClient } from '@hcengineering/presentation'
   import tags, { TagElement } from '@hcengineering/tags'
   import { selectedTagElements } from '@hcengineering/tags-resources'
-  import { Component, getCurrentResolvedLocation, navigate } from '@hcengineering/ui'
+  import { Component, getCurrentResolvedLocation, type Location, navigate } from '@hcengineering/ui'
   import { Filter } from '@hcengineering/view'
   import { buildFilterKey, setFilters } from '@hcengineering/view-resources'
   import tracker from '../plugin'
 
-  function setFilterTag(tag: TagElement) {
+  function setFilterTag(tag: TagElement, loc: Location) {
     const client = getClient()
     const hierarchy = client.getHierarchy()
     const attribute = hierarchy.getAttribute(tracker.class.Issue, 'labels')
@@ -20,7 +20,7 @@
       mode: tags.filter.FilterTagsIn,
       index: 1
     } as unknown as Filter
-    setFilters([filter])
+    setFilters([filter], loc, tracker.class.Issue)
   }
   async function onTag(tag: TagElement): Promise<void> {
     selectedTagElements.set([tag._id])
@@ -29,9 +29,7 @@
     loc.path[3] = 'all-issues'
     loc.path.length = 4
     navigate(loc)
-    setTimeout(() => {
-      setFilterTag(tag)
-    }, 200)
+    setFilterTag(tag, loc)
   }
 </script>
 
