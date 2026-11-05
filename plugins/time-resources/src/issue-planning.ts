@@ -16,9 +16,8 @@ const MAX_SLOT_HOURS = 8
 /**
  * Default slot length in milliseconds for a slot starting at `start`.
  *
- * Uses the issue's remaining hours, capped at one working day and at the end of the start day, so a
- * late drop never creates a slot that runs past midnight. Missing or non-positive remaining time keeps
- * the previous default.
+ * Uses the issue's positive remaining hours, capped at one working day and at the end of the start
+ * day. Missing or non-positive remaining time keeps the previous, uncapped default.
  *
  * The remaining time is derived from `estimation` and `reportedTime` on purpose instead of reading the
  * server-maintained `remainingTime`: older issues may not have that field filled in, and both values
@@ -78,7 +77,7 @@ export function getToDoPlanningConstraints (
   blockers: ReadonlyMap<Ref<Issue>, Issue>,
   resolvedStatuses: ReadonlySet<Ref<Status>>,
   now: number,
-  previous: ReadonlyMap<Ref<ToDo>, IssuePlanningConstraints> = new Map()
+  previous = new Map<Ref<ToDo>, IssuePlanningConstraints>()
 ): Map<Ref<ToDo>, IssuePlanningConstraints> {
   const result = new Map<Ref<ToDo>, IssuePlanningConstraints>()
   for (const todo of todos) {
@@ -87,19 +86,30 @@ export function getToDoPlanningConstraints (
     if (issue === undefined) continue
     const constraints = getIssuePlanningConstraints(issue, blockers, resolvedStatuses, now)
     if (constraints.blockers.length > 0 || constraints.startDate !== undefined) {
-      result.set(todo._id, constraints)
+      const old = previous.get(todo._id)
+      const unchanged =
+        old !== undefined &&
+        old.startDate === constraints.startDate &&
+        old.blockers.length === constraints.blockers.length &&
+        old.blockers.every((blocker, index) => blocker === constraints.blockers[index])
+      result.set(todo._id, unchanged ? old : constraints)
     }
   }
-  return result
+  return result.size === previous.size && Array.from(result).every(([id, value]) => previous.get(id) === value)
+    ? previous
+    : result
 }
-
 
 /** Sorted, unique issue IDs for rows that can show planning hints. */
 export function getPlanningIssueIds (
   todos: ReadonlyArray<Pick<ToDo, 'attachedTo' | 'attachedToClass' | 'workslots' | 'doneOn'>>,
   isIssue: (clazz: Ref<Class<Doc>>) => boolean
 ): Array<Ref<Issue>> {
-  return Array.from(new Set(todos
-    .filter((todo) => isIssue(todo.attachedToClass))
-    .map((todo) => todo.attachedTo as Ref<Issue>))).sort()
+  return Array.from(
+    new Set(
+      todos
+        .filter((todo) => todo.workslots === 0 && todo.doneOn == null && isIssue(todo.attachedToClass))
+        .map((todo) => todo.attachedTo as Ref<Issue>)
+    )
+  ).sort()
 }

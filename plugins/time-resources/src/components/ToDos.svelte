@@ -43,7 +43,12 @@
   import type { ToDosMode } from '..'
   import time from '../plugin'
   import { getNearest } from '../utils'
-  import { getBlockerIds, getPlanningIssueIds, getToDoPlanningConstraints } from '../issue-planning'
+  import {
+    getBlockerIds,
+    getPlanningIssueIds,
+    getToDoPlanningConstraints,
+    type IssuePlanningConstraints
+  } from '../issue-planning'
   import { queryPlanningIssues } from '../planning-query'
   import CreateToDo from './CreateToDo.svelte'
   import ToDoGroup from './ToDoGroup.svelte'
@@ -213,6 +218,7 @@
   const planningBlockersQuery = createQuery()
   let planningIssues: IdMap<Issue> = new Map()
   let planningBlockers: IdMap<Issue> = new Map()
+  let planningConstraints = new Map<Ref<ToDo>, IssuePlanningConstraints>()
 
   $: queryPlanningIssues(
     planningIssuesQuery,
@@ -231,13 +237,18 @@
       .filter((status) => status.category === task.statusCategory.Won || status.category === task.statusCategory.Lost)
       .map((status) => status._id)
   )
-  $: planningConstraints = getToDoPlanningConstraints(
-    inbox,
-    planningIssues,
-    planningBlockers,
-    resolvedStatuses,
-    $ticker
-  )
+  $: {
+    const next = getToDoPlanningConstraints(
+      inbox,
+      planningIssues,
+      planningBlockers,
+      resolvedStatuses,
+      $ticker,
+      planningConstraints
+    )
+    // Svelte invalidates object props even when their identity is unchanged. Only assign on a real change.
+    if (next !== planningConstraints) planningConstraints = next
+  }
 
   $: groups = group(inbox, done, active, todoValue)
 
