@@ -86,7 +86,9 @@ export function getMigrations (ns: string, flavor: DBFlavor): [string, string][]
     getV26Migration(ns, flavor),
     getV27Migration(ns, flavor),
     getV28Migration(ns, flavor),
-    getV29Migration(ns, flavor)
+    getV29Migration(ns, flavor),
+    getV30Migration(ns, flavor),
+    getV31Migration(ns, flavor)
   ]
 }
 
@@ -881,6 +883,28 @@ function getV29Migration (ns: string, flavor: DBFlavor): [string, string] {
 
     CREATE INDEX IF NOT EXISTS api_tokens_expires_on_idx
     ON ${ns}.api_tokens (expires_on);
+    `
+  ]
+}
+
+function getV30Migration (ns: string, flavor: DBFlavor): [string, string] {
+  const types = dbTypes[flavor]
+  return [
+    'account_db_v28_add_otp_attempts',
+    `
+    ALTER TABLE ${ns}.otp
+    ADD COLUMN IF NOT EXISTS attempts ${types.int4} NOT NULL DEFAULT 0;
+    `
+  ]
+}
+
+function getV31Migration (ns: string, flavor: DBFlavor): [string, string] {
+  const types = dbTypes[flavor]
+  return [
+    'account_db_v29_add_otp_retry_on',
+    `
+    ALTER TABLE ${ns}.social_id
+    ADD COLUMN IF NOT EXISTS otp_retry_on ${types.int8};
     `
   ]
 }

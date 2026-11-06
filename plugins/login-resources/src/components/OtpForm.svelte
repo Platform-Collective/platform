@@ -34,6 +34,7 @@
   export let loginState: 'login' | 'signup' | 'none' = 'none'
   export let canChangeEmail = true
   export let password: string | undefined = undefined
+  // Pending signups have no account yet and must resend through signUpOtp.
   export let onLogin: ((loginInfo: LoginInfo | null, status: Status) => void | Promise<void>) | undefined = undefined
   export let onResend: typeof loginOtp = loginOtp
 

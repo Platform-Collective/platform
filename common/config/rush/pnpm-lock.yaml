@@ -18836,6 +18836,9 @@ importers:
       '@hcengineering/activity':
         specifier: workspace:^0.7.0
         version: link:../activity
+      '@hcengineering/analytics':
+        specifier: workspace:^0.7.19
+        version: link:../../foundations/core/packages/analytics
       '@hcengineering/attachment':
         specifier: workspace:^0.7.0
         version: link:../attachment
@@ -18978,6 +18981,9 @@ importers:
       eslint-plugin-svelte:
         specifier: ^3.23.0
         version: 3.23.0(eslint@9.39.5(jiti@2.7.0))(svelte@4.2.20)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest-environment-jsdom:
+        specifier: ^30.4.1
+        version: 30.5.2(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       jest:
         specifier: ^30.4.2
         version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
