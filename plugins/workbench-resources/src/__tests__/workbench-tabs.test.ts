@@ -370,6 +370,41 @@ describe('tabs of removed documents', () => {
     expect(get(tabsStore)[0].location).toBe('workbench/workspace/app/elsewhere')
   })
 
+  it('does not override a return to the previous view while a background correction is loading', async () => {
+    const tab = makeTab('return-background')
+    const previous = makeTab('return-origin', 'workbench/workspace/return-origin')
+    const previousLocation = getTabLocation(previous)
+    tabsStore.set([tab, previous])
+    tabIdStore.set(previous._id)
+    jest.mocked(getCurrentLocation).mockReturnValue(previousLocation)
+    await resolveTab(tab)
+    removeDocs(objectId)
+
+    let held = false
+    let complete: (data: LocationData) => void = () => {}
+    resolver.mockImplementation(async () => {
+      held = true
+      return await new Promise<LocationData>((resolve) => {
+        complete = resolve
+      })
+    })
+    tabIdStore.set(tab._id)
+    await flush()
+    expect(held).toBe(true)
+
+    // Location sync can still be queued behind the held title read.
+    const selectedLocation = getTabLocation(get(tabsStore)[0])
+    jest.mocked(getCurrentLocation).mockReturnValue(selectedLocation)
+    testLocationStore.set(selectedLocation)
+    jest.mocked(getCurrentLocation).mockReturnValue(previousLocation)
+    testLocationStore.set(previousLocation)
+    complete({ name: 'Home' })
+    await flush()
+
+    expect(navigate).not.toHaveBeenCalled()
+    expect(get(tabIdStore)).toBe(tab._id)
+  })
+
   it('does not change a background tab that moved to another location before it is opened', async () => {
     const tab = makeTab('background')
     const active = makeTab('active', 'workbench/workspace/app/other')
