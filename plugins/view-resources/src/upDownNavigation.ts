@@ -21,8 +21,8 @@ export const previousDocumentKeys = ['Alt + ArrowUp']
 export const nextDocumentKeys = ['Alt + ArrowDown']
 
 type NavigationKeyEvent = Pick<
-KeyboardEvent,
-'key' | 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'defaultPrevented'
+  KeyboardEvent,
+  'key' | 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'defaultPrevented'
 >
 
 interface EditableTarget {

@@ -116,7 +116,7 @@
 
   const client = getClient()
 
-  function createMilestone (): void {
+  function createMilestone(): void {
     if (!canCreate || typeof space !== 'string') return
     const project = space
     showPopup(NewMilestone, { space: project }, 'top', async (milestoneId: Ref<Milestone> | undefined) => {

@@ -16,8 +16,8 @@
 import type { Issue } from '@hcengineering/tracker'
 
 export type IssueTimeInfo = Pick<
-Issue,
-'_id' | 'attachedTo' | 'parents' | 'status' | 'estimation' | 'reportedTime' | 'childInfo'
+  Issue,
+  '_id' | 'attachedTo' | 'parents' | 'status' | 'estimation' | 'reportedTime' | 'childInfo'
 >
 
 export interface IssueTimeStatsOptions<T extends IssueTimeInfo> {

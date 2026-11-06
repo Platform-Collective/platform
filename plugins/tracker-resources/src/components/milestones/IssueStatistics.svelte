@@ -50,7 +50,7 @@
 
   let fetchedKey: string | undefined = undefined
 
-  async function fetchGroup (key: string | undefined, ids: Array<Issue['_id']> | undefined): Promise<void> {
+  async function fetchGroup(key: string | undefined, ids: Array<Issue['_id']> | undefined): Promise<void> {
     if (key === fetchedKey) return
     fetchedKey = key
     const seq = ++fetchSeq

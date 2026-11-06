@@ -44,7 +44,7 @@
 
   $: canSave = canSaveMilestone(space, object.label, $permissionsStore)
 
-  async function onSave () {
+  async function onSave() {
     if (!canSaveMilestone(space, object.label, $permissionsStore)) return
     createdMilestone = await client.createDoc(tracker.class.Milestone, space, object)
   }
