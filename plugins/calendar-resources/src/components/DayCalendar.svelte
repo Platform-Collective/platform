@@ -167,7 +167,6 @@
   let scroller: HTMLElement
   let calendarWidth: number = 0
   let calendarRect: DOMRect
-  let containerRect: DOMRect
   let colWidth: number = 0
   let nowLineTop: number = -1
   let timeNow: string = '--:--'
@@ -550,6 +549,7 @@
   })
   onDestroy(() => {
     if (timer) clearInterval(timer)
+    stopScroll()
   })
 
   const calcColumnWidth = (calWidth: number): number => (calWidth - rem(3.5)) / displayedDaysCount
@@ -639,7 +639,7 @@
   let oldTime: number = -1
   let originDate: Timestamp = 0
   let originDueDate: Timestamp = 0
-  let scrollTimer: any = null
+  let scrollTimer: ReturnType<typeof setTimeout> | null = null
 
   async function updateHandler(event: Event) {
     const update: DocumentUpdate<Event> = {}
@@ -663,6 +663,7 @@
     }
   }
   async function mouseUpElement(e: MouseEvent): Promise<void> {
+    stopScroll()
     window.removeEventListener('mouseup', mouseUpElement as any)
     const event = events.find((ev) => ev._id === resizeId)
     if (event !== undefined) await updateHandler(event)
@@ -676,7 +677,6 @@
     directionResize = direction
     originDate = event.date
     originDueDate = event.dueDate
-    containerRect = scroller.getBoundingClientRect()
     window.addEventListener('mouseup', mouseUpElement as any)
   }
   function mouseMoveElement(
@@ -700,20 +700,24 @@
     }
     events = events
 
-    if (!scrollTimer) {
-      directionScroll(
-        e.clientY < containerRect.y + headerHeight + 16 && scroller.scrollTop > 0
-          ? 'top'
-          : e.clientY > containerRect.bottom - 16 && scroller.scrollHeight - scroller.scrollTop > scroller.clientHeight
-            ? 'bottom'
-            : 'none'
-      )
-    }
+    scrollAtEdge(e.clientY)
   }
-  const directionScroll = (direction: 'top' | 'bottom' | 'none'): void => {
+  const scrollAtEdge = (clientY: number): void => {
+    if (scrollTimer !== null) return
+    const containerRect = scroller.getBoundingClientRect()
+    const direction =
+      clientY < containerRect.y + headerHeight + 16 && scroller.scrollTop > 0
+        ? 'top'
+        : clientY > containerRect.bottom - 16 && scroller.scrollHeight - scroller.scrollTop > scroller.clientHeight
+          ? 'bottom'
+          : 'none'
     if (direction === 'none') return
     scrollTimer = setTimeout(() => (scrollTimer = null), 150)
     scroller.scrollBy({ top: direction === 'top' ? -cellHeight * 2 : cellHeight * 2, left: 0, behavior: 'smooth' })
+  }
+  const stopScroll = (): void => {
+    if (scrollTimer !== null) clearTimeout(scrollTimer)
+    scrollTimer = null
   }
 
   const transparentImage = new Image(1, 1)
@@ -734,12 +738,14 @@
   }
 
   async function dragEndElement(e: DragEvent) {
+    stopScroll()
     const event = events.find((ev) => ev._id === dragId)
     if (event !== undefined) await updateHandler(event)
     dragId = null
   }
 
   function dragDrop(e: DragEvent, day: Date, hourOfDay: number): void {
+    stopScroll()
     const hour = hourOfDay + startHour
     const newTime = new Date(day).setHours(hour, getExactly(e, true), 0, 0)
     if (dragId) {
@@ -784,6 +790,7 @@
       e.dataTransfer.dropEffect = 'move'
     }
     e.preventDefault()
+    scrollAtEdge(e.clientY)
     const dragOn: CalendarCell = {
       day,
       hourOfDay,
@@ -831,6 +838,7 @@
   }
 
   const dragLeave = (e: DragEvent): void => {
+    stopScroll()
     dispatch('dragOut')
     e.preventDefault()
   }
