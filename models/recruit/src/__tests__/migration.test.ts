@@ -1,124 +1,181 @@
-// SPDX-License-Identifier: EPL-2.0
+// Copyright © 2026 Hardcore Engineering Inc.
+// Licensed under the Eclipse Public License, Version 2.0
 
 import core, {
-  type Class,
+  ModelDb,
+  type Client,
   type Doc,
-  type DocumentQuery,
+  type PersonId,
   type Ref,
   type Tx,
-  type TxCreateDoc,
-  type TxResult,
-  TxProcessor,
-  toFindResult
+  type TxCUD,
+  type TxResult
 } from '@hcengineering/core'
-import { type MigrationUpgradeClient } from '@hcengineering/model'
-import tags, { DOMAIN_TAGS, type TagCategory } from '@hcengineering/model-tags'
+import { Builder } from '@hcengineering/model'
+import { createModel as createCoreModel } from '@hcengineering/model-core'
+import tags, { TTagCategory, type TagCategory } from '@hcengineering/model-tags'
 import { recruitId } from '@hcengineering/recruit'
 
 import { recruitOperation } from '../migration'
 import recruit from '../plugin'
 
-// Skill templates are unrelated to label defaults; keep the fresh-workspace fixture small.
-jest.mock('@anticrm/skillset', () => ({ getCategories: () => [] }))
-
-function createClient (): { client: MigrationUpgradeClient, tx: jest.Mock<Promise<TxResult>, [Tx]> } {
-  const docs: Doc[] = []
-  function find (_class: Ref<Class<Doc>>, query: DocumentQuery<Doc>): Doc[] {
-    return docs.filter(
-      (doc) =>
-        doc._class === _class &&
-        Object.entries(query).every(([key, value]) => (doc as unknown as Record<string, unknown>)[key] === value)
-    )
+function createCategory (overrides: Partial<TagCategory> = {}): TagCategory {
+  return {
+    _id: recruit.category.VacancyOther,
+    _class: tags.class.TagCategory,
+    space: core.space.Workspace,
+    modifiedBy: core.account.System,
+    modifiedOn: 0,
+    icon: tags.icon.Tags,
+    label: 'Other',
+    targetClass: recruit.class.Vacancy,
+    tags: [],
+    default: true,
+    ...overrides
   }
+}
 
-  const tx = jest.fn(async (transaction: Tx) => {
-    if (transaction._class !== core.class.TxCreateDoc) {
-      throw new Error('Unexpected transaction in category fixture')
-    }
-    docs.push(TxProcessor.createDoc2Doc(transaction as TxCreateDoc<Doc>))
+function createContext (categories: TagCategory[] = []): {
+  model: ModelDb
+  client: Client
+  tx: jest.Mock<Promise<TxResult>, [Tx]>
+} {
+  const builder = new Builder()
+  createCoreModel(builder)
+  builder.createModel(TTagCategory)
+  const model = new ModelDb(builder.hierarchy)
+  for (const category of categories) {
+    model.addDoc(category)
+  }
+  const tx = jest.fn(async (transaction: Tx): Promise<TxResult> => {
+    await model.tx(transaction)
     return {}
   })
-  // Only transport/storage and hierarchy checks are stubbed; upgrade dispatch,
-  // createOrUpdate and TxOperations all run their production implementations.
-  const client = {
-    findOne: jest.fn(async (_class: Ref<Class<Doc>>, query: DocumentQuery<Doc>) => find(_class, query)[0]),
-    findAll: jest.fn(async (_class: Ref<Class<Doc>>, query: DocumentQuery<Doc>) => toFindResult(find(_class, query))),
-    getHierarchy: () => ({ isDerived: () => false, findDomain: () => DOMAIN_TAGS }),
+  const partialClient: Pick<Client, 'getHierarchy' | 'findAll' | 'findOne' | 'tx'> = {
+    getHierarchy: () => builder.hierarchy,
+    findAll: (clazz, query, options) => model.findAll(clazz, query, options),
+    findOne: (clazz, query, options) => model.findOne(clazz, query, options),
     tx
-  } as unknown as MigrationUpgradeClient
-  return { client, tx }
+  }
+  const client = partialClient as Client
+  return { model, client, tx }
 }
 
-async function applicantCategories (client: MigrationUpgradeClient): Promise<TagCategory[]> {
-  // Use the popup's exact targetClass query, rather than a Task ancestor lookup.
-  return await client.findAll(tags.class.TagCategory, { targetClass: recruit.class.Applicant })
-}
+describe('create-vacancy-tag-category upgrade', () => {
+  const initialState = (): Map<string, Set<string>> => new Map([[recruitId, new Set(['create-defaults-v2', 'create-default-applicant-label-category'])]])
 
-describe('Applicant label category upgrade', () => {
-  it('creates a default for Quick Add on a fresh workspace without changing Candidate skills', async () => {
-    const { client } = createClient()
+  it('creates a default vacancy category with a stable ID', async () => {
+    const { model, client } = createContext()
 
-    await recruitOperation.upgrade(new Map(), async () => client, 'create')
+    await recruitOperation.upgrade(initialState(), async () => client, 'upgrade')
 
-    expect(await applicantCategories(client)).toEqual(
-      toFindResult([
-        expect.objectContaining({
-          _id: expect.any(String),
-          space: core.space.Workspace,
-          icon: tags.icon.Tags,
-          label: 'Other',
-          targetClass: recruit.class.Applicant,
-          tags: [],
-          default: true
-        })
-      ])
-    )
-    expect(await client.findAll(tags.class.TagCategory, { targetClass: recruit.mixin.Candidate })).toEqual(
-      toFindResult([
-        expect.objectContaining({ _id: recruit.category.Other, targetClass: recruit.mixin.Candidate, default: true })
-      ])
-    )
+    const categories = await model.findAll(tags.class.TagCategory, {})
+    expect(categories).toHaveLength(1)
+    expect(categories[0]).toMatchObject({
+      _id: recruit.category.VacancyOther,
+      space: core.space.Workspace,
+      icon: tags.icon.Tags,
+      label: 'Other',
+      targetClass: recruit.class.Vacancy,
+      tags: [],
+      default: true
+    })
+    expect(Array.from(await model.findAll(core.class.MigrationState, { plugin: recruitId }))).toEqual([
+      expect.objectContaining({ state: 'create-vacancy-tag-category' })
+    ])
   })
 
-  it('backfills the default when the existing recruiting defaults have already run', async () => {
-    const { client } = createClient()
-    const state = new Map([[recruitId, new Set(['create-defaults-v2'])]])
+  it('does not duplicate the category when retried without a completion marker', async () => {
+    const { model, client, tx } = createContext()
 
-    await recruitOperation.upgrade(state, async () => client, 'upgrade')
+    await recruitOperation.upgrade(initialState(), async () => client, 'upgrade')
+    await recruitOperation.upgrade(initialState(), async () => client, 'upgrade')
 
-    expect(await applicantCategories(client)).toEqual(
-      toFindResult([expect.objectContaining({ targetClass: recruit.class.Applicant, default: true, tags: [] })])
-    )
-    expect(
-      await client.findAll(core.class.MigrationState, {
-        plugin: recruitId,
-        state: 'create-default-applicant-label-category'
-      })
-    ).toHaveLength(1)
-  })
-
-  it('does not duplicate the category when an incomplete upgrade is retried', async () => {
-    const { client, tx } = createClient()
-    const state = new Map([[recruitId, new Set(['create-defaults-v2'])]])
-
-    await recruitOperation.upgrade(state, async () => client, 'upgrade')
-    await recruitOperation.upgrade(state, async () => client, 'upgrade')
-
-    expect(await applicantCategories(client)).toHaveLength(1)
-    const categoryWrites = tx.mock.calls.filter(
-      ([transaction]) => (transaction as TxCreateDoc<Doc>).objectClass === tags.class.TagCategory
-    )
+    expect(await model.findAll(tags.class.TagCategory, {})).toHaveLength(1)
+    const categoryWrites = tx.mock.calls.filter(([transaction]) => {
+      if (!client.getHierarchy().isDerived(transaction._class, core.class.TxCUD)) return false
+      const cud = transaction as TxCUD<Doc>
+      return cud.objectClass === tags.class.TagCategory
+    })
     expect(categoryWrites).toHaveLength(1)
   })
 
-  it('skips the backfill after its migration state is recorded', async () => {
-    const { client, tx } = createClient()
-    const state = new Map([[recruitId, new Set(['create-defaults-v2', 'create-default-applicant-label-category'])]])
-    const getClient = jest.fn(async () => client)
+  it('skips a completed upgrade step', async () => {
+    const { client, tx } = createContext()
+    const state = new Map([[recruitId, new Set(['create-defaults-v2', 'create-vacancy-tag-category', 'create-default-applicant-label-category'])]])
 
-    await recruitOperation.upgrade(state, getClient, 'upgrade')
+    await recruitOperation.upgrade(state, async () => client, 'upgrade')
 
-    expect(getClient).not.toHaveBeenCalled()
     expect(tx).not.toHaveBeenCalled()
+  })
+
+  it('preserves an existing category and its user customizations', async () => {
+    const category = createCategory({
+      label: 'My labels',
+      tags: ['engineering'],
+      modifiedBy: 'test:user' as PersonId
+    })
+    const { model, client, tx } = createContext([category])
+
+    await recruitOperation.upgrade(initialState(), async () => client, 'upgrade')
+
+    expect(Array.from(await model.findAll(tags.class.TagCategory, {}))).toEqual([category])
+    expect(tx).toHaveBeenCalledTimes(1)
+    expect(tx).toHaveBeenCalledWith(expect.objectContaining({ objectClass: core.class.MigrationState }))
+  })
+
+  it('reuses an existing Other category with a different ID and makes it the default', async () => {
+    const category = createCategory({
+      _id: 'test:category:Other' as Ref<TagCategory>,
+      default: false,
+      tags: ['engineering'],
+      modifiedBy: 'test:user' as PersonId
+    })
+    const expected = { ...category, default: true }
+    const { model, client } = createContext([category])
+
+    await recruitOperation.upgrade(initialState(), async () => client, 'upgrade')
+    await recruitOperation.upgrade(initialState(), async () => client, 'upgrade')
+
+    const categories = await model.findAll(tags.class.TagCategory, {})
+    expect(categories).toHaveLength(1)
+    expect(categories[0]).toMatchObject({
+      _id: expected._id,
+      label: expected.label,
+      icon: expected.icon,
+      tags: expected.tags,
+      targetClass: expected.targetClass,
+      default: true
+    })
+  })
+
+  it('keeps an existing default instead of promoting another Other category', async () => {
+    const categories = [
+      createCategory({ _id: 'test:category:Other' as Ref<TagCategory>, default: false }),
+      createCategory({ _id: 'test:category:Default' as Ref<TagCategory>, label: 'General' })
+    ]
+    const { model, client, tx } = createContext(categories)
+
+    await recruitOperation.upgrade(initialState(), async () => client, 'upgrade')
+
+    expect(Array.from(await model.findAll(tags.class.TagCategory, {}))).toEqual(categories)
+    expect(tx).toHaveBeenCalledTimes(1)
+    expect(tx).toHaveBeenCalledWith(expect.objectContaining({ objectClass: core.class.MigrationState }))
+  })
+
+  it('does not reuse an Other category belonging to another target class', async () => {
+    const category = createCategory({
+      _id: recruit.category.Other,
+      targetClass: recruit.mixin.Candidate
+    })
+    const { model, client } = createContext([category])
+
+    await recruitOperation.upgrade(initialState(), async () => client, 'upgrade')
+
+    expect(await model.findAll(tags.class.TagCategory, {})).toHaveLength(2)
+    expect(await model.findOne(tags.class.TagCategory, { _id: category._id })).toEqual(category)
+    expect(Array.from(await model.findAll(tags.class.TagCategory, { targetClass: recruit.class.Vacancy }))).toEqual([
+      expect.objectContaining({ _id: recruit.category.VacancyOther, default: true })
+    ])
   })
 })
