@@ -28,27 +28,21 @@ export function concatLink (host: string, path: string): string {
   }
 }
 
-async function loadServerConfig (url: string): Promise<any> {
-  let retries = 1
-  let res: Response | undefined
-
-  while (true) {
-    try {
-      res = await fetch(url, {
-        keepalive: true
-      })
-      if (res === undefined) {
-        // In theory should never get here
-        throw new Error('Failed to load server config')
-      }
-      break
-    } catch (e) {
-      retries++
-      await new Promise((resolve) => setTimeout(resolve, 1000 * Math.min(5, retries)))
+async function loadServerConfig<T> (url: string): Promise<T> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => { controller.abort() }, 10000)
+  try {
+    const res = await fetch(url, {
+      keepalive: true,
+      signal: controller.signal
+    })
+    if (!res.ok) {
+      throw new Error(`Failed to load server config: ${res.status}`)
     }
+    return await res.json()
+  } finally {
+    clearTimeout(timeout)
   }
-
-  return await res.json()
 }
 
 const openArg = (process.argv.find((it) => it.startsWith('--open=')) ?? '').split('--open=')[1]
@@ -99,29 +93,24 @@ const expose: IPCMainExposed = {
 
   config: async () => {
     if (configPromise === undefined) {
-      configPromise = new Promise((resolve, reject) => {
-        ipcRenderer.invoke(IpcMessage.GetMainConfig).then(
-          async (mainConfig) => {
-            const serverConfig = await loadServerConfig(concatLink(mainConfig.FRONT_URL, mainConfig.CONFIG_URL))
-            const combinedConfig = {
-              ...serverConfig,
-              ...mainConfig,
-              INITIAL_URL: openArg ?? '',
-              UPLOAD_URL: (serverConfig.UPLOAD_URL as string).includes('://')
-                ? serverConfig.UPLOAD_URL
-                : concatLink(mainConfig.FRONT_URL, serverConfig.UPLOAD_URL),
-              MODEL_VERSION: serverConfig.MODEL_VERSION ?? mainConfig.MODEL_VERSION,
-              VERSION: mainConfig.VERSION
-            }
+      configPromise = ipcRenderer.invoke(IpcMessage.GetMainConfig).then(async (mainConfig: Config) => {
+        const serverConfig = await loadServerConfig<Config>(concatLink(mainConfig.FRONT_URL, mainConfig.CONFIG_URL))
+        const combinedConfig = {
+          ...serverConfig,
+          ...mainConfig,
+          INITIAL_URL: openArg ?? '',
+          UPLOAD_URL: serverConfig.UPLOAD_URL.includes('://')
+            ? serverConfig.UPLOAD_URL
+            : concatLink(mainConfig.FRONT_URL, serverConfig.UPLOAD_URL),
+          MODEL_VERSION: serverConfig.MODEL_VERSION ?? mainConfig.MODEL_VERSION,
+          VERSION: mainConfig.VERSION
+        }
 
-            ipcRenderer.send(IpcMessage.SetCombinedConfig, combinedConfig)
-
-            resolve(combinedConfig)
-          },
-          (err) => {
-            reject(err)
-          }
-        )
+        ipcRenderer.send(IpcMessage.SetCombinedConfig, combinedConfig)
+        return combinedConfig
+      }).catch((err) => {
+        configPromise = undefined
+        throw err
       })
     }
 
@@ -129,9 +118,7 @@ const expose: IPCMainExposed = {
   },
   branding: async () => {
     const cfg = await expose.config()
-    const branding: BrandingMap = await (
-      await fetch(cfg.BRANDING_URL ?? concatLink(cfg.FRONT_URL, 'branding.json'), { keepalive: true })
-    ).json()
+    const branding = await loadServerConfig<BrandingMap>(cfg.BRANDING_URL ?? concatLink(cfg.FRONT_URL, 'branding.json'))
     const host = await ipcRenderer.invoke(IpcMessage.GetHost)
     return branding[host] ?? {}
   },

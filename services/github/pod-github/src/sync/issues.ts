@@ -237,7 +237,7 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
         const stateReasonMap: Record<string, GithubIssueStateReason> = {
           completed: GithubIssueStateReason.Completed,
           reopened: GithubIssueStateReason.Reopened,
-          not_planed: GithubIssueStateReason.NotPlanned
+          not_planned: GithubIssueStateReason.NotPlanned
         }
         const type = await this.provider.getTaskTypeOf(prj.type, tracker.class.Issue)
         const statuses = await this.provider.getStatuses(type?._id)

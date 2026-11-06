@@ -26,6 +26,8 @@ import DeleteRow from '../../../icons/table/DeleteRow.svelte'
 import Duplicate from '../../../icons/table/Duplicate.svelte'
 import { duplicateRows, moveSelectedRows } from './actions'
 import { createCellsHandle, type OptionItem } from './cellsHandle'
+import { calculateRowDropIndex } from './calculate-row-drop-index'
+import type { TableRow } from './calculate-row-drop-index'
 import {
   dropMarkerWidthPx,
   getDropMarker,
@@ -236,11 +238,6 @@ class RowHandler {
   }
 }
 
-interface TableRow {
-  topPx: number
-  heightPx: number
-}
-
 const createOptionItems = (editor: Editor): OptionItem[] => [
   {
     id: 'delete',
@@ -263,12 +260,6 @@ const createOptionItems = (editor: Editor): OptionItem[] => [
     }
   }
 ]
-
-function calculateRowDropIndex (row: number, rows: TableRow[], top: number): number {
-  const rowCenterPx = top + rows[row].heightPx / 2
-  const index = rows.findIndex((p) => rowCenterPx <= p.topPx + p.heightPx)
-  return index !== -1 ? (index > row ? index - 1 : index) : rows.length - 1
-}
 
 function getTableRows (table: TableNodeLocation, editor: Editor): TableRow[] {
   const result = []

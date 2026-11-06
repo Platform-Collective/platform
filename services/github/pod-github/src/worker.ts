@@ -561,6 +561,7 @@ export class GithubWorker implements IntegrationManager {
           ...normalizedInfoData
         })
       }
+      return normalizedInfoData
     }
     return info
   }

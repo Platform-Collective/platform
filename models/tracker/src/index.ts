@@ -26,7 +26,7 @@ import workbench from '@hcengineering/model-workbench'
 import converter from '@hcengineering/converter'
 import notification from '@hcengineering/notification'
 import setting from '@hcengineering/setting'
-import pluginState, { type Issue, trackerId } from '@hcengineering/tracker'
+import pluginState, { type Issue, issuePrioritySorting, trackerId } from '@hcengineering/tracker'
 
 import type { TaskStatusFactory } from '@hcengineering/task'
 import { PaletteColorIndexes } from '@hcengineering/ui/src/colors'
@@ -95,7 +95,8 @@ function defineSortAndGrouping (builder: Builder): void {
   })
 
   builder.mixin(tracker.class.TypeIssuePriority, core.class.Class, view.mixin.SortFuncs, {
-    func: tracker.function.IssuePrioritySort
+    func: tracker.function.IssuePrioritySort,
+    sortingRules: issuePrioritySorting
   })
 
   builder.mixin(tracker.class.Milestone, core.class.Class, view.mixin.SortFuncs, {
@@ -850,7 +851,8 @@ function defineSpaceType (builder: Builder): void {
         core.permission.ForbidDeleteObject
       ],
       allowedClassic: true,
-      allowedTaskTypeDescriptors: [tracker.descriptors.Issue]
+      allowedTaskTypeDescriptors: [tracker.descriptors.Issue],
+      defaultTaskType: tracker.taskTypes.Issue
     },
     tracker.descriptors.ProjectType
   )

@@ -129,7 +129,7 @@ import PersonPreviewProvider from './components/person/PersonPreviewProvider.sve
 import TranslationSettings from './components/TranslationSettings.svelte'
 
 import { get } from 'svelte/store'
-import { getChannelURL } from './channel-url'
+import { getChannelURL, openChannelLink } from './channel-url'
 import { canKickEmployee, kickEmployee } from './kick-employee'
 import { canMergePersons, canResendInvitation } from './visibilityTester'
 import contact from './plugin'
@@ -302,7 +302,7 @@ async function resendInvite (doc: Person): Promise<void> {
 async function openChannelURL (doc: Channel): Promise<void> {
   const url = getChannelURL(doc)
   if (url !== undefined) {
-    window.open(url)
+    openChannelLink(url)
   }
 }
 
