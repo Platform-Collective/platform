@@ -13,24 +13,28 @@
 // limitations under the License.
 //
 
+import { Analytics } from '@hcengineering/analytics'
 import {
   type Client,
   type Data,
   type QuerySelector,
   type Ref,
   SortingOrder,
-  type TxOperations
+  type TxOperations,
+  generateId
 } from '@hcengineering/core'
 import { type Document, type Teamspace, documentId, getFirstRank } from '@hcengineering/document'
 import { getMetadata, translate } from '@hcengineering/platform'
 import presentation, { getClient } from '@hcengineering/presentation'
 import { makeRank } from '@hcengineering/rank'
 import { type Location, type ResolvedLocation, getCurrentResolvedLocation, getPanelURI } from '@hcengineering/ui'
-import { accessDeniedStore } from '@hcengineering/view-resources'
+import { accessDeniedStore, openDoc } from '@hcengineering/view-resources'
 import { workbenchId } from '@hcengineering/workbench'
+import { type Editor } from '@tiptap/core'
 import slugify from 'slugify'
 
 import document from './plugin'
+import { findReferenceRanges, makeReferenceContent } from './subpage'
 
 export async function moveDocument (doc: Document, space: Ref<Teamspace>, parent: Ref<Document>): Promise<void> {
   const client = getClient()
@@ -90,6 +94,48 @@ export async function createEmptyDocument (
   }
 
   await client.createDoc(document.class.Document, space, object, id)
+}
+
+/**
+ * Create a child document of `parent`, insert a link to it at `pos` and open it,
+ * the same way creating a child document from the navigator does.
+ */
+export async function createSubpage (editor: Editor, pos: number, parent: Document): Promise<void> {
+  const client = getClient()
+  const id: Ref<Document> = generateId()
+  const title = await translate(document.string.Untitled, {})
+
+  // Insert the link before the document is created, so it lands where the command was typed
+  // even if the content changes while the document is being created.
+  const at = Math.min(pos, editor.state.doc.content.size)
+  const inline = editor.state.doc.resolve(at).parent.inlineContent
+  editor
+    .chain()
+    .focus(at)
+    .insertContentAt(at, makeReferenceContent(id, document.class.Document, title, inline))
+    .run()
+
+  try {
+    await createEmptyDocument(client, id, parent.space, parent._id, { title })
+  } catch (err: any) {
+    // Do not leave a link to a document that does not exist
+    const ranges = findReferenceRanges(editor.state.doc, id)
+    if (ranges.length > 0) {
+      const tr = editor.state.tr
+      for (const { from, to } of ranges) {
+        tr.delete(from, to)
+      }
+      editor.view.dispatch(tr)
+    }
+    console.error(err)
+    Analytics.handleError(err)
+    return
+  }
+
+  const doc = await client.findOne(document.class.Document, { _id: id })
+  if (doc !== undefined) {
+    await openDoc(client.getHierarchy(), doc)
+  }
 }
 
 export async function resolveLocation (loc: Location): Promise<ResolvedLocation | undefined> {
