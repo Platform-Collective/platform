@@ -729,7 +729,25 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
       }
     }
     const result = await this.provideSearchFulltext(ctx, newQuery, options)
-    return result
+    if (isSystem(account, ctx)) {
+      return result
+    }
+
+    const allowedSpaces = new Set(this.getAllAllowedSpaces(account, false, false))
+    const docs = result.docs.filter(
+      ({ doc }) =>
+        !this.context.hierarchy.isDerived(doc._class, core.class.Space) || allowedSpaces.has(doc._id as Ref<Space>)
+    )
+
+    if (docs.length === result.docs.length) {
+      return result
+    }
+
+    return {
+      ...result,
+      docs,
+      ...(result.total !== undefined ? { total: docs.length } : {})
+    }
   }
 
   filterLookup<T extends Doc> (ctx: MeasureContext, lookup: LookupData<T>, showArchived: boolean): void {
