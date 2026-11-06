@@ -452,6 +452,15 @@ async function getRemoveMentionTxes (
   return res
 }
 
+function isSameMentionContent (content: string, message: string): boolean {
+  try {
+    return areEqualJson(JSON.parse(content), JSON.parse(message))
+  } catch {
+    // Empty or legacy non-JSON content: treat it as changed so the excerpt is refreshed.
+    return false
+  }
+}
+
 async function getReferencesTxes (
   ctx: MeasureContext,
   control: TriggerControl,
@@ -488,7 +497,30 @@ async function getReferencesTxes (
 
   const notificationControl = await getNotificationProviderControl(ctx, control)
 
+  // Each markup field yields its own references, so a person mentioned in several fields appears several times.
+  // Keep only the first one: a (person, document) pair has one mention record and is notified at most once.
+  const mentionedPersons = new Set<string>()
+  const uniqueReferences = references.filter((ref) => {
+    if (!control.hierarchy.isDerived(ref.attachedToClass, contact.class.Person)) return true
+    const key = `${ref.attachedTo}:${ref.attachedDocId}`
+    if (mentionedPersons.has(key)) return false
+    mentionedPersons.add(key)
+    return true
+  })
+  references.splice(0, references.length, ...uniqueReferences)
+
+  // A user can have several mention records for one document (e.g. from concurrent saves).
+  // Only the first one is matched against the reference or removed with its notifications;
+  // the others are redundant records and are dropped without touching notifications.
+  const handledMentions = new Set<string>()
   for (const mention of mentions) {
+    const mentionKey = `${mention.user}:${mention.attachedTo}`
+    if (handledMentions.has(mentionKey)) {
+      txes.push(control.txFactory.createTxRemoveDoc(mention._class, mention.space, mention._id))
+      continue
+    }
+    handledMentions.add(mentionKey)
+
     const refIndex = references.findIndex(
       (r) => mention.user === r.attachedTo && mention.attachedTo === r.attachedDocId
     )
@@ -496,11 +528,10 @@ async function getReferencesTxes (
     const ref = references[refIndex]
 
     if (refIndex !== -1) {
-      const alreadyProcessed = areEqualJson(JSON.parse(mention.content), JSON.parse(ref.message))
-
-      if (alreadyProcessed) {
-        references.splice(refIndex, 1)
+      if (!isSameMentionContent(mention.content, ref.message)) {
+        txes.push(getUpdateMentionInfoTx(control, ref, space, mention))
       }
+      references.splice(refIndex, 1)
     } else {
       const removeTxes = await getRemoveMentionTxes(control, mention, originTx)
       txes.push(...removeTxes)

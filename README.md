@@ -157,6 +157,9 @@ rush install
 rush build
 ```
 
+When building from a source archive without a `.git` directory, disable the Rush build cache by setting
+`buildCacheEnabled` to `false` in `common/config/rush/build-cache.json`, or set `RUSH_BUILD_CACHE_ENABLED=0`.
+
 Alternatively, you can just execute:
 
 ```bash

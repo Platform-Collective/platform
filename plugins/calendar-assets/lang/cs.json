@@ -47,6 +47,7 @@
     "Connect": "Připojit",
     "RedirectGoogle": "Budete přesměrováni na stránku autentizace Google. Ujistěte se, že jste vybrali všechna oprávnění.",
     "ConnectCalendar": "Připojit účet Google Kalendáře",
+    "FailedToConnect": "Nepodařilo se připojit ke Kalendáři Google. Zkuste to prosím později.",
     "EditRecEvent": "Upravit opakující se událost",
     "RemoveRecEvent": "Odstranit opakující se událost",
     "ThisEvent": "Tato událost",

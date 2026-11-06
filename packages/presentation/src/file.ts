@@ -51,7 +51,17 @@ export function getFileStorage (): FileStorage {
 }
 
 /** @public */
+export function getPlatformFileId (url: string): string | undefined {
+  if (!url.startsWith('platform://platform/files/workspace/?')) {
+    return undefined
+  }
+
+  return new URL(url).searchParams.get('file') || undefined
+}
+
+/** @public */
 export function getFileUrl (file: string, filename?: string): string {
+  file = getPlatformFileId(file) ?? file
   if (file.includes('://')) {
     return file
   }

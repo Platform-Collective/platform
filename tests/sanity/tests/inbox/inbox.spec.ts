@@ -14,7 +14,14 @@ import { SignInJoinPage } from '../model/signin-page'
 import { TeamPage } from '../model/team-page'
 import { IssuesDetailsPage } from '../model/tracker/issues-details-page'
 import { createNewIssueData, prepareNewIssueWithOpenStep } from '../tracker/common-steps'
-import { attachScreenshot, generateTestData, getTimeForPlanner, PlatformURI, setTestOptions } from '../utils'
+import {
+  attachScreenshot,
+  generateId,
+  generateTestData,
+  getTimeForPlanner,
+  PlatformURI,
+  setTestOptions
+} from '../utils'
 
 test.describe('Inbox tests', () => {
   let leftSideMenuPage: LeftSideMenuPage
@@ -27,9 +34,10 @@ test.describe('Inbox tests', () => {
 
   test.beforeEach(async ({ page, request }) => {
     data = generateTestData()
+    data.lastName = `${generateId()}-${data.lastName}`
     newUser2 = {
       firstName: faker.person.firstName(),
-      lastName: faker.person.lastName(),
+      lastName: `${generateId()}-${faker.person.lastName()}`,
       email: faker.internet.email(),
       password: '1234'
     }

@@ -44,6 +44,7 @@ import { htmlToMarkup } from '@hcengineering/text'
 import { deepEqual } from 'fast-equals'
 import { calendar_v3 } from 'googleapis'
 import { getClient } from './client'
+import { getEventLocation, getEventLocationUpdate } from './conference'
 import { getCalendarsSyncHistory, getEventHistory, setCalendarsSyncHistory, setEventHistory } from './kvsUtils'
 import { lock } from './mutex'
 import { getRateLimitter, RateLimiter } from './rateLimiter'
@@ -308,7 +309,7 @@ export class IncomingSyncManager {
       await this.client.remove(current)
       return
     }
-    const data: Partial<AttachedData<Event>> = await this.parseUpdateData(event)
+    const data: Partial<AttachedData<Event>> = await this.parseUpdateData(event, current)
     if (event.recurringEventId != null) {
       const diff = this.getDiff<ReccuringInstance>(
         {
@@ -401,7 +402,7 @@ export class IncomingSyncManager {
       allDay: event.start?.date != null,
       description: htmlToMarkup(event.description ?? ''),
       title: event.summary ?? '',
-      location: event.location ?? undefined,
+      ...getEventLocation(event),
       participants: participants[0],
       eventId: event.id ?? '',
       calendar: _calendar,
@@ -477,7 +478,10 @@ export class IncomingSyncManager {
     return res
   }
 
-  private async parseUpdateData (event: calendar_v3.Schema$Event): Promise<Partial<AttachedData<Event>>> {
+  private async parseUpdateData (
+    event: calendar_v3.Schema$Event,
+    current: Event
+  ): Promise<Partial<AttachedData<Event>>> {
     const res: Partial<AttachedData<Event>> = {}
     if (event.attendees !== undefined) {
       const participants = await this.getParticipants(event)
@@ -486,9 +490,7 @@ export class IncomingSyncManager {
         res.externalParticipants = participants[1]
       }
     }
-    if (event.location != null) {
-      res.location = event.location
-    }
+    Object.assign(res, getEventLocationUpdate(event, current))
     if (event.description != null) {
       res.description = htmlToMarkup(event.description)
     }
