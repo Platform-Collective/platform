@@ -47,7 +47,16 @@ import {
 } from '../types'
 import { IssueExternalData, issueDetails } from './githubTypes'
 import { GithubIssueData, IssueSyncManagerBase, IssueUpdate, WithMarkup } from './issueBase'
-import { ensureGraphQLOctokit, getSince, gqlp, guessStatus, isGHWriteAllowed, syncRunner } from './utils'
+import {
+  applyIssueEventEdits,
+  ensureGraphQLOctokit,
+  getSince,
+  gqlp,
+  guessStatus,
+  isGHWriteAllowed,
+  shouldUpdateGithubIssueStatus,
+  syncRunner
+} from './utils'
 
 export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncManager {
   createPromise: Promise<IssueExternalData | undefined> | undefined
@@ -207,18 +216,9 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
           update.title = event.issue.title
         }
 
-        await this.handleUpdate(
-          ctx,
-          externalData as IssueExternalData,
-          derivedClient,
-          update,
-          account,
-          prj,
-          false,
-          undefined,
-          undefined,
-          du
-        )
+        externalData = applyIssueEventEdits(externalData as IssueExternalData, event.issue, event.changes)
+
+        await this.handleUpdate(ctx, externalData, derivedClient, update, account, prj, false, undefined, undefined, du)
         break
       }
       case 'assigned':
@@ -265,7 +265,7 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
             // We need to be sure we not change status if category is same, since github doesn't know about it.
             const existingStatus = statuses.find((it) => it._id === existing.status)
             const updateState = statuses.find((it) => it._id === update.status)
-            return existingStatus?.category !== updateState?.category
+            return shouldUpdateGithubIssueStatus(existingStatus, updateState)
           }
         )
         break
