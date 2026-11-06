@@ -364,6 +364,11 @@ async function leaveRemovedDocument (
   // The location event, or the explicit sync above, persists the active tab's location and name.
 }
 
+/** Let an editor hand missing-document navigation to the workbench. */
+export function handleMissingTabDocument (_objectId: Ref<Doc>): boolean {
+  return get(currentTabStore) !== undefined
+}
+
 function onRemovedDocuments (removed: Set<Ref<Doc>>): void {
   const currentTabId = get(tabIdStore)
   for (const tab of get(tabsStore)) {

@@ -13,6 +13,7 @@ import {
   closeTab,
   getTabDataByLocation,
   getTabLocation,
+  handleMissingTabDocument,
   tabIdStore,
   tabsStore,
   watchTabDocuments
@@ -688,6 +689,93 @@ describe('tabs of removed documents', () => {
   it('stops listening when the workbench is destroyed', () => {
     unwatch()
     expect(removeTxListener).toHaveBeenCalledWith(listener)
+  })
+  describe('editor-reported missing documents', () => {
+    beforeEach(() => {
+      storage.getItem.mockReset().mockReturnValue(null)
+      jest.mocked(navigate).mockReset()
+    })
+
+    it('leaves a missing document without waiting for a remove transaction', async () => {
+      const tab = makeTab('editor-missing')
+      tabsStore.set([tab])
+      tabIdStore.set(tab._id)
+      const loc = getTabLocation(tab)
+      jest.mocked(getCurrentLocation).mockReturnValue(loc)
+      await resolveTab(tab)
+      storage.getItem.mockImplementation((key) => key === 'location_app' ? JSON.stringify(loc) : null)
+      resolver.mockResolvedValue({ name: 'App' })
+
+      expect(handleMissingTabDocument(objectId)).toBe(true)
+      await flush()
+
+      expect(navigate).toHaveBeenCalledWith({ path: ['workbench', 'workspace', 'app'] })
+      expect(storage.removeItem).toHaveBeenCalledWith('location_app')
+    })
+
+    it('keeps a pinned missing document in place', async () => {
+      const tab = { ...makeTab('editor-pinned'), isPinned: true }
+      tabsStore.set([tab])
+      tabIdStore.set(tab._id)
+      jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
+      await resolveTab(tab)
+
+      expect(handleMissingTabDocument(objectId)).toBe(true)
+      await flush()
+
+      expect(navigate).not.toHaveBeenCalled()
+      expect(get(tabsStore)[0].location).toBe(tab.location)
+    })
+
+    it('does not move a tab showing another document', async () => {
+      const tab = makeTab('editor-unrelated', 'workbench/workspace/app/unrelated-editor-document')
+      tabsStore.set([tab])
+      tabIdStore.set(tab._id)
+      jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
+      resolver.mockResolvedValue({ objectId: 'unrelated-editor-document' as Ref<Doc>, name: 'Other' })
+      await resolveTab(tab)
+
+      expect(handleMissingTabDocument(objectId)).toBe(true)
+      await flush()
+
+      expect(navigate).not.toHaveBeenCalled()
+      expect(get(tabsStore)[0].location).toBe(tab.location)
+    })
+
+    it('leaves the editor fallback available outside a workbench tab', () => {
+      expect(handleMissingTabDocument(objectId)).toBe(false)
+      expect(navigate).not.toHaveBeenCalled()
+    })
+
+    it('persists only once when the remove transaction follows the editor report', async () => {
+      workspaceStore.set('workspace')
+      const tab = makeTab('editor-and-transaction')
+      tabsStore.set([tab])
+      tabIdStore.set(tab._id)
+      jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
+      await resolveTab(tab)
+      resolver.mockResolvedValue({ name: 'App' })
+      jest.mocked(navigate).mockImplementation((loc) => {
+        jest.mocked(getCurrentLocation).mockReturnValue(loc)
+        testLocationStore.set(loc)
+        return true
+      })
+
+      try {
+        expect(handleMissingTabDocument(objectId)).toBe(true)
+        removeDocs(objectId)
+        await flush()
+
+        expect(navigate).toHaveBeenCalledTimes(1)
+        const writes = client.diffUpdate.mock.calls.filter(
+          ([doc, update]) => doc._id === tab._id && update.location === 'workbench/workspace/app'
+        )
+        expect(writes).toHaveLength(1)
+        expect(writes[0][0].location).not.toBe(writes[0][1].location)
+      } finally {
+        jest.mocked(navigate).mockReset()
+      }
+    })
   })
 })
 

@@ -45,12 +45,11 @@
     showPopup
   } from '@hcengineering/ui'
   import view from '@hcengineering/view'
-  import { currentTabStore } from '@hcengineering/workbench-resources'
+  import { handleMissingTabDocument } from '@hcengineering/workbench-resources'
   import { canChangeDoc, showMenu } from '@hcengineering/view-resources'
 
   import { permissionsStore } from '@hcengineering/contact-resources'
   import { afterUpdate } from 'svelte'
-  import { get } from 'svelte/store'
   import card from '../plugin'
   import { openCardInSidebar, setViewMode, viewStore } from '../utils'
   import CardIcon from './CardIcon.svelte'
@@ -95,7 +94,7 @@
     } else {
       // Workbench processes removals after live queries and owns tab navigation,
       // including keeping pinned tabs in place.
-      if (get(currentTabStore) !== undefined) return
+      if (handleMissingTabDocument(_id)) return
       const loc = getCurrentLocation()
       loc.path.length = 3
       navigate(loc)
