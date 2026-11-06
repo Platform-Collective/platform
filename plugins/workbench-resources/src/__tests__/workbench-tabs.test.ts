@@ -431,37 +431,41 @@ describe('tabs of removed documents', () => {
     jest.mocked(navigate).mockReset()
   })
 
-  it.each([false, true])('diffs against the persisted location after an optimistic correction (background=%s)', async (background) => {
-    workspaceStore.set('workspace')
-    const tab = makeTab(`persisted-${String(background)}`)
-    const active = makeTab('persisted-other', 'workbench/workspace/app/other')
-    tabsStore.set([tab, active])
-    tabIdStore.set(background ? active._id : tab._id)
-    jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(background ? active : tab))
-    await resolveTab(tab)
-    resolver.mockResolvedValue({ name: 'Home' })
-    jest.mocked(navigate).mockImplementation((loc) => {
-      jest.mocked(getCurrentLocation).mockReturnValue(loc)
-      testLocationStore.set(loc)
-      return true
-    })
+  it.each([false, true])(
+    'diffs against the persisted location after an optimistic correction (background=%s)',
+    async (background) => {
+      workspaceStore.set('workspace')
+      const tab = makeTab(`persisted-${String(background)}`)
+      const active = makeTab('persisted-other', 'workbench/workspace/app/other')
+      tabsStore.set([tab, active])
+      tabIdStore.set(background ? active._id : tab._id)
+      jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(background ? active : tab))
+      await resolveTab(tab)
+      resolver.mockResolvedValue({ name: 'Home' })
+      jest.mocked(navigate).mockImplementation((loc) => {
+        jest.mocked(getCurrentLocation).mockReturnValue(loc)
+        testLocationStore.set(loc)
+        return true
+      })
 
-    try {
-      removeDocs(objectId)
-      if (background) tabIdStore.set(tab._id)
-      await flush()
+      try {
+        removeDocs(objectId)
+        if (background) tabIdStore.set(tab._id)
+        await flush()
 
-      // TxOperations.diffUpdate skips fields equal to its input document. The
-      // optimistic store must not make the persisted old location look current.
-      const write = client.diffUpdate.mock.calls.find(([doc, update]) =>
-        doc._id === tab._id && update.location === 'workbench/workspace/app' && doc.location !== update.location
-      )
-      expect(write).toBeDefined()
-      expect(get(tabsStore).find((doc) => doc._id === tab._id)?.location).toBe('workbench/workspace/app')
-    } finally {
-      jest.mocked(navigate).mockReset()
+        // TxOperations.diffUpdate skips fields equal to its input document. The
+        // optimistic store must not make the persisted old location look current.
+        const write = client.diffUpdate.mock.calls.find(
+          ([doc, update]) =>
+            doc._id === tab._id && update.location === 'workbench/workspace/app' && doc.location !== update.location
+        )
+        expect(write).toBeDefined()
+        expect(get(tabsStore).find((doc) => doc._id === tab._id)?.location).toBe('workbench/workspace/app')
+      } finally {
+        jest.mocked(navigate).mockReset()
+      }
     }
-  })
+  )
 
   it('persists a selected background panel when its destination URL is already shown', async () => {
     workspaceStore.set('workspace')
@@ -479,8 +483,9 @@ describe('tabs of removed documents', () => {
       tabIdStore.set(tab._id)
       await flush()
 
-      const write = client.diffUpdate.mock.calls.find(([doc, update]) =>
-        doc._id === tab._id && update.location === active.location && doc.location !== update.location
+      const write = client.diffUpdate.mock.calls.find(
+        ([doc, update]) =>
+          doc._id === tab._id && update.location === active.location && doc.location !== update.location
       )
       expect(write).toBeDefined()
     } finally {
@@ -525,8 +530,9 @@ describe('tabs of removed documents', () => {
       must(completeNew)({ name: 'Home' })
       await flush()
 
-      const write = client.diffUpdate.mock.calls.find(([doc, update]) =>
-        doc._id === tab._id && update.location === 'workbench/workspace/app' && doc.location !== update.location
+      const write = client.diffUpdate.mock.calls.find(
+        ([doc, update]) =>
+          doc._id === tab._id && update.location === 'workbench/workspace/app' && doc.location !== update.location
       )
       expect(write).toBeDefined()
     } finally {

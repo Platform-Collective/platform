@@ -306,7 +306,7 @@ async function getLocationWithoutDocument (loc: Location, objectId: Ref<Doc>): P
     const below =
       loc.path[3] === objectId
         ? objectId
-        : known ?? (await getTabDataByLocation(location).catch((): undefined => undefined))?.objectId
+        : (known ?? (await getTabDataByLocation(location).catch((): undefined => undefined))?.objectId)
     if (below !== objectId) return location
   }
   return getApplicationLocation(loc)
