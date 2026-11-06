@@ -1172,10 +1172,7 @@ export async function updateWorkspaceRole (
   await db.updateWorkspaceRole(targetAccount, workspace, targetRole)
 }
 
-export async function isLastWorkspaceOwner (
-  db: AccountDB,
-  workspace: WorkspaceUuid
-): Promise<boolean> {
+export async function isLastWorkspaceOwner (db: AccountDB, workspace: WorkspaceUuid): Promise<boolean> {
   const owners = (await db.getWorkspaceMembers(workspace)).filter((member) => member.role === AccountRole.Owner)
   return owners.length === 1
 }

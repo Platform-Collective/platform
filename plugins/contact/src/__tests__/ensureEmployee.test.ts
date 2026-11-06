@@ -62,7 +62,7 @@ describe('workspace member provisioning', () => {
       await ensureEmployee(
         ctx,
         makeAccount(role),
-        client as any,
+        client,
         [socialId],
         async () =>
           ({

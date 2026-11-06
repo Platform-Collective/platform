@@ -66,7 +66,10 @@ describe('OpenID callback redirects', () => {
     else process.env.OPENID_ROLE_GROUPS = previousRoleGroups
   })
 
-  function registerOpenidRoutes (user: Record<string, unknown> = {}, db: Record<string, unknown> = {}): {
+  function registerOpenidRoutes (
+    user: Record<string, unknown> = {},
+    db: Record<string, unknown> = {}
+  ): {
     routes: Map<string, Array<(ctx: any, next: () => Promise<void>) => Promise<void>>>
     passport: { use: jest.Mock, authenticate: jest.Mock }
   } {
@@ -172,7 +175,10 @@ describe('OpenID callback redirects', () => {
       .mockRejectedValueOnce(new Error('temporary database failure'))
       .mockResolvedValue({ uuid: 'a1111111-1111-4111-9111-111111111111' })
     const { routes } = registerOpenidRoutes(
-      { sub: 'subject', _idClaims: { sub: 'subject', groups: ['engineering'], email: 'user@example.com', xms_edov: true } },
+      {
+        sub: 'subject',
+        _idClaims: { sub: 'subject', groups: ['engineering'], email: 'user@example.com', xms_edov: true }
+      },
       { workspace: { findOne } }
     )
     const handlers = routes.get('/auth/openid/callback')

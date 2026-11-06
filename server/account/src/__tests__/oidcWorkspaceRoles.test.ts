@@ -30,17 +30,15 @@ function createDb (roles: Map<any, AccountRole>): any {
       roles.set(workspace, role)
     ),
     unassignWorkspace: jest.fn(async (_account: any, workspace: any) => roles.delete(workspace)),
-    updateOrUnassignWorkspaceOwnerIfNotLast: jest.fn(async (
-      _account: any,
-      workspace: any,
-      role: AccountRole | null
-    ) => {
-      const owners = await db.getWorkspaceMembers(workspace)
-      if (owners.filter((member: any) => member.role === AccountRole.Owner).length < 2) return false
-      if (role == null) roles.delete(workspace)
-      else roles.set(workspace, role)
-      return true
-    })
+    updateOrUnassignWorkspaceOwnerIfNotLast: jest.fn(
+      async (_account: any, workspace: any, role: AccountRole | null) => {
+        const owners = await db.getWorkspaceMembers(workspace)
+        if (owners.filter((member: any) => member.role === AccountRole.Owner).length < 2) return false
+        if (role == null) roles.delete(workspace)
+        else roles.set(workspace, role)
+        return true
+      }
+    )
   }
   return db
 }
@@ -141,30 +139,28 @@ describe('OIDC workspace role synchronization', () => {
     const db = {
       socialId: { findOne: jest.fn().mockResolvedValue({ type: SocialIdType.OIDC }) },
       getWorkspaceRole: jest.fn(async (candidate: any) => ownerRoles.get(candidate) ?? null),
-      updateOrUnassignWorkspaceOwnerIfNotLast: jest.fn(async (
-        candidate: any,
-        _workspace: any,
-        role: AccountRole | null
-      ) => {
-        // Models the database's per-workspace serialization point. Both syncs
-        // enter before either mutation is released, but only the first may
-        // change an OWNER row.
-        const waitFor = previous
-        let release: () => void = () => {}
-        previous = new Promise<void>((resolve) => {
-          release = resolve
-        })
-        await waitFor
-        const hasAnotherOwner = [...ownerRoles.entries()].some(
-          ([owner, ownerRole]) => owner !== candidate && ownerRole === AccountRole.Owner
-        )
-        if (hasAnotherOwner) {
-          if (role == null) ownerRoles.delete(candidate)
-          else ownerRoles.set(candidate, role)
+      updateOrUnassignWorkspaceOwnerIfNotLast: jest.fn(
+        async (candidate: any, _workspace: any, role: AccountRole | null) => {
+          // Models the database's per-workspace serialization point. Both syncs
+          // enter before either mutation is released, but only the first may
+          // change an OWNER row.
+          const waitFor = previous
+          let release: () => void = () => {}
+          previous = new Promise<void>((resolve) => {
+            release = resolve
+          })
+          await waitFor
+          const hasAnotherOwner = [...ownerRoles.entries()].some(
+            ([owner, ownerRole]) => owner !== candidate && ownerRole === AccountRole.Owner
+          )
+          if (hasAnotherOwner) {
+            if (role == null) ownerRoles.delete(candidate)
+            else ownerRoles.set(candidate, role)
+          }
+          release()
+          return hasAnotherOwner
         }
-        release()
-        return hasAnotherOwner
-      })
+      )
     }
     const ctx = { info: jest.fn(), warn: jest.fn() } as unknown as MeasureContext
 
