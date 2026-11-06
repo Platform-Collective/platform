@@ -365,8 +365,10 @@ async function leaveRemovedDocument (
 }
 
 /** Let an editor hand missing-document navigation to the workbench. */
-export function handleMissingTabDocument (_objectId: Ref<Doc>): boolean {
-  return get(currentTabStore) !== undefined
+export function handleMissingTabDocument (objectId: Ref<Doc>): boolean {
+  if (get(currentTabStore) === undefined) return false
+  onRemovedDocuments(new Set([objectId]))
+  return true
 }
 
 function onRemovedDocuments (removed: Set<Ref<Doc>>): void {

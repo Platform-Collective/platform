@@ -703,7 +703,7 @@ describe('tabs of removed documents', () => {
       const loc = getTabLocation(tab)
       jest.mocked(getCurrentLocation).mockReturnValue(loc)
       await resolveTab(tab)
-      storage.getItem.mockImplementation((key) => key === 'location_app' ? JSON.stringify(loc) : null)
+      storage.getItem.mockImplementation((key) => (key === 'location_app' ? JSON.stringify(loc) : null))
       resolver.mockResolvedValue({ name: 'App' })
 
       expect(handleMissingTabDocument(objectId)).toBe(true)
