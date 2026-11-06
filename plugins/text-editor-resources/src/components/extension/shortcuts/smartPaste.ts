@@ -32,7 +32,7 @@ export const SmartPasteExtension = Extension.create({
 export function PasteTextAsMarkdownPlugin (): Plugin {
   return new Plugin({
     props: {
-      transformPastedHTML: normalizeSlackPastedHTML,
+      transformPastedHTML: normalizePastedHTML,
 
       handlePaste (view, event, slice) {
         const clipboardData = event.clipboardData
@@ -85,6 +85,53 @@ export function PasteTextAsMarkdownPlugin (): Plugin {
       }
     }
   })
+}
+
+function normalizePastedHTML (html: string): string {
+  html = normalizeSlackPastedHTML(html)
+  if (!/<(?:pre|code)\b/i.test(html)) return html
+
+  const document = new DOMParser().parseFromString(html, 'text/html')
+  let changed = false
+
+  document.querySelectorAll('code').forEach((code) => {
+    const pre = code.closest('pre')
+    const content = code.cloneNode(true) as HTMLElement
+    content.querySelectorAll('br').forEach((br) => {
+      br.replaceWith('\n')
+    })
+    const text = content.textContent ?? ''
+    if (pre === null && !/[\r\n]/.test(text)) return
+
+    // Keep code text and its language class, excluding surrounding labels and controls.
+    code.textContent = text
+    if (pre !== null) {
+      // Only strip surrounding labels and controls when the block holds a single code element
+      if (pre.querySelectorAll('code').length === 1) {
+        pre.replaceChildren(code)
+      }
+    } else {
+      const block = document.createElement('pre')
+      code.replaceWith(block)
+      block.append(code)
+
+      // Split a surrounding paragraph so serializing the block produces valid HTML.
+      const paragraph = block.closest('p')
+      if (paragraph !== null) {
+        const range = document.createRange()
+        range.selectNodeContents(paragraph)
+        range.setStartAfter(block)
+        const after = paragraph.cloneNode(false) as HTMLElement
+        after.append(range.extractContents())
+        paragraph.after(block)
+        if (after.hasChildNodes()) block.after(after)
+        if (!paragraph.hasChildNodes()) paragraph.remove()
+      }
+    }
+    changed = true
+  })
+
+  return changed ? document.body.innerHTML : html
 }
 
 export function normalizeSlackPastedHTML (html: string): string {
