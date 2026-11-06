@@ -339,7 +339,7 @@ async function OnRoomInfo (txes: TxCUD<RoomInfo>[], control: TriggerControl): Pr
 
       personsByRoom.set(tx.objectId, newPersons)
       // PC finishes specific meetings via the room_finished webhook. Only restore access here.
-      if (pulled.length > 0 && await isRoomEmpty(roomInfo.room, roomInfo.isOffice, newPersons, control)) {
+      if (pulled.length > 0 && (await isRoomEmpty(roomInfo.room, roomInfo.isOffice, newPersons, control))) {
         result.push(...(await restoreRoomAccess(roomInfo.room, roomInfo.isOffice, control)))
       }
     }

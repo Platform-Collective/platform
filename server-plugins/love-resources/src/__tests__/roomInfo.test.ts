@@ -8,8 +8,19 @@ import resources from '../index'
 jest.mock('@hcengineering/server-contact', () => ({}))
 jest.mock('@hcengineering/server-notification-resources', () => ({}))
 
-async function leave (office: boolean, persons: string[], leaving: string[], joining: string[] = []): Promise<TxCUD<Doc>[]> {
-  const room = { _id: 'room', _class: office ? love.class.Office : love.class.Room, space: core.space.Workspace, person: 'owner', access: RoomAccess.DND }
+async function leave (
+  office: boolean,
+  persons: string[],
+  leaving: string[],
+  joining: string[] = []
+): Promise<TxCUD<Doc>[]> {
+  const room = {
+    _id: 'room',
+    _class: office ? love.class.Office : love.class.Room,
+    space: core.space.Workspace,
+    person: 'owner',
+    access: RoomAccess.DND
+  }
   const info = { _id: 'info', room: room._id, isOffice: office, persons }
   const control = {
     ctx: {},
@@ -23,7 +34,7 @@ async function leave (office: boolean, persons: string[], leaving: string[], joi
     objectId: info._id,
     operations: { $pull: { persons: { $in: leaving } }, $push: { persons: { $each: joining } } }
   } as unknown as TxCUD<RoomInfo>
-  return await (await resources()).trigger.OnRoomInfo([tx], control) as TxCUD<Doc>[]
+  return (await (await resources()).trigger.OnRoomInfo([tx], control)) as TxCUD<Doc>[]
 }
 
 describe('PC room access after participants leave', () => {
