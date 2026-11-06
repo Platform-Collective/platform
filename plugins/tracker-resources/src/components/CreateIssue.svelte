@@ -86,6 +86,7 @@
   import { fillIssueDefaults } from '../issue-defaults'
   import { activeComponent, activeMilestone, generateIssueShortLink, updateIssueRelation } from '../issues'
   import tracker from '../plugin'
+  import { createIssueTypeMixinDefaults } from '../utils'
   import SetParentIssueActionPopup from './SetParentIssueActionPopup.svelte'
   import SubIssues from './SubIssues.svelte'
   import ComponentSelector from './components/ComponentSelector.svelte'
@@ -532,6 +533,7 @@
       }
 
       await docCreateManager.commit(operations, _id, currentProject, value, 'pre')
+      fillDefaults(hierarchy, value, tracker.class.Issue)
 
       await operations.addCollection(
         tracker.class.Issue,
@@ -542,8 +544,16 @@
         value,
         _id
       )
+      const taskTypeMixin = operations.getModel().findObject(kind)?.targetClass
+      await createIssueTypeMixinDefaults(
+        operations,
+        _id,
+        _space,
+        kind,
+        taskTypeMixin === undefined ? undefined : customFields.mixins.get(taskTypeMixin)
+      )
       for (const [mixin, attributes] of customFields.mixins) {
-        await operations.createMixin(_id, tracker.class.Issue, _space, mixin, attributes)
+        if (mixin !== taskTypeMixin) await operations.createMixin(_id, tracker.class.Issue, _space, mixin, attributes)
       }
       await docCreateManager.commit(operations, _id, currentProject, value, 'post')
       for (const label of object.labels) {
