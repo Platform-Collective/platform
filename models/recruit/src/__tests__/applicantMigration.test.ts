@@ -113,7 +113,12 @@ describe('Applicant label category upgrade', () => {
 
   it('skips the backfill after its migration state is recorded', async () => {
     const { client, tx } = createClient()
-    const state = new Map([[recruitId, new Set(['create-defaults-v2', 'create-default-applicant-label-category', 'create-vacancy-tag-category'])]])
+    const state = new Map([
+      [
+        recruitId,
+        new Set(['create-defaults-v2', 'create-default-applicant-label-category', 'create-vacancy-tag-category'])
+      ]
+    ])
     const getClient = jest.fn(async () => client)
 
     await recruitOperation.upgrade(state, getClient, 'upgrade')

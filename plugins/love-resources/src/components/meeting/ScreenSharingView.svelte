@@ -126,7 +126,7 @@
   $: person = activeParticipant != null ? $personByRefStore.get(activeParticipant.identity as Ref<Person>) : undefined
   $: sharerName = (person !== undefined ? person.name : activeParticipant?.name) ?? ''
 
-  function trySetActiveTrack (track: Track | undefined, participant: Participant): boolean {
+  function trySetActiveTrack(track: Track | undefined, participant: Participant): boolean {
     if (track === undefined) return false
     if (track.kind !== Track.Kind.Video || track.source !== Track.Source.ScreenShare) return false
     hasActiveTrack = true
@@ -160,7 +160,7 @@
     clearActiveTrack(track)
   }
 
-  function onLocalTrackPublished (publication: LocalTrackPublication, participant: LocalParticipant): void {
+  function onLocalTrackPublished(publication: LocalTrackPublication, participant: LocalParticipant): void {
     trySetActiveTrack(publication.track, participant)
   }
 
@@ -223,11 +223,11 @@
       <ButtonIcon icon={IconScaleFull} size="small" on:click={resetZoom} disabled={scale === 1} />
     </div>
   {/if}
-{#if activeParticipant != null && sharerName !== ''}
-  <div class="label overflow-label">
-    <Label label={love.string.ScreenSharedBy} params={{ name: formatName(sharerName) }} />
-  </div>
-{/if}
+  {#if activeParticipant != null && sharerName !== ''}
+    <div class="label overflow-label">
+      <Label label={love.string.ScreenSharedBy} params={{ name: formatName(sharerName) }} />
+    </div>
+  {/if}
 </div>
 
 <style lang="scss">

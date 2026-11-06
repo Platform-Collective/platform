@@ -119,7 +119,7 @@
     attr: hierarchy.getAttribute(recruit.class.Vacancy, 'labels')
   }
 
-  function addTagRef (tag: TagElement): void {
+  function addTagRef(tag: TagElement): void {
     labels = [
       ...labels,
       {

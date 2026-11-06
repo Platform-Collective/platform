@@ -35,7 +35,7 @@
   // and reset the selection on every arrow key or hover
   $: resetSelection(items)
 
-  function resetSelection (items: ExtendedEmoji[]): void {
+  function resetSelection(items: ExtendedEmoji[]): void {
     selection = 0
   }
 
@@ -51,14 +51,14 @@
     dummyPopup?.close()
   })
 
-  function getShortcode (emoji: ExtendedEmoji): string {
+  function getShortcode(emoji: ExtendedEmoji): string {
     if (isCustomEmoji(emoji)) return emoji.shortcode
     const lowerQuery = query.toLowerCase()
     const shortcodes = emoji.shortcodes ?? []
     return shortcodes.find((s) => s.toLowerCase().startsWith(lowerQuery)) ?? shortcodes[0] ?? emoji.label
   }
 
-  export function onKeyDown (ev: KeyboardEvent): boolean {
+  export function onKeyDown(ev: KeyboardEvent): boolean {
     if (!visible) return false
     if (ev.key === 'ArrowDown') {
       ev.stopPropagation()
@@ -82,9 +82,9 @@
     return false
   }
 
-  export function done (): void {}
+  export function done(): void {}
 
-  function updateStyle (): void {
+  function updateStyle(): void {
     const rect = clientRect?.()
     if (popup == null || rect == null) return
     const wDoc = $deviceInfo.docWidth

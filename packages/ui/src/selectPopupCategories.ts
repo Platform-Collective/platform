@@ -20,11 +20,11 @@ import type { SelectPopupValueType } from './types'
  */
 export type SelectPopupRow =
   | {
-    kind: 'category'
-    category: NonNullable<SelectPopupValueType['category']>
-    count: number
-    collapsed: boolean
-  }
+      kind: 'category'
+      category: NonNullable<SelectPopupValueType['category']>
+      count: number
+      collapsed: boolean
+    }
   | { kind: 'item', item: SelectPopupValueType }
 
 /**

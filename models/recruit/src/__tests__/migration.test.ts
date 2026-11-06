@@ -62,7 +62,8 @@ function createContext (categories: TagCategory[] = []): {
 }
 
 describe('create-vacancy-tag-category upgrade', () => {
-  const initialState = (): Map<string, Set<string>> => new Map([[recruitId, new Set(['create-defaults-v2', 'create-default-applicant-label-category'])]])
+  const initialState = (): Map<string, Set<string>> =>
+    new Map([[recruitId, new Set(['create-defaults-v2', 'create-default-applicant-label-category'])]])
 
   it('creates a default vacancy category with a stable ID', async () => {
     const { model, client } = createContext()
@@ -102,7 +103,12 @@ describe('create-vacancy-tag-category upgrade', () => {
 
   it('skips a completed upgrade step', async () => {
     const { client, tx } = createContext()
-    const state = new Map([[recruitId, new Set(['create-defaults-v2', 'create-vacancy-tag-category', 'create-default-applicant-label-category'])]])
+    const state = new Map([
+      [
+        recruitId,
+        new Set(['create-defaults-v2', 'create-vacancy-tag-category', 'create-default-applicant-label-category'])
+      ]
+    ])
 
     await recruitOperation.upgrade(state, async () => client, 'upgrade')
 

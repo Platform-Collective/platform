@@ -128,14 +128,14 @@
   $: statusesInfo =
     statuses !== undefined
       ? groupStatusesByCategory(statuses, (c) => client.getModel().findObject(c)).map(({ status: s, category }) => {
-        return {
-          id: s._id,
-          component: StatusPresenter,
-          props: { value: s, size: 'small', space: value.space },
-          isSelected: selectedStatus?._id === s._id,
-          category: category !== undefined ? { label: category.label, icon: category.icon } : undefined
-        }
-      })
+          return {
+            id: s._id,
+            component: StatusPresenter,
+            props: { value: s, size: 'small', space: value.space },
+            isSelected: selectedStatus?._id === s._id,
+            category: category !== undefined ? { label: category.label, icon: category.icon } : undefined
+          }
+        })
       : undefined
   $: smallgap = size === 'inline' || size === 'small'
 </script>
