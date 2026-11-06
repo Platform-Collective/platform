@@ -26,6 +26,28 @@ import { deepEqual } from 'fast-equals'
 import { Octokit } from 'octokit'
 import { ContainerFocus, githubExternalSyncVersion } from '../types'
 
+/** Parse a GitHub date, using processing time when the source has no usable date. */
+export function githubTime (iso: string | null | undefined, fallback: number = Date.now()): number {
+  const timestamp = iso == null ? NaN : Date.parse(iso)
+  return Number.isFinite(timestamp) ? timestamp : fallback
+}
+
+/** Source timestamp preservation is opt-in for existing deployments. */
+export function isGithubTimestampPreservationEnabled (): boolean {
+  return process.env.GITHUB_PRESERVE_SOURCE_TIMESTAMPS === 'true'
+}
+
+/** Preserve newer local edits, including edits made after the sync snapshot was read. */
+export async function getGithubModifiedOn (
+  client: TxOperations,
+  doc: Pick<Doc, '_id' | '_class' | 'modifiedOn'>,
+  iso: string | null | undefined
+): Promise<number> {
+  if (!isGithubTimestampPreservationEnabled()) return Date.now()
+  const current = await client.findOne(doc._class, { _id: doc._id })
+  return Math.max(doc.modifiedOn, current?.modifiedOn ?? doc.modifiedOn, githubTime(iso))
+}
+
 /**
  * Return if github write operations are allowed.
  */

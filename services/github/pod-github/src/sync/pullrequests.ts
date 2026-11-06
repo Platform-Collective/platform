@@ -64,9 +64,12 @@ import {
   ensureGraphQLOctokit,
   errorToObj,
   getSinceRaw,
+  getGithubModifiedOn,
+  githubTime,
   gqlp,
   guessStatus,
   isGHWriteAllowed,
+  isGithubTimestampPreservationEnabled,
   syncChilds,
   syncDerivedDocuments,
   syncRunner
@@ -848,10 +851,7 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
 
   private async requestFix (
     client: TxOperations,
-    pullRequest: Pick<
-      GithubPullRequest,
-      '_id' | 'identifier' | 'reviewers' | 'title' | 'space' | 'state' | 'space' | '_class'
-    >,
+    pullRequest: Pick<GithubPullRequest, '_id' | 'identifier' | 'reviewers' | 'title' | 'space' | 'state' | '_class'>,
     external: PullRequestExternalData,
     todoUser: Ref<Person>,
     account: PersonId
@@ -1116,7 +1116,7 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
               type: blob.contentType,
               lastModified
             },
-            new Date().getTime(),
+            await getGithubModifiedOn(this.client, patchAttachment, pullRequestExternal.updatedAt),
             account
           )
         }
@@ -1152,6 +1152,9 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
     )
 
     const prId = info._id as unknown as Ref<GithubPullRequest>
+    const createdOn = isGithubTimestampPreservationEnabled()
+      ? githubTime(pullRequestExternal.createdAt)
+      : new Date(pullRequestExternal.createdAt).getTime()
 
     const { description, ...data } = pullRequestData
     const project = (incResult as any).object as Project
@@ -1193,7 +1196,7 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
       'subIssues',
       value,
       prId,
-      new Date(pullRequestExternal.createdAt).getTime(),
+      createdOn,
       account
     )
     await client.createMixin<Issue, GithubIssue>(
@@ -1206,7 +1209,8 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
         url: pullRequestExternal.url,
         repository: repo,
         descriptionLocked: isDescriptionLocked
-      }
+      },
+      isGithubTimestampPreservationEnabled() ? createdOn : undefined
     )
 
     await this.addConnectToMessage(
@@ -1215,7 +1219,8 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
       prId,
       tracker.class.Issue,
       pullRequestExternal,
-      repository
+      repository,
+      isGithubTimestampPreservationEnabled() ? createdOn : undefined
     )
 
     return {
@@ -1226,9 +1231,9 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
       attachedTo: tracker.ids.NoParent,
       attachedToClass: tracker.class.Issue,
       collection: 'subIssues',
-      modifiedOn: new Date(pullRequestExternal.createdAt).getTime(),
+      modifiedOn: createdOn,
       modifiedBy: account,
-      createdOn: new Date(pullRequestExternal.createdAt).getTime(),
+      createdOn,
       createdBy: account
     }
   }
@@ -1289,7 +1294,9 @@ export class PullRequestSyncManager extends IssueSyncManagerBase implements DocS
         (ext.reviewThreads.nodes ?? []).map((it) => ({
           ...it,
           url: it.id,
-          createdAt: new Date(it.comments.nodes[0].createdAt ?? Date.now()).toISOString(),
+          createdAt: isGithubTimestampPreservationEnabled()
+            ? new Date(githubTime(it.comments.nodes[0].createdAt)).toISOString()
+            : new Date(it.comments.nodes[0].createdAt ?? Date.now()).toISOString(),
           updatedAt: new Date(getUpdatedAtReviewThread(it)).toISOString()
         }))
       )

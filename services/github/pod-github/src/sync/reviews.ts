@@ -29,7 +29,17 @@ import {
   githubSyncVersion
 } from '../types'
 import { PullRequestExternalData, Review as ReviewExternalData, reviewDetails, toReviewState } from './githubTypes'
-import { collectUpdate, deleteObjects, ensureGraphQLOctokit, errorToObj, isGHWriteAllowed, syncChilds } from './utils'
+import {
+  collectUpdate,
+  deleteObjects,
+  ensureGraphQLOctokit,
+  errorToObj,
+  isGHWriteAllowed,
+  syncChilds,
+  getGithubModifiedOn,
+  githubTime,
+  isGithubTimestampPreservationEnabled
+} from './utils'
 
 import { Analytics } from '@hcengineering/analytics'
 import { PullRequestReviewEvent, PullRequestReviewSubmittedEvent } from '@octokit/webhooks-types'
@@ -233,7 +243,9 @@ export class ReviewSyncManager implements DocSyncManager {
             _id: reviewData._id as unknown as Ref<GithubReview>
           })
           if (reviewObj !== undefined) {
-            const lastModified = Date.now()
+            const lastModified = isGithubTimestampPreservationEnabled()
+              ? githubTime(externalData.updatedAt)
+              : Date.now()
             await derivedClient.diffUpdate(
               reviewData,
               {
@@ -250,7 +262,9 @@ export class ReviewSyncManager implements DocSyncManager {
                 state: GithubPullRequestReviewState.Dismissed
               },
               false,
-              lastModified,
+              isGithubTimestampPreservationEnabled()
+                ? await getGithubModifiedOn(this.client, reviewObj, externalData.updatedAt)
+                : lastModified,
               account
             )
             this.provider.sync()
@@ -283,7 +297,9 @@ export class ReviewSyncManager implements DocSyncManager {
         externalVersion: githubExternalSyncVersion,
         derivedVersion: '',
         parent: (createdEvent.pull_request.html_url ?? '').toLowerCase(),
-        lastModified: new Date(createdEvent.review.submitted_at ?? Date.now()).getTime()
+        lastModified: isGithubTimestampPreservationEnabled()
+          ? githubTime(createdEvent.review.submitted_at)
+          : new Date(createdEvent.review.submitted_at ?? Date.now()).getTime()
       })
     }
   }
@@ -385,7 +401,15 @@ export class ReviewSyncManager implements DocSyncManager {
       // No update is possible for review.
     }
     if (Object.keys(update).length > 0) {
-      await this.client.update(existing, update, false, new Date(review.updatedAt ?? Date.now()).getTime(), account)
+      await this.client.update(
+        existing,
+        update,
+        false,
+        isGithubTimestampPreservationEnabled()
+          ? await getGithubModifiedOn(this.client, existing, review.updatedAt)
+          : new Date(review.updatedAt ?? Date.now()).getTime(),
+        account
+      )
     }
   }
 
@@ -410,7 +434,9 @@ export class ReviewSyncManager implements DocSyncManager {
       'activity',
       value,
       _id,
-      new Date(review.submittedAt ?? review.createdAt ?? Date.now()).getTime(),
+      isGithubTimestampPreservationEnabled()
+        ? githubTime(review.submittedAt ?? review.createdAt)
+        : new Date(review.submittedAt ?? review.createdAt ?? Date.now()).getTime(),
       account
     )
   }
