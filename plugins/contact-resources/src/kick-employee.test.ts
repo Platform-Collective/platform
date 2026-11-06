@@ -119,5 +119,4 @@ describe('kickEmployee', () => {
     expect(await canKickEmployee([other])).toBe(true)
     expect(await canKickEmployee([other, current])).toBe(false)
   })
-
 })
