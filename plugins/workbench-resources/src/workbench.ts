@@ -262,12 +262,12 @@ export async function getTabDataByLocation (
   loc: Location,
   client = getClient()
 ): Promise<{
-    name?: string
-    label: IntlString
-    icon?: Asset
-    iconComponent?: AnyComponent
-    iconProps?: Record<string, any>
-  }> {
+  name?: string
+  label: IntlString
+  icon?: Asset
+  iconComponent?: AnyComponent
+  iconProps?: Record<string, any>
+}> {
   const appAlias = loc.path[2]
   const application = client.getModel().findAllSync<Application>(workbench.class.Application, { alias: appAlias })[0]
 
