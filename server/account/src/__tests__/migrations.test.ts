@@ -41,18 +41,22 @@ describe('account db migrations', () => {
   )
 })
 
-
 describe('provider avatar migration on PC', () => {
-  it.each(['postgres', 'cockroach'] as const)('retains existing migration keys and adds avatar storage (%s)', (flavor) => {
-    const migrations = getMigrations('global_account', flavor)
-    const names = migrations.map(([name]) => name)
-    expect(new Set(names).size).toBe(names.length)
-    expect(names).toEqual(expect.arrayContaining([
-      'account_db_v27_add_office_social_id_type',
-      'account_db_v28_add_workspace_member_unread',
-      'account_db_v27_add_api_tokens_table',
-      'account_db_v28_add_person_avatar_url'
-    ]))
-    expect(migrations.find(([name]) => name === 'account_db_v28_add_person_avatar_url')?.[1]).toContain('avatar_url')
-  })
+  it.each(['postgres', 'cockroach'] as const)(
+    'retains existing migration keys and adds avatar storage (%s)',
+    (flavor) => {
+      const migrations = getMigrations('global_account', flavor)
+      const names = migrations.map(([name]) => name)
+      expect(new Set(names).size).toBe(names.length)
+      expect(names).toEqual(
+        expect.arrayContaining([
+          'account_db_v27_add_office_social_id_type',
+          'account_db_v28_add_workspace_member_unread',
+          'account_db_v27_add_api_tokens_table',
+          'account_db_v28_add_person_avatar_url'
+        ])
+      )
+      expect(migrations.find(([name]) => name === 'account_db_v28_add_person_avatar_url')?.[1]).toContain('avatar_url')
+    }
+  )
 })
