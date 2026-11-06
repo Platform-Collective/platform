@@ -1,5 +1,7 @@
 {
   "string": {
+    "CreateIssueFromMessage": "Aufgabe erstellen",
+    "SourceMessage": "Ursprüngliche Nachricht",
     "TrackerApplication": "Tracker",
     "Projects": "Deine Projekte",
     "More": "Mehr",

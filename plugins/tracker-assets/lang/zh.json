@@ -1,5 +1,7 @@
 {
   "string": {
+    "CreateIssueFromMessage": "创建问题",
+    "SourceMessage": "源消息",
     "TrackerApplication": "追踪器",
     "Projects": "您的项目",
     "More": "更多",

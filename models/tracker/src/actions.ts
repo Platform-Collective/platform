@@ -14,6 +14,8 @@
 //
 
 import contact from '@hcengineering/contact'
+import activity from '@hcengineering/activity'
+import communication from '@hcengineering/communication'
 import { type Builder } from '@hcengineering/model'
 import core from '@hcengineering/model-core'
 import task from '@hcengineering/model-task'
@@ -43,6 +45,31 @@ function createGotoSpecialAction (
   })
 }
 export function createActions (builder: Builder, issuesId: string, componentsId: string, myIssuesId: string): void {
+  createAction(builder, {
+    action: tracker.actionImpl.CreateIssueFromMessage,
+    label: tracker.string.CreateIssueFromMessage,
+    icon: tracker.icon.Issue,
+    input: 'focus',
+    category: tracker.category.Tracker,
+    target: activity.class.ActivityMessage,
+    visibilityTester: tracker.function.CanCreateIssueFromMessage,
+    context: { mode: 'context', group: 'associate' }
+  })
+
+  builder.createDoc(
+    communication.class.MessageAction,
+    core.space.Model,
+    {
+      label: tracker.string.CreateIssueFromMessage,
+      icon: tracker.icon.Issue,
+      action: tracker.messageActionImpl.CreateIssue,
+      visibilityTester: tracker.function.CanCreateIssueFromCommunicationMessage,
+      order: 350,
+      menu: true
+    },
+    tracker.messageAction.CreateIssue
+  )
+
   createGotoSpecialAction(builder, issuesId, 'keyG->keyE', tracker.string.GotoIssues)
   createGotoSpecialAction(builder, issuesId, 'keyG->keyA', tracker.string.GotoActive, { mode: 'active' })
   createGotoSpecialAction(builder, issuesId, 'keyG->keyB', tracker.string.GotoBacklog, { mode: 'backlog' })

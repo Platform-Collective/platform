@@ -1,5 +1,7 @@
 {
   "string": {
+    "CreateIssueFromMessage": "Sorun oluştur",
+    "SourceMessage": "Kaynak mesaj",
     "TrackerApplication": "Tracker",
     "Projects": "Projeleriniz",
     "More": "Daha fazla",
