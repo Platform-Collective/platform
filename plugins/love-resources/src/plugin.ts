@@ -130,6 +130,12 @@ export default mergeIds(loveId, love, {
     Organizators: '' as IntlString,
     SpeakingWhileMuted: '' as IntlString,
     SpeakingWhileMutedAlert: '' as IntlString,
-    ScreenSharedBy: '' as IntlString
+    ScreenSharedBy: '' as IntlString,
+    ScreenShareFailed: '' as IntlString,
+    ScreenShareDenied: '' as IntlString,
+    ScreenShareUnsupported: '' as IntlString,
+    ScreenShareError: '' as IntlString,
+    ScreenShareNotStartedTitle: '' as IntlString,
+    ScreenShareNotStarted: '' as IntlString
   }
 })

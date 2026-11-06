@@ -12,18 +12,20 @@ import {
   type TrackPublication,
   type Participant
 } from 'livekit-client'
-import { setPlatformStatus, translate, unknownError } from '@hcengineering/platform'
+import { translate } from '@hcengineering/platform'
 import { getMediaDevices, getSelectedSpeakerId, type MediaSession } from '@hcengineering/media'
 import { LoveEvents } from '@hcengineering/love'
 import { useMedia } from '@hcengineering/media-resources'
 import { get, writable } from 'svelte/store'
 import { Analytics } from '@hcengineering/analytics'
 import { addNotification, NotificationSeverity } from '@hcengineering/ui'
+import { SimpleNotification } from '@hcengineering/view-resources'
 import { getCurrentLanguage } from '@hcengineering/theme'
 import LastParticipantNotification from './components/meeting/LastParticipantNotification.svelte'
 import love from './plugin'
 import { $myPreferences } from './stores'
 import { leaveMeeting } from './meetings'
+import { getScreenShareErrorKind, isScreenShareCancelled } from './screenShareError'
 
 export enum ScreenSharingState {
   Inactive,
@@ -553,21 +555,33 @@ export class LiveKitClient {
     try {
       await this.liveKitRoom.localParticipant.setScreenShareEnabled(value, { audio: withAudio })
     } catch (e) {
-      if (isScreenShareCancelled(e)) {
-        console.log(e)
-        return
+      console.log(e)
+      if (isScreenShareCancelled(e)) return
+      if (value) {
+        await this.showScreenShareError(e)
       }
-      await setPlatformStatus(unknownError(e))
     }
   }
-}
 
-/**
- * Cancelling the source picker is not an error: the desktop picker rejects with AbortError and browsers reject
- * getDisplayMedia with NotAllowedError. Chrome reports an OS-level block as "Permission denied by system".
- */
-function isScreenShareCancelled (e: unknown): boolean {
-  if (!(e instanceof Error || e instanceof DOMException)) return false
-  if (e.name === 'AbortError') return true
-  return e.name === 'NotAllowedError' && !e.message.toLowerCase().includes('system')
+  private async showScreenShareError (error: unknown): Promise<void> {
+    const kind = getScreenShareErrorKind(error, navigator.mediaDevices?.getDisplayMedia !== undefined)
+    if (kind === 'notStarted') {
+      return
+    }
+    const lang = getCurrentLanguage()
+    const message =
+      kind === 'denied'
+        ? love.string.ScreenShareDenied
+        : kind === 'unsupported'
+          ? love.string.ScreenShareUnsupported
+          : love.string.ScreenShareError
+    addNotification(
+      await translate(love.string.ScreenShareFailed, {}, lang),
+      await translate(message, {}, lang),
+      SimpleNotification,
+      undefined,
+      NotificationSeverity.Error,
+      'love'
+    )
+  }
 }
