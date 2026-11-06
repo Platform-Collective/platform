@@ -17,6 +17,7 @@ import core, {
   checkPermission,
   checkForbiddenPermission,
   getCurrentAccount,
+  hasAccountRole,
   toIdMap,
   AccountRole,
   type Doc,
@@ -64,7 +65,8 @@ export async function canEditSpace (doc?: Doc | Doc[]): Promise<boolean> {
 
   const space = doc as Space
 
-  if (isSpaceOwner(space)) {
+  const enforce = isTypedSpace(space)
+  if (isSpaceOwner(space) || (enforce && hasAccountRole(getCurrentAccount(), AccountRole.Owner))) {
     return true
   }
 
@@ -72,11 +74,11 @@ export async function canEditSpace (doc?: Doc | Doc[]): Promise<boolean> {
 
   const _spaceSpace = get(spaceSpace) ?? (await client.findOne(core.class.TypedSpace, { _id: core.space.Space }))
 
-  if (await checkPermission(client, core.permission.UpdateObject, core.space.Space, _spaceSpace)) {
+  if (await checkPermission(client, core.permission.UpdateObject, core.space.Space, _spaceSpace, enforce)) {
     return true
   }
 
-  if (isTypedSpace(space) && (await checkPermission(client, core.permission.UpdateSpace, space._id, space))) {
+  if (isTypedSpace(space) && (await checkPermission(client, core.permission.UpdateSpace, space._id, space, true))) {
     return true
   }
 
@@ -90,7 +92,8 @@ export async function canArchiveSpace (doc?: Doc | Doc[]): Promise<boolean> {
 
   const space = doc as Space
 
-  if (isSpaceOwner(space)) {
+  const enforce = isTypedSpace(space)
+  if (isSpaceOwner(space) || (enforce && hasAccountRole(getCurrentAccount(), AccountRole.Owner))) {
     return true
   }
 
@@ -98,11 +101,11 @@ export async function canArchiveSpace (doc?: Doc | Doc[]): Promise<boolean> {
 
   const _spaceSpace = get(spaceSpace) ?? (await client.findOne(core.class.TypedSpace, { _id: core.space.Space }))
 
-  if (await checkPermission(client, core.permission.DeleteObject, core.space.Space, _spaceSpace)) {
+  if (await checkPermission(client, core.permission.DeleteObject, core.space.Space, _spaceSpace, enforce)) {
     return true
   }
 
-  if (isTypedSpace(space) && (await checkPermission(client, core.permission.ArchiveSpace, space._id, space))) {
+  if (isTypedSpace(space) && (await checkPermission(client, core.permission.ArchiveSpace, space._id, space, true))) {
     return true
   }
 

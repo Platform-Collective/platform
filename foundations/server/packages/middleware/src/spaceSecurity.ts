@@ -30,8 +30,6 @@ import core, {
   type LookupData,
   type MeasureContext,
   type ObjQueryType,
-  type Position,
-  type PullArray,
   type Ref,
   type SearchOptions,
   type SearchQuery,
@@ -57,6 +55,7 @@ import {
   type TxMiddlewareResult
 } from '@hcengineering/server-core'
 import { isOwner, isSystem } from './utils'
+import { getUpdatedAttributes } from './spacePermissions'
 
 type SpaceWithMembers = Pick<Space, '_id' | 'members' | 'private' | '_class' | 'archived'>
 
@@ -66,6 +65,7 @@ type SpaceWithMembers = Pick<Space, '_id' | 'members' | 'private' | '_class' | '
 export class SpaceSecurityMiddleware extends BaseMiddleware implements Middleware {
   private allowedSpaces: Record<AccountUuid, Ref<Space>[]> = {}
   private readonly spacesMap = new Map<Ref<Space>, SpaceWithMembers>()
+  private readonly updateTails = new Map<Ref<Space>, Promise<void>>()
   private readonly privateSpaces = new Set<Ref<Space>>()
   private readonly _domainSpaces = new Map<string, Set<Ref<Space>> | Promise<Set<Ref<Space>>>>()
   private readonly publicSpaces = new Set<Ref<Space>>()
@@ -105,7 +105,7 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
 
   private addMemberSpace (member: AccountUuid, space: Ref<Space>): void {
     const arr = this.allowedSpaces[member] ?? []
-    arr.push(space)
+    if (!arr.includes(space)) arr.push(space)
     this.allowedSpaces[member] = arr
   }
 
@@ -144,6 +144,8 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
                 }
               }
             )) ?? []
+          this.allowedSpaces = {}
+          this.privateSpaces.clear()
           this.spacesMap.clear()
           this.publicSpaces.clear()
           this.systemSpaces.clear()
@@ -158,19 +160,20 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
       })()
     }
     if (this.wasInit instanceof Promise) {
-      await this.wasInit
-      this.wasInit = true
+      try {
+        await this.wasInit
+        this.wasInit = true
+      } catch (err) {
+        this.wasInit = false
+        throw err
+      }
     }
   }
 
   private removeMemberSpace (member: AccountUuid, space: Ref<Space>): void {
     const arr = this.allowedSpaces[member]
     if (arr !== undefined) {
-      const index = arr.findIndex((p) => p === space)
-      if (index !== -1) {
-        arr.splice(index, 1)
-        this.allowedSpaces[member] = arr
-      }
+      this.allowedSpaces[member] = arr.filter((id) => id !== space)
     }
   }
 
@@ -216,50 +219,10 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
     }
   }
 
-  private handleCreate (tx: TxCUD<Space>): void {
-    const createTx = tx as TxCreateDoc<Space>
-    if (!this.context.hierarchy.isDerived(createTx.objectClass, core.class.Space)) return
-    if (createTx.objectClass === core.class.SystemSpace) {
-      this.systemSpaces.add(createTx.objectId)
-    } else {
-      const res = TxProcessor.createDoc2Doc<Space>(createTx)
-      this.addSpace(res)
-    }
-  }
-
-  private pushMembersHandle (
-    ctx: MeasureContext,
-    addedMembers: AccountUuid | Position<AccountUuid>,
-    space: Ref<Space>
-  ): void {
-    if (typeof addedMembers === 'object') {
-      for (const member of addedMembers.$each) {
-        this.addMemberSpace(member, space)
-      }
-      this.brodcastEvent(ctx, addedMembers.$each, space)
-    } else {
-      this.addMemberSpace(addedMembers, space)
-      this.brodcastEvent(ctx, [addedMembers], space)
-    }
-  }
-
-  private pullMembersHandle (
-    ctx: MeasureContext,
-    removedMembers: Partial<AccountUuid> | PullArray<AccountUuid>,
-    space: Ref<Space>
-  ): void {
-    if (typeof removedMembers === 'object') {
-      const { $in } = removedMembers as PullArray<AccountUuid>
-      if ($in !== undefined) {
-        for (const member of $in) {
-          this.removeMemberSpace(member, space)
-        }
-        this.brodcastEvent(ctx, $in, space)
-      }
-    } else {
-      this.removeMemberSpace(removedMembers, space)
-      this.brodcastEvent(ctx, [removedMembers], space)
-    }
+  private async handleCreate (ctx: MeasureContext, tx: TxCUD<Space>): Promise<void> {
+    if (!this.context.hierarchy.isDerived(tx.objectClass, core.class.Space)) return
+    // Duplicate inserts can be ignored by storage. Trust only the committed document.
+    await this.refreshSpace(ctx, tx.objectId)
   }
 
   private syncMembers (ctx: MeasureContext, members: AccountUuid[], space: SpaceWithMembers): void {
@@ -326,35 +289,72 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
     const updateDoc = tx as TxUpdateDoc<Space>
     if (!this.context.hierarchy.isDerived(updateDoc.objectClass, core.class.Space)) return
 
-    const space = this.spacesMap.get(updateDoc.objectId)
-    if (space !== undefined) {
-      if (updateDoc.operations.private !== undefined) {
-        if (updateDoc.operations.private) {
-          this.privateSpaces.add(updateDoc.objectId)
-          this.publicSpaces.delete(updateDoc.objectId)
-          this.broadcastNonMembers(ctx, space)
-        } else if (!updateDoc.operations.private) {
-          this.privateSpaces.delete(updateDoc.objectId)
-          this.publicSpaces.add(updateDoc.objectId)
-          this.broadcastNonMembers(ctx, space)
+    const attributes = getUpdatedAttributes(updateDoc.operations)
+    if (attributes !== 'all' && !['members', 'private', 'archived', '_class'].some((key) => attributes.has(key))) return
+    await this.refreshSpace(ctx, updateDoc.objectId)
+  }
+
+  private async refreshSpace (ctx: MeasureContext, id: Ref<Space>): Promise<void> {
+    const previous = this.updateTails.get(id) ?? Promise.resolve()
+    let release: () => void = () => {}
+    const tail = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    this.updateTails.set(id, tail)
+    await previous
+    try {
+      // Serialize fresh reads per space, so an older snapshot cannot overwrite a
+      // newer one. The projection matches init and bypasses in-flight client reads.
+      const [stored] =
+        (await this.next?.findAll(
+          ctx,
+          core.class.Space,
+          { _id: id },
+          {
+            limit: 1,
+            prefix: 'security',
+            projection: { _id: 1, _class: 1, members: 1, private: 1, archived: 1 }
+          }
+        )) ?? []
+      if (stored === undefined) return
+      if (stored._class === core.class.SystemSpace) {
+        this.removeSpace(id)
+        this.systemSpaces.add(id)
+        return
+      }
+      this.systemSpaces.delete(id)
+      const updatedSpace: SpaceWithMembers = {
+        _id: stored._id,
+        _class: stored._class,
+        members: stored.members ?? [],
+        private: stored.private,
+        archived: stored.archived
+      }
+      const space = this.spacesMap.get(id)
+      if (space === undefined) {
+        this.addSpace(updatedSpace)
+        return
+      }
+      if (space.private !== updatedSpace.private) {
+        if (updatedSpace.private) {
+          this.privateSpaces.add(id)
+          this.publicSpaces.delete(id)
+        } else {
+          this.privateSpaces.delete(id)
+          this.publicSpaces.add(id)
         }
+        this.broadcastNonMembers(ctx, space)
       }
-
-      if (updateDoc.operations.members !== undefined) {
-        this.syncMembers(ctx, updateDoc.operations.members, space)
-      }
-      if (updateDoc.operations.$push?.members !== undefined) {
-        this.pushMembersHandle(ctx, updateDoc.operations.$push.members, space._id)
-      }
-
-      if (updateDoc.operations.$pull?.members !== undefined) {
-        this.pullMembersHandle(ctx, updateDoc.operations.$pull.members, space._id)
-      }
-      if (updateDoc.operations.archived !== undefined) {
-        this.broadcastAll(ctx, space)
-      }
-      const updatedSpace = TxProcessor.updateDoc2Doc(space as any, updateDoc)
-      this.spacesMap.set(updateDoc.objectId, updatedSpace)
+      this.syncMembers(ctx, updatedSpace.members, space)
+      if (space.archived !== updatedSpace.archived) this.broadcastAll(ctx, space)
+      this.spacesMap.set(id, updatedSpace)
+    } catch (err) {
+      // The write already committed. Reload read access before the next request.
+      this.resyncDomains()
+      ctx.error('Failed to refresh space security', { id, err })
+    } finally {
+      release()
+      if (this.updateTails.get(id) === tail) this.updateTails.delete(id)
     }
   }
 
@@ -368,7 +368,7 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
   private async handleTx (ctx: MeasureContext, tx: TxCUD<Space>): Promise<void> {
     await this.init(ctx)
     if (tx._class === core.class.TxCreateDoc) {
-      this.handleCreate(tx)
+      await this.handleCreate(ctx, tx)
     } else if (tx._class === core.class.TxUpdateDoc) {
       await this.handleUpdate(ctx, tx)
     } else if (tx._class === core.class.TxRemoveDoc) {
@@ -404,14 +404,14 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
     }
   }
 
-  private async processTx (ctx: MeasureContext<SessionData>, tx: Tx): Promise<void> {
+  private async processTx (ctx: MeasureContext<SessionData>, tx: Tx, skipCollaboratorRemove = false): Promise<void> {
     const h = this.context.hierarchy
     if (TxProcessor.isExtendsCUD(tx._class)) {
       const cudTx = tx as TxCUD<Doc>
       const isSpace = h.isDerived(cudTx.objectClass, core.class.Space)
       if (isSpace) {
         await this.handleTx(ctx, cudTx as TxCUD<Space>)
-      } else {
+      } else if (!skipCollaboratorRemove || tx._class !== core.class.TxRemoveDoc) {
         await this.handeCollaborator(ctx, cudTx as TxCUD<Collaborator>)
       }
       await this.processTxSpaceDomain(ctx, tx as TxCUD<Doc>)
@@ -425,13 +425,39 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
 
   async tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
     await this.init(ctx)
+    // Preserve removal notifications: these documents are unavailable after persistence.
+    const removedCollaborators: Collaborator[] = []
+    for (const tx of txes) {
+      const cud = tx as TxCUD<Collaborator>
+      if (
+        tx._class === core.class.TxRemoveDoc &&
+        this.context.hierarchy.isDerived(cud.objectClass, core.class.Collaborator)
+      ) {
+        removedCollaborators.push(
+          ...((await this.next?.findAll(ctx, core.class.Collaborator, {
+            _id: cud.objectId
+          })) ?? [])
+        )
+      }
+    }
+    const broadcast = ctx.contextData.broadcast
+    const start = broadcast.txes.length
+    // Authorization and persistence must succeed before changing read access or broadcasts.
+    const res = await this.provideTx(ctx, txes)
+    const persisted = broadcast.txes.length
     const processed = new Set<Ref<Tx>>()
     ctx.contextData.contextCache.set('processed', processed)
     for (const tx of txes) {
       processed.add(tx._id)
-      await this.processTx(ctx, tx)
+      await this.processTx(ctx, tx, true)
     }
-    return await this.provideTx(ctx, txes)
+    for (const collaborator of removedCollaborators) this.handleChangeCollaborator(ctx, collaborator)
+    // Clients must receive security events before the committed changes. A query refresh
+    // that follows an already applied update drops the pending live query notification.
+    if (broadcast.txes.length > persisted) {
+      broadcast.txes.splice(start, 0, ...broadcast.txes.splice(persisted))
+    }
+    return res
   }
 
   override async handleBroadcast (ctx: MeasureContext<SessionData>): Promise<void> {
