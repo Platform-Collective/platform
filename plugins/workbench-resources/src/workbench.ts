@@ -146,7 +146,9 @@ const syncTabLoc = reduceCalls(async (): Promise<void> => {
   }
 })
 
+let locationRevision = 0
 locationStore.subscribe(() => {
+  locationRevision++
   void syncTabLoc()
 })
 
@@ -343,6 +345,7 @@ async function leaveRemovedDocument (
   expectedLocation = loc
 ): Promise<void> {
   const currentUrl = locationToUrl(getCurrentLocation())
+  const revision = locationRevision
   const expectedUrl = locationToUrl(expectedLocation)
   const tabLocation = get(tabsStore).find((t) => t._id === tab._id)?.location
   const target = await getLocationWithoutDocument(loc, objectId)
@@ -352,7 +355,9 @@ async function leaveRemovedDocument (
   const shownUrl = locationToUrl(getCurrentLocation())
   const currentTab = get(tabsStore).find((t) => t._id === tab._id)
   if (get(tabIdStore) !== tab._id || currentTab?.isPinned !== false || currentTab.location !== tabLocation) return
-  if (shownUrl !== currentUrl && shownUrl !== expectedUrl) return
+  // A return to the previous app must win even when its URL matches the initial one.
+  const unchangedLocation = shownUrl === currentUrl && locationRevision === revision
+  if (shownUrl !== expectedUrl && !unchangedLocation) return
   if (target.path.length <= 3) forgetApplicationLocation(loc)
   const location = locationToUrl(target)
   if (!optimisticTabSources.has(tab._id)) optimisticTabSources.set(tab._id, tab)
