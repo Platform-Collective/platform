@@ -159,6 +159,7 @@
     "GroupByStatus": "Nach Status",
     "GroupByDate": "Nach Datum",
     "SpeakingWhileMuted": "Dein Mikrofon ist stumm - andere hören dich nicht",
-    "SpeakingWhileMutedAlert": "Warnen, wenn ich bei stummem Mikrofon spreche"
+    "SpeakingWhileMutedAlert": "Warnen, wenn ich bei stummem Mikrofon spreche",
+    "ScreenSharedBy": "{name} teilt den Bildschirm"
   }
 }

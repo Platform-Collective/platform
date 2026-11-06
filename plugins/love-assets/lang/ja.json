@@ -159,6 +159,7 @@
     "GroupByStatus": "ステータス別",
     "GroupByDate": "日付別",
     "SpeakingWhileMuted": "ミュート中です - 他の人に聞こえていません",
-    "SpeakingWhileMutedAlert": "ミュート中に話したら警告する"
+    "SpeakingWhileMutedAlert": "ミュート中に話したら警告する",
+    "ScreenSharedBy": "{name} が画面を共有しています"
   }
 }

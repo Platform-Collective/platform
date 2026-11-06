@@ -129,6 +129,7 @@ export default mergeIds(loveId, love, {
     ExpiresAt: '' as IntlString,
     Organizators: '' as IntlString,
     SpeakingWhileMuted: '' as IntlString,
-    SpeakingWhileMutedAlert: '' as IntlString
+    SpeakingWhileMutedAlert: '' as IntlString,
+    ScreenSharedBy: '' as IntlString
   }
 })
