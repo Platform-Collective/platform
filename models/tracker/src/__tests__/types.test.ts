@@ -17,7 +17,7 @@ describe('Milestone status type', () => {
   it('keeps the milestone status type with a localized label', () => {
     expect(TypeMilestoneStatus()).toEqual({
       _class: tracker.class.TypeMilestoneStatus,
-      label: tracker.string.Status
+      label: tracker.string.TypeMilestoneStatus
     })
   })
 
@@ -34,7 +34,7 @@ describe('Milestone status type', () => {
 
     try {
       expect(attribute.type._class).toBe(tracker.class.TypeMilestoneStatus)
-      expect(await translate(attribute.type.label, {}, 'en')).toBe('Status')
+      expect(await translate(attribute.type.label, {}, 'en')).toBe('Milestone status')
       expect(onStatus).not.toHaveBeenCalled()
     } finally {
       removeEventListener(PlatformEvent, onStatus)
