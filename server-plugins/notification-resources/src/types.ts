@@ -32,7 +32,10 @@ export interface Content {
 /**
  * @public
  */
-export type NotifyResult = Map<Ref<NotificationProvider>, NotificationType[]>
+export interface NotifyResult extends Map<Ref<NotificationProvider>, NotificationType[]> {
+  /** Request-local decisions for providers covered by a summary. */
+  coveredProviders?: Ref<NotificationProvider>[]
+}
 
 export interface NotifyParams {
   isOwn: boolean

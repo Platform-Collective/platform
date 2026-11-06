@@ -20,59 +20,65 @@
 //  - duplicates collapse, oversized payloads are capped, and an empty result
 //    after filtering dispatches nothing at all.
 
-import core, { type AccountUuid, type Ref } from '@hcengineering/core'
+import core, {
+  type AccountUuid,
+  type Doc,
+  type Ref,
+  type Tx,
+  type TxCreateDoc,
+  type TxUpdateDoc,
+  type MeasureContext,
+  type SessionData,
+  MeasureMetricsContext,
+  TxFactory,
+  TxProcessor
+} from '@hcengineering/core'
 import contact from '@hcengineering/contact'
-import notification from '@hcengineering/notification'
+import gmail from '@hcengineering/gmail'
+import notification, { type InboxNotification, type NotificationType } from '@hcengineering/notification'
+import type { ReceiverInfo, SenderInfo } from '@hcengineering/server-notification'
+import {
+  getCommonNotificationTxes,
+  isShouldNotifyTx,
+  NotificationProviderControl
+} from '@hcengineering/server-notification-resources'
+import gmailResources from '@hcengineering/server-gmail-resources'
+import { BroadcastMiddleware, TxMiddleware } from '@hcengineering/middleware'
+import type { PipelineContext } from '@hcengineering/server-core'
 
 // server-contact is mocked so the trigger's modifiedBy→account resolution is
 // deterministic without a live account store.
 const getAccountBySocialId = jest.fn()
 jest.mock('@hcengineering/server-contact', () => ({
-  getAccountBySocialId: (...a: unknown[]) => getAccountBySocialId(...a)
+  getAccountBySocialId: (...a: unknown[]) => getAccountBySocialId(...a),
+  getEmployeeByAcc: async () => ({ _id: 'employee' }),
+  getPerson: async () => undefined
 }))
 
-// Augment @hcengineering/tracker with the dependency-shift symbols the compiled fixture may
-// not yet expose in a partial build; the grouping impl is exercised in full by
-// plugins/tracker group-shifts.test.ts.
-jest.mock('@hcengineering/tracker', () => {
-  const actual = jest.requireActual('@hcengineering/tracker')
-  function groupShiftsByRecipient (
-    triggerUserId: AccountUuid | undefined,
-    entries: any[],
-    collaboratorsByIssue: Map<any, AccountUuid[]>
-  ): Map<AccountUuid, any[]> {
-    const result = new Map<AccountUuid, any[]>()
-    for (const entry of entries) {
-      const collaborators = collaboratorsByIssue.get(entry.issueId) ?? []
-      const seen = new Set<AccountUuid>()
-      for (const acc of collaborators) {
-        if (triggerUserId !== undefined && acc === triggerUserId) continue
-        if (seen.has(acc)) continue
-        seen.add(acc)
-        const bucket = result.get(acc)
-        if (bucket === undefined) result.set(acc, [entry])
-        else bucket.push(entry)
-      }
-    }
-    return result
-  }
+// Keep routing and provider settings real; stub only identity, templates and transport.
+jest.mock('@hcengineering/platform', () => ({
+  ...jest.requireActual('@hcengineering/platform'),
+  getMetadata: (key: string) => (key === 'server-notification:metadata:MailUrl' ? 'http://mail.test' : undefined)
+}))
+jest.mock('@hcengineering/server-notification-resources', () => {
+  const actual = jest.requireActual<typeof import('@hcengineering/server-notification-resources')>(
+    '@hcengineering/server-notification-resources'
+  )
   return {
-    __esModule: true,
     ...actual,
-    groupShiftsByRecipient,
-    default: {
-      ...actual.default,
-      class: {
-        ...actual.default.class,
-        DependencyShiftRequest: 'tracker:class:DependencyShiftRequest'
-      }
-    }
+    getNotificationProviderControl: async () => new actual.NotificationProviderControl([], []),
+    getReceiversInfo: async () => [{ account: 'acc-member', socialIds: ['member-social'] }],
+    getContentByTemplate: async (_doc: unknown, _sender: unknown, type: string) => ({
+      text: type,
+      html: `<p>${type}</p>`,
+      subject: type
+    })
   }
 })
 
 // Imported after the mocks are registered.
 import { OnDependencyShiftRequest } from '../index'
-import tracker from '@hcengineering/tracker'
+import tracker, { type DependencyShiftedNotification } from '@hcengineering/tracker'
 
 const REAL = 'acc-real' as AccountUuid
 const MEMBER = 'acc-member' as AccountUuid
@@ -84,8 +90,8 @@ const FOREIGN = 'project2'
 const DAY = 86_400_000
 const DAY0 = 1_700_000_000_000
 
-/** Must mirror `MAX_SHIFTED_ISSUES` in ../index. */
-const MAX_SHIFTED_ISSUES = 200
+/** Must mirror `MAX_DISPLAYED_SHIFTED_ISSUES` in ../index. */
+const MAX_DISPLAYED_SHIFTED_ISSUES = 200
 
 interface FakeIssue {
   _id: string
@@ -189,6 +195,7 @@ function makeControl (opts: WorldOptions = {}): any {
     }
     return []
   })
+  let nextTxId = 0
   const txFactory = {
     createTxRemoveDoc: (_class: any, space: any, objectId: any) => ({
       _class: core.class.TxRemoveDoc,
@@ -204,6 +211,7 @@ function makeControl (opts: WorldOptions = {}): any {
       operations
     }),
     createTxCreateDoc: (_class: any, space: any, attributes: any, objectId?: any) => ({
+      _id: `generated-tx-${++nextTxId}`,
       _class: core.class.TxCreateDoc,
       objectClass: _class,
       objectSpace: space,
@@ -211,7 +219,7 @@ function makeControl (opts: WorldOptions = {}): any {
       objectId
     })
   }
-  return { ctx: { contextData: {} }, findAll, txFactory }
+  return { ctx: { contextData: {} }, findAll, txFactory, txes: [], contextCache: new Map() }
 }
 
 function makeReqTx (modifiedBy: string, over: Partial<Record<string, unknown>> = {}): any {
@@ -241,6 +249,12 @@ function isShiftedNotificationCreate (tx: any): boolean {
   return tx?._class === core.class.TxCreateDoc && tx?.objectClass === tracker.class.DependencyShiftedNotification
 }
 
+function requireSummary (txes: Tx[]): TxCreateDoc<DependencyShiftedNotification> {
+  const tx = txes.find(isShiftedNotificationCreate)
+  if (tx === undefined) throw new Error('Expected a dependency-shift summary')
+  return tx as TxCreateDoc<DependencyShiftedNotification>
+}
+
 function isContextCreate (tx: any): boolean {
   return tx?._class === core.class.TxCreateDoc && tx?.objectClass === notification.class.DocNotifyContext
 }
@@ -255,7 +269,7 @@ describe('OnDependencyShiftRequest', () => {
     getAccountBySocialId.mockResolvedValue(REAL)
   })
 
-  it('derives triggerUserId from tx.modifiedBy and self-suppresses the author', async () => {
+  it('creates an email-eligible summary and self-suppresses the author', async () => {
     getAccountBySocialId.mockResolvedValue(REAL) // modifiedBy 'social-real' → REAL account
     const control = makeControl()
     const res = await OnDependencyShiftRequest([makeReqTx('social-real')], control)
@@ -266,11 +280,242 @@ describe('OnDependencyShiftRequest', () => {
     expect(notif.attributes.triggerUserId).toBe(REAL)
     // Recipient is the member, not the self-suppressed author.
     expect(notif.attributes.user).toBe(MEMBER)
+    // Gmail reads the first notification type to select the email template.
+    // The real plugin id: an undefined id would silently drop the summary email.
+    expect(notif.attributes.types).toEqual(['tracker:ids:DependencyShiftedNotification'])
+    expect(tracker.ids.DependencyShiftedNotification).toBe('tracker:ids:DependencyShiftedNotification')
     // No self-notification back to the trigger user.
     const selfNotif = res.filter(isShiftedNotificationCreate).some((t: any) => t.attributes.user === REAL)
     expect(selfNotif).toBe(false)
     // The request doc is always cleaned up.
     expect(requestRemoved(res)).toBe(true)
+  })
+
+  it.each([false, true])(
+    'carries coverage with the summary without editing input txes (reversed=%s)',
+    async (reversed) => {
+      const control = makeControl()
+      const request = makeReqTx('social-real')
+      const dueDateUpdate = Object.freeze({
+        _id: 'date-tx',
+        _class: core.class.TxUpdateDoc,
+        objectClass: tracker.class.Issue,
+        objectId: 'issueB',
+        objectSpace: HOME,
+        modifiedBy: request.modifiedBy,
+        meta: Object.freeze({ public: 'unchanged' }),
+        operations: Object.freeze({ dueDate: DAY0 + 10 * DAY })
+      })
+      const otherAuthor = { ...dueDateUpdate, _id: 'other-author', modifiedBy: 'someone-else' }
+      const otherSpace = { ...dueDateUpdate, _id: 'other-space', objectSpace: FOREIGN }
+      const otherField = { ...dueDateUpdate, _id: 'other-field', operations: { title: 'new title' } }
+      control.txes = [dueDateUpdate, otherAuthor, otherSpace, otherField, request]
+      if (reversed) control.txes.reverse()
+      const before = JSON.stringify(control.txes)
+
+      const result = await OnDependencyShiftRequest([request], control)
+      const summary = requireSummary(result)
+      const coverage = control.contextCache.get('notification:provider-coverage')
+      expect(coverage.get('date-tx')).toEqual([
+        {
+          summary: summary._id,
+          recipient: MEMBER,
+          provider: 'gmail:providers:EmailNotificationProvider',
+          type: tracker.ids.DependencyShiftedNotification,
+          field: 'dueDate'
+        }
+      ])
+      expect([...coverage.keys()]).toEqual(['date-tx'])
+      expect(JSON.stringify(control.txes)).toBe(before)
+      expect(JSON.stringify(result)).not.toContain('notification:provider-coverage')
+      expect(result.every((tx: Tx) => tx.meta === undefined)).toBe(true)
+    }
+  )
+
+  it('sends exactly one email for 201 moved issues with both email types enabled', async () => {
+    const moved = Array.from({ length: 201 }, (_, i) => issue(`bulk${i}`, HOME, `PROJ-${i + 10}`, `Bulk ${i}`))
+    const control = makeControl({
+      issues: [...defaultIssues(), ...moved],
+      collaborators: Object.fromEntries(moved.map((doc) => [doc._id, [MEMBER]]))
+    })
+    const request = makeReqTx('social-real', { shiftedIssues: moved.map((doc) => payload(doc._id)) })
+    control.txFactory = new TxFactory(core.account.System)
+    const updates = moved.map((doc) => ({
+      ...control.txFactory.createTxUpdateDoc(tracker.class.Issue, HOME, doc._id, { dueDate: DAY0 + 10 * DAY }),
+      modifiedBy: request.modifiedBy
+    })) as TxUpdateDoc<Doc>[]
+    control.txes = [...updates, request]
+    const generated = await OnDependencyShiftRequest([request], control)
+    const summary = requireSummary(generated)
+    expect(generated.filter(isShiftedNotificationCreate)).toHaveLength(1)
+    expect(summary.attributes.shiftedIssues).toHaveLength(MAX_DISPLAYED_SHIFTED_ISSUES)
+
+    const dueDateType: NotificationType = {
+      _id: 'tracker:notification:Issue_dueDate' as Ref<NotificationType>,
+      _class: notification.class.NotificationType,
+      space: core.space.Model,
+      modifiedBy: core.account.System,
+      modifiedOn: DAY0,
+      label: notification.string.Notifications,
+      generated: false,
+      hidden: false,
+      group: notification.ids.NotificationGroup,
+      field: 'dueDate',
+      defaultEnabled: true,
+      txClasses: [core.class.TxUpdateDoc],
+      objectClass: tracker.class.Issue
+    }
+    const summaryType: NotificationType = {
+      ...dueDateType,
+      _id: tracker.ids.DependencyShiftedNotification,
+      objectClass: tracker.class.DependencyShiftedNotification,
+      txClasses: [core.class.TxCreateDoc],
+      field: undefined
+    }
+    const providers = [gmail.providers.EmailNotificationProvider, notification.providers.InboxNotificationProvider].map(
+      (_id) => ({ _id, defaultEnabled: true })
+    )
+    control.modelDb = {
+      findObject: () => summaryType,
+      getObject: (id: string) => (id === summaryType._id ? summaryType : dueDateType),
+      findAllSync: (clazz: unknown) => {
+        if (clazz === notification.class.NotificationProvider) return providers
+        if (clazz === notification.class.NotificationType) return [dueDateType]
+        return []
+      }
+    }
+    control.hierarchy = {
+      getBaseClass: (clazz: unknown) => clazz,
+      isDerived: (clazz: unknown, parent: unknown) =>
+        clazz === parent ||
+        (clazz === tracker.class.DependencyShiftedNotification &&
+          parent === notification.class.CommonInboxNotification),
+      hasMixin: () => false
+    }
+    control.ctx = { info: jest.fn(), warn: jest.fn(), error: jest.fn() }
+    control.lowLevel = { rawFindAll: jest.fn().mockResolvedValue([{ value: 'member@example.test' }]) }
+    control.findAll = jest.fn(async (_ctx: unknown, clazz: unknown, q: { _id?: string, objectId?: string }) => {
+      if (clazz === notification.class.DocNotifyContext) return [{ _id: 'context', user: MEMBER, objectId: q.objectId }]
+      return [...defaultIssues(), ...moved].filter((doc) => doc._id === q._id)
+    })
+    control.txes.push(...generated)
+    const receiver: ReceiverInfo = {
+      account: MEMBER,
+      socialIds: ['member-social' as ReceiverInfo['socialIds'][number]],
+      space: 'person-space' as ReceiverInfo['space'],
+      employee: 'emp-acc-member' as ReceiverInfo['employee'],
+      role: undefined
+    }
+    const sender: SenderInfo = { socialId: request.modifiedBy }
+    const notifications: TxCreateDoc<InboxNotification>[] = [summary]
+    for (const update of updates) {
+      const doc: Doc = {
+        _id: update.objectId,
+        _class: tracker.class.Issue,
+        space: update.objectSpace,
+        modifiedBy: update.modifiedBy,
+        modifiedOn: update.modifiedOn
+      }
+      const result = await isShouldNotifyTx(
+        control,
+        update,
+        doc,
+        receiver,
+        false,
+        false,
+        new NotificationProviderControl([], [])
+      )
+      const txes = await getCommonNotificationTxes(
+        control.ctx,
+        control,
+        doc,
+        {},
+        receiver,
+        sender,
+        doc._id,
+        doc._class,
+        doc.space,
+        1,
+        result,
+        notification.class.CommonInboxNotification,
+        update
+      )
+      notifications.push(...(txes as TxCreateDoc<InboxNotification>[]))
+    }
+    expect(notifications).toHaveLength(202) // All ordinary inbox notifications remain available.
+    const originalFetch = globalThis.fetch
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true })
+    globalThis.fetch = fetchMock
+    try {
+      await (await gmailResources()).trigger.NotificationsHandler(notifications, control)
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body as string)).toMatchObject({
+        subject: summaryType._id,
+        to: ['member@example.test']
+      })
+      expect(summary.attributes.intlParams?.count).toBe(201)
+      expect(control.contextCache.get('notification:provider-coverage').size).toBe(201)
+      expect(control.ctx.error).not.toHaveBeenCalled()
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it('keeps coverage out of transaction storage, documents and client broadcasts', async () => {
+    const control = makeControl()
+    const request = makeReqTx('social-real')
+    const update = {
+      _id: 'date-tx',
+      _class: core.class.TxUpdateDoc,
+      space: core.space.Tx,
+      objectClass: tracker.class.Issue,
+      objectId: 'issueB',
+      objectSpace: HOME,
+      modifiedBy: request.modifiedBy,
+      operations: { dueDate: DAY0 + 10 * DAY }
+    }
+    control.txes = [update, request]
+    control.txFactory = new TxFactory(core.account.System)
+    const generated = await OnDependencyShiftRequest([request], control)
+    expect(control.contextCache.has('notification:provider-coverage')).toBe(true)
+
+    const stored = jest.fn(async (..._args: unknown[]) => [])
+    const sent = jest.fn()
+    const ctx = new MeasureMetricsContext('test', {}) as MeasureContext<SessionData>
+    ctx.contextData = {
+      contextCache: control.contextCache,
+      broadcast: { txes: [], targets: {}, queue: [], sessions: {} }
+    } as unknown as SessionData
+    const pipeline = {
+      hierarchy: { findDomain: () => 'notification' },
+      adapterManager: { getAdapter: () => ({ tx: stored }) }
+    } as unknown as PipelineContext
+    const broadcast = new BroadcastMiddleware(pipeline, undefined, {
+      broadcast: sent,
+      broadcastSessions: jest.fn()
+    })
+    const storage = await TxMiddleware.create(ctx, pipeline, broadcast)
+    const txes = [update, request, ...generated] as Tx[]
+
+    await storage.tx(ctx, txes)
+    await broadcast.handleBroadcast(ctx)
+
+    expect(stored).toHaveBeenCalledTimes(1)
+    expect(sent).toHaveBeenCalledTimes(1)
+    const persisted = stored.mock.calls[0].slice(1)
+    const broadcastTxes = sent.mock.calls[0][1] as Tx[]
+    expect(persisted).toHaveLength(txes.length)
+    expect(broadcastTxes).toEqual(expect.arrayContaining(txes))
+    for (const transport of [persisted, broadcastTxes]) {
+      expect(JSON.stringify(transport)).not.toContain('notification:provider-coverage')
+      expect(JSON.stringify(transport)).not.toContain('notification:provider-suppressions')
+      expect(transport.every((tx) => (tx as Tx).meta === undefined)).toBe(true)
+    }
+    const summaryTx = requireSummary(generated)
+    const summaryDoc = TxProcessor.createDoc2Doc(summaryTx)
+    expect(summaryDoc).not.toHaveProperty('meta')
+    expect(summaryDoc).not.toHaveProperty('coverage')
+    expect(summaryTx.meta).toBeUndefined()
   })
 
   it('fails closed (no notifications) when the author account cannot be resolved', async () => {
@@ -406,10 +651,10 @@ describe('OnDependencyShiftRequest', () => {
     expect(notif.attributes.intlParams.count).toBe(1)
   })
 
-  it('caps an oversized payload at MAX_SHIFTED_ISSUES', async () => {
+  it('caps an oversized payload at MAX_DISPLAYED_SHIFTED_ISSUES', async () => {
     const many: FakeIssue[] = [issue('issueA', HOME, 'PROJ-1', 'Trigger issue', 0)]
     const collaborators: Record<string, AccountUuid[]> = {}
-    for (let i = 0; i < MAX_SHIFTED_ISSUES + 50; i++) {
+    for (let i = 0; i < MAX_DISPLAYED_SHIFTED_ISSUES + 50; i++) {
       many.push(issue(`bulk${i}`, HOME, `PROJ-${i + 10}`, `Bulk ${i}`))
       collaborators[`bulk${i}`] = [MEMBER]
     }
@@ -424,7 +669,7 @@ describe('OnDependencyShiftRequest', () => {
     )
 
     const notif = res.find(isShiftedNotificationCreate) as any
-    expect(notif.attributes.shiftedIssues).toHaveLength(MAX_SHIFTED_ISSUES)
+    expect(notif.attributes.shiftedIssues).toHaveLength(MAX_DISPLAYED_SHIFTED_ISSUES)
   })
 
   it('dispatches nothing when the payload is empty after filtering', async () => {
