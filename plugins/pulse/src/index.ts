@@ -18,3 +18,6 @@ import pulsePlugin, { pulseId } from './plugin'
 export type * from './types'
 export { pulseId }
 export default pulsePlugin
+
+export * from './client'
+export * from './reconnect'
