@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import type { Employee } from '@hcengineering/contact'
+import { getCurrentEmployee, type Employee } from '@hcengineering/contact'
 import { getCurrentAccount, type AccountUuid } from '@hcengineering/core'
 import login from '@hcengineering/login'
 import { getResource } from '@hcengineering/platform'
@@ -8,6 +8,7 @@ import { getClient } from '@hcengineering/presentation'
 import { showPopup } from '@hcengineering/ui'
 import { canKickEmployee, kickEmployee } from './kick-employee'
 
+jest.mock('@hcengineering/contact', () => ({ getCurrentEmployee: jest.fn() }), { virtual: true })
 jest.mock('@hcengineering/core', () => ({ getCurrentAccount: jest.fn() }), { virtual: true })
 jest.mock('@hcengineering/login', () => ({ function: { LeaveWorkspace: 'leave-workspace' } }), { virtual: true })
 jest.mock('@hcengineering/platform', () => ({ getResource: jest.fn() }), { virtual: true })
@@ -26,6 +27,7 @@ describe('kickEmployee', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    jest.mocked(getCurrentEmployee).mockReturnValue('current-employee' as ReturnType<typeof getCurrentEmployee>)
     jest
       .mocked(getCurrentAccount)
       .mockReturnValue({ uuid: currentAccountUuid } as unknown as ReturnType<typeof getCurrentAccount>)
@@ -93,4 +95,29 @@ describe('kickEmployee', () => {
     expect(getResource).not.toHaveBeenCalled()
     expect(leaveWorkspace).not.toHaveBeenCalled()
   })
+
+  it('protects the current employee when the account link is missing', async () => {
+    const employee = createEmployee()
+    jest.mocked(getCurrentEmployee).mockReturnValue(employee._id)
+
+    expect(await canKickEmployee(employee)).toBe(false)
+    await kickEmployee(employee)
+
+    expect(showPopup).not.toHaveBeenCalled()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('rejects missing and empty selections', async () => {
+    expect(await canKickEmployee(undefined)).toBe(false)
+    expect(await canKickEmployee([])).toBe(false)
+  })
+
+  it('hides the action for a mixed selection containing the current employee', async () => {
+    const other = createEmployee(otherAccountUuid)
+    const current = createEmployee(currentAccountUuid)
+
+    expect(await canKickEmployee([other])).toBe(true)
+    expect(await canKickEmployee([other, current])).toBe(false)
+  })
+
 })

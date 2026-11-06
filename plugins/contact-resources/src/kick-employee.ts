@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import type { Person } from '@hcengineering/contact'
+import { getCurrentEmployee, type Person } from '@hcengineering/contact'
 import { getCurrentAccount } from '@hcengineering/core'
 import login from '@hcengineering/login'
 import { getResource } from '@hcengineering/platform'
@@ -9,12 +9,14 @@ import { showPopup } from '@hcengineering/ui'
 import contact from './plugin'
 
 function isCurrentAccount (doc: Person): boolean {
-  return doc.personUuid === getCurrentAccount().uuid
+  return doc.personUuid === getCurrentAccount().uuid || doc._id === getCurrentEmployee()
 }
 
 /** Removing yourself would log you out of the workspace for good, so the action is hidden for your own person. */
-export async function canKickEmployee (doc: Person): Promise<boolean> {
-  return !isCurrentAccount(doc)
+export async function canKickEmployee (doc: Person | Person[] | undefined): Promise<boolean> {
+  if (doc === undefined) return false
+  const people = Array.isArray(doc) ? doc : [doc]
+  return people.length > 0 && !people.some(isCurrentAccount)
 }
 
 export async function kickEmployee (doc: Person): Promise<void> {
