@@ -186,7 +186,13 @@
           {#each extraHeaders ?? [] as extra}
             <Component
               is={extra}
-              props={{ ...props, value: category, category: groupByKey, docs: items, categoryQuery }}
+              props={{
+                ...props,
+                value: category,
+                category: groupByKey,
+                docs: items,
+                categoryQuery
+              }}
             />
           {/each}
         </div>
