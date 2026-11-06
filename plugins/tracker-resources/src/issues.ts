@@ -7,6 +7,7 @@ import { accessDeniedStore } from '@hcengineering/view-resources'
 import { workbenchId } from '@hcengineering/workbench'
 import { writable } from 'svelte/store'
 import tracker from './plugin'
+import { findIssueByIdentifier } from './issue-identifiers'
 
 export const activeComponent = writable<Ref<Component> | undefined>(undefined)
 export const activeMilestone = writable<Ref<Milestone> | undefined>(undefined)
@@ -72,7 +73,7 @@ export function generateIssueShortLink (issueId: string): string {
 
 export async function generateIssueLocation (loc: Location, issueId: string): Promise<ResolvedLocation | undefined> {
   const client = getClient()
-  const issue = await client.findOne(tracker.class.Issue, { identifier: issueId }, { showArchived: true })
+  const issue = await findIssueByIdentifier(client, issueId)
   if (issue === undefined) {
     accessDeniedStore.set(true)
     console.error(`Could not find issue ${issueId}.`)
@@ -130,7 +131,7 @@ export async function updateIssueRelation (
 export async function getIssueIdByIdentifier (identifier: string): Promise<Ref<Issue> | undefined> {
   if (!isIssueId(identifier)) return
   const client = getClient()
-  const issue = await client.findOne(tracker.class.Issue, { identifier })
+  const issue = await findIssueByIdentifier(client, identifier)
 
   return issue?._id
 }

@@ -41,6 +41,7 @@ import {
   TDependencyShiftedNotification,
   TDependencyShiftRequest,
   TIssue,
+  TIssueIdentifierAlias,
   TIssueRelation,
   TIssueStatus,
   TIssueTemplate,
@@ -475,6 +476,7 @@ export function createModel (builder: Builder): void {
     TProject,
     TComponent,
     TIssue,
+    TIssueIdentifierAlias,
     TIssueRelation,
     TIssueTemplate,
     TIssueStatus,
@@ -490,6 +492,10 @@ export function createModel (builder: Builder): void {
     TDependencyShiftedNotification,
     TDependencyShiftRequest
   )
+
+  builder.mixin(tracker.class.IssueIdentifierAlias, core.class.Class, core.mixin.TxAccessLevel, {
+    serverOnly: true
+  })
 
   builder.mixin(tracker.class.Project, core.class.Class, activity.mixin.ActivityDoc, {})
   builder.mixin(tracker.class.Issue, core.class.Class, activity.mixin.ActivityDoc, {})

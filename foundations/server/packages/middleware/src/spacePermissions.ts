@@ -441,6 +441,14 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
 
     const cudTx = tx as TxCUD<Doc>
     const h = this.context.hierarchy
+    // Derived transactions enter the pipeline after permission checks. Do not trust
+    // a client-supplied transaction space to identify server-generated writes.
+    if (
+      h.classHierarchyMixin(cudTx.objectClass, core.mixin.TxAccessLevel)?.serverOnly === true &&
+      ctx.contextData.account.primarySocialId !== core.account.System
+    ) {
+      this.throwForbidden()
+    }
     const isSpace = h.isDerived(cudTx.objectClass, core.class.Space)
 
     this.checkSpacePermissions(ctx, cudTx, cudTx.objectSpace)
