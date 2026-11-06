@@ -11,6 +11,14 @@
   import { createEventDispatcher } from 'svelte'
 
   import workflowRules from '../plugin'
+  import {
+    aggregateStatusesAcrossTaskTypes,
+    isCandidateTarget,
+    resolveAllowedLoops,
+    resolvePairLinkKinds,
+    type SiblingRule,
+    type StatusLike
+  } from '../pure'
 
   export let currentSpace: Ref<Project>
   export let existingForward: WorkflowRule | undefined = undefined
@@ -34,9 +42,16 @@
   let allProjects: Project[] = []
   let projectsById: Record<string, Project> = {}
 
-  // Rules already defined in currentSpace: used to prevent two pairings
-  // against the same linked project.
-  let siblingRules: WorkflowRule[] = []
+  // Rules that already pair currentSpace with some other project, in either
+  // direction. We need both:
+  //   - rules IN currentSpace (space = currentSpace): would clash when
+  //     offering the same linked project twice;
+  //   - rules POINTING AT currentSpace (linkedProject = currentSpace): an
+  //     A->B rule stored in A must still block B from creating a second
+  //     pairing targeting A (otherwise both ends claim the primary role).
+  let localSiblingRules: WorkflowRule[] = []
+  let incomingSiblingRules: WorkflowRule[] = []
+  const incomingSiblingsQ = createQuery()
 
   $: projectsQ.query(tracker.class.Project, {}, (res) => {
     allProjects = res as Project[]
@@ -46,7 +61,11 @@
   })
 
   $: pairedQ.query(workflowRules.class.WorkflowRule, { space: currentSpace }, (res) => {
-    siblingRules = res as unknown as WorkflowRule[]
+    localSiblingRules = res as unknown as WorkflowRule[]
+  })
+
+  $: incomingSiblingsQ.query(workflowRules.class.WorkflowRule, { linkedProject: currentSpace }, (res) => {
+    incomingSiblingRules = res as unknown as WorkflowRule[]
   })
 
   const isEditing = existingForward !== undefined
@@ -79,28 +98,27 @@
     return currentUserMemberOf(p)
   }
 
-  // Projects offered as a pairing target. Excludes:
-  //  - the current project (would be self-pairing),
-  //  - archived / restricted targets (server would refuse to mirror anyway),
-  //  - projects the current user is not a member/owner of (the reverse rule
-  //    is written into THAT project's space, which the server authz check
-  //    would refuse for a non-member),
-  //  - projects already paired with current (prevents duplicate pairings).
-  //  In edit mode the linked project is also excluded from the picker since
-  //  the picker is disabled - but it would be filtered out by the
-  //  already-paired rule anyway.
+  // Projects offered as a pairing target. The candidate filter is pushed
+  // through `isCandidateTarget` (pure helper) so Jest can exercise the
+  // same inclusion/exclusion rules without a DOM:
+  //  - self-pairing, archived, restricted, non-member: no
+  //  - already paired in EITHER direction: no (pairedBy carries the id)
+  // In edit mode the target of the pair must still render in the dropdown
+  // so its label resolves; the picker itself is disabled so the user can't
+  // reselect it anyway.
   $: candidateProjects = allProjects.filter((p) => {
-    if (p._id === currentSpace) return false
     if (!isWritable(p)) return false
-    const already = siblingRules.find((r) => r.linkedProject === p._id)
-    if (already !== undefined) {
-      // Allow the current pairing's target to stay in the list in edit
-      // mode (even though the picker is disabled, the Dropdown still needs
-      // to resolve the selected id's label).
-      if (isEditing && already._id === existingForward?._id) return true
-      return false
-    }
-    return true
+    const me = getCurrentAccount().uuid
+    const res = isCandidateTarget(
+      p as unknown as Parameters<typeof isCandidateTarget>[0],
+      currentSpace,
+      me,
+      localSiblingRules as unknown as SiblingRule[],
+      incomingSiblingRules as unknown as SiblingRule[]
+    )
+    if (res.ok) return true
+    if (isEditing && (res.pairedBy === existingForward?._id || res.pairedBy === existingReverse?._id)) return true
+    return false
   })
 
   $: projectItems = candidateProjects.map(
@@ -113,16 +131,38 @@
     if (proj === undefined || token !== loadToken) return []
     const ptype = await client.findOne<ProjectType>(task.class.ProjectType, { _id: proj.type })
     if (ptype === undefined || token !== loadToken) return []
-    const ttId = ptype.tasks?.[0]
-    if (ttId === undefined) return []
-    const tt = await client.findOne<TaskType>(task.class.TaskType, { _id: ttId })
-    if (tt === undefined || token !== loadToken) return []
-    const out: StatusEntry[] = []
-    const statusIds = (tt.statuses ?? []) as Array<Ref<IssueStatus>>
-    for (const sid of statusIds) {
-      const s = await client.findOne(tracker.class.IssueStatus, { _id: sid })
+    // Aggregate statuses across EVERY TaskType in the project type, not just
+    // the first. Multi-TaskType projects (e.g., Issue + Bug) stored loops and
+    // mappings against statuses from any type; loading only `tasks[0]` left
+    // the other types unmappable and made loopsValid reject rows that
+    // reference their statuses as "stale". `aggregateStatusesAcrossTaskTypes`
+    // owns the dedup + ordering so the Jest spec exercises the same path.
+    const taskIds = (ptype.tasks ?? []) as Array<Ref<TaskType>>
+    if (taskIds.length === 0) return []
+    const tasks: Array<{ statuses: Array<Ref<IssueStatus>> }> = []
+    for (const ttId of taskIds) {
+      const tt = await client.findOne<TaskType>(task.class.TaskType, { _id: ttId })
       if (token !== loadToken) return []
-      if (s !== undefined) out.push({ id: sid, name: s.name, category: s.category, status: s })
+      if (tt === undefined) continue
+      tasks.push({ statuses: (tt.statuses ?? []) as Array<Ref<IssueStatus>> })
+    }
+    const statusById = new Map<string, IssueStatus>()
+    const uniqueIds = new Set<string>()
+    for (const t of tasks) for (const sid of t.statuses) uniqueIds.add(sid as string)
+    for (const sid of uniqueIds) {
+      const s = await client.findOne(tracker.class.IssueStatus, { _id: sid as Ref<IssueStatus> })
+      if (token !== loadToken) return []
+      if (s !== undefined) statusById.set(sid, s)
+    }
+    const slim: StatusLike[] = aggregateStatusesAcrossTaskTypes(tasks, (id) => {
+      const s = statusById.get(id as string)
+      if (s === undefined) return undefined
+      return { id, name: s.name, category: s.category }
+    })
+    const out: StatusEntry[] = []
+    for (const sl of slim) {
+      const s = statusById.get(sl.id as string)
+      if (s !== undefined) out.push({ id: sl.id, name: sl.name, category: sl.category, status: s })
     }
     return out
   }
@@ -223,9 +263,15 @@
     reverseMap = next
   }
 
+  // Explicit reset wipes BOTH the status maps and any customized
+  // allowedLoops; preserved-on-save (below) only applies when the user has
+  // not asked for a reset. Without the loops reset, Advanced editor state
+  // could be left stranded after a mapping reset.
+  let loopsResetRequested = false
   function resetMappings(): void {
     forwardMap = buildAutoMap(sourceStatuses, targetStatuses)
     reverseMap = buildAutoMap(targetStatuses, sourceStatuses)
+    loopsResetRequested = true
   }
 
   function mappedTarget(sourceId: string, targets: StatusEntry[]): StatusEntry | undefined {
@@ -259,19 +305,38 @@
   async function save(): Promise<void> {
     if (!canSave || linkedProject === undefined) return
     const trimmedName = name.trim()
-    const forwardLoops = buildAllowedLoops(targetStatuses)
-    const reverseLoops = buildAllowedLoops(sourceStatuses)
+    // Preserve customized allowedLoops across pair-level edits (rename,
+    // retoggle bidirectionality, remap statuses). Pressing Reset flips the
+    // `loopsResetRequested` flag; the Advanced editor owns per-rule loop
+    // editing. Both sides go through `resolveAllowedLoops` so the Jest
+    // spec can exercise the same preserve/regenerate decision.
+    const forwardLoops = resolveAllowedLoops(
+      existingForward?.allowedLoops,
+      targetStatuses as unknown as StatusLike[],
+      { isCreate: existingForward === undefined, resetRequested: loopsResetRequested }
+    )
+    const reverseLoops = resolveAllowedLoops(
+      existingReverse?.allowedLoops,
+      sourceStatuses as unknown as StatusLike[],
+      { isCreate: existingReverse === undefined, resetRequested: loopsResetRequested }
+    )
+    const linkKinds = resolvePairLinkKinds()
 
     const ops = client.apply()
     // Preserve `enabled` on edit (don't force-resume a paused pair);
     // default to true on create.
     const forwardEnabled = existingForward?.enabled ?? true
+    // The pairing wizard models the (sub -> parent) direction as the
+    // canonical primary. Editing should never flip that: the panel refuses
+    // to offer this editor from the reverse endpoint (see
+    // WorkflowRulesPanel's `primaryPairings` filter), so an edit here is
+    // either a create (primary = subIssue, reverse = parentIssue) or an
+    // edit of a pair whose forward is already subIssue. Hardcode the
+    // mapping on every save so a stale stored value (older rows, future
+    // migrations) cannot produce two parentIssue rules on one edge.
     const forwardData: Partial<WorkflowRule> = {
       linkedProject,
-      // In edit mode we keep the stored `linkKind` instead of hardcoding
-      // a side; the panel only opens this editor from the primary side so
-      // `subIssue` is the correct create-time default.
-      linkKind: existingForward?.linkKind ?? 'subIssue',
+      linkKind: linkKinds.forward,
       name: trimmedName.length > 0 ? trimmedName : undefined,
       forwardMap,
       allowedLoops: forwardLoops,
@@ -287,7 +352,7 @@
       const reverseEnabled = existingReverse?.enabled ?? true
       const reverseData: Partial<WorkflowRule> = {
         linkedProject: currentSpace,
-        linkKind: existingReverse?.linkKind ?? 'parentIssue',
+        linkKind: linkKinds.reverse,
         name: trimmedName.length > 0 ? trimmedName : undefined,
         forwardMap: reverseMap,
         allowedLoops: reverseLoops,

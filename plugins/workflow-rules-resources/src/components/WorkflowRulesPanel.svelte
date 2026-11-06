@@ -21,6 +21,11 @@
   import workflowRules from '../plugin'
   import PairProjectEditor from './PairProjectEditor.svelte'
   import EditWorkflowRule from './EditWorkflowRule.svelte'
+  import {
+    canEditPair as canEditPairPure,
+    classifyPairings,
+    type PairClassifierRule
+  } from '../pure'
 
   export let currentSpace: Ref<Project>
 
@@ -84,32 +89,47 @@
     hasReverseHere: boolean
   }
 
-  // Primary pairings: each forward rule in currentSpace is one; the reverse
-  // rule is the one in the linked project whose `linkedProject` is us.
-  $: primaryPairings = (() => {
-    const out: PrimaryPairing[] = []
-    for (const r of localRules) {
-      const reverse = incomingRules.find((rr) => rr.space === r.linkedProject && rr.linkedProject === currentSpace)
-      out.push({ kind: 'primary', other: r.linkedProject, forward: r, reverse })
-    }
-    return out
-  })()
+  // Pair classification is delegated to `classifyPairings` so the Jest
+  // spec exercises the same path. The primary endpoint of a pair is the
+  // side whose rule carries `linkKind === 'subIssue'`. The reverse side
+  // (`parentIssue`) must NOT be offered for direct editing - saving from
+  // there would otherwise flip the mirrored rule's linkKind (two
+  // `parentIssue` rules on one edge, Michael's rev-1 reproducer).
+  $: classified = classifyPairings(
+    currentSpace,
+    localRules as unknown as PairClassifierRule[],
+    incomingRules as unknown as PairClassifierRule[]
+  )
+  // Rehydrate the full rule object the panel needs for actions/labels from
+  // the ids the classifier returns. Non-null assertions are safe: the ids
+  // are sourced from the same arrays we're resolving them against.
+  $: primaryPairings = classified.primary.map((p) => {
+    const forward = localRules.find((r) => r._id === p.forwardId)!
+    const reverse = p.reverseId !== undefined ? incomingRules.find((r) => r._id === p.reverseId) : undefined
+    return { kind: 'primary', other: p.other, forward, reverse } as PrimaryPairing
+  })
+  $: incomingPairings = classified.incoming.map((p) => {
+    const inbound = (p.hasReverseHere
+      ? localRules.find((r) => r._id === p.inboundId)
+      : incomingRules.find((r) => r._id === p.inboundId))!
+    return { kind: 'incoming', other: p.other, inbound, hasReverseHere: p.hasReverseHere } as IncomingPairing
+  })
 
-  // Incoming pairings: a rule whose linkedProject is us AND whose space is
-  // NOT already covered by a primary pairing (i.e. the local side is a pure
-  // target). The user has to open the other project to edit it.
-  $: incomingPairings = (() => {
-    const out: IncomingPairing[] = []
-    const primaryOthers = new Set(primaryPairings.map((p) => p.other as string))
-    for (const r of incomingRules) {
-      if (primaryOthers.has(r.space as string)) continue
-      // See if there is a reverse rule (we'd be the primary side), but that
-      // case is already covered by primaryPairings above. This path is just
-      // "incoming only", one-way into this project.
-      out.push({ kind: 'incoming', other: r.space, inbound: r, hasReverseHere: false })
-    }
-    return out
-  })()
+  // Toggle and delete on a bidirectional pair write to BOTH sides. If the
+  // current actor is not a member/owner of the linked project, the server
+  // authz check on the reverse-side write rejects and we'd end up with one
+  // side flipped and the other stale. Gate both actions on membership of
+  // the paired project too (shared `canEditPairPure` helper so tests cover
+  // the same decision).
+  function canEditPair (p: PrimaryPairing): boolean {
+    const me = getCurrentAccount().uuid
+    return canEditPairPure(
+      currentProject,
+      projectsById[p.other as string],
+      me,
+      p.reverse !== undefined
+    )
+  }
 
   function openCreate(): void {
     if (!pluginEnabled || !canEditHere) return
@@ -152,7 +172,7 @@
   }
 
   async function toggleEnabled(p: PrimaryPairing): Promise<void> {
-    if (!pluginEnabled || !canEditHere) return
+    if (!pluginEnabled || !canEditPair(p)) return
     const now = !p.forward.enabled
     const ops = client.apply()
     ops.updateDoc(workflowRules.class.WorkflowRule, p.forward.space, p.forward._id, { enabled: now })
@@ -163,7 +183,7 @@
   }
 
   function confirmRemove(p: PrimaryPairing): void {
-    if (!pluginEnabled || !canEditHere) return
+    if (!pluginEnabled || !canEditPair(p)) return
     showPopup(
       MessageBox,
       {
@@ -307,7 +327,7 @@
                 </div>
               </div>
               <div class="wfr-card-actions" on:click|stopPropagation on:keydown|stopPropagation role="toolbar">
-                <Toggle on={pair.forward.enabled} disabled={!canEditHere} on:change={() => toggleEnabled(pair)} />
+                <Toggle on={pair.forward.enabled} disabled={!canEditPair(pair)} on:change={() => toggleEnabled(pair)} />
                 <Button
                   label={workflowRules.string.Advanced}
                   kind="ghost"
@@ -319,7 +339,7 @@
                   icon={IconDelete}
                   size="small"
                   kind="ghost"
-                  disabled={!canEditHere}
+                  disabled={!canEditPair(pair)}
                   on:click={() => confirmRemove(pair)}
                 />
               </div>

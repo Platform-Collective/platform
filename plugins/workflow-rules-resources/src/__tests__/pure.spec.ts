@@ -2,23 +2,44 @@
 //
 // Copyright © 2026 Platform Collective Contributors
 //
-// Tests for the editor's authorization gate, candidate filter, auto-match,
-// allowed-loops default, primary-only edit guard, and loop validation.
-// Covers the regression paths MichaelUray flagged in the #244 review.
+// Tests for the editor's pure helpers. Every helper here is called from an
+// actual Svelte component path - NO shadow re-implementation. Covers:
+//   - the five regression cases MichaelUray flagged in the #244 rev-1
+//     review (loops overwritten, opposite-endpoint corruption, incoming
+//     duplicate bypass, first-TaskType-only, cross-project auth);
+//   - the earlier P1 regressions (primary-only edit guard, candidate
+//     filter, auto-match, allowed-loops default, loop validation).
+//
+// Component wiring:
+//   - PairProjectEditor.svelte
+//       * candidateProjects -> isCandidateTarget
+//       * statusesOf        -> aggregateStatusesAcrossTaskTypes
+//       * save()            -> resolveAllowedLoops + resolvePairLinkKinds
+//   - WorkflowRulesPanel.svelte
+//       * primary/incoming  -> classifyPairings
+//       * canEditPair       -> canEditPair (pure)
+//   - EditWorkflowRule.svelte
+//       * statusesOf        -> aggregateStatusesAcrossTaskTypes (same path)
 
 import { type AccountUuid, type Ref } from '@hcengineering/core'
 import { type IssueStatus, type Project } from '@hcengineering/tracker'
 import { type WorkflowRule } from '@hcengineering/workflow-rules'
 
 import {
+  aggregateStatusesAcrossTaskTypes,
   autoMatch,
   buildAllowedLoops,
   buildAutoMap,
   canEditFromHere,
+  canEditPair,
+  classifyPairings,
   isCandidateTarget,
   isMemberOf,
   loopsValid,
+  resolveAllowedLoops,
+  resolvePairLinkKinds,
   type AuthProject,
+  type PairClassifierRule,
   type SiblingRule,
   type StatusLike
 } from '../pure'
@@ -29,6 +50,10 @@ const OTHER = 'acc-other' as AccountUuid
 const PROJ_A = 'proj:a' as Ref<Project>
 const PROJ_B = 'proj:b' as Ref<Project>
 const PROJ_C = 'proj:c' as Ref<Project>
+
+const RULE_1 = 'rule:1' as Ref<WorkflowRule>
+const RULE_2 = 'rule:2' as Ref<WorkflowRule>
+const RULE_3 = 'rule:3' as Ref<WorkflowRule>
 
 function proj (over: Partial<AuthProject> = {}): AuthProject {
   return { _id: PROJ_B, members: [ME], owners: [], ...over }
@@ -57,37 +82,54 @@ describe('isMemberOf', () => {
 })
 
 describe('isCandidateTarget', () => {
-  it('allows a writable, un-paired target', () => {
-    expect(isCandidateTarget(proj(), PROJ_A, ME, []).ok).toBe(true)
+  it('allows a writable, un-paired target (no incoming either)', () => {
+    expect(isCandidateTarget(proj(), PROJ_A, ME, [], []).ok).toBe(true)
   })
 
   it('refuses self-pairing', () => {
-    expect(isCandidateTarget(proj({ _id: PROJ_A }), PROJ_A, ME, []).ok).toBe(false)
+    expect(isCandidateTarget(proj({ _id: PROJ_A }), PROJ_A, ME, [], []).ok).toBe(false)
   })
 
   it('refuses an archived target', () => {
-    expect(isCandidateTarget(proj({ archived: true }), PROJ_A, ME, []).ok).toBe(false)
+    expect(isCandidateTarget(proj({ archived: true }), PROJ_A, ME, [], []).ok).toBe(false)
   })
 
   it('refuses a restricted TypedSpace', () => {
-    expect(isCandidateTarget(proj({ restricted: true }), PROJ_A, ME, []).ok).toBe(false)
+    expect(isCandidateTarget(proj({ restricted: true }), PROJ_A, ME, [], []).ok).toBe(false)
   })
 
   it('refuses a project the actor is not a member of', () => {
-    expect(isCandidateTarget(proj({ members: [OTHER] }), PROJ_A, ME, []).ok).toBe(false)
+    expect(isCandidateTarget(proj({ members: [OTHER] }), PROJ_A, ME, [], []).ok).toBe(false)
   })
 
-  it('refuses a project already paired with the current one', () => {
-    const sibling: SiblingRule = { _id: 'rule:1' as Ref<WorkflowRule>, linkedProject: PROJ_B }
-    const res = isCandidateTarget(proj(), PROJ_A, ME, [sibling])
+  it('refuses a project already paired with the current one (local side)', () => {
+    const sibling: SiblingRule = { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B }
+    const res = isCandidateTarget(proj(), PROJ_A, ME, [sibling], [])
     expect(res.ok).toBe(false)
-    expect(res.pairedBy).toBe('rule:1')
+    expect(res.pairedBy).toBe(RULE_1)
+  })
+
+  it('refuses a project that ALREADY pairs with us from its side (incoming duplicate)', () => {
+    // Regression for Michael's rev-1 #3: A->B exists in A as a primary.
+    // From B's editor, picking A must be refused, otherwise B creates a
+    // second primary and both ends claim the (A, B) edge.
+    const incoming: SiblingRule = { _id: RULE_2, space: PROJ_A, linkedProject: PROJ_B }
+    const res = isCandidateTarget(
+      // we are in B, offering A as target
+      { _id: PROJ_A, members: [ME] },
+      PROJ_B,
+      ME,
+      [],
+      [incoming]
+    )
+    expect(res.ok).toBe(false)
+    expect(res.pairedBy).toBe(RULE_2)
   })
 
   it('refuses other targets when some are already paired', () => {
-    const sibling: SiblingRule = { _id: 'rule:1' as Ref<WorkflowRule>, linkedProject: PROJ_C }
-    expect(isCandidateTarget(proj({ _id: PROJ_B }), PROJ_A, ME, [sibling]).ok).toBe(true)
-    expect(isCandidateTarget(proj({ _id: PROJ_C }), PROJ_A, ME, [sibling]).ok).toBe(false)
+    const sibling: SiblingRule = { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_C }
+    expect(isCandidateTarget(proj({ _id: PROJ_B }), PROJ_A, ME, [sibling], []).ok).toBe(true)
+    expect(isCandidateTarget(proj({ _id: PROJ_C }), PROJ_A, ME, [sibling], []).ok).toBe(false)
   })
 })
 
@@ -221,5 +263,194 @@ describe('loopsValid', () => {
 
   it('accepts the empty loop list', () => {
     expect(loopsValid([], known)).toBe(true)
+  })
+})
+
+describe('resolveAllowedLoops', () => {
+  // Backs the "custom loops are still overwritten" regression (rev-1 #1).
+  const dst: StatusLike[] = [
+    s({ name: 'Backlog', category: 'task:statusCategory:UnStarted' }),
+    s({ name: 'In Progress', category: 'task:statusCategory:Active' })
+  ]
+  const existing = [{ from: dst[1].id, to: dst[0].id }, { from: dst[0].id, to: dst[1].id }]
+
+  it('preserves the stored loops on edit when no reset was requested', () => {
+    const got = resolveAllowedLoops(existing, dst, { isCreate: false, resetRequested: false })
+    expect(got).toBe(existing)
+  })
+
+  it('regenerates when the user explicitly resets', () => {
+    const got = resolveAllowedLoops(existing, dst, { isCreate: false, resetRequested: true })
+    // Default has 1 pair (i>j) between two non-terminal statuses.
+    expect(got).toHaveLength(1)
+    expect(got).not.toBe(existing)
+  })
+
+  it('regenerates on create (no existing loops to preserve)', () => {
+    const got = resolveAllowedLoops(undefined, dst, { isCreate: true, resetRequested: false })
+    expect(got).toHaveLength(1)
+  })
+
+  it('regenerates when the stored list is empty (nothing custom to preserve)', () => {
+    const got = resolveAllowedLoops([], dst, { isCreate: false, resetRequested: false })
+    expect(got).toHaveLength(1)
+  })
+})
+
+describe('resolvePairLinkKinds', () => {
+  // Backs the "opposite-endpoint editing corrupts a pair" regression (rev-1
+  // #2). Forward is ALWAYS subIssue, reverse is ALWAYS parentIssue - a save
+  // from any endpoint must not flip them.
+  it('always returns subIssue forward and parentIssue reverse', () => {
+    const got = resolvePairLinkKinds()
+    expect(got).toEqual({ forward: 'subIssue', reverse: 'parentIssue' })
+  })
+})
+
+describe('classifyPairings', () => {
+  // Backs the pair classification used by the Rules panel. The primary
+  // endpoint is the subIssue side; the reverse (parentIssue) side must be
+  // routed to the primary project to edit.
+
+  it('a local subIssue rule with a matching reverse in the other project is primary', () => {
+    const local: PairClassifierRule[] = [
+      { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B, linkKind: 'subIssue' }
+    ]
+    const incoming: PairClassifierRule[] = [
+      { _id: RULE_2, space: PROJ_B, linkedProject: PROJ_A, linkKind: 'parentIssue' }
+    ]
+    const got = classifyPairings(PROJ_A, local, incoming)
+    expect(got.primary).toHaveLength(1)
+    expect(got.incoming).toHaveLength(0)
+    expect(got.primary[0].forwardId).toBe(RULE_1)
+    expect(got.primary[0].reverseId).toBe(RULE_2)
+    expect(got.primary[0].other).toBe(PROJ_B)
+  })
+
+  it('a local parentIssue rule is INCOMING, not primary (reverse endpoint)', () => {
+    // Michael's rev-1 reproducer: opening project B which stores the
+    // parentIssue rule must classify it as incoming so the editor is NOT
+    // offered here.
+    const local: PairClassifierRule[] = [
+      { _id: RULE_2, space: PROJ_B, linkedProject: PROJ_A, linkKind: 'parentIssue' }
+    ]
+    const incoming: PairClassifierRule[] = [
+      { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B, linkKind: 'subIssue' }
+    ]
+    const got = classifyPairings(PROJ_B, local, incoming)
+    expect(got.primary).toHaveLength(0)
+    expect(got.incoming).toHaveLength(1)
+    expect(got.incoming[0].inboundId).toBe(RULE_2)
+    expect(got.incoming[0].hasReverseHere).toBe(true)
+    expect(got.incoming[0].other).toBe(PROJ_A)
+  })
+
+  it('a pure one-way inbound rule (no local counterpart) is incoming', () => {
+    const local: PairClassifierRule[] = []
+    const incoming: PairClassifierRule[] = [
+      { _id: RULE_3, space: PROJ_C, linkedProject: PROJ_A, linkKind: 'subIssue' }
+    ]
+    const got = classifyPairings(PROJ_A, local, incoming)
+    expect(got.primary).toHaveLength(0)
+    expect(got.incoming).toHaveLength(1)
+    expect(got.incoming[0].hasReverseHere).toBe(false)
+  })
+
+  it('does not double-count a bidirectional edge (reverse here + incoming)', () => {
+    // We're in B. The parentIssue rule lives here; the matching subIssue
+    // rule is incoming. Only one incoming entry should surface.
+    const local: PairClassifierRule[] = [
+      { _id: RULE_2, space: PROJ_B, linkedProject: PROJ_A, linkKind: 'parentIssue' }
+    ]
+    const incoming: PairClassifierRule[] = [
+      { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B, linkKind: 'subIssue' }
+    ]
+    const got = classifyPairings(PROJ_B, local, incoming)
+    expect(got.incoming).toHaveLength(1)
+  })
+
+  it('does not treat a local subIssue rule as its own incoming', () => {
+    const local: PairClassifierRule[] = [
+      { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B, linkKind: 'subIssue' }
+    ]
+    const got = classifyPairings(PROJ_A, local, [])
+    expect(got.primary).toHaveLength(1)
+    expect(got.incoming).toHaveLength(0)
+  })
+})
+
+describe('canEditPair', () => {
+  // Backs the "paired toggle/delete actions only check the current project"
+  // regression (rev-1 #5). A bidirectional pair writes to both endpoints;
+  // the UI must gate on membership of BOTH.
+  const current: AuthProject = { _id: PROJ_A, members: [ME] }
+  const otherMember: AuthProject = { _id: PROJ_B, members: [ME] }
+  const otherNonMember: AuthProject = { _id: PROJ_B, members: [OTHER] }
+
+  it('one-way pair only needs current-project membership', () => {
+    expect(canEditPair(current, otherNonMember, ME, false)).toBe(true)
+  })
+
+  it('bidirectional pair requires membership of BOTH projects', () => {
+    expect(canEditPair(current, otherMember, ME, true)).toBe(true)
+  })
+
+  it('bidirectional pair is denied when the actor is not a member of the paired project', () => {
+    expect(canEditPair(current, otherNonMember, ME, true)).toBe(false)
+  })
+
+  it('denies when the current project itself is not writable by the actor', () => {
+    expect(canEditPair({ _id: PROJ_A, members: [OTHER] }, otherMember, ME, true)).toBe(false)
+  })
+
+  it('denies when the current project is undefined', () => {
+    expect(canEditPair(undefined, otherMember, ME, false)).toBe(false)
+  })
+
+  it('denies when the other project is undefined on a bidirectional pair', () => {
+    expect(canEditPair(current, undefined, ME, true)).toBe(false)
+  })
+})
+
+describe('aggregateStatusesAcrossTaskTypes', () => {
+  // Backs the "only the first TaskType is supported" regression (rev-1 #4).
+  // The editor now aggregates statuses across every TaskType on the
+  // ProjectType, dedup-ed by status id.
+  const SID_A = 's:issueA' as Ref<IssueStatus>
+  const SID_B = 's:issueB' as Ref<IssueStatus>
+  const SID_C = 's:bugC' as Ref<IssueStatus>
+
+  const resolve = (id: Ref<IssueStatus>): StatusLike | undefined => ({
+    id,
+    name: String(id),
+    category: undefined
+  })
+
+  it('returns an empty list when there are no task types', () => {
+    expect(aggregateStatusesAcrossTaskTypes([], resolve)).toHaveLength(0)
+  })
+
+  it('collects statuses from every task type, in declaration order', () => {
+    const got = aggregateStatusesAcrossTaskTypes(
+      [{ statuses: [SID_A, SID_B] }, { statuses: [SID_C] }],
+      resolve
+    )
+    expect(got.map((s) => s.id)).toEqual([SID_A, SID_B, SID_C])
+  })
+
+  it('deduplicates a status shared between multiple task types', () => {
+    const got = aggregateStatusesAcrossTaskTypes(
+      [{ statuses: [SID_A, SID_B] }, { statuses: [SID_B, SID_C] }],
+      resolve
+    )
+    expect(got.map((s) => s.id)).toEqual([SID_A, SID_B, SID_C])
+  })
+
+  it('skips statuses the resolver cannot find', () => {
+    const got = aggregateStatusesAcrossTaskTypes(
+      [{ statuses: [SID_A, SID_B] }],
+      (id) => (id === SID_A ? { id, name: 'A', category: undefined } : undefined)
+    )
+    expect(got.map((s) => s.id)).toEqual([SID_A])
   })
 })

@@ -51,16 +51,27 @@
     if (proj === undefined || token !== loadToken) return []
     const ptype = await client.findOne<ProjectType>(task.class.ProjectType, { _id: proj.type })
     if (ptype === undefined || token !== loadToken) return []
-    const ttId = ptype.tasks?.[0]
-    if (ttId === undefined) return []
-    const tt = await client.findOne<TaskType>(task.class.TaskType, { _id: ttId })
-    if (tt === undefined || token !== loadToken) return []
+    // Aggregate statuses across every TaskType: a project type can declare
+    // more than one (Issue + Bug, ...), and the Advanced editor's stored
+    // forwardMap and allowedLoops can reference statuses from any of them.
+    // Loading only `tasks[0]` made loop validation reject rows that pointed
+    // at statuses belonging to a later type.
+    const taskIds = (ptype.tasks ?? []) as Array<Ref<TaskType>>
+    if (taskIds.length === 0) return []
     const out: Array<{ id: Ref<IssueStatus>, name: string }> = []
-    const statusIds = (tt.statuses ?? []) as Array<Ref<IssueStatus>>
-    for (const sid of statusIds) {
-      const s = await client.findOne(tracker.class.IssueStatus, { _id: sid })
+    const seen = new Set<string>()
+    for (const ttId of taskIds) {
+      const tt = await client.findOne<TaskType>(task.class.TaskType, { _id: ttId })
       if (token !== loadToken) return []
-      if (s !== undefined) out.push({ id: sid, name: s.name })
+      if (tt === undefined) continue
+      const statusIds = (tt.statuses ?? []) as Array<Ref<IssueStatus>>
+      for (const sid of statusIds) {
+        if (seen.has(sid as string)) continue
+        seen.add(sid as string)
+        const s = await client.findOne(tracker.class.IssueStatus, { _id: sid })
+        if (token !== loadToken) return []
+        if (s !== undefined) out.push({ id: sid, name: s.name })
+      }
     }
     return out
   }

@@ -19,9 +19,15 @@ export interface AuthProject {
   restricted?: boolean
 }
 
-/** Minimal `WorkflowRule` subset used to detect duplicate pairings. */
+/**
+ * Minimal `WorkflowRule` subset used to detect duplicate pairings. The
+ * editor considers both "my rules" (`space === currentSpace`) and incoming
+ * rules (`linkedProject === currentSpace`), so we need both endpoints to
+ * decide uniqueness.
+ */
 export interface SiblingRule {
   _id: Ref<WorkflowRule>
+  space: Ref<Project>
   linkedProject: Ref<Project>
 }
 
@@ -40,22 +46,37 @@ export function isMemberOf (p: AuthProject | undefined, me: AccountUuid): boolea
 /**
  * Can the current actor pair the current project with this target? The target
  * must be writable (not archived, not restricted, actor is member/owner) and
- * not already paired with the current project. Returns the matching sibling
- * rule when the project IS already paired, so the caller can keep it in the
- * dropdown when the editor is in edit-mode on that pair.
+ * not already paired with the current project in EITHER direction.
+ *
+ * - `localRules` are rules in `currentSpace`. One already pointing at
+ *   `target._id` means we have already paired with the target.
+ * - `incomingRules` are rules in other spaces pointing at `currentSpace`. One
+ *   whose `space` is `target._id` means the target has already paired with
+ *   us, and allowing a second pair from our side would produce two primaries
+ *   on the same edge (the "incoming-only pair bypasses duplicate detection"
+ *   case Michael flagged).
+ *
+ * Returns the matching sibling rule when the project IS already paired, so
+ * the caller can keep it in the dropdown when the editor is in edit-mode on
+ * that pair (the picker is disabled in edit mode, but the Dropdown still has
+ * to resolve the selected id's label).
  */
 export function isCandidateTarget (
   target: AuthProject,
   currentSpace: Ref<Project>,
   me: AccountUuid,
-  siblingRules: SiblingRule[]
+  localRules: SiblingRule[],
+  incomingRules: SiblingRule[] = []
 ): { ok: boolean, pairedBy?: Ref<WorkflowRule> } {
   if (target._id === currentSpace) return { ok: false }
   if (target.archived === true) return { ok: false }
   if (target.restricted === true) return { ok: false }
   if (!isMemberOf(target, me)) return { ok: false }
-  const already = siblingRules.find((r) => r.linkedProject === target._id)
-  return already === undefined ? { ok: true } : { ok: false, pairedBy: already._id }
+  const already = localRules.find((r) => r.linkedProject === target._id)
+  if (already !== undefined) return { ok: false, pairedBy: already._id }
+  const incoming = incomingRules.find((r) => r.space === target._id)
+  if (incoming !== undefined) return { ok: false, pairedBy: incoming._id }
+  return { ok: true }
 }
 
 /** Minimal status row the UI consumes to render the mapping table. */
@@ -143,4 +164,141 @@ export function loopsValid (
   targetStatusIds: Set<Ref<IssueStatus>>
 ): boolean {
   return loops.every((l) => l.from !== l.to && targetStatusIds.has(l.from) && targetStatusIds.has(l.to))
+}
+
+/**
+ * Pair-level classification used by the Rules panel. A pair's "primary"
+ * endpoint is the side whose rule carries `linkKind === 'subIssue'`; the
+ * other side (`parentIssue`) is the reverse endpoint. Opening the editor
+ * from the reverse endpoint has to be routed back to the primary side -
+ * saving from there would otherwise flip the mirrored rule's `linkKind`
+ * (producing two `parentIssue` rules on the same edge, Michael's rev-1
+ * reproducer).
+ *
+ * The two input arrays are:
+ *   - `localRules`: every rule stored in `currentSpace` (space === current)
+ *   - `incomingRules`: every rule from other spaces whose `linkedProject`
+ *      is `currentSpace`
+ */
+export interface PairClassifierRule {
+  _id: Ref<WorkflowRule>
+  space: Ref<Project>
+  linkedProject: Ref<Project>
+  linkKind: 'subIssue' | 'parentIssue'
+}
+export interface PrimaryPairSummary {
+  kind: 'primary'
+  other: Ref<Project>
+  forwardId: Ref<WorkflowRule>
+  reverseId: Ref<WorkflowRule> | undefined
+}
+export interface IncomingPairSummary {
+  kind: 'incoming'
+  other: Ref<Project>
+  inboundId: Ref<WorkflowRule>
+  hasReverseHere: boolean
+}
+
+export function classifyPairings (
+  currentSpace: Ref<Project>,
+  localRules: PairClassifierRule[],
+  incomingRules: PairClassifierRule[]
+): { primary: PrimaryPairSummary[], incoming: IncomingPairSummary[] } {
+  const primary: PrimaryPairSummary[] = []
+  for (const r of localRules) {
+    if (r.linkKind !== 'subIssue') continue
+    const reverse = incomingRules.find(
+      (rr) => rr.space === r.linkedProject && rr.linkedProject === currentSpace && rr.linkKind === 'parentIssue'
+    )
+    primary.push({ kind: 'primary', other: r.linkedProject, forwardId: r._id, reverseId: reverse?._id })
+  }
+  const incoming: IncomingPairSummary[] = []
+  const primaryOthers = new Set(primary.map((p) => p.other as string))
+  for (const r of localRules) {
+    if (r.linkKind === 'subIssue') continue
+    incoming.push({ kind: 'incoming', other: r.linkedProject, inboundId: r._id, hasReverseHere: true })
+  }
+  for (const r of incomingRules) {
+    if (primaryOthers.has(r.space as string)) continue
+    const mirrored = localRules.some((lr) => lr.linkedProject === r.space && lr.linkKind !== 'subIssue')
+    if (mirrored) continue
+    incoming.push({ kind: 'incoming', other: r.space, inboundId: r._id, hasReverseHere: false })
+  }
+  return { primary, incoming }
+}
+
+/**
+ * Decide the `allowedLoops` to persist on save. Preserve the already-stored
+ * list across pair-level edits (rename, retoggle bidirectionality, remap
+ * statuses) unless the user explicitly asked for a reset OR there is no
+ * existing custom list to preserve. Regenerating unconditionally was
+ * Michael's "custom loops are still overwritten" case: Advanced-editor
+ * customizations survived until the next time the pairing wizard opened,
+ * then got wiped.
+ */
+export function resolveAllowedLoops (
+  existingLoops: Array<{ from: Ref<IssueStatus>, to: Ref<IssueStatus> }> | undefined,
+  dstStatuses: StatusLike[],
+  opts: { isCreate: boolean, resetRequested: boolean }
+): Array<{ from: Ref<IssueStatus>, to: Ref<IssueStatus> }> {
+  const stored = existingLoops ?? []
+  const shouldRegen = opts.isCreate || opts.resetRequested || stored.length === 0
+  return shouldRegen ? buildAllowedLoops(dstStatuses) : stored
+}
+
+/**
+ * Link-kind coherence for the pairing wizard's `save`. The primary endpoint
+ * is always `subIssue`; the reverse is always `parentIssue`. Fix this at the
+ * client to defend against stale stored values and against a future refactor
+ * in which the editor opens from either side - the panel refuses to open the
+ * editor from the reverse endpoint, and this function enforces the matching
+ * invariant at persistence time.
+ */
+export function resolvePairLinkKinds (): { forward: 'subIssue', reverse: 'parentIssue' } {
+  return { forward: 'subIssue', reverse: 'parentIssue' }
+}
+
+/**
+ * Can the current actor edit (toggle / delete / save) BOTH sides of a
+ * bidirectional pair? Toggle writes to forward.space AND reverse.space;
+ * if the actor is a non-member of the linked project, the server authz
+ * check on the reverse write rejects and the pair ends up half-flipped.
+ * Hiding the action is cleaner than recovering from a partial write.
+ */
+export function canEditPair (
+  current: AuthProject | undefined,
+  other: AuthProject | undefined,
+  me: AccountUuid,
+  hasReverse: boolean
+): boolean {
+  if (!isMemberOf(current, me)) return false
+  if (!hasReverse) return true
+  return isMemberOf(other, me)
+}
+
+/**
+ * Aggregate statuses across every TaskType declared on a ProjectType.
+ * Previously only the first TaskType was loaded, which meant:
+ *   - multi-type projects could not map or loop against later types'
+ *     statuses;
+ *   - stored loops and mappings referencing those statuses silently
+ *     failed `loopsValid` and were treated as stale.
+ * Deduplicate by status id - a TaskType can theoretically repeat an
+ * `IssueStatus` reference, and the editor only needs it once.
+ */
+export function aggregateStatusesAcrossTaskTypes (
+  tasks: Array<{ statuses: Array<Ref<IssueStatus>> }>,
+  resolve: (id: Ref<IssueStatus>) => StatusLike | undefined
+): StatusLike[] {
+  const out: StatusLike[] = []
+  const seen = new Set<string>()
+  for (const tt of tasks) {
+    for (const sid of tt.statuses ?? []) {
+      if (seen.has(sid as string)) continue
+      seen.add(sid as string)
+      const resolved = resolve(sid)
+      if (resolved !== undefined) out.push(resolved)
+    }
+  }
+  return out
 }
