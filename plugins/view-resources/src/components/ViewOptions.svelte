@@ -79,7 +79,7 @@
     return groupBy.filter((p) => !notAllowed.includes(p.id as string))
   }
 
-  function setOrder (value: OrderOption | undefined): void {
+  function setOrder(value: OrderOption | undefined): void {
     if (value === undefined) return
     viewOptions.orderBy = value
     dispatch('update', { key: 'orderBy', value })

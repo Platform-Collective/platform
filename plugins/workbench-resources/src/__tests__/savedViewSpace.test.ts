@@ -17,7 +17,7 @@ import type { FilteredView } from '@hcengineering/view'
 import { getFilteredViewSpaceId, getFilteredViewSpaceIds, getSpaceShortLabel } from '../savedViewSpace'
 
 function fv (path: string[]): Pick<FilteredView, 'location'> {
-  return { location: { path } } as unknown as Pick<FilteredView, 'location'>
+  return { location: { path } }
 }
 
 describe('saved view space', () => {
