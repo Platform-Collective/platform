@@ -197,12 +197,12 @@ describe('enum persistence through the presentation failure boundary', () => {
       failure === 'transport'
         ? new Error('Write failed')
         : new PlatformError(
-          new Status(
-            Severity.ERROR,
-            failure === 'permission' ? platform.status.Forbidden : platform.status.ConnectionClosed,
-            {}
+            new Status(
+              Severity.ERROR,
+              failure === 'permission' ? platform.status.Forbidden : platform.status.ConnectionClosed,
+              {}
+            )
           )
-        )
     const rejected = expect(saving).rejects.toBe(error)
     await entered.promise
     // The real core model has changed even though transport has not succeeded.
@@ -396,12 +396,12 @@ describe('enum persistence through the presentation failure boundary', () => {
         failure === 'transport'
           ? new Error('Write failed')
           : new PlatformError(
-            new Status(
-              Severity.ERROR,
-              failure === 'permission' ? platform.status.Forbidden : platform.status.ConnectionClosed,
-              {}
+              new Status(
+                Severity.ERROR,
+                failure === 'permission' ? platform.status.Forbidden : platform.status.ConnectionClosed,
+                {}
+              )
             )
-          )
       const transport = jest.fn<Promise<TxResult>, [Tx]>().mockRejectedValue(error)
       const { operations, value } = await persistenceFixture(transport)
       await expect(operations.update(value, { enumValues: ['a', 'renamed'] })).resolves.toEqual({})
