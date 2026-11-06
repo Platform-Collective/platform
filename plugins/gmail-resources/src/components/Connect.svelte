@@ -21,6 +21,7 @@
   import gmail from '../plugin'
   import { concatLink } from '@hcengineering/core'
   import presentation from '@hcengineering/presentation'
+  import { getGmailAuthUrl } from '../connect'
 
   const dispatch = createEventDispatcher()
 
@@ -31,20 +32,14 @@
   async function sendRequest(): Promise<void> {
     try {
       connecting = true
+      error = false
       const link = concatLink(gmailUrl, '/signin')
       const url = new URL(link)
       url.search = new URLSearchParams({
         redirectURL: (getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin) + window.location.pathname
       }).toString()
 
-      const res = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-          Authorization: 'Bearer ' + getMetadata(presentation.metadata.Token),
-          'Content-Type': 'application/json'
-        }
-      })
-      const redirectTo = await res.text()
+      const redirectTo = await getGmailAuthUrl(url.toString(), getMetadata(presentation.metadata.Token))
       window.open(redirectTo)
       dispatch('close')
     } catch (e: any) {

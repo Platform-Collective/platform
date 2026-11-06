@@ -433,7 +433,7 @@ export default function buildModel (): Builder {
       {
         label: questions.string.ConfigLabel,
         description: questions.string.ConfigDescription,
-        enabled: true,
+        enabled: false,
         beta: false,
         icon: questions.icon.Question,
         classFilter: defaultFilter

@@ -147,15 +147,17 @@ export class ChannelDataProvider implements IChannelDataProvider {
     }
 
     const metadata = get(this.metadataStore)
+    const skipIds = new Set(this.getChunkSkipIds(timestamp))
+    const hasMoreAtTimestamp = metadata.some(({ _id, createdOn }) => createdOn === timestamp && !skipIds.has(_id))
 
     if (mode === 'forward') {
       const isTailLoading = get(this.isTailLoading)
       const tail = get(this.tailStore)
       const last = metadata[metadata.length - 1]?.createdOn ?? 0
-      return last > timestamp && !isTailLoading && tail.length === 0
+      return (last > timestamp || hasMoreAtTimestamp) && !isTailLoading && tail.length === 0
     } else {
       const first = metadata[0]?.createdOn ?? 0
-      return first < timestamp
+      return first < timestamp || hasMoreAtTimestamp
     }
   }
 
@@ -181,7 +183,7 @@ export class ChannelDataProvider implements IChannelDataProvider {
         this.refsStore.set(res)
         this.isRefsLoading.set(false)
       },
-      { sort: { createdOn: SortingOrder.Ascending } }
+      { sort: { createdOn: SortingOrder.Ascending, _id: SortingOrder.Ascending } }
     )
   }
 
@@ -209,7 +211,7 @@ export class ChannelDataProvider implements IChannelDataProvider {
       },
       {
         projection: { _id: 1, _class: 1, space: 1, createdOn: 1, createdBy: 1, attachedTo: 1, modifiedOn: 1 },
-        sort: { createdOn: SortingOrder.Ascending }
+        sort: { createdOn: SortingOrder.Ascending, _id: SortingOrder.Ascending }
       }
     )
   }
@@ -298,7 +300,7 @@ export class ChannelDataProvider implements IChannelDataProvider {
         this.isTailLoading.set(false)
       },
       {
-        sort: { createdOn: SortingOrder.Descending },
+        sort: { createdOn: SortingOrder.Descending, _id: SortingOrder.Descending },
         lookup: this.getLookup()
       }
     )
@@ -326,21 +328,24 @@ export class ChannelDataProvider implements IChannelDataProvider {
   }
 
   getTailStartIndex (metadata: MessageMetadata[], loadAfter: Timestamp): number {
-    const index = metadata.slice(-this.limit - 1).findIndex(({ createdOn }) => createdOn === loadAfter)
+    const start = Math.max(0, metadata.length - this.limit - 1)
+    const index = metadata.slice(start).findIndex(({ createdOn }) => createdOn === loadAfter)
 
-    return index !== -1 ? metadata.length - index : -1
+    return index !== -1 ? start + index : -1
   }
 
   async loadChunk (isBackward: boolean, loadAfter: Timestamp, limit?: number, equal = true): Promise<Chunk | undefined> {
     const client = getClient()
     const skipIds = this.getChunkSkipIds(loadAfter)
 
-    let messages: ActivityMessage[] = await client.findAll(
+    const order = isBackward ? SortingOrder.Descending : SortingOrder.Ascending
+    const messages: ActivityMessage[] = await client.findAll(
       this.msgClass,
       {
         attachedTo: this.chatId,
         space: this.space,
         ...(this.collection != null ? { collection: this.collection } : {}),
+        _id: { $nin: skipIds },
         createdOn: equal
           ? isBackward
             ? { $lte: loadAfter }
@@ -351,12 +356,10 @@ export class ChannelDataProvider implements IChannelDataProvider {
       },
       {
         limit: limit ?? this.limit,
-        sort: { createdOn: isBackward ? SortingOrder.Descending : SortingOrder.Ascending },
+        sort: { createdOn: order, _id: order },
         lookup: this.getLookup()
       }
     )
-
-    messages = messages.filter(({ _id }) => !skipIds.includes(_id))
 
     if (messages.length === 0) {
       return
@@ -376,7 +379,12 @@ export class ChannelDataProvider implements IChannelDataProvider {
     const chunks = get(this.chunksStore)
     const metadata = get(this.metadataStore)
     const tail = get(this.tailStore)
-    const tailData = tail.length > 0 ? get(this.tailStore) : metadata.slice(-this.limit)
+    const tailData =
+      tail.length > 0
+        ? tail
+        : get(this.isTailLoading)
+          ? metadata.filter(({ createdOn }) => this.tailStart === undefined || (createdOn ?? 0) >= this.tailStart)
+          : []
 
     return chunks
       .filter(({ to, from }) => from >= after || to <= after)
@@ -483,7 +491,7 @@ export class ChannelDataProvider implements IChannelDataProvider {
       const tailAfter = metadata[index]?.createdOn
 
       if (tailAfter !== undefined) {
-        const skipIds = chunks[chunks.length - 1]?.data.map(({ _id }) => _id) ?? []
+        const skipIds = this.getChunkSkipIds(tailAfter, true)
         this.loadTail(tailAfter, { _id: { $nin: skipIds } })
         this.isLoadingMoreStore.set(false)
         return

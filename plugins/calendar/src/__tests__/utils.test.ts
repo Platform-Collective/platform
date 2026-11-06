@@ -1,5 +1,5 @@
 import { RecurringRule } from '..'
-import { generateRecurringValues } from '../utils'
+import { generateRecurringValues, getRecurringInstanceLocation } from '../utils'
 
 describe('generateRecurringValues', () => {
   const baseDate = new Date('2024-01-01T00:00:00Z').getTime()
@@ -196,5 +196,26 @@ describe('generateRecurringValues', () => {
     expect(new Date(result[1]).toISOString().slice(0, 10)).toBe('2025-03-10')
     expect(new Date(result[2]).toISOString().slice(0, 10)).toBe('2026-03-10')
     expect(new Date(result[3]).toISOString().slice(0, 10)).toBe('2027-03-10')
+  })
+})
+
+describe('getRecurringInstanceLocation', () => {
+  const meet = 'https://meet.google.com/abc-defg-hij'
+
+  it('keeps the imported conference link marker with the location', () => {
+    expect(getRecurringInstanceLocation({ location: meet, importedConferenceLink: meet })).toEqual({
+      location: meet,
+      importedConferenceLink: meet
+    })
+    expect(getRecurringInstanceLocation({ location: '', importedConferenceLink: '' })).toEqual({
+      location: '',
+      importedConferenceLink: ''
+    })
+  })
+
+  it('copies only the location when nothing was imported', () => {
+    const res = getRecurringInstanceLocation({ location: 'Room 1' })
+    expect(res).toEqual({ location: 'Room 1' })
+    expect('importedConferenceLink' in res).toBe(false)
   })
 })

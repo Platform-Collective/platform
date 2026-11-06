@@ -206,8 +206,13 @@ export class DocumentContentPage extends CommonPage {
   }
 
   async updateDocumentTitle (title: string): Promise<void> {
-    await this.buttonDocumentTitle().fill(title)
-    await this.buttonDocumentTitle().blur()
+    // A late document update can reset the input to the stored title before blur saves it,
+    // so repeat the edit until the new title stays in the input. Renaming again is idempotent.
+    await expect(async () => {
+      await this.buttonDocumentTitle().fill(title)
+      await this.buttonDocumentTitle().blur()
+      await expect(this.buttonDocumentTitle()).toHaveValue(title, { timeout: 3000 })
+    }).toPass({ intervals: [500, 1000], timeout: 30000 })
   }
 
   async addRandomLines (count: number, lineLength: number = 36): Promise<void> {
@@ -285,6 +290,16 @@ export class DocumentContentPage extends CommonPage {
 
   async checkImage (width: number = 215): Promise<void> {
     await expect(this.imageInContent()).toHaveAttribute('width', width.toString())
+  }
+
+  async hideFloatingToolbar (): Promise<void> {
+    // The floating text toolbar follows the editor selection and is shown again on every document change
+    // (e.g. a finished image upload), even when the editor is not focused. It is rendered above popups,
+    // so collapse the selection to hide it before working with other popups.
+    await expect(async () => {
+      await this.inputContent().press('End')
+      await expect(this.page.locator('div.text-editor-toolbar')).toBeHidden({ timeout: 2000 })
+    }).toPass({ intervals: [500], timeout: 15000 })
   }
 
   async checkLinkInTheText (text: string, link: string): Promise<void> {

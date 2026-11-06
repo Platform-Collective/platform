@@ -6,7 +6,6 @@
   TODO:
   * Add since to synchronization
 */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import activity from '@hcengineering/activity'
 import { Analytics } from '@hcengineering/analytics'
 import { CollaboratorClient } from '@hcengineering/collaborator-client'
@@ -330,7 +329,7 @@ export abstract class IssueSyncManagerBase {
     }
 
     const existingIssue = this.client.getHierarchy().as(existing, github.mixin.GithubIssue)
-    const previousData: GithubIssueData = info.current ?? ({} as unknown as GithubIssueData)
+    const previousData: GithubIssueData = info.current ?? {}
     // const type = await this.provider.getTaskTypeOf(container.project.type, existing._class)
     // const stst = await this.provider.getStatuses(type?._id)
 
@@ -502,17 +501,19 @@ export abstract class IssueSyncManagerBase {
         platformUpdate.assignee !== null
           ? await this.provider.getGithubLogin(container.container, platformUpdate.assignee)
           : undefined
-      // Check external
+      // Keep GitHub assignees when the Huly assignee has no linked GitHub account.
+      if (platformUpdate.assignee === null || info !== undefined) {
+        // Check external
+        const currentAssignees = (issueExternal.assignees.nodes ?? []).map((it) => it.id)
+        currentAssignees.sort((a, b) => a.localeCompare(b))
 
-      const currentAssignees = (issueExternal.assignees.nodes ?? []).map((it) => it.id)
-      currentAssignees.sort((a, b) => a.localeCompare(b))
+        issueUpdate.assigneeIds = info !== undefined ? [info.id] : []
+        issueUpdate.assigneeIds.sort((a, b) => a.localeCompare(b))
 
-      issueUpdate.assigneeIds = info !== undefined ? [info.id] : []
-      issueUpdate.assigneeIds.sort((a, b) => a.localeCompare(b))
-
-      if (deepEqual(currentAssignees, issueUpdate.assigneeIds)) {
-        // Same ids
-        delete issueUpdate.assigneeIds
+        if (deepEqual(currentAssignees, issueUpdate.assigneeIds)) {
+          // Same ids
+          delete issueUpdate.assigneeIds
+        }
       }
       issueData.assignee = platformUpdate.assignee
     }

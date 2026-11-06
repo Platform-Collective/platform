@@ -160,6 +160,7 @@
     <EditBox bind:value={title} placeholder={tracker.string.IssueTitlePlaceholder} kind="large-style" on:blur={save} />
     <div class="w-full mt-6">
       <AttachmentStyleBoxEditor
+        enableTodoList
         focusIndex={30}
         object={template}
         key={{ key: 'description', attr: descriptionKey }}
