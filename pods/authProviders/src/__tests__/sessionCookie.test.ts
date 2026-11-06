@@ -81,9 +81,9 @@ function attributes (cookies: string[], name: string): string[] {
 
 const withDecision =
   (rawDomain: string | undefined, rawSecure: string | undefined): Install =>
-    (app) => {
-      installSession(app, resolveSessionCookieOptions(rawDomain, rawSecure))
-    }
+  (app) => {
+    installSession(app, resolveSessionCookieOptions(rawDomain, rawSecure))
+  }
 
 describe('installSession over a plain-HTTP listener', () => {
   it('keeps domain-only cookies on koa-session defaults and uses the huly key', async () => {
