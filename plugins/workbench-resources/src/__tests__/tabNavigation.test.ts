@@ -95,8 +95,8 @@ describe('workbench tab capability', () => {
   const findAllSync = jest.fn<Application[], [unknown, unknown]>()
   const createDoc = jest.fn<Promise<Core.Ref<Core.Doc>>, [unknown, unknown, unknown]>()
   const loadData = jest.fn<
-  Promise<{ name?: string, label: Platform.IntlString }>,
-  [Location, ReturnType<typeof getClient>]
+    Promise<{ name?: string, label: Platform.IntlString }>,
+    [Location, ReturnType<typeof getClient>]
   >()
   const label = 'workbench:string:Tab' as Platform.IntlString
   const onConnect = withWorkbenchSession(async () => {})
