@@ -1263,28 +1263,30 @@ multi-hour receiver outage. Rev 7 pins them separately.
   reaches `maxRetryLifetime` without a 2xx is marked `failed`
   (not quarantined for retry) with `terminalReason:
   'retryBudgetExhausted'` and the audit chain closes.
-- **Manual reactivation** of a quarantined or failed row is
-  bounded by the SAME advertised window. The reactivation RPC
-  (`reactivateOutboxRow(subscription, deliveryId)`):
-  - If `now - renderedAt <= idempotencyIdRetentionHours`,
-    reactivation is permitted and the row re-enters the claim
-    set with its original `deliveryId`.
-  - Otherwise the RPC rejects with error code
-    **`beyond_idempotency_retention`**. The operator's only
-    options are (a) fire a fresh test event (new
-    `sourceEventId`, new `deliveryId`), or (b) raise the
-    advertised retention workspace-wide and ensure the receiver's
-    dedup table is sized to match BEFORE the next publish.
+- **Per-delivery retention.** At render time, persist the effective
+  `idempotencyIdRetentionHours` on the outbox row together with an
+  immutable `deliveryExpiresAt = renderedAt + retention`. Every
+  attempt advertises that persisted value. Later workspace or
+  subscription changes affect newly rendered deliveries only.
+- **Manual reactivation** (`reactivateOutboxRow(subscription, deliveryId)`)
+  rejects with error code **`beyond_idempotency_retention`** once
+  `deliveryExpiresAt` has passed. Raising the configured retention
+  does not revive an expired deliveryId; a fresh test event (new
+  `sourceEventId`, new `deliveryId`) is the way to resend.
+- **Dispatch deadline.** Before every HTTP attempt, including
+  reactivated work, the worker rechecks `deliveryExpiresAt` with a
+  small margin for transit and clock skew, and makes expired work
+  terminal without sending. Reactivation never resets the deadline.
 - **Advertising.** The service emits
-  `X-Huly-Idempotency-Retention: <seconds>` on every attempt.
-  The advertised value is the workspace-effective
-  `idempotencyIdRetentionHours`. Subscription-level overrides
-  RAISE the workspace default (not the retry budget); the retry
-  budget is set by `maxRetryLifetime` separately. A receiver that
-  persists `X-Huly-Delivery` for at least the advertised value
-  rejects repeated deliveryIds within it and will not see a
-  duplicate from any service-initiated retry or operator-initiated
-  reactivation.
+  `X-Huly-Idempotency-Retention: <seconds>` on every attempt,
+  computed from the row's persisted `deliveryExpiresAt - now`
+  (floored at 0). Subscription-level overrides RAISE the workspace
+  default on newly rendered rows only (not on rows already in the
+  outbox, and not on the retry budget). The retry budget is set by
+  `maxRetryLifetime` separately. A receiver that persists
+  `X-Huly-Delivery` for at least the advertised value rejects
+  repeated deliveryIds within it and will not see a duplicate from
+  any service-initiated retry or operator-initiated reactivation.
 
 ### Payload immutability per delivery (fixing point #14)
 
@@ -1462,9 +1464,12 @@ Rev 6 drops in-pipeline journalling. Delivery is driven by a
   per A4), then one outbox row per matched subscription. All writes
   live in the webhooks domain (`DOMAIN_WEBHOOKS`), a single-domain
   storage transaction, so atomicity on this side is normal.
-- Writes are keyed by `(subscription, eventKind, sourceEventId)`
-  with a UNIQUE constraint, so a sweeper restart that reprocesses a
-  Tx inserts no duplicates.
+- Outbox rows have a UNIQUE constraint on
+  `(subscription, eventKind, sourceEventId, generation)`.
+  The sweeper always inserts generation 0, making restart replay
+  idempotent. Secret rotation inserts the next generation. There is
+  no additional UNIQUE constraint on the three-field event identity
+  in the outbox; cancelled and replacement generations must coexist.
 - The pre-image is reconstructed by replaying the Tx stream for the
   source doc up to and including the Tx under consideration. For
   common cases (Create / Update) the Tx itself carries the post-
@@ -1538,6 +1543,16 @@ interface WebhookOutboxJob extends Doc {
                              //   the audit row, not here
     configDigestAtRealize: string  // for bindingDrift re-check
     renderedAt: Timestamp
+    // Retention frozen at render time; drives both the
+    // `X-Huly-Idempotency-Retention` advertisement and the
+    // `deliveryExpiresAt` deadline. Later workspace or subscription
+    // changes affect newly rendered deliveries only.
+    idempotencyRetentionHours: number
+    // Hard deadline = renderedAt + idempotencyRetentionHours.
+    // Checked at reactivation AND before every HTTP attempt, with a
+    // small margin for transit and clock skew; expired work is made
+    // terminal without sending. Immutable once set.
+    deliveryExpiresAt: Timestamp
     // Capture-time sequence number; outbox ordering reads this,
     // NOT `nextAttemptAt`, so a job in backoff is not overtaken by a
     // newer job for the same subscription.
@@ -1773,27 +1788,35 @@ flagged this as M5'). Rev 8 removes the pre-sort filter:
     one co-triggered set each.
   - **Save-time projection.** On every `createSubscription` and
     `updateSubscription`, the RPC computes, for each
-    co-triggered set, the projected aggregate fan-out: the
-    service sums `matchingSubscriptionCount(kind)` across every
-    kind in the set, using the subscription set as it would be
-    after save (including this sub, including the current
-    revision of every other sub). The projection takes the MAX
-    across all co-triggered sets the save could produce. If
-    that max exceeds `maxFanoutPerTx`, the RPC rejects with
-    error code **`fanout_cap_exceeded`** and a response body
-    naming the co-triggered kind set, the projected aggregate
-    count, the limit, and the subscriptions already counting
-    against it (the operator needs the list to triage).
-  - **Realize-time check.** The realize-time fallback is also
-    aggregate: for the current source Tx, the realizer first
-    enumerates every event kind that matches, then sums the
-    matching subscriptions across that entire set, and only
-    then compares the sum against `maxFanoutPerTx`. It does
-    not short-circuit on a per-kind pass, and never drops an
-    event kind from the sum to try to fit under the cap. If
-    the sum exceeds the cap, every subscription in the sum is
-    marked `failed:fanoutExceeded` for this Tx and auto-paused
-    (same behaviour as rev 7, just with the correct sum).
+    co-triggered set, the projected aggregate fan-out. Each
+    event source registers a conservative `maxEventsPerTx`
+    (upper bound on `SourceEvent` records it can emit from a
+    single Tx: e.g., a single-doc CUD source is 1, a bulk hook
+    that iterates matched docs declares its finite ceiling).
+    The projection sums, across every kind in the set,
+    `matchingSubscriptionCount(kind) * maxEventsPerTx(source)`,
+    using the subscription set as it would be after save
+    (including this sub, including the current revision of
+    every other sub). It takes the MAX across all co-triggered
+    sets the save could produce. If that max exceeds
+    `maxFanoutPerTx`, the RPC rejects with error code
+    **`fanout_cap_exceeded`** and a response body naming the
+    co-triggered kind set, the projected aggregate count, the
+    limit, and the subscriptions already counting against it
+    (the operator needs the list to triage). An event source
+    without a finite `maxEventsPerTx` cannot pass the save-time
+    gate; either register a bound or move the source to
+    bounded batch handling. Save-time cannot admit unbounded
+    emitters.
+  - **Realize-time check.** Before inserting outbox jobs,
+    enumerate the SourceEvent instances produced by the current
+    source Tx and their matching subscriptions. Count distinct
+    `(subscription, eventKind, sourceEventId)` tuples and
+    compare that count with `maxFanoutPerTx`. Multiple matching
+    triggers for one tuple count once; different sourceEventIds
+    of the same kind count separately. On overflow, record
+    `failed:fanoutExceeded` and auto-pause the affected
+    subscriptions without partial insertion.
   - Operator remediation: narrow this sub's `scope` /
     `classFilter` / `attributeFilter`; split triggers so a
     single sub no longer joins a saturated co-triggered set;
