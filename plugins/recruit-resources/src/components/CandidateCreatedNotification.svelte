@@ -21,7 +21,7 @@
   export let notification: Notification
   export let onRemove: () => void
 
-  function handleOpen (): void {
+  function handleOpen(): void {
     const candidateId = notification.params?.candidateId
     if (candidateId !== undefined) {
       void openDocFromRef(recruit.mixin.Candidate, candidateId)
