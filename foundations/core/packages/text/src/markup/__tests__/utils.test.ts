@@ -32,6 +32,7 @@ import {
   nodeText
 } from '@hcengineering/text-core'
 import { Editor, getSchema } from '@tiptap/core'
+import { CommonKit } from '../../kits/common-kit'
 import { ServerKit } from '../../kits/server-kit'
 import { getMarkup, htmlToJSON, htmlToMarkup, jsonToHTML, jsonToPmNode, jsonToText, pmNodeToJSON } from '../utils'
 
@@ -459,5 +460,76 @@ describe('gif node in the server kit', () => {
     expect(schema.nodes.gif.spec.selectable).not.toBe(false)
     expect(schema.nodes.emoji.spec.atom).toBe(true)
     expect(schema.nodes.emoji.spec.selectable).toBe(false)
+  })
+})
+
+describe('CommonKit link paste rules', () => {
+  let editor: Editor
+
+  beforeEach(() => {
+    editor = new Editor({ extensions: [CommonKit] })
+  })
+
+  afterEach(() => {
+    editor.destroy()
+  })
+
+  function links (): Array<{ text: string, href: string | null }> {
+    return Array.from(editor.view.dom.querySelectorAll('a')).map((link) => ({
+      text: link.textContent ?? '',
+      href: link.getAttribute('href')
+    }))
+  }
+
+  it.each([
+    '<a href="https://curl2url.com">https://curl2url.com</a>',
+    "<a href='https://curl2url.com'>https://curl2url.com</a>",
+    'Before <a href="https://curl2url.com">https://curl2url.com</a> after'
+  ])('keeps markup outside links when pasting literal HTML: %s', (text) => {
+    editor.view.pasteText(text, new Event('paste') as ClipboardEvent)
+
+    expect(editor.state.doc.textContent).toBe(text)
+    expect(links()).toEqual([
+      { text: 'https://curl2url.com', href: 'https://curl2url.com' },
+      { text: 'https://curl2url.com', href: 'https://curl2url.com' }
+    ])
+  })
+
+  it.each([
+    'https://curl2url.com',
+    'https://example.com/path?q=one&other=two#section',
+    "https://example.com/it's",
+    'https://example.com/%3Ctag%3E',
+    'person@example.com'
+  ])('preserves ordinary pasted links: %s', (text) => {
+    editor.view.pasteText(text, new Event('paste') as ClipboardEvent)
+
+    expect(links()).toEqual([{ text, href: text.includes('@') ? 'mailto:' + text : text }])
+  })
+
+  it('does not link a filename, pasted or typed followed by a space', () => {
+    editor.view.pasteText('FOO_BAR.MP3 ', new Event('paste') as ClipboardEvent)
+    expect(links()).toEqual([])
+
+    editor.commands.clearContent()
+    for (const char of 'FOO_BAR.MP3 ') {
+      editor.view.dispatch(editor.state.tr.insertText(char))
+    }
+    expect(links()).toEqual([])
+  })
+
+  it('still links a URL typed followed by a space', () => {
+    for (const char of 'https://curl2url.com ') {
+      editor.view.dispatch(editor.state.tr.insertText(char))
+    }
+
+    expect(links()).toEqual([{ text: 'https://curl2url.com', href: 'https://curl2url.com' }])
+  })
+
+  it('preserves rich HTML links with a different label', () => {
+    editor.view.pasteHTML('<a href="https://curl2url.com">Example</a>', new Event('paste') as ClipboardEvent)
+
+    expect(editor.state.doc.textContent).toBe('Example')
+    expect(links()).toEqual([{ text: 'Example', href: 'https://curl2url.com' }])
   })
 })

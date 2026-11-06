@@ -47,7 +47,7 @@
     showPopup,
     themeStore
   } from '@hcengineering/ui'
-  import view from '@hcengineering/view'
+  import view, { type IconProps } from '@hcengineering/view'
   import {
     ClassAttributeBar,
     IconPicker,
@@ -59,6 +59,7 @@
   import { createEventDispatcher, onDestroy, onMount } from 'svelte'
 
   import { unlockContent } from '..'
+  import { getDocumentIconUpdate } from '../document-icon'
   import document from '../plugin'
   import { getDocumentUrl } from '../utils'
   import DocumentEditor from './DocumentEditor.svelte'
@@ -88,6 +89,7 @@
 
   let doc: WithLookup<Document> | undefined
   let title = ''
+  let lastTitleSync: { _id: Ref<Document> | undefined, title: string } | undefined
   let innerWidth: number
 
   let isCopied = false
@@ -150,7 +152,13 @@
   $: _id !== undefined &&
     query.query(document.class.Document, { _id }, async (result) => {
       ;[doc] = result
-      title = doc?.title ?? ''
+      // Sync the input only when the stored title changes, so that unrelated updates of the document
+      // (e.g. a new backlink) do not overwrite a title that is being edited and not saved yet
+      const docTitle = doc?.title ?? ''
+      if (doc?._id !== lastTitleSync?._id || docTitle !== lastTitleSync?.title) {
+        title = docTitle
+        lastTitleSync = { _id: doc?._id, title: docTitle }
+      }
     })
 
   $: canSave = title.trim().length > 0
@@ -173,12 +181,13 @@
     if (doc !== undefined) {
       const { icon, color } = doc
       const icons = [document.icon.Document, document.icon.Teamspace]
-      const update = async (result: any): Promise<void> => {
-        if (result !== undefined && result !== null && doc !== undefined) {
-          await client.update(doc, { icon: result.icon, color: result.color })
+      const update = async (result: IconProps | null | undefined): Promise<void> => {
+        const operations = getDocumentIconUpdate(result)
+        if (operations !== undefined && doc !== undefined) {
+          await client.update(doc, operations)
         }
       }
-      showPopup(IconPicker, { icon, color, icons }, 'top', update, update)
+      showPopup(IconPicker, { icon, color, icons, showReset: true }, 'top', update, update)
     }
   }
 
@@ -271,6 +280,7 @@
     bind:useMaxWidth
     {sideContentSpace}
     printHeader={false}
+    printActivity={false}
     {embedded}
     adaptive={'default'}
     bind:content

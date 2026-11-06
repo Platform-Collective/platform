@@ -16,7 +16,7 @@
 import calendar, { calendarId } from '@hcengineering/calendar'
 import { type IntlString, mergeIds } from '@hcengineering/platform'
 
-export default mergeIds(calendarId, calendar, {
+const resources = {
   string: {
     Events: '' as IntlString,
     RemindMeAt: '' as IntlString,
@@ -41,6 +41,7 @@ export default mergeIds(calendarId, calendar, {
     RedirectGoogle: '' as IntlString,
     Connect: '' as IntlString,
     ConnectCalendar: '' as IntlString,
+    FailedToConnect: '' as IntlString,
     EditRecEvent: '' as IntlString,
     RemoveRecEvent: '' as IntlString,
     ThisEvent: '' as IntlString,
@@ -85,4 +86,8 @@ export default mergeIds(calendarId, calendar, {
     Weekday: '' as IntlString,
     WeekendDay: '' as IntlString
   }
-})
+}
+
+const calendarPlugin: typeof calendar & typeof resources = mergeIds(calendarId, calendar, resources)
+
+export default calendarPlugin

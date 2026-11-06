@@ -42,6 +42,7 @@ export default mergeIds(tagsId, tags, {
     TagName: '' as IntlString,
     SaveLabel: '' as IntlString,
     CategoryLabel: '' as IntlString,
+    Usage: '' as IntlString,
     AllCategories: '' as IntlString,
     SelectAll: '' as IntlString,
     SelectNone: '' as IntlString,

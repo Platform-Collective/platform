@@ -18,6 +18,7 @@
     "Subject": "Assunto",
     "Send": "Enviar",
     "Resend": "Reenviar",
+    "IntegrationUnavailable": "A integração do Gmail está indisponível. Volte a ligar o Gmail nas Definições e reenvie esta mensagem.",
     "NewMessage": "Nova mensagem",
     "NewMessageTo": "Nova mensagem para",
     "Cancel": "Cancelar",

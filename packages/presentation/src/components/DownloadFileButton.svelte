@@ -22,7 +22,8 @@
   import { IntlString } from '@hcengineering/platform'
 
   export let file: Ref<Blob> | undefined
-  export let name: string
+  // Storage URLs distinguish an absent filename from an explicitly empty one.
+  export let name: string | undefined
   export let tooltip: IntlString | undefined = presentation.string.Download
 
   let download: HTMLAnchorElement

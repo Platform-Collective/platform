@@ -98,7 +98,7 @@
     "ws": "^8.21.0",
     "@hcengineering/account-client": "workspace:^0.7.25",
     "morgan": "^1.11.0",
-    "body-parser": "^1.20.3",
+    "body-parser": "^1.20.9",
     "cors": "^2.8.6",
     "express": "^4.21.2"
   }

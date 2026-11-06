@@ -38,6 +38,19 @@ export const codeBlockHighlightOptions: CodeBlockLowlightOptions = {
 export const CodeBlockHighlighExtension = CodeBlockLowlight.extend<CodeBlockLowlightOptions>({
   marks: 'inline-comment',
 
+  addKeyboardShortcuts () {
+    return {
+      ...this.parent?.(),
+      'Mod-a': () => {
+        const { $from, $to, from, to } = this.editor.state.selection
+        if ($from.parent.type.name !== this.name || !$from.sameParent($to)) return false
+        if (from === $from.start() && to === $from.end()) return false
+
+        return this.editor.commands.setTextSelection({ from: $from.start(), to: $from.end() })
+      }
+    }
+  },
+
   addCommands () {
     return {
       setCodeBlock:

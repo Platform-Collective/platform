@@ -61,7 +61,8 @@ import {
   leaveWorkspace,
   checkJoin,
   mergeSpecifiedPersons,
-  canMergeSpecifiedPersons
+  canMergeSpecifiedPersons,
+  getMethods
 } from '../operations'
 import { accountPlugin } from '../plugin'
 
@@ -140,6 +141,9 @@ describe('account operations', () => {
     socialId: {
       findOne: jest.fn()
     },
+    mailboxSecret: {
+      findOne: jest.fn()
+    },
     generatePersonUuid: jest.fn().mockResolvedValue('generated-person-uuid')
   } as unknown as AccountDB
 
@@ -158,6 +162,47 @@ describe('account operations', () => {
       account: mockAccount.uuid,
       workspace: mockWorkspace.uuid,
       extra: {}
+    })
+  })
+
+  describe('getMailboxSecret', () => {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const getMailboxSecret = getMethods().getMailboxSecret!
+    const mailbox = 'alice@example.com'
+    const request = { id: 1, params: { mailbox } }
+    const secret = { mailbox, secret: 'smtp-app-password' }
+
+    test.each([
+      ['ordinary user', {}],
+      ['missing extra claims', undefined],
+      ['unrelated service', { service: 'workspace' }]
+    ])('denies %s without reading the mailbox secret', async (_label, extra) => {
+      jest.mocked(decodeTokenVerbose).mockReturnValue({
+        account: mockAccount.uuid as AccountUuid,
+        workspace: mockWorkspace.uuid,
+        extra
+      })
+      jest.mocked(mockDb.mailboxSecret.findOne).mockResolvedValue(secret)
+
+      const result = await getMailboxSecret(mockCtx, mockDb, mockBranding, request, mockToken)
+
+      expect(result).toEqual({ error: new Status(Severity.ERROR, platform.status.Forbidden, {}) })
+      expect(mockDb.mailboxSecret.findOne).not.toHaveBeenCalled()
+    })
+
+    test('returns the requested mailbox secret for huly-mail', async () => {
+      jest.mocked(decodeTokenVerbose).mockReturnValue({
+        account: mockAccount.uuid as AccountUuid,
+        workspace: mockWorkspace.uuid,
+        extra: { service: 'huly-mail' }
+      })
+      jest.mocked(mockDb.mailboxSecret.findOne).mockResolvedValue(secret)
+
+      const result = await getMailboxSecret(mockCtx, mockDb, mockBranding, request, mockToken)
+
+      expect(result).toEqual({ id: request.id, result: secret })
+      expect(mockDb.mailboxSecret.findOne).toHaveBeenCalledTimes(1)
+      expect(mockDb.mailboxSecret.findOne).toHaveBeenCalledWith({ mailbox })
     })
   })
 

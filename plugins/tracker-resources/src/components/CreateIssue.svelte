@@ -83,11 +83,13 @@
   import { ObjectBox } from '@hcengineering/view-resources'
   import { createEventDispatcher, onDestroy } from 'svelte'
 
+  import { fillIssueDefaults } from '../issue-defaults'
   import { activeComponent, activeMilestone, generateIssueShortLink, updateIssueRelation } from '../issues'
   import tracker from '../plugin'
   import SetParentIssueActionPopup from './SetParentIssueActionPopup.svelte'
   import SubIssues from './SubIssues.svelte'
   import ComponentSelector from './components/ComponentSelector.svelte'
+  import { getDuplicateIssueCustomFields } from './duplicate-issue'
   import AssigneeEditor from './issues/AssigneeEditor.svelte'
   import IssueNotification from './issues/IssueNotification.svelte'
   import ParentIssue from './issues/ParentIssue.svelte'
@@ -136,7 +138,8 @@
   // let project: Project | undefined
   let object = getDefaultObjectFromDraft() ?? getDefaultObject(id)
   let isAssigneeTouched = false
-  let kind: Ref<TaskType> | undefined = undefined
+  let kind: Ref<TaskType> | undefined = originalIssue?.kind
+  let duplicateSource = originalIssue
 
   let templateId: Ref<IssueTemplate> | undefined = draft?.template?.template
   let appliedTemplateId: Ref<IssueTemplate> | undefined = draft?.template?.template
@@ -265,6 +268,7 @@
   function resetObject(): void {
     templateId = undefined
     template = undefined
+    duplicateSource = undefined
     object = getDefaultObject(undefined, true)
     fillDefaults(hierarchy, object, tracker.class.Issue)
   }
@@ -482,8 +486,10 @@
       const number = (incResult as any).object.sequence
 
       const identifier = `${currentProject?.identifier}-${number}`
+      const customFields = getDuplicateIssueCustomFields(hierarchy, duplicateSource, kind)
 
       const value: DocData<Issue> = {
+        ...customFields.attributes,
         title: getTitle(object.title),
         description: null,
         assignee: object.assignee,
@@ -518,6 +524,7 @@
         kind,
         identifier
       }
+      fillIssueDefaults(hierarchy, object, value)
 
       if (!isEmptyMarkup(object.description)) {
         const collabId = makeCollabId(tracker.class.Issue, _id, 'description')
@@ -535,6 +542,9 @@
         value,
         _id
       )
+      for (const [mixin, attributes] of customFields.mixins) {
+        await operations.createMixin(_id, tracker.class.Issue, _space, mixin, attributes)
+      }
       await docCreateManager.commit(operations, _id, currentProject, value, 'post')
       for (const label of object.labels) {
         await operations.addCollection(label._class, label.space, _id, tracker.class.Issue, 'labels', {
@@ -889,7 +899,13 @@
         showButtons={false}
         kind={'indented'}
         isScrollable={false}
-        kitOptions={{ reference: true }}
+        kitOptions={{
+          reference: true,
+          lists: {
+            todoItem: true,
+            todoList: true
+          }
+        }}
         enableAttachments={false}
         bind:content={object.description}
         placeholder={tracker.string.IssueDescriptionPlaceholder}

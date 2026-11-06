@@ -1,4 +1,4 @@
-FROM node:24
+FROM node:24.22.1
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \

@@ -14,7 +14,7 @@
 //
 import { notEmpty } from '@hcengineering/core'
 import { getEmbeddedLabel } from '@hcengineering/platform'
-import { FilePreviewPopup, getBlobRef, getFileUrl } from '@hcengineering/presentation'
+import { FilePreviewPopup, getBlobRef, getFileUrl, getPlatformFileId } from '@hcengineering/presentation'
 import { ImageNode, type ImageOptions } from '@hcengineering/text'
 import textEditor from '@hcengineering/text-editor'
 import { getEventPositionElement, SelectPopup, showPopup } from '@hcengineering/ui'
@@ -190,7 +190,7 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
           imgElement.setAttribute(k, v)
         }
       }
-      const fileId = imgAttributes['file-id']
+      const fileId = imgAttributes['file-id'] ?? getPlatformFileId(imgAttributes.src ?? '')
       if (fileId !== null && imageSrcCache.has(fileId)) {
         const cached = imageSrcCache.get(fileId)
         setImageProps(cached?.src ?? null, cached?.srcset ?? null)
