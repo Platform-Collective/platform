@@ -35,9 +35,9 @@ import love, {
   loveId,
   MeetingMinutes,
   MeetingStatus,
+  Office,
   ParticipantInfo,
   Room,
-  RoomAccess,
   RoomInfo,
   UserMeetingInvite
 } from '@hcengineering/love'
@@ -53,6 +53,7 @@ import {
 import { ReceiverInfo, SenderInfo } from '@hcengineering/server-notification'
 import view from '@hcengineering/view'
 import { workbenchId } from '@hcengineering/workbench'
+import { getDefaultRoomAccess, getRoomAccessToRestore } from './utils'
 
 export async function OnEmployee (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
   const result: Tx[] = []
@@ -216,7 +217,7 @@ async function setDefaultRoomAccess (info: ParticipantInfo, control: TriggerCont
         core.space.Workspace,
         oldRoomInfo.room,
         {
-          access: oldRoomInfo.isOffice ? RoomAccess.Knock : RoomAccess.Open
+          access: getDefaultRoomAccess(oldRoomInfo.isOffice)
         }
       )
       res.push(resetAccessTx)
@@ -284,6 +285,30 @@ export async function meetingMinutesTextPresenter (doc: Doc): Promise<string> {
   return meetingMinutes.title
 }
 
+async function isRoomEmpty (
+  room: Ref<Room>,
+  isOffice: boolean,
+  persons: Ref<Person>[],
+  control: TriggerControl
+): Promise<boolean> {
+  if (persons.length === 0) return true
+  if (isOffice && persons.length === 1) {
+    const office = (await control.findAll(control.ctx, love.class.Office, { _id: room as Ref<Office> }))[0]
+    if (office === undefined) return true
+    return office.person != null && office.person === persons[0]
+  }
+
+  return false
+}
+
+async function restoreRoomAccess (room: Ref<Room>, isOffice: boolean, control: TriggerControl): Promise<Tx[]> {
+  const doc = (await control.findAll(control.ctx, love.class.Room, { _id: room }, { limit: 1 }))[0]
+  if (doc === undefined) return []
+  const access = getRoomAccessToRestore(doc, isOffice)
+  if (access === undefined) return []
+  return [control.txFactory.createTxUpdateDoc(doc._class, doc.space, doc._id, { access })]
+}
+
 async function OnRoomInfo (txes: TxCUD<RoomInfo>[], control: TriggerControl): Promise<Tx[]> {
   const result: Tx[] = []
   const personsByRoom = new Map<Ref<RoomInfo>, Ref<Person>[]>()
@@ -313,6 +338,10 @@ async function OnRoomInfo (txes: TxCUD<RoomInfo>[], control: TriggerControl): Pr
       const newPersons = currentPersons.filter((p) => !pulled.includes(p)).concat(pushed)
 
       personsByRoom.set(tx.objectId, newPersons)
+      // PC finishes specific meetings via the room_finished webhook. Only restore access here.
+      if (pulled.length > 0 && await isRoomEmpty(roomInfo.room, roomInfo.isOffice, newPersons, control)) {
+        result.push(...(await restoreRoomAccess(roomInfo.room, roomInfo.isOffice, control)))
+      }
     }
   }
   return result
