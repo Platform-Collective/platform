@@ -433,7 +433,7 @@ describe.each(['mongo', 'sql'] as const)('OTP attempts and lifetime through %s a
     const updatePerson = jest.spyOn(db.person, 'update').mockResolvedValue()
     jest.spyOn(db.socialId, 'findOne').mockResolvedValue(identity)
     const confirmEmail = jest.spyOn(db.socialId, 'update').mockResolvedValue()
-    const createSocialId = jest.spyOn(db.socialId, 'insertOne').mockResolvedValue('huly-id' as PersonId)
+    const createSocialId = jest.spyOn(db.socialId, 'insertOne').mockResolvedValue('huly-id')
     const insert = jest.spyOn(db.otp, 'insertOne').mockImplementation(async (row) => {
       if (
         row.socialId === undefined ||

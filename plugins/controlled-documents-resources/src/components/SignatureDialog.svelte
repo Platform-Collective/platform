@@ -73,7 +73,7 @@
     canResend = requests.retryOn <= Date.now()
   })
 
-  async function loadConfirmation (): Promise<void> {
+  async function loadConfirmation(): Promise<void> {
     try {
       confirmation = await loadSignatureConfirmation(accountClient, account.uuid)
       object.email = confirmation.email
@@ -95,7 +95,7 @@
     (useOtp ? requests.codeRequested && code.trim() !== '' : object.password !== '') &&
     (!isRejection || rejectionNote.trim().length > 0)
 
-  async function submit (): Promise<void> {
+  async function submit(): Promise<void> {
     if (requests.pending !== undefined || !canSubmit) {
       return
     }
@@ -109,12 +109,12 @@
     }
   }
 
-  async function sendCode (): Promise<void> {
+  async function sendCode(): Promise<void> {
     if (!useOtp || !canResend || confirmation?.email === undefined) return
     await requests.sendCode(confirmation.email)
   }
 
-  async function validate (): Promise<void> {
+  async function validate(): Promise<void> {
     const request = ++validationRequest
     if (requests.pending !== undefined) return
     if (useOtp) {

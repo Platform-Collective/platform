@@ -40,17 +40,22 @@ describe('account db migrations', () => {
     )
   })
 
-  it.each(['postgres', 'cockroach'] as const)('preserves PC migration history alongside OTP additions (%s)', (flavor) => {
-    const names = getMigrations('global_account', flavor).map(([name]) => name)
-    expect(new Set(names).size).toBe(names.length)
-    expect(names).toEqual(expect.arrayContaining([
-      'account_db_v27_add_office_social_id_type',
-      'account_db_v28_add_workspace_member_unread',
-      'account_db_v27_add_api_tokens_table',
-      'account_db_v28_add_otp_attempts',
-      'account_db_v29_add_otp_retry_on'
-    ]))
-  })
+  it.each(['postgres', 'cockroach'] as const)(
+    'preserves PC migration history alongside OTP additions (%s)',
+    (flavor) => {
+      const names = getMigrations('global_account', flavor).map(([name]) => name)
+      expect(new Set(names).size).toBe(names.length)
+      expect(names).toEqual(
+        expect.arrayContaining([
+          'account_db_v27_add_office_social_id_type',
+          'account_db_v28_add_workspace_member_unread',
+          'account_db_v27_add_api_tokens_table',
+          'account_db_v28_add_otp_attempts',
+          'account_db_v29_add_otp_retry_on'
+        ])
+      )
+    }
+  )
 
   const splitStatements = (ddl: string): string[] =>
     ddl
