@@ -21,7 +21,7 @@ import { metricsAggregate, type Branding, type BrandingMap, type MeasureContext 
 import { getPlatformQueue } from '@hcengineering/kafka'
 import { type ConsumerHandle, type PlatformQueue } from '@hcengineering/server-core'
 import platform, { Severity, Status, addStringsLoader, setMetadata, unknownStatus } from '@hcengineering/platform'
-import serverToken, { decodeToken, decodeTokenVerbose, generateToken } from '@hcengineering/server-token'
+import serverToken, { decodeToken, TokenError } from '@hcengineering/server-token'
 import cors from '@koa/cors'
 import type Cookies from 'cookies'
 import { type IncomingHttpHeaders } from 'http'
@@ -29,6 +29,7 @@ import Koa from 'koa'
 import bodyParser from 'koa-bodyparser'
 import Router from 'koa-router'
 import os from 'os'
+import { createAuthCookie } from './auth-cookie'
 import { migrateFromOldAccounts } from './migration/migration'
 import { startWorkspaceMemberUnreadConsumer } from './unread'
 
@@ -331,13 +332,16 @@ export function serveAccount (measureCtx: MeasureContext, brandings: BrandingMap
       return
     }
 
-    // Ensure we don't set the token with workspace to the cookie
-    const { account, extra } = decodeTokenVerbose(measureCtx, token)
-    const tokenWithoutWorkspace = generateToken(account, undefined, extra)
-
-    const cookieOpts = getCookieOptions(ctx)
-    for (const opt of cookieOpts) {
-      ctx.cookies.set(AUTH_TOKEN_COOKIE, tokenWithoutWorkspace, opt)
+    try {
+      const cookie = createAuthCookie(measureCtx, token)
+      for (const opt of getCookieOptions(ctx)) {
+        ctx.cookies.set(AUTH_TOKEN_COOKIE, cookie.token, { ...opt, maxAge: cookie.maxAge })
+      }
+    } catch (err) {
+      if (!(err instanceof TokenError)) throw err
+      ctx.res.writeHead(401, KEEP_ALIVE_HEADERS)
+      ctx.res.end(JSON.stringify({ error: new Status(Severity.ERROR, platform.status.Unauthorized, {}) }))
+      return
     }
 
     ctx.res.writeHead(204)

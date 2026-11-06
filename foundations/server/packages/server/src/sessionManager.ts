@@ -85,7 +85,7 @@ import {
   workspaceEvents,
   type WorkspaceStatistics
 } from '@hcengineering/server-core'
-import { generateToken, type Token } from '@hcengineering/server-token'
+import { generateToken, isTokenExpired, type Token } from '@hcengineering/server-token'
 import { ClientSession } from './client'
 import { sendResponse } from './utils'
 import { Workspace } from './workspace'
@@ -108,6 +108,7 @@ export interface Timeouts {
 }
 
 export class TSessionManager implements SessionManager {
+  private readonly expiredSessions = new WeakSet<Session>()
   private readonly statusPromises = new Map<string, Promise<void>>()
   readonly workspaces = new Map<WorkspaceUuid, Workspace>()
   checkInterval: any
@@ -357,12 +358,56 @@ export class TSessionManager implements SessionManager {
     this.ctx.measure('workspaces-systemonly', sysOnlyWorkspaces, true)
   }
 
+  private isExpiredOidcSession (session: Session, now: number): boolean {
+    // Only newly configured OIDC sessions opt into active expiry enforcement.
+    return session.token?.extra?.authMethod === 'oidc' && isTokenExpired(session.token, now)
+  }
+
+  private expireSession (ctx: MeasureContext, session: Session, socket: ConnectionSocket, wsId: WorkspaceUuid): void {
+    if (this.expiredSessions.has(session)) return
+    this.expiredSessions.add(session)
+
+    let socketClosed = false
+    const closeSocket = (): void => {
+      if (socketClosed) return
+      socketClosed = true
+      try {
+        socket.close()
+      } catch (err) {
+        ctx.error('failed to close expired session socket', { err })
+      }
+    }
+    // Backpressure/compression and queue publication must never extend access.
+    // Give the terminating frame a bounded opportunity to flush before closing.
+    const deadline = setTimeout(closeSocket, 250)
+    void Promise.resolve()
+      .then(async () => {
+        await socket.send(ctx, { error: UNAUTHORIZED, terminate: true }, session.binaryMode, session.useCompression)
+      })
+      .catch((err) => {
+        ctx.error('failed to notify expired session', { err })
+      })
+      .finally(() => {
+        clearTimeout(deadline)
+        closeSocket()
+      })
+
+    // close removes both session map entries before awaiting the logout queue.
+    void this.close(ctx, socket, wsId, false).catch((err) => {
+      ctx.error('failed to clean up expired session', { err })
+    })
+  }
+
   private handleSessionTick (now: number): void {
     for (const s of this.sessions.values()) {
       const isCurrentUserTick = this.ticks % ticksPerSecond === s.tickHash
 
       if (isCurrentUserTick) {
         const wsId = s.session.workspace.uuid
+        if (this.isExpiredOidcSession(s.session, now)) {
+          this.expireSession(this.ticksContext, s.session, s.socket, wsId)
+          continue
+        }
         const lastRequestDiff = now - s.session.lastRequest
 
         let timeout = hangSessionTimeoutSeconds * 1000
@@ -1097,7 +1142,12 @@ export class TSessionManager implements SessionManager {
     }
   }
 
-  async close (ctx: MeasureContext, ws: ConnectionSocket, workspaceUuid: WorkspaceUuid): Promise<void> {
+  async close (
+    ctx: MeasureContext,
+    ws: ConnectionSocket,
+    workspaceUuid: WorkspaceUuid,
+    closeSocket = true
+  ): Promise<void> {
     const workspace = this.workspaces.get(workspaceUuid)
 
     const sessionRef = this.sessions.get(ws.id)
@@ -1156,10 +1206,12 @@ export class TSessionManager implements SessionManager {
         }
         this.reconnectIds.add(sessionRef.session.sessionId)
       }
-      try {
-        sessionRef.socket.close()
-      } catch (err) {
-        // Ignore if closed
+      if (closeSocket) {
+        try {
+          sessionRef.socket.close()
+        } catch (err) {
+          // Ignore if closed
+        }
       }
     }
   }
@@ -1399,6 +1451,11 @@ export class TSessionManager implements SessionManager {
     request: Request<any>,
     workspaceId: WorkspaceUuid
   ): Promise<void> {
+    if (this.expiredSessions.has(service) || this.isExpiredOidcSession(service, Date.now())) {
+      this.expireSession(requestCtx, service, ws, workspaceId)
+      return
+    }
+
     // Calculate total number of clients
     const reqId = generateId()
     const source = service.token.extra?.service ?? '🤦‍♂️user'

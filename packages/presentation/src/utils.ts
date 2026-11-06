@@ -907,7 +907,7 @@ export function decodeTokenPayload (token: string): any {
     if (tsplit.length < 2) {
       return {}
     }
-    return JSON.parse(atob(tsplit[1]))
+    return JSON.parse(atob(tsplit[1].replace(/-/g, '+').replace(/_/g, '/')))
   } catch (err: any) {
     console.error(err)
     return {}
