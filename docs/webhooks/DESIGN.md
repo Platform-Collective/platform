@@ -39,8 +39,9 @@ hole.
 Delivery is driven by a Tx-log sweeper. `TxMiddleware` persists the
 source Tx to `DOMAIN_TX` before the domain apply; the sweeper reads
 Tx log tail-forward, resolves each Tx through the registered match
-hooks, and writes idempotent outbox rows keyed by
-`(subscription, eventKind, sourceEventId)`. This closes the
+hooks, and writes idempotent outbox rows deduplicated by the event
+identity `(subscription, eventKind, sourceEventId)`, with outbox
+rows unique per `generation`. This closes the
 cross-domain atomicity gap in rev 4's "same storage transaction"
 story. Pre-image values live in a separate encrypted journal payload,
 NOT inline in the journal row.
@@ -1296,8 +1297,13 @@ multi-hour receiver outage. Rev 7 pins them separately.
   headers, body) alongside the deliveryId. All subsequent attempts
   for that deliveryId re-use those exact bytes. A re-render on a
   retry is forbidden.
-- Only the signature header is re-generated per attempt (fresh `t`,
-  same `kid`, same `s` computation over the frozen bytes). The
+- Only the signature and `X-Huly-Idempotency-Retention` headers are
+  regenerated per attempt; all other request headers and the
+  rendered URL and body remain frozen. The signature is fresh `t`,
+  same `kid`, same `s` computation over the frozen bytes.
+  `X-Huly-Idempotency-Retention` advertises the remaining retention
+  derived from the immutable `deliveryExpiresAt`
+  (`floor(max(deliveryExpiresAt - now, 0) in seconds)`). The
   receiver sees a stable payload under a stable deliveryId;
   signature freshness is purely for replay protection.
 - A worker crash between a successful 2xx and the state write is
