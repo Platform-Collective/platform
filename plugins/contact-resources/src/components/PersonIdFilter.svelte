@@ -13,7 +13,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import contact, { Person, SocialIdentity } from '@hcengineering/contact'
+  import contact, { getNameSearch, Person, SocialIdentity } from '@hcengineering/contact'
   import core, { FindResult, getObjectValue, includesAny, PersonId, Ref, Space, WithLookup } from '@hcengineering/core'
   import presentation, { getClient } from '@hcengineering/presentation'
   import ui, {
@@ -82,10 +82,11 @@
     const personIds = Array.from(targets).filter((personId): personId is PersonId => personId !== undefined)
     const socialIdentityIds = personIds as Array<Ref<SocialIdentity> & PersonId>
 
+    const nameSearch = getNameSearch(search)
     const resultQuery =
       search !== ''
         ? {
-            '$lookup.attachedTo.name': { $like: '%' + search + '%' },
+            '$lookup.attachedTo.name': { $like: nameSearch.like },
             _id: { $in: socialIdentityIds }
           }
         : {
@@ -98,7 +99,7 @@
     socialIdentitiesPromise = client.findAll(contact.class.SocialIdentity, resultQuery, {
       lookup: { attachedTo: contact.class.Person }
     })
-    socialIdentities = await socialIdentitiesPromise
+    socialIdentities = (await socialIdentitiesPromise).filter((it) => nameSearch.matches(it.$lookup?.attachedTo?.name))
     unresolvedPersonIds = getUnresolvedPersonIds(
       targets,
       rawSocialIdentitiesPromise !== undefined ? await rawSocialIdentitiesPromise : socialIdentities,
