@@ -14,18 +14,25 @@ jest.mock('@hcengineering/media', () => ({}), { virtual: true })
 jest.mock('@hcengineering/love', () => ({}), { virtual: true })
 jest.mock('@hcengineering/media-resources', () => ({}), { virtual: true })
 jest.mock('@hcengineering/analytics', () => ({}), { virtual: true })
-jest.mock('@hcengineering/ui', () => ({ addNotification: jest.fn(), NotificationSeverity: { Error: 'error' } }), { virtual: true })
+jest.mock('@hcengineering/ui', () => ({ addNotification: jest.fn(), NotificationSeverity: { Error: 'error' } }), {
+  virtual: true
+})
 jest.mock('@hcengineering/view-resources', () => ({ SimpleNotification: {} }), { virtual: true })
 jest.mock('@hcengineering/theme', () => ({ getCurrentLanguage: () => 'en' }), { virtual: true })
 jest.mock('svelte/store', () => ({ writable: jest.fn() }), { virtual: true })
 jest.mock('../components/meeting/LastParticipantNotification.svelte', () => ({}))
-jest.mock('../plugin', () => ({ string: { ScreenShareFailed: 'failed', ScreenShareDenied: 'denied', ScreenShareError: 'generic' } }))
+jest.mock('../plugin', () => ({
+  string: { ScreenShareFailed: 'failed', ScreenShareDenied: 'denied', ScreenShareError: 'generic' }
+}))
 jest.mock('../stores', () => ({}))
 jest.mock('../meetings', () => ({}))
 
 const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
 beforeAll(() => {
-  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { mediaDevices: { getDisplayMedia: jest.fn() } } })
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { mediaDevices: { getDisplayMedia: jest.fn() } }
+  })
 })
 afterAll(() => {
   if (navigatorDescriptor !== undefined) Object.defineProperty(globalThis, 'navigator', navigatorDescriptor)
@@ -48,7 +55,14 @@ test('surfaces capture failures and permits a successful retry', async () => {
 
   await client.setScreenShareEnabled(true, true)
 
-  expect(addNotification).toHaveBeenCalledWith('failed', 'generic', expect.anything(), undefined, NotificationSeverity.Error, 'love')
+  expect(addNotification).toHaveBeenCalledWith(
+    'failed',
+    'generic',
+    expect.anything(),
+    undefined,
+    NotificationSeverity.Error,
+    'love'
+  )
 
   await client.setScreenShareEnabled(true, true)
 
@@ -79,5 +93,12 @@ test('surfaces screen capture blocked by the operating system', async () => {
 
   await client.setScreenShareEnabled(true)
 
-  expect(addNotification).toHaveBeenCalledWith('failed', 'denied', expect.anything(), undefined, NotificationSeverity.Error, 'love')
+  expect(addNotification).toHaveBeenCalledWith(
+    'failed',
+    'denied',
+    expect.anything(),
+    undefined,
+    NotificationSeverity.Error,
+    'love'
+  )
 })

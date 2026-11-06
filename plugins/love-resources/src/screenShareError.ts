@@ -41,7 +41,6 @@ export function getScreenShareErrorKind (error: unknown, displayMediaSupported: 
   return 'failed'
 }
 
-
 /** Explicit desktop picker cancellation stays silent; ambiguous browser denials use the error classifier. */
 export function isScreenShareCancelled (error: unknown): boolean {
   return (error instanceof Error || error instanceof DOMException) && error.name === 'AbortError'

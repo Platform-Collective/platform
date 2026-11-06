@@ -59,7 +59,6 @@ describe('getScreenShareErrorKind', () => {
   })
 })
 
-
 describe('PC picker cancellation', () => {
   it('keeps explicit cancellations silent while allowing permission feedback', () => {
     expect(isScreenShareCancelled(err('AbortError'))).toBe(true)

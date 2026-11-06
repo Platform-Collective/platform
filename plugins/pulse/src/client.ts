@@ -114,12 +114,12 @@ export class HulypulseClient implements Disposable {
   private correlationId = 1
 
   private readonly pending = new Map<
-  string,
-  {
-    resolve: (v: any) => void
-    reject: (e: any) => void
-    send_timeout: ReturnType<typeof setTimeout>
-  }
+    string,
+    {
+      resolve: (v: any) => void
+      reject: (e: any) => void
+      send_timeout: ReturnType<typeof setTimeout>
+    }
   >()
 
   private constructor (private readonly url: string | URL) {}
@@ -379,8 +379,8 @@ export class HulypulseClient implements Disposable {
     return true
   }
 
-  public async put (key: string, data: any, ttl: number): Promise<void>
-  public async put (
+  public async put(key: string, data: any, ttl: number): Promise<void>
+  public async put(
     key: string,
     data: any,
     options?: Pick<PutMessage, 'ifMatch' | 'ifNoneMatch' | 'TTL' | 'expiresAt'>
@@ -399,8 +399,8 @@ export class HulypulseClient implements Disposable {
     void (await this.send(message))
   }
 
-  public async put_full (key: string, data: any, ttl: number): Promise<any>
-  public async put_full (
+  public async put_full(key: string, data: any, ttl: number): Promise<any>
+  public async put_full(
     key: string,
     data: any,
     options?: Pick<PutMessage, 'ifMatch' | 'ifNoneMatch' | 'TTL' | 'expiresAt'>
@@ -422,7 +422,7 @@ export class HulypulseClient implements Disposable {
     }
   }
 
-  public async get<T>(key: string): Promise<T | undefined> {
+  public async get<T> (key: string): Promise<T | undefined> {
     const reply = await this.send({ type: 'get', key })
     if (reply.error !== undefined) {
       if (reply.error === 'not found') {
@@ -433,7 +433,7 @@ export class HulypulseClient implements Disposable {
     return reply.result?.data
   }
 
-  public async get_full<T>(key: string): Promise<GetFullResult<T> | undefined> {
+  public async get_full<T> (key: string): Promise<GetFullResult<T> | undefined> {
     const reply = await this.send({ type: 'get', key })
     if (reply.error !== undefined) {
       if (reply.error === 'not found') {
@@ -460,7 +460,7 @@ export class HulypulseClient implements Disposable {
     return true
   }
 
-  private async send<M extends Omit<ProtocolMessage, 'correlation'>>(msg: M): Promise<any> {
+  private async send<M extends Omit<ProtocolMessage, 'correlation'>> (msg: M): Promise<any> {
     const id = String(this.correlationId++)
     const message = { ...msg, correlation: id.toString() } satisfies M
 
