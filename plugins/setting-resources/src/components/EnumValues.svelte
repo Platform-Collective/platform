@@ -13,9 +13,9 @@
 // limitations under the License.
 -->
 <script lang="ts">
+  import core, { Enum } from '@hcengineering/core'
   import { Analytics } from '@hcengineering/analytics'
-  import { Enum } from '@hcengineering/core'
-  import presentation, { getClient, MessageBox } from '@hcengineering/presentation'
+  import presentation, { getClient, updateDocWithError } from '@hcengineering/presentation'
   import {
     ModernEditbox,
     IconAdd,
@@ -33,6 +33,8 @@
   import type { DropdownIntlItem } from '@hcengineering/ui'
   import setting from '../plugin'
   import { createEnumValueAdder } from '../utils/enum-values'
+  import { EnumValuesDraft, type EnumValuesEditResult, type EnumValuesError } from '../enumValuesUtils'
+  import { canChangeEnumValues } from '../enumValuesPolicy'
   import EnumValuesList from './EnumValuesList.svelte'
   import IconCrossedArrows from './icons/CrossedArrows.svelte'
   import IconBulletList from './icons/BulletList.svelte'
@@ -42,30 +44,56 @@
 
   const client = getClient()
   const addEnumValue = createEnumValueAdder(client)
+  const valuesClient = {
+    update: async (value: Enum, changes: { enumValues: string[] }): Promise<unknown> =>
+      await updateDocWithError(client, value, changes)
+  }
 
   let newValue: string = ''
   let newItem: boolean = false
   let opened: boolean = false
+  let matched = false
 
-  async function add() {
-    try {
-      if (await addEnumValue(value, newValue)) {
-        newValue = ''
-        newItem = false
-      }
-    } catch (err) {
-      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+  let draft = new EnumValuesDraft()
+  let validationError: EnumValuesError | undefined
+  const validationLabels = {
+    empty: setting.string.EmptyEnumValue,
+    duplicate: setting.string.DuplicateEnumValue,
+    conflict: setting.string.EnumValuesChanged,
+    referenced: setting.string.ReferencedEnumValue,
+    saveFailed: setting.string.EnumValuesSaveFailed
+  }
+
+  function syncFromDoc(enumValues: string[]): void {
+    draft.sync(enumValues)
+    draft = draft
+  }
+
+  $: syncFromDoc(value.enumValues)
+
+  function handleError(error: unknown): void {
+    Analytics.handleError(error instanceof Error ? error : new Error(String(error)))
+  }
+
+  async function add(): Promise<void> {
+    if (await addEnumValue(value, newValue)) {
+      newValue = ''
+      newItem = false
     }
   }
 
-  async function remove(target: string) {
+  async function remove(target: string): Promise<void> {
+    if (!canSaveValues(value.enumValues.filter((option) => option !== target))) {
+      validationError = 'referenced'
+      return
+    }
     await client.update(value, {
       $pull: { enumValues: target }
     })
   }
-  const handleKeydown = (evt: KeyboardEvent) => {
+  const handleKeydown = (evt: KeyboardEvent): void => {
     if (evt.key === 'Enter') {
-      add()
+      void add().catch(handleError)
     }
     if (evt.key === 'Escape') {
       newItem = false
@@ -77,7 +105,7 @@
 
   async function handleClipboard(): Promise<void> {
     const text = await navigator.clipboard.readText()
-    processText(text)
+    await processText(text)
   }
 
   async function processText(text: string): Promise<void> {
@@ -94,21 +122,21 @@
   let inputFile: HTMLInputElement
   async function processFile(file: File): Promise<void> {
     const text = await file.text()
-    processText(text)
+    await processText(text)
   }
 
-  function fileSelected() {
+  function fileSelected(): void {
     const list = inputFile.files
     if (list === null || list.length === 0) return
     for (let index = 0; index < list.length; index++) {
       const file = list.item(index)
       if (file !== null) {
-        processFile(file)
+        void processFile(file).catch(handleError)
       }
     }
     inputFile.value = ''
   }
-  // function onDelete () {
+  // function onDelete() {
   //   showPopup(
   //     MessageBox,
   //     {
@@ -134,8 +162,50 @@
     })
   }
 
-  async function updateValues(): Promise<void> {
-    await client.update(value, { enumValues: value.enumValues })
+  function beginEdit(): void {
+    draft.beginEdit()
+  }
+
+  function cancelEdit(): void {
+    draft.endEdit(value.enumValues)
+    draft = draft
+  }
+
+  function canSaveValues(values: string[]): boolean {
+    return canChangeEnumValues(
+      client.getModel().findObject(value._id) ?? value,
+      values,
+      client.getModel().findAllSync(core.class.Attribute, {}),
+      client.getHierarchy()
+    )
+  }
+
+  async function saveValues(normalize: boolean): Promise<void> {
+    const saving = draft.save(valuesClient, value, normalize, canSaveValues)
+    draft = draft
+    let result: EnumValuesEditResult
+    try {
+      result = await saving
+    } catch (error) {
+      if (draft.needsRetry) validationError = 'saveFailed'
+      throw error
+    } finally {
+      draft = draft
+    }
+    if ('error' in result) {
+      validationError = result.error
+    } else if (validationError === 'saveFailed' && !draft.needsRetry) {
+      validationError = undefined
+    }
+  }
+
+  function onDrop(): void {
+    validationError = undefined
+    void saveValues(false).catch(handleError)
+  }
+
+  function onValuesUpdate(): void {
+    void saveValues(true).catch(handleError)
   }
 
   const items: (DropdownIntlItem & { action: () => void })[] = [
@@ -152,7 +222,7 @@
       icon: Report,
       label: setting.string.ImportEnumCopy,
       action: () => {
-        handleClipboard()
+        void handleClipboard().catch(handleError)
       }
     }
   ]
@@ -161,7 +231,7 @@
     if (!opened) {
       opened = true
       showPopup(ModernPopup, { items }, eventToHTMLElement(ev), (result) => {
-        if (result) items.find((it) => it.id === result)?.action()
+        if (typeof result === 'string') items.find((it) => it.id === result)?.action()
         opened = false
       })
     }
@@ -185,6 +255,9 @@
     size={'medium'}
     hasMenu
   />
+</div>
+<div class="font-regular-12 secondary-textColor mt-2">
+  <Label label={setting.string.EnumRenameHint} />
 </div>
 <input
   bind:this={inputFile}
@@ -224,14 +297,19 @@
       />
     </div>
   </div>
-  {#if value.enumValues.length > 0 || newItem}
+  {#if draft.values.length > 0 || newItem}
     <div class="hulyTableAttr-content options">
       <EnumValuesList
-        bind:values={value.enumValues}
+        bind:values={draft.values}
         disableMouseOver={newItem}
+        on:editstart={beginEdit}
+        on:editcancel={cancelEdit}
+        on:editinput={() => {
+          validationError = undefined
+        }}
         on:remove={(e) => remove(e.detail)}
-        on:drop={updateValues}
-        on:update={updateValues}
+        on:drop={onDrop}
+        on:update={onValuesUpdate}
       />
       {#if newItem}
         <div class="hulyTableAttr-content__row hovered">
@@ -245,7 +323,7 @@
               label={setting.string.EnterOptionTitle}
               on:keydown={handleKeydown}
               on:blur={() => {
-                add()
+                void add().catch(handleError)
                 newItem = false
               }}
               bind:value={newValue}
@@ -269,6 +347,11 @@
           />
         </div>
       {/if}
+    </div>
+  {/if}
+  {#if validationError !== undefined}
+    <div class="error font-regular-12 mt-2" role="alert">
+      <Label label={validationLabels[validationError]} />
     </div>
   {/if}
 </div>
