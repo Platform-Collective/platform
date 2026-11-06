@@ -190,7 +190,7 @@
   .message__links {
     display: grid;
     grid-gap: 0.75rem;
-    grid-template-columns: repeat(auto-fit, 25rem);
+    grid-template-columns: repeat(auto-fit, minmax(0, min(25rem, 100%)));
     min-height: 2.5rem;
     width: 100%;
     overflow: hidden;

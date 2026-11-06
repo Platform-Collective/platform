@@ -36,6 +36,7 @@
     "jest-environment-jsdom": "^30.4.1",
     "ts-jest": "^29.4.12",
     "@types/jest": "^30.0.0",
+    "@types/node": "^24.13.3",
     "svelte-eslint-parser": "^1.8.1",
     "eslint-config-love": "^157.0.0"
   },

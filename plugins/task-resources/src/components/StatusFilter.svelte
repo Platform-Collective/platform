@@ -40,6 +40,8 @@
   import { buildConfigLookup, getPresenter } from '@hcengineering/view-resources/src/utils'
   import { createEventDispatcher } from 'svelte'
   import { typesOfJoinedProjectsStore, selectedTaskTypeStore, selectedTypeStore, taskTypeStore, typeStore } from '..'
+  import { getStatusProjectType } from '../statusProjectType'
+  import { getTaskTypeStatuses } from './status-filter'
 
   export let filter: Filter
   export let space: Ref<Space> | undefined = undefined
@@ -80,7 +82,7 @@
     }
     const type = selectedType !== undefined ? typeStore.get(selectedType) : undefined
     if (type !== undefined) {
-      values = type?.statuses?.map((p) => statusStore.get(p))
+      values = getTaskTypeStatuses(type.statuses, statusStore)
       for (const value of values) {
         targets.add(value?._id)
       }
@@ -118,7 +120,7 @@
       statuses = statuses.filter((it, idx, arr) => arr.findIndex((q) => q._id === it._id) === idx)
       values = await sort(statuses)
     }
-    if (targets.has(undefined)) {
+    if (filter.value.includes(undefined)) {
       values.unshift(undefined)
     }
     if (values.length !== targets.size) {
@@ -183,6 +185,19 @@
     }, FILTER_DEBOUNCE_MS)
   }
 
+  // Without a space (e.g. All Issues) pick a project type per status, so its own color is shown, not the category one.
+  $: getPresenterProps = (status: Status): Record<string, any> =>
+    space === undefined
+      ? {
+          projectType: getStatusProjectType(
+            status._id,
+            $selectedTypeStore,
+            $typeStore,
+            $typesOfJoinedProjectsStore ?? []
+          )
+        }
+      : {}
+
   let search: string = ''
 
   const dispatch = createEventDispatcher()
@@ -237,6 +252,7 @@
                         {value}
                         {...attribute.props}
                         {space}
+                        {...getPresenterProps(value)}
                         disabled
                         oneLine
                       />

@@ -323,6 +323,10 @@ class AccountClientImpl implements AccountClient {
     return await withRetryUntilMaxAttempts(async () => {
       const response = await fetch(concatLink(this.url, '/providers'))
 
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`)
+      }
+
       return await response.json()
     })()
   }
@@ -341,6 +345,15 @@ class AccountClientImpl implements AccountClient {
       method: 'POST',
       body: JSON.stringify(request)
     })
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => undefined)
+      if (result?.error != null) {
+        throw new PlatformError(result.error)
+      }
+
+      throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`)
+    }
 
     const result = await response.json()
     if (result.error != null) {
