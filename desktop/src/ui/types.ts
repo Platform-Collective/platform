@@ -57,6 +57,7 @@ export interface Config {
   TELEGRAM_URL: string
   VERSION: string
   STREAM_URL?: string
+  RECORDING_RECOVERY_ENABLED?: string
   BACKUP_URL?: string
   PUBLIC_SCHEDULE_URL?: string
   CALDAV_SERVER_URL?: string

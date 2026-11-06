@@ -55,6 +55,7 @@ func NewMultipartUpload(
 	multipartStorage storage.MultipartStorage,
 	info handler.FileInfo,
 	contentType string,
+	loggerContext context.Context,
 ) (*MultipartUpload, error) {
 	objectName := info.ID
 	uploadID, err := multipartStorage.MultipartUploadStart(ctx, objectName, contentType)
@@ -62,7 +63,7 @@ func NewMultipartUpload(
 		return nil, errors.Wrap(err, "failed to initialize multipart upload")
 	}
 
-	logger := log.FromContext(ctx).With(zap.String("multipart", "upload"), zap.String("uploadID", uploadID))
+	logger := log.FromContext(loggerContext).With(zap.String("multipart", "upload"), zap.String("uploadID", uploadID))
 
 	return &MultipartUpload{
 		logger:      logger,
@@ -76,42 +77,60 @@ func NewMultipartUpload(
 	}, nil
 }
 
-// Write writes chunk of data to the storage
-func (w *MultipartUpload) Write(ctx context.Context, data []byte) error {
+// Write returns only bytes accepted into the bounded in-memory buffer.
+// A failed flush keeps its bytes; flush it before accepting the next request.
+func (w *MultipartUpload) Write(ctx context.Context, data []byte) (int, error) {
 	if w.terminated || w.completed {
-		return errors.New("upload already terminated or completed")
+		return 0, errors.New("upload already terminated or completed")
 	}
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	if err := w.flush(ctx); err != nil {
+		return 0, err
+	}
+	if len(data) > 4*minPartSize-w.buffer.Len() {
+		return 0, errors.New("recording multipart buffer limit exceeded")
+	}
+	// The context may have been canceled while retrying the previous part.
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	n, err := w.buffer.Write(data)
+	w.bytesWritten += int64(n)
+	if err != nil {
+		return n, err
+	}
+	// Accepted bytes remain in memory on failure. Report success so tusd finalizes a final PATCH;
+	// otherwise a HEAD could expose offset == length without ever calling FinishUpload.
+	if err := w.flush(ctx); err != nil {
+		w.logger.Warn("multipart flush deferred", zap.Error(err))
+	}
+	return n, nil
+}
 
+func (w *MultipartUpload) flush(ctx context.Context) error {
+	for w.buffer.Len() >= minPartSize {
+		if err := w.uploadPart(ctx, minPartSize); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *MultipartUpload) uploadPart(ctx context.Context, size int) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-
-	_, err := w.buffer.Write(data)
+	part, err := w.storage.MultipartUploadPart(ctx, w.objectName, w.uploadID, w.nextPartNum, w.buffer.Bytes()[:size])
 	if err != nil {
-		return errors.Wrap(err, "failed to write to buffer")
+		w.logger.Error("multipart upload part failed", zap.Int("partNumber", w.nextPartNum), zap.Error(err))
+		return errors.Wrap(err, "failed to upload part")
 	}
-	w.bytesWritten += int64(len(data))
-
-	// flush parts of at least minPartSize
-	for w.buffer.Len() >= minPartSize {
-		partNum := w.nextPartNum
-		partData := w.buffer.Next(minPartSize)
-
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-
-		part, err := w.storage.MultipartUploadPart(ctx, w.objectName, w.uploadID, partNum, partData)
-		if err != nil {
-			w.logger.Error("multipart upload part failed", zap.Error(err), zap.Int("partNumber", partNum))
-			return errors.Wrap(err, "failed to upload part")
-		}
-
-		w.bytesUploaded += int64(len(partData))
-		w.parts = append(w.parts, *part)
-		w.nextPartNum++
-	}
-
+	w.buffer.Next(size)
+	w.bytesUploaded += int64(size)
+	w.parts = append(w.parts, *part)
+	w.nextPartNum++
 	return nil
 }
 
@@ -121,16 +140,17 @@ func (w *MultipartUpload) Terminate(ctx context.Context) error {
 		return nil
 	}
 	w.terminated = true
+	w.buffer = bytes.NewBuffer(nil)
 
 	w.logger.Debug("terminating multipart upload", zap.Int("parts", len(w.parts)))
 
 	// create new context in case the main context is canceled
 	cancelCtx := ctx
 	if ctx.Err() != nil {
-		var cancel context.CancelFunc
-		cancelCtx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
+		cancelCtx = context.WithoutCancel(ctx)
 	}
+	cancelCtx, cancel := context.WithTimeout(cancelCtx, 30*time.Second)
+	defer cancel()
 
 	if err := w.storage.MultipartUploadCancel(cancelCtx, w.objectName, w.uploadID); err != nil {
 		w.logger.Error("multipart upload cancel failed", zap.Error(err))
@@ -154,19 +174,13 @@ func (w *MultipartUpload) Complete(ctx context.Context) error {
 
 	w.logger.Debug("finishing multipart upload", zap.Int("parts", len(w.parts)))
 
-	// flush any remaining data as last part
+	if err := w.flush(ctx); err != nil {
+		return err
+	}
 	if w.buffer.Len() > 0 {
-		partNum := w.nextPartNum
-		lastData := w.buffer.Bytes()
-
-		part, err := w.storage.MultipartUploadPart(ctx, w.objectName, w.uploadID, partNum, lastData)
-		if err != nil {
-			w.logger.Error("multipart upload last part failed", zap.Error(err), zap.Int("partNumber", partNum))
-			return errors.Wrap(err, "failed to upload last part")
+		if err := w.uploadPart(ctx, w.buffer.Len()); err != nil {
+			return err
 		}
-
-		w.bytesUploaded += int64(len(lastData))
-		w.parts = append(w.parts, *part)
 	}
 
 	if len(w.parts) == 0 {
@@ -180,6 +194,7 @@ func (w *MultipartUpload) Complete(ctx context.Context) error {
 	}
 
 	w.completed = true
+	w.buffer = bytes.NewBuffer(nil)
 	w.logger.Info(
 		"multipart upload completed",
 		zap.Int64("bytesUploaded", w.bytesUploaded),

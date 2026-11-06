@@ -1,5 +1,6 @@
 {
   "string": {
+    "UploadFailed": "录制文件上传失败，请重试。",
     "Cancel": "取消",
     "Pause": "暂停",
     "Stop": "停止",

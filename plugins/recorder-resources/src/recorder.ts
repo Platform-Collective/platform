@@ -14,7 +14,8 @@
 //
 
 import { releaseStream } from '@hcengineering/media'
-import { ChunkReader } from './stream'
+import { ChunkReader } from './chunk-reader'
+import { MAX_RETAINED_BYTES } from './const'
 import { formatElapsedTime } from './utils'
 
 const chunkIntervalMs = 1000
@@ -23,6 +24,7 @@ export interface RecorderOptions {
   chunkIntervalMs?: number
   audioBps?: number
   videoBps?: number
+  recoveryEnabled?: boolean
 }
 
 export class Recorder {
@@ -46,7 +48,7 @@ export class Recorder {
 
     this.mimeType = supportedTypes[0]
     this.chunkInterval = options.chunkIntervalMs ?? chunkIntervalMs
-    this.chunkStream = new ChunkReader()
+    this.chunkStream = new ChunkReader(options.recoveryEnabled === true ? MAX_RETAINED_BYTES : 0)
 
     this.mediaRecorder = new MediaRecorder(mediaStream, {
       mimeType: this.mimeType,
@@ -76,7 +78,10 @@ export class Recorder {
     }
     this.mediaRecorder.onerror = (ev) => {
       console.error('Recorder: MediaRecorder error:', ev)
-      this.chunkStream.close()
+      const error = 'error' in ev ? ev.error : undefined
+      this.chunkStream.fail(
+        error instanceof Error ? error : new Error('MediaRecorder failed; attempting to salvage the final recording')
+      )
     }
   }
 
@@ -151,9 +156,21 @@ export class Recorder {
 
     try {
       // After requesting data, we can safely stop the recorder
-      this.mediaRecorder.stop()
+      if (this.mediaRecorder.state !== 'inactive') this.mediaRecorder.stop()
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('MediaRecorder did not stop'))
+        }, 5000)
+        void this.chunkStream.closed.then(() => {
+          clearTimeout(timeout)
+          resolve()
+        })
+      })
     } catch (err) {
       console.error('Recorder: error stopping MediaRecorder:', err)
+      // No stop event means no consumer can safely wait for more capture data.
+      this.chunkStream.release()
+      throw err
     } finally {
       releaseStream(this.mediaStream)
     }

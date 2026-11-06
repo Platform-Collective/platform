@@ -18,3 +18,11 @@ export const DefaultVideoBps = 4000000
 export const DefaultVideoRes = 1080
 export const DefaultFps = 30
 export const DefaultChunkIntervalMs = 1000
+
+export const MAX_RETAINED_BYTES = 512 * 1024 * 1024
+// This bounds an outage on the original upload; keep it below the server's STREAM_TIMEOUT (default 5m).
+export const UPLOAD_RETRY_BUDGET_MS = 180000
+export const RECOVERY_OFFLINE_DEADLINE_MS = 10 * 60 * 1000
+// Allow the final PATCH to flush parts, complete the backend object and reconcile a lost response.
+export const UPLOAD_REQUEST_TIMEOUT_MS = 6 * 60 * 1000
+export const UPLOAD_CLEANUP_TIMEOUT_MS = 5000

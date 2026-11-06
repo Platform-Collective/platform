@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { ChunkReader } from '../stream'
+import { ChunkReader } from '../chunk-reader'
 
 describe('ChunkReader', () => {
   let chunkReader: ChunkReader
@@ -92,5 +92,69 @@ describe('ChunkReader', () => {
 
     const result2 = await chunkReader.read()
     expect(result2).toEqual({ done: true, value: undefined })
+  })
+})
+
+describe('ChunkReader recovery', () => {
+  test('replays consumed, queued and final chunks only after close', async () => {
+    const reader = new ChunkReader(20)
+    reader.push(new Blob(['first']))
+    await reader.read()
+    reader.push(new Blob(['second']))
+    expect(() => reader.replayBlob()).toThrow()
+    reader.beginRecovery()
+    reader.push(new Blob(['final']))
+    reader.close()
+    await reader.closed
+    expect(await reader.replayBlob().text()).toBe('firstsecondfinal')
+  })
+
+  test('cap counts queued and consumed bytes exactly once and preserves the live consumer', async () => {
+    const reader = new ChunkReader(6)
+    reader.push(new Blob(['abc']))
+    await reader.read()
+    reader.push(new Blob(['def']))
+    expect(reader.recoverable).toBe(true)
+    reader.push(new Blob(['g']))
+    expect(reader.recoverable).toBe(false)
+    expect(await (await reader.read()).value?.text()).toBe('def')
+    expect(await (await reader.read()).value?.text()).toBe('g')
+    reader.close()
+  })
+
+  test('overflow without a consumer promptly discards the queue and all future pushes', async () => {
+    const reader = new ChunkReader(3)
+    const unavailable = jest.fn()
+    reader.onRecoveryUnavailable = unavailable
+    reader.beginRecovery()
+    reader.push(new Blob(['abc']))
+    for (let i = 0; i < 100; i++) reader.push(new Blob(['more']))
+    expect(unavailable).toHaveBeenCalledTimes(1)
+    expect(await reader.read()).toEqual({ done: true, value: undefined })
+    expect(() => reader.replayBlob()).toThrow()
+    expect(reader).toMatchObject({ chunks: [], sent: [], retainedBytes: 0 })
+    await reader.closed
+  })
+
+  test('release resolves pending reads and close waiters, and ignores future pushes', async () => {
+    const reader = new ChunkReader(10)
+    const pending = reader.read()
+    reader.release()
+    reader.push(new Blob(['late']))
+    expect(await pending).toEqual({ done: true, value: undefined })
+    await reader.closed
+    expect(reader).toMatchObject({ chunks: [], sent: [], retainedBytes: 0 })
+  })
+
+  test('recording error does not close the stream before its final chunk', async () => {
+    const reader = new ChunkReader(100)
+    const error = jest.fn()
+    reader.onError = error
+    reader.push(new Blob(['start']))
+    reader.fail(new Error('capture failed'))
+    reader.push(new Blob(['final']))
+    reader.close()
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(await reader.replayBlob().text()).toBe('startfinal')
   })
 })

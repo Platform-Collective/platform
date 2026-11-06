@@ -1,5 +1,6 @@
 {
   "string": {
+    "UploadFailed": "Die Aufnahme konnte nicht hochgeladen werden. Bitte versuche es erneut.",
     "Cancel": "Abbrechen",
     "Pause": "Pause",
     "Stop": "Stopp",

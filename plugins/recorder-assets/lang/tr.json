@@ -1,5 +1,6 @@
 {
   "string": {
+    "UploadFailed": "Kayıt yüklenemedi. Lütfen tekrar deneyin.",
     "Cancel": "İptal",
     "Pause": "Duraklat",
     "Stop": "Durdur",

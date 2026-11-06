@@ -256,6 +256,7 @@ export interface Config {
   TRANSACTOR_OVERRIDE?: string
   BACKUP_URL?: string
   STREAM_URL?: string
+  RECORDING_RECOVERY_ENABLED?: string
   PUBLIC_SCHEDULE_URL?: string
   CALDAV_SERVER_URL?: string
   EXPORT_URL?: string
@@ -499,6 +500,7 @@ export async function configurePlatform() {
   setMetadata(presentation.metadata.DisabledFeatures, new Set(disabledFeatures))
 
   setMetadata(recorder.metadata.StreamUrl, config.STREAM_URL)
+  setMetadata(recorder.metadata.RecoveryEnabled, config.RECORDING_RECOVERY_ENABLED === 'true')
   setMetadata(textEditor.metadata.Collaborator, config.COLLABORATOR)
   setMetadata(communication.metadata.Enabled, config.COMMUNICATION_API_ENABLED === 'true')
 

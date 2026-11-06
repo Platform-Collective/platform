@@ -1,5 +1,6 @@
 {
   "string": {
+    "UploadFailed": "Impossibile caricare la registrazione. Riprova.",
     "Cancel": "Annulla",
     "Pause": "Pausa",
     "Stop": "Stop",

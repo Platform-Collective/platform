@@ -352,6 +352,7 @@ export async function configurePlatform (onWorkbenchConnect?: () => Promise<void
   setMetadata(presentation.metadata.LinkPreviewUrl, config.LINK_PREVIEW_URL ?? '')
   setMetadata(presentation.metadata.MailUrl, config.MAIL_URL)
   setMetadata(recorder.metadata.StreamUrl, config.STREAM_URL ?? '')
+  setMetadata(recorder.metadata.RecoveryEnabled, config.RECORDING_RECOVERY_ENABLED === 'true')
   setMetadata(presentation.metadata.StatsUrl, config.STATS_URL)
   setMetadata(presentation.metadata.HulylakeUrl, config.HULYLAKE_URL ?? '')
 

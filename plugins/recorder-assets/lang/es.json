@@ -1,5 +1,6 @@
 {
   "string": {
+    "UploadFailed": "No se pudo subir la grabación. Inténtalo de nuevo.",
     "Cancel": "Cancelar",
     "Pause": "Pausar",
     "Stop": "Detener",
