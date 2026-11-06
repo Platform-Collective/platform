@@ -1,4 +1,11 @@
-import { emojiGlobalRegex, shortcodeGlobalRegex, isCustomEmoji, fetchEmojis, fetchMessages } from '@hcengineering/emoji'
+import {
+  emojiGlobalRegex,
+  emoticonRegex,
+  shortcodeGlobalRegex,
+  isCustomEmoji,
+  fetchEmojis,
+  fetchMessages
+} from '@hcengineering/emoji'
 import type {
   EmojiWithGroup,
   ExtendedEmoji,
@@ -68,9 +75,13 @@ export function getEmojiByHexcode (hexcode: string): EmojiWithGroup | undefined 
 
 export function getEmojiByEmoticon (emoticon: string | undefined): string | undefined {
   if (emoticon === undefined) return undefined
-  const matchEmoji = findEmoji(
-    (e) => !isCustomEmoji(e) && (Array.isArray(e.emoticon) ? e.emoticon.includes(emoticon) : e.emoticon === emoticon)
-  )
+  const findEmoticon = (value: string): ExtendedEmoji | undefined =>
+    findEmoji(
+      (e) => !isCustomEmoji(e) && (Array.isArray(e.emoticon) ? e.emoticon.includes(value) : e.emoticon === value)
+    )
+  const matchEmoji =
+    findEmoticon(emoticon) ??
+    (emoticon.includes('-') && emoticonRegex.test(emoticon) ? findEmoticon(emoticon.replace('-', '')) : undefined)
   if (matchEmoji === undefined) return undefined
   return !isCustomEmoji(matchEmoji) ? matchEmoji.emoji : undefined
 }
