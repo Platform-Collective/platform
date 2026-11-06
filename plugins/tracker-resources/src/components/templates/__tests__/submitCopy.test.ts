@@ -76,7 +76,7 @@ function setup (): {
   const findOne = jest.fn().mockResolvedValue(project)
   // Synthetic query result: the submission only consumes the model task type's ID.
   const findAll = jest.fn().mockResolvedValue([{ _id: taskType }])
-  const createDoc = jest.fn().mockResolvedValue('copied-template' as Ref<IssueTemplate>)
+  const createDoc = jest.fn().mockResolvedValue('copied-template')
   let nextChild = 0
   const newChildId = jest.fn<Ref<Issue>, []>(() => `copied-child-${++nextChild}` as Ref<Issue>)
   const client: Pick<TxOperations, 'findOne' | 'findAll' | 'createDoc'> = { findOne, findAll, createDoc }

@@ -36,7 +36,7 @@
   let space: Ref<Project> | undefined = undefined
   let error: IntlString | undefined
 
-  function handleProjectChange (event: CustomEvent<Ref<Project> | null | undefined>): void {
+  function handleProjectChange(event: CustomEvent<Ref<Project> | null | undefined>): void {
     // SpaceSelector also reports the unavailable-target reset; keep that error visible.
     if (event.detail != null) error = undefined
   }
