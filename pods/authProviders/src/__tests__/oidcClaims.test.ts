@@ -41,10 +41,18 @@ describe('OIDC email claims', () => {
     [{ email: 'user@example.com', tid: 'other-tenant', iss: issuer }, 'a different tenant'],
     [{ email: 'user@example.com', tid: 'tenant-id', iss: 'https://issuer.example.com' }, 'a different issuer'],
     [
-      { email: 'user@example.com', tid: 'tenant-id', iss: issuer, preferred_username: 'user_example.com#EXT#@tenant.example.com' },
+      {
+        email: 'user@example.com',
+        tid: 'tenant-id',
+        iss: issuer,
+        preferred_username: 'user_example.com#EXT#@tenant.example.com'
+      },
       'a B2B guest'
     ],
-    [{ email: 'user@example.com', tid: 'tenant-id', iss: issuer, idp: 'https://sts.windows.net/home-tenant/' }, 'another identity provider'],
+    [
+      { email: 'user@example.com', tid: 'tenant-id', iss: issuer, idp: 'https://sts.windows.net/home-tenant/' },
+      'another identity provider'
+    ],
     [{ email: 'user@example.com', tid: 'tenant-id', iss: issuer, acct: 1 }, 'a guest account'],
     [
       {
