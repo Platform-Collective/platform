@@ -59,3 +59,21 @@ describe('account client responses', () => {
     await expect(result).rejects.toMatchObject({ status: error })
   })
 })
+
+
+describe.each(['setCookie', 'deleteCookie'] as const)('account client %s responses', (method) => {
+  afterEach(() => jest.restoreAllMocks())
+
+  it.each(['<html>Gateway Timeout</html>', '', '{}'])('reports non-RPC error responses', async (body) => {
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(body, { status: 504, statusText: 'Gateway Timeout' }))
+    await expect(getClient('https://accounts.example.com')[method]()).rejects.toMatchObject({
+      status: { params: { message: 'Unexpected response from account service: 504 Gateway Timeout' } }
+    })
+  })
+
+  it('preserves structured account errors', async () => {
+    const error = new Status(Severity.ERROR, platform.status.Unauthorized, {})
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error }), { status: 401 }))
+    await expect(getClient('https://accounts.example.com')[method]()).rejects.toMatchObject({ status: error })
+  })
+})
