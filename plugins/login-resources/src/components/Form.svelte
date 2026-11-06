@@ -238,6 +238,7 @@
   .container {
     overflow-x: hidden;
     min-height: 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
 
@@ -254,7 +255,7 @@
 
     .form {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       column-gap: 0.75rem;
       row-gap: 1.5rem;
       margin-top: 1.5rem;

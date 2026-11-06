@@ -92,7 +92,7 @@ function statusTriple(cat: string | null): BarColorTriple {
     case 'task:statusCategory:ToDo':
       return {
         fill: 'var(--theme-state-primary-color)',
-        border: 'var(--theme-state-primary-hover)',
+        border: 'var(--theme-state-primary-color)',
         text: 'var(--theme-button-contrast-color)'
       }
     case 'task:statusCategory:Active':

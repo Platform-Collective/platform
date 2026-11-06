@@ -221,7 +221,7 @@
   }
   .cell-slack {
     font-size: 11px;
-    color: var(--theme-content-trans-color);
+    color: var(--theme-dark-color);
     text-align: right;
   }
   .cp-badge {
@@ -235,6 +235,6 @@
     letter-spacing: 0.5px;
   }
   .dim {
-    color: var(--theme-content-trans-color);
+    color: var(--theme-dark-color);
   }
 </style>

@@ -625,7 +625,7 @@
         class="bar-label-left"
         text-anchor="end"
         dominant-baseline="middle"
-        fill="var(--theme-content-trans-color)"
+        fill="var(--theme-dark-color)"
         pointer-events="none">{leftLabel}</text
       >
     {/if}
@@ -645,7 +645,7 @@
         class="bar-label-right"
         text-anchor="start"
         dominant-baseline="middle"
-        fill="var(--theme-content-trans-color)"
+        fill="var(--theme-dark-color)"
         pointer-events="none">{rightLabel}</text
       >
     {/if}

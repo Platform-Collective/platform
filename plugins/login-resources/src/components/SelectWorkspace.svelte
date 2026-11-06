@@ -138,7 +138,7 @@
   let search: string = ''
 </script>
 
-<form class="container" style:padding={$deviceInfo.docWidth <= 480 ? '1.25rem' : '5rem'}>
+<form class="container" style:padding={$deviceInfo.docWidth <= 480 ? '1.25rem' : '2rem'}>
   <div class="grow-separator" />
   <div class="fs-title">
     {#if account != null}
@@ -161,7 +161,7 @@
       <Spinner />
     </div>
   {:then}
-    <Scroller padding={'.125rem 0'} maxHeight={35}>
+    <Scroller padding={'.125rem 0'} maxHeight={22}>
       {#if workspaces.length === 0 && account?.token != null && isReadOnlyGuest}
         <span class="readonly-warning"><Label label={login.string.SignUpToCreateWorkspace} /></span>
       {/if}
@@ -259,6 +259,8 @@
     flex-direction: column;
     justify-content: space-between;
     flex-grow: 1;
+    min-height: 0;
+    min-width: 0;
     overflow: hidden;
 
     .workspace-loader {
@@ -274,16 +276,15 @@
       color: var(--theme-caption-color);
     }
     .status {
-      min-height: 7.5rem;
-      max-height: 7.5rem;
-      padding-top: 1.25rem;
+      min-height: 0;
+      padding-top: 0.75rem;
     }
 
     .form {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       column-gap: 0.75rem;
-      row-gap: 1.5rem;
+      row-gap: 0.625rem;
 
       .form-row {
         grid-column-start: 1;
@@ -303,7 +304,7 @@
       flex-grow: 1;
     }
     .footer {
-      margin-top: 3.5rem;
+      margin-top: 1.25rem;
       font-size: 0.8rem;
       color: var(--theme-caption-color);
       span {

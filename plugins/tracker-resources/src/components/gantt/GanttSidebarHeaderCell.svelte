@@ -154,7 +154,7 @@
   }
   .sort-glyph {
     font-size: 9px;
-    color: var(--theme-content-trans-color);
+    color: var(--theme-dark-color);
     flex-shrink: 0;
   }
   .resize-handle {

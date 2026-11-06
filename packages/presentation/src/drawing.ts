@@ -373,7 +373,7 @@ export function drawing (
   let isOffsetAnimating = false
 
   updateToolCursor(false)
-  updateCanvasTouchAction()
+  updateCanvasInteraction()
 
   interface LiveTextBox {
     pos: MouseScaledPoint
@@ -1177,7 +1177,8 @@ export function drawing (
     requestAnimationFrame(animate)
   }
 
-  function updateCanvasTouchAction (): void {
+  function updateCanvasInteraction (): void {
+    canvas.style.pointerEvents = readonly ? 'none' : 'auto'
     canvas.style.touchAction = readonly ? 'unset' : 'none'
   }
 
@@ -1274,7 +1275,7 @@ export function drawing (
       if (props.readonly !== undefined) {
         if (props.readonly !== readonly) {
           readonly = props.readonly
-          updateCanvasTouchAction()
+          updateCanvasInteraction()
           syncToolCursor = true
         }
       }

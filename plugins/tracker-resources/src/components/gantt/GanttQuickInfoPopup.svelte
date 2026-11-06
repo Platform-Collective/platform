@@ -107,7 +107,7 @@
     .ident {
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size: 11px;
-      color: var(--theme-content-trans-color);
+      color: var(--theme-dark-color);
     }
     .title {
       font-weight: 600;
@@ -122,7 +122,7 @@
     gap: 8px;
     .label {
       font-size: 12px;
-      color: var(--theme-content-trans-color);
+      color: var(--theme-dark-color);
     }
   }
   .quick-info__footer {

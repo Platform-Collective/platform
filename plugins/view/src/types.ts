@@ -33,6 +33,7 @@ import {
   PrimitiveType,
   Ref,
   SortingOrder,
+  type SortingRules,
   Space,
   Tx,
   TxOperations,
@@ -363,6 +364,8 @@ export type SortFunc = Resource<
  */
 export interface ClassSortFuncs extends Class<Doc> {
   func: SortFunc
+  /** Query ordering applied before limiting list results, using the selected direction. */
+  sortingRules?: Omit<SortingRules<PrimitiveType>, 'order'>
 }
 
 /**

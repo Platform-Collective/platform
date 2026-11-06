@@ -902,7 +902,7 @@
   }
   .cell-slack {
     font-size: 11px;
-    color: var(--theme-content-trans-color);
+    color: var(--theme-dark-color);
     padding-left: 8px;
     text-align: right;
     min-width: 40px;

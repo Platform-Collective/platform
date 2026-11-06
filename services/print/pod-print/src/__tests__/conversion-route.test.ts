@@ -39,6 +39,9 @@ jest.mock('../config', () => ({
   default: { GotenbergUrl: 'http://converter', AccountsUrl: 'http://accounts' }
 }))
 jest.mock('../print', () => ({}))
+jest.mock('../browser', () => ({
+  PrintBrowserManager: jest.fn(() => ({ getStatus: jest.fn(), close: jest.fn(async () => {}) }))
+}))
 jest.mock('../convert', () => ({ convertToHtml: jest.fn(async () => '<p>HTML</p>') }))
 jest.mock('../preview', () => ({
   ...jest.requireActual('../preview'),

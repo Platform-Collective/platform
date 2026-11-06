@@ -32,7 +32,8 @@
   import { FilePreviewExtension } from '../types'
 
   export let file: Ref<Blob> | string
-  export let name: string
+  // Preserve an absent filename when forwarding to storage and registered renderers.
+  export let name: string | undefined
   export let contentType: string
   export let metadata: BlobMetadata | undefined
   export let props: Record<string, any> = {}

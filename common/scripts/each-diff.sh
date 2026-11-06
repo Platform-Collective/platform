@@ -21,7 +21,7 @@ if [ -n "$FILES" ]; then
   for file in $FILES; do
     # Match file to root
     for r in $roots; do
-      if [[ "$file" == ${r}* ]]; then
+      if [[ "$file" == ${r}/* ]]; then
         echo -e "${file}"
         if [[ ! " ${changed_roots[@]} " =~ " ${r} " ]]; then
           changed_roots+=("$r")

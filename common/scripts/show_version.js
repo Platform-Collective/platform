@@ -18,21 +18,33 @@ const path = require('path')
 const exec = require('child_process').exec
 
 function main() {
+  // Read version from version.txt first, fall back to git tag, then default
+  let version
+  try {
+    const versionFilePath = path.resolve(__dirname, 'version.txt')
+    version = fs.readFileSync(versionFilePath, 'utf8').trim()
+  } catch (error) {
+    // version.txt not found
+  }
+
+  if (version) {
+    console.log(version)
+    return
+  }
+
   exec('git describe --tags --abbrev=0', (err, stdout) => {
     if (err !== null) {
       console.log('"0.6.0"')
       return
     }
-    // Take version from file
-    let version
-    try {
-      const versionFilePath = path.resolve(__dirname, 'version.txt')
-      version = fs.readFileSync(versionFilePath, 'utf8').trim()
-    } catch (error) {
-      version = '"0.6.0"'
+    // Tags look like v0.7.428, s0.7.327 or v0.7.428-pc73; print x.y.z
+    const parts = stdout.trim().replace(/^[^0-9]+/, '').split('.')
+    const [major, minor, patch] = parts.map((it) => parseInt(it))
+    if (parts.length !== 3 || [major, minor, patch].some((it) => Number.isNaN(it))) {
+      console.log('"0.6.0"')
+      return
     }
-
-    console.log(version)
+    console.log(`"${major}.${minor}.${patch}"`)
   })
 }
 

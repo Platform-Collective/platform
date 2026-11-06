@@ -2,9 +2,11 @@
 // Copyright © 2024 Hardcore Engineering Inc.
 //
 import { MeasureContext } from '@hcengineering/core'
-import puppeteer, { Page, Viewport } from 'puppeteer'
+import { type Page, type Viewport } from 'puppeteer'
 
+import { type PrintBrowserManager, type PrintBrowserPage, withTimeout } from './browser'
 import config from './config'
+import { Semaphore } from './semaphore'
 
 export interface PrintOptions {
   kind?: ExportKind
@@ -18,6 +20,8 @@ export const validPageOrientations = ['portrait', 'landscape'] as const
 export type ExportKind = (typeof validKinds)[number]
 export type PageOrientation = (typeof validPageOrientations)[number]
 
+const printSemaphore = new Semaphore(config.PrintConcurrency)
+
 /**
  * Prints a webpage with the specified options
  * @public
@@ -25,27 +29,45 @@ export type PageOrientation = (typeof validPageOrientations)[number]
  * @param options - The options to use when printing the webpage.
  * @returns Buffer with the printed content.
  */
-export async function print (ctx: MeasureContext, url: string, options?: PrintOptions): Promise<Buffer | undefined> {
+export async function print (
+  ctx: MeasureContext,
+  url: string,
+  options: PrintOptions | undefined,
+  browserManager: PrintBrowserManager
+): Promise<Buffer | undefined> {
   const kind = options?.kind ?? 'pdf'
   const orientation = options?.orientation ?? 'portrait'
   const viewport = options?.viewport ?? { width: 1440, height: 900 }
+  const release = await printSemaphore.acquire()
+  let browserPage: PrintBrowserPage | undefined
 
-  ctx.info('print', { url, kind, orientation, viewport })
+  try {
+    ctx.info('print', { url, kind, orientation, viewport })
 
-  // TODO: think of having a "hot" browser instance to avoid the overhead of launching a new one every time
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-gpu',
-      '--disable-dev-shm-usage',
-      '--disable-extensions',
-      '--disable-setuid-sandbox',
-      ...config.PuppeteerArgs
-    ]
-  })
-  const page = await browser.newPage()
+    browserPage = await browserManager.createPage()
+    const job = render(ctx, browserPage.page, url, kind, orientation, viewport)
+    // After a timeout the job is abandoned; closing its context makes the pending
+    // puppeteer calls reject, which must not surface as an unhandled rejection.
+    job.catch(() => {})
 
+    return await withTimeout(job, config.PrintTimeoutMs, `Print timed out after ${config.PrintTimeoutMs} ms`)
+  } finally {
+    try {
+      await browserPage?.release()
+    } finally {
+      release()
+    }
+  }
+}
+
+async function render (
+  ctx: MeasureContext,
+  page: Page,
+  url: string,
+  kind: ExportKind,
+  orientation: PageOrientation,
+  viewport: Viewport
+): Promise<Buffer | undefined> {
   page
     .on('pageerror', (err: unknown) => {
       const message = err instanceof Error ? err.message : String(err)
@@ -85,6 +107,7 @@ export async function print (ctx: MeasureContext, url: string, options?: PrintOp
 
     const displayHeaderFooter = pageHeader !== '' || pageFooter !== ''
 
+    // No own pdf timeout: the whole job is bounded by PrintTimeoutMs
     res = await ctx.with('pdf', {}, () =>
       page.pdf({
         format: 'A4',
@@ -106,8 +129,6 @@ export async function print (ctx: MeasureContext, url: string, options?: PrintOp
     // might make it configurable in the future
     res = await ctx.with('screenshot', { kind }, () => page.screenshot({ type: kind }))
   }
-
-  await browser.close()
 
   return res !== undefined ? Buffer.from(res) : undefined
 }

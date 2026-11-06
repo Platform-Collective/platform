@@ -242,6 +242,7 @@ test.describe('Planning ToDo tests', () => {
     await planningPage.buttonPopupSave().click()
 
     await test.step('User is able to create multiple by dragging slots to the same Action Item', async () => {
+      await expect(planningPage.eventInSchedule(titleV)).toHaveCount(1)
       await planningPage.dragToCalendar(titleV, 3, time2)
       await planningPage.checkToDoExistInCalendar(titleV, 2)
     })

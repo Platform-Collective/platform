@@ -258,6 +258,9 @@ class PlatformQueueProducerImpl implements PlatformQueueProducer<any> {
 class PlatformQueueConsumerImpl implements ConsumerHandle {
   connected = false
   cc: Consumer
+  private closed = false
+  private readonly starting: Promise<void>
+  private cancelRetry?: () => void
   constructor (
     readonly ctx: MeasureContext,
     readonly kafka: Kafka,
@@ -285,14 +288,43 @@ class PlatformQueueConsumerImpl implements ConsumerHandle {
       heartbeatInterval: 3000
     })
 
-    void this.start().catch((err) => {
+    this.cc.on('consumer.connect', () => {
+      this.connected = true
+      this.ctx.info('consumer connected to queue')
+    })
+    this.cc.on('consumer.disconnect', () => {
+      this.connected = false
+      this.ctx.warn('consumer disconnected from queue')
+    })
+
+    this.starting = this.start().catch((err) => {
       ctx.error('failed to consume', { err })
     })
   }
 
   async start (): Promise<void> {
-    await this.doConnect()
-    await this.doSubscribe()
+    let retryDelay = 1000
+    while (!this.closed) {
+      try {
+        await this.cc.connect()
+        if (this.closed) return
+        await this.doSubscribe()
+        break
+      } catch (err) {
+        if (this.closed) return
+        this.ctx.error('failed to start consumer, retrying', { err, topic: this.topic, retryDelay })
+        await new Promise<void>((resolve) => {
+          const timeout = setTimeout(resolve, retryDelay)
+          this.cancelRetry = () => {
+            clearTimeout(timeout)
+            resolve()
+          }
+        })
+        this.cancelRetry = undefined
+        retryDelay = Math.min(retryDelay * 2, 10000)
+      }
+    }
+    if (this.closed) return
 
     await this.cc.run({
       eachMessage: async (payload) => {
@@ -335,18 +367,6 @@ class PlatformQueueConsumerImpl implements ConsumerHandle {
     })
   }
 
-  async doConnect (): Promise<void> {
-    this.cc.on('consumer.connect', () => {
-      this.connected = true
-      this.ctx.info('consumer connected to queue')
-    })
-    this.cc.on('consumer.disconnect', () => {
-      this.connected = false
-      this.ctx.warn('consumer disconnected from queue')
-    })
-    await this.cc.connect()
-  }
-
   async doSubscribe (): Promise<void> {
     await this.cc.subscribe({
       topic: getKafkaTopicId(this.topic, this.config),
@@ -358,8 +378,12 @@ class PlatformQueueConsumerImpl implements ConsumerHandle {
     return this.connected
   }
 
-  close (): Promise<void> {
-    return this.cc.disconnect()
+  async close (): Promise<void> {
+    this.closed = true
+    this.cancelRetry?.()
+    // Let in-flight startup finish before disconnecting so it cannot reconnect after close.
+    await this.starting
+    await this.cc.disconnect()
   }
 }
 

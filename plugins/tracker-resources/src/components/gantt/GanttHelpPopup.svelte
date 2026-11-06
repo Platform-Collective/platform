@@ -118,6 +118,6 @@
     padding-top: 10px;
     border-top: 1px solid var(--theme-popup-divider);
     font-size: 11px;
-    color: var(--theme-content-trans-color);
+    color: var(--theme-dark-color);
   }
 </style>
