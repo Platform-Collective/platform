@@ -60,12 +60,13 @@ describe('account client responses', () => {
   })
 })
 
-
 describe.each(['setCookie', 'deleteCookie'] as const)('account client %s responses', (method) => {
   afterEach(() => jest.restoreAllMocks())
 
   it.each(['<html>Gateway Timeout</html>', '', '{}'])('reports non-RPC error responses', async (body) => {
-    jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(body, { status: 504, statusText: 'Gateway Timeout' }))
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(body, { status: 504, statusText: 'Gateway Timeout' }))
     await expect(getClient('https://accounts.example.com')[method]()).rejects.toMatchObject({
       status: { params: { message: 'Unexpected response from account service: 504 Gateway Timeout' } }
     })
