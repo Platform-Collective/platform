@@ -43,6 +43,7 @@ export { default as ComponentNavigator } from './components/ComponentNavigator.s
 export { default as SavedView } from './components/SavedView.svelte'
 
 export { SpecialView }
+export { currentTabStore } from './workbench'
 
 export * from './utils'
 export * from './sidebar'
