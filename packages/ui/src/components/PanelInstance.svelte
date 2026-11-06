@@ -27,9 +27,14 @@
   export let embedded: boolean = false
   export let readonly: boolean = false
 
+  interface PanelComponentInstance {
+    canClose?: () => boolean
+    handlePanelClose?: () => boolean
+  }
+
   let modalHTML: HTMLElement
   let oldPanel: HTMLElement | undefined
-  let componentInstance: any
+  let componentInstance: unknown
 
   let options: PopupOptions = {
     props: {
@@ -52,6 +57,9 @@
 
   let props: PanelProps | undefined
   function _close(): void {
+    if ((componentInstance as PanelComponentInstance | undefined)?.handlePanelClose?.() === true) {
+      return
+    }
     closePanel()
   }
 
@@ -70,13 +78,15 @@
   }
 
   function escapeClose(): void {
+    const panelComponent = componentInstance as PanelComponentInstance | undefined
+
     // Check if there is popup visible, then ignore
     if ($popupstore.length > 0) {
       return
     }
 
-    if (componentInstance?.canClose !== undefined) {
-      if (!(componentInstance as { canClose: () => boolean }).canClose()) {
+    if (panelComponent?.canClose !== undefined) {
+      if (!panelComponent.canClose()) {
         return
       }
     }
