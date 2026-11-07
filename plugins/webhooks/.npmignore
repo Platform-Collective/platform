@@ -1,0 +1,6 @@
+*
+!/lib/**/*
+!CHANGELOG.md
+/lib/**/__tests__/
+/lib/**/*.map
+tsconfig.json
