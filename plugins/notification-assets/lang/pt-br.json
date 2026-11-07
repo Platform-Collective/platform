@@ -71,6 +71,9 @@
     "AlreadySubscribed": "Este navegador já está inscrito",
     "PushNotConfigured": "As notificações push não estão configuradas neste servidor",
     "PushNotSupported": "Não compatível com este navegador",
-    "PushDenied": "As notificações estão bloqueadas nas configurações do navegador"
+    "PushDenied": "As notificações estão bloqueadas nas configurações do navegador",
+    "NotifyLevelAll": "Todas as mensagens",
+    "NotifyLevelMentions": "Somente menções",
+    "NotifyLevelNone": "Nada"
   }
 }

@@ -54,6 +54,7 @@ import notification, {
   ActivityInboxNotification,
   CommonInboxNotification,
   DocNotifyContext,
+  DocNotifyLevel,
   InboxNotification,
   MentionInboxNotification,
   NotificationType
@@ -64,6 +65,12 @@ import { type TriggerControl } from '@hcengineering/server-core'
 import { NOTIFICATION_BODY_SIZE, ReceiverInfo, SenderInfo } from '@hcengineering/server-notification'
 import { markupToText, stripTags } from '@hcengineering/text-core'
 
+import {
+  getApplicableNotifyLevels,
+  isAllowedByNotifyLevels,
+  isMentionedInMarkup,
+  type NotifyLevelSource
+} from './notifyLevel'
 import { OnInboxNotificationCreate, PushNotificationsHandler } from './push'
 import {
   AvailableProvidersCache,
@@ -372,10 +379,23 @@ export async function pushInboxNotifications (
   modifiedOn: Timestamp,
   types: Ref<NotificationType>[],
   shouldUpdateTimestamp = true,
-  tx?: TxCUD<Doc>
+  tx?: TxCUD<Doc>,
+  isMention?: () => boolean
 ): Promise<TxCreateDoc<InboxNotification> | undefined> {
   const context = getDocNotifyContext(control, contexts, objectId, receiver.account)
   let docNotifyContextId: Ref<DocNotifyContext>
+
+  const levels = await getApplicableNotifyLevels(getNotifyLevelSource(ctx, control), objectId, receiver, [
+    context,
+    ...contexts
+  ])
+  const allowed = isAllowedByNotifyLevels(
+    levels,
+    () => control.hierarchy.isDerived(_class, notification.class.MentionInboxNotification) || isMention?.() === true
+  )
+  if (!allowed) {
+    return undefined
+  }
 
   if (context === undefined) {
     docNotifyContextId = await createNotifyContext(
@@ -545,8 +565,63 @@ export async function pushActivityInboxNotifications (
     activityMessage.modifiedOn,
     types,
     shouldUpdateTimestamp,
-    originTx
+    originTx,
+    () => isReceiverMentioned(control, activityMessage, receiver)
   )
+}
+
+const NotifyLevelCacheKey = 'NotifyLevelCache'
+
+/**
+ * Loaders used to resolve notification levels, cached for the current request.
+ */
+function getNotifyLevelSource (ctx: MeasureContext, control: TriggerControl): NotifyLevelSource {
+  const cache: Map<string, Promise<unknown>> = control.contextCache.get(NotifyLevelCacheKey) ?? new Map()
+  control.contextCache.set(NotifyLevelCacheKey, cache)
+  const cached = async <T> (key: string, load: () => Promise<T>): Promise<T> => {
+    let value = cache.get(key) as Promise<T> | undefined
+    if (value === undefined) {
+      value = load()
+      cache.set(key, value)
+    }
+    return await value
+  }
+  const restrictedLevels: DocNotifyLevel[] = ['mentions', 'none']
+
+  return {
+    // Resolve by id only, using the base class, so a wrong attachedToClass cannot skip the lookup
+    findParentMessage: (objectId) =>
+      cached(`parent_${objectId}`, async () => {
+        const parent = (
+          await control.findAll(
+            ctx,
+            activity.class.ActivityMessage,
+            { _id: objectId as Ref<ActivityMessage> },
+            { limit: 1, projection: { _id: 1, _class: 1, attachedTo: 1 } }
+          )
+        )[0]
+        if (parent === undefined) return undefined
+        return { _id: parent._id, _class: parent._class, attachedTo: parent.attachedTo }
+      }),
+    isThreadParent: (parentClass) => control.hierarchy.isDerived(parentClass, activity.class.ActivityMessage),
+    findRestrictedContexts: (objectId) =>
+      cached(`contexts_${objectId}`, () =>
+        control.findAll(ctx, notification.class.DocNotifyContext, {
+          objectId,
+          notifyLevel: { $in: restrictedLevels }
+        })
+      )
+  }
+}
+
+function isReceiverMentioned (control: TriggerControl, message: ActivityMessage, receiver: ReceiverInfo): boolean {
+  if (!control.hierarchy.isDerived(message._class, chunter.class.ChatMessage)) return false
+  const targets: string[] = [receiver.employee, contact.mention.Everyone]
+  const isOnline = Array.from(control.userStatusMap.values()).some((s) => s.online && s.user === receiver.account)
+  if (isOnline) {
+    targets.push(contact.mention.Here)
+  }
+  return isMentionedInMarkup((message as ChatMessage).message, targets)
 }
 
 async function createNotifyContext (

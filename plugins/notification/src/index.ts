@@ -291,6 +291,16 @@ export interface DisplayActivityInboxNotification extends ActivityInboxNotificat
 export type DisplayInboxNotification = DisplayActivityInboxNotification | InboxNotification
 
 /**
+ * Per user, per document notification level.
+ * 'all' (default) - notify about every message,
+ * 'mentions' - notify only when the user is mentioned,
+ * 'none' - do not notify at all.
+ *
+ * @public
+ */
+export type DocNotifyLevel = 'all' | 'mentions' | 'none'
+
+/**
  * @public
  */
 export interface DocNotifyContext extends Doc<PersonSpace> {
@@ -302,6 +312,8 @@ export interface DocNotifyContext extends Doc<PersonSpace> {
 
   isPinned: boolean
   hidden: boolean
+  // Unset means 'all'
+  notifyLevel?: DocNotifyLevel
   lastViewedTimestamp?: Timestamp
   lastUpdateTimestamp?: Timestamp
 
@@ -468,6 +480,9 @@ const notification = plugin(notificationId, {
     PushSubscribeErrorNetwork: '' as IntlString,
     PushSubscribeErrorNotSupported: '' as IntlString,
     PushOnDesktop: '' as IntlString,
+    NotifyLevelAll: '' as IntlString,
+    NotifyLevelMentions: '' as IntlString,
+    NotifyLevelNone: '' as IntlString,
     AlreadySubscribed: '' as IntlString,
     PushNotConfigured: '' as IntlString,
     PushNotSupported: '' as IntlString,

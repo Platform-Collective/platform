@@ -51,6 +51,7 @@ import {
   TypeIntlString,
   TypeMarkup,
   TypeRef,
+  TypeString,
   UX,
   type Builder
 } from '@hcengineering/model'
@@ -69,6 +70,7 @@ import {
   type BrowserNotification,
   type CommonInboxNotification,
   type DocNotifyContext,
+  type DocNotifyLevel,
   type InboxNotification,
   type MentionInboxNotification,
   type NotificationContextPresenter,
@@ -219,6 +221,9 @@ export class TDocNotifyContext extends TDoc implements DocNotifyContext {
   @Prop(TypeBoolean(), view.string.Hide)
   hidden!: boolean
 
+  @Prop(TypeString(), notification.string.Notifications)
+  notifyLevel?: DocNotifyLevel
+
   tx?: Ref<TxCUD<Doc>>
 }
 
@@ -353,6 +358,15 @@ export const notificationActionTemplates = template({
     category: notification.category.Notification,
     target: notification.class.DocNotifyContext,
     visibilityTester: notification.function.HasDocNotifyContextUnpinAction,
+    context: { mode: ['context', 'browser'], group: 'edit' }
+  },
+  setNotifyLevel: {
+    action: notification.actionImpl.SetDocNotifyLevel,
+    label: notification.string.Notifications,
+    icon: notification.icon.Notifications,
+    input: 'focus',
+    category: notification.category.Notification,
+    target: notification.class.DocNotifyContext,
     context: { mode: ['context', 'browser'], group: 'edit' }
   }
 })

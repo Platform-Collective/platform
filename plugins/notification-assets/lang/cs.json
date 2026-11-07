@@ -72,6 +72,9 @@
     "AlreadySubscribed": "Tento prohlížeč je již přihlášen k odběru",
     "PushNotConfigured": "Push oznámení nejsou na tomto serveru nakonfigurována",
     "PushNotSupported": "Tento prohlížeč to nepodporuje",
-    "PushDenied": "Oznámení jsou blokována v nastavení prohlížeče"
+    "PushDenied": "Oznámení jsou blokována v nastavení prohlížeče",
+    "NotifyLevelAll": "Všechny zprávy",
+    "NotifyLevelMentions": "Pouze zmínky",
+    "NotifyLevelNone": "Nic"
   }
 }
