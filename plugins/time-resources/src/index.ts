@@ -29,6 +29,7 @@ import NotificationToDoPresenter from './components/NotificationToDoPresenter.sv
 import PriorityEditor from './components/PriorityEditor.svelte'
 import ToDoPresenter from './components/ToDoPresenter.svelte'
 import { ToDoTitleProvider } from './utils'
+import PlanMessagePopup from './components/PlanMessagePopup.svelte'
 
 export type ToDosMode = 'unplanned' | 'planned' | 'all' | 'tag' | 'date'
 
@@ -44,6 +45,7 @@ export default async (): Promise<Resources> => ({
     EditWorkSlot,
     WorkSlotElement,
     CreateToDoPopup,
+    PlanMessagePopup,
     EditToDo,
     NotificationToDoPresenter,
     PriorityEditor,
