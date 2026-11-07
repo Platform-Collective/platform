@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "カレンダー",
+    "CalendarWithoutDueDate": "期限のない課題: {count}",
+    "CalendarUpdateFailed": "課題の日付を更新できませんでした。もう一度お試しください。",
     "TrackerApplication": "トラッカー",
     "Projects": "あなたのプロジェクト",
     "More": "その他",

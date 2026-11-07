@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Calendario",
+    "CalendarWithoutDueDate": "Incidencias sin fecha de vencimiento: {count}",
+    "CalendarUpdateFailed": "No se pudieron actualizar las fechas de la incidencia. Inténtalo de nuevo.",
     "TrackerApplication": "Seguimiento",
     "Projects": "Tus proyectos",
     "More": "Más",

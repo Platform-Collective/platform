@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Kalendář",
+    "CalendarWithoutDueDate": "Počet úkolů bez termínu: {count}",
+    "CalendarUpdateFailed": "Termíny úkolu se nepodařilo aktualizovat. Zkuste to znovu.",
     "TrackerApplication": "Přehled",
     "Projects": "Vaše projekty",
     "More": "Více",
