@@ -14,7 +14,7 @@
 //
 
 import { getResource } from '@hcengineering/platform'
-import { type Location } from '@hcengineering/ui'
+import { type Location, type LocationResolver } from '@hcengineering/ui'
 import { type Application } from '@hcengineering/workbench'
 
 export async function resolveTabLocation (
@@ -23,7 +23,7 @@ export async function resolveTabLocation (
 ): Promise<Location> {
   if (app?.locationResolver === undefined) return loc
 
-  const resolver = await getResource(app.locationResolver)
+  const resolver = await getResource<LocationResolver>(app.locationResolver)
   // Tab creation, sync and presenter refreshes only read metadata. Foreground
   // resolvers must not set the active view's access-denied state for these reads.
   return (await resolver(loc, { background: true }))?.loc ?? loc
