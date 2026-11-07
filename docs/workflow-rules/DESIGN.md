@@ -222,6 +222,17 @@ The trigger body:
    seen by this specific candidate, not a shared "original persisted"
    value, so a chain of legal moves emits a chain of CAS-shaped
    updates.
+
+   The `scope` field on the `TxApplyIf` is
+   `workflow-rules.mirror:${counterpart._id}` (per-target). The apply
+   pipeline (`ApplyTxMiddleware.verifyApplyIf` in
+   `foundations/server/packages/middleware/src/applyTx.ts`) only
+   evaluates the match when `scope` is non-null; a null scope silently
+   short-circuits to `passed=true` and the stale mirror would overwrite
+   the fresh target. Keying the scope to the counterpart identity
+   serializes concurrent applies to the SAME target through the
+   middleware's scopes Promise map, while applies to DIFFERENT targets
+   run in parallel.
 10. The first invocation evaluates the complete request (`control.txes`),
     including candidates from every dispatcher actor group, once in
     `modifiedOn` order. Equal timestamps retain their order in the request

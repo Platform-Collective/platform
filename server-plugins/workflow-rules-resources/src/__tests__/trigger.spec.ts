@@ -1190,3 +1190,160 @@ describe('rev-6: TxApplyIf match guards cross-request concurrency', () => {
     expect(raw[1].match[0].query).toEqual({ _id: 'issue:b1', status: S.done })
   })
 })
+
+describe('rev-7: TxApplyIf predicate runs through the apply middleware', () => {
+  // `ApplyTxMiddleware.verifyApplyIf` only evaluates `match` when
+  // `scope != null`. Rev-6 passed `undefined` so the match was never
+  // queried and the stale mirror would overwrite the fresh target.
+  // Rev-7 sets a per-target scope. The tests below mimic the real
+  // middleware against the same in-memory issues array:
+  //  - for each `match` entry, require a hit by `_id` AND field equality
+  //  - if the predicate passes, apply the inner TxUpdateDoc by mutating
+  //    the stored doc in place; otherwise drop the wrapper
+  //  - the scope string is per-target so two wrappers for the same
+  //    target serialize at the apply stage; wrappers for different
+  //    targets do not serialize.
+
+  function applyWrapper (wrapper: Any, issues: Any[]): { passed: boolean, reason?: string } {
+    if (wrapper.scope == null) {
+      // Would short-circuit in real middleware - the bug Michael found.
+      return { passed: false, reason: 'scope missing' }
+    }
+    for (const m of wrapper.match ?? []) {
+      const query: Any = m.query
+      const row = issues.find((i) => i._id === query._id)
+      if (row == null) return { passed: false, reason: 'match row missing' }
+      for (const key of Object.keys(query)) {
+        if (key === '_id') continue
+        if ((row as any)[key] !== (query as any)[key]) {
+          return { passed: false, reason: `match failed on ${key}` }
+        }
+      }
+    }
+    for (const inner of wrapper.txes) {
+      const row = issues.find((i) => i._id === inner.objectId)
+      if (row == null) continue
+      Object.assign(row, inner.operations)
+    }
+    return { passed: true }
+  }
+
+  it('emitted wrapper carries a per-target scope so verifyApplyIf actually runs', async () => {
+    const control = makeControl({ issues: linkedPair(), rules: [rule()] })
+    const raw = await rawEmit([updateTx(S.review)], control)
+    expect(raw).toHaveLength(1)
+    // A non-null scope is what gates `verifyApplyIf` in ApplyTxMiddleware
+    // (`applyIf.scope != null ? await this.verifyApplyIf(...) : passed:true`).
+    // Rev-6 shipped `undefined`; rev-7 pins it to the target identity.
+    expect(raw[0].scope).toBe('workflow-rules.mirror:issue:b1')
+  })
+
+  it('independent targets get distinct scope keys (no serialization on different targets)', async () => {
+    const issues = [
+      issue({ _id: 'issue:a1' }),
+      issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1' }),
+      issue({ _id: 'issue:a2' }),
+      issue({ _id: 'issue:b2', space: PROJ_B, attachedTo: 'issue:a2' })
+    ]
+    const control = makeControl({ issues, rules: [rule()] })
+    const request = [
+      updateTx(S.review, { objectId: 'issue:a1', modifiedOn: 1001 }),
+      updateTx(S.review, { objectId: 'issue:a2', modifiedOn: 1002 })
+    ]
+    const raw = await rawEmit(request, { ...control, txes: request })
+    expect(raw).toHaveLength(2)
+    expect(raw[0].scope).toBe('workflow-rules.mirror:issue:b1')
+    expect(raw[1].scope).toBe('workflow-rules.mirror:issue:b2')
+    // Different scopes - the real middleware would not block these at
+    // the scopes Promise map. The test proves the key is per-counterpart.
+    expect(raw[0].scope).not.toBe(raw[1].scope)
+  })
+
+  it('stale mirror is rejected at apply time when the counterpart has moved', async () => {
+    // One request moves source A1 -> Review; another parallel request
+    // already moved counterpart B1 from Backlog to Done between the
+    // sweeper read and the apply. The wrapper's match says
+    // `{status: backlog}`; the stored row says `status: done`; apply
+    // must reject.
+    const issues = linkedPair()
+    const control = makeControl({ issues, rules: [rule()] })
+    const raw = await rawEmit([updateTx(S.review)], control)
+    expect(raw).toHaveLength(1)
+    const wrapper = raw[0]
+
+    // Simulate a parallel request that advanced the counterpart.
+    const b1 = issues.find((i) => i._id === "issue:b1") as any
+    b1.status = S.done
+
+    const result = applyWrapper(wrapper, issues)
+    expect(result.passed).toBe(false)
+    expect(result.reason).toContain('status')
+    // Counterpart still holds what the parallel request wrote; the stale
+    // mirror did not overwrite it.
+    expect(b1.status).toBe(S.done)
+  })
+
+  it('two chained mirrors in one request: the first applies, the second`s match reflects the post-apply state', async () => {
+    // The pending-status map already makes the second emit carry
+    // `{status: done}`. When the first wrapper applies and mutates B1
+    // to Done, the second wrapper's predicate is satisfied by the live
+    // doc and the inner update runs. Nothing is stale, so both apply.
+    const chainRule = rule({
+      forwardMap: { [S.review]: S.done, [S.inProgress]: S.inProgress },
+      allowedLoops: [{ from: S.done, to: S.inProgress }]
+    })
+    const issues = linkedPair()
+    const control = makeControl({ issues, rules: [chainRule] })
+    const request = [
+      updateTx(S.review, { modifiedOn: 1001 }),
+      updateTx(S.inProgress, { modifiedOn: 1002 })
+    ]
+    const raw = await rawEmit(request, { ...control, txes: request })
+    expect(raw).toHaveLength(2)
+
+    const b1 = issues.find((i) => i._id === "issue:b1") as any
+    expect(b1.status).toBe(S.backlog)
+
+    // Apply in dispatch order under the same scope key (real middleware
+    // serializes same-scope applies via its Promise map).
+    expect(raw[0].scope).toBe(raw[1].scope)
+    const r0 = applyWrapper(raw[0], issues)
+    expect(r0.passed).toBe(true)
+    expect(b1.status).toBe(S.done)
+    const r1 = applyWrapper(raw[1], issues)
+    expect(r1.passed).toBe(true)
+    expect(b1.status).toBe(S.inProgress)
+  })
+
+  it('chained mirrors reject the second apply if an outside writer broke the chain in between', async () => {
+    // Same two source txes in one request, but between the first and
+    // second apply an outsider overwrote the counterpart to Review.
+    // The second wrapper`s match says `{status: done}` (the pending map
+    // value after the first emit) and must reject.
+    const chainRule = rule({
+      forwardMap: { [S.review]: S.done, [S.inProgress]: S.inProgress },
+      allowedLoops: [{ from: S.done, to: S.inProgress }]
+    })
+    const issues = linkedPair()
+    const control = makeControl({ issues, rules: [chainRule] })
+    const request = [
+      updateTx(S.review, { modifiedOn: 1001 }),
+      updateTx(S.inProgress, { modifiedOn: 1002 })
+    ]
+    const raw = await rawEmit(request, { ...control, txes: request })
+    expect(raw).toHaveLength(2)
+
+    const b1 = issues.find((i) => i._id === "issue:b1") as any
+    const r0 = applyWrapper(raw[0], issues)
+    expect(r0.passed).toBe(true)
+    expect(b1.status).toBe(S.done)
+
+    // Outside writer flips the counterpart to Review between our two
+    // applies. Same scope but the predicate check must now fail.
+    b1.status = S.review
+    const r1 = applyWrapper(raw[1], issues)
+    expect(r1.passed).toBe(false)
+    expect(r1.reason).toContain('status')
+    expect(b1.status).toBe(S.review)
+  })
+})

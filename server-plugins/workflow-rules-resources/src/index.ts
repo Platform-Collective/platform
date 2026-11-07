@@ -252,9 +252,16 @@ export async function OnWorkflowRuleMirror (_txes: Tx[], control: TriggerControl
           query: { _id: counterpart._id, status: effectiveStatus } as any
         }
       ]
+      // `scope` MUST be non-null: ApplyTxMiddleware.verifyApplyIf is
+      // only run when scope is set (see applyTx.ts). A null scope
+      // skips predicate evaluation entirely and the stale mirror
+      // would apply. The scope key is per-target so parallel updates
+      // to DIFFERENT targets are not serialized, but parallel updates
+      // to the SAME target are serialized at the apply stage and the
+      // stale write is rejected by the match predicate.
       const applyIf = control.txFactory.createTxApplyIf(
         counterpart.space,
-        undefined,
+        `workflow-rules.mirror:${counterpart._id}`,
         match,
         [],
         [update],
