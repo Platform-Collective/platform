@@ -3,8 +3,8 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/?(*.)+(spec|test).[jt]s?(x)'],
   // workbench.ts imports `svelte/store`, which ships as ESM and cannot be required
-  // under the ts-jest CommonJS runtime. Map it to the local stand-in.
+  // under the ts-jest CommonJS runtime. Map it to the shared stand-in.
   moduleNameMapper: {
-    '^svelte/store$': '<rootDir>/src/__mocks__/svelte-store.ts'
+    '^svelte/store$': '<rootDir>/../../packages/presentation/src/__mocks__/svelte-store.ts'
   }
 }
