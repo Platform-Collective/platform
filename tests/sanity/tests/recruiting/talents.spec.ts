@@ -71,7 +71,7 @@ test.describe('candidate/talents tests', () => {
     await talentsPage.checkTalentNotExist(talentName)
   })
 
-  test.skip('Merge contacts', async () => {
+  test('Merge contacts', async () => {
     const firstLocation = 'Location 1'
     const secondLocation = 'Location 2'
 
