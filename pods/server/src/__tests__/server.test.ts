@@ -23,6 +23,7 @@ import WebSocket from 'ws'
 
 import core, {
   AccountRole,
+  SocialIdType,
   type AccountUuid,
   Hierarchy,
   MeasureMetricsContext,
@@ -177,7 +178,17 @@ describe('server', () => {
     const loginInfo: LoginInfoWithWorkspaces = {
       account: '123e4567-e89b-12d3-a456-426614174000' as AccountUuid,
       name: 'Reconnect test',
-      socialIds: [],
+      socialIds: [
+        {
+          _id: 'reconnect-social' as PersonId,
+          type: SocialIdType.EMAIL,
+          value: 'reconnect@example.test',
+          key: 'email:reconnect@example.test',
+          personUuid: '123e4567-e89b-12d3-a456-426614174000' as PersonUuid,
+          verifiedOn: 1,
+          isDeleted: false
+        }
+      ],
       workspaces: {
         [workspace]: {
           url: 'reconnect-test',
@@ -269,7 +280,16 @@ describe('server', () => {
       accountsUrl: `http://127.0.0.1:${address.port}`,
       queue: createDummyQueue()
     }
-    const reconnectSessionMgr = startSessionManager(new MeasureMetricsContext('test', {}), opt)
+    const reconnectSessionMgr = (() => {
+      const previousModelVersion = process.env.MODEL_VERSION
+      process.env.MODEL_VERSION = '0.7.0'
+      try {
+        return startSessionManager(new MeasureMetricsContext('test', {}), opt)
+      } finally {
+        if (previousModelVersion === undefined) delete process.env.MODEL_VERSION
+        else process.env.MODEL_VERSION = previousModelVersion
+      }
+    })()
     const serverShutdown = startHttpServer(
       toolCtx,
       reconnectSessionMgr,
