@@ -221,11 +221,19 @@ describe('server', () => {
       queue: createDummyQueue()
     }
     const reconnectSessionMgr = startSessionManager(new MeasureMetricsContext('test', {}), opt)
-    const serverShutdown = startHttpServer(toolCtx, reconnectSessionMgr, port + 1, opt.accountsUrl, createDummyStorageAdapter())
+    const serverShutdown = startHttpServer(
+      toolCtx,
+      reconnectSessionMgr,
+      port + 1,
+      opt.accountsUrl,
+      createDummyStorageAdapter()
+    )
 
     async function findClose (token: string, timeoutPromise: Promise<never>, code: number): Promise<string> {
       const newConn = new WebSocket(`ws://localhost:${port + 1}/${token}?sessionId=s1`)
-      const closed = new Promise<void>((resolve) => newConn.once('close', () => resolve()))
+      const closed = new Promise<void>((resolve) => {
+        newConn.once('close', () => resolve())
+      })
       const response = new Promise<string>((resolve, reject) => {
         let helloReceived = false
         newConn.on('error', reject)
@@ -276,7 +284,7 @@ describe('server', () => {
         '123e4567-e89b-12d3-a456-426614174000' as PersonUuid,
         '123e4567-e89b-12d3-a456-426614174001' as WorkspaceUuid
       )
-      const timeoutPromise = new Promise<never>((resolve, reject) => {
+      const timeoutPromise = new Promise<never>((_resolve, reject) => {
         clearTo = setTimeout(() => reject(new Error('Timed out waiting for the reconnect response')), 4000)
       })
       const t1 = await findClose(token, timeoutPromise, 1005)
