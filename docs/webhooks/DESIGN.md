@@ -1621,6 +1621,13 @@ interface WebhookOutboxJob extends Doc {
                              //   before send-time rendering
     method: 'POST' | 'PUT'   // kept here because rotation / routing
                              //   middleware needs it without a blob read
+    // Distinct named-secret placeholders used by this frozen request,
+    // derived by the sweeper from the diagnostic-form blob content at
+    // realization time (before AEAD-sealing). Kept on the outbox row
+    // so the rotation RPC can select affected jobs without reading
+    // the blob and without reintroducing rendered source values on
+    // the row. The field is a set; order is not significant.
+    referencedCredentialNames: string[]
     bodyBytesHash: string    // sha256 of body AFTER secret substitution,
                              //   NOT of the diagnostic form; computed at
                              //   send time once per attempt and stored on
@@ -1715,10 +1722,15 @@ The rotation RPC (`rotateSecret(subscription, name)`) then:
    (the destination revision) is NOT touched: destination templates
    and scope did not change, so queued jobs that reference other
    secrets, or no secret, must remain eligible at dispatch.
-2. In the same storage transaction, finds every outbox row in
-   `state in ('pending', 'in_flight')` whose
-   `frozenRequest.{url,headers,bodyBytes}` contains the
-   `[SECRET:<name>]` placeholder for the rotated secret.
+2. In the same storage transaction, selects the subscription's
+   outbox rows in `state in ('pending', 'in_flight')` whose
+   `frozenRequest.referencedCredentialNames` contains the rotated
+   name. Rows referencing other secrets, or no secrets, are
+   untouched; `credentialRevision` identifies that rotation happened
+   but does NOT identify which secret each queued row referenced,
+   which is why the per-row set is required. The rendered URL /
+   headers / body do not need to be read from the audit blob store
+   to perform this selection.
 3. Flips each matched row to `state = 'failed'` with
    `terminalReason: 'secretRotated'` and writes a `rotatedSecret`
    audit row. A row in `in_flight` is left for its worker to
@@ -1732,8 +1744,17 @@ The rotation RPC (`rotateSecret(subscription, name)`) then:
    new `captureSeq`, same `journal` + `sourceEventId`. The INSERT
    succeeds under the new UNIQUE constraint because
    `(subscription, eventKind, sourceEventId, generation)` is
-   distinct. Cancelled rows with `attempts > 0` are NOT re-queued:
-   the receiver already saw at least one attempt under the old
+   distinct. The replacement row's `frozenRequest.blobKey` is
+   `webhook-audit:rendered-request/<workspace>/<newDeliveryId>` and
+   the sweeper re-renders the diagnostic form and AEAD-seals it
+   under this new `deliveryId`; the cancelled row's blob reference
+   is NOT reused because the blob AAD binds `(workspace, deliveryId,
+   blobMasterKeyId)` and the replacement carries a distinct
+   `deliveryId`. `referencedCredentialNames` is recomputed from the
+   fresh diagnostic form (same template, so the set is normally
+   unchanged, but the field is re-derived rather than copied).
+   Cancelled rows with `attempts > 0` are NOT re-queued: the
+   receiver already saw at least one attempt under the old
    deliveryId, and a second deliveryId for the same source event
    past the receiver's retention window would double-fire.
 5. Master-key succession (`WEBHOOKS_MASTER_KEY_NEXT` ring, section
