@@ -17,6 +17,9 @@ export const accountPlugin = plugin(accountId, {
     Transactors: '' as Metadata<string>,
     OtpTimeToLiveSec: '' as Metadata<number>,
     OtpRetryDelaySec: '' as Metadata<number>,
+    OtpMaxAttempts: '' as Metadata<number>,
+    OtpMaxFailedAttemptsPerWindow: '' as Metadata<number>,
+    OtpLockWindowSec: '' as Metadata<number>,
     WsLivenessDays: '' as Metadata<number>
   },
   string: {

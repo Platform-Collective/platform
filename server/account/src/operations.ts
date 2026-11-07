@@ -104,7 +104,7 @@ import {
   getWorkspaceRoles,
   GUEST_ACCOUNT,
   isEmail,
-  isOtpValid,
+  verifyOtpAttempt,
   normalizeValue,
   doReleaseSocialId,
   selectWorkspace,
@@ -468,9 +468,15 @@ export async function validateOtp (
       throw new PlatformError(new Status(Severity.ERROR, platform.status.AccountNotFound, { account: email }))
     }
 
-    const isValid = await isOtpValid(db, emailSocialId._id, code)
+    const otpResult = await verifyOtpAttempt(db, emailSocialId._id, code)
 
-    if (!isValid) {
+    if (otpResult === 'locked') {
+      ctx.warn('OTP validation locked due to too many failed attempts', { email: normalizedEmail })
+      throw new PlatformError(new Status(Severity.ERROR, platform.status.OtpLocked, {}))
+    }
+
+    if (otpResult !== 'valid') {
+      ctx.warn('Invalid OTP attempt', { email: normalizedEmail })
       throw new PlatformError(new Status(Severity.ERROR, platform.status.InvalidOtp, {}))
     }
 
