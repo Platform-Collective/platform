@@ -26,6 +26,8 @@
     "ToDos": "Akční položky",
     "Done": "Hotovo",
     "EditToDo": "Upravit akční položku",
+    "BlockedBy": "Blokováno úkolem {issues}",
+    "StartsOn": "Začíná {date}",
     "Unplanned": "Neplánováno",
     "Planned": "Plánováno",
     "AddSlot": "Přidat blok",

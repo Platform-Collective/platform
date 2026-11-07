@@ -4,7 +4,7 @@
   import { getCurrentEmployee } from '@hcengineering/contact'
   import { Ref, SortingOrder, Timestamp, getCurrentAccount } from '@hcengineering/core'
   import { IntlString, getEmbeddedLabel } from '@hcengineering/platform'
-  import { createQuery } from '@hcengineering/presentation'
+  import { createQuery, getClient } from '@hcengineering/presentation'
   import {
     AnyComponent,
     ButtonBase,
@@ -21,8 +21,11 @@
     deviceOptionsStore as deviceInfo
   } from '@hcengineering/ui'
   import { ToDo, WorkSlot } from '@hcengineering/time'
+  import tracker, { type Issue } from '@hcengineering/tracker'
+  import { getIssueSlotDuration } from '../issue-planning'
   import time from '../plugin'
   import IconSun from './icons/Sun.svelte'
+  import { createEventDispatcher } from 'svelte'
 
   export let dragItem: ToDo | null = null
   export let currentDate: Date = new Date()
@@ -30,7 +33,32 @@
   export let element: HTMLElement | undefined = undefined
   export let createComponent: AnyComponent | undefined = calendar.component.CreateEvent
 
+  const dispatch = createEventDispatcher()
   const q = createQuery()
+  const issueQuery = createQuery()
+  let dragIssue: Issue | undefined
+  // False while the dragged ToDo's issue is still loading; the drop then reads the estimate itself.
+  let dragIssueLoaded = true
+
+  function updateDragIssue(todo: ToDo | null): void {
+    if (todo !== null && getClient().getHierarchy().isDerived(todo.attachedToClass, tracker.class.Issue)) {
+      if (
+        issueQuery.query(tracker.class.Issue, { _id: todo.attachedTo as Ref<Issue> }, (res) => {
+          dragIssue = res[0]
+          dragIssueLoaded = true
+        })
+      ) {
+        dragIssue = undefined
+        dragIssueLoaded = false
+      }
+    } else {
+      issueQuery.unsubscribe()
+      dragIssue = undefined
+      dragIssueLoaded = true
+    }
+  }
+
+  $: updateDragIssue(dragItem)
 
   function getFrom(date: Date): Timestamp {
     return new Date(date).setHours(0, 0, 0, 0)
@@ -106,6 +134,25 @@
   }
 
   const dragItemId = 'drag_item' as Ref<WorkSlot>
+
+  function updateDragDuration(issue: Issue | undefined): void {
+    const current = raw.find((p) => p._id === dragItemId)
+    if (current === undefined) return
+    const dueDate = current.date + getIssueSlotDuration(issue, current.date)
+    if (current.dueDate !== dueDate) {
+      current.dueDate = dueDate
+      raw = raw
+    }
+  }
+
+  $: updateDragDuration(dragIssue)
+
+  // Create the slot with the same duration the preview shows, without another round trip.
+  function dragDrop(e: CustomEvent<{ day: Date, hour: number, date: Date }>): void {
+    const duration = dragIssueLoaded ? getIssueSlotDuration(dragIssue, e.detail.date.getTime()) : undefined
+    dispatch('dragDrop', { ...e.detail, duration })
+  }
+
   function dragEnter(e: CustomEvent<any>) {
     if (dragItem != null) {
       const current = raw.find((p) => p._id === dragItemId)
@@ -113,7 +160,7 @@
         current.attachedTo = dragItem._id
         current.attachedToClass = dragItem._class
         current.date = e.detail.date.getTime()
-        current.dueDate = new Date(e.detail.date).setMinutes(new Date(e.detail.date).getMinutes() + 30)
+        current.dueDate = current.date + getIssueSlotDuration(dragIssue, current.date)
       } else {
         const ev: WorkSlot = {
           _id: dragItemId,
@@ -134,7 +181,7 @@
           participants: [getCurrentEmployee()],
           modifiedOn: Date.now(),
           date: e.detail.date.getTime(),
-          dueDate: new Date(e.detail.date).setMinutes(new Date(e.detail.date).getMinutes() + 30),
+          dueDate: e.detail.date.getTime() + getIssueSlotDuration(dragIssue, e.detail.date.getTime()),
           user: myAcc.primarySocialId
         }
         raw.push(ev)
@@ -234,7 +281,7 @@
       on:create={(e) => {
         showCreateDialog(e.detail.date, e.detail.withTime)
       }}
-      on:dragDrop
+      on:dragDrop={dragDrop}
       bind:currentDate
       bind:todayDate
     />
