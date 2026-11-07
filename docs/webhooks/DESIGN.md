@@ -25,10 +25,13 @@ reads the Tx + pre-image and returns zero or more source events,
 plus a `variables` schema and a `renderMinimalBody` function.
 
 All webhook docs live in a dedicated private space
-(`webhooks.space.Webhooks`, `SystemSpace`, `private: true`, members =
-current workspace Owners + the webhooks service). Reads, Tx-history
-queries, and live broadcast are all gated by the existing space
-security; the permission middleware adds a defence-in-depth
+(`webhooks.space.Webhooks`, a regular private `core.class.Space`
+subclass, `private: true`, members = current workspace Owners + the
+webhooks service). A `SystemSpace` draft was rejected because
+`SpaceSecurityMiddleware` bypasses the privacy boundary for
+`SystemSpace` (see [Scope and lifetime](#scope-and-lifetime)). Reads,
+Tx-history queries, and live broadcast are all gated by the existing
+space security; the permission middleware adds a defence-in-depth
 class-level gate on top. Destination-level writes go only through a
 service-owned management RPC — the middleware refuses them from any
 client, including the stored owner. The RPC recomputes
@@ -237,8 +240,8 @@ Shared conventions (open to counter-proposal from @thomas-bouvier):
 
 ```ts
 interface WebhookSubscription extends Doc {
-  // Pinned to `webhooks.space.Webhooks`, a dedicated private
-  // SystemSpace that holds every webhook doc (subscriptions,
+  // Pinned to `webhooks.space.Webhooks`, a regular private
+  // `core.class.Space` that holds every webhook doc (subscriptions,
   // secrets, journal, outbox, delivery attempts, audit blob rows,
   // lease, cleanup tasks). Members = current workspace Owners +
   // the webhooks service. The permission middleware refuses any
@@ -258,10 +261,24 @@ interface WebhookSubscription extends Doc {
   // Target config (templated method/URL/headers/body + binding).
   target: WebhookTarget
 
-  // Monotonic revision. Incremented by the service on every
-  // destination-changing save. Client Tx attempts to set this are
-  // rejected by the permission middleware.
+  // Monotonic destination revision. Incremented by the service on
+  // every destination-changing save (URL, method, headers, body
+  // template, triggers, scope). NOT touched by secret rotation. The
+  // dispatch-time binding guard compares this against the outbox
+  // row's captured `revision`; rotation leaves this stable so
+  // queued jobs that did NOT reference the rotated secret stay
+  // eligible. Client Tx attempts to set this are rejected by the
+  // permission middleware.
   revision: number
+
+  // Monotonic credential revision. Incremented by the service each
+  // time `rotateSecret` writes a new ciphertext. Dispatch does NOT
+  // gate on this value; its only roles are (a) feed the sweeper's
+  // "rows that reference the rotated secret" selection at rotation
+  // time, (b) surface in audit rows for key-succession tracing.
+  // Splitting credential and destination revisions is what keeps a
+  // rotation from stranding unrelated pending jobs.
+  credentialRevision: number
 
   // Named-secret metadata. No `lastFour`: a short secret would
   // leak fully. Only name + rotation time are exposed.
@@ -616,7 +633,7 @@ adapter accept at write time:
 
 Rev 5 flips the middleware to an **allowlist**:
 
-- **Service-only fields** - `space`, `owner`, `revision`,
+- **Service-only fields** - `space`, `owner`, `revision`, `credentialRevision`,
   `secretsMeta`, `lastDeliveryAt`, `lastDeliveryStatus`,
   `lastDeliveryHttpCode`, `lastDeliveryError`, `target.configDigest`,
   `target.configDigestAlg`, `target.boundAt` - refused for every
@@ -683,10 +700,18 @@ webhook classes, but not:
 - `$lookup`, full-text search, `loadDocs` and backup paths.
 
 Rev 6 moves every webhook doc into a dedicated private space
-`webhooks.space.Webhooks`:
+`webhooks.space.Webhooks`. Rev 11 switches that space from
+`SystemSpace` to a regular private `core.class.Space`:
 
-- `SystemSpace`, `private: true`, created once per workspace at model
-  init time.
+- A regular `core.class.Space` subclass, `private: true`, created once
+  per workspace at model init time. The earlier `SystemSpace` draft is
+  rejected because `SpaceSecurityMiddleware` applies three special
+  rules to `SystemSpace`: `init` excludes it from private-space
+  membership tracking, `getAllAllowedSpaces` includes it for ordinary
+  users, and `handleBroadcast` broadcasts its Tx workspace-wide. Those
+  rules collectively defeat `private: true` + Owner-only members, so
+  a regular private space is required for the privacy boundary this
+  section depends on.
 - `members` = current workspace Owners plus the webhooks service's
   system account. A member-maintenance trigger syncs the list on
   `AccountRole` changes (joins add, demotions remove).
@@ -825,7 +850,10 @@ every test event, the delivery service re-checks:
 - Subscription owner currently has read access to the source doc.
 - Target project exists, is not archived, is not restricted.
 - Job's `revision` and `configDigest` both match the subscription's
-  current values (binding guard; see [Binding](#binding)).
+  current values (binding guard; see [Binding](#binding)). `revision`
+  here is the subscription's destination revision; secret rotation
+  bumps `credentialRevision` only and does NOT change this field, so
+  queued jobs that referenced no rotated secret remain eligible.
 - Rendered destination passes SSRF checks (independent from the
   configDigest, which hashes the approved config, not the rendered
   values; fixes point #10).
@@ -1310,9 +1338,44 @@ multi-hour receiver outage. Rev 7 pins them separately.
   retried with the same frozen payload; the receiver's dedup
   (within `X-Huly-Idempotency-Retention`) absorbs the duplicate.
 
-The rendered-request store is a service-local blob in the audit
-blob store (same AEAD scheme as secrets), scoped by workspace +
-`deliveryId`. See [Audit](#audit) for retention.
+### Rendered-request blob (outbox `frozenRequest.blobKey`)
+
+The rendered-request bytes (URL, headers, body template with
+`[SECRET:<name>]` placeholders) are held in a service-local blob in
+the audit blob store, NOT inlined on the outbox row. This blocks the
+source-access bypass that an inline copy would create: an outbox row
+is readable by workspace Owners through space-scoped broadcasts and
+Tx-history queries, so inlining rendered source values would expose
+source-doc content to Owners who cannot read the source doc under
+the ordinary source-space ACL. The blob keeps a second copy of
+source-derived content from reaching DOMAIN_TX and live broadcasts.
+
+- **Key.** `webhook-audit:rendered-request/<workspace>/<deliveryId>`
+  (same `webhook-audit:*` key family and AEAD scheme as audit rows).
+  The outbox row's `frozenRequest.blobKey` is the sole reference;
+  there is no inline copy.
+- **AAD** binds `(workspace, deliveryId, blobMasterKeyId)` so a blob
+  moved into another workspace or another delivery fails AEAD.
+- **Writer** is the sweeper, under the webhooks service account.
+  **Readers** are the delivery worker (at send time, to re-render the
+  request with fresh secret values) and the audit read path (which
+  still obeys audit-blob gating). No client-visible read endpoint
+  returns the raw blob.
+- **Source-access gating.** The audit read path already requires
+  the caller to hold read access on the source doc before returning
+  blob content (see [Audit](#audit)). Since the outbox row carries
+  only the blob key + integrity hashes, an Owner who can list
+  outbox rows still cannot derive source content from a dump.
+- **Rotation and retention.** Rotation under the `webhook-audit:*`
+  key family re-seals the blob and atomically advances
+  `frozenRequest.blobMasterKeyId` on the outbox row. Retention is
+  the audit retention window; see [Audit](#audit).
+- **Integrity.** `frozenRequest.blobBytesHash` is sha256 of the
+  cleartext blob payload taken BEFORE AEAD sealing. The worker
+  verifies this hash after decrypting on each attempt; a mismatch
+  marks the delivery `failed:frozenRequestCorrupt` without sending.
+
+See [Audit](#audit) for retention and read gating.
 
 ## SSRF protection
 
@@ -1535,14 +1598,29 @@ interface WebhookOutboxJob extends Doc {
   deliveryId: string               // uuid; minted at realize time
   journal: Ref<WebhookJournal>
   txId: Ref<Tx>
-  // Diagnostic form only. Secret values are substituted at send
-  // time, so plain secret values never reach DOMAIN_TX, Kafka or
-  // backups (B2).
+  // Reference to the rendered-request blob held in the encrypted
+  // audit blob store (same AEAD scheme and `webhook-audit:*` key
+  // family as audit rows). The outbox row never carries inlined
+  // rendered source values; only the blob key and integrity hash
+  // appear here, so any Owner with outbox read access cannot read
+  // source data that their role does not grant through the normal
+  // source-space ACL. Rendered source values are also redacted
+  // through `[SECRET:<name>]` placeholders inside the blob, so plain
+  // secret values never reach DOMAIN_TX, Kafka, backups or the audit
+  // blob store itself (B2).
   frozenRequest: {
-    method: 'POST' | 'PUT'
-    url: string              // rendered with [SECRET:<name>] placeholders
-    headers: Array<{ name: string, value: string }>  // same placeholders
-    bodyBytes: Buffer        // body template rendered with [SECRET:<name>]
+    blobKey: string          // webhook-audit: key; see "Rendered-request
+                             //   blob" below
+    blobMasterKeyId: string  // active DEK at render time; blob is
+                             //   re-encrypted on key rotation and this
+                             //   field is advanced atomically with the
+                             //   rewrite
+    blobBytesHash: string    // sha256 of the diagnostic-form blob
+                             //   payload, taken BEFORE AEAD-sealing, so
+                             //   a corrupted / tampered blob is caught
+                             //   before send-time rendering
+    method: 'POST' | 'PUT'   // kept here because rotation / routing
+                             //   middleware needs it without a blob read
     bodyBytesHash: string    // sha256 of body AFTER secret substitution,
                              //   NOT of the diagnostic form; computed at
                              //   send time once per attempt and stored on
@@ -1633,7 +1711,10 @@ from delivery-generation:
 The rotation RPC (`rotateSecret(subscription, name)`) then:
 
 1. Writes the new ciphertext and bumps `secretsMeta[name].lastRotatedAt`
-   plus `subscription.revision`.
+   plus `subscription.credentialRevision`. `subscription.revision`
+   (the destination revision) is NOT touched: destination templates
+   and scope did not change, so queued jobs that reference other
+   secrets, or no secret, must remain eligible at dispatch.
 2. In the same storage transaction, finds every outbox row in
    `state in ('pending', 'in_flight')` whose
    `frozenRequest.{url,headers,bodyBytes}` contains the
