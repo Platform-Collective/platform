@@ -53,6 +53,7 @@
     "Editor": "Edytor",
     "MarkdownFormatting": "Formatowanie",
     "CustomizeView": "Dostosuj widok",
+    "ConfigureColumns": "Konfiguruj kolumny",
     "Filter": "Filtruj",
     "ClearFilters": "Wyczyść filtry",
     "FilterLessThan": "Mniej niż",
@@ -165,6 +166,9 @@
     "RoleLabel": "Rola: {role}",
     "ForbidAttributeChanges": "Zablokuj zmiany: ",
     "AllowAttributeChanges": "Zezwól na zmiany: ",
-    "RelationshipTable": "Macierz powiązań"
+    "RelationshipTable": "Macierz powiązań",
+    "FilterOverflowBadge": "+{count}",
+    "AddFilter": "Dodaj filtr",
+    "HiddenFilters": "Ukryte filtry"
   }
 }
