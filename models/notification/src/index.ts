@@ -82,13 +82,14 @@ import {
   type NotificationTemplate,
   type NotificationType,
   type NotificationTypeSetting,
+  type WorkspaceNotificationTypeSetting,
   type PushSubscription,
   type PushSubscriptionKeys,
   type PushSubscriptionSetting,
   type ReactionInboxNotification
 } from '@hcengineering/notification'
 import { type Asset, type IntlString, type Resource } from '@hcengineering/platform'
-import setting from '@hcengineering/setting'
+import setting, { DOMAIN_SETTING } from '@hcengineering/setting'
 import { type AnyComponent, type Location } from '@hcengineering/ui/src/types'
 
 import notification from './plugin'
@@ -157,6 +158,13 @@ export class TNotificationPreferencesGroup extends TDoc implements NotificationP
 @Model(notification.class.NotificationTypeSetting, preference.class.Preference)
 export class TNotificationTypeSetting extends TPreference implements NotificationTypeSetting {
   declare attachedTo: Ref<TNotificationProvider>
+  type!: Ref<NotificationType>
+  enabled!: boolean
+}
+
+@Model(notification.class.WorkspaceNotificationTypeSetting, core.class.Doc, DOMAIN_SETTING)
+export class TWorkspaceNotificationTypeSetting extends TDoc implements WorkspaceNotificationTypeSetting {
+  attachedTo!: Ref<TNotificationProvider>
   type!: Ref<NotificationType>
   enabled!: boolean
 }
@@ -379,6 +387,7 @@ export function createModel (builder: Builder): void {
     TNotificationProvider,
     TNotificationProviderSetting,
     TNotificationTypeSetting,
+    TWorkspaceNotificationTypeSetting,
     TNotificationProviderDefaults,
     TReactionInboxNotification
   )
@@ -586,6 +595,13 @@ export function createModel (builder: Builder): void {
     createAccessLevel: AccountRole.Guest,
     updateAccessLevel: AccountRole.Guest,
     removeAccessLevel: AccountRole.Guest
+  })
+
+  // Workspace-wide defaults are managed by workspace owners only
+  builder.mixin(notification.class.WorkspaceNotificationTypeSetting, core.class.Class, core.mixin.TxAccessLevel, {
+    createAccessLevel: AccountRole.Owner,
+    updateAccessLevel: AccountRole.Owner,
+    removeAccessLevel: AccountRole.Owner
   })
 
   builder.mixin(notification.class.NotificationProviderSetting, core.class.Class, core.mixin.TxAccessLevel, {

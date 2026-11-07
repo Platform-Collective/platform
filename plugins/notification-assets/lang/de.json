@@ -72,6 +72,8 @@
     "AlreadySubscribed": "Dieser Browser ist bereits abonniert",
     "PushNotConfigured": "Push-Benachrichtigungen sind auf diesem Server nicht konfiguriert",
     "PushNotSupported": "Von diesem Browser nicht unterstützt",
-    "PushDenied": "Benachrichtigungen sind in den Browsereinstellungen blockiert"
+    "PushDenied": "Benachrichtigungen sind in den Browsereinstellungen blockiert",
+    "WorkspaceDefaults": "Workspace-Standards",
+    "WorkspaceDefaultsDescription": "Diese Einstellungen gelten für alle Benutzer des Workspaces, die sie nicht selbst geändert haben. Benutzer können sie in ihren eigenen Einstellungen weiterhin überschreiben."
   }
 }
