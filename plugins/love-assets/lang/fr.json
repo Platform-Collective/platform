@@ -2,6 +2,8 @@
   "string": {
     "Office": "Bureau",
     "Room": "Salle",
+    "RoomHasUnfinishedMeetings": "Impossible de supprimer cette salle tant qu’elle contient des réunions planifiées, en attente ou actives. Terminez ou supprimez d’abord ces réunions.",
+    "RoomRemovalFailed": "La salle ou ses réunions ont changé. Rechargez la page et réessayez de supprimer la salle.",
     "RoomType": "Type de salle",
     "Share": "Partager",
     "StopShare": "Arrêter le partage",

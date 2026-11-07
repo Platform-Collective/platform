@@ -2,6 +2,8 @@
   "string": {
     "Office": "Biuro",
     "Room": "Pokój",
+    "RoomHasUnfinishedMeetings": "Nie można usunąć tego pokoju, gdy zawiera zaplanowane, oczekujące lub aktywne spotkania. Najpierw zakończ lub usuń te spotkania.",
+    "RoomRemovalFailed": "Pokój lub jego spotkania uległy zmianie. Odśwież stronę i spróbuj ponownie usunąć pokój.",
     "RoomType": "Typ pokoju",
     "Share": "Udostępnij",
     "StopShare": "Zatrzymaj udostępnianie",
