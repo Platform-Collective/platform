@@ -220,55 +220,55 @@ describe('server', () => {
       accountsUrl: '',
       queue: createDummyQueue()
     }
-    const cancelOp = startSessionManager(new MeasureMetricsContext('test', {}), opt)
-    const serverShutdown = startHttpServer(toolCtx, sessionMgr, port + 1, opt.accountsUrl, createDummyStorageAdapter())
+    const reconnectSessionMgr = startSessionManager(new MeasureMetricsContext('test', {}), opt)
+    const serverShutdown = startHttpServer(toolCtx, reconnectSessionMgr, port + 1, opt.accountsUrl, createDummyStorageAdapter())
 
-    async function findClose (token: string, timeoutPromise: Promise<void>, code: number): Promise<string> {
+    async function findClose (token: string, timeoutPromise: Promise<never>, code: number): Promise<string> {
       const newConn = new WebSocket(`ws://localhost:${port + 1}/${token}?sessionId=s1`)
-
-      await Promise.race([
-        timeoutPromise,
-        new Promise((resolve) => {
-          newConn.on('open', () => {
-            newConn.send(handler.serialize({ method: 'hello', params: [], id: -1 }, false))
-            newConn.send(handler.serialize({ method: 'findAll', params: [], id: -1 }, false))
-            resolve(null)
-          })
+      const closed = new Promise<void>((resolve) => newConn.once('close', () => resolve()))
+      const response = new Promise<string>((resolve, reject) => {
+        let helloReceived = false
+        newConn.on('error', reject)
+        newConn.once('close', () => reject(new Error('Connection closed before the session response')))
+        newConn.once('open', () => {
+          newConn.send(handler.serialize({ method: 'hello', params: [], id: -1 }, false))
+          newConn.send(handler.serialize({ method: 'findAll', params: [], id: -1 }, false))
         })
-      ])
-
-      let helloReceived = false
-
-      let responseMsg: any = {}
-
-      await Promise.race([
-        timeoutPromise,
-        new Promise((resolve) => {
-          newConn.on('message', (msg: Buffer) => {
-            try {
-              console.log('resp:', msg.toString())
-              const parsedMsg: Response<any> = handler.readResponse(msg.toString(), false) // Hello
-              if (!helloReceived) {
-                expect(parsedMsg.result === 'hello')
-                helloReceived = true
-                return
-              }
-              responseMsg = handler.readResponse(msg.toString(), false) // our message
-              resolve(null)
-            } catch (err: any) {
-              console.error(err)
+        newConn.on('message', (msg: Buffer) => {
+          try {
+            const parsedMsg: Response<any> = handler.readResponse(msg.toString(), false)
+            if (!helloReceived) {
+              helloReceived = true
+              return
             }
-          })
+            const sessionId = parsedMsg.result?.[0]?.sessionId
+            if (typeof sessionId !== 'string' || sessionId.length === 0) {
+              reject(new Error('Expected a nonempty session ID in the reconnect response'))
+              return
+            }
+            resolve(sessionId)
+          } catch (err: unknown) {
+            reject(err)
+          }
         })
-      ])
+      })
 
-      if (code === 1005) {
-        newConn.close()
-      } else {
-        newConn.close(code)
+      try {
+        const sessionId = await Promise.race([response, timeoutPromise])
+        if (code === 1005) {
+          newConn.close()
+        } else {
+          newConn.close(code)
+        }
+        await Promise.race([closed, timeoutPromise])
+        return sessionId
+      } finally {
+        if (newConn.readyState !== WebSocket.CLOSED) newConn.terminate()
+        await closed
       }
-      return responseMsg.result[0].sessionId
     }
+
+    let clearTo: ReturnType<typeof setTimeout> | undefined
 
     try {
       //
@@ -276,20 +276,15 @@ describe('server', () => {
         '123e4567-e89b-12d3-a456-426614174000' as PersonUuid,
         '123e4567-e89b-12d3-a456-426614174001' as WorkspaceUuid
       )
-      let clearTo: any
-      const timeoutPromise = new Promise<void>((resolve) => {
-        clearTo = setTimeout(resolve, 4000)
+      const timeoutPromise = new Promise<never>((resolve, reject) => {
+        clearTo = setTimeout(() => reject(new Error('Timed out waiting for the reconnect response')), 4000)
       })
       const t1 = await findClose(token, timeoutPromise, 1005)
       const t2 = await findClose(token, timeoutPromise, 1000)
 
       expect(t1).toBe(t2)
-      clearTimeout(clearTo)
-    } catch (err: any) {
-      console.error(err)
     } finally {
-      console.log('calling shutdown')
-      await cancelOp.closeWorkspaces(new MeasureMetricsContext('test', {}))
+      if (clearTo !== undefined) clearTimeout(clearTo)
       await serverShutdown()
     }
   })
