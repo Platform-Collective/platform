@@ -2,7 +2,7 @@
   import calendar from '@hcengineering/calendar'
   import { ScheduleNavSection } from '@hcengineering/calendar-resources'
   import { getCurrentEmployee } from '@hcengineering/contact'
-  import { Ref, getCurrentAccount } from '@hcengineering/core'
+  import core, { Ref, type Space, getCurrentAccount } from '@hcengineering/core'
   import { Asset, getMetadata, getResource, IntlString } from '@hcengineering/platform'
   import { createQuery } from '@hcengineering/presentation'
   import type { ToDo, WorkSlot } from '@hcengineering/time'
@@ -29,6 +29,7 @@
   import { ToDosMode } from '..'
   import time from '../plugin'
   import { getPlannerMarkers, getPlannerMonthRange } from './planner-markers'
+  import { getArchivedToDoQuery } from '../to-do-query'
 
   export let mode: ToDosMode
   export let tag: Ref<TagElementType> | undefined
@@ -93,6 +94,7 @@
   $: tags = allTags.filter((p) => myTags.has(p._id))
 
   const unplannedQuery = createQuery()
+  let unplannedTotal = 0
 
   unplannedQuery.query(
     time.class.ToDo,
@@ -102,7 +104,7 @@
       workslots: 0
     },
     (res) => {
-      counters.unplanned = res.total
+      unplannedTotal = res.total
     },
     {
       total: true,
@@ -110,7 +112,36 @@
     }
   )
 
+  // Todos of archived spaces are hidden in the planner, so they must not be counted either
+  const archivedSpacesQuery = createQuery()
+  const archivedUnplannedQuery = createQuery()
+  let archivedUnplannedTotal = 0
+  let archivedSpaces: Ref<Space>[] = []
+  archivedSpacesQuery.query(
+    core.class.Space,
+    { archived: true },
+    (result) => {
+      archivedSpaces = result.map((project) => project._id)
+    },
+    { projection: { _id: 1 }, showArchived: true }
+  )
+
+  $: if (archivedSpaces.length > 0) {
+    archivedUnplannedQuery.query(
+      time.class.ToDo,
+      getArchivedToDoQuery({ user: currentUser, doneOn: null, workslots: 0 }, archivedSpaces),
+      (res) => {
+        archivedUnplannedTotal = res.total
+      },
+      { total: true, limit: 1 }
+    )
+  } else {
+    archivedUnplannedQuery.unsubscribe()
+    archivedUnplannedTotal = 0
+  }
+
   const counters: Record<string, number> = {}
+  $: counters.unplanned = Math.max(0, unplannedTotal - archivedUnplannedTotal)
   let viewDate = new Date(mode === 'date' ? currentDate : new Date())
   let todos: ToDo[] = []
   let issues: Issue[] = []
@@ -145,7 +176,7 @@
       workslots = result
     }
   )
-  $: markers = getPlannerMarkers(viewDate, todos, issues, workslots)
+  $: markers = getPlannerMarkers(viewDate, todos, issues, workslots, new Set(archivedSpaces))
 
   let pressed: boolean = false
 
