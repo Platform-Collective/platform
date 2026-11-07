@@ -89,19 +89,19 @@
 
     if (docInfo._id !== doc?._id) {
       doc = await client.findOne(docInfo._class, { _id: docInfo._id })
+    }
 
-      if (doc != null) {
-        const queryContext = loc.query?.context as Ref<DocNotifyContext>
-        const ctx =
-          $contextByIdStore.get(queryContext) ?? $contextByDocStore.get(thread) ?? $contextByDocStore.get(urlObjectId)
+    if (doc != null) {
+      const queryContext = loc.query?.context as Ref<DocNotifyContext>
+      const ctx =
+        $contextByIdStore.get(queryContext) ?? $contextByDocStore.get(thread) ?? $contextByDocStore.get(urlObjectId)
 
-        legacyContext =
-          ctx ??
-          (await client.findOne(notification.class.DocNotifyContext, {
-            objectId: doc._id,
-            user: getCurrentAccount().uuid
-          }))
-      }
+      legacyContext =
+        ctx ??
+        (await client.findOne(notification.class.DocNotifyContext, {
+          objectId: doc._id,
+          user: getCurrentAccount().uuid
+        }))
     }
 
     const messageInfo = getMessageInfoFromLocation(loc)
@@ -224,7 +224,7 @@
       <div class="antiPanel-wrap__content hulyNavPanel-container">
         <InboxHeader />
         <div class="antiPanel-wrap__content hulyNavPanel-container">
-          <InboxNavigation {doc} {legacyContext} on:select={select} />
+          <InboxNavigation {doc} {legacyContext} on:select={select} on:clear={handleClose} />
         </div>
       </div>
       {#if !($deviceInfo.isMobile && $deviceInfo.isPortrait && $deviceInfo.minWidth)}
