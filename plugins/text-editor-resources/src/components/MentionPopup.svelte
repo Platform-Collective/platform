@@ -15,9 +15,19 @@
 -->
 <script lang="ts">
   import contact, { type Employee } from '@hcengineering/contact'
-  import core, { Class, Doc, Ref, SearchResultDoc, SortingOrder, type VersionableDoc } from '@hcengineering/core'
+  import core, {
+    AccountUuid,
+    Class,
+    Doc,
+    Ref,
+    SearchResultDoc,
+    SortingOrder,
+    Space,
+    type VersionableDoc
+  } from '@hcengineering/core'
   import { getResource, translate } from '@hcengineering/platform'
   import presentation, {
+    createQuery,
     getClient,
     reduceCalls,
     searchFor,
@@ -30,11 +40,13 @@
   import { getReferenceLabel, getReferenceObject } from './extension/reference'
 
   import MentionVersionPopup from './MentionVersionPopup.svelte'
+  import { createMentionSearch, mergeMemberResults } from './mention-search'
   import { excludeMentionItems } from './mention'
 
   export let query: string = ''
   export let multipleMentions: boolean = false
   export let docClass: Ref<Class<Doc>> | undefined = undefined
+  export let objectSpace: Ref<Space> | undefined = undefined
 
   let items: SearchItem[] = []
 
@@ -104,6 +116,44 @@
   const employeeSearchCategory = client
     .getModel()
     .findAllSync(presentation.class.ObjectSearchCategory, { classToSearch: contact.mixin.Employee })[0]
+
+  // Members of the space the text belongs to; kept up to date by a single live query.
+  let members: AccountUuid[] | undefined = undefined
+  const spaceQuery = createQuery()
+  $: if (objectSpace !== undefined) {
+    members = undefined
+    spaceQuery.query(
+      core.class.Space,
+      { _id: objectSpace },
+      (res) => {
+        members = res[0]?.members ?? []
+      },
+      { limit: 1 }
+    )
+  } else {
+    spaceQuery.unsubscribe()
+    members = undefined
+  }
+
+  async function getMemberSearchItems(localQuery: string, members: AccountUuid[] | undefined): Promise<SearchItem[]> {
+    if (members === undefined || members.length === 0 || employeeSearchCategory === undefined) return []
+
+    // Resolved from the employees already loaded on the client, without server queries.
+    const searchEmployees = await getResource(employeeSearchCategory.query)
+    return (await searchEmployees(client, localQuery, { members })).map((item, num) => ({
+      num,
+      category: employeeSearchCategory,
+      item: {
+        id: item.doc._id,
+        title: item.title,
+        iconComponent: {
+          component: contact.component.AvatarRef,
+          props: { _id: item.doc._id }
+        },
+        doc: item.doc
+      }
+    }))
+  }
 
   async function getMultipleEmployeeSearchItems(localQuery: string, lastIndex: number): Promise<SearchItem[]> {
     if (!multipleMentions) return []
@@ -234,10 +284,22 @@
     return excluded
   }
 
-  const updateItems = reduceCalls(async function (localQuery: string): Promise<void> {
-    const r = await searchFor('mention', localQuery, undefined, categoryLimit * 2)
+  const fullTextSearch = createMentionSearch((query: string) =>
+    searchFor('mention', query, undefined, categoryLimit * 2)
+  )
+
+  const updateItems = reduceCalls(async function (
+    localQuery: string,
+    members: AccountUuid[] | undefined
+  ): Promise<void> {
+    const [r, memberItems] = await Promise.all([fullTextSearch(localQuery), getMemberSearchItems(localQuery, members)])
     if (r.query === query) {
-      const found = excludeMentionItems(r.items, await getInactiveEmployees(r.items), categoryLimit)
+      const searchItems = mergeMemberResults(
+        memberItems,
+        r.items,
+        (it) => it.category.classToSearch === contact.mixin.Employee
+      )
+      const found = excludeMentionItems(searchItems, await getInactiveEmployees(searchItems), categoryLimit)
       const latestIndex = found.findLastIndex((it) => it.category.classToSearch === contact.mixin.Employee)
       const multipleEmployeeSearchItems = await getMultipleEmployeeSearchItems(localQuery, latestIndex)
       if (r.query !== query) return
@@ -248,7 +310,8 @@
           : [...found.slice(0, latestIndex + 1), ...multipleEmployeeSearchItems, ...found.slice(latestIndex + 1)]
     }
   })
-  $: void updateItems(query)
+  // Runs again when the members of the space change, so the list does not stay stale.
+  $: void updateItems(query, members)
 </script>
 
 {#if (items.length === 0 && query !== '') || items.length > 0}
