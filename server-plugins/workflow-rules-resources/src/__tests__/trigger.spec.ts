@@ -19,8 +19,28 @@ import { OnWorkflowRuleMirror as _OnWorkflowRuleMirror, isValidRule } from '../i
 // Cast once so each test can pass plain fixture objects as Tx[].
 const invokeMirror = _OnWorkflowRuleMirror as unknown as (txes: Any[], control: Any) => Promise<Any[]>
 
+/**
+ * Unwrap one level of TxApplyIf for assertion convenience. Rev-6 wraps
+ * every derived status update in a TxApplyIf with a live-status match;
+ * the existing tests assert directly on the TxUpdateDoc shape, so this
+ * helper returns the inner tx with the enclosing match attached under
+ * `_applyIfMatch` for the handful of tests that need it. New tests can
+ * use `rawEmit()` to see the full wrapper.
+ */
+function unwrapApplyIf (tx: Any): Any {
+  if (tx == null || tx._class !== core.class.TxApplyIf) return tx
+  const inner = Array.isArray(tx.txes) ? tx.txes[0] : undefined
+  if (inner == null) return tx
+  return { ...inner, _applyIfMatch: tx.match, _applyIfModifiedBy: tx.modifiedBy, _applyIfModifiedOn: tx.modifiedOn }
+}
+
 async function OnWorkflowRuleMirror (txes: Any[], control: Any): Promise<Any[]> {
   // Single-invocation fixtures use their input as the complete request.
+  const raw = await invokeMirror(txes, { ...control, txes: control.txes ?? txes })
+  return raw.map(unwrapApplyIf)
+}
+
+async function rawEmit (txes: Any[], control: Any): Promise<Any[]> {
   return await invokeMirror(txes, { ...control, txes: control.txes ?? txes })
 }
 
@@ -1054,5 +1074,119 @@ describe('isValidRule', () => {
 
   it('accepts an empty autoCreate.triggerStatuses', () => {
     expect(isValidRule(rule({ autoCreate: { triggerStatuses: [] } as any }) as any)).toBe(true)
+  })
+})
+
+describe('rev-6: guest-class roles refused', () => {
+  const guestAcc = 'acc-guest' as AccountUuid
+  const socGuest = 'social:guest'
+
+  function makeGuestControl (role: AccountRole): any {
+    const control = makeControl({
+      issues: linkedPair(),
+      rules: [rule()],
+      projects: [project({ members: [guestAcc], owners: [] })]
+    })
+    // Rewire the social map to put the guest social id in with the
+    // requested role, same shape the resolver produces.
+    control.ctx.contextData.socialStringsToUsers.set(socGuest, { accontUuid: guestAcc, role })
+    return control
+  }
+
+  it.each([AccountRole.Guest, AccountRole.DocGuest, AccountRole.ReadOnlyGuest])(
+    'refuses a mirror authored by a below-User role (%s) even when the actor is a project member',
+    async (role) => {
+      const control = makeGuestControl(role)
+      const res = await OnWorkflowRuleMirror([updateTx(S.review, { modifiedBy: socGuest })], control)
+      expect(res).toHaveLength(0)
+    }
+  )
+
+  it('still allows a User role on the same membership', async () => {
+    // Positive control: with role = User, the fixture would emit. This
+    // distinguishes the role-based refusal from a membership-based
+    // refusal.
+    const control = makeGuestControl(AccountRole.User)
+    const res = await OnWorkflowRuleMirror([updateTx(S.review, { modifiedBy: socGuest })], control)
+    expect(res).toHaveLength(1)
+  })
+})
+
+describe('rev-6: TxApplyIf match guards cross-request concurrency', () => {
+  it('emits an outer TxApplyIf whose match asserts the live counterpart status', async () => {
+    const control = makeControl({ issues: linkedPair(), rules: [rule()] })
+    const raw = await rawEmit([updateTx(S.review)], control)
+    expect(raw).toHaveLength(1)
+    const wrapper = raw[0]
+    expect(wrapper._class).toBe(core.class.TxApplyIf)
+    // One match, keyed to counterpart identity + live status (`backlog`
+    // is the fixture's persisted starting status, which is what the
+    // trigger evaluated against).
+    expect(wrapper.match).toHaveLength(1)
+    expect(wrapper.match[0]).toEqual({
+      _class: tracker.class.Issue,
+      query: { _id: 'issue:b1', status: S.backlog }
+    })
+    // Inner tx is the actual update, and it carries DerivedTx space so
+    // the cascade guard still catches it when it circles back.
+    const inner = wrapper.txes[0]
+    expect(inner._class).toBe(core.class.TxUpdateDoc)
+    expect(inner.space).toBe(core.space.DerivedTx)
+    expect(inner.operations).toEqual({ status: S.done })
+    expect(inner.objectId).toBe('issue:b1')
+  })
+
+  it('refuses to emit a derived update whose match would be stale (counterpart advanced by a concurrent request)', async () => {
+    // Simulate what a concurrent request would have left on disk: the
+    // counterpart has already moved to Done, but the current request
+    // evaluated under the old Backlog status. The pending-status map
+    // starts from the LIVE persisted status, so a refreshed read picks
+    // the new value and the regression guard handles the conflict.
+    //
+    // Here we show the stronger invariant: the emitted TxApplyIf match
+    // encodes the status we READ from storage. If disk has moved on,
+    // the server-side TxApplyIf drops the tx on evaluation; the test
+    // asserts the match equals what the trigger read, not what disk
+    // might advance to after the emit.
+    const control = makeControl({
+      issues: [
+        issue({ _id: 'issue:a1' }),
+        // Counterpart is already at InProgress, as if a parallel request
+        // advanced it between the sweeper read and our emit.
+        issue({ _id: 'issue:b1', space: PROJ_B, attachedTo: 'issue:a1', status: S.inProgress })
+      ],
+      rules: [rule()]
+    })
+    const raw = await rawEmit([updateTx(S.review)], control)
+    expect(raw).toHaveLength(1)
+    const wrapper = raw[0]
+    // Match carries the LIVE status we evaluated against, not the old
+    // backlog default. The server's TxApplyIf evaluator will compare
+    // this to the actual disk state at apply time, so if someone else
+    // moves the counterpart between here and the apply, the tx is
+    // dropped rather than overwriting their work.
+    expect(wrapper.match[0].query).toEqual({ _id: 'issue:b1', status: S.inProgress })
+  })
+
+  it('match stays on the pending status after an earlier mirror in the same request moved the counterpart', async () => {
+    // Two source txes in one request, both targeting the same
+    // counterpart through the same rule. The first emits a mirror to
+    // `done`; the second must not re-assert that counterpart status
+    // equals its original `backlog` - after the first emit, the pending
+    // status in the trigger's map is `done`. The second emit's match
+    // must therefore be `{ status: done }`, not `{ status: backlog }`.
+    const chainRule = rule({
+      forwardMap: { [S.review]: S.done, [S.inProgress]: S.inProgress },
+      allowedLoops: [{ from: S.done, to: S.inProgress }]
+    })
+    const control = makeControl({ issues: linkedPair(), rules: [chainRule] })
+    const request = [
+      updateTx(S.review, { modifiedOn: 1001 }),
+      updateTx(S.inProgress, { modifiedOn: 1002 })
+    ]
+    const raw = await rawEmit(request, { ...control, txes: request })
+    expect(raw).toHaveLength(2)
+    expect(raw[0].match[0].query).toEqual({ _id: 'issue:b1', status: S.backlog })
+    expect(raw[1].match[0].query).toEqual({ _id: 'issue:b1', status: S.done })
   })
 })

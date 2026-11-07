@@ -158,35 +158,70 @@ The trigger body:
    `control.ctx.contextData` channel so operators can see suppressed moves
    in the trace UI.
 8. Enforce target-side authorization before emitting a write. The derived
-   mirror update bypasses the ordinary space permission middleware, so
-   the trigger stands in for it. **Target-level checks run first and
-   apply to every caller including the system account and workspace
-   admins**: a missing target, an archived target, or a `restricted`
-   `TypedSpace` is refused unconditionally. After those pass, actor-level
-   allowance is checked:
+   mirror update bypasses the ordinary space permission middleware AND
+   `GuestPermissionsMiddleware`, so the trigger stands in for both.
+   **Target-level checks run first and apply to every caller including
+   the system account and workspace admins**: a missing target, an
+   archived target, or a `restricted` `TypedSpace` is refused
+   unconditionally. After those pass, actor-level allowance is checked:
    - `tx.modifiedBy === core.account.System` is allowed (server-authored
      writes, integrations). The session-level `socialStringsToUsers` map
      omits system sessions, so this explicit check is needed.
    - Otherwise the acting account resolved from `socialStringsToUsers`
-     must hold `AccountRole.Admin` or higher, OR be present in the target
-     project's `members` or `owners`. Source-project membership alone is
-     not sufficient.
+     must have `AccountRole.User` or higher. Guest-class roles
+     (`Guest`, `DocGuest`, `ReadOnlyGuest`) are refused outright. The
+     `GuestPermissionsMiddleware` would normally allow a Guest only to
+     mutate docs they created, and the derived mirror-target update is
+     not a doc the guest created; rather than replicate the guest
+     own-doc model + the `ModulePermissionGroup` role-forbid consultation
+     in the trigger (both of which only matter for guest-class roles),
+     this first step refuses every below-User role. Relaxing the gate
+     for Guest with the full permission-model integration is additive
+     and tracked as a follow-up.
+   - A User-or-higher actor must then hold `AccountRole.Admin` or
+     higher, OR be present in the target project's `members` or
+     `owners`. Source-project membership alone is not sufficient.
    - The member/owner check is a strict first step. It is not identical
      to the platform's full write rule (public spaces where non-members
-     can write, role grants, role forbids). Tightening to the full
-     permission pipeline is a follow-up; the current rule refuses to
-     emit a cross-project write unless the actor is in the target's
-     membership list.
+     can write, role grants, role forbids on unrestricted projects).
+     Tightening to the full permission pipeline is a follow-up; the
+     current rule refuses to emit a cross-project write unless the
+     actor is in the target's membership list.
    - Rule management (who may create a rule on A that writes to B) has
      no dedicated permission yet; the plugin ships disabled by default
      so an Owner has to opt in via Settings > Configure before any rule
      fires.
-9. Emit `TxUpdateDoc<Issue>` via
-   `control.txFactory.createTxUpdateDoc(..., tx.modifiedOn, tx.modifiedBy)`. Passing the
-   source tx's `modifiedOn` lines up with how `OnIssueUpdate` already builds
-   its chained updates (see `doTimeReportUpdate` in `server-plugins/tracker-resources/src/index.ts`),
-   so the mirror does not look like it happened in the future. The explicit
-   actor preserves attribution when a request contains several actor groups.
+9. Emit the derived update **wrapped in a `TxApplyIf`** whose `match`
+   asserts that the counterpart's live status equals the
+   `effectiveStatus` the trigger evaluated against. The inner tx is a
+   `TxUpdateDoc<Issue>` built via
+   `control.txFactory.createTxUpdateDoc(..., tx.modifiedOn, tx.modifiedBy)`
+   and marked with `space = core.space.DerivedTx` so the cascade guard
+   catches it when it circles back. Passing the source tx's `modifiedOn`
+   lines up with how `OnIssueUpdate` already builds its chained updates
+   (see `doTimeReportUpdate` in `server-plugins/tracker-resources/src/index.ts`),
+   so the mirror does not look like it happened in the future. The
+   explicit actor preserves attribution when a request contains several
+   actor groups.
+
+   The `TxApplyIf` match is what guards against cross-request
+   concurrency. The pending-status map protects within one invocation
+   and the dispatcher reorders groups within one request by
+   `modifiedOn`, so two groups in one request never race. Two
+   CONCURRENT requests, however, can each read the same persisted
+   counterpart status (say `Backlog`) and independently decide to move
+   the counterpart to incompatible targets (say `Done` and
+   `InProgress`), with the second applying after the first and
+   performing a forbidden regression the first-request read did not
+   anticipate. The `TxApplyIf` match asserts live equality to the
+   status the trigger read. If a concurrent request has advanced the
+   counterpart since the read, the match fails at apply time and the
+   derived tx is dropped (not partially applied). The dispatcher will
+   fire the trigger again on the newer write and re-evaluate from
+   scratch. Inside one request, the match carries the pending status
+   seen by this specific candidate, not a shared "original persisted"
+   value, so a chain of legal moves emits a chain of CAS-shaped
+   updates.
 10. The first invocation evaluates the complete request (`control.txes`),
     including candidates from every dispatcher actor group, once in
     `modifiedOn` order. Equal timestamps retain their order in the request
