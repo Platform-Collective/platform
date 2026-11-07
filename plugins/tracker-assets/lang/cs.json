@@ -136,6 +136,12 @@
     "ComponentMembersSearchPlaceholder": "Změnit členy komponenty…",
     "MoveToProject": "Přesunout do projektu",
     "Duplicate": "Duplikovat",
+    "MarkAsDuplicate": "Označit jako duplikát…",
+    "DuplicateOf": "Duplikát úkolu {issue}",
+    "MarkedAsDuplicateOfThis": "{issue} byl označen jako duplikát tohoto úkolu",
+    "DuplicateEditRequired": "Musíte mít oprávnění upravovat oba úkoly.",
+    "DuplicateNoCanceledStatus": "Typ tohoto úkolu nemá stav zrušení.",
+    "MarkDuplicateFailed": "Úkol se nepodařilo označit jako duplikát. Obnovte stránku a zkuste to znovu.",
 
      "GotoIssues": "Přejít na úkoly",
     "GotoActive": "Přejít na aktivní úkoly",

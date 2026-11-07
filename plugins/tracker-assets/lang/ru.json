@@ -163,6 +163,12 @@
     "ComponentMembersSearchPlaceholder": "Изменить участников компонента\u2026",
     "MoveToProject": "Изменить проект",
     "Duplicate": "Дублировать",
+    "MarkAsDuplicate": "Отметить как дубликат…",
+    "DuplicateOf": "Дубликат {issue}",
+    "MarkedAsDuplicateOfThis": "{issue} отмечена как дубликат этой задачи",
+    "DuplicateEditRequired": "Необходимо право редактирования обеих задач.",
+    "DuplicateNoCanceledStatus": "У типа этой задачи нет статуса отмены.",
+    "MarkDuplicateFailed": "Не удалось отметить задачу как дубликат. Обновите страницу и повторите попытку.",
 
     "GotoIssues": "Перейти к задачам",
     "GotoActive": "Перейти к активным задачам",

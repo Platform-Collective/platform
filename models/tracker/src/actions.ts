@@ -706,6 +706,30 @@ export function createActions (builder: Builder, issuesId: string, componentsId:
   createAction(
     builder,
     {
+      action: view.actionImpl.ShowPopup,
+      actionProps: {
+        component: tracker.component.MarkIssueDuplicatePopup,
+        element: 'top',
+        fillProps: { _object: 'value' }
+      },
+      label: tracker.string.MarkAsDuplicate,
+      icon: tracker.icon.Duplicate,
+      input: 'focus',
+      category: tracker.category.Tracker,
+      target: tracker.class.Issue,
+      visibilityTester: tracker.function.CanMarkIssueDuplicate,
+      context: {
+        mode: ['context', 'browser'],
+        application: tracker.app.Tracker,
+        group: 'associate'
+      }
+    },
+    tracker.action.MarkAsDuplicate
+  )
+
+  createAction(
+    builder,
+    {
       action: tracker.actionImpl.DeleteMilestone,
       label: view.string.Delete,
       icon: view.icon.Delete,

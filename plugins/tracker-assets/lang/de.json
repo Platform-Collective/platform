@@ -177,6 +177,12 @@
     "ComponentMembersSearchPlaceholder": "Komponentenmitglieder ändern...",
     "MoveToProject": "Zu Projekt verschieben",
     "Duplicate": "Duplizieren",
+    "MarkAsDuplicate": "Als Duplikat markieren von…",
+    "DuplicateOf": "Duplikat von {issue}",
+    "MarkedAsDuplicateOfThis": "{issue} wurde als Duplikat dieses Vorgangs markiert",
+    "DuplicateEditRequired": "Sie müssen beide Vorgänge bearbeiten können.",
+    "DuplicateNoCanceledStatus": "Der Aufgabentyp dieses Vorgangs hat keinen Status für abgebrochene Vorgänge.",
+    "MarkDuplicateFailed": "Der Vorgang konnte nicht als Duplikat markiert werden. Aktualisieren Sie die Seite und versuchen Sie es erneut.",
 
     "GotoIssues": "Zu Aufgaben",
     "GotoActive": "Zu aktiven Aufgaben",
