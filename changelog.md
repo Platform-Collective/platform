@@ -2,6 +2,15 @@
 
 Changelog.
 
+## Unreleased
+
+- Printing always allows the exact `FRONT_URL` origin. Configure additional printing
+  domains with comma-separated `ALLOWED_HOSTNAMES` entries (`host`, `host:port`, or
+  `*.example.com`). Bare hosts allow default HTTP/HTTPS ports only. Deployments
+  that previously printed other domains with an empty list must configure them.
+- Print subresources reject private and reserved addresses unless the host and
+  port are explicitly allowed. Inline `data:` and `blob:` images remain supported.
+
 ## [0.7.423] - 2026-05-10
 
 * 🚀 FEATURES: · Print documents by class and id ([#10753](https://github.com/hcengineering/platform/issues/10753)) · Add tool to create missing SocialIdentity ([#10758](https://github.com/hcengineering/platform/issues/10758)) · User statuses ([#10774](https://github.com/hcengineering/platform/issues/10774)) · Add ability to configure guest spaces in settings ([#10770](https://github.com/hcengineering/platform/issues/10770)) · Add min and max transformation functions ([#10782](https://github.com/hcengineering/platform/issues/10782)) · Add trigger to remove associated execution data when a card is deleted ([#10795](https://github.com/hcengineering/platform/issues/10795)) · Add found elements count in desktop ([#10799](https://github.com/hcengineering/platform/issues/10799)) 
