@@ -641,9 +641,10 @@ export async function getInviteLink (
   mask: string,
   limit: number | undefined,
   role: AccountRole,
-  navigateUrl?: string
+  navigateUrl?: string,
+  allowedDomains?: string
 ): Promise<string> {
-  const inviteId = await getInviteLinkId(expHours, mask, limit ?? -1, role)
+  const inviteId = await getInviteLinkId(expHours, mask, limit ?? -1, role, allowedDomains)
   const loc = getCurrentLocation()
   loc.path[0] = loginId
   loc.path[1] = 'join'
@@ -663,11 +664,41 @@ export async function getInviteLink (
   return concatLink(host, url)
 }
 
+const DOMAIN_LABEL_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
+
+/**
+ * Client-side pre-check of the "allowed email domains" invite input.
+ * Mirrors the server-side validation (the server re-validates and enforces it).
+ * Returns a normalized comma separated list, '' for no restriction,
+ * or undefined if any entry is not a valid domain.
+ */
+export function normalizeAllowedDomains (input: string): string | undefined {
+  const domains: string[] = []
+  for (const entry of input.split(/[\s,;]+/)) {
+    let domain = entry.trim().toLowerCase()
+    if (domain === '') continue
+    if (domain.startsWith('@')) domain = domain.slice(1)
+    if (domain.endsWith('.')) domain = domain.slice(0, -1)
+    const labels = domain.split('.')
+    if (
+      domain.length > 253 ||
+      labels.length < 2 ||
+      labels.some((label) => !DOMAIN_LABEL_RE.test(label)) ||
+      /^[0-9]+$/.test(labels[labels.length - 1])
+    ) {
+      return undefined
+    }
+    if (!domains.includes(domain)) domains.push(domain)
+  }
+  return domains.join(',')
+}
+
 export async function getInviteLinkId (
   expHours: number,
   emailMask: string,
   limit: number,
-  role: AccountRole = AccountRole.User
+  role: AccountRole = AccountRole.User,
+  allowedDomains?: string
 ): Promise<string> {
   const exp = expHours < 0 ? -1 : expHours * 1000 * 60 * 60
   const token = getMetadata(presentation.metadata.Token)
@@ -681,7 +712,7 @@ export async function getInviteLinkId (
     return ''
   }
 
-  const inviteLink = await getAccountClient(token).createInvite(exp, emailMask, limit, role)
+  const inviteLink = await getAccountClient(token).createInvite(exp, emailMask, limit, role, allowedDomains)
 
   Analytics.handleEvent('Get invite link', { invite_id: inviteLink })
 

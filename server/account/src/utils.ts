@@ -76,6 +76,7 @@ import {
   type DBFlavor
 } from './types'
 import { isAdminEmail } from './admin'
+import { isEmailAllowedByDomains } from './inviteDomains'
 import { type Sql } from 'postgres'
 
 export const GUEST_ACCOUNT = 'b6996120-416f-49cd-841e-e4a5d2e49c9b' as PersonUuid
@@ -1360,6 +1361,11 @@ export async function checkInvite (ctx: MeasureContext, invite: WorkspaceInvite,
 
   if (invite.email != null && invite.email.trim().length > 0 && invite.email !== email) {
     ctx.warn("Invite doesn't allow this email address", { email, ...invite })
+    throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+  }
+
+  if (!isEmailAllowedByDomains(email, invite.allowedDomains)) {
+    ctx.warn("Invite doesn't allow this email domain", { email, ...invite })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
