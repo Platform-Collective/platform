@@ -753,7 +753,7 @@ export async function resolveLocationData (loc: Location): Promise<LocationData>
     return { nameIntl: specialLabel }
   }
 
-  return { name: getName(client.getHierarchy(), object) }
+  return { name: getName(client.getHierarchy(), object), objectId: object._id, objectClass: object._class }
 }
 
 export function checkMyPermission (_id: Ref<Permission>, space: Ref<TypedSpace>, store: PermissionsStore): boolean {

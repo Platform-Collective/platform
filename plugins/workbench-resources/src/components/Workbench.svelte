@@ -139,7 +139,8 @@
     selectTab,
     syncWorkbenchTab,
     tabIdStore,
-    tabsStore
+    tabsStore,
+    watchTabDocuments
   } from '../workbench'
   import { get } from 'svelte/store'
 
@@ -271,6 +272,7 @@
   }
 
   onMount(() => {
+    const unwatchTabDocuments = watchTabDocuments()
     pushRootBarComponent('right', view.component.SearchSelector)
     pushRootBarComponent('left', workbench.component.WorkbenchTabs, 30)
     void getResource(login.function.GetWorkspaces).then(async (getWorkspaceFn) => {
@@ -298,6 +300,7 @@
     window.addEventListener('focus', onVisible)
 
     return () => {
+      unwatchTabDocuments()
       clearInterval(refreshInterval)
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', onVisible)
