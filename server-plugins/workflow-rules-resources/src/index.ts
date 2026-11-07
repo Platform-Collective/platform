@@ -249,7 +249,7 @@ export async function OnWorkflowRuleMirror (_txes: Tx[], control: TriggerControl
       const match: DocumentClassQuery<Doc>[] = [
         {
           _class: counterpart._class,
-          query: { _id: counterpart._id, status: effectiveStatus } as any
+          query: { _id: counterpart._id, status: effectiveStatus }
         }
       ]
       // `scope` MUST be non-null: ApplyTxMiddleware.verifyApplyIf is

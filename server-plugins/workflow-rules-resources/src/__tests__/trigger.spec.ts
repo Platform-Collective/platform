@@ -1180,10 +1180,7 @@ describe('rev-6: TxApplyIf match guards cross-request concurrency', () => {
       allowedLoops: [{ from: S.done, to: S.inProgress }]
     })
     const control = makeControl({ issues: linkedPair(), rules: [chainRule] })
-    const request = [
-      updateTx(S.review, { modifiedOn: 1001 }),
-      updateTx(S.inProgress, { modifiedOn: 1002 })
-    ]
+    const request = [updateTx(S.review, { modifiedOn: 1001 }), updateTx(S.inProgress, { modifiedOn: 1002 })]
     const raw = await rawEmit(request, { ...control, txes: request })
     expect(raw).toHaveLength(2)
     expect(raw[0].match[0].query).toEqual({ _id: 'issue:b1', status: S.backlog })
@@ -1272,7 +1269,7 @@ describe('rev-7: TxApplyIf predicate runs through the apply middleware', () => {
     const wrapper = raw[0]
 
     // Simulate a parallel request that advanced the counterpart.
-    const b1 = issues.find((i) => i._id === "issue:b1") as any
+    const b1 = issues.find((i) => i._id === 'issue:b1') as any
     b1.status = S.done
 
     const result = applyWrapper(wrapper, issues)
@@ -1294,14 +1291,11 @@ describe('rev-7: TxApplyIf predicate runs through the apply middleware', () => {
     })
     const issues = linkedPair()
     const control = makeControl({ issues, rules: [chainRule] })
-    const request = [
-      updateTx(S.review, { modifiedOn: 1001 }),
-      updateTx(S.inProgress, { modifiedOn: 1002 })
-    ]
+    const request = [updateTx(S.review, { modifiedOn: 1001 }), updateTx(S.inProgress, { modifiedOn: 1002 })]
     const raw = await rawEmit(request, { ...control, txes: request })
     expect(raw).toHaveLength(2)
 
-    const b1 = issues.find((i) => i._id === "issue:b1") as any
+    const b1 = issues.find((i) => i._id === 'issue:b1') as any
     expect(b1.status).toBe(S.backlog)
 
     // Apply in dispatch order under the same scope key (real middleware
@@ -1326,14 +1320,11 @@ describe('rev-7: TxApplyIf predicate runs through the apply middleware', () => {
     })
     const issues = linkedPair()
     const control = makeControl({ issues, rules: [chainRule] })
-    const request = [
-      updateTx(S.review, { modifiedOn: 1001 }),
-      updateTx(S.inProgress, { modifiedOn: 1002 })
-    ]
+    const request = [updateTx(S.review, { modifiedOn: 1001 }), updateTx(S.inProgress, { modifiedOn: 1002 })]
     const raw = await rawEmit(request, { ...control, txes: request })
     expect(raw).toHaveLength(2)
 
-    const b1 = issues.find((i) => i._id === "issue:b1") as any
+    const b1 = issues.find((i) => i._id === 'issue:b1') as any
     const r0 = applyWrapper(raw[0], issues)
     expect(r0.passed).toBe(true)
     expect(b1.status).toBe(S.done)
