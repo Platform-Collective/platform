@@ -66,7 +66,7 @@
     "Next": "İleri",
     "Skip": "Atla",
     "SignUpCompleted": "Kayıt tamamlandı",
-    "StartUsingHuly": "Huly'yi kullanmaya başla",
+    "StartUsingHuly": "RelyFrame'yi kullanmaya başla",
     "PasswordMinLength": "{count, plural, =1 {Şifre en az # karakter uzunluğunda olmalı} other {Şifre en az # karakter uzunluğunda olmalı}}",
     "PasswordMinSpecialChars": "{count, plural, =1 {Şifre en az # özel karakter içermeli} other {Şifre en az # özel karakter içermeli}}",
     "PasswordMinDigits": "{count, plural, =1 {Şifre en az # rakam içermeli} other {Şifre en az # rakam içermeli}}",

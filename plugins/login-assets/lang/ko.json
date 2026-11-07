@@ -71,7 +71,7 @@
         "Next": "다음",
         "Skip": "건너뛰기",
         "SignUpCompleted": "회원가입 완료",
-        "StartUsingHuly": "Huly 시작하기",
+        "StartUsingHuly": "RelyFrame 시작하기",
         "PasswordMinLength": "{count, plural, =1 {비밀번호는 #자 이상이어야 합니다} other {비밀번호는 #자 이상이어야 합니다}}",
         "PasswordMinSpecialChars": "{count, plural, =1 {비밀번호에는 특수 문자가 #개 이상 포함되어야 합니다} other {비밀번호에는 특수 문자가 #개 이상 포함되어야 합니다}}",
         "PasswordMinDigits": "{count, plural, =1 {비밀번호에는 숫자가 #개 이상 포함되어야 합니다} other {비밀번호에는 숫자가 #개 이상 포함되어야 합니다}}",

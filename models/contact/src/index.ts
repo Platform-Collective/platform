@@ -933,7 +933,7 @@ export function createModel (builder: Builder): void {
     contact.class.SocialIdentityProvider,
     core.space.Model,
     {
-      label: getEmbeddedLabel('Huly'),
+      label: getEmbeddedLabel('RelyFrame'),
       icon: contact.icon.Huly,
       type: SocialIdType.HULY
     },

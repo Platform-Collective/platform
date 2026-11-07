@@ -1,6 +1,6 @@
 # Overview
 
-A configuration guide, for self-hosted users.
+A configuration guide, for self-hosted users. For product name, icons and login look see [branding.md](./branding.md).
 
 ## Disable features
 Installation could have force disabled one of unused features for all workspaces.

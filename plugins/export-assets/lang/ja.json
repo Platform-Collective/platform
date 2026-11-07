@@ -12,7 +12,7 @@
     "ExportFormat": "エクスポート形式",
     "ExportJSON": "JSON",
     "ExportCSV": "CSV",
-    "ExportUnifiedFormat": "Huly 統一形式",
+    "ExportUnifiedFormat": "RelyFrame 統一形式",
     "ExportIncludeContent": "コンテンツを含める",
     "ExportEverything": "すべて",
     "ExportAttributesOnly": "属性のみ",

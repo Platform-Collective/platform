@@ -50,7 +50,7 @@
     "EnablePush": "Povolit push oznámení",
     "NotificationBlockedInBrowser": "Oznámení jsou blokována ve vašem prohlížeči. Povolení oznámení nastavte v nastavení prohlížeče",
     "General": "Obecné",
-    "InboxNotificationsDescription": "Přijímejte osobní oznámení ve své doručené poště na platformě Huly.",
+    "InboxNotificationsDescription": "Přijímejte osobní oznámení ve své doručené poště na platformě RelyFrame.",
     "PushNotificationsDescription": "Přijímejte osobní oznámení na ploše.",
     "CommonNotificationCollectionAdded": "{senderName} přidal {collection}",
     "CommonNotificationCollectionRemoved": "{senderName} odebral {collection}",

@@ -679,7 +679,7 @@ export async function sendOtpEmail (
   const mailAuth = getMetadata(accountPlugin.metadata.MAIL_AUTH_TOKEN)
 
   const lang = branding?.language
-  const app = branding?.title ?? getMetadata(accountPlugin.metadata.ProductName)
+  const app = getProductName(branding)
 
   const text = await translate(accountPlugin.string.OtpText, { code: otp, app }, lang)
   const html = await translate(accountPlugin.string.OtpHTML, { code: otp, app }, lang)
@@ -1394,11 +1394,11 @@ export async function sendEmailConfirmation (
 
   const link = concatLink(front, `/login/confirm?id=${token}`)
 
-  const name = branding?.title ?? getMetadata(accountPlugin.metadata.ProductName)
+  const name = getProductName(branding)
   const lang = branding?.language
-  const text = await translate(accountPlugin.string.ConfirmationText, { name, link }, lang)
-  const html = await translate(accountPlugin.string.ConfirmationHTML, { name, link }, lang)
-  const subject = await translate(accountPlugin.string.ConfirmationSubject, { name }, lang)
+  const text = await translate(accountPlugin.string.ConfirmationText, { name, app: name, link }, lang)
+  const html = await translate(accountPlugin.string.ConfirmationHTML, { name, app: name, link }, lang)
+  const subject = await translate(accountPlugin.string.ConfirmationSubject, { name, app: name }, lang)
 
   const response = await fetch(concatLink(mailURL, '/send'), {
     method: 'post',
@@ -1931,6 +1931,14 @@ export function sanitizeEmail (email: string): string {
   return sanitizedEmail
 }
 
+/**
+ * Product name used in account emails and authenticator apps:
+ * the host branding title, then PRODUCT_NAME, then the platform default.
+ */
+export function getProductName (branding: Branding | null): string {
+  return branding?.title ?? getMetadata(accountPlugin.metadata.ProductName) ?? 'RelyFrame'
+}
+
 export async function getInviteEmail (
   branding: Branding | null,
   email: string,
@@ -1941,21 +1949,22 @@ export async function getInviteEmail (
 ): Promise<EmailInfo> {
   const ws = sanitizeEmail(workspace.name !== '' ? workspace.name : workspace.url)
   const lang = branding?.language
+  const app = getProductName(branding)
 
   return {
     text: await translate(
       resend ? accountPlugin.string.ResendInviteText : accountPlugin.string.InviteText,
-      { link, ws, expHours },
+      { link, ws, expHours, app },
       lang
     ),
     html: await translate(
       resend ? accountPlugin.string.ResendInviteHTML : accountPlugin.string.InviteHTML,
-      { link, ws, expHours },
+      { link, ws, expHours, app },
       lang
     ),
     subject: await translate(
       resend ? accountPlugin.string.ResendInviteSubject : accountPlugin.string.InviteSubject,
-      { ws },
+      { ws, app },
       lang
     ),
     to: email

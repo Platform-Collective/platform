@@ -15,7 +15,7 @@ Front service is suited to deliver application bundles and resource assets, it a
 * COLLABORATOR_URL: Specifies the URL of the collaborator service.
 * MODEL_VERSION: Specifies the required model version.
 * SERVER_SECRET: Specifies the server secret.
-* BRANDING_URL: Specifies the URL of the branding service.
+* BRANDING_URL: Specifies the URL of the branding service. See [docs/branding.md](../../docs/branding.md) for the per-host fields, including `loginTheme` for installations with their own brand.
 
 ## Variables
 

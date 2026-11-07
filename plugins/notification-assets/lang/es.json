@@ -49,7 +49,7 @@
     "EnablePush": "Habilitar notificaciones push",
     "NotificationBlockedInBrowser": "Las notificaciones están bloqueadas en tu navegador. Por favor, habilita las notificaciones en la configuración de tu navegador.",
     "General": "General",
-    "InboxNotificationsDescription": "Reciba notificaciones personales en su bandeja de entrada de Huly.",
+    "InboxNotificationsDescription": "Reciba notificaciones personales en su bandeja de entrada de RelyFrame.",
     "PushNotificationsDescription": "Reciba notificaciones personales en el escritorio.",
     "Sound": "Sonido",
     "SoundNotificationsDescription": "Reciba notificaciones de sonido para eventos.",

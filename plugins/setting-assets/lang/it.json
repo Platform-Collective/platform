@@ -153,7 +153,7 @@
     "BackupCopyToken": "Copia token",
     "BackupScriptInfo": "Uno script shell che scarica tutti i file di backup con curl. Salvalo ed eseguilo in un terminale; richiederà il tuo token di backup, quindi nello script non vengono memorizzati segreti.",
     "BackupRestoreGuide": "Guida a backup e ripristino",
-    "BackupRestoreGuideInfo": "Istruzioni dettagliate per scaricare questo backup e ripristinarlo in un'altra istanza di Huly.",
+    "BackupRestoreGuideInfo": "Istruzioni dettagliate per scaricare questo backup e ripristinarlo in un'altra istanza di RelyFrame.",
     "NonBackupedBlobs": "Non Backed up blobs",
     "Calendar": "Calendario",
     "StartOfTheWeek": "Inizio settimana",

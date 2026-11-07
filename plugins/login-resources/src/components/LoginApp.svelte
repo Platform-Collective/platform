@@ -46,6 +46,7 @@
 
   import AdminWorkspaces from './AdminWorkspaces.svelte'
   import ChangePassword from './ChangePassword.svelte'
+  import { loginTheme } from '../theme'
 
   export let page: Pages = 'signup'
 
@@ -117,9 +118,13 @@
 {#if page === 'admin'}
   <AdminWorkspaces />
 {:else}
-  <div class="login w-full h-full">
+  <div class="login w-full h-full" class:theme-brand-scope={$loginTheme.brandAccent}>
     <div class="login-column">
-      <!-- TODO(rebranding): the logo is intentionally not shown on the login page for now -->
+      {#if $loginTheme.logoComponent !== undefined}
+        <div class="login-logo">
+          <svelte:component this={$loginTheme.logoComponent} />
+        </div>
+      {/if}
       <div class="login-card">
         <Scroller padding={'1rem 0'}>
           <div class="form-content">
@@ -176,7 +181,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--theme-bg-color);
+    background-color: var(--login-bg-color, var(--theme-bg-color));
     padding: 2rem 1rem;
     box-sizing: border-box;
   }
@@ -189,6 +194,12 @@
     max-width: 30rem;
     min-width: 0;
     gap: 1.75rem;
+  }
+
+  .login-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .login-card {

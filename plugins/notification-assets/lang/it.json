@@ -50,7 +50,7 @@
     "EnablePush": "Abilita notifiche push",
     "NotificationBlockedInBrowser": "Le notifiche sono bloccate nel tuo browser. Abilita le notifiche nelle impostazioni del browser.",
     "General": "Generale",
-    "InboxNotificationsDescription": "Ricevi notifiche personali nella tua casella di posta Huly.",
+    "InboxNotificationsDescription": "Ricevi notifiche personali nella tua casella di posta RelyFrame.",
     "PushNotificationsDescription": "Ricevi notifiche personali sul desktop.",
     "CommonNotificationCollectionAdded": "{senderName} ha aggiunto {collection}",
     "CommonNotificationCollectionRemoved": "{senderName} ha rimosso {collection}",

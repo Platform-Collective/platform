@@ -38,7 +38,7 @@
     "NewIncomingMessage": "Wysłał ci nową wiadomość e-mail",
     "ConfigLabel": "E-mail",
     "ConfigDescription": "Rozszerzenie do integracji e-mail Gmail",
-    "GooglePrivacy": "Użycie i transfer informacji otrzymanych przez Huly z interfejsów API Google do jakiejkolwiek innej aplikacji będzie zgodne z <a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">Polityką danych użytkownika usług API Google</a>, włączając wymagania dotyczące ograniczonego użycia.",
+    "GooglePrivacy": "Użycie i transfer informacji otrzymanych przez RelyFrame z interfejsów API Google do jakiejkolwiek innej aplikacji będzie zgodne z <a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">Polityką danych użytkownika usług API Google</a>, włączając wymagania dotyczące ograniczonego użycia.",
     "EmailNotificationsDescription": "Otrzymuj osobiste powiadomienia na e-mail.",
     "FailedToConnect": "Usługa Gmail nie jest dostępna",
     "TotalMessages": "Razem wiadomości:",

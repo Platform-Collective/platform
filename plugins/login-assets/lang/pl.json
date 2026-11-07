@@ -71,7 +71,7 @@
     "Next": "Dalej",
     "Skip": "Pomiń",
     "SignUpCompleted": "Rejestracja zakończona",
-    "StartUsingHuly": "Zacznij korzystać z Huly",
+    "StartUsingHuly": "Zacznij korzystać z RelyFrame",
     "PasswordMinLength": "Hasło musi mieć co najmniej {count, plural, =1 {# znak} few {# znaki} other {# znaków}}",
     "PasswordMinSpecialChars": "Hasło musi zawierać co najmniej {count, plural, =1 {# znak specjalny} few {# znaki specjalne} other {# znaków specjalnych}}",
     "PasswordMinDigits": "Hasło musi zawierać co najmniej {count, plural, =1 {# cyfrę} few {# cyfry} other {# cyfr}}",

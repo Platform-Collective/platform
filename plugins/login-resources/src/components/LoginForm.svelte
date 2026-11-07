@@ -152,11 +152,8 @@
     }
   }
 
-  .method-toggle {
-    color: var(--theme-link-color);
-  }
-
+  .method-toggle,
   .guest-link {
-    color: var(--theme-content-color);
+    color: var(--theme-link-color);
   }
 </style>

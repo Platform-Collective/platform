@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+import { getMetadata } from '@hcengineering/platform'
 import { type AnySvelteComponent } from '@hcengineering/ui'
-import { writable, derived, get, type Readable } from 'svelte/store'
-import LoginIcon from './components/icons/LoginIcon.svelte'
+import { writable, derived, type Readable } from 'svelte/store'
+import BrandingLogo from './components/icons/BrandingLogo.svelte'
+import RelyFrameLogo from './components/icons/RelyFrameLogo.svelte'
+import login from './plugin'
 
 /**
  * Names of supported login themes.
+ * Selected per host through the `loginTheme` field of branding.json.
  */
-export type LoginThemeName = 'huly'
+export type LoginThemeName = 'relyframe' | 'plain'
 
 /**
  * Theme description for login UI.
@@ -27,83 +31,82 @@ export type LoginThemeName = 'huly'
 export interface LoginTheme {
   name: LoginThemeName
   alignment: 'left' | 'center' | 'right'
-  showTitle: boolean
   showLoginTitle: boolean
   backgroundComponent?: AnySvelteComponent
   logoComponent?: AnySvelteComponent
-  // optional html accent class (corresponds to classes in _accent-colors.scss)
-  accentClass?: string
+  // Apply the brand accent colours (`.theme-brand-scope` from the theme package)
+  brandAccent: boolean
+  // True when logoComponent is the host's own logo from branding.json (`loginLogo`)
+  customLogo: boolean
 }
 
 /**
  * Built-in themes for login-resources.
  */
 export const themes: Record<LoginThemeName, LoginTheme> = {
-  huly: {
-    name: 'huly',
+  relyframe: {
+    name: 'relyframe',
     alignment: 'center',
     backgroundComponent: undefined,
-    logoComponent: LoginIcon,
-    showTitle: true,
+    logoComponent: RelyFrameLogo,
     showLoginTitle: false,
-    accentClass: 'accent-huly'
+    brandAccent: true,
+    customLogo: false
+  },
+  // Neutral look without platform logo or accent, for hosts that carry their own brand (see docs/branding.md)
+  plain: {
+    name: 'plain',
+    alignment: 'center',
+    backgroundComponent: undefined,
+    logoComponent: undefined,
+    showLoginTitle: false,
+    brandAccent: false,
+    customLogo: false
   }
 }
 
 /**
- * Default theme name used on startup.
+ * Default theme name used when branding does not specify one.
  */
-export const DEFAULT_THEME_NAME: LoginThemeName = 'huly'
+export const DEFAULT_THEME_NAME: LoginThemeName = 'relyframe'
+
+/**
+ * Checks that a value is the name of a registered theme (own keys only).
+ */
+export function isLoginThemeName (value: unknown): value is LoginThemeName {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(themes, value)
+}
+
+function initialThemeName (): LoginThemeName {
+  const fromBranding = getMetadata(login.metadata.LoginTheme)
+  return isLoginThemeName(fromBranding) ? fromBranding : DEFAULT_THEME_NAME
+}
 
 /**
  * Writable store that holds current theme name.
  */
-export const loginThemeName = writable<LoginThemeName>(DEFAULT_THEME_NAME)
+export const loginThemeName = writable<LoginThemeName>(initialThemeName())
 
 /**
  * Readable store that resolves to the active theme object.
  */
 export const loginTheme: Readable<LoginTheme> = derived(loginThemeName, ($name) => {
-  return themes[$name]
+  const theme = themes[$name]
+  // A logo configured for the host (branding.json `loginLogo`) replaces the theme logo
+  return hasCustomLogo() ? { ...theme, logoComponent: BrandingLogo, customLogo: true } : theme
 })
+
+function hasCustomLogo (): boolean {
+  const logo = getMetadata(login.metadata.LoginLogo)
+  return typeof logo?.light === 'string' && logo.light !== ''
+}
 
 /**
  * Set the current login theme by name. Throws on unknown theme name.
  */
 export function setLoginTheme (name: LoginThemeName): void {
-  if (!(name in themes)) {
+  if (!isLoginThemeName(name)) {
     throw new Error(`Unknown login theme: ${String(name)}`)
   }
   loginThemeName.set(name)
 }
-
-/**
- * Apply accent class to the document <html> element for the provided theme.
- */
-export function applyHtmlAccent (arg?: LoginThemeName | LoginTheme): void {
-  if (typeof document === 'undefined') return
-
-  let name: LoginThemeName
-  if (typeof arg === 'string') {
-    name = arg
-  } else if (arg?.name !== undefined) {
-    name = arg.name
-  } else {
-    name = get(loginThemeName)
-  }
-
-  const docCls = document.documentElement.classList
-  for (const c of Array.from(docCls)) {
-    if (c.startsWith('accent-')) docCls.remove(c)
-  }
-
-  const accent = themes[name]?.accentClass
-  if (accent !== undefined && accent !== null && accent !== '') {
-    docCls.add(accent)
-  }
-}
-
-// Automatically apply accent class when theme changes
-loginThemeName.subscribe((n) => {
-  applyHtmlAccent(n)
-})

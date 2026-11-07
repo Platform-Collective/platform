@@ -45,6 +45,19 @@ export const pages = [
 ] as const
 
 export type Pages = (typeof pages)[number]
+
+/**
+ * Custom logo for the login and onboarding pages, set per host via branding.json.
+ * @public
+ */
+export interface LoginLogo {
+  // Image for the light theme (also used for the dark theme when `dark` is not set)
+  light: string
+  // Image for the dark theme
+  dark?: string
+  // Alternative text, usually the product name
+  alt?: string
+}
 export default plugin(loginId, {
   metadata: {
     AccountsUrl: '' as Asset,
@@ -54,6 +67,7 @@ export default plugin(loginId, {
     DisableSignUp: '' as Metadata<boolean>,
     HideLocalLogin: '' as Metadata<boolean>,
     LoginTheme: '' as Metadata<string>,
+    LoginLogo: '' as Metadata<LoginLogo>,
     TransactorOverride: '' as Metadata<string>,
     PasswordValidations: '' as Metadata<{
       MinLength: number

@@ -50,7 +50,7 @@
     "EnablePush": "Push bildirimlerini etkinleştir",
     "NotificationBlockedInBrowser": "Bildirimler tarayıcınızda engellenmiş. Lütfen tarayıcı ayarlarınızdan bildirimleri etkinleştirin",
     "General": "Genel",
-    "InboxNotificationsDescription": "Huly gelen kutunuzda kişisel bildirimler alın.",
+    "InboxNotificationsDescription": "RelyFrame gelen kutunuzda kişisel bildirimler alın.",
     "PushNotificationsDescription": "Masaüstünde kişisel bildirimler alın.",
     "CommonNotificationCollectionAdded": "{senderName}, {collection} ekledi",
     "CommonNotificationCollectionRemoved": "{senderName}, {collection} kaldırdı",

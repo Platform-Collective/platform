@@ -17,20 +17,10 @@
 <script lang="ts">
   import platform, { getMetadata } from '@hcengineering/platform'
   import { Popup, Scroller, deviceOptionsStore as deviceInfo } from '@hcengineering/ui'
-  import { onMount } from 'svelte'
-  import login from '../plugin'
 
   export let wide: boolean = false
 
-  import { loginTheme, setLoginTheme, type LoginThemeName } from '../theme'
-
-  onMount(() => {
-    // Initialize login theme from platform metadata if provided
-    const lTheme = getMetadata(login.metadata.LoginTheme) as LoginThemeName | undefined
-    if (lTheme === 'huly') {
-      setLoginTheme(lTheme)
-    }
-  })
+  import { loginTheme, setLoginTheme, themes, type LoginThemeName } from '../theme'
 
   // activeTheme is used everywhere for rendering (prefers override if set)
   $: activeTheme = $loginTheme
@@ -38,21 +28,23 @@
   // themeStyle resolves to override theme vars when override is active, otherwise to store theme vars
   function onDevThemeChange(e: Event): void {
     const v = (e.target as HTMLSelectElement).value as LoginThemeName
-    // set local override and apply accent class immediately (no store change)
+    // dev-only switch between registered login themes
     setLoginTheme(v)
   }
 </script>
 
 <div
   class="w-full h-full backd"
+  class:theme-brand-scope={activeTheme.brandAccent}
   class:paneld={$deviceInfo.docWidth <= 768}
-  class:login-theme-huly={activeTheme.name === 'huly'}
 >
   <div class="bg-image clear-mins p-4">
     {#if getMetadata(platform.metadata.DevModel)}
       <div style:position="fixed" style:left={'0px'} style:top={'0px'} style:z-index={10000} class="flex-row-center">
         <select class="select small" value={$loginTheme.name} on:change={onDevThemeChange}>
-          <option value="huly">Huly</option>
+          {#each Object.values(themes) as t}
+            <option value={t.name}>{t.name}</option>
+          {/each}
         </select>
       </div>
     {/if}
@@ -68,7 +60,11 @@
       </div>
     {:else}
       <div class="login-column">
-        <!-- TODO(rebranding): the logo is intentionally not shown for now -->
+        {#if activeTheme.logoComponent !== undefined}
+          <div class="login-logo">
+            <svelte:component this={activeTheme.logoComponent} />
+          </div>
+        {/if}
         <div class="panel">
           <Scroller padding={'1rem 0'}>
             <div class="form-content">
@@ -107,7 +103,7 @@
     align-items: center;
     width: 100%;
     height: 100%;
-    background-color: var(--theme-bg-color);
+    background-color: var(--login-bg-color, var(--theme-bg-color));
   }
 
   .fs-title {
@@ -125,6 +121,12 @@
     gap: 1.75rem;
     padding: 2rem 1rem;
     box-sizing: border-box;
+  }
+
+  .login-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   /* Flat themed panel, used both for the compact card and the wide

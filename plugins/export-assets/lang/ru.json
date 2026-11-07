@@ -12,7 +12,7 @@
     "ExportFormat": "Формат экспорта",
     "ExportJSON": "JSON",
     "ExportCSV": "CSV",
-    "ExportUnifiedFormat": "Единый формат Huly",
+    "ExportUnifiedFormat": "Единый формат RelyFrame",
     "ExportIncludeContent": "Включить содержимое",
     "ExportEverything": "Всё",
     "ExportAttributesOnly": "Только атрибуты",

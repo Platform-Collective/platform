@@ -1,21 +1,21 @@
 {
   "huly.local:8080": {
     "key": "huly-dev",
-    "title": "Huly",
+    "title": "RelyFrame",
     "protocol": "http",
     "language": "en",
     "lastNameFirst": "true"
   },
   "huly.local:8087": {
     "key": "huly",
-    "title": "Huly",
+    "title": "RelyFrame",
     "protocol": "http",
     "language": "en",
     "lastNameFirst": "true"
   },
   "host.docker.internal:8087": {
     "key": "huly-docker",
-    "title": "Huly",
+    "title": "RelyFrame",
     "protocol": "http",
     "language": "en",
     "lastNameFirst": "true"

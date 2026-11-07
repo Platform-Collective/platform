@@ -12,7 +12,7 @@
     "ExportFormat": "Export format",
     "ExportJSON": "JSON",
     "ExportCSV": "CSV",
-    "ExportUnifiedFormat": "Huly Unified Format",
+    "ExportUnifiedFormat": "RelyFrame Unified Format",
     "ExportIncludeContent": "Include content",
     "ExportEverything": "Everything",
     "ExportAttributesOnly": "Attributes only",

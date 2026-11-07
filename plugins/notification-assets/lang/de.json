@@ -50,7 +50,7 @@
     "EnablePush": "Push-Benachrichtigungen aktivieren",
     "NotificationBlockedInBrowser": "Benachrichtigungen sind in Ihrem Browser blockiert. Bitte aktivieren Sie Benachrichtigungen in Ihren Browser-Einstellungen",
     "General": "Allgemein",
-    "InboxNotificationsDescription": "Erhalten Sie persönliche Benachrichtigungen in Ihrem Huly-Posteingang.",
+    "InboxNotificationsDescription": "Erhalten Sie persönliche Benachrichtigungen in Ihrem RelyFrame-Posteingang.",
     "PushNotificationsDescription": "Erhalten Sie persönliche Benachrichtigungen auf dem Desktop.",
     "CommonNotificationCollectionAdded": "{senderName} hat {collection} hinzugefügt",
     "CommonNotificationCollectionRemoved": "{senderName} hat {collection} entfernt",

@@ -40,7 +40,7 @@ import { hrId } from '@hcengineering/hr'
 import { imageCropperId } from '@hcengineering/image-cropper'
 import { inventoryId } from '@hcengineering/inventory'
 import { leadId } from '@hcengineering/lead'
-import login, { loginId } from '@hcengineering/login'
+import login, { loginId, type LoginLogo } from '@hcengineering/login'
 import love, { loveId } from '@hcengineering/love'
 import notification, { notificationId } from '@hcengineering/notification'
 import onboard, { onboardId } from '@hcengineering/onboard'
@@ -292,6 +292,22 @@ export interface Branding {
   initWorkspace?: string
   defaultInviteRole?: string
   inviteLinkGeneratorRoles?: string[]
+  // Login page look: 'relyframe' (default) or 'plain' for hosts with their own brand
+  loginTheme?: string
+  // Custom login/onboarding logo: an image URL, or separate images for light and dark themes
+  loginLogo?: string | { light?: string, dark?: string, alt?: string }
+}
+
+function parseLoginLogo (value: Branding['loginLogo'], title: string | undefined): LoginLogo | undefined {
+  const clean = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined)
+  if (typeof value === 'string') {
+    const light = clean(value)
+    return light !== undefined ? { light, alt: title } : undefined
+  }
+  if (value == null || typeof value !== 'object') return undefined
+  const light = clean(value.light) ?? clean(value.dark)
+  if (light === undefined) return undefined
+  return { light, dark: clean(value.dark), alt: clean(value.alt) ?? title }
 }
 
 export type BrandingMap = Record<string, Branding>
@@ -477,6 +493,8 @@ export async function configurePlatform() {
   setMetadata(login.metadata.AccountsUrl, config.ACCOUNTS_URL)
   setMetadata(login.metadata.DisableSignUp, config.DISABLE_SIGNUP === 'true')
   setMetadata(login.metadata.HideLocalLogin, config.HIDE_LOCAL_LOGIN === 'true')
+  setMetadata(login.metadata.LoginTheme, myBranding.loginTheme)
+  setMetadata(login.metadata.LoginLogo, parseLoginLogo(myBranding.loginLogo, myBranding.title))
 
   setMetadata(login.metadata.PasswordValidations, PASSWORD_REQUIREMENTS[config.PASSWORD_STRICTNESS ?? 'none'])
 

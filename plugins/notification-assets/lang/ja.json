@@ -50,7 +50,7 @@
     "EnablePush": "プッシュ通知を有効にする",
     "NotificationBlockedInBrowser": "ブラウザで通知がブロックされています。ブラウザの設定で通知を有効にしてください",
     "General": "一般",
-    "InboxNotificationsDescription": "Hulyの受信箱で個人通知を受け取ります。",
+    "InboxNotificationsDescription": "RelyFrameの受信箱で個人通知を受け取ります。",
     "PushNotificationsDescription": "デスクトップで個人通知を受け取ります。",
     "CommonNotificationCollectionAdded": "{senderName} が {collection} を追加しました",
     "CommonNotificationCollectionRemoved": "{senderName} が {collection} を削除しました",

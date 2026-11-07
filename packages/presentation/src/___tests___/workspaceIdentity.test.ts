@@ -18,7 +18,7 @@ describe('workspace favicon before application startup', () => {
   const template = readFileSync(resolve(__dirname, '../../../../dev/prod/src/index.ejs'), 'utf8')
 
   function bootstrap (pathname: string, cached?: string, denied = false): { fallback: any, icons: any[] } {
-    const fallback = { href: '', dataset: { defaultHref: '/huly/favicon.ico' } }
+    const fallback = { href: '', dataset: { defaultHref: '/relyframe/favicon.ico' } }
     const icons: any[] = []
     const script = template.match(/<script id="workspace-favicon-bootstrap">([\s\S]*?)<\/script>/)?.[1]
     expect(script).toBeDefined()
@@ -48,16 +48,16 @@ describe('workspace favicon before application startup', () => {
   it('never uses another workspace icon or applies one to the login page', () => {
     for (const pathname of ['/workbench/company-b', '/login']) {
       const { fallback, icons } = bootstrap(pathname, icon)
-      expect(fallback.href).toBe('/huly/favicon.ico')
+      expect(fallback.href).toBe('/relyframe/favicon.ico')
       expect(icons).toHaveLength(0)
     }
   })
 
   it('falls back safely when storage is denied or contains a non-PNG URL', () => {
     for (const cached of ['https://other.example/icon.png', 'javascript:alert(1)', 'broken']) {
-      expect(bootstrap('/workbench/company-a', cached).fallback.href).toBe('/huly/favicon.ico')
+      expect(bootstrap('/workbench/company-a', cached).fallback.href).toBe('/relyframe/favicon.ico')
     }
-    expect(bootstrap('/workbench/company-a', icon, true).fallback.href).toBe('/huly/favicon.ico')
+    expect(bootstrap('/workbench/company-a', icon, true).fallback.href).toBe('/relyframe/favicon.ico')
   })
 })
 

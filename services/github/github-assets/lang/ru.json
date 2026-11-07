@@ -42,7 +42,7 @@
     "ProjectsInSync": "- репозиториев ({of}/{sync})",
     "ProjectsConfig": "Github Проекты (Новые)",
     "AuthorizeAs": "Авторизован как: {login}",
-    "Integrations": "Huly Github интеграции",
+    "Integrations": "RelyFrame Github интеграции",
     "Options": "Опции",
     "Projects": "Проекты ({count})",
     "GithubIssue": "Github тикет",

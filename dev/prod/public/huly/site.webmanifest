@@ -1,10 +1,11 @@
 {
-  "name": "huly",
+  "name": "RelyFrame",
+  "short_name": "RelyFrame",
   "display": "standalone",
   "icons": [
-    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192" },
-    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512" },
-    { "src": "/icon-1024.png", "type": "image/png", "sizes": "1024x1024" }
+    { "src": "/relyframe/icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/relyframe/icon-512.png", "type": "image/png", "sizes": "512x512" },
+    { "src": "/relyframe/icon.svg", "type": "image/svg+xml", "sizes": "any" }
   ],
   "start_url": "/",
   "scope": "/"

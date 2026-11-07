@@ -50,7 +50,7 @@
     "EnablePush": "Włącz powiadomienia push",
     "NotificationBlockedInBrowser": "Powiadomienia są zablokowane w przeglądarce. Włącz powiadomienia w ustawieniach przeglądarki",
     "General": "Ogólne",
-    "InboxNotificationsDescription": "Otrzymuj osobiste powiadomienia na skrzynce odbiorczej Huly.",
+    "InboxNotificationsDescription": "Otrzymuj osobiste powiadomienia na skrzynce odbiorczej RelyFrame.",
     "PushNotificationsDescription": "Otrzymuj osobiste powiadomienia na pulpicie.",
     "CommonNotificationCollectionAdded": "Użytkownik {senderName} dodał kolekcję {collection}",
     "CommonNotificationCollectionRemoved": "Użytkownik {senderName} usunął kolekcję {collection}",
