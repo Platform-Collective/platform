@@ -288,7 +288,7 @@ test.describe('Tracker issue tests', () => {
     await issuesPage.searchIssueByName(commentIssue.title)
     await issuesPage.checkCommentsCount(commentIssue.title, '1')
     await issuesPage.openCommentPopupForIssueByName(commentIssue.title)
-    await issueCommentPopup.addCommentInPopup(commentPopup, 'cat2.jpeg')
+    await issueCommentPopup.addCommentInPopup(commentPopup, 'cat2.jpeg', true)
     await issueCommentPopup.checkCommentWithImageExist('left a comment', 'cat2.jpeg')
     await issueCommentPopup.checkCommentExist(commentPopup)
     await page.locator('.modal-overlay').hover({ position: { x: 10, y: 10 } })

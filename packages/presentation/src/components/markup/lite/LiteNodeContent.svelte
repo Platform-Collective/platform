@@ -14,12 +14,13 @@
 -->
 <script lang="ts">
   import { Blob, Class, Doc, Ref } from '@hcengineering/core'
-  import { AttrValue, MarkupNode, MarkupNodeType, MarkupMarkType } from '@hcengineering/text'
+  import { AttrValue, isFileId, MarkupNode, MarkupNodeType, MarkupMarkType } from '@hcengineering/text'
 
   import LiteNodes from './LiteNodes.svelte'
+  import ImageNode from '../ImageNode.svelte'
   import ObjectNode from '../ObjectNode.svelte'
   import NodeMarks from '../NodeMarks.svelte'
-  import { getBlobRef } from '../../../preview'
+  import BlobImage from '../BlobImage.svelte'
   import { ParsedTextWithEmojis } from '@hcengineering/emoji'
 
   export let node: MarkupNode
@@ -70,9 +71,7 @@
             {#if 'image' in textOrEmoji}
               {@const blob = toRefBlob(textOrEmoji.image)}
               {@const alt = toString(textOrEmoji.emoji)}
-              {#await getBlobRef(blob) then blobSrc}
-                <img src={blobSrc.src} {alt} />
-              {/await}
+              <BlobImage file={blob} {alt} />
             {:else}
               {textOrEmoji.emoji}
             {/if}
@@ -116,24 +115,20 @@
       {#if node.attrs?.kind === 'image'}
         {@const blob = toRefBlob(attrs.image)}
         {@const alt = toString(attrs.emoji)}
-        {#await getBlobRef(blob) then blobSrc}
-          <img src={blobSrc.src} {alt} />
-        {/await}
+        <BlobImage file={blob} {alt} />
       {:else}
         {node.attrs?.emoji}
       {/if}
     </span>
+  {:else if node.type === MarkupNodeType.image}
+    <span class="emoji">
+      <ImageNode {attrs} compact />
+    </span>
   {:else if node.type === MarkupNodeType.gif}
-    <!-- A gif is a leaf, so the children-only fallback at the bottom of this file renders nothing
-    and a gif-only message previews as an empty line. Note MarkupNodeType.image is not handled here
-    either, so image-only messages have always previewed blank; gif is called out because a message
-    whose whole content is one gif is ordinary, where an image usually rides with an attachment. -->
     {@const alt = toString(attrs.alt)}
     <span class="emoji">
-      {#if attrs['file-id'] != null}
-        {#await getBlobRef(toRefBlob(attrs['file-id'])) then blobSrc}
-          <img src={blobSrc.src} {alt} />
-        {/await}
+      {#if isFileId(attrs['file-id'])}
+        <BlobImage file={toRefBlob(attrs['file-id'])} {alt} />
       {:else if attrs.src != null}
         <img src={toString(attrs.src)} {alt} />
       {/if}
