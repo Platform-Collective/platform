@@ -295,10 +295,22 @@
   $: linkedProjectDoc = linkedProject !== undefined ? projectsById[linkedProject as string] : undefined
   $: targetWritable = linkedProjectDoc !== undefined && isWritable(linkedProjectDoc)
 
+  // Re-check that the selected linkedProject is still a candidate target
+  // whenever the sibling queries refresh. Without this, another session
+  // creating A->B between the picker rendering the list and the user
+  // clicking OK would leave an invalidated target selected: the server
+  // apply still rejects it (commit-time notMatch below), but the editor
+  // button should surface the conflict before the user commits.
+  $: isLinkedStillCandidate =
+    isEditing ||
+    (linkedProject !== undefined &&
+      candidateProjects.some((p) => p._id === linkedProject))
+
   $: canSave =
     !primaryMismatch &&
     linkedProject !== undefined &&
     targetWritable &&
+    isLinkedStillCandidate &&
     Object.keys(forwardMap).length > 0 &&
     !loadingStatuses
 
@@ -322,7 +334,28 @@
     )
     const linkKinds = resolvePairLinkKinds()
 
-    const ops = client.apply()
+    // Commit-time duplicate guard. The incoming-rule picker filter hides
+    // targets with an existing A->B or B->A rule when the editor OPENS,
+    // but between opening and commit another session can create the
+    // sibling pair. Add `notMatch` predicates so the server rejects the
+    // whole apply if either direction now exists. Scope keys on the
+    // UNORDERED pair so two editors creating from opposite endpoints
+    // serialize against the same apply key. The scope must be a non-
+    // empty string: `ApplyTxMiddleware` skips predicate evaluation
+    // entirely when `scope` is undefined.
+    const endpoints = [currentSpace as string, linkedProject as string].sort()
+    const scope = `workflow-rules.pair:${JSON.stringify(endpoints)}`
+    const ops = client.apply(scope)
+    if (!isEditing) {
+      ops.notMatch(workflowRules.class.WorkflowRule, {
+        space: currentSpace,
+        linkedProject
+      })
+      ops.notMatch(workflowRules.class.WorkflowRule, {
+        space: linkedProject,
+        linkedProject: currentSpace
+      })
+    }
     // Preserve `enabled` on edit (don't force-resume a paused pair);
     // default to true on create.
     const forwardEnabled = existingForward?.enabled ?? true
@@ -367,7 +400,14 @@
       ops.removeDoc(workflowRules.class.WorkflowRule, existingReverse.space, existingReverse._id)
     }
 
-    await ops.commit()
+    const { result } = await ops.commit()
+    if (!result) {
+      // Duplicate guard rejected the apply (either direction got created
+      // in another session between opening and commit). Leave the editor
+      // open so the user can see the picker refresh and either select a
+      // different target or cancel.
+      return
+    }
     dispatch('close')
   }
 </script>

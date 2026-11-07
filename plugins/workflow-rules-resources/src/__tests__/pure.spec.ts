@@ -33,6 +33,8 @@ import {
   canEditFromHere,
   canEditPair,
   classifyPairings,
+  computeDuplicateNotMatchFilters,
+  computePairApplyScope,
   isCandidateTarget,
   isMemberOf,
   loopsValid,
@@ -291,8 +293,30 @@ describe('resolveAllowedLoops', () => {
     expect(got).toHaveLength(1)
   })
 
-  it('regenerates when the stored list is empty (nothing custom to preserve)', () => {
-    const got = resolveAllowedLoops([], dst, { isCreate: false, resetRequested: false })
+  it('preserves an intentionally empty stored list on edit (no reset): forbid-all-backward survives a rename', () => {
+    // Michael's #244 rev-2 P2 reproduction. Clearing every loop in the
+    // Advanced editor is a valid way to forbid backward moves for a pair.
+    // Regenerating the defaults on an empty stored value silently re-adds
+    // "InProgress -> Backlog" on the next pair-level edit.
+    const stored: Array<{ from: string, to: string }> = []
+    const got = resolveAllowedLoops(stored as any, dst, { isCreate: false, resetRequested: false })
+    // Same reference, same length (zero), still forbids every backward move.
+    expect(got).toBe(stored)
+    expect(got).toHaveLength(0)
+  })
+
+  it('still regenerates when the stored list is explicitly undefined (new field on an older row)', () => {
+    // Guards the single valid regeneration path on an existing rule:
+    // the row predates `allowedLoops` and no value has ever been
+    // persisted. Backward-fill from defaults so the row is useful.
+    const got = resolveAllowedLoops(undefined, dst, { isCreate: false, resetRequested: false })
+    expect(got).toHaveLength(1)
+  })
+
+  it('regenerates when the user explicitly resets even if the stored list is empty', () => {
+    // Reset is an explicit opt-in to defaults. It must override the
+    // preserve-empty guard above.
+    const got = resolveAllowedLoops([], dst, { isCreate: false, resetRequested: true })
     expect(got).toHaveLength(1)
   })
 })
@@ -452,5 +476,56 @@ describe('aggregateStatusesAcrossTaskTypes', () => {
       (id) => (id === SID_A ? { id, name: 'A', category: undefined } : undefined)
     )
     expect(got.map((s) => s.id)).toEqual([SID_A])
+  })
+})
+
+describe('computePairApplyScope', () => {
+  // Backs the "enforce duplicate prevention when committing" regression
+  // (#244 rev-2 P2). Both editors - one creating A->B, one creating B->A -
+  // must serialize against the same apply scope so the server evaluates
+  // the notMatch predicates on both. Scope must also be non-empty, since
+  // `ApplyTxMiddleware` skips predicate evaluation when `scope` is
+  // undefined (Michael's #238 rev-5 P2 analogue).
+  it('keys on the unordered pair (A->B and B->A produce the same scope)', () => {
+    const forward = computePairApplyScope(PROJ_A as string, PROJ_B as string)
+    const reverse = computePairApplyScope(PROJ_B as string, PROJ_A as string)
+    expect(forward).toBe(reverse)
+  })
+
+  it('produces different scopes for different pairs', () => {
+    const ab = computePairApplyScope(PROJ_A as string, PROJ_B as string)
+    const ac = computePairApplyScope(PROJ_A as string, PROJ_C as string)
+    expect(ab).not.toBe(ac)
+  })
+
+  it('returns a non-empty string so ApplyTxMiddleware evaluates predicates', () => {
+    const scope = computePairApplyScope(PROJ_A as string, PROJ_B as string)
+    expect(typeof scope).toBe('string')
+    expect(scope.length).toBeGreaterThan(0)
+  })
+
+  it('starts with the workflow-rules namespace so other features cannot collide', () => {
+    expect(computePairApplyScope(PROJ_A as string, PROJ_B as string).startsWith('workflow-rules.pair:')).toBe(true)
+  })
+})
+
+describe('computeDuplicateNotMatchFilters', () => {
+  // Backs the commit-time duplicate rejection: even if the picker filter
+  // loaded only clean candidates, another session creating the sibling
+  // pair between open-time and commit-time must still be rejected by the
+  // server. Two filters: one for A->B, one for B->A.
+  it('emits a notMatch for each direction', () => {
+    const filters = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string)
+    expect(filters).toHaveLength(2)
+    expect(filters).toContainEqual({ space: PROJ_A, linkedProject: PROJ_B })
+    expect(filters).toContainEqual({ space: PROJ_B, linkedProject: PROJ_A })
+  })
+
+  it('swapping the endpoints flips the filter pair but covers the same edge', () => {
+    const forward = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string)
+    const reverse = computeDuplicateNotMatchFilters(PROJ_B as string, PROJ_A as string)
+    // Set-equal: same two filters, either order.
+    const asKey = (f: { space: string, linkedProject: string }): string => `${f.space}->${f.linkedProject}`
+    expect(forward.map(asKey).sort()).toEqual(reverse.map(asKey).sort())
   })
 })

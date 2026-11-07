@@ -230,20 +230,30 @@ export function classifyPairings (
 /**
  * Decide the `allowedLoops` to persist on save. Preserve the already-stored
  * list across pair-level edits (rename, retoggle bidirectionality, remap
- * statuses) unless the user explicitly asked for a reset OR there is no
- * existing custom list to preserve. Regenerating unconditionally was
- * Michael's "custom loops are still overwritten" case: Advanced-editor
- * customizations survived until the next time the pairing wizard opened,
- * then got wiped.
+ * statuses) unless the user explicitly asked for a reset OR the stored
+ * value is missing on the rule.
+ *
+ * An EMPTY array is a valid persisted state: clearing every loop in the
+ * Advanced editor is how a user forbids all backward moves for a pair.
+ * Earlier revisions treated `stored.length === 0` as permission to
+ * regenerate the defaults, which silently restored "InProgress -> Backlog"
+ * on the next pair-level edit without Reset (Michael's round-3 P2
+ * reproduction). The guard is now `existingLoops === undefined` so:
+ * - `undefined` on the rule (first save / rows written before the field
+ *   existed): regenerate defaults.
+ * - `[]` on the rule: preserve `[]` and keep all backward moves forbidden.
+ * - any populated array: preserve as-is.
+ * - `opts.isCreate`: regenerate defaults for the new rule.
+ * - `opts.resetRequested`: regenerate defaults after the user clicks
+ *   Reset.
  */
 export function resolveAllowedLoops (
   existingLoops: Array<{ from: Ref<IssueStatus>, to: Ref<IssueStatus> }> | undefined,
   dstStatuses: StatusLike[],
   opts: { isCreate: boolean, resetRequested: boolean }
 ): Array<{ from: Ref<IssueStatus>, to: Ref<IssueStatus> }> {
-  const stored = existingLoops ?? []
-  const shouldRegen = opts.isCreate || opts.resetRequested || stored.length === 0
-  return shouldRegen ? buildAllowedLoops(dstStatuses) : stored
+  const shouldRegen = opts.isCreate || opts.resetRequested || existingLoops === undefined
+  return shouldRegen ? buildAllowedLoops(dstStatuses) : existingLoops
 }
 
 /**
@@ -301,4 +311,38 @@ export function aggregateStatusesAcrossTaskTypes (
     }
   }
   return out
+}
+
+/**
+ * Compute the apply-scope key for a pairing create / edit. The scope must
+ * key on the UNORDERED pair so an A->B save and a B->A save from two
+ * editors serialize against the same key. `ApplyTxMiddleware` also skips
+ * predicate evaluation entirely when `scope` is undefined, so the scope
+ * must be a non-empty string.
+ *
+ * This is a pure helper so `pure.spec.ts` can prove the unordered-key
+ * invariant without a DOM.
+ */
+export function computePairApplyScope (
+  endpointA: string,
+  endpointB: string
+): string {
+  const endpoints = [endpointA, endpointB].sort()
+  return `workflow-rules.pair:${JSON.stringify(endpoints)}`
+}
+
+/**
+ * Shape of the duplicate-prevention `notMatch` filters an editor must
+ * attach to the apply when creating a pair. Both directions are rejected,
+ * so a sibling created in another session between picker-open and
+ * commit-time causes the server to drop the whole apply.
+ */
+export function computeDuplicateNotMatchFilters (
+  currentSpace: string,
+  linkedProject: string
+): Array<{ space: string, linkedProject: string }> {
+  return [
+    { space: currentSpace, linkedProject },
+    { space: linkedProject, linkedProject: currentSpace }
+  ]
 }
