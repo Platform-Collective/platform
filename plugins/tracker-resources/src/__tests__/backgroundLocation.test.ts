@@ -24,7 +24,11 @@ jest.mock('@hcengineering/view-resources', () => ({ accessDeniedStore: { set: je
 jest.mock('svelte/store', () => ({ writable: jest.fn() }))
 jest.mock('../plugin', () => ({
   __esModule: true,
-  default: { class: { Issue: 'tracker:class:Issue' }, component: { EditIssue: 'tracker:component:EditIssue' } }
+  default: {
+    class: { Issue: 'tracker:class:Issue', Project: 'tracker:class:Project' },
+    component: { EditIssue: 'tracker:component:EditIssue' },
+    string: { IssueNotFound: 'tracker:string:IssueNotFound', ShowProjectIssues: 'tracker:string:ShowProjectIssues' }
+  }
 }))
 
 // Real issue short-link shape and production tab -> tracker resolver chain, with
@@ -92,7 +96,15 @@ describe('background issue location resolution', () => {
     await expect(resolveLocation(loc)).resolves.toBeUndefined()
 
     expect(setAccessDenied).toHaveBeenCalledTimes(1)
-    expect(setAccessDenied).toHaveBeenCalledWith(true)
+    const [message] = setAccessDenied.mock.calls[0] as [unknown]
+    // Both the original foreground signal and the detailed missing-issue message
+    // mean that foreground navigation reports the error; background calls stay silent.
+    if (message !== true) {
+      expect(message).toMatchObject({
+        label: 'tracker:string:IssueNotFound',
+        params: { id: 'PROJ-123' }
+      })
+    }
   })
 
   it('returns the original location when no resolver is configured', async () => {
