@@ -4,7 +4,7 @@ import { findProperty } from '@hcengineering/core'
 import type { DocumentQuery, Ref, Space, WithLookup } from '@hcengineering/core'
 import type { Event } from '@hcengineering/calendar'
 import type { ToDo } from '@hcengineering/time'
-import { filterVisibleToDos, filterVisibleWorkSlots, getArchivedToDoQuery } from '../to-do-query'
+import { countVisibleUnplannedToDos, filterVisibleToDos, filterVisibleWorkSlots, getArchivedToDoQuery } from '../to-do-query'
 
 const ARCHIVED_PROJECT = 'archived-project' as Ref<Space>
 const ACTIVE_PROJECT = 'active-project' as Ref<Space>
@@ -55,6 +55,34 @@ describe('Planner archived project filtering', () => {
     getArchivedToDoQuery(query, [ARCHIVED_PROJECT])
 
     expect(query).toEqual({ doneOn: null, workslots: 0 })
+  })
+})
+
+describe('unplanned navigator count from the existing todo list', () => {
+  const archived = new Set([ARCHIVED_PROJECT])
+  const input = [
+    todo('archived-open', { attachedSpace: ARCHIVED_PROJECT }),
+    todo('active-open', { attachedSpace: ACTIVE_PROJECT }),
+    todo('standalone-open'),
+    todo('planned', { workslots: 1 }),
+    todo('done', { doneOn: 123 })
+  ]
+
+  it('counts visible open unplanned todos, including ones without an attached space', () => {
+    expect(countVisibleUnplannedToDos(input, archived)).toBe(2)
+  })
+
+  it('recomputes on archive and unarchive using the already loaded todos', () => {
+    expect(countVisibleUnplannedToDos(input, new Set())).toBe(3)
+    expect(countVisibleUnplannedToDos(input, new Set([ARCHIVED_PROJECT, ACTIVE_PROJECT]))).toBe(1)
+    expect(countVisibleUnplannedToDos(input, new Set())).toBe(3)
+  })
+
+  it('does not inherit the list query limit or change the loaded todos', () => {
+    const many = Array.from({ length: 205 }, (_, index) => todo(`visible-${index}`))
+    const before = [...many]
+    expect(countVisibleUnplannedToDos(many, archived)).toBe(205)
+    expect(many).toEqual(before)
   })
 })
 
