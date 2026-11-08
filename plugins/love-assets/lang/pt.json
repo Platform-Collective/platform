@@ -159,6 +159,7 @@
     "GroupByStatus": "Por estado",
     "GroupByDate": "Por data",
     "SpeakingWhileMuted": "O seu microfone está mudo - os outros não o ouvem",
-    "SpeakingWhileMutedAlert": "Avisar quando eu falar com o microfone mudo"
+    "SpeakingWhileMutedAlert": "Avisar quando eu falar com o microfone mudo",
+    "ScreenSharedBy": "{name} está a partilhar o ecrã"
   }
 }
