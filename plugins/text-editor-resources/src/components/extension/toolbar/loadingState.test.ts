@@ -6,9 +6,9 @@ import { EditorState } from '@tiptap/pm/state'
 import { getLoadingState, LoadingStatePlugin, loadingStatePluginKey, type LoadingStateTxMeta } from './toolbar'
 
 jest.mock('@hcengineering/core', () => ({ notEmpty: (value: unknown) => value != null }))
-jest.mock('@hcengineering/ui', () => ({ DebouncedCaller: class {} }))
+jest.mock('@hcengineering/ui', () => ({ DebouncedCaller: jest.fn() }))
 jest.mock('tippy.js', () => ({ __esModule: true, default: jest.fn() }))
-jest.mock('../../node-view', () => ({ SvelteRenderer: class {} }))
+jest.mock('../../node-view', () => ({ SvelteRenderer: jest.fn() }))
 jest.mock('./EditorToolbar.svelte', () => ({}))
 
 const schema = new Schema({
