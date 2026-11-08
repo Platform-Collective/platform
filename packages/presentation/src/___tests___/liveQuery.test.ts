@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import core, { type Client, type Doc, type FindResult, setCurrentAccount } from '@hcengineering/core'
+import core, { type Doc, type FindResult, setCurrentAccount } from '@hcengineering/core'
 import { createQuery, refreshClient, setClient } from '../utils'
 
 interface Subscription {

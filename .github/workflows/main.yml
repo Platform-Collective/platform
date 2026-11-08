@@ -163,6 +163,7 @@ jobs:
           echo "::warning::Build cache was missing; reinstalling dependencies and rebuilding."
           node common/scripts/install-run-rush.js install
           node common/scripts/install-run-rush.js build
+          node common/scripts/install-run-rush.js validate
 
       - name: Checking svelte sources...
         run: node common/scripts/install-run-rush.js svelte-check -v
@@ -236,6 +237,7 @@ jobs:
           echo "::warning::Build cache was missing; reinstalling dependencies and rebuilding."
           node common/scripts/install-run-rush.js install
           node common/scripts/install-run-rush.js build
+          node common/scripts/install-run-rush.js bundle
       - name: Login to Docker Hub
         if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         continue-on-error: true
