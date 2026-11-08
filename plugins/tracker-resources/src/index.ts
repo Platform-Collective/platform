@@ -105,6 +105,7 @@ import {
   resolveLocation
 } from './issues'
 import tracker from './plugin'
+import { copyIssueBranch } from './copy-issue-branch'
 import { formatIssueValue } from './issueTableFormatter'
 
 import MilestoneEditor from './components/milestones/MilestoneEditor.svelte'
@@ -569,6 +570,7 @@ export default async (): Promise<Resources> => ({
     FormatIssueMarkdownValue: formatIssueValue
   },
   actionImpl: {
+    CopyIssueBranch: copyIssueBranch,
     Move: move,
     EditWorkflowStatuses: editWorkflowStatuses,
     EditProject: editProject,
