@@ -150,4 +150,38 @@ describe('image node view', () => {
     expect(setLoadingState).not.toHaveBeenCalled()
     expect(image.src).toBe('')
   })
+
+  it('clears the loading state when the blob lookup fails', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+    let rendered: RenderedImage | undefined
+    try {
+      getBlobRef.mockRejectedValueOnce(new Error('not found'))
+      rendered = renderImage({ 'file-id': 'missing-image' })
+      await flushPromises()
+
+      expect(setLoadingState).toHaveBeenNthCalledWith(1, rendered.view, 0, true)
+      expect(setLoadingState).toHaveBeenLastCalledWith(rendered.view, 0, false)
+      expect(consoleError).toHaveBeenCalled()
+    } finally {
+      rendered?.destroy()
+      consoleError.mockRestore()
+    }
+  })
+
+  it('clears the placeholder timer when the node view is destroyed', () => {
+    jest.useFakeTimers()
+    try {
+      getBlobRef.mockReturnValueOnce(new Promise<{ src: string, srcset: string }>(() => {}))
+      const rendered = renderImage({ 'file-id': 'slow-image' })
+      jest.runAllTicks()
+      expect(jest.getTimerCount()).toBe(1)
+
+      rendered.destroy()
+      expect(jest.getTimerCount()).toBe(0)
+      jest.advanceTimersByTime(500)
+      expect(image.src).toBe('')
+    } finally {
+      jest.useRealTimers()
+    }
+  })
 })

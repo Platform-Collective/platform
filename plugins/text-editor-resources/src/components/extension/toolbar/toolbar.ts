@@ -136,10 +136,11 @@ export function LoadingStatePlugin (): Plugin<LoadingStatePluginState> {
           const mapped = new Set<number>()
           loadingNodes.forEach((pos) => {
             try {
-              const mappedPos = tr.mapping.map(pos, -1)
-              // Verify position is still valid
-              if (mappedPos >= 0 && mappedPos < tr.doc.content.size) {
-                mapped.add(mappedPos)
+              // assoc = 1 keeps the entry on the node when content is inserted right before it;
+              // `deleted` drops entries whose node start token was removed (the node was deleted).
+              const result = tr.mapping.mapResult(pos, 1)
+              if (!result.deleted && result.pos >= 0 && result.pos < tr.doc.content.size) {
+                mapped.add(result.pos)
               }
             } catch (e) {
               // Position no longer valid, skip it
