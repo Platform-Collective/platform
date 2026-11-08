@@ -233,6 +233,38 @@ describe('createTables - existing tables', () => {
     ])
   })
 
+  // PostgreSQL folds the unquoted event_attachedTo_idx, so the catalog returns it in lowercase.
+  it('skips a valid mixed-case index (event.attachedTo) reported in lowercase by the catalog', async () => {
+    const { url } = uniq()
+    const { client, queries } = createMockClient({
+      tables: ['event'],
+      columns: { event: ['_id', 'attachedTo'] },
+      indexes: [{ table_name: 'event', index_name: 'event_attachedto_idx', valid: true }]
+    })
+
+    await createTables(createCtx(), client, url, ['event'])
+
+    const ddl = queries.filter((q) => q.includes('INDEX')).filter((q) => !q.includes('pg_index'))
+    expect(ddl).toEqual([])
+  })
+
+  it('recreates an invalid mixed-case index (event.attachedTo) reported in lowercase by the catalog', async () => {
+    const { url } = uniq()
+    const { client, queries } = createMockClient({
+      tables: ['event'],
+      columns: { event: ['_id', 'attachedTo'] },
+      indexes: [{ table_name: 'event', index_name: 'event_attachedto_idx', valid: false }]
+    })
+
+    await createTables(createCtx(), client, url, ['event'])
+
+    const ddl = queries.filter((q) => q.includes('INDEX')).filter((q) => !q.includes('pg_index'))
+    expect(ddl).toEqual([
+      'DROP INDEX CONCURRENTLY IF EXISTS event_attachedto_idx',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS event_attachedto_idx ON event ("attachedTo")'
+    ])
+  })
+
   it('logs and continues when an index build fails', async () => {
     const { url, domain } = uniq()
     declare(domain)

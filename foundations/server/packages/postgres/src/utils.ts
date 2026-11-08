@@ -118,7 +118,9 @@ export async function createTables (
 
 function getIndexName (domain: string, key: string): string {
   // `_idx` suffix: indexes and tables share a namespace (index notification(user) vs table notification_user).
-  return `${domain}_${key}_idx`
+  // Lowercase: the name is unquoted in DDL, so PostgreSQL folds it (event_attachedTo_idx -> event_attachedto_idx)
+  // and pg_class returns the folded spelling, which the catalog lookup must match.
+  return `${domain}_${key}_idx`.toLowerCase()
 }
 
 /**
