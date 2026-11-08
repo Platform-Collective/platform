@@ -6,6 +6,8 @@ import { type Page, type Viewport } from 'puppeteer'
 
 import { type PrintBrowserManager, type PrintBrowserPage, withTimeout } from './browser'
 import config from './config'
+import { ApiError } from './error'
+import { createPrintRequestChecker, isAllowedPrintUrl } from './print-url'
 import { Semaphore } from './semaphore'
 
 export interface PrintOptions {
@@ -33,25 +35,39 @@ export async function print (
   ctx: MeasureContext,
   url: string,
   options: PrintOptions | undefined,
-  browserManager: PrintBrowserManager
+  browserManager: PrintBrowserManager,
+  allowedHostnames: readonly string[]
 ): Promise<Buffer | undefined> {
+  if (!isAllowedPrintUrl(url, allowedHostnames)) {
+    throw new ApiError(403, 'Cannot process provided link')
+  }
+
   const kind = options?.kind ?? 'pdf'
   const orientation = options?.orientation ?? 'portrait'
   const viewport = options?.viewport ?? { width: 1440, height: 900 }
   const release = await printSemaphore.acquire()
   let browserPage: PrintBrowserPage | undefined
+  let finished = false
 
   try {
     ctx.info('print', { url, kind, orientation, viewport })
 
     browserPage = await browserManager.createPage()
-    const job = render(ctx, browserPage.page, url, kind, orientation, viewport)
+    const page = browserPage.page
+    const job = (async () => {
+      await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(window, 'open', { value: () => null, writable: false, configurable: false })
+      })
+      if (finished) return undefined
+      return await render(ctx, page, url, kind, orientation, viewport, allowedHostnames)
+    })()
     // After a timeout the job is abandoned; closing its context makes the pending
     // puppeteer calls reject, which must not surface as an unhandled rejection.
     job.catch(() => {})
 
     return await withTimeout(job, config.PrintTimeoutMs, `Print timed out after ${config.PrintTimeoutMs} ms`)
   } finally {
+    finished = true
     try {
       await browserPage?.release()
     } finally {
@@ -66,8 +82,10 @@ async function render (
   url: string,
   kind: ExportKind,
   orientation: PageOrientation,
-  viewport: Viewport
+  viewport: Viewport,
+  allowedHostnames: readonly string[]
 ): Promise<Buffer | undefined> {
+  const isSafeRequest = createPrintRequestChecker(allowedHostnames)
   page
     .on('pageerror', (err: unknown) => {
       const message = err instanceof Error ? err.message : String(err)
@@ -76,7 +94,31 @@ async function render (
     .on('requestfailed', (request) => {
       ctx.warn('requestfailed', { url: request.url(), errorText: request.failure()?.errorText })
     })
+    .on('request', (request) => {
+      void (async () => {
+        try {
+          const allowed = request.isNavigationRequest()
+            ? isAllowedPrintUrl(request.url(), allowedHostnames)
+            : await isSafeRequest(request.url())
+          if (allowed) {
+            await request.continue()
+          } else {
+            // Do not log query strings, fragments or credentials from user-supplied links.
+            let origin: string | undefined
+            try {
+              origin = new URL(request.url()).origin
+            } catch {}
+            ctx.warn('Blocked print request', { origin, navigation: request.isNavigationRequest() })
+            await request.abort('blockedbyclient')
+          }
+        } catch (err: unknown) {
+          ctx.warn('Failed to handle print request', { err })
+        }
+      })()
+    })
 
+  await page.setBypassServiceWorker(true)
+  await page.setRequestInterception(true)
   await page.setViewport(viewport)
 
   // NOTE: Issues opened with a guest link worked fine only with networkidle0 here and
