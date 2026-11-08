@@ -778,7 +778,10 @@ describe('tabs of removed documents', () => {
     })
 
     it.each([false, true])('preserves the editor fallback for an already-deleted Cards link (pinned: %s)', async (isPinned) => {
-      const tab = { ...makeTab(`stale-card-${isPinned}`, `workbench/workspace/card/already-deleted-${isPinned}`), isPinned }
+      const tab = {
+        ...makeTab(`stale-card-${isPinned}`, `workbench/workspace/card/already-deleted-${isPinned}`),
+        isPinned
+      }
       tabsStore.set([tab])
       tabIdStore.set(tab._id)
       jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
@@ -798,7 +801,12 @@ describe('tabs of removed documents', () => {
       tabIdStore.set(tab._id)
       jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
       let complete: (data: LocationData) => void = () => {}
-      resolver.mockImplementation(async () => await new Promise<LocationData>((resolve) => { complete = resolve }))
+      resolver.mockImplementation(
+        async () =>
+          await new Promise<LocationData>((resolve) => {
+            complete = resolve
+          })
+      )
       const resolving = resolveTab(tab)
       await Promise.resolve()
 

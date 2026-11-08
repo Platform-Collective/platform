@@ -372,6 +372,8 @@ async function leaveRemovedDocument (
 /** Let an editor hand missing-document navigation to the workbench. */
 export function handleMissingTabDocument (objectId: Ref<Doc>): boolean {
   if (get(currentTabStore) === undefined) return false
+  // An unresolved location needs the editor's fallback (for example an already-deleted Card link).
+  if (!tabDocuments.has(locationToUrl(getCurrentLocation()))) return false
   onRemovedDocuments(new Set([objectId]))
   return true
 }
