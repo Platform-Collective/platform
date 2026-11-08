@@ -293,6 +293,7 @@ const calendarPlugin = plugin(calendarId, {
     Busy: '' as IntlString,
     Private: '' as IntlString,
     NotAllPermissions: '' as IntlString,
+    IntegrationFailed: '' as IntlString,
     Value: '' as IntlString,
     Schedule: '' as IntlString,
     ScheduleNew: '' as IntlString,
