@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Calendrier",
+    "CalendarWithoutDueDate": "Tickets sans date d’échéance : {count}",
+    "CalendarUpdateFailed": "Impossible de mettre à jour les dates du ticket. Veuillez réessayer.",
     "TrackerApplication": "Suivi",
     "Projects": "Vos projets",
     "More": "Plus",
