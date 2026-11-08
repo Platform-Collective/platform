@@ -19,6 +19,7 @@ import core, {
   MeasureContext,
   PersonId,
   Ref,
+  SocialIdType,
   Space,
   TxOperations,
   makeDocCollabId,
@@ -113,6 +114,30 @@ export abstract class IssueSyncManagerBase {
     return socialIds.map((it) => it.attachedTo)
   }
 
+  private async reconcileAssignee (
+    data: Partial<Pick<Issue, 'assignee'>>,
+    existing: Issue,
+    external: IssueExternalData
+  ): Promise<void> {
+    if (data.assignee != null || existing.assignee == null || (external.assignees?.nodes ?? []).length > 0) {
+      return
+    }
+    if (!(await this.hasGithubIdentity(existing.assignee))) {
+      // GitHub cannot distinguish its empty-assignee echo from an intentional unassign.
+      // Unlinked assignees can only be changed in Huly.
+      data.assignee = existing.assignee
+    }
+  }
+
+  private async hasGithubIdentity (person: Ref<Person>): Promise<boolean> {
+    const identity = await this.client.findOne(
+      contact.class.SocialIdentity,
+      { attachedTo: person, type: SocialIdType.GITHUB },
+      { projection: { _id: 1 } }
+    )
+    return identity !== undefined
+  }
+
   @withContext('issues-handleUpdate')
   async handleUpdate (
     ctx: MeasureContext,
@@ -152,6 +177,9 @@ export abstract class IssueSyncManagerBase {
       const lastModified = new Date().getTime()
 
       if (doc !== undefined && ((await verifyUpdate?.(syncData, doc, external, update)) ?? true)) {
+        if (update.assignee === null) {
+          await this.reconcileAssignee(update, doc, external)
+        }
         const issueData: DocumentUpdate<Issue> = { ...update, description: doc.description }
         if (
           update.description !== undefined &&
@@ -329,6 +357,7 @@ export abstract class IssueSyncManagerBase {
     }
 
     const existingIssue = this.client.getHierarchy().as(existing, github.mixin.GithubIssue)
+    await this.reconcileAssignee(issueData, existingIssue, issueExternal)
     const previousData: GithubIssueData = info.current ?? {}
     // const type = await this.provider.getTaskTypeOf(container.project.type, existing._class)
     // const stst = await this.provider.getStatuses(type?._id)
