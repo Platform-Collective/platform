@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { findProperty } from '@hcengineering/core'
-import type { DocumentQuery, Ref, Space, WithLookup } from '@hcengineering/core'
+import type { Ref, Space, WithLookup } from '@hcengineering/core'
 import type { Event } from '@hcengineering/calendar'
 import type { ToDo } from '@hcengineering/time'
-import { countVisibleUnplannedToDos, filterVisibleToDos, filterVisibleWorkSlots, getArchivedToDoQuery } from '../to-do-query'
+import { countVisibleUnplannedToDos, filterVisibleToDos, filterVisibleWorkSlots } from '../to-do-query'
 
 const ARCHIVED_PROJECT = 'archived-project' as Ref<Space>
 const ACTIVE_PROJECT = 'active-project' as Ref<Space>
@@ -17,13 +16,6 @@ function todo (id: string, fields: Partial<ToDo> = {}): ToDo {
     workslots: 0,
     ...fields
   } as unknown as ToDo
-}
-
-function findTodos (todos: ToDo[], query: DocumentQuery<ToDo>): ToDo[] {
-  return Object.entries(query).reduce<ToDo[]>(
-    (result, [key, value]) => findProperty(result, key, value) as ToDo[],
-    todos
-  )
 }
 
 describe('Planner archived project filtering', () => {
@@ -40,21 +32,6 @@ describe('Planner archived project filtering', () => {
 
   it('shows everything again once the project is unarchived', () => {
     expect(filterVisibleToDos(todos, new Set())).toEqual(todos)
-  })
-
-  it('counts only unplanned todos of archived projects', () => {
-    const query = getArchivedToDoQuery({ doneOn: null, workslots: 0 }, [ARCHIVED_PROJECT])
-    const planned = todo('planned', { attachedSpace: ARCHIVED_PROJECT, workslots: 1 })
-
-    expect(findTodos([...todos, planned], query)).toEqual([archived])
-  })
-
-  it('does not modify the original query', () => {
-    const query: DocumentQuery<ToDo> = { doneOn: null, workslots: 0 }
-
-    getArchivedToDoQuery(query, [ARCHIVED_PROJECT])
-
-    expect(query).toEqual({ doneOn: null, workslots: 0 })
   })
 })
 

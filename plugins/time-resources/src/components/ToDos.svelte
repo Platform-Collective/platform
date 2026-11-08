@@ -154,6 +154,8 @@
         _id: { $in: ids }
       }
     }
+    // Known limit: archived todos are hidden after the 200-row query cap, so later visible rows can be missed.
+    // Postgres does not support a top-level $or here, and its $nin excludes missing attachedSpace values.
     if (activeQ !== undefined) {
       activeQuery.query(
         time.class.ToDo,

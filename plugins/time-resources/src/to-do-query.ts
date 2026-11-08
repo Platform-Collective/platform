@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import type { DocumentQuery, Ref, Space, WithLookup } from '@hcengineering/core'
+import type { Ref, Space, WithLookup } from '@hcengineering/core'
 import type { Event } from '@hcengineering/calendar'
 import type { ToDo } from '@hcengineering/time'
 
@@ -10,12 +10,9 @@ export function filterVisibleToDos<T extends ToDo> (todos: T[], archivedProjects
   return todos.filter((todo) => todo.attachedSpace == null || !archivedProjects.has(todo.attachedSpace))
 }
 
-/**
- * Restrict a todo query to todos attached to archived spaces.
- * A positive $in is used, because $nin does not match todos without an attached space on Postgres.
- */
-export function getArchivedToDoQuery (query: DocumentQuery<ToDo>, archivedProjects: Ref<Space>[]): DocumentQuery<ToDo> {
-  return { ...query, attachedSpace: { $in: archivedProjects } }
+/** Count the visible unplanned todos already loaded by the navigator, without a second query. */
+export function countVisibleUnplannedToDos (todos: ToDo[], archivedSpaces: Set<Ref<Space>>): number {
+  return filterVisibleToDos(todos, archivedSpaces).filter((todo) => todo.doneOn == null && todo.workslots === 0).length
 }
 
 /** Hide work slots through their todo lookup; ordinary calendar events stay visible. */

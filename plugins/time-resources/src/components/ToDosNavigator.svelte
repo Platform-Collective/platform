@@ -29,7 +29,7 @@
   import { ToDosMode } from '..'
   import time from '../plugin'
   import { getPlannerMarkers, getPlannerMonthRange } from './planner-markers'
-  import { getArchivedToDoQuery } from '../to-do-query'
+  import { countVisibleUnplannedToDos } from '../to-do-query'
 
   export let mode: ToDosMode
   export let tag: Ref<TagElementType> | undefined
@@ -93,29 +93,8 @@
 
   $: tags = allTags.filter((p) => myTags.has(p._id))
 
-  const unplannedQuery = createQuery()
-  let unplannedTotal = 0
-
-  unplannedQuery.query(
-    time.class.ToDo,
-    {
-      user: currentUser,
-      doneOn: null,
-      workslots: 0
-    },
-    (res) => {
-      unplannedTotal = res.total
-    },
-    {
-      total: true,
-      limit: 1
-    }
-  )
-
   // Todos of archived spaces are hidden in the planner, so they must not be counted either
   const archivedSpacesQuery = createQuery()
-  const archivedUnplannedQuery = createQuery()
-  let archivedUnplannedTotal = 0
   let archivedSpaces: Ref<Space>[] = []
   archivedSpacesQuery.query(
     core.class.Space,
@@ -126,22 +105,6 @@
     { projection: { _id: 1 }, showArchived: true }
   )
 
-  $: if (archivedSpaces.length > 0) {
-    archivedUnplannedQuery.query(
-      time.class.ToDo,
-      getArchivedToDoQuery({ user: currentUser, doneOn: null, workslots: 0 }, archivedSpaces),
-      (res) => {
-        archivedUnplannedTotal = res.total
-      },
-      { total: true, limit: 1 }
-    )
-  } else {
-    archivedUnplannedQuery.unsubscribe()
-    archivedUnplannedTotal = 0
-  }
-
-  const counters: Record<string, number> = {}
-  $: counters.unplanned = Math.max(0, unplannedTotal - archivedUnplannedTotal)
   let viewDate = new Date(mode === 'date' ? currentDate : new Date())
   let todos: ToDo[] = []
   let issues: Issue[] = []
@@ -153,6 +116,9 @@
   todosQuery.query(time.class.ToDo, { user: currentUser, doneOn: null }, (result) => {
     todos = result
   })
+
+  const counters: Record<string, number> = {}
+  $: counters.unplanned = countVisibleUnplannedToDos(todos, new Set(archivedSpaces))
 
   $: monthRange = getPlannerMonthRange(viewDate)
   $: issuesQuery.query(
