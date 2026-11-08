@@ -15,11 +15,16 @@
 //
 
 import { UNAUTHORIZED } from '@hcengineering/platform'
-import { RPCHandler, type Response } from '@hcengineering/rpc'
+import { RPCHandler, type HelloResponse, type Response } from '@hcengineering/rpc'
+import type { LoginInfoWithWorkspaces } from '@hcengineering/account-client'
+import { createServer } from 'http'
 import { generateToken } from '@hcengineering/server-token'
 import WebSocket from 'ws'
 
-import {
+import core, {
+  AccountRole,
+  SocialIdType,
+  type AccountUuid,
   Hierarchy,
   MeasureMetricsContext,
   ModelDb,
@@ -169,13 +174,70 @@ describe('server', () => {
   })
 
   it('reconnect', async () => {
+    const workspace = '123e4567-e89b-12d3-a456-426614174001' as WorkspaceUuid
+    const loginInfo: LoginInfoWithWorkspaces = {
+      account: '123e4567-e89b-12d3-a456-426614174000' as AccountUuid,
+      name: 'Reconnect test',
+      socialIds: [
+        {
+          _id: 'reconnect-social' as PersonId,
+          type: SocialIdType.EMAIL,
+          value: 'reconnect@example.test',
+          key: 'email:reconnect@example.test',
+          personUuid: '123e4567-e89b-12d3-a456-426614174000' as PersonUuid,
+          verifiedOn: 1,
+          isDeleted: false
+        }
+      ],
+      workspaces: {
+        [workspace]: {
+          url: 'reconnect-test',
+          mode: 'active',
+          version: { versionMajor: 0, versionMinor: 7, versionPatch: 0 },
+          endpoint: { internalUrl: '', externalUrl: '', region: '' },
+          role: AccountRole.User
+        }
+      }
+    }
+    const accountCalls: string[] = []
+    const accountsServer = createServer((req, res) => {
+      let body = ''
+      req.on('data', (chunk: Buffer) => {
+        body += chunk.toString()
+      })
+      req.on('end', () => {
+        try {
+          const request = JSON.parse(body)
+          accountCalls.push(request.method)
+          if (request.method !== 'getLoginWithWorkspaceInfo' && request.method !== 'updateLastVisit') {
+            res.writeHead(400)
+            res.end()
+            return
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ result: request.method === 'getLoginWithWorkspaceInfo' ? loginInfo : null }))
+        } catch {
+          res.writeHead(400)
+          res.end()
+        }
+      })
+    })
+    await new Promise<void>((resolve, reject) => {
+      accountsServer.once('error', reject)
+      accountsServer.listen(0, '127.0.0.1', () => {
+        resolve()
+      })
+    })
+    const address = accountsServer.address()
+    if (address === null || typeof address === 'string') throw new Error('Expected an account fixture TCP address')
+
     const opt: SessionManagerOptions = {
       pipelineFactory: async () => {
         const { modelDb, hierarchy } = await getModelDb()
         return {
           hierarchy,
           modelDb,
-          context: {} as any,
+          context: { hierarchy } as any,
           handleBroadcast: async (ctx) => {},
           findAll: async <T extends Doc> (
             ctx: MeasureContext<SessionData>,
@@ -217,58 +279,90 @@ describe('server', () => {
         }
       },
       brandingMap: {},
-      accountsUrl: '',
+      accountsUrl: `http://127.0.0.1:${address.port}`,
       queue: createDummyQueue()
     }
-    const cancelOp = startSessionManager(new MeasureMetricsContext('test', {}), opt)
-    const serverShutdown = startHttpServer(toolCtx, sessionMgr, port + 1, opt.accountsUrl, createDummyStorageAdapter())
-
-    async function findClose (token: string, timeoutPromise: Promise<void>, code: number): Promise<string> {
-      const newConn = new WebSocket(`ws://localhost:${port + 1}/${token}?sessionId=s1`)
-
-      await Promise.race([
-        timeoutPromise,
-        new Promise((resolve) => {
-          newConn.on('open', () => {
-            newConn.send(handler.serialize({ method: 'hello', params: [], id: -1 }, false))
-            newConn.send(handler.serialize({ method: 'findAll', params: [], id: -1 }, false))
-            resolve(null)
-          })
-        })
-      ])
-
-      let helloReceived = false
-
-      let responseMsg: any = {}
-
-      await Promise.race([
-        timeoutPromise,
-        new Promise((resolve) => {
-          newConn.on('message', (msg: Buffer) => {
-            try {
-              console.log('resp:', msg.toString())
-              const parsedMsg: Response<any> = handler.readResponse(msg.toString(), false) // Hello
-              if (!helloReceived) {
-                expect(parsedMsg.result === 'hello')
-                helloReceived = true
-                return
-              }
-              responseMsg = handler.readResponse(msg.toString(), false) // our message
-              resolve(null)
-            } catch (err: any) {
-              console.error(err)
-            }
-          })
-        })
-      ])
-
-      if (code === 1005) {
-        newConn.close()
-      } else {
-        newConn.close(code)
+    const reconnectSessionMgr = (() => {
+      const previousModelVersion = process.env.MODEL_VERSION
+      process.env.MODEL_VERSION = '0.7.0'
+      try {
+        return startSessionManager(new MeasureMetricsContext('test', {}), opt)
+      } finally {
+        if (previousModelVersion === undefined) delete process.env.MODEL_VERSION
+        else process.env.MODEL_VERSION = previousModelVersion
       }
-      return responseMsg.result[0].sessionId
+    })()
+    const serverShutdown = startHttpServer(
+      toolCtx,
+      reconnectSessionMgr,
+      port + 1,
+      opt.accountsUrl,
+      createDummyStorageAdapter()
+    )
+
+    async function findClose (
+      token: string,
+      timeoutPromise: Promise<never>,
+      code: number,
+      expectedReconnect: boolean
+    ): Promise<string> {
+      const newConn = new WebSocket(`ws://localhost:${port + 1}/${token}?sessionId=s1`)
+      const closed = new Promise<void>((resolve) => {
+        newConn.once('close', () => {
+          resolve()
+        })
+      })
+      const response = new Promise<string>((resolve, reject) => {
+        let helloReceived = false
+        newConn.on('error', reject)
+        newConn.once('close', () => {
+          reject(new Error('Connection closed before the session response'))
+        })
+        newConn.once('open', () => {
+          newConn.send(handler.serialize({ method: 'hello', params: [], id: -1 }, false))
+        })
+        newConn.on('message', (msg: Buffer) => {
+          try {
+            const parsedMsg: Response<any> = handler.readResponse(msg.toString(), false)
+            expect(parsedMsg.error).toBeUndefined()
+            if (parsedMsg.id === -1) {
+              expect(helloReceived).toBe(false)
+              expect(parsedMsg.result).toBe('hello')
+              expect((parsedMsg as HelloResponse).reconnect).toBe(expectedReconnect)
+              helloReceived = true
+              newConn.send(handler.serialize({ method: 'findAll', params: [core.class.Space, {}], id: 1 }, false))
+              return
+            }
+            expect(helloReceived).toBe(true)
+            expect(parsedMsg.id).toBe(1)
+            const sessionId = parsedMsg.result?.[0]?.sessionId
+            if (typeof sessionId !== 'string' || sessionId.length === 0) {
+              reject(new Error('Expected a nonempty session ID in the reconnect response'))
+              return
+            }
+            resolve(sessionId)
+          } catch (err: unknown) {
+            reject(err)
+          }
+        })
+      })
+
+      try {
+        const sessionId = await Promise.race([response, timeoutPromise])
+        if (code === 1005) {
+          newConn.close()
+        } else {
+          newConn.close(code)
+        }
+        await Promise.race([closed, timeoutPromise])
+        return sessionId
+      } finally {
+        if (newConn.readyState !== WebSocket.CLOSED) newConn.terminate()
+        await closed
+      }
     }
+
+    let clearTo: ReturnType<typeof setTimeout> | undefined
 
     try {
       //
@@ -276,21 +370,29 @@ describe('server', () => {
         '123e4567-e89b-12d3-a456-426614174000' as PersonUuid,
         '123e4567-e89b-12d3-a456-426614174001' as WorkspaceUuid
       )
-      let clearTo: any
-      const timeoutPromise = new Promise<void>((resolve) => {
-        clearTo = setTimeout(resolve, 4000)
+      const timeoutPromise = new Promise<never>((_resolve, reject) => {
+        clearTo = setTimeout(() => {
+          reject(new Error('Timed out waiting for the reconnect response'))
+        }, 4000)
       })
-      const t1 = await findClose(token, timeoutPromise, 1005)
-      const t2 = await findClose(token, timeoutPromise, 1000)
+      const t1 = await findClose(token, timeoutPromise, 1005, false)
+      const t2 = await findClose(token, timeoutPromise, 1000, true)
 
       expect(t1).toBe(t2)
-      clearTimeout(clearTo)
-    } catch (err: any) {
-      console.error(err)
+      expect(accountCalls.filter((method) => method === 'getLoginWithWorkspaceInfo')).toHaveLength(2)
     } finally {
-      console.log('calling shutdown')
-      await cancelOp.closeWorkspaces(new MeasureMetricsContext('test', {}))
-      await serverShutdown()
+      if (clearTo !== undefined) clearTimeout(clearTo)
+      try {
+        await serverShutdown()
+      } finally {
+        accountsServer.closeAllConnections()
+        await new Promise<void>((resolve, reject) => {
+          accountsServer.close((err) => {
+            if (err !== undefined) reject(err)
+            else resolve()
+          })
+        })
+      }
     }
   })
 })
