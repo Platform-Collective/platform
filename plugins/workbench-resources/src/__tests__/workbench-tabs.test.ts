@@ -777,6 +777,40 @@ describe('tabs of removed documents', () => {
       expect(get(tabsStore)[0].location).toBe(tab.location)
     })
 
+    it.each([false, true])('preserves the editor fallback for an already-deleted Cards link (pinned: %s)', async (isPinned) => {
+      const tab = { ...makeTab(`stale-card-${isPinned}`, `workbench/workspace/card/already-deleted-${isPinned}`), isPinned }
+      tabsStore.set([tab])
+      tabIdStore.set(tab._id)
+      jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
+      // A stale Cards link resolves no objectId because findOne cannot find the card.
+      resolver.mockResolvedValue({ name: 'Cards' })
+      await resolveTab(tab)
+
+      expect(handleMissingTabDocument(`already-deleted-${isPinned}` as Ref<Doc>)).toBe(false)
+      await flush()
+      expect(navigate).not.toHaveBeenCalled()
+      expect(get(tabsStore)[0].location).toBe(tab.location)
+    })
+
+    it('preserves the editor fallback while the current Cards location is still resolving', async () => {
+      const tab = makeTab('unresolved-card', 'workbench/workspace/card/unresolved-missing-card')
+      tabsStore.set([tab])
+      tabIdStore.set(tab._id)
+      jest.mocked(getCurrentLocation).mockReturnValue(getTabLocation(tab))
+      let complete: (data: LocationData) => void = () => {}
+      resolver.mockImplementation(async () => await new Promise<LocationData>((resolve) => { complete = resolve }))
+      const resolving = resolveTab(tab)
+      await Promise.resolve()
+
+      try {
+        expect(handleMissingTabDocument('unresolved-missing-card' as Ref<Doc>)).toBe(false)
+        expect(navigate).not.toHaveBeenCalled()
+      } finally {
+        complete({ name: 'Cards' })
+        await resolving
+      }
+    })
+
     it('leaves the editor fallback available outside a workbench tab', () => {
       expect(handleMissingTabDocument(objectId)).toBe(false)
       expect(navigate).not.toHaveBeenCalled()
