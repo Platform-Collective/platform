@@ -200,7 +200,7 @@ describe('real-account', () => {
       )
 
       expect(results.reduce((sum, it) => sum + it, 0)).toBe(1)
-      expect(await pgAccount.otp.count({ socialId })).toBe(0)
+      expect(await pgAccount.otp.find({ socialId })).toHaveLength(0)
     })
 
     it('only one concurrent verify + consume flow succeeds for the same valid code', async () => {
