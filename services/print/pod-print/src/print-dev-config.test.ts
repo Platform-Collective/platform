@@ -11,7 +11,7 @@ function devEnvironment (service: string): Map<string, string> {
   const start = lines.indexOf(`  ${service}:`)
   if (start < 0) throw new Error('Missing dev service')
   let end = start + 1
-  while (end < lines.length && !/^  [A-Za-z0-9_-]+:/.test(lines[end])) end++
+  while (end < lines.length && !/^ {2}[A-Za-z0-9_-]+:/.test(lines[end])) end++
   const entries = lines.slice(start + 1, end).flatMap((line) => {
     const match = line.match(/^\s+-\s+([A-Z][A-Z0-9_]*)=(.*)$/)
     return match === null ? [] : [[match[1], match[2]] as [string, string]]
@@ -32,9 +32,9 @@ it('finds the front end backend URL configuration', () => {
 })
 
 it.each(services)('allows the configured dev backend %s when DNS is private', async (_key, url) => {
-  jest.spyOn(dns.promises, 'lookup').mockResolvedValue([
-    { address: '10.0.0.1', family: 4 }
-  ] as unknown as dns.LookupAddress)
+  jest
+    .spyOn(dns.promises, 'lookup')
+    .mockResolvedValue([{ address: '10.0.0.1', family: 4 }] as unknown as dns.LookupAddress)
   const allowed = getPrintHostnames((print.get('ALLOWED_HOSTNAMES') ?? '').split(','), print.get('FRONT_URL') ?? '')
   const check = createPrintRequestChecker(allowed)
   expect(await check(url)).toBe(true)

@@ -86,10 +86,10 @@ printing domains in `ALLOWED_HOSTNAMES`, separated by commas. Bare hosts and
 Malformed entries fail startup. These entries are operator-controlled trust
 exceptions, including for private network destinations on the configured port.
 
-Backend services used by the front end must also be listed when their origins
-resolve to private addresses. This includes `ACCOUNTS_URL`, `FILES_URL`,
-`UPLOAD_URL`, `PREVIEW_URL`, `COLLABORATOR_URL`, and any other backend origins
-used by the page. Trusting `FRONT_URL` does not trust another port on that host.
+HTTP(S) backend origins that differ from `FRONT_URL` must also be listed when
+they resolve to private addresses, including accounts, files and preview services.
+Relative URLs use the already trusted front origin. WebSocket requests remain
+outside this interception. Trusting `FRONT_URL` does not trust another port on that host.
 Use exact scheme/host/port origins to keep these exceptions narrow. This applies
 to split-horizon DNS and internal Kubernetes service names too. The development
 Compose file explicitly lists the backend origins from its front-end configuration;
