@@ -224,7 +224,7 @@ describe('server', () => {
     })
     await new Promise<void>((resolve, reject) => {
       accountsServer.once('error', reject)
-      accountsServer.listen(0, '127.0.0.1', () => resolve())
+      accountsServer.listen(0, '127.0.0.1', () => { resolve(); })
     })
     const address = accountsServer.address()
     if (address === null || typeof address === 'string') throw new Error('Expected an account fixture TCP address')
@@ -306,12 +306,12 @@ describe('server', () => {
     ): Promise<string> {
       const newConn = new WebSocket(`ws://localhost:${port + 1}/${token}?sessionId=s1`)
       const closed = new Promise<void>((resolve) => {
-        newConn.once('close', () => resolve())
+        newConn.once('close', () => { resolve(); })
       })
       const response = new Promise<string>((resolve, reject) => {
         let helloReceived = false
         newConn.on('error', reject)
-        newConn.once('close', () => reject(new Error('Connection closed before the session response')))
+        newConn.once('close', () => { reject(new Error('Connection closed before the session response')); })
         newConn.once('open', () => {
           newConn.send(handler.serialize({ method: 'hello', params: [], id: -1 }, false))
         })
@@ -365,7 +365,7 @@ describe('server', () => {
         '123e4567-e89b-12d3-a456-426614174001' as WorkspaceUuid
       )
       const timeoutPromise = new Promise<never>((_resolve, reject) => {
-        clearTo = setTimeout(() => reject(new Error('Timed out waiting for the reconnect response')), 4000)
+        clearTo = setTimeout(() => { reject(new Error('Timed out waiting for the reconnect response')); }, 4000)
       })
       const t1 = await findClose(token, timeoutPromise, 1005, false)
       const t2 = await findClose(token, timeoutPromise, 1000, true)
