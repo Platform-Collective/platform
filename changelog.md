@@ -8,6 +8,9 @@ Changelog.
   domains with comma-separated `ALLOWED_HOSTNAMES` entries (`host`, `host:port`, or
   `*.example.com`). Bare hosts allow default HTTP/HTTPS ports only. Deployments
   that previously printed other domains with an empty list must configure them.
+- Print: backend service origins (`ACCOUNTS_URL`, `FILES_URL`, `PREVIEW_URL`, and others)
+  must be listed in `ALLOWED_HOSTNAMES` when they resolve to private addresses,
+  including split-horizon DNS. Development Compose includes its configured service origins.
 - Print subresources reject private and reserved addresses unless the host and
   port are explicitly allowed. Inline `data:` and `blob:` images remain supported.
 

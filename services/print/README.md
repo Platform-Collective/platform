@@ -86,6 +86,16 @@ printing domains in `ALLOWED_HOSTNAMES`, separated by commas. Bare hosts and
 Malformed entries fail startup. These entries are operator-controlled trust
 exceptions, including for private network destinations on the configured port.
 
+Backend services used by the front end must also be listed when their origins
+resolve to private addresses. This includes `ACCOUNTS_URL`, `FILES_URL`,
+`UPLOAD_URL`, `PREVIEW_URL`, `COLLABORATOR_URL`, and any other backend origins
+used by the page. Trusting `FRONT_URL` does not trust another port on that host.
+Use exact scheme/host/port origins to keep these exceptions narrow. This applies
+to split-horizon DNS and internal Kubernetes service names too. The development
+Compose file explicitly lists the backend origins from its front-end configuration;
+update that list when adding or moving a service. The Print service does not
+automatically trust origins discovered in page content or `config.json`.
+
 Navigation, redirects and frames must match that policy. Other HTTP(S) resources
 are checked with safe-fetch before Chromium loads them; DNS results are cached
 per render, and any private or reserved result blocks the host. Inline `data:`
