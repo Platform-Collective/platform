@@ -1078,7 +1078,9 @@ export class PostgresAccountDB implements AccountDB {
 
       if ((res.length ?? 0) > 0) {
         await rTx.unsafe(
-          `UPDATE ${this.workspaceStatus.getTableName()} SET processing_attempts = processing_attempts + 1, "last_processing_time" = $1 WHERE workspace_uuid = $2`,
+          `UPDATE ${this.workspaceStatus.getTableName()}
+           SET processing_attempts = COALESCE(processing_attempts, 0) + 1, "last_processing_time" = $1
+           WHERE workspace_uuid = $2`,
           [Date.now(), res[0].uuid]
         )
       }

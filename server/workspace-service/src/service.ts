@@ -448,14 +448,14 @@ export class WorkspaceWorker {
   ): Promise<void> {
     const token = generateToken(systemAccountUuid, workspace.uuid, { service: 'workspace' })
 
-    const sendEvent = (event: WorkspaceUpdateEvent, progress: number): Promise<void> =>
+    const sendEvent = (event: WorkspaceUpdateEvent, progress: number, message = `${event} done`): Promise<void> =>
       withRetryConnUntilSuccess(() =>
         getAccountClient(this.accountsUrl, token).updateWorkspaceInfo(
           workspace.uuid,
           event,
           this.version,
           progress,
-          `${event} done`
+          message
         )
       )()
 
@@ -538,17 +538,29 @@ export class WorkspaceWorker {
         break
       }
       case 'pending-restore':
-      case 'restoring':
+      case 'restoring': {
         await sendEvent('restore-started', 0)
-        if (await this.doRestore(ctx, workspace, opt)) {
+        let restored = false
+        let restoreError = new Error('Restore failed')
+        try {
+          restored = await this.doRestore(ctx, workspace, opt)
+        } catch (err: unknown) {
+          ctx.error('Failed to restore workspace', { workspace: workspace.uuid, err })
+          restoreError = err instanceof Error ? err : new Error('Restore failed')
+        }
+        if (restored) {
           // We should reindex fulltext
           await sendEvent('restore-done', 100)
 
           workspace.mode = 'active'
           await this._upgradeWorkspace(ctx, workspace, opt)
           await this.workspaceQueue.send(ctx, workspace.uuid, [workspaceEvents.restored()])
+        } else {
+          await sendEvent('restore-failed', 0, 'Restore failed. Retry or contact support.')
+          await opt.errorHandler(workspace, restoreError)
         }
         break
+      }
       default:
         ctx.error('Unknown workspace mode', { workspace: workspace.uuid, wsUrl: workspace.url, mode: workspace.mode })
     }
@@ -653,46 +665,49 @@ export class WorkspaceWorker {
     opt: WorkspaceOptions
   ): Promise<boolean> {
     if (opt.backup === undefined) {
-      return false
+      throw new Error('Backup is not configured')
     }
     const { dbUrl } = prepareTools([])
 
     const workspaceStorageConfig = storageConfigFromEnv()
     const workspaceStorageAdapter = buildStorageFromConfig(workspaceStorageConfig)
 
-    const pipelineFactory: PipelineFactory = createBackupPipeline(ctx, dbUrl, this.txes, {
-      externalStorage: workspaceStorageAdapter,
-      usePassedCtx: true
-    })
-
-    // A token to access account service
-    const token = generateToken(systemAccountUuid, undefined, { service: 'workspace' })
-
-    const handleWsEventWithRetry = (
-      event: 'ping' | 'progress',
-      version: Data<Version>,
-      progress: number,
-      message?: string
-    ): Promise<void> => {
-      return withRetryConnUntilTimeout(
-        () =>
-          getAccountClient(this.accountsUrl, token).updateWorkspaceInfo(
-            workspace.uuid,
-            event,
-            version,
-            progress,
-            message
-          ),
-        5000
-      )()
-    }
-    let progress = 0
-
-    const notifyInt = setInterval(() => {
-      void handleWsEventWithRetry('ping', this.version, progress, '')
-    }, 5000)
-
+    let notifyInt: ReturnType<typeof setInterval> | undefined
+    let restored = false
     try {
+      const pipelineFactory: PipelineFactory = createBackupPipeline(ctx, dbUrl, this.txes, {
+        externalStorage: workspaceStorageAdapter,
+        usePassedCtx: true
+      })
+
+      // A token to access account service
+      const token = generateToken(systemAccountUuid, undefined, { service: 'workspace' })
+
+      const handleWsEventWithRetry = (
+        event: 'ping' | 'progress',
+        version: Data<Version>,
+        progress: number,
+        message?: string
+      ): Promise<void> => {
+        return withRetryConnUntilTimeout(
+          () =>
+            getAccountClient(this.accountsUrl, token).updateWorkspaceInfo(
+              workspace.uuid,
+              event,
+              version,
+              progress,
+              message
+            ),
+          5000
+        )()
+      }
+      let progress = 0
+
+      notifyInt = setInterval(() => {
+        void handleWsEventWithRetry('ping', this.version, progress).catch((err) => {
+          ctx.error('Restore heartbeat failed', { workspace: workspace.uuid, err })
+        })
+      }, 5000)
       const result: boolean = await doRestoreWorkspace(
         ctx,
         {
@@ -710,23 +725,25 @@ export class WorkspaceWorker {
         (_p: number) => {
           if (progress !== Math.round(_p)) {
             progress = Math.round(_p)
-            return handleWsEventWithRetry('progress', this.version, progress, '')
+            return handleWsEventWithRetry('progress', this.version, progress)
           }
           return Promise.resolve()
         }
       )
       if (result) {
         ctx.info('restore completed')
-        return true
-      } else {
-        // Restore failed
-        await opt.errorHandler(workspace, new Error('Restore failed'))
       }
+      restored = result
     } finally {
       clearInterval(notifyInt)
-      await workspaceStorageAdapter.close()
+      try {
+        await workspaceStorageAdapter.close()
+      } catch (err: unknown) {
+        ctx.error('Failed to close restore storage', { workspace: workspace.uuid, err })
+        restored = false
+      }
     }
-    return false
+    return restored
   }
 
   private async doSleep (ctx: MeasureContext, opt: WorkspaceOptions): Promise<void> {

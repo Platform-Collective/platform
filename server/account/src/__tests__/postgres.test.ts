@@ -970,7 +970,7 @@ describe('PostgresAccountDB', () => {
           mockClient.unsafe.mock.calls[1][0].replace(/\s+/g, ' ').replace(/\(\s/g, '(').replace(/\s\)/g, ')')
         ).toEqual(
           `UPDATE global_account.workspace_status
-           SET processing_attempts = processing_attempts + 1, "last_processing_time" = $1
+           SET processing_attempts = COALESCE(processing_attempts, 0) + 1, "last_processing_time" = $1
            WHERE workspace_uuid = $2`
             .replace(/\s+/g, ' ')
             .replace(/\(\s/g, '(')

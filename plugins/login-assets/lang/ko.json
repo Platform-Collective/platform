@@ -78,6 +78,8 @@
         "PasswordMinUpperChars": "{count, plural, =1 {비밀번호에는 대문자가 #개 이상 포함되어야 합니다} other {비밀번호에는 대문자가 #개 이상 포함되어야 합니다}}",
         "PasswordMinLowerChars": "{count, plural, =1 {비밀번호에는 소문자가 #개 이상 포함되어야 합니다} other {비밀번호에는 소문자가 #개 이상 포함되어야 합니다}}",
         "WorkspaceArchivedDesc": "사용하지 않아 워크스페이스가 보관되었습니다.",
+        "WorkspaceRestoreFailed": "Restore failed",
+        "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
         "RestoreArchivedWorkspace": "보관 해제",
         "Hello": "{name}님, 안녕하세요",
         "ProcessingInvite": "초대를 처리 중입니다. 잠시만 기다려 주세요...",
