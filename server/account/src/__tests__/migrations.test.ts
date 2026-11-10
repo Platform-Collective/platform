@@ -16,6 +16,47 @@
 import { getMigrations } from '../collections/postgres/migrations'
 
 describe('account db migrations', () => {
+  it.each(['postgres', 'cockroach'] as const)('adds persistent OTP resend reservations (%s)', (flavor) => {
+    const migration = getMigrations('global_account', flavor).find(
+      ([name]) => name === 'account_db_v29_add_otp_retry_on'
+    )
+
+    expect(migration).toBeDefined()
+    const timestampType = flavor === 'postgres' ? 'BIGINT' : 'INT8'
+    expect(migration?.[1].replace(/\s+/g, ' ').trim()).toBe(
+      `ALTER TABLE global_account.social_id ADD COLUMN IF NOT EXISTS otp_retry_on ${timestampType};`
+    )
+  })
+
+  it.each(['postgres', 'cockroach'] as const)('initializes OTP attempt counters for existing rows (%s)', (flavor) => {
+    const migration = getMigrations('global_account', flavor).find(
+      ([name]) => name === 'account_db_v28_add_otp_attempts'
+    )
+
+    expect(migration).toBeDefined()
+    const counterType = flavor === 'postgres' ? 'INTEGER' : 'INT4'
+    expect(migration?.[1].replace(/\s+/g, ' ').trim()).toBe(
+      `ALTER TABLE global_account.otp ADD COLUMN IF NOT EXISTS attempts ${counterType} NOT NULL DEFAULT 0;`
+    )
+  })
+
+  it.each(['postgres', 'cockroach'] as const)(
+    'preserves PC migration history alongside OTP additions (%s)',
+    (flavor) => {
+      const names = getMigrations('global_account', flavor).map(([name]) => name)
+      expect(new Set(names).size).toBe(names.length)
+      expect(names).toEqual(
+        expect.arrayContaining([
+          'account_db_v27_add_office_social_id_type',
+          'account_db_v28_add_workspace_member_unread',
+          'account_db_v27_add_api_tokens_table',
+          'account_db_v28_add_otp_attempts',
+          'account_db_v29_add_otp_retry_on'
+        ])
+      )
+    }
+  )
+
   const splitStatements = (ddl: string): string[] =>
     ddl
       .split('\n')
