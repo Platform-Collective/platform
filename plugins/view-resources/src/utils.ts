@@ -107,6 +107,7 @@ import contact, {
   type Contact
 } from '@hcengineering/contact'
 import { get, writable } from 'svelte/store'
+import { getArrayPresenter } from './arrayPresenter'
 import plugin from './plugin'
 import { noCategory } from './viewOptions'
 
@@ -296,8 +297,7 @@ export function getAttrTypePresenter (hierarchy: Hierarchy, type: Type<any>): An
     mixin
   )
 
-  const arrayPresenter =
-    presenterMixin !== undefined && 'arrayPresenter' in presenterMixin ? presenterMixin.arrayPresenter : undefined
+  const arrayPresenter = getArrayPresenter(presenterMixin)
   if (category === 'array' && arrayPresenter !== undefined) {
     return arrayPresenter
   } else if (presenterMixin?.presenter !== undefined) {
@@ -345,8 +345,7 @@ export function findAttributePresenter (
     presenterMixin = hierarchy.classHierarchyMixin(attrClass, view.mixin.AttributePresenter)
   }
 
-  const arrayPresenter =
-    presenterMixin !== undefined && 'arrayPresenter' in presenterMixin ? presenterMixin.arrayPresenter : undefined
+  const arrayPresenter = getArrayPresenter(presenterMixin)
   if (category === 'array' && arrayPresenter !== undefined) {
     return arrayPresenter
   } else if (presenterMixin?.presenter !== undefined) {
