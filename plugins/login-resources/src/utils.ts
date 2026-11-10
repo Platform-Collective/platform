@@ -32,6 +32,7 @@ import {
   AccountRole,
   concatLink,
   getCurrentAccount,
+  parseEmailDomains,
   type AccountUuid,
   type Person,
   type WorkspaceUuid,
@@ -593,15 +594,18 @@ export async function checkJoined (inviteId: string): Promise<WorkspaceLoginInfo
 }
 
 /**
- * Fetches workspace name for a valid invite (no auth required). Returns undefined for invalid or expired invites.
+ * Fetches public invite details (no auth required): the workspace name (undefined for invalid
+ * or expired invites) and the e-mail domains the invite is limited to (empty if not restricted).
  */
-export async function getInviteWorkspaceName (inviteId: string): Promise<string | undefined> {
+export async function getPublicInviteInfo (
+  inviteId: string
+): Promise<{ workspaceName: string | undefined, allowedDomains: string[] } | undefined> {
   try {
     const client = getAccountClient(null)
     const info = await client.getInviteInfo(inviteId)
-    return info.workspaceName ?? undefined
+    return { workspaceName: info.workspaceName ?? undefined, allowedDomains: info.allowedDomains ?? [] }
   } catch (err: any) {
-    console.error('Failed to get invite workspace name', err)
+    console.error('Failed to get invite info', err)
     if (!(err instanceof PlatformError)) {
       Analytics.handleError(err)
     }
@@ -664,33 +668,15 @@ export async function getInviteLink (
   return concatLink(host, url)
 }
 
-const DOMAIN_LABEL_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
-
 /**
- * Client-side pre-check of the "allowed email domains" invite input.
- * Mirrors the server-side validation (the server re-validates and enforces it).
+ * Client-side pre-check of the "allowed email domains" invite input, using the same
+ * parser as the server (the server re-validates and enforces it).
  * Returns a normalized comma separated list, '' for no restriction,
  * or undefined if any entry is not a valid domain.
  */
 export function normalizeAllowedDomains (input: string): string | undefined {
-  const domains: string[] = []
-  for (const entry of input.split(/[\s,;]+/)) {
-    let domain = entry.trim().toLowerCase()
-    if (domain === '') continue
-    if (domain.startsWith('@')) domain = domain.slice(1)
-    if (domain.endsWith('.')) domain = domain.slice(0, -1)
-    const labels = domain.split('.')
-    if (
-      domain.length > 253 ||
-      labels.length < 2 ||
-      labels.some((label) => !DOMAIN_LABEL_RE.test(label)) ||
-      /^[0-9]+$/.test(labels[labels.length - 1])
-    ) {
-      return undefined
-    }
-    if (!domains.includes(domain)) domains.push(domain)
-  }
-  return domains.join(',')
+  const { domains, invalid } = parseEmailDomains(input)
+  return invalid.length > 0 ? undefined : domains.join(',')
 }
 
 export async function getInviteLinkId (

@@ -17,13 +17,14 @@
   import { copyTextToClipboard, createQuery } from '@hcengineering/presentation'
   import setting, { RoleCapability } from '@hcengineering/setting'
   import { getDefaultInviteRole, resolveInviteSettings } from '@hcengineering/setting-resources'
-  import { getResource } from '@hcengineering/platform'
+  import { getResource, PlatformError, type Status } from '@hcengineering/platform'
   import { AnySvelteComponent, Button, EditBox, Grid, Label, Loading, MiniToggle, ticker } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
 
   import login from '../plugin'
   import { getInviteLink, normalizeAllowedDomains } from '../utils'
   import InviteWorkspace from './icons/InviteWorkspace.svelte'
+  import StatusControl from './StatusControl.svelte'
 
   export let role: AccountRole | undefined = undefined
   export let ignoreSettings: boolean = false
@@ -78,6 +79,7 @@
       return
     }
     domainsInvalid = false
+    linkError = undefined
     loading = true
     try {
       link = await getInviteLink(
@@ -88,6 +90,10 @@
         undefined,
         normalizedDomains !== '' ? normalizedDomains : undefined
       )
+    } catch (err: any) {
+      // e.g. a domain restriction on a server without mail service: show the reason
+      if (!(err instanceof PlatformError)) throw err
+      linkError = err.status
     } finally {
       loading = false
     }
@@ -113,6 +119,7 @@
   let emailMask: string = ''
   let allowedDomains: string = ''
   let domainsInvalid: boolean = false
+  let linkError: Status | undefined = undefined
   let limit: number | undefined = undefined
   let useDefault: boolean | undefined = true
   let noLimit: boolean = false
@@ -198,11 +205,16 @@
         on:input={() => {
           link = undefined
           domainsInvalid = false
+          linkError = undefined
         }}
       />
       {#if domainsInvalid}
         <div class="domains-error">
           <Label label={login.string.InvalidEmailDomains} />
+        </div>
+      {:else if linkError !== undefined}
+        <div class="domains-error" data-id="invite-link-error">
+          <StatusControl status={linkError} />
         </div>
       {/if}
     </div>

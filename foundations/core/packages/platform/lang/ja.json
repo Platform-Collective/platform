@@ -26,6 +26,7 @@
     "WorkspaceLimitReached": "作成可能なワークスペースの上限に達しました。お問い合わせください",
     "ReadOnlyAccount": "匿名ゲストデモ",
     "SystemAccount": "システムアカウント",
-    "SocialIdAlreadyExists": "ソーシャルIDは既に存在します"
+    "SocialIdAlreadyExists": "ソーシャルIDは既に存在します",
+    "EmailVerificationUnavailable": "メールドメインに制限された招待にはメールアドレスの確認が必要ですが、このサーバーにはメールサービスが設定されていません。"
   }
 }

@@ -1,95 +1,19 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import { AccountRole, type MeasureContext, type WorkspaceUuid } from '@hcengineering/core'
+import platform, { PlatformError, Severity, Status, setMetadata } from '@hcengineering/platform'
 import {
   getEmailDomain,
   hasDomainRestriction,
   isEmailAllowedByDomains,
   isStrictSingleEmail,
-  normalizeDomain,
-  parseAllowedDomains,
   serializeAllowedDomains
 } from '../inviteDomains'
 import { type WorkspaceInvite } from '../types'
 import { checkInvite } from '../utils'
+import { accountPlugin } from '../plugin'
 
 describe('inviteDomains', () => {
-  describe('normalizeDomain', () => {
-    test('trims, lowercases and strips a leading @ and a trailing dot', () => {
-      expect(normalizeDomain('  Example.COM ')).toBe('example.com')
-      expect(normalizeDomain('@example.com')).toBe('example.com')
-      expect(normalizeDomain('example.com.')).toBe('example.com')
-      expect(normalizeDomain('mail.sub.example.co.uk')).toBe('mail.sub.example.co.uk')
-      expect(normalizeDomain('xn--bcher-kva.example')).toBe('xn--bcher-kva.example')
-    })
-
-    test.each([
-      '',
-      'localhost',
-      'example',
-      '.example.com',
-      'example..com',
-      '-example.com',
-      'example-.com',
-      'exa_mple.com',
-      '*.example.com',
-      '.*@example.com',
-      'user@example.com',
-      'example.com/path',
-      '10.0.0.1',
-      'bücher.example',
-      'a'.repeat(64) + '.com',
-      ('a'.repeat(60) + '.').repeat(5) + 'com'
-    ])('rejects invalid domain %p', (value) => {
-      expect(normalizeDomain(value)).toBeUndefined()
-    })
-  })
-
-  describe('parseAllowedDomains', () => {
-    test('parses comma, semicolon and whitespace separated lists', () => {
-      expect(parseAllowedDomains('example.com, Example.org;foo.bar  baz.qux')).toEqual({
-        domains: ['example.com', 'example.org', 'foo.bar', 'baz.qux'],
-        invalid: []
-      })
-    })
-
-    test('ignores empty entries and removes duplicates', () => {
-      expect(parseAllowedDomains(' , example.com,,EXAMPLE.com , @example.com ')).toEqual({
-        domains: ['example.com'],
-        invalid: []
-      })
-    })
-
-    test('accepts arrays', () => {
-      expect(parseAllowedDomains(['example.com', ' example.org , foo.bar'])).toEqual({
-        domains: ['example.com', 'example.org', 'foo.bar'],
-        invalid: []
-      })
-    })
-
-    test('reports invalid entries', () => {
-      expect(parseAllowedDomains('example.com, *.evil.com, localhost')).toEqual({
-        domains: ['example.com'],
-        invalid: ['*.evil.com', 'localhost']
-      })
-    })
-
-    test('returns no domains for empty input', () => {
-      expect(parseAllowedDomains(undefined)).toEqual({ domains: [], invalid: [] })
-      expect(parseAllowedDomains(null)).toEqual({ domains: [], invalid: [] })
-      expect(parseAllowedDomains('')).toEqual({ domains: [], invalid: [] })
-      expect(parseAllowedDomains('  ,  ')).toEqual({ domains: [], invalid: [] })
-      expect(parseAllowedDomains([])).toEqual({ domains: [], invalid: [] })
-    })
-
-    test('limits the number of domains', () => {
-      const input = Array.from({ length: 101 }, (_, i) => `d${i}.example.com`).join(',')
-      const { domains, invalid } = parseAllowedDomains(input)
-      expect(domains).toHaveLength(100)
-      expect(invalid).toEqual(['d100.example.com'])
-    })
-  })
-
   describe('serializeAllowedDomains', () => {
     test('joins domains or returns undefined for no restriction', () => {
       expect(serializeAllowedDomains(['example.com', 'example.org'])).toBe('example.com,example.org')
@@ -233,6 +157,14 @@ describe('checkInvite with allowed domains', () => {
   } as unknown as MeasureContext
   const workspaceUuid = 'ws-uuid' as WorkspaceUuid
 
+  beforeEach(() => {
+    setMetadata(accountPlugin.metadata.MAIL_URL, 'http://mail.test')
+  })
+
+  afterAll(() => {
+    setMetadata(accountPlugin.metadata.MAIL_URL, '')
+  })
+
   function makeInvite (extra: Partial<WorkspaceInvite> = {}): WorkspaceInvite {
     return {
       id: '1',
@@ -272,5 +204,22 @@ describe('checkInvite with allowed domains', () => {
   test('rejects an empty email when restricted (e.g. provider without verified email)', async () => {
     const invite = makeInvite({ allowedDomains: 'example.com' })
     await expect(checkInvite(ctx, invite, '')).rejects.toThrow()
+  })
+
+  describe('without a mail service', () => {
+    beforeEach(() => {
+      setMetadata(accountPlugin.metadata.MAIL_URL, '')
+    })
+
+    test('refuses a domain restricted invite even for an allowed address', async () => {
+      const invite = makeInvite({ allowedDomains: 'example.com' })
+      await expect(checkInvite(ctx, invite, 'user@example.com')).rejects.toThrow(
+        new PlatformError(new Status(Severity.ERROR, platform.status.EmailVerificationUnavailable, {}))
+      )
+    })
+
+    test('keeps accepting invites without a domain restriction', async () => {
+      await expect(checkInvite(ctx, makeInvite(), 'user@anything.test')).resolves.toBe(workspaceUuid)
+    })
   })
 })

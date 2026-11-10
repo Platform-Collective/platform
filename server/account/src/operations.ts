@@ -34,7 +34,8 @@ import {
   type WorkspaceConfiguration,
   type WorkspaceMemberInfo,
   type WorkspaceUuid,
-  type IntegrationKind
+  type IntegrationKind,
+  parseEmailDomains
 } from '@hcengineering/core'
 import platform, { getMetadata, PlatformError, Severity, Status, translate } from '@hcengineering/platform'
 import {
@@ -76,12 +77,7 @@ import {
   type InviteInfo,
   type WorkspaceInvite
 } from './types'
-import {
-  hasDomainRestriction,
-  isEmailAllowedByDomains,
-  parseAllowedDomains,
-  serializeAllowedDomains
-} from './inviteDomains'
+import { hasDomainRestriction, isEmailAllowedByDomains, serializeAllowedDomains } from './inviteDomains'
 import {
   addSocialIdBase,
   checkInvite,
@@ -111,6 +107,7 @@ import {
   getWorkspaceRoles,
   GUEST_ACCOUNT,
   isEmail,
+  isMailServiceConfigured,
   verifyOtpAttempt,
   normalizeValue,
   doReleaseSocialId,
@@ -722,7 +719,7 @@ export async function createInvite (
     throw new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
   }
 
-  const { domains, invalid } = parseAllowedDomains(params.allowedDomains)
+  const { domains, invalid } = parseEmailDomains(params.allowedDomains)
   if (invalid.length > 0) {
     ctx.warn('Invalid allowed email domains for invite', { invalid })
     throw new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
@@ -746,6 +743,12 @@ export async function createInvite (
 
   if (autoJoin === true) {
     verifyAllowedServices(['schedule'], extra)
+  }
+
+  if (allowedDomains !== undefined && !isMailServiceConfigured()) {
+    // The restriction relies on verified e-mail addresses, see checkInvite
+    ctx.warn('Domain restricted invites require a mail service')
+    throw new PlatformError(new Status(Severity.ERROR, platform.status.EmailVerificationUnavailable, {}))
   }
 
   ctx.info('Creating invite', {
@@ -1122,7 +1125,7 @@ export async function join (
 }
 
 /**
- * Returns public invite details (e.g. workspace name) for a valid invite. No auth required.
+ * Returns public invite details (workspace name, allowed e-mail domains) for a valid invite. No auth required.
  * Returns { workspaceName: null } for invalid or expired invites.
  */
 export async function getInviteInfo (
@@ -1150,7 +1153,9 @@ export async function getInviteInfo (
     return { workspaceName: null }
   }
 
-  return { workspaceName: workspace.name }
+  // Tell the invitee up front which addresses the invite accepts
+  const { domains } = parseEmailDomains(invite.allowedDomains)
+  return { workspaceName: workspace.name, ...(domains.length > 0 ? { allowedDomains: domains } : {}) }
 }
 
 /**
@@ -1420,7 +1425,8 @@ export async function signUpJoin (
   })
 
   // Require email confirmation just like the regular signUp flow.
-  // Auto-confirm only when no mail service is configured (dev setups).
+  // Auto-confirm only when no mail service is configured (dev setups). Domain restricted
+  // invites are refused in that case already (checkInvite in getWorkspaceJoinInfo).
   const mailURL = getMetadata(accountPlugin.metadata.MAIL_URL)
   const forceConfirmation = mailURL !== undefined && mailURL !== ''
 

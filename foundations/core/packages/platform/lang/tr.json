@@ -26,6 +26,7 @@
     "WorkspaceLimitReached": "Çalışma alanı limitine ulaştınız. Lütfen bizimle iletişime geçin...",
     "ReadOnlyAccount": "Anonim Misafir Demo",
     "SystemAccount": "Sistem hesabı",
-    "SocialIdAlreadyExists": "Sosyal ID zaten mevcut"
+    "SocialIdAlreadyExists": "Sosyal ID zaten mevcut",
+    "EmailVerificationUnavailable": "E-posta alan adlarıyla sınırlı davetler e-posta doğrulaması gerektirir, ancak bu sunucuda bir posta hizmeti yapılandırılmamış."
   }
 }

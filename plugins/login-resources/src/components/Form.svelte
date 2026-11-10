@@ -164,6 +164,7 @@
     </div>
   {/if}
   <div class="form">
+    <slot name="before-fields" />
     {#each fields as field (field.name)}
       <div class={field.short !== undefined && !($deviceInfo.docWidth <= 600) ? 'form-col' : 'form-row'}>
         <StylishEdit

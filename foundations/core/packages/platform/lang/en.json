@@ -26,6 +26,7 @@
     "WorkspaceLimitReached": "You have reached the workspace limit. Please contact us...",
     "ReadOnlyAccount": "Anonymous Guest Demo",
     "SystemAccount": "System account",
-    "SocialIdAlreadyExists": "Social ID already exists"
+    "SocialIdAlreadyExists": "Social ID already exists",
+    "EmailVerificationUnavailable": "Invites limited to email domains require email verification, but no mail service is configured on this server."
   }
 }

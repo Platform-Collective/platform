@@ -27,6 +27,7 @@
     "WorkspaceLimitReached": "Hai raggiunto il limite di spazi di lavoro. Contattaci...",
     "ReadOnlyAccount": "Demo ospite anonimo",
     "SystemAccount": "Account di sistema",
-    "SocialIdAlreadyExists": "L'ID social esiste già"
+    "SocialIdAlreadyExists": "L'ID social esiste già",
+    "EmailVerificationUnavailable": "Gli inviti limitati a domini email richiedono la verifica dell'email, ma su questo server non è configurato alcun servizio di posta."
   }
 }

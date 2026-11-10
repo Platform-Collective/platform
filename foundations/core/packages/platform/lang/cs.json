@@ -27,6 +27,7 @@
     "WorkspaceLimitReached": "Dosáhli jste limitu pracovních prostorů. Kontaktujte nás...",
     "ReadOnlyAccount": "Anonymní hostovská ukázka",
     "SystemAccount": "Systémový účet",
-    "SocialIdAlreadyExists": "Sociální ID již existuje"
+    "SocialIdAlreadyExists": "Sociální ID již existuje",
+    "EmailVerificationUnavailable": "Pozvánky omezené na e-mailové domény vyžadují ověření e-mailu, ale na tomto serveru není nastavena poštovní služba."
   }
 }

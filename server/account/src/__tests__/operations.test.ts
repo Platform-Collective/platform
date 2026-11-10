@@ -61,6 +61,7 @@ import {
   leaveWorkspace,
   checkJoin,
   joinByToken,
+  getInviteInfo,
   mergeSpecifiedPersons,
   canMergeSpecifiedPersons,
   getMethods
@@ -256,6 +257,65 @@ describe('account operations', () => {
           role: AccountRole.Owner
         })
       ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {})))
+    })
+
+    describe('with allowed email domains', () => {
+      beforeEach(() => {
+        ;(mockDb.account.findOne as jest.Mock).mockResolvedValue(mockAccount)
+        ;(mockDb.workspace.findOne as jest.Mock).mockResolvedValue(mockWorkspace)
+        ;(mockDb.getWorkspaceRole as jest.Mock).mockResolvedValue(AccountRole.Maintainer)
+        ;(mockDb.invite.insertOne as jest.Mock).mockResolvedValue('new-invite-id')
+      })
+
+      afterEach(() => {
+        ;(getMetadata as jest.Mock).mockReset()
+      })
+
+      test('refuses a domain restriction when no mail service is configured', async () => {
+        ;(getMetadata as jest.Mock).mockReturnValue(undefined)
+
+        await expect(
+          createInvite(mockCtx, mockDb, mockBranding, mockToken, {
+            exp: 24 * 60 * 60 * 1000,
+            limit: -1,
+            role: AccountRole.User,
+            allowedDomains: 'example.com'
+          })
+        ).rejects.toThrow(
+          new PlatformError(new Status(Severity.ERROR, platform.status.EmailVerificationUnavailable, {}))
+        )
+        expect(mockDb.invite.insertOne).not.toHaveBeenCalled()
+      })
+
+      test('stores the normalized domains when a mail service is configured', async () => {
+        ;(getMetadata as jest.Mock).mockImplementation((key) =>
+          key === accountPlugin.metadata.MAIL_URL ? 'http://mail-service.com' : undefined
+        )
+
+        await expect(
+          createInvite(mockCtx, mockDb, mockBranding, mockToken, {
+            exp: 24 * 60 * 60 * 1000,
+            limit: -1,
+            role: AccountRole.User,
+            allowedDomains: ' @Example.COM, example.org. '
+          })
+        ).resolves.toBe('new-invite-id')
+        expect(mockDb.invite.insertOne).toHaveBeenCalledWith(
+          expect.objectContaining({ allowedDomains: 'example.com,example.org' })
+        )
+      })
+
+      test('does not need a mail service without a domain restriction', async () => {
+        ;(getMetadata as jest.Mock).mockReturnValue(undefined)
+
+        await expect(
+          createInvite(mockCtx, mockDb, mockBranding, mockToken, {
+            exp: 24 * 60 * 60 * 1000,
+            limit: -1,
+            role: AccountRole.User
+          })
+        ).resolves.toBe('new-invite-id')
+      })
     })
   })
 
@@ -2914,6 +2974,35 @@ describe('account operations', () => {
         expect(utils.doJoinByInvite).not.toHaveBeenCalled()
       })
 
+      test('refuses sign up through a domain restricted invite when no mail service is configured', async () => {
+        const restrictedInvite = {
+          id: mockInviteId,
+          workspaceUuid: mockWorkspaceUuid,
+          remainingUses: 5,
+          expiresOn: -1,
+          role: AccountRole.User,
+          allowedDomains: 'example.com'
+        }
+        const db = {
+          ...mockDb,
+          invite: { findOne: jest.fn().mockResolvedValue(restrictedInvite) }
+        } as unknown as AccountDB
+        jest.spyOn(utils, 'getWorkspaceJoinInfo').mockRestore()
+        jest.spyOn(utils, 'signUpByEmail').mockResolvedValue({ account: mockAccountId, socialId: 'social-id' as any })
+        jest.spyOn(utils, 'sendEmailConfirmation').mockResolvedValue()
+        jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue({} as any)
+        ;(getMetadata as jest.Mock).mockReturnValue('') // No mail service configured
+
+        await expect(
+          signUpJoin(mockCtx, db, mockBranding, mockToken, { ...baseParams, email: 'someone@example.com' })
+        ).rejects.toThrow(
+          new PlatformError(new Status(Severity.ERROR, platform.status.EmailVerificationUnavailable, {}))
+        )
+        expect(utils.signUpByEmail).not.toHaveBeenCalled()
+        expect(utils.sendEmailConfirmation).not.toHaveBeenCalled()
+        expect(utils.doJoinByInvite).not.toHaveBeenCalled()
+      })
+
       test('should fail with missing required fields', async () => {
         const testCases = [
           { ...baseParams, password: '' },
@@ -3525,10 +3614,14 @@ describe('account operations', () => {
       jest.spyOn(utils, 'selectWorkspace').mockResolvedValue(loginInfo as any)
       jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue(loginInfo as any)
       ;(mockDb.getWorkspaceRole as jest.Mock).mockResolvedValue(AccountRole.User)
+      ;(getMetadata as jest.Mock).mockImplementation((key) =>
+        key === accountPlugin.metadata.MAIL_URL ? 'http://mail-service.com' : undefined
+      )
     })
 
     afterEach(() => {
       jest.spyOn(utils, 'checkInvite').mockRestore()
+      ;(getMetadata as jest.Mock).mockReset()
     })
 
     test('checkJoin uses a verified email from an allowed domain', async () => {
@@ -3573,6 +3666,19 @@ describe('account operations', () => {
       expect(utils.doJoinByInvite).not.toHaveBeenCalled()
     })
 
+    test('joinByToken refuses a domain restricted invite when no mail service is configured', async () => {
+      // Without a mail service sign up auto-confirms any address, so a "verified" address
+      // from an allowed domain does not prove that the user owns it.
+      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(restrictedInvite)
+      setVerifiedEmails(['me@example.com'])
+      ;(getMetadata as jest.Mock).mockReturnValue(undefined)
+
+      await expect(joinByToken(mockCtx, db, mockBranding, mockToken, { inviteId: 'invite-uuid' })).rejects.toThrow(
+        new PlatformError(new Status(Severity.ERROR, platform.status.EmailVerificationUnavailable, {}))
+      )
+      expect(utils.doJoinByInvite).not.toHaveBeenCalled()
+    })
+
     test('joinByToken rejects an account without verified email for a restricted invite', async () => {
       jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue(restrictedInvite)
       setVerifiedEmails([])
@@ -3581,6 +3687,39 @@ describe('account operations', () => {
         new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
       )
       expect(utils.doJoinByInvite).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('getInviteInfo', () => {
+    const invite = {
+      id: 'invite-uuid',
+      workspaceUuid: 'workspace-uuid' as WorkspaceUuid,
+      role: AccountRole.User,
+      expiresOn: -1,
+      remainingUses: -1
+    }
+
+    beforeEach(() => {
+      jest.spyOn(utils, 'getWorkspaceById').mockResolvedValue(mockWorkspace as any)
+    })
+
+    test('returns the allowed email domains of a restricted invite', async () => {
+      jest
+        .spyOn(utils, 'getWorkspaceInvite')
+        .mockResolvedValue({ ...invite, allowedDomains: 'example.com,example.org' })
+
+      await expect(getInviteInfo(mockCtx, mockDb, mockBranding, '', { inviteId: 'invite-uuid' })).resolves.toEqual({
+        workspaceName: mockWorkspace.name,
+        allowedDomains: ['example.com', 'example.org']
+      })
+    })
+
+    test('returns only the workspace name for an unrestricted invite', async () => {
+      jest.spyOn(utils, 'getWorkspaceInvite').mockResolvedValue({ ...invite, emailPattern: '.*@corp\\.test' })
+
+      await expect(getInviteInfo(mockCtx, mockDb, mockBranding, '', { inviteId: 'invite-uuid' })).resolves.toEqual({
+        workspaceName: mockWorkspace.name
+      })
     })
   })
 })

@@ -534,6 +534,8 @@ export interface WorkspaceInviteInfo {
 
 export interface InviteInfo {
   workspaceName: string | null
+  // E-mail domains the invite is limited to (normalized, without '@'); missing if not restricted
+  allowedDomains?: string[]
 }
 
 export interface MailboxOptions {
