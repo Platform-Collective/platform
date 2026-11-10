@@ -231,17 +231,35 @@ export class GithubWorker implements IntegrationManager {
     const imageUrl = concatLink(frontUrl ?? config.FrontURL, `/files?workspace=${this.workspace.uuid}&file=`)
     const guestUrl = getPublicLinkUrl(this.workspace, frontUrl)
     const personUrl = concatLink(frontUrl, `/workbench/${this.workspace.url}/contact/`)
-    const json = await parseMessageMarkdownWithPersons(text ?? '', refUrl, imageUrl, guestUrl, personUrl, async (ids) =>
-      (
-        await this._client.findAll(
-          contact.class.Person,
-          { _id: { $in: ids as Array<Ref<Person>> } },
-          { projection: { _id: 1 } }
-        )
-      ).map((it) => it._id)
+    const json = await parseMessageMarkdownWithPersons(
+      text ?? '',
+      refUrl,
+      imageUrl,
+      guestUrl,
+      personUrl,
+      async (ids) => await this.findPersonIds(ids)
     )
     await preprocessor?.(json)
     return jsonToMarkup(json)
+  }
+
+  private async findPersonIds (ids: string[]): Promise<Array<Ref<Person>>> {
+    try {
+      const persons = await this._client.findAll(
+        contact.class.Person,
+        { _id: { $in: ids as Array<Ref<Person>> } },
+        { projection: { _id: 1 } }
+      )
+      return persons.map((it) => it._id)
+    } catch (err) {
+      // Contact links stay plain links; ids and message text are not logged.
+      this.ctx.warn('Failed to resolve contact links to persons', {
+        workspace: this.workspace.uuid,
+        count: ids.length,
+        error: err instanceof Error ? err.name : typeof err
+      })
+      return []
+    }
   }
 
   async getMarkdown (text?: string | null, preprocessor?: (nodes: MarkupNode) => Promise<void>): Promise<string> {

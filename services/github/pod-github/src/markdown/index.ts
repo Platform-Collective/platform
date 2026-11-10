@@ -139,11 +139,21 @@ function getPersonLinkId (node: MarkupNode, personUrl: string): { id: string, li
   }
   const id = href.slice(personUrl.length)
   if (id.length === 0 || /[/?#]/.test(id)) return undefined
+  let personId: string
   try {
-    return { id: decodeURIComponent(id), link }
+    personId = decodeURIComponent(id)
   } catch {
     return undefined
   }
+  return hasControlCharacters(personId) ? undefined : { id: personId, link }
+}
+
+function hasControlCharacters (value: string): boolean {
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i)
+    if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) return true
+  }
+  return false
 }
 
 function convertPersonLinks (json: MarkupNode, personUrl: string, isPerson: (id: string) => boolean): void {

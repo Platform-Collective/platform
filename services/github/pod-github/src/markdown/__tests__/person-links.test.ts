@@ -174,3 +174,32 @@ describe('GitHub contact links that do not resolve to a Person', () => {
     }
   )
 })
+
+describe('GitHub contact links with ids that cannot be a Person', () => {
+  const INVALID_IDS = ['%00', `${PERSON_ID}%00`, '%0A', '%7F', '%C2%85', '%E0%A4%A']
+
+  function expectPlainLink (node: MarkupNode | undefined): void {
+    expect(node).toMatchObject({ type: MarkupNodeType.text, text: LABEL, marks: [{ type: MarkupMarkType.link }] })
+  }
+
+  it.each(INVALID_IDS)('keeps the link and skips the lookup for id %s', async (id) => {
+    const lookup = jest.fn(async (ids: string[]) => ids)
+    const parsed = await parseMessageMarkdownWithPersons(
+      `[${LABEL}](${PERSON_URL}${id})`,
+      REF_URL,
+      IMAGE_URL,
+      GUEST_URL,
+      PERSON_URL,
+      lookup
+    )
+
+    expect(lookup).not.toHaveBeenCalled()
+    expectPlainLink(parsed.content?.[0].content?.[0])
+  })
+
+  it.each(INVALID_IDS)('keeps the link without a lookup for id %s', (id) => {
+    const parsed = parseMessageMarkdown(`[${LABEL}](${PERSON_URL}${id})`, REF_URL, IMAGE_URL, GUEST_URL, PERSON_URL)
+
+    expectPlainLink(parsed.content?.[0].content?.[0])
+  })
+})
