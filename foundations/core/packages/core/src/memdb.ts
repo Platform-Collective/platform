@@ -400,6 +400,18 @@ export class TxDb extends MemDb {
  *
  * @public
  */
+/**
+ * Thrown by `ModelDb.addTxes` after the whole batch was applied when required
+ * transactions could not be applied.
+ * @public
+ */
+export class RequiredModelTxError extends Error {
+  constructor (readonly txIds: Array<Ref<Tx>>) {
+    super(`Failed to apply required model transactions: ${txIds.join(', ')}`)
+    this.name = 'RequiredModelTxError'
+  }
+}
+
 export class ModelDb extends MemDb {
   protected override async txCreateDoc (tx: TxCreateDoc<Doc>): Promise<TxResult> {
     this.addDoc(TxProcessor.createDoc2Doc(tx))
@@ -512,7 +524,8 @@ export class ModelDb extends MemDb {
     }
     const skippedRequired = Array.from(skipped.values()).filter((tx) => requiredTxes?.has(tx._id) === true)
     if (skippedRequired.length > 0) {
-      throw new Error(`Failed to apply required model transactions: ${skippedRequired.map((tx) => tx._id).join(', ')}`)
+      // The model is complete except for these transactions; callers decide whether that is fatal.
+      throw new RequiredModelTxError(skippedRequired.map((tx) => tx._id))
     }
   }
 

@@ -21,7 +21,7 @@ import type { Class, Doc, Obj, Mixin, OperationDomain, PersonId, Ref, Space } fr
 import { ClassifierKind } from '../classes'
 import core from '../component'
 import { Hierarchy } from '../hierarchy'
-import { ModelDb, TxDb } from '../memdb'
+import { ModelDb, RequiredModelTxError, TxDb } from '../memdb'
 import { TxOperations } from '../operations'
 import {
   type DocumentQuery,
@@ -945,6 +945,31 @@ describe('memdb', () => {
     expect(() => {
       model.addTxes(ctx, [unknown], false, new Set([unknown._id]))
     }).toThrow(`Failed to apply required model transactions: ${unknown._id}`)
+  })
+
+  it('reports skipped required transactions with a typed error after applying the batch', async () => {
+    const { model } = await createModel()
+    const ctx = { warn: jest.fn(), info: jest.fn() } as any
+    const unknown = createDoc<Doc>('test:class:Unknown' as Ref<Class<Doc>>, {})
+    const space = createDoc<Space>(core.class.Space, {
+      name: 'applied',
+      description: '',
+      private: false,
+      archived: false,
+      members: []
+    })
+
+    let error: unknown
+    try {
+      model.addTxes(ctx, [unknown, space], false, new Set([unknown._id, space._id]))
+    } catch (err: unknown) {
+      error = err
+    }
+
+    expect(error).toBeInstanceOf(RequiredModelTxError)
+    expect((error as RequiredModelTxError).txIds).toEqual([unknown._id])
+    // The rest of the batch is applied before the error is raised.
+    expect(model.getObject<Space>(space.objectId).name).toBe('applied')
   })
 
   it('txUpdateDoc via tx() should swallow errors for a missing document', async () => {
