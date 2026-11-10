@@ -303,6 +303,10 @@ export async function backup (
     let downloadedMb = 0
     let downloaded = 0
 
+    // Documents that could not be loaded from the workspace. A backup with skipped documents is incomplete.
+    let skippedDocs = 0
+    const incompleteDomains = new Set<Domain>()
+
     const printDownloaded = (msg: string, size?: number | null, pending?: number): void => {
       if (size == null || Number.isNaN(size) || !Number.isInteger(size)) {
         return
@@ -612,6 +616,7 @@ export async function backup (
       let lastSize = 0
       const chunkRetryCount = new Map<RetriavableChunks, number>()
       const maxChunkRetries = 3
+      let domainIncomplete = false
 
       while (needRetrieveChunks.length > 0) {
         if (canceled()) {
@@ -686,7 +691,10 @@ export async function backup (
           })
           if (currentRetry >= maxChunkRetries) {
             ctx.error('Max retries exceeded for chunk, skipping', { domain, chunkSize: needRetrieve.size })
-            // Skip this chunk after max retries
+            // Skip this chunk after max retries, the backup is incomplete then.
+            skippedDocs += needRetrieve.size
+            domainIncomplete = true
+            incompleteDomains.add(domain)
             continue
           }
           // Put back with delay.
@@ -904,9 +912,15 @@ export async function backup (
         changed++
       }
 
-      if (changed > 0 || (domain !== DOMAIN_BLOB && backupInfo.domainHashes[domain] !== dHash)) {
-        // Store domain hash, to be used on next time.
-        backupInfo.domainHashes[domain] = dHash
+      if (changed > 0 || domainIncomplete || (domain !== DOMAIN_BLOB && backupInfo.domainHashes[domain] !== dHash)) {
+        if (domainIncomplete) {
+          // Some documents were skipped, so the domain must be scanned again on the next run.
+          // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+          delete backupInfo.domainHashes[domain]
+        } else {
+          // Store domain hash, to be used on next time.
+          backupInfo.domainHashes[domain] = dHash
+        }
 
         domainInfo.added += processedChanges.added.size
         domainInfo.updated += processedChanges.updated.size
@@ -1225,9 +1239,23 @@ export async function backup (
       await options.progress?.(Math.round((domainProgress / domains.length) * 10000) / 100)
     }
 
+    if (canceled()) {
+      ctx.error('Backup was canceled before all domains were processed', { workspace: workspaceId, url: wsIds.url })
+      return result
+    }
+    if (skippedDocs > 0) {
+      ctx.error('Backup is incomplete, some documents could not be loaded', {
+        workspace: workspaceId,
+        url: wsIds.url,
+        skippedDocs,
+        domains: Array.from(incompleteDomains)
+      })
+      return result
+    }
+
     result.result = true
 
-    if (!canceled() && domainChanges > 0) {
+    if (domainChanges > 0) {
       backupInfo.lastTxId = lastTx?._id ?? '0' // We could store last tx, since full backup is complete
       backupInfo.migrations.forcedFullCheck = forcedFullCheck
       backupInfo.migrations.forcedCompact = forcedCompact
