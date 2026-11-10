@@ -61,6 +61,19 @@ export interface MigrationIterator<T extends Doc> {
   close: () => Promise<void>
 }
 
+/** A migration that failed and remains pending, so it is run again by the next upgrade. */
+export interface MigrationFailure {
+  plugin: string
+  state: string
+}
+
+const upgradeFailures = new WeakMap<Map<string, Set<string>>, MigrationFailure[]>()
+
+/** Returns the failed upgrade operations recorded by `tryUpgrade` for one migration state map. */
+export function getUpgradeFailures (state: Map<string, Set<string>>): readonly MigrationFailure[] {
+  return upgradeFailures.get(state) ?? []
+}
+
 /**
  * @public
  * Client to perform model upgrades
@@ -115,6 +128,8 @@ export interface MigrationClient {
   model: ModelDb
 
   migrateState: Map<string, Set<string>>
+  // Failed migrations are collected here, if defined.
+  migrationFailures?: MigrationFailure[]
   storageAdapter: StorageAdapter
   accountClient: AccountClient
 
@@ -190,6 +205,7 @@ export async function tryMigrate (
     } catch (err: any) {
       client.logger.error('Failed to run migration', { plugin, state: migration.state, err })
       Analytics.handleError(err)
+      client.migrationFailures?.push({ plugin, state: migration.state })
       continue
     }
     const finishedAt = Date.now()
@@ -230,6 +246,9 @@ export async function tryUpgrade (
     } catch (err: any) {
       console.error(err)
       Analytics.handleError(err)
+      const failures = upgradeFailures.get(state) ?? []
+      failures.push({ plugin, state: upgrades.state })
+      upgradeFailures.set(state, failures)
       continue
     }
     const finishedAt = Date.now()
