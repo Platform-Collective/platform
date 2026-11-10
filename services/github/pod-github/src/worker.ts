@@ -75,7 +75,7 @@ import { App, Octokit } from 'octokit'
 import { createPlatformClient } from './client'
 import { createCollaboratorClient } from './collaborator'
 import config from './config'
-import { markupToMarkdown, parseMessageMarkdown } from './markdown'
+import { markupToMarkdown, parseMessageMarkdownWithPersons } from './markdown'
 import { createNotification } from './notifications'
 import { InstallationRecord, PlatformWorker } from './platform'
 import { CommentSyncManager } from './sync/comments'
@@ -231,7 +231,15 @@ export class GithubWorker implements IntegrationManager {
     const imageUrl = concatLink(frontUrl ?? config.FrontURL, `/files?workspace=${this.workspace.uuid}&file=`)
     const guestUrl = getPublicLinkUrl(this.workspace, frontUrl)
     const personUrl = concatLink(frontUrl, `/workbench/${this.workspace.url}/contact/`)
-    const json = parseMessageMarkdown(text ?? '', refUrl, imageUrl, guestUrl, personUrl)
+    const json = await parseMessageMarkdownWithPersons(text ?? '', refUrl, imageUrl, guestUrl, personUrl, async (ids) =>
+      (
+        await this._client.findAll(
+          contact.class.Person,
+          { _id: { $in: ids as Array<Ref<Person>> } },
+          { projection: { _id: 1 } }
+        )
+      ).map((it) => it._id)
+    )
     await preprocessor?.(json)
     return jsonToMarkup(json)
   }
