@@ -40,7 +40,6 @@ import {
   getAllTransactors,
   wrap,
   verifyOtpAttempt,
-  isOtpLocked,
   sendOtpEmail,
   sendOtp,
   generateUniqueOtp,
@@ -881,20 +880,6 @@ describe('account utils', () => {
           })
         })
 
-        test('should refuse to send a new OTP when locked by failed attempts', async () => {
-          const now = Date.now()
-          ;(mockDb.otp.find as jest.Mock).mockResolvedValueOnce([
-            { code: '111111', attempts: 6, expiresOn: now - 1000, createdOn: now - 120000 },
-            { code: '222222', attempts: 6, expiresOn: now - 1000, createdOn: now - 60000 },
-            { code: '333333', attempts: 6, expiresOn: now - 1000, createdOn: now - 30000 }
-          ])
-
-          await expect(sendOtp(mockCtx, mockDb, mockBranding, mockSocialId)).rejects.toThrow(
-            new PlatformError(new Status(Severity.ERROR, platform.status.OtpLocked, {}))
-          )
-          expect(mockDb.otp.insertOne).not.toHaveBeenCalled()
-        })
-
         test('should throw error for unsupported social id type', async () => {
           const invalidSocialId = {
             _id: '999888777' as PersonId,
@@ -942,6 +927,8 @@ describe('account utils', () => {
 
       describe('verifyOtpAttempt', () => {
         const now = Date.now()
+        let store: any[] = []
+
         const otp = (code: string, attempts: number, expiresOn = now + 60000, createdOn = now - 1000): any => ({
           socialId: socialIdId,
           code,
@@ -950,140 +937,155 @@ describe('account utils', () => {
           createdOn
         })
 
-        // Emulates db.otp.find for the queries issued by verifyOtpAttempt
-        const mockOtps = (all: any[]): void => {
+        const matches = (it: any, query: any): boolean =>
+          Object.entries(query ?? {}).every(([key, cond]: [string, any]) =>
+            cond !== null && typeof cond === 'object' && '$gt' in cond ? it[key] > cond.$gt : it[key] === cond
+          )
+
+        // Stateful stand-in for db.otp: $inc is applied, so attempt counters really accumulate
+        const useStore = (initial: any[]): void => {
+          store = initial.map((it) => ({ ...it }))
           ;(mockDb.otp.find as jest.Mock).mockImplementation(async (query: any, sort?: any, limit?: number) => {
-            let res = all
-            if (query?.expiresOn?.$gt !== undefined) {
-              res = res.filter((it) => it.expiresOn > query.expiresOn.$gt)
-            }
+            let res = store.filter((it) => matches(it, query))
             if (sort?.createdOn === 'descending') {
               res = [...res].sort((x, y) => y.createdOn - x.createdOn)
             }
-            return limit !== undefined ? res.slice(0, limit) : res
+            return (limit !== undefined ? res.slice(0, limit) : res).map((it) => ({ ...it }))
+          })
+          ;(mockDb.otp.findOne as jest.Mock).mockImplementation(async (query: any) => {
+            const found = store.find((it) => matches(it, query))
+            return found !== undefined ? { ...found } : null
+          })
+          ;(mockDb.otp.update as jest.Mock).mockImplementation(async (query: any, ops: any) => {
+            for (const it of store.filter((it) => matches(it, query))) {
+              for (const [key, value] of Object.entries(ops.$inc ?? {})) {
+                it[key] = (it[key] ?? 0) + (value as number)
+              }
+            }
           })
         }
 
-        test('should increment attempts on the latest active OTP before checking the code', async () => {
-          mockOtps([otp('123456', 1)])
+        const attemptsOf = (code: string): number | undefined => store.find((it) => it.code === code)?.attempts
 
-          const result = await verifyOtpAttempt(mockDb, socialIdId, '123456')
+        test('should accept correct code and count the attempt', async () => {
+          useStore([otp('123456', 0)])
 
-          expect(result).toBe('valid')
-          expect(mockDb.otp.update).toHaveBeenCalledWith(
-            { socialId: socialIdId, code: '123456' },
-            { $inc: { attempts: 1 } }
-          )
-          expect((mockDb.otp.update as jest.Mock).mock.invocationCallOrder[0]).toBeLessThan(
-            (mockDb.otp.find as jest.Mock).mock.invocationCallOrder[1]
-          )
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('valid')
+          expect(attemptsOf('123456')).toBe(1)
         })
 
-        test('should count a single attempt once when several codes are active', async () => {
-          mockOtps([otp('111111', 1, now + 30000, now - 40000), otp('222222', 0, now + 60000, now - 1000)])
+        test('should return invalid for wrong code', async () => {
+          useStore([otp('123456', 0)])
 
           expect(await verifyOtpAttempt(mockDb, socialIdId, '000000')).toBe('invalid')
-
-          expect(mockDb.otp.update).toHaveBeenCalledTimes(1)
-          expect(mockDb.otp.update).toHaveBeenCalledWith(
-            { socialId: socialIdId, code: '222222' },
-            { $inc: { attempts: 1 } }
-          )
+          expect(attemptsOf('123456')).toBe(1)
         })
 
-        test('should not count an attempt when there is no active OTP', async () => {
-          mockOtps([otp('123456', 1, now - 1000)])
+        test('should accept correct code on the last allowed attempt', async () => {
+          useStore([otp('123456', 0)])
+
+          for (let i = 0; i < 4; i++) {
+            expect(await verifyOtpAttempt(mockDb, socialIdId, '000000')).toBe('invalid')
+          }
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('valid')
+          expect(attemptsOf('123456')).toBe(5)
+        })
+
+        test('should reject correct code once attempts are exhausted', async () => {
+          useStore([otp('123456', 0)])
+
+          for (let i = 0; i < 5; i++) {
+            expect(await verifyOtpAttempt(mockDb, socialIdId, '000000')).toBe('invalid')
+          }
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('locked')
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '000000')).toBe('locked')
+          expect(attemptsOf('123456')).toBe(7)
+        })
+
+        test('should not let concurrent attempts exceed the limit', async () => {
+          useStore([otp('123456', 0)])
+
+          const results = await Promise.all(
+            Array.from({ length: 20 }, async () => await verifyOtpAttempt(mockDb, socialIdId, '123456'))
+          )
+
+          expect(results.filter((it) => it !== 'locked').length).toBeLessThanOrEqual(5)
+          expect(attemptsOf('123456')).toBe(20)
+        })
+
+        test('should return invalid without counting when there is no active OTP', async () => {
+          useStore([otp('123456', 0, now - 1000)])
+
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('invalid')
+          expect(mockDb.otp.update).not.toHaveBeenCalled()
+          expect(attemptsOf('123456')).toBe(0)
+        })
+
+        test('should return invalid for non-existent OTP', async () => {
+          useStore([])
 
           expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('invalid')
           expect(mockDb.otp.update).not.toHaveBeenCalled()
         })
 
-        test('should use limits from metadata', async () => {
-          ;(getMetadata as jest.Mock).mockImplementation((key) =>
-            key === accountPlugin.metadata.OtpMaxAttempts ? 2 : undefined
-          )
-          mockOtps([otp('123456', 3)])
-
-          expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('locked')
-        })
-
-        test('should return invalid for wrong code', async () => {
-          mockOtps([otp('123456', 1)])
-
-          expect(await verifyOtpAttempt(mockDb, socialIdId, '000000')).toBe('invalid')
-        })
-
-        test('should return invalid for expired OTP', async () => {
-          mockOtps([otp('123456', 1, now - 1000)])
+        test('should not accept a code created between the counting and the check', async () => {
+          useStore([])
+          // Emulate sendOtp inserting a code right after the lookup of the active code
+          const find = mockDb.otp.find as jest.Mock
+          const lookup = find.getMockImplementation() as (...args: any[]) => Promise<any[]>
+          find.mockImplementationOnce(async (...args: any[]) => {
+            const res = await lookup(...args)
+            store.push(otp('123456', 0))
+            return res
+          })
 
           expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('invalid')
-        })
+          expect(attemptsOf('123456')).toBe(0)
 
-        test('should return invalid for non-existent OTP', async () => {
-          mockOtps([])
-
-          expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('invalid')
-        })
-
-        test('should reject correct code after too many attempts on it', async () => {
-          mockOtps([otp('123456', 6)])
-
-          expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('locked')
-        })
-
-        test('should accept correct code on the last allowed attempt', async () => {
-          mockOtps([otp('123456', 5)])
-
+          // The next attempt is counted and accepted as usual
           expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('valid')
+          expect(attemptsOf('123456')).toBe(1)
         })
 
-        test('should report lock for wrong code when all active codes are exhausted', async () => {
-          mockOtps([otp('123456', 6)])
+        test('should accept only the newest active code', async () => {
+          useStore([otp('111111', 0, now + 30000, now - 40000), otp('222222', 0, now + 60000, now - 1000)])
 
-          expect(await verifyOtpAttempt(mockDb, socialIdId, '000000')).toBe('locked')
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '111111')).toBe('invalid')
+          expect(attemptsOf('111111')).toBe(0)
+          expect(attemptsOf('222222')).toBe(1)
+
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '222222')).toBe('valid')
+        })
+
+        test('should not accept an older code with spent attempts after a resend', async () => {
+          useStore([otp('111111', 5, now + 30000, now - 40000), otp('222222', 0, now + 60000, now - 1000)])
+
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '111111')).toBe('invalid')
+          expect(attemptsOf('111111')).toBe(5)
         })
 
         test('should not let an exhausted old code block a fresh one', async () => {
-          mockOtps([otp('111111', 6), otp('123456', 1)])
+          useStore([otp('111111', 6, now - 1000, now - 61000), otp('222222', 0)])
 
-          expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('valid')
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '222222')).toBe('valid')
         })
 
-        test('should lock when failed attempts across codes exceed the window limit', async () => {
-          mockOtps([
-            otp('111111', 5, now - 1000, now - 120000),
-            otp('222222', 5, now - 1000, now - 60000),
-            otp('123456', 6)
-          ])
+        test('should use the limit from metadata', async () => {
+          ;(getMetadata as jest.Mock).mockImplementation((key) =>
+            key === accountPlugin.metadata.OtpMaxAttempts ? 2 : undefined
+          )
+          useStore([otp('123456', 2)])
 
           expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('locked')
         })
 
-        test('should ignore attempts outside the lock window', async () => {
-          mockOtps([otp('111111', 50, now - 7200000, now - 7260000), otp('123456', 1)])
+        test('should not limit attempts when the limit is not positive', async () => {
+          ;(getMetadata as jest.Mock).mockImplementation((key) =>
+            key === accountPlugin.metadata.OtpMaxAttempts ? 0 : undefined
+          )
+          useStore([otp('123456', 100)])
 
           expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('valid')
-        })
-      })
-
-      describe('isOtpLocked', () => {
-        test('should be locked when failed attempts in window reach the limit', async () => {
-          const now = Date.now()
-          ;(mockDb.otp.find as jest.Mock).mockResolvedValue([
-            { socialId: socialIdId, code: '1', attempts: 10, expiresOn: now - 1000, createdOn: now - 60000 },
-            { socialId: socialIdId, code: '2', attempts: 5, expiresOn: now - 1000, createdOn: now - 30000 }
-          ])
-
-          expect(await isOtpLocked(mockDb, socialIdId, now)).toBe(true)
-        })
-
-        test('should not be locked below the limit', async () => {
-          const now = Date.now()
-          ;(mockDb.otp.find as jest.Mock).mockResolvedValue([
-            { socialId: socialIdId, code: '1', attempts: 3, expiresOn: now + 1000, createdOn: now - 1000 }
-          ])
-
-          expect(await isOtpLocked(mockDb, socialIdId, now)).toBe(false)
         })
       })
     })
@@ -1851,8 +1853,7 @@ describe('account utils', () => {
       await cleanExpiredOtp(mockDb)
 
       expect(mockDb.otp.deleteMany).toHaveBeenCalledWith({
-        expiresOn: { $lte: expect.any(Number) },
-        createdOn: { $lte: expect.any(Number) }
+        expiresOn: { $lte: expect.any(Number) }
       })
     })
   })

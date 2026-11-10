@@ -887,11 +887,13 @@ function getV29Migration (ns: string, flavor: DBFlavor): [string, string] {
   ]
 }
 
-// Upstream's v33 (OTP attempts counter). Key kept identical to upstream so future merges don't re-run it.
+// OTP attempts counter. Upstream PR hcengineering/platform#11143 adds the same column under
+// 'account_db_v28_add_otp_attempts' with different counting: reconcile both on the next upstream sync.
+// The statement is idempotent, so running both keys is harmless.
 function getV30Migration (ns: string, flavor: DBFlavor): [string, string] {
   const types = dbTypes[flavor]
   return [
-    'account_db_v33_add_otp_attempts',
+    'account_db_v30_add_otp_attempts',
     `
     ALTER TABLE ${ns}.otp
     ADD COLUMN IF NOT EXISTS attempts ${types.int4} NOT NULL DEFAULT 0;

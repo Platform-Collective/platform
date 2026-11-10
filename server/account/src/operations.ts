@@ -471,12 +471,12 @@ export async function validateOtp (
     const otpResult = await verifyOtpAttempt(db, emailSocialId._id, code)
 
     if (otpResult === 'locked') {
-      ctx.warn('OTP validation locked due to too many failed attempts', { email: normalizedEmail })
+      ctx.warn('OTP validation locked due to too many failed attempts', { socialId: emailSocialId._id })
       throw new PlatformError(new Status(Severity.ERROR, platform.status.OtpLocked, {}))
     }
 
     if (otpResult !== 'valid') {
-      ctx.warn('Invalid OTP attempt', { email: normalizedEmail })
+      ctx.warn('Invalid OTP attempt', { socialId: emailSocialId._id })
       throw new PlatformError(new Status(Severity.ERROR, platform.status.InvalidOtp, {}))
     }
 
