@@ -29,7 +29,8 @@
 
   interface PanelComponentInstance {
     canClose?: () => boolean
-    handlePanelClose?: () => boolean
+    /** Escape only: return true when the panel stepped back instead of closing. */
+    handlePanelBack?: () => boolean
   }
 
   let modalHTML: HTMLElement
@@ -57,9 +58,6 @@
 
   let props: PanelProps | undefined
   function _close(): void {
-    if ((componentInstance as PanelComponentInstance | undefined)?.handlePanelClose?.() === true) {
-      return
-    }
     closePanel()
   }
 
@@ -77,11 +75,22 @@
     props = undefined
   }
 
-  function escapeClose(): void {
+  function isEditableTarget(target: EventTarget | null): boolean {
+    return (
+      target instanceof HTMLElement && (target.isContentEditable || target.closest('input, textarea, select') !== null)
+    )
+  }
+
+  function escapeClose(ev?: KeyboardEvent): void {
     const panelComponent = componentInstance as PanelComponentInstance | undefined
 
     // Check if there is popup visible, then ignore
     if ($popupstore.length > 0) {
+      return
+    }
+
+    // Escape steps back through panels the component opened; the close button always closes.
+    if (ev !== undefined && !isEditableTarget(ev.target) && panelComponent?.handlePanelBack?.() === true) {
       return
     }
 
@@ -119,7 +128,7 @@
 
   function handleKeydown(ev: KeyboardEvent): void {
     if (ev.key === 'Escape') {
-      escapeClose()
+      escapeClose(ev)
     }
   }
 
