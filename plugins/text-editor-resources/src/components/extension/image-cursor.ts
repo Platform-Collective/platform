@@ -10,6 +10,7 @@ export function moveCursorBeforeSelectedLeadingImage (
   const isSelectedLeadingImage =
     selection instanceof NodeSelection &&
     selection.node.type.name === 'image' &&
+    selection.$from.parent.inlineContent &&
     selection.$from.parentOffset === 0 &&
     selection.$from.index(0) === 0
   if (!isSelectedLeadingImage) {

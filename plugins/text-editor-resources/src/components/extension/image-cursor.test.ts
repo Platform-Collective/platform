@@ -4,13 +4,13 @@ import { Schema } from '@tiptap/pm/model'
 import { EditorState, NodeSelection, TextSelection, type Transaction } from '@tiptap/pm/state'
 import { moveCursorBeforeSelectedLeadingImage } from './image-cursor'
 
-function createSchema (): Schema {
+function createSchema (inline = true): Schema {
   return new Schema({
     nodes: {
       doc: { content: 'block+' },
       paragraph: { content: 'inline*', group: 'block' },
       text: { group: 'inline' },
-      image: { atom: true, group: 'inline', inline: true, selectable: true }
+      image: { atom: true, group: inline ? 'inline' : 'block', inline, selectable: true }
     }
   })
 }
@@ -53,5 +53,15 @@ describe('moveCursorBeforeSelectedLeadingImage', () => {
     const state = EditorState.create({ schema, doc, selection: NodeSelection.create(doc, 3) })
 
     expect(moveCursorBeforeSelectedLeadingImage(state)).toBe(false)
+  })
+
+  it('does not intercept ArrowUp for a leading block image', () => {
+    const schema = createSchema(false)
+    const doc = schema.nodes.doc.create(null, [schema.nodes.image.create(), schema.nodes.paragraph.create()])
+    const state = EditorState.create({ schema, doc, selection: NodeSelection.create(doc, 0) })
+    let transaction: Transaction | undefined
+
+    expect(moveCursorBeforeSelectedLeadingImage(state, (tr) => (transaction = tr))).toBe(false)
+    expect(transaction).toBeUndefined()
   })
 })
