@@ -241,11 +241,15 @@ describe('dependency-shift e-mail coverage through the trigger pipeline', () => 
 
     const user = new TxFactory(AUTHOR_SOCIAL)
     const dateTx = user.createTxUpdateDoc(tracker.class.Issue, HOME as any, 'issueB' as Ref<Issue>, { dueDate: 10 })
-    const requestTx = user.createTxCreateDoc(tracker.class.DependencyShiftRequest, HOME as any, {
-      triggerIssueId: 'issueA',
-      shiftedIssues: [{ issueId: 'issueB' }],
-      cascadeToken: 'tok'
-    } as any)
+    const requestTx = user.createTxCreateDoc(
+      tracker.class.DependencyShiftRequest,
+      HOME as any,
+      {
+        triggerIssueId: 'issueA',
+        shiftedIssues: [{ issueId: 'issueB' }],
+        cascadeToken: 'tok'
+      } as any
+    )
 
     await middleware.tx(ctx, [dateTx, requestTx])
 
@@ -253,7 +257,9 @@ describe('dependency-shift e-mail coverage through the trigger pipeline', () => 
     expect(order).toEqual(['summary'])
     const syncDerived = derived.mock.calls.flatMap((call) => call[1] as Tx[])
     expect(syncDerived.some((tx: any) => tx.objectClass === tracker.class.DependencyShiftedNotification)).toBe(true)
-    const asyncRequests = (ctx.contextData as any).asyncRequests as Array<(ctx: MeasureContext, id?: string) => Promise<void>>
+    const asyncRequests = (ctx.contextData as any).asyncRequests as Array<
+      (ctx: MeasureContext, id?: string) => Promise<void>
+    >
     expect(asyncRequests).toHaveLength(1)
 
     await asyncRequests[0](ctx, 'async')
@@ -327,4 +333,3 @@ describe('dependency-shift e-mail coverage through the trigger pipeline', () => 
     expect(control.contextCache.has('notification:provider-coverage')).toBe(false)
   })
 })
-

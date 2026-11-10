@@ -893,9 +893,7 @@ async function dispatchShiftRequest (
         isPinned: false,
         lastUpdateTimestamp: Date.now()
       }
-      out.push(
-        control.txFactory.createTxCreateDoc(notification.class.DocNotifyContext, space, contextData, contextId)
-      )
+      out.push(control.txFactory.createTxCreateDoc(notification.class.DocNotifyContext, space, contextData, contextId))
     }
 
     const notifData: Data<DependencyShiftedNotification> = {
@@ -919,11 +917,7 @@ async function dispatchShiftRequest (
       shiftedIssues: recipientShifts.slice(0, MAX_DISPLAYED_SHIFTED_ISSUES),
       cascadeToken
     }
-    const summaryTx = control.txFactory.createTxCreateDoc(
-      tracker.class.DependencyShiftedNotification,
-      space,
-      notifData
-    )
+    const summaryTx = control.txFactory.createTxCreateDoc(tracker.class.DependencyShiftedNotification, space, notifData)
     out.push(summaryTx)
 
     // Coverage belongs to this dedicated summary, never to another transaction's meta.
