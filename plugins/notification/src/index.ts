@@ -208,6 +208,43 @@ export interface WorkspaceNotificationTypeSetting extends Doc {
 }
 
 /**
+ * Deterministic id of the workspace default for a provider and notification type,
+ * so concurrent edits address the same document instead of creating duplicates.
+ * @public
+ */
+export function getWorkspaceNotificationTypeSettingId (
+  provider: Ref<NotificationProvider>,
+  type: Ref<NotificationType>
+): Ref<WorkspaceNotificationTypeSetting> {
+  return `${provider}-${type}` as Ref<WorkspaceNotificationTypeSetting>
+}
+
+/**
+ * Find the workspace default for a provider and notification type.
+ * If duplicates exist, the document with the deterministic id wins, then the most recently modified one
+ * (lowest id on a tie), so the result does not depend on the order of the input.
+ * @public
+ */
+export function findWorkspaceNotificationTypeSetting<
+  T extends Pick<WorkspaceNotificationTypeSetting, '_id' | 'attachedTo' | 'type' | 'modifiedOn'>
+> (settings: T[], provider: Ref<NotificationProvider>, type: Ref<NotificationType>): T | undefined {
+  const id = getWorkspaceNotificationTypeSettingId(provider, type)
+  let result: T | undefined
+  for (const it of settings) {
+    if (it.attachedTo !== provider || it.type !== type) continue
+    if (it._id === id) return it
+    if (
+      result === undefined ||
+      it.modifiedOn > result.modifiedOn ||
+      (it.modifiedOn === result.modifiedOn && it._id < result._id)
+    ) {
+      result = it
+    }
+  }
+  return result
+}
+
+/**
  * Resolve whether a notification type is enabled for a provider.
  * Precedence: user setting, then workspace default, then model defaults.
  * @public

@@ -53,6 +53,7 @@ import notification, {
   type NotificationProviderSetting,
   NotificationType,
   type NotificationTypeSetting,
+  findWorkspaceNotificationTypeSetting,
   resolveNotificationTypeEnabled,
   type WorkspaceNotificationTypeSetting
 } from '@hcengineering/notification'
@@ -199,8 +200,10 @@ export function isAllowed (
   const setting = (notificationControl.settingsByProvider.get(provider._id) ?? []).find(
     (it) => it.type === type._id && it.createdBy !== undefined && receiverIds.includes(it.createdBy)
   )
-  const workspaceSetting = (notificationControl.workspaceSettingsByProvider.get(provider._id) ?? []).find(
-    (it) => it.type === type._id
+  const workspaceSetting = findWorkspaceNotificationTypeSetting(
+    notificationControl.workspaceSettingsByProvider.get(provider._id) ?? [],
+    provider._id,
+    type._id
   )
 
   return resolveNotificationTypeEnabled(type, provider._id, setting, workspaceSetting, providerDefaults)

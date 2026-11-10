@@ -49,6 +49,7 @@ import notification, {
   type NotificationType,
   type NotificationTypeSetting,
   type WorkspaceNotificationTypeSetting,
+  findWorkspaceNotificationTypeSetting,
   resolveNotificationTypeEnabled,
   type ReactionInboxNotification
 } from '@hcengineering/notification'
@@ -952,9 +953,7 @@ export function isNotificationAllowed (type: NotificationType, providerId: Ref<N
   }
 
   const setting = get(typesSettings).find((it) => it.attachedTo === provider._id && it.type === type._id)
-  const workspaceSetting = get(workspaceTypesSettings).find(
-    (it) => it.attachedTo === provider._id && it.type === type._id
-  )
+  const workspaceSetting = findWorkspaceNotificationTypeSetting(get(workspaceTypesSettings), provider._id, type._id)
 
   return resolveNotificationTypeEnabled(type, provider._id, setting, workspaceSetting, providerDefaults)
 }

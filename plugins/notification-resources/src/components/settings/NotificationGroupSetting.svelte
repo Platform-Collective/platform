@@ -22,6 +22,8 @@
     NotificationProviderDefaults,
     NotificationProviderSetting,
     WorkspaceNotificationTypeSetting,
+    findWorkspaceNotificationTypeSetting,
+    getWorkspaceNotificationTypeSettingId,
     resolveNotificationTypeEnabled
   } from '@hcengineering/notification'
   import { getResource, IntlString } from '@hcengineering/platform'
@@ -63,7 +65,7 @@
     const typeValue = typesMap.get(type)
     if (typeValue === undefined) return false
     const userSetting = workspaceMode ? undefined : getTypeSetting(settings, type, provider)
-    const workspaceSetting = getTypeSetting(workspaceSettings, type, provider)
+    const workspaceSetting = getWorkspaceSetting(workspaceSettings, type, provider)
     return resolveNotificationTypeEnabled(typeValue, provider, userSetting, workspaceSetting, providerDefaults)
   }
 
@@ -75,16 +77,7 @@
     const provider = providersMap.get(providerId)
     if (provider === undefined) return
     if (workspaceMode) {
-      const current = getTypeSetting(workspaceSettings, typeId, providerId)
-      if (current === undefined) {
-        await client.createDoc(notification.class.WorkspaceNotificationTypeSetting, core.space.Workspace, {
-          attachedTo: providerId,
-          type: typeId,
-          enabled: value
-        })
-      } else {
-        await client.update(current, { enabled: value })
-      }
+      await updateWorkspaceSetting(typeId, providerId, value)
     } else {
       await updateUserSetting(typeId, providerId, value)
     }
@@ -120,14 +113,49 @@
     }
   }
 
-  function getTypeSetting<T extends NotificationTypeSetting | WorkspaceNotificationTypeSetting> (
-    map: Map<Ref<NotificationType>, T[]>,
+  async function updateWorkspaceSetting(
+    typeId: Ref<NotificationType>,
+    providerId: Ref<NotificationProvider>,
+    value: boolean
+  ): Promise<void> {
+    const current = getWorkspaceSetting(workspaceSettings, typeId, providerId)
+    if (current !== undefined) {
+      await client.update(current, { enabled: value })
+      return
+    }
+    // One document per provider and type: a deterministic id makes a concurrent second create fail
+    // instead of adding a duplicate, in which case the document created meanwhile is updated.
+    const id = getWorkspaceNotificationTypeSettingId(providerId, typeId)
+    try {
+      await client.createDoc(
+        notification.class.WorkspaceNotificationTypeSetting,
+        core.space.Workspace,
+        { attachedTo: providerId, type: typeId, enabled: value },
+        id
+      )
+    } catch (err: any) {
+      const existing = await client.findOne(notification.class.WorkspaceNotificationTypeSetting, { _id: id })
+      if (existing === undefined) throw err
+      await client.update(existing, { enabled: value })
+    }
+  }
+
+  function getTypeSetting(
+    map: Map<Ref<NotificationType>, NotificationTypeSetting[]>,
     type: Ref<NotificationType>,
     provider: Ref<NotificationProvider>
-  ): T | undefined {
+  ): NotificationTypeSetting | undefined {
     const typeMap = map.get(type)
     if (typeMap === undefined) return
     return typeMap.find((p) => p.attachedTo === provider)
+  }
+
+  function getWorkspaceSetting(
+    map: Map<Ref<NotificationType>, WorkspaceNotificationTypeSetting[]>,
+    type: Ref<NotificationType>,
+    provider: Ref<NotificationProvider>
+  ): WorkspaceNotificationTypeSetting | undefined {
+    return findWorkspaceNotificationTypeSetting(map.get(type) ?? [], provider, type)
   }
 
   const isNotificationType = (type: NotificationType): type is NotificationType => {
