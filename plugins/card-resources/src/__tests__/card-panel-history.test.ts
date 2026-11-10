@@ -44,6 +44,28 @@ describe('PanelHistory', () => {
     expect(history.back()).toBeUndefined()
   })
 
+  it('keeps the open card when there is nothing to go back to', () => {
+    const history = new PanelHistory()
+    history.update('card-a')
+    expect(history.back()).toBeUndefined()
+    history.update('card-b')
+    expect(history.back()).toBe('card-a')
+  })
+
+  it('returns to the first card after going back once too often', () => {
+    const history = new PanelHistory()
+    history.update('card-a')
+    history.update('card-b')
+    history.update('card-c')
+    expect(history.back()).toBe('card-b')
+    history.update('card-b')
+    expect(history.back()).toBe('card-a')
+    history.update('card-a')
+    expect(history.back()).toBeUndefined()
+    history.update('card-d')
+    expect(history.back()).toBe('card-a')
+  })
+
   it('clears the stack after leaving a card panel', () => {
     const history = new PanelHistory()
     history.update('card-a')

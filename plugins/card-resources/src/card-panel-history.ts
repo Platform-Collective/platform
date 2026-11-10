@@ -46,7 +46,8 @@ export class PanelHistory {
 
   back (): string | undefined {
     const fragment = this.items.pop()
-    this.current = fragment
+    // Nothing to go back to: the open card stays current, so a later card can still return to it.
+    if (fragment !== undefined) this.current = fragment
     return fragment
   }
 }
