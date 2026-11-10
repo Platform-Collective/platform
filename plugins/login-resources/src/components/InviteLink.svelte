@@ -264,7 +264,7 @@
     flex-direction: column;
     padding: 1.75rem;
     width: 30rem;
-    max-width: 40rem;
+    max-width: calc(100vw - 2rem);
     background: var(--popup-bg-color);
     border-radius: 1.25rem;
     -webkit-user-select: none;
