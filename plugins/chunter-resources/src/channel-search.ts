@@ -7,7 +7,7 @@ export function getChannelSearchQuery (
   search: string,
   filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
 ): DocumentQuery<Channel> {
-  const query: DocumentQuery<Channel> = { name: { $like: `%${search}%` } }
+  const query: DocumentQuery<Channel> = { name: { $like: `%${search}%` }, archived: false }
   if (filter?.in !== undefined || filter?.nin !== undefined) {
     query._id = {}
     if (filter.in !== undefined) {
@@ -26,5 +26,8 @@ export async function queryChannels (
   search: string,
   filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
 ): Promise<Array<WithLookup<Channel>>> {
-  return await client.findAll(chunter.class.Channel, getChannelSearchQuery(search, filter), { limit: 200 })
+  const channels = await client.findAll(chunter.class.Channel, getChannelSearchQuery(search, filter), { limit: 200 })
+  // $like has no portable escape for % and _ across storage adapters, so keep only literal matches.
+  const text = search.toLowerCase()
+  return channels.filter((channel) => channel.name.toLowerCase().includes(text))
 }

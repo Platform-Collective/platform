@@ -23,9 +23,21 @@ describe('queryChannels', () => {
       chunter.class.Channel,
       {
         name: { $like: '%engineering%' },
+        archived: false,
         _id: { $in: ['one'], $nin: ['two'] }
       },
       { limit: 200 }
     )
+  })
+
+  it('matches LIKE wildcard characters in the search text literally', async () => {
+    const literal = { _id: 'channel-literal', name: 'Release_Notes' } as unknown as WithLookup<Channel>
+    const wildcard = { _id: 'channel-wildcard', name: 'releaseXnotes' } as unknown as WithLookup<Channel>
+    const percent = { _id: 'channel-percent', name: '100% done' } as unknown as WithLookup<Channel>
+    const findAll = jest.fn().mockResolvedValue([literal, wildcard, percent])
+    const client = { findAll } as unknown as Client
+
+    await expect(queryChannels(client, 'release_notes')).resolves.toEqual([literal])
+    await expect(queryChannels(client, '0% d')).resolves.toEqual([percent])
   })
 })
