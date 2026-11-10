@@ -33,6 +33,12 @@ export function createModel (builder: Builder): void {
     presenter: serverChunter.function.ChannelTextPresenter
   })
 
+  // Full-text search only returns documents with a search title; mention search finds channels this way.
+  builder.mixin(chunter.class.Channel, core.class.Class, serverCore.mixin.SearchPresenter, {
+    searchIcon: chunter.icon.Hashtag,
+    title: [['name']]
+  })
+
   builder.mixin(chunter.class.ChatMessage, core.class.Class, serverNotification.mixin.TextPresenter, {
     presenter: serverChunter.function.ChatMessageTextPresenter
   })
