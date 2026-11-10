@@ -94,6 +94,7 @@ function createProvider (statuses: Status[]): IntegrationManager {
     }),
     getStatuses: jest.fn().mockResolvedValue(statuses),
     getTaskTypeOf: jest.fn().mockResolvedValue({ _id: 'task-type' }),
+    getWorkspaceId: jest.fn().mockReturnValue('workspace'),
     sync: jest.fn()
   } as unknown as IntegrationManager
 }
@@ -209,5 +210,50 @@ describe('GitHub issue status synchronization', () => {
 
     expect(operations.diffUpdate).not.toHaveBeenCalled()
     expect(operations.commit).toHaveBeenCalledWith(true)
+  })
+
+  async function syncOne (existing: Partial<DocSyncInfo>, issue: IssueExternalData): Promise<jest.Mock> {
+    const operations = { commit: jest.fn(), diffUpdate: jest.fn() }
+    const derivedClient = { apply: jest.fn().mockReturnValue(operations) }
+    const manager = new IssueSyncManager({} as unknown as TxOperations, null as never, null as never)
+    await manager.init(createProvider(statuses))
+    const ctx = createContext()
+
+    await manager.syncIssues(
+      ctx,
+      tracker.class.Issue,
+      { _id: 'repository', githubProject: 'project', name: 'repo' } as unknown as never,
+      [issue],
+      derivedClient as never,
+      [{ ...syncData, needSync: '', repository: 'repository', ...existing } as unknown as DocSyncInfo]
+    )
+
+    expect(ctx.error).not.toHaveBeenCalled()
+    return operations.diffUpdate
+  }
+
+  it('stores polled data for a sync doc that has no external data yet', async () => {
+    const issue = createExternalIssue()
+
+    const diffUpdate = await syncOne({ external: undefined }, issue)
+
+    expect(diffUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: syncData._id }),
+      expect.objectContaining({ external: issue, repository: 'repository' }),
+      expect.any(Number)
+    )
+  })
+
+  it('still records a repository transfer when the polled data is older', async () => {
+    const stored = createExternalIssue({ updatedAt: '2026-10-19T12:00:00.000Z' })
+    const stale = createExternalIssue({ updatedAt: '2026-10-19T11:59:59.000Z' })
+
+    const diffUpdate = await syncOne({ external: stored, repository: 'old-repository' as never }, stale)
+
+    expect(diffUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: syncData._id }),
+      expect.objectContaining({ repository: 'repository' }),
+      expect.any(Number)
+    )
   })
 })

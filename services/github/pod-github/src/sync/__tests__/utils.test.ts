@@ -60,4 +60,9 @@ describe('isGithubIssueDataStale', () => {
       isGithubIssueDataStale({ updatedAt: '2026-10-19T12:00:00.000Z' }, { updatedAt: '2026-10-19T11:59:59.000Z' })
     ).toBe(true)
   })
+
+  it('treats missing stored or incoming data as not stale', () => {
+    expect(isGithubIssueDataStale(undefined, { updatedAt: '2026-10-19T11:59:59.000Z' })).toBe(false)
+    expect(isGithubIssueDataStale({ updatedAt: '2026-10-19T12:00:00.000Z' }, undefined)).toBe(false)
+  })
 })

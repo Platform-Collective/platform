@@ -269,6 +269,7 @@ export abstract class IssueSyncManagerBase {
           )
         )
       } else {
+        // Only reached when verifyUpdate rejected the update (a missing issue is handled above).
         // The platform update was intentionally rejected, but the webhook's
         // external state is still authoritative. Persist it so a later poll
         // does not replay the same external transition.
@@ -742,7 +743,12 @@ export abstract class IssueSyncManagerBase {
           if (syncDocs !== undefined) {
             syncDocs = syncDocs.filter((it) => it._id !== existing._id)
           }
-          if (isGithubIssueDataStale(existing.external as IssueExternalData, issue)) {
+          // An older listing must not revert newer stored data. A transfer to another
+          // repository is still recorded below.
+          if (
+            existing.repository === repo._id &&
+            isGithubIssueDataStale(existing.external as IssueExternalData | undefined, issue)
+          ) {
             continue
           }
           const externalEqual = deepEqual(existing.external, issue) && existing.repository === repo._id

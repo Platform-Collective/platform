@@ -244,9 +244,11 @@ export function applyIssueEventEdits<T extends { title: string, body: string, up
  * update. Do not let that older query undo the webhook data we already stored.
  */
 export function isGithubIssueDataStale (
-  stored: Pick<{ updatedAt: string }, 'updatedAt'>,
-  incoming: Pick<{ updatedAt: string }, 'updatedAt'>
+  stored: Pick<{ updatedAt: string }, 'updatedAt'> | undefined | null,
+  incoming: Pick<{ updatedAt: string }, 'updatedAt'> | undefined | null
 ): boolean {
+  // Sync docs created before their first fetch have no external data yet.
+  if (stored?.updatedAt == null || incoming?.updatedAt == null) return false
   const storedTime = Date.parse(stored.updatedAt)
   const incomingTime = Date.parse(incoming.updatedAt)
 
