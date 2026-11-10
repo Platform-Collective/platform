@@ -74,6 +74,6 @@
     "PushNotSupported": "Bu tarayıcı tarafından desteklenmiyor",
     "PushDenied": "Bildirimler tarayıcı ayarlarında engellenmiş",
     "WorkspaceDefaults": "Çalışma alanı varsayılanları",
-    "WorkspaceDefaultsDescription": "Bu ayarlar, bunları kendisi değiştirmemiş olan tüm çalışma alanı kullanıcılarına uygulanır. Kullanıcılar bunları kendi ayarlarında yine de geçersiz kılabilir."
+    "WorkspaceDefaultsDescription": "Bu ayarlar, bunları kendisi değiştirmemiş olan tüm çalışma alanı kullanıcılarına uygulanır. Kullanıcılar bunları kendi ayarlarında yine de geçersiz kılabilir. Bir bildirimi daha önce kendi ayarlarında değiştirmiş olan kullanıcılar, bu bildirim için kendi değerlerini korur."
   }
 }

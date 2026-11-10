@@ -74,6 +74,6 @@
     "PushNotSupported": "Tento prohlížeč to nepodporuje",
     "PushDenied": "Oznámení jsou blokována v nastavení prohlížeče",
     "WorkspaceDefaults": "Výchozí nastavení pracovního prostoru",
-    "WorkspaceDefaultsDescription": "Tato nastavení platí pro všechny uživatele pracovního prostoru, kteří je sami nezměnili. Uživatelé je mohou ve svém nastavení stále přepsat."
+    "WorkspaceDefaultsDescription": "Tato nastavení platí pro všechny uživatele pracovního prostoru, kteří je sami nezměnili. Uživatelé je mohou ve svém nastavení stále přepsat. Uživatelé, kteří dříve změnili oznámení ve svém nastavení, si pro něj ponechají svou vlastní hodnotu."
   }
 }

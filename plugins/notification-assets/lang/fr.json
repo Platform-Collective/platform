@@ -74,6 +74,6 @@
     "PushNotSupported": "Non pris en charge par ce navigateur",
     "PushDenied": "Les notifications sont bloquées dans les paramètres du navigateur",
     "WorkspaceDefaults": "Paramètres par défaut de l'espace de travail",
-    "WorkspaceDefaultsDescription": "Ces paramètres s'appliquent à tous les utilisateurs de l'espace de travail qui ne les ont pas modifiés eux-mêmes. Les utilisateurs peuvent toujours les remplacer dans leurs propres paramètres."
+    "WorkspaceDefaultsDescription": "Ces paramètres s'appliquent à tous les utilisateurs de l'espace de travail qui ne les ont pas modifiés eux-mêmes. Les utilisateurs peuvent toujours les remplacer dans leurs propres paramètres. Les utilisateurs qui ont déjà modifié une notification dans leurs propres paramètres conservent leur propre valeur pour celle-ci."
   }
 }

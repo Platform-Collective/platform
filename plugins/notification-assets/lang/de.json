@@ -74,6 +74,6 @@
     "PushNotSupported": "Von diesem Browser nicht unterstützt",
     "PushDenied": "Benachrichtigungen sind in den Browsereinstellungen blockiert",
     "WorkspaceDefaults": "Workspace-Standards",
-    "WorkspaceDefaultsDescription": "Diese Einstellungen gelten für alle Benutzer des Workspaces, die sie nicht selbst geändert haben. Benutzer können sie in ihren eigenen Einstellungen weiterhin überschreiben."
+    "WorkspaceDefaultsDescription": "Diese Einstellungen gelten für alle Benutzer des Workspaces, die sie nicht selbst geändert haben. Benutzer können sie in ihren eigenen Einstellungen weiterhin überschreiben. Benutzer, die eine Benachrichtigung früher in ihren eigenen Einstellungen geändert haben, behalten dafür ihren eigenen Wert."
   }
 }

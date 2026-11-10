@@ -74,6 +74,6 @@
     "PushNotSupported": "Not supported by this browser",
     "PushDenied": "Notifications are blocked in browser settings",
     "WorkspaceDefaults": "Workspace defaults",
-    "WorkspaceDefaultsDescription": "These settings apply to all users of the workspace who have not changed them themselves. Users can still override them in their own settings."
+    "WorkspaceDefaultsDescription": "These settings apply to all users of the workspace who have not changed them themselves. Users can still override them in their own settings. Users who changed a notification in their own settings before keep their own value for it."
   }
 }

@@ -74,6 +74,6 @@
     "PushNotSupported": "No compatible con este navegador",
     "PushDenied": "Las notificaciones están bloqueadas en la configuración del navegador",
     "WorkspaceDefaults": "Valores predeterminados del espacio de trabajo",
-    "WorkspaceDefaultsDescription": "Esta configuración se aplica a todos los usuarios del espacio de trabajo que no la hayan cambiado ellos mismos. Los usuarios aún pueden anularla en su propia configuración."
+    "WorkspaceDefaultsDescription": "Esta configuración se aplica a todos los usuarios del espacio de trabajo que no la hayan cambiado ellos mismos. Los usuarios aún pueden anularla en su propia configuración. Los usuarios que ya cambiaron una notificación en su propia configuración conservan su propio valor para ella."
   }
 }
