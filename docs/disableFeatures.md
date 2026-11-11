@@ -11,7 +11,7 @@ Please set a DISABLED_FEATURES environment variable for front service container,
 - github - Will disable Github
 - mailboxes - Will disable Huly Mail
 - export - Will disable export
-- integration - Will disable all integrations
+- integrations - Will disable all integrations
 - backup - Will disable backup UI
 - invites - Will disable invites UI
 - documents - Will disable Control Documents
