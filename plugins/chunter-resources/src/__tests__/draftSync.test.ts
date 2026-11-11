@@ -66,6 +66,14 @@ describe('keepsUnsentDraft', () => {
     expect(keepsUnsentDraft(current, loaded, draft('A B'))).toBe(true)
   })
 
+  it('keeps a draft with the same text and file count as the sent message but another file', () => {
+    // The sent message has the loaded file; this input replaced it with another one.
+    const current = { ...draft('A', 1), attachmentIds: ['added-here'] }
+    const loaded = { ...draft('A', 1), attachmentIds: ['loaded'] }
+    const sent = { ...draft('A', 1), attachmentIds: ['loaded'] }
+    expect(keepsUnsentDraft(current, loaded, sent)).toBe(true)
+  })
+
   it('drops a copy whose files are still the loaded ones, in any order', () => {
     const current = { ...draft('A', 2), attachmentIds: ['second', 'first'] }
     const loaded = { ...draft('A', 2), attachmentIds: ['first', 'second'] }

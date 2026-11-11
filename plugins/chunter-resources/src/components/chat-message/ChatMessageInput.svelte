@@ -93,8 +93,8 @@
   function onMessageCreated(result: ChatMessage[]): void {
     if (result.length === 0 || _id === chatMessage?._id) return
     // Ouch we have got comment with same id created already.
-    if (keepsUnsentDraft(shownMessage(), loadedMessage, result[0])) {
-      // Content typed here and not sent is kept as a new draft, together with the files added here.
+    if (keepsUnsentDraft(shownMessage(), loadedMessage, loadedMessage)) {
+      // Changed here: compare with the sent message and its files, keep what was not sent.
       void keepDraftAfterSend(result[0])
     } else {
       // Stale copy of the draft that was sent
@@ -110,18 +110,33 @@
     if (keepingMessageId === sent._id) return
     keepingMessageId = sent._id
     try {
-      const sentAttachments =
-        (sent.attachments ?? 0) > 0 ? await client.findAll(attachment.class.Attachment, { attachedTo: sent._id }) : []
+      let sentAttachments: Array<Ref<Attachment>> | undefined = []
+      if ((sent.attachments ?? 0) > 0) {
+        try {
+          sentAttachments = (await client.findAll(attachment.class.Attachment, { attachedTo: sent._id })).map(
+            (it) => it._id
+          )
+        } catch (err: unknown) {
+          // Without the sent files, compare by their count and still move the draft to a new ID below.
+          Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+          sentAttachments = undefined
+        }
+      }
       // The input may have sent or cleared its draft while the attachment query was pending.
       if (_id !== sent._id) return
-      if (!keepsUnsentDraft(shownMessage(), loadedMessage, sent)) {
+      const sentMessage: DraftContent = {
+        message: sent.message,
+        attachments: sent.attachments,
+        attachmentIds: sentAttachments
+      }
+      if (!keepsUnsentDraft(shownMessage(), loadedMessage, sentMessage)) {
         clear()
         return
       }
       // Files sent with the message belong to it. Files that came with the loaded copy were sent, or removed and
       // deleted, by the other input.
       const excluded = new Set<Ref<Attachment>>([
-        ...sentAttachments.map((it) => it._id),
+        ...(sentAttachments ?? []),
         ...((loadedMessage.attachmentIds ?? []) as Array<Ref<Attachment>>)
       ])
       const renewed = renewSharedDraft(currentMessage, inputAttachments, generateId<ChatMessage>(), excluded)
@@ -134,9 +149,6 @@
       loadedMessage = renewed.loaded
       inputAttachments = renewed.attachments
       _id = currentMessage._id
-    } catch (err: unknown) {
-      // Leave the current draft and its files as they are if the sent files cannot be read.
-      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
     } finally {
       keepingMessageId = undefined
     }
