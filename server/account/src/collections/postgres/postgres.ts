@@ -21,7 +21,8 @@ import {
   type AccountRole,
   type WorkspaceUuid,
   type AccountUuid,
-  type PersonUuid
+  type PersonUuid,
+  versionToString
 } from '@hcengineering/core'
 
 import { getMigrations } from './migrations'
@@ -1026,7 +1027,10 @@ export class PostgresAccountDB implements AccountDB {
       "s.mode IN ('archiving-pending-backup', 'archiving-backup', 'archiving-pending-clean', 'archiving-clean')"
     const versionSql =
       '(s.version_major < $1 OR (s.version_major = $1 AND s.version_minor < $2) OR (s.version_major = $1 AND s.version_minor = $2 AND s.version_patch < $3))'
-    const pendingUpgradeSql = `(((s.is_disabled = FALSE OR s.is_disabled IS NULL) AND (s.mode = 'active' OR s.mode IS NULL) AND ${versionSql} ${wsLivenessMs !== undefined ? 'AND s.last_visit > $4' : ''}) OR ((s.is_disabled = FALSE OR s.is_disabled IS NULL) AND s.mode = 'upgrading'))`
+    const livenessSql = wsLivenessMs !== undefined ? 'AND s.last_visit > $4' : ''
+    // A failed upgrade is retried only by another, newer version than the one that failed.
+    const failedVersionParam = wsLivenessMs !== undefined ? '$5' : '$4'
+    const pendingUpgradeSql = `(((s.is_disabled = FALSE OR s.is_disabled IS NULL) AND (s.mode = 'active' OR s.mode IS NULL) AND ${versionSql} ${livenessSql}) OR ((s.is_disabled = FALSE OR s.is_disabled IS NULL) AND s.mode = 'upgrading') OR ((s.is_disabled = FALSE OR s.is_disabled IS NULL) AND s.mode = 'upgrade-failed' AND s.upgrade_failed_version IS DISTINCT FROM ${failedVersionParam} AND ${versionSql} ${livenessSql}))`
     let operationSql: string = ''
     switch (operation) {
       case 'create':
@@ -1049,13 +1053,15 @@ export class PostgresAccountDB implements AccountDB {
       if (wsLivenessMs !== undefined) {
         values.push(Date.now() - wsLivenessMs)
       }
+      values.push(versionToString(version))
     }
     whereChunks.push(operationSql)
 
     // TODO: support returning pending deletion workspaces when we will actually want
     // to clear them with the worker.
     whereChunks.push("s.mode <> 'manual-creation'")
-    whereChunks.push('(s.processing_attempts IS NULL OR s.processing_attempts <= 3)')
+    // A failed upgrade has used up its attempts; the upgrade-started event resets them for the new version.
+    whereChunks.push("(s.processing_attempts IS NULL OR s.processing_attempts <= 3 OR s.mode = 'upgrade-failed')")
     whereChunks.push(`(s.last_processing_time IS NULL OR s.last_processing_time < $${values.length + 1})`)
     values.push(Date.now() - processingTimeoutMs)
 

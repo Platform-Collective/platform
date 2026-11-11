@@ -75,6 +75,7 @@
     "WorkspaceArchivedDesc": "工作区已被归档，因为未使用。",
     "WorkspaceRestoreFailed": "Restore failed",
     "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
+    "WorkspaceUpgradeFailed": "升级失败",
     "RestoreArchivedWorkspace": "解包",
     "Hello": "你好 {name},",
     "ProcessingInvite": "处理邀请，请稍候...",

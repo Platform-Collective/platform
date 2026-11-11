@@ -22,7 +22,8 @@ import {
   AccountRole,
   type Version,
   type Data,
-  type AccountUuid
+  type AccountUuid,
+  versionToString
 } from '@hcengineering/core'
 import {
   MongoDbCollection,
@@ -970,7 +971,11 @@ describe('MongoAccountDB', () => {
               { 'status.mode': { $ne: 'manual-creation' } },
               { $or: [{ 'status.mode': { $in: ['pending-creation', 'creating'] } }] },
               {
-                $or: [{ 'status.processingAttempts': { $exists: false } }, { 'status.processingAttempts': { $lte: 3 } }]
+                $or: [
+                  { 'status.processingAttempts': { $exists: false } },
+                  { 'status.processingAttempts': { $lte: 3 } },
+                  { 'status.mode': 'upgrade-failed' }
+                ]
               },
               { $or: [{ region: { $exists: false } }, { region: '' }] },
               {
@@ -1034,11 +1039,40 @@ describe('MongoAccountDB', () => {
                   {
                     $or: [{ 'status.isDisabled': false }, { 'status.isDisabled': { $exists: false } }],
                     'status.mode': 'upgrading'
+                  },
+                  {
+                    $and: [
+                      {
+                        $or: [{ 'status.isDisabled': false }, { 'status.isDisabled': { $exists: false } }]
+                      },
+                      {
+                        'status.mode': 'upgrade-failed',
+                        'status.upgradeFailedVersion': { $ne: versionToString(version) }
+                      },
+                      {
+                        $or: [
+                          { 'status.versionMajor': { $lt: version.major } },
+                          { 'status.versionMajor': version.major, 'status.versionMinor': { $lt: version.minor } },
+                          {
+                            'status.versionMajor': version.major,
+                            'status.versionMinor': version.minor,
+                            'status.versionPatch': { $lt: version.patch }
+                          }
+                        ]
+                      },
+                      {
+                        'status.lastVisit': { $gt: NOW - wsLivenessMs }
+                      }
+                    ]
                   }
                 ]
               },
               {
-                $or: [{ 'status.processingAttempts': { $exists: false } }, { 'status.processingAttempts': { $lte: 3 } }]
+                $or: [
+                  { 'status.processingAttempts': { $exists: false } },
+                  { 'status.processingAttempts': { $lte: 3 } },
+                  { 'status.mode': 'upgrade-failed' }
+                ]
               },
               { $or: [{ region: { $exists: false } }, { region: '' }] },
               {
@@ -1102,6 +1136,28 @@ describe('MongoAccountDB', () => {
                     'status.mode': 'upgrading'
                   },
                   {
+                    $and: [
+                      {
+                        $or: [{ 'status.isDisabled': false }, { 'status.isDisabled': { $exists: false } }]
+                      },
+                      {
+                        'status.mode': 'upgrade-failed',
+                        'status.upgradeFailedVersion': { $ne: versionToString(version) }
+                      },
+                      {
+                        $or: [
+                          { 'status.versionMajor': { $lt: version.major } },
+                          { 'status.versionMajor': version.major, 'status.versionMinor': { $lt: version.minor } },
+                          {
+                            'status.versionMajor': version.major,
+                            'status.versionMinor': version.minor,
+                            'status.versionPatch': { $lt: version.patch }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
                     'status.mode': {
                       $in: [
                         'migration-backup',
@@ -1126,7 +1182,11 @@ describe('MongoAccountDB', () => {
                 ]
               },
               {
-                $or: [{ 'status.processingAttempts': { $exists: false } }, { 'status.processingAttempts': { $lte: 3 } }]
+                $or: [
+                  { 'status.processingAttempts': { $exists: false } },
+                  { 'status.processingAttempts': { $lte: 3 } },
+                  { 'status.mode': 'upgrade-failed' }
+                ]
               },
               { $or: [{ region: { $exists: false } }, { region: '' }] },
               {
@@ -1164,7 +1224,11 @@ describe('MongoAccountDB', () => {
               { 'status.mode': { $ne: 'manual-creation' } },
               { $or: [{ 'status.mode': { $in: ['pending-creation', 'creating'] } }] },
               {
-                $or: [{ 'status.processingAttempts': { $exists: false } }, { 'status.processingAttempts': { $lte: 3 } }]
+                $or: [
+                  { 'status.processingAttempts': { $exists: false } },
+                  { 'status.processingAttempts': { $lte: 3 } },
+                  { 'status.mode': 'upgrade-failed' }
+                ]
               },
               { region },
               {

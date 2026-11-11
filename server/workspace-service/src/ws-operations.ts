@@ -176,7 +176,8 @@ export async function createWorkspace (
 
       await handleWsEvent?.('create-done', version, 100, '')
     } catch (err: any) {
-      void handleWsEvent?.('ping', version, 0, `Create failed: ${err.message}`)
+      // The status message is visible to workspace members; the error itself is logged by the caller.
+      void handleWsEvent?.('ping', version, 0, 'Create failed')
       throw err
     } finally {
       await pipeline.close()
@@ -201,7 +202,7 @@ export async function upgradeWorkspace (
   logger: ModelLogger = consoleModelLogger,
   queue: PlatformQueueProducer<QueueWorkspaceMessage>,
   handleWsEvent?: (
-    event: 'upgrade-started' | 'progress' | 'upgrade-done' | 'ping',
+    event: 'upgrade-started' | 'progress' | 'upgrade-done' | 'upgrade-failed' | 'ping',
     version: Data<Version>,
     progress: number,
     message?: string
@@ -216,20 +217,25 @@ export async function upgradeWorkspace (
   const storageConfig = storageConfigFromEnv()
   const storageAdapter = buildStorageFromConfig(storageConfig)
   try {
-    pipeline = await getServerPipeline(
-      ctx,
-      txes,
-      dbUrl,
-      {
-        uuid: ws.uuid,
-        url: ws.url ?? '',
-        dataId: ws.dataId
-      },
-      storageAdapter,
-      {
-        queue: queue.getQueue()
-      }
-    )
+    try {
+      pipeline = await getServerPipeline(
+        ctx,
+        txes,
+        dbUrl,
+        {
+          uuid: ws.uuid,
+          url: ws.url ?? '',
+          dataId: ws.dataId
+        },
+        storageAdapter,
+        {
+          queue: queue.getQueue()
+        }
+      )
+    } catch (err: any) {
+      await reportFailedUpgradeSetup(ctx, version, ws, err, handleWsEvent, forceUpdate)
+      throw err
+    }
     if (pipeline === undefined || storageAdapter === undefined) {
       return
     }
@@ -264,6 +270,39 @@ export async function upgradeWorkspace (
   }
 }
 
+const PENDING_MIGRATIONS =
+  /^\d+ migrations failed and remain pending: [A-Za-z0-9._-]+\/[A-Za-z0-9._-]+(?:, [A-Za-z0-9._-]+\/[A-Za-z0-9._-]+)*$/
+
+// The reported reason ends up in the workspace status, which workspace members can read. Only the IDs of
+// pending migrations are passed on; other error details (SQL, paths, hosts) stay in the server log.
+function getUpgradeFailureReason (err: any): string {
+  const message: string = typeof err?.message === 'string' ? err.message : ''
+  return message.length <= 2000 && PENDING_MIGRATIONS.test(message) ? `Upgrade failed: ${message}` : 'Upgrade failed'
+}
+
+// A failure before upgradeWorkspaceWith starts would otherwise not reach the account service: the claim
+// would be repeated without a delay, and the attempts of an active or upgrade-failed workspace would not be reset.
+async function reportFailedUpgradeSetup (
+  ctx: MeasureContext,
+  version: Data<Version>,
+  ws: WorkspaceInfoWithStatus,
+  err: any,
+  handleWsEvent: Parameters<typeof upgradeWorkspace>[8],
+  forceUpdate: boolean
+): Promise<void> {
+  const workspaceVersion = { major: ws.versionMajor, minor: ws.versionMinor, patch: ws.versionPatch }
+  if (handleWsEvent === undefined || (!forceUpdate && versionToString(version) === versionToString(workspaceVersion))) {
+    return
+  }
+  ctx.error('upgrade-failed', { message: err.message })
+  try {
+    await handleWsEvent('upgrade-started', version, 0)
+    await handleWsEvent('upgrade-failed', version, 0, getUpgradeFailureReason(err))
+  } catch (reportErr: any) {
+    ctx.error('Error while reporting upgrade failure', { origErr: reportErr })
+  }
+}
+
 /**
  * @public
  */
@@ -280,7 +319,7 @@ export async function upgradeWorkspaceWith (
   queue: PlatformQueueProducer<QueueWorkspaceMessage>,
   logger: ModelLogger = consoleModelLogger,
   handleWsEvent?: (
-    event: 'upgrade-started' | 'progress' | 'upgrade-done' | 'ping',
+    event: 'upgrade-started' | 'progress' | 'upgrade-done' | 'upgrade-failed' | 'ping',
     version: Data<Version>,
     progress: number,
     message?: string
@@ -361,7 +400,15 @@ export async function upgradeWorkspaceWith (
     await handleWsEvent?.('upgrade-done', version, 100, '')
   } catch (err: any) {
     ctx.error('upgrade-failed', { message: err.message })
-    void handleWsEvent?.('ping', version, 0, `Upgrade failed: ${err.message}`)
+    clearInterval(updateProgressHandle)
+    if (mode === 'upgrade') {
+      // The account service schedules the next attempt or marks the upgrade as failed.
+      await handleWsEvent?.('upgrade-failed', version, 0, getUpgradeFailureReason(err)).catch((reportErr: any) => {
+        ctx.error('Error while reporting upgrade failure', { origErr: reportErr })
+      })
+    } else {
+      void handleWsEvent?.('ping', version, 0, getUpgradeFailureReason(err))
+    }
     throw err
   } finally {
     clearInterval(updateProgressHandle)

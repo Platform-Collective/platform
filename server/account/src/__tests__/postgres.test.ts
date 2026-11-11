@@ -18,7 +18,8 @@ import {
   type Version,
   type AccountUuid,
   type WorkspaceMode,
-  type WorkspaceUuid
+  type WorkspaceUuid,
+  versionToString
 } from '@hcengineering/core'
 import { AccountPostgresDbCollection, PostgresAccountDB, PostgresDbCollection } from '../collections/postgres/postgres'
 import { type Sql } from 'postgres'
@@ -665,7 +666,7 @@ describe('PostgresAccountDB', () => {
                INNER JOIN global_account.workspace_status as s ON s.workspace_uuid = w.uuid
                WHERE s.mode IN ('pending-creation', 'creating')
                AND s.mode <> 'manual-creation'
-               AND (s.processing_attempts IS NULL OR s.processing_attempts <= 3)
+               AND (s.processing_attempts IS NULL OR s.processing_attempts <= 3 OR s.mode = 'upgrade-failed')
                AND (s.last_processing_time IS NULL OR s.last_processing_time < $1)
                AND (w.region IS NULL OR w.region = '')
                ORDER BY s.last_visit DESC
@@ -724,10 +725,22 @@ describe('PostgresAccountDB', () => {
                       (s.is_disabled = FALSE OR s.is_disabled IS NULL)
                       AND s.mode = 'upgrading'
                   )
+                  OR
+                  (
+                      (s.is_disabled = FALSE OR s.is_disabled IS NULL)
+                      AND s.mode = 'upgrade-failed'
+                      AND s.upgrade_failed_version IS DISTINCT FROM $5
+                      AND (
+                        s.version_major < $1
+                        OR (s.version_major = $1 AND s.version_minor < $2)
+                        OR (s.version_major = $1 AND s.version_minor = $2 AND s.version_patch < $3)
+                      )
+                      AND s.last_visit > $4
+                  )
                )
                AND s.mode <> 'manual-creation'
-               AND (s.processing_attempts IS NULL OR s.processing_attempts <= 3)
-               AND (s.last_processing_time IS NULL OR s.last_processing_time < $5)
+               AND (s.processing_attempts IS NULL OR s.processing_attempts <= 3 OR s.mode = 'upgrade-failed')
+               AND (s.last_processing_time IS NULL OR s.last_processing_time < $6)
                AND (w.region IS NULL OR w.region = '')
                ORDER BY s.last_visit DESC
                LIMIT 1`
@@ -740,6 +753,7 @@ describe('PostgresAccountDB', () => {
           version.minor,
           version.patch,
           NOW - wsLivenessMs,
+          versionToString(version),
           NOW - processingTimeoutMs
         ])
       })
@@ -797,11 +811,23 @@ describe('PostgresAccountDB', () => {
                       (s.is_disabled = FALSE OR s.is_disabled IS NULL)
                       AND s.mode = 'upgrading'
                     )
+                    OR
+                    (
+                      (s.is_disabled = FALSE OR s.is_disabled IS NULL)
+                      AND s.mode = 'upgrade-failed'
+                      AND s.upgrade_failed_version IS DISTINCT FROM $5
+                      AND (
+                        s.version_major < $1
+                        OR (s.version_major = $1 AND s.version_minor < $2)
+                        OR (s.version_major = $1 AND s.version_minor = $2 AND s.version_patch < $3)
+                      )
+                      AND s.last_visit > $4
+                    )
                   )
                )
                AND s.mode <> 'manual-creation'
-               AND (s.processing_attempts IS NULL OR s.processing_attempts <= 3)
-               AND (s.last_processing_time IS NULL OR s.last_processing_time < $5)
+               AND (s.processing_attempts IS NULL OR s.processing_attempts <= 3 OR s.mode = 'upgrade-failed')
+               AND (s.last_processing_time IS NULL OR s.last_processing_time < $6)
                AND (w.region IS NULL OR w.region = '')
                ORDER BY s.last_visit DESC
                LIMIT 1`
@@ -814,6 +840,7 @@ describe('PostgresAccountDB', () => {
           version.minor,
           version.patch,
           NOW - wsLivenessMs,
+          versionToString(version),
           NOW - processingTimeoutMs
         ])
       })
@@ -871,6 +898,18 @@ describe('PostgresAccountDB', () => {
                       (s.is_disabled = FALSE OR s.is_disabled IS NULL)
                       AND s.mode = 'upgrading'
                     )
+                    OR
+                    (
+                      (s.is_disabled = FALSE OR s.is_disabled IS NULL)
+                      AND s.mode = 'upgrade-failed'
+                      AND s.upgrade_failed_version IS DISTINCT FROM $5
+                      AND (
+                        s.version_major < $1
+                        OR (s.version_major = $1 AND s.version_minor < $2)
+                        OR (s.version_major = $1 AND s.version_minor = $2 AND s.version_patch < $3)
+                      )
+                      AND s.last_visit > $4
+                    )
                   )
                  OR
                  s.mode IN (
@@ -892,8 +931,8 @@ describe('PostgresAccountDB', () => {
                  s.mode IN ('pending-deletion', 'deleting')
                )
                AND s.mode <> 'manual-creation'
-               AND (s.processing_attempts IS NULL OR s.processing_attempts <= 3)
-               AND (s.last_processing_time IS NULL OR s.last_processing_time < $5)
+               AND (s.processing_attempts IS NULL OR s.processing_attempts <= 3 OR s.mode = 'upgrade-failed')
+               AND (s.last_processing_time IS NULL OR s.last_processing_time < $6)
                AND (w.region IS NULL OR w.region = '')
                ORDER BY s.last_visit DESC
                LIMIT 1`
@@ -906,6 +945,7 @@ describe('PostgresAccountDB', () => {
           version.minor,
           version.patch,
           NOW - wsLivenessMs,
+          versionToString(version),
           NOW - processingTimeoutMs
         ])
       })
@@ -947,7 +987,7 @@ describe('PostgresAccountDB', () => {
                INNER JOIN global_account.workspace_status as s ON s.workspace_uuid = w.uuid
                WHERE s.mode IN ('pending-creation', 'creating')
                AND s.mode <> 'manual-creation'
-               AND (s.processing_attempts IS NULL OR s.processing_attempts <= 3)
+               AND (s.processing_attempts IS NULL OR s.processing_attempts <= 3 OR s.mode = 'upgrade-failed')
                AND (s.last_processing_time IS NULL OR s.last_processing_time < $1)
                AND region = $2
                ORDER BY s.last_visit DESC

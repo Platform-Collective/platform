@@ -1816,3 +1816,191 @@ describe('restore lifecycle', () => {
     await expect(retry()).rejects.toThrow()
   })
 })
+
+describe('upgrade failure lifecycle', () => {
+  const workspaceUuid = 'upgrade-workspace' as WorkspaceUuid
+  const NOW = 1_000_000_000
+  const minute = 60 * 1000
+  const ctx = { info: jest.fn() } as unknown as MeasureContext
+  let version = { major: 1, minor: 1, patch: 0 }
+  let status: WorkspaceStatus
+  let db: AccountDB
+
+  async function event (event: WorkspaceEvent, message?: string): Promise<void> {
+    await updateWorkspaceInfo(ctx, db, null, 'worker', { workspaceUuid, version, event, progress: 0, message })
+  }
+
+  /** Mirrors getPendingWorkspace: a claim increments the attempts, then the worker reports upgrade-started. */
+  async function claimAndStart (): Promise<void> {
+    status.processingAttempts = (status.processingAttempts ?? 0) + 1
+    await event('upgrade-started')
+  }
+
+  async function resetAttempts (): Promise<void> {
+    jest.mocked(decodeTokenVerbose).mockReturnValue({
+      account: 'test-account' as AccountUuid,
+      workspace: workspaceUuid,
+      extra: { admin: 'true' }
+    })
+    await performWorkspaceOperation(ctx, db, null, 'admin', {
+      workspaceId: workspaceUuid,
+      event: 'reset-attempts',
+      params: []
+    })
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    jest.spyOn(Date, 'now').mockReturnValue(NOW)
+    version = { major: 1, minor: 1, patch: 0 }
+    status = {
+      workspaceUuid,
+      mode: 'active',
+      processingAttempts: 0,
+      isDisabled: false,
+      versionMajor: 1,
+      versionMinor: 0,
+      versionPatch: 0
+    }
+    const update = jest.fn(async (query: Record<string, unknown>, changes: Partial<WorkspaceStatus>) => {
+      const matches = Object.entries(query).every(([key, expected]) => {
+        const actual = status[key as keyof WorkspaceStatus]
+        if (expected != null && typeof expected === 'object') {
+          const op = expected as { $lte?: number }
+          if (op.$lte !== undefined) return actual == null || Number(actual) <= op.$lte
+        }
+        return actual === expected
+      })
+      if (matches) Object.assign(status, changes)
+    })
+    db = {
+      workspace: { exists: jest.fn().mockResolvedValue(true), update: jest.fn() },
+      workspaceStatus: { findOne: jest.fn(async () => ({ ...status })), update }
+    } as unknown as AccountDB
+    jest.mocked(decodeTokenVerbose).mockReturnValue({
+      account: 'test-account' as AccountUuid,
+      workspace: workspaceUuid,
+      extra: { service: 'workspace' }
+    })
+    jest
+      .spyOn(utils, 'getWorkspacesInfoWithStatusByIds')
+      .mockImplementation(async () => [{ uuid: workspaceUuid, status } as unknown as WorkspaceInfoWithStatus])
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  test('waits longer after each failure and ends in upgrade-failed after four runs', async () => {
+    const nextClaims: number[] = []
+    for (let run = 1; run <= 4; run++) {
+      await claimAndStart()
+      expect(status.mode).toBe('upgrading')
+      await event('upgrade-failed', 'Upgrade failed: 1 migrations failed and remain pending: test/broken')
+      expect(status.processingMessage).toBe('Upgrade failed. Contact support. Pending migrations: test/broken')
+      if (run < 4) {
+        expect(status.mode).toBe('upgrading')
+        // getPendingWorkspace claims once lastProcessingTime is older than the 30 s processing timeout.
+        nextClaims.push((status.lastProcessingTime ?? 0) + 30 * 1000 - NOW)
+      }
+    }
+    expect(nextClaims).toEqual([1 * minute, 4 * minute, 16 * minute])
+    expect(status).toMatchObject({
+      mode: 'upgrade-failed',
+      upgradeFailedVersion: '1.1.0',
+      processingMessage: 'Upgrade failed. Contact support. Pending migrations: test/broken',
+      versionMajor: 1,
+      versionMinor: 0
+    })
+
+    // Heartbeats and late reports do not hide the failed state or its reason.
+    const failed = { ...status }
+    await event('ping')
+    await event('upgrade-failed', 'late report')
+    expect(status).toEqual(failed)
+  })
+
+  test('a newer version starts the failed upgrade with fresh attempts', async () => {
+    status.mode = 'upgrade-failed'
+    status.upgradeFailedVersion = '1.1.0'
+    status.processingAttempts = 4
+    version = { major: 1, minor: 2, patch: 0 }
+    await claimAndStart()
+    expect(status).toMatchObject({ mode: 'upgrading', processingAttempts: 0 })
+    await event('upgrade-failed')
+    expect(status.mode).toBe('upgrading')
+    await event('upgrade-done')
+    expect(status).toMatchObject({ mode: 'active', versionMinor: 2 })
+  })
+
+  test('an operator reset retries a failed upgrade with the same version', async () => {
+    status.mode = 'upgrade-failed'
+    status.upgradeFailedVersion = '1.1.0'
+    status.processingAttempts = 4
+    await resetAttempts()
+    expect(status).toMatchObject({ mode: 'upgrading', processingAttempts: 0, lastProcessingTime: NOW - 30 * 1000 })
+  })
+
+  test('late failure reports cannot change a completed upgrade or a newer claim', async () => {
+    await claimAndStart()
+    await event('upgrade-done')
+    await event('upgrade-failed')
+    expect(status.mode).toBe('active')
+
+    status.mode = 'upgrading'
+    status.processingAttempts = 3
+    jest.mocked(db.workspaceStatus.findOne).mockImplementationOnce(async () => {
+      const previous = { ...status }
+      status.processingAttempts = 4
+      return previous
+    })
+    await event('upgrade-failed')
+    expect(status).toMatchObject({ mode: 'upgrading', processingAttempts: 4 })
+  })
+
+  test('stores a fixed reason instead of the free-text error of a failed upgrade', async () => {
+    status.mode = 'upgrading'
+    status.processingAttempts = 3
+    await event(
+      'upgrade-failed',
+      'Upgrade failed: connect ECONNREFUSED 10.1.2.3:26257 at /srv/huly/db.ts while SELECT * FROM global_account.workspace'
+    )
+    expect(status.processingMessage).toBe('Upgrade failed. Contact support.')
+
+    status.mode = 'upgrading'
+    status.processingAttempts = 3
+    await event('upgrade-failed', 'Upgrade failed: 2 migrations failed and remain pending: a/b, c/d; host 10.1.2.3')
+    expect(status.processingMessage).toBe('Upgrade failed. Contact support.')
+
+    status.mode = 'upgrading'
+    status.processingAttempts = 3
+    await event('upgrade-failed', 'Upgrade failed: 2 migrations failed and remain pending: core/a-1, notification/b_2')
+    expect(status.processingMessage).toBe(
+      'Upgrade failed. Contact support. Pending migrations: core/a-1, notification/b_2'
+    )
+
+    status.mode = 'upgrading'
+    status.processingAttempts = 3
+    await event('upgrade-failed', 'Upgrade failed: 1 migrations failed and remain pending: 10.1.2.3:26257/x')
+    expect(status.processingMessage).toBe('Upgrade failed. Contact support.')
+  })
+
+  test('stores a fixed reason for failure pings of older workspace services', async () => {
+    await event('ping', 'Upgrade failed: connect ECONNREFUSED 10.1.2.3:26257')
+    expect(status.processingMessage).toBe('Upgrade failed. Contact support.')
+    await event('ping', 'Create failed: relation "global_account.workspace" does not exist')
+    expect(status.processingMessage).toBe('Create failed. Contact support.')
+    await event('ping', 'Create failed')
+    expect(status.processingMessage).toBe('Create failed. Contact support.')
+  })
+
+  test('the failure report passes mode and attempt guards to the status collection', async () => {
+    status.mode = 'upgrading'
+    status.processingAttempts = 3
+    await event('upgrade-failed', 'Upgrade failed: timeout')
+    expect(db.workspaceStatus.update).toHaveBeenLastCalledWith(
+      { workspaceUuid, mode: 'upgrading', processingAttempts: 3 },
+      expect.objectContaining({ mode: 'upgrade-failed', upgradeFailedVersion: '1.1.0' })
+    )
+  })
+})

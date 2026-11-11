@@ -8,6 +8,7 @@
   "string": {
     "WorkspaceRestoreFailed": "Restore failed",
     "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
+    "WorkspaceUpgradeFailed": "Yükseltme başarısız oldu",
     "ChangePassword": "Parolayı değiştir",
     "CurrentPassword": "Mevcut parola",
     "NewPassword": "Yeni parola",
