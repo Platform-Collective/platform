@@ -15,6 +15,7 @@
 <script lang="ts">
   import activity, { ActivityMessage } from '@hcengineering/activity'
   import { Analytics } from '@hcengineering/analytics'
+  import attachment, { type Attachment } from '@hcengineering/attachment'
   import { AttachmentRefInput } from '@hcengineering/attachment-resources'
   import chunter, { ChatMessage, ChunterEvents, ThreadMessage } from '@hcengineering/chunter'
   import { Class, Doc, generateId, getCurrentAccount, Ref, type CommitResult } from '@hcengineering/core'
@@ -22,7 +23,7 @@
   import { EmptyMarkup, isEmptyMarkup } from '@hcengineering/text'
   import { createEventDispatcher } from 'svelte'
   import { getObjectId } from '@hcengineering/view-resources'
-  import { keepsUnsentDraft } from './draftSync'
+  import { type DraftContent, keepsUnsentDraft, renewSharedDraft } from './draftSync'
   import { ThrottledCaller } from '@hcengineering/ui'
   import { getSpace, editingMessageStore } from '@hcengineering/activity-resources'
 
@@ -63,13 +64,21 @@
   }
 
   let inputRef: AttachmentRefInput
+  let inputAttachments = new Map<Ref<Attachment>, Attachment>()
+  let keepingMessageId: Ref<ChatMessage> | undefined
   // Copy the stored draft: the object in draftsStore is shared with any other input showing the same draft, and
   // onUpdate() below mutates currentMessage in place.
+  // Both inputs still save to the same draft key, so the stored draft is the one of the input edited last. When
+  // both inputs were edited, the other input's text is not stored and is gone after a reload.
   let currentMessage: MessageDraft = chatMessage ?? (currentDraft != null ? { ...currentDraft } : getDefault())
   let _id = currentMessage._id
   let inputContent = currentMessage.message
   // What this input showed when it loaded the draft; content still equal to it was not edited here.
-  let loadedMessage: MessageDraft = { ...currentMessage }
+  // AttachmentRefInput loads its files from the same draft store entry.
+  let loadedMessage: DraftContent = {
+    ...currentMessage,
+    attachmentIds: Object.keys(($draftsStore[`${_id}_attachments`] as Record<string, Attachment> | undefined) ?? {})
+  }
 
   // The same draft (and message _id) can be open in several inputs at once, e.g. in the channel view and in the
   // sidebar. Watch for the message being created to clear this input when it was sent from another one.
@@ -83,19 +92,58 @@
   function onMessageCreated(result: ChatMessage[]): void {
     if (result.length === 0 || _id === chatMessage?._id) return
     // Ouch we have got comment with same id created already.
-    if (keepsUnsentDraft(currentMessage, loadedMessage, result[0])) {
-      // Content typed here and not sent is kept as a new draft
-      _id = generateId()
-      currentMessage = { ...currentMessage, _id }
+    if (keepsUnsentDraft(shownMessage(), loadedMessage, result[0])) {
+      // Content typed here and not sent is kept as a new draft, together with the files added here.
+      void keepDraftAfterSend(result[0])
     } else {
       // Stale copy of the draft that was sent
       clear()
     }
   }
 
+  function shownMessage(): DraftContent {
+    return { ...currentMessage, attachmentIds: Array.from(inputAttachments.keys()) }
+  }
+
+  async function keepDraftAfterSend(sent: ChatMessage): Promise<void> {
+    if (keepingMessageId === sent._id) return
+    keepingMessageId = sent._id
+    try {
+      const sentAttachments =
+        (sent.attachments ?? 0) > 0 ? await client.findAll(attachment.class.Attachment, { attachedTo: sent._id }) : []
+      // The input may have sent or cleared its draft while the attachment query was pending.
+      if (_id !== sent._id) return
+      if (!keepsUnsentDraft(shownMessage(), loadedMessage, sent)) {
+        clear()
+        return
+      }
+      // Files sent with the message belong to it. Files that came with the loaded copy were sent, or removed and
+      // deleted, by the other input.
+      const excluded = new Set<Ref<Attachment>>([
+        ...sentAttachments.map((it) => it._id),
+        ...((loadedMessage.attachmentIds ?? []) as Array<Ref<Attachment>>)
+      ])
+      const renewed = renewSharedDraft(currentMessage, inputAttachments, generateId<ChatMessage>(), excluded)
+      // Store the files under the new ID before AttachmentRefInput switches to it and loads them from there.
+      if (renewed.attachments.size > 0) {
+        DraftController.save(`${renewed.draft._id}_attachments`, Object.fromEntries(renewed.attachments))
+      }
+      DraftController.remove(`${_id}_attachments`)
+      currentMessage = renewed.draft
+      loadedMessage = renewed.loaded
+      inputAttachments = renewed.attachments
+      _id = currentMessage._id
+    } catch (err: unknown) {
+      // Leave the current draft and its files as they are if the sent files cannot be read.
+      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+    } finally {
+      keepingMessageId = undefined
+    }
+  }
+
   function clear(): void {
     currentMessage = getDefault()
-    loadedMessage = { ...currentMessage }
+    loadedMessage = { ...currentMessage, attachmentIds: [] }
     _id = currentMessage._id
     inputContent = currentMessage.message
     inputRef.removeDraft(false)
@@ -254,6 +302,7 @@
 <AttachmentRefInput
   {focusIndex}
   bind:this={inputRef}
+  bind:attachments={inputAttachments}
   bind:content={inputContent}
   docId={object._id}
   docClass={object._class}
