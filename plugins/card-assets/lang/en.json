@@ -18,7 +18,7 @@
     "MinimizeAll": "Minimize All",
     "ExpandAll": "Expand All",
     "DeleteTag": "Delete Tag",
-    "TagRelations": "Tag Relations",
+    "TagRelations": "Tag relations",
     "DeleteTagConfirm": "Are you sure you want to delete this tag? All related properties will be deleted",
     "DeleteMasterTag": "Delete Type",
     "DeleteMasterTagConfirm": "Are you sure you want to delete this type? All objects related to this type will be deleted",
