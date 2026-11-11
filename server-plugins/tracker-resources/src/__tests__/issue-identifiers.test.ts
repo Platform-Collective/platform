@@ -63,7 +63,8 @@ function makeWorld (): {
     findAll,
     txFactory: derived,
     hierarchy: { isDerived: (a: string, b: string) => a === b },
-    txes: [] as Tx[]
+    txes: [] as Tx[],
+    removedMap: new Map()
   } as unknown as TriggerControl
 
   function persist (txes: Tx[]): void {
