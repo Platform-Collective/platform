@@ -86,6 +86,7 @@
     "FreeBusy": "Ocupado/Livre",
     "DefaultVisibility": "Visibilidade padrão",
     "NotAllPermissions": "Não foram concedidas todas as permissões",
+    "IntegrationFailed": "Não foi possível conectar o Google Agenda. Tente novamente.",
     "GooglePrivacy": "O uso e transferência de informações recebidas pela Huly das APIs do Google e todos os outros aplicativos seguirão à <a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">Política de Dados de Usuário das APIs dos Serviços Google</a>, inclusive os requerimentos de Uso Limitado.",
     "Value": "{value}",
     "Schedule": "Agenda pública",

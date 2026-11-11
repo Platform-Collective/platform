@@ -14122,6 +14122,9 @@ importers:
       '@hcengineering/presentation':
         specifier: workspace:^0.7.0
         version: link:../presentation
+      '@hcengineering/ui':
+        specifier: workspace:^0.7.0
+        version: link:../ui
       hls.js:
         specifier: ^1.5.20
         version: 1.6.14
@@ -15049,6 +15052,9 @@ importers:
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.6
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.67.0
         version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
@@ -28440,6 +28446,9 @@ importers:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
         version: link:../../foundations/utils/packages/platform-rig
+      '@hcengineering/text-html':
+        specifier: workspace:^0.7.19
+        version: link:../../foundations/core/packages/text-html
       '@types/diff':
         specifier: ~5.0.2
         version: 5.0.9
@@ -28473,6 +28482,9 @@ importers:
       jest:
         specifier: ^30.4.2
         version: 30.5.2(@types/node@24.13.6)(ts-node@10.9.2(@types/node@24.13.6)(typescript@5.9.3))
+      jest-environment-jsdom:
+        specifier: ^30.4.1
+        version: 30.5.2(bufferutil@4.0.9)(utf-8-validate@6.0.5)
       prettier:
         specifier: ^3.6.2
         version: 3.6.2
@@ -40288,6 +40300,9 @@ importers:
 
   ../../services/print/pod-print:
     dependencies:
+      '@hcengineering/safe-fetch':
+        specifier: workspace:^0.7.0
+        version: link:../../../packages/safe-fetch
       '@hcengineering/account-client':
         specifier: workspace:^0.7.25
         version: link:../../../foundations/core/packages/account-client

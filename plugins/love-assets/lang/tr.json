@@ -159,6 +159,7 @@
     "GroupByStatus": "Duruma göre",
     "GroupByDate": "Tarihe göre",
     "SpeakingWhileMuted": "Mikrofonunuz kapalı - diğerleri sizi duymuyor",
-    "SpeakingWhileMutedAlert": "Mikrofon kapalıyken konuştuğumda uyar"
+    "SpeakingWhileMutedAlert": "Mikrofon kapalıyken konuştuğumda uyar",
+    "ScreenSharedBy": "{name} ekranı paylaşıyor"
   }
 }

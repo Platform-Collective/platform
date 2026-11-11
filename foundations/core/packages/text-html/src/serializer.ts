@@ -14,6 +14,7 @@
 //
 
 import {
+  getOrderedListStart,
   type Attrs,
   type AttrValue,
   type MarkupMark,
@@ -257,7 +258,9 @@ function addNodeContent (builder: NodeBuilder, node?: MarkupNode): void {
   } else if (node.type === MarkupNodeType.hard_break) {
     builder.openTag('br', {}, { selfClosing: true })
   } else if (node.type === MarkupNodeType.ordered_list) {
-    builder.openTag('ol')
+    // Editor lists use start; keep order as a fallback for existing Markdown data.
+    const start = getOrderedListStart(attrs)
+    builder.openTag('ol', { start: start !== 1 ? start : undefined })
     addNodes(builder, nodes)
     builder.closeTag('ol')
   } else if (node.type === MarkupNodeType.bullet_list) {

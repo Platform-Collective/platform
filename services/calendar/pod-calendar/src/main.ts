@@ -14,7 +14,7 @@
 //
 
 import { SplitLogger, createOpenTelemetryMetricsContext } from '@hcengineering/analytics-service'
-import { calendarIntegrationKind } from '@hcengineering/calendar'
+import calendar, { calendarIntegrationKind } from '@hcengineering/calendar'
 import { newMetrics } from '@hcengineering/core'
 import { getIntegrationClient } from '@hcengineering/integration-client'
 import { setMetadata } from '@hcengineering/platform'
@@ -27,6 +27,7 @@ import { AuthController } from './auth'
 import { decode64 } from './base64'
 import { CalendarController } from './calendarController'
 import config from './config'
+import { ApiError } from './error'
 import { OutcomingClient } from './outcomingClient'
 import { PushHandler } from './pushHandler'
 import { createServer, listen } from './server'
@@ -119,10 +120,19 @@ export const main = async (): Promise<void> => {
             await AuthController.createAndSync(ctx, accountClient, integrationClient, state, code)
             res.redirect(state.redirectURL)
           } catch (err) {
-            ctx.error('signin code error', { message: (err as any).message })
+            ctx.error('signin code error', { message: err instanceof Error ? err.message : String(err) })
+            const url = new URL(state.redirectURL)
+            url.searchParams.set(
+              'integrationError',
+              err instanceof ApiError && err.code === calendar.string.NotAllPermissions
+                ? calendar.string.NotAllPermissions
+                : calendar.string.IntegrationFailed
+            )
+            res.redirect(url.toString())
           }
         } catch (err) {
           ctx.error('signin code state parse error', { message: (err as any).message })
+          res.status(400).send()
         }
       }
     },

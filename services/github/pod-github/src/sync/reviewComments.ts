@@ -29,7 +29,16 @@ import {
   githubSyncVersion
 } from '../types'
 import { ReviewComment as ReviewCommentExternalData, reviewCommentDetails } from './githubTypes'
-import { collectUpdate, deleteObjects, ensureGraphQLOctokit, errorToObj, isGHWriteAllowed } from './utils'
+import {
+  collectUpdate,
+  deleteObjects,
+  ensureGraphQLOctokit,
+  errorToObj,
+  isGHWriteAllowed,
+  getGithubModifiedOn,
+  githubTime,
+  isGithubTimestampPreservationEnabled
+} from './utils'
 
 import { Analytics } from '@hcengineering/analytics'
 import { PullRequestReviewCommentCreatedEvent, PullRequestReviewCommentEvent } from '@octokit/webhooks-types'
@@ -253,7 +262,9 @@ export class ReviewCommentSyncManager implements DocSyncManager {
             }
           )
           if (reviewObj !== undefined) {
-            const lastModified = Date.now()
+            const lastModified = isGithubTimestampPreservationEnabled()
+              ? githubTime(event.comment.updated_at)
+              : Date.now()
             const body = await this.provider.getMarkupSafe(integration, event.comment.body)
             await derivedClient.diffUpdate(
               reviewData,
@@ -272,7 +283,9 @@ export class ReviewCommentSyncManager implements DocSyncManager {
                 body
               },
               false,
-              lastModified,
+              isGithubTimestampPreservationEnabled()
+                ? await getGithubModifiedOn(this.client, reviewObj, event.comment.updated_at)
+                : lastModified,
               account
             )
             this.provider.sync()
@@ -304,7 +317,9 @@ export class ReviewCommentSyncManager implements DocSyncManager {
         external: externalData,
         externalVersion: githubExternalSyncVersion,
         parent: (createdEvent.pull_request.html_url ?? '').toLowerCase(),
-        lastModified: new Date(createdEvent.comment.updated_at ?? Date.now()).getTime()
+        lastModified: isGithubTimestampPreservationEnabled()
+          ? githubTime(createdEvent.comment.updated_at)
+          : new Date(createdEvent.comment.updated_at ?? Date.now()).getTime()
       })
       this.provider.sync()
     }
@@ -464,7 +479,9 @@ export class ReviewCommentSyncManager implements DocSyncManager {
         existing,
         update,
         false,
-        new Date(reviewComment.updatedAt ?? Date.now()).getTime(),
+        isGithubTimestampPreservationEnabled()
+          ? await getGithubModifiedOn(this.client, existing, reviewComment.updatedAt)
+          : new Date(reviewComment.updatedAt ?? Date.now()).getTime(),
         account
       )
     }
@@ -491,7 +508,9 @@ export class ReviewCommentSyncManager implements DocSyncManager {
       'reviewComments',
       value,
       _id,
-      new Date(review.createdAt ?? Date.now()).getTime(),
+      isGithubTimestampPreservationEnabled()
+        ? githubTime(review.createdAt)
+        : new Date(review.createdAt ?? Date.now()).getTime(),
       account
     )
   }

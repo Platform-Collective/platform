@@ -113,28 +113,46 @@ export const EmbedNode = BaseEmbedNode.extend<EmbedNodeOptions>({
       root.setAttribute('data-embed-src', node.attrs.src)
       root.classList.add('embed-node')
 
-      const pos = typeof getPos === 'function' ? getPos() : 0
-      setLoadingState(editor.view, pos, true)
       root.setAttribute('block-editor-blur', 'true')
 
       let handle: EmbedNodeViewHandle | undefined
+      let destroyed = false
+
+      const setNodeLoadingState = (loading: boolean): void => {
+        const view = editor.view
+        if (destroyed || view.isDestroyed || typeof getPos !== 'function') return
+        const currentPos = getPos()
+        if (typeof currentPos !== 'number' || currentPos < 0 || currentPos >= view.state.doc.content.size) return
+        if (view.state.doc.nodeAt(currentPos)?.type !== node.type) return
+        setLoadingState(view, currentPos, loading)
+      }
+
+      // Wait until ProseMirror finishes creating the node view before dispatching.
+      queueMicrotask(() => {
+        setNodeLoadingState(true)
+      })
 
       void providerPromise
         .then((view) => {
+          if (destroyed) return
           view = view ?? StubEmbedNodeView
           handle = view(editor, root, getPos)
           if (handle !== undefined) {
             root.classList.add(`embed-${handle.name}`)
           }
         })
+        .catch((error: unknown) => {
+          if (destroyed) return
+          console.error('[EmbedNode.addNodeView] Failed to build embed view', { src: node.attrs.src, error })
+        })
         .finally(() => {
-          const pos = typeof getPos === 'function' ? getPos() : 0
-          setLoadingState(editor.view, pos, false)
+          setNodeLoadingState(false)
         })
 
       return {
         dom: root,
         destroy: () => {
+          destroyed = true
           handle?.destroy?.()
         }
       }

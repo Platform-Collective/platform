@@ -1,4 +1,5 @@
 import {
+  type AccountUuid,
   type Tx,
   type Blob as PlatformBlob,
   type Class,
@@ -34,6 +35,19 @@ export interface ObjectSearchResult {
 /**
  * @public
  */
+export interface ObjectSearchOptions {
+  in?: RelatedDocument[]
+  nin?: RelatedDocument[]
+  /**
+   * Supported by EmployeeQuery only: replaces full-text search with an in-memory search among these
+   * accounts (for example space members). Other search factories ignore this option.
+   */
+  members?: AccountUuid[]
+}
+
+/**
+ * @public
+ */
 export interface ObjectCreate {
   component: AnyComponent | undefined
   props?: Record<string, any>
@@ -50,10 +64,7 @@ export interface ObjectCreate {
 export type ObjectSearchFactory = (
   client: Client,
   query: string,
-  options?: {
-    in?: RelatedDocument[]
-    nin?: RelatedDocument[]
-  }
+  options?: ObjectSearchOptions
 ) => Promise<ObjectSearchResult[]>
 
 /**

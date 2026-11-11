@@ -28,6 +28,7 @@
   import { getSpace, editingMessageStore } from '@hcengineering/activity-resources'
 
   import { getChannelSpace } from '../../utils'
+  import { getChatMessageEditData, type ChatMessageInputData } from '../../chat-message-utils'
   import ChannelTypingInfo from '../ChannelTypingInfo.svelte'
 
   export let object: Doc
@@ -271,12 +272,11 @@
     return await operations.commit()
   }
 
-  async function editMessage(event: CustomEvent): Promise<void> {
+  async function editMessage(event: CustomEvent<ChatMessageInputData>): Promise<void> {
     if (chatMessage === undefined) {
       return
     }
-    const { message, attachments } = event.detail
-    await client.update(chatMessage, { message, attachments, editedOn: Date.now() })
+    await client.update(chatMessage, getChatMessageEditData(event.detail, Date.now()))
   }
   export function submit(): void {
     inputRef.submit()

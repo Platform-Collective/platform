@@ -4,6 +4,7 @@ import { type Editor, type NodeViewRendererProps } from '@tiptap/core'
 import { type NodeType } from '@tiptap/pm/model'
 
 import { ImageExtension } from './imageExt'
+import { setLoadingState } from './toolbar/toolbar'
 
 const platformSrc = 'platform://platform/files/workspace/?file=copied-image'
 
@@ -39,7 +40,23 @@ describe('image node view', () => {
     globalThis.document = originalDocument
   })
 
-  async function renderImage (attributes: Record<string, string>): Promise<void> {
+  const imageType = {} as unknown as NodeType
+  const otherType = {} as unknown as NodeType
+
+  interface RenderedImage {
+    view: unknown
+    destroy: () => void
+  }
+
+  /** Let queued microtasks and promise callbacks (blob lookup, decode) run. */
+  async function flushPromises (): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  }
+
+  function renderImage (
+    attributes: Record<string, string>,
+    options: { nodeAtType?: NodeType, docSize?: number } = {}
+  ): RenderedImage {
     const extension = ImageExtension.configure({ getBlobRef })
     const addNodeView = extension.config.addNodeView
     if (addNodeView == null) throw new Error('Image extension must provide a node view')
@@ -49,29 +66,42 @@ describe('image node view', () => {
       options: extension.options,
       storage: extension.storage,
       editor: {} as unknown as Editor,
-      type: {} as unknown as NodeType,
+      type: imageType,
       parent: undefined
     })
     if (render === null) throw new Error('Image node view renderer must be defined')
 
-    render({
-      node: { attrs: attributes },
+    const node = { attrs: attributes, type: imageType }
+    const view = {
+      isDestroyed: false,
+      state: {
+        doc: {
+          content: { size: options.docSize ?? 1 },
+          nodeAt: () => ({ type: options.nodeAtType ?? imageType })
+        }
+      }
+    }
+    const nodeView = render({
+      node,
       HTMLAttributes: attributes,
-      view: {},
+      view,
       getPos: () => 0
-    } as unknown as NodeViewRendererProps)
-    await Promise.resolve()
+    } as unknown as NodeViewRendererProps) as { destroy?: () => void }
+
+    return { view, destroy: () => nodeView.destroy?.() }
   }
 
   it('resolves a copied src-only platform image through the workspace storage', async () => {
-    await renderImage({ src: platformSrc })
+    renderImage({ src: platformSrc })
+    await flushPromises()
 
     expect(getBlobRef).toHaveBeenCalledWith('copied-image')
     expect(image.src).toBe('https://storage.example/copied-image')
   })
 
   it('prefers the file-id over src', async () => {
-    await renderImage({ 'file-id': 'attached-image', src: platformSrc })
+    renderImage({ 'file-id': 'attached-image', src: platformSrc })
+    await flushPromises()
 
     expect(getBlobRef).toHaveBeenCalledWith('attached-image')
     expect(image.src).toBe('https://storage.example/attached-image')
@@ -80,10 +110,78 @@ describe('image node view', () => {
   it.each(['https://images.example/image.png', 'data:image/png;base64,AAAA', '/images/image.png'])(
     'keeps a src-only image URL %s',
     async (src) => {
-      await renderImage({ src })
+      renderImage({ src })
+      await flushPromises()
 
       expect(getBlobRef).not.toHaveBeenCalled()
       expect(image.src).toBe(src)
     }
   )
+
+  it('sets and clears the loading state for the current node position', async () => {
+    const { view } = renderImage({ 'file-id': 'attached-image' })
+    expect(setLoadingState).not.toHaveBeenCalled()
+
+    await flushPromises()
+
+    expect(setLoadingState).toHaveBeenNthCalledWith(1, view, 0, true)
+    expect(setLoadingState).toHaveBeenLastCalledWith(view, 0, false)
+  })
+
+  it('does not touch the loading state when another node is at the position', async () => {
+    renderImage({ 'file-id': 'attached-image' }, { nodeAtType: otherType })
+    await flushPromises()
+
+    expect(setLoadingState).not.toHaveBeenCalled()
+  })
+
+  it('does not touch the loading state for a position outside the document', async () => {
+    renderImage({ 'file-id': 'attached-image' }, { docSize: 0 })
+    await flushPromises()
+
+    expect(setLoadingState).not.toHaveBeenCalled()
+  })
+
+  it('ignores pending callbacks after the node view is destroyed', async () => {
+    const rendered = renderImage({ 'file-id': 'attached-image' })
+    rendered.destroy()
+    await flushPromises()
+
+    expect(setLoadingState).not.toHaveBeenCalled()
+    expect(image.src).toBe('')
+  })
+
+  it('clears the loading state when the blob lookup fails', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
+    let rendered: RenderedImage | undefined
+    try {
+      getBlobRef.mockRejectedValueOnce(new Error('not found'))
+      rendered = renderImage({ 'file-id': 'missing-image' })
+      await flushPromises()
+
+      expect(setLoadingState).toHaveBeenNthCalledWith(1, rendered.view, 0, true)
+      expect(setLoadingState).toHaveBeenLastCalledWith(rendered.view, 0, false)
+      expect(consoleError).toHaveBeenCalled()
+    } finally {
+      rendered?.destroy()
+      consoleError.mockRestore()
+    }
+  })
+
+  it('clears the placeholder timer when the node view is destroyed', () => {
+    jest.useFakeTimers()
+    try {
+      getBlobRef.mockReturnValueOnce(new Promise<{ src: string, srcset: string }>(() => {}))
+      const rendered = renderImage({ 'file-id': 'slow-image' })
+      jest.runAllTicks()
+      expect(jest.getTimerCount()).toBe(1)
+
+      rendered.destroy()
+      expect(jest.getTimerCount()).toBe(0)
+      jest.advanceTimersByTime(500)
+      expect(image.src).toBe('')
+    } finally {
+      jest.useRealTimers()
+    }
+  })
 })

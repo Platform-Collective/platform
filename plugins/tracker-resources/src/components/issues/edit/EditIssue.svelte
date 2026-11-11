@@ -50,6 +50,7 @@
   import { Analytics } from '@hcengineering/analytics'
 
   import { createEventDispatcher, onDestroy } from 'svelte'
+  import { handleIssueTitleKeyDown, normalizeIssueTitle } from '../../../issue-title'
   import { generateIssueShortLink, getIssueIdByIdentifier } from '../../../issues'
   import { canEditIssue } from '../../../utils'
   import tracker from '../../../plugin'
@@ -58,6 +59,7 @@
   import CopyToClipboard from './CopyToClipboard.svelte'
   import SubIssueSelector from './SubIssueSelector.svelte'
   import SubIssues from './SubIssues.svelte'
+  import { canCloseIssue } from './can-close-issue'
 
   export let _id: Ref<Issue> | string
   export let _class: Ref<Class<Issue>>
@@ -75,7 +77,7 @@
   let issueLoaded = false
   let title = ''
   let innerWidth: number
-  let descriptionBox: AttachmentStyleBoxCollabEditor
+  let descriptionBox: AttachmentStyleBoxCollabEditor | null | undefined
   let showAllMixins: boolean
 
   let effectiveReadonly = true
@@ -152,7 +154,7 @@
       return
     }
 
-    const trimmedTitle = title.trim()
+    const trimmedTitle = normalizeIssueTitle(title)
 
     if (trimmedTitle.length > 0 && trimmedTitle !== issue.title?.trim()) {
       await client.update(issue, { title: trimmedTitle })
@@ -168,10 +170,7 @@
 
   const manager = createFocusManager()
   export function canClose(): boolean {
-    if (descriptionBox?.isFocused()) {
-      return false
-    }
-    return true
+    return canCloseIssue(issue, descriptionBox)
   }
 
   // If it is embedded
@@ -386,7 +385,9 @@
       bind:value={title}
       disabled={effectiveReadonly}
       placeholder={tracker.string.IssueTitlePlaceholder}
+      format="text-multiline"
       kind="large-style"
+      on:keydown={handleIssueTitleKeyDown}
       on:blur={save}
     />
     <div class="w-full mt-6">

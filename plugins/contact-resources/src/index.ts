@@ -39,7 +39,13 @@ import {
 } from '@hcengineering/core'
 import login from '@hcengineering/login'
 import { getResource, type IntlString, type Resources } from '@hcengineering/platform'
-import { MessageBox, getBlobRef, getClient, type ObjectSearchResult } from '@hcengineering/presentation'
+import {
+  MessageBox,
+  getBlobRef,
+  getClient,
+  type ObjectSearchOptions,
+  type ObjectSearchResult
+} from '@hcengineering/presentation'
 import {
   getPlatformAvatarColorByName,
   getPlatformAvatarColorForTextDef,
@@ -136,10 +142,13 @@ import { getChannelURL, openChannelLink } from './channel-url'
 import { canKickEmployee, kickEmployee } from './kick-employee'
 import { canMergePersons, canResendInvitation } from './visibilityTester'
 import contact from './plugin'
+import { rankByName } from './member-search'
 import {
   channelIdentifierProvider,
   channelTitleProvider,
   contactTitleProvider,
+  employeeByIdStore,
+  employeeRefByAccountUuidStore,
   employeeSort,
   filterChannelHasMessagesResult,
   filterChannelHasNewMessagesResult,
@@ -239,11 +248,35 @@ async function queryContact (
   return await doContactQuery(_class, q, filter, client, (it) => nameSearch.matches(it.name))
 }
 
+// Promote at most five matching members; additional members can still appear in full-text order.
+const memberSearchLimit = 5
+
+function searchMemberEmployees (search: string, filter: ObjectSearchOptions): ObjectSearchResult[] {
+  const refByAccount = get(employeeRefByAccountUuidStore)
+  const employeeById = get(employeeByIdStore)
+  const included = filter.in === undefined ? undefined : new Set(filter.in.map((it) => it._id))
+  const excluded = new Set((filter.nin ?? []).map((it) => it._id))
+  const employees: Employee[] = []
+  for (const account of filter.members ?? []) {
+    const ref = refByAccount.get(account)
+    const employee = ref === undefined ? undefined : employeeById.get(ref)
+    if (employee === undefined || !employee.active) continue
+    if (excluded.has(employee._id) || (included !== undefined && !included.has(employee._id))) continue
+    employees.push(employee)
+  }
+  const hierarchy = getClient().getHierarchy()
+  return rankByName(employees, search, (it) => [getName(hierarchy, it), it.name], memberSearchLimit).map(
+    toObjectSearchResult
+  )
+}
+
 async function queryEmployee (
   client: Client,
   search: string,
-  filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
+  filter?: ObjectSearchOptions
 ): Promise<ObjectSearchResult[]> {
+  // Members are resolved from the employees already loaded on the client: no server queries.
+  if (filter?.members !== undefined) return searchMemberEmployees(search, filter)
   const nameSearch = getNameSearch(search)
   const q1 = await doContactQuery(
     contact.mixin.Employee,
@@ -403,11 +436,8 @@ export default async (): Promise<Resources> => ({
     WorkspaceMemberStatusEditor
   },
   completion: {
-    EmployeeQuery: async (
-      client: Client,
-      query: string,
-      filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
-    ) => await queryEmployee(client, query, filter),
+    EmployeeQuery: async (client: Client, query: string, filter?: ObjectSearchOptions) =>
+      await queryEmployee(client, query, filter),
     PersonQuery: async (client: Client, query: string, filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }) =>
       await queryContact(contact.class.Person, client, query, filter),
     OrganizationQuery: async (

@@ -14,8 +14,10 @@
 -->
 <script lang="ts">
   import { Label, ModernToggle } from '@hcengineering/ui'
-  import love, { Room } from '@hcengineering/love'
+  import { Room } from '@hcengineering/love'
   import { getClient } from '@hcengineering/presentation'
+  import love from '../plugin'
+  import RoomLanguageSelector from './RoomLanguageSelector.svelte'
 
   export let room: Room
 
@@ -31,12 +33,12 @@
 </script>
 
 <div class="antiGrid">
-  <!-- <div class="antiGrid-row">
+  <div class="antiGrid-row">
     <div class="antiGrid-row__header">
-      <Label label={ui.string.Language} />
+      <Label label={love.string.Language} />
     </div>
     <RoomLanguageSelector {room} />
-  </div> -->
+  </div>
   <div class="antiGrid-row">
     <div class="antiGrid-row__header">
       <Label label={love.string.StartWithTranscription} />
