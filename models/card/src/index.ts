@@ -989,7 +989,7 @@ export function createModel (builder: Builder): void {
       component: card.component.RelationSetting,
       group: 'settings-editor',
       role: AccountRole.Maintainer,
-      order: 4501
+      order: 4502
     },
     card.ids.TagRelations
   )

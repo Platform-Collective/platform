@@ -1488,6 +1488,6 @@ export function createModel (builder: Builder): void {
     group: 'settings-account',
     role: AccountRole.Guest,
     feature: 'auto-translate',
-    order: 1600
+    order: 1450
   })
 }

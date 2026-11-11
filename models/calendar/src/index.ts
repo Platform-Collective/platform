@@ -427,7 +427,7 @@ export function createModel (builder: Builder): void {
       component: calendar.component.CalendarSettings,
       group: 'settings-account',
       role: AccountRole.User,
-      order: 1600
+      order: 1350
     },
     calendar.ids.Settings
   )
