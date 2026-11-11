@@ -17,19 +17,12 @@
   import { EditableAvatar, getAccountClient } from '@hcengineering/contact-resources'
   import core, { Configuration, WorkspaceAccountPermission } from '@hcengineering/core'
   import { loginId } from '@hcengineering/login'
-  import { translateCB } from '@hcengineering/platform'
   import { createQuery, getClient, MessageBox } from '@hcengineering/presentation'
   import { WorkspaceSetting } from '@hcengineering/setting'
   import {
     Breadcrumb,
     Button,
-    deviceOptionsStore as deviceInfo,
-    DropdownLabels,
-    type DropdownTextItem,
     EditBox,
-    getLocalWeekStart,
-    getWeekDayNames,
-    hasLocalWeekStart,
     Header,
     IconCheckmark,
     IconClose,
@@ -39,7 +32,6 @@
     navigate,
     Scroller,
     showPopup,
-    themeStore,
     Toggle
   } from '@hcengineering/ui'
   import settingsRes from '../plugin'
@@ -180,32 +172,6 @@
       }
     })
   }
-
-  const weekInfoFirstDay: number = getLocalWeekStart()
-  const hasWeekInfo: boolean = hasLocalWeekStart()
-  const weekNames = getWeekDayNames()
-  let items: DropdownTextItem[] = []
-  let selected: string
-
-  $: translateCB(
-    hasWeekInfo ? settingsRes.string.SystemSetupString : settingsRes.string.DefaultString,
-    { day: weekNames?.get(weekInfoFirstDay)?.toLowerCase() ?? '' },
-    $themeStore.language,
-    (r) => {
-      items = [
-        { id: 'system', label: r },
-        ...Array.from(weekNames.entries()).map((it) => ({ id: it[0].toString(), label: it[1] }))
-      ]
-      const savedFirstDayOfWeek = localStorage.getItem('firstDayOfWeek') ?? 'system'
-      selected = items[savedFirstDayOfWeek === 'system' ? 0 : $deviceInfo.firstDayOfWeek + 1].id
-    }
-  )
-
-  const onSelected = (e: CustomEvent<string>): void => {
-    selected = e.detail
-    localStorage.setItem('firstDayOfWeek', `${e.detail}`)
-    $deviceInfo.firstDayOfWeek = e.detail === 'system' ? weekInfoFirstDay : (parseInt(e.detail, 10) ?? 1)
-  }
 </script>
 
 <div class="hulyComponent">
@@ -281,21 +247,6 @@
                   />
                 </div>
               {/if}
-            </div>
-          </div>
-
-          <div class="flex-col flex-gap-4 mt-6">
-            <div class="title"><Label label={settingsRes.string.Calendar} /></div>
-            <div class="flex-row-center flex-gap-4">
-              <Label label={settingsRes.string.StartOfTheWeek} />
-              <DropdownLabels
-                {items}
-                kind={'regular'}
-                size={'medium'}
-                {selected}
-                enableSearch={false}
-                on:selected={onSelected}
-              />
             </div>
           </div>
 

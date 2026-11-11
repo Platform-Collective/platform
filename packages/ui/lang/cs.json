@@ -110,6 +110,9 @@
         "ThisYear": "Tento rok",
         "EmojiStyle": "Styl emoji",
         "EmojiSystem": "Výchozí systémové",
-        "EmojiNoto": "Noto Color"
+        "EmojiNoto": "Noto Color",
+        "FirstDayOfWeek": "Začátek týdne",
+        "FirstDayOfWeekSystem": "Nastavení systému ({day})",
+        "FirstDayOfWeekDefault": "Výchozí ({day})"
     }
 }

@@ -111,6 +111,9 @@
         "ThisYear": "Этот год",
         "EmojiStyle": "Стиль эмодзи",
         "EmojiSystem": "Системный по умолчанию",
-        "EmojiNoto": "Noto Color"
+        "EmojiNoto": "Noto Color",
+        "FirstDayOfWeek": "Начало недели",
+        "FirstDayOfWeekSystem": "Системная настройка ({day})",
+        "FirstDayOfWeekDefault": "По умолчанию ({day})"
     }
 }
