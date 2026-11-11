@@ -88,6 +88,16 @@ async function loadEslintConfig() {
     {
       ...love,
       files: ['**/*.{js,cjs,mjs,ts,cts,mts}'],
+      languageOptions: {
+        ...love.languageOptions,
+        parserOptions: {
+          ...love.languageOptions?.parserOptions,
+          projectService: true,
+          tsconfigRootDir: process.cwd(),
+          // Shared project service must know .svelte from the first file, otherwise linting is much slower
+          extraFileExtensions: ['.svelte']
+        }
+      },
       plugins: {
         ...love.plugins,
         '@stylistic': stylistic,
@@ -129,7 +139,8 @@ async function loadEslintConfig() {
         parserOptions: {
           extraFileExtensions: ['.svelte'],
           parser: tsParser,
-          projectService: true
+          projectService: true,
+          tsconfigRootDir: process.cwd()
         }
       },
       rules: {
