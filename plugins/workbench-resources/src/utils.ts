@@ -182,15 +182,21 @@ export const currentWorkspaceStore = derived(
 )
 
 /**
- * True when the account has unread notifications in some workspace other than
- * the one currently open. Single source of truth for the cross-workspace unread
- * indicator across the switcher, the workbench logo, and the desktop badge.
+ * Number of workspaces, other than the one currently open, where the account has
+ * unread notifications. Used by the desktop badge (+1 per such workspace).
  */
-export const hasCrossWorkspaceUnread = derived(
+export const crossWorkspaceUnreadCount = derived(
   [workspacesStore, locationWorkspaceStore],
   ([$workspaces, $locationWorkspace]) =>
-    $workspaces.some((ws) => ws.hasUnread === true && ws.url !== $locationWorkspace)
+    $workspaces.filter((ws) => ws.hasUnread === true && ws.url !== $locationWorkspace).length
 )
+
+/**
+ * True when the account has unread notifications in some workspace other than
+ * the one currently open. Single source of truth for the cross-workspace unread
+ * indicator across the switcher and the workbench logo.
+ */
+export const hasCrossWorkspaceUnread = derived(crossWorkspaceUnreadCount, ($count) => $count > 0)
 
 /**
  * Re-fetches the account's workspaces (including their per-workspace hasUnread
