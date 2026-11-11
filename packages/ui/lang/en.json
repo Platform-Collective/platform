@@ -100,6 +100,7 @@
         "Sidebar": "Sidebar",
         "FontSize": "Font size",
         "Language": "Language",
+        "AppearanceAndLanguage": "Appearance and language",
         "DaysWOValue": "{days, plural, =1 {day} other {days}}",
         "WeeksWOValue": "{weeks, plural, =1 {week} other {weeks}}",
         "MonthsWOValue": "{months, plural, =1 {month} other {months}}",

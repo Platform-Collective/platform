@@ -13,7 +13,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { showPopup } from '../..'
+  import ui, { showPopup } from '../..'
   import StatusBarButton from '../StatusBarButton.svelte'
   import SettingsPopup from './SettingsPopup.svelte'
   import Settings from './icons/Settings.svelte'
@@ -29,4 +29,10 @@
   }
 </script>
 
-<StatusBarButton bind:element icon={Settings} {pressed} on:click={showSettings} />
+<StatusBarButton
+  bind:element
+  icon={Settings}
+  label={ui.string.AppearanceAndLanguage}
+  {pressed}
+  on:click={showSettings}
+/>
