@@ -42,8 +42,8 @@ jobs:
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           node common/scripts/bump.js --check "$VERSION"
-          if [[ "$VERSION" == "0.7.423" ]] || ! printf '%s\n' 0.7.423 "$VERSION" | sort -V -C; then
-            echo "::error::The release version must be greater than 0.7.423."
+          if ! printf '%s\n' 0.8.0 "$VERSION" | sort -V -C; then
+            echo "::error::The release version must be at least 0.8.0, the first version published as @platformcollective/*."
             exit 1
           fi
       - name: Building...

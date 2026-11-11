@@ -287,15 +287,22 @@ rushx dev-debug -g 'pattern' # To execute tests in debug mode with only the matc
 
 The [Publish npm workflow](.github/workflows/publish-npm.yml) releases the Rush projects marked
 `shouldPublish: true` under `@hcengineering/*`, excluding manifests with `private: true`.
+They are published to the `@platformcollective` npm organization: `@hcengineering/core` is published as
+`@platformcollective/core`. Dependencies between published packages keep their source names as npm aliases, for
+example `"@hcengineering/platform": "npm:@platformcollective/platform@^0.8.0"`, so the published code, which imports
+`@hcengineering/*`, works unchanged. To use the packages with their source names, install them the same way, for
+example `npm install @hcengineering/core@npm:@platformcollective/core@^0.8.0`; then your code and the packages share
+one copy of each package.
 Before merging this workflow, a repository administrator must create the
 `npm-publish` GitHub environment, configure required maintainer reviewers, and restrict deployment refs to `v*` tags.
 GitHub can auto-create a missing environment without protection; referencing it in YAML does not enable reviews.
 Protect release tags as well. This workflow is the sole automated npm publishing path; the main CI workflow handles
 other release artifacts. The legacy local `bump.js --publish` option remains available but bypasses this workflow's gates.
 
-The npm scope owner must enable one of these access options for every package being released:
+An owner of the `@platformcollective` npm organization must enable one of these access options for every package
+being released:
 
-- Add a named Platform Collective maintainer to the `@hcengineering` npm organization with package/team write access.
+- Add a named Platform Collective maintainer to the `@platformcollective` npm organization with package/team write access.
   That maintainer can configure an appropriately scoped publishing token as the `npm-publish` environment's
   `NPM_TOKEN` secret, subject to npm's current publishing and 2FA policy.
 - Configure [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) for GitHub organization
@@ -305,14 +312,15 @@ The npm scope owner must enable one of these access options for every package be
   A new trusted publisher configuration expires unless its first publish succeeds within 2 days; delete and recreate
   it if it expires (see the linked npm documentation).
 
-`@hcengineering/gantt` does not yet exist on npm and remains in the release set. Its first publication requires an
-authorized scope maintainer's publishing token in the environment's `NPM_TOKEN` secret, or an initial manual publish
-before configuring its trusted publisher. Configure this before the first release: OIDC alone cannot create the package.
+No package exists under `@platformcollective` yet. The first release creates them, which requires an authorized
+organization member's publishing token in the environment's `NPM_TOKEN` secret, or an initial manual publish before
+configuring trusted publishers. Configure this before the first release: OIDC alone cannot create a package.
 
 Release steps:
 
-1. Choose one unused stable `major.minor.patch` version for all packages, greater than the published baseline
-   `0.7.423` and every package's current registry `latest`. Prerelease/build suffixes are rejected.
+1. Choose one unused stable `major.minor.patch` version for all packages: `0.8.0` for the first release under
+   `@platformcollective`, later versions greater than every package's current registry `latest`.
+   Prerelease/build suffixes are rejected.
 2. From the repository root, run `node common/scripts/bump.js <version>` to update package versions and internal
    dependency ranges together. Review and commit that release change separately before tagging.
 3. In a clean checkout, run the following checks with Node from `.nvmrc` and npm >=11.5.1:
@@ -333,8 +341,10 @@ Release steps:
 
 Validation emits the TypeScript declarations; building alone does not. The pack check verifies top-level `types` and
 nested `exports` types entries against npm's packed file list (`--check-types` uses `npm pack --dry-run --json --ignore-scripts`).
-Packing temporarily removes `workspace:` dependency prefixes and sets repository metadata to the GitHub publishing
-repository for provenance, then restores the manifests. The build checks the actual tarballs passed to publishing.
+Packing temporarily renames the packages to `@platformcollective/*`, removes `workspace:` dependency prefixes, turns
+dependencies on other published packages into npm aliases, and sets repository metadata to the GitHub publishing
+repository for provenance, then restores the manifests. It fails if a published package depends on an
+`@hcengineering/*` package that is not published. The build checks the actual tarballs passed to publishing.
 All registry/version checks complete before any publish; downgrades and registry errors abort that preflight.
 Already published matching versions are skipped on retries. Publish-time failures can still leave a partial release.
 `safe-publish.js` has no publishing dry-run mode: use `--check-types` for the non-publishing pack check.
