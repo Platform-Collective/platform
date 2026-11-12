@@ -77,7 +77,10 @@ function makeControl (channelLevel: DocNotifyLevel): { control: TriggerControl, 
   return { control: control as TriggerControl, findAll }
 }
 
-async function notifyMention (control: TriggerControl): Promise<Tx[]> {
+async function notifyMention (
+  control: TriggerControl,
+  targetClass: Ref<Class<Doc>> = activity.class.ActivityMessage
+): Promise<Tx[]> {
   const type = { _id: 'mention-type' as Ref<NotificationType> } as unknown as NotificationType
   return await getCommonNotificationTxes(
     control.ctx,
@@ -87,8 +90,8 @@ async function notifyMention (control: TriggerControl): Promise<Tx[]> {
     receiver,
     { socialId: 'social-b' as PersonId },
     rootMessage,
-    // Base class instead of the real ChatMessage class
-    activity.class.ActivityMessage,
+    // The source may use a base class instead of the loaded ChatMessage class
+    targetClass,
     'space-1' as Ref<Space>,
     Date.now(),
     new Map([[notification.providers.InboxNotificationProvider, [type]]]),
@@ -97,6 +100,17 @@ async function notifyMention (control: TriggerControl): Promise<Tx[]> {
 }
 
 describe('channel notification level for thread notifications', () => {
+  it('uses the loaded message class when a common notification names the Doc base class', async () => {
+    const { control, findAll } = makeControl('none')
+    expect(await notifyMention(control, core.class.Doc)).toEqual([])
+    expect(findAll).toHaveBeenCalledWith(
+      expect.anything(),
+      activity.class.ActivityMessage,
+      { _id: rootMessage },
+      expect.anything()
+    )
+  })
+
   it('blocks a thread mention when the channel level is none, even with a base attachedToClass', async () => {
     const { control, findAll } = makeControl('none')
     const res = await notifyMention(control)
