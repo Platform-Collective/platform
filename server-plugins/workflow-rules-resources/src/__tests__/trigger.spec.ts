@@ -1257,11 +1257,14 @@ describe('rev-8: TxApplyIf predicate runs through the real ApplyTxMiddleware', (
     // derived from core.class.TxApplyIf. Our fixtures stamp the class
     // directly, so equality is sufficient.
     const context: Any = {
+      workspace: {},
       hierarchy: { isDerived: (a: string, b: string) => a === b },
       modelDb: { findAllSync: () => [] },
+      branding: null,
       contextVars: {}
     }
-    const mw = await ApplyTxMiddleware.create(ctx, context, next)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mw = await ApplyTxMiddleware.create(ctx, context as any, next)
     return { mw, ctx }
   }
 
