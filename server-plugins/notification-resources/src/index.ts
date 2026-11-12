@@ -385,10 +385,13 @@ export async function pushInboxNotifications (
   const context = getDocNotifyContext(control, contexts, objectId, receiver.account)
   let docNotifyContextId: Ref<DocNotifyContext>
 
-  const levels = await getApplicableNotifyLevels(getNotifyLevelSource(ctx, control), objectId, receiver, [
-    context,
-    ...contexts
-  ])
+  const levels = await getApplicableNotifyLevels(
+    getNotifyLevelSource(ctx, control),
+    objectId,
+    receiver,
+    [context, ...contexts],
+    objectClass
+  )
   const allowed = isAllowedByNotifyLevels(
     levels,
     () => control.hierarchy.isDerived(_class, notification.class.MentionInboxNotification) || isMention?.() === true
@@ -589,7 +592,7 @@ function getNotifyLevelSource (ctx: MeasureContext, control: TriggerControl): No
   const restrictedLevels: DocNotifyLevel[] = ['mentions', 'none']
 
   return {
-    // Resolve by id only, using the base class, so a wrong attachedToClass cannot skip the lookup
+    // For activity message targets, resolve the persisted parent by id using the base class
     findParentMessage: (objectId) =>
       cached(`parent_${objectId}`, async () => {
         const parent = (

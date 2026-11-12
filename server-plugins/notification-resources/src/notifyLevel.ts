@@ -81,7 +81,7 @@ export interface NotifyLevelSource {
  * parent message, the receiver's level of the channel that contains it.
  *
  * The parent is resolved by id and its persisted class and attachedTo are
- * used; the class or channel claimed by the notification source is ignored.
+ * used for message targets. Non-message target classes skip the parent lookup.
  */
 export async function getApplicableNotifyLevels (
   source: NotifyLevelSource,
@@ -91,6 +91,7 @@ export async function getApplicableNotifyLevels (
   objectClass?: Ref<Class<Doc>>
 ): Promise<Array<DocNotifyLevel | undefined>> {
   const levels: Array<DocNotifyLevel | undefined> = [selectReceiverNotifyLevel(knownContexts, objectId, receiver)]
+  if (objectClass !== undefined && !source.isThreadParent(objectClass)) return levels
 
   const parent = await source.findParentMessage(objectId)
   if (parent === undefined || parent._id !== objectId || !source.isThreadParent(parent._class)) return levels
