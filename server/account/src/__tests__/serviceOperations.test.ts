@@ -1837,7 +1837,7 @@ describe('upgrade failure lifecycle', () => {
   }
 
   async function resetAttempts (): Promise<void> {
-    jest.mocked(decodeTokenVerbose).mockReturnValue({
+    jest.mocked(decodeTokenVerbose).mockReturnValueOnce({
       account: 'test-account' as AccountUuid,
       workspace: workspaceUuid,
       extra: { admin: 'true' }
