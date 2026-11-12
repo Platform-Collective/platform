@@ -301,7 +301,7 @@ describe('resolveAllowedLoops', () => {
     // Advanced editor is a valid way to forbid backward moves for a pair.
     // Regenerating the defaults on an empty stored value silently re-adds
     // "InProgress -> Backlog" on the next pair-level edit.
-    const stored: Array<{ from: string, to: string }> = []
+    const stored: Array<{ from: Ref<IssueStatus>, to: Ref<IssueStatus> }> = []
     const got = resolveAllowedLoops(stored, dst, { isCreate: false, resetRequested: false })
     // Same reference, same length (zero), still forbids every backward move.
     expect(got).toBe(stored)
@@ -469,19 +469,19 @@ describe('computePairApplyScope', () => {
   // `ApplyTxMiddleware` skips predicate evaluation when `scope` is
   // undefined (Michael's #238 rev-5 P2 analogue).
   it('keys on the unordered pair (A->B and B->A produce the same scope)', () => {
-    const forward = computePairApplyScope(PROJ_A as string, PROJ_B as string)
-    const reverse = computePairApplyScope(PROJ_B as string, PROJ_A as string)
+    const forward = computePairApplyScope(PROJ_A, PROJ_B)
+    const reverse = computePairApplyScope(PROJ_B, PROJ_A)
     expect(forward).toBe(reverse)
   })
 
   it('produces different scopes for different pairs', () => {
-    const ab = computePairApplyScope(PROJ_A as string, PROJ_B as string)
-    const ac = computePairApplyScope(PROJ_A as string, PROJ_C as string)
+    const ab = computePairApplyScope(PROJ_A, PROJ_B)
+    const ac = computePairApplyScope(PROJ_A, PROJ_C)
     expect(ab).not.toBe(ac)
   })
 
   it('returns a non-empty string so ApplyTxMiddleware evaluates predicates', () => {
-    const scope = computePairApplyScope(PROJ_A as string, PROJ_B as string)
+    const scope = computePairApplyScope(PROJ_A, PROJ_B)
     expect(typeof scope).toBe('string')
     expect(scope.length).toBeGreaterThan(0)
   })
@@ -499,7 +499,7 @@ describe('computeDuplicateNotMatchFilters', () => {
   // side (e.g. turning on bidirectionality for an existing one-way pair)
   // still guard that specific side.
   it('both-create emits a notMatch for each direction', () => {
-    const filters = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string, {
+    const filters = computeDuplicateNotMatchFilters(PROJ_A, PROJ_B, {
       createForward: true,
       createReverse: true
     })
@@ -513,7 +513,7 @@ describe('computeDuplicateNotMatchFilters', () => {
     // Forward row is already persisted; no new row is being created. The
     // save is a pure update, so no notMatch is required for it. Reverse
     // is also not being created. Result: empty.
-    const filters = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string, {
+    const filters = computeDuplicateNotMatchFilters(PROJ_A, PROJ_B, {
       createForward: false,
       createReverse: false
     })
@@ -526,7 +526,7 @@ describe('computeDuplicateNotMatchFilters', () => {
     // direction - two sessions turning on bidirectionality on the same
     // one-way pair both see `existingReverse === undefined`, so this
     // filter rejects the second apply.
-    const filters = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string, {
+    const filters = computeDuplicateNotMatchFilters(PROJ_A, PROJ_B, {
       createForward: false,
       createReverse: true
     })
@@ -537,7 +537,7 @@ describe('computeDuplicateNotMatchFilters', () => {
     // A hypothetical create-forward-only path; keeps the per-direction
     // contract symmetric and documents what the filter looks like without
     // the reverse side.
-    const filters = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string, {
+    const filters = computeDuplicateNotMatchFilters(PROJ_A, PROJ_B, {
       createForward: true,
       createReverse: false
     })
@@ -547,7 +547,7 @@ describe('computeDuplicateNotMatchFilters', () => {
   it('pure edit (neither create flag) emits no filters', () => {
     // Explicit coverage of the no-create branch: the server has nothing
     // to reject because no new row is being inserted.
-    const filters = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string, {
+    const filters = computeDuplicateNotMatchFilters(PROJ_A, PROJ_B, {
       createForward: false,
       createReverse: false
     })
@@ -555,11 +555,11 @@ describe('computeDuplicateNotMatchFilters', () => {
   })
 
   it('swapping the endpoints flips the filter pair but covers the same edge', () => {
-    const forward = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string, {
+    const forward = computeDuplicateNotMatchFilters(PROJ_A, PROJ_B, {
       createForward: true,
       createReverse: true
     })
-    const reverse = computeDuplicateNotMatchFilters(PROJ_B as string, PROJ_A as string, {
+    const reverse = computeDuplicateNotMatchFilters(PROJ_B, PROJ_A, {
       createForward: true,
       createReverse: true
     })

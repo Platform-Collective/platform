@@ -211,7 +211,7 @@ export function classifyPairings (
     incoming.push({ kind: 'incoming', other: r.linkedProject, inboundId: r._id, hasReverseHere: true })
   }
   for (const r of incomingRules) {
-    if (primaryOthers.has(r.space as string)) continue
+    if (primaryOthers.has(r.space)) continue
     const mirrored = localRules.some((lr) => lr.linkedProject === r.space && lr.linkKind !== 'subIssue')
     if (mirrored) continue
     incoming.push({ kind: 'incoming', other: r.space, inboundId: r._id, hasReverseHere: false })
@@ -296,8 +296,8 @@ export function aggregateStatusesAcrossTaskTypes (
   const seen = new Set<string>()
   for (const tt of tasks) {
     for (const sid of tt.statuses ?? []) {
-      if (seen.has(sid as string)) continue
-      seen.add(sid as string)
+      if (seen.has(sid)) continue
+      seen.add(sid)
       const resolved = resolve(sid)
       if (resolved !== undefined) out.push(resolved)
     }
