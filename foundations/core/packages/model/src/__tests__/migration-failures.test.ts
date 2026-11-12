@@ -44,3 +44,26 @@ it('includes failed high-level upgrades in the end-of-upgrade report without mar
   expect(getUpgradeFailures(state)).toEqual([{ plugin: 'notification', state: 'collaborators-v2' }])
   expect(state.get('notification')?.has('collaborators-v2')).not.toBe(true)
 })
+
+it('logs the failed upgrade name and original exception for diagnosis', async () => {
+  const failure = new Error('original migration exception')
+  const error = jest.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    await tryUpgrade('upgrade', new Map(), async () => ({}) as unknown as Client, 'tracker', [
+      {
+        state: 'add-search-view-options',
+        func: async () => {
+          throw failure
+        }
+      }
+    ])
+    expect(error).toHaveBeenCalledWith('Migration upgrade failed', {
+      plugin: 'tracker',
+      state: 'add-search-view-options',
+      error: failure.message,
+      stack: failure.stack
+    })
+  } finally {
+    error.mockRestore()
+  }
+})
