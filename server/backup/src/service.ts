@@ -60,7 +60,7 @@ export interface BackupConfig {
   KeepSnapshots: number
 }
 
-class BackupWorker {
+export class BackupWorker {
   downloadLimit: number = 2
   workspacesToBackup = new Map<WorkspaceUuid, WorkspaceInfoWithStatus>()
   rateLimiter: RateLimiter

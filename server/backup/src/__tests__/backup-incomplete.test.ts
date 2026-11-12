@@ -124,6 +124,9 @@ describe('backup completeness', () => {
       // The domain must be scanned again, and the backup must not be marked as up to date.
       expect(info.domainHashes[DOMAIN_TX]).toBeUndefined()
       expect(info.lastTxId).toBe('')
+      // Partial progress must be usable by the next run, without claiming a complete backup.
+      expect(await storage.exists('blob-info.json.gz')).toBe(true)
+      expect(info.backupSize).toBeGreaterThan(0)
 
       // The database is back: the next run picks up the skipped documents.
       workspace.state.failLoad = false
