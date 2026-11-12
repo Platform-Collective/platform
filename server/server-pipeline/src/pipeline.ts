@@ -73,6 +73,7 @@ import { generateToken } from '@hcengineering/server-token'
 import { createStorageDataAdapter } from './blobStorage'
 import { CommunicationMiddleware, type CommunicationApiFactory } from './communication'
 
+import { GifMiddleware } from '@hcengineering/server-gif'
 import { RatingMiddleware } from '@hcengineering/server-rating'
 
 /**
@@ -164,6 +165,7 @@ export function createServerPipeline (
       VersioningMiddleware.create,
       IdentifierMiddleware.create, // After ApplyTx to ensure that it pass
       RatingMiddleware.create, // Rating editing restrictions
+      GifMiddleware.create, // GIF library removal rule
       TransientMiddleware.create,
       TxMiddleware.create, // Store tx into transaction domain
       ...(opt.disableTriggers === true ? [] : [TriggersMiddleware.create]),
