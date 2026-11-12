@@ -35,7 +35,11 @@ describe('canOverwriteFilteredView', () => {
     expect(canOverwriteFilteredView(savedView, [owner], otherPath, 2)).toBe(false)
   })
 
-  it('denies when no filter is applied', () => {
-    expect(canOverwriteFilteredView(savedView, [owner], path, 0)).toBe(false)
+  it('allows the creator to clear all saved filters', () => {
+    expect(canOverwriteFilteredView(savedView, [owner], path, 0)).toBe(true)
+  })
+
+  it('does not allow another user to clear all saved filters', () => {
+    expect(canOverwriteFilteredView(savedView, [other], path, 0)).toBe(false)
   })
 })
