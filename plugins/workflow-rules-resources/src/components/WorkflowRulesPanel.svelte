@@ -21,11 +21,7 @@
   import workflowRules from '../plugin'
   import PairProjectEditor from './PairProjectEditor.svelte'
   import EditWorkflowRule from './EditWorkflowRule.svelte'
-  import {
-    canEditPair as canEditPairPure,
-    classifyPairings,
-    type PairClassifierRule
-  } from '../pure'
+  import { canEditPair as canEditPairPure, classifyPairings, type PairClassifierRule } from '../pure'
 
   export let currentSpace: Ref<Project>
 
@@ -109,9 +105,11 @@
     return { kind: 'primary', other: p.other, forward, reverse } as PrimaryPairing
   })
   $: incomingPairings = classified.incoming.map((p) => {
-    const inbound = (p.hasReverseHere
-      ? localRules.find((r) => r._id === p.inboundId)
-      : incomingRules.find((r) => r._id === p.inboundId))!
+    const inbound = (
+      p.hasReverseHere
+        ? localRules.find((r) => r._id === p.inboundId)
+        : incomingRules.find((r) => r._id === p.inboundId)
+    )!
     return { kind: 'incoming', other: p.other, inbound, hasReverseHere: p.hasReverseHere } as IncomingPairing
   })
 
@@ -121,14 +119,9 @@
   // side flipped and the other stale. Gate both actions on membership of
   // the paired project too (shared `canEditPairPure` helper so tests cover
   // the same decision).
-  function canEditPair (p: PrimaryPairing): boolean {
+  function canEditPair(p: PrimaryPairing): boolean {
     const me = getCurrentAccount().uuid
-    return canEditPairPure(
-      currentProject,
-      projectsById[p.other as string],
-      me,
-      p.reverse !== undefined
-    )
+    return canEditPairPure(currentProject, projectsById[p.other as string], me, p.reverse !== undefined)
   }
 
   function openCreate(): void {
@@ -236,12 +229,7 @@
   <Breadcrumbs items={[{ icon: workflowRules.icon.WorkflowRule, label: workflowRules.string.WorkflowRules }]} />
   <svelte:fragment slot="actions">
     {#if pluginEnabled && canEditHere}
-      <Button
-        icon={IconAdd}
-        label={workflowRules.string.PairProjects}
-        kind={'primary'}
-        on:click={openCreate}
-      />
+      <Button icon={IconAdd} label={workflowRules.string.PairProjects} kind={'primary'} on:click={openCreate} />
     {/if}
   </svelte:fragment>
 </Header>
@@ -260,7 +248,16 @@
     {:else if primaryPairings.length === 0 && incomingPairings.length === 0}
       <div class="wfr-empty">
         <div class="wfr-empty-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            width="48"
+            height="48"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.25"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <rect x="2.5" y="4" width="7" height="7" rx="1.5" />
             <rect x="14.5" y="13" width="7" height="7" rx="1.5" />
             <path d="M9.5 7.5 h3 a2.5 2.5 0 0 1 2.5 2.5 v3" opacity="0.6" />
@@ -406,7 +403,11 @@
     width: 100%;
     box-sizing: border-box;
   }
-  .wfr-section { display: flex; flex-direction: column; gap: 0.5rem; }
+  .wfr-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
   .wfr-section-head {
     font-size: 0.75rem;
     color: var(--theme-dark-color);
@@ -433,11 +434,22 @@
     background: var(--theme-list-row-color);
     border: 1px solid var(--theme-divider-color);
     border-radius: 0.75rem;
-    transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+    transition:
+      border-color 180ms ease,
+      background 180ms ease,
+      transform 180ms ease;
   }
-  .wfr-card:hover { border-color: var(--theme-caret-color); background: var(--theme-bg-accent-color); }
-  .wfr-card.disabled { opacity: 0.6; }
-  .wfr-card.incoming { opacity: 0.9; border-style: dashed; }
+  .wfr-card:hover {
+    border-color: var(--theme-caret-color);
+    background: var(--theme-bg-accent-color);
+  }
+  .wfr-card.disabled {
+    opacity: 0.6;
+  }
+  .wfr-card.incoming {
+    opacity: 0.9;
+    border-style: dashed;
+  }
   .wfr-card-main {
     display: grid;
     grid-template-columns: minmax(14rem, 2fr) 7rem 10rem 7rem;
@@ -446,9 +458,18 @@
     cursor: pointer;
     align-items: center;
   }
-  .wfr-card-main.readonly { cursor: default; }
-  .wfr-cell { display: flex; align-items: center; gap: 0.625rem; min-width: 0; }
-  .wfr-cell.project { gap: 0.75rem; }
+  .wfr-card-main.readonly {
+    cursor: default;
+  }
+  .wfr-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 0;
+  }
+  .wfr-cell.project {
+    gap: 0.75rem;
+  }
   .wfr-proj-badge {
     display: inline-flex;
     align-items: center;
@@ -464,7 +485,11 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
-  .wfr-proj-text { display: flex; flex-direction: column; min-width: 0; }
+  .wfr-proj-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
   .wfr-proj-name {
     color: var(--theme-caption-color);
     font-weight: 500;
@@ -496,10 +521,25 @@
     color: var(--theme-caption-color);
     border-color: transparent;
   }
-  .wfr-direction.one-way { background: transparent; color: var(--theme-dark-color); }
-  .wfr-count { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--theme-caption-color); font-size: 0.9375rem; }
-  .wfr-count-sep { color: var(--theme-dark-color); font-size: 0.875rem; }
-  .wfr-count-label { color: var(--theme-dark-color); font-size: 0.75rem; margin-left: 0.25rem; }
+  .wfr-direction.one-way {
+    background: transparent;
+    color: var(--theme-dark-color);
+  }
+  .wfr-count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--theme-caption-color);
+    font-size: 0.9375rem;
+  }
+  .wfr-count-sep {
+    color: var(--theme-dark-color);
+    font-size: 0.875rem;
+  }
+  .wfr-count-label {
+    color: var(--theme-dark-color);
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
+  }
   .wfr-dot {
     width: 0.5rem;
     height: 0.5rem;
@@ -510,7 +550,9 @@
   .wfr-dot.on {
     background: var(--theme-progress-color);
     opacity: 1;
-    box-shadow: 0 0 0 2px var(--theme-list-row-color), 0 0 0 3px var(--theme-progress-color);
+    box-shadow:
+      0 0 0 2px var(--theme-list-row-color),
+      0 0 0 3px var(--theme-progress-color);
   }
   .wfr-card-actions {
     display: flex;
@@ -531,10 +573,23 @@
     border-radius: 0.875rem;
     background: var(--theme-list-row-color);
   }
-  .wfr-empty-icon { color: var(--theme-dark-color); opacity: 0.55; }
-  .wfr-empty-title { color: var(--theme-caption-color); font-size: 1rem; font-weight: 600; }
-  .wfr-empty-sub { color: var(--theme-dark-color); font-size: 0.875rem; max-width: 28rem; }
-  .wfr-empty-cta { margin-top: 0.75rem; }
+  .wfr-empty-icon {
+    color: var(--theme-dark-color);
+    opacity: 0.55;
+  }
+  .wfr-empty-title {
+    color: var(--theme-caption-color);
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .wfr-empty-sub {
+    color: var(--theme-dark-color);
+    font-size: 0.875rem;
+    max-width: 28rem;
+  }
+  .wfr-empty-cta {
+    margin-top: 0.75rem;
+  }
   .wfr-notice {
     display: flex;
     flex-direction: column;
@@ -544,6 +599,13 @@
     border-radius: 0.75rem;
     background: var(--theme-list-row-color);
   }
-  .wfr-notice-title { color: var(--theme-caption-color); font-weight: 600; font-size: 0.9375rem; }
-  .wfr-notice-sub { color: var(--theme-dark-color); font-size: 0.875rem; }
+  .wfr-notice-title {
+    color: var(--theme-caption-color);
+    font-weight: 600;
+    font-size: 0.9375rem;
+  }
+  .wfr-notice-sub {
+    color: var(--theme-dark-color);
+    font-size: 0.875rem;
+  }
 </style>

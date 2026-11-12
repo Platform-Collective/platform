@@ -103,10 +103,7 @@ export function autoMatch (src: StatusLike, targets: StatusLike[]): Ref<IssueSta
 }
 
 /** Build the default forward map by auto-matching every source status. */
-export function buildAutoMap (
-  src: StatusLike[],
-  dst: StatusLike[]
-): Record<string, Ref<IssueStatus>> {
+export function buildAutoMap (src: StatusLike[], dst: StatusLike[]): Record<string, Ref<IssueStatus>> {
   const out: Record<string, Ref<IssueStatus>> = {}
   for (const s of src) {
     const t = autoMatch(s, dst)
@@ -115,10 +112,7 @@ export function buildAutoMap (
   return out
 }
 
-const TERMINAL_CATEGORIES = new Set<string>([
-  'task:statusCategory:Won',
-  'task:statusCategory:Lost'
-])
+const TERMINAL_CATEGORIES = new Set<string>(['task:statusCategory:Won', 'task:statusCategory:Lost'])
 
 /**
  * Build the default `allowedLoops` for a target status list. Terminal
@@ -126,9 +120,7 @@ const TERMINAL_CATEGORIES = new Set<string>([
  * closed work. Every non-terminal pair `(i, j)` with `i > j` by rank is an
  * allowed backward move.
  */
-export function buildAllowedLoops (
-  dstStatuses: StatusLike[]
-): Array<{ from: Ref<IssueStatus>, to: Ref<IssueStatus> }> {
+export function buildAllowedLoops (dstStatuses: StatusLike[]): Array<{ from: Ref<IssueStatus>, to: Ref<IssueStatus> }> {
   const nonTerminal = dstStatuses.filter((s) => s.category === undefined || !TERMINAL_CATEGORIES.has(s.category))
   const loops: Array<{ from: Ref<IssueStatus>, to: Ref<IssueStatus> }> = []
   for (let i = 0; i < nonTerminal.length; i++) {
@@ -323,26 +315,38 @@ export function aggregateStatusesAcrossTaskTypes (
  * This is a pure helper so `pure.spec.ts` can prove the unordered-key
  * invariant without a DOM.
  */
-export function computePairApplyScope (
-  endpointA: string,
-  endpointB: string
-): string {
+export function computePairApplyScope (endpointA: string, endpointB: string): string {
   const endpoints = [endpointA, endpointB].sort()
   return `workflow-rules.pair:${JSON.stringify(endpoints)}`
 }
 
 /**
  * Shape of the duplicate-prevention `notMatch` filters an editor must
- * attach to the apply when creating a pair. Both directions are rejected,
- * so a sibling created in another session between picker-open and
- * commit-time causes the server to drop the whole apply.
+ * attach to the apply when a new rule is being inserted. The filters are
+ * emitted per-direction, so edits that only add one side (e.g. turning on
+ * bidirectionality for an existing one-way pair) still guard that side.
+ *
+ * - `createForward` flags whether the apply creates the forward rule
+ *   (A -> B). When true, add a filter that rejects the apply if any
+ *   forward rule already exists between the same ordered pair.
+ * - `createReverse` flags whether the apply creates the reverse rule
+ *   (B -> A). Same shape, swapped endpoints.
+ *
+ * Returns the empty array when neither direction is being created
+ * (pure edit of existing rules). The caller attaches each filter with
+ * `ops.notMatch(WorkflowRule, filter)`.
  */
 export function computeDuplicateNotMatchFilters (
   currentSpace: string,
-  linkedProject: string
+  linkedProject: string,
+  opts: { createForward: boolean, createReverse: boolean }
 ): Array<{ space: string, linkedProject: string }> {
-  return [
-    { space: currentSpace, linkedProject },
-    { space: linkedProject, linkedProject: currentSpace }
-  ]
+  const filters: Array<{ space: string, linkedProject: string }> = []
+  if (opts.createForward) {
+    filters.push({ space: currentSpace, linkedProject })
+  }
+  if (opts.createReverse) {
+    filters.push({ space: linkedProject, linkedProject: currentSpace })
+  }
+  return filters
 }

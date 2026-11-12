@@ -136,7 +136,7 @@ describe('isCandidateTarget', () => {
 })
 
 const s = (over: Partial<StatusLike> & { name: string, category?: string }): StatusLike => ({
-  id: (`s:${over.name}:${over.category ?? '-'}`) as Ref<IssueStatus>,
+  id: `s:${over.name}:${over.category ?? '-'}` as Ref<IssueStatus>,
   category: over.category,
   ...over
 })
@@ -235,12 +235,12 @@ describe('canEditFromHere', () => {
   })
 
   it('allows editing when the forward rule is in the current project (the primary side)', () => {
-    expect(canEditFromHere({ space: PROJ_A as Ref<Project> }, PROJ_A)).toBe(true)
+    expect(canEditFromHere({ space: PROJ_A }, PROJ_A)).toBe(true)
   })
 
   it('refuses editing when the forward rule is in another project (opened from the linked side)', () => {
     // This is the "editing from the opposite endpoint" case Michael flagged.
-    expect(canEditFromHere({ space: PROJ_B as Ref<Project> }, PROJ_A)).toBe(false)
+    expect(canEditFromHere({ space: PROJ_B }, PROJ_A)).toBe(false)
   })
 })
 
@@ -274,7 +274,10 @@ describe('resolveAllowedLoops', () => {
     s({ name: 'Backlog', category: 'task:statusCategory:UnStarted' }),
     s({ name: 'In Progress', category: 'task:statusCategory:Active' })
   ]
-  const existing = [{ from: dst[1].id, to: dst[0].id }, { from: dst[0].id, to: dst[1].id }]
+  const existing = [
+    { from: dst[1].id, to: dst[0].id },
+    { from: dst[0].id, to: dst[1].id }
+  ]
 
   it('preserves the stored loops on edit when no reset was requested', () => {
     const got = resolveAllowedLoops(existing, dst, { isCreate: false, resetRequested: false })
@@ -299,7 +302,7 @@ describe('resolveAllowedLoops', () => {
     // Regenerating the defaults on an empty stored value silently re-adds
     // "InProgress -> Backlog" on the next pair-level edit.
     const stored: Array<{ from: string, to: string }> = []
-    const got = resolveAllowedLoops(stored as any, dst, { isCreate: false, resetRequested: false })
+    const got = resolveAllowedLoops(stored, dst, { isCreate: false, resetRequested: false })
     // Same reference, same length (zero), still forbids every backward move.
     expect(got).toBe(stored)
     expect(got).toHaveLength(0)
@@ -337,9 +340,7 @@ describe('classifyPairings', () => {
   // routed to the primary project to edit.
 
   it('a local subIssue rule with a matching reverse in the other project is primary', () => {
-    const local: PairClassifierRule[] = [
-      { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B, linkKind: 'subIssue' }
-    ]
+    const local: PairClassifierRule[] = [{ _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B, linkKind: 'subIssue' }]
     const incoming: PairClassifierRule[] = [
       { _id: RULE_2, space: PROJ_B, linkedProject: PROJ_A, linkKind: 'parentIssue' }
     ]
@@ -355,12 +356,8 @@ describe('classifyPairings', () => {
     // Michael's rev-1 reproducer: opening project B which stores the
     // parentIssue rule must classify it as incoming so the editor is NOT
     // offered here.
-    const local: PairClassifierRule[] = [
-      { _id: RULE_2, space: PROJ_B, linkedProject: PROJ_A, linkKind: 'parentIssue' }
-    ]
-    const incoming: PairClassifierRule[] = [
-      { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B, linkKind: 'subIssue' }
-    ]
+    const local: PairClassifierRule[] = [{ _id: RULE_2, space: PROJ_B, linkedProject: PROJ_A, linkKind: 'parentIssue' }]
+    const incoming: PairClassifierRule[] = [{ _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B, linkKind: 'subIssue' }]
     const got = classifyPairings(PROJ_B, local, incoming)
     expect(got.primary).toHaveLength(0)
     expect(got.incoming).toHaveLength(1)
@@ -371,9 +368,7 @@ describe('classifyPairings', () => {
 
   it('a pure one-way inbound rule (no local counterpart) is incoming', () => {
     const local: PairClassifierRule[] = []
-    const incoming: PairClassifierRule[] = [
-      { _id: RULE_3, space: PROJ_C, linkedProject: PROJ_A, linkKind: 'subIssue' }
-    ]
+    const incoming: PairClassifierRule[] = [{ _id: RULE_3, space: PROJ_C, linkedProject: PROJ_A, linkKind: 'subIssue' }]
     const got = classifyPairings(PROJ_A, local, incoming)
     expect(got.primary).toHaveLength(0)
     expect(got.incoming).toHaveLength(1)
@@ -383,20 +378,14 @@ describe('classifyPairings', () => {
   it('does not double-count a bidirectional edge (reverse here + incoming)', () => {
     // We're in B. The parentIssue rule lives here; the matching subIssue
     // rule is incoming. Only one incoming entry should surface.
-    const local: PairClassifierRule[] = [
-      { _id: RULE_2, space: PROJ_B, linkedProject: PROJ_A, linkKind: 'parentIssue' }
-    ]
-    const incoming: PairClassifierRule[] = [
-      { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B, linkKind: 'subIssue' }
-    ]
+    const local: PairClassifierRule[] = [{ _id: RULE_2, space: PROJ_B, linkedProject: PROJ_A, linkKind: 'parentIssue' }]
+    const incoming: PairClassifierRule[] = [{ _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B, linkKind: 'subIssue' }]
     const got = classifyPairings(PROJ_B, local, incoming)
     expect(got.incoming).toHaveLength(1)
   })
 
   it('does not treat a local subIssue rule as its own incoming', () => {
-    const local: PairClassifierRule[] = [
-      { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B, linkKind: 'subIssue' }
-    ]
+    const local: PairClassifierRule[] = [{ _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B, linkKind: 'subIssue' }]
     const got = classifyPairings(PROJ_A, local, [])
     expect(got.primary).toHaveLength(1)
     expect(got.incoming).toHaveLength(0)
@@ -455,25 +444,18 @@ describe('aggregateStatusesAcrossTaskTypes', () => {
   })
 
   it('collects statuses from every task type, in declaration order', () => {
-    const got = aggregateStatusesAcrossTaskTypes(
-      [{ statuses: [SID_A, SID_B] }, { statuses: [SID_C] }],
-      resolve
-    )
+    const got = aggregateStatusesAcrossTaskTypes([{ statuses: [SID_A, SID_B] }, { statuses: [SID_C] }], resolve)
     expect(got.map((s) => s.id)).toEqual([SID_A, SID_B, SID_C])
   })
 
   it('deduplicates a status shared between multiple task types', () => {
-    const got = aggregateStatusesAcrossTaskTypes(
-      [{ statuses: [SID_A, SID_B] }, { statuses: [SID_B, SID_C] }],
-      resolve
-    )
+    const got = aggregateStatusesAcrossTaskTypes([{ statuses: [SID_A, SID_B] }, { statuses: [SID_B, SID_C] }], resolve)
     expect(got.map((s) => s.id)).toEqual([SID_A, SID_B, SID_C])
   })
 
   it('skips statuses the resolver cannot find', () => {
-    const got = aggregateStatusesAcrossTaskTypes(
-      [{ statuses: [SID_A, SID_B] }],
-      (id) => (id === SID_A ? { id, name: 'A', category: undefined } : undefined)
+    const got = aggregateStatusesAcrossTaskTypes([{ statuses: [SID_A, SID_B] }], (id) =>
+      id === SID_A ? { id, name: 'A', category: undefined } : undefined
     )
     expect(got.map((s) => s.id)).toEqual([SID_A])
   })
@@ -513,17 +495,74 @@ describe('computeDuplicateNotMatchFilters', () => {
   // Backs the commit-time duplicate rejection: even if the picker filter
   // loaded only clean candidates, another session creating the sibling
   // pair between open-time and commit-time must still be rejected by the
-  // server. Two filters: one for A->B, one for B->A.
-  it('emits a notMatch for each direction', () => {
-    const filters = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string)
+  // server. Filters are emitted per-direction so edits that add only one
+  // side (e.g. turning on bidirectionality for an existing one-way pair)
+  // still guard that specific side.
+  it('both-create emits a notMatch for each direction', () => {
+    const filters = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string, {
+      createForward: true,
+      createReverse: true
+    })
     expect(filters).toHaveLength(2)
     expect(filters).toContainEqual({ space: PROJ_A, linkedProject: PROJ_B })
     expect(filters).toContainEqual({ space: PROJ_B, linkedProject: PROJ_A })
   })
 
+  it('forward-only create emits only the forward filter', () => {
+    // Edit of an existing one-way pair that does NOT turn on bidirectionality.
+    // Forward row is already persisted; no new row is being created. The
+    // save is a pure update, so no notMatch is required for it. Reverse
+    // is also not being created. Result: empty.
+    const filters = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string, {
+      createForward: false,
+      createReverse: false
+    })
+    expect(filters).toEqual([])
+  })
+
+  it('reverse-only create emits only the reverse filter', () => {
+    // Editing a one-way A->B pair into bidirectional. Forward is already
+    // persisted; reverse (B->A) is a new insert. Only guard the reverse
+    // direction - two sessions turning on bidirectionality on the same
+    // one-way pair both see `existingReverse === undefined`, so this
+    // filter rejects the second apply.
+    const filters = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string, {
+      createForward: false,
+      createReverse: true
+    })
+    expect(filters).toEqual([{ space: PROJ_B, linkedProject: PROJ_A }])
+  })
+
+  it('forward-only create (bidi-off edit path) emits only the forward filter', () => {
+    // A hypothetical create-forward-only path; keeps the per-direction
+    // contract symmetric and documents what the filter looks like without
+    // the reverse side.
+    const filters = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string, {
+      createForward: true,
+      createReverse: false
+    })
+    expect(filters).toEqual([{ space: PROJ_A, linkedProject: PROJ_B }])
+  })
+
+  it('pure edit (neither create flag) emits no filters', () => {
+    // Explicit coverage of the no-create branch: the server has nothing
+    // to reject because no new row is being inserted.
+    const filters = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string, {
+      createForward: false,
+      createReverse: false
+    })
+    expect(filters).toHaveLength(0)
+  })
+
   it('swapping the endpoints flips the filter pair but covers the same edge', () => {
-    const forward = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string)
-    const reverse = computeDuplicateNotMatchFilters(PROJ_B as string, PROJ_A as string)
+    const forward = computeDuplicateNotMatchFilters(PROJ_A as string, PROJ_B as string, {
+      createForward: true,
+      createReverse: true
+    })
+    const reverse = computeDuplicateNotMatchFilters(PROJ_B as string, PROJ_A as string, {
+      createForward: true,
+      createReverse: true
+    })
     // Set-equal: same two filters, either order.
     const asKey = (f: { space: string, linkedProject: string }): string => `${f.space}->${f.linkedProject}`
     expect(forward.map(asKey).sort()).toEqual(reverse.map(asKey).sort())

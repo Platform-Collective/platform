@@ -6,13 +6,24 @@
   import task, { type ProjectType, type TaskType } from '@hcengineering/task'
   import tracker, { type IssueStatus, type Project } from '@hcengineering/tracker'
   import { IssueStatusIcon } from '@hcengineering/tracker-resources'
-  import { Button, DropdownLabels, EditBox, Icon, Label, Toggle, IconArrowRight, type DropdownTextItem } from '@hcengineering/ui'
+  import {
+    Button,
+    DropdownLabels,
+    EditBox,
+    Icon,
+    Label,
+    Toggle,
+    IconArrowRight,
+    type DropdownTextItem
+  } from '@hcengineering/ui'
   import { type WorkflowRule } from '@hcengineering/workflow-rules'
   import { createEventDispatcher } from 'svelte'
 
   import workflowRules from '../plugin'
   import {
     aggregateStatusesAcrossTaskTypes,
+    computeDuplicateNotMatchFilters,
+    computePairApplyScope,
     isCandidateTarget,
     resolveAllowedLoops,
     resolvePairLinkKinds,
@@ -252,14 +263,22 @@
   function setForward(sourceId: string, detail: unknown): void {
     const t = (detail ?? '') as string
     const next = { ...forwardMap }
-    if (t === '') { delete next[sourceId] } else { next[sourceId] = t }
+    if (t === '') {
+      delete next[sourceId]
+    } else {
+      next[sourceId] = t
+    }
     forwardMap = next
   }
 
   function setReverse(sourceId: string, detail: unknown): void {
     const t = (detail ?? '') as string
     const next = { ...reverseMap }
-    if (t === '') { delete next[sourceId] } else { next[sourceId] = t }
+    if (t === '') {
+      delete next[sourceId]
+    } else {
+      next[sourceId] = t
+    }
     reverseMap = next
   }
 
@@ -302,9 +321,7 @@
   // apply still rejects it (commit-time notMatch below), but the editor
   // button should surface the conflict before the user commits.
   $: isLinkedStillCandidate =
-    isEditing ||
-    (linkedProject !== undefined &&
-      candidateProjects.some((p) => p._id === linkedProject))
+    isEditing || (linkedProject !== undefined && candidateProjects.some((p) => p._id === linkedProject))
 
   $: canSave =
     !primaryMismatch &&
@@ -322,16 +339,14 @@
     // `loopsResetRequested` flag; the Advanced editor owns per-rule loop
     // editing. Both sides go through `resolveAllowedLoops` so the Jest
     // spec can exercise the same preserve/regenerate decision.
-    const forwardLoops = resolveAllowedLoops(
-      existingForward?.allowedLoops,
-      targetStatuses as unknown as StatusLike[],
-      { isCreate: existingForward === undefined, resetRequested: loopsResetRequested }
-    )
-    const reverseLoops = resolveAllowedLoops(
-      existingReverse?.allowedLoops,
-      sourceStatuses as unknown as StatusLike[],
-      { isCreate: existingReverse === undefined, resetRequested: loopsResetRequested }
-    )
+    const forwardLoops = resolveAllowedLoops(existingForward?.allowedLoops, targetStatuses as unknown as StatusLike[], {
+      isCreate: existingForward === undefined,
+      resetRequested: loopsResetRequested
+    })
+    const reverseLoops = resolveAllowedLoops(existingReverse?.allowedLoops, sourceStatuses as unknown as StatusLike[], {
+      isCreate: existingReverse === undefined,
+      resetRequested: loopsResetRequested
+    })
     const linkKinds = resolvePairLinkKinds()
 
     // Commit-time duplicate guard. The incoming-rule picker filter hides
@@ -343,18 +358,23 @@
     // serialize against the same apply key. The scope must be a non-
     // empty string: `ApplyTxMiddleware` skips predicate evaluation
     // entirely when `scope` is undefined.
-    const endpoints = [currentSpace as string, linkedProject as string].sort()
-    const scope = `workflow-rules.pair:${JSON.stringify(endpoints)}`
+    //
+    // Guard per direction: a pure edit emits no filters; a create emits
+    // both; editing a one-way pair into bidirectional creates a new
+    // reverse rule, so the reverse direction must still be guarded even
+    // though the forward is persisted. Two sessions opening the same
+    // one-way pair and both enabling bidirectionality both see
+    // `existingReverse === undefined`; the reverse filter rejects the
+    // second apply.
+    const createForward = existingForward === undefined
+    const createReverse = bidirectional && existingReverse === undefined
+    const scope = computePairApplyScope(currentSpace as string, linkedProject as string)
     const ops = client.apply(scope)
-    if (!isEditing) {
-      ops.notMatch(workflowRules.class.WorkflowRule, {
-        space: currentSpace,
-        linkedProject
-      })
-      ops.notMatch(workflowRules.class.WorkflowRule, {
-        space: linkedProject,
-        linkedProject: currentSpace
-      })
+    for (const filter of computeDuplicateNotMatchFilters(currentSpace as string, linkedProject as string, {
+      createForward,
+      createReverse
+    })) {
+      ops.notMatch(workflowRules.class.WorkflowRule, filter)
     }
     // Preserve `enabled` on edit (don't force-resume a paused pair);
     // default to true on create.
@@ -414,7 +434,7 @@
 
 <Card
   label={isEditing ? workflowRules.string.EditPair : workflowRules.string.PairProjects}
-  canSave={canSave}
+  {canSave}
   okLabel={workflowRules.string.Save}
   okAction={save}
   on:close
@@ -450,7 +470,16 @@
     {:else if linkedProject === undefined}
       <div class="wfr-placeholder">
         <div class="wfr-placeholder-icon">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            width="40"
+            height="40"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <circle cx="6" cy="6" r="2.5" />
             <circle cx="18" cy="18" r="2.5" />
             <path d="M8 7 l9 10" opacity="0.5" stroke-dasharray="2 2" />
@@ -471,12 +500,7 @@
         <div class="wfr-section-head">
           <div class="wfr-section-title"><Label label={workflowRules.string.StatusMapping} /></div>
           <div class="wfr-section-caption"><Label label={workflowRules.string.StatusMappingHint} /></div>
-          <Button
-            label={workflowRules.string.ResetMapping}
-            kind="ghost"
-            size="small"
-            on:click={resetMappings}
-          />
+          <Button label={workflowRules.string.ResetMapping} kind="ghost" size="small" on:click={resetMappings} />
         </div>
         <div class="wfr-map">
           {#each sourceStatuses as src (src.id)}
@@ -581,8 +605,15 @@
     background: var(--theme-list-row-color);
     border: 1px solid var(--theme-divider-color);
   }
-  .wfr-field { display: flex; flex-direction: column; gap: 0.375rem; }
-  .wfr-field.compact { align-items: flex-start; min-width: 7rem; }
+  .wfr-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+  .wfr-field.compact {
+    align-items: flex-start;
+    min-width: 7rem;
+  }
   .wfr-field-label {
     font-size: 0.75rem;
     color: var(--theme-dark-color);
@@ -600,18 +631,38 @@
     border-radius: 0.75rem;
     color: var(--theme-dark-color);
   }
-  .wfr-placeholder-icon { color: var(--theme-dark-color); opacity: 0.6; }
-  .wfr-placeholder-title { color: var(--theme-caption-color); font-weight: 500; }
-  .wfr-placeholder-sub { font-size: 0.875rem; }
-  .wfr-section { display: flex; flex-direction: column; gap: 0.75rem; }
-  .wfr-section-head { display: flex; flex-direction: column; gap: 0.125rem; padding: 0 0.25rem; }
+  .wfr-placeholder-icon {
+    color: var(--theme-dark-color);
+    opacity: 0.6;
+  }
+  .wfr-placeholder-title {
+    color: var(--theme-caption-color);
+    font-weight: 500;
+  }
+  .wfr-placeholder-sub {
+    font-size: 0.875rem;
+  }
+  .wfr-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .wfr-section-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0 0.25rem;
+  }
   .wfr-section-title {
     font-size: 0.9375rem;
     font-weight: 600;
     color: var(--theme-caption-color);
     letter-spacing: -0.01em;
   }
-  .wfr-section-caption { font-size: 0.8125rem; color: var(--theme-dark-color); }
+  .wfr-section-caption {
+    font-size: 0.8125rem;
+    color: var(--theme-dark-color);
+  }
   .wfr-map {
     display: flex;
     flex-direction: column;
@@ -630,11 +681,27 @@
     border-radius: 0.5rem;
     transition: background 180ms ease;
   }
-  .wfr-map-row:hover { background: var(--theme-list-row-color); }
-  .wfr-map-row.terminal { opacity: 0.72; }
-  .wfr-slot { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
-  .wfr-slot.src { font-weight: 500; }
-  .wfr-slot.dst { display: flex; flex-direction: column; align-items: stretch; gap: 0.25rem; }
+  .wfr-map-row:hover {
+    background: var(--theme-list-row-color);
+  }
+  .wfr-map-row.terminal {
+    opacity: 0.72;
+  }
+  .wfr-slot {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  .wfr-slot.src {
+    font-weight: 500;
+  }
+  .wfr-slot.dst {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+  }
   .wfr-slot-label {
     color: var(--theme-caption-color);
     font-size: 0.9375rem;
@@ -678,5 +745,7 @@
     font-size: 0.8125rem;
     color: var(--theme-dark-color);
   }
-  .grow { min-width: 0; }
+  .grow {
+    min-width: 0;
+  }
 </style>

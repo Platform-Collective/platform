@@ -6,7 +6,11 @@
   import task, { type ProjectType, type TaskType } from '@hcengineering/task'
   import tracker, { type IssueStatus, type Project } from '@hcengineering/tracker'
   import { Button, DropdownLabels, Label, Toggle, type DropdownTextItem } from '@hcengineering/ui'
-  import { type WorkflowRule, type WorkflowRuleAllowedLoop, type WorkflowRuleLinkKind } from '@hcengineering/workflow-rules'
+  import {
+    type WorkflowRule,
+    type WorkflowRuleAllowedLoop,
+    type WorkflowRuleLinkKind
+  } from '@hcengineering/workflow-rules'
   import { createEventDispatcher } from 'svelte'
 
   import workflowRules from '../plugin'
@@ -131,9 +135,7 @@
   // a status that is not in the current target TaskType - the server guard
   // would ignore those anyway, but keeping them in the stored doc leaks
   // stale references.
-  $: loopsValid = allowedLoops.every(
-    (l) => l.from !== l.to && targetSet.has(l.from) && targetSet.has(l.to)
-  )
+  $: loopsValid = allowedLoops.every((l) => l.from !== l.to && targetSet.has(l.from) && targetSet.has(l.to))
 
   $: canSave = !primaryMismatch && Object.keys(forwardMap).length > 0 && !loadingStatuses && loopsValid
 
@@ -150,7 +152,7 @@
 
 <Card
   label={workflowRules.string.EditRule}
-  canSave={canSave}
+  {canSave}
   okLabel={workflowRules.string.Save}
   okAction={save}
   on:close
@@ -162,9 +164,7 @@
         <div class="field-label"><Label label={workflowRules.string.LinkKind} /></div>
         <div class="field-value">
           <Label
-            label={linkKindDisplay() === 'subIssue'
-              ? workflowRules.string.SubIssue
-              : workflowRules.string.ParentIssue}
+            label={linkKindDisplay() === 'subIssue' ? workflowRules.string.SubIssue : workflowRules.string.ParentIssue}
           />
         </div>
       </div>
@@ -239,12 +239,7 @@
                 autoSelect={false}
                 on:selected={(e) => setLoopTo(i, e.detail)}
               />
-              <Button
-                label={workflowRules.string.Remove}
-                kind="ghost"
-                size="small"
-                on:click={() => removeLoop(i)}
-              />
+              <Button label={workflowRules.string.Remove} kind="ghost" size="small" on:click={() => removeLoop(i)} />
               {#if invalid}
                 <div class="loop-error">
                   <Label
@@ -263,18 +258,65 @@
 </Card>
 
 <style lang="scss">
-  .body { display: flex; flex-direction: column; gap: 1.5rem; min-width: 36rem; }
-  .row { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: end; }
-  .field { display: flex; flex-direction: column; gap: 0.25rem; }
-  .field.toggle { justify-items: start; }
-  .field-label { font-size: 0.8125rem; color: var(--theme-dark-color); font-weight: 500; }
-  .field-value { color: var(--theme-caption-color); font-size: 0.9375rem; }
-  .section { display: flex; flex-direction: column; gap: 0.5rem; }
-  .section-head { display: flex; justify-content: space-between; align-items: center; }
-  h4 { margin: 0; font-size: 0.9375rem; color: var(--theme-caption-color); }
-  .hint { margin: 0; font-size: 0.8125rem; color: var(--theme-dark-color); }
-  .matrix { width: 100%; border-collapse: collapse; }
-  .matrix th, .matrix td { padding: 0.5rem; border-bottom: 1px solid var(--theme-divider-color); text-align: left; }
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 36rem;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    align-items: end;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .field.toggle {
+    justify-items: start;
+  }
+  .field-label {
+    font-size: 0.8125rem;
+    color: var(--theme-dark-color);
+    font-weight: 500;
+  }
+  .field-value {
+    color: var(--theme-caption-color);
+    font-size: 0.9375rem;
+  }
+  .section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  h4 {
+    margin: 0;
+    font-size: 0.9375rem;
+    color: var(--theme-caption-color);
+  }
+  .hint {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--theme-dark-color);
+  }
+  .matrix {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .matrix th,
+  .matrix td {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--theme-divider-color);
+    text-align: left;
+  }
   .matrix th {
     font-size: 0.75rem;
     color: var(--theme-dark-color);
@@ -282,17 +324,43 @@
     letter-spacing: 0.05em;
     font-weight: 500;
   }
-  .matrix tr:last-child td { border-bottom: none; }
-  .status-cell { display: flex; align-items: center; gap: 0.5rem; }
-  .status-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--theme-progress-color); }
-  .loops { display: flex; flex-direction: column; gap: 0.5rem; }
+  .matrix tr:last-child td {
+    border-bottom: none;
+  }
+  .status-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .status-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--theme-progress-color);
+  }
+  .loops {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
   .loop-row {
     display: grid;
     grid-template-columns: 1fr auto 1fr auto;
     gap: 0.5rem;
     align-items: center;
   }
-  .loop-row.invalid { outline: 1px solid var(--theme-warning-color); border-radius: 0.25rem; padding: 0.125rem; }
-  .loop-error { grid-column: 1 / -1; font-size: 0.75rem; color: var(--theme-warning-color); }
-  .arrow { color: var(--theme-dark-color); font-size: 0.8125rem; }
+  .loop-row.invalid {
+    outline: 1px solid var(--theme-warning-color);
+    border-radius: 0.25rem;
+    padding: 0.125rem;
+  }
+  .loop-error {
+    grid-column: 1 / -1;
+    font-size: 0.75rem;
+    color: var(--theme-warning-color);
+  }
+  .arrow {
+    color: var(--theme-dark-color);
+    font-size: 0.8125rem;
+  }
 </style>
