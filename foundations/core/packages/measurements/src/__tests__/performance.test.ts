@@ -130,15 +130,26 @@ describe('performance', () => {
       // NoMetricsContext should have minimal overhead
       const noMetricsCtx = new NoMetricsContext(noParamsLogger)
 
+      // Keep Jest bookkeeping outside the timed workload: assertion throughput and
+      // runner scheduling are not NoMetricsContext overhead.
+      let completed = 0
+      async function work (): Promise<void> {
+        const end = performance.now() + 1
+        while (performance.now() < end) {
+          // Simulate the same millisecond of work on both paths.
+        }
+        completed++
+      }
+
       async function measure (withContext: boolean): Promise<number> {
         const start = performance.now()
         for (let i = 0; i < iterations; i++) {
           if (withContext) {
             await noMetricsCtx.with('operation', { iteration: i }, async () => {
-              await simulateWork(1)
+              await work()
             })
           } else {
-            await simulateWork(1)
+            await work()
           }
         }
         return performance.now() - start
@@ -148,6 +159,7 @@ describe('performance', () => {
       await measure(false)
       await measure(true)
       const rawTimes: number[] = []
+      const overheads: number[] = []
       const noMetricsTimes: number[] = []
       for (let sample = 0; sample < 5; sample++) {
         if (sample % 2 === 0) {
@@ -157,14 +169,19 @@ describe('performance', () => {
           noMetricsTimes.push(await measure(true))
           rawTimes.push(await measure(false))
         }
+        overheads.push(((noMetricsTimes[sample] - rawTimes[sample]) / rawTimes[sample]) * 100)
       }
+
+      expect(completed).toBe(iterations * 12) // Both warm-ups and all ten timed batches ran.
 
       // Compare medians so an isolated scheduling pause does not determine the overhead.
       const noMetricsTime = noMetricsTimes.sort((a, b) => a - b)[2]
       const rawTime = rawTimes.sort((a, b) => a - b)[2]
 
       const overhead = noMetricsTime - rawTime
-      const overheadPercentage = (overhead / rawTime) * 100
+      // Pair neighbouring samples before taking the median so changes in runner
+      // load between pairs do not change the relative weighting of the two paths.
+      const overheadPercentage = overheads.sort((a, b) => a - b)[2]
 
       console.log(`\n📊 NoMetricsContext Overhead (${iterations} iterations):`)
       console.log(`  Raw time: ${rawTime.toFixed(2)}ms`)
