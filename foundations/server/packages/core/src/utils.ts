@@ -267,6 +267,24 @@ export function loadBrandingMap (brandingPath?: string): BrandingMap {
   return brandings
 }
 
+// LookupMiddleware omits matching scalar query fields to reduce response size. In-process clients
+// need the same reconstruction as network clients before the documents can be updated or proxied.
+function restoreQueryFields<T extends Doc> (doc: T, query: DocumentQuery<T>, options?: FindOptions<T>): T {
+  const projection = options?.projection as Record<string, number> | undefined
+  const inclusive = Object.values(projection ?? {}).some((value) => value === 1)
+  let restored = doc
+  for (const [key, value] of Object.entries(query)) {
+    if (key.startsWith('$') || key.includes('.')) continue
+    if (projection?.[key] === 0) continue
+    if (inclusive && projection?.[key] !== 1 && key !== '_id' && key !== '_class') continue
+    if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') continue
+    if (Object.prototype.hasOwnProperty.call(doc, key)) continue
+    if (restored === doc) restored = { ...doc }
+    Object.defineProperty(restored, key, { value, enumerable: true, configurable: true, writable: true })
+  }
+  return restored
+}
+
 export function wrapPipeline (
   ctx: MeasureContext,
   pipeline: Pipeline,
@@ -297,7 +315,7 @@ export function wrapPipeline (
       const result = await pipeline.findAll(ctx, _class, query, options)
       return toFindResult(
         result.map((v) => {
-          return pipeline.context.hierarchy.updateLookupMixin(_class, v, options)
+          return pipeline.context.hierarchy.updateLookupMixin(_class, restoreQueryFields(v, query, options), options)
         }),
         result.total
       )
@@ -306,7 +324,7 @@ export function wrapPipeline (
       const result = await pipeline.findAll(ctx, _class, query, { ...options, limit: 1 })
       return toFindResult(
         result.map((v) => {
-          return pipeline.context.hierarchy.updateLookupMixin(_class, v, options)
+          return pipeline.context.hierarchy.updateLookupMixin(_class, restoreQueryFields(v, query, options), options)
         }),
         result.total
       )[0]
@@ -317,14 +335,21 @@ export function wrapPipeline (
         _class,
         query,
         options,
-        async (pagination, sort, projection, pageLimit) =>
-          await pipeline.findAll(ctx, _class, query, {
+        async (pagination, sort, projection, pageLimit) => {
+          const fetchOptions = {
             ...findOptions,
             sort,
             projection,
             limit: pageLimit,
             pagination
-          }),
+          }
+          const result = await pipeline.findAll(ctx, _class, query, fetchOptions)
+          return toFindResult(
+            result.map((doc) => restoreQueryFields(doc, query, fetchOptions)),
+            result.total,
+            result.lookupMap
+          )
+        },
         { hierarchy: pipeline.context.hierarchy }
       )
       return {

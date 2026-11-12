@@ -244,7 +244,12 @@ export async function tryUpgrade (
     try {
       await upgrades.func(_client, mode)
     } catch (err: any) {
-      console.error(err)
+      console.error('Migration upgrade failed', {
+        plugin,
+        state: upgrades.state,
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined
+      })
       Analytics.handleError(err)
       const failures = upgradeFailures.get(state) ?? []
       failures.push({ plugin, state: upgrades.state })

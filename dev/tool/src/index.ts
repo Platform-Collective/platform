@@ -216,7 +216,8 @@ export function devTool (
   async function withAccountDatabase (
     f: (db: AccountDB) => Promise<any>,
     dbOverride?: string,
-    nsOverride?: string
+    nsOverride?: string,
+    propagateFailure: boolean = false
   ): Promise<void> {
     const uri = dbOverride ?? getAccountDBUrl()
     const ns = nsOverride ?? process.env.ACCOUNT_DB_NS
@@ -225,10 +226,15 @@ export function devTool (
     try {
       await f(accountDb)
     } catch (err: any) {
+      if (propagateFailure) throw err
       console.error(err)
+    } finally {
+      try {
+        await closeAccountsDb()
+      } finally {
+        await shutdownMongo()
+      }
     }
-    closeAccountsDb()
-    await shutdownMongo()
   }
 
   async function withStorage (f: (storageAdapter: StorageAdapter) => Promise<any>): Promise<void> {
@@ -400,35 +406,38 @@ export function devTool (
       const measureCtx = new MeasureMetricsContext('upgrade-workspace', {})
       const accountClient = getAccountClient(getToolToken(wsInfo.uuid))
       const queue = getPlatformQueue('tool', info.region)
-      const wsProducer = queue.getProducer<QueueWorkspaceMessage>(toolCtx, QueueTopic.Workspace)
-      await upgradeWorkspace(
-        measureCtx,
-        version,
-        txes,
-        migrateOperations,
-        accountClient,
-        coreWsInfo,
-        consoleModelLogger,
-        wsProducer,
-        async () => {},
-        forceUpdate,
-        forceIndexes,
-        true
-      )
+      try {
+        const wsProducer = queue.getProducer<QueueWorkspaceMessage>(toolCtx, QueueTopic.Workspace)
+        await upgradeWorkspace(
+          measureCtx,
+          version,
+          txes,
+          migrateOperations,
+          accountClient,
+          coreWsInfo,
+          consoleModelLogger,
+          wsProducer,
+          async () => {},
+          forceUpdate,
+          forceIndexes,
+          true
+        )
 
-      await updateWorkspaceInfo(measureCtx, db, null, getToolToken(), {
-        workspaceUuid: info.uuid,
-        event: 'upgrade-done',
-        version,
-        progress: 100
-      })
+        await updateWorkspaceInfo(measureCtx, db, null, getToolToken(), {
+          workspaceUuid: info.uuid,
+          event: 'upgrade-done',
+          version,
+          progress: 100
+        })
 
-      console.log(metricsToString(measureCtx.metrics, 'upgrade', 60))
+        console.log(metricsToString(measureCtx.metrics, 'upgrade', 60))
 
-      await wsProducer.send(measureCtx, info.uuid, [workspaceEvents.upgraded()])
-      await queue.shutdown()
-      console.log('upgrade-workspace done')
-    })
+        await wsProducer.send(measureCtx, info.uuid, [workspaceEvents.upgraded()])
+        console.log('upgrade-workspace done')
+      } finally {
+        await queue.shutdown()
+      }
+    }, undefined, undefined, true)
   }
 
   program
@@ -437,7 +446,12 @@ export function devTool (
     .option('-f|--force [force]', 'Force update', true)
     .option('-i|--indexes [indexes]', 'Force indexes rebuild', false)
     .action(async (workspace, cmd: { force: boolean, indexes: boolean }) => {
-      await doUpgrade(toolCtx, workspace, cmd.force, cmd.indexes)
+      try {
+        await doUpgrade(toolCtx, workspace, cmd.force, cmd.indexes)
+      } catch (err) {
+        toolCtx.error('failed to upgrade workspace', { err })
+        process.exitCode = 1
+      }
     })
 
   program
@@ -938,14 +952,12 @@ export function devTool (
           const storageConfig = storageConfigFromEnv()
 
           const queue = !cmd.noqueue ? getPlatformQueue('tool', ws.region) : undefined
-          const wsProducer = queue?.getProducer<QueueWorkspaceMessage>(toolCtx, QueueTopic.Workspace)
-
-          await wsProducer?.send(toolCtx, ws.uuid, [workspaceEvents.restoring()])
-
-          const workspaceStorage: StorageAdapter = buildStorageFromConfig(storageConfig)
-
+          let workspaceStorage: StorageAdapter | undefined
           let pipeline: Pipeline | undefined
           try {
+            const wsProducer = queue?.getProducer<QueueWorkspaceMessage>(toolCtx, QueueTopic.Workspace)
+            await wsProducer?.send(toolCtx, ws.uuid, [workspaceEvents.restoring()])
+            workspaceStorage = buildStorageFromConfig(storageConfig)
             pipeline = await createBackupPipeline(toolCtx, dbUrl, txes, {
               externalStorage: workspaceStorage,
               usePassedCtx: true
@@ -960,8 +972,7 @@ export function devTool (
               null
             )
             if (pipeline === undefined) {
-              toolCtx.error('failed to restore, pipeline is undefined', { workspaceId })
-              return
+              throw new Error(`failed to restore ${workspaceId}, pipeline is undefined`)
             }
             await sendTransactorEvent(workspace, 'force-maintenance')
 
@@ -983,12 +994,20 @@ export function devTool (
 
             console.log('workspace restored')
             await wsProducer?.send(toolCtx, ws.uuid, [workspaceEvents.restored()])
-          } catch (err) {
-            toolCtx.error('failed to restore', { err })
+          } finally {
+            try {
+              await pipeline?.close()
+            } finally {
+              try {
+                await queue?.shutdown()
+              } finally {
+                await workspaceStorage?.close()
+              }
+            }
           }
-          await pipeline?.close()
-          await queue?.shutdown()
-          await workspaceStorage?.close()
+        }, undefined, undefined, true).catch((err) => {
+          toolCtx.error('failed to restore', { err })
+          process.exitCode = 1
         })
       }
     )
