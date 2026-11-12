@@ -196,7 +196,7 @@ describe('fulltext index initialization', () => {
       process.env.ELASTIC_ANALYZER = analyzer
       ;(getMetadata as jest.Mock).mockImplementation((key: string) => (key === 'index-version' ? 'v3' : undefined))
       const indexName = `storage_index_v3${analyzer === 'rebuilt_english' ? '' : `_${analyzer}`}`
-      const { client, context, ctx } = setup({ storage_index_v2: {} })
+      const { client, ctx } = setup({ storage_index_v2: {} })
       client.indices.create.mockResolvedValueOnce({ body: { acknowledged: true } }).mockRejectedValueOnce(
         Object.assign(new Error('index already exists'), {
           meta: { statusCode: 400, body: { error: { type: 'resource_already_exists_exception' } } }
