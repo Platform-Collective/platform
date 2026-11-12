@@ -50,7 +50,7 @@ export function registerProviders (
   app.keys = [serverSecret]
   // SESSION_COOKIE_DOMAIN=.example.com lets an OIDC flow begin on one
   // subdomain and finish on another. It changes only the cookie scope; see the
-  // package README for the independent TLS and browser-cookie configuration.
+  // SESSION_COOKIES.md for the independent TLS and browser-cookie configuration.
   const decision = resolveSessionCookieOptions(process.env.SESSION_COOKIE_DOMAIN, process.env.SESSION_COOKIE_SECURE)
   for (const warning of decision.warnings) {
     ctx.warn(warning.message, { value: warning.value })
