@@ -14,7 +14,7 @@
 -->
 <script lang="ts">
   import contact, { Contact, Person } from '@hcengineering/contact'
-  import { AssigneeBox } from '@hcengineering/contact-resources'
+  import { AssigneeBox, Avatar, getPersonByPersonRefStore } from '@hcengineering/contact-resources'
   import { Ref } from '@hcengineering/core'
   import { getClient } from '@hcengineering/presentation'
   import { ActionIcon, EditBox, Icon, IconDelete, resizeObserver } from '@hcengineering/ui'
@@ -36,6 +36,9 @@
   export let excludedPersons: Ref<Contact>[] = []
 
   const client = getClient()
+
+  $: assignedPersonStore = getPersonByPersonRefStore(isOffice(room) && room.person != null ? [room.person] : [])
+  $: assignedPerson = isOffice(room) && room.person != null ? $assignedPersonStore.get(room.person) : undefined
 
   const SHADOW_OFFSET = 3
   const SHADOW_BLUR = 2
@@ -208,16 +211,24 @@
           <AssigneeBox
             _class={contact.class.Person}
             excluded={excludedPersons}
-            shouldShowName={false}
             showNavigate={false}
             width={'100%'}
             height={'100%'}
             label={contact.string.Person}
             value={room.person}
-            avatarSize={'full'}
             allowDeselect={true}
             on:change={changePerson}
-          />
+          >
+            <svelte:fragment slot="content">
+              <Avatar
+                person={assignedPerson}
+                name={assignedPerson?.name}
+                size={'full'}
+                variant={'roundedRect'}
+                adaptiveName
+              />
+            </svelte:fragment>
+          </AssigneeBox>
         {/if}
       </div>
     {/each}
@@ -242,13 +253,3 @@
     {/if}
   </div>
 </div>
-
-<style lang="scss">
-  .floorGrid-configureRoom__field :global(.employee-presenter),
-  .floorGrid-configureRoom__field :global(.employee-presenter .antiPresenter),
-  .floorGrid-configureRoom__field :global(.employee-presenter .ap-icon) {
-    width: 100%;
-    height: 100%;
-    justify-content: center;
-  }
-</style>
