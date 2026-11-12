@@ -17,7 +17,7 @@
  * Channel names are compared ignoring surrounding whitespace and letter case.
  */
 export function normalizeChannelName (name: string): string {
-  return name.trim().toLocaleLowerCase()
+  return name.trim().toLowerCase()
 }
 
 /**

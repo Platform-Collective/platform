@@ -437,6 +437,11 @@ export function getReferenceMessage (doc: MarkupNode, parentNode: MarkupNode | n
 
   if (getTextLength(doc) <= fullReferenceMessageMaxLength) return jsonToMarkup(doc)
 
+  // Only text blocks accept an inline ellipsis. Containers require block children.
+  if (parentNode.type !== MarkupNodeType.paragraph && parentNode.type !== MarkupNodeType.heading) {
+    return jsonToMarkup(parentNode)
+  }
+
   return jsonToMarkup({
     ...parentNode,
     content: [...(parentNode.content ?? []), { type: MarkupNodeType.text, text: ' …' }]
