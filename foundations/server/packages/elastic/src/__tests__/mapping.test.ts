@@ -66,6 +66,30 @@ function setup (indexes: Record<string, any> = {}): TestSetup {
   return { client, context, ctx: context as unknown as MeasureContext }
 }
 
+// Representative persisted mapping; do not derive the expected contract from adapter internals.
+function ownedIndex (analyzer = 'rebuilt_english', base = 'storage_index', version = 'v2'): any {
+  return {
+    mappings: {
+      _meta: { huly_fulltext: { base, version, analyzer } },
+      properties: {
+        fulltextSummary: { type: 'text', analyzer },
+        workspaceId: { type: 'keyword', index: true },
+        id: { type: 'keyword', index: true },
+        _class: { type: 'keyword', index: true },
+        attachedTo: { type: 'keyword', index: true },
+        attachedToClass: { type: 'keyword', index: true },
+        space: { type: 'keyword', index: true },
+        'core:class:Doc%createdBy': { type: 'keyword', index: true },
+        'core:class:Doc%createdOn': { type: 'date', format: 'epoch_millis', index: true },
+        modifiedBy: { type: 'keyword', index: true },
+        modifiedOn: { type: 'date', format: 'epoch_millis', index: true },
+        'core:class:Doc%modifiedBy': { type: 'keyword', index: true },
+        'core:class:Doc%modifiedOn': { type: 'date', format: 'epoch_millis', index: true }
+      }
+    }
+  }
+}
+
 function rejectedAnalyzer (analyzer: string): Error {
   const reason = `analyzer [${analyzer}] has not been configured in mappings`
   return Object.assign(new Error(reason), {
@@ -111,6 +135,7 @@ describe('fulltext index initialization', () => {
           analysis: expect.objectContaining({ analyzer: { rebuilt_english: expect.any(Object) } })
         }),
         mappings: expect.objectContaining({
+          _meta: { huly_fulltext: { base: 'storage_index', version: 'v2', analyzer: 'rebuilt_english' } },
           properties: expect.objectContaining({ fulltextSummary: { type: 'text', analyzer: 'rebuilt_english' } })
         })
       }
@@ -136,6 +161,7 @@ describe('fulltext index initialization', () => {
         body: {
           settings: undefined,
           mappings: expect.objectContaining({
+            _meta: { huly_fulltext: { base: 'custom_index', version: 'v3', analyzer } },
             properties: expect.objectContaining({ fulltextSummary: { type: 'text', analyzer } })
           })
         }
@@ -151,7 +177,7 @@ describe('fulltext index initialization', () => {
     'keeps the old index and continues reads and writes when %s is unavailable',
     async (analyzer) => {
       process.env.ELASTIC_ANALYZER = analyzer
-      const { client, context, ctx } = setup({ storage_index_v1: {}, storage_index_v2: {} })
+      const { client, context, ctx } = setup({ storage_index_v1: {}, storage_index_v2: ownedIndex() })
       client.indices.create.mockRejectedValue(rejectedAnalyzer(analyzer))
       const adapter = await createElasticAdapter('http://localhost:9200')
       // Returning true lets WorkspaceManager's startup loop finish and its consumers start.
@@ -179,8 +205,9 @@ describe('fulltext index initialization', () => {
   it('retains the newest existing analyzer index when there is no default index', async () => {
     process.env.ELASTIC_ANALYZER = 'unknown_analyzer'
     const { client, ctx } = setup({
-      storage_index_v2_french: { settings: { index: { creation_date: '20' } } },
-      storage_index_v2_german: { settings: { index: { creation_date: '10' } } }
+      storage_index_v2_french: { ...ownedIndex('french'), settings: { index: { creation_date: '20' } } },
+      storage_index_v2_german: { ...ownedIndex('german'), settings: { index: { creation_date: '10' } } },
+      storage_index_v2_archive: { settings: { index: { creation_date: '99' } } }
     })
     client.indices.create.mockRejectedValue(rejectedAnalyzer('unknown_analyzer'))
     const adapter = await createElasticAdapter('http://localhost:9200')
@@ -194,7 +221,7 @@ describe('fulltext index initialization', () => {
     process.env.ELASTIC_ANALYZER = 'unknown_analyzer'
     ;(getMetadata as jest.Mock).mockImplementation((key: string) => (key === 'index-name' ? 'custom_index' : 'v3'))
     const { client, ctx } = setup({
-      custom_index_v3_french: { settings: { index: { creation_date: '10' } } },
+      custom_index_v3_french: { ...ownedIndex('french', 'custom_index', 'v3'), settings: { index: { creation_date: '10' } } },
       custom_index_v2: { settings: { index: { creation_date: '20' } } },
       custom_index_unrelated: { settings: { index: { creation_date: '30' } } }
     })
@@ -218,9 +245,9 @@ describe('fulltext index initialization', () => {
 
   it.each([
     ['unmarked archive', {}],
-    ['colliding version', { _meta: { huly_fulltext: { base: 'storage_index', version: 'v2_archive' } } }],
-    ['another application', { _meta: { huly_fulltext: { base: 'another_index', version: 'v2' } } }],
-    ['incompatible mapping', { _meta: { huly_fulltext: { base: 'storage_index', version: 'v2' } }, properties: {} }]
+    ['colliding version', ownedIndex('rebuilt_english', 'storage_index', 'v2_archive').mappings],
+    ['another application', ownedIndex('archive', 'another_index').mappings],
+    ['incompatible mapping', { _meta: { huly_fulltext: { base: 'storage_index', version: 'v2', analyzer: 'archive' } }, properties: {} }]
   ])('rejects an analyzer fallback with %s', async (_description, mappings) => {
     process.env.ELASTIC_ANALYZER = 'unknown_analyzer'
     const { client, ctx } = setup({ storage_index_v2_archive: { mappings } })
@@ -238,7 +265,7 @@ describe('fulltext index initialization', () => {
       process.env.ELASTIC_ANALYZER = analyzer
       ;(getMetadata as jest.Mock).mockImplementation((key: string) => (key === 'index-version' ? 'v3' : undefined))
       const indexName = `storage_index_v3${analyzer === 'rebuilt_english' ? '' : `_${analyzer}`}`
-      const { client, ctx } = setup({ storage_index_v2: {} })
+      const { client, ctx } = setup({ storage_index_v2: ownedIndex() })
       client.indices.create.mockResolvedValueOnce({ body: { acknowledged: true } }).mockRejectedValueOnce(
         Object.assign(new Error('index already exists'), {
           meta: { statusCode: 400, body: { error: { type: 'resource_already_exists_exception' } } }
@@ -264,7 +291,7 @@ describe('fulltext index initialization', () => {
     'retains the existing index when the analyzer rejection is reported as a %s root cause',
     async (type) => {
       process.env.ELASTIC_ANALYZER = 'icu_analyzer'
-      const { client, context, ctx } = setup({ storage_index_v2: {} })
+      const { client, context, ctx } = setup({ storage_index_v2: ownedIndex() })
       client.indices.create.mockRejectedValue(
         Object.assign(new Error('failed to create index'), {
           meta: {
@@ -293,7 +320,7 @@ describe('fulltext index initialization', () => {
     'retries an unrelated HTTP 400 (%s) without pinning to an old index',
     async (type) => {
       process.env.ELASTIC_ANALYZER = 'russian'
-      const { client, context, ctx } = setup({ storage_index_v2: {} })
+      const { client, context, ctx } = setup({ storage_index_v2: ownedIndex() })
       const error = Object.assign(new Error('invalid request'), {
         meta: { statusCode: 400, body: { error: { type, reason: 'invalid request' } } }
       })
@@ -328,7 +355,7 @@ describe('fulltext index initialization', () => {
 
   it('leaves old indexes untouched on a transient creation failure and allows a retry', async () => {
     process.env.ELASTIC_ANALYZER = 'russian'
-    const { client, ctx } = setup({ storage_index_v2: {} })
+    const { client, ctx } = setup({ storage_index_v2: ownedIndex() })
     const handleError = jest.spyOn(Analytics, 'handleError')
     client.indices.create.mockRejectedValueOnce(Object.assign(new Error('unavailable'), { meta: { statusCode: 503 } }))
     const adapter = await createElasticAdapter('http://localhost:9200')
@@ -357,7 +384,7 @@ describe('fulltext index initialization', () => {
 
   it('does not delete old indices while or after creating the new index', async () => {
     process.env.ELASTIC_ANALYZER = 'russian'
-    const { client, ctx } = setup({ storage_index_v2: {} })
+    const { client, ctx } = setup({ storage_index_v2: ownedIndex() })
     let finishCreation!: () => void
     let notifyCreation!: () => void
     const creationStarted = new Promise<void>((resolve) => {
@@ -389,7 +416,7 @@ describe('fulltext index initialization', () => {
   })
 
   it('validates a same-name mapping migration before deleting the current index', async () => {
-    const { client, context, ctx } = setup({ storage_index_v2: {} })
+    const { client, context, ctx } = setup({ storage_index_v2: ownedIndex() })
     client.indices.getMapping.mockResolvedValue({ body: { storage_index_v2: { mappings: { properties: {} } } } })
     const adapter = await createElasticAdapter('http://localhost:9200')
     expect(await adapter.initMapping(ctx)).toBe(true)
@@ -407,9 +434,9 @@ describe('fulltext index initialization', () => {
     })
   })
 
-  it('keeps a same-name index when analyzer validation fails during mapping migration', async () => {
+  it('uses a compatible owned default when the same-name mapping is incompatible', async () => {
     process.env.ELASTIC_ANALYZER = 'icu_analyzer'
-    const { client, context, ctx } = setup({ storage_index_v2: {}, storage_index_v2_icu_analyzer: {} })
+    const { client, context, ctx } = setup({ storage_index_v2: ownedIndex(), storage_index_v2_icu_analyzer: {} })
     client.indices.getMapping.mockResolvedValue({
       body: { storage_index_v2_icu_analyzer: { mappings: { properties: {} } } }
     })
@@ -425,6 +452,6 @@ describe('fulltext index initialization', () => {
     expect(client.indices.create).not.toHaveBeenCalled()
     expect(context.error).toHaveBeenCalledTimes(1)
     await adapter.index(ctx, workspace, doc)
-    expect(client.index).toHaveBeenCalledWith(expect.objectContaining({ index: 'storage_index_v2_icu_analyzer' }))
+    expect(client.index).toHaveBeenCalledWith(expect.objectContaining({ index: 'storage_index_v2' }))
   })
 })

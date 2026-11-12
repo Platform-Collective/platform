@@ -115,7 +115,9 @@ class ElasticAdapter implements FullTextAdapter {
   private readonly getDocId: (workspaceId: WorkspaceUuid, fulltext: Ref<Doc>) => Ref<Doc>
   private indexName: string
   private usingExistingIndex = false
-  private readonly mappings: ReturnType<typeof getMappings>
+  private readonly mappings: ReturnType<typeof getMappings> & {
+    _meta: { huly_fulltext: { base: string, version: string, analyzer: string } }
+  }
 
   constructor (
     private readonly client: Client,
@@ -124,7 +126,10 @@ class ElasticAdapter implements FullTextAdapter {
     private readonly analyzer: string = DEFAULT_FULLTEXT_ANALYZER
   ) {
     this.indexName = `${indexBaseName}_${indexVersion}${analyzer === DEFAULT_FULLTEXT_ANALYZER ? '' : `_${analyzer}`}`
-    this.mappings = getMappings(this.analyzer)
+    this.mappings = {
+      ...getMappings(this.analyzer),
+      _meta: { huly_fulltext: { base: indexBaseName, version: indexVersion, analyzer } }
+    }
     this.getFulltextDocId = (workspaceId, doc) => `${doc}@${workspaceId}` as Ref<Doc>
     this.getDocId = (workspaceId, fulltext) => fulltext.slice(0, -1 * (workspaceId.length + 1)) as Ref<Doc>
   }
@@ -178,14 +183,23 @@ class ElasticAdapter implements FullTextAdapter {
         if (!analyzerRejected) {
           return false
         }
-        // A retained prefix match may belong to another application or mapping
-        // version. Only this version's default/analyzer index names are eligible.
+        // Names alone cannot distinguish an analyzer suffix from another version
+        // or application's index. Require explicit ownership and a usable mapping.
         const versionName = `${this.indexBaseName}_${this.indexVersion}`
-        const candidates = indexes.filter(
-          (name) =>
-            name === versionName ||
-            (name.startsWith(`${versionName}_`) && /^[a-z0-9_-]+$/.test(name.slice(versionName.length + 1)))
-        )
+        const candidates = indexes.filter((name) => {
+          const mapping = existingVersions.body[name].mappings
+          const owner = mapping?._meta?.huly_fulltext
+          if (
+            owner?.base !== this.indexBaseName || owner?.version !== this.indexVersion ||
+            typeof owner?.analyzer !== 'string' || !/^[a-z0-9_-]+$/.test(owner.analyzer)
+          ) return false
+          const expectedName = `${versionName}${owner.analyzer === DEFAULT_FULLTEXT_ANALYZER ? '' : `_${owner.analyzer}`}`
+          if (name !== expectedName) return false
+          return Object.entries(getMappings(owner.analyzer).properties).every(([propName, propType]) => {
+            const existing = mapping.properties?.[propName]
+            return existing !== undefined && Object.entries(propType).every(([key, value]) => existing[key] === value)
+          })
+        })
         if (candidates.length === 0) return false
         this.indexName = candidates.includes(indexName)
           ? indexName
