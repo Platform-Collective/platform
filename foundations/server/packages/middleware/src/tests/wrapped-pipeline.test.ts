@@ -43,6 +43,11 @@ async function fixture (): Promise<any> {
     findAll: jest.fn(async (_ctx: unknown, _class: unknown, _query: unknown, options?: { projection?: Record<string, number> }) => {
       const result = { ...doc }
       if (options?.projection?.name === 0) Reflect.deleteProperty(result, 'name')
+      if (options?.projection?.name === 1) {
+        for (const key of Object.keys(result)) {
+          if (key !== '_id' && key !== '_class' && key !== 'name') Reflect.deleteProperty(result, key)
+        }
+      }
       return toFindResult([result], 7)
     }),
     tx: received
@@ -88,7 +93,11 @@ it('keeps operator queries, the returned class and proxy options intact for mixi
   const mixin = 'test:mixin:View' as Ref<any>
   const options = { projection: { name: 1 }, lookup: {} }
   await client.findAll(mixin, { _id: { $in: [doc._id] } }, options)
-  expect(hierarchy.updateLookupMixin).toHaveBeenCalledWith(mixin, expect.objectContaining(doc), options)
+  expect(hierarchy.updateLookupMixin).toHaveBeenCalledWith(
+    mixin,
+    { _id: doc._id, _class: doc._class, name: doc.name },
+    options
+  )
 })
 
 it('does not reconstruct an explicitly excluded scalar field', async () => {
@@ -96,4 +105,11 @@ it('does not reconstruct an explicitly excluded scalar field', async () => {
   const result = await client.findAll(doc._class, { _id: doc._id, name: doc.name }, { projection: { name: 0 } })
   expect(result[0]._id).toBe(doc._id)
   expect(result[0]).not.toHaveProperty('name')
+})
+
+it('keeps unrequested scalar fields out of an inclusive projection', async () => {
+  const { client, doc } = await fixture()
+  const result = await client.findAll(doc._class, { name: doc.name, space: doc.space }, { projection: { name: 1 } })
+  expect(result[0].name).toBe(doc.name)
+  expect(result[0]).not.toHaveProperty('space')
 })
