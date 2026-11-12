@@ -1931,6 +1931,8 @@ describe('upgrade failure lifecycle', () => {
     expect(status.mode).toBe('upgrading')
     await event('upgrade-done')
     expect(status).toMatchObject({ mode: 'active', versionMinor: 2 })
+    expect(status.upgradeFailedVersion).toBeNull()
+    expect(status.processingMessage).toBe('')
   })
 
   test('an operator reset retries a failed upgrade with the same version', async () => {
@@ -1938,7 +1940,21 @@ describe('upgrade failure lifecycle', () => {
     status.upgradeFailedVersion = '1.1.0'
     status.processingAttempts = 4
     await resetAttempts()
-    expect(status).toMatchObject({ mode: 'upgrading', processingAttempts: 0, lastProcessingTime: NOW - 30 * 1000 })
+    expect(status).toMatchObject({
+      mode: 'upgrading', processingAttempts: -1, lastProcessingTime: NOW - 30 * 1000,
+      upgradeFailedVersion: null, processingMessage: ''
+    })
+    const delays: number[] = []
+    for (let run = 0; run < 4; run++) {
+      await claimAndStart()
+      await event('upgrade-failed')
+      if (run < 3) {
+        expect(status.mode).toBe('upgrading')
+        delays.push((status.lastProcessingTime ?? 0) + 30 * 1000 - NOW)
+      }
+    }
+    expect(delays).toEqual([minute, 4 * minute, 16 * minute])
+    expect(status.mode).toBe('upgrade-failed')
   })
 
   test('late failure reports cannot change a completed upgrade or a newer claim', async () => {

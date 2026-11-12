@@ -974,7 +974,7 @@ describe('MongoAccountDB', () => {
                 $or: [
                   { 'status.processingAttempts': { $exists: false } },
                   { 'status.processingAttempts': { $lte: 3 } },
-                  { 'status.mode': 'upgrade-failed' }
+                  { 'status.mode': 'upgrade-failed', 'status.processingAttempts': { $lte: 7 } }
                 ]
               },
               { $or: [{ region: { $exists: false } }, { region: '' }] },
@@ -1071,7 +1071,7 @@ describe('MongoAccountDB', () => {
                 $or: [
                   { 'status.processingAttempts': { $exists: false } },
                   { 'status.processingAttempts': { $lte: 3 } },
-                  { 'status.mode': 'upgrade-failed' }
+                  { 'status.mode': 'upgrade-failed', 'status.processingAttempts': { $lte: 7 } }
                 ]
               },
               { $or: [{ region: { $exists: false } }, { region: '' }] },
@@ -1185,7 +1185,7 @@ describe('MongoAccountDB', () => {
                 $or: [
                   { 'status.processingAttempts': { $exists: false } },
                   { 'status.processingAttempts': { $lte: 3 } },
-                  { 'status.mode': 'upgrade-failed' }
+                  { 'status.mode': 'upgrade-failed', 'status.processingAttempts': { $lte: 7 } }
                 ]
               },
               { $or: [{ region: { $exists: false } }, { region: '' }] },
@@ -1227,7 +1227,7 @@ describe('MongoAccountDB', () => {
                 $or: [
                   { 'status.processingAttempts': { $exists: false } },
                   { 'status.processingAttempts': { $lte: 3 } },
-                  { 'status.mode': 'upgrade-failed' }
+                  { 'status.mode': 'upgrade-failed', 'status.processingAttempts': { $lte: 7 } }
                 ]
               },
               { region },
