@@ -191,11 +191,11 @@ export async function performWorkspaceOperation (
           update.mode = 'upgrading'
           // The first claim increments this to zero, matching a fresh upgrade-started.
           update.processingAttempts = -1
-          update.processingMessage = ''
-          update.upgradeFailedVersion = null
         } else {
           update.processingAttempts = 0
         }
+        update.processingMessage = ''
+        update.upgradeFailedVersion = null
         update.lastProcessingTime = Date.now() - processingTimeoutMs // To not wait for next step
         break
       case 'delete':
