@@ -216,6 +216,22 @@ describe('fulltext index initialization', () => {
     expect(client.indices.delete).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['unmarked archive', {}],
+    ['colliding version', { _meta: { huly_fulltext: { base: 'storage_index', version: 'v2_archive' } } }],
+    ['another application', { _meta: { huly_fulltext: { base: 'another_index', version: 'v2' } } }],
+    ['incompatible mapping', { _meta: { huly_fulltext: { base: 'storage_index', version: 'v2' } }, properties: {} }]
+  ])('rejects an analyzer fallback with %s', async (_description, mappings) => {
+    process.env.ELASTIC_ANALYZER = 'unknown_analyzer'
+    const { client, ctx } = setup({ storage_index_v2_archive: { mappings } })
+    client.indices.create.mockRejectedValue(rejectedAnalyzer('unknown_analyzer'))
+    const adapter = await createElasticAdapter('http://localhost:9200')
+    expect(await adapter.initMapping(ctx)).toBe(false)
+    expect(client.index).not.toHaveBeenCalled()
+    expect(client.indices.delete).not.toHaveBeenCalled()
+    expect(client.indices.putMapping).not.toHaveBeenCalled()
+  })
+
   it.each(['rebuilt_english', 'russian'])(
     'uses the new %s index when another pod wins concurrent creation without deleting other indices',
     async (analyzer) => {
