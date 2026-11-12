@@ -6,7 +6,7 @@ import { generateUuid, SocialIdType, type AccountUuid, type PersonId } from '@hc
 import { getDBClient, shutdownPostgres, type PostgresClientReference } from '@hcengineering/postgres'
 import { PostgresAccountDB } from '../collections/postgres/postgres'
 import { type SocialId } from '../types'
-import { createAccount, getDbFlavor, normalizeValue } from '../utils'
+import { createAccount, getDbFlavor, normalizeValue, verifyOtpAttempt } from '../utils'
 
 jest.setTimeout(90000)
 
@@ -178,6 +178,62 @@ describe('real-account', () => {
 
     const usersPG = await pgAccount.listAccounts()
     expect(usersPG.length).toBe(2)
+  })
+
+  // CockroachDB is the default account DB and behaves differently under contention (SERIALIZABLE, retries)
+  describe.each([
+    ['postgres', () => pgAccount],
+    ['cockroach', () => crAccount]
+  ])('otp concurrency (%s)', (_name, getAccount) => {
+    const code = '123456'
+
+    async function createOtp (): Promise<PersonId> {
+      const socialId = (await getAccount().socialId.find({ personUuid: users[0].uuid })).find(
+        (it) => it.type === SocialIdType.EMAIL
+      ) as SocialId
+      const now = Date.now()
+      await getAccount().otp.insertOne({ socialId: socialId._id, code, expiresOn: now + 60000, createdOn: now })
+      return socialId._id
+    }
+
+    it('deleteMany lets exactly one of many concurrent consumers delete the code', async () => {
+      const socialId = await createOtp()
+
+      const results = await Promise.all(
+        Array.from({ length: 20 }, async () => await getAccount().otp.deleteMany({ socialId, code }))
+      )
+
+      expect(results.reduce((sum, it) => sum + it, 0)).toBe(1)
+      expect(await getAccount().otp.find({ socialId })).toHaveLength(0)
+    })
+
+    it('only one concurrent verify + consume flow succeeds for the same valid code', async () => {
+      const socialId = await createOtp()
+
+      // Same sequence as validateOtp: verify the attempt, then atomically consume the code.
+      // Kept below the attempts limit so every request is 'valid' and only consume can stop the extras.
+      const results = await Promise.all(
+        Array.from({ length: 4 }, async () => {
+          if ((await verifyOtpAttempt(getAccount(), socialId, code)) !== 'valid') return false
+          return (await getAccount().otp.deleteMany({ socialId, code })) > 0
+        })
+      )
+
+      expect(results.filter((it) => it).length).toBe(1)
+    })
+
+    it('concurrent attempts cannot exceed the attempts limit', async () => {
+      const socialId = await createOtp()
+
+      const results = await Promise.all(
+        Array.from({ length: 30 }, async () => await verifyOtpAttempt(getAccount(), socialId, code))
+      )
+
+      // Default OTP_MAX_ATTEMPTS is 5: at most 5 concurrent requests may be accepted
+      expect(results.filter((it) => it === 'valid').length).toBeLessThanOrEqual(5)
+      const [otp] = await getAccount().otp.find({ socialId })
+      expect(otp.attempts).toBe(30)
+    })
   })
 
   it('check invites', async () => {
