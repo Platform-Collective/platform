@@ -678,8 +678,14 @@ describe('permission cache refresh', () => {
     const remove = factory.createTxRemoveDoc(DOCUMENT, SPACE, 'test:doc' as Ref<Doc>)
     let settled = false
     const deleting = middleware.tx(ctx, [remove]).then(
-      () => { settled = true; return undefined },
-      (err) => { settled = true; return err }
+      () => {
+        settled = true
+        return undefined
+      },
+      (err) => {
+        settled = true
+        return err
+      }
     )
     // Let the operational write enter the first refresh's wait before replacing it.
     await new Promise<void>((resolve) => setImmediate(resolve))
