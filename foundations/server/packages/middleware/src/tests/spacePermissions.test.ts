@@ -562,6 +562,7 @@ describe('permission cache refresh', () => {
     async (_class) => {
       const { middleware, storage, ctx } = await setup()
       ctx.contextData.account.uuid = systemAccountUuid
+      ctx.contextData.account.primarySocialId = core.account.System
       await middleware.tx(ctx, [])
       const started = deferred()
       const gate = deferred()
