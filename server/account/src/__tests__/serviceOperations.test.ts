@@ -1941,8 +1941,11 @@ describe('upgrade failure lifecycle', () => {
     status.processingAttempts = 4
     await resetAttempts()
     expect(status).toMatchObject({
-      mode: 'upgrading', processingAttempts: -1, lastProcessingTime: NOW - 30 * 1000,
-      upgradeFailedVersion: null, processingMessage: ''
+      mode: 'upgrading',
+      processingAttempts: -1,
+      lastProcessingTime: NOW - 30 * 1000,
+      upgradeFailedVersion: null,
+      processingMessage: ''
     })
     const delays: number[] = []
     for (let run = 0; run < 4; run++) {

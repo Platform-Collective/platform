@@ -258,19 +258,32 @@ describe('real-account', () => {
         await account.createWorkspace(
           { url: 'crashing-upgrade', name: 'crashing-upgrade', allowGuestSignUp: false, allowReadOnlyGuest: false },
           {
-            isDisabled: false, mode: 'upgrade-failed', versionMajor: 0, versionMinor: 7, versionPatch: 0,
-            lastVisit: Date.now(), processingAttempts: 4, upgradeFailedVersion: '0.7.5'
+            isDisabled: false,
+            mode: 'upgrade-failed',
+            versionMajor: 0,
+            versionMinor: 7,
+            versionPatch: 0,
+            lastVisit: Date.now(),
+            processingAttempts: 4,
+            upgradeFailedVersion: '0.7.5'
           }
         )
         for (let attempt = 0; attempt < 4; attempt++) {
-          const ws = await account.getPendingWorkspace('', { major: 0, minor: 8, patch: 0 }, 'upgrade', 60000, wsLivenessMs)
+          const ws = await account.getPendingWorkspace(
+            '',
+            { major: 0, minor: 8, patch: 0 },
+            'upgrade',
+            60000,
+            wsLivenessMs
+          )
           expect(ws?.url).toBe('crashing-upgrade')
           if (ws === undefined) throw new Error('Expected another bounded claim')
           // No upgrade-started report: only let the claim lease expire before the next worker.
           await account.workspaceStatus.update({ workspaceUuid: ws.uuid }, { lastProcessingTime: 0 })
         }
-        expect(await account.getPendingWorkspace('', { major: 0, minor: 8, patch: 0 }, 'upgrade', 60000, wsLivenessMs))
-          .toBeUndefined()
+        expect(
+          await account.getPendingWorkspace('', { major: 0, minor: 8, patch: 0 }, 'upgrade', 60000, wsLivenessMs)
+        ).toBeUndefined()
       }
     }
   )
