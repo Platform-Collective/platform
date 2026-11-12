@@ -18,15 +18,14 @@ import type { FilteredView } from '@hcengineering/view'
 /**
  * A saved view can be overwritten with the currently applied filters only by
  * its creator, only while the list it was saved for is open (the filters
- * belong to that list) and only when there is at least one filter to store.
+ * belong to that list). An empty filter list clears the saved filters.
  */
 export function canOverwriteFilteredView (
   filteredView: Pick<FilteredView, 'createdBy' | 'location'>,
   socialIds: PersonId[],
   currentPath: string[],
-  filtersCount: number
+  _filtersCount: number
 ): boolean {
   if (filteredView.createdBy === undefined || !socialIds.includes(filteredView.createdBy)) return false
-  if (filtersCount === 0) return false
   return filteredView.location.path.join() === currentPath.join()
 }
