@@ -19,7 +19,7 @@ import { EmptyMarkup, MarkupNodeType, jsonToMarkup, type MarkupNode } from '@hce
 import { fullReferenceMessageMaxLength, getReferenceMessage, getReferencesData } from '../references'
 
 describe('block container excerpts', () => {
-  it.each(['tableCell', 'listItem'])('does not append inline text to %s', (type) => {
+  it.each([MarkupNodeType.table_cell, MarkupNodeType.list_item])('does not append inline text to %s', (type) => {
     const parent: MarkupNode = {
       type,
       content: [{ type: MarkupNodeType.paragraph, content: [{ type: MarkupNodeType.text, text: 'reference' }] }]
