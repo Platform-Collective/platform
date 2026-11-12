@@ -1253,14 +1253,16 @@ export async function backup (
       })
     }
 
-    result.result = !wasCanceled && skippedDocs === 0
+    const complete = !wasCanceled && skippedDocs === 0
 
-    if (domainChanges > 0 || !result.result) {
+    if (domainChanges > 0 || !complete) {
       // Incomplete domains count as changes because their cleared hashes must be persisted too.
       // Keep partial blob/size progress, but never mark an incomplete backup as up to date.
-      if (result.result) backupInfo.lastTxId = lastTx?._id ?? '0'
-      backupInfo.migrations.forcedFullCheck = forcedFullCheck
-      backupInfo.migrations.forcedCompact = forcedCompact
+      if (complete) {
+        backupInfo.lastTxId = lastTx?._id ?? '0'
+        backupInfo.migrations.forcedFullCheck = forcedFullCheck
+        backupInfo.migrations.forcedCompact = forcedCompact
+      }
       backupInfo.dataSize = result.dataSize
       backupInfo.blobsSize = result.blobsSize
       backupInfo.backupSize = result.backupSize
@@ -1271,9 +1273,11 @@ export async function backup (
       await rebuildSizeInfo(storage, recheckSizes, ctx, result, backupInfo, infoFile, blobInfoFile)
 
       // Same one more time with recalculated sizes
+      backupInfo.backupSize = result.backupSize
       await storage.writeFile(infoFile, gzipSync(JSON.stringify(backupInfo, undefined, 2), { level: defaultLevel }))
     }
 
+    result.result = complete
     return result
   } catch (err: any) {
     ctx.error('backup error', { err, workspace: workspaceId })
