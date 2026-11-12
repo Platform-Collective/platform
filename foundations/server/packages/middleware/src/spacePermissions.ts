@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 import core, {
+  type DocumentUpdate,
   type Class,
   type Doc,
   type Permission,
