@@ -95,6 +95,9 @@ jobs:
             node common/scripts/install-run-rush.js install
           fi
 
+      - name: Check download retry behaviour
+        run: bash common/scripts/tests/ci-retry.test.sh
+
       # - name: Checking model version is updated...
       #   run: node common/scripts/check_model_version.js
 
@@ -244,6 +247,11 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
 
+      - name: Cache and pre-pull test services
+        uses: ./.github/actions/cache-test-images
+        with:
+          directory: tests
+          services: elastic mongodb cockroach postgres redpanda
       - name: Prepare server
         run: |
           cd ./tests
@@ -306,15 +314,20 @@ jobs:
       - name: Configure /etc/hosts
         run: |
           sudo echo "127.0.0.1 huly.local" | sudo tee -a /etc/hosts
+      - name: Cache and pre-pull test services
+        uses: ./.github/actions/cache-test-images
+        with:
+          directory: tests
+          services: mongodb cockroach postgres redpanda redpanda_console minio elastic
       - name: Prepare server
         run: |
           cd ./tests
           export DO_CLEAN="true"
           ./prepare.sh
       - name: Install Playwright
-        run: |
-          cd ./tests/sanity
-          node ../../common/scripts/install-run-rushx.js ci
+        uses: ./.github/actions/install-playwright
+        with:
+          package: tests/sanity
       - name: Start profiling
         run: |
           cd ./tests
@@ -441,15 +454,20 @@ jobs:
       - name: Configure /etc/hosts
         run: |
           sudo echo "127.0.0.1 huly.local" | sudo tee -a /etc/hosts
+      - name: Cache and pre-pull test services
+        uses: ./.github/actions/cache-test-images
+        with:
+          directory: tests
+          services: mongodb cockroach postgres redpanda redpanda_console minio elastic
       - name: Prepare server
         run: |
           cd ./tests
           export DO_CLEAN="true"
           ./prepare-pg.sh
       - name: Install Playwright
-        run: |
-          cd ./tests/sanity
-          node ../../common/scripts/install-run-rushx.js ci
+        uses: ./.github/actions/install-playwright
+        with:
+          package: tests/sanity
       - name: Start profiling
         run: |
           cd ./tests
@@ -544,6 +562,11 @@ jobs:
       - name: Configure /etc/hosts
         run: |
           sudo echo "127.0.0.1 huly.local" | sudo tee -a /etc/hosts
+      - name: Cache and pre-pull test services
+        uses: ./.github/actions/cache-test-images
+        with:
+          directory: ws-tests
+          services: mongodb cockroach redpanda redpanda_console minio elastic
       - name: Prepare server
         run: |
           cd ./ws-tests
@@ -555,9 +578,9 @@ jobs:
           node ../../common/scripts/install-run-rush.js validate --to @hcengineering/api-tests
           node ../../common/scripts/install-run-rushx.js api-test --verbose
       - name: Install Playwright
-        run: |
-          cd ./ws-tests/sanity
-          node ../../common/scripts/install-run-rushx.js ci
+        uses: ./.github/actions/install-playwright
+        with:
+          package: ws-tests/sanity
       - name: Run UI tests
         run: |
           cd ./ws-tests/sanity
