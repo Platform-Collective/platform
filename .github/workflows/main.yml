@@ -96,7 +96,9 @@ jobs:
           fi
 
       - name: Check download retry behaviour
-        run: bash common/scripts/tests/ci-retry.test.sh
+        run: |
+          bash common/scripts/tests/ci-retry.test.sh
+          bash common/scripts/tests/ci-pull-images.test.sh
 
       # - name: Checking model version is updated...
       #   run: node common/scripts/check_model_version.js

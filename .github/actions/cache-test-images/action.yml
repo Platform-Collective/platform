@@ -21,21 +21,8 @@ runs:
       run: docker load --input "$RUNNER_TEMP/test-images.tar"
     - name: Pull missing service images
       shell: bash
-      working-directory: ${{ inputs.directory }}
       env:
+        IMAGE_DIRECTORY: ${{ inputs.directory }}
         SERVICES: ${{ inputs.services }}
         CACHE_HIT: ${{ steps.images.outputs.cache-hit }}
-      run: |
-        # Deliberate word splitting: services are repository-controlled Compose names.
-        read -ra services <<< "$SERVICES"
-        image_list=$(docker compose -f docker-compose.yaml config --images "${services[@]}")
-        mapfile -t images <<< "$image_list"
-        test -n "$image_list"
-        for image in "${images[@]}"; do
-          if ! docker image inspect "$image" >/dev/null 2>&1; then
-            bash ../common/scripts/ci-retry.sh timeout 5m docker pull "$image"
-          fi
-        done
-        if [ "$CACHE_HIT" != true ]; then
-          docker save --output "$RUNNER_TEMP/test-images.tar" "${images[@]}"
-        fi
+      run: bash common/scripts/ci-pull-images.sh "$IMAGE_DIRECTORY" "$SERVICES" "$CACHE_HIT"
