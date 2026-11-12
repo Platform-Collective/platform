@@ -40,7 +40,7 @@ async function fixture (): Promise<any> {
   }
   const received = jest.fn(async () => ({}))
   const terminal = {
-    findAll: jest.fn(async (_ctx, _class, _query, options) => {
+    findAll: jest.fn(async (_ctx: unknown, _class: unknown, _query: unknown, options?: { projection?: Record<string, number> }) => {
       const result = { ...doc }
       if (options?.projection?.name === 0) Reflect.deleteProperty(result, 'name')
       return toFindResult([result], 7)
