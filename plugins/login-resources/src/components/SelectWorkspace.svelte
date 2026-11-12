@@ -32,6 +32,8 @@
     SearchEdit,
     Spinner,
     deviceOptionsStore as deviceInfo,
+    matchWorkspaceSearch,
+    WORKSPACE_SEARCH_THRESHOLD,
     showPopup,
     ticker
   } from '@hcengineering/ui'
@@ -160,7 +162,7 @@
       <Label label={login.string.WorkspaceRestoreFailedDesc} />
     {/if}
   </div>
-  {#if workspaces.length > 10}
+  {#if workspaces.length > WORKSPACE_SEARCH_THRESHOLD}
     <div class="ml-2 mr-2 mb-2 flex-grow">
       <SearchEdit bind:value={search} width={'100%'} />
     </div>
@@ -175,9 +177,7 @@
         <span class="readonly-warning"><Label label={login.string.SignUpToCreateWorkspace} /></span>
       {/if}
       <div class="form">
-        {#each workspaces
-          .filter((it) => search === '' || (it.name?.includes(search) ?? false) || it.url.includes(search))
-          .slice(0, 500) as workspace}
+        {#each workspaces.filter((it) => matchWorkspaceSearch(it, search)).slice(0, 500) as workspace}
           {@const wsName = workspace.name ?? workspace.url}
           {@const lastUsageDays =
             workspace.lastVisit === undefined
