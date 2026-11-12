@@ -61,6 +61,20 @@ env:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  stream-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.ref || github.sha }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: foundations/stream/go.mod
+          cache-dependency-path: foundations/stream/go.sum
+      - name: Test stream
+        working-directory: foundations/stream
+        run: go test ./...
   # This workflow contains a single job called "build"
   build:
     runs-on: ubuntu-latest
