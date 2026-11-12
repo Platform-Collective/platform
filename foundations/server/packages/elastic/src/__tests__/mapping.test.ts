@@ -119,14 +119,15 @@ describe('fulltext index initialization', () => {
   })
 
   it.each(['russian', 'german'])(
-    'creates the %s index before cleaning up previous versions and analyzers',
+    'creates the %s index while retaining previous versions and analyzers',
     async (analyzer) => {
       process.env.ELASTIC_ANALYZER = analyzer
       ;(getMetadata as jest.Mock).mockImplementation((key: string) => (key === 'index-name' ? 'custom_index' : 'v3'))
       const { client, context, ctx } = setup({
         custom_index_v2: {},
         custom_index_v3: {},
-        custom_index_v3_french: {}
+        custom_index_v3_french: {},
+        custom_index_unrelated: {}
       })
       const adapter = await createElasticAdapter('http://localhost:9200')
       expect(await adapter.initMapping(ctx)).toBe(true)
@@ -190,7 +191,7 @@ describe('fulltext index initialization', () => {
   })
 
   it.each(['rebuilt_english', 'russian'])(
-    'uses the new %s index when another pod wins concurrent creation without repeating cleanup',
+    'uses the new %s index when another pod wins concurrent creation without deleting other indices',
     async (analyzer) => {
       process.env.ELASTIC_ANALYZER = analyzer
       ;(getMetadata as jest.Mock).mockImplementation((key: string) => (key === 'index-version' ? 'v3' : undefined))
@@ -296,7 +297,7 @@ describe('fulltext index initialization', () => {
     expect(client.indices.delete).not.toHaveBeenCalled()
   })
 
-  it('reuses a compatible index and cleans up only older indexes', async () => {
+  it('reuses a compatible index and retains other indexes', async () => {
     process.env.ELASTIC_ANALYZER = 'russian'
     const { client, ctx } = setup()
     const first = await createElasticAdapter('http://localhost:9200')
@@ -312,7 +313,7 @@ describe('fulltext index initialization', () => {
     expect(client.indices.delete).not.toHaveBeenCalled()
   })
 
-  it('waits for successful creation before deleting any old index', async () => {
+  it('does not delete old indices while or after creating the new index', async () => {
     process.env.ELASTIC_ANALYZER = 'russian'
     const { client, ctx } = setup({ storage_index_v2: {} })
     let finishCreation!: () => void
@@ -337,7 +338,7 @@ describe('fulltext index initialization', () => {
     expect(client.indices.delete).not.toHaveBeenCalled()
   })
 
-  it('cleans up the previous analyzer when switching back to the default', async () => {
+  it('retains the previous analyzer when switching back to the default', async () => {
     const { client, ctx } = setup({ storage_index_v2_russian: {} })
     const adapter = await createElasticAdapter('http://localhost:9200')
     expect(await adapter.initMapping(ctx)).toBe(true)
@@ -359,7 +360,7 @@ describe('fulltext index initialization', () => {
     )
     expect(client.indices.delete).toHaveBeenCalledWith({ index: 'storage_index_v2' })
     expect(client.indices.create).toHaveBeenCalledWith(expect.objectContaining({ index: 'storage_index_v2' }))
-    expect(context.warn).toHaveBeenCalledWith(expect.stringContaining('fulltext-reindex-all'), {
+    expect(context.error).toHaveBeenCalledWith(expect.stringContaining('fulltext-reindex-all'), {
       indexName: 'storage_index_v2'
     })
   })

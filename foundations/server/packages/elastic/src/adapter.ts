@@ -130,6 +130,7 @@ class ElasticAdapter implements FullTextAdapter {
   }
 
   async initMapping (ctx: MeasureContext): Promise<boolean> {
+    ctx.measure('fulltext_analyzer_fallback', this.usingExistingIndex ? 1 : 0, true)
     if (this.usingExistingIndex) {
       return true
     }
@@ -189,6 +190,7 @@ class ElasticAdapter implements FullTextAdapter {
                 return difference === 0 || Number.isNaN(difference) ? a.localeCompare(b) : difference
               })[0]
         this.usingExistingIndex = true
+        ctx.measure('fulltext_analyzer_fallback', 1, true)
         ctx.error(`Cannot use ELASTIC_ANALYZER '${this.analyzer}'; keeping existing index '${this.indexName}'`, {
           analyzer: this.analyzer,
           indexName: this.indexName,
@@ -270,12 +272,15 @@ class ElasticAdapter implements FullTextAdapter {
           })
         )
       }
-      // Creation validates the new analyzer before any old-version index is removed.
+      // Other analyzers/versions may still be in use by older pods. The prefix
+      // can also match unrelated indices, so startup must never delete them.
       if (existingOldVersionIndices.length > 0) {
-        await ctx.with('delete-old-index', {}, () => this.client.indices.delete({ index: existingOldVersionIndices }))
+        ctx.warn('Other fulltext indices retained; verify ownership and active users before explicit cleanup', {
+          indices: existingOldVersionIndices
+        })
       }
-      if (existingOldVersionIndices.length > 0 || shouldDropExistingIndex) {
-        ctx.warn('Fulltext index changed; run fulltext-reindex-all to reindex all active workspaces', { indexName })
+      if ((!existsIndex && existingOldVersionIndices.length > 0) || shouldDropExistingIndex) {
+        ctx.error('Fulltext index changed; run fulltext-reindex-all to reindex all active workspaces', { indexName })
       }
     } catch (err: any) {
       if (err.name === 'ConnectionError') {
