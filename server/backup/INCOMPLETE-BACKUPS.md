@@ -13,9 +13,10 @@ Failed workspaces wait for the configured interval instead of being immediately
 requeued, so a repeatedly timed-out workspace does not stay first in every cycle.
 An unsuccessful attempt remains eligible for retry even without another workspace
 visit. The activity check still applies after the most recent attempt succeeded.
-With an interval of zero, every workspace remains eligible, ordered by its last
-attempt. Older backup services ignore `lastAttempt`; queue fairness requires the
-updated backup service. No account database migration is required for this
+A zero interval disables the interval delay, but the activity and exclusion
+filters still apply. Eligible workspaces are ordered by their last attempt or
+successful backup. Older backup services ignore `lastAttempt`; queue fairness
+requires the updated backup service. No account database migration is required for this
 optional field in the existing backup-status JSON.
 
 Alert on repeated `BACKUP FAILED` messages and on the age of `lastBackup` rather
