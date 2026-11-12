@@ -296,7 +296,12 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     }
   }
 
-  private collectChangedSpaces (tx: Tx, spaces: Set<Ref<Space>>, types: Map<Ref<Doc>, Ref<SpaceType>>, seen = new Set<Tx>()): void {
+  private collectChangedSpaces (
+    tx: Tx,
+    spaces: Set<Ref<Space>>,
+    types: Map<Ref<Doc>, Ref<SpaceType>>,
+    seen = new Set<Tx>()
+  ): void {
     if (seen.has(tx) || seen.size >= 10000) this.throwForbidden()
     seen.add(tx)
     if (tx._class === core.class.TxApplyIf) {
@@ -499,7 +504,6 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
       this.throwForbidden()
     }
   }
-
 
   private checkSpacePermissions (
     ctx: MeasureContext,
