@@ -121,6 +121,8 @@ export async function getCommonNotificationTxes (
 
   const res: Tx[] = []
   const notifyContexts = await control.findAll(ctx, notification.class.DocNotifyContext, { objectId: attachedTo })
+  // Prefer the loaded target class over a caller's more general base-class reference.
+  const targetClass = doc._id === attachedTo ? doc._class : attachedToClass
 
   const notificationTx = await pushInboxNotifications(
     ctx,
@@ -129,7 +131,7 @@ export async function getCommonNotificationTxes (
     receiver,
     sender,
     attachedTo,
-    attachedToClass,
+    targetClass,
     space,
     notifyContexts,
     data,
@@ -553,6 +555,7 @@ export async function pushActivityInboxNotifications (
     attachedToClass: activityMessage._class
   }
 
+  const targetClass = object._id === activityMessage.attachedTo ? object._class : activityMessage.attachedToClass
   return await pushInboxNotifications(
     ctx,
     control,
@@ -560,7 +563,7 @@ export async function pushActivityInboxNotifications (
     receiver,
     sender,
     activityMessage.attachedTo,
-    activityMessage.attachedToClass,
+    targetClass,
     object.space,
     docNotifyContexts,
     data,
