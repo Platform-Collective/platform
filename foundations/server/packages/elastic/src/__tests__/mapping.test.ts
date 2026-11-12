@@ -37,7 +37,7 @@ interface TestSetup {
     bulk: jest.Mock
     search: jest.Mock
   }
-  context: Record<'with' | 'withSync' | 'error' | 'warn', jest.Mock>
+  context: Record<'with' | 'withSync' | 'error' | 'warn' | 'measure', jest.Mock>
   ctx: MeasureContext
 }
 
@@ -59,7 +59,8 @@ function setup (indexes: Record<string, any> = {}): TestSetup {
     with: jest.fn(async (_name: string, _params: any, op: () => Promise<any>) => await op()),
     withSync: jest.fn((_name: string, _params: any, op: () => any) => op()),
     error: jest.fn(),
-    warn: jest.fn()
+    warn: jest.fn(),
+    measure: jest.fn()
   }
   ;(Client as unknown as jest.Mock).mockImplementation(() => client)
   return { client, context, ctx: context as unknown as MeasureContext }
@@ -170,6 +171,7 @@ describe('fulltext index initialization', () => {
         indexName: 'storage_index_v2',
         error: expect.any(Error)
       })
+      expect(context.measure).toHaveBeenCalledWith('fulltext_analyzer_fallback', 1, true)
     }
   )
 
