@@ -19,6 +19,15 @@ describe('normalizeChannelName', () => {
   it('trims and lower-cases the name', () => {
     expect(normalizeChannelName('  General ')).toBe('general')
   })
+
+  it('does not depend on the runtime locale', () => {
+    const localeLowerCase = jest.spyOn(String.prototype, 'toLocaleLowerCase').mockReturnValue('ı')
+    try {
+      expect(normalizeChannelName('I')).toBe('i')
+    } finally {
+      localeLowerCase.mockRestore()
+    }
+  })
 })
 
 describe('isChannelNameTaken', () => {

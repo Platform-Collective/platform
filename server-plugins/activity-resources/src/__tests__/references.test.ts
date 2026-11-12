@@ -14,9 +14,26 @@
 //
 
 import { type Class, type Doc, type Ref } from '@hcengineering/core'
-import { EmptyMarkup, MarkupNodeType, jsonToMarkup } from '@hcengineering/text-core'
+import { EmptyMarkup, MarkupNodeType, jsonToMarkup, type MarkupNode } from '@hcengineering/text-core'
 
-import { fullReferenceMessageMaxLength, getReferencesData } from '../references'
+import { fullReferenceMessageMaxLength, getReferenceMessage, getReferencesData } from '../references'
+
+describe('block container excerpts', () => {
+  it.each(['tableCell', 'listItem'])('does not append inline text to %s', (type) => {
+    const parent: MarkupNode = {
+      type,
+      content: [{ type: MarkupNodeType.paragraph, content: [{ type: MarkupNodeType.text, text: 'reference' }] }]
+    }
+    const doc: MarkupNode = {
+      type: MarkupNodeType.doc,
+      content: [
+        { type: MarkupNodeType.paragraph, content: [{ type: MarkupNodeType.text, text: 'a'.repeat(600) }] },
+        parent
+      ]
+    }
+    expect(JSON.parse(getReferenceMessage(doc, parent))).toEqual(parent)
+  })
+})
 
 describe('extractBacklinks', () => {
   it('should return no references for empty document', () => {
