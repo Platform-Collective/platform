@@ -165,6 +165,26 @@ describe('getApplicableNotifyLevels', () => {
 
   const isMentionClass = (): boolean => true // e.g. a MentionInboxNotification from an edited reply
 
+  it.each(['tracker:class:Issue', 'document:class:Document'])(
+    'does not query a parent message for %s',
+    async (objectClass) => {
+      const source = makeSource(undefined, [])
+      const levels = await getApplicableNotifyLevels(
+        source, channel, receiver, [own(channel, 'none')], objectClass as Ref<Class<Doc>>
+      )
+      expect(levels).toEqual(['none'])
+      expect(source.findParentMessage).not.toHaveBeenCalled()
+      expect(source.findRestrictedContexts).not.toHaveBeenCalled()
+    }
+  )
+
+  it('still checks the persisted parent for an activity message class', async () => {
+    const source = makeSource(thread(channel), [own(channel, 'none')])
+    const levels = await getApplicableNotifyLevels(source, rootMessage, receiver, [], chatMessageClass)
+    expect(levels).toEqual([undefined, 'none'])
+    expect(source.findParentMessage).toHaveBeenCalledWith(rootMessage)
+  })
+
   it('returns only the own level for documents that are not messages', async () => {
     const source = makeSource(undefined, [own(channel, 'mentions')])
     const levels = await getApplicableNotifyLevels(source, channel, receiver, [own(channel, 'none')])

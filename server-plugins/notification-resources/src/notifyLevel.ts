@@ -87,7 +87,8 @@ export async function getApplicableNotifyLevels (
   source: NotifyLevelSource,
   objectId: Ref<Doc>,
   receiver: NotifyLevelReceiver,
-  knownContexts: Array<NotifyLevelContext | undefined>
+  knownContexts: Array<NotifyLevelContext | undefined>,
+  objectClass?: Ref<Class<Doc>>
 ): Promise<Array<DocNotifyLevel | undefined>> {
   const levels: Array<DocNotifyLevel | undefined> = [selectReceiverNotifyLevel(knownContexts, objectId, receiver)]
 
