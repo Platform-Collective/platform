@@ -299,7 +299,8 @@
       })
     }
 
-    await applyOps.commit()
+    const { result } = await applyOps.commit()
+    if (!result) return
     addNotification(
       await translate(recruit.string.TalentCreated, {}, $themeStore.language),
       formatName(candidate.name),
