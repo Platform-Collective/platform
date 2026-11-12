@@ -137,8 +137,10 @@ export class BackupWorker {
       })
 
       workspaces.sort((a, b) => {
-        return Math.max(a.backupInfo?.lastAttempt ?? 0, a.backupInfo?.lastBackup ?? 0) -
+        return (
+          Math.max(a.backupInfo?.lastAttempt ?? 0, a.backupInfo?.lastBackup ?? 0) -
           Math.max(b.backupInfo?.lastAttempt ?? 0, b.backupInfo?.lastBackup ?? 0)
+        )
       })
 
       // Shift new with existing ones.
