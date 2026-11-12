@@ -13,7 +13,6 @@
 // limitations under the License.
 //
 import core, {
-  type DocumentUpdate,
   type Class,
   type Doc,
   type Permission,
@@ -51,38 +50,6 @@ const SPACE_ADMIN_ATTRIBUTES = new Set([
 ])
 
 const SPACE_IDENTITY_ATTRIBUTES = new Set(['_id', '_class', 'space', 'createdBy'])
-
-/** Check that an array operator targets exactly the current account. */
-function isSelfMembershipOperand (operand: unknown, uuid: AccountUuid, key: '$each' | '$in'): boolean {
-  if (operand === uuid) return true
-  if (operand === null || typeof operand !== 'object' || Array.isArray(operand)) return false
-  // Attribute editors push a one-element $each, optionally with a numeric $position, and pull a one-element $in.
-  const allowed = key === '$each' ? ['$each', '$position'] : ['$in']
-  if (!Object.keys(operand).every((name) => allowed.includes(name))) return false
-  const position: unknown = Reflect.get(operand, '$position')
-  if (position !== undefined && typeof position !== 'number') return false
-  const values: unknown = Reflect.get(operand, key)
-  return Array.isArray(values) && values.length === 1 && values[0] === uuid
-}
-
-/** Only scalar or single-element self-join and self-leave forms are member operations. */
-export function isSelfMembershipChange (
-  operations: DocumentUpdate<Doc>,
-  uuid: AccountUuid
-): 'join' | 'leave' | undefined {
-  const keys = Object.keys(operations)
-  if (keys.length !== 1) return
-  const key = keys[0]
-  if (key !== '$push' && key !== '$pull') return
-  const value: unknown = operations[key]
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return
-  if (Object.keys(value).length !== 1) return
-  const operand: unknown = Reflect.get(value, 'members')
-  if (!isSelfMembershipOperand(operand, uuid, key === '$push' ? '$each' : '$in')) return
-  return key === '$push' ? 'join' : 'leave'
-}
-
-
 
 /**
  * @public
@@ -218,7 +185,7 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     isSpace: boolean
   ): boolean {
     const account = ctx.contextData.account
-    if (account.primarySocialId === core.account.System || isSystem(account, ctx)) return true
+    if (account.primarySocialId === core.account.System) return true
     const permissions = this.permissionsBySpace[space]?.[account.uuid] ?? []
     let withoutMatch: Permission | undefined
     for (const permission of permissions) {
@@ -526,13 +493,12 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
   private checkSpaceTypePermissions (ctx: MeasureContext, cudTx: TxCUD<Space>): void {
     const account = ctx.contextData.account
     const h = this.context.hierarchy
-    if (account.primarySocialId === core.account.System || isSystem(account, ctx)) return
+    if (account.primarySocialId === core.account.System) return
 
     if (h.isDerived(cudTx.objectClass, contact.class.PersonSpace)) {
       this.throwForbidden()
     }
   }
-
 
 
   private checkSpacePermissions (

@@ -51,7 +51,6 @@ import {
   type TxMiddlewareResult
 } from '@hcengineering/server-core'
 import {
-  isSelfMembershipChange,
   SpacePermissionsMiddleware
 } from '../spacePermissions'
 import {
@@ -368,30 +367,7 @@ describe('operation classification', () => {
     expect(getUpdatedAttributes({ $unset: null } as unknown as DocumentUpdate<Doc>)).toBe('all')
   })
 
-  it('requires a scalar or single-element self membership form', () => {
-    expect(isSelfMembershipChange({ $push: { members: MEMBER } }, MEMBER)).toBe('join')
-    expect(isSelfMembershipChange({ $pull: { members: MEMBER } }, MEMBER)).toBe('leave')
-    expect(isSelfMembershipChange({ $push: { members: OTHER } }, MEMBER)).toBeUndefined()
-    // Attribute editors use these forms for the Join button and member removal.
-    const forms: Array<[Record<string, unknown>, 'join' | 'leave' | undefined]> = [
-      [{ $push: { members: { $each: [MEMBER] } } }, 'join'],
-      [{ $push: { members: { $each: [MEMBER], $position: 0 } } }, 'join'],
-      [{ $pull: { members: { $in: [MEMBER] } } }, 'leave'],
-      [{ $push: { members: { $each: [MEMBER, OTHER] } } }, undefined],
-      [{ $push: { members: { $each: [OTHER], $position: 0 } } }, undefined],
-      [{ $push: { members: { $each: [MEMBER], $position: '0' } } }, undefined],
-      [{ $push: { members: { $each: [MEMBER], $slice: 1 } } }, undefined],
-      [{ $push: { members: { $in: [MEMBER] } } }, undefined],
-      [{ $pull: { members: { $each: [MEMBER] } } }, undefined],
-      [{ $pull: { members: { $in: [MEMBER], $position: 0 } } }, undefined],
-      [{ $pull: { members: { $in: [OWNER] } } }, undefined],
-      [{ $pull: { members: { $in: MEMBER } } }, undefined],
-      [{ $push: { members: { $each: [MEMBER] }, owners: MEMBER } }, undefined]
-    ]
-    for (const [operations, expected] of forms) {
-      expect(isSelfMembershipChange(operations as DocumentUpdate<Doc>, MEMBER)).toBe(expected)
-    }
-  })
+
 })
 
 function deferred (): { promise: Promise<void>, resolve: () => void } {
