@@ -138,13 +138,8 @@ describe('fulltext index initialization', () => {
           })
         }
       })
-      expect(client.indices.create.mock.invocationCallOrder[0]).toBeLessThan(
-        client.indices.delete.mock.invocationCallOrder[0]
-      )
-      expect(client.indices.delete).toHaveBeenCalledWith({
-        index: ['custom_index_v2', 'custom_index_v3', 'custom_index_v3_french']
-      })
-      expect(context.warn).toHaveBeenCalledWith(expect.stringContaining('fulltext-reindex-all'), {
+      expect(client.indices.delete).not.toHaveBeenCalled()
+      expect(context.error).toHaveBeenCalledWith(expect.stringContaining('fulltext-reindex-all'), {
         indexName: `custom_index_v3_${analyzer}`
       })
     }
@@ -210,9 +205,7 @@ describe('fulltext index initialization', () => {
       expect(await Promise.all([first.initMapping(ctx), second.initMapping(ctx)])).toEqual([true, true])
       expect(client.indices.create).toHaveBeenCalledTimes(2)
       expect(client.indices.create).toHaveBeenNthCalledWith(2, expect.objectContaining({ index: indexName }))
-      expect(client.indices.delete).toHaveBeenCalledTimes(1)
-      expect(client.indices.delete).toHaveBeenCalledWith({ index: ['storage_index_v2'] })
-      expect(context.error).not.toHaveBeenCalled()
+      expect(client.indices.delete).not.toHaveBeenCalled()
       await second.index(ctx, workspace, doc)
       await second.updateMany(ctx, workspace, [doc])
       await second.searchString(ctx, workspace, { query: 'continued' }, {})
@@ -298,7 +291,7 @@ describe('fulltext index initialization', () => {
     expect(client.indices.delete).not.toHaveBeenCalled()
     expect(handleError).toHaveBeenCalledTimes(1)
     expect(await adapter.initMapping(ctx)).toBe(true)
-    expect(client.indices.delete).toHaveBeenCalledWith({ index: ['storage_index_v2'] })
+    expect(client.indices.delete).not.toHaveBeenCalled()
   })
 
   it('reuses a compatible index and cleans up only older indexes', async () => {
@@ -314,7 +307,7 @@ describe('fulltext index initialization', () => {
     expect(await second.initMapping(ctx)).toBe(true)
     expect(client.indices.create).not.toHaveBeenCalled()
     expect(client.indices.putMapping).toHaveBeenCalledWith({ index: 'storage_index_v2_russian', body: mappings })
-    expect(client.indices.delete).toHaveBeenCalledWith({ index: ['storage_index_v2'] })
+    expect(client.indices.delete).not.toHaveBeenCalled()
   })
 
   it('waits for successful creation before deleting any old index', async () => {
@@ -339,7 +332,7 @@ describe('fulltext index initialization', () => {
     expect(client.indices.delete).not.toHaveBeenCalled()
     finishCreation()
     expect(await initializing).toBe(true)
-    expect(client.indices.delete).toHaveBeenCalledWith({ index: ['storage_index_v2'] })
+    expect(client.indices.delete).not.toHaveBeenCalled()
   })
 
   it('cleans up the previous analyzer when switching back to the default', async () => {
@@ -347,10 +340,7 @@ describe('fulltext index initialization', () => {
     const adapter = await createElasticAdapter('http://localhost:9200')
     expect(await adapter.initMapping(ctx)).toBe(true)
     expect(client.indices.create).toHaveBeenCalledWith(expect.objectContaining({ index: 'storage_index_v2' }))
-    expect(client.indices.delete).toHaveBeenCalledWith({ index: ['storage_index_v2_russian'] })
-    expect(client.indices.create.mock.invocationCallOrder[0]).toBeLessThan(
-      client.indices.delete.mock.invocationCallOrder[0]
-    )
+    expect(client.indices.delete).not.toHaveBeenCalled()
   })
 
   it('validates a same-name mapping migration before deleting the current index', async () => {
