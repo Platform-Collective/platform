@@ -118,7 +118,7 @@
     "TableCopiedToClipboard": "Tabla copiada al portapapeles",
     "TableCopyFailed": "Error al copiar la tabla al portapapeles",
     "PublicView": "Público",
-    "OverwriteWithCurrentFilters": "Sobrescribir con los filtros actuales",
+    "OverwriteWithCurrentFilters": "Sobrescribir con los filtros y el tipo de vista actuales",
     "ChooseIcon": "Elegir icono",
     "IconColor": "Elegir color del icono",
     "IconCategory": "Icono",

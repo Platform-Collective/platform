@@ -122,7 +122,7 @@
     "TableCopiedToClipboard": "Tabulka zkopírována do schránky",
     "TableCopyFailed": "Nepodařilo se zkopírovat tabulku do schránky",
     "PublicView": "Veřejné",
-    "OverwriteWithCurrentFilters": "Přepsat aktuálními filtry",
+    "OverwriteWithCurrentFilters": "Přepsat aktuálními filtry a typem zobrazení",
 
     "ChooseIcon": "Vybrat ikonu",
     "IconColor": "Vybrat barvu ikony",

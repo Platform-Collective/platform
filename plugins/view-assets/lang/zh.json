@@ -122,7 +122,7 @@
     "TableCopiedToClipboard": "表格已复制到剪贴板",
     "TableCopyFailed": "复制表格到剪贴板失败",
     "PublicView": "公开视图",
-    "OverwriteWithCurrentFilters": "用当前筛选器覆盖",
+    "OverwriteWithCurrentFilters": "使用当前筛选条件和视图类型覆盖",
 
     "ChooseIcon": "选择图标",
     "IconColor": "选择图标颜色",
