@@ -22,6 +22,8 @@
     "_phase:validate": "compile validate"
   },
   "devDependencies": {
+    "@hcengineering/measurements": "workspace:^0.7.19",
+    "@hcengineering/middleware": "workspace:^0.7.21",
     "@hcengineering/platform-rig": "workspace:^0.7.21",
     "@types/node": "^24.13.3",
     "@typescript-eslint/eslint-plugin": "^8.67.0",

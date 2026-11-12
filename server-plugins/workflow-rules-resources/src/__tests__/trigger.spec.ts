@@ -10,6 +10,8 @@
 // authorization gate, and PluginConfiguration kill switch.
 
 import core, { AccountRole, TxFactory, type AccountUuid, type PersonId, type Ref } from '@hcengineering/core'
+import { MeasureMetricsContext } from '@hcengineering/measurements'
+import { ApplyTxMiddleware } from '@hcengineering/middleware'
 import task from '@hcengineering/task'
 import tracker from '@hcengineering/tracker'
 import workflowRules, { workflowRulesId } from '@hcengineering/workflow-rules'
@@ -1188,41 +1190,93 @@ describe('rev-6: TxApplyIf match guards cross-request concurrency', () => {
   })
 })
 
-describe('rev-7: TxApplyIf predicate runs through the apply middleware', () => {
-  // `ApplyTxMiddleware.verifyApplyIf` only evaluates `match` when
-  // `scope != null`. Rev-6 passed `undefined` so the match was never
-  // queried and the stale mirror would overwrite the fresh target.
-  // Rev-7 sets a per-target scope. The tests below mimic the real
-  // middleware against the same in-memory issues array:
-  //  - for each `match` entry, require a hit by `_id` AND field equality
-  //  - if the predicate passes, apply the inner TxUpdateDoc by mutating
-  //    the stored doc in place; otherwise drop the wrapper
-  //  - the scope string is per-target so two wrappers for the same
-  //    target serialize at the apply stage; wrappers for different
-  //    targets do not serialize.
+describe('rev-8: TxApplyIf predicate runs through the real ApplyTxMiddleware', () => {
+  // Rev-7's suite used `applyWrapper`, a hand-written shadow of the
+  // middleware's `verifyApplyIf` rules. Michael flagged that the shadow
+  // diverged from the real middleware on the missing-scope case (shadow
+  // returned failure, middleware short-circuits to pass) and never
+  // exercised overlapping applies.
+  //
+  // Rev-8 builds `ApplyTxMiddleware` directly with a stub `next` that
+  // owns the in-memory `issues` array. The middleware's own
+  // `verifyApplyIf` evaluates `match` through `next.findAll` and its
+  // Promise-map serializes same-scope applies. Tests assert against the
+  // real code path:
+  //  - a wrapper with `scope == null` is passed through unchanged (the
+  //    exact short-circuit at `applyTx.ts:49`); the control case below
+  //    proves it, confirming why rev-7's fix was needed in the first
+  //    place.
+  //  - a wrapper with a non-null scope runs `match` via `findAll` on
+  //    the live `issues` array and only applies the inner tx when every
+  //    match clause matches; otherwise the result is `{success:false}`.
+  //  - two overlapping applies against the same scope serialize through
+  //    the middleware's Promise map; the stale second one rejects.
 
-  function applyWrapper (wrapper: Any, issues: Any[]): { passed: boolean, reason?: string } {
-    if (wrapper.scope == null) {
-      // Would short-circuit in real middleware - the bug Michael found.
-      return { passed: false, reason: 'scope missing' }
-    }
-    for (const m of wrapper.match ?? []) {
-      const query: Any = m.query
-      const row = issues.find((i) => i._id === query._id)
-      if (row == null) return { passed: false, reason: 'match row missing' }
-      for (const key of Object.keys(query)) {
-        if (key === '_id') continue
-        if ((row as any)[key] !== (query as any)[key]) {
-          return { passed: false, reason: `match failed on ${key}` }
+  type ApplyRow = { success: boolean, serverTime?: number } | Record<string, never>
+
+  /**
+   * Build a real ApplyTxMiddleware over the given in-memory `issues`.
+   * The `next` stub owns the array: it serves `findAll` for the match
+   * clauses and applies inner TxUpdateDocs by mutating the row in
+   * place. A microtask-await inside `next.tx` widens the overlap
+   * window so same-scope serialization is observable.
+   */
+  async function makeRealApplyMw (issues: Any[]): Promise<{ mw: Any, ctx: MeasureMetricsContext }> {
+    const ctx = new MeasureMetricsContext('workflow-rules-test', {})
+
+    const next: Any = {
+      findAll: async (_c: Any, _class: string, query: Any) => {
+        return issues.filter((i) => {
+          if ((i as any)._class !== _class) return false
+          for (const [k, v] of Object.entries(query)) {
+            if ((i as any)[k] !== v) return false
+          }
+          return true
+        })
+      },
+      tx: async (_c: Any, txes: Any[]) => {
+        // Yield so two parallel `mw.tx` invocations overlap at the
+        // scopes Promise map rather than running serially by accident.
+        await new Promise<void>((resolve) => setTimeout(resolve, 0))
+        for (const t of txes) {
+          const row = issues.find((i) => (i as any)._id === t.objectId)
+          if (row != null) Object.assign(row, t.operations ?? {})
         }
+        return {}
+      },
+      groupBy: async () => new Map(),
+      searchFulltext: async () => ({ docs: [] }),
+      handleBroadcast: async () => {},
+      loadModel: async () => [],
+      domainRequest: async (_c: Any, d: Any) => ({ domain: d, value: null }),
+      closeSession: async () => {},
+      close: async () => {}
+    }
+
+    // `isDerived(child, parent)` must say TxApplyIf-shaped txes ARE
+    // derived from core.class.TxApplyIf. Our fixtures stamp the class
+    // directly, so equality is sufficient.
+    const context: Any = {
+      hierarchy: { isDerived: (a: string, b: string) => a === b },
+      modelDb: { findAllSync: () => [] },
+      contextVars: {}
+    }
+    const mw = await ApplyTxMiddleware.create(ctx, context, next)
+    return { mw, ctx }
+  }
+
+  // Normalize mw.tx() results to a boolean "did the wrapped apply run".
+  // `tx` returns either the single TxApplyResult or an array; search for
+  // a TxApplyResult-shaped entry (`success` key present).
+  function didApply (res: Any): boolean {
+    if (res == null) return false
+    const arr = Array.isArray(res) ? res : [res]
+    for (const r of arr) {
+      if (r != null && typeof (r as ApplyRow).success === 'boolean') {
+        return (r as ApplyRow).success
       }
     }
-    for (const inner of wrapper.txes) {
-      const row = issues.find((i) => i._id === inner.objectId)
-      if (row == null) continue
-      Object.assign(row, inner.operations)
-    }
-    return { passed: true }
+    return false
   }
 
   it('emitted wrapper carries a per-target scope so verifyApplyIf actually runs', async () => {
@@ -1256,35 +1310,33 @@ describe('rev-7: TxApplyIf predicate runs through the apply middleware', () => {
     expect(raw[0].scope).not.toBe(raw[1].scope)
   })
 
-  it('stale mirror is rejected at apply time when the counterpart has moved', async () => {
+  it('stale mirror is rejected by the real middleware when the counterpart has moved', async () => {
     // One request moves source A1 -> Review; another parallel request
     // already moved counterpart B1 from Backlog to Done between the
     // sweeper read and the apply. The wrapper's match says
-    // `{status: backlog}`; the stored row says `status: done`; apply
-    // must reject.
+    // `{status: backlog}`; the stored row says `status: done`; the real
+    // ApplyTxMiddleware must drop the inner tx and the row must still
+    // hold `done`.
     const issues = linkedPair()
     const control = makeControl({ issues, rules: [rule()] })
     const raw = await rawEmit([updateTx(S.review)], control)
     expect(raw).toHaveLength(1)
     const wrapper = raw[0]
 
-    // Simulate a parallel request that advanced the counterpart.
+    // Simulate a parallel request that advanced the counterpart before
+    // our wrapper's apply reaches the middleware.
     const b1 = issues.find((i) => i._id === 'issue:b1') as any
     b1.status = S.done
 
-    const result = applyWrapper(wrapper, issues)
-    expect(result.passed).toBe(false)
-    expect(result.reason).toContain('status')
-    // Counterpart still holds what the parallel request wrote; the stale
-    // mirror did not overwrite it.
+    const { mw, ctx } = await makeRealApplyMw(issues)
+    const result = await mw.tx(ctx, [wrapper])
+    expect(didApply(result)).toBe(false)
+    // Counterpart still holds what the parallel request wrote; the
+    // stale mirror did not overwrite it.
     expect(b1.status).toBe(S.done)
   })
 
-  it('two chained mirrors in one request: the first applies, the second`s match reflects the post-apply state', async () => {
-    // The pending-status map already makes the second emit carry
-    // `{status: done}`. When the first wrapper applies and mutates B1
-    // to Done, the second wrapper's predicate is satisfied by the live
-    // doc and the inner update runs. Nothing is stale, so both apply.
+  it('two chained mirrors in one request: first applies via middleware, the second sees the post-apply state', async () => {
     const chainRule = rule({
       forwardMap: { [S.review]: S.done, [S.inProgress]: S.inProgress },
       allowedLoops: [{ from: S.done, to: S.inProgress }]
@@ -1297,23 +1349,21 @@ describe('rev-7: TxApplyIf predicate runs through the apply middleware', () => {
 
     const b1 = issues.find((i) => i._id === 'issue:b1') as any
     expect(b1.status).toBe(S.backlog)
-
-    // Apply in dispatch order under the same scope key (real middleware
-    // serializes same-scope applies via its Promise map).
     expect(raw[0].scope).toBe(raw[1].scope)
-    const r0 = applyWrapper(raw[0], issues)
-    expect(r0.passed).toBe(true)
-    expect(b1.status).toBe(S.done)
-    const r1 = applyWrapper(raw[1], issues)
-    expect(r1.passed).toBe(true)
+
+    // Hand both wrappers to the real middleware in a single tx call.
+    // The middleware processes TxApplyIf entries one at a time, so the
+    // first's inner tx mutates B1 to Done before the second's match
+    // is checked against the row.
+    const { mw, ctx } = await makeRealApplyMw(issues)
+    const result = await mw.tx(ctx, raw)
+    const arr = Array.isArray(result) ? result : [result]
+    const applied = arr.filter((r) => r != null && typeof (r as ApplyRow).success === 'boolean')
+    expect(applied.map((r) => (r as ApplyRow).success)).toEqual([true, true])
     expect(b1.status).toBe(S.inProgress)
   })
 
   it('chained mirrors reject the second apply if an outside writer broke the chain in between', async () => {
-    // Same two source txes in one request, but between the first and
-    // second apply an outsider overwrote the counterpart to Review.
-    // The second wrapper`s match says `{status: done}` (the pending map
-    // value after the first emit) and must reject.
     const chainRule = rule({
       forwardMap: { [S.review]: S.done, [S.inProgress]: S.inProgress },
       allowedLoops: [{ from: S.done, to: S.inProgress }]
@@ -1324,17 +1374,71 @@ describe('rev-7: TxApplyIf predicate runs through the apply middleware', () => {
     const raw = await rawEmit(request, { ...control, txes: request })
     expect(raw).toHaveLength(2)
 
+    // Build a middleware whose stub `next.tx` flips B1's status to
+    // Review after applying the first wrapper's inner update; that
+    // simulates an outside writer landing between our two wrappers.
     const b1 = issues.find((i) => i._id === 'issue:b1') as any
-    const r0 = applyWrapper(raw[0], issues)
-    expect(r0.passed).toBe(true)
+    const { mw, ctx } = await makeRealApplyMw(issues)
+
+    const r0 = await mw.tx(ctx, [raw[0]])
+    expect(didApply(r0)).toBe(true)
     expect(b1.status).toBe(S.done)
 
-    // Outside writer flips the counterpart to Review between our two
-    // applies. Same scope but the predicate check must now fail.
+    // Outsider rewrites the counterpart before the second wrapper
+    // reaches the middleware.
     b1.status = S.review
-    const r1 = applyWrapper(raw[1], issues)
-    expect(r1.passed).toBe(false)
-    expect(r1.reason).toContain('status')
+    const r1 = await mw.tx(ctx, [raw[1]])
+    expect(didApply(r1)).toBe(false)
     expect(b1.status).toBe(S.review)
+  })
+
+  it('two overlapping requests: only the first mirror applies, the second is dropped by match', async () => {
+    // Michael's suggested regression case. Both requests read the
+    // counterpart at Backlog before either applies; the middleware's
+    // scope-promise map serializes the same-scope applies so the
+    // second one reruns its predicate against the row the first just
+    // mutated and must fail.
+    const chainRule = rule({
+      forwardMap: { [S.review]: S.done, [S.inProgress]: S.inProgress },
+      allowedLoops: [{ from: S.done, to: S.inProgress }]
+    })
+    const issues = linkedPair()
+    const control = makeControl({ issues, rules: [chainRule] })
+    const [w1] = await rawEmit([updateTx(S.review, { modifiedOn: 1001 })], control)
+    const [w2] = await rawEmit([updateTx(S.inProgress, { modifiedOn: 1002 })], control)
+    // Both wrappers were rendered against the same Backlog snapshot,
+    // so w2's match clause carries `{status: backlog}` the same as w1.
+    // Only the first apply can land; the second must reject because
+    // b1.status is no longer Backlog by the time the predicate runs.
+    expect(w1.scope).toBe(w2.scope)
+
+    const { mw, ctx } = await makeRealApplyMw(issues)
+    const [r1, r2] = await Promise.all([mw.tx(ctx, [w1]), mw.tx(ctx, [w2])])
+    expect([didApply(r1), didApply(r2)]).toEqual([true, false])
+    const b1 = issues.find((i) => i._id === 'issue:b1') as any
+    expect(b1.status).toBe(S.done)
+  })
+
+  it('control: stripping the scope lets both overlapping applies through (rev-6 regression)', async () => {
+    // With `scope: undefined` (the rev-6 shape), ApplyTxMiddleware's
+    // `verifyApplyIf` short-circuits at `applyTx.ts:49` and treats the
+    // predicate as a pass. Both stale applies win, confirming why
+    // rev-7's scope is load-bearing.
+    const chainRule = rule({
+      forwardMap: { [S.review]: S.done, [S.inProgress]: S.inProgress },
+      allowedLoops: [{ from: S.done, to: S.inProgress }]
+    })
+    const issues = linkedPair()
+    const control = makeControl({ issues, rules: [chainRule] })
+    const [w1] = await rawEmit([updateTx(S.review, { modifiedOn: 1001 })], control)
+    const [w2] = await rawEmit([updateTx(S.inProgress, { modifiedOn: 1002 })], control)
+    // Degrade the wrappers to the rev-6 shape.
+    const w1no: Any = { ...w1, scope: undefined }
+    const w2no: Any = { ...w2, scope: undefined }
+
+    const { mw, ctx } = await makeRealApplyMw(issues)
+    const [r1, r2] = await Promise.all([mw.tx(ctx, [w1no]), mw.tx(ctx, [w2no])])
+    // Both succeed because the predicate never ran.
+    expect([didApply(r1), didApply(r2)]).toEqual([true, true])
   })
 })
