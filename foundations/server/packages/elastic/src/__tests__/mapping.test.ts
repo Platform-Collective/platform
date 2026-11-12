@@ -190,6 +190,32 @@ describe('fulltext index initialization', () => {
     expect(client.indices.delete).not.toHaveBeenCalled()
   })
 
+  it('does not select unrelated or other-version indices as an analyzer fallback', async () => {
+    process.env.ELASTIC_ANALYZER = 'unknown_analyzer'
+    ;(getMetadata as jest.Mock).mockImplementation((key: string) => (key === 'index-name' ? 'custom_index' : 'v3'))
+    const { client, ctx } = setup({
+      custom_index_v3_french: { settings: { index: { creation_date: '10' } } },
+      custom_index_v2: { settings: { index: { creation_date: '20' } } },
+      custom_index_unrelated: { settings: { index: { creation_date: '30' } } }
+    })
+    client.indices.create.mockRejectedValue(rejectedAnalyzer('unknown_analyzer'))
+    const adapter = await createElasticAdapter('http://localhost:9200')
+    expect(await adapter.initMapping(ctx)).toBe(true)
+    await adapter.index(ctx, workspace, doc)
+    expect(client.index).toHaveBeenCalledWith(expect.objectContaining({ index: 'custom_index_v3_french' }))
+    expect(client.indices.delete).not.toHaveBeenCalled()
+  })
+
+  it('fails initialization when only unrelated or other-version fallback indices exist', async () => {
+    process.env.ELASTIC_ANALYZER = 'unknown_analyzer'
+    const { client, ctx } = setup({ storage_index_v1: {}, storage_index_unrelated: {} })
+    client.indices.create.mockRejectedValue(rejectedAnalyzer('unknown_analyzer'))
+    const adapter = await createElasticAdapter('http://localhost:9200')
+    expect(await adapter.initMapping(ctx)).toBe(false)
+    expect(client.index).not.toHaveBeenCalled()
+    expect(client.indices.delete).not.toHaveBeenCalled()
+  })
+
   it.each(['rebuilt_english', 'russian'])(
     'uses the new %s index when another pod wins concurrent creation without deleting other indices',
     async (analyzer) => {
