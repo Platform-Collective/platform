@@ -178,12 +178,20 @@ class ElasticAdapter implements FullTextAdapter {
         if (!analyzerRejected) {
           return false
         }
-        // Prefer the current version, otherwise the most recently created index.
-        this.indexName = indexes.includes(indexName)
+        // A retained prefix match may belong to another application or mapping
+        // version. Only this version's default/analyzer index names are eligible.
+        const versionName = `${this.indexBaseName}_${this.indexVersion}`
+        const candidates = indexes.filter(
+          (name) =>
+            name === versionName ||
+            (name.startsWith(`${versionName}_`) && /^[a-z0-9_-]+$/.test(name.slice(versionName.length + 1)))
+        )
+        if (candidates.length === 0) return false
+        this.indexName = candidates.includes(indexName)
           ? indexName
-          : indexes.includes(`${this.indexBaseName}_${this.indexVersion}`)
-            ? `${this.indexBaseName}_${this.indexVersion}`
-            : indexes.sort((a, b) => {
+          : candidates.includes(versionName)
+            ? versionName
+            : candidates.sort((a, b) => {
                 const createdAt = (name: string): number =>
                   Number(existingVersions.body[name].settings?.index?.creation_date ?? 0)
                 const difference = createdAt(b) - createdAt(a)
