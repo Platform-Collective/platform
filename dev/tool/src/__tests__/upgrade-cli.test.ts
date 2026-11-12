@@ -52,6 +52,7 @@ jest.mock('@hcengineering/server-token', () => ({
   default: { metadata: { Secret: 'test:secret', Service: 'test:service' } }
 }))
 jest.mock('@hcengineering/pod-rating', () => ({}))
+jest.mock('@faker-js/faker', () => ({}))
 jest.mock('@hcengineering/api-client', () => ({}))
 jest.mock('@hcengineering/server-tool', () => ({ sendTransactorEvent: async () => {} }))
 jest.mock('@hcengineering/server-backup', () => ({

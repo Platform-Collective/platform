@@ -40,7 +40,11 @@ async function fixture (): Promise<any> {
   }
   const received = jest.fn(async () => ({}))
   const terminal = {
-    findAll: jest.fn(async () => toFindResult([{ ...doc }], 7)),
+    findAll: jest.fn(async (_ctx, _class, _query, options) => {
+      const result = { ...doc }
+      if (options?.projection?.name === 0) Reflect.deleteProperty(result, 'name')
+      return toFindResult([result], 7)
+    }),
     tx: received
   } as unknown as Middleware
   const ctx = new MeasureMetricsContext('wrapped-pipeline', {})
@@ -79,10 +83,17 @@ it('restores scalar class, space, false and zero before applying mixin proxies',
   expect(hierarchy.updateLookupMixin).toHaveBeenCalledWith(doc._class, expect.objectContaining(query), undefined)
 })
 
-it('keeps operator queries and the returned class intact for mixin lookups', async () => {
+it('keeps operator queries, the returned class and proxy options intact for mixin lookups', async () => {
   const { client, doc, hierarchy } = await fixture()
   const mixin = 'test:mixin:View' as Ref<any>
   const options = { projection: { name: 1 }, lookup: {} }
   await client.findAll(mixin, { _id: { $in: [doc._id] } }, options)
   expect(hierarchy.updateLookupMixin).toHaveBeenCalledWith(mixin, expect.objectContaining(doc), options)
+})
+
+it('does not reconstruct an explicitly excluded scalar field', async () => {
+  const { client, doc } = await fixture()
+  const result = await client.findAll(doc._class, { _id: doc._id, name: doc.name }, { projection: { name: 0 } })
+  expect(result[0]._id).toBe(doc._id)
+  expect(result[0]).not.toHaveProperty('name')
 })
