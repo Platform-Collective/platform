@@ -70,7 +70,9 @@ describe('CreateCandidate commit result', () => {
   it('shows the created talent and closes the form only after a successful commit', async () => {
     const { save, notify, removeDraft, dispatch, reset } = createForm(jest.fn().mockResolvedValue({ result: true }))
     await save()
-    expect(notify).toHaveBeenCalledWith('Talent created', 'Jane Doe', 'notification-component', { candidateId: 'talent-id' })
+    expect(notify).toHaveBeenCalledWith('Talent created', 'Jane Doe', 'notification-component', {
+      candidateId: 'talent-id'
+    })
     expect(removeDraft).toHaveBeenCalledTimes(1)
     expect(dispatch).toHaveBeenCalledWith('close', 'talent-id')
     expect(reset).toHaveBeenCalledTimes(1)
