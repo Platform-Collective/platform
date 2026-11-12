@@ -484,9 +484,16 @@ export class SpacePermissionsMiddleware extends BaseMiddleware implements Middle
     if (!TxProcessor.isExtendsCUD(tx._class)) return
     const cudTx = tx as TxCUD<Doc>
     const isSpace = this.context.hierarchy.isDerived(cudTx.objectClass, core.class.Space)
-    for (const id of [cudTx.objectSpace, ...(isSpace ? [cudTx.objectId as Ref<Space>] : [])]) {
-      const pending = this.pendingSpaces.get(id)
-      if (pending !== undefined) await pending
+    const ids = [cudTx.objectSpace, ...(isSpace ? [cudTx.objectId as Ref<Space>] : [])]
+    const waited = new Set<Promise<void>>()
+    for (let attempt = 0; ; attempt++) {
+      // Re-read every relevant entry after each await: a newer refresh can
+      // replace the one we observed, including for an already visited space.
+      const pending = ids.map((id) => this.pendingSpaces.get(id)).find((value) => value !== undefined)
+      if (pending === undefined) break
+      if (attempt >= 1000 || waited.has(pending)) this.throwForbidden()
+      waited.add(pending)
+      await pending
     }
     this.checkSpacePermissions(ctx, cudTx, cudTx.objectSpace)
     if (isSpace) {
