@@ -221,7 +221,10 @@ describe('fulltext index initialization', () => {
     process.env.ELASTIC_ANALYZER = 'unknown_analyzer'
     ;(getMetadata as jest.Mock).mockImplementation((key: string) => (key === 'index-name' ? 'custom_index' : 'v3'))
     const { client, ctx } = setup({
-      custom_index_v3_french: { ...ownedIndex('french', 'custom_index', 'v3'), settings: { index: { creation_date: '10' } } },
+      custom_index_v3_french: {
+        ...ownedIndex('french', 'custom_index', 'v3'),
+        settings: { index: { creation_date: '10' } }
+      },
       custom_index_v2: { settings: { index: { creation_date: '20' } } },
       custom_index_unrelated: { settings: { index: { creation_date: '30' } } }
     })
@@ -247,7 +250,10 @@ describe('fulltext index initialization', () => {
     ['unmarked archive', {}],
     ['colliding version', ownedIndex('rebuilt_english', 'storage_index', 'v2_archive').mappings],
     ['another application', ownedIndex('archive', 'another_index').mappings],
-    ['incompatible mapping', { _meta: { huly_fulltext: { base: 'storage_index', version: 'v2', analyzer: 'archive' } }, properties: {} }]
+    [
+      'incompatible mapping',
+      { _meta: { huly_fulltext: { base: 'storage_index', version: 'v2', analyzer: 'archive' } }, properties: {} }
+    ]
   ])('rejects an analyzer fallback with %s', async (_description, mappings) => {
     process.env.ELASTIC_ANALYZER = 'unknown_analyzer'
     const { client, ctx } = setup({ storage_index_v2_archive: { mappings } })

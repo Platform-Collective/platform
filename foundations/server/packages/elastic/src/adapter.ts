@@ -190,9 +190,13 @@ class ElasticAdapter implements FullTextAdapter {
           const mapping = existingVersions.body[name].mappings
           const owner = mapping?._meta?.huly_fulltext
           if (
-            owner?.base !== this.indexBaseName || owner?.version !== this.indexVersion ||
-            typeof owner?.analyzer !== 'string' || !/^[a-z0-9_-]+$/.test(owner.analyzer)
-          ) return false
+            owner?.base !== this.indexBaseName ||
+            owner?.version !== this.indexVersion ||
+            typeof owner?.analyzer !== 'string' ||
+            !/^[a-z0-9_-]+$/.test(owner.analyzer)
+          ) {
+            return false
+          }
           const expectedName = `${versionName}${owner.analyzer === DEFAULT_FULLTEXT_ANALYZER ? '' : `_${owner.analyzer}`}`
           if (name !== expectedName) return false
           return Object.entries(getMappings(owner.analyzer).properties).every(([propName, propType]) => {
