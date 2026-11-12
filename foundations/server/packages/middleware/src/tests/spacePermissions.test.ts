@@ -652,6 +652,54 @@ describe('permission cache refresh', () => {
     await expect(middleware.tx(ctx, [remove])).rejects.toEqual(forbidden)
   })
 
+  it('waits for a replacement refresh before authorizing a queued write', async () => {
+    const { middleware, storage, ctx, space, model } = await setup()
+    const permission = model.findAllSync(core.class.Permission, { _id: core.permission.DeleteObject })[0]
+    Object.assign(permission, { txClass: core.class.TxRemoveDoc, objectClass: DOCUMENT })
+    await middleware.tx(ctx, [])
+    const firstRead = deferred()
+    const secondRead = deferred()
+    const firstGate = deferred()
+    const secondGate = deferred()
+    let reads = 0
+    storage.afterRead = async (query) => {
+      if (typeof query._id !== 'object') return
+      reads++
+      if (reads === 1) {
+        firstRead.resolve()
+        await firstGate.promise
+      } else if (reads === 2) {
+        secondRead.resolve()
+        await secondGate.promise
+      }
+    }
+    const writing = middleware.tx(makeContext(OWNER), [update({ private: true })])
+    await firstRead.promise
+    const remove = factory.createTxRemoveDoc(DOCUMENT, SPACE, 'test:doc' as Ref<Doc>)
+    let settled = false
+    const deleting = middleware.tx(ctx, [remove]).then(
+      () => { settled = true; return undefined },
+      (err) => { settled = true; return err }
+    )
+    // Let the operational write enter the first refresh's wait before replacing it.
+    await new Promise<void>((resolve) => setImmediate(resolve))
+    space.restricted = true
+    const triggerCtx = makeContext()
+    triggerCtx.contextData.broadcast.txes.push(update({ restricted: true }))
+    const restricting = middleware.tx(triggerCtx, [])
+    await secondRead.promise
+    firstGate.resolve()
+    await writing
+    await new Promise<void>((resolve) => setImmediate(resolve))
+    const settledBeforeRefresh = settled
+    secondGate.resolve()
+    await restricting
+    const result = await deleting
+    expect(settledBeforeRefresh).toBe(false)
+    expect(result).toEqual(forbidden)
+    expect(storage.txes).not.toContain(remove)
+  })
+
   it('preserves a trigger-created restricted space during another refresh', async () => {
     const { middleware, storage, ctx, space, model } = await setup()
     const permission = model.findAllSync(core.class.Permission, { _id: core.permission.DeleteObject })[0]
