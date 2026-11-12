@@ -118,16 +118,20 @@ export class BackupWorker {
           return false
         }
 
-        if (it.lastVisit == null) {
-          skipped++
-          return false
-        }
+        // A failed attempt must be retried even without another workspace visit.
+        const failedAttempt = (it.backupInfo?.lastAttempt ?? 0) > (it.backupInfo?.lastBackup ?? 0)
+        if (!failedAttempt) {
+          if (it.lastVisit == null) {
+            skipped++
+            return false
+          }
 
-        const lastVisitSec = Math.floor((now - it.lastVisit) / 1000)
-        if (lastVisitSec > this.config.Interval) {
-          // No backup required, interval not elapsed
-          skipped++
-          return false
+          const lastVisitSec = Math.floor((now - it.lastVisit) / 1000)
+          if (lastVisitSec > this.config.Interval) {
+            // No recent activity since the last successful backup.
+            skipped++
+            return false
+          }
         }
         return !workspacesIgnore.has(it.uuid)
       })

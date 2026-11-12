@@ -11,6 +11,8 @@ the interval and ordering. The attempt is recorded before pipeline creation;
 failure does not advance the last successful backup time or successful count.
 Failed workspaces wait for the configured interval instead of being immediately
 requeued, so a repeatedly timed-out workspace does not stay first in every cycle.
+An unsuccessful attempt remains eligible for retry even without another workspace
+visit. The activity check still applies after the most recent attempt succeeded.
 With an interval of zero, every workspace remains eligible, ordered by its last
 attempt. Older backup services ignore `lastAttempt`; queue fairness requires the
 updated backup service. No account database migration is required for this
