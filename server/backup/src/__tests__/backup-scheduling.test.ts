@@ -44,6 +44,21 @@ describe('backup attempt scheduling', () => {
     )
   }
 
+  async function recheck (runner: BackupWorker): Promise<void> {
+    // reduceCalls resolves after scheduling; the terminal log marks completion.
+    const completed = new Promise<void>((resolve, reject) => {
+      ctx.info.mockImplementation(() => { resolve() })
+      ctx.error.mockImplementation((_message, details) => { reject(details.error) })
+    })
+    try {
+      await runner.recheckWorkspaces(ctx as unknown as MeasureContext)
+      await completed
+    } finally {
+      ctx.info.mockReset()
+      ctx.error.mockReset()
+    }
+  }
+
   beforeEach(() => {
     jest.clearAllMocks()
     jest.spyOn(Date, 'now').mockReturnValue(now)
@@ -61,14 +76,14 @@ describe('backup attempt scheduling', () => {
   it('defers a recently attempted failed workspace even when its last successful backup is old', async () => {
     workspaces = [workspace('failed', 1, now - 1000), workspace('due', 2)]
     const runner = worker()
-    await runner.recheckWorkspaces(ctx as unknown as MeasureContext)
+    await recheck(runner)
     expect([...runner.workspacesToBackup.keys()]).toEqual(['due'])
   })
 
   it('orders eligible workspaces by last attempt, with last success as the fallback', async () => {
     workspaces = [workspace('failed', 1, now - 200000), workspace('due', 2)]
     const runner = worker(0)
-    await runner.recheckWorkspaces(ctx as unknown as MeasureContext)
+    await recheck(runner)
     expect([...runner.workspacesToBackup.keys()]).toEqual(['due', 'failed'])
   })
 
@@ -81,7 +96,7 @@ describe('backup attempt scheduling', () => {
       const inactive = { ...workspace('inactive', 1, now - 200000), lastVisit, mode: 'archived' as const }
       workspaces = [successful, recent, inactive, failed]
       const runner = worker()
-      await runner.recheckWorkspaces(ctx as unknown as MeasureContext)
+      await recheck(runner)
       expect([...runner.workspacesToBackup.keys()]).toEqual(['failed'])
     }
   )
