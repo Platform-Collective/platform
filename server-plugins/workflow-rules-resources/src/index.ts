@@ -11,10 +11,13 @@ import core, {
   roleOrder,
   systemAccountUuid,
   type AccountUuid,
+  type DocumentClassQuery,
+  type Doc,
   type PersonId,
   type Ref,
   type Space,
   type Tx,
+  type TxCUD,
   type TxUpdateDoc
 } from '@hcengineering/core'
 import type { TriggerControl } from '@hcengineering/server-core'
@@ -54,21 +57,50 @@ const PROCESSED_CACHE_KEY = 'workflow-rules.processed'
  * so the trigger treats stored JSON as untrusted.
  *
  * Authorization. The derived mirror update bypasses the ordinary space
- * permission middleware, so this trigger enforces authorization itself
- * before emitting a write. Target-level checks run first and apply to
- * every caller including the system account and workspace admins: a
- * missing target, an archived target, or a `restricted` TypedSpace is
- * refused unconditionally. After those pass, the actor is accepted when
- * the tx was authored by the system account, OR the acting account
- * resolved from `socialStringsToUsers` holds `AccountRole.Admin` or
- * higher, OR is a member or owner of the target. Source-project
- * membership alone is not sufficient. The rule management side (who may
- * create a rule on project A that writes to B) is out of scope for the
- * trigger today: the kill switch in `models/all/src/index.ts` ships the
- * plugin disabled, so an Owner has to opt in via Settings > Configure
- * before any rule fires. A dedicated rule-management permission and
- * full permission-pipeline integration (role grants, forbids) are
- * tracked as a follow-up.
+ * permission middleware AND the `GuestPermissionsMiddleware`, so this
+ * trigger enforces authorization itself before emitting a write.
+ * Target-level checks run first and apply to every caller including the
+ * system account and workspace admins: a missing target, an archived
+ * target, or a `restricted` TypedSpace is refused unconditionally. After
+ * those pass, the acting account is checked against the actor-level
+ * rules below.
+ *
+ * Guest-class roles (`Guest`, `DocGuest`, `ReadOnlyGuest`) are refused
+ * outright. `GuestPermissionsMiddleware` only lets a Guest write their
+ * own doc, and a mirror onto a counterpart issue the guest did not
+ * create is exactly the write that middleware would have refused. Rather
+ * than replicate the guest's own-doc model here (and the role-forbid
+ * `ModulePermissionGroup` consultation that goes with it), the trigger
+ * refuses every below-User role until the full guest-permission
+ * integration lands in a follow-up PR. This matches the rule
+ * "refuse the unsupported case" and is strictly a strict first step:
+ * widening Guest access later is additive. The acting account is
+ * accepted only when the tx was authored by the system account, the
+ * resolved role is `AccountRole.User` or higher AND (the role is
+ * `AccountRole.Admin` or higher OR the account is a member or owner of
+ * the target space). Source-project membership alone is not sufficient.
+ * The rule management side (who may create a rule on project A that
+ * writes to B) is out of scope for the trigger today: the kill switch
+ * in `models/all/src/index.ts` ships the plugin disabled, so an Owner
+ * has to opt in via Settings > Configure before any rule fires. A
+ * dedicated rule-management permission and full permission-pipeline
+ * integration (per-role class forbids on unrestricted projects,
+ * guest-own-doc semantics) are tracked as a follow-up.
+ *
+ * Cross-request concurrency. The pending-status map protects within one
+ * invocation; the dispatcher also reorders groups within one request by
+ * `modifiedOn`, so two groups in one request never race. Two CONCURRENT
+ * requests, however, can each read the same persisted counterpart
+ * status (say `Backlog`) and independently decide to move the
+ * counterpart to incompatible targets (say `Done` and `InProgress`),
+ * with the second applying after the first and performing a forbidden
+ * regression that the first-request read did not anticipate. Every
+ * derived update is therefore wrapped in a `TxApplyIf` whose `match`
+ * asserts the counterpart's live status equals the `effectiveStatus`
+ * the trigger evaluated against. If a concurrent request has advanced
+ * the counterpart since the read, the match fails and the derived tx
+ * is dropped (not partially applied). The dispatcher will fire the
+ * trigger again on the latest write and re-evaluate from scratch.
  *
  * Conflict ordering. The first invocation evaluates the complete request
  * (`control.txes`) in `modifiedOn` order, with request-array order breaking
@@ -188,17 +220,58 @@ export async function OnWorkflowRuleMirror (_txes: Tx[], control: TriggerControl
         continue
       }
 
-      result.push(
-        control.txFactory.createTxUpdateDoc(
-          counterpart._class,
-          counterpart.space,
-          counterpart._id,
-          { status: target },
-          false,
-          updateTx.modifiedOn,
-          updateTx.modifiedBy
-        )
+      // Wrap the derived update in TxApplyIf so a concurrent request
+      // that advanced the counterpart since our read fails the match
+      // and drops the stale derived update instead of applying a
+      // regression against someone else's write. The match is strict
+      // identity + live status: a concurrent move anywhere else does
+      // not race us out of a legal mirror. A match failure is a drop,
+      // not a failure, so the pipeline treats the emitted tx as a
+      // no-op. The pending-status map within one request already
+      // covers the same-request case; this wrapper only handles the
+      // cross-request race.
+      const update = control.txFactory.createTxUpdateDoc(
+        counterpart._class,
+        counterpart.space,
+        counterpart._id,
+        { status: target },
+        false,
+        updateTx.modifiedOn,
+        updateTx.modifiedBy
+      ) as unknown as TxCUD<Doc>
+      // Mark the inner update as DerivedTx explicitly so the cascade guard
+      // catches it when it circles back to the trigger, regardless of
+      // whether the pipeline's DerivedEntry wrapping covers the inner txes
+      // of a TxApplyIf. Belt-and-braces: if the pipeline already marks it,
+      // the second assignment is a no-op; if it does not, the explicit
+      // space is what prevents a cascade.
+      ;(update as unknown as { space: unknown }).space = core.space.DerivedTx
+      const match: DocumentClassQuery<Doc>[] = [
+        {
+          _class: counterpart._class,
+          query: { _id: counterpart._id, status: effectiveStatus }
+        }
+      ]
+      // `scope` MUST be non-null: ApplyTxMiddleware.verifyApplyIf is
+      // only run when scope is set (see applyTx.ts). A null scope
+      // skips predicate evaluation entirely and the stale mirror
+      // would apply. The scope key is per-target so parallel updates
+      // to DIFFERENT targets are not serialized, but parallel updates
+      // to the SAME target are serialized at the apply stage and the
+      // stale write is rejected by the match predicate.
+      const applyIf = control.txFactory.createTxApplyIf(
+        counterpart.space,
+        `workflow-rules.mirror:${counterpart._id}`,
+        match,
+        [],
+        [update],
+        'workflow-rules.mirror',
+        true,
+        [],
+        updateTx.modifiedOn,
+        updateTx.modifiedBy
       )
+      result.push(applyIf)
       pendingStatuses.set(counterpart._id, target)
     }
   }
@@ -253,9 +326,18 @@ function isPluginEnabled (control: TriggerControl): boolean {
  *  - `tx.modifiedBy === core.account.System` (server-side writes,
  *    integrations). This is checked explicitly because the session map
  *    skips system sessions.
- *  - the acting account resolved from `socialStringsToUsers` holds
- *    `AccountRole.Admin` or higher.
- *  - the acting account is a member or owner of the target.
+ *  - After resolving the acting account from `socialStringsToUsers`:
+ *    - the role must be `AccountRole.User` or higher. Guest-class roles
+ *      (`Guest`, `DocGuest`, `ReadOnlyGuest`) are refused outright
+ *      because `GuestPermissionsMiddleware` only allows them to mutate
+ *      their own docs, and the derived mirror-target update is NOT a
+ *      doc the guest created. Rather than partially replicate the
+ *      guest own-doc model + the `ModulePermissionGroup` role-forbid
+ *      consultation here (both of which only matter for Guest-class
+ *      roles), the trigger refuses every below-User role until the full
+ *      guest-permission integration lands in a follow-up PR;
+ *    - AND either the role is `AccountRole.Admin` or higher, OR the
+ *      account is a member or owner of the target space.
  *
  * Fails closed when a non-system acting account cannot be resolved from
  * the social id. Results are memoized by `actor + space`; the target
@@ -265,9 +347,10 @@ function isPluginEnabled (control: TriggerControl): boolean {
  * The member/owner check is deliberately a strict first step. For a
  * public Space a non-member could normally write; this trigger still
  * refuses because the actor is not in the target's membership list.
- * Full permission-pipeline integration (role grants, forbids, non-member
- * writes to public spaces) is a follow-up tracked alongside the
- * dedicated rule-management permission.
+ * Full permission-pipeline integration (role grants, forbids on
+ * unrestricted projects, guest-own-doc semantics, non-member writes to
+ * public spaces) is a follow-up tracked alongside the dedicated
+ * rule-management permission.
  */
 async function isAuthorizedForTarget (
   control: TriggerControl,
@@ -314,6 +397,15 @@ async function isAuthorizedForTarget (
   if (accountUuid === systemAccountUuid) {
     cache.set(cacheKey, true)
     return true
+  }
+  // Refuse guest-class roles outright. `GuestPermissionsMiddleware`
+  // would normally refuse a Guest writing to a doc they did not
+  // create, and the derived mirror would bypass that middleware. Rule
+  // "refuse the unsupported case": the follow-up PR lands the full
+  // guest-permission integration before this gate relaxes.
+  if (roleOrder[resolved.role] < roleOrder[AccountRole.User]) {
+    cache.set(cacheKey, false)
+    return false
   }
   if (roleOrder[resolved.role] >= roleOrder[AccountRole.Admin]) {
     cache.set(cacheKey, true)
