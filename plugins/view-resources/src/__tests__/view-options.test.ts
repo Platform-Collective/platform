@@ -2,7 +2,14 @@
 import { SortingOrder, type Ref } from '@hcengineering/core'
 import { type IntlString } from '@hcengineering/platform'
 import { type Viewlet, type ViewOptions, type ViewOptionsModel } from '@hcengineering/view'
-import { defaultOptions, getDefaultViewOptions, getStoredViewOptions, getViewOptions, noCategory, viewOptionStore } from '../viewOptions'
+import {
+  defaultOptions,
+  getDefaultViewOptions,
+  getStoredViewOptions,
+  getViewOptions,
+  noCategory,
+  viewOptionStore
+} from '../viewOptions'
 
 jest.mock('@hcengineering/core', () => ({ SortingOrder: { Ascending: 1, Descending: -1 } }), { virtual: true })
 jest.mock('@hcengineering/platform', () => ({}), { virtual: true })
