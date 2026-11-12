@@ -498,7 +498,7 @@ export async function validateOtp (
     // so concurrent requests with the same valid code cannot both succeed.
     const consumed = await db.otp.deleteMany({ socialId: emailSocialId._id, code })
     if (consumed === 0) {
-      ctx.warn('OTP already used', { email: normalizedEmail })
+      ctx.warn('OTP already used', { socialId: emailSocialId._id })
       throw new PlatformError(new Status(Severity.ERROR, platform.status.InvalidOtp, {}))
     }
     await db.otp.deleteMany({ socialId: emailSocialId._id })

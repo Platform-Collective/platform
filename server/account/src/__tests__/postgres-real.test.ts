@@ -180,15 +180,19 @@ describe('real-account', () => {
     expect(usersPG.length).toBe(2)
   })
 
-  describe('otp concurrency', () => {
+  // CockroachDB is the default account DB and behaves differently under contention (SERIALIZABLE, retries)
+  describe.each([
+    ['postgres', () => pgAccount],
+    ['cockroach', () => crAccount]
+  ])('otp concurrency (%s)', (_name, getAccount) => {
     const code = '123456'
 
     async function createOtp (): Promise<PersonId> {
-      const socialId = (await pgAccount.socialId.find({ personUuid: users[0].uuid })).find(
+      const socialId = (await getAccount().socialId.find({ personUuid: users[0].uuid })).find(
         (it) => it.type === SocialIdType.EMAIL
       ) as SocialId
       const now = Date.now()
-      await pgAccount.otp.insertOne({ socialId: socialId._id, code, expiresOn: now + 60000, createdOn: now })
+      await getAccount().otp.insertOne({ socialId: socialId._id, code, expiresOn: now + 60000, createdOn: now })
       return socialId._id
     }
 
@@ -196,11 +200,11 @@ describe('real-account', () => {
       const socialId = await createOtp()
 
       const results = await Promise.all(
-        Array.from({ length: 20 }, async () => await pgAccount.otp.deleteMany({ socialId, code }))
+        Array.from({ length: 20 }, async () => await getAccount().otp.deleteMany({ socialId, code }))
       )
 
       expect(results.reduce((sum, it) => sum + it, 0)).toBe(1)
-      expect(await pgAccount.otp.find({ socialId })).toHaveLength(0)
+      expect(await getAccount().otp.find({ socialId })).toHaveLength(0)
     })
 
     it('only one concurrent verify + consume flow succeeds for the same valid code', async () => {
@@ -210,8 +214,8 @@ describe('real-account', () => {
       // Kept below the attempts limit so every request is 'valid' and only consume can stop the extras.
       const results = await Promise.all(
         Array.from({ length: 4 }, async () => {
-          if ((await verifyOtpAttempt(pgAccount, socialId, code)) !== 'valid') return false
-          return (await pgAccount.otp.deleteMany({ socialId, code })) > 0
+          if ((await verifyOtpAttempt(getAccount(), socialId, code)) !== 'valid') return false
+          return (await getAccount().otp.deleteMany({ socialId, code })) > 0
         })
       )
 
@@ -222,12 +226,12 @@ describe('real-account', () => {
       const socialId = await createOtp()
 
       const results = await Promise.all(
-        Array.from({ length: 30 }, async () => await verifyOtpAttempt(pgAccount, socialId, code))
+        Array.from({ length: 30 }, async () => await verifyOtpAttempt(getAccount(), socialId, code))
       )
 
       // Default OTP_MAX_ATTEMPTS is 5: at most 5 concurrent requests may be accepted
       expect(results.filter((it) => it === 'valid').length).toBeLessThanOrEqual(5)
-      const [otp] = await pgAccount.otp.find({ socialId })
+      const [otp] = await getAccount().otp.find({ socialId })
       expect(otp.attempts).toBe(30)
     })
   })
