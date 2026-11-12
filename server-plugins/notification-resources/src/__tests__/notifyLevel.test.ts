@@ -170,7 +170,11 @@ describe('getApplicableNotifyLevels', () => {
     async (objectClass) => {
       const source = makeSource(undefined, [])
       const levels = await getApplicableNotifyLevels(
-        source, channel, receiver, [own(channel, 'none')], objectClass as Ref<Class<Doc>>
+        source,
+        channel,
+        receiver,
+        [own(channel, 'none')],
+        objectClass as Ref<Class<Doc>>
       )
       expect(levels).toEqual(['none'])
       expect(source.findParentMessage).not.toHaveBeenCalled()
