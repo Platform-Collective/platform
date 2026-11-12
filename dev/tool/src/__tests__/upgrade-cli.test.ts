@@ -116,7 +116,7 @@ describe('upgrade CLI error handling', () => {
     }
     for (const [event, previous] of originalListeners) {
       for (const listener of processEvents.listeners(event)) {
-        if (!previous.has(listener)) processEvents.removeListener(event, listener)
+        if (!previous.has(listener)) processEvents.removeListener(event, listener as (...args: unknown[]) => void)
       }
     }
   })
