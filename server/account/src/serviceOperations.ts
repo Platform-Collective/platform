@@ -92,6 +92,7 @@ function getUpgradeRetryDelay (retries: number): number {
 
 const UPGRADE_FAILED_MESSAGE = 'Upgrade failed. Contact support.'
 const MIGRATION_ID = '[A-Za-z0-9._-]+/[A-Za-z0-9._-]+'
+// Keep the accepted migration-ID grammar in sync with PENDING_MIGRATIONS in workspace-service/ws-operations.ts.
 const PENDING_MIGRATIONS_REASON = new RegExp(
   `^Upgrade failed: \\d+ migrations failed and remain pending: (${MIGRATION_ID}(?:, ${MIGRATION_ID})*)$`
 )
@@ -188,8 +189,13 @@ export async function performWorkspaceOperation (
         if (workspace.status.mode === 'upgrade-failed') {
           // Retry the failed upgrade with the current version.
           update.mode = 'upgrading'
+          // The first claim increments this to zero, matching a fresh upgrade-started.
+          update.processingAttempts = -1
+          update.processingMessage = ''
+          update.upgradeFailedVersion = null
+        } else {
+          update.processingAttempts = 0
         }
-        update.processingAttempts = 0
         update.lastProcessingTime = Date.now() - processingTimeoutMs // To not wait for next step
         break
       case 'delete':
@@ -411,6 +417,8 @@ export async function updateWorkspaceInfo (
       update.versionMinor = version.minor
       update.versionPatch = version.patch
       update.processingProgress = progress
+      update.upgradeFailedVersion = null
+      update.processingMessage = ''
       break
     case 'upgrade-failed': {
       // Ignore late reports after a successful upgrade or a reset, and reports of an older claim.

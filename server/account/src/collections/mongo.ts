@@ -778,7 +778,8 @@ export class MongoAccountDB implements AccountDB {
       $or: [
         { 'status.processingAttempts': { $exists: false } },
         { 'status.processingAttempts': { $lte: 3 } },
-        { 'status.mode': 'upgrade-failed' }
+        // Match the PostgreSQL bound, including crashes before upgrade-started.
+        { 'status.mode': 'upgrade-failed', 'status.processingAttempts': { $lte: 7 } }
       ]
     }
 

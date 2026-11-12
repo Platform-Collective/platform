@@ -270,6 +270,7 @@ export async function upgradeWorkspace (
   }
 }
 
+// Keep this grammar in sync with PENDING_MIGRATIONS_REASON in account/serviceOperations.ts.
 const PENDING_MIGRATIONS =
   /^\d+ migrations failed and remain pending: [A-Za-z0-9._-]+\/[A-Za-z0-9._-]+(?:, [A-Za-z0-9._-]+\/[A-Za-z0-9._-]+)*$/
 

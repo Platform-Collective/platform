@@ -1061,7 +1061,11 @@ export class PostgresAccountDB implements AccountDB {
     // to clear them with the worker.
     whereChunks.push("s.mode <> 'manual-creation'")
     // A failed upgrade has used up its attempts; the upgrade-started event resets them for the new version.
-    whereChunks.push("(s.processing_attempts IS NULL OR s.processing_attempts <= 3 OR s.mode = 'upgrade-failed')")
+    // Bound claims after terminal failure too: crashes before upgrade-started must exhaust the budget.
+    // Keep this bound in sync with the MongoDB claim query.
+    whereChunks.push(
+      "(s.processing_attempts IS NULL OR s.processing_attempts <= 3 OR (s.mode = 'upgrade-failed' AND s.processing_attempts <= 7))"
+    )
     whereChunks.push(`(s.last_processing_time IS NULL OR s.last_processing_time < $${values.length + 1})`)
     values.push(Date.now() - processingTimeoutMs)
 

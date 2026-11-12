@@ -109,7 +109,7 @@ export interface WorkspaceStatus extends WorkspaceVersion {
 
   targetRegion?: string
   // Version whose upgrade failed in 'upgrade-failed' mode; a different version retries the upgrade.
-  upgradeFailedVersion?: string
+  upgradeFailedVersion?: string | null
 }
 
 export interface Workspace {
