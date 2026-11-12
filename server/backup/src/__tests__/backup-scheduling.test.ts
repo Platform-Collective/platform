@@ -26,11 +26,12 @@ describe('backup attempt scheduling', () => {
   let updateBackupInfo: jest.Mock
 
   function workspace (id: string, lastBackup: number, lastAttempt?: number): WorkspaceInfoWithStatus {
+    const backupInfo = { lastBackup, lastAttempt, backups: 2, backupSize: 1, dataSize: 2, blobsSize: 3 }
     return {
       uuid: id as WorkspaceUuid, url: id, name: id, mode: 'active', createdOn: 0,
       lastVisit: now, versionMajor: 0, versionMinor: 0, versionPatch: 0,
-      backupInfo: { lastBackup, lastAttempt, backups: 2, backupSize: 1, dataSize: 2, blobsSize: 3 }
-    } as WorkspaceInfoWithStatus
+      processingAttemps: 0, backupInfo
+    }
   }
 
   function worker (interval = 100): BackupWorker {
