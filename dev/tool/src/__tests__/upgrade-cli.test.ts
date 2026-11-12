@@ -124,6 +124,8 @@ describe('upgrade CLI error handling', () => {
     jest.mocked(upgradeWorkspace).mockRejectedValue(new Error('tracker/add-search-view-options failed'))
     const args = command === 'backup-restore' ? [command, 'backup-dir', 'workspace', '--upgrade'] : [command, 'workspace']
     await program.parseAsync(['node', 'tool', ...args])
+    expect(upgradeWorkspace).toHaveBeenCalledTimes(1)
+    expect(restore).toHaveBeenCalledTimes(command === 'backup-restore' ? 1 : 0)
     expect(process.exitCode).toBe(1)
     expect(updateWorkspaceInfo).not.toHaveBeenCalled()
     expect(log).not.toHaveBeenCalledWith('workspace restored')
