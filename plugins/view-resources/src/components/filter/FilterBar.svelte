@@ -109,14 +109,15 @@
     visible = hierarchy.classHierarchyMixin(_class, view.mixin.ClassFilters) !== undefined
   }
 
-  function selectedFilterChanged(
+  // True when the open saved view no longer matches what is on screen
+  // (viewlet, filters or view options), whoever created it.
+  function selectedFilterModified(
     selectedFilter: FilteredView | undefined,
     filters: Filter[],
     activeViewlet: Record<string, Ref<Viewlet> | null>,
     viewOptionStore: Map<string, ViewOptions>
   ): boolean {
     if (selectedFilter === undefined) return false
-    if (!getCurrentAccount().socialIds.includes(selectedFilter.createdBy)) return false
     const loc = getCurrentLocation()
     const key = makeViewletKey(loc)
     if (selectedFilter.viewletId !== activeViewlet[key]) return true
@@ -128,13 +129,29 @@
     return false
   }
 
+  // "Save" overwrites the saved view, so it is offered only to its creator.
+  function selectedFilterChanged(
+    selectedFilter: FilteredView | undefined,
+    filters: Filter[],
+    activeViewlet: Record<string, Ref<Viewlet> | null>,
+    viewOptionStore: Map<string, ViewOptions>
+  ): boolean {
+    if (selectedFilter === undefined) return false
+    if (!getCurrentAccount().socialIds.includes(selectedFilter.createdBy)) return false
+    return selectedFilterModified(selectedFilter, filters, activeViewlet, viewOptionStore)
+  }
+
   $: hasFilters = $filterStore !== undefined && $filterStore.length > 0
+  // The SaveAs row takes a full-width band of its own, so it is shown only
+  // when there is something to save: one-off filters (no saved view open) or
+  // a saved view that has been changed. An unchanged saved view gets no row.
   $: showSaveRow =
     visible &&
     hasFilters &&
     !hideSaveButtons &&
     canSaveFilteredView &&
-    (hideChips || selectedFilterChanged($selectedFilterStore, $filterStore, $activeViewlet, $viewOptionStore))
+    ($selectedFilterStore === undefined ||
+      selectedFilterModified($selectedFilterStore, $filterStore, $activeViewlet, $viewOptionStore))
   $: showChipRow = visible && hasFilters && !hideChips
 </script>
 
