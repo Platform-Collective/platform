@@ -74,9 +74,10 @@ const mockCloseStorage = jest.fn(async () => {})
 const mockClosePipeline = jest.fn(async () => {})
 
 describe('upgrade CLI error handling', () => {
+  const processEvents: NodeJS.EventEmitter = process
   const originalExitCode = process.exitCode
   const originalListeners = new Map(
-    ['exit', 'unhandledRejection', 'uncaughtException'].map((event) => [event, new Set(process.listeners(event))])
+    ['exit', 'unhandledRejection', 'uncaughtException'].map((event) => [event, new Set(processEvents.listeners(event))])
   )
   const originalEnv = { SERVER_SECRET: process.env.SERVER_SECRET, ACCOUNTS_URL: process.env.ACCOUNTS_URL }
   const closeDb = jest.fn(async () => {})
@@ -110,12 +111,12 @@ describe('upgrade CLI error handling', () => {
 
   afterAll(() => {
     for (const [key, value] of Object.entries(originalEnv)) {
-      if (value === undefined) delete process.env[key]
+      if (value === undefined) Reflect.deleteProperty(process.env, key)
       else process.env[key] = value
     }
     for (const [event, previous] of originalListeners) {
-      for (const listener of process.listeners(event)) {
-        if (!previous.has(listener)) process.removeListener(event, listener)
+      for (const listener of processEvents.listeners(event)) {
+        if (!previous.has(listener)) processEvents.removeListener(event, listener)
       }
     }
   })
