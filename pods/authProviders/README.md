@@ -56,5 +56,36 @@ changes the Secure default of other cookies written by the service. Use
 plain-HTTP development deployment.
 
 Neither setting changes `SameSite`. This preserves compatibility with identity
-providers that return using `response_mode=form_post`, for which a forced
-`SameSite=Lax` cookie would not be sent on the cross-site POST.
+providers using a top-level GET callback. It does not establish support for
+`response_mode=form_post`: browsers can treat an omitted SameSite attribute as
+Lax and withhold the session cookie on a cross-site POST. Use the authorization
+code flow with a query/GET callback. Supporting form_post requires both a POST
+callback handler and an explicit `SameSite=None; Secure` session configuration;
+neither is provided by these settings.
+
+## Forwarded headers and cookie handling
+
+The service deliberately does not enable Koa's global `app.proxy` setting.
+That setting trusts forwarded protocol information for the whole application;
+this service does not establish that requests can arrive only through a proxy
+that strips and replaces client-supplied forwarded headers. Enabling it here
+would broaden trust beyond session-cookie configuration.
+
+Instead, `SESSION_COOKIE_SECURE=true` explicitly permits only the session
+cookie and its signature to be emitted as Secure behind TLS termination. The
+middleware temporarily adjusts the cookie object's secure flag while calling
+its setter, then restores the flag even if the setter throws. Other cookie
+writers keep their existing defaults. This is an adapter for the currently
+installed Koa/Cookies API; dependency upgrades must retain the session-cookie
+integration tests. Configure it only where the browser-facing connection is
+HTTPS, and restrict direct access to the HTTP service at the deployment edge.
+
+## Release notes: cookie-domain transition
+
+Enabling or disabling `SESSION_COOKIE_DOMAIN` changes the cookie name between
+`koa.sess` and `huly.sess`. An OIDC login already in progress cannot resume
+across that transition and must be restarted. During a rolling deployment,
+requests reaching pods with different cookie-domain settings can fail the same
+way. Drain in-progress login flows and apply the setting consistently across
+authentication pods; schedule a brief sign-in interruption. The old cookie is
+not imported into the new session.
