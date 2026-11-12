@@ -72,6 +72,20 @@ describe('backup attempt scheduling', () => {
     expect([...runner.workspacesToBackup.keys()]).toEqual(['due', 'failed'])
   })
 
+  it.each([now - 300000, undefined])(
+    'retries an elapsed unsuccessful attempt without another visit (lastVisit %s)',
+    async (lastVisit) => {
+      const failed = { ...workspace('failed', 1, now - 200000), lastVisit }
+      const successful = { ...workspace('successful', now - 200000, now - 200000), lastVisit }
+      const recent = { ...workspace('recent', 1, now - 1000), lastVisit }
+      const inactive = { ...workspace('inactive', 1, now - 200000), lastVisit, mode: 'archived' as const }
+      workspaces = [successful, recent, inactive, failed]
+      const runner = worker()
+      await runner.recheckWorkspaces(ctx as unknown as MeasureContext)
+      expect([...runner.workspacesToBackup.keys()]).toEqual(['failed'])
+    }
+  )
+
   it('records an unsuccessful attempt without changing the successful backup time or count', async () => {
     const ws = workspace('failed', 1)
     expect(await worker().doBackup(ctx as unknown as MeasureContext, ws)).toBe(false)
