@@ -121,29 +121,39 @@ describe('upgrade CLI error handling', () => {
     }
   })
 
-  it.each(['upgrade-workspace', 'backup-restore'])('%s reports a failed migration with a nonzero exit and closes resources', async (command) => {
-    jest.mocked(upgradeWorkspace).mockRejectedValue(new Error('tracker/add-search-view-options failed'))
-    const args = command === 'backup-restore' ? [command, 'backup-dir', 'workspace', '--upgrade'] : [command, 'workspace']
-    await program.parseAsync(['node', 'tool', ...args])
-    expect(upgradeWorkspace).toHaveBeenCalledTimes(1)
-    expect(restore).toHaveBeenCalledTimes(command === 'backup-restore' ? 1 : 0)
-    expect(process.exitCode).toBe(1)
-    expect(updateWorkspaceInfo).not.toHaveBeenCalled()
-    expect(log).not.toHaveBeenCalledWith('workspace restored')
-    expect(log).not.toHaveBeenCalledWith('upgrade-workspace done')
-    expect(send).not.toHaveBeenCalledWith(expect.anything(), 'workspace', [workspaceEvents.restored()])
-    expect(send).not.toHaveBeenCalledWith(expect.anything(), 'workspace', [workspaceEvents.upgraded()])
-    expect(shutdown).toHaveBeenCalledTimes(command === 'backup-restore' ? 2 : 1)
-    expect(closeDb).toHaveBeenCalledTimes(command === 'backup-restore' ? 2 : 1)
-    expect(mockClosePipeline).toHaveBeenCalledTimes(command === 'backup-restore' ? 1 : 0)
-    expect(mockCloseStorage).toHaveBeenCalledTimes(command === 'backup-restore' ? 1 : 0)
-  })
+  it.each(['upgrade-workspace', 'backup-restore'])(
+    '%s reports a failed migration with a nonzero exit and closes resources',
+    async (command) => {
+      jest.mocked(upgradeWorkspace).mockRejectedValue(new Error('tracker/add-search-view-options failed'))
+      const args =
+        command === 'backup-restore' ? [command, 'backup-dir', 'workspace', '--upgrade'] : [command, 'workspace']
+      await program.parseAsync(['node', 'tool', ...args])
+      expect(upgradeWorkspace).toHaveBeenCalledTimes(1)
+      expect(restore).toHaveBeenCalledTimes(command === 'backup-restore' ? 1 : 0)
+      expect(process.exitCode).toBe(1)
+      expect(updateWorkspaceInfo).not.toHaveBeenCalled()
+      expect(log).not.toHaveBeenCalledWith('workspace restored')
+      expect(log).not.toHaveBeenCalledWith('upgrade-workspace done')
+      expect(send).not.toHaveBeenCalledWith(expect.anything(), 'workspace', [workspaceEvents.restored()])
+      expect(send).not.toHaveBeenCalledWith(expect.anything(), 'workspace', [workspaceEvents.upgraded()])
+      expect(shutdown).toHaveBeenCalledTimes(command === 'backup-restore' ? 2 : 1)
+      expect(closeDb).toHaveBeenCalledTimes(command === 'backup-restore' ? 2 : 1)
+      expect(mockClosePipeline).toHaveBeenCalledTimes(command === 'backup-restore' ? 1 : 0)
+      expect(mockCloseStorage).toHaveBeenCalledTimes(command === 'backup-restore' ? 1 : 0)
+    }
+  )
 
   it('preserves a successful restore and upgrade', async () => {
     await program.parseAsync(['node', 'tool', 'backup-restore', 'backup-dir', 'workspace', '--upgrade'])
     expect(process.exitCode).toBe(0)
     expect(restore).toHaveBeenCalledTimes(1)
-    expect(updateWorkspaceInfo).toHaveBeenCalledWith(expect.anything(), expect.anything(), null, expect.anything(), expect.objectContaining({ event: 'upgrade-done' }))
+    expect(updateWorkspaceInfo).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      null,
+      expect.anything(),
+      expect.objectContaining({ event: 'upgrade-done' })
+    )
     expect(log).toHaveBeenCalledWith('workspace restored')
     expect(shutdown).toHaveBeenCalledTimes(2)
     expect(closeDb).toHaveBeenCalledTimes(2)

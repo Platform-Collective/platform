@@ -230,7 +230,7 @@ export function devTool (
       console.error(err)
     } finally {
       try {
-        await closeAccountsDb()
+        closeAccountsDb()
       } finally {
         await shutdownMongo()
       }
@@ -391,53 +391,58 @@ export function devTool (
   ): Promise<void> {
     const { version, txes, migrateOperations } = prepareTools()
 
-    await withAccountDatabase(async (db) => {
-      const info = await getWorkspace(db, workspace)
-      if (info === null) {
-        throw new Error(`workspace ${workspace} not found`)
-      }
+    await withAccountDatabase(
+      async (db) => {
+        const info = await getWorkspace(db, workspace)
+        if (info === null) {
+          throw new Error(`workspace ${workspace} not found`)
+        }
 
-      const wsInfo = await getWorkspaceInfoWithStatusById(db, info.uuid)
-      if (wsInfo === null) {
-        throw new Error(`workspace ${workspace} not found`)
-      }
+        const wsInfo = await getWorkspaceInfoWithStatusById(db, info.uuid)
+        if (wsInfo === null) {
+          throw new Error(`workspace ${workspace} not found`)
+        }
 
-      const coreWsInfo = flattenStatus(wsInfo)
-      const measureCtx = new MeasureMetricsContext('upgrade-workspace', {})
-      const accountClient = getAccountClient(getToolToken(wsInfo.uuid))
-      const queue = getPlatformQueue('tool', info.region)
-      try {
-        const wsProducer = queue.getProducer<QueueWorkspaceMessage>(toolCtx, QueueTopic.Workspace)
-        await upgradeWorkspace(
-          measureCtx,
-          version,
-          txes,
-          migrateOperations,
-          accountClient,
-          coreWsInfo,
-          consoleModelLogger,
-          wsProducer,
-          async () => {},
-          forceUpdate,
-          forceIndexes,
-          true
-        )
+        const coreWsInfo = flattenStatus(wsInfo)
+        const measureCtx = new MeasureMetricsContext('upgrade-workspace', {})
+        const accountClient = getAccountClient(getToolToken(wsInfo.uuid))
+        const queue = getPlatformQueue('tool', info.region)
+        try {
+          const wsProducer = queue.getProducer<QueueWorkspaceMessage>(toolCtx, QueueTopic.Workspace)
+          await upgradeWorkspace(
+            measureCtx,
+            version,
+            txes,
+            migrateOperations,
+            accountClient,
+            coreWsInfo,
+            consoleModelLogger,
+            wsProducer,
+            async () => {},
+            forceUpdate,
+            forceIndexes,
+            true
+          )
 
-        await updateWorkspaceInfo(measureCtx, db, null, getToolToken(), {
-          workspaceUuid: info.uuid,
-          event: 'upgrade-done',
-          version,
-          progress: 100
-        })
+          await updateWorkspaceInfo(measureCtx, db, null, getToolToken(), {
+            workspaceUuid: info.uuid,
+            event: 'upgrade-done',
+            version,
+            progress: 100
+          })
 
-        console.log(metricsToString(measureCtx.metrics, 'upgrade', 60))
+          console.log(metricsToString(measureCtx.metrics, 'upgrade', 60))
 
-        await wsProducer.send(measureCtx, info.uuid, [workspaceEvents.upgraded()])
-        console.log('upgrade-workspace done')
-      } finally {
-        await queue.shutdown()
-      }
-    }, undefined, undefined, true)
+          await wsProducer.send(measureCtx, info.uuid, [workspaceEvents.upgraded()])
+          console.log('upgrade-workspace done')
+        } finally {
+          await queue.shutdown()
+        }
+      },
+      undefined,
+      undefined,
+      true
+    )
   }
 
   program
@@ -935,77 +940,82 @@ export function devTool (
               'Restored blobs may be written to the wrong storage. Set STORAGE_CONFIG to match the transactor before restoring.'
           )
         }
-        await withAccountDatabase(async (db) => {
-          const { txes, dbUrl } = prepareTools()
-          const ws = await getWorkspace(db, workspaceId)
-          if (ws === null) {
-            throw new Error(`workspace ${workspaceId} not found`)
-          }
-
-          const workspace = ws.uuid
-          const wsIds = {
-            uuid: ws.uuid,
-            dataId: ws.dataId,
-            url: ws.url
-          }
-          const storage = await createFileBackupStorage(dirName)
-          const storageConfig = storageConfigFromEnv()
-
-          const queue = !cmd.noqueue ? getPlatformQueue('tool', ws.region) : undefined
-          let workspaceStorage: StorageAdapter | undefined
-          let pipeline: Pipeline | undefined
-          try {
-            const wsProducer = queue?.getProducer<QueueWorkspaceMessage>(toolCtx, QueueTopic.Workspace)
-            await wsProducer?.send(toolCtx, ws.uuid, [workspaceEvents.restoring()])
-            workspaceStorage = buildStorageFromConfig(storageConfig)
-            pipeline = await createBackupPipeline(toolCtx, dbUrl, txes, {
-              externalStorage: workspaceStorage,
-              usePassedCtx: true
-            })(
-              toolCtx,
-              {
-                uuid: ws.uuid,
-                url: ws.url ?? '',
-                dataId: ws.dataId
-              },
-              createEmptyBroadcastOps(),
-              null
-            )
-            if (pipeline === undefined) {
-              throw new Error(`failed to restore ${workspaceId}, pipeline is undefined`)
-            }
-            await sendTransactorEvent(workspace, 'force-maintenance')
-
-            await restore(toolCtx, pipeline, wsIds, storage, cmd.accounts ? db : undefined, {
-              date: parseInt(date ?? '-1'),
-              merge: cmd.merge,
-              parallel: parseInt(cmd.parallel ?? '1'),
-              recheck: cmd.recheck,
-              include: cmd.include === '*' ? undefined : new Set(cmd.include.split(';')),
-              skip: new Set(cmd.skip.split(';')),
-              historyFile: cmd.historyFile
-            })
-
-            if (cmd.upgrade) {
-              await doUpgrade(toolCtx, workspace, true, true)
-            } else {
-              await sendTransactorEvent(workspace, 'force-close')
+        await withAccountDatabase(
+          async (db) => {
+            const { txes, dbUrl } = prepareTools()
+            const ws = await getWorkspace(db, workspaceId)
+            if (ws === null) {
+              throw new Error(`workspace ${workspaceId} not found`)
             }
 
-            console.log('workspace restored')
-            await wsProducer?.send(toolCtx, ws.uuid, [workspaceEvents.restored()])
-          } finally {
+            const workspace = ws.uuid
+            const wsIds = {
+              uuid: ws.uuid,
+              dataId: ws.dataId,
+              url: ws.url
+            }
+            const storage = await createFileBackupStorage(dirName)
+            const storageConfig = storageConfigFromEnv()
+
+            const queue = !cmd.noqueue ? getPlatformQueue('tool', ws.region) : undefined
+            let workspaceStorage: StorageAdapter | undefined
+            let pipeline: Pipeline | undefined
             try {
-              await pipeline?.close()
+              const wsProducer = queue?.getProducer<QueueWorkspaceMessage>(toolCtx, QueueTopic.Workspace)
+              await wsProducer?.send(toolCtx, ws.uuid, [workspaceEvents.restoring()])
+              workspaceStorage = buildStorageFromConfig(storageConfig)
+              pipeline = await createBackupPipeline(toolCtx, dbUrl, txes, {
+                externalStorage: workspaceStorage,
+                usePassedCtx: true
+              })(
+                toolCtx,
+                {
+                  uuid: ws.uuid,
+                  url: ws.url ?? '',
+                  dataId: ws.dataId
+                },
+                createEmptyBroadcastOps(),
+                null
+              )
+              if (pipeline === undefined) {
+                throw new Error(`failed to restore ${workspaceId}, pipeline is undefined`)
+              }
+              await sendTransactorEvent(workspace, 'force-maintenance')
+
+              await restore(toolCtx, pipeline, wsIds, storage, cmd.accounts ? db : undefined, {
+                date: parseInt(date ?? '-1'),
+                merge: cmd.merge,
+                parallel: parseInt(cmd.parallel ?? '1'),
+                recheck: cmd.recheck,
+                include: cmd.include === '*' ? undefined : new Set(cmd.include.split(';')),
+                skip: new Set(cmd.skip.split(';')),
+                historyFile: cmd.historyFile
+              })
+
+              if (cmd.upgrade) {
+                await doUpgrade(toolCtx, workspace, true, true)
+              } else {
+                await sendTransactorEvent(workspace, 'force-close')
+              }
+
+              console.log('workspace restored')
+              await wsProducer?.send(toolCtx, ws.uuid, [workspaceEvents.restored()])
             } finally {
               try {
-                await queue?.shutdown()
+                await pipeline?.close()
               } finally {
-                await workspaceStorage?.close()
+                try {
+                  await queue?.shutdown()
+                } finally {
+                  await workspaceStorage?.close()
+                }
               }
             }
-          }
-        }, undefined, undefined, true).catch((err) => {
+          },
+          undefined,
+          undefined,
+          true
+        ).catch((err) => {
           toolCtx.error('failed to restore', { err })
           process.exitCode = 1
         })

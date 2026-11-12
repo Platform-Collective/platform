@@ -26,7 +26,7 @@ async function fixture (): Promise<any> {
     workspace: { uuid: 'test-workspace' as WorkspaceUuid, url: 'test-workspace' },
     branding: null,
     contextVars: {},
-    lowLevelStorage: {} as LowLevelStorage
+    lowLevelStorage: {} as unknown as LowLevelStorage
   }
   const doc = {
     _id: 'tracker:viewlet:IssueList' as Ref<Doc>,
@@ -40,16 +40,18 @@ async function fixture (): Promise<any> {
   }
   const received = jest.fn(async () => ({}))
   const terminal = {
-    findAll: jest.fn(async (_ctx: unknown, _class: unknown, _query: unknown, options?: { projection?: Record<string, number> }) => {
-      const result = { ...doc }
-      if (options?.projection?.name === 0) Reflect.deleteProperty(result, 'name')
-      if (options?.projection?.name === 1) {
-        for (const key of Object.keys(result)) {
-          if (key !== '_id' && key !== '_class' && key !== 'name') Reflect.deleteProperty(result, key)
+    findAll: jest.fn(
+      async (_ctx: unknown, _class: unknown, _query: unknown, options?: { projection?: Record<string, number> }) => {
+        const result = { ...doc }
+        if (options?.projection?.name === 0) Reflect.deleteProperty(result, 'name')
+        if (options?.projection?.name === 1) {
+          for (const key of Object.keys(result)) {
+            if (key !== '_id' && key !== '_class' && key !== 'name') Reflect.deleteProperty(result, key)
+          }
         }
+        return toFindResult([result], 7)
       }
-      return toFindResult([result], 7)
-    }),
+    ),
     tx: received
   } as unknown as Middleware
   const ctx = new MeasureMetricsContext('wrapped-pipeline', {})
@@ -67,18 +69,21 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
-it.each(['findAll', 'findOne'] as const)('%s returns an updateable document after scalar query compression', async (method) => {
-  const { client, doc, received, lookup, ctx } = await fixture()
-  const query = { _id: doc._id }
-  // The real middleware removes the queried ID before the in-process client receives it.
-  expect((await lookup.findAll(ctx, doc._class, query))[0]._id).toBeUndefined()
-  const result = await client[method](doc._class, query)
-  const found = method === 'findAll' ? result[0] : result
-  expect(found._id).toBe(doc._id)
-  await new TxOperations(client, core.account.System).update(found, { name: 'Updated' })
-  expect(received).toHaveBeenCalledWith(expect.anything(), [expect.objectContaining({ objectId: doc._id })])
-  if (method === 'findAll') expect(result.total).toBe(7)
-})
+it.each(['findAll', 'findOne'] as const)(
+  '%s returns an updateable document after scalar query compression',
+  async (method) => {
+    const { client, doc, received, lookup, ctx } = await fixture()
+    const query = { _id: doc._id }
+    // The real middleware removes the queried ID before the in-process client receives it.
+    expect((await lookup.findAll(ctx, doc._class, query))[0]._id).toBeUndefined()
+    const result = await client[method](doc._class, query)
+    const found = method === 'findAll' ? result[0] : result
+    expect(found._id).toBe(doc._id)
+    await new TxOperations(client, core.account.System).update(found, { name: 'Updated' })
+    expect(received).toHaveBeenCalledWith(expect.anything(), [expect.objectContaining({ objectId: doc._id })])
+    if (method === 'findAll') expect(result.total).toBe(7)
+  }
+)
 
 it('restores scalar class, space, false and zero before applying mixin proxies', async () => {
   const { client, doc, hierarchy } = await fixture()
