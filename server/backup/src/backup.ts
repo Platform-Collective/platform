@@ -303,7 +303,8 @@ export async function backup (
     let downloadedMb = 0
     let downloaded = 0
 
-    // Documents that could not be loaded from the workspace. A backup with skipped documents is incomplete.
+    // Counts exhausted document-chunk retries in processDomain only. Account-domain loads and
+    // individual blob-download failures retain their existing behaviour, including for archives.
     let skippedDocs = 0
     const incompleteDomains = new Set<Domain>()
 
@@ -1239,9 +1240,9 @@ export async function backup (
       await options.progress?.(Math.round((domainProgress / domains.length) * 10000) / 100)
     }
 
-    if (canceled()) {
+    const wasCanceled = canceled()
+    if (wasCanceled) {
       ctx.error('Backup was canceled before all domains were processed', { workspace: workspaceId, url: wsIds.url })
-      return result
     }
     if (skippedDocs > 0) {
       ctx.error('Backup is incomplete, some documents could not be loaded', {
@@ -1250,13 +1251,14 @@ export async function backup (
         skippedDocs,
         domains: Array.from(incompleteDomains)
       })
-      return result
     }
 
-    result.result = true
+    result.result = !wasCanceled && skippedDocs === 0
 
-    if (domainChanges > 0) {
-      backupInfo.lastTxId = lastTx?._id ?? '0' // We could store last tx, since full backup is complete
+    if (domainChanges > 0 || !result.result) {
+      // Incomplete domains count as changes because their cleared hashes must be persisted too.
+      // Keep partial blob/size progress, but never mark an incomplete backup as up to date.
+      if (result.result) backupInfo.lastTxId = lastTx?._id ?? '0'
       backupInfo.migrations.forcedFullCheck = forcedFullCheck
       backupInfo.migrations.forcedCompact = forcedCompact
       backupInfo.dataSize = result.dataSize

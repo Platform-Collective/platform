@@ -111,7 +111,7 @@ export class BackupWorker {
           return false
         }
 
-        const lastBackup = it.backupInfo?.lastBackup ?? 0
+        const lastBackup = Math.max(it.backupInfo?.lastAttempt ?? 0, it.backupInfo?.lastBackup ?? 0)
         if ((now - lastBackup) / 1000 < this.config.Interval && this.config.Interval !== 0) {
           // No backup required, interval not elapsed
           skipped++
@@ -133,7 +133,8 @@ export class BackupWorker {
       })
 
       workspaces.sort((a, b) => {
-        return (a.backupInfo?.lastBackup ?? 0) - (b.backupInfo?.lastBackup ?? 0)
+        return Math.max(a.backupInfo?.lastAttempt ?? 0, a.backupInfo?.lastBackup ?? 0) -
+          Math.max(b.backupInfo?.lastAttempt ?? 0, b.backupInfo?.lastBackup ?? 0)
       })
 
       // Shift new with existing ones.
@@ -244,9 +245,7 @@ export class BackupWorker {
         } else {
           f.counter++
         }
-        if ((f?.counter ?? 1) < 5) {
-          this.workspacesToBackup.set(ws.uuid, ws)
-        }
+        // Let recheckWorkspaces enforce the interval after a failed attempt as well.
       }
 
       await this.rateLimiter.add(
@@ -263,7 +262,7 @@ export class BackupWorker {
               this.processed++
             } else {
               handleFailedBackup(ws)
-              ctx.error('Backup failed, put back to queue', { workspace: ws.uuid, url: ws.url })
+              ctx.error('Backup failed, retry after the backup interval', { workspace: ws.uuid, url: ws.url })
             }
           } catch (err: any) {
             ctx.error('Backup failed', { err })
@@ -308,6 +307,18 @@ export class BackupWorker {
       url: ''
     }
     try {
+      // Persist attempts independently of success, including timeouts and pipeline failures.
+      const attemptInfo: BackupStatus = {
+        backups: ws.backupInfo?.backups ?? 0,
+        lastBackup: ws.backupInfo?.lastBackup ?? 0,
+        backupSize: ws.backupInfo?.backupSize ?? 0,
+        dataSize: ws.backupInfo?.dataSize ?? 0,
+        blobsSize: ws.backupInfo?.blobsSize ?? 0,
+        lastAttempt: st
+      }
+      const attemptToken = generateToken(systemAccountUuid, ws.uuid, { service: 'backup' })
+      await getAccountClient(attemptToken).updateBackupInfo(attemptInfo)
+      ws.backupInfo = attemptInfo
       const storage = await createStorageBackupStorage(ctx, this.storageAdapter, backupIds, dataId)
       const wsIds: WorkspaceIds = {
         uuid: ws.uuid,
@@ -360,6 +371,7 @@ export class BackupWorker {
         const backupInfo: BackupStatus = {
           backups: (ws.backupInfo?.backups ?? 0) + 1,
           lastBackup: Date.now(),
+          lastAttempt: st,
           backupSize: Math.round((result.backupSize * 100) / (1024 * 1024)) / 100,
           dataSize: Math.round((result.dataSize * 100) / (1024 * 1024)) / 100,
           blobsSize: Math.round((result.blobsSize * 100) / (1024 * 1024)) / 100
