@@ -403,6 +403,35 @@ function deferred (): { promise: Promise<void>, resolve: () => void } {
 }
 
 describe('permission cache refresh', () => {
+  it('measures bulk creation and administration with 1000 stored spaces', async () => {
+    const { middleware, storage, space } = await setup()
+    const ctx = makeContext(OWNER)
+    await middleware.tx(ctx, [])
+    const before = storage.reads
+    const creates = Array.from({ length: 1000 }, (_, index) => factory.createTxCreateDoc(
+      core.class.TypedSpace, core.space.Space, { ...space, name: `Bulk ${index}` },
+      `test:bulk:${index}` as Ref<TypedSpace>
+    ))
+    const started = Date.now()
+    await middleware.tx(ctx, creates)
+    const createMs = Date.now() - started
+    const createReads = storage.reads - before
+    expect(createReads).toBe(1)
+    const reads = storage.reads
+    const updates = creates.map(tx => factory.createTxUpdateDoc(
+      core.class.TypedSpace, core.space.Space, tx.objectId, { private: true }
+    ))
+    const updateStarted = Date.now()
+    await middleware.tx(ctx, updates)
+    const updateReads = storage.reads - reads
+    ctx.info('Synthetic space administration measurement', {
+      spaces: creates.length, createReads, createMs, updateReads, updateMs: Date.now() - updateStarted
+    })
+    // One stored cache reload per batch; authorization reads belong to the next cut.
+    expect(updateReads).toBe(1)
+    expect(storage.documents.size).toBe(1002)
+  })
+
   it.each([false, true])('checks ordinary deletes after refresh (forbid=%s)', async (forbid) => {
     const { middleware, storage, ctx, space, model } = await setup(forbid ? [core.permission.DeleteObject] : [])
     space.restricted = !forbid
