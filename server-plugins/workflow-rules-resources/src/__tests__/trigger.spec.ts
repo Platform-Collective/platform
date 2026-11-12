@@ -1264,7 +1264,7 @@ describe('rev-8: TxApplyIf predicate runs through the real ApplyTxMiddleware', (
       contextVars: {}
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mw = await ApplyTxMiddleware.create(ctx, context as any, next)
+    const mw = await ApplyTxMiddleware.create(ctx, context as any, next as any)
     return { mw, ctx }
   }
 
