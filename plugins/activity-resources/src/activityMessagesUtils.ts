@@ -47,7 +47,9 @@ import activity, {
 // Use 5 minutes to combine similar messages
 const combineThresholdMs = 5 * 60 * 1000
 // Use 10 seconds to combine update messages after creation.
-const createCombineThreshold = parseInt(localStorage.getItem('platform.activity.threshold') ?? '10 * 1000')
+const createCombineThreshold = parseInt(
+  (typeof localStorage === 'undefined' ? null : localStorage.getItem('platform.activity.threshold')) ?? '10 * 1000'
+)
 
 const valueTypes: ReadonlyArray<Ref<Class<Doc>>> = [
   core.class.TypeString,
@@ -207,6 +209,11 @@ function combineByCreateThreshold (docUpdateMessages: DocUpdateMessage[]): DocUp
       return true
     }
 
+    // Preserve other authors' collaborative edits while folding the creator's initial markup.
+    if (message.attributeUpdates?.attrClass === core.class.TypeMarkup && createMsg.createdBy !== message.createdBy) {
+      return true
+    }
+
     if (createMsg._id === _id) {
       return true
     }
@@ -254,25 +261,19 @@ export function combineActivityMessages (
 
   const result: Array<DisplayActivityMessage | undefined> = [...uncombined]
 
-  const groupedByType: Map<string, DocUpdateMessage[]> = groupByArray(docUpdateMessages, getDocUpdateMessageKey)
+  const authorRuns = new Map<string, { author: DocUpdateMessage['createdBy'], run: number }>()
+  const groupedByType = groupByArray(sortActivityMessages([...docUpdateMessages]), (message) => {
+    const previous = authorRuns.get(message.attachedTo)
+    const run = previous === undefined ? 0 : previous.run + (previous.author === message.createdBy ? 0 : 1)
+    authorRuns.set(message.attachedTo, { author: message.createdBy, run })
+    return `${getDocUpdateMessageKey(message)}_${run}`
+  })
 
   for (const [, groupedMessages] of groupedByType) {
-    const cantMerge = groupedMessages.filter(
-      (message, index) => index !== groupedMessages.length - 1 && !canCombineMessage(message)
-    )
-    const cantMergeIds = new Set(cantMerge.map(({ _id }) => _id))
-
-    const canMerge = groupedMessages.filter(({ _id }) => !cantMergeIds.has(_id))
-    const forMerge = groupByTime(canMerge)
-
-    forMerge.forEach((messagesForMerge) => {
+    for (const messagesForMerge of groupByTime(groupedMessages)) {
       const mergedNotification = mergeDocUpdateMessages(messagesForMerge)
-
-      if (mergedNotification !== undefined) {
-        result.push(mergedNotification)
-      }
-    })
-    result.push(...cantMerge)
+      if (mergedNotification !== undefined) result.push(mergedNotification)
+    }
   }
 
   return sortActivityMessages(
@@ -300,31 +301,27 @@ function canCombineMessage (message: ActivityMessage): boolean {
   return !hasReactions && !isPinned && !hasReplies
 }
 
-function groupByTime<T extends ActivityMessage> (messages: T[]): T[][] {
-  const result: T[][] = []
-
-  for (const message1 of messages) {
-    if (result.some((forMerge) => forMerge.includes(message1))) {
-      continue
+function groupByTime (messages: DocUpdateMessage[]): DocUpdateMessage[][] {
+  const result: DocUpdateMessage[][] = []
+  for (const message of messages) {
+    const run = result[result.length - 1]
+    const previous = run?.[run.length - 1]
+    const compatibleMarkup =
+      message.attributeUpdates?.attrClass !== core.class.TypeMarkup ||
+      previous?.attributeUpdates?.set[0] === message.attributeUpdates.prevValue
+    if (
+      previous !== undefined &&
+      previous.createdBy === message.createdBy &&
+      canCombineMessage(previous) &&
+      canCombineMessage(message) &&
+      compatibleMarkup &&
+      getMessageTime(message) - getMessageTime(run[0]) < combineThresholdMs
+    ) {
+      run.push(message)
+    } else {
+      result.push([message])
     }
-
-    const forMerge: T[] = [message1]
-
-    for (const message2 of messages) {
-      if (message1._id === message2._id) {
-        continue
-      }
-
-      const timeDiff = (message2.createdOn ?? message2.modifiedOn) - (message1.createdOn ?? message1.modifiedOn)
-
-      if (timeDiff >= 0 && timeDiff < combineThresholdMs) {
-        forMerge.push(message2)
-      }
-    }
-
-    result.push(forMerge)
   }
-
   return result
 }
 

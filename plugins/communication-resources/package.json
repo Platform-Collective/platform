@@ -6,6 +6,8 @@
   "license": "EPL-2.0",
   "scripts": {
     "build": "compile ui",
+    "test": "jest --passWithNoTests --silent",
+    "_phase:test": "jest --passWithNoTests --silent",
     "format": "format src",
     "svelte-check": "do-svelte-check",
     "_phase:svelte-check": "do-svelte-check",

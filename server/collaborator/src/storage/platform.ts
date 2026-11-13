@@ -17,16 +17,27 @@ import activity, { DocUpdateMessage } from '@hcengineering/activity'
 import { Analytics } from '@hcengineering/analytics'
 import { loadCollabJson, loadCollabYdoc, saveCollabJson, saveCollabYdoc } from '@hcengineering/collaboration'
 import { decodeDocumentId } from '@hcengineering/collaborator-client'
+import { generateMessageId } from '@hcengineering/communication-shared'
 import { CreateMessageEvent, MessageEventType } from '@hcengineering/communication-sdk-types'
 import { ActivityCollaborativeChange, ActivityUpdateType, MessageType } from '@hcengineering/communication-types'
-import core, { AttachedData, Doc, MeasureContext, OperationDomain, Ref, Space, TxOperations } from '@hcengineering/core'
+import core, {
+  AttachedData,
+  Class,
+  Doc,
+  generateId,
+  MeasureContext,
+  OperationDomain,
+  Ref,
+  Space,
+  TxOperations
+} from '@hcengineering/core'
 import { StorageAdapter } from '@hcengineering/server-core'
 import { areEqualMarkups } from '@hcengineering/text'
 import { markupToYDoc } from '@hcengineering/text-ydoc'
-import { Doc as YDoc } from 'yjs'
+import { Doc as YDoc, applyUpdate, encodeStateAsUpdate } from 'yjs'
 
 import { Context } from '../context'
-import { CollabStorageAdapter } from './adapter'
+import { CollabStorageAdapter, type AuthorSegment, type DocumentSaveBatch } from './adapter'
 
 const activityMarkupLimit = 100 * 1024 // 100kb
 
@@ -130,63 +141,72 @@ export class PlatformStorageAdapter implements CollabStorageAdapter {
     getMarkup: {
       prev: () => Record<string, string>
       curr: () => Record<string, string>
-    }
+    },
+    batch?: DocumentSaveBatch
   ): Promise<Record<string, string> | undefined> {
-    const { clientFactory, wsIds } = context
+    const { wsIds } = context
     const { documentId } = decodeDocumentId(documentName)
-
-    try {
-      ctx.info('save document ydoc content', { documentName })
-      await ctx.with(
-        'saveCollabYdoc',
-        {},
-        (ctx) => {
-          return withRetry(
-            ctx,
-            this.retryCount,
-            () => {
-              return saveCollabYdoc(ctx, this.storage, wsIds, documentId, document)
-            },
-            this.retryInterval
-          )
-        },
-        {
-          workspace: context.wsIds.uuid,
-          documentName
+    // Keep the old adapter call path, with the same synchronous cutoff as segmented saves.
+    const legacyDocument = batch === undefined ? new YDoc({ gc: false }) : undefined
+    if (legacyDocument !== undefined) applyUpdate(legacyDocument, encodeStateAsUpdate(document))
+    batch ??= {
+      segments: [{ context, prev: getMarkup.prev(), curr: getMarkup.curr(), id: generateId(), timestamp: Date.now() }]
+    }
+    const clients = new Map<Context['account'], TxOperations>()
+    const getClient = async (author: Context): Promise<TxOperations> => {
+      let client = clients.get(author.account)
+      if (client === undefined) {
+        try {
+          client = await ctx.with('connect', {}, () => author.clientFactory())
+        } catch (error) {
+          ctx.error('failed to connect author to platform', { documentName, account: author.account, error })
+          throw error
         }
-      )
-    } catch (err: any) {
-      Analytics.handleError(err)
-      ctx.error('failed to save document ydoc content', { documentName, error: err })
-      // raise an error if failed to save document to storage
-      // this will prevent document from being unloaded from memory
-      throw err
-    }
-
-    let client: TxOperations
-    try {
-      client = await ctx.with('connect', {}, () => clientFactory())
-    } catch (err: any) {
-      Analytics.handleError(err)
-      ctx.error('failed to connect to platform', { documentName, error: err })
-      throw err
+        clients.set(author.account, client)
+      }
+      return client
     }
 
     try {
-      ctx.info('save document content to platform', { documentName })
+      if (batch.ydocSaved !== true) {
+        await ctx.with(
+          'saveCollabYdoc',
+          {},
+          (ctx) =>
+            withRetry(
+              ctx,
+              this.retryCount,
+              () => saveCollabYdoc(ctx, this.storage, wsIds, documentId, legacyDocument ?? document),
+              this.retryInterval
+            ),
+          {
+            workspace: context.wsIds.uuid,
+            documentName
+          }
+        )
+        batch.ydocSaved = true
+      }
+      const last = batch.segments[batch.segments.length - 1]
+      const client = await getClient(last.context)
       return await ctx.with(
         'save-to-platform',
         {},
-        (ctx) => {
-          return this.saveDocumentToPlatform(ctx, client, context, documentName, getMarkup)
-        },
+        (ctx) => this.saveDocumentToPlatform(ctx, client, context, documentName, getMarkup, batch, getClient),
         {
           workspace: context.wsIds.uuid,
           documentName
         }
       )
     } finally {
-      await client.close()
+      legacyDocument?.destroy()
+      for (const client of clients.values()) {
+        try {
+          await client.close()
+        } catch (error) {
+          // Cleanup must not replay already acknowledged activity writes.
+          ctx.warn('failed to close platform client', { documentName, error })
+        }
+      }
     }
   }
 
@@ -198,80 +218,105 @@ export class PlatformStorageAdapter implements CollabStorageAdapter {
     getMarkup: {
       prev: () => Record<string, string>
       curr: () => Record<string, string>
-    }
-  ): Promise<Record<string, string> | undefined> {
-    const { wsIds } = context
+    },
+    batch: DocumentSaveBatch = {
+      segments: [{ context, prev: getMarkup.prev(), curr: getMarkup.curr(), id: generateId(), timestamp: Date.now() }]
+    },
+    getClient: (context: Context) => Promise<Omit<TxOperations, 'close'>> = async () => client
+  ): Promise<Record<string, string>> {
     const { documentId } = decodeDocumentId(documentName)
     const { objectAttr, objectClass, objectId } = documentId
-
-    const attribute = client.getHierarchy().findAttribute(objectClass, objectAttr)
+    const segments = batch.segments
+    const curr = segments[segments.length - 1].curr
+    const hierarchy = client.getHierarchy()
+    const attribute = hierarchy.findAttribute(objectClass, objectAttr)
     if (attribute === undefined) {
       ctx.warn('attribute not found', { documentName, objectClass, objectAttr })
-      return
+      return curr
     }
 
-    const markup = {
-      prev: getMarkup.prev(),
-      curr: getMarkup.curr()
-    }
+    const changed = segments.filter(
+      (segment) => !areEqualMarkups(segment.prev[objectAttr] ?? '', segment.curr[objectAttr] ?? '')
+    )
+    // A net-zero batch may still contain real changes by several authors.
+    if (changed.length === 0) return curr
 
-    const currMarkup = markup.curr[objectAttr] ?? ''
-    const prevMarkup = markup.prev[objectAttr] ?? ''
-
-    if (areEqualMarkups(currMarkup, prevMarkup)) {
-      ctx.info('markup not changed, skip platform update', { documentName })
-      return
-    }
-
-    const current = await ctx.with('query', {}, () => {
-      return client.findOne(objectClass, { _id: objectId })
-    })
-
+    const current = await ctx.with('query', {}, () => client.findOne(objectClass, { _id: objectId }))
     if (current === undefined) {
       ctx.warn('document not found', { documentName, objectClass, objectId })
-      return
+      return curr
     }
-
-    const hierarchy = client.getHierarchy()
     if (!hierarchy.isDerived(attribute.type._class, core.class.TypeCollaborativeDoc)) {
       ctx.warn('unsupported attribute type', { documentName, objectClass, objectAttr })
-      return
+      return curr
     }
 
-    const blobId = await ctx.with(
-      'saveCollabJson',
-      {},
-      (ctx) => {
-        return withRetry(
-          ctx,
-          this.retryCount,
-          () => {
-            return saveCollabJson(ctx, this.storage, wsIds, documentId, markup.curr[objectAttr])
-          },
-          this.retryInterval
-        )
-      },
-      {
-        workspace: context.wsIds.uuid,
-        documentName
-      }
-    )
+    if (batch.platformSaved !== true) {
+      const blobId = await ctx.with(
+        'saveCollabJson',
+        {},
+        (ctx) =>
+          withRetry(
+            ctx,
+            this.retryCount,
+            () => saveCollabJson(ctx, this.storage, context.wsIds, documentId, curr[objectAttr]),
+            this.retryInterval
+          ),
+        {
+          workspace: context.wsIds.uuid,
+          documentName
+        }
+      )
+      // Use the last actual editor for modifiedBy, including net-zero batches.
+      await ctx.with('update', {}, () => client.diffUpdate(current, { [objectAttr]: blobId }))
+      batch.platformSaved = true
+    }
 
-    await ctx.with('update', {}, () => client.diffUpdate(current, { [objectAttr]: blobId }))
+    for (const segment of changed) {
+      if (segment.eventSent === true && segment.activitySaved === true) continue
+      const authorClient = await getClient(segment.context)
+      await ctx.with(
+        'activity',
+        {},
+        (ctx) => this.emitActivity(ctx, authorClient, current, objectClass, objectAttr, segment),
+        {
+          workspace: context.wsIds.uuid,
+          documentName
+        }
+      )
+    }
+    return curr
+  }
 
+  private async emitActivity (
+    ctx: MeasureContext,
+    client: Omit<TxOperations, 'close'>,
+    current: Doc,
+    objectClass: Ref<Class<Doc>>,
+    objectAttr: string,
+    segment: AuthorSegment
+  ): Promise<void> {
+    segment.emittedAt ??= Date.now()
+    const hierarchy = client.getHierarchy()
+    const prevMarkup = segment.prev[objectAttr] ?? ''
+    const currMarkup = segment.curr[objectAttr] ?? ''
     const prevValue = prevMarkup.length > activityMarkupLimit ? activity.string.ValueTooLarge : prevMarkup
     const currValue = currMarkup.length > activityMarkupLimit ? activity.string.ValueTooLarge : currMarkup
-
-    await ctx.with(
-      'activity',
-      {},
-      async () => {
+    if (segment.eventSent !== true) {
+      // Communication deduplicates CreateMessage by cardId/messageId, including lost acknowledgements.
+      await sendEvent(client, objectAttr, prevValue, currValue, current, segment)
+      segment.eventSent = true
+    }
+    if (segment.activitySaved !== true) {
+      const id = segment.id as Ref<DocUpdateMessage>
+      // Reconcile an ambiguous addCollection acknowledgement before retrying its stable identity.
+      const existing = await client.findOne(activity.class.DocUpdateMessage, { _id: id })
+      if (existing === undefined) {
         const space = hierarchy.isDerived(current._class, core.class.Space)
           ? (current._id as Ref<Space>)
           : current.space
-        await sendEvent(client, objectAttr, prevValue, currValue, current)
         const data: AttachedData<DocUpdateMessage> = {
-          objectId,
+          objectId: current._id,
           objectClass,
           action: 'update',
           attributeUpdates: {
@@ -284,22 +329,21 @@ export class PlatformStorageAdapter implements CollabStorageAdapter {
             isMixin: hierarchy.isMixin(objectClass)
           }
         }
-        return await client.addCollection(
+        await client.addCollection(
           activity.class.DocUpdateMessage,
           space,
           current._id,
           current._class,
           'docUpdateMessages',
-          data
+          data,
+          id,
+          segment.emittedAt
         )
-      },
-      {
-        workspace: context.wsIds.uuid,
-        documentName
+      } else {
+        ctx.info('activity already saved', { id })
       }
-    )
-
-    return markup.curr
+      segment.activitySaved = true
+    }
   }
 }
 
@@ -308,7 +352,8 @@ async function sendEvent (
   attrKey: string,
   prevValue: string,
   value: string,
-  doc: Doc
+  doc: Doc,
+  segment: AuthorSegment
 ): Promise<void> {
   const eventData: ActivityCollaborativeChange = {
     type: ActivityUpdateType.CollaborativeChange,
@@ -319,6 +364,7 @@ async function sendEvent (
   const event: CreateMessageEvent = {
     type: MessageEventType.CreateMessage,
     messageType: MessageType.Activity,
+    messageId: (segment.messageId ??= generateMessageId()),
     cardId: doc._id,
     cardType: doc._class,
     extra: {
@@ -327,7 +373,7 @@ async function sendEvent (
     },
     content: '',
     socialId: client.txFactory.account,
-    date: new Date()
+    date: new Date(segment.emittedAt ?? segment.timestamp)
   }
 
   await client.domainRequest('communication' as OperationDomain, { event })
