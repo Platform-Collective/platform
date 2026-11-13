@@ -270,10 +270,10 @@ function attemptStorage (storage: 'mongo' | 'sql'): {
       if (sql.endsWith('RETURNING code, attempts')) {
         expect(sql).toBe(
           'UPDATE test_account.otp SET attempts = COALESCE(attempts, 0) + 1 ' +
-          'WHERE social_id = $1 AND code = ( SELECT code FROM test_account.otp ' +
-          'WHERE social_id = $1 AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT ' +
-          'ORDER BY created_on DESC LIMIT 1 ) ' +
-          'AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT RETURNING code, attempts'
+            'WHERE social_id = $1 AND code = ( SELECT code FROM test_account.otp ' +
+            'WHERE social_id = $1 AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT ' +
+            'ORDER BY created_on DESC LIMIT 1 ) ' +
+            'AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT RETURNING code, attempts'
         )
         expect(values).toEqual([socialId])
         const result = advanceLatest()

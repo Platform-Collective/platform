@@ -1035,11 +1035,11 @@ describe('account utils', () => {
           [61000, -59000, 'invalid']
         ])('uses database expiry at DB=%s and replica=%s', async (databaseNow, replicaNow, expected) => {
           const row = { code: '123456', attempts: 1, expiresOn: 61000 }
-          const clock = jest.spyOn(Date, 'now').mockReturnValue(replicaNow as number)
+          const clock = jest.spyOn(Date, 'now').mockReturnValue(replicaNow)
           const db = {
-            advanceLatestOtpAttempt: jest.fn(async () => row.expiresOn > (databaseNow as number) ? row : null),
+            advanceLatestOtpAttempt: jest.fn(async () => (row.expiresOn > (databaseNow) ? row : null)),
             otp: {
-              find: jest.fn(async (query) => row.expiresOn > query.expiresOn.$gt ? [row] : []),
+              find: jest.fn(async (query) => (row.expiresOn > query.expiresOn.$gt ? [row] : [])),
               update: jest.fn(),
               findOne: jest.fn(async () => row)
             }
@@ -1066,7 +1066,8 @@ describe('account utils', () => {
         const useStore = (initial: any[]): void => {
           store = initial.map((it) => ({ ...it }))
           ;(mockDb.advanceLatestOtpAttempt as jest.Mock).mockImplementation(async () => {
-            const latest = store.filter((it) => it.socialId === socialIdId && it.expiresOn > now)
+            const latest = store
+              .filter((it) => it.socialId === socialIdId && it.expiresOn > now)
               .sort((x, y) => y.createdOn - x.createdOn)[0]
             if (latest === undefined) return null
             latest.attempts = (latest.attempts ?? 0) + 1
