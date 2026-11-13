@@ -204,7 +204,8 @@
       },
       {
         sort: {
-          createdOn: SortingOrder.Ascending
+          createdOn: SortingOrder.Ascending,
+          _id: SortingOrder.Ascending
         }
       }
     )
@@ -227,7 +228,8 @@
       },
       {
         sort: {
-          createdOn: SortingOrder.Ascending
+          createdOn: SortingOrder.Ascending,
+          _id: SortingOrder.Ascending
         },
         lookup: {
           _id: {

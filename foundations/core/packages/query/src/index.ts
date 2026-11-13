@@ -62,6 +62,7 @@ import core, {
   platformNow,
   RateLimiter,
   reduceCalls,
+  resultSort,
   shouldShowArchived,
   toFindResult,
   type DomainParams,
@@ -71,6 +72,7 @@ import core, {
   type OperationDomain
 } from '@hcengineering/core'
 import { deepEqual } from 'fast-equals'
+import { clearOptimisticCreate, isOptimisticCreate, markOptimisticCreate } from './optimistic'
 import { Refs } from './refs'
 import { ResultArray } from './results'
 import { Callback, Query, type QueryId } from './types'
@@ -93,6 +95,11 @@ export interface RefreshConnectStats {
   activeByClass: Map<string, { count: number, docs: number }>
 }
 
+// An early create in flight. Settled once a confirmation, edit, mixin or removal arrives.
+interface EarlyCreate {
+  settled: boolean
+}
+
 /**
  * @public
  */
@@ -102,8 +109,14 @@ export class LiveQuery implements WithTx, Client {
   private readonly queue = new Map<QueryId, Query & { lastUsed: number }>()
   private queryCounter: number = 0
   private closed: boolean = false
+  private transactionRevision = 0
 
   private readonly queriesToUpdate = new Map<number, Query>()
+
+  // Early creates still being applied to the registered queries, by document. A confirmation,
+  // an edit, a mixin or a removal settles one for every query, including queries it has not
+  // reached yet because an earlier query's lookup or search check was still pending.
+  private readonly earlyCreates = new Map<Ref<Doc>, EarlyCreate>()
 
   private readonly refs = new Refs(() => this.getHierarchy())
 
@@ -136,6 +149,9 @@ export class LiveQuery implements WithTx, Client {
 
   // Concurrency cap for parallel refresh after reconnect — avoid request storm.
   static readonly REFRESH_CONCURRENCY = 4
+
+  // Reads a create confirmation refresh may make while transactions keep crossing them.
+  static readonly CONFIRMATION_REFRESH_ATTEMPTS = 3
 
   // Perform refresh of content since connection established.
   // `lastReconnectGapMs` — ms since previous successful connection. When the
@@ -216,13 +232,9 @@ export class LiveQuery implements WithTx, Client {
     q.total = -1
   }
 
-  private match (q: Query, doc: Doc, skipLookup = false): boolean {
+  private matchClass (q: Query, doc: Doc): boolean {
     if (this.getHierarchy().isMixin(q._class)) {
-      if (this.getHierarchy().hasMixin(doc, q._class)) {
-        doc = this.getHierarchy().as(doc, q._class)
-      } else {
-        return false
-      }
+      return this.getHierarchy().hasMixin(doc, q._class)
     }
     if (!this.getHierarchy().isDerived(doc._class, q._class)) {
       // Check if it is not a mixin and not match class
@@ -231,6 +243,12 @@ export class LiveQuery implements WithTx, Client {
         return false
       }
     }
+    return true
+  }
+
+  private match (q: Query, doc: Doc, skipLookup = false): boolean {
+    if (!this.matchClass(q, doc)) return false
+    doc = this.asMixin(doc, q._class)
     const query = q.query
     for (const key in query) {
       if (key === '$search') continue
@@ -467,6 +485,7 @@ export class LiveQuery implements WithTx, Client {
       callbacks: new Map(),
       refresh: reduceCalls(() => this.doRefresh(q)),
       refreshId: 0,
+      pendingCreates: new Map(),
       refsRegistered: false
     }
     if (callback !== undefined) {
@@ -689,6 +708,7 @@ export class LiveQuery implements WithTx, Client {
   }
 
   private async __updateMixinDoc (q: Query, updatedDoc: WithLookup<Doc>, tx: TxMixin<Doc, Doc>): Promise<void> {
+    clearOptimisticCreate(updatedDoc)
     updatedDoc = TxProcessor.updateMixin4Doc(updatedDoc, tx)
 
     const ops = {
@@ -719,6 +739,7 @@ export class LiveQuery implements WithTx, Client {
   }
 
   protected async txMixin (tx: TxMixin<Doc, Doc>, docCache: Map<string, Doc>): Promise<TxResult> {
+    this.settleEarlyCreate(tx.objectId)
     const hierarchy = this.client.getHierarchy()
 
     for (const queries of this.queries.entries()) {
@@ -733,6 +754,7 @@ export class LiveQuery implements WithTx, Client {
           await this.handleDocAddLookup(q, tx)
           continue
         }
+        q.pendingCreates.delete(tx.objectId)
         if (q.result instanceof Promise) {
           q.result = await q.result
         }
@@ -780,6 +802,7 @@ export class LiveQuery implements WithTx, Client {
   }
 
   async txUpdateDoc (tx: TxUpdateDoc<Doc>, docCache: Map<string, Doc>): Promise<TxResult> {
+    this.settleEarlyCreate(tx.objectId)
     for (const queries of this.queries.entries()) {
       const isTx = this.client.getHierarchy().isDerived(queries[0], core.class.Tx)
       for (const q of queries[1].values()) {
@@ -799,6 +822,9 @@ export class LiveQuery implements WithTx, Client {
   }
 
   private async handleDocUpdate (q: Query, tx: TxUpdateDoc<Doc>, docCache: Map<string, Doc>): Promise<void> {
+    // An edit may change membership while a create is pending. An absent copy then
+    // needs authoritative membership/counts instead of reusing its original contribution.
+    q.pendingCreates.delete(tx.objectId)
     if (q.result instanceof Promise) {
       q.result = await q.result
     }
@@ -990,17 +1016,36 @@ export class LiveQuery implements WithTx, Client {
     await q.refresh()
   }
 
-  private async doRefresh (q: Query): Promise<void> {
+  private async doRefresh (q: Query, reconciledId?: Ref<Doc>): Promise<void> {
     const qid = ++q.refreshId
-    const res = await this.client.findAll(q._class, q.query, q.options)
-    const current = q.result instanceof Promise ? await q.result : q.result
-    if (
-      q.refreshId === qid &&
-      (!deepEqual(res, current.getDocs()) || (res.total !== q.total && q.options?.total === true))
-    ) {
+    // A transaction can change revisions, membership or totals while the read is pending.
+    // Only create confirmation refreshes read again then, and only a bounded number of times,
+    // so a steady stream of transactions cannot keep them reading. Other refreshes, and a
+    // confirmation refresh without attempts left, publish their last response as before.
+    const attempts = reconciledId !== undefined ? LiveQuery.CONFIRMATION_REFRESH_ATTEMPTS : 1
+    let attempt = 0
+    let revision: number
+    let res: FindResult<Doc>
+    let current: ResultArray
+    do {
+      attempt++
+      revision = this.transactionRevision
+      res = await this.client.findAll(q._class, q.query, q.options)
+      current = q.result instanceof Promise ? await q.result : q.result
+      if (q.refreshId !== qid) return
+    } while (revision !== this.transactionRevision && attempt < attempts)
+    q.pendingCreates.clear()
+    if (!deepEqual(res, current.getDocs()) || (res.total !== q.total && q.options?.total === true)) {
+      if (reconciledId !== undefined) {
+        this.refs.updateDocuments(q, current.getDocs(), true)
+      }
       q.result = new ResultArray(res, this.getHierarchy())
       q.refsRegistered = false
       q.total = res.total
+      if (reconciledId !== undefined) {
+        this.refs.updateDocuments(q, q.result.getDocs(), false, reconciledId)
+        q.refsRegistered = true
+      }
       await this.callback(q)
     }
   }
@@ -1159,29 +1204,208 @@ export class LiveQuery implements WithTx, Client {
     ;(doc as WithLookup<Doc>).$lookup = result
   }
 
+  private settleEarlyCreate (_id: Ref<Doc>): void {
+    const early = this.earlyCreates.get(_id)
+    if (early !== undefined) {
+      early.settled = true
+      this.earlyCreates.delete(_id)
+    }
+  }
+
   protected async txCreateDoc (tx: TxCreateDoc<Doc>, docCache: Map<string, Doc>): Promise<TxResult> {
     const docTx = TxProcessor.createDoc2Doc(tx)
-    for (const queries of this.queries.entries()) {
-      const doc = this.client.getHierarchy().isDerived(queries[0], core.class.Tx) ? tx : docTx
-      for (const q of queries[1].values()) {
-        if (this.match(q, doc, q.options?.lookup !== undefined)) {
-          await this.handleDocAdd(q, doc, true, docCache)
-        }
+    if (tx.meta?.isCreateConfirmation === true) {
+      this.settleEarlyCreate(docTx._id)
+    }
+    const early: EarlyCreate | undefined = tx.meta?.isOptimisticCreate === true ? { settled: false } : undefined
+    if (early !== undefined) {
+      this.earlyCreates.set(docTx._id, early)
+    }
+    // Kept inline rather than in a helper: each extra async call delays a plain create's
+    // notification, and creates notified without being awaited would get their updates coalesced.
+    try {
+      let revision = this.transactionRevision
+      for (const queries of this.queries.entries()) {
+        const doc = this.client.getHierarchy().isDerived(queries[0], core.class.Tx) ? tx : docTx
+        // Once settled, the early create payload must not reach further queries or their lookups.
+        const settled = (): boolean => doc !== tx && early?.settled === true
+        for (const q of queries[1].values()) {
+          if (settled()) continue
+          if (
+            doc !== tx &&
+            tx.meta?.isOptimisticCreate === true &&
+            this.matchClass(q, doc) &&
+            !q.pendingCreates.has(doc._id)
+          ) {
+            q.pendingCreates.set(doc._id, false)
+          }
+          if (doc !== tx && tx.meta?.isCreateConfirmation === true && this.matchClass(q, doc)) {
+            // Earlier queries in this transaction may have read before an intervening edit.
+            if (revision !== this.transactionRevision) {
+              docCache.clear()
+              revision = this.transactionRevision
+            }
+            await this.reconcileCreate(q, doc, docCache)
+            q.pendingCreates.delete(doc._id)
+          } else if (this.match(q, doc, q.options?.lookup !== undefined)) {
+            await this.handleDocAdd(q, this.asMixin(doc, q._class), true, docCache, doc !== tx ? early : undefined)
+          }
+          if (settled()) continue
 
-        await this.handleDocAddLookup(q, doc)
-        await this.handleDocAddRelation(q, doc)
+          await this.handleDocAddLookup(q, doc)
+          await this.handleDocAddRelation(q, doc)
+        }
+      }
+    } finally {
+      if (early !== undefined && this.earlyCreates.get(docTx._id) === early) {
+        this.earlyCreates.delete(docTx._id)
       }
     }
     return {}
   }
 
-  private async handleDocAdd (q: Query, doc: Doc, handleLookup = true, docCache: Map<string, Doc>): Promise<void> {
-    let needPush = true
+  private async reconcileCreate (q: Query, doc: Doc, docCache: Map<string, Doc>): Promise<void> {
+    doc = this.asMixin(doc, q._class)
     if (q.result instanceof Promise) {
       q.result = await q.result
     }
+    const existing = q.result.findDoc(doc._id)
+    const contributed = q.pendingCreates.get(doc._id) ?? (existing !== undefined ? true : undefined)
+    if (existing === undefined && !this.match(q, doc, true)) {
+      // The confirmed create is authoritative for its own fields. A document that fails them
+      // cannot join this query, so skip lookups and reads and only release an earlier count.
+      if (q.options?.total === true && contributed === true) {
+        q.total--
+        await this.callback(q, true)
+      }
+      return
+    }
+    // Edits/removals invalidate the early-create snapshot even when totals are not requested.
+    // An absent document with unknown provenance must never be re-added from its create payload.
+    if (existing === undefined && contributed === undefined) {
+      await this.doRefresh(q, doc._id)
+      return
+    }
+    const revision = this.transactionRevision
+    if (existing === undefined && q.options?.lookup !== undefined) {
+      // Resolve complete membership and sort keys before changing counts or choosing a window.
+      await this.lookup(q._class, doc, q.options.lookup)
+      // A later edit/removal invalidates the create snapshot while its lookup is pending.
+      // Refresh before mutating results, totals or Refs, even when totals are not requested.
+      if (revision !== this.transactionRevision) {
+        docCache.clear()
+        this.queriesToUpdate.delete(q.id)
+        await this.doRefresh(q, doc._id)
+        return
+      }
+    }
+    const matches = this.match(q, doc)
+    if (existing === undefined && !matches) {
+      if (q.options?.total === true && contributed === true) {
+        q.total--
+        await this.callback(q, true)
+      }
+      return
+    }
+    if (q.query.$search != null) {
+      this.queriesToUpdate.delete(q.id)
+      await this.doRefresh(q, doc._id)
+      return
+    }
+    if (existing === undefined) {
+      if (q.options?.limit !== undefined && q.result.length >= q.options.limit) {
+        const boundary = q.result.getDocs()[q.result.length - 1]
+        if (boundary !== undefined && q.options.sort !== undefined) {
+          const pair = [doc, boundary]
+          resultSort(pair, q.options.sort, q._class, this.getHierarchy(), this.client.getModel())
+          if (pair[0] === boundary) {
+            if (q.options.total === true && contributed === false) {
+              q.total++
+              await this.callback(q, true)
+            }
+            return
+          }
+        }
+        this.queriesToUpdate.delete(q.id)
+        await this.doRefresh(q, doc._id)
+        return
+      }
+      if (matches) {
+        await this.handleDocAdd(q, doc, false, docCache, undefined, contributed !== true)
+      }
+      return
+    }
+    // Only explicitly marked, untouched local copies can be patched without a server read.
+    // Server-loaded copies and later edits remain uncertain regardless of clock skew.
+    const optimistic = isOptimisticCreate(existing)
+    const current = optimistic
+      ? this.asMixin({ ...existing, createdOn: doc.createdOn, modifiedOn: doc.modifiedOn }, q._class)
+      : await this.getDocFromCache(docCache, doc._id, doc._class, doc.space, q)
+    if (revision !== this.transactionRevision) {
+      docCache.clear()
+      this.queriesToUpdate.delete(q.id)
+      await this.doRefresh(q, doc._id)
+      return
+    }
+    const currentMatches = current !== undefined && this.match(q, current)
+    const sort = q.options?.sort
+    if (q.options?.limit === q.result.length && (q.options?.total !== true || q.total > q.result.length)) {
+      // A document that stays before the old window edge cannot displace an unseen document.
+      const boundary = q.result.getDocs()[q.result.length - 1]
+      let staysInWindow = currentMatches
+      if (current !== undefined && sort !== undefined) {
+        const pair = [current, boundary]
+        resultSort(pair, sort, q._class, this.getHierarchy(), this.client.getModel())
+        staysInWindow = staysInWindow && pair[0] === current
+      }
+      if (!staysInWindow) {
+        this.queriesToUpdate.delete(q.id)
+        await this.doRefresh(q, doc._id)
+        return
+      }
+    }
+    if (current !== undefined && currentMatches) {
+      const stored = q.result.updateDoc(current)
+      if (!optimistic) {
+        q.result.setLoadedModifiedOn(doc._id, current.modifiedOn)
+      }
+      // The client's optimistic timestamp may be ahead of the server's clock.
+      this.refs.updateDocuments(q, [stored], false, doc._id)
+      if (sort !== undefined) {
+        q.result.sort(q._class, sort, this.getHierarchy(), this.client.getModel())
+      }
+    } else {
+      q.result.delete(doc._id)
+      this.refs.updateDocuments(q, [existing], true)
+      if (q.options?.total === true) {
+        q.total--
+      }
+    }
+    await this.callback(q, true)
+  }
+
+  private async handleDocAdd (
+    q: Query,
+    doc: Doc,
+    handleLookup = true,
+    docCache: Map<string, Doc>,
+    early?: EarlyCreate,
+    count = true
+  ): Promise<void> {
+    const optimistic = early !== undefined
+    // A confirmation, an edit, a mixin, a removal or a refresh can settle an early create during
+    // any await below, also while its own processing of this query still waits. Its create payload
+    // must then leave results, totals and Refs alone. Its pending entry stays as it is, so a waiting
+    // confirmation still knows that this query has not counted the document.
+    const dropped = (): boolean => early !== undefined && (early.settled || !q.pendingCreates.has(doc._id))
+    let needPush = true
+    if (q.result instanceof Promise) {
+      q.result = await q.result
+      if (dropped()) return
+    }
     if (q.options?.lookup !== undefined && handleLookup) {
       await this.lookup(q._class, doc, q.options.lookup)
+      if (dropped()) return
       const matched = this.match(q, doc)
       if (!matched) needPush = false
     }
@@ -1189,6 +1413,9 @@ export class LiveQuery implements WithTx, Client {
       // We could already have document inside results, if query is created during processing of document create transaction and not yet handled on client.
       const pos = q.result.findDoc(doc._id)
       if (pos !== undefined) {
+        if (optimistic) {
+          q.pendingCreates.set(doc._id, true)
+        }
         // No need to update, document already in results.
         needPush = false
       }
@@ -1198,6 +1425,7 @@ export class LiveQuery implements WithTx, Client {
       if (q.query.$search != null && q.query.$search.length > 0) {
         const match = await this.client.findOne(q._class, { $search: q.query.$search, _id: doc._id }, q.options)
         if (match === undefined) return
+        if (dropped()) return
         // Copy: the tx doc is shared between queries
         const source = match.$source
         if (source != null) {
@@ -1206,7 +1434,11 @@ export class LiveQuery implements WithTx, Client {
       }
 
       const stored = q.result.push(doc)
-      if (q.options?.total === true) {
+      if (optimistic) {
+        markOptimisticCreate(stored)
+        q.pendingCreates.set(doc._id, true)
+      }
+      if (count && q.options?.total === true) {
         q.total++
       }
 
@@ -1400,6 +1632,7 @@ export class LiveQuery implements WithTx, Client {
   }
 
   protected async txRemoveDoc (tx: TxRemoveDoc<Doc>, docCache: Map<string, Doc>): Promise<TxResult> {
+    this.settleEarlyCreate(tx.objectId)
     for (const queries of this.queries.entries()) {
       const isTx = this.client.getHierarchy().isDerived(queries[0], core.class.Tx)
       for (const q of queries[1].values()) {
@@ -1420,6 +1653,7 @@ export class LiveQuery implements WithTx, Client {
   }
 
   private async handleDocRemove (q: Query, tx: TxRemoveDoc<Doc>): Promise<void> {
+    q.pendingCreates.delete(tx.objectId)
     const h = this.client.getHierarchy()
     if (q._class === tx.objectClass || h.isDerived(q._class, tx.objectClass) || h.isDerived(tx.objectClass, q._class)) {
       if (q.result instanceof Promise) {
@@ -1548,6 +1782,8 @@ export class LiveQuery implements WithTx, Client {
   }
 
   async tx (...txes: Tx[]): Promise<TxResult[]> {
+    // Conservative across classes: lookups and predicates can depend on other documents.
+    this.transactionRevision++
     const result: TxResult[] = []
     const docCache = new Map<string, Doc>()
     for (const tx of txes) {
@@ -1752,6 +1988,7 @@ export class LiveQuery implements WithTx, Client {
     if (q.result instanceof ResultArray) {
       q.result.clearLoadedModifiedOn(tx.objectId)
     }
+    clearOptimisticCreate(updatedDoc)
     TxProcessor.updateDoc2Doc(updatedDoc, tx)
 
     const ops = {
