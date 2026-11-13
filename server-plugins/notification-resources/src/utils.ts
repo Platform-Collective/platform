@@ -52,7 +52,9 @@ import notification, {
   NotificationProvider,
   type NotificationProviderSetting,
   NotificationType,
-  type NotificationTypeSetting
+  type NotificationTypeSetting,
+  resolveNotificationTypeEnabled,
+  type WorkspaceNotificationTypeSetting
 } from '@hcengineering/notification'
 import { getMetadata, getResource, IntlString, translate } from '@hcengineering/platform'
 import { getPersonSpaces } from '@hcengineering/server-contact'
@@ -197,18 +199,11 @@ export function isAllowed (
   const setting = (notificationControl.settingsByProvider.get(provider._id) ?? []).find(
     (it) => it.type === type._id && it.createdBy !== undefined && receiverIds.includes(it.createdBy)
   )
+  const workspaceSetting = (notificationControl.workspaceSettingsByProvider.get(provider._id) ?? []).find(
+    (it) => it.type === type._id
+  )
 
-  if (setting !== undefined) {
-    return setting.enabled
-  }
-
-  if (providerDefaults.some((it) => it.provider === provider._id && it.enabledTypes.includes(type._id))) {
-    return true
-  }
-
-  if (type === undefined) return false
-
-  return type.defaultEnabled
+  return resolveNotificationTypeEnabled(type, provider._id, setting, workspaceSetting, providerDefaults)
 }
 
 export async function isShouldNotifyTx (
@@ -629,16 +624,20 @@ export async function messageToMarkup (control: TriggerControl, message: Activit
 export class NotificationProviderControl {
   public byProvider: Map<Ref<NotificationProvider>, NotificationProviderSetting[]>
   public settingsByProvider: Map<Ref<NotificationProvider>, NotificationTypeSetting[]>
+  public workspaceSettingsByProvider: Map<Ref<NotificationProvider>, WorkspaceNotificationTypeSetting[]>
   constructor (
     readonly providersSettings: NotificationProviderSetting[],
-    readonly typesSettings: NotificationTypeSetting[]
+    readonly typesSettings: NotificationTypeSetting[],
+    readonly workspaceTypesSettings: WorkspaceNotificationTypeSetting[] = []
   ) {
     this.byProvider = groupByArray(providersSettings, (it) => it.attachedTo)
     this.settingsByProvider = groupByArray(typesSettings, (it) => it.attachedTo)
+    this.workspaceSettingsByProvider = groupByArray(workspaceTypesSettings, (it) => it.attachedTo)
   }
 }
 const notificationProvidersKey = 'notification_provider_settings'
 const typesSettingsKey = 'notification_type_settings'
+const workspaceTypesSettingsKey = 'notification_workspace_type_settings'
 export async function getNotificationProviderControl (
   ctx: MeasureContext,
   control: TriggerControl
@@ -657,7 +656,12 @@ export async function getNotificationProviderControl (
     })
     control.contextCache.set(typesSettingsKey, typesSettings)
   }
-  return new NotificationProviderControl(providersSettings, typesSettings)
+  let workspaceTypesSettings: WorkspaceNotificationTypeSetting[] = control.contextCache.get(workspaceTypesSettingsKey)
+  if (workspaceTypesSettings === undefined) {
+    workspaceTypesSettings = await control.queryFind(ctx, notification.class.WorkspaceNotificationTypeSetting, {})
+    control.contextCache.set(workspaceTypesSettingsKey, workspaceTypesSettings)
+  }
+  return new NotificationProviderControl(providersSettings, typesSettings, workspaceTypesSettings)
 }
 
 export async function getObjectSpace (control: TriggerControl, doc: Doc, cache: Map<Ref<Doc>, Doc>): Promise<Space> {

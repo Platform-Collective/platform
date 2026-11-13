@@ -48,6 +48,8 @@ import notification, {
   type NotificationProviderSetting,
   type NotificationType,
   type NotificationTypeSetting,
+  type WorkspaceNotificationTypeSetting,
+  resolveNotificationTypeEnabled,
   type ReactionInboxNotification
 } from '@hcengineering/notification'
 import { getMetadata, getResource } from '@hcengineering/platform'
@@ -73,9 +75,11 @@ import { type InboxData, type InboxNotificationsFilter } from './types'
 
 export const providersSettings = writable<NotificationProviderSetting[]>([])
 export const typesSettings = writable<NotificationTypeSetting[]>([])
+export const workspaceTypesSettings = writable<WorkspaceNotificationTypeSetting[]>([])
 
 const providerSettingsQuery = createQuery(true)
 const typeSettingsQuery = createQuery(true)
+const workspaceTypeSettingsQuery = createQuery(true)
 
 export function loadNotificationSettings (): void {
   providerSettingsQuery.query(
@@ -88,6 +92,10 @@ export function loadNotificationSettings (): void {
 
   typeSettingsQuery.query(notification.class.NotificationTypeSetting, { space: core.space.Workspace }, (res) => {
     typesSettings.set(res)
+  })
+
+  workspaceTypeSettingsQuery.query(notification.class.WorkspaceNotificationTypeSetting, {}, (res) => {
+    workspaceTypesSettings.set(res)
   })
 }
 
@@ -944,16 +952,11 @@ export function isNotificationAllowed (type: NotificationType, providerId: Ref<N
   }
 
   const setting = get(typesSettings).find((it) => it.attachedTo === provider._id && it.type === type._id)
+  const workspaceSetting = get(workspaceTypesSettings).find(
+    (it) => it.attachedTo === provider._id && it.type === type._id
+  )
 
-  if (setting !== undefined) {
-    return setting.enabled
-  }
-
-  if (providerDefaults.some((it) => it.provider === provider._id && it.enabledTypes.includes(type._id))) {
-    return true
-  }
-
-  return type.defaultEnabled
+  return resolveNotificationTypeEnabled(type, provider._id, setting, workspaceSetting, providerDefaults)
 }
 
 export async function locationDataResolver (loc: Location): Promise<LocationData> {
