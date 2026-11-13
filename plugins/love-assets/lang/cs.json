@@ -160,6 +160,12 @@
     "GroupByDate": "Podle data",
     "SpeakingWhileMuted": "Máte vypnutý mikrofon - ostatní vás neslyší",
     "SpeakingWhileMutedAlert": "Upozornit, když mluvím s vypnutým mikrofonem",
-    "ScreenSharedBy": "{name} sdílí obrazovku"
+    "ScreenSharedBy": "{name} sdílí obrazovku",
+    "ScreenShareFailed": "Nelze sdílet obrazovku",
+    "ScreenShareDenied": "Sdílení obrazovky zablokoval váš prohlížeč nebo operační systém. Povolte prohlížeči nahrávání obrazovky v nastavení soukromí systému a zkuste to znovu.",
+    "ScreenShareUnsupported": "Sdílení obrazovky není v tomto prohlížeči nebo připojení podporováno. Použijte aktuální desktopový prohlížeč přes HTTPS.",
+    "ScreenShareError": "Sdílení obrazovky se nepodařilo spustit. Zkuste to prosím znovu.",
+    "ScreenShareNotStartedTitle": "Sdílení obrazovky nebylo spuštěno",
+    "ScreenShareNotStarted": "Sdílení obrazovky nebylo spuštěno. Pokud jste ho nezrušili, zkontrolujte, zda váš prohlížeč a operační systém povolují sdílení obrazovky pro tento web."
   }
 }
