@@ -90,7 +90,7 @@
             loc.path[3] = issue.space
             loc.path[4] = 'issues'
             navigate(loc)
-            setFilters([filter])
+            setFilters([filter], loc, tracker.class.Issue)
           }
         }}
       />

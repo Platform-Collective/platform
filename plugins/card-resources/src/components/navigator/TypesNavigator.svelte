@@ -19,7 +19,7 @@
   import { createQuery, getClient } from '@hcengineering/presentation'
   import { Action, getCurrentLocation, location as locationStore, navigate } from '@hcengineering/ui'
   import view from '@hcengineering/view'
-  import { setFilters, TreeNode } from '@hcengineering/view-resources'
+  import { TreeNode } from '@hcengineering/view-resources'
   import { GroupsNavModel } from '@hcengineering/workbench'
   import card from '../../plugin'
   import TagHierarchy from './TagHierarchy.svelte'
@@ -74,7 +74,6 @@
   function selectType(type: Ref<MasterTag>): void {
     const loc = getCurrentLocation()
     loc.path = buildTypePath(loc.path, type)
-    setFilters([])
     navigate(loc)
   }
 

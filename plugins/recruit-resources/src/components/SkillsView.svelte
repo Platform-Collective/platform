@@ -1,6 +1,6 @@
 <script lang="ts">
   import tags, { TagElement } from '@hcengineering/tags'
-  import { Button, Component, getCurrentResolvedLocation, navigate, showPopup } from '@hcengineering/ui'
+  import { Button, Component, getCurrentResolvedLocation, type Location, navigate, showPopup } from '@hcengineering/ui'
   import recruit from '../plugin'
   import { buildFilterKey, setFilters } from '@hcengineering/view-resources'
   import { getClient } from '@hcengineering/presentation'
@@ -9,7 +9,7 @@
   import OptimizeSkills from './OptimizeSkills.svelte'
   import { selectedTagElements } from '@hcengineering/tags-resources'
 
-  function setFilterTag(tag: TagElement) {
+  function setFilterTag(tag: TagElement, loc: Location) {
     const client = getClient()
     const hierarchy = client.getHierarchy()
     const attribute = hierarchy.getAttribute(recruit.mixin.Candidate, 'skills')
@@ -22,7 +22,7 @@
       mode: tags.filter.FilterTagsIn,
       index: 1
     } as unknown as Filter
-    setFilters([filter])
+    setFilters([filter], loc, recruit.mixin.Candidate)
   }
   async function onTag(tag: TagElement): Promise<void> {
     selectedTagElements.set([tag._id])
@@ -31,9 +31,7 @@
     loc.path[3] = 'talents'
     loc.path.length = 4
     navigate(loc)
-    setTimeout(() => {
-      setFilterTag(tag)
-    }, 200)
+    setFilterTag(tag, loc)
   }
 </script>
 
