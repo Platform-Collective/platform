@@ -28,6 +28,7 @@ import core, {
   type MeasureContext,
   type MigrationState,
   ModelDb,
+  RequiredModelTxError,
   type PersonInfo,
   platformNow,
   platformNowDiff,
@@ -126,6 +127,11 @@ export async function initModel (
   }
 
   try {
+    if (isStrictModelUpgrade()) {
+      // Strict mode only: reject an incomplete model before the database is created.
+      await buildModel(ctx, txes, txes)
+    }
+
     logger.log('creating database...', { workspaceId })
     const firstTx: Tx = {
       _class: core.class.Tx,
@@ -272,7 +278,7 @@ export async function upgradeModel (
   const newModelRes = await ctx.with('load-model', {}, (ctx) => pipeline.loadModel(ctx, 0))
   const newModel = Array.isArray(newModelRes) ? newModelRes : newModelRes.transactions
 
-  const { hierarchy, modelDb, model } = await buildModel(ctx, newModel)
+  const { hierarchy, modelDb, model } = await buildModel(ctx, newModel, txes)
   const { migrateClient: preMigrateClient } = await prepareMigrationClient(
     ctx,
     pipeline,
@@ -428,16 +434,37 @@ async function prepareMigrationClient (
   return { migrateClient, migrateState }
 }
 
+/**
+ * `MODEL_UPGRADE_STRICT=true` makes init and upgrade fail when a required model
+ * transaction cannot be applied. By default such transactions are only reported,
+ * as before, and the upgrade continues with the rest of the model.
+ * @public
+ */
+export function isStrictModelUpgrade (): boolean {
+  return process.env.MODEL_UPGRADE_STRICT === 'true'
+}
+
 export async function buildModel (
   ctx: MeasureContext,
-  model: Tx[]
+  model: Tx[],
+  requiredTxes?: Tx[]
 ): Promise<{ hierarchy: Hierarchy, modelDb: ModelDb, model: Tx[] }> {
   const hierarchy = new Hierarchy()
   const modelDb = new ModelDb(hierarchy)
 
   // addTxes feeds the hierarchy itself, a separate pass would just deserialize everything twice.
   ctx.withSync('build local model', {}, () => {
-    modelDb.addTxes(ctx, model, false)
+    const requiredTxIds = requiredTxes === undefined ? undefined : new Set(requiredTxes.map((tx) => tx._id))
+    try {
+      modelDb.addTxes(ctx, model, false, requiredTxIds)
+    } catch (err: unknown) {
+      // addTxes throws only after the whole batch was applied, so the model is usable.
+      if (!(err instanceof RequiredModelTxError) || isStrictModelUpgrade()) throw err
+      ctx.error('required model transactions were not applied; set MODEL_UPGRADE_STRICT=true to fail instead', {
+        count: err.txIds.length,
+        txIds: err.txIds
+      })
+    }
   })
   return { hierarchy, modelDb, model: model ?? [] }
 }
