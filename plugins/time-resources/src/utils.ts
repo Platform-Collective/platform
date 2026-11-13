@@ -3,10 +3,21 @@ import { getClient } from '@hcengineering/presentation'
 import type { ToDo, WorkSlot } from '@hcengineering/time'
 import time from '@hcengineering/time'
 import type { DefSeparators } from '@hcengineering/ui'
+import tracker, { type Issue } from '@hcengineering/tracker'
+import { getIssueSlotDuration } from './issue-planning'
 
 import calendarPlugin, { AccessLevel, getPrimaryCalendar, type Calendar } from '@hcengineering/calendar'
 
 export * from './types'
+
+/** Read the current issue estimate when scheduling an attached ToDo in a slot starting at `start`. */
+export async function getToDoSlotDuration (client: Client, todo: ToDo, start: number): Promise<number> {
+  if (!client.getHierarchy().isDerived(todo.attachedToClass, tracker.class.Issue)) {
+    return getIssueSlotDuration(undefined, start)
+  }
+  const issue = await client.findOne(tracker.class.Issue, { _id: todo.attachedTo as Ref<Issue> })
+  return getIssueSlotDuration(issue, start)
+}
 
 export function getNearest (events: WorkSlot[]): WorkSlot | undefined {
   const now = Date.now()

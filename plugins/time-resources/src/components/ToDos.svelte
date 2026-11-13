@@ -18,11 +18,12 @@
   import type { DocumentQuery, IdMap, Ref, Space, WithLookup } from '@hcengineering/core'
   import core, { SortingOrder, toIdMap } from '@hcengineering/core'
   import type { IntlString } from '@hcengineering/platform'
-  import { createQuery } from '@hcengineering/presentation'
+  import { createQuery, getClient } from '@hcengineering/presentation'
   import type { TagElement } from '@hcengineering/tags'
   import tags from '@hcengineering/tags'
   import type { ToDo, WorkSlot } from '@hcengineering/time'
-  import type { Project } from '@hcengineering/tracker'
+  import task from '@hcengineering/task'
+  import type { Issue, Project } from '@hcengineering/tracker'
   import tracker from '@hcengineering/tracker'
   import {
     ButtonIcon,
@@ -34,13 +35,22 @@
     areDatesEqual,
     defaultSP,
     deviceOptionsStore as deviceInfo,
+    ticker,
     todosSP
   } from '@hcengineering/ui'
+  import { statusStore } from '@hcengineering/view-resources'
   import view from '@hcengineering/view-resources/src/plugin'
   import type { ToDosMode } from '..'
   import time from '../plugin'
   import { filterVisibleToDos } from '../to-do-query'
   import { getNearest } from '../utils'
+  import {
+    getBlockerIds,
+    getPlanningIssueIds,
+    getToDoPlanningConstraints,
+    type IssuePlanningConstraints
+  } from '../issue-planning'
+  import { queryPlanningIssues } from '../planning-query'
   import CreateToDo from './CreateToDo.svelte'
   import ToDoGroup from './ToDoGroup.svelte'
 
@@ -215,6 +225,45 @@
 
   $: active = filterActive(mode, filterVisibleToDos(rawActive, archivedSpaces), currentDate)
 
+  // Planning hints for unplanned ToDos: one query for all attached issues and one for all their
+  // blockers, shared by every row instead of a query pair per row.
+  const hierarchy = getClient().getHierarchy()
+  const planningIssuesQuery = createQuery()
+  const planningBlockersQuery = createQuery()
+  let planningIssues: IdMap<Issue> = new Map()
+  let planningBlockers: IdMap<Issue> = new Map()
+  let planningConstraints = new Map<Ref<ToDo>, IssuePlanningConstraints>()
+
+  $: queryPlanningIssues(
+    planningIssuesQuery,
+    tracker.class.Issue,
+    getPlanningIssueIds(inbox, (clazz) => hierarchy.isDerived(clazz, tracker.class.Issue)),
+    (value) => (planningIssues = value)
+  )
+  $: queryPlanningIssues(
+    planningBlockersQuery,
+    tracker.class.Issue,
+    getBlockerIds(Array.from(planningIssues.values())).sort(),
+    (value) => (planningBlockers = value)
+  )
+  $: resolvedStatuses = new Set(
+    $statusStore.array
+      .filter((status) => status.category === task.statusCategory.Won || status.category === task.statusCategory.Lost)
+      .map((status) => status._id)
+  )
+  $: {
+    const next = getToDoPlanningConstraints(
+      inbox,
+      planningIssues,
+      planningBlockers,
+      resolvedStatuses,
+      $ticker,
+      planningConstraints
+    )
+    // Svelte invalidates object props even when their identity is unchanged. Only assign on a real change.
+    if (next !== planningConstraints) planningConstraints = next
+  }
+
   $: groups = group(
     filterVisibleToDos(inbox, archivedSpaces),
     filterVisibleToDos(done, archivedSpaces),
@@ -356,6 +405,7 @@
         showDuration={group[0] !== time.string.Unplanned}
         {mode}
         {projects}
+        {planningConstraints}
       />
     {/each}
   </Scroller>
