@@ -83,6 +83,36 @@ export async function disconnect (): Promise<void> {
   }
 }
 
+const endpointCheckMaxDelayMs = 5000
+const endpointCheckTimeoutMs = 10000
+const endpointCheckCooldownMs = 30000
+
+function normalizeEndpoint (endpoint: string): string {
+  try {
+    // URL canonicalizes host casing, default ports and the empty root path, preserving path casing.
+    return new URL(endpoint).href
+  } catch {
+    return endpoint
+  }
+}
+
+async function withTimeout<T> (promise: Promise<T>, ms: number): Promise<T | undefined> {
+  // This only bounds waiting; it does not cancel the underlying request.
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<undefined>((resolve) => {
+        timer = setTimeout(() => {
+          resolve(undefined)
+        }, ms)
+      })
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function connect (title: string): Promise<Client | undefined> {
   const ctx = uiContext.newChild('connect', {})
   const loc = getCurrentLocation()
@@ -237,6 +267,45 @@ export async function connect (title: string): Promise<Client | undefined> {
   }
   _token = token
 
+  const endpointChanged = (info: WorkspaceLoginInfo): boolean =>
+    normalizeEndpoint(getMetadata(login.metadata.TransactorOverride) ?? info.endpoint) !== normalizeEndpoint(endpoint)
+
+  // Re-check the workspace endpoint after a reconnect, next to the normal refresh: the old
+  // server may still accept connections after the workspace moved to another region.
+  // A random delay spreads the account service load when many clients reconnect at once
+  // (e.g. after a transactor restart), a time limit drops slow checks, and only one check
+  // runs at a time. It uses the account client directly, so a failure never navigates or
+  // shows anything. A cooldown after success, failure or timeout bounds repeated checks.
+  let endpointCheck: Promise<void> | undefined
+  let lastEndpointCheckFinishedAt: number | undefined
+  function recheckEndpoint (): void {
+    if (
+      endpointCheck !== undefined ||
+      (lastEndpointCheckFinishedAt !== undefined && Date.now() - lastEndpointCheckFinishedAt < endpointCheckCooldownMs)
+    ) {
+      return
+    }
+    endpointCheck = (async () => {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * endpointCheckMaxDelayMs))
+        const currentToken = getMetadata(presentation.metadata.Token)
+        if (currentToken == null) return
+        // Disable the retry window; the outer timeout is the only waiting deadline.
+        const accountClient = getAccountClient(getMetadata(login.metadata.AccountsUrl), currentToken, 0)
+        const info = await withTimeout(accountClient.selectWorkspace(wsUrl), endpointCheckTimeoutMs)
+        if (info != null && endpointChanged(info) && wsUrl === getCurrentLocation().path[1]) {
+          console.log('endpoint changed, reloading')
+          location.reload()
+        }
+      } catch (err: any) {
+        console.warn('Workspace endpoint check failed', err?.message ?? err)
+      } finally {
+        lastEndpointCheckFinishedAt = Date.now()
+        endpointCheck = undefined
+      }
+    })()
+  }
+
   const clientFactory = await getResource(client.function.GetClient)
   let version: Version | undefined
   const newClient = await ctx.with(
@@ -367,6 +436,14 @@ export async function connect (title: string): Promise<Client | undefined> {
             return
           }
           try {
+            // Core may report a reconnect as Refresh when transactions changed.
+            if (
+              (_clientSet && event === ClientConnectEvent.Connected) ||
+              event === ClientConnectEvent.Reconnected ||
+              event === ClientConnectEvent.Refresh
+            ) {
+              recheckEndpoint()
+            }
             if (event === ClientConnectEvent.Connected || event === ClientConnectEvent.Reconnected) {
               setMetadata(presentation.metadata.SessionId, data)
             }
@@ -390,7 +467,8 @@ export async function connect (title: string): Promise<Client | undefined> {
             }
 
             void (async () => {
-              if (_client !== undefined) {
+              // Without a baseline version (initial connect still in progress) there is nothing to compare.
+              if (_client !== undefined && version !== undefined) {
                 const client = _client
                 const newVersion = await ctx.with(
                   'find-version',
@@ -399,7 +477,7 @@ export async function connect (title: string): Promise<Client | undefined> {
                 )
                 console.log('Reconnect Model version', newVersion)
 
-                const currentVersionStr = versionToString(version as Version)
+                const currentVersionStr = versionToString(version)
                 const reconnectVersionStr = versionToString(newVersion as Version)
 
                 if (currentVersionStr !== reconnectVersionStr) {
@@ -456,7 +534,8 @@ export async function connect (title: string): Promise<Client | undefined> {
             {},
             async () => (await selectWorkspace(wsUrl, token))[1]
           )
-          if (newLoginInfo?.endpoint !== endpoint) {
+          // As before, also reload when no login info comes back.
+          if (newLoginInfo == null || endpointChanged(newLoginInfo)) {
             console.log('endpoint changed, reloading')
             location.reload()
           }
