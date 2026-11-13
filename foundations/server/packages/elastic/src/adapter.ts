@@ -33,6 +33,7 @@ import serverCore from '@hcengineering/server-core'
 
 import { Client, errors as esErr } from '@elastic/elasticsearch'
 import { getMetadata } from '@hcengineering/platform'
+import { DEFAULT_FULLTEXT_ANALYZER, getFulltextAnalyzer } from './analyzer'
 import { getElasticTlsOptions } from './elastic-tls'
 
 const DEFAULT_LIMIT = 200
@@ -45,62 +46,66 @@ function getIndexVersion (): string {
   return getMetadata(serverCore.metadata.ElasticIndexVersion) ?? 'v2'
 }
 
-const mappings = {
-  properties: {
-    fulltextSummary: {
-      type: 'text',
-      analyzer: 'rebuilt_english'
-    },
-    workspaceId: {
-      type: 'keyword',
-      index: true
-    },
-    id: {
-      type: 'keyword',
-      index: true
-    },
-    _class: {
-      type: 'keyword',
-      index: true
-    },
-    attachedTo: {
-      type: 'keyword',
-      index: true
-    },
-    attachedToClass: {
-      type: 'keyword',
-      index: true
-    },
-    space: {
-      type: 'keyword',
-      index: true
-    },
-    'core:class:Doc%createdBy': {
-      type: 'keyword',
-      index: true
-    },
-    'core:class:Doc%createdOn': {
-      type: 'date',
-      format: 'epoch_millis',
-      index: true
-    },
-    modifiedBy: {
-      type: 'keyword',
-      index: true
-    },
-    modifiedOn: {
-      type: 'date',
-      format: 'epoch_millis',
-      index: true
-    },
-    'core:class:Doc%modifiedBy': {
-      type: 'keyword',
-      index: true
-    },
-    'core:class:Doc%modifiedOn': {
-      type: 'date',
-      format: 'epoch_millis',
-      index: true
+function getMappings (analyzer: string): {
+  properties: Record<string, { type: string, analyzer?: string, index?: boolean, format?: string }>
+} {
+  return {
+    properties: {
+      fulltextSummary: {
+        type: 'text',
+        analyzer
+      },
+      workspaceId: {
+        type: 'keyword',
+        index: true
+      },
+      id: {
+        type: 'keyword',
+        index: true
+      },
+      _class: {
+        type: 'keyword',
+        index: true
+      },
+      attachedTo: {
+        type: 'keyword',
+        index: true
+      },
+      attachedToClass: {
+        type: 'keyword',
+        index: true
+      },
+      space: {
+        type: 'keyword',
+        index: true
+      },
+      'core:class:Doc%createdBy': {
+        type: 'keyword',
+        index: true
+      },
+      'core:class:Doc%createdOn': {
+        type: 'date',
+        format: 'epoch_millis',
+        index: true
+      },
+      modifiedBy: {
+        type: 'keyword',
+        index: true
+      },
+      modifiedOn: {
+        type: 'date',
+        format: 'epoch_millis',
+        index: true
+      },
+      'core:class:Doc%modifiedBy': {
+        type: 'keyword',
+        index: true
+      },
+      'core:class:Doc%modifiedOn': {
+        type: 'date',
+        format: 'epoch_millis',
+        index: true
+      }
     }
   }
 }
@@ -108,20 +113,34 @@ const mappings = {
 class ElasticAdapter implements FullTextAdapter {
   private readonly getFulltextDocId: (workspaceId: WorkspaceUuid, doc: Ref<Doc>) => Ref<Doc>
   private readonly getDocId: (workspaceId: WorkspaceUuid, fulltext: Ref<Doc>) => Ref<Doc>
-  private readonly indexName: string
+  private indexName: string
+  private usingExistingIndex = false
+  private readonly mappings: ReturnType<typeof getMappings> & {
+    _meta: { huly_fulltext: { base: string, version: string, analyzer: string } }
+  }
 
   constructor (
     private readonly client: Client,
     private readonly indexBaseName: string,
-    readonly indexVersion: string
+    readonly indexVersion: string,
+    private readonly analyzer: string = DEFAULT_FULLTEXT_ANALYZER
   ) {
-    this.indexName = `${indexBaseName}_${indexVersion}`
+    this.indexName = `${indexBaseName}_${indexVersion}${analyzer === DEFAULT_FULLTEXT_ANALYZER ? '' : `_${analyzer}`}`
+    this.mappings = {
+      ...getMappings(this.analyzer),
+      _meta: { huly_fulltext: { base: indexBaseName, version: indexVersion, analyzer } }
+    }
     this.getFulltextDocId = (workspaceId, doc) => `${doc}@${workspaceId}` as Ref<Doc>
     this.getDocId = (workspaceId, fulltext) => fulltext.slice(0, -1 * (workspaceId.length + 1)) as Ref<Doc>
   }
 
   async initMapping (ctx: MeasureContext): Promise<boolean> {
+    ctx.measure('fulltext_analyzer_fallback', this.usingExistingIndex ? 1 : 0, true)
+    if (this.usingExistingIndex) {
+      return true
+    }
     const indexName = this.indexName
+    const indexMappings = this.mappings
     try {
       const existingVersions = await ctx.withSync('get-indexes', {}, () =>
         this.client.indices.get({
@@ -138,57 +157,156 @@ class ElasticAdapter implements FullTextAdapter {
             index: indexName
           })
         )
-        for (const [propName, propType] of Object.entries(mappings.properties)) {
-          if (mapping.body[indexName]?.mappings.properties?.[propName]?.type !== propType.type) {
+        for (const [propName, propType] of Object.entries(indexMappings.properties)) {
+          const existing = mapping.body[indexName]?.mappings.properties?.[propName]
+          // An analyzer change cannot be applied to an existing field, the index has to be recreated
+          if (
+            existing?.type !== propType.type ||
+            ('analyzer' in propType && existing?.analyzer !== propType.analyzer)
+          ) {
             shouldDropExistingIndex = true
             break
           }
         }
       }
-      if (existingOldVersionIndices.length > 0 || shouldDropExistingIndex) {
-        await ctx.with('delete-old-index', {}, () =>
-          this.client.indices.delete({
-            index: shouldDropExistingIndex ? allIndexes : existingOldVersionIndices
-          })
+      // A rejected analyzer must not prevent the indexer from serving the current index.
+      const keepExistingIndex = (err: any, indexes: string[]): boolean => {
+        if (err.meta?.statusCode !== 400 || indexes.length === 0) {
+          return false
+        }
+        const error = err.meta?.body?.error
+        const analyzerRejected = [error, ...(error?.root_cause ?? [])].some(
+          (cause) =>
+            cause?.type === 'mapper_parsing_exception' ||
+            (cause?.type === 'illegal_argument_exception' && /analyzer/i.test(cause.reason ?? ''))
         )
+        if (!analyzerRejected) {
+          return false
+        }
+        // Names alone cannot distinguish an analyzer suffix from another version
+        // or application's index. Require explicit ownership and a usable mapping.
+        const versionName = `${this.indexBaseName}_${this.indexVersion}`
+        const candidates = indexes.filter((name) => {
+          const mapping = existingVersions.body[name].mappings
+          const owner = mapping?._meta?.huly_fulltext
+          if (
+            owner?.base !== this.indexBaseName ||
+            owner?.version !== this.indexVersion ||
+            typeof owner?.analyzer !== 'string' ||
+            !/^[a-z0-9_-]+$/.test(owner.analyzer)
+          ) {
+            return false
+          }
+          const expectedName = `${versionName}${owner.analyzer === DEFAULT_FULLTEXT_ANALYZER ? '' : `_${owner.analyzer}`}`
+          if (name !== expectedName) return false
+          return Object.entries(getMappings(owner.analyzer).properties).every(([propName, propType]) => {
+            const existing = mapping.properties?.[propName]
+            return existing !== undefined && Object.entries(propType).every(([key, value]) => existing[key] === value)
+          })
+        })
+        if (candidates.length === 0) return false
+        this.indexName = candidates.includes(indexName)
+          ? indexName
+          : candidates.includes(versionName)
+            ? versionName
+            : candidates.sort((a, b) => {
+                const createdAt = (name: string): number =>
+                  Number(existingVersions.body[name].settings?.index?.creation_date ?? 0)
+                const difference = createdAt(b) - createdAt(a)
+                return difference === 0 || Number.isNaN(difference) ? a.localeCompare(b) : difference
+              })[0]
+        this.usingExistingIndex = true
+        ctx.measure('fulltext_analyzer_fallback', 1, true)
+        ctx.error(`Cannot use ELASTIC_ANALYZER '${this.analyzer}'; keeping existing index '${this.indexName}'`, {
+          analyzer: this.analyzer,
+          indexName: this.indexName,
+          error: err
+        })
+        return true
+      }
+      if (shouldDropExistingIndex) {
+        // The same-name mapping migration also needs validation before any deletion.
+        try {
+          await ctx.with('validate-analyzer', { indexName }, () =>
+            this.client.indices.analyze({
+              index: indexName,
+              body: { analyzer: this.analyzer, text: 'test' }
+            })
+          )
+        } catch (err: any) {
+          if (keepExistingIndex(err, allIndexes)) {
+            return true
+          }
+          throw err
+        }
+        await ctx.with('delete-index', { indexName }, () => this.client.indices.delete({ index: indexName }))
       }
       if (!existsIndex || shouldDropExistingIndex) {
-        await ctx.with('create-index', { indexName }, () =>
-          this.client.indices.create({
-            index: indexName,
-            body: {
-              settings: {
-                analysis: {
-                  filter: {
-                    english_stemmer: {
-                      type: 'stemmer',
-                      language: 'english'
-                    },
-                    english_possessive_stemmer: {
-                      type: 'stemmer',
-                      language: 'possessive_english'
-                    }
-                  },
-                  analyzer: {
-                    rebuilt_english: {
-                      type: 'custom',
-                      tokenizer: 'standard',
-                      filter: ['english_possessive_stemmer', 'lowercase', 'english_stemmer']
-                    }
-                  }
-                }
-              },
-              mappings
-            }
-          })
-        )
+        try {
+          await ctx.with('create-index', { indexName }, () =>
+            this.client.indices.create({
+              index: indexName,
+              body: {
+                settings:
+                  this.analyzer === DEFAULT_FULLTEXT_ANALYZER
+                    ? {
+                        analysis: {
+                          filter: {
+                            english_stemmer: {
+                              type: 'stemmer',
+                              language: 'english'
+                            },
+                            english_possessive_stemmer: {
+                              type: 'stemmer',
+                              language: 'possessive_english'
+                            }
+                          },
+                          analyzer: {
+                            rebuilt_english: {
+                              type: 'custom',
+                              tokenizer: 'standard',
+                              filter: ['english_possessive_stemmer', 'lowercase', 'english_stemmer']
+                            }
+                          }
+                        }
+                      }
+                    : undefined,
+                mappings: indexMappings
+              }
+            })
+          )
+        } catch (err: any) {
+          if (err.meta?.statusCode === 400 && err.meta?.body?.error?.type === 'resource_already_exists_exception') {
+            // Another pod created this index; use it and leave cleanup to that pod.
+            return true
+          }
+          if (
+            keepExistingIndex(
+              err,
+              allIndexes.filter((name) => !shouldDropExistingIndex || name !== indexName)
+            )
+          ) {
+            return true
+          }
+          throw err
+        }
       } else {
         await ctx.with('put-mapping', {}, () =>
           this.client.indices.putMapping({
             index: indexName,
-            body: mappings
+            body: indexMappings
           })
         )
+      }
+      // Other analyzers/versions may still be in use by older pods. The prefix
+      // can also match unrelated indices, so startup must never delete them.
+      if (existingOldVersionIndices.length > 0) {
+        ctx.warn('Other fulltext indices retained; verify ownership and active users before explicit cleanup', {
+          indices: existingOldVersionIndices
+        })
+      }
+      if ((!existsIndex && existingOldVersionIndices.length > 0) || shouldDropExistingIndex) {
+        ctx.error('Fulltext index changed; run fulltext-reindex-all to reindex all active workspaces', { indexName })
       }
     } catch (err: any) {
       if (err.name === 'ConnectionError') {
@@ -268,7 +386,7 @@ class ElasticAdapter implements FullTextAdapter {
 
       if (options.scoring !== undefined) {
         const scoringTerms: any[] = options.scoring.map((scoringOption): any => {
-          const field = Object.hasOwn(mappings.properties, scoringOption.attr)
+          const field = Object.hasOwn(this.mappings.properties, scoringOption.attr)
             ? scoringOption.attr
             : `${scoringOption.attr}.keyword`
           return {
@@ -413,7 +531,7 @@ class ElasticAdapter implements FullTextAdapter {
 
     for (const [q, v] of Object.entries(query)) {
       if (!q.startsWith('$')) {
-        const field = Object.hasOwn(mappings.properties, q) ? q : `${q}.keyword`
+        const field = Object.hasOwn(this.mappings.properties, q) ? q : `${q}.keyword`
         if (typeof v === 'object') {
           if (v.$in !== undefined) {
             request.bool.should.push({
@@ -472,7 +590,7 @@ class ElasticAdapter implements FullTextAdapter {
 
   private getTerms (values: string[], field: string, extra: any = {}): any {
     return {
-      [Object.hasOwn(mappings.properties, field) ? field : `${field}.keyword`]: values,
+      [Object.hasOwn(this.mappings.properties, field) ? field : `${field}.keyword`]: values,
       ...extra
     }
   }
@@ -574,14 +692,14 @@ class ElasticAdapter implements FullTextAdapter {
           if (v.$in !== undefined) {
             elasticQuery.bool.must.push({
               terms: {
-                [Object.hasOwn(mappings.properties, q) ? q : `${q}.keyword`]: v.$in
+                [Object.hasOwn(this.mappings.properties, q) ? q : `${q}.keyword`]: v.$in
               }
             })
           }
         } else {
           elasticQuery.bool.must.push({
             term: {
-              [Object.hasOwn(mappings.properties, q) ? q : `${q}.keyword`]: {
+              [Object.hasOwn(this.mappings.properties, q) ? q : `${q}.keyword`]: {
                 value: v
               }
             }
@@ -667,14 +785,14 @@ class ElasticAdapter implements FullTextAdapter {
           if (v.$in !== undefined) {
             elasticQuery.bool.must.push({
               terms: {
-                [Object.hasOwn(mappings.properties, q) ? q : `${q}.keyword`]: v.$in
+                [Object.hasOwn(this.mappings.properties, q) ? q : `${q}.keyword`]: v.$in
               }
             })
           }
         } else {
           elasticQuery.bool.must.push({
             term: {
-              [Object.hasOwn(mappings.properties, q) ? q : `${q}.keyword`]: {
+              [Object.hasOwn(this.mappings.properties, q) ? q : `${q}.keyword`]: {
                 value: v
               }
             }
@@ -771,5 +889,5 @@ export async function createElasticAdapter (url: string): Promise<FullTextAdapte
   const indexBaseName = getIndexName()
   const indexVersion = getIndexVersion()
 
-  return new ElasticAdapter(client, indexBaseName, indexVersion)
+  return new ElasticAdapter(client, indexBaseName, indexVersion, getFulltextAnalyzer())
 }
