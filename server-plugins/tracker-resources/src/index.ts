@@ -31,7 +31,14 @@ import core, {
   TxUpdateDoc,
   WithLookup
 } from '@hcengineering/core'
-import notification, { DocNotifyContext, NotificationContent } from '@hcengineering/notification'
+import gmail from '@hcengineering/gmail'
+import notification, {
+  DocNotifyContext,
+  NotificationContent,
+  NOTIFICATION_PROVIDER_COVERAGE,
+  type NotificationProviderCoverage,
+  type NotificationProviderCoverageMap
+} from '@hcengineering/notification'
 import { getMetadata, IntlString } from '@hcengineering/platform'
 import serverCore, { TriggerControl } from '@hcengineering/server-core'
 import { getAccountBySocialId } from '@hcengineering/server-contact'
@@ -579,12 +586,11 @@ async function issueLinkIdProvider (issue: Issue): Promise<string> {
 /**
  * Notification on Dependency-Shift (server-side dispatch).
  *
- * Upper bound on how many shift entries a single request may fan out. The
- * request payload is client-supplied, so an unbounded list would let one write
- * turn into an arbitrary number of privileged cross-space notification writes.
- * Entries beyond the cap are dropped.
+ * Upper bound on displayed shift entries per recipient. Coverage is derived
+ * separately from validated batch updates so this limit cannot leak ordinary
+ * due-date emails for the rest of a cascade.
  */
-const MAX_SHIFTED_ISSUES = 200
+const MAX_DISPLAYED_SHIFTED_ISSUES = 200
 
 /** Upper bound for the correlation token copied onto the notification. */
 const MAX_CASCADE_TOKEN_LENGTH = 128
@@ -640,7 +646,9 @@ function sanitizeCascadeToken (value: unknown): string {
  *  - ids that are not strings, not issues, not in this space, or unknown are
  *    dropped (a non-issue `Ref` cannot match an `Issue` query at all),
  *  - duplicate ids collapse to one entry,
- *  - the list is capped at `MAX_SHIFTED_ISSUES`,
+ *  - only the first `MAX_DISPLAYED_SHIFTED_ISSUES` unique request ids plus
+ *    ids updated in the same batch are resolved; request-only overflow cannot
+ *    cause additional privileged notification writes,
  *  - `identifier` and `title` come from the stored doc; no dates or delta are
  *    emitted (a client-reported delta would be unverifiable, so it is not shown).
  *
@@ -650,12 +658,14 @@ function sanitizeCascadeToken (value: unknown): string {
 async function resolveShiftPayload (
   control: TriggerControl,
   space: Ref<Space>,
-  rawEntries: unknown
+  rawEntries: unknown,
+  batchIssueIds: Set<Ref<Issue>>
 ): Promise<{ payloads: ShiftedIssuePayload[], issues: ShiftIssueDoc[] }> {
   const empty = { payloads: [], issues: [] }
   if (!Array.isArray(rawEntries) || rawEntries.length === 0) return empty
 
-  // Unique, string-typed ids in payload order, capped.
+  // Keep complete batch coverage, even beyond the displayed detail limit.
+  // Overflow ids must also occur in a matching server-received update.
   const ids: Array<Ref<Issue>> = []
   const seen = new Set<string>()
   for (const raw of rawEntries) {
@@ -665,8 +675,9 @@ async function resolveShiftPayload (
     if (typeof issueId !== 'string' || issueId.length === 0) continue
     if (seen.has(issueId)) continue
     seen.add(issueId)
-    ids.push(issueId as Ref<Issue>)
-    if (ids.length >= MAX_SHIFTED_ISSUES) break
+    if (seen.size <= MAX_DISPLAYED_SHIFTED_ISSUES || batchIssueIds.has(issueId as Ref<Issue>)) {
+      ids.push(issueId as Ref<Issue>)
+    }
   }
   if (ids.length === 0) return empty
 
@@ -801,11 +812,25 @@ async function resolveShiftRecipientSpaces (
  *  - the trigger issue is loaded as a real `tracker.class.Issue` of
  *    `tx.objectSpace`, and its identifier/title/space come from that doc,
  *  - the shifted-issue list is rebuilt by `resolveShiftPayload` (same-space
- *    issues only, deduplicated, capped, dates from storage).
+ *    issues only, deduplicated, displayed details capped).
  *
  * Every step is fail-closed: an unresolvable author, a trigger issue that is
  * not an issue of this space, or an empty list after filtering all end the
  * dispatch. The request doc is removed in every case so no residue accumulates.
+ * An unexpected error is caught per request and never rejects the date batch
+ * written in the same apply; that request then emits no summary and no coverage.
+ *
+ * E-mail coverage ordering contract (pinned by dependency-shift-pipeline.test.ts):
+ *  1. this trigger is registered as a synchronous trigger, so it runs in the
+ *     sync phase of the apply and writes `NOTIFICATION_PROVIDER_COVERAGE` into
+ *     the request-local `contextCache`,
+ *  2. the per-issue due-date notifications are evaluated later by the
+ *     asynchronous activity trigger (`ActivityMessagesHandler`), whose control
+ *     shares the same `contextCache` and receives the sync results in `txes`,
+ *  3. the e-mail sender (`NotificationsHandler`) runs on the derived inbox
+ *     notifications of that async pass, again with the same `contextCache`.
+ * Making this trigger asynchronous, or giving the async phase a fresh cache,
+ * silently brings back one e-mail per shifted issue.
  * @public
  */
 export async function OnDependencyShiftRequest (txes: Tx[], control: TriggerControl): Promise<Tx[]> {
@@ -815,103 +840,171 @@ export async function OnDependencyShiftRequest (txes: Tx[], control: TriggerCont
     const createTx = tx as TxCreateDoc<DependencyShiftRequest>
     if (createTx.objectClass !== tracker.class.DependencyShiftRequest) continue
 
-    const req = TxProcessor.createDoc2Doc(createTx)
-
     // Always clean up the request doc, whatever happens below.
     result.push(control.txFactory.createTxRemoveDoc(createTx.objectClass, createTx.objectSpace, createTx.objectId))
 
-    // Anti-spoofing: resolve the trigger user from the tx author, not payload.
-    const triggerUserId = await getAccountBySocialId(control, createTx.modifiedBy)
-    if (triggerUserId == null) continue // fail-closed: no trusted author → no dispatch
-
-    // The notification subject must be a real issue of the space the request
-    // was written into — not whatever id the payload names.
-    if (typeof req.triggerIssueId !== 'string' || req.triggerIssueId.length === 0) continue
-    const triggerIssues = await control.findAll(
-      control.ctx,
-      tracker.class.Issue,
-      { _id: req.triggerIssueId, space: createTx.objectSpace as Ref<Project> },
-      { limit: 1, projection: shiftIssueProjection }
-    )
-    if (triggerIssues.length === 0) continue // fail-closed: foreign/unknown trigger issue
-    const triggerIssue: ShiftIssueDoc = triggerIssues[0]
-
-    const { payloads: shiftedIssues, issues: shiftedDocs } = await resolveShiftPayload(
-      control,
-      createTx.objectSpace,
-      req.shiftedIssues
-    )
-    if (shiftedIssues.length === 0) continue // fail-closed: nothing survived validation
-
-    const cascadeToken = sanitizeCascadeToken(req.cascadeToken)
-
-    const collaborators = await collectShiftCollaborators(control, shiftedDocs)
-    const bundles = groupShiftsByRecipient(triggerUserId, shiftedIssues, collaborators)
-    if (bundles.size === 0) continue
-
-    const spaces = await resolveShiftRecipientSpaces(control, Array.from(bundles.keys()))
-    if (spaces.size === 0) continue
-
-    for (const [recipient, recipientShifts] of bundles) {
-      const space = spaces.get(recipient)
-      if (space === undefined) continue
-
-      const existing = await control.findAll(
-        control.ctx,
-        notification.class.DocNotifyContext,
-        { objectId: triggerIssue._id, user: recipient },
-        { limit: 1 }
-      )
-
-      let contextId: Ref<DocNotifyContext>
-      if (existing.length > 0) {
-        contextId = existing[0]._id
-        result.push(
-          control.txFactory.createTxUpdateDoc(existing[0]._class, existing[0].space, existing[0]._id, {
-            hidden: false,
-            lastUpdateTimestamp: Date.now()
-          })
-        )
-      } else {
-        contextId = generateId<DocNotifyContext>()
-        const contextData: Data<DocNotifyContext> = {
-          user: recipient,
-          objectId: triggerIssue._id,
-          objectClass: tracker.class.Issue,
-          objectSpace: triggerIssue.space,
-          hidden: false,
-          isPinned: false,
-          lastUpdateTimestamp: Date.now()
+    // The request is written in the same apply as the date changes. A summary failure must never
+    // reject that batch: this request then produces neither summaries nor coverage, so every
+    // shifted issue keeps its ordinary due-date notifications (fail closed, nothing is lost).
+    try {
+      const dispatch = await dispatchShiftRequest(createTx, control)
+      result.push(...dispatch.txes)
+      if (dispatch.coverage.length > 0) {
+        const coverage: NotificationProviderCoverageMap =
+          control.contextCache.get(NOTIFICATION_PROVIDER_COVERAGE) ?? new Map()
+        for (const [sourceTx, marker] of dispatch.coverage) {
+          coverage.set(sourceTx, [...(coverage.get(sourceTx) ?? []), marker])
         }
-        result.push(
-          control.txFactory.createTxCreateDoc(notification.class.DocNotifyContext, space, contextData, contextId)
-        )
+        control.contextCache.set(NOTIFICATION_PROVIDER_COVERAGE, coverage)
       }
-
-      const notifData: Data<DependencyShiftedNotification> = {
-        user: recipient,
-        isViewed: false,
-        docNotifyContext: contextId,
-        objectId: req.triggerIssueId,
-        objectClass: tracker.class.Issue,
-        archived: false,
-        header: tracker.string.DependencyShiftedHeader,
-        message: tracker.string.DependencyShiftedMessage,
-        intlParams: {
-          count: recipientShifts.length,
-          trigger: triggerIssue.identifier
-        },
-        triggerIssueId: triggerIssue._id,
-        triggerIssueIdentifier: triggerIssue.identifier,
-        triggerIssueTitle: triggerIssue.title,
-        triggerUserId,
-        shiftedIssues: recipientShifts,
-        cascadeToken
-      }
-      result.push(control.txFactory.createTxCreateDoc(tracker.class.DependencyShiftedNotification, space, notifData))
+    } catch (err: any) {
+      control.ctx.error('Dependency-shift summary skipped; per-issue notifications are kept', {
+        request: createTx.objectId,
+        err
+      })
     }
   }
   return result
+}
+
+interface ShiftRequestDispatch {
+  txes: Tx[]
+  coverage: Array<[Ref<Tx>, NotificationProviderCoverage]>
+}
+
+/**
+ * Builds all summaries of one request. Nothing is published until the whole request
+ * succeeded, so a partial failure cannot leave coverage without its summary.
+ */
+async function dispatchShiftRequest (
+  createTx: TxCreateDoc<DependencyShiftRequest>,
+  control: TriggerControl
+): Promise<ShiftRequestDispatch> {
+  const out: Tx[] = []
+  const coverage: ShiftRequestDispatch['coverage'] = []
+  const none: ShiftRequestDispatch = { txes: [], coverage: [] }
+  const req = TxProcessor.createDoc2Doc(createTx)
+
+  // Anti-spoofing: resolve the trigger user from the tx author, not payload.
+  const triggerUserId = await getAccountBySocialId(control, createTx.modifiedBy)
+  if (triggerUserId == null) return none // fail-closed: no trusted author → no dispatch
+
+  // The notification subject must be a real issue of the space the request
+  // was written into — not whatever id the payload names.
+  if (typeof req.triggerIssueId !== 'string' || req.triggerIssueId.length === 0) return none
+  const triggerIssues = await control.findAll(
+    control.ctx,
+    tracker.class.Issue,
+    { _id: req.triggerIssueId, space: createTx.objectSpace as Ref<Project> },
+    { limit: 1, projection: shiftIssueProjection }
+  )
+  if (triggerIssues.length === 0) return none // fail-closed: foreign/unknown trigger issue
+  const triggerIssue: ShiftIssueDoc = triggerIssues[0]
+
+  const sourceTxes = control.txes.filter(
+    (sourceTx): sourceTx is TxUpdateDoc<Issue> =>
+      sourceTx._class === core.class.TxUpdateDoc &&
+      (sourceTx as TxUpdateDoc<Issue>).objectClass === tracker.class.Issue &&
+      sourceTx.objectSpace === createTx.objectSpace &&
+      sourceTx.modifiedBy === createTx.modifiedBy &&
+      'dueDate' in (sourceTx as TxUpdateDoc<Issue>).operations
+  )
+  const { payloads: shiftedIssues, issues: shiftedDocs } = await resolveShiftPayload(
+    control,
+    createTx.objectSpace,
+    req.shiftedIssues,
+    new Set(sourceTxes.map((sourceTx) => sourceTx.objectId))
+  )
+  if (shiftedIssues.length === 0) return none // fail-closed: nothing survived validation
+
+  const cascadeToken = sanitizeCascadeToken(req.cascadeToken)
+
+  const collaborators = await collectShiftCollaborators(control, shiftedDocs)
+  const bundles = groupShiftsByRecipient(triggerUserId, shiftedIssues, collaborators)
+  if (bundles.size === 0) return none
+
+  const spaces = await resolveShiftRecipientSpaces(control, Array.from(bundles.keys()))
+  if (spaces.size === 0) return none
+
+  for (const [recipient, recipientShifts] of bundles) {
+    const space = spaces.get(recipient)
+    if (space === undefined) continue
+
+    const existing = await control.findAll(
+      control.ctx,
+      notification.class.DocNotifyContext,
+      { objectId: triggerIssue._id, user: recipient },
+      { limit: 1 }
+    )
+
+    let contextId: Ref<DocNotifyContext>
+    if (existing.length > 0) {
+      contextId = existing[0]._id
+      out.push(
+        control.txFactory.createTxUpdateDoc(existing[0]._class, existing[0].space, existing[0]._id, {
+          hidden: false,
+          lastUpdateTimestamp: Date.now()
+        })
+      )
+    } else {
+      contextId = generateId<DocNotifyContext>()
+      const contextData: Data<DocNotifyContext> = {
+        user: recipient,
+        objectId: triggerIssue._id,
+        objectClass: tracker.class.Issue,
+        objectSpace: triggerIssue.space,
+        hidden: false,
+        isPinned: false,
+        lastUpdateTimestamp: Date.now()
+      }
+      out.push(control.txFactory.createTxCreateDoc(notification.class.DocNotifyContext, space, contextData, contextId))
+    }
+
+    const notifData: Data<DependencyShiftedNotification> = {
+      user: recipient,
+      isViewed: false,
+      types: [tracker.ids.DependencyShiftedNotification],
+      docNotifyContext: contextId,
+      objectId: req.triggerIssueId,
+      objectClass: tracker.class.Issue,
+      archived: false,
+      header: tracker.string.DependencyShiftedHeader,
+      message: tracker.string.DependencyShiftedMessage,
+      intlParams: {
+        count: recipientShifts.length,
+        trigger: triggerIssue.identifier
+      },
+      triggerIssueId: triggerIssue._id,
+      triggerIssueIdentifier: triggerIssue.identifier,
+      triggerIssueTitle: triggerIssue.title,
+      triggerUserId,
+      shiftedIssues: recipientShifts.slice(0, MAX_DISPLAYED_SHIFTED_ISSUES),
+      cascadeToken
+    }
+    const summaryTx = control.txFactory.createTxCreateDoc(tracker.class.DependencyShiftedNotification, space, notifData)
+    out.push(summaryTx)
+
+    // Coverage belongs to this dedicated summary, never to another transaction's meta.
+    // Ordering contract (see OnDependencyShiftRequest): this trigger is synchronous, the
+    // due-date notifications are evaluated by the asynchronous activity trigger afterwards.
+    // Consumers also require the summary tx in their explicit input (syncResult), so a
+    // dropped summary can never suppress an e-mail.
+    const shiftedIds = new Set(recipientShifts.map((shifted) => shifted.issueId))
+    for (const sourceTx of sourceTxes) {
+      if (!shiftedIds.has(sourceTx.objectId)) continue
+      coverage.push([
+        sourceTx._id,
+        {
+          summary: summaryTx._id,
+          recipient,
+          provider: gmail.providers.EmailNotificationProvider,
+          type: tracker.ids.DependencyShiftedNotification,
+          field: 'dueDate'
+        }
+      ])
+    }
+  }
+  return { txes: out, coverage }
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type

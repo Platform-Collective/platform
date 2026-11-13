@@ -6,11 +6,9 @@
 /**
  * Notification on Dependency-Shift.
  *
- * Client-side signal emitter: takes a freshly-committed cascade result and
- * writes a single `DependencyShiftRequest` doc into the *project* space the
- * user already edits. The send runs after `ops.commit()` succeeds in
- * `GanttView.svelte:commitCascadeBatch` (and the alt-bypass + no-cascade-with-
- * shifts code paths), so a failed commit never produces a phantom request.
+ * Client-side signal emitter: queues a single `DependencyShiftRequest` doc in
+ * the same apply batch as the date updates. A failed commit therefore creates
+ * neither shifted dates nor a notification request.
  *
  * Architecture (security):
  *
@@ -56,19 +54,18 @@ export interface DependencyShiftSendArgs {
 }
 
 /**
- * Fire-and-forget request emit. Returns 1 if a `DependencyShiftRequest` doc was
- * written (there was at least one shifted issue), 0 otherwise. Errors are
- * caught and surfaced via the optional `onError` hook so the cascade commit
- * itself is never rolled back by a notification glitch.
+ * Queues a request in the supplied apply operations. Returns 1 if a
+ * `DependencyShiftRequest` doc was queued (there was at least one shifted
+ * issue), 0 otherwise. Errors are caught and surfaced via the optional
+ * `onError` hook so notification setup never prevents the date batch itself.
  *
  * Degrades silently when the workspace model does not know
  * `DependencyShiftRequest`. A workspace that has not been migrated to the
  * model version introducing that class would otherwise fail on every single
- * cascade commit — the date shift itself has already been committed
- * successfully at this point, so a failure here must never surface as an
- * error to the user. The notification is best-effort by design.
+ * cascade commit, so a failure here must never surface as an error to the
+ * user. The notification is best-effort by design.
  */
-export async function sendDependencyShiftedNotifications(
+export async function queueDependencyShiftRequest(
   client: TxOperations,
   args: DependencyShiftSendArgs,
   onError?: (err: unknown) => void
