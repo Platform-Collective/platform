@@ -14,14 +14,16 @@
 // limitations under the License.
 -->
 <script lang="ts">
+  import { Analytics } from '@hcengineering/analytics'
   import { Ref } from '@hcengineering/core'
   import { Card, SpaceSelector, createQuery, getClient } from '@hcengineering/presentation'
   import { Component, Issue, Milestone, Project } from '@hcengineering/tracker'
   import ui, { Button, IconForward, Label, Spinner, Toggle, tooltip } from '@hcengineering/ui'
   import view from '@hcengineering/view'
-  import { createEventDispatcher } from 'svelte'
+  import { createEventDispatcher, onMount } from 'svelte'
   import { componentStore } from '../../component'
   import tracker from '../../plugin'
+  import { canCreateProject } from '../../projectPermissions'
   import { ComponentToUpdate, IssueToUpdate, collectIssues, moveIssueToSpace } from '../../utils'
   import ProjectPresenter from '../projects/ProjectPresenter.svelte'
   import IssuePresenter from './IssuePresenter.svelte'
@@ -36,6 +38,13 @@
   const client = getClient()
   const dispatch = createEventDispatcher()
   const hierarchy = client.getHierarchy()
+
+  let canCreate = false
+  onMount(() => {
+    void canCreateProject().then((allowed) => {
+      canCreate = allowed
+    }).catch(Analytics.handleError)
+  })
 
   let targetProject: Project | undefined
   let originProject: Project | undefined
@@ -258,6 +267,9 @@
           query={spaceQuery}
           label={hierarchy.getClass(tracker.class.Project).label}
           bind:space
+          create={canCreate
+            ? { component: tracker.component.CreateProject, label: tracker.string.CreateNewProject }
+            : undefined}
           kind={'regular'}
           size={'large'}
           component={ProjectPresenter}
