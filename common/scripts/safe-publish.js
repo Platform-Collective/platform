@@ -1,48 +1,102 @@
 #!/usr/bin/env node
 
 /**
- * Safe publish script that skips packages that are already published.
+ * Safe publish script that rejects older releases and skips already published versions.
+ *
+ * Packages are developed as @hcengineering/* and published as @platformcollective/*. Dependencies on
+ * other published packages keep their source names as npm aliases (for example
+ * "@hcengineering/core": "npm:@platformcollective/core@^0.8.0"), so the published code resolves them unchanged.
  *
  * Usage:
- *   node safe-publish.js [--include <package-name>]
+ *   node safe-publish.js [--include <package-name>] [--check-types | --pack <dir>]
+ *   node safe-publish.js --publish-packed <dir>
  *
  * Options:
  *   --include <name>  Only consider packages whose name includes <name>
+ *   --check-types     Check packed declaration entry points without publishing
+ *   --pack <dir>      Prepare and check tarballs for a separate publishing job
+ *   --publish-packed <dir>  Publish prepared tarballs without installing or building
  */
 
-const { execSync, spawnSync } = require('child_process')
+const { execSync, execFileSync } = require('child_process')
 const fs = require('fs')
 const path = require('path')
 const https = require('https')
 const http = require('http')
 
+const SOURCE_SCOPE = '@hcengineering/'
+const NPM_SCOPE = '@platformcollective/'
+
 /**
- * Check if a package version exists on npm registry
+ * Name under which a package is published on npm.
  */
-function checkPackageExists(packageName, version) {
-  return new Promise((resolve) => {
+function publishedName(name) {
+  if (name.startsWith(NPM_SCOPE)) return name
+  if (!name.startsWith(SOURCE_SCOPE)) throw new Error(`Unexpected package name ${name}`)
+  return NPM_SCOPE + name.slice(SOURCE_SCOPE.length)
+}
+
+/**
+ * Read a package version from npm. Only a 404 means it is absent.
+ */
+function getRegistryVersion(packageName, version) {
+  return new Promise((resolve, reject) => {
     const registryUrl = process.env.NPM_REGISTRY || 'https://registry.npmjs.org'
     const url = `${registryUrl}/${encodeURIComponent(packageName)}/${version}`
 
     const client = url.startsWith('https:') ? https : http
 
     const req = client.get(url, (res) => {
-      if (res.statusCode === 200) {
-        resolve(true) // Package version exists
-      } else {
-        resolve(false) // Package version doesn't exist
+      if (res.statusCode !== 200) {
+        res.resume()
+        if (res.statusCode === 404) {
+          resolve(null)
+        } else {
+          reject(new Error(`Registry returned HTTP ${res.statusCode} for ${packageName}@${version}`))
+        }
+        return
       }
+
+      let body = ''
+      res.setEncoding('utf8')
+      res.on('data', (chunk) => {
+        body += chunk
+      })
+      res.on('error', reject)
+      res.on('end', () => {
+        try {
+          const metadata = JSON.parse(body)
+          if (typeof metadata.version !== 'string') {
+            throw new Error(`Registry response has no version for ${packageName}@${version}`)
+          }
+          resolve(metadata.version)
+        } catch (err) {
+          reject(err)
+        }
+      })
     })
 
-    req.on('error', () => {
-      resolve(false) // Assume doesn't exist on error
-    })
-
+    req.on('error', reject)
     req.setTimeout(5000, () => {
-      req.destroy()
-      resolve(false)
+      req.destroy(new Error(`Registry request timed out for ${packageName}@${version}`))
     })
   })
+}
+
+/**
+ * Compare stable release versions. Reject unsupported versions rather than risking a downgrade.
+ */
+function compareVersions(version, latest) {
+  const releasePattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
+  if (!releasePattern.test(version) || !releasePattern.test(latest)) {
+    throw new Error(`Expected major.minor.patch releases, got ${version} and ${latest}`)
+  }
+  const currentParts = version.split('.').map(Number)
+  const latestParts = latest.split('.').map(Number)
+  for (let i = 0; i < currentParts.length; i++) {
+    if (currentParts[i] !== latestParts[i]) return currentParts[i] - latestParts[i]
+  }
+  return 0
 }
 
 /**
@@ -64,8 +118,7 @@ function getPublishablePackages(includePattern) {
       }
     }
     if (jsonStart === -1) {
-      console.error('Could not find JSON output from rush list')
-      return []
+      throw new Error('Could not find JSON output from rush list')
     }
     const config = JSON.parse(lines.slice(jsonStart).join('\n'))
 
@@ -83,20 +136,67 @@ function getPublishablePackages(includePattern) {
         return false
       }
 
-      return shouldPublish && project.name.startsWith('@hcengineering')
+      if (!shouldPublish || !project.name.startsWith(SOURCE_SCOPE)) return false
+      const manifest = JSON.parse(fs.readFileSync(path.join(project.fullPath, 'package.json'), 'utf8'))
+      if (manifest.private === true) {
+        console.log(`⊘ Skipping ${project.name} (private)`)
+        return false
+      }
+      return true
     })
   } catch (err) {
-    console.error('Error getting package list:', err.message)
-    return []
+    throw new Error(`Error getting package list: ${err.message}`)
+  }
+}
+
+/**
+ * Verify top-level and exported types entries are included in npm's pack file list.
+ */
+function checkPackedTypes(pkg, packed) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(pkg.fullPath, 'package.json'), 'utf8'))
+  const entries = []
+  function collectTypes(value) {
+    if (value === null || typeof value !== 'object') return
+    for (const [key, entry] of Object.entries(value)) {
+      if (key === 'types') entries.push(entry)
+      else collectTypes(entry)
+    }
+  }
+  if (manifest.types !== undefined) entries.push(manifest.types)
+  collectTypes(manifest.exports)
+  if (entries.length === 0) {
+    console.log(`⊘ ${pkg.name}: no types entry declared`)
+    return
+  }
+  if (entries.some((entry) => typeof entry !== 'string' || entry.length === 0)) {
+    throw new Error(`${pkg.name} has no declared types entry`)
+  }
+  if (packed === undefined) {
+    const output = execSync('npm pack --dry-run --json --ignore-scripts', {
+      cwd: pkg.fullPath,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'inherit']
+    })
+    packed = JSON.parse(output)[0]
+  }
+  for (const entry of new Set(entries)) {
+    const typesPath = entry.replace(/^\.\//, '')
+    if (!packed.files.some((file) => file.path === typesPath)) {
+      throw new Error(`${pkg.name}: declared types file ${entry} is missing from npm pack`)
+    }
+    console.log(`✓ ${pkg.name}: packed ${entry}`)
   }
 }
 
 /**
  * Normalize workspace: dependency ranges in package.json to plain semver
  * so that consumers without workspace support can install the package.
+ * Rename the package to its npm scope, and point dependencies on other published
+ * packages to that scope through npm aliases that keep their source names.
+ * Set repository metadata to the publishing repository for GitHub provenance.
  * Returns the original package.json string so it can be restored.
  */
-function normalizeWorkspaceDeps(packagePath) {
+function normalizeWorkspaceDeps(packagePath, publishedSourceNames) {
   const packageJsonPath = path.join(packagePath, 'package.json')
   let original = null
 
@@ -106,25 +206,35 @@ function normalizeWorkspaceDeps(packagePath) {
 
     const depFields = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']
 
-    let changed = false
+    pkg.name = publishedName(pkg.name)
     for (const field of depFields) {
       const deps = pkg[field]
       if (!deps || typeof deps !== 'object') continue
 
       for (const [name, range] of Object.entries(deps)) {
-        if (typeof range === 'string' && range.startsWith('workspace:')) {
-          const normalized = range.replace(/^workspace:/, '')
+        if (typeof range !== 'string') continue
+        const normalized = range.replace(/^workspace:/, '')
+        if (publishedSourceNames.has(name)) {
+          deps[name] = `npm:${publishedName(name)}@${normalized}`
+        } else if (name.startsWith(SOURCE_SCOPE) && field !== 'devDependencies') {
+          throw new Error(`${pkg.name} depends on ${name}, which is not published`)
+        } else {
           deps[name] = normalized
-          changed = true
         }
       }
     }
 
-    if (changed) {
-      fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8')
+    if (process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_REPOSITORY) {
+      pkg.repository = {
+        type: 'git',
+        url: `git+https://github.com/${process.env.GITHUB_REPOSITORY}.git`,
+        directory: path.relative(process.env.GITHUB_WORKSPACE, packagePath).split(path.sep).join('/')
+      }
     }
+
+    fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8')
   } catch (err) {
-    console.warn(`Warning: could not normalize workspace dependencies for ${packagePath}: ${err.message}`)
+    throw new Error(`Could not prepare package.json for ${packagePath}: ${err.message}`)
   }
 
   return original
@@ -133,21 +243,37 @@ function normalizeWorkspaceDeps(packagePath) {
 /**
  * Publish a single package
  */
-function publishPackage(packagePath, packageName) {
-  const originalPackageJson = normalizeWorkspaceDeps(packagePath)
+function publishPackage(packagePath, packageName, tarball, publishedSourceNames) {
+  if (!tarball && JSON.parse(fs.readFileSync(path.join(packagePath, 'package.json'), 'utf8')).private === true) {
+    console.log(`⊘ Skipping ${packageName} (private)`)
+    return true
+  }
+  const originalPackageJson = tarball ? null : normalizeWorkspaceDeps(packagePath, publishedSourceNames)
 
   try {
-    try {
-      execSync('npm pkg fix', { cwd: packagePath, encoding: 'utf-8', stdio: 'pipe' })
-    } catch {
-      // Ignore pkg fix errors (e.g. npm < 10)
+    if (!tarball) {
+      try {
+        execSync('npm pkg fix', { cwd: packagePath, encoding: 'utf-8', stdio: 'pipe' })
+      } catch {
+        // Ignore pkg fix errors (e.g. npm < 10)
+      }
     }
     console.log(`Publishing ${packageName}...`)
-    execSync('npm publish', {
+    const withProvenance =
+      process.env.GITHUB_ACTIONS === 'true' &&
+      process.env.ACTIONS_ID_TOKEN_REQUEST_URL &&
+      process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN
+    const options = {
       cwd: packagePath,
       stdio: 'inherit',
       encoding: 'utf-8'
-    })
+    }
+    if (tarball) {
+      execFileSync('npm', ['publish', tarball, '--ignore-scripts', '--access', 'public',
+        ...(withProvenance ? ['--provenance'] : [])], options)
+    } else {
+      execSync(withProvenance ? 'npm publish --provenance' : 'npm publish', options)
+    }
     console.log(`✓ Successfully published ${packageName}`)
     return true
   } catch (err) {
@@ -171,50 +297,110 @@ function publishPackage(packagePath, packageName) {
 async function main() {
   const args = process.argv.slice(2)
   let includePattern = null
+  let checkTypes = false
+  let packDirectory = null
+  let publishDirectory = null
 
   // Parse arguments
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--include' && i + 1 < args.length) {
       includePattern = args[i + 1]
       i++
+    } else if (args[i] === '--check-types') {
+      checkTypes = true
+    } else if (args[i] === '--pack' && args[i + 1] && !args[i + 1].startsWith('--')) {
+      packDirectory = path.resolve(args[++i])
+    } else if (args[i] === '--publish-packed' && args[i + 1] && !args[i + 1].startsWith('--')) {
+      publishDirectory = path.resolve(args[++i])
+    } else {
+      throw new Error(`Unknown or incomplete argument: ${args[i]}`)
     }
+  }
+  if ([checkTypes, packDirectory, publishDirectory].filter(Boolean).length > 1 || (publishDirectory && includePattern)) {
+    throw new Error('Use only one of --check-types, --pack or --publish-packed')
   }
 
   console.log('Fetching publishable packages...')
-  const packages = getPublishablePackages(includePattern)
+  const packages = publishDirectory
+    ? JSON.parse(fs.readFileSync(path.join(publishDirectory, 'packages.json'), 'utf8')).map((pkg) => {
+      if (!pkg.name.startsWith(NPM_SCOPE) || path.basename(pkg.filename) !== pkg.filename ||
+          !pkg.filename.endsWith('.tgz') || !fs.statSync(path.join(publishDirectory, pkg.filename)).isFile()) {
+        throw new Error('Invalid packed package metadata')
+      }
+      return { ...pkg, tarball: path.join(publishDirectory, pkg.filename) }
+    })
+    : getPublishablePackages(includePattern)
 
   if (packages.length === 0) {
-    console.log('No packages found to publish')
-    return
+    throw new Error('No packages found to publish')
   }
+
+  // Dependencies on these packages become aliases to their npm scope. Use all publishable packages, also with
+  // --include, since a release publishes all of them.
+  const publishedSourceNames = new Set(
+    publishDirectory ? [] : (includePattern ? getPublishablePackages(null) : packages).map((pkg) => pkg.name)
+  )
 
   console.log(`Found ${packages.length} package(s) to check`)
   console.log('='.repeat(80))
 
+  if (checkTypes) {
+    for (const pkg of packages) checkPackedTypes(pkg)
+    return
+  }
+
+  if (packDirectory) {
+    fs.mkdirSync(packDirectory, { recursive: true })
+    const packedPackages = []
+    for (const pkg of packages) {
+      const original = normalizeWorkspaceDeps(pkg.fullPath, publishedSourceNames)
+      try {
+        const [packed] = JSON.parse(execFileSync('npm', [
+          'pack', '--json', '--ignore-scripts', '--pack-destination', packDirectory
+        ], { cwd: pkg.fullPath, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }))
+        checkPackedTypes(pkg, packed)
+        packedPackages.push({ name: packed.name, version: packed.version, filename: packed.filename })
+      } finally {
+        fs.writeFileSync(path.join(pkg.fullPath, 'package.json'), original, 'utf8')
+      }
+    }
+    fs.writeFileSync(path.join(packDirectory, 'packages.json'), JSON.stringify(packedPackages, null, 2) + '\n')
+    return
+  }
+
   let published = 0
   let skipped = 0
   let failed = 0
+  const pending = []
 
+  // Complete every registry/version check before publishing the first package.
   for (const pkg of packages) {
-    const packageName = pkg.name
+    const packageName = publishedName(pkg.name)
     const version = pkg.version
-    const packagePath = pkg.fullPath
 
     console.log(`\nChecking ${packageName}@${version}...`)
+    compareVersions(version, version)
 
-    const exists = await checkPackageExists(packageName, version)
+    const latest = await getRegistryVersion(packageName, 'latest')
+    if (latest !== null && compareVersions(version, latest) < 0) {
+      throw new Error(`${packageName}@${version} is lower than registry latest ${latest}; bump the release version`)
+    }
+    const exists = latest === version || (await getRegistryVersion(packageName, version)) !== null
 
     if (exists) {
       console.log(`⊘ Skipping ${packageName}@${version} (already published)`)
       skipped++
     } else {
-      console.log(`→ ${packageName}@${version} not published, publishing now...`)
-      const success = publishPackage(packagePath, packageName)
-      if (success) {
-        published++
-      } else {
-        failed++
-      }
+      pending.push(pkg)
+    }
+  }
+
+  for (const pkg of pending) {
+    const success = publishPackage(pkg.fullPath, publishedName(pkg.name), pkg.tarball, publishedSourceNames)
+    if (success) {
+      published++
+    } else {
+      failed++
     }
   }
 
