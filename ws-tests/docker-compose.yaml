@@ -13,6 +13,7 @@ services:
     restart: unless-stopped
   mongodb:
     image: 'mongo:7-jammy'
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     command: mongod --port 27018
     extra_hosts:
       - 'huly.local:host-gateway'
@@ -31,6 +32,7 @@ services:
     restart: unless-stopped
   cockroach:
     image: cockroachdb/cockroach:v24.1.2
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     extra_hosts:
       - 'huly.local:host-gateway'
     ports:
@@ -40,6 +42,7 @@ services:
     restart: unless-stopped
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.3.6
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     extra_hosts:
       - 'huly.local:host-gateway'
     command:
@@ -67,6 +70,7 @@ services:
       retries: 10
   redpanda_console:
     image: docker.redpanda.com/redpandadata/console:v2.8.3
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     extra_hosts:
       - 'huly.local:host-gateway'
     entrypoint: /bin/sh
@@ -89,6 +93,7 @@ services:
       - redpanda
   minio:
     image: 'pgsty/silo'
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     command: server /data --address ":9000" --console-address ":9001"
     extra_hosts:
       - 'huly.local:host-gateway'
@@ -127,6 +132,7 @@ services:
     restart: unless-stopped
   elastic:
     image: 'elasticsearch:7.14.2'
+    pull_policy: ${CI_TEST_PULL_POLICY:-missing}
     expose:
       - 9201
     extra_hosts:
