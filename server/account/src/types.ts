@@ -108,6 +108,8 @@ export interface WorkspaceStatus extends WorkspaceVersion {
   usageInfo?: UsageStatus
 
   targetRegion?: string
+  // Version whose upgrade failed in 'upgrade-failed' mode; a different version retries the upgrade.
+  upgradeFailedVersion?: string
 }
 
 export interface Workspace {
@@ -456,6 +458,7 @@ export type WorkspaceEvent =
   | 'progress'
   | 'create-done'
   | 'upgrade-done'
+  | 'upgrade-failed'
   | 'migrate-backup-started' // -> state = 'migration-backup'
   | 'restore-started'
   | 'restore-done'

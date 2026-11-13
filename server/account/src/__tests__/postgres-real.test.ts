@@ -279,6 +279,42 @@ describe('real-account', () => {
     })
     expect(inviteLinkPG).toBeDefined()
   })
+
+  async function claimFailedUpgrades (account: PostgresAccountDB, wsLivenessMs?: number): Promise<string[]> {
+    const names = ['same-version', 'other-version', 'no-version']
+    const failedVersions = ['0.8.0', '0.7.5', undefined]
+    for (let i = 0; i < names.length; i++) {
+      await account.createWorkspace(
+        { url: names[i], name: names[i], allowGuestSignUp: false, allowReadOnlyGuest: false },
+        {
+          isDisabled: false,
+          mode: 'upgrade-failed',
+          versionMajor: 0,
+          versionMinor: 7,
+          versionPatch: 0,
+          lastVisit: Date.now(),
+          processingAttempts: 4,
+          ...(failedVersions[i] !== undefined ? { upgradeFailedVersion: failedVersions[i] } : {})
+        }
+      )
+    }
+    const claimed: string[] = []
+    for (let i = 0; i < names.length + 1; i++) {
+      const ws = await account.getPendingWorkspace('', { major: 0, minor: 8, patch: 0 }, 'upgrade', 60000, wsLivenessMs)
+      if (ws === undefined) break
+      claimed.push(ws.url)
+    }
+    return claimed.sort()
+  }
+
+  it.each([undefined, 60000])(
+    'claims an upgrade-failed workspace only for another version (liveness %s)',
+    async (wsLivenessMs) => {
+      for (const account of [crAccount, pgAccount]) {
+        expect(await claimFailedUpgrades(account, wsLivenessMs)).toEqual(['no-version', 'other-version'])
+      }
+    }
+  )
 })
 
 async function migratePostgreSQL (pgAccount: PostgresAccountDB, pgDbUri: string): Promise<void> {

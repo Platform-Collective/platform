@@ -877,6 +877,7 @@ export type WorkspaceMode =
   | 'pending-restore' // -> 'restoring'
   | 'restoring' // -> 'active'
   | 'restore-failed' // Retry via unarchive
+  | 'upgrade-failed' // Retried by a newer version or via reset-attempts
 
 export type WorkspaceUserOperation = 'archive' | 'migrate-to' | 'unarchive' | 'delete' | 'reset-attempts'
 
@@ -916,12 +917,17 @@ export function isUpgradingMode (mode?: WorkspaceMode): boolean {
   return mode === 'upgrading'
 }
 
+export function isUpgradeFailedMode (mode?: WorkspaceMode): boolean {
+  return mode === 'upgrade-failed'
+}
+
 export type WorkspaceUpdateEvent =
   | 'ping'
   | 'create-started'
   | 'create-done'
   | 'upgrade-started'
   | 'upgrade-done'
+  | 'upgrade-failed'
   | 'restore-started'
   | 'restore-done'
   | 'restore-failed'

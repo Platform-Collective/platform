@@ -75,6 +75,7 @@
     "WorkspaceArchivedDesc": "Рабочее пространство архивировано из-за неиспользования.",
     "WorkspaceRestoreFailed": "Restore failed",
     "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
+    "WorkspaceUpgradeFailed": "Ошибка обновления",
     "RestoreArchivedWorkspace": "Восстановить",
     "Hello": "Привет {name},",
     "ProcessingInvite": "Обработка приглашения, пожалуйста, подождите...",

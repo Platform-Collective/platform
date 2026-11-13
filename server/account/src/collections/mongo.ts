@@ -22,7 +22,8 @@ import {
   type AccountUuid,
   buildSocialIdString,
   type SocialKey,
-  type PersonUuid
+  type PersonUuid,
+  versionToString
 } from '@hcengineering/core'
 import type {
   Collection,
@@ -704,6 +705,14 @@ export class MongoAccountDB implements AccountDB {
         }
       ]
     }
+    const livenessQuery =
+      wsLivenessMs !== undefined
+        ? [
+            {
+              'status.lastVisit': { $gt: Date.now() - wsLivenessMs }
+            }
+          ]
+        : []
     const pendingUpgradeQuery: Filter<WorkspaceInfoWithStatus>['$or'] = [
       {
         $and: [
@@ -714,18 +723,26 @@ export class MongoAccountDB implements AccountDB {
             $or: [{ 'status.mode': 'active' }, { 'status.mode': { $exists: false } }]
           },
           versionQuery,
-          ...(wsLivenessMs !== undefined
-            ? [
-                {
-                  'status.lastVisit': { $gt: Date.now() - wsLivenessMs }
-                }
-              ]
-            : [])
+          ...livenessQuery
         ]
       },
       {
         $or: [{ 'status.isDisabled': false }, { 'status.isDisabled': { $exists: false } }],
         'status.mode': 'upgrading'
+      },
+      // A failed upgrade is retried only by another, newer version than the one that failed.
+      {
+        $and: [
+          {
+            $or: [{ 'status.isDisabled': false }, { 'status.isDisabled': { $exists: false } }]
+          },
+          {
+            'status.mode': 'upgrade-failed',
+            'status.upgradeFailedVersion': { $ne: versionToString(version) }
+          },
+          versionQuery,
+          ...livenessQuery
+        ]
       }
     ]
     // TODO: support returning pending deletion workspaces when we will actually want
@@ -757,8 +774,13 @@ export class MongoAccountDB implements AccountDB {
         }
         break
     }
+    // A failed upgrade has used up its attempts; the upgrade-started event resets them for the new version.
     const attemptsQuery = {
-      $or: [{ 'status.processingAttempts': { $exists: false } }, { 'status.processingAttempts': { $lte: 3 } }]
+      $or: [
+        { 'status.processingAttempts': { $exists: false } },
+        { 'status.processingAttempts': { $lte: 3 } },
+        { 'status.mode': 'upgrade-failed' }
+      ]
     }
 
     // We must have all the conditions in the DB query and we cannot filter anything in the code

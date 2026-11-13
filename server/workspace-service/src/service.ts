@@ -360,7 +360,7 @@ export class WorkspaceWorker {
       const token = generateToken(systemAccountUuid, ws.uuid, { service: 'workspace' })
       const accountClient = getAccountClient(this.accountsUrl, token)
       const handleWsEventWithRetry = (
-        event: 'upgrade-started' | 'progress' | 'upgrade-done' | 'ping',
+        event: 'upgrade-started' | 'progress' | 'upgrade-done' | 'upgrade-failed' | 'ping',
         version: Data<Version>,
         progress: number,
         message?: string
@@ -467,6 +467,7 @@ export class WorkspaceWorker {
         await this._createWorkspace(ctx, workspace, opt)
         break
       case 'upgrading':
+      case 'upgrade-failed': // Claimed again by a newer version.
       case 'active':
         // It seem version upgrade is required, or upgrade is not finished on previoous iteration.
         // It's safe to upgrade the workspace again as the procedure allows re-trying.

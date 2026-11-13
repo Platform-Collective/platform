@@ -9,6 +9,7 @@
     isMigrationMode,
     isRestoringMode,
     isRestoreFailedMode,
+    isUpgradeFailedMode,
     isUpgradingMode,
     reduceCalls,
     systemAccountUuid,
@@ -137,6 +138,7 @@
               isRestoringMode(it.mode) ||
               isRestoreFailedMode(it.mode) ||
               isUpgradingMode(it.mode) ||
+              isUpgradeFailedMode(it.mode) ||
               (isArchivingMode(it.mode) && it.mode !== 'archived'))) ||
           (showGrAttempts && it.processingAttempts > 0))
     )
@@ -354,6 +356,7 @@
         <div class="fs-title p-3">
           Workspaces: {workspaces.length} active: {workspaces.filter((it) => isActiveMode(it.mode)).length}
           upgrading: {workspaces.filter((it) => isUpgradingMode(it.mode)).length}
+          upgrade failed: {workspaces.filter((it) => isUpgradeFailedMode(it.mode)).length}
           <br />
           Backupable: {backupable.length} new: {backupable.reduce((p, it) => p + (it.backupInfo == null ? 1 : 0), 0)}
           Active: {data?.workspaces.length ?? -1}

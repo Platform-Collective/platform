@@ -75,6 +75,7 @@
     "WorkspaceArchivedDesc": "O espaço de trabalho está arquivado por estar inativo.",
     "WorkspaceRestoreFailed": "Restore failed",
     "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
+    "WorkspaceUpgradeFailed": "Falha na atualização",
     "RestoreArchivedWorkspace": "Restaurar",
     "Hello": "Olá {name},",
     "ProcessingInvite": "Processando convite, aguarde...",

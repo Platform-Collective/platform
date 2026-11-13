@@ -8,6 +8,7 @@
   "string": {
     "WorkspaceRestoreFailed": "Restore failed",
     "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
+    "WorkspaceUpgradeFailed": "Aktualizace selhala",
     "LogIn": "Přihlásit se",
     "SignUp": "Zaregistrovat se",
     "ChangePassword": "Změnit heslo",
