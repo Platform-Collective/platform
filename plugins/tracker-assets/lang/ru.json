@@ -578,7 +578,9 @@
     "GanttVisibleRange": "Период",
     "GanttNotScheduled": "Не запланировано",
     "GanttMissingStartDates": "У {count} задач не задана дата начала.",
-    "GanttSetDatesHint": "Задайте дату начала и срок в карточке задачи, чтобы увидеть полосу на шкале."
+    "GanttSetDatesHint": "Задайте дату начала и срок в карточке задачи, чтобы увидеть полосу на шкале.",
+    "CreateIssueFromMessage": "Создать задачу",
+    "SourceMessage": "Исходное сообщение"
   },
   "status": {}
 }

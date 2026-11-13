@@ -341,7 +341,9 @@
     "GanttVisibleRange": "范围",
     "GanttNotScheduled": "未安排",
     "GanttMissingStartDates": "{count} 个任务没有开始日期。",
-    "GanttSetDatesHint": "为任务设置开始日期和截止日期，即可在时间轴上显示。"
+    "GanttSetDatesHint": "为任务设置开始日期和截止日期，即可在时间轴上显示。",
+    "CreateIssueFromMessage": "创建问题",
+    "SourceMessage": "源消息"
   },
   "status": {}
 }

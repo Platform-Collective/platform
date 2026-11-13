@@ -331,7 +331,9 @@
     "GanttVisibleRange": "Rozsah",
     "GanttNotScheduled": "Nenaplánováno",
     "GanttMissingStartDates": "{count} úkolů nemá datum zahájení.",
-    "GanttSetDatesHint": "Nastavte u úkolu datum zahájení a termín dokončení, aby se zobrazil v časové ose."
+    "GanttSetDatesHint": "Nastavte u úkolu datum zahájení a termín dokončení, aby se zobrazil v časové ose.",
+    "CreateIssueFromMessage": "Vytvořit úkol",
+    "SourceMessage": "Původní zpráva"
   },
   "status": {}
 }

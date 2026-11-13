@@ -578,7 +578,9 @@
     "GanttVisibleRange": "Zeitraum",
     "GanttNotScheduled": "Nicht geplant",
     "GanttMissingStartDates": "Für {count} Aufgaben ist kein Startdatum festgelegt.",
-    "GanttSetDatesHint": "Legen Sie für ein Issue Start- und Fälligkeitsdatum fest, damit es auf der Zeitachse erscheint."
+    "GanttSetDatesHint": "Legen Sie für ein Issue Start- und Fälligkeitsdatum fest, damit es auf der Zeitachse erscheint.",
+    "CreateIssueFromMessage": "Aufgabe erstellen",
+    "SourceMessage": "Ursprüngliche Nachricht"
   },
   "status": {}
 }

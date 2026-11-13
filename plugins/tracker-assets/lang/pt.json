@@ -324,7 +324,9 @@
     "GanttVisibleRange": "Período",
     "GanttNotScheduled": "Não agendado",
     "GanttMissingStartDates": "{count} tarefas não têm data de início.",
-    "GanttSetDatesHint": "Defina as datas de início e conclusão de uma tarefa para a apresentar na cronologia."
+    "GanttSetDatesHint": "Defina as datas de início e conclusão de uma tarefa para a apresentar na cronologia.",
+    "CreateIssueFromMessage": "Criar problema",
+    "SourceMessage": "Mensagem original"
   },
   "status": {}
 }
