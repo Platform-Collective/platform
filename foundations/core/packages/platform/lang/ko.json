@@ -26,6 +26,7 @@
         "WorkspaceLimitReached": "워크스페이스 한도에 도달했습니다. 문의해 주세요...",
         "ReadOnlyAccount": "익명 게스트 데모",
         "SystemAccount": "시스템 계정",
-        "SocialIdAlreadyExists": "이미 존재하는 소셜 ID입니다"
+        "SocialIdAlreadyExists": "이미 존재하는 소셜 ID입니다",
+        "EmailVerificationUnavailable": "이메일 도메인으로 제한된 초대에는 이메일 인증이 필요하지만 이 서버에는 메일 서비스가 구성되어 있지 않습니다."
     }
 }

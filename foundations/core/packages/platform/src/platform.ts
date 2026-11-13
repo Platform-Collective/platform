@@ -176,6 +176,7 @@ export default plugin(platformId, {
     InviteNotFound: '' as StatusCode<{ email: string }>,
     MailboxError: '' as StatusCode<{ reason: string }>,
     SocialIdAlreadyExists: '' as StatusCode,
+    EmailVerificationUnavailable: '' as StatusCode,
     ReadOnlyAccount: '' as StatusCode,
     RegularAccount: '' as StatusCode,
     SystemAccount: '' as StatusCode
