@@ -126,6 +126,7 @@
     "DocumentColor": "Dokumentfarbe",
     "Rank": "Rang",
     "TypeIssuePriority": "Aufgabenpriorität",
+    "TypeMilestoneStatus": "Meilensteinstatus",
     "IssueTitlePlaceholder": "Aufgabentitel",
     "SubIssueTitlePlaceholder": "Unteraufgabentitel",
     "IssueDescriptionPlaceholder": "Beschreibung hinzufügen...",
@@ -280,6 +281,8 @@
     "CapacityValue": "von {value}T",
     "NewRelatedIssue": "Neue verwandte Aufgabe",
     "RelatedIssuesNotFound": "Keine verwandten Aufgaben gefunden",
+    "IssueNotFound": "Aufgabe {id} wurde nicht gefunden. Sie wurde möglicherweise gelöscht, oder Sie haben keine Berechtigung, sie anzuzeigen.",
+    "ShowProjectIssues": "Alle Aufgaben in {project} anzeigen",
 
     "AddedReference": "Referenz hinzugefügt",
     "AddedAsBlocked": "Als blockiert markiert",

@@ -112,6 +112,7 @@
     "DocumentColor": "",
     "Rank": "Rank",
     "TypeIssuePriority": "Issue priority",
+    "TypeMilestoneStatus": "Milestone status",
     "IssueTitlePlaceholder": "Issue title",
     "SubIssueTitlePlaceholder": "Sub-issue title",
     "IssueDescriptionPlaceholder": "Add description\u2026",
@@ -266,6 +267,8 @@
     "CapacityValue": "of {value}d",
     "NewRelatedIssue": "New related issue",
     "RelatedIssuesNotFound": "Related issues not found",
+    "IssueNotFound": "Issue {id} was not found. It may have been deleted, or you may not have permission to view it.",
+    "ShowProjectIssues": "Show all issues in {project}",
 
     "AddedReference": "Added reference",
     "AddedAsBlocked": "Marked as blocked",

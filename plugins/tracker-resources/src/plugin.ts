@@ -204,6 +204,7 @@ export default mergeIds(trackerId, tracker, {
     OriginalDescription: '' as IntlString,
 
     TypeIssuePriority: '' as IntlString,
+    TypeMilestoneStatus: '' as IntlString,
     IssueTitlePlaceholder: '' as IntlString,
     SubIssueTitlePlaceholder: '' as IntlString,
     IssueDescriptionPlaceholder: '' as IntlString,
@@ -237,6 +238,8 @@ export default mergeIds(trackerId, tracker, {
     AddIsBlocking: '' as IntlString,
     AddRelatedIssue: '' as IntlString,
     RelatedIssuesNotFound: '' as IntlString,
+    IssueNotFound: '' as IntlString,
+    ShowProjectIssues: '' as IntlString,
     RelatedIssue: '' as IntlString,
     BlockedIssue: '' as IntlString,
     BlockingIssue: '' as IntlString,

@@ -112,6 +112,7 @@
     "DocumentColor": "Kolor dokumentu",
     "Rank": "Ranga",
     "TypeIssuePriority": "Priorytet zadania",
+    "TypeMilestoneStatus": "Status kamienia milowego",
     "IssueTitlePlaceholder": "Tytuł zadania",
     "SubIssueTitlePlaceholder": "Tytuł podzagadnienia",
     "IssueDescriptionPlaceholder": "Dodaj opis zadania\u2026",
@@ -246,6 +247,8 @@
     "CapacityValue": "z {value, plural, =1 {1 dnia} other {# dni}}",
     "NewRelatedIssue": "Nowe powiązane zadanie",
     "RelatedIssuesNotFound": "Nie znaleziono powiązanych zadań",
+    "IssueNotFound": "Nie znaleziono zadania {id}. Mogło zostać usunięte lub nie masz uprawnień do jego wyświetlenia.",
+    "ShowProjectIssues": "Pokaż wszystkie zadania w {project}",
 
     "AddedReference": "Dodano powiązanie",
     "AddedAsBlocked": "Oznaczono jako blokowane",
