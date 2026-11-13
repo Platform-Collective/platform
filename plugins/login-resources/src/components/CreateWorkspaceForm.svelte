@@ -21,7 +21,15 @@
   import { workbenchId } from '@hcengineering/workbench'
   import { onMount } from 'svelte'
   import login from '../plugin'
-  import { createWorkspace, getAccount, getRegionInfo, goTo, setLoginInfo, getAccountDisplayName } from '../utils'
+  import {
+    createWorkspace,
+    fetchLoginCapabilities,
+    getAccount,
+    getRegionInfo,
+    goTo,
+    setLoginInfo,
+    getAccountDisplayName
+  } from '../utils'
   import Form from './Form.svelte'
 
   const fields = [
@@ -42,9 +50,16 @@
   let regions: RegionInfo[] = []
   let selectedRegion: string = ''
   let withDemoContent: boolean = true
+  let workspaceCreationAllowed = false
 
   onMount(async () => {
     loginInfo = await getAccount()
+    const capabilities = await fetchLoginCapabilities(loginInfo?.token)
+    workspaceCreationAllowed = capabilities.workspaceCreationAllowed
+    if (!workspaceCreationAllowed) {
+      goTo('selectWorkspace')
+      return
+    }
     // Show only regions with specified name
     regions = (await getRegionInfo())?.filter((it) => it.name.length > 0) ?? []
     selectedRegion = regions[0]?.region
@@ -78,6 +93,7 @@
 <!-- svelte-ignore a11y-label-has-associated-control -->
 <Form
   caption={login.string.CreateWorkspace}
+  proceedDisabled={!workspaceCreationAllowed}
   {status}
   {fields}
   {object}
