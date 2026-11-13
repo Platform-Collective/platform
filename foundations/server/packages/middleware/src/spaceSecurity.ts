@@ -729,7 +729,24 @@ export class SpaceSecurityMiddleware extends BaseMiddleware implements Middlewar
       }
     }
     const result = await this.provideSearchFulltext(ctx, newQuery, options)
-    return result
+    if (isSystem(account, ctx)) {
+      return result
+    }
+
+    const hierarchy = this.context.hierarchy
+    const mayReturnSpaces =
+      query.classes === undefined || query.classes.some((_class) => hierarchy.isDerived(_class, core.class.Space))
+    if (!mayReturnSpaces) {
+      return result
+    }
+
+    const allowedSpaces = new Set(this.getAllAllowedSpaces(account, false, false, true))
+    const docs = result.docs.filter(
+      ({ doc }) => !hierarchy.isDerived(doc._class, core.class.Space) || allowedSpaces.has(doc._id as Ref<Space>)
+    )
+
+    // No total: the backend total may also count spaces on other pages that the caller cannot see.
+    return { docs }
   }
 
   filterLookup<T extends Doc> (ctx: MeasureContext, lookup: LookupData<T>, showArchived: boolean): void {

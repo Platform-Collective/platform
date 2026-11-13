@@ -15,8 +15,9 @@
 
 import { type ActivityMessage } from '@hcengineering/activity'
 import chunter, { type Channel, type ChatMessage, type DirectMessage } from '@hcengineering/chunter'
+import type { Client, RelatedDocument, WithLookup } from '@hcengineering/core'
 import { type Resources } from '@hcengineering/platform'
-import { MessageBox, getClient } from '@hcengineering/presentation'
+import { MessageBox, getClient, type ObjectSearchResult } from '@hcengineering/presentation'
 import { getLocation, navigate, showPopup } from '@hcengineering/ui'
 import { writable } from 'svelte/store'
 
@@ -56,6 +57,8 @@ import WorkbenchTabExtension from './components/WorkbenchTabExtension.svelte'
 import DirectMessageButton from './components/DirectMessageButton.svelte'
 import EmployeePresenter from './components/ChunterEmployeePresenter.svelte'
 import InlineCommentThread from './components/inline-comment/InlineCommentThread.svelte'
+
+import { queryChannels } from './channel-search'
 
 import {
   chunterSpaceLinkFragmentProvider,
@@ -145,6 +148,22 @@ export function chatMessagesFilter (message: ActivityMessage): boolean {
   return message._class === chunter.class.ChatMessage
 }
 
+const toChannelObjectSearchResult = (channel: WithLookup<Channel>): ObjectSearchResult => ({
+  doc: channel,
+  title: channel.name,
+  icon: chunter.icon.Hashtag,
+  component: ChannelPresenter,
+  componentProps: { type: 'text' }
+})
+
+export async function queryChannel (
+  client: Client,
+  search: string,
+  filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
+): Promise<ObjectSearchResult[]> {
+  return (await queryChannels(client, search, filter)).map(toChannelObjectSearchResult)
+}
+
 export async function deleteChatMessage (message: ChatMessage): Promise<void> {
   const client = getClient()
 
@@ -154,6 +173,9 @@ export async function deleteChatMessage (message: ChatMessage): Promise<void> {
 export { replyToThread } from './navigation'
 
 export default async (): Promise<Resources> => ({
+  completion: {
+    ChannelQuery: queryChannel
+  },
   filter: {
     ChatMessagesFilter: chatMessagesFilter
   },
