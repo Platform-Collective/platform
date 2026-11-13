@@ -58,7 +58,7 @@ test.describe('Cross-workspace unread indicator', () => {
     const InboxNotification = 'notification:class:InboxNotification' as Ref<Class<Doc>>
     const account = await rest.getAccount()
     const factory = new TxFactory(account.primarySocialId)
-    const unread = await rest.findAll(InboxNotification, { user: account.uuid, isViewed: false } as any)
+    const unread = await rest.findAll(InboxNotification, { user: account.uuid, isViewed: false })
     expect(unread.length).toBeGreaterThan(0)
     for (const n of unread) {
       await rest.tx(factory.createTxUpdateDoc(n._class, n.space, n._id, { isViewed: true } as any))
