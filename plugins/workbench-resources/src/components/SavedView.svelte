@@ -219,6 +219,11 @@
       for (const fv of filteredViews) {
         if (checkFilter(fv, loc, filters, viewOptionStore)) {
           selectedId = fv._id
+          // Keep the store in step with the highlighted view. Opening a view
+          // from a page without filters, or reloading the page, leaves the
+          // store empty while the view is shown as selected, and then the
+          // filter bar treats the view's filters as unsaved.
+          selectedFilterStore.set(fv)
           dispatch('select', true)
           return
         }
