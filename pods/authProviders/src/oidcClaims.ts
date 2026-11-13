@@ -40,7 +40,11 @@ function isVerifiedEmailClaim (value: unknown): boolean {
 }
 
 function isEmail (value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  const at = value.indexOf('@')
+  if (at <= 0 || at !== value.lastIndexOf('@') || /\s/.test(value)) return false
+  const domain = value.slice(at + 1)
+  const dot = domain.lastIndexOf('.')
+  return dot > 0 && dot < domain.length - 1
 }
 
 export function getOidcEmailCandidate (claims: OidcClaims | undefined): string | undefined {

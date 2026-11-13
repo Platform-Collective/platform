@@ -12,6 +12,20 @@ import { getOidcEmailCandidate, getTenantIdFromIssuer, getVerifiedOidcEmail, typ
 const issuer = 'https://login.microsoftonline.com/tenant-id/v2.0'
 
 describe('OIDC email claims', () => {
+  test.each([
+    ['user@example.com', 'user@example.com'],
+    ['user@sub.example.com', 'user@sub.example.com'],
+    ['user@example..com', 'user@example..com'],
+    ['user@example.', undefined],
+    ['user@.com', undefined],
+    ['@example.com', undefined],
+    ['user@@example.com', undefined],
+    ['user@exam ple.com', undefined],
+    ['a'.repeat(32768) + '@example', undefined]
+  ])('validates the email candidate %s', (email, expected) => {
+    expect(getOidcEmailCandidate({ email })).toBe(expected)
+  })
+
   test('links a normalized Entra email for the configured tenant when trust is enabled', () => {
     expect(
       getVerifiedOidcEmail({ email: '  User@Example.COM ', tid: 'TENANT-ID', iss: issuer }, undefined, {
