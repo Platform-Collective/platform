@@ -99,6 +99,7 @@
         "Sidebar": "Postranní panel",
         "FontSize": "Velikost písma",
         "Language": "Jazyk",
+        "AppearanceAndLanguage": "Vzhled a jazyk",
         "DaysWOValue": "{days, plural, =1 {den} other {dny}}",
         "WeeksWOValue": "{weeks, plural, =1 {týden} other {týdny}}",
         "MonthsWOValue": "{months, plural, =1 {měsíc} other {měsíce}}",

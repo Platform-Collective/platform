@@ -149,6 +149,7 @@ export const uis = plugin(uiId, {
     Sidebar: '' as IntlString,
     FontSize: '' as IntlString,
     Language: '' as IntlString,
+    AppearanceAndLanguage: '' as IntlString,
     DaysWOValue: '' as IntlString,
     WeeksWOValue: '' as IntlString,
     MonthsWOValue: '' as IntlString,
