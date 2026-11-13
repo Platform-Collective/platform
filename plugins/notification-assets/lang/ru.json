@@ -72,6 +72,9 @@
     "AlreadySubscribed": "Этот браузер уже подписан",
     "PushNotConfigured": "Push-уведомления не настроены на сервере",
     "PushNotSupported": "Не поддерживается этим браузером",
-    "PushDenied": "Уведомления заблокированы в настройках браузера"
+    "PushDenied": "Уведомления заблокированы в настройках браузера",
+    "NotifyLevelAll": "Все сообщения",
+    "NotifyLevelMentions": "Только упоминания",
+    "NotifyLevelNone": "Ничего"
   }
 }
