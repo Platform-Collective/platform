@@ -89,7 +89,7 @@ services:
       - 19092:19092
       - 19644:9644
     healthcheck:
-      test: ['CMD', 'rpk', 'cluster', 'info', '-X', 'user=superuser', '-X', 'pass=secretpassword']
+      test: ['CMD-SHELL', "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
