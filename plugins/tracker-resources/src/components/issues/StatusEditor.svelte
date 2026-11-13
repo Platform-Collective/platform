@@ -131,7 +131,7 @@
           return {
             id: s._id,
             component: StatusPresenter,
-            props: { value: s, size: 'small', space: value.space },
+            props: { value: s, size: 'small', space: value.space, taskType: value.kind },
             isSelected: selectedStatus?._id === s._id,
             category: category !== undefined ? { label: category.label, icon: category.icon } : undefined
           }
