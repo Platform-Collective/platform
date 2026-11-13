@@ -466,7 +466,7 @@
         <EditBox
           id="project-identifier"
           bind:value={identifier}
-          disabled={!isNew || fixedProjectType !== undefined}
+          disabled={!isNew}
           placeholder={tracker.string.ProjectIdentifierPlaceholder}
           kind={'large-style'}
           uppercase
