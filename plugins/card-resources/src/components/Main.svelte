@@ -13,7 +13,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { MasterTag } from '@hcengineering/card'
+  import { cardId, MasterTag } from '@hcengineering/card'
   import { Class, Doc, Ref, Space } from '@hcengineering/core'
   import { IntlString } from '@hcengineering/platform'
   import { createQuery, IconWithEmoji } from '@hcengineering/presentation'
@@ -21,17 +21,27 @@
   import view from '@hcengineering/view'
   import { SpecialView } from '@hcengineering/workbench-resources'
   import { onDestroy } from 'svelte'
+  import { cardPanelHistory, getPanelLocation } from '../card-panel-history'
   import card from '../plugin'
 
   let _class: Ref<Class<Doc>> | undefined
   let space: Ref<Space> | undefined
 
-  onDestroy(
-    location.subscribe((loc) => {
-      space = loc.path[3] === 'type' ? undefined : loc.path[3]
-      _class = loc.path[4]
-    })
-  )
+  const unsubscribe = location.subscribe((loc) => {
+    space = loc.path[3] === 'type' ? undefined : loc.path[3]
+    const panel = getPanelLocation(loc.fragment, card.component.EditCard)
+    const isCardLink = loc.path[2] === cardId && loc.path[3] !== undefined && loc.path[4] === undefined
+    if (panel !== undefined || !isCardLink) {
+      cardPanelHistory.update(panel?.fragment)
+    }
+    _class = panel?._class as Ref<Class<Doc>> | undefined
+    _class ??= loc.path[4]
+  })
+
+  onDestroy(() => {
+    unsubscribe()
+    cardPanelHistory.update(undefined)
+  })
 
   let allClasses: MasterTag[] = []
 

@@ -18,8 +18,10 @@
   import { Analytics } from '@hcengineering/analytics'
   import { Card, CardEvents } from '@hcengineering/card'
   import { Ref } from '@hcengineering/core'
-  import { onMount } from 'svelte'
+  import { getCurrentLocation, navigate } from '@hcengineering/ui'
+  import { createEventDispatcher, onMount } from 'svelte'
 
+  import { cardPanelHistory } from '../card-panel-history'
   import EditCardNew from './EditCardNew.svelte'
 
   export let _id: Ref<Card>
@@ -27,8 +29,21 @@
   export let embedded: boolean = false
   export let allowClose: boolean = true
 
+  const dispatch = createEventDispatcher()
+
   export function canClose(): boolean {
     return false
+  }
+
+  /** Escape returns to the previously opened card; the close button closes the whole chain. */
+  export function handlePanelBack(): boolean {
+    const previousFragment = cardPanelHistory.back()
+    if (previousFragment === undefined) return false
+
+    const loc = getCurrentLocation()
+    loc.fragment = previousFragment
+    navigate(loc)
+    return true
   }
 
   onMount(() => {
@@ -36,4 +51,14 @@
   })
 </script>
 
-<EditCardNew {_id} {readonly} {embedded} {allowClose} on:close on:open />
+<EditCardNew
+  {_id}
+  {readonly}
+  {embedded}
+  {allowClose}
+  on:close={() => {
+    cardPanelHistory.update(undefined)
+    dispatch('close')
+  }}
+  on:open
+/>
