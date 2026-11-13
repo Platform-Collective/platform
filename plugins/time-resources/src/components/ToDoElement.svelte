@@ -13,13 +13,13 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { SortingOrder, WithLookup } from '@hcengineering/core'
-  import { createQuery, getClient } from '@hcengineering/presentation'
+  import type { WithLookup } from '@hcengineering/core'
+  import { getClient } from '@hcengineering/presentation'
   import tags from '@hcengineering/tags'
   import { Component, IconMoreV2, Spinner, showPanel, Icon } from '@hcengineering/ui'
   import { showMenu } from '@hcengineering/view-resources'
-  import time, { ToDo, ToDoPriority, WorkSlot } from '@hcengineering/time'
-  import plugin from '../plugin'
+  import type { ToDo, WorkSlot } from '@hcengineering/time'
+  import time from '@hcengineering/time'
   import ToDoDuration from './ToDoDuration.svelte'
   import WorkItemPresenter from './WorkItemPresenter.svelte'
   import ToDoCheckbox from './ToDoCheckbox.svelte'
@@ -39,18 +39,7 @@
     updating = undefined
   }
 
-  let events: WorkSlot[] = []
-  const query = createQuery()
-  $: query.query(
-    plugin.class.WorkSlot,
-    {
-      attachedTo: todo._id
-    },
-    (res) => {
-      events = res
-    },
-    { sort: { date: SortingOrder.Descending } }
-  )
+  $: events = (todo.$lookup?.workslots ?? []) as WorkSlot[]
 
   let hovered = false
   async function onMenuClick(ev: MouseEvent): Promise<void> {

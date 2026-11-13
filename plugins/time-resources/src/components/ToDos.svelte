@@ -183,7 +183,8 @@
         },
         {
           limit: 200,
-          sort: { rank: SortingOrder.Ascending }
+          sort: { rank: SortingOrder.Ascending },
+          lookup: { _id: { workslots: time.class.WorkSlot } }
         }
       )
     } else {
