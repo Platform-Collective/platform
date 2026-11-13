@@ -440,6 +440,14 @@ export class MongoAccountDB implements AccountDB {
     this.apiToken = new MongoDbCollection<ApiToken, 'id'>('apiTokens', db, 'id')
   }
 
+  async advanceLatestOtpAttempt (socialId: PersonId): Promise<Pick<OTP, 'code' | 'attempts'> | null> {
+    return await this.otp.collection.findOneAndUpdate(
+      { socialId, $expr: { $gt: ['$expiresOn', { $toLong: '$$NOW' }] } },
+      [{ $set: { attempts: { $add: [{ $ifNull: ['$attempts', 0] }, 1] } } }],
+      { sort: { createdOn: -1 }, returnDocument: 'after', includeResultMetadata: false }
+    )
+  }
+
   async advanceOtpAttempts (socialId: PersonId): Promise<string[]> {
     const active = {
       socialId,

@@ -704,6 +704,37 @@ export async function sendOtpEmail (
   }
 }
 
+function getOtpMaxAttempts (): number {
+  // 0 or negative value means no limit
+  const value = getMetadata(accountPlugin.metadata.OtpMaxAttempts) ?? 5
+  return Number.isFinite(value) ? value : 5
+}
+
+export type OtpVerificationResult = 'valid' | 'invalid' | 'locked'
+
+export async function verifyOtpAttempt (
+  db: AccountDB,
+  socialId: PersonId,
+  code: string
+): Promise<OtpVerificationResult> {
+  const maxAttempts = getOtpMaxAttempts()
+
+  // Only the newest active code is accepted: a resend supersedes older codes,
+  // so an attempt is always counted on the same code it is checked against.
+  // Use the database clock and the counter returned by the same atomic write.
+  const otpData = await db.advanceLatestOtpAttempt(socialId)
+  if (otpData == null) {
+    // Consumed or cleaned up concurrently
+    return 'invalid'
+  }
+
+  if (maxAttempts > 0 && (otpData.attempts ?? 0) > maxAttempts) {
+    return 'locked'
+  }
+
+  return otpData.code === code ? 'valid' : 'invalid'
+}
+
 export async function isOtpValid (db: AccountDB, socialId: PersonId, code: string): Promise<boolean> {
   // Compare only the records returned by the atomic attempt writes. A code issued concurrently
   // must never enter this comparison through a separate lookup without spending its own budget.

@@ -815,6 +815,23 @@ export class PostgresAccountDB implements AccountDB {
     )
   }
 
+  async advanceLatestOtpAttempt (socialId: PersonId): Promise<Pick<OTP, 'code' | 'attempts'> | null> {
+    return await this.withRetry(async (client) => {
+      const table = this.otp.getTableName()
+      const result = await client.unsafe<Pick<OTP, 'code' | 'attempts'>[]>(
+        `UPDATE ${table} SET attempts = COALESCE(attempts, 0) + 1
+         WHERE social_id = $1 AND code = (
+           SELECT code FROM ${table}
+           WHERE social_id = $1 AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT
+           ORDER BY created_on DESC LIMIT 1
+         ) AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT
+         RETURNING code, attempts`,
+        [socialId]
+      )
+      return result[0] ?? null
+    })
+  }
+
   async advanceOtpAttempts (socialId: PersonId): Promise<string[]> {
     return await this.withRetry(async (client) => {
       const result = await client.unsafe<{ code: string }[]>(

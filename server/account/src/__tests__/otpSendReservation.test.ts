@@ -26,7 +26,7 @@ import type { Sql } from 'postgres'
 
 import { MongoAccountDB } from '../collections/mongo'
 import { PostgresAccountDB } from '../collections/postgres/postgres'
-import { cleanExpiredOtp, isOtpValid, sendOtp } from '../utils'
+import { cleanExpiredOtp, isOtpValid, sendOtp, verifyOtpAttempt } from '../utils'
 import type { Account, AccountDB, OTP, SocialId } from '../types'
 import { loginOtp, signUpOtp, validateOtp } from '../operations'
 
@@ -213,6 +213,14 @@ function attemptStorage (storage: 'mongo' | 'sql'): {
     row.attempts = (row.attempts ?? 0) + 1
     return { code: row.code }
   }
+  function advanceLatest (): Pick<OTP, 'code' | 'attempts'> | null {
+    const row = Array.from(rows.values())
+      .filter((row) => row.socialId === socialId && row.expiresOn > now)
+      .sort((a, b) => b.createdOn - a.createdOn)[0]
+    if (row === undefined) return null
+    row.attempts = (row.attempts ?? 0) + 1
+    return { code: row.code, attempts: row.attempts }
+  }
   const activeExpr = {
     $and: [{ $gt: ['$expiresOn', { $toLong: '$$NOW' }] }, { $lt: [{ $ifNull: ['$attempts', 0] }, 5] }]
   }
@@ -231,6 +239,12 @@ function attemptStorage (storage: 'mongo' | 'sql'): {
       }
     }),
     findOneAndUpdate: jest.fn(async (query, update, options) => {
+      if (Array.isArray(update)) {
+        expect(query).toEqual({ socialId, $expr: { $gt: ['$expiresOn', { $toLong: '$$NOW' }] } })
+        expect(update).toEqual([{ $set: { attempts: { $add: [{ $ifNull: ['$attempts', 0] }, 1] } } }])
+        expect(options).toEqual({ sort: { createdOn: -1 }, returnDocument: 'after', includeResultMetadata: false })
+        return advanceLatest()
+      }
       expect(query).toEqual({ socialId, $expr: activeExpr, _id: expect.any(String) })
       expect(update).toEqual({ $inc: { attempts: 1 } })
       expect(options).toEqual({ returnDocument: 'after', includeResultMetadata: false })
@@ -253,6 +267,18 @@ function attemptStorage (storage: 'mongo' | 'sql'): {
   const unsafe = jest.fn(async (query: string, values?: unknown[]) => {
     const sql = query.replace(/\s+/g, ' ').trim()
     if (sql.startsWith('UPDATE test_account.otp')) {
+      if (sql.endsWith('RETURNING code, attempts')) {
+        expect(sql).toBe(
+          'UPDATE test_account.otp SET attempts = COALESCE(attempts, 0) + 1 ' +
+          'WHERE social_id = $1 AND code = ( SELECT code FROM test_account.otp ' +
+          'WHERE social_id = $1 AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT ' +
+          'ORDER BY created_on DESC LIMIT 1 ) ' +
+          'AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT RETURNING code, attempts'
+        )
+        expect(values).toEqual([socialId])
+        const result = advanceLatest()
+        return result === null ? [] : [result]
+      }
       expect(sql).toBe(
         'UPDATE test_account.otp SET attempts = COALESCE(attempts, 0) + 1 ' +
           'WHERE social_id = $1 AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT ' +
@@ -392,10 +418,10 @@ describe.each(['mongo', 'sql'] as const)('OTP attempts and lifetime through %s a
         const code = rows.get('issued')?.code ?? ''
         await cleanExpiredOtp(db)
         expect(rows.size).toBe(1)
-        expect(await isOtpValid(db, socialId, code)).toBe(true)
+        expect(await verifyOtpAttempt(db, socialId, code)).toBe('valid')
         setNow(61000)
         localNow.mockReturnValue(61000 + offset)
-        expect(await isOtpValid(db, socialId, code)).toBe(false)
+        expect(await verifyOtpAttempt(db, socialId, code)).toBe('invalid')
         await cleanExpiredOtp(db)
         expect(rows.size).toBe(0)
       } finally {
@@ -454,8 +480,15 @@ describe.each(['mongo', 'sql'] as const)('OTP attempts and lifetime through %s a
     })
     jest.spyOn(db.otp, 'findOne').mockResolvedValue(null)
     const consume = jest.spyOn(db.otp, 'deleteMany').mockImplementation(async (query) => {
-      expect(query).toEqual({ socialId })
-      rows.clear()
+      expect(query.socialId).toBe(socialId)
+      let count = 0
+      for (const [id, row] of rows) {
+        if (query.code === undefined || row.code === query.code) {
+          rows.delete(id)
+          count++
+        }
+      }
+      return count
     })
     // SignupForm passes this same signUpOtp request (including the retained names) to OtpForm.onResend.
     const signup = { email: identity.value, firstName: person.firstName, lastName: person.lastName }
@@ -471,7 +504,7 @@ describe.each(['mongo', 'sql'] as const)('OTP attempts and lifetime through %s a
       }
       expect(original.attempts).toBe(5)
       await expect(validateOtp(ctx, db, null, '', { email: signup.email, code: original.code })).rejects.toMatchObject({
-        status: { code: platform.status.InvalidOtp }
+        status: { code: platform.status.OtpLocked }
       })
       expect(createAccount).not.toHaveBeenCalled()
       expect(account).toBeNull()
@@ -481,7 +514,7 @@ describe.each(['mongo', 'sql'] as const)('OTP attempts and lifetime through %s a
       expect(insert).toHaveBeenCalledTimes(1)
       setNow(31000)
       await expect(validateOtp(ctx, db, null, '', { email: signup.email, code: original.code })).rejects.toMatchObject({
-        status: { code: platform.status.InvalidOtp }
+        status: { code: platform.status.OtpLocked }
       })
       await expect(signUpOtp(ctx, db, null, '', signup)).resolves.toEqual({ sent: true, retryOn: 61000 })
       expect(insert).toHaveBeenCalledTimes(2)
@@ -509,7 +542,9 @@ describe.each(['mongo', 'sql'] as const)('OTP attempts and lifetime through %s a
       })
       expect(createEvent).toHaveBeenCalledTimes(1)
       expect(createProfile).toHaveBeenCalledWith({ personUuid: person.uuid, isPublic: false })
-      expect(consume).toHaveBeenCalledTimes(1)
+      expect(consume).toHaveBeenCalledTimes(2)
+      expect(consume).toHaveBeenNthCalledWith(1, { socialId, code: expect.any(String) })
+      expect(consume).toHaveBeenNthCalledWith(2, { socialId })
       expect(rows.size).toBe(0)
     } finally {
       jest.restoreAllMocks()
@@ -554,8 +589,15 @@ describe.each(['mongo', 'sql'] as const)('OTP attempts and lifetime through %s a
       .spyOn(db.person, 'findOne')
       .mockResolvedValue({ uuid: identity.personUuid, firstName: 'Test', lastName: 'Signer' })
     const consume = jest.spyOn(db.otp, 'deleteMany').mockImplementation(async (query) => {
-      expect(query).toEqual({ socialId })
-      rows.clear()
+      expect(query.socialId).toBe(socialId)
+      let count = 0
+      for (const [id, row] of rows) {
+        if (query.code === undefined || row.code === query.code) {
+          rows.delete(id)
+          count++
+        }
+      }
+      return count
     })
     try {
       await loginOtp(ctx, db, null, '', { email: identity.value })
@@ -564,7 +606,9 @@ describe.each(['mongo', 'sql'] as const)('OTP attempts and lifetime through %s a
         account: identity.personUuid,
         token: 'synthetic-login-token'
       })
-      expect(consume).toHaveBeenCalledTimes(1)
+      expect(consume).toHaveBeenCalledTimes(2)
+      expect(consume).toHaveBeenNthCalledWith(1, { socialId, code: expect.any(String) })
+      expect(consume).toHaveBeenNthCalledWith(2, { socialId })
       expect(rows.size).toBe(0)
       await expect(loginOtp(ctx, db, null, '', { email: identity.value })).resolves.toEqual({
         sent: true,
