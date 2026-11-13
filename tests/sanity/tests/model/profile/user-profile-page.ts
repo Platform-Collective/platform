@@ -17,7 +17,7 @@ export class UserProfilePage {
   accountDissabledMessage = (): Locator => this.page.getByRole('heading')
   changeAccount = (): Locator => this.page.getByRole('link', { name: 'Change account' })
   settings = (): Locator => this.page.getByRole('button', { name: 'Settings' })
-  accountSettings = (): Locator => this.page.getByRole('button', { name: 'Account settings' })
+  accountSettings = (): Locator => this.page.getByRole('button', { name: 'Profile' })
   userAvatarMenu = (): Locator => this.page.locator('.mr-8 > .cursor-pointer')
   savaAvatarButton = (): Locator => this.page.getByRole('button', { name: 'Save' }).nth(1)
   selectWorkspace = (): Locator => this.page.getByRole('button', { name: 'Select workspace' })
