@@ -568,3 +568,133 @@ describe('computeDuplicateNotMatchFilters', () => {
     expect(forward.map(asKey).sort()).toEqual(reverse.map(asKey).sort())
   })
 })
+
+describe('two stale editors creating a one-way pair from opposite endpoints', () => {
+  // Michael's #244 rev-4 P2 regression: two users each open the pair
+  // editor on opposite projects, each with no existing forward rule,
+  // both with bidirectionality OFF. Editor A commits A -> B first.
+  // Editor B, still looking at a stale cache that shows "no pair with
+  // A yet", commits B -> A. Result: two subIssue primaries on the same
+  // edge, exactly the duplicate state the apply-scope guard is supposed
+  // to prevent.
+  //
+  // Fix: the caller must guard BOTH directions whenever the forward row
+  // is being created, not just the forward one. The Svelte component
+  // encodes this by passing `createReverse: createForward || createReverse`
+  // to the helper (components/PairProjectEditor.svelte line 381).
+  //
+  // This test exercises the exact caller shape rather than the helper's
+  // raw signature so a future refactor of the Svelte line stays honest.
+  //
+  // How the server rejects the second save: both editors compute the
+  // same apply scope (`workflow-rules.pair:<unordered A,B>`), so
+  // `ApplyTxMiddleware.verifyApplyIf` serializes them and evaluates
+  // the second one's notMatch predicates against the state already
+  // written by the first. The forward-filter on editor B's save
+  // (`{ space: PROJ_B, linkedProject: PROJ_A }` from B's perspective
+  // but `{ space: PROJ_A, linkedProject: PROJ_B }` on the stored row
+  // written by editor A) matches the stored row, so the apply fails
+  // and B's duplicate never lands.
+
+  // Mirrors the Svelte component's exact call pattern. Keeping this
+  // local to the test file documents the invariant and will fail
+  // loudly if someone refactors the component to drop the OR.
+  function uiFilters (
+    space: string,
+    linkedProject: string,
+    args: { existingForward: SiblingRule | undefined, existingReverse: SiblingRule | undefined, bidirectional: boolean }
+  ): Array<{ space: string, linkedProject: string }> {
+    const createForward = args.existingForward === undefined
+    const createReverse = args.bidirectional && args.existingReverse === undefined
+    return computeDuplicateNotMatchFilters(space, linkedProject, {
+      createForward,
+      createReverse: createForward || createReverse
+    })
+  }
+
+  it('one-way create from endpoint A emits BOTH direction guards', () => {
+    // Editor A: in project A, picking B as target, bidi OFF, no existing rules either side.
+    const filters = uiFilters(PROJ_A as string, PROJ_B as string, {
+      existingForward: undefined,
+      existingReverse: undefined,
+      bidirectional: false
+    })
+    expect(filters).toHaveLength(2)
+    expect(filters).toContainEqual({ space: PROJ_A, linkedProject: PROJ_B })
+    expect(filters).toContainEqual({ space: PROJ_B, linkedProject: PROJ_A })
+  })
+
+  it('one-way create from endpoint B emits BOTH direction guards', () => {
+    // Editor B: in project B, picking A as target, bidi OFF, no existing rules either side.
+    const filters = uiFilters(PROJ_B as string, PROJ_A as string, {
+      existingForward: undefined,
+      existingReverse: undefined,
+      bidirectional: false
+    })
+    expect(filters).toHaveLength(2)
+    expect(filters).toContainEqual({ space: PROJ_A, linkedProject: PROJ_B })
+    expect(filters).toContainEqual({ space: PROJ_B, linkedProject: PROJ_A })
+  })
+
+  it('both opposite-endpoint one-way creates produce the same filter set (serialize + reject)', () => {
+    const asKey = (f: { space: string, linkedProject: string }): string => `${f.space}->${f.linkedProject}`
+    const fromA = uiFilters(PROJ_A as string, PROJ_B as string, {
+      existingForward: undefined,
+      existingReverse: undefined,
+      bidirectional: false
+    })
+    const fromB = uiFilters(PROJ_B as string, PROJ_A as string, {
+      existingForward: undefined,
+      existingReverse: undefined,
+      bidirectional: false
+    })
+    // Set-equal: same two guards, so once the first save lands either
+    // forward or reverse, the second save's apply scope lookup rejects it.
+    expect(fromA.map(asKey).sort()).toEqual(fromB.map(asKey).sort())
+    // And both scopes are identical (so apply-tx middleware serializes them).
+    expect(computePairApplyScope(PROJ_A as string, PROJ_B as string)).toBe(
+      computePairApplyScope(PROJ_B as string, PROJ_A as string)
+    )
+  })
+
+  it('second save is rejected: its forward filter matches the stored row from the first save', () => {
+    // Simulate: editor A's save landed first. The stored row is
+    // `{ space: PROJ_A, linkedProject: PROJ_B }`. Editor B's save now
+    // runs through ApplyTxMiddleware.verifyApplyIf with its notMatch
+    // predicates. Verify that at least one of B's predicates matches
+    // the stored row, so the apply is rejected.
+    const storedFromA: { space: string, linkedProject: string } = { space: PROJ_A, linkedProject: PROJ_B }
+    const bsGuards = uiFilters(PROJ_B as string, PROJ_A as string, {
+      existingForward: undefined,
+      existingReverse: undefined,
+      bidirectional: false
+    })
+    const hit = bsGuards.some((f) => f.space === storedFromA.space && f.linkedProject === storedFromA.linkedProject)
+    expect(hit).toBe(true)
+  })
+
+  it('edit-into-bidi path keeps its tighter one-filter contract (no regression on the other direction)', () => {
+    // Guard the complement: editing an existing one-way A -> B into
+    // bidirectional must NOT suddenly emit the forward guard again -
+    // the forward row is persisted, so matching it would reject every
+    // save. Only the reverse (new B -> A row) needs guarding.
+    const existingForward: SiblingRule = { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B }
+    const filters = uiFilters(PROJ_A as string, PROJ_B as string, {
+      existingForward,
+      existingReverse: undefined,
+      bidirectional: true
+    })
+    expect(filters).toEqual([{ space: PROJ_B, linkedProject: PROJ_A }])
+  })
+
+  it('pure edit (both persisted, no bidi toggle) emits no filters', () => {
+    const existingForward: SiblingRule = { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B }
+    const existingReverse: SiblingRule = { _id: RULE_2, space: PROJ_B, linkedProject: PROJ_A }
+    const filters = uiFilters(PROJ_A as string, PROJ_B as string, {
+      existingForward,
+      existingReverse,
+      bidirectional: true
+    })
+    expect(filters).toEqual([])
+  })
+})

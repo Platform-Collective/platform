@@ -359,20 +359,26 @@
     // empty string: `ApplyTxMiddleware` skips predicate evaluation
     // entirely when `scope` is undefined.
     //
-    // Guard per direction: a pure edit emits no filters; a create emits
-    // both; editing a one-way pair into bidirectional creates a new
-    // reverse rule, so the reverse direction must still be guarded even
-    // though the forward is persisted. Two sessions opening the same
-    // one-way pair and both enabling bidirectionality both see
-    // `existingReverse === undefined`; the reverse filter rejects the
-    // second apply.
+    // Guard per direction. Three cases:
+    //   - Pure edit, both rules persisted: emit no filters.
+    //   - Create a new pair, one-way OR bidirectional: emit BOTH filters,
+    //     because another session may have just created either the
+    //     forward A -> B or the reverse B -> A primary from the opposite
+    //     endpoint. Without the reverse guard on a one-way create, two
+    //     stale editors (each picking the other project as target) can
+    //     both commit sequentially and land two subIssue primaries on
+    //     the same edge (Michael #244 rev-4 regression).
+    //   - Edit a one-way into bidirectional (forward persisted, reverse
+    //     being created): emit only the reverse guard.
+    // Collapse to "guard reverse whenever we create forward OR reverse"
+    // which preserves all three.
     const createForward = existingForward === undefined
     const createReverse = bidirectional && existingReverse === undefined
     const scope = computePairApplyScope(currentSpace as string, linkedProject as string)
     const ops = client.apply(scope)
     for (const filter of computeDuplicateNotMatchFilters(currentSpace as string, linkedProject as string, {
       createForward,
-      createReverse
+      createReverse: createForward || createReverse
     })) {
       ops.notMatch(workflowRules.class.WorkflowRule, filter)
     }
