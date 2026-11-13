@@ -145,6 +145,9 @@ export class TProject extends TTaskProject implements Project {
 
   @Prop(TypeRecord(), tracker.string.WorkingDaysConfig)
   workingDaysConfig?: WorkingDaysConfig
+
+  @Prop(TypeNumber(), tracker.string.HoursPerDay)
+  hoursPerDay?: number
 }
 /**
  * @public
@@ -363,6 +366,9 @@ export class TIssueTemplate extends TDoc implements IssueTemplate {
 export class TTimeSpendReport extends TAttachedDoc implements TimeSpendReport {
   @Prop(TypeRef(tracker.class.Issue), tracker.string.Issue)
   declare attachedTo: Ref<Issue>
+
+  @Prop(TypeRef(tracker.class.Project), tracker.string.Project)
+  declare space: Ref<Project>
 
   @Prop(TypeRef(contact.mixin.Employee), contact.string.Employee)
   employee!: Ref<Employee>

@@ -36,7 +36,7 @@
     notEmpty,
     setWorkspaceGuestAutoJoinRoles
   } from '@hcengineering/core'
-  import { Asset } from '@hcengineering/platform'
+  import { Asset, getEmbeddedLabel } from '@hcengineering/platform'
   import presentation, { IconWithEmoji, Card, createQuery, getClient } from '@hcengineering/presentation'
   import task, { ProjectType, TaskType } from '@hcengineering/task'
   import { taskTypeStore, typeStore } from '@hcengineering/task-resources'
@@ -61,6 +61,7 @@
   import tracker from '../../plugin'
   import StatusSelector from '../issues/StatusSelector.svelte'
   import { workingDaysUpdate } from '../gantt/lib/working-days-editor'
+  import { DEFAULT_HOURS_PER_DAY, hoursPerDayUpdate, normalizeHoursPerDay } from '../issues/timereport/working-hours'
   import WorkingDaysEditor from './WorkingDaysEditor.svelte'
 
   export let project: Project | undefined = undefined
@@ -89,6 +90,7 @@
   // untouched until save. A stored `null` means "not configured", like undefined.
   let workingDaysConfig: WorkingDaysConfig | undefined =
     project?.workingDaysConfig != null ? { ...project.workingDaysConfig } : undefined
+  let hoursPerDay: number | undefined = project?.hoursPerDay
   let rolesAssignment: RolesAssignment | undefined
 
   let typeId: Ref<ProjectType> | undefined = project?.type
@@ -126,6 +128,7 @@
   let identifier: string = project?.identifier ?? 'TSK'
 
   function getProjectData(): Omit<Data<Project>, 'type'> {
+    const hpd = normalizeHoursPerDay(hoursPerDay)
     return {
       name,
       description,
@@ -143,6 +146,8 @@
       defaultTimeReportDay: project?.defaultTimeReportDay ?? TimeReportDayType.PreviousWorkDay,
       // Omitted when disabled: an undefined value would be serialized as null.
       ...(workingDaysConfig !== undefined ? { workingDaysConfig } : {}),
+      // Not configured: leave the field out instead of storing undefined/null.
+      ...(hpd !== undefined ? { hoursPerDay: hpd } : {}),
       autoJoinForRoles: normalizeAutoJoinForRoles(autoJoinForRoles)
     }
   }
@@ -206,6 +211,13 @@
         update.workingDaysConfig = wdUpdate.workingDaysConfig
       }
     }
+    // Clearing is sent as a separate update: an update that mixes `$unset`
+    // with plain fields is not applied as an operator by every storage adapter.
+    const hpdUpdate = hoursPerDayUpdate(projectData.hoursPerDay, project?.hoursPerDay)
+    const hpdUnset = hpdUpdate !== undefined && '$unset' in hpdUpdate ? hpdUpdate : undefined
+    if (hpdUpdate !== undefined && !('$unset' in hpdUpdate)) {
+      update.hoursPerDay = hpdUpdate.hoursPerDay
+    }
     if (projectData.autoJoin !== project?.autoJoin) {
       update.autoJoin = projectData.autoJoin
     }
@@ -245,6 +257,9 @@
       } finally {
         isSaving = false
       }
+    }
+    if (hpdUnset !== undefined) {
+      await client.update(project, hpdUnset)
     }
 
     if (rolesAssignment && !deepEqual(rolesAssignment, getRolesAssignment())) {
@@ -548,6 +563,22 @@
         <span><Label label={tracker.string.WorkingDaysDescription} /></span>
       </div>
       <WorkingDaysEditor bind:value={workingDaysConfig} />
+    </div>
+
+    <div class="antiGrid-row">
+      <div class="antiGrid-row__header withDesciption">
+        <Label label={tracker.string.HoursPerDay} />
+        <span><Label label={tracker.string.HoursPerDayDescription} /></span>
+      </div>
+      <EditBox
+        id="project-hours-per-day"
+        bind:value={hoursPerDay}
+        format={'number'}
+        minValue={1}
+        maxValue={24}
+        maxDigitsAfterPoint={2}
+        placeholder={getEmbeddedLabel(String(DEFAULT_HOURS_PER_DAY))}
+      />
     </div>
 
     <div class="antiGrid-row">
