@@ -2,6 +2,8 @@
   "string": {
     "Office": "Escritório",
     "Room": "Sala",
+    "RoomHasUnfinishedMeetings": "Não é possível excluir esta sala enquanto houver reuniões agendadas, pendentes ou ativas. Primeiro, encerre ou remova essas reuniões.",
+    "RoomRemovalFailed": "A sala ou suas reuniões foram alteradas. Recarregue a página e tente excluir a sala novamente.",
     "RoomType": "Tipo de sala",
     "Share": "Compartilhar",
     "StopShare": "Parar compartilhamento",

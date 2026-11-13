@@ -17,6 +17,7 @@ export enum RoomType {
 
 export interface Floor extends Doc {
   name: string
+  meetings?: number
 }
 
 /**
