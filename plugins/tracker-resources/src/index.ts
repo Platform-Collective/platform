@@ -30,7 +30,7 @@ import {
 } from '@hcengineering/core'
 import { type Resources, type Status, translate } from '@hcengineering/platform'
 import { getClient, MessageBox, type ObjectSearchResult } from '@hcengineering/presentation'
-import { type Component, type Issue, type Milestone, type Project } from '@hcengineering/tracker'
+import { type Component, type Issue, type IssueTemplate, type Milestone, type Project } from '@hcengineering/tracker'
 import {
   closePanel,
   getCurrentLocation,
@@ -94,6 +94,7 @@ import SetParentIssueActionPopup from './components/SetParentIssueActionPopup.sv
 import LinkSubIssueActionPopup from './components/LinkSubIssueActionPopup.svelte'
 import SettingsRelatedTargets from './components/SettingsRelatedTargets.svelte'
 import CreateIssueTemplate from './components/templates/CreateIssueTemplate.svelte'
+import CopyIssueTemplate from './components/templates/CopyIssueTemplate.svelte'
 import {
   getIssueIdByIdentifier,
   getIssueTitle,
@@ -266,6 +267,13 @@ export async function queryMilestone (
 
 async function move (issues: Issue | Issue[]): Promise<void> {
   showPopup(MoveIssues, { selected: issues }, 'top')
+}
+
+async function copyIssueTemplateToProject (template: IssueTemplate | IssueTemplate[]): Promise<void> {
+  const value = Array.isArray(template) ? template : [template]
+  if (value.length > 0) {
+    showPopup(CopyIssueTemplate, { value }, 'top')
+  }
 }
 
 async function editWorkflowStatuses (project: Project): Promise<void> {
@@ -572,6 +580,7 @@ export default async (): Promise<Resources> => ({
   actionImpl: {
     CopyIssueBranch: copyIssueBranch,
     Move: move,
+    CopyIssueTemplateToProject: copyIssueTemplateToProject,
     EditWorkflowStatuses: editWorkflowStatuses,
     EditProject: editProject,
     DeleteMilestone: deleteMilestone,
