@@ -35,21 +35,17 @@
     "SelectItemAll": "Zaznacz wszystkie elementy",
     "SelectItemNone": "Odznacz wszystkie elementy",
     "NumberItems": "{count, plural, =0 {brak elementów} =1 {1 element} few {# elementy} many {# elementów} other {# elementu}}",
-
     "Assigned": "Przypisano",
     "Created": "Utworzono",
     "Subscribed": "Zaobserwowano",
-
     "ShowPreview": "Wyświetl podgląd dokumentu",
     "ShowActions": "Wyświetl dostępne akcje",
-
     "ActionPlaceholder": "Wyszukaj lub uruchom polecenie...",
     "General": "Ogólne",
     "Navigation": "Nawigacja",
     "Editor": "Edytor",
     "MarkdownFormatting": "Formatowanie",
     "CustomizeView": "Dostosuj widok",
-    "ConfigureColumns": "Konfiguruj kolumny",
     "Filter": "Filtruj",
     "ClearFilters": "Wyczyść filtry",
     "FilterLessThan": "Mniej niż",
@@ -79,7 +75,6 @@
     "Grouping": "Grupowanie po",
     "Ordering": "Sortowanie według",
     "Manual": "Ręczne",
-
     "FilteredViews": "Filtrowane widoki",
     "NewFilteredView": "Nowy widok filtrowany",
     "FilteredViewName": "Nazwa filtrowanego widoku",
@@ -120,7 +115,6 @@
     "TableCopiedToClipboard": "Tabela skopiowana do schowka",
     "TableCopyFailed": "Nieudana próba skopiowania tabeli do schowka",
     "PublicView": "Publiczny",
-
     "ChooseIcon": "Wybierz ikonę",
     "IconColor": "Wybierz kolor ikony",
     "IconCategory": "Ikona",
@@ -160,6 +154,9 @@
     "ForbidAttributeChanges": "Zablokuj zmiany: ",
     "AllowAttributeChanges": "Zezwól na zmiany: ",
     "RelationshipTable": "Macierz powiązań",
+    "PreviousItem": "Poprzedni element",
+    "NextItem": "Następny element",
+    "ConfigureColumns": "Konfiguruj kolumny",
     "FilterOverflowBadge": "+{count}",
     "AddFilter": "Dodaj filtr",
     "HiddenFilters": "Ukryte filtry"

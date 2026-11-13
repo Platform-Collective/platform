@@ -28,6 +28,14 @@ import tracker from './plugin'
 // (List + Kanban) and the Gantt viewlet block. Keep this list as the single
 // source of truth so a change in one place can never disagree with the
 // other half of the UI.
+const showEstimationSumViewOption: ViewOptionModel = {
+  key: 'showEstimationSum',
+  type: 'toggle',
+  defaultValue: false,
+  actionTarget: 'display',
+  label: tracker.string.ShowEstimationSum
+}
+
 const SEARCH_VIEW_OPTIONS: ViewOptionModel[] = [
   {
     key: 'showQuickModeSelector',
@@ -108,7 +116,7 @@ export const issuesOptions = (kanban: boolean): ViewOptionsModel => ({
       action: view.function.HideArchived,
       label: view.string.HideArchived
     },
-    ...(!kanban ? [showColorsViewOption] : []),
+    ...(!kanban ? [showColorsViewOption, showEstimationSumViewOption] : []),
     ...SEARCH_VIEW_OPTIONS
   ]
 })
@@ -218,6 +226,15 @@ export function issueConfig (
           }
         ]
       : []),
+    {
+      // Hidden until enabled in the view settings: it is mostly useful in
+      // cross-project views like "All issues" or "My issues".
+      key: 'space',
+      label: tracker.string.Project,
+      presenter: tracker.component.ProjectPresenter,
+      props: { openIssues: true },
+      displayProps: { key: key + 'project', excludeByKey: 'space', compression: true, defaultHidden: true }
+    },
     {
       key: '',
       label: tracker.string.DueDate,
@@ -682,7 +699,7 @@ export function defineViewlets (builder: Builder): void {
       ['dueDate', SortingOrder.Ascending]
     ],
     groupDepth: 1,
-    other: [showColorsViewOption]
+    other: [showColorsViewOption, showEstimationSumViewOption]
   }
 
   builder.createDoc(
@@ -724,7 +741,7 @@ export function defineViewlets (builder: Builder): void {
       ['dueDate', SortingOrder.Ascending]
     ],
     groupDepth: 1,
-    other: [showColorsViewOption]
+    other: [showColorsViewOption, showEstimationSumViewOption]
   }
 
   builder.createDoc(
