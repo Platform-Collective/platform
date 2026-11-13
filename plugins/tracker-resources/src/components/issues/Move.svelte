@@ -41,9 +41,11 @@
 
   let canCreate = false
   onMount(() => {
-    void canCreateProject().then((allowed) => {
-      canCreate = allowed
-    }).catch(Analytics.handleError)
+    void canCreateProject()
+      .then((allowed) => {
+        canCreate = allowed
+      })
+      .catch(Analytics.handleError)
   })
 
   let targetProject: Project | undefined
