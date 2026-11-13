@@ -20,7 +20,7 @@
   import { AttributeModel } from '@hcengineering/view'
   import { DocAttributeUpdates, DocUpdateMessageViewlet } from '@hcengineering/activity'
 
-  import { getAttributeValues } from '../../../activityMessagesUtils'
+  import { getAttributeValues, isUnresolvedObjectRef } from '../../../activityMessagesUtils'
 
   type Values = DocAttributeUpdates['set' | 'added' | 'removed']
   export let viewlet: DocUpdateMessageViewlet | undefined
@@ -32,10 +32,18 @@
   const client = getClient()
 
   let attributeValues: Values | Doc[] = []
+  let resolvedFor: Values | undefined
 
-  $: void getAttributeValues(client, values, attributeModel._class).then((result) => {
+  $: void resolveValues(values, attributeModel)
+
+  async function resolveValues(values: Values, attributeModel: AttributeModel): Promise<void> {
+    const result = await getAttributeValues(client, values, attributeModel._class)
     attributeValues = result
-  })
+    resolvedFor = values
+  }
+
+  // A reference shown with an object presenter whose value is not a document, e.g. a cleared parent issue
+  $: unresolved = resolvedFor === values && isUnresolvedObjectRef(client, attributeModel, attributeValues)
 
   $: attrViewletConfig = viewlet?.config?.[attributeModel.key]
   $: attributeIcon = attrViewletConfig?.icon ?? attributeModel.icon ?? IconEdit
@@ -54,17 +62,25 @@
     {/if}
   </span>
 
-  <slot name="text" />
+  <slot name="text" {unresolved} />
 
-  {#each attributeValues as value}
-    <span class="strong overflow-label">
-      {#if value !== null && typeof value === 'object'}
-        <ObjectPresenter {value} shouldShowAvatar={false} accent />
-      {:else}
-        <svelte:component this={attributeModel.presenter} {value} shouldShowAvatar={false} accent kind="list-header" />
-      {/if}
-    </span>
-  {/each}
+  {#if !unresolved}
+    {#each attributeValues as value}
+      <span class="strong overflow-label">
+        {#if value !== null && typeof value === 'object'}
+          <ObjectPresenter {value} shouldShowAvatar={false} accent />
+        {:else}
+          <svelte:component
+            this={attributeModel.presenter}
+            {value}
+            shouldShowAvatar={false}
+            accent
+            kind="list-header"
+          />
+        {/if}
+      </span>
+    {/each}
+  {/if}
 </div>
 
 <style lang="scss">

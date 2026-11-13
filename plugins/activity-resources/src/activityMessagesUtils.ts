@@ -191,6 +191,27 @@ async function getRefAttributeModel (
   }
 }
 
+/**
+ * True when the activity entry for this attribute is drawn with the object presenter of the
+ * class it refers to (see getRefAttributeModel) and none of its values is an existing or removed
+ * document. Clearing an issue's parent stores a placeholder id, for example: there is nothing to
+ * present, so the entry says the attribute was unset.
+ * @param resolvedValues the result of getAttributeValues
+ */
+export function isUnresolvedObjectRef (client: Client, attributeModel: AttributeModel, resolvedValues: any[]): boolean {
+  const attribute = attributeModel.attribute
+  if (attribute === undefined || attribute.type._class !== core.class.RefTo) {
+    return false
+  }
+  if (resolvedValues.length === 0 || resolvedValues.some((value) => typeof value !== 'string')) {
+    return false
+  }
+  return (
+    findAttributePresenter(client, attribute.attributeOf, attribute.name, view.mixin.ActivityAttributePresenter) ===
+    undefined
+  )
+}
+
 export function hasAttributeModel (
   client: Client,
   attributeUpdates: DocAttributeUpdates | undefined,
