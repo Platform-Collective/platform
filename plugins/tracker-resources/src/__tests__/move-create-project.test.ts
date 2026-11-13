@@ -21,7 +21,7 @@ beforeAll(async () => {
 
 /** Render the real dialog while capturing the existing SpaceSelector boundary. */
 function renderMove (allowed: boolean | Error) {
-  let selector: { create?: { component: string, label: string }, space: string } | undefined
+  let selector: { create?: { component: string, label: string, props?: { fixedProjectType: string } }, space: string } | undefined
   const project = { _id: 'origin', _class: 'Project', type: 'workflow' }
   const store = (value: unknown) => ({ subscribe: (publish: (v: unknown) => void) => {
     publish(value)
@@ -81,7 +81,9 @@ function renderMove (allowed: boolean | Error) {
 
 it('offers the existing project creation dialog from the move project selector to employees', () => {
   const { selector } = renderMove(true)
-  expect(selector?.create).toEqual({ component: 'CreateProject', label: 'CreateNewProject' })
+  expect(selector?.create).toEqual({
+    component: 'CreateProject', label: 'CreateNewProject', props: { fixedProjectType: 'workflow' }
+  })
   expect(selector?.space).toBe('origin')
 })
 it('keeps the current target and offers no project creation to users without creation rights', () => {

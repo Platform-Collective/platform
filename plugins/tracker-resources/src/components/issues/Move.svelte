@@ -267,8 +267,12 @@
           query={spaceQuery}
           label={hierarchy.getClass(tracker.class.Project).label}
           bind:space
-          create={canCreate
-            ? { component: tracker.component.CreateProject, label: tracker.string.CreateNewProject }
+          create={canCreate && originProject !== undefined
+            ? {
+                component: tracker.component.CreateProject,
+                label: tracker.string.CreateNewProject,
+                props: { fixedProjectType: originProject.type }
+              }
             : undefined}
           kind={'regular'}
           size={'large'}
