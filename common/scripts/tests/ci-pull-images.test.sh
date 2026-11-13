@@ -3,6 +3,7 @@ set -euo pipefail
 repo=$(cd "$(dirname "$0")/../../.." && pwd)
 pull=${PULL_SCRIPT:-$repo/common/scripts/ci-pull-images.sh}
 fixture=$(mktemp -d "${TMPDIR:-.}/ci-images-test.XXXXXX")
+fixture=$(cd "$fixture" && pwd)
 trap 'python3 -c "import shutil,sys; shutil.rmtree(sys.argv[1])" "$fixture"' EXIT
 export IMAGE_FIXTURE="$fixture" RUNNER_TEMP="$fixture" GITHUB_ENV="$fixture/env"
 mkdir "$fixture/bin"
