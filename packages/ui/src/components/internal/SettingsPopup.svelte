@@ -13,7 +13,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { type IntlString, getMetadata } from '@hcengineering/platform'
+  import { type IntlString, getEmbeddedLabel, getMetadata } from '@hcengineering/platform'
   import { getContext } from 'svelte'
   import { type Readable } from 'svelte/store'
 
@@ -29,9 +29,19 @@
     showPopup,
     deviceOptionsStore as deviceInfo,
     modalStore,
-    eventToHTMLElement
+    eventToHTMLElement,
+    getLocalWeekStart,
+    getWeekDayNames,
+    hasLocalWeekStart,
+    IconCalendar
   } from '../..'
   import EmojiStyle from './icons/EmojiStyle.svelte'
+  import {
+    type FirstDayOfWeekPreference,
+    loadFirstDayOfWeek,
+    resolveFirstDayOfWeek,
+    saveFirstDayOfWeek
+  } from '../../firstDayOfWeek'
 
   const { currentFontSize, setFontSize } = getContext<{
     currentFontSize: Readable<string>
@@ -114,6 +124,27 @@
     setLanguage(language)
   }
 
+  const localWeekStart = getLocalWeekStart()
+  const weekDayNames = getWeekDayNames()
+  const localWeekStartName = weekDayNames.get(localWeekStart % 7) ?? ''
+  const firstDaysOfWeek: Array<{ id: string, label: IntlString, params?: Record<string, any> }> = [
+    {
+      id: 'system',
+      label: hasLocalWeekStart() ? ui.string.FirstDayOfWeekSystem : ui.string.FirstDayOfWeekDefault,
+      params: { day: localWeekStartName }
+    },
+    ...Array.from(weekDayNames.entries()).map(([day, name]) => ({ id: `${day}`, label: getEmbeddedLabel(name) }))
+  ]
+  let firstDayOfWeek: FirstDayOfWeekPreference = loadFirstDayOfWeek()
+
+  function selectFirstDayOfWeek(id: string): void {
+    const preference: FirstDayOfWeekPreference = id === 'system' ? 'system' : Number(id)
+    if (preference === firstDayOfWeek) return
+    firstDayOfWeek = preference
+    saveFirstDayOfWeek(preference)
+    $deviceInfo.firstDayOfWeek = resolveFirstDayOfWeek(preference, localWeekStart)
+  }
+
   function selectEmoji(emoji: string): void {
     if ($currentEmoji === emoji) return
     setEmoji(emoji)
@@ -123,6 +154,7 @@
   $: fontsize = fontsizes.find((fs) => fs.id === $currentFontSize) ?? fontsizes[0]
   $: language = langs.find((lang) => lang.id === $currentLanguage) ?? langs[0]
   $: emoji = emojis.find((e) => e.id === $currentEmoji) ?? emojis[0]
+  $: firstDayOfWeekItem = firstDaysOfWeek.find((it) => it.id === `${firstDayOfWeek}`) ?? firstDaysOfWeek[0]
 </script>
 
 <div class="antiPopup thinStyle">
@@ -240,6 +272,34 @@
             <div class="label text-lgd">
               <Html value={language.logo} />
             </div>
+          </div>
+        </div>
+      </button>
+
+      <div class="ap-menuItem separator halfMargin" />
+
+      <button
+        class="ap-menuItem antiPopup-submenu withIcon noMargin flex-row-center flex-grow"
+        on:click={(ev) => {
+          showPopup(
+            ModernPopup,
+            { items: firstDaysOfWeek, selected: firstDayOfWeekItem.id },
+            eventToHTMLElement(ev),
+            (id) => {
+              if (id !== undefined) {
+                selectFirstDayOfWeek(id)
+              }
+            }
+          )
+        }}
+      >
+        <div class="flex-between flex-grow">
+          <div class="flex-row-center">
+            <div class="icon mr-2"><Icon icon={IconCalendar} size={'small'} /></div>
+            <span class="label font-medium"><Label label={ui.string.FirstDayOfWeek} /></span>
+          </div>
+          <div class="flex-row-center pr-4">
+            <Label label={firstDayOfWeekItem.label} params={firstDayOfWeekItem.params ?? {}} />
           </div>
         </div>
       </button>

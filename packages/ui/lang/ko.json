@@ -111,6 +111,9 @@
         "ThisYear": "올해",
         "EmojiStyle": "이모지 스타일",
         "EmojiSystem": "시스템 기본",
-        "EmojiNoto": "Noto Color"
+        "EmojiNoto": "Noto Color",
+        "FirstDayOfWeek": "주 시작일",
+        "FirstDayOfWeekSystem": "시스템 설정 ({day})",
+        "FirstDayOfWeekDefault": "기본값 ({day})"
     }
 }

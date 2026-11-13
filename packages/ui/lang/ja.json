@@ -111,6 +111,9 @@
     "ThisYear": "今年",
     "EmojiStyle": "絵文字スタイル",
     "EmojiSystem": "システムデフォルト",
-    "EmojiNoto": "Noto Color"
+    "EmojiNoto": "Noto Color",
+    "FirstDayOfWeek": "週の開始",
+    "FirstDayOfWeekSystem": "システム設定 ({day})",
+    "FirstDayOfWeekDefault": "既定 ({day})"
   }
 }
