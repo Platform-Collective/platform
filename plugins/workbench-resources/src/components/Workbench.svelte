@@ -327,7 +327,7 @@
 
   // Same criteria as the Inbox: the notification context must exist, activity notifications
   // need their message and must be among the activity notifications the Inbox has loaded.
-  async function hasUnreadVisibleInInbox (): Promise<boolean> {
+  async function hasUnreadVisibleInInbox(): Promise<boolean> {
     const query = {
       user: account.uuid,
       isViewed: false,
@@ -361,7 +361,7 @@
   }
 
   // The local inbox may be briefly empty while loading; confirm in the DB before clearing.
-  async function clearWorkspaceUnreadIfNoneInDb (): Promise<void> {
+  async function clearWorkspaceUnreadIfNoneInDb(): Promise<void> {
     if (checkingWorkspaceUnread) {
       recheckWorkspaceUnread = true
       return
@@ -389,7 +389,7 @@
   // right after opening a workspace inboxNotificationsByContextStore starts out empty,
   // which is indistinguishable from "confirmed no unread".
   // Kept out of the reactive statement below, so the flags it updates don't re-trigger it.
-  function onInboxUnreadState (res: boolean): void {
+  function onInboxUnreadState(res: boolean): void {
     if (isDestroyed) return
     hasInboxNotifications = res
     currentWorkspaceHasInboxUnread.set(res)
