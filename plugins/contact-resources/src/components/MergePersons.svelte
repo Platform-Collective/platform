@@ -16,20 +16,8 @@
   /* eslint-disable @typescript-eslint/no-unused-vars */
   import { Analytics } from '@hcengineering/analytics'
   import { Channel, Person, SocialIdentity, getName } from '@hcengineering/contact'
-  import core, {
-    ArrOf,
-    Doc,
-    DocumentUpdate,
-    Mixin,
-    PersonUuid,
-    Ref,
-    RefTo,
-    SocialIdType,
-    Tx,
-    TxOperations,
-    TxProcessor
-  } from '@hcengineering/core'
-  import { Card, createQuery, getClient, updateAttribute } from '@hcengineering/presentation'
+  import core, { Doc, DocumentUpdate, Mixin, PersonUuid, Ref, SocialIdType, TxProcessor } from '@hcengineering/core'
+  import { Card, createQuery, getClient } from '@hcengineering/presentation'
   import { Label, Spinner, Toggle } from '@hcengineering/ui'
   import { isCollectionAttr } from '@hcengineering/view-resources'
   import { createEventDispatcher } from 'svelte'
@@ -44,6 +32,9 @@
   import EditPerson from './EditPerson.svelte'
   import { getAccountClient } from '../utils'
   import SocialIdentityPresenter from './SocialIdentityPresenter.svelte'
+  import { finishPersonMerge, runPersonMerge } from './finish-person-merge'
+  import { updateAllRefs } from './update-person-refs'
+  import { isPersonMergePermissionCached, canMergePersonTypes } from './person-merge-permission'
 
   export let value: Person
   const dispatch = createEventDispatcher()
@@ -119,10 +110,30 @@
     result = r
   }
 
+  let mergeError: string | undefined = undefined
+
   async function merge(): Promise<void> {
-    if (sourcePerson === undefined || targetPerson === undefined) return
+    const source = sourcePerson
+    const target = targetPerson
+    if (source === undefined || target === undefined) return
+    if (source._id === target._id || !allowedPersonTypes(source, target)) return
     if (!canMergeGlobalPersons) return
 
+    mergeError = undefined
+    const err = await runPersonMerge(async () => {
+      await mergeInto(source, target)
+    })
+    if (err !== undefined) {
+      // The source is kept, so the merge can be retried after the cause is fixed.
+      Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+      mergeError = err instanceof Error ? err.message : String(err)
+      return
+    }
+
+    dispatch('close')
+  }
+
+  async function mergeInto(sourcePerson: Person, targetPerson: Person): Promise<void> {
     if (Object.keys(update).length > 0) {
       const _update = { ...update }
       if (_update.avatar !== undefined || sourcePerson.avatar === targetPerson.avatar) {
@@ -171,11 +182,9 @@
     }
     await ops.commit()
     await updateAllRefs(client, sourcePerson, targetPerson)
-    if (targetPerson.personUuid !== undefined && sourcePerson.personUuid !== undefined) {
-      await accountClient.mergeSpecifiedPersons(targetPerson.personUuid, sourcePerson.personUuid)
-    }
-
-    dispatch('close')
+    await finishPersonMerge(client, accountClient, sourcePerson, targetPerson, {
+      removeSource: !hierarchy.hasMixin(sourcePerson, contact.mixin.Employee)
+    })
   }
 
   function select(field: string, targetValue: boolean): void {
@@ -270,80 +279,15 @@
     mixinUpdate[mixin] = upd
   }
 
-  async function updateAllRefs(client: TxOperations, sourceAccount: Person, targetAccount: Person): Promise<Tx[]> {
-    const h = client.getHierarchy()
-    // Move all possible references to Employee and replace to target one.
-    const ancestors = h.getAncestors(contact.class.Person)
-    const reftos = (await client.findAll(core.class.Attribute, { 'type._class': core.class.RefTo })).filter((it) => {
-      const to = it.type as RefTo<Doc>
-      return h.getBaseClass(to.to) === contact.class.Person || ancestors.includes(to.to)
-    })
-
-    for (const attr of reftos) {
-      if (attr.name === '_id') {
-        continue
-      }
-      try {
-        const descendants = h.getDescendants(attr.attributeOf)
-        for (const d of descendants) {
-          if (h.isDerived(d, core.class.Tx) || h.isDerived(d, core.class.BenchmarkDoc)) {
-            continue
-          }
-          if (h.findDomain(d) !== undefined) {
-            while (true) {
-              const values = await client.findAll(d, { [attr.name]: sourceAccount._id }, { limit: 100 })
-              if (values.length === 0) {
-                break
-              }
-
-              const builder = client.apply(sourceAccount._id)
-              for (const v of values) {
-                await updateAttribute(builder, v, d, { key: attr.name, attr }, targetAccount._id)
-              }
-              if (builder.txes.length > 0) {
-                await builder.commit()
-              }
-            }
-          }
-        }
-      } catch (err: any) {
-        Analytics.handleError(err)
-      }
-    }
-    const arrs = (await client.findAll(core.class.Attribute, { 'type._class': core.class.ArrOf })).filter((it) => {
-      const to = it.type as ArrOf<Doc>
-      if (to.of._class !== core.class.RefTo) return false
-      const refTo = to.of as RefTo<Doc>
-      return h.getBaseClass(refTo.to) === contact.class.Person || ancestors.includes(refTo.to)
-    })
-
-    for (const attr of arrs) {
-      if (attr.name === '_id') {
-        continue
-      }
-      const descendants = h.getDescendants(attr.attributeOf)
-      for (const d of descendants) {
-        if (h.isDerived(d, core.class.Tx) || h.isDerived(d, core.class.BenchmarkDoc)) {
-          continue
-        }
-        if (h.findDomain(d) !== undefined) {
-          while (true) {
-            const values = await client.findAll(attr.attributeOf, { [attr.name]: sourceAccount._id }, { limit: 100 })
-            if (values.length === 0) {
-              break
-            }
-            const builder = client.apply(sourceAccount._id)
-            for (const v of values) {
-              await updateAttribute(builder, v, d, { key: attr.name, attr }, targetAccount._id)
-            }
-            await builder.commit()
-          }
-        }
-      }
-    }
-
-    return []
+  function allowedPersonTypes(source: Person, target: Person): boolean {
+    return canMergePersonTypes(
+      hierarchy.hasMixin(source, contact.mixin.Employee),
+      hierarchy.hasMixin(target, contact.mixin.Employee)
+    )
   }
+
+  $: employeeMergeBlocked =
+    sourcePerson !== undefined && targetPerson !== undefined && !allowedPersonTypes(sourcePerson, targetPerson)
 
   let canMergeGlobalPersons = false
   let previousPrimaryUuid: PersonUuid | undefined
@@ -357,7 +301,19 @@
       return
     }
 
-    if (primaryPerson.personUuid === previousPrimaryUuid && secondaryPerson.personUuid === previousSecondaryUuid) {
+    if (!allowedPersonTypes(secondaryPerson, primaryPerson)) {
+      loading = false
+      return
+    }
+
+    if (
+      isPersonMergePermissionCached(
+        primaryPerson.personUuid,
+        secondaryPerson.personUuid,
+        previousPrimaryUuid,
+        previousSecondaryUuid
+      )
+    ) {
       return
     }
 
@@ -378,7 +334,12 @@
     loading = false
   }
 
-  $: canSave = targetPerson !== undefined && !loading && canMergeGlobalPersons
+  $: canSave =
+    targetPerson !== undefined &&
+    sourcePerson !== undefined &&
+    !employeeMergeBlocked &&
+    !loading &&
+    canMergeGlobalPersons
 </script>
 
 <Card
@@ -430,6 +391,14 @@
   </div>
   {#key [targetPersonRef, sourcePersonRef]}
     {#if targetPerson != null && sourcePerson != null}
+      {#if !hierarchy.hasMixin(sourcePerson, contact.mixin.Employee)}
+        <div class="mt-4">
+          <Label
+            label={contact.string.MergeSourceWillBeDeleted}
+            params={{ source: getName(hierarchy, sourcePerson) }}
+          />
+        </div>
+      {/if}
       <div class="flex-col flex-grow mt-4">
         <MergeComparer
           key="avatar"
@@ -495,10 +464,19 @@
   {/key}
   {#if targetPersonRef != null}
     <div class="mt-4">
-      {#if loading}
+      {#if employeeMergeBlocked}
+        <span class="error"><Label label={contact.string.CannotMergeEmployeeIntoLocal} /></span>
+      {:else if loading}
         <Spinner size="medium" />
       {:else if !canMergeGlobalPersons}
         <span class="error"><Label label={contact.string.CannotMerge} /></span>
+      {:else if mergeError !== undefined}
+        <span class="error"
+          ><Label
+            label={contact.string.MergeFailed}
+            params={{ target: targetPerson !== undefined ? getName(hierarchy, targetPerson) : '', error: mergeError }}
+          /></span
+        >
       {:else if visibleResultSocialIdentities.length > 0}
         <span class="label"><Label label={contact.string.SocialIds} /></span>
         {#each visibleResultSocialIdentities as socialIdentity}
