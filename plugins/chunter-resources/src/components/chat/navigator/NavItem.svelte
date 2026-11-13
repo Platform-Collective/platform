@@ -51,6 +51,13 @@
   $: menuActions = actions.filter(({ inline }) => inline !== true)
 
   function handleMenuClicked(ev: MouseEvent): void {
+    ev.preventDefault()
+    ev.stopPropagation()
+
+    if (menuActions.length === 0) {
+      return
+    }
+
     showPopup(Menu, { actions: menuActions, ctx: _id }, ev.target as HTMLElement, () => {
       menuOpened = false
     })
@@ -76,7 +83,7 @@
   withBackground={withIconBackground}
   showMenu={menuOpened}
   on:click
-  on:contextmenu
+  on:contextmenu={handleMenuClicked}
 >
   <svelte:fragment slot="actions">
     {#each inlineActions as action}
