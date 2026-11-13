@@ -58,8 +58,8 @@
   const dispatch = createEventDispatcher()
   const query = createQuery()
 
-  const client = getClient()
-  void client.findAll(tags.class.TagCategory, { targetClass }).then((res) => {
+  const categoryQuery = createQuery()
+  $: categoryQuery.query(tags.class.TagCategory, { targetClass }, (res) => {
     categories = res
     isSingleCategory = categories.length <= 1
   })

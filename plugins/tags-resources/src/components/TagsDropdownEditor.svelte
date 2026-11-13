@@ -22,6 +22,7 @@
   import { createEventDispatcher } from 'svelte'
   import tags from '../plugin'
   import TagsPopup from './TagsPopup.svelte'
+  import { hasTagReference } from '../tag-reference'
 
   export let items: TagReference[] = []
   export let targetClass: Ref<Class<Doc>>
@@ -49,6 +50,8 @@
   })
 
   async function addRef(tag: TagElement): Promise<void> {
+    if (hasTagReference(items, tag)) return
+
     dispatch('open', tag)
   }
   async function addTag(evt: Event): Promise<void> {
