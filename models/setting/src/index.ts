@@ -460,49 +460,6 @@ export function createModel (builder: Builder): void {
     },
     setting.ids.ApiTokens
   )
-  // Currently remove Support item from settings
-  // builder.createDoc(
-  //   setting.class.SettingsCategory,
-  //   core.space.Model,
-  //   {
-  //     name: 'support',
-  //     label: setting.string.Support,
-  //     icon: setting.icon.Support,
-  //     component: setting.component.Support,
-  //     group: 'main',
-  //     secured: false,
-  //     order: 5000
-  //   },
-  //   setting.ids.Support
-  // )
-  // builder.createDoc(
-  //   setting.class.SettingsCategory,
-  //   core.space.Model,
-  //   {
-  //     name: 'privacy',
-  //     label: setting.string.Privacy,
-  //     icon: setting.icon.Privacy,
-  //     component: setting.component.Privacy,
-  //     group: 'main',
-  //     secured: false,
-  //     order: 6000
-  //   },
-  //   setting.ids.Privacy
-  // )
-  // builder.createDoc(
-  //   setting.class.SettingsCategory,
-  //   core.space.Model,
-  //   {
-  //     name: 'terms',
-  //     label: setting.string.Terms,
-  //     icon: setting.icon.Terms,
-  //     component: setting.component.Terms,
-  //     group: 'main',
-  //     secured: false,
-  //     order: 10000
-  //   },
-  //   setting.ids.Terms
-  // )
 
   builder.createDoc(
     workbench.class.Application,
