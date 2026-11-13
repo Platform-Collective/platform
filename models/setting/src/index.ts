@@ -455,7 +455,7 @@ export function createModel (builder: Builder): void {
       icon: setting.icon.ApiToken,
       component: setting.component.ApiTokens,
       group: 'settings-account',
-      order: 1500,
+      order: 1550,
       role: AccountRole.User
     },
     setting.ids.ApiTokens
