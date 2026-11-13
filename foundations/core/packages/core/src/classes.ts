@@ -982,6 +982,7 @@ export interface BackupStatus {
   backupSize: number
 
   lastBackup: Timestamp
+  lastAttempt?: Timestamp
   backups: number
 }
 
