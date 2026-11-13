@@ -614,7 +614,7 @@ describe('two stale editors creating a one-way pair from opposite endpoints', ()
 
   it('one-way create from endpoint A emits BOTH direction guards', () => {
     // Editor A: in project A, picking B as target, bidi OFF, no existing rules either side.
-    const filters = uiFilters(PROJ_A as string, PROJ_B as string, {
+    const filters = uiFilters(PROJ_A, PROJ_B, {
       existingForward: undefined,
       existingReverse: undefined,
       bidirectional: false
@@ -626,7 +626,7 @@ describe('two stale editors creating a one-way pair from opposite endpoints', ()
 
   it('one-way create from endpoint B emits BOTH direction guards', () => {
     // Editor B: in project B, picking A as target, bidi OFF, no existing rules either side.
-    const filters = uiFilters(PROJ_B as string, PROJ_A as string, {
+    const filters = uiFilters(PROJ_B, PROJ_A, {
       existingForward: undefined,
       existingReverse: undefined,
       bidirectional: false
@@ -638,12 +638,12 @@ describe('two stale editors creating a one-way pair from opposite endpoints', ()
 
   it('both opposite-endpoint one-way creates produce the same filter set (serialize + reject)', () => {
     const asKey = (f: { space: string, linkedProject: string }): string => `${f.space}->${f.linkedProject}`
-    const fromA = uiFilters(PROJ_A as string, PROJ_B as string, {
+    const fromA = uiFilters(PROJ_A, PROJ_B, {
       existingForward: undefined,
       existingReverse: undefined,
       bidirectional: false
     })
-    const fromB = uiFilters(PROJ_B as string, PROJ_A as string, {
+    const fromB = uiFilters(PROJ_B, PROJ_A, {
       existingForward: undefined,
       existingReverse: undefined,
       bidirectional: false
@@ -664,7 +664,7 @@ describe('two stale editors creating a one-way pair from opposite endpoints', ()
     // predicates. Verify that at least one of B's predicates matches
     // the stored row, so the apply is rejected.
     const storedFromA: { space: string, linkedProject: string } = { space: PROJ_A, linkedProject: PROJ_B }
-    const bsGuards = uiFilters(PROJ_B as string, PROJ_A as string, {
+    const bsGuards = uiFilters(PROJ_B, PROJ_A, {
       existingForward: undefined,
       existingReverse: undefined,
       bidirectional: false
@@ -679,7 +679,7 @@ describe('two stale editors creating a one-way pair from opposite endpoints', ()
     // the forward row is persisted, so matching it would reject every
     // save. Only the reverse (new B -> A row) needs guarding.
     const existingForward: SiblingRule = { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B }
-    const filters = uiFilters(PROJ_A as string, PROJ_B as string, {
+    const filters = uiFilters(PROJ_A, PROJ_B, {
       existingForward,
       existingReverse: undefined,
       bidirectional: true
@@ -690,7 +690,7 @@ describe('two stale editors creating a one-way pair from opposite endpoints', ()
   it('pure edit (both persisted, no bidi toggle) emits no filters', () => {
     const existingForward: SiblingRule = { _id: RULE_1, space: PROJ_A, linkedProject: PROJ_B }
     const existingReverse: SiblingRule = { _id: RULE_2, space: PROJ_B, linkedProject: PROJ_A }
-    const filters = uiFilters(PROJ_A as string, PROJ_B as string, {
+    const filters = uiFilters(PROJ_A, PROJ_B, {
       existingForward,
       existingReverse,
       bidirectional: true
