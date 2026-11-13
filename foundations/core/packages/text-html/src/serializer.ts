@@ -14,6 +14,7 @@
 //
 
 import {
+  getCalloutKind,
   getOrderedListStart,
   type Attrs,
   type AttrValue,
@@ -37,6 +38,7 @@ export class HtmlSerializer {
 }
 
 class NodeBuilder {
+  inCallout = false
   textParts: string[] = []
 
   constructor (private readonly addTags: boolean) {}
@@ -198,6 +200,17 @@ function addNodeContent (builder: NodeBuilder, node?: MarkupNode): void {
     builder.openTag('p', { style })
     addNodes(builder, nodes)
     builder.closeTag('p')
+  } else if (node.type === MarkupNodeType.callout) {
+    builder.openTag('div', {
+      'data-type': 'callout',
+      'data-kind': getCalloutKind(attrs.kind),
+      'data-emoji': attrs.emoji
+    })
+    const inCallout = builder.inCallout
+    builder.inCallout = true
+    addNodes(builder, nodes)
+    builder.inCallout = inCallout
+    builder.closeTag('div')
   } else if (node.type === MarkupNodeType.blockquote) {
     builder.openTag('blockquote')
     addNodes(builder, nodes)
@@ -218,7 +231,10 @@ function addNodeContent (builder: NodeBuilder, node?: MarkupNode): void {
     builder.closeTag('code')
     builder.closeTag('pre')
   } else if (node.type === MarkupNodeType.text) {
-    builder.addText(node.text ?? '')
+    // Callouts contain literal editor text, including HTML-looking text and code. Outside
+    // callouts, preserve the legacy raw-HTML serialization behavior for existing content.
+    const text = node.text ?? ''
+    builder.addText(builder.inCallout ? escapeHtml(text) : text)
   } else if (node.type === MarkupNodeType.gif) {
     // Deliberately not modelled on the image case below: that one reads attrs.src only, so a
     // library gif (file-id set, src null) would serialize to src="undefined" and lose the blob
