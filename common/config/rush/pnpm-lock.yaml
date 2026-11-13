@@ -4240,6 +4240,9 @@ importers:
         specifier: ^0.4.2
         version: 0.4.2(prosemirror-inputrules@1.5.1)(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.3)
     devDependencies:
+      jest-environment-jsdom:
+        specifier: ^30.4.1
+        version: 30.5.2(bufferutil@4.0.9)(utf-8-validate@6.0.5)
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
         version: link:../../../utils/packages/platform-rig
