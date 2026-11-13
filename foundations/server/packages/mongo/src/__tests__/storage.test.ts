@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 //
 // Copyright © 2020 Anticrm Platform Contributors.
 //
@@ -29,12 +28,20 @@ import { type DbAdapter, wrapAdapterToClient } from '@hcengineering/server-core'
 import { runSharedIntegrationTests } from '@hcengineering/server-core/src/__tests__/shared-integration'
 import { createMongoAdapter, createMongoTxAdapter } from '..'
 import { getMongoClient, type MongoClientReference, shutdownMongo } from '../utils'
-import { genMinModel } from './minmodel'
+import { createDoc, genMinModel } from './minmodel'
 import { createTaskModel, type Task, type TaskComment, taskPlugin } from './tasks'
 
 const txes = genMinModel()
 
 createTaskModel(txes)
+txes.push(
+  createDoc(core.class.Attribute, {
+    attributeOf: taskPlugin.class.Task,
+    name: 'members',
+    label: core.string.Class,
+    type: { _class: core.class.ArrOf, of: { _class: core.class.TypeString } }
+  })
+)
 
 describe('mongo operations', () => {
   const mongodbUri: string = process.env.MONGO_URL ?? 'mongodb://localhost:27018'
@@ -64,7 +71,7 @@ describe('mongo operations', () => {
     try {
       await (await mongoClient.getClient()).db(dbUuid).dropDatabase()
     } catch (eee) {}
-    await serverStorage.close()
+    await serverStorage?.close()
   })
 
   async function initDb (): Promise<void> {
@@ -208,6 +215,30 @@ describe('mongo operations', () => {
 
     const sortDesc = await client.findAll(taskPlugin.class.Task, {}, { sort: { name: SortingOrder.Descending } })
     expect(sortDesc[0].name).toMatch('my-task-4')
+  })
+
+  it('sorts arrays of 0, 1 and 3 members before applying limits', async () => {
+    for (const count of [1, 3, 0]) {
+      await operations.createDoc<Task & { members: string[] }>(taskPlugin.class.Task, '' as Ref<Space>, {
+        name: `members-${count}`,
+        description: '',
+        members: Array.from({ length: count }, (_, index) => `member-${index}`)
+      })
+    }
+
+    for (const order of [SortingOrder.Ascending, SortingOrder.Descending]) {
+      const expected =
+        order === SortingOrder.Ascending
+          ? ['members-0', 'members-1', 'members-3']
+          : ['members-3', 'members-1', 'members-0']
+      const sorted = await client.findAll(taskPlugin.class.Task, {}, { sort: { 'members.length': order } })
+      expect(sorted.map((doc) => doc.name)).toEqual(expected)
+
+      for (const limit of [1, 2]) {
+        const limited = await client.findAll(taskPlugin.class.Task, {}, { sort: { 'members.length': order }, limit })
+        expect(limited.map((doc) => doc.name)).toEqual(expected.slice(0, limit))
+      }
+    }
   })
 
   it('check attached', async () => {
