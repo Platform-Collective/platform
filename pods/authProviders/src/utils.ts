@@ -105,7 +105,10 @@ export function shouldUseSecureAuthStateCookie (
   }
 }
 
-function authStateTokenCookieOptions (secure: boolean, maxAge?: number): {
+function authStateTokenCookieOptions (
+  secure: boolean,
+  maxAge?: number
+): {
   httpOnly: true
   secure: boolean
   sameSite: 'lax'

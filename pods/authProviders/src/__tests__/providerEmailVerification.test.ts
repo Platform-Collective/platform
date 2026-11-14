@@ -223,10 +223,26 @@ describe('provider email verification', () => {
       session: true
     })
     expect(koaCtx.redirect).not.toHaveBeenCalled()
-    expect(koaCtx.cookies.set).toHaveBeenCalledWith(
-      'auth_state_token',
-      null,
-      expect.objectContaining({ signed: true })
-    )
+    expect(koaCtx.cookies.set).toHaveBeenCalledWith('auth_state_token', null, expect.objectContaining({ signed: true }))
+  })
+
+  test.each(['google', 'github'] as const)('%s rejects parsed null state', async (provider) => {
+    const { measureCtx, passport, router } = setupProvider(provider)
+    passport.authenticate.mockReturnValue(async () => {})
+    const layer = router.stack.find((entry) => entry.path === `/auth/${provider}/callback`)
+    expect(layer).toBeDefined()
+    const koaCtx: any = {
+      query: { state: 'null' },
+      state: {},
+      cookies: { get: jest.fn().mockReturnValue('state-nonce'), set: jest.fn() },
+      redirect: jest.fn()
+    }
+
+    await (layer as any).stack[0](koaCtx, async () => {})
+
+    expect(passport.authenticate).not.toHaveBeenCalled()
+    expect(koaCtx.redirect).toHaveBeenCalledWith('http://front.example.com/login')
+    expect(measureCtx.warn).toHaveBeenCalledWith('auth state rejected', { provider, reason: 'missing_nonce' })
+    expect(koaCtx.cookies.set).toHaveBeenCalledWith('auth_state_token', null, expect.objectContaining({ signed: true }))
   })
 })

@@ -64,7 +64,7 @@ export function registerGithub (
       const state = safeParseAuthState(ctx.query?.state)
       const branding = getBranding(brandings, state?.branding)
       const loginUrl = concatLink(branding?.front ?? frontUrl, '/login')
-      const validation = validateAuthStateTokenCookie(ctx, state.nonce, secureStateCookie)
+      const validation = validateAuthStateTokenCookie(ctx, state?.nonce, secureStateCookie)
       if (!validation.valid) {
         measureCtx.warn('auth state rejected', { provider: 'github', reason: validation.reason })
         ctx.redirect(loginUrl)
