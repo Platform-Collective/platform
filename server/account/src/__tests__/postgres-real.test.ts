@@ -4,6 +4,7 @@
 
 import { generateUuid, SocialIdType, type AccountUuid, type PersonId } from '@hcengineering/core'
 import { getDBClient, shutdownPostgres, type PostgresClientReference } from '@hcengineering/postgres'
+import type { Sql } from 'postgres'
 import { PostgresAccountDB } from '../collections/postgres/postgres'
 import { type SocialId } from '../types'
 import { createAccount, getDbFlavor, normalizeValue, verifyOtpAttempt } from '../utils'
@@ -31,6 +32,8 @@ describe('real-account', () => {
 
   let crClient: PostgresClientReference
   let pgClient: PostgresClientReference
+  let crRawClient: Sql | undefined
+  let pgRawClient: Sql | undefined
 
   let crAccount: PostgresAccountDB
   let pgAccount: PostgresAccountDB
@@ -92,6 +95,8 @@ describe('real-account', () => {
   })
 
   beforeEach(async () => {
+    crRawClient = undefined
+    pgRawClient = undefined
     // Create a unique database for each test to ensure isolation
     dbUuid = 'otp296db' + generateUuid().replace(/-/g, '')
     crDbUri = cockroachDB.replace('/defaultdb', '/' + dbUuid)
@@ -109,9 +114,11 @@ describe('real-account', () => {
 
     crClient = getDBClient(crDbUri)
     const crPGClient = await crClient.getClient()
+    crRawClient = crPGClient
 
     pgClient = getDBClient(pgDbUri)
     const pgPGClient = await pgClient.getClient()
+    pgRawClient = pgPGClient
 
     // Initial DB's
 
@@ -125,8 +132,14 @@ describe('real-account', () => {
   })
 
   afterEach(async () => {
-    pgClient?.close()
-    crClient?.close()
+    // Reference.close() starts asynchronous shutdown and cannot be awaited.
+    // Wait for these UUID-database pools only before dropping their databases.
+    try {
+      await Promise.all([pgRawClient?.end({ timeout: 1 }), crRawClient?.end({ timeout: 1 })])
+    } finally {
+      pgClient?.close()
+      crClient?.close()
+    }
 
     // Drop only this fixture's UUID-named databases; never clean another job's namespace.
     const adminClient = await adminClientCRRef.getClient()
