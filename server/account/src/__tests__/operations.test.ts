@@ -39,6 +39,7 @@ import {
   getLoginWithWorkspaceInfo,
   getWorkspacesInfo,
   updateLastVisit,
+  join,
   releaseSocialId,
   loginAsGuest,
   getLoginCapabilities,
@@ -64,6 +65,7 @@ import {
   canMergeSpecifiedPersons,
   getMethods
 } from '../operations'
+import { overrideAccountConfigurationForTests } from '../config'
 import { accountPlugin } from '../plugin'
 
 // Mock platform
@@ -121,7 +123,8 @@ describe('account operations', () => {
 
   const mockDb = {
     account: {
-      findOne: jest.fn()
+      findOne: jest.fn(),
+      update: jest.fn()
     },
     workspace: {
       findOne: jest.fn()
@@ -132,6 +135,7 @@ describe('account operations', () => {
       update: jest.fn()
     },
     getWorkspaceRole: jest.fn(),
+    assignWorkspace: jest.fn(),
     getWorkspaceMembers: jest.fn(),
     unassignWorkspace: jest.fn(),
     updateWorkspaceRole: jest.fn(),
@@ -139,7 +143,8 @@ describe('account operations', () => {
       findOne: jest.fn()
     },
     socialId: {
-      findOne: jest.fn()
+      findOne: jest.fn(),
+      find: jest.fn()
     },
     mailboxSecret: {
       findOne: jest.fn()
@@ -255,6 +260,62 @@ describe('account operations', () => {
           role: AccountRole.Owner
         })
       ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {})))
+    })
+  })
+
+  describe('join', () => {
+    test('allows an existing account to join a public workspace by URL in invite-or-SSO mode', async () => {
+      const restoreConfiguration = overrideAccountConfigurationForTests({ inviteOrSsoSignup: true })
+      const password = 'existing-account-password'
+      const salt = Buffer.from('existing-account-salt')
+      const publicWorkspace = {
+        ...mockWorkspace,
+        allowReadOnlyGuest: true,
+        allowGuestSignUp: true
+      }
+      const joinResult = { account: mockAccount.uuid, workspace: mockWorkspace.uuid } as any
+
+      try {
+        ;(mockDb.workspace.findOne as jest.Mock).mockResolvedValue(publicWorkspace)
+        ;(mockDb.socialId.findOne as jest.Mock).mockResolvedValue({
+          _id: 'existing-email-social-id',
+          personUuid: mockAccount.uuid,
+          verifiedOn: Date.now()
+        })
+        ;(mockDb.account.findOne as jest.Mock).mockResolvedValue({
+          uuid: mockAccount.uuid,
+          hash: utils.hashWithSalt(password, salt),
+          salt
+        })
+        ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({
+          uuid: mockAccount.uuid,
+          firstName: 'Existing',
+          lastName: 'Account'
+        })
+        jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue(joinResult)
+
+        await expect(
+          join(mockCtx, mockDb, mockBranding, mockToken, {
+            email: 'existing@example.com',
+            password,
+            inviteId: '',
+            workspaceUrl: mockWorkspace.url
+          })
+        ).resolves.toEqual(joinResult)
+
+        expect(mockDb.account.findOne).toHaveBeenCalledWith({ uuid: mockAccount.uuid })
+        expect(utils.doJoinByInvite).toHaveBeenCalledWith(
+          mockCtx,
+          mockDb,
+          mockBranding,
+          expect.any(String),
+          mockAccount.uuid,
+          publicWorkspace,
+          undefined
+        )
+      } finally {
+        restoreConfiguration()
+      }
     })
   })
 
@@ -863,6 +924,20 @@ describe('account operations', () => {
         })
       })
 
+      test('denies a grant from provisioning a new account in invite-or-SSO mode', async () => {
+        const restoreConfiguration = overrideAccountConfigurationForTests({ inviteOrSsoSignup: true })
+        try {
+          ;(mockDb.account.findOne as jest.Mock).mockResolvedValue(null)
+
+          await expect(getLoginInfoByToken(mockCtx, mockDb, mockBranding, mockToken)).rejects.toThrow(
+            new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+          )
+          expect(mockDb.assignWorkspace).not.toHaveBeenCalled()
+        } finally {
+          restoreConfiguration()
+        }
+      })
+
       test('should request firstName/lastName if not provided for new account', async () => {
         ;(mockDb.account.findOne as jest.Mock).mockResolvedValue(null)
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(null)
@@ -902,6 +977,26 @@ describe('account operations', () => {
           endpoint: expect.any(String),
           role: AccountRole.Guest
         })
+      })
+
+      test('allows an existing automatic account to redeem a grant in invite-or-SSO mode', async () => {
+        const restoreConfiguration = overrideAccountConfigurationForTests({ inviteOrSsoSignup: true })
+        try {
+          ;(mockDb.account.findOne as jest.Mock).mockResolvedValue({ uuid: grantAccount, automatic: true })
+          ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({
+            uuid: grantAccount,
+            firstName: grantFirstName,
+            lastName: grantLastName
+          })
+          ;(mockDb.getWorkspaceRole as jest.Mock).mockResolvedValue(AccountRole.User)
+          ;(mockDb.socialId.find as jest.Mock).mockResolvedValue([{ _id: 'social-id-1' }])
+
+          const result = await getLoginInfoByToken(mockCtx, mockDb, mockBranding, mockToken)
+
+          expect(result).toEqual(expect.objectContaining({ account: grantAccount, workspace: grantWorkspace.uuid }))
+        } finally {
+          restoreConfiguration()
+        }
       })
 
       test('should return null for grant with existing non-automatic account', async () => {
@@ -1887,6 +1982,22 @@ describe('account operations', () => {
         }
       })
 
+      test('should report signUpEnabled=false in invite-or-SSO mode', async () => {
+        const restoreConfiguration = overrideAccountConfigurationForTests({ inviteOrSsoSignup: true })
+        const prevGuest = process.env.DISABLE_GUEST_LOGIN
+        delete process.env.DISABLE_GUEST_LOGIN
+        try {
+          ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({ uuid: readOnlyGuestAccountUuid })
+
+          const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
+
+          expect(result).toEqual({ signUpEnabled: false, guestLoginAvailable: true })
+        } finally {
+          restoreConfiguration()
+          restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
+        }
+      })
+
       test('should report guestLoginAvailable=false when DISABLE_GUEST_LOGIN=true (no DB lookup)', async () => {
         const prevSignup = process.env.DISABLE_SIGNUP
         const prevGuest = process.env.DISABLE_GUEST_LOGIN
@@ -2186,6 +2297,22 @@ describe('account operations', () => {
           }
         }
       })
+
+      test('should fail with Forbidden in invite-or-SSO mode', async () => {
+        const restoreConfiguration = overrideAccountConfigurationForTests({ inviteOrSsoSignup: true })
+        try {
+          await expect(
+            signUp(mockCtx, mockDb, mockBranding, mockToken, {
+              email: mockEmail,
+              password: mockPassword,
+              firstName: mockFirstName,
+              lastName: mockLastName
+            })
+          ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {})))
+        } finally {
+          restoreConfiguration()
+        }
+      })
     })
 
     describe('confirm', () => {
@@ -2432,11 +2559,51 @@ describe('account operations', () => {
           }
         }
       })
+
+      test('should fail with Forbidden in invite-or-SSO mode', async () => {
+        const restoreConfiguration = overrideAccountConfigurationForTests({ inviteOrSsoSignup: true })
+        try {
+          await expect(
+            signUpOtp(mockCtx, mockDb, mockBranding, mockToken, {
+              email: mockEmail,
+              firstName: mockFirstName,
+              lastName: mockLastName
+            })
+          ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {})))
+        } finally {
+          restoreConfiguration()
+        }
+      })
     })
 
     describe('validateOtp', () => {
       beforeEach(() => {
         jest.spyOn(utils, 'setPassword').mockResolvedValue()
+      })
+
+      test('does not create an account from a pending signup OTP in invite-or-SSO mode', async () => {
+        const restoreConfiguration = overrideAccountConfigurationForTests({ inviteOrSsoSignup: true })
+        const mockSocialId: SocialId = {
+          _id: 'social-id' as PersonId,
+          personUuid: mockPersonId,
+          type: SocialIdType.EMAIL,
+          value: mockEmail,
+          key: `email:${mockEmail}`
+        }
+        try {
+          jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
+          jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+          jest.spyOn(utils, 'createAccount').mockResolvedValue('huly-social-id' as PersonId)
+          ;(mockDb.account.findOne as jest.Mock).mockResolvedValue(null)
+
+          await expect(
+            validateOtp(mockCtx, mockDb, mockBranding, mockToken, { email: mockEmail, code: '123456' })
+          ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {})))
+          expect(utils.createAccount).not.toHaveBeenCalled()
+          expect(mockDb.otp.deleteMany).not.toHaveBeenCalled()
+        } finally {
+          restoreConfiguration()
+        }
       })
 
       test('should validate OTP and create account for signup', async () => {
@@ -2805,6 +2972,47 @@ describe('account operations', () => {
         inviteId: mockInviteId,
         workspaceUrl: mockWorkspaceUrl
       }
+
+      test('denies public workspace signup without an invite in invite-or-SSO mode', async () => {
+        const restoreConfiguration = overrideAccountConfigurationForTests({ inviteOrSsoSignup: true })
+        const getWorkspaceJoinInfoSpy = jest.spyOn(utils, 'getWorkspaceJoinInfo')
+        try {
+          await expect(
+            signUpJoin(mockCtx, mockDb, mockBranding, mockToken, { ...baseParams, inviteId: '' })
+          ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {})))
+          expect(getWorkspaceJoinInfoSpy).not.toHaveBeenCalled()
+        } finally {
+          restoreConfiguration()
+        }
+      })
+
+      test('allows signup with a valid invite in invite-or-SSO mode', async () => {
+        const mockSocialId = 'social-id' as PersonId
+        const joinResult = { account: mockAccountId, workspace: mockWorkspaceUuid } as any
+        const restoreConfiguration = overrideAccountConfigurationForTests({ inviteOrSsoSignup: true })
+        try {
+          jest.spyOn(utils, 'getWorkspaceJoinInfo').mockResolvedValue({
+            email: mockEmail,
+            invite: mockInvite,
+            workspace: mockWorkspace
+          })
+          jest.spyOn(utils, 'signUpByEmail').mockResolvedValue({ account: mockAccountId, socialId: mockSocialId })
+          jest.spyOn(utils, 'confirmHulyIds').mockResolvedValue()
+          jest.spyOn(utils, 'doJoinByInvite').mockResolvedValue(joinResult)
+          ;(getMetadata as jest.Mock).mockReturnValue('')
+
+          await expect(signUpJoin(mockCtx, mockDb, mockBranding, mockToken, baseParams)).resolves.toEqual(joinResult)
+          expect(utils.getWorkspaceJoinInfo).toHaveBeenCalledWith(
+            mockCtx,
+            mockDb,
+            mockEmail,
+            mockInviteId,
+            mockWorkspaceUrl
+          )
+        } finally {
+          restoreConfiguration()
+        }
+      })
 
       test('should NOT auto-confirm and should send confirmation with invite info when MAIL_URL is configured', async () => {
         const mockSocialId = {

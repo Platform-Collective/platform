@@ -47,6 +47,7 @@ import {
 
 import { randomUUID } from 'crypto'
 import { isAdminEmail } from './admin'
+import { accountConfiguration } from './config'
 import { accountPlugin } from './plugin'
 import { type AccountServiceMethods, getServiceMethods } from './serviceOperations'
 import {
@@ -197,7 +198,7 @@ export async function getLoginCapabilities (
   branding: Branding | null,
   token: string
 ): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean }> {
-  const signUpEnabled = process.env.DISABLE_SIGNUP !== 'true'
+  const signUpEnabled = process.env.DISABLE_SIGNUP !== 'true' && !accountConfiguration.inviteOrSsoSignup
 
   let guestLoginAvailable = false
   if (process.env.DISABLE_GUEST_LOGIN !== 'true') {
@@ -355,7 +356,7 @@ export async function signUp (
   },
   meta?: Meta
 ): Promise<LoginInfo> {
-  if (process.env.DISABLE_SIGNUP === 'true') {
+  if (process.env.DISABLE_SIGNUP === 'true' || accountConfiguration.inviteOrSsoSignup) {
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
   const { email, password, firstName, lastName } = params
@@ -402,7 +403,7 @@ export async function signUpOtp (
     lastName?: string
   }
 ): Promise<OtpInfo> {
-  if (process.env.DISABLE_SIGNUP === 'true') {
+  if (process.env.DISABLE_SIGNUP === 'true' || accountConfiguration.inviteOrSsoSignup) {
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
   const { email, firstName, lastName } = params
@@ -494,6 +495,12 @@ export async function validateOtp (
       }
     }
 
+    const targetAccount = await db.account.findOne({ uuid: emailSocialId.personUuid as AccountUuid })
+
+    if (action !== 'verify' && targetAccount == null && accountConfiguration.inviteOrSsoSignup) {
+      throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+    }
+
     // Consume the code atomically: only the request that actually deletes it may proceed,
     // so concurrent requests with the same valid code cannot both succeed.
     const consumed = await db.otp.deleteMany({ socialId: emailSocialId._id, code })
@@ -502,8 +509,6 @@ export async function validateOtp (
       throw new PlatformError(new Status(Severity.ERROR, platform.status.InvalidOtp, {}))
     }
     await db.otp.deleteMany({ socialId: emailSocialId._id })
-
-    const targetAccount = await db.account.findOne({ uuid: emailSocialId.personUuid as AccountUuid })
 
     if (action !== 'verify') {
       // login/sign up
@@ -1367,6 +1372,10 @@ export async function signUpJoin (
     throw new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
   }
 
+  if (accountConfiguration.inviteOrSsoSignup && (inviteId == null || inviteId === '')) {
+    throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+  }
+
   const workspaceJoinInfo = await getWorkspaceJoinInfo(ctx, db, email, inviteId, workspaceUrl)
   ctx.info('Signing up and joining a workspace using invite', {
     email,
@@ -2188,6 +2197,10 @@ export async function getLoginInfoByToken (
     const grantAccount = await getAccount(db, accountUuid)
 
     if (grantAccount == null) {
+      if (accountConfiguration.inviteOrSsoSignup) {
+        throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+      }
+
       const grantPerson = await db.person.findOne({ uuid: accountUuid })
       const firstName = grantPerson?.firstName ?? params?.firstName ?? grant.firstName
       const lastName = grantPerson?.lastName ?? params?.lastName ?? grant.lastName

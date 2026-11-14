@@ -461,6 +461,7 @@ sequenceDiagram
 - `SERVER_SECRET`: `secret` - Service-to-service auth
 - `ADMIN_EMAILS`: Admin user emails
 - `LAST_NAME_FIRST`: `true` - Name formatting preference
+- `ACCOUNT_SIGNUP_MODE`: `invite_or_sso` blocks direct account provisioning, enabling guest access or guest signup, and public guest joins by URL for new accounts; invites and configured SSO remain available, existing accounts can still join a public workspace by URL, and login capabilities hide the signup link. Unset keeps existing behavior.
 
 ### Feature Flags
 - `COMMUNICATION_API_ENABLED`: `true`

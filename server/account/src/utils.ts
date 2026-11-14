@@ -76,6 +76,7 @@ import {
   type DBFlavor
 } from './types'
 import { isAdminEmail } from './admin'
+import { accountConfiguration } from './config'
 import { type Sql } from 'postgres'
 
 export const GUEST_ACCOUNT = 'b6996120-416f-49cd-841e-e4a5d2e49c9b' as PersonUuid
@@ -1034,6 +1035,11 @@ export async function updateAllowReadOnlyGuests (
   }
 ): Promise<{ guestPerson: Person, guestSocialIds: SocialId[] } | undefined> {
   const { readOnlyGuestsAllowed } = params
+
+  if (readOnlyGuestsAllowed && accountConfiguration.inviteOrSsoSignup) {
+    throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+  }
+
   const { account, workspace } = decodeTokenVerbose(ctx, token)
 
   if (workspace === null) {
@@ -1138,6 +1144,11 @@ export async function updateAllowGuestSignUp (
   }
 ): Promise<void> {
   const { guestSignUpAllowed } = params
+
+  if (guestSignUpAllowed && accountConfiguration.inviteOrSsoSignup) {
+    throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+  }
+
   const { account, workspace } = decodeTokenVerbose(ctx, token)
 
   if (workspace === null) {
