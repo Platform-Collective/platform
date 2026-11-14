@@ -27,5 +27,14 @@ export function getEmojiCodePoints (emoji: string): number[] {
  */
 export function getEmojiFromCodePoints (icon: number | number[]): string {
   const value = Array.isArray(icon) ? String.fromCodePoint(...icon) : String.fromCodePoint(icon)
-  return emojiPresentation.get(value.replace(/\uFE0F/g, '')) ?? value
+  const canonical = emojiPresentation.get(value.replace(/\uFE0F/g, ''))
+  if (canonical === undefined) return value
+  // Only restore selectors omitted at canonical positions; never move or remove input characters.
+  const input = Array.from(value)
+  let index = 0
+  for (const character of canonical) {
+    if (character === input[index]) index++
+    else if (character !== '\uFE0F') return value
+  }
+  return index === input.length ? canonical : value
 }

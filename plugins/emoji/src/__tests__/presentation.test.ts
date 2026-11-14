@@ -57,3 +57,21 @@ describe('emoji icon presentation', () => {
     expect(getEmojiFromCodePoints([0x1f3cb, 0x1f3fd, 0x200d, 0x2642])).toBe('\u{1F3CB}\u{1F3FD}\u200D\u2642\uFE0F')
   })
 })
+
+
+describe('unknown presentation selectors', () => {
+  it.each([
+    [0xfe0f, 0x1f5a5],
+    [0x1f5a5, 0xfe0f, 0xfe0f],
+    [0x1f3f3, 0x200d, 0xfe0f, 0x26a7]
+  ])('preserves misplaced or repeated selectors (%p)', (...points: number[]) => {
+    expect(getEmojiFromCodePoints(points)).toBe(String.fromCodePoint(...points))
+  })
+
+  it.each([
+    [0x1f3f3, 0xfe0f, 0x200d, 0x26a7],
+    [0x1f3f3, 0x200d, 0x26a7, 0xfe0f]
+  ])('restores a partially qualified sequence (%p)', (...points: number[]) => {
+    expect(getEmojiFromCodePoints(points)).toBe(String.fromCodePoint(0x1f3f3, 0xfe0f, 0x200d, 0x26a7, 0xfe0f))
+  })
+})
