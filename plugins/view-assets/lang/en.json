@@ -79,6 +79,8 @@
     "Grouping": "Grouping",
     "Ordering": "Ordering",
     "Manual": "Manual",
+    "Ascending": "Ascending",
+    "Descending": "Descending",
 
     "FilteredViews": "Filtered views",
     "NewFilteredView": "New filtered view",
@@ -120,6 +122,7 @@
     "TableCopiedToClipboard": "Table copied to clipboard",
     "TableCopyFailed": "Failed to copy table to clipboard",
     "PublicView": "Public",
+    "OverwriteWithCurrentFilters": "Overwrite with current filters and view type",
 
     "ChooseIcon": "Choose icon",
     "IconColor": "Choose icon color",

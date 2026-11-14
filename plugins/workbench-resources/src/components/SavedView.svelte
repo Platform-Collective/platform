@@ -1,6 +1,6 @@
 <script lang="ts">
   import contact from '@hcengineering/contact'
-  import { AccountRole, Ref, getCurrentAccount, toIdMap } from '@hcengineering/core'
+  import core, { AccountRole, Ref, Space, getCurrentAccount, toIdMap } from '@hcengineering/core'
   import { copyTextToClipboard, createQuery, getClient } from '@hcengineering/presentation'
   import setting from '@hcengineering/setting'
   import {
@@ -24,7 +24,9 @@
     TreeNode,
     activeViewlet,
     filterStore,
+    getActiveViewletId,
     getViewOptions,
+    getStoredViewOptions,
     makeViewletKey,
     selectedFilterStore,
     setActiveViewletId,
@@ -34,6 +36,8 @@
   } from '@hcengineering/view-resources'
   import copy from 'fast-copy'
   import { createEventDispatcher } from 'svelte'
+  import { canOverwriteFilteredView } from '../savedView'
+  import { getFilteredViewSpaceId, getFilteredViewSpaceIds, getSpaceShortLabel } from '../savedViewSpace'
   import TodoCheck from './icons/TodoCheck.svelte'
   import TodoUncheck from './icons/TodoUncheck.svelte'
 
@@ -64,6 +68,23 @@
     filteredViewsQuery.unsubscribe()
     myFilteredViews = []
     availableFilteredViews = []
+  }
+
+  const spacesQuery = createQuery()
+  let spaceLabels = new Map<Ref<Space>, string>()
+  $: spaceIds = getFilteredViewSpaceIds([...myFilteredViews, ...availableFilteredViews])
+  $: if (spaceIds.length > 0) {
+    spacesQuery.query(core.class.Space, { _id: { $in: spaceIds } }, (res) => {
+      spaceLabels = new Map(res.map((s) => [s._id, getSpaceShortLabel(s)]))
+    })
+  } else {
+    spacesQuery.unsubscribe()
+    spaceLabels = new Map()
+  }
+
+  function getSpaceLabel(fv: FilteredView, labels: Map<Ref<Space>, string>): string | undefined {
+    const id = getFilteredViewSpaceId(fv)
+    return id !== undefined ? labels.get(id) : undefined
   }
 
   async function removeAction(filteredView: FilteredView): Promise<Action[]> {
@@ -111,6 +132,27 @@
     ]
   }
 
+  async function overwriteAction(filteredView: FilteredView): Promise<Action[]> {
+    if (!canOverwriteFilteredView(filteredView, myAcc.socialIds, $location.path, $filterStore.length)) return []
+    return [
+      {
+        icon: view.icon.Views,
+        label: view.string.OverwriteWithCurrentFilters,
+        action: async (ctx: any, evt: Event) => {
+          const filters = JSON.stringify($filterStore)
+          const viewletId = getActiveViewletId()
+          const viewlet =
+            viewletId !== null ? await client.findOne<Viewlet>(view.class.Viewlet, { _id: viewletId }) : undefined
+          const current = viewlet !== undefined ? getStoredViewOptions(viewlet, $viewOptionStore) : null
+          const viewOptions = current ?? filteredView.viewOptions
+          await client.update(filteredView, { filters, viewOptions, viewletId })
+          selectedFilterStore.set({ ...filteredView, filters, viewOptions, viewletId })
+          selectedId = filteredView._id
+        }
+      }
+    ]
+  }
+
   async function copyUrlAction(filteredView: FilteredView): Promise<Action[]> {
     return [
       {
@@ -141,8 +183,9 @@
     const hide = await hideAction(filteredView)
 
     if (filteredView.createdBy !== undefined && myAcc.socialIds.includes(filteredView.createdBy)) {
+      const overwrite = await overwriteAction(filteredView)
       const remove = await removeAction(filteredView)
-      return [...setPublic, ...rename, ...remove, ...copyUrl]
+      return [...overwrite, ...setPublic, ...rename, ...remove, ...copyUrl]
     }
     return [...hide, ...copyUrl]
   }
@@ -242,10 +285,13 @@
         const filteredView = filteredViewsIdMap.get(id)
         if (filteredView) await client.update(filteredView, { $push: { users: myAcc.uuid } })
       }
-      const value = availableFilteredViews.map((p) => ({
-        id: p._id,
-        text: p.name
-      }))
+      const value = availableFilteredViews.map((p) => {
+        const spaceLabel = getSpaceLabel(p, spaceLabels)
+        return {
+          id: p._id,
+          text: spaceLabel !== undefined ? `${p.name} (${spaceLabel})` : p.name
+        }
+      })
       const add: Action = {
         label: view.string.AddSavedView,
         icon: IconAdd,
@@ -288,13 +334,27 @@
           await load(fv)
         }}
         actions={async (ov) => await viewAction(fv, ov)}
-      />
+      >
+        <svelte:fragment slot="extra">
+          {@const spaceLabel = getSpaceLabel(fv, spaceLabels)}
+          {#if spaceLabel !== undefined}
+            <span class="content-dark-color font-regular-12 flex-no-shrink ml-2">{spaceLabel}</span>
+          {/if}
+        </svelte:fragment>
+      </TreeItem>
     {/each}
 
     <svelte:fragment slot="visible">
       {#if visibleFilter}
         {@const item = visibleFilter}
-        <TreeItem _id={item._id} title={item.name} selected actions={async (ov) => await viewAction(item, ov)} />
+        {@const spaceLabel = getSpaceLabel(item, spaceLabels)}
+        <TreeItem _id={item._id} title={item.name} selected actions={async (ov) => await viewAction(item, ov)}>
+          <svelte:fragment slot="extra">
+            {#if spaceLabel !== undefined}
+              <span class="content-dark-color font-regular-12 flex-no-shrink ml-2">{spaceLabel}</span>
+            {/if}
+          </svelte:fragment>
+        </TreeItem>
       {/if}
     </svelte:fragment>
   </TreeNode>

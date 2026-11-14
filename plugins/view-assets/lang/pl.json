@@ -1,5 +1,9 @@
 {
   "string": {
+    "AddFilter": "Dodaj filtr",
+    "ConfigureColumns": "Konfiguruj kolumny",
+    "FilterOverflowBadge": "+{count}",
+    "HiddenFilters": "Ukryte filtry",
     "Contains": "zawiera",
     "NotContains": "nie zawiera",
     "MoveClass": "Przenieś {class}",
@@ -79,6 +83,8 @@
     "Grouping": "Grupowanie po",
     "Ordering": "Sortowanie według",
     "Manual": "Ręczne",
+    "Ascending": "Rosnąco",
+    "Descending": "Malejąco",
 
     "FilteredViews": "Filtrowane widoki",
     "NewFilteredView": "Nowy widok filtrowany",
@@ -120,6 +126,7 @@
     "TableCopiedToClipboard": "Tabela skopiowana do schowka",
     "TableCopyFailed": "Nieudana próba skopiowania tabeli do schowka",
     "PublicView": "Publiczny",
+    "OverwriteWithCurrentFilters": "Nadpisz bieżącymi filtrami i typem widoku",
 
     "ChooseIcon": "Wybierz ikonę",
     "IconColor": "Wybierz kolor ikony",

@@ -79,6 +79,8 @@
     "Grouping": "分组",
     "Ordering": "排序",
     "Manual": "手动",
+    "Ascending": "升序",
+    "Descending": "降序",
 
     "FilteredViews": "筛选视图",
     "NewFilteredView": "新筛选视图",
@@ -120,6 +122,7 @@
     "TableCopiedToClipboard": "表格已复制到剪贴板",
     "TableCopyFailed": "复制表格到剪贴板失败",
     "PublicView": "公开视图",
+    "OverwriteWithCurrentFilters": "使用当前筛选条件和视图类型覆盖",
 
     "ChooseIcon": "选择图标",
     "IconColor": "选择图标颜色",

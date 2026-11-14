@@ -76,6 +76,8 @@
     "Grouping": "Группировка",
     "Ordering": "Сортировка",
     "Manual": "Пользовательский",
+    "Ascending": "По возрастанию",
+    "Descending": "По убыванию",
     "FilteredViews": "Фильтрованные отображения",
     "NewFilteredView": "Новое фильтрованное отображение",
     "FilteredViewName": "Имя фильтрованного отображения",
@@ -116,6 +118,7 @@
     "TableCopiedToClipboard": "Таблица скопирована в буфер обмена",
     "TableCopyFailed": "Не удалось скопировать таблицу в буфер обмена",
     "PublicView": "Публичный",
+    "OverwriteWithCurrentFilters": "Перезаписать текущими фильтрами и типом представления",
 
     "ChooseIcon": "Выбрать иконку",
     "IconColor": "Выберите цвет",
