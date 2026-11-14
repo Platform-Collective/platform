@@ -599,6 +599,14 @@ export const trackerOperation: MigrateOperation = {
         func: async (client) => {
           await client.reindex(DOMAIN_TRACKER, [tracker.class.Milestone])
         }
+      },
+      {
+        // Repeat requests consumed before workspace reindex events were forwarded.
+        // Deploy the updated fulltext service before upgrading workspaces.
+        state: 'milestone-search-reindex-v2',
+        func: async (client) => {
+          await client.reindex(DOMAIN_TRACKER, [tracker.class.Milestone])
+        }
       }
     ])
   },

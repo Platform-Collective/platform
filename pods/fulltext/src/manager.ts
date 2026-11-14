@@ -221,6 +221,14 @@ export class WorkspaceManager {
         return
       }
       await this.fulltextProducer.send(ctx, ws, [workspaceEvents.fullReindex()])
+    } else if (mm.type === QueueWorkspaceEvent.Reindex) {
+      // Migrations request a partial reindex (`client.reindex(domain, classes)`) on the workspace topic;
+      // it is done by the fulltext consumer, so hand it on unless the workspace is being restored.
+      if (this.restoring.has(ws)) {
+        return
+      }
+      const mmd = mm as QueueWorkspaceReindexMessage
+      await this.fulltextProducer.send(ctx, ws, [workspaceEvents.reindex(mmd.domain, mmd.classes)])
     } else if (
       mm.type === QueueWorkspaceEvent.Deleted ||
       mm.type === QueueWorkspaceEvent.Archived ||

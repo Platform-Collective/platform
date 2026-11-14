@@ -190,6 +190,7 @@ class ElasticPushQueue {
 
           await this.control?.heartbeat()
         } catch (err: any) {
+          this.ctx.warn('bulk indexing failed, retrying documents individually', { err, workspace: this.workspace.uuid })
           Analytics.handleError(err)
           // Try to push one by one
           await this.ctx.with(
@@ -200,6 +201,11 @@ class ElasticPushQueue {
                 try {
                   await this.fulltextAdapter.update(this.ctx, this.workspace.uuid, d.id, d)
                 } catch (err2: any) {
+                  this.ctx.error('failed to index document', {
+                    err: err2,
+                    workspace: this.workspace.uuid,
+                    document: d.id
+                  })
                   Analytics.handleError(err2)
                 }
               }
@@ -210,6 +216,7 @@ class ElasticPushQueue {
           )
         }
       } catch (err: any) {
+        this.ctx.error('failed to push documents to index', { err, workspace: this.workspace.uuid })
         Analytics.handleError(err)
       }
     })
@@ -347,7 +354,8 @@ export class FullTextIndexPipeline implements FullTextPipeline {
           }
           await pushQueue.waitProcessing()
         } catch (err: any) {
-          ctx.error('failed to restore index state', { err })
+          ctx.error('failed to restore index state', { err, workspace: this.workspace.uuid, domain, processed })
+          throw err
         } finally {
           await allDocs.close()
         }
@@ -357,7 +365,7 @@ export class FullTextIndexPipeline implements FullTextPipeline {
         workspace: this.workspace.uuid
       }
     )
-    ctx.info('reindex done', { domain, processed, processedCommunication })
+    ctx.info('reindex done', { workspace: this.workspace.uuid, domain, processed, processedCommunication })
   }
 
   async dropWorkspace (control?: ConsumerControl): Promise<void> {
