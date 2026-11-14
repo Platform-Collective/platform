@@ -1030,10 +1030,11 @@ describe('account utils', () => {
       })
 
       describe('verifyOtpAttempt', () => {
-        test.each([
+        const clockCases: Array<[number, number, string]> = [
           [1000, 121000, 'valid'],
           [61000, -59000, 'invalid']
-        ])('uses database expiry at DB=%s and replica=%s', async (databaseNow, replicaNow, expected) => {
+        ]
+        test.each(clockCases)('uses database expiry at DB=%s and replica=%s', async (databaseNow, replicaNow, expected) => {
           const row = { code: '123456', attempts: 1, expiresOn: 61000 }
           const clock = jest.spyOn(Date, 'now').mockReturnValue(replicaNow)
           const db = {

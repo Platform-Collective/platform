@@ -1,4 +1,4 @@
-import { SocialIdType, type PersonId } from '@hcengineering/core'
+import { generateUuid, SocialIdType, type PersonId } from '@hcengineering/core'
 import { MongoClient, type Db } from 'mongodb'
 import { MongoAccountDB } from '../collections/mongo'
 import { otpCooldownCases } from './otpCooldownCases'
@@ -16,7 +16,7 @@ describe('real MongoDB OTP cooldown transition', () => {
   })
 
   beforeEach(async () => {
-    database = client.db(`account_otp_transition_${Date.now()}`)
+    database = client.db(`account_otp_transition_${generateUuid().replace(/-/g, '')}`)
     account = new MongoAccountDB(database)
     await database.collection<{ _id: PersonId, type: SocialIdType, value: string }>('socialId').insertOne({
       _id: socialId,

@@ -494,6 +494,17 @@ export async function validateOtp (
       }
     }
 
+    // Preserve an active legacy code's cooldown before consumption removes its only timestamp.
+    // This reserves/imports the deadline without sending mail, and fails closed on storage errors.
+    await db.reserveOtpSend(emailSocialId._id, (getMetadata(accountPlugin.metadata.OtpRetryDelaySec) ?? 30) * 1000)
+
+    // Consume the code atomically: only the request that actually deletes it may proceed,
+    // so concurrent requests with the same valid code cannot both succeed.
+    const consumed = await db.otp.deleteMany({ socialId: emailSocialId._id, code })
+    if (consumed === 0) {
+      ctx.warn('OTP already used', { socialId: emailSocialId._id })
+      throw new PlatformError(new Status(Severity.ERROR, platform.status.InvalidOtp, {}))
+    }
     await db.otp.deleteMany({ socialId: emailSocialId._id })
 
     const targetAccount = await db.account.findOne({ uuid: emailSocialId.personUuid as AccountUuid })

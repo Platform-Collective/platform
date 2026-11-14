@@ -2054,7 +2054,8 @@ describe('account operations', () => {
       },
       otp: {
         deleteMany: jest.fn()
-      }
+      },
+      reserveOtpSend: jest.fn()
     } as unknown as AccountDB
 
     beforeEach(() => {
@@ -2528,6 +2529,10 @@ describe('account operations', () => {
         })
 
         expect(mockDb.otp.deleteMany).toHaveBeenCalledWith({ socialId: mockSocialId._id })
+        expect(mockDb.reserveOtpSend).toHaveBeenCalledWith(mockSocialId._id, 30000)
+        expect(jest.mocked(mockDb.reserveOtpSend).mock.invocationCallOrder[0]).toBeLessThan(
+          jest.mocked(mockDb.otp.deleteMany).mock.invocationCallOrder[0]
+        )
         expect(mockDb.socialId.update).toHaveBeenCalledWith(
           { _id: mockSocialId._id },
           { verifiedOn: expect.any(Number) }
@@ -2745,6 +2750,67 @@ describe('account operations', () => {
             code: '123456'
           })
         ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.InvalidOtp, {})))
+      })
+
+      test('should fail with OtpLocked when too many attempts were made', async () => {
+        const mockSocialId = {
+          _id: 'social-id-1' as PersonId,
+          personUuid: 'account-1' as PersonUuid,
+          type: SocialIdType.EMAIL,
+          value: mockEmail,
+          key: `email:${mockEmail}`
+        }
+
+        jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('locked')
+
+        await expect(
+          validateOtp(mockCtx, mockDb, mockBranding, mockToken, {
+            email: mockEmail,
+            code: '123456'
+          })
+        ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.OtpLocked, {})))
+        expect(mockDb.otp.deleteMany).not.toHaveBeenCalled()
+      })
+
+      test('should preserve the legacy deadline before consuming and fail closed on storage errors', async () => {
+        const identity = {
+          _id: 'legacy-social' as PersonId,
+          personUuid: mockPersonId,
+          type: SocialIdType.EMAIL,
+          value: mockEmail,
+          key: `email:${mockEmail}`
+        }
+        jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(identity)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
+        jest.mocked(mockDb.reserveOtpSend).mockRejectedValueOnce(new Error('reservation unavailable'))
+
+        await expect(
+          validateOtp(mockCtx, mockDb, mockBranding, mockToken, { email: mockEmail, code: '123456' })
+        ).rejects.toThrow()
+        expect(mockDb.reserveOtpSend).toHaveBeenCalledWith(identity._id, 30000)
+        expect(mockDb.otp.deleteMany).not.toHaveBeenCalled()
+      })
+
+      test('should reject when the code was already consumed by a concurrent request', async () => {
+        const mockSocialId = {
+          _id: 'social-1' as PersonId,
+          personUuid: 'account-1' as PersonUuid,
+          type: SocialIdType.EMAIL,
+          value: mockEmail,
+          key: `email:${mockEmail}`
+        }
+
+        jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
+        ;(mockDb.otp.deleteMany as jest.Mock).mockResolvedValue(0)
+
+        await expect(
+          validateOtp(mockCtx, mockDb, mockBranding, mockToken, { email: mockEmail, code: '123456' })
+        ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.InvalidOtp, {})))
+        expect(mockDb.otp.deleteMany).toHaveBeenCalledWith({ socialId: mockSocialId._id, code: '123456' })
+        // only the atomic consume call happened; the cleanup deleteMany must not run
+        expect(mockDb.otp.deleteMany).toHaveBeenCalledTimes(1)
       })
 
       test('should fail if email not found', async () => {
