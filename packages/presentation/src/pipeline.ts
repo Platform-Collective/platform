@@ -244,6 +244,8 @@ export class PresentationPipelineImpl implements PresentationPipeline {
           return {}
         }
       }
+      // A background writer handles its own rejection; it must not raise the global error status.
+      if (isBackgroundTx(tx)) throw err
       const status = unknownError(err)
       await setPlatformStatus(status)
       return {}

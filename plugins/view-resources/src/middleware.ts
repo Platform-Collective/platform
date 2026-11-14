@@ -20,8 +20,8 @@ import core, {
   TxProcessor,
   type TxResult
 } from '@hcengineering/core'
-import platform, { getResource, PlatformError, translate } from '@hcengineering/platform'
-import { BasePresentationMiddleware, type PresentationMiddleware } from '@hcengineering/presentation'
+import platform, { getResource, PlatformError, Severity, Status, translate } from '@hcengineering/platform'
+import { BasePresentationMiddleware, isBackgroundTx, type PresentationMiddleware } from '@hcengineering/presentation'
 import view, { type IAggregationManager } from '@hcengineering/view'
 import notification from '@hcengineering/notification'
 import { addNotification, NotificationSeverity } from '@hcengineering/ui'
@@ -352,7 +352,9 @@ export class ReadOnlyAccessMiddleware extends BasePresentationMiddleware impleme
   }
 
   async tx (tx: Tx): Promise<TxResult> {
+    const background = isBackgroundTx(tx)
     if (getCurrentAccount()?.role === AccountRole.ReadOnlyGuest) {
+      if (background) throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
       addNotification(
         await translate(view.string.ReadOnlyWarningTitle, {}, getCurrentLanguage()),
         await translate(view.string.ReadOnlyWarningMessage, {}, getCurrentLanguage()),
@@ -365,8 +367,9 @@ export class ReadOnlyAccessMiddleware extends BasePresentationMiddleware impleme
     }
     try {
       return await this.provideTx(tx)
-    } catch (err: any) {
-      if (err instanceof PlatformError && err.status.code === platform.status.Forbidden) {
+    } catch (err) {
+      // Writes the user did not trigger must not notify; the writer receives the rejection instead.
+      if (!background && err instanceof PlatformError && err.status.code === platform.status.Forbidden) {
         addNotification(
           await translate(view.string.PermissionWarningTitle, {}, getCurrentLanguage()),
           await translate(view.string.PermissionWarningMessage, {}, getCurrentLanguage()),
@@ -374,7 +377,9 @@ export class ReadOnlyAccessMiddleware extends BasePresentationMiddleware impleme
           {
             onClose: () => {}
           },
-          NotificationSeverity.Info
+          NotificationSeverity.Info,
+          // Repeated rejections replace the visible notification instead of stacking copies.
+          'permissionNotification'
         )
         return {}
       } else {
