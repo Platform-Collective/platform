@@ -39,10 +39,7 @@ describe('real MongoDB OTP cooldown transition', () => {
     async () => {
       const row = await database
         .collection('socialId')
-        .aggregate<{ now: number }>([
-          { $match: { _id: socialId } },
-          { $project: { now: { $toLong: '$$NOW' } } }
-        ])
+        .aggregate<{ now: number }>([{ $match: { _id: socialId } }, { $project: { now: { $toLong: '$$NOW' } } }])
         .next()
       if (row == null) throw new Error('Missing test identity')
       return row.now

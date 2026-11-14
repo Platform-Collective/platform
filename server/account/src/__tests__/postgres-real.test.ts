@@ -217,7 +217,9 @@ describe('real-account', () => {
       },
       async () => {
         const client = await (_name === 'postgres' ? pgClient : crClient).getClient()
-        const rows = await client.unsafe('SELECT FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT AS now')
+        const rows = await client.unsafe(
+          'SELECT FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT AS now'
+        )
         return Number(rows[0].now)
       }
     )

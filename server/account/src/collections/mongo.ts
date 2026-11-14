@@ -479,11 +479,9 @@ export class MongoAccountDB implements AccountDB {
     // Persist before reserving so consuming the legacy code cannot erase its cooldown.
     // This cannot fence an unmodified old service that sends mail before inserting its OTP.
     const legacy = await this.otp.collection
-      .aggregate<{ retryOn: number }>([
-        { $match: { socialId, $expr: { $gt: ['$expiresOn', { $toLong: '$$NOW' }] } } },
-        { $project: { retryOn: { $min: ['$expiresOn', { $add: ['$createdOn', retryDelayMs] }] } } },
-        { $group: { _id: null, retryOn: { $max: '$retryOn' } } }
-      ])
+      .aggregate<{
+        retryOn: number
+      }>([{ $match: { socialId, $expr: { $gt: ['$expiresOn', { $toLong: '$$NOW' }] } } }, { $project: { retryOn: { $min: ['$expiresOn', { $add: ['$createdOn', retryDelayMs] }] } } }, { $group: { _id: null, retryOn: { $max: '$retryOn' } } }])
       .next()
     if (legacy != null) {
       await this.socialId.collection.updateOne({ _id: socialId }, { $max: { otpRetryOn: legacy.retryOn } })

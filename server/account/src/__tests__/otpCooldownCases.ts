@@ -57,9 +57,7 @@ export function otpCooldownCases (
     const socialId = await getSocialId()
     const now = await getNow()
     await db.otp.insertOne({ socialId, code: '234567', createdOn: now - 60000, expiresOn: now - 1 })
-    const results = await Promise.all(
-      Array.from({ length: 4 }, async () => await db.reserveOtpSend(socialId, 60000))
-    )
+    const results = await Promise.all(Array.from({ length: 4 }, async () => await db.reserveOtpSend(socialId, 60000)))
     expect(results.filter((result) => result.reserved)).toHaveLength(1)
     expect(new Set(results.map((result) => result.retryOn)).size).toBe(1)
   })

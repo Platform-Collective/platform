@@ -1034,23 +1034,26 @@ describe('account utils', () => {
           [1000, 121000, 'valid'],
           [61000, -59000, 'invalid']
         ]
-        test.each(clockCases)('uses database expiry at DB=%s and replica=%s', async (databaseNow, replicaNow, expected) => {
-          const row = { code: '123456', attempts: 1, expiresOn: 61000 }
-          const clock = jest.spyOn(Date, 'now').mockReturnValue(replicaNow)
-          const db = {
-            advanceLatestOtpAttempt: jest.fn(async () => (row.expiresOn > databaseNow ? row : null)),
-            otp: {
-              find: jest.fn(async (query) => (row.expiresOn > query.expiresOn.$gt ? [row] : [])),
-              update: jest.fn(),
-              findOne: jest.fn(async () => row)
+        test.each(clockCases)(
+          'uses database expiry at DB=%s and replica=%s',
+          async (databaseNow, replicaNow, expected) => {
+            const row = { code: '123456', attempts: 1, expiresOn: 61000 }
+            const clock = jest.spyOn(Date, 'now').mockReturnValue(replicaNow)
+            const db = {
+              advanceLatestOtpAttempt: jest.fn(async () => (row.expiresOn > databaseNow ? row : null)),
+              otp: {
+                find: jest.fn(async (query) => (row.expiresOn > query.expiresOn.$gt ? [row] : [])),
+                update: jest.fn(),
+                findOne: jest.fn(async () => row)
+              }
+            } as unknown as AccountDB
+            try {
+              expect(await verifyOtpAttempt(db, socialIdId, '123456')).toBe(expected)
+            } finally {
+              clock.mockRestore()
             }
-          } as unknown as AccountDB
-          try {
-            expect(await verifyOtpAttempt(db, socialIdId, '123456')).toBe(expected)
-          } finally {
-            clock.mockRestore()
           }
-        })
+        )
 
         const now = Date.now()
         let store: any[] = []
