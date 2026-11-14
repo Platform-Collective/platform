@@ -190,7 +190,10 @@ class ElasticPushQueue {
 
           await this.control?.heartbeat()
         } catch (err: any) {
-          this.ctx.warn('bulk indexing failed, retrying documents individually', { err, workspace: this.workspace.uuid })
+          this.ctx.warn('bulk indexing failed, retrying documents individually', {
+            err,
+            workspace: this.workspace.uuid
+          })
           Analytics.handleError(err)
           // Try to push one by one
           await this.ctx.with(
