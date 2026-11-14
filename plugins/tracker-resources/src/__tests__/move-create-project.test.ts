@@ -32,7 +32,7 @@ function renderMove (allowed: boolean | Error): {
     | { create?: { component: string, label: string, props?: { fixedProjectType: string } }, space: string }
     | undefined
   const project = { _id: 'origin', _class: 'Project', type: 'workflow' }
-  const store = (value: unknown) => ({
+  const store = (value: unknown): { subscribe: (publish: (v: unknown) => void) => () => void } => ({
     subscribe: (publish: (v: unknown) => void) => {
       publish(value)
       return (): void => {}
