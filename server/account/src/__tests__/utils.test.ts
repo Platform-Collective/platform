@@ -1037,7 +1037,7 @@ describe('account utils', () => {
           const row = { code: '123456', attempts: 1, expiresOn: 61000 }
           const clock = jest.spyOn(Date, 'now').mockReturnValue(replicaNow)
           const db = {
-            advanceLatestOtpAttempt: jest.fn(async () => (row.expiresOn > (databaseNow) ? row : null)),
+            advanceLatestOtpAttempt: jest.fn(async () => (row.expiresOn > databaseNow ? row : null)),
             otp: {
               find: jest.fn(async (query) => (row.expiresOn > query.expiresOn.$gt ? [row] : [])),
               update: jest.fn(),

@@ -45,6 +45,7 @@ describe('OTP send reservations', () => {
     const row = { now: databaseNow, otp_retry_on: deadline }
     const unsafe = jest
       .fn()
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce(reserved ? [row] : [])
       .mockResolvedValue([row])
     const client = { unsafe, begin: jest.fn() }
@@ -59,15 +60,15 @@ describe('OTP send reservations', () => {
       retryOn: deadline
     })
     const now = 'FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT'
-    expect(unsafe.mock.calls[0][0].replace(/\s+/g, ' ').trim()).toBe(
+    expect(unsafe.mock.calls[1][0].replace(/\s+/g, ' ').trim()).toBe(
       `UPDATE test_account.social_id SET otp_retry_on = ${now} + $2 ` +
         `WHERE _id = $1 AND (otp_retry_on IS NULL OR otp_retry_on <= ${now}) ` +
         'RETURNING otp_retry_on - $2 AS now, otp_retry_on'
     )
-    expect(unsafe.mock.calls[0][1]).toEqual([socialId, 30000])
-    expect(unsafe).toHaveBeenCalledTimes(reserved ? 1 : 2)
+    expect(unsafe.mock.calls[1][1]).toEqual([socialId, 30000])
+    expect(unsafe).toHaveBeenCalledTimes(reserved ? 2 : 3)
     if (!reserved) {
-      expect(unsafe.mock.calls[1]).toEqual([
+      expect(unsafe.mock.calls[2]).toEqual([
         `SELECT ${now} AS now, otp_retry_on FROM test_account.social_id WHERE _id = $1`,
         [socialId]
       ])
@@ -80,7 +81,9 @@ describe('OTP send reservations', () => {
       const findOneAndUpdate = jest.fn().mockResolvedValue(reserved ? { otpRetryOn: deadline } : null)
       const next = jest.fn().mockResolvedValue({ now: databaseNow, retryOn: deadline })
       const aggregate = jest.fn().mockReturnValue({ next })
-      const collection = jest.fn().mockReturnValue({ findOneAndUpdate, aggregate })
+      const collection = jest.fn((name: string) =>
+        name === 'otp' ? { aggregate: () => ({ next: async () => null }) } : { findOneAndUpdate, aggregate }
+      )
       const db = new MongoAccountDB({ collection } as unknown as Db)
 
       await expect(db.reserveOtpSend(socialId, 30000)).resolves.toEqual({
@@ -114,12 +117,21 @@ describe('OTP send reservations', () => {
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ otpRetryOn: 61000 })
       const next = jest.fn().mockResolvedValue({ now: 30999, retryOn: deadline })
-      const mongo = { collection: jest.fn().mockReturnValue({ findOneAndUpdate, aggregate: () => ({ next }) }) }
+      const mongo = {
+        collection: jest.fn((name: string) =>
+          name === 'otp'
+            ? { aggregate: () => ({ next: async () => null }) }
+            : { findOneAndUpdate, aggregate: () => ({ next }) }
+        )
+      }
       const unsafe = jest
         .fn()
+        .mockResolvedValueOnce([])
         .mockResolvedValueOnce([{ now: 1000, otp_retry_on: deadline }])
         .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
         .mockResolvedValueOnce([{ now: 30999, otp_retry_on: deadline }])
+        .mockResolvedValueOnce([])
         .mockResolvedValueOnce([{ now: 31000, otp_retry_on: 61000 }])
       const client = { unsafe, begin: jest.fn() }
       client.begin.mockImplementation(async (transaction: (sql: Sql) => Promise<unknown>) => {
@@ -156,7 +168,10 @@ describe('OTP send reservations', () => {
           expect(unsafe.mock.calls.map((call) => call[1])).toEqual([
             [socialId, 30000],
             [socialId, 30000],
+            [socialId, 30000],
+            [socialId, 30000],
             [socialId],
+            [socialId, 30000],
             [socialId, 30000]
           ])
         } else {
@@ -225,6 +240,7 @@ function attemptStorage (storage: 'mongo' | 'sql'): {
     $and: [{ $gt: ['$expiresOn', { $toLong: '$$NOW' }] }, { $lt: [{ $ifNull: ['$attempts', 0] }, 5] }]
   }
   const otp = {
+    aggregate: () => ({ next: async () => null }),
     find: jest.fn((query, options) => {
       expect(query).toEqual({ socialId, $expr: activeExpr })
       expect(options).toEqual({ projection: { _id: 1 } })
@@ -299,6 +315,7 @@ function attemptStorage (storage: 'mongo' | 'sql'): {
       for (const [id, row] of rows) if (row.expiresOn <= now) rows.delete(id)
       return []
     }
+    if (sql.startsWith('UPDATE test_account.social_id SET otp_retry_on = GREATEST')) return []
     if (sql.startsWith('UPDATE test_account.social_id')) {
       if (retryOn > now) return []
       retryOn = now + Number(values?.[1])

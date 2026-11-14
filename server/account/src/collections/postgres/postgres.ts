@@ -855,6 +855,16 @@ export class PostgresAccountDB implements AccountDB {
     return await this.withRetry(async (client) => {
       // statement_timestamp is database time and is stable throughout each conditional write.
       const now = 'FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT'
+      // Import every observed legacy write, preserving any longer existing reservation.
+      // Keep the imported deadline after code consumption. Old mail-before-insert writers
+      // still require a compatible writer deployment; this cannot fence their mail call.
+      await client.unsafe(
+        `UPDATE ${this.socialId.getTableName()} SET otp_retry_on = GREATEST(COALESCE(otp_retry_on, 0),
+           COALESCE((SELECT MAX(LEAST(expires_on, created_on + $2)) FROM ${this.otp.getTableName()}
+             WHERE social_id = $1 AND expires_on > ${now}), 0))
+         WHERE _id = $1`,
+        [socialId, retryDelayMs]
+      )
       const result = await client.unsafe(
         `UPDATE ${this.socialId.getTableName()} SET otp_retry_on = ${now} + $2
          WHERE _id = $1 AND (otp_retry_on IS NULL OR otp_retry_on <= ${now})
