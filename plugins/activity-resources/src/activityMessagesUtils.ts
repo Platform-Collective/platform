@@ -330,13 +330,7 @@ function groupByTime<T extends ActivityMessage> (messages: T[]): T[][] {
 
 function getDocUpdateMessageKey (message: DocUpdateMessage): string {
   if (message.action === 'update') {
-    return [
-      message._class,
-      message.attachedTo,
-      message.action,
-      message.createdBy,
-      message._id
-    ].join('_')
+    return [message._class, message.attachedTo, message.action, message.createdBy, message._id].join('_')
   }
 
   return [
