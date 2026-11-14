@@ -203,6 +203,8 @@ export type FileOrBlob = File | Blob
  * @public
  */
 export interface FilePreviewExtension extends ComponentPointExtension {
+  // Inherited props are viewer defaults, overridden by caller props and then host values:
+  // value, name (including undefined), contentType, metadata, fit and setLoading.
   contentType: string | string[]
   alignment?: string
   metadataProvider?: Resource<(file: FileOrBlob, blob: Ref<PlatformBlob>) => Promise<BlobMetadata | undefined>>

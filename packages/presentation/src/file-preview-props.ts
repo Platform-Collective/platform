@@ -17,14 +17,13 @@ export function getFilePreviewProps (
   caller: Readonly<Record<string, any>>,
   host: FilePreviewHostProps
 ): Record<string, any> {
-  // Unfixed behavior extracted from FilePreview for red-first contract evidence.
-  void registration
   return {
+    ...registration,
+    ...caller,
     value: host.value,
     name: host.name,
     contentType: host.contentType,
     metadata: host.metadata,
-    ...caller,
     fit: host.fit,
     setLoading: host.setLoading
   }
