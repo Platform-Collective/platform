@@ -14,8 +14,9 @@
 // limitations under the License
 
 import { type Employee, type Person } from '@hcengineering/contact'
-import { type Class, type Doc, type Ref, type Space } from '@hcengineering/core'
-import { createQuery, getClient } from '@hcengineering/presentation'
+import { type Class, type Doc, type Ref, type Space, type Tx } from '@hcengineering/core'
+import platform, { PlatformError } from '@hcengineering/platform'
+import { createQuery, getClient, markBackgroundTx } from '@hcengineering/presentation'
 import pulse, { type DocumentPresence } from '@hcengineering/pulse'
 
 export interface PresenceInfo {
@@ -80,41 +81,72 @@ export function presence (node: HTMLElement, params: PresenceActionParams): any 
   }
 }
 
+type PresenceClient = ReturnType<typeof getClient>
+
+/** Spaces whose presence writes the server rejected; presence is not retried there until the page reloads. */
+const rejectedSpaces = new Set<Ref<Space>>()
+
+function isForbidden (err: unknown): boolean {
+  return err instanceof PlatformError && err.status.code === platform.status.Forbidden
+}
+
+/** Presence is advisory and written without user action, so a rejection is never shown to the user. */
+async function sendPresenceTx (client: PresenceClient, tx: Tx): Promise<void> {
+  await client.tx(markBackgroundTx(tx))
+}
+
 export async function updatePresence (info: PresenceInfo): Promise<void> {
+  if (rejectedSpaces.has(info.space)) return
   try {
     const client = getClient()
     const id = presenceDocId(info.objectId, info.personId)
     const existing = await client.findOne(pulse.class.DocumentPresence, { _id: id })
     const now = Date.now()
     if (existing !== undefined) {
-      await client.diffUpdate(existing, { lastActive: now })
+      await sendPresenceTx(
+        client,
+        client.txFactory.createTxUpdateDoc(existing._class, existing.space, existing._id, { lastActive: now })
+      )
       return
     }
-    await client.createDoc(
-      pulse.class.DocumentPresence,
-      info.space,
-      {
-        objectId: info.objectId as Ref<Doc>,
-        objectClass: info.objectClass,
-        person: info.personId,
-        lastActive: now
-      },
-      id
+    await sendPresenceTx(
+      client,
+      client.txFactory.createTxCreateDoc(
+        pulse.class.DocumentPresence,
+        info.space,
+        {
+          objectId: info.objectId as Ref<Doc>,
+          objectClass: info.objectClass,
+          person: info.personId,
+          lastActive: now
+        },
+        id
+      )
     )
   } catch (err) {
+    if (isForbidden(err)) {
+      // The role may not write presence here; stop the heartbeat for this space instead of retrying.
+      rejectedSpaces.add(info.space)
+      return
+    }
     console.warn('failed to update presence:', err)
   }
 }
 
 export async function deletePresence (info: PresenceInfo): Promise<void> {
+  if (rejectedSpaces.has(info.space)) return
   try {
     const client = getClient()
     const id = presenceDocId(info.objectId, info.personId)
     const existing = await client.findOne(pulse.class.DocumentPresence, { _id: id })
     if (existing !== undefined) {
-      await client.removeDoc(pulse.class.DocumentPresence, existing.space, existing._id)
+      await sendPresenceTx(client, client.txFactory.createTxRemoveDoc(existing._class, existing.space, existing._id))
     }
   } catch (err) {
+    if (isForbidden(err)) {
+      rejectedSpaces.add(info.space)
+      return
+    }
     console.warn('failed to delete presence:', err)
   }
 }
