@@ -143,7 +143,10 @@ export async function deletePresence (info: PresenceInfo): Promise<void> {
       await sendPresenceTx(client, client.txFactory.createTxRemoveDoc(existing._class, existing.space, existing._id))
     }
   } catch (err) {
-    if (isForbidden(err)) return
+    if (isForbidden(err)) {
+      rejectedSpaces.add(info.space)
+      return
+    }
     console.warn('failed to delete presence:', err)
   }
 }

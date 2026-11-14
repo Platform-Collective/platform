@@ -13,7 +13,7 @@ import core, {
 } from '@hcengineering/core'
 import platform, { PlatformError, Severity, Status } from '@hcengineering/platform'
 import { isBackgroundTx } from '@hcengineering/presentation'
-import { updatePresence } from '../presence'
+import { deletePresence, updatePresence } from '../presence'
 
 const connection = {
   findOne: jest.fn(async (): Promise<Doc | undefined> => undefined),
@@ -62,6 +62,21 @@ describe('updatePresence', () => {
     await updatePresence(info('other'))
     expect(connection.tx).toHaveBeenCalledTimes(2)
     warn.mockRestore()
+  })
+
+  it('stops cleanup and heartbeat writes after a rejected deletion', async () => {
+    const existing = {
+      _id: 'presence:issue-delete-rejected:person',
+      _class: 'pulse:class:DocumentPresence',
+      space: 'delete-rejected'
+    } as unknown as Doc
+    connection.findOne.mockResolvedValue(existing)
+    connection.tx.mockRejectedValueOnce(forbidden())
+    await deletePresence(info('delete-rejected'))
+    await deletePresence(info('delete-rejected'))
+    await updatePresence(info('delete-rejected'))
+    expect(connection.tx).toHaveBeenCalledTimes(1)
+    connection.findOne.mockResolvedValue(undefined)
   })
 
   it('retries after a failure that is not a rejection', async () => {
