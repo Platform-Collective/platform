@@ -2592,7 +2592,7 @@ describe('account operations', () => {
         }
         try {
           jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-          jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+          jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
           jest.spyOn(utils, 'createAccount').mockResolvedValue('huly-social-id' as PersonId)
           ;(mockDb.account.findOne as jest.Mock).mockResolvedValue(null)
 
