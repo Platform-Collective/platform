@@ -2451,6 +2451,7 @@ describe('account operations', () => {
 
     describe('validateOtp', () => {
       beforeEach(() => {
+        jest.mocked(getMetadata).mockReset()
         jest.spyOn(utils, 'setPassword').mockResolvedValue()
       })
 
