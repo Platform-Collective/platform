@@ -58,7 +58,6 @@ describe('emoji icon presentation', () => {
   })
 })
 
-
 describe('unknown presentation selectors', () => {
   it.each([
     [0xfe0f, 0x1f5a5],
