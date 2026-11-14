@@ -481,7 +481,11 @@ export class MongoAccountDB implements AccountDB {
     const legacy = await this.otp.collection
       .aggregate<{
         retryOn: number
-      }>([{ $match: { socialId, $expr: { $gt: ['$expiresOn', { $toLong: '$$NOW' }] } } }, { $project: { retryOn: { $min: ['$expiresOn', { $add: ['$createdOn', retryDelayMs] }] } } }, { $group: { _id: null, retryOn: { $max: '$retryOn' } } }])
+      }>([
+        { $match: { socialId, $expr: { $gt: ['$expiresOn', { $toLong: '$$NOW' }] } } },
+        { $project: { retryOn: { $min: ['$expiresOn', { $add: ['$createdOn', retryDelayMs] }] } } },
+        { $group: { _id: null, retryOn: { $max: '$retryOn' } } }
+      ])
       .next()
     if (legacy != null) {
       await this.socialId.collection.updateOne({ _id: socialId }, { $max: { otpRetryOn: legacy.retryOn } })
