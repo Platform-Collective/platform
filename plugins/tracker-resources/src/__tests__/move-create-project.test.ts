@@ -51,7 +51,12 @@ function renderMove (allowed: boolean | Error): {
         }
       })
     },
-    svelte: { createEventDispatcher: () => jest.fn(), onMount: (callback: () => void) => { callback(); } },
+    svelte: {
+      createEventDispatcher: () => jest.fn(),
+      onMount: (callback: () => void) => {
+        callback()
+      }
+    },
     '@hcengineering/analytics': { Analytics: { handleError } },
     '@hcengineering/core': {},
     '@hcengineering/platform': { setPlatformStatus: jest.fn(), unknownError: jest.fn() },
