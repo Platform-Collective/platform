@@ -16,7 +16,17 @@
 import activity, { type DocAttributeUpdates, type DocUpdateMessage } from '@hcengineering/activity'
 import { type Class, type Doc, type Ref } from '@hcengineering/core'
 import { getClient } from '@hcengineering/presentation'
-import { combineActivityMessages } from '../activityMessagesUtils'
+import type * as ActivityMessagesUtils from '../activityMessagesUtils'
+
+jest.mock('@hcengineering/presentation', () => ({ getClient: jest.fn() }))
+jest.mock('@hcengineering/view-resources', () => ({}))
+
+Object.defineProperty(globalThis, 'localStorage', {
+  value: { getItem: () => null },
+  configurable: true
+})
+
+const { combineActivityMessages } = jest.requireActual<typeof ActivityMessagesUtils>('../activityMessagesUtils')
 
 function createAttributeUpdate (set: (string | null)[], prevValue: string | undefined): DocAttributeUpdates {
   return {
