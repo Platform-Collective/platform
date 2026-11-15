@@ -433,12 +433,12 @@ describe('nested vacancy label subscriptions', () => {
   it.each(['mode', 'resource', 'result'] as const)(
     'reports a rejected %s to Analytics and runs the queued composition',
     async (stage) => {
-      const started = deferred<void>()
-      const release = deferred<void>()
+      const started = deferred<undefined>()
+      const release = deferred<undefined>()
       const dispatched = deferred<DocumentQuery<Doc>>()
       const failure = new Error(`Failed ${stage}`)
       const fail = async (): Promise<never> => {
-        started.resolve()
+        started.resolve(undefined)
         await release.promise
         throw failure
       }
@@ -460,7 +460,7 @@ describe('nested vacancy label subscriptions', () => {
       await started.promise
       const next: DocumentQuery<Doc> = { _class: vacancyClass }
       await compose(next, [])
-      release.resolve()
+      release.resolve(undefined)
       expect(await dispatched.promise).toEqual(next)
       expect(handleError).toHaveBeenCalledTimes(1)
       expect(handleError).toHaveBeenCalledWith(failure)
@@ -575,15 +575,15 @@ describe('nested vacancy label subscriptions', () => {
   it.each([tags.class.TagReference, vacancyClass])(
     'settles a cancelled first result from %s and advances the query queue without delivery',
     async (clazz) => {
-      const subscribed = deferred<void>()
-      const cleared = deferred<void>()
+      const subscribed = deferred<undefined>()
+      const cleared = deferred<undefined>()
       const resolverSettled = deferred<unknown>()
       const snapshots: Array<() => void> = []
       const docs = source.docs
       source = transport((target, snapshot) => {
         if (target === clazz) {
           snapshots.push(snapshot)
-          subscribed.resolve()
+          subscribed.resolve(undefined)
         } else {
           snapshot()
         }
@@ -607,7 +607,7 @@ describe('nested vacancy label subscriptions', () => {
         refresh,
         onChange: (query) => {
           dispatch(query)
-          if (Object.keys(query).length === 0) cleared.resolve()
+          if (Object.keys(query).length === 0) cleared.resolve(undefined)
         }
       })
       await run({}, [filter])
@@ -632,7 +632,7 @@ describe('nested vacancy label subscriptions', () => {
   it.each(['mode', 'resource'] as const)(
     'cancels composition during outer %s lookup without reviving a reused index',
     async (stage) => {
-      const lookup = deferred<void>()
+      const lookup = deferred<undefined>()
       const pendingMode = deferred<FilterMode>()
       const pendingResource = deferred<typeof nestedMatchResult>()
       const outerMode: FilterMode = { ...mode, result: nestedResource }
@@ -642,14 +642,14 @@ describe('nested vacancy label subscriptions', () => {
       const lifetime = new FilterQueryLifetime([filter.index])
       const resolveMode = jest.fn(async (): Promise<FilterMode> => {
         if (stage === 'mode') {
-          lookup.resolve()
+          lookup.resolve(undefined)
           return await pendingMode.promise
         }
         return outerMode
       })
       jest.mocked(getResource).mockImplementation(async (resource) => {
         if (resource !== nestedResource) return tagsInResult
-        lookup.resolve()
+        lookup.resolve(undefined)
         return await pendingResource.promise
       })
       const refresh = jest.fn()

@@ -102,7 +102,7 @@
     }
   })
 
-  function makeQuery (query: DocumentQuery<Doc>, filters: Filter[]): void {
+  function makeQuery(query: DocumentQuery<Doc>, filters: Filter[]): void {
     void composeQuery(query, filters).catch((error) => {
       Analytics.handleError(error)
     })
