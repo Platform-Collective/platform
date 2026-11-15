@@ -47,3 +47,5 @@ export * from './collaborators'
 export type * from './versioning'
 
 export default core
+
+export * from './logging'

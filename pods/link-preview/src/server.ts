@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+import { redactLogValue, safeRequestLog } from '@hcengineering/core'
 import { Analytics } from '@hcengineering/analytics'
 import { MeasureContext, metricsAggregate } from '@hcengineering/core'
 import { getCPUInfo, getMemoryInfo } from '@hcengineering/server-core'
@@ -78,7 +79,7 @@ export async function createServer (ctx: MeasureContext, config: Config): Promis
       handleRequest(ctx, name, fn, req, res, next)
     }
 
-  app.use(morgan('short', { stream: new LogStream() }))
+  app.use(morgan((_tokens, req, res) => JSON.stringify(safeRequestLog(req, res.statusCode, { duration: _tokens['response-time'](req, res), bytes: _tokens.res(req, res, 'content-length') })), { stream: new LogStream() }))
 
   app.get(
     '/details',
@@ -97,7 +98,7 @@ export async function createServer (ctx: MeasureContext, config: Config): Promis
         const result = await parseLinkPreviewDetails(ctx, config, url)
         res.status(200).json(result)
       } catch (err) {
-        console.error({ message: 'failed to parse link preview details', url, err })
+        console.error({ message: 'failed to parse link preview details', ...safeRequestLog(req, 422), error: redactLogValue(err) })
         res.status(422).json({ message: 'Unprocessable Entity' })
       }
     })

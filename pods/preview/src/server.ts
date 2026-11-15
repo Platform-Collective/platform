@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+import { safeRequestLog } from '@hcengineering/core'
 import { Analytics } from '@hcengineering/analytics'
 import { MeasureContext, metricsAggregate, WorkspaceUuid } from '@hcengineering/core'
 import { getCPUInfo, getMemoryInfo, StorageConfiguration } from '@hcengineering/server-core'
@@ -170,7 +171,7 @@ export async function createServer (ctx: MeasureContext, config: Config): Promis
       handleRequest(ctx, name, fn, req, res, next)
     }
 
-  app.use(morgan('short', { stream: new LogStream() }))
+  app.use(morgan((_tokens, req, res) => JSON.stringify(safeRequestLog(req, res.statusCode, { duration: _tokens['response-time'](req, res), bytes: _tokens.res(req, res, 'content-length') })), { stream: new LogStream() }))
 
   app.get(
     '/metadata/:workspace/:name',

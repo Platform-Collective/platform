@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 
+import { safeRequestLog } from '@hcengineering/core'
 import { Analytics } from '@hcengineering/analytics'
 import { MeasureContext, Blob as PlatformBlob, WorkspaceIds, metricsAggregate, type Ref } from '@hcengineering/core'
 import platform, { PlatformError } from '@hcengineering/platform'
@@ -327,7 +328,7 @@ export function start (
 
   const myStream = new MyStream()
 
-  app.use(morgan('short', { stream: myStream }))
+  app.use(morgan((_tokens, req, res) => JSON.stringify(safeRequestLog(req, res.statusCode, { duration: _tokens['response-time'](req, res), bytes: _tokens.res(req, res, 'content-length') })), { stream: myStream }))
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   app.get('/config.json', async (req, res) => {

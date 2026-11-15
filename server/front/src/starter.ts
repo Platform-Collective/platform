@@ -153,7 +153,7 @@ export function startFront (ctx: MeasureContext, extraConfig?: Record<string, st
     hulylakeUrl,
     datalakeUrl
   }
-  console.log('Starting Front service with', config)
+  console.log('Starting Front service', { port: SERVER_PORT, version, modelVersion })
   const shutdown = start(ctx, config, SERVER_PORT, extraConfig)
 
   const close = (): void => {

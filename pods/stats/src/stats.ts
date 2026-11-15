@@ -3,7 +3,7 @@
 //
 
 import { Analytics } from '@hcengineering/analytics'
-import { metricsAggregate, type MeasureContext } from '@hcengineering/core'
+import { redactLogValue, safeRequestLog, metricsAggregate, type MeasureContext } from '@hcengineering/core'
 import { setMetadata } from '@hcengineering/platform'
 import {
   getCPUInfo,
@@ -142,7 +142,7 @@ export function serveStats (ctx: MeasureContext, onClose?: () => void): void {
       }
       req.body = dta
     } catch (err: any) {
-      console.error(err, req.host, req.headers, req.ip)
+      ctx.error('Statistics request failed', { ...safeRequestLog(req, 404), error: redactLogValue(err) })
       req.res.writeHead(404, {})
       req.res.end()
     }
@@ -192,7 +192,7 @@ export function serveStats (ctx: MeasureContext, onClose?: () => void): void {
       req.res.writeHead(200)
       req.res.end()
     } catch (err: any) {
-      console.error(err, req.host, req.headers, req.ip)
+      ctx.error('Statistics request failed', { ...safeRequestLog(req, 404), error: redactLogValue(err) })
       req.res.writeHead(404, {})
       req.res.end()
     }

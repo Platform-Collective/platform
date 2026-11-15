@@ -17,7 +17,7 @@
 import { setMetadata } from '@hcengineering/platform'
 import serverToken from '@hcengineering/server-token'
 
-import type { MeasureContext } from '@hcengineering/core'
+import { redactLogValue, type MeasureContext } from '@hcengineering/core'
 import serverClient from '@hcengineering/server-client'
 import type { StorageConfiguration } from '@hcengineering/server-core'
 import { buildStorageFromConfig, storageConfigFromEnv } from '@hcengineering/server-storage'
@@ -25,31 +25,42 @@ import config from './config'
 import { start } from './server'
 
 export async function startCollaborator (ctx: MeasureContext, onClose?: () => void): Promise<void> {
-  setMetadata(serverToken.metadata.Secret, config.Secret)
-  setMetadata(serverToken.metadata.Service, 'collaborator')
-  setMetadata(serverClient.metadata.UserAgent, config.ServiceID)
-  setMetadata(serverClient.metadata.Endpoint, config.AccountsUrl)
+  let storageAdapter: ReturnType<typeof buildStorageFromConfig> | undefined
+  try {
+    setMetadata(serverToken.metadata.Secret, config.Secret)
+    setMetadata(serverToken.metadata.Service, 'collaborator')
+    setMetadata(serverClient.metadata.UserAgent, config.ServiceID)
+    setMetadata(serverClient.metadata.Endpoint, config.AccountsUrl)
 
-  const storageConfig: StorageConfiguration = storageConfigFromEnv()
-  const storageAdapter = buildStorageFromConfig(storageConfig)
+    const storageConfig: StorageConfiguration = storageConfigFromEnv()
+    storageAdapter = buildStorageFromConfig(storageConfig)
+    const shutdown = await start(ctx, config, storageAdapter)
+    const storage = storageAdapter
 
-  const shutdown = await start(ctx, config, storageAdapter)
+    const close = (): void => {
+      void storage.close()
+      void shutdown()
+      onClose?.()
+    }
 
-  const close = (): void => {
-    void storageAdapter.close()
-    void shutdown()
-    onClose?.()
+    process.on('uncaughtException', (error) => {
+      ctx.error('UncaughtException', { error: redactLogValue(error) })
+    })
+    process.on('unhandledRejection', (reason) => {
+      ctx.error('Unhandled Rejection', { error: redactLogValue(reason) })
+    })
+    process.on('SIGINT', close)
+    process.on('SIGTERM', close)
+    process.on('exit', close)
+  } catch (error) {
+    ctx.error('Collaborator startup failed', { error: redactLogValue(error) })
+    process.exitCode = 1
+    try {
+      await storageAdapter?.close()
+    } catch (closeError) {
+      ctx.error('Collaborator storage cleanup failed', { error: redactLogValue(closeError) })
+    }
+    // Metrics timers can keep a failed pod alive even with exitCode set.
+    process.exit(1)
   }
-
-  process.on('uncaughtException', (e) => {
-    ctx.error('UncaughtException', { error: e })
-  })
-
-  process.on('unhandledRejection', (reason, promise) => {
-    ctx.error('Unhandled Rejection at:', { promise, reason })
-  })
-
-  process.on('SIGINT', close)
-  process.on('SIGTERM', close)
-  process.on('exit', close)
 }

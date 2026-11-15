@@ -18,6 +18,7 @@ import {
   isWorkspaceLoginInfo,
   type AccountClient
 } from '@hcengineering/account-client'
+import { safeRequestLog } from '@hcengineering/core'
 import { Analytics } from '@hcengineering/analytics'
 import {
   generateId,
@@ -120,7 +121,6 @@ export function startHttpServer (
   if (LOGGING_ENABLED) {
     ctx.info('starting server on', {
       port,
-      accountsUrl,
       parallel: os.availableParallelism()
     })
   }
@@ -141,7 +141,7 @@ export function startHttpServer (
 
   const myStream = new MyStream()
 
-  app.use(morgan('short', { stream: myStream }))
+  app.use(morgan((_tokens, req, res) => JSON.stringify(safeRequestLog(req, res.statusCode, { duration: _tokens['response-time'](req, res), bytes: _tokens.res(req, res, 'content-length') })), { stream: myStream }))
 
   const getUsers = (): any => Array.from(sessions.sessions.entries()).map(([k, v]) => v.session.getUser())
 

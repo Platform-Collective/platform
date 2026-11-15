@@ -13,6 +13,7 @@
 // limitations under the License.
 //
 
+import { safeRequestLog } from '@hcengineering/core'
 import { createOpenTelemetryMetricsContext, SplitLogger } from '@hcengineering/analytics-service'
 import { newMetrics } from '@hcengineering/core'
 import { setMetadata } from '@hcengineering/platform'
@@ -34,7 +35,6 @@ import { extract } from './extractors'
 import { parseGenericResume } from './generic'
 import { extractDocument } from './process'
 import { type ReconiDocument } from './types'
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 
 export const startServer = async (): Promise<void> => {
   const app = express()
@@ -70,7 +70,7 @@ export const startServer = async (): Promise<void> => {
   app.use(express.raw({ limit: '50mb' }))
   app.use(bodyParser.json())
 
-  app.use(morgan('short', { stream: myStream }))
+  app.use(morgan((_tokens, req, res) => JSON.stringify(safeRequestLog(req, res.statusCode, { duration: _tokens['response-time'](req, res), bytes: _tokens.res(req, res, 'content-length') })), { stream: myStream }))
   app.use(
     bodyParser.text({
       type: 'text/plain'
@@ -125,9 +125,7 @@ export const startServer = async (): Promise<void> => {
       return
     }
 
-    const params = req.body
-
-    ctx.info('recognize', { url: params.fileUrl })
+    ctx.info('recognize request')
 
     const contentType = req.body.type as string
     const name = req.body.name as string
@@ -249,7 +247,7 @@ export const startServer = async (): Promise<void> => {
   })
 
   app.use((_req, res, _next) => {
-    ctx.info('request', { url: _req.url })
+    ctx.info('request', safeRequestLog(_req, 404))
     res.status(404).send({ message: 'Not found' })
   })
 

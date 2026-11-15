@@ -24,6 +24,7 @@ import {
 } from '@hcengineering/calendar'
 import contact, { type SocialIdentity, type SocialIdentityRef } from '@hcengineering/contact'
 import core, {
+  redactLogValue,
   type AccountUuid,
   buildSocialIdString,
   type Doc,
@@ -524,7 +525,7 @@ async function migrateIntegrations (client: MigrationClient): Promise<void> {
         }
       }
     } catch (err) {
-      client.logger.error('Error while migrating integration', { secret, error: err })
+      client.logger.error('Error while migrating integration', { socialId: secret.socialId, kind: secret.kind, workspace: secret.workspaceUuid, error: redactLogValue(err) })
     }
   }
 }

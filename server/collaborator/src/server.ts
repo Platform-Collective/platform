@@ -47,7 +47,7 @@ export async function start (ctx: MeasureContext, config: Config, storageAdapter
   const retryCount = config.StorageRetryCount
   const retryInterval = config.StorageRetryInterval
 
-  ctx.info('Starting collaborator server', { config })
+  ctx.info('Starting collaborator server')
 
   const app = express()
   app.use(cors())
@@ -224,9 +224,15 @@ export async function start (ctx: MeasureContext, config: Config, storageAdapter
     })
   })
 
-  server.listen(port)
-
-  ctx.info('Running collaborator server', { port })
+  await new Promise<void>((resolve, reject) => {
+    const onError = (error: Error): void => { reject(error) }
+    server.once('error', onError)
+    server.listen(port, () => {
+      server.removeListener('error', onError)
+      ctx.info('Running collaborator server', { port })
+      resolve()
+    })
+  })
 
   return async () => {
     server.close()
