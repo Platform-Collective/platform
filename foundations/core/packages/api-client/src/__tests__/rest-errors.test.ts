@@ -52,30 +52,27 @@ describe('REST HTTP errors', () => {
     await expect(client.tx(transaction)).resolves.toEqual({ object: { sequence: 7 } })
   })
 
-  it.each(['network', 'body', '', 500, 503, 401, 403, 429])(
-    'never replays a transaction after %s',
-    async (failure) => {
-      const fetch = jest.spyOn(globalThis, 'fetch')
-      fetch.mockImplementation(async () => {
-        if (fetch.mock.calls.length > 1) return Response.json({})
-        if (failure === 'network') throw new Error('sensitive transport detail')
-        if (failure === 'body') return new Response('invalid JSON', { status: 200 })
-        if (failure === '') return new Response('', { status: 200 })
-        if (typeof failure !== 'number') throw new Error('Unexpected test case')
-        return new Response('sensitive response detail', { status: failure, headers: { 'Retry-After-ms': '0' } })
-      })
-      const client = publicApi.createRestClient(endpoint, 'workspace', token)
-      const error: unknown = await client.tx(transaction).catch((error: unknown) => error)
-      expect(fetch).toHaveBeenCalledTimes(1)
-      expect(error).toBeInstanceOf(publicApi.RestHttpError)
-      if (typeof failure === 'string' || failure >= 500) {
-        expect(error).toHaveProperty('outcomeUnknown', true)
-      } else {
-        expect(error).not.toHaveProperty('outcomeUnknown', true)
-      }
-      expect((error as Error).message).not.toContain('sensitive')
+  it.each(['network', 'body', '', 500, 503, 401, 403, 429])('never replays a transaction after %s', async (failure) => {
+    const fetch = jest.spyOn(globalThis, 'fetch')
+    fetch.mockImplementation(async () => {
+      if (fetch.mock.calls.length > 1) return Response.json({})
+      if (failure === 'network') throw new Error('sensitive transport detail')
+      if (failure === 'body') return new Response('invalid JSON', { status: 200 })
+      if (failure === '') return new Response('', { status: 200 })
+      if (typeof failure !== 'number') throw new Error('Unexpected test case')
+      return new Response('sensitive response detail', { status: failure, headers: { 'Retry-After-ms': '0' } })
+    })
+    const client = publicApi.createRestClient(endpoint, 'workspace', token)
+    const error: unknown = await client.tx(transaction).catch((error: unknown) => error)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(error).toBeInstanceOf(publicApi.RestHttpError)
+    if (typeof failure === 'string' || failure >= 500) {
+      expect(error).toHaveProperty('outcomeUnknown', true)
+    } else {
+      expect(error).not.toHaveProperty('outcomeUnknown', true)
     }
-  )
+    expect((error as Error).message).not.toContain('sensitive')
+  })
 
   it.each([401, 403])(
     'preservesTypedHttpStatusWithoutLoggingToken (%i)',

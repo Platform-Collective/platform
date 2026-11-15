@@ -40,8 +40,12 @@ describe('collaborator HTTP errors', () => {
     const operations: Array<() => Promise<unknown>> = [
       async () => await client.getMarkup(document),
       async () => await client.createMarkup(document, 'content'),
-      async () => { await client.updateMarkup(document, 'content'); },
-      async () => { await client.copyContent(document, document); }
+      async () => {
+        await client.updateMarkup(document, 'content')
+      },
+      async () => {
+        await client.copyContent(document, document)
+      }
     ]
 
     for (const operation of operations) {
