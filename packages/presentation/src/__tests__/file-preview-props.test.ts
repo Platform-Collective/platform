@@ -93,4 +93,3 @@ describe('FilePreview viewer props contract', () => {
     expect(result).toEqual({ format: 'caller', ...host })
   })
 })
-
