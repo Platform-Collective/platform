@@ -115,7 +115,7 @@ describe('ensureDefaultLabelCategory', () => {
 describe('addSearchViewOptions', () => {
   // Right after `backup-restore --upgrade` of an older workspace the upgrade client returned the stored
   // IssueList/IssueKanban viewlets without `_id`; `txOp.update(v, ...)` then sent a TxUpdateDoc with
-  // objectId undefined, NormalizeTxMiddleware rejected it (BadRequest) and the state failed (2026-11-05 dk5).
+  // objectId undefined, NormalizeTxMiddleware rejected it (BadRequest) and the migration state failed.
   function upgradeClient (viewlets: Array<Partial<Viewlet>>): { client: any, txes: any[] } {
     const txes: any[] = []
     const client: any = {
