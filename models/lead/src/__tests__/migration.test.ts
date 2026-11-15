@@ -4,6 +4,7 @@ import core, {
   type Class,
   type Doc,
   type DocumentQuery,
+  type Domain,
   type Ref,
   type Tx,
   type TxCreateDoc,
@@ -13,7 +14,7 @@ import core, {
 } from '@hcengineering/core'
 import { leadId } from '@hcengineering/lead'
 import { type MigrationUpgradeClient } from '@hcengineering/model'
-import tags, { DOMAIN_TAGS, type TagCategory } from '@hcengineering/model-tags'
+import tags, { type TagCategory } from '@hcengineering/tags'
 import task, { taskOperation } from '@hcengineering/model-task'
 
 import { leadOperation } from '../migration'
@@ -41,7 +42,7 @@ function createClient (): { client: MigrationUpgradeClient, tx: jest.Mock<Promis
   const client = {
     findOne: jest.fn(async (_class: Ref<Class<Doc>>, query: DocumentQuery<Doc>) => find(_class, query)[0]),
     findAll: jest.fn(async (_class: Ref<Class<Doc>>, query: DocumentQuery<Doc>) => toFindResult(find(_class, query))),
-    getHierarchy: () => ({ isDerived: () => false, findDomain: () => DOMAIN_TAGS }),
+    getHierarchy: () => ({ isDerived: () => false, findDomain: () => 'tags' as Domain }),
     tx
   } as unknown as MigrationUpgradeClient
   return { client, tx }
