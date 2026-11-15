@@ -220,8 +220,9 @@ describe('addGanttPhase1ViewOptions', () => {
     expect(stored.viewOptions.groupBy).toEqual(['status'])
     expect(stored.viewOptions.orderBy).toEqual([['rank', 1]])
     expect(stored.viewOptions.other[0]).toEqual(custom)
-    expect(stored.viewOptions.other.map((o: { key: string }) => o.key)).toEqual(
-      expect.arrayContaining(['ganttBarLabelLeft', 'ganttBarLabelInside', 'ganttBarLabelRight', 'ganttQuickInfoOnClick'])
-    )
+    const keys = stored.viewOptions.other.map((o: { key: string }) => o.key)
+    for (const key of ['ganttBarLabelLeft', 'ganttBarLabelInside', 'ganttBarLabelRight', 'ganttQuickInfoOnClick']) {
+      expect(keys).toContain(key)
+    }
   })
 })
