@@ -15,7 +15,6 @@ jest.mock('../storage/platform', () => ({ PlatformStorageAdapter: jest.fn() }))
 jest.mock('../extensions/storage', () => ({ StorageExtension: jest.fn() }))
 jest.mock('../extensions/authentication', () => ({ AuthenticationExtension: jest.fn() }))
 jest.mock('../transformers/markup', () => ({ MarkupTransformer: jest.fn() }))
-jest.mock('../issue-document-controls', () => ({ IssueDocumentControls: jest.fn() }))
 jest.mock('ws', () => ({ WebSocketServer: jest.fn(() => ({ on: jest.fn() })) }))
 
 const config: Config = { Port: 3078, Secret: 'synthetic-listen-credential', ServiceID: 'test', Interval: 30000, StorageRetryCount: 5, StorageRetryInterval: 50, AccountsUrl: 'http://example.invalid' }

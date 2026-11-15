@@ -18,11 +18,8 @@ function scrubFields (text: string): string {
   while ((match = fields.exec(text)) !== null) {
     if (!isSecretKey(match[1])) continue
     result += text.slice(start, match.index) + match[1] + '=' + redacted
-    // Unquoted diagnostic/form values have ambiguous delimiters. Discard the entire
-    // line, including punctuation, quotes and apparent following fields.
-    const end = text.slice(fields.lastIndex).search(/[\r\n]/)
-    start = end < 0 ? text.length : fields.lastIndex + end
-    fields.lastIndex = start
+    // A credential value may continue across lines, so discard the remaining text.
+    return result
   }
   return result + text.slice(start)
 }
