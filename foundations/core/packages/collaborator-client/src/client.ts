@@ -16,6 +16,20 @@
 import { Blob, CollaborativeDoc, Markup, MarkupBlobRef, Ref, WorkspaceUuid, concatLink } from '@hcengineering/core'
 import { encodeDocumentId } from './utils'
 
+/** HTTP failure with optional metadata for callers and adapters. @public */
+export class CollaboratorHttpError extends Error {
+  status?: number
+  retryAfterMs?: number
+  outcomeUnknown?: boolean
+  rejectedBeforeWrite?: boolean
+
+  constructor (status?: number, message = status === undefined ? 'HTTP error' : `HTTP error ${status}`) {
+    super(message)
+    this.name = 'CollaboratorHttpError'
+    this.status = status
+  }
+}
+
 /** @public */
 export interface GetContentRequest {
   source?: Ref<Blob>
@@ -42,7 +56,6 @@ export interface UpdateContentRequest {
 }
 
 /** @public */
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface UpdateContentResponse {}
 
 /** @public */
@@ -82,7 +95,7 @@ class CollaboratorClientImpl implements CollaboratorClient {
     })
 
     if (!res.ok) {
-      throw new Error('HTTP error ' + res.status)
+      throw new CollaboratorHttpError(res.status)
     }
 
     const result = await res.json()

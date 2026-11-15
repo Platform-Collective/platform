@@ -444,3 +444,9 @@ await client.updateMixin(
   }
 )
 ```
+
+## REST error compatibility
+
+HTTP failures now throw the exported `RestHttpError` with a numeric `status`, instead of a `PlatformError` for an HTTP rejection. Application-level status responses continue to throw `PlatformError`. Consumers should distinguish these error classes before reading status codes; neither error response bodies nor credentials are included in `RestHttpError` messages.
+
+REST transactions are sent once. Network failures, HTTP 5xx and malformed successful transaction replies set `RestHttpError.outcomeUnknown` to `true`; read back the affected state before deciding whether to repeat a write. Read requests retain their existing retry behavior. `getModel(full?, ctx?)` and `createRestTxOperations(endpoint, workspace, token, fullModel?, ctx?)` accept an optional caller-owned diagnostic context; omitting it retains default diagnostics.

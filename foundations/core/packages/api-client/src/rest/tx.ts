@@ -28,6 +28,7 @@ import {
   type FindResult,
   Hierarchy,
   ModelDb,
+  type MeasureContext,
   type IterateOptions,
   type OperationDomain,
   type Ref,
@@ -42,16 +43,18 @@ import {
 } from '@hcengineering/core'
 import { RestClientImpl } from './rest'
 
+/** Create REST transactions; an optional caller-owned context controls model diagnostics. */
 export async function createRestTxOperations (
   endpoint: string,
   workspaceId: string,
   token: string,
-  fullModel: boolean = false
+  fullModel: boolean = false,
+  ctx?: MeasureContext
 ): Promise<TxOperations> {
   const restClient = new RestClientImpl(endpoint, workspaceId, token)
 
   const account = await restClient.getAccount()
-  const { hierarchy, model } = await restClient.getModel(fullModel)
+  const { hierarchy, model } = await restClient.getModel(fullModel, ctx)
 
   return new TxOperations(new RestTxClient(restClient, hierarchy, model, account), account.socialIds[0])
 }

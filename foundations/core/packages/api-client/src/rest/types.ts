@@ -35,6 +35,7 @@ import {
   type MixinData,
   type MixinUpdate,
   type ModelDb,
+  type MeasureContext,
   type OperationDomain,
   type PersonId,
   type PersonUuid,
@@ -68,7 +69,8 @@ export interface RestClient extends Storage, FulltextStorage {
     options?: IterateOptions<T>
   ) => AsyncIterable<WithLookup<T>>
 
-  getModel: () => Promise<{ hierarchy: Hierarchy, model: ModelDb }>
+  /** Load the model with optional caller-owned diagnostics; omitted contexts retain default logging. */
+  getModel: (full?: boolean, ctx?: MeasureContext) => Promise<{ hierarchy: Hierarchy, model: ModelDb }>
 
   domainRequest: <T>(
     domain: OperationDomain,

@@ -18,7 +18,6 @@ import { type ClientSocket, type ClientSocketFactory } from '@hcengineering/clie
 /** @public */
 export const NodeWebSocketFactory: ClientSocketFactory = (url: string): ClientSocket => {
   // We need to override default factory with 'ws' one.
-  // eslint-disable-next-line
   let WebSocket
   try {
     WebSocket = require('ws')

@@ -3,6 +3,7 @@
 //
 
 import { createMarkupOperations } from '../markup/client'
+import * as publicApi from '../index'
 import { getClient } from '@hcengineering/collaborator-client'
 import { makeCollabId } from '@hcengineering/core'
 
@@ -45,6 +46,45 @@ describe('MarkupOperations', () => {
     ;(getClient as jest.Mock).mockReturnValue(mockCollaborator)
 
     operations = createMarkupOperations(url, workspace, token, mockConfig)
+  })
+
+  it('exportsMarkupFactoryFromPublicPackage', () => {
+    expect(Reflect.get(publicApi, 'createMarkupOperations')).toBe(createMarkupOperations)
+  })
+
+  it.each([401, 403])('preservesTypedCollaboratorErrorsThroughMarkup (%i)', async (status) => {
+    const actualCollaborator = jest.requireActual<typeof import('@hcengineering/collaborator-client')>(
+      '@hcengineering/collaborator-client'
+    )
+    const ErrorClass = Reflect.get(actualCollaborator, 'CollaboratorHttpError')
+    expect(typeof ErrorClass).toBe('function')
+    const failure = new ErrorClass(status)
+    mockCollaborator.getMarkup.mockRejectedValue(failure)
+    mockCollaborator.createMarkup.mockRejectedValue(failure)
+    mockCollaborator.updateMarkup.mockRejectedValue(failure)
+    const log = jest.spyOn(console, 'log').mockImplementation(() => {})
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
+    const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      await expect(operations.fetchMarkup('class:test.Doc', 'doc', 'content', 'ref', 'markup')).rejects.toBe(failure)
+      await expect(operations.uploadMarkup('class:test.Doc', 'doc', 'content', 'content', 'markup')).rejects.toBe(
+        failure
+      )
+      await expect(operations.updateMarkup('class:test.Doc', 'doc', 'content', 'content', 'markup')).rejects.toBe(
+        failure
+      )
+      expect(failure).toBeInstanceOf(ErrorClass)
+      expect(failure.status).toBe(status)
+      expect(failure.message).toBe(`HTTP error ${status}`)
+      expect(log).not.toHaveBeenCalled()
+      expect(warn).not.toHaveBeenCalled()
+      expect(errorLog).not.toHaveBeenCalled()
+    } finally {
+      log.mockRestore()
+      warn.mockRestore()
+      errorLog.mockRestore()
+    }
   })
 
   describe('fetchMarkup', () => {
