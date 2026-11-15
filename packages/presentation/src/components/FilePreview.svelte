@@ -116,7 +116,14 @@
     {:else if previewType !== undefined}
       <Component
         is={previewType.component}
-        props={getFilePreviewProps(previewType.props, props, { value: file, name, contentType, metadata, fit, setLoading })}
+        props={getFilePreviewProps(previewType.props, props, {
+          value: file,
+          name,
+          contentType,
+          metadata,
+          fit,
+          setLoading
+        })}
       />
     {:else if loading}
       <Loading />

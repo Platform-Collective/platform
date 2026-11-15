@@ -5,14 +5,21 @@ import { getFilePreviewProps } from '../file-preview-props'
 
 const hostKeys = ['value', 'name', 'contentType', 'metadata', 'fit', 'setLoading'] as const
 
-function hostProps () {
+function hostProps (): {
+  value: string
+  name: string | undefined
+  contentType: string
+  metadata: BlobMetadata | undefined
+  fit: boolean
+  setLoading: ((loading: boolean) => void) | undefined
+} {
   return {
     value: 'host-blob',
-    name: 'original.txt' as string | undefined,
+    name: 'original.txt',
     contentType: 'text/plain',
-    metadata: { originalWidth: 123 } as BlobMetadata | undefined,
+    metadata: { originalWidth: 123 },
     fit: false,
-    setLoading: ((loading: boolean) => {}) as ((loading: boolean) => void) | undefined
+    setLoading: (loading: boolean): void => {}
   }
 }
 
