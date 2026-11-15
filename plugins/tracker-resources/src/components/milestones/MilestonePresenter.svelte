@@ -33,7 +33,11 @@
   export let inline = false
   export let accent: boolean = false
   export let noUnderline: boolean = false
+  export let showSpace: boolean = false
   export let onClick: (() => void) | undefined = undefined
+
+  $: projectIdentifier = showSpace ? value?.$lookup?.space?.identifier : undefined
+  $: label = projectIdentifier ? `${projectIdentifier} · ${value?.label ?? ''}` : value?.label
 
   const dispatch = createEventDispatcher()
   $: accentColor =
@@ -59,12 +63,12 @@
           </div>
         {/if}
         <span
-          title={value.label}
+          title={label}
           class="overflow-label label"
           class:no-underline={noUnderline || disabled}
           class:fs-bold={accent}
         >
-          {value.label}
+          {label}
         </span>
       </div>
     </DocNavLink>

@@ -139,7 +139,8 @@ import {
   buildFilterKey,
   deleteObject,
   deleteObjects,
-  setFilters
+  setFilters,
+  registerObjectFilterConfig
 } from '@hcengineering/view-resources'
 import MoveAndDeleteMilestonePopup from './components/milestones/MoveAndDeleteMilestonePopup.svelte'
 import EditIssueTemplate from './components/templates/EditIssueTemplate.svelte'
@@ -431,6 +432,12 @@ async function openIssuesOfTaskType (taskType: TaskType): Promise<void> {
     setFilterTag(taskType)
   }, 200)
 }
+
+registerObjectFilterConfig(tracker.class.Issue, 'milestone', (space) =>
+  space === undefined
+    ? { lookup: { space: tracker.class.Project }, presenterProps: { showSpace: true } }
+    : {}
+)
 
 export default async (): Promise<Resources> => ({
   activity: {

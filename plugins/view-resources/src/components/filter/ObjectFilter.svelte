@@ -39,7 +39,7 @@
   } from '@hcengineering/ui'
   import { Filter, GrouppingManager } from '@hcengineering/view'
   import { createEventDispatcher } from 'svelte'
-  import { FILTER_DEBOUNCE_MS, sortFilterValues } from '../../filter'
+  import { FILTER_DEBOUNCE_MS, getObjectFilterConfig, sortFilterValues, type ObjectFilterConfig } from '../../filter'
   import view from '../../plugin'
   import { buildConfigLookup, getPresenter } from '../../utils'
   import FilterRemovedNotification from './FilterRemovedNotification.svelte'
@@ -71,9 +71,13 @@
     grouppingManager = undefined
   }
 
+  let config: ObjectFilterConfig = {}
   let filterUpdateTimeout: any | undefined
 
   async function getValues(search: string): Promise<void> {
+    // Loading the presenter also loads its plugin's filter configuration.
+    await promise
+    config = getObjectFilterConfig(filter.key, space)
     if (objectsPromise !== undefined) {
       await objectsPromise
     }
@@ -127,7 +131,7 @@
             _id: { $in: Array.from(targets.keys()) }
           }
     const options = clazz.sortingKey !== undefined ? { sort: { [clazz.sortingKey]: SortingOrder.Ascending } } : {}
-    objectsPromise = client.findAll(targetClass, resultQuery, options)
+    objectsPromise = client.findAll(targetClass, resultQuery, { ...options, lookup: config.lookup })
     values = await objectsPromise
     if (grouppingManager !== undefined) {
       values = grouppingManager.groupValues(values as Doc[], targets)
@@ -222,7 +226,14 @@
                 <div class="flex-row-center">
                   {#if value}
                     {#key value._id}
-                      <svelte:component this={attribute.presenter} {value} {...attribute.props} disabled oneLine />
+                      <svelte:component
+                        this={attribute.presenter}
+                        {value}
+                        {...attribute.props}
+                        {...config.presenterProps}
+                        disabled
+                        oneLine
+                      />
                     {/key}
                   {:else}
                     <Label label={ui.string.NotSelected} />
