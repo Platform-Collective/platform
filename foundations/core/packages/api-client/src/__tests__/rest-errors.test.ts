@@ -61,6 +61,7 @@ describe('REST HTTP errors', () => {
         if (failure === 'network') throw new Error('sensitive transport detail')
         if (failure === 'body') return new Response('invalid JSON', { status: 200 })
         if (failure === '') return new Response('', { status: 200 })
+        if (typeof failure !== 'number') throw new Error('Unexpected test case')
         return new Response('sensitive response detail', { status: failure, headers: { 'Retry-After-ms': '0' } })
       })
       const client = publicApi.createRestClient(endpoint, 'workspace', token)
