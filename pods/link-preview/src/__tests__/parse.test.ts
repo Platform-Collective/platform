@@ -980,3 +980,17 @@ describe('Real-world Scenarios', () => {
     expect(result.hostname).toBe('simple.example.com')
   })
 })
+
+describe('diagnostic confidentiality', () => {
+  it.each(['opengraph', 'oembed'])('does not log signed URLs on %s success', async (mode) => {
+    const ctx = createMockContext()
+    const secret = 'synthetic-signed-query-value'
+    const discovery = mode === 'oembed'
+      ? '<link rel="alternate" type="application/json+oembed" href="https://example.com/oembed?token=' + secret + '">'
+      : ''
+    global.fetch = jest.fn().mockResolvedValueOnce(createHtmlResponse('<html><head><title>Test</title>' + discovery + '</head></html>'))
+    if (mode === 'oembed') jest.mocked(global.fetch).mockResolvedValueOnce(createJsonResponse({ type: 'link', version: '1.0', title: 'Test' }))
+    await parseLinkPreviewDetails(ctx, defaultConfig, 'https://example.com/page?token=' + secret)
+    expect(JSON.stringify([jest.mocked(ctx.info).mock.calls, jest.mocked(ctx.warn).mock.calls]).includes(secret)).toBe(false)
+  })
+})

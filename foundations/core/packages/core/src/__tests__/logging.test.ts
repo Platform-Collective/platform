@@ -183,3 +183,7 @@ it('keeps safe numeric request duration and response size', () => {
     expect(invalid.duration === undefined && invalid.bytes === undefined).toBe(true)
   }
 })
+
+it.each(['\n', '\r\n', '\r'])('does not retain multiline credential continuations (%j)', (separator) => {
+  expect(absent(redactLogValue('passphrase="first-line' + separator + canary + '"'))).toBe(true)
+})
