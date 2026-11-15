@@ -26,7 +26,8 @@ it('logs startup without serializing configuration or credentials', async () => 
   }
   const info = jest.fn()
   const context = { info } as unknown as MeasureContext
-  await expect(start(context, configuration, {} as StorageAdapter)).rejects.toThrow('startup-test-boundary')
+  const storage = Object.create(null) as StorageAdapter
+  await expect(start(context, configuration, storage)).rejects.toThrow('startup-test-boundary')
   // Assert scalars so a failing regression never dumps the captured configuration.
   expect(info.mock.calls.length).toBe(1)
   expect(info.mock.calls[0]?.[0] === 'Starting collaborator server').toBe(true)

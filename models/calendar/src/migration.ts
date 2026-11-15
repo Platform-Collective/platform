@@ -525,7 +525,12 @@ async function migrateIntegrations (client: MigrationClient): Promise<void> {
         }
       }
     } catch (err) {
-      client.logger.error('Error while migrating integration', { socialId: secret.socialId, kind: secret.kind, workspace: secret.workspaceUuid, error: redactLogValue(err) })
+      client.logger.error('Error while migrating integration', {
+        socialId: secret.socialId,
+        kind: secret.kind,
+        workspace: secret.workspaceUuid,
+        error: redactLogValue(err)
+      })
     }
   }
 }

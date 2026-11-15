@@ -17,7 +17,15 @@ jest.mock('../extensions/authentication', () => ({ AuthenticationExtension: jest
 jest.mock('../transformers/markup', () => ({ MarkupTransformer: jest.fn() }))
 jest.mock('ws', () => ({ WebSocketServer: jest.fn(() => ({ on: jest.fn() })) }))
 
-const config: Config = { Port: 3078, Secret: 'synthetic-listen-credential', ServiceID: 'test', Interval: 30000, StorageRetryCount: 5, StorageRetryInterval: 50, AccountsUrl: 'http://example.invalid' }
+const config: Config = {
+  Port: 3078,
+  Secret: 'synthetic-listen-credential',
+  ServiceID: 'test',
+  Interval: 30000,
+  StorageRetryCount: 5,
+  StorageRetryInterval: 50,
+  AccountsUrl: 'http://example.invalid'
+}
 let server: EventEmitter & { listen: jest.Mock, close: jest.Mock }
 let ctx: MeasureContext
 let info: jest.Mock
@@ -30,7 +38,10 @@ beforeEach(() => {
 })
 it('runs express and reports listening only after the successful listen callback', async () => {
   let listening: (() => void) | undefined
-  server.listen.mockImplementation((_port, callback) => { listening = callback; return server })
+  server.listen.mockImplementation((_port, callback) => {
+    listening = callback
+    return server
+  })
   const pending = start(ctx, config, {} as unknown as StorageAdapter)
   expect(express).toHaveBeenCalled()
   expect(info.mock.calls.some(([message]) => message === 'Running collaborator server')).toBe(false)
@@ -43,9 +54,18 @@ it('runs express and reports listening only after the successful listen callback
   expect(server.close).toHaveBeenCalled()
 })
 it('rejects bind failures without a false listening message or raw error payload', async () => {
-  server.listen.mockImplementation(() => { queueMicrotask(() => server.emit('error', Object.assign(new Error('synthetic bind failure'), { code: 'EADDRINUSE' }))); return server })
+  server.listen.mockImplementation(() => {
+    queueMicrotask(() =>
+      server.emit('error', Object.assign(new Error('synthetic bind failure'), { code: 'EADDRINUSE' }))
+    )
+    return server
+  })
   let error: unknown
-  try { await start(ctx, config, {} as unknown as StorageAdapter) } catch (e) { error = e }
+  try {
+    await start(ctx, config, {} as unknown as StorageAdapter)
+  } catch (e) {
+    error = e
+  }
   expect(error instanceof Error).toBe(true)
   expect(JSON.stringify(info.mock.calls).includes(config.Secret)).toBe(false)
   expect(info.mock.calls.some(([message]) => message === 'Running collaborator server')).toBe(false)

@@ -225,7 +225,9 @@ export async function start (ctx: MeasureContext, config: Config, storageAdapter
   })
 
   await new Promise<void>((resolve, reject) => {
-    const onError = (error: Error): void => { reject(error) }
+    const onError = (error: Error): void => {
+      reject(error)
+    }
     server.once('error', onError)
     server.listen(port, () => {
       server.removeListener('error', onError)

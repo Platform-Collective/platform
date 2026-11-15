@@ -9,8 +9,10 @@ import { request } from 'http'
 const root = resolve(__dirname, '../../../..')
 const source = (path: string): string => readFileSync(resolve(root, path), 'utf8')
 it.each([
-  'server/front/src/index.ts', 'pods/server/src/server_http.ts',
-  'pods/preview/src/server.ts', 'pods/link-preview/src/server.ts',
+  'server/front/src/index.ts',
+  'pods/server/src/server_http.ts',
+  'pods/preview/src/server.ts',
+  'pods/link-preview/src/server.ts',
   'services/backup/backup-api-pod/src/server.ts',
   'services/billing/pod-billing/src/server.ts',
   'services/datalake/pod-datalake/src/server.ts',
@@ -20,7 +22,7 @@ it.each([
   const text = source(path)
   expect(text.includes("morgan('short'")).toBe(false)
   expect(text.includes('safeRequestLog')).toBe(true)
-  expect(/morgan\((?!\(_tokens)/.test(text)).toBe(false)
+  expect(/morgan\(\s*(?!\s|\(_tokens\b)/.test(text)).toBe(false)
 })
 it.each([
   ['server/front/src/starter.ts', /console.log\('Starting Front service with', config\)/],
@@ -34,19 +36,22 @@ it.each([
 
 it('does not log raw error/fallback request URLs', () => {
   expect(source('services/rekoni/src/server.ts').includes('{ url: _req.url }')).toBe(false)
-  expect(source('pods/link-preview/src/server.ts').includes("url, err }")).toBe(false)
+  expect(source('pods/link-preview/src/server.ts').includes('url, err }')).toBe(false)
 })
 
 it('love-agent startup never passes credential config to console', async () => {
   const canary = 'synthetic-worker-credential'
   const calls: unknown[][] = []
   const exports: { start?: () => Promise<void> } = {}
-  const script = transpileModule(source('services/ai-bot/love-agent/src/start.ts'), { compilerOptions: { module: ModuleKind.CommonJS } }).outputText
+  const script = transpileModule(source('services/ai-bot/love-agent/src/start.ts'), {
+    compilerOptions: { module: ModuleKind.CommonJS }
+  }).outputText
   runInNewContext(script, {
     exports,
-    require: (name: string) => name === './config.js'
-      ? { default: { DeepgramApiKey: canary, OpenaiApiKey: canary, PlatformToken: canary } }
-      : { runAgent: () => {} },
+    require: (name: string) =>
+      name === './config.js'
+        ? { default: { DeepgramApiKey: canary, OpenaiApiKey: canary, PlatformToken: canary } }
+        : { runAgent: () => {} },
     console: { log: (...args: unknown[]) => calls.push(args) },
     process: { on: () => {} }
   })
@@ -56,31 +61,50 @@ it('love-agent startup never passes credential config to console', async () => {
 })
 
 it.each(['server/front/src/index.ts', 'pods/server/src/server_http.ts'])(
-  'real request keeps duration and size without credentials: %s', async (path) => {
+  'real request keeps duration and size without credentials: %s',
+  async (path) => {
     const canary = 'synthetic-request-credential'
     const exports = {}
-    runInNewContext(transpileModule(source('foundations/core/packages/core/src/logging.ts'), {
-      compilerOptions: { module: ModuleKind.CommonJS }
-    }).outputText, { exports })
-    const expression = source(path).match(/morgan\((\(_tokens, req, res\) => JSON.stringify\(safeRequestLog\([^\n]+?\)\)), \{ stream:/)?.[1]
+    runInNewContext(
+      transpileModule(source('foundations/core/packages/core/src/logging.ts'), {
+        compilerOptions: { module: ModuleKind.CommonJS }
+      }).outputText,
+      { exports }
+    )
+    const expression = source(path).match(
+      /morgan\(\s*(\(_tokens,\s*req,\s*res\)\s*=>\s*JSON\.stringify\(\s*safeRequestLog\([\s\S]*?\)\s*\))\s*,\s*\{\s*stream:/
+    )?.[1]
     expect(typeof expression === 'string').toBe(true)
     const formatter = runInNewContext('(' + expression + ')', exports) as morgan.FormatFn
     let finish: (text: string) => void = () => {}
-    const logged = new Promise<string>((resolve) => { finish = resolve })
+    const logged = new Promise<string>((resolve) => {
+      finish = resolve
+    })
     const app = express()
     app.use(morgan(formatter, { stream: { write: finish } }))
-    app.use((_req, res) => { res.send('safe response') })
+    app.use((_req, res) => {
+      res.send('safe response')
+    })
     const server = app.listen(0, '127.0.0.1')
     try {
-      await new Promise<void>((resolve) => { server.on('listening', resolve) })
+      await new Promise<void>((resolve) => {
+        server.on('listening', resolve)
+      })
       const address = server.address()
       if (address === null || typeof address === 'string') throw new Error('missing test listener')
       await new Promise<void>((resolve, reject) => {
-        const req = request({ host: '127.0.0.1', port: address.port, path: '/_transactor/' + canary + '?token=' + canary,
-          headers: { Authorization: 'Bearer ' + canary, Cookie: 'session=' + canary } }, (res) => {
-          res.resume()
-          res.on('end', resolve)
-        })
+        const req = request(
+          {
+            host: '127.0.0.1',
+            port: address.port,
+            path: '/_transactor/' + canary + '?token=' + canary,
+            headers: { Authorization: 'Bearer ' + canary, Cookie: 'session=' + canary }
+          },
+          (res) => {
+            res.resume()
+            res.on('end', resolve)
+          }
+        )
         req.on('error', reject)
         req.end()
       })
@@ -92,7 +116,12 @@ it.each(['server/front/src/index.ts', 'pods/server/src/server_http.ts'])(
       expect(typeof record.duration === 'number' && record.duration >= 0).toBe(true)
       expect(record.bytes).toBe(13)
     } finally {
-      await new Promise<void>((resolve, reject) => { server.close((err) => { if (err !== undefined) reject(err); else resolve() }) })
+      await new Promise<void>((resolve, reject) => {
+        server.close((err) => {
+          if (err !== undefined) reject(err)
+          else resolve()
+        })
+      })
     }
   }
 )

@@ -5,8 +5,16 @@ it('does not log TLS private keys or passphrases', () => {
   const canary = 'synthetic-tls-credential'
   const info = jest.spyOn(console, 'info').mockImplementation(() => {})
   try {
-    createPlatformQueue({ brokers: ['localhost:9092'], clientId: 'test', postfix: '', region: '', ssl: { key: canary, passphrase: canary } })
+    createPlatformQueue({
+      brokers: ['localhost:9092'],
+      clientId: 'test',
+      postfix: '',
+      region: '',
+      ssl: { key: canary, passphrase: canary }
+    })
     expect(JSON.stringify(info.mock.calls).includes(canary)).toBe(false)
     expect(info.mock.calls.length).toBe(1)
-  } finally { info.mockRestore() }
+  } finally {
+    info.mockRestore()
+  }
 })

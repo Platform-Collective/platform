@@ -4,10 +4,29 @@ const redacted = '[REDACTED]'
 // Capture the native accessor; invoke it below with an explicit Error receiver.
 // eslint-disable-next-line @typescript-eslint/unbound-method
 const errorStackGetter = Object.getOwnPropertyDescriptor(new Error(), 'stack')?.get
-const secretKey = /authorization|cookie|token|secret|password|passwd|passphrase|apikey|privatekey|accesskey|credential|jwt|bearer|signature|session|storageadapter|(?:otp|auth|verification|reset|login)code|(?:encryption|signing|master|license|client|hmac)key|^(?:auth|pass|pwd|sig|sid|code|state|otp|key|cert|ca)$/i
-const errorNames = ['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError', 'EvalError', 'AggregateError', 'PlatformError', 'NoSuchKey']
+const secretKey =
+  /authorization|cookie|token|secret|password|passwd|passphrase|apikey|privatekey|accesskey|credential|jwt|bearer|signature|session|storageadapter|(?:otp|auth|verification|reset|login)code|(?:encryption|signing|master|license|client|hmac)key|^(?:auth|pass|pwd|sig|sid|code|state|otp|key|cert|ca)$/i
+const errorNames = [
+  'Error',
+  'TypeError',
+  'RangeError',
+  'ReferenceError',
+  'SyntaxError',
+  'URIError',
+  'EvalError',
+  'AggregateError',
+  'PlatformError',
+  'NoSuchKey'
+]
 const errorCodes = ['EADDRINUSE', 'EACCES', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET', 'ENOTFOUND', 'EPIPE']
-const errorMessages = ['storage unavailable', 'fetch failed', 'socket hang up', 'Invalid API key', 'database unavailable', 'permission denied']
+const errorMessages = [
+  'storage unavailable',
+  'fetch failed',
+  'socket hang up',
+  'Invalid API key',
+  'database unavailable',
+  'permission denied'
+]
 
 function scrubFields (text: string): string {
   // Restart only at a key boundary and bound whitespace to avoid quadratic retries.
@@ -27,7 +46,11 @@ function scrubFields (text: string): string {
 // Decode before matching: diagnostic strings may contain encoded keys or entire URLs.
 function decodeLayer (text: string): string {
   return text.replace(/(?:%[a-f0-9]{2})+/gi, (part) => {
-    try { return decodeURIComponent(part) } catch { return redacted }
+    try {
+      return decodeURIComponent(part)
+    } catch {
+      return redacted
+    }
   })
 }
 
@@ -53,17 +76,23 @@ export function redactLogValue (value: unknown): unknown {
       if (item.length > 65536) return redacted
       const scrub = (text: string): string => {
         if (/^\s*[[{]/.test(text)) {
-          try { return JSON.stringify(visit(JSON.parse(text), depth + 1)) } catch { /* Continue with text diagnostics. */ }
+          try {
+            return JSON.stringify(visit(JSON.parse(text), depth + 1))
+          } catch {
+            /* Continue with text diagnostics. */
+          }
         }
-        return scrubFields(text)
-          .replace(/\b(Bearer|Basic|Token)\s{1,16}(?![=:])[^\r\n]*/gi, '$1 ' + redacted)
-          // Scheme matching is bounded; scan each URL-shaped span once, even without @.
-          .replace(/\b[a-z][a-z0-9+.-]{0,31}:\/\/\S*/gi, (url) => {
-            const at = url.lastIndexOf('@')
-            return at < 0 ? url : url.slice(0, url.indexOf('://') + 3) + redacted + url.slice(at)
-          })
-          .replace(/([?&#;][^=?&#;\s"']{1,128})=([^\r\n]*)/g, '$1=' + redacted)
-          .replace(/\beyJ[A-Za-z0-9_.-]*/g, redacted)
+        return (
+          scrubFields(text)
+            .replace(/\b(Bearer|Basic|Token)\s{1,16}(?![=:])[^\r\n]*/gi, '$1 ' + redacted)
+            // Scheme matching is bounded; scan each URL-shaped span once, even without @.
+            .replace(/\b[a-z][a-z0-9+.-]{0,31}:\/\/\S*/gi, (url) => {
+              const at = url.lastIndexOf('@')
+              return at < 0 ? url : url.slice(0, url.indexOf('://') + 3) + redacted + url.slice(at)
+            })
+            .replace(/([?&#;][^=?&#;\s"']{1,128})=([^\r\n]*)/g, '$1=' + redacted)
+            .replace(/\beyJ[A-Za-z0-9_.-]*/g, redacted)
+        )
       }
       let text = item
       for (let count = 0; count < 3; count++) {
@@ -85,9 +114,10 @@ export function redactLogValue (value: unknown): unknown {
         for (let count = 0; current !== null && count < 8; count++, current = Object.getPrototypeOf(current)) {
           const descriptor = Object.getOwnPropertyDescriptor(current, key)
           if (descriptor !== undefined) {
-            const value = key === 'stack' && errorStackGetter !== undefined && descriptor.get === errorStackGetter
-              ? errorStackGetter.call(item)
-              : descriptor.value
+            const value =
+              key === 'stack' && errorStackGetter !== undefined && descriptor.get === errorStackGetter
+                ? errorStackGetter.call(item)
+                : descriptor.value
             return typeof value === 'string' ? value : undefined
           }
         }
@@ -101,18 +131,40 @@ export function redactLogValue (value: unknown): unknown {
       // Retain only literal categories and numeric frame positions, never foreign text.
       const safeName = name !== undefined && errorNames.includes(name) ? name : 'Error'
       const safeCode = code !== undefined && errorCodes.includes(code) ? code : undefined
-      const prefix = errorMessages.find((prefix) => message === prefix || message?.startsWith(prefix + ' ') === true || message?.startsWith(prefix + '\n') === true)
-      const safeMessage = prefix !== undefined ? prefix + (message === prefix ? '' : ' ' + redacted) : safeCode !== undefined ? safeCode + ' ' + redacted : redacted
-      const frames = stack?.slice(0, 8192).split('\n').slice(1).flatMap((line) => {
-        if (!/^\s{1,16}at /.test(line)) return []
-        const position = /:(\d{1,7}):(\d{1,7})\)?$/.exec(line)
-        const method = /^\s{1,16}at (connect|listen|start|main) \(/.exec(line)?.[1]
-        return ['    at ' + (method ?? redacted) + (position === null ? '' : ' (' + redacted + ':' + position[1] + ':' + position[2] + ')')]
-      }).slice(0, 7)
+      const prefix = errorMessages.find(
+        (prefix) =>
+          message === prefix ||
+          message?.startsWith(prefix + ' ') === true ||
+          message?.startsWith(prefix + '\n') === true
+      )
+      const safeMessage =
+        prefix !== undefined
+          ? prefix + (message === prefix ? '' : ' ' + redacted)
+          : safeCode !== undefined
+            ? safeCode + ' ' + redacted
+            : redacted
+      const frames = stack
+        ?.slice(0, 8192)
+        .split('\n')
+        .slice(1)
+        .flatMap((line) => {
+          if (!/^\s{1,16}at /.test(line)) return []
+          const position = /:(\d{1,7}):(\d{1,7})\)?$/.exec(line)
+          const method = /^\s{1,16}at (connect|listen|start|main) \(/.exec(line)?.[1]
+          return [
+            '    at ' +
+              (method ?? redacted) +
+              (position === null ? '' : ' (' + redacted + ':' + position[1] + ':' + position[2] + ')')
+          ]
+        })
+        .slice(0, 7)
       return {
         name: safeName,
         message: safeMessage,
-        stack: stack === undefined ? undefined : [safeName + ': ' + safeMessage, ...(frames ?? [])].join('\n').slice(0, 2048),
+        stack:
+          stack === undefined
+            ? undefined
+            : [safeName + ': ' + safeMessage, ...(frames ?? [])].join('\n').slice(0, 2048),
         code: safeCode
       }
     }
@@ -121,7 +173,9 @@ export function redactLogValue (value: unknown): unknown {
         const descriptor = Object.getOwnPropertyDescriptor(item, index)
         // Covers both [name, value] pairs and Node's flat rawHeaders representation.
         const previous = index > 0 ? Object.getOwnPropertyDescriptor(item, index - 1)?.value : undefined
-        return descriptor?.get !== undefined || (typeof previous === 'string' && isSecretKey(previous)) ? redacted : visit(descriptor?.value, depth + 1)
+        return descriptor?.get !== undefined || (typeof previous === 'string' && isSecretKey(previous))
+          ? redacted
+          : visit(descriptor?.value, depth + 1)
       })
     }
     const result: Record<string, unknown> = {}
@@ -130,7 +184,12 @@ export function redactLogValue (value: unknown): unknown {
     for (const [key, descriptor] of Object.entries(descriptors)) {
       if (!descriptor.enumerable) continue
       Object.defineProperty(result, key, {
-        value: isSecretKey(key) || descriptor.get !== undefined || (key === 'value' && typeof headerName === 'string' && isSecretKey(headerName)) ? redacted : visit(descriptor.value, depth + 1),
+        value:
+          isSecretKey(key) ||
+          descriptor.get !== undefined ||
+          (key === 'value' && typeof headerName === 'string' && isSecretKey(headerName))
+            ? redacted
+            : visit(descriptor.value, depth + 1),
         enumerable: true
       })
     }
@@ -163,10 +222,14 @@ export function safeRequestLog (
             ? 'api'
             : /^\/login(?:\/|$)/.test(path)
               ? 'login'
-              : path === '/' ? 'root' : 'other'
+              : path === '/'
+                ? 'root'
+                : 'other'
   const method = request.method ?? ''
   return {
-    method: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'CONNECT', 'TRACE'].includes(method) ? method : 'OTHER',
+    method: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'CONNECT', 'TRACE'].includes(method)
+      ? method
+      : 'OTHER',
     route,
     status,
     duration: numeric(metrics?.duration),

@@ -141,7 +141,18 @@ export function startHttpServer (
 
   const myStream = new MyStream()
 
-  app.use(morgan((_tokens, req, res) => JSON.stringify(safeRequestLog(req, res.statusCode, { duration: _tokens['response-time'](req, res), bytes: _tokens.res(req, res, 'content-length') })), { stream: myStream }))
+  app.use(
+    morgan(
+      (_tokens, req, res) =>
+        JSON.stringify(
+          safeRequestLog(req, res.statusCode, {
+            duration: _tokens['response-time'](req, res),
+            bytes: _tokens.res(req, res, 'content-length')
+          })
+        ),
+      { stream: myStream }
+    )
+  )
 
   const getUsers = (): any => Array.from(sessions.sessions.entries()).map(([k, v]) => v.session.getUser())
 

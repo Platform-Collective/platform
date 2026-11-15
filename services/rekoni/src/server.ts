@@ -70,7 +70,18 @@ export const startServer = async (): Promise<void> => {
   app.use(express.raw({ limit: '50mb' }))
   app.use(bodyParser.json())
 
-  app.use(morgan((_tokens, req, res) => JSON.stringify(safeRequestLog(req, res.statusCode, { duration: _tokens['response-time'](req, res), bytes: _tokens.res(req, res, 'content-length') })), { stream: myStream }))
+  app.use(
+    morgan(
+      (_tokens, req, res) =>
+        JSON.stringify(
+          safeRequestLog(req, res.statusCode, {
+            duration: _tokens['response-time'](req, res),
+            bytes: _tokens.res(req, res, 'content-length')
+          })
+        ),
+      { stream: myStream }
+    )
+  )
   app.use(
     bodyParser.text({
       type: 'text/plain'

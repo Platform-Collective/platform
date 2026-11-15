@@ -110,7 +110,18 @@ export async function createServer (
       handleRequest(ctx, name, db, storageConfigs, fn, req, res, next)
     }
 
-  app.use(morgan((_tokens, req, res) => JSON.stringify(safeRequestLog(req, res.statusCode, { duration: _tokens['response-time'](req, res), bytes: _tokens.res(req, res, 'content-length') })), { stream: new LogStream() }))
+  app.use(
+    morgan(
+      (_tokens, req, res) =>
+        JSON.stringify(
+          safeRequestLog(req, res.statusCode, {
+            duration: _tokens['response-time'](req, res),
+            bytes: _tokens.res(req, res, 'content-length')
+          })
+        ),
+      { stream: new LogStream() }
+    )
+  )
 
   app.post(
     '/api/v1/livekit/sessions',

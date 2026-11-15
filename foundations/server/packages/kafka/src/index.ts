@@ -449,7 +449,11 @@ export function getPlatformQueue (serviceId: string, region?: string): PlatformQ
 }
 
 export function createPlatformQueue (config: QueueConfig): PlatformQueue {
-  console.info({ message: 'Using queue', brokers: config.brokers.length, tls: config.ssl !== undefined && config.ssl !== false })
+  console.info({
+    message: 'Using queue',
+    brokers: config.brokers.length,
+    tls: config.ssl !== undefined && config.ssl !== false
+  })
 
   return new PlatformQueueImpl(
     new Kafka({

@@ -22,20 +22,36 @@ it('redacts nested credentials, authorization, URL credentials and query tokens 
 
 it('handles cycles, getters, buffers and error objects without exposing their contents', () => {
   // Synthetic credential fixture for the redactor; the raw error is never logged.
-  const value: any = { error: Object.assign(new Error(canary), { config: { token: canary } }), bytes: new Uint8Array(Array.from(canary, (character) => character.charCodeAt(0))) }
+  const value: any = {
+    error: Object.assign(new Error(canary), { config: { token: canary } }),
+    bytes: new Uint8Array(Array.from(canary, (character) => character.charCodeAt(0)))
+  }
   value.self = value
-  Object.defineProperty(value, 'getter', { enumerable: true, get: () => { throw new Error(canary) } })
+  Object.defineProperty(value, 'getter', {
+    enumerable: true,
+    get: () => {
+      throw new Error(canary)
+    }
+  })
   const result = redactLogValue(value) as { bytes: unknown }
   expect(absent(result)).toBe(true)
   expect(result.bytes === '[REDACTED]').toBe(true)
   const array = [canary]
-  Object.defineProperty(array, 0, { get: () => { throw new Error('getter must not run') } })
+  Object.defineProperty(array, 0, {
+    get: () => {
+      throw new Error('getter must not run')
+    }
+  })
   expect(absent(redactLogValue(array))).toBe(true)
 })
 
 it.each(['/login/auth', '/files', '/api/v1/statistics', '/_transactor/' + canary, '/' + canary])(
-  'logs method, constant route and status without URL or headers', (path) => {
-    const record = safeRequestLog({ method: 'GET', url: path + '?token=' + canary, headers: { authorization: canary } }, 401)
+  'logs method, constant route and status without URL or headers',
+  (path) => {
+    const record = safeRequestLog(
+      { method: 'GET', url: path + '?token=' + canary, headers: { authorization: canary } },
+      401
+    )
     expect(absent(record)).toBe(true)
     expect(record.method).toBe('GET')
     expect(record.status).toBe(401)
@@ -43,11 +59,57 @@ it.each(['/login/auth', '/files', '/api/v1/statistics', '/_transactor/' + canary
   }
 )
 
-const keys = ['secret', 'token', 'password', 'pass', 'pwd', 'jwt', 'code', 'state', 'apiKey', 'privateKey', 'signature', 'session', 'sid',
-  'auth', 'otpCode', 'verificationCode', 'encryptionKey', 'signingKey', 'masterKey', 'licenseKey',
-  'bearer', 'sig', 'otp', 'passwd', 'accessKey', 'credential', 'storageAdapter', 'key', 'cert', 'ca', 'passphrase',
-  'sessionId', 'clientSecret', 'refresh_token', 'accessKeyId', 'secretAccessKey', 'credentials', 'webhookSecret', 'SERVER_SECRET']
-const headers = ['Authorization', 'aUtHoRiZaTiOn', 'Cookie', 'sEt-CoOkIe', 'X-Service-Token', 'x-api-key', 'Proxy-Authorization', 'x-amz-security-token']
+const keys = [
+  'secret',
+  'token',
+  'password',
+  'pass',
+  'pwd',
+  'jwt',
+  'code',
+  'state',
+  'apiKey',
+  'privateKey',
+  'signature',
+  'session',
+  'sid',
+  'auth',
+  'otpCode',
+  'verificationCode',
+  'encryptionKey',
+  'signingKey',
+  'masterKey',
+  'licenseKey',
+  'bearer',
+  'sig',
+  'otp',
+  'passwd',
+  'accessKey',
+  'credential',
+  'storageAdapter',
+  'key',
+  'cert',
+  'ca',
+  'passphrase',
+  'sessionId',
+  'clientSecret',
+  'refresh_token',
+  'accessKeyId',
+  'secretAccessKey',
+  'credentials',
+  'webhookSecret',
+  'SERVER_SECRET'
+]
+const headers = [
+  'Authorization',
+  'aUtHoRiZaTiOn',
+  'Cookie',
+  'sEt-CoOkIe',
+  'X-Service-Token',
+  'x-api-key',
+  'Proxy-Authorization',
+  'x-amz-security-token'
+]
 const cases: Array<[string, unknown]> = []
 for (const key of [...keys, ...headers]) {
   for (const name of [key, key.toUpperCase(), Array.from(key, (c) => '%' + c.charCodeAt(0).toString(16)).join('')]) {
@@ -70,23 +132,40 @@ for (const scheme of ['Bearer', 'Basic', 'Token', 'Digest', 'AWS4-HMAC-SHA256', 
   const value = scheme + ' ' + canary + ', credential="' + canary + '"'
   cases.push(['auth scheme', 'Authorization: ' + value], ['auth pair', [['Authorization', value]]])
 }
-for (const value of ['Bearer ' + canary, 'Basic ' + canary, 'Token ' + canary,
+for (const value of [
+  'Bearer ' + canary,
+  'Basic ' + canary,
+  'Token ' + canary,
   'Authorization: "Bearer safe", credential="' + canary + '"',
   'Cookie: "safe=value"; session=' + canary,
   'pass="prefix\\"' + canary + '"',
   'password=prefix ' + canary,
-  'failed pass=' + canary, 'https://user:p/a@' + canary + '@example.invalid/',
-  'https://example.invalid/#access_token=' + canary, 'token=' + canary + '&x=1']) {
-  cases.push(['text', value], ['encoded text', encodeURIComponent(value)], ['double encoded text', encodeURIComponent(encodeURIComponent(value))])
+  'failed pass=' + canary,
+  'https://user:p/a@' + canary + '@example.invalid/',
+  'https://example.invalid/#access_token=' + canary,
+  'token=' + canary + '&x=1'
+]) {
+  cases.push(
+    ['text', value],
+    ['encoded text', encodeURIComponent(value)],
+    ['double encoded text', encodeURIComponent(encodeURIComponent(value))]
+  )
 }
 for (const key of keys) {
   const encoded = Array.from(canary, (c) => '%' + c.charCodeAt(0).toString(16)).join('')
   cases.push(['encoded value', key + '=' + encoded], ['serialized encoded value', JSON.stringify({ [key]: encoded })])
 }
 for (const separator of ['%26', '%23', '%3B', '%0A', '%22', '%27']) {
-  for (const text of ['token=prefix' + separator + canary, 'https://example.invalid/?token=prefix' + separator + canary,
-    'https://example.invalid/#token=prefix' + separator + canary, 'Authorization: Bearer prefix' + separator + canary]) {
-    cases.push(['encoded credential delimiter', text], ['encoded credential delimiter in encoded text', encodeURIComponent(text)])
+  for (const text of [
+    'token=prefix' + separator + canary,
+    'https://example.invalid/?token=prefix' + separator + canary,
+    'https://example.invalid/#token=prefix' + separator + canary,
+    'Authorization: Bearer prefix' + separator + canary
+  ]) {
+    cases.push(
+      ['encoded credential delimiter', text],
+      ['encoded credential delimiter in encoded text', encodeURIComponent(text)]
+    )
   }
 }
 for (const separator of [',', ';', '#', '}', '&']) {
@@ -94,7 +173,11 @@ for (const separator of [',', ';', '#', '}', '&']) {
     const text = key + '=prefix' + separator + canary + '&safe=1'
     const error = new Error(text)
     error.stack = 'Error: ' + text + '\n    at ' + canary + ' (/source/' + canary + ':1:2)'
-    cases.push(['raw form delimiter', text], ['encoded raw form delimiter', encodeURIComponent(text)], ['error form delimiter', error])
+    cases.push(
+      ['raw form delimiter', text],
+      ['encoded raw form delimiter', encodeURIComponent(text)],
+      ['error form delimiter', error]
+    )
   }
 }
 for (const text of ['Bearer "' + canary + '"', "Bearer '" + canary + "'", 'token => ' + canary]) {
@@ -108,7 +191,11 @@ it.each(cases.map(([label, input], index) => [label + ' ' + index, input] as con
 
 it('retains useful error diagnostics with redacted and bounded message and stack', () => {
   const error = new TypeError('storage unavailable token=' + canary)
-  error.stack = 'TypeError: token=' + canary + '\n' + ('    at connect (https://example.invalid/?token=' + canary + ':1:2)\n').repeat(100)
+  error.stack =
+    'TypeError: token=' +
+    canary +
+    '\n' +
+    ('    at connect (https://example.invalid/?token=' + canary + ':1:2)\n').repeat(100)
   const result = redactLogValue(error) as { name: string, message: string, stack: string }
   expect(absent(result)).toBe(true)
   expect(result.name).toBe('TypeError')
@@ -121,7 +208,11 @@ it('retains useful error diagnostics with redacted and bounded message and stack
 it('does not invoke diagnostic getters on errors', () => {
   const error = new Error('safe message')
   for (const key of ['name', 'message', 'stack', 'code']) {
-    Object.defineProperty(error, key, { get: () => { throw new Error('getter must not run') } })
+    Object.defineProperty(error, key, {
+      get: () => {
+        throw new Error('getter must not run')
+      }
+    })
   }
   expect(() => redactLogValue(error)).not.toThrow()
 })
@@ -158,23 +249,42 @@ it.each([129, 200, 4096])('redacts credential fields with long keys of length %s
   }
 })
 
-it.each(['letters', 'hyphens', 'urls', 'queries', 'jwt prefixes', 'error'])('scrubs 64 KiB adversarial %s within 250 ms', (kind) => {
-  const text = (kind === 'hyphens' ? 'a-' : kind === 'urls' ? 'http://' : kind === 'queries' ? '?' : kind === 'jwt prefixes' ? 'eyJ-' : 'a').repeat(65536).slice(0, 65536)
-  const input = kind === 'error' ? new Error(text) : text
-  // Warm up the same path, then measure each call independently; output is never printed.
-  redactLogValue(input)
-  let slowest = 0
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const start = performance.now()
+it.each(['letters', 'hyphens', 'urls', 'queries', 'jwt prefixes', 'error'])(
+  'scrubs 64 KiB adversarial %s within 250 ms',
+  (kind) => {
+    const text = (
+      kind === 'hyphens'
+        ? 'a-'
+        : kind === 'urls'
+          ? 'http://'
+          : kind === 'queries'
+            ? '?'
+            : kind === 'jwt prefixes'
+              ? 'eyJ-'
+              : 'a'
+    )
+      .repeat(65536)
+      .slice(0, 65536)
+    const input = kind === 'error' ? new Error(text) : text
+    // Warm up the same path, then measure each call independently; output is never printed.
     redactLogValue(input)
-    slowest = Math.max(slowest, performance.now() - start)
+    let slowest = 0
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const start = performance.now()
+      redactLogValue(input)
+      slowest = Math.max(slowest, performance.now() - start)
+    }
+    // The former quadratic regression took seconds; allow ample shared-runner headroom.
+    expect(slowest < 250).toBe(true)
   }
-  // The former quadratic regression took seconds; allow ample shared-runner headroom.
-  expect(slowest < 250).toBe(true)
-})
+)
 
 it('keeps safe numeric request duration and response size', () => {
-  const log = safeRequestLog as (request: { method: string }, status: number, metrics: { duration: unknown, bytes: unknown }) => { duration?: number, bytes?: number }
+  const log = safeRequestLog as (
+    request: { method: string },
+    status: number,
+    metrics: { duration: unknown, bytes: unknown }
+  ) => { duration?: number, bytes?: number }
   const result = log({ method: 'GET' }, 200, { duration: '12.345', bytes: '4096' })
   expect(result.duration).toBe(12.345)
   expect(result.bytes).toBe(4096)
