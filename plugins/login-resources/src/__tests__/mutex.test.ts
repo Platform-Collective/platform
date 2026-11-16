@@ -21,8 +21,15 @@ describe('mutex', () => {
   })
 
   it('expect parallel execution', async () => {
-    const myUpdate = waitAndPushResult
-    await Promise.all([myUpdate(50), myUpdate(30), myUpdate(40), myUpdate(10), myUpdate(20)])
-    expect(results).toEqual([10, 20, 30, 40, 50])
+    jest.useFakeTimers()
+    try {
+      const myUpdate = waitAndPushResult
+      const updates = Promise.all([myUpdate(50), myUpdate(30), myUpdate(40), myUpdate(10), myUpdate(20)])
+      await jest.advanceTimersByTimeAsync(50)
+      await updates
+      expect(results).toEqual([10, 20, 30, 40, 50])
+    } finally {
+      jest.useRealTimers()
+    }
   })
 })
