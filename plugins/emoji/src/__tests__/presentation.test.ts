@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import emojiData from 'emojibase-data/en/data.json'
-import { getEmojiCodePoints, getEmojiFromCodePoints } from '../presentation'
+import { getEmojiCodePoints, getEmojiCodePointsFromHexcode, getEmojiFromCodePoints } from '../presentation'
 
 describe('emoji icon presentation', () => {
-  it('stores the displayed desktop computer instead of its selector-free hexcode', () => {
+  it('stores the existing desktop hexcode and restores its displayed presentation only on reading', () => {
     const desktop = emojiData.find((emoji) => emoji.hexcode === '1F5A5')
     expect(desktop).toBeDefined()
-    expect(getEmojiCodePoints(desktop?.emoji ?? '')).toEqual([0x1f5a5, 0xfe0f])
+    expect(getEmojiCodePointsFromHexcode(desktop?.hexcode ?? '')).toEqual([0x1f5a5])
+    expect(getEmojiFromCodePoints(getEmojiCodePointsFromHexcode(desktop?.hexcode ?? ''))).toBe('\u{1F5A5}\uFE0F')
   })
 
   it.each([0x1f5a5, 0x2600, 0x260e, 0x2708, 0x2764])(
@@ -29,7 +30,8 @@ describe('emoji icon presentation', () => {
       expect(String.fromCodePoint(...selected)).toBe(emoji.emoji)
       expect(getEmojiFromCodePoints(selected)).toBe(emoji.emoji)
 
-      const legacy = emoji.hexcode.split('-').map((code) => parseInt(code, 16))
+      const legacy = getEmojiCodePointsFromHexcode(emoji.hexcode)
+      expect(legacy).toEqual(emoji.hexcode.split('-').map((code) => parseInt(code, 16)))
       expect(getEmojiFromCodePoints(legacy)).toBe(emoji.emoji)
       expect(getEmojiFromCodePoints(selected.filter((code) => code !== 0xfe0f))).toBe(emoji.emoji)
     }
@@ -91,5 +93,16 @@ describe('invalid stored icon codepoints', () => {
 
   it('converts a long stored sequence without spreading it into function arguments', () => {
     expect(getEmojiFromCodePoints(Array(150000).fill(0x41))).toBe('A'.repeat(150000))
+  })
+})
+
+describe('picker storage compatibility', () => {
+  it.each([
+    ['1F5A5', [0x1f5a5]],
+    ['0031-20E3', [0x31, 0x20e3]],
+    ['1F3F3-FE0F-200D-1F308', [0x1f3f3, 0xfe0f, 0x200d, 0x1f308]],
+    ['1F44D-1F3FD', [0x1f44d, 0x1f3fd]]
+  ] as const)('keeps stored hexcode %s unchanged', (hexcode, expected) => {
+    expect(getEmojiCodePointsFromHexcode(hexcode)).toEqual(expected)
   })
 })

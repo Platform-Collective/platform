@@ -21,6 +21,14 @@ export function getEmojiCodePoints (emoji: string): number[] {
 }
 
 /**
+ * Decode the picker hexcode without adding presentation selectors to stored icon values.
+ * @public
+ */
+export function getEmojiCodePointsFromHexcode (hexcode: string): number[] {
+  return hexcode.split('-').map((code) => parseInt(code, 16))
+}
+
+/**
  * Restore emoji presentation for legacy icon codepoints using a compact lookup generated from the picker's emoji dataset.
  * Unknown sequences and explicit text presentation are preserved.
  * @public
