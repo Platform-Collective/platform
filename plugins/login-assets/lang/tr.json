@@ -8,6 +8,8 @@
     "OidcRoleSyncFailed": "Çalışma alanı erişiminiz eşitlenemedi. Lütfen yeniden oturum açmayı deneyin."
   },
   "string": {
+    "WorkspaceRestoreFailed": "Restore failed",
+    "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
     "ChangePassword": "Parolayı değiştir",
     "CurrentPassword": "Mevcut parola",
     "NewPassword": "Yeni parola",

@@ -1,5 +1,5 @@
-<!--
-// Copyright © 2020, 2021 Anticrm Platform Contributors.
+// SPDX-License-Identifier: EPL-2.0
+// Copyright © 2026 Hardcore Engineering Inc.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -11,15 +11,14 @@
 //
 // See the License for the specific language governing permissions and
 // limitations under the License.
--->
-<script lang="ts">
-  import setting from '@hcengineering/setting'
-  import { Icon, Label } from '@hcengineering/ui'
-</script>
 
-<div class="antiComponent">
-  <div class="ac-header short divide">
-    <div class="ac-header__icon"><Icon icon={setting.icon.Privacy} size={'medium'} /></div>
-    <div class="ac-header__title"><Label label={setting.string.Privacy} /></div>
-  </div>
-</div>
+import { getChatMessageEditData } from '../chat-message-utils'
+
+describe('getChatMessageEditData', () => {
+  it('does not overwrite the collection-managed attachment counter', () => {
+    const update = getChatMessageEditData({ message: '<p>Edited</p>', attachments: 1 }, 123)
+
+    expect(update).toEqual({ message: '<p>Edited</p>', editedOn: 123 })
+    expect(update).not.toHaveProperty('attachments')
+  })
+})

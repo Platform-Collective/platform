@@ -8,6 +8,8 @@
     "OidcRoleSyncFailed": "Nepodařilo se synchronizovat přístup k pracovnímu prostoru. Zkuste se prosím znovu přihlásit."
   },
   "string": {
+    "WorkspaceRestoreFailed": "Restore failed",
+    "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
     "LogIn": "Přihlásit se",
     "SignUp": "Zaregistrovat se",
     "ChangePassword": "Změnit heslo",

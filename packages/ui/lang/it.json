@@ -111,6 +111,9 @@
         "ThisYear": "Quest'anno",
         "EmojiStyle": "Stile emoji",
         "EmojiSystem": "Predefinito di sistema",
-        "EmojiNoto": "Noto Color"
+        "EmojiNoto": "Noto Color",
+        "FirstDayOfWeek": "Inizio settimana",
+        "FirstDayOfWeekSystem": "Configurazione del sistema ({day})",
+        "FirstDayOfWeekDefault": "Predefinito ({day})"
     }
 }

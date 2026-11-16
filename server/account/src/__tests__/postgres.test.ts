@@ -202,6 +202,20 @@ describe('PostgresDbCollection', () => {
     })
   })
 
+  describe('deleteMany count', () => {
+    it('should return deleted rows count reported by the driver', async () => {
+      ;(mockClient.unsafe as jest.Mock).mockResolvedValueOnce(Object.assign([], { count: 3 }))
+
+      expect(await collection.deleteMany({ mode: 'deleted' as const })).toBe(3)
+    })
+
+    it('should return 0 when nothing was deleted', async () => {
+      ;(mockClient.unsafe as jest.Mock).mockResolvedValueOnce(Object.assign([], { count: 0 }))
+
+      expect(await collection.deleteMany({ mode: 'deleted' as const })).toBe(0)
+    })
+  })
+
   describe('timestamp field handling', () => {
     beforeEach(() => {
       // Create collection with timestamp fields specified
@@ -970,7 +984,7 @@ describe('PostgresAccountDB', () => {
           mockClient.unsafe.mock.calls[1][0].replace(/\s+/g, ' ').replace(/\(\s/g, '(').replace(/\s\)/g, ')')
         ).toEqual(
           `UPDATE global_account.workspace_status
-           SET processing_attempts = processing_attempts + 1, "last_processing_time" = $1
+           SET processing_attempts = COALESCE(processing_attempts, 0) + 1, "last_processing_time" = $1
            WHERE workspace_uuid = $2`
             .replace(/\s+/g, ' ')
             .replace(/\(\s/g, '(')

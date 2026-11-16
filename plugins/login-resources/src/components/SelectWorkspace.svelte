@@ -19,6 +19,7 @@
     isActiveMode,
     isArchivingMode,
     isRestoringMode,
+    isRestoreFailedMode,
     isUpgradingMode
   } from '@hcengineering/core'
   import { LoginInfo } from '@hcengineering/login'
@@ -55,6 +56,7 @@
 
   let workspaces: WorkspaceInfoWithStatus[] = []
   let status = OK
+  let restoreFailed = false
   let accountPromise: Promise<LoginInfo | null>
   let account: LoginInfo | null | undefined = undefined
   let isReadOnlyGuest: boolean = true
@@ -85,15 +87,18 @@
   })
 
   async function select(workspaceUrl: string): Promise<void> {
+    restoreFailed = false
     status = new Status(Severity.INFO, login.status.ConnectingToServer, {})
 
     const [loginStatus, result] = await selectWorkspace(workspaceUrl)
 
     const ws = workspaces.find((it) => it.uuid === result?.workspace)
-    if (ws != null && isArchivingMode(ws?.mode) && result?.workspace !== undefined) {
+    if (ws != null && (isArchivingMode(ws.mode) || isRestoreFailedMode(ws.mode)) && result?.workspace !== undefined) {
       showPopup(MessageBox, {
         label: login.string.SelectWorkspace,
-        message: login.string.WorkspaceArchivedDesc,
+        message: isRestoreFailedMode(ws.mode)
+          ? login.string.WorkspaceRestoreFailedDesc
+          : login.string.WorkspaceArchivedDesc,
         canSubmit: true,
         params: {},
         okLabel: login.string.RestoreArchivedWorkspace,
@@ -106,6 +111,7 @@
               workspaces = await getWorkspaces()
               info = workspaces.find((it) => it.uuid === ws.uuid)
             }
+            restoreFailed = isRestoreFailedMode(info?.mode)
           }
         }
       })
@@ -150,6 +156,9 @@
   <div class="title"><Label label={login.string.SelectWorkspace} /></div>
   <div class="status">
     <StatusControl {status} />
+    {#if restoreFailed}
+      <Label label={login.string.WorkspaceRestoreFailedDesc} />
+    {/if}
   </div>
   {#if workspaces.length > 10}
     <div class="ml-2 mr-2 mb-2 flex-grow">
@@ -189,7 +198,9 @@
                 {#if isArchivingMode(workspace.mode)}
                   - <Label label={presentation.string.Archived} />
                 {/if}
-                {#if !isActiveMode(workspace.mode) && !isArchivingMode(workspace.mode)}
+                {#if isRestoreFailedMode(workspace.mode)}
+                  - <Label label={login.string.WorkspaceRestoreFailed} />
+                {:else if !isActiveMode(workspace.mode) && !isArchivingMode(workspace.mode)}
                   ({workspace.processingProgress}%)
                 {/if}
               </span>

@@ -159,6 +159,7 @@
     "GroupByStatus": "상태별",
     "GroupByDate": "날짜별",
     "SpeakingWhileMuted": "음소거 상태입니다. 다른 사람에게 소리가 들리지 않습니다",
-    "SpeakingWhileMutedAlert": "음소거 상태에서 말하면 알림"
+    "SpeakingWhileMutedAlert": "음소거 상태에서 말하면 알림",
+    "ScreenSharedBy": "{name}님이 화면을 공유하고 있습니다"
   }
 }

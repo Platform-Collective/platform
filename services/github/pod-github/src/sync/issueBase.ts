@@ -19,6 +19,7 @@ import core, {
   MeasureContext,
   PersonId,
   Ref,
+  SocialIdType,
   Space,
   TxOperations,
   makeDocCollabId,
@@ -37,7 +38,17 @@ import { Octokit } from 'octokit'
 import { ContainerFocus, IntegrationManager, githubExternalSyncVersion, githubSyncVersion } from '../types'
 import { IssueExternalData } from './githubTypes'
 import { stripGuestLink } from './guest'
-import { collectUpdate, compareMarkdown, deleteObjects, ensureGraphQLOctokit, errorToObj, guessStatus } from './utils'
+import {
+  collectUpdate,
+  compareMarkdown,
+  deleteObjects,
+  ensureGraphQLOctokit,
+  errorToObj,
+  getGithubModifiedOn,
+  githubTime,
+  guessStatus,
+  isGithubTimestampPreservationEnabled
+} from './utils'
 
 /**
  * @public
@@ -113,6 +124,30 @@ export abstract class IssueSyncManagerBase {
     return socialIds.map((it) => it.attachedTo)
   }
 
+  private async reconcileAssignee (
+    data: Partial<Pick<Issue, 'assignee'>>,
+    existing: Issue,
+    external: IssueExternalData
+  ): Promise<void> {
+    if (data.assignee != null || existing.assignee == null || (external.assignees?.nodes ?? []).length > 0) {
+      return
+    }
+    if (!(await this.hasGithubIdentity(existing.assignee))) {
+      // GitHub cannot distinguish its empty-assignee echo from an intentional unassign.
+      // Unlinked assignees can only be changed in Huly.
+      data.assignee = existing.assignee
+    }
+  }
+
+  private async hasGithubIdentity (person: Ref<Person>): Promise<boolean> {
+    const identity = await this.client.findOne(
+      contact.class.SocialIdentity,
+      { attachedTo: person, type: SocialIdType.GITHUB },
+      { projection: { _id: 1 } }
+    )
+    return identity !== undefined
+  }
+
   @withContext('issues-handleUpdate')
   async handleUpdate (
     ctx: MeasureContext,
@@ -148,10 +183,12 @@ export abstract class IssueSyncManagerBase {
         })
       )
 
-      // Use now as modified date for events.
-      const lastModified = new Date().getTime()
+      const lastModified = isGithubTimestampPreservationEnabled() ? githubTime(external.updatedAt) : Date.now()
 
       if (doc !== undefined && ((await verifyUpdate?.(syncData, doc, external, update)) ?? true)) {
+        if (update.assignee === null) {
+          await this.reconcileAssignee(update, doc, external)
+        }
         const issueData: DocumentUpdate<Issue> = { ...update, description: doc.description }
         if (
           update.description !== undefined &&
@@ -207,7 +244,10 @@ export abstract class IssueSyncManagerBase {
             lastModified
           )
         )
-        await ctx.with('diffUpdate-issue', {}, (ctx) => this.client.diffUpdate(doc, issueData, lastModified, account))
+        const modifiedOn = isGithubTimestampPreservationEnabled()
+          ? await getGithubModifiedOn(this.client, doc, external.updatedAt)
+          : lastModified
+        await ctx.with('diffUpdate-issue', {}, (ctx) => this.client.diffUpdate(doc, issueData, modifiedOn, account))
         this.provider.sync()
       } else if (doc === undefined) {
         await ctx.with('diffUpdate-syncData', {}, (ctx) =>
@@ -240,18 +280,28 @@ export abstract class IssueSyncManagerBase {
     issueId: Ref<Issue>,
     _class: Ref<Class<Doc>>,
     issueExternal: { url: string, number: number },
-    repository: GithubIntegrationRepository
+    repository: GithubIntegrationRepository,
+    modifiedOn?: number
   ): Promise<void> {
-    await this.client.addCollection(activity.class.ActivityInfoMessage, prj, issueId, _class, 'activity', {
-      message: msg,
-      icon: github.icon.Github,
-      props: {
-        url: issueExternal.url,
-        repository: repository.url?.replace('api.github.com/repos', 'github.com'),
-        repoName: repository.name,
-        number: issueExternal.number
-      }
-    })
+    await this.client.addCollection(
+      activity.class.ActivityInfoMessage,
+      prj,
+      issueId,
+      _class,
+      'activity',
+      {
+        message: msg,
+        icon: github.icon.Github,
+        props: {
+          url: issueExternal.url,
+          repository: repository.url?.replace('api.github.com/repos', 'github.com'),
+          repoName: repository.name,
+          number: issueExternal.number
+        }
+      },
+      undefined,
+      modifiedOn
+    )
   }
 
   stripGuestLink = async (data: MarkupNode): Promise<void> => {
@@ -304,7 +354,10 @@ export abstract class IssueSyncManagerBase {
               githubNumber: issueExternal.number,
               url: issueExternal.url,
               repository: info.repository as Ref<GithubIntegrationRepository>
-            }
+            },
+            isGithubTimestampPreservationEnabled()
+              ? await getGithubModifiedOn(this.client, existing, issueExternal.updatedAt)
+              : undefined
           )
           await this.notifyConnected(container, info, existing, issueExternal)
         },
@@ -315,12 +368,19 @@ export abstract class IssueSyncManagerBase {
       needUpdate = true
     } else {
       const ghIssue = this.client.getHierarchy().as(existing, github.mixin.GithubIssue)
-      await this.client.diffUpdate(ghIssue, {
-        githubNumber: issueExternal.number,
-        url: issueExternal.url,
-        repository: info.repository as Ref<GithubIntegrationRepository>
-      })
-      if (ghIssue.url !== issueExternal.url) {
+      const reconnect = ghIssue.url !== issueExternal.url
+      await this.client.diffUpdate(
+        ghIssue,
+        {
+          githubNumber: issueExternal.number,
+          url: issueExternal.url,
+          repository: info.repository as Ref<GithubIntegrationRepository>
+        },
+        isGithubTimestampPreservationEnabled()
+          ? await getGithubModifiedOn(this.client, existing, issueExternal.updatedAt)
+          : undefined
+      )
+      if (reconnect) {
         await this.notifyConnected(container, info, existing, issueExternal)
       }
     }
@@ -329,6 +389,7 @@ export abstract class IssueSyncManagerBase {
     }
 
     const existingIssue = this.client.getHierarchy().as(existing, github.mixin.GithubIssue)
+    await this.reconcileAssignee(issueData, existingIssue, issueExternal)
     const previousData: GithubIssueData = info.current ?? {}
     // const type = await this.provider.getTaskTypeOf(container.project.type, existing._class)
     // const stst = await this.provider.getStatuses(type?._id)
@@ -427,7 +488,13 @@ export abstract class IssueSyncManagerBase {
         ...update,
         workspace: this.provider.getWorkspaceId()
       })
-      await this.client.update(existingIssue, update, false, new Date().getTime(), accountGH)
+      await this.client.update(
+        existingIssue,
+        update,
+        false,
+        await getGithubModifiedOn(this.client, existingIssue, issueExternal.updatedAt),
+        accountGH
+      )
     }
 
     await this.afterSync(ctx, existingIssue, accountGH, issueExternal, info)
@@ -456,7 +523,10 @@ export abstract class IssueSyncManagerBase {
         existing._id,
         existing._class,
         issueExternal,
-        repo
+        repo,
+        isGithubTimestampPreservationEnabled()
+          ? await getGithubModifiedOn(this.client, existing, issueExternal.updatedAt)
+          : undefined
       )
     }
   }

@@ -8,6 +8,8 @@
     "OidcRoleSyncFailed": "Impossible de synchroniser votre accès à l’espace de travail. Veuillez réessayer de vous connecter."
   },
   "string": {
+    "WorkspaceRestoreFailed": "Restore failed",
+    "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
     "ChangePassword": "Changer le mot de passe",
     "CurrentPassword": "Mot de passe actuel",
     "NewPassword": "Nouveau mot de passe",

@@ -19,6 +19,7 @@ import Router from 'koa-router'
 import { Issuer, Strategy } from 'openid-client'
 
 import { Passport } from '.'
+import { splitOidcName } from './oidcNameSplit'
 import { authorizeOpenidUser, type OpenidUser } from './oidcAuthorization'
 import { type OidcClaims } from './oidcClaims'
 import { getOidcGroups } from './oidcGroups'
@@ -452,11 +453,12 @@ export function registerOpenid (
         issuer,
         signUpDisabled,
         async (verifiedEmail, effectiveSignUpDisabled) => {
-          const name =
-            typeof user.name === 'string' ? user.name : typeof user.username === 'string' ? user.username : ''
-          const nameParts = name.split(' ')
-          const first = typeof user.given_name === 'string' ? user.given_name : (nameParts[0] ?? '')
-          const last = typeof user.family_name === 'string' ? user.family_name : nameParts.slice(1).join(' ')
+          const { first, last } = splitOidcName({
+            name: typeof user.name === 'string' ? user.name : undefined,
+            username: typeof user.username === 'string' ? user.username : undefined,
+            given_name: typeof user.given_name === 'string' ? user.given_name : undefined,
+            family_name: typeof user.family_name === 'string' ? user.family_name : undefined
+          })
           try {
             return await handleProviderAuth(
               measureCtx,
