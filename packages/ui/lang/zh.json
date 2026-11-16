@@ -111,6 +111,9 @@
         "ThisYear": "今年",
         "EmojiStyle": "表情样式",
         "EmojiSystem": "系统默认",
-        "EmojiNoto": "Noto Color"
+        "EmojiNoto": "Noto Color",
+        "FirstDayOfWeek": "每周开始于",
+        "FirstDayOfWeekSystem": "系统设置（{day}）",
+        "FirstDayOfWeekDefault": "默认（{day}）"
     }
 }

@@ -111,6 +111,9 @@
         "ThisYear": "Bu yıl",
         "EmojiStyle": "Emoji Stili",
         "EmojiSystem": "Sistem Varsayılanı",
-        "EmojiNoto": "Noto Color"
+        "EmojiNoto": "Noto Color",
+        "FirstDayOfWeek": "Haftanın başlangıcı",
+        "FirstDayOfWeekSystem": "Sistem ayarı ({day})",
+        "FirstDayOfWeekDefault": "Varsayılan ({day})"
     }
 }
