@@ -24,7 +24,7 @@ function fixture (failedDomains: Domain[] = [broken]): any {
   const pipeline = Object.assign(Object.create(FullTextIndexPipeline.prototype), {
     workspace: { uuid: workspace },
     storage: {
-      rawFind: jest.fn((_ctx, domain) => failedDomains.includes(domain) ? failedCursor : healthyCursor)
+      rawFind: jest.fn((_ctx, domain) => (failedDomains.includes(domain) ? failedCursor : healthyCursor))
     },
     fulltextAdapter: adapter
   }) as FullTextIndexPipeline
@@ -64,7 +64,9 @@ describe('fulltext event reindex failure containment', () => {
     expect(f.healthyCursor.find).toHaveBeenCalledTimes(1)
     expect(f.adapter.clean).not.toHaveBeenCalled()
     expect(f.ctx.error).toHaveBeenCalledWith('failed to reindex domain', {
-      err: f.err, workspace: f.workspace, domain: broken
+      err: f.err,
+      workspace: f.workspace,
+      domain: broken
     })
     expect(f.ctx.info).not.toHaveBeenCalledWith('reindex done', expect.objectContaining({ domain: broken }))
     expect(f.ctx.info).toHaveBeenCalledWith('reindex done', expect.objectContaining({ domain: healthy }))
@@ -81,10 +83,15 @@ describe('fulltext event reindex failure containment', () => {
     expect(f.healthyCursor.find).toHaveBeenCalledTimes(2)
     expect(f.reindex.mock.calls.map((call: any[]) => call[1])).toEqual([broken, healthy, healthy])
     expect(f.ctx.error).toHaveBeenCalledWith('failed to restore index state', {
-      err: f.err, workspace: f.workspace, domain: broken, processed: 0
+      err: f.err,
+      workspace: f.workspace,
+      domain: broken,
+      processed: 0
     })
     expect(f.ctx.error).toHaveBeenCalledWith('failed to reindex domain', {
-      err: f.err, workspace: f.workspace, domain: broken
+      err: f.err,
+      workspace: f.workspace,
+      domain: broken
     })
     expect(f.ctx.error).toHaveBeenCalledWith('reindex full failed', { workspace: f.workspace, failedDomains: 1 })
     expect(f.ctx.info).not.toHaveBeenCalledWith('reindex full done', expect.anything())
