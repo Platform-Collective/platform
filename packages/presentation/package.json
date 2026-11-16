@@ -12,7 +12,6 @@
     "_phase:svelte-check": "do-svelte-check",
     "build:watch": "compile ui",
     "test": "jest --passWithNoTests --silent",
-    "test:emoji": "jest --runInBand src/__tests__/emoji-wiring.test.ts",
     "_phase:build": "compile ui",
     "_phase:test": "jest --passWithNoTests --silent",
     "_phase:format": "format src",

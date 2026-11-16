@@ -8,27 +8,7 @@ module.exports = {
       preset: 'ts-jest',
       testEnvironment: 'node',
       testMatch: ['**/?(*.)+(spec|test).[jt]s?(x)'],
-      testPathIgnorePatterns: ['.*drawing\\.test\\.ts$', '.*emoji-wiring\\.test\\.ts$']
-    },
-    // Compile the real Svelte runtime for the mounted emoji regression tests.
-    {
-      displayName: 'emoji',
-      testEnvironment: 'jsdom',
-      testMatch: ['**/emoji-wiring.test.ts'],
-      moduleNameMapper: {
-        '^emojibase-data/(.*)$': '<rootDir>/../../plugins/emoji/node_modules/emojibase-data/$1'
-      },
-      transform: {
-        '^.+\\.svelte$': '<rootDir>/config/jest/svelte-transform.cjs',
-        '^.+\\.[tj]s$': ['ts-jest', {
-          tsconfig: {
-            allowJs: true,
-            target: 'ES2022',
-            module: 'CommonJS'
-          }
-        }]
-      },
-      transformIgnorePatterns: ['node_modules/(?!(svelte/|esm-env/|\\.pnpm/(svelte|esm-env)@))']
+      testPathIgnorePatterns: ['.*drawing\\.test\\.ts$']
     },
     // configuration for drawing tests (jsdom environment)
     {
