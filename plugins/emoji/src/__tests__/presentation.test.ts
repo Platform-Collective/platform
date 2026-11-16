@@ -74,3 +74,22 @@ describe('unknown presentation selectors', () => {
     expect(getEmojiFromCodePoints(points)).toBe(String.fromCodePoint(0x1f3f3, 0xfe0f, 0x200d, 0x26a7, 0xfe0f))
   })
 })
+
+describe('invalid stored icon codepoints', () => {
+  it.each([0xdeadbeef, -1, 0x110000, 1.5, NaN, Infinity, -Infinity])(
+    'does not throw for invalid scalar or array codepoints: %s',
+    (point) => {
+      expect(getEmojiFromCodePoints(point)).toBe('')
+      expect(getEmojiFromCodePoints([0x1f5a5, point])).toBe('')
+    }
+  )
+
+  it('preserves the valid Unicode boundaries', () => {
+    expect(getEmojiFromCodePoints(0)).toBe('\0')
+    expect(getEmojiFromCodePoints(0x10ffff)).toBe('\u{10FFFF}')
+  })
+
+  it('converts a long stored sequence without spreading it into function arguments', () => {
+    expect(getEmojiFromCodePoints(Array(150000).fill(0x41))).toBe('A'.repeat(150000))
+  })
+})

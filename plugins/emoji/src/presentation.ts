@@ -26,7 +26,10 @@ export function getEmojiCodePoints (emoji: string): number[] {
  * @public
  */
 export function getEmojiFromCodePoints (icon: number | number[]): string {
-  const value = Array.isArray(icon) ? String.fromCodePoint(...icon) : String.fromCodePoint(icon)
+  const points = Array.isArray(icon) ? icon : [icon]
+  // Stored icon data may contain invalid codepoints. Keep popup rendering safe as well as icon rendering.
+  if (!points.every((point) => Number.isInteger(point) && point >= 0 && point <= 0x10ffff)) return ''
+  const value = points.map((point) => String.fromCodePoint(point)).join('')
   const canonical = emojiPresentation.get(value.replace(/\uFE0F/g, ''))
   if (canonical === undefined) return value
   // Only restore selectors omitted at canonical positions; never move or remove input characters.
