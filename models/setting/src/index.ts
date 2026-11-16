@@ -188,7 +188,7 @@ export function createModel (builder: Builder): void {
     core.space.Model,
     {
       name: 'profile',
-      label: setting.string.AccountSettings,
+      label: setting.string.Profile,
       icon: setting.icon.AccountSettings,
       component: setting.component.Profile,
       group: 'settings-account',
@@ -346,7 +346,7 @@ export function createModel (builder: Builder): void {
     core.space.Model,
     {
       name: 'configuration',
-      label: setting.string.Configure,
+      label: setting.string.Modules,
       icon: setting.icon.Setting,
       component: setting.component.Configure,
       order: 1200,
