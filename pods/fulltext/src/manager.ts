@@ -267,24 +267,30 @@ export class WorkspaceManager {
       await this.withIndexer(this.ctx, ws, token, true, async (indexer) => {
         await indexer.dropWorkspace()
         const toIndex = await indexer.getIndexClassess()
+        let failedDomains = 0
         this.ctx.info('reindex starting full', { workspace: ws })
         await this.ctx.with(
           'reindex-workspace',
           {},
           async (ctx) => {
             for (const { domain, classes } of toIndex) {
+              await control.heartbeat()
               try {
-                await control.heartbeat()
                 await indexer.reindex(ctx, domain, classes, control)
               } catch (err: any) {
-                ctx.error('failed to reindex domain', { workspace: ws })
-                throw err
+                // A domain failure must not replay the destructive workspace drop via Kafka retries.
+                failedDomains++
+                ctx.error('failed to reindex domain', { err, workspace: ws, domain })
               }
             }
           },
           { workspace: ws }
         )
-        this.ctx.info('reindex full done', { workspace: ws })
+        if (failedDomains > 0) {
+          this.ctx.error('reindex full failed', { workspace: ws, failedDomains })
+        } else {
+          this.ctx.info('reindex full done', { workspace: ws })
+        }
       })
     } else if (mm.type === QueueWorkspaceEvent.Reindex) {
       const mmd = mm as QueueWorkspaceReindexMessage
@@ -293,8 +299,8 @@ export class WorkspaceManager {
           try {
             await indexer.reindex(this.ctx, mmd.domain, mmd.classes, control)
           } catch (err: any) {
-            this.ctx.error('failed to reindex domain', { workspace: ws })
-            throw err
+            // Leave the failure visible without blocking subsequent fulltext messages indefinitely.
+            this.ctx.error('failed to reindex domain', { err, workspace: ws, domain: mmd.domain })
           }
         })
       }
