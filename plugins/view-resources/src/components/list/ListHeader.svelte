@@ -13,7 +13,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { AggregateValue, Doc, DocumentQuery, PrimitiveType, Ref, Space } from '@hcengineering/core'
+  import { AggregateValue, Doc, PrimitiveType, Ref, Space } from '@hcengineering/core'
   import { IntlString } from '@hcengineering/platform'
   import {
     AnyComponent,
@@ -63,8 +63,6 @@
 
   export let viewOptions: ViewOptions
   export let loading: boolean = false
-  // Full query of this category (view query + group keys), for extra headers that aggregate server-side.
-  export let categoryQuery: DocumentQuery<Doc> | undefined = undefined
 
   const dispatch = createEventDispatcher()
 
@@ -191,7 +189,9 @@
                 value: category,
                 category: groupByKey,
                 docs: items,
-                categoryQuery
+                allDocs: itemsProj,
+                viewOptions,
+                space
               }}
             />
           {/each}

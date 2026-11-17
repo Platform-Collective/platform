@@ -13,35 +13,19 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { Doc, DocumentQuery } from '@hcengineering/core'
-  import { createQuery } from '@hcengineering/presentation'
+  import { Doc } from '@hcengineering/core'
   import { TimeSpendReport } from '@hcengineering/tracker'
   import { floorFractionDigits } from '@hcengineering/ui'
-  import tracker from '../../../plugin'
   import TimePresenter from './TimePresenter.svelte'
 
-  // Query of the list category (view query + group keys), provided by the list header.
-  export let categoryQuery: DocumentQuery<Doc> | undefined = undefined
+  export let docs: TimeSpendReport[] = []
+  export let allDocs: Doc[] = []
 
-  const query = createQuery()
-  let total: number | undefined = undefined
-
-  $: if (categoryQuery !== undefined) {
-    query.query(
-      tracker.class.TimeSpendReport,
-      categoryQuery as DocumentQuery<TimeSpendReport>,
-      (res) => {
-        total = floorFractionDigits(
-          res.reduce((sum, it) => sum + (it.value ?? 0), 0),
-          3
-        )
-      },
-      { projection: { _id: 1, value: 1 } }
-    )
-  } else {
-    query.unsubscribe()
-    total = undefined
-  }
+  // Do not open a workspace-sized subscription for every group. Only show an
+  // exact total when the list has loaded every report belonging to the group.
+  $: total = docs.length === allDocs.length
+    ? floorFractionDigits(docs.reduce((sum, it) => sum + (it.value ?? 0), 0), 3)
+    : undefined
 </script>
 
 {#if total !== undefined}
