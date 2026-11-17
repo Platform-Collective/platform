@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import core, { AccountRole, getCurrentAccount, hasAccountRole } from '@hcengineering/core'
+import core, { type Account, AccountRole, getCurrentAccount, hasAccountRole } from '@hcengineering/core'
 import { getMetadata, type IntlString, setMetadata, translate } from '@hcengineering/platform'
 import presentation, { getClient } from '@hcengineering/presentation'
 import { getCurrentLocation, languageStore, type Location, locationToUrl } from '@hcengineering/ui'
@@ -35,22 +35,21 @@ export function registerWorkbenchTabNavigation (): () => void {
   const workspaceUuid = getMetadata(presentation.metadata.WorkspaceUuid)
   let mounted = true
 
-  const canOpen = (loc: Location): boolean => {
-    const current = getCurrentLocation()
-    const me = getCurrentAccount()
+  const isSameSession = (me: Account, current: Location): boolean =>
+    mounted &&
+    me.uuid === accountUuid &&
+    hasAccountRole(me, AccountRole.Guest) &&
+    getClient().getModel() === model &&
+    getMetadata(presentation.metadata.SessionId) === sessionId &&
+    getMetadata(presentation.metadata.Token) === token &&
+    getMetadata(presentation.metadata.WorkspaceUuid) === workspaceUuid &&
+    current.path[0] === workbenchId &&
+    current.path[1] === workspace
+
+  const isTargetAllowed = (loc: Location, me: Account): boolean => {
     if (
-      !mounted ||
-      me == null ||
-      me.uuid !== accountUuid ||
-      !hasAccountRole(me, AccountRole.Guest) ||
-      getClient().getModel() !== model ||
-      getMetadata(presentation.metadata.SessionId) !== sessionId ||
-      getMetadata(presentation.metadata.Token) !== token ||
-      getMetadata(presentation.metadata.WorkspaceUuid) !== workspaceUuid ||
       workspace === undefined ||
       workspace.length === 0 ||
-      current.path[0] !== workbenchId ||
-      current.path[1] !== workspace ||
       loc.path[0] !== workbenchId ||
       loc.path[1] !== workspace ||
       loc.path[2] === undefined
@@ -60,6 +59,13 @@ export function registerWorkbenchTabNavigation (): () => void {
 
     const app = model.findAllSync<Application>(workbench.class.Application, { alias: loc.path[2] })[0]
     return app !== undefined && (app.accessLevel === undefined || hasAccountRole(me, app.accessLevel))
+  }
+
+  const canOpen = (loc: Location): boolean => {
+    const current = getCurrentLocation()
+    const me = getCurrentAccount()
+    if (me == null || !isSameSession(me, current)) return false
+    return isTargetAllowed(loc, me)
   }
 
   setMetadata(presentation.metadata.OpenInNewTab, workbench.function.OpenInNewTab)
