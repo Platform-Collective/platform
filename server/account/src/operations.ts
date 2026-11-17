@@ -206,7 +206,7 @@ export async function getLoginCapabilities (
   ctx: MeasureContext,
   db: AccountDB,
   branding: Branding | null,
-  token: string
+  token?: string
 ): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean, workspaceCreationAllowed: boolean }> {
   const signUpEnabled = process.env.DISABLE_SIGNUP !== 'true'
   let workspaceCreationAllowed = isWorkspaceCreationAllowed()
