@@ -9,7 +9,7 @@ The built-in plugin lists remain unchanged. Register additional plugins only in 
 | `dev/prod/src/extra.ts` | Web assets, string loaders, and client resources |
 | `desktop/src/ui/extra.ts` | Desktop assets, string loaders, and client resources |
 
-The extension files contain no plugin registrations by default, so a build without additional plugins is unchanged. The same server extension is used by the server pipeline and the standalone tool. Only the files needed by a plugin have to be changed.
+The extension files contain no plugin registrations by default, so a build without additional plugins is unchanged. Only the files needed by a plugin have to be changed.
 
 ## Package setup
 
@@ -28,7 +28,7 @@ The following snippets register a fictional `hello` plugin. They are examples on
 
 ### Model and migrations
 
-Add the model builder in `models/all/src/extra.ts`. The optional third tuple element accepts the same plugin configuration as a built-in builder. Add a migration operation only when the plugin provides one.
+Add the model builder in `models/all/src/extra.ts`; both arrays are already exported from that file. The optional third tuple element accepts the same plugin configuration as a built-in builder. Add a migration operation only when the plugin provides one.
 
 ```ts
 import { createModel, helloId, helloOperation } from '@example/model-hello'

@@ -31,8 +31,6 @@ import { serverAiBotId } from '@hcengineering/server-ai-bot'
 import { serverProcessId } from '@hcengineering/server-process'
 import { registerExtraServerPlugins } from './extra'
 
-export { registerExtraServerPlugins } from './extra'
-
 export function registerServerPlugins (): void {
   addLocation(serverActivityId, () => import('@hcengineering/server-activity-resources'))
   addLocation(serverAttachmentId, () => import('@hcengineering/server-attachment-resources'))

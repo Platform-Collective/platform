@@ -18,7 +18,6 @@ import { prepareTools as prepareToolsRaw } from '@hcengineering/server-tool'
 import { type Data, type Tx, type Version } from '@hcengineering/core'
 import { type MigrateOperation } from '@hcengineering/model'
 import builder, { getModelVersion, migrateOperations } from '@hcengineering/model-all'
-import { registerExtraServerPlugins } from '@hcengineering/server-pipeline'
 import { devTool } from '.'
 
 import { addLocation } from '@hcengineering/platform'
@@ -73,7 +72,6 @@ addLocation(serverTimeId, () => import('@hcengineering/server-time-resources'))
 addLocation(serverGuestId, () => import('@hcengineering/server-guest-resources'))
 addLocation(serverDriveId, () => import('@hcengineering/server-drive-resources'))
 addLocation(serverAiBotId, () => import('@hcengineering/server-ai-bot-resources'))
-registerExtraServerPlugins()
 
 function prepareTools (): {
   dbUrl: string

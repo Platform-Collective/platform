@@ -126,7 +126,6 @@ import {
   createModel as serverDocumentsModel
 } from '@hcengineering/model-server-controlled-documents'
 import survey, { surveyId, createModel as surveyModel } from '@hcengineering/model-survey'
-import { type Plugin } from '@hcengineering/platform'
 import { extraModelBuilders, type BuilderConfig } from './extra'
 
 export function getModelVersion (): Data<Version> {
