@@ -149,11 +149,16 @@ const NIL_UUID = '00000000-0000-0000-0000-000000000000' as AccountUuid
 const workspaceLimitPerUser =
   process.env.WORKSPACE_LIMIT_PER_USER != null ? parseInt(process.env.WORKSPACE_LIMIT_PER_USER) : 10
 
-function isWorkspaceCreationAllowed (extra?: Record<string, unknown>): boolean {
-  return (process.env.WORKSPACE_CREATION?.toLowerCase() || 'all') === 'all' || extra?.admin === 'true'
+function getWorkspaceCreationPolicy (): string {
+  const raw = process.env.WORKSPACE_CREATION?.toLowerCase()
+  return raw == null || raw === '' ? 'all' : raw
 }
 
-const workspaceCreation = process.env.WORKSPACE_CREATION?.toLowerCase() || 'all'
+function isWorkspaceCreationAllowed (extra?: Record<string, unknown>): boolean {
+  return getWorkspaceCreationPolicy() === 'all' || extra?.admin === 'true'
+}
+
+const workspaceCreation = getWorkspaceCreationPolicy()
 if (workspaceCreation !== 'all' && workspaceCreation !== 'admin') {
   console.warn('Unknown WORKSPACE_CREATION value; only platform admins can create workspaces', {
     value: process.env.WORKSPACE_CREATION
