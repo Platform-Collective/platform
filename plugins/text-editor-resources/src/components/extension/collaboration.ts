@@ -54,6 +54,8 @@ function withRevealChange (command: () => (props: CommandProps) => boolean): (pr
     const { view, dispatch } = props
     if (dispatch === undefined) return command()(props)
 
+    // y-prosemirror applies undo/redo to view.state synchronously. Unlike props.state, it also
+    // includes earlier commands when undo/redo runs inside an editor.chain().
     const before = view.state.doc
     const result = command()(props)
     if (result) {
