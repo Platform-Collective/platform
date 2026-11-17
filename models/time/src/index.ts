@@ -296,13 +296,13 @@ export function createModel (builder: Builder): void {
           _object: 'object'
         }
       },
-      label: time.string.AddToDo,
+      label: time.string.CreateToDo,
       icon: time.icon.Calendar,
-      input: 'focus',
+      input: 'none',
       category: time.category.Time,
-      target: chunter.class.ChatMessage,
+      target: core.class.Doc,
       context: {
-        mode: ['context'],
+        mode: [],
         group: 'associate'
       },
       override: [time.action.CreateToDoGlobal]
@@ -310,20 +310,23 @@ export function createModel (builder: Builder): void {
     time.action.CreateToDo
   )
 
-  createAction(builder, {
-    action: view.actionImpl.ShowPopup,
-    actionProps: {
-      component: time.component.PlanMessagePopup,
-      element: 'top',
-      fillProps: { _object: 'object' }
-    },
-    label: time.string.AddToPlanner,
-    icon: time.icon.Calendar,
-    input: 'focus',
-    category: time.category.Time,
-    target: chunter.class.ChatMessage,
-    context: { mode: ['context'], group: 'associate' }
-  })
+  createAction(
+    builder,
+    {
+      action: view.actionImpl.ShowPopup,
+      actionProps: {
+        component: time.component.PlanMessagePopup,
+        element: 'top',
+        fillProps: { _object: 'object' }
+      },
+      label: time.string.AddToPlanner,
+      icon: time.icon.Calendar,
+      input: 'focus',
+      category: time.category.Time,
+      target: chunter.class.ChatMessage,
+      context: { mode: ['context'], group: 'associate' }
+    }
+  )
 
   createAction(
     builder,
