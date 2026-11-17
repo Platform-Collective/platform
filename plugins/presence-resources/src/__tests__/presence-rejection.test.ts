@@ -21,17 +21,12 @@ const connection = {
   getHierarchy: () => ({ isDerived: () => false, findDomain: () => 'transient' })
 }
 const client = new TxOperations(connection as unknown as Client, 'account' as PersonId)
-const otherConnection = {
-  findOne: jest.fn(async (): Promise<Doc | undefined> => undefined),
-  tx: jest.fn<Promise<TxResult>, [Tx]>(async () => ({})),
-  getHierarchy: () => ({ isDerived: () => false, findDomain: () => 'transient' })
-}
-const otherClient = new TxOperations(otherConnection as unknown as Client, 'account' as PersonId)
-let currentClient = client
+let currentWorkspace = 'workspace-a'
 
 jest.mock('@hcengineering/presentation', () => ({
   ...jest.requireActual('@hcengineering/presentation/src/pipeline'),
-  getClient: () => currentClient,
+  getClient: () => client,
+  getCurrentWorkspaceUuid: () => currentWorkspace,
   createQuery: jest.fn()
 }))
 
@@ -49,7 +44,7 @@ function info (space: string): Parameters<typeof updatePresence>[0] {
 describe('updatePresence', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    currentClient = client
+    currentWorkspace = 'workspace-a'
   })
 
   it('sends presence as a background write', async () => {
@@ -72,19 +67,19 @@ describe('updatePresence', () => {
     warn.mockRestore()
   })
 
-  it('scopes rejected spaces to the current client', async () => {
+  it('scopes rejected spaces to the current workspace', async () => {
     connection.tx.mockRejectedValueOnce(forbidden())
     await updatePresence(info('shared'))
     await updatePresence(info('shared'))
     expect(connection.tx).toHaveBeenCalledTimes(1)
 
-    currentClient = otherClient
+    currentWorkspace = 'workspace-b'
     await updatePresence(info('shared'))
-    expect(otherConnection.tx).toHaveBeenCalledTimes(1)
+    expect(connection.tx).toHaveBeenCalledTimes(2)
 
-    currentClient = client
+    currentWorkspace = 'workspace-a'
     await updatePresence(info('shared'))
-    expect(connection.tx).toHaveBeenCalledTimes(1)
+    expect(connection.tx).toHaveBeenCalledTimes(2)
   })
 
   it('retries a rejected space after the retry delay', async () => {

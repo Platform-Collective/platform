@@ -16,7 +16,7 @@
 import { type Employee, type Person } from '@hcengineering/contact'
 import { type Class, type Doc, type Ref, type Space, type Tx } from '@hcengineering/core'
 import platform, { PlatformError } from '@hcengineering/platform'
-import { createQuery, getClient, markBackgroundTx } from '@hcengineering/presentation'
+import { createQuery, getClient, getCurrentWorkspaceUuid, markBackgroundTx } from '@hcengineering/presentation'
 import pulse, { type DocumentPresence } from '@hcengineering/pulse'
 
 export interface PresenceInfo {
@@ -85,14 +85,14 @@ type PresenceClient = ReturnType<typeof getClient>
 
 const PRESENCE_RETRY_DELAY_MS = 60_000
 
-/** Spaces whose presence writes the server rejected, keyed by the time when a retry is allowed. */
-const rejectedSpaces = new WeakMap<PresenceClient, Map<Ref<Space>, number>>()
+/** Spaces whose presence writes the server rejected, keyed by workspace and retry time. */
+const rejectedSpaces = new Map<string, Map<Ref<Space>, number>>()
 
-function getRejectedSpaces (client: PresenceClient): Map<Ref<Space>, number> {
-  let spaces = rejectedSpaces.get(client)
+function getRejectedSpaces (workspace: string): Map<Ref<Space>, number> {
+  let spaces = rejectedSpaces.get(workspace)
   if (spaces === undefined) {
     spaces = new Map<Ref<Space>, number>()
-    rejectedSpaces.set(client, spaces)
+    rejectedSpaces.set(workspace, spaces)
   }
   return spaces
 }
@@ -118,7 +118,7 @@ async function sendPresenceTx (client: PresenceClient, tx: Tx): Promise<void> {
 
 export async function updatePresence (info: PresenceInfo): Promise<void> {
   const client = getClient()
-  const rejected = getRejectedSpaces(client)
+  const rejected = getRejectedSpaces(getCurrentWorkspaceUuid())
   if (isPresenceRejected(rejected, info.space)) return
   try {
     const id = presenceDocId(info.objectId, info.personId)
@@ -157,7 +157,7 @@ export async function updatePresence (info: PresenceInfo): Promise<void> {
 
 export async function deletePresence (info: PresenceInfo): Promise<void> {
   const client = getClient()
-  const rejected = getRejectedSpaces(client)
+  const rejected = getRejectedSpaces(getCurrentWorkspaceUuid())
   if (isPresenceRejected(rejected, info.space)) return
   try {
     const id = presenceDocId(info.objectId, info.personId)
