@@ -1,5 +1,5 @@
-<!--
-// Copyright © 2020, 2021 Anticrm Platform Contributors.
+//
+// Copyright © 2026 Hardcore Engineering Inc.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -11,15 +11,8 @@
 //
 // See the License for the specific language governing permissions and
 // limitations under the License.
--->
-<script lang="ts">
-  import setting from '@hcengineering/setting'
-  import { Icon, Label } from '@hcengineering/ui'
-</script>
+//
 
-<div class="antiComponent">
-  <div class="ac-header short divide">
-    <div class="ac-header__icon"><Icon icon={setting.icon.Support} size={'medium'} /></div>
-    <div class="ac-header__title"><Label label={setting.string.Support} /></div>
-  </div>
-</div>
+export function isNonEmptyArray<T> (value: unknown): value is T[] {
+  return Array.isArray(value) && value.length > 0
+}

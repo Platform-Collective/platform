@@ -86,6 +86,7 @@
     "FreeBusy": "Libero/Occupato",
     "DefaultVisibility": "Visibilità predefinita",
     "NotAllPermissions": "Non tutte le autorizzazioni sono state concesse",
+    "IntegrationFailed": "Impossibile connettere Google Calendar. Riprova.",
     "GooglePrivacy": "L'uso e il trasferimento delle informazioni ricevute dalle API di Google verso altre app da parte di Huly saranno conformi alla <a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">Normativa sui dati degli utenti dei servizi API di Google</a>, inclusi i requisiti di uso limitato.",
     "Value": "{value}",
     "Schedule": "Programmazione pubblica",

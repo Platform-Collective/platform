@@ -2060,6 +2060,7 @@ describe('account operations', () => {
 
     beforeEach(() => {
       jest.clearAllMocks()
+      ;(mockDb.otp.deleteMany as jest.Mock).mockResolvedValue(1)
     })
 
     describe('signUp', () => {
@@ -2504,7 +2505,7 @@ describe('account operations', () => {
         }
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
         jest.spyOn(utils, 'createAccount').mockResolvedValue(personId)
 
         const mockPerson = {
@@ -2562,7 +2563,7 @@ describe('account operations', () => {
         }
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
         jest.spyOn(utils, 'confirmHulyIds').mockResolvedValue()
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(mockPerson)
         ;(mockDb.account.findOne as jest.Mock).mockResolvedValue(mockAccount)
@@ -2599,7 +2600,7 @@ describe('account operations', () => {
         })
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
         ;(mockDb.account.findOne as jest.Mock).mockResolvedValue({ uuid: callerAccountId })
         ;(mockDb.socialId.findOne as jest.Mock).mockResolvedValue(mockSocialId)
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({
@@ -2646,7 +2647,7 @@ describe('account operations', () => {
         })
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
         jest.spyOn(utils, 'doMergePersons').mockResolvedValue()
         ;(mockDb.account.findOne as jest.Mock).mockImplementation(async ({ uuid }) => {
           if (uuid === callerAccountId) {
@@ -2702,7 +2703,7 @@ describe('account operations', () => {
         })
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
         ;(mockDb.account.findOne as jest.Mock).mockImplementation(async ({ uuid }) =>
           uuid === targetAccountId ? { uuid: targetAccountId } : { uuid: callerAccountId }
         )
@@ -2743,7 +2744,7 @@ describe('account operations', () => {
         }
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(false)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('invalid')
 
         await expect(
           validateOtp(mockCtx, mockDb, mockBranding, mockToken, {
@@ -2843,7 +2844,7 @@ describe('account operations', () => {
         })
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
         ;(mockDb.account.findOne as jest.Mock).mockResolvedValue({ uuid: mockPersonId })
 
         await expect(

@@ -426,7 +426,8 @@ export interface DbCollection<T> {
   insertOne: (data: Partial<T>) => Promise<any>
   insertMany: (data: Partial<T>[]) => Promise<any>
   update: (query: Query<T>, ops: Operations<T>) => Promise<void>
-  deleteMany: (query: Query<T>) => Promise<void>
+  // Returns the number of rows actually deleted by this call
+  deleteMany: (query: Query<T>) => Promise<number>
 }
 
 export type Sort<T> = {
@@ -473,6 +474,7 @@ export type WorkspaceEvent =
   | 'migrate-backup-started' // -> state = 'migration-backup'
   | 'restore-started'
   | 'restore-done'
+  | 'restore-failed'
   | 'migrate-backup-done' // -> state = 'migration-pending-cleaning'
   | 'migrate-clean-started' // -> state = 'migration-cleaning'
   | 'migrate-clean-done' // -> state = 'pending-restoring'

@@ -14,9 +14,9 @@
 -->
 <script lang="ts">
   import { Analytics } from '@hcengineering/analytics'
-  import { getMetadata, translate } from '@hcengineering/platform'
+  import { getMetadata, translate, type IntlString } from '@hcengineering/platform'
   import { Button, Html, IconClose, IconError, Label, themeStore } from '@hcengineering/ui'
-  import { createEventDispatcher } from 'svelte'
+  import { createEventDispatcher, onDestroy } from 'svelte'
   import calendar from '../plugin'
   import { concatLink } from '@hcengineering/core'
   import presentation from '@hcengineering/presentation'
@@ -30,26 +30,72 @@
   }
 
   let connecting = false
-  let error = false
+  let error: IntlString | undefined
+  let authWindow: Window | null = null
+  let popupCheck: ReturnType<typeof setInterval> | undefined
   const calendarUrl = getMetadata(calendar.metadata.CalendarServiceURL) ?? ''
+  const redirectURL = (getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin) + `/${calendarId}`
+  const callbackOrigin = new URL(redirectURL).origin
+
+  function stopWaiting(): void {
+    connecting = false
+    clearInterval(popupCheck)
+    popupCheck = undefined
+  }
+
+  function handleAuthResult(event: MessageEvent<unknown>): void {
+    if (!connecting || authWindow === null || event.source !== authWindow || event.origin !== callbackOrigin) return
+    const result = event.data
+    if (
+      result === null ||
+      typeof result !== 'object' ||
+      !('type' in result) ||
+      result.type !== 'calendar-auth-result' ||
+      !('error' in result) ||
+      (result.error !== null && typeof result.error !== 'string')
+    )
+      return
+
+    stopWaiting()
+    if (result.error === null) {
+      dispatch('close')
+    } else {
+      error =
+        result.error === calendar.string.NotAllPermissions
+          ? calendar.string.NotAllPermissions
+          : calendar.string.FailedToConnect
+    }
+  }
+
+  onDestroy(stopWaiting)
 
   async function sendRequest(): Promise<void> {
     connecting = true
-    error = false
+    error = undefined
+    authWindow?.close()
+    authWindow = null
     try {
       const link = concatLink(calendarUrl, '/signin')
       const url = new URL(link)
-      url.search = new URLSearchParams({
-        redirectURL: (getMetadata(presentation.metadata.FrontUrl) ?? window.location.origin) + `/${calendarId}`
-      }).toString()
+      url.search = new URLSearchParams({ redirectURL }).toString()
 
-      await connectCalendar(url, getMetadata(presentation.metadata.Token))
-      dispatch('close')
+      authWindow = await connectCalendar(url, getMetadata(presentation.metadata.Token))
+      if (!connecting) return
+      if (authWindow === null) {
+        stopWaiting()
+        dispatch('close')
+        return
+      }
+      popupCheck = setInterval(() => {
+        if (authWindow?.closed === true) {
+          error = calendar.string.FailedToConnect
+          stopWaiting()
+        }
+      }, 500)
     } catch (err) {
-      error = true
+      error = calendar.string.FailedToConnect
+      stopWaiting()
       Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
-    } finally {
-      connecting = false
     }
   }
 
@@ -61,6 +107,8 @@
 
   $: updateLabel($themeStore.language).catch(Analytics.handleError)
 </script>
+
+<svelte:window on:message={handleAuthResult} />
 
 <div class="card">
   <div class="flex-between header">
@@ -79,10 +127,10 @@
       <Html value={label} />
     </div>
 
-    {#if error}
+    {#if error !== undefined}
       <div class="flex-row-center gap-2 pt-2" role="alert">
         <IconError size="medium" />
-        <Label label={calendar.string.FailedToConnect} />
+        <Label label={error} />
       </div>
     {/if}
 

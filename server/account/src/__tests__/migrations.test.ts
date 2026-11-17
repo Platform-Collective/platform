@@ -30,7 +30,7 @@ describe('account db migrations', () => {
 
   it.each(['postgres', 'cockroach'] as const)('initializes OTP attempt counters for existing rows (%s)', (flavor) => {
     const migration = getMigrations('global_account', flavor).find(
-      ([name]) => name === 'account_db_v28_add_otp_attempts'
+      ([name]) => name === 'account_db_v30_add_otp_attempts'
     )
 
     expect(migration).toBeDefined()
@@ -50,7 +50,7 @@ describe('account db migrations', () => {
           'account_db_v27_add_office_social_id_type',
           'account_db_v28_add_workspace_member_unread',
           'account_db_v27_add_api_tokens_table',
-          'account_db_v28_add_otp_attempts',
+          'account_db_v30_add_otp_attempts',
           'account_db_v29_add_otp_retry_on'
         ])
       )

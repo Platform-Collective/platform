@@ -78,6 +78,8 @@
     "PasswordMinUpperChars": "Hasło musi zawierać co najmniej {count, plural, =1 {# wielką literę} few {# wielkie litery} other {# wielkich liter}}",
     "PasswordMinLowerChars": "Hasło musi zawierać co najmniej {count, plural, =1 {# małą literę} few {# małe litery} other {# małych liter}}",
     "WorkspaceArchivedDesc": "Przestrzeń robocza została zarchiwizowana z powodu braku aktywności.",
+    "WorkspaceRestoreFailed": "Restore failed",
+    "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
     "RestoreArchivedWorkspace": "Przywróć z archiwum",
     "Hello": "{name}! Dzień dobry,",
     "ProcessingInvite": "Przetwarzanie zaproszenia, proszę czekać...",

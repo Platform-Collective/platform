@@ -159,6 +159,7 @@
     "GroupByStatus": "Par statut",
     "GroupByDate": "Par date",
     "SpeakingWhileMuted": "Votre micro est coupé - les autres ne vous entendent pas",
-    "SpeakingWhileMutedAlert": "M'alerter quand je parle avec le micro coupé"
+    "SpeakingWhileMutedAlert": "M'alerter quand je parle avec le micro coupé",
+    "ScreenSharedBy": "{name} partage l'écran"
   }
 }

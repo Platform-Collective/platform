@@ -188,7 +188,7 @@ export function createModel (builder: Builder): void {
     core.space.Model,
     {
       name: 'profile',
-      label: setting.string.AccountSettings,
+      label: setting.string.Profile,
       icon: setting.icon.AccountSettings,
       component: setting.component.Profile,
       group: 'settings-account',
@@ -346,7 +346,7 @@ export function createModel (builder: Builder): void {
     core.space.Model,
     {
       name: 'configuration',
-      label: setting.string.Configure,
+      label: setting.string.Modules,
       icon: setting.icon.Setting,
       component: setting.component.Configure,
       order: 1200,
@@ -455,54 +455,11 @@ export function createModel (builder: Builder): void {
       icon: setting.icon.ApiToken,
       component: setting.component.ApiTokens,
       group: 'settings-account',
-      order: 1500,
+      order: 1550,
       role: AccountRole.User
     },
     setting.ids.ApiTokens
   )
-  // Currently remove Support item from settings
-  // builder.createDoc(
-  //   setting.class.SettingsCategory,
-  //   core.space.Model,
-  //   {
-  //     name: 'support',
-  //     label: setting.string.Support,
-  //     icon: setting.icon.Support,
-  //     component: setting.component.Support,
-  //     group: 'main',
-  //     secured: false,
-  //     order: 5000
-  //   },
-  //   setting.ids.Support
-  // )
-  // builder.createDoc(
-  //   setting.class.SettingsCategory,
-  //   core.space.Model,
-  //   {
-  //     name: 'privacy',
-  //     label: setting.string.Privacy,
-  //     icon: setting.icon.Privacy,
-  //     component: setting.component.Privacy,
-  //     group: 'main',
-  //     secured: false,
-  //     order: 6000
-  //   },
-  //   setting.ids.Privacy
-  // )
-  // builder.createDoc(
-  //   setting.class.SettingsCategory,
-  //   core.space.Model,
-  //   {
-  //     name: 'terms',
-  //     label: setting.string.Terms,
-  //     icon: setting.icon.Terms,
-  //     component: setting.component.Terms,
-  //     group: 'main',
-  //     secured: false,
-  //     order: 10000
-  //   },
-  //   setting.ids.Terms
-  // )
 
   builder.createDoc(
     workbench.class.Application,
