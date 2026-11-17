@@ -1,13 +1,18 @@
 <script lang="ts">
   import { Doc } from '@hcengineering/core'
   import { getClient } from '@hcengineering/presentation'
-  import { Button, IconDownOutline, IconUpOutline } from '@hcengineering/ui'
+  import { Button, IconDownOutline, IconUpOutline, panelstore, popupstore } from '@hcengineering/ui'
   import { tick } from 'svelte'
   import { get } from 'svelte/store'
   import view from '../plugin'
   import { ListSelectionProvider, focusStore } from '../selection'
-  import { getUpDownNavigationOffset, nextDocumentKeys, previousDocumentKeys } from '../upDownNavigation'
-  import { openDoc, restrictionStore } from '../utils'
+  import {
+    getUpDownNavigationOffset,
+    isActiveUpDownNavigationPanel,
+    nextDocumentKeys,
+    previousDocumentKeys
+  } from '../upDownNavigation'
+  import { getObjectLinkId, openDoc, restrictionStore } from '../utils'
 
   export let element: Doc
 
@@ -17,6 +22,19 @@
   // belong to another list (for example sub-issues shown inside the opened document).
   // Re-evaluated on focus changes, which also happen when the list content is updated.
   $: provider = $focusStore !== undefined ? ListSelectionProvider.Find(element._id) : undefined
+
+  let elementLinkId: string | undefined
+  $: void updateElementLinkId(element)
+
+  async function updateElementLinkId(doc: Doc): Promise<void> {
+    const provider = client.getHierarchy().classHierarchyMixin(doc._class, view.mixin.LinkIdProvider)
+    const id = await getObjectLinkId(provider !== undefined ? [provider] : [], doc._id, doc._class, doc)
+    if (element._id === doc._id) {
+      elementLinkId = id
+    }
+  }
+
+  $: isActivePanel = isActiveUpDownNavigationPanel(elementLinkId, $panelstore.panel?._id, $popupstore.length > 0)
 
   let navigating = false
 
@@ -39,7 +57,7 @@
   }
 
   function onKeydown(evt: KeyboardEvent): void {
-    if (provider === undefined || $restrictionStore.disableNavigation) return
+    if (provider === undefined || !isActivePanel || $restrictionStore.disableNavigation) return
     const offset = getUpDownNavigationOffset(evt, evt.target as HTMLElement | null)
     if (offset === undefined) return
     evt.preventDefault()

@@ -1,4 +1,4 @@
-import { getUpDownNavigationOffset } from '../upDownNavigation'
+import { getUpDownNavigationOffset, isActiveUpDownNavigationPanel } from '../upDownNavigation'
 
 function key (
   k: string,
@@ -39,5 +39,14 @@ describe('getUpDownNavigationOffset', () => {
     expect(getUpDownNavigationOffset(evt, { tagName: 'DIV', isContentEditable: false })).toBe(1)
     expect(getUpDownNavigationOffset(evt, { tagName: 'BUTTON' })).toBe(1)
     expect(getUpDownNavigationOffset(evt, null)).toBe(1)
+  })
+})
+
+describe('isActiveUpDownNavigationPanel', () => {
+  it('handles keys only in the current panel when no popup is open', () => {
+    expect(isActiveUpDownNavigationPanel('issue-2', 'issue-2', false)).toBe(true)
+    expect(isActiveUpDownNavigationPanel('issue-1', 'issue-2', false)).toBe(false)
+    expect(isActiveUpDownNavigationPanel(undefined, 'issue-2', false)).toBe(false)
+    expect(isActiveUpDownNavigationPanel('issue-2', 'issue-2', true)).toBe(false)
   })
 })

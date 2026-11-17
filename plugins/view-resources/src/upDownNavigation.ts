@@ -49,3 +49,11 @@ export function getUpDownNavigationOffset (evt: NavigationKeyEvent, target?: Edi
   if (evt.key === 'ArrowDown') return 1
   return undefined
 }
+
+export function isActiveUpDownNavigationPanel (
+  elementPanelId: string | undefined,
+  activePanelId: string | undefined,
+  hasOpenPopup: boolean
+): boolean {
+  return !hasOpenPopup && elementPanelId !== undefined && elementPanelId === activePanelId
+}
