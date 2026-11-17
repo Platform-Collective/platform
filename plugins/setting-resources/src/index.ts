@@ -27,7 +27,6 @@ import General from './components/General.svelte'
 import Backup from './components/Backup.svelte'
 import Members from './components/Members.svelte'
 import Password from './components/Password.svelte'
-import Privacy from './components/Privacy.svelte'
 import Profile from './components/Profile.svelte'
 import Settings from './components/Settings.svelte'
 import TwoFactorSettings from './components/TwoFactorSettings.svelte'
@@ -50,8 +49,6 @@ import ManageSpaceTypeContent from './components/spaceTypes/ManageSpaceTypeConte
 import ManageSpaceTypes from './components/spaceTypes/ManageSpaceTypes.svelte'
 import ManageSpaceTypesTools from './components/spaceTypes/ManageSpaceTypesTools.svelte'
 import RoleEditor from './components/spaceTypes/RoleEditor.svelte'
-import Support from './components/Support.svelte'
-import Terms from './components/Terms.svelte'
 import ArrayEditor from './components/typeEditors/ArrayEditor.svelte'
 import BooleanTypeEditor from './components/typeEditors/BooleanTypeEditor.svelte'
 import DateTypeEditor from './components/typeEditors/DateTypeEditor.svelte'
@@ -128,9 +125,6 @@ export default async (): Promise<Resources> => ({
     Password,
     WorkspaceSettings,
     Integrations,
-    Support,
-    Privacy,
-    Terms,
     ClassSetting,
     StringTypeEditor,
     HyperlinkTypeEditor,

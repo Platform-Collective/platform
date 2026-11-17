@@ -82,10 +82,15 @@
   {/if}
 {:else}
   <ChangeAttributesTemplate {viewlet} {attributeModel} {values} {preview} {space}>
-    <svelte:fragment slot="text">
-      <Label label={attributeModel.label} />
-      <span class="lower"><Label label={activity.string.Set} /></span>
-      <span class="lower"><Label label={activity.string.To} /></span>
+    <svelte:fragment slot="text" let:unresolved>
+      {#if unresolved}
+        <Label label={activity.string.Unset} />
+        <span class="lower"><Label label={attributeModel.label} /></span>
+      {:else}
+        <Label label={attributeModel.label} />
+        <span class="lower"><Label label={activity.string.Set} /></span>
+        <span class="lower"><Label label={activity.string.To} /></span>
+      {/if}
     </svelte:fragment>
   </ChangeAttributesTemplate>
 {/if}

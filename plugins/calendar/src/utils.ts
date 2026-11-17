@@ -396,6 +396,22 @@ export function getAllEvents (events: Event[], from: Timestamp, to: Timestamp): 
 }
 
 /**
+ * Returns the location fields to copy when a single occurrence of a recurring event is stored as a separate instance
+ * (edited or cancelled "this occurrence"). The imported conference link marker must stay with the location;
+ * otherwise the sync treats the conference link as a location entered by a user and writes it to the provider.
+ * @public
+ */
+export function getRecurringInstanceLocation (
+  instance: Pick<Event, 'location' | 'importedConferenceLink'>
+): Pick<Event, 'location' | 'importedConferenceLink'> {
+  const res: Pick<Event, 'location' | 'importedConferenceLink'> = { location: instance.location }
+  if (instance.importedConferenceLink !== undefined) {
+    res.importedConferenceLink = instance.importedConferenceLink
+  }
+  return res
+}
+
+/**
  * @public
  */
 export function generateEventId (): string {

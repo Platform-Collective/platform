@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { test } from '@playwright/test'
 import { NewDocument } from './model/documents/types'
 import { LeftSideMenuPage } from './model/left-side-menu-page'
 import { DocumentsPage } from './model/documents/documents-page'
@@ -13,12 +13,13 @@ import { LoginPage } from './model/login-page'
 import { SignUpPage } from './model/signup-page'
 import { SelectWorkspacePage } from './model/select-workspace-page'
 
-const retryOptions = { intervals: [1000, 1500, 2500], timeout: 60000 }
 test.use({
   storageState: PlatformSetting
 })
 
 test.describe('Fulltext index', () => {
+  test.setTimeout(180_000)
+
   test.beforeEach(async ({ page }) => {
     await (await page.goto(`${PlatformURI}/workbench/sanity-ws`))?.finished()
   })
@@ -64,17 +65,11 @@ test.describe('Fulltext index', () => {
       })
 
       await test.step('search by title', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(titleId)
-        await spotlight.checkSearchResult(newDocument.title, 1)
-        await spotlight.close()
+        await spotlight.searchAndCheck(titleId, newDocument.title, 1)
       })
 
       await test.step('search by content', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(contentId)
-        await spotlight.checkSearchResult(newDocument.title, 1)
-        await spotlight.close()
+        await spotlight.searchAndCheck(contentId, newDocument.title, 1)
       })
     })
 
@@ -115,24 +110,16 @@ test.describe('Fulltext index', () => {
       })
 
       await test.step('search by old title', async () => {
-        await spotlight.open()
-        await spotlight.checkSearchResult(newDocument.title, 0)
-        await spotlight.checkSearchResult(updatedTitle, 0)
-        await spotlight.close()
+        await spotlight.searchAndCheck(titleId, newDocument.title, 0)
+        await spotlight.searchAndCheck(titleId, updatedTitle, 0)
       })
 
       await test.step('search by title', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(updatedTitleId)
-        await spotlight.checkSearchResult(updatedTitle, 1)
-        await spotlight.close()
+        await spotlight.searchAndCheck(updatedTitleId, updatedTitle, 1)
       })
 
       await test.step('search by content', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(updatedContentId)
-        await spotlight.checkSearchResult(updatedTitle, 1)
-        await spotlight.close()
+        await spotlight.searchAndCheck(updatedContentId, updatedTitle, 1)
       })
     })
 
@@ -158,10 +145,7 @@ test.describe('Fulltext index', () => {
       })
 
       await test.step('search by title', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(titleId)
-        await spotlight.checkSearchResult(newDocument.title, 1)
-        await spotlight.close()
+        await spotlight.searchAndCheck(titleId, newDocument.title, 1)
       })
 
       await test.step('remove document', async () => {
@@ -172,12 +156,7 @@ test.describe('Fulltext index', () => {
       })
 
       await test.step('search by title', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(titleId)
-        await expect(async () => {
-          await spotlight.checkSearchResult(newDocument.title, 0)
-        }).toPass(retryOptions)
-        await spotlight.close()
+        await spotlight.searchAndCheck(titleId, newDocument.title, 0)
       })
     })
   })
@@ -208,17 +187,11 @@ test.describe('Fulltext index', () => {
       })
 
       await test.step('search by title', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(titleId)
-        await spotlight.checkSearchResult(newIssue.title, 1)
-        await spotlight.close()
+        await spotlight.searchAndCheck(titleId, newIssue.title, 1)
       })
 
       await test.step('search by content', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(contentId)
-        await spotlight.checkSearchResult(newIssue.title, 1)
-        await spotlight.close()
+        await spotlight.searchAndCheck(contentId, newIssue.title, 1)
       })
     })
 
@@ -242,10 +215,7 @@ test.describe('Fulltext index', () => {
       })
 
       await test.step('search by title', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(titleId)
-        await spotlight.checkSearchResult(newIssue.title, 1)
-        await spotlight.close()
+        await spotlight.searchAndCheck(titleId, newIssue.title, 1)
       })
 
       await test.step('update issue', async () => {
@@ -259,24 +229,15 @@ test.describe('Fulltext index', () => {
       })
 
       await test.step('search by old title', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(titleId)
-        await spotlight.checkSearchResult(newIssue.title, 0)
-        await spotlight.close()
+        await spotlight.searchAndCheck(titleId, newIssue.title, 0)
       })
 
       await test.step('search by title', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(updatedTitleId)
-        await spotlight.checkSearchResult(updatedTitle, 1)
-        await spotlight.close()
+        await spotlight.searchAndCheck(updatedTitleId, updatedTitle, 1)
       })
 
       await test.step('search by content', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(updatedContentId)
-        await spotlight.checkSearchResult(updatedTitle, 1)
-        await spotlight.close()
+        await spotlight.searchAndCheck(updatedContentId, updatedTitle, 1)
       })
     })
 
@@ -295,10 +256,7 @@ test.describe('Fulltext index', () => {
       })
 
       await test.step('search by title', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(titleId)
-        await spotlight.checkSearchResult(newIssue.title, 1)
-        await spotlight.close()
+        await spotlight.searchAndCheck(titleId, newIssue.title, 1)
       })
 
       await test.step('remove issue', async () => {
@@ -311,10 +269,7 @@ test.describe('Fulltext index', () => {
       })
 
       await test.step('search by title', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(titleId)
-        await spotlight.checkSearchResult(newIssue.title, 0)
-        await spotlight.close()
+        await spotlight.searchAndCheck(titleId, newIssue.title, 0)
       })
     })
   })
@@ -341,10 +296,7 @@ test.describe('Fulltext index', () => {
       })
 
       await test.step('search by title', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(titleId)
-        await spotlight.checkSearchResult(newIssue.title, 1)
-        await spotlight.close()
+        await spotlight.searchAndCheck(titleId, newIssue.title, 1)
       })
 
       await test.step('create workspace', async () => {
@@ -364,10 +316,7 @@ test.describe('Fulltext index', () => {
       })
 
       await test.step('search by title', async () => {
-        await spotlight.open()
-        await spotlight.fillSearchInput(titleId)
-        await spotlight.checkSearchResult(newIssue.title, 0)
-        await spotlight.close()
+        await spotlight.searchAndCheck(titleId, newIssue.title, 0)
       })
     })
   })

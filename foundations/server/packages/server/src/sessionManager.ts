@@ -30,6 +30,7 @@ import core, {
   isArchivingMode,
   isMigrationMode,
   isRestoringMode,
+  isRestoreFailedMode,
   isWorkspaceCreating,
   type MeasureContext,
   type PersonId,
@@ -564,7 +565,7 @@ export class TSessionManager implements SessionManager {
       return { resp: { error: new Error('Workspace not found or not available'), terminate: true } }
     }
 
-    if (isArchivingMode(workspaceInfo.mode)) {
+    if (isArchivingMode(workspaceInfo.mode) || isRestoreFailedMode(workspaceInfo.mode)) {
       // No access to disabled workspaces for regular users
       return {
         resp: {
