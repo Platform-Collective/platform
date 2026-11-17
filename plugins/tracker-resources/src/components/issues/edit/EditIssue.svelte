@@ -335,6 +335,10 @@
             navigate(loc)
           }}
         />
+        <ComponentExtensions
+          extension={tracker.extensions.EditIssueActions}
+          props={{ object: issue, value: issue, _class, space: issue.space, readonly: effectiveReadonly }}
+        />
       {/if}
       <Button
         icon={IconMixin}
