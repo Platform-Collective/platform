@@ -91,6 +91,31 @@ function setup (): {
 
 beforeEach(() => jest.clearAllMocks())
 
+it('holds at most two author connections while saving many authors', async () => {
+  const { adapter } = setup()
+  let active = 0
+  let peak = 0
+  const clients = Array.from({ length: 20 }, (_, index) => makeClient(String(index)))
+  const segments = clients.map((client, index): AuthorSegment => {
+    client.close.mockImplementation(async () => { active-- })
+    const context = {
+      account: String(index), connectionId: String(index), wsIds: { uuid: 'workspace' },
+      clientFactory: async () => { active++; peak = Math.max(peak, active); return client }
+    } as unknown as Context
+    return { context, prev: { content: markup(String(index)) }, curr: { content: markup(String(index + 1)) },
+      id: String(index), timestamp: index }
+  })
+  const doc = new Doc()
+  try {
+    await adapter.saveDocument(ctx, 'doc', doc, segments[19].context,
+      { prev: () => segments[0].prev, curr: () => segments[19].curr }, { segments })
+    expect(peak).toBeLessThanOrEqual(2)
+    expect(active).toBe(0)
+  } finally {
+    doc.destroy()
+  }
+})
+
 it('emits exact A/B/A diffs in both representations with one final blob update and cached clients', async () => {
   const { adapter, batch, clients, contexts } = setup()
   const doc = new Doc()

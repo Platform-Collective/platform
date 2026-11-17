@@ -155,6 +155,14 @@ export class PlatformStorageAdapter implements CollabStorageAdapter {
     const getClient = async (author: Context): Promise<TxOperations> => {
       let client = clients.get(author.account)
       if (client === undefined) {
+        // Bound live transactor connections independently of the number of editors.
+        if (clients.size >= 2) {
+          const oldest = clients.entries().next().value
+          if (oldest !== undefined) {
+            await oldest[1].close()
+            clients.delete(oldest[0])
+          }
+        }
         try {
           client = await ctx.with('connect', {}, () => author.clientFactory())
         } catch (error) {
