@@ -2,7 +2,14 @@
  * A set of tests against a real PostgreSQL database, for both CorockachDB and pure.
  */
 
-import { AccountRole, generateUuid, SocialIdType, type AccountUuid, type PersonId } from '@hcengineering/core'
+import {
+  AccountRole,
+  generateUuid,
+  SocialIdType,
+  type AccountUuid,
+  type PersonId,
+  type WorkspaceUuid
+} from '@hcengineering/core'
 import { getDBClient, shutdownPostgres, type PostgresClientReference } from '@hcengineering/postgres'
 import { PostgresAccountDB } from '../collections/postgres/postgres'
 import { type SocialId } from '../types'
@@ -324,7 +331,7 @@ describe('real-account', () => {
     '%s rolls back account creation and all OIDC role changes on failure',
     async (_name, getAccount) => {
       const account = getAccount()
-      const workspaces = []
+      const workspaces: WorkspaceUuid[] = []
       for (const name of ['atomic-one', 'atomic-two']) {
         workspaces.push(
           await account.createWorkspace(
