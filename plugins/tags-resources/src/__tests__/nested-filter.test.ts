@@ -26,7 +26,7 @@ import {
   nestedMatchResult,
   removeFilter,
   setFilters
-} from '@hcengineering/view-resources'
+} from '@hcengineering/view-resources/src/filter'
 import { FilterQueryLifetime } from '@hcengineering/view-resources/src/filter/lifecycle'
 import { createFilterQueryComposer } from '@hcengineering/view-resources/src/filter/composer'
 import {
