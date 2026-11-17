@@ -6,11 +6,9 @@ import core, {
   type Doc,
   type FindResult,
   type Hierarchy,
-  type Lookup,
   type ObjQueryType,
   type Ref,
-  type RefTo,
-  type Space
+  type RefTo
 } from '@hcengineering/core'
 import { getResource } from '@hcengineering/platform'
 import { createQuery, getClient, type LiveQuery } from '@hcengineering/presentation'
@@ -18,34 +16,6 @@ import { getCurrentResolvedLocation, locationToUrl, type AnyComponent } from '@h
 import { type Filter, type FilterMode, type FilteredView, type KeyFilter } from '@hcengineering/view'
 import { get, writable } from 'svelte/store'
 import view from './plugin'
-
-/** Optional query and row presentation settings for a reference filter. */
-export interface ObjectFilterConfig {
-  lookup?: Lookup<Doc>
-  presenterProps?: Record<string, unknown>
-}
-
-type ObjectFilterConfigProvider = (space: Ref<Space> | undefined) => ObjectFilterConfig
-const objectFilterConfigs = new Map<Ref<Class<Doc>>, Map<string, ObjectFilterConfigProvider>>()
-
-/** Register frontend-only settings for a specific class attribute's reference filter. */
-export function registerObjectFilterConfig (
-  _class: Ref<Class<Doc>>,
-  key: string,
-  provider: ObjectFilterConfigProvider
-): void {
-  let configs = objectFilterConfigs.get(_class)
-  if (configs === undefined) {
-    configs = new Map()
-    objectFilterConfigs.set(_class, configs)
-  }
-  configs.set(key, provider)
-}
-
-/** Resolve settings for both newly created and saved reference filters. */
-export function getObjectFilterConfig (key: KeyFilter, space: Ref<Space> | undefined): ObjectFilterConfig {
-  return objectFilterConfigs.get(key._class)?.get(key.key)?.(space) ?? {}
-}
 
 /**
  * @public

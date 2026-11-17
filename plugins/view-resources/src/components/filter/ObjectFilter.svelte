@@ -37,9 +37,10 @@
     resizeObserver,
     themeStore
   } from '@hcengineering/ui'
-  import { Filter, GrouppingManager } from '@hcengineering/view'
+  import { Filter, GrouppingManager, type ReferenceFilterSpace } from '@hcengineering/view'
   import { createEventDispatcher } from 'svelte'
-  import { FILTER_DEBOUNCE_MS, getObjectFilterConfig, sortFilterValues, type ObjectFilterConfig } from '../../filter'
+  import { FILTER_DEBOUNCE_MS, sortFilterValues } from '../../filter'
+  import { filterAndSortBySpace, getReferenceFilterSpace, getSpaceFilterLabel } from '../../referenceFilterSpace'
   import view from '../../plugin'
   import { buildConfigLookup, getPresenter } from '../../utils'
   import FilterRemovedNotification from './FilterRemovedNotification.svelte'
@@ -71,13 +72,20 @@
     grouppingManager = undefined
   }
 
-  let config: ObjectFilterConfig = {}
+  let spaceConfig: ReferenceFilterSpace | undefined
   let filterUpdateTimeout: any | undefined
 
+  function getLabel(value: Doc): string {
+    const labelKey = clazz.sortingKey ?? clazz.filteringKey
+    return labelKey !== undefined ? String(getObjectValue(labelKey, value) ?? '') : ''
+  }
+
   async function getValues(search: string): Promise<void> {
-    // Loading the presenter also loads its plugin's filter configuration.
-    await promise
-    config = getObjectFilterConfig(filter.key, space)
+    // Values grouped by a manager are not plain documents, so they keep their default rows.
+    spaceConfig =
+      grouppingManager === undefined
+        ? getReferenceFilterSpace(hierarchy, client.getModel(), filter.key, space)
+        : undefined
     if (objectsPromise !== undefined) {
       await objectsPromise
     }
@@ -121,8 +129,9 @@
       targets.add(object)
     }
 
+    // With space settings the search also matches the space label, so it runs on the loaded values.
     const resultQuery =
-      search !== '' && clazz.filteringKey !== undefined
+      search !== '' && clazz.filteringKey !== undefined && spaceConfig === undefined
         ? {
             [clazz.filteringKey]: { $like: '%' + search + '%' },
             _id: { $in: Array.from(targets.keys()) }
@@ -131,7 +140,11 @@
             _id: { $in: Array.from(targets.keys()) }
           }
     const options = clazz.sortingKey !== undefined ? { sort: { [clazz.sortingKey]: SortingOrder.Ascending } } : {}
-    objectsPromise = client.findAll(targetClass, resultQuery, { ...options, lookup: config.lookup })
+    objectsPromise = client.findAll(
+      targetClass,
+      resultQuery,
+      spaceConfig !== undefined ? { ...options, lookup: { space: spaceConfig.spaceClass } } : options
+    )
     values = await objectsPromise
     if (grouppingManager !== undefined) {
       values = grouppingManager.groupValues(values as Doc[], targets)
@@ -154,6 +167,11 @@
           }
         )
       }
+    }
+    if (spaceConfig !== undefined) {
+      const docs = values.filter((v): v is Doc => v != null)
+      const sorted = filterAndSortBySpace(docs, spaceConfig, getLabel, search)
+      values = docs.length < values.length ? [undefined, ...sorted] : sorted
     }
     values = sortFilterValues(values, (v) => isSelected(v, filter.value))
     objectsPromise = undefined
@@ -230,7 +248,7 @@
                         this={attribute.presenter}
                         {value}
                         {...attribute.props}
-                        {...config.presenterProps}
+                        {...spaceConfig !== undefined ? { spaceLabel: getSpaceFilterLabel(value, spaceConfig) } : {}}
                         disabled
                         oneLine
                       />

@@ -33,11 +33,11 @@
   export let inline = false
   export let accent: boolean = false
   export let noUnderline: boolean = false
-  export let showSpace: boolean = false
+  // Names the milestone's project where milestones from several projects are listed together.
+  export let spaceLabel: string | undefined = undefined
   export let onClick: (() => void) | undefined = undefined
 
-  $: projectIdentifier = showSpace ? value?.$lookup?.space?.identifier : undefined
-  $: label = projectIdentifier ? `${projectIdentifier} · ${value?.label ?? ''}` : value?.label
+  $: label = spaceLabel !== undefined && spaceLabel !== '' ? `${spaceLabel} · ${value?.label ?? ''}` : value?.label
 
   const dispatch = createEventDispatcher()
   $: accentColor =
