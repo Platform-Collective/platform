@@ -127,10 +127,7 @@ import {
 } from '@hcengineering/model-server-controlled-documents'
 import survey, { surveyId, createModel as surveyModel } from '@hcengineering/model-survey'
 import { type Plugin } from '@hcengineering/platform'
-
-interface ConfigurablePlugin extends Omit<Data<PluginConfiguration>, 'pluginId' | 'transactions'> {}
-
-type BuilderConfig = [(b: Builder) => void, Plugin] | [(b: Builder) => void, Plugin, ConfigurablePlugin | undefined]
+import { extraModelBuilders, type BuilderConfig } from './extra'
 
 export function getModelVersion (): Data<Version> {
   const rawVersion = (process.env.MODEL_VERSION ?? '0.6.0').replace('"', '').trim().replace('v', '').split('.')
@@ -569,7 +566,8 @@ export default function buildModel (): Builder {
     [serverTrainingModel, serverTrainingId],
     [serverDocumentsModel, serverDocumentsId],
     [serverAiBotModel, serverAiBotId],
-    [serverProcessModel, serverProcessId]
+    [serverProcessModel, serverProcessId],
+    ...extraModelBuilders
   ]
 
   for (const [b, id, config] of builders) {

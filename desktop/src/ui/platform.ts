@@ -219,6 +219,7 @@ import textEditor, { textEditorId } from '@hcengineering/text-editor'
 
 import { initThemeStore, setDefaultLanguage } from '@hcengineering/theme'
 import { configureNotifications } from './notifications'
+import { configureExtraDesktopPlugins } from './extra'
 import { configureAnalyticsProviders } from '@hcengineering/analytics-providers'
 import { Branding, Config } from './types'
 import { ipcMainExposed } from './typesUtils'
@@ -516,6 +517,7 @@ export async function configurePlatform (onWorkbenchConnect?: () => Promise<void
     () => import(/* webpackChunkName: "ai-assistant" */ '@hcengineering/ai-assistant-resources')
   )
   addLocation(ratingId, async () => await import(/* webpackChunkName: "rating" */ '@hcengineering/rating-resources'))
+  configureExtraDesktopPlugins()
 
   setMetadata(client.metadata.FilterModel, 'ui')
   setMetadata(client.metadata.ExtraFilter, disabledFeatures)

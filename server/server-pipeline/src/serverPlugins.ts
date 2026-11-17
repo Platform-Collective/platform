@@ -29,6 +29,9 @@ import { serverTrainingId } from '@hcengineering/server-training'
 import { serverViewId } from '@hcengineering/server-view'
 import { serverAiBotId } from '@hcengineering/server-ai-bot'
 import { serverProcessId } from '@hcengineering/server-process'
+import { registerExtraServerPlugins } from './extra'
+
+export { registerExtraServerPlugins } from './extra'
 
 export function registerServerPlugins (): void {
   addLocation(serverActivityId, () => import('@hcengineering/server-activity-resources'))
@@ -61,4 +64,5 @@ export function registerServerPlugins (): void {
   addLocation(serverGithubId, () => import('@hcengineering/server-github-resources'))
   addLocation(serverAiBotId, () => import('@hcengineering/server-ai-bot-resources'))
   addLocation(serverProcessId, () => import('@hcengineering/server-process-resources'))
+  registerExtraServerPlugins()
 }
