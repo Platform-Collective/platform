@@ -2531,7 +2531,7 @@ describe('account operations', () => {
         })
 
         expect(mockDb.otp.deleteMany).toHaveBeenCalledWith({ socialId: mockSocialId._id })
-        expect(mockDb.reserveOtpSend).toHaveBeenCalledWith(mockSocialId._id, 30000)
+        expect(mockDb.reserveOtpSend).toHaveBeenCalledWith(mockSocialId._id, 30000, false)
         expect(jest.mocked(mockDb.reserveOtpSend).mock.invocationCallOrder[0]).toBeLessThan(
           jest.mocked(mockDb.otp.deleteMany).mock.invocationCallOrder[0]
         )
@@ -2790,7 +2790,7 @@ describe('account operations', () => {
         await expect(
           validateOtp(mockCtx, mockDb, mockBranding, mockToken, { email: mockEmail, code: '123456' })
         ).rejects.toThrow()
-        expect(mockDb.reserveOtpSend).toHaveBeenCalledWith(identity._id, 30000)
+        expect(mockDb.reserveOtpSend).toHaveBeenCalledWith(identity._id, 30000, false)
         expect(mockDb.otp.deleteMany).not.toHaveBeenCalled()
       })
 

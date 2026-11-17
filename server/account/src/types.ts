@@ -361,7 +361,7 @@ export interface AccountDB {
   apiToken: DbCollection<ApiToken>
 
   init: () => Promise<void>
-  reserveOtpSend: (socialId: PersonId, retryDelayMs: number) => Promise<OtpSendReservation>
+  reserveOtpSend: (socialId: PersonId, retryDelayMs: number, reserve?: boolean) => Promise<OtpSendReservation>
   /** Atomically count an attempt on the newest active code using database time. */
   advanceLatestOtpAttempt: (socialId: PersonId) => Promise<Pick<OTP, 'code' | 'attempts'> | null>
   /** Delete expired codes using the same database clock as issuance and attempt accounting. */

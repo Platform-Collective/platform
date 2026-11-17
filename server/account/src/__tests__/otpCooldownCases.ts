@@ -52,6 +52,17 @@ export function otpCooldownCases (
     expect(result.retryOn).toBe(reserved.retryOn)
   })
 
+  it('does not create a reservation when only preserving a legacy cooldown', async () => {
+    const db = getDb()
+    const socialId = await getSocialId()
+    const result = await db.reserveOtpSend(socialId, 60000, false)
+    expect(result.reserved).toBe(false)
+    expect(result.retryOn).toBeLessThanOrEqual(result.now)
+    const reserved = await db.reserveOtpSend(socialId, 60000)
+    expect(reserved.reserved).toBe(true)
+    expect(reserved.retryOn).toBeGreaterThanOrEqual(result.now + 60000)
+  })
+
   it('ignores expired legacy OTPs and reserves atomically between new writers', async () => {
     const db = getDb()
     const socialId = await getSocialId()

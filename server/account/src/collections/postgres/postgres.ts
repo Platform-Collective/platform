@@ -841,7 +841,7 @@ export class PostgresAccountDB implements AccountDB {
     )
   }
 
-  async reserveOtpSend (socialId: PersonId, retryDelayMs: number): Promise<OtpSendReservation> {
+  async reserveOtpSend (socialId: PersonId, retryDelayMs: number, reserve = true): Promise<OtpSendReservation> {
     return await this.withRetry(async (client) => {
       // statement_timestamp is database time and is stable throughout each conditional write.
       const now = 'FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT'
@@ -855,12 +855,14 @@ export class PostgresAccountDB implements AccountDB {
          WHERE _id = $1`,
         [socialId, retryDelayMs]
       )
-      const result = await client.unsafe(
-        `UPDATE ${this.socialId.getTableName()} SET otp_retry_on = ${now} + $2
-         WHERE _id = $1 AND (otp_retry_on IS NULL OR otp_retry_on <= ${now})
-         RETURNING otp_retry_on - $2 AS now, otp_retry_on`,
-        [socialId, retryDelayMs]
-      )
+      const result = reserve
+        ? await client.unsafe(
+            `UPDATE ${this.socialId.getTableName()} SET otp_retry_on = ${now} + $2
+             WHERE _id = $1 AND (otp_retry_on IS NULL OR otp_retry_on <= ${now})
+             RETURNING otp_retry_on - $2 AS now, otp_retry_on`,
+            [socialId, retryDelayMs]
+          )
+        : []
       if (result.length === 1) {
         return { reserved: true, now: Number(result[0].now), retryOn: Number(result[0].otp_retry_on) }
       }
@@ -868,10 +870,14 @@ export class PostgresAccountDB implements AccountDB {
         `SELECT ${now} AS now, otp_retry_on FROM ${this.socialId.getTableName()} WHERE _id = $1`,
         [socialId]
       )
-      if (current.length !== 1 || current[0].otp_retry_on == null) {
+      if (current.length !== 1 || (reserve && current[0].otp_retry_on == null)) {
         throw new Error('OTP identity or reservation is missing')
       }
-      return { reserved: false, now: Number(current[0].now), retryOn: Number(current[0].otp_retry_on) }
+      return {
+        reserved: false,
+        now: Number(current[0].now),
+        retryOn: Number(current[0].otp_retry_on ?? current[0].now)
+      }
     })
   }
 

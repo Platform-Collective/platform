@@ -449,7 +449,7 @@ export class MongoAccountDB implements AccountDB {
     await this.otp.collection.deleteMany({ $expr: { $lte: ['$expiresOn', { $toLong: '$$NOW' }] } })
   }
 
-  async reserveOtpSend (socialId: PersonId, retryDelayMs: number): Promise<OtpSendReservation> {
+  async reserveOtpSend (socialId: PersonId, retryDelayMs: number, reserve = true): Promise<OtpSendReservation> {
     // Import observed legacy writes on every request, including after a new writer has run.
     // Persist before reserving so consuming the legacy code cannot erase its cooldown.
     // This cannot fence an unmodified old service that sends mail before inserting its OTP.
@@ -466,11 +466,13 @@ export class MongoAccountDB implements AccountDB {
       await this.socialId.collection.updateOne({ _id: socialId }, { $max: { otpRetryOn: legacy.retryOn } })
     }
     // Both the predicate and deadline use MongoDB's clock, including across service replicas.
-    const reserved = await this.socialId.collection.findOneAndUpdate(
-      { _id: socialId, $expr: { $lte: [{ $ifNull: ['$otpRetryOn', 0] }, { $toLong: '$$NOW' }] } },
-      [{ $set: { otpRetryOn: { $add: [{ $toLong: '$$NOW' }, retryDelayMs] } } }],
-      { returnDocument: 'after', includeResultMetadata: false }
-    )
+    const reserved = reserve
+      ? await this.socialId.collection.findOneAndUpdate(
+          { _id: socialId, $expr: { $lte: [{ $ifNull: ['$otpRetryOn', 0] }, { $toLong: '$$NOW' }] } },
+          [{ $set: { otpRetryOn: { $add: [{ $toLong: '$$NOW' }, retryDelayMs] } } }],
+          { returnDocument: 'after', includeResultMetadata: false }
+        )
+      : null
     if (reserved?.otpRetryOn !== undefined) {
       return { reserved: true, now: reserved.otpRetryOn - retryDelayMs, retryOn: reserved.otpRetryOn }
     }
@@ -480,10 +482,10 @@ export class MongoAccountDB implements AccountDB {
       { $project: { now: { $toLong: '$$NOW' }, retryOn: '$otpRetryOn' } }
     ])
     const current = await reservations.next()
-    if (current?.retryOn == null) {
+    if (current == null || (reserve && current.retryOn == null)) {
       throw new Error('OTP identity or reservation is missing')
     }
-    return { reserved: false, now: current.now, retryOn: current.retryOn }
+    return { reserved: false, now: current.now, retryOn: current.retryOn ?? current.now }
   }
 
   async init (): Promise<void> {
