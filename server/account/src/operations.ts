@@ -400,7 +400,9 @@ export async function signUp (
     account,
     name: getPersonName(person),
     socialId,
-    token: !forceConfirmation ? generateToken(account) : undefined
+    token: !forceConfirmation
+      ? generateToken(account, undefined, isAdminEmail(email) ? { admin: 'true' } : undefined)
+      : undefined
   }
 }
 
@@ -1460,7 +1462,7 @@ export async function confirm (
     account,
     name: getPersonName(person),
     socialId,
-    token: generateToken(account)
+    token: generateToken(account, undefined, isAdminEmail(email) ? { admin: 'true' } : undefined)
   }
 
   // If invite info was carried through the confirmation token (signUpJoin flow),

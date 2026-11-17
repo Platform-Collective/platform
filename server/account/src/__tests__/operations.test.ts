@@ -29,6 +29,7 @@ import serverToken, { decodeToken, decodeTokenVerbose, TokenError } from '@hceng
 import { Analytics } from '@hcengineering/analytics'
 
 import * as utils from '../utils'
+import * as admin from '../admin'
 import { type AccountDB, type SocialId } from '../types'
 import {
   createWorkspace,
@@ -2215,7 +2216,7 @@ describe('account operations', () => {
     })
 
     describe('signUp', () => {
-      test('should create account when email service not configured', async () => {
+      test('should create an admin account with an admin token when email service not configured', async () => {
         const mockSocialId = {
           _id: 'social-id' as PersonId,
           personUuid: mockAccountId,
@@ -2238,6 +2239,7 @@ describe('account operations', () => {
         jest.spyOn(utils, 'confirmHulyIds').mockResolvedValue()
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(mockPerson)
         ;(getMetadata as jest.Mock).mockReturnValue('') // No mail service configured
+        const isAdminEmailSpy = jest.spyOn(admin, 'isAdminEmail').mockReturnValue(true)
 
         const result = await signUp(mockCtx, mockDb, mockBranding, mockToken, {
           email: mockEmail,
@@ -2245,12 +2247,13 @@ describe('account operations', () => {
           firstName: mockFirstName,
           lastName: mockLastName
         })
+        isAdminEmailSpy.mockRestore()
 
         expect(result).toEqual({
           account: mockAccountId,
           name: 'John Doe',
           socialId: mockSocialId._id,
-          token: expect.any(String)
+          token: expect.stringContaining('"admin":"true"')
         })
 
         expect(utils.signUpByEmail).toHaveBeenCalledWith(
@@ -2356,7 +2359,7 @@ describe('account operations', () => {
     })
 
     describe('confirm', () => {
-      test('should confirm email and return login info', async () => {
+      test('should confirm an admin email and return login info with an admin token', async () => {
         const mockSocialId = {
           _id: 'social-id' as PersonId,
           personUuid: mockAccountId,
@@ -2379,14 +2382,16 @@ describe('account operations', () => {
         jest.spyOn(utils, 'confirmEmail').mockResolvedValue(mockSocialId._id)
         jest.spyOn(utils, 'confirmHulyIds').mockResolvedValue()
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(mockPerson)
+        const isAdminEmailSpy = jest.spyOn(admin, 'isAdminEmail').mockReturnValue(true)
 
         const result = await confirm(mockCtx, mockDb, mockBranding, mockToken)
+        isAdminEmailSpy.mockRestore()
 
         expect(result).toEqual({
           account: mockAccountId,
           name: 'John Doe',
           socialId: mockSocialId._id,
-          token: expect.any(String)
+          token: expect.stringContaining('"admin":"true"')
         })
 
         expect(utils.confirmEmail).toHaveBeenCalledWith(mockCtx, mockDb, mockAccountId, mockEmail)
