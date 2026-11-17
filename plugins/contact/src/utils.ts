@@ -36,7 +36,13 @@ import {
   TxFactory,
   DocumentUpdate
 } from '@hcengineering/core'
-import platform, { getMetadata, PlatformError } from '@hcengineering/platform'
+import platform, {
+  getMetadata,
+  getNameSearch,
+  getPlainSearch,
+  PlatformError,
+  type NameSearch
+} from '@hcengineering/platform'
 import { ColorDefinition } from '@hcengineering/ui'
 import contact, {
   AvatarProvider,
@@ -51,7 +57,6 @@ import contact, {
 } from '.'
 
 import { AVATAR_COLORS, GravatarPlaceholderType } from './types'
-import { getNameSearch, getPlainSearch, type NameSearch } from './nameSearch'
 import ContactCache from './cache'
 
 let currentEmployee: Ref<Employee>

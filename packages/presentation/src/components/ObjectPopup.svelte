@@ -21,13 +21,12 @@
     type FindOptions,
     type Ref
   } from '@hcengineering/core'
-  import { getFieldSearch } from '@hcengineering/contact'
-  import type { IntlString } from '@hcengineering/platform'
+  import { getNameSearch, getPlainSearch, type IntlString } from '@hcengineering/platform'
   import { Label } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import presentation, { searchFor, type SearchItem } from '..'
   import { ObjectCreate, type ObjectSearchCategory } from '../types'
-  import { createQuery, getClient } from '../utils'
+  import { createQuery } from '../utils'
   import DocPopup from './DocPopup.svelte'
 
   export let _class: Ref<Class<Doc>>
@@ -86,7 +85,6 @@
 
   let extraItems: Ref<Doc>[] = []
 
-  const hierarchy = getClient().getHierarchy()
   const query = createQuery()
   const sQuery = createQuery() // Query for selected objects
 
@@ -100,7 +98,7 @@
     extraItems = []
   }
 
-  $: fieldSearch = getFieldSearch(hierarchy, _class, searchField, search)
+  $: fieldSearch = searchField === 'name' ? getNameSearch(search) : getPlainSearch(search)
   $: fieldMatches = (doc: Doc): boolean => search === '' || fieldSearch.matches(getObjectValue(searchField, doc))
 
   $: fquery = {

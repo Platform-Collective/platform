@@ -445,7 +445,7 @@ export * from './types'
 export * from './utils'
 export * from './analytics'
 export * from './avatar'
-export * from './nameSearch'
+export { getNameSearch, getNameSearchTokens, getPlainSearch, type NameSearch } from '@hcengineering/platform'
 export {
   WORKSPACE_MEMBER_STATUS_MESSAGE_MAX,
   trimWorkspaceMemberStatusMessage,

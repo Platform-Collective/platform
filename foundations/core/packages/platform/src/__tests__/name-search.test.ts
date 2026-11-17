@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { getNameSearch, getNameSearchTokens } from '../nameSearch'
+import { getNameSearch, getNameSearchTokens } from '../name-search'
 
 describe('getNameSearchTokens', () => {
   it('splits on whitespace and commas', () => {
