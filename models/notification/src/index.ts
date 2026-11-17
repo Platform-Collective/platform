@@ -82,6 +82,7 @@ import {
   type NotificationTemplate,
   type NotificationType,
   type NotificationTypeSetting,
+  DOMAIN_WORKSPACE_NOTIFICATION,
   type WorkspaceNotificationTypeSetting,
   type PushSubscription,
   type PushSubscriptionKeys,
@@ -89,12 +90,18 @@ import {
   type ReactionInboxNotification
 } from '@hcengineering/notification'
 import { type Asset, type IntlString, type Resource } from '@hcengineering/platform'
-import setting, { DOMAIN_SETTING } from '@hcengineering/setting'
+import setting from '@hcengineering/setting'
 import { type AnyComponent, type Location } from '@hcengineering/ui/src/types'
 
 import notification from './plugin'
 
-export { DOMAIN_DOC_NOTIFY, DOMAIN_NOTIFICATION, DOMAIN_USER_NOTIFY, notificationId } from '@hcengineering/notification'
+export {
+  DOMAIN_DOC_NOTIFY,
+  DOMAIN_NOTIFICATION,
+  DOMAIN_USER_NOTIFY,
+  DOMAIN_WORKSPACE_NOTIFICATION,
+  notificationId
+} from '@hcengineering/notification'
 export { notificationOperation } from './migration'
 export { notification as default }
 
@@ -162,7 +169,7 @@ export class TNotificationTypeSetting extends TPreference implements Notificatio
   enabled!: boolean
 }
 
-@Model(notification.class.WorkspaceNotificationTypeSetting, core.class.Doc, DOMAIN_SETTING)
+@Model(notification.class.WorkspaceNotificationTypeSetting, core.class.Doc, DOMAIN_WORKSPACE_NOTIFICATION)
 export class TWorkspaceNotificationTypeSetting extends TDoc implements WorkspaceNotificationTypeSetting {
   attachedTo!: Ref<TNotificationProvider>
   type!: Ref<NotificationType>

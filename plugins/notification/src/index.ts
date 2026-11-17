@@ -49,6 +49,8 @@ export type * from './types'
 export const DOMAIN_NOTIFICATION = 'notification' as Domain
 export const DOMAIN_DOC_NOTIFY = 'notification-dnc' as Domain
 export const DOMAIN_USER_NOTIFY = 'notification-user' as Domain
+/** Storage domain of the workspace-wide notification defaults */
+export const DOMAIN_WORKSPACE_NOTIFICATION = 'workspace-notification' as Domain
 
 /**
  * @public
