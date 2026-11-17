@@ -2229,7 +2229,7 @@ describe('account operations', () => {
     })
 
     describe('signUp', () => {
-      test('should create an admin account with an admin token when email service not configured', async () => {
+      test.each([true, false])('should set the sign-up token admin flag from the email: %p', async (isAdmin) => {
         const mockSocialId = {
           _id: 'social-id' as PersonId,
           personUuid: mockAccountId,
@@ -2252,7 +2252,7 @@ describe('account operations', () => {
         jest.spyOn(utils, 'confirmHulyIds').mockResolvedValue()
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(mockPerson)
         ;(getMetadata as jest.Mock).mockReturnValue('') // No mail service configured
-        const isAdminEmailSpy = jest.spyOn(admin, 'isAdminEmail').mockReturnValue(true)
+        const isAdminEmailSpy = jest.spyOn(admin, 'isAdminEmail').mockReturnValue(isAdmin)
 
         const result = await signUp(mockCtx, mockDb, mockBranding, mockToken, {
           email: mockEmail,
@@ -2266,7 +2266,7 @@ describe('account operations', () => {
           account: mockAccountId,
           name: 'John Doe',
           socialId: mockSocialId._id,
-          token: expect.stringContaining('"admin":"true"')
+          token: isAdmin ? expect.stringContaining('"admin":"true"') : expect.not.stringContaining('"admin":"true"')
         })
 
         expect(utils.signUpByEmail).toHaveBeenCalledWith(
@@ -2372,7 +2372,7 @@ describe('account operations', () => {
     })
 
     describe('confirm', () => {
-      test('should confirm an admin email and return login info with an admin token', async () => {
+      test.each([true, false])('should set the confirmed token admin flag from the email: %p', async (isAdmin) => {
         const mockSocialId = {
           _id: 'social-id' as PersonId,
           personUuid: mockAccountId,
@@ -2395,7 +2395,7 @@ describe('account operations', () => {
         jest.spyOn(utils, 'confirmEmail').mockResolvedValue(mockSocialId._id)
         jest.spyOn(utils, 'confirmHulyIds').mockResolvedValue()
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(mockPerson)
-        const isAdminEmailSpy = jest.spyOn(admin, 'isAdminEmail').mockReturnValue(true)
+        const isAdminEmailSpy = jest.spyOn(admin, 'isAdminEmail').mockReturnValue(isAdmin)
 
         const result = await confirm(mockCtx, mockDb, mockBranding, mockToken)
         isAdminEmailSpy.mockRestore()
@@ -2404,7 +2404,7 @@ describe('account operations', () => {
           account: mockAccountId,
           name: 'John Doe',
           socialId: mockSocialId._id,
-          token: expect.stringContaining('"admin":"true"')
+          token: isAdmin ? expect.stringContaining('"admin":"true"') : expect.not.stringContaining('"admin":"true"')
         })
 
         expect(utils.confirmEmail).toHaveBeenCalledWith(mockCtx, mockDb, mockAccountId, mockEmail)
