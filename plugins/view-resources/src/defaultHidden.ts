@@ -24,6 +24,11 @@ export function isDefaultHidden (key: BuildModelKey | string): boolean {
   return typeof key !== 'string' && key.displayProps?.defaultHidden === true
 }
 
+export function matchesConfigKey (entry: BuildModelKey | string, key: string): boolean {
+  if (isDefaultHidden(entry)) return false
+  return typeof entry === 'string' ? entry === key : entry.key === key
+}
+
 /**
  * Returns the config entry without the `defaultHidden` flag, the form stored in
  * a viewlet preference once the user enables the entry.

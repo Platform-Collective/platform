@@ -14,7 +14,7 @@
 //
 
 import { type BuildModelKey } from '@hcengineering/view'
-import { isDefaultHidden, withoutDefaultHidden } from '../defaultHidden'
+import { isDefaultHidden, matchesConfigKey, withoutDefaultHidden } from '../defaultHidden'
 
 describe('defaultHidden', () => {
   const hidden: BuildModelKey = {
@@ -28,6 +28,13 @@ describe('defaultHidden', () => {
     expect(isDefaultHidden('space')).toBe(false)
     expect(isDefaultHidden({ key: 'space' })).toBe(false)
     expect(isDefaultHidden({ key: 'space', displayProps: { defaultHidden: false } })).toBe(false)
+  })
+
+  test('does not match hidden config entries', () => {
+    expect(matchesConfigKey(hidden, 'space')).toBe(false)
+    expect(matchesConfigKey(withoutDefaultHidden(hidden), 'space')).toBe(true)
+    expect(matchesConfigKey('space', 'space')).toBe(true)
+    expect(matchesConfigKey({ key: 'assignee' }, 'space')).toBe(false)
   })
 
   test('strips the flag and keeps the rest of the entry', () => {

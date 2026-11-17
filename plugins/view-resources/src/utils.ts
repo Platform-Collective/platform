@@ -108,7 +108,7 @@ import contact, {
 } from '@hcengineering/contact'
 import { get, writable } from 'svelte/store'
 import plugin from './plugin'
-import { isDefaultHidden } from './defaultHidden'
+import { isDefaultHidden, matchesConfigKey } from './defaultHidden'
 import { noCategory } from './viewOptions'
 
 export { getFiltredKeys, isCollectionAttr } from '@hcengineering/presentation'
@@ -1483,14 +1483,7 @@ export function isAttachedDoc (doc: Doc | AttachedDoc): doc is AttachedDoc {
 }
 
 export function enabledConfig (config: Array<string | BuildModelKey>, key: string): boolean {
-  for (const value of config) {
-    if (typeof value === 'string') {
-      if (value === key) return true
-    } else {
-      if (value.key === key) return true
-    }
-  }
-  return false
+  return config.some((entry) => matchesConfigKey(entry, key))
 }
 
 export async function openDoc (hierarchy: Hierarchy, object: Doc): Promise<void> {
