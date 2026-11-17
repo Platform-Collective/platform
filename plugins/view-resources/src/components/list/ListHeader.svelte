@@ -189,9 +189,7 @@
                 value: category,
                 category: groupByKey,
                 docs: items,
-                allDocs: itemsProj,
-                viewOptions,
-                space
+                allDocs: itemsProj
               }}
             />
           {/each}
