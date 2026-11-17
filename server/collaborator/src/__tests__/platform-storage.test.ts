@@ -97,18 +97,37 @@ it('holds at most two author connections while saving many authors', async () =>
   let peak = 0
   const clients = Array.from({ length: 20 }, (_, index) => makeClient(String(index)))
   const segments = clients.map((client, index): AuthorSegment => {
-    client.close.mockImplementation(async () => { active-- })
+    client.close.mockImplementation(async () => {
+      active--
+    })
     const context = {
-      account: String(index), connectionId: String(index), wsIds: { uuid: 'workspace' },
-      clientFactory: async () => { active++; peak = Math.max(peak, active); return client }
+      account: String(index),
+      connectionId: String(index),
+      wsIds: { uuid: 'workspace' },
+      clientFactory: async () => {
+        active++
+        peak = Math.max(peak, active)
+        return client
+      }
     } as unknown as Context
-    return { context, prev: { content: markup(String(index)) }, curr: { content: markup(String(index + 1)) },
-      id: String(index), timestamp: index }
+    return {
+      context,
+      prev: { content: markup(String(index)) },
+      curr: { content: markup(String(index + 1)) },
+      id: String(index),
+      timestamp: index
+    }
   })
   const doc = new Doc()
   try {
-    await adapter.saveDocument(ctx, 'doc', doc, segments[19].context,
-      { prev: () => segments[0].prev, curr: () => segments[19].curr }, { segments })
+    await adapter.saveDocument(
+      ctx,
+      'doc',
+      doc,
+      segments[19].context,
+      { prev: () => segments[0].prev, curr: () => segments[19].curr },
+      { segments }
+    )
     expect(peak).toBeLessThanOrEqual(2)
     expect(active).toBe(0)
   } finally {

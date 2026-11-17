@@ -84,8 +84,11 @@ it('keeps unrelated attributes outside collaborative author barriers', () => {
 })
 
 it('retains existing grouping for non-markup attributes', () => {
-  const messages = [message('1', 'A', '', 'a', 100), message('2', 'B', 'a', 'ab', 101),
-    message('3', 'A', 'a', 'abc', 102)]
+  const messages = [
+    message('1', 'A', '', 'a', 100),
+    message('2', 'B', 'a', 'ab', 101),
+    message('3', 'A', 'a', 'abc', 102)
+  ]
   for (const item of messages) {
     if (item.attributeUpdates !== undefined) item.attributeUpdates.attrClass = core.class.TypeString
   }

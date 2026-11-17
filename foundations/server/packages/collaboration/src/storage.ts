@@ -67,9 +67,8 @@ export async function saveCollabYdoc (
 ): Promise<Ref<Blob>> {
   const blobId = typeof doc === 'string' ? doc : makeCollabYdocId(doc)
 
-  const buffer = ydoc instanceof Uint8Array
-    ? Buffer.from(ydoc.buffer, ydoc.byteOffset, ydoc.byteLength)
-    : yDocToBuffer(ydoc)
+  const buffer =
+    ydoc instanceof Uint8Array ? Buffer.from(ydoc.buffer, ydoc.byteOffset, ydoc.byteLength) : yDocToBuffer(ydoc)
   await storageAdapter.put(ctx, wsIds, blobId, buffer, 'application/ydoc', buffer.length)
 
   return blobId
