@@ -43,8 +43,8 @@ export async function createMessageToDo (object: Doc, date: number, reminders: n
   const id = await ops.addCollection(
     time.class.ToDo,
     time.space.ToDos,
-    object._id,
-    object._class,
+    time.ids.NotAttached,
+    time.class.ToDo,
     'todos',
     {
       ...content,

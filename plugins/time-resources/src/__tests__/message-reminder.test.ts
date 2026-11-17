@@ -63,8 +63,8 @@ it('keeps the message title clean and schedules a native thirty-minute WorkSlot'
   expect(addCollection).toHaveBeenCalledWith(
     time.class.ToDo,
     time.space.ToDos,
-    message._id,
-    message._class,
+    time.ids.NotAttached,
+    time.class.ToDo,
     'todos',
     expect.objectContaining({ title: 'Follow up' })
   )
@@ -77,6 +77,26 @@ it('keeps the message title clean and schedules a native thirty-minute WorkSlot'
     expect.objectContaining({ title: 'Follow up', date: start, dueDate: start + 30 * 60 * 1000, reminders: [] })
   )
   expect(ops.commit).toHaveBeenCalledTimes(1)
+})
+
+it('does not update the source message collection or metadata', async () => {
+  await createMessageToDo(message, Date.UTC(2026, 10, 12, 14, 30))
+  expect(addCollection).toHaveBeenCalledWith(
+    time.class.ToDo,
+    time.space.ToDos,
+    time.ids.NotAttached,
+    time.class.ToDo,
+    'todos',
+    expect.anything()
+  )
+  expect(addCollection).not.toHaveBeenCalledWith(
+    expect.anything(),
+    expect.anything(),
+    message._id,
+    message._class,
+    'todos',
+    expect.anything()
+  )
 })
 
 it('stores the selected event reminders on the WorkSlot', async () => {
