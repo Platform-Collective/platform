@@ -34,6 +34,7 @@ import { makeFilterQuery, makeFilterQueryWithLifetime } from '@hcengineering/vie
 import tags from '../plugin'
 import { tagsInResult, tagsNinResult } from '../utils'
 
+jest.mock('@hcengineering/view-resources', () => jest.requireActual('@hcengineering/view-resources/src/filter'))
 jest.mock('@hcengineering/platform', () => ({
   ...jest.requireActual('@hcengineering/platform'),
   getResource: jest.fn()
