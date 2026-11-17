@@ -77,7 +77,7 @@ import {
 import platform, { getMetadata, PlatformError, Severity, Status } from '@hcengineering/platform'
 import serverToken, { decodeTokenVerbose, generateToken, TokenError } from '@hcengineering/server-token'
 import { Analytics } from '@hcengineering/analytics'
-import { randomBytes } from 'crypto'
+import * as crypto from 'crypto'
 
 import { type AccountDB, type AccountEvent, AccountEventType, type Workspace } from '../types'
 import { accountPlugin } from '../plugin'
@@ -470,7 +470,7 @@ describe('account utils', () => {
         ['🔑password', 'password with emoji'],
         [' password ', 'password with spaces']
       ])('should hash "%s" consistently (%s)', (password, description) => {
-        const salt = randomBytes(32)
+        const salt = crypto.randomBytes(32)
         const hash1 = hashWithSalt(password, salt)
         const hash2 = hashWithSalt(password, salt)
 
@@ -480,8 +480,8 @@ describe('account utils', () => {
 
       test('should produce different hashes for different salts', () => {
         const password = 'password123'
-        const salt1 = randomBytes(32)
-        const salt2 = randomBytes(32)
+        const salt1 = crypto.randomBytes(32)
+        const salt2 = crypto.randomBytes(32)
 
         const hash1 = hashWithSalt(password, salt1)
         const hash2 = hashWithSalt(password, salt2)
@@ -491,7 +491,7 @@ describe('account utils', () => {
       })
 
       test('should produce different hashes for different passwords', () => {
-        const salt = randomBytes(32)
+        const salt = crypto.randomBytes(32)
         const hash1 = hashWithSalt('password1', salt)
         const hash2 = hashWithSalt('password2', salt)
 
@@ -509,15 +509,15 @@ describe('account utils', () => {
         ['password with spaces', ' password123 ', true],
         ['password with special chars', 'p@ssw0rd!123', true]
       ])('should verify %s', (description, password, shouldMatch) => {
-        const salt = randomBytes(32)
+        const salt = crypto.randomBytes(32)
         const hash = shouldMatch ? hashWithSalt(password, salt) : hashWithSalt('different', salt)
 
         expect(verifyPassword(password, hash, salt)).toBe(shouldMatch)
       })
 
       test.each([
-        ['null hash', 'password123', null, randomBytes(32)],
-        ['null salt', 'password123', randomBytes(32), null],
+        ['null hash', 'password123', null, crypto.randomBytes(32)],
+        ['null salt', 'password123', crypto.randomBytes(32), null],
         ['null both', 'password123', null, null]
       ])('should handle %s', (description, password, hash, salt) => {
         expect(verifyPassword(password, hash, salt)).toBe(false)
@@ -1085,6 +1085,19 @@ describe('account utils', () => {
 
           expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('valid')
           expect(attemptsOf('123456')).toBe(1)
+        })
+
+        test('should use timingSafeEqual only for equal-length code buffers', async () => {
+          useStore([otp('123456', 0)])
+          const compare = jest.spyOn(crypto, 'timingSafeEqual')
+          try {
+            expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('valid')
+            expect(compare).toHaveBeenCalledWith(Buffer.from('123456'), Buffer.from('123456'))
+            expect(await verifyOtpAttempt(mockDb, socialIdId, '12345')).toBe('invalid')
+            expect(compare).toHaveBeenCalledTimes(1)
+          } finally {
+            compare.mockRestore()
+          }
         })
 
         test('should return invalid for wrong code', async () => {

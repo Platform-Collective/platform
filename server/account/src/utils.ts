@@ -38,7 +38,7 @@ import {
 import { getMongoClient } from '@hcengineering/mongo' // TODO: get rid of this import later
 import platform, { getMetadata, PlatformError, Severity, Status, translate } from '@hcengineering/platform'
 import { getDBClient, setDBExtraOptions } from '@hcengineering/postgres'
-import { createHmac, pbkdf2Sync, randomBytes } from 'crypto'
+import { createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from 'crypto'
 import otpGenerator from 'otp-generator'
 import { authenticator } from 'otplib'
 
@@ -732,7 +732,10 @@ export async function verifyOtpAttempt (
     return 'locked'
   }
 
-  return otpData.code === code ? 'valid' : 'invalid'
+  const expected = Buffer.from(otpData.code)
+  const candidate = Buffer.from(code)
+  const matches = expected.length === candidate.length && timingSafeEqual(expected, candidate)
+  return matches ? 'valid' : 'invalid'
 }
 
 /**
