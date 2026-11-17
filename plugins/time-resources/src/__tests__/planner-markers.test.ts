@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import type { Ref } from '@hcengineering/core'
+import type { Ref, Space } from '@hcengineering/core'
 import type { ToDo, WorkSlot } from '@hcengineering/time'
 import type { Issue } from '@hcengineering/tracker'
 
@@ -94,6 +94,19 @@ describe('planner calendar markers', () => {
     expect(getPlannerMarkers(month, [], [], slots).scheduled.size).toBe(0)
     expect(getPlannerMarkers(month, [todo], [], []).due.size).toBe(0)
     expect(getPlannerMarkers(month, [todo], [], []).scheduled.size).toBe(0)
+  })
+
+  it('hides due and scheduled markers for archived spaces and restores them when unarchived', () => {
+    const space = 'archived-space' as Ref<Space>
+    const item = { ...todo, attachedSpace: space, dueDate: date(5) }
+    const issues = [{ _id: ISSUE_ID, dueDate: date(8) }]
+    const slots = [{ attachedTo: TODO_ID, date: date(6), dueDate: date(7) }]
+    const hidden = getPlannerMarkers(month, [item], issues, slots, new Set([space]))
+    expect(hidden.due.size).toBe(0)
+    expect(hidden.scheduled.size).toBe(0)
+    const visible = getPlannerMarkers(month, [item], issues, slots, new Set())
+    expect(visible.due).toEqual(new Set([date(5), date(8)]))
+    expect(visible.scheduled).toEqual(new Set([date(6)]))
   })
 
   it('uses calendar days across daylight saving changes', () => {

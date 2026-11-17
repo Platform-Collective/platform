@@ -159,6 +159,7 @@
     "MeetingMinutesTable_": "Tabela",
     "IncludeArchived": "Uwzględnij zarchiwizowane",
     "LeaveParticipant": "Opuszczono spotkanie",
-    "Summary": "Podsumowanie"
+    "Summary": "Podsumowanie",
+    "ScreenSharedBy": "{name} udostępnia ekran"
   }
 }

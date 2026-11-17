@@ -86,6 +86,7 @@
     "FreeBusy": "Скрыть детали",
     "DefaultVisibility": "Видимость по умолчанию",
     "NotAllPermissions": "Были предоставлены не все разрешения",
+    "IntegrationFailed": "Не удалось подключить Google Календарь. Попробуйте ещё раз.",
     "GooglePrivacy": "Использование и передача информации, полученной Huly от Google API, будет соответствовать <a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">Политике использования данных пользователей Google API</a>, включая требования ограниченного использования.",
     "Value": "{value}",
     "Schedule": "Публичное расписание",

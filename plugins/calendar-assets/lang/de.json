@@ -86,6 +86,7 @@
     "FreeBusy": "Frei/Beschäftigt",
     "DefaultVisibility": "Standardsichtbarkeit",
     "NotAllPermissions": "Es wurden nicht alle Berechtigungen erteilt",
+    "IntegrationFailed": "Google Kalender konnte nicht verbunden werden. Bitte versuche es erneut.",
     "GooglePrivacy": "Die Nutzung und Übertragung von Informationen durch Huly, die von Google APIs empfangen werden, an andere Apps entspricht der <a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">Google API Services User Data Policy</a>, einschließlich der Anforderungen zur eingeschränkten Nutzung.",
     "Value": "{value}",
     "Schedule": "Öffentlicher Zeitplan",
