@@ -65,7 +65,7 @@
 </script>
 
 <Card
-  label={tracker.string.CopyToProject}
+  label={tracker.string.CopyToProjectTitle}
   okAction={copy}
   closeOnSave={false}
   canSave={space !== undefined}

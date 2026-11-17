@@ -161,6 +161,7 @@
     "ComponentMembersSearchPlaceholder": "Bileşen üyelerini değiştir…",
     "MoveToProject": "Projeye taşı",
     "CopyToProject": "Projeye kopyala…",
+    "CopyToProjectTitle": "Projeye kopyala",
     "CopyTargetUnavailable": "Bu projeye artık kopyalama yapılamıyor. Üyesi olduğunuz başka bir etkin proje seçin.",
     "CopyTemplateFailed": "Aşağıdaki şablonlar kopyalanamadı. Yalnızca bu şablonları kopyalamak için tekrar deneyin.",
     "Duplicate": "Çoğalt",
