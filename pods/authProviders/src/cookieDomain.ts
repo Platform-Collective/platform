@@ -46,6 +46,16 @@ function parseBoolean (value: string | undefined): boolean | undefined {
   }
 }
 
+function getUncoveredAccountsHost (domain: string, accountsUrl: string): string | undefined {
+  const normalizedDomain = domain.replace(/^\./, '').toLowerCase()
+  try {
+    const hostname = new URL(accountsUrl).hostname.toLowerCase()
+    return hostname !== normalizedDomain && !hostname.endsWith(`.${normalizedDomain}`) ? hostname : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export interface SessionCookieDecision {
   /** Options handed to koa-session. */
   opts: Partial<session.opts>
@@ -68,7 +78,8 @@ export interface SessionCookieDecision {
  */
 export function resolveSessionCookieOptions (
   rawDomain: string | undefined,
-  rawSecure: string | undefined
+  rawSecure: string | undefined,
+  accountsUrl?: string
 ): SessionCookieDecision {
   const warnings: SessionCookieWarning[] = []
   const opts: Partial<session.opts> = {}
@@ -83,6 +94,17 @@ export function resolveSessionCookieOptions (
     } else {
       warnings.push({
         message: 'SESSION_COOKIE_DOMAIN ignored: not a valid domain',
+        variable: 'SESSION_COOKIE_DOMAIN',
+        value: rawDomain
+      })
+    }
+  }
+
+  if (opts.domain !== undefined && accountsUrl !== undefined) {
+    const uncoveredHost = getUncoveredAccountsHost(opts.domain, accountsUrl)
+    if (uncoveredHost !== undefined) {
+      warnings.push({
+        message: `SESSION_COOKIE_DOMAIN does not cover ACCOUNTS_URL hostname '${uncoveredHost}'`,
         variable: 'SESSION_COOKIE_DOMAIN',
         value: rawDomain
       })

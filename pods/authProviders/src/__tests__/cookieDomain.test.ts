@@ -88,6 +88,25 @@ describe('resolveSessionCookieOptions', () => {
     ])
   })
 
+  it.each(['https://example.com', 'https://dev.example.com:8080'])(
+    'does not warn when ACCOUNTS_URL %s is covered by the cookie domain',
+    (accountsUrl) => {
+      expect(resolveSessionCookieOptions('.example.com', undefined, accountsUrl).warnings).toEqual([])
+    }
+  )
+
+  it.each(['https://example.net', 'https://notexample.com'])(
+    'warns without changing options when ACCOUNTS_URL %s is outside the cookie domain',
+    (accountsUrl) => {
+      const decision = resolveSessionCookieOptions('.example.com', undefined, accountsUrl)
+      expect(decision.opts).toEqual({ domain: '.example.com', key: 'huly.sess' })
+      expect(decision.warnings).toEqual([
+        expect.objectContaining({ variable: 'SESSION_COOKIE_DOMAIN', value: '.example.com' })
+      ])
+      expect(decision.warnings[0].message).toContain(new URL(accountsUrl).hostname)
+    }
+  )
+
   it('trims the domain', () => {
     expect(resolveSessionCookieOptions(' .example.com ', undefined).opts.domain).toBe('.example.com')
   })
