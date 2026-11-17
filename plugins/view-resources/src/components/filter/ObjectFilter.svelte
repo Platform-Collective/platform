@@ -23,7 +23,7 @@
     Space,
     type WithLookup
   } from '@hcengineering/core'
-  import { getNameSearch, getPlainSearch, getResourceC, translate } from '@hcengineering/platform'
+  import { getPlainSearch, getResourceC, translate } from '@hcengineering/platform'
   import presentation, { getClient } from '@hcengineering/presentation'
   import ui, {
     addNotification,
@@ -117,7 +117,7 @@
       targets.add(object)
     }
 
-    const fieldSearch = clazz.filteringKey === 'name' ? getNameSearch(search) : getPlainSearch(search)
+    const fieldSearch = getPlainSearch(search)
     const resultQuery =
       search !== '' && clazz.filteringKey !== undefined
         ? {

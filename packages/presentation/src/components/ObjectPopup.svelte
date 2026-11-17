@@ -21,7 +21,7 @@
     type FindOptions,
     type Ref
   } from '@hcengineering/core'
-  import { getNameSearch, getPlainSearch, type IntlString } from '@hcengineering/platform'
+  import { getPlainSearch, type IntlString } from '@hcengineering/platform'
   import { Label } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import presentation, { searchFor, type SearchItem } from '..'
@@ -98,7 +98,7 @@
     extraItems = []
   }
 
-  $: fieldSearch = searchField === 'name' ? getNameSearch(search) : getPlainSearch(search)
+  $: fieldSearch = getPlainSearch(search)
   $: fieldMatches = (doc: Doc): boolean => search === '' || fieldSearch.matches(getObjectValue(searchField, doc))
 
   $: fquery = {
