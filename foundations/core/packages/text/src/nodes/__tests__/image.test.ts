@@ -24,7 +24,7 @@ const doc = nodeDoc(
   })
 )
 
-describe('ImageNode renderHTML', () => {
+describe('image and gif renderHTML', () => {
   it('renders a platform placeholder src without a file url resolver', () => {
     expect(jsonToHTML(doc)).toContain('src="platform://platform/files/workspace/?file=blob-1"')
   })
@@ -33,6 +33,22 @@ describe('ImageNode renderHTML', () => {
     const html = jsonToHTML(doc, [
       ServerKit.configure({
         image: { getFileUrl: (fileId) => `https://front.example/files/ws?file=${fileId}` }
+      })
+    ])
+    expect(html).toContain('src="https://front.example/files/ws?file=blob-1"')
+    expect(html).not.toContain('platform://')
+  })
+
+  it('renders the resolved file url for a gif', () => {
+    const gifDoc = nodeDoc(
+      nodeParagraph({
+        type: MarkupNodeType.gif,
+        attrs: { 'file-id': 'blob-1', src: 'platform://platform/files/workspace/?file=blob-1' }
+      })
+    )
+    const html = jsonToHTML(gifDoc, [
+      ServerKit.configure({
+        gif: { getFileUrl: (fileId) => `https://front.example/files/ws?file=${fileId}` }
       })
     ])
     expect(html).toContain('src="https://front.example/files/ws?file=blob-1"')
