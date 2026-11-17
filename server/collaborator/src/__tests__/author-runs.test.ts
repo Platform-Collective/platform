@@ -13,9 +13,9 @@ const A = author('A')
 const B = author('B')
 
 describe('author runs', () => {
-  it.each([false, true])('preserves 40 alternating runs with gc:%s and ignores no-op sync', (gc) => {
+  it.each([false, true])('bounds alternating runs and conversions with gc:%s, including no-op sync', (gc) => {
     const doc = new Doc({ gc })
-    const getMarkup = (): Record<string, string> => ({ content: doc.getText('content').toString() })
+    const getMarkup = jest.fn(() => ({ content: doc.getText('content').toString() }))
     const runs = new AuthorRuns(doc, getMarkup)
     const baseline = getMarkup()
     for (let i = 0; i < 40; i++) {
@@ -30,11 +30,15 @@ describe('author runs', () => {
       applyUpdate(doc, encodeStateAsUpdate(doc), { context: author('C') })
     }
     const segments = runs.drain(baseline, getMarkup())
-    expect(segments).toHaveLength(40)
+    expect(segments.length).toBeLessThanOrEqual(16)
+    expect(segments.length).toBeGreaterThan(1)
+    // Fifteen boundaries plus the explicit baseline and final reads.
+    expect(getMarkup.mock.calls.length).toBeLessThanOrEqual(17)
     segments.forEach((segment, index) => {
-      expect(segment.context).toBe(index % 2 === 0 ? A : B)
+      const last = index === segments.length - 1
+      expect(segment.context).toBe(last ? B : index % 2 === 0 ? A : B)
       expect(segment.prev.content).toBe('x'.repeat(index))
-      expect(segment.curr.content).toBe('x'.repeat(index + 1))
+      expect(segment.curr.content).toBe('x'.repeat(last ? 40 : index + 1))
       if (index > 0) expect(segment.timestamp).toBeGreaterThan(segments[index - 1].timestamp)
     })
     runs.destroy()

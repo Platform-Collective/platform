@@ -11,12 +11,16 @@ interface Run {
   curr?: Record<string, string>
 }
 
+// Bound full markup conversions, retained snapshots and activity writes per save.
+export const MAX_AUTHOR_RUNS = 16
+
 /** Tracks authenticated submitting authors in server arrival order, including RPC edits. */
 export class AuthorRuns {
   private readonly closed: Run[] = []
   private current?: Run
   private timestamp = 0
   private captureFailed = false
+  private captures = 0
   private readonly candidates = new Map<Transaction, Record<string, string>>()
 
   constructor (
@@ -31,9 +35,10 @@ export class AuthorRuns {
   private readonly beforeTransaction = (transaction: Transaction): void => {
     const context = this.getContext(transaction)
     if (context !== undefined && this.current !== undefined && this.current.context.account !== context.account) {
+      if (this.captures >= MAX_AUTHOR_RUNS - 1) return
+      this.captures++
       // Capture before the edit, but commit the boundary only for a real update.
-      // Markup capture also works with gc:true and never discards author runs on overflow.
-      // Full markup conversion is also needed for author switches that prove to be no-ops.
+      // Count attempted captures too: no-op updates must not bypass the CPU bound.
       // Never let a capture error escape: Yjs emits beforeTransaction outside its cleanup guard.
       try {
         this.candidates.set(transaction, this.getMarkup())
@@ -57,6 +62,11 @@ export class AuthorRuns {
 
     if (this.current?.context.account === context.account) return
     if (this.current !== undefined) {
+      if (this.captures >= MAX_AUTHOR_RUNS - 1 && boundary === undefined) {
+        // Coalesce overflow into the final run, attributed to its last actual editor.
+        this.current.context = context
+        return
+      }
       if (boundary === undefined) return
       this.current.curr = boundary
       this.closed.push(this.current)
@@ -76,6 +86,7 @@ export class AuthorRuns {
     if (this.current !== undefined) runs.push({ ...this.current, curr })
     this.closed.length = 0
     this.current = undefined
+    this.captures = 0
     return runs.map((run) => {
       const end = run.curr ?? curr
       const segment = { ...run, id: generateId(), prev, curr: end }
