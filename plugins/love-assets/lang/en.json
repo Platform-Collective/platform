@@ -4,6 +4,7 @@
     "Room": "Room",
     "RoomHasUnfinishedMeetings": "Cannot delete this room while it has scheduled, pending, or active meetings. Finish or remove those meetings first.",
     "RoomRemovalFailed": "The room or its meetings changed. Reload and try deleting the room again.",
+    "FloorRemovalFailed": "Cannot delete this floor while it has rooms or meeting minutes. Remove them first.",
     "RoomType": "Room type",
     "Share": "Share",
     "StopShare": "Stop share",

@@ -4,6 +4,7 @@
     "Room": "Místnost",
     "RoomHasUnfinishedMeetings": "Tuto místnost nelze smazat, dokud obsahuje naplánované, čekající nebo aktivní schůzky. Nejprve tyto schůzky dokončete nebo odstraňte.",
     "RoomRemovalFailed": "Místnost nebo její schůzky se změnily. Obnovte stránku a zkuste místnost smazat znovu.",
+    "FloorRemovalFailed": "Toto patro nelze smazat, dokud obsahuje místnosti nebo zápisy ze schůzek. Nejprve je odstraňte.",
     "RoomType": "Typ místnosti",
     "Share": "Sdílet",
     "StopShare": "Zastavit sdílení",

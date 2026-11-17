@@ -4,6 +4,19 @@ import type { DocumentQuery, TxOperations } from '@hcengineering/core'
 import love, { MeetingStatus, type Floor, type MeetingMinutes, type Room } from '@hcengineering/love'
 import { PlatformError, Severity, Status } from '@hcengineering/platform'
 
+/** Preserve room minutes by rejecting deletion of their floor in the same transaction. */
+export async function removeFloor (client: Pick<TxOperations, 'apply'>, floor: Floor): Promise<void> {
+  const ops = client.apply(`remove_floor_${floor._id}`)
+  // Inspect documents at commit time: collection counters and the rendered room list can be stale.
+  ops.notMatch(love.class.MeetingMinutes, { attachedTo: floor._id })
+  ops.notMatch(love.class.Room, { floor: floor._id })
+  await ops.remove(floor)
+  const { result } = await ops.commit()
+  if (!result) {
+    throw new PlatformError(new Status(Severity.ERROR, love.string.FloorRemovalFailed, {}))
+  }
+}
+
 /** Remove a room while preserving its meeting minutes on the floor. */
 export async function removeRoom (client: Pick<TxOperations, 'findAll' | 'apply'>, room: Room): Promise<void> {
   const minutes = await client.findAll(love.class.MeetingMinutes, { attachedTo: room._id })

@@ -4,6 +4,7 @@
     "Room": "Raum",
     "RoomHasUnfinishedMeetings": "Dieser Raum kann nicht gelöscht werden, solange er geplante, ausstehende oder aktive Besprechungen enthält. Beenden oder entfernen Sie diese Besprechungen zuerst.",
     "RoomRemovalFailed": "Der Raum oder seine Besprechungen wurden geändert. Laden Sie die Seite neu und versuchen Sie erneut, den Raum zu löschen.",
+    "FloorRemovalFailed": "Diese Etage kann nicht gelöscht werden, solange sie Räume oder Besprechungsprotokolle enthält. Entfernen Sie diese zuerst.",
     "RoomType": "Raumtyp",
     "Share": "Teilen",
     "StopShare": "Teilen beenden",

@@ -13,6 +13,7 @@ import core, {
   type Ref,
   type Tx,
   type TxApplyIf,
+  type TxRemoveDoc,
   type TxUpdateDoc
 } from '@hcengineering/core'
 import love, {
@@ -27,7 +28,7 @@ import love, {
   type Room
 } from '@hcengineering/love'
 import { PlatformError, unknownError } from '@hcengineering/platform'
-import { getMeetingMinutesQuery, removeRoom } from '../meeting-minutes'
+import { getMeetingMinutesQuery, removeFloor, removeRoom } from '../meeting-minutes'
 
 const floor: Floor = {
   _id: 'floor' as Ref<Floor>,
@@ -99,6 +100,13 @@ function createClient (initialMinutes: MeetingMinutes[] = minutes): {
     .mockImplementation(async (_class, query) => toFindResult(matchQuery([...docs.values()], query, _class, hierarchy)))
   // Exercise real ApplyOperations/TxOperations. This transport accepts a batch only after its preconditions pass.
   const tx = jest.fn().mockImplementation(async (tx: Tx) => {
+    // ApplyOperations optimizes a single unconditional removal into a plain transaction.
+    // Permit the old floor-deletion path so the regression can reproduce its data loss.
+    const removal = tx as TxRemoveDoc<Floor>
+    if (tx._class === core.class.TxRemoveDoc && removal.objectClass === love.class.Floor) {
+      docs.delete(removal.objectId)
+      return {}
+    }
     if (tx._class !== core.class.TxApplyIf) throw new Error('Expected one atomic apply')
     const batch = tx as TxApplyIf
     const matches = ({ _class, query }: DocumentClassQuery<Doc>): boolean =>
@@ -122,7 +130,10 @@ function createClient (initialMinutes: MeetingMinutes[] = minutes): {
     core.account.System
   )
   const ops = client.apply(`create_meeting_${room._id}`)
-  const apply = jest.spyOn(client, 'apply').mockReturnValue(ops)
+  const createApply = client.apply.bind(client)
+  const apply = jest
+    .spyOn(client, 'apply')
+    .mockImplementation((scope) => (scope === `create_meeting_${room._id}` ? ops : createApply(scope)))
   return { client, ops, findAll, apply, tx, docs }
 }
 
@@ -314,6 +325,38 @@ describe('removeRoom', () => {
       expect(error).toBeInstanceOf(PlatformError)
       expect(unknownError(error).code).toBe(love.string.RoomHasUnfinishedMeetings)
     }
+  })
+})
+
+describe('removeFloor', () => {
+  it('keeps the preserved minutes and floor after deleting the last room', async () => {
+    const { client, docs } = createClient()
+    await removeRoom(client, room)
+    const before = new Map([...docs].map(([id, doc]) => [id, { ...doc }]))
+    await expect(removeFloor(client, floor)).rejects.toBeInstanceOf(PlatformError)
+    expect(docs).toEqual(before)
+  })
+
+  it('keeps a floor while rooms remain even if its counters are stale', async () => {
+    const { client, docs } = createClient([])
+    await expect(removeFloor(client, floor)).rejects.toBeInstanceOf(PlatformError)
+    expect(docs.has(floor._id)).toBe(true)
+    expect(docs.has(room._id)).toBe(true)
+  })
+
+  it('deletes a floor after its last room and minutes are removed', async () => {
+    const { client, docs } = createClient([])
+    await removeRoom(client, room)
+    await removeFloor(client, floor)
+    expect(docs.has(floor._id)).toBe(false)
+  })
+
+  it('propagates transport failures and keeps the floor', async () => {
+    const { client, docs, tx } = createClient([])
+    await removeRoom(client, room)
+    tx.mockRejectedValueOnce(new Error('Connection lost'))
+    await expect(removeFloor(client, floor)).rejects.toThrow('Connection lost')
+    expect(docs.has(floor._id)).toBe(true)
   })
 })
 

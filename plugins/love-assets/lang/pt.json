@@ -4,6 +4,7 @@
     "Room": "Sala",
     "RoomHasUnfinishedMeetings": "Não é possível eliminar esta sala enquanto tiver reuniões agendadas, pendentes ou ativas. Termine ou remova essas reuniões primeiro.",
     "RoomRemovalFailed": "A sala ou as suas reuniões foram alteradas. Recarregue a página e tente eliminar a sala novamente.",
+    "FloorRemovalFailed": "Não é possível eliminar este piso enquanto contiver salas ou atas de reuniões. Remova-as primeiro.",
     "RoomType": "Tipo de sala",
     "Share": "Compartilhar",
     "StopShare": "Parar compartilhamento",

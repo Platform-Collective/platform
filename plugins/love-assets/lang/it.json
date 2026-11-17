@@ -4,6 +4,7 @@
     "Room": "Stanza",
     "RoomHasUnfinishedMeetings": "Impossibile eliminare questa stanza mentre contiene riunioni programmate, in attesa o attive. Prima termina o rimuovi queste riunioni.",
     "RoomRemovalFailed": "La stanza o le sue riunioni sono cambiate. Ricarica la pagina e riprova a eliminare la stanza.",
+    "FloorRemovalFailed": "Impossibile eliminare questo piano finché contiene stanze o verbali di riunioni. Rimuovili prima.",
     "RoomType": "Tipo di stanza",
     "Share": "Condividi",
     "StopShare": "Interrompi condivisione",

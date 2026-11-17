@@ -4,6 +4,7 @@
     "Room": "Oda",
     "RoomHasUnfinishedMeetings": "Planlanmış, bekleyen veya etkin toplantılar varken bu oda silinemez. Önce bu toplantıları bitirin veya kaldırın.",
     "RoomRemovalFailed": "Oda veya toplantıları değişti. Sayfayı yenileyip odayı silmeyi tekrar deneyin.",
+    "FloorRemovalFailed": "Odalar veya toplantı tutanakları bulunan bu kat silinemez. Önce bunları kaldırın.",
     "RoomType": "Oda tipi",
     "Share": "Paylaş",
     "StopShare": "Paylaşmayı durdur",
