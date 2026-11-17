@@ -5,7 +5,7 @@
 <script lang="ts">
   import type { Ref, Space } from '@hcengineering/core'
   import { Label } from '@hcengineering/ui'
-  import { filterStore, removeFilter } from '../../filter'
+  import { filterStore, removeFilter, updateFilter } from '../../filter'
   import view from '../../plugin'
   import FilterSection from './FilterSection.svelte'
 
@@ -22,6 +22,7 @@
           <FilterSection
             {filter}
             {space}
+            on:change={() => updateFilter(filter)}
             on:remove={() => {
               removeFilter(i)
             }}

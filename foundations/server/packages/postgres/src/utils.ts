@@ -47,9 +47,14 @@ import {
 } from './schemas'
 import { retryTxn, type DBClient } from '@hcengineering/postgres-base'
 
-const loadedDomains = new Set<string>()
+interface TableCache {
+  url: string
+  domains: Set<string>
+  tables: Set<string>
+}
 
-let loadedTables = new Set<string>()
+// Pools are shared by workspace adapters, but never share schema state across connections.
+const tableCaches = new WeakMap<postgres.Sql, TableCache>()
 
 export const NumericTypes = [
   core.class.TypeNumber,
@@ -64,14 +69,20 @@ export async function createTables (
   url: string,
   domains: string[]
 ): Promise<void> {
-  const filtered = domains.filter((d) => !loadedDomains.has(url + translateDomain(d)))
+  let cache = tableCaches.get(client)
+  if (cache === undefined || cache.url !== url) {
+    cache = { url, domains: new Set(), tables: new Set() }
+    tableCaches.set(client, cache)
+  }
+  const loadedDomains = cache.domains
+  const filtered = domains.filter((d) => !loadedDomains.has(translateDomain(d)))
   if (filtered.length === 0) {
     return
   }
   const mapped = filtered.map((p) => translateDomain(p))
   const t = platformNow()
-  loadedTables =
-    loadedTables.size === 0
+  const loadedTables =
+    cache.tables.size === 0
       ? new Set(
           (
             await ctx.with('load-table', {}, () =>
@@ -86,7 +97,8 @@ export async function createTables (
             )
           ).map((it) => it.table_name)
         )
-      : loadedTables
+      : cache.tables
+  cache.tables = loadedTables
   console.log('load-table', platformNowDiff(t))
 
   const domainsToLoad = mapped.filter((it) => loadedTables.has(it))
@@ -98,7 +110,7 @@ export async function createTables (
     if (!loadedTables.has(domain)) {
       domainsToCreate.push(domain)
     } else {
-      loadedDomains.add(url + domain)
+      loadedDomains.add(domain)
     }
   }
 
@@ -106,7 +118,7 @@ export async function createTables (
     await retryTxn(client, async (client) => {
       for (const domain of domainsToCreate) {
         await ctx.with('create-table', {}, () => createTable(client as unknown as postgres.Sql, domain))
-        loadedDomains.add(url + domain)
+        loadedDomains.add(domain)
       }
     })
   }
