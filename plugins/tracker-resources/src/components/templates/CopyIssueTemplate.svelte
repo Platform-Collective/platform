@@ -18,7 +18,7 @@
   import { type IntlString, translate } from '@hcengineering/platform'
   import presentation, { Card, SpaceSelector, getClient } from '@hcengineering/presentation'
   import { IssueTemplate, Project } from '@hcengineering/tracker'
-  import { Label, NotificationSeverity, addNotification, themeStore } from '@hcengineering/ui'
+  import ui, { Label, NotificationSeverity, addNotification, themeStore } from '@hcengineering/ui'
   import { SimpleNotification } from '@hcengineering/view-resources'
   import { createEventDispatcher } from 'svelte'
   import tracker from '../../plugin'
@@ -52,9 +52,14 @@
     onFailure: async (failures) => {
       for (const { error } of failures) Analytics.handleError(error instanceof Error ? error : new Error(String(error)))
       const title = await translate(tracker.string.CopyTemplateFailed, {}, $themeStore.language)
+      const titles = failures.slice(0, 5).map(({ template }) => template.title)
+      if (failures.length > titles.length) {
+        const more = await translate(ui.string.MoreCount, { count: failures.length - titles.length }, $themeStore.language)
+        titles.push(`+${more}`)
+      }
       addNotification(
         title,
-        failures.map(({ template }) => template.title).join(', '),
+        titles.join(', '),
         SimpleNotification,
         undefined,
         NotificationSeverity.Error
