@@ -142,6 +142,7 @@ import { getChannelURL, openChannelLink } from './channel-url'
 import { canKickEmployee, kickEmployee } from './kick-employee'
 import { canMergePersons, canResendInvitation } from './visibilityTester'
 import contact from './plugin'
+import { getPersonNameQueries } from './person-name-query'
 import { rankByName } from './member-search'
 import {
   channelIdentifierProvider,
@@ -244,8 +245,14 @@ async function queryContact (
   filter?: { in?: RelatedDocument[], nin?: RelatedDocument[] }
 ): Promise<ObjectSearchResult[]> {
   const nameSearch = getFieldSearch(client.getHierarchy(), _class, 'name', search)
-  const q: DocumentQuery<Contact> = { name: { $like: nameSearch.like } }
-  return await doContactQuery(_class, q, filter, client, (it) => nameSearch.matches(it.name))
+  const queries: Array<DocumentQuery<Contact>> =
+    _class === contact.class.Organization ? [{ name: { $like: nameSearch.like } }] : getPersonNameQueries(search)
+  const results = await Promise.all(
+    queries.map(
+      async (q) => await doContactQuery(_class, q, filter, client, (it) => nameSearch.matches(it.name))
+    )
+  )
+  return Array.from(new Map(results.flat().map((result) => [result.doc._id, result])).values()).slice(0, 200)
 }
 
 // Promote at most five matching members; additional members can still appear in full-text order.
@@ -277,25 +284,28 @@ async function queryEmployee (
 ): Promise<ObjectSearchResult[]> {
   // Members are resolved from the employees already loaded on the client: no server queries.
   if (filter?.members !== undefined) return searchMemberEmployees(search, filter)
+  const q1 = await queryContact(contact.mixin.Employee, client, search, filter)
   const nameSearch = getNameSearch(search)
-  const q1 = await doContactQuery(
-    contact.mixin.Employee,
-    { name: { $like: nameSearch.like }, active: true },
-    filter,
-    client,
-    (it) => nameSearch.matches(it.name)
+  const displayNameQueries = getPersonNameQueries(search).map(({ name }) => ({ displayName: name, active: true }))
+  const displayNameResults = await Promise.all(
+    displayNameQueries.map(
+      async (q) =>
+        await doContactQuery(
+          contact.mixin.Employee,
+          q,
+          {
+            in: filter?.in,
+            nin: [...(filter?.nin ?? []), ...Array.from(q1.map((it) => ({ _id: it.doc._id, _class: it.doc._class })))]
+          },
+          client,
+          // `displayName` is a legacy Employee field which is no longer part of the type.
+          (it) => nameSearch.matches((it as Employee & { displayName?: string }).displayName)
+        )
+    )
   )
-  const q2 = await doContactQuery(
-    contact.mixin.Employee,
-    { displayName: { $like: nameSearch.like }, active: true },
-    {
-      in: filter?.in,
-      nin: [...(filter?.nin ?? []), ...Array.from(q1.map((it) => ({ _id: it.doc._id, _class: it.doc._class })))]
-    },
-    client,
-    // `displayName` is a legacy Employee field which is no longer part of the type.
-    (it) => nameSearch.matches((it as Employee & { displayName?: string }).displayName)
-  )
+  const q2 = Array.from(
+    new Map(displayNameResults.flat().map((result) => [result.doc._id, result])).values()
+  ).slice(0, 200)
 
   return q1.concat(q2)
 }
