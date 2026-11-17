@@ -241,16 +241,19 @@ describe('account operations', () => {
       jest.mocked(utils.getEndpoint).mockRestore()
     })
 
-    test.each([undefined, '', 'all', 'ALL', 'aLl'])('allows ordinary users when WORKSPACE_CREATION=%p', async (policy) => {
-      if (policy !== undefined) process.env.WORKSPACE_CREATION = policy
+    test.each([undefined, '', 'all', 'ALL', 'aLl'])(
+      'allows ordinary users when WORKSPACE_CREATION=%p',
+      async (policy) => {
+        if (policy !== undefined) process.env.WORKSPACE_CREATION = policy
 
-      const result = await createWorkspace(mockCtx, creationDb as unknown as AccountDB, mockBranding, mockToken, {
-        workspaceName: mockWorkspace.name
-      })
+        const result = await createWorkspace(mockCtx, creationDb as unknown as AccountDB, mockBranding, mockToken, {
+          workspaceName: mockWorkspace.name
+        })
 
-      expect(result.workspace).toBe(mockWorkspace.uuid)
-      expect(creationDb.assignWorkspace).toHaveBeenCalledWith(mockAccount.uuid, mockWorkspace.uuid, AccountRole.Owner)
-    })
+        expect(result.workspace).toBe(mockWorkspace.uuid)
+        expect(creationDb.assignWorkspace).toHaveBeenCalledWith(mockAccount.uuid, mockWorkspace.uuid, AccountRole.Owner)
+      }
+    )
 
     test.each(['admin', 'Admin', 'ADMIN', 'unknown'])('restricts policy %p to admins', async (policy) => {
       process.env.WORKSPACE_CREATION = policy
