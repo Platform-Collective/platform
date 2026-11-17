@@ -6,6 +6,7 @@
 import {
   calcIssueTimeStats,
   calcPlanningIssueTimeStats,
+  getIssueStatsQueryBatches,
   type IssueTimeInfo,
   type IssueTimeStatsOptions
 } from '../issueTimeStats'
@@ -34,6 +35,15 @@ const options = (skipUnStarted: boolean, includeAllChildren = false): IssueTimeS
   isClosed: (it) => it.status === 'done' || it.status === 'canceled',
   skipUnStarted,
   includeAllChildren
+})
+
+describe('getIssueStatsQueryBatches', () => {
+  it('bounds query size without changing the requested ids', () => {
+    const ids = Array.from({ length: 401 }, (_, i) => issue(String(i), 'todo', 0, 0)._id)
+    const batches = getIssueStatsQueryBatches(ids)
+    expect(batches.map((it) => it.length)).toEqual([200, 200, 1])
+    expect(batches.flat()).toEqual(ids)
+  })
 })
 
 describe('calcIssueTimeStats', () => {

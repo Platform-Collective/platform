@@ -20,7 +20,7 @@
   import { floorFractionDigits, Label } from '@hcengineering/ui'
   import { ViewOptions } from '@hcengineering/view'
   import { FixedColumn, statusStore } from '@hcengineering/view-resources'
-  import { calcIssueTimeStats, calcPlanningIssueTimeStats } from '../../issueTimeStats'
+  import { calcIssueTimeStats, calcPlanningIssueTimeStats, getIssueStatsQueryBatches } from '../../issueTimeStats'
   import tracker from '../../plugin'
   import EstimationProgressCircle from '../issues/timereport/EstimationProgressCircle.svelte'
   import TimePresenter from '../issues/timereport/TimePresenter.svelte'
@@ -39,43 +39,56 @@
   let fetched: Issue[] | undefined = undefined
   let fetchSeq = 0
 
-  // Rows of a group are loaded page by page, so with the option enabled the
-  // time fields of the remaining issues are fetched once per set of group ids.
-  // Live updates of loaded rows or loading another page do not refetch.
-  $: groupIds =
-    showSum && allDocs !== undefined && allDocs.length > (docs?.length ?? 0)
-      ? allDocs.map((it) => it._id as Issue['_id']).sort((a, b) => a.localeCompare(b))
-      : undefined
-  $: void fetchGroup(groupIds?.join(','), groupIds)
+  let fetchedIds = new Set<Issue['_id']>()
+  let hasFetchedGroup = false
 
-  let fetchedKey: string | undefined = undefined
+  $: void fetchGroup(showSum ? allDocs : undefined)
 
-  async function fetchGroup(key: string | undefined, ids: Array<Issue['_id']> | undefined): Promise<void> {
-    if (key === fetchedKey) return
-    fetchedKey = key
+  async function fetchGroup(group: Doc[] | undefined): Promise<void> {
+    if (group === undefined) {
+      if (!hasFetchedGroup) return
+      hasFetchedGroup = false
+      fetchedIds = new Set()
+      fetchSeq++
+      fetched = undefined
+      return
+    }
+
+    const ids = group.map((it) => it._id as Issue['_id'])
+    if (hasFetchedGroup && ids.length === fetchedIds.size && ids.every((id) => fetchedIds.has(id))) return
+
+    hasFetchedGroup = true
+    fetchedIds = new Set(ids)
     const seq = ++fetchSeq
-    // Discard the previous group while the next group's request is pending.
     fetched = undefined
-    if (ids === undefined) return
-    const res = await client.findAll(
-      tracker.class.Issue,
-      { _id: { $in: ids } },
-      {
-        projection: {
-          _id: 1,
-          _class: 1,
-          space: 1,
-          attachedTo: 1,
-          parents: 1,
-          status: 1,
-          estimation: 1,
-          reportedTime: 1,
-          childInfo: 1
-        }
-      }
+
+    const loadedIds = new Set((docs ?? []).map((it) => it._id))
+    const missingIds = ids.filter((id) => !loadedIds.has(id))
+    if (missingIds.length === 0) return
+
+    const responses = await Promise.all(
+      getIssueStatsQueryBatches(missingIds).map((batch) =>
+        client.findAll(
+          tracker.class.Issue,
+          { _id: { $in: batch } },
+          {
+            projection: {
+              _id: 1,
+              _class: 1,
+              space: 1,
+              attachedTo: 1,
+              parents: 1,
+              status: 1,
+              estimation: 1,
+              reportedTime: 1,
+              childInfo: 1
+            }
+          }
+        )
+      )
     )
     if (seq === fetchSeq) {
-      fetched = res
+      fetched = responses.flat()
     }
   }
 

@@ -37,6 +37,16 @@ export interface IssueTimeStats {
   reportedTime: number
 }
 
+const ISSUE_STATS_QUERY_BATCH_SIZE = 200
+
+export function getIssueStatsQueryBatches (ids: Array<Issue['_id']>): Array<Array<Issue['_id']>> {
+  const batches: Array<Array<Issue['_id']>> = []
+  for (let i = 0; i < ids.length; i += ISSUE_STATS_QUERY_BATCH_SIZE) {
+    batches.push(ids.slice(i, i + ISSUE_STATS_QUERY_BATCH_SIZE))
+  }
+  return batches
+}
+
 /**
  * Sum estimation and reported time of a group of issues.
  *
