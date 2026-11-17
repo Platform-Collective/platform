@@ -179,9 +179,9 @@ export function getTabLocation (tab: Pick<WorkbenchTab, 'location'>): Location {
 }
 
 export async function OpenInNewTab (loc: Location): Promise<void> {
-  // NavLink only calls this after the capability accepted the target. Other callers,
-  // such as the context-menu action, keep their browser-tab fallback when it does not.
-  if (getMetadata(presentation.metadata.CanOpenInNewTab)?.(loc) !== true) {
+  // Only shells without a tab provider use the browser fallback. A registered
+  // provider that rejects the target must not silently change navigation modes.
+  if (getMetadata(presentation.metadata.OpenInNewTab) === undefined) {
     window.open(locationToUrl(loc), '_blank')
     return
   }

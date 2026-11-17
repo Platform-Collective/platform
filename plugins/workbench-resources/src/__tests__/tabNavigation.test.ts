@@ -289,9 +289,32 @@ describe('workbench tab capability', () => {
     })
   })
 
-  it('opens a browser tab from the existing OpenInNewTab action without a live shell capability', async () => {
+  it('opens a browser tab synchronously when no tab provider is registered', async () => {
     unregister()
+    setMetadata(presentation.metadata.OpenInNewTab, undefined)
     // Node test environment: provide only the window.open used by the fallback.
+    const open = jest.fn()
+    const globals = globalThis as unknown as { window?: unknown }
+    const previousWindow = globals.window
+    globals.window = { open }
+    try {
+      const pending = OpenInNewTab(loc)
+      expect(open).toHaveBeenCalledTimes(1)
+      await pending
+    } finally {
+      if (previousWindow === undefined) {
+        delete globals.window
+      } else {
+        globals.window = previousWindow
+      }
+    }
+
+    expect(open).toHaveBeenCalledWith('workbench/workspace/tracker/PROJ-123', '_blank')
+    expect(createDoc).not.toHaveBeenCalled()
+  })
+
+  it('does not use the browser fallback when a registered provider rejects the target', async () => {
+    setMetadata(presentation.metadata.CanOpenInNewTab, () => false)
     const open = jest.fn()
     const globals = globalThis as unknown as { window?: unknown }
     const previousWindow = globals.window
@@ -306,8 +329,7 @@ describe('workbench tab capability', () => {
       }
     }
 
-    expect(open).toHaveBeenCalledTimes(1)
-    expect(open).toHaveBeenCalledWith('workbench/workspace/tracker/PROJ-123', '_blank')
+    expect(open).not.toHaveBeenCalled()
     expect(createDoc).not.toHaveBeenCalled()
   })
 
