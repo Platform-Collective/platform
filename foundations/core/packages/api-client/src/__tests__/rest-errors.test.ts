@@ -52,7 +52,7 @@ describe('REST HTTP errors', () => {
     await expect(client.tx(transaction)).resolves.toEqual({ object: { sequence: 7 } })
   })
 
-  it.each(['network', 'body', '', 500, 503, 401, 403, 429])('never replays a transaction after %s', async (failure) => {
+  it.each(['network', 'body', '', 500, 503, 401, 403])('never replays a transaction after %s', async (failure) => {
     const fetch = jest.spyOn(globalThis, 'fetch')
     fetch.mockImplementation(async () => {
       if (fetch.mock.calls.length > 1) return Response.json({})
@@ -72,6 +72,21 @@ describe('REST HTTP errors', () => {
       expect(error).not.toHaveProperty('outcomeUnknown', true)
     }
     expect((error as Error).message).not.toContain('sensitive')
+  })
+
+  it('retries a rate-limited transaction with the same body', async () => {
+    const fetch = jest.spyOn(globalThis, 'fetch')
+    fetch.mockImplementation(async () => {
+      if (fetch.mock.calls.length === 1) {
+        return new Response('rate limited', { status: 429, headers: { 'Retry-After-ms': '0' } })
+      }
+      return Response.json({})
+    })
+    const client = publicApi.createRestClient(endpoint, 'workspace', token)
+
+    await expect(client.tx(transaction)).resolves.toEqual({})
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch.mock.calls[0][1]?.body).toBe(fetch.mock.calls[1][1]?.body)
   })
 
   it.each([401, 403])(

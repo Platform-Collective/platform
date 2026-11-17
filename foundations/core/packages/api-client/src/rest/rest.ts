@@ -281,7 +281,9 @@ export class RestClientImpl implements RestClient {
             ? new Date(parseInt(rateLimitReset)).getTime() - Date.now()
             : 1000) // Default to 1 seconds if no headers are provided
       await new Promise((resolve) => setTimeout(resolve, waitTime))
-      throw new RestHttpError(response.status, rateLimitError)
+      const failure = new RestHttpError(response.status, rateLimitError)
+      failure.rejectedBeforeWrite = true
+      throw failure
     }
   }
 
@@ -340,38 +342,50 @@ export class RestClientImpl implements RestClient {
     return (await this.findAll(_class, query, { ...options, limit: 1 })).shift()
   }
 
+  private async sendWrite (requestUrl: string, body: string): Promise<unknown> {
+    while (true) {
+      let response: Response
+      try {
+        response = await fetch(requestUrl, {
+          method: 'POST',
+          headers: this.jsonHeaders(),
+          keepalive: true,
+          body
+        })
+      } catch {
+        const failure = new RestHttpError()
+        failure.outcomeUnknown = true
+        throw failure
+      }
+      if (response.status === 429) {
+        try {
+          await this.checkRateLimits(response)
+        } catch (error) {
+          if (isRLE(error)) continue
+          throw error
+        }
+      }
+      if (!response.ok) {
+        await this.checkRateLimits(response)
+        const failure = new RestHttpError(response.status)
+        if (response.status >= 500) failure.outcomeUnknown = true
+        throw failure
+      }
+      this.updateRateLimit(response)
+      try {
+        return await extractJson<unknown>(response)
+      } catch {
+        const failure = new RestHttpError(response.status)
+        failure.outcomeUnknown = true
+        throw failure
+      }
+    }
+  }
+
   async tx (tx: Tx): Promise<TxResult> {
     const requestUrl = concatLink(this.endpoint, `/api/v1/tx/${this.workspace}`)
     await this.checkRate()
-    const body = JSON.stringify(tx)
-    let response: Response
-    try {
-      response = await fetch(requestUrl, {
-        method: 'POST',
-        headers: this.jsonHeaders(),
-        keepalive: true,
-        body
-      })
-    } catch {
-      const failure = new RestHttpError()
-      failure.outcomeUnknown = true
-      throw failure
-    }
-    if (!response.ok) {
-      await this.checkRateLimits(response)
-      const failure = new RestHttpError(response.status)
-      if (response.status >= 500) failure.outcomeUnknown = true
-      throw failure
-    }
-    this.updateRateLimit(response)
-    let parsed: unknown
-    try {
-      parsed = await extractJson<unknown>(response)
-    } catch {
-      const failure = new RestHttpError(response.status)
-      failure.outcomeUnknown = true
-      throw failure
-    }
+    const parsed = await this.sendWrite(requestUrl, JSON.stringify(tx))
     // A successful transaction may carry an empty result such as `[]` or `null`; any valid JSON body is accepted.
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
     const result = parsed as TxResult & { error?: Status }
