@@ -34,7 +34,7 @@ import core, {
 import { StorageAdapter } from '@hcengineering/server-core'
 import { areEqualMarkups } from '@hcengineering/text'
 import { markupToYDoc } from '@hcengineering/text-ydoc'
-import { Doc as YDoc, applyUpdate, encodeStateAsUpdate } from 'yjs'
+import { Doc as YDoc, encodeStateAsUpdate } from 'yjs'
 
 import { Context } from '../context'
 import { CollabStorageAdapter, type AuthorSegment, type DocumentSaveBatch } from './adapter'
@@ -136,7 +136,7 @@ export class PlatformStorageAdapter implements CollabStorageAdapter {
   async saveDocument (
     ctx: MeasureContext,
     documentName: string,
-    document: YDoc,
+    document: YDoc | Uint8Array,
     context: Context,
     getMarkup: {
       prev: () => Record<string, string>
@@ -147,8 +147,7 @@ export class PlatformStorageAdapter implements CollabStorageAdapter {
     const { wsIds } = context
     const { documentId } = decodeDocumentId(documentName)
     // Keep the old adapter call path, with the same synchronous cutoff as segmented saves.
-    const legacyDocument = batch === undefined ? new YDoc({ gc: false }) : undefined
-    if (legacyDocument !== undefined) applyUpdate(legacyDocument, encodeStateAsUpdate(document))
+    const frozen = document instanceof Uint8Array ? document : encodeStateAsUpdate(document)
     batch ??= {
       segments: [{ context, prev: getMarkup.prev(), curr: getMarkup.curr(), id: generateId(), timestamp: Date.now() }]
     }
@@ -176,7 +175,7 @@ export class PlatformStorageAdapter implements CollabStorageAdapter {
             withRetry(
               ctx,
               this.retryCount,
-              () => saveCollabYdoc(ctx, this.storage, wsIds, documentId, legacyDocument ?? document),
+              () => saveCollabYdoc(ctx, this.storage, wsIds, documentId, frozen),
               this.retryInterval
             ),
           {
@@ -198,7 +197,6 @@ export class PlatformStorageAdapter implements CollabStorageAdapter {
         }
       )
     } finally {
-      legacyDocument?.destroy()
       for (const client of clients.values()) {
         try {
           await client.close()

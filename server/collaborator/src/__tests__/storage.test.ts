@@ -20,6 +20,17 @@ const transformer: Transformer = {
   toYdoc: () => new Doc()
 }
 
+function storedContent (document: Doc | Uint8Array): string {
+  if (!(document instanceof Uint8Array)) return document.getText('content').toString()
+  const copy = new Doc()
+  try {
+    applyUpdate(copy, document)
+    return copy.getText('content').toString()
+  } finally {
+    copy.destroy()
+  }
+}
+
 function deferred (): { promise: Promise<void>, resolve: () => void } {
   let resolve: () => void = () => {}
   const promise = new Promise<void>((_resolve) => {
@@ -73,6 +84,7 @@ it('freezes bytes/markup/authors before I/O and preserves edits arriving during 
   const release = deferred()
   const batches: DocumentSaveBatch[] = []
   const bytes: string[] = []
+  const encoded: boolean[] = []
   const save = jest
     .fn<ReturnType<CollabStorageAdapter['saveDocument']>, Parameters<CollabStorageAdapter['saveDocument']>>()
     .mockImplementation(async (_ctx, _name, document, _context, markup, batch) => {
@@ -83,7 +95,8 @@ it('freezes bytes/markup/authors before I/O and preserves edits arriving during 
         await release.promise
         throw new Error('retry')
       }
-      bytes.push(document.getText('content').toString())
+      encoded.push(document instanceof Uint8Array)
+      bytes.push(storedContent(document))
       return markup.curr()
     })
   const { extension, document, edit, store } = await setup(save)
@@ -106,6 +119,7 @@ it('freezes bytes/markup/authors before I/O and preserves edits arriving during 
     ['C', 'oldabc', 'oldabcd']
   ])
   expect(bytes).toEqual(['oldab', 'oldabcd'])
+  expect(encoded).toEqual([true, true])
   await extension.afterUnloadDocument({ documentName: 'doc' } as unknown as Parameters<
     StorageExtension['afterUnloadDocument']
   >[0])
@@ -363,7 +377,7 @@ it.each([false, true])('persists Yjs bytes when markup conversion fails (at load
     return { content: doc.getText('content').toString() }
   })
   const save = jest.fn().mockImplementation(async (_ctx, _name, document, _context, markup, batch) => {
-    expect(document.getText('content').toString()).toBe('oldab')
+    expect(storedContent(document)).toBe('oldab')
     expect(markup.curr()).toEqual(failAtLoad ? {} : { content: 'old' })
     expect(batch.segments).toHaveLength(1)
     expect(batch.segments[0].curr).toEqual(batch.segments[0].prev)

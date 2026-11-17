@@ -63,11 +63,13 @@ export async function saveCollabYdoc (
   storageAdapter: StorageAdapter,
   wsIds: WorkspaceIds,
   doc: CollaborativeDoc | MarkupBlobRef,
-  ydoc: YDoc
+  ydoc: YDoc | Uint8Array
 ): Promise<Ref<Blob>> {
   const blobId = typeof doc === 'string' ? doc : makeCollabYdocId(doc)
 
-  const buffer = yDocToBuffer(ydoc)
+  const buffer = ydoc instanceof Uint8Array
+    ? Buffer.from(ydoc.buffer, ydoc.byteOffset, ydoc.byteLength)
+    : yDocToBuffer(ydoc)
   await storageAdapter.put(ctx, wsIds, blobId, buffer, 'application/ydoc', buffer.length)
 
   return blobId

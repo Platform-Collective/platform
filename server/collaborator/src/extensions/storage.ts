@@ -27,7 +27,7 @@ import {
   onStoreDocumentPayload
 } from '@hocuspocus/server'
 import { Transformer } from '@hocuspocus/transformer'
-import { Doc as YDoc, applyUpdate, encodeStateAsUpdate } from 'yjs'
+import { Doc as YDoc, encodeStateAsUpdate } from 'yjs'
 import { Context, withContext } from '../context'
 import { CollabStorageAdapter, type DocumentSaveBatch } from '../storage/adapter'
 import { AuthorRuns } from './author-runs'
@@ -248,9 +248,8 @@ export class StorageExtension implements Extension {
 
     // Freeze bytes, markups and provenance together before any asynchronous work. New edits
     // start a separate pending batch, including edits made in the same millisecond.
-    // This temporary copy briefly doubles Yjs memory to keep retries isolated from new edits.
-    const frozen = new YDoc({ gc: false })
-    applyUpdate(frozen, encodeStateAsUpdate(document))
+    // Keep only the immutable encoded update; retries do not need a second decoded document.
+    const frozen = encodeStateAsUpdate(document)
     const prev = this.markups.get(documentName) ?? {}
     const runs = this.runs.get(documentName)
     let curr = prev
@@ -317,7 +316,6 @@ export class StorageExtension implements Extension {
       }
     } finally {
       this.saving.delete(documentName)
-      frozen.destroy()
     }
   }
 

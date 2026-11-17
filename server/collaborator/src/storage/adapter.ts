@@ -42,7 +42,7 @@ export interface CollabStorageAdapter {
   saveDocument: (
     ctx: MeasureContext,
     documentId: string,
-    document: YDoc,
+    document: YDoc | Uint8Array,
     context: Context,
     getMarkup: {
       prev: () => Record<string, string>
