@@ -20,10 +20,10 @@ import {
 import { type Card } from '@hcengineering/card'
 import { AccountRole, type Data, getCurrentAccount, type Ref, type Space, type Markup } from '@hcengineering/core'
 import { getMetadata, translate } from '@hcengineering/platform'
-import { addNotification, languageStore, NotificationSeverity, showPopup } from '@hcengineering/ui'
+import { type AnyComponent, addNotification, languageStore, NotificationSeverity, showPopup } from '@hcengineering/ui'
 import { type Emoji, type LinkPreviewParams, type Message } from '@hcengineering/communication-types'
 import emoji from '@hcengineering/emoji'
-import gifPlugin, { isGifResult } from '@hcengineering/gif'
+import gifPlugin, { insertPickerResult } from '@hcengineering/gif'
 import { markdownToMarkup, markupToMarkdown } from '@hcengineering/text-markdown'
 import { jsonToMarkup, markupToJSON } from '@hcengineering/text'
 
@@ -61,41 +61,45 @@ export async function canUnsubscribe (card: Card): Promise<boolean> {
   return isCardSubscribed(card._id)
 }
 
-export const defaultMessageInputActions: TextInputAction[] = [
-  {
+function emojiInputAction (popup: AnyComponent): TextInputAction {
+  return {
     label: communication.string.Emoji,
     icon: emoji.icon.Emoji,
     action: (element, editorHandler) => {
       showPopup(
-        gifPlugin.component.GifPickerPopup,
+        popup,
         {},
         element,
         (result) => {
-          if (result === null || result === undefined) {
-            return
-          }
-
-          if (isGifResult(result)) {
-            editorHandler.insertGif(result)
-          } else {
-            editorHandler.insertEmoji(result.text, result.image)
-          }
-          editorHandler.focus()
+          insertPickerResult(result, editorHandler)
         },
         () => {}
       )
     },
     order: 3000
-  },
-  {
-    label: communication.string.Mention,
-    icon: IconAt,
-    action: (_element, editorHandler) => {
-      editorHandler.insertText('@')
-      editorHandler.focus()
-    },
-    order: 4000
   }
+}
+
+const mentionInputAction: TextInputAction = {
+  label: communication.string.Mention,
+  icon: IconAt,
+  action: (_element, editorHandler) => {
+    editorHandler.insertText('@')
+    editorHandler.focus()
+  },
+  order: 4000
+}
+
+export const defaultMessageInputActions: TextInputAction[] = [
+  emojiInputAction(emoji.component.EmojiPopup),
+  mentionInputAction
+]
+
+// Opt-in: the emoji button opens the tabbed emoji/GIF picker. Consumers that must not take GIFs
+// (controlled documents, card forms) keep defaultMessageInputActions.
+export const gifMessageInputActions: TextInputAction[] = [
+  emojiInputAction(gifPlugin.component.GifPickerPopup),
+  mentionInputAction
 ]
 
 export function toMarkdown (markup: Markup): string {

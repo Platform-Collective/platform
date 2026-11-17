@@ -31,7 +31,7 @@
   import { messageEditingStore } from '../../stores'
   import { type TextInputAction, AppletDraft, MessageDraft } from '../../types'
   import {
-    defaultMessageInputActions,
+    gifMessageInputActions,
     isCardAllowedForCommunications,
     loadLinkPreviewParams,
     showForbidden,
@@ -472,7 +472,7 @@
     placeholder={message == null ? communication.string.WriteMessageEllipsis : communication.string.EditMessageEllipsis}
     loading={progress}
     hasChanges={ch}
-    actions={[...defaultMessageInputActions, attachAction, ...uploadActions, ...appletActions]}
+    actions={[...gifMessageInputActions, attachAction, ...uploadActions, ...appletActions]}
     on:submit={handleSubmit}
     on:update={onUpdate}
     autofocus="end"

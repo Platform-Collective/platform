@@ -26,6 +26,7 @@ import {
   filenameToTitle,
   gridPage,
   isEmojiResult,
+  insertPickerResult,
   isGifResult,
   isSearchEnter,
   libraryViewState,
@@ -340,5 +341,46 @@ describe('searchEnterPick', () => {
 
   it('picks nothing when the current search has no results', () => {
     expect(searchEnterPick([], 'cat', librarySearchKey('cat'))).toBeUndefined()
+  })
+})
+
+describe('insertPickerResult', () => {
+  const handler = (): { insertGif: jest.Mock, insertEmoji: jest.Mock, focus: jest.Mock } => ({
+    insertGif: jest.fn(),
+    insertEmoji: jest.fn(),
+    focus: jest.fn()
+  })
+
+  // T-52: a gif must never travel down the emoji path. insertEmoji routes to the emoji node,
+  // which renders at 1.3em, is an atom, drops its blob in the markdown serializer and has no
+  // html serializer case at all.
+  it('routes a gif result to insertGif and never to insertEmoji', () => {
+    const h = handler()
+    insertPickerResult({ kind: 'gif', 'file-id': 'blob-1', width: 320, height: 240 }, h)
+    expect(h.insertGif).toHaveBeenCalledTimes(1)
+    expect(h.insertEmoji).not.toHaveBeenCalled()
+    expect(h.focus).toHaveBeenCalled()
+  })
+
+  // T-53 and T-54: the image argument is what makes a custom emoji render as an image instead
+  // of literal :shortcode: text.
+  it('routes an emoji result to insertEmoji and forwards the image', () => {
+    const h = handler()
+    insertPickerResult({ kind: 'emoji', text: ':party:', image: 'blob-9' }, h)
+    expect(h.insertEmoji).toHaveBeenCalledWith(':party:', 'blob-9')
+    expect(h.insertGif).not.toHaveBeenCalled()
+    expect(h.focus).toHaveBeenCalled()
+  })
+
+  // T-55: the popup framework calls back with undefined on dismiss. Losing this guard means an
+  // insert on every Escape and every click-outside.
+  it('inserts nothing when the picker is dismissed', () => {
+    for (const dismissal of [undefined, null]) {
+      const h = handler()
+      insertPickerResult(dismissal, h)
+      expect(h.insertEmoji).not.toHaveBeenCalled()
+      expect(h.insertGif).not.toHaveBeenCalled()
+      expect(h.focus).not.toHaveBeenCalled()
+    }
   })
 })

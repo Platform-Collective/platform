@@ -47,19 +47,7 @@
   function select(next: Tab): void {
     tab = next
   }
-
-  function onKeydown(e: KeyboardEvent): void {
-    // Switch tabs without leaving the search box. Escape is left to the popup framework, which
-    // already handles it for every popup in the app.
-    if (!(e.ctrlKey || e.metaKey)) return
-    const idx = Number(e.key)
-    if (!Number.isInteger(idx) || idx < 1 || idx > tabs.length) return
-    select(tabs[idx - 1].id)
-    e.preventDefault()
-  }
 </script>
-
-<svelte:window on:keydown={onKeydown} />
 
 <div class="gifPicker-container" class:embedded class:mobile={isMobile}>
   <div class="gifPicker-tabs" role="tablist">

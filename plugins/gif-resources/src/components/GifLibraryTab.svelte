@@ -36,6 +36,11 @@
   const dispatch = createEventDispatcher()
   const RECENTS_KEY = 'gif.recents'
 
+  // The library queries stay idle until the GIFs tab has been shown once, so opening the picker
+  // for an emoji costs nothing on the server. Stays true afterwards to keep the results live.
+  let opened = active
+  $: if (active) opened = true
+
   let items: WorkspaceGif[] = []
   let matchedTotal = 0
   let libraryTotal = 0
@@ -55,7 +60,7 @@
   const gifQuery = createQuery()
   $: term = query.trim()
   $: searchKey = librarySearchKey(query)
-  $: queryLibrary(searchKey, page)
+  $: if (opened) queryLibrary(searchKey, page)
 
   function queryLibrary(forKey: string, forPage: number): void {
     gifQuery.query(
@@ -74,22 +79,26 @@
   // Whether the library is empty at all, so a search with no hits is not reported as an empty
   // library.
   const totalQuery = createQuery()
-  $: totalQuery.query(
-    gifPlugin.class.WorkspaceGif,
-    {},
-    (res) => {
-      libraryTotal = res.total
-      totalLoaded = true
-    },
-    { limit: 1, total: true }
-  )
+  $: if (opened) {
+    totalQuery.query(
+      gifPlugin.class.WorkspaceGif,
+      {},
+      (res) => {
+        libraryTotal = res.total
+        totalLoaded = true
+      },
+      { limit: 1, total: true }
+    )
+  }
 
   // Recently used entries lead the unfiltered view, fetched by id so they are found however
   // old the upload is.
   const recentsQuery = createQuery()
-  $: recentsQuery.query(gifPlugin.class.WorkspaceGif, { _id: { $in: recents as Array<Ref<WorkspaceGif>> } }, (res) => {
-    recentGifs = res
-  })
+  $: if (opened) {
+    recentsQuery.query(gifPlugin.class.WorkspaceGif, { _id: { $in: recents as Array<Ref<WorkspaceGif>> } }, (res) => {
+      recentGifs = res
+    })
+  }
 
   onMount(() => {
     recents = parseRecents(localStorage.getItem(RECENTS_KEY))

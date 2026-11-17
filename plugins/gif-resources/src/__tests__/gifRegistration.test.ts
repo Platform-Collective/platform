@@ -16,7 +16,7 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-const repoRoot = join(__dirname, '../../../../..')
+const repoRoot = join(__dirname, '../../../..')
 const read = (rel: string): string => readFileSync(join(repoRoot, rel), 'utf8')
 
 const WEB = 'dev/prod/src/platform.ts'
@@ -91,5 +91,17 @@ describe('package registration', () => {
       const deps = Object.keys(JSON.parse(read(p)).dependencies ?? {})
       expect(deps.filter((d) => !d.startsWith('@hcengineering/') && d !== 'svelte')).toEqual([])
     }
+  })
+})
+
+describe('picker opt-in', () => {
+  // The tabbed picker is opt-in per consumer. Controlled documents, card forms and comments keep
+  // the plain emoji popup; only the chat composer takes GIFs.
+  it('opens the GIF picker only from the chat composer', () => {
+    expect(read('plugins/communication-resources/src/components/input/MessageInput.svelte')).toContain(
+      '...gifMessageInputActions'
+    )
+    expect(read('plugins/text-editor-resources/src/components/editor/actions.ts')).not.toContain('GifPickerPopup')
+    expect(read('plugins/card-resources/src/components/NewCardForm.svelte')).toContain('...defaultMessageInputActions')
   })
 })

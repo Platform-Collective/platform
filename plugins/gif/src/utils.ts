@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-import type { Ref } from '@hcengineering/core'
+import type { Blob, Ref } from '@hcengineering/core'
 import type { GifGridPage, GifPickerResult, UploadValidation, WorkspaceGif } from './types'
 
 /** Uploads above this are rejected client-side. The repo enforces no upload limit at any
@@ -78,6 +78,29 @@ export function validateUpload (
 /** @public */
 export function isGifResult (result: unknown): result is Extract<GifPickerResult, { kind: 'gif' }> {
   return typeof result === 'object' && result !== null && (result as { kind?: unknown }).kind === 'gif'
+}
+
+/** @public */
+export interface PickerResultHandler {
+  insertGif: (gif: Extract<GifPickerResult, { kind: 'gif' }>) => void
+  insertEmoji: (text: string, image: Ref<Blob>) => void
+  focus: () => void
+}
+
+/**
+ * Applies what GifPickerPopup (or EmojiPopup) closed with. A gif must never reach insertEmoji,
+ * which renders an emoji node. The popup framework reports a dismissal as null or undefined.
+ * @public
+ */
+export function insertPickerResult (result: unknown, handler: PickerResultHandler): void {
+  if (result === null || result === undefined) return
+  if (isGifResult(result)) {
+    handler.insertGif(result)
+  } else {
+    const emoji = result as { text: string, image: Ref<Blob> }
+    handler.insertEmoji(emoji.text, emoji.image)
+  }
+  handler.focus()
 }
 
 /** @public */
