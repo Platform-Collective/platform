@@ -556,7 +556,7 @@ export async function getTargetObjectFromUrl (
 
   if (locationResolver !== undefined) {
     const locationResolverFn = await getResource(locationResolver)
-    const resolvedLocation = await locationResolverFn(location)
+    const resolvedLocation = await locationResolverFn(location, { background: true })
     const obj = await getObjectFromFragment(resolvedLocation?.loc?.fragment ?? '')
     if (obj !== undefined) return obj
   }
