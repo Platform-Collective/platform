@@ -248,9 +248,7 @@ async function queryContact (
   const queries: Array<DocumentQuery<Contact>> =
     _class === contact.class.Organization ? [{ name: { $like: nameSearch.like } }] : getPersonNameQueries(search)
   const results = await Promise.all(
-    queries.map(
-      async (q) => await doContactQuery(_class, q, filter, client, (it) => nameSearch.matches(it.name))
-    )
+    queries.map(async (q) => await doContactQuery(_class, q, filter, client, (it) => nameSearch.matches(it.name)))
   )
   return Array.from(new Map(results.flat().map((result) => [result.doc._id, result])).values()).slice(0, 200)
 }
