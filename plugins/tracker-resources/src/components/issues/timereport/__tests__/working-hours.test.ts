@@ -11,7 +11,8 @@ import {
 } from '../working-hours'
 
 describe('normalizeHoursPerDay', () => {
-  it('accepts values in (0, 24]', () => {
+  it('accepts values in [0.01, 24]', () => {
+    expect(normalizeHoursPerDay(0.01)).toBe(0.01)
     expect(normalizeHoursPerDay(6)).toBe(6)
     expect(normalizeHoursPerDay(7.5)).toBe(7.5)
     expect(normalizeHoursPerDay(24)).toBe(24)
@@ -21,6 +22,7 @@ describe('normalizeHoursPerDay', () => {
     expect(normalizeHoursPerDay(undefined)).toBeUndefined()
     expect(normalizeHoursPerDay(null)).toBeUndefined()
     expect(normalizeHoursPerDay(0)).toBeUndefined()
+    expect(normalizeHoursPerDay(0.001)).toBeUndefined()
     expect(normalizeHoursPerDay(-1)).toBeUndefined()
     expect(normalizeHoursPerDay(25)).toBeUndefined()
     expect(normalizeHoursPerDay(NaN)).toBeUndefined()
@@ -61,6 +63,19 @@ describe('splitTime', () => {
   it('supports fractional day lengths', () => {
     expect(splitTime(15, 7.5)).toEqual({ days: 2, hours: 0, minutes: 0 })
     expect(splitTime(10, 7.5)).toEqual({ days: 1, hours: 2, minutes: 30 })
+  })
+
+  it('preserves sub-minute and decimal working-day boundaries', () => {
+    expect(splitTime(1, 0.01)).toEqual({ days: 100, hours: 0, minutes: 0 })
+    expect(splitTime(15.02, 7.51)).toEqual({ days: 2, hours: 0, minutes: 0 })
+    expect(splitTime(7.51, 7.51)).toEqual({ days: 1, hours: 0, minutes: 0 })
+    expect(splitTime(8.51, 7.51)).toEqual({ days: 1, hours: 1, minutes: 0 })
+  })
+
+  it('preserves floating-point exact decimal multiples', () => {
+    expect(splitTime(0.21, 0.07)).toEqual({ days: 3, hours: 0, minutes: 0 })
+    expect(splitTime(0.28, 0.07)).toEqual({ days: 4, hours: 0, minutes: 0 })
+    expect(splitTime(0.2, 0.07)).toEqual({ days: 2, hours: 0, minutes: 4 })
   })
 
   it('rounds to whole minutes without producing 60 minutes', () => {

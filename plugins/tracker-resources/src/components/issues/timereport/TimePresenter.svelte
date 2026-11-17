@@ -18,7 +18,7 @@
   import { type Project } from '@hcengineering/tracker'
   import { themeStore, tooltip } from '@hcengineering/ui'
   import tracker from '../../../plugin'
-  import { activeProjects } from '../../../utils'
+  import { timeProjects } from '../../../utils'
   import { getHoursPerDay, splitTime } from './working-hours'
 
   export let id: string | undefined = undefined
@@ -31,7 +31,7 @@
 
   let label = ''
 
-  $: hoursPerDay = getHoursPerDay(space !== undefined ? $activeProjects.get(space as Ref<Project>) : undefined)
+  $: hoursPerDay = getHoursPerDay(space !== undefined ? $timeProjects.get(space as Ref<Project>) : undefined)
   $: parts = splitTime(value, hoursPerDay, hoursOnly)
 
   $: void getLabel(parts.days, parts.hours, parts.minutes, $themeStore.language)

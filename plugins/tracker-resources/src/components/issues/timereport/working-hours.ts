@@ -12,10 +12,10 @@ const MINUTES_PER_HOUR = 60
 
 /**
  * Normalizes a user-entered hours-per-day value: anything that is not a
- * number in (0, 24] counts as "not configured" (`undefined`).
+ * number in [0.01, 24] counts as "not configured" (`undefined`).
  */
 export function normalizeHoursPerDay (value: number | null | undefined): number | undefined {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > 24) return undefined
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0.01 || value > 24) return undefined
   return value
 }
 
@@ -32,16 +32,26 @@ export interface TimeParts {
 
 /**
  * Splits a time value stored in hours into working days, hours and minutes.
- * Computed on whole minutes so fractional day lengths (e.g. 7.5h) and
- * rounding (e.g. 0.999h) never yield "60m" or a fractional hour.
+ * Preserve the configured day boundary, rounding only the displayed remainder
+ * to whole minutes so rounding (e.g. 0.999h) never yields "60m".
  */
 export function splitTime (value: number, hoursPerDay: number = DEFAULT_HOURS_PER_DAY, hoursOnly = false): TimeParts {
   const total = Math.round(value * MINUTES_PER_HOUR)
   if (!Number.isFinite(total) || total <= 0) return { days: 0, hours: 0, minutes: 0 }
   if (hoursOnly) return { days: 0, hours: Math.floor(total / MINUTES_PER_HOUR), minutes: total % MINUTES_PER_HOUR }
-  const minutesPerDay = Math.round((normalizeHoursPerDay(hoursPerDay) ?? DEFAULT_HOURS_PER_DAY) * MINUTES_PER_HOUR)
-  const days = Math.floor(total / minutesPerDay)
-  const rest = total - days * minutesPerDay
+  const dayHours = normalizeHoursPerDay(hoursPerDay) ?? DEFAULT_HOURS_PER_DAY
+  const quotient = value / dayHours
+  const nearestDay = Math.round(quotient)
+  // Decimal inputs can place an exact multiple one floating-point step below
+  // its integer boundary. Resolve that boundary before rounding the minutes.
+  const tolerance = Number.EPSILON * Math.max(1, quotient) * 2
+  const wholeDays = Math.abs(quotient - nearestDay) <= tolerance ? nearestDay : quotient
+  let days = Math.floor(wholeDays)
+  let rest = Math.max(0, Math.round((value - days * dayHours) * MINUTES_PER_HOUR))
+  if (rest >= dayHours * MINUTES_PER_HOUR) {
+    days++
+    rest = 0
+  }
   return { days, hours: Math.floor(rest / MINUTES_PER_HOUR), minutes: rest % MINUTES_PER_HOUR }
 }
 

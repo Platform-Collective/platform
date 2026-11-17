@@ -574,7 +574,7 @@
         id="project-hours-per-day"
         bind:value={hoursPerDay}
         format={'number'}
-        minValue={1}
+        minValue={0.01}
         maxValue={24}
         maxDigitsAfterPoint={2}
         placeholder={getEmbeddedLabel(String(DEFAULT_HOURS_PER_DAY))}
