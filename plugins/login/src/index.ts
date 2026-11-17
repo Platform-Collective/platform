@@ -95,6 +95,8 @@ export default plugin(loginId, {
     RepeatNewPassword: '' as IntlString,
     WorkspaceArchived: '' as IntlString,
     WorkspaceArchivedDesc: '' as IntlString,
+    WorkspaceRestoreFailed: '' as IntlString,
+    WorkspaceRestoreFailedDesc: '' as IntlString,
     RestoreArchivedWorkspace: '' as IntlString,
     PasswordExpiredDesc: '' as IntlString,
     Email: '' as IntlString,

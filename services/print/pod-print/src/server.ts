@@ -35,8 +35,10 @@ import config from './config'
 import { convertToHtml } from './convert'
 import { convertToPdf, createPreviewQueue, getPreviewId, maxDocumentBytes } from './preview'
 import { ApiError } from './error'
+import { PrintBrowserManager } from './browser'
 import { PrintOptions, print, validKinds, validPageOrientations } from './print'
 import { withMeasureContext } from './middleware'
+import { isAllowedPrintUrl } from './print-url'
 
 function getAccountClient (token: string): AccountClient {
   return getAccountClientRaw(config.AccountsUrl, token)
@@ -176,9 +178,10 @@ function parsePrintOptions (query: Request['query']): PrintOptions {
 export function createServer (
   storageConfig: StorageConfiguration,
   allowedHostnames: string[]
-): { app: Express, close: () => void } {
+): { app: Express, close: () => Promise<void> } {
   const storageAdapter = buildStorageFromConfig(storageConfig)
   const pdfPreviewQueue = createPreviewQueue()
+  const browserManager = new PrintBrowserManager()
   const measureCtx = initStatisticsContext('print', {
     factory: () =>
       createOpenTelemetryMetricsContext(
@@ -192,12 +195,16 @@ export function createServer (
         })
       )
   })
-  const whitelistedHostnames = allowedHostnames.length > 0 ? new Set(allowedHostnames) : null
 
   const app = express()
   app.use(cors())
   app.use(express.json())
   app.use(withMeasureContext({ ctx: measureCtx }))
+
+  app.get('/health', (_req, res) => {
+    res.contentType('application/json')
+    res.send({ status: 'ok', browser: browserManager.getStatus() })
+  })
 
   app.get(
     '/print',
@@ -206,12 +213,7 @@ export function createServer (
       const rawlink = req.query.link as string
       const link = decodeURIComponent(rawlink)
 
-      // Verify that link is from the same host and protocol is among the allowed
-      const url = new URL(link)
-      if (
-        !['http:', 'https:'].includes(url.protocol) ||
-        (whitelistedHostnames != null && !whitelistedHostnames.has(url.hostname))
-      ) {
+      if (!isAllowedPrintUrl(link, allowedHostnames)) {
         ctx.error('Rejected processing unexpected link', { link })
         throw new ApiError(403, 'Cannot process provided link')
       }
@@ -221,9 +223,9 @@ export function createServer (
       const printRes = await ctx.with(
         'print',
         { kind: options.kind, orientation: options.orientation },
-        (ctx) => print(ctx, link, options),
+        (ctx) => print(ctx, link, options, browserManager, allowedHostnames),
         {
-          url,
+          url: new URL(link),
           viewport: options.viewport
         }
       )
@@ -324,7 +326,7 @@ export function createServer (
         const printRes = await ctx.with(
           'print',
           { kind: options.kind, orientation: options.orientation },
-          (ctx) => print(ctx, link, options),
+          (ctx) => print(ctx, link, options, browserManager, allowedHostnames),
           {
             link,
             viewport: options.viewport
@@ -358,8 +360,8 @@ export function createServer (
 
   return {
     app,
-    close: () => {
-      void storageAdapter.close()
+    close: async () => {
+      await Promise.all([storageAdapter.close(), browserManager.close()])
     }
   }
 }

@@ -704,10 +704,43 @@ export async function sendOtpEmail (
   }
 }
 
-export async function isOtpValid (db: AccountDB, socialId: PersonId, code: string): Promise<boolean> {
-  const otpData = await db.otp.findOne({ socialId, code })
+function getOtpMaxAttempts (): number {
+  // 0 or negative value means no limit
+  const value = getMetadata(accountPlugin.metadata.OtpMaxAttempts) ?? 5
+  return Number.isFinite(value) ? value : 5
+}
 
-  return (otpData?.expiresOn ?? 0) > Date.now()
+export type OtpVerificationResult = 'valid' | 'invalid' | 'locked'
+
+export async function verifyOtpAttempt (
+  db: AccountDB,
+  socialId: PersonId,
+  code: string
+): Promise<OtpVerificationResult> {
+  const now = Date.now()
+  const maxAttempts = getOtpMaxAttempts()
+
+  // Only the newest active code is accepted: a resend supersedes older codes,
+  // so an attempt is always counted on the same code it is checked against.
+  const [latest] = await db.otp.find({ socialId, expiresOn: { $gt: now } }, { createdOn: 'descending' }, 1)
+  if (latest === undefined) {
+    return 'invalid'
+  }
+
+  // Count the attempt before checking the code and re-read the counter,
+  // so concurrent requests cannot exceed the limit.
+  await db.otp.update({ socialId, code: latest.code }, { $inc: { attempts: 1 } })
+  const otpData = await db.otp.findOne({ socialId, code: latest.code })
+  if (otpData == null) {
+    // Consumed or cleaned up concurrently
+    return 'invalid'
+  }
+
+  if (maxAttempts > 0 && (otpData.attempts ?? 0) > maxAttempts) {
+    return 'locked'
+  }
+
+  return otpData.code === code ? 'valid' : 'invalid'
 }
 
 /**
@@ -1656,6 +1689,15 @@ export async function doJoinByInvite (
   })
 
   return result
+}
+
+/**
+ * Whether new accounts may NOT be created through external auth providers (Google, GitHub, OpenID Connect).
+ * By default this follows DISABLE_SIGNUP; ALLOW_PROVIDER_SIGNUP=true keeps provider sign-up enabled
+ * while password sign-up stays disabled.
+ */
+export function isProviderSignUpDisabled (env: Record<string, string | undefined> = process.env): boolean {
+  return env.DISABLE_SIGNUP === 'true' && env.ALLOW_PROVIDER_SIGNUP !== 'true'
 }
 
 export async function loginOrSignUpWithProvider (

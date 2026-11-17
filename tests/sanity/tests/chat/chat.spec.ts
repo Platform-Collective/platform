@@ -287,10 +287,14 @@ test.describe('Channel tests', () => {
   })
 
   test('Check if user can copy message', async ({ page }) => {
-    const baseURL = process.env.PLATFORM_URI ?? 'http://huly.local:8083'
-    const expectedUrl = `${baseURL}/workbench/${data.workspaceName}/chunter/chunter%3Aspace%3ARandom%7Cchunter%3Aclass%3AChannel?message=`
     await leftSideMenuPage.clickChunter()
     await channelPage.clickChannel('random')
+    await expect(page).toHaveURL(/\/workbench\/[^/]+\/chunter\//)
+    const workspaceUrl = new URL(page.url())
+    const workspacePath = workspaceUrl.pathname.split('/').slice(0, 3).join('/')
+    const expectedUrl =
+      `${workspaceUrl.origin}${workspacePath}/chunter/` +
+      'chunter%3Aspace%3ARandom%7Cchunter%3Aclass%3AChannel?message='
     await channelPage.sendMessage('Test message')
     await channelPage.clickOpenMoreButton('Test message')
     await channelPage.clickCopyLinkButton()

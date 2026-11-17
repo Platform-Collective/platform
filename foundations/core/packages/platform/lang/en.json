@@ -20,6 +20,7 @@
     "AccountAlreadyConfirmed": "Account already confirmed",
     "WorkspaceAlreadyExists": "Workspace already exists",
     "InvalidOtp": "Invalid code",
+    "OtpLocked": "Too many incorrect codes. Please wait a while and request a new code.",
     "PasswordLoginLocked": "Password login is locked due to too many failed attempts. Please use an OTP login method to unlock your account.",
     "InviteNotFound": "Invitation with email:{email} not found.",
     "WorkspaceLimitReached": "You have reached the workspace limit. Please contact us...",

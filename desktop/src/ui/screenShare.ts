@@ -55,22 +55,24 @@ export function defineGetDisplayMedia (): void {
         'top',
         () => {
           if (!wasSelected) {
-            reject(new Error('No source selected'))
+            reject(new DOMException('No source selected', 'AbortError'))
           }
         },
-        (val) => {
-          if (val != null) {
-            wasSelected = true
-            opts.video = {
-              mandatory: {
-                ...(typeof opts.video === 'boolean' ? {} : opts.video),
-                chromeMediaSource: 'desktop',
-                chromeMediaSourceId: val
-              }
-            } as any
-            void window.navigator.mediaDevices.getUserMedia(opts).then((stream) => {
-              resolve(stream)
-            })
+        async (val) => {
+          try {
+            if (val != null) {
+              wasSelected = true
+              opts.video = {
+                mandatory: {
+                  ...(typeof opts.video === 'boolean' ? {} : opts.video),
+                  chromeMediaSource: 'desktop',
+                  chromeMediaSourceId: val
+                }
+              } as any
+              resolve(await window.navigator.mediaDevices.getUserMedia(opts))
+            }
+          } catch (err) {
+            reject(err)
           }
         }
       )
@@ -104,36 +106,37 @@ export function defineScreenShare (): void {
         'top',
         () => {
           if (!wasSelected) {
-            reject(new Error('No source selected'))
+            reject(new DOMException('No source selected', 'AbortError'))
           }
         },
-        (val) => {
-          if (val != null) {
-            wasSelected = true
-            if (options === undefined) {
-              options = {}
-            }
-
-            if (options.resolution === undefined) {
-              options.resolution = ScreenSharePresets.h1080fps30.resolution
-            }
-
-            const constraints = screenCaptureToDisplayMediaStreamOptions(options)
-
-            if (constraints.video === undefined) {
-              log.error('Wrong video options specified')
-              throw new Error('Wrong video options specified')
-            }
-
-            constraints.video = {
-              mandatory: {
-                ...(typeof constraints.video === 'boolean' ? {} : constraints.video),
-                chromeMediaSource: 'desktop',
-                chromeMediaSourceId: val
+        async (val) => {
+          try {
+            if (val != null) {
+              wasSelected = true
+              if (options === undefined) {
+                options = {}
               }
-            } as any
 
-            void window.navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
+              if (options.resolution === undefined) {
+                options.resolution = ScreenSharePresets.h1080fps30.resolution
+              }
+
+              const constraints = screenCaptureToDisplayMediaStreamOptions(options)
+
+              if (constraints.video === undefined) {
+                log.error('Wrong video options specified')
+                throw new Error('Wrong video options specified')
+              }
+
+              constraints.video = {
+                mandatory: {
+                  ...(typeof constraints.video === 'boolean' ? {} : constraints.video),
+                  chromeMediaSource: 'desktop',
+                  chromeMediaSourceId: val
+                }
+              } as any
+
+              const stream = await window.navigator.mediaDevices.getUserMedia(constraints)
               const tracks = stream.getVideoTracks()
               if (tracks.length === 0) {
                 log.error('No video track found')
@@ -162,7 +165,9 @@ export function defineScreenShare (): void {
                 localTracks.push(screenAudio)
               }
               resolve(localTracks)
-            })
+            }
+          } catch (err) {
+            reject(err)
           }
         }
       )

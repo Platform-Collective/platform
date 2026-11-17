@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "カレンダー",
+    "CalendarWithoutDueDate": "期限のない課題: {count}",
+    "CalendarUpdateFailed": "課題の日付を更新できませんでした。もう一度お試しください。",
     "TrackerApplication": "トラッカー",
     "Projects": "あなたのプロジェクト",
     "More": "その他",
@@ -195,6 +198,7 @@
     "AllFilters": "すべてのフィルター",
     "NoDescription": "説明なし",
     "SearchIssue": "タスクを検索...",
+    "SearchMilestone": "マイルストーンを検索...",
     "StatusHistory": "状態履歴",
     "NewSubIssue": "子イシューを追加...",
     "AddLabel": "ラベルを追加",

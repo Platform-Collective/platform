@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import type { PersonId } from '@hcengineering/core'
-import { getUnresolvedPersonIds } from './person-id-filter'
+import core, { type PersonId } from '@hcengineering/core'
+import { getUnresolvedPersonIds, isSystemPersonId } from './person-id-filter'
 
 describe('getUnresolvedPersonIds', () => {
   it('keeps distinct ids for contacts created by different system identities', () => {
@@ -22,5 +22,13 @@ describe('getUnresolvedPersonIds', () => {
     const automationPersonId = 'automation' as PersonId
 
     expect(getUnresolvedPersonIds([systemPersonId, automationPersonId], [], 'system')).toEqual([systemPersonId])
+  })
+})
+
+describe('isSystemPersonId', () => {
+  it('treats the system and configuration accounts as system identities', () => {
+    expect(isSystemPersonId(core.account.System)).toBe(true)
+    expect(isSystemPersonId(core.account.ConfigUser)).toBe(true)
+    expect(isSystemPersonId('social-identity' as PersonId)).toBe(false)
   })
 })

@@ -28,6 +28,7 @@
   import { taskTypeStore } from '@hcengineering/task-resources'
   import { getTaskTypeStates } from '@hcengineering/task'
   import { statusStore } from '@hcengineering/view-resources'
+  import { fillIssueDefaults } from '../issue-defaults'
 
   export let projectId: Ref<Project>
   export let project: Project | undefined
@@ -57,6 +58,7 @@
     })
   }
   const client = getClient()
+  const hierarchy = client.getHierarchy()
   // TODO: move to utils
   export async function save(parents: IssueParentInfo[], _id: Ref<Doc>) {
     if (project === undefined) return
@@ -98,6 +100,7 @@
         kind: subIssue.kind,
         identifier: `${project.identifier}-${number}`
       }
+      fillIssueDefaults(hierarchy, subIssue, cvalue)
 
       if (!isEmptyMarkup(subIssue.description)) {
         const collabId = makeCollabId(tracker.class.Issue, childId, 'description')

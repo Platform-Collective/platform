@@ -5,6 +5,7 @@
     "DescriptionLabel": "説明",
     "ColorLabel": "色",
     "CategoryLabel": "カテゴリ",
+    "Usage": "使用状況",
     "TagReferenceLabel": "タグ",
     "TagLabel": "タグ",
     "TagName": "{word}のタイトルを入力してください",

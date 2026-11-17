@@ -9,10 +9,10 @@ import core, {
   PersonId,
   Ref,
   SortingOrder,
-  Status,
   Timestamp,
   TxOperations
 } from '@hcengineering/core'
+import type { Status } from '@hcengineering/core'
 import github, {
   DocSyncInfo,
   GithubIntegrationRepository,
@@ -25,6 +25,28 @@ import { IssueStatus } from '@hcengineering/tracker'
 import { deepEqual } from 'fast-equals'
 import { Octokit } from 'octokit'
 import { ContainerFocus, githubExternalSyncVersion } from '../types'
+
+/** Parse a GitHub date, using processing time when the source has no usable date. */
+export function githubTime (iso: string | null | undefined, fallback: number = Date.now()): number {
+  const timestamp = iso == null ? NaN : Date.parse(iso)
+  return Number.isFinite(timestamp) ? timestamp : fallback
+}
+
+/** Source timestamp preservation is opt-in for existing deployments. */
+export function isGithubTimestampPreservationEnabled (): boolean {
+  return process.env.GITHUB_PRESERVE_SOURCE_TIMESTAMPS === 'true'
+}
+
+/** Preserve newer local edits, including edits made after the sync snapshot was read. */
+export async function getGithubModifiedOn (
+  client: TxOperations,
+  doc: Pick<Doc, '_id' | '_class' | 'modifiedOn'>,
+  iso: string | null | undefined
+): Promise<number> {
+  if (!isGithubTimestampPreservationEnabled()) return Date.now()
+  const current = await client.findOne(doc._class, { _id: doc._id })
+  return Math.max(doc.modifiedOn, current?.modifiedOn ?? doc.modifiedOn, githubTime(iso))
+}
 
 /**
  * Return if github write operations are allowed.
@@ -175,6 +197,62 @@ export function gqlp (params: Record<string, string | number | string[] | undefi
  */
 export function hashCode (str: string): number {
   return str.split('').reduce((prevHash, currVal) => ((prevHash << 5) - prevHash + currVal.charCodeAt(0)) | 0, 0)
+}
+
+/**
+ * Keep an open platform status when GitHub reopens an issue. GitHub exposes only
+ * one open state, so it cannot distinguish unstarted, todo, and active statuses.
+ */
+export function shouldUpdateGithubIssueStatus (existing: Status | undefined, updated: Status | undefined): boolean {
+  if (existing === undefined || updated === undefined) {
+    return existing !== updated
+  }
+
+  const existingCategory = existing.category
+  const updatedCategory = updated.category
+  if (existingCategory === undefined || updatedCategory === undefined) {
+    return existingCategory !== updatedCategory
+  }
+
+  if (existingCategory === updatedCategory) {
+    return false
+  }
+
+  const openCategories = [task.statusCategory.UnStarted, task.statusCategory.ToDo, task.statusCategory.Active]
+  return !openCategories.includes(existingCategory) || !openCategories.includes(updatedCategory)
+}
+
+/**
+ * Prefer values from an edited webhook to the GraphQL response. The webhook can
+ * arrive before the edited value is visible through GraphQL.
+ */
+export function applyIssueEventEdits<T extends { title: string, body: string, updatedAt: string }> (
+  external: T,
+  issue: { title: string, body?: string | null, updated_at: string },
+  changes: { title?: unknown, body?: unknown }
+): T {
+  return {
+    ...external,
+    updatedAt: issue.updated_at,
+    ...(changes.title !== undefined ? { title: issue.title } : {}),
+    ...(changes.body !== undefined ? { body: issue.body ?? '' } : {})
+  }
+}
+
+/**
+ * A webhook can be visible before a GraphQL query returns the corresponding
+ * update. Do not let that older query undo the webhook data we already stored.
+ */
+export function isGithubIssueDataStale (
+  stored: Pick<{ updatedAt: string }, 'updatedAt'> | undefined | null,
+  incoming: Pick<{ updatedAt: string }, 'updatedAt'> | undefined | null
+): boolean {
+  // Sync docs created before their first fetch have no external data yet.
+  if (stored?.updatedAt == null || incoming?.updatedAt == null) return false
+  const storedTime = Date.parse(stored.updatedAt)
+  const incomingTime = Date.parse(incoming.updatedAt)
+
+  return Number.isFinite(storedTime) && Number.isFinite(incomingTime) && incomingTime < storedTime
 }
 
 export async function guessStatus (
