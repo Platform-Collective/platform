@@ -15,12 +15,13 @@ function makeMeasureCtx (): any {
   return { info: jest.fn(), warn: jest.fn(), error: jest.fn() }
 }
 
-function setupProvider (provider: 'google' | 'github'): { router: Router<any, any> } {
+function setupProvider (provider: 'google' | 'github'): { measureCtx: any, passport: any, router: Router<any, any> } {
   const passport: any = { use: jest.fn(), authenticate: jest.fn() }
   const router = new Router<any, any>()
+  const measureCtx = makeMeasureCtx()
   const register = provider === 'google' ? registerGoogle : registerGithub
   register(
-    makeMeasureCtx(),
+    measureCtx,
     passport,
     router,
     'http://accounts.example.com',
@@ -28,7 +29,7 @@ function setupProvider (provider: 'google' | 'github'): { router: Router<any, an
     'http://front.example.com',
     {}
   )
-  return { router }
+  return { measureCtx, passport, router }
 }
 
 async function invokeProviderHandler (
@@ -171,5 +172,77 @@ describe('provider email verification', () => {
       expect.anything(),
       undefined
     )
+  })
+
+  test.each([
+    ['google', 'state from another browser', 'another-browser-nonce', 'mismatch'],
+    ['google', 'missing state cookie', undefined, 'missing_cookie'],
+    ['github', 'state from another browser', 'another-browser-nonce', 'mismatch'],
+    ['github', 'missing state cookie', undefined, 'missing_cookie']
+  ] as const)('%s: %s is rejected before provider authentication', async (provider, _scenario, cookieNonce, reason) => {
+    const { measureCtx, passport, router } = setupProvider(provider)
+    passport.authenticate.mockReturnValue(async () => {})
+    const layer = router.stack.find((entry) => entry.path === `/auth/${provider}/callback`)
+    expect(layer).toBeDefined()
+    const koaCtx: any = {
+      query: { state: encodeURIComponent(JSON.stringify({ nonce: 'state-nonce' })) },
+      state: {},
+      cookies: { get: jest.fn().mockReturnValue(cookieNonce), set: jest.fn() },
+      redirect: jest.fn()
+    }
+
+    await (layer as any).stack[0](koaCtx, async () => {})
+
+    expect(passport.authenticate).not.toHaveBeenCalled()
+    expect(koaCtx.redirect).toHaveBeenCalledWith('http://front.example.com/login')
+    expect(measureCtx.warn).toHaveBeenCalledWith('auth state rejected', { provider, reason })
+    expect(koaCtx.cookies.get).toHaveBeenCalledWith('auth_state_token', { signed: true })
+    expect(koaCtx.cookies.set).toHaveBeenCalledWith(
+      'auth_state_token',
+      null,
+      expect.objectContaining({ httpOnly: true, sameSite: 'lax', signed: true, secure: false })
+    )
+  })
+
+  test.each(['google', 'github'] as const)('%s accepts a matching browser state', async (provider) => {
+    const { passport, router } = setupProvider(provider)
+    passport.authenticate.mockReturnValue(async () => {})
+    const layer = router.stack.find((entry) => entry.path === `/auth/${provider}/callback`)
+    expect(layer).toBeDefined()
+    const koaCtx: any = {
+      query: { state: encodeURIComponent(JSON.stringify({ nonce: 'state-nonce' })) },
+      state: {},
+      cookies: { get: jest.fn().mockReturnValue('state-nonce'), set: jest.fn() },
+      redirect: jest.fn()
+    }
+
+    await (layer as any).stack[0](koaCtx, async () => {})
+
+    expect(passport.authenticate).toHaveBeenCalledWith(provider, {
+      failureRedirect: 'http://front.example.com/login',
+      session: true
+    })
+    expect(koaCtx.redirect).not.toHaveBeenCalled()
+    expect(koaCtx.cookies.set).toHaveBeenCalledWith('auth_state_token', null, expect.objectContaining({ signed: true }))
+  })
+
+  test.each(['google', 'github'] as const)('%s rejects parsed null state', async (provider) => {
+    const { measureCtx, passport, router } = setupProvider(provider)
+    passport.authenticate.mockReturnValue(async () => {})
+    const layer = router.stack.find((entry) => entry.path === `/auth/${provider}/callback`)
+    expect(layer).toBeDefined()
+    const koaCtx: any = {
+      query: { state: 'null' },
+      state: {},
+      cookies: { get: jest.fn().mockReturnValue('state-nonce'), set: jest.fn() },
+      redirect: jest.fn()
+    }
+
+    await (layer as any).stack[0](koaCtx, async () => {})
+
+    expect(passport.authenticate).not.toHaveBeenCalled()
+    expect(koaCtx.redirect).toHaveBeenCalledWith('http://front.example.com/login')
+    expect(measureCtx.warn).toHaveBeenCalledWith('auth state rejected', { provider, reason: 'missing_nonce' })
+    expect(koaCtx.cookies.set).toHaveBeenCalledWith('auth_state_token', null, expect.objectContaining({ signed: true }))
   })
 })
