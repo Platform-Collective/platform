@@ -286,7 +286,7 @@ async function queryEmployee (
   if (filter?.members !== undefined) return searchMemberEmployees(search, filter)
   const q1 = await queryContact(contact.mixin.Employee, client, search, filter)
   const nameSearch = getNameSearch(search)
-  const displayNameQueries = getPersonNameQueries(search).map(({ name }) => ({ displayName: name, active: true }))
+  const displayNameQueries = getPersonNameQueries(search, ' ').map(({ name }) => ({ displayName: name, active: true }))
   const displayNameResults = await Promise.all(
     displayNameQueries.map(
       async (q) =>
