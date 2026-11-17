@@ -89,7 +89,7 @@ services:
       - 19092:19092
       - 19644:9644
     healthcheck:
-      test: ['CMD', 'rpk', 'cluster', 'info', '-X', 'user=superuser', '-X', 'pass=secretpassword']
+      test: ['CMD-SHELL', "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -198,6 +198,8 @@ services:
       - LAST_NAME_FIRST=true
       # - WS_LIVENESS_DAYS=1
       - ACCOUNTS_URL=http://huly.local:3000
+      # Override the auth-state cookie Secure attribute (default follows ACCOUNTS_URL protocol).
+      # - SESSION_COOKIE_SECURE=true
       - BRANDING_PATH=/var/cfg/branding.json
       # - DISABLE_SIGNUP=true
       # Keep sign-up via Google/GitHub/OpenID Connect enabled when DISABLE_SIGNUP=true

@@ -216,8 +216,9 @@ export class MongoDbCollection<T extends Record<string, any>, K extends keyof T 
     await this.collection.updateMany(getFilteredQuery(query) as Filter<T>, resOps)
   }
 
-  async deleteMany (query: Query<T>): Promise<void> {
-    await this.collection.deleteMany(getFilteredQuery(query) as Filter<T>)
+  async deleteMany (query: Query<T>): Promise<number> {
+    const res = await this.collection.deleteMany(getFilteredQuery(query) as Filter<T>)
+    return res.deletedCount
   }
 }
 
@@ -368,8 +369,8 @@ export class WorkspaceStatusMongoDbCollection implements DbCollection<WorkspaceS
     await this.wsCollection.update(this.toWsQuery(query), this.toWsOperations(ops))
   }
 
-  async deleteMany (query: Query<WorkspaceStatus>): Promise<void> {
-    await this.wsCollection.deleteMany(this.toWsQuery(query))
+  async deleteMany (query: Query<WorkspaceStatus>): Promise<number> {
+    return await this.wsCollection.deleteMany(this.toWsQuery(query))
   }
 }
 

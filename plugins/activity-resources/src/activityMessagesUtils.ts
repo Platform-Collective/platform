@@ -23,18 +23,20 @@ import core, {
   type Hierarchy,
   type Mixin,
   type Ref,
+  type RefTo,
   SortingOrder
 } from '@hcengineering/core'
 import view, { type AttributeModel } from '@hcengineering/view'
 import { getClient, getFiltredKeys } from '@hcengineering/presentation'
 import {
   buildRemovedDoc,
+  findAttributePresenter,
   getAttributePresenter,
   getDocLinkTitle,
   hasAttributePresenter
 } from '@hcengineering/view-resources'
 import contact, { type Person } from '@hcengineering/contact'
-import { type IntlString } from '@hcengineering/platform'
+import { getResource, type IntlString } from '@hcengineering/platform'
 import { type AnyComponent } from '@hcengineering/ui'
 import activity, {
   type ActivityMessage,
@@ -137,6 +139,13 @@ export async function getAttributeModel (
     attrObjectClass = keyedAttribute.attr.attributeOf
   }
 
+  if (findAttributePresenter(client, attrObjectClass, attrKey, view.mixin.ActivityAttributePresenter) === undefined) {
+    const refModel = await getRefAttributeModel(client, attrObjectClass, attrKey)
+    if (refModel !== undefined) {
+      return refModel
+    }
+  }
+
   const model = await getAttributePresenterSafe(client, attrObjectClass, attrKey, view.mixin.ActivityAttributePresenter)
 
   if (model !== undefined) {
@@ -144,6 +153,63 @@ export async function getAttributeModel (
   }
 
   return await getAttributePresenterSafe(client, attrObjectClass, attrKey)
+}
+
+/**
+ * A reference to a class that has no attribute presenter, such as an issue's parent, would
+ * otherwise leave the activity entry empty. Its value is a document, which is shown with the
+ * object presenter of the class it refers to.
+ */
+async function getRefAttributeModel (
+  client: Client,
+  _class: Ref<Class<Doc>>,
+  attrKey: string
+): Promise<AttributeModel | undefined> {
+  const hierarchy = client.getHierarchy()
+  const attribute = hierarchy.findAttribute(_class, attrKey)
+
+  if (attribute === undefined || attribute.type._class !== core.class.RefTo) {
+    return undefined
+  }
+
+  const refClass = (attribute.type as RefTo<Doc>).to
+  const presenter = hierarchy.classHierarchyMixin(refClass, view.mixin.ObjectPresenter)?.presenter
+
+  if (presenter === undefined) {
+    return undefined
+  }
+
+  return {
+    key: attrKey,
+    sortingKey: attrKey,
+    _class: refClass,
+    label: attribute.shortLabel ?? attribute.label,
+    presenter: await getResource(presenter),
+    attribute,
+    collectionAttr: false,
+    isLookup: false
+  }
+}
+
+/**
+ * True when the activity entry for this attribute is drawn with the object presenter of the
+ * class it refers to (see getRefAttributeModel) and none of its values is an existing or removed
+ * document. Clearing an issue's parent stores a placeholder id, for example: there is nothing to
+ * present, so the entry says the attribute was unset.
+ * @param resolvedValues the result of getAttributeValues
+ */
+export function isUnresolvedObjectRef (client: Client, attributeModel: AttributeModel, resolvedValues: any[]): boolean {
+  const attribute = attributeModel.attribute
+  if (attribute === undefined || attribute.type._class !== core.class.RefTo) {
+    return false
+  }
+  if (resolvedValues.length === 0 || resolvedValues.some((value) => typeof value !== 'string')) {
+    return false
+  }
+  return (
+    findAttributePresenter(client, attribute.attributeOf, attribute.name, view.mixin.ActivityAttributePresenter) ===
+    undefined
+  )
 }
 
 export function hasAttributeModel (
