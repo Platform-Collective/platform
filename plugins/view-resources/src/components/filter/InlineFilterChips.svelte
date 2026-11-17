@@ -190,7 +190,7 @@
        width via ResizeObserver; once chips overflow it collapses them
        into the +N popover. -->
   <div class="inline-filter-chips" use:resizeObserver={onContainerResize}>
-    {#each $filterStore as filter, i (filter.index)}
+    {#each $filterStore as filter, i (`${filter.index}:${i}`)}
       {#if i < visibleCount}
         <span bind:this={chipEls[i]} class="chip-slot">
           <FilterSection

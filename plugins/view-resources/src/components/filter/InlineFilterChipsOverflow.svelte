@@ -16,7 +16,7 @@
 <div class="filter-overflow-popover">
   <div class="title"><Label label={view.string.HiddenFilters} /></div>
   <div class="list">
-    {#each $filterStore as filter, i (filter.index)}
+    {#each $filterStore as filter, i (`${filter.index}:${i}`)}
       {#if i >= hiddenStartIndex}
         <div class="row">
           <FilterSection
