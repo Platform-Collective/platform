@@ -282,6 +282,7 @@ export class RestClientImpl implements RestClient {
             : 1000) // Default to 1 seconds if no headers are provided
       await new Promise((resolve) => setTimeout(resolve, waitTime))
       const failure = new RestHttpError(response.status, rateLimitError)
+      failure.retryAfterMs = waitTime
       failure.rejectedBeforeWrite = true
       throw failure
     }

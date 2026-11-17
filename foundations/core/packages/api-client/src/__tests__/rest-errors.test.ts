@@ -182,6 +182,8 @@ describe('REST HTTP errors', () => {
     expect(failure).toHaveProperty('status', 429)
     expect(failure).toBeInstanceOf(Reflect.get(publicApi, 'RestHttpError'))
     expect((failure as Error).message).toBe('rate-limit')
+    expect(failure).toHaveProperty('retryAfterMs', 0)
+    expect(failure).toHaveProperty('rejectedBeforeWrite', true)
     expect(log).not.toHaveBeenCalled()
     expect(warn).not.toHaveBeenCalled()
     expect(errorLog).not.toHaveBeenCalled()
