@@ -102,11 +102,12 @@ export type InlineCommandId =
 export function inlineCommandsConfig (
   handleSelect: (id: string, pos: number, targetItem?: MouseEvent | HTMLElement) => Promise<void>,
   excludedCommands: InlineCommandId[] = [],
-  extraCommands: InlineCommandItem[] = []
+  extraCommands: InlineCommandItem[] | (() => InlineCommandItem[]) = []
 ): Partial<InlineCommandsOptions> {
   return {
     suggestion: {
       items: () => {
+        const commands = typeof extraCommands === 'function' ? extraCommands() : extraCommands
         return mergeInlineCommandItems(
           [
             { id: 'image', label: textEditor.string.Image, icon: view.icon.Image },
@@ -117,7 +118,7 @@ export function inlineCommandsConfig (
             { id: 'drawing-board', label: textEditor.string.DrawingBoard, icon: IconScribble as any },
             { id: 'mermaid', label: textEditor.string.MermaidDiargram, icon: view.icon.Model }
           ],
-          extraCommands.map(({ id, label, icon }) => ({ id, label, icon })),
+          commands.map(({ id, label, icon }) => ({ id, label, icon })),
           excludedCommands
         )
       },

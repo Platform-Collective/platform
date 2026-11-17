@@ -19,6 +19,12 @@ import { type EditorView } from '@tiptap/pm/view'
 import { type Asset, getMetadata } from '@hcengineering/platform'
 import { SelectPopup, getEventPositionElement, showPopup } from '@hcengineering/ui'
 
+interface LeftMenuItem {
+  id: string
+  label: string
+  icon: Asset
+}
+
 export interface LeftMenuOptions {
   width: number
   height: number
@@ -26,8 +32,12 @@ export interface LeftMenuOptions {
   className: string
   icon: Asset
   iconProps: any
-  items: Array<{ id: string, label: string, icon: Asset }>
+  items: LeftMenuItem[] | (() => LeftMenuItem[])
   handleSelect: (id: string, pos: number, event: MouseEvent) => Promise<void>
+}
+
+function getMenuItems (options: LeftMenuOptions): LeftMenuItem[] {
+  return typeof options.items === 'function' ? options.items() : (options.items ?? [])
 }
 
 function nodeDOMAtCoords (coords: { x: number, y: number }): Element | undefined {
@@ -122,7 +132,7 @@ function LeftMenu (options: LeftMenuOptions): Plugin {
         showPopup(
           SelectPopup,
           {
-            value: options.items
+            value: getMenuItems(options)
           },
           getEventPositionElement(e),
           (val) => {
@@ -170,7 +180,7 @@ function LeftMenu (options: LeftMenuOptions): Plugin {
               !(node instanceof HTMLElement) ||
               node.nodeName === 'HR' ||
               options.items === undefined ||
-              options.items.length === 0
+              getMenuItems(options).length === 0
             ) {
               hideLeftMenu()
               return

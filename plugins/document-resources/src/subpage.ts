@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import type { Teamspace } from '@hcengineering/document'
 import { AccountRole, type Account, type Class, type Doc, type Ref, hasAccountRole } from '@hcengineering/core'
 
 /** Id of the "Subpage" editor command */
@@ -60,10 +61,19 @@ export function findReferenceRanges (doc: DocLike, id: Ref<Doc>): Array<{ from: 
 }
 
 /**
- * Creating documents is allowed for workspace members (the same role the
- * "Create document" header button requires); guests can not create them,
- * even when they are allowed to edit a document they created themselves.
+ * Require workspace membership, an active teamspace membership and the
+ * navigator's document creation permission. Missing space data fails closed.
  */
-export function canCreateSubpage (account: Account): boolean {
-  return hasAccountRole(account, AccountRole.User)
+export function canCreateSubpage (
+  account: Account,
+  space?: Pick<Teamspace, 'members' | 'archived'>,
+  allowed = false
+): boolean {
+  return (
+    hasAccountRole(account, AccountRole.User) &&
+    space !== undefined &&
+    !space.archived &&
+    space.members.includes(account.uuid) &&
+    allowed
+  )
 }

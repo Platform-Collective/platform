@@ -399,23 +399,24 @@
             className: 'svg-tiny',
             fill: 'currentColor'
           },
-          items: mergeInlineCommandItems(
-            [
-              { id: 'image', label: textEditor.string.Image, icon: view.icon.Image },
-              { id: 'table', label: textEditor.string.Table, icon: view.icon.Table2 },
-              { id: 'code-block', label: textEditor.string.CodeBlock, icon: view.icon.CodeBlock },
-              { id: 'separator-line', label: textEditor.string.SeparatorLine, icon: view.icon.SeparatorLine },
-              { id: 'todo-list', label: textEditor.string.TodoItem, icon: view.icon.TodoList },
-              { id: 'drawing-board', label: textEditor.string.DrawingBoard, icon: IconScribble as any },
-              { id: 'mermaid', label: textEditor.string.MermaidDiargram, icon: view.icon.Model }
-            ],
-            extraInlineCommands.map(({ id, label, icon }) => ({ id, label, icon }))
-          ),
+          items: () =>
+            mergeInlineCommandItems(
+              [
+                { id: 'image', label: textEditor.string.Image, icon: view.icon.Image },
+                { id: 'table', label: textEditor.string.Table, icon: view.icon.Table2 },
+                { id: 'code-block', label: textEditor.string.CodeBlock, icon: view.icon.CodeBlock },
+                { id: 'separator-line', label: textEditor.string.SeparatorLine, icon: view.icon.SeparatorLine },
+                { id: 'todo-list', label: textEditor.string.TodoItem, icon: view.icon.TodoList },
+                { id: 'drawing-board', label: textEditor.string.DrawingBoard, icon: IconScribble as any },
+                { id: 'mermaid', label: textEditor.string.MermaidDiargram, icon: view.icon.Model }
+              ],
+              extraInlineCommands.map(({ id, label, icon }) => ({ id, label, icon }))
+            ),
           handleSelect: handleLeftMenuClick
         },
         inlineCommands:
           withInlineCommands &&
-          inlineCommandsConfig(handleLeftMenuClick, canAttachFiles ? [] : ['image'], extraInlineCommands),
+          inlineCommandsConfig(handleLeftMenuClick, canAttachFiles ? [] : ['image'], () => extraInlineCommands),
         placeholder: {
           placeholderIntl: placeholder,
           placeholderIntlParams: placeholderParams,

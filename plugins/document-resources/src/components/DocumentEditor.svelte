@@ -16,15 +16,17 @@
 -->
 <script lang="ts">
   import contact from '@hcengineering/contact'
+  import { permissionsStore } from '@hcengineering/contact-resources'
   import { getCurrentAccount } from '@hcengineering/core'
-  import { Document } from '@hcengineering/document'
+  import { Document, Teamspace } from '@hcengineering/document'
   import { getResource } from '@hcengineering/platform'
-  import { getClient } from '@hcengineering/presentation'
+  import { createQuery, getClient } from '@hcengineering/presentation'
   import { CollaboratorEditor, ImageUploadOptions, InlineCommandItem } from '@hcengineering/text-editor-resources'
   import { AnySvelteComponent } from '@hcengineering/ui'
-  import { getCollaborationUser } from '@hcengineering/view-resources'
+  import { canCreateObject, getCollaborationUser } from '@hcengineering/view-resources'
   import { FocusPosition } from '@tiptap/core'
   import { createEventDispatcher } from 'svelte'
+  import { get } from 'svelte/store'
 
   import document from '../plugin'
   import { canCreateSubpage, SubpageCommandId } from '../subpage'
@@ -49,24 +51,44 @@
   })
 
   let collabEditor: CollaboratorEditor
+  let teamspace: Teamspace | undefined
+  const teamspaceQuery = createQuery()
+  $: teamspaceQuery.query(document.class.Teamspace, { _id: object.space }, (spaces) => {
+    teamspace = spaces[0]
+  })
 
   export function focus(position?: FocusPosition): void {
     collabEditor.focus(position)
   }
 
   // Read-only and locked documents are handled by the editor itself: it does not accept commands then.
-  const extraInlineCommands: InlineCommandItem[] = canCreateSubpage(getCurrentAccount())
-    ? [
-        {
-          id: SubpageCommandId,
-          label: document.string.Subpage,
-          icon: document.icon.Document,
-          action: async (editor, pos) => {
-            await createSubpage(editor, pos, object)
-          }
-        }
-      ]
-    : []
+  $: extraInlineCommands =
+    !readonly &&
+    canCreateSubpage(
+      getCurrentAccount(),
+      teamspace?._id === object.space ? teamspace : undefined,
+      canCreateObject(document.class.Document, object.space, $permissionsStore)
+    )
+      ? [
+          {
+            id: SubpageCommandId,
+            label: document.string.Subpage,
+            icon: document.icon.Document,
+            action: async (editor, pos) => {
+              if (
+                readonly ||
+                !canCreateSubpage(
+                  getCurrentAccount(),
+                  teamspace?._id === object.space ? teamspace : undefined,
+                  canCreateObject(document.class.Document, object.space, get(permissionsStore))
+                )
+              )
+                return
+              await createSubpage(editor, pos, object)
+            }
+          } satisfies InlineCommandItem
+        ]
+      : []
 
   $: attribute = {
     key: 'content',

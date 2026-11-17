@@ -71,15 +71,27 @@ describe('findReferenceRanges', () => {
 })
 
 describe('canCreateSubpage', () => {
+  const space = { members: [account(AccountRole.User).uuid], archived: false }
+
+  it('rejects a member whose teamspace permission forbids creation', () => {
+    expect(canCreateSubpage(account(AccountRole.User), space, false)).toBe(false)
+  })
+
+  it('rejects a non-member, an archived teamspace, or an unavailable teamspace', () => {
+    expect(canCreateSubpage(account(AccountRole.User), { ...space, members: [] }, true)).toBe(false)
+    expect(canCreateSubpage(account(AccountRole.User), { ...space, archived: true }, true)).toBe(false)
+    expect(canCreateSubpage(account(AccountRole.User), undefined, true)).toBe(false)
+  })
+
   it('allows workspace members', () => {
-    expect(canCreateSubpage(account(AccountRole.User))).toBe(true)
-    expect(canCreateSubpage(account(AccountRole.Maintainer))).toBe(true)
-    expect(canCreateSubpage(account(AccountRole.Owner))).toBe(true)
+    expect(canCreateSubpage(account(AccountRole.User), space, true)).toBe(true)
+    expect(canCreateSubpage(account(AccountRole.Maintainer), space, true)).toBe(true)
+    expect(canCreateSubpage(account(AccountRole.Owner), space, true)).toBe(true)
   })
 
   it('does not allow guests', () => {
-    expect(canCreateSubpage(account(AccountRole.Guest))).toBe(false)
-    expect(canCreateSubpage(account(AccountRole.DocGuest))).toBe(false)
-    expect(canCreateSubpage(account(AccountRole.ReadOnlyGuest))).toBe(false)
+    expect(canCreateSubpage(account(AccountRole.Guest), space, true)).toBe(false)
+    expect(canCreateSubpage(account(AccountRole.DocGuest), space, true)).toBe(false)
+    expect(canCreateSubpage(account(AccountRole.ReadOnlyGuest), space, true)).toBe(false)
   })
 })
