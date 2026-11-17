@@ -76,4 +76,20 @@ export interface MarkupOperations {
     markup: string,
     format: MarkupFormat
   ) => Promise<MarkupRef>
+
+  /**
+   * Updates markup content for an existing document object.
+   * @param objectClass - Reference to the class of the document where markup is stored
+   * @param objectId - Reference to the document where markup is stored
+   * @param objectAttr - The attribute/field name where markup is stored
+   * @param markup - The replacement markup content
+   * @param format - The format of the provided markup (e.g., HTML, Markdown, etc.)
+   */
+  updateMarkup: (
+    objectClass: Ref<Class<Doc>>,
+    objectId: Ref<Doc>,
+    objectAttr: string,
+    markup: string,
+    format: MarkupFormat
+  ) => Promise<void>
 }

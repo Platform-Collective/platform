@@ -18,6 +18,7 @@
     "Subject": "Betreff",
     "Send": "Senden",
     "Resend": "Erneut senden",
+    "IntegrationUnavailable": "Die Gmail-Integration ist nicht verfügbar. Verbinden Sie Gmail in den Einstellungen erneut und senden Sie diese Nachricht noch einmal.",
     "NewMessage": "Neue Nachricht",
     "NewMessageTo": "Neue Nachricht an",
     "Cancel": "Abbrechen",

@@ -179,12 +179,21 @@ class PlatformClientImpl implements PlatformClient {
     await this.connection.close()
   }
 
-  private async processMarkup<T> (_class: Ref<Class<Doc>>, id: Ref<Doc>, data: WithMarkup<T>): Promise<T> {
-    const result: any = {}
+  private async processMarkup<T> (
+    _class: Ref<Class<Doc>>,
+    id: Ref<Doc>,
+    data: WithMarkup<T>,
+    updateExisting: boolean = false
+  ): Promise<T> {
+    const result: Record<string, unknown> = {}
 
     for (const [key, value] of Object.entries(data)) {
       if (value instanceof MarkupContent) {
-        result[key] = this.markup.uploadMarkup(_class, id, key, value.content, value.kind)
+        if (updateExisting) {
+          await this.markup.updateMarkup(_class, id, key, value.content, value.kind)
+        } else {
+          result[key] = await this.markup.uploadMarkup(_class, id, key, value.content, value.kind)
+        }
       } else {
         result[key] = value
       }
@@ -213,7 +222,7 @@ class PlatformClientImpl implements PlatformClient {
     operations: WithMarkup<DocumentUpdate<T>>,
     retrieve?: boolean
   ): Promise<TxResult> {
-    const update = await this.processMarkup<DocumentUpdate<T>>(_class, objectId, operations)
+    const update = await this.processMarkup<DocumentUpdate<T>>(_class, objectId, operations, true)
     return await this.client.updateDoc(_class, space, objectId, update, retrieve)
   }
 
@@ -247,7 +256,7 @@ class PlatformClientImpl implements PlatformClient {
     operations: WithMarkup<DocumentUpdate<P>>,
     retrieve?: boolean
   ): Promise<Ref<T>> {
-    const update = await this.processMarkup<DocumentUpdate<P>>(_class, objectId, operations)
+    const update = await this.processMarkup<DocumentUpdate<P>>(_class, objectId, operations, true)
     return await this.client.updateCollection(
       _class,
       space,
@@ -291,7 +300,7 @@ class PlatformClientImpl implements PlatformClient {
     mixin: Ref<Mixin<M>>,
     attributes: WithMarkup<MixinUpdate<D, M>>
   ): Promise<TxResult> {
-    const update = await this.processMarkup<MixinUpdate<D, M>>(objectClass, objectId, attributes)
+    const update = await this.processMarkup<MixinUpdate<D, M>>(objectClass, objectId, attributes, true)
     return await this.client.updateMixin(objectId, objectClass, objectSpace, mixin, update)
   }
 
@@ -315,6 +324,16 @@ class PlatformClientImpl implements PlatformClient {
     format: MarkupFormat
   ): Promise<MarkupRef> {
     return await this.markup.uploadMarkup(objectClass, objectId, objectAttr, markup, format)
+  }
+
+  async updateMarkup (
+    objectClass: Ref<Class<Doc>>,
+    objectId: Ref<Doc>,
+    objectAttr: string,
+    markup: string,
+    format: MarkupFormat
+  ): Promise<void> {
+    await this.markup.updateMarkup(objectClass, objectId, objectAttr, markup, format)
   }
 
   // AsyncDisposable

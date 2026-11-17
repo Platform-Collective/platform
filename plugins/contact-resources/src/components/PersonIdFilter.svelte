@@ -22,6 +22,7 @@
     Icon,
     IconCheck,
     IconSearch,
+    Label,
     Loading,
     resizeObserver
   } from '@hcengineering/ui'
@@ -30,6 +31,8 @@
   import { createEventDispatcher } from 'svelte'
 
   import PersonPresenter from './PersonPresenter.svelte'
+  import SystemAvatar from './SystemAvatar.svelte'
+  import { getUnresolvedPersonIds, isSystemPersonId } from './person-id-filter'
 
   export let filter: Filter
   export let space: Ref<Space> | undefined = undefined
@@ -44,7 +47,8 @@
   let personIdToPersonMap: Record<PersonId, Ref<Person>> = {}
   let personToPersonIdsMap: Record<Ref<Person>, PersonId[]> = {}
   let persons: Ref<Person>[] = []
-  const targets = new Set<any>()
+  let unresolvedPersonIds: PersonId[] = []
+  const targets = new Set<PersonId | undefined>()
 
   let filterUpdateTimeout: any | undefined
   let search: string = ''
@@ -69,26 +73,37 @@
       }
     )
     for (const object of baseObjects) {
-      const socialIdentity = getObjectValue(filter.key.key, object) ?? undefined
-      targets.add(socialIdentity)
+      const personId = getObjectValue(filter.key.key, object) as PersonId | undefined
+      targets.add(personId)
     }
     for (const object of filter.value) {
-      targets.add(object)
+      targets.add(object as PersonId)
     }
+    const personIds = Array.from(targets).filter((personId): personId is PersonId => personId !== undefined)
+    const socialIdentityIds = personIds as Array<Ref<SocialIdentity> & PersonId>
 
     const resultQuery =
       search !== ''
         ? {
             '$lookup.attachedTo.name': { $like: '%' + search + '%' },
-            _id: { $in: Array.from(targets.keys()) }
+            _id: { $in: socialIdentityIds }
           }
         : {
-            _id: { $in: Array.from(targets.keys()) }
+            _id: { $in: socialIdentityIds }
           }
+    const rawSocialIdentitiesPromise =
+      search !== ''
+        ? client.findAll(contact.class.SocialIdentity, { _id: { $in: socialIdentityIds } }, { projection: { _id: 1 } })
+        : undefined
     socialIdentitiesPromise = client.findAll(contact.class.SocialIdentity, resultQuery, {
       lookup: { attachedTo: contact.class.Person }
     })
     socialIdentities = await socialIdentitiesPromise
+    unresolvedPersonIds = getUnresolvedPersonIds(
+      targets,
+      rawSocialIdentitiesPromise !== undefined ? await rawSocialIdentitiesPromise : socialIdentities,
+      search
+    )
     if (targets.has(undefined)) {
       socialIdentities.unshift(undefined)
     }
@@ -143,6 +158,20 @@
     updateFilter()
   }
 
+  function isPersonIdSelected(personId: PersonId, selectedIds: PersonId[]): boolean {
+    return selectedIds.includes(personId)
+  }
+
+  function handlePersonIdToggle(personId: PersonId): void {
+    if (isPersonIdSelected(personId, filter.value)) {
+      filter.value = filter.value.filter((value) => value !== personId)
+    } else {
+      filter.value = [...filter.value, personId]
+    }
+
+    updateFilter()
+  }
+
   function updateFilter(): void {
     clearTimeout(filterUpdateTimeout)
 
@@ -190,6 +219,30 @@
             </div>
             <div class="check pointer-events-none">
               {#if isPersonSelected(person, filter.value)}
+                <Icon icon={IconCheck} size={'small'} />
+              {/if}
+            </div>
+          </button>
+        {/each}
+        {#each unresolvedPersonIds as personId}
+          <button
+            class="menu-item no-focus flex-row-center"
+            on:click={() => {
+              handlePersonIdToggle(personId)
+            }}
+          >
+            <div class="clear-mins flex-grow">
+              {#if isSystemPersonId(personId)}
+                <div class="flex-row-center flex-gap-2">
+                  <SystemAvatar size="x-small" />
+                  <Label label={core.string.System} />
+                </div>
+              {:else}
+                <div class="overflow-label">{personId}</div>
+              {/if}
+            </div>
+            <div class="check pointer-events-none">
+              {#if isPersonIdSelected(personId, filter.value)}
                 <Icon icon={IconCheck} size={'small'} />
               {/if}
             </div>

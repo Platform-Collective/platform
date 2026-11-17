@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { calcSørensenDiceCoefficient, normalizeMarkdown } from '../compare'
+import { calcSørensenDiceCoefficient, isMarkdownsEquals, normalizeMarkdown } from '../compare'
 
 describe('calcSørensenDiceCoefficient', () => {
   it('returns zero for nullish inputs', () => {
@@ -70,5 +70,12 @@ describe('normalizeMarkdown', () => {
     const expected = 'Text before\n<img alt="test" src="image.jpg" />\nText after'
 
     expect(normalizeMarkdown(source)).toBe(expected)
+  })
+
+  it('treats URL autolinks as equivalent to bare URLs', () => {
+    const source = 'See https://github.com/hcengineering/platform/issues/8381.'
+    const serialized = 'See <https://github.com/hcengineering/platform/issues/8381>.'
+
+    expect(isMarkdownsEquals(source, serialized)).toBe(true)
   })
 })

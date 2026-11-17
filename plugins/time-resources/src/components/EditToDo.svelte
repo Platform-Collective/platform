@@ -28,6 +28,7 @@
   import PriorityEditor from './PriorityEditor.svelte'
   import TodoWorkslots from './TodoWorkslots.svelte'
   import { VisibilityEditor } from '@hcengineering/calendar-resources'
+  import { updateAttachedSpace } from './edit-todo'
 
   // export let object: ToDo
   export let _id: Ref<ToDo>
@@ -90,13 +91,8 @@
     object.visibility = visibility
   }
 
-  async function spaceChange(space: Space | null) {
-    const oldSpace = object.attachedSpace ?? undefined
-    const newSpace = space?._id ?? undefined
-    if (newSpace !== oldSpace) {
-      await client.update(object, { attachedSpace: newSpace })
-      object.attachedSpace = newSpace
-    }
+  async function spaceChange(space: Ref<Space> | undefined) {
+    await updateAttachedSpace(client, object, space)
   }
 </script>
 
@@ -165,7 +161,7 @@
             autoSelect={false}
             readonly={object._class === time.class.ProjectToDo}
             space={object.attachedSpace}
-            on:object={(e) => spaceChange(e.detail)}
+            on:change={(e) => spaceChange(e.detail)}
           />
         </div>
       </div>

@@ -35,6 +35,7 @@ import notification, {
 import { createQuery, getClient, onClient } from '@hcengineering/presentation'
 import { derived, get, writable } from 'svelte/store'
 
+import { getInitialInboxNotificationsLimits, getNextInboxNotificationsLimits } from './inbox-notifications-limits'
 import { isActivityNotification } from './utils'
 
 /**
@@ -53,6 +54,14 @@ export class InboxNotificationsClientImpl implements InboxNotificationsClient {
 
   readonly activityInboxNotifications = writable<Array<WithLookup<ActivityInboxNotification>>>([])
   readonly otherInboxNotifications = writable<InboxNotification[]>([])
+
+  private readonly inboxNotificationsLimits = writable(getInitialInboxNotificationsLimits())
+
+  readonly hasMoreInboxNotifications = derived(
+    [this.activityInboxNotifications, this.inboxNotificationsLimits],
+    ([activityNotifications, limits]) => activityNotifications.length >= limits.activity,
+    false
+  )
 
   readonly inboxNotifications = derived(
     [this.activityInboxNotifications, this.otherInboxNotifications],
@@ -88,12 +97,15 @@ export class InboxNotificationsClientImpl implements InboxNotificationsClient {
   private readonly activityInboxNotificationsQuery = createQuery(true)
 
   private _contextByDoc = new Map<Ref<Doc>, DocNotifyContext>()
+  private account: Account | undefined = undefined
 
   private constructor () {
     onClient(this.init.bind(this))
   }
 
   private async init (client: Client, account: Account): Promise<void> {
+    this.account = account
+
     this.contextsQuery.query(
       notification.class.DocNotifyContext,
       {
@@ -105,11 +117,21 @@ export class InboxNotificationsClientImpl implements InboxNotificationsClient {
         this.contextByDoc.set(this._contextByDoc)
       }
     )
+    this.updateInboxNotificationsQuery()
+  }
+
+  private updateInboxNotificationsQuery (): void {
+    if (this.account === undefined) {
+      return
+    }
+
+    const limits = get(this.inboxNotificationsLimits)
+
     this.otherInboxNotificationsQuery.query(
       notification.class.CommonInboxNotification,
       {
         archived: false,
-        user: account.uuid
+        user: this.account.uuid
       },
       (result: InboxNotification[]) => {
         result.sort((a, b) => (b.createdOn ?? b.modifiedOn) - (a.createdOn ?? a.modifiedOn))
@@ -121,7 +143,7 @@ export class InboxNotificationsClientImpl implements InboxNotificationsClient {
       notification.class.ActivityInboxNotification,
       {
         archived: false,
-        user: account.uuid
+        user: this.account.uuid
       },
       (result: ActivityInboxNotification[]) => {
         this.activityInboxNotifications.set(result)
@@ -133,9 +155,18 @@ export class InboxNotificationsClientImpl implements InboxNotificationsClient {
         lookup: {
           attachedTo: activity.class.ActivityMessage
         },
-        limit: 1000
+        limit: limits.activity
       }
     )
+  }
+
+  loadMoreInboxNotifications (): void {
+    if (!get(this.hasMoreInboxNotifications)) {
+      return
+    }
+
+    this.inboxNotificationsLimits.update(getNextInboxNotificationsLimits)
+    this.updateInboxNotificationsQuery()
   }
 
   static createClient (): InboxNotificationsClientImpl {

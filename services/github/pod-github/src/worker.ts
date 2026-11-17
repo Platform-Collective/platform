@@ -75,7 +75,7 @@ import { App, Octokit } from 'octokit'
 import { createPlatformClient } from './client'
 import { createCollaboratorClient } from './collaborator'
 import config from './config'
-import { markupToMarkdown, parseMessageMarkdown } from './markdown'
+import { markupToMarkdown, parseMessageMarkdownWithPersons } from './markdown'
 import { createNotification } from './notifications'
 import { InstallationRecord, PlatformWorker } from './platform'
 import { CommentSyncManager } from './sync/comments'
@@ -230,24 +230,53 @@ export class GithubWorker implements IntegrationManager {
     // TODO storage URL
     const imageUrl = concatLink(frontUrl ?? config.FrontURL, `/files?workspace=${this.workspace.uuid}&file=`)
     const guestUrl = getPublicLinkUrl(this.workspace, frontUrl)
-    const json = parseMessageMarkdown(text ?? '', refUrl, imageUrl, guestUrl)
+    const personUrl = concatLink(frontUrl, `/workbench/${this.workspace.url}/contact/`)
+    const json = await parseMessageMarkdownWithPersons(
+      text ?? '',
+      refUrl,
+      imageUrl,
+      guestUrl,
+      personUrl,
+      async (ids) => await this.findPersonIds(ids)
+    )
     await preprocessor?.(json)
     return jsonToMarkup(json)
+  }
+
+  private async findPersonIds (ids: string[]): Promise<Array<Ref<Person>>> {
+    try {
+      const persons = await this._client.findAll(
+        contact.class.Person,
+        { _id: { $in: ids as Array<Ref<Person>> } },
+        { projection: { _id: 1 } }
+      )
+      return persons.map((it) => it._id)
+    } catch (err) {
+      // Contact links stay plain links; ids and message text are not logged.
+      this.ctx.warn('Failed to resolve contact links to persons', {
+        workspace: this.workspace.uuid,
+        count: ids.length,
+        error: err instanceof Error ? err.name : typeof err
+      })
+      return []
+    }
   }
 
   async getMarkdown (text?: string | null, preprocessor?: (nodes: MarkupNode) => Promise<void>): Promise<string> {
     if (text == null) {
       return ''
     }
+    const frontUrl = this.getBranding()?.front ?? config.FrontURL
     return await markupToMarkdown(
       text ?? '',
-      concatLink(this.getBranding()?.front ?? config.FrontURL, `/browse/?workspace=${this.workspace.uuid}`),
+      concatLink(frontUrl, `/browse/?workspace=${this.workspace.uuid}`),
       // TODO storage URL
-      concatLink(this.getBranding()?.front ?? config.FrontURL, `/files/${this.workspace.uuid}/`),
+      concatLink(frontUrl, `/files/${this.workspace.uuid}/`),
       preprocessor ??
         (async (nodes) => {
           appendGuestLinkToImage(nodes, this.workspace.uuid)
-        })
+        }),
+      concatLink(frontUrl, `/workbench/${this.workspace.url}/contact/`)
     )
   }
 
@@ -558,6 +587,7 @@ export class GithubWorker implements IntegrationManager {
           ...normalizedInfoData
         })
       }
+      return normalizedInfoData
     }
     return info
   }

@@ -463,6 +463,7 @@ export async function doRestoreWorkspace (
   const ctx = rootCtx.newChild('doRestore', {}, { span: false })
   let pipeline: Pipeline | undefined
   let closeAccountDB: (() => void) | undefined
+  let result = false
   try {
     pipeline = await pipelineFactory(
       ctx,
@@ -482,7 +483,7 @@ export async function doRestoreWorkspace (
     if (accountsDbUrl !== undefined) {
       ;[accountDB, closeAccountDB] = await getAccountDB(accountsDbUrl, accountsDbNs)
     }
-    const result: boolean = await ctx.with(
+    result = await ctx.with(
       'restore',
       {},
       (ctx) =>
@@ -497,14 +498,19 @@ export async function doRestoreWorkspace (
         }),
       { workspace: wsIds.uuid }
     )
-    return result
   } catch (err: any) {
     rootCtx.error('\n\nFAILED to RESTORE', { workspace: wsIds.uuid, err })
-    return false
   } finally {
-    closeAccountDB?.()
-    if (pipeline !== undefined) {
-      await pipeline.close()
+    try {
+      try {
+        closeAccountDB?.()
+      } finally {
+        await pipeline?.close()
+      }
+    } catch (err: unknown) {
+      rootCtx.error('Failed to close restore resources', { workspace: wsIds.uuid, err })
+      result = false
     }
   }
+  return result
 }

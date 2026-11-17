@@ -109,17 +109,20 @@ export class NavigationClient {
     const navItems = get(this.navigationItemsStore)
 
     const hasNextPage = get(contextsWindowStore)?.hasPrevPage() ?? false
-    return hasNextPage || allItems.length > navItems.length
+    return hasNextPage || allItems.length > navItems.length || get(this.oldClient.hasMoreInboxNotifications)
   }
 
   public async prev (): Promise<void> {
     if (this.isPrevLoading || !this.hasPrevPage()) return
     const w = get(contextsWindowStore)
-    if (w == null) return
     this.isPrevLoading = true
-    await w.loadPrevPage()
-    this.limitStore.update((it) => it + limit)
-    this.isPrevLoading = false
+    try {
+      await w?.loadPrevPage()
+      this.oldClient.loadMoreInboxNotifications()
+      this.limitStore.update((it) => it + limit)
+    } finally {
+      this.isPrevLoading = false
+    }
   }
 
   public async remove (item: NavigationItem): Promise<void> {

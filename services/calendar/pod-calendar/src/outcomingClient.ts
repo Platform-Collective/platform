@@ -23,11 +23,13 @@ import calendar, {
 } from '@hcengineering/calendar'
 import contact, { Contact } from '@hcengineering/contact'
 import core, { MeasureContext, Ref, SocialIdType, TxOperations, WorkspaceUuid } from '@hcengineering/core'
-import { areEqualMarkups, htmlToMarkup, isEmptyMarkup, jsonToHTML, markupToJSON } from '@hcengineering/text'
+import { htmlToMarkup, jsonToHTML, markupToJSON } from '@hcengineering/text'
 import { deepEqual } from 'fast-equals'
 import { OAuth2Client } from 'google-auth-library'
 import { calendar_v3 } from 'googleapis'
 import { getClient } from './client'
+import { getOutgoingLocation, isLocationInSync } from './conference'
+import { shouldPushDescriptionUpdate } from './description'
 import { setSyncHistory } from './kvsUtils'
 import { lock, synced } from './mutex'
 import { getRateLimitter, RateLimiter } from './rateLimiter'
@@ -95,8 +97,9 @@ export class OutcomingClient {
       description: jsonToHTML(markupToJSON(event.description)),
       summary: event.title
     }
-    if (event.location != null) {
-      res.location = event.location
+    const location = getOutgoingLocation(event)
+    if (location != null) {
+      res.location = location
     }
     if (event.visibility !== undefined) {
       res.visibility = event.visibility === 'public' ? 'public' : 'private'
@@ -260,10 +263,7 @@ export class OutcomingClient {
     }
     const description = jsonToHTML(markupToJSON(current.description))
     const originMarkup = htmlToMarkup(event.description ?? '')
-    if (
-      isEmptyMarkup(description) !== isEmptyMarkup(originMarkup) &&
-      !areEqualMarkups(current.description, originMarkup)
-    ) {
+    if (shouldPushDescriptionUpdate(current.description, originMarkup)) {
       res = true
       this.ctx.info('Update event diff: description', {
         calendarId: current.calendar,
@@ -276,7 +276,7 @@ export class OutcomingClient {
       })
       event.description = description
     }
-    if (current.location !== event.location) {
+    if (!isLocationInSync(current, event)) {
       res = true
       this.ctx.info('Update event diff: location', {
         calendarId: current.calendar,

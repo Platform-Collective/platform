@@ -84,6 +84,24 @@ class MarkupOperationsImpl implements MarkupOperations {
     value: string,
     format: MarkupFormat
   ): Promise<MarkupRef> {
+    const markup = this.toMarkup(value, format)
+    const collabId = makeCollabId(objectClass, objectId, objectAttr)
+    return await this.collaborator.createMarkup(collabId, markup)
+  }
+
+  async updateMarkup (
+    objectClass: Ref<Class<Doc>>,
+    objectId: Ref<Doc>,
+    objectAttr: string,
+    value: string,
+    format: MarkupFormat
+  ): Promise<void> {
+    const markup = this.toMarkup(value, format)
+    const collabId = makeCollabId(objectClass, objectId, objectAttr)
+    await this.collaborator.updateMarkup(collabId, markup)
+  }
+
+  private toMarkup (value: string, format: MarkupFormat): Markup {
     let markup: Markup = ''
 
     switch (format) {
@@ -100,7 +118,6 @@ class MarkupOperationsImpl implements MarkupOperations {
         throw new Error('Unknown content format')
     }
 
-    const collabId = makeCollabId(objectClass, objectId, objectAttr)
-    return await this.collaborator.createMarkup(collabId, markup)
+    return markup
   }
 }

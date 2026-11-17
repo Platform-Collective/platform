@@ -20,6 +20,7 @@
     "AccountAlreadyConfirmed": "Konto zostało już potwierdzone",
     "WorkspaceAlreadyExists": "Przestrzeń robocza już istnieje",
     "InvalidOtp": "Nieprawidłowy kod",
+    "OtpLocked": "Zbyt wiele nieprawidłowych kodów. Odczekaj chwilę i poproś o nowy kod.",
     "PasswordLoginLocked": "Logowanie hasłem jest zablokowane z powodu zbyt wielu nieudanych prób. Użyj metody logowania hasłem jednorazowym, aby odblokować konto.",
     "InviteNotFound": "Zaproszenie za pomocą adresu e-mail: nie znaleziono adresu {email}.",
     "WorkspaceLimitReached": "Osiągnąłeś limit przestrzeni roboczych. Skontaktuj się z nami...",

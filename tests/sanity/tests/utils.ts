@@ -32,7 +32,7 @@ export function generateTestData (): TestData {
   }
 
   return {
-    workspaceName: faker.lorem.word(),
+    workspaceName: `${faker.lorem.word()}-${generateId()}`,
     userName: faker.internet.username(),
     firstName: faker.person.firstName(),
     lastName: faker.person.lastName(),

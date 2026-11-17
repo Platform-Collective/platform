@@ -13,7 +13,16 @@
 // limitations under the License.
 //
 
-import { MarkupNode, jsonToMarkup, markupToJSON, htmlToJSON } from '@hcengineering/text'
+import contact from '@hcengineering/contact'
+import {
+  MarkupMarkType,
+  MarkupNodeType,
+  jsonToMarkup,
+  markupToJSON,
+  htmlToJSON,
+  traverseNode
+} from '@hcengineering/text'
+import type { MarkupMark, MarkupNode } from '@hcengineering/text'
 import { MarkdownParser, storeNodes, storeMarks, MarkdownState } from '@hcengineering/text-markdown'
 import { GithubKit } from './extensions'
 import { hasHulyLink, hasHulyLinkText } from '../sync/guest'
@@ -25,7 +34,8 @@ export function parseMessageMarkdown (
   message: string | undefined,
   refUrl: string,
   imageUrl: string,
-  guestUrl: string
+  guestUrl: string,
+  personUrl?: string
 ): MarkupNode {
   const extensions = [
     GithubKit.configure({
@@ -39,7 +49,12 @@ export function parseMessageMarkdown (
     return htmlToJSON(html, extensions)
   }
   const parser = new MarkdownParser({ refUrl, imageUrl, htmlParser })
+  parser.tokenizer.set({ linkify: true })
+  parser.tokenizer.linkify.set({ fuzzyLink: false, fuzzyEmail: false })
   const json = parser.parse(message ?? '')
+  if (personUrl !== undefined) {
+    convertPersonLinks(json, personUrl, () => true)
+  }
   return json
 }
 
@@ -59,11 +74,100 @@ export async function markupToMarkdown (
   markup: string,
   refUrl: string = 'ref://',
   imageUrl: string = 'http://localhost',
-  preprocessor?: (nodes: MarkupNode) => Promise<void>
+  preprocessor?: (nodes: MarkupNode) => Promise<void>,
+  personUrl?: string
 ): Promise<string> {
   const json = markupToJSON(markup)
   await preprocessor?.(json)
+  if (personUrl !== undefined) {
+    traverseNode(json, (node) => {
+      const attrs = node.attrs
+      if (node.type !== MarkupNodeType.reference || attrs?.objectclass !== contact.class.Person) return
+      if (typeof attrs.id !== 'string' || attrs.id.length === 0) return
+      node.type = MarkupNodeType.text
+      node.text = String(attrs.label ?? '')
+      node.marks = [
+        ...(node.marks ?? []),
+        { type: MarkupMarkType.link, attrs: { href: personUrl + encodeURIComponent(attrs.id), title: attrs.title } }
+      ]
+      delete node.attrs
+      delete node.content
+      return false
+    })
+  }
   return serializeMessage(json, refUrl, imageUrl)
+}
+
+/**
+ * Parses a message like {@link parseMessageMarkdown}, but turns a contact link into a
+ * Person mention only when its id resolves to a Person. Ids of one message are looked up
+ * in a single call, and not at all when the message has no contact links.
+ *
+ * @public
+ */
+export async function parseMessageMarkdownWithPersons (
+  message: string | undefined,
+  refUrl: string,
+  imageUrl: string,
+  guestUrl: string,
+  personUrl: string,
+  findPersons: (ids: string[]) => Promise<Iterable<string>>
+): Promise<MarkupNode> {
+  const json = parseMessageMarkdown(message, refUrl, imageUrl, guestUrl)
+  const ids = new Set<string>()
+  traverseNode(json, (node) => {
+    const id = getPersonLinkId(node, personUrl)?.id
+    if (id !== undefined) ids.add(id)
+    return true
+  })
+  if (ids.size === 0) return json
+  const persons = new Set(await findPersons(Array.from(ids)))
+  convertPersonLinks(json, personUrl, (id) => persons.has(id))
+  return json
+}
+
+function getPersonLinkId (node: MarkupNode, personUrl: string): { id: string, link: MarkupMark } | undefined {
+  const link = node.marks?.find((mark) => mark.type === MarkupMarkType.link)
+  const href = link?.attrs?.href
+  if (
+    link === undefined ||
+    node.type !== MarkupNodeType.text ||
+    typeof href !== 'string' ||
+    !href.startsWith(personUrl)
+  ) {
+    return undefined
+  }
+  const id = href.slice(personUrl.length)
+  if (id.length === 0 || /[/?#]/.test(id)) return undefined
+  let personId: string
+  try {
+    personId = decodeURIComponent(id)
+  } catch {
+    return undefined
+  }
+  return hasControlCharacters(personId) ? undefined : { id: personId, link }
+}
+
+function hasControlCharacters (value: string): boolean {
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i)
+    if (code < 0x20 || (code >= 0x7f && code <= 0x9f)) return true
+  }
+  return false
+}
+
+function convertPersonLinks (json: MarkupNode, personUrl: string, isPerson: (id: string) => boolean): void {
+  traverseNode(json, (node) => {
+    const personLink = getPersonLinkId(node, personUrl)
+    if (personLink === undefined || !isPerson(personLink.id)) return
+    const label = node.text ?? ''
+    node.type = MarkupNodeType.reference
+    node.attrs = { id: personLink.id, objectclass: contact.class.Person, label }
+    node.content = [{ type: MarkupNodeType.text, text: label, marks: [] }]
+    node.marks = node.marks?.filter((mark) => mark !== personLink.link)
+    delete node.text
+    return false
+  })
 }
 
 /**

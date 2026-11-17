@@ -173,7 +173,8 @@ module.exports = [
     },
     optimization: prod
       ? {
-          minimize: true
+          minimize: true,
+          minimizer: [new EsbuildPlugin({ target: 'es2021' })]
         }
       : {
           minimize: false,

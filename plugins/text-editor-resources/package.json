@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@hcengineering/platform-rig": "workspace:^0.7.21",
+    "@hcengineering/text-html": "workspace:^0.7.19",
     "svelte-loader": "^3.2.0",
     "sass": "^1.80.0",
     "svelte-preprocess": "^5.1.4",
@@ -33,6 +34,7 @@
     "svelte-check": "^3.6.9",
     "typescript": "^5.9.3",
     "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
     "ts-jest": "^29.4.12",
     "@types/jest": "^30.0.0",
     "@types/diff": "~5.0.2",

@@ -13,10 +13,11 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { Asset } from '@hcengineering/platform'
+  import { Asset, IntlString, translateCB } from '@hcengineering/platform'
   import { ComponentType } from 'svelte'
 
-  import { AnySvelteComponent, Icon, IconProps } from '../..'
+  import { AnySvelteComponent, Icon, IconProps, themeStore } from '../..'
+  import { tooltip } from '../tooltips'
 
   export let icon: Asset | AnySvelteComponent | ComponentType
   export let iconProps: Record<string, any> = {}
@@ -24,6 +25,16 @@
 
   export let id: string | undefined = undefined
   export let element: HTMLElement | undefined = undefined
+  export let label: IntlString | undefined = undefined
+
+  let ariaLabel: string | undefined = undefined
+  $: if (label !== undefined) {
+    translateCB(label, {}, $themeStore.language, (res) => {
+      ariaLabel = res
+    })
+  } else {
+    ariaLabel = undefined
+  }
 </script>
 
 <button
@@ -32,6 +43,8 @@
   class="antiButton ghost jf-center bs-none no-focus resetIconSize statusButton square"
   class:pressed
   style:color={'var(--theme-dark-color)'}
+  aria-label={ariaLabel}
+  use:tooltip={label !== undefined && !pressed ? { label } : undefined}
   on:click
 >
   <Icon {icon} {iconProps} size={'small'} />

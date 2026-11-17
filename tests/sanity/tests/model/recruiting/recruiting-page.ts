@@ -122,7 +122,8 @@ export class RecruitingPage {
   async checkApplicationsVisibility (): Promise<void> {
     await this.applicationsLink().click()
     await expect(this.page.locator('text=Applications >> nth=1')).toBeVisible()
-    expect(this.page.locator('text="APP-1"')).toBeDefined()
+    // APP-1 is not necessarily among the rows rendered in this view, so accept any application.
+    await expect(this.page.getByText(/^APP-\d+$/).first()).toBeVisible()
   }
 
   async verifyTalentSection (): Promise<void> {
@@ -133,8 +134,9 @@ export class RecruitingPage {
   async navigateToVacanciesAndCheckSoftwareEngineer (): Promise<void> {
     await this.vacanciesLink().click()
     await this.softwareEngineerLink().click()
-    expect(this.page.locator('text=Software Engineer')).toBeDefined()
-    expect(this.page.locator('text="APP-1"')).toBeDefined()
+    await expect(this.page.locator('text=Software Engineer').first()).toBeVisible()
+    // APP-1 is not one of the Software Engineer applications, so check that the vacancy lists any application.
+    await expect(this.page.getByText(/^APP-\d+$/).first()).toBeVisible()
   }
 
   async navigateToGeneralChatAndContacts (): Promise<void> {

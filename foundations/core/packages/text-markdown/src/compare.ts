@@ -76,6 +76,10 @@ export function normalizeMarkdown (source: string): string {
     .filter((it) => it.length > 0)
     .join('\n')
 
+  // The Markdown serializer emits plain URL links as autolinks. They have the
+  // same Markdown meaning as the bare URLs recognized by the GitHub parser.
+  source = source.replace(/<((?:[a-z][a-z\d+.-]*:\/\/|mailto:)[^\s<>]+)>/gi, '$1')
+
   // Normalize HTML tags
   source = source.replace(tagRegex, (match, tagName, attributes) => {
     const attrs: Record<string, string> = {}

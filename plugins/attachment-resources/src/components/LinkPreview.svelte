@@ -96,8 +96,8 @@
     background-color: var(--theme-link-preview-bg-color);
     border-radius: 0.75rem;
     scroll-snap-align: start;
-    max-width: 26rem;
-    min-width: 16rem;
+    max-width: min(26rem, 100%);
+    min-width: min(16rem, 100%);
 
     &:hover {
       .link-preview__delete-button {
