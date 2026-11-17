@@ -28,7 +28,10 @@
   // exact total when the list has loaded every report belonging to the group.
   $: total =
     docs.length === allDocs.length
-      ? floorFractionDigits(docs.reduce((sum, it) => sum + (it.value ?? 0), 0), 3)
+      ? floorFractionDigits(
+          docs.reduce((sum, it) => sum + (it.value ?? 0), 0),
+          3
+        )
       : undefined
 </script>
 
