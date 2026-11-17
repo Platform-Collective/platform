@@ -326,7 +326,7 @@ export function createModel (builder: Builder): void {
       order: 1025,
       role: AccountRole.Owner
     },
-    'setting:ids:AccessOverview' as Ref<SettingsCategory>
+    setting.ids.AccessOverview
   )
   builder.createDoc(
     setting.class.WorkspaceSettingCategory,

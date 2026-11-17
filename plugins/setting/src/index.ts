@@ -194,6 +194,7 @@ export default plugin(settingId, {
     ClassSetting: '' as Ref<Doc>,
     General: '' as Ref<Doc>,
     Members: '' as Ref<Doc>,
+    AccessOverview: '' as Ref<SettingsCategory>,
     InviteSettings: '' as Ref<Doc>,
     RoleCapabilitySettings: '' as Ref<Doc>,
     WorkspaceSetting: '' as Ref<Doc>,
