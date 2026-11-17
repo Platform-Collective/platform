@@ -10,7 +10,7 @@ import {
   nodeParagraph,
   nodeText
 } from '@hcengineering/text-core'
-import { getMessageToDoContent, isMessageToDoSource, withPlannedTime } from '../message-todo'
+import { getMessageToDoContent, isMessageToDoSource } from '../message-todo'
 
 const LINK = 'https://huly.example/workbench/workspace/chunter/channel?message=message-1'
 
@@ -66,10 +66,5 @@ describe('message ToDo content', () => {
     expect(isMessageToDoSource({ message: 42 } as unknown as Doc)).toBe(false)
     expect(isMessageToDoSource({} as unknown as Doc)).toBe(false)
     expect(isMessageToDoSource()).toBe(false)
-  })
-
-  it('appends the chosen time to the title', () => {
-    const dueDate = new Date(2026, 9, 24, 14, 30).getTime()
-    expect(withPlannedTime('Follow up', dueDate, 'en-GB')).toBe('Follow up (14:30)')
   })
 })

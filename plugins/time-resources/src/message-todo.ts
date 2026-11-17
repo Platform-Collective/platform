@@ -32,12 +32,3 @@ export function getMessageToDoContent (
     description: jsonToMarkup(nodeDoc(nodeParagraph(markLink({ href: link, title }, nodeText(link)))))
   }
 }
-
-/**
- * Append the chosen time to the title. The planner list only shows the due date, so this keeps the
- * selected time visible without a schema change.
- */
-export function withPlannedTime (title: string, dueDate: number, locale?: string): string {
-  const time = new Date(dueDate).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
-  return `${title} (${time})`
-}
