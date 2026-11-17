@@ -522,6 +522,7 @@ export interface StateOptions {
   refUrl: string
   imageUrl: string
   htmlWriter?: HtmlWriter
+  warn?: (message: string, meta: Record<string, unknown>) => void
 }
 export class MarkdownState implements IState {
   nodes: Record<string, NodeProcessor>
@@ -633,6 +634,7 @@ export class MarkdownState implements IState {
     const processor = this.nodes[node.type]
     if (processor === undefined) {
       // Unknown node type, render its content (if any) instead of failing the whole document
+      this.options.warn?.('Unknown Markdown node type', { type: node.type })
       this.renderContent(node)
       return
     }
@@ -707,7 +709,13 @@ export class MarkdownState implements IState {
 
   renderNodeInline (state: InlineState, index: number): void {
     // Unknown marks have no markdown representation, ignore them and keep the text
-    state.marks = (state.node?.marks ?? []).filter((mark) => this.marks[mark.type] !== undefined)
+    const marks = state.node?.marks ?? []
+    for (const mark of marks) {
+      if (this.marks[mark.type] === undefined) {
+        this.options.warn?.('Unknown Markdown mark type', { type: mark.type })
+      }
+    }
+    state.marks = marks.filter((mark) => this.marks[mark.type] !== undefined)
     this.updateHardBreakMarks(state, index)
     if (state.node !== undefined && state.node.type !== MarkupNodeType.text) {
       state.marks = state.marks.filter((mark) => mark.type !== MarkupMarkType.code)

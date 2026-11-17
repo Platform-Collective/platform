@@ -1281,8 +1281,6 @@ describe('gif node', () => {
     content: [{ type: MarkupNodeType.paragraph, content: [{ type: MarkupNodeType.gif, attrs }] }]
   })
 
-  // a missing serializer case is NOT silent here. serializer.ts render() throws for an
-  // unregistered type, which fails the WHOLE message, not just the GIF.
   it('serializes without throwing', () => {
     expect(() => markupToMarkdown(gifDoc({ 'file-id': 'blob-1' }), options)).not.toThrow()
   })
@@ -1388,7 +1386,10 @@ describe('markupToMarkdown with unsupported content', () => {
         }
       ]
     }
-    expect(markupToMarkdown(markup, options)).toEqual('unknown *and italic*')
+    const warn = jest.fn()
+    expect(markupToMarkdown(markup, { ...options, warn })).toEqual('unknown *and italic*')
+    expect(warn).toHaveBeenCalledTimes(2)
+    expect(warn).toHaveBeenCalledWith('Unknown Markdown mark type', { type: 'unknown-mark' })
   })
 
   it('renders content of unknown nodes', () => {
@@ -1415,6 +1416,11 @@ describe('markupToMarkdown with unsupported content', () => {
         }
       ]
     }
-    expect(markupToMarkdown(markup, options)).toEqual('Inside unknown block\n\nBefore inner after')
+    const warn = jest.fn()
+    expect(markupToMarkdown(markup, { ...options, warn })).toEqual('Inside unknown block\n\nBefore inner after')
+    expect(warn).toHaveBeenCalledTimes(3)
+    expect(warn).toHaveBeenCalledWith('Unknown Markdown node type', { type: 'unknownBlock' })
+    expect(warn).toHaveBeenCalledWith('Unknown Markdown node type', { type: 'unknownInline' })
+    expect(warn).toHaveBeenCalledWith('Unknown Markdown node type', { type: undefined })
   })
 })

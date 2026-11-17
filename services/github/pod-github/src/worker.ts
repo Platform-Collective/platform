@@ -250,7 +250,8 @@ export class GithubWorker implements IntegrationManager {
         (async (nodes) => {
           appendGuestLinkToImage(nodes, this.workspace.uuid)
         }),
-      concatLink(frontUrl, `/workbench/${this.workspace.url}/contact/`)
+      concatLink(frontUrl, `/workbench/${this.workspace.url}/contact/`),
+      this.ctx
     )
   }
 

@@ -14,6 +14,7 @@
 //
 
 import contact from '@hcengineering/contact'
+import type { MeasureContext } from '@hcengineering/core'
 import {
   MarkupMarkType,
   MarkupNodeType,
@@ -80,8 +81,20 @@ export function parseMessageMarkdown (
 /**
  * @public
  */
-export function serializeMessage (node: MarkupNode, refUrl: string, imageUrl: string): string {
-  const state = new MarkdownState(storeNodes, storeMarks, { tightLists: true, refUrl, imageUrl })
+export function serializeMessage (
+  node: MarkupNode,
+  refUrl: string,
+  imageUrl: string,
+  ctx?: Pick<MeasureContext, 'warn'>
+): string {
+  const state = new MarkdownState(storeNodes, storeMarks, {
+    tightLists: true,
+    refUrl,
+    imageUrl,
+    warn: (message, meta) => {
+      ctx?.warn(message, meta)
+    }
+  })
   state.renderContent(node)
   return state.out
 }
@@ -94,7 +107,8 @@ export async function markupToMarkdown (
   refUrl: string = 'ref://',
   imageUrl: string = 'http://localhost',
   preprocessor?: (nodes: MarkupNode) => Promise<void>,
-  personUrl?: string
+  personUrl?: string,
+  ctx?: Pick<MeasureContext, 'warn'>
 ): Promise<string> {
   const json = markupToJSON(markup)
   await preprocessor?.(json)
@@ -114,7 +128,7 @@ export async function markupToMarkdown (
       return false
     })
   }
-  return serializeMessage(json, refUrl, imageUrl)
+  return serializeMessage(json, refUrl, imageUrl, ctx)
 }
 
 /**

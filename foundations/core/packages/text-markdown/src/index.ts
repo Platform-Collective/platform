@@ -25,6 +25,7 @@ export * from './serializer'
 export interface MarkdownOptions {
   refUrl?: string
   imageUrl?: string
+  warn?: (message: string, meta: Record<string, unknown>) => void
 }
 
 /** @public */
@@ -32,7 +33,7 @@ export function markupToMarkdown (markup: MarkupNode, options?: MarkdownOptions)
   const refUrl = options?.refUrl ?? 'ref://'
   const imageUrl = options?.imageUrl ?? 'image://'
 
-  const state = new MarkdownState(storeNodes, storeMarks, { tightLists: true, refUrl, imageUrl })
+  const state = new MarkdownState(storeNodes, storeMarks, { tightLists: true, refUrl, imageUrl, warn: options?.warn })
   state.renderContent(markup)
   return state.out
 }

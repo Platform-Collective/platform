@@ -978,7 +978,9 @@ A list of closed updated issues`
       ],
       type: MarkupNodeType.doc
     }
-    expect(serializeMessage(node, 'ref://', 'http://')).toEqual('* test1 ')
+    const ctx = { warn: jest.fn() }
+    expect(serializeMessage(node, 'ref://', 'http://', ctx)).toEqual('* test1 ')
+    expect(ctx.warn).toHaveBeenCalledWith('Unknown Markdown node type', { type: `${MarkupNodeType.text}qwe` })
   })
 
   it('check markdown state', () => {
