@@ -35,9 +35,10 @@ export interface TimeParts {
  * Computed on whole minutes so fractional day lengths (e.g. 7.5h) and
  * rounding (e.g. 0.999h) never yield "60m" or a fractional hour.
  */
-export function splitTime (value: number, hoursPerDay: number = DEFAULT_HOURS_PER_DAY): TimeParts {
+export function splitTime (value: number, hoursPerDay: number = DEFAULT_HOURS_PER_DAY, hoursOnly = false): TimeParts {
   const total = Math.round(value * MINUTES_PER_HOUR)
   if (!Number.isFinite(total) || total <= 0) return { days: 0, hours: 0, minutes: 0 }
+  if (hoursOnly) return { days: 0, hours: Math.floor(total / MINUTES_PER_HOUR), minutes: total % MINUTES_PER_HOUR }
   const minutesPerDay = Math.round((normalizeHoursPerDay(hoursPerDay) ?? DEFAULT_HOURS_PER_DAY) * MINUTES_PER_HOUR)
   const days = Math.floor(total / minutesPerDay)
   const rest = total - days * minutesPerDay

@@ -27,11 +27,12 @@
   export let accent: boolean = false
   // Project of the presented value; its `hoursPerDay` defines the length of a day.
   export let space: Ref<Space> | undefined = undefined
+  export let hoursOnly: boolean = false
 
   let label = ''
 
   $: hoursPerDay = getHoursPerDay(space !== undefined ? $activeProjects.get(space as Ref<Project>) : undefined)
-  $: parts = splitTime(value, hoursPerDay)
+  $: parts = splitTime(value, hoursPerDay, hoursOnly)
 
   $: void getLabel(parts.days, parts.hours, parts.minutes, $themeStore.language)
 

@@ -41,6 +41,11 @@ describe('getHoursPerDay', () => {
 })
 
 describe('splitTime', () => {
+  it('keeps mixed-project totals in hours instead of assuming an eight-hour day', () => {
+    expect(splitTime(15, 7.5, true)).toEqual({ days: 0, hours: 15, minutes: 0 })
+    expect(splitTime(8.999, 8, true)).toEqual({ days: 0, hours: 9, minutes: 0 })
+  })
+
   it('keeps the legacy 8-hour day by default', () => {
     expect(splitTime(12)).toEqual({ days: 1, hours: 4, minutes: 0 })
     expect(splitTime(1.5)).toEqual({ days: 0, hours: 1, minutes: 30 })

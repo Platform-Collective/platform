@@ -45,5 +45,5 @@
 </script>
 
 {#if total !== undefined}
-  <TimePresenter value={total} accent />
+  <TimePresenter value={total} hoursOnly accent />
 {/if}
