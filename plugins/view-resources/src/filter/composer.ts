@@ -5,7 +5,7 @@ import { Analytics } from '@hcengineering/analytics'
 import { reduceCalls, type Doc, type DocumentQuery, type Hierarchy } from '@hcengineering/core'
 import { type Filter } from '@hcengineering/view'
 import { FilterQueryLifetime } from './lifecycle'
-import { makeFilterQuery, type FilterModeResolver, type ResourceResolver } from './query-builder'
+import { makeFilterQueryWithLifetime, type FilterModeResolver, type ResourceResolver } from './query-builder'
 
 interface FilterQueryComposerOptions {
   resolveMode: FilterModeResolver
@@ -36,7 +36,15 @@ export function createFilterQueryComposer ({
         if (!lifetime.isActive() || request !== queryRequest) return
         // makeFilterQuery guards retained refresh callbacks by their own filter
         // generation. refresh must read current inputs, even after sibling removal.
-        const next = await makeFilterQuery(base, filters, resolveMode, resolveResource, hierarchy, refresh, lifetime)
+        const next = await makeFilterQueryWithLifetime(
+          base,
+          filters,
+          resolveMode,
+          resolveResource,
+          hierarchy,
+          refresh,
+          lifetime
+        )
         if (next !== undefined && lifetime.isActive() && request === queryRequest) onChange(next)
       } catch (error) {
         Analytics.handleError(error instanceof Error ? error : new Error(String(error)))

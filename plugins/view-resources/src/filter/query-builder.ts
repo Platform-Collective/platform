@@ -19,8 +19,8 @@ import { FilterQueryLifetime } from './lifecycle'
  * invocation. Calling
  * `mode.result(filter)` directly would throw at runtime.
  *
- * Cancellation returns undefined; callers must check the captured lifetime again
- * before dispatching, since removal can also happen after this promise settles.
+ * The composer's cancellable variant returns undefined; callers must check the
+ * captured lifetime again before dispatching, since removal can also happen after this promise settles.
  *
  * AND-semantics across filters on the same key: when two filters target the
  * same attribute, their result-operators are merged (intersection on $in,
@@ -64,6 +64,25 @@ function cloneQuery (base: DocumentQuery<Doc>, hierarchy?: Hierarchy): DocumentQ
 }
 
 export async function makeFilterQuery (
+  base: DocumentQuery<Doc>,
+  filters: Filter[],
+  resolveMode: FilterModeResolver,
+  resolveResource: ResourceResolver = defaultResolveResource,
+  hierarchy?: Hierarchy,
+  refresh: () => void = (): void => {}
+): Promise<DocumentQuery<Doc>> {
+  return (await makeFilterQueryWithLifetime(
+    base,
+    filters,
+    resolveMode,
+    resolveResource,
+    hierarchy,
+    refresh,
+    new FilterQueryLifetime([])
+  ))!
+}
+
+export async function makeFilterQueryWithLifetime (
   base: DocumentQuery<Doc>,
   filters: Filter[],
   resolveMode: FilterModeResolver,

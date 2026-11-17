@@ -29,7 +29,10 @@ import {
 } from '@hcengineering/view-resources'
 import { FilterQueryLifetime } from '@hcengineering/view-resources/src/filter/lifecycle'
 import { createFilterQueryComposer } from '@hcengineering/view-resources/src/filter/composer'
-import { makeFilterQuery } from '@hcengineering/view-resources/src/filter/query-builder'
+import {
+  makeFilterQuery,
+  makeFilterQueryWithLifetime
+} from '@hcengineering/view-resources/src/filter/query-builder'
 
 import tags from '../plugin'
 import { tagsInResult, tagsNinResult } from '../utils'
@@ -654,7 +657,7 @@ describe('nested vacancy label subscriptions', () => {
       })
       const refresh = jest.fn()
       const dispatch = jest.fn()
-      const pending = makeFilterQuery({}, [filter], resolveMode, undefined, undefined, refresh, lifetime)
+      const pending = makeFilterQueryWithLifetime({}, [filter], resolveMode, undefined, undefined, refresh, lifetime)
       await lookup.promise
       if (stage === 'mode') removeFilter(0)
       else setFilters([])
