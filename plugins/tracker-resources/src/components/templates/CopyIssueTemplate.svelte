@@ -61,13 +61,7 @@
         )
         titles.push(`+${more}`)
       }
-      addNotification(
-        title,
-        titles.join(', '),
-        SimpleNotification,
-        undefined,
-        NotificationSeverity.Error
-      )
+      addNotification(title, titles.join(', '), SimpleNotification, undefined, NotificationSeverity.Error)
     },
     onComplete: () => dispatch('close')
   })
