@@ -43,7 +43,6 @@ export function registerWorkbenchTabNavigation (): () => void {
       me == null ||
       me.uuid !== accountUuid ||
       !hasAccountRole(me, AccountRole.Guest) ||
-      getClient() !== client ||
       getClient().getModel() !== model ||
       getMetadata(presentation.metadata.SessionId) !== sessionId ||
       getMetadata(presentation.metadata.Token) !== token ||
@@ -74,7 +73,7 @@ export function registerWorkbenchTabNavigation (): () => void {
   }
 }
 
-// Keep the write bound to the initiating shell/client/account even when metadata
+// Keep the write bound to the initiating shell/model/account even when metadata
 // or translation is slow. Pending reads may finish after invalidation, but must
 // never create a tab for a replacement session or resume the browser default.
 export async function openWorkbenchTab (

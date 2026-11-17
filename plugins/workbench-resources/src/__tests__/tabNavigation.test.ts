@@ -231,12 +231,8 @@ describe('workbench tab capability', () => {
     expect(canOpen()).toBe(false)
   })
 
-  it('invalidates the capability when the account UUID or client model changes', () => {
+  it('invalidates the capability when the account UUID changes', () => {
     setCurrentAccount({ ...account, uuid: 'other-account' as Core.AccountUuid })
-    expect(canOpen()).toBe(false)
-    setCurrentAccount(account)
-    const client = { getModel: () => ({ findAllSync }) }
-    jest.mocked(getClient).mockReturnValue(client as unknown as ReturnType<typeof getClient>)
     expect(canOpen()).toBe(false)
   })
 
@@ -401,11 +397,6 @@ describe('workbench tab capability', () => {
     if (change === 'account') {
       setCurrentAccount({ ...account, uuid: 'replacement-account' as Core.AccountUuid })
     }
-    if (change === 'client') {
-      const oldClient = getClient()
-      const client = { getModel: () => oldClient.getModel(), createDoc }
-      jest.mocked(getClient).mockReturnValue(client as unknown as ReturnType<typeof getClient>)
-    }
     if (change === 'model') {
       // getClient is a stable proxy in production; changing the backing model must
       // invalidate work even when the client reference itself remains identical.
@@ -424,7 +415,6 @@ describe('workbench tab capability', () => {
       'workspace identity',
       'workspace route',
       'account',
-      'client',
       'model',
       'role',
       'new shell'
