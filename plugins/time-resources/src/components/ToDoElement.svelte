@@ -99,7 +99,7 @@
     <WorkItemPresenter {todo} kind={'todo-line'} withoutSpace />
     <div
       class="hulyToDoLine-title text-left font-regular-14 line-height-auto overflow-label"
-      class:unavailableTitle={isUnavailable}
+      style:opacity={isUnavailable ? 0.55 : 1}
     >
       {todo.title}
     </div>
@@ -128,10 +128,3 @@
     <ToDoCheckbox checked={isDone} priority={todo.priority} on:value={markDone} />
   </div>
 </button>
-
-<style lang="scss">
-  /* Only the title is dimmed: the hint is advisory and the checkbox and menu stay fully usable. */
-  .unavailableTitle {
-    opacity: 0.55;
-  }
-</style>
