@@ -54,7 +54,11 @@
       const title = await translate(tracker.string.CopyTemplateFailed, {}, $themeStore.language)
       const titles = failures.slice(0, 5).map(({ template }) => template.title)
       if (failures.length > titles.length) {
-        const more = await translate(ui.string.MoreCount, { count: failures.length - titles.length }, $themeStore.language)
+        const more = await translate(
+          ui.string.MoreCount,
+          { count: failures.length - titles.length },
+          $themeStore.language
+        )
         titles.push(`+${more}`)
       }
       addNotification(
