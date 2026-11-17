@@ -19,7 +19,7 @@
     SearchInput
   } from '@hcengineering/ui'
   import view from '@hcengineering/view'
-  import { onMount } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
   import { collectPersonAccess, collectSpaceAccess, filterSpaceAccess } from '../access-overview'
   import setting from '../plugin'
   import { getAccountClient } from '../utils'
@@ -55,6 +55,17 @@
   let employeesLoaded = false
   let failed = false
   let search = ''
+  let appliedSearch = ''
+  let searchTimer: ReturnType<typeof setTimeout> | undefined
+  $: {
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(() => {
+      appliedSearch = search
+    }, 200)
+  }
+  onDestroy(() => {
+    clearTimeout(searchTimer)
+  })
   let mode = 'spaces'
   let spaceClass = 'all'
   let privacy = 'all'
@@ -107,18 +118,19 @@
   $: inventory = collectSpaceAccess(spaces, types, roles, hierarchy, excludedClasses)
   $: classes = [...new Set(inventory.map(({ space }) => space._class))]
   $: filteredSpaces = filterSpaceAccess(inventory, {
-    search: mode === 'spaces' ? search : '',
+    search: mode === 'spaces' ? appliedSearch : '',
     spaceClass: spaceClass === 'all' ? undefined : (spaceClass as Ref<Class<Space>>),
     private: privacy === 'all' ? undefined : privacy === 'private',
     archived: archived === 'all' ? undefined : archived === 'archived'
   })
-  $: people = collectPersonAccess(filteredSpaces, members)
+  $: personAccess = collectPersonAccess(filteredSpaces, members)
+  $: people = personAccess
     .filter(
       (person) =>
         (!guestsOnly || person.guest) &&
         `${personName(person.person, employees)} ${person.person}`
           .toLocaleLowerCase()
-          .includes(search.trim().toLocaleLowerCase())
+          .includes(appliedSearch.trim().toLocaleLowerCase())
     )
     .sort((a, b) => personName(a.person, employees).localeCompare(personName(b.person, employees)))
   $: loaded = membersLoaded && spacesLoaded && typesLoaded && rolesLoaded && employeesLoaded
