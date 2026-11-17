@@ -153,7 +153,8 @@ function isWorkspaceCreationAllowed (extra?: Record<string, unknown>): boolean {
   return (process.env.WORKSPACE_CREATION?.toLowerCase() || 'all') === 'all' || extra?.admin === 'true'
 }
 
-if (!isWorkspaceCreationAllowed() && process.env.WORKSPACE_CREATION?.toLowerCase() !== 'admin') {
+const workspaceCreation = process.env.WORKSPACE_CREATION?.toLowerCase() || 'all'
+if (workspaceCreation !== 'all' && workspaceCreation !== 'admin') {
   console.warn('Unknown WORKSPACE_CREATION value; only platform admins can create workspaces', {
     value: process.env.WORKSPACE_CREATION
   })
