@@ -2,9 +2,16 @@
   import calendar, { AccessLevel, Calendar, Event, generateEventId, getAllEvents } from '@hcengineering/calendar'
   import { DayCalendar, calendarByIdStore, hidePrivateEvents } from '@hcengineering/calendar-resources'
   import { getCurrentEmployee } from '@hcengineering/contact'
-  import { Ref, SortingOrder, Timestamp, getCurrentAccount } from '@hcengineering/core'
+  import core, {
+    Ref,
+    type Space,
+    type WithLookup,
+    SortingOrder,
+    Timestamp,
+    getCurrentAccount
+  } from '@hcengineering/core'
   import { IntlString, getEmbeddedLabel } from '@hcengineering/platform'
-  import { createQuery } from '@hcengineering/presentation'
+  import { createQuery, getClient } from '@hcengineering/presentation'
   import {
     AnyComponent,
     ButtonBase,
@@ -22,6 +29,7 @@
   } from '@hcengineering/ui'
   import { ToDo, WorkSlot } from '@hcengineering/time'
   import time from '../plugin'
+  import { filterVisibleWorkSlots } from '../to-do-query'
   import IconSun from './icons/Sun.svelte'
 
   export let dragItem: ToDo | null = null
@@ -31,6 +39,18 @@
   export let createComponent: AnyComponent | undefined = calendar.component.CreateEvent
 
   const q = createQuery()
+  const hierarchy = getClient().getHierarchy()
+  const isWorkSlot = (event: Event): boolean => hierarchy.isDerived(event._class, time.class.WorkSlot)
+  const archivedSpacesQuery = createQuery()
+  let archivedSpaces = new Set<Ref<Space>>()
+  archivedSpacesQuery.query(
+    core.class.Space,
+    { archived: true },
+    (spaces) => {
+      archivedSpaces = new Set(spaces.map((space) => space._id))
+    },
+    { projection: { _id: 1 }, showArchived: true }
+  )
 
   function getFrom(date: Date): Timestamp {
     return new Date(date).setHours(0, 0, 0, 0)
@@ -41,7 +61,7 @@
   }
 
   let dayCalendar: DayCalendar
-  let raw: Event[] = []
+  let raw: WithLookup<Event>[] = []
   let objects: Event[] = []
   let showLabel: boolean = true
 
@@ -70,12 +90,12 @@
       (result) => {
         raw = result
       },
-      { sort: { date: SortingOrder.Ascending } }
+      { sort: { date: SortingOrder.Ascending }, lookup: { attachedTo: time.class.ToDo } }
     )
   }
 
   $: update(calendars)
-  $: all = getAllEvents(raw, from, to)
+  $: all = getAllEvents(filterVisibleWorkSlots(raw, archivedSpaces, isWorkSlot), from, to)
   $: objects = hidePrivateEvents(all, $calendarByIdStore)
 
   function inc(val: number): void {
@@ -111,11 +131,13 @@
       const current = raw.find((p) => p._id === dragItemId)
       if (current !== undefined) {
         current.attachedTo = dragItem._id
+        current.$lookup = { ...current.$lookup, attachedTo: dragItem }
         current.attachedToClass = dragItem._class
         current.date = e.detail.date.getTime()
         current.dueDate = new Date(e.detail.date).setMinutes(new Date(e.detail.date).getMinutes() + 30)
       } else {
-        const ev: WorkSlot = {
+        const ev: WithLookup<WorkSlot> = {
+          $lookup: { attachedTo: dragItem },
           _id: dragItemId,
           allDay: false,
           eventId: generateEventId(),
@@ -140,7 +162,7 @@
         raw.push(ev)
       }
       raw = raw
-      all = getAllEvents(raw, from, to)
+      all = getAllEvents(filterVisibleWorkSlots(raw, archivedSpaces, isWorkSlot), from, to)
       objects = hidePrivateEvents(all, $calendarByIdStore)
     }
   }
@@ -160,7 +182,7 @@
   function clear(dragItem: ToDo | null) {
     if (dragItem === null) {
       raw = raw.filter((p) => p._id !== dragItemId)
-      all = getAllEvents(raw, from, to)
+      all = getAllEvents(filterVisibleWorkSlots(raw, archivedSpaces, isWorkSlot), from, to)
       objects = hidePrivateEvents(all, $calendarByIdStore)
     }
   }

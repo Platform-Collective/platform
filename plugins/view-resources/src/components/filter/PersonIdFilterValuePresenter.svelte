@@ -13,27 +13,26 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { PersonId, Ref } from '@hcengineering/core'
+  import { Ref } from '@hcengineering/core'
   import { Component } from '@hcengineering/ui'
   import { getClient } from '@hcengineering/presentation'
-  import contact, { getPersonRefsBySocialIds, Person } from '@hcengineering/contact'
+  import contact, { Person } from '@hcengineering/contact'
+  import { Analytics } from '@hcengineering/analytics'
+  import type { Filter } from '@hcengineering/view'
+  import { createFilterPersonUpdater } from './person-filter'
+  import type { PersonFilterValue } from './person-filter'
 
-  export let value: PersonId[]
+  export let value: PersonFilterValue[]
+  export let filter: Filter
 
   const client = getClient()
   let persons: Ref<Person>[] = []
-  $: void getPersons(value)
-
-  async function getPersons(ids: PersonId[]): Promise<void> {
-    if (ids !== undefined) {
-      if (ids.length === 0) {
-        persons = []
-      } else {
-        const personsMap = await getPersonRefsBySocialIds(client, ids)
-        persons = Object.values(personsMap)
-      }
-    }
-  }
+  const updatePersons = createFilterPersonUpdater(client, (value) => {
+    persons = value
+  })
+  $: void updatePersons(value ?? [], filter.key.attribute.type).catch((err: unknown) => {
+    Analytics.handleError(err instanceof Error ? err : new Error(String(err)))
+  })
 </script>
 
 <Component is={contact.component.PersonFilterValuePresenter} props={{ value: persons }} />

@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { type ReccuringInstance } from '@hcengineering/calendar'
+import { type ReccuringInstance, getRecurringInstanceLocation } from '@hcengineering/calendar'
 import { type Doc, type TxOperations } from '@hcengineering/core'
 import { type Resources } from '@hcengineering/platform'
 import { getClient } from '@hcengineering/presentation'
@@ -104,7 +104,7 @@ async function deleteRecHandler (res: any, object: ReccuringInstance): Promise<v
         originalStartTime: object.originalStartTime,
         recurringEventId: object.recurringEventId,
         reminders: object.reminders,
-        location: object.location,
+        ...getRecurringInstanceLocation(object),
         isCancelled: true,
         rdate: object.rdate,
         rules: object.rules,

@@ -8,6 +8,7 @@
   import { createEventDispatcher } from 'svelte'
   import love from '../plugin'
   import { rooms, selectedFloor } from '../stores'
+  import { getBrowserRoomLanguage } from '../roomLanguage'
 
   export let floor: Ref<Floor>
 
@@ -73,7 +74,7 @@
       height: 1,
       type: val.type,
       access: val.access,
-      language: 'en',
+      language: getBrowserRoomLanguage(),
       startWithTranscription: defaultTranscription,
       startWithRecording: defaultRecording,
       description: null

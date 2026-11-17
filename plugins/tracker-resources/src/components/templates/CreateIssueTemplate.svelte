@@ -187,6 +187,7 @@
   <StyledTextBox
     alwaysEdit
     showButtons={false}
+    enableTodoList
     kind={'emphasized'}
     bind:content={object.description}
     placeholder={tracker.string.IssueDescriptionPlaceholder}

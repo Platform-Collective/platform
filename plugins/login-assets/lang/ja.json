@@ -66,6 +66,8 @@
     "PasswordMinUpperChars": "{count, plural, =1 {パスワードには#個以上の大文字が含まれている必要があります} other {パスワードには#個以上の大文字が含まれている必要があります}}",
     "PasswordMinLowerChars": "{count, plural, =1 {パスワードには#個以上の小文字が含まれている必要があります} other {パスワードには#個以上の小文字が含まれている必要があります}}",
     "WorkspaceArchivedDesc": "ワークスペースは未使用のためアーカイブされました。",
+    "WorkspaceRestoreFailed": "Restore failed",
+    "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
     "RestoreArchivedWorkspace": "アーカイブを解除",
     "Hello": "{name} さん、こんにちは",
     "ProcessingInvite": "招待を処理中です。しばらくお待ちください...",

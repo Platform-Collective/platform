@@ -61,7 +61,8 @@ import {
   leaveWorkspace,
   checkJoin,
   mergeSpecifiedPersons,
-  canMergeSpecifiedPersons
+  canMergeSpecifiedPersons,
+  getMethods
 } from '../operations'
 import { accountPlugin } from '../plugin'
 
@@ -140,6 +141,9 @@ describe('account operations', () => {
     socialId: {
       findOne: jest.fn()
     },
+    mailboxSecret: {
+      findOne: jest.fn()
+    },
     generatePersonUuid: jest.fn().mockResolvedValue('generated-person-uuid')
   } as unknown as AccountDB
 
@@ -158,6 +162,47 @@ describe('account operations', () => {
       account: mockAccount.uuid,
       workspace: mockWorkspace.uuid,
       extra: {}
+    })
+  })
+
+  describe('getMailboxSecret', () => {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const getMailboxSecret = getMethods().getMailboxSecret!
+    const mailbox = 'alice@example.com'
+    const request = { id: 1, params: { mailbox } }
+    const secret = { mailbox, secret: 'smtp-app-password' }
+
+    test.each([
+      ['ordinary user', {}],
+      ['missing extra claims', undefined],
+      ['unrelated service', { service: 'workspace' }]
+    ])('denies %s without reading the mailbox secret', async (_label, extra) => {
+      jest.mocked(decodeTokenVerbose).mockReturnValue({
+        account: mockAccount.uuid as AccountUuid,
+        workspace: mockWorkspace.uuid,
+        extra
+      })
+      jest.mocked(mockDb.mailboxSecret.findOne).mockResolvedValue(secret)
+
+      const result = await getMailboxSecret(mockCtx, mockDb, mockBranding, request, mockToken)
+
+      expect(result).toEqual({ error: new Status(Severity.ERROR, platform.status.Forbidden, {}) })
+      expect(mockDb.mailboxSecret.findOne).not.toHaveBeenCalled()
+    })
+
+    test('returns the requested mailbox secret for huly-mail', async () => {
+      jest.mocked(decodeTokenVerbose).mockReturnValue({
+        account: mockAccount.uuid as AccountUuid,
+        workspace: mockWorkspace.uuid,
+        extra: { service: 'huly-mail' }
+      })
+      jest.mocked(mockDb.mailboxSecret.findOne).mockResolvedValue(secret)
+
+      const result = await getMailboxSecret(mockCtx, mockDb, mockBranding, request, mockToken)
+
+      expect(result).toEqual({ id: request.id, result: secret })
+      expect(mockDb.mailboxSecret.findOne).toHaveBeenCalledTimes(1)
+      expect(mockDb.mailboxSecret.findOne).toHaveBeenCalledWith({ mailbox })
     })
   })
 
@@ -1999,6 +2044,7 @@ describe('account operations', () => {
 
     beforeEach(() => {
       jest.clearAllMocks()
+      ;(mockDb.otp.deleteMany as jest.Mock).mockResolvedValue(1)
     })
 
     describe('signUp', () => {
@@ -2404,7 +2450,7 @@ describe('account operations', () => {
         }
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
         jest.spyOn(utils, 'createAccount').mockResolvedValue(personId)
 
         const mockPerson = {
@@ -2458,7 +2504,7 @@ describe('account operations', () => {
         }
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
         jest.spyOn(utils, 'confirmHulyIds').mockResolvedValue()
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(mockPerson)
         ;(mockDb.account.findOne as jest.Mock).mockResolvedValue(mockAccount)
@@ -2495,7 +2541,7 @@ describe('account operations', () => {
         })
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
         ;(mockDb.account.findOne as jest.Mock).mockResolvedValue({ uuid: callerAccountId })
         ;(mockDb.socialId.findOne as jest.Mock).mockResolvedValue(mockSocialId)
         ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({
@@ -2542,7 +2588,7 @@ describe('account operations', () => {
         })
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
         jest.spyOn(utils, 'doMergePersons').mockResolvedValue()
         ;(mockDb.account.findOne as jest.Mock).mockImplementation(async ({ uuid }) => {
           if (uuid === callerAccountId) {
@@ -2598,7 +2644,7 @@ describe('account operations', () => {
         })
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
         ;(mockDb.account.findOne as jest.Mock).mockImplementation(async ({ uuid }) =>
           uuid === targetAccountId ? { uuid: targetAccountId } : { uuid: callerAccountId }
         )
@@ -2639,7 +2685,7 @@ describe('account operations', () => {
         }
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(false)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('invalid')
 
         await expect(
           validateOtp(mockCtx, mockDb, mockBranding, mockToken, {
@@ -2647,6 +2693,48 @@ describe('account operations', () => {
             code: '123456'
           })
         ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.InvalidOtp, {})))
+      })
+
+      test('should fail with OtpLocked when too many attempts were made', async () => {
+        const mockSocialId = {
+          _id: 'social-id-1' as PersonId,
+          personUuid: 'account-1' as PersonUuid,
+          type: SocialIdType.EMAIL,
+          value: mockEmail,
+          key: `email:${mockEmail}`
+        }
+
+        jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('locked')
+
+        await expect(
+          validateOtp(mockCtx, mockDb, mockBranding, mockToken, {
+            email: mockEmail,
+            code: '123456'
+          })
+        ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.OtpLocked, {})))
+        expect(mockDb.otp.deleteMany).not.toHaveBeenCalled()
+      })
+
+      test('should reject when the code was already consumed by a concurrent request', async () => {
+        const mockSocialId = {
+          _id: 'social-1' as PersonId,
+          personUuid: 'account-1' as PersonUuid,
+          type: SocialIdType.EMAIL,
+          value: mockEmail,
+          key: `email:${mockEmail}`
+        }
+
+        jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
+        ;(mockDb.otp.deleteMany as jest.Mock).mockResolvedValue(0)
+
+        await expect(
+          validateOtp(mockCtx, mockDb, mockBranding, mockToken, { email: mockEmail, code: '123456' })
+        ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.InvalidOtp, {})))
+        expect(mockDb.otp.deleteMany).toHaveBeenCalledWith({ socialId: mockSocialId._id, code: '123456' })
+        // only the atomic consume call happened; the cleanup deleteMany must not run
+        expect(mockDb.otp.deleteMany).toHaveBeenCalledTimes(1)
       })
 
       test('should fail if email not found', async () => {
@@ -2678,7 +2766,7 @@ describe('account operations', () => {
         })
 
         jest.spyOn(utils, 'getEmailSocialId').mockResolvedValue(mockSocialId)
-        jest.spyOn(utils, 'isOtpValid').mockResolvedValue(true)
+        jest.spyOn(utils, 'verifyOtpAttempt').mockResolvedValue('valid')
         ;(mockDb.account.findOne as jest.Mock).mockResolvedValue({ uuid: mockPersonId })
 
         await expect(

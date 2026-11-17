@@ -30,15 +30,23 @@ export class MsgQueue {
   }
 
   private async handle (): Promise<void> {
-    while (!this.paused) {
-      if (this.inProgress) continue
-      const event = this.events.shift()
+    if (this.inProgress) return
 
-      if (event === undefined) {
-        return
+    this.inProgress = true
+    try {
+      while (!this.paused) {
+        const event = this.events.shift()
+
+        if (event === undefined) {
+          return
+        }
+        try {
+          await this.onEvent(event)
+        } catch (err) {
+          console.error(err)
+        }
       }
-      this.inProgress = true
-      await this.onEvent(event)
+    } finally {
       this.inProgress = false
     }
   }
