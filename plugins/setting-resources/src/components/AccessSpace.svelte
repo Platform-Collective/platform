@@ -9,6 +9,7 @@
   import type { SpaceAccess } from '../access-overview'
   import setting from '../plugin'
   import AccessAccount from './AccessAccount.svelte'
+  import AccessCollapse from './AccessCollapse.svelte'
 
   export let entry: SpaceAccess
   export let employees: Map<AccountUuid, Employee>
@@ -17,8 +18,15 @@
   let expanded = false
 </script>
 
-<details class="space" bind:open={expanded}>
-  <summary>
+<div class="space">
+  <div class="summary">
+    <AccessCollapse
+      {expanded}
+      label={entry.space.name}
+      on:click={() => {
+        expanded = !expanded
+      }}
+    />
     <strong>{entry.space.name}</strong>
     <span class="type"><Label label={hierarchy.getClass(entry.space._class).label} /></span>
     {#if entry.type !== undefined}<span>{entry.type.name}</span>{/if}
@@ -35,7 +43,7 @@
       <Label label={entry.space.archived ? setting.string.AccessYes : setting.string.AccessNo} />
     </span>
     <span><Label label={core.string.Members} />: {entry.members.length}</span>
-  </summary>
+  </div>
   {#if expanded}
     <div class="details">
       <div class="accounts">
@@ -66,7 +74,7 @@
       {/each}
     </div>
   {/if}
-</details>
+</div>
 
 <style lang="scss">
   .space {
@@ -74,8 +82,11 @@
     border-bottom: 1px solid var(--theme-divider-color);
   }
 
-  summary {
-    cursor: pointer;
+  .summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
     line-height: 1.75;
 
     > span {

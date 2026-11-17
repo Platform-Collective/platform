@@ -4,20 +4,29 @@
   import chunter from '@hcengineering/chunter'
   import contact, { formatName } from '@hcengineering/contact'
   import type { Employee } from '@hcengineering/contact'
-  import core, { AccountRole, getCurrentAccount } from '@hcengineering/core'
+  import core, { AccountRole } from '@hcengineering/core'
   import type { AccountUuid, Class, Ref, Role, Space, SpaceType, WorkspaceMemberInfo } from '@hcengineering/core'
   import type { IntlString } from '@hcengineering/platform'
   import { createQuery, getClient } from '@hcengineering/presentation'
-  import { Breadcrumb, Header, Label, Loading, Scroller, SearchInput } from '@hcengineering/ui'
+  import {
+    Breadcrumb,
+    DropdownLabelsIntl,
+    Header,
+    Label,
+    Loading,
+    ModernToggle,
+    Scroller,
+    SearchInput
+  } from '@hcengineering/ui'
   import view from '@hcengineering/view'
   import { onMount } from 'svelte'
   import { collectPersonAccess, collectSpaceAccess, filterSpaceAccess } from '../access-overview'
   import setting from '../plugin'
   import { getAccountClient } from '../utils'
   import AccessAccount from './AccessAccount.svelte'
+  import AccessCollapse from './AccessCollapse.svelte'
   import AccessSpace from './AccessSpace.svelte'
 
-  const owner = getCurrentAccount().role === AccountRole.Owner
   const hierarchy = getClient().getHierarchy()
   const spacesQuery = createQuery()
   const typesQuery = createQuery()
@@ -47,14 +56,13 @@
   let failed = false
   let search = ''
   let mode = 'spaces'
-  let spaceClass = ''
+  let spaceClass = 'all'
   let privacy = 'all'
   let archived = 'all'
   let guestsOnly = false
   let expandedPeople: Record<AccountUuid, boolean> = {}
 
   onMount(() => {
-    if (!owner) return
     spacesQuery.query(
       core.class.Space,
       {},
@@ -100,7 +108,7 @@
   $: classes = [...new Set(inventory.map(({ space }) => space._class))]
   $: filteredSpaces = filterSpaceAccess(inventory, {
     search: mode === 'spaces' ? search : '',
-    spaceClass: spaceClass === '' ? undefined : (spaceClass as Ref<Class<Space>>),
+    spaceClass: spaceClass === 'all' ? undefined : (spaceClass as Ref<Class<Space>>),
     private: privacy === 'all' ? undefined : privacy === 'private',
     archived: archived === 'all' ? undefined : archived === 'archived'
   })
@@ -116,100 +124,112 @@
   $: loaded = membersLoaded && spacesLoaded && typesLoaded && rolesLoaded && employeesLoaded
 </script>
 
-{#if owner}
-  <div class="hulyComponent">
-    <Header adaptive="disabled">
-      <Breadcrumb icon={setting.icon.Members} label={setting.string.AccessOverview} size="large" isCurrent />
-      <svelte:fragment slot="search">
-        <SearchInput bind:value={search} collapsed />
-      </svelte:fragment>
-    </Header>
-    <div class="hulyComponent-content__column">
-      <Scroller padding="var(--spacing-3)" bottomPadding="var(--spacing-3)">
-        <div class="overview">
-          <p><Label label={setting.string.AccessOverviewHint} /></p>
-          {#if failed}
-            <p role="alert"><Label label={setting.string.AccessLoadError} /></p>
-          {:else if !loaded}
-            <Loading />
-          {:else}
-            <div class="filters">
-              <label>
-                <Label label={setting.string.AccessView} />
-                <select bind:value={mode}>
-                  <option value="spaces"><Label label={setting.string.Spaces} /></option>
-                  <option value="people"><Label label={setting.string.AccessPeople} /></option>
-                </select>
-              </label>
-              <label>
-                <Label label={setting.string.Type} />
-                <select bind:value={spaceClass}>
-                  <option value=""><Label label={setting.string.AccessAll} /></option>
-                  {#each classes as id}
-                    <option value={id}><Label label={hierarchy.getClass(id).label} /></option>
-                  {/each}
-                </select>
-              </label>
-              <label>
-                <Label label={core.string.Private} />
-                <select bind:value={privacy}>
-                  <option value="all"><Label label={setting.string.AccessAll} /></option>
-                  <option value="private"><Label label={core.string.Private} /></option>
-                  <option value="public"><Label label={setting.string.AccessPublic} /></option>
-                </select>
-              </label>
-              <label>
-                <Label label={view.string.Archived} />
-                <select bind:value={archived}>
-                  <option value="all"><Label label={setting.string.AccessAll} /></option>
-                  <option value="archived"><Label label={view.string.Archived} /></option>
-                  <option value="active"><Label label={setting.string.AccessActive} /></option>
-                </select>
-              </label>
-              {#if mode === 'people'}
-                <label>
-                  <input type="checkbox" bind:checked={guestsOnly} />
-                  <Label label={setting.string.AccessGuestsOnly} />
-                </label>
-              {/if}
+<div class="hulyComponent">
+  <Header adaptive="disabled">
+    <Breadcrumb icon={setting.icon.Members} label={setting.string.AccessOverview} size="large" isCurrent />
+    <svelte:fragment slot="search">
+      <SearchInput bind:value={search} collapsed />
+    </svelte:fragment>
+  </Header>
+  <div class="hulyComponent-content__column">
+    <Scroller padding="var(--spacing-3)" bottomPadding="var(--spacing-3)">
+      <div class="overview">
+        <p><Label label={setting.string.AccessOverviewHint} /></p>
+        {#if failed}
+          <p role="alert"><Label label={setting.string.AccessLoadError} /></p>
+        {:else if !loaded}
+          <Loading />
+        {:else}
+          <div class="filters">
+            <div class="filter">
+              <Label label={setting.string.AccessView} />
+              <DropdownLabelsIntl
+                items={[
+                  { id: 'spaces', label: setting.string.Spaces },
+                  { id: 'people', label: setting.string.AccessPeople }
+                ]}
+                bind:selected={mode}
+              />
             </div>
-            {#if mode === 'spaces'}
-              {#each filteredSpaces as entry (entry.space._id)}
-                <AccessSpace {entry} {employees} />
-              {:else}
-                <Label label={setting.string.AccessNoResults} />
-              {/each}
-            {:else}
-              {#each people as person (person.person)}
-                <details class="person" bind:open={expandedPeople[person.person]}>
-                  <summary>
-                    <AccessAccount account={person.person} {employees} />
-                    <span><Label label={roleLabels[person.role]} /></span>
-                    <span><Label label={setting.string.Spaces} />: {person.spaces.length}</span>
-                  </summary>
-                  {#if expandedPeople[person.person]}
-                    {#each person.spaces as membership (membership.entry.space._id)}
-                      <div class="membership">
-                        {#if membership.owner}<Label label={setting.string.Owner} />{/if}
-                        {#if membership.member}<Label label={setting.string.AccessMember} />{/if}
-                        {#each membership.roles as role}<span>{role.name}</span>{/each}
-                        <AccessSpace entry={membership.entry} {employees} />
-                      </div>
-                    {:else}
-                      <p><Label label={setting.string.AccessNoSpaces} /></p>
-                    {/each}
-                  {/if}
-                </details>
-              {:else}
-                <Label label={setting.string.AccessNoResults} />
-              {/each}
+            <div class="filter">
+              <Label label={setting.string.Type} />
+              <DropdownLabelsIntl
+                items={[
+                  { id: 'all', label: setting.string.AccessAll },
+                  ...classes.map((id) => ({ id, label: hierarchy.getClass(id).label }))
+                ]}
+                bind:selected={spaceClass}
+              />
+            </div>
+            <div class="filter">
+              <Label label={core.string.Private} />
+              <DropdownLabelsIntl
+                items={[
+                  { id: 'all', label: setting.string.AccessAll },
+                  { id: 'private', label: core.string.Private },
+                  { id: 'public', label: setting.string.AccessPublic }
+                ]}
+                bind:selected={privacy}
+              />
+            </div>
+            <div class="filter">
+              <Label label={view.string.Archived} />
+              <DropdownLabelsIntl
+                items={[
+                  { id: 'all', label: setting.string.AccessAll },
+                  { id: 'archived', label: view.string.Archived },
+                  { id: 'active', label: setting.string.AccessActive }
+                ]}
+                bind:selected={archived}
+              />
+            </div>
+            {#if mode === 'people'}
+              <ModernToggle label={setting.string.AccessGuestsOnly} bind:checked={guestsOnly} />
             {/if}
+          </div>
+          {#if mode === 'spaces'}
+            {#each filteredSpaces as entry (entry.space._id)}
+              <AccessSpace {entry} {employees} />
+            {:else}
+              <Label label={setting.string.AccessNoResults} />
+            {/each}
+          {:else}
+            {#each people as person (person.person)}
+              <div class="person">
+                <div class="summary">
+                  <AccessCollapse
+                    expanded={expandedPeople[person.person] ?? false}
+                    label={personName(person.person, employees)}
+                    on:click={() => {
+                      expandedPeople[person.person] = !expandedPeople[person.person]
+                    }}
+                  />
+                  <AccessAccount account={person.person} {employees} />
+                  <span><Label label={roleLabels[person.role]} /></span>
+                  <span><Label label={setting.string.Spaces} />: {person.spaces.length}</span>
+                </div>
+                {#if expandedPeople[person.person]}
+                  {#each person.spaces as membership (membership.entry.space._id)}
+                    <div class="membership">
+                      {#if membership.owner}<Label label={setting.string.Owner} />{/if}
+                      {#if membership.member}<Label label={setting.string.AccessMember} />{/if}
+                      {#each membership.roles as role}<span>{role.name}</span>{/each}
+                      <AccessSpace entry={membership.entry} {employees} />
+                    </div>
+                  {:else}
+                    <p><Label label={setting.string.AccessNoSpaces} /></p>
+                  {/each}
+                {/if}
+              </div>
+            {:else}
+              <Label label={setting.string.AccessNoResults} />
+            {/each}
           {/if}
-        </div>
-      </Scroller>
-    </div>
+        {/if}
+      </div>
+    </Scroller>
   </div>
-{/if}
+</div>
 
 <style lang="scss">
   .overview {
@@ -224,17 +244,10 @@
     gap: 1rem;
     margin: 1rem 0;
 
-    label {
+    .filter {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-    }
-
-    select {
-      color: var(--theme-content-color);
-      background: var(--theme-comp-back-color);
-      padding: 0.25rem;
-      border-radius: 0.25rem;
     }
   }
 
@@ -242,8 +255,11 @@
     padding: 0.75rem;
     border-bottom: 1px solid var(--theme-divider-color);
 
-    summary {
-      cursor: pointer;
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
       line-height: 2;
 
       > span {
