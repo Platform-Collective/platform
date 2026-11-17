@@ -17,13 +17,12 @@ import type { MeasureContext, Ref } from '@hcengineering/core'
 import type { PushData, PushSubscription } from '@hcengineering/notification'
 import webpush, { WebPushError } from 'web-push'
 import {
-  DEFAULT_PUSH_TTL_SECONDS,
   getPushRequestOptions,
   isDisposableSubscriptionError,
-  parsePushTtl,
   sendPushToSubscription,
   webPushErrorBodyString
 } from '../push'
+import { DEFAULT_PUSH_TTL_SECONDS, parsePushTtl } from '../push-ttl'
 
 jest.mock('web-push', () => {
   const actual = jest.requireActual<typeof import('web-push')>('web-push')
@@ -85,8 +84,14 @@ describe('parsePushTtl', () => {
     expect(parsePushTtl('86400')).toBe(86400)
   })
 
-  it.each(['abc', '-1', '1.5'])('falls back to the default for invalid value %s', (value) => {
+  it.each(['abc', '-1', '1.5'])('warns and falls back to the default for invalid value %s', (value) => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {})
     expect(parsePushTtl(value)).toBe(DEFAULT_PUSH_TTL_SECONDS)
+    expect(warn).toHaveBeenCalledWith('Invalid PUSH_TTL; using default TTL', {
+      value,
+      defaultTtl: DEFAULT_PUSH_TTL_SECONDS
+    })
+    warn.mockRestore()
   })
 })
 

@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { parsePushTtl } from './push'
+import { parsePushTtl } from './push-ttl'
 
 interface Config {
   Port: number
