@@ -21,6 +21,9 @@
   export let docs: TimeSpendReport[] = []
   export let allDocs: Doc[] = []
 
+  $: firstSpace = docs[0]?.space
+  $: space = docs.every((it) => it.space === firstSpace) ? firstSpace : undefined
+
   // Do not open a workspace-sized subscription for every group. Only show an
   // exact total when the list has loaded every report belonging to the group.
   $: total =
@@ -30,5 +33,5 @@
 </script>
 
 {#if total !== undefined}
-  <TimePresenter value={total} hoursOnly accent />
+  <TimePresenter value={total} {space} hoursOnly={space === undefined} accent />
 {/if}
