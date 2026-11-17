@@ -36,6 +36,7 @@ export async function submitIssueTemplateCopy (
   account: AccountUuid,
   newChildId: () => Ref<Issue>
 ): Promise<IssueTemplateCopyResult | undefined> {
+  // The picker excludes source projects; this guard also protects non-dialog callers.
   if (templates.length === 0 || targetProject === undefined || templates.some((it) => it.space === targetProject)) {
     return undefined
   }
