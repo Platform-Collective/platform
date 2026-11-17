@@ -150,7 +150,7 @@ const workspaceLimitPerUser =
   process.env.WORKSPACE_LIMIT_PER_USER != null ? parseInt(process.env.WORKSPACE_LIMIT_PER_USER) : 10
 
 function isWorkspaceCreationAllowed (extra?: Record<string, unknown>): boolean {
-  return (process.env.WORKSPACE_CREATION?.toLowerCase() ?? 'all') === 'all' || extra?.admin === 'true'
+  return (process.env.WORKSPACE_CREATION?.toLowerCase() || 'all') === 'all' || extra?.admin === 'true'
 }
 
 if (!isWorkspaceCreationAllowed() && process.env.WORKSPACE_CREATION?.toLowerCase() !== 'admin') {

@@ -241,7 +241,7 @@ describe('account operations', () => {
       jest.mocked(utils.getEndpoint).mockRestore()
     })
 
-    test.each([undefined, 'all', 'ALL', 'aLl'])('allows ordinary users when WORKSPACE_CREATION=%p', async (policy) => {
+    test.each([undefined, '', 'all', 'ALL', 'aLl'])('allows ordinary users when WORKSPACE_CREATION=%p', async (policy) => {
       if (policy !== undefined) process.env.WORKSPACE_CREATION = policy
 
       const result = await createWorkspace(mockCtx, creationDb as unknown as AccountDB, mockBranding, mockToken, {
@@ -252,7 +252,7 @@ describe('account operations', () => {
       expect(creationDb.assignWorkspace).toHaveBeenCalledWith(mockAccount.uuid, mockWorkspace.uuid, AccountRole.Owner)
     })
 
-    test.each(['admin', 'Admin', 'ADMIN', 'unknown', ''])('restricts policy %p to admins', async (policy) => {
+    test.each(['admin', 'Admin', 'ADMIN', 'unknown'])('restricts policy %p to admins', async (policy) => {
       process.env.WORKSPACE_CREATION = policy
 
       await expect(
@@ -289,7 +289,7 @@ describe('account operations', () => {
       }
     )
 
-    test.each(['admin', 'Admin', 'ADMIN', 'unknown', ''])('preserves admin access and flag for %p', async (policy) => {
+    test.each(['admin', 'Admin', 'ADMIN', 'unknown'])('preserves admin access and flag for %p', async (policy) => {
       process.env.WORKSPACE_CREATION = policy
       ;(decodeTokenVerbose as jest.Mock).mockReturnValue({ account: mockAccount.uuid, extra: { admin: 'true' } })
 
@@ -314,7 +314,7 @@ describe('account operations', () => {
       ['unknown', undefined, false],
       ['unknown', {}, false],
       ['unknown', { admin: 'true' }, true],
-      ['', {}, false]
+      ['', {}, true]
     ])('reports workspace creation permission for policy=%p and extra=%p', async (policy, extra, allowed) => {
       if (policy !== undefined) process.env.WORKSPACE_CREATION = policy
       ;(decodeTokenVerbose as jest.Mock).mockReturnValue({ account: mockAccount.uuid, extra })
@@ -360,7 +360,7 @@ describe('account operations', () => {
             jest.requireActual('../operations')
           })
 
-          if (policy === 'unknown' || policy === '') {
+          if (policy === 'unknown') {
             expect(warn).toHaveBeenCalledWith(
               'Unknown WORKSPACE_CREATION value; only platform admins can create workspaces',
               { value: policy }

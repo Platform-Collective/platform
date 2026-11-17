@@ -478,7 +478,8 @@ sequenceDiagram
   (the signed token's `extra.admin` flag, issued for `ADMIN_EMAILS`) can create workspaces, including after SSO login.
   Other users can still sign in and join existing workspaces by invitation. The login UI hides workspace creation
   controls using the account service capabilities; no frontend environment variable is needed.
-  Values are case-insensitive; unknown values restrict creation to admins and emit a startup warning.
+  Values are case-insensitive; unset and empty values allow everyone, while unknown values restrict creation to admins
+  and emit a startup warning.
 - `REGION_INFO`: `cockroach|CockroachDB` - Available regions
 
 ### Backup Configuration
