@@ -26,6 +26,42 @@ import { isMarkdownsEquals, MarkdownState } from '@hcengineering/text-markdown'
 import { markdownToMarkup, markupToMarkdown, parseMessageMarkdown, serializeMessage } from '..'
 
 describe('server', () => {
+  it.each(['commented text', '# [commented] *text*'])('serializes inline-comment text: %s', async (text) => {
+    const markup = JSON.stringify({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text, marks: [{ type: 'inline-comment', attrs: { thread: 'thread-9314' } }] }]
+        }
+      ]
+    })
+
+    expect(await markupToMarkdown(markup)).toBe(text)
+  })
+
+  it('preserves nested formatting within inline-comment text', async () => {
+    const comment = { type: 'inline-comment', attrs: { thread: 'thread-9314' } }
+    const bold = { type: 'bold' }
+    const markup = JSON.stringify({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'before ' },
+            { type: 'text', text: 'bold ', marks: [comment, bold] },
+            { type: 'text', text: 'nested [text]', marks: [bold, comment, { type: 'italic' }] },
+            { type: 'text', text: ' after', marks: [comment, bold] },
+            { type: 'text', text: ' end' }
+          ]
+        }
+      ]
+    })
+
+    expect(await markupToMarkdown(markup)).toBe('before **bold *nested [text]* after** end')
+  })
+
   it('parses bare URLs and GFM tables', () => {
     const url = 'https://github.com/hcengineering/platform/issues/8381'
     const msg = parseMessageMarkdown(

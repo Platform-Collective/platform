@@ -21,6 +21,7 @@
     "AccountAlreadyConfirmed": "Účet již byl potvrzen",
     "WorkspaceAlreadyExists": "Pracovní prostor již existuje",
         "InvalidOtp": "Neplatný kód",
+    "OtpLocked": "Příliš mnoho nesprávných kódů. Chvíli počkejte a vyžádejte si nový kód.",
     "PasswordLoginLocked": "Přihlášení heslem je zablokováno z důvodu příliš mnoha neúspěšných pokusů. Pomocí metody přihlášení OTP odemkněte svůj účet.",
     "InviteNotFound": "Pozvánka s e-mailem:{email} nenalezena.",
     "WorkspaceLimitReached": "Dosáhli jste limitu pracovních prostorů. Kontaktujte nás...",

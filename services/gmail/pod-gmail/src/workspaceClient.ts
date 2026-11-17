@@ -180,17 +180,7 @@ export class WorkspaceClient {
     this.ctx.info('get new messages', { workspaceUuid: this.workspace, count: newMessages.length })
     await this.subscribeMessages()
     for (const message of newMessages) {
-      const from = message.from ?? message.createdBy ?? message.modifiedBy
-      const client = this.getGmailClient(from)
-      if (client !== undefined) {
-        await client.createMessage(message)
-      } else {
-        this.ctx.error('client not found, skip message', {
-          workspaceUuid: this.workspace,
-          from,
-          messageId: message._id
-        })
-      }
+      await this.prepareAndSendMessage(message)
     }
   }
 
@@ -232,6 +222,16 @@ export class WorkspaceClient {
         workspaceUuid: this.workspace,
         messageId: doc._id,
         from: doc.from ?? doc.createdBy ?? doc.modifiedBy
+      })
+      const tx = new TxOperations(this.client, doc.from ?? doc.createdBy ?? doc.modifiedBy)
+      await tx.updateDoc(doc._class, doc.space, doc._id, {
+        status: 'error',
+        error: JSON.stringify({
+          data: {
+            error: 'integration_unavailable',
+            error_description: 'Gmail integration is unavailable. Reconnect Gmail in Settings and resend this message.'
+          }
+        })
       })
       return
     }

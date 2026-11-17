@@ -684,10 +684,77 @@ async function changeIssueAssigneeHandler (
   return []
 }
 
+/**
+ * Assignees whose automatic issue todos are affected by this update: the current
+ * assignee and, if the same update reassigned the issue, the previous one.
+ */
+async function getAffectedAssignees (
+  control: TriggerControl,
+  issue: Issue,
+  updateTx: TxUpdateDoc<Issue>
+): Promise<Array<Ref<Person>>> {
+  const assignees = new Set<Ref<Person>>()
+  if (issue.assignee != null) {
+    assignees.add(issue.assignee)
+  }
+  if (updateTx.operations.assignee !== undefined) {
+    const history = (
+      await control.findAll(
+        control.ctx,
+        core.class.TxCUD,
+        { objectId: issue._id },
+        { sort: { modifiedOn: SortingOrder.Ascending } }
+      )
+    ).filter((it) => it._id !== updateTx._id)
+    const previous = TxProcessor.buildDoc2Doc<Issue>(history)
+    if (previous?.assignee != null) {
+      assignees.add(previous.assignee)
+    }
+  }
+  return Array.from(assignees)
+}
+
+/**
+ * Remove the pending todos of the issue's assignees that have no work slots yet.
+ * Planned and completed todos are kept.
+ */
+async function removeUnplannedIssueToDos (
+  control: TriggerControl,
+  issue: Issue,
+  updateTx: TxUpdateDoc<Issue>
+): Promise<Tx[]> {
+  const assignees = await getAffectedAssignees(control, issue, updateTx)
+  if (assignees.length === 0) return []
+  const todos = await control.findAll(control.ctx, time.class.ProjectToDo, {
+    attachedTo: issue._id,
+    user: { $in: assignees as Array<Ref<Employee>> },
+    doneOn: null,
+    workslots: 0
+  })
+  if (todos.length === 0) return []
+  // The workslots counter can drift, so also look for actual work slots.
+  const slots = await control.findAll(control.ctx, time.class.WorkSlot, {
+    attachedTo: { $in: todos.map((todo) => todo._id) }
+  })
+  const planned = new Set<Ref<Doc>>(slots.map((slot) => slot.attachedTo))
+  return todos
+    .filter((todo) => !planned.has(todo._id))
+    .map((todo) =>
+      control.txFactory.createTxCollectionCUD(
+        todo.attachedToClass,
+        todo.attachedTo,
+        todo.space,
+        todo.collection,
+        control.txFactory.createTxRemoveDoc(todo._class, todo.space, todo._id)
+      )
+    )
+}
+
 async function changeIssueStatusHandler (
   control: TriggerControl,
   newStatus: Ref<IssueStatus>,
-  issueId: Ref<Issue>
+  issueId: Ref<Issue>,
+  updateTx: TxUpdateDoc<Issue>
 ): Promise<Tx[]> {
   const status = (await control.modelDb.findAll(core.class.Status, { _id: newStatus }))[0]
   if (status === undefined) return []
@@ -704,6 +771,11 @@ async function changeIssueStatusHandler (
           await control.apply(control.ctx, [tx])
         }
       }
+    }
+  } else if (status.category === task.statusCategory.UnStarted) {
+    const issue = (await control.findAll(control.ctx, tracker.class.Issue, { _id: issueId }))[0]
+    if (issue !== undefined) {
+      return await removeUnplannedIssueToDos(control, issue, updateTx)
     }
   } else if (status.category === task.statusCategory.Won || status.category === task.statusCategory.Lost) {
     const issue = (await control.findAll(control.ctx, tracker.class.Issue, { _id: issueId }))[0]
@@ -770,7 +842,7 @@ async function updateIssueHandler (tx: TxUpdateDoc<Issue>, control: TriggerContr
   }
   const newStatus = tx.operations.status
   if (newStatus !== undefined) {
-    res.push(...(await changeIssueStatusHandler(control, newStatus, tx.objectId)))
+    res.push(...(await changeIssueStatusHandler(control, newStatus, tx.objectId, tx)))
   }
   const name = tx.operations.title
   const space = tx.operations.space

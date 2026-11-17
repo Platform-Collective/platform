@@ -18,6 +18,7 @@
     "Subject": "Konu",
     "Send": "Gönder",
     "Resend": "Yeniden gönder",
+    "IntegrationUnavailable": "Gmail entegrasyonu kullanılamıyor. Ayarlar’dan Gmail’i yeniden bağlayın ve bu mesajı tekrar gönderin.",
     "NewMessage": "Yeni mesaj",
     "NewMessageTo": "Yeni mesaj:",
     "Cancel": "İptal",

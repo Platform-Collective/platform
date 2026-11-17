@@ -5,6 +5,7 @@
     "DescriptionLabel": "Description",
     "ColorLabel": "Couleur",
     "CategoryLabel": "Catégorie",
+    "Usage": "Utilisation",
     "TagReferenceLabel": "Étiquette",
     "TagLabel": "Étiquette",
     "TagName": "Veuillez saisir le titre de {word}",
