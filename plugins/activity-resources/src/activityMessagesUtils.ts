@@ -263,9 +263,11 @@ export function combineActivityMessages (
 
   const authorRuns = new Map<string, { author: DocUpdateMessage['createdBy'], run: number }>()
   const groupedByType = groupByArray(sortActivityMessages([...docUpdateMessages]), (message) => {
-    const previous = authorRuns.get(message.attachedTo)
+    if (message.attributeUpdates?.attrClass !== core.class.TypeMarkup) return getDocUpdateMessageKey(message)
+    const key = `${message.attachedTo}_${message.attributeUpdates?.attrKey ?? ''}`
+    const previous = authorRuns.get(key)
     const run = previous === undefined ? 0 : previous.run + (previous.author === message.createdBy ? 0 : 1)
-    authorRuns.set(message.attachedTo, { author: message.createdBy, run })
+    authorRuns.set(key, { author: message.createdBy, run })
     return `${getDocUpdateMessageKey(message)}_${run}`
   })
 

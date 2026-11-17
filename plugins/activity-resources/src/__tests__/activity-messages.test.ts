@@ -75,12 +75,21 @@ it('keeps author barriers for reacted messages and immediately after creation', 
   expect(combineActivityMessages([create, first, middle, last])).toHaveLength(4)
 })
 
-it('does not merge across a different author editing another attribute', () => {
+it('keeps unrelated attributes outside collaborative author barriers', () => {
   const first = message('1', 'A', '', 'a', 100)
   const middle = message('2', 'B', '', 'other', 101)
   if (middle.attributeUpdates !== undefined) middle.attributeUpdates.attrKey = 'other'
   const last = message('3', 'A', 'a', 'ab', 102)
-  expect(combineActivityMessages([first, middle, last])).toHaveLength(3)
+  expect(combineActivityMessages([first, middle, last])).toHaveLength(2)
+})
+
+it('retains existing grouping for non-markup attributes', () => {
+  const messages = [message('1', 'A', '', 'a', 100), message('2', 'B', 'a', 'ab', 101),
+    message('3', 'A', 'a', 'abc', 102)]
+  for (const item of messages) {
+    if (item.attributeUpdates !== undefined) item.attributeUpdates.attrClass = core.class.TypeString
+  }
+  expect(combineActivityMessages(messages)).toHaveLength(2)
 })
 
 it('folds initial markup into creation for the creator and preserves other authors', () => {
