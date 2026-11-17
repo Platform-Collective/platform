@@ -18,18 +18,14 @@
   import { EventReminders, VisibilityEditor } from '@hcengineering/calendar-resources'
   import calendar from '@hcengineering/calendar-resources/src/plugin'
   import { getCurrentEmployee } from '@hcengineering/contact'
-  import { setPlatformStatus, unknownError } from '@hcengineering/platform'
   import core, { AttachedData, Doc, Ref, SortingOrder, generateId, getCurrentAccount } from '@hcengineering/core'
   import { SpaceSelector, createQuery, getClient } from '@hcengineering/presentation'
   import tagsPlugin, { TagReference } from '@hcengineering/tags'
   import task, { makeRank } from '@hcengineering/task'
-  import { isEmptyMarkup } from '@hcengineering/text-core'
   import { StyledTextBox } from '@hcengineering/text-editor-resources'
   import { TimeEvents, ToDo, ToDoPriority, WorkSlot } from '@hcengineering/time'
   import { Button, Component, EditBox, IconClose, Label, Scroller } from '@hcengineering/ui'
-  import { createEventDispatcher, onMount } from 'svelte'
-  import { getMessageToDoDefaults } from '../message-reminder'
-  import { isMessageToDoSource } from '../message-todo'
+  import { createEventDispatcher } from 'svelte'
   import time from '../plugin'
   import DueDateEditor from './DueDateEditor.svelte'
   import PriorityEditor from './PriorityEditor.svelte'
@@ -61,23 +57,6 @@
   }
 
   let loading = false
-
-  onMount(() => {
-    if (isMessageToDoSource(object)) {
-      loading = true
-      void getMessageToDoDefaults(object)
-        .then((content) => {
-          if (todo.title === value) todo.title = content.title
-          if (isEmptyMarkup(todo.description)) todo.description = content.description
-        })
-        .catch((err) => {
-          void setPlatformStatus(unknownError(err))
-        })
-        .finally(() => {
-          loading = false
-        })
-    }
-  })
 
   async function saveToDo(): Promise<void> {
     loading = true
