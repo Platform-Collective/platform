@@ -735,13 +735,6 @@ export async function verifyOtpAttempt (
   return otpData.code === code ? 'valid' : 'invalid'
 }
 
-export async function isOtpValid (db: AccountDB, socialId: PersonId, code: string): Promise<boolean> {
-  // Compare only the records returned by the atomic attempt writes. A code issued concurrently
-  // must never enter this comparison through a separate lookup without spending its own budget.
-  const codes = await db.advanceOtpAttempts(socialId)
-  return codes.includes(code)
-}
-
 /**
  * Creates an account and a Huly social id for the specified person.
  * Returns the _id of the newly created Huly social id.

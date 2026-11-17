@@ -445,28 +445,6 @@ export class MongoAccountDB implements AccountDB {
     )
   }
 
-  async advanceOtpAttempts (socialId: PersonId): Promise<string[]> {
-    const active = {
-      socialId,
-      $expr: {
-        $and: [{ $gt: ['$expiresOn', { $toLong: '$$NOW' }] }, { $lt: [{ $ifNull: ['$attempts', 0] }, 5] }]
-      }
-    }
-    // Snapshot record IDs before incrementing. New insertions cannot join a later code lookup.
-    const candidates = await this.otp.collection.find(active, { projection: { _id: 1 } }).toArray()
-    const codes: string[] = []
-    for (const candidate of candidates) {
-      const advanced = await this.otp.collection.findOneAndUpdate(
-        { ...active, _id: candidate._id },
-        { $inc: { attempts: 1 } },
-        { returnDocument: 'after', includeResultMetadata: false }
-      )
-      // $inc initializes legacy counters. Recheck expiry/budget in each atomic write.
-      if (advanced !== null) codes.push(advanced.code)
-    }
-    return codes
-  }
-
   async cleanExpiredOtp (): Promise<void> {
     await this.otp.collection.deleteMany({ $expr: { $lte: ['$expiresOn', { $toLong: '$$NOW' }] } })
   }

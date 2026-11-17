@@ -39,7 +39,6 @@ import {
   verifyPassword,
   getAllTransactors,
   wrap,
-  isOtpValid,
   verifyOtpAttempt,
   sendOtpEmail,
   sendOtp,
@@ -1203,23 +1202,6 @@ describe('account utils', () => {
         })
       })
 
-      describe('isOtpValid', () => {
-        test.each(['123456', '000000'])('compares only codes returned by the attempt operation (%s)', async (code) => {
-          const advanceOtpAttempts = jest.fn().mockResolvedValue(['123456'])
-          const findOne = jest.fn()
-          const db = { advanceOtpAttempts, otp: { findOne } } as unknown as AccountDB
-
-          expect(await isOtpValid(db, socialIdId, code)).toBe(code === '123456')
-          expect(advanceOtpAttempts).toHaveBeenCalledWith(socialIdId)
-          expect(findOne).not.toHaveBeenCalled()
-        })
-
-        test('rejects when no active code has an available attempt', async () => {
-          const advanceOtpAttempts = jest.fn().mockResolvedValue([])
-          const db = { advanceOtpAttempts } as unknown as AccountDB
-          expect(await isOtpValid(db, socialIdId, '123456')).toBe(false)
-        })
-      })
     })
 
     describe('email confirmation utils', () => {

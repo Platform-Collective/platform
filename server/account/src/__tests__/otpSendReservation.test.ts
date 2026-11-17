@@ -26,7 +26,7 @@ import type { Sql } from 'postgres'
 
 import { MongoAccountDB } from '../collections/mongo'
 import { PostgresAccountDB } from '../collections/postgres/postgres'
-import { cleanExpiredOtp, isOtpValid, sendOtp, verifyOtpAttempt } from '../utils'
+import { cleanExpiredOtp, sendOtp, verifyOtpAttempt } from '../utils'
 import type { Account, AccountDB, OTP, SocialId } from '../types'
 import { loginOtp, signUpOtp, validateOtp } from '../operations'
 
@@ -185,49 +185,15 @@ describe('OTP send reservations', () => {
   )
 })
 
-// These collaborators model storage operations at explicit barriers. They assert the real adapter
-// inputs, but do not replace live PostgreSQL/CockroachDB/MongoDB concurrency verification.
-interface Deferred<T> {
-  promise: Promise<T>
-  resolve: (value: T) => void
-}
-
-function deferred<T> (): Deferred<T> {
-  let complete: (value: T) => void = () => {
-    throw new Error('Deferred not initialized')
-  }
-  const promise = new Promise<T>((resolve) => {
-    complete = resolve
-  })
-  return { promise, resolve: complete }
-}
-
+// These collaborators assert the real adapter inputs, but do not replace live database verification.
 function attemptStorage (storage: 'mongo' | 'sql'): {
   db: AccountDB
   rows: Map<string, OTP>
   setNow: (now: number) => void
-  hold: (count: number) => { reached: Promise<void>, release: () => void }
 } {
   let now = 1000
   let retryOn = 0
   const rows = new Map<string, OTP>()
-  let barrier: { count: number, reached: Deferred<undefined>, released: Deferred<undefined> } | undefined
-  async function checkpoint (): Promise<void> {
-    const current = barrier
-    if (current === undefined) return
-    current.count--
-    if (current.count === 0) current.reached.resolve(undefined)
-    await current.released.promise
-  }
-  function active (row: OTP): boolean {
-    return row.socialId === socialId && row.expiresOn > now && (row.attempts ?? 0) < 5
-  }
-  function advance (id: string): { code: string } | null {
-    const row = rows.get(id)
-    if (row === undefined || !active(row)) return null
-    row.attempts = (row.attempts ?? 0) + 1
-    return { code: row.code }
-  }
   function advanceLatest (): Pick<OTP, 'code' | 'attempts'> | null {
     const row = Array.from(rows.values())
       .filter((row) => row.socialId === socialId && row.expiresOn > now)
@@ -236,35 +202,13 @@ function attemptStorage (storage: 'mongo' | 'sql'): {
     row.attempts = (row.attempts ?? 0) + 1
     return { code: row.code, attempts: row.attempts }
   }
-  const activeExpr = {
-    $and: [{ $gt: ['$expiresOn', { $toLong: '$$NOW' }] }, { $lt: [{ $ifNull: ['$attempts', 0] }, 5] }]
-  }
   const otp = {
     aggregate: () => ({ next: async () => null }),
-    find: jest.fn((query, options) => {
-      expect(query).toEqual({ socialId, $expr: activeExpr })
-      expect(options).toEqual({ projection: { _id: 1 } })
-      const ids = Array.from(rows)
-        .filter(([, row]) => active(row))
-        .map(([id]) => ({ _id: id }))
-      return {
-        toArray: async () => {
-          await checkpoint()
-          return ids
-        }
-      }
-    }),
     findOneAndUpdate: jest.fn(async (query, update, options) => {
-      if (Array.isArray(update)) {
-        expect(query).toEqual({ socialId, $expr: { $gt: ['$expiresOn', { $toLong: '$$NOW' }] } })
-        expect(update).toEqual([{ $set: { attempts: { $add: [{ $ifNull: ['$attempts', 0] }, 1] } } }])
-        expect(options).toEqual({ sort: { createdOn: -1 }, returnDocument: 'after', includeResultMetadata: false })
-        return advanceLatest()
-      }
-      expect(query).toEqual({ socialId, $expr: activeExpr, _id: expect.any(String) })
-      expect(update).toEqual({ $inc: { attempts: 1 } })
-      expect(options).toEqual({ returnDocument: 'after', includeResultMetadata: false })
-      return advance(query._id)
+      expect(query).toEqual({ socialId, $expr: { $gt: ['$expiresOn', { $toLong: '$$NOW' }] } })
+      expect(update).toEqual([{ $set: { attempts: { $add: [{ $ifNull: ['$attempts', 0] }, 1] } } }])
+      expect(options).toEqual({ sort: { createdOn: -1 }, returnDocument: 'after', includeResultMetadata: false })
+      return advanceLatest()
     }),
     deleteMany: jest.fn(async (query) => {
       expect(query).toEqual({ $expr: { $lte: ['$expiresOn', { $toLong: '$$NOW' }] } })
@@ -283,29 +227,16 @@ function attemptStorage (storage: 'mongo' | 'sql'): {
   const unsafe = jest.fn(async (query: string, values?: unknown[]) => {
     const sql = query.replace(/\s+/g, ' ').trim()
     if (sql.startsWith('UPDATE test_account.otp')) {
-      if (sql.endsWith('RETURNING code, attempts')) {
-        expect(sql).toBe(
-          'UPDATE test_account.otp SET attempts = COALESCE(attempts, 0) + 1 ' +
-            'WHERE social_id = $1 AND code = ( SELECT code FROM test_account.otp ' +
-            'WHERE social_id = $1 AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT ' +
-            'ORDER BY created_on DESC LIMIT 1 ) ' +
-            'AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT RETURNING code, attempts'
-        )
-        expect(values).toEqual([socialId])
-        const result = advanceLatest()
-        return result === null ? [] : [result]
-      }
       expect(sql).toBe(
         'UPDATE test_account.otp SET attempts = COALESCE(attempts, 0) + 1 ' +
+          'WHERE social_id = $1 AND code = ( SELECT code FROM test_account.otp ' +
           'WHERE social_id = $1 AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT ' +
-          'AND COALESCE(attempts, 0) < 5 RETURNING code'
+          'ORDER BY created_on DESC LIMIT 1 ) ' +
+          'AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT RETURNING code, attempts'
       )
       expect(values).toEqual([socialId])
-      const advanced = Array.from(rows.keys())
-        .map(advance)
-        .filter((row) => row !== null)
-      await checkpoint()
-      return advanced
+      const result = advanceLatest()
+      return result === null ? [] : [result]
     }
     if (sql.startsWith('DELETE FROM')) {
       expect(sql).toBe(
@@ -337,17 +268,6 @@ function attemptStorage (storage: 'mongo' | 'sql'): {
     rows,
     setNow: (value) => {
       now = value
-    },
-    hold: (count) => {
-      const current = { count, reached: deferred<undefined>(), released: deferred<undefined>() }
-      barrier = current
-      return {
-        reached: current.reached.promise,
-        release: () => {
-          barrier = undefined
-          current.released.resolve(undefined)
-        }
-      }
     }
   }
 }
@@ -357,44 +277,6 @@ function otpRow (code = '123456'): OTP {
 }
 
 describe.each(['mongo', 'sql'] as const)('OTP attempts and lifetime through %s adapter', (storage) => {
-  it.each([false, true])(
-    'does not compare a new code inserted after attempt selection (old code: %s)',
-    async (oldCode) => {
-      const { db, rows, hold } = attemptStorage(storage)
-      if (oldCode) rows.set('old', otpRow('999999'))
-      const barrier = hold(6)
-      const guesses = ['123456', '000001', '000002', '000003', '000004', '000005']
-      const pending = guesses.map(async (guess) => await isOtpValid(db, socialId, guess))
-      await barrier.reached
-      rows.set('new', otpRow())
-      barrier.release()
-      expect(await Promise.all(pending)).toEqual(guesses.map(() => false))
-      expect(rows.get('new')?.attempts).toBe(0)
-      if (oldCode) expect(rows.get('old')?.attempts).toBe(5)
-      expect(await isOtpValid(db, socialId, '123456')).toBe(true)
-      expect(rows.get('new')?.attempts).toBe(1)
-    }
-  )
-
-  it.each([5, 6])('initializes legacy counters and checks the correct code on attempt %s', async (correctAttempt) => {
-    const { db, rows } = attemptStorage(storage)
-    rows.set('legacy', { ...otpRow(), attempts: undefined })
-    for (let attempt = 0; attempt < correctAttempt - 1; attempt++) {
-      expect(await isOtpValid(db, socialId, '000000')).toBe(false)
-    }
-    expect(await isOtpValid(db, socialId, '123456')).toBe(correctAttempt === 5)
-    expect(await isOtpValid(db, socialId, '123456')).toBe(false)
-    expect(rows.get('legacy')?.attempts).toBe(5)
-  })
-
-  it('limits concurrent comparisons to five independently of result delivery order', async () => {
-    const { db, rows } = attemptStorage(storage)
-    rows.set('code', otpRow())
-    const results = await Promise.all(Array.from({ length: 6 }, async () => await isOtpValid(db, socialId, '123456')))
-    expect(results.filter(Boolean)).toHaveLength(5)
-    expect(rows.get('code')?.attempts).toBe(5)
-  })
-
   it.each([-120000, 120000])(
     'issues, validates and cleans up using database time with replica offset %s',
     async (offset) => {
@@ -632,11 +514,11 @@ describe.each(['mongo', 'sql'] as const)('OTP attempts and lifetime through %s a
         retryOn: 31000
       })
       expect(insert).toHaveBeenCalledTimes(1)
-      expect(await isOtpValid(db, socialId, code)).toBe(false)
+      expect(await verifyOtpAttempt(db, socialId, code)).toBe('invalid')
       setNow(31000)
       await loginOtp(ctx, db, null, '', { email: identity.value })
       expect(insert).toHaveBeenCalledTimes(2)
-      expect(await isOtpValid(db, socialId, rows.get('issued')?.code ?? '')).toBe(true)
+      expect(await verifyOtpAttempt(db, socialId, rows.get('issued')?.code ?? '')).toBe('valid')
     } finally {
       jest.restoreAllMocks()
     }

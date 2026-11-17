@@ -362,8 +362,6 @@ export interface AccountDB {
 
   init: () => Promise<void>
   reserveOtpSend: (socialId: PersonId, retryDelayMs: number) => Promise<OtpSendReservation>
-  /** Return only codes whose active, database-clock attempt budget this operation atomically advanced. */
-  advanceOtpAttempts: (socialId: PersonId) => Promise<string[]>
   /** Atomically count an attempt on the newest active code using database time. */
   advanceLatestOtpAttempt: (socialId: PersonId) => Promise<Pick<OTP, 'code' | 'attempts'> | null>
   /** Delete expired codes using the same database clock as issuance and attempt accounting. */

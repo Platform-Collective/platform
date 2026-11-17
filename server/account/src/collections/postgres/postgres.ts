@@ -834,18 +834,6 @@ export class PostgresAccountDB implements AccountDB {
     })
   }
 
-  async advanceOtpAttempts (socialId: PersonId): Promise<string[]> {
-    return await this.withRetry(async (client) => {
-      const result = await client.unsafe<{ code: string }[]>(
-        `UPDATE ${this.otp.getTableName()} SET attempts = COALESCE(attempts, 0) + 1
-         WHERE social_id = $1 AND expires_on > FLOOR(EXTRACT(EPOCH FROM statement_timestamp()) * 1000)::BIGINT
-         AND COALESCE(attempts, 0) < 5 RETURNING code`,
-        [socialId]
-      )
-      return result.map((row) => row.code)
-    })
-  }
-
   async cleanExpiredOtp (): Promise<void> {
     await this.client.unsafe(
       `DELETE FROM ${this.otp.getTableName()}
