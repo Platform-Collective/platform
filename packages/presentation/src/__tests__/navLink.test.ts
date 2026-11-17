@@ -49,6 +49,7 @@ jest.mock('@hcengineering/ui', () => ({
 }))
 
 jest.mock('../configuration', () => ({ hasResource: jest.fn() }))
+jest.mock('svelte/store', () => ({ get: () => 'en' }))
 
 // Synthetic cancelable Event with assigned mouse fields, not a dispatched MouseEvent.
 // URL parsing and resource execution are mocked. These tests cover helper dispatch,

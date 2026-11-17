@@ -6,7 +6,7 @@
 import * as Core from '@hcengineering/core'
 import * as Platform from '@hcengineering/platform'
 import presentation, { getClient } from '@hcengineering/presentation'
-import { getCurrentLocation, type Location, locationToUrl, parseLocation } from '@hcengineering/ui'
+import { getCurrentLocation, type Location, locationToUrl } from '@hcengineering/ui'
 import { type Application } from '@hcengineering/workbench'
 import { withWorkbenchSession } from '../session'
 import { openWorkbenchTab, registerWorkbenchTabNavigation } from '../tabNavigation'

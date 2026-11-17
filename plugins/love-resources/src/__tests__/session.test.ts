@@ -8,11 +8,10 @@ describe('isPendingJoinInThisSession', () => {
     { pendingSessionId: 'other-session', currentSessionId: 'session', expected: false },
     { pendingSessionId: null, currentSessionId: 'session', expected: false },
     { pendingSessionId: 'session', currentSessionId: undefined, expected: false }
-  ])('returns $expected for pending $pendingSessionId and current $currentSessionId', ({
-    pendingSessionId,
-    currentSessionId,
-    expected
-  }) => {
-    expect(isPendingJoinInThisSession(pendingSessionId, currentSessionId)).toBe(expected)
-  })
+  ])(
+    'returns $expected for pending $pendingSessionId and current $currentSessionId',
+    ({ pendingSessionId, currentSessionId, expected }) => {
+      expect(isPendingJoinInThisSession(pendingSessionId, currentSessionId)).toBe(expected)
+    }
+  )
 })
