@@ -402,6 +402,10 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
     findAll: SessionFindAll
   ): Promise<Tx[]> {
     const result: Tx[] = []
+    // Removed documents already decremented within this batch, to not count duplicate removes twice.
+    const countedRemoves = new Set<Ref<Doc>>()
+    // Documents created within this batch, they are not in removedMap since it is filled before the batch is applied.
+    const createdInBatch = new Set<Ref<Doc>>()
     for (const tx of txes) {
       const colTx = tx as TxCUD<AttachedDoc>
       if (colTx.attachedTo !== undefined && colTx.attachedToClass !== undefined && colTx.collection !== undefined) {
@@ -419,6 +423,22 @@ export class TriggersMiddleware extends BaseMiddleware implements Middleware {
         const isUpdateTx = colTx._class === core.class.TxUpdateDoc
         if (isUpdateTx) {
           result.push(...(await this.updateCollection(ctx, colTx as TxUpdateDoc<AttachedDoc>, findAll)))
+        }
+
+        if (isCreateTx) {
+          createdInBatch.add(colTx.objectId)
+          countedRemoves.delete(colTx.objectId)
+        }
+
+        if (isDeleteTx) {
+          // DomainTxMiddleware puts every document it is about to remove into removedMap.
+          // If it is not there and was not created in this batch, the document did not exist anymore
+          // (already removed, e.g. a double click on delete), so the counter should not be decremented again.
+          const exists = ctx.contextData.removedMap.has(colTx.objectId) || createdInBatch.has(colTx.objectId)
+          if (!exists || countedRemoves.has(colTx.objectId)) {
+            continue
+          }
+          countedRemoves.add(colTx.objectId)
         }
 
         if ((isCreateTx || isDeleteTx) && !ctx.contextData.removedMap.has(_id)) {

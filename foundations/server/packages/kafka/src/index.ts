@@ -202,9 +202,16 @@ class PlatformQueueImpl implements PlatformQueue {
   }
 }
 
+const producerRetryDelay = 1000 // Initial reconnect delay in milliseconds
+const producerMaxRetryDelay = 10000 // Maximum reconnect delay in milliseconds
+
 class PlatformQueueProducerImpl implements PlatformQueueProducer<any> {
   txProducer: Producer
-  connected: Promise<void> | undefined
+  private connected = false
+  private connecting: Promise<void> | undefined
+  private lastConnectError: unknown
+  private nextConnectAt = 0
+  private retryDelay = producerRetryDelay
   private closed = false
 
   constructor (
@@ -217,18 +224,59 @@ class PlatformQueueProducerImpl implements PlatformQueueProducer<any> {
       allowAutoTopicCreation: true,
       createPartitioner: Partitioners.DefaultPartitioner
     })
-    this.connected = this.ctx.with('connect-broker', {}, () => this.txProducer.connect())
+    // Connect eagerly; a failure here is reported by the next send, which reconnects after a backoff.
+    this.connect().catch(() => {})
   }
 
   getQueue (): PlatformQueue {
     return this.queue
   }
 
-  async send (ctx: MeasureContext, workspace: WorkspaceUuid, msgs: any[], partitionKey?: string): Promise<void> {
-    if (this.connected !== undefined) {
-      await this.connected
-      this.connected = undefined
+  private connect (): Promise<void> {
+    const connecting = this.ctx
+      .with('connect-broker', {}, () => this.txProducer.connect())
+      .then(
+        () => {
+          this.connected = true
+          this.lastConnectError = undefined
+          this.retryDelay = producerRetryDelay
+        },
+        (err: any) => {
+          // Drop the rejected attempt, so a later send can connect again once the broker is back.
+          this.lastConnectError = err
+          this.nextConnectAt = Date.now() + this.retryDelay
+          this.ctx.error('failed to connect producer', { err, topic: this.topic, retryDelay: this.retryDelay })
+          this.retryDelay = Math.min(this.retryDelay * 2, producerMaxRetryDelay)
+          throw err
+        }
+      )
+      .finally(() => {
+        if (this.connecting === connecting) {
+          this.connecting = undefined
+        }
+      })
+    this.connecting = connecting
+    return connecting
+  }
+
+  private async ensureConnected (): Promise<void> {
+    if (this.connected) return
+    if (this.connecting !== undefined) {
+      await this.connecting
+      return
     }
+    if (this.closed) {
+      throw new Error(`Producer for ${this.topic} is closed`)
+    }
+    if (this.lastConnectError !== undefined && Date.now() < this.nextConnectAt) {
+      // Fail fast while backing off instead of letting every caller wait for a new connection attempt.
+      throw this.lastConnectError
+    }
+    await this.connect()
+  }
+
+  async send (ctx: MeasureContext, workspace: WorkspaceUuid, msgs: any[], partitionKey?: string): Promise<void> {
+    await this.ensureConnected()
     await this.ctx.with('send', { topic: this.topic }, () =>
       this.txProducer.send({
         topic: this.topic,
@@ -251,6 +299,7 @@ class PlatformQueueProducerImpl implements PlatformQueueProducer<any> {
 
   async close (): Promise<void> {
     this.closed = true
+    this.connected = false
     await this.ctx.with('disconnect', {}, () => this.txProducer.disconnect())
   }
 }
