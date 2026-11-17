@@ -64,6 +64,7 @@ export * from './drafts'
 export { presentationId }
 export * from './collaborator'
 export * from './configuration'
+export * from './navLink'
 export * from './context'
 export * from './pipeline'
 export * from './components/extensions/manager'

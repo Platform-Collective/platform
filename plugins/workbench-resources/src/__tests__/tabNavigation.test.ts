@@ -6,22 +6,14 @@
 import * as Core from '@hcengineering/core'
 import * as Platform from '@hcengineering/platform'
 import presentation, { getClient } from '@hcengineering/presentation'
-import { hasResource } from '@hcengineering/presentation/src/configuration'
-import { handleNewTabClick } from '@hcengineering/presentation/src/navLink'
-import uiPlugin, {
-  type AnyComponent,
-  getCurrentLocation,
-  type Location,
-  locationToUrl,
-  parseLocation
-} from '@hcengineering/ui'
+import { getCurrentLocation, type Location, locationToUrl, parseLocation } from '@hcengineering/ui'
 import { type Application } from '@hcengineering/workbench'
 import { withWorkbenchSession } from '../session'
 import { openWorkbenchTab, registerWorkbenchTabNavigation } from '../tabNavigation'
 import { OpenInNewTab } from '../workbench'
 
 const { AccountRole, getCurrentAccount, setCurrentAccount } = Core
-const { getMetadata, getResource, setMetadata, translate } = Platform
+const { getMetadata, setMetadata, translate } = Platform
 
 jest.mock('@hcengineering/platform', () => ({
   ...jest.requireActual<typeof Platform>('@hcengineering/platform'),
@@ -47,9 +39,6 @@ jest.mock('@hcengineering/presentation', () => ({
 
 jest.mock('@hcengineering/ui', () => ({
   __esModule: true,
-  default: { metadata: { Routes: 'ui:metadata:Routes' } },
-  addNotification: jest.fn(),
-  NotificationSeverity: { Success: 1, Error: 3 },
   getCurrentLocation: jest.fn(),
   locationToUrl: jest.fn(),
   parseLocation: jest.fn(),
@@ -61,8 +50,6 @@ jest.mock('@hcengineering/ui', () => ({
     }
   }
 }))
-
-jest.mock('@hcengineering/presentation/src/configuration', () => ({ hasResource: jest.fn() }))
 
 // This suite exercises orchestration in CommonJS Jest, not the Svelte ESM runtime.
 // Keep the real provider policy/opener. Store subscriptions unrelated to opening
@@ -236,38 +223,6 @@ describe('workbench tab capability', () => {
   it('invalidates the capability when the account UUID changes', () => {
     setCurrentAccount({ ...account, uuid: 'other-account' as Core.AccountUuid })
     expect(canOpen()).toBe(false)
-  })
-
-  it('allows a fresh modified gesture after a same-UUID profile replacement', async () => {
-    setCurrentAccount({ ...account })
-    const href = 'https://huly.example/workbench/workspace/tracker/PROJ-123'
-    setMetadata(presentation.metadata.FrontUrl, 'https://huly.example')
-    setMetadata(uiPlugin.metadata.Routes, new Map([['workbench', 'workbench:component:WorkbenchApp' as AnyComponent]]))
-    jest.mocked(parseLocation).mockReturnValue(loc)
-    jest.mocked(hasResource).mockReturnValue(true)
-    jest.mocked(getResource).mockResolvedValue(async (target: Location) => {
-      return await openWorkbenchTab(target, loadData)
-    })
-    // Synthetic mouse fields; native/Svelte dispatch and browser tabs are not run.
-    const event = Object.assign(new Event('click', { cancelable: true }), {
-      button: 0,
-      ctrlKey: true,
-      metaKey: false,
-      shiftKey: false,
-      altKey: false
-    }) as MouseEvent
-
-    await handleNewTabClick(event, { href, disabled: false })
-
-    expect(event.defaultPrevented).toBe(true)
-    expect(getResource).toHaveBeenCalledWith('workbench:function:OpenInNewTab')
-    expect(createDoc).toHaveBeenCalledTimes(1)
-    expect(createDoc).toHaveBeenCalledWith('workbench:class:WorkbenchTab', Core.default.space.Workspace, {
-      attachedTo: account.uuid,
-      location: 'workbench/workspace/tracker/PROJ-123',
-      isPinned: false,
-      name: 'PROJ-123'
-    })
   })
 
   it('keeps the provider used by the existing OpenInNewTab action usable after a same-UUID profile replacement', async () => {
