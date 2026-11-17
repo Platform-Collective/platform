@@ -490,20 +490,7 @@ export class RestClientImpl implements RestClient {
   private async v1op<T extends Doc, P> (op: string, data: any): Promise<P> {
     const requestUrl = concatLink(this.endpoint, `/api/v1/${op}/${this.workspace}`)
     await this.checkRate()
-    const result = await withRetry<{ result?: Ref<T>, error?: Status }>(async () => {
-      const response = await fetch(requestUrl, {
-        method: 'POST',
-        headers: this.jsonHeaders(),
-        keepalive: true,
-        body: JSON.stringify(data)
-      })
-      if (!response.ok) {
-        await this.checkRateLimits(response)
-        throw new RestHttpError(response.status)
-      }
-      this.updateRateLimit(response)
-      return await extractJson<TxResult>(response)
-    }, isRLE)
+    const result = (await this.sendWrite(requestUrl, JSON.stringify(data))) as { result?: Ref<T>, error?: Status }
     if (result.error !== undefined) {
       throw new PlatformError(result.error)
     }

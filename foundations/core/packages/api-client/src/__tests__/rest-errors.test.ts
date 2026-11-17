@@ -89,6 +89,37 @@ describe('REST HTTP errors', () => {
     expect(fetch.mock.calls[0][1]?.body).toBe(fetch.mock.calls[1][1]?.body)
   })
 
+  it.each(['network', 'body', 500, 503])('never replays a v1 write after %s', async (failure) => {
+    const fetch = jest.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      if (failure === 'network') throw new Error('transport failure')
+      if (failure === 'body') return new Response('invalid JSON', { status: 200 })
+      return new Response('failure', { status: failure as number })
+    })
+    const client = publicApi.createRestClient(endpoint, 'workspace', token)
+
+    const error: unknown = await client
+      .createDoc(core.class.Doc, 'space' as Ref<Space>, {})
+      .catch((error: unknown) => error)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(error).toBeInstanceOf(publicApi.RestHttpError)
+    expect(error).toHaveProperty('outcomeUnknown', true)
+  })
+
+  it('retries a rate-limited v1 write with the same body', async () => {
+    const fetch = jest.spyOn(globalThis, 'fetch')
+    fetch.mockImplementation(async () => {
+      if (fetch.mock.calls.length === 1) {
+        return new Response('rate limited', { status: 429, headers: { 'Retry-After-ms': '0' } })
+      }
+      return Response.json('created-doc')
+    })
+    const client = publicApi.createRestClient(endpoint, 'workspace', token)
+
+    await expect(client.createDoc(core.class.Doc, 'space' as Ref<Space>, {})).resolves.toBe('created-doc')
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch.mock.calls[0][1]?.body).toBe(fetch.mock.calls[1][1]?.body)
+  })
+
   it.each([401, 403])(
     'preservesTypedHttpStatusWithoutLoggingToken (%i)',
     async (status) => {
