@@ -354,7 +354,9 @@ async function leaveRemovedDocument (
   // A location resolver or title provider can finish after the user has moved on.
   const shownUrl = locationToUrl(getCurrentLocation())
   const currentTab = get(tabsStore).find((t) => t._id === tab._id)
-  if (get(tabIdStore) !== tab._id || currentTab?.isPinned !== false || currentTab.location !== tabLocation) return
+  if (currentTab === undefined) return
+  if (currentTab.isPinned === true) return
+  if (get(tabIdStore) !== tab._id || currentTab.location !== tabLocation) return
   // A return to the previous app must win even when its URL matches the initial one.
   const unchangedLocation = shownUrl === currentUrl && locationRevision === revision
   if (shownUrl !== expectedUrl && !unchangedLocation) return
