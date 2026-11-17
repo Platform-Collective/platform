@@ -244,6 +244,7 @@ export async function handleProviderAuth (
     }
   } catch (err: any) {
     measureCtx.error('failed to auth', { err, type: providerType })
+    if (db.transactionActive === true) throw err
     return ''
   }
 
