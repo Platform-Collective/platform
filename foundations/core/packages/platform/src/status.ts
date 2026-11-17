@@ -67,9 +67,6 @@ export class PlatformError<P extends Record<string, any>> extends Error {
  */
 export class HttpError extends PlatformError<Record<string, unknown>> {
   readonly httpStatus?: number
-  retryAfterMs?: number
-  outcomeUnknown?: boolean
-  rejectedBeforeWrite?: boolean
 
   constructor (
     name: string,

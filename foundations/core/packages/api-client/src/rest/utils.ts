@@ -18,6 +18,10 @@ import { uncompress } from 'snappyjs'
 
 /** HTTP failure with optional metadata for callers and adapters. @public */
 export class RestHttpError extends HttpError {
+  retryAfterMs?: number
+  outcomeUnknown?: boolean
+  rejectedBeforeWrite?: boolean
+
   constructor (httpStatus?: number, message?: string) {
     super('RestHttpError', httpStatus, message)
   }

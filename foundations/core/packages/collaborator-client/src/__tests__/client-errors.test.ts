@@ -57,9 +57,6 @@ describe('collaborator HTTP errors', () => {
       expect(failure).toBeInstanceOf(PlatformError)
       expect((failure as Error).message).toBe(`HTTP error ${status}`)
       expect(failure).toHaveProperty('name', 'CollaboratorHttpError')
-      expect((failure as { retryAfterMs?: number }).retryAfterMs).toBeUndefined()
-      expect((failure as { outcomeUnknown?: boolean }).outcomeUnknown).toBeUndefined()
-      expect((failure as { rejectedBeforeWrite?: boolean }).rejectedBeforeWrite).toBeUndefined()
     }
     expect(log).not.toHaveBeenCalled()
     expect(warn).not.toHaveBeenCalled()
