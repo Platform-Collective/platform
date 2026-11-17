@@ -131,6 +131,10 @@
 
   const provider = contextProvider ?? createRemoteProvider(ydoc, collaborativeDoc, content)
 
+  export async function flush(): Promise<void> {
+    await provider.flush?.()
+  }
+
   let contentError = false
   let synced = false
   let editorReady = false

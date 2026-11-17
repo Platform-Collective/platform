@@ -48,6 +48,37 @@ export class HocuspocusCollabProvider extends HocuspocusProvider implements Prov
     })
   }
 
+  async flush (): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      let loaded = false
+      const cleanup = (): void => {
+        clearTimeout(timer)
+        this.off('unsyncedChanges', check)
+        this.off('destroy', destroyed)
+      }
+      const check = (): void => {
+        if (loaded && !this.hasUnsyncedChanges) {
+          cleanup()
+          resolve()
+        }
+      }
+      const destroyed = (): void => {
+        cleanup()
+        reject(new Error('Collaboration provider closed before changes were synchronized'))
+      }
+      const timer = setTimeout(() => {
+        cleanup()
+        reject(new Error('Collaboration changes have not been synchronized yet'))
+      }, 15000)
+      this.on('unsyncedChanges', check)
+      this.on('destroy', destroyed)
+      void this.loaded.then(() => {
+        loaded = true
+        check()
+      })
+    })
+  }
+
   destroy (): void {
     super.destroy()
     this.configuration.websocketProvider.disconnect()

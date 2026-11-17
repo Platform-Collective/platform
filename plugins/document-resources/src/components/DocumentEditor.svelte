@@ -84,7 +84,7 @@
                 )
               )
                 return
-              await createSubpage(editor, pos, object)
+              await createSubpage(editor, pos, object, async () => await collabEditor.flush())
             }
           } satisfies InlineCommandItem
         ]

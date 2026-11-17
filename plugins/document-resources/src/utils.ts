@@ -100,7 +100,12 @@ export async function createEmptyDocument (
  * Create a child document of `parent`, insert a link to it at `pos` and open it,
  * the same way creating a child document from the navigator does.
  */
-export async function createSubpage (editor: Editor, pos: number, parent: Document): Promise<void> {
+export async function createSubpage (
+  editor: Editor,
+  pos: number,
+  parent: Document,
+  flush?: () => Promise<void>
+): Promise<void> {
   const client = getClient()
   const id: Ref<Document> = generateId()
   const title = await translate(document.string.Untitled, {})
@@ -134,6 +139,13 @@ export async function createSubpage (editor: Editor, pos: number, parent: Docume
 
   const doc = await client.findOne(document.class.Document, { _id: id })
   if (doc !== undefined) {
+    try {
+      await flush?.()
+    } catch (err: any) {
+      // The child exists, so keep its link and the parent editor open to finish syncing.
+      Analytics.handleError(err)
+      return
+    }
     await openDoc(client.getHierarchy(), doc)
   }
 }

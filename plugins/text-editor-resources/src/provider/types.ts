@@ -19,5 +19,7 @@ export interface Provider {
   loaded: Promise<void>
   awareness: Awareness | null
 
+  flush?: () => Promise<void>
+
   destroy: () => void | Promise<void>
 }
