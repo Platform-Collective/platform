@@ -10,12 +10,18 @@ interface FakeNode {
   attrs?: Record<string, any>
   size: number
   pos: number
+  text?: string
 }
 
 function fakeDoc (nodes: FakeNode[]): {
   descendants: (f: (node: any, pos: number) => boolean | undefined) => void
+  nodeAt: (pos: number) => any
 } {
   return {
+    nodeAt: (pos) => {
+      const node = nodes.find((node) => node.pos === pos)
+      return node === undefined ? null : { type: { name: node.name }, text: node.text, nodeSize: node.size }
+    },
     descendants: (f) => {
       for (const node of nodes) {
         f({ type: { name: node.name }, attrs: node.attrs ?? {}, nodeSize: node.size }, node.pos)
@@ -50,6 +56,24 @@ describe('makeReferenceContent', () => {
 })
 
 describe('findReferenceRanges', () => {
+  it('removes only the inserted separator, preserving following text and existing whitespace', () => {
+    const doc = fakeDoc([
+      { name: 'reference', attrs: { id: 'doc-1' }, size: 1, pos: 2 },
+      { name: 'text', text: '  existing text', size: 15, pos: 3 }
+    ])
+    expect(findReferenceRanges(doc, 'doc-1' as Ref<Doc>, [{ from: 3, to: 4 }])).toEqual([{ from: 2, to: 4 }])
+    // Whitespace alone does not establish that it was inserted by this operation.
+    expect(findReferenceRanges(doc, 'doc-1' as Ref<Doc>)).toEqual([{ from: 2, to: 3 }])
+  })
+
+  it('keeps adjacent user text when the separator was removed', () => {
+    const doc = fakeDoc([
+      { name: 'reference', attrs: { id: 'doc-1' }, size: 1, pos: 2 },
+      { name: 'text', text: 'existing text', size: 13, pos: 3 }
+    ])
+    expect(findReferenceRanges(doc, 'doc-1' as Ref<Doc>)).toEqual([{ from: 2, to: 3 }])
+  })
+
   it('finds only references to the given object, last first', () => {
     const doc = fakeDoc([
       { name: 'paragraph', size: 10, pos: 0 },

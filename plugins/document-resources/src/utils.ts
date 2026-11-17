@@ -34,7 +34,7 @@ import { type Editor } from '@tiptap/core'
 import slugify from 'slugify'
 
 import document from './plugin'
-import { findReferenceRanges, makeReferenceContent } from './subpage'
+import { createSubpageRollback, makeReferenceContent } from './subpage'
 
 export async function moveDocument (doc: Document, space: Ref<Teamspace>, parent: Ref<Document>): Promise<void> {
   const client = getClient()
@@ -114,17 +114,22 @@ export async function createSubpage (
   // even if the content changes while the document is being created.
   const at = Math.min(pos, editor.state.doc.content.size)
   const inline = editor.state.doc.resolve(at).parent.inlineContent
-  editor
-    .chain()
-    .focus(at)
-    .insertContentAt(at, makeReferenceContent(id, document.class.Document, title, inline))
-    .run()
-
+  const rollback = createSubpageRollback(editor, id)
   try {
+    editor
+      .chain()
+      .focus(at)
+      .insertContentAt(at, makeReferenceContent(id, document.class.Document, title, inline))
+      .command(({ tr }) => {
+        rollback.track(tr)
+        return true
+      })
+      .run()
+    rollback.capture()
     await createEmptyDocument(client, id, parent.space, parent._id, { title })
   } catch (err: any) {
     // Do not leave a link to a document that does not exist
-    const ranges = findReferenceRanges(editor.state.doc, id)
+    const ranges = editor.isDestroyed ? [] : rollback.ranges()
     if (ranges.length > 0) {
       const tr = editor.state.tr
       for (const { from, to } of ranges) {
@@ -135,6 +140,8 @@ export async function createSubpage (
     console.error(err)
     Analytics.handleError(err)
     return
+  } finally {
+    rollback.dispose()
   }
 
   const doc = await client.findOne(document.class.Document, { _id: id })

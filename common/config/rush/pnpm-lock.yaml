@@ -20112,6 +20112,9 @@ importers:
       '@tiptap/core':
         specifier: ^2.11.7
         version: 2.27.1(@tiptap/pm@2.27.1)
+      '@tiptap/pm':
+        specifier: ^2.11.7
+        version: 2.27.1
       fast-equals:
         specifier: ^5.2.2
         version: 5.3.2
@@ -20121,6 +20124,12 @@ importers:
       svelte:
         specifier: ^4.2.20
         version: 4.2.20
+      y-prosemirror:
+        specifier: ^1.3.7
+        version: 1.3.7(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.3)(y-protocols@1.0.6(yjs@13.6.27))(yjs@13.6.27)
+      yjs:
+        specifier: ^13.6.27
+        version: 13.6.27
     devDependencies:
       '@hcengineering/platform-rig':
         specifier: workspace:^0.7.21
