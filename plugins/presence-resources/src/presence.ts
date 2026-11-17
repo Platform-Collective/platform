@@ -84,7 +84,16 @@ export function presence (node: HTMLElement, params: PresenceActionParams): any 
 type PresenceClient = ReturnType<typeof getClient>
 
 /** Spaces whose presence writes the server rejected; presence is not retried there until the page reloads. */
-const rejectedSpaces = new Set<Ref<Space>>()
+const rejectedSpaces = new WeakMap<PresenceClient, Set<Ref<Space>>>()
+
+function getRejectedSpaces (client: PresenceClient): Set<Ref<Space>> {
+  let spaces = rejectedSpaces.get(client)
+  if (spaces === undefined) {
+    spaces = new Set<Ref<Space>>()
+    rejectedSpaces.set(client, spaces)
+  }
+  return spaces
+}
 
 function isForbidden (err: unknown): boolean {
   return err instanceof PlatformError && err.status.code === platform.status.Forbidden
@@ -96,9 +105,10 @@ async function sendPresenceTx (client: PresenceClient, tx: Tx): Promise<void> {
 }
 
 export async function updatePresence (info: PresenceInfo): Promise<void> {
-  if (rejectedSpaces.has(info.space)) return
+  const client = getClient()
+  const rejected = getRejectedSpaces(client)
+  if (rejected.has(info.space)) return
   try {
-    const client = getClient()
     const id = presenceDocId(info.objectId, info.personId)
     const existing = await client.findOne(pulse.class.DocumentPresence, { _id: id })
     const now = Date.now()
@@ -126,7 +136,7 @@ export async function updatePresence (info: PresenceInfo): Promise<void> {
   } catch (err) {
     if (isForbidden(err)) {
       // The role may not write presence here; stop the heartbeat for this space instead of retrying.
-      rejectedSpaces.add(info.space)
+      rejected.add(info.space)
       return
     }
     console.warn('failed to update presence:', err)
@@ -134,9 +144,10 @@ export async function updatePresence (info: PresenceInfo): Promise<void> {
 }
 
 export async function deletePresence (info: PresenceInfo): Promise<void> {
-  if (rejectedSpaces.has(info.space)) return
+  const client = getClient()
+  const rejected = getRejectedSpaces(client)
+  if (rejected.has(info.space)) return
   try {
-    const client = getClient()
     const id = presenceDocId(info.objectId, info.personId)
     const existing = await client.findOne(pulse.class.DocumentPresence, { _id: id })
     if (existing !== undefined) {
@@ -144,7 +155,7 @@ export async function deletePresence (info: PresenceInfo): Promise<void> {
     }
   } catch (err) {
     if (isForbidden(err)) {
-      rejectedSpaces.add(info.space)
+      rejected.add(info.space)
       return
     }
     console.warn('failed to delete presence:', err)
