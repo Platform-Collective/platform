@@ -202,6 +202,9 @@ export const leadOperation: MigrateOperation = {
       {
         state: 'create-default-lead-label-category',
         func: async (client) => {
+          const categories = await client.findAll(tags.class.TagCategory, { targetClass: lead.class.Lead })
+          if (categories.some((category) => category.default)) return
+
           const ops = new TxOperations(client, core.account.System)
           await createOrUpdate(
             ops,

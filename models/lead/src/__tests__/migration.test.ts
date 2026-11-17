@@ -20,8 +20,11 @@ import task, { taskOperation } from '@hcengineering/model-task'
 import { leadOperation } from '../migration'
 import lead from '../plugin'
 
-function createClient (): { client: MigrationUpgradeClient, tx: jest.Mock<Promise<TxResult>, [Tx]> } {
-  const docs: Doc[] = []
+function createClient (initialDocs: Doc[] = []): {
+  client: MigrationUpgradeClient
+  tx: jest.Mock<Promise<TxResult>, [Tx]>
+} {
+  const docs: Doc[] = [...initialDocs]
   function find (_class: Ref<Class<Doc>>, query: DocumentQuery<Doc>): Doc[] {
     return docs.filter(
       (doc) =>
@@ -97,6 +100,29 @@ describe('Lead label category upgrade', () => {
     ).toHaveLength(1)
     expect(await client.findAll(lead.class.Funnel, {})).toHaveLength(0)
     expect(await client.findAll(core.class.Sequence, {})).toHaveLength(0)
+  })
+
+  it('keeps an existing default category instead of creating a second one', async () => {
+    const category: TagCategory = {
+      _id: 'lead:category:Custom' as Ref<TagCategory>,
+      _class: tags.class.TagCategory,
+      space: core.space.Workspace,
+      modifiedBy: 'test-user' as TagCategory['modifiedBy'],
+      modifiedOn: 0,
+      icon: tags.icon.Tags,
+      label: 'Lead labels',
+      targetClass: lead.class.Lead,
+      tags: ['Priority'],
+      default: true
+    }
+    const { client, tx } = createClient([category])
+    const state = new Map([[leadId, new Set(['u-default-funnel'])]])
+
+    await leadOperation.upgrade(state, async () => client, 'upgrade')
+
+    expect(await leadCategories(client)).toEqual(toFindResult([category]))
+    expect(tx).toHaveBeenCalledTimes(1)
+    expect(tx).toHaveBeenCalledWith(expect.objectContaining({ objectClass: core.class.MigrationState }))
   })
 
   it('does not duplicate the category when an incomplete upgrade is retried', async () => {
