@@ -79,7 +79,7 @@ export async function makeFilterQuery (
     hierarchy,
     refresh,
     new FilterQueryLifetime([])
-  ))!
+  )) as DocumentQuery<Doc>
 }
 
 export async function makeFilterQueryWithLifetime (
