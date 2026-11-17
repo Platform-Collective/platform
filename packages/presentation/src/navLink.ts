@@ -43,7 +43,7 @@ export function getInternalLocation (link: string): Location | undefined {
   return undefined
 }
 
-async function showTabNotification (
+export async function showTabNotification (
   label: IntlString,
   subTitle: string = '',
   severity: NotificationSeverity = NotificationSeverity.Success
