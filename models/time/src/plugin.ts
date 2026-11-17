@@ -26,6 +26,7 @@ export default mergeIds(timeId, time, {
   action: {
     EditToDo: '' as Ref<Action<Doc, any>>,
     CreateToDo: '' as Ref<Action<Doc, any>>,
+    PlanMessage: '' as Ref<Action<Doc, any>>,
     DeleteToDo: '' as Ref<Action<Doc, any>>,
     CreateToDoGlobal: '' as Ref<Action<Doc, any>>
   },

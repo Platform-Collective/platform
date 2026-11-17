@@ -325,7 +325,8 @@ export function createModel (builder: Builder): void {
       category: time.category.Time,
       target: chunter.class.ChatMessage,
       context: { mode: ['context'], group: 'associate' }
-    }
+    },
+    time.action.PlanMessage
   )
 
   createAction(
