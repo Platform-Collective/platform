@@ -57,7 +57,9 @@
     "RectangleTool": "Rettangolo",
     "EllipseTool": "Ellisse",
     "PaletteManagementMenu": "Gestisci i preset di colore",
-    "BetaVersion": "Versione beta"
+    "BetaVersion": "Versione beta",
+    "TabOpened": "Scheda aperta",
+    "FailedToOpenTab": "Impossibile aprire la scheda"
   },
   "status": {
     "FileTooLarge": "File troppo grande"

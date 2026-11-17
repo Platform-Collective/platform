@@ -57,7 +57,9 @@
     "RectangleTool": "Dikdörtgen",
     "EllipseTool": "Elips",
     "PaletteManagementMenu": "Renk önayarlarını yönet",
-    "BetaVersion": "Beta sürümü"
+    "BetaVersion": "Beta sürümü",
+    "TabOpened": "Sekme açıldı",
+    "FailedToOpenTab": "Sekme açılamadı"
   },
   "status": {
     "FileTooLarge": "Dosya çok büyük"

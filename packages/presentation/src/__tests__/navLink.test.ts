@@ -14,22 +14,37 @@
 //
 
 import * as Platform from '@hcengineering/platform'
-import uiPlugin, { type AnyComponent, type Location, parseLocation } from '@hcengineering/ui'
+import uiPlugin, {
+  addNotification,
+  type AnyComponent,
+  type Location,
+  NotificationSeverity,
+  parseLocation
+} from '@hcengineering/ui'
 import { hasResource } from '../configuration'
 import { handleNewTabClick } from '../navLink'
 import presentation from '../plugin'
 
-const { getMetadata, getResource, setMetadata } = Platform
+const { getMetadata, getResource, setMetadata, translate } = Platform
 
 jest.mock('@hcengineering/platform', () => ({
   ...jest.requireActual<typeof Platform>('@hcengineering/platform'),
   getMetadata: jest.fn(),
-  getResource: jest.fn()
+  getResource: jest.fn(),
+  translate: jest.fn()
 }))
 
 jest.mock('@hcengineering/ui', () => ({
   __esModule: true,
   default: { metadata: { Routes: 'ui:metadata:Routes' } },
+  addNotification: jest.fn(),
+  languageStore: {
+    subscribe: (run: (value: string) => void) => {
+      run('en')
+      return () => {}
+    }
+  },
+  NotificationSeverity: { Success: 1, Error: 3 },
   parseLocation: jest.fn()
 }))
 
@@ -51,8 +66,8 @@ describe('handleNewTabClick', () => {
     query: { filter: 'all' },
     fragment: 'issue'
   }
-  const resource = 'custom:function:OpenInNewTab' as Platform.Resource<(loc: Location) => Promise<void>>
-  const openInNewTab = jest.fn<Promise<void>, [Location]>()
+  const resource = 'custom:function:OpenInNewTab' as Platform.Resource<(loc: Location) => Promise<boolean>>
+  const openInNewTab = jest.fn<Promise<boolean>, [Location]>()
   const canOpenInNewTab = jest.fn<boolean, [Location]>()
 
   beforeEach(() => {
@@ -68,7 +83,8 @@ describe('handleNewTabClick', () => {
     jest.mocked(parseLocation).mockReturnValue(loc)
     jest.mocked(hasResource).mockReturnValue(true)
     jest.mocked(getResource).mockResolvedValue(openInNewTab)
-    openInNewTab.mockResolvedValue(undefined)
+    jest.mocked(translate).mockImplementation(async (label) => label)
+    openInNewTab.mockResolvedValue(true)
   })
 
   it.each<{ name: string, init: MouseEventInit }>([
@@ -97,6 +113,29 @@ describe('handleNewTabClick', () => {
     expect(parseLocation).toHaveBeenCalledWith(new URL(href))
     expect(openInNewTab).toHaveBeenCalledTimes(1)
     expect(openInNewTab).toHaveBeenCalledWith(loc)
+    expect(addNotification).toHaveBeenCalledWith(
+      presentation.string.TabOpened,
+      '',
+      undefined,
+      undefined,
+      NotificationSeverity.Success
+    )
+  })
+
+  it('reports when the provider does not create a tab after its asynchronous rechecks', async () => {
+    openInNewTab.mockResolvedValueOnce(false)
+    const event = clickEvent({ button: 1 })
+
+    await handleNewTabClick(event, { href, disabled: false })
+
+    expect(addNotification).toHaveBeenCalledTimes(1)
+    expect(addNotification).toHaveBeenCalledWith(
+      presentation.string.FailedToOpenTab,
+      '',
+      undefined,
+      undefined,
+      NotificationSeverity.Error
+    )
   })
 
   it.each(['teardown', 'replacement registration', 'session invalidation', 'resource replacement'])(
@@ -123,6 +162,13 @@ describe('handleNewTabClick', () => {
       await pending
       expect(openInNewTab).not.toHaveBeenCalled()
       expect(event.defaultPrevented).toBe(true)
+      expect(addNotification).toHaveBeenCalledWith(
+        presentation.string.FailedToOpenTab,
+        '',
+        undefined,
+        undefined,
+        NotificationSeverity.Error
+      )
     }
   )
 
@@ -272,6 +318,13 @@ describe('handleNewTabClick', () => {
 
     expect(event.defaultPrevented).toBe(true)
     expect(openInNewTab).toHaveBeenCalledTimes(1)
+    expect(addNotification).toHaveBeenCalledWith(
+      presentation.string.FailedToOpenTab,
+      error.message,
+      undefined,
+      undefined,
+      NotificationSeverity.Error
+    )
   })
 
   it('keeps the browser default cancelled when resource loading fails', async () => {
@@ -283,5 +336,12 @@ describe('handleNewTabClick', () => {
 
     expect(event.defaultPrevented).toBe(true)
     expect(openInNewTab).not.toHaveBeenCalled()
+    expect(addNotification).toHaveBeenCalledWith(
+      presentation.string.FailedToOpenTab,
+      error.message,
+      undefined,
+      undefined,
+      NotificationSeverity.Error
+    )
   })
 })

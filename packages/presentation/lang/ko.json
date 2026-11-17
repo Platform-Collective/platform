@@ -56,7 +56,9 @@
         "LineTool": "직선",
         "RectangleTool": "사각형",
         "EllipseTool": "타원",
-        "PaletteManagementMenu": "색상 프리셋 관리"
+        "PaletteManagementMenu": "색상 프리셋 관리",
+        "TabOpened": "탭이 열렸습니다",
+        "FailedToOpenTab": "탭을 열지 못했습니다"
     },
     "status": {
         "FileTooLarge": "파일 크기가 너무 큽니다"

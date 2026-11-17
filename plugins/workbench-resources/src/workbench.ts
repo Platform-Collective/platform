@@ -178,14 +178,14 @@ export function getTabLocation (tab: Pick<WorkbenchTab, 'location'>): Location {
   return parseLocation(url)
 }
 
-export async function OpenInNewTab (loc: Location): Promise<void> {
+export async function OpenInNewTab (loc: Location): Promise<boolean> {
   // Only shells without a tab provider use the browser fallback. A registered
   // provider that rejects the target must not silently change navigation modes.
   if (getMetadata(presentation.metadata.OpenInNewTab) === undefined) {
     window.open(locationToUrl(loc), '_blank')
-    return
+    return true
   }
-  await openWorkbenchTab(loc, getTabDataByLocation)
+  return await openWorkbenchTab(loc, getTabDataByLocation)
 }
 
 export async function closeTab (tab: WorkbenchTab): Promise<void> {

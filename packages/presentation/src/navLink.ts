@@ -13,8 +13,15 @@
 // limitations under the License.
 //
 
-import { getMetadata, getResource } from '@hcengineering/platform'
-import uiPlugin, { type Location, parseLocation } from '@hcengineering/ui'
+import { getMetadata, getResource, type IntlString, translate } from '@hcengineering/platform'
+import uiPlugin, {
+  addNotification,
+  languageStore,
+  type Location,
+  NotificationSeverity,
+  parseLocation
+} from '@hcengineering/ui'
+import { get } from 'svelte/store'
 import { hasResource } from './configuration'
 import { isNewTabClick } from './linkClick'
 import presentation from './plugin'
@@ -36,6 +43,15 @@ export function getInternalLocation (link: string): Location | undefined {
   return undefined
 }
 
+async function showTabNotification (
+  label: IntlString,
+  subTitle: string = '',
+  severity: NotificationSeverity = NotificationSeverity.Success
+): Promise<void> {
+  const title = await translate(label, {}, get(languageStore))
+  addNotification(title, subTitle, undefined as any, undefined, severity)
+}
+
 export async function handleNewTabClick (
   e: MouseEvent,
   options: { href: string | undefined, disabled: boolean, onClick?: (event: MouseEvent) => void }
@@ -54,14 +70,26 @@ export async function handleNewTabClick (
   // Cancel synchronously, before resource loading can yield to the browser.
   e.preventDefault()
   e.stopPropagation()
-  const openInNewTab = await getResource(resource)
-  // The original shell must still own this operation after resource loading.
-  if (
-    getMetadata(presentation.metadata.OpenInNewTab) !== resource ||
-    getMetadata(presentation.metadata.CanOpenInNewTab) !== canOpen ||
-    !canOpen(loc)
-  ) {
-    return
+  try {
+    const openInNewTab = await getResource(resource)
+    // The original shell must still own this operation after resource loading.
+    if (
+      getMetadata(presentation.metadata.OpenInNewTab) !== resource ||
+      getMetadata(presentation.metadata.CanOpenInNewTab) !== canOpen ||
+      !canOpen(loc)
+    ) {
+      await showTabNotification(presentation.string.FailedToOpenTab, '', NotificationSeverity.Error)
+      return
+    }
+    const opened = await openInNewTab(loc)
+    await showTabNotification(
+      opened ? presentation.string.TabOpened : presentation.string.FailedToOpenTab,
+      '',
+      opened ? NotificationSeverity.Success : NotificationSeverity.Error
+    )
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    await showTabNotification(presentation.string.FailedToOpenTab, message, NotificationSeverity.Error)
+    throw err
   }
-  await openInNewTab(loc)
 }

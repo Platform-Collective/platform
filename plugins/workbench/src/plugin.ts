@@ -96,7 +96,7 @@ export const workbenchPlugin = plugin(workbenchId, {
     GetSidebarObject: '' as Resource<() => Partial<Pick<Doc, '_id' | '_class'>>>,
     LogIn: '' as Resource<(loginInfo: { account: string, token?: string }) => Promise<void>>,
     LogOut: '' as Resource<() => Promise<void>>,
-    OpenInNewTab: '' as Resource<(loc: Location) => Promise<void>>
+    OpenInNewTab: '' as Resource<(loc: Location) => Promise<boolean>>
   },
   actionImpl: {
     Navigate: '' as ViewAction<{

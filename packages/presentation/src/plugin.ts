@@ -159,7 +159,9 @@ export default plugin(presentationId, {
     RectangleTool: '' as IntlString,
     EllipseTool: '' as IntlString,
     PaletteManagementMenu: '' as IntlString,
-    BetaVersion: '' as IntlString
+    BetaVersion: '' as IntlString,
+    TabOpened: '' as IntlString,
+    FailedToOpenTab: '' as IntlString
   },
   extension: {
     FilePreviewExtension: '' as ComponentExtensionId,
@@ -167,7 +169,7 @@ export default plugin(presentationId, {
   },
   metadata: {
     // The resource alone does not imply that the current shell/session can write tabs.
-    OpenInNewTab: '' as Metadata<Resource<(loc: Location) => Promise<void>>>,
+    OpenInNewTab: '' as Metadata<Resource<(loc: Location) => Promise<boolean>>>,
     // Installed by the mounted tab shell, removed on teardown. Must synchronously
     // validate the live session, role, target route and workspace before cancellation.
     // Consumers must retain and recheck this registration after resource loading;

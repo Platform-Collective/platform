@@ -57,7 +57,9 @@
     "RectangleTool": "Прямоугольник",
     "EllipseTool": "Эллипс",
     "PaletteManagementMenu": "Управление цветовыми пресетами",
-    "BetaVersion": "Бета-версия"
+    "BetaVersion": "Бета-версия",
+    "TabOpened": "Вкладка открыта",
+    "FailedToOpenTab": "Не удалось открыть вкладку"
   },
   "status": {
     "FileTooLarge": "Файл слишком большой"

@@ -48,6 +48,8 @@ jest.mock('@hcengineering/presentation', () => ({
 jest.mock('@hcengineering/ui', () => ({
   __esModule: true,
   default: { metadata: { Routes: 'ui:metadata:Routes' } },
+  addNotification: jest.fn(),
+  NotificationSeverity: { Success: 1, Error: 3 },
   getCurrentLocation: jest.fn(),
   locationToUrl: jest.fn(),
   parseLocation: jest.fn(),
@@ -244,7 +246,7 @@ describe('workbench tab capability', () => {
     jest.mocked(parseLocation).mockReturnValue(loc)
     jest.mocked(hasResource).mockReturnValue(true)
     jest.mocked(getResource).mockResolvedValue(async (target: Location) => {
-      await openWorkbenchTab(target, loadData)
+      return await openWorkbenchTab(target, loadData)
     })
     // Synthetic mouse fields; native/Svelte dispatch and browser tabs are not run.
     const event = Object.assign(new Event('click', { cancelable: true }), {

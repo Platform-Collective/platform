@@ -57,7 +57,9 @@
     "RectangleTool": "Obdélník",
     "EllipseTool": "Elipsa",
     "PaletteManagementMenu": "Spravovat barevné předvolby",
-    "BetaVersion": "Beta verze"
+    "BetaVersion": "Beta verze",
+    "TabOpened": "Karta otevřena",
+    "FailedToOpenTab": "Kartu se nepodařilo otevřít"
   },
   "status": {
     "FileTooLarge": "Soubor je příliš velký"

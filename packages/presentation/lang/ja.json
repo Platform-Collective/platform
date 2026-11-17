@@ -57,7 +57,9 @@
     "RectangleTool": "長方形",
     "EllipseTool": "楕円",
     "PaletteManagementMenu": "カラープリセットを管理",
-    "BetaVersion": "ベータ版"
+    "BetaVersion": "ベータ版",
+    "TabOpened": "タブを開きました",
+    "FailedToOpenTab": "タブを開けませんでした"
   },
   "status": {
     "FileTooLarge": "ファイルサイズが大きすぎます"

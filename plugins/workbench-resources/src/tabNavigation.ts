@@ -79,21 +79,22 @@ export function registerWorkbenchTabNavigation (): () => void {
 export async function openWorkbenchTab (
   loc: Location,
   loadData: (loc: Location, client: ReturnType<typeof getClient>) => Promise<{ name?: string, label: IntlString }>
-): Promise<void> {
+): Promise<boolean> {
   const canOpen = getMetadata(presentation.metadata.CanOpenInNewTab)
-  if (canOpen?.(loc) !== true) return
+  if (canOpen?.(loc) !== true) return false
   const client = getClient()
   const accountUuid = getCurrentAccount().uuid
   const isCurrent = (): boolean => getMetadata(presentation.metadata.CanOpenInNewTab) === canOpen && canOpen(loc)
 
   const data = await loadData(loc, client)
-  if (!isCurrent()) return
+  if (!isCurrent()) return false
   const name = data.name ?? (await translate(data.label, {}, get(languageStore)))
-  if (!isCurrent()) return
+  if (!isCurrent()) return false
   await client.createDoc(workbench.class.WorkbenchTab, core.space.Workspace, {
     attachedTo: accountUuid,
     location: locationToUrl(loc),
     isPinned: false,
     name
   })
+  return true
 }
