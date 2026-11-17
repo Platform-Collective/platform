@@ -212,7 +212,8 @@ async function getActiveTalants (filter: Filter, onUpdate: () => void): Promise<
   const doneStates = get(statusStore)
     .array.filter((p) => p.category === task.statusCategory.Lost || p.category === task.statusCategory.Won)
     .map((p) => p._id)
-  const promise = new Promise<Array<Ref<Doc>>>((resolve, reject) => {
+  const lifetime = FilterQuery.getLifetime(filter.index)
+  const promise = new Promise<Array<Ref<Doc>>>((resolve) => {
     let refresh: boolean = false
     const lq = FilterQuery.getLiveQuery(filter.index)
     refresh = lq.query(
@@ -221,6 +222,11 @@ async function getActiveTalants (filter: Filter, onUpdate: () => void): Promise<
         status: { $nin: doneStates }
       },
       (refs: FindResult<Applicant>) => {
+        if (!FilterQuery.isActive(filter.index, 'value', lq)) {
+          lq.unsubscribe()
+          resolve([])
+          return
+        }
         const result = Array.from(new Set(refs.map((p) => p.attachedTo)))
         FilterQuery.results.set(filter.index, result)
         resolve(result)
@@ -239,11 +245,12 @@ async function getActiveTalants (filter: Filter, onUpdate: () => void): Promise<
       resolve(FilterQuery.results.get(filter.index) ?? [])
     }
   })
-  return await promise
+  return (await lifetime.waitFor(promise)) ?? []
 }
 
 async function getNoApplicantCandidates (filter: Filter, onUpdate: () => void): Promise<Array<Ref<Doc>>> {
-  const promise = new Promise<Array<Ref<Doc>>>((resolve, reject) => {
+  const lifetime = FilterQuery.getLifetime(filter.index)
+  const promise = new Promise<Array<Ref<Doc>>>((resolve) => {
     let refresh: boolean = false
     const lq = FilterQuery.getLiveQuery(filter.index)
     refresh = lq.query(
@@ -252,6 +259,11 @@ async function getNoApplicantCandidates (filter: Filter, onUpdate: () => void): 
         applications: { $in: [0, undefined] }
       },
       (refs: FindResult<Candidate>) => {
+        if (!FilterQuery.isActive(filter.index, 'value', lq)) {
+          lq.unsubscribe()
+          resolve([])
+          return
+        }
         const result = Array.from(refs.map((p) => p._id))
         FilterQuery.results.set(filter.index, result)
         resolve(result)
@@ -270,7 +282,7 @@ async function getNoApplicantCandidates (filter: Filter, onUpdate: () => void): 
       resolve(FilterQuery.results.get(filter.index) ?? [])
     }
   })
-  return await promise
+  return (await lifetime.waitFor(promise)) ?? []
 }
 
 async function hasActiveApplicant (filter: Filter, onUpdate: () => void): Promise<ObjQueryType<any>> {

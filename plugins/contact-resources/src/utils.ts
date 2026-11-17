@@ -188,11 +188,12 @@ export async function getRefs (
   docUpdates?: Map<Ref<Doc>, DocNotifyContext>,
   inboxNotificationsByContext?: Map<Ref<DocNotifyContext>, InboxNotification[]>
 ): Promise<Array<Ref<Doc>>> {
+  const lifetime = FilterQuery.getLifetime(filter.index)
   const lq = FilterQuery.getLiveQuery(filter.index)
   const client = getClient()
-  const mode = await client.findOne(view.class.FilterMode, { _id: filter.mode })
-  if (mode === undefined) return []
-  const promise = new Promise<Array<Ref<Doc>>>((resolve, reject) => {
+  const mode = await lifetime.waitFor(client.findOne(view.class.FilterMode, { _id: filter.mode }))
+  if (mode === undefined || !FilterQuery.isActive(filter.index, 'value', lq)) return []
+  const promise = new Promise<Array<Ref<Doc>>>((resolve) => {
     const hasMessagesQuery = hasMessages === true ? { items: { $gt: 0 } } : {}
     const refresh = lq.query(
       contact.class.Channel,
@@ -201,6 +202,11 @@ export async function getRefs (
         ...hasMessagesQuery
       },
       (refs) => {
+        if (!FilterQuery.isActive(filter.index, 'value', lq)) {
+          lq.unsubscribe()
+          resolve([])
+          return
+        }
         const filteredRefs =
           docUpdates !== undefined && inboxNotificationsByContext !== undefined
             ? refs.filter((channel) => {
@@ -220,7 +226,7 @@ export async function getRefs (
       resolve(FilterQuery.results.get(filter.index) ?? [])
     }
   })
-  return await promise
+  return (await lifetime.waitFor(promise)) ?? []
 }
 
 export async function getCurrentEmployeeName (): Promise<string> {
