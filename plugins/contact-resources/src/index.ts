@@ -301,9 +301,10 @@ async function queryEmployee (
         )
     )
   )
-  const q2 = Array.from(
-    new Map(displayNameResults.flat().map((result) => [result.doc._id, result])).values()
-  ).slice(0, 200)
+  const q2 = Array.from(new Map(displayNameResults.flat().map((result) => [result.doc._id, result])).values()).slice(
+    0,
+    200
+  )
 
   return q1.concat(q2)
 }
