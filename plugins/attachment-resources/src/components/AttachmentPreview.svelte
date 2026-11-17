@@ -51,7 +51,7 @@
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div
-    class="content flex-center buttonContainer cursor-pointer"
+    class="content image flex-center buttonContainer cursor-pointer"
     class:hovered
     on:click={() => {
       if (listProvider !== undefined && isAttachment(value)) listProvider.updateFocus(value)
@@ -115,5 +115,9 @@
     max-width: 25rem;
     max-height: 25rem;
     scroll-snap-align: start;
+
+    &.image {
+      max-width: min(25rem, 100%);
+    }
   }
 </style>

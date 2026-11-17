@@ -15,6 +15,7 @@
 <script lang="ts">
   import { AccountRole, getCurrentAccount, hasAccountRole } from '@hcengineering/core'
   import login, { loginId } from '@hcengineering/login'
+  import { getMetadata } from '@hcengineering/platform'
   import { getClient, createQuery, isDisabled } from '@hcengineering/presentation'
   import settingPlg from '../plugin'
   import setting, { SettingsCategory, SettingsEvents } from '@hcengineering/setting'
@@ -47,10 +48,12 @@
   import { ComponentType, onDestroy, onMount } from 'svelte'
   import { clearSettingsStore, settingsStore, type SettingsStore } from '../store'
   import { Analytics } from '@hcengineering/analytics'
+  import { isSettingsCategoryVisible } from '../settings-category'
 
   export let workbenchWidth: number = 0
 
   const client = getClient()
+  const localLoginHidden = getMetadata(login.metadata.HideLocalLogin) ?? false
 
   let category: SettingsCategory | undefined
   let categoryId: string = ''
@@ -65,7 +68,12 @@
     setting.class.SettingsCategory,
     {},
     (res) => {
-      categories = res.filter((p) => hasAccountRole(account, p.role) && !isDisabled(p.feature))
+      categories = res.filter(
+        (p) =>
+          hasAccountRole(account, p.role) &&
+          !isDisabled(p.feature) &&
+          isSettingsCategoryVisible(p._id, localLoginHidden)
+      )
       category = findCategory(categoryId)
     },
     { sort: { order: 1 } }

@@ -109,7 +109,7 @@ export class TTypeIssuePriority extends TType {}
  */
 
 export function TypeMilestoneStatus (): Type<MilestoneStatus> {
-  return { _class: tracker.class.TypeMilestoneStatus, label: 'TypeMilestoneStatus' as IntlString }
+  return { _class: tracker.class.TypeMilestoneStatus, label: tracker.string.Status }
 }
 /**
  * @public
@@ -434,7 +434,7 @@ export class TComponent extends TDoc implements Component {
 @UX(tracker.string.Milestone, tracker.icon.Milestone, '', 'label', undefined, tracker.string.Milestones)
 export class TMilestone extends TDoc implements Milestone {
   @Prop(TypeString(), tracker.string.Title)
-  // @Index(IndexKind.FullText)
+  @Index(IndexKind.FullText)
   label!: string
 
   @Prop(TypeMarkup(), tracker.string.Description)

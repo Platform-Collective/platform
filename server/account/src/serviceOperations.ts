@@ -79,6 +79,7 @@ import {
 
 // Move to config?
 const processingTimeoutMs = 30 * 1000
+const MAX_RESTORE_ATTEMPTS = 3
 
 export async function listWorkspaces (
   ctx: MeasureContext,
@@ -176,12 +177,13 @@ export async function performWorkspaceOperation (
         break
       case 'unarchive':
         if (event === 'unarchive') {
-          if (workspace.status.mode !== 'archived') {
-            throw new PlatformError(unknownError('Unarchive allowed only for archived workspaces'))
+          if (workspace.status.mode !== 'archived' && workspace.status.mode !== 'restore-failed') {
+            throw new PlatformError(unknownError('Unarchive allowed only for archived or restore-failed workspaces'))
           }
         }
 
         update.mode = 'pending-restore'
+        update.processingMessage = ''
         update.processingAttempts = 0
         update.processingProgress = 0
         update.lastProcessingTime = Date.now() - processingTimeoutMs // To not wait for next step
@@ -336,7 +338,7 @@ export async function updateWorkspaceInfo (
   // Only read status for certain events because it is not needed for others
   // and it interferes with status updates when concurrency is high
   let wsStatus: WorkspaceStatus | null = null
-  if (['create-started', 'upgrade-started', 'migrate-clean-done'].includes(event)) {
+  if (['create-started', 'upgrade-started', 'migrate-clean-done', 'restore-failed'].includes(event)) {
     wsStatus = await db.workspaceStatus.findOne({ workspaceUuid })
   }
   switch (event) {
@@ -393,15 +395,33 @@ export async function updateWorkspaceInfo (
     case 'migrate-clean-done':
       wsUpdate.region = wsStatus?.targetRegion ?? ''
       update.mode = 'pending-restore'
+      update.processingAttempts = 0
       update.processingProgress = progress
       update.lastProcessingTime = Date.now() - processingTimeoutMs // To not wait for next step
       break
     case 'restore-started':
+      query.mode = { $in: ['pending-restore', 'restoring'] }
       update.mode = 'restoring'
-      update.processingAttempts = 0
+      // Claims already increment the counter; reset only when scheduling a new restore.
       update.processingProgress = progress
       break
+    case 'restore-failed':
+      // Reject completed restores and retries still pending. Overlapping attempts in restoring mode
+      // cannot be distinguished without a retry-generation identifier.
+      if (wsStatus?.mode !== 'restoring') return
+      query.mode = 'restoring'
+      if (wsStatus.processingAttempts != null) {
+        query.processingAttempts = wsStatus.processingAttempts
+      }
+      if ((wsStatus.processingAttempts ?? 0) >= MAX_RESTORE_ATTEMPTS) {
+        update.mode = 'restore-failed'
+      }
+      update.processingProgress = progress
+      // Status is visible to workspace members. Keep storage/DB details in server logs.
+      update.processingMessage = 'Restore failed. Retry or contact support.'
+      break
     case 'restore-done':
+      query.mode = 'restoring'
       update.mode = 'active'
       update.processingProgress = 100
       update.lastProcessingTime = Date.now() - processingTimeoutMs // To not wait for next step
@@ -431,7 +451,7 @@ export async function updateWorkspaceInfo (
       break
   }
 
-  if (message != null) {
+  if (event !== 'restore-failed' && message != null) {
     update.processingMessage = message
   }
 

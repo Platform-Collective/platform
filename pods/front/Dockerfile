@@ -1,4 +1,4 @@
-FROM platformcollective/front-base:v20261006
+FROM platformcollective/front-base:v20261102
 WORKDIR /app
 
 COPY bundle/bundle.js ./

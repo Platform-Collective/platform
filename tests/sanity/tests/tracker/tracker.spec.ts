@@ -3,12 +3,15 @@ import { readFileSync } from 'fs'
 import { CommonTrackerPage } from '../model/tracker/common-tracker-page'
 import { IssuesDetailsPage } from '../model/tracker/issues-details-page'
 import { IssuesPage } from '../model/tracker/issues-page'
-import { PlatformSetting, PlatformURI, fillSearch } from '../utils'
+import { NewProjectPage } from '../model/tracker/new-project-page'
+import { TrackerNavigationMenuPage } from '../model/tracker/tracker-navigation-menu-page'
+import { PlatformSetting, PlatformURI, fillSearch, generateId } from '../utils'
 import {
   DEFAULT_STATUSES,
   ViewletSelectors,
   checkIssueDraft,
   createIssue,
+  generateProjectId,
   getIssueName,
   navigate,
   openIssue,
@@ -297,21 +300,46 @@ test.describe('Tracker tests', () => {
     { item: 'Export as PDF', extension: 'pdf', magic: [0x25, 0x50, 0x44, 0x46, 0x2d] } // %PDF-
   ]) {
     test(`gantt exports the chart as ${extension.toUpperCase()}`, async ({ page }) => {
-      await (
-        await page.goto(`${PlatformURI}/workbench/sanity-ws/tracker/tracker%3Aproject%3ADefaultProject/issues`)
-      )?.finished()
+      test.setTimeout(120_000)
+
       const issuesPage = new IssuesPage(page)
+      const trackerNavigationMenuPage = new TrackerNavigationMenuPage(page)
+      const newProjectPage = new NewProjectPage(page)
+      const projectTitle = `Gantt export ${generateId()}`
+      const issueTitle = `Export issue ${generateId()}`
+
       await navigate(page)
-      await issuesPage.navigateToIssues()
+      await trackerNavigationMenuPage.pressCreateProjectButton()
+      await newProjectPage.createNewProject({
+        title: projectTitle,
+        identifier: generateProjectId(),
+        description: 'Small project for Gantt export',
+        private: true,
+        defaultAssigneeForIssues: 'Dirak Kainin',
+        defaultIssueStatus: 'In Progress'
+      })
+      await trackerNavigationMenuPage.checkProjectExist(projectTitle)
+      await trackerNavigationMenuPage.openIssuesForProject(projectTitle)
+      await issuesPage.createNewIssue(
+        {
+          title: issueTitle,
+          description: 'Issue included in the exported chart',
+          projectName: projectTitle,
+          status: 'In Progress'
+        },
+        true
+      )
       await page.click(ViewletSelectors.Gantt)
       await expect(issuesPage.ganttRoot()).toBeInViewport()
+      await expect(issuesPage.ganttRoot()).toContainText(issueTitle)
 
       await issuesPage.ganttMoreActionsButton().click()
       await expect(issuesPage.ganttMoreActionsMenu()).toBeInViewport({ ratio: 1 })
 
-      const downloadPromise = page.waitForEvent('download', { timeout: 30000 })
-      await issuesPage.ganttMoreActionsMenuItem(item).click()
-      const download = await downloadPromise
+      const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 60_000 }),
+        issuesPage.ganttMoreActionsMenuItem(item).click()
+      ])
 
       expect(download.suggestedFilename()).toMatch(new RegExp(`\\.${extension}$`))
       const downloadPath = await download.path()

@@ -27,12 +27,14 @@
 
   import { getFileUrl } from '../file'
   import { getPreviewType, previewTypes } from '../filetypes'
+  import { getFilePreviewProps } from '../file-preview-props'
   import { getPreviewThumbnail } from '../preview'
   import { imageSizeToRatio } from '../image'
   import { FilePreviewExtension } from '../types'
 
   export let file: Ref<Blob> | string
-  export let name: string
+  // Preserve an absent filename when forwarding to storage and registered renderers.
+  export let name: string | undefined
   export let contentType: string
   export let metadata: BlobMetadata | undefined
   export let props: Record<string, any> = {}
@@ -114,7 +116,14 @@
     {:else if previewType !== undefined}
       <Component
         is={previewType.component}
-        props={{ value: file, name, contentType, metadata, ...props, fit, setLoading }}
+        props={getFilePreviewProps(previewType.props, props, {
+          value: file,
+          name,
+          contentType,
+          metadata,
+          fit,
+          setLoading
+        })}
       />
     {:else if loading}
       <Loading />

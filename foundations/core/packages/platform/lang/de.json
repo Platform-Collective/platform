@@ -21,6 +21,7 @@
     "AccountAlreadyConfirmed": "Konto wurde bereits bestätigt",
     "WorkspaceAlreadyExists": "Arbeitsbereich existiert bereits",
     "InvalidOtp": "Ungültiger Code",
+    "OtpLocked": "Zu viele falsche Codes. Bitte warten Sie eine Weile und fordern Sie einen neuen Code an.",
     "PasswordLoginLocked": "Die Passwort-Anmeldung ist aufgrund zu vieler fehlgeschlagener Versuche gesperrt. Bitte verwenden Sie eine OTP-Anmeldungsmethode, um Ihr Konto freizuschalten.",
     "InviteNotFound": "Einladung mit E-Mail:{email} nicht gefunden.",
     "WorkspaceLimitReached": "Sie haben das Arbeitsbereichslimit erreicht. Bitte kontaktieren Sie uns...",

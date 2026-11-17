@@ -15,6 +15,7 @@
 <script lang="ts">
   import { Asset, Metadata } from '@hcengineering/platform'
   import {
+    Button,
     ButtonIcon,
     fromCodePoint,
     Scroller,
@@ -36,6 +37,7 @@
   export let color: number | number[] = 0
   export let showColor: boolean = true
   export let showEmoji: boolean = true
+  export let showReset: boolean = false
 
   const dispatch = createEventDispatcher()
 
@@ -103,6 +105,16 @@
         dispatch('close', { icon: iconWithEmoji, color: evt.detail.codes })
       }}
     />
+  {/if}
+  {#if showReset}
+    <div class="flex-row-reverse mb-2 mr-2">
+      <Button
+        label={view.string.RestoreDefaults}
+        size={'x-small'}
+        kind={'link'}
+        on:click={() => dispatch('close', { icon: undefined, color: undefined })}
+      />
+    </div>
   {/if}
 </div>
 

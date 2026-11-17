@@ -47,7 +47,18 @@ import {
 } from '../types'
 import { IssueExternalData, issueDetails } from './githubTypes'
 import { GithubIssueData, IssueSyncManagerBase, IssueUpdate, WithMarkup } from './issueBase'
-import { ensureGraphQLOctokit, getSince, gqlp, guessStatus, isGHWriteAllowed, syncRunner } from './utils'
+import {
+  applyIssueEventEdits,
+  ensureGraphQLOctokit,
+  getSince,
+  githubTime,
+  gqlp,
+  guessStatus,
+  isGHWriteAllowed,
+  isGithubTimestampPreservationEnabled,
+  shouldUpdateGithubIssueStatus,
+  syncRunner
+} from './utils'
 
 export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncManager {
   createPromise: Promise<IssueExternalData | undefined> | undefined
@@ -207,18 +218,9 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
           update.title = event.issue.title
         }
 
-        await this.handleUpdate(
-          ctx,
-          externalData as IssueExternalData,
-          derivedClient,
-          update,
-          account,
-          prj,
-          false,
-          undefined,
-          undefined,
-          du
-        )
+        externalData = applyIssueEventEdits(externalData as IssueExternalData, event.issue, event.changes)
+
+        await this.handleUpdate(ctx, externalData, derivedClient, update, account, prj, false, undefined, undefined, du)
         break
       }
       case 'assigned':
@@ -237,7 +239,7 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
         const stateReasonMap: Record<string, GithubIssueStateReason> = {
           completed: GithubIssueStateReason.Completed,
           reopened: GithubIssueStateReason.Reopened,
-          not_planed: GithubIssueStateReason.NotPlanned
+          not_planned: GithubIssueStateReason.NotPlanned
         }
         const type = await this.provider.getTaskTypeOf(prj.type, tracker.class.Issue)
         const statuses = await this.provider.getStatuses(type?._id)
@@ -265,7 +267,7 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
             // We need to be sure we not change status if category is same, since github doesn't know about it.
             const existingStatus = statuses.find((it) => it._id === existing.status)
             const updateState = statuses.find((it) => it._id === update.status)
-            return existingStatus?.category !== updateState?.category
+            return shouldUpdateGithubIssueStatus(existingStatus, updateState)
           }
         )
         break
@@ -851,6 +853,9 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
     const number = (incResult as any).object.sequence
 
     const issueId = info._id as unknown as Ref<Issue>
+    const createdOn = isGithubTimestampPreservationEnabled()
+      ? githubTime(issueExternal.createdAt)
+      : new Date(issueExternal.createdAt).getTime()
 
     const { description, ...update } = issueData
 
@@ -890,18 +895,25 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
       'subIssues',
       value,
       issueId,
-      new Date(issueExternal.createdAt).getTime(),
+      createdOn,
       account
     )
 
     // Compare description and our markdown and mark issue as description locked in case they are not match.
 
-    await this.client.createMixin(issueId, tracker.class.Issue, prj._id, github.mixin.GithubIssue, {
-      githubNumber: issueExternal.number,
-      url: issueExternal.url,
-      repository: repo,
-      descriptionLocked: isDescriptionLocked
-    })
+    await this.client.createMixin(
+      issueId,
+      tracker.class.Issue,
+      prj._id,
+      github.mixin.GithubIssue,
+      {
+        githubNumber: issueExternal.number,
+        url: issueExternal.url,
+        repository: repo,
+        descriptionLocked: isDescriptionLocked
+      },
+      isGithubTimestampPreservationEnabled() ? createdOn : undefined
+    )
 
     await this.addConnectToMessage(
       github.string.IssueConnectedActivityInfo,
@@ -909,7 +921,8 @@ export class IssueSyncManager extends IssueSyncManagerBase implements DocSyncMan
       issueId,
       tracker.class.Issue,
       issueExternal,
-      repository
+      repository,
+      isGithubTimestampPreservationEnabled() ? createdOn : undefined
     )
   }
 

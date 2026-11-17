@@ -22,12 +22,13 @@ export interface LoginFormLayout {
 
 export function getLoginFormLayout (docWidth: number, docHeight: number): LoginFormLayout {
   if (docWidth <= 480) {
-    return { padding: '.25rem 1.25rem', paddingInline: '1.25rem' }
+    return { padding: '1.25rem', paddingInline: '1.25rem' }
   }
   if (docHeight <= 820) {
-    return { padding: '1rem 2rem', paddingInline: '2rem' }
+    return { padding: '2rem 1.75rem', paddingInline: '1.75rem' }
   }
-  return { padding: '4rem 5rem', paddingInline: '5rem' }
+  // Matches the 36px/32px card padding from the login redesign spec.
+  return { padding: '2.25rem 2rem', paddingInline: '2rem' }
 }
 
 export function loginFormPadding (docWidth: number, docHeight: number): string {
@@ -42,5 +43,6 @@ export function loginFormMinHeight (docHeight: number): string {
   if (docHeight <= 880) {
     return '0'
   }
-  return 'min(42rem, calc(100dvh - 12rem))'
+  // Kept small so the card hugs its content instead of stretching into a tall panel.
+  return 'min(24rem, calc(100dvh - 12rem))'
 }

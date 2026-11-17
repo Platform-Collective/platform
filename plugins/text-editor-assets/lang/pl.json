@@ -49,6 +49,8 @@
     "DeleteColumn": "Usuń kolumnę",
     "AddRowBefore": "Dodaj wiersz przed",
     "AddRowAfter": "Dodaj wiersz po",
+    "AddRowsBefore": "Dodaj wiersze przed ({count})",
+    "AddRowsAfter": "Dodaj wiersze po ({count})",
     "DeleteRow": "Usuń wiersz",
     "DeleteTable": "Usuń tabelę",
     "MergeCells": "Scal komórki",
@@ -87,6 +89,7 @@
     "UnableToLoadEmbeddedContent": "Podgląd linku nie mógł zostać załadowany z powodu niewystarczających uprawnień lub nieobsługiwanej treści",
     "CannotConnectToCollaborationService": "Nie można połączyć się z modułem współpracy",
     "SourceURL": "Adres URL źródła",
-    "SelectedDocuments": "Wybrane dokumenty ({count, plural, =1 {1 element} other {# elementów}})"
+    "SelectedDocuments": "Wybrane dokumenty ({count, plural, =1 {1 element} other {# elementów}})",
+    "LatestVersion": "Najnowsza"
   }
 }

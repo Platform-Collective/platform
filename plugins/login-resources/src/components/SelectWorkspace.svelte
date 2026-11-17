@@ -19,6 +19,7 @@
     isActiveMode,
     isArchivingMode,
     isRestoringMode,
+    isRestoreFailedMode,
     isUpgradingMode
   } from '@hcengineering/core'
   import { LoginInfo } from '@hcengineering/login'
@@ -55,6 +56,7 @@
 
   let workspaces: WorkspaceInfoWithStatus[] = []
   let status = OK
+  let restoreFailed = false
   let accountPromise: Promise<LoginInfo | null>
   let account: LoginInfo | null | undefined = undefined
   let isReadOnlyGuest: boolean = true
@@ -85,15 +87,18 @@
   })
 
   async function select(workspaceUrl: string): Promise<void> {
+    restoreFailed = false
     status = new Status(Severity.INFO, login.status.ConnectingToServer, {})
 
     const [loginStatus, result] = await selectWorkspace(workspaceUrl)
 
     const ws = workspaces.find((it) => it.uuid === result?.workspace)
-    if (ws != null && isArchivingMode(ws?.mode) && result?.workspace !== undefined) {
+    if (ws != null && (isArchivingMode(ws.mode) || isRestoreFailedMode(ws.mode)) && result?.workspace !== undefined) {
       showPopup(MessageBox, {
         label: login.string.SelectWorkspace,
-        message: login.string.WorkspaceArchivedDesc,
+        message: isRestoreFailedMode(ws.mode)
+          ? login.string.WorkspaceRestoreFailedDesc
+          : login.string.WorkspaceArchivedDesc,
         canSubmit: true,
         params: {},
         okLabel: login.string.RestoreArchivedWorkspace,
@@ -106,6 +111,7 @@
               workspaces = await getWorkspaces()
               info = workspaces.find((it) => it.uuid === ws.uuid)
             }
+            restoreFailed = isRestoreFailedMode(info?.mode)
           }
         }
       })
@@ -138,7 +144,7 @@
   let search: string = ''
 </script>
 
-<form class="container" style:padding={$deviceInfo.docWidth <= 480 ? '1.25rem' : '5rem'}>
+<form class="container" style:padding={$deviceInfo.docWidth <= 480 ? '1.25rem' : '2rem'}>
   <div class="grow-separator" />
   <div class="fs-title">
     {#if account != null}
@@ -150,6 +156,9 @@
   <div class="title"><Label label={login.string.SelectWorkspace} /></div>
   <div class="status">
     <StatusControl {status} />
+    {#if restoreFailed}
+      <Label label={login.string.WorkspaceRestoreFailedDesc} />
+    {/if}
   </div>
   {#if workspaces.length > 10}
     <div class="ml-2 mr-2 mb-2 flex-grow">
@@ -161,7 +170,7 @@
       <Spinner />
     </div>
   {:then}
-    <Scroller padding={'.125rem 0'} maxHeight={35}>
+    <Scroller padding={'.125rem 0'} maxHeight={22}>
       {#if workspaces.length === 0 && account?.token != null && isReadOnlyGuest}
         <span class="readonly-warning"><Label label={login.string.SignUpToCreateWorkspace} /></span>
       {/if}
@@ -189,7 +198,9 @@
                 {#if isArchivingMode(workspace.mode)}
                   - <Label label={presentation.string.Archived} />
                 {/if}
-                {#if !isActiveMode(workspace.mode) && !isArchivingMode(workspace.mode)}
+                {#if isRestoreFailedMode(workspace.mode)}
+                  - <Label label={login.string.WorkspaceRestoreFailed} />
+                {:else if !isActiveMode(workspace.mode) && !isArchivingMode(workspace.mode)}
                   ({workspace.processingProgress}%)
                 {/if}
               </span>
@@ -259,6 +270,8 @@
     flex-direction: column;
     justify-content: space-between;
     flex-grow: 1;
+    min-height: 0;
+    min-width: 0;
     overflow: hidden;
 
     .workspace-loader {
@@ -274,16 +287,15 @@
       color: var(--theme-caption-color);
     }
     .status {
-      min-height: 7.5rem;
-      max-height: 7.5rem;
-      padding-top: 1.25rem;
+      min-height: 0;
+      padding-top: 0.75rem;
     }
 
     .form {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       column-gap: 0.75rem;
-      row-gap: 1.5rem;
+      row-gap: 0.625rem;
 
       .form-row {
         grid-column-start: 1;
@@ -303,7 +315,7 @@
       flex-grow: 1;
     }
     .footer {
-      margin-top: 3.5rem;
+      margin-top: 1.25rem;
       font-size: 0.8rem;
       color: var(--theme-caption-color);
       span {

@@ -56,6 +56,7 @@ import {
   getSocialIdFromOldAccount
 } from '@hcengineering/model-core'
 import { DOMAIN_DOC_NOTIFY, DOMAIN_NOTIFICATION, DOMAIN_USER_NOTIFY } from './index'
+import { isNonEmptyArray } from './migration-utils'
 
 export async function removeNotifications (
   client: MigrationClient,
@@ -244,13 +245,14 @@ export async function migrateDuplicateContexts (client: MigrationClient): Promis
   }
 }
 
-async function migrateCollaborators (client: MigrationClient): Promise<void> {
+export async function migrateCollaborators (client: MigrationClient): Promise<void> {
   const hierarchy = client.hierarchy
   client.logger.log('processing extract collaborators ', {})
   for (const domain of client.hierarchy.domains()) {
     if ([DOMAIN_TX, DOMAIN_TRANSIENT].includes(domain)) continue
     client.logger.log('processing domain ', { domain })
     let processed = 0
+    let skippedInvalidCollaborators = 0
     const iterator = await client.traverse(domain, { 'notification:mixin:Collaborators': { $exists: true } })
 
     try {
@@ -266,9 +268,14 @@ async function migrateCollaborators (client: MigrationClient): Promise<void> {
 
         for (const doc of docs) {
           const mixin = hierarchy.as(doc, notification.mixin.Collaborators) as any as OldCollaborators
-          const oldCollaborators = mixin.collaborators
+          const oldCollaborators: unknown = mixin.collaborators
 
-          if (oldCollaborators === undefined || oldCollaborators.length === 0) continue
+          if (!isNonEmptyArray<AccountUuid>(oldCollaborators)) {
+            if (oldCollaborators !== undefined) {
+              skippedInvalidCollaborators++
+            }
+            continue
+          }
 
           for (const collab of oldCollaborators) {
             collabs.push({
@@ -303,7 +310,7 @@ async function migrateCollaborators (client: MigrationClient): Promise<void> {
         client.logger.log('...processed', { count: processed })
       }
 
-      client.logger.log('finished processing domain ', { domain, processed })
+      client.logger.log('finished processing domain ', { domain, processed, skippedInvalidCollaborators })
     } finally {
       await iterator.close()
     }
@@ -325,7 +332,7 @@ async function migrateReactionNotifications (client: MigrationClient): Promise<v
  * @param client
  * @returns
  */
-async function migrateAccounts (client: MigrationClient): Promise<void> {
+export async function migrateAccounts (client: MigrationClient): Promise<void> {
   const hierarchy = client.hierarchy
   const socialKeyByAccount = await getSocialKeyByOldAccount(client)
   const socialIdBySocialKey = new Map<string, PersonId | null>()
@@ -337,6 +344,7 @@ async function migrateAccounts (client: MigrationClient): Promise<void> {
     if (['tx'].includes(domain)) continue
     client.logger.log('processing domain ', { domain })
     let processed = 0
+    let skippedInvalidCollaborators = 0
     const iterator = await client.traverse(domain, {})
 
     try {
@@ -352,9 +360,14 @@ async function migrateAccounts (client: MigrationClient): Promise<void> {
 
         for (const doc of docs) {
           const mixin = hierarchy.as(doc, notification.mixin.Collaborators) as any as OldCollaborators
-          const oldCollaborators = mixin.collaborators
+          const oldCollaborators: unknown = mixin.collaborators
 
-          if (oldCollaborators === undefined || oldCollaborators.length === 0) continue
+          if (!isNonEmptyArray<AccountUuid>(oldCollaborators)) {
+            if (oldCollaborators !== undefined) {
+              skippedInvalidCollaborators++
+            }
+            continue
+          }
 
           const newCollaborators = await getUniqueAccountsFromOldAccounts(
             client,
@@ -396,7 +409,7 @@ async function migrateAccounts (client: MigrationClient): Promise<void> {
         client.logger.log('...processed', { count: processed })
       }
 
-      client.logger.log('finished processing domain ', { domain, processed })
+      client.logger.log('finished processing domain ', { domain, processed, skippedInvalidCollaborators })
     } finally {
       await iterator.close()
     }

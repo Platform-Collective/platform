@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Calendario",
+    "CalendarWithoutDueDate": "Incidencias sin fecha de vencimiento: {count}",
+    "CalendarUpdateFailed": "No se pudieron actualizar las fechas de la incidencia. Inténtalo de nuevo.",
     "TrackerApplication": "Seguimiento",
     "Projects": "Tus proyectos",
     "More": "Más",
@@ -195,6 +198,7 @@
     "AllFilters": "todos los filtros",
     "NoDescription": "Sin descripción",
     "SearchIssue": "Buscar tarea...",
+    "SearchMilestone": "Buscar hito...",
     "StatusHistory": "Historial de estado",
     "NewSubIssue": "Agregar subproblema...",
     "AddLabel": "Agregar etiqueta",

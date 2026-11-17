@@ -159,6 +159,7 @@
     "GroupByStatus": "Podle stavu",
     "GroupByDate": "Podle data",
     "SpeakingWhileMuted": "Máte vypnutý mikrofon - ostatní vás neslyší",
-    "SpeakingWhileMutedAlert": "Upozornit, když mluvím s vypnutým mikrofonem"
+    "SpeakingWhileMutedAlert": "Upozornit, když mluvím s vypnutým mikrofonem",
+    "ScreenSharedBy": "{name} sdílí obrazovku"
   }
 }

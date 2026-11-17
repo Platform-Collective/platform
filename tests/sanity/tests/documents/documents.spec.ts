@@ -236,6 +236,10 @@ test.describe('Documents tests', () => {
       await documentContentPage.updateDocumentTitle(targetDocumentSecondTitle)
       await documentContentPage.checkDocumentTitle(targetDocumentSecondTitle)
 
+      // Make sure the new title was stored, not only shown in the input
+      await documentsPage.page.reload()
+      await documentContentPage.checkDocumentTitle(targetDocumentSecondTitle)
+
       await documentsPage.openDocument(sourceDocument.title)
       await documentContentPage.checkDocumentTitle(sourceDocument.title)
 

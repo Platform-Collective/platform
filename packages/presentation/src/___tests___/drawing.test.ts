@@ -133,6 +133,25 @@ describe('drawing module tests', () => {
       expect(drawingBoard).toBeDefined()
     })
 
+    it('allows the underlying image to receive pointer events when readonly', () => {
+      const props: DrawingProps = {
+        colorsList: [['alpha', new ThemeAwareColor('red', 'yellow')]],
+        readonly: true,
+        getCurrentTheme: () => 'theme-light',
+        subscribeOnThemeChange: () => {},
+        imageWidth: 40,
+        imageHeight: 40,
+        commands: []
+      }
+      const drawingBoard = drawing(drawingPlugInPoint, props)
+
+      expect(drawingBoard.canvas?.style.pointerEvents).toBe('none')
+
+      drawingBoard.update?.({ ...props, readonly: false })
+
+      expect(drawingBoard.canvas?.style.pointerEvents).toBe('auto')
+    })
+
     describe('text editing', () => {
       const DefaultPenColor: ColorMetaNameOrHex = 'red' as ColorMetaNameOrHex
       const DefaultTool: DrawingTool = 'pen'
