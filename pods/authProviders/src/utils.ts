@@ -14,8 +14,19 @@
 //
 import { AccountDB, joinWithProvider, LoginInfo, loginOrSignUpWithProvider } from '@hcengineering/account'
 import { BrandingMap, concatLink, getBranding, MeasureContext, SocialKey } from '@hcengineering/core'
+import { randomUUID } from 'crypto'
 import { IncomingHttpHeaders } from 'http'
 import qs from 'querystringify'
+
+const AUTH_STATE_TOKEN_COOKIE = 'auth_state_token'
+const AUTH_STATE_TOKEN_MAX_AGE_MS = 10 * 60 * 1000
+
+export type AuthStateRejectReason = 'missing_cookie' | 'missing_nonce' | 'mismatch'
+
+export interface AuthStateTokenValidation {
+  valid: boolean
+  reason?: AuthStateRejectReason
+}
 
 export function getHost (headers: IncomingHttpHeaders): string | undefined {
   let host: string | undefined
@@ -32,6 +43,7 @@ export interface AuthState {
   branding?: string
   autoJoin?: boolean
   navigateUrl?: string
+  nonce?: string
 }
 
 export function safeParseAuthState (rawState: string | undefined): AuthState {
@@ -46,17 +58,107 @@ export function safeParseAuthState (rawState: string | undefined): AuthState {
   }
 }
 
-export function encodeState (ctx: any, brandings: BrandingMap): string {
+export function createAuthStateNonce (): string {
+  return randomUUID()
+}
+
+export function encodeState (ctx: any, brandings: BrandingMap, nonce?: string): string {
   const host = getHost(ctx.request.headers)
   const branding = host !== undefined ? (brandings[host]?.key ?? undefined) : undefined
   const state: AuthState = {
     inviteId: ctx.query?.inviteId,
     branding,
     autoJoin: ctx.query?.autoJoin !== undefined,
-    navigateUrl: ctx.query?.navigateUrl
+    navigateUrl: ctx.query?.navigateUrl,
+    nonce
   }
 
   return encodeURIComponent(JSON.stringify(state))
+}
+
+function parseSessionCookieSecure (value: string | undefined): boolean | undefined {
+  switch (value?.trim().toLowerCase()) {
+    case 'true':
+    case '1':
+    case 'yes':
+      return true
+    case 'false':
+    case '0':
+    case 'no':
+      return false
+    default:
+      return undefined
+  }
+}
+
+export function shouldUseSecureAuthStateCookie (
+  accountsUrl: string,
+  sessionCookieSecure: string | undefined = process.env.SESSION_COOKIE_SECURE
+): boolean {
+  const configuredValue = parseSessionCookieSecure(sessionCookieSecure)
+  if (configuredValue !== undefined) return configuredValue
+
+  try {
+    return new URL(accountsUrl).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function authStateTokenCookieOptions (
+  secure: boolean,
+  maxAge?: number
+): {
+  httpOnly: true
+  secure: boolean
+  sameSite: 'lax'
+  signed: true
+  maxAge?: number
+} {
+  return {
+    httpOnly: true,
+    secure,
+    sameSite: 'lax',
+    signed: true,
+    ...(maxAge !== undefined ? { maxAge } : {})
+  }
+}
+
+function setAuthStateTokenCookieValue (ctx: any, value: string | null, secure: boolean, maxAge?: number): void {
+  const setCookie = (): void => {
+    ctx.cookies.set(AUTH_STATE_TOKEN_COOKIE, value, authStateTokenCookieOptions(secure, maxAge))
+  }
+
+  if (!secure || ctx.cookies.secure === true) {
+    setCookie()
+    return
+  }
+
+  const currentSecure = ctx.cookies.secure
+  ctx.cookies.secure = true
+  try {
+    setCookie()
+  } finally {
+    ctx.cookies.secure = currentSecure
+  }
+}
+
+export function setAuthStateTokenCookie (ctx: any, nonce: string, secure: boolean): void {
+  setAuthStateTokenCookieValue(ctx, nonce, secure, AUTH_STATE_TOKEN_MAX_AGE_MS)
+}
+
+export function validateAuthStateTokenCookie (
+  ctx: any,
+  expectedNonce: string | undefined,
+  secure: boolean
+): AuthStateTokenValidation {
+  const nonce = ctx.cookies.get(AUTH_STATE_TOKEN_COOKIE, { signed: true })
+  setAuthStateTokenCookieValue(ctx, null, secure)
+
+  if (expectedNonce === undefined) return { valid: false, reason: 'missing_nonce' }
+  if (nonce === undefined) return { valid: false, reason: 'missing_cookie' }
+  if (nonce !== expectedNonce) return { valid: false, reason: 'mismatch' }
+  return { valid: true }
 }
 
 export async function handleProviderAuth (

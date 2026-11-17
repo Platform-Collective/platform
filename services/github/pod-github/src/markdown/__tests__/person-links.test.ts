@@ -3,7 +3,7 @@
 import contact from '@hcengineering/contact'
 import { MarkupMarkType, MarkupNodeType, jsonToMarkup } from '@hcengineering/text'
 import type { MarkupNode } from '@hcengineering/text'
-import { markupToMarkdown, parseMessageMarkdown } from '..'
+import { markupToMarkdown, parseMessageMarkdown, parseMessageMarkdownWithPersons } from '..'
 
 const REF_URL = 'https://brand.example/browse/?workspace=workspace-uuid'
 const PERSON_URL = 'https://brand.example/workbench/workspace-name/contact/'
@@ -102,5 +102,104 @@ describe('GitHub Person mention links', () => {
     expect(markdown).toBe(
       `> [${LABEL}](${REF_URL}&_class=github%3Aclass%3AGithubPullRequest&_id=${PERSON_ID}&label=Kristina%20Fefelova)`
     )
+  })
+})
+
+describe('GitHub contact links that do not resolve to a Person', () => {
+  const OTHER_ID = '63204fc031b9728f9e6b2e1b'
+
+  function linkNode (url: string): MarkupNode {
+    return {
+      type: MarkupNodeType.text,
+      text: LABEL,
+      marks: [{ type: MarkupMarkType.link, attrs: { href: url } }]
+    }
+  }
+
+  async function parse (markdown: string, known: string[]): Promise<{ parsed: MarkupNode, lookup: jest.Mock }> {
+    const lookup = jest.fn(async (ids: string[]) => ids.filter((id) => known.includes(id)))
+    const parsed = await parseMessageMarkdownWithPersons(markdown, REF_URL, IMAGE_URL, GUEST_URL, PERSON_URL, lookup)
+    return { parsed, lookup }
+  }
+
+  it('keeps a contact link with an unknown id as an ordinary link', async () => {
+    const url = `${PERSON_URL}${OTHER_ID}`
+    const { parsed, lookup } = await parse(`[${LABEL}](${url})`, [PERSON_ID])
+
+    expect(parsed.content?.[0].content?.[0]).toMatchObject(linkNode(url))
+    expect(lookup).toHaveBeenCalledWith([OTHER_ID])
+  })
+
+  it('turns a contact link with a known id into a Person mention', async () => {
+    const { parsed } = await parse(`[${LABEL}](${PERSON_URL}${PERSON_ID})`, [PERSON_ID])
+
+    expect(parsed.content?.[0].content?.[0]).toMatchObject({
+      type: MarkupNodeType.reference,
+      attrs: { id: PERSON_ID, objectclass: contact.class.Person, label: LABEL }
+    })
+  })
+
+  it('looks up all ids of one message at once', async () => {
+    const markdown = [
+      `[${LABEL}](${PERSON_URL}${PERSON_ID})`,
+      `[${LABEL}](${PERSON_URL}${OTHER_ID})`,
+      `[${LABEL}](${PERSON_URL}${PERSON_ID})`
+    ].join(' ')
+    const { parsed, lookup } = await parse(markdown, [PERSON_ID])
+
+    expect(lookup).toHaveBeenCalledTimes(1)
+    expect(lookup).toHaveBeenCalledWith([PERSON_ID, OTHER_ID])
+    const types = parsed.content?.[0].content?.filter((it) => it.text !== ' ').map((it) => it.type)
+    expect(types).toEqual([MarkupNodeType.reference, MarkupNodeType.text, MarkupNodeType.reference])
+    expect(parsed.content?.[0].content?.[2]).toMatchObject(linkNode(`${PERSON_URL}${OTHER_ID}`))
+  })
+
+  it('skips the lookup when a message has no contact links', async () => {
+    const { parsed, lookup } = await parse('plain [link](https://example.com) text', [PERSON_ID])
+
+    expect(lookup).not.toHaveBeenCalled()
+    expect(parsed).toEqual(
+      parseMessageMarkdown('plain [link](https://example.com) text', REF_URL, IMAGE_URL, GUEST_URL)
+    )
+  })
+
+  it.each([`\`[${LABEL}](${PERSON_URL}${PERSON_ID})\``, `\`\`\`\n[${LABEL}](${PERSON_URL}${PERSON_ID})\n\`\`\``])(
+    'leaves contact links inside code untouched: %s',
+    async (markdown) => {
+      const { parsed, lookup } = await parse(markdown, [PERSON_ID])
+
+      expect(lookup).not.toHaveBeenCalled()
+      expect(parsed).toEqual(parseMessageMarkdown(markdown, REF_URL, IMAGE_URL, GUEST_URL))
+      expect(JSON.stringify(parsed)).not.toContain(MarkupNodeType.reference)
+    }
+  )
+})
+
+describe('GitHub contact links with ids that cannot be a Person', () => {
+  const INVALID_IDS = ['%00', `${PERSON_ID}%00`, '%0A', '%7F', '%C2%85', '%E0%A4%A']
+
+  function expectPlainLink (node: MarkupNode | undefined): void {
+    expect(node).toMatchObject({ type: MarkupNodeType.text, text: LABEL, marks: [{ type: MarkupMarkType.link }] })
+  }
+
+  it.each(INVALID_IDS)('keeps the link and skips the lookup for id %s', async (id) => {
+    const lookup = jest.fn(async (ids: string[]) => ids)
+    const parsed = await parseMessageMarkdownWithPersons(
+      `[${LABEL}](${PERSON_URL}${id})`,
+      REF_URL,
+      IMAGE_URL,
+      GUEST_URL,
+      PERSON_URL,
+      lookup
+    )
+
+    expect(lookup).not.toHaveBeenCalled()
+    expectPlainLink(parsed.content?.[0].content?.[0])
+  })
+
+  it.each(INVALID_IDS)('keeps the link without a lookup for id %s', (id) => {
+    const parsed = parseMessageMarkdown(`[${LABEL}](${PERSON_URL}${id})`, REF_URL, IMAGE_URL, GUEST_URL, PERSON_URL)
+
+    expectPlainLink(parsed.content?.[0].content?.[0])
   })
 })
