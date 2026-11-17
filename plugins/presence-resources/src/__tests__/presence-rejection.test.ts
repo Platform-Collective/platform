@@ -87,6 +87,19 @@ describe('updatePresence', () => {
     expect(connection.tx).toHaveBeenCalledTimes(1)
   })
 
+  it('retries a rejected space after the retry delay', async () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(0)
+    connection.tx.mockRejectedValueOnce(forbidden())
+    await updatePresence(info('role-upgraded'))
+    await updatePresence(info('role-upgraded'))
+    expect(connection.tx).toHaveBeenCalledTimes(1)
+
+    now.mockReturnValue(60_000)
+    await updatePresence(info('role-upgraded'))
+    expect(connection.tx).toHaveBeenCalledTimes(2)
+    now.mockRestore()
+  })
+
   it('stops cleanup and heartbeat writes after a rejected deletion', async () => {
     const existing = {
       _id: 'presence:issue-delete-rejected:person',
