@@ -52,9 +52,12 @@ linking:
   The identity provider is authoritative for workspaces listed in
   `OPENID_ROLE_GROUPS`: manual membership and role changes there are
   overwritten at the user's next OIDC login. Changes take effect on the next
-  login; existing sessions are not terminated. Synchronization also runs after
-  an invite join, so a user who joins a configured workspace through an invite
-  without a matching group is removed during that same login.
+  login. Removing a membership follows `leaveWorkspace`: the workspace Employee
+  remains active to preserve the person's workspace history, and existing
+  sessions are not terminated. Employee deactivation and immediate session
+  revocation are separate administrative operations. Synchronization also runs
+  after an invite join, so a user who joins a configured workspace through an
+  invite without a matching group is removed during that same login.
 - `OPENID_TRUST_EMAIL=true` treats an ID-token email as verified only when the
   token issuer exactly matches `OPENID_ISSUER` and its `tid` matches the tenant
   in an issuer of the form
