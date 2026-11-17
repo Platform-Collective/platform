@@ -23,9 +23,10 @@
 
   // Do not open a workspace-sized subscription for every group. Only show an
   // exact total when the list has loaded every report belonging to the group.
-  $: total = docs.length === allDocs.length
-    ? floorFractionDigits(docs.reduce((sum, it) => sum + (it.value ?? 0), 0), 3)
-    : undefined
+  $: total =
+    docs.length === allDocs.length
+      ? floorFractionDigits(docs.reduce((sum, it) => sum + (it.value ?? 0), 0), 3)
+      : undefined
 </script>
 
 {#if total !== undefined}
