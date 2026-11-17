@@ -14,7 +14,7 @@
 -->
 <script lang="ts">
   import { Analytics } from '@hcengineering/analytics'
-  import { BlobMetadata, SortingOrder, type Blob, type Ref } from '@hcengineering/core'
+  import { BlobMetadata, SortingOrder, generateId, type Blob, type Ref } from '@hcengineering/core'
   import { getEmbeddedLabel } from '@hcengineering/platform'
   import {
     Button,
@@ -26,9 +26,10 @@
     ButtonIcon,
     IconMaximize,
     IconMinimize,
-    IconClose
+    IconClose,
+    Label
   } from '@hcengineering/ui'
-  import { createEventDispatcher, onMount } from 'svelte'
+  import { createEventDispatcher, onDestroy, onMount } from 'svelte'
 
   import ActionContext from './ActionContext.svelte'
   import FilePreview from './FilePreview.svelte'
@@ -39,7 +40,7 @@
   import FileTypeIcon from './FileTypeIcon.svelte'
 
   export let file: Ref<Blob> | undefined
-  export let name: string
+  export let name: string | undefined = undefined
   export let contentType: string
   export let metadata: BlobMetadata | undefined
   export let props: Record<string, any> & {
@@ -54,31 +55,65 @@
   export let showIcon = true
 
   let drawingLoading = false
+  let drawingRequest = 0
+  let preview: HTMLDivElement | undefined
+  let previousFocus: HTMLElement | undefined
+  let focusScope: Element | undefined
   let createDrawing: (data: any) => Promise<any>
 
   const dispatch = createEventDispatcher()
+  const titleId = generateId()
 
+  // Only normalize the title: storage URLs distinguish undefined from an empty filename.
+  $: titleName = name ?? ''
   $: void loadDrawings(file)
 
-  async function loadDrawings(file: Ref<Blob> | undefined): Promise<void> {
+  async function loadDrawings(requestedFile: Ref<Blob> | undefined): Promise<void> {
+    const request = ++drawingRequest
+    drawingLoading = false
     if (props.drawingAvailable === true) {
       if (props.loadDrawings !== undefined) {
         drawingLoading = true
         props
           .loadDrawings()
           .then((result) => {
+            if (request !== drawingRequest || requestedFile !== file) return
             drawingLoading = false
             props.drawings = result
           })
           .catch((error) => {
-            drawingLoading = false
+            if (request === drawingRequest && requestedFile === file) drawingLoading = false
             Analytics.handleError(error)
           })
       }
     }
   }
 
+  // Remember who had focus (e.g. a text editor that opened the preview) before the title takes it.
+  function rememberFocus(): void {
+    const active = document.activeElement
+    if (preview === undefined || !(active instanceof HTMLElement) || active === document.body) return
+    focusScope = preview.closest('.hulyModal-container') ?? preview
+    if (!focusScope.contains(active)) previousFocus = active
+  }
+
+  // Give focus back only if it is still in the popup or was lost with it, never steal it from elsewhere.
+  function restoreFocus(): void {
+    if (previousFocus === undefined || !previousFocus.isConnected) return
+    const active = document.activeElement
+    if (active === null || active === document.body || focusScope?.contains(active) === true) {
+      previousFocus.focus({ preventScroll: true })
+    }
+  }
+
+  onDestroy(() => {
+    drawingRequest++
+    restoreFocus()
+  })
+
   onMount(() => {
+    rememberFocus()
+    preview?.focus({ preventScroll: true })
     if (props.drawingAvailable === true) {
       if (props.createDrawing !== undefined) {
         createDrawing = props.createDrawing
@@ -160,19 +195,33 @@
       on:click={() => {
         fullSize = !fullSize
         dispatch('fullsize', fullSize)
+        preview?.focus({ preventScroll: true })
       }}
     />
     <div class="hulyHeader-divider short no-print" />
   </svelte:fragment>
 
   <svelte:fragment slot="title">
-    <div class="antiTitle icon-wrapper">
+    <div
+      class="antiTitle icon-wrapper"
+      role="heading"
+      aria-level="1"
+      aria-labelledby={titleId}
+      tabindex="-1"
+      bind:this={preview}
+    >
       {#if showIcon}
         <div class="wrapped-icon">
-          <FileTypeIcon {name} />
+          <FileTypeIcon name={titleName} />
         </div>
       {/if}
-      <span class="wrapped-title" use:tooltip={{ label: getEmbeddedLabel(name) }}>{name}</span>
+      <span id={titleId} class="wrapped-title" use:tooltip={{ label: getEmbeddedLabel(titleName) }}>
+        {#if titleName.trim().length > 0}
+          {titleName}
+        {:else}
+          <Label label={presentation.string.DocumentPreview} />
+        {/if}
+      </span>
     </div>
   </svelte:fragment>
 
@@ -217,3 +266,9 @@
     <FilePreview {file} {contentType} {name} {metadata} {props} fit />
   {/if}
 </Modal>
+
+<style>
+  .antiTitle:focus {
+    outline: none;
+  }
+</style>

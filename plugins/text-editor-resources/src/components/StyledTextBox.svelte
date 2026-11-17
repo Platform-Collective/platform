@@ -28,6 +28,9 @@
   import { type FileAttachFunction } from './extension/types'
   import { inlineCommandsConfig } from './extensions'
 
+  const TODO_LIST_COMMANDS = ['todo-list'] as const
+  const IMAGE_COMMANDS = ['image'] as const
+
   export let label: IntlString | undefined = undefined
   export let content: Markup
   export let placeholder: IntlString = textEditor.string.EditorPlaceholder
@@ -44,6 +47,7 @@
   export let focusable: boolean = false
   export let autofocus = false
   export let enableInlineCommands: boolean = true
+  export let enableTodoList: boolean = false
   export let isScrollable: boolean = true
   export let boundary: HTMLElement | undefined = undefined
   export let readonly: boolean = false
@@ -189,6 +193,9 @@
       case 'separator-line':
         editor.editorHandler.insertSeparatorLine()
         break
+      case 'todo-list':
+        editor.getEditor()?.chain().focus(pos).toggleTaskList().run()
+        break
       case 'mermaid':
         editor.getEditor()?.commands.insertContentAt(pos, { type: 'mermaid' })
         break
@@ -284,6 +291,7 @@
       kitOptions={{
         emoji: true,
         textColorStyling: true,
+        ...(enableTodoList ? { lists: { todoItem: true, todoList: true } } : {}),
         hooks: {
           focus: {
             onCanBlur: (value) => (canBlur = value),
@@ -296,10 +304,11 @@
             getFileUrl
           }
         },
-        inlineCommands: inlineCommandsConfig(
-          handleCommandSelected,
-          attachFile == null ? ['drawing-board', 'todo-list', 'image'] : ['drawing-board', 'todo-list']
-        ),
+        inlineCommands: inlineCommandsConfig(handleCommandSelected, [
+          'drawing-board',
+          ...(enableTodoList ? [] : TODO_LIST_COMMANDS),
+          ...(attachFile == null ? IMAGE_COMMANDS : [])
+        ]),
         ...kitOptions,
         leftMenu: {
           width: 20,
@@ -316,6 +325,9 @@
             { id: 'table', label: textEditor.string.Table, icon: view.icon.Table2 },
             { id: 'code-block', label: textEditor.string.CodeBlock, icon: view.icon.CodeBlock },
             { id: 'separator-line', label: textEditor.string.SeparatorLine, icon: view.icon.SeparatorLine },
+            ...(enableTodoList
+              ? [{ id: 'todo-list', label: textEditor.string.TodoItem, icon: view.icon.TodoList }]
+              : []),
             { id: 'mermaid', label: textEditor.string.MermaidDiargram, icon: view.icon.Model }
           ],
           handleSelect: handleCommandSelected

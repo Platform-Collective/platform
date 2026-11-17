@@ -26,7 +26,7 @@ import workbench from '@hcengineering/model-workbench'
 import converter from '@hcengineering/converter'
 import notification from '@hcengineering/notification'
 import setting from '@hcengineering/setting'
-import pluginState, { type Issue, trackerId } from '@hcengineering/tracker'
+import pluginState, { type Issue, issuePrioritySorting, trackerId } from '@hcengineering/tracker'
 
 import type { TaskStatusFactory } from '@hcengineering/task'
 import { PaletteColorIndexes } from '@hcengineering/ui/src/colors'
@@ -95,7 +95,8 @@ function defineSortAndGrouping (builder: Builder): void {
   })
 
   builder.mixin(tracker.class.TypeIssuePriority, core.class.Class, view.mixin.SortFuncs, {
-    func: tracker.function.IssuePrioritySort
+    func: tracker.function.IssuePrioritySort,
+    sortingRules: issuePrioritySorting
   })
 
   builder.mixin(tracker.class.Milestone, core.class.Class, view.mixin.SortFuncs, {
@@ -710,6 +711,21 @@ export function createModel (builder: Builder): void {
     tracker.completion.IssueCategory
   )
 
+  builder.createDoc(
+    presentation.class.ObjectSearchCategory,
+    core.space.Model,
+    {
+      icon: tracker.icon.Milestone,
+      label: tracker.string.SearchMilestone,
+      title: tracker.string.Milestones,
+      query: tracker.completion.MilestoneQuery,
+      context: ['search', 'mention', 'spotlight'],
+      classToSearch: tracker.class.Milestone,
+      priority: 250
+    },
+    tracker.completion.MilestoneCategory
+  )
+
   defineNotifications(builder)
 
   builder.createDoc(setting.class.WorkspaceSettingCategory, core.space.Model, {
@@ -850,7 +866,8 @@ function defineSpaceType (builder: Builder): void {
         core.permission.ForbidDeleteObject
       ],
       allowedClassic: true,
-      allowedTaskTypeDescriptors: [tracker.descriptors.Issue]
+      allowedTaskTypeDescriptors: [tracker.descriptors.Issue],
+      defaultTaskType: tracker.taskTypes.Issue
     },
     tracker.descriptors.ProjectType
   )

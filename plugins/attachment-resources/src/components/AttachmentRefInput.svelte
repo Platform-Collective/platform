@@ -541,6 +541,7 @@
       loading={loading || fileUploads > 0 || loadingLinks}
       {boundary}
       {docClass}
+      objectSpace={space}
       extraActions={[
         ...extraActions,
         {

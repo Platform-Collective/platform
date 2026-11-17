@@ -175,6 +175,7 @@ export interface ProjectType extends SpaceType {
 export interface ProjectTypeDescriptor extends SpaceTypeDescriptor {
   allowedClassic?: boolean
   allowedTaskTypeDescriptors?: Ref<TaskTypeDescriptor>[] // if undefined we allow all possible
+  defaultTaskType?: Ref<TaskType>
   baseClass: Ref<Class<Project>>
   editor?: AnyComponent
 }

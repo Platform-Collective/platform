@@ -1,5 +1,6 @@
 //
 // Copyright © 2023, 2024 Hardcore Engineering Inc.
+// Copyright © 2026 TraceX SAS.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -154,6 +155,8 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
     return ({ view, node, HTMLAttributes, getPos }) => {
       const container = document.createElement('div')
       const imgElement = document.createElement('img')
+      let destroyed = false
+      let setBrokenImg: ReturnType<typeof setTimeout> | undefined
       container.append(imgElement)
       const divAttributes = {
         class: 'text-editor-image-container',
@@ -161,18 +164,26 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
         'data-align': node.attrs.align
       }
 
-      const pos = typeof getPos === 'function' ? getPos() : 0
-      setLoadingState(view, pos, true)
+      const setNodeLoadingState = (loading: boolean): void => {
+        if (destroyed || view.isDestroyed || typeof getPos !== 'function') return
+        const currentPos = getPos()
+        if (typeof currentPos !== 'number' || currentPos < 0 || currentPos >= view.state.doc.content.size) return
+        if (view.state.doc.nodeAt(currentPos)?.type !== node.type) return
+        setLoadingState(view, currentPos, loading)
+      }
+
+      // Wait until ProseMirror finishes creating the node view before dispatching.
+      queueMicrotask(() => {
+        setNodeLoadingState(true)
+      })
       const setImageProps = (src: string | null, srcset: string | null): void => {
+        if (destroyed) return
         if (src != null) imgElement.src = src
         if (srcset != null) imgElement.srcset = srcset
-        void imgElement
-          .decode()
-          .catch(() => {})
-          .finally(() => {
-            const pos = typeof getPos === 'function' ? getPos() : 0
-            setLoadingState(view, pos, false)
-          })
+        const finishLoading = (): void => {
+          setNodeLoadingState(false)
+        }
+        void imgElement.decode().then(finishLoading, finishLoading)
       }
 
       for (const [k, v] of Object.entries(divAttributes)) {
@@ -199,23 +210,25 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
         setImageProps(cached?.src ?? null, cached?.srcset ?? null)
       }
       if (fileId != null) {
-        const setBrokenImg = setTimeout(() => {
+        setBrokenImg = setTimeout(() => {
+          if (destroyed || view.isDestroyed) return
           imgElement.src = this.options.loadingImgSrc ?? `platform://platform/files/workspace/?file=${fileId}`
         }, 500)
-        if (fileId != null) {
-          void this.options
-            .getBlobRef(fileId)
-            .then((val) => {
-              clearTimeout(setBrokenImg)
+        void this.options
+          .getBlobRef(fileId)
+          .then((val) => {
+            clearTimeout(setBrokenImg)
+            if (destroyed || view.isDestroyed) return
 
-              setImageProps(val.src, val.srcset)
-              imageSrcCache.set(fileId, { src: val.src, srcset: val.srcset })
-            })
-            .catch(() => {
-              clearTimeout(setBrokenImg)
-              setImageProps(imgAttributes.src || null, null)
-            })
-        }
+            setImageProps(val.src, val.srcset)
+            imageSrcCache.set(fileId, { src: val.src, srcset: val.srcset })
+          })
+          .catch((error: unknown) => {
+            clearTimeout(setBrokenImg)
+            if (destroyed || view.isDestroyed) return
+            console.error('[ImageExtension.addNodeView] Failed to resolve image', { fileId, error })
+            setImageProps(imgAttributes.src || null, null)
+          })
       } else {
         setImageProps(imgAttributes.src ?? null, imgAttributes.srcset ?? null)
       }
@@ -224,7 +237,11 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
       imgElement.setAttribute('data-toolbar-anchor', 'true')
 
       return {
-        dom: container
+        dom: container,
+        destroy () {
+          destroyed = true
+          clearTimeout(setBrokenImg)
+        }
       }
     }
   }

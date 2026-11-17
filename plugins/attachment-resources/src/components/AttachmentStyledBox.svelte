@@ -63,6 +63,7 @@
   export let useAttachmentPreview = false
   export let focusIndex: number | undefined = -1
   export let enableAttachments: boolean = true
+  export let enableTodoList: boolean = false
   export let isScrollable = true
   export let kitOptions: Partial<EditorKitOptions> = {}
   export let fullWidth = false
@@ -420,6 +421,7 @@
   }}
 >
   <StyledTextBox
+    {enableTodoList}
     {focusIndex}
     bind:this={refInput}
     bind:content

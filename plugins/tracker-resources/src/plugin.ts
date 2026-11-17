@@ -25,6 +25,7 @@ import {
   type GrouppingManagerResource,
   type KeyFilter,
   type SortFunc,
+  type ViewAction,
   type ViewQueryAction,
   type Viewlet,
   type ViewletDescriptor
@@ -37,12 +38,15 @@ export default mergeIds(trackerId, tracker, {
     List: '' as Ref<ViewletDescriptor>,
     Kanban: '' as Ref<ViewletDescriptor>,
     Gantt: '' as Ref<ViewletDescriptor>,
+    Calendar: '' as Ref<ViewletDescriptor>,
     MilestoneIssuesList: '' as Ref<Viewlet>,
     ComponentIssuesList: '' as Ref<Viewlet>
   },
   completion: {
     IssueQuery: '' as Resource<ObjectSearchFactory>,
-    IssueCategory: '' as Ref<ObjectSearchCategory>
+    IssueCategory: '' as Ref<ObjectSearchCategory>,
+    MilestoneQuery: '' as Resource<ObjectSearchFactory>,
+    MilestoneCategory: '' as Ref<ObjectSearchCategory>
   },
   string: {
     More: '' as IntlString,
@@ -312,6 +316,9 @@ export default mergeIds(trackerId, tracker, {
 
     Day: '' as IntlString,
     Gantt: '' as IntlString,
+    Calendar: '' as IntlString,
+    CalendarWithoutDueDate: '' as IntlString,
+    CalendarUpdateFailed: '' as IntlString,
     Month: '' as IntlString,
     Quarter: '' as IntlString,
     Week: '' as IntlString,
@@ -582,6 +589,7 @@ export default mergeIds(trackerId, tracker, {
     IssuesView: '' as AnyComponent,
     KanbanView: '' as AnyComponent,
     GanttView: '' as AnyComponent,
+    CalendarView: '' as AnyComponent,
     ProjectComponents: '' as AnyComponent,
     IssuePreview: '' as AnyComponent,
     RelationsPopup: '' as AnyComponent,
@@ -618,6 +626,9 @@ export default mergeIds(trackerId, tracker, {
   },
   metadata: {
     CreateIssueDraft: '' as Metadata<IssueDraft>
+  },
+  actionImpl: {
+    CopyIssueBranch: '' as ViewAction
   },
   function: {
     IssueTitleProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,

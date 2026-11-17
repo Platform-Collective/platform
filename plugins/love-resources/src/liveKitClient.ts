@@ -12,7 +12,7 @@ import {
   type TrackPublication,
   type Participant
 } from 'livekit-client'
-import { translate } from '@hcengineering/platform'
+import { setPlatformStatus, translate, unknownError } from '@hcengineering/platform'
 import { getMediaDevices, getSelectedSpeakerId, type MediaSession } from '@hcengineering/media'
 import { LoveEvents } from '@hcengineering/love'
 import { useMedia } from '@hcengineering/media-resources'
@@ -553,7 +553,21 @@ export class LiveKitClient {
     try {
       await this.liveKitRoom.localParticipant.setScreenShareEnabled(value, { audio: withAudio })
     } catch (e) {
-      console.log(e)
+      if (isScreenShareCancelled(e)) {
+        console.log(e)
+        return
+      }
+      await setPlatformStatus(unknownError(e))
     }
   }
+}
+
+/**
+ * Cancelling the source picker is not an error: the desktop picker rejects with AbortError and browsers reject
+ * getDisplayMedia with NotAllowedError. Chrome reports an OS-level block as "Permission denied by system".
+ */
+function isScreenShareCancelled (e: unknown): boolean {
+  if (!(e instanceof Error || e instanceof DOMException)) return false
+  if (e.name === 'AbortError') return true
+  return e.name === 'NotAllowedError' && !e.message.toLowerCase().includes('system')
 }

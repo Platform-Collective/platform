@@ -272,25 +272,25 @@ export class PlatformWorker {
       // Let's remove it and sync to new one.
       const oldWorkspaces = oldInstallation.filter((it) => it.workspace !== workspace)
       if (oldWorkspaces.length > 0) {
-        const oldWorkspace = oldWorkspaces[0].workspace
-
         for (const oldInstallation of oldWorkspaces) {
           const has = oldInstallation.installationId.filter((it) => it !== installationId)
+          oldInstallation.installationId = has
           if (has.length > 0) {
-            oldInstallation.installationId = has
             await accountsClient.updateIntegration({
               kind: githubIntegrationKind,
-              workspaceUuid: oldWorkspace,
-              socialId: oldInstallation.accountId
+              workspaceUuid: oldInstallation.workspace,
+              socialId: oldInstallation.accountId,
+              data: { installationId: has } satisfies IntegrationDataValue
             })
           } else {
             await accountsClient.deleteIntegration({
               kind: githubIntegrationKind,
-              workspaceUuid: oldWorkspace,
+              workspaceUuid: oldInstallation.workspace,
               socialId: oldInstallation.accountId
             })
           }
         }
+        this.integrations = this.integrations.filter((it) => it.installationId.length > 0)
 
         // We need new integeration to be added to new workspace
         const existingRecord = this.integrations.find((it) => it.workspace === workspace && it.accountId === accountId)
@@ -316,19 +316,21 @@ export class PlatformWorker {
           })
         }
 
-        const oldWorker = this.clients.get(oldWorkspace) as GithubWorker
-        if (oldWorker !== undefined) {
-          await this.removeInstallationFromWorkspace(oldWorker.client, installationId)
-          await oldWorker.reloadRepositories(ctx, installationId)
-        } else {
-          let client: Client | undefined
-          try {
-            ;({ client } = await createPlatformClient(ctx, oldWorkspace, 30000))
-            await this.removeInstallationFromWorkspace(oldWorker, installationId)
-          } catch (err: any) {
-            ctx.error('failed to remove old installation from workspace', { workspace: oldWorkspace, installationId })
-          } finally {
-            await client?.close()
+        for (const oldWorkspace of new Set(oldWorkspaces.map((it) => it.workspace))) {
+          const oldWorker = this.clients.get(oldWorkspace)
+          if (oldWorker !== undefined) {
+            await this.removeInstallationFromWorkspace(oldWorker.client, installationId)
+            await oldWorker.reloadRepositories(ctx, installationId)
+          } else {
+            let client: Client | undefined
+            try {
+              ;({ client } = await createPlatformClient(ctx, oldWorkspace, 30000))
+              await this.removeInstallationFromWorkspace(client, installationId)
+            } catch (err: any) {
+              ctx.error('failed to remove old installation from workspace', { workspace: oldWorkspace, installationId })
+            } finally {
+              await client?.close()
+            }
           }
         }
       }

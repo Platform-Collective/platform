@@ -124,7 +124,7 @@
 
 <div class="hulyComponent">
   <Header adaptive={'disabled'}>
-    <Breadcrumb icon={setting.icon.AccountSettings} label={setting.string.AccountSettings} size={'large'} isCurrent />
+    <Breadcrumb icon={setting.icon.AccountSettings} label={setting.string.Profile} size={'large'} isCurrent />
   </Header>
   <Scroller>
     <div class="ac-body p-10 flex-col max-w-240 content">
