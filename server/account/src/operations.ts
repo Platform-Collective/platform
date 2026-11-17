@@ -208,9 +208,14 @@ export async function getLoginCapabilities (
   token: string
 ): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean, workspaceCreationAllowed: boolean }> {
   const signUpEnabled = process.env.DISABLE_SIGNUP !== 'true'
-  const workspaceCreationAllowed =
-    isWorkspaceCreationAllowed() ||
-    (token != null && token !== '' && isWorkspaceCreationAllowed(decodeTokenVerbose(ctx, token).extra))
+  let workspaceCreationAllowed = isWorkspaceCreationAllowed()
+  if (!workspaceCreationAllowed && token != null && token !== '') {
+    try {
+      workspaceCreationAllowed = isWorkspaceCreationAllowed(decodeTokenVerbose(ctx, token).extra)
+    } catch {
+      workspaceCreationAllowed = false
+    }
+  }
 
   let guestLoginAvailable = false
   if (process.env.DISABLE_GUEST_LOGIN !== 'true') {

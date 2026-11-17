@@ -336,6 +336,19 @@ describe('account operations', () => {
       expect(decodeTokenVerbose).not.toHaveBeenCalled()
     })
 
+    test.each(['admin', 'unknown'])('treats invalid capability tokens as anonymous for %p', async (policy) => {
+      process.env.WORKSPACE_CREATION = policy
+      resetGuestPersonCache()
+      ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({ uuid: readOnlyGuestAccountUuid })
+      jest.mocked(decodeTokenVerbose).mockImplementation(() => {
+        throw new Error('Invalid token')
+      })
+
+      const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, 'invalid-token')
+
+      expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: true, workspaceCreationAllowed: false })
+    })
+
     test.each(['admin', 'unknown'])('reads signed capability tokens in restricted mode %p', async (policy) => {
       process.env.WORKSPACE_CREATION = policy
       jest.mocked(decodeTokenVerbose).mockReturnValue({
