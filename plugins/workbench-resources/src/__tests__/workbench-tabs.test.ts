@@ -860,6 +860,30 @@ describe('tabs of removed documents', () => {
 })
 
 describe('tab document resolution', () => {
+  it.each([true, false])(
+    'only loads a panel title without an application data resolver (resolver: %s)',
+    async (hasResolver) => {
+      const titleProvider = jest.fn(async () => 'Panel title')
+      jest.mocked(getClient).mockReturnValue({
+        ...client,
+        getHierarchy: () => ({
+          hasClass: (cls: string) => cls === objectClass,
+          classHierarchyMixin: () => ({ titleProvider })
+        })
+      } as unknown as ReturnType<typeof getClient>)
+      if (!hasResolver) application.locationDataResolver = undefined
+      const loc = { path: ['workbench', 'workspace', 'app', 'list'], fragment: 'panel|LINK-1|document-class' }
+
+      expect(await getTabDataByLocation(loc)).toMatchObject({
+        name: hasResolver ? 'Document' : 'Panel title',
+        objectId,
+        objectClass
+      })
+      expect(parseLinkId).toHaveBeenCalledWith([], 'LINK-1', objectClass)
+      expect(titleProvider).toHaveBeenCalledTimes(hasResolver ? 0 : 1)
+    }
+  )
+
   it('preserves the document identity returned by an application resolver', async () => {
     expect(await getTabDataByLocation({ path: ['workbench', 'workspace', 'app'] })).toMatchObject(documentData)
   })

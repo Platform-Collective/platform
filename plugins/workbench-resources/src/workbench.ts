@@ -467,7 +467,7 @@ export async function getTabDataByLocation (loc: Location): Promise<{
     objectId = data.objectId
     objectClass = data.objectClass
     if (loc.fragment != null && loc.fragment !== '') {
-      const panel = await getDefaultTabData(loc)
+      const panel = await getTabDocument(loc)
       if (panel.objectId !== undefined) {
         objectId = panel.objectId
         objectClass = panel.objectClass
@@ -501,20 +501,33 @@ async function getResolvedLocation (loc: Location, app?: Application): Promise<L
   return (await resolver(loc))?.loc ?? loc
 }
 
-async function getDefaultTabData (loc: Location): Promise<LocationData> {
+/** Resolve a panel identity without loading the document title. */
+async function getTabDocument (loc: Location): Promise<LocationData> {
   if (loc.fragment == null) return {}
   const client = getClient()
   const hierarchy = client.getHierarchy()
   const [, id, _class] = decodeURIComponent(loc.fragment).split('|')
   if (_class == null || !hierarchy.hasClass(_class as Ref<Class<Doc>>)) return {}
 
-  const mixin = hierarchy.classHierarchyMixin(_class as Ref<Class<Doc>>, view.mixin.ObjectTitle)
   try {
     const linkProviders = client.getModel().findAllSync(view.mixin.LinkIdProvider, {})
     const _id = await parseLinkId(linkProviders, id, _class as Ref<Class<Doc>>)
+    return { objectId: _id, objectClass: _class as Ref<Class<Doc>> }
+  } catch (err: any) {
+    console.error(err)
+  }
+  return {}
+}
+
+async function getDefaultTabData (loc: Location): Promise<LocationData> {
+  const data = await getTabDocument(loc)
+  if (data.objectId === undefined || data.objectClass === undefined) return data
+  const client = getClient()
+  const mixin = client.getHierarchy().classHierarchyMixin(data.objectClass, view.mixin.ObjectTitle)
+  try {
     const titleProvider = mixin === undefined ? undefined : await getResource(mixin.titleProvider)
-    const name = await titleProvider?.(client, _id)
-    return { name, objectId: _id, objectClass: _class as Ref<Class<Doc>> }
+    const name = await titleProvider?.(client, data.objectId)
+    return { ...data, name }
   } catch (err: any) {
     console.error(err)
   }
