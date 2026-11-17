@@ -14,19 +14,13 @@
 //
 
 import { Blob, CollaborativeDoc, Markup, MarkupBlobRef, Ref, WorkspaceUuid, concatLink } from '@hcengineering/core'
+import { HttpError } from '@hcengineering/platform'
 import { encodeDocumentId } from './utils'
 
 /** HTTP failure with optional metadata for callers and adapters. @public */
-export class CollaboratorHttpError extends Error {
-  status?: number
-  retryAfterMs?: number
-  outcomeUnknown?: boolean
-  rejectedBeforeWrite?: boolean
-
-  constructor (status?: number, message = status === undefined ? 'HTTP error' : `HTTP error ${status}`) {
-    super(message)
-    this.name = 'CollaboratorHttpError'
-    this.status = status
+export class CollaboratorHttpError extends HttpError {
+  constructor (status?: number, message?: string) {
+    super('CollaboratorHttpError', status, message)
   }
 }
 

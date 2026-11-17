@@ -13,19 +13,13 @@
 // limitations under the License.
 //
 
+import { HttpError } from '@hcengineering/platform'
 import { uncompress } from 'snappyjs'
 
 /** HTTP failure with optional metadata for callers and adapters. @public */
-export class RestHttpError extends Error {
-  status?: number
-  retryAfterMs?: number
-  outcomeUnknown?: boolean
-  rejectedBeforeWrite?: boolean
-
-  constructor (status?: number, message = status === undefined ? 'HTTP error' : `HTTP error ${status}`) {
-    super(message)
-    this.name = 'RestHttpError'
-    this.status = status
+export class RestHttpError extends HttpError {
+  constructor (status?: number, message?: string) {
+    super('RestHttpError', status, message)
   }
 }
 
