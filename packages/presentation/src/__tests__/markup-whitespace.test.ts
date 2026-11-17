@@ -7,7 +7,7 @@ import { compile, preprocess } from 'svelte/compiler'
 import { ModuleKind, ScriptTarget, transpileModule } from 'typescript'
 
 interface TextProps {
-  node: { type: string; text?: string }
+  node: { type: string, text?: string }
   preview?: boolean
   parseEmojisFunction?: (text: string) => {
     nodes: Array<string | { emoji: string }>
@@ -41,7 +41,7 @@ beforeAll(async () => {
   }).outputText
   // Transpile the ESM runtime too, without changing the package's CommonJS Jest configuration.
   const runtimeModules = new Map<string, { exports: Record<string, unknown> }>()
-  function loadRuntime(filename: string): Record<string, unknown> {
+  function loadRuntime (filename: string): Record<string, unknown> {
     const cached = runtimeModules.get(filename)
     if (cached !== undefined) return cached.exports
     const runtimeModule = { exports: {} }
