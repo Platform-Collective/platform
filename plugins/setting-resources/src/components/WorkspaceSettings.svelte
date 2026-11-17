@@ -13,7 +13,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { AccountRole, getCurrentAccount, hasAccountRole } from '@hcengineering/core'
+  import { getCurrentAccount, hasAccountRole } from '@hcengineering/core'
   import { createQuery, isAdminUser, isDisabled } from '@hcengineering/presentation'
   import setting, { SettingsCategory } from '@hcengineering/setting'
   import {
@@ -27,7 +27,6 @@
   } from '@hcengineering/ui'
   import { onDestroy, onMount } from 'svelte'
   import { clearSettingsStore } from '../store'
-  import settingResources from '../plugin'
 
   export let kind: 'navigation' | 'content' | undefined
   export let categoryName: string
@@ -44,12 +43,7 @@
     setting.class.WorkspaceSettingCategory,
     {},
     (res) => {
-      categories = res.filter(
-        (p) =>
-          hasAccountRole(account, p.role) &&
-          !isDisabled(p.feature ?? '') &&
-          (p.component !== settingResources.component.AccessOverview || account.role === AccountRole.Owner)
-      )
+      categories = res.filter((p) => hasAccountRole(account, p.role) && !isDisabled(p.feature ?? ''))
       if (!admin) {
         categories = categories.filter((p) => !(p.adminOnly ?? false))
       }
