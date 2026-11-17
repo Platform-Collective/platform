@@ -18,6 +18,13 @@ export default defineConfig([
   {
     files: ['**/*.{js,cjs,mjs,ts,cts,mts}'],
     extends: [love, secureCoding.configs.recommended],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        // Shared project service must know .svelte from the first file, otherwise linting is much slower
+        extraFileExtensions: ['.svelte']
+      }
+    },
     rules: {
       ...LEGACY_COMPATIBILITY_RULES,
       '@typescript-eslint/consistent-type-exports': 'off',
