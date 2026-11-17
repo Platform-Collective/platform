@@ -465,11 +465,11 @@ export function registerOpenid (
               last,
               { type: SocialIdType.OIDC, value: user.sub as string },
               effectiveSignUpDisabled,
-              async (loginInfo) => {
-                if (workspaceRoles !== undefined) {
-                  await synchronizeOidcWorkspaceRoles(measureCtx, db, loginInfo.account, subject, workspaceRoles)
-                }
-              }
+              workspaceRoles === undefined
+                ? undefined
+                : async (loginInfo, txDb) => {
+                    await synchronizeOidcWorkspaceRoles(measureCtx, txDb, loginInfo.account, subject, workspaceRoles)
+                  }
             )
           } catch (err) {
             if (err instanceof ProviderAuthenticationHookError) {

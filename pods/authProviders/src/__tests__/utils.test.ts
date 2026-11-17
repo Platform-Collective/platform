@@ -51,6 +51,7 @@ describe('handleProviderAuth', () => {
     const transactionDb = { transactionActive: true }
     const transaction = jest.fn(async (operation) => await operation(transactionDb))
     const db = { transaction }
+    const onAuthenticated = jest.fn(async () => {})
     ;(loginOrSignUpWithProvider as jest.Mock).mockResolvedValue({ account: 'account-id', token: 'token' })
 
     await handleProviderAuth(
@@ -66,10 +67,11 @@ describe('handleProviderAuth', () => {
       'Example',
       {} as any,
       false,
-      async () => {}
+      onAuthenticated
     )
 
     expect(transaction).toHaveBeenCalledTimes(1)
+    expect(onAuthenticated).toHaveBeenCalledWith(expect.anything(), transactionDb)
     expect(loginOrSignUpWithProvider).toHaveBeenCalledWith(
       measureCtx,
       transactionDb,

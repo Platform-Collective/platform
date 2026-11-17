@@ -186,7 +186,7 @@ export async function handleProviderAuth (
   last: string,
   socialKey: SocialKey,
   signUpDisabled: boolean | undefined,
-  onAuthenticated?: (loginInfo: LoginInfo) => Promise<void>
+  onAuthenticated?: (loginInfo: LoginInfo, db: AccountDB) => Promise<void>
 ): Promise<string> {
   if (db.transaction !== undefined && db.transactionActive !== true && onAuthenticated !== undefined) {
     return await db.transaction(
@@ -256,7 +256,7 @@ export async function handleProviderAuth (
   }
 
   try {
-    await onAuthenticated?.(loginInfo)
+    await onAuthenticated?.(loginInfo, db)
   } catch (err) {
     throw new ProviderAuthenticationHookError(err)
   }
