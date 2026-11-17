@@ -70,7 +70,7 @@ describe('MarkupOperations', () => {
         failure
       )
       expect(failure).toBeInstanceOf(ErrorClass)
-      expect(failure.status).toBe(status)
+      expect(failure.httpStatus).toBe(status)
       expect(failure.message).toBe(`HTTP error ${status}`)
       expect(log).not.toHaveBeenCalled()
       expect(warn).not.toHaveBeenCalled()

@@ -19,8 +19,8 @@ import { encodeDocumentId } from './utils'
 
 /** HTTP failure with optional metadata for callers and adapters. @public */
 export class CollaboratorHttpError extends HttpError {
-  constructor (status?: number, message?: string) {
-    super('CollaboratorHttpError', status, message)
+  constructor (httpStatus?: number, message?: string) {
+    super('CollaboratorHttpError', httpStatus, message)
   }
 }
 

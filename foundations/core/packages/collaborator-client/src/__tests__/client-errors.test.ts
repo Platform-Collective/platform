@@ -14,6 +14,7 @@
 //
 
 import core, { type Doc, type Ref, type WorkspaceUuid, makeCollabId } from '@hcengineering/core'
+import { PlatformError } from '@hcengineering/platform'
 import * as publicApi from '../index'
 
 describe('collaborator HTTP errors', () => {
@@ -50,9 +51,10 @@ describe('collaborator HTTP errors', () => {
 
     for (const operation of operations) {
       const failure: unknown = await operation().catch((error: unknown) => error)
-      expect(failure).toHaveProperty('status', status)
+      expect(failure).toHaveProperty('httpStatus', status)
       expect(failure).toBeInstanceOf(Reflect.get(publicApi, 'CollaboratorHttpError'))
       expect(failure).toBeInstanceOf(Error)
+      expect(failure).toBeInstanceOf(PlatformError)
       expect((failure as Error).message).toBe(`HTTP error ${status}`)
       expect(failure).toHaveProperty('name', 'CollaboratorHttpError')
       expect((failure as { retryAfterMs?: number }).retryAfterMs).toBeUndefined()

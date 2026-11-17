@@ -447,6 +447,6 @@ await client.updateMixin(
 
 ## REST error compatibility
 
-HTTP failures now throw the exported `RestHttpError` with a numeric `status`, instead of a `PlatformError` for an HTTP rejection. Application-level status responses continue to throw `PlatformError`. Consumers should distinguish these error classes before reading status codes; neither error response bodies nor credentials are included in `RestHttpError` messages.
+HTTP failures now throw the exported `RestHttpError`, which remains a `PlatformError` and exposes the numeric HTTP code as `httpStatus`. Application-level status responses continue to throw `PlatformError`; neither error response bodies nor credentials are included in `RestHttpError` messages.
 
 REST writes are not replayed after network failures, HTTP 5xx or malformed successful replies; these failures set `RestHttpError.outcomeUnknown` to `true`, so read back the affected state before deciding whether to repeat a write. HTTP 429 responses are retried because the server rejected the write before processing it. Read requests retain their existing retry behavior. `getModel(full?, ctx?)` and `createRestTxOperations(endpoint, workspace, token, fullModel?, ctx?)` accept an optional caller-owned diagnostic context; omitting it retains default diagnostics.

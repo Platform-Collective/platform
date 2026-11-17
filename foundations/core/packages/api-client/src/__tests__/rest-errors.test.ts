@@ -22,6 +22,7 @@ import core, {
   OperationDomain,
   TxFactory
 } from '@hcengineering/core'
+import { PlatformError } from '@hcengineering/platform'
 import * as publicApi from '../index'
 
 describe('REST HTTP errors', () => {
@@ -148,9 +149,10 @@ describe('REST HTTP errors', () => {
 
       for (const operation of operations) {
         const failure: unknown = await operation().catch((error: unknown) => error)
-        expect(failure).toHaveProperty('status', status)
+        expect(failure).toHaveProperty('httpStatus', status)
         expect(failure).toBeInstanceOf(Reflect.get(publicApi, 'RestHttpError'))
         expect(failure).toBeInstanceOf(Error)
+        expect(failure).toBeInstanceOf(PlatformError)
         expect((failure as Error).message).toBe(`HTTP error ${status}`)
         expect(failure).toHaveProperty('name', 'RestHttpError')
         expect((failure as { retryAfterMs?: number }).retryAfterMs).toBeUndefined()
@@ -179,7 +181,7 @@ describe('REST HTTP errors', () => {
     const client = publicApi.createRestClient(endpoint, 'workspace', token)
     const failure: unknown = await client.getAccount().catch((error: unknown) => error)
 
-    expect(failure).toHaveProperty('status', 429)
+    expect(failure).toHaveProperty('httpStatus', 429)
     expect(failure).toBeInstanceOf(Reflect.get(publicApi, 'RestHttpError'))
     expect((failure as Error).message).toBe('rate-limit')
     expect(failure).toHaveProperty('retryAfterMs', 0)
