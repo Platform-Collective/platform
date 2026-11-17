@@ -29,10 +29,7 @@ import {
 } from '@hcengineering/view-resources/src/filter'
 import { FilterQueryLifetime } from '@hcengineering/view-resources/src/filter/lifecycle'
 import { createFilterQueryComposer } from '@hcengineering/view-resources/src/filter/composer'
-import {
-  makeFilterQuery,
-  makeFilterQueryWithLifetime
-} from '@hcengineering/view-resources/src/filter/query-builder'
+import { makeFilterQuery, makeFilterQueryWithLifetime } from '@hcengineering/view-resources/src/filter/query-builder'
 
 import tags from '../plugin'
 import { tagsInResult, tagsNinResult } from '../utils'
