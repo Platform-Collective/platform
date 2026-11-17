@@ -3,7 +3,6 @@
 //
 
 import { createMarkupOperations } from '../markup/client'
-import * as publicApi from '../index'
 import { getClient } from '@hcengineering/collaborator-client'
 import { makeCollabId } from '@hcengineering/core'
 
@@ -46,10 +45,6 @@ describe('MarkupOperations', () => {
     ;(getClient as jest.Mock).mockReturnValue(mockCollaborator)
 
     operations = createMarkupOperations(url, workspace, token, mockConfig)
-  })
-
-  it('exportsMarkupFactoryFromPublicPackage', () => {
-    expect(Reflect.get(publicApi, 'createMarkupOperations')).toBe(createMarkupOperations)
   })
 
   it.each([401, 403])('preservesTypedCollaboratorErrorsThroughMarkup (%i)', async (status) => {

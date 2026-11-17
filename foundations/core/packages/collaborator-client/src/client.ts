@@ -50,6 +50,7 @@ export interface UpdateContentRequest {
 }
 
 /** @public */
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface UpdateContentResponse {}
 
 /** @public */

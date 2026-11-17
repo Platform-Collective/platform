@@ -96,6 +96,7 @@ async function createClient (
     // --experimental-vm-modules. Use require there and keep dynamic import
     // for browser/bundler environments.
     if (typeof window === 'undefined') {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       return Promise.resolve(require('@hcengineering/client-resources'))
     }
     return import(/* webpackChunkName: "client" */ '@hcengineering/client-resources')
