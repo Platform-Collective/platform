@@ -17,6 +17,7 @@ const workspaceWithoutRules = '00000000-0000-0000-0000-000000000013' as any
 
 function createDb (roles: Map<any, AccountRole>): any {
   const db = {
+    transactionActive: true,
     socialId: { findOne: jest.fn().mockResolvedValue({ type: SocialIdType.OIDC, personUuid: account }) },
     getWorkspaceRole: jest.fn(async (_account: any, workspace: any) => roles.get(workspace) ?? null),
     getWorkspaceMembers: jest.fn(async (workspace: any) => {
@@ -137,6 +138,7 @@ describe('OIDC workspace role synchronization', () => {
     let previous = Promise.resolve()
 
     const db = {
+      transactionActive: true,
       socialId: { findOne: jest.fn().mockResolvedValue({ type: SocialIdType.OIDC }) },
       getWorkspaceRole: jest.fn(async (candidate: any) => ownerRoles.get(candidate) ?? null),
       updateOrUnassignWorkspaceOwnerIfNotLast: jest.fn(

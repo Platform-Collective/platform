@@ -44,9 +44,10 @@ linking:
   Accounts without an OIDC identity are never changed, and a workspace's last
   owner is never demoted or removed by OIDC synchronization. PostgreSQL and
   CockroachDB serialize OIDC owner demotions and removals per workspace, so two
-  concurrent logins cannot remove every owner. The Mongo account backend
-  stores members in separate documents and only provides a best-effort
-  last-owner check.
+  concurrent logins cannot remove every owner. Account creation or linking,
+  invite joining and all role changes run in one transaction on these backends;
+  a synchronization failure rolls back all of them. Synchronization requires a
+  transactional account database and otherwise fails before account changes.
 
   The identity provider is authoritative for workspaces listed in
   `OPENID_ROLE_GROUPS`: manual membership and role changes there are

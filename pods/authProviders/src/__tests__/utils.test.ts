@@ -45,4 +45,40 @@ describe('handleProviderAuth', () => {
 
     expect(measureCtx.error).not.toHaveBeenCalled()
   })
+
+  test('runs account changes and the OIDC synchronization hook in one transaction', async () => {
+    const measureCtx = { info: jest.fn(), error: jest.fn() } as any
+    const transactionDb = { transactionActive: true }
+    const transaction = jest.fn(async (operation) => await operation(transactionDb))
+    const db = { transaction }
+    ;(loginOrSignUpWithProvider as jest.Mock).mockResolvedValue({ account: 'account-id', token: 'token' })
+
+    await handleProviderAuth(
+      measureCtx,
+      db as any,
+      {},
+      'https://front.example',
+      'openid',
+      undefined,
+      undefined,
+      'person@example.com',
+      'Person',
+      'Example',
+      {} as any,
+      false,
+      async () => {}
+    )
+
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(loginOrSignUpWithProvider).toHaveBeenCalledWith(
+      measureCtx,
+      transactionDb,
+      null,
+      'person@example.com',
+      'Person',
+      'Example',
+      {},
+      false
+    )
+  })
 })

@@ -188,6 +188,27 @@ export async function handleProviderAuth (
   signUpDisabled: boolean | undefined,
   onAuthenticated?: (loginInfo: LoginInfo) => Promise<void>
 ): Promise<string> {
+  if (db.transaction !== undefined && db.transactionActive !== true && onAuthenticated !== undefined) {
+    return await db.transaction(
+      async (transactionDb) =>
+        await handleProviderAuth(
+          measureCtx,
+          transactionDb,
+          brandings,
+          frontUrl,
+          providerType,
+          rawState,
+          user,
+          email,
+          first,
+          last,
+          socialKey,
+          signUpDisabled,
+          onAuthenticated
+        )
+    )
+  }
+
   let loginInfo: LoginInfo | null
   let state: AuthState
   let branding: ReturnType<typeof getBranding>

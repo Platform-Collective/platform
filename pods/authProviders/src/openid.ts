@@ -439,6 +439,11 @@ export function registerOpenid (
       const oidcGroups = getOidcGroups(user._idClaims)
       const workspaceRoles = getOidcWorkspaceRoles(user._idClaims, resolvedRoleRules)
       const subject = typeof user._idClaims?.sub === 'string' ? user._idClaims.sub : undefined
+      if (workspaceRoles !== undefined && workspaceRoles.length > 0 && db.transaction === undefined) {
+        measureCtx.error('OIDC workspace role synchronization requires a transactional account database')
+        ctx.redirect(loginUrl + '?error=oidc_role_sync_failed')
+        return
+      }
       if (resolvedRoleRules.length > 0 && oidcGroups.state !== 'available') {
         measureCtx.warn(
           oidcGroups.state === 'overage'

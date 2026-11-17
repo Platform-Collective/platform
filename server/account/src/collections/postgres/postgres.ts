@@ -550,8 +550,12 @@ export class PostgresAccountDB implements AccountDB {
   constructor (
     readonly client: Sql,
     readonly ns: string = 'global_account',
-    readonly dbFlavor: DBFlavor = 'cockroach'
+    readonly dbFlavor: DBFlavor = 'cockroach',
+    readonly transactionActive: boolean = false
   ) {
+    if (transactionActive) {
+      this.withRetry = async (operation) => await operation(client)
+    }
     const withRetryClient = this.withRetry
     this.person = new PostgresDbCollection<Person, 'uuid'>('person', client, { ns, idKey: 'uuid', withRetryClient })
     this.account = new AccountPostgresDbCollection(client, ns, withRetryClient)
@@ -813,6 +817,15 @@ export class PostgresAccountDB implements AccountDB {
       err.code === 'CONNECTION_DESTROYED' || // This error is thrown for any queries that were pending when the timeout to sql.end({ timeout: X }) was reached. If the DB client is being closed completely retry will result in CONNECTION_ENDED which is not retried so should be fine.
       msg.includes('RETRY_SERIALIZABLE')
     )
+  }
+
+  async transaction<T> (operation: (db: AccountDB) => Promise<T>): Promise<T> {
+    if (this.transactionActive) return await operation(this)
+
+    return await this.withRetry(async (client) => {
+      const transactionDb = new PostgresAccountDB(client as unknown as Sql, this.ns, this.dbFlavor, true)
+      return await operation(transactionDb)
+    })
   }
 
   async createWorkspace (data: WorkspaceData, status: WorkspaceStatusData): Promise<WorkspaceUuid> {

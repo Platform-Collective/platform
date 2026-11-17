@@ -335,6 +335,8 @@ export type DBFlavor = 'postgres' | 'cockroach' | 'unknown'
 
 /* ========= D A T A B A S E  C O L L E C T I O N S ========= */
 export interface AccountDB {
+  readonly transactionActive?: boolean
+  transaction?: <T>(operation: (db: AccountDB) => Promise<T>) => Promise<T>
   person: DbCollection<Person>
   account: DbCollection<Account>
   socialId: DbCollection<SocialId>
