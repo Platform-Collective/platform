@@ -302,24 +302,11 @@ export function registerOpenid (
   const redirectURL = '/auth/openid/callback'
   if (openidClientId === undefined || openidClientSecret === undefined || issuer === undefined) return
   const prompt = getOpenidPrompt(measureCtx)
-  let roleRules: Promise<Awaited<ReturnType<typeof resolveOidcRoleGroupRules>>> | undefined
   const getRoleRules = async (): Promise<Awaited<ReturnType<typeof resolveOidcRoleGroupRules>>> => {
-    if (roleRules === undefined) {
-      roleRules = dbPromise
-        .then(async (db) => {
-          const rules = await resolveOidcRoleGroupRules(measureCtx, db, process.env.OPENID_ROLE_GROUPS)
-          warnOnEmptyAutoAllowedGroups(measureCtx, process.env.OPENID_ALLOWED_GROUPS, rules)
-          return rules
-        })
-        .catch((err) => {
-          // Cache successful resolution only. A transient database error must
-          // not make every future OIDC callback fail until the pod restarts.
-          roleRules = undefined
-          measureCtx.error('OIDC role-group rules could not be resolved; retrying on the next login', { err })
-          throw err
-        })
-    }
-    return await roleRules
+    const db = await dbPromise
+    const rules = await resolveOidcRoleGroupRules(measureCtx, db, process.env.OPENID_ROLE_GROUPS)
+    warnOnEmptyAutoAllowedGroups(measureCtx, process.env.OPENID_ALLOWED_GROUPS, rules)
+    return rules
   }
   if (openidRouters.has(router)) {
     throw new Error('OIDC provider is already registered on this router')

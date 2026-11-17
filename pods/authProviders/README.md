@@ -33,11 +33,11 @@ linking:
   indicated, no workspace role is changed. Group names containing ':', '=' or ','
   cannot be expressed in OPENID_ROLE_GROUPS.
 
-  Rules are resolved against the account database on the first OIDC callback
-  and cached after a successful resolution; a failed resolution (for example a
-  transient database error) fails that login and is retried on the next one. A
-  workspace created or re-created after that first callback is picked up after
-  restarting the account service.
+  Rules are resolved against the account database on every OIDC callback.
+  Workspace creation, re-creation or a changed URL is reflected on the next
+  login without restarting the account service. A failed resolution (for
+  example a transient database error) fails that login and is retried on the
+  next one.
   Invalid rules and rules for unknown workspaces are ignored with a warning
   that does not contain group names.
 
