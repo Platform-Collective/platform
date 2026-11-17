@@ -44,7 +44,8 @@ function createMessage (
   id: string,
   createdOn: number,
   action: 'update' | 'create' | 'remove',
-  attributeUpdates?: DocAttributeUpdates
+  attributeUpdates?: DocAttributeUpdates,
+  objectId?: string
 ): DocUpdateMessage {
   return {
     _id: id as Ref<DocUpdateMessage>,
@@ -52,7 +53,7 @@ function createMessage (
     space: 'space:default' as Ref<Doc>,
     attachedTo: 'issue:1' as Ref<Doc>,
     attachedToClass: 'tracker:class:Issue' as Ref<Class<Doc>>,
-    objectId: action === 'update' ? ('issue:1' as Ref<Doc>) : (`label:${id}` as Ref<Doc>),
+    objectId: action === 'update' ? ('issue:1' as Ref<Doc>) : ((objectId ?? `label:${id}`) as Ref<Doc>),
     objectClass: 'tracker:class:Issue' as Ref<Class<Doc>>,
     action,
     updateCollection: action === 'update' ? undefined : 'labels',
@@ -83,9 +84,42 @@ describe('combineActivityMessages history preservation', () => {
     expect(combineActivityMessages(messages).map(({ _id }) => _id)).toEqual(['set-first', 'reset', 'set-again'])
   })
 
-  it('keeps label creation and removal as separate entries within the merge window', () => {
-    const messages = [createMessage('label-added', 1_000, 'create'), createMessage('label-removed', 2_000, 'remove')]
+  it('combines consecutive attribute value updates within the merge window', () => {
+    const messages = [
+      createMessage('set-first', 1_000, 'update', createAttributeUpdate(['2026-10-19'], undefined)),
+      createMessage('set-second', 2_000, 'update', createAttributeUpdate(['2026-10-20'], '2026-10-19'))
+    ]
 
-    expect(combineActivityMessages(messages).map(({ _id }) => _id)).toEqual(['label-added', 'label-removed'])
+    const combined = combineActivityMessages(messages)
+
+    expect(combined.map(({ _id }) => _id)).toEqual(['set-second'])
+    expect(combined[0]).toMatchObject({
+      attributeUpdates: createAttributeUpdate(['2026-10-20'], undefined),
+      combinedMessagesIds: ['set-first', 'set-second']
+    })
+  })
+
+  it('combines labels created one at a time within the merge window', () => {
+    const messages = [
+      createMessage('label-added-first', 1_000, 'create'),
+      createMessage('label-added-second', 2_000, 'create')
+    ]
+
+    const combined = combineActivityMessages(messages)
+
+    expect(combined.map(({ _id }) => _id)).toEqual(['label-added-second'])
+    expect(combined[0]).toMatchObject({
+      previousMessages: [{ _id: 'label-added-first' }],
+      combinedMessagesIds: ['label-added-first', 'label-added-second']
+    })
+  })
+
+  it('cancels label creation and removal within the merge window', () => {
+    const messages = [
+      createMessage('label-added', 1_000, 'create', undefined, 'label:shared'),
+      createMessage('label-removed', 2_000, 'remove', undefined, 'label:shared')
+    ]
+
+    expect(combineActivityMessages(messages)).toEqual([])
   })
 })

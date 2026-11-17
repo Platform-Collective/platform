@@ -263,7 +263,7 @@ export function combineActivityMessages (
     const cantMergeIds = new Set(cantMerge.map(({ _id }) => _id))
 
     const canMerge = groupedMessages.filter(({ _id }) => !cantMergeIds.has(_id))
-    const forMerge = groupByTime(canMerge)
+    const forMerge = groupByTime(canMerge).flatMap(splitAttributeUpdatesAtResets)
 
     forMerge.forEach((messagesForMerge) => {
       const mergedNotification = mergeDocUpdateMessages(messagesForMerge)
@@ -328,16 +328,48 @@ function groupByTime<T extends ActivityMessage> (messages: T[]): T[][] {
   return result
 }
 
+function splitAttributeUpdatesAtResets (messages: DocUpdateMessage[]): DocUpdateMessage[][] {
+  if (messages[0].action !== 'update') {
+    return [messages]
+  }
+
+  const result: DocUpdateMessage[][] = []
+  let forMerge: DocUpdateMessage[] = []
+
+  for (const message of messages) {
+    if (message.attributeUpdates?.set.includes(null) === true) {
+      if (forMerge.length > 0) {
+        result.push(forMerge)
+        forMerge = []
+      }
+      result.push([message])
+    } else {
+      forMerge.push(message)
+    }
+  }
+
+  if (forMerge.length > 0) {
+    result.push(forMerge)
+  }
+
+  return result
+}
+
 function getDocUpdateMessageKey (message: DocUpdateMessage): string {
   if (message.action === 'update') {
-    return [message._class, message.attachedTo, message.action, message.createdBy, message._id].join('_')
+    return [
+      message._class,
+      message.attachedTo,
+      message.action,
+      message.createdBy,
+      getAttributeUpdatesKey(message)
+    ].join('_')
   }
 
   return [
     message._class,
     message.attachedTo,
     message.createdBy,
-    message.action,
     message.updateCollection,
     message.objectId === message.attachedTo
   ].join('_')
@@ -442,6 +474,16 @@ function mergeAttributeUpdates (
     removed,
     isMixin
   }
+}
+
+function getAttributeUpdatesKey (message: DocUpdateMessage): string {
+  if (message.attributeUpdates === undefined) {
+    return ''
+  }
+
+  const { attrKey, attrClass, isMixin } = message.attributeUpdates
+
+  return [attrKey, attrClass, isMixin].join('-')
 }
 
 export function referencesFilter (message: ActivityMessage, _class?: Ref<Doc>): boolean {
