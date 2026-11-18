@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import card from '@hcengineering/card'
 import {
   DOMAIN_BENCHMARK,
@@ -50,7 +49,8 @@ import {
   TxMiddleware,
   TxOrderingMiddleware,
   UserStatusMiddleware,
-  TransientMiddleware
+  TransientMiddleware,
+  TxValidatorMiddleware
 } from '@hcengineering/middleware'
 import {
   createBenchmarkAdapter,
@@ -72,7 +72,6 @@ import {
 import { generateToken } from '@hcengineering/server-token'
 import { createStorageDataAdapter } from './blobStorage'
 import { CommunicationMiddleware, type CommunicationApiFactory } from './communication'
-
 import { RatingMiddleware } from '@hcengineering/server-rating'
 
 /**
@@ -153,6 +152,7 @@ export function createServerPipeline (
         SpaceSecurityMiddleware.create(opt.adapterSecurity ?? false, ctx, context, next),
       SpacePermissionsMiddleware.create,
       GuestPermissionsMiddleware.create,
+      TxValidatorMiddleware.create,
       ConfigurationMiddleware.create,
       ContextNameMiddleware.create,
       MarkDerivedEntryMiddleware.create,
@@ -164,6 +164,7 @@ export function createServerPipeline (
       VersioningMiddleware.create,
       IdentifierMiddleware.create, // After ApplyTx to ensure that it pass
       RatingMiddleware.create, // Rating editing restrictions
+      TxValidatorMiddleware.createDerived,
       TransientMiddleware.create,
       TxMiddleware.create, // Store tx into transaction domain
       ...(opt.disableTriggers === true ? [] : [TriggersMiddleware.create]),
