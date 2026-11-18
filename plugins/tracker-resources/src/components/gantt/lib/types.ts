@@ -121,8 +121,8 @@ export interface PrimaryEdit {
 /** One issue shifted by the cascade (push-successor or pull-predecessor). */
 export interface CascadeShift {
   issue: Issue
-  oldStart: number
-  oldDue: number
+  oldStart: number | null
+  oldDue: number | null
   newStart: number
   newDue: number
   reason: 'push-successor' | 'pull-predecessor'

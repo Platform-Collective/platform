@@ -11,6 +11,7 @@
   import GanttConnectorDot from './GanttConnectorDot.svelte'
   import { activeDragTargetId, classifyPointer, LONG_PRESS_MS, MOVE_THRESHOLD_PX } from '@hcengineering/gantt'
   import { resolveBarLabel, type BarLabelSlot } from './lib/bar-labels'
+  import type { BarDateRange } from './lib/bar-range'
   import { resolveBarColors, type BarColorMode, type BarColorContext, GanttBarIssueLike } from './lib/bar-colors'
   import { isPastDue, isBlocked } from './lib/bar-overlays'
   import { progressFraction } from './lib/progress-fraction'
@@ -26,6 +27,8 @@
   export let timeScale: TimeScale
   export let isSummary: boolean = false
   export let summaryRange: { startDate: number | null, dueDate: number | null } | null = null
+  /** Display bounds for issues whose due date supplies an inferred start. */
+  export let displayRange: BarDateRange | null = null
   // Status category drives bar fill: backlog grey, todo blue, in-progress
   // amber, completed green, cancelled muted. null = no status info.
   export let statusCategory: string | null = null
@@ -284,8 +287,12 @@
     triple.paletteIndex !== undefined ? getPlatformColor(triple.paletteIndex, $themeStore.dark) : triple.border
   $: resolvedText = triple.text
 
-  $: effectiveStart = isSummary ? (summaryRange?.startDate ?? issue.startDate) : issue.startDate
-  $: effectiveDue = isSummary ? (summaryRange?.dueDate ?? issue.dueDate) : issue.dueDate
+  $: effectiveStart = isSummary
+    ? (summaryRange?.startDate ?? displayRange?.startDate ?? issue.startDate)
+    : (displayRange?.startDate ?? issue.startDate)
+  $: effectiveDue = isSummary
+    ? (summaryRange?.dueDate ?? displayRange?.dueDate ?? issue.dueDate)
+    : (displayRange?.dueDate ?? issue.dueDate)
 
   // Edit-mode: while THIS bar is the active drag target, swap the bar
   // geometry over to the reducer's preview values so the bar visually tracks

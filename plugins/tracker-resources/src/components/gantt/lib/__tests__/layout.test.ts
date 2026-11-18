@@ -48,6 +48,16 @@ describe('buildLayout (no grouping)', () => {
     expect(rows[1].y).toBe(ROW_H)
   })
 
+  it('keeps a due-date-only issue in the row stream', () => {
+    const dueOnly = fakeIssue('due-only')
+    dueOnly.dueDate = Date.UTC(2026, 9, 19)
+
+    const rows = buildLayout([dueOnly], [], 'none', ROW_H)
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0].issue?._id).toBe('due-only')
+  })
+
   it('places children below parent with depth+1', () => {
     const a = fakeIssue('a', undefined, true)
     const child = fakeIssue('a.1', 'a')

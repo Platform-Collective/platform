@@ -163,6 +163,8 @@
   import { cycleSort, comparatorFor, parseSortState, type GanttSortState } from './lib/sidebar-sort'
   import { GROUP_BY_KEYS, type GroupByKey } from './lib/group-by'
   import { buildGroupedRows, groupRowsToLayoutRows } from './lib/build-rows'
+  import { getIssueBarRange } from './lib/bar-range'
+  import { bulkDragPrimaryEdits, issueDragPrimaryEdit, selectedDragMembers, type DragMember } from './lib/drag-members'
   import { ganttToolbarSnapshot } from './ganttToolbarStore'
   import { pageTimeline, restorePanOffsetDays, withPinnedPanOffset } from './lib/timeline-navigation'
   // E — GanttFilter / applyFilter removed in favour of the standard
@@ -1819,40 +1821,33 @@
     // agnostic reducer doesn't need to know which field on target.doc to
     // read. Milestone uses targetDate, Issue uses dueDate.
     const t = e.detail.target
-    const originStart = t.kind === 'issue' ? (t.doc.startDate as number) : (t.doc.startDate as number)
-    const originEnd = t.kind === 'issue' ? (t.doc.dueDate as number) : t.doc.targetDate
-    // Guard: a milestone with startDate=null shouldn't reach this path — the
-    // bar isn't rendered. Issue with null dates was already handled
-    // (mousedown-unscheduled path).
+    const issueRange = t.kind === 'issue' ? getIssueBarRange(t.doc) : null
+    const originStart = t.kind === 'issue' ? issueRange?.startDate : (t.doc.startDate as number)
+    const originEnd = t.kind === 'issue' ? issueRange?.dueDate : t.doc.targetDate
+    // Guard: a milestone without a start date or an issue without a drawable
+    // range should not reach this path — neither renders a draggable bar.
     if (originStart == null || originEnd == null) return
-    // Build co-drag payload for the bulk-drag branch. Members are every
-    // selected issue with both dates set; the leading bar's id is included
-    // too so the commit loop can iterate members uniformly without
-    // special-casing it.
+    // Build co-drag payload for the bulk-drag branch. Due-only bars use the
+    // same inferred range as their leading bar, so their first bulk move
+    // persists a complete schedule too.
     let coDrag:
       | {
-          members: Array<{ issueId: Ref<Issue>, originStart: number, originEnd: number }>
+          members: DragMember[]
           minDeltaMs: number
           maxDeltaMs: number
         }
       | undefined
     if (isBulkBodyDrag) {
-      const memberIssues = issues.filter(
-        (i) => multiSelectedIssueIds.has(i._id) && i.startDate != null && i.dueDate != null
-      )
-      if (memberIssues.length >= 2) {
+      const members = selectedDragMembers(issues, multiSelectedIssueIds)
+      if (members.length >= 2) {
         const bounds = computeBulkDeltaBounds(
-          new Set(memberIssues.map((i) => i._id)),
+          new Set(members.map(({ issueId }) => issueId)),
           issues,
           relations,
           effectiveCalendar
         )
         coDrag = {
-          members: memberIssues.map((i) => ({
-            issueId: i._id,
-            originStart: i.startDate as number,
-            originEnd: i.dueDate as number
-          })),
+          members,
           minDeltaMs: bounds.minDeltaMs,
           maxDeltaMs: bounds.maxDeltaMs
         }
@@ -2943,18 +2938,7 @@
     // ConfirmCascadePopup is the single confirmation surface (legacy
     // GanttConfirmCommitPopup is bypassed via 'none').
     if (state.kind === 'dragging-body' && state.target.kind === 'issue' && state.coDrag !== undefined) {
-      const issuesByRef = new Map<string, Issue>()
-      for (const i of issues) issuesByRef.set(String(i._id), i)
-      const primaryEdits: PrimaryEdit[] = []
-      for (const m of state.coDrag.members) {
-        const issueDoc = issuesByRef.get(String(m.issueId))
-        if (issueDoc === undefined) continue
-        primaryEdits.push({
-          issue: issueDoc,
-          newStart: m.originStart + state.coDrag.anchorDeltaMs,
-          newDue: m.originEnd + state.coDrag.anchorDeltaMs
-        })
-      }
+      const primaryEdits = bulkDragPrimaryEdits(state.coDrag.members, issues, state.coDrag.anchorDeltaMs)
       if (primaryEdits.length === 0) {
         activeDrag.set({ kind: 'idle' })
         return
@@ -2982,13 +2966,7 @@
       )
       const isParent = allInSpace.some((i) => i.parents?.[0]?.parentId === parent._id)
       if (isParent) {
-        const primaryEdits: PrimaryEdit[] = [
-          {
-            issue: parent,
-            newStart: (state as any).previewStart,
-            newDue: (state as any).previewEnd
-          }
-        ]
+        const primaryEdits: PrimaryEdit[] = [issueDragPrimaryEdit(parent, state)]
         // Children move like the parent: by working days, or by calendar
         // days when this drag suspended the snapping (Shift held).
         const childCalendar = dragCalendar(state, effectiveCalendar)
@@ -3009,39 +2987,21 @@
 
     if (state.kind === 'dragging-body') {
       const target = state.target.doc
-      const primaryEdits: PrimaryEdit[] = [
-        {
-          issue: target,
-          newStart: (state as any).previewStart,
-          newDue: (state as any).previewEnd
-        }
-      ]
+      const primaryEdits: PrimaryEdit[] = [issueDragPrimaryEdit(target, state)]
       const legacyConfirmKind: 'move' | 'resize' | 'none' = confirmMove ? 'move' : 'none'
       await commitWithCascade(primaryEdits, altKey, target.space, legacyConfirmKind)
       return
     }
     if (state.kind === 'resizing-left') {
       const target = state.target.doc
-      const primaryEdits: PrimaryEdit[] = [
-        {
-          issue: target,
-          newStart: (state as any).previewStart,
-          newDue: target.dueDate as number
-        }
-      ]
+      const primaryEdits: PrimaryEdit[] = [issueDragPrimaryEdit(target, state)]
       const legacyConfirmKind: 'move' | 'resize' | 'none' = confirmResize ? 'resize' : 'none'
       await commitWithCascade(primaryEdits, altKey, target.space, legacyConfirmKind)
       return
     }
     if (state.kind === 'resizing-right') {
       const target = state.target.doc
-      const primaryEdits: PrimaryEdit[] = [
-        {
-          issue: target,
-          newStart: target.startDate as number,
-          newDue: (state as any).previewEnd
-        }
-      ]
+      const primaryEdits: PrimaryEdit[] = [issueDragPrimaryEdit(target, state)]
       const legacyConfirmKind: 'move' | 'resize' | 'none' = confirmResize ? 'resize' : 'none'
       await commitWithCascade(primaryEdits, altKey, target.space, legacyConfirmKind)
     }

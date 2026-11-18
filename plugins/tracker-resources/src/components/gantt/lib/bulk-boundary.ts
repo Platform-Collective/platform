@@ -7,6 +7,7 @@ import type { Issue, IssueRelation } from '@hcengineering/tracker'
 import type { Ref } from '@hcengineering/core'
 import { type WorkingCalendar, fsAnchor, ssAnchor, ffAnchor, sfAnchor } from '@hcengineering/gantt'
 import { detectCycle } from './scheduler'
+import { getIssueBarRange } from './bar-range'
 
 /**
  * Bulk-Select + Bulk-Drag.
@@ -42,8 +43,8 @@ export interface BulkDeltaBounds {
   maxDeltaMs: number
 }
 
-export function computeBulkDeltaBounds(
-  memberIds: ReadonlySet<Ref<Issue>>,
+export function computeBulkDeltaBounds (
+  memberIds: ReadonlySet<Ref<Issue> | string>,
   allIssues: readonly Issue[],
   relations: readonly IssueRelation[],
   workingDays?: WorkingCalendar
@@ -57,12 +58,12 @@ export function computeBulkDeltaBounds(
     return { minDeltaMs: -Infinity, maxDeltaMs: Infinity }
   }
 
-  const issuesByRef = new Map<Ref<Issue>, Issue>()
+  const issuesByRef = new Map<string, Issue>()
   for (const i of allIssues) issuesByRef.set(i._id, i)
 
   // Group every relation by its target so we can look up incoming
   // (predecessor) edges per member in O(1).
-  const byTarget = new Map<Ref<Issue>, IssueRelation[]>()
+  const byTarget = new Map<string, IssueRelation[]>()
   for (const r of relations) {
     const bucket = byTarget.get(r.target)
     if (bucket === undefined) byTarget.set(r.target, [r])
@@ -75,9 +76,10 @@ export function computeBulkDeltaBounds(
   for (const memberId of memberIds) {
     const member = issuesByRef.get(memberId)
     if (member === undefined) continue
-    if (member.startDate == null || member.dueDate == null) continue
-    const memberStart = member.startDate
-    const memberDue = member.dueDate
+    const memberRange = getIssueBarRange(member)
+    if (memberRange === null) continue
+    const memberStart = memberRange.startDate
+    const memberDue = memberRange.dueDate
 
     const incoming = byTarget.get(memberId) ?? []
     for (const r of incoming) {
@@ -86,9 +88,10 @@ export function computeBulkDeltaBounds(
       if (memberIds.has(r.attachedTo)) continue
       const pred = issuesByRef.get(r.attachedTo)
       if (pred === undefined) continue
-      if (pred.startDate == null || pred.dueDate == null) continue
-      const predStart = pred.startDate
-      const predDue = pred.dueDate
+      const predRange = getIssueBarRange(pred)
+      if (predRange === null) continue
+      const predStart = predRange.startDate
+      const predDue = predRange.dueDate
       const lag = r.lag ?? 0
 
       // For each kind, compute the constraint-driven minimum of the

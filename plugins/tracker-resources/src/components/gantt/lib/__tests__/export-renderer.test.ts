@@ -84,4 +84,29 @@ describe('buildGanttExportSvg', () => {
     expect(svg).toContain('class="dependency"')
     expect(svg).toContain('+2d')
   })
+
+  it('renders a due-date-only issue and keeps it as a dependency endpoint', () => {
+    const a = issue('a', 'TSK-1', 'Due-date-only work', 0)
+    a.startDate = null
+    const b = issue('b', 'TSK-2', 'Following work', 8)
+    const rel = {
+      _id: 'rel-1',
+      attachedTo: a._id,
+      target: b._id,
+      kind: 'finish-to-start',
+      lag: 0
+    } as unknown as IssueRelation
+
+    const svg = buildGanttExportSvg({
+      rows: [row(a, 0), row(b, 36)],
+      relations: [rel],
+      summaryRanges: new Map(),
+      timeScale: createTimeScale('week', start),
+      range: [start, start + 20 * DAY],
+      chartWidth: 320
+    })
+
+    expect(svg).toContain('Due-date-only work')
+    expect(svg).toContain('class="dependency"')
+  })
 })
