@@ -1,6 +1,7 @@
 // Basic performance metrics suite.
 
 import { platformNow, platformNowDiff } from '.'
+import { safeLogStringify } from './log-redaction'
 import { childMetrics, newMetrics, updateMeasure } from './metrics'
 import {
   type FullParamsType,
@@ -14,13 +15,8 @@ import {
   type WithOptions
 } from './types'
 
-const errorPrinter = ({ message, stack, ...rest }: Error): object => ({
-  message,
-  stack,
-  ...rest
-})
-function replacer (value: any): any {
-  return value instanceof Error ? errorPrinter(value) : value
+function stringifyLogValue (key: string, value: any): string | undefined {
+  return safeLogStringify(value, key)
 }
 
 export const consoleLogger = (logParams: Record<string, any>): MeasureLogger => ({
@@ -28,7 +24,7 @@ export const consoleLogger = (logParams: Record<string, any>): MeasureLogger => 
     console.info(
       msg,
       ...Object.entries({ ...(args ?? {}), ...(logParams ?? {}) }).map(
-        (it) => `${it[0]}=${JSON.stringify(replacer(it[1]))}`
+        (it) => `${it[0]}=${stringifyLogValue(it[0], it[1])}`
       )
     )
   },
@@ -36,18 +32,18 @@ export const consoleLogger = (logParams: Record<string, any>): MeasureLogger => 
     console.error(
       msg,
       ...Object.entries({ ...(args ?? {}), ...(logParams ?? {}) }).map(
-        (it) => `${it[0]}=${JSON.stringify(replacer(it[1]))}`
+        (it) => `${it[0]}=${stringifyLogValue(it[0], it[1])}`
       )
     )
   },
   warn: (msg, args) => {
-    console.warn(msg, ...Object.entries(args ?? {}).map((it) => `${it[0]}=${JSON.stringify(replacer(it[1]))}`))
+    console.warn(msg, ...Object.entries(args ?? {}).map((it) => `${it[0]}=${stringifyLogValue(it[0], it[1])}`))
   },
   debug: (msg, args) => {
     console.debug(
       msg,
       ...Object.entries({ ...(args ?? {}), ...(logParams ?? {}) }).map(
-        (it) => `${it[0]}=${JSON.stringify(replacer(it[1]))}`
+        (it) => `${it[0]}=${stringifyLogValue(it[0], it[1])}`
       )
     )
   },

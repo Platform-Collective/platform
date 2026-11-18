@@ -16,7 +16,7 @@
 import cors from 'cors'
 import express, { type Express, NextFunction, type Request, type Response } from 'express'
 import { type Server } from 'http'
-import { MeasureContext, systemAccountUuid } from '@hcengineering/core'
+import { MeasureContext, safeHttpLogFormat, systemAccountUuid } from '@hcengineering/core'
 import morgan from 'morgan'
 import onHeaders from 'on-headers'
 import rateLimit from 'express-rate-limit'
@@ -87,7 +87,7 @@ export async function createServer (ctx: MeasureContext, config: Config): Promis
     }
   }
 
-  app.use(morgan('short', { stream: new LogStream() }))
+  app.use(morgan(safeHttpLogFormat, { stream: new LogStream() }))
 
   // Apply JSON parsing conditionally - skip for webhook routes
   app.use((req, res, next) => {

@@ -14,6 +14,7 @@ import {
   type MeasureLogLevel,
   type Metrics,
   type ParamsType,
+  sanitizeLogFields,
   type WithOptions
 } from '@hcengineering/measurements'
 import {
@@ -274,7 +275,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
         body: message,
         attributes: {
           'service.name': sdkServiceName,
-          ...(args ?? {})
+          ...sanitizeLogFields(args)
         }
       })
     }
@@ -290,7 +291,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
         body: message,
         attributes: {
           'service.name': sdkServiceName,
-          ...(args ?? {})
+          ...sanitizeLogFields(args)
         }
       })
     }
@@ -306,7 +307,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
         body: message,
         attributes: {
           'service.name': sdkServiceName,
-          ...(args ?? {})
+          ...sanitizeLogFields(args)
         }
       })
     }
@@ -323,7 +324,7 @@ export class OpenTelemetryMetricsContext implements MeasureContext {
         body: message,
         attributes: {
           'service.name': sdkServiceName,
-          ...(args ?? {})
+          ...sanitizeLogFields(args)
         }
       })
     }
@@ -510,7 +511,7 @@ export function reportOTELError (error: Error, attributes?: Record<string, any>)
       body: error.message,
       context: context.active(),
       attributes: {
-        ...attributes,
+        ...sanitizeLogFields(attributes),
         'service.name': sdkServiceName,
         'service.version': sdkServiceVersion,
         'error.stack': error.stack
@@ -534,7 +535,7 @@ export function reportOTEL (
       timestamp: time,
       context: context.active(),
       attributes: {
-        ...attributes,
+        ...sanitizeLogFields(attributes),
         'service.name': sdkServiceName,
         'service.version': sdkServiceVersion
       }

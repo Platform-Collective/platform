@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { MeasureContext } from '@hcengineering/core'
+import { MeasureContext, safeHttpLogFormat } from '@hcengineering/core'
 import { StorageConfig } from '@hcengineering/server-core'
 
 import {
@@ -109,7 +109,7 @@ export async function createServer (
       handleRequest(ctx, name, db, storageConfigs, fn, req, res, next)
     }
 
-  app.use(morgan('short', { stream: new LogStream() }))
+  app.use(morgan(safeHttpLogFormat, { stream: new LogStream() }))
 
   app.post(
     '/api/v1/livekit/sessions',

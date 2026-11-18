@@ -15,7 +15,15 @@
 //
 
 import { Analytics } from '@hcengineering/analytics'
-import { MeasureContext, Blob as PlatformBlob, WorkspaceIds, metricsAggregate, type Ref } from '@hcengineering/core'
+import {
+  MeasureContext,
+  Blob as PlatformBlob,
+  WorkspaceIds,
+  metricsAggregate,
+  redactUrl,
+  safeHttpLogFormat,
+  type Ref
+} from '@hcengineering/core'
 import platform, { PlatformError } from '@hcengineering/platform'
 import { TokenError, decodeToken } from '@hcengineering/server-token'
 import { StorageAdapter } from '@hcengineering/storage'
@@ -327,7 +335,7 @@ export function start (
 
   const myStream = new MyStream()
 
-  app.use(morgan('short', { stream: myStream }))
+  app.use(morgan(safeHttpLogFormat, { stream: myStream }))
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   app.get('/config.json', async (req, res) => {
@@ -667,7 +675,7 @@ export function start (
         return
       }
       Analytics.handleError(error)
-      ctx.error('failed to delete', { url: req.url })
+      ctx.error('failed to delete', { url: redactUrl(req.url) })
       res.status(500).send()
     }
   }
