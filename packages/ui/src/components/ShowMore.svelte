@@ -35,7 +35,7 @@
   $: if (bigger && !ignore) crop = true
 </script>
 
-<div class="clear-mins">
+<div class="clear-mins relative showMore-container">
   <div
     use:resizeObserver={(element) => {
       cHeight = element.clientHeight
@@ -58,6 +58,11 @@
 </div>
 
 <style lang="scss">
+  .showMore-container {
+    // Keep the expanded content's bottom margin inside the toggle's containing block.
+    display: flow-root;
+  }
+
   .showMore-content {
     max-height: max-content;
 
