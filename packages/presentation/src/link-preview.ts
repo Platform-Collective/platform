@@ -33,7 +33,7 @@ export interface LinkPreviewDetails {
 
 export type LinkPreviewAttachmentMetadata = Pick<
   LinkPreviewDetails,
-  'title' | 'description' | 'image' | 'imageWidth' | 'imageHeight'
+  'title' | 'description' | 'image' | 'imageWidth' | 'imageHeight' | 'url'
 >
 
 export function canDisplayLinkPreview (val: LinkPreviewDetails): boolean {
