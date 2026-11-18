@@ -264,6 +264,11 @@ export function createModel (builder: Builder): void {
     strict: true
   })
 
+  builder.mixin(chunter.class.ChatMessage, core.class.Class, view.mixin.ClassFilters, {
+    filters: ['createdOn', 'createdBy'],
+    strict: true
+  })
+
   builder.mixin(chunter.class.ChatMessage, core.class.Class, presentation.mixin.InstantTransactions, {
     txClasses: [core.class.TxCreateDoc]
   })
