@@ -82,6 +82,7 @@ import StatusPresenter from './components/issues/StatusPresenter.svelte'
 import TitlePresenter from './components/issues/TitlePresenter.svelte'
 import LabelsView from './components/LabelsView.svelte'
 import EditMilestone from './components/milestones/EditMilestone.svelte'
+import ReleaseList from './components/milestones/ReleaseList.svelte'
 import MilestoneDatePresenter from './components/milestones/MilestoneDatePresenter.svelte'
 import MyIssues from './components/myissues/MyIssues.svelte'
 import NewIssueHeader from './components/NewIssueHeader.svelte'
@@ -574,6 +575,10 @@ export default async (): Promise<Resources> => ({
     Move: move,
     EditWorkflowStatuses: editWorkflowStatuses,
     EditProject: editProject,
+    CopyReleaseList: async (object: Milestone | Milestone[]) => {
+      const milestone = Array.isArray(object) ? object[0] : object
+      if (milestone !== undefined) showPopup(ReleaseList, { object: milestone }, 'top')
+    },
     DeleteMilestone: deleteMilestone,
     DeleteProject: deleteProject,
     DeleteIssue: deleteIssue

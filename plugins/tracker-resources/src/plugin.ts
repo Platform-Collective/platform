@@ -49,6 +49,15 @@ export default mergeIds(trackerId, tracker, {
     MilestoneCategory: '' as Ref<ObjectSearchCategory>
   },
   string: {
+    CopyReleaseList: '' as IntlString,
+    ReleaseListLoading: '' as IntlString,
+    ReleaseListCount: '' as IntlString,
+    ReleaseListEmpty: '' as IntlString,
+    ReleaseListMarkdown: '' as IntlString,
+    ReleaseListCopied: '' as IntlString,
+    ReleaseListCopyFallback: '' as IntlString,
+    ReleaseListLoadFailed: '' as IntlString,
+
     More: '' as IntlString,
     Delete: '' as IntlString,
     Open: '' as IntlString,

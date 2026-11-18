@@ -324,7 +324,15 @@
     "GanttVisibleRange": "Période",
     "GanttNotScheduled": "Non planifié",
     "GanttMissingStartDates": "{count} tâches n'ont pas de date de début.",
-    "GanttSetDatesHint": "Définissez les dates de début et d'échéance d'une tâche pour l'afficher sur la chronologie."
+    "GanttSetDatesHint": "Définissez les dates de début et d'échéance d'une tâche pour l'afficher sur la chronologie.",
+    "CopyReleaseList": "Copy release list",
+    "ReleaseListLoading": "Loading completed issues…",
+    "ReleaseListCount": "Completed issues: {count}",
+    "ReleaseListEmpty": "This milestone has no completed issues.",
+    "ReleaseListMarkdown": "Release list (Markdown / plain text)",
+    "ReleaseListCopied": "Release list copied.",
+    "ReleaseListCopyFallback": "Clipboard access failed. The text is selected; copy it with your keyboard or context menu.",
+    "ReleaseListLoadFailed": "The completed issues could not be loaded. Close this dialog and try again."
   },
   "status": {}
 }

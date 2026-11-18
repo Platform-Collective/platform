@@ -308,7 +308,15 @@
     "GanttMissingStartDates": "{count} zadań nie ma daty rozpoczęcia.",
     "GanttSetDatesHint": "Ustaw datę rozpoczęcia i termin zakończenia zadania, aby wyświetlić je na osi czasu.",
     "GanttHelpCalendarDaysDrag": "Przytrzymaj podczas przeciągania, aby ignorować dni robocze (dni kalendarzowe)",
-    "GanttDragCalendarDays": "Dni kalendarzowe"
+    "GanttDragCalendarDays": "Dni kalendarzowe",
+    "CopyReleaseList": "Copy release list",
+    "ReleaseListLoading": "Loading completed issues…",
+    "ReleaseListCount": "Completed issues: {count}",
+    "ReleaseListEmpty": "This milestone has no completed issues.",
+    "ReleaseListMarkdown": "Release list (Markdown / plain text)",
+    "ReleaseListCopied": "Release list copied.",
+    "ReleaseListCopyFallback": "Clipboard access failed. The text is selected; copy it with your keyboard or context menu.",
+    "ReleaseListLoadFailed": "The completed issues could not be loaded. Close this dialog and try again."
   },
   "status": {}
 }

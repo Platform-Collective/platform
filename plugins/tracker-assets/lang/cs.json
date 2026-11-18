@@ -331,7 +331,15 @@
     "GanttVisibleRange": "Rozsah",
     "GanttNotScheduled": "Nenaplánováno",
     "GanttMissingStartDates": "{count} úkolů nemá datum zahájení.",
-    "GanttSetDatesHint": "Nastavte u úkolu datum zahájení a termín dokončení, aby se zobrazil v časové ose."
+    "GanttSetDatesHint": "Nastavte u úkolu datum zahájení a termín dokončení, aby se zobrazil v časové ose.",
+    "CopyReleaseList": "Copy release list",
+    "ReleaseListLoading": "Loading completed issues…",
+    "ReleaseListCount": "Completed issues: {count}",
+    "ReleaseListEmpty": "This milestone has no completed issues.",
+    "ReleaseListMarkdown": "Release list (Markdown / plain text)",
+    "ReleaseListCopied": "Release list copied.",
+    "ReleaseListCopyFallback": "Clipboard access failed. The text is selected; copy it with your keyboard or context menu.",
+    "ReleaseListLoadFailed": "The completed issues could not be loaded. Close this dialog and try again."
   },
   "status": {}
 }

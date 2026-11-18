@@ -578,7 +578,15 @@
     "GanttVisibleRange": "Zeitraum",
     "GanttNotScheduled": "Nicht geplant",
     "GanttMissingStartDates": "Für {count} Aufgaben ist kein Startdatum festgelegt.",
-    "GanttSetDatesHint": "Legen Sie für ein Issue Start- und Fälligkeitsdatum fest, damit es auf der Zeitachse erscheint."
+    "GanttSetDatesHint": "Legen Sie für ein Issue Start- und Fälligkeitsdatum fest, damit es auf der Zeitachse erscheint.",
+    "CopyReleaseList": "Release-Liste kopieren",
+    "ReleaseListLoading": "Erledigte Issues werden geladen…",
+    "ReleaseListCount": "Erledigte Issues: {count}",
+    "ReleaseListEmpty": "Dieser Milestone enthält keine erledigten Issues.",
+    "ReleaseListMarkdown": "Release-Liste (Markdown / Klartext)",
+    "ReleaseListCopied": "Release-Liste kopiert.",
+    "ReleaseListCopyFallback": "Kein Zugriff auf die Zwischenablage. Der Text ist ausgewählt; kopiere ihn mit der Tastatur oder dem Kontextmenü.",
+    "ReleaseListLoadFailed": "Die erledigten Issues konnten nicht geladen werden. Schließe den Dialog und versuche es erneut."
   },
   "status": {}
 }
