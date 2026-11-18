@@ -12,11 +12,13 @@ import core, {
   type Ref,
   type SessionData,
   type Space,
+  type Tx,
   type TxAccessLevel
 } from '@hcengineering/core'
 import { PlatformError } from '@hcengineering/platform'
 import { type Middleware, type PipelineContext } from '@hcengineering/server-core'
 import { SpacePermissionsMiddleware } from '../spacePermissions'
+import { TriggersMiddleware } from '../triggers'
 
 const ALIAS = 'tracker:class:IssueIdentifierAlias' as Ref<Class<Doc>>
 const ISSUE = 'tracker:class:Issue' as Ref<Class<Doc>>
@@ -27,7 +29,8 @@ const factory = new TxFactory(author)
 async function setup (
   role: AccountRole,
   restricted: boolean,
-  system = false
+  system = false,
+  configure?: (context: PipelineContext, next: Middleware) => Middleware
 ): Promise<{
   middleware: SpacePermissionsMiddleware
   ctx: MeasureContext<SessionData>
@@ -43,6 +46,9 @@ async function setup (
       getAncestors: (cls: string) => [cls],
       classHierarchyMixin: (cls: string) =>
         cls === ALIAS ? ({ serverOnly: true } as unknown as TxAccessLevel) : undefined,
+      getClassifierProp: () => undefined,
+      getClass: () => ({}),
+      hasMixin: () => false,
       as: () => ({ role: ['account'] })
     },
     modelDb: {
@@ -63,7 +69,8 @@ async function setup (
     findAll: jest.fn(async () => [{ _id: PROJECT, _class: 'project-class', type: 'type', restricted }]),
     tx: jest.fn(async () => ({}))
   }
-  const middleware = await SpacePermissionsMiddleware.create(ctx, context, next as unknown as Middleware)
+  const downstream = configure?.(context, next as unknown as Middleware) ?? (next as unknown as Middleware)
+  const middleware = await SpacePermissionsMiddleware.create(ctx, context, downstream)
   return { middleware, ctx, next }
 }
 
@@ -101,4 +108,39 @@ it('rejects alias writes nested in a client apply batch', async () => {
 it('allows trusted system maintenance', async () => {
   const { middleware, ctx } = await setup(AccountRole.User, false, true)
   await expect(middleware.tx(ctx, [factory.createTxCreateDoc(ALIAS, PROJECT, {})])).resolves.toEqual({})
+})
+
+it('persists a trigger-produced alias through the derived entry during a user request', async () => {
+  const derived = { tx: jest.fn(async (_ctx: MeasureContext<SessionData>, _txes: Tx[]) => ({})) }
+  const triggerMiddleware: TriggersMiddleware[] = []
+  const { middleware, ctx, next } = await setup(AccountRole.User, true, false, (context, next) => {
+    const triggers = new TriggersMiddleware(context, next)
+    context.derived = derived as unknown as Middleware
+    triggerMiddleware.push(triggers)
+    return triggers
+  })
+  const triggers = triggerMiddleware[0]
+  triggers.triggers.apply = jest.fn(async (_ctx: MeasureContext, txes: Tx[]) => {
+    const txFactory = new TxFactory(txes[0].modifiedBy, true)
+    return [txFactory.createTxCreateDoc(ALIAS, PROJECT, {})]
+  })
+
+  try {
+    const update = factory.createTxUpdateDoc(ISSUE, PROJECT, 'issue' as Ref<Doc>, {})
+    await expect(middleware.tx(ctx, [update])).resolves.toEqual({})
+
+    expect(next.tx).toHaveBeenCalledTimes(1)
+    expect(derived.tx).toHaveBeenCalledTimes(1)
+    const [derivedCtx, derivedTxes] = derived.tx.mock.calls[0]
+    expect(derivedCtx.contextData.account.primarySocialId).toBe(author)
+    expect(derivedTxes).toHaveLength(1)
+    expect(derivedTxes[0]).toMatchObject({
+      _class: core.class.TxCreateDoc,
+      objectClass: ALIAS,
+      space: core.space.DerivedTx,
+      modifiedBy: author
+    })
+  } finally {
+    await triggers.close()
+  }
 })
