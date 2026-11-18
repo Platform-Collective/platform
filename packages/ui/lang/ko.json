@@ -100,6 +100,7 @@
         "Sidebar": "사이드바",
         "FontSize": "글꼴 크기",
         "Language": "언어",
+        "AppearanceAndLanguage": "모양 및 언어",
         "DaysWOValue": "{days, plural, =1 {일} other {일}}",
         "WeeksWOValue": "{weeks, plural, =1 {주} other {주}}",
         "MonthsWOValue": "{months, plural, =1 {개월} other {개월}}",
