@@ -13,7 +13,17 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { ButtonIcon, CheckBox, Component, IconMoreV, Label, Loading, showPopup, Spinner } from '@hcengineering/ui'
+  import {
+    ButtonIcon,
+    CheckBox,
+    Component,
+    IconMoreV,
+    Label,
+    Loading,
+    showPopup,
+    Spinner,
+    tooltip
+  } from '@hcengineering/ui'
   import notification, {
     ActivityNotificationViewlet,
     DisplayInboxNotification,
@@ -27,6 +37,7 @@
   import chunter from '@hcengineering/chunter'
   import { getPersonRefsByPersonIds } from '@hcengineering/contact-resources'
   import { Person } from '@hcengineering/contact'
+  import view from '@hcengineering/view'
 
   import InboxNotificationPresenter from './inbox/InboxNotificationPresenter.svelte'
   import NotifyContextIcon from './NotifyContextIcon.svelte'
@@ -224,7 +235,10 @@
       </div>
 
       <div class="actions clear-mins">
-        <div class="flex-center min-w-6">
+        <div
+          class="flex-center min-w-6"
+          use:tooltip={{ label: archived ? view.string.UnArchive : view.string.Archive }}
+        >
           {#if isArchiving}
             <Spinner size="small" />
           {:else if account.role !== AccountRole.ReadOnlyGuest}
@@ -277,7 +291,7 @@
       </div>
 
       <div class="actions clear-mins">
-        <div class="flex-center">
+        <div class="flex-center" use:tooltip={{ label: archived ? view.string.UnArchive : view.string.Archive }}>
           {#if isArchiving}
             <Spinner size="small" />
           {:else}
