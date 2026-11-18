@@ -87,6 +87,7 @@ export default mergeIds(trackerId, tracker, {
     Completed: '' as IntlString,
     Canceled: '' as IntlString,
     CreateProject: '' as IntlString,
+    CreateNewProject: '' as IntlString,
     ProjectTitle: '' as IntlString,
     ProjectTitlePlaceholder: '' as IntlString,
     ProjectIdentifierPlaceholder: '' as IntlString,
