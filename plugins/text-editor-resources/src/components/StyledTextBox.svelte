@@ -173,6 +173,8 @@
   }
 
   async function handleCommandSelected(id: string, pos: number, targetItem?: MouseEvent | HTMLElement): Promise<void> {
+    editor.getEditor()?.commands.focus(pos, { scrollIntoView: false })
+
     switch (id) {
       case 'image':
         handleAttachImage()
