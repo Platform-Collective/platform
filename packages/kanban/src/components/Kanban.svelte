@@ -20,16 +20,15 @@
     DocumentQuery,
     DocumentUpdate,
     FindOptions,
-    type Rank,
     RateLimiter,
     Ref,
     Space
   } from '@hcengineering/core'
   import { getClient } from '@hcengineering/presentation'
-  import { makeRank } from '@hcengineering/rank'
   import { ScrollBox, Scroller } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import { CardDragEvent, DocWithRank, Item } from '../types'
+  import { getDropRank } from '../utils'
   import KanbanRow from './KanbanRow.svelte'
 
   export let categories: CategoryType[] = []
@@ -61,6 +60,7 @@
   const limiter = new RateLimiter(10)
 
   async function move(state: CategoryType): Promise<void> {
+    isDragging = false
     if (dragCard === undefined) {
       return
     }
@@ -82,25 +82,26 @@
       return
     }
 
-    if (!dontUpdateRank && dragCardInitialRank !== dragCard.rank && dragCardInitialRank !== undefined) {
-      const dragCardRank = dragCard.rank
-      updates = {
-        ...updates,
-        rank: dragCardRank
+    if (!dontUpdateRank) {
+      const rank = getDropRank(getGroupByValues(groupByDocs, state) ?? [], dragCard._id)
+      if (rank !== undefined) {
+        updates = {
+          ...updates,
+          rank
+        }
       }
-      dragCard.rank = dragCardInitialRank
     }
-    if (Object.keys(updates).length > 0) {
-      await client.diffUpdate(dragCard, updates)
-    }
+    const card = dragCard
     dragCard = undefined
     dragCardAvailableCategories = undefined
+    if (Object.keys(updates).length > 0) {
+      await client.diffUpdate(card, updates)
+    }
   }
 
   const client = getClient()
 
   let dragCard: Item | undefined
-  let dragCardInitialRank: Rank | undefined
   let dragCardInitialState: CategoryType
   let dragCardInitialPosition: number | undefined
   let dragCardState: CategoryType | undefined
@@ -230,26 +231,9 @@
     }
   }
 
-  async function cardDrop(evt: CardDragEvent, object: Item, state: CategoryType): Promise<void> {
-    if (!dontUpdateRank && dragCard !== undefined) {
-      const arr = getGroupByValues(groupByDocs, state) ?? []
-      const s = arr.findIndex((p) => p._id === dragCard?._id)
-      if (s !== -1) {
-        dragCard.rank = makeRank(arr[s - 1]?.rank, arr[s + 1]?.rank)
-        const updates = getUpdateProps(dragCard, state)
-
-        if (updates === undefined) {
-          await client.update(dragCard, { rank: dragCard.rank })
-        }
-      }
-    }
-    isDragging = false
-  }
-
   async function onDragStart(object: Item, state: CategoryType): Promise<void> {
     dragCardInitialState = state
     dragCardState = state
-    dragCardInitialRank = object.rank
     const items = getGroupByValues(groupByDocs, state) ?? []
     dragCardInitialPosition = items.findIndex((p) => p._id === object._id)
     dragCard = object
@@ -393,10 +377,8 @@
           on:dragover={(event) => {
             panelDragOver(event, state)
           }}
-          on:drop={() => {
-            void move(state).then(() => {
-              isDragging = false
-            })
+          on:drop|preventDefault={() => {
+            void move(state)
           }}
         >
           {#if $$slots.header !== undefined}
@@ -419,9 +401,6 @@
               {limiter}
               cardDragOver={(evt, obj) => {
                 cardDragOver(evt, obj, state)
-              }}
-              cardDrop={(evt, obj) => {
-                void cardDrop(evt, obj, state)
               }}
               {onDragStart}
               {showMenu}
