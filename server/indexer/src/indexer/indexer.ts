@@ -60,7 +60,7 @@ import type {
   StorageAdapter
 } from '@hcengineering/server-core'
 import { RateLimiter, SessionDataImpl } from '@hcengineering/server-core'
-import { jsonToText, markupToJSON, markupToText } from '@hcengineering/text'
+import { jsonToText, markupToJSON, markupToText, MarkupNodeType } from '@hcengineering/text'
 import card, { type Card } from '@hcengineering/card'
 import { findSearchPresenter, updateDocWithPresenter } from '../mapper'
 import { type FullTextPipeline } from './types'
@@ -103,6 +103,107 @@ export * from './utils'
 const printThresholdMs = 2500
 
 const textLimit = 500 * 1024
+
+interface BlobReadError {
+  name?: string
+  cause?: unknown
+  code?: string
+  Code?: string
+  message?: string
+  statusCode?: number
+  $metadata?: { httpStatusCode?: number }
+}
+
+function isMissingBlobError (err: unknown): boolean {
+  const seen = new Set<object>()
+  // S3 wraps every GetObject failure in NoSuchKeyError; inspect its cause.
+  for (let depth = 0; depth < 32; depth++) {
+    if (typeof err !== 'object' || err === null || seen.has(err)) {
+      return false
+    }
+    seen.add(err)
+    const error = err as BlobReadError
+    if (error.code === 'NoSuchKey' && error.cause !== undefined) {
+      err = error.cause
+      continue
+    }
+
+    const code = error.code ?? error.Code ?? (error.name !== 'Error' ? error.name : undefined)
+    if (code !== undefined) {
+      return code === 'NoSuchKey' || code === 'NotFound'
+    }
+    return (
+      error.message === 'No such key' ||
+      error.message === 'NoSuchKey' ||
+      error.$metadata?.httpStatusCode === 404 ||
+      error.statusCode === 404
+    )
+  }
+  return false
+}
+
+function isCollaborativeBlobRef (value: string): boolean {
+  return /^[0-9a-f]{24}-.+-\d{13}$/.test(value)
+}
+
+function normalizeTextContent (textContent: string): string {
+  return textContent
+    .split(/ +|\t+|\f+/)
+    .filter((it) => it)
+    .join(' ')
+    .split(/\n\n+/)
+    .join('\n')
+}
+
+function isMarkupDocument (value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || !('type' in value) || value.type !== 'doc') {
+    return false
+  }
+
+  const validTypes = new Set<string>(Object.values(MarkupNodeType))
+  const pending: Array<{ node: unknown, depth: number }> = [{ node: value, depth: 0 }]
+  let visited = 0
+  while (pending.length > 0) {
+    const current = pending.pop()
+    if (current === undefined) break
+    if (++visited > 10000 || current.depth > 64) return false
+    if (typeof current.node !== 'object' || current.node === null || !('type' in current.node)) return false
+    const node = current.node as { type: unknown, content?: unknown, marks?: unknown, text?: unknown }
+    if (typeof node.type !== 'string' || !validTypes.has(node.type)) return false
+    if (node.text !== undefined && typeof node.text !== 'string') return false
+    if (node.content !== undefined) {
+      if (!Array.isArray(node.content)) return false
+      for (const child of node.content) pending.push({ node: child, depth: current.depth + 1 })
+    }
+    if (node.marks !== undefined) {
+      if (!Array.isArray(node.marks)) return false
+      if (
+        node.marks.some(
+          (mark) => typeof mark !== 'object' || mark === null || !('type' in mark) || typeof mark.type !== 'string'
+        )
+      ) {
+        return false
+      }
+    }
+  }
+  return true
+}
+
+function inlineCollaborativeDocToText (value: string): string {
+  const markup = value.trim()
+  if (markup.startsWith('{')) {
+    try {
+      const parsed: unknown = JSON.parse(markup)
+      if (isMarkupDocument(parsed)) {
+        return normalizeTextContent(markupToText(markup))
+      }
+    } catch {
+      // Index invalid markup as the legacy inline text it is.
+    }
+  }
+
+  return normalizeTextContent(value)
+}
 
 // Inner presentation in message queue differs from sdk-types,
 // also date is always filled at the output queue
@@ -975,17 +1076,23 @@ export class FullTextIndexPipeline implements FullTextPipeline {
       try {
         const readable = await this.storageAdapter?.read(ctx, this.workspace, value)
         const markup = Buffer.concat(readable).toString()
-        let textContent = markupToText(markup)
-        textContent = textContent
-          .split(/ +|\t+|\f+/)
-          .filter((it) => it)
-          .join(' ')
-          .split(/\n\n+/)
-          .join('\n')
+        const textContent = normalizeTextContent(markupToText(markup))
 
         indexedDoc.fulltextSummary += '\n' + textContent
-      } catch (err: any) {
-        Analytics.handleError(err)
+      } catch (err: unknown) {
+        // Legacy/direct API writes may contain inline Markdown instead of a blob
+        // reference. A read both checks for the blob and fetches it when present,
+        // avoiding a separate stat request for the normal blob path.
+        if (isMissingBlobError(err) && !isCollaborativeBlobRef(value)) {
+          ctx.debug('indexing inline collaborative document', {
+            workspace: this.workspace.uuid,
+            attribute: v.attr.name,
+            size: value.length
+          })
+          indexedDoc.fulltextSummary += '\n' + inlineCollaborativeDocToText(value)
+          return
+        }
+        Analytics.handleError(err as Error)
         ctx.error('failed to handle blob', { _id: value, workspace: this.workspace.uuid })
       }
     }
