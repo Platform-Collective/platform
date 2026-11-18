@@ -8,8 +8,12 @@ jest.mock('@hocuspocus/provider', () => {
     HocuspocusProvider: class extends EventEmitter {
       unsyncedChanges = 0
       configuration = { websocketProvider: { disconnect: jest.fn() } }
-      get hasUnsyncedChanges (): boolean { return this.unsyncedChanges > 0 }
-      destroy (): void { this.emit('destroy') }
+      get hasUnsyncedChanges (): boolean {
+        return this.unsyncedChanges > 0
+      }
+      destroy (): void {
+        this.emit('destroy')
+      }
     }
   }
 })
@@ -19,14 +23,16 @@ describe('collaboration flush before navigation', () => {
 
   it('waits for a pending update acknowledgement after initial sync', async () => {
     const provider = new HocuspocusCollabProvider({ parameters: { content: null } } as any)
-    provider.emit('synced', { state: true })
+    ;(provider as any).emit('synced', { state: true })
     provider.unsyncedChanges = 1
     let complete = false
-    const flushed = provider.flush().then(() => { complete = true })
+    const flushed = provider.flush().then(() => {
+      complete = true
+    })
     await Promise.resolve()
     expect(complete).toBe(false)
     provider.unsyncedChanges = 0
-    provider.emit('unsyncedChanges', 0)
+    ;(provider as any).emit('unsyncedChanges', 0)
     await flushed
     expect(complete).toBe(true)
     expect((provider as any).listenerCount('unsyncedChanges')).toBe(0)
@@ -43,7 +49,7 @@ describe('collaboration flush before navigation', () => {
 
   it('rejects when the provider closes with an update still pending', async () => {
     const provider = new HocuspocusCollabProvider({ parameters: { content: null } } as any)
-    provider.emit('synced', { state: true })
+    ;(provider as any).emit('synced', { state: true })
     provider.unsyncedChanges = 1
     const rejected = expect(provider.flush()).rejects.toThrow('closed before')
     provider.destroy()
