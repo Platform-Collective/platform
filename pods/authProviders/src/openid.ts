@@ -302,24 +302,11 @@ export function registerOpenid (
   const redirectURL = '/auth/openid/callback'
   if (openidClientId === undefined || openidClientSecret === undefined || issuer === undefined) return
   const prompt = getOpenidPrompt(measureCtx)
-  let roleRules: Promise<Awaited<ReturnType<typeof resolveOidcRoleGroupRules>>> | undefined
   const getRoleRules = async (): Promise<Awaited<ReturnType<typeof resolveOidcRoleGroupRules>>> => {
-    if (roleRules === undefined) {
-      roleRules = dbPromise
-        .then(async (db) => {
-          const rules = await resolveOidcRoleGroupRules(measureCtx, db, process.env.OPENID_ROLE_GROUPS)
-          warnOnEmptyAutoAllowedGroups(measureCtx, process.env.OPENID_ALLOWED_GROUPS, rules)
-          return rules
-        })
-        .catch((err) => {
-          // Cache successful resolution only. A transient database error must
-          // not make every future OIDC callback fail until the pod restarts.
-          roleRules = undefined
-          measureCtx.error('OIDC role-group rules could not be resolved; retrying on the next login', { err })
-          throw err
-        })
-    }
-    return await roleRules
+    const db = await dbPromise
+    const rules = await resolveOidcRoleGroupRules(measureCtx, db, process.env.OPENID_ROLE_GROUPS)
+    warnOnEmptyAutoAllowedGroups(measureCtx, process.env.OPENID_ALLOWED_GROUPS, rules)
+    return rules
   }
   if (openidRouters.has(router)) {
     throw new Error('OIDC provider is already registered on this router')
@@ -439,6 +426,11 @@ export function registerOpenid (
       const oidcGroups = getOidcGroups(user._idClaims)
       const workspaceRoles = getOidcWorkspaceRoles(user._idClaims, resolvedRoleRules)
       const subject = typeof user._idClaims?.sub === 'string' ? user._idClaims.sub : undefined
+      if (workspaceRoles !== undefined && workspaceRoles.length > 0 && db.transaction === undefined) {
+        measureCtx.error('OIDC workspace role synchronization requires a transactional account database')
+        ctx.redirect(loginUrl + '?error=oidc_role_sync_failed')
+        return
+      }
       if (resolvedRoleRules.length > 0 && oidcGroups.state !== 'available') {
         measureCtx.warn(
           oidcGroups.state === 'overage'
@@ -473,11 +465,11 @@ export function registerOpenid (
               last,
               { type: SocialIdType.OIDC, value: user.sub as string },
               effectiveSignUpDisabled,
-              async (loginInfo) => {
-                if (workspaceRoles !== undefined) {
-                  await synchronizeOidcWorkspaceRoles(measureCtx, db, loginInfo.account, subject, workspaceRoles)
-                }
-              }
+              workspaceRoles === undefined
+                ? undefined
+                : async (loginInfo, txDb) => {
+                    await synchronizeOidcWorkspaceRoles(measureCtx, txDb, loginInfo.account, subject, workspaceRoles)
+                  }
             )
           } catch (err) {
             if (err instanceof ProviderAuthenticationHookError) {

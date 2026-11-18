@@ -186,8 +186,29 @@ export async function handleProviderAuth (
   last: string,
   socialKey: SocialKey,
   signUpDisabled: boolean | undefined,
-  onAuthenticated?: (loginInfo: LoginInfo) => Promise<void>
+  onAuthenticated?: (loginInfo: LoginInfo, db: AccountDB) => Promise<void>
 ): Promise<string> {
+  if (db.transaction !== undefined && db.transactionActive !== true && onAuthenticated !== undefined) {
+    return await db.transaction(
+      async (transactionDb) =>
+        await handleProviderAuth(
+          measureCtx,
+          transactionDb,
+          brandings,
+          frontUrl,
+          providerType,
+          rawState,
+          user,
+          email,
+          first,
+          last,
+          socialKey,
+          signUpDisabled,
+          onAuthenticated
+        )
+    )
+  }
+
   let loginInfo: LoginInfo | null
   let state: AuthState
   let branding: ReturnType<typeof getBranding>
@@ -223,6 +244,7 @@ export async function handleProviderAuth (
     }
   } catch (err: any) {
     measureCtx.error('failed to auth', { err, type: providerType })
+    if (db.transactionActive === true) throw err
     return ''
   }
 
@@ -235,7 +257,7 @@ export async function handleProviderAuth (
   }
 
   try {
-    await onAuthenticated?.(loginInfo)
+    await onAuthenticated?.(loginInfo, db)
   } catch (err) {
     throw new ProviderAuthenticationHookError(err)
   }

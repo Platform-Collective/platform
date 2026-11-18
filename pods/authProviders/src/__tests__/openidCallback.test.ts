@@ -179,7 +179,7 @@ describe('OpenID callback redirects', () => {
         sub: 'subject',
         _idClaims: { sub: 'subject', groups: ['engineering'], email: 'user@example.com', xms_edov: true }
       },
-      { workspace: { findOne } }
+      { workspace: { findOne }, transaction: jest.fn() }
     )
     const handlers = routes.get('/auth/openid/callback')
     if (handlers === undefined) throw new Error('OIDC callback was not registered')
@@ -199,6 +199,52 @@ describe('OpenID callback redirects', () => {
     expect(failedRedirect).toHaveBeenCalledWith('https://front.example/login?error=oidc_callback_failed')
     expect(handleProviderAuth).toHaveBeenCalledTimes(1)
     expect(redirect).toHaveBeenCalledWith('https://front.example/login/auth?token=token-value')
+  })
+
+  test('resolves workspace rules again after workspace creation or rename', async () => {
+    process.env.OPENID_ROLE_GROUPS = 'workspace:engineering=user'
+    ;(handleProviderAuth as jest.Mock).mockResolvedValue('https://front.example/login/auth')
+    const findOne = jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({ uuid: 'new-workspace' })
+    const { routes } = registerOpenidRoutes(
+      {
+        sub: 'subject',
+        _idClaims: { sub: 'subject', groups: ['engineering'], email: 'user@example.com', xms_edov: true }
+      },
+      { workspace: { findOne }, transaction: jest.fn() }
+    )
+    const handlers = routes.get('/auth/openid/callback')
+    if (handlers === undefined) throw new Error('OIDC callback was not registered')
+    for (let login = 0; login < 2; login++) {
+      const ctx = { query: {}, state: {}, redirect: jest.fn() }
+      await handlers[0](ctx, async () => {
+        await handlers[1](ctx, async () => {})
+      })
+    }
+
+    expect(findOne).toHaveBeenCalledTimes(2)
+    expect(findOne).toHaveBeenNthCalledWith(2, { url: 'workspace' })
+  })
+
+  test('rejects synchronization on a non-transactional backend before authentication', async () => {
+    process.env.OPENID_ROLE_GROUPS = 'workspace:engineering=user'
+    const findOne = jest.fn().mockResolvedValue({ uuid: 'new-workspace' })
+    const { routes } = registerOpenidRoutes(
+      {
+        sub: 'subject',
+        _idClaims: { sub: 'subject', groups: ['engineering'], email: 'user@example.com', xms_edov: true }
+      },
+      { workspace: { findOne } }
+    )
+    const handlers = routes.get('/auth/openid/callback')
+    if (handlers === undefined) throw new Error('OIDC callback was not registered')
+    const redirect = jest.fn()
+    const ctx = { query: {}, state: {}, redirect }
+    await handlers[0](ctx, async () => {
+      await handlers[1](ctx, async () => {})
+    })
+
+    expect(handleProviderAuth).not.toHaveBeenCalled()
+    expect(redirect).toHaveBeenCalledWith('https://front.example/login?error=oidc_role_sync_failed')
   })
 
   test('ignores an invalid OPENID_PROMPT and logs one warning without its value', async () => {

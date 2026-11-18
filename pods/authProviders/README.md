@@ -33,27 +33,31 @@ linking:
   indicated, no workspace role is changed. Group names containing ':', '=' or ','
   cannot be expressed in OPENID_ROLE_GROUPS.
 
-  Rules are resolved against the account database on the first OIDC callback
-  and cached after a successful resolution; a failed resolution (for example a
-  transient database error) fails that login and is retried on the next one. A
-  workspace created or re-created after that first callback is picked up after
-  restarting the account service.
+  Rules are resolved against the account database on every OIDC callback.
+  Workspace creation, re-creation or a changed URL is reflected on the next
+  login without restarting the account service. A failed resolution (for
+  example a transient database error) fails that login and is retried on the
+  next one.
   Invalid rules and rules for unknown workspaces are ignored with a warning
   that does not contain group names.
 
   Accounts without an OIDC identity are never changed, and a workspace's last
   owner is never demoted or removed by OIDC synchronization. PostgreSQL and
   CockroachDB serialize OIDC owner demotions and removals per workspace, so two
-  concurrent logins cannot remove every owner. The Mongo account backend
-  stores members in separate documents and only provides a best-effort
-  last-owner check.
+  concurrent logins cannot remove every owner. Account creation or linking,
+  invite joining and all role changes run in one transaction on these backends;
+  a synchronization failure rolls back all of them. Synchronization requires a
+  transactional account database and otherwise fails before account changes.
 
   The identity provider is authoritative for workspaces listed in
   `OPENID_ROLE_GROUPS`: manual membership and role changes there are
   overwritten at the user's next OIDC login. Changes take effect on the next
-  login; existing sessions are not terminated. Synchronization also runs after
-  an invite join, so a user who joins a configured workspace through an invite
-  without a matching group is removed during that same login.
+  login. Removing a membership follows `leaveWorkspace`: the workspace Employee
+  remains active to preserve the person's workspace history, and existing
+  sessions are not terminated. Employee deactivation and immediate session
+  revocation are separate administrative operations. Synchronization also runs
+  after an invite join, so a user who joins a configured workspace through an
+  invite without a matching group is removed during that same login.
 - `OPENID_TRUST_EMAIL=true` treats an ID-token email as verified only when the
   token issuer exactly matches `OPENID_ISSUER` and its `tid` matches the tenant
   in an issuer of the form

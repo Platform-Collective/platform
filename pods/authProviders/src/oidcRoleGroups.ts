@@ -86,7 +86,7 @@ export function parseOidcRoleGroupRules (value: string | undefined): {
   return { rules, invalidRuleCount }
 }
 
-/** Resolves configured workspace URLs to workspace ids; the caller caches a successful result. */
+/** Resolves configured workspace URLs to their current workspace ids. */
 export async function resolveOidcRoleGroupRules (
   measureCtx: MeasureContext,
   db: AccountDB,
@@ -120,7 +120,7 @@ export function getAllowedGroups (
   return groups.length > 0 ? groups.join(',') : null
 }
 
-/** Warn once, when the rules are resolved, if the derived allowlist would deny all users. */
+/** Warn when rule resolution leaves an auto allowlist that denies all users. */
 export function warnOnEmptyAutoAllowedGroups (
   measureCtx: MeasureContext,
   configuredAllowedGroups: string | undefined,

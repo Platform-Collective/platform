@@ -45,4 +45,82 @@ describe('handleProviderAuth', () => {
 
     expect(measureCtx.error).not.toHaveBeenCalled()
   })
+
+  test('runs account changes and the OIDC synchronization hook in one transaction', async () => {
+    const measureCtx = { info: jest.fn(), error: jest.fn() } as any
+    const transactionDb = { transactionActive: true }
+    const transaction = jest.fn(async (operation) => await operation(transactionDb))
+    const db = { transaction }
+    const onAuthenticated = jest.fn(async () => {})
+    ;(loginOrSignUpWithProvider as jest.Mock).mockResolvedValue({ account: 'account-id', token: 'token' })
+
+    await handleProviderAuth(
+      measureCtx,
+      db as any,
+      {},
+      'https://front.example',
+      'openid',
+      undefined,
+      undefined,
+      'person@example.com',
+      'Person',
+      'Example',
+      {} as any,
+      false,
+      onAuthenticated
+    )
+
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(onAuthenticated).toHaveBeenCalledWith(expect.anything(), transactionDb)
+    expect(loginOrSignUpWithProvider).toHaveBeenCalledWith(
+      measureCtx,
+      transactionDb,
+      null,
+      'person@example.com',
+      'Person',
+      'Example',
+      {},
+      false
+    )
+  })
+
+  test('rethrows transactional authentication failures so the outer database retry can rerun the login', async () => {
+    jest.clearAllMocks()
+    const measureCtx = { info: jest.fn(), error: jest.fn() } as any
+    const transactionDb = { transactionActive: true }
+    const serializationError = Object.assign(new Error('serialization failure'), { code: '40001' })
+    const transaction = jest.fn(async (operation) => {
+      try {
+        return await operation(transactionDb)
+      } catch (err: any) {
+        if (err.code !== '40001') throw err
+        return await operation(transactionDb)
+      }
+    })
+    const onAuthenticated = jest.fn(async () => {})
+    ;(loginOrSignUpWithProvider as jest.Mock)
+      .mockRejectedValueOnce(serializationError)
+      .mockResolvedValue({ account: 'account-id', token: 'token' })
+
+    const result = await handleProviderAuth(
+      measureCtx,
+      { transaction } as any,
+      {},
+      'https://front.example',
+      'openid',
+      undefined,
+      undefined,
+      'person@example.com',
+      'Person',
+      'Example',
+      {} as any,
+      false,
+      onAuthenticated
+    )
+
+    expect(result).toContain('/login/auth?')
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(loginOrSignUpWithProvider).toHaveBeenCalledTimes(2)
+    expect(onAuthenticated).toHaveBeenCalledTimes(1)
+  })
 })
