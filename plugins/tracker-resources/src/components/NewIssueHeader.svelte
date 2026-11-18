@@ -44,7 +44,7 @@
     })
   )
 
-  query.query(tracker.class.Project, {}, (res) => {
+  query.query(tracker.class.Project, { archived: false }, (res) => {
     projectExists = res.length > 0
     loading = false
   })

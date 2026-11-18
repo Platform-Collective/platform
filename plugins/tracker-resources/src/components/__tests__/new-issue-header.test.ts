@@ -42,7 +42,11 @@ beforeAll(async () => {
   }).outputText
 })
 
-function renderHeader (projectExists = true, draftExists = false): HeaderRenderResult {
+function renderHeader (
+  projectExists = true,
+  draftExists = false,
+  projects: Array<{ archived: boolean }> = projectExists ? [{ archived: false }] : []
+): HeaderRenderResult {
   let header: HeaderProps | undefined
   const showPopup = jest.fn()
   const handleEvent = jest.fn()
@@ -75,8 +79,12 @@ function renderHeader (projectExists = true, draftExists = false): HeaderRenderR
         }
       },
       createQuery: () => ({
-        query: (_class: unknown, _query: unknown, onProjects: (projects: object[]) => void) => {
-          onProjects(projectExists ? [{}] : [])
+        query: (_class: unknown, query: Record<string, unknown>, onProjects: (projects: object[]) => void) => {
+          onProjects(
+            projects.filter((project) =>
+              Object.entries(query).every(([key, value]) => project[key as keyof typeof project] === value)
+            )
+          )
         }
       }),
       getClient: () => ({ findOne: async () => ({ keyBinding }) })
@@ -141,5 +149,20 @@ describe('NewIssueHeader actions', () => {
     expect(header.visibleActions).toEqual(['CreateProject'])
     header.actions.find(({ id }) => id === 'CreateProject')?.callback()
     expect(showPopup).toHaveBeenCalledWith('CreateProject', {}, 'top', expect.any(Function))
+  })
+})
+
+describe('NewIssueHeader active projects', () => {
+  it.each([false, true])(
+    'offers only project creation when all projects are archived and draftExists=%s',
+    (draftExists) => {
+      const { header } = renderHeader(true, draftExists, [{ archived: true }, { archived: true }])
+      expect(header.visibleActions).toEqual(['CreateProject'])
+    }
+  )
+
+  it('preserves issue creation when an active project exists alongside archived projects', () => {
+    const { header } = renderHeader(true, false, [{ archived: true }, { archived: false }])
+    expect(header.visibleActions).toEqual(['CreateProject', 'NewIssue'])
   })
 })
