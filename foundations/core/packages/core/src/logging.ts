@@ -32,7 +32,7 @@ function scrubFields (text: string): string {
   // Restart only at a key boundary and bound whitespace to avoid quadratic retries.
   const fields = /(?<![\w%-])([\w%-]+)(["']?\s{0,16}[:=]\s{0,16})/g
   let result = ''
-  let start = 0
+  const start = 0
   let match: RegExpExecArray | null
   while ((match = fields.exec(text)) !== null) {
     if (!isSecretKey(match[1])) continue

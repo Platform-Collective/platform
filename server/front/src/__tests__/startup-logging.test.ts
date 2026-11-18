@@ -14,12 +14,10 @@ it('does not serialize URLs or storage options, even with a deep custom inspecto
   const log = jest.spyOn(console, 'log').mockImplementation(() => {})
   const on = jest.spyOn(process, 'on').mockReturnValue(process)
   const inspector = jest.fn(() => canary)
-  jest
-    .mocked(buildStorageFromConfig)
-    .mockReturnValue({
-      adapters: [{ options: { secretKey: canary } }],
-      [Symbol.for('nodejs.util.inspect.custom')]: inspector
-    } as any)
+  jest.mocked(buildStorageFromConfig).mockReturnValue({
+    adapters: [{ options: { secretKey: canary } }],
+    [Symbol.for('nodejs.util.inspect.custom')]: inspector
+  } as any)
   for (const key of [
     'ACCOUNTS_URL',
     'UPLOAD_URL',
@@ -28,8 +26,9 @@ it('does not serialize URLs or storage options, even with a deep custom inspecto
     'TELEGRAM_URL',
     'REKONI_URL',
     'COLLABORATOR_URL'
-  ])
-    {process.env[key] = 'https://example.invalid/?token=' + canary}
+  ]) {
+    process.env[key] = 'https://example.invalid/?token=' + canary
+  }
   Object.assign(process.env, { MODEL_VERSION: 'test', VERSION: 'test', SERVER_SECRET: canary })
   try {
     startFront({} as unknown as MeasureContext)
