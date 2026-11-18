@@ -13,10 +13,15 @@
 // limitations under the License.
 //
 
+import type { Class, Doc, Ref, Space } from '@hcengineering/core'
 import { tick } from 'svelte'
 import type * as svelteCompiler from 'svelte/compiler'
 import type * as ts from 'typescript'
 import AttachmentRefInput from '../components/AttachmentRefInput.svelte'
+
+const objectRef: Ref<Doc> = 'object' as Ref<Doc>
+const spaceRef: Ref<Space> = 'space' as Ref<Space>
+const classRef: Ref<Class<Doc>> = 'class' as Ref<Class<Doc>>
 
 interface PreviewDocument {
   _id: string
@@ -56,13 +61,17 @@ jest.mock('@hcengineering/core', () => ({
   generateId: () => 'attachment-' + ++mockState.sequence,
   toIdMap: (docs: PreviewDocument[]) => new Map(docs.map((doc) => [doc._id, doc])),
   RateLimiter: class {
-    async add (fn: () => Promise<void>): Promise<void> { await fn() }
+    async add (fn: () => Promise<void>): Promise<void> {
+      await fn()
+    }
     async waitProcessing (): Promise<void> {}
   }
 }))
 jest.mock('@hcengineering/platform', () => ({
   setPlatformStatus: jest.fn(),
-  unknownError: (err: Error) => { throw err }
+  unknownError: (err: Error) => {
+    throw err
+  }
 }))
 jest.mock('@hcengineering/presentation', () => ({
   getClient: () => ({}),
@@ -135,7 +144,9 @@ jest.mock('@hcengineering/ui', () => ({ Loading: mockComponent('<span></span>') 
 
 function deferred<T> (): { promise: Promise<T>, resolve: (value: T) => void } {
   let settle: (value: T) => void = () => {}
-  const promise = new Promise<T>((resolve) => { settle = resolve })
+  const promise = new Promise<T>((resolve) => {
+    settle = resolve
+  })
   return { promise, resolve: settle }
 }
 
@@ -168,7 +179,7 @@ interface Composer {
   fetch: jest.MockedFunction<(url: string) => Promise<typeof details>>
   upload: jest.MockedFunction<() => Promise<{ uuid: string }>>
   fetchStored: jest.MockedFunction<StoredFetch>
-  switchObject: (next: string) => Promise<void>
+  switchObject: (next: Ref<Doc>) => Promise<void>
   platform: { setPlatformStatus: jest.Mock }
 }
 
@@ -192,7 +203,7 @@ async function composer (
   document.body.appendChild(target)
   const component = new AttachmentRefInput({
     target,
-    props: { objectId: 'object', space: 'space', _class: 'class', shouldSaveDraft: draft, attachments: new Map() }
+    props: { objectId: objectRef, space: spaceRef, _class: classRef, shouldSaveDraft: draft, attachments: new Map() }
   })
   cleanups.push(() => {
     component.$destroy()
@@ -204,15 +215,17 @@ async function composer (
   const container = target.querySelector('.no-print')
   if (container === null) throw new Error('Attachment container was not rendered')
   const state = (): ComponentState => {
-    const ids = Array.from(container.querySelectorAll('[data-attachment-id]')).map(
-      (element) => element.getAttribute('data-attachment-id')
+    const ids = Array.from(container.querySelectorAll('[data-attachment-id]')).map((element) =>
+      element.getAttribute('data-attachment-id')
     )
     return {
       attachments: {
         size: ids.length,
         values: () => ids,
-        get: (id: string) => ids.includes(id) ? id : undefined,
-        clear: () => { component.$set({ attachments: new Map() }) }
+        get: (id: string) => (ids.includes(id) ? id : undefined),
+        clear: () => {
+          component.$set({ attachments: new Map() })
+        }
       },
       removeAttachment: async (_doc: unknown) => {
         const button = container.querySelector('[data-testid="attachment-remove"]')
@@ -235,8 +248,10 @@ async function composer (
     if (!(button instanceof HTMLButtonElement)) throw new Error('Reference input was not rendered')
     button.click()
   }
-  const settle = async (): Promise<void> => { for (let i = 0; i < 20; i++) await Promise.resolve() }
-  const switchObject = async (next: string): Promise<void> => {
+  const settle = async (): Promise<void> => {
+    for (let i = 0; i < 20; i++) await Promise.resolve()
+  }
+  const switchObject = async (next: Ref<Doc>): Promise<void> => {
     component.$set({ objectId: next })
     await tick()
   }
@@ -257,32 +272,41 @@ function preview (source = url): PreviewDocument {
 describe('AttachmentRefInput URL preview lifecycle', () => {
   it('removes a preview with its URL and allows it to be added again', async () => {
     const c = await composer()
-    c.update([url]); await c.settle()
+    c.update([url])
+    await c.settle()
     expect(c.state().attachments.size).toBe(1)
-    c.update([]); await c.settle()
+    c.update([])
+    await c.settle()
     expect(c.state().attachments.size).toBe(0)
-    c.update([url]); await c.settle()
+    c.update([url])
+    await c.settle()
     expect(c.fetch).toHaveBeenCalledTimes(2)
     expect(c.state().attachments.size).toBe(1)
   })
 
   it('releases a slot at the three-preview limit', async () => {
     const c = await composer()
-    c.update([url, url + '2', url + '3']); await c.settle()
+    c.update([url, url + '2', url + '3'])
+    await c.settle()
     expect(c.state().attachments.size).toBe(3)
-    c.update([url + '2', url + '3', url + '4']); await c.settle()
+    c.update([url + '2', url + '3', url + '4'])
+    await c.settle()
     expect(c.fetch).toHaveBeenCalledWith(url + '4')
     expect(c.state().attachments.size).toBe(3)
   })
 
   it('keeps X dismissed while the URL stays, then permits removal/re-add', async () => {
     const c = await composer()
-    c.update([url]); await c.settle()
+    c.update([url])
+    await c.settle()
     await c.state().removeAttachment(Array.from(c.state().attachments.values())[0])
-    c.update([url]); await c.settle()
+    c.update([url])
+    await c.settle()
     expect(c.state().attachments.size).toBe(0)
     expect(c.fetch).toHaveBeenCalledTimes(1)
-    c.update([]); c.update([url]); await c.settle()
+    c.update([])
+    c.update([url])
+    await c.settle()
     expect(c.fetch).toHaveBeenCalledTimes(2)
     expect(c.state().attachments.size).toBe(1)
   })
@@ -291,8 +315,10 @@ describe('AttachmentRefInput URL preview lifecycle', () => {
     const c = await composer()
     const pending = deferred<typeof details>()
     c.fetch.mockImplementationOnce(async () => await pending.promise)
-    c.update([url]); c.update([])
-    pending.resolve(details); await c.settle()
+    c.update([url])
+    c.update([])
+    pending.resolve(details)
+    await c.settle()
     expect(c.state().attachments.size).toBe(0)
     expect(c.upload).not.toHaveBeenCalled()
   })
@@ -301,9 +327,11 @@ describe('AttachmentRefInput URL preview lifecycle', () => {
     const c = await composer()
     const pending = deferred<{ uuid: string }>()
     c.upload.mockImplementationOnce(async () => await pending.promise)
-    c.update([url]); await c.settle()
+    c.update([url])
+    await c.settle()
     c.update([])
-    pending.resolve({ uuid: 'late' }); await c.settle()
+    pending.resolve({ uuid: 'late' })
+    await c.settle()
     expect(c.state().attachments.size).toBe(0)
   })
 
@@ -314,18 +342,24 @@ describe('AttachmentRefInput URL preview lifecycle', () => {
     c.fetch
       .mockImplementationOnce(async () => await old.promise)
       .mockImplementationOnce(async () => await current.promise)
-    c.update([url]); c.update([]); c.update([url])
-    old.resolve(details); await c.settle()
+    c.update([url])
+    c.update([])
+    c.update([url])
+    old.resolve(details)
+    await c.settle()
     expect(c.state().attachments.size).toBe(0)
-    current.resolve(details); await c.settle()
+    current.resolve(details)
+    await c.settle()
     expect(c.state().attachments.size).toBe(1)
   })
 
   it.each([false, true])('restores tracking from %s (false=edited message, true=draft)', async (draft) => {
     const c = await composer([preview()], draft)
-    c.update([url]); await c.settle()
+    c.update([url])
+    await c.settle()
     expect(c.fetch).not.toHaveBeenCalled()
-    c.update([]); await c.settle()
+    c.update([])
+    await c.settle()
     expect(c.state().attachments.size).toBe(0)
   })
 })
@@ -338,15 +372,19 @@ describe('legacy preview source restoration', () => {
   it.each([false, true])('reads original JSON and avoids duplicate previews (draft=%s)', async (draft) => {
     const pending = deferred<StoredResponse>()
     const c = await composer([legacy()], draft, async () => await pending.promise)
-    c.update([url]); await c.settle()
+    c.update([url])
+    await c.settle()
     expect(c.fetch).not.toHaveBeenCalled()
-    pending.resolve({ ok: true, json: async () => details }); await c.settle()
+    pending.resolve({ ok: true, json: async () => details })
+    await c.settle()
     expect(c.fetchStored).toHaveBeenCalledWith('/files/saved-blob', expect.any(Object))
     expect(c.state().attachments.size).toBe(1)
     expect(c.fetch).not.toHaveBeenCalled()
-    c.update([]); await c.settle()
+    c.update([])
+    await c.settle()
     expect(c.state().attachments.size).toBe(0)
-    c.update([url]); await c.settle()
+    c.update([url])
+    await c.settle()
     expect(c.fetch).toHaveBeenCalledTimes(1)
     expect(c.state().attachments.size).toBe(1)
   })
@@ -354,8 +392,10 @@ describe('legacy preview source restoration', () => {
   it.each([false, true])('reconciles text changed while original JSON loads (draft=%s)', async (draft) => {
     const pending = deferred<StoredResponse>()
     const c = await composer([legacy()], draft, async () => await pending.promise)
-    c.update([url]); c.update([])
-    pending.resolve({ ok: true, json: async () => details }); await c.settle()
+    c.update([url])
+    c.update([])
+    pending.resolve({ ok: true, json: async () => details })
+    await c.settle()
     expect(c.state().attachments.size).toBe(0)
     expect(c.fetch).not.toHaveBeenCalled()
   })
@@ -365,7 +405,8 @@ describe('legacy preview source restoration', () => {
     const c = await composer([legacy()], true, async () => await pending.promise)
     c.update([url])
     await c.state().removeAttachment(c.state().attachments.get('saved'))
-    pending.resolve({ ok: true, json: async () => details }); await c.settle()
+    pending.resolve({ ok: true, json: async () => details })
+    await c.settle()
     expect(c.state().attachments.size).toBe(0)
     expect(c.fetch).not.toHaveBeenCalled()
   })
@@ -374,10 +415,12 @@ describe('legacy preview source restoration', () => {
     const pending = deferred<StoredResponse>()
     const c = await composer([legacy()], false, async () => await pending.promise)
     c.update([url])
-    await c.switchObject('other'); await c.switchObject('object')
+    await c.switchObject('other' as Ref<Doc>)
+    await c.switchObject(objectRef)
     c.state().attachments.clear()
     c.update([])
-    pending.resolve({ ok: true, json: async () => details }); await c.settle()
+    pending.resolve({ ok: true, json: async () => details })
+    await c.settle()
     expect(c.state().attachments.size).toBe(0)
   })
 
@@ -385,7 +428,9 @@ describe('legacy preview source restoration', () => {
     const error = new Error('missing legacy blob')
     const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {})
     try {
-      const c = await composer([legacy()], false, async () => { throw error })
+      const c = await composer([legacy()], false, async () => {
+        throw error
+      })
       await c.settle()
       expect(c.platform.setPlatformStatus).not.toHaveBeenCalled()
       expect(errorLog).toHaveBeenCalledWith('Failed to restore legacy link preview', error)
