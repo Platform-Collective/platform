@@ -46,6 +46,7 @@
     "Completed": "Completed",
     "Canceled": "Canceled",
     "CreateProject": "Create project",
+    "CreateNewProject": "Create new project…",
     "NewProject": "New project",
     "ProjectTitle": "Project title",
     "ProjectTitlePlaceholder": "New project",
