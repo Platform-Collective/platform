@@ -102,38 +102,33 @@ describe('FullTextIndexPipeline collaborative documents', () => {
     expect(ctx.error).not.toHaveBeenCalled()
   })
 
-  it.each([
-    '{"type":"doc","content":[]}',
-    '{"type":"doc"}'
-  ])('preserves empty markup document semantics: %s', async (value) => {
-    const pipeline = createPipeline(jest.fn().mockRejectedValue({ code: 'NoSuchKey' }))
-    const ctx = createContext()
-    const indexedDoc = { fulltextSummary: '' }
+  it.each(['{"type":"doc","content":[]}', '{"type":"doc"}'])(
+    'preserves empty markup document semantics: %s',
+    async (value) => {
+      const pipeline = createPipeline(jest.fn().mockRejectedValue({ code: 'NoSuchKey' }))
+      const ctx = createContext()
+      const indexedDoc = { fulltextSummary: '' }
 
-    await pipeline.processCollaborativeDoc(
-      ctx,
-      { value, attr: { name: 'description' } },
-      indexedDoc
-    )
+      await pipeline.processCollaborativeDoc(ctx, { value, attr: { name: 'description' } }, indexedDoc)
 
-    expect(indexedDoc.fulltextSummary).toBe('\n')
-    expect(ctx.error).not.toHaveBeenCalled()
-  })
+      expect(indexedDoc.fulltextSummary).toBe('\n')
+      expect(ctx.error).not.toHaveBeenCalled()
+    }
+  )
 
-  it.each([
-    { name: 'NoSuchKey', $metadata: { httpStatusCode: 404 } },
-    { code: 'NoSuchKey' },
-    { statusCode: 404 }
-  ])('indexes inline text for a wrapped missing object: %j', async (cause) => {
-    const pipeline = createPipeline(jest.fn().mockRejectedValue(new NoSuchKeyError('missing', cause)))
-    const ctx = createContext()
-    const indexedDoc = { fulltextSummary: '' }
+  it.each([{ name: 'NoSuchKey', $metadata: { httpStatusCode: 404 } }, { code: 'NoSuchKey' }, { statusCode: 404 }])(
+    'indexes inline text for a wrapped missing object: %j',
+    async (cause) => {
+      const pipeline = createPipeline(jest.fn().mockRejectedValue(new NoSuchKeyError('missing', cause)))
+      const ctx = createContext()
+      const indexedDoc = { fulltextSummary: '' }
 
-    await pipeline.processCollaborativeDoc(ctx, { value: 'hello', attr: { name: 'description' } }, indexedDoc)
+      await pipeline.processCollaborativeDoc(ctx, { value: 'hello', attr: { name: 'description' } }, indexedDoc)
 
-    expect(indexedDoc.fulltextSummary).toBe('\nhello')
-    expect(ctx.error).not.toHaveBeenCalled()
-  })
+      expect(indexedDoc.fulltextSummary).toBe('\nhello')
+      expect(ctx.error).not.toHaveBeenCalled()
+    }
+  )
 
   it.each([
     { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } },
