@@ -96,6 +96,16 @@ export class InboxNotificationsClientImpl implements InboxNotificationsClient {
   private readonly otherInboxNotificationsQuery = createQuery(true)
   private readonly activityInboxNotificationsQuery = createQuery(true)
 
+  private readonly contextsLoaded = writable(false)
+  private readonly otherInboxNotificationsLoaded = writable(false)
+  private readonly activityInboxNotificationsLoaded = writable(false)
+
+  readonly isLoaded = derived(
+    [this.contextsLoaded, this.otherInboxNotificationsLoaded, this.activityInboxNotificationsLoaded],
+    ([contextsLoaded, otherLoaded, activityLoaded]) => contextsLoaded && otherLoaded && activityLoaded,
+    false
+  )
+
   private _contextByDoc = new Map<Ref<Doc>, DocNotifyContext>()
   private account: Account | undefined = undefined
 
@@ -115,6 +125,7 @@ export class InboxNotificationsClientImpl implements InboxNotificationsClient {
         this.contexts.set(result)
         this._contextByDoc = new Map(result.map((updates) => [updates.objectId, updates]))
         this.contextByDoc.set(this._contextByDoc)
+        this.contextsLoaded.set(true)
       }
     )
     this.updateInboxNotificationsQuery()
@@ -136,6 +147,7 @@ export class InboxNotificationsClientImpl implements InboxNotificationsClient {
       (result: InboxNotification[]) => {
         result.sort((a, b) => (b.createdOn ?? b.modifiedOn) - (a.createdOn ?? a.modifiedOn))
         this.otherInboxNotifications.set(result)
+        this.otherInboxNotificationsLoaded.set(true)
       }
     )
 
@@ -147,6 +159,7 @@ export class InboxNotificationsClientImpl implements InboxNotificationsClient {
       },
       (result: ActivityInboxNotification[]) => {
         this.activityInboxNotifications.set(result)
+        this.activityInboxNotificationsLoaded.set(true)
       },
       {
         sort: {

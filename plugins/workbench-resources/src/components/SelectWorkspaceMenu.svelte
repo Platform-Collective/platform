@@ -31,6 +31,8 @@
     Location,
     locationStorageKeyId,
     locationToUrl,
+    matchWorkspaceSearch,
+    WORKSPACE_SEARCH_THRESHOLD,
     navigate,
     resolvedLocationStore,
     SearchEdit,
@@ -43,7 +45,7 @@
   import { NotifyMarker } from '@hcengineering/notification-resources'
   import type { PersonRating } from '@hcengineering/rating'
   import ratingPlugin from '@hcengineering/rating'
-  import { workspacesStore } from '../utils'
+  import { currentWorkspaceHasInboxUnread, workspacesStore } from '../utils'
   // import Drag from './icons/Drag.svelte'
 
   onMount(() => {
@@ -177,7 +179,7 @@
       {/if}
     </div>
 
-    {#if isAdmin}
+    {#if isAdmin || $workspacesStore.length > WORKSPACE_SEARCH_THRESHOLD}
       <div class="p-2 ml-2 mr-2 mb-2 flex-grow flex-row-center">
         <SearchEdit bind:value={search} width={'100%'} />
         {#if isAdminUser()}
@@ -189,15 +191,15 @@
           </div>
         {/if}
       </div>
+    {/if}
+    {#if isAdmin}
       <div class="p-2 ml-2 mb-4 select-text flex-col bordered">
         {decodeTokenPayload(getMetadata(presentation.metadata.Token) ?? '').workspace ?? ''}
       </div>
     {/if}
     <div class="ap-scroll">
       <div class="ap-box">
-        {#each $workspacesStore
-          .filter((it) => search === '' || (it.name?.includes(search) ?? false) || it.url.includes(search))
-          .slice(0, 500) as ws, i}
+        {#each $workspacesStore.filter((it) => matchWorkspaceSearch(it, search)).slice(0, 500) as ws, i}
           {@const wsName = ws.name ?? ws.url}
           {@const _activeSession = activeSessions[ws.uuid]}
           {@const lastUsageDays = Math.round((Date.now() - (ws.lastVisit ?? 0)) / (1000 * 3600 * 24))}
@@ -224,7 +226,7 @@
                 <span class="label overflow-label flex flex-grow flex-between">
                   <span class="flex-row-center">
                     {wsName}
-                    {#if ws.hasUnread === true && $resolvedLocationStore.path[1] !== ws.url}
+                    {#if $resolvedLocationStore.path[1] === ws.url ? $currentWorkspaceHasInboxUnread : ws.hasUnread === true}
                       <div class="ml-1">
                         <NotifyMarker kind={'simple'} size={'xx-small'} />
                       </div>
