@@ -28,6 +28,7 @@
         "Removed": "제거됨",
         "Replies": "답글",
         "RepliesCount": "{replies, plural, =1 {답글 1개} other {답글 #개}}",
+        "ShowMoreReplies": "답글 {count}개 더 보기",
         "Set": "설정함",
         "To": "→",
         "Unset": "설정 해제",

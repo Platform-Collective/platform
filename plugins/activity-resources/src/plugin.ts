@@ -23,6 +23,7 @@ export default mergeIds(activityId, activity, {
     CollectionUpdated: '' as IntlString,
     DocAdded: '' as IntlString,
     DocCreated: '' as IntlString,
-    DocDeleted: '' as IntlString
+    DocDeleted: '' as IntlString,
+    ShowMoreReplies: '' as IntlString
   }
 })

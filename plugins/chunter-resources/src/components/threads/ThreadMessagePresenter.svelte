@@ -17,13 +17,15 @@
   import { Action, Label } from '@hcengineering/ui'
   import { getDocLinkTitle } from '@hcengineering/view-resources'
   import { getClient } from '@hcengineering/presentation'
-  import activity from '@hcengineering/activity'
+  import activity, { type ActivityMessage } from '@hcengineering/activity'
   import { AttachmentImageSize } from '@hcengineering/attachment-resources'
+  import type { ActivityMessagePresentation } from '@hcengineering/activity-resources'
 
   import chunter from '../../plugin'
   import ChatMessagePresenter from '../chat-message/ChatMessagePresenter.svelte'
 
   export let value: ThreadMessage | undefined
+  export let presentation: ActivityMessagePresentation = 'default'
   export let showNotify: boolean = false
   export let isHighlighted: boolean = false
   export let isSelected: boolean = false
@@ -31,6 +33,7 @@
   export let embedded: boolean = false
   export let withActions: boolean = true
   export let showEmbedded = false
+  export let hideFooter = false
   export let skipLabel = false
   export let actions: Action[] = []
   export let hoverable = true
@@ -41,6 +44,7 @@
   export let videoPreload = false
   export let readonly = false
   export let onClick: (() => void) | undefined = undefined
+  export let onReply: ((message: ActivityMessage) => void) | undefined = undefined
 
   const client = getClient()
 </script>
@@ -60,12 +64,14 @@
 {:else}
   <ChatMessagePresenter
     {value}
+    {presentation}
     {showNotify}
     {isHighlighted}
     {isSelected}
     {shouldScroll}
     {withActions}
     {showEmbedded}
+    {hideFooter}
     {embedded}
     {skipLabel}
     {actions}
@@ -75,6 +81,7 @@
     {attachmentImageSize}
     {videoPreload}
     {onClick}
+    {onReply}
     {readonly}
   />
 {/if}

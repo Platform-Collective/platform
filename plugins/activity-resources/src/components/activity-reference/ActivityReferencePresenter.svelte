@@ -26,8 +26,10 @@
   import ReferenceSrcPresenter from './ReferenceSrcPresenter.svelte'
 
   import ActivityMessageTemplate from '../activity-message/ActivityMessageTemplate.svelte'
+  import type { ActivityMessagePresentation } from '../../types'
 
   export let value: ActivityReference
+  export let presentation: ActivityMessagePresentation = 'default'
   export let showNotify: boolean = false
   export let isHighlighted: boolean = false
   export let isSelected: boolean = false
@@ -83,6 +85,8 @@
 
 <ActivityMessageTemplate
   message={value}
+  {presentation}
+  isEvent
   {readonly}
   {person}
   {showNotify}

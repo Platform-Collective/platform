@@ -28,6 +28,7 @@
     "Removed": "odstranil(a)",
     "Replies": "Odpovědi",
     "RepliesCount": "{replies, plural, =1 {# odpověď} other {# odpovědí}}",
+    "ShowMoreReplies": "Zobrazit dalších {count} odpovědí",
     "Set": "nastavil(a)",
     "To": "na",
     "Unset": "Zrušit nastavení",

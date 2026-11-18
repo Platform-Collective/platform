@@ -28,6 +28,7 @@
     "Removed": "Удалил(а)",
     "Replies": "Ответы",
     "RepliesCount": "{replies, plural, one {# ответ} few {# ответа} other {# ответов}}",
+    "ShowMoreReplies": "{count, plural, one {Показать еще # ответ} few {Показать еще # ответа} other {Показать еще # ответов}}",
     "Set": "установлен",
     "To": "на",
     "Unset": "Сбросил",

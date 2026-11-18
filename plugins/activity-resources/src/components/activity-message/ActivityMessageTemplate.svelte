@@ -25,20 +25,25 @@
   import notification from '@hcengineering/notification'
   import { Asset } from '@hcengineering/platform'
   import { ComponentExtensions, getClient } from '@hcengineering/presentation'
-  import { Action, Icon, Label } from '@hcengineering/ui'
+  import { Action, Icon, Label, TimeSince } from '@hcengineering/ui'
   import { Action as ViewAction } from '@hcengineering/view'
   import { getActions, restrictionStore, showMenu } from '@hcengineering/view-resources'
 
   import { clearMessageInLocation, savedMessagesStore } from '../../activity'
   import { MessageInlineAction } from '../../types'
+  import type { ActivityMessagePresentation } from '../../types'
   import ActivityMessageActions from '../ActivityMessageActions.svelte'
   import MessageTimestamp from '../MessageTimestamp.svelte'
   import ReactionsPresenter from '../reactions/ReactionsPresenter.svelte'
   import Replies from '../Replies.svelte'
   import ActivityMessagePresenter from './ActivityMessagePresenter.svelte'
+  import ActivityReplies from './ActivityReplies.svelte'
   import InlineAction from './InlineAction.svelte'
 
   export let message: DisplayActivityMessage
+  export let presentation: ActivityMessagePresentation = 'default'
+  export let isEvent = false
+  export let eventIcon: Asset = activity.icon.Activity
   export let parentMessage: DisplayActivityMessage | undefined = undefined
 
   export let viewlet: ActivityMessageViewlet | undefined = undefined
@@ -124,7 +129,10 @@
     return type === 'short' && !isSaved && (message.replies ?? 0) === 0
   }
 
-  $: isShort = canDisplayShort(type, isSaved)
+  $: isShort = presentation === 'default' && canDisplayShort(type, isSaved)
+  $: isCard = presentation === 'activity' && !isEvent && !embedded
+  $: isReply = presentation === 'reply' && !embedded
+  $: isTimelineEvent = presentation === 'activity' && isEvent && !embedded
 
   function isInside(x: number, y: number, rect: DOMRect): boolean {
     return x >= rect.left && y >= rect.top && x <= rect.right && y <= rect.bottom
@@ -177,13 +185,16 @@
       bind:this={element}
       id={message._id}
       class="activityMessage clear-mins"
+      class:card={isCard}
+      class:reply={isReply}
+      class:timeline-event={isTimelineEvent}
       class:clickable={!!onClick}
       class:highlighted={isHighlighted}
       class:selected={isSelected}
       class:hoverable
       class:embedded
       class:actionsOpened={isActionsOpened}
-      class:filledHover={hoverStyles === 'filledHover'}
+      class:filledHover={hoverStyles === 'filledHover' && presentation === 'default'}
       class:stale
       on:click={onClick}
       on:contextmenu={handleContextMenu}
@@ -200,12 +211,14 @@
         </span>
       {:else}
         <div class="avatar mt-1 relative flex-no-shrink">
-          {#if $$slots.icon}
+          {#if isTimelineEvent}
+            <Icon icon={eventIcon} size="small" />
+          {:else if $$slots.icon}
             <slot name="icon" />
           {:else if person}
-            <Avatar size="medium" {person} name={person.name} showPreview />
+            <Avatar size={isCard || isReply ? 'x-small' : 'medium'} {person} name={person.name} showPreview />
           {:else}
-            <SystemAvatar size="medium" />
+            <SystemAvatar size={isCard || isReply ? 'x-small' : 'medium'} />
           {/if}
           {#if isSaved}
             <div class="saveMarker">
@@ -239,14 +252,18 @@
               <slot name="header" />
             {/if}
 
-            {#if !skipLabel && showDatePreposition}
+            {#if !skipLabel && showDatePreposition && presentation === 'default'}
               <span class="text-sm lower">
                 <Label label={activity.string.At} />
               </span>
             {/if}
 
-            <span class="text-sm lower">
-              <MessageTimestamp date={message.createdOn ?? message.modifiedOn} />
+            <span class="text-sm lower timestamp">
+              {#if presentation === 'default'}
+                <MessageTimestamp date={message.createdOn ?? message.modifiedOn} />
+              {:else}
+                <TimeSince value={message.createdOn ?? message.modifiedOn} />
+              {/if}
             </span>
             {#if message.editedOn}
               <span class="text-sm lower">(<Label label={notification.string.Edited} />)</span>
@@ -262,16 +279,23 @@
           </div>
         {/if}
 
-        <slot name="content" {readonly} />
+        <div class="message-body clear-mins">
+          <div class="message-content-box">
+            <slot name="content" {readonly} />
+          </div>
 
-        {#if !hideFooter}
-          <Replies {embedded} object={message} {onReply} />
-        {/if}
-        <ReactionsPresenter object={message} {readonly} />
-        {#if parentMessage && showEmbedded}
-          <div class="mt-2" />
-          <ActivityMessagePresenter value={parentMessage} embedded hideFooter withActions={false} />
-        {/if}
+          {#if !hideFooter}
+            <Replies {embedded} object={message} {onReply} />
+          {/if}
+          <ReactionsPresenter object={message} {readonly} />
+          {#if parentMessage && showEmbedded}
+            <div class="mt-2" />
+            <ActivityMessagePresenter value={parentMessage} embedded hideFooter withActions={false} />
+          {/if}
+          {#if isCard && !hideFooter && (message.replies ?? 0) > 0}
+            <ActivityReplies {message} {readonly} {onReply} />
+          {/if}
+        </div>
       </div>
 
       {#if withActions && !readonly}
@@ -472,5 +496,174 @@
   .username {
     font-weight: 500;
     margin-right: 0.25rem;
+  }
+
+  .message-body {
+    display: contents;
+  }
+
+  .message-content-box {
+    position: relative;
+    min-width: 0;
+  }
+
+  .activityMessage.card,
+  .activityMessage.reply {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0;
+    padding: 0;
+
+    > .avatar {
+      grid-column: 1;
+      grid-row: 1;
+      width: 1.5rem;
+      height: 1.5rem;
+      margin: 0.5rem 0;
+      margin-inline-start: 0.75rem;
+    }
+
+    > .message-content {
+      display: contents;
+
+      > .header {
+        grid-column: 2;
+        grid-row: 1;
+        flex-wrap: wrap;
+        align-items: center;
+        margin: 0;
+        padding: 0.5rem 0;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+
+      > .message-body {
+        display: block;
+        grid-column: 1 / -1;
+        grid-row: 2;
+        padding: 0.75rem;
+      }
+    }
+
+    > .actions {
+      position: static;
+      grid-column: 3;
+      grid-row: 1;
+      margin: 0.375rem 0.5rem;
+    }
+
+    > .actions:not(.pending) {
+      // Preserve keyboard access and the reserved grid space while hidden. The pointer is always over the card
+      // when it reaches the toolbar, so the toolbar is visible before it can be clicked.
+      visibility: visible;
+      opacity: 0;
+    }
+
+    &:hover:not(:has(.reply:hover)) > .actions:not(.pending),
+    &:focus-within:not(:has(.reply:focus-within)) > .actions:not(.pending),
+    &.actionsOpened > .actions:not(.pending) {
+      opacity: 1;
+    }
+
+    @media (hover: none) {
+      > .actions:not(.pending) {
+        opacity: 1;
+      }
+    }
+  }
+
+  .activityMessage.card {
+    margin: 0.5rem 0;
+    border-color: var(--global-ui-BorderColor);
+    border-radius: 0.5rem;
+    background-color: var(--global-surface-01-BackgroundColor);
+
+    > .message-content > .message-body {
+      border-top: 1px solid var(--global-ui-BorderColor);
+      border-radius: 0 0 0.5rem 0.5rem;
+      background-color: var(--global-surface-02-BackgroundColor);
+    }
+
+    &.highlighted > .message-content > .message-body {
+      animation: highlight 3000ms ease-in-out;
+    }
+
+    &.selected > .message-content > .message-body {
+      background-color: var(--global-ui-highlight-BackgroundColor);
+    }
+
+    &.hoverable:hover,
+    &.actionsOpened {
+      background-color: var(--global-surface-01-BackgroundColor);
+    }
+  }
+
+  .activityMessage.reply {
+    border: 0;
+    border-radius: 0;
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+
+    > .avatar {
+      margin-inline-start: 0;
+    }
+
+    > .message-content > .message-body {
+      padding: 0 0 0.75rem;
+      padding-inline-start: 2rem;
+    }
+  }
+
+  .activityMessage.timeline-event {
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.375rem 0.75rem;
+    border: 0;
+    border-radius: 0;
+
+    > .avatar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.5rem;
+      height: 1.5rem;
+      margin: 0;
+      border-radius: 50%;
+      color: var(--global-secondary-TextColor);
+      background-color: var(--global-surface-02-BackgroundColor);
+    }
+
+    > .message-content {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.25rem 0.5rem;
+      font-size: 0.875rem;
+
+      > .header {
+        display: contents;
+
+        > .timestamp {
+          order: 2;
+        }
+      }
+
+      > .message-body {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem 0.5rem;
+        order: 1;
+      }
+    }
+
+    > .actions {
+      top: 0.25rem;
+    }
+
+    &:focus-within > .actions:not(.pending) {
+      visibility: visible;
+    }
   }
 </style>

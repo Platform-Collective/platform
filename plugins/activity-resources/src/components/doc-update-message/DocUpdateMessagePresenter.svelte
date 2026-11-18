@@ -37,8 +37,10 @@
   import { getAttributeModel, getCollectionAttribute } from '../../activityMessagesUtils'
   import { getIsTextType } from '../../utils'
   import { Person } from '@hcengineering/contact'
+  import type { ActivityMessagePresentation } from '../../types'
 
   export let value: DisplayDocUpdateMessage
+  export let presentation: ActivityMessagePresentation = 'default'
   export let doc: Doc | undefined = undefined
   export let showNotify: boolean = false
   export let isHighlighted: boolean = false
@@ -170,6 +172,13 @@
 {#if clazz != null}
   <ActivityMessageTemplate
     message={value}
+    {presentation}
+    isEvent
+    eventIcon={viewlet?.icon ??
+      attributeModel?.icon ??
+      collectionAttribute?.icon ??
+      clazz.icon ??
+      activity.icon.Activity}
     {parentMessage}
     {person}
     {showNotify}

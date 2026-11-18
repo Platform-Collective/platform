@@ -13,7 +13,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { ActivityInfoMessage } from '@hcengineering/activity'
+  import activity, { ActivityInfoMessage } from '@hcengineering/activity'
   import { Avatar, SystemAvatar, getPersonByPersonIdCb } from '@hcengineering/contact-resources'
   import { translateCB } from '@hcengineering/platform'
   import { HTMLViewer } from '@hcengineering/presentation'
@@ -22,8 +22,10 @@
   import ActivityMessageHeader from '../activity-message/ActivityMessageHeader.svelte'
   import ActivityMessageTemplate from '../activity-message/ActivityMessageTemplate.svelte'
   import { Person } from '@hcengineering/contact'
+  import type { ActivityMessagePresentation } from '../../types'
 
   export let value: ActivityInfoMessage
+  export let presentation: ActivityMessagePresentation = 'default'
   export let showNotify: boolean = false
   export let isHighlighted: boolean = false
   export let isSelected: boolean = false
@@ -51,6 +53,9 @@
 
 <ActivityMessageTemplate
   message={value}
+  {presentation}
+  isEvent
+  eventIcon={value.icon ?? activity.icon.Activity}
   parentMessage={undefined}
   {person}
   {showNotify}

@@ -20,6 +20,7 @@
     MessageInlineAction,
     editingMessageStore
   } from '@hcengineering/activity-resources'
+  import type { ActivityMessagePresentation } from '@hcengineering/activity-resources'
   import { Attachment } from '@hcengineering/attachment'
   import { AttachmentDocList, AttachmentImageSize } from '@hcengineering/attachment-resources'
   import chunter, { ChatMessage, ChatMessageViewlet } from '@hcengineering/chunter'
@@ -37,6 +38,7 @@
   import ChatMessageInput from './ChatMessageInput.svelte'
 
   export let value: WithLookup<ChatMessage> | undefined
+  export let presentation: ActivityMessagePresentation = 'default'
   export let doc: Doc | undefined = undefined
   export let showNotify: boolean = false
   export let isHighlighted: boolean = false
@@ -241,6 +243,7 @@
 {:else if value && !inline}
   <ActivityMessageTemplate
     message={value}
+    {presentation}
     {viewlet}
     {parentMessage}
     {person}
