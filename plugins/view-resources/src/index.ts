@@ -195,6 +195,7 @@ export { default as StatusRefPresenter } from './components/status/StatusRefPres
 export { canArchiveSpace, canDeleteObject, canDeleteSpace, canEditSpace } from './visibilityTester'
 
 export * from './filter'
+export { getWeekRange } from './date-week'
 export { makeFilterQuery } from './filter/query-builder'
 export {
   resultIssueCountStore,

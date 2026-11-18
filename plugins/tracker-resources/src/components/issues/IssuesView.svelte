@@ -46,9 +46,13 @@
   export let icon: Asset | undefined = undefined
   export let modeSelectorProps: IModeSelector | undefined = undefined
 
+  export let viewOptionsOverride: Partial<ViewOptions> = {}
+
   let viewlet: WithLookup<Viewlet> | undefined = undefined
   const viewlets: WithLookup<Viewlet>[] | undefined = undefined
   let viewOptions: ViewOptions | undefined
+
+  $: effectiveViewOptions = viewOptions === undefined ? undefined : { ...viewOptions, ...viewOptionsOverride }
 
   // The Gantt viewlet has its own toolbar inside GanttView with dedicated
   // Filter / Group-by / Sort / Tree-View / Virtualization controls. The
@@ -163,7 +167,7 @@
     <ViewletSettingButton
       bind:viewOptions
       bind:viewlet
-      hideGroupingAndOrdering={isGanttMode || isCalendarMode}
+      hideGroupingAndOrdering={isGanttMode || isCalendarMode || viewOptionsOverride.orderBy !== undefined}
       showConfigureColumns={!isGanttMode && !isCalendarMode}
       hideKeys={isGanttMode ? ['ganttGroupBy'] : []}
     />
@@ -260,7 +264,7 @@
   _class={tracker.class.Issue}
   {space}
   query={searchQuery}
-  {viewOptions}
+  viewOptions={effectiveViewOptions}
   hideChips={true}
   on:change={(e) => (resultQuery = e.detail)}
 />
@@ -309,13 +313,13 @@
      groups / Kanban columns remain visible and the card is suppressed — the
      user's explicit view option wins. -->
 <div class="viewlet-wrap">
-  {#if viewlet && viewOptions}
+  {#if viewlet && effectiveViewOptions}
     <ViewletContentView
       _class={tracker.class.Issue}
       {viewlet}
       query={resultQuery}
       {space}
-      {viewOptions}
+      viewOptions={effectiveViewOptions}
       createItemDialog={CreateIssue}
       createItemLabel={tracker.string.AddIssueTooltip}
       createItemEvent={TrackerEvents.IssuePlusButtonClicked}

@@ -14,16 +14,18 @@
 -->
 <script lang="ts">
   import { getCurrentEmployee } from '@hcengineering/contact'
-  import core, { DocumentQuery, getCurrentAccount, Ref } from '@hcengineering/core'
+  import core, { DocumentQuery, getCurrentAccount, Ref, SortingOrder } from '@hcengineering/core'
   import type { IntlString, Asset } from '@hcengineering/platform'
   import { createQuery, getClient } from '@hcengineering/presentation'
   import type { Issue, IssueStatus } from '@hcengineering/tracker'
-  import { IModeSelector, resolvedLocationStore } from '@hcengineering/ui'
-  import { createEventDispatcher } from 'svelte'
+  import { deviceOptionsStore as deviceInfo, IModeSelector, resolvedLocationStore } from '@hcengineering/ui'
+  import { createEventDispatcher, onMount } from 'svelte'
+  import { getWeekRange } from '@hcengineering/view-resources'
 
   import task from '@hcengineering/task'
   import tracker from '../../plugin'
   import IssuesView from '../issues/IssuesView.svelte'
+  import { getDueQuery, nextDayDelay } from './due'
 
   export let config: [string, IntlString, object][] = []
   export let icon: Asset | undefined = undefined
@@ -32,13 +34,43 @@
   const hierarchy = client.getHierarchy()
   const socialIds = getCurrentAccount().socialIds
   const acc = getCurrentAccount().uuid
+  const employee = getCurrentEmployee()
   const dispatch = createEventDispatcher()
-  const assigned = { assignee: getCurrentEmployee() }
+  const assigned = { assignee: employee }
   const created = { createdBy: { $in: socialIds } }
   let subscribed = { _id: { $in: [] as Ref<Issue>[] } }
   let query: DocumentQuery<Issue> | undefined = undefined
   let modeSelectorProps: IModeSelector | undefined = undefined
   let mode: string | undefined = undefined
+
+  let today = new Date()
+  onMount(() => {
+    let timer: ReturnType<typeof setTimeout>
+    const refresh = (): void => {
+      clearTimeout(timer)
+      today = new Date()
+      timer = setTimeout(refresh, nextDayDelay(today))
+    }
+    refresh()
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  })
+
+  const dueStatusQuery = createQuery()
+  let dueStatuses: IssueStatus[] = []
+  dueStatusQuery.query(
+    tracker.class.IssueStatus,
+    { category: { $nin: [task.statusCategory.Won, task.statusCategory.Lost] } },
+    (result) => {
+      dueStatuses = result
+    }
+  )
+  $: due = getDueQuery(employee, dueStatuses, getWeekRange(today, $deviceInfo.firstDayOfWeek).$lte)
 
   const activeStatusQuery = createQuery()
 
@@ -78,7 +110,7 @@
     { sort: { attachedTo: 1 }, projection: { attachedTo: 1 } }
   )
 
-  $: queries = { assigned, active, backlog, created, subscribed }
+  $: queries = { assigned, active, backlog, created, subscribed, due }
   $: mode = $resolvedLocationStore.query?.mode ?? undefined
   $: if (mode === undefined || (queries as any)[mode] === undefined) {
     ;[[mode]] = config
@@ -95,5 +127,12 @@
 </script>
 
 {#if query !== undefined && modeSelectorProps !== undefined}
-  <IssuesView {query} space={undefined} {icon} title={tracker.string.MyIssues} {modeSelectorProps} />
+  <IssuesView
+    {query}
+    space={undefined}
+    {icon}
+    title={tracker.string.MyIssues}
+    {modeSelectorProps}
+    viewOptionsOverride={mode === 'due' ? { groupBy: [], orderBy: ['dueDate', SortingOrder.Ascending] } : {}}
+  />
 {/if}

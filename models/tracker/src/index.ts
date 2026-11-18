@@ -385,6 +385,7 @@ function defineApplication (
                 ['assigned', view.string.Assigned, {}],
                 ['active', tracker.string.Active, {}],
                 ['backlog', tracker.string.Backlog, {}],
+                ['due', tracker.string.Due, {}],
                 ['created', view.string.Created, {}],
                 ['subscribed', view.string.Subscribed, {}]
               ]
