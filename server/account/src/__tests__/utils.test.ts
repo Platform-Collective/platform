@@ -2923,7 +2923,7 @@ describe('token log redaction', () => {
       ])
 
     beforeEach(() => {
-      ctx = { error: jest.fn(), warn: jest.fn(), info: jest.fn() }
+      ctx = { error: jest.fn(), warn: jest.fn(), info: jest.fn() } as unknown as MeasureContext
     })
 
     test('logs a TokenError at warn level with fingerprint and reason only and skips Analytics', () => {
