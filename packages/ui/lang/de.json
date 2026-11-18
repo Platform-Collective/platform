@@ -99,6 +99,7 @@
         "UseMaxWidth": "Maximale Breite",
         "Sidebar": "Seitenleiste",
         "FontSize": "Schriftgröße",
+        "BrowserLanguage": "Browsersprache (automatisch)",
         "Language": "Sprache",
         "AppearanceAndLanguage": "Darstellung und Sprache",
         "DaysWOValue": "{days, plural, =1 {Tag} other {Tage}}",

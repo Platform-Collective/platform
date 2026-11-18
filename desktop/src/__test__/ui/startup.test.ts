@@ -53,7 +53,7 @@ describe('desktop startup shell', () => {
       default: { string: { Disconnected: 'Disconnected', Reconnect: 'Reconnect' } }
     }), { virtual: true })
     jest.doMock('@hcengineering/ui', () => ({ createApp: mockCreateApp }), { virtual: true })
-    jest.doMock('@hcengineering/theme', () => ({}), { virtual: true })
+    jest.doMock('@hcengineering/theme', () => ({ getCurrentLanguage: () => 'en' }), { virtual: true })
     jest.doMock('../../ui/platform', () => ({ configurePlatform: mockConfigure }))
     jest.doMock('../../ui/titleBarMenu', () => ({}))
     jest.doMock('../../ui/screenShare', () => ({ defineScreenShare: jest.fn(), defineGetDisplayMedia: jest.fn() }))
@@ -88,6 +88,19 @@ describe('desktop startup shell', () => {
     expect(document.getElementById('desktop-startup')?.textContent).toContain('Huly')
     expect(document.getElementById('desktop-startup-progress')).not.toBeNull()
     expect(document.getElementById('desktop-app-titlebar-root') !== null).toBe(isWindows)
+  })
+
+  test('uses the resolved language for startup and reconnect labels', async () => {
+    const translate = jest.fn(async (value: string) => value)
+    jest.doMock('@hcengineering/platform', () => ({ translate }), { virtual: true })
+    jest.doMock('@hcengineering/theme', () => ({ getCurrentLanguage: () => 'de' }), { virtual: true })
+    mockConfigure.mockResolvedValue(parameters)
+
+    start()
+    await flushPromises()
+
+    expect(translate).toHaveBeenCalledWith('Disconnected', {}, 'de')
+    expect(translate).toHaveBeenCalledWith('Reconnect', {}, 'de')
   })
 
   test.each(['click', 'online'])('offline startup recovers through %s and mounts only once', async (event) => {

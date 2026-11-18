@@ -99,6 +99,7 @@
         "UseMaxWidth": "Ancho máximo",
         "Sidebar": "Barra lateral",
         "FontSize": "Tamaño de fuente",
+        "BrowserLanguage": "Idioma del navegador (automático)",
         "Language": "Idioma",
         "AppearanceAndLanguage": "Apariencia e idioma",
         "DaysWOValue": "{days, plural, =1 {día} other {días}}",

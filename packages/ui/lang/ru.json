@@ -99,6 +99,7 @@
         "UseMaxWidth": "Максимальная ширина",
         "Sidebar": "Боковая панель",
         "FontSize": "Размер шрифта",
+        "BrowserLanguage": "Язык браузера (автоматически)",
         "Language": "Язык",
         "AppearanceAndLanguage": "Внешний вид и язык",
         "DaysWOValue": "{days, plural, one {день} few {дня} other {дней}}",

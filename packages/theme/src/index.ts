@@ -15,20 +15,54 @@
 
 import { Analytics } from '@hcengineering/analytics'
 import '@hcengineering/platform-rig/profiles/ui/svelte'
-import { derived, writable } from 'svelte/store'
+import platform, { loadPluginStrings, setMetadata } from '@hcengineering/platform'
+import { derived, get, writable } from 'svelte/store'
 import { ThemeVariant, type ThemeVariantType } from './variants'
+import { DEFAULT_LANGUAGES, getBrowserLanguages, LanguagePreference } from './language'
 
 export { default as Theme } from './Theme.svelte'
 export { default as InvertedTheme } from './InvertedTheme.svelte'
 export { ThemeVariant, type ThemeVariantType } from './variants'
+export { DEFAULT_LANGUAGES } from './language'
 
-/**
- * @public
- */
-export const setDefaultLanguage = (language: string): void => {
-  if (localStorage.getItem('lang') === null) {
-    localStorage.setItem('lang', language)
+const languagePreference = new LanguagePreference(() => localStorage)
+let defaultLanguage = 'en'
+let supportedLanguages: readonly string[] = DEFAULT_LANGUAGES
+
+/** Configure language selection before mounting the application. @public */
+export const setDefaultLanguage = (language: string, languages: readonly string[] = DEFAULT_LANGUAGES): void => {
+  defaultLanguage = language
+  supportedLanguages = languages
+}
+
+/** Explicit value in the picker: null is Browser language (automatic). @public */
+export const languagePreferenceStore = writable<string | null>(null)
+/** Resolved language shared with Theme. @public */
+export const currentLanguageStore = writable<string>('en')
+
+/** Set an explicit choice without reloading plugin strings. @public */
+export const setLanguagePreference = (language: string | null): void => {
+  languagePreference.set(language)
+}
+
+/** Save an explicit preference before displaying it. @public */
+export async function selectLanguagePreference (language: string | null): Promise<void> {
+  languagePreference.set(language)
+  await initializeLanguage()
+}
+
+/** Load the locale before rendering login, onboarding or the workbench. @public */
+export async function initializeLanguage (): Promise<void> {
+  const language = getCurrentLanguage()
+  setMetadata(platform.metadata.locale, language)
+  document.documentElement.lang = language
+  currentLanguageStore.set(language)
+  languagePreferenceStore.set(languagePreference.choice())
+  const theme = get(themeStore)
+  if (theme !== undefined) {
+    themeStore.set(new ThemeOptions(theme.fontSize, theme.dark, language, theme.emoji))
   }
+  await loadPluginStrings(language)
 }
 
 function getDefaultProps (prop: string, value: string): string {
@@ -58,7 +92,11 @@ export const getCurrentFontSize = (): string =>
  * @public
  */
 export const getCurrentLanguage = (): string => {
-  const lang = localStorage.getItem('lang') ?? getDefaultProps('lang', 'en')
+  const lang = languagePreference.get({
+    defaultLanguage,
+    supportedLanguages,
+    browserLanguages: getBrowserLanguages(typeof navigator === 'undefined' ? undefined : navigator)
+  })
   Analytics.setTag('language', lang)
   return lang
 }

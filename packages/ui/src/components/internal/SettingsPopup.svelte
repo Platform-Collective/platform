@@ -13,7 +13,14 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { type IntlString, getEmbeddedLabel, getMetadata } from '@hcengineering/platform'
+  import {
+    type IntlString,
+    getEmbeddedLabel,
+    getMetadata,
+    PlatformError,
+    setPlatformStatus,
+    unknownError
+  } from '@hcengineering/platform'
   import { getContext } from 'svelte'
   import { type Readable } from 'svelte/store'
 
@@ -52,9 +59,9 @@
     'theme'
   )
 
-  const { currentLanguage, setLanguage } = getContext<{
-    currentLanguage: Readable<string>
-    setLanguage: (language: string) => void
+  const { languagePreference, setLanguage } = getContext<{
+    languagePreference: Readable<string | null>
+    setLanguage: (language: string | null) => Promise<void>
   }>('lang')
 
   const { currentEmoji, setEmoji } = getContext<{
@@ -96,10 +103,6 @@
     { id: 'tr', label: ui.string.Turkish, logo: '&#x1F1F9;&#x1F1F7;' }
   ].filter((lang) => uiLangs.has(lang.id))
 
-  if (langs.findIndex((l) => l.id === $currentLanguage) < 0 && langs.length !== 0) {
-    setLanguage(langs[0].id)
-  }
-
   if (langs.length === 0) {
     console.error(
       `List of configured UI languages: [${getMetadata(ui.metadata.Languages)?.join(
@@ -119,9 +122,12 @@
     setTheme(theme)
   }
 
-  function selectLanguage(language: string): void {
-    if ($currentLanguage === language) return
-    setLanguage(language)
+  async function selectLanguage(language: string): Promise<void> {
+    try {
+      await setLanguage(language === 'automatic' ? null : language)
+    } catch (error) {
+      await setPlatformStatus(error instanceof PlatformError ? error.status : unknownError(error))
+    }
   }
 
   const localWeekStart = getLocalWeekStart()
@@ -152,7 +158,8 @@
 
   $: $deviceInfo.theme = $currentTheme
   $: fontsize = fontsizes.find((fs) => fs.id === $currentFontSize) ?? fontsizes[0]
-  $: language = langs.find((lang) => lang.id === $currentLanguage) ?? langs[0]
+  const automatic = { id: 'automatic', label: ui.string.BrowserLanguage, logo: '&#x1F310;' }
+  $: language = langs.find((lang) => lang.id === $languagePreference) ?? automatic
   $: emoji = emojis.find((e) => e.id === $currentEmoji) ?? emojis[0]
   $: firstDayOfWeekItem = firstDaysOfWeek.find((it) => it.id === `${firstDayOfWeek}`) ?? firstDaysOfWeek[0]
 </script>
@@ -247,7 +254,7 @@
       <button
         class="ap-menuItem antiPopup-submenu withIcon noMargin flex-row-center flex-grow"
         on:click={(ev) => {
-          const items = langs.map((p) => {
+          const items = [automatic, ...langs].map((p) => {
             return {
               ...p,
               icon: Html,
@@ -258,7 +265,7 @@
           })
           showPopup(ModernPopup, { items, selected: language.id }, eventToHTMLElement(ev), (id) => {
             if (id !== undefined) {
-              selectLanguage(id)
+              void selectLanguage(id)
             }
           })
         }}

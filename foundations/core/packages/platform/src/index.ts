@@ -18,6 +18,7 @@ import type { Metadata } from './metadata'
 
 export * from './event'
 export * from './i18n'
+export * from './locales'
 export * from './metadata'
 export * from './platform'
 export * from './ident'

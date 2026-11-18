@@ -13,8 +13,6 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { Analytics } from '@hcengineering/analytics'
-  import platform, { loadPluginStrings, setMetadata } from '@hcengineering/platform'
   import { onMount, setContext } from 'svelte'
   import { writable } from 'svelte/store'
   import { ThemeVariant } from './variants'
@@ -22,6 +20,10 @@
     ThemeOptions,
     getCurrentFontSize,
     getCurrentLanguage,
+    selectLanguagePreference,
+    currentLanguageStore,
+    languagePreferenceStore,
+    initializeLanguage,
     getCurrentTheme,
     isSystemThemeDark,
     isThemeDark,
@@ -31,8 +33,9 @@
 
   const currentTheme = writable<string>(getCurrentTheme())
   const currentFontSize = writable<string>(getCurrentFontSize())
-  const currentLanguage = writable<string>(getCurrentLanguage())
+  const currentLanguage = currentLanguageStore
   const currentEmoji = writable<string>(getCurrentEmoji())
+  let languageRequest = 0
 
   const setOptions = (currentFont: string, theme: string, language: string, emoji: string) => {
     themeOptions.set(new ThemeOptions(currentFont === 'normal-font' ? 16 : 14, isThemeDark(theme), language, emoji))
@@ -61,15 +64,11 @@
     )
     setOptions(fontsize, getCurrentTheme(), getCurrentLanguage(), getCurrentEmoji())
   }
-  const setLanguage = async (language: string, set: boolean = true) => {
-    currentLanguage.set(language)
-    if (set) {
-      localStorage.setItem('lang', language)
-    }
-    Analytics.setTag('language', language)
-    setMetadata(platform.metadata.locale, $currentLanguage)
-    await loadPluginStrings($currentLanguage, set)
-    setOptions(getCurrentFontSize(), getCurrentTheme(), language, getCurrentEmoji())
+  const setLanguage = async (language: string | null) => {
+    const request = ++languageRequest
+    await selectLanguagePreference(language)
+    if (request !== languageRequest) return
+    setOptions(getCurrentFontSize(), getCurrentTheme(), getCurrentLanguage(), getCurrentEmoji())
   }
   const setEmoji = (emoji: string, set = true) => {
     currentEmoji.set(emoji)
@@ -93,6 +92,7 @@
   })
   setContext('lang', {
     currentLanguage,
+    languagePreference: languagePreferenceStore,
     setLanguage
   })
   setContext('emoji', {
@@ -129,8 +129,7 @@
   onMount(() => {
     setRootColors($currentTheme, false)
     setRootFontSize($currentFontSize, false)
-    void setLanguage($currentLanguage, false)
-    void loadPluginStrings($currentLanguage)
+    void initializeLanguage()
     setDocumentLanguage()
   })
 </script>

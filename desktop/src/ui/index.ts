@@ -38,7 +38,7 @@ import { inboxId } from '@hcengineering/inbox'
 import workbench, { workbenchId, logOut } from '@hcengineering/workbench'
 import view, { Action, encodeObjectURI } from '@hcengineering/view'
 import { resolveLocation } from '@hcengineering/notification-resources'
-import { themeStore, ThemeVariant } from '@hcengineering/theme'
+import { getCurrentLanguage, themeStore, ThemeVariant } from '@hcengineering/theme'
 import type { Application } from '@hcengineering/workbench'
 import { isAllowedToRole } from '@hcengineering/workbench-resources'
 import card from '@hcengineering/card'
@@ -186,7 +186,7 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('online', retryApplication)
   void startApplication()
 
-  const language = localStorage.getItem('lang') ?? 'en'
+  const language = getCurrentLanguage()
   void Promise.all([
     translate(setting.string.Disconnected, {}, language),
     translate(setting.string.Reconnect, {}, language)

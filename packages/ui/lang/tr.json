@@ -99,6 +99,7 @@
         "UseMaxWidth": "Maksimum genişlik",
         "Sidebar": "Kenar çubuğu",
         "FontSize": "Yazı boyutu",
+        "BrowserLanguage": "Tarayıcı dili (otomatik)",
         "Language": "Dil",
         "AppearanceAndLanguage": "Görünüm ve dil",
         "DaysWOValue": "{days, plural, =1 {gün} other {gün}}",
