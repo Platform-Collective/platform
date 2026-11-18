@@ -63,6 +63,7 @@ import { serverLeadId, createModel as serverLeadModel } from '@hcengineering/mod
 import { serverNotificationId, createModel as serverNotificationModel } from '@hcengineering/model-server-notification'
 import { serverRecruitId, createModel as serverRecruitModel } from '@hcengineering/model-server-recruit'
 import { serverRequestId, createModel as serverRequestModel } from '@hcengineering/model-server-request'
+import { serverRatingId, createModel as serverRatingModel } from '@hcengineering/model-server-rating'
 import { serverSettingId, createModel as serveSettingModel } from '@hcengineering/model-server-setting'
 import { serverTagsId, createModel as serverTagsModel } from '@hcengineering/model-server-tags'
 import { serverTaskId, createModel as serverTaskModel } from '@hcengineering/model-server-task'
@@ -557,6 +558,7 @@ export default function buildModel (): Builder {
     [serverHrModel, serverHrId],
     [serverNotificationModel, serverNotificationId],
     [serverRequestModel, serverRequestId],
+    [serverRatingModel, serverRatingId],
     [serverViewModel, serverViewId],
     [serverActivityModel, serverActivityId],
     [serverDocumentModel, serverDocumentId],

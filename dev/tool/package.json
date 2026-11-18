@@ -142,6 +142,8 @@
     "@hcengineering/server-recruit-resources": "workspace:^0.7.0",
     "@hcengineering/server-request": "workspace:^0.7.0",
     "@hcengineering/server-request-resources": "workspace:^0.7.0",
+    "@hcengineering/server-rating": "workspace:^0.7.0",
+    "@hcengineering/server-rating-resources": "workspace:^0.7.0",
     "@hcengineering/server-setting": "workspace:^0.7.0",
     "@hcengineering/server-setting-resources": "workspace:^0.7.0",
     "@hcengineering/server-tags": "workspace:^0.7.0",

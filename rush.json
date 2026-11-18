@@ -2732,8 +2732,18 @@
       "shouldPublish": false
     },
     {
+      "packageName": "@hcengineering/server-rating-resources",
+      "projectFolder": "server-plugins/rating-resources",
+      "shouldPublish": false
+    },
+    {
       "packageName": "@hcengineering/model-rating",
       "projectFolder": "models/rating",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/model-server-rating",
+      "projectFolder": "models/server-rating",
       "shouldPublish": false
     },
     {

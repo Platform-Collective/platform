@@ -72,7 +72,6 @@ import {
 import { generateToken } from '@hcengineering/server-token'
 import { createStorageDataAdapter } from './blobStorage'
 import { CommunicationMiddleware, type CommunicationApiFactory } from './communication'
-import { RatingMiddleware } from '@hcengineering/server-rating'
 
 /**
  * @public
@@ -163,7 +162,6 @@ export function createServerPipeline (
       ApplyTxMiddleware.create, // Extract apply
       VersioningMiddleware.create,
       IdentifierMiddleware.create, // After ApplyTx to ensure that it pass
-      RatingMiddleware.create, // Rating editing restrictions
       TxValidatorMiddleware.createDerived,
       TransientMiddleware.create,
       TxMiddleware.create, // Store tx into transaction domain
