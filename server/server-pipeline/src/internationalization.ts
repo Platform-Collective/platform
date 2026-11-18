@@ -30,6 +30,7 @@ import { taskId } from '@hcengineering/task'
 import { telegramId } from '@hcengineering/telegram'
 import { templatesId } from '@hcengineering/templates'
 import { trackerId } from '@hcengineering/tracker'
+import { workflowRulesId } from '@hcengineering/workflow-rules'
 import { trainingId } from '@hcengineering/training'
 import { viewId } from '@hcengineering/view'
 import { workbenchId } from '@hcengineering/workbench'
@@ -72,6 +73,7 @@ import taskEn from '@hcengineering/task-assets/lang/en.json'
 import telegramEn from '@hcengineering/telegram-assets/lang/en.json'
 import templatesEn from '@hcengineering/templates-assets/lang/en.json'
 import trackerEn from '@hcengineering/tracker-assets/lang/en.json'
+import workflowRulesEn from '@hcengineering/workflow-rules-assets/lang/en.json'
 import trainingEn from '@hcengineering/training-assets/lang/en.json'
 import viewEn from '@hcengineering/view-assets/lang/en.json'
 import workbenchEn from '@hcengineering/workbench-assets/lang/en.json'
@@ -107,6 +109,7 @@ export function registerStringLoaders (): void {
   addStringsLoader(tagsId, async (lang: string) => tagsEn)
   addStringsLoader(calendarId, async (lang: string) => calendarEn)
   addStringsLoader(trackerId, async (lang: string) => trackerEn)
+  addStringsLoader(workflowRulesId, async (lang: string) => workflowRulesEn)
   addStringsLoader(boardId, async (lang: string) => boardEn)
   addStringsLoader(preferenceId, async (lang: string) => preferenceEn)
   addStringsLoader(hrId, async (lang: string) => hrEn)
