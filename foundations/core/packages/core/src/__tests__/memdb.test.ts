@@ -296,6 +296,90 @@ describe('memdb', () => {
     expect(numberSort[0].modifiedOn).toBeLessThanOrEqual(numberSort[numberSortDesc.length - 1].modifiedOn)
   })
 
+  it('sorting by custom rules', async () => {
+    const { model } = await createModel()
+
+    const byRules = await model.findAll(
+      core.class.Space,
+      {},
+      {
+        sort: {
+          name: {
+            order: SortingOrder.Ascending,
+            cases: [
+              { query: 'Sp2', index: 0 },
+              { query: 'Sp1', index: 1 }
+            ]
+          }
+        }
+      }
+    )
+    expect(byRules.map((it) => it.name)).toEqual(['Sp2', 'Sp1'])
+
+    const byRulesDesc = await model.findAll(
+      core.class.Space,
+      {},
+      {
+        sort: {
+          name: {
+            order: SortingOrder.Descending,
+            cases: [
+              { query: 'Sp2', index: 0 },
+              { query: 'Sp1', index: 1 }
+            ]
+          }
+        }
+      }
+    )
+    expect(byRulesDesc.map((it) => it.name)).toEqual(['Sp1', 'Sp2'])
+
+    // Values without a matching case are ordered by the default index.
+    const withDefault = await model.findAll(
+      core.class.Space,
+      {},
+      {
+        sort: {
+          name: {
+            order: SortingOrder.Ascending,
+            default: 0,
+            cases: [{ query: 'Sp1', index: 1 }]
+          }
+        }
+      }
+    )
+    expect(withDefault.map((it) => it.name)).toEqual(['Sp2', 'Sp1'])
+  })
+
+  it('sorting by custom rules with a null case', async () => {
+    const { model } = await createModel()
+    const client = new TxOperations(model, core.account.System)
+    await client.createDoc(core.class.Space, core.space.Model, {
+      private: false,
+      name: 'Sp3',
+      description: null as any,
+      members: [],
+      archived: false
+    })
+
+    const result = await client.findAll(
+      core.class.Space,
+      {},
+      {
+        sort: {
+          description: {
+            order: SortingOrder.Ascending,
+            cases: [
+              { query: null, index: 0 },
+              { query: '', index: 1 }
+            ]
+          },
+          name: SortingOrder.Ascending
+        }
+      }
+    )
+    expect(result.map((it) => it.name)).toEqual(['Sp3', 'Sp1', 'Sp2'])
+  })
+
   it('should add attached document', async () => {
     const { model } = await createModel()
 

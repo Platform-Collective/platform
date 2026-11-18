@@ -75,6 +75,13 @@ function mapSortingValue (order: SortingOrder | SortingRules<any>, val: any): an
     return val
   }
   for (const r of order.cases) {
+    if (r.query === null) {
+      // getValue stringifies object values, null included.
+      if (val === null || val === 'null') {
+        return r.index
+      }
+      continue
+    }
     if (typeof r.query === 'object') {
       const q: SortQuerySelector<any> = r.query
       if (q.$in?.includes(val) ?? false) {
@@ -91,6 +98,7 @@ function mapSortingValue (order: SortingOrder | SortingRules<any>, val: any): an
       return r.index
     }
   }
+  return order.default ?? order.cases.length
 }
 
 function getSortingResult (aValue: any, bValue: any, order: SortingOrder | SortingRules<any>): number {

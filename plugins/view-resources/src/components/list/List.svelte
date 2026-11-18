@@ -20,17 +20,21 @@
     FindOptions,
     RateLimiter,
     Ref,
+    SortingQuery,
     Space,
+    Status,
     mergeQueries
   } from '@hcengineering/core'
   import { IntlString } from '@hcengineering/platform'
   import { createQuery, getClient, reduceCalls } from '@hcengineering/presentation'
   import { AnyComponent, AnySvelteComponent } from '@hcengineering/ui'
-  import { BuildModelKey, ViewOptionModel, ViewOptions, Viewlet } from '@hcengineering/view'
+  import { BuildModelKey, OrderOption, ViewOptionModel, ViewOptions, Viewlet } from '@hcengineering/view'
   import { createEventDispatcher, onDestroy } from 'svelte'
   import { SelectionFocusProvider } from '../../selection'
+  import { statusStore } from '../../status'
   import { claimResultCountOwner, releaseResultCountOwner, setResultCount } from '../../stores'
   import { buildConfigLookup } from '../../utils'
+  import { getOrderBySorting } from '../../order-by-sorting'
   import { getResultOptions, getResultQuery } from '../../viewOptions'
   import ListCategories from './ListCategories.svelte'
   import { getListSorting } from './sorting'
@@ -98,6 +102,29 @@
 
   $: orderBy = viewOptions.orderBy
 
+  // Some attributes (e.g. statuses) are not ordered by their stored value, see getOrderBySorting.
+  let orderBySorting: { orderBy: OrderOption, sort: SortingQuery<Doc> } | undefined
+  const updateOrderBySorting = reduceCalls(async function (
+    orderBy: OrderOption | undefined,
+    space: Ref<Space> | undefined,
+    statuses: Status[]
+  ) {
+    orderBySorting =
+      orderBy !== undefined
+        ? { orderBy, sort: await getOrderBySorting(client, _class, orderBy, space, statuses) }
+        : undefined
+  })
+  $: void updateOrderBySorting(orderBy, space, $statusStore.array)
+
+  $: orderSort =
+    orderBy !== undefined
+      ? orderBySorting !== undefined &&
+        orderBySorting.orderBy[0] === orderBy[0] &&
+        orderBySorting.orderBy[1] === orderBy[1]
+        ? orderBySorting.sort
+        : getListSorting(hierarchy, _class, orderBy)
+      : undefined
+
   const docsQuery = createQuery()
   const docsQuerySlow = createQuery()
 
@@ -107,7 +134,7 @@
   $: resultOptions = {
     ...configOptions,
     ...(Object.keys(lookup).length > 0 ? { lookup } : {}),
-    ...(orderBy !== undefined ? { sort: getListSorting(hierarchy, _class, orderBy) } : {})
+    ...(orderSort !== undefined ? { sort: orderSort } : {})
   }
 
   const updateOptions = reduceCalls(async function (options: FindOptions<Doc> | undefined, viewOptions: ViewOptions) {

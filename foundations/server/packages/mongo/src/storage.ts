@@ -1799,6 +1799,12 @@ function fillCustomSort<T extends Doc> (
   _key: string
 ): void {
   const branches = rules.cases.map((selector) => {
+    if (selector.query === null) {
+      return {
+        case: { $or: [{ $eq: [`$${key}`, null] }, { $eq: [{ $type: `$${key}` }, 'missing'] }] },
+        then: selector.index
+      }
+    }
     if (typeof selector.query === 'object') {
       const q = selector.query as SortQuerySelector<T>
       if (q.$in !== undefined) {
