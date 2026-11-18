@@ -7,77 +7,18 @@ import {
   shortcodeGlobalRegex,
   emojiRegex,
   emojiGlobalRegex,
-  type ExtendedEmoji,
-  isCustomEmoji
+  type ExtendedEmoji
 } from '@hcengineering/emoji'
 import emojiPlugin from '@hcengineering/emoji'
-import { type ResolvedPos } from '@tiptap/pm/model'
-import {
-  type ExtendedRegExpMatchArray,
-  type SingleCommands,
-  type Range,
-  type PasteRuleMatch,
-  InputRule,
-  PasteRule
-} from '@tiptap/core'
-import { type EditorState, PluginKey } from '@tiptap/pm/state'
+import { type PasteRuleMatch, InputRule, PasteRule } from '@tiptap/core'
+import { PluginKey } from '@tiptap/pm/state'
 import { getBlobRef } from '@hcengineering/presentation'
 import { getResource } from '@hcengineering/platform'
 import Suggestion, { type SuggestionKeyDownProps, type SuggestionProps } from './suggestion'
 import { SvelteRenderer } from '../node-view'
 import EmojiSuggestionList from '../EmojiSuggestionList.svelte'
 import { isWordLikeEmoticon } from './emoticon'
-
-const invalidMarks = ['link']
-
-function isValidEmojiPosition ($pos: ResolvedPos): boolean {
-  const marks = $pos.marks()
-  if (marks.some((p) => invalidMarks.includes(p.type.name))) {
-    return false
-  }
-  return true
-}
-
-function handleEmoji (
-  state: EditorState,
-  range: Range,
-  match: ExtendedRegExpMatchArray,
-  commands: SingleCommands,
-  getEmojiFunction: (key: string | undefined) => ExtendedEmoji | string | undefined
-): void {
-  const $from = state.doc.resolve(range.from)
-  if (!isValidEmojiPosition($from)) {
-    return
-  }
-
-  const emojiString = match.pop()
-  if (emojiString === undefined) return
-  const emoji = getEmojiFunction(emojiString)
-  if (emoji === undefined) return
-  if (match.length > 0) range.from = range.to - emojiString.length + 1
-
-  commands.insertContentAt(range, [getEmojiNodeContent(emoji)])
-}
-
-function getEmojiNodeContent (emoji: ExtendedEmoji | string): Record<string, any> {
-  if (typeof emoji === 'string' || !isCustomEmoji(emoji)) {
-    return {
-      type: 'emoji',
-      attrs: {
-        emoji: typeof emoji === 'string' ? emoji : emoji.emoji,
-        kind: 'unicode'
-      }
-    }
-  }
-  return {
-    type: 'emoji',
-    attrs: {
-      emoji: `:${emoji.shortcode}:`,
-      kind: 'image',
-      image: emoji.image
-    }
-  }
-}
+import { getEmojiNodeContent, handleEmoji, isValidEmojiPosition } from './emojiInput'
 
 function detectPasteEmojis (text: string, regExp: RegExp): PasteRuleMatch[] | null | undefined {
   const matches = text.match(regExp)

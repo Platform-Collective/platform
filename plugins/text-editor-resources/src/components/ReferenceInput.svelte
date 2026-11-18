@@ -308,6 +308,16 @@
 
   .buttons-panel {
     flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     padding: 0.325rem 0.75rem;
+
+    // The global single-row grid does not wrap inside narrow composers.
+    .buttons-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      min-width: 0;
+    }
   }
 </style>
