@@ -42,6 +42,7 @@
     "Completed": "Completado",
     "Canceled": "Cancelado",
     "CreateProject": "Crear proyecto",
+    "CreateNewProject": "Crear nuevo proyecto…",
     "NewProject": "Nuevo proyecto",
     "ProjectTitle": "Título del proyecto",
     "ProjectTitlePlaceholder": "Nuevo proyecto",

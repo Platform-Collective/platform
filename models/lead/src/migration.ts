@@ -16,6 +16,7 @@
 import { DOMAIN_MODEL_TX, TxOperations, type Ref, type Status } from '@hcengineering/core'
 import { leadId, type Lead } from '@hcengineering/lead'
 import {
+  createOrUpdate,
   tryMigrate,
   tryUpgrade,
   type MigrateOperation,
@@ -27,6 +28,7 @@ import core, { DOMAIN_SPACE } from '@hcengineering/model-core'
 
 import { DOMAIN_CONTACT } from '@hcengineering/model-contact'
 import task, { createSequence, DOMAIN_TASK, migrateDefaultStatusesBase } from '@hcengineering/model-task'
+import tags, { type TagCategory } from '@hcengineering/tags'
 
 import lead from './plugin'
 import { defaultLeadStatuses } from './spaceType'
@@ -195,6 +197,28 @@ export const leadOperation: MigrateOperation = {
         func: async (client) => {
           const ops = new TxOperations(client, core.account.System)
           await createDefaults(ops)
+        }
+      },
+      {
+        state: 'create-default-lead-label-category',
+        func: async (client) => {
+          const categories = await client.findAll(tags.class.TagCategory, { targetClass: lead.class.Lead })
+          if (categories.some((category) => category.default)) return
+
+          const ops = new TxOperations(client, core.account.System)
+          await createOrUpdate(
+            ops,
+            tags.class.TagCategory,
+            core.space.Workspace,
+            {
+              icon: tags.icon.Tags,
+              label: 'Other',
+              targetClass: lead.class.Lead,
+              tags: [],
+              default: true
+            },
+            'lead:category:Other' as Ref<TagCategory>
+          )
         }
       }
     ])
