@@ -1,4 +1,3 @@
-/* eslint-disable max-lines */
 //
 // Copyright © 2025 Hardcore Engineering Inc.
 //
