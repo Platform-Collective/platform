@@ -1,10 +1,5 @@
 // SPDX-License-Identifier: EPL-2.0
-import {
-  createTransactionState,
-  runCardAction,
-  runCreateTransaction,
-  type CreateFinalizer
-} from '../createRetry'
+import { createTransactionState, runCardAction, runCreateTransaction, type CreateFinalizer } from '../createRetry'
 import presentation from '../plugin'
 
 function finalizer (): CreateFinalizer & jest.Mock {
@@ -84,7 +79,8 @@ describe('create transaction lifecycle', () => {
     const commit = jest.fn().mockResolvedValue({ result: true })
     const extend = jest.fn().mockRejectedValueOnce(new Error('preparation')).mockResolvedValue(undefined)
     const committed = jest.fn()
-    const prepare = jest.fn()
+    const prepare = jest
+      .fn()
       .mockImplementationOnce(async () => ({ context: 'first', finalize: first, commit }))
       .mockImplementationOnce(async () => ({ context: 'second', finalize: second, commit }))
     const execute = async (): Promise<void> => {
@@ -162,16 +158,18 @@ describe('create transaction lifecycle', () => {
   it('keeps a negative commit result retryable', async () => {
     const state = createTransactionState()
     const finalize = finalizer()
-    await expect(runCreateTransaction({
-      state,
-      prepare: async () => ({
-        context: undefined,
-        finalize,
-        commit: async () => ({ result: false })
-      }),
-      extend: jest.fn().mockResolvedValue(undefined),
-      committed: jest.fn()
-    })).rejects.toMatchObject({ status: { code: presentation.status.CreateNotCommitted } })
+    await expect(
+      runCreateTransaction({
+        state,
+        prepare: async () => ({
+          context: undefined,
+          finalize,
+          commit: async () => ({ result: false })
+        }),
+        extend: jest.fn().mockResolvedValue(undefined),
+        committed: jest.fn()
+      })
+    ).rejects.toMatchObject({ status: { code: presentation.status.CreateNotCommitted } })
     expect(finalize.cancelBeforeCommit).toHaveBeenCalledTimes(1)
     expect(state.commitUncertain).toBe(false)
     expect(state.creationCommitted).toBe(false)

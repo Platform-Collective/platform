@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { Attachment } from '@hcengineering/attachment'
-import type { AttachedDoc, Class, Doc, Ref, Space, TxOperations } from '@hcengineering/core'
+import type { Class, Doc, Ref, Space, TxOperations } from '@hcengineering/core'
 import {
   prepareAttachmentTransaction,
   type AttachmentTransactionCallbacks,
@@ -16,10 +16,11 @@ function harness (): {
   state: AttachmentTransactionState
   callbacks: AttachmentTransactionCallbacks
   op: TxOperations
+  addCollection: jest.Mock
   prepare: () => ReturnType<typeof prepareAttachmentTransaction>
   setDestroyed: (destroyed: boolean) => void
 } {
-  const current = { _id: 'a', file: 'blob-a' } as Attachment
+  const current = { _id: 'a', file: 'blob-a' } as unknown as Attachment
   const state: AttachmentTransactionState = {
     attachments: new Map([[current._id, current]]),
     newAttachments: new Set([current._id]),
@@ -37,15 +38,18 @@ function harness (): {
     setSaved: jest.fn(),
     reportError: jest.fn()
   }
+  const addCollection = jest.fn().mockResolvedValue(undefined)
   const op = {
-    addCollection: jest.fn().mockResolvedValue(undefined),
+    addCollection,
     removeCollection: jest.fn().mockResolvedValue(undefined)
   } as unknown as TxOperations
   return {
     state,
     callbacks,
     op,
-    prepare: () => prepareAttachmentTransaction(op, attachmentClass, parentId, parentClass, space, state, callbacks),
+    addCollection,
+    prepare: async () =>
+      await prepareAttachmentTransaction(op, attachmentClass, parentId, parentClass, space, state, callbacks),
     setDestroyed: (value) => {
       destroyed = value
     }
@@ -54,12 +58,12 @@ function harness (): {
 
 describe('deferred attachment transactions', () => {
   it('retains uploaded refs through a failed commit and reuses their IDs', async () => {
-    const { state, callbacks, op, prepare } = harness()
+    const { state, callbacks, addCollection, prepare } = harness()
     await prepare()
     expect(state.newAttachments.has('a' as Ref<Attachment>)).toBe(true)
     expect(callbacks.removeDraft).not.toHaveBeenCalled()
     const complete = await prepare()
-    expect(jest.mocked(op.addCollection).mock.calls.map((call) => call[6])).toEqual(['a', 'a'])
+    expect(addCollection.mock.calls.map((call) => call[6])).toEqual(['a', 'a'])
     complete()
     complete()
     expect(state.newAttachments.size).toBe(0)
@@ -68,13 +72,11 @@ describe('deferred attachment transactions', () => {
   })
 
   it('does not consume refs when preparation partially fails', async () => {
-    const { state, callbacks, op, prepare } = harness()
-    const other = { _id: 'b', file: 'blob-b' } as Attachment
+    const { state, callbacks, addCollection, prepare } = harness()
+    const other = { _id: 'b', file: 'blob-b' } as unknown as Attachment
     state.attachments.set(other._id, other)
     state.newAttachments.add(other._id)
-    jest.mocked(op.addCollection)
-      .mockResolvedValueOnce('a' as Ref<AttachedDoc>)
-      .mockRejectedValueOnce(new Error('queue'))
+    addCollection.mockResolvedValueOnce('a').mockRejectedValueOnce(new Error('queue'))
     await expect(prepare()).rejects.toThrow('queue')
     expect(Array.from(state.newAttachments)).toEqual(['a', 'b'])
     expect(callbacks.deleteFile).not.toHaveBeenCalled()
@@ -112,8 +114,8 @@ describe('deferred attachment transactions', () => {
       space: 'space',
       attachedTo: 'parent',
       attachedToClass: 'Parent'
-    } as Attachment
-    const unused = { _id: 'unused', file: 'unused-blob' } as Attachment
+    } as unknown as Attachment
+    const unused = { _id: 'unused', file: 'unused-blob' } as unknown as Attachment
     state.originalAttachments.add(original._id)
     state.removedAttachments.add(original)
     state.removedAttachments.add(unused)

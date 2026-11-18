@@ -4,12 +4,15 @@
 import { parse } from 'svelte/compiler'
 
 // This UI package includes Jest types; keep the Node-only fixture APIs local to this test.
-declare const __dirname: string
 const { readFileSync } = jest.requireActual<{ readFileSync: (path: string, encoding: 'utf8') => string }>('node:fs')
 const { join } = jest.requireActual<{ join: (...paths: string[]) => string }>('node:path')
+const { runInNewContext } = jest.requireActual<{ runInNewContext: (code: string, context: object) => unknown }>(
+  'node:vm'
+)
+const { cwd } = jest.requireActual<{ cwd: () => string }>('node:process')
 
 describe('inbox archive controls', () => {
-  const source = readFileSync(join(__dirname, '../components/DocNotifyContextCard.svelte'), 'utf8')
+  const source = readFileSync(join(cwd(), 'src/components/DocNotifyContextCard.svelte'), 'utf8')
   // The template parser does not need the component's TypeScript script or styles.
   const template = source.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '')
   const labels: Array<string | undefined> = []
@@ -30,8 +33,11 @@ describe('inbox archive controls', () => {
       labels.push(label === undefined ? undefined : template.slice(label.start, label.end))
     }
     for (const child of Object.values(value)) {
-      if (Array.isArray(child)) child.forEach((node) => visit(node, currentTooltip))
-      else visit(child, currentTooltip)
+      if (Array.isArray(child)) {
+        child.forEach((node) => {
+          visit(node, currentTooltip)
+        })
+      } else visit(child, currentTooltip)
     }
   }
 
@@ -46,8 +52,8 @@ describe('inbox archive controls', () => {
     for (const label of labels) {
       expect(label).toBeDefined()
       // Evaluate the actual template binding in both states with distinct translation keys.
-      const resolveLabel = new Function('archived', 'view', `return (${label})`)
-      expect(resolveLabel(archived, view)).toBe(archived ? 'Unarchive' : 'Archive')
+      const resolved = runInNewContext(`(${label})`, { archived, view })
+      expect(resolved).toBe(archived ? 'Unarchive' : 'Archive')
     }
   })
 })

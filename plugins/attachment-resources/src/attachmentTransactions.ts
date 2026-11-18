@@ -82,7 +82,9 @@ export async function prepareAttachmentTransaction (
     if (saved) callbacks.removeDraft(false)
     else void callbacks.saveDraft()
   }) as CreateFinalizer
-  finalize.cancelBeforeCommit = () => releasePreparation(true)
+  finalize.cancelBeforeCommit = () => {
+    releasePreparation(true)
+  }
   finalize.markCommitUncertain = () => {
     added.forEach((doc) => state.uncertainAttachments.add(doc._id))
   }
