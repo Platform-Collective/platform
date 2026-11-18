@@ -205,10 +205,13 @@ export type FileOrBlob = File | Blob
 export interface FilePreviewExtension extends ComponentPointExtension {
   // Inherited props are viewer defaults, overridden by caller props and then host values:
   // value, name (including undefined), contentType, metadata, fit and setLoading.
+  // Selection: exact MIME before type/* before */*, then order (missing last), then _id.
+  // MIME values are literal; only type/* and */* are wildcard patterns.
   contentType: string | string[]
   alignment?: string
   metadataProvider?: Resource<(file: FileOrBlob, blob: Ref<PlatformBlob>) => Promise<BlobMetadata | undefined>>
-  // Extension is only available if this checker returns true
+  // A registered checker must resolve and return true; missing/failed resources are unavailable.
+  // Only MIME-matching candidates are checked, and failure is isolated to that candidate.
   availabilityChecker?: Resource<() => Promise<boolean>>
 }
 

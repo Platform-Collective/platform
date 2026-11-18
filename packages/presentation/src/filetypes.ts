@@ -71,13 +71,7 @@ previewTypes.subscribe((it) => {
  * @public
  */
 export async function canPreviewFile (contentType: string, _previewTypes: FilePreviewExtension[]): Promise<boolean> {
-  for (const previewType of _previewTypes) {
-    if (await isApplicableType(previewType, contentType)) {
-      return true
-    }
-  }
-
-  return false
+  return (await getPreviewType(contentType, _previewTypes)) !== undefined
 }
 
 /**
@@ -87,14 +81,24 @@ export async function getPreviewType (
   contentType: string,
   _previewTypes: FilePreviewExtension[]
 ): Promise<FilePreviewExtension | undefined> {
-  const applicableTypes: FilePreviewExtension[] = []
-  for (const previewType of _previewTypes) {
-    if (await isApplicableType(previewType, contentType)) {
-      applicableTypes.push(previewType)
+  const candidates = _previewTypes
+    .map((previewType) => ({ previewType, specificity: getMimeSpecificity(previewType.contentType, contentType) }))
+    .filter(({ specificity }) => specificity >= 0)
+    .sort((a, b) => b.specificity - a.specificity || comparePreviewTypes(a.previewType, b.previewType))
+
+  for (const { previewType } of candidates) {
+    if (previewType.availabilityChecker === undefined) return previewType
+
+    try {
+      const checkAvailability = await getResource(previewType.availabilityChecker)
+      if (checkAvailability !== undefined && (await checkAvailability())) return previewType
+    } catch {
+      // Resource errors may include document data; report only the failed operation.
+      console.error('File preview availability check failed')
     }
   }
 
-  return applicableTypes.sort(comparePreviewTypes)[0]
+  return undefined
 }
 
 /**
@@ -110,33 +114,22 @@ export function getPreviewAlignment (contentType: string): PopupAlignment {
   }
 }
 
-function getPreviewTypeRegExp (type: string): RegExp {
-  return new RegExp(`^${type.replaceAll('/', '\\/').replaceAll('*', '.*')}$`)
-}
+function getMimeSpecificity (patterns: string | string[], contentType: string): number {
+  const slash = contentType.indexOf('/')
+  if (slash <= 0 || slash === contentType.length - 1 || contentType.includes('/', slash + 1)) return -1
 
-async function isApplicableType (
-  { contentType, availabilityChecker }: FilePreviewExtension,
-  _contentType: string
-): Promise<boolean> {
-  const checkAvailability = availabilityChecker !== undefined ? await getResource(availabilityChecker) : undefined
-  const isAvailable: boolean = checkAvailability === undefined || (await checkAvailability())
-
-  return (
-    isAvailable &&
-    (Array.isArray(contentType) ? contentType : [contentType]).some((type) =>
-      getPreviewTypeRegExp(type).test(_contentType)
-    )
-  )
+  let specificity = -1
+  for (const pattern of Array.isArray(patterns) ? patterns : [patterns]) {
+    if (pattern === contentType && !pattern.includes('*')) return 2
+    if (pattern === `${contentType.slice(0, slash)}/*`) specificity = 1
+    else if (pattern === '*/*' && specificity < 0) specificity = 0
+  }
+  return specificity
 }
 
 function comparePreviewTypes (a: FilePreviewExtension, b: FilePreviewExtension): number {
-  if (a.order === undefined && b.order === undefined) {
-    return 0
-  } else if (a.order === undefined) {
-    return -1
-  } else if (b.order === undefined) {
-    return 1
-  } else {
-    return a.order - b.order
-  }
+  if (a.order === undefined && b.order !== undefined) return 1
+  if (a.order !== undefined && b.order === undefined) return -1
+  const order = (a.order ?? 0) - (b.order ?? 0)
+  return order || (a._id < b._id ? -1 : a._id > b._id ? 1 : 0)
 }
