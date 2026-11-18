@@ -127,5 +127,5 @@
 </script>
 
 {#if actions}
-  <Menu {actions} on:changeContent />
+  <Menu {actions} on:close on:changeContent />
 {/if}
