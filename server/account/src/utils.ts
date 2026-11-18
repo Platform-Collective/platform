@@ -1226,9 +1226,10 @@ export async function synchronizeOidcWorkspaceRoles (
     if (db.transaction === undefined) {
       throw new Error('OIDC workspace role synchronization requires a transactional account database')
     }
-    return await db.transaction(
-      async (transactionDb) => await synchronizeOidcWorkspaceRoles(ctx, transactionDb, account, sub, updates)
-    )
+    await db.transaction(async (transactionDb) => {
+      await synchronizeOidcWorkspaceRoles(ctx, transactionDb, account, sub, updates)
+    })
+    return
   }
 
   const oidcIdentity = await db.socialId.findOne({
