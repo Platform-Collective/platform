@@ -355,7 +355,7 @@ async function leaveRemovedDocument (
   const shownUrl = locationToUrl(getCurrentLocation())
   const currentTab = get(tabsStore).find((t) => t._id === tab._id)
   if (currentTab === undefined) return
-  if (currentTab.isPinned === true) return
+  if (currentTab.isPinned) return
   if (get(tabIdStore) !== tab._id || currentTab.location !== tabLocation) return
   // A return to the previous app must win even when its URL matches the initial one.
   const unchangedLocation = shownUrl === currentUrl && locationRevision === revision
