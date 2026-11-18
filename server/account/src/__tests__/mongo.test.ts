@@ -212,8 +212,10 @@ describe('MongoDbCollection', () => {
   })
 
   describe('deleteMany', () => {
-    it('should delete documents matching query', async () => {
-      await collection.deleteMany({ mode: 'deleted' as const })
+    it('should delete documents matching query and return deleted count', async () => {
+      ;(mockCollection.deleteMany as jest.Mock).mockResolvedValueOnce({ deletedCount: 2 })
+
+      expect(await collection.deleteMany({ mode: 'deleted' as const })).toBe(2)
 
       expect(mockCollection.deleteMany).toHaveBeenCalledWith({ mode: 'deleted' })
     })
@@ -673,7 +675,9 @@ describe('WorkspaceStatusMongoDbCollection', () => {
     it('should transform query for deletion', async () => {
       const query = { workspaceUuid: 'ws1' as WorkspaceUuid, mode: 'active' as const }
 
-      await wsStatusCollection.deleteMany(query)
+      ;(mockWsCollection.deleteMany as jest.Mock).mockResolvedValueOnce(1)
+
+      expect(await wsStatusCollection.deleteMany(query)).toBe(1)
 
       expect(mockWsCollection.deleteMany).toHaveBeenCalledWith({
         uuid: 'ws1',
