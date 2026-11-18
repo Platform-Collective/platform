@@ -9,6 +9,17 @@ rush docker:build
 docker compose up -d --force-recreate
 ```
 
+## Receiving emails locally
+
+Emails (sign-in codes, invites, notifications) go to a local Mailpit inbox with the mail overlay:
+
+```bash
+docker compose -f docker-compose.yaml -f docker-compose.mail.yaml up -d
+```
+
+Open the inbox at http://localhost:8025. With the overlay the login page switches to sign-in by email code.
+Email notifications reach only users with a verified email who enabled email delivery in Settings → Notifications.
+
 ## Running ElasticVUE to check elastic intance
 
 ```bash

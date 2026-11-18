@@ -344,7 +344,6 @@ services:
       - SMTP_HOST=mailpit
       - SMTP_PORT=1025
       - SMTP_TLS_MODE=ignore
-      - MAIL_AUTH_TOKEN=${MAIL_AUTH_TOKEN}
     restart: unless-stopped
   account-otp:
     image: platformcollective/account
@@ -381,7 +380,6 @@ services:
       - STATS_URL=http://stats:4901
       - FRONT_URL=http://localhost:8084
       - MAIL_URL=http://mail:8097
-      - MAIL_AUTH_TOKEN=${MAIL_AUTH_TOKEN}
     restart: unless-stopped
   front-otp:
     image: platformcollective/front

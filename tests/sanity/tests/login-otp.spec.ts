@@ -36,7 +36,7 @@ test.describe('OTP login', () => {
 
   test('sign up and log in with an email code', async ({ page, browser, request }) => {
     const mailpit = new Mailpit(request, MailpitURL as string)
-    const email = `otp-${Date.now()}-${Math.floor(Math.random() * 1e6)}@tracex.local`
+    const email = `otp-${Date.now()}-${Math.floor(Math.random() * 1e6)}@huly.local`
 
     await test.step('sign up with OTP', async () => {
       const known = await mailpit.messageIds(email)
@@ -77,7 +77,7 @@ test.describe('OTP login', () => {
 
   test('wrong code is rejected', async ({ page, request }) => {
     const mailpit = new Mailpit(request, MailpitURL as string)
-    const email = `otp-wrong-${Date.now()}-${Math.floor(Math.random() * 1e6)}@tracex.local`
+    const email = `otp-wrong-${Date.now()}-${Math.floor(Math.random() * 1e6)}@huly.local`
 
     const known = await mailpit.messageIds(email)
     await (await page.goto(`${PlatformOtpURI}/login/signup`))?.finished()
@@ -99,14 +99,16 @@ test.describe('OTP login', () => {
 
   test('confirms email and joins an existing workspace for a new account', async ({ browser, request }) => {
     const mailpit = new Mailpit(request, MailpitURL as string)
-    const email = `otp-join-${Date.now()}-${Math.floor(Math.random() * 1e6)}@tracex.local`
+    const email = `otp-join-${Date.now()}-${Math.floor(Math.random() * 1e6)}@huly.local`
     const ownerContext = await browser.newContext({ storageState: PlatformSetting })
     const joinContext = await browser.newContext()
 
     try {
       const ownerPage = await ownerContext.newPage()
       await (await ownerPage.goto(`${PlatformURI}/workbench/sanity-ws`))?.finished()
-      const inviteUrl = new URL(await getInviteLink(ownerPage))
+      const inviteLink = await getInviteLink(ownerPage)
+      expect(inviteLink).not.toBeNull()
+      const inviteUrl = new URL(inviteLink as string)
       const joinUrl = new URL('/login/join', PlatformOtpURI)
       joinUrl.search = inviteUrl.search
 
