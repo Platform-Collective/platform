@@ -1,5 +1,9 @@
 {
   "string": {
+    "PanelSectionDetails": "Details",
+    "PanelSectionPlanning": "Planning",
+    "PanelSectionDates": "Dates",
+    "PanelSectionAttributes": "Attributes",
     "Calendar": "Calendar",
     "CalendarWithoutDueDate": "Issues without a due date: {count}",
     "CalendarUpdateFailed": "Could not update issue dates. Please try again.",

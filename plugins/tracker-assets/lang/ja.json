@@ -1,5 +1,9 @@
 {
   "string": {
+    "PanelSectionDetails": "詳細",
+    "PanelSectionPlanning": "計画",
+    "PanelSectionDates": "日付",
+    "PanelSectionAttributes": "属性",
     "Calendar": "カレンダー",
     "CalendarWithoutDueDate": "期限のない課題: {count}",
     "CalendarUpdateFailed": "課題の日付を更新できませんでした。もう一度お試しください。",

@@ -1,5 +1,9 @@
 {
   "string": {
+    "PanelSectionDetails": "Szczegóły",
+    "PanelSectionPlanning": "Planowanie",
+    "PanelSectionDates": "Daty",
+    "PanelSectionAttributes": "Atrybuty",
     "Calendar": "Kalendarz",
     "CalendarWithoutDueDate": "Zgłoszenia bez terminu: {count}",
     "CalendarUpdateFailed": "Nie udało się zaktualizować dat zgłoszenia. Spróbuj ponownie.",

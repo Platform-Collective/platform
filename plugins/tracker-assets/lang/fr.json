@@ -1,5 +1,9 @@
 {
   "string": {
+    "PanelSectionDetails": "Détails",
+    "PanelSectionPlanning": "Planification",
+    "PanelSectionDates": "Dates",
+    "PanelSectionAttributes": "Attributs",
     "Calendar": "Calendrier",
     "CalendarWithoutDueDate": "Tickets sans date d’échéance : {count}",
     "CalendarUpdateFailed": "Impossible de mettre à jour les dates du ticket. Veuillez réessayer.",

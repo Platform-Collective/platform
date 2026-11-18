@@ -1,5 +1,9 @@
 {
   "string": {
+    "PanelSectionDetails": "Details",
+    "PanelSectionPlanning": "Planung",
+    "PanelSectionDates": "Termine",
+    "PanelSectionAttributes": "Attribute",
     "Calendar": "Kalender",
     "CalendarWithoutDueDate": "Aufgaben ohne Fälligkeitsdatum: {count}",
     "CalendarUpdateFailed": "Die Aufgabendaten konnten nicht aktualisiert werden. Bitte erneut versuchen.",

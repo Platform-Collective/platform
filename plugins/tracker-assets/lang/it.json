@@ -1,5 +1,9 @@
 {
   "string": {
+    "PanelSectionDetails": "Dettagli",
+    "PanelSectionPlanning": "Pianificazione",
+    "PanelSectionDates": "Date",
+    "PanelSectionAttributes": "Attributi",
     "Calendar": "Calendario",
     "CalendarWithoutDueDate": "Issue senza data di scadenza: {count}",
     "CalendarUpdateFailed": "Impossibile aggiornare le date dell’issue. Riprova.",

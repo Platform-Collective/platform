@@ -1,5 +1,9 @@
 {
   "string": {
+    "PanelSectionDetails": "详情",
+    "PanelSectionPlanning": "计划",
+    "PanelSectionDates": "日期",
+    "PanelSectionAttributes": "属性",
     "Calendar": "日历",
     "CalendarWithoutDueDate": "没有截止日期的问题：{count}",
     "CalendarUpdateFailed": "无法更新问题日期。请重试。",

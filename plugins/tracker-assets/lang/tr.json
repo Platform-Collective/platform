@@ -1,5 +1,9 @@
 {
   "string": {
+    "PanelSectionDetails": "Ayrıntılar",
+    "PanelSectionPlanning": "Planlama",
+    "PanelSectionDates": "Tarihler",
+    "PanelSectionAttributes": "Öznitelikler",
     "Calendar": "Takvim",
     "CalendarWithoutDueDate": "Bitiş tarihi olmayan sorunlar: {count}",
     "CalendarUpdateFailed": "Sorun tarihleri güncellenemedi. Lütfen tekrar deneyin.",

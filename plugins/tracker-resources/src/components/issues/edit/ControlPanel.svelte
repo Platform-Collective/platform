@@ -43,6 +43,7 @@
   import SchedulingModeEditor from '../SchedulingModeEditor.svelte'
   import notification from '@hcengineering/notification'
   import { getIssueMixins } from './issue-mixins'
+  import PanelSection from './PanelSection.svelte'
 
   export let issue: Issue
   export let showAllMixins: boolean = false
@@ -142,135 +143,143 @@
     />
   {/if}
 
-  <span class="labelOnPanel">
-    <Label label={tracker.string.Status} />
-  </span>
-
-  <StatusEditor value={issue} size={'medium'} iconSize={'small'} shouldShowLabel isEditable={!readonly} />
-
-  {#if issue.blockedBy?.length}
-    <span class="labelTop">
-      <Label label={tracker.string.BlockedBy} />
+  <PanelSection
+    id="details"
+    label={tracker.string.PanelSectionDetails}
+    divider={issue.template?.template !== undefined}
+  >
+    <span class="labelOnPanel">
+      <Label label={tracker.string.Status} />
     </span>
-    <RelationEditor value={issue} type="blockedBy" {readonly} disabled={$restrictionStore.disableNavigation} />
-  {/if}
-  {#if showIsBlocking}
-    <span class="labelTop">
-      <Label label={tracker.string.Blocks} />
+
+    <StatusEditor value={issue} size={'medium'} iconSize={'small'} shouldShowLabel isEditable={!readonly} />
+
+    {#if issue.blockedBy?.length}
+      <span class="labelTop">
+        <Label label={tracker.string.BlockedBy} />
+      </span>
+      <RelationEditor value={issue} type="blockedBy" {readonly} disabled={$restrictionStore.disableNavigation} />
+    {/if}
+    {#if showIsBlocking}
+      <span class="labelTop">
+        <Label label={tracker.string.Blocks} />
+      </span>
+      <RelationEditor
+        value={issue}
+        type="isBlocking"
+        {blockedBy}
+        {readonly}
+        disabled={$restrictionStore.disableNavigation}
+      />
+    {/if}
+    {#if issue.relations?.length}
+      <span class="labelTop">
+        <Label label={tracker.string.Related} />
+      </span>
+      <RelationEditor value={issue} type="relations" {readonly} disabled={$restrictionStore.disableNavigation} />
+    {/if}
+
+    <IssueDependenciesPanel {issue} {readonly} />
+
+    <span class="labelOnPanel">
+      <Label label={tracker.string.Priority} />
     </span>
-    <RelationEditor
-      value={issue}
-      type="isBlocking"
-      {blockedBy}
-      {readonly}
-      disabled={$restrictionStore.disableNavigation}
+    <PriorityEditor value={issue} size={'medium'} shouldShowLabel isEditable={!readonly} width={'100%'} />
+
+    <span class="labelOnPanel">
+      <Label label={core.string.CreatedBy} />
+    </span>
+    <EmployeeBox
+      value={creatorPersonRef}
+      label={core.string.CreatedBy}
+      kind={'link'}
+      size={'medium'}
+      avatarSize={'card'}
+      width={'100%'}
+      showNavigate={false}
+      readonly
     />
-  {/if}
-  {#if issue.relations?.length}
-    <span class="labelTop">
-      <Label label={tracker.string.Related} />
+
+    <span class="labelOnPanel">
+      <Label label={tracker.string.Assignee} />
     </span>
-    <RelationEditor value={issue} type="relations" {readonly} disabled={$restrictionStore.disableNavigation} />
-  {/if}
+    <AssigneeEditor object={issue} size={'medium'} avatarSize={'card'} width="100%" {readonly} />
 
-  <IssueDependenciesPanel {issue} {readonly} />
+    <span class="labelTop">
+      <Label label={tracker.string.Labels} />
+    </span>
+    <Component
+      is={tags.component.TagsAttributeEditor}
+      props={{ object: issue, label: tracker.string.AddLabel, readonly }}
+    />
+  </PanelSection>
 
-  <span class="labelOnPanel">
-    <Label label={tracker.string.Priority} />
-  </span>
-  <PriorityEditor value={issue} size={'medium'} shouldShowLabel isEditable={!readonly} width={'100%'} />
+  <PanelSection id="planning" label={tracker.string.PanelSectionPlanning}>
+    <span class="labelOnPanel">
+      <Label label={tracker.string.Component} />
+    </span>
+    <ComponentEditor value={issue} space={issue.space} size={'medium'} isEditable={!readonly} />
 
-  <span class="labelOnPanel">
-    <Label label={core.string.CreatedBy} />
-  </span>
-  <EmployeeBox
-    value={creatorPersonRef}
-    label={core.string.CreatedBy}
-    kind={'link'}
-    size={'medium'}
-    avatarSize={'card'}
-    width={'100%'}
-    showNavigate={false}
-    readonly
-  />
+    <span class="labelOnPanel">
+      <Label label={tracker.string.Milestone} />
+    </span>
+    <MilestoneEditor value={issue} space={issue.space} size={'medium'} isEditable={!readonly} />
+  </PanelSection>
 
-  <span class="labelOnPanel">
-    <Label label={tracker.string.Assignee} />
-  </span>
-  <AssigneeEditor object={issue} size={'medium'} avatarSize={'card'} width="100%" {readonly} />
+  <PanelSection id="dates" label={tracker.string.PanelSectionDates}>
+    <span class="labelOnPanel">
+      <Label label={tracker.string.IssueStartDate} />
+    </span>
+    <StartDateEditor value={issue} width={'100%'} editable={!readonly} />
 
-  <span class="labelTop">
-    <Label label={tracker.string.Labels} />
-  </span>
-  <Component
-    is={tags.component.TagsAttributeEditor}
-    props={{ object: issue, label: tracker.string.AddLabel, readonly }}
-  />
+    <span class="labelOnPanel">
+      <Label label={tracker.string.DueDate} />
+    </span>
+    <DueDateEditor value={issue} width={'100%'} editable={!readonly} />
 
-  <div class="divider" />
+    <span class="labelOnPanel">
+      <Label label={tracker.string.Deadline} />
+    </span>
+    <DeadlineEditor value={issue} width={'100%'} editable={!readonly} />
 
-  <span class="labelOnPanel">
-    <Label label={tracker.string.Component} />
-  </span>
-  <ComponentEditor value={issue} space={issue.space} size={'medium'} isEditable={!readonly} />
-
-  <span class="labelOnPanel">
-    <Label label={tracker.string.Milestone} />
-  </span>
-  <MilestoneEditor value={issue} space={issue.space} size={'medium'} isEditable={!readonly} />
-
-  <div class="divider" />
-
-  <span class="labelOnPanel">
-    <Label label={tracker.string.IssueStartDate} />
-  </span>
-  <StartDateEditor value={issue} width={'100%'} editable={!readonly} />
-
-  <span class="labelOnPanel">
-    <Label label={tracker.string.DueDate} />
-  </span>
-  <DueDateEditor value={issue} width={'100%'} editable={!readonly} />
-
-  <span class="labelOnPanel">
-    <Label label={tracker.string.Deadline} />
-  </span>
-  <DeadlineEditor value={issue} width={'100%'} editable={!readonly} />
-
-  <span class="labelOnPanel">
-    <Label label={tracker.string.SchedulingMode} />
-  </span>
-  <SchedulingModeEditor value={issue} width={'100%'} editable={!readonly} />
+    <span class="labelOnPanel">
+      <Label label={tracker.string.SchedulingMode} />
+    </span>
+    <SchedulingModeEditor value={issue} width={'100%'} editable={!readonly} />
+  </PanelSection>
 
   {#if keys.length > 0}
-    <div class="divider" />
-    {#each keys as key (typeof key === 'string' ? key : key.key)}
-      <AttributeBarEditor
-        {readonly}
-        {key}
-        identifier={issue.identifier}
-        _class={issue._class}
-        object={issue}
-        showHeader={true}
-        size={'medium'}
-      />
-    {/each}
-  {/if}
-
-  {#each mixins as mixin}
-    {@const mixinKeys = getMixinKeys(mixin._id)}
-    {#if mixinKeys.length}
-      <div class="divider" />
-      {#each mixinKeys as key (typeof key === 'string' ? key : key.key)}
+    <PanelSection id="attributes" label={tracker.string.PanelSectionAttributes}>
+      {#each keys as key (typeof key === 'string' ? key : key.key)}
         <AttributeBarEditor
+          {readonly}
           {key}
           identifier={issue.identifier}
-          _class={mixin._id}
-          {readonly}
-          object={hierarchy.as(issue, mixin._id)}
+          _class={issue._class}
+          object={issue}
           showHeader={true}
           size={'medium'}
         />
       {/each}
+    </PanelSection>
+  {/if}
+
+  {#each mixins as mixin (mixin._id)}
+    {@const mixinKeys = getMixinKeys(mixin._id)}
+    {#if mixinKeys.length}
+      <PanelSection id={`mixin:${mixin._id}`} label={mixin.label}>
+        {#each mixinKeys as key (typeof key === 'string' ? key : key.key)}
+          <AttributeBarEditor
+            {key}
+            identifier={issue.identifier}
+            _class={mixin._id}
+            {readonly}
+            object={hierarchy.as(issue, mixin._id)}
+            showHeader={true}
+            size={'medium'}
+          />
+        {/each}
+      </PanelSection>
     {/if}
   {/each}
 </div>

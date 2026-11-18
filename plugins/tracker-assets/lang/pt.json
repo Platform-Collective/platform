@@ -1,5 +1,9 @@
 {
   "string": {
+    "PanelSectionDetails": "Detalhes",
+    "PanelSectionPlanning": "Planeamento",
+    "PanelSectionDates": "Datas",
+    "PanelSectionAttributes": "Atributos",
     "Calendar": "Calendário",
     "CalendarWithoutDueDate": "Tarefas sem data de vencimento: {count}",
     "CalendarUpdateFailed": "Não foi possível atualizar as datas da tarefa. Tente novamente.",
