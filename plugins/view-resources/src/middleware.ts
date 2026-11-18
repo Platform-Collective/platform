@@ -20,12 +20,8 @@ import core, {
   TxProcessor,
   type TxResult
 } from '@hcengineering/core'
-import platform, { getResource, PlatformError, Severity, Status, translate } from '@hcengineering/platform'
-import {
-  BasePresentationMiddleware,
-  type PresentationMiddleware,
-  shouldPropagateTxError
-} from '@hcengineering/presentation'
+import platform, { getResource, PlatformError, translate } from '@hcengineering/platform'
+import { BasePresentationMiddleware, type PresentationMiddleware } from '@hcengineering/presentation'
 import view, { type IAggregationManager } from '@hcengineering/view'
 import notification from '@hcengineering/notification'
 import { addNotification, NotificationSeverity } from '@hcengineering/ui'
@@ -365,10 +361,6 @@ export class ReadOnlyAccessMiddleware extends BasePresentationMiddleware impleme
         NotificationSeverity.Info,
         'readOnlyNotification'
       )
-      // Failure-aware optimistic editors need a rejection even when no write reaches transport.
-      if (shouldPropagateTxError(tx)) {
-        throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
-      }
       return {}
     }
     try {
@@ -384,8 +376,6 @@ export class ReadOnlyAccessMiddleware extends BasePresentationMiddleware impleme
           },
           NotificationSeverity.Info
         )
-        // Keep permission feedback and ordinary resolve semantics; opted-in editors must retry.
-        if (shouldPropagateTxError(tx)) throw err
         return {}
       } else {
         throw err

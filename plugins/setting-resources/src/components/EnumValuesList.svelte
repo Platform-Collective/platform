@@ -31,20 +31,16 @@
   export let disableMouseOver: boolean = false
 
   let selected: string | undefined
-  let dragValues: string[] | undefined
   let opened: number | undefined = undefined
   const elements: HTMLElement[] = []
 
   function dragswap(ev: MouseEvent, item: string): boolean {
-    if (selected === undefined || dragValues === undefined) return false
     const s = values.findIndex((p) => p === selected)
     const i = values.findIndex((p) => p === item)
-    const element = elements[i]
-    if (s < 0 || i < 0 || element === undefined) return false
     if (i < s) {
-      return ev.offsetY < element.offsetHeight / 2
+      return ev.offsetY < elements[i].offsetHeight / 2
     } else if (i > s) {
-      return ev.offsetY > element.offsetHeight / 2
+      return ev.offsetY > elements[i].offsetHeight / 2
     }
     return false
   }
@@ -59,14 +55,11 @@
 
   const dispatch = createEventDispatcher()
 
-  function remove(target: string): void {
+  async function remove(target: string): Promise<void> {
     dispatch('remove', target)
   }
 
-  function onDrop(): void {
-    if (dragValues === undefined) return
-    // Clear before dispatch: dragend must not cancel a submitted drop.
-    dragValues = undefined
+  async function onDrop(): Promise<void> {
     dispatch('drop')
   }
 
@@ -77,18 +70,18 @@
       label: setting.string.Delete,
       action: () => {
         if (opened !== undefined) {
-          remove(values[opened])
+          void remove(values[opened])
           opened = undefined
         }
       }
     }
   ]
 
-  function openPopup(ev: MouseEvent, n: number): void {
+  function openPopup(ev: MouseEvent, n: number) {
     if (opened === undefined) {
       opened = n
       showPopup(ModernPopup, { items }, eventToHTMLElement(ev), (result) => {
-        if (typeof result === 'string') {
+        if (result) {
           switch (result) {
             case 'delete':
               remove(values[n])
@@ -127,37 +120,21 @@
     }}
     on:drop|preventDefault={onDrop}
     on:dragstart={() => {
-      dragValues = [...values]
-      dispatch('editstart')
       selected = item
     }}
     on:dragend={() => {
       selected = undefined
-      if (dragValues !== undefined) {
-        values = dragValues
-        dragValues = undefined
-        dispatch('editcancel')
-      }
     }}
   >
     <button class="hulyTableAttr-content__row-dragMenu" class:drag={!disableMouseOver}>
       <IconMoreV2 size={'small'} />
     </button>
-    <div
-      class="hulyTableAttr-content__row-label font-regular-14 accent"
-      on:focusin={() => {
-        dispatch('editstart')
-      }}
-    >
+    <div class="hulyTableAttr-content__row-label font-regular-14 accent">
       <ModernEditbox
         kind={'ghost'}
         size={'small'}
         label={setting.string.EnterOptionTitle}
         on:keydown={handleKeydown}
-        on:input={() => {
-          dispatch('editstart')
-          dispatch('editinput')
-        }}
         on:blur={() => {
           update()
         }}

@@ -47,7 +47,7 @@
     }
   })
 
-  function create(): void {
+  function create() {
     showPopup(setting.component.EditEnum, { title: setting.string.CreateEnum }, 'top')
   }
 
@@ -114,9 +114,7 @@
       <Scroller align={'center'} padding={'var(--spacing-3)'} bottomPadding={'var(--spacing-3)'}>
         <div class="hulyComponent-content">
           {#if selected !== undefined}
-            {#key selected._id}
-              <EnumValues value={selected} />
-            {/key}
+            <EnumValues value={selected} />
           {/if}
         </div>
       </Scroller>
