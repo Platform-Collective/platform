@@ -992,10 +992,11 @@ describe('diagnostic confidentiality', () => {
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce(createHtmlResponse('<html><head><title>Test</title>' + discovery + '</head></html>'))
-    if (mode === 'oembed')
-      {jest
+    if (mode === 'oembed') {
+      jest
         .mocked(global.fetch)
-        .mockResolvedValueOnce(createJsonResponse({ type: 'link', version: '1.0', title: 'Test' }))}
+        .mockResolvedValueOnce(createJsonResponse({ type: 'link', version: '1.0', title: 'Test' }))
+    }
     await parseLinkPreviewDetails(ctx, defaultConfig, 'https://example.com/page?token=' + secret)
     expect(JSON.stringify([jest.mocked(ctx.info).mock.calls, jest.mocked(ctx.warn).mock.calls]).includes(secret)).toBe(
       false
