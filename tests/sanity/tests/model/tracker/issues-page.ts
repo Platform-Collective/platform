@@ -16,7 +16,7 @@ export class IssuesPage extends CommonTrackerPage {
   modelSelectorBacklog = (): Locator => this.page.locator('label[data-id="tab-backlog"]')
   buttonCreateNewIssue = (): Locator => this.page.locator('button > div', { hasText: 'New issue' })
   inputPopupCreateNewIssueTitle = (): Locator =>
-    this.page.locator('form[id="tracker:string:NewIssue"] input[type="text"]')
+    this.page.locator('form[id="tracker:string:NewIssue"] #issue-name textarea')
 
   inputPopupCreateNewIssueDescription = (): Locator =>
     this.page.locator('form[id="tracker:string:NewIssue"] div.tiptap')
@@ -162,7 +162,7 @@ export class IssuesPage extends CommonTrackerPage {
   estimationSpan = (): Locator => this.page.locator('.estimation-container >> span').first()
   okButton = (): Locator => this.page.getByRole('button', { name: 'Ok', exact: true })
   newIssueButton = (): Locator => this.page.locator('#tracker-string-NewIssue')
-  issueNameInput = (): Locator => this.page.locator('#issue-name >> input')
+  issueNameInput = (): Locator => this.page.locator('#issue-name >> textarea')
   issueDescriptionInput = (): Locator => this.page.locator('#issue-description >> [contenteditable]')
   statusEditor = (): Locator => this.page.locator('#status-editor')
   todoButton = (): Locator => this.page.locator('button:has-text("Todo")')

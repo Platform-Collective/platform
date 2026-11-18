@@ -12,7 +12,7 @@ export class IssuesDetailsPage extends CommonTrackerPage {
   }
 
   readonly issueTitle = (): Locator => this.page.locator('div.hulyHeader-container div.title')
-  readonly inputTitle = (): Locator => this.page.locator('div.popupPanel-body input[type="text"]')
+  readonly inputTitle = (): Locator => this.page.locator('div.popupPanel-body textarea[placeholder="Issue title"]')
   readonly inputDescription = (): Locator => this.page.locator('div.popupPanel-body div.textInput div.tiptap')
   readonly textIdentifier = (): Locator => this.page.locator('div.title.not-active')
   readonly buttonStatus = (): Locator => this.page.locator('//span[text()="Status"]/../button[1]//span')

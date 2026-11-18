@@ -4,9 +4,10 @@ const REQUEST_TIMEOUT = 30000
 
 /**
  * Request the Google authentication URL from the calendar service and open it.
+ * Returns the popup reference, or null when the desktop app opens the system browser.
  * Rejects when the service is unreachable, answers with an error or does not answer in time.
  */
-export async function connectCalendar (url: URL, token: string | undefined): Promise<void> {
+export async function connectCalendar (url: URL, token: string | undefined): Promise<Window | null> {
   const controller = new AbortController()
   const timeout = setTimeout(() => {
     controller.abort()
@@ -31,6 +32,5 @@ export async function connectCalendar (url: URL, token: string | undefined): Pro
   if (redirectTo === '') {
     throw new Error('Google Calendar authentication URL is empty')
   }
-  // The returned window is not checked: the desktop app opens external URLs in the system browser and returns null.
-  window.open(redirectTo, '_blank', 'location=yes,height=870,width=720,scrollbars=yes,status=yes')
+  return window.open(redirectTo, '_blank', 'location=yes,height=870,width=720,scrollbars=yes,status=yes')
 }

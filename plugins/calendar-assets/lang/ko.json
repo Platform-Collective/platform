@@ -86,6 +86,7 @@
         "FreeBusy": "FreeBusy (예정 유무만)",
         "DefaultVisibility": "기본 공개 범위",
         "NotAllPermissions": "일부 권한이 허용되지 않았습니다",
+    "IntegrationFailed": "Google 캘린더에 연결할 수 없습니다. 다시 시도해 주세요.",
         "GooglePrivacy": "Huly가 Google API로부터 받은 정보를 다른 앱에 사용 및 전송하는 것은 제한적 사용 요건을 포함하여 <a href=\"https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes\" target=\"_blank\">Google API 서비스 사용자 데이터 정책</a>을 따릅니다.",
         "Value": "{value}",
         "Schedule": "공개 예약",

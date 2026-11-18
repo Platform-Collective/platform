@@ -65,6 +65,7 @@
   import WorkingDaysEditor from './WorkingDaysEditor.svelte'
 
   export let project: Project | undefined = undefined
+  export let fixedProjectType: Ref<ProjectType> | undefined = undefined
   export let namePlaceholder: string = ''
   export let descriptionPlaceholder: string = ''
 
@@ -93,7 +94,7 @@
   let hoursPerDay: number | undefined = project?.hoursPerDay
   let rolesAssignment: RolesAssignment | undefined
 
-  let typeId: Ref<ProjectType> | undefined = project?.type
+  let typeId: Ref<ProjectType> | undefined = project?.type ?? fixedProjectType
   $: typeType = typeId !== undefined ? $typeStore.get(typeId) : undefined
   $: membersPersons = members.map((m) => $employeeRefByAccountUuidStore.get(m)).filter(notEmpty)
   $: readOnlyGuestOwnerExcludeItems = getAnonymousRefs($employeeRefByAccountUuidStore, owners)
@@ -351,6 +352,7 @@
   })
 
   function handleTypeChange(evt: CustomEvent<Ref<ProjectType>>): void {
+    if (fixedProjectType !== undefined) return
     typeId = evt.detail
     defaultStatus = undefined
   }
@@ -438,7 +440,7 @@
 
       <Component
         is={task.component.ProjectTypeSelector}
-        disabled={!isNew}
+        disabled={!isNew || fixedProjectType !== undefined}
         props={{
           descriptors: [tracker.descriptors.ProjectType],
           type: typeId,

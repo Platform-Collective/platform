@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Kalendarz",
+    "CalendarWithoutDueDate": "Zgłoszenia bez terminu: {count}",
+    "CalendarUpdateFailed": "Nie udało się zaktualizować dat zgłoszenia. Spróbuj ponownie.",
     "TrackerApplication": "Zarządzanie zadaniami",
     "Projects": "Twoje projekty",
     "More": "Więcej",
@@ -39,6 +42,7 @@
     "Completed": "Ukończone",
     "Canceled": "Anulowane",
     "CreateProject": "Utwórz projekt",
+    "CreateNewProject": "Utwórz nowy projekt…",
     "NewProject": "Nowy projekt",
     "ProjectTitle": "Tytuł projektu",
     "ProjectTitlePlaceholder": "Przykładowe zadanie",
@@ -199,6 +203,7 @@
     "AllFilters": "wszystkie filtry",
     "NoDescription": "Brak opisu",
     "SearchIssue": "Wyszukaj zadanie\u2026",
+    "SearchMilestone": "Wyszukaj cel\u2026",
 
     "StatusHistory": "Historia statusów",
     "NewSubIssue": "Dodaj podzagadnienie",

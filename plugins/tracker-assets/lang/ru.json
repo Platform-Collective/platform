@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Календарь",
+    "CalendarWithoutDueDate": "Задач без срока выполнения: {count}",
+    "CalendarUpdateFailed": "Не удалось обновить даты задачи. Попробуйте ещё раз.",
     "TrackerApplication": "Трекер",
     "Projects": "Проекты",
     "More": "Больше",
@@ -39,6 +42,7 @@
     "Completed": "Завершен",
     "Canceled": "Отменено",
     "CreateProject": "Новый проект",
+    "CreateNewProject": "Создать новый проект…",
     "NewProject": "Новый проект",
     "ProjectTitle": "Название проекта",
     "ProjectTitlePlaceholder": "Новый проект",
@@ -221,6 +225,7 @@
     "AllFilters": "всем фильтрам",
     "NoDescription": "Нет описания",
     "SearchIssue": "Поиск задачи...",
+    "SearchMilestone": "Поиск этапа...",
 
     "StatusHistory": "История состояний",
     "NewSubIssue": "Добавить подзадачу...",

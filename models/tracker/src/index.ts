@@ -15,13 +15,14 @@
 
 import activity from '@hcengineering/activity'
 import chunter from '@hcengineering/chunter'
-import { AccountRole, type ClassCollaborators, type Ref, type Status } from '@hcengineering/core'
+import { AccountRole, type AnyAttribute, type ClassCollaborators, type Ref, type Status } from '@hcengineering/core'
 import { type Builder } from '@hcengineering/model'
 import core from '@hcengineering/model-core'
 import { generateClassNotificationTypes } from '@hcengineering/model-notification'
 import presentation from '@hcengineering/model-presentation'
 import task from '@hcengineering/model-task'
 import view from '@hcengineering/model-view'
+import { type ReferenceFilterSpace } from '@hcengineering/view'
 import workbench from '@hcengineering/model-workbench'
 import converter from '@hcengineering/converter'
 import notification from '@hcengineering/notification'
@@ -239,6 +240,20 @@ function defineFilters (builder: Builder): void {
     filters: ['employee', 'space', 'attachedTo', 'date'],
     ignoreKeys: ['value']
   })
+
+  // Milestone names repeat across projects, so name each milestone's project
+  // when the filter is not limited to one project.
+  // Attribute has an index signature that hides mixin fields from MixinData, so type them here.
+  const milestoneFilterSpace: Pick<ReferenceFilterSpace, 'spaceClass' | 'labelKey'> = {
+    spaceClass: tracker.class.Project,
+    labelKey: 'identifier'
+  }
+  builder.mixin(
+    `${tracker.class.Issue}_milestone` as Ref<AnyAttribute>,
+    core.class.Attribute,
+    view.mixin.ReferenceFilterSpace,
+    milestoneFilterSpace
+  )
 
   builder.mixin(tracker.class.Issue, core.class.Class, view.mixin.ObjectIdentifier, {
     provider: tracker.function.IssueIdentifierProvider
@@ -741,6 +756,21 @@ export function createModel (builder: Builder): void {
       priority: 300
     },
     tracker.completion.IssueCategory
+  )
+
+  builder.createDoc(
+    presentation.class.ObjectSearchCategory,
+    core.space.Model,
+    {
+      icon: tracker.icon.Milestone,
+      label: tracker.string.SearchMilestone,
+      title: tracker.string.Milestones,
+      query: tracker.completion.MilestoneQuery,
+      context: ['search', 'mention', 'spotlight'],
+      classToSearch: tracker.class.Milestone,
+      priority: 250
+    },
+    tracker.completion.MilestoneCategory
   )
 
   defineNotifications(builder)

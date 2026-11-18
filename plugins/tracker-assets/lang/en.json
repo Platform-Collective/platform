@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Calendar",
+    "CalendarWithoutDueDate": "Issues without a due date: {count}",
+    "CalendarUpdateFailed": "Could not update issue dates. Please try again.",
     "TrackerApplication": "Tracker",
     "Projects": "Your projects",
     "More": "More",
@@ -39,6 +42,7 @@
     "Completed": "Completed",
     "Canceled": "Canceled",
     "CreateProject": "Create project",
+    "CreateNewProject": "Create new project…",
     "NewProject": "New project",
     "ProjectTitle": "Project title",
     "ProjectTitlePlaceholder": "New project",
@@ -221,6 +225,7 @@
     "AllFilters": "all filters",
     "NoDescription": "No description",
     "SearchIssue": "Search for task...",
+    "SearchMilestone": "Search for milestone...",
 
     "StatusHistory": "State History",
     "NewSubIssue": "Add sub-issue...",

@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Kalender",
+    "CalendarWithoutDueDate": "Aufgaben ohne Fälligkeitsdatum: {count}",
+    "CalendarUpdateFailed": "Die Aufgabendaten konnten nicht aktualisiert werden. Bitte erneut versuchen.",
     "TrackerApplication": "Tracker",
     "Projects": "Deine Projekte",
     "More": "Mehr",
@@ -39,6 +42,7 @@
     "Completed": "Abgeschlossen",
     "Canceled": "Abgebrochen",
     "CreateProject": "Projekt erstellen",
+    "CreateNewProject": "Neues Projekt anlegen…",
     "NewProject": "Neues Projekt",
     "ProjectTitle": "Projekttitel",
     "ProjectTitlePlaceholder": "Neues Projekt",
@@ -235,6 +239,7 @@
     "AllFilters": "allen Filtern",
     "NoDescription": "Keine Beschreibung",
     "SearchIssue": "Nach Aufgabe suchen...",
+    "SearchMilestone": "Nach Meilenstein suchen...",
 
     "StatusHistory": "Statusverlauf",
     "NewSubIssue": "Unteraufgabe hinzufügen...",

@@ -17,7 +17,7 @@
   import type { PopupResult } from '@hcengineering/ui'
   import { Button, IconClose, Label, eventToHTMLElement, resizeObserver, showPopup, tooltip } from '@hcengineering/ui'
   import { onDestroy, tick } from 'svelte'
-  import { filterStore, removeFilter, setFilters } from '../../filter'
+  import { filterStore, removeFilter, setFilters, updateFilter } from '../../filter'
   import view from '../../plugin'
   import FilterSection from './FilterSection.svelte'
   import InlineFilterChipsOverflow from './InlineFilterChipsOverflow.svelte'
@@ -196,6 +196,7 @@
           <FilterSection
             {space}
             {filter}
+            on:change={() => updateFilter(filter)}
             on:remove={() => {
               removeFilter(i)
             }}

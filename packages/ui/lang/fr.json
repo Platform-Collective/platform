@@ -100,6 +100,7 @@
         "Sidebar": "Barre latérale",
         "FontSize": "Taille de police",
         "Language": "Langue",
+        "AppearanceAndLanguage": "Apparence et langue",
         "DaysWOValue": "{days, plural, =1 {jour} other {jours}}",
         "WeeksWOValue": "{weeks, plural, =1 {semaine} other {semaines}}",
         "MonthsWOValue": "{months, plural, =1 {mois} other {mois}}",
@@ -111,6 +112,9 @@
         "ThisYear": "Cette année",
         "EmojiStyle": "Style d'émoji",
         "EmojiSystem": "Par défaut du système",
-        "EmojiNoto": "Noto Color"
+        "EmojiNoto": "Noto Color",
+        "FirstDayOfWeek": "Début de semaine",
+        "FirstDayOfWeekSystem": "Configuration du système ({day})",
+        "FirstDayOfWeekDefault": "Par défaut ({day})"
     }
 }

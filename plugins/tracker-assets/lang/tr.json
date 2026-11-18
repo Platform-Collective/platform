@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Takvim",
+    "CalendarWithoutDueDate": "Bitiş tarihi olmayan sorunlar: {count}",
+    "CalendarUpdateFailed": "Sorun tarihleri güncellenemedi. Lütfen tekrar deneyin.",
     "TrackerApplication": "Tracker",
     "Projects": "Projeleriniz",
     "More": "Daha fazla",
@@ -39,6 +42,7 @@
     "Completed": "Tamamlandı",
     "Canceled": "İptal edildi",
     "CreateProject": "Proje oluştur",
+    "CreateNewProject": "Yeni proje oluştur…",
     "NewProject": "Yeni proje",
     "ProjectTitle": "Proje başlığı",
     "ProjectTitlePlaceholder": "Yeni proje",
@@ -214,6 +218,7 @@
     "AllFilters": "tüm filtreler",
     "NoDescription": "Açıklama yok",
     "SearchIssue": "Görev ara...",
+    "SearchMilestone": "Kilometre taşı ara...",
     "StatusHistory": "Durum Geçmişi",
     "NewSubIssue": "Alt sorun ekle...",
     "AddLabel": "Etiket ekle",

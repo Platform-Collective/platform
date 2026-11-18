@@ -1,5 +1,8 @@
 {
   "string": {
+    "Calendar": "Calendrier",
+    "CalendarWithoutDueDate": "Tickets sans date d’échéance : {count}",
+    "CalendarUpdateFailed": "Impossible de mettre à jour les dates du ticket. Veuillez réessayer.",
     "TrackerApplication": "Suivi",
     "Projects": "Vos projets",
     "More": "Plus",
@@ -39,6 +42,7 @@
     "Completed": "Terminé",
     "Canceled": "Annulé",
     "CreateProject": "Créer un projet",
+    "CreateNewProject": "Créer un nouveau projet…",
     "NewProject": "Nouveau projet",
     "ProjectTitle": "Titre du projet",
     "ProjectTitlePlaceholder": "Nouveau projet",
@@ -195,6 +199,7 @@
     "AllFilters": "tous les filtres",
     "NoDescription": "Pas de description",
     "SearchIssue": "Rechercher une tâche...",
+    "SearchMilestone": "Rechercher un jalon...",
     "StatusHistory": "Historique des statuts",
     "NewSubIssue": "Ajouter un sub-ssue...",
     "AddLabel": "Ajouter une étiquette",

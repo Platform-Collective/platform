@@ -269,7 +269,7 @@ export class PostgresDbCollection<T extends Record<string, any>, K extends keyof
     return res as T
   }
 
-  async unsafe (sql: string, values: any[], client?: ISql): Promise<any[]> {
+  async unsafe (sql: string, values: any[], client?: ISql): Promise<any[] & { count?: number }> {
     if (client !== undefined) {
       return await client.unsafe(sql, values)
     } else if (this.options.withRetryClient !== undefined) {
@@ -411,7 +411,7 @@ export class PostgresDbCollection<T extends Record<string, any>, K extends keyof
     await this.unsafe(finalSql, [...updateValues, ...whereValues], client)
   }
 
-  async deleteMany (query: Query<T>, client?: ISql): Promise<void> {
+  async deleteMany (query: Query<T>, client?: ISql): Promise<number> {
     const sqlChunks: string[] = [`DELETE FROM ${this.getTableName()}`]
     const [whereClause, whereValues] = this.buildWhereClause(query)
 
@@ -420,7 +420,9 @@ export class PostgresDbCollection<T extends Record<string, any>, K extends keyof
     }
 
     const finalSql = sqlChunks.join(' ')
-    await this.unsafe(finalSql, whereValues, client)
+    const result = await this.unsafe(finalSql, whereValues, client)
+    // Number of rows actually deleted by this statement (reported by the driver, no RETURNING needed)
+    return result.count ?? 0
   }
 }
 
@@ -499,7 +501,7 @@ export class AccountPostgresDbCollection
     await super.update(query, ops, client)
   }
 
-  async deleteMany (query: Query<Account>, client?: ISql): Promise<void> {
+  async deleteMany (query: Query<Account>, client?: ISql): Promise<number> {
     if (Object.keys(query).some((k) => this.passwordKeys.includes(k))) {
       throw new Error('Passwords are not allowed in delete query')
     }
@@ -514,7 +516,7 @@ export class AccountPostgresDbCollection
       )`
     await this.unsafe(passwordsSql, whereValues, client)
 
-    await super.deleteMany(query, client)
+    return await super.deleteMany(query, client)
   }
 }
 
@@ -1078,7 +1080,9 @@ export class PostgresAccountDB implements AccountDB {
 
       if ((res.length ?? 0) > 0) {
         await rTx.unsafe(
-          `UPDATE ${this.workspaceStatus.getTableName()} SET processing_attempts = processing_attempts + 1, "last_processing_time" = $1 WHERE workspace_uuid = $2`,
+          `UPDATE ${this.workspaceStatus.getTableName()}
+           SET processing_attempts = COALESCE(processing_attempts, 0) + 1, "last_processing_time" = $1
+           WHERE workspace_uuid = $2`,
           [Date.now(), res[0].uuid]
         )
       }
