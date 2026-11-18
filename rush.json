@@ -2740,6 +2740,31 @@
       "packageName": "@hcengineering/pod-rating",
       "projectFolder": "services/rating",
       "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/webhooks",
+      "projectFolder": "plugins/webhooks",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/webhooks-assets",
+      "projectFolder": "plugins/webhooks-assets",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/webhooks-resources",
+      "projectFolder": "plugins/webhooks-resources",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/model-webhooks",
+      "projectFolder": "models/webhooks",
+      "shouldPublish": false
+    },
+    {
+      "packageName": "@hcengineering/server-webhooks",
+      "projectFolder": "server-plugins/webhooks",
+      "shouldPublish": false
     }
   ]
 }
