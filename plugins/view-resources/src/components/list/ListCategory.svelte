@@ -40,11 +40,12 @@
     Scroller
   } from '@hcengineering/ui'
   import { AttributeModel, BuildModelKey, ViewOptionModel, ViewOptions, Viewlet } from '@hcengineering/view'
+  import { Analytics } from '@hcengineering/analytics'
   import { createEventDispatcher } from 'svelte'
   import { fade } from 'svelte/transition'
   import { showMenu } from '../../actions'
   import { FocusSelection, SelectionFocusProvider, focusStore } from '../../selection'
-  import { getCategoryDropIndex, isDragAtBorder } from './category-drag'
+  import { getCategoryDropIndex, isPointInside, removeDragPreview } from './category-drag'
   import ListHeader from './ListHeader.svelte'
   import ListItem from './ListItem.svelte'
 
@@ -78,6 +79,7 @@
   export let newObjectProps: (doc: Doc | undefined) => Record<string, any> | undefined
   export let viewOptionsConfig: ViewOptionModel[] | undefined = undefined
   export let dragItem: {
+    completing?: Promise<void>
     doc?: Doc
     revert?: () => void
   }
@@ -143,6 +145,13 @@
           { ...finalResultQuery, ...docKeys },
           (res) => {
             items = res
+            if (
+              dragHiddenId !== undefined &&
+              dragSourceId === undefined &&
+              !res.some((it) => it._id === dragHiddenId)
+            ) {
+              dragHiddenId = undefined
+            }
             loading = false
             const focusDoc = items.find((it) => it._id === $focusStore.focus?._id)
             if (focusDoc) {
@@ -225,6 +234,9 @@
   const client = getClient()
 
   let dragItemIndex: number | undefined
+  let dragHiddenId: Ref<Doc> | undefined
+  let dragSourceId: Ref<Doc> | undefined
+  let dragPreviewId: Ref<Doc> | undefined
 
   function dragswap(ev: MouseEvent, i: number): boolean {
     if (dragItemIndex === undefined || !byRank) return false
@@ -247,46 +259,37 @@
   function dragEnterCat(ev: MouseEvent): void {
     ev.preventDefault()
     if (dragItemIndex === undefined && dragItem.doc !== undefined) {
-      const index = items.findIndex((p) => p._id === dragItem.doc?._id)
-      if (index !== -1) {
-        dragItemIndex = index
+      const existingIndex = items.findIndex((p) => p._id === dragItem.doc?._id)
+      if (existingIndex !== -1) {
+        dragItemIndex = existingIndex
+        dragHiddenId = undefined
         return
       }
       const props = _newObjectProps(dragItem.doc)
-      if (props !== undefined) {
+      if (props !== undefined && lastLevel && !collapsed) {
         const index = getCategoryDropIndex(ev, items.length, collapsed)
-        if (index !== undefined) {
-          items.splice(index, 0, dragItem.doc)
-          dragItemIndex = index
-          items = items
-          dispatch('row-focus', dragItem)
-        }
+        items.splice(index, 0, dragItem.doc)
+        dragItemIndex = index
+        dragPreviewId = dragItem.doc._id
+        items = items
+        dispatch('row-focus', dragItem)
       }
     }
   }
 
   function dragLeaveCat(ev: MouseEvent): void {
+    if (isPointInside(div.getBoundingClientRect(), ev.clientX, ev.clientY)) return
     if (ev.relatedTarget instanceof Node && (ev.currentTarget as HTMLElement).contains(ev.relatedTarget)) return
     ev.stopPropagation()
     if (dragItemIndex !== undefined) {
-      items.splice(dragItemIndex, 1)
-      items = items
+      const doc = items[dragItemIndex]
+      if (doc !== undefined && doc._id === dragSourceId) {
+        dragHiddenId = doc._id
+      } else {
+        items = removeDragPreview(items, dragPreviewId)
+        dragPreviewId = undefined
+      }
       dragItemIndex = undefined
-    }
-  }
-
-  function dragItemLeave(ev: MouseEvent, i: number): void {
-    if (dragItemIndex !== undefined) {
-      const isLastItem = i === limited.length - 1
-      const isFirstItemWithoutHeader = i === 0 && disableHeader
-      if (isFirstItemWithoutHeader && isDragAtBorder(ev, 'top')) {
-        return
-      }
-      if (isLastItem && isDragAtBorder(ev, 'bottom')) {
-        return
-      }
-      ev.stopPropagation()
-      ev.preventDefault()
     }
   }
 
@@ -307,7 +310,7 @@
     ev.stopPropagation()
     ev.preventDefault()
     const update: DocumentUpdate<Doc> = {}
-    if (dragItemIndex !== undefined && viewOptions.orderBy?.[0] === 'rank') {
+    if (dragItemIndex !== undefined && lastLevel && viewOptions.orderBy?.[0] === 'rank') {
       const prev = limited[dragItemIndex - 1] as DocWithRank
       const next = limited[dragItemIndex + 1] as DocWithRank
       try {
@@ -317,7 +320,11 @@
         }
       } catch {}
     }
-    void drop(update)
+    dragItem.completing = drop(update)
+    void dragItem.completing.catch((error) => {
+      dragItem.revert?.()
+      Analytics.handleError(error)
+    })
   }
 
   async function drop(update: DocumentUpdate<Doc> = {}): Promise<void> {
@@ -344,6 +351,34 @@
 
   const dragEndListener: any = (ev: DragEvent, initIndex: number) => {
     ev.preventDefault()
+    dragSourceId = undefined
+    if (ev.dataTransfer?.dropEffect === 'none') {
+      dragHiddenId = undefined
+    } else if (dragHiddenId !== undefined && dragItem.completing !== undefined) {
+      const hiddenId = dragHiddenId
+      void dragItem.completing
+        .then(
+          async () => {
+            const remaining = await client.findAll(
+              _class,
+              { ...finalResultQuery, ...docKeys, _id: hiddenId },
+              { limit: 1 }
+            )
+            if (dragHiddenId !== hiddenId) return
+            if (remaining.length === 0) items = items.filter((it) => it._id !== hiddenId)
+            dragHiddenId = undefined
+          },
+          () => {
+            dragHiddenId = undefined
+          }
+        )
+        .catch((error) => {
+          dragHiddenId = undefined
+          Analytics.handleError(error)
+        })
+    } else {
+      dragHiddenId = undefined
+    }
     const rect = listDiv.getBoundingClientRect()
     const inRect = ev.clientY > rect.top && ev.clientY < rect.top + rect.height
     if (!inRect) {
@@ -355,6 +390,15 @@
         dragItem.revert = undefined
       }
     }
+  }
+
+  function windowDragEnd(ev: DragEvent): void {
+    if (dragItemIndex === undefined && dragPreviewId === undefined && dragHiddenId === undefined) return
+    if (ev.dataTransfer?.dropEffect === 'none' && dragPreviewId !== undefined) {
+      items = removeDragPreview(items, dragPreviewId)
+    }
+    dragPreviewId = undefined
+    dragItemIndex = undefined
   }
 
   function dragStartHandler(e: CustomEvent<any>): void {
@@ -369,9 +413,12 @@
       ev.dataTransfer.dropEffect = 'move'
     }
     ev.target?.addEventListener('dragend', (e) => dragEndListener(e, i))
+    dragSourceId = docObject._id
+    dragHiddenId = undefined
     dragItem = {
       doc: docObject,
       revert: () => {
+        dragHiddenId = undefined
         const d = items.find((it) => it._id === docObject._id)
         if (d === undefined) {
           items.splice(i, 0, docObject)
@@ -432,6 +479,8 @@
   }
 </script>
 
+<svelte:window on:dragend={windowDragEnd} />
+
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
   in:fade|local={{ duration: 50 }}
@@ -442,7 +491,7 @@
   class:category-one={oneCat}
   class:category-last={lastCat}
   class:disableHeader
-  on:drop|preventDefault|stopPropagation={() => drop()}
+  on:drop={dropItemHandle}
   on:dragover={dragOverCat}
   on:dragenter={dragEnterCat}
   on:dragleave={dragLeaveCat}
@@ -529,6 +578,7 @@
                 selected={isSelected(docObject, $focusStore)}
                 {readonly}
                 checked={selectedObjectIdsSet.has(docObject._id)}
+                dragHidden={docObject._id === dragHiddenId}
                 last={i === limited.length - 1 && HLimited >= itemProj.length}
                 lastCat={i === limited.length - 1 && (oneCat || lastCat) && HLimited >= itemProj.length}
                 on:dragstart={(e) => {
@@ -539,9 +589,6 @@
                     e.stopPropagation()
                     e.preventDefault()
                   }
-                }}
-                on:dragleave={(e) => {
-                  dragItemLeave(e, i)
                 }}
                 on:dragover={(e) => {
                   dragover(e, i)
