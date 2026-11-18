@@ -15,7 +15,7 @@
 <script lang="ts">
   import notification, { DocNotifyContext, InboxNotification } from '@hcengineering/notification'
   import { getResource } from '@hcengineering/platform'
-  import { getClient } from '@hcengineering/presentation'
+  import { draftsStore, getClient } from '@hcengineering/presentation'
   import { Action, IconEdit } from '@hcengineering/ui'
   import { getActions, getObjectLinkId } from '@hcengineering/view-resources'
   import {
@@ -32,6 +32,7 @@
   import { ChatNavItemModel } from '../types'
   import { openChannel } from '../../../navigation'
   import chunter from '../../../plugin'
+  import { getChatDrafts } from '../../../chat-drafts'
 
   export let context: DocNotifyContext | undefined
   export let item: ChatNavItemModel
@@ -127,6 +128,7 @@
   {isSelected}
   iconProps={{ ...item.iconProps, value: item.object }}
   {count}
+  hasDraft={getChatDrafts($draftsStore).some((draft) => !draft.thread && draft.target === item.object._id)}
   title={item.title}
   description={item.description}
   secondaryNotifyMarker={context === undefined

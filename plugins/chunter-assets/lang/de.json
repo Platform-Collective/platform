@@ -1,6 +1,10 @@
 {
   "string": {
     "ApplicationLabelChunter": "Chat",
+    "Drafts": "Entwürfe",
+    "Draft": "Entwurf",
+    "DraftsLocal": "Ungesendete Nachrichten, die nur in diesem Browser gespeichert sind. Entwürfe für nicht verfügbare Unterhaltungen werden nicht angezeigt.",
+    "NoDrafts": "Keine ungesendeten Entwürfe",
     "LeftComment": "hat einen Kommentar hinterlassen",
     "Channels": "Kanäle",
     "DirectMessages": "Direktnachrichten",

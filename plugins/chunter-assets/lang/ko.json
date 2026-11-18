@@ -1,6 +1,10 @@
 {
     "string": {
         "ApplicationLabelChunter": "채팅",
+        "Drafts": "Drafts",
+        "Draft": "Draft",
+        "DraftsLocal": "Unsent messages saved in this browser only. Drafts for unavailable conversations are not shown.",
+        "NoDrafts": "No unsent drafts",
         "LeftComment": "님이 댓글을 남겼습니다",
         "Channels": "채널",
         "DirectMessages": "다이렉트 메시지",

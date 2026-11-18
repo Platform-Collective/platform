@@ -34,6 +34,7 @@ export default mergeIds(chunterId, chunter, {
     MessagePreview: '' as AnyComponent,
     CreateDocChannel: '' as AnyComponent,
     SavedMessages: '' as AnyComponent,
+    Drafts: '' as AnyComponent,
     Threads: '' as AnyComponent,
     ChunterBrowser: '' as AnyComponent,
     ChannelIcon: '' as AnyComponent
@@ -67,6 +68,10 @@ export default mergeIds(chunterId, chunter, {
     About: '' as IntlString,
     Members: '' as IntlString,
     NoMembers: '' as IntlString,
+    Drafts: '' as IntlString,
+    Draft: '' as IntlString,
+    DraftsLocal: '' as IntlString,
+    NoDrafts: '' as IntlString,
     In: '' as IntlString,
     Replies: '' as IntlString,
     Topic: '' as IntlString,

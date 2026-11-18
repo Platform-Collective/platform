@@ -36,6 +36,7 @@ import CreateChannel from './components/chat/create/CreateChannel.svelte'
 import CreateDirectChat from './components/chat/create/CreateDirectChat.svelte'
 import ChunterBrowser from './components/chat/specials/ChunterBrowser.svelte'
 import SavedMessages from './components/chat/specials/SavedMessages.svelte'
+import Drafts from './components/chat/specials/Drafts.svelte'
 import ConvertDmToPrivateChannelModal from './components/ConvertDmToPrivateChannel.svelte'
 import DirectIcon from './components/DirectIcon.svelte'
 import DmHeader from './components/DmHeader.svelte'
@@ -172,6 +173,7 @@ export default async (): Promise<Resources> => ({
     EditChannel,
     ThreadView,
     SavedMessages,
+    Drafts,
     ChatMessagePresenter,
     ChatMessageInput,
     ChatMessagesPresenter,
