@@ -252,7 +252,7 @@
               <slot name="header" />
             {/if}
 
-            {#if !skipLabel && showDatePreposition && presentation === 'default'}
+            {#if !skipLabel && showDatePreposition}
               <span class="text-sm lower">
                 <Label label={activity.string.At} />
               </span>
@@ -642,11 +642,7 @@
       font-size: 0.875rem;
 
       > .header {
-        display: contents;
-
-        > .timestamp {
-          order: 2;
-        }
+        margin: 0;
       }
 
       > .message-body {
