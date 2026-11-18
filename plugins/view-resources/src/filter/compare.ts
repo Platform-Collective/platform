@@ -29,6 +29,8 @@ const UNORDERED_MODES = new Set<string>([
 ])
 
 // JSON.stringify(undefined) is undefined; inside an array it is written as null.
+// Values of these modes are primitives (ids, numbers, null), or for "Value is" / "is not"
+// a [value, rawValues] pair of primitives: no objects, so equal values give equal JSON text.
 function valueKey (value: unknown): string {
   return JSON.stringify(value) ?? 'null'
 }

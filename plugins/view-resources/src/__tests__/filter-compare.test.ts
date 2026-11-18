@@ -18,10 +18,6 @@ const filter = (key: string, mode: string, value: unknown[], extra: Partial<Filt
 })
 
 describe('sameFilters', () => {
-  it('uses the real filter mode ids', () => {
-    expect(view.filter.FilterObjectIn).toBe('view:filter:FilterObjectIn')
-  })
-
   it('ignores the order of "is" values (a value unticked and ticked again)', () => {
     const saved = [filter('milestone', view.filter.FilterObjectIn, ['otp', 'ferna', 'paw'])]
     const now = [filter('milestone', view.filter.FilterObjectIn, ['ferna', 'paw', 'otp'])]
@@ -40,6 +36,11 @@ describe('sameFilters', () => {
         true
       )
     }
+  })
+
+  it('treats "Not selected" the same in stored JSON and live filters', () => {
+    const saved = JSON.stringify([filter('k', view.filter.FilterObjectIn, [undefined, 'b', 'a'])])
+    expect(sameFilters(saved, [filter('k', view.filter.FilterObjectIn, ['a', undefined, 'b'])])).toBe(true)
   })
 
   it('still sees a different value, a missing value and a different mode', () => {

@@ -218,6 +218,18 @@
     dispatch('select', false)
   }
 
+  // Normalised form of each saved view's stored filters, filled lazily: checkSelected
+  // runs on every filter, location and view-option change, for every saved view.
+  const storedKeys = new Map<string, string>()
+  function storedKey(filters: string): string {
+    let key = storedKeys.get(filters)
+    if (key === undefined) {
+      key = filtersKey(filters)
+      storedKeys.set(filters, key)
+    }
+    return key
+  }
+
   function checkFilter(
     fv: FilteredView,
     loc: Location,
@@ -227,7 +239,7 @@
     if (fv.location.path.join() !== loc.path.join()) return false
     // Compared as sets of values: ticking a value again puts it at the end of
     // its filter, which used to make a saved view stop matching after a reload.
-    if (filtersKey(fv.filters) !== filters) return false
+    if (storedKey(fv.filters) !== filters) return false
     const key = makeViewletKey(loc)
     if (fv.viewletId !== $activeViewlet[key]) return false
     if (fv.viewletId !== null) {
