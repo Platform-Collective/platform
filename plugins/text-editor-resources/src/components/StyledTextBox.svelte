@@ -26,6 +26,7 @@
   import { addTableHandler } from '../utils'
   import view from '@hcengineering/view'
   import { type FileAttachFunction } from './extension/types'
+  import { isBlockCommandId, runBlockCommand } from './extension/block-commands'
   import { inlineCommandsConfig } from './extensions'
 
   const TODO_LIST_COMMANDS = ['todo-list'] as const
@@ -174,6 +175,10 @@
 
   async function handleCommandSelected(id: string, pos: number, targetItem?: MouseEvent | HTMLElement): Promise<void> {
     editor.getEditor()?.commands.focus(pos, { scrollIntoView: false })
+    if (isBlockCommandId(id)) {
+      runBlockCommand(editor.getEditor(), id, pos)
+      return
+    }
 
     switch (id) {
       case 'image':

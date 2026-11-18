@@ -76,6 +76,7 @@
   import { defaultEditorAttributes } from './editor/editorProps'
   import { SavedBoard } from './extension/drawingBoard'
   import { type FileAttachFunction } from './extension/types'
+  import { isBlockCommandId, runBlockCommand } from './extension/block-commands'
   import { inlineCommandsConfig } from './extensions'
 
   export let object: Doc
@@ -275,6 +276,11 @@
   }
 
   async function handleLeftMenuClick(id: string, pos: number, targetItem?: MouseEvent | HTMLElement): Promise<void> {
+    if (isBlockCommandId(id)) {
+      runBlockCommand(editor, id, pos)
+      return
+    }
+
     editor.commands.focus(pos, { scrollIntoView: false })
 
     switch (id) {

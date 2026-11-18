@@ -1,6 +1,9 @@
 {
     "string": {
         "TableOfContents": "목차",
+        "Heading1": "제목 1",
+        "Heading2": "제목 2",
+        "Heading3": "제목 3",
         "Suggested": "추천",
         "NoItems": "항목 없음",
         "EditorPlaceholder": "입력을 시작하세요...",

@@ -1,6 +1,9 @@
 {
   "string": {
     "TableOfContents": "Table des matières",
+    "Heading1": "Titre 1",
+    "Heading2": "Titre 2",
+    "Heading3": "Titre 3",
     "Suggested": "Suggéré",
     "NoItems": "Aucun élément",
     "EditorPlaceholder": "Commencez à taper...",

@@ -371,7 +371,9 @@ const convertListItems: RawCommands['convertListItems'] =
       }
       pos += child.nodeSize
     }
-    return false
+    // A valid list is handled even when its items already have the target type.
+    // List toggles rely on this result when preflighting a chained conversion.
+    return true
   }
 
 // Fork of tiptap implementation with support for conversion-based transitions

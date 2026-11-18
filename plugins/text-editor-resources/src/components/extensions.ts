@@ -22,6 +22,8 @@ import { type InlineCommandsOptions } from './extension/inlineCommands'
 import type { SuggestionKeyDownProps, SuggestionProps } from './extension/suggestion'
 import InlineCommandsList from './InlineCommandsList.svelte'
 import { SvelteRenderer } from './node-view'
+import { type BlockCommandId } from './extension/block-commands'
+import { withBlockCommands } from './extension/block-commands-config'
 
 export const mInsertTable = [
   {
@@ -94,6 +96,7 @@ export type InlineCommandId =
   | 'todo-list'
   | 'drawing-board'
   | 'mermaid'
+  | BlockCommandId
 
 /**
  * @public
@@ -102,7 +105,7 @@ export function inlineCommandsConfig (
   handleSelect: (id: string, pos: number, targetItem?: MouseEvent | HTMLElement) => Promise<void>,
   excludedCommands: InlineCommandId[] = []
 ): Partial<InlineCommandsOptions> {
-  return {
+  const config: Partial<InlineCommandsOptions> = {
     suggestion: {
       items: () => {
         return [
@@ -156,4 +159,5 @@ export function inlineCommandsConfig (
       }
     }
   }
+  return withBlockCommands(config, excludedCommands)
 }

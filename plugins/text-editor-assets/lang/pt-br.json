@@ -1,6 +1,9 @@
 {
   "string": {
     "TableOfContents": "Índice",
+    "Heading1": "Título 1",
+    "Heading2": "Título 2",
+    "Heading3": "Título 3",
     "Suggested": "SUGERIDO",
     "NoItems": "Sem itens",
     "EditorPlaceholder": "Começa a escrever...",
