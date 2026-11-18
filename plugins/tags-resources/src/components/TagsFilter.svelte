@@ -35,6 +35,8 @@
   import { FILTER_DEBOUNCE_MS, FilterQuery, sortFilterValues } from '@hcengineering/view-resources'
   import { createEventDispatcher } from 'svelte'
   import tags from '../plugin'
+  import { groupTagElements } from '../tag-category-groups'
+  import type { TagCategoryGroup } from '../tag-category-groups'
   import { tagLevel } from '../utils'
   import WeightPopup from './WeightPopup.svelte'
 
@@ -55,6 +57,8 @@
 
   let categories: TagCategory[] = []
   let objects: TagElement[] = []
+
+  $: groups = groupTagElements(categories, objects, tags.category.NoCategory)
 
   let catsSorted = false
 
@@ -99,10 +103,10 @@
     const el: HTMLElement = ev.currentTarget as HTMLElement
     el.classList.toggle('show')
   }
-  $: show = categories.length <= 1
+  $: show = groups.length <= 1
 
-  const getCount = (cat: TagCategory): string => {
-    const count = objects.filter((el) => el.category === cat._id).filter((it) => selected.includes(it._id)).length
+  const getCount = (cat: TagCategoryGroup): string => {
+    const count = cat.elements.filter((it) => selected.includes(it._id)).length
     if (count > 0) return count.toString()
     return ''
   }
@@ -180,8 +184,8 @@
       {#if objectsPromise}
         <Loading />
       {:else}
-        {#each categories as cat, i}
-          {@const values = objects.filter((el) => el.category === cat._id)}
+        {#each groups as cat, i}
+          {@const values = cat.elements}
           {#if values.length > 0}
             {#if i > 0}<div class="menu-separator" />{/if}
             <div class="sticky-wrapper">
@@ -191,9 +195,13 @@
                 class:hidden={show}
                 on:click={toggleGroup}
               >
-                {#if categories.length > 1}
+                {#if groups.length > 1}
                   <div class="flex-row-center">
-                    <span class="mr-1-5">{cat.label}</span>
+                    <span class="mr-1-5">
+                      {#if cat.label !== undefined}{cat.label}{:else}<Label
+                          label={tags.string.OtherCategoryLabel}
+                        />{/if}
+                    </span>
                     <div class="icon">
                       <svg fill="var(--content-color)" viewBox="0 0 6 6" xmlns="http://www.w3.org/2000/svg">
                         <path d="M0,0L6,3L0,6Z" />

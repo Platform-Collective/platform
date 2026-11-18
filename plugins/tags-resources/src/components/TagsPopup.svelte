@@ -33,6 +33,8 @@
   } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import tags from '../plugin'
+  import { groupTagElements } from '../tag-category-groups'
+  import type { TagCategoryGroup } from '../tag-category-groups'
   import { createTagElement } from '../utils'
   import CreateTagElement from './CreateTagElement.svelte'
   import IconView from './icons/View.svelte'
@@ -52,7 +54,6 @@
   let show: boolean = false
   let objects: TagElement[] = []
   let categories: TagCategory[] = []
-  let isSingleCategory = true
   let inProcess = false
 
   const dispatch = createEventDispatcher()
@@ -61,8 +62,10 @@
   const client = getClient()
   void client.findAll(tags.class.TagCategory, { targetClass }).then((res) => {
     categories = res
-    isSingleCategory = categories.length <= 1
   })
+
+  $: groups = groupTagElements(categories, objects, tags.category.NoCategory)
+  $: isSingleCategory = groups.length <= 1
 
   // TODO: Add $not: {$in: []} query
   $: query.query(tags.class.TagElement, { title: { $like: '%' + search + '%' }, targetClass }, (result) => {
@@ -111,8 +114,8 @@
     const el: HTMLElement = ev.currentTarget as HTMLElement
     el.classList.toggle('show')
   }
-  const getCount = (cat: TagCategory): string => {
-    const count = objects.filter((el) => el.category === cat._id).filter((it) => selected.includes(it._id)).length
+  const getCount = (cat: TagCategoryGroup): string => {
+    const count = cat.elements.filter((it) => selected.includes(it._id)).length
     if (count > 0) return count.toString()
     return ''
   }
@@ -165,8 +168,8 @@
   </div>
   <div class="scroll">
     <div class="box">
-      {#each categories as cat, i}
-        {@const catObjects = objects.filter((el) => el.category === cat._id).sort(tagSort)}
+      {#each groups as cat, i (cat._id)}
+        {@const catObjects = [...cat.elements].sort(tagSort)}
         {#if catObjects.length > 0}
           {#if i > 0}<div class="menu-separator" />{/if}
           <div class="sticky-wrapper">
@@ -177,7 +180,9 @@
               on:click={toggleGroup}
             >
               <div class="flex-row-center">
-                <span class="mr-1-5">{cat.label}</span>
+                <span class="mr-1-5">
+                  {#if cat.label !== undefined}{cat.label}{:else}<Label label={tags.string.OtherCategoryLabel} />{/if}
+                </span>
                 <div class="icon">
                   <svg fill="var(--theme-content-color)" viewBox="0 0 6 6" xmlns="http://www.w3.org/2000/svg">
                     <path d="M0,0L6,3L0,6Z" />

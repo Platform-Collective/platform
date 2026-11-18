@@ -17,7 +17,7 @@
   import type { IntlString } from '@hcengineering/platform'
   import { translateCB } from '@hcengineering/platform'
   import presentation, { createQuery } from '@hcengineering/presentation'
-  import { TagCategory, TagElement } from '@hcengineering/tags'
+  import { TagElement } from '@hcengineering/tags'
   import {
     Button,
     CheckBox,
@@ -30,12 +30,13 @@
   } from '@hcengineering/ui'
   import { createEventDispatcher, onMount } from 'svelte'
   import tags from '../plugin'
+  import type { TagCategoryGroup } from '../tag-category-groups'
 
   export let targetClass: Ref<Class<Doc>>
   export let placeholder: IntlString = presentation.string.Search
   export let selected: Ref<TagElement>[] = []
   export let keyLabel: string = ''
-  export let category: TagCategory
+  export let category: TagCategoryGroup
 
   let elements: TagElement[] = []
 
@@ -54,7 +55,7 @@
 
   $: query.query(
     tags.class.TagElement,
-    { title: { $like: '%' + search + '%' }, targetClass, category: category._id },
+    { ...category.query, title: { $like: '%' + search + '%' }, targetClass },
     (result) => {
       elements = result
     },

@@ -29,6 +29,8 @@
   } from '@hcengineering/ui'
   import { TableBrowser } from '@hcengineering/view-resources'
   import tags from '../plugin'
+  import { getTagCategoryQuery } from '../tag-category-groups'
+  import type { TagCategoryGroup } from '../tag-category-groups'
   import CategoryBar from './CategoryBar.svelte'
   import CreateTagElement from './CreateTagElement.svelte'
   // import { deviceOptionsStore as deviceInfo } from '@hcengineering/ui'
@@ -49,10 +51,10 @@
   let search = ''
   let resultQuery: DocumentQuery<TagElement> = { targetClass }
 
-  function updateResultQuery(search: string, category?: Ref<TagCategory>): void {
+  function updateResultQuery(search: string, category: Ref<TagCategory> | undefined, categories: TagCategory[]): void {
     resultQuery = search === '' ? { targetClass } : { $search: search, targetClass }
     if (category !== undefined) {
-      resultQuery.category = category
+      Object.assign(resultQuery, getTagCategoryQuery(categories, category, tags.category.NoCategory))
     }
   }
 
@@ -94,20 +96,17 @@
   const countSorting = (a: Doc, b: Doc) =>
     (tagElements?.get(b._id as Ref<TagElement>)?.count ?? 0) - (tagElements?.get(a._id as Ref<TagElement>)?.count ?? 0)
 
-  let visibleCategories: TagCategory[] = []
+  let categories: TagCategory[] = []
+  let visibleCategories: TagCategoryGroup[] = []
+
+  $: updateResultQuery(search, category, categories)
 </script>
 
 <Header adaptive={'disabled'}>
   <Breadcrumb {icon} label={title} size={'large'} isCurrent />
 
   <svelte:fragment slot="search">
-    <SearchInput
-      bind:value={search}
-      collapsed
-      on:change={() => {
-        updateResultQuery(search, category)
-      }}
-    />
+    <SearchInput bind:value={search} collapsed />
   </svelte:fragment>
   <svelte:fragment slot="actions">
     <slot />
@@ -120,10 +119,10 @@
   {tagElements}
   on:change={(evt) => {
     category = evt.detail.category ?? undefined
-    updateResultQuery(search, category)
   }}
   on:categories={(evt) => {
-    visibleCategories = evt.detail
+    categories = evt.detail.categories
+    visibleCategories = evt.detail.visibleCategories
   }}
 />
 <TableBrowser
