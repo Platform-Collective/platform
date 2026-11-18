@@ -215,6 +215,8 @@
     "AllFilters": "tüm filtreler",
     "NoDescription": "Açıklama yok",
     "SearchIssue": "Görev ara...",
+    "ShowProjectOwners": "Kenar çubuğunda sahipleri göster",
+    "HideProjectOwners": "Kenar çubuğunda sahipleri gizle",
     "SearchMilestone": "Kilometre taşı ara...",
     "StatusHistory": "Durum Geçmişi",
     "NewSubIssue": "Alt sorun ekle...",

@@ -236,6 +236,8 @@
     "AllFilters": "allen Filtern",
     "NoDescription": "Keine Beschreibung",
     "SearchIssue": "Nach Aufgabe suchen...",
+    "ShowProjectOwners": "Owner in der Seitenleiste anzeigen",
+    "HideProjectOwners": "Owner in der Seitenleiste ausblenden",
     "SearchMilestone": "Nach Meilenstein suchen...",
 
     "StatusHistory": "Statusverlauf",

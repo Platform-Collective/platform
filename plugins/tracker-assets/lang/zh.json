@@ -205,6 +205,8 @@
     "AllFilters": "所有过滤器",
     "NoDescription": "无描述",
     "SearchIssue": "搜索任务…",
+    "ShowProjectOwners": "在侧边栏显示负责人",
+    "HideProjectOwners": "在侧边栏隐藏负责人",
     "SearchMilestone": "搜索里程碑…",
 
     "StatusHistory": "状态历史",

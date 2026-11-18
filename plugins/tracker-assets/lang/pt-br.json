@@ -198,6 +198,8 @@
     "AllFilters": "todos os filtros",
     "NoDescription": "Sem descrição",
     "SearchIssue": "Procurar tarefa...",
+    "ShowProjectOwners": "Mostrar proprietários na barra lateral",
+    "HideProjectOwners": "Ocultar proprietários na barra lateral",
     "SearchMilestone": "Procurar objetivo...",
     "StatusHistory": "Histórico de estado",
     "NewSubIssue": "Adicionar sub-tarefa...",

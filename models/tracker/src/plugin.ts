@@ -110,6 +110,8 @@ export default mergeIds(trackerId, tracker, {
     DeleteMilestone: '' as ViewAction
   },
   action: {
+    ShowProjectOwners: '' as Ref<Action<Doc, any>>,
+    HideProjectOwners: '' as Ref<Action<Doc, any>>,
     NewRelatedIssue: '' as Ref<Action<Doc, any>>,
     CopyReleaseList: '' as Ref<Action<Doc, Record<string, any>>>,
     DeleteMilestone: '' as Ref<Action<Doc, Record<string, any>>>,

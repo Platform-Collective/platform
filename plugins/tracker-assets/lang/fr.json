@@ -198,6 +198,8 @@
     "AllFilters": "tous les filtres",
     "NoDescription": "Pas de description",
     "SearchIssue": "Rechercher une tâche...",
+    "ShowProjectOwners": "Afficher les propriétaires dans la barre latérale",
+    "HideProjectOwners": "Masquer les propriétaires dans la barre latérale",
     "SearchMilestone": "Rechercher un jalon...",
     "StatusHistory": "Historique des statuts",
     "NewSubIssue": "Ajouter un sub-ssue...",

@@ -222,6 +222,8 @@
     "AllFilters": "всем фильтрам",
     "NoDescription": "Нет описания",
     "SearchIssue": "Поиск задачи...",
+    "ShowProjectOwners": "Показывать владельцев в боковой панели",
+    "HideProjectOwners": "Скрыть владельцев в боковой панели",
     "SearchMilestone": "Поиск этапа...",
 
     "StatusHistory": "История состояний",

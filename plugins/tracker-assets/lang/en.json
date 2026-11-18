@@ -222,6 +222,8 @@
     "AllFilters": "all filters",
     "NoDescription": "No description",
     "SearchIssue": "Search for task...",
+    "ShowProjectOwners": "Show owners in sidebar",
+    "HideProjectOwners": "Hide owners in sidebar",
     "SearchMilestone": "Search for milestone...",
 
     "StatusHistory": "State History",

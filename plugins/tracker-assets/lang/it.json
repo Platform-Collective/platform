@@ -198,6 +198,8 @@
     "AllFilters": "tutti i filtri",
     "NoDescription": "Nessuna descrizione",
     "SearchIssue": "Cerca attività...",
+    "ShowProjectOwners": "Mostra proprietari nella barra laterale",
+    "HideProjectOwners": "Nascondi proprietari nella barra laterale",
     "SearchMilestone": "Cerca traguardo...",
     "StatusHistory": "Storia degli stati",
     "NewSubIssue": "Aggiungi subissue...",

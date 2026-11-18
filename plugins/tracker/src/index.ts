@@ -136,6 +136,15 @@ export interface ProjectTargetPreference extends Preference {
   props?: { key: string, value: any }[]
 }
 
+/**
+ * Per-account tracker navigator settings (stored as a private preference, so it follows the user across devices).
+ * @public
+ */
+export interface ProjectNavigatorPreference extends Preference {
+  // Show the project owners next to the project in the tracker navigator. Missing means shown.
+  showProjectOwners: boolean
+}
+
 export type RelatedIssueKind = 'classRule' | 'spaceRule'
 
 export interface RelatedClassRule {
@@ -597,6 +606,7 @@ const pluginState = plugin(trackerId, {
     TypeRemainingTime: '' as Ref<Class<Type<number>>>,
     RelatedIssueTarget: '' as Ref<Class<RelatedIssueTarget>>,
     ProjectTargetPreference: '' as Ref<Class<ProjectTargetPreference>>,
+    ProjectNavigatorPreference: '' as Ref<Class<ProjectNavigatorPreference>>,
     DependencyShiftedNotification: '' as Ref<Class<DependencyShiftedNotification>>,
     DependencyShiftRequest: '' as Ref<Class<DependencyShiftRequest>>
   },

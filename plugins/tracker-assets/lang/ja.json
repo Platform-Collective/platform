@@ -198,6 +198,8 @@
     "AllFilters": "すべてのフィルター",
     "NoDescription": "説明なし",
     "SearchIssue": "タスクを検索...",
+    "ShowProjectOwners": "サイドバーにオーナーを表示",
+    "HideProjectOwners": "サイドバーのオーナーを非表示",
     "SearchMilestone": "マイルストーンを検索...",
     "StatusHistory": "状態履歴",
     "NewSubIssue": "子イシューを追加...",

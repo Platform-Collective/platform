@@ -195,6 +195,8 @@
     "AllFilters": "všem filtrům",
     "NoDescription": "Žádný popis",
     "SearchIssue": "Hledat úkol...",
+    "ShowProjectOwners": "Zobrazit vlastníky v postranním panelu",
+    "HideProjectOwners": "Skrýt vlastníky v postranním panelu",
     "SearchMilestone": "Hledat milník...",
 
     "StatusHistory": "Historie stavů",

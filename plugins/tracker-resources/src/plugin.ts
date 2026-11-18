@@ -58,6 +58,8 @@ export default mergeIds(trackerId, tracker, {
     ReleaseListCopyFallback: '' as IntlString,
     ReleaseListLoadFailed: '' as IntlString,
 
+    ShowProjectOwners: '' as IntlString,
+    HideProjectOwners: '' as IntlString,
     More: '' as IntlString,
     Delete: '' as IntlString,
     Open: '' as IntlString,
@@ -637,9 +639,13 @@ export default mergeIds(trackerId, tracker, {
     CreateIssueDraft: '' as Metadata<IssueDraft>
   },
   actionImpl: {
+    ShowProjectOwners: '' as ViewAction,
+    HideProjectOwners: '' as ViewAction,
     CopyIssueBranch: '' as ViewAction
   },
   function: {
+    CanShowProjectOwners: '' as Resource<(doc?: Doc | Doc[]) => Promise<boolean>>,
+    CanHideProjectOwners: '' as Resource<(doc?: Doc | Doc[]) => Promise<boolean>>,
     IssueTitleProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,
     IssueIdentifierProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,
     ComponentTitleProvider: '' as Resource<(client: Client, ref: Ref<Doc>, doc?: Doc) => Promise<string>>,

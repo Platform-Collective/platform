@@ -199,6 +199,8 @@
         "NoDescription": "설명 없음",
         "SearchIssue": "작업 검색...",
         "SearchMilestone": "마일스톤 검색...",
+        "ShowProjectOwners": "사이드바에 소유자 표시",
+        "HideProjectOwners": "사이드바에서 소유자 숨기기",
         "StatusHistory": "상태 이력",
         "NewSubIssue": "하위 이슈 추가...",
         "AddLabel": "라벨 추가",
