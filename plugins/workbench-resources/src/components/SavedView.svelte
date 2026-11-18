@@ -160,10 +160,11 @@
   }
 
   let selectedId: Ref<FilteredView> | undefined = undefined
-  // True while load() is applying a saved view. Between navigate() and
-  // setFilters() the previous page's filters are still in place, and
-  // checkSelected() must not clear the view that is being opened.
-  let loading = false
+  // Number of load() calls still applying a saved view. Between navigate()
+  // and setFilters() the previous page's filters are still in place, and
+  // checkSelected() must not clear the view that is being opened. A counter,
+  // so an earlier load() finishing doesn't lift the guard for a later one.
+  let loading = 0
 
   // The saved view this tab last opened. After a reload only this view is
   // put back into selectedFilterStore when the filters match it; a view the
@@ -188,7 +189,7 @@
   }
 
   async function load(fv: FilteredView): Promise<void> {
-    loading = true
+    loading++
     setLastOpened(fv._id)
     try {
       selectedFilterStore.set(fv)
@@ -206,7 +207,7 @@
       }
       setFilters(JSON.parse(fv.filters))
     } finally {
-      loading = false
+      loading--
     }
   }
 
@@ -239,7 +240,7 @@
     filteredViews: FilteredView[] | undefined,
     viewOptionStore: Map<string, ViewOptions>
   ): void {
-    if (loading) return
+    if (loading > 0) return
     const filters = JSON.stringify(fs)
     if (loc && Array.isArray(fs) && fs.length > 0 && Array.isArray(filteredViews)) {
       if ($selectedFilterStore !== undefined) {
