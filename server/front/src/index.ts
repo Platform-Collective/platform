@@ -263,6 +263,10 @@ export function start (
     telegramUrl: string
     gmailUrl: string
     calendarUrl: string
+    // Optional on purpose: with no key the client hides the Giphy tab and the picker still
+    // works against the workspace library, so a deployment without a key is a lesser feature
+    // rather than a broken one.
+    giphyApiKey?: string
     collaborator?: string
     collaboratorUrl: string
     brandingUrl?: string
@@ -338,6 +342,7 @@ export function start (
       MODEL_VERSION: config.modelVersion,
       VERSION: config.version,
       REKONI_URL: config.rekoniUrl,
+      GIPHY_API_KEY: config.giphyApiKey,
       TELEGRAM_URL: config.telegramUrl,
       GMAIL_URL: config.gmailUrl,
       CALENDAR_URL: config.calendarUrl,

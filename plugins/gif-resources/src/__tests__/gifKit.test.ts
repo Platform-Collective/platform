@@ -23,7 +23,7 @@ import { GifNode } from '@hcengineering/text'
 // error. The editor kit and the composers' kitOptions are plain source; a schema built here
 // from GifNode would prove only that GifNode works, which is not the risk. Resolve from
 // __dirname so the test cannot pass vacuously against an empty read under a different cwd.
-const repoRoot = join(__dirname, '../../../../..')
+const repoRoot = join(__dirname, '../../../..')
 const read = (rel: string): string => readFileSync(join(repoRoot, rel), 'utf8')
 
 const EDITOR_KIT = 'plugins/text-editor-resources/src/kits/editor-kit.ts'

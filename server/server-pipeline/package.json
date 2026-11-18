@@ -91,6 +91,7 @@
     "@hcengineering/server-guest": "workspace:^0.7.0",
     "@hcengineering/server-guest-resources": "workspace:^0.7.0",
     "@hcengineering/server-token": "workspace:^0.7.18",
+    "@hcengineering/server-gif": "workspace:^0.7.0",
     "@hcengineering/server-rating": "workspace:^0.7.0",
     "@hcengineering/server-controlled-documents": "workspace:^0.7.0",
     "@hcengineering/server-controlled-documents-resources": "workspace:^0.7.0",
