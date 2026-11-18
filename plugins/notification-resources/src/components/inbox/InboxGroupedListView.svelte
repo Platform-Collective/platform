@@ -192,9 +192,12 @@
     lazy={true}
     getKey={getContextKey}
   >
-    <svelte:fragment slot="item" let:item={itemIndex}>
-      {@const contextId = displayData[itemIndex][0]}
-      {@const contextNotifications = displayData[itemIndex][1]}
+    <!-- Take the row data from the keyed item, not from displayData[itemIndex]: while the list is
+         reordered (e.g. a new context is inserted on top) the index can be stale for one update,
+         which made existing cards briefly render a neighbour context and reload. -->
+    <svelte:fragment slot="item" let:item={itemIndex} let:value>
+      {@const contextId = value[0]}
+      {@const contextNotifications = value[1]}
       {@const context = $contextByIdStore.get(contextId)}
       {#if context}
         <DocNotifyContextCard
