@@ -23,7 +23,7 @@ export interface BarDateRange {
  * returned separately so callers can persist it only after the user changes
  * the bar.
  */
-export function getIssueBarRange (issue: IssueDateRange): BarDateRange | null {
+export function getIssueBarRange(issue: IssueDateRange): BarDateRange | null {
   if (issue.startDate != null && issue.dueDate != null) {
     return { startDate: issue.startDate, dueDate: issue.dueDate, hasInferredStart: false }
   }

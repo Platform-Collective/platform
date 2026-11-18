@@ -48,10 +48,7 @@ function rowBottom(rows: LayoutRow[]): number {
   return bottom
 }
 
-function barRange (
-  row: LayoutRow,
-  summaryRanges: Map<string, SummaryRange>
-): { start: number, end: number } | null {
+function barRange(row: LayoutRow, summaryRanges: Map<string, SummaryRange>): { start: number; end: number } | null {
   if (row.kind === 'milestone' && row.milestone !== null) {
     return { start: row.milestone.startDate ?? row.milestone.targetDate, end: row.milestone.targetDate }
   }

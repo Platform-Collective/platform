@@ -12,7 +12,7 @@ import { computeBulkDeltaBounds } from '../bulk-boundary'
 const DAY = 86_400_000
 const CALENDAR = { weekdayMask: 0b0011111, holidays: [] }
 
-function issue (id: string, startDate: number | null, dueDate: number | null): Issue {
+function issue(id: string, startDate: number | null, dueDate: number | null): Issue {
   return {
     _id: id as Ref<Issue>,
     _class: 'tracker:class:Issue' as never,
@@ -27,7 +27,7 @@ function issue (id: string, startDate: number | null, dueDate: number | null): I
   } as unknown as Issue
 }
 
-function relation (source: Issue, target: Issue): IssueRelation {
+function relation(source: Issue, target: Issue): IssueRelation {
   return {
     _id: 'relation:one' as never,
     _class: 'tracker:class:IssueRelation' as never,

@@ -43,7 +43,7 @@ export interface BulkDeltaBounds {
   maxDeltaMs: number
 }
 
-export function computeBulkDeltaBounds (
+export function computeBulkDeltaBounds(
   memberIds: ReadonlySet<Ref<Issue> | string>,
   allIssues: readonly Issue[],
   relations: readonly IssueRelation[],

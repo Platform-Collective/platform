@@ -15,15 +15,12 @@ export interface DragMember {
 }
 
 export type IssueDragCommitState =
-  | { kind: 'dragging-body', originStart: number, originEnd: number, previewStart: number, previewEnd: number }
-  | { kind: 'resizing-left', originStart: number, originEnd: number, previewStart: number }
-  | { kind: 'resizing-right', originStart: number, originEnd: number, previewEnd: number }
+  | { kind: 'dragging-body'; originStart: number; originEnd: number; previewStart: number; previewEnd: number }
+  | { kind: 'resizing-left'; originStart: number; originEnd: number; previewStart: number }
+  | { kind: 'resizing-right'; originStart: number; originEnd: number; previewEnd: number }
 
 /** Return every selected issue with a drawable range, including due-only bars. */
-export function selectedDragMembers (
-  issues: Issue[],
-  selectedIssueIds: ReadonlySet<Ref<Issue> | string>
-): DragMember[] {
+export function selectedDragMembers(issues: Issue[], selectedIssueIds: ReadonlySet<Ref<Issue> | string>): DragMember[] {
   return issues.flatMap((issue) => {
     const range = getIssueBarRange(issue)
     return selectedIssueIds.has(issue._id) && range !== null
@@ -33,7 +30,7 @@ export function selectedDragMembers (
 }
 
 /** Build the complete date pair persisted after an issue body drag or resize. */
-export function issueDragPrimaryEdit (issue: Issue, state: IssueDragCommitState): PrimaryEdit {
+export function issueDragPrimaryEdit(issue: Issue, state: IssueDragCommitState): PrimaryEdit {
   if (state.kind === 'dragging-body') {
     return { issue, newStart: state.previewStart, newDue: state.previewEnd }
   }
@@ -44,11 +41,7 @@ export function issueDragPrimaryEdit (issue: Issue, state: IssueDragCommitState)
 }
 
 /** Convert a co-drag preview into the exact complete schedule written for each selected issue. */
-export function bulkDragPrimaryEdits (
-  members: DragMember[],
-  issues: Issue[],
-  anchorDeltaMs: number
-): PrimaryEdit[] {
+export function bulkDragPrimaryEdits(members: DragMember[], issues: Issue[], anchorDeltaMs: number): PrimaryEdit[] {
   const issuesByRef = new Map<string, Issue>(issues.map((issue) => [issue._id, issue]))
   return members.flatMap((member) => {
     const issue = issuesByRef.get(member.issueId)
