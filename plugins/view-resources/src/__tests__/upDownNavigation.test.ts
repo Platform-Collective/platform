@@ -43,10 +43,15 @@ describe('getUpDownNavigationOffset', () => {
 })
 
 describe('isActiveUpDownNavigationPanel', () => {
+  it('uses the raw document id even when the document has a different link id', () => {
+    const issue = { _id: 'raw-issue-id', identifier: 'TSK-12' }
+    expect(isActiveUpDownNavigationPanel(issue, 'raw-issue-id', false)).toBe(true)
+    expect(isActiveUpDownNavigationPanel(issue, 'TSK-12', false)).toBe(false)
+  })
+
   it('handles keys only in the current panel when no popup is open', () => {
-    expect(isActiveUpDownNavigationPanel('issue-2', 'issue-2', false)).toBe(true)
-    expect(isActiveUpDownNavigationPanel('issue-1', 'issue-2', false)).toBe(false)
-    expect(isActiveUpDownNavigationPanel(undefined, 'issue-2', false)).toBe(false)
-    expect(isActiveUpDownNavigationPanel('issue-2', 'issue-2', true)).toBe(false)
+    const issue = { _id: 'issue-2' }
+    expect(isActiveUpDownNavigationPanel({ _id: 'issue-1' }, 'issue-2', false)).toBe(false)
+    expect(isActiveUpDownNavigationPanel(issue, 'issue-2', true)).toBe(false)
   })
 })

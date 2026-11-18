@@ -12,7 +12,7 @@
     nextDocumentKeys,
     previousDocumentKeys
   } from '../upDownNavigation'
-  import { getObjectLinkId, openDoc, restrictionStore } from '../utils'
+  import { openDoc, restrictionStore } from '../utils'
 
   export let element: Doc
 
@@ -23,18 +23,7 @@
   // Re-evaluated on focus changes, which also happen when the list content is updated.
   $: provider = $focusStore !== undefined ? ListSelectionProvider.Find(element._id) : undefined
 
-  let elementLinkId: string | undefined
-  $: void updateElementLinkId(element)
-
-  async function updateElementLinkId(doc: Doc): Promise<void> {
-    const provider = client.getHierarchy().classHierarchyMixin(doc._class, view.mixin.LinkIdProvider)
-    const id = await getObjectLinkId(provider !== undefined ? [provider] : [], doc._id, doc._class, doc)
-    if (element._id === doc._id) {
-      elementLinkId = id
-    }
-  }
-
-  $: isActivePanel = isActiveUpDownNavigationPanel(elementLinkId, $panelstore.panel?._id, $popupstore.length > 0)
+  $: isActivePanel = isActiveUpDownNavigationPanel(element, $panelstore.panel?._id, $popupstore.length > 0)
 
   let navigating = false
 

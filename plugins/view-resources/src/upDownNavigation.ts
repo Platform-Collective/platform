@@ -50,10 +50,14 @@ export function getUpDownNavigationOffset (evt: NavigationKeyEvent, target?: Edi
   return undefined
 }
 
+interface NavigationPanelElement {
+  _id: string
+}
+
 export function isActiveUpDownNavigationPanel (
-  elementPanelId: string | undefined,
+  element: NavigationPanelElement,
   activePanelId: string | undefined,
   hasOpenPopup: boolean
 ): boolean {
-  return !hasOpenPopup && elementPanelId !== undefined && elementPanelId === activePanelId
+  return !hasOpenPopup && element._id === activePanelId
 }
