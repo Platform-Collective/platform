@@ -22,28 +22,33 @@
 {#if divider}
   <div class="divider" />
 {/if}
-<button
-  type="button"
-  class="panel-section-header"
-  class:collapsed
-  aria-expanded={!collapsed}
-  data-panel-section={id}
-  on:click={toggle}
->
-  <span class="panel-section-chevron">
-    {#if collapsed}
-      <IconChevronRight size={'small'} />
-    {:else}
-      <IconChevronDown size={'small'} />
-    {/if}
-  </span>
-  <span class="panel-section-label"><Label {label} /></span>
-</button>
+<div class="panel-section-header-container">
+  <button
+    type="button"
+    class="panel-section-header"
+    class:collapsed
+    aria-expanded={!collapsed}
+    data-panel-section={id}
+    on:click={toggle}
+  >
+    <span class="panel-section-chevron">
+      {#if collapsed}
+        <IconChevronRight size="small" />
+      {:else}
+        <IconChevronDown size="small" />
+      {/if}
+    </span>
+    <span class="panel-section-label"><Label {label} /></span>
+  </button>
+</div>
 {#if !collapsed}
   <slot />
 {/if}
 
 <style lang="scss">
+  .panel-section-header-container {
+    display: contents;
+  }
   .panel-section-header {
     grid-column: 1 / -1;
     display: flex;
