@@ -42,6 +42,7 @@
         "Completed": "완료",
         "Canceled": "취소됨",
         "CreateProject": "프로젝트 생성",
+        "CreateNewProject": "새 프로젝트 생성…",
         "NewProject": "새 프로젝트",
         "ProjectTitle": "프로젝트 제목",
         "ProjectTitlePlaceholder": "새 프로젝트",

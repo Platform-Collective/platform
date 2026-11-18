@@ -508,6 +508,10 @@ export function startHttpServer (
     }
 
     if (webSocketData.session instanceof Promise) {
+      const handleSessionError = (err: unknown): void => {
+        cs.close()
+        ctx.error('unexpected error in websocket', { err })
+      }
       void webSocketData.session.then((s) => {
         if ('error' in s) {
           void cs.send(
@@ -533,10 +537,7 @@ export function startHttpServer (
               cs.close()
             })
         }
-      })
-      void webSocketData.session.catch((err) => {
-        ctx.error('unexpected error in websocket', { err })
-      })
+      }, handleSessionError)
     }
 
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
