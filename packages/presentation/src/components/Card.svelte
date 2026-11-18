@@ -14,7 +14,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import type { IntlString } from '@hcengineering/platform'
+  import { type IntlString, setPlatformStatus, unknownError } from '@hcengineering/platform'
   import {
     Button,
     IconClose,
@@ -27,11 +27,16 @@
   } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import presentation from '..'
+  import { runCardAction } from '../createRetry'
   import IconForward from './icons/Forward.svelte'
 
   export let label: IntlString
   export let labelProps: any | undefined = undefined
   export let okAction: () => Promise<void> | void
+  // Enable only for actions whose writes can safely be retried.
+  export let retryOnError = false
+  // Prevent dismissing an in-flight action when its caller retains transient state until it settles.
+  export let preventCloseWhileProcessing = false
   export let canSave: boolean = false
   export let okLabel: IntlString = presentation.string.Create
   export let onCancel: (() => void) | undefined = undefined
@@ -76,22 +81,25 @@
   }
 
   function handleOkClick(): void {
-    if (canSave) {
-      if (okProcessing) {
-        return
+    runCardAction({
+      canSave,
+      processing: okProcessing,
+      retryOnError,
+      action: okAction,
+      setProcessing: (processing) => {
+        okProcessing = processing
+      },
+      close: () => dispatch('close'),
+      reportError: (error) => {
+        void setPlatformStatus(unknownError(error))
       }
-      okProcessing = true
-      const r = okAction()
-      if (r instanceof Promise) {
-        r.then(() => {
-          okProcessing = false
-          dispatch('close')
-        })
-      } else {
-        okProcessing = false
-        dispatch('close')
-      }
-    }
+    })
+  }
+
+  function handleCancel(): void {
+    if (preventCloseWhileProcessing && okProcessing) return
+    if (onCancel) onCancel()
+    else dispatch('close')
   }
 </script>
 
@@ -138,13 +146,8 @@
           iconProps={{ size: 'medium', fill: 'var(--theme-dark-color)' }}
           kind={'ghost'}
           size={'small'}
-          on:click={() => {
-            if (onCancel) {
-              onCancel()
-            } else {
-              dispatch('close')
-            }
-          }}
+          disabled={preventCloseWhileProcessing && okProcessing}
+          on:click={handleCancel}
         />
       </div>
     {/if}

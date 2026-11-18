@@ -60,6 +60,9 @@
     "BetaVersion": "Beta verze"
   },
   "status": {
-    "FileTooLarge": "Soubor je příliš velký"
+    "FileTooLarge": "Soubor je příliš velký",
+    "CreateAlreadyCommitted": "Již vytvořeno. Před dalším pokusem zkontrolujte existující záznamy.",
+    "CreateOutcomeUnknown": "Výsledek vytváření je neznámý. Před dalším pokusem zkontrolujte záznamy.",
+    "CreateNotCommitted": "Záznam nebyl vytvořen. Můžete to zkusit znovu."
   }
 }

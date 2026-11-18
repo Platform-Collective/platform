@@ -60,6 +60,9 @@
     "BetaVersion": "Beta 版本"
   },
   "status": {
-    "FileTooLarge": "文件太大"
+    "FileTooLarge": "文件太大",
+    "CreateAlreadyCommitted": "已创建。重试前请检查现有记录。",
+    "CreateOutcomeUnknown": "创建结果未知。重试前请检查现有记录。",
+    "CreateNotCommitted": "尚未创建。您可以重试。"
   }
 }

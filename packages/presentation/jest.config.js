@@ -8,7 +8,10 @@ module.exports = {
       preset: 'ts-jest',
       testEnvironment: 'node',
       testMatch: ['**/?(*.)+(spec|test).[jt]s?(x)'],
-      testPathIgnorePatterns: ['.*drawing\\.test\\.ts$']
+      testPathIgnorePatterns: ['.*drawing\\.test\\.ts$'],
+      moduleNameMapper: {
+        '^@hcengineering/platform$': '<rootDir>/node_modules/@hcengineering/platform/src/index.ts'
+      }
     },
     // configuration for drawing tests (jsdom environment)
     {

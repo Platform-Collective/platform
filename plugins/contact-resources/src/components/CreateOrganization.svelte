@@ -25,7 +25,14 @@
     TxOperations,
     WithLookup
   } from '@hcengineering/core'
-  import { Card, createMarkup, getClient, InlineAttributeBar } from '@hcengineering/presentation'
+  import {
+    Card,
+    createMarkup,
+    createTransactionState,
+    getClient,
+    InlineAttributeBar,
+    runCreateTransaction
+  } from '@hcengineering/presentation'
   import { EmptyMarkup, isEmptyMarkup } from '@hcengineering/text'
   import { Button, createFocusManager, EditBox, FocusHandler, IconAttachment, IconInfo, Label } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
@@ -38,8 +45,10 @@
 
   export let onCreate: ((orgId: Ref<Organization>, client: TxOperations) => Promise<void>) | undefined = undefined
 
+  const creation = createTransactionState()
+
   export function canClose(): boolean {
-    return object.name === ''
+    return !creation.creating && object.name === ''
   }
 
   const id: Ref<Organization> = generateId()
@@ -58,36 +67,52 @@
   fillDefaults(hierarchy, object, contact.class.Organization)
 
   async function createOrganization(): Promise<void> {
-    if (!isEmptyMarkup(description)) {
-      const target = makeCollabId(contact.class.Organization, id, 'description')
-      object.description = await createMarkup(target, description)
-    }
-    const op = client.apply()
-    await op.createDoc(contact.class.Organization, contact.space.Contacts, object, id)
-    await descriptionBox.createAttachments(id, op)
-
-    for (const channel of channels) {
-      await op.addCollection(
-        contact.class.Channel,
-        contact.space.Contacts,
-        id,
-        contact.class.Organization,
-        'channels',
-        {
-          value: channel.value,
-          provider: channel.provider
+    try {
+      await runCreateTransaction({
+        state: creation,
+        prepare: async () => {
+          object.description = null
+          if (!isEmptyMarkup(description)) {
+            const target = makeCollabId(contact.class.Organization, id, 'description')
+            object.description = await createMarkup(target, description)
+          }
+          const op = client.apply()
+          await op.createDoc(contact.class.Organization, contact.space.Contacts, object, id)
+          const finalize = await descriptionBox.prepareAttachments(op, id)
+          return { context: op, finalize, commit: async () => await op.commit() }
+        },
+        extend: async (op) => {
+          for (const channel of channels) {
+            let channelId = channelIds.get(channel)
+            if (channelId === undefined) {
+              channelId = generateId()
+              channelIds.set(channel, channelId)
+            }
+            await op.addCollection(
+              contact.class.Channel,
+              contact.space.Contacts,
+              id,
+              contact.class.Organization,
+              'channels',
+              { value: channel.value, provider: channel.provider },
+              channelId
+            )
+          }
+          await onCreate?.(id, op)
+        },
+        committed: () => {
+          Analytics.handleEvent(ContactEvents.CompanyCreated, { id })
+          dispatch('close', id)
         }
-      )
+      })
+    } finally {
+      creation.creating = false
     }
-    if (onCreate !== undefined) {
-      await onCreate?.(id, op)
-    }
-    await op.commit()
-    Analytics.handleEvent(ContactEvents.CompanyCreated, { id })
-    dispatch('close', id)
   }
 
   let channels: AttachedData<Channel>[] = []
+  // Keep collection identities when a failed transaction is rebuilt.
+  const channelIds = new WeakMap<AttachedData<Channel>, Ref<Channel>>()
 
   const manager = createFocusManager()
 
@@ -108,8 +133,10 @@
 <Card
   label={contact.string.CreateOrganization}
   okAction={createOrganization}
+  retryOnError
+  preventCloseWhileProcessing
   hideAttachments={attachments.size === 0}
-  canSave={object.name.length > 0}
+  canSave={object.name.length > 0 && !creation.commitUncertain && !creation.creationCommitted}
   on:close={() => {
     dispatch('close')
   }}

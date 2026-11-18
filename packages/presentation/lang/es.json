@@ -60,6 +60,9 @@
     "BetaVersion": "Versión beta"
   },
   "status": {
-    "FileTooLarge": "Archivo demasiado grande"
+    "FileTooLarge": "Archivo demasiado grande",
+    "CreateAlreadyCommitted": "Ya creado. Comprueba los registros existentes antes de volver a intentarlo.",
+    "CreateOutcomeUnknown": "Resultado desconocido. Comprueba los registros antes de volver a intentarlo.",
+    "CreateNotCommitted": "No se ha creado. Puedes volver a intentarlo."
   }
 }
