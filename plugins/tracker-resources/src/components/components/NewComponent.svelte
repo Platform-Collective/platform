@@ -48,7 +48,6 @@
   okAction={onSave}
   canSave={object.label !== ''}
   okLabel={tracker.string.CreateComponent}
-  gap={'gapV-4'}
   on:close={() => dispatch('close')}
   on:changeContent
 >
@@ -63,16 +62,19 @@
       defaultIcon={tracker.icon.Home}
     />
   </svelte:fragment>
-  <EditBox
-    bind:value={object.label}
-    placeholder={tracker.string.ComponentNamePlaceholder}
-    kind={'large-style'}
-    autoFocus
-  />
+  <div class="m-3 clear-mins">
+    <EditBox
+      bind:value={object.label}
+      placeholder={tracker.string.ComponentNamePlaceholder}
+      kind={'large-style'}
+      autoFocus
+      fullSize
+    />
+  </div>
   <StyledTextArea
     bind:content={object.description}
     placeholder={tracker.string.ComponentDescriptionPlaceholder}
-    kind={'emphasized'}
+    kind={'indented'}
     showButtons={false}
   />
   <svelte:fragment slot="pool">
