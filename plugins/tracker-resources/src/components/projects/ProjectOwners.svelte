@@ -32,7 +32,7 @@
     aria-hidden="true"
     use:tooltip={{ label: getEmbeddedLabel(names) }}
   >
-    <CombineAvatars _class={contact.mixin.Employee} items={refs} size={'x-small'} limit={2} />
+    <CombineAvatars _class={contact.mixin.Employee} items={refs} size="x-small" limit={2} />
   </div>
 {/if}
 
