@@ -14,10 +14,16 @@
 -->
 <script lang="ts">
   import { Ref, Status } from '@hcengineering/core'
+  import { getStatusProjectType } from './status-project-type'
   import { Project } from '@hcengineering/tracker'
   import { statusStore } from '@hcengineering/view-resources'
   import StatusPresenter from './StatusPresenter.svelte'
-  import { selectedTaskTypeStore } from '@hcengineering/task-resources'
+  import {
+    selectedTaskTypeStore,
+    selectedTypeStore,
+    typeStore,
+    typesOfJoinedProjectsStore
+  } from '@hcengineering/task-resources'
 
   export let value: Ref<Status> | undefined
   export let space: Ref<Project>
@@ -27,10 +33,20 @@
   export let accent: boolean = false
 
   $: statusValue = value ? $statusStore.byId.get(value) : undefined
+
+  // Without a space (e.g. All issues group headers and kanban columns) take the status color and icon
+  // from a project type instead of falling back to the category color.
+  // Mirrors getStatusProjectType from the status filter: the selected project type wins, otherwise a joined
+  // project type that configures a color or icon for the status, otherwise the first joined one containing it.
+  $: projectType =
+    space === undefined && value !== undefined
+      ? getStatusProjectType(value, $selectedTypeStore, $typeStore, $typesOfJoinedProjectsStore ?? [])
+      : undefined
 </script>
 
 <StatusPresenter
   {space}
+  {projectType}
   value={statusValue}
   {size}
   {kind}
