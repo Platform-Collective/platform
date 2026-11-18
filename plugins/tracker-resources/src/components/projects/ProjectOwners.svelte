@@ -26,7 +26,12 @@
 </script>
 
 {#if refs.length > 0}
-  <div class="project-owners" data-testid="project-owners" use:tooltip={{ label: getEmbeddedLabel(names) }}>
+  <div
+    class="project-owners"
+    data-testid="project-owners"
+    aria-hidden="true"
+    use:tooltip={{ label: getEmbeddedLabel(names) }}
+  >
     <CombineAvatars _class={contact.mixin.Employee} items={refs} size={'x-small'} limit={2} />
   </div>
 {/if}
