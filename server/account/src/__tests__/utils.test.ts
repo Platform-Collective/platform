@@ -82,6 +82,14 @@ import * as crypto from 'crypto'
 import { type AccountDB, type AccountEvent, AccountEventType, type Workspace } from '../types'
 import { accountPlugin } from '../plugin'
 
+jest.mock('crypto', () => {
+  const actual = jest.requireActual<typeof import('crypto')>('crypto')
+  return {
+    ...actual,
+    timingSafeEqual: jest.fn(actual.timingSafeEqual)
+  }
+})
+
 // Mock platform with minimum required functionality
 jest.mock('@hcengineering/platform', () => {
   const actual = jest.requireActual('@hcengineering/platform')
@@ -1089,15 +1097,12 @@ describe('account utils', () => {
 
         test('should use timingSafeEqual only for equal-length code buffers', async () => {
           useStore([otp('123456', 0)])
-          const compare = jest.spyOn(crypto, 'timingSafeEqual')
-          try {
-            expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('valid')
-            expect(compare).toHaveBeenCalledWith(Buffer.from('123456'), Buffer.from('123456'))
-            expect(await verifyOtpAttempt(mockDb, socialIdId, '12345')).toBe('invalid')
-            expect(compare).toHaveBeenCalledTimes(1)
-          } finally {
-            compare.mockRestore()
-          }
+          const compare = jest.mocked(crypto.timingSafeEqual)
+
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('valid')
+          expect(compare).toHaveBeenCalledWith(Buffer.from('123456'), Buffer.from('123456'))
+          expect(await verifyOtpAttempt(mockDb, socialIdId, '12345')).toBe('invalid')
+          expect(compare).toHaveBeenCalledTimes(1)
         })
 
         test('should return invalid for wrong code', async () => {
@@ -1214,7 +1219,6 @@ describe('account utils', () => {
           expect(await verifyOtpAttempt(mockDb, socialIdId, '123456')).toBe('valid')
         })
       })
-
     })
 
     describe('email confirmation utils', () => {
@@ -2919,7 +2923,7 @@ describe('token log redaction', () => {
       ])
 
     beforeEach(() => {
-      ctx = { error: jest.fn(), warn: jest.fn(), info: jest.fn() } as unknown as MeasureContext
+      ctx = { error: jest.fn(), warn: jest.fn(), info: jest.fn() }
     })
 
     test('logs a TokenError at warn level with fingerprint and reason only and skips Analytics', () => {

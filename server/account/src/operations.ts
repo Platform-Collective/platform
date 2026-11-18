@@ -501,7 +501,11 @@ export async function validateOtp (
     }
 
     // Preserve an active legacy code's cooldown without starting a new reservation during verification.
-    await db.reserveOtpSend(emailSocialId._id, (getMetadata(accountPlugin.metadata.OtpRetryDelaySec) ?? 30) * 1000, false)
+    await db.reserveOtpSend(
+      emailSocialId._id,
+      (getMetadata(accountPlugin.metadata.OtpRetryDelaySec) ?? 30) * 1000,
+      false
+    )
 
     // Consume the code atomically: only the request that actually deletes it may proceed,
     // so concurrent requests with the same valid code cannot both succeed.
