@@ -17,25 +17,24 @@
   import { Data } from '@hcengineering/core'
   import type { IntlString } from '@hcengineering/platform'
   import { translateCB } from '@hcengineering/platform'
-  import { copyTextToClipboard } from '@hcengineering/presentation'
+  import { copyTextToClipboard, getClient } from '@hcengineering/presentation'
   import {
     Button,
     FocusHandler,
     IconArrowRight,
     IconBlueCheck,
     IconClose,
-    IconMoreV,
+    IconDelete,
     PopupOptions,
     createFocusManager,
-    getEventPopupPositionElement,
     registerFocus,
-    showPopup,
     themeStore
   } from '@hcengineering/ui'
   import view from '@hcengineering/view'
-  import { ContextMenu } from '@hcengineering/view-resources'
+  import { canDeleteObject, invokeAction } from '@hcengineering/view-resources'
   import { afterUpdate, createEventDispatcher, onMount } from 'svelte'
   import plugin from '../plugin'
+  import { canDeleteChannel, deleteChannel } from '../channel-editor'
   import IconCopy from './icons/Copy.svelte'
   export let value: string = ''
   export let placeholder: IntlString
@@ -52,6 +51,15 @@
   let lTranslate: string
   $: translateCB(label, {}, $themeStore.language, (tr) => (lTranslate = tr))
   let show: boolean = false
+  let canDelete = false
+
+  async function updateCanDelete(channel: Data<Channel> | Channel): Promise<void> {
+    const target = channel
+    canDelete = !('_id' in channel)
+    const allowed = await canDeleteChannel(target, canDeleteObject)
+    if (channel === target) canDelete = allowed
+  }
+  $: void updateCanDelete(channel)
 
   const copyChannel = (): void => {
     if (label === plugin.string.CopyToClipboard) {
@@ -151,23 +159,17 @@
         }}
       />
     {/if}
-    {#if '_id' in channel}
+    {#if canDelete}
       <Button
+        focusIndex={5}
         kind={'ghost'}
         size={'small'}
-        icon={IconMoreV}
+        icon={IconDelete}
+        showTooltip={{ label: view.string.Delete }}
         on:click={(evt) => {
-          showPopup(
-            ContextMenu,
-            {
-              object: channel,
-              includedActions: [view.action.Delete]
-            },
-            getEventPopupPositionElement(evt),
-            () => {
-              dispatch('close')
-            }
-          )
+          void deleteChannel(channel, evt, invokeAction, dispatch, canDeleteObject, () => {
+            return getClient().getModel().findAllSync(view.class.Action, { _id: view.action.Delete })[0]
+          })
         }}
       />
     {/if}
