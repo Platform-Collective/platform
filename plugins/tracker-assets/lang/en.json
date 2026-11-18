@@ -257,6 +257,7 @@
     "TimeSpendReportDate": "Date",
     "TimeSpendReportValue": "Spent time",
     "TimeSpendReportValueTooltip": "Spent time in hours",
+    "TimeSpendReportValuePlaceholder": "e.g. 1h 30m",
     "TimeSpendReportDescription": "Description",
     "TimeSpendDays": "{value}d",
     "TimeSpendHours": "{value}h",

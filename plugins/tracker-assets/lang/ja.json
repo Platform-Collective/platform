@@ -227,6 +227,7 @@
     "TimeSpendReportDate": "日付",
     "TimeSpendReportValue": "消費時間",
     "TimeSpendReportValueTooltip": "消費時間 (時間)",
+    "TimeSpendReportValuePlaceholder": "例: 1h 30m",
     "TimeSpendReportDescription": "説明",
     "TimeSpendDays": "{value}日",
     "TimeSpendHours": "{value}時間",

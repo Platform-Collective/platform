@@ -271,6 +271,7 @@
     "TimeSpendReportDate": "Datum",
     "TimeSpendReportValue": "Aufgewendete Zeit",
     "TimeSpendReportValueTooltip": "Aufgewendete Zeit in Stunden",
+    "TimeSpendReportValuePlaceholder": "z. B. 1h 30m",
     "TimeSpendReportDescription": "Beschreibung",
     "TimeSpendDays": "{value}T",
     "TimeSpendHours": "{value}Std",

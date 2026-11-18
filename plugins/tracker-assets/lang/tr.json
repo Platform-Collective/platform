@@ -244,6 +244,7 @@
     "TimeSpendReportDate": "Tarih",
     "TimeSpendReportValue": "Harcanan zaman",
     "TimeSpendReportValueTooltip": "Saat cinsinden harcanan zaman",
+    "TimeSpendReportValuePlaceholder": "örn. 1h 30m",
     "TimeSpendReportDescription": "Açıklama",
     "TimeSpendDays": "{value}g",
     "TimeSpendHours": "{value}s",

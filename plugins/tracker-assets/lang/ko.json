@@ -227,6 +227,7 @@
         "TimeSpendReportDate": "날짜",
         "TimeSpendReportValue": "사용 시간",
         "TimeSpendReportValueTooltip": "사용 시간(시간 단위)",
+        "TimeSpendReportValuePlaceholder": "예: 1h 30m",
         "TimeSpendReportDescription": "설명",
         "TimeSpendDays": "{value}일",
         "TimeSpendHours": "{value}시간",

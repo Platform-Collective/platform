@@ -227,6 +227,7 @@
     "TimeSpendReportDate": "Data",
     "TimeSpendReportValue": "Tempo trascorso",
     "TimeSpendReportValueTooltip": "Tempo trascorso in ore",
+    "TimeSpendReportValuePlaceholder": "es. 1h 30m",
     "TimeSpendReportDescription": "Descrizione",
     "TimeSpendDays": "{value}d",
     "TimeSpendHours": "{value}h",

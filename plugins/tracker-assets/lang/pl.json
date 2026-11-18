@@ -237,6 +237,7 @@
     "TimeSpendReportDate": "Data",
     "TimeSpendReportValue": "Poświęcony czas",
     "TimeSpendReportValueTooltip": "Poświęcony czas (w godzinach)",
+    "TimeSpendReportValuePlaceholder": "np. 1h 30m",
     "TimeSpendReportDescription": "Opis",
     "TimeSpendDays": "{value, plural, =1 {1 dzień} other {# dni}}",
     "TimeSpendHours": "{value, plural, =1 {1 godzina} few {# godziny} many {# godzin} other {# godziny}}",

@@ -240,6 +240,7 @@
     "TimeSpendReportDate": "日期",
     "TimeSpendReportValue": "花费时间",
     "TimeSpendReportValueTooltip": "花费时间（小时）",
+    "TimeSpendReportValuePlaceholder": "例如 1h 30m",
     "TimeSpendReportDescription": "描述",
     "TimeSpendDays": "{value} 天",
     "TimeSpendHours": "{value} 小时",
