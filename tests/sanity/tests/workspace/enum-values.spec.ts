@@ -1,11 +1,13 @@
+// SPDX-License-Identifier: EPL-2.0
+
 import { expect, type Locator, type Page, test } from '@playwright/test'
-import { faker } from '@faker-js/faker'
-import { LoginPage } from '../model/login-page'
-import { SelectWorkspacePage } from '../model/select-workspace-page'
-import { SignUpPage } from '../model/signup-page'
 import { UserProfilePage } from '../model/profile/user-profile-page'
 import { ButtonType, WorkspaceSettingsPage } from '../model/workspace/workspace-settings-page'
-import { generateId } from '../utils'
+import { generateId, PlatformSetting, PlatformURI } from '../utils'
+
+test.use({
+  storageState: PlatformSetting
+})
 
 const tableSelector = '.hulyComponent-content__column.content .hulyTableAttr-container'
 const rowSelector = '.options > button.hulyTableAttr-content__row'
@@ -41,16 +43,7 @@ test.describe('Inline enum values', () => {
   const original = ['First', 'Second']
 
   test.beforeEach(async ({ page }) => {
-    const login = new LoginPage(page)
-    await login.goto()
-    await login.clickSignUp()
-    await new SignUpPage(page).signUp({
-      firstName: faker.person.firstName(),
-      lastName: faker.person.lastName(),
-      email: faker.internet.email(),
-      password: '1234'
-    })
-    await new SelectWorkspacePage(page).createWorkspace(`Enum checks ${generateId(8)}`)
+    await (await page.goto(`${PlatformURI}/workbench/sanity-ws`))?.finished()
     const profile = new UserProfilePage(page)
     await profile.openProfileMenu()
     await profile.clickSettings()
