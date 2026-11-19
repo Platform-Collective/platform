@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 // SPDX-License-Identifier: EPL-2.0
 import { resolve } from 'node:path'
-import { componentRuntime, type ComponentConstructor } from './svelte-component'
+import { componentRuntime, type ComponentConstructor } from '@hcengineering/ui/src/__test__/svelte-component'
 
 describe('RelationsPopup menu events', () => {
   afterEach(() => {
