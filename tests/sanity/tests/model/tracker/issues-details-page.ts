@@ -73,6 +73,18 @@ export class IssuesDetailsPage extends CommonTrackerPage {
   readonly antiPopupSubMenueBtn = (actionFirst: string): Locator =>
     this.page.locator('button.antiPopup-submenu', { hasText: actionFirst })
 
+  readonly activityCard = (comment: string): Locator =>
+    this.page.locator('.activityMessage.card').filter({ hasText: comment }).first()
+
+  readonly activityCardReplies = (comment: string): Locator =>
+    this.activityCard(comment).locator('.activity-replies .activityMessage.reply')
+
+  readonly activityCardShowMore = (comment: string): Locator =>
+    this.activityCard(comment).locator('button.show-more-replies')
+
+  readonly activityCardMoreActions = (comment: string): Locator =>
+    this.activityCard(comment).locator('> .actions button[data-id="btnMoreActions"]')
+
   readonly stateHistoryDropdown = (nameDr: string): Locator => {
     return this.popup().locator(this.page.getByRole('button', { name: nameDr }))
   }
@@ -209,6 +221,24 @@ export class IssuesDetailsPage extends CommonTrackerPage {
     const existDescription = await this.inputDescription().textContent()
     await expect(this.inputDescription()).toHaveJSProperty('contentEditable', 'true')
     await this.inputDescription().fill(`${existDescription}\n${description}`)
+  }
+
+  async addReplyToActivityCard (comment: string, reply: string): Promise<void> {
+    const card = this.activityCard(comment)
+    await card.hover()
+    await card.locator('> .actions button[data-id="activity:action:Reply"]').click()
+    await this.page.keyboard.type(reply)
+    await this.page.keyboard.press('Enter')
+    await expect(this.activityCardReplies(comment).filter({ hasText: reply })).toBeVisible()
+    await this.page.locator('#sidebar .hulyHeader-container > button.iconOnly').click()
+  }
+
+  async focusActivityCardMoreActions (comment: string): Promise<void> {
+    const action = this.activityCardMoreActions(comment)
+    await action.focus()
+    await this.page.keyboard.press('Tab')
+    await this.page.keyboard.press('Shift+Tab')
+    await expect(action).toBeFocused()
   }
 
   async openShowMoreLink (activityHeader: string, position: number = 0): Promise<void> {

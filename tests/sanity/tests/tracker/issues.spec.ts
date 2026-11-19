@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { generateId, PlatformSetting, PlatformURI } from '../utils'
+import { attachScreenshot, generateId, PlatformSetting, PlatformURI } from '../utils'
 import { IssuesPage } from '../model/tracker/issues-page'
 import { IssuesDetailsPage } from '../model/tracker/issues-details-page'
 import { Issue, NewIssue } from '../model/tracker/types'
@@ -241,6 +241,52 @@ test.describe('Tracker issue tests', () => {
     await page.reload()
     await issuesDetailsPage.waitDetailsOpened(commentIssue.title)
     await issuesDetailsPage.checkCommentExist(commentText)
+  })
+
+  test('Show inline activity replies and capture card layouts', async ({ page }) => {
+    const commentText = `Long activity comment-${generateId()} ${'Keep the comment readable across viewport widths. '.repeat(8)}`
+    const replyTexts = Array.from({ length: 4 }, (_, index) => `Inline reply ${index + 1}-${generateId()}`)
+    const commentIssue: NewIssue = {
+      title: `Issue for inline activity replies-${generateId()}`,
+      description: 'Issue for inline activity reply preview',
+      projectName: 'Default'
+    }
+    await prepareNewIssueWithOpenStep(page, commentIssue)
+    await issuesDetailsPage.waitDetailsOpened(commentIssue.title)
+    await issuesDetailsPage.addComment(commentText)
+    await issuesDetailsPage.checkCommentExist(commentText)
+
+    for (const reply of replyTexts) {
+      await issuesDetailsPage.addReplyToActivityCard(commentText, reply)
+    }
+
+    const card = issuesDetailsPage.activityCard(commentText)
+    const replies = issuesDetailsPage.activityCardReplies(commentText)
+    const showMore = issuesDetailsPage.activityCardShowMore(commentText)
+    await expect(replies).toHaveCount(3)
+    await expect(card).toContainText(replyTexts[3])
+    await expect(card).not.toContainText(replyTexts[0])
+    await expect(showMore).toHaveText('Show 1 more reply')
+    await expect(page.locator('.activityMessage.timeline-event').first()).toBeVisible()
+    await attachScreenshot('activity-long-replies-desktop-1440x900.png', page)
+
+    await replies.last().hover()
+    await expect(card.locator('> .actions')).toHaveCSS('pointer-events', 'none')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await issuesDetailsPage.focusActivityCardMoreActions(commentText)
+    await expect(card.locator('> .actions')).toHaveCSS('opacity', '1')
+    await attachScreenshot('activity-long-replies-mobile-390x844.png', page)
+
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await showMore.click()
+    await expect(replies).toHaveCount(4)
+    await expect(showMore).toHaveCount(0)
+    await issuesDetailsPage.focusActivityCardMoreActions(commentText)
+    await attachScreenshot('activity-mixed-events-desktop-1440x900.png', page)
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await issuesDetailsPage.focusActivityCardMoreActions(commentText)
+    await attachScreenshot('activity-mixed-events-mobile-390x844.png', page)
   })
 
   test('Create an Issue from template', async ({ page }) => {
