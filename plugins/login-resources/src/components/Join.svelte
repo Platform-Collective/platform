@@ -134,11 +134,7 @@
   }
 
   $: secondaryButtonLabel =
-    page === 'login'
-      ? publicJoinSignUpEnabled
-        ? login.string.CreateNewAccount
-        : undefined
-      : login.string.HaveAccount
+    page === 'login' ? (publicJoinSignUpEnabled ? login.string.CreateNewAccount : undefined) : login.string.HaveAccount
   $: secondaryButtonAction =
     page === 'login'
       ? () => {
