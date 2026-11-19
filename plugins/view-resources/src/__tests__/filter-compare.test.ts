@@ -43,11 +43,35 @@ describe('sameFilters', () => {
     expect(sameFilters(saved, [filter('k', view.filter.FilterObjectIn, ['a', undefined, 'b'])])).toBe(true)
   })
 
-  it('ignores the order of raw values behind a "Value is" label', () => {
-    for (const mode of [view.filter.FilterValueIn, view.filter.FilterValueNin]) {
-      const saved = JSON.stringify([filter('k', mode, [['Open', ['s2', 's1']], ['Done', ['s3']]])])
-      expect(sameFilters(saved, [filter('k', mode, [['Done', ['s3']], ['Open', ['s1', 's2']]])])).toBe(true)
-      expect(sameFilters(saved, [filter('k', mode, [['Done', ['s3']], ['Open', ['s1']]])])).toBe(false)
+  it('ignores the order of raw values behind a label', () => {
+    for (const mode of [
+      view.filter.FilterValueIn,
+      view.filter.FilterValueNin,
+      view.filter.FilterArrayAll,
+      view.filter.FilterArrayAny
+    ]) {
+      const saved = JSON.stringify([
+        filter('k', mode, [
+          ['Open', ['s2', 's1']],
+          ['Done', ['s3']]
+        ])
+      ])
+      expect(
+        sameFilters(saved, [
+          filter('k', mode, [
+            ['Done', ['s3']],
+            ['Open', ['s1', 's2']]
+          ])
+        ])
+      ).toBe(true)
+      expect(
+        sameFilters(saved, [
+          filter('k', mode, [
+            ['Done', ['s3']],
+            ['Open', ['s1']]
+          ])
+        ])
+      ).toBe(false)
     }
   })
 

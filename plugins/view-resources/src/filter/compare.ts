@@ -28,13 +28,9 @@ const UNORDERED_MODES = new Set<string>([
   view.filter.FilterArrayAny
 ])
 
-// "Value is" / "is not" store each value as a [value, rawValues] pair, where rawValues
-// lists the stored values shown under that label, in the order the query returned them.
-const PAIR_MODES = new Set<string>([view.filter.FilterValueIn, view.filter.FilterValueNin])
-
 // JSON.stringify(undefined) is undefined; inside an array it is written as null.
-// Values of these modes are primitives (ids, numbers, null), or for "Value is" / "is not"
-// a [value, rawValues] pair of primitives: no objects, so equal values give equal JSON text.
+// Values of these modes are ids, or for "Value is" / "is not" and "all of" / "any of" a
+// [value, rawValues] pair. Both are normally primitives, so equal values give equal JSON text.
 function valueKey (value: unknown): string {
   return JSON.stringify(value) ?? 'null'
 }
@@ -46,8 +42,9 @@ function sortByKey (values: unknown[]): unknown[] {
     .map(({ v }) => v)
 }
 
-// The order inside rawValues has no meaning either: sort it too, so a pair rebuilt
-// from a different query order still compares equal.
+// rawValues lists the stored values shown under one label, in the order the query returned
+// them. That order has no meaning either: sort it too, so a rebuilt pair still compares equal.
+// Ids (ObjectIn / ObjectNin) are not pairs and pass through unchanged.
 function normalizePair (value: unknown): unknown {
   if (Array.isArray(value) && value.length === 2 && Array.isArray(value[1])) {
     return [value[0], sortByKey(value[1])]
@@ -58,7 +55,7 @@ function normalizePair (value: unknown): unknown {
 function normalizeFilter (filter: Filter): Filter {
   let value = filter.value
   if (UNORDERED_MODES.has(filter.mode) && Array.isArray(value)) {
-    value = sortByKey(PAIR_MODES.has(filter.mode) ? value.map(normalizePair) : value)
+    value = sortByKey(value.map(normalizePair))
   }
   const nested = filter.nested !== undefined ? normalizeFilter(filter.nested) : undefined
   return { ...filter, value, ...(nested !== undefined ? { nested } : {}) }
