@@ -61,6 +61,25 @@ describe('buildGanttExportSvg', () => {
     expect(svg.indexOf('TSK-1')).toBeLessThan(svg.indexOf('class="chart-bg"'))
   })
 
+  it.each([false, true])('includes the final day in exported issue bars (due-only: %s)', (dueOnly) => {
+    const a = issue('a', 'TSK-1', 'Design work', 0)
+    if (dueOnly) a.startDate = null
+    const timeScale = createTimeScale('week', start)
+    const svg = buildGanttExportSvg({
+      rows: [row(a, 0)],
+      relations: [],
+      summaryRanges: new Map(),
+      timeScale,
+      range: [start, start + 20 * DAY],
+      chartWidth: 320
+    })
+
+    const due = a.dueDate as number
+    const expectedStart = dueOnly ? due : (a.startDate as number)
+    const expectedWidth = timeScale.toX(due + DAY) - timeScale.toX(expectedStart)
+    expect(svg).toContain(`width="${expectedWidth}" height="16"`)
+  })
+
   it('renders dependency arrows between exported issue bars', () => {
     const a = issue('a', 'TSK-1', 'Design work', 0)
     const b = issue('b', 'TSK-2', 'Construction work', 8)

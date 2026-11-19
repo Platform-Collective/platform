@@ -132,11 +132,7 @@ function renderRowsAndBars(input: GanttExportInput): { svg: string; rects: Map<s
     if (range === null) continue
     const x = SIDEBAR_WIDTH + input.timeScale.toX(range.start)
     const right = SIDEBAR_WIDTH + input.timeScale.toX(range.end)
-    const dueOnly = row.issue !== null && !row.isSummary && row.issue.startDate == null && row.issue.dueDate != null
-    const w = Math.max(
-      4,
-      dueOnly ? input.timeScale.toX(range.end + 86_400_000) - input.timeScale.toX(range.end) : right - x
-    )
+    const w = Math.max(4, right - x + input.timeScale.pxPerDay)
     const barY = y + Math.max(4, (row.height - BAR_HEIGHT) / 2)
     if (row.kind === 'milestone') {
       const cx = SIDEBAR_WIDTH + input.timeScale.toX(range.end)
