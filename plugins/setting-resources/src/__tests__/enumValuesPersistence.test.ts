@@ -39,21 +39,12 @@ import platform, {
   Severity,
   Status
 } from '@hcengineering/platform'
-// Import the production boundary without loading unrelated Svelte components from the barrel.
-import {
-  OptimizeQueryMiddleware,
-  PresentationPipelineImpl,
-  updateDocWithError
-} from '@hcengineering/presentation/src/pipeline'
+import { OptimizeQueryMiddleware, PresentationPipelineImpl, updateDocWithError } from '@hcengineering/presentation'
 import { addNotification } from '@hcengineering/ui'
-import { ReadOnlyAccessMiddleware } from '@hcengineering/view-resources/src/middleware'
+import { ReadOnlyAccessMiddleware } from '@hcengineering/view-resources'
 import { EnumValuesDraft } from '../enumValuesUtils'
 
-// Keep the production pipeline and permission middleware. Only presentation/UI
-// barrels, notification rendering and translation are isolated for the Node environment.
-jest.mock('@hcengineering/presentation', () =>
-  jest.requireActual<Record<string, unknown>>('@hcengineering/presentation/src/pipeline')
-)
+// Keep the production pipeline and permission middleware. Notification rendering and translation are isolated for Node.
 jest.mock('@hcengineering/platform', () => ({
   ...jest.requireActual<Record<string, unknown>>('@hcengineering/platform'),
   __esModule: true,
@@ -64,8 +55,6 @@ jest.mock('@hcengineering/ui', () => ({
   addNotification: jest.fn()
 }))
 jest.mock('@hcengineering/theme', () => ({ getCurrentLanguage: (): string => 'en' }))
-jest.mock('@hcengineering/view-resources/src/components/ReadOnlyNotification.svelte', () => ({}))
-jest.mock('@hcengineering/view-resources/src/components/ForbiddenNotification.svelte', () => ({}))
 
 function deferred (): {
   promise: Promise<TxResult>
