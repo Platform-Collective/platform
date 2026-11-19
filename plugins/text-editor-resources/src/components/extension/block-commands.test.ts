@@ -188,3 +188,13 @@ it('inserts a block after a trailing non-paragraph in one undo step', () => {
   expect(editor.commands.redo()).toBe(true)
   expect(editor.getJSON()).toEqual(result)
 })
+
+it('isolates the tiptap preflight and dispatches only the committed transaction', () => {
+  const editor = fixture()
+  const dispatch = jest.spyOn(editor.view, 'dispatch')
+
+  expect(runBlockCommand(editor, 'heading-1', 9, { from: 9, to: 17 })).toBe(true)
+  expect(dispatch).toHaveBeenCalledTimes(1)
+  expect(editor.state.doc.child(1).type.name).toBe('heading')
+  dispatch.mockRestore()
+})
