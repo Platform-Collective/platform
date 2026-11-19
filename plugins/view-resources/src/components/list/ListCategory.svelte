@@ -41,7 +41,7 @@
   } from '@hcengineering/ui'
   import { AttributeModel, BuildModelKey, ViewOptionModel, ViewOptions, Viewlet } from '@hcengineering/view'
   import { Analytics } from '@hcengineering/analytics'
-  import { createEventDispatcher } from 'svelte'
+  import { createEventDispatcher, onDestroy } from 'svelte'
   import { fade } from 'svelte/transition'
   import { showMenu } from '../../actions'
   import { FocusSelection, SelectionFocusProvider, focusStore } from '../../selection'
@@ -269,6 +269,7 @@
       if (existingIndex !== -1) {
         dragItemIndex = existingIndex
         dragHiddenId = undefined
+        listenForWindowDragEnd()
         return
       }
       const props = _newObjectProps(dragItem.doc)
@@ -278,6 +279,7 @@
         dragItemIndex = index
         dragPreviewId = dragItem.doc._id
         items = items
+        listenForWindowDragEnd()
         dispatch('row-focus', dragItem)
       }
     }
@@ -297,6 +299,7 @@
       }
       dragItemIndex = undefined
     }
+    if (dragHiddenId === undefined && dragPreviewId === undefined) stopWindowDragEnd()
   }
 
   function dragover(ev: MouseEvent, i: number): void {
@@ -410,7 +413,10 @@
     }
   }
 
+  let listeningForWindowDragEnd = false
+
   function windowDragEnd(ev: DragEvent): void {
+    stopWindowDragEnd()
     if (dragItemIndex === undefined && dragPreviewId === undefined && dragHiddenId === undefined) return
     if (ev.dataTransfer?.dropEffect === 'none' && dragPreviewId !== undefined) {
       items = removeDragPreview(items, dragPreviewId)
@@ -418,6 +424,20 @@
     dragPreviewId = undefined
     dragItemIndex = undefined
   }
+
+  function listenForWindowDragEnd(): void {
+    if (listeningForWindowDragEnd) return
+    window.addEventListener('dragend', windowDragEnd)
+    listeningForWindowDragEnd = true
+  }
+
+  function stopWindowDragEnd(): void {
+    if (!listeningForWindowDragEnd) return
+    window.removeEventListener('dragend', windowDragEnd)
+    listeningForWindowDragEnd = false
+  }
+
+  onDestroy(stopWindowDragEnd)
 
   function dragStartHandler(e: CustomEvent<any>): void {
     const { target, index } = e.detail
@@ -445,6 +465,7 @@
       }
     }
     dragItemIndex = i
+    listenForWindowDragEnd()
     dispatch('dragstart', {
       target: ev.target,
       index: i
@@ -496,8 +517,6 @@
     return []
   }
 </script>
-
-<svelte:window on:dragend={windowDragEnd} />
 
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <div
