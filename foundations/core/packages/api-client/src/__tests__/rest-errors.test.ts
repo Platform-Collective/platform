@@ -107,7 +107,7 @@ describe('REST HTTP errors', () => {
     expect(fetch.mock.calls[0][1]?.body).toBe(fetch.mock.calls[1][1]?.body)
   })
 
-  it.each([
+  it.each<{ name: string, headers: Record<string, string> }>([
     { name: 'malformed Retry-After-ms', headers: { 'Retry-After-ms': 'invalid' } },
     { name: 'HTTP-date Retry-After', headers: { 'Retry-After': 'Wed, 21 Oct 2015 07:28:00 GMT' } },
     { name: 'past X-RateLimit-Reset', headers: { 'X-RateLimit-Reset': '1' } }
