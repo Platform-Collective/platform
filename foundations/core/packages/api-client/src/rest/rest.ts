@@ -502,7 +502,10 @@ export class RestClientImpl implements RestClient {
     const requestUrl = concatLink(this.endpoint, `/api/v1/${op}/${this.workspace}`)
     await this.checkRate()
     const parsed = await this.sendWrite(requestUrl, JSON.stringify(data))
-    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {} as P
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      const emptyResult: unknown = {}
+      return emptyResult as P
+    }
     const result = parsed as { result?: Ref<T>, error?: Status }
     if (result.error !== undefined) {
       throw new PlatformError(result.error)
