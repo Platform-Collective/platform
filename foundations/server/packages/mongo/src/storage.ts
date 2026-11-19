@@ -50,7 +50,6 @@ import core, {
   type QueryUpdate,
   type Ref,
   type ReverseLookups,
-  type SortQuerySelector,
   type SortingQuery,
   type SortingRules,
   type StorageIterator,
@@ -88,6 +87,7 @@ import {
   type UpdateFilter,
   type WithId
 } from 'mongodb'
+import { buildCustomSortBranches } from './custom-sort'
 import { DBCollectionHelper, getMongoClient, getWorkspaceMongoDB, type MongoClientReference } from './utils'
 
 function translateDoc (doc: Doc, hash: string): Doc {
@@ -1798,27 +1798,7 @@ function fillCustomSort<T extends Doc> (
   options: FindOptions<Doc>,
   _key: string
 ): void {
-  const branches = rules.cases.map((selector) => {
-    if (selector.query === null) {
-      return {
-        case: { $or: [{ $eq: [`$${key}`, null] }, { $eq: [{ $type: `$${key}` }, 'missing'] }] },
-        then: selector.index
-      }
-    }
-    if (typeof selector.query === 'object') {
-      const q = selector.query as SortQuerySelector<T>
-      if (q.$in !== undefined) {
-        return { case: { $in: { [key]: q.$in } }, then: selector.index }
-      }
-      if (q.$nin !== undefined) {
-        return { case: { $nin: { [key]: q.$in } }, then: selector.index }
-      }
-      if (q.$ne !== undefined) {
-        return { case: { $ne: [`$${key}`, q.$ne] }, then: selector.index }
-      }
-    }
-    return { case: { $eq: [`$${key}`, selector.query] }, then: selector.index }
-  })
+  const branches = buildCustomSortBranches(rules, key)
   pipeline.push({
     $addFields: {
       [`sort_${key}`]: {
