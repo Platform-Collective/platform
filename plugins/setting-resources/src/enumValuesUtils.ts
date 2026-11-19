@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import type { Enum } from '@hcengineering/core'
+import type { DocumentUpdate, Enum } from '@hcengineering/core'
 
 export type EnumValuesError = 'empty' | 'duplicate' | 'conflict' | 'referenced' | 'saveFailed'
 
@@ -145,10 +145,11 @@ export class EnumValuesDraft {
   }
 
   async save (
-    client: { update: (value: Enum, changes: { enumValues: string[] }) => Promise<unknown> },
+    client: { update: (value: Enum, changes: DocumentUpdate<Enum>) => Promise<unknown> },
     value: Enum,
     normalize: boolean = true,
-    canSave?: (values: string[]) => boolean
+    canSave?: (values: string[]) => boolean,
+    createChanges: (values: string[]) => DocumentUpdate<Enum> = (enumValues) => ({ enumValues })
   ): Promise<EnumValuesEditResult> {
     const previousSubmission = this.submission
     const result = this.finishEdit(value.enumValues, normalize, canSave)
@@ -159,13 +160,13 @@ export class EnumValuesDraft {
       const supersession = this.supersession
       const enumValues = [...result.values]
       try {
-        await client.update(value, { enumValues })
+        await client.update(value, createChanges(enumValues))
       } catch (error) {
         const failed = this.submitted.findIndex(({ id }) => id === submission)
         if (failed !== -1) this.submitted.splice(failed, 1)
         // Preserve the user's text and force the unchanged retry to write again,
         // even if an optimistic query already acknowledged this submission.
-        // A newer full-list submission or delivered conflict supersedes this one.
+        // A newer submission or delivered conflict supersedes this one.
         if (this.supersession === supersession && isSameEnumValues(this.original, enumValues)) {
           this.retryValues = [...enumValues]
         }

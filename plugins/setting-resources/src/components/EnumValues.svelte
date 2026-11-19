@@ -14,7 +14,7 @@
 -->
 <script lang="ts">
   import { Analytics } from '@hcengineering/analytics'
-  import core, { Enum } from '@hcengineering/core'
+  import core, { type DocumentUpdate, Enum } from '@hcengineering/core'
   import presentation, { getClient, updateDocWithError } from '@hcengineering/presentation'
   import {
     ModernEditbox,
@@ -45,7 +45,7 @@
   const client = getClient()
   const addEnumValue = createEnumValueAdder(client)
   const valuesClient = {
-    update: async (value: Enum, changes: { enumValues: string[] }): Promise<unknown> =>
+    update: async (value: Enum, changes: DocumentUpdate<Enum>): Promise<unknown> =>
       await updateDocWithError(client, value, changes)
   }
 
@@ -90,7 +90,7 @@
     validationError = undefined
     draft.beginEdit()
     draft.values = draft.values.filter((option) => option !== target)
-    await saveValues(false)
+    await saveValues(false, () => ({ $pull: { enumValues: target } }))
   }
 
   const handleKeydown = (evt: KeyboardEvent): void => {
@@ -165,8 +165,11 @@
     )
   }
 
-  async function saveValues(normalize: boolean): Promise<void> {
-    const saving = draft.save(valuesClient, value, normalize, canSaveValues)
+  async function saveValues(
+    normalize: boolean,
+    createChanges?: (values: string[]) => DocumentUpdate<Enum>
+  ): Promise<void> {
+    const saving = draft.save(valuesClient, value, normalize, canSaveValues, createChanges)
     draft = draft
     let result: EnumValuesEditResult
     try {

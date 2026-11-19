@@ -19,6 +19,7 @@ import core, {
   ClassifierKind,
   type ClientConnection,
   createClient,
+  type DocumentUpdate,
   DOMAIN_MODEL,
   type Enum,
   getCurrentAccount,
@@ -186,7 +187,7 @@ describe('enum persistence through the presentation failure boundary', () => {
       })
       .mockResolvedValue({})
     const { operations, value, modelValue } = await persistenceFixture(transport)
-    const update = async (value: Enum, changes: { enumValues: string[] }): Promise<TxResult> =>
+    const update = async (value: Enum, changes: DocumentUpdate<Enum>): Promise<TxResult> =>
       await updateDocWithError(operations, value, changes)
     const draft = new EnumValuesDraft()
     draft.sync(value.enumValues)
@@ -237,10 +238,39 @@ describe('enum persistence through the presentation failure boundary', () => {
     expect(transport).toHaveBeenCalledTimes(2)
   })
 
+  it('removes an option atomically and retries the same $pull update', async () => {
+    const response = deferred()
+    const transport = jest
+      .fn<Promise<TxResult>, [Tx]>()
+      .mockImplementationOnce(async () => await response.promise)
+      .mockResolvedValue({})
+    const { operations, value, modelValue } = await persistenceFixture(transport)
+    const update = async (value: Enum, changes: DocumentUpdate<Enum>): Promise<TxResult> =>
+      await updateDocWithError(operations, value, changes)
+    const draft = new EnumValuesDraft()
+    draft.sync(value.enumValues)
+    draft.beginEdit()
+    draft.values = draft.values.filter((option) => option !== 'b')
+    const saving = draft.save({ update }, value, false, undefined, () => ({ $pull: { enumValues: 'b' } }))
+    const rejected = expect(saving).rejects.toThrow('Write failed')
+    response.reject(new Error('Write failed'))
+    await rejected
+    expect(draft.needsRetry).toBe(true)
+    expect(draft.values).toEqual(['a'])
+    expect(modelValue().enumValues).toEqual(['a'])
+
+    await draft.save({ update }, value, false, undefined, () => ({ $pull: { enumValues: 'b' } }))
+    expect(draft.needsRetry).toBe(false)
+    expect(transport).toHaveBeenCalledTimes(2)
+    for (const [tx] of transport.mock.calls) {
+      expect((tx as TxUpdateDoc<Enum>).operations).toEqual({ $pull: { enumValues: 'b' } })
+    }
+  })
+
   it('retries unchanged text after a local read-only denial and role restoration', async () => {
     const transport = jest.fn<Promise<TxResult>, [Tx]>().mockResolvedValue({})
     const { operations, value, modelValue } = await persistenceFixture(transport)
-    const update = async (value: Enum, changes: { enumValues: string[] }): Promise<TxResult> =>
+    const update = async (value: Enum, changes: DocumentUpdate<Enum>): Promise<TxResult> =>
       await updateDocWithError(operations, value, changes)
     setCurrentAccount({ ...getCurrentAccount(), role: AccountRole.ReadOnlyGuest })
     const draft = new EnumValuesDraft()
@@ -290,7 +320,7 @@ describe('enum persistence through the presentation failure boundary', () => {
       })
       .mockResolvedValue({})
     const { operations, value } = await persistenceFixture(transport)
-    const update = async (value: Enum, changes: { enumValues: string[] }): Promise<TxResult> =>
+    const update = async (value: Enum, changes: DocumentUpdate<Enum>): Promise<TxResult> =>
       await updateDocWithError(operations, value, changes)
     const draft = new EnumValuesDraft()
     draft.sync(value.enumValues)
@@ -325,7 +355,7 @@ describe('enum persistence through the presentation failure boundary', () => {
   it('adopts a divergent delivered update after failure rather than retrying stale values', async () => {
     const transport = jest.fn<Promise<TxResult>, [Tx]>().mockRejectedValue(new Error('Write failed'))
     const { operations, value } = await persistenceFixture(transport)
-    const update = async (value: Enum, changes: { enumValues: string[] }): Promise<TxResult> =>
+    const update = async (value: Enum, changes: DocumentUpdate<Enum>): Promise<TxResult> =>
       await updateDocWithError(operations, value, changes)
     const draft = new EnumValuesDraft()
     draft.sync(value.enumValues)
@@ -353,7 +383,7 @@ describe('enum persistence through the presentation failure boundary', () => {
       return await response.promise
     })
     const { operations, value } = await persistenceFixture(transport)
-    const update = async (value: Enum, changes: { enumValues: string[] }): Promise<TxResult> =>
+    const update = async (value: Enum, changes: DocumentUpdate<Enum>): Promise<TxResult> =>
       await updateDocWithError(operations, value, changes)
     const draft = new EnumValuesDraft()
     draft.sync(value.enumValues)
