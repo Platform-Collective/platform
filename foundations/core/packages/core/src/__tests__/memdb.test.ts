@@ -360,6 +360,20 @@ describe('memdb', () => {
       members: [],
       archived: false
     })
+    await client.createDoc(core.class.Space, core.space.Model, {
+      private: false,
+      name: 'Sp4',
+      description: undefined as any,
+      members: [],
+      archived: false
+    })
+    await client.createDoc(core.class.Space, core.space.Model, {
+      private: false,
+      name: 'Sp5',
+      description: 'null',
+      members: [],
+      archived: false
+    })
 
     const result = await client.findAll(
       core.class.Space,
@@ -370,14 +384,15 @@ describe('memdb', () => {
             order: SortingOrder.Ascending,
             cases: [
               { query: null, index: 0 },
-              { query: '', index: 1 }
+              { query: 'null', index: 1 },
+              { query: '', index: 2 }
             ]
           },
           name: SortingOrder.Ascending
         }
       }
     )
-    expect(result.map((it) => it.name)).toEqual(['Sp3', 'Sp1', 'Sp2'])
+    expect(result.map((it) => it.name)).toEqual(['Sp3', 'Sp4', 'Sp5', 'Sp1', 'Sp2'])
   })
 
   it('should add attached document', async () => {
