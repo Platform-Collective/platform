@@ -2,14 +2,21 @@
 
 import { emojiPresentationGroups } from './presentation-data'
 
-const emojiPresentation = new Map<string, string>()
-for (const [prefixes, suffixes] of emojiPresentationGroups) {
-  for (const prefix of prefixes.split(' ')) {
-    for (const suffix of suffixes) {
-      const emoji = prefix + suffix
-      emojiPresentation.set(emoji.replace(/\uFE0F/g, ''), emoji)
+let emojiPresentation: Map<string, string> | undefined
+
+function getEmojiPresentation (): Map<string, string> {
+  if (emojiPresentation === undefined) {
+    emojiPresentation = new Map<string, string>()
+    for (const [prefixes, suffixes] of emojiPresentationGroups) {
+      for (const prefix of prefixes.split(' ')) {
+        for (const suffix of suffixes) {
+          const emoji = prefix + suffix
+          emojiPresentation.set(emoji.replace(/\uFE0F/g, ''), emoji)
+        }
+      }
     }
   }
+  return emojiPresentation
 }
 
 /**
@@ -38,7 +45,7 @@ export function getEmojiFromCodePoints (icon: number | number[]): string | undef
   // Let icon renderers use their existing fallback for invalid stored data.
   if (!points.every((point) => Number.isInteger(point) && point >= 0 && point <= 0x10ffff)) return undefined
   const value = points.map((point) => String.fromCodePoint(point)).join('')
-  const canonical = emojiPresentation.get(value.replace(/\uFE0F/g, ''))
+  const canonical = getEmojiPresentation().get(value.replace(/\uFE0F/g, ''))
   if (canonical === undefined) return value
   // Only restore selectors omitted at canonical positions; never move or remove input characters.
   const input = Array.from(value)
