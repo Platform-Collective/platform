@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { Employee } from '@hcengineering/contact'
 import type { DocumentQuery, Ref } from '@hcengineering/core'
-import task from '@hcengineering/task'
 import type { Issue, IssueStatus } from '@hcengineering/tracker'
 
 export function getDueQuery (
@@ -11,11 +10,7 @@ export function getDueQuery (
 ): DocumentQuery<Issue> {
   return {
     assignee: { $in: employee === null ? [] : [employee] },
-    status: {
-      $in: statuses
-        .filter(({ category }) => category !== task.statusCategory.Won && category !== task.statusCategory.Lost)
-        .map(({ _id }) => _id)
-    },
+    status: { $in: statuses.map(({ _id }) => _id) },
     dueDate: { $exists: true, $ne: null, $lte: weekEnd }
   }
 }

@@ -9,9 +9,7 @@ const employee = 'creator-person' as Ref<Employee>
 const statuses = [
   ['backlog', task.statusCategory.UnStarted],
   ['todo', task.statusCategory.ToDo],
-  ['active', task.statusCategory.Active],
-  ['done', task.statusCategory.Won],
-  ['canceled', task.statusCategory.Lost]
+  ['active', task.statusCategory.Active]
 ].map(([_id, category]) => ({ _id, category })) as IssueStatus[]
 
 it('queries the scoped assignee, every open category and all dated issues through the inclusive week end', () => {
@@ -27,10 +25,8 @@ it('does not include unassigned issues when no employee is available', () => {
   expect(getDueQuery(null, statuses, 123).assignee).toEqual({ $in: [] })
 })
 
-it('uses live statuses when an issue category changes to completed', () => {
-  const changed = statuses.map((status) =>
-    status._id === 'active' ? { ...status, category: task.statusCategory.Won } : status
-  )
+it('uses the current results of the open-status query', () => {
+  const changed = statuses.filter((status) => status._id !== 'active')
   expect(getDueQuery(employee, changed, 123).status).toEqual({ $in: ['backlog', 'todo'] })
   expect(getDueQuery(employee, [], 123).status).toEqual({ $in: [] })
 })
