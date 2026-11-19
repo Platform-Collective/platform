@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: EPL-2.0
+
+import type { Doc, Ref } from '@hcengineering/core'
+import type { Filter } from '@hcengineering/view'
+import { get } from 'svelte/store'
+import { filterStore, setFilters, updateFilter } from '../filter'
+
+jest.mock('@hcengineering/presentation', () => ({ createQuery: jest.fn(), getClient: jest.fn() }))
+jest.mock('@hcengineering/platform', () => ({ getResource: jest.fn() }))
+jest.mock('@hcengineering/ui', () => ({}))
+
+function mockFilter (index: number): Filter {
+  return {
+    key: {
+      _class: 'test:class:Doc' as Filter['key']['_class'],
+      key: 'value',
+      attribute: undefined as Filter['key']['attribute'],
+      label: 'test:string:Value' as Filter['key']['label'],
+      component: 'test:component:Filter' as Filter['key']['component']
+    },
+    mode: 'test:filter:Mode' as Filter['mode'],
+    modes: [],
+    value: [],
+    index
+  }
+}
+
+describe('filter indexes', () => {
+  afterEach(() => {
+    setFilters([])
+  })
+
+  it('assigns unique indexes to duplicate saved filters', () => {
+    setFilters([mockFilter(2), mockFilter(1), mockFilter(2), mockFilter(1)])
+
+    expect(get(filterStore).map((filter) => filter.index)).toEqual([2, 1, 3, 4])
+  })
+
+  it('keeps reindexed filters independently addressable', () => {
+    setFilters([mockFilter(1), mockFilter(1)])
+    const replacement = { ...mockFilter(2), value: ['test:doc:Replacement' as Ref<Doc>] }
+
+    updateFilter(replacement)
+
+    expect(get(filterStore)).toEqual([mockFilter(1), replacement])
+  })
+})

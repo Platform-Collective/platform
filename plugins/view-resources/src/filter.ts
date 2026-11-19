@@ -31,7 +31,21 @@ export const selectedFilterStore = writable<FilteredView | undefined>()
 export function setFilters (filters: Filter[]): void {
   const old = get(filterStore)
   old.forEach(disposeFilter)
-  filterStore.set(filters)
+  filterStore.set(ensureUniqueFilterIndexes(filters))
+}
+
+function ensureUniqueFilterIndexes (filters: Filter[]): Filter[] {
+  const used = new Set<number>()
+  let next = filters.reduce((max, filter) => Math.max(max, filter.index), 0) + 1
+  return filters.map((filter) => {
+    if (!used.has(filter.index)) {
+      used.add(filter.index)
+      return filter
+    }
+    while (used.has(next)) next++
+    used.add(next)
+    return { ...filter, index: next++ }
+  })
 }
 
 export function removeFilter (i: number): void {
