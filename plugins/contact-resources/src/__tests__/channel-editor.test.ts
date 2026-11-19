@@ -49,7 +49,7 @@ describe('updateChannelCanDelete', () => {
     const previousPermission = new Promise<boolean>((resolve) => {
       resolvePrevious = resolve
     })
-    const canDelete = jest.fn((channel: Channel) => {
+    const canDelete = jest.fn(async (channel: Channel): Promise<boolean> => {
       return channel === previous ? previousPermission : Promise.resolve(false)
     })
     const states: boolean[] = []
