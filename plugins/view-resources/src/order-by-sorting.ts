@@ -10,6 +10,7 @@ import core, {
   type TxOperations
 } from '@hcengineering/core'
 import { getAttributePresenterClass } from '@hcengineering/presentation'
+import task, { type Project } from '@hcengineering/task'
 import view, { type OrderOption } from '@hcengineering/view'
 import { buildSortingRules } from './sortingRules'
 import { sortCategories } from './utils'
@@ -20,8 +21,9 @@ export async function getOrderBySorting (
   _class: Ref<Class<Doc>>,
   orderBy: OrderOption,
   space: Ref<Space> | undefined,
-  statuses: Status[]
-): Promise<SortingQuery<Doc>> {
+  statuses: Status[],
+  statusesReady: boolean
+): Promise<SortingQuery<Doc> | undefined> {
   const [key, order] = orderBy
   const defaultSort: SortingQuery<Doc> = { [key]: order }
   const hierarchy = client.getHierarchy()
@@ -34,7 +36,20 @@ export async function getOrderBySorting (
   ) {
     return defaultSort
   }
-  const values = statuses.filter((it) => hierarchy.isDerived(it._class, attrClass)).map((it) => it._id)
+  if (!statusesReady) return undefined
+  let values = statuses.filter((it) => hierarchy.isDerived(it._class, attrClass)).map((it) => it._id)
+  if (space !== undefined) {
+    const project = await client.findOne(
+      task.class.Project,
+      { _id: space as Ref<Project> },
+      { lookup: { type: task.class.ProjectType } }
+    )
+    const projectType = project?.$lookup?.type
+    if (projectType !== undefined) {
+      const projectStatuses = new Set(projectType.statuses.map((status) => status._id))
+      values = values.filter((status) => projectStatuses.has(status))
+    }
+  }
   if (values.length === 0) return defaultSort
   const sorted = await sortCategories(client, attrClass, space, values)
   return { [key]: buildSortingRules(order, sorted) }

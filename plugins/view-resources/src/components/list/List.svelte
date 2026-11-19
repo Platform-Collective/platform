@@ -104,17 +104,28 @@
 
   // Some attributes (e.g. statuses) are not ordered by their stored value, see getOrderBySorting.
   let orderBySorting: { orderBy: OrderOption, sort: SortingQuery<Doc> } | undefined
+  let orderSortReady = false
   const updateOrderBySorting = reduceCalls(async function (
+    _class: Ref<Class<Doc>>,
     orderBy: OrderOption | undefined,
     space: Ref<Space> | undefined,
-    statuses: Status[]
+    statuses: Status[],
+    statusesReady: boolean
   ) {
-    orderBySorting =
-      orderBy !== undefined
-        ? { orderBy, sort: await getOrderBySorting(client, _class, orderBy, space, statuses) }
-        : undefined
+    if (orderBy === undefined) {
+      orderBySorting = undefined
+      orderSortReady = true
+      return
+    }
+    const sort = await getOrderBySorting(client, _class, orderBy, space, statuses, statusesReady)
+    if (sort === undefined) return
+    orderBySorting = { orderBy, sort }
+    orderSortReady = true
   })
-  $: void updateOrderBySorting(orderBy, space, $statusStore.array)
+  $: {
+    orderSortReady = false
+    void updateOrderBySorting(_class, orderBy, space, $statusStore.array, $statusStore.ready)
+  }
 
   $: orderSort =
     orderBy !== undefined
@@ -181,18 +192,20 @@
     }
   }
 
-  $: docsQuery.query(
-    _class,
-    queryNoLookup,
-    (res) => {
-      fastDocs = res
-      fastQueryIds = new Set(res.map((it) => it._id))
-      queryReady = true
-    },
-    { ...categoryQueryOptions, limit: 1000 }
-  )
+  $: if (orderSortReady) {
+    docsQuery.query(
+      _class,
+      queryNoLookup,
+      (res) => {
+        fastDocs = res
+        fastQueryIds = new Set(res.map((it) => it._id))
+        queryReady = true
+      },
+      { ...categoryQueryOptions, limit: 1000 }
+    )
+  }
 
-  $: if (fastDocs.length === 1000 && queryNoLookup.$search == null) {
+  $: if (orderSortReady && fastDocs.length === 1000 && queryNoLookup.$search == null) {
     docsQuerySlow.query(
       _class,
       queryNoLookup,
