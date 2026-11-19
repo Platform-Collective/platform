@@ -34,7 +34,7 @@
   import { canDeleteObject, invokeAction } from '@hcengineering/view-resources'
   import { afterUpdate, createEventDispatcher, onMount } from 'svelte'
   import plugin from '../plugin'
-  import { canDeleteChannel, deleteChannel } from '../channel-editor'
+  import { deleteChannel, updateChannelCanDelete } from '../channel-editor'
   import IconCopy from './icons/Copy.svelte'
   export let value: string = ''
   export let placeholder: IntlString
@@ -53,13 +53,9 @@
   let show: boolean = false
   let canDelete = false
 
-  async function updateCanDelete(channel: Data<Channel> | Channel): Promise<void> {
-    const target = channel
-    canDelete = !('_id' in channel)
-    const allowed = await canDeleteChannel(target, canDeleteObject)
-    if (channel === target) canDelete = allowed
-  }
-  $: void updateCanDelete(channel)
+  $: void updateChannelCanDelete(channel, () => channel, canDeleteObject, (allowed) => {
+    canDelete = allowed
+  })
 
   const copyChannel = (): void => {
     if (label === plugin.string.CopyToClipboard) {

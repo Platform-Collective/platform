@@ -2,7 +2,7 @@
 
 import contact, { type Channel, type Person } from '@hcengineering/contact'
 import core, { generateId, type Data } from '@hcengineering/core'
-import { canDeleteChannel, deleteChannel } from '../channel-editor'
+import { canDeleteChannel, deleteChannel, updateChannelCanDelete } from '../channel-editor'
 
 const channelData: Data<Channel> = {
   attachedTo: generateId<Person>(),
@@ -37,6 +37,33 @@ describe('canDeleteChannel', () => {
 
     await expect(canDeleteChannel(channelData, canDelete)).resolves.toBe(true)
     expect(canDelete).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateChannelCanDelete', () => {
+  it('ignores a stale permission result after the displayed channel changes', async () => {
+    const previous = createChannel()
+    const next = createChannel()
+    let current = previous
+    let resolvePrevious: (allowed: boolean) => void = () => undefined
+    const previousPermission = new Promise<boolean>((resolve) => {
+      resolvePrevious = resolve
+    })
+    const canDelete = jest.fn((channel: Channel) => {
+      return channel === previous ? previousPermission : Promise.resolve(false)
+    })
+    const states: boolean[] = []
+    const setCanDelete = (allowed: boolean): void => {
+      states.push(allowed)
+    }
+
+    const previousUpdate = updateChannelCanDelete(previous, () => current, canDelete, setCanDelete)
+    current = next
+    await updateChannelCanDelete(next, () => current, canDelete, setCanDelete)
+    resolvePrevious(true)
+    await previousUpdate
+
+    expect(states).toEqual([false, false, false])
   })
 })
 

@@ -14,6 +14,17 @@ export async function canDeleteChannel (channel: Data<Channel> | Channel, canDel
   }
 }
 
+export async function updateChannelCanDelete (
+  next: Data<Channel> | Channel,
+  getCurrentChannel: () => Data<Channel> | Channel,
+  canDelete: CanDelete,
+  setCanDelete: (allowed: boolean) => void
+): Promise<void> {
+  setCanDelete(!('_id' in next))
+  const allowed = await canDeleteChannel(next, canDelete)
+  if (getCurrentChannel() === next) setCanDelete(allowed)
+}
+
 export async function deleteChannel<TAction> (
   channel: Data<Channel> | Channel,
   event: Event,
