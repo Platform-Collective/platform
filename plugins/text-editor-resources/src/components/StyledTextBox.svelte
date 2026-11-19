@@ -88,6 +88,7 @@
   let modified: boolean = false
 
   let editor: StyledTextEditor
+  let insertImageAtEnd = false
 
   $: if (oldContent !== content) {
     oldContent = content
@@ -250,7 +251,6 @@
   }
 
   let inputImage: HTMLInputElement
-  let insertImageAtEnd = false
 
   export function handleAttachImage(): void {
     inputImage.click()
