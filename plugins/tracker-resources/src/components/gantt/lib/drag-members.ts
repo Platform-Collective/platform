@@ -9,7 +9,7 @@ import type { PrimaryEdit } from './types'
 import { getIssueBarRange } from './bar-range'
 
 export interface DragMember {
-  issueId: string
+  issueId: Ref<Issue>
   originStart: number
   originEnd: number
 }
@@ -20,7 +20,7 @@ export type IssueDragCommitState =
   | { kind: 'resizing-right'; originStart: number; originEnd: number; previewEnd: number }
 
 /** Return every selected issue with a drawable range, including due-only bars. */
-export function selectedDragMembers(issues: Issue[], selectedIssueIds: ReadonlySet<Ref<Issue> | string>): DragMember[] {
+export function selectedDragMembers(issues: Issue[], selectedIssueIds: ReadonlySet<Ref<Issue>>): DragMember[] {
   return issues.flatMap((issue) => {
     const range = getIssueBarRange(issue)
     return selectedIssueIds.has(issue._id) && range !== null
@@ -42,7 +42,7 @@ export function issueDragPrimaryEdit(issue: Issue, state: IssueDragCommitState):
 
 /** Convert a co-drag preview into the exact complete schedule written for each selected issue. */
 export function bulkDragPrimaryEdits(members: DragMember[], issues: Issue[], anchorDeltaMs: number): PrimaryEdit[] {
-  const issuesByRef = new Map<string, Issue>(issues.map((issue) => [issue._id, issue]))
+  const issuesByRef = new Map<Ref<Issue>, Issue>(issues.map((issue) => [issue._id, issue]))
   return members.flatMap((member) => {
     const issue = issuesByRef.get(member.issueId)
     return issue === undefined

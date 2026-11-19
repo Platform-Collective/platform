@@ -2938,7 +2938,11 @@
     // ConfirmCascadePopup is the single confirmation surface (legacy
     // GanttConfirmCommitPopup is bypassed via 'none').
     if (state.kind === 'dragging-body' && state.target.kind === 'issue' && state.coDrag !== undefined) {
-      const primaryEdits = bulkDragPrimaryEdits(state.coDrag.members, issues, state.coDrag.anchorDeltaMs)
+      const primaryEdits = bulkDragPrimaryEdits(
+        state.coDrag.members as DragMember[],
+        issues,
+        state.coDrag.anchorDeltaMs
+      )
       if (primaryEdits.length === 0) {
         activeDrag.set({ kind: 'idle' })
         return

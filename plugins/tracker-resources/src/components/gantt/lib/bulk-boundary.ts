@@ -44,7 +44,7 @@ export interface BulkDeltaBounds {
 }
 
 export function computeBulkDeltaBounds(
-  memberIds: ReadonlySet<Ref<Issue> | string>,
+  memberIds: ReadonlySet<Ref<Issue>>,
   allIssues: readonly Issue[],
   relations: readonly IssueRelation[],
   workingDays?: WorkingCalendar
@@ -58,12 +58,12 @@ export function computeBulkDeltaBounds(
     return { minDeltaMs: -Infinity, maxDeltaMs: Infinity }
   }
 
-  const issuesByRef = new Map<string, Issue>()
+  const issuesByRef = new Map<Ref<Issue>, Issue>()
   for (const i of allIssues) issuesByRef.set(i._id, i)
 
   // Group every relation by its target so we can look up incoming
   // (predecessor) edges per member in O(1).
-  const byTarget = new Map<string, IssueRelation[]>()
+  const byTarget = new Map<Ref<Issue>, IssueRelation[]>()
   for (const r of relations) {
     const bucket = byTarget.get(r.target)
     if (bucket === undefined) byTarget.set(r.target, [r])
