@@ -21,11 +21,10 @@
 
   import ActivityMessageHeader from '../activity-message/ActivityMessageHeader.svelte'
   import ActivityMessageTemplate from '../activity-message/ActivityMessageTemplate.svelte'
+  import { getActivityMessagePresentation } from '../activity-message/activity-message-presentation'
   import { Person } from '@hcengineering/contact'
-  import type { ActivityMessagePresentation } from '../../types'
 
   export let value: ActivityInfoMessage
-  export let presentation: ActivityMessagePresentation = 'default'
   export let showNotify: boolean = false
   export let isHighlighted: boolean = false
   export let isSelected: boolean = false
@@ -39,6 +38,7 @@
   export let readonly: boolean = false
   export let onClick: (() => void) | undefined = undefined
 
+  const presentationStore = getActivityMessagePresentation()
   let person: Person | undefined
   $: getPersonByPersonIdCb(value.createdBy ?? value.modifiedBy, (p) => {
     person = p ?? undefined
@@ -53,7 +53,7 @@
 
 <ActivityMessageTemplate
   message={value}
-  {presentation}
+  presentation={$presentationStore}
   isEvent
   eventIcon={value.icon ?? activity.icon.Activity}
   parentMessage={undefined}

@@ -19,6 +19,7 @@
   import { Action, Component } from '@hcengineering/ui'
   import { Class, Doc, Ref } from '@hcengineering/core'
   import type { ActivityMessagePresentation } from '../../types'
+  import { setActivityMessagePresentation } from './activity-message-presentation'
 
   export let value: DisplayActivityMessage
   export let presentation: ActivityMessagePresentation = 'default'
@@ -47,7 +48,9 @@
 
   const client = getClient()
   const hierarchy = client.getHierarchy()
+  const presentationStore = setActivityMessagePresentation(presentation)
 
+  $: presentationStore.set(presentation)
   $: objectPresenter = hierarchy.classHierarchyMixin(value._class as Ref<Class<Doc>>, view.mixin.ObjectPresenter)
 </script>
 
@@ -57,7 +60,6 @@
     props={{
       space: value.space,
       value,
-      presentation,
       doc,
       showNotify,
       skipLabel,

@@ -19,13 +19,11 @@
   import { getClient } from '@hcengineering/presentation'
   import activity, { type ActivityMessage } from '@hcengineering/activity'
   import { AttachmentImageSize } from '@hcengineering/attachment-resources'
-  import type { ActivityMessagePresentation } from '@hcengineering/activity-resources'
 
   import chunter from '../../plugin'
   import ChatMessagePresenter from '../chat-message/ChatMessagePresenter.svelte'
 
   export let value: ThreadMessage | undefined
-  export let presentation: ActivityMessagePresentation = 'default'
   export let showNotify: boolean = false
   export let isHighlighted: boolean = false
   export let isSelected: boolean = false
@@ -64,7 +62,6 @@
 {:else}
   <ChatMessagePresenter
     {value}
-    {presentation}
     {showNotify}
     {isHighlighted}
     {isSelected}

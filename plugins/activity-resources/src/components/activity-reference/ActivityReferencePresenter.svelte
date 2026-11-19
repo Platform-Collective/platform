@@ -26,10 +26,9 @@
   import ReferenceSrcPresenter from './ReferenceSrcPresenter.svelte'
 
   import ActivityMessageTemplate from '../activity-message/ActivityMessageTemplate.svelte'
-  import type { ActivityMessagePresentation } from '../../types'
+  import { getActivityMessagePresentation } from '../activity-message/activity-message-presentation'
 
   export let value: ActivityReference
-  export let presentation: ActivityMessagePresentation = 'default'
   export let showNotify: boolean = false
   export let isHighlighted: boolean = false
   export let isSelected: boolean = false
@@ -46,6 +45,7 @@
   export let readonly: boolean = false
   export let onClick: (() => void) | undefined = undefined
 
+  const presentationStore = getActivityMessagePresentation()
   const client = getClient()
   const hierarchy = client.getHierarchy()
   const currentEmployee = getCurrentEmployee()
@@ -85,7 +85,7 @@
 
 <ActivityMessageTemplate
   message={value}
-  {presentation}
+  presentation={$presentationStore}
   isEvent
   {readonly}
   {person}
