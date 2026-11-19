@@ -3,7 +3,7 @@
 import type { Class, PersonId, Ref, Space } from '@hcengineering/core'
 import { makeRank } from '@hcengineering/rank'
 import type { Item } from '../types'
-import { getDropRank } from '../utils'
+import { getDropRank, hasDropPositionChanged } from '../utils'
 
 function card (id: string, rank: string): Item {
   return {
@@ -56,5 +56,16 @@ describe('getDropRank', () => {
 
   it('does not invent a position if the dragged card is absent', () => {
     expect(getDropRank([a, b], c._id)).toBeUndefined()
+  })
+})
+
+describe('hasDropPositionChanged', () => {
+  it('does not update a card released at its original column and position', () => {
+    expect(hasDropPositionChanged('open', 'open', 1, 1)).toBe(false)
+  })
+
+  it('updates a card moved to another position or column', () => {
+    expect(hasDropPositionChanged('open', 'open', 1, 2)).toBe(true)
+    expect(hasDropPositionChanged('open', 'done', 1, 1)).toBe(true)
   })
 })

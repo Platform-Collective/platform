@@ -28,7 +28,7 @@
   import { ScrollBox, Scroller } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
   import { CardDragEvent, DocWithRank, Item } from '../types'
-  import { getDropRank } from '../utils'
+  import { getDropRank, hasDropPositionChanged } from '../utils'
   import KanbanRow from './KanbanRow.svelte'
 
   export let categories: CategoryType[] = []
@@ -83,11 +83,15 @@
     }
 
     if (!dontUpdateRank) {
-      const rank = getDropRank(getGroupByValues(groupByDocs, state) ?? [], dragCard._id)
-      if (rank !== undefined) {
-        updates = {
-          ...updates,
-          rank
+      const items = getGroupByValues(groupByDocs, state) ?? []
+      const position = items.findIndex((item) => item._id === dragCard?._id)
+      if (hasDropPositionChanged(dragCardInitialState, state, dragCardInitialPosition, position)) {
+        const rank = getDropRank(items, dragCard._id)
+        if (rank !== undefined) {
+          updates = {
+            ...updates,
+            rank
+          }
         }
       }
     }
