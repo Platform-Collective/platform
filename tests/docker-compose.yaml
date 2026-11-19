@@ -331,7 +331,7 @@ services:
   mailpit:
     image: axllent/mailpit:v1.29
     ports:
-      - 8025:8025 # Web UI + REST API used by tests to read OTP codes
+      - 127.0.0.1:8025:8025 # Web UI + REST API used by tests to read OTP codes
     restart: unless-stopped
   mail:
     image: platformcollective/mail

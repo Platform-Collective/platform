@@ -13,15 +13,15 @@ services:
   mailpit:
     image: axllent/mailpit:v1.29
     ports:
-      - 8025:8025 # web UI
-      - 1025:1025 # SMTP
+      - 127.0.0.1:8025:8025 # web UI
+      - 127.0.0.1:1025:1025 # SMTP
     restart: unless-stopped
   mail:
     image: platformcollective/mail
     depends_on:
       - mailpit
     ports:
-      - 8091:8091
+      - 127.0.0.1:8091:8091 # HTTP API, for services started outside docker
     environment:
       - PORT=8091
       - SOURCE=noreply@huly.local

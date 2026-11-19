@@ -68,7 +68,7 @@ export class Mailpit {
       .poll(
         async () => {
           const fresh = (await this.listMessages(to)).filter((m) => !knownIds.has(m.ID))
-          code = fresh.map((m) => /\b(\d{6})\b/.exec(m.Subject)?.[1]).find((c) => c !== undefined)
+          code = fresh.map((m) => /confirmation code:\s*(\d{6})\b/.exec(m.Subject)?.[1]).find((c) => c !== undefined)
           return code
         },
         { message: `OTP email for ${to} was not received`, timeout: 30_000, intervals: [500, 1000, 2000] }

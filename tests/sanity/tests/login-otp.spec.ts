@@ -97,7 +97,7 @@ test.describe('OTP login', () => {
     await expect(new SelectWorkspacePage(page).buttonCreateWorkspace()).toBeHidden()
   })
 
-  // Skipped until the Join.svelte fix (TraceX e4263480ae, "Fix email verification in join") is ported:
+  // Skipped until #321 (email confirmation when joining by invite) is merged:
   // without it join calls logIn() with no token instead of redirecting to confirmationSend.
   test.skip('confirms email and joins an existing workspace for a new account', async ({ browser, request }) => {
     const mailpit = new Mailpit(request, MailpitURL as string)
