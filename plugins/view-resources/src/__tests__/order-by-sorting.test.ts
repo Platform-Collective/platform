@@ -2,6 +2,7 @@
 
 import core, {
   type AnyAttribute,
+  type Attribute,
   type Class,
   type Doc,
   Hierarchy,
@@ -19,7 +20,15 @@ const statusClass = 'test:class:IssueStatus' as Ref<Class<Status>>
 const projectId = 'test:space:Project' as Ref<Space>
 
 function status (id: string, _class: Ref<Class<Status>> = statusClass): Status {
-  return { _id: id as Ref<Status>, _class } as Status
+  return {
+    _id: id as Ref<Status>,
+    _class,
+    space: core.space.Model,
+    modifiedOn: 0,
+    modifiedBy: core.account.System,
+    ofAttribute: 'test:attribute:Status' as Ref<Attribute<Status>>,
+    name: id
+  }
 }
 
 function createHierarchy (): Hierarchy {
