@@ -328,14 +328,14 @@
     "GanttNotScheduled": "Não agendado",
     "GanttMissingStartDates": "{count} tarefas não têm data de início.",
     "GanttSetDatesHint": "Defina as datas de início e conclusão de uma tarefa para a apresentar na cronologia.",
-    "CopyReleaseList": "Copy release list",
-    "ReleaseListLoading": "Loading completed issues…",
-    "ReleaseListCount": "Completed issues: {count}",
-    "ReleaseListEmpty": "This milestone has no completed issues.",
-    "ReleaseListMarkdown": "Release list (Markdown / plain text)",
-    "ReleaseListCopied": "Release list copied.",
-    "ReleaseListCopyFallback": "Clipboard access failed. The text is selected; copy it with your keyboard or context menu.",
-    "ReleaseListLoadFailed": "The completed issues could not be loaded. Close this dialog and try again."
+    "CopyReleaseList": "Copiar lista de lançamentos",
+    "ReleaseListLoading": "A carregar tarefas concluídas…",
+    "ReleaseListCount": "Tarefas concluídas: {count}",
+    "ReleaseListEmpty": "Este marco não tem tarefas concluídas.",
+    "ReleaseListMarkdown": "Lista de lançamentos (Markdown / texto simples)",
+    "ReleaseListCopied": "Lista de lançamentos copiada.",
+    "ReleaseListCopyFallback": "Falha ao aceder à área de transferência. O texto está selecionado; copie-o com o teclado ou o menu de contexto.",
+    "ReleaseListLoadFailed": "Não foi possível carregar as tarefas concluídas. Feche esta caixa de diálogo e tente novamente."
   },
   "status": {}
 }

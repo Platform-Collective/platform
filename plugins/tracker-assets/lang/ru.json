@@ -582,14 +582,14 @@
     "GanttNotScheduled": "Не запланировано",
     "GanttMissingStartDates": "У {count} задач не задана дата начала.",
     "GanttSetDatesHint": "Задайте дату начала и срок в карточке задачи, чтобы увидеть полосу на шкале.",
-    "CopyReleaseList": "Copy release list",
-    "ReleaseListLoading": "Loading completed issues…",
-    "ReleaseListCount": "Completed issues: {count}",
-    "ReleaseListEmpty": "This milestone has no completed issues.",
-    "ReleaseListMarkdown": "Release list (Markdown / plain text)",
-    "ReleaseListCopied": "Release list copied.",
-    "ReleaseListCopyFallback": "Clipboard access failed. The text is selected; copy it with your keyboard or context menu.",
-    "ReleaseListLoadFailed": "The completed issues could not be loaded. Close this dialog and try again."
+    "CopyReleaseList": "Копировать список релизов",
+    "ReleaseListLoading": "Загрузка завершённых задач…",
+    "ReleaseListCount": "Завершённые задачи: {count}",
+    "ReleaseListEmpty": "На этом этапе нет завершённых задач.",
+    "ReleaseListMarkdown": "Список релизов (Markdown / обычный текст)",
+    "ReleaseListCopied": "Список релизов скопирован.",
+    "ReleaseListCopyFallback": "Не удалось получить доступ к буферу обмена. Текст выделен; скопируйте его с помощью клавиатуры или контекстного меню.",
+    "ReleaseListLoadFailed": "Не удалось загрузить завершённые задачи. Закройте этот диалог и повторите попытку."
   },
   "status": {}
 }

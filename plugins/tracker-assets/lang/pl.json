@@ -312,14 +312,14 @@
     "GanttSetDatesHint": "Ustaw datę rozpoczęcia i termin zakończenia zadania, aby wyświetlić je na osi czasu.",
     "GanttHelpCalendarDaysDrag": "Przytrzymaj podczas przeciągania, aby ignorować dni robocze (dni kalendarzowe)",
     "GanttDragCalendarDays": "Dni kalendarzowe",
-    "CopyReleaseList": "Copy release list",
-    "ReleaseListLoading": "Loading completed issues…",
-    "ReleaseListCount": "Completed issues: {count}",
-    "ReleaseListEmpty": "This milestone has no completed issues.",
-    "ReleaseListMarkdown": "Release list (Markdown / plain text)",
-    "ReleaseListCopied": "Release list copied.",
-    "ReleaseListCopyFallback": "Clipboard access failed. The text is selected; copy it with your keyboard or context menu.",
-    "ReleaseListLoadFailed": "The completed issues could not be loaded. Close this dialog and try again."
+    "CopyReleaseList": "Kopiuj listę wydań",
+    "ReleaseListLoading": "Ładowanie ukończonych zadań…",
+    "ReleaseListCount": "Ukończone zadania: {count}",
+    "ReleaseListEmpty": "Ten kamień milowy nie zawiera ukończonych zadań.",
+    "ReleaseListMarkdown": "Lista wydań (Markdown / zwykły tekst)",
+    "ReleaseListCopied": "Skopiowano listę wydań.",
+    "ReleaseListCopyFallback": "Nie udało się uzyskać dostępu do schowka. Tekst jest zaznaczony; skopiuj go za pomocą klawiatury lub menu kontekstowego.",
+    "ReleaseListLoadFailed": "Nie udało się załadować ukończonych zadań. Zamknij to okno dialogowe i spróbuj ponownie."
   },
   "status": {}
 }

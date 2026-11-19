@@ -328,14 +328,14 @@
         "GanttNotScheduled": "일정 없음",
         "GanttMissingStartDates": "{count}개 이슈에 시작일이 없습니다.",
         "GanttSetDatesHint": "이슈의 시작일과 마감일을 설정하면 타임라인에 표시됩니다.",
-    "CopyReleaseList": "Copy release list",
-    "ReleaseListLoading": "Loading completed issues…",
-    "ReleaseListCount": "Completed issues: {count}",
-    "ReleaseListEmpty": "This milestone has no completed issues.",
-    "ReleaseListMarkdown": "Release list (Markdown / plain text)",
-    "ReleaseListCopied": "Release list copied.",
-    "ReleaseListCopyFallback": "Clipboard access failed. The text is selected; copy it with your keyboard or context menu.",
-    "ReleaseListLoadFailed": "The completed issues could not be loaded. Close this dialog and try again."
+        "CopyReleaseList": "릴리스 목록 복사",
+        "ReleaseListLoading": "완료된 이슈를 불러오는 중…",
+        "ReleaseListCount": "완료된 이슈: {count}",
+        "ReleaseListEmpty": "이 마일스톤에는 완료된 이슈가 없습니다.",
+        "ReleaseListMarkdown": "릴리스 목록(Markdown / 일반 텍스트)",
+        "ReleaseListCopied": "릴리스 목록을 복사했습니다.",
+        "ReleaseListCopyFallback": "클립보드에 접근하지 못했습니다. 텍스트가 선택되어 있으니 키보드나 컨텍스트 메뉴를 사용해 복사하세요.",
+        "ReleaseListLoadFailed": "완료된 이슈를 불러오지 못했습니다. 이 대화 상자를 닫고 다시 시도하세요."
     },
     "status": {}
 }

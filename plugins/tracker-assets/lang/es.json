@@ -328,14 +328,14 @@
     "GanttNotScheduled": "Sin programar",
     "GanttMissingStartDates": "{count} tareas no tienen fecha de inicio.",
     "GanttSetDatesHint": "Establece las fechas de inicio y vencimiento de una tarea para mostrarla en la línea de tiempo.",
-    "CopyReleaseList": "Copy release list",
-    "ReleaseListLoading": "Loading completed issues…",
-    "ReleaseListCount": "Completed issues: {count}",
-    "ReleaseListEmpty": "This milestone has no completed issues.",
-    "ReleaseListMarkdown": "Release list (Markdown / plain text)",
-    "ReleaseListCopied": "Release list copied.",
-    "ReleaseListCopyFallback": "Clipboard access failed. The text is selected; copy it with your keyboard or context menu.",
-    "ReleaseListLoadFailed": "The completed issues could not be loaded. Close this dialog and try again."
+    "CopyReleaseList": "Copiar la lista de lanzamientos",
+    "ReleaseListLoading": "Cargando incidencias completadas…",
+    "ReleaseListCount": "Incidencias completadas: {count}",
+    "ReleaseListEmpty": "Este hito no tiene incidencias completadas.",
+    "ReleaseListMarkdown": "Lista de lanzamientos (Markdown / texto sin formato)",
+    "ReleaseListCopied": "Lista de lanzamientos copiada.",
+    "ReleaseListCopyFallback": "No se pudo acceder al portapapeles. El texto está seleccionado; cópialo con el teclado o el menú contextual.",
+    "ReleaseListLoadFailed": "No se pudieron cargar las incidencias completadas. Cierra este diálogo e inténtalo de nuevo."
   },
   "status": {}
 }

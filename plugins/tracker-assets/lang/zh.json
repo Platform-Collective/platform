@@ -345,14 +345,14 @@
     "GanttNotScheduled": "未安排",
     "GanttMissingStartDates": "{count} 个任务没有开始日期。",
     "GanttSetDatesHint": "为任务设置开始日期和截止日期，即可在时间轴上显示。",
-    "CopyReleaseList": "Copy release list",
-    "ReleaseListLoading": "Loading completed issues…",
-    "ReleaseListCount": "Completed issues: {count}",
-    "ReleaseListEmpty": "This milestone has no completed issues.",
-    "ReleaseListMarkdown": "Release list (Markdown / plain text)",
-    "ReleaseListCopied": "Release list copied.",
-    "ReleaseListCopyFallback": "Clipboard access failed. The text is selected; copy it with your keyboard or context menu.",
-    "ReleaseListLoadFailed": "The completed issues could not be loaded. Close this dialog and try again."
+    "CopyReleaseList": "复制发布列表",
+    "ReleaseListLoading": "正在加载已完成的问题…",
+    "ReleaseListCount": "已完成的问题：{count}",
+    "ReleaseListEmpty": "此里程碑没有已完成的问题。",
+    "ReleaseListMarkdown": "发布列表（Markdown / 纯文本）",
+    "ReleaseListCopied": "发布列表已复制。",
+    "ReleaseListCopyFallback": "无法访问剪贴板。文本已选中；请使用键盘或上下文菜单复制。",
+    "ReleaseListLoadFailed": "无法加载已完成的问题。请关闭此对话框后重试。"
   },
   "status": {}
 }

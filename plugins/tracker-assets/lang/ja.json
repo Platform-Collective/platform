@@ -328,14 +328,14 @@
     "GanttNotScheduled": "未予定",
     "GanttMissingStartDates": "{count} 件の課題に開始日が設定されていません。",
     "GanttSetDatesHint": "課題に開始日と期限を設定すると、タイムラインに表示されます。",
-    "CopyReleaseList": "Copy release list",
-    "ReleaseListLoading": "Loading completed issues…",
-    "ReleaseListCount": "Completed issues: {count}",
-    "ReleaseListEmpty": "This milestone has no completed issues.",
-    "ReleaseListMarkdown": "Release list (Markdown / plain text)",
-    "ReleaseListCopied": "Release list copied.",
-    "ReleaseListCopyFallback": "Clipboard access failed. The text is selected; copy it with your keyboard or context menu.",
-    "ReleaseListLoadFailed": "The completed issues could not be loaded. Close this dialog and try again."
+    "CopyReleaseList": "リリースリストをコピー",
+    "ReleaseListLoading": "完了した課題を読み込み中…",
+    "ReleaseListCount": "完了した課題: {count}",
+    "ReleaseListEmpty": "このマイルストーンには完了した課題がありません。",
+    "ReleaseListMarkdown": "リリースリスト（Markdown / プレーンテキスト）",
+    "ReleaseListCopied": "リリースリストをコピーしました。",
+    "ReleaseListCopyFallback": "クリップボードにアクセスできませんでした。テキストが選択されているので、キーボードまたはコンテキストメニューでコピーしてください。",
+    "ReleaseListLoadFailed": "完了した課題を読み込めませんでした。このダイアログを閉じて、もう一度お試しください。"
   },
   "status": {}
 }

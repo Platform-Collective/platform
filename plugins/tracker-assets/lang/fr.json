@@ -328,14 +328,14 @@
     "GanttNotScheduled": "Non planifié",
     "GanttMissingStartDates": "{count} tâches n'ont pas de date de début.",
     "GanttSetDatesHint": "Définissez les dates de début et d'échéance d'une tâche pour l'afficher sur la chronologie.",
-    "CopyReleaseList": "Copy release list",
-    "ReleaseListLoading": "Loading completed issues…",
-    "ReleaseListCount": "Completed issues: {count}",
-    "ReleaseListEmpty": "This milestone has no completed issues.",
-    "ReleaseListMarkdown": "Release list (Markdown / plain text)",
-    "ReleaseListCopied": "Release list copied.",
-    "ReleaseListCopyFallback": "Clipboard access failed. The text is selected; copy it with your keyboard or context menu.",
-    "ReleaseListLoadFailed": "The completed issues could not be loaded. Close this dialog and try again."
+    "CopyReleaseList": "Copier la liste de versions",
+    "ReleaseListLoading": "Chargement des tickets terminés…",
+    "ReleaseListCount": "Tickets terminés : {count}",
+    "ReleaseListEmpty": "Ce jalon ne contient aucun ticket terminé.",
+    "ReleaseListMarkdown": "Liste de versions (Markdown / texte brut)",
+    "ReleaseListCopied": "Liste de versions copiée.",
+    "ReleaseListCopyFallback": "Impossible d’accéder au presse-papiers. Le texte est sélectionné ; copiez-le avec le clavier ou le menu contextuel.",
+    "ReleaseListLoadFailed": "Impossible de charger les tickets terminés. Fermez cette boîte de dialogue et réessayez."
   },
   "status": {}
 }
