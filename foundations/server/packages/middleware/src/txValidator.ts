@@ -17,13 +17,7 @@ import core, {
   type TxMixin,
   type TxUpdateDoc
 } from '@hcengineering/core'
-import platform, {
-  getResource,
-  PlatformError,
-  Severity,
-  Status,
-  type Resource
-} from '@hcengineering/platform'
+import platform, { getResource, PlatformError, Severity, Status, type Resource } from '@hcengineering/platform'
 import serverCore, {
   BaseMiddleware,
   type Middleware,

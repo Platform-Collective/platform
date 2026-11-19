@@ -294,9 +294,11 @@ describe('TxValidatorMiddleware', () => {
   it('rejects client writes to subclasses of the validator class', async () => {
     const { middleware, next, hierarchy } = await makeMiddleware()
     const subclass = 'test:class:ValidatorSubclass' as Ref<Class<TxValidator>>
-    jest.spyOn(hierarchy, 'isDerived').mockImplementation(
-      (_class, from) => _class === from || (_class === subclass && from === serverCore.class.TxValidator)
-    )
+    jest
+      .spyOn(hierarchy, 'isDerived')
+      .mockImplementation(
+        (_class, from) => _class === from || (_class === subclass && from === serverCore.class.TxValidator)
+      )
     const tx = factory.createTxCreateDoc(subclass, core.space.Model, {
       validator: validatorResource,
       objectClass: testClass
