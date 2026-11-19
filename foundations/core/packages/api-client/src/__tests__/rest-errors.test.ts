@@ -170,6 +170,49 @@ describe('REST HTTP errors', () => {
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
+  it('returns the string id from createDoc', async () => {
+    jest.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json('created-id'))
+    const client = publicApi.createRestClient(endpoint, 'workspace', token)
+
+    await expect(client.createDoc(core.class.Doc, 'space' as Ref<Space>, {})).resolves.toBe('created-id')
+  })
+
+  it('returns the string id from addCollection', async () => {
+    jest.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json('attached-id'))
+    const client = publicApi.createRestClient(endpoint, 'workspace', token)
+
+    await expect(
+      client.addCollection(core.class.Doc, 'space' as Ref<Space>, 'parent' as Ref<Doc>, core.class.Doc, 'children', {})
+    ).resolves.toBe('attached-id')
+  })
+
+  it('returns object results from update and remove', async () => {
+    jest.spyOn(globalThis, 'fetch').mockImplementation(async () => Response.json({ object: { sequence: 7 } }))
+    const client = publicApi.createRestClient(endpoint, 'workspace', token)
+    const doc: Doc = {
+      _class: core.class.Doc,
+      _id: 'doc' as Ref<Doc>,
+      space: 'space' as Ref<Space>,
+      modifiedOn: 0,
+      modifiedBy: 'caller' as PersonId
+    }
+
+    await expect(client.update(doc, {})).resolves.toEqual({ object: { sequence: 7 } })
+    await expect(client.remove(doc)).resolves.toEqual({ object: { sequence: 7 } })
+  })
+
+  it('updates rate limits after a successful write', async () => {
+    jest.spyOn(globalThis, 'fetch').mockImplementation(async () =>
+      Response.json('created-id', {
+        headers: { 'X-RateLimit-Limit': '200', 'X-RateLimit-Remaining': '40' }
+      })
+    )
+    const client = publicApi.createRestClient(endpoint, 'workspace', token)
+
+    await client.createDoc(core.class.Doc, 'space' as Ref<Space>, {})
+    expect(client).toHaveProperty('currentRateLimit', { limit: 200, remaining: 40 })
+  })
+
   it('retries a rate-limited v1 write with the same body', async () => {
     const fetch = jest.spyOn(globalThis, 'fetch')
     fetch.mockImplementation(async () => {
