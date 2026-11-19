@@ -356,6 +356,7 @@
           }
         },
         inlineCommands: inlineCommandsConfig(handleCommandSelected, [
+          'heading-1',
           'drawing-board',
           ...(enableTodoList ? [] : TODO_LIST_COMMANDS),
           ...(attachFile == null ? IMAGE_COMMANDS : [])
