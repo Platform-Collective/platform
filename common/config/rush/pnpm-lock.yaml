@@ -3096,13 +3096,13 @@ importers:
         specifier: workspace:^0.7.19
         version: link:../client-resources
       '@hcengineering/collaborator-client':
-        specifier: workspace:^0.7.18
+        specifier: workspace:^0.7.19
         version: link:../collaborator-client
       '@hcengineering/core':
         specifier: workspace:^0.7.26
         version: link:../core
       '@hcengineering/platform':
-        specifier: workspace:^0.7.20
+        specifier: workspace:^0.7.21
         version: link:../platform
       '@hcengineering/text':
         specifier: workspace:^0.7.19
@@ -3310,7 +3310,7 @@ importers:
         specifier: workspace:^0.7.26
         version: link:../core
       '@hcengineering/platform':
-        specifier: workspace:^0.7.20
+        specifier: workspace:^0.7.21
         version: link:../platform
     devDependencies:
       '@hcengineering/platform-rig':
