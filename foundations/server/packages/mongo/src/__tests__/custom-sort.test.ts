@@ -18,7 +18,10 @@ describe('Mongo custom sorting', () => {
   it('builds aggregation expressions for inclusion and null or missing values', () => {
     const rules: SortingRules<string> = {
       order: SortingOrder.Ascending,
-      cases: [{ query: { $in: ['open', 'active'] }, index: 0 }, { query: null, index: 1 }]
+      cases: [
+        { query: { $in: ['open', 'active'] }, index: 0 },
+        { query: null, index: 1 }
+      ]
     }
 
     expect(buildCustomSortBranches(rules, 'status')).toEqual([
