@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: EPL-2.0
-import { createTransactionState, runCardAction, runCreateTransaction, type CreateFinalizer } from '../createRetry'
+import type { Blob, Ref } from '@hcengineering/core'
+import {
+  createMarkupPersistence,
+  createTransactionState,
+  runCardAction,
+  runCreateTransaction,
+  type CreateFinalizer
+} from '../createRetry'
 import presentation from '../plugin'
 
 function finalizer (): CreateFinalizer & jest.Mock {
@@ -68,6 +75,25 @@ describe('retryable card actions', () => {
     if (retryOnError) submit()
     else submit()
     expect(action).toHaveBeenCalledTimes(retryOnError ? 2 : 1)
+  })
+})
+
+describe('markup persistence', () => {
+  it('reuses the same blob across retries and updates changed content', async () => {
+    const reference = 'description' as Ref<Blob>
+    const create = jest.fn(async () => reference)
+    const update = jest.fn(async () => {})
+    const persistence = createMarkupPersistence(create, update)
+
+    expect(persistence.reference).toBeNull()
+    await expect(persistence.save('first')).resolves.toBe(reference)
+    await expect(persistence.save('first')).resolves.toBe(reference)
+    expect(create).toHaveBeenCalledTimes(1)
+    expect(update).not.toHaveBeenCalled()
+
+    await expect(persistence.save('updated')).resolves.toBe(reference)
+    expect(create).toHaveBeenCalledTimes(1)
+    expect(update).toHaveBeenCalledWith('updated')
   })
 })
 

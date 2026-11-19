@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import { PlatformError, Severity, Status, type StatusCode } from '@hcengineering/platform'
+import type { Blob, Markup, Ref } from '@hcengineering/core'
 import presentation from './plugin'
 
 export interface CardActionOptions {
@@ -38,6 +39,33 @@ export function runCardAction (options: CardActionOptions): void {
   } else {
     options.setProcessing(false)
     options.close()
+  }
+}
+
+export interface MarkupPersistence {
+  readonly reference: Ref<Blob> | null
+  save: (markup: Markup) => Promise<Ref<Blob>>
+}
+
+export function createMarkupPersistence (
+  create: (markup: Markup) => Promise<Ref<Blob>>,
+  update: (markup: Markup) => Promise<void>
+): MarkupPersistence {
+  let reference: Ref<Blob> | null = null
+  let savedMarkup: Markup | undefined
+  return {
+    get reference () {
+      return reference
+    },
+    save: async (markup) => {
+      if (reference === null) {
+        reference = await create(markup)
+      } else if (savedMarkup !== markup) {
+        await update(markup)
+      }
+      savedMarkup = markup
+      return reference
+    }
   }
 }
 

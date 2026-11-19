@@ -23,9 +23,11 @@
     Card,
     SpaceSelector,
     createMarkup,
+    createMarkupPersistence,
     createTransactionState,
     getClient,
-    runCreateTransaction
+    runCreateTransaction,
+    updateMarkup
   } from '@hcengineering/presentation'
   import { EmptyMarkup, isEmptyMarkup } from '@hcengineering/text'
   import { Button, createFocusManager, EditBox, FocusHandler, IconAttachment, getLocation } from '@hcengineering/ui'
@@ -48,6 +50,11 @@
 
   testSuiteId = testSuiteId ?? (getLocation()?.query?.attachedTo as Ref<TestSuite>)
   const id: Ref<TestCase> = generateId()
+  const target = makeCollabId(testManagement.class.TestCase, id, 'description')
+  const descriptionMarkup = createMarkupPersistence(
+    async (markup) => await createMarkup(target, markup),
+    async (markup) => await updateMarkup(target, markup)
+  )
 
   const object: Data<TestCase> = {
     name: '',
@@ -74,11 +81,10 @@
         state: creation,
         prepare: async () => {
           const op = client.apply()
-          object.description = null
-          if (!isEmptyMarkup(description)) {
-            const target = makeCollabId(testManagement.class.TestCase, id, 'description')
-            object.description = await createMarkup(target, description)
-          }
+          object.description =
+            descriptionMarkup.reference !== null || !isEmptyMarkup(description)
+              ? await descriptionMarkup.save(description)
+              : null
           await op.addCollection(
             testManagement.class.TestCase,
             _space,

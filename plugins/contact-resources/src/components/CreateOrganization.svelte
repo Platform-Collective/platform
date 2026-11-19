@@ -28,10 +28,12 @@
   import {
     Card,
     createMarkup,
+    createMarkupPersistence,
     createTransactionState,
     getClient,
     InlineAttributeBar,
-    runCreateTransaction
+    runCreateTransaction,
+    updateMarkup
   } from '@hcengineering/presentation'
   import { EmptyMarkup, isEmptyMarkup } from '@hcengineering/text'
   import { Button, createFocusManager, EditBox, FocusHandler, IconAttachment, IconInfo, Label } from '@hcengineering/ui'
@@ -53,6 +55,11 @@
   }
 
   const id: Ref<Organization> = generateId()
+  const target = makeCollabId(contact.class.Organization, id, 'description')
+  const descriptionMarkup = createMarkupPersistence(
+    async (markup) => await createMarkup(target, markup),
+    async (markup) => await updateMarkup(target, markup)
+  )
 
   const object: Organization = {
     name: '',
@@ -72,11 +79,10 @@
       await runCreateTransaction({
         state: creation,
         prepare: async () => {
-          object.description = null
-          if (!isEmptyMarkup(description)) {
-            const target = makeCollabId(contact.class.Organization, id, 'description')
-            object.description = await createMarkup(target, description)
-          }
+          object.description =
+            descriptionMarkup.reference !== null || !isEmptyMarkup(description)
+              ? await descriptionMarkup.save(description)
+              : null
           const op = client.apply()
           await op.createDoc(contact.class.Organization, contact.space.Contacts, object, id)
           const finalize = await descriptionBox.prepareAttachments(op, id)
