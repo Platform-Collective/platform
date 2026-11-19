@@ -119,13 +119,13 @@
     { sort: { attachedTo: 1 }, projection: { attachedTo: 1 } }
   )
 
-  $: queries = { assigned, active, backlog, created, subscribed, ...(mode === 'due' ? { due } : {}) }
+  $: queries = { assigned, active, backlog, created, subscribed }
   $: mode = $resolvedLocationStore.query?.mode ?? undefined
-  $: if (mode === undefined || (queries as any)[mode] === undefined) {
+  $: if (mode === undefined || (mode !== 'due' && (queries as any)[mode] === undefined)) {
     ;[[mode]] = config
   }
   $: if (mode !== undefined) {
-    query = { ...(queries as any)[mode] }
+    query = { ...(mode === 'due' ? due : (queries as any)[mode]) }
 
     modeSelectorProps = {
       config,
