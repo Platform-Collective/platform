@@ -11,12 +11,21 @@ const { runInNewContext } = jest.requireActual<{ runInNewContext: (code: string,
 )
 const { cwd } = jest.requireActual<{ cwd: () => string }>('node:process')
 
+interface ArchiveLabels {
+  tooltip: string | undefined
+  ariaLabel: string | undefined
+}
+
 describe('inbox archive controls', () => {
   const source = readFileSync(join(cwd(), 'src/components/DocNotifyContextCard.svelte'), 'utf8')
   // The template parser does not need the component's TypeScript script or styles.
   const template = source.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '')
-  const labels: Array<string | undefined> = []
+  const labels: ArchiveLabels[] = []
   const seen = new Set<object>()
+
+  function expressionSource (expression: any): string | undefined {
+    return expression === undefined ? undefined : template.slice(expression.start, expression.end)
+  }
 
   function visit (value: any, tooltip?: any): void {
     if (value === null || typeof value !== 'object' || seen.has(value)) return
@@ -27,10 +36,13 @@ describe('inbox archive controls', () => {
     )
     const currentTooltip = action ?? tooltip
     if (value.type === 'InlineComponent' && value.name === 'CheckBox') {
-      const label = currentTooltip?.expression?.properties?.find(
+      const tooltipLabel = currentTooltip?.expression?.properties?.find(
         (property: any) => property.key?.name === 'label'
       )?.value
-      labels.push(label === undefined ? undefined : template.slice(label.start, label.end))
+      const ariaLabel = value.attributes?.find(
+        (attribute: any) => attribute.type === 'Attribute' && attribute.name === 'label'
+      )?.value?.[0]?.expression
+      labels.push({ tooltip: expressionSource(tooltipLabel), ariaLabel: expressionSource(ariaLabel) })
     }
     for (const child of Object.values(value)) {
       if (Array.isArray(child)) {
@@ -50,10 +62,13 @@ describe('inbox archive controls', () => {
   it.each([false, true])('labels both archive controls when archived=%s', (archived) => {
     const view = { string: { Archive: 'Archive', UnArchive: 'Unarchive' } }
     for (const label of labels) {
-      expect(label).toBeDefined()
-      // Evaluate the actual template binding in both states with distinct translation keys.
-      const resolved = runInNewContext(`(${label})`, { archived, view })
-      expect(resolved).toBe(archived ? 'Unarchive' : 'Archive')
+      expect(label.tooltip).toBeDefined()
+      expect(label.ariaLabel).toBeDefined()
+      // Evaluate the actual template bindings in both states with distinct translation keys.
+      const tooltip = runInNewContext(`(${label.tooltip})`, { archived, view })
+      const ariaLabel = runInNewContext(`(${label.ariaLabel})`, { archived, view })
+      expect(tooltip).toBe(archived ? 'Unarchive' : 'Archive')
+      expect(ariaLabel).toBe(archived ? 'Unarchive' : 'Archive')
     }
   })
 })

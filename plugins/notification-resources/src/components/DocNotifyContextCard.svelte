@@ -242,7 +242,13 @@
           {#if isArchiving}
             <Spinner size="small" />
           {:else if account.role !== AccountRole.ReadOnlyGuest}
-            <CheckBox checked={archived} kind="todo" size="medium" on:value={checkContext} />
+            <CheckBox
+              checked={archived}
+              kind="todo"
+              size="medium"
+              label={archived ? view.string.UnArchive : view.string.Archive}
+              on:value={checkContext}
+            />
           {/if}
         </div>
         <ButtonIcon
@@ -295,7 +301,13 @@
           {#if isArchiving}
             <Spinner size="small" />
           {:else}
-            <CheckBox checked={archived} kind="todo" size="medium" on:value={checkContext} />
+            <CheckBox
+              checked={archived}
+              kind="todo"
+              size="medium"
+              label={archived ? view.string.UnArchive : view.string.Archive}
+              on:value={checkContext}
+            />
           {/if}
         </div>
         <ButtonIcon
