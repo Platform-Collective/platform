@@ -36,6 +36,7 @@
   import { getResource, translate } from '@hcengineering/platform'
   import preference, { SpacePreference } from '@hcengineering/preference'
   import {
+    AttributeBarEditor,
     Card,
     createMarkup,
     createQuery,
@@ -51,7 +52,7 @@
   } from '@hcengineering/presentation'
   import tags, { type TagElement, TagReference } from '@hcengineering/tags'
   import { TaskType } from '@hcengineering/task'
-  import { TaskKindSelector } from '@hcengineering/task-resources'
+  import { TaskKindSelector, taskTypeStore } from '@hcengineering/task-resources'
   import { EmptyMarkup, isEmptyMarkup } from '@hcengineering/text'
   import {
     Component as ComponentType,
@@ -83,6 +84,17 @@
   import { ObjectBox } from '@hcengineering/view-resources'
   import { createEventDispatcher, onDestroy } from 'svelte'
 
+  import {
+    areRequiredAttributesFilled,
+    fillCreateIssueAttributeDefaults,
+    getCreateIssueAttributeObject,
+    getCreateIssueAttributes,
+    getCreateIssueAttributeValues,
+    getTaskTypeAttributes,
+    isRequiredAttributeFilled,
+    removeChangedTaskTypeValues,
+    setCreateIssueAttributeValue
+  } from '../create-issue-attributes'
   import { fillIssueDefaults } from '../issue-defaults'
   import { handleIssueTitleKeyDown, normalizeIssueTitle } from '../issue-title'
   import { activeComponent, activeMilestone, generateIssueShortLink, updateIssueRelation } from '../issues'
@@ -139,7 +151,8 @@
   // let project: Project | undefined
   let object = getDefaultObjectFromDraft() ?? getDefaultObject(id)
   let isAssigneeTouched = false
-  let kind: Ref<TaskType> | undefined = originalIssue?.kind
+  let kind: Ref<TaskType> | undefined =
+    originalIssue?.kind ?? (draft?.kind !== undefined && draft.kind !== '' ? draft.kind : undefined)
   let duplicateSource = originalIssue
 
   let templateId: Ref<IssueTemplate> | undefined = draft?.template?.template
@@ -207,8 +220,11 @@
       subIssues: []
     }
     if (originalIssue !== undefined && !ignoreOriginal) {
+      const customFields = getDuplicateIssueCustomFields(hierarchy, originalIssue)
       const res: IssueDraft = {
         ...base,
+        ...customFields.attributes,
+        ...Object.fromEntries(customFields.mixins),
         status: originalIssue.status,
         priority: originalIssue.priority,
         component: originalIssue.component,
@@ -239,7 +255,28 @@
   let currentProject: Project | undefined
 
   let descriptionBox: AttachmentStyledBox | undefined
+  let previousKind = kind
+  let defaultsKind: Ref<TaskType> | undefined
 
+  $: selectedTaskType = kind !== undefined ? $taskTypeStore.get(kind) : undefined
+  $: createIssueAttributes = getCreateIssueAttributes(hierarchy, selectedTaskType)
+  $: if (kind !== previousKind) {
+    const previousAttributes = getTaskTypeAttributes(
+      hierarchy,
+      previousKind !== undefined ? $taskTypeStore.get(previousKind) : undefined
+    )
+    const nextAttributes = getTaskTypeAttributes(hierarchy, selectedTaskType)
+    object = removeChangedTaskTypeValues(object, previousAttributes, nextAttributes)
+    object.kind = kind ?? ('' as Ref<TaskType>)
+    previousKind = kind
+    defaultsKind = undefined
+  }
+  $: if (selectedTaskType !== undefined && defaultsKind !== selectedTaskType._id) {
+    defaultsKind = selectedTaskType._id
+    object = fillCreateIssueAttributeDefaults(getTaskTypeAttributes(hierarchy, selectedTaskType), object)
+  }
+  $: objectValues = object as unknown as Record<string, unknown>
+  $: requiredAttributesFilled = areRequiredAttributesFilled(createIssueAttributes, objectValues)
   $: updateIssueStatusId(object, currentProject)
   $: updateAssigneeId(object, currentProject)
   $: canSave =
@@ -247,7 +284,8 @@
     normalizeIssueTitle(object.title ?? '').length > 0 &&
     object.status !== undefined &&
     kind !== undefined &&
-    currentProject !== undefined
+    currentProject !== undefined &&
+    requiredAttributesFilled
 
   $: empty = {
     assignee: assignee ?? currentProject?.defaultAssignee,
@@ -270,6 +308,7 @@
     templateId = undefined
     template = undefined
     duplicateSource = undefined
+    defaultsKind = undefined
     object = getDefaultObject(undefined, true)
     fillDefaults(hierarchy, object, tracker.class.Issue)
   }
@@ -484,9 +523,22 @@
 
       const identifier = `${currentProject?.identifier}-${number}`
       const customFields = getDuplicateIssueCustomFields(hierarchy, duplicateSource, kind)
+      const taskTypeTargetClass = selectedTaskType?.targetClass
+      const taskTypeValues = getCreateIssueAttributeValues(
+        getTaskTypeAttributes(hierarchy, selectedTaskType),
+        object as unknown as Record<string, unknown>
+      )
+      if (taskTypeTargetClass !== undefined && hierarchy.isMixin(taskTypeTargetClass)) {
+        const attributes = {
+          ...customFields.mixins.get(taskTypeTargetClass),
+          ...taskTypeValues
+        }
+        if (Object.keys(attributes).length > 0) customFields.mixins.set(taskTypeTargetClass, attributes)
+      }
 
       const value: DocData<Issue> = {
         ...customFields.attributes,
+        ...(taskTypeTargetClass !== undefined && !hierarchy.isMixin(taskTypeTargetClass) ? taskTypeValues : {}),
         title: normalizeIssueTitle(object.title),
         description: null,
         assignee: object.assignee,
@@ -931,6 +983,28 @@
       />
     {/key}
   </div>
+  {#if createIssueAttributes.length > 0}
+    <div id="issue-custom-attributes" class="popupPanel-body__aside-grid m-3">
+      {#each createIssueAttributes as attribute (attribute.attr._id)}
+        <AttributeBarEditor
+          key={attribute}
+          _class={attribute._class}
+          object={getCreateIssueAttributeObject(hierarchy, objectValues, attribute)}
+          draft
+          showHeader
+          size={'medium'}
+          on:update={(event) => {
+            object = setCreateIssueAttributeValue(object, attribute, event.detail.value)
+          }}
+        />
+        {#if !isRequiredAttributeFilled(attribute, objectValues)}
+          <span class="required-attribute-hint">
+            <Label label={tracker.string.Required} />
+          </span>
+        {/if}
+      {/each}
+    </div>
+  {/if}
   {#if _space}
     <SubIssues
       bind:this={subIssuesComponent}
@@ -1113,3 +1187,15 @@
     </DocCreateExtComponent>
   </svelte:fragment>
 </Card>
+
+<style lang="scss">
+  #issue-custom-attributes {
+    row-gap: 0.5rem;
+  }
+
+  .required-attribute-hint {
+    grid-column: 1 / 3;
+    color: var(--theme-error-color, #eb5757);
+    font-size: 0.75rem;
+  }
+</style>

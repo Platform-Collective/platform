@@ -158,6 +158,7 @@
     "MoveIssues": "Mover tareas",
     "MoveIssuesDescription": "Selecciona el proyecto al que deseas mover las tareas",
     "ManageAttributes": "Gestionar atributos",
+    "Required": "Requerido",
     "KeepOriginalAttributes": "Mantener atributos originales",
     "KeepOriginalAttributesTooltip": "Se mantendrán los estados y componentes originales en el nuevo proyecto",
     "SelectReplacement": "Los siguientes elementos no están disponibles en el nuevo proyecto. Seleccione un reemplazo.",

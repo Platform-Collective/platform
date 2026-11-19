@@ -158,6 +158,7 @@
         "MoveIssues": "이슈 이동",
         "MoveIssuesDescription": "이슈를 이동할 프로젝트를 선택하세요",
         "ManageAttributes": "속성 관리",
+        "Required": "필수",
         "KeepOriginalAttributes": "원래 속성 유지",
         "KeepOriginalAttributesTooltip": "원래 이슈 상태와 컴포넌트가 새 프로젝트에 유지됨",
         "SelectReplacement": "다음 항목은 새 프로젝트에서 사용할 수 없습니다. 대체 항목을 선택하세요.",

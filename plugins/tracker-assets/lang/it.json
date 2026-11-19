@@ -158,6 +158,7 @@
     "MoveIssues": "Sposta issue",
     "MoveIssuesDescription": "Seleziona il progetto in cui desideri spostare le issue",
     "ManageAttributes": "Gestisci attributi",
+    "Required": "Richiesto",
     "KeepOriginalAttributes": "Mantieni attributi originali",
     "KeepOriginalAttributesTooltip": "Gli stati e i componenti originali delle issue saranno mantenuti nel nuovo progetto",
     "SelectReplacement": "I seguenti elementi non sono disponibili nel nuovo progetto. Seleziona un sostituto.",

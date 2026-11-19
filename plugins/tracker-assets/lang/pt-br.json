@@ -158,6 +158,7 @@
     "MoveIssues": "Mover questões",
     "MoveIssuesDescription": "Selecione o projeto para mover as questões",
     "ManageAttributes": "Gerir atributos",
+    "Required": "Obrigatório",
     "KeepOriginalAttributes": "Manter atributos originais",
     "KeepOriginalAttributesTooltip": "Os estados e componentes originais da questão serão mantidos no novo projeto",
     "SelectReplacement": "Os seguintes itens não estão disponíveis no novo projeto. Selecione uma substituição.",

@@ -158,6 +158,7 @@
     "MoveIssues": "Déplacer les issues",
     "MoveIssuesDescription": "Sélectionnez le projet vers lequel vous souhaitez déplacer les issues",
     "ManageAttributes": "Gérer les attributs",
+    "Required": "Requis",
     "KeepOriginalAttributes": "Conserver les attributs d'origine",
     "KeepOriginalAttributesTooltip": "Les statuts et composants des problèmes d'origine seront conservés dans le nouveau projet",
     "SelectReplacement": "Les éléments suivants ne sont pas disponibles dans le nouveau projet. Sélectionnez un remplacement.",
