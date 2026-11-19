@@ -43,6 +43,7 @@
   import OrganizationPresenter from './OrganizationPresenter.svelte'
   import { Analytics } from '@hcengineering/analytics'
 
+  /** Runs on every attempt; only enqueue writes through the supplied transaction, without external side effects. */
   export let onCreate: ((orgId: Ref<Organization>, client: TxOperations) => Promise<void>) | undefined = undefined
 
   const creation = createTransactionState()

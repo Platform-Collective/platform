@@ -34,6 +34,7 @@
   import ProjectPresenter from '../project/ProjectPresenter.svelte'
   import testManagement from '../../plugin'
 
+  /** Runs on every attempt; only enqueue writes through the supplied transaction, without external side effects. */
   export let onCreate: ((orgId: Ref<TestCase>, client: TxOperations) => Promise<void>) | undefined = undefined
   const creation = createTransactionState()
 
