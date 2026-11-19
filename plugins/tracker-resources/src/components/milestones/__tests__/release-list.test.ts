@@ -56,11 +56,12 @@ describe('milestone release list', () => {
   it('treats markdown-looking issue titles as plain text and escapes table pipes', () => {
     const text = formatReleaseList(
       'Release',
-      [issue('id', 1, '[click](https://x.y) | next')],
+      [issue('id', 1, '[click](https://x.y)'), issue('id-2', 2, 'pipe | title')],
       (id) => `/tracker/${id}`
     )
-    expect(text).toContain('| \\[click\\](https://x.y) \\| next |')
-    expect(text).not.toContain('| [click](https://x.y)')
+    expect(text).toContain('| \\[click\\](https://x.y) |')
+    expect(text).not.toContain('| [click](https://x.y) |')
+    expect(text).toContain('| pipe \\| title |')
   })
 
   it('escapes markdown, newlines and HTML and emits internal links as plain-text markdown', () => {
