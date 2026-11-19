@@ -13,7 +13,7 @@
 //
 
 import { Extension, getTextSerializersFromSchema, type TextSerializer } from '@tiptap/core'
-import { type Node as ProseMirrorNode } from '@tiptap/pm/model'
+import { type Node as ProseMirrorNode, type ResolvedPos } from '@tiptap/pm/model'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 
 const blockSeparator = '\n\n'
@@ -142,6 +142,18 @@ function getSeparator (node: ProseMirrorNode): string {
   return blockSeparator
 }
 
+function tableRowPosition ($pos: ResolvedPos): number | undefined {
+  for (let depth = $pos.depth; depth > 0; depth--) {
+    if ($pos.node(depth).type.spec.tableRole === 'row') return $pos.before(depth)
+  }
+  return undefined
+}
+
+function getRangeSeparator (previous: ResolvedPos, current: ResolvedPos): string {
+  const previousRow = tableRowPosition(previous)
+  return previousRow !== undefined && previousRow === tableRowPosition(current) ? '\t' : tightSeparator
+}
+
 /**
  * Replaces the plain text (text/plain) clipboard serializer, which is used when content
  * is pasted into applications that do not accept HTML.
@@ -158,11 +170,16 @@ export const PlainTextCopyExtension = Extension.create({
         key: new PluginKey('plainTextCopy'),
         props: {
           clipboardTextSerializer: (_slice, view) => {
-            const { ranges } = view.state.selection
-            const from = Math.min(...ranges.map((range) => range.$from.pos))
-            const to = Math.max(...ranges.map((range) => range.$to.pos))
+            const { doc, selection, schema } = view.state
+            const serializers = getTextSerializersFromSchema(schema)
 
-            return serializePlainText(view.state.doc, from, to, getTextSerializersFromSchema(view.state.schema))
+            return selection.ranges
+              .map((range, index) => {
+                const text = serializePlainText(doc, range.$from.pos, range.$to.pos, serializers)
+                if (index === 0) return text
+                return getRangeSeparator(selection.ranges[index - 1].$from, range.$from) + text
+              })
+              .join('')
           }
         }
       })

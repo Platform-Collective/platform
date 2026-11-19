@@ -1,3 +1,4 @@
+/** @jest-environment jsdom */
 //
 // Copyright © 2026 Hardcore Engineering Inc.
 //
@@ -12,9 +13,16 @@
 // limitations under the License.
 //
 
-import { type Node as ProseMirrorNode, Schema } from '@tiptap/pm/model'
+import { Editor } from '@tiptap/core'
+import Table from '@tiptap/extension-table'
+import TableCell from '@tiptap/extension-table-cell'
+import TableHeader from '@tiptap/extension-table-header'
+import TableRow from '@tiptap/extension-table-row'
+import StarterKit from '@tiptap/starter-kit'
+import { type Node as ProseMirrorNode, Schema, Slice } from '@tiptap/pm/model'
+import { CellSelection } from '@tiptap/pm/tables'
 
-import { serializePlainText } from '../plainTextCopy'
+import { PlainTextCopyExtension, serializePlainText } from '../plainTextCopy'
 
 const schema = new Schema({
   nodes: {
@@ -134,5 +142,44 @@ describe('serializePlainText', () => {
       schema.node('codeBlock', null, [schema.text('a\n  b')])
     )
     expect(copyAll(d)).toBe('Hi @Jane!\n\na\n  b')
+  })
+})
+
+function tableEditor (): Editor {
+  return new Editor({
+    element: document.createElement('div'),
+    extensions: [StarterKit, Table, TableRow, TableHeader, TableCell, PlainTextCopyExtension],
+    content:
+      '<table><tr><th>A</th><th>B</th><th>C</th></tr>' +
+      '<tr><td>1</td><td>2</td><td>3</td></tr>' +
+      '<tr><td>4</td><td>5</td><td>6</td></tr></table>'
+  })
+}
+
+function copyCellRange (editor: Editor, anchor: number, head: number): string | undefined {
+  const cells: number[] = []
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'tableHeader' || node.type.name === 'tableCell') cells.push(pos)
+  })
+  editor.view.dispatch(editor.state.tr.setSelection(CellSelection.create(editor.state.doc, cells[anchor], cells[head])))
+  return editor.view.someProp('clipboardTextSerializer', (serialize) => serialize(Slice.empty, editor.view))
+}
+
+describe('PlainTextCopyExtension cell selections', () => {
+  let editor: Editor | undefined
+
+  afterEach(() => {
+    editor?.destroy()
+    editor = undefined
+  })
+
+  it('copies only the selected column', () => {
+    editor = tableEditor()
+    expect(copyCellRange(editor, 0, 6)).toBe('A\n1\n4')
+  })
+
+  it('preserves rows and columns in a rectangular cell selection', () => {
+    editor = tableEditor()
+    expect(copyCellRange(editor, 0, 4)).toBe('A\tB\n1\t2')
   })
 })
