@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { Client } from '@hcengineering/core'
-import { escapeMarkdownLinkUrl, escapeMarkdownTableCellContent } from '@hcengineering/converter-resources'
+import { escapeMarkdownLinkText, escapeMarkdownLinkUrl } from '@hcengineering/converter-resources'
 import task from '@hcengineering/task'
 import tracker, { type Issue, type Milestone } from '@hcengineering/tracker'
 
@@ -21,7 +21,7 @@ export async function loadMilestoneIssues (
 }
 
 function plain (value: string): string {
-  return escapeMarkdownTableCellContent(value.replace(/\r\n?|\n/g, ' '))
+  return escapeMarkdownLinkText(value.replace(/\r\n?|\n/g, ' '))
     .replace(/[*_`#~]/g, '\\$&')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

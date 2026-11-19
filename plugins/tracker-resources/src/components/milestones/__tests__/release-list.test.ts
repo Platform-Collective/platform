@@ -54,6 +54,16 @@ describe('milestone release list', () => {
     expect(rows.map((r) => r._id)).toEqual(['ten', 'feature', 'two'])
   })
 
+  it('treats markdown-looking issue titles as plain text and escapes table pipes', () => {
+    const text = formatReleaseList(
+      'Release',
+      [issue('id', 1, 'bug', '[click](https://x.y) | next')],
+      (id) => `/tracker/${id}`
+    )
+    expect(text).toContain('| \\[click\\](https://x.y) \\| next |')
+    expect(text).not.toContain('| [click](https://x.y)')
+  })
+
   it('escapes markdown, newlines and HTML and emits internal links as plain-text markdown', () => {
     const text = formatReleaseList(
       'Release **one**\n<script>',
