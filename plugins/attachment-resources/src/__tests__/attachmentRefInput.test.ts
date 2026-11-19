@@ -25,6 +25,11 @@ const classRef: Ref<Class<Doc>> = 'class' as Ref<Class<Doc>>
 
 interface PreviewDocument {
   _id: string
+  _class: string
+  collection: string
+  space: string
+  attachedTo: string
+  attachedToClass: string
   type: string
   name: string
   file: string
@@ -38,6 +43,8 @@ interface MockState {
   callbacks: Array<(docs: PreviewDocument[]) => void>
   fetchDetails: jest.MockedFunction<(url: string) => Promise<typeof details>>
   upload: jest.MockedFunction<() => Promise<{ uuid: string }>>
+  updateCollection: jest.MockedFunction<(...args: unknown[]) => Promise<void>>
+  saveDraft: jest.MockedFunction<(draft: Record<string, PreviewDocument>) => void>
 }
 
 let mockState: MockState
@@ -74,7 +81,11 @@ jest.mock('@hcengineering/platform', () => ({
   }
 }))
 jest.mock('@hcengineering/presentation', () => ({
-  getClient: () => ({}),
+  getClient: () => ({
+    updateCollection: async (...args: unknown[]): Promise<void> => {
+      await mockState.updateCollection(...args)
+    }
+  }),
   getFileUrl: (file: string) => '/files/' + file,
   createQuery: () => ({
     query: (_class: unknown, _query: unknown, callback: (docs: PreviewDocument[]) => void) => {
@@ -83,7 +94,9 @@ jest.mock('@hcengineering/presentation', () => ({
     unsubscribe: () => {}
   }),
   DraftController: class {
-    save (): void {}
+    save (draft: Record<string, PreviewDocument>): void {
+      mockState.saveDraft(draft)
+    }
     remove (): void {}
   },
   draftsStore: {
@@ -179,6 +192,8 @@ interface Composer {
   fetch: jest.MockedFunction<(url: string) => Promise<typeof details>>
   upload: jest.MockedFunction<() => Promise<{ uuid: string }>>
   fetchStored: jest.MockedFunction<StoredFetch>
+  updateCollection: jest.MockedFunction<(...args: unknown[]) => Promise<void>>
+  saveDraft: jest.MockedFunction<(draft: Record<string, PreviewDocument>) => void>
   switchObject: (next: Ref<Doc>) => Promise<void>
   platform: { setPlatformStatus: jest.Mock }
 }
@@ -195,7 +210,9 @@ async function composer (
 ): Promise<Composer> {
   const fetchDetails = jest.fn(async (_url: string) => details)
   const upload = jest.fn(async () => ({ uuid: 'blob-' + ++mockState.sequence }))
-  mockState = { sequence: 0, draft, initial, callbacks: [], fetchDetails, upload }
+  const updateCollection = jest.fn(async (..._args: unknown[]) => {})
+  const saveDraft = jest.fn((_draft: Record<string, PreviewDocument>) => {})
+  mockState = { sequence: 0, draft, initial, callbacks: [], fetchDetails, upload, updateCollection, saveDraft }
   const fetchStored = jest.fn(stored)
   const originalFetch = Object.getOwnPropertyDescriptor(globalThis, 'fetch')
   Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: true, value: fetchStored })
@@ -256,12 +273,28 @@ async function composer (
     await tick()
   }
   const platform = jest.requireMock<{ setPlatformStatus: jest.Mock }>('@hcengineering/platform')
-  return { state, update, settle, fetch: fetchDetails, upload, fetchStored, switchObject, platform }
+  return {
+    state,
+    update,
+    settle,
+    fetch: fetchDetails,
+    upload,
+    fetchStored,
+    updateCollection,
+    saveDraft,
+    switchObject,
+    platform
+  }
 }
 
 function preview (source = url): PreviewDocument {
   return {
     _id: 'saved',
+    _class: 'attachment',
+    collection: 'attachments',
+    space: 'space',
+    attachedTo: 'object',
+    attachedToClass: 'class',
     type: 'application/link-preview',
     name: 'opaque-file-id',
     file: 'saved-blob',
@@ -368,6 +401,33 @@ describe('legacy preview source restoration', () => {
   function legacy (): PreviewDocument {
     return { ...preview(), metadata: { title: 'Legacy' } }
   }
+
+  it('persists the restored source URL on a saved legacy preview', async () => {
+    const c = await composer([legacy()])
+    await c.settle()
+    expect(c.updateCollection).toHaveBeenCalledTimes(1)
+    expect(c.updateCollection).toHaveBeenCalledWith(
+      'attachment',
+      'space',
+      'saved',
+      'object',
+      'class',
+      'attachments',
+      { metadata: { title: 'Legacy', url } }
+    )
+    expect(c.saveDraft).not.toHaveBeenCalled()
+  })
+
+  it('saves the restored source URL in a draft without updating a saved document', async () => {
+    const doc = legacy()
+    const c = await composer([doc], true)
+    await c.settle()
+    expect(doc.metadata).toEqual({ title: 'Legacy', url })
+    expect(c.saveDraft).toHaveBeenCalledWith({
+      saved: expect.objectContaining({ metadata: { title: 'Legacy', url } })
+    })
+    expect(c.updateCollection).not.toHaveBeenCalled()
+  })
 
   it.each([false, true])('reads original JSON and avoids duplicate previews (draft=%s)', async (draft) => {
     const pending = deferred<StoredResponse>()

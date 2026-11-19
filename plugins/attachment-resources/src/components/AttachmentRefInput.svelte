@@ -181,9 +181,23 @@
       }
       if (typeof meta?.url !== 'string' || !isValidUrl(meta.url)) return
       // Read the original blob, never refetch metadata from the remote website.
+      const metadata = { ...doc.metadata, url: meta.url }
+      doc.metadata = metadata
       previewRequests.delete(meta.url)
       previewUrls.set(meta.url, removedAttachments.has(doc) ? undefined : doc._id)
       urlSet.add(getUrlKey(meta.url))
+      saveDraft()
+      if (originalAttachments.has(doc._id)) {
+        await client.updateCollection(
+          doc._class,
+          doc.space,
+          doc._id,
+          doc.attachedTo,
+          doc.attachedToClass,
+          doc.collection,
+          { metadata }
+        )
+      }
     } catch (err: any) {
       console.error('Failed to restore legacy link preview', err)
     } finally {
