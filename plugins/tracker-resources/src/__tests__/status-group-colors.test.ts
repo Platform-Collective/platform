@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: EPL-2.0
+
 import core, { type Class, type IdMap, type Ref, type Status } from '@hcengineering/core'
 import type { Asset } from '@hcengineering/platform'
 import task, {
