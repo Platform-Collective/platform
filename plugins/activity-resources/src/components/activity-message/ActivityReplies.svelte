@@ -61,7 +61,15 @@
         </button>
       {/if}
       {#each replies as reply (reply._id)}
-        <ActivityMessagePresenter value={reply} presentation="reply" skipLabel hideLink hideFooter {readonly} {onReply} />
+        <ActivityMessagePresenter
+          value={reply}
+          presentation="reply"
+          skipLabel
+          hideLink
+          hideFooter
+          {readonly}
+          {onReply}
+        />
       {/each}
     </div>
   {/if}
