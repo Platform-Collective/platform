@@ -8700,6 +8700,9 @@ importers:
       '@hcengineering/setting':
         specifier: workspace:^0.7.0
         version: link:../../plugins/setting
+      '@hcengineering/tags':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/tags
       '@hcengineering/task':
         specifier: workspace:^0.7.0
         version: link:../../plugins/task
