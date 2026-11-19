@@ -279,10 +279,8 @@
           </div>
         {/if}
 
-        <div class="message-body clear-mins">
-          <div class="message-content-box">
-            <slot name="content" {readonly} />
-          </div>
+        {#if presentation === 'default'}
+          <slot name="content" {readonly} />
 
           {#if !hideFooter}
             <Replies {embedded} object={message} {onReply} />
@@ -292,10 +290,25 @@
             <div class="mt-2" />
             <ActivityMessagePresenter value={parentMessage} embedded hideFooter withActions={false} />
           {/if}
-          {#if isCard && !hideFooter && (message.replies ?? 0) > 0}
-            <ActivityReplies {message} {readonly} {onReply} />
-          {/if}
-        </div>
+        {:else}
+          <div class="message-body clear-mins">
+            <div class="message-content-box">
+              <slot name="content" {readonly} />
+            </div>
+
+            {#if !hideFooter}
+              <Replies {embedded} object={message} {onReply} />
+            {/if}
+            <ReactionsPresenter object={message} {readonly} />
+            {#if parentMessage && showEmbedded}
+              <div class="mt-2" />
+              <ActivityMessagePresenter value={parentMessage} embedded hideFooter withActions={false} />
+            {/if}
+            {#if isCard && !hideFooter && (message.replies ?? 0) > 0}
+              <ActivityReplies {message} {readonly} {onReply} />
+            {/if}
+          </div>
+        {/if}
       </div>
 
       {#if withActions && !readonly}
