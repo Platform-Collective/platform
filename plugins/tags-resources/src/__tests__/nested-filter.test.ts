@@ -488,9 +488,9 @@ describe('nested vacancy label subscriptions', () => {
     const lookupReady = new Promise<void>((resolve) => {
       lookupStarted = resolve
     })
-    jest.mocked(getResource).mockImplementation(() => {
+    jest.mocked(getResource).mockImplementation(async () => {
       lookupStarted()
-      return pendingResource
+      return await pendingResource
     })
     const filter = nestedFilter()
     setFilters([filter])
