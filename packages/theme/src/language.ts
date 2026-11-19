@@ -75,7 +75,6 @@ export class LanguagePreference {
         if (legacy !== null) {
           storage.setItem(ANONYMOUS_LANGUAGE_KEY, legacy)
         }
-        storage.removeItem('lang')
         storage.setItem(LANGUAGE_VERSION_KEY, LANGUAGE_VERSION)
       }
       this.migrated = true
@@ -104,7 +103,17 @@ export class LanguagePreference {
   /** Explicit picker value, independent of the currently resolved browser language. */
   choice (): string | null {
     this.migrate()
-    return this.selected !== undefined ? this.selected : this.read(ANONYMOUS_LANGUAGE_KEY)
+    const saved = this.read(ANONYMOUS_LANGUAGE_KEY)
+    const legacy = this.read('lang')
+    if (legacy !== null && legacy !== saved) {
+      this.selected = legacy
+      this.write(ANONYMOUS_LANGUAGE_KEY, legacy)
+      return legacy
+    }
+    if (legacy === null && saved !== null) {
+      this.write('lang', saved)
+    }
+    return this.selected !== undefined ? this.selected : saved
   }
 
   get (options: Omit<LanguageOptions, 'explicitLanguage'>): string {
@@ -114,6 +123,7 @@ export class LanguagePreference {
   set (language: string | null): void {
     this.migrate()
     this.selected = language
+    this.write('lang', language)
     this.write(ANONYMOUS_LANGUAGE_KEY, language)
   }
 }

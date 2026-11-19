@@ -101,7 +101,7 @@ describe('explicit preference persistence', () => {
     expect(preference.get({ ...defaults, defaultLanguage: 'de' })).toBe('de')
     expect(saved.setItem).not.toHaveBeenCalled()
   })
-  test('preserves a saved non-default choice during migration', () => {
+  test('preserves a saved non-default choice and its legacy key during migration', () => {
     const saved = storage()
     saved.values.delete('languagePreferenceVersion')
     saved.values.set('lang', 'fr')
@@ -109,7 +109,7 @@ describe('explicit preference persistence', () => {
 
     expect(preference.get({ ...defaults, browserLanguages: ['de-AT'] })).toBe('fr')
     expect(saved.values.get('languagePreference:anonymous:v1')).toBe('fr')
-    expect(saved.values.has('lang')).toBe(false)
+    expect(saved.values.get('lang')).toBe('fr')
   })
   test('preserves a saved deployment default as an explicit choice', () => {
     const saved = storage()
@@ -119,6 +119,37 @@ describe('explicit preference persistence', () => {
 
     expect(preference.get({ ...defaults, browserLanguages: ['de-AT'] })).toBe('en')
     expect(saved.values.get('languagePreference:anonymous:v1')).toBe('en')
+    expect(saved.values.get('lang')).toBe('en')
+  })
+  test('mirrors explicit choices to both keys and clears both for automatic selection', () => {
+    const saved = storage()
+    const preference = new LanguagePreference(() => saved)
+
+    preference.set('fr')
+    expect(saved.values.get('languagePreference:anonymous:v1')).toBe('fr')
+    expect(saved.values.get('lang')).toBe('fr')
+    preference.set(null)
+    expect(saved.values.has('languagePreference:anonymous:v1')).toBe(false)
+    expect(saved.values.has('lang')).toBe(false)
+  })
+  test('imports a legacy value written by an older bundle after migration', () => {
+    const saved = storage()
+    saved.values.set('languagePreference:anonymous:v1', 'en')
+    saved.values.set('lang', 'en')
+    const preference = new LanguagePreference(() => saved)
+    expect(preference.get({ ...defaults, browserLanguages: ['de-AT'] })).toBe('en')
+
+    saved.values.set('lang', 'fr')
+    expect(preference.get({ ...defaults, browserLanguages: ['de-AT'] })).toBe('fr')
+    expect(saved.values.get('languagePreference:anonymous:v1')).toBe('fr')
+  })
+  test('restores the legacy mirror for an existing migrated preference', () => {
+    const saved = storage()
+    saved.values.set('languagePreference:anonymous:v1', 'fr')
+    const preference = new LanguagePreference(() => saved)
+
+    expect(preference.get({ ...defaults, browserLanguages: ['de-AT'] })).toBe('fr')
+    expect(saved.values.get('lang')).toBe('fr')
   })
   test('explicitly pinning the detected language survives reload and a new browser locale', () => {
     const saved = storage()
