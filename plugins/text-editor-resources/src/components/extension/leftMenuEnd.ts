@@ -16,6 +16,20 @@
 import { type Node } from '@tiptap/pm/model'
 import { type Transaction } from '@tiptap/pm/state'
 
+export const endZoneClassName = 'tiptap-left-menu-end-zone'
+
+export function createEndZone (height: number): HTMLElement {
+  // The absolute hover area must not add permanent vertical space after the document.
+  const zone = document.createElement('div')
+  zone.classList.add(endZoneClassName)
+  zone.contentEditable = 'false'
+  zone.style.position = 'absolute'
+  zone.style.width = '100%'
+  zone.style.height = `${height}px`
+  zone.style.lineHeight = `${height}px`
+  return zone
+}
+
 /**
  * The left menu inserts content before the hovered block, so an empty trailing
  * paragraph is the slot for inserting at the end of the document.

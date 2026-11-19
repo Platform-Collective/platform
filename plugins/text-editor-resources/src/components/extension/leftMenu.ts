@@ -18,7 +18,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import { type Asset, getMetadata } from '@hcengineering/platform'
 import { SelectPopup, getEventPositionElement, showPopup } from '@hcengineering/ui'
-import { hasInsertSlotAtEnd, prepareInsertAtEnd } from './leftMenuEnd'
+import { createEndZone, endZoneClassName, hasInsertSlotAtEnd, prepareInsertAtEnd } from './leftMenuEnd'
 
 export interface LeftMenuOptions {
   width: number
@@ -55,18 +55,6 @@ function posAtLeftMenuElement (view: EditorView, leftMenuElement: HTMLElement, o
   const pos = position.inside >= 0 ? position.inside : position.pos
   const $pos = view.state.doc.resolve(pos)
   return $pos.depth === 0 ? $pos.pos : $pos.before($pos.depth)
-}
-
-const endZoneClassName = 'tiptap-left-menu-end-zone'
-
-function createEndZone (height: number): HTMLElement {
-  // Invisible hover area after the last block, so the menu can be shown there to insert at the end
-  const zone = document.createElement('div')
-  zone.classList.add(endZoneClassName)
-  zone.contentEditable = 'false'
-  zone.style.height = `${height}px`
-  zone.style.lineHeight = `${height}px`
-  return zone
 }
 
 function LeftMenu (options: LeftMenuOptions, isEditable: () => boolean): Plugin {

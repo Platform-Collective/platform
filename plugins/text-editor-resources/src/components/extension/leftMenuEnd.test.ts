@@ -1,3 +1,4 @@
+/** @jest-environment jsdom */
 //
 // Copyright © 2026 Hardcore Engineering Inc.
 //
@@ -14,7 +15,7 @@
 
 import { type Node, Schema } from '@tiptap/pm/model'
 import { EditorState } from '@tiptap/pm/state'
-import { hasInsertSlotAtEnd, prepareInsertAtEnd } from './leftMenuEnd'
+import { createEndZone, hasInsertSlotAtEnd, prepareInsertAtEnd } from './leftMenuEnd'
 
 const schema = new Schema({
   nodes: {
@@ -73,5 +74,16 @@ describe('prepareInsertAtEnd', () => {
     expect(tr.docChanged).toBe(false)
     expect(pos).toBe(doc.child(0).nodeSize)
     expect(tr.doc.nodeAt(pos)?.type.name).toBe('paragraph')
+  })
+})
+
+describe('createEndZone', () => {
+  it('keeps the hover area outside the document flow', () => {
+    const zone = createEndZone(20)
+
+    expect(zone.style.position).toBe('absolute')
+    expect(zone.style.width).toBe('100%')
+    expect(zone.style.height).toBe('20px')
+    expect(zone.contentEditable).toBe('false')
   })
 })
