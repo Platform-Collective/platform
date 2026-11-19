@@ -500,7 +500,9 @@ export class RestClientImpl implements RestClient {
   private async v1op<T extends Doc, P> (op: string, data: any): Promise<P> {
     const requestUrl = concatLink(this.endpoint, `/api/v1/${op}/${this.workspace}`)
     await this.checkRate()
-    const result = (await this.sendWrite(requestUrl, JSON.stringify(data))) as { result?: Ref<T>, error?: Status }
+    const parsed = await this.sendWrite(requestUrl, JSON.stringify(data))
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {} as P
+    const result = parsed as { result?: Ref<T>, error?: Status }
     if (result.error !== undefined) {
       throw new PlatformError(result.error)
     }

@@ -146,17 +146,25 @@ describe('REST HTTP errors', () => {
     expect(error).toHaveProperty('outcomeUnknown', true)
   })
 
+  it.each(['[]', 'null', '1'])('treats a valid JSON v1 write result as committed (%s)', async (body) => {
+    const fetch = jest.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(body, { status: 200 }))
+    const client = publicApi.createRestClient(endpoint, 'workspace', token)
+
+    await expect(client.createDoc(core.class.Doc, 'space' as Ref<Space>, {})).resolves.toEqual({})
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
   it('retries a rate-limited v1 write with the same body', async () => {
     const fetch = jest.spyOn(globalThis, 'fetch')
     fetch.mockImplementation(async () => {
       if (fetch.mock.calls.length === 1) {
         return new Response('rate limited', { status: 429, headers: { 'Retry-After-ms': '100' } })
       }
-      return Response.json('created-doc')
+      return Response.json({})
     })
     const client = publicApi.createRestClient(endpoint, 'workspace', token)
 
-    await expect(client.createDoc(core.class.Doc, 'space' as Ref<Space>, {})).resolves.toBe('created-doc')
+    await expect(client.createDoc(core.class.Doc, 'space' as Ref<Space>, {})).resolves.toEqual({})
     expect(fetch).toHaveBeenCalledTimes(2)
     expect(fetch.mock.calls[0][1]?.body).toBe(fetch.mock.calls[1][1]?.body)
   })
