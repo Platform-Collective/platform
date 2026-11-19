@@ -4,6 +4,10 @@ import task from '@hcengineering/task'
 import tracker, { type Issue, type Milestone } from '@hcengineering/tracker'
 import { formatReleaseList, loadMilestoneIssues, type ReleaseIssue } from '../release-list'
 
+jest.mock('@hcengineering/converter-resources', () =>
+  jest.requireActual('@hcengineering/converter-resources/src/markdown/escape')
+)
+
 const milestone: Pick<Milestone, '_id' | 'space' | 'label'> = {
   _id: 'release' as Milestone['_id'],
   space: 'project' as Milestone['space'],

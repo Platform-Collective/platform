@@ -69,6 +69,10 @@ function renderHeader (
     'svelte/internal': {
       create_ssr_component: (render: unknown) => render,
       validate_store: () => {},
+      subscribe: (
+        store: { subscribe: (callback: (visible: boolean) => void) => () => void },
+        callback: (visible: boolean) => void
+      ) => store.subscribe(callback),
       component_subscribe: (
         _component: unknown,
         store: { subscribe: (callback: (visible: boolean) => void) => () => void },
