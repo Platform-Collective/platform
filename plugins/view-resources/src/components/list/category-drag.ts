@@ -34,3 +34,22 @@ export function rollbackCategoryDrop<T extends { _id: string }> (
   revert?.()
   return removeDragPreview(items, previewId)
 }
+
+export interface CategoryDragItem {
+  doc?: { _id: string }
+  revert?: () => void
+}
+
+export async function performCategoryDrop (
+  dragItem: CategoryDragItem,
+  update: () => Promise<void>,
+  resetIndex: () => void
+): Promise<void> {
+  try {
+    await update()
+  } finally {
+    dragItem.doc = undefined
+    dragItem.revert = undefined
+    resetIndex()
+  }
+}

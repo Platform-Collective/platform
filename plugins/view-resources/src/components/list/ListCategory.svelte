@@ -45,7 +45,13 @@
   import { fade } from 'svelte/transition'
   import { showMenu } from '../../actions'
   import { FocusSelection, SelectionFocusProvider, focusStore } from '../../selection'
-  import { getCategoryDropIndex, isPointInside, removeDragPreview, rollbackCategoryDrop } from './category-drag'
+  import {
+    getCategoryDropIndex,
+    isPointInside,
+    performCategoryDrop,
+    removeDragPreview,
+    rollbackCategoryDrop
+  } from './category-drag'
   import ListHeader from './ListHeader.svelte'
   import ListItem from './ListItem.svelte'
 
@@ -332,25 +338,30 @@
   }
 
   async function drop(update: DocumentUpdate<Doc> = {}): Promise<void> {
-    if (dragItem.doc !== undefined) {
-      const props = _newObjectProps(dragItem.doc)
-      if (props !== undefined) {
-        for (const key in props) {
-          const value = props[key]
-          if ((dragItem.doc as any)[key] !== value) {
-            ;(update as any)[key] = value
+    await performCategoryDrop(
+      dragItem,
+      async () => {
+        if (dragItem.doc !== undefined) {
+          const props = _newObjectProps(dragItem.doc)
+          if (props !== undefined) {
+            for (const key in props) {
+              const value = props[key]
+              if ((dragItem.doc as any)[key] !== value) {
+                ;(update as any)[key] = value
+              }
+            }
+            if (Object.keys(update).length > 0) {
+              await client.update(dragItem.doc, update)
+            }
+          } else {
+            dragItem.revert?.()
           }
         }
-        if (Object.keys(update).length > 0) {
-          await client.update(dragItem.doc, update)
-        }
-      } else {
-        dragItem.revert?.()
+      },
+      () => {
+        dragItemIndex = undefined
       }
-    }
-    dragItem.doc = undefined
-    dragItem.revert = undefined
-    dragItemIndex = undefined
+    )
   }
 
   const dragEndListener: any = (ev: DragEvent, initIndex: number) => {

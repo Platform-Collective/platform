@@ -3,6 +3,7 @@
 import {
   getCategoryDropIndex,
   isPointInside,
+  performCategoryDrop,
   removeDragPreview,
   rollbackCategoryDrop
 } from '../components/list/category-drag'
@@ -86,5 +87,17 @@ describe('failed category drop', () => {
 
     expect(rollbackCategoryDrop([existing, preview], preview._id, revert)).toEqual([existing])
     expect(revert).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears the shared drag state after a rejected update', async () => {
+    const dragItem = { doc: { _id: 'document' }, revert: jest.fn() }
+    const resetIndex = jest.fn()
+
+    await expect(
+      performCategoryDrop(dragItem, () => Promise.reject(new Error('write failed')), resetIndex)
+    ).rejects.toThrow('write failed')
+    expect(dragItem.doc).toBeUndefined()
+    expect(dragItem.revert).toBeUndefined()
+    expect(resetIndex).toHaveBeenCalledTimes(1)
   })
 })
