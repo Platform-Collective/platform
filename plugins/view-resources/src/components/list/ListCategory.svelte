@@ -393,6 +393,8 @@
           Analytics.handleError(error)
         })
     } else {
+      // Cross-list drops store completion on the target list's dragItem, so this source cannot await it.
+      // The source row is reconciled by its live query.
       dragHiddenId = undefined
     }
     const rect = listDiv.getBoundingClientRect()
