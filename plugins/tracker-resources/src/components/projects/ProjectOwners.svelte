@@ -1,28 +1,22 @@
 <!-- SPDX-License-Identifier: EPL-2.0 -->
 <script lang="ts">
   import contact, { type Employee, getName } from '@hcengineering/contact'
-  import { CombineAvatars, employeeRefByAccountUuidStore } from '@hcengineering/contact-resources'
+  import { CombineAvatars, employeeByIdStore, employeeRefByAccountUuidStore } from '@hcengineering/contact-resources'
   import { type AccountUuid, notEmpty, type Ref } from '@hcengineering/core'
   import { getEmbeddedLabel } from '@hcengineering/platform'
-  import { createQuery, getClient } from '@hcengineering/presentation'
+  import { getClient } from '@hcengineering/presentation'
   import { tooltip } from '@hcengineering/ui'
 
   export let owners: AccountUuid[] | undefined = undefined
 
+  const hierarchy = getClient().getHierarchy()
   let refs: Array<Ref<Employee>> = []
   $: refs = (owners ?? []).map((owner) => $employeeRefByAccountUuidStore.get(owner)).filter(notEmpty)
-
-  let names = ''
-  const query = createQuery()
-  $: if (refs.length > 0) {
-    query.query(contact.mixin.Employee, { _id: { $in: refs } }, (result) => {
-      const hierarchy = getClient().getHierarchy()
-      names = result.map((employee) => getName(hierarchy, employee)).join(', ')
-    })
-  } else {
-    query.unsubscribe()
-    names = ''
-  }
+  $: names = refs
+    .map((ref) => $employeeByIdStore.get(ref))
+    .filter(notEmpty)
+    .map((employee) => getName(hierarchy, employee))
+    .join(', ')
 </script>
 
 {#if refs.length > 0}
