@@ -193,7 +193,6 @@
     "MoveIssues": "Aufgaben verschieben",
     "MoveIssuesDescription": "Wählen Sie das Zielprojekt aus",
     "ManageAttributes": "Attribute verwalten",
-    "Required": "Pflichtfeld",
     "KeepOriginalAttributes": "Ursprüngliche Attribute beibehalten",
     "KeepOriginalAttributesTooltip": "Ursprüngliche Aufgabenstatus und Komponenten werden im neuen Projekt beibehalten",
     "SelectReplacement": "Die folgenden Elemente sind im neuen Projekt nicht verfügbar. Wählen Sie einen Ersatz.",

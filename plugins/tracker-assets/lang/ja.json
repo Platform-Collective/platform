@@ -158,7 +158,6 @@
     "MoveIssues": "イシューを移動",
     "MoveIssuesDescription": "イシューを移動するプロジェクトを選択します",
     "ManageAttributes": "属性を管理",
-    "Required": "必須",
     "KeepOriginalAttributes": "元の属性を保持",
     "KeepOriginalAttributesTooltip": "元のイシューステータスとコンポーネントは新しいプロジェクトに保持されます",
     "SelectReplacement": "次のアイテムは新しいプロジェクトで利用できません。代替を選択してください。",

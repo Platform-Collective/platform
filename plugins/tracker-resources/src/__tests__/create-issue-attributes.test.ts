@@ -15,6 +15,11 @@ import {
   setCreateIssueAttributeValue
 } from '../create-issue-attributes'
 
+// Use the real shared required-value check without loading the whole presentation package
+jest.mock('@hcengineering/presentation', () =>
+  jest.requireActual('../../../../packages/presentation/src/required-value')
+)
+
 const issueType = 'test:mixin:IssueType' as Ref<Mixin<Doc>>
 const otherIssueType = 'test:mixin:OtherIssueType' as Ref<Mixin<Doc>>
 

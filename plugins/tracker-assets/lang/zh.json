@@ -162,7 +162,6 @@
     "MoveIssues": "移动问题",
     "MoveIssuesDescription": "选择要移动问题的项目",
     "ManageAttributes": "管理属性",
-    "Required": "必须",
     "KeepOriginalAttributes": "保留原始属性",
     "KeepOriginalAttributesTooltip": "原始问题状态和组件将在新项目中保留",
     "SelectReplacement": "以下项目在新项目中不可用。请选择替换项。",

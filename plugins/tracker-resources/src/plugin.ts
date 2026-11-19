@@ -196,7 +196,6 @@ export default mergeIds(trackerId, tracker, {
     MoveIssues: '' as IntlString,
     MoveIssuesDescription: '' as IntlString,
     ManageAttributes: '' as IntlString,
-    Required: '' as IntlString,
     KeepOriginalAttributes: '' as IntlString,
     KeepOriginalAttributesTooltip: '' as IntlString,
     SelectReplacement: '' as IntlString,

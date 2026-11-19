@@ -2,9 +2,9 @@
 
 import core, { toRank } from '@hcengineering/core'
 import type { Class, Doc, Hierarchy, Ref } from '@hcengineering/core'
+import { isRequiredValueEmpty } from '@hcengineering/presentation'
 import type { KeyedAttribute } from '@hcengineering/presentation'
 import type { TaskType } from '@hcengineering/task'
-import { isEmptyMarkup } from '@hcengineering/text'
 import tracker from '@hcengineering/tracker'
 
 export interface CreateIssueAttribute extends KeyedAttribute {
@@ -120,15 +120,7 @@ export function isRequiredAttributeFilled (
 ): boolean {
   if (attribute.attr.required !== true) return true
   const draftValue = getDraftValue(attribute, draft)
-  const value = draftValue !== undefined ? draftValue : attribute.attr.defaultValue
-  if (value == null) return false
-  if (attribute.attr.type._class === core.class.TypeMarkup) {
-    return typeof value === 'string' && !isEmptyMarkup(value)
-  }
-  if (typeof value === 'string') return value.trim().length > 0
-  if (typeof value === 'number') return Number.isFinite(value)
-  if (Array.isArray(value)) return value.length > 0
-  return true
+  return !isRequiredValueEmpty(attribute.attr, draftValue !== undefined ? draftValue : attribute.attr.defaultValue)
 }
 
 export function areRequiredAttributesFilled (

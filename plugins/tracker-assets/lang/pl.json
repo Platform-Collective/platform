@@ -159,7 +159,6 @@
     "MoveIssues": "Przenieś zadania",
     "MoveIssuesDescription": "Wybierz projekt, do którego chcesz przenieść zadania.",
     "ManageAttributes": "Zarządzaj atrybutami",
-    "Required": "Obowiązkowe",
     "KeepOriginalAttributes": "Zachowaj oryginalne atrybuty",
     "KeepOriginalAttributesTooltip": "Oryginalne statusy i komponenty zadania będą zachowane w nowym projekcie",
     "SelectReplacement": "Poniższe elementy nie są dostępne w nowym projekcie. Wybierz zamiennik.",

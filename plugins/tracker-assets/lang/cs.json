@@ -152,7 +152,6 @@
     "MoveIssues": "Přesunout úkoly",
     "MoveIssuesDescription": "Vyberte projekt, do kterého chcete úkoly přesunout",
     "ManageAttributes": "Spravovat atributy",
-    "Required": "Požadované",
     "KeepOriginalAttributes": "Zachovat původní atributy",
     "KeepOriginalAttributesTooltip": "Původní stavy a komponenty úkolů budou zachovány v novém projektu",
     "SelectReplacement": "Následující položky nejsou dostupné v novém projektu. Vyberte náhradu.",

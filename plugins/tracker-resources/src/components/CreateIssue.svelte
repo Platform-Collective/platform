@@ -91,7 +91,6 @@
     getCreateIssueAttributes,
     getCreateIssueAttributeValues,
     getTaskTypeAttributes,
-    isRequiredAttributeFilled,
     removeChangedTaskTypeValues,
     setCreateIssueAttributeValue
   } from '../create-issue-attributes'
@@ -997,11 +996,6 @@
             object = setCreateIssueAttributeValue(object, attribute, event.detail.value)
           }}
         />
-        {#if !isRequiredAttributeFilled(attribute, objectValues)}
-          <span class="required-attribute-hint">
-            <Label label={tracker.string.Required} />
-          </span>
-        {/if}
       {/each}
     </div>
   {/if}
@@ -1191,11 +1185,5 @@
 <style lang="scss">
   #issue-custom-attributes {
     row-gap: 0.5rem;
-  }
-
-  .required-attribute-hint {
-    grid-column: 1 / 3;
-    color: var(--theme-error-color, #eb5757);
-    font-size: 0.75rem;
   }
 </style>
