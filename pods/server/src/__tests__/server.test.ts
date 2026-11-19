@@ -20,6 +20,7 @@ import { generateToken } from '@hcengineering/server-token'
 import WebSocket from 'ws'
 
 import {
+  AccountRole,
   Hierarchy,
   MeasureMetricsContext,
   ModelDb,
@@ -40,7 +41,7 @@ import {
   type TxResult,
   type WorkspaceUuid
 } from '@hcengineering/core'
-import { startSessionManager, type SessionManagerOptions } from '@hcengineering/server'
+import { startSessionManager, TSessionManager, type SessionManagerOptions } from '@hcengineering/server'
 import { createDummyQueue, createDummyStorageAdapter } from '@hcengineering/server-core'
 import { startHttpServer } from '../server_http'
 import { genMinModel } from './minmodel'
@@ -118,6 +119,53 @@ describe('server', () => {
   afterAll(async () => {
     await sessionMgr.closeWorkspaces(new MeasureMetricsContext('test', {}))
     await serverShutdown()
+  })
+
+  it('closes the websocket when session initialization fails', async () => {
+    const manager = sessionMgr as unknown as TSessionManager
+    const workspaceUuid = '123e4567-e89b-12d3-a456-426614174001' as WorkspaceUuid
+    const user = '123e4567-e89b-12d3-a456-426614174000'
+    const workspace = { sessions: new Map(), wsId: { uuid: workspaceUuid }, context: {} }
+    const login = jest.spyOn(manager, 'getLoginWithWorkspaceInfo').mockResolvedValue({
+      account: user,
+      socialIds: [{ _id: 'p1', type: 'email', value: 'socket@example.test' }],
+      workspaces: { [workspaceUuid]: { role: AccountRole.User } }
+    } as any)
+    const getWorkspace = jest.spyOn(manager, 'getWorkspace').mockResolvedValue({ workspace } as any)
+    let fail!: (err: Error) => void
+    let registered!: () => void
+    const registration = new Promise<void>((resolve) => {
+      registered = resolve
+    })
+    const send = jest.spyOn(manager.usersProducer, 'send').mockImplementationOnce(async () => {
+      registered()
+      await new Promise<void>((_resolve, reject) => {
+        fail = reject
+      })
+    })
+    const conn = connect()
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const closed = new Promise<void>((resolve, reject) => {
+      conn.once('close', () => {
+        resolve()
+      })
+      conn.once('error', reject)
+      timer = setTimeout(() => {
+        reject(new Error('failed login socket remained open'))
+      }, 1500)
+    })
+    try {
+      await Promise.race([registration, closed])
+      expect(manager.sessions.size).toBe(1)
+      fail(new Error('login queue unavailable'))
+      await closed
+    } finally {
+      clearTimeout(timer)
+      conn.terminate()
+      login.mockRestore()
+      getWorkspace.mockRestore()
+      send.mockRestore()
+    }
   })
 
   it('should connect to server', (done) => {
