@@ -72,6 +72,14 @@
     })
   }
 
+  function showOwners(): void {
+    void showProjectOwnersAction()
+  }
+
+  function hideOwners(): void {
+    void hideProjectOwnersAction()
+  }
+
   let mainActionId: string | undefined = undefined
   let visibleActions: string[] = []
   function updateActions(draft: boolean, project: boolean, closed: boolean, ownersVisible: boolean): void {
@@ -113,16 +121,12 @@
     {
       id: tracker.string.ShowProjectOwners,
       label: tracker.string.ShowProjectOwners,
-      callback: (): void => {
-        void showProjectOwnersAction()
-      }
+      callback: showOwners
     },
     {
       id: tracker.string.HideProjectOwners,
       label: tracker.string.HideProjectOwners,
-      callback: (): void => {
-        void hideProjectOwnersAction()
-      }
+      callback: hideOwners
     }
   ]}
 />
