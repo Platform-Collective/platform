@@ -31,6 +31,18 @@ describe('account configuration', () => {
     })
   })
 
+  test('keeps registration enabled for an empty signup mode', () => {
+    expect(readAccountConfiguration({ ACCOUNT_SIGNUP_MODE: '' })).toEqual({
+      inviteOrSsoSignup: false
+    })
+  })
+
+  test.each(['invite-or-sso', 'INVITE_OR_SSO'])('rejects unsupported signup mode %s', (signupMode) => {
+    expect(() => readAccountConfiguration({ ACCOUNT_SIGNUP_MODE: signupMode })).toThrow(
+      `Unsupported ACCOUNT_SIGNUP_MODE value: ${signupMode}`
+    )
+  })
+
   test('uses frozen configuration snapshots and restores test overrides', () => {
     const original = accountConfiguration
     expect(Object.isFrozen(original)).toBe(true)

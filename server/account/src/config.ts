@@ -17,8 +17,13 @@ export interface AccountConfiguration {
 }
 
 export function readAccountConfiguration (env: NodeJS.ProcessEnv = process.env): AccountConfiguration {
+  const signupMode = env.ACCOUNT_SIGNUP_MODE
+  if (signupMode != null && signupMode !== '' && signupMode !== 'invite_or_sso') {
+    throw new Error(`Unsupported ACCOUNT_SIGNUP_MODE value: ${signupMode}`)
+  }
+
   return {
-    inviteOrSsoSignup: env.ACCOUNT_SIGNUP_MODE === 'invite_or_sso'
+    inviteOrSsoSignup: signupMode === 'invite_or_sso'
   }
 }
 
