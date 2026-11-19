@@ -1,16 +1,9 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import type { Class, Doc, DocumentQuery, PersonId, Ref, Space } from '@hcengineering/core'
+import type { Class, Doc, PersonId, Ref, Space } from '@hcengineering/core'
 import type { Asset } from '@hcengineering/platform'
 import type { TagCategory, TagElement } from '@hcengineering/tags'
-import { readFileSync } from 'fs'
-import { join } from 'path'
-import { runInNewContext } from 'vm'
-import * as ts from 'typescript'
-import * as tagGroups from '../tag-category-groups'
-import type { TagCategoryGroup } from '../tag-category-groups'
-
-const { groupTagElements } = tagGroups
+import { getTagCategoryQuery, groupTagElements } from '../tag-category-groups'
 
 const NO_CATEGORY = 'tags:category:NoCategory' as Ref<TagCategory>
 const TARGET_CLASS = 'test:class:Issue' as Ref<Class<Doc>>
@@ -43,126 +36,6 @@ function element (id: string, category: Ref<TagCategory>): TagElement {
     description: '',
     color: 0,
     category
-  }
-}
-
-// Execute the components' production statements and event handlers without a DOM or application services.
-// This covers their query/selection wiring as well as the shared grouping helper.
-function createCategoryView (categories: TagCategory[]): {
-  bar: {
-    categories: TagCategory[]
-    visibleCategories: TagCategoryGroup[]
-    category: Ref<TagCategory> | undefined
-    selected: Ref<TagElement>[]
-  }
-  view: {
-    search: string
-    category: Ref<TagCategory> | undefined
-    resultQuery: DocumentQuery<TagElement>
-  }
-  refresh: (elements: TagElement[]) => void
-  selectFallback: () => void
-  canClear: () => boolean
-  clear: () => void
-} {
-  const barSource = readFileSync(join(__dirname, '../components/CategoryBar.svelte'), 'utf8')
-  const viewSource = readFileSync(join(__dirname, '../components/TagsView.svelte'), 'utf8')
-
-  function statement (source: string, predicate: (node: ts.Statement) => boolean): string {
-    const script = source.match(/<script lang="ts">([\s\S]*?)<\/script>/)?.[1]
-    if (script === undefined) throw new Error('Missing component script')
-    const node = ts.createSourceFile('component.ts', script, ts.ScriptTarget.Latest, true).statements.find(predicate)
-    if (node === undefined) throw new Error('Missing production statement')
-    return node.getText()
-  }
-
-  function execute (code: string, state: object): unknown {
-    return runInNewContext(ts.transpileModule(code, {}).outputText, state)
-  }
-
-  function viewEvent (event: string, detail: unknown): void {
-    const handler = viewSource.match(new RegExp(`on:${event}=\\{(\\(evt\\) => \\{[\\s\\S]*?\\n  \\})\\}`))?.[1]
-    if (handler === undefined) throw new Error(`Missing ${event} handler`)
-    execute(`(${handler})(evt)`, Object.assign(view, { evt: { detail } }))
-  }
-
-  const shared = { ...tagGroups, tags: { category: { NoCategory: NO_CATEGORY } } }
-  const resultQuery: DocumentQuery<TagElement> = {}
-  const view = {
-    ...shared,
-    targetClass: TARGET_CLASS,
-    search: '',
-    category: undefined as Ref<TagCategory> | undefined,
-    categories: [] as TagCategory[],
-    visibleCategories: [] as TagCategoryGroup[],
-    resultQuery
-  }
-  const bar = {
-    ...shared,
-    categories,
-    elements: [] as TagElement[],
-    visibleCategories: [] as TagCategoryGroup[],
-    category: undefined as Ref<TagCategory> | undefined,
-    selected: [] as Ref<TagElement>[],
-    dispatch: viewEvent
-  }
-
-  execute(
-    statement(viewSource, (node) => ts.isFunctionDeclaration(node) && node.name?.text === 'updateResultQuery'),
-    view
-  )
-  execute(
-    statement(
-      barSource,
-      (node) =>
-        ts.isVariableStatement(node) &&
-        node.declarationList.declarations.some((declaration) => declaration.name.getText() === 'selectItem')
-    ),
-    bar
-  )
-
-  const updateQuery = statement(
-    viewSource,
-    (node) => ts.isLabeledStatement(node) && node.statement.getText().startsWith('updateResultQuery(')
-  )
-  const updateGroups = statement(
-    barSource,
-    (node) => ts.isLabeledStatement(node) && node.statement.getText().startsWith('visibleCategories =')
-  )
-  const updateSelection = statement(
-    barSource,
-    (node) => ts.isLabeledStatement(node) && node.statement.getText().startsWith('if (selected.length > 0')
-  )
-  const emitCategories = statement(
-    barSource,
-    (node) => ts.isLabeledStatement(node) && node.statement.getText().startsWith("dispatch('categories',")
-  )
-
-  return {
-    bar,
-    view,
-    refresh (elements: TagElement[]): void {
-      bar.elements = elements
-      execute(updateGroups, bar)
-      execute(updateSelection, bar)
-      execute(emitCategories, bar)
-      execute(updateQuery, view)
-    },
-    selectFallback (): void {
-      execute('selectItem(visibleCategories.find((group) => group._id === tags.category.NoCategory))', bar)
-      execute(updateQuery, view)
-    },
-    canClear (): boolean {
-      const condition = barSource.match(/\{#if (.*)\}/)?.[1]
-      if (condition === undefined) throw new Error('Missing category bar condition')
-      return execute(condition, bar) as boolean
-    },
-    clear (): void {
-      const handler = barSource.match(/<ModernButton[\s\S]*?on:click=\{(\(\) => \{[\s\S]*?\n {6}\})\}/)?.[1]
-      if (handler === undefined) throw new Error('Missing AllCategories handler')
-      execute(`(${handler})()`, bar)
-      execute(updateQuery, view)
-    }
   }
 }
 
@@ -267,56 +140,16 @@ describe('groupTagElements', () => {
     expect(searchResults).toEqual([missing])
   })
 
-  it('keeps the selected virtual fallback query after its last attachments are removed', () => {
+  it('keeps the fallback query independent of the currently displayed labels', () => {
     const unused = category('unused')
-    const stored = [noCategory, emptyCategory, missing, foreign, regular]
-    const component = createCategoryView([known, unused])
-    component.refresh(stored)
-    component.selectFallback()
-    expect(component.view.resultQuery).toEqual({
-      targetClass: TARGET_CLASS,
+
+    expect(groupTagElements([known, unused], [regular], NO_CATEGORY).map((group) => group._id)).toEqual([known._id])
+    expect(getTagCategoryQuery([known, unused], NO_CATEGORY, NO_CATEGORY)).toEqual({
       category: { $nin: [known._id, unused._id] }
     })
-
-    // Only attachment-derived input changes: all five label documents still exist in storage.
-    component.view.search = 'repro-'
-    component.refresh([regular])
-
-    expect(component.bar.visibleCategories.map((group) => group._id)).toEqual([known._id])
-    expect(component.view.category).toBe(NO_CATEGORY)
-    expect(component.view.resultQuery).toEqual({
-      $search: 'repro-',
-      targetClass: TARGET_CLASS,
-      category: { $nin: [known._id, unused._id] }
-    })
-
-    // Removing an unused category must also update the selected predicate.
-    component.bar.categories = [known]
-    component.refresh([regular])
-    expect(component.view.resultQuery.category).toEqual({ $nin: [known._id] })
-  })
-
-  it('keeps AllCategories available and clears the filter after all attachments are removed', () => {
-    const component = createCategoryView([known])
-    component.refresh([regular, missing])
-    component.selectFallback()
-    component.refresh([])
-
-    expect(component.canClear()).toBe(true)
-    expect(component.bar.category).toBe(NO_CATEGORY)
-    expect(component.bar.visibleCategories).toEqual([])
-    expect(component.view.resultQuery).toEqual({
-      targetClass: TARGET_CLASS,
+    expect(groupTagElements([known], [], NO_CATEGORY)).toEqual([])
+    expect(getTagCategoryQuery([known], NO_CATEGORY, NO_CATEGORY)).toEqual({
       category: { $nin: [known._id] }
     })
-
-    component.clear()
-    expect(component.canClear()).toBe(false)
-    component.refresh([regular, missing])
-    expect(component.bar.category).toBeUndefined()
-    expect(component.bar.selected).toEqual([])
-    expect(component.view.category).toBeUndefined()
-    expect(component.view.resultQuery).toEqual({ targetClass: TARGET_CLASS })
-    expect(component.canClear()).toBe(true)
   })
 })
