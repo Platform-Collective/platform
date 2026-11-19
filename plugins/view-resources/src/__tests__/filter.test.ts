@@ -4,7 +4,7 @@ import type { Doc, Ref } from '@hcengineering/core'
 import { createQuery, getClient } from '@hcengineering/presentation'
 import type { Filter } from '@hcengineering/view'
 import { get } from 'svelte/store'
-import { filterStore, nestedMatchResult, setFilters, updateFilter } from '../filter'
+import { FilterQuery, filterStore, nestedMatchResult, setFilters, updateFilter } from '../filter'
 
 jest.mock('@hcengineering/presentation', () => ({ createQuery: jest.fn(), getClient: jest.fn() }))
 jest.mock('@hcengineering/platform', () => ({ getResource: jest.fn() }))
@@ -55,5 +55,20 @@ describe('filter indexes', () => {
     await expect(nestedMatchResult(filter, jest.fn())).resolves.toEqual({ $in: [] })
     expect(createQuery).not.toHaveBeenCalled()
     expect(getClient).not.toHaveBeenCalled()
+  })
+
+  it('disposes the previous generation when saved filters replace it', () => {
+    setFilters([mockFilter(1)])
+    const unsubscribe = jest.fn()
+    const query = { unsubscribe } as unknown as ReturnType<typeof createQuery>
+    jest.mocked(createQuery).mockReturnValue(query)
+    FilterQuery.getLiveQuery(1)
+    FilterQuery.results.set(1, ['test:doc:Stale' as Ref<Doc>])
+
+    setFilters([mockFilter(1)])
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+    expect(FilterQuery.queries.size).toBe(0)
+    expect(FilterQuery.results.size).toBe(0)
   })
 })
