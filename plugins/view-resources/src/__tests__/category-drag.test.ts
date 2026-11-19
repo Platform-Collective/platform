@@ -94,7 +94,13 @@ describe('failed category drop', () => {
     const resetIndex = jest.fn()
 
     await expect(
-      performCategoryDrop(dragItem, () => Promise.reject(new Error('write failed')), resetIndex)
+      performCategoryDrop(
+        dragItem,
+        async () => {
+          throw new Error('write failed')
+        },
+        resetIndex
+      )
     ).rejects.toThrow('write failed')
     expect(dragItem.doc).toBeUndefined()
     expect(dragItem.revert).toBeUndefined()
