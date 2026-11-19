@@ -180,7 +180,6 @@
     targetItem?: MouseEvent | HTMLElement,
     insertAtEnd = false
   ): Promise<void> {
-    editor.getEditor()?.commands.focus(pos, { scrollIntoView: false })
     if (isBlockCommandId(id)) {
       runBlockCommand(editor.getEditor(), id, pos, undefined, insertAtEnd)
       return
