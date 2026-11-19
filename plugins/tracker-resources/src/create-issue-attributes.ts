@@ -12,11 +12,7 @@ export interface CreateIssueAttribute extends KeyedAttribute {
   mixin: boolean
 }
 
-function collectAttributes (
-  hierarchy: Hierarchy,
-  _class: Ref<Class<Doc>>,
-  to: Ref<Class<Doc>>
-): CreateIssueAttribute[] {
+function collectAttributes (hierarchy: Hierarchy, _class: Ref<Class<Doc>>, to: Ref<Class<Doc>>): CreateIssueAttribute[] {
   return Array.from(hierarchy.getAllAttributes(_class, to))
     .filter(
       ([, attr]) =>
@@ -65,16 +61,10 @@ export function getCreateIssueAttributeObject (
 function getDraftValue (attribute: CreateIssueAttribute, draft: Record<string, unknown>): unknown {
   if (!attribute.mixin) return draft[attribute.key]
   const values = draft[attribute._class]
-  return typeof values === 'object' && values !== null
-    ? (values as Record<string, unknown>)[attribute.key]
-    : undefined
+  return typeof values === 'object' && values !== null ? (values as Record<string, unknown>)[attribute.key] : undefined
 }
 
-export function setCreateIssueAttributeValue<T> (
-  draft: T,
-  attribute: CreateIssueAttribute,
-  value: unknown
-): T {
+export function setCreateIssueAttributeValue<T> (draft: T, attribute: CreateIssueAttribute, value: unknown): T {
   if (!attribute.mixin) return { ...draft, [attribute.key]: value }
   const result: Record<string, unknown> = { ...(draft as Record<string, unknown>) }
   const current = result[attribute._class]
@@ -155,10 +145,7 @@ export function fillCreateIssueAttributeDefaults<T> (attributes: CreateIssueAttr
   return result
 }
 
-export function isRequiredAttributeFilled (
-  attribute: CreateIssueAttribute,
-  draft: Record<string, unknown>
-): boolean {
+export function isRequiredAttributeFilled (attribute: CreateIssueAttribute, draft: Record<string, unknown>): boolean {
   if (attribute.attr.required !== true) return true
   const draftValue = getDraftValue(attribute, draft)
   return !isRequiredValueEmpty(attribute.attr, draftValue !== undefined ? draftValue : attribute.attr.defaultValue)
