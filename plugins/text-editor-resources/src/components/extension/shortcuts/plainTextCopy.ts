@@ -172,12 +172,13 @@ export const PlainTextCopyExtension = Extension.create({
           clipboardTextSerializer: (_slice, view) => {
             const { doc, selection, schema } = view.state
             const serializers = getTextSerializersFromSchema(schema)
+            const ranges = [...selection.ranges].sort((a, b) => a.$from.pos - b.$from.pos)
 
-            return selection.ranges
+            return ranges
               .map((range, index) => {
                 const text = serializePlainText(doc, range.$from.pos, range.$to.pos, serializers)
                 if (index === 0) return text
-                return getRangeSeparator(selection.ranges[index - 1].$from, range.$from) + text
+                return getRangeSeparator(ranges[index - 1].$from, range.$from) + text
               })
               .join('')
           }
