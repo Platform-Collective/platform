@@ -29,6 +29,9 @@ const languagePreference = new LanguagePreference(() => localStorage)
 let defaultLanguage = 'en'
 let supportedLanguages: readonly string[] = DEFAULT_LANGUAGES
 let analyticsLanguage: string | undefined
+let languageInitialization:
+  | { language: string, preference: string | null, promise: Promise<void> }
+  | undefined
 
 /** Configure language selection before mounting the application. @public */
 export const setDefaultLanguage = (language: string, languages: readonly string[] = DEFAULT_LANGUAGES): void => {
@@ -55,15 +58,29 @@ export async function selectLanguagePreference (language: string | null): Promis
 /** Load the locale before rendering login, onboarding or the workbench. @public */
 export async function initializeLanguage (): Promise<void> {
   const language = getCurrentLanguage()
+  const preference = languagePreference.choice()
+  const current = languageInitialization
+  if (current?.language === language && current.preference === preference) {
+    return current.promise
+  }
   setMetadata(platform.metadata.locale, language)
   document.documentElement.lang = language
   currentLanguageStore.set(language)
-  languagePreferenceStore.set(languagePreference.choice())
+  languagePreferenceStore.set(preference)
   const theme = get(themeStore)
   if (theme !== undefined) {
     themeStore.set(new ThemeOptions(theme.fontSize, theme.dark, language, theme.emoji))
   }
-  await loadPluginStrings(language)
+  const promise = loadPluginStrings(language)
+  languageInitialization = { language, preference, promise }
+  try {
+    await promise
+  } catch (error) {
+    if (languageInitialization?.promise === promise) {
+      languageInitialization = undefined
+    }
+    throw error
+  }
 }
 
 function getDefaultProps (prop: string, value: string): string {

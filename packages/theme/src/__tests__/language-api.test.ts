@@ -125,11 +125,17 @@ describe('language startup API', () => {
     expect(mockSetMetadata).toHaveBeenCalledWith('locale', 'de')
     expect(document.documentElement.lang).toBe('de')
     expect(mockLoadPluginStrings).toHaveBeenCalledWith('de')
-    await Promise.resolve()
     expect(ready).toBe(false)
     finish()
     await initialization
     expect(ready).toBe(true)
+  })
+  test('repeated initialization is a no-op', async () => {
+    await theme.initializeLanguage()
+    await theme.initializeLanguage()
+
+    expect(mockLoadPluginStrings).toHaveBeenCalledTimes(1)
+    expect(mockSetMetadata).toHaveBeenCalledTimes(1)
   })
   test('language selection updates the mounted Theme stores and document', async () => {
     const read = <T> (store: { subscribe: (fn: (value: T) => void) => () => void }): T | undefined => {

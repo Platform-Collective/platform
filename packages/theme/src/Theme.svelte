@@ -23,6 +23,7 @@
     selectLanguagePreference,
     currentLanguageStore,
     languagePreferenceStore,
+    initializeLanguage,
     getCurrentTheme,
     isSystemThemeDark,
     isThemeDark,
@@ -128,6 +129,7 @@
   onMount(() => {
     setRootColors($currentTheme, false)
     setRootFontSize($currentFontSize, false)
+    void initializeLanguage()
     setDocumentLanguage()
   })
 </script>
