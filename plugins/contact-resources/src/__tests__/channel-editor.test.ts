@@ -85,6 +85,17 @@ describe('deleteChannel', () => {
     expect(dispatch).toHaveBeenCalledWith('close')
   })
 
+  it('handles a rejected delete action without closing the editor', async () => {
+    const channel = createChannel()
+    const invoke = jest.fn().mockRejectedValue(new Error('delete failed'))
+    const dispatch = jest.fn()
+    const getAction = jest.fn().mockReturnValue({ _id: 'delete' })
+
+    await expect(deleteChannel(channel, event, invoke, dispatch, allowDelete, getAction)).resolves.toBeUndefined()
+
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
   it('does not look up or invoke an action when the document check forbids deletion', async () => {
     const channel = createChannel()
     const invoke = jest.fn()

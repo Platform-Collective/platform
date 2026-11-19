@@ -28,7 +28,7 @@ export async function updateChannelCanDelete (
 export async function deleteChannel<TAction> (
   channel: Data<Channel> | Channel,
   event: Event,
-  invoke: (channel: Channel, event: Event, action: TAction) => unknown,
+  invoke: (channel: Channel, event: Event, action: TAction) => Promise<void>,
   dispatch: (event: 'close', detail?: string) => void,
   canDelete: CanDelete,
   getAction: () => TAction | undefined
@@ -39,6 +39,10 @@ export async function deleteChannel<TAction> (
   }
   if (!(await canDeleteChannel(channel, canDelete))) return
   const action = getAction()
-  if (action !== undefined) invoke(channel, event, action)
+  try {
+    if (action !== undefined) await invoke(channel, event, action)
+  } catch {
+    return
+  }
   dispatch('close')
 }
