@@ -140,7 +140,6 @@
 <Card
   label={contact.string.CreateOrganization}
   okAction={createOrganization}
-  retryOnError
   preventCloseWhileProcessing
   hideAttachments={attachments.size === 0}
   canSave={object.name.length > 0 && !creation.commitUncertain && !creation.creationCommitted}

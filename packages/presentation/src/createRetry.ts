@@ -6,7 +6,6 @@ import presentation from './plugin'
 export interface CardActionOptions {
   canSave: boolean
   processing: boolean
-  retryOnError: boolean
   action: () => Promise<void> | void
   setProcessing: (processing: boolean) => void
   close: () => void
@@ -24,18 +23,14 @@ export function runCardAction (options: CardActionOptions): void {
   try {
     result = options.action()
   } catch (error) {
-    if (!options.retryOnError) throw error
     failed(error)
     return
   }
   if (result instanceof Promise) {
-    void result.then(
-      () => {
-        options.setProcessing(false)
-        options.close()
-      },
-      options.retryOnError ? failed : undefined
-    )
+    void result.then(() => {
+      options.setProcessing(false)
+      options.close()
+    }, failed)
   } else {
     options.setProcessing(false)
     options.close()

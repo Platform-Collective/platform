@@ -124,7 +124,6 @@
 <Card
   label={testManagement.string.CreateTestCase}
   okAction={createTestCase}
-  retryOnError
   preventCloseWhileProcessing
   hideAttachments={attachments.size === 0}
   canSave={object.name.length > 0 && !creation.commitUncertain && !creation.creationCommitted}

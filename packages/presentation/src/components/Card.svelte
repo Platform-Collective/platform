@@ -33,8 +33,6 @@
   export let label: IntlString
   export let labelProps: any | undefined = undefined
   export let okAction: () => Promise<void> | void
-  // Enable only for actions whose writes can safely be retried.
-  export let retryOnError = false
   // Prevent dismissing an in-flight action when its caller retains transient state until it settles.
   export let preventCloseWhileProcessing = false
   export let canSave: boolean = false
@@ -84,7 +82,6 @@
     runCardAction({
       canSave,
       processing: okProcessing,
-      retryOnError,
       action: okAction,
       setProcessing: (processing) => {
         okProcessing = processing

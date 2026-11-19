@@ -16,7 +16,7 @@ function finalizer (): CreateFinalizer & jest.Mock {
   })
 }
 
-describe('retryable card actions', () => {
+describe('card actions', () => {
   it('keeps a rejected action available for retry and suppresses duplicate submission', async () => {
     const error = new Error('commit failed')
     const action = jest.fn().mockRejectedValueOnce(error).mockResolvedValue(undefined)
@@ -27,7 +27,6 @@ describe('retryable card actions', () => {
       runCardAction({
         canSave: true,
         processing: state.processing,
-        retryOnError: true,
         action,
         setProcessing: (processing) => {
           state.processing = processing
@@ -42,6 +41,7 @@ describe('retryable card actions', () => {
     await Promise.resolve()
     await Promise.resolve()
     expect(action).toHaveBeenCalledTimes(1)
+    expect(state.processing).toBe(false)
     expect(reportError).toHaveBeenCalledWith(error)
     expect(close).not.toHaveBeenCalled()
 
@@ -51,30 +51,33 @@ describe('retryable card actions', () => {
     expect(close).toHaveBeenCalledTimes(1)
   })
 
-  it.each([false, true])('handles synchronous errors according to retryOnError=%s', (retryOnError) => {
+  it('reports synchronous errors and restores processing', () => {
+    const error = new Error('failed')
     const action = jest.fn(() => {
-      throw new Error('failed')
+      throw error
     })
     const state = { processing: false }
+    const close = jest.fn()
+    const reportError = jest.fn()
     const submit = (): void => {
       runCardAction({
         canSave: true,
         processing: state.processing,
-        retryOnError,
         action,
         setProcessing: (processing) => {
           state.processing = processing
         },
-        close: jest.fn(),
-        reportError: jest.fn()
+        close,
+        reportError
       })
     }
 
-    if (retryOnError) submit()
-    else expect(submit).toThrow('failed')
-    if (retryOnError) submit()
-    else submit()
-    expect(action).toHaveBeenCalledTimes(retryOnError ? 2 : 1)
+    submit()
+    expect(state.processing).toBe(false)
+    expect(reportError).toHaveBeenCalledWith(error)
+    expect(close).not.toHaveBeenCalled()
+    submit()
+    expect(action).toHaveBeenCalledTimes(2)
   })
 })
 
