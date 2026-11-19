@@ -74,8 +74,10 @@
         )
       ) {
         protectedOptions = true
+        if (name !== value.name) await client.update(value, { name })
         return
       }
+      protectedOptions = false
       await client.update(value, {
         name,
         enumValues: values
