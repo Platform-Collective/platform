@@ -149,12 +149,13 @@ export class TxValidatorMiddleware extends BaseMiddleware implements Middleware 
           try {
             validator = await getResource(record.validator)
           } catch (err: any) {
+            // Log the cause here; the client only gets a generic error (no internal resource id).
             ctx.error('Failed to load transaction validator', {
               resource: record.validator,
               objectClass: record.objectClass,
               err
             })
-            throw err
+            throw new PlatformError(new Status(Severity.ERROR, platform.status.InternalServerError, {}))
           }
           const frozen = matches.map((tx) => {
             const copy = clone(tx) as TxCUD<Doc>

@@ -38,4 +38,4 @@ Validators with `includeDerived` are not run before the apply is unpacked. They 
 
 Validators without `includeDerived` run outside any scope serialization. Two concurrent requests can both pass a check-then-write rule (for example "no duplicate") because neither sees the other's write yet. A validator author who needs such a rule to hold must either use `includeDerived`, which serializes applies that share a scope, or back the rule with a deterministic object id or a unique constraint that the storage rejects.
 
-A missing validator resource is logged with its resource and object class and rejects that class. It does not prevent unrelated classes from being written.
+A validator resource that cannot be loaded is logged on the server with its resource and object class. It rejects writes of that class with a generic `InternalServerError` that does not contain the resource id, and does not prevent unrelated classes from being written.

@@ -372,7 +372,17 @@ describe('TxValidatorMiddleware', () => {
     }
     const { middleware, next } = await makeMiddleware([missing])
 
-    await expect(middleware.tx(makeCtx(), [createTx()])).rejects.toBeInstanceOf(PlatformError)
+    const ctx = makeCtx()
+    const log = jest.spyOn(ctx, 'error').mockImplementation(() => {})
+    const rejection = expect(middleware.tx(ctx, [createTx()])).rejects
+    await rejection.toMatchObject({
+      status: expect.objectContaining({ code: platform.status.InternalServerError, params: {} })
+    })
+    await rejection.not.toThrow(missing.validator)
+    expect(log).toHaveBeenCalledWith(
+      'Failed to load transaction validator',
+      expect.objectContaining({ resource: missing.validator, objectClass: testClass })
+    )
     const other = factory.createTxCreateDoc(core.class.Doc, core.space.Workspace, {})
     await middleware.tx(makeCtx(), [other])
     expect(next.tx).toHaveBeenCalledTimes(1)
