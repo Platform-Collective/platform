@@ -23,6 +23,8 @@ interface HeaderRenderResult {
   header: HeaderProps
   showPopup: jest.Mock
   handleEvent: jest.Mock
+  showOwners: jest.Mock
+  hideOwners: jest.Mock
   keyBinding: string[]
 }
 
@@ -45,22 +47,33 @@ beforeAll(async () => {
 function renderHeader (
   projectExists = true,
   draftExists = false,
-  projects: Array<{ archived: boolean }> = projectExists ? [{ archived: false }] : []
+  projects: Array<{ archived: boolean }> = projectExists ? [{ archived: false }] : [],
+  ownersVisible = true
 ): HeaderRenderResult {
   let header: HeaderProps | undefined
   const showPopup = jest.fn()
   const handleEvent = jest.fn()
+  const showOwners = jest.fn()
+  const hideOwners = jest.fn()
   const keyBinding = ['keyC']
   const strings = {
     CreateProject: 'CreateProject',
     NewIssue: 'NewIssue',
     ResumeDraft: 'ResumeDraft',
+    ShowProjectOwners: 'ShowProjectOwners',
+    HideProjectOwners: 'HideProjectOwners',
     Import: 'Import'
   }
   const dependencies: Record<string, unknown> = {
     // Capture the rendered HeaderButton props without loading the application's UI dependencies.
     'svelte/internal': {
       create_ssr_component: (render: unknown) => render,
+      validate_store: () => {},
+      component_subscribe: (
+        _component: unknown,
+        store: { subscribe: (callback: (visible: boolean) => void) => () => void },
+        callback: (visible: boolean) => void
+      ) => store.subscribe(callback),
       validate_component: () => ({
         $$render: (_result: unknown, props: HeaderProps) => {
           header = props
@@ -99,6 +112,17 @@ function renderHeader (
       class: { Project: 'Project' },
       component: { CreateProject: 'CreateProject' }
     },
+    '../project-owners': {
+      hideProjectOwnersAction: hideOwners,
+      showProjectOwnersAction: showOwners,
+      showProjectOwners: {
+        subscribe: (callback: (visible: boolean) => void) => {
+          callback(ownersVisible)
+          return () => {}
+        }
+      },
+      watchProjectOwnersPreference: jest.fn()
+    },
     './CreateIssue.svelte': 'CreateIssue'
   }
   const exports = {
@@ -113,7 +137,7 @@ function renderHeader (
   })
   exports.default({}, { currentSpace: 'project-1' }, {}, {})
   if (header === undefined) throw new Error('HeaderButton was not rendered')
-  return { header, showPopup, handleEvent, keyBinding }
+  return { header, showPopup, handleEvent, showOwners, hideOwners, keyBinding }
 }
 
 describe('NewIssueHeader actions', () => {
@@ -128,7 +152,7 @@ describe('NewIssueHeader actions', () => {
     const { header, showPopup, handleEvent, keyBinding } = renderHeader(true, draftExists)
     const actionId = draftExists ? 'ResumeDraft' : 'NewIssue'
     expect(header.mainActionId).toBe(actionId)
-    expect(header.visibleActions).toEqual(['CreateProject', actionId])
+    expect(header.visibleActions).toEqual(['CreateProject', actionId, 'HideProjectOwners'])
     const action = header.actions.find(({ id }) => id === actionId)
     expect(action).toBeDefined()
     if (action === undefined) throw new Error(`Missing action: ${actionId}`)
@@ -146,23 +170,34 @@ describe('NewIssueHeader actions', () => {
 
   it('preserves project creation when there are no projects', () => {
     const { header, showPopup } = renderHeader(false)
-    expect(header.visibleActions).toEqual(['CreateProject'])
+    expect(header.visibleActions).toEqual(['CreateProject', 'HideProjectOwners'])
     header.actions.find(({ id }) => id === 'CreateProject')?.callback()
     expect(showPopup).toHaveBeenCalledWith('CreateProject', {}, 'top', expect.any(Function))
   })
+
+  it.each([false, true])(
+    'controls owner visibility from the navigator menu when ownersVisible=%s',
+    (ownersVisible) => {
+      const { header, showOwners, hideOwners } = renderHeader(true, false, [{ archived: false }], ownersVisible)
+      const actionId = ownersVisible ? 'HideProjectOwners' : 'ShowProjectOwners'
+      expect(header.visibleActions).toEqual(['CreateProject', 'NewIssue', actionId])
+      header.actions.find(({ id }) => id === actionId)?.callback()
+      expect(ownersVisible ? hideOwners : showOwners).toHaveBeenCalledTimes(1)
+    }
+  )
 })
 
 describe('NewIssueHeader active projects', () => {
   it.each([false, true])(
-    'offers only project creation when all projects are archived and draftExists=%s',
+    'offers project creation without issue creation when all projects are archived and draftExists=%s',
     (draftExists) => {
       const { header } = renderHeader(true, draftExists, [{ archived: true }, { archived: true }])
-      expect(header.visibleActions).toEqual(['CreateProject'])
+      expect(header.visibleActions).toEqual(['CreateProject', 'HideProjectOwners'])
     }
   )
 
   it('preserves issue creation when an active project exists alongside archived projects', () => {
     const { header } = renderHeader(true, false, [{ archived: true }, { archived: false }])
-    expect(header.visibleActions).toEqual(['CreateProject', 'NewIssue'])
+    expect(header.visibleActions).toEqual(['CreateProject', 'NewIssue', 'HideProjectOwners'])
   })
 })

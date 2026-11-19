@@ -85,12 +85,6 @@ import EditMilestone from './components/milestones/EditMilestone.svelte'
 import ReleaseList from './components/milestones/ReleaseList.svelte'
 import MilestoneDatePresenter from './components/milestones/MilestoneDatePresenter.svelte'
 import MyIssues from './components/myissues/MyIssues.svelte'
-import {
-  canHideProjectOwners,
-  canShowProjectOwners,
-  hideProjectOwnersAction,
-  showProjectOwnersAction
-} from './project-owners'
 import NewIssueHeader from './components/NewIssueHeader.svelte'
 import NopeComponent from './components/NopeComponent.svelte'
 import MembersArrayEditor from './components/projects/MembersArrayEditor.svelte'
@@ -569,8 +563,6 @@ export default async (): Promise<Resources> => ({
     ) => await getAllStates(query, onUpdate, queryId, attr, false),
     GetVisibleFilters: getVisibleFilters,
     IssueChatTitleProvider: getIssueChatTitle,
-    CanShowProjectOwners: canShowProjectOwners,
-    CanHideProjectOwners: canHideProjectOwners,
     IsProjectJoined: async (project: Project) => project.members.includes(getCurrentAccount().uuid),
     GetIssueStatusCategories: getIssueStatusCategories,
     SetComponentStore: setStore,
@@ -579,8 +571,6 @@ export default async (): Promise<Resources> => ({
     FormatIssueMarkdownValue: formatIssueValue
   },
   actionImpl: {
-    ShowProjectOwners: showProjectOwnersAction,
-    HideProjectOwners: hideProjectOwnersAction,
     CopyIssueBranch: copyIssueBranch,
     Move: move,
     EditWorkflowStatuses: editWorkflowStatuses,

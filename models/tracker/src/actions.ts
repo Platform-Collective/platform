@@ -88,37 +88,6 @@ export function createActions (builder: Builder, issuesId: string, componentsId:
     tracker.action.EditWorkflowStatuses
   )
 
-  // Per-account switch for the owner avatars next to the projects in the tracker navigator.
-  createAction(
-    builder,
-    {
-      action: tracker.actionImpl.HideProjectOwners,
-      label: tracker.string.HideProjectOwners,
-      icon: contact.icon.Person,
-      input: 'focus',
-      category: tracker.category.Tracker,
-      target: tracker.class.Project,
-      visibilityTester: tracker.function.CanHideProjectOwners,
-      context: { mode: ['context'], group: 'tools' }
-    },
-    tracker.action.HideProjectOwners
-  )
-
-  createAction(
-    builder,
-    {
-      action: tracker.actionImpl.ShowProjectOwners,
-      label: tracker.string.ShowProjectOwners,
-      icon: contact.icon.Person,
-      input: 'focus',
-      category: tracker.category.Tracker,
-      target: tracker.class.Project,
-      visibilityTester: tracker.function.CanShowProjectOwners,
-      context: { mode: ['context'], group: 'tools' }
-    },
-    tracker.action.ShowProjectOwners
-  )
-
   createAction(
     builder,
     {

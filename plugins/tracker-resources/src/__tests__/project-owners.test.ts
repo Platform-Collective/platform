@@ -33,8 +33,6 @@ jest.mock('../plugin', () => ({
 }))
 
 import {
-  canHideProjectOwners,
-  canShowProjectOwners,
   isShowingProjectOwners,
   navigatorPreferenceTarget,
   setShowProjectOwners,
@@ -59,8 +57,6 @@ describe('project owners in the navigator', () => {
       showProjectOwners: false
     })
     expect(get(showProjectOwners)).toBe(false)
-    await expect(canShowProjectOwners()).resolves.toBe(true)
-    await expect(canHideProjectOwners()).resolves.toBe(false)
   })
 
   it('updates the existing preference instead of creating a second one', async () => {
@@ -75,6 +71,5 @@ describe('project owners in the navigator', () => {
     expect(client.createDoc).not.toHaveBeenCalled()
     expect(client.updateDoc).toHaveBeenCalledWith(pref._class, pref.space, pref._id, { showProjectOwners: true })
     expect(get(showProjectOwners)).toBe(true)
-    await expect(canHideProjectOwners()).resolves.toBe(true)
   })
 })

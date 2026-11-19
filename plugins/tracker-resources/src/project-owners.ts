@@ -3,7 +3,7 @@
 import core, { type Doc, type Ref, type TxOperations } from '@hcengineering/core'
 import { createQuery, getClient } from '@hcengineering/presentation'
 import { trackerId, type ProjectNavigatorPreference } from '@hcengineering/tracker'
-import { get, writable } from 'svelte/store'
+import { writable } from 'svelte/store'
 import tracker from './plugin'
 
 // The navigator preference is a single private document per account (the preference domain only returns the
@@ -55,12 +55,4 @@ export async function showProjectOwnersAction (): Promise<void> {
 
 export async function hideProjectOwnersAction (): Promise<void> {
   await setShowProjectOwners(getClient(), false)
-}
-
-export async function canShowProjectOwners (): Promise<boolean> {
-  return !get(showProjectOwners)
-}
-
-export async function canHideProjectOwners (): Promise<boolean> {
-  return get(showProjectOwners)
 }
