@@ -93,6 +93,7 @@
     getTaskTypeAttributes,
     getUntouchedCreateIssueDraft,
     removeChangedTaskTypeValues,
+    setCreateIssueMixinValues,
     setCreateIssueAttributeValue
   } from '../create-issue-attributes'
   import { fillIssueDefaults } from '../issue-defaults'
@@ -533,12 +534,11 @@
       const taskTypeTargetClass = selectedTaskType?.targetClass
       const taskTypeAttributes = getTaskTypeAttributes(hierarchy, selectedTaskType)
       if (taskTypeTargetClass !== undefined && hierarchy.isMixin(taskTypeTargetClass)) {
-        const attributes = getCreateIssueAttributeValues(
-          taskTypeAttributes,
-          draftValues,
-          customFields.mixins.get(taskTypeTargetClass)
+        setCreateIssueMixinValues(
+          customFields.mixins,
+          taskTypeTargetClass,
+          getCreateIssueAttributeValues(taskTypeAttributes, draftValues, customFields.mixins.get(taskTypeTargetClass))
         )
-        if (Object.keys(attributes).length > 0) customFields.mixins.set(taskTypeTargetClass, attributes)
       }
 
       const value: DocData<Issue> = {

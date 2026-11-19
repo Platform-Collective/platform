@@ -129,6 +129,19 @@ export function getUntouchedCreateIssueDraft (
   return fillCreateIssueAttributeDefaults(attributes, { kind: kind ?? '' })
 }
 
+/**
+ * Stores the mixin values to save, or removes the mixin when no value is left
+ * (for example when every value copied from a duplicated issue was cleared).
+ */
+export function setCreateIssueMixinValues (
+  mixins: Map<Ref<Class<Doc>>, Record<string, unknown>>,
+  mixin: Ref<Class<Doc>>,
+  values: Record<string, unknown>
+): void {
+  if (Object.keys(values).length > 0) mixins.set(mixin, values)
+  else mixins.delete(mixin)
+}
+
 export function fillCreateIssueAttributeDefaults<T> (attributes: CreateIssueAttribute[], draft: T): T {
   let result = draft
   for (const attribute of attributes) {

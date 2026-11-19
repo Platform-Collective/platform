@@ -13,7 +13,8 @@ import {
   getCreateIssueAttributeValues,
   isRequiredAttributeFilled,
   removeChangedTaskTypeValues,
-  setCreateIssueAttributeValue
+  setCreateIssueAttributeValue,
+  setCreateIssueMixinValues
 } from '../create-issue-attributes'
 
 // Use the real shared required-value check without loading the whole presentation package
@@ -209,5 +210,22 @@ describe('new issue task type attributes', () => {
       typeEdited: 'new',
       other: 'kept'
     })
+  })
+
+  it('removes the mixin of a duplicated issue when all its values are cleared', () => {
+    const hierarchy = createHierarchy()
+    addAttribute(hierarchy, issueType, 'typeEdited')
+    const attributes = getCreateIssueAttributes(hierarchy, createTaskType(issueType))
+    const mixins = new Map<Ref<Class<Doc>>, Record<string, unknown>>([[issueType, { typeEdited: 'old' }]])
+    const cleared = { [issueType]: { typeEdited: undefined } }
+
+    const clearedValues = getCreateIssueAttributeValues(attributes, cleared, mixins.get(issueType))
+    setCreateIssueMixinValues(mixins, issueType, clearedValues)
+    expect(mixins.has(issueType)).toBe(false)
+
+    const edited = { [issueType]: { typeEdited: 'new' } }
+    const editedValues = getCreateIssueAttributeValues(attributes, edited, { typeEdited: 'old' })
+    setCreateIssueMixinValues(mixins, issueType, editedValues)
+    expect(mixins.get(issueType)).toEqual({ typeEdited: 'new' })
   })
 })
