@@ -180,12 +180,14 @@ describe('new issue task type attributes', () => {
     const attributes = getCreateIssueAttributes(hierarchy, createTaskType(issueType))
     const kind = 'test:type:Issue' as Ref<TaskType>
     const baseline = getUntouchedCreateIssueDraft(attributes, kind)
-    const untouched = fillCreateIssueAttributeDefaults(attributes, { kind, title: '' })
+    const initial: Record<string, unknown> = { kind, title: '' }
+    const untouched = fillCreateIssueAttributeDefaults(attributes, initial)
 
     expect(baseline).toEqual({ kind, [issueType]: { withDefault: 'default' } })
-    expect(untouched).toMatchObject(baseline)
+    expect(untouched.kind).toEqual(baseline.kind)
+    expect(untouched[issueType]).toEqual(baseline[issueType])
     const edited = setCreateIssueAttributeValue(untouched, attributes[1], 'value')
-    expect(edited).not.toMatchObject(baseline)
+    expect(edited[issueType]).not.toEqual(baseline[issueType])
     expect(getUntouchedCreateIssueDraft(attributes, undefined)).toMatchObject({ kind: '' })
   })
 
