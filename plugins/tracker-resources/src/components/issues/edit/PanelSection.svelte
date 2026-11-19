@@ -17,38 +17,44 @@
     collapsed = !collapsed
     setPanelSectionCollapsed(id, collapsed)
   }
+
+  function onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      toggle()
+    }
+  }
 </script>
 
 {#if divider}
   <div class="divider" />
 {/if}
-<div class="panel-section-header-container">
-  <button
-    type="button"
-    class="panel-section-header"
-    class:collapsed
-    aria-expanded={!collapsed}
-    data-panel-section={id}
-    on:click={toggle}
-  >
-    <span class="panel-section-chevron">
-      {#if collapsed}
-        <IconChevronRight size="small" />
-      {:else}
-        <IconChevronDown size="small" />
-      {/if}
-    </span>
-    <span class="panel-section-label"><Label {label} /></span>
-  </button>
+<!-- A div with role="button" (not a <button> and not wrapped in a <div>) keeps the grid's direct-child
+  button/div>button structure unchanged for existing page-object selectors. -->
+<div
+  role="button"
+  tabindex="0"
+  class="panel-section-header"
+  class:collapsed
+  aria-expanded={!collapsed}
+  data-panel-section={id}
+  on:click={toggle}
+  on:keydown={onKeydown}
+>
+  <span class="panel-section-chevron">
+    {#if collapsed}
+      <IconChevronRight size="small" />
+    {:else}
+      <IconChevronDown size="small" />
+    {/if}
+  </span>
+  <span class="panel-section-label"><Label {label} /></span>
 </div>
 {#if !collapsed}
   <slot />
 {/if}
 
 <style lang="scss">
-  .panel-section-header-container {
-    display: contents;
-  }
   .panel-section-header {
     grid-column: 1 / -1;
     display: flex;
