@@ -28,6 +28,7 @@ export { DEFAULT_LANGUAGES } from './language'
 const languagePreference = new LanguagePreference(() => localStorage)
 let defaultLanguage = 'en'
 let supportedLanguages: readonly string[] = DEFAULT_LANGUAGES
+let analyticsLanguage: string | undefined
 
 /** Configure language selection before mounting the application. @public */
 export const setDefaultLanguage = (language: string, languages: readonly string[] = DEFAULT_LANGUAGES): void => {
@@ -97,7 +98,10 @@ export const getCurrentLanguage = (): string => {
     supportedLanguages,
     browserLanguages: getBrowserLanguages(typeof navigator === 'undefined' ? undefined : navigator)
   })
-  Analytics.setTag('language', lang)
+  if (analyticsLanguage !== lang) {
+    Analytics.setTag('language', lang)
+    analyticsLanguage = lang
+  }
   return lang
 }
 /**

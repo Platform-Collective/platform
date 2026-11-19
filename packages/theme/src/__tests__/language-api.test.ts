@@ -2,7 +2,8 @@
 
 const mockLoadPluginStrings = jest.fn(async () => {})
 const mockSetMetadata = jest.fn()
-jest.mock('@hcengineering/analytics', () => ({ Analytics: { setTag: jest.fn() } }))
+const mockSetTag = jest.fn()
+jest.mock('@hcengineering/analytics', () => ({ Analytics: { setTag: mockSetTag } }))
 jest.mock('@hcengineering/platform-rig/profiles/ui/svelte', () => ({}), { virtual: true })
 jest.mock('@hcengineering/platform', () => ({
   __esModule: true,
@@ -94,6 +95,20 @@ describe('language startup API', () => {
     theme.setDefaultLanguage('fr', ['en', 'fr'])
     expect(theme.getCurrentLanguage()).toBe('fr')
     expect(values.has('languagePreference:anonymous:v1')).toBe(false)
+  })
+
+  test('sets the analytics tag only when the resolved language changes', () => {
+    theme.setDefaultLanguage('en')
+    expect(theme.getCurrentLanguage()).toBe('de')
+    expect(theme.getCurrentLanguage()).toBe('de')
+    expect(mockSetTag).toHaveBeenCalledTimes(1)
+    expect(mockSetTag).toHaveBeenLastCalledWith('language', 'de')
+
+    theme.setLanguagePreference('fr')
+    expect(theme.getCurrentLanguage()).toBe('fr')
+    expect(theme.getCurrentLanguage()).toBe('fr')
+    expect(mockSetTag).toHaveBeenCalledTimes(2)
+    expect(mockSetTag).toHaveBeenLastCalledWith('language', 'fr')
   })
 
   test('initialization sets locale and document language and awaits translation loading', async () => {
