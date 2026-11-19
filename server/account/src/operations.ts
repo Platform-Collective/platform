@@ -197,7 +197,12 @@ export async function getLoginCapabilities (
   db: AccountDB,
   branding: Branding | null,
   token: string
-): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean }> {
+): Promise<{
+  signUpEnabled: boolean
+  guestLoginAvailable: boolean
+  publicJoinSignUpEnabled: boolean
+  guestSettingsLocked: boolean
+}> {
   const signUpEnabled = process.env.DISABLE_SIGNUP !== 'true' && !accountConfiguration.inviteOrSsoSignup
 
   let guestLoginAvailable = false
@@ -210,7 +215,12 @@ export async function getLoginCapabilities (
     guestLoginAvailable = guestPersonCache.value
   }
 
-  return { signUpEnabled, guestLoginAvailable }
+  return {
+    signUpEnabled,
+    guestLoginAvailable,
+    publicJoinSignUpEnabled: !accountConfiguration.inviteOrSsoSignup,
+    guestSettingsLocked: accountConfiguration.inviteOrSsoSignup
+  }
 }
 
 /**

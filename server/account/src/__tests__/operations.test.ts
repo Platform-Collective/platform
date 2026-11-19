@@ -1941,7 +1941,12 @@ describe('account operations', () => {
 
           const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
 
-          expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: true })
+          expect(result).toEqual({
+            signUpEnabled: true,
+            guestLoginAvailable: true,
+            publicJoinSignUpEnabled: true,
+            guestSettingsLocked: false
+          })
         } finally {
           restoreEnv('DISABLE_SIGNUP', prevSignup)
           restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
@@ -1958,7 +1963,12 @@ describe('account operations', () => {
 
           const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
 
-          expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: false })
+          expect(result).toEqual({
+            signUpEnabled: true,
+            guestLoginAvailable: false,
+            publicJoinSignUpEnabled: true,
+            guestSettingsLocked: false
+          })
         } finally {
           restoreEnv('DISABLE_SIGNUP', prevSignup)
           restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
@@ -1975,7 +1985,12 @@ describe('account operations', () => {
 
           const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
 
-          expect(result).toEqual({ signUpEnabled: false, guestLoginAvailable: true })
+          expect(result).toEqual({
+            signUpEnabled: false,
+            guestLoginAvailable: true,
+            publicJoinSignUpEnabled: true,
+            guestSettingsLocked: false
+          })
         } finally {
           restoreEnv('DISABLE_SIGNUP', prevSignup)
           restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
@@ -1991,7 +2006,12 @@ describe('account operations', () => {
 
           const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
 
-          expect(result).toEqual({ signUpEnabled: false, guestLoginAvailable: true })
+          expect(result).toEqual({
+            signUpEnabled: false,
+            guestLoginAvailable: true,
+            publicJoinSignUpEnabled: false,
+            guestSettingsLocked: true
+          })
         } finally {
           restoreConfiguration()
           restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
@@ -2008,7 +2028,12 @@ describe('account operations', () => {
 
           const result = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
 
-          expect(result).toEqual({ signUpEnabled: true, guestLoginAvailable: false })
+          expect(result).toEqual({
+            signUpEnabled: true,
+            guestLoginAvailable: false,
+            publicJoinSignUpEnabled: true,
+            guestSettingsLocked: false
+          })
           expect(mockDb.person.findOne).not.toHaveBeenCalled()
         } finally {
           restoreEnv('DISABLE_SIGNUP', prevSignup)
@@ -2028,8 +2053,14 @@ describe('account operations', () => {
           const r1 = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
           const r2 = await getLoginCapabilities(mockCtx, mockDb, mockBranding, mockToken)
 
-          expect(r1).toEqual({ signUpEnabled: true, guestLoginAvailable: true })
-          expect(r2).toEqual({ signUpEnabled: true, guestLoginAvailable: true })
+          const expected = {
+            signUpEnabled: true,
+            guestLoginAvailable: true,
+            publicJoinSignUpEnabled: true,
+            guestSettingsLocked: false
+          }
+          expect(r1).toEqual(expected)
+          expect(r2).toEqual(expected)
           // Second call within TTL must be served from cache -> exactly one DB hit.
           expect(mockDb.person.findOne).toHaveBeenCalledTimes(1)
         } finally {

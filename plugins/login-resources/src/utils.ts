@@ -89,12 +89,24 @@ export function getAccountClient (
 export async function fetchLoginCapabilities (): Promise<{
   signUpEnabled: boolean
   guestLoginAvailable: boolean
+  publicJoinSignUpEnabled: boolean
+  guestSettingsLocked: boolean
 }> {
   try {
     const accountClient = getAccountClient(null)
-    return await accountClient.getLoginCapabilities()
+    const capabilities = await accountClient.getLoginCapabilities()
+    return {
+      ...capabilities,
+      publicJoinSignUpEnabled: capabilities.publicJoinSignUpEnabled ?? true,
+      guestSettingsLocked: capabilities.guestSettingsLocked ?? false
+    }
   } catch {
-    return { signUpEnabled: true, guestLoginAvailable: true }
+    return {
+      signUpEnabled: true,
+      guestLoginAvailable: true,
+      publicJoinSignUpEnabled: true,
+      guestSettingsLocked: false
+    }
   }
 }
 
