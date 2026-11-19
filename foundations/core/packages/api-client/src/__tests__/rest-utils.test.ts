@@ -36,29 +36,27 @@ describe('withRetry', () => {
   })
 
   it('should use exponential backoff', async () => {
+    // Check the delays withRetry asks for rather than measuring wall-clock time,
+    // which drifts by a few ms on a loaded CI runner.
     const delays: number[] = []
-    const startTimes: number[] = []
-    let lastTime = Date.now()
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation(((cb: () => void, ms?: number) => {
+      delays.push(ms ?? 0)
+      cb()
+      return 0 as any
+    }) as any)
 
     const fn = jest.fn(async () => {
-      const now = Date.now()
-      if (startTimes.length > 0) {
-        delays.push(now - lastTime)
-      }
-      startTimes.push(now)
-      lastTime = now
       throw new Error('fail')
     })
 
-    await expect(withRetry(fn)).rejects.toThrow('fail')
+    try {
+      await expect(withRetry(fn)).rejects.toThrow('fail')
+    } finally {
+      setTimeoutSpy.mockRestore()
+    }
 
     expect(fn).toHaveBeenCalledTimes(3)
-    // Delays should be approximately 100ms and 200ms (with some tolerance)
-    expect(delays.length).toBe(2)
-    expect(delays[0]).toBeGreaterThanOrEqual(80)
-    expect(delays[0]).toBeLessThan(150)
-    expect(delays[1]).toBeGreaterThanOrEqual(180)
-    expect(delays[1]).toBeLessThan(250)
+    expect(delays).toEqual([100, 200])
   })
 
   it('should not decrement attempt when ignoreAttemptCheck returns true', async () => {

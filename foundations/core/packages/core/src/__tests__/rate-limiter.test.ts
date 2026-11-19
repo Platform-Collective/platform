@@ -351,7 +351,9 @@ describe('RateLimiter', () => {
       await limiter.exec(mockFn)
       const duration = Date.now() - start
 
-      expect(duration).toBeGreaterThanOrEqual(50)
+      // Node timers may fire up to ~1 ms before Date.now() reaches the target,
+      // so leave a small tolerance instead of a strict >= 50.
+      expect(duration).toBeGreaterThanOrEqual(45)
     })
 
     it('should handle mixed sync and async operations', async () => {
