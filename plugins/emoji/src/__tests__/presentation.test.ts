@@ -79,10 +79,10 @@ describe('unknown presentation selectors', () => {
 
 describe('invalid stored icon codepoints', () => {
   it.each([0xdeadbeef, -1, 0x110000, 1.5, NaN, Infinity, -Infinity])(
-    'does not throw for invalid scalar or array codepoints: %s',
+    'returns no emoji for invalid scalar or array codepoints: %s',
     (point) => {
-      expect(getEmojiFromCodePoints(point)).toBe('')
-      expect(getEmojiFromCodePoints([0x1f5a5, point])).toBe('')
+      expect(getEmojiFromCodePoints(point)).toBeUndefined()
+      expect(getEmojiFromCodePoints([0x1f5a5, point])).toBeUndefined()
     }
   )
 

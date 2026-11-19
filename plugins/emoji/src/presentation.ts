@@ -33,10 +33,10 @@ export function getEmojiCodePointsFromHexcode (hexcode: string): number[] {
  * Unknown sequences and explicit text presentation are preserved.
  * @public
  */
-export function getEmojiFromCodePoints (icon: number | number[]): string {
+export function getEmojiFromCodePoints (icon: number | number[]): string | undefined {
   const points = Array.isArray(icon) ? icon : [icon]
-  // Stored icon data may contain invalid codepoints. Keep popup rendering safe as well as icon rendering.
-  if (!points.every((point) => Number.isInteger(point) && point >= 0 && point <= 0x10ffff)) return ''
+  // Let icon renderers use their existing fallback for invalid stored data.
+  if (!points.every((point) => Number.isInteger(point) && point >= 0 && point <= 0x10ffff)) return undefined
   const value = points.map((point) => String.fromCodePoint(point)).join('')
   const canonical = emojiPresentation.get(value.replace(/\uFE0F/g, ''))
   if (canonical === undefined) return value
