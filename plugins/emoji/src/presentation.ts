@@ -20,14 +20,6 @@ function getEmojiPresentation (): Map<string, string> {
 }
 
 /**
- * Preserve the picker display sequence, including presentation selectors and supplementary codepoints.
- * @public
- */
-export function getEmojiCodePoints (emoji: string): number[] {
-  return Array.from(emoji, (character) => character.codePointAt(0) ?? 0)
-}
-
-/**
  * Decode the picker hexcode without adding presentation selectors to stored icon values.
  * @public
  */

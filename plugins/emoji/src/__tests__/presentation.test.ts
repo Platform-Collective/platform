@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import emojiData from 'emojibase-data/en/data.json'
-import { getEmojiCodePoints, getEmojiCodePointsFromHexcode, getEmojiFromCodePoints } from '../presentation'
+import { getEmojiCodePointsFromHexcode, getEmojiFromCodePoints } from '../presentation'
 
 describe('emoji icon presentation', () => {
   it('stores the existing desktop hexcode and restores its displayed presentation only on reading', () => {
@@ -26,8 +26,7 @@ describe('emoji icon presentation', () => {
   it.each(emojis.map((emoji) => [emoji.hexcode, emoji] as const))(
     'matches the picker for new and legacy values of %s',
     (_hexcode, emoji) => {
-      const selected = getEmojiCodePoints(emoji.emoji)
-      expect(String.fromCodePoint(...selected)).toBe(emoji.emoji)
+      const selected = Array.from(emoji.emoji, (character) => character.codePointAt(0) ?? 0)
       expect(getEmojiFromCodePoints(selected)).toBe(emoji.emoji)
 
       const legacy = getEmojiCodePointsFromHexcode(emoji.hexcode)
