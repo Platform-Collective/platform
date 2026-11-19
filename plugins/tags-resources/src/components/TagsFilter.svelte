@@ -32,7 +32,7 @@
     themeStore
   } from '@hcengineering/ui'
   import { Filter } from '@hcengineering/view'
-  import { FILTER_DEBOUNCE_MS, FilterQuery, sortFilterValues } from '@hcengineering/view-resources'
+  import { FILTER_DEBOUNCE_MS, sortFilterValues } from '@hcengineering/view-resources'
   import { createEventDispatcher } from 'svelte'
   import tags from '../plugin'
   import { tagLevel } from '../utils'
@@ -41,9 +41,6 @@
   export let _class: Ref<Class<Doc>>
   export let filter: Filter
   export let onChange: (e: Filter) => void
-  filter.onRemove = () => {
-    FilterQuery.remove(filter.index)
-  }
   const client = getClient()
   let selected: Ref<TagElement>[] = filter.value
   let level: number = filter.props?.level ?? 0

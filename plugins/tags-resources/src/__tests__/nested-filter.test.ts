@@ -113,10 +113,7 @@ function nestedFilter (): Filter {
     mode: view.filter.FilterNestedMatch,
     modes: [view.filter.FilterNestedMatch, view.filter.FilterNestedDontMatch],
     nested,
-    value: nested.value,
-    onRemove: (): void => {
-      FilterQuery.remove(1)
-    }
+    value: nested.value
   }
 }
 
@@ -303,10 +300,7 @@ describe('nested vacancy label subscriptions', () => {
     if (filter.nested === undefined) throw new Error('Missing nested filter fixture')
     const direct: Filter = {
       ...filter.nested,
-      index: 2,
-      onRemove: () => {
-        FilterQuery.remove(2)
-      }
+      index: 2
     }
     setFilters([filter, direct])
     const refresh = jest.fn()

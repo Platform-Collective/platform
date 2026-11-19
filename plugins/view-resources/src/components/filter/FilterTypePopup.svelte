@@ -19,7 +19,7 @@
   import { ClassFilters, Filter, KeyFilter, KeyFilterPreset, ViewOptions } from '@hcengineering/view'
   import { getResource } from '@hcengineering/platform'
   import { createEventDispatcher } from 'svelte'
-  import { FilterQuery, buildFilterKey } from '../../filter'
+  import { buildFilterKey } from '../../filter'
   import view from '../../plugin'
 
   export let _class: Ref<Class<Doc>>
@@ -255,10 +255,7 @@
       key: type,
       index,
       mode: view.filter.FilterNestedMatch,
-      modes: [view.filter.FilterNestedMatch, view.filter.FilterNestedDontMatch],
-      onRemove: () => {
-        FilterQuery.remove(index)
-      }
+      modes: [view.filter.FilterNestedMatch, view.filter.FilterNestedDontMatch]
     }
     if (e === undefined || filter === undefined) return
     filter.nested = e

@@ -4,6 +4,8 @@ import core, {
   type Class,
   type Collection,
   type Doc,
+  type DocumentQuery,
+  type FindOptions,
   type FindResult,
   type Hierarchy,
   type ObjQueryType,
@@ -231,6 +233,55 @@ export const FilterQuery = {
   }
 }
 
+export interface FilterQueryRefsOptions<T extends Doc> {
+  filter: Filter
+  onUpdate: () => void
+  lifetime: FilterQueryLifetime
+  lq: LiveQuery
+  scope?: string
+  _class: Ref<Class<T>>
+  query: DocumentQuery<T>
+  mapResults: (refs: FindResult<T>) => Array<Ref<Doc>>
+  options?: FindOptions<T>
+}
+
+export async function queryFilterRefs<T extends Doc> ({
+  filter,
+  onUpdate,
+  lifetime,
+  lq,
+  scope = 'value',
+  _class,
+  query,
+  mapResults,
+  options
+}: FilterQueryRefsOptions<T>): Promise<Array<Ref<Doc>>> {
+  if (!lifetime.isActive() || !FilterQuery.isActive(filter.index, scope, lq)) return []
+  const cacheKey = scope === 'value' ? filter.index : lq
+  const promise = new Promise<Array<Ref<Doc>>>((resolve) => {
+    const refresh = lq.query(
+      _class,
+      query,
+      (refs: FindResult<T>) => {
+        if (!FilterQuery.isActive(filter.index, scope, lq)) {
+          lq.unsubscribe()
+          resolve([])
+          return
+        }
+        const result = Array.from(new Set(mapResults(refs)))
+        FilterQuery.results.set(cacheKey, result)
+        resolve(result)
+        onUpdate()
+      },
+      options
+    )
+    if (!refresh) {
+      resolve(FilterQuery.results.get(cacheKey) ?? [])
+    }
+  })
+  return (await lifetime.waitFor(promise)) ?? []
+}
+
 function disposeFilter (filter: Filter): void {
   filter.onRemove?.()
   FilterQuery.remove(filter.index)
@@ -238,6 +289,7 @@ function disposeFilter (filter: Filter): void {
 
 export async function getRefs (filter: Filter, onUpdate: () => void): Promise<Array<Ref<Doc>>> {
   const lifetime = FilterQuery.getLifetime(filter.index)
+  if (!lifetime.isActive()) return []
   const scope = `refs:${filter.key._class}:${filter.key.key}`
   const lq = FilterQuery.getLiveQuery(filter.index, scope)
   const client = getClient()
@@ -250,30 +302,16 @@ export async function getRefs (filter: Filter, onUpdate: () => void): Promise<Ar
       if (FilterQuery.isActive(filter.index, scope, lq)) onUpdate()
     })
   )
-  if (!FilterQuery.isActive(filter.index, scope, lq)) return []
-  const promise = new Promise<Array<Ref<Doc>>>((resolve) => {
-    const refresh = lq.query(
-      filter.key._class,
-      {
-        [filter.key.key]: newValue
-      },
-      (refs: FindResult<Doc>) => {
-        if (!FilterQuery.isActive(filter.index, scope, lq)) {
-          lq.unsubscribe()
-          resolve([])
-          return
-        }
-        const result = Array.from(new Set(refs.map((p) => p._id)))
-        FilterQuery.results.set(lq, result)
-        resolve(result)
-        onUpdate()
-      }
-    )
-    if (!refresh) {
-      resolve(FilterQuery.results.get(lq) ?? [])
-    }
+  return await queryFilterRefs({
+    filter,
+    onUpdate,
+    lifetime,
+    lq,
+    scope,
+    _class: filter.key._class,
+    query: { [filter.key.key]: newValue },
+    mapResults: (refs) => refs.map((p) => p._id)
   })
-  return (await lifetime.waitFor(promise)) ?? []
 }
 
 function buildRefFilterKey (

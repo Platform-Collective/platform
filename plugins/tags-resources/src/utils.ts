@@ -1,21 +1,13 @@
 // Copyright © 2022 Hardcore Engineering Inc.
 
 import { Analytics } from '@hcengineering/analytics'
-import core, {
-  type Class,
-  type Data,
-  type Doc,
-  type DocumentQuery,
-  type FindResult,
-  type ObjQueryType,
-  type Ref
-} from '@hcengineering/core'
+import core, { type Class, type Data, type Doc, type DocumentQuery, type ObjQueryType, type Ref } from '@hcengineering/core'
 import { type Asset } from '@hcengineering/platform'
 import { getClient } from '@hcengineering/presentation'
 import { type TagCategory, type TagElement, type TagReference, TagsEvents } from '@hcengineering/tags'
 import { type ColorDefinition, getColorNumberByText } from '@hcengineering/ui'
 import { type Filter } from '@hcengineering/view'
-import { FilterQuery } from '@hcengineering/view-resources'
+import { FilterQuery, queryFilterRefs } from '@hcengineering/view-resources'
 import { writable } from 'svelte/store'
 import tags from './plugin'
 
@@ -31,30 +23,22 @@ export async function getRefs (filter: Filter, onUpdate: () => void): Promise<Ar
   const lifetime = FilterQuery.getLifetime(filter.index)
   if (!lifetime.isActive()) return []
   const lq = FilterQuery.getLiveQuery(filter.index)
-  const promise = new Promise<Array<Ref<Doc>>>((resolve) => {
-    const level = filter.props?.level ?? 0
-    const q: DocumentQuery<TagReference> = {
-      tag: { $in: filter.value }
-    }
-    if (level > 0) {
-      q.weight = { $gte: level as TagReference['weight'] }
-    }
-    const refresh = lq.query(tags.class.TagReference, q, (refs: FindResult<TagReference>) => {
-      if (!FilterQuery.isActive(filter.index, 'value', lq)) {
-        lq.unsubscribe()
-        resolve([])
-        return
-      }
-      const result = Array.from(new Set(refs.map((p) => p.attachedTo)))
-      FilterQuery.results.set(filter.index, result)
-      resolve(result)
-      onUpdate()
-    })
-    if (!refresh) {
-      resolve(FilterQuery.results.get(filter.index) ?? [])
-    }
+  const level = filter.props?.level ?? 0
+  const query: DocumentQuery<TagReference> = {
+    tag: { $in: filter.value }
+  }
+  if (level > 0) {
+    query.weight = { $gte: level as TagReference['weight'] }
+  }
+  return await queryFilterRefs({
+    filter,
+    onUpdate,
+    lifetime,
+    lq,
+    _class: tags.class.TagReference,
+    query,
+    mapResults: (refs) => refs.map((p) => p.attachedTo)
   })
-  return (await lifetime.waitFor(promise)) ?? []
 }
 
 export async function tagsInResult (filter: Filter, onUpdate: () => void): Promise<ObjQueryType<any>> {
