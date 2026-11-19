@@ -57,6 +57,7 @@ function createHierarchy (): Hierarchy {
 
 describe('getOrderBySorting', () => {
   afterEach(() => {
+    jest.clearAllMocks()
     jest.restoreAllMocks()
   })
 
