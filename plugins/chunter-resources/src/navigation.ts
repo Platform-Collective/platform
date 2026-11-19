@@ -383,7 +383,12 @@ export async function openThreadInSidebar (
     const targetDocLinkId = await getObjectLinkId(providers, message.attachedTo, message.attachedToClass, object)
     const targetDocUri = encodeObjectURI(targetDocLinkId, message.attachedToClass)
     const pathCopy = [...loc.path]
-    pathCopy[3] = targetDocUri
+    // In chat specials (threads, saved, ...) the thread is opened on top of the special,
+    // see buildThreadLink, so keep the special in the allowed path.
+    const isSpecial = appComponent === chunterId && chatSpecials.some(({ id }) => id === loc.path[3])
+    if (!isSpecial) {
+      pathCopy[3] = targetDocUri
+    }
     pathCopy[4] = message._id
     pathCopy.length = 5
     allowedPath = pathCopy.join('/')
