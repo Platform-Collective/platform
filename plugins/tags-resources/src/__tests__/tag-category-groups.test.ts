@@ -143,11 +143,14 @@ describe('groupTagElements', () => {
   it('keeps the fallback query independent of the currently displayed labels', () => {
     const unused = category('unused')
 
-    expect(groupTagElements([known, unused], [regular], NO_CATEGORY).map((group) => group._id)).toEqual([known._id])
+    expect(groupTagElements([known, unused], [regular], NO_CATEGORY).map((group) => group._id)).toEqual([
+      known._id,
+      unused._id
+    ])
     expect(getTagCategoryQuery([known, unused], NO_CATEGORY, NO_CATEGORY)).toEqual({
       category: { $nin: [known._id, unused._id] }
     })
-    expect(groupTagElements([known], [], NO_CATEGORY)).toEqual([])
+    expect(groupTagElements([known], [], NO_CATEGORY).map((group) => group._id)).toEqual([known._id])
     expect(getTagCategoryQuery([known], NO_CATEGORY, NO_CATEGORY)).toEqual({
       category: { $nin: [known._id] }
     })
