@@ -85,20 +85,48 @@ export function setCreateIssueAttributeValue<T> (
   return result as T
 }
 
+function hasDraftValue (attribute: CreateIssueAttribute, draft: Record<string, unknown>): boolean {
+  if (!attribute.mixin) return attribute.key in draft
+  const values = draft[attribute._class]
+  return typeof values === 'object' && values !== null && attribute.key in values
+}
+
+/**
+ * Collects the values to save for the given attributes. Draft values win over `original` values
+ * (for example the values of a duplicated issue), and a value cleared in the draft is not restored from `original`.
+ */
 export function getCreateIssueAttributeValues (
   attributes: CreateIssueAttribute[],
-  draft: Record<string, unknown>
+  draft: Record<string, unknown>,
+  original: Record<string, unknown> = {}
 ): Record<string, unknown> {
-  const values: Record<string, unknown> = {}
+  const values: Record<string, unknown> = { ...original }
   for (const attribute of attributes) {
     const value = getDraftValue(attribute, draft)
     if (value !== undefined) {
       values[attribute.key] = value
-    } else if (attribute.attr.defaultValue != null) {
+    } else if (
+      attribute.attr.defaultValue != null &&
+      (original[attribute.key] === undefined || hasDraftValue(attribute, draft))
+    ) {
       values[attribute.key] = structuredClone(attribute.attr.defaultValue)
+    } else if (hasDraftValue(attribute, draft)) {
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      delete values[attribute.key]
     }
   }
   return values
+}
+
+/**
+ * What an untouched dialog already contains: the selected task type and the default attribute values.
+ * Used as the "empty" reference so that opening and closing the dialog does not keep a draft.
+ */
+export function getUntouchedCreateIssueDraft (
+  attributes: CreateIssueAttribute[],
+  kind: Ref<TaskType> | undefined
+): Record<string, unknown> {
+  return fillCreateIssueAttributeDefaults(attributes, { kind: kind ?? '' })
 }
 
 export function fillCreateIssueAttributeDefaults<T> (attributes: CreateIssueAttribute[], draft: T): T {

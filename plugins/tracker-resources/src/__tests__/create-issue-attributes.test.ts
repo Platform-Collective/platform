@@ -8,6 +8,7 @@ import { EmptyMarkup } from '@hcengineering/text'
 import tracker from '@hcengineering/tracker'
 import {
   fillCreateIssueAttributeDefaults,
+  getUntouchedCreateIssueDraft,
   getCreateIssueAttributes,
   getCreateIssueAttributeValues,
   isRequiredAttributeFilled,
@@ -169,5 +170,44 @@ describe('new issue task type attributes', () => {
 
     expect(filled).toEqual({ [issueType]: { explicit: 'changed', withDefault: 'default' } })
     expect(existingValues.explicit).toBe('existing')
+  })
+
+  it('keeps an untouched dialog equal to its empty reference', () => {
+    const hierarchy = createHierarchy()
+    addAttribute(hierarchy, issueType, 'withDefault', { defaultValue: 'default' })
+    addAttribute(hierarchy, issueType, 'explicit')
+    const attributes = getCreateIssueAttributes(hierarchy, createTaskType(issueType))
+    const kind = 'test:type:Issue' as Ref<TaskType>
+    const baseline = getUntouchedCreateIssueDraft(attributes, kind)
+    const untouched = fillCreateIssueAttributeDefaults(attributes, { kind, title: '' })
+
+    expect(baseline).toEqual({ kind, [issueType]: { withDefault: 'default' } })
+    expect(untouched).toMatchObject(baseline)
+    const edited = setCreateIssueAttributeValue(untouched, attributes[1], 'value')
+    expect(edited).not.toMatchObject(baseline)
+    expect(getUntouchedCreateIssueDraft(attributes, undefined)).toMatchObject({ kind: '' })
+  })
+
+  it('lets edited and cleared values win over the original values of a duplicated issue', () => {
+    const hierarchy = createHierarchy()
+    addAttribute(hierarchy, tracker.class.Issue, 'edited')
+    addAttribute(hierarchy, tracker.class.Issue, 'cleared')
+    addAttribute(hierarchy, tracker.class.Issue, 'untouched')
+    addAttribute(hierarchy, tracker.class.Issue, 'notShown', { hidden: true })
+    addAttribute(hierarchy, issueType, 'typeEdited')
+    const issueAttributes = getCreateIssueAttributes(hierarchy)
+    const typeAttributes = getCreateIssueAttributes(hierarchy, createTaskType(issueType)).slice(issueAttributes.length)
+    const original = { edited: 'old', cleared: 'old', untouched: 'old', notShown: 'old' }
+    const draft = { ...original, edited: 'new', cleared: undefined, [issueType]: { typeEdited: 'new' } }
+
+    expect(getCreateIssueAttributeValues(issueAttributes, draft, original)).toEqual({
+      edited: 'new',
+      untouched: 'old',
+      notShown: 'old'
+    })
+    expect(getCreateIssueAttributeValues(typeAttributes, draft, { typeEdited: 'old', other: 'kept' })).toEqual({
+      typeEdited: 'new',
+      other: 'kept'
+    })
   })
 })

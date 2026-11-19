@@ -91,6 +91,7 @@
     getCreateIssueAttributes,
     getCreateIssueAttributeValues,
     getTaskTypeAttributes,
+    getUntouchedCreateIssueDraft,
     removeChangedTaskTypeValues,
     setCreateIssueAttributeValue
   } from '../create-issue-attributes'
@@ -287,6 +288,7 @@
     requiredAttributesFilled
 
   $: empty = {
+    ...getUntouchedCreateIssueDraft(getTaskTypeAttributes(hierarchy, selectedTaskType), kind),
     assignee: assignee ?? currentProject?.defaultAssignee,
     status: status ?? currentProject?.defaultIssueStatus,
     parentIssue: parentIssue?._id,
@@ -522,22 +524,28 @@
 
       const identifier = `${currentProject?.identifier}-${number}`
       const customFields = getDuplicateIssueCustomFields(hierarchy, duplicateSource, kind)
-      const taskTypeTargetClass = selectedTaskType?.targetClass
-      const taskTypeValues = getCreateIssueAttributeValues(
-        getTaskTypeAttributes(hierarchy, selectedTaskType),
-        object as unknown as Record<string, unknown>
+      const draftValues = object as unknown as Record<string, unknown>
+      const issueAttributeValues = getCreateIssueAttributeValues(
+        getCreateIssueAttributes(hierarchy),
+        draftValues,
+        customFields.attributes
       )
+      const taskTypeTargetClass = selectedTaskType?.targetClass
+      const taskTypeAttributes = getTaskTypeAttributes(hierarchy, selectedTaskType)
       if (taskTypeTargetClass !== undefined && hierarchy.isMixin(taskTypeTargetClass)) {
-        const attributes = {
-          ...customFields.mixins.get(taskTypeTargetClass),
-          ...taskTypeValues
-        }
+        const attributes = getCreateIssueAttributeValues(
+          taskTypeAttributes,
+          draftValues,
+          customFields.mixins.get(taskTypeTargetClass)
+        )
         if (Object.keys(attributes).length > 0) customFields.mixins.set(taskTypeTargetClass, attributes)
       }
 
       const value: DocData<Issue> = {
-        ...customFields.attributes,
-        ...(taskTypeTargetClass !== undefined && !hierarchy.isMixin(taskTypeTargetClass) ? taskTypeValues : {}),
+        ...issueAttributeValues,
+        ...(taskTypeTargetClass !== undefined && !hierarchy.isMixin(taskTypeTargetClass)
+          ? getCreateIssueAttributeValues(taskTypeAttributes, draftValues, issueAttributeValues)
+          : {}),
         title: normalizeIssueTitle(object.title),
         description: null,
         assignee: object.assignee,
