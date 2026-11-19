@@ -28,6 +28,10 @@ const UNORDERED_MODES = new Set<string>([
   view.filter.FilterArrayAny
 ])
 
+// "Value is" / "is not" store each value as a [value, rawValues] pair, where rawValues
+// lists the stored values shown under that label, in the order the query returned them.
+const PAIR_MODES = new Set<string>([view.filter.FilterValueIn, view.filter.FilterValueNin])
+
 // JSON.stringify(undefined) is undefined; inside an array it is written as null.
 // Values of these modes are primitives (ids, numbers, null), or for "Value is" / "is not"
 // a [value, rawValues] pair of primitives: no objects, so equal values give equal JSON text.
@@ -35,15 +39,27 @@ function valueKey (value: unknown): string {
   return JSON.stringify(value) ?? 'null'
 }
 
+function sortByKey (values: unknown[]): unknown[] {
+  return values
+    .map((v) => ({ v, k: valueKey(v) }))
+    .sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0))
+    .map(({ v }) => v)
+}
+
+// The order inside rawValues has no meaning either: sort it too, so a pair rebuilt
+// from a different query order still compares equal.
+function normalizePair (value: unknown): unknown {
+  if (Array.isArray(value) && value.length === 2 && Array.isArray(value[1])) {
+    return [value[0], sortByKey(value[1])]
+  }
+  return value
+}
+
 function normalizeFilter (filter: Filter): Filter {
-  const value =
-    UNORDERED_MODES.has(filter.mode) && Array.isArray(filter.value)
-      ? [...filter.value].sort((a, b) => {
-          const ka = valueKey(a)
-          const kb = valueKey(b)
-          return ka < kb ? -1 : ka > kb ? 1 : 0
-        })
-      : filter.value
+  let value = filter.value
+  if (UNORDERED_MODES.has(filter.mode) && Array.isArray(value)) {
+    value = sortByKey(PAIR_MODES.has(filter.mode) ? value.map(normalizePair) : value)
+  }
   const nested = filter.nested !== undefined ? normalizeFilter(filter.nested) : undefined
   return { ...filter, value, ...(nested !== undefined ? { nested } : {}) }
 }
