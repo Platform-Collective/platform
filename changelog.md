@@ -13,6 +13,8 @@ Changelog.
   including split-horizon DNS. Development Compose includes its configured service origins.
 - Print subresources reject private and reserved addresses unless the host and
   port are explicitly allowed. Inline `data:` and `blob:` images remain supported.
+- File preview availability checkers must resolve to `true`; `undefined`, `false`, missing resources, and failures
+  make that viewer unavailable and allow the next matching viewer to be selected.
 
 ## [0.7.423] - 2026-05-10
 
