@@ -55,7 +55,7 @@ export function createFilterQueryComposer ({
   return async (base, filters): Promise<void> => {
     // Capture ownership before queueing. Index reuse cannot revive an old call,
     // and only the latest requested composition may dispatch.
-    const lifetime = new FilterQueryLifetime(filters.map((filter) => filter.index))
+    const lifetime = FilterQueryLifetime.register(filters.map((filter) => filter.index))
     await compose(base, filters, lifetime, ++queryRequest)
   }
 }

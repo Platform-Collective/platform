@@ -2,6 +2,8 @@
 // Licensed under the Eclipse Public License, Version 2.0
 
 const owners = new Map<number, AbortController>()
+const cancelledController = new AbortController()
+cancelledController.abort()
 
 function getSignal (index: number): AbortSignal {
   let owner = owners.get(index)
@@ -23,8 +25,16 @@ export function cancelFilterQuery (index: number): void {
 export class FilterQueryLifetime {
   private readonly signals: AbortSignal[]
 
-  constructor (indexes: number[]) {
-    this.signals = indexes.map(getSignal)
+  private constructor (signals: AbortSignal[]) {
+    this.signals = signals
+  }
+
+  static register (indexes: number[]): FilterQueryLifetime {
+    return new FilterQueryLifetime(indexes.map(getSignal))
+  }
+
+  static capture (index: number): FilterQueryLifetime {
+    return new FilterQueryLifetime([owners.get(index)?.signal ?? cancelledController.signal])
   }
 
   isActive (): boolean {

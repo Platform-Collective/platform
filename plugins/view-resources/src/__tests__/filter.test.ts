@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: EPL-2.0
 
 import type { Doc, Ref } from '@hcengineering/core'
+import { createQuery, getClient } from '@hcengineering/presentation'
 import type { Filter } from '@hcengineering/view'
 import { get } from 'svelte/store'
-import { filterStore, setFilters, updateFilter } from '../filter'
+import { filterStore, nestedMatchResult, setFilters, updateFilter } from '../filter'
 
 jest.mock('@hcengineering/presentation', () => ({ createQuery: jest.fn(), getClient: jest.fn() }))
 jest.mock('@hcengineering/platform', () => ({ getResource: jest.fn() }))
@@ -43,5 +44,16 @@ describe('filter indexes', () => {
     updateFilter(replacement)
 
     expect(get(filterStore)).toEqual([mockFilter(1), replacement])
+  })
+
+  it('does not recreate a query when a removed filter resolves late', async () => {
+    const filter = { ...mockFilter(1), nested: mockFilter(1) }
+    setFilters([filter])
+    setFilters([])
+    jest.mocked(createQuery).mockClear()
+
+    await expect(nestedMatchResult(filter, jest.fn())).resolves.toEqual({ $in: [] })
+    expect(createQuery).not.toHaveBeenCalled()
+    expect(getClient).not.toHaveBeenCalled()
   })
 })

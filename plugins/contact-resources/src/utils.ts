@@ -189,6 +189,7 @@ export async function getRefs (
   inboxNotificationsByContext?: Map<Ref<DocNotifyContext>, InboxNotification[]>
 ): Promise<Array<Ref<Doc>>> {
   const lifetime = FilterQuery.getLifetime(filter.index)
+  if (!lifetime.isActive()) return []
   const lq = FilterQuery.getLiveQuery(filter.index)
   const client = getClient()
   const mode = await lifetime.waitFor(client.findOne(view.class.FilterMode, { _id: filter.mode }))

@@ -78,7 +78,7 @@ export async function makeFilterQuery (
     resolveResource,
     hierarchy,
     refresh,
-    new FilterQueryLifetime([])
+    FilterQueryLifetime.register([])
   )) as DocumentQuery<Doc>
 }
 
@@ -89,11 +89,11 @@ export async function makeFilterQueryWithLifetime (
   resolveResource: ResourceResolver = defaultResolveResource,
   hierarchy?: Hierarchy,
   refresh: () => void = (): void => {},
-  lifetime = new FilterQueryLifetime(filters.map((filter) => filter.index))
+  lifetime = FilterQueryLifetime.register(filters.map((filter) => filter.index))
 ): Promise<DocumentQuery<Doc> | undefined> {
   // Composition cancellation includes siblings, but a retained subscription's
   // refresh belongs only to its own generation. Capture both before any await.
-  const filterLifetimes = filters.map((filter) => new FilterQueryLifetime([filter.index]))
+  const filterLifetimes = filters.map((filter) => FilterQueryLifetime.register([filter.index]))
   const out: DocumentQuery<Doc> = cloneQuery(base, hierarchy)
   for (let i = 0; i < filters.length; i++) {
     const filter = filters[i]

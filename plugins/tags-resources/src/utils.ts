@@ -29,6 +29,7 @@ export function getTagStyle (color: ColorDefinition, selected = false): string {
 
 export async function getRefs (filter: Filter, onUpdate: () => void): Promise<Array<Ref<Doc>>> {
   const lifetime = FilterQuery.getLifetime(filter.index)
+  if (!lifetime.isActive()) return []
   const lq = FilterQuery.getLiveQuery(filter.index)
   const promise = new Promise<Array<Ref<Doc>>>((resolve) => {
     const level = filter.props?.level ?? 0

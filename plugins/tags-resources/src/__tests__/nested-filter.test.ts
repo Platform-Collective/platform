@@ -640,7 +640,7 @@ describe('nested vacancy label subscriptions', () => {
       const filter = nestedFilter()
       delete filter.onRemove
       setFilters([filter])
-      const lifetime = new FilterQueryLifetime([filter.index])
+      const lifetime = FilterQueryLifetime.register([filter.index])
       const resolveMode = jest.fn(async (): Promise<FilterMode> => {
         if (stage === 'mode') {
           lookup.resolve(undefined)

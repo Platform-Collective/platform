@@ -31,7 +31,9 @@ export const selectedFilterStore = writable<FilteredView | undefined>()
 export function setFilters (filters: Filter[]): void {
   const old = get(filterStore)
   old.forEach(disposeFilter)
-  filterStore.set(ensureUniqueFilterIndexes(filters))
+  const next = ensureUniqueFilterIndexes(filters)
+  for (const filter of next) FilterQueryLifetime.register([filter.index])
+  filterStore.set(next)
 }
 
 function ensureUniqueFilterIndexes (filters: Filter[]): Filter[] {
@@ -62,6 +64,7 @@ export function removeFilter (i: number): void {
 export function updateFilter (filter: Filter): void {
   const old = get(filterStore)
   const index = old.findIndex((p) => p.index === filter.index)
+  if (index === -1) FilterQueryLifetime.register([filter.index])
   // Build a new array instead of mutating `old` in place.
   filterStore.set(index === -1 ? [...old, filter] : old.map((p, idx) => (idx === index ? filter : p)))
 }
@@ -199,7 +202,7 @@ export const FilterQuery = {
   results: new Map<number | LiveQuery, Array<Ref<Doc>>>(),
 
   getLifetime (index: number): FilterQueryLifetime {
-    return new FilterQueryLifetime([index])
+    return FilterQueryLifetime.capture(index)
   },
   getLiveQuery (index: number, scope: string = 'value'): LiveQuery {
     let queries = this.queries.get(index)
