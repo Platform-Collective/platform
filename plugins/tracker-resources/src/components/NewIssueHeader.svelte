@@ -113,14 +113,14 @@
     {
       id: tracker.string.ShowProjectOwners,
       label: tracker.string.ShowProjectOwners,
-      callback: () => {
+      callback: (): void => {
         void showProjectOwnersAction()
       }
     },
     {
       id: tracker.string.HideProjectOwners,
       label: tracker.string.HideProjectOwners,
-      callback: () => {
+      callback: (): void => {
         void hideProjectOwnersAction()
       }
     }

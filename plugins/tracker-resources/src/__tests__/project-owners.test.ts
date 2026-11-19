@@ -77,9 +77,9 @@ describe('project owners in the navigator', () => {
     const client = {
       findOne: jest
         .fn()
-        .mockImplementationOnce(() => {
+        .mockImplementationOnce(async () => {
           signalFindOne()
-          return Promise.resolve(undefined)
+          return undefined
         })
         .mockResolvedValueOnce(pref),
       createDoc: jest.fn().mockReturnValue(createPending),

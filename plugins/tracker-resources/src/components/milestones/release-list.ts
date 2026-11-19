@@ -21,6 +21,8 @@ export async function loadMilestoneIssues (
 }
 
 function plain (value: string): string {
+  // Only angle brackets need HTML escaping in this plain-text Markdown output.
+  // eslint-disable-next-line secure-coding/no-improper-sanitization
   return escapeMarkdownLinkText(value.replace(/\r\n?|\n/g, ' '))
     .replace(/[*_`#~]/g, '\\$&')
     .replace(/</g, '&lt;')
