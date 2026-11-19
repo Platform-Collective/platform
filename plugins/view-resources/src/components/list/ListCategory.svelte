@@ -45,7 +45,7 @@
   import { fade } from 'svelte/transition'
   import { showMenu } from '../../actions'
   import { FocusSelection, SelectionFocusProvider, focusStore } from '../../selection'
-  import { getCategoryDropIndex, isPointInside, removeDragPreview } from './category-drag'
+  import { getCategoryDropIndex, isPointInside, removeDragPreview, rollbackCategoryDrop } from './category-drag'
   import ListHeader from './ListHeader.svelte'
   import ListItem from './ListItem.svelte'
 
@@ -320,9 +320,13 @@
         }
       } catch {}
     }
+    const previewId = dragPreviewId
+    const revert = dragItem.revert
     dragItem.completing = drop(update)
     void dragItem.completing.catch((error) => {
-      dragItem.revert?.()
+      items = rollbackCategoryDrop(items, previewId, revert)
+      if (dragPreviewId === previewId) dragPreviewId = undefined
+      dragItemIndex = undefined
       Analytics.handleError(error)
     })
   }

@@ -25,3 +25,12 @@ export function removeDragPreview<T extends { _id: string }> (items: T[], previe
   if (previewId === undefined) return items
   return items.filter((item) => item._id !== previewId)
 }
+
+export function rollbackCategoryDrop<T extends { _id: string }> (
+  items: T[],
+  previewId: string | undefined,
+  revert: (() => void) | undefined
+): T[] {
+  revert?.()
+  return removeDragPreview(items, previewId)
+}

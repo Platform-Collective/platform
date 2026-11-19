@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { getCategoryDropIndex, isPointInside, removeDragPreview } from '../components/list/category-drag'
+import {
+  getCategoryDropIndex,
+  isPointInside,
+  removeDragPreview,
+  rollbackCategoryDrop
+} from '../components/list/category-drag'
 
 function dragEvent (clientY: number, clientX = 250): MouseEvent {
   return {
@@ -70,5 +75,16 @@ describe('cancelled category preview', () => {
     const items = [{ _id: 'first' }, { _id: 'second' }]
 
     expect(removeDragPreview(items, undefined)).toBe(items)
+  })
+})
+
+describe('failed category drop', () => {
+  it('removes the target preview and restores the source row', () => {
+    const existing = { _id: 'existing' }
+    const preview = { _id: 'preview' }
+    const revert = jest.fn()
+
+    expect(rollbackCategoryDrop([existing, preview], preview._id, revert)).toEqual([existing])
+    expect(revert).toHaveBeenCalledTimes(1)
   })
 })
