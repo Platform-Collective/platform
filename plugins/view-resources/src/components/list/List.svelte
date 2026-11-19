@@ -105,7 +105,9 @@
   // Some attributes (e.g. statuses) are not ordered by their stored value, see getOrderBySorting.
   let orderBySorting: { orderBy: OrderOption, sort: SortingQuery<Doc> } | undefined
   let orderSortReady = false
+  let orderSortRequest = 0
   const updateOrderBySorting = reduceCalls(async function (
+    request: number,
     _class: Ref<Class<Doc>>,
     orderBy: OrderOption | undefined,
     space: Ref<Space> | undefined,
@@ -118,13 +120,14 @@
       return
     }
     const sort = await getOrderBySorting(client, _class, orderBy, space, statuses, statusesReady)
-    if (sort === undefined) return
+    if (request !== orderSortRequest || sort === undefined) return
     orderBySorting = { orderBy, sort }
     orderSortReady = true
   })
   $: {
+    const request = ++orderSortRequest
     orderSortReady = false
-    void updateOrderBySorting(_class, orderBy, space, $statusStore.array, $statusStore.ready)
+    void updateOrderBySorting(request, _class, orderBy, space, $statusStore.array, $statusStore.ready)
   }
 
   $: orderSort =
