@@ -59,6 +59,43 @@ describe('project owners in the navigator', () => {
     expect(get(showProjectOwners)).toBe(false)
   })
 
+  it('serializes simultaneous first choices so only one preference is created', async () => {
+    const pref = {
+      _id: 'pref',
+      _class: 'tracker:class:ProjectNavigatorPreference',
+      space: 'core:space:Workspace',
+      showProjectOwners: false
+    }
+    let signalFindOne!: () => void
+    const findOneCalled = new Promise<void>((resolve) => {
+      signalFindOne = resolve
+    })
+    let resolveCreate!: () => void
+    const createPending = new Promise<void>((resolve) => {
+      resolveCreate = resolve
+    })
+    const client = {
+      findOne: jest
+        .fn()
+        .mockImplementationOnce(() => {
+          signalFindOne()
+          return Promise.resolve(undefined)
+        })
+        .mockResolvedValueOnce(pref),
+      createDoc: jest.fn().mockReturnValue(createPending),
+      updateDoc: jest.fn()
+    }
+
+    const first = setShowProjectOwners(client as unknown as TxOperations, false)
+    const second = setShowProjectOwners(client as unknown as TxOperations, false)
+    await findOneCalled
+    expect(client.findOne).toHaveBeenCalledTimes(1)
+    resolveCreate()
+    await Promise.all([first, second])
+    expect(client.createDoc).toHaveBeenCalledTimes(1)
+    expect(client.updateDoc).not.toHaveBeenCalled()
+  })
+
   it('updates the existing preference instead of creating a second one', async () => {
     const pref = {
       _id: 'pref',

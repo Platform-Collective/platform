@@ -34,19 +34,26 @@ export function watchProjectOwnersPreference (): void {
   )
 }
 
+// Serialize read/create/write cycles so repeated actions cannot create duplicate preference documents.
+let preferenceWrite: Promise<void> = Promise.resolve()
+
 export async function setShowProjectOwners (client: TxOperations, value: boolean): Promise<void> {
-  const current = await client.findOne(tracker.class.ProjectNavigatorPreference, {
-    attachedTo: navigatorPreferenceTarget
-  })
-  if (current === undefined) {
-    await client.createDoc(tracker.class.ProjectNavigatorPreference, core.space.Workspace, {
-      attachedTo: navigatorPreferenceTarget,
-      showProjectOwners: value
+  const write = preferenceWrite.then(async () => {
+    const current = await client.findOne(tracker.class.ProjectNavigatorPreference, {
+      attachedTo: navigatorPreferenceTarget
     })
-  } else if (current.showProjectOwners !== value) {
-    await client.updateDoc(current._class, current.space, current._id, { showProjectOwners: value })
-  }
-  showProjectOwners.set(value)
+    if (current === undefined) {
+      await client.createDoc(tracker.class.ProjectNavigatorPreference, core.space.Workspace, {
+        attachedTo: navigatorPreferenceTarget,
+        showProjectOwners: value
+      })
+    } else if (current.showProjectOwners !== value) {
+      await client.updateDoc(current._class, current.space, current._id, { showProjectOwners: value })
+    }
+    showProjectOwners.set(value)
+  })
+  preferenceWrite = write.catch(() => {})
+  await write
 }
 
 export async function showProjectOwnersAction (): Promise<void> {
