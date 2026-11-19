@@ -615,6 +615,8 @@
   }
 
   .activityMessage.timeline-event {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.5rem;
     min-height: 2.5rem;
@@ -655,7 +657,7 @@
     }
 
     > .actions {
-      top: 0.25rem;
+      position: static;
     }
 
     &:focus-within > .actions:not(.pending) {
