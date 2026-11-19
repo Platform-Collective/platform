@@ -53,9 +53,14 @@
   let show: boolean = false
   let canDelete = false
 
-  $: void updateChannelCanDelete(channel, () => channel, canDeleteObject, (allowed) => {
-    canDelete = allowed
-  })
+  $: void updateChannelCanDelete(
+    channel,
+    () => channel,
+    canDeleteObject,
+    (allowed) => {
+      canDelete = allowed
+    }
+  )
 
   const copyChannel = (): void => {
     if (label === plugin.string.CopyToClipboard) {
