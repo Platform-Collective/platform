@@ -567,21 +567,23 @@
     }
 
     > .actions:not(.pending) {
-      // Preserve keyboard access and the reserved grid space while hidden. The pointer is always over the card
-      // when it reaches the toolbar, so the toolbar is visible before it can be clicked.
+      // Preserve keyboard access and the reserved grid space without leaving an invisible pointer target.
       visibility: visible;
       opacity: 0;
+      pointer-events: none;
     }
 
     &:hover:not(:has(.reply:hover)) > .actions:not(.pending),
     &:focus-within:not(:has(.reply:focus-within)) > .actions:not(.pending),
     &.actionsOpened > .actions:not(.pending) {
       opacity: 1;
+      pointer-events: auto;
     }
 
     @media (hover: none) {
       > .actions:not(.pending) {
         opacity: 1;
+        pointer-events: auto;
       }
     }
   }
