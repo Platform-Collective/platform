@@ -2,6 +2,7 @@
 
 import core, {
   AccountRole,
+  ClassifierKind,
   Hierarchy,
   MeasureMetricsContext,
   systemAccount,
@@ -10,6 +11,7 @@ import core, {
   type Class,
   type Data,
   type Doc,
+  type DocumentUpdate,
   type PersonId,
   type Ref,
   type SessionData,
@@ -80,7 +82,6 @@ async function makeMiddleware (
   context: PipelineContext
 }> {
   const hierarchy = new Hierarchy()
-  jest.spyOn(hierarchy, 'getDescendants').mockReturnValue([])
   const context: PipelineContext = {
     hierarchy,
     modelDb: { findAllSync: () => validators } as unknown as PipelineContext['modelDb'],
@@ -107,16 +108,16 @@ describe('TxValidatorMiddleware', () => {
     validate.mockReset()
   })
 
-  it('passes transactions through without lookups when no validators are registered', async () => {
+  it('passes transactions through without document or ancestor lookups when no validators are registered', async () => {
     const { middleware, next, hierarchy } = await makeMiddleware()
     const tx = createTx()
-    const getDescendants = jest.spyOn(hierarchy, 'getDescendants')
+    const getAncestors = jest.spyOn(hierarchy, 'getAncestors')
 
     await middleware.tx(makeCtx(), [tx])
 
     expect(next.tx).toHaveBeenCalledWith(expect.anything(), [tx])
     expect(next.findAll).not.toHaveBeenCalled()
-    expect(getDescendants).not.toHaveBeenCalled()
+    expect(getAncestors).not.toHaveBeenCalled()
   })
 
   it('rejects with the validator status without storing the transaction', async () => {
@@ -376,5 +377,85 @@ describe('TxValidatorMiddleware', () => {
     await middleware.tx(makeCtx(), [other])
     expect(next.tx).toHaveBeenCalledTimes(1)
     expect(next.tx).toHaveBeenCalledWith(expect.anything(), [other])
+  })
+  describe('classes created at runtime', () => {
+    const root = 'test:class:Root' as Ref<Class<Doc>>
+
+    function addClass (hierarchy: Hierarchy, _id: Ref<Class<Doc>>, extendsClass?: Ref<Class<Doc>>): void {
+      hierarchy.tx(
+        factory.createTxCreateDoc(
+          core.class.Class,
+          core.space.Model,
+          { extends: extendsClass, kind: ClassifierKind.CLASS } as unknown as Data<Class<Doc>>,
+          _id
+        )
+      )
+    }
+
+    function createIn (_class: Ref<Class<Doc>>): TxCUD<Doc> {
+      return factory.createTxCreateDoc(_class, core.space.Workspace, {})
+    }
+
+    it('validates a subclass created after the middleware was built', async () => {
+      const { middleware, next, hierarchy } = await makeMiddleware([makeValidator()])
+      addClass(hierarchy, root)
+      addClass(hierarchy, testClass, root)
+      const subclass = 'test:class:RuntimeSub' as Ref<Class<Doc>>
+      const before = createIn(testClass)
+      await middleware.tx(makeCtx(), [before])
+      expect(validate).toHaveBeenCalledTimes(1)
+
+      addClass(hierarchy, subclass, testClass)
+      const tx = createIn(subclass)
+      await middleware.tx(makeCtx(), [tx])
+
+      expect(validate).toHaveBeenCalledTimes(2)
+      expect(validate).toHaveBeenLastCalledWith([tx], expect.anything())
+      expect(next.tx).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not cache a miss for a class that is created later', async () => {
+      const { middleware, hierarchy } = await makeMiddleware([makeValidator()])
+      addClass(hierarchy, root)
+      addClass(hierarchy, testClass, root)
+      const late = 'test:class:Late' as Ref<Class<Doc>>
+
+      await middleware.tx(makeCtx(), [createIn(late)])
+      expect(validate).not.toHaveBeenCalled()
+
+      addClass(hierarchy, late, testClass)
+      await middleware.tx(makeCtx(), [createIn(late)])
+      expect(validate).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not validate unrelated classes after other classes are created', async () => {
+      const { middleware, hierarchy } = await makeMiddleware([makeValidator()])
+      addClass(hierarchy, root)
+      addClass(hierarchy, testClass, root)
+      const unrelated = 'test:class:Unrelated' as Ref<Class<Doc>>
+      addClass(hierarchy, unrelated, root)
+      await middleware.tx(makeCtx(), [createIn(unrelated)])
+
+      addClass(hierarchy, 'test:class:Another' as Ref<Class<Doc>>, testClass)
+      await middleware.tx(makeCtx(), [createIn(unrelated)])
+
+      expect(validate).not.toHaveBeenCalled()
+    })
+
+    it('follows a class that is moved below the validated class', async () => {
+      const { middleware, hierarchy } = await makeMiddleware([makeValidator()])
+      addClass(hierarchy, root)
+      addClass(hierarchy, testClass, root)
+      const moved = 'test:class:Moved' as Ref<Class<Doc>>
+      addClass(hierarchy, moved, root)
+      await middleware.tx(makeCtx(), [createIn(moved)])
+      expect(validate).not.toHaveBeenCalled()
+
+      const update = { extends: testClass } as unknown as DocumentUpdate<Doc>
+      hierarchy.tx(factory.createTxUpdateDoc(core.class.Class, core.space.Model, moved, update))
+      await middleware.tx(makeCtx(), [createIn(moved)])
+
+      expect(validate).toHaveBeenCalledTimes(1)
+    })
   })
 })

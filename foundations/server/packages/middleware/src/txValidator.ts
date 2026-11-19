@@ -6,6 +6,7 @@ import core, {
   systemAccountUuid,
   TxProcessor,
   type Class,
+  type Classifier,
   type Doc,
   type MeasureContext,
   type Ref,
@@ -43,9 +44,17 @@ interface ValidatorRecord {
   includeSystem: boolean
 }
 
+interface ResolvedRecords {
+  ancestors: Ref<Classifier>[]
+  records: ValidatorRecord[]
+}
+
 /** Runs model-provided validators before transactions reach storage. */
 export class TxValidatorMiddleware extends BaseMiddleware implements Middleware {
-  private readonly validators = new Map<Ref<Class<Doc>>, ValidatorRecord[]>()
+  private readonly records: ValidatorRecord[] = []
+  // Validators per object class, resolved lazily so that classes created after start-up are covered.
+  // An entry is valid while the ancestor chain it was computed from is still the hierarchy's current one.
+  private readonly resolved = new Map<Ref<Class<Doc>>, ResolvedRecords>()
 
   private constructor (context: PipelineContext, next: Middleware | undefined, derived: boolean) {
     super(context, next)
@@ -71,11 +80,23 @@ export class TxValidatorMiddleware extends BaseMiddleware implements Middleware 
       txMatch: validator.txMatch !== undefined ? clone(validator.txMatch) : undefined,
       includeSystem: validator.includeSystem === true
     }
-    for (const _class of [validator.objectClass, ...this.context.hierarchy.getDescendants(validator.objectClass)]) {
-      const records = this.validators.get(_class) ?? []
-      records.push(record)
-      this.validators.set(_class, records)
+    this.records.push(record)
+  }
+
+  /** Validators registered for the class or one of its ancestors. */
+  private recordsFor (_class: Ref<Class<Doc>>): ValidatorRecord[] {
+    const hierarchy = this.context.hierarchy
+    if (!hierarchy.hasClass(_class)) {
+      // Not known (yet): never cache, the class may be created later.
+      return this.records.filter((it) => it.objectClass === _class)
     }
+    // The chain is rebuilt (new array) whenever the hierarchy changes, which invalidates the entry.
+    const ancestors = hierarchy.getAncestors(_class)
+    const cached = this.resolved.get(_class)
+    if (cached !== undefined && cached.ancestors === ancestors) return cached.records
+    const records = this.records.filter((it) => it.objectClass === _class || ancestors.includes(it.objectClass))
+    this.resolved.set(_class, { ancestors, records })
+    return records
   }
 
   async tx (ctx: MeasureContext<SessionData>, txes: Tx[]): Promise<TxMiddlewareResult> {
@@ -92,13 +113,13 @@ export class TxValidatorMiddleware extends BaseMiddleware implements Middleware 
     if (!isSystem && cudTxes.some((tx) => this.isValidatorWrite(tx))) {
       throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
     }
-    if (this.validators.size === 0) {
+    if (this.records.length === 0) {
       return await this.provideTx(ctx, txes)
     }
 
     const records = new Set<ValidatorRecord>()
     for (const tx of cudTxes) {
-      for (const record of this.validators.get(tx.objectClass) ?? []) {
+      for (const record of this.recordsFor(tx.objectClass)) {
         if (!isSystem || record.includeSystem) {
           records.add(record)
         }
@@ -118,7 +139,7 @@ export class TxValidatorMiddleware extends BaseMiddleware implements Middleware 
       current: async (tx) => await this.current(ctx, cudTxes, originals.get(tx) ?? tx)
     }
     for (const record of records) {
-      let matches = cudTxes.filter((tx) => this.validators.get(tx.objectClass)?.includes(record) === true)
+      let matches = cudTxes.filter((tx) => this.recordsFor(tx.objectClass).includes(record))
       if (record.txMatch !== undefined) {
         matches = matchQuery(matches, record.txMatch, core.class.Tx, this.context.hierarchy) as TxCUD<Doc>[]
       }
