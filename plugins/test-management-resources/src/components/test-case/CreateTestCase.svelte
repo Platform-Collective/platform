@@ -98,7 +98,7 @@
         }
       })
     } finally {
-      creation.creating = false
+      creation = creation
     }
   }
 
