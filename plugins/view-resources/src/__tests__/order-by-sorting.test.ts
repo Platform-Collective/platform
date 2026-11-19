@@ -16,6 +16,14 @@ import task from '@hcengineering/task'
 import { getOrderBySorting } from '../order-by-sorting'
 import * as utils from '../utils'
 
+jest.mock('@hcengineering/presentation', () => ({
+  getAttributePresenterClass: (_hierarchy: Hierarchy, type: { to: Ref<Class<Doc>> }) => ({
+    attrClass: type.to,
+    category: 'object'
+  })
+}))
+jest.mock('../utils', () => ({ sortCategories: jest.fn() }))
+
 const statusClass = 'test:class:IssueStatus' as Ref<Class<Status>>
 const projectId = 'test:space:Project' as Ref<Space>
 
