@@ -134,9 +134,7 @@ function LeftMenu (options: LeftMenuOptions, isEditable: () => boolean): Plugin 
           getEventPositionElement(e),
           (val) => {
             if (leftMenuElement === null || !view.editable || val === undefined || val === null) return
-            const pos = insertAtEnd
-              ? view.state.doc.content.size
-              : posAtLeftMenuElement(view, leftMenuElement, offsetX)
+            const pos = insertAtEnd ? view.state.doc.content.size : posAtLeftMenuElement(view, leftMenuElement, offsetX)
             void options.handleSelect(val, pos, e, insertAtEnd)
           }
         )
