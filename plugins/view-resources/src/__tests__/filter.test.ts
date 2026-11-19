@@ -7,7 +7,10 @@ import { get } from 'svelte/store'
 import { FilterQuery, filterStore, nestedMatchResult, setFilters, updateFilter } from '../filter'
 
 jest.mock('@hcengineering/presentation', () => ({ createQuery: jest.fn(), getClient: jest.fn() }))
-jest.mock('@hcengineering/platform', () => ({ getResource: jest.fn() }))
+jest.mock('@hcengineering/platform', () => ({
+  ...jest.requireActual('@hcengineering/platform'),
+  getResource: jest.fn()
+}))
 jest.mock('@hcengineering/ui', () => ({}))
 
 function mockFilter (index: number): Filter {
