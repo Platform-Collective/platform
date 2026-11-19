@@ -290,6 +290,7 @@ describe('nested vacancy label subscriptions', () => {
     expect(source.subscriptions.size).toBe(0)
     expect(FilterQuery.queries.size).toBe(0)
     expect(FilterQuery.results.size).toBe(0)
+    expect(FilterQuery.scopedResults.size).toBe(0)
     refresh.mockClear()
     await source.publish(tags.class.TagReference)
     expect(refresh).not.toHaveBeenCalled()
@@ -314,6 +315,7 @@ describe('nested vacancy label subscriptions', () => {
     setFilters([])
     expect(source.subscriptions.size).toBe(0)
     expect(FilterQuery.results.size).toBe(0)
+    expect(FilterQuery.scopedResults.size).toBe(0)
   })
 
   it.each([
@@ -454,6 +456,7 @@ describe('nested vacancy label subscriptions', () => {
       expect(source.subscriptions.size).toBe(0)
       expect(FilterQuery.queries.size).toBe(0)
       expect(FilterQuery.results.size).toBe(0)
+      expect(FilterQuery.scopedResults.size).toBe(0)
     }
   )
 
@@ -473,6 +476,7 @@ describe('nested vacancy label subscriptions', () => {
     expect(source.subscriptions.size).toBe(0)
     expect(FilterQuery.queries.size).toBe(0)
     expect(FilterQuery.results.size).toBe(0)
+    expect(FilterQuery.scopedResults.size).toBe(0)
   })
 
   it('does not subscribe when a removed filter finishes resolving its result resource', async () => {
@@ -500,6 +504,7 @@ describe('nested vacancy label subscriptions', () => {
     expect(source.subscriptions.size).toBe(0)
     expect(FilterQuery.queries.size).toBe(0)
     expect(FilterQuery.results.size).toBe(0)
+    expect(FilterQuery.scopedResults.size).toBe(0)
   })
 
   it.each([tags.class.TagReference, vacancyClass])(
@@ -552,6 +557,7 @@ describe('nested vacancy label subscriptions', () => {
       expect(source.subscriptions.size).toBe(0)
       expect(FilterQuery.queries.size).toBe(0)
       expect(FilterQuery.results.size).toBe(0)
+      expect(FilterQuery.scopedResults.size).toBe(0)
       // Ordinary unsubscribe suppresses these snapshots; cancellation already
       // settled composition and allowed the queued clear to finish above.
       for (const snapshot of snapshots) snapshot()

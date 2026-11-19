@@ -70,5 +70,6 @@ describe('filter indexes', () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1)
     expect(FilterQuery.queries.size).toBe(0)
     expect(FilterQuery.results.size).toBe(0)
+    expect(FilterQuery.scopedResults.size).toBe(0)
   })
 })

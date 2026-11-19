@@ -95,7 +95,7 @@ import {
   type TabItem
 } from '@hcengineering/ui'
 import view, { type Filter, type GrouppingManager, type ObjectPanel } from '@hcengineering/view'
-import { accessDeniedStore, FilterQuery, queryFilterRefs } from '@hcengineering/view-resources'
+import { accessDeniedStore, FILTER_QUERY_VALUE_SCOPE, FilterQuery, queryFilterRefs } from '@hcengineering/view-resources'
 import { type LocationData } from '@hcengineering/workbench'
 import { derived, get, type Readable, writable } from 'svelte/store'
 
@@ -193,7 +193,7 @@ export async function getRefs (
   const lq = FilterQuery.getLiveQuery(filter.index)
   const client = getClient()
   const mode = await lifetime.waitFor(client.findOne(view.class.FilterMode, { _id: filter.mode }))
-  if (mode === undefined || !FilterQuery.isActive(filter.index, 'value', lq)) return []
+  if (mode === undefined || !FilterQuery.isActive(filter.index, FILTER_QUERY_VALUE_SCOPE, lq)) return []
   const hasMessagesQuery = hasMessages === true ? { items: { $gt: 0 } } : {}
   return await queryFilterRefs({
     filter,

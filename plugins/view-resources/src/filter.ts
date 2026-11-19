@@ -192,6 +192,8 @@ export async function dateCustom (filter: Filter): Promise<ObjQueryType<any>> {
   return await dateNotSpecified(filter)
 }
 
+export const FILTER_QUERY_VALUE_SCOPE = 'value'
+
 /**
  * @public
  */
@@ -199,14 +201,13 @@ export const FilterQuery = {
   // A nested filter shares its index with its value resolver. Keep each query
   // stage separate, but retain one owner so removing the filter cleans up all stages.
   queries: new Map<number, Map<string, LiveQuery>>(),
-  // Existing value resolvers use the numeric index; scoped stages use their
-  // subscription identity so their cached IDs cannot overwrite the value IDs.
-  results: new Map<number | LiveQuery, Array<Ref<Doc>>>(),
+  results: new Map<number, Array<Ref<Doc>>>(),
+  scopedResults: new Map<LiveQuery, Array<Ref<Doc>>>(),
 
   getLifetime (index: number): FilterQueryLifetime {
     return FilterQueryLifetime.capture(index)
   },
-  getLiveQuery (index: number, scope: string = 'value'): LiveQuery {
+  getLiveQuery (index: number, scope: string = FILTER_QUERY_VALUE_SCOPE): LiveQuery {
     let queries = this.queries.get(index)
     if (queries === undefined) {
       queries = new Map()
@@ -227,7 +228,7 @@ export const FilterQuery = {
     this.queries.delete(index)
     for (const query of queries?.values() ?? []) {
       query.unsubscribe()
-      this.results.delete(query)
+      this.scopedResults.delete(query)
     }
     this.results.delete(index)
   }
@@ -250,14 +251,13 @@ export async function queryFilterRefs<T extends Doc> ({
   onUpdate,
   lifetime,
   lq,
-  scope = 'value',
+  scope = FILTER_QUERY_VALUE_SCOPE,
   _class,
   query,
   mapResults,
   options
 }: FilterQueryRefsOptions<T>): Promise<Array<Ref<Doc>>> {
   if (!lifetime.isActive() || !FilterQuery.isActive(filter.index, scope, lq)) return []
-  const cacheKey = scope === 'value' ? filter.index : lq
   const promise = new Promise<Array<Ref<Doc>>>((resolve) => {
     const refresh = lq.query(
       _class,
@@ -269,14 +269,17 @@ export async function queryFilterRefs<T extends Doc> ({
           return
         }
         const result = Array.from(new Set(mapResults(refs)))
-        FilterQuery.results.set(cacheKey, result)
+        if (scope === FILTER_QUERY_VALUE_SCOPE) FilterQuery.results.set(filter.index, result)
+        else FilterQuery.scopedResults.set(lq, result)
         resolve(result)
         onUpdate()
       },
       options
     )
     if (!refresh) {
-      resolve(FilterQuery.results.get(cacheKey) ?? [])
+      const cached =
+        scope === FILTER_QUERY_VALUE_SCOPE ? FilterQuery.results.get(filter.index) : FilterQuery.scopedResults.get(lq)
+      resolve(cached ?? [])
     }
   })
   return (await lifetime.waitFor(promise)) ?? []

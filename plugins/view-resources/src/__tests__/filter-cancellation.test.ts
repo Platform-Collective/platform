@@ -44,6 +44,23 @@ describe('filter query cancellation', () => {
     expect(FilterQueryLifetime.capture(filter.index).isActive()).toBe(false)
   })
 
+  it('shares one abort listener between pending operations', async () => {
+    const addEventListener = jest.spyOn(AbortSignal.prototype, 'addEventListener')
+    const lifetime = FilterQueryLifetime.register([filter.index])
+    const pending = new Promise<never>(() => {})
+    const first = lifetime.waitFor(pending)
+    const second = lifetime.waitFor(pending)
+
+    try {
+      expect(addEventListener).toHaveBeenCalledTimes(1)
+      cancelFilterQuery(filter.index)
+      await expect(first).resolves.toBeUndefined()
+      await expect(second).resolves.toBeUndefined()
+    } finally {
+      addEventListener.mockRestore()
+    }
+  })
+
   it.each(['mode', 'resource'] as const)('cancels during %s lookup without reviving a reused index', async (stage) => {
     const lookup = deferred<undefined>()
     const pendingMode = deferred<FilterMode>()
