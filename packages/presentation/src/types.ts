@@ -205,7 +205,7 @@ export type FileOrBlob = File | Blob
 export interface FilePreviewExtension extends ComponentPointExtension {
   // Inherited props are viewer defaults, overridden by caller props and then host values:
   // value, name (including undefined), contentType, metadata, fit and setLoading.
-  // Selection: exact MIME before type/* before */*, then order (missing last), then _id.
+  // Selection: exact MIME before type/* before */*, then order (missing first), then _id.
   // MIME values are literal; only type/* and */* are wildcard patterns.
   contentType: string | string[]
   alignment?: string

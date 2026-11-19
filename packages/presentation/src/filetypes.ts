@@ -128,8 +128,8 @@ function getMimeSpecificity (patterns: string | string[], contentType: string): 
 }
 
 function comparePreviewTypes (a: FilePreviewExtension, b: FilePreviewExtension): number {
-  if (a.order === undefined && b.order !== undefined) return 1
-  if (a.order !== undefined && b.order === undefined) return -1
+  if (a.order === undefined && b.order !== undefined) return -1
+  if (a.order !== undefined && b.order === undefined) return 1
   const order = (a.order ?? 0) - (b.order ?? 0)
   return order || (a._id < b._id ? -1 : a._id > b._id ? 1 : 0)
 }

@@ -58,11 +58,10 @@ describe('file preview selection', () => {
     expect(await getPreviewType('text/html', [viewer('text', 'text/*', -1), exact])).toBe(exact)
   })
 
-  it('uses order only between candidates with equal MIME specificity, missing order last', async () => {
-    const first = viewer('first', 'text/*', 0)
-    expect(await getPreviewType('text/plain', [viewer('missing', 'text/*'), viewer('later', 'text/*', 1), first])).toBe(
-      first
-    )
+  it('uses order only between candidates with equal MIME specificity, missing order first', async () => {
+    const unordered = viewer('missing', 'text/*')
+    const candidates = [viewer('later', 'text/*', 1), viewer('first', 'text/*', 0), unordered]
+    expect(await getPreviewType('text/plain', candidates)).toBe(unordered)
   })
 
   it.each([undefined, 4])('uses a stable ID tie-break with equal order %s', async (order) => {
