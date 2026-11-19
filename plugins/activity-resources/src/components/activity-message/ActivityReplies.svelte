@@ -31,7 +31,7 @@
       { rootMargin: '200px 0px' }
     )
     observer.observe(element)
-    return () => observer.disconnect()
+    return (): void => observer.disconnect()
   })
 
   function showAllReplies(): void {
