@@ -2,6 +2,7 @@
 
 import { CommandManager, type ChainedCommands, type Editor, type Range } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
+import { prepareInsertAtEnd } from './leftMenuEnd'
 
 export const BLOCK_COMMAND_IDS = [
   'heading-1',
@@ -48,14 +49,21 @@ function formatBlock (chain: ChainedCommands, id: BlockCommandId): ChainedComman
   }
 }
 
-export function runBlockCommand (editor: Editor | undefined, id: string, pos: number, range?: Range): boolean {
+export function runBlockCommand (
+  editor: Editor | undefined,
+  id: string,
+  pos: number,
+  range?: Range,
+  insertAtEnd = false
+): boolean {
   if (editor === undefined || !isBlockCommandId(id) || !isBlockCommandAvailable(editor, id)) return false
 
   // Prepare the target explicitly, including side-menu positions that differ
   // from the current cursor. Failed commands keep the query.
   const prepare = (chain: ChainedCommands): ChainedCommands =>
     chain.command(({ tr }) => {
-      tr.setSelection(TextSelection.near(tr.doc.resolve(pos), 1))
+      const targetPos = insertAtEnd ? prepareInsertAtEnd(tr) : pos
+      tr.setSelection(TextSelection.near(tr.doc.resolve(targetPos), 1))
       return true
     })
   const complete = (chain: ChainedCommands): ChainedCommands =>

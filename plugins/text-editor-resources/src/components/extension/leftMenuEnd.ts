@@ -13,8 +13,27 @@
 // limitations under the License.
 //
 
-import { type Node } from '@tiptap/pm/model'
+import { type ChainedCommands, type Content, type Editor } from '@tiptap/core'
+import { type Node, type ParseOptions } from '@tiptap/pm/model'
 import { type Transaction } from '@tiptap/pm/state'
+
+export function prepareCommandAtEnd (editor: Editor): { chain: ChainedCommands, pos: number } {
+  const pos = editor.state.doc.content.size
+  const chain = editor.chain().command(({ tr }) => {
+    prepareInsertAtEnd(tr)
+    return true
+  })
+  return { chain, pos }
+}
+
+export function insertContentAtEnd (
+  editor: Editor,
+  content: Content,
+  options?: { parseOptions?: ParseOptions, updateSelection?: boolean }
+): boolean {
+  const { chain, pos } = prepareCommandAtEnd(editor)
+  return chain.insertContentAt(pos, content, options).run()
+}
 
 export const endZoneClassName = 'tiptap-left-menu-end-zone'
 

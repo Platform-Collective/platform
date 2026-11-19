@@ -173,3 +173,18 @@ it('normalizes side-menu paragraph boundaries independently of the current selec
   expect(editor.state.doc.child(1).attrs.level).toBe(2)
   expect(editor.state.doc.child(1).textContent).toBe('second')
 })
+
+it('inserts a block after a trailing non-paragraph in one undo step', () => {
+  const editor = fixture('<pre><code>code</code></pre>')
+  const initial = editor.getJSON()
+  const pos = editor.state.doc.content.size
+
+  expect(runBlockCommand(editor, 'heading-1', pos, undefined, true)).toBe(true)
+  expect(editor.state.doc.childCount).toBe(2)
+  expect(editor.state.doc.lastChild?.type.name).toBe('heading')
+  const result = editor.getJSON()
+  expect(editor.commands.undo()).toBe(true)
+  expect(editor.getJSON()).toEqual(initial)
+  expect(editor.commands.redo()).toBe(true)
+  expect(editor.getJSON()).toEqual(result)
+})

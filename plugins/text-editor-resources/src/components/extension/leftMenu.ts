@@ -18,7 +18,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import { type Asset, getMetadata } from '@hcengineering/platform'
 import { SelectPopup, getEventPositionElement, showPopup } from '@hcengineering/ui'
-import { createEndZone, endZoneClassName, hasInsertSlotAtEnd, prepareInsertAtEnd } from './leftMenuEnd'
+import { createEndZone, endZoneClassName, hasInsertSlotAtEnd } from './leftMenuEnd'
 
 export interface LeftMenuOptions {
   width: number
@@ -28,7 +28,7 @@ export interface LeftMenuOptions {
   icon: Asset
   iconProps: any
   items: Array<{ id: string, label: string, icon: Asset }>
-  handleSelect: (id: string, pos: number, event: MouseEvent) => Promise<void>
+  handleSelect: (id: string, pos: number, event: MouseEvent, insertAtEnd: boolean) => Promise<void>
 }
 
 function nodeDOMAtCoords (coords: { x: number, y: number }): Element | undefined {
@@ -133,18 +133,11 @@ function LeftMenu (options: LeftMenuOptions, isEditable: () => boolean): Plugin 
           },
           getEventPositionElement(e),
           (val) => {
-            if (leftMenuElement === null || !view.editable) return
-            if (insertAtEnd) {
-              if (val === undefined || val === null) return
-              // Create the trailing paragraph only on an explicit user action
-              const tr = view.state.tr
-              const pos = prepareInsertAtEnd(tr)
-              if (tr.docChanged) view.dispatch(tr)
-              void options.handleSelect(val, pos, e)
-              return
-            }
-            const pos = posAtLeftMenuElement(view, leftMenuElement, offsetX)
-            void options.handleSelect(val, pos, e)
+            if (leftMenuElement === null || !view.editable || val === undefined || val === null) return
+            const pos = insertAtEnd
+              ? view.state.doc.content.size
+              : posAtLeftMenuElement(view, leftMenuElement, offsetX)
+            void options.handleSelect(val, pos, e, insertAtEnd)
           }
         )
       })

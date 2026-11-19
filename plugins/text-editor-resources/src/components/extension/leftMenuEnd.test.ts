@@ -13,9 +13,11 @@
 // limitations under the License.
 //
 
+import { Editor } from '@tiptap/core'
+import StarterKit from '@tiptap/starter-kit'
 import { type Node, Schema } from '@tiptap/pm/model'
 import { EditorState } from '@tiptap/pm/state'
-import { createEndZone, hasInsertSlotAtEnd, prepareInsertAtEnd } from './leftMenuEnd'
+import { createEndZone, hasInsertSlotAtEnd, prepareCommandAtEnd, prepareInsertAtEnd } from './leftMenuEnd'
 
 const schema = new Schema({
   nodes: {
@@ -85,5 +87,33 @@ describe('createEndZone', () => {
     expect(zone.style.width).toBe('100%')
     expect(zone.style.height).toBe('20px')
     expect(zone.contentEditable).toBe('false')
+  })
+})
+
+describe('prepareCommandAtEnd', () => {
+  it('defers changes and combines the trailing paragraph and insertion in one undo step', () => {
+    const editor = new Editor({
+      element: document.createElement('div'),
+      extensions: [StarterKit],
+      content: '<pre><code>code</code></pre>'
+    })
+    const initial = editor.getJSON()
+
+    try {
+      const { chain, pos } = prepareCommandAtEnd(editor)
+      expect(editor.getJSON()).toEqual(initial)
+
+      expect(chain.insertContentAt(pos, { type: 'horizontalRule' }).run()).toBe(true)
+      expect(editor.state.doc.childCount).toBe(3)
+      expect(editor.state.doc.child(1).type.name).toBe('horizontalRule')
+      expect(editor.state.doc.lastChild?.type.name).toBe('paragraph')
+      const result = editor.getJSON()
+      expect(editor.commands.undo()).toBe(true)
+      expect(editor.getJSON()).toEqual(initial)
+      expect(editor.commands.redo()).toBe(true)
+      expect(editor.getJSON()).toEqual(result)
+    } finally {
+      editor.destroy()
+    }
   })
 })
