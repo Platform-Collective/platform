@@ -70,6 +70,9 @@ export async function connectRest (url: string, options: AuthOptions): Promise<R
 }
 
 const rateLimitError = 'rate-limit'
+const maxWriteAttempts = 5
+const defaultRetryAfterMs = 1000
+const minRetryAfterMs = 100
 
 function isRLE (err: any): boolean {
   return err.message === rateLimitError
@@ -273,13 +276,17 @@ export class RestClientImpl implements RestClient {
       const rateLimitReset = response.headers.get('X-RateLimit-Reset')
 
       this.updateRateLimit(response)
-      const waitTime =
+      const requestedWaitTime =
         (retryAfterMS != null ? parseInt(retryAfterMS) : undefined) ??
         (retryAfter != null
           ? parseInt(retryAfter) * 1000
           : rateLimitReset != null
             ? new Date(parseInt(rateLimitReset)).getTime() - Date.now()
-            : 1000) // Default to 1 seconds if no headers are provided
+            : defaultRetryAfterMs)
+      const waitTime =
+        Number.isFinite(requestedWaitTime) && requestedWaitTime > 0
+          ? Math.max(requestedWaitTime, minRetryAfterMs)
+          : defaultRetryAfterMs
       await new Promise((resolve) => setTimeout(resolve, waitTime))
       const failure = new RestHttpError(response.status, rateLimitError)
       failure.retryAfterMs = waitTime
@@ -344,7 +351,9 @@ export class RestClientImpl implements RestClient {
   }
 
   private async sendWrite (requestUrl: string, body: string): Promise<unknown> {
+    let attempts = 0
     while (true) {
+      attempts++
       let response: Response
       try {
         response = await fetch(requestUrl, {
@@ -362,7 +371,7 @@ export class RestClientImpl implements RestClient {
         try {
           await this.checkRateLimits(response)
         } catch (error) {
-          if (isRLE(error)) continue
+          if (isRLE(error) && attempts < maxWriteAttempts) continue
           throw error
         }
       }

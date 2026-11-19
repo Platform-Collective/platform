@@ -38,6 +38,7 @@ describe('REST HTTP errors', () => {
 
   afterEach(() => {
     jest.restoreAllMocks()
+    jest.useRealTimers()
   })
 
   it.each(['[]', 'null', '1', '{}'])('treatsAValidJsonSuccessBodyAsACommittedTransaction (%s)', async (body) => {
@@ -61,7 +62,7 @@ describe('REST HTTP errors', () => {
       if (failure === 'body') return new Response('invalid JSON', { status: 200 })
       if (failure === '') return new Response('', { status: 200 })
       if (typeof failure !== 'number') throw new Error('Unexpected test case')
-      return new Response('sensitive response detail', { status: failure, headers: { 'Retry-After-ms': '0' } })
+      return new Response('sensitive response detail', { status: failure, headers: { 'Retry-After-ms': '100' } })
     })
     const client = publicApi.createRestClient(endpoint, 'workspace', token)
     const error: unknown = await client.tx(transaction).catch((error: unknown) => error)
@@ -79,7 +80,7 @@ describe('REST HTTP errors', () => {
     const fetch = jest.spyOn(globalThis, 'fetch')
     fetch.mockImplementation(async () => {
       if (fetch.mock.calls.length === 1) {
-        return new Response('rate limited', { status: 429, headers: { 'Retry-After-ms': '0' } })
+        return new Response('rate limited', { status: 429, headers: { 'Retry-After-ms': '100' } })
       }
       return Response.json({})
     })
@@ -88,6 +89,45 @@ describe('REST HTTP errors', () => {
     await expect(client.tx(transaction)).resolves.toEqual({})
     expect(fetch).toHaveBeenCalledTimes(2)
     expect(fetch.mock.calls[0][1]?.body).toBe(fetch.mock.calls[1][1]?.body)
+  })
+
+  it.each([
+    { name: 'malformed Retry-After-ms', headers: { 'Retry-After-ms': 'invalid' } },
+    { name: 'HTTP-date Retry-After', headers: { 'Retry-After': 'Wed, 21 Oct 2015 07:28:00 GMT' } },
+    { name: 'past X-RateLimit-Reset', headers: { 'X-RateLimit-Reset': '1' } }
+  ])('uses a safe retry delay for $name', async ({ headers }) => {
+    jest.useFakeTimers()
+    const timeout = jest.spyOn(globalThis, 'setTimeout')
+    const fetch = jest.spyOn(globalThis, 'fetch')
+    fetch.mockImplementation(async () => {
+      if (fetch.mock.calls.length === 1) return new Response('rate limited', { status: 429, headers })
+      return Response.json({})
+    })
+    const client = publicApi.createRestClient(endpoint, 'workspace', token)
+
+    const result = client.tx(transaction)
+    await jest.runAllTimersAsync()
+    await expect(result).resolves.toEqual({})
+    expect(timeout).toHaveBeenCalledWith(expect.any(Function), 1000)
+  })
+
+  it('stops retrying a write after five rate-limited attempts', async () => {
+    jest.useFakeTimers()
+    const timeout = jest.spyOn(globalThis, 'setTimeout')
+    const fetch = jest.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      return new Response('rate limited', { status: 429, headers: { 'Retry-After-ms': '1' } })
+    })
+    const client = publicApi.createRestClient(endpoint, 'workspace', token)
+
+    const result = client.tx(transaction).catch((error: unknown) => error)
+    await jest.runAllTimersAsync()
+    const error: unknown = await result
+    expect(fetch).toHaveBeenCalledTimes(5)
+    expect(timeout).toHaveBeenCalledWith(expect.any(Function), 100)
+    expect(error).toBeInstanceOf(publicApi.RestHttpError)
+    expect(error).toHaveProperty('httpStatus', 429)
+    expect(error).toHaveProperty('retryAfterMs', 100)
+    expect(error).toHaveProperty('rejectedBeforeWrite', true)
   })
 
   it.each(['network', 'body', 500, 503])('never replays a v1 write after %s', async (failure) => {
@@ -110,7 +150,7 @@ describe('REST HTTP errors', () => {
     const fetch = jest.spyOn(globalThis, 'fetch')
     fetch.mockImplementation(async () => {
       if (fetch.mock.calls.length === 1) {
-        return new Response('rate limited', { status: 429, headers: { 'Retry-After-ms': '0' } })
+        return new Response('rate limited', { status: 429, headers: { 'Retry-After-ms': '100' } })
       }
       return Response.json('created-doc')
     })
@@ -175,7 +215,7 @@ describe('REST HTTP errors', () => {
         new Response(body, {
           status: 429,
           statusText: `${token} ${endpoint} ${body}`,
-          headers: { 'Retry-After-ms': '0' }
+          headers: { 'Retry-After-ms': '100' }
         })
     )
     const client = publicApi.createRestClient(endpoint, 'workspace', token)
@@ -184,7 +224,7 @@ describe('REST HTTP errors', () => {
     expect(failure).toHaveProperty('httpStatus', 429)
     expect(failure).toBeInstanceOf(Reflect.get(publicApi, 'RestHttpError'))
     expect((failure as Error).message).toBe('rate-limit')
-    expect(failure).toHaveProperty('retryAfterMs', 0)
+    expect(failure).toHaveProperty('retryAfterMs', 100)
     expect(failure).toHaveProperty('rejectedBeforeWrite', true)
     expect(log).not.toHaveBeenCalled()
     expect(warn).not.toHaveBeenCalled()
