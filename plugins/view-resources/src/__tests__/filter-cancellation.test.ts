@@ -11,7 +11,7 @@ const filter: Filter = {
   key: {
     _class: 'test:class:Doc' as Filter['key']['_class'],
     key: 'value',
-    attribute: undefined as Filter['key']['attribute'],
+    attribute: undefined as unknown as Filter['key']['attribute'],
     label: 'test:string:Value' as Filter['key']['label'],
     component: 'test:component:Filter' as Filter['key']['component']
   },
