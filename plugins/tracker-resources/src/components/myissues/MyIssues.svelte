@@ -48,8 +48,11 @@
     let timer: ReturnType<typeof setTimeout>
     const refresh = (): void => {
       clearTimeout(timer)
-      today = new Date()
-      timer = setTimeout(refresh, nextDayDelay(today))
+      const now = new Date()
+      if (now.toDateString() !== today.toDateString()) {
+        today = now
+      }
+      timer = setTimeout(refresh, nextDayDelay(now))
     }
     refresh()
     window.addEventListener('focus', refresh)
@@ -70,7 +73,10 @@
       dueStatuses = result
     }
   )
-  $: due = getDueQuery(employee, dueStatuses, getWeekRange(today, $deviceInfo.firstDayOfWeek).$lte)
+  let due: DocumentQuery<Issue> = {}
+  $: if (mode === 'due') {
+    due = getDueQuery(employee, dueStatuses, getWeekRange(today, $deviceInfo.firstDayOfWeek).$lte)
+  }
 
   const activeStatusQuery = createQuery()
 
@@ -110,7 +116,7 @@
     { sort: { attachedTo: 1 }, projection: { attachedTo: 1 } }
   )
 
-  $: queries = { assigned, active, backlog, created, subscribed, due }
+  $: queries = { assigned, active, backlog, created, subscribed, ...(mode === 'due' ? { due } : {}) }
   $: mode = $resolvedLocationStore.query?.mode ?? undefined
   $: if (mode === undefined || (queries as any)[mode] === undefined) {
     ;[[mode]] = config
