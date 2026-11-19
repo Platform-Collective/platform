@@ -227,10 +227,18 @@ export class IssuesDetailsPage extends CommonTrackerPage {
     const card = this.activityCard(comment)
     await card.hover()
     await card.locator('> .actions button[data-id="activity:action:Reply"]').click()
+    const replyInput = this.page.locator('#sidebar .ProseMirror').last()
+    await expect(replyInput).toBeFocused()
     await this.page.keyboard.type(reply)
     await this.page.keyboard.press('Enter')
-    await expect(this.activityCardReplies(comment).filter({ hasText: reply })).toBeVisible()
+    const sidebarReply = this.page.locator('#sidebar .activityMessage').filter({ hasText: reply })
+    await expect(sidebarReply).toBeVisible()
     await this.page.locator('#sidebar .hulyHeader-container > button.iconOnly').click()
+    await expect(sidebarReply).toBeHidden()
+    await card.evaluate((element) => {
+      element.scrollIntoView({ block: 'end' })
+    })
+    await expect(this.activityCardReplies(comment).filter({ hasText: reply })).toBeVisible()
   }
 
   async focusActivityCardMoreActions (comment: string): Promise<void> {
