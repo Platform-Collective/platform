@@ -17,6 +17,7 @@ import core, {
   type AnyAttribute,
   type ArrOf,
   type Doc,
+  type DocumentUpdate,
   type Enum,
   type EnumOf,
   Hierarchy,
@@ -175,7 +176,7 @@ describe('canChangeEnumValues', () => {
     objects.addDoc(object)
     const canSave = (values: string[]): boolean =>
       canChangeEnumValues(value, values, model.findAllSync(core.class.Attribute, {}), hierarchy)
-    const update = jest.fn<Promise<void>, [Enum, { enumValues: string[] }]>().mockResolvedValue(undefined)
+    const update = jest.fn<Promise<void>, [Enum, DocumentUpdate<Enum>]>().mockResolvedValue(undefined)
     const draft = new EnumValuesDraft()
     draft.sync(value.enumValues)
     for (const edited of [['New', 'Other'], ['Other']]) {
