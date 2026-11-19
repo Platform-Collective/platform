@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
-// Run from plugins/emoji after updating emojibase-data. No dataset is imported by renderers.
+// Run `rushx generate:presentation` from plugins/emoji after updating emojibase-data.
+// No dataset is imported by renderers.
 const { writeFileSync } = require('node:fs')
 const { join } = require('node:path')
 const unicodeEmoji = require('emojibase-data/meta/unicode.json')
