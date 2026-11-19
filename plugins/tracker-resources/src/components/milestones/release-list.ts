@@ -4,7 +4,7 @@ import { escapeMarkdownLinkText, escapeMarkdownLinkUrl } from '@hcengineering/co
 import task from '@hcengineering/task'
 import tracker, { type Issue, type Milestone } from '@hcengineering/tracker'
 
-export type ReleaseIssue = Pick<Issue, '_id' | 'identifier' | 'number' | 'kind' | 'title'>
+export type ReleaseIssue = Pick<Issue, '_id' | 'identifier' | 'number' | 'title'>
 
 /** Read the complete milestone, independently of the current view's filters and limit. */
 export async function loadMilestoneIssues (

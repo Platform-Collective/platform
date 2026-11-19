@@ -9,11 +9,10 @@ const milestone: Pick<Milestone, '_id' | 'space' | 'label'> = {
   space: 'project' as Milestone['space'],
   label: 'Version [1] | 日本語'
 }
-const issue = (id: string, number: number, kind = 'bug', title = 'Same title'): ReleaseIssue => ({
+const issue = (id: string, number: number, title = 'Same title'): ReleaseIssue => ({
   _id: id as Issue['_id'],
   identifier: `TEST-${number}`,
   number,
-  kind: kind as Issue['kind'],
   title
 })
 
@@ -46,7 +45,7 @@ describe('milestone release list', () => {
   })
 
   it('orders by numeric ID, retains identical titles, and does not mutate the input', () => {
-    const rows = [issue('ten', 10), issue('feature', 1, 'feature'), issue('two', 2)]
+    const rows = [issue('ten', 10), issue('feature', 1), issue('two', 2)]
     const text = formatReleaseList(milestone.label, rows, (id) => `https://example.test/tracker/${id}`)
     expect(text.indexOf('TEST-1]')).toBeLessThan(text.indexOf('TEST-2]'))
     expect(text.indexOf('TEST-2]')).toBeLessThan(text.indexOf('TEST-10]'))
@@ -57,7 +56,7 @@ describe('milestone release list', () => {
   it('treats markdown-looking issue titles as plain text and escapes table pipes', () => {
     const text = formatReleaseList(
       'Release',
-      [issue('id', 1, 'bug', '[click](https://x.y) | next')],
+      [issue('id', 1, '[click](https://x.y) | next')],
       (id) => `/tracker/${id}`
     )
     expect(text).toContain('| \\[click\\](https://x.y) \\| next |')
@@ -67,7 +66,7 @@ describe('milestone release list', () => {
   it('escapes markdown, newlines and HTML and emits internal links as plain-text markdown', () => {
     const text = formatReleaseList(
       'Release **one**\n<script>',
-      [issue('id', 3, 'bug', '[fix] | **bold** `_x_`\n<script> 日本語')],
+      [issue('id', 3, '[fix] | **bold** `_x_`\n<script> 日本語')],
       () => 'https://example.test/a)b'
     )
     expect(text).toContain('## Release \\*\\*one\\*\\* &lt;script&gt;')
