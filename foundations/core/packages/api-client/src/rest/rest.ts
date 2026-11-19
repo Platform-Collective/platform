@@ -377,7 +377,6 @@ export class RestClientImpl implements RestClient {
         }
       }
       if (!response.ok) {
-        await this.checkRateLimits(response)
         const failure = new RestHttpError(response.status)
         if (response.status >= 500) failure.outcomeUnknown = true
         throw failure
