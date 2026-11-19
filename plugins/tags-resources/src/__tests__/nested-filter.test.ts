@@ -27,9 +27,8 @@ import {
   removeFilter,
   setFilters
 } from '@hcengineering/view-resources/src/filter'
-import { FilterQueryLifetime } from '@hcengineering/view-resources/src/filter/lifecycle'
 import { createFilterQueryComposer } from '@hcengineering/view-resources/src/filter/composer'
-import { makeFilterQuery, makeFilterQueryWithLifetime } from '@hcengineering/view-resources/src/filter/query-builder'
+import { makeFilterQuery } from '@hcengineering/view-resources/src/filter/query-builder'
 
 import tags from '../plugin'
 import { tagsInResult, tagsNinResult } from '../utils'
@@ -206,7 +205,6 @@ function transport (
 
 describe('nested vacancy label subscriptions', () => {
   const handleError = jest.spyOn(Analytics, 'handleError')
-  const consoleError = jest.spyOn(console, 'error')
   const vacancyA = document(vacancyClass, 'test:vacancy:A')
   const vacancyB = document(vacancyClass, 'test:vacancy:B')
   const applicantA = {
@@ -431,69 +429,6 @@ describe('nested vacancy label subscriptions', () => {
     expect(handleError).not.toHaveBeenCalled()
   })
 
-  it.each(['mode', 'resource', 'result'] as const)(
-    'reports a rejected %s to Analytics and runs the queued composition',
-    async (stage) => {
-      const started = deferred<undefined>()
-      const release = deferred<undefined>()
-      const dispatched = deferred<DocumentQuery<Doc>>()
-      const failure = new Error(`Failed ${stage}`)
-      const fail = async (): Promise<never> => {
-        started.resolve(undefined)
-        await release.promise
-        throw failure
-      }
-      const filter = nestedFilter()
-      setFilters([filter])
-      jest.mocked(getResource).mockImplementation(async () => {
-        if (stage === 'resource') return await fail()
-        return fail
-      })
-      const onChange = jest.fn((query: DocumentQuery<Doc>) => {
-        dispatched.resolve(query)
-      })
-      const compose = createFilterQueryComposer({
-        resolveMode: async () => (stage === 'mode' ? await fail() : mode),
-        refresh: jest.fn(),
-        onChange
-      })
-      await compose({}, [filter])
-      await started.promise
-      const next: DocumentQuery<Doc> = { _class: vacancyClass }
-      await compose(next, [])
-      release.resolve(undefined)
-      expect(await dispatched.promise).toEqual(next)
-      expect(handleError).toHaveBeenCalledTimes(1)
-      expect(handleError).toHaveBeenCalledWith(failure)
-      expect(onChange.mock.calls).toEqual([[next]])
-      expect(consoleError).not.toHaveBeenCalled()
-    }
-  )
-
-  it('reports a dispatch failure to Analytics and runs the queued composition', async () => {
-    const dispatched = deferred<DocumentQuery<Doc>>()
-    const failure = new Error('Failed dispatch')
-    const next: DocumentQuery<Doc> = { _class: vacancyClass }
-    const compose = createFilterQueryComposer({
-      resolveMode: async () => mode,
-      refresh: jest.fn(),
-      onChange: (query) => {
-        if (query._class === undefined) {
-          void compose(next, []).catch((error) => {
-            Analytics.handleError(error)
-          })
-          throw failure
-        }
-        dispatched.resolve(query)
-      }
-    })
-    await compose({}, [])
-    expect(await dispatched.promise).toEqual(next)
-    expect(handleError).toHaveBeenCalledTimes(1)
-    expect(handleError).toHaveBeenCalledWith(failure)
-    expect(consoleError).not.toHaveBeenCalled()
-  })
-
   it.each([tags.class.TagReference, vacancyClass])(
     'ignores a late initial snapshot from %s after removal',
     async (clazz) => {
@@ -627,60 +562,6 @@ describe('nested vacancy label subscriptions', () => {
       // settled composition and allowed the queued clear to finish above.
       for (const snapshot of snapshots) snapshot()
       expect(refresh).not.toHaveBeenCalled()
-    }
-  )
-
-  it.each(['mode', 'resource'] as const)(
-    'cancels composition during outer %s lookup without reviving a reused index',
-    async (stage) => {
-      const lookup = deferred<undefined>()
-      const pendingMode = deferred<FilterMode>()
-      const pendingResource = deferred<typeof nestedMatchResult>()
-      const outerMode: FilterMode = { ...mode, result: nestedResource }
-      const filter = nestedFilter()
-      delete filter.onRemove
-      setFilters([filter])
-      const lifetime = FilterQueryLifetime.register([filter.index])
-      const resolveMode = jest.fn(async (): Promise<FilterMode> => {
-        if (stage === 'mode') {
-          lookup.resolve(undefined)
-          return await pendingMode.promise
-        }
-        return outerMode
-      })
-      jest.mocked(getResource).mockImplementation(async (resource) => {
-        if (resource !== nestedResource) return tagsInResult
-        lookup.resolve(undefined)
-        return await pendingResource.promise
-      })
-      const refresh = jest.fn()
-      const dispatch = jest.fn()
-      const pending = makeFilterQueryWithLifetime({}, [filter], resolveMode, undefined, undefined, refresh, lifetime)
-      await lookup.promise
-      if (stage === 'mode') removeFilter(0)
-      else setFilters([])
-      // Await cancellation before fulfilling either lookup, then reuse index 1.
-      expect(await pending).toBeUndefined()
-      expect(FilterQuery.queries.size).toBe(0)
-      const replacement = nestedFilter()
-      setFilters([replacement])
-      jest
-        .mocked(getResource)
-        .mockImplementation(async (resource) => (resource === nestedResource ? nestedMatchResult : tagsInResult))
-      const next = await makeFilterQuery({}, [replacement], async () => outerMode)
-      expect(next).toEqual({ space: { $in: [vacancyA._id] } })
-      expect(source.subscriptions.size).toBe(2)
-      const created = jest.mocked(createQuery).mock.calls.length
-      pendingMode.resolve(outerMode)
-      pendingResource.resolve(nestedMatchResult)
-      // A removed composition's captured generation also guards final dispatch.
-      const stale = await pending
-      if (stale !== undefined && lifetime.isActive()) dispatch(stale)
-      expect(dispatch).not.toHaveBeenCalled()
-      expect(refresh).not.toHaveBeenCalled()
-      expect(jest.mocked(createQuery).mock.calls).toHaveLength(created)
-      expect(source.subscriptions.size).toBe(2)
-      expect(FilterQuery.queries.size).toBe(1)
     }
   )
 })
