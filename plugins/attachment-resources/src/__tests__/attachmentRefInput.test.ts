@@ -406,15 +406,9 @@ describe('legacy preview source restoration', () => {
     const c = await composer([legacy()])
     await c.settle()
     expect(c.updateCollection).toHaveBeenCalledTimes(1)
-    expect(c.updateCollection).toHaveBeenCalledWith(
-      'attachment',
-      'space',
-      'saved',
-      'object',
-      'class',
-      'attachments',
-      { metadata: { title: 'Legacy', url } }
-    )
+    expect(c.updateCollection).toHaveBeenCalledWith('attachment', 'space', 'saved', 'object', 'class', 'attachments', {
+      metadata: { title: 'Legacy', url }
+    })
     expect(c.saveDraft).not.toHaveBeenCalled()
   })
 
