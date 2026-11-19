@@ -27,7 +27,7 @@
     Ref,
     Space
   } from '@hcengineering/core'
-  import { IntlString } from '@hcengineering/platform'
+  import { IntlString, setPlatformStatus, unknownError } from '@hcengineering/platform'
   import { createQuery, getClient } from '@hcengineering/presentation'
   import { DocWithRank, makeRank } from '@hcengineering/task'
   import ui, {
@@ -334,6 +334,7 @@
       if (dragPreviewId === previewId) dragPreviewId = undefined
       dragItemIndex = undefined
       Analytics.handleError(error)
+      void setPlatformStatus(unknownError(error))
     })
   }
 
