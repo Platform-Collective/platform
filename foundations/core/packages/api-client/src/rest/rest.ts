@@ -362,9 +362,10 @@ export class RestClientImpl implements RestClient {
           keepalive: true,
           body
         })
-      } catch {
+      } catch (error) {
         const failure = new RestHttpError()
         failure.outcomeUnknown = true
+        failure.cause = error
         throw failure
       }
       if (response.status === 429) {
@@ -384,9 +385,10 @@ export class RestClientImpl implements RestClient {
       this.updateRateLimit(response)
       try {
         return await extractJson<unknown>(response)
-      } catch {
+      } catch (error) {
         const failure = new RestHttpError(response.status)
         failure.outcomeUnknown = true
+        failure.cause = error
         throw failure
       }
     }

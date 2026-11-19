@@ -76,6 +76,22 @@ describe('REST HTTP errors', () => {
     expect((error as Error).message).not.toContain('sensitive')
   })
 
+  it.each(['network', 'body'])('retains the original %s failure as the error cause', async (failure) => {
+    const cause = new Error(`sensitive ${failure} detail`)
+    jest.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      if (failure === 'network') throw cause
+      const response = new Response('invalid JSON', { status: 200 })
+      jest.spyOn(response, 'text').mockRejectedValue(cause)
+      return response
+    })
+    const client = publicApi.createRestClient(endpoint, 'workspace', token)
+
+    const error: unknown = await client.tx(transaction).catch((error: unknown) => error)
+    expect(error).toBeInstanceOf(publicApi.RestHttpError)
+    expect(error).toHaveProperty('cause', cause)
+    expect((error as Error).message).not.toContain('sensitive')
+  })
+
   it('retries a rate-limited transaction with the same body', async () => {
     const fetch = jest.spyOn(globalThis, 'fetch')
     fetch.mockImplementation(async () => {
