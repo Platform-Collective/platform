@@ -179,16 +179,13 @@ describe('NewIssueHeader actions', () => {
     expect(showPopup).toHaveBeenCalledWith('CreateProject', {}, 'top', expect.any(Function))
   })
 
-  it.each([false, true])(
-    'controls owner visibility from the navigator menu when ownersVisible=%s',
-    (ownersVisible) => {
-      const { header, showOwners, hideOwners } = renderHeader(true, false, [{ archived: false }], ownersVisible)
-      const actionId = ownersVisible ? 'HideProjectOwners' : 'ShowProjectOwners'
-      expect(header.visibleActions).toEqual(['CreateProject', 'NewIssue', actionId])
-      header.actions.find(({ id }) => id === actionId)?.callback()
-      expect(ownersVisible ? hideOwners : showOwners).toHaveBeenCalledTimes(1)
-    }
-  )
+  it.each([false, true])('controls owner visibility from the navigator menu when ownersVisible=%s', (ownersVisible) => {
+    const { header, showOwners, hideOwners } = renderHeader(true, false, [{ archived: false }], ownersVisible)
+    const actionId = ownersVisible ? 'HideProjectOwners' : 'ShowProjectOwners'
+    expect(header.visibleActions).toEqual(['CreateProject', 'NewIssue', actionId])
+    header.actions.find(({ id }) => id === actionId)?.callback()
+    expect(ownersVisible ? hideOwners : showOwners).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('NewIssueHeader active projects', () => {
