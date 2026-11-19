@@ -18,6 +18,7 @@
   import type { IntlString, Asset } from '@hcengineering/platform'
   import { createQuery, getClient } from '@hcengineering/presentation'
   import type { Issue, IssueStatus } from '@hcengineering/tracker'
+  import type { ViewOptions } from '@hcengineering/view'
   import { deviceOptionsStore as deviceInfo, IModeSelector, resolvedLocationStore } from '@hcengineering/ui'
   import { createEventDispatcher, onMount } from 'svelte'
   import { getWeekRange } from '@hcengineering/view-resources'
@@ -38,6 +39,8 @@
   const dispatch = createEventDispatcher()
   const assigned = { assignee: employee }
   const created = { createdBy: { $in: socialIds } }
+  const defaultViewOptions: Partial<ViewOptions> = {}
+  const dueViewOptions: Partial<ViewOptions> = { groupBy: [], orderBy: ['dueDate', SortingOrder.Ascending] }
   let subscribed = { _id: { $in: [] as Ref<Issue>[] } }
   let query: DocumentQuery<Issue> | undefined = undefined
   let modeSelectorProps: IModeSelector | undefined = undefined
@@ -139,6 +142,6 @@
     {icon}
     title={tracker.string.MyIssues}
     {modeSelectorProps}
-    viewOptionsOverride={mode === 'due' ? { groupBy: [], orderBy: ['dueDate', SortingOrder.Ascending] } : {}}
+    viewOptionsOverride={mode === 'due' ? dueViewOptions : defaultViewOptions}
   />
 {/if}
