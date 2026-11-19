@@ -29,9 +29,7 @@ const languagePreference = new LanguagePreference(() => localStorage)
 let defaultLanguage = 'en'
 let supportedLanguages: readonly string[] = DEFAULT_LANGUAGES
 let analyticsLanguage: string | undefined
-let languageInitialization:
-  | { language: string, preference: string | null, promise: Promise<void> }
-  | undefined
+let languageInitialization: { language: string, preference: string | null, promise: Promise<void> } | undefined
 
 /** Configure language selection before mounting the application. @public */
 export const setDefaultLanguage = (language: string, languages: readonly string[] = DEFAULT_LANGUAGES): void => {
@@ -61,7 +59,8 @@ export async function initializeLanguage (): Promise<void> {
   const preference = languagePreference.choice()
   const current = languageInitialization
   if (current?.language === language && current.preference === preference) {
-    return current.promise
+    await current.promise
+    return
   }
   setMetadata(platform.metadata.locale, language)
   document.documentElement.lang = language

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: EPL-2.0
 
+import type * as ThemeModule from '../index'
+
 const mockLoadPluginStrings = jest.fn(async () => {})
 const mockSetMetadata = jest.fn()
 const mockSetTag = jest.fn()
@@ -38,7 +40,7 @@ describe('language startup API', () => {
   const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
   const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document')
   let values: Map<string, string>
-  let theme: typeof import('../index')
+  let theme: typeof ThemeModule
 
   beforeEach(async () => {
     jest.resetModules()
