@@ -6,7 +6,15 @@ import { FilterQueryLifetime, cancelFilterQuery } from '../filter/lifecycle'
 import { makeFilterQuery, makeFilterQueryWithLifetime, type ResourceResolver } from '../filter/query-builder'
 
 const mockResult = async (filter: Filter): Promise<{ $in: unknown }> => ({ $in: filter.value })
-const mockMode = { result: 'test:function:Result' as FilterMode['result'] } as FilterMode
+const mockMode: FilterMode = {
+  _id: 'test:filter:Mode' as FilterMode['_id'],
+  _class: 'view:class:FilterMode' as FilterMode['_class'],
+  space: 'test:space:Space' as FilterMode['space'],
+  modifiedBy: 'core:account:System' as FilterMode['modifiedBy'],
+  modifiedOn: 0,
+  label: 'test:string:Mode' as FilterMode['label'],
+  result: 'test:function:Result' as FilterMode['result']
+}
 const filter: Filter = {
   key: {
     _class: 'test:class:Doc' as Filter['key']['_class'],

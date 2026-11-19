@@ -22,7 +22,16 @@ const filter: Filter = {
   value: [],
   index: 1
 }
-const mode = { result: 'test:function:Result' as FilterMode['result'] } as FilterMode
+const mode: FilterMode = {
+  _id: 'test:filter:Mode' as FilterMode['_id'],
+  _class: 'view:class:FilterMode' as FilterMode['_class'],
+  space: 'test:space:Space' as FilterMode['space'],
+  modifiedBy: 'core:account:System' as FilterMode['modifiedBy'],
+  modifiedOn: 0,
+  label: 'test:string:Mode' as FilterMode['label'],
+  result: 'test:function:Result' as FilterMode['result']
+}
+const handleError = Reflect.get(Analytics, 'handleError') as jest.Mock
 
 function deferred<T> (): { promise: Promise<T>, resolve: (value: T) => void } {
   let resolveValue: (value: T) => void = () => {}
@@ -36,7 +45,7 @@ describe('filter query composer', () => {
   const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {})
 
   beforeEach(() => {
-    jest.mocked(Analytics.handleError).mockClear()
+    jest.mocked(handleError).mockClear()
     consoleError.mockClear()
   })
 
@@ -80,8 +89,8 @@ describe('filter query composer', () => {
       release.resolve(undefined)
 
       expect(await dispatched.promise).toEqual(next)
-      expect(Analytics.handleError).toHaveBeenCalledTimes(1)
-      expect(Analytics.handleError).toHaveBeenCalledWith(failure)
+      expect(handleError).toHaveBeenCalledTimes(1)
+      expect(handleError).toHaveBeenCalledWith(failure)
       expect(consoleError).not.toHaveBeenCalled()
     }
   )
@@ -105,8 +114,8 @@ describe('filter query composer', () => {
     await compose({}, [])
 
     expect(await dispatched.promise).toEqual(next)
-    expect(Analytics.handleError).toHaveBeenCalledTimes(1)
-    expect(Analytics.handleError).toHaveBeenCalledWith(failure)
+    expect(handleError).toHaveBeenCalledTimes(1)
+    expect(handleError).toHaveBeenCalledWith(failure)
     expect(consoleError).not.toHaveBeenCalled()
   })
 })
