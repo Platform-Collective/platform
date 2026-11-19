@@ -47,7 +47,19 @@ export function isSameEnumValues (a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((it, i) => it === b[i])
 }
 
-/** Keeps an active draft separate from live-query results until it is submitted. */
+/**
+ * Keeps an active draft separate from live-query results until it is submitted.
+ *
+ * State flow (`sync` handles query results):
+ * ```
+ * idle -> editing -> submitted -> idle
+ *           │         │   │
+ *           │         │   └─ failure -> retry -> submitted
+ *           │         └─ own echo -> idle (or editing when typing)
+ *           └─ divergent echo -> conflict -> idle via submit/cancel
+ * ```
+ * A newer submission or divergent echo supersedes an earlier retry.
+ */
 export class EnumValuesDraft {
   values: string[] = []
   private original: string[] = []
