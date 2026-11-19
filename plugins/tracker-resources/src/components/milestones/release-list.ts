@@ -23,11 +23,8 @@ export async function loadMilestoneIssues (
 function plain (value: string): string {
   return escapeMarkdownLinkText(value.replace(/\r\n?|\n/g, ' '))
     .replace(/[*_`#~]/g, '\\$&')
-    .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
 }
 
 function compare (a: string, b: string): number {

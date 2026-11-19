@@ -74,7 +74,7 @@ describe('milestone release list', () => {
     expect(text).toContain('\\[fix\\] \\| \\*\\*bold\\*\\* \\`\\_x\\_\\` &lt;script&gt; 日本語')
     expect(text).toContain('[TEST-3](https://example.test/a\\)b)')
     expect(text.split('\n')).toHaveLength(6)
-    expect(formatReleaseList('Release "one"\'', [], (id) => id)).toContain('## Release &quot;one&quot;&#39;')
+    expect(formatReleaseList('Release "one"\' & Co', [], (id) => id)).toContain('## Release "one"\' & Co')
   })
 
   it('keeps all 125 rows and produces a heading and fixed columns for an empty milestone', () => {
