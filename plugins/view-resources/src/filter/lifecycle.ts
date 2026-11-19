@@ -56,7 +56,7 @@ export class FilterQueryLifetime {
   async waitFor<T> (operation: Promise<T>): Promise<T | undefined> {
     return await Promise.race([
       operation.then((value) => (this.isActive() ? value : undefined)),
-      this.aborted.then(() => undefined)
+      this.aborted.then((): undefined => undefined)
     ])
   }
 }
