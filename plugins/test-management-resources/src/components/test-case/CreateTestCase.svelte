@@ -38,7 +38,7 @@
 
   /** Runs on every attempt; only enqueue writes through the supplied transaction, without external side effects. */
   export let onCreate: ((orgId: Ref<TestCase>, client: TxOperations) => Promise<void>) | undefined = undefined
-  const creation = createTransactionState()
+  let creation = createTransactionState()
 
   export function canClose(): boolean {
     return !creation.creating && object.name === ''
