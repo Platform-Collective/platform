@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: EPL-2.0
 import type { Client } from '@hcengineering/core'
-import {
-  escapeMarkdownLinkUrl,
-  escapeMarkdownTableCellContent
-} from '@hcengineering/converter-resources/src/markdown/escape'
+import { escapeMarkdownLinkUrl, escapeMarkdownTableCellContent } from '@hcengineering/converter-resources'
 import task from '@hcengineering/task'
 import tracker, { type Issue, type Milestone } from '@hcengineering/tracker'
 
