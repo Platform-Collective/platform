@@ -14,6 +14,8 @@
 
 export interface AccountConfiguration {
   inviteOrSsoSignup: boolean
+  disableSignup: boolean
+  allowProviderSignup: boolean
 }
 
 export function readAccountConfiguration (env: NodeJS.ProcessEnv = process.env): AccountConfiguration {
@@ -23,7 +25,9 @@ export function readAccountConfiguration (env: NodeJS.ProcessEnv = process.env):
   }
 
   return {
-    inviteOrSsoSignup: signupMode === 'invite_or_sso'
+    inviteOrSsoSignup: signupMode === 'invite_or_sso',
+    disableSignup: env.DISABLE_SIGNUP === 'true',
+    allowProviderSignup: env.ALLOW_PROVIDER_SIGNUP === 'true'
   }
 }
 

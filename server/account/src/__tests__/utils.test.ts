@@ -2128,34 +2128,28 @@ describe('account utils', () => {
   })
 
   describe('isProviderSignUpDisabled', () => {
-    test('should allow provider sign-up when DISABLE_SIGNUP is not set', () => {
-      expect(isProviderSignUpDisabled({})).toBe(false)
-      expect(isProviderSignUpDisabled({ DISABLE_SIGNUP: 'false' })).toBe(false)
+    test('should allow provider sign-up when signup is enabled', () => {
+      expect(isProviderSignUpDisabled({ disableSignup: false, allowProviderSignup: false })).toBe(false)
+      expect(isProviderSignUpDisabled({ disableSignup: false, allowProviderSignup: true })).toBe(false)
     })
 
-    test('should follow DISABLE_SIGNUP by default', () => {
-      expect(isProviderSignUpDisabled({ DISABLE_SIGNUP: 'true' })).toBe(true)
-      expect(isProviderSignUpDisabled({ DISABLE_SIGNUP: 'true', ALLOW_PROVIDER_SIGNUP: 'false' })).toBe(true)
+    test('should follow disableSignup by default', () => {
+      expect(isProviderSignUpDisabled({ disableSignup: true, allowProviderSignup: false })).toBe(true)
     })
 
-    test('should allow provider sign-up when ALLOW_PROVIDER_SIGNUP=true overrides DISABLE_SIGNUP', () => {
-      expect(isProviderSignUpDisabled({ DISABLE_SIGNUP: 'true', ALLOW_PROVIDER_SIGNUP: 'true' })).toBe(false)
+    test('should allow provider sign-up when allowProviderSignup overrides disableSignup', () => {
+      expect(isProviderSignUpDisabled({ disableSignup: true, allowProviderSignup: true })).toBe(false)
     })
 
-    test('should read process.env when no env is passed', () => {
-      const prevSignup = process.env.DISABLE_SIGNUP
-      const prevProvider = process.env.ALLOW_PROVIDER_SIGNUP
+    test('should read account configuration when no config is passed', () => {
+      const restoreConfiguration = overrideAccountConfigurationForTests({
+        disableSignup: true,
+        allowProviderSignup: false
+      })
       try {
-        process.env.DISABLE_SIGNUP = 'true'
-        delete process.env.ALLOW_PROVIDER_SIGNUP
         expect(isProviderSignUpDisabled()).toBe(true)
-        process.env.ALLOW_PROVIDER_SIGNUP = 'true'
-        expect(isProviderSignUpDisabled()).toBe(false)
       } finally {
-        if (prevSignup === undefined) delete process.env.DISABLE_SIGNUP
-        else process.env.DISABLE_SIGNUP = prevSignup
-        if (prevProvider === undefined) delete process.env.ALLOW_PROVIDER_SIGNUP
-        else process.env.ALLOW_PROVIDER_SIGNUP = prevProvider
+        restoreConfiguration()
       }
     })
   })

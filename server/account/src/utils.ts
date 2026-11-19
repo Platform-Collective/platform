@@ -76,7 +76,7 @@ import {
   type DBFlavor
 } from './types'
 import { isAdminEmail } from './admin'
-import { accountConfiguration } from './config'
+import { type AccountConfiguration, accountConfiguration } from './config'
 import { type Sql } from 'postgres'
 
 export const GUEST_ACCOUNT = 'b6996120-416f-49cd-841e-e4a5d2e49c9b' as PersonUuid
@@ -1707,8 +1707,10 @@ export async function doJoinByInvite (
  * By default this follows DISABLE_SIGNUP; ALLOW_PROVIDER_SIGNUP=true keeps provider sign-up enabled
  * while password sign-up stays disabled.
  */
-export function isProviderSignUpDisabled (env: Record<string, string | undefined> = process.env): boolean {
-  return env.DISABLE_SIGNUP === 'true' && env.ALLOW_PROVIDER_SIGNUP !== 'true'
+export function isProviderSignUpDisabled (
+  config: Pick<AccountConfiguration, 'disableSignup' | 'allowProviderSignup'> = accountConfiguration
+): boolean {
+  return config.disableSignup && !config.allowProviderSignup
 }
 
 export async function loginOrSignUpWithProvider (

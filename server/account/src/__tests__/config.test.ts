@@ -17,7 +17,9 @@ import { accountConfiguration, overrideAccountConfigurationForTests, readAccount
 describe('account configuration', () => {
   test('keeps registration enabled by default', () => {
     expect(readAccountConfiguration({})).toEqual({
-      inviteOrSsoSignup: false
+      inviteOrSsoSignup: false,
+      disableSignup: false,
+      allowProviderSignup: false
     })
   })
 
@@ -27,13 +29,30 @@ describe('account configuration', () => {
         ACCOUNT_SIGNUP_MODE: 'invite_or_sso'
       })
     ).toEqual({
-      inviteOrSsoSignup: true
+      inviteOrSsoSignup: true,
+      disableSignup: false,
+      allowProviderSignup: false
     })
   })
 
   test('keeps registration enabled for an empty signup mode', () => {
     expect(readAccountConfiguration({ ACCOUNT_SIGNUP_MODE: '' })).toEqual({
-      inviteOrSsoSignup: false
+      inviteOrSsoSignup: false,
+      disableSignup: false,
+      allowProviderSignup: false
+    })
+  })
+
+  test('reads signup disable and provider override settings', () => {
+    expect(
+      readAccountConfiguration({
+        DISABLE_SIGNUP: 'true',
+        ALLOW_PROVIDER_SIGNUP: 'true'
+      })
+    ).toEqual({
+      inviteOrSsoSignup: false,
+      disableSignup: true,
+      allowProviderSignup: true
     })
   })
 

@@ -1932,9 +1932,7 @@ describe('account operations', () => {
       }
 
       test('should report both signUp and guest available by default when guest person exists', async () => {
-        const prevSignup = process.env.DISABLE_SIGNUP
         const prevGuest = process.env.DISABLE_GUEST_LOGIN
-        delete process.env.DISABLE_SIGNUP
         delete process.env.DISABLE_GUEST_LOGIN
         try {
           ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({ uuid: readOnlyGuestAccountUuid })
@@ -1948,15 +1946,12 @@ describe('account operations', () => {
             guestSettingsLocked: false
           })
         } finally {
-          restoreEnv('DISABLE_SIGNUP', prevSignup)
           restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
         }
       })
 
       test('should report guestLoginAvailable=false when guest person missing', async () => {
-        const prevSignup = process.env.DISABLE_SIGNUP
         const prevGuest = process.env.DISABLE_GUEST_LOGIN
-        delete process.env.DISABLE_SIGNUP
         delete process.env.DISABLE_GUEST_LOGIN
         try {
           ;(mockDb.person.findOne as jest.Mock).mockResolvedValue(null)
@@ -1970,15 +1965,13 @@ describe('account operations', () => {
             guestSettingsLocked: false
           })
         } finally {
-          restoreEnv('DISABLE_SIGNUP', prevSignup)
           restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
         }
       })
 
-      test('should report signUpEnabled=false when DISABLE_SIGNUP=true', async () => {
-        const prevSignup = process.env.DISABLE_SIGNUP
+      test('should report signUpEnabled=false when disableSignup=true', async () => {
+        const restoreConfiguration = overrideAccountConfigurationForTests({ disableSignup: true })
         const prevGuest = process.env.DISABLE_GUEST_LOGIN
-        process.env.DISABLE_SIGNUP = 'true'
         delete process.env.DISABLE_GUEST_LOGIN
         try {
           ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({ uuid: readOnlyGuestAccountUuid })
@@ -1992,7 +1985,7 @@ describe('account operations', () => {
             guestSettingsLocked: false
           })
         } finally {
-          restoreEnv('DISABLE_SIGNUP', prevSignup)
+          restoreConfiguration()
           restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
         }
       })
@@ -2019,9 +2012,7 @@ describe('account operations', () => {
       })
 
       test('should report guestLoginAvailable=false when DISABLE_GUEST_LOGIN=true (no DB lookup)', async () => {
-        const prevSignup = process.env.DISABLE_SIGNUP
         const prevGuest = process.env.DISABLE_GUEST_LOGIN
-        delete process.env.DISABLE_SIGNUP
         process.env.DISABLE_GUEST_LOGIN = 'true'
         try {
           ;(mockDb.person.findOne as jest.Mock).mockClear()
@@ -2036,15 +2027,12 @@ describe('account operations', () => {
           })
           expect(mockDb.person.findOne).not.toHaveBeenCalled()
         } finally {
-          restoreEnv('DISABLE_SIGNUP', prevSignup)
           restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
         }
       })
 
       test('L-AUTH-1: caches the guest-person lookup within TTL (single DB hit)', async () => {
-        const prevSignup = process.env.DISABLE_SIGNUP
         const prevGuest = process.env.DISABLE_GUEST_LOGIN
-        delete process.env.DISABLE_SIGNUP
         delete process.env.DISABLE_GUEST_LOGIN
         try {
           ;(mockDb.person.findOne as jest.Mock).mockClear()
@@ -2064,7 +2052,6 @@ describe('account operations', () => {
           // Second call within TTL must be served from cache -> exactly one DB hit.
           expect(mockDb.person.findOne).toHaveBeenCalledTimes(1)
         } finally {
-          restoreEnv('DISABLE_SIGNUP', prevSignup)
           restoreEnv('DISABLE_GUEST_LOGIN', prevGuest)
         }
       })
@@ -2306,9 +2293,8 @@ describe('account operations', () => {
         }
       })
 
-      test('should fail with Forbidden when DISABLE_SIGNUP=true', async () => {
-        const prev = process.env.DISABLE_SIGNUP
-        process.env.DISABLE_SIGNUP = 'true'
+      test('should fail with Forbidden when disableSignup=true', async () => {
+        const restoreConfiguration = overrideAccountConfigurationForTests({ disableSignup: true })
         const signUpByEmailSpy = jest.spyOn(utils, 'signUpByEmail')
         try {
           await expect(
@@ -2321,11 +2307,7 @@ describe('account operations', () => {
           ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {})))
           expect(signUpByEmailSpy).not.toHaveBeenCalled()
         } finally {
-          if (prev === undefined) {
-            delete process.env.DISABLE_SIGNUP
-          } else {
-            process.env.DISABLE_SIGNUP = prev
-          }
+          restoreConfiguration()
         }
       })
 
@@ -2569,9 +2551,8 @@ describe('account operations', () => {
         }
       })
 
-      test('should fail with Forbidden when DISABLE_SIGNUP=true', async () => {
-        const prev = process.env.DISABLE_SIGNUP
-        process.env.DISABLE_SIGNUP = 'true'
+      test('should fail with Forbidden when disableSignup=true', async () => {
+        const restoreConfiguration = overrideAccountConfigurationForTests({ disableSignup: true })
         const getEmailSocialIdSpy = jest.spyOn(utils, 'getEmailSocialId')
         try {
           await expect(
@@ -2583,11 +2564,7 @@ describe('account operations', () => {
           ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {})))
           expect(getEmailSocialIdSpy).not.toHaveBeenCalled()
         } finally {
-          if (prev === undefined) {
-            delete process.env.DISABLE_SIGNUP
-          } else {
-            process.env.DISABLE_SIGNUP = prev
-          }
+          restoreConfiguration()
         }
       })
 

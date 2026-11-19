@@ -203,7 +203,7 @@ export async function getLoginCapabilities (
   publicJoinSignUpEnabled: boolean
   guestSettingsLocked: boolean
 }> {
-  const signUpEnabled = process.env.DISABLE_SIGNUP !== 'true' && !accountConfiguration.inviteOrSsoSignup
+  const signUpEnabled = !accountConfiguration.disableSignup && !accountConfiguration.inviteOrSsoSignup
 
   let guestLoginAvailable = false
   if (process.env.DISABLE_GUEST_LOGIN !== 'true') {
@@ -366,7 +366,7 @@ export async function signUp (
   },
   meta?: Meta
 ): Promise<LoginInfo> {
-  if (process.env.DISABLE_SIGNUP === 'true' || accountConfiguration.inviteOrSsoSignup) {
+  if (accountConfiguration.disableSignup || accountConfiguration.inviteOrSsoSignup) {
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
   const { email, password, firstName, lastName } = params
@@ -413,7 +413,7 @@ export async function signUpOtp (
     lastName?: string
   }
 ): Promise<OtpInfo> {
-  if (process.env.DISABLE_SIGNUP === 'true' || accountConfiguration.inviteOrSsoSignup) {
+  if (accountConfiguration.disableSignup || accountConfiguration.inviteOrSsoSignup) {
     throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
   const { email, firstName, lastName } = params
