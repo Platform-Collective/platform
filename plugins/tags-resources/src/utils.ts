@@ -1,7 +1,14 @@
 // Copyright © 2022 Hardcore Engineering Inc.
 
 import { Analytics } from '@hcengineering/analytics'
-import core, { type Class, type Data, type Doc, type DocumentQuery, type ObjQueryType, type Ref } from '@hcengineering/core'
+import core, {
+  type Class,
+  type Data,
+  type Doc,
+  type DocumentQuery,
+  type ObjQueryType,
+  type Ref
+} from '@hcengineering/core'
 import { type Asset } from '@hcengineering/platform'
 import { getClient } from '@hcengineering/presentation'
 import { type TagCategory, type TagElement, type TagReference, TagsEvents } from '@hcengineering/tags'

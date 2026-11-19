@@ -95,7 +95,12 @@ import {
   type TabItem
 } from '@hcengineering/ui'
 import view, { type Filter, type GrouppingManager, type ObjectPanel } from '@hcengineering/view'
-import { accessDeniedStore, FILTER_QUERY_VALUE_SCOPE, FilterQuery, queryFilterRefs } from '@hcengineering/view-resources'
+import {
+  accessDeniedStore,
+  FILTER_QUERY_VALUE_SCOPE,
+  FilterQuery,
+  queryFilterRefs
+} from '@hcengineering/view-resources'
 import { type LocationData } from '@hcengineering/workbench'
 import { derived, get, type Readable, writable } from 'svelte/store'
 

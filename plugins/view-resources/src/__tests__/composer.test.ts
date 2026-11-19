@@ -4,6 +4,7 @@ import { Analytics } from '@hcengineering/analytics'
 import type { Doc, DocumentQuery } from '@hcengineering/core'
 import type { Filter, FilterMode } from '@hcengineering/view'
 import { createFilterQueryComposer } from '../filter/composer'
+import { cancelFilterQuery } from '../filter/lifecycle'
 import type { ResourceResolver } from '../filter/query-builder'
 
 jest.mock('@hcengineering/analytics', () => ({ Analytics: { handleError: jest.fn() } }))
@@ -37,6 +38,14 @@ describe('filter query composer', () => {
   beforeEach(() => {
     jest.mocked(Analytics.handleError).mockClear()
     consoleError.mockClear()
+  })
+
+  afterEach(() => {
+    cancelFilterQuery(filter.index)
+  })
+
+  afterAll(() => {
+    consoleError.mockRestore()
   })
 
   it.each(['mode', 'resource', 'result'] as const)(
