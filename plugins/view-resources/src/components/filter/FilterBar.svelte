@@ -13,7 +13,6 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { Analytics } from '@hcengineering/analytics'
   import { AccountRole, Class, Doc, DocumentQuery, Ref, Space, getCurrentAccount } from '@hcengineering/core'
   import { getClient } from '@hcengineering/presentation'
   import { Button, IconAdd, IconClose, eventToHTMLElement, getCurrentLocation, showPopup } from '@hcengineering/ui'
@@ -103,9 +102,7 @@
   })
 
   function makeQuery(query: DocumentQuery<Doc>, filters: Filter[]): void {
-    void composeQuery(query, filters).catch((error) => {
-      Analytics.handleError(error)
-    })
+    void composeQuery(query, filters)
   }
 
   $: makeQuery(query, $filterStore)
