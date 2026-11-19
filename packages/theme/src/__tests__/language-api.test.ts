@@ -7,7 +7,6 @@ jest.mock('@hcengineering/platform-rig/profiles/ui/svelte', () => ({}), { virtua
 jest.mock('@hcengineering/platform', () => ({
   __esModule: true,
   default: { metadata: { locale: 'locale' } },
-  UI_LANGUAGES: ['en', 'ru', 'es', 'pl', 'pt', 'pt-br', 'zh', 'fr', 'cs', 'it', 'de', 'ja', 'ko', 'tr'],
   loadPluginStrings: mockLoadPluginStrings,
   setMetadata: mockSetMetadata
 }))

@@ -1,9 +1,22 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { UI_LANGUAGES } from '@hcengineering/platform'
-
 /** Languages with bundled UI translations. @public */
-export const DEFAULT_LANGUAGES = UI_LANGUAGES
+export const DEFAULT_LANGUAGES: readonly string[] = [
+  'en',
+  'ru',
+  'es',
+  'pl',
+  'pt',
+  'pt-br',
+  'zh',
+  'fr',
+  'cs',
+  'it',
+  'de',
+  'ja',
+  'ko',
+  'tr'
+]
 
 /** Inputs used to choose the UI language before mounting the application. @public */
 export interface LanguageOptions {
