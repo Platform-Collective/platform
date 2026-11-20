@@ -39,6 +39,7 @@ jest.mock('@hcengineering/core', () => ({
 }))
 
 jest.mock('@hcengineering/platform', () => ({
+  ...jest.requireActual('@hcengineering/platform'),
   addLocation: jest.fn(),
   getResource: mockGetResource
 }))

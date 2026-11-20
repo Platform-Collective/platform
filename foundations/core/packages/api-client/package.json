@@ -1,6 +1,6 @@
 {
   "name": "@hcengineering/api-client",
-  "version": "0.7.19",
+  "version": "0.7.20",
   "main": "lib/index.js",
   "exports": {
     ".": {
