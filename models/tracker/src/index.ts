@@ -236,6 +236,11 @@ function defineFilters (builder: Builder): void {
     getVisibleFilters: tracker.function.GetVisibleFilters
   })
 
+  builder.mixin(tracker.class.TimeSpendReport, core.class.Class, view.mixin.ClassFilters, {
+    filters: ['employee', 'space', 'attachedTo', 'date'],
+    ignoreKeys: ['value']
+  })
+
   // Milestone names repeat across projects, so name each milestone's project
   // when the filter is not limited to one project.
   // Attribute has an index signature that hides mixin fields from MixinData, so type them here.
@@ -355,6 +360,7 @@ function defineApplication (
   opt: {
     myIssuesId: string
     allIssuesId: string
+    timeReportsId: string
     issuesId: string
     componentsId: string
     milestonesId: string
@@ -406,6 +412,18 @@ function defineApplication (
                 ['backlog', tracker.string.Backlog, {}]
               ],
               allProjectsTypes: true
+            }
+          },
+          {
+            id: opt.timeReportsId,
+            position: 'top',
+            label: tracker.string.TimeReports,
+            icon: tracker.icon.TimeReport,
+            component: workbench.component.SpecialView,
+            componentProps: {
+              _class: tracker.class.TimeSpendReport,
+              icon: tracker.icon.TimeReport,
+              label: tracker.string.TimeReports
             }
           },
           {
@@ -556,6 +574,7 @@ export function createModel (builder: Builder): void {
   const templatesId = 'templates'
   const myIssuesId = 'my-issues'
   const allIssuesId = 'all-issues'
+  const timeReportsId = 'time-reports'
   const labelsId = 'labels'
   // const scrumsId = 'scrums'
 
@@ -567,6 +586,10 @@ export function createModel (builder: Builder): void {
 
   builder.mixin(tracker.class.Issue, core.class.Class, view.mixin.ListHeaderExtra, {
     presenters: [tracker.component.IssueStatistics]
+  })
+
+  builder.mixin(tracker.class.TimeSpendReport, core.class.Class, view.mixin.ListHeaderExtra, {
+    presenters: [tracker.component.TimeSpendReportTotal]
   })
 
   defineSortAndGrouping(builder)
@@ -705,7 +728,16 @@ export function createModel (builder: Builder): void {
     tracker.ids.IssueTemplateUpdatedActivityViewlet
   )
 
-  defineApplication(builder, { myIssuesId, allIssuesId, issuesId, componentsId, milestonesId, templatesId, labelsId })
+  defineApplication(builder, {
+    myIssuesId,
+    allIssuesId,
+    timeReportsId,
+    issuesId,
+    componentsId,
+    milestonesId,
+    templatesId,
+    labelsId
+  })
 
   defineActions(builder, issuesId, componentsId, myIssuesId)
 
