@@ -17,7 +17,7 @@ jest.mock('../plugin', () => ({
 }))
 
 jest.mock('svelte/store', () => ({
-  writable<T>(initial: T) {
+  writable<T> (initial: T) {
     let value = initial
     const subscribers = new Set<(value: T) => void>()
     return {
