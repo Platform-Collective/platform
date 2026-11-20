@@ -261,9 +261,12 @@
   let descriptionBox: AttachmentStyledBox | undefined
   let previousKind = kind
   let defaultsKind: Ref<TaskType> | undefined
+  let attributesRevision = 0
 
   $: selectedTaskType = kind !== undefined ? $taskTypeStore.get(kind) : undefined
-  $: createIssueAttributes = getCreateIssueAttributes(hierarchy, selectedTaskType)
+  $: if (attributesRevision >= 0) {
+    createIssueAttributes = getCreateIssueAttributes(hierarchy, selectedTaskType)
+  }
   $: createIssueAttributesQuery.query(
     core.class.Attribute,
     {
@@ -272,7 +275,7 @@
       }
     },
     () => {
-      createIssueAttributes = getCreateIssueAttributes(hierarchy, selectedTaskType)
+      attributesRevision += 1
     }
   )
   $: if (kind !== previousKind) {
