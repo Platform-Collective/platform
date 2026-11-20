@@ -222,10 +222,12 @@
     }
     if (originalIssue !== undefined && !ignoreOriginal) {
       const customFields = getDuplicateIssueCustomFields(hierarchy, originalIssue)
+      const mixin = $taskTypeStore.get(originalIssue.kind)?.targetClass
+      const mixinValues = mixin !== undefined ? customFields.mixins.get(mixin) : undefined
       const res: IssueDraft = {
         ...base,
         ...customFields.attributes,
-        ...Object.fromEntries(customFields.mixins),
+        ...(mixin !== undefined && mixinValues !== undefined ? { [mixin]: mixinValues } : {}),
         status: originalIssue.status,
         priority: originalIssue.priority,
         component: originalIssue.component,
