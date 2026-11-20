@@ -244,8 +244,9 @@ export class IssuesDetailsPage extends CommonTrackerPage {
   async focusActivityCardMoreActions (comment: string): Promise<void> {
     const action = this.activityCardMoreActions(comment)
     await action.focus()
-    await this.page.keyboard.press('Tab')
     await this.page.keyboard.press('Shift+Tab')
+    await expect(action).not.toBeFocused()
+    await this.page.keyboard.press('Tab')
     await expect(action).toBeFocused()
   }
 
