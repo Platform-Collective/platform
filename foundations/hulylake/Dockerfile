@@ -30,7 +30,7 @@ RUN \
 
 RUN cargo test
 
-FROM debian:12-slim
+FROM debian:13-slim
 
 ARG TARGET
 COPY --from=builder /tmp/build/target/*/release/hulylake /usr/local/bin/hulylake
