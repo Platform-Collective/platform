@@ -18,8 +18,9 @@
    * SetParentIssueActionPopup's structure with two differences:
    *   - docQuery scopes to `issue.space` (Phase-1 deps are intra-project)
    *   - ignoreObjects excludes self and existing successors
+   * Without `issue` it lists issues of all projects, e.g. to pick where to log time.
    */
-  export let issue: Issue
+  export let issue: Issue | undefined = undefined
   export let outgoing: IssueRelation[] = []
   /**
    * Direct ids to exclude from the picker. When set, takes precedence
@@ -36,12 +37,16 @@
     sort: { modifiedOn: SortingOrder.Descending }
   }
 
-  $: ignoreObjects = [issue._id, ...outgoing.map((r) => r.target), ...extraIgnore] as Ref<Issue>[]
+  $: ignoreObjects = [
+    ...(issue !== undefined ? [issue._id] : []),
+    ...outgoing.map((r) => r.target),
+    ...extraIgnore
+  ] as Ref<Issue>[]
 </script>
 
 <ObjectPopup
   _class={tracker.class.Issue}
-  docQuery={{ space: issue.space }}
+  docQuery={issue !== undefined ? { space: issue.space } : {}}
   {options}
   {ignoreObjects}
   placeholder={tracker.string.SelectIssue}

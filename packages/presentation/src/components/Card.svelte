@@ -14,6 +14,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
+  import { Analytics } from '@hcengineering/analytics'
   import type { IntlString } from '@hcengineering/platform'
   import {
     Button,
@@ -50,6 +51,8 @@
   export let gap: string | undefined = undefined
   export let width: 'large' | 'medium' | 'small' | 'x-small' | 'menu' = 'large'
   export let noFade = false
+  // Opt-in for idempotent okActions: on rejection unblock OK and keep the dialog open instead of staying blocked.
+  export let retryOnError = false
 
   const dispatch = createEventDispatcher()
 
@@ -83,10 +86,17 @@
       okProcessing = true
       const r = okAction()
       if (r instanceof Promise) {
-        r.then(() => {
+        const done = r.then(() => {
           okProcessing = false
           dispatch('close')
         })
+        if (retryOnError) {
+          // Only for idempotent actions: keep the dialog and its values open so the action can be retried.
+          void done.catch((err) => {
+            okProcessing = false
+            Analytics.handleError(err)
+          })
+        }
       } else {
         okProcessing = false
         dispatch('close')
