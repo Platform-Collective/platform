@@ -147,3 +147,38 @@ This project is licensed under the [MIT License](LICENSE).
 ---
 
 Enjoy seamless transcoding with *Stream*! 🚀
+
+### Recording protocol recovery (opt-in)
+
+`STREAM_RECORDING_RECOVERY_ENABLED` defaults to disabled. Enable it only with a
+Datalake multipart backend configured by `STREAM_ENDPOINT_URL`. An unsupported or
+missing backend produces a startup warning and disables recovery in the coordinator's
+effective configuration; the caller's configuration is not changed.
+
+The server option enables an in-process tus locker, missing-upload 404 responses,
+and completed-upload retention for `STREAM_TIMEOUT` (default five minutes). Recovery
+PATCH requests have a bounded in-memory buffer. Legacy mode preserves unrestricted
+request-body sizes and reports multipart flush errors immediately. Multipart byte
+accounting, cancellation and lifecycle safety apply to both modes.
+
+Use one stream replica, or sticky routing that keeps creation and every PATCH, HEAD
+and DELETE for an upload on the same instance. Upload state, locks and completion
+markers are process-local. Startup logs this routing requirement when recovery is
+enabled. A restart loses active upload state and requires a new upload; the server
+does not persist checkpoints or recording tokens. Storage lifecycle cleanup is still
+required for multipart uploads orphaned by a process crash or failed abort.
+
+With recovery enabled, multipart start and each PATCH's part writes have a one-minute
+deadline. Completion retries are bounded to three minutes, with one additional minute
+for reconciliation after an ambiguous completion. Failed completion is hidden from
+HEAD and left for expiry cleanup. Legacy completion gains no deadline. Cancellation
+is bounded to thirty seconds.
+
+#### Upload download compatibility
+
+Live tus upload downloads (`GET` on an upload URL) are no longer supported, including
+when recovery is disabled. Consumers must read completed recordings from object
+storage. This changes the previous live-download API behavior and must be accounted
+for when deploying an external consumer.
+
+This server change does not enable or include browser recording retention or replay.

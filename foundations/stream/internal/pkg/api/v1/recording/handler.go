@@ -28,6 +28,7 @@ import (
 	"go.uber.org/zap"
 
 	tusd "github.com/tus/tusd/v2/pkg/handler"
+	"github.com/tus/tusd/v2/pkg/memorylocker"
 )
 
 type recordingHandler struct {
@@ -60,6 +61,9 @@ func (h *recordingHandler) initialize() {
 
 	tusComposer := tusd.NewStoreComposer()
 	tusComposer.UseCore(coordinator)
+	if h.cfg.RecordingRecoveryEnabled {
+		memorylocker.New().UseIn(tusComposer)
+	}
 	tusComposer.UseTerminater(coordinator)
 	tusComposer.UseConcater(coordinator)
 	tusComposer.UseLengthDeferrer(coordinator)

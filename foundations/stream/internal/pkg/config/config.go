@@ -40,6 +40,8 @@ type Config struct {
 	OutputDir string        `split_words:"true" default:"/tmp/transcoing/" desc:"path to the directory with transcoding result."`
 	Timeout   time.Duration `default:"5m" desc:"timeout for the upload"`
 
+	RecordingRecoveryEnabled bool `split_words:"true" default:"false" desc:"enable recording recovery protocol safeguards (requires datalake)"`
+
 	// OpenTelemetry configuration
 	OtelEnabled        bool   `split_words:"true" default:"true" desc:"enable OpenTelemetry"`
 	OtelServiceName    string `split_words:"true" default:"stream" desc:"service name for OpenTelemetry"`
