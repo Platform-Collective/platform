@@ -181,7 +181,11 @@
     if (value != null && grouppingManager !== undefined) {
       return grouppingManager.hasValue(value, values)
     }
-    return values.includes(value?._id ?? value)
+    if (value == null) {
+      // "Not selected" is stored as undefined, and comes back as null once the filter was saved and reloaded.
+      return values.some((p) => p == null)
+    }
+    return values.includes(value._id)
   }
 
   function handleFilterToggle(value: any): void {
