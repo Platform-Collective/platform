@@ -100,7 +100,12 @@ describe('makeFilterQuery with an emptied tick-list filter', () => {
   const resultOf = (result: unknown): any => jest.fn(async () => async () => result)
 
   it('leaves out a filter whose selection is empty instead of matching nothing', async () => {
-    const out = await makeFilterQuery({ space: 'foo' as any }, [mockFilter('milestone', [])], async () => mockMode, resultOf({ $in: [] }))
+    const out = await makeFilterQuery(
+      { space: 'foo' as any },
+      [mockFilter('milestone', [])],
+      async () => mockMode,
+      resultOf({ $in: [] })
+    )
     expect(out).toEqual({ space: 'foo' })
   })
 
@@ -112,7 +117,12 @@ describe('makeFilterQuery with an emptied tick-list filter', () => {
   })
 
   it('keeps a filter that has no values by design, such as a date mode', async () => {
-    const out = await makeFilterQuery({}, [mockFilter('dueDate', [])], async () => mockMode, resultOf({ $exists: false }))
+    const out = await makeFilterQuery(
+      {},
+      [mockFilter('dueDate', [])],
+      async () => mockMode,
+      resultOf({ $exists: false })
+    )
     expect(out).toEqual({ dueDate: { $exists: false } })
   })
 
@@ -127,18 +137,33 @@ describe('makeFilterQuery with a result given as document ids', () => {
   const idsResult = (ids: string[]): any => jest.fn(async () => async () => ({ [FILTER_DOC_IDS]: ids }))
 
   it('turns the ids into a condition on _id, not on the filter key', async () => {
-    const out = await makeFilterQuery({}, [mockFilter('blockedBy', [['x', ['x']]])], async () => mockMode, idsResult(['a', 'b']))
+    const out = await makeFilterQuery(
+      {},
+      [mockFilter('blockedBy', [['x', ['x']]])],
+      async () => mockMode,
+      idsResult(['a', 'b'])
+    )
     expect(out).toEqual({ _id: { $in: ['a', 'b'] } })
   })
 
   it('narrows an _id condition the query already has', async () => {
     const base: DocumentQuery<Doc> = { _id: { $in: ['b', 'c'] } as any }
-    const out = await makeFilterQuery(base, [mockFilter('blockedBy', [['x', ['x']]])], async () => mockMode, idsResult(['a', 'b']))
+    const out = await makeFilterQuery(
+      base,
+      [mockFilter('blockedBy', [['x', ['x']]])],
+      async () => mockMode,
+      idsResult(['a', 'b'])
+    )
     expect(out).toEqual({ _id: { $in: ['b'] } })
   })
 
   it('matches nothing when no document holds the links', async () => {
-    const out = await makeFilterQuery({}, [mockFilter('blockedBy', [['x', ['x']]])], async () => mockMode, idsResult([]))
+    const out = await makeFilterQuery(
+      {},
+      [mockFilter('blockedBy', [['x', ['x']]])],
+      async () => mockMode,
+      idsResult([])
+    )
     expect(out).toEqual({ _id: { $in: [] } })
   })
 })
