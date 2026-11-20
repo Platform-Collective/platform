@@ -107,6 +107,12 @@ import {
 import tracker from './plugin'
 import { copyIssueBranch } from './copy-issue-branch'
 import { formatIssueValue } from './issueTableFormatter'
+import {
+  canCreateIssueFromMessage,
+  canCreateIssueFromCommunicationMessage,
+  createIssueFromMessage,
+  createIssueFromCommunicationMessage
+} from './message-actions'
 
 import MilestoneEditor from './components/milestones/MilestoneEditor.svelte'
 import MilestonePresenter from './components/milestones/MilestonePresenter.svelte'
@@ -538,6 +544,8 @@ export default async (): Promise<Resources> => ({
     ) => await queryMilestone(client, query, filter)
   },
   function: {
+    CanCreateIssueFromMessage: canCreateIssueFromMessage,
+    CanCreateIssueFromCommunicationMessage: canCreateIssueFromCommunicationMessage,
     IssueIdentifierProvider: issueIdentifierProvider,
     IssueTitleProvider: issueTitleProvider,
     ComponentTitleProvider: getComponentTitle,
@@ -571,12 +579,16 @@ export default async (): Promise<Resources> => ({
   },
   actionImpl: {
     CopyIssueBranch: copyIssueBranch,
+    CreateIssueFromMessage: createIssueFromMessage,
     Move: move,
     EditWorkflowStatuses: editWorkflowStatuses,
     EditProject: editProject,
     DeleteMilestone: deleteMilestone,
     DeleteProject: deleteProject,
     DeleteIssue: deleteIssue
+  },
+  messageActionImpl: {
+    CreateIssue: createIssueFromCommunicationMessage
   },
   resolver: {
     Location: resolveLocation
