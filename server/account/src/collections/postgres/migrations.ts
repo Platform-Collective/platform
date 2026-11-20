@@ -87,7 +87,8 @@ export function getMigrations (ns: string, flavor: DBFlavor): [string, string][]
     getV27Migration(ns, flavor),
     getV28Migration(ns, flavor),
     getV29Migration(ns, flavor),
-    getV30Migration(ns, flavor)
+    getV30Migration(ns, flavor),
+    getV31Migration(ns, flavor)
   ]
 }
 
@@ -896,6 +897,17 @@ function getV30Migration (ns: string, flavor: DBFlavor): [string, string] {
     `
     ALTER TABLE ${ns}.otp
     ADD COLUMN IF NOT EXISTS attempts ${types.int4} NOT NULL DEFAULT 0;
+    `
+  ]
+}
+
+function getV31Migration (ns: string, flavor: DBFlavor): [string, string] {
+  const types = dbTypes[flavor]
+  return [
+    'account_db_v29_add_otp_retry_on',
+    `
+    ALTER TABLE ${ns}.social_id
+    ADD COLUMN IF NOT EXISTS otp_retry_on ${types.int8};
     `
   ]
 }

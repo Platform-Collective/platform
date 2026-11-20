@@ -22,6 +22,7 @@ import {
   type AccountUuid,
   buildSocialIdString,
   type SocialKey,
+  type PersonId,
   type PersonUuid
 } from '@hcengineering/core'
 import type {
@@ -47,6 +48,7 @@ import type {
   MailboxSecret,
   Operations,
   OTP,
+  OtpSendReservation,
   Query,
   SocialId,
   Sort,
@@ -433,6 +435,57 @@ export class MongoAccountDB implements AccountDB {
     this.workspaceMembers = new MongoDbCollection<WorkspaceMember>('workspaceMembers', db)
     this.workspacePermission = new MongoDbCollection<WorkspacePermission>('workspacePermissions', db)
     this.apiToken = new MongoDbCollection<ApiToken, 'id'>('apiTokens', db, 'id')
+  }
+
+  async advanceLatestOtpAttempt (socialId: PersonId): Promise<Pick<OTP, 'code' | 'attempts'> | null> {
+    return await this.otp.collection.findOneAndUpdate(
+      { socialId, $expr: { $gt: ['$expiresOn', { $toLong: '$$NOW' }] } },
+      [{ $set: { attempts: { $add: [{ $ifNull: ['$attempts', 0] }, 1] } } }],
+      { sort: { createdOn: -1 }, returnDocument: 'after', includeResultMetadata: false }
+    )
+  }
+
+  async cleanExpiredOtp (): Promise<void> {
+    await this.otp.collection.deleteMany({ $expr: { $lte: ['$expiresOn', { $toLong: '$$NOW' }] } })
+  }
+
+  async reserveOtpSend (socialId: PersonId, retryDelayMs: number, reserve = true): Promise<OtpSendReservation> {
+    // Import observed legacy writes on every request, including after a new writer has run.
+    // Persist before reserving so consuming the legacy code cannot erase its cooldown.
+    // This cannot fence an unmodified old service that sends mail before inserting its OTP.
+    const legacy = await this.otp.collection
+      .aggregate<{
+        retryOn: number
+      }>([
+        { $match: { socialId, $expr: { $gt: ['$expiresOn', { $toLong: '$$NOW' }] } } },
+        { $project: { retryOn: { $min: ['$expiresOn', { $add: ['$createdOn', retryDelayMs] }] } } },
+        { $group: { _id: null, retryOn: { $max: '$retryOn' } } }
+      ])
+      .next()
+    if (legacy != null) {
+      await this.socialId.collection.updateOne({ _id: socialId }, { $max: { otpRetryOn: legacy.retryOn } })
+    }
+    // Both the predicate and deadline use MongoDB's clock, including across service replicas.
+    const reserved = reserve
+      ? await this.socialId.collection.findOneAndUpdate(
+          { _id: socialId, $expr: { $lte: [{ $ifNull: ['$otpRetryOn', 0] }, { $toLong: '$$NOW' }] } },
+          [{ $set: { otpRetryOn: { $add: [{ $toLong: '$$NOW' }, retryDelayMs] } } }],
+          { returnDocument: 'after', includeResultMetadata: false }
+        )
+      : null
+    if (reserved?.otpRetryOn !== undefined) {
+      return { reserved: true, now: reserved.otpRetryOn - retryDelayMs, retryOn: reserved.otpRetryOn }
+    }
+
+    const reservations = this.socialId.collection.aggregate<Pick<OtpSendReservation, 'now' | 'retryOn'>>([
+      { $match: { _id: socialId } },
+      { $project: { now: { $toLong: '$$NOW' }, retryOn: '$otpRetryOn' } }
+    ])
+    const current = await reservations.next()
+    if (current == null || (reserve && current.retryOn == null)) {
+      throw new Error('OTP identity or reservation is missing')
+    }
+    return { reserved: false, now: current.now, retryOn: current.retryOn ?? current.now }
   }
 
   async init (): Promise<void> {
