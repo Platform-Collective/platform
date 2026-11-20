@@ -127,6 +127,9 @@ export class QueryJoinMiddleware extends BaseMiddleware implements Middleware {
     query: DocumentQuery<T>,
     options?: ServerFindOptions<T>
   ): Promise<FindResult<T>> {
+    // Authorization and post-write cache reads must observe committed storage,
+    // never an identical client query that started before the write.
+    if (options?.prefix === 'security') return this.provideFindAll(ctx, _class, query, options)
     const opt = { ...options }
     delete opt.ctx
     return this.joiner.query(
