@@ -2,11 +2,18 @@
  * A set of tests against a real PostgreSQL database, for both CorockachDB and pure.
  */
 
-import { generateUuid, SocialIdType, type AccountUuid, type PersonId } from '@hcengineering/core'
+import {
+  AccountRole,
+  generateUuid,
+  SocialIdType,
+  type AccountUuid,
+  type PersonId,
+  type WorkspaceUuid
+} from '@hcengineering/core'
 import { getDBClient, shutdownPostgres, type PostgresClientReference } from '@hcengineering/postgres'
 import { PostgresAccountDB } from '../collections/postgres/postgres'
 import { type SocialId } from '../types'
-import { createAccount, getDbFlavor, normalizeValue, verifyOtpAttempt } from '../utils'
+import { createAccount, getDbFlavor, normalizeValue, synchronizeOidcWorkspaceRoles, verifyOtpAttempt } from '../utils'
 
 jest.setTimeout(90000)
 
@@ -279,6 +286,102 @@ describe('real-account', () => {
     })
     expect(inviteLinkPG).toBeDefined()
   })
+
+  const ownerRaceDatabases: Array<[string, () => PostgresAccountDB]> = [
+    ['CockroachDB', () => crAccount],
+    ['PostgreSQL', () => pgAccount]
+  ]
+
+  it.each(ownerRaceDatabases)(
+    '%s retains an owner during concurrent OIDC owner demotions',
+    async (_name, getAccount) => {
+      const account = getAccount()
+      const workspaceUuid = await account.createWorkspace(
+        {
+          url: `owner-race-${generateUuid()}`,
+          name: 'owner race',
+          allowGuestSignUp: false,
+          allowReadOnlyGuest: false
+        },
+        {
+          isDisabled: false,
+          mode: 'active',
+          versionMajor: 0,
+          versionMinor: 7,
+          versionPatch: 0
+        }
+      )
+      await Promise.all([
+        account.assignWorkspace(users[0].uuid, workspaceUuid, AccountRole.Owner),
+        account.assignWorkspace(users[1].uuid, workspaceUuid, AccountRole.Owner)
+      ])
+
+      const changed = await Promise.all([
+        account.updateOrUnassignWorkspaceOwnerIfNotLast(users[0].uuid, workspaceUuid, AccountRole.User),
+        account.updateOrUnassignWorkspaceOwnerIfNotLast(users[1].uuid, workspaceUuid, AccountRole.Guest)
+      ])
+      const members = await account.getWorkspaceMembers(workspaceUuid)
+
+      expect(changed.filter(Boolean)).toHaveLength(1)
+      expect(members.filter((member) => member.role === AccountRole.Owner)).toHaveLength(1)
+    }
+  )
+
+  it.each(ownerRaceDatabases)(
+    '%s rolls back account creation and all OIDC role changes on failure',
+    async (_name, getAccount) => {
+      const account = getAccount()
+      const workspaces: WorkspaceUuid[] = []
+      for (const name of ['atomic-one', 'atomic-two']) {
+        workspaces.push(
+          await account.createWorkspace(
+            {
+              url: `${name}-${generateUuid()}`,
+              name,
+              allowGuestSignUp: false,
+              allowReadOnlyGuest: false
+            },
+            {
+              isDisabled: false,
+              mode: 'active',
+              versionMajor: 0,
+              versionMinor: 7,
+              versionPatch: 0
+            }
+          )
+        )
+      }
+      await account.assignWorkspace(users[0].uuid, workspaces[0], AccountRole.Maintainer)
+      await account.assignWorkspace(users[0].uuid, workspaces[1], AccountRole.User)
+      await account.socialId.insertOne({
+        type: SocialIdType.OIDC,
+        value: 'atomic-subject',
+        personUuid: users[0].uuid,
+        verifiedOn: Date.now()
+      })
+      const newAccount = generateUuid() as AccountUuid
+      const ctx = { info: jest.fn(), warn: jest.fn() } as any
+
+      await expect(
+        account.transaction(async (transactionDb) => {
+          await transactionDb.person.insertOne({ uuid: newAccount, firstName: 'Rolled', lastName: 'Back' })
+          await createAccount(transactionDb, newAccount, true)
+          transactionDb.unassignWorkspace = async () => {
+            throw new Error('synchronization failed')
+          }
+          await synchronizeOidcWorkspaceRoles(ctx, transactionDb, users[0].uuid, 'atomic-subject', [
+            { workspaceUuid: workspaces[0], workspaceUrl: 'atomic-one', role: AccountRole.Owner },
+            { workspaceUuid: workspaces[1], workspaceUrl: 'atomic-two', role: null }
+          ])
+        })
+      ).rejects.toThrow('synchronization failed')
+
+      expect(await account.person.findOne({ uuid: newAccount })).toBeNull()
+      expect(await account.account.findOne({ uuid: newAccount })).toBeNull()
+      expect(await account.getWorkspaceRole(users[0].uuid, workspaces[0])).toBe(AccountRole.Maintainer)
+      expect(await account.getWorkspaceRole(users[0].uuid, workspaces[1])).toBe(AccountRole.User)
+    }
+  )
 })
 
 async function migratePostgreSQL (pgAccount: PostgresAccountDB, pgDbUri: string): Promise<void> {
