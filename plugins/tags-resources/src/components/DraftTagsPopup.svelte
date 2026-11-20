@@ -17,6 +17,7 @@
   import { TagElement, TagReference } from '@hcengineering/tags'
   import { createEventDispatcher } from 'svelte'
   import TagsPopup from './TagsPopup.svelte'
+  import { hasTagReference } from '../tag-reference'
 
   export let targetClass: Ref<Class<Doc>>
   export let tags: AttachedData<TagReference>[] = []
@@ -25,6 +26,8 @@
 
   const dispatch = createEventDispatcher()
   async function addRef({ title, color, _id: tag }: TagElement): Promise<void> {
+    if (hasTagReference(tags, { _id: tag })) return
+
     tags = [
       ...tags,
       {
@@ -41,7 +44,7 @@
     dispatch('update', tags)
   }
 
-  async function onUpdate(event: CustomEvent<{ action: string, tag: TagElement }>) {
+  async function onUpdate(event: CustomEvent<{ action: string, tag: TagElement }>): Promise<void> {
     const result = event.detail
     if (result === undefined) return
     if (result.action === 'add') addRef(result.tag)

@@ -13,58 +13,70 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { Class, Doc, Ref } from '@hcengineering/core'
-  import { createQuery, getClient } from '@hcengineering/presentation'
-  import tags, { TagElement, TagsEvents } from '@hcengineering/tags'
   import { Analytics } from '@hcengineering/analytics'
-
-  import TagsPopup from './TagsPopup.svelte'
+  import type { Class, Doc, Ref } from '@hcengineering/core'
+  import { createQuery, getClient } from '@hcengineering/presentation'
+  import tags, { TagsEvents } from '@hcengineering/tags'
+  import type { TagElement } from '@hcengineering/tags'
   import { getObjectId } from '@hcengineering/view-resources'
+  import { addTagReference } from '../tag-reference'
+  import TagsPopup from './TagsPopup.svelte'
 
   export let object: Doc
-  export let targetClass: Ref<Class<Doc>> = object._class
+  export let targetClass: Ref<Class<Doc>> | undefined = undefined
+  export let attachedToClass: Ref<Class<Doc>> | undefined = undefined
+  export let collection: string = 'labels'
 
   let selected: Ref<TagElement>[] = []
   const query = createQuery()
-  $: query.query(tags.class.TagReference, { attachedTo: object._id }, (result) => {
-    selected = result.map(({ tag }) => tag)
-  })
+  $: referenceClass = attachedToClass ?? object._class
+  $: tagTargetClass = targetClass ?? object._class
+  // A new scope object also distinguishes leaving and returning to the same document.
+  $: scope = { object: { ...object }, referenceClass, collection }
+  $: query.query(
+    tags.class.TagReference,
+    { attachedTo: object._id, attachedToClass: referenceClass, collection },
+    (result) => {
+      selected = result.map(({ tag }) => tag)
+    }
+  )
   const client = getClient()
   const hierarchy = client.getHierarchy()
-  async function addRef({ title, color, _id: tag }: TagElement): Promise<void> {
-    // check if tag already attached, could happen if 'add' clicked faster than ui updates
-    const containsTag = selected.some((refElement) => refElement === tag)
-    if (containsTag) {
-      return
-    }
+  async function addRef(tag: TagElement): Promise<void> {
+    const origin = scope
+    if (!(await addTagReference(client, origin.object, tag, origin.collection, origin.referenceClass))) return
 
-    selected.push(tag)
-
-    await client.addCollection(tags.class.TagReference, object.space, object._id, object._class, 'labels', {
-      title,
-      color,
-      tag
-    })
-    const id = await getObjectId(object, hierarchy)
-    Analytics.handleEvent(TagsEvents.TagCreated, { objectId: id, objectClass: object._class })
+    if (scope === origin && !selected.includes(tag._id)) selected = [...selected, tag._id]
+    const id = await getObjectId(origin.object, hierarchy)
+    Analytics.handleEvent(TagsEvents.TagCreated, { objectId: id, objectClass: origin.object._class })
   }
 
   async function removeTag(tag: TagElement): Promise<void> {
-    const tagRef = await client.findOne(tags.class.TagReference, { tag: tag._id, attachedTo: object._id })
-    if (tagRef) {
+    const origin = scope
+    const tagRef = await client.findOne(tags.class.TagReference, {
+      tag: tag._id,
+      attachedTo: origin.object._id,
+      attachedToClass: origin.referenceClass,
+      collection: origin.collection
+    })
+    if (tagRef !== undefined) {
       await client.remove(tagRef)
-      selected.splice(selected.indexOf(tag._id), 1)
-      const id = await getObjectId(object, hierarchy)
-      Analytics.handleEvent(TagsEvents.TagRemoved, { objectId: id, objectClass: object._class })
+      if (scope === origin) selected = selected.filter((id) => id !== tag._id)
+      const id = await getObjectId(origin.object, hierarchy)
+      Analytics.handleEvent(TagsEvents.TagRemoved, { objectId: id, objectClass: origin.object._class })
     }
   }
 
-  async function onUpdate(event: CustomEvent<{ action: string, tag: TagElement }>) {
+  function onUpdate(event: CustomEvent<{ action: string, tag: TagElement }>): void {
     const result = event.detail
     if (result === undefined) return
-    if (result.action === 'add') addRef(result.tag)
-    else if (result.action === 'remove') removeTag(result.tag)
+    const operation = result.action === 'add' ? addRef : result.action === 'remove' ? removeTag : undefined
+    if (operation !== undefined) {
+      void operation(result.tag).catch((error: unknown) => {
+        Analytics.handleError(error instanceof Error ? error : new Error(String(error)))
+      })
+    }
   }
 </script>
 
-<TagsPopup {targetClass} {selected} on:update={onUpdate} />
+<TagsPopup targetClass={tagTargetClass} {selected} on:update={onUpdate} />

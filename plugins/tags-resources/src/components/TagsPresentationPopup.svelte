@@ -15,6 +15,7 @@
 <script lang="ts">
   import { Class, Doc, IdMap, Ref, toIdMap } from '@hcengineering/core'
   import { createQuery } from '@hcengineering/presentation'
+  import type { KeyedAttribute } from '@hcengineering/presentation'
   import { TagElement, TagReference } from '@hcengineering/tags'
   import tags from '../plugin'
   import TagItem from './TagItem.svelte'
@@ -23,6 +24,7 @@
 
   export let object: Doc
   export let _class: Ref<Class<Doc>>
+  export let key: KeyedAttribute
 
   let elements: IdMap<TagElement> = new Map()
   const elementQuery = createQuery()
@@ -36,7 +38,7 @@
   const query = createQuery()
   $: query.query(
     tags.class.TagReference,
-    { attachedTo: object._id, attachedToClass: _class },
+    { attachedTo: object._id, attachedToClass: _class, collection: key.key },
     (res) => {
       items = res
     },
