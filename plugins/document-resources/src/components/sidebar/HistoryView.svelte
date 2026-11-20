@@ -18,9 +18,16 @@
   import { Person } from '@hcengineering/contact'
   import { EmployeePresenter, getPersonByPersonIdCb } from '@hcengineering/contact-resources'
   import { DocumentSnapshot } from '@hcengineering/document'
-  import { TimeSince } from '@hcengineering/ui'
+  import { Button, TimeSince } from '@hcengineering/ui'
+  import { createEventDispatcher } from 'svelte'
+
+  import document from '../../plugin'
 
   export let value: DocumentSnapshot
+  export let readonly = true
+  export let disabled = false
+
+  const dispatch = createEventDispatcher<{ restore: void }>()
 
   let employee: Person | undefined
   $: if (value.createdBy !== undefined) {
@@ -42,6 +49,15 @@
     </div>
   </div>
   <EmployeePresenter value={employee} disabled />
+  {#if !readonly}
+    <Button
+      label={document.string.RestoreVersion}
+      kind={'link'}
+      size={'small'}
+      {disabled}
+      on:click={() => dispatch('restore')}
+    />
+  {/if}
 </div>
 
 <style lang="scss">
