@@ -21,7 +21,7 @@
   export let shrink: boolean = false
 
   const client = getClient()
-  const _class = value !== undefined ? client.getModel().getObject(value) : undefined
+  const _class = value !== undefined ? client.getModel().findObject(value) : undefined
 </script>
 
 {#if _class}
