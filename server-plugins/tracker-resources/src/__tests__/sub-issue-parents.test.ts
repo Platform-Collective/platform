@@ -75,7 +75,7 @@ function makeControl (issues: FakeIssue[]): any {
     })
   }
   const hierarchy = { isDerived: (a: unknown, b: unknown) => a === b }
-  return { ctx: {}, findAll, txFactory, hierarchy, removedMap: new Map() }
+  return { ctx: {}, findAll, txFactory, hierarchy, removedMap: new Map(), txes: [] }
 }
 
 function updateTx (issue: FakeIssue, objectSpace: string, operations: Record<string, unknown>): any {
