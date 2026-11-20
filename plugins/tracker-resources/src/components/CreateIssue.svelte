@@ -147,6 +147,7 @@
   const client = getClient()
   const hierarchy = client.getHierarchy()
   const parentQuery = createQuery()
+  const createIssueAttributesQuery = createQuery()
 
   let _space = draft?.space ?? space
   // let project: Project | undefined
@@ -263,6 +264,17 @@
 
   $: selectedTaskType = kind !== undefined ? $taskTypeStore.get(kind) : undefined
   $: createIssueAttributes = getCreateIssueAttributes(hierarchy, selectedTaskType)
+  $: createIssueAttributesQuery.query(
+    core.class.Attribute,
+    {
+      attributeOf: {
+        $in: [tracker.class.Issue, ...(selectedTaskType !== undefined ? [selectedTaskType.targetClass] : [])]
+      }
+    },
+    () => {
+      createIssueAttributes = getCreateIssueAttributes(hierarchy, selectedTaskType)
+    }
+  )
   $: if (kind !== previousKind) {
     duplicateSource = getDuplicateIssueSource(duplicateSource, kind)
     const previousAttributes = getTaskTypeAttributes(
