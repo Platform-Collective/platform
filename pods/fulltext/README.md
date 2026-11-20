@@ -99,3 +99,28 @@ When `COMMUNICATION_API_ENABLED=true`, the service will:
 
 When disabled (default), communication indexing is skipped, preventing errors if Hulylake is not available.
 
+
+## Reindex Requests from Migrations
+
+A migration's `client.reindex(domain, classes)` sends a `fulltext-reindex` event on
+its workspace topic. The workspace consumer forwards the domain and classes to
+the fulltext topic, where the indexer processes it. Requests are ignored while
+that workspace is being restored.
+
+Deploy the updated fulltext service before upgrading workspaces. Older consumers
+drop these requests even though the migration is recorded as completed. The
+`milestone-search-reindex-v2` migration repeats the previously dropped milestone
+request. If an older consumer has already consumed that request, explicitly
+reindex the affected workspace after updating the service.
+
+For a domain reindex, verify the `reindex done` log with the matching workspace,
+domain and processed count. A cursor failure is logged with that context and
+propagated to the fulltext event handler instead of reporting completion. The
+handler logs failed domains and continues with later domains and messages without
+automatically retrying the failed reindex. A full reindex with a failed domain
+reports `reindex full failed` rather than `reindex full done`; repair the cause and
+explicitly request another reindex to recover missing documents. Bulk fallback
+and individual document indexing failures are logged separately; completion alone does not prove every
+individual document was indexed. An empty domain legitimately reports zero
+processed documents. Verify a known existing document through search when
+confirming a non-empty migration reindex.
