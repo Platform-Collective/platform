@@ -45,6 +45,7 @@ import {
   type Space,
   type Timestamp,
   type Tx,
+  type TxCUD,
   type TxFactory,
   type TxResult,
   type UserStatus,
@@ -333,6 +334,26 @@ export interface Trigger extends Doc {
   // We should match transaction
   txMatch?: DocumentQuery<Tx>
 }
+
+/** A server-side check executed before matching transactions are stored. */
+export interface TxValidator extends Doc {
+  validator: Resource<TxValidatorFunc>
+  objectClass: Ref<Class<Doc>>
+  txMatch?: DocumentQuery<Tx>
+  includeSystem?: boolean
+  includeDerived?: boolean
+}
+
+export interface TxValidatorControl {
+  ctx: MeasureContext<SessionData>
+  account: Account
+  hierarchy: Hierarchy
+  modelDb: ModelDb
+  findAllUnfiltered: SessionFindAll
+  current: (tx: TxCUD<Doc>) => Promise<Doc | undefined>
+}
+
+export type TxValidatorFunc = (txes: TxCUD<Doc>[], control: TxValidatorControl) => Promise<void>
 
 /**
  * @public
