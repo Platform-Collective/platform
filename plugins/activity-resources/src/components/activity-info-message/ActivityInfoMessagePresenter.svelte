@@ -13,7 +13,7 @@
 // limitations under the License.
 -->
 <script lang="ts">
-  import { ActivityInfoMessage } from '@hcengineering/activity'
+  import activity, { ActivityInfoMessage } from '@hcengineering/activity'
   import { Avatar, SystemAvatar, getPersonByPersonIdCb } from '@hcengineering/contact-resources'
   import { translateCB } from '@hcengineering/platform'
   import { HTMLViewer } from '@hcengineering/presentation'
@@ -21,6 +21,7 @@
 
   import ActivityMessageHeader from '../activity-message/ActivityMessageHeader.svelte'
   import ActivityMessageTemplate from '../activity-message/ActivityMessageTemplate.svelte'
+  import { getActivityMessagePresentation } from '../activity-message/activity-message-presentation'
   import { Person } from '@hcengineering/contact'
 
   export let value: ActivityInfoMessage
@@ -37,6 +38,7 @@
   export let readonly: boolean = false
   export let onClick: (() => void) | undefined = undefined
 
+  const presentationStore = getActivityMessagePresentation()
   let person: Person | undefined
   $: getPersonByPersonIdCb(value.createdBy ?? value.modifiedBy, (p) => {
     person = p ?? undefined
@@ -51,6 +53,9 @@
 
 <ActivityMessageTemplate
   message={value}
+  presentation={$presentationStore}
+  isEvent
+  eventIcon={value.icon ?? activity.icon.Activity}
   parentMessage={undefined}
   {person}
   {showNotify}

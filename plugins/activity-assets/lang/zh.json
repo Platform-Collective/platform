@@ -28,6 +28,7 @@
     "Removed": "移除了",
     "Replies": "回复",
     "RepliesCount": "{replies, plural, =1 {# 回复} other {# 回复}}",
+    "ShowMoreReplies": "显示 {count} 条更多回复",
     "Set": "设置",
     "To": "到",
     "Unset": "取消设置",

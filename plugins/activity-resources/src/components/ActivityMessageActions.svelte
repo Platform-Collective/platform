@@ -96,10 +96,19 @@
 
     await fn(message, ev, { onOpen, onClose })
   }
+
+  function handleKeyDown(ev: KeyboardEvent): void {
+    // Keep the native Tab order inside the action bar: window-level focus managers
+    // (e.g. FocusHandler in EditIssue) otherwise intercept Tab and skip these buttons.
+    if (ev.key === 'Tab') {
+      ev.stopPropagation()
+    }
+  }
 </script>
 
 {#if message}
-  <div class="activityMessage-actionPopup">
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div class="activityMessage-actionPopup" on:keydown={handleKeyDown}>
     {#each providedInlineActions as inline}
       {#if inline.icon}
         <ActivityMessageAction

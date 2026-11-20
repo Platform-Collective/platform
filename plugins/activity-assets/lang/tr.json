@@ -28,6 +28,7 @@
     "Removed": "kaldırıldı",
     "Replies": "Yanıtlar",
     "RepliesCount": "{replies, plural, =1 {# yanıt} other {# yanıt}}",
+    "ShowMoreReplies": "{count} yanıt daha göster",
     "Set": "ayarlandı",
     "To": "hedef",
     "Unset": "Kaldırıldı",

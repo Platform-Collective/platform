@@ -14,6 +14,8 @@
 //
 import { type IntlString } from '@hcengineering/platform'
 
+export type ActivityMessagePresentation = 'default' | 'activity' | 'reply'
+
 export interface MessageInlineAction {
   label: IntlString
   onClick?: () => Promise<void>

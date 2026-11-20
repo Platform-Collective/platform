@@ -17,7 +17,7 @@
   import { Action, Label } from '@hcengineering/ui'
   import { getDocLinkTitle } from '@hcengineering/view-resources'
   import { getClient } from '@hcengineering/presentation'
-  import activity from '@hcengineering/activity'
+  import activity, { type ActivityMessage } from '@hcengineering/activity'
   import { AttachmentImageSize } from '@hcengineering/attachment-resources'
 
   import chunter from '../../plugin'
@@ -31,6 +31,7 @@
   export let embedded: boolean = false
   export let withActions: boolean = true
   export let showEmbedded = false
+  export let hideFooter = false
   export let skipLabel = false
   export let actions: Action[] = []
   export let hoverable = true
@@ -41,6 +42,7 @@
   export let videoPreload = false
   export let readonly = false
   export let onClick: (() => void) | undefined = undefined
+  export let onReply: ((message: ActivityMessage) => void) | undefined = undefined
 
   const client = getClient()
 </script>
@@ -66,6 +68,7 @@
     {shouldScroll}
     {withActions}
     {showEmbedded}
+    {hideFooter}
     {embedded}
     {skipLabel}
     {actions}
@@ -75,6 +78,7 @@
     {attachmentImageSize}
     {videoPreload}
     {onClick}
+    {onReply}
     {readonly}
   />
 {/if}
