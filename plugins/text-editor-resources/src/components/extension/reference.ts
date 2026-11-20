@@ -27,7 +27,8 @@ import presentation, { createQuery, getBlobRef, getClient, MessageBox } from '@h
 import view, { type ObjectTooltip, type ReferenceObjectProvider } from '@hcengineering/view'
 import activity, { type ActivityMessage } from '@hcengineering/activity'
 import contact from '@hcengineering/contact'
-import { parseLocation, showPopup, tooltip, type LabelAndProps, type Location, fromCodePoint } from '@hcengineering/ui'
+import { parseLocation, showPopup, tooltip, type LabelAndProps, type Location } from '@hcengineering/ui'
+import { getEmojiFromCodePoints } from '@hcengineering/emoji'
 import workbench, { type Application } from '@hcengineering/workbench'
 
 export interface ReferenceExtensionOptions extends ReferenceOptions {
@@ -626,17 +627,18 @@ function makeQuery (obj: Record<string, string | number | boolean | null | undef
 }
 
 function parseEmoji (icon: number | number[] | Ref<Blob>): string | undefined {
-  if (typeof icon === 'object' && '__ref' in icon) {
+  if (typeof icon !== 'number' && !Array.isArray(icon)) {
     return undefined
   }
   try {
-    return Array.isArray(icon) ? fromCodePoint(...icon) : fromCodePoint(icon as number)
+    return getEmojiFromCodePoints(icon)
   } catch (err) {}
   return undefined
 }
 
 function createEmojiElement (emojiCode: number | number[] | Ref<Blob>): HTMLElement {
   const root = document.createElement('span')
+  root.classList.add('emoji')
   Object.assign(root.style, {
     display: 'inline',
     flexShrink: '0',

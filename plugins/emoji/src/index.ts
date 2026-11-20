@@ -16,6 +16,7 @@ import { emojiId, emojiPlugin } from './plugin'
 
 export * from './types'
 export * from './utils'
+export * from './presentation'
 
 export { emojiId }
 export default emojiPlugin

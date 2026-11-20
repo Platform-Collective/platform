@@ -17,7 +17,6 @@
   import {
     Button,
     ButtonIcon,
-    fromCodePoint,
     Scroller,
     getPlatformColor,
     getPlatformColorDef,
@@ -25,7 +24,7 @@
     Label,
     Component
   } from '@hcengineering/ui'
-  import emojiPlugin from '@hcengineering/emoji'
+  import emojiPlugin, { getEmojiFromCodePoints } from '@hcengineering/emoji'
   import { createEventDispatcher } from 'svelte'
   import { iconsLibrary } from '../icons'
   import view from '../plugin'
@@ -93,12 +92,12 @@
       is={emojiPlugin.component.EmojiPopup}
       props={{
         selected:
-          typeof color === 'string'
-            ? color
-            : Array.isArray(color)
-              ? fromCodePoint(...color)
+          icon !== iconWithEmoji
+            ? undefined
+            : typeof color === 'string'
+              ? color
               : color
-                ? fromCodePoint(color)
+                ? getEmojiFromCodePoints(color)
                 : undefined
       }}
       on:close={(evt) => {
