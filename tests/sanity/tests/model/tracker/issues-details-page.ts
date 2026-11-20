@@ -242,10 +242,15 @@ export class IssuesDetailsPage extends CommonTrackerPage {
   }
 
   async focusActivityCardMoreActions (comment: string): Promise<void> {
+    const card = this.activityCard(comment)
+    const reply = card.locator('> .actions button[data-id="activity:action:Reply"]')
     const action = this.activityCardMoreActions(comment)
-    await action.focus()
+    await reply.focus()
+    await expect(reply).toBeFocused()
+    await this.page.keyboard.press('Tab')
+    await expect(action).toBeFocused()
     await this.page.keyboard.press('Shift+Tab')
-    await expect(action).not.toBeFocused()
+    await expect(reply).toBeFocused()
     await this.page.keyboard.press('Tab')
     await expect(action).toBeFocused()
   }
