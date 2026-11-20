@@ -19,7 +19,16 @@
   import { TestCase, TestProject, TestSuite, TestCaseStatus } from '@hcengineering/test-management'
   import core, { fillDefaults, generateId, makeCollabId, Ref, TxOperations, Data } from '@hcengineering/core'
   import { ObjectBox } from '@hcengineering/view-resources'
-  import { Card, SpaceSelector, createMarkup, getClient } from '@hcengineering/presentation'
+  import {
+    Card,
+    SpaceSelector,
+    createMarkup,
+    createMarkupPersistence,
+    createTransactionState,
+    getClient,
+    runCreateTransaction,
+    updateMarkup
+  } from '@hcengineering/presentation'
   import { EmptyMarkup, isEmptyMarkup } from '@hcengineering/text'
   import { Button, createFocusManager, EditBox, FocusHandler, IconAttachment, getLocation } from '@hcengineering/ui'
 
@@ -27,10 +36,12 @@
   import ProjectPresenter from '../project/ProjectPresenter.svelte'
   import testManagement from '../../plugin'
 
+  /** Runs on every attempt; only enqueue writes through the supplied transaction, without external side effects. */
   export let onCreate: ((orgId: Ref<TestCase>, client: TxOperations) => Promise<void>) | undefined = undefined
+  let creation = createTransactionState()
 
   export function canClose(): boolean {
-    return object.name === ''
+    return !creation.creating && object.name === ''
   }
 
   export let space: Ref<TestProject>
@@ -39,6 +50,11 @@
 
   testSuiteId = testSuiteId ?? (getLocation()?.query?.attachedTo as Ref<TestSuite>)
   const id: Ref<TestCase> = generateId()
+  const target = makeCollabId(testManagement.class.TestCase, id, 'description')
+  const descriptionMarkup = createMarkupPersistence(
+    async (markup) => await createMarkup(target, markup),
+    async (markup) => await updateMarkup(target, markup)
+  )
 
   const object: Data<TestCase> = {
     name: '',
@@ -60,27 +76,37 @@
   fillDefaults(hierarchy, object, testManagement.class.TestCase)
 
   async function createTestCase(): Promise<void> {
-    const op = client.apply()
-    if (!isEmptyMarkup(description)) {
-      const target = makeCollabId(testManagement.class.TestCase, id, 'description')
-      object.description = await createMarkup(target, description)
+    try {
+      await runCreateTransaction({
+        state: creation,
+        prepare: async () => {
+          const op = client.apply()
+          object.description =
+            descriptionMarkup.reference !== null || !isEmptyMarkup(description)
+              ? await descriptionMarkup.save(description)
+              : null
+          await op.addCollection(
+            testManagement.class.TestCase,
+            _space,
+            testSuiteId ?? testManagement.ids.NoParent,
+            testManagement.class.TestSuite,
+            'testCases',
+            object,
+            id
+          )
+          const finalize = await descriptionBox.prepareAttachments(op, id)
+          return { context: op, finalize, commit: async () => await op.commit() }
+        },
+        extend: async (op) => {
+          await onCreate?.(id, op)
+        },
+        committed: () => {
+          dispatch('close', id)
+        }
+      })
+    } finally {
+      creation = creation
     }
-    await op.addCollection(
-      testManagement.class.TestCase,
-      _space,
-      testSuiteId ?? testManagement.ids.NoParent,
-      testManagement.class.TestSuite,
-      'testCases',
-      object,
-      id
-    )
-    await descriptionBox.createAttachments(id, op)
-
-    if (onCreate !== undefined) {
-      await onCreate?.(id, op)
-    }
-    await op.commit()
-    dispatch('close', id)
   }
 
   function handleTestSuiteChange(evt: CustomEvent<Ref<TestSuite>>): void {
@@ -98,8 +124,9 @@
 <Card
   label={testManagement.string.CreateTestCase}
   okAction={createTestCase}
+  preventCloseWhileProcessing
   hideAttachments={attachments.size === 0}
-  canSave={object.name.length > 0}
+  canSave={object.name.length > 0 && !creation.commitUncertain && !creation.creationCommitted}
   on:close={() => {
     dispatch('close')
   }}

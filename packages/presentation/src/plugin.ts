@@ -191,6 +191,9 @@ export default plugin(presentationId, {
     SignupUrl: '' as Metadata<string>
   },
   status: {
-    FileTooLarge: '' as StatusCode
+    FileTooLarge: '' as StatusCode,
+    CreateAlreadyCommitted: '' as StatusCode,
+    CreateOutcomeUnknown: '' as StatusCode,
+    CreateNotCommitted: '' as StatusCode
   }
 })

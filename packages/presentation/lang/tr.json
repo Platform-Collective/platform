@@ -60,6 +60,9 @@
     "BetaVersion": "Beta sürümü"
   },
   "status": {
-    "FileTooLarge": "Dosya çok büyük"
+    "FileTooLarge": "Dosya çok büyük",
+    "CreateAlreadyCommitted": "Zaten oluşturuldu. Yeniden denemeden önce mevcut kayıtları kontrol edin.",
+    "CreateOutcomeUnknown": "Oluşturma sonucu bilinmiyor. Yeniden denemeden önce kayıtları kontrol edin.",
+    "CreateNotCommitted": "Oluşturulmadı. Yeniden deneyebilirsiniz."
   }
 }

@@ -59,6 +59,9 @@
         "PaletteManagementMenu": "색상 프리셋 관리"
     },
     "status": {
-        "FileTooLarge": "파일 크기가 너무 큽니다"
+        "FileTooLarge": "파일 크기가 너무 큽니다",
+        "CreateAlreadyCommitted": "이미 생성되었습니다. 다시 시도하기 전에 기존 레코드를 확인하세요.",
+        "CreateOutcomeUnknown": "생성 결과를 알 수 없습니다. 다시 시도하기 전에 기존 레코드를 확인하세요.",
+        "CreateNotCommitted": "생성되지 않았습니다. 다시 시도할 수 있습니다."
     }
 }

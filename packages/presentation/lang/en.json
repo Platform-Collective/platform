@@ -60,6 +60,9 @@
     "BetaVersion": "Beta version"
   },
   "status": {
-    "FileTooLarge": "File too large"
+    "FileTooLarge": "File too large",
+    "CreateAlreadyCommitted": "Already created. Check the existing records before trying again.",
+    "CreateOutcomeUnknown": "Creation outcome unknown. Check the existing records before trying again.",
+    "CreateNotCommitted": "Not created. You can try again."
   }
 }
