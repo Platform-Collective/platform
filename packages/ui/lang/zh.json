@@ -99,6 +99,7 @@
         "UseMaxWidth": "使用最大宽度",
         "Sidebar": "侧边栏",
         "FontSize": "字体大小",
+        "BrowserLanguage": "浏览器语言（自动）",
         "Language": "语言",
         "AppearanceAndLanguage": "外观和语言",
         "DaysWOValue": "{days, plural, =1 {天} other {天}}",

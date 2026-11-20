@@ -217,7 +217,7 @@ import print, { printId } from '@hcengineering/print'
 import sign from '@hcengineering/sign'
 import textEditor, { textEditorId } from '@hcengineering/text-editor'
 
-import { initThemeStore, setDefaultLanguage } from '@hcengineering/theme'
+import { DEFAULT_LANGUAGES, initializeLanguage, initThemeStore, setDefaultLanguage } from '@hcengineering/theme'
 import { configureNotifications } from './notifications'
 import { configureAnalyticsProviders } from '@hcengineering/analytics-providers'
 import { Branding, Config } from './types'
@@ -411,7 +411,7 @@ export async function configurePlatform (onWorkbenchConnect?: () => Promise<void
   const languages =
     myBranding.languages !== undefined && myBranding.languages !== ''
       ? myBranding.languages.split(',').map((l) => l.trim())
-      : ['en', 'ru', 'es', 'pl', 'pt', 'pt-br', 'zh', 'fr', 'cs', 'it', 'de', 'ja', 'ko', 'tr']
+      : [...DEFAULT_LANGUAGES]
 
   setMetadata(uiPlugin.metadata.Languages, languages)
 
@@ -528,7 +528,7 @@ export async function configurePlatform (onWorkbenchConnect?: () => Promise<void
 
   setMetadata(uiPlugin.metadata.PlatformTitle, title)
   setMetadata(workbench.metadata.PlatformTitle, title)
-  setDefaultLanguage(myBranding.defaultLanguage ?? 'en')
+  setDefaultLanguage(myBranding.defaultLanguage ?? 'en', languages)
   setMetadata(workbench.metadata.DefaultApplication, myBranding.defaultApplication ?? 'tracker')
   setMetadata(workbench.metadata.DefaultSpace, myBranding.defaultSpace ?? tracker.project.DefaultProject)
   setMetadata(workbench.metadata.DefaultSpecial, myBranding.defaultSpecial ?? 'issues')
@@ -542,6 +542,7 @@ export async function configurePlatform (onWorkbenchConnect?: () => Promise<void
     setMetadata(workbench.metadata.ExcludedApplicationsForAnonymous, [])
   }
 
+  await initializeLanguage()
   initThemeStore()
 
   addEventListener(workbench.event.NotifyConnection, async () => {

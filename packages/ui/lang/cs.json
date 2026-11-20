@@ -98,6 +98,7 @@
         "UseMaxWidth": "Maximální šířka",
         "Sidebar": "Postranní panel",
         "FontSize": "Velikost písma",
+        "BrowserLanguage": "Jazyk prohlížeče (automaticky)",
         "Language": "Jazyk",
         "AppearanceAndLanguage": "Vzhled a jazyk",
         "DaysWOValue": "{days, plural, =1 {den} other {dny}}",

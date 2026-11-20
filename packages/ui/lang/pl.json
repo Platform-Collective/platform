@@ -99,6 +99,7 @@
     "UseMaxWidth": "Maksymalna szerokość",
     "Sidebar": "Pasek boczny",
     "FontSize": "Rozmiar czcionki",
+    "BrowserLanguage": "Język przeglądarki (automatyczny)",
     "Language": "Język",
     "AppearanceAndLanguage": "Wygląd i język",
     "DaysWOValue": "{days, plural, =1 {dzień} other {dni}}",

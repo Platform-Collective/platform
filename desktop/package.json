@@ -73,6 +73,7 @@
     "esbuild": "^0.25.10",
     "esbuild-loader": "^4.3.0",
     "@types/ws": "^8.18.1",
+    "ejs": "3.1.10",
     "jest": "^30.4.2",
     "ts-jest": "^29.4.12",
     "@types/jest": "^30.0.0",
