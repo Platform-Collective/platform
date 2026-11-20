@@ -17,16 +17,13 @@
   import { Ref } from '@hcengineering/core'
   import { IconCheck, Icon, Label, resizeObserver } from '@hcengineering/ui'
   import { Filter } from '@hcengineering/view'
-  import { FILTER_DEBOUNCE_MS, FilterQuery, sortFilterValues } from '@hcengineering/view-resources'
+  import { FILTER_DEBOUNCE_MS, sortFilterValues } from '@hcengineering/view-resources'
   import { createEventDispatcher } from 'svelte'
   import { channelProviders } from '../utils'
   import contact from '../plugin'
 
   export let filter: Filter
   export let onChange: (e: Filter) => void
-  filter.onRemove = () => {
-    FilterQuery.remove(filter.index)
-  }
   let selected: Ref<ChannelProvider>[] = filter.value
   const level: number = filter.props?.level ?? 0
 

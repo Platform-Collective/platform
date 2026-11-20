@@ -4,6 +4,8 @@ import core, {
   type Class,
   type Collection,
   type Doc,
+  type DocumentQuery,
+  type FindOptions,
   type FindResult,
   type Hierarchy,
   type ObjQueryType,
@@ -15,6 +17,7 @@ import { createQuery, getClient, type LiveQuery } from '@hcengineering/presentat
 import { getCurrentResolvedLocation, locationToUrl, type AnyComponent } from '@hcengineering/ui'
 import { type Filter, type FilterMode, type FilteredView, type KeyFilter } from '@hcengineering/view'
 import { get, writable } from 'svelte/store'
+import { cancelFilterQuery, FilterQueryLifetime } from './filter/lifecycle'
 import view from './plugin'
 
 /**
@@ -29,13 +32,32 @@ export const selectedFilterStore = writable<FilteredView | undefined>()
 
 export function setFilters (filters: Filter[]): void {
   const old = get(filterStore)
-  old.forEach((p) => p.onRemove?.())
-  filterStore.set(filters)
+  old.forEach(disposeFilter)
+  const next = ensureUniqueFilterIndexes(filters)
+  for (const filter of next) FilterQueryLifetime.register([filter.index])
+  filterStore.set(next)
+}
+
+function ensureUniqueFilterIndexes (filters: Filter[]): Filter[] {
+  const used = new Set<number>()
+  let next = filters.reduce((max, filter) => Math.max(max, filter.index), 0) + 1
+  return filters.map((filter) => {
+    if (!used.has(filter.index)) {
+      used.add(filter.index)
+      return filter
+    }
+    while (used.has(next)) next++
+    used.add(next)
+    return { ...filter, index: next++ }
+  })
 }
 
 export function removeFilter (i: number): void {
   const old = get(filterStore)
-  old[i]?.onRemove?.()
+  const removed = old[i]
+  if (removed !== undefined) {
+    disposeFilter(removed)
+  }
   // Emit a fresh array rather than splicing in place, so reference-memo
   // consumers (and reduceCalls queue coalescing) always see a new identity.
   filterStore.set(old.filter((_, idx) => idx !== i))
@@ -44,6 +66,7 @@ export function removeFilter (i: number): void {
 export function updateFilter (filter: Filter): void {
   const old = get(filterStore)
   const index = old.findIndex((p) => p.index === filter.index)
+  if (index === -1) FilterQueryLifetime.register([filter.index])
   // Build a new array instead of mutating `old` in place.
   filterStore.set(index === -1 ? [...old, filter] : old.map((p, idx) => (idx === index ? filter : p)))
 }
@@ -169,53 +192,129 @@ export async function dateCustom (filter: Filter): Promise<ObjQueryType<any>> {
   return await dateNotSpecified(filter)
 }
 
+export const FILTER_QUERY_VALUE_SCOPE = 'value'
+
 /**
  * @public
  */
 export const FilterQuery = {
-  queries: new Map<number, LiveQuery>(),
+  // A nested filter shares its index with its value resolver. Keep each query
+  // stage separate, but retain one owner so removing the filter cleans up all stages.
+  queries: new Map<number, Map<string, LiveQuery>>(),
   results: new Map<number, Array<Ref<Doc>>>(),
+  scopedResults: new Map<LiveQuery, Array<Ref<Doc>>>(),
 
-  getLiveQuery (index: number): LiveQuery {
-    const current = FilterQuery.queries.get(index)
+  getLifetime (index: number): FilterQueryLifetime {
+    return FilterQueryLifetime.capture(index)
+  },
+  getLiveQuery (index: number, scope: string = FILTER_QUERY_VALUE_SCOPE): LiveQuery {
+    let queries = this.queries.get(index)
+    if (queries === undefined) {
+      queries = new Map()
+      this.queries.set(index, queries)
+    }
+    const current = queries.get(scope)
     if (current !== undefined) return current
     const query = createQuery(true)
-    this.queries.set(index, query)
+    queries.set(scope, query)
     return query
   },
+  isActive (index: number, scope: string, query: LiveQuery): boolean {
+    return this.queries.get(index)?.get(scope) === query
+  },
   remove (index: number): void {
-    const lq = this.queries.get(index)
-    lq?.unsubscribe()
+    cancelFilterQuery(index)
+    const queries = this.queries.get(index)
     this.queries.delete(index)
+    for (const query of queries?.values() ?? []) {
+      query.unsubscribe()
+      this.scopedResults.delete(query)
+    }
     this.results.delete(index)
   }
 }
 
-export async function getRefs (filter: Filter, onUpdate: () => void): Promise<Array<Ref<Doc>>> {
-  const lq = FilterQuery.getLiveQuery(filter.index)
-  const client = getClient()
-  const mode = await client.findOne(view.class.FilterMode, { _id: filter.mode })
-  if (mode === undefined) return []
-  const result = await getResource(mode.result)
-  const newValue = await result(filter, () => {})
-  const promise = new Promise<Array<Ref<Doc>>>((resolve, reject) => {
+export interface FilterQueryRefsOptions<T extends Doc> {
+  filter: Filter
+  onUpdate: () => void
+  lifetime: FilterQueryLifetime
+  lq: LiveQuery
+  scope?: string
+  _class: Ref<Class<T>>
+  query: DocumentQuery<T>
+  mapResults: (refs: FindResult<T>) => Array<Ref<Doc>>
+  options?: FindOptions<T>
+}
+
+export async function queryFilterRefs<T extends Doc> ({
+  filter,
+  onUpdate,
+  lifetime,
+  lq,
+  scope = FILTER_QUERY_VALUE_SCOPE,
+  _class,
+  query,
+  mapResults,
+  options
+}: FilterQueryRefsOptions<T>): Promise<Array<Ref<Doc>>> {
+  if (!lifetime.isActive() || !FilterQuery.isActive(filter.index, scope, lq)) return []
+  const promise = new Promise<Array<Ref<Doc>>>((resolve) => {
     const refresh = lq.query(
-      filter.key._class,
-      {
-        [filter.key.key]: newValue
-      },
-      (refs: FindResult<Doc>) => {
-        const result = Array.from(new Set(refs.map((p) => p._id)))
-        FilterQuery.results.set(filter.index, result)
+      _class,
+      query,
+      (refs: FindResult<T>) => {
+        if (!FilterQuery.isActive(filter.index, scope, lq)) {
+          lq.unsubscribe()
+          resolve([])
+          return
+        }
+        const result = Array.from(new Set(mapResults(refs)))
+        if (scope === FILTER_QUERY_VALUE_SCOPE) FilterQuery.results.set(filter.index, result)
+        else FilterQuery.scopedResults.set(lq, result)
         resolve(result)
         onUpdate()
-      }
+      },
+      options
     )
     if (!refresh) {
-      resolve(FilterQuery.results.get(filter.index) ?? [])
+      const cached =
+        scope === FILTER_QUERY_VALUE_SCOPE ? FilterQuery.results.get(filter.index) : FilterQuery.scopedResults.get(lq)
+      resolve(cached ?? [])
     }
   })
-  return await promise
+  return (await lifetime.waitFor(promise)) ?? []
+}
+
+function disposeFilter (filter: Filter): void {
+  filter.onRemove?.()
+  FilterQuery.remove(filter.index)
+}
+
+export async function getRefs (filter: Filter, onUpdate: () => void): Promise<Array<Ref<Doc>>> {
+  const lifetime = FilterQuery.getLifetime(filter.index)
+  if (!lifetime.isActive()) return []
+  const scope = `refs:${filter.key._class}:${filter.key.key}`
+  const lq = FilterQuery.getLiveQuery(filter.index, scope)
+  const client = getClient()
+  const mode = await lifetime.waitFor(client.findOne(view.class.FilterMode, { _id: filter.mode }))
+  if (mode === undefined || !FilterQuery.isActive(filter.index, scope, lq)) return []
+  const result = await lifetime.waitFor(getResource(mode.result))
+  if (result === undefined || !FilterQuery.isActive(filter.index, scope, lq)) return []
+  const newValue = await lifetime.waitFor(
+    result(filter, () => {
+      if (FilterQuery.isActive(filter.index, scope, lq)) onUpdate()
+    })
+  )
+  return await queryFilterRefs({
+    filter,
+    onUpdate,
+    lifetime,
+    lq,
+    scope,
+    _class: filter.key._class,
+    query: { [filter.key.key]: newValue },
+    mapResults: (refs) => refs.map((p) => p._id)
+  })
 }
 
 function buildRefFilterKey (

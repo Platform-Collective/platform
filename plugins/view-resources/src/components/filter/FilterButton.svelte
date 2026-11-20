@@ -17,7 +17,7 @@
   import { getClient } from '@hcengineering/presentation'
   import { Button, IconAdd, IconFilter, eventToHTMLElement, resolvedLocationStore, showPopup } from '@hcengineering/ui'
   import { Filter, ViewOptions } from '@hcengineering/view'
-  import { filterStore, getFilterKey, selectedFilterStore, updateFilter } from '../../filter'
+  import { filterStore, getFilterKey, selectedFilterStore, setFilters, updateFilter } from '../../filter'
   import view from '../../plugin'
   import FilterTypePopup from './FilterTypePopup.svelte'
   import { onDestroy } from 'svelte'
@@ -40,7 +40,7 @@
     const key = getFilterKey(_class)
     const items = localStorage.getItem(key)
     if (items !== null) {
-      filterStore.set(JSON.parse(items))
+      setFilters(JSON.parse(items))
     }
   }
 

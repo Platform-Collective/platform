@@ -19,18 +19,17 @@ import core, {
   type Client,
   type Doc,
   type DocumentQuery,
-  type FindResult,
   type ObjQueryType,
   type Ref,
   type RelatedDocument
 } from '@hcengineering/core'
 import { OK, Severity, Status, type Resources } from '@hcengineering/platform'
 import { getClient, type ObjectSearchResult } from '@hcengineering/presentation'
-import { type Applicant, type Candidate, type Vacancy } from '@hcengineering/recruit'
+import { type Applicant, type Vacancy } from '@hcengineering/recruit'
 import task from '@hcengineering/task'
 import { showPopup } from '@hcengineering/ui'
 import { type Filter } from '@hcengineering/view'
-import { FilterQuery, statusStore } from '@hcengineering/view-resources'
+import { FilterQuery, queryFilterRefs, statusStore } from '@hcengineering/view-resources'
 import ApplicantFilter from './components/ApplicantFilter.svelte'
 import ApplicantNamePresenter from './components/ApplicantNamePresenter.svelte'
 import ApplicationItem from './components/ApplicationItem.svelte'
@@ -212,65 +211,47 @@ async function getActiveTalants (filter: Filter, onUpdate: () => void): Promise<
   const doneStates = get(statusStore)
     .array.filter((p) => p.category === task.statusCategory.Lost || p.category === task.statusCategory.Won)
     .map((p) => p._id)
-  const promise = new Promise<Array<Ref<Doc>>>((resolve, reject) => {
-    let refresh: boolean = false
-    const lq = FilterQuery.getLiveQuery(filter.index)
-    refresh = lq.query(
-      recruit.class.Applicant,
-      {
-        status: { $nin: doneStates }
-      },
-      (refs: FindResult<Applicant>) => {
-        const result = Array.from(new Set(refs.map((p) => p.attachedTo)))
-        FilterQuery.results.set(filter.index, result)
-        resolve(result)
-        onUpdate()
-      },
-      {
-        projection: {
-          _id: 1,
-          _class: 1,
-          attachedTo: 1
-        }
+  const lifetime = FilterQuery.getLifetime(filter.index)
+  if (!lifetime.isActive()) return []
+  const lq = FilterQuery.getLiveQuery(filter.index)
+  return await queryFilterRefs({
+    filter,
+    onUpdate,
+    lifetime,
+    lq,
+    _class: recruit.class.Applicant,
+    query: { status: { $nin: doneStates } },
+    mapResults: (refs) => refs.map((p) => p.attachedTo),
+    options: {
+      projection: {
+        _id: 1,
+        _class: 1,
+        attachedTo: 1
       }
-    )
-
-    if (!refresh) {
-      resolve(FilterQuery.results.get(filter.index) ?? [])
     }
   })
-  return await promise
 }
 
 async function getNoApplicantCandidates (filter: Filter, onUpdate: () => void): Promise<Array<Ref<Doc>>> {
-  const promise = new Promise<Array<Ref<Doc>>>((resolve, reject) => {
-    let refresh: boolean = false
-    const lq = FilterQuery.getLiveQuery(filter.index)
-    refresh = lq.query(
-      recruit.mixin.Candidate,
-      {
-        applications: { $in: [0, undefined] }
-      },
-      (refs: FindResult<Candidate>) => {
-        const result = Array.from(refs.map((p) => p._id))
-        FilterQuery.results.set(filter.index, result)
-        resolve(result)
-        onUpdate()
-      },
-      {
-        projection: {
-          _id: 1,
-          _class: 1,
-          applications: 1
-        }
+  const lifetime = FilterQuery.getLifetime(filter.index)
+  if (!lifetime.isActive()) return []
+  const lq = FilterQuery.getLiveQuery(filter.index)
+  return await queryFilterRefs({
+    filter,
+    onUpdate,
+    lifetime,
+    lq,
+    _class: recruit.mixin.Candidate,
+    query: { applications: { $in: [0, undefined] } },
+    mapResults: (refs) => refs.map((p) => p._id),
+    options: {
+      projection: {
+        _id: 1,
+        _class: 1,
+        applications: 1
       }
-    )
-
-    if (!refresh) {
-      resolve(FilterQuery.results.get(filter.index) ?? [])
     }
   })
-  return await promise
 }
 
 async function hasActiveApplicant (filter: Filter, onUpdate: () => void): Promise<ObjQueryType<any>> {
