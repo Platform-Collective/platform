@@ -36,27 +36,32 @@ describe('withRetry', () => {
   })
 
   it('should use exponential backoff', async () => {
-    // Check the delays withRetry asks for rather than measuring wall-clock time,
-    // which drifts by a few ms on a loaded CI runner.
-    const delays: number[] = []
-    const setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation(((cb: () => void, ms?: number) => {
-      delays.push(ms ?? 0)
-      cb()
-      return 0 as any
-    }) as any)
-
-    const fn = jest.fn(async () => {
-      throw new Error('fail')
-    })
-
+    // Fake timers keep the check deterministic (wall-clock delays drift on a loaded
+    // CI runner) while still proving that withRetry waits 100 ms, then 200 ms.
+    jest.useFakeTimers()
     try {
-      await expect(withRetry(fn)).rejects.toThrow('fail')
-    } finally {
-      setTimeoutSpy.mockRestore()
-    }
+      const fn = jest.fn(async () => {
+        throw new Error('fail')
+      })
 
-    expect(fn).toHaveBeenCalledTimes(3)
-    expect(delays).toEqual([100, 200])
+      const result = expect(withRetry(fn)).rejects.toThrow('fail')
+      await jest.advanceTimersByTimeAsync(0)
+      expect(fn).toHaveBeenCalledTimes(1)
+
+      await jest.advanceTimersByTimeAsync(99)
+      expect(fn).toHaveBeenCalledTimes(1)
+      await jest.advanceTimersByTimeAsync(1)
+      expect(fn).toHaveBeenCalledTimes(2)
+
+      await jest.advanceTimersByTimeAsync(199)
+      expect(fn).toHaveBeenCalledTimes(2)
+      await jest.advanceTimersByTimeAsync(1)
+      expect(fn).toHaveBeenCalledTimes(3)
+
+      await result
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   it('should not decrement attempt when ignoreAttemptCheck returns true', async () => {

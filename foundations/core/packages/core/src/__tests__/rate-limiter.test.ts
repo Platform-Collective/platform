@@ -341,19 +341,30 @@ describe('RateLimiter', () => {
     })
 
     it('should handle very long running operations', async () => {
-      const limiter = new RateLimiter(1)
-      const mockFn = jest.fn().mockImplementation(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50))
-        return 'result'
-      })
+      // Fake timers make this deterministic: exec must not settle before the
+      // 50 ms operation completes, and must settle as soon as it does.
+      jest.useFakeTimers()
+      try {
+        const limiter = new RateLimiter(1)
+        const mockFn = jest.fn().mockImplementation(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 50))
+          return 'result'
+        })
 
-      const start = Date.now()
-      await limiter.exec(mockFn)
-      const duration = Date.now() - start
+        let settled = false
+        const p = limiter.exec(mockFn).finally(() => {
+          settled = true
+        })
 
-      // Node timers may fire up to ~1 ms before Date.now() reaches the target,
-      // so leave a small tolerance instead of a strict >= 50.
-      expect(duration).toBeGreaterThanOrEqual(45)
+        await jest.advanceTimersByTimeAsync(49)
+        expect(settled).toBe(false)
+
+        await jest.advanceTimersByTimeAsync(1)
+        expect(settled).toBe(true)
+        await expect(p).resolves.toBe('result')
+      } finally {
+        jest.useRealTimers()
+      }
     })
 
     it('should handle mixed sync and async operations', async () => {
