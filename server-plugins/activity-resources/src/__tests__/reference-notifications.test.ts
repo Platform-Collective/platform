@@ -231,7 +231,16 @@ describe('collaborative document mention notifications', () => {
       content: [{ type: MarkupNodeType.text, text: 'Another paragraph' }]
     })
 
-    expect(await workspace.save(jsonToMarkup(updated))).toEqual([])
+    const markup = jsonToMarkup(updated)
+    const txes = await workspace.save(markup)
+    expect(txes).toHaveLength(1)
+    expect(txes[0]).toMatchObject({
+      _class: core.class.TxUpdateDoc,
+      objectClass: activity.class.UserMentionInfo,
+      operations: { content: mentionExcerpt(markup) }
+    })
+    expectNotifications(1)
+    expect(await workspace.save(markup)).toEqual([])
     expectNotifications(1)
   })
 
