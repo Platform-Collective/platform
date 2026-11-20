@@ -49,6 +49,7 @@ import {
   TMilestone,
   TProject,
   TProjectTargetPreference,
+  TProjectNavigatorPreference,
   TRelatedIssueTarget,
   TTimeSpendReport,
   TTypeEstimation,
@@ -502,6 +503,7 @@ export function createModel (builder: Builder): void {
     TTypeEstimation,
     TTypeRemainingTime,
     TProjectTargetPreference,
+    TProjectNavigatorPreference,
     TDependencyShiftedNotification,
     TDependencyShiftRequest
   )

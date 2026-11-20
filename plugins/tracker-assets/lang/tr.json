@@ -216,6 +216,8 @@
     "AllFilters": "tüm filtreler",
     "NoDescription": "Açıklama yok",
     "SearchIssue": "Görev ara...",
+    "ShowProjectOwners": "Kenar çubuğunda sahipleri göster",
+    "HideProjectOwners": "Kenar çubuğunda sahipleri gizle",
     "SearchMilestone": "Kilometre taşı ara...",
     "StatusHistory": "Durum Geçmişi",
     "NewSubIssue": "Alt sorun ekle...",
@@ -562,7 +564,15 @@
     "GanttVisibleRange": "Aralık",
     "GanttNotScheduled": "Planlanmadı",
     "GanttMissingStartDates": "{count} görevin başlangıç tarihi yok.",
-    "GanttSetDatesHint": "Zaman çizelgesinde görmek için bir göreve başlangıç ve bitiş tarihleri ekleyin."
+    "GanttSetDatesHint": "Zaman çizelgesinde görmek için bir göreve başlangıç ve bitiş tarihleri ekleyin.",
+    "CopyReleaseList": "Sürüm listesini kopyala",
+    "ReleaseListLoading": "Tamamlanan işler yükleniyor…",
+    "ReleaseListCount": "Tamamlanan işler: {count}",
+    "ReleaseListEmpty": "Bu kilometre taşında tamamlanmış iş yok.",
+    "ReleaseListMarkdown": "Sürüm listesi (Markdown / düz metin)",
+    "ReleaseListCopied": "Sürüm listesi kopyalandı.",
+    "ReleaseListCopyFallback": "Panoya erişilemedi. Metin seçildi; klavyenizi veya bağlam menüsünü kullanarak kopyalayın.",
+    "ReleaseListLoadFailed": "Tamamlanan işler yüklenemedi. Bu iletişim kutusunu kapatıp yeniden deneyin."
   },
   "status": {}
 }

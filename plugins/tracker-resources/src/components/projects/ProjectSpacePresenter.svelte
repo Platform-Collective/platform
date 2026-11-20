@@ -19,6 +19,8 @@
   import { IconWithEmoji } from '@hcengineering/presentation'
   import { getPlatformColorDef, getPlatformColorForTextDef, themeStore, type Action } from '@hcengineering/ui'
   import view from '@hcengineering/view'
+  import { showProjectOwners, watchProjectOwnersPreference } from '../../project-owners'
+  import ProjectOwners from './ProjectOwners.svelte'
   import { NavLink, TreeNode } from '@hcengineering/view-resources'
   import { SpacesNavModel, SpecialNavModel } from '@hcengineering/workbench'
   import { SpecialElement } from '@hcengineering/workbench-resources'
@@ -32,6 +34,8 @@
   export let forciblyCollapsed: boolean = false
 
   let specials: SpecialNavModel[] = []
+
+  watchProjectOwnersPreference()
 
   async function updateSpecials(model: SpacesNavModel, space: Project): Promise<void> {
     const newSpecials: SpecialNavModel[] = []
@@ -88,6 +92,9 @@
       </NavLink>
     {/each}
 
+    <svelte:fragment slot="extra">
+      {#if $showProjectOwners}<ProjectOwners owners={space.owners} />{/if}
+    </svelte:fragment>
     <svelte:fragment slot="visible">
       {#if visible}
         {@const item = specials.find((sp) => sp.id === currentSpecial && currentSpace === space._id)}

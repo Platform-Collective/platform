@@ -206,6 +206,8 @@
     "AllFilters": "所有过滤器",
     "NoDescription": "无描述",
     "SearchIssue": "搜索任务…",
+    "ShowProjectOwners": "在侧边栏显示负责人",
+    "HideProjectOwners": "在侧边栏隐藏负责人",
     "SearchMilestone": "搜索里程碑…",
 
     "StatusHistory": "状态历史",
@@ -342,7 +344,15 @@
     "GanttVisibleRange": "范围",
     "GanttNotScheduled": "未安排",
     "GanttMissingStartDates": "{count} 个任务没有开始日期。",
-    "GanttSetDatesHint": "为任务设置开始日期和截止日期，即可在时间轴上显示。"
+    "GanttSetDatesHint": "为任务设置开始日期和截止日期，即可在时间轴上显示。",
+    "CopyReleaseList": "复制发布列表",
+    "ReleaseListLoading": "正在加载已完成的问题…",
+    "ReleaseListCount": "已完成的问题：{count}",
+    "ReleaseListEmpty": "此里程碑没有已完成的问题。",
+    "ReleaseListMarkdown": "发布列表（Markdown / 纯文本）",
+    "ReleaseListCopied": "发布列表已复制。",
+    "ReleaseListCopyFallback": "无法访问剪贴板。文本已选中；请使用键盘或上下文菜单复制。",
+    "ReleaseListLoadFailed": "无法加载已完成的问题。请关闭此对话框后重试。"
   },
   "status": {}
 }

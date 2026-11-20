@@ -26,6 +26,12 @@ import CopyAsMarkdownButton from './components/CopyAsMarkdownButton.svelte'
 export * from './formatter'
 export * from './model'
 export * from './data'
+export {
+  escapeMarkdownLinkText,
+  escapeMarkdownLinkUrl,
+  escapeMarkdownTableCellContent,
+  looksLikeHttpOrRefMarkdownLink
+} from './markdown/escape'
 
 export {
   copyAsMarkdownTable,

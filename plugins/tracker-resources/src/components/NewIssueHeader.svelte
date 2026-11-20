@@ -22,6 +22,12 @@
 
   import { onDestroy } from 'svelte'
   import tracker from '../plugin'
+  import {
+    hideProjectOwnersAction,
+    showProjectOwners,
+    showProjectOwnersAction,
+    watchProjectOwnersPreference
+  } from '../project-owners'
   import CreateIssue from './CreateIssue.svelte'
 
   export let currentSpace: Ref<Space> | undefined
@@ -38,13 +44,15 @@
     .findOne(view.class.Action, { _id: tracker.action.NewIssue })
     .then((p) => p?.keyBinding)
 
+  watchProjectOwnersPreference()
+
   onDestroy(
     draftController.hasNext((res) => {
       draftExists = res
     })
   )
 
-  query.query(tracker.class.Project, {}, (res) => {
+  query.query(tracker.class.Project, { archived: false }, (res) => {
     projectExists = res.length > 0
     loading = false
   })
@@ -64,18 +72,25 @@
     })
   }
 
-  let mainActionId: string | undefined = undefined
-  let visibleActions: string[] = []
-  function updateActions(draft: boolean, project: boolean, closed: boolean): void {
-    mainActionId = draft || !closed ? tracker.string.ResumeDraft : tracker.string.NewIssue
-    if (project) {
-      visibleActions = [tracker.string.CreateProject, mainActionId]
-    } else {
-      visibleActions = [tracker.string.CreateProject]
-    }
+  function showOwners(): void {
+    void showProjectOwnersAction()
   }
 
-  $: updateActions(draftExists, projectExists, closed)
+  function hideOwners(): void {
+    void hideProjectOwnersAction()
+  }
+
+  let mainActionId: string | undefined = undefined
+  let visibleActions: string[] = []
+  function updateActions(draft: boolean, project: boolean, closed: boolean, ownersVisible: boolean): void {
+    mainActionId = draft || !closed ? tracker.string.ResumeDraft : tracker.string.NewIssue
+    const ownerAction = ownersVisible ? tracker.string.HideProjectOwners : tracker.string.ShowProjectOwners
+    visibleActions = project
+      ? [tracker.string.CreateProject, mainActionId, ownerAction]
+      : [tracker.string.CreateProject, ownerAction]
+  }
+
+  $: updateActions(draftExists, projectExists, closed, $showProjectOwners)
 </script>
 
 <HeaderButton
@@ -102,6 +117,16 @@
       label: tracker.string.NewIssue,
       keyBindingPromise: newIssueKeyBindingPromise,
       callback: newIssue
+    },
+    {
+      id: tracker.string.ShowProjectOwners,
+      label: tracker.string.ShowProjectOwners,
+      callback: showOwners
+    },
+    {
+      id: tracker.string.HideProjectOwners,
+      label: tracker.string.HideProjectOwners,
+      callback: hideOwners
     }
   ]}
 />
