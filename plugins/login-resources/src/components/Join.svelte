@@ -111,6 +111,17 @@
       status = loginStatus
 
       if (result != null) {
+        // When email confirmation is required the server returns no token.
+        // Calling logIn() then triggers PUT /cookie without Authorization (401),
+        // so send the user to the confirmation page instead.
+        if (result.token == null) {
+          const loc = getCurrentLocation()
+          loc.path[1] = 'confirmationSend'
+          loc.path.length = 2
+          navigate(loc)
+          return
+        }
+
         await logIn(result)
         setLoginInfo(result)
 
