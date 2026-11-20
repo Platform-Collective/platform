@@ -38,6 +38,7 @@ export default mergeIds(timeId, time, {
     WorkItem: '' as IntlString,
     WorkSlot: '' as IntlString,
     CreateToDo: '' as IntlString,
+    AddToPlanner: '' as IntlString,
     Inbox: '' as IntlString,
     All: '' as IntlString,
     Done: '' as IntlString,
