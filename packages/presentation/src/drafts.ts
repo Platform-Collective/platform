@@ -112,6 +112,16 @@ function deleteActive (id: string): void {
 
 // #endregion
 
+function withoutClearedValues (value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value
+  const prototype = Object.getPrototypeOf(value)
+  if (prototype !== Object.prototype && prototype !== null) return value
+  const entries = Object.entries(value)
+    .filter(([, nested]) => nested != null)
+    .map(([key, nested]) => [key, withoutClearedValues(nested)])
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined
+}
+
 function isEmptyDraft<T> (object: T, emptyObj: Partial<T> | undefined): boolean {
   for (const key in object) {
     if (key === '_id') continue
@@ -131,7 +141,7 @@ function isEmptyDraft<T> (object: T, emptyObj: Partial<T> | undefined): boolean 
         res = value !== 0
       }
       if (res && emptyObj != null) {
-        res = !deepEqual(value, emptyObj[key])
+        res = !deepEqual(withoutClearedValues(value), withoutClearedValues(emptyObj[key]))
       }
     }
     if (res) {
