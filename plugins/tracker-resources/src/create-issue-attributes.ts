@@ -93,16 +93,15 @@ export function getCreateIssueAttributeValues (
   const values: Record<string, unknown> = { ...original }
   for (const attribute of attributes) {
     const value = getDraftValue(attribute, draft)
-    if (value !== undefined) {
-      values[attribute.key] = value
-    } else if (
-      attribute.attr.defaultValue != null &&
-      (original[attribute.key] === undefined || hasDraftValue(attribute, draft))
-    ) {
+    if (hasDraftValue(attribute, draft)) {
+      if (value !== undefined) {
+        values[attribute.key] = value
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete values[attribute.key]
+      }
+    } else if (original[attribute.key] === undefined && attribute.attr.defaultValue != null) {
       values[attribute.key] = structuredClone(attribute.attr.defaultValue)
-    } else if (hasDraftValue(attribute, draft)) {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-      delete values[attribute.key]
     }
   }
   return values
@@ -147,8 +146,8 @@ export function fillCreateIssueAttributeDefaults<T> (attributes: CreateIssueAttr
 
 export function isRequiredAttributeFilled (attribute: CreateIssueAttribute, draft: Record<string, unknown>): boolean {
   if (attribute.attr.required !== true) return true
-  const draftValue = getDraftValue(attribute, draft)
-  return !isRequiredValueEmpty(attribute.attr, draftValue !== undefined ? draftValue : attribute.attr.defaultValue)
+  const value = hasDraftValue(attribute, draft) ? getDraftValue(attribute, draft) : attribute.attr.defaultValue
+  return !isRequiredValueEmpty(attribute.attr, value)
 }
 
 export function areRequiredAttributesFilled (

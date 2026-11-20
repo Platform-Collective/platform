@@ -120,6 +120,21 @@ describe('new issue task type attributes', () => {
     expect(isRequiredAttributeFilled(attributes[2], withValue('list', ['value']))).toBe(true)
   })
 
+  it.each([undefined, null])('treats an explicitly cleared default as empty: %s', (clearedValue) => {
+    const hierarchy = createHierarchy()
+    addAttribute(hierarchy, issueType, 'withDefault', { required: true, defaultValue: 'default' })
+    const [attribute] = getCreateIssueAttributes(hierarchy, createTaskType(issueType))
+    const initial = fillCreateIssueAttributeDefaults([attribute], {})
+    const cleared = setCreateIssueAttributeValue(initial, attribute, clearedValue)
+
+    expect(isRequiredAttributeFilled(attribute, initial)).toBe(true)
+    expect(getCreateIssueAttributeValues([attribute], initial)).toEqual({ withDefault: 'default' })
+    expect(isRequiredAttributeFilled(attribute, cleared)).toBe(false)
+    expect(getCreateIssueAttributeValues([attribute], cleared)).toEqual(
+      clearedValue === null ? { withDefault: null } : {}
+    )
+  })
+
   it('discards previous task type values without clearing other draft fields', () => {
     const hierarchy = createHierarchy()
     addAttribute(hierarchy, tracker.class.Issue, 'issueCustom')
