@@ -8,6 +8,7 @@ import { anchorOf, arrowheadPoints, bezierPath, endpointPx, type BarRect } from 
 import { kindCode, signedLag } from './predecessor-format'
 import type { TimeScale } from '@hcengineering/gantt'
 import type { LayoutRow, SummaryRange } from './types'
+import { getIssueBarRange } from './bar-range'
 
 const SIDEBAR_WIDTH = 360
 const HEADER_HEIGHT = 64
@@ -56,8 +57,8 @@ function barRange(row: LayoutRow, summaryRanges: Map<string, SummaryRange>): { s
     const summary = summaryRanges.get(String(row.issue._id)) ?? summaryRanges.get(row.id)
     if (summary?.startDate != null && summary.dueDate != null) return { start: summary.startDate, end: summary.dueDate }
   }
-  if (row.issue.startDate == null || row.issue.dueDate == null) return null
-  return { start: row.issue.startDate, end: row.issue.dueDate }
+  const range = getIssueBarRange(row.issue)
+  return range === null ? null : { start: range.startDate, end: range.dueDate }
 }
 
 function renderIssueList(rows: LayoutRow[]): string {
@@ -131,7 +132,7 @@ function renderRowsAndBars(input: GanttExportInput): { svg: string; rects: Map<s
     if (range === null) continue
     const x = SIDEBAR_WIDTH + input.timeScale.toX(range.start)
     const right = SIDEBAR_WIDTH + input.timeScale.toX(range.end)
-    const w = Math.max(4, right - x)
+    const w = Math.max(4, right - x + input.timeScale.pxPerDay)
     const barY = y + Math.max(4, (row.height - BAR_HEIGHT) / 2)
     if (row.kind === 'milestone') {
       const cx = SIDEBAR_WIDTH + input.timeScale.toX(range.end)

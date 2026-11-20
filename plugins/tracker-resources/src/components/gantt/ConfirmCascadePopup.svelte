@@ -43,8 +43,8 @@
   interface Row {
     id: string
     label: string
-    oldStart: number
-    oldDue: number
+    oldStart: number | null
+    oldDue: number | null
     newStart: number
     newDue: number
     color: string
@@ -128,8 +128,8 @@
     let min = Infinity
     let max = -Infinity
     for (const r of rs) {
-      min = Math.min(min, r.oldStart, r.newStart)
-      max = Math.max(max, r.oldDue, r.newDue)
+      min = Math.min(min, r.oldStart ?? r.newStart, r.newStart)
+      max = Math.max(max, r.oldDue ?? r.newDue, r.newDue)
     }
     const padDays = 2
     return { min: min - padDays * DAY_MS, max: max + padDays * DAY_MS }
@@ -260,15 +260,17 @@
           fill="#374151"
           clip-path="url(#cascade-label-clip)">{row.label}</text
         >
-        <rect
-          x={LABEL_WIDTH + xOf(row.oldStart)}
-          y={BAR_TOP_PADDING + idx * ROW_HEIGHT + 4}
-          width={Math.max(2, xOf(row.oldDue) - xOf(row.oldStart))}
-          height={14}
-          fill={row.color}
-          fill-opacity={0.35}
-          rx="2"
-        />
+        {#if row.oldStart != null && row.oldDue != null}
+          <rect
+            x={LABEL_WIDTH + xOf(row.oldStart)}
+            y={BAR_TOP_PADDING + idx * ROW_HEIGHT + 4}
+            width={Math.max(2, xOf(row.oldDue) - xOf(row.oldStart))}
+            height={14}
+            fill={row.color}
+            fill-opacity={0.35}
+            rx="2"
+          />
+        {/if}
         <rect
           x={LABEL_WIDTH + xOf(row.newStart)}
           y={BAR_TOP_PADDING + idx * ROW_HEIGHT + 4}

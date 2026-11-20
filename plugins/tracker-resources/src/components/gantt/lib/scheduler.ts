@@ -25,6 +25,7 @@ import {
   ffReverseAnchor,
   sfReverseAnchor
 } from '@hcengineering/gantt'
+import { getIssueBarRange } from './bar-range'
 
 const DAY_MS = 86_400_000
 
@@ -277,10 +278,10 @@ export function simulateCascade(
   for (const i of allIssues) issuesByRef.set(i._id, i)
   const current = new Map<Ref<Issue>, WorkingDates>()
   for (const i of allIssues) {
-    if (i.startDate != null && i.dueDate != null) {
-      current.set(i._id, { start: i.startDate, due: i.dueDate })
-    }
+    const range = getIssueBarRange(i)
+    if (range !== null) current.set(i._id, { start: range.startDate, due: range.dueDate })
   }
+  const original = new Map(current)
   const primarySet = new Set<Ref<Issue>>()
   for (const p of primary) {
     primarySet.add(p.issue._id)
@@ -317,10 +318,10 @@ export function simulateCascade(
     // test would misclassify a pure due-resize of an issue that stores a
     // time-of-day. Only a start-DAY move (body drag or cascaded shift) arms
     // the floor; workingDayDelta normalizes its endpoints internally.
-    const origCur = issuesByRef.get(cur)
-    const origCurStart = origCur?.startDate ?? curDates.start
+    const origCur = original.get(cur)
+    const origCurStart = origCur?.start ?? curDates.start
     const curStartDelta = curDates.start - origCurStart
-    const origCurDue = origCur?.dueDate ?? curDates.due
+    const origCurDue = origCur?.due ?? curDates.due
     const startDayMoved = utcMidnight(curDates.start) !== utcMidnight(origCurStart)
     const curDueDeltaWd = cfg === undefined || !startDayMoved ? 0 : workingDayDelta(origCurDue, curDates.due, cfg)
     for (const r of outgoing) {
@@ -340,12 +341,12 @@ export function simulateCascade(
       // already returned for primaries, so a user-dragged Manual bar
       // still commits.
       if (targetIssue.schedulingMode === 'manual') continue
-      if (targetIssue.startDate == null || targetIssue.dueDate == null) {
+      const targetDates = current.get(r.target)
+      if (targetDates === undefined) {
         // Set semantics dedupe multi-path skip counts (DAG fan-in).
         skippedRefs.add(r.target)
         continue
       }
-      const targetDates = current.get(r.target) as WorkingDates
       const lag = r.lag ?? 0
       let requiredAnchor: number
       let targetAnchorIsStart: boolean
@@ -431,11 +432,11 @@ export function simulateCascade(
       // (pull-predecessor). Same rationale as outgoing: pinned dates
       // win over a successor's pull.
       if (predIssue.schedulingMode === 'manual') continue
-      if (predIssue.startDate == null || predIssue.dueDate == null) {
+      const predDates = current.get(r.attachedTo)
+      if (predDates === undefined) {
         skippedRefs.add(r.attachedTo)
         continue
       }
-      const predDates = current.get(r.attachedTo) as WorkingDates
       const lag = r.lag ?? 0
       let requiredAnchor: number
       let predAnchorIsDue: boolean

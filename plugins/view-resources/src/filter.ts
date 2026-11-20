@@ -12,10 +12,16 @@ import core, {
 } from '@hcengineering/core'
 import { getResource } from '@hcengineering/platform'
 import { createQuery, getClient, type LiveQuery } from '@hcengineering/presentation'
-import { getCurrentResolvedLocation, locationToUrl, type AnyComponent } from '@hcengineering/ui'
+import {
+  deviceOptionsStore as deviceInfo,
+  getCurrentResolvedLocation,
+  locationToUrl,
+  type AnyComponent
+} from '@hcengineering/ui'
 import { type Filter, type FilterMode, type FilteredView, type KeyFilter } from '@hcengineering/view'
 import { get, writable } from 'svelte/store'
 import view from './plugin'
+import { getWeekRange } from './date-week'
 
 /**
  * @public
@@ -118,21 +124,11 @@ export async function dateYesterday (filter: Filter): Promise<ObjQueryType<any>>
 }
 
 export async function dateWeek (filter: Filter): Promise<ObjQueryType<any>> {
-  const day = new Date().getDay()
-  const startDayDiff = day === 0 ? 6 : day - 1
-  const endDayDiff = 7 - startDayDiff
-  const weekStart = new Date(new Date().setDate(new Date().getDate() - startDayDiff)).setHours(0, 0, 0, 0)
-  const weekEnd = new Date(new Date().setDate(new Date().getDate() + endDayDiff)).setHours(23, 59, 59, 999)
-  return { $gte: weekStart, $lte: weekEnd }
+  return getWeekRange(new Date(), get(deviceInfo).firstDayOfWeek)
 }
 
 export async function dateNextWeek (filter: Filter): Promise<ObjQueryType<any>> {
-  const day = new Date().getDay()
-  const startDayDiff = day === 0 ? 6 : day - 1
-  const endDayDiff = 7 - startDayDiff
-  const weekStart = new Date(new Date().setDate(new Date().getDate() - startDayDiff + 7)).setHours(0, 0, 0, 0)
-  const weekEnd = new Date(new Date().setDate(new Date().getDate() + endDayDiff + 7)).setHours(23, 59, 59, 999)
-  return { $gte: weekStart, $lte: weekEnd }
+  return getWeekRange(new Date(), get(deviceInfo).firstDayOfWeek, 1)
 }
 
 export async function dateMonth (filter: Filter): Promise<ObjQueryType<any>> {
