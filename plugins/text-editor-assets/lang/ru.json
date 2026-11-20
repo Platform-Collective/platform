@@ -1,6 +1,9 @@
 {
   "string": {
     "TableOfContents": "Оглавление",
+    "Heading1": "Заголовок 1",
+    "Heading2": "Заголовок 2",
+    "Heading3": "Заголовок 3",
     "Suggested": "РЕКОМЕНДУЕМЫЕ",
     "NoItems": "Нет содержимого",
     "EditorPlaceholder": "Начните печатать...",

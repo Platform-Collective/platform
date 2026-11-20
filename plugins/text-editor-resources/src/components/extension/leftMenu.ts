@@ -15,9 +15,10 @@
 
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
-import { type EditorView } from '@tiptap/pm/view'
+import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 import { type Asset, getMetadata } from '@hcengineering/platform'
 import { SelectPopup, getEventPositionElement, showPopup } from '@hcengineering/ui'
+import { createEndZone, endZoneClassName, hasInsertSlotAtEnd } from './leftMenuEnd'
 
 export interface LeftMenuOptions {
   width: number
@@ -27,7 +28,7 @@ export interface LeftMenuOptions {
   icon: Asset
   iconProps: any
   items: Array<{ id: string, label: string, icon: Asset }>
-  handleSelect: (id: string, pos: number, event: MouseEvent) => Promise<void>
+  handleSelect: (id: string, pos: number, event: MouseEvent, insertAtEnd: boolean) => Promise<void>
 }
 
 function nodeDOMAtCoords (coords: { x: number, y: number }): Element | undefined {
@@ -56,8 +57,9 @@ function posAtLeftMenuElement (view: EditorView, leftMenuElement: HTMLElement, o
   return $pos.depth === 0 ? $pos.pos : $pos.before($pos.depth)
 }
 
-function LeftMenu (options: LeftMenuOptions): Plugin {
+function LeftMenu (options: LeftMenuOptions, isEditable: () => boolean): Plugin {
   let leftMenuElement: HTMLElement | null = null
+  let isAtEnd = false
   const offsetX = options.width + options.marginX
   let rafId: number | null = null
   let styleCache = new WeakMap<HTMLElement, { lineHeight: number, paddingTop: number, marginTop: number }>()
@@ -119,6 +121,11 @@ function LeftMenu (options: LeftMenuOptions): Plugin {
         // Prevent default in order for the popup to take focus for keyboard events
         e.preventDefault()
         e.stopPropagation()
+        if (!view.editable) {
+          hideLeftMenu()
+          return
+        }
+        const insertAtEnd = isAtEnd
         showPopup(
           SelectPopup,
           {
@@ -126,9 +133,9 @@ function LeftMenu (options: LeftMenuOptions): Plugin {
           },
           getEventPositionElement(e),
           (val) => {
-            if (leftMenuElement === null) return
-            const pos = posAtLeftMenuElement(view, leftMenuElement, offsetX)
-            void options.handleSelect(val, pos, e)
+            if (leftMenuElement === null || !view.editable || val === undefined || val === null) return
+            const pos = insertAtEnd ? view.state.doc.content.size : posAtLeftMenuElement(view, leftMenuElement, offsetX)
+            void options.handleSelect(val, pos, e, insertAtEnd)
           }
         )
       })
@@ -136,6 +143,11 @@ function LeftMenu (options: LeftMenuOptions): Plugin {
       view?.dom?.parentElement?.appendChild(leftMenuElement)
 
       return {
+        update: (updatedView) => {
+          if (!updatedView.editable) {
+            hideLeftMenu()
+          }
+        },
         destroy: () => {
           if (rafId !== null) {
             cancelAnimationFrame(rafId)
@@ -148,6 +160,17 @@ function LeftMenu (options: LeftMenuOptions): Plugin {
       }
     },
     props: {
+      decorations: (state) => {
+        if (!isEditable() || options.items === undefined || options.items.length === 0) return null
+        if (hasInsertSlotAtEnd(state.doc)) return null
+        return DecorationSet.create(state.doc, [
+          Decoration.widget(state.doc.content.size, () => createEndZone(options.height), {
+            side: 1,
+            key: endZoneClassName,
+            ignoreSelection: true
+          })
+        ])
+      },
       handleDOMEvents: {
         mousemove: (view, event) => {
           if (!view.editable) {
@@ -200,6 +223,7 @@ function LeftMenu (options: LeftMenuOptions): Plugin {
 
             if (leftMenuElement === null) return
 
+            isAtEnd = node.classList.contains(endZoneClassName)
             leftMenuElement.style.left = `${left}px`
             leftMenuElement.style.top = `${top}px`
 
@@ -252,6 +276,6 @@ export const LeftMenuExtension = Extension.create<LeftMenuOptions>({
   name: 'leftMenu',
 
   addProseMirrorPlugins () {
-    return [LeftMenu(this.options)]
+    return [LeftMenu(this.options, () => this.editor.isEditable)]
   }
 })

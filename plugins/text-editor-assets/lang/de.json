@@ -1,6 +1,9 @@
 {
   "string": {
     "TableOfContents": "Inhaltsverzeichnis",
+    "Heading1": "Überschrift 1",
+    "Heading2": "Überschrift 2",
+    "Heading3": "Überschrift 3",
     "Suggested": "NLICHE",
     "NoItems": "Keine Artikel",
     "EditorPlaceholder": "Fang an zu tippen...",
