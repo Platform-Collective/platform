@@ -22,7 +22,10 @@
     "_phase:validate": "compile validate"
   },
   "devDependencies": {
+    "@hcengineering/middleware": "workspace:^0.7.21",
     "@hcengineering/platform-rig": "workspace:^0.7.21",
+    "@hcengineering/server-gmail-resources": "workspace:^0.7.0",
+    "@hcengineering/server-notification-resources": "workspace:^0.7.0",
     "@typescript-eslint/eslint-plugin": "^8.67.0",
     "eslint-plugin-promise": "^7.3.0",
     "eslint-plugin-n": "^18.3.0",
@@ -41,6 +44,7 @@
     "@hcengineering/contact": "workspace:^0.7.0",
     "@hcengineering/server-contact": "workspace:^0.7.0",
     "@hcengineering/core": "workspace:^0.7.26",
+    "@hcengineering/gmail": "workspace:^0.7.0",
     "@hcengineering/login": "workspace:^0.7.0",
     "@hcengineering/notification": "workspace:^0.7.0",
     "@hcengineering/platform": "workspace:^0.7.20",

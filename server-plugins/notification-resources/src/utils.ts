@@ -48,6 +48,11 @@ import core, {
 } from '@hcengineering/core'
 import notification, {
   NotificationContent,
+  NOTIFICATION_PROVIDER_COVERAGE,
+  NOTIFICATION_PROVIDER_SUPPRESSIONS,
+  type InboxNotification,
+  type NotificationProviderCoverageMap,
+  type NotificationProviderSuppressions,
   notificationId,
   NotificationProvider,
   type NotificationProviderSetting,
@@ -69,7 +74,7 @@ import { extractReferences, markupToJSON, Reference } from '@hcengineering/text-
 import { encodeObjectURI } from '@hcengineering/view'
 import { workbenchId } from '@hcengineering/workbench'
 
-import { NotifyResult } from './types'
+import { AvailableProvidersCacheKey, type AvailableProvidersCache, type NotifyResult } from './types'
 
 /**
  * @public
@@ -211,6 +216,24 @@ export function isAllowed (
   return type.defaultEnabled
 }
 
+/** Cache routing and explicit coverage separately so legacy provider fallbacks remain valid. */
+export function cacheNotificationProviderDecision (
+  control: TriggerControl,
+  id: Ref<InboxNotification>,
+  result: NotifyResult
+): void {
+  const providers: AvailableProvidersCache = control.contextCache.get(AvailableProvidersCacheKey) ?? new Map()
+  providers.set(id, Array.from(result.keys()))
+  control.contextCache.set(AvailableProvidersCacheKey, providers)
+
+  if (result.coveredProviders !== undefined && result.coveredProviders.length > 0) {
+    const suppressed: NotificationProviderSuppressions =
+      control.contextCache.get(NOTIFICATION_PROVIDER_SUPPRESSIONS) ?? new Map()
+    suppressed.set(id, result.coveredProviders)
+    control.contextCache.set(NOTIFICATION_PROVIDER_SUPPRESSIONS, suppressed)
+  }
+}
+
 export async function isShouldNotifyTx (
   control: TriggerControl,
   tx: TxCUD<Doc>,
@@ -223,7 +246,10 @@ export async function isShouldNotifyTx (
 ): Promise<NotifyResult> {
   const types = getMatchedTypes(control, tx, isOwn, isSpace, docUpdateMessage?.attributeUpdates?.attrKey)
   const modifiedByPersonId = tx.modifiedBy
-  const result = new Map<Ref<NotificationProvider>, NotificationType[]>()
+  const result: NotifyResult = new Map()
+  const coverage: NotificationProviderCoverageMap | undefined = control.contextCache.get(NOTIFICATION_PROVIDER_COVERAGE)
+  const markers = coverage?.get(tx._id)
+  let coveredProviders: Set<Ref<NotificationProvider>> | undefined
   let providers: NotificationProvider[] = control.modelDb.findAllSync(notification.class.NotificationProvider, {})
 
   if (getMetadata(serverNotification.metadata.InboxOnlyNotifications) === true) {
@@ -249,13 +275,40 @@ export async function isShouldNotifyTx (
     for (const provider of providers) {
       const allowed = isAllowed(control, receiver.socialIds, type, provider, notificationControl)
 
-      if (allowed) {
+      if (!allowed) continue
+
+      const covered =
+        markers?.some((marker) => {
+          if (
+            marker.recipient !== receiver.account ||
+            marker.provider !== provider._id ||
+            marker.field !== type.field ||
+            !control.txes.some((summary) => summary._id === marker.summary)
+          ) {
+            return false
+          }
+
+          const summaryType = control.modelDb.findObject(marker.type)
+          return (
+            summaryType !== undefined &&
+            isAllowed(control, receiver.socialIds, summaryType, provider, notificationControl)
+          )
+        }) ?? false
+
+      if (covered) {
+        coveredProviders ??= new Set()
+        coveredProviders.add(provider._id)
+      } else {
         const cur = result.get(provider._id) ?? []
         result.set(provider._id, [...cur, type])
       }
     }
   }
 
+  // A provider still needed by another matched type must remain available.
+  if (coveredProviders !== undefined) {
+    result.coveredProviders = Array.from(coveredProviders).filter((provider) => !result.has(provider))
+  }
   return result
 }
 
