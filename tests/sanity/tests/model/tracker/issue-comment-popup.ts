@@ -9,11 +9,15 @@ export class IssueCommentPopup extends IssuesPage {
   buttonSendComment = (): Locator =>
     this.page.locator('div[class*="commentPopup"] div.buttons-panel > button[type="button"]')
 
-  async addCommentInPopup (commentText: string, attachmentFileName?: string): Promise<void> {
+  async addCommentInPopup (commentText: string, attachmentFileName?: string, inlineImage = false): Promise<void> {
     await this.inputCommentText().fill(commentText)
     if (attachmentFileName != null) {
       await this.inputAttachFile().setInputFiles(path.join(__dirname, `../../files/${attachmentFileName}`))
-      await expect(this.textAttachFileName()).toHaveText(attachmentFileName)
+      if (inlineImage) {
+        await expect(this.inputCommentText().getByRole('img', { name: attachmentFileName, exact: true })).toBeVisible()
+      } else {
+        await expect(this.textAttachFileName()).toHaveText(attachmentFileName)
+      }
     }
 
     await this.buttonSendComment().click()

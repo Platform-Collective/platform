@@ -204,8 +204,8 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
           imgElement.setAttribute(k, v)
         }
       }
-      const fileId = imgAttributes['file-id'] ?? getPlatformFileId(imgAttributes.src ?? '')
-      if (fileId !== null && imageSrcCache.has(fileId)) {
+      const fileId = imgAttributes['file-id'] || getPlatformFileId(imgAttributes.src ?? '')
+      if (fileId != null && imageSrcCache.has(fileId)) {
         const cached = imageSrcCache.get(fileId)
         setImageProps(cached?.src ?? null, cached?.srcset ?? null)
       }
@@ -224,9 +224,10 @@ export const ImageExtension = ImageNode.extend<ImageOptions>({
             imageSrcCache.set(fileId, { src: val.src, srcset: val.srcset })
           })
           .catch((error: unknown) => {
+            clearTimeout(setBrokenImg)
             if (destroyed || view.isDestroyed) return
             console.error('[ImageExtension.addNodeView] Failed to resolve image', { fileId, error })
-            setNodeLoadingState(false)
+            setImageProps(imgAttributes.src || null, null)
           })
       } else {
         setImageProps(imgAttributes.src ?? null, imgAttributes.srcset ?? null)

@@ -235,6 +235,7 @@
 </script>
 
 <AttachmentRefInput
+  inlineImages
   {focusIndex}
   bind:this={inputRef}
   bind:content={inputContent}
