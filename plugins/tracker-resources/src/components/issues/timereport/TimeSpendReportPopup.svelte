@@ -15,15 +15,16 @@
 <script lang="ts">
   import contact, { Employee, getCurrentEmployee } from '@hcengineering/contact'
   import { AttachedData, Class, DocumentUpdate, Ref, Space } from '@hcengineering/core'
-  import type { IntlString } from '@hcengineering/platform'
+  import { translate, type IntlString } from '@hcengineering/platform'
   import presentation, { Card, getClient } from '@hcengineering/presentation'
   import { UserBox } from '@hcengineering/contact-resources'
   import { Issue, TimeReportDayType, TimeSpendReport, TrackerEvents } from '@hcengineering/tracker'
-  import { Button, DatePresenter, EditBox, Label } from '@hcengineering/ui'
+  import { Button, DatePresenter, EditBox, Label, themeStore } from '@hcengineering/ui'
   import tracker from '../../../plugin'
   import { getTimeReportDate, getTimeReportDayType } from '../../../utils'
   import TitlePresenter from '../TitlePresenter.svelte'
   import TimeReportDayDropdown from './TimeReportDayDropdown.svelte'
+  import { formatTimeReportValue, parseTimeReportValue } from './timeReportValue'
   import { Analytics } from '@hcengineering/analytics'
 
   export let issue: Issue | undefined = undefined
@@ -33,7 +34,7 @@
   export let assignee: Ref<Employee> | null | undefined = issue?.assignee as Ref<Employee>
 
   export let value: TimeSpendReport | undefined
-  export let placeholder: IntlString = tracker.string.TimeSpendReportValue
+  export let placeholder: IntlString = tracker.string.TimeSpendReportValuePlaceholder
   export let defaultTimeReportDay: TimeReportDayType = TimeReportDayType.PreviousWorkDay
 
   const data = {
@@ -44,6 +45,28 @@
   }
 
   let selectedTimeReportDay = getTimeReportDayType(data.date)
+
+  const initialValueText = formatTimeReportValue(data.value)
+  let valueText = initialValueText
+  let hourUnits: string[] = []
+  let minuteUnits: string[] = []
+
+  $: void loadUnits($themeStore.language)
+
+  async function loadUnits(language: string): Promise<void> {
+    try {
+      hourUnits = [await translate(tracker.string.HourLabel, {}, language)]
+      minuteUnits = [await translate(tracker.string.MinuteLabel, {}, language)]
+    } catch {}
+  }
+
+  // Keep the stored value as is until the user changes the text
+  $: data.value =
+    valueText === initialValueText ? value?.value : parseTimeReportValue(valueText, hourUnits, minuteUnits)
+
+  function setValue(hours: number): void {
+    valueText = formatTimeReportValue(hours)
+  }
 
   export function canClose(): boolean {
     return true
@@ -103,37 +126,32 @@
     {/if}
   </svelte:fragment>
   <div class="flex-row-center gap-2">
-    <EditBox
-      autoFocus
-      bind:value={data.value}
-      {placeholder}
-      maxWidth={'9rem'}
-      format={'number'}
-      maxDigitsAfterPoint={3}
-      kind={'editbox'}
-    />
-    <Button kind={'link-bordered'} on:click={() => (data.value = 0.25)}>
+    <EditBox autoFocus bind:value={valueText} {placeholder} maxWidth={'9rem'} kind={'editbox'} />
+    {#if data.value !== undefined && Number.isFinite(data.value) && data.value !== 0}
+      <span class="flex-no-shrink content-dark-color">= {formatTimeReportValue(data.value)}</span>
+    {/if}
+    <Button kind={'link-bordered'} on:click={() => setValue(0.25)}>
       <span slot="content">15<Label label={tracker.string.MinuteLabel} /></span>
     </Button>
-    <Button kind={'link-bordered'} on:click={() => (data.value = 0.5)}>
+    <Button kind={'link-bordered'} on:click={() => setValue(0.5)}>
       <span slot="content">30<Label label={tracker.string.MinuteLabel} /></span>
     </Button>
-    <Button kind={'link-bordered'} on:click={() => (data.value = 1)}>
+    <Button kind={'link-bordered'} on:click={() => setValue(1)}>
       <span slot="content">1<Label label={tracker.string.HourLabel} /></span>
     </Button>
-    <Button kind={'link-bordered'} on:click={() => (data.value = 2)}>
+    <Button kind={'link-bordered'} on:click={() => setValue(2)}>
       <span slot="content">2<Label label={tracker.string.HourLabel} /></span>
     </Button>
-    <Button kind={'link-bordered'} on:click={() => (data.value = 4)}>
+    <Button kind={'link-bordered'} on:click={() => setValue(4)}>
       <span slot="content">4<Label label={tracker.string.HourLabel} /></span>
     </Button>
-    <Button kind={'link-bordered'} on:click={() => (data.value = 6)}>
+    <Button kind={'link-bordered'} on:click={() => setValue(6)}>
       <span slot="content">6<Label label={tracker.string.HourLabel} /></span>
     </Button>
-    <Button kind={'link-bordered'} on:click={() => (data.value = 7)}>
+    <Button kind={'link-bordered'} on:click={() => setValue(7)}>
       <span slot="content">7<Label label={tracker.string.HourLabel} /></span>
     </Button>
-    <Button kind={'link-bordered'} on:click={() => (data.value = 8)}>
+    <Button kind={'link-bordered'} on:click={() => setValue(8)}>
       <span slot="content">8<Label label={tracker.string.HourLabel} /></span>
     </Button>
   </div>

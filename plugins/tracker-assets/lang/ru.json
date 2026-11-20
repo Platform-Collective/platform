@@ -1,5 +1,9 @@
 {
   "string": {
+    "PanelSectionDetails": "Детали",
+    "PanelSectionPlanning": "Планирование",
+    "PanelSectionDates": "Даты",
+    "PanelSectionAttributes": "Атрибуты",
     "Calendar": "Календарь",
     "CalendarWithoutDueDate": "Задач без срока выполнения: {count}",
     "CalendarUpdateFailed": "Не удалось обновить даты задачи. Попробуйте ещё раз.",
@@ -258,6 +262,7 @@
     "TimeSpendReportDate": "Дата",
     "TimeSpendReportValue": "Затраченное время",
     "TimeSpendReportValueTooltip": "Затраченное время в человеко днях",
+    "TimeSpendReportValuePlaceholder": "напр. 1h 30m",
     "TimeSpendReportDescription": "Описание",
     "TimeSpendDays": "{value} д",
     "TimeSpendHours": "{value} ч",
