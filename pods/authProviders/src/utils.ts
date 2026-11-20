@@ -209,8 +209,7 @@ export async function handleProviderAuth (
     if (loginInfo === null) {
       measureCtx.info('Failed to auth: no associated account found', {
         email,
-        type: providerType,
-        user
+        type: providerType
       })
       return concatLink(branding?.front ?? frontUrl, '/login')
     } else {
@@ -229,7 +228,7 @@ export async function handleProviderAuth (
       return `${origin}?${query}`
     }
   } catch (err: any) {
-    measureCtx.error('failed to auth', { err, type: providerType, user })
+    measureCtx.error('failed to auth', { err, type: providerType })
     return ''
   }
 }
