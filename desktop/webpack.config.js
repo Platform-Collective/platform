@@ -140,7 +140,19 @@ module.exports = [
       symlinks: true,
       alias: {
         svelte: path.resolve('node_modules', 'svelte/src/runtime'),
-        '@hcengineering/platform-rig/profiles/ui/svelte': path.resolve('node_modules', 'svelte/src/runtime')
+        '@hcengineering/platform-rig/profiles/ui/svelte': path.resolve('node_modules', 'svelte/src/runtime'),
+        // DESKTOP-ONLY EXCLUSION: Iconify packs for Mermaid diagrams (logos:*, mdi:* icons).
+        // Why: the two packs are about 11 MB of JSON. The web build loads them lazily from
+        // a separate chunk, but this desktop UI build emits a single bundle, and minifying
+        // that bundle with the packs inside runs out of memory (ERR_WORKER_OUT_OF_MEMORY).
+        // `false` makes webpack substitute an empty module, so the JSON is never parsed here.
+        // Effect in the desktop app: Mermaid diagrams still render, but icons from these
+        // packs show Mermaid's "?" placeholder. The web build (dev/prod) is not affected.
+        // To lift this: serve the pack JSON at runtime instead of bundling it, then remove
+        // these two aliases. See plugins/text-editor-resources/src/components/extension/
+        // codeSnippets/mermaid-icon-packs.ts.
+        '@iconify-json/logos': false,
+        '@iconify-json/mdi': false
       },
       fallback: {
         crypto: false,
