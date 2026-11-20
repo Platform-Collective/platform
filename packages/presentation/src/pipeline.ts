@@ -26,6 +26,25 @@ import {
 } from '@hcengineering/core'
 import platform, { PlatformError, setPlatformStatus, unknownError, type Resource } from '@hcengineering/platform'
 
+const backgroundTxMetaKey = 'backgroundWrite'
+
+/**
+ * Marks a write the user did not trigger (e.g. a presence heartbeat). A rejection of such a write is
+ * returned to its writer only: no permission notification and no global platform status.
+ * @public
+ */
+export function markBackgroundTx<T extends Tx> (tx: T): T {
+  tx.meta = { ...tx.meta, [backgroundTxMetaKey]: true }
+  return tx
+}
+
+/**
+ * @public
+ */
+export function isBackgroundTx (tx: Tx): boolean {
+  return tx.meta?.[backgroundTxMetaKey] === true
+}
+
 /**
  * @public
  */
@@ -225,6 +244,8 @@ export class PresentationPipelineImpl implements PresentationPipeline {
           return {}
         }
       }
+      // A background writer handles its own rejection; it must not raise the global error status.
+      if (isBackgroundTx(tx)) throw err
       const status = unknownError(err)
       await setPlatformStatus(status)
       return {}
