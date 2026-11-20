@@ -45,6 +45,7 @@
     showPopup
   } from '@hcengineering/ui'
   import view from '@hcengineering/view'
+  import { handleMissingTabDocument } from '@hcengineering/workbench-resources'
   import { canChangeDoc, showMenu } from '@hcengineering/view-resources'
 
   import { permissionsStore } from '@hcengineering/contact-resources'
@@ -91,6 +92,9 @@
         title = doc.title
       }
     } else {
+      // Workbench processes removals after live queries and owns tab navigation,
+      // including keeping pinned tabs in place.
+      if (handleMissingTabDocument(_id)) return
       const loc = getCurrentLocation()
       loc.path.length = 3
       navigate(loc)
