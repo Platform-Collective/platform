@@ -26,6 +26,8 @@
     "ToDos": "Aufgaben",
     "Done": "Erledigt",
     "EditToDo": "Aufgabe bearbeiten",
+    "BlockedBy": "Blockiert durch {issues}",
+    "StartsOn": "Beginnt am {date}",
     "Unplanned": "Ungeplant",
     "Planned": "Geplant",
     "AddSlot": "Zeitfenster hinzufügen",

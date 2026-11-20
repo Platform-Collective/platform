@@ -26,6 +26,8 @@
     "ToDos": "Tarefas pendentes",
     "Done": "Feito",
     "EditToDo": "Editar tarefa",
+    "BlockedBy": "Bloqueado por {issues}",
+    "StartsOn": "Começa em {date}",
     "Unplanned": "Não planejado",
     "Planned": "Planejado",
     "AddSlot": "Adicionar intervalo",

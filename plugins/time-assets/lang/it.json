@@ -26,6 +26,8 @@
     "ToDos": "Elementi d'Azione",
     "Done": "Fatto",
     "EditToDo": "Modifica Elemento d'Azione",
+    "BlockedBy": "Bloccato da {issues}",
+    "StartsOn": "Inizia il {date}",
     "Unplanned": "Non pianificato",
     "Planned": "Pianificato",
     "AddSlot": "Aggiungi Finestra",

@@ -26,6 +26,8 @@
     "ToDos": "Eylem Öğeleri",
     "Done": "Tamam",
     "EditToDo": "Eylem Öğesini Düzenle",
+    "BlockedBy": "{issues} tarafından engelleniyor",
+    "StartsOn": "{date} tarihinde başlar",
     "Unplanned": "Planlanmamış",
     "Planned": "Planlanmış",
     "AddSlot": "Aralık Ekle",

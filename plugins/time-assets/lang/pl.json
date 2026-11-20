@@ -26,6 +26,8 @@
     "ToDos": "Działania",
     "Done": "Wykonane",
     "EditToDo": "Edytuj działanie",
+    "BlockedBy": "Zablokowane przez {issues}",
+    "StartsOn": "Rozpoczyna się {date}",
     "Unplanned": "Niezaplanowane",
     "Planned": "Zaplanowane",
     "AddSlot": "Dodaj okno pracy",

@@ -26,6 +26,8 @@
     "ToDos": "待办事项",
     "Done": "完成",
     "EditToDo": "编辑待办",
+    "BlockedBy": "被 {issues} 阻塞",
+    "StartsOn": "开始于 {date}",
     "Unplanned": "未计划",
     "Planned": "已计划",
     "AddSlot": "添加时段",
