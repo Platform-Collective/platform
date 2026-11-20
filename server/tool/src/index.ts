@@ -40,6 +40,7 @@ import core, {
 } from '@hcengineering/core'
 import {
   consoleModelLogger,
+  getUpgradeFailures,
   type MigrateMode,
   type MigrateOperation,
   type ModelLogger,
@@ -55,7 +56,7 @@ import {
 } from '@hcengineering/server-core'
 import { type InitScript, WorkspaceInitializer } from './initializer'
 import toolPlugin from './plugin'
-import { MigrateClientImpl } from './upgrade'
+import { MigrateClientImpl, reportMigrationFailures } from './upgrade'
 
 import { getMetadata, PlatformError, unknownError } from '@hcengineering/platform'
 import fs from 'fs'
@@ -381,6 +382,17 @@ export async function upgradeModel (
       i++
     }
   })
+
+  // Failed migrations stay pending; in upgrade mode this fails the upgrade, so it is retried.
+  reportMigrationFailures(
+    ctx,
+    logger,
+    wsIds,
+    mode,
+    preMigrateClient.migrationFailures,
+    migrateClient.migrationFailures,
+    getUpgradeFailures(migrateState)
+  )
 
   // We need to send reboot for workspace
   ctx.info('send force close', { workspace: wsIds, transactorUrl })

@@ -13,8 +13,10 @@ import {
   type Class
 } from '@hcengineering/core'
 import {
+  type MigrateMode,
   type MigrateUpdate,
   type MigrationClient,
+  type MigrationFailure,
   type MigrationIterator,
   type ModelLogger
 } from '@hcengineering/model'
@@ -26,6 +28,52 @@ import {
   type QueueWorkspaceMessage
 } from '@hcengineering/server-core'
 import { type AccountClient } from '@hcengineering/account-client'
+
+/**
+ * Operator allow list of migrations (`plugin/state`, comma separated) whose failure does not fail an upgrade.
+ * Empty by default, so every failed migration fails the upgrade.
+ */
+export const TOLERATED_MIGRATION_FAILURES_ENV = 'UPGRADE_TOLERATED_MIGRATION_FAILURES'
+
+function getToleratedMigrationFailures (): Set<string> {
+  const value = process.env[TOLERATED_MIGRATION_FAILURES_ENV] ?? ''
+  return new Set(
+    value
+      .split(',')
+      .map((it) => it.trim())
+      .filter((it) => it !== '')
+  )
+}
+
+/**
+ * Reports all migrations that failed during one upgrade run. They have no MigrationState, so they
+ * run again next time. In upgrade mode the upgrade fails, so the workspace is not marked as upgraded
+ * and the upgrade is retried, unless an operator listed every failed migration in
+ * UPGRADE_TOLERATED_MIGRATION_FAILURES; on workspace creation the failures are only logged.
+ */
+export function reportMigrationFailures (
+  ctx: MeasureContext,
+  logger: ModelLogger,
+  wsIds: WorkspaceIds,
+  mode: MigrateMode,
+  ...failureGroups: Array<readonly MigrationFailure[] | undefined>
+): void {
+  const failures = failureGroups.flatMap((it) => it ?? [])
+  if (failures.length === 0) return
+  const names = failures.map(({ plugin, state }) => `${plugin}/${state}`)
+  const message = `Upgrade completed with ${names.length} failed migrations: ${names.join(', ')}`
+  logger.error(message, { workspaceId: wsIds, failures: names })
+  ctx.error(message, { workspaceId: wsIds, failures: names })
+  if (mode !== 'upgrade') return
+  const tolerated = getToleratedMigrationFailures()
+  if (names.every((it) => tolerated.has(it))) {
+    const warning = `Upgrade continues despite ${names.length} failed migrations tolerated by ${TOLERATED_MIGRATION_FAILURES_ENV}: ${names.join(', ')}`
+    logger.log(warning, { workspaceId: wsIds, failures: names })
+    ctx.warn(warning, { workspaceId: wsIds, failures: names })
+    return
+  }
+  throw new Error(`${names.length} migrations failed and remain pending: ${names.join(', ')}`)
+}
 
 /**
  * Upgrade client implementation.
@@ -52,6 +100,7 @@ export class MigrateClientImpl implements MigrationClient {
   }
 
   migrateState = new Map<string, Set<string>>()
+  migrationFailures: MigrationFailure[] = []
 
   async find<T extends Doc> (
     domain: Domain,
