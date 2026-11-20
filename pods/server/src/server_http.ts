@@ -59,6 +59,7 @@ import { compress } from 'snappy'
 import { setImmediate } from 'timers/promises'
 import 'utf-8-validate'
 import { WebSocketServer, type RawData, type WebSocket } from 'ws'
+import { isExpiredOidcTokenError } from './token-expiry'
 import { registerRPC } from './rpc'
 import { retrieveJson } from './utils'
 
@@ -470,7 +471,6 @@ export function startHttpServer (
     maxPayload: 250 * 1024 * 1024,
     clientTracking: false // We do not need to track clients inside clients.
   })
-  // eslint-disable-next-line @typescript-eslint/no-misused-promises
   const handleConnection = async (
     ws: WebSocket,
     request: IncomingMessage,
@@ -519,7 +519,6 @@ export function startHttpServer (
           }, 1000)
         }
         if ('upgrade' in s) {
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
           void cs
             .send(ctx, { id: -1, result: { state: 'upgrading', stats: (s as any).upgradeInfo } }, false, false)
             .then(() => {
@@ -529,7 +528,6 @@ export function startHttpServer (
       }, handleSessionError)
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     ws.on('message', (msg: RawData) => {
       try {
         let buff: Buffer | undefined
@@ -556,7 +554,6 @@ export function startHttpServer (
         }
       }
     })
-    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     ws.on('close', (code: number, reason: Buffer) => {
       doSessionOp(
         ctx,
@@ -608,7 +605,8 @@ export function startHttpServer (
         const resp: Response<any> = {
           id: -1,
           error: UNAUTHORIZED,
-          result: 'hello'
+          result: 'hello',
+          ...(isExpiredOidcTokenError(err, token) ? { terminate: true } : {})
         }
         ws.send(rpcHandler.serialize(resp, false), { binary: false })
         ws.onmessage = (msg) => {
@@ -647,7 +645,8 @@ export function startHttpServer (
     )
   }
 }
-function createWebsocketClientSocket (
+/** Creates the transport used by session expiry notification and bounded shutdown. */
+export function createWebsocketClientSocket (
   ws: WebSocket,
   data: {
     remoteAddress: string
@@ -672,7 +671,7 @@ function createWebsocketClientSocket (
         return
       }
       await ctx.with('backpressure', {}, async () => {
-        while (ws.bufferedAmount > backpressureSize) {
+        while (ws.bufferedAmount > backpressureSize && ws.readyState === ws.OPEN && !cs.isClosed) {
           await setImmediate()
         }
       })
@@ -711,6 +710,9 @@ function createWebsocketClientSocket (
       let sendMsg = smsg
       if (_compression) {
         sendMsg = await compress(smsg)
+      }
+      if (ws.readyState !== ws.OPEN || cs.isClosed) {
+        return
       }
       const st = platformNow()
       await new Promise<void>((resolve) => {

@@ -47,6 +47,8 @@ import view from '@hcengineering/view'
 import workbench, { type Application, type NavigatorModel } from '@hcengineering/workbench'
 import { derived, get, writable } from 'svelte/store'
 
+import { deleteCookieForLogout } from './logout'
+
 export const workspaceCreating = writable<number | undefined>(undefined)
 
 export function getSpecialSpaceClass (model: NavigatorModel): Array<Ref<Class<Space>>> {
@@ -269,12 +271,12 @@ export async function reportWorkspaceRead (): Promise<void> {
   }
 }
 
-export async function logOut (): Promise<void> {
+export async function logOut (cookieTimeoutMs?: number): Promise<void> {
   clearWorkspaceFaviconCache()
   const accountsUrl = getMetadata(login.metadata.AccountsUrl)
-  try {
+  await deleteCookieForLogout(async () => {
     await getAccountClient(accountsUrl).deleteCookie()
-  } catch (error) {}
+  }, cookieTimeoutMs)
 
   const currentWorkspace = getMetadata(presentation.metadata.WorkspaceUuid)
   if (currentWorkspace !== undefined) {

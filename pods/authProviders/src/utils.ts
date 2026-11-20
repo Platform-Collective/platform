@@ -12,7 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-import { AccountDB, joinWithProvider, LoginInfo, loginOrSignUpWithProvider } from '@hcengineering/account'
+import {
+  type AccountDB,
+  joinWithProvider,
+  type LoginInfo,
+  loginOrSignUpWithProvider,
+  type ProviderSessionOptions
+} from '@hcengineering/account'
 import { BrandingMap, concatLink, getBranding, MeasureContext, SocialKey } from '@hcengineering/core'
 import { randomUUID } from 'crypto'
 import { IncomingHttpHeaders } from 'http'
@@ -173,7 +179,8 @@ export async function handleProviderAuth (
   first: string,
   last: string,
   socialKey: SocialKey,
-  signUpDisabled: boolean | undefined
+  signUpDisabled: boolean | undefined,
+  sessionOptions?: ProviderSessionOptions
 ): Promise<string> {
   try {
     measureCtx.info('Provider auth handler', { email, type: providerType })
@@ -191,7 +198,8 @@ export async function handleProviderAuth (
         last,
         state.inviteId,
         socialKey,
-        signUpDisabled
+        signUpDisabled,
+        sessionOptions
       )
     } else {
       loginInfo = await loginOrSignUpWithProvider(
@@ -202,7 +210,8 @@ export async function handleProviderAuth (
         first,
         last,
         socialKey,
-        signUpDisabled === true || state.autoJoin === true
+        signUpDisabled === true || state.autoJoin === true,
+        sessionOptions
       )
     }
 

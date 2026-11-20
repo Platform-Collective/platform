@@ -20,7 +20,13 @@
 
 import Router from 'koa-router'
 import { Issuer, Strategy } from 'openid-client'
-import { registerOidcStrategyWithRetry, registerOpenid, shouldWarnOnAttempt } from '../openid'
+import {
+  parseOidcSessionLifetime,
+  resolveOidcSessionExp,
+  registerOidcStrategyWithRetry,
+  registerOpenid,
+  shouldWarnOnAttempt
+} from '../openid'
 import { handleProviderAuth } from '../utils'
 
 jest.mock('openid-client', () => ({
@@ -53,6 +59,21 @@ function makeSleepRecorder (): { sleep: (ms: number) => Promise<void>, delays: n
     }
   }
 }
+
+describe('OIDC session lifetime', () => {
+  test.each([undefined, '60', '120', '31536000'])('accepts %s', (value) => {
+    const lifetime = parseOidcSessionLifetime(value)
+    expect(lifetime).toBe(value === undefined ? undefined : Number(value))
+    expect(resolveOidcSessionExp(lifetime, 1000123)).toBe(value === undefined ? undefined : 1000 + Number(value))
+  })
+
+  test.each(['', ' ', '59', '31536001', '-60', '1.5', '1e3', 'Infinity', 'NaN', 'idp', '120s'])(
+    'rejects %s',
+    (value) => {
+      expect(() => parseOidcSessionLifetime(value)).toThrow('OPENID_SESSION_LIFETIME')
+    }
+  )
+})
 
 describe('A. registerOidcStrategyWithRetry — schedule, cap, whole-attempt retry, warn gating', () => {
   test('1. fails K=3 times then succeeds: registers once after K+1 attempts, default schedule', async () => {
@@ -307,6 +328,37 @@ describe('B. registerOpenid wiring — non-blocking startup, 503 pending window,
     await (layer as any).stack[0](koaCtx, async () => {})
     return koaCtx
   }
+
+  test.each([undefined, 'invalid', '120'])('session config %s keeps OIDC available', async (value) => {
+    if (value === undefined) delete process.env.OPENID_SESSION_LIFETIME
+    else process.env.OPENID_SESSION_LIFETIME = value
+    ;(Issuer.discover as jest.Mock).mockResolvedValue({ Client: jest.fn() })
+    const { passport, router, ctx } = callRegister()
+    await Promise.resolve()
+    await Promise.resolve()
+    const user = { email: 'person@example.com', email_verified: true, sub: 'subject' }
+    passport.authenticate.mockImplementation(
+      (_name: string, _options: unknown, done: (err: null, user: object) => void) => async () => {
+        done(null, user)
+      }
+    )
+    ;(handleProviderAuth as jest.Mock).mockResolvedValue('http://front.example.com/login/auth')
+    const before = Math.floor(Date.now() / 1000)
+    await invokeCallbackRoute(router)
+    const options = (handleProviderAuth as jest.Mock).mock.calls[0][12]
+    if (value === '120') {
+      expect(options).toEqual({ authMethod: 'oidc', exp: before + 120 })
+      jest.advanceTimersByTime(5000)
+      await invokeCallbackRoute(router)
+      expect((handleProviderAuth as jest.Mock).mock.calls[1][12].exp).toBe(before + 125)
+    } else {
+      expect(options).toBeUndefined()
+      if (value === undefined) expect(ctx.warn).toHaveBeenCalledTimes(1)
+      else expect(ctx.error).toHaveBeenCalledWith(expect.stringContaining('falling back'), expect.anything())
+    }
+    expect(passport.use).toHaveBeenCalledTimes(1)
+    expect(user).toEqual({ email: 'person@example.com', email_verified: true, sub: 'subject' })
+  })
 
   test('1. route registered synchronously; pending window responds 503 + Retry-After', async () => {
     const discover = Issuer.discover as jest.Mock

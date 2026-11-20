@@ -48,6 +48,7 @@ import serverToken, {
   decodeTokenVerbose,
   generateToken,
   type PermissionsGrant,
+  type Token,
   TokenError
 } from '@hcengineering/server-token'
 import { MongoAccountDB } from './collections/mongo'
@@ -77,6 +78,22 @@ import {
 } from './types'
 import { isAdminEmail } from './admin'
 import { type Sql } from 'postgres'
+
+/** Options for an opt-in, bounded provider login. */
+export interface ProviderSessionOptions {
+  exp?: number
+  authMethod?: string
+}
+
+/** Reissues a session token without widening its identity or permissions. */
+export function reissueToken (
+  decoded: Token,
+  workspace?: WorkspaceUuid,
+  extra: Record<string, string> | undefined = decoded.extra,
+  account: AccountUuid = decoded.account
+): string {
+  return generateToken(account, workspace, extra, undefined, { exp: decoded.exp, nbf: decoded.nbf })
+}
 
 export const GUEST_ACCOUNT = 'b6996120-416f-49cd-841e-e4a5d2e49c9b' as PersonUuid
 
@@ -1708,7 +1725,8 @@ export async function loginOrSignUpWithProvider (
   first: string,
   last: string,
   socialId: SocialKey,
-  signUpDisabled = false
+  signUpDisabled = false,
+  sessionOptions?: ProviderSessionOptions
 ): Promise<LoginInfo | null> {
   try {
     const normalizedEmail = email != null ? cleanEmail(email) : ''
@@ -1786,13 +1804,16 @@ export async function loginOrSignUpWithProvider (
 
     await confirmHulyIds(ctx, db, personUuid as AccountUuid)
     const extraToken: Record<string, string> = isAdminEmail(normalizedEmail) ? { admin: 'true' } : {}
+    if (sessionOptions?.authMethod !== undefined) {
+      extraToken.authMethod = sessionOptions.authMethod
+    }
     ctx.info('Provider login succeeded', { email, normalizedEmail, emailSocialId, socialId, ...extraToken })
 
     return {
       account: personUuid as AccountUuid,
       socialId: socialIdId,
       name: getPersonName(person),
-      token: generateToken(personUuid, undefined, extraToken)
+      token: generateToken(personUuid, undefined, extraToken, undefined, sessionOptions)
     }
   } catch (err: any) {
     Analytics.handleError(err)
@@ -1810,7 +1831,8 @@ export async function joinWithProvider (
   last: string,
   inviteId: string,
   socialId: SocialKey,
-  signUpDisabled = false
+  signUpDisabled = false,
+  sessionOptions?: ProviderSessionOptions
 ): Promise<WorkspaceLoginInfo | LoginInfo | null> {
   const normalizedEmail = email != null ? cleanEmail(email) : ''
   const invite = await getWorkspaceInvite(db, inviteId)
@@ -1833,7 +1855,8 @@ export async function joinWithProvider (
     first,
     last,
     socialId,
-    signUpDisabled
+    signUpDisabled,
+    sessionOptions
   )
 
   if (loginInfo == null) {
@@ -1844,7 +1867,9 @@ export async function joinWithProvider (
     ctx,
     db,
     branding,
-    generateToken(loginInfo.account, workspaceUuid),
+    sessionOptions === undefined
+      ? generateToken(loginInfo.account, workspaceUuid)
+      : reissueToken(decodeToken(loginInfo.token ?? ''), workspaceUuid),
     loginInfo.account,
     workspace,
     invite
