@@ -24,7 +24,9 @@ jest.mock('svelte/store', () => ({
       subscribe: (subscriber: (value: T) => void) => {
         subscriber(value)
         subscribers.add(subscriber)
-        return () => subscribers.delete(subscriber)
+        return () => {
+          subscribers.delete(subscriber)
+        }
       },
       set: (next: T) => {
         value = next
