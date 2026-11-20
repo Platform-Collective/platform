@@ -23,7 +23,7 @@
     Space,
     type WithLookup
   } from '@hcengineering/core'
-  import { getResourceC, translate } from '@hcengineering/platform'
+  import { getPlainSearch, getResourceC, translate } from '@hcengineering/platform'
   import presentation, { getClient } from '@hcengineering/presentation'
   import ui, {
     addNotification,
@@ -130,10 +130,11 @@
     }
 
     // With space settings the search also matches the space label, so it runs on the loaded values.
+    const fieldSearch = getPlainSearch(search)
     const resultQuery =
       search !== '' && clazz.filteringKey !== undefined && spaceConfig === undefined
         ? {
-            [clazz.filteringKey]: { $like: '%' + search + '%' },
+            [clazz.filteringKey]: { $like: fieldSearch.like },
             _id: { $in: Array.from(targets.keys()) }
           }
         : {
@@ -146,6 +147,9 @@
       spaceConfig !== undefined ? { ...options, lookup: { space: spaceConfig.spaceClass } } : options
     )
     values = await objectsPromise
+    if (spaceConfig === undefined) {
+      values = values.filter((it) => it != null && fieldSearch.matches(getObjectValue(clazz.filteringKey ?? '', it)))
+    }
     if (grouppingManager !== undefined) {
       values = grouppingManager.groupValues(values as Doc[], targets)
     }

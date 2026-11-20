@@ -14,10 +14,10 @@
 //
 
 import { type Blob, type Ref } from '@hcengineering/core'
-import { getBlobRef } from '@hcengineering/presentation'
-import { GifNode } from '@hcengineering/text'
+import { getBlobRef, getFileUrl } from '@hcengineering/presentation'
+import { GifNode, type GifOptions } from '@hcengineering/text'
 
-export interface GifExtensionOptions {
+export interface GifExtensionOptions extends GifOptions {
   getBlobRef: (fileId: Ref<Blob>, filename?: string, size?: number) => Promise<{ src: string, srcset: string }>
 }
 
@@ -26,7 +26,8 @@ export interface GifExtensionOptions {
 export const GifExtension = GifNode.extend<GifExtensionOptions>({
   addOptions () {
     return {
-      getBlobRef: async (file, name, size) => await getBlobRef(file, name, size)
+      getBlobRef: async (file, name, size) => await getBlobRef(file, name, size),
+      getFileUrl: (fileId) => getFileUrl(fileId)
     }
   },
 

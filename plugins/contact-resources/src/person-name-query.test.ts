@@ -4,9 +4,9 @@ import type { Contact } from '@hcengineering/contact'
 import { findProperty } from '@hcengineering/core'
 import { getPersonNameQueries } from './person-name-query'
 
-function matchesName (name: string, search: string): boolean {
+function matchesName (name: string, search: string, separator?: string): boolean {
   const person = { name } as unknown as Contact
-  return getPersonNameQueries(search).some((query) => findProperty([person], 'name', query.name).length > 0)
+  return getPersonNameQueries(search, separator).some((query) => findProperty([person], 'name', query.name).length > 0)
 }
 
 describe('getPersonNameQueries', () => {
@@ -31,6 +31,13 @@ describe('getPersonNameQueries', () => {
   ])('matches multiword name %j using %j', (name, search) => {
     expect(matchesName(name, search)).toBe(true)
   })
+
+  it.each(['John Smith', 'Smith John', 'john smith', 'Jo Smi', 'Smi Jo'])(
+    'matches a space-separated legacy display name using %j',
+    (search) => {
+      expect(matchesName('John Smith', search, ' ')).toBe(true)
+    }
+  )
 
   it.each(['John Jones', 'Jane Smith', 'John Paul Smith', 'Smith Jane'])('rejects unrelated name %j', (search) => {
     expect(matchesName('Smith,John', search)).toBe(false)
