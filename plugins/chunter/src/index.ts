@@ -18,7 +18,7 @@ import type { Class, Doc, Markup, Mixin, Ref, Space, Timestamp } from '@hcengine
 import { NotificationType } from '@hcengineering/notification'
 import type { Asset, Plugin, Resource } from '@hcengineering/platform'
 import { IntlString, plugin } from '@hcengineering/platform'
-import { AnyComponent } from '@hcengineering/ui'
+import { AnyComponent, ComponentExtensionId } from '@hcengineering/ui'
 import { Action } from '@hcengineering/view'
 import { Person, ChannelProvider as SocialChannelProvider } from '@hcengineering/contact'
 import { Widget, WidgetTab } from '@hcengineering/workbench'
@@ -65,6 +65,22 @@ export interface ChatMessage extends ActivityMessage {
   editedOn?: Timestamp
   provider?: Ref<SocialChannelProvider>
 }
+
+/** @public */
+export interface ChatMessageCreatedEvent {
+  _id: Ref<ChatMessage>
+  _class: Ref<Class<ChatMessage>>
+  space: Ref<Space>
+  object: Doc
+  message: Markup
+  attachments: number
+}
+
+/** @public */
+export type ChatMessageCreatedHandler = (event: ChatMessageCreatedEvent) => void
+
+/** @public */
+export type RegisterChatMessageCreatedHandler = (handler: ChatMessageCreatedHandler) => () => void
 
 /**
  * @public
@@ -133,6 +149,9 @@ export default plugin(chunterId, {
     ThreadMessagePreview: '' as AnyComponent,
     DirectIcon: '' as AnyComponent,
     InlineCommentThread: '' as AnyComponent
+  },
+  extensions: {
+    ChatMessageInput: '' as ComponentExtensionId
   },
   activity: {
     MembersChangedMessage: '' as AnyComponent

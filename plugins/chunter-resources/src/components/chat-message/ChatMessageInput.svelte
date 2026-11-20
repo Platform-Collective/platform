@@ -16,9 +16,21 @@
   import activity, { ActivityMessage } from '@hcengineering/activity'
   import { Analytics } from '@hcengineering/analytics'
   import { AttachmentRefInput } from '@hcengineering/attachment-resources'
-  import chunter, { ChatMessage, ChunterEvents, ThreadMessage } from '@hcengineering/chunter'
+  import chunter, {
+    ChatMessage,
+    ChunterEvents,
+    ThreadMessage,
+    type ChatMessageCreatedHandler,
+    type RegisterChatMessageCreatedHandler
+  } from '@hcengineering/chunter'
   import { Class, Doc, generateId, getCurrentAccount, Ref, type CommitResult } from '@hcengineering/core'
-  import { createQuery, DraftController, draftsStore, getClient } from '@hcengineering/presentation'
+  import {
+    ComponentExtensions,
+    createQuery,
+    DraftController,
+    draftsStore,
+    getClient
+  } from '@hcengineering/presentation'
   import { EmptyMarkup, isEmptyMarkup } from '@hcengineering/text'
   import { createEventDispatcher } from 'svelte'
   import { getObjectId } from '@hcengineering/view-resources'
@@ -116,6 +128,24 @@
     })
   }
 
+  const messageCreatedHandlers = new Set<ChatMessageCreatedHandler>()
+  const onMessageCreated: RegisterChatMessageCreatedHandler = (handler) => {
+    messageCreatedHandlers.add(handler)
+    return () => messageCreatedHandlers.delete(handler)
+  }
+
+  function notifyMessageCreated(event: CustomEvent, _id: Ref<ChatMessage>): void {
+    const { message, attachments } = event.detail
+    const createdEvent = { _id, _class, space: getSpace(object), object, message, attachments }
+    messageCreatedHandlers.forEach((handler) => {
+      try {
+        handler(createdEvent)
+      } catch (err: any) {
+        Analytics.handleError(err)
+      }
+    })
+  }
+
   function onUpdate(event: CustomEvent): void {
     if (!isEmptyMarkup(event.detail.message)) {
       void updateTypingInfo()
@@ -135,6 +165,7 @@
       console.log(`create.${_class} measure`, res.serverTime, res.time)
       const objectId = await getObjectId(object, client.getHierarchy())
       Analytics.handleEvent(ChunterEvents.MessageCreated, { ok: res.result, objectId, objectClass: object._class })
+      notifyMessageCreated(event, _id)
     } catch (err: any) {
       const objectId = await getObjectId(object, client.getHierarchy())
       Analytics.handleEvent(ChunterEvents.MessageCreated, { ok: false, objectId, objectClass: object._class })
@@ -253,6 +284,11 @@
   on:blur
   bind:loading
   onKeyDown={handleKeyDown}
+/>
+
+<ComponentExtensions
+  extension={chunter.extensions.ChatMessageInput}
+  props={{ object, content: inputContent, chatMessage, withTypingInfo, onMessageCreated }}
 />
 
 {#if withTypingInfo}
