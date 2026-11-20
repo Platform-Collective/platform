@@ -12,10 +12,11 @@ import core, {
 } from '@hcengineering/core'
 import { getResource } from '@hcengineering/platform'
 import { createQuery, getClient, type LiveQuery } from '@hcengineering/presentation'
-import { getCurrentResolvedLocation, locationToUrl, type AnyComponent } from '@hcengineering/ui'
+import { getCurrentResolvedLocation, resolvedLocationStore, type AnyComponent, type Location } from '@hcengineering/ui'
 import { type Filter, type FilterMode, type FilteredView, type KeyFilter } from '@hcengineering/view'
 import { get, writable } from 'svelte/store'
 import view from './plugin'
+import { makeFilterStorageKey } from './filter-persistence'
 
 /**
  * @public
@@ -27,7 +28,79 @@ export const filterStore = writable<Filter[]>([])
  */
 export const selectedFilterStore = writable<FilteredView | undefined>()
 
-export function setFilters (filters: Filter[]): void {
+/** Filters requested by navigation are applied when the destination view is ready. */
+export interface NavigationFilters {
+  location: Location
+  filters: Filter[]
+  _class?: Ref<Class<Doc>>
+}
+
+export const navigationFilterStore = writable<NavigationFilters | undefined>()
+
+// Whether the destination of the queued navigation filters has been shown.
+let navigationTargetReached = false
+let navigationOrigin: string[] = []
+// A route change can reach the outgoing controller before its replacement mounts.
+// Keep the applied override for every controller participating in this visit.
+let activeNavigationFilters: NavigationFilters | undefined
+
+filterStore.subscribe((filters) => {
+  if (activeNavigationFilters !== undefined && filters !== activeNavigationFilters.filters) {
+    activeNavigationFilters = undefined
+  }
+})
+
+function isNavigationTarget (target: Location, current: Location): boolean {
+  return target.path.every((segment, index) => segment === current.path[index])
+}
+
+/** Applies the queued request to all matching controllers during this destination visit. */
+export function takeNavigationFilters (
+  location: Location,
+  _class: Ref<Class<Doc>>,
+  pending: NavigationFilters | undefined = get(navigationFilterStore)
+): Filter[] | undefined {
+  const requested = pending ?? activeNavigationFilters
+  if (requested === undefined) return undefined
+  if (requested._class !== undefined && requested._class !== _class) return undefined
+  if (!isNavigationTarget(requested.location, location)) return undefined
+  if (pending !== undefined) {
+    activeNavigationFilters = { location: { ...location, path: [...location.path] }, filters: pending.filters, _class }
+    navigationFilterStore.set(undefined)
+  }
+  return requested.filters
+}
+
+// Drop unclaimed filters when leaving the destination or resolving a different path (e.g. a router rewrite).
+// Query and fragment changes at the origin do not cancel navigation that is still pending.
+resolvedLocationStore.subscribe((location) => {
+  if (
+    activeNavigationFilters !== undefined &&
+    JSON.stringify(activeNavigationFilters.location.path) !== JSON.stringify(location.path)
+  ) {
+    activeNavigationFilters = undefined
+  }
+  const pending = get(navigationFilterStore)
+  if (pending === undefined) return
+  if (isNavigationTarget(pending.location, location)) {
+    navigationTargetReached = true
+  } else if (navigationTargetReached || JSON.stringify(location.path) !== JSON.stringify(navigationOrigin)) {
+    navigationFilterStore.set(undefined)
+  }
+})
+
+/**
+ * Applies filters immediately, or queues them for the destination location and class.
+ * Queued filters are shown once by that view and do not replace its saved draft.
+ */
+export function setFilters (filters: Filter[], location?: Location, _class?: Ref<Class<Doc>>): void {
+  if (location !== undefined) {
+    activeNavigationFilters = undefined
+    navigationOrigin = [...get(resolvedLocationStore).path]
+    navigationTargetReached = isNavigationTarget(location, get(resolvedLocationStore))
+    navigationFilterStore.set({ location, filters, _class })
+    return
+  }
   const old = get(filterStore)
   old.forEach((p) => p.onRemove?.())
   filterStore.set(filters)
@@ -316,16 +389,11 @@ export function createFilter (_class: Ref<Class<Doc>>, key: string, value: any[]
   }
 }
 
-export function getFilterKey (_class: Ref<Class<Doc>> | undefined): string {
-  const loc = getCurrentResolvedLocation()
-  loc.path.length = 3
-  loc.fragment = undefined
-  loc.query = undefined
-  let res = 'filter' + locationToUrl(loc)
-  if (_class !== undefined) {
-    res = res + _class
-  }
-  return res
+export function getFilterKey (
+  _class: Ref<Class<Doc>> | undefined,
+  location: Location = getCurrentResolvedLocation()
+): string {
+  return makeFilterStorageKey(location, _class)
 }
 
 /**
