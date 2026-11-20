@@ -13,6 +13,7 @@
     "OrderedList": "Lista ordenada",
     "BulletedList": "Lista com marcadores",
     "Blockquote": "Citação",
+    "Callout": "Destaque",
     "Code": "Código",
     "CodeBlock": "Bloco de código",
     "Note": "Nota",
