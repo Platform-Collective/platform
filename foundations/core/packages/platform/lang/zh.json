@@ -26,6 +26,7 @@
     "InviteNotFound": "未找到包含以下电子邮件的邀请:{email}。",
     "WorkspaceLimitReached": "您已达到工作区限制。请联系我们...",
     "ReadOnlyAccount": "匿名访客演示",
-    "SocialIdAlreadyExists": "社交ID已存在"
+    "SocialIdAlreadyExists": "社交ID已存在",
+    "EmailVerificationUnavailable": "限制电子邮件域名的邀请需要验证电子邮件，但此服务器未配置邮件服务。"
   }
 }

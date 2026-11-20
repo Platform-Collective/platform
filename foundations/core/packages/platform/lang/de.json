@@ -27,6 +27,7 @@
     "WorkspaceLimitReached": "Sie haben das Arbeitsbereichslimit erreicht. Bitte kontaktieren Sie uns...",
     "ReadOnlyAccount": "Anonymer Gast-Demo",
     "SystemAccount": "Systemkonto",
-    "SocialIdAlreadyExists": "Social ID existiert bereits"
+    "SocialIdAlreadyExists": "Social ID existiert bereits",
+    "EmailVerificationUnavailable": "Auf E-Mail-Domains beschränkte Einladungen erfordern eine E-Mail-Bestätigung, auf diesem Server ist jedoch kein Mail-Dienst konfiguriert."
   }
 }

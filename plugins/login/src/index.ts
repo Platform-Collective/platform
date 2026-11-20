@@ -73,7 +73,10 @@ export default plugin(loginId, {
   string: {
     LogIn: '' as IntlString,
     LinkValidHours: '' as IntlString,
-    EmailMask: '' as IntlString,
+    AllowedEmailDomains: '' as IntlString,
+    AllowedEmailDomainsPlaceholder: '' as IntlString,
+    InvalidEmailDomains: '' as IntlString,
+    InviteLimitedToDomains: '' as IntlString<{ domains: string }>,
     NoLimit: '' as IntlString,
     InviteLimit: '' as IntlString,
     PasswordMinLength: '' as IntlString<{ count: number }>,
@@ -116,7 +119,8 @@ export default plugin(loginId, {
         mask: string,
         limit: number | undefined,
         role: AccountRole,
-        navigateUrl?: string
+        navigateUrl?: string,
+        allowedDomains?: string
       ) => Promise<string>
     >,
     LeaveWorkspace: '' as Resource<(account: string) => Promise<LoginInfo | null>>,

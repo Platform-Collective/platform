@@ -17,13 +17,14 @@
   import { copyTextToClipboard, createQuery } from '@hcengineering/presentation'
   import setting, { RoleCapability } from '@hcengineering/setting'
   import { getDefaultInviteRole, resolveInviteSettings } from '@hcengineering/setting-resources'
-  import { getResource } from '@hcengineering/platform'
+  import { getResource, PlatformError, type Status } from '@hcengineering/platform'
   import { AnySvelteComponent, Button, EditBox, Grid, Label, Loading, MiniToggle, ticker } from '@hcengineering/ui'
   import { createEventDispatcher } from 'svelte'
 
   import login from '../plugin'
-  import { getInviteLink } from '../utils'
+  import { getInviteLink, normalizeAllowedDomains } from '../utils'
   import InviteWorkspace from './icons/InviteWorkspace.svelte'
+  import StatusControl from './StatusControl.svelte'
 
   export let role: AccountRole | undefined = undefined
   export let ignoreSettings: boolean = false
@@ -65,10 +66,37 @@
     limit = defaultValues.limit
   }
 
-  async function getLink(expHours: number, mask: string, limit: number | undefined, role: AccountRole): Promise<void> {
+  async function getLink(
+    expHours: number,
+    mask: string,
+    limit: number | undefined,
+    role: AccountRole,
+    domains: string
+  ): Promise<void> {
+    const normalizedDomains = normalizeAllowedDomains(domains)
+    if (normalizedDomains === undefined) {
+      domainsInvalid = true
+      return
+    }
+    domainsInvalid = false
+    linkError = undefined
     loading = true
-    link = await getInviteLink(expHours, mask, limit ?? -1, role)
-    loading = false
+    try {
+      link = await getInviteLink(
+        expHours,
+        mask,
+        limit ?? -1,
+        role,
+        undefined,
+        normalizedDomains !== '' ? normalizedDomains : undefined
+      )
+    } catch (err: any) {
+      // e.g. a domain restriction on a server without mail service: show the reason
+      if (!(err instanceof PlatformError)) throw err
+      linkError = err.status
+    } finally {
+      loading = false
+    }
   }
 
   let copiedTime: Timestamp | undefined
@@ -89,6 +117,9 @@
 
   let expHours: number = 48
   let emailMask: string = ''
+  let allowedDomains: string = ''
+  let domainsInvalid: boolean = false
+  let linkError: Status | undefined = undefined
   let limit: number | undefined = undefined
   let useDefault: boolean | undefined = true
   let noLimit: boolean = false
@@ -165,6 +196,29 @@
       {/if}
     </Grid>
   {/if}
+  {#if link === undefined && !loading}
+    <div class="domains">
+      <EditBox
+        label={login.string.AllowedEmailDomains}
+        placeholder={login.string.AllowedEmailDomainsPlaceholder}
+        bind:value={allowedDomains}
+        on:input={() => {
+          link = undefined
+          domainsInvalid = false
+          linkError = undefined
+        }}
+      />
+      {#if domainsInvalid}
+        <div class="domains-error">
+          <Label label={login.string.InvalidEmailDomains} />
+        </div>
+      {:else if linkError !== undefined}
+        <div class="domains-error" data-id="invite-link-error">
+          <StatusControl status={linkError} />
+        </div>
+      {/if}
+    </div>
+  {/if}
   {#if loading}
     <Loading />
   {:else if link !== undefined}
@@ -196,7 +250,7 @@
           if (!canGenerateInviteLinks) return
           const effectiveLimit = limit ?? 0
           if (effectiveLimit > 0 || noLimit) {
-            void getLink(expHours, emailMask, limit, role ?? defaultInviteRole)
+            void getLink(expHours, emailMask, limit, role ?? defaultInviteRole, allowedDomains)
           }
         }}
       />
@@ -210,12 +264,21 @@
     flex-direction: column;
     padding: 1.75rem;
     width: 30rem;
-    max-width: 40rem;
+    max-width: calc(100vw - 2rem);
     background: var(--popup-bg-color);
     border-radius: 1.25rem;
     -webkit-user-select: none;
     user-select: none;
     box-shadow: var(--popup-shadow);
+
+    .domains {
+      margin-top: 1.5rem;
+    }
+
+    .domains-error {
+      margin-top: 0.5rem;
+      color: var(--theme-error-color);
+    }
 
     .link {
       margin: 1.75rem 0 0;

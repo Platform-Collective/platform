@@ -34,7 +34,8 @@ import {
   type WorkspaceConfiguration,
   type WorkspaceMemberInfo,
   type WorkspaceUuid,
-  type IntegrationKind
+  type IntegrationKind,
+  parseEmailDomains
 } from '@hcengineering/core'
 import platform, { getMetadata, PlatformError, Severity, Status, translate } from '@hcengineering/platform'
 import {
@@ -73,8 +74,10 @@ import {
   type Subscription,
   SubscriptionStatus,
   type Query,
-  type InviteInfo
+  type InviteInfo,
+  type WorkspaceInvite
 } from './types'
+import { hasDomainRestriction, isEmailAllowedByDomains, serializeAllowedDomains } from './inviteDomains'
 import {
   addSocialIdBase,
   checkInvite,
@@ -104,6 +107,7 @@ import {
   getWorkspaceRoles,
   GUEST_ACCOUNT,
   isEmail,
+  isMailServiceConfigured,
   verifyOtpAttempt,
   normalizeValue,
   doReleaseSocialId,
@@ -709,6 +713,7 @@ export async function createInvite (
   params: {
     exp: number
     emailMask?: string
+    allowedDomains?: string | string[]
     email?: string
     limit: number
     role: AccountRole
@@ -720,6 +725,13 @@ export async function createInvite (
   if (role == null || !assignableRoles.includes(role)) {
     throw new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
   }
+
+  const { domains, invalid } = parseEmailDomains(params.allowedDomains)
+  if (invalid.length > 0) {
+    ctx.warn('Invalid allowed email domains for invite', { invalid })
+    throw new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
+  }
+  const allowedDomains = serializeAllowedDomains(domains)
 
   const { account, workspace: workspaceUuid, extra } = decodeTokenVerbose(ctx, token)
 
@@ -740,13 +752,28 @@ export async function createInvite (
     verifyAllowedServices(['schedule'], extra)
   }
 
-  ctx.info('Creating invite', { workspace, workspaceName: workspace.name, email, emailMask, limit, autoJoin })
+  if (allowedDomains !== undefined && !isMailServiceConfigured()) {
+    // The restriction relies on verified e-mail addresses, see checkInvite
+    ctx.warn('Domain restricted invites require a mail service')
+    throw new PlatformError(new Status(Severity.ERROR, platform.status.EmailVerificationUnavailable, {}))
+  }
+
+  ctx.info('Creating invite', {
+    workspace,
+    workspaceName: workspace.name,
+    email,
+    emailMask,
+    allowedDomains,
+    limit,
+    autoJoin
+  })
 
   return await db.invite.insertOne({
     workspaceUuid,
     expiresOn: exp < 0 ? -1 : Date.now() + exp,
     email,
     emailPattern: emailMask,
+    ...(allowedDomains !== undefined ? { allowedDomains } : {}),
     remainingUses: limit,
     role,
     autoJoin
@@ -1105,7 +1132,7 @@ export async function join (
 }
 
 /**
- * Returns public invite details (e.g. workspace name) for a valid invite. No auth required.
+ * Returns public invite details (workspace name, allowed e-mail domains) for a valid invite. No auth required.
  * Returns { workspaceName: null } for invalid or expired invites.
  */
 export async function getInviteInfo (
@@ -1133,7 +1160,40 @@ export async function getInviteInfo (
     return { workspaceName: null }
   }
 
-  return { workspaceName: workspace.name }
+  // Tell the invitee up front which addresses the invite accepts
+  const { domains } = parseEmailDomains(invite.allowedDomains)
+  return { workspaceName: workspace.name, ...(domains.length > 0 ? { allowedDomains: domains } : {}) }
+}
+
+/**
+ * Returns the verified e-mail of the account to check an invite against.
+ * For invites bound to an e-mail and/or restricted to e-mail domains, a verified
+ * address satisfying both restrictions is preferred, so users with several verified
+ * addresses are not rejected just because another address happened to be found first.
+ * If none matches, some verified address is returned and checkInvite rejects it.
+ */
+async function getVerifiedEmailForInvite (
+  db: AccountDB,
+  accountUuid: AccountUuid,
+  invite: WorkspaceInvite
+): Promise<string> {
+  const query: Query<SocialId> = {
+    type: SocialIdType.EMAIL,
+    personUuid: accountUuid,
+    verifiedOn: { $gt: 0 }
+  }
+  const inviteEmail = invite.email != null && invite.email.trim().length > 0 ? invite.email : undefined
+  if (inviteEmail === undefined && !hasDomainRestriction(invite.allowedDomains)) {
+    const emailSocialId = await db.socialId.findOne(query)
+    return emailSocialId?.value ?? ''
+  }
+  const emailSocialIds = await db.socialId.find(query)
+  const matching = emailSocialIds.find(
+    (it) =>
+      (inviteEmail === undefined || it.value === inviteEmail) &&
+      isEmailAllowedByDomains(it.value, invite.allowedDomains)
+  )
+  return matching?.value ?? emailSocialIds[0]?.value ?? ''
 }
 
 /**
@@ -1159,12 +1219,7 @@ export async function checkJoin (
   }
 
   const { account: accountUuid } = decodeTokenVerbose(ctx, token)
-  const emailSocialId = await db.socialId.findOne({
-    type: SocialIdType.EMAIL,
-    personUuid: accountUuid,
-    verifiedOn: { $gt: 0 }
-  })
-  const email = emailSocialId?.value ?? ''
+  const email = await getVerifiedEmailForInvite(db, accountUuid, invite)
   const workspaceUuid = await checkInvite(ctx, invite, email)
   const workspace = await getWorkspaceById(db, workspaceUuid)
 
@@ -1213,12 +1268,7 @@ export async function joinByToken (
   }
 
   const { account: accountUuid } = decodeTokenVerbose(ctx, token)
-  const emailSocialId = await db.socialId.findOne({
-    type: SocialIdType.EMAIL,
-    personUuid: accountUuid,
-    verifiedOn: { $gt: 0 }
-  })
-  const email = emailSocialId?.value ?? ''
+  const email = await getVerifiedEmailForInvite(db, accountUuid, invite)
   const workspaceUuid = await checkInvite(ctx, invite, email)
   const workspace = await getWorkspaceById(db, workspaceUuid)
 
@@ -1270,6 +1320,11 @@ export async function checkAutoJoin (
   if (normalizedEmail == null || normalizedEmail === '') {
     ctx.error('Malformed auto-join invite', invite)
     throw new PlatformError(new Status(Severity.ERROR, platform.status.BadRequest, {}))
+  }
+
+  if (!isEmailAllowedByDomains(normalizedEmail, invite.allowedDomains)) {
+    ctx.warn("Auto-join invite doesn't allow this email domain", { email: normalizedEmail, ...invite })
+    throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
   }
 
   const emailSocialId = await db.socialId.findOne({
@@ -1377,7 +1432,8 @@ export async function signUpJoin (
   })
 
   // Require email confirmation just like the regular signUp flow.
-  // Auto-confirm only when no mail service is configured (dev setups).
+  // Auto-confirm only when no mail service is configured (dev setups). Domain restricted
+  // invites are refused in that case already (checkInvite in getWorkspaceJoinInfo).
   const mailURL = getMetadata(accountPlugin.metadata.MAIL_URL)
   const forceConfirmation = mailURL !== undefined && mailURL !== ''
 
