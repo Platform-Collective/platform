@@ -12,7 +12,7 @@ import core, {
   makeDocCollabId
 } from '@hcengineering/core'
 import { type Asset, type IntlString, type Resource, getResource } from '@hcengineering/platform'
-import {
+import presentation, {
   type ContextStore,
   MessageBox,
   contextStore,
@@ -20,6 +20,7 @@ import {
   getClient,
   getMarkup,
   hasResource,
+  showTabNotification,
   updateAttribute
 } from '@hcengineering/presentation'
 import { markupToJSON } from '@hcengineering/text'
@@ -29,6 +30,7 @@ import {
   type AnySvelteComponent,
   type PopupAlignment,
   type PopupPosAlignment,
+  NotificationSeverity,
   closeTooltip,
   isPopupPosAlignment,
   locationToUrl,
@@ -388,7 +390,10 @@ async function OpenInNewTab (
   const loc = await getObjectLinkFragment(hierarchy, d, {}, component)
   if (hasResource(workbenchPlugin.function.OpenInNewTab) === true) {
     const res = await getResource(workbenchPlugin.function.OpenInNewTab)
-    await res(loc)
+    const opened = await res(loc)
+    if (!opened) {
+      await showTabNotification(presentation.string.FailedToOpenTab, '', NotificationSeverity.Error)
+    }
   } else {
     const url = locationToUrl(loc)
     window.open(url, '_blank')

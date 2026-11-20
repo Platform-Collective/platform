@@ -59,6 +59,7 @@ import {
 import { get, writable } from 'svelte/store'
 
 import plugin from './plugin'
+import { withWorkbenchSession } from './session'
 import { logOut, workspaceCreating } from './utils'
 import { WorkbenchEvents } from '@hcengineering/workbench'
 import { allowGuestSignUpStore } from '@hcengineering/view-resources'
@@ -350,7 +351,7 @@ export async function connect (title: string): Promise<Client | undefined> {
           }
         },
         // We need to refresh all active live queries and clear old queries.
-        onConnect: async (event: ClientConnectEvent, data: any): Promise<void> => {
+        onConnect: withWorkbenchSession(async (event, _lastTx, data): Promise<void> => {
           console.log('WorkbenchClient: onConnect', event)
           if (event === ClientConnectEvent.Maintenance) {
             if (data != null && data.total !== 0) {
@@ -367,9 +368,6 @@ export async function connect (title: string): Promise<Client | undefined> {
             return
           }
           try {
-            if (event === ClientConnectEvent.Connected || event === ClientConnectEvent.Reconnected) {
-              setMetadata(presentation.metadata.SessionId, data)
-            }
             const gapMs = lastOnConnectAt === 0 ? 0 : platformNow() - lastOnConnectAt
             lastOnConnectAt = platformNow()
             if ((_clientSet && event === ClientConnectEvent.Connected) || event === ClientConnectEvent.Refresh) {
@@ -448,7 +446,7 @@ export async function connect (title: string): Promise<Client | undefined> {
           } catch (err) {
             console.error(err)
           }
-        },
+        }),
         ctx,
         onDialTimeout: async () => {
           const newLoginInfo = await ctx.with(

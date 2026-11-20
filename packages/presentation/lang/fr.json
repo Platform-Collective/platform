@@ -57,7 +57,9 @@
     "RectangleTool": "Rectangle",
     "EllipseTool": "Ellipse",
     "PaletteManagementMenu": "Gérer les préréglages de couleur",
-    "BetaVersion": "Version bêta"
+    "BetaVersion": "Version bêta",
+    "TabOpened": "Onglet ouvert",
+    "FailedToOpenTab": "Impossible d’ouvrir l’onglet"
   },
   "status": {
     "FileTooLarge": "Fichier trop volumineux"
