@@ -41,6 +41,7 @@
   import { getResource } from '@hcengineering/platform'
 
   import { InboxNotificationsClientImpl } from '../../inboxNotificationsClient'
+  import { getInitialInboxNotificationsLimits, getNextInboxNotificationsLimits } from '../../inbox-notifications-limits'
   import notification from '../../plugin'
   import { InboxData, InboxNotificationsFilter } from '../../types'
   import { getDisplayInboxData, resetInboxContext, resolveLocation, selectInboxContext } from '../../utils'
@@ -78,6 +79,9 @@
   let archivedActivityNotifications: InboxNotification[] = []
   let archivedOtherNotifications: InboxNotification[] = []
   let archivedNotifications: InboxNotification[] = []
+  let archivedNotificationsLimits = getInitialInboxNotificationsLimits()
+  let inboxScroller: HTMLElement | undefined | null = undefined
+  let lastLoadMoreScrollHeight: number | undefined = undefined
 
   let inboxData: InboxData = new Map()
 
@@ -109,7 +113,7 @@
         sort: {
           createdOn: SortingOrder.Descending
         },
-        limit: 1000
+        limit: archivedNotificationsLimits.activity
       }
     )
 
@@ -123,7 +127,7 @@
         sort: {
           createdOn: SortingOrder.Descending
         },
-        limit: 500
+        limit: archivedNotificationsLimits.other
       }
     )
   }
@@ -370,7 +374,29 @@
   function onArchiveToggled(): void {
     showArchive = !showArchive
     selectedTabId = allTab.id
+    lastLoadMoreScrollHeight = undefined
     void selectContext(undefined)
+  }
+
+  function loadMoreNotifications(): void {
+    if (showArchive) {
+      archivedNotificationsLimits = getNextInboxNotificationsLimits(archivedNotificationsLimits)
+      return
+    }
+
+    inboxClient.loadMoreInboxNotifications()
+  }
+
+  function handleInboxScroll(): void {
+    if (inboxScroller === undefined || inboxScroller === null) {
+      return
+    }
+
+    const isAtBottom = inboxScroller.scrollTop + inboxScroller.clientHeight >= inboxScroller.scrollHeight - 10
+    if (isAtBottom && lastLoadMoreScrollHeight !== inboxScroller.scrollHeight) {
+      lastLoadMoreScrollHeight = inboxScroller.scrollHeight
+      loadMoreNotifications()
+    }
   }
 
   function onUnreadsToggled(): void {
@@ -429,7 +455,7 @@
           <TabList items={tabItems} selected={selectedTabId} on:select={selectTab} padding={'var(--spacing-1) 0'} />
         </div>
 
-        <Scroller padding="0">
+        <Scroller bind:divScroll={inboxScroller} padding="0" onScroll={handleInboxScroll}>
           <InboxGroupedListView
             data={filteredData}
             selectedContext={selectedContextId}

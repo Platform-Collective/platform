@@ -22,11 +22,13 @@ import calendar, {
   calendarIntegrationKind
 } from '@hcengineering/calendar'
 import { Client, MeasureContext, Ref, TxOperations } from '@hcengineering/core'
-import { areEqualMarkups, htmlToMarkup, isEmptyMarkup, jsonToHTML, markupToJSON } from '@hcengineering/text'
+import { htmlToMarkup, jsonToHTML, markupToJSON } from '@hcengineering/text'
 import { deepEqual } from 'fast-equals'
 import { OAuth2Client } from 'google-auth-library'
 import { calendar_v3 } from 'googleapis'
+import { getOutgoingLocation, isLocationInSync } from './conference'
 import { getRateLimitter, RateLimiter } from './rateLimiter'
+import { shouldPushDescriptionUpdate } from './description'
 import { type Token } from './types'
 import {
   convertDate,
@@ -247,8 +249,9 @@ export class CalendarClient {
       description: jsonToHTML(markupToJSON(event.description)),
       summary: event.title
     }
-    if (event.location != null) {
-      res.location = event.location
+    const location = getOutgoingLocation(event)
+    if (location != null) {
+      res.location = location
     }
     if (event.visibility !== undefined) {
       res.visibility = event.visibility === 'public' ? 'public' : 'private'
@@ -342,10 +345,7 @@ export class CalendarClient {
     }
     const description = jsonToHTML(markupToJSON(current.description))
     const originMarkup = htmlToMarkup(event.description ?? '')
-    if (
-      isEmptyMarkup(description) !== isEmptyMarkup(originMarkup) &&
-      !areEqualMarkups(current.description, originMarkup)
-    ) {
+    if (shouldPushDescriptionUpdate(current.description, originMarkup)) {
       res = true
       this.ctx.info('Update event diff: description', {
         calendarId: current.calendar,
@@ -358,7 +358,7 @@ export class CalendarClient {
       })
       event.description = description
     }
-    if (current.location !== event.location) {
+    if (!isLocationInSync(current, event)) {
       res = true
       this.ctx.info('Update event diff: location', {
         calendarId: current.calendar,

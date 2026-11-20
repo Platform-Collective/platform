@@ -1,5 +1,6 @@
 <!--
 // Copyright © 2025 Hardcore Engineering Inc.
+// Copyright © 2026 Exaviz.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -14,12 +15,63 @@
 -->
 
 <script lang="ts">
+  import { onDestroy } from 'svelte'
+  import type { EmbeddableUrlResolver } from '../file-embed-utils'
+  import Loading from './Loading.svelte'
+
   export let src: string
   export let name: string
   export let fit: boolean = false
   export let css: string | undefined = undefined
+  export let resolveUrl: EmbeddableUrlResolver | undefined = undefined
 
   let iframe: HTMLIFrameElement | undefined = undefined
+  let iframeSrc: string | undefined
+  let owned = false
+  let failed = false
+  let controller: AbortController | undefined
+
+  function revokeOwned(): void {
+    if (owned && iframeSrc !== undefined) {
+      URL.revokeObjectURL(iframeSrc)
+    }
+    iframeSrc = undefined
+    owned = false
+  }
+
+  async function loadFile(src: string, resolveUrl?: EmbeddableUrlResolver): Promise<void> {
+    controller?.abort()
+    controller = new AbortController()
+    const { signal } = controller
+
+    failed = false
+    revokeOwned()
+
+    try {
+      const result = (await resolveUrl?.(src, signal)) ?? { url: src, owned: false }
+      if (signal.aborted) {
+        if (result.owned) {
+          URL.revokeObjectURL(result.url)
+        }
+        return
+      }
+      iframeSrc = result.url
+      owned = result.owned
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        return
+      }
+      failed = true
+      console.error('Failed to load embedded file', err)
+    }
+  }
+
+  $: void loadFile(src, resolveUrl)
+
+  onDestroy(() => {
+    controller?.abort()
+    revokeOwned()
+  })
 
   // eslint-disable-next-line @typescript-eslint/prefer-optional-chain
   $: if (css !== undefined && iframe !== undefined && iframe !== null) {
@@ -42,7 +94,11 @@
   }
 </script>
 
-<iframe bind:this={iframe} class:fit src={src + '#view=FitH&navpanes=0'} title={name} on:load />
+{#if iframeSrc}
+  <iframe bind:this={iframe} class:fit src={iframeSrc + '#view=FitH&navpanes=0'} title={name} on:load />
+{:else if !failed}
+  <Loading />
+{/if}
 
 <style lang="scss">
   iframe {

@@ -20,6 +20,7 @@ import { Node, type Schema } from '@tiptap/pm/model'
 import { NodeSelection, Plugin } from '@tiptap/pm/state'
 import { CodeBlockHighlighExtension } from '../codeSnippets/codeblock'
 import { hasTableMetadataMarker } from './tableMetadata'
+import { normalizeWordPastedHTML } from './word-paste'
 
 export const SmartPasteExtension = Extension.create({
   name: 'transformPastedContent',
@@ -32,6 +33,9 @@ export const SmartPasteExtension = Extension.create({
 export function PasteTextAsMarkdownPlugin (): Plugin {
   return new Plugin({
     props: {
+      // Preserve Slack's text line breaks before Word normalization parses and serializes the HTML.
+      transformPastedHTML: (html) => normalizeWordPastedHTML(normalizeSlackPastedHTML(html)),
+
       handlePaste (view, event, slice) {
         const clipboardData = event.clipboardData
         if (clipboardData === null) return false
@@ -71,7 +75,7 @@ export function PasteTextAsMarkdownPlugin (): Plugin {
             const content = Node.fromJSON(view.state.schema, markupNode)
             content.check()
 
-            const transaction = view.state.tr.replaceSelectionWith(content)
+            const transaction = view.state.tr.replaceSelectionWith(content).scrollIntoView()
             view.dispatch(transaction)
             return true
           }
@@ -83,6 +87,41 @@ export function PasteTextAsMarkdownPlugin (): Plugin {
       }
     }
   })
+}
+
+export function normalizeSlackPastedHTML (html: string): string {
+  if (!html.includes('data-stringify-type')) return html
+
+  const tagStack: boolean[] = []
+  let slackContentDepth = 0
+
+  return html
+    .split(/(<[^>]*>)/)
+    .map((part) => {
+      const openingTag = /^<([a-z][\w:-]*)\b[^>]*>$/i.exec(part)
+      if (openingTag !== null) {
+        const isSlackContent = /\sdata-stringify-type(?:\s|=|>)/i.test(part)
+        const isVoidElement = /\/>$/.test(part) || ['br', 'img', 'meta'].includes(openingTag[1].toLowerCase())
+
+        if (!isVoidElement) {
+          tagStack.push(isSlackContent)
+          if (isSlackContent) {
+            slackContentDepth++
+          }
+        }
+        return part
+      }
+
+      if (/^<\/[a-z][\w:-]*\s*>$/i.test(part)) {
+        if (tagStack.pop() === true) {
+          slackContentDepth--
+        }
+        return part
+      }
+
+      return slackContentDepth > 0 ? part.replace(/\r\n?|\n/g, '<br>') : part
+    })
+    .join('')
 }
 
 const importantMarkupNodeTypes = new Set<MarkupNodeType>([

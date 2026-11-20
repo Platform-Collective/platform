@@ -22,10 +22,119 @@ import {
   traverseAllMarks,
   traverseNode
 } from '@hcengineering/text'
-import { MarkdownState } from '@hcengineering/text-markdown'
+import { isMarkdownsEquals, MarkdownState } from '@hcengineering/text-markdown'
 import { markdownToMarkup, markupToMarkdown, parseMessageMarkdown, serializeMessage } from '..'
 
 describe('server', () => {
+  it.each(['commented text', '# [commented] *text*'])('serializes inline-comment text: %s', async (text) => {
+    const markup = JSON.stringify({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text, marks: [{ type: 'inline-comment', attrs: { thread: 'thread-9314' } }] }]
+        }
+      ]
+    })
+
+    expect(await markupToMarkdown(markup)).toBe(text)
+  })
+
+  it('preserves nested formatting within inline-comment text', async () => {
+    const comment = { type: 'inline-comment', attrs: { thread: 'thread-9314' } }
+    const bold = { type: 'bold' }
+    const markup = JSON.stringify({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'before ' },
+            { type: 'text', text: 'bold ', marks: [comment, bold] },
+            { type: 'text', text: 'nested [text]', marks: [bold, comment, { type: 'italic' }] },
+            { type: 'text', text: ' after', marks: [comment, bold] },
+            { type: 'text', text: ' end' }
+          ]
+        }
+      ]
+    })
+
+    expect(await markupToMarkdown(markup)).toBe('before **bold *nested [text]* after** end')
+  })
+
+  it('parses bare URLs and GFM tables', () => {
+    const url = 'https://github.com/hcengineering/platform/issues/8381'
+    const msg = parseMessageMarkdown(
+      `${url}
+
+| Name | Value |
+| --- | --- |
+| Issue | ${url} |`,
+      'ref://',
+      'http://',
+      'http://'
+    )
+
+    expect(msg).toMatchObject({
+      type: MarkupNodeType.doc,
+      content: [
+        {
+          type: MarkupNodeType.paragraph,
+          content: [
+            {
+              type: MarkupNodeType.text,
+              text: url,
+              marks: [{ type: MarkupMarkType.link, attrs: { href: url } }]
+            }
+          ]
+        },
+        {
+          type: MarkupNodeType.table,
+          content: [
+            {
+              type: MarkupNodeType.table_row,
+              content: [{ type: MarkupNodeType.table_header }, { type: MarkupNodeType.table_header }]
+            },
+            {
+              type: MarkupNodeType.table_row,
+              content: [{ type: MarkupNodeType.table_cell }, { type: MarkupNodeType.table_cell }]
+            }
+          ]
+        }
+      ]
+    })
+  })
+
+  it('round-trips bare URLs without linking filenames, emails, code, or Huly references', async () => {
+    const refUrl = 'https://huly.example/browse'
+    const url = 'https://github.com/hcengineering/platform/issues/8381'
+    const hulyUrl = `${refUrl}?workspace=platform&_id=issue-8381`
+    const source = `See ${url} and ${hulyUrl}.
+
+README.md, a@b.com, and \`${url}\` stay text.`
+
+    const parsed = parseMessageMarkdown(source, refUrl, 'http://', 'http://')
+    const serialized = await markupToMarkdown(jsonToMarkup(parsed), refUrl, 'http://')
+
+    expect(isMarkdownsEquals(source, serialized)).toBe(true)
+    expect(serialized).toContain(`<${url}>`)
+    expect(serialized).toContain(`<${hulyUrl}>`)
+    const links: string[] = []
+    const nodeTypes: MarkupNodeType[] = []
+    traverseAllMarks(parsed, (_, mark) => {
+      if (mark.type === MarkupMarkType.link) {
+        links.push(String(mark.attrs?.href))
+      }
+    })
+    traverseNode(parsed, (node) => {
+      nodeTypes.push(node.type)
+      return true
+    })
+
+    expect(links).toEqual([url, hulyUrl])
+    expect(nodeTypes).not.toContain(MarkupNodeType.reference)
+  })
+
   it('todos serialize and back', async () => {
     const markdown = `# Contribution checklist
 

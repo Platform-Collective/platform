@@ -39,7 +39,8 @@ describe('MarkupOperations', () => {
 
     mockCollaborator = {
       getMarkup: jest.fn(),
-      createMarkup: jest.fn()
+      createMarkup: jest.fn(),
+      updateMarkup: jest.fn()
     }
     ;(getClient as jest.Mock).mockReturnValue(mockCollaborator)
 
@@ -117,7 +118,23 @@ describe('MarkupOperations', () => {
 
       const collabId = makeCollabId(objectClass, objectId, objectAttr)
       expect(mockCollaborator.createMarkup).toHaveBeenCalledWith(collabId, content)
+      expect(mockCollaborator.updateMarkup).not.toHaveBeenCalled()
       expect(result).toBe(mockMarkupRef)
+    })
+
+    it('updates an open collaborator document without creating it', async () => {
+      const content = 'Updated markup content'
+
+      mockCollaborator.createMarkup.mockRejectedValue(new Error('Document already exists'))
+      mockCollaborator.updateMarkup.mockResolvedValue(undefined)
+
+      await expect(
+        operations.updateMarkup(objectClass, objectId, objectAttr, content, 'markup')
+      ).resolves.toBeUndefined()
+
+      const collabId = makeCollabId(objectClass, objectId, objectAttr)
+      expect(mockCollaborator.createMarkup).not.toHaveBeenCalled()
+      expect(mockCollaborator.updateMarkup).toHaveBeenCalledWith(collabId, content)
     })
 
     it('should upload markup in HTML format', async () => {

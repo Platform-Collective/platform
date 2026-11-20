@@ -17,10 +17,8 @@
   import { OK, Severity, Status } from '@hcengineering/platform'
   import { logIn } from '@hcengineering/workbench'
   import { signupStore } from '@hcengineering/analytics-providers'
-  import { deviceOptionsStore as deviceInfo } from '@hcengineering/ui'
 
-  import { loginFormPaddingInline } from '../loginFormLayout'
-  import BottomActionComponent from './BottomAction.svelte'
+  import { loginFooterActions } from '../footerActions'
   import login from '../plugin'
   import { getPasswordValidationRules } from '../validations'
   import { goTo } from '../utils'
@@ -28,7 +26,7 @@
   import { OtpLoginSteps, signUp, signUpOtp, type BottomAction } from '../index'
   import type { Field } from '../types'
   import OtpForm from './OtpForm.svelte'
-  import { onMount } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
 
   export let signUpDisabled = false
   export let localLoginHidden = false
@@ -129,6 +127,12 @@
   function handleStep(event: CustomEvent<OtpLoginSteps>): void {
     step = event.detail
   }
+
+  $: loginFooterActions.set(useOTP ? [withPasswordAction] : [])
+
+  onDestroy(() => {
+    loginFooterActions.set([])
+  })
 </script>
 
 {#if step === OtpLoginSteps.Email}
@@ -143,21 +147,7 @@
     loginState="signup"
     password={object.password}
     retryOn={otpRetryOn}
+    onResend={(email) => signUpOtp(email, object.first, object.last)}
     on:step={handleStep}
   />
 {/if}
-
-{#if useOTP}
-  <div class="action" style:margin-inline-start={loginFormPaddingInline($deviceInfo.docWidth, $deviceInfo.docHeight)}>
-    <BottomActionComponent action={withPasswordAction} />
-  </div>
-{:else}
-  <div class="placeholder" />
-{/if}
-
-<style lang="scss">
-  // TODO: Refactor me please
-  .placeholder {
-    height: 1.125rem;
-  }
-</style>

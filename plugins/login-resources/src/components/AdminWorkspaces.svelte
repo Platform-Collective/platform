@@ -8,6 +8,7 @@
     isDeletingMode,
     isMigrationMode,
     isRestoringMode,
+    isRestoreFailedMode,
     isUpgradingMode,
     reduceCalls,
     systemAccountUuid,
@@ -134,6 +135,7 @@
           (showOther &&
             (isMigrationMode(it.mode) ||
               isRestoringMode(it.mode) ||
+              isRestoreFailedMode(it.mode) ||
               isUpgradingMode(it.mode) ||
               (isArchivingMode(it.mode) && it.mode !== 'archived'))) ||
           (showGrAttempts && it.processingAttempts > 0))
@@ -665,7 +667,7 @@
                             />
                           {/if}
 
-                          {#if workspace.mode === 'archived'}
+                          {#if workspace.mode === 'archived' || isRestoreFailedMode(workspace.mode)}
                             <Button
                               icon={IconStart}
                               size={'small'}

@@ -47,9 +47,14 @@ import {
 } from './schemas'
 import { retryTxn, type DBClient } from '@hcengineering/postgres-base'
 
-const loadedDomains = new Set<string>()
+interface TableCache {
+  url: string
+  domains: Set<string>
+  tables: Set<string>
+}
 
-let loadedTables = new Set<string>()
+// Pools are shared by workspace adapters, but never share schema state across connections.
+const tableCaches = new WeakMap<postgres.Sql, TableCache>()
 
 export const NumericTypes = [
   core.class.TypeNumber,
@@ -64,14 +69,20 @@ export async function createTables (
   url: string,
   domains: string[]
 ): Promise<void> {
-  const filtered = domains.filter((d) => !loadedDomains.has(url + translateDomain(d)))
+  let cache = tableCaches.get(client)
+  if (cache === undefined || cache.url !== url) {
+    cache = { url, domains: new Set(), tables: new Set() }
+    tableCaches.set(client, cache)
+  }
+  const loadedDomains = cache.domains
+  const filtered = domains.filter((d) => !loadedDomains.has(translateDomain(d)))
   if (filtered.length === 0) {
     return
   }
   const mapped = filtered.map((p) => translateDomain(p))
   const t = platformNow()
-  loadedTables =
-    loadedTables.size === 0
+  const loadedTables =
+    cache.tables.size === 0
       ? new Set(
           (
             await ctx.with('load-table', {}, () =>
@@ -86,7 +97,8 @@ export async function createTables (
             )
           ).map((it) => it.table_name)
         )
-      : loadedTables
+      : cache.tables
+  cache.tables = loadedTables
   console.log('load-table', platformNowDiff(t))
 
   const domainsToLoad = mapped.filter((it) => loadedTables.has(it))
@@ -98,7 +110,7 @@ export async function createTables (
     if (!loadedTables.has(domain)) {
       domainsToCreate.push(domain)
     } else {
-      loadedDomains.add(url + domain)
+      loadedDomains.add(domain)
     }
   }
 
@@ -106,9 +118,58 @@ export async function createTables (
     await retryTxn(client, async (client) => {
       for (const domain of domainsToCreate) {
         await ctx.with('create-table', {}, () => createTable(client as unknown as postgres.Sql, domain))
-        loadedDomains.add(url + domain)
+        loadedDomains.add(domain)
       }
     })
+  }
+
+  if (domainsToLoad.length > 0) {
+    await ctx.with('create-missing-indexes', {}, () => createMissingIndexes(ctx, client, domainsToLoad))
+  }
+}
+
+function getIndexName (domain: string, key: string): string {
+  // `_idx` suffix: indexes and tables share a namespace (index notification(user) vs table notification_user).
+  // Lowercase: the name is unquoted in DDL, so PostgreSQL folds it (event_attachedTo_idx -> event_attachedto_idx)
+  // and pg_class returns the folded spelling, which the catalog lookup must match.
+  return `${domain}_${key}_idx`.toLowerCase()
+}
+
+/**
+ * Existing tables never got their declared indexes (the old `count > 0` check never fired),
+ * so create the missing ones. `CONCURRENTLY` avoids blocking writes on populated tables;
+ * it must run outside a transaction. CockroachDB accepts it (all its index builds are online).
+ */
+async function createMissingIndexes (ctx: MeasureContext, client: postgres.Sql, domains: string[]): Promise<void> {
+  const rows =
+    await client.unsafe(`SELECT t.relname::text AS table_name, i.relname::text AS index_name, x.indisvalid AS valid
+    FROM pg_catalog.pg_index x
+    JOIN pg_catalog.pg_class i ON i.oid = x.indexrelid
+    JOIN pg_catalog.pg_class t ON t.oid = x.indrelid
+    WHERE t.relname IN (${domains.map((it) => `'${it}'`).join(', ')})`)
+  const existing = new Map<string, boolean>()
+  for (const row of rows) {
+    existing.set(row.index_name, row.valid !== false)
+  }
+
+  for (const domain of domains) {
+    const schema = getSchema(domain)
+    for (const key in schema) {
+      const val = schema[key]
+      if (!val.index) continue
+      const name = getIndexName(domain, key)
+      const valid = existing.get(name)
+      if (valid === true) continue
+      try {
+        if (valid === false) {
+          // A failed CONCURRENTLY build leaves an invalid index behind, which IF NOT EXISTS would skip.
+          await client.unsafe(`DROP INDEX CONCURRENTLY IF EXISTS ${name}`)
+        }
+        await client.unsafe(`CREATE INDEX CONCURRENTLY IF NOT EXISTS ${name} ON ${domain}${getIndex(val)} ("${key}")`)
+      } catch (err: any) {
+        ctx.error('failed to create index', { domain, key, name, err })
+      }
+    }
   }
 }
 
@@ -127,10 +188,13 @@ async function getTableSchema (client: postgres.Sql, domains: string[]): Promise
     const schema = schemas[column.table_name] ?? {}
     schemas[column.table_name] = schema
 
+    // information_schema has no index info: keep the declared one, so missing indexes can be created.
+    const declared = getSchema(column.table_name)[column.column_name]
     schema[column.column_name] = {
       type: parseDataType(column.data_type),
       notNull: column.is_nullable === 'NO',
-      index: false
+      index: declared?.index ?? false,
+      ...(declared?.indexType !== undefined ? { indexType: declared.indexType } : {})
     }
   }
   for (const [domain, schema] of Object.entries(schemas)) {
@@ -160,21 +224,19 @@ async function createTable (client: postgres.Sql, domain: string): Promise<void>
     fields.push(`"${key}" ${val.type} ${val.notNull ? 'NOT NULL' : ''}`)
   }
   const colums = fields.join(', ')
-  const res = await client.unsafe(`CREATE TABLE IF NOT EXISTS ${domain} (
+  await client.unsafe(`CREATE TABLE IF NOT EXISTS ${domain} (
       "workspaceId" uuid NOT NULL,
       ${colums}, 
       data JSONB NOT NULL,
       PRIMARY KEY("workspaceId", _id)
     )`)
-  if (res.count > 0) {
-    for (const key in schema) {
-      const val = schema[key]
-      if (val.index) {
-        await client.unsafe(`
-          CREATE INDEX ${domain}_${key} ON ${domain} ${getIndex(val)} ("${key}")
-        `)
-      }
-      fields.push(`"${key}" ${val.type} ${val.notNull ? 'NOT NULL' : ''}`)
+  // postgres.js reports count = null for DDL, so it can't tell whether the table was created.
+  for (const key in schema) {
+    const val = schema[key]
+    if (val.index) {
+      await client.unsafe(`
+        CREATE INDEX IF NOT EXISTS ${getIndexName(domain, key)} ON ${domain} ${getIndex(val)} ("${key}")
+      `)
     }
   }
 }
@@ -255,7 +317,7 @@ export function inferType (val: any): string {
     return '::boolean'
   }
   if (Array.isArray(val)) {
-    const type = inferType(val[0] ?? val[1])
+    const type = inferType(val.find((it) => it != null) ?? val[0])
     if (type !== '') {
       return type + '[]'
     }

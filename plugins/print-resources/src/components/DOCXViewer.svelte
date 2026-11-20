@@ -1,5 +1,6 @@
 <!--
 // Copyright © 2024 Hardcore Engineering Inc.
+// Copyright © 2026 Exaviz.
 //
 -->
 
@@ -7,7 +8,7 @@
   import { Analytics } from '@hcengineering/analytics'
   import { type Blob, type BlobMetadata, type Ref } from '@hcengineering/core'
   import { getMetadata } from '@hcengineering/platform'
-  import presentation, { getFileUrl } from '@hcengineering/presentation'
+  import presentation, { getFileBlobUrl, getFileUrl } from '@hcengineering/presentation'
   import print, { convertForPreview, type ConvertedPreview } from '@hcengineering/print'
   import { Button, EmbeddedHTML, EmbeddedPDF, Label, Spinner, themeStore } from '@hcengineering/ui'
   import { onDestroy } from 'svelte'
@@ -306,9 +307,9 @@
 {:else if src}
   {#key src}
     {#if convertedFile?.contentType === 'application/pdf'}
-      <EmbeddedPDF {src} name={previewName} />
+      <EmbeddedPDF {src} name={previewName} resolveUrl={getFileBlobUrl} />
     {:else}
-      <EmbeddedHTML {src} {name} {css} />
+      <EmbeddedHTML {src} {name} {css} resolveUrl={getFileBlobUrl} />
     {/if}
   {/key}
 {/if}

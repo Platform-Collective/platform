@@ -58,6 +58,7 @@ export { default } from './plugin'
 export type * from './types'
 export * from './utils'
 export * from './file'
+export * from './file-blob'
 export * from './filetypes'
 export * from './drafts'
 export { presentationId }

@@ -339,7 +339,7 @@
     font-size: 12px;
   }
   .hint {
-    color: var(--theme-content-trans-color);
+    color: var(--theme-dark-color);
   }
   .warning {
     background: var(--theme-warning-color, #fef2f2);
@@ -360,7 +360,7 @@
     gap: 16px;
     padding: 8px 16px;
     font-size: 11px;
-    color: var(--theme-content-trans-color);
+    color: var(--theme-dark-color);
     border-top: 1px solid var(--theme-popup-divider);
   }
   .legend-section {

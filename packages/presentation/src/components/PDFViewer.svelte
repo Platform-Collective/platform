@@ -1,5 +1,6 @@
 <!--
 // Copyright © 2024 Hardcore Engineering Inc.
+// Copyright © 2026 Exaviz.
 //
 // Licensed under the Eclipse Public License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License. You may
@@ -17,7 +18,7 @@
   import type { Blob, Ref } from '@hcengineering/core'
   import { Button, Dialog, EmbeddedPDF, Label, Spinner } from '@hcengineering/ui'
   import { createEventDispatcher, onMount } from 'svelte'
-  import presentation, { getFileUrl } from '..'
+  import presentation, { getFileBlobUrl, getFileUrl } from '..'
   import ActionContext from './ActionContext.svelte'
   import Download from './icons/Download.svelte'
 
@@ -97,7 +98,7 @@
         <img class="img-fit" {src} alt="" />
       </div>
     {:else}
-      <EmbeddedPDF {src} {name} {css} fit />
+      <EmbeddedPDF {src} {name} {css} resolveUrl={getFileBlobUrl} fit />
     {/if}
   {:else}
     <div class="centered">

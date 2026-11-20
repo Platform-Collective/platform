@@ -10,6 +10,16 @@ In order to be able to install required packages, you will need to obtain GitHub
 npm install @hcengineering/api-client
 ```
 
+## Examples and your own instance
+
+The [huly-examples repository](https://github.com/hcengineering/huly-examples) contains runnable examples for [listing issues](https://github.com/hcengineering/huly-examples/blob/main/platform-api/examples/issue-list.ts), creating and updating issues, and [listing documents](https://github.com/hcengineering/huly-examples/blob/main/platform-api/examples/documents/document-list.ts). Follow its installation instructions and use package versions compatible with your server.
+
+For your own instance, pass the URL you use to open Huly, such as `https://huly.example.com`, to `connect` or `connectRest`. For Huly Cloud, use `https://huly.app`. The client loads `/config.json` from this URL to discover the services; do not pass a WebSocket endpoint or the full workspace URL.
+
+For example, if your workspace URL is `https://huly.example.com/workbench/my-workspace`, use `https://huly.example.com` as the instance URL and `my-workspace` as the `workspace` option. The machine running the client must be able to reach the instance and the services advertised in its configuration.
+
+The examples below use a placeholder instance URL. Replace it with your own URL and workspace. Keep credentials outside source code, for example in environment variables. A GitHub package-registry token is separate from a Huly authentication token.
+
 ## WebSocket Client vs REST Client
 
 The api client package provides two main client variants: a WebSocket client and a REST client. The WebSocket client holds persistent connection to the Huly Platform API. The REST client uses standard HTTP requests to perform operations.
@@ -20,7 +30,7 @@ The api client package provides two main client variants: a WebSocket client and
 import { connect } from '@hcengineering/api-client'
 
 // Connect to Huly
-const client = await connect('https://huly.app', {
+const client = await connect('https://huly.example.com', {
   email: 'johndoe@example.com',
   password: 'password',
   workspace: 'my-workspace',
@@ -39,7 +49,7 @@ await client.close()
 import { connectRest } from '@hcengineering/api-client'
 
 // Connect to Huly
-const client = await connectRest('https://huly.app', {
+const client = await connectRest('https://huly.example.com', {
   email: 'johndoe@example.com',
   password: 'password',
   workspace: 'my-workspace'
@@ -59,9 +69,9 @@ When authenticated, the client will have access to the same resources as the use
 
 Parameters:
 
-- `url`: URL of the Huly instance, for Huly Cloud use `https://huly.app`
+- `url`: URL of the Huly instance, for example `https://huly.example.com`; for Huly Cloud use `https://huly.app`
 - `options`: Connection options
-  - `workspace`: Name of the workspace to connect to, the workspace name can be found in the URL of the workspace: `https://huly.app/workbench/<workspace-name>`
+  - `workspace`: Name of the workspace to connect to, the workspace name can be found in the URL of the workspace: `https://huly.example.com/workbench/<workspace-name>`
   - `token`: Optional authentication token
   - `email`: Optional user email
   - `password`: Optional user password
@@ -71,7 +81,7 @@ Parameters:
 ```ts
 import { connect } from '@hcengineering/api-client'
 
-const client = await connect('https://huly.app', {
+const client = await connect('https://huly.example.com', {
   email: 'johndoe@example.com',
   password: 'password',
   workspace: 'my-workspace'
@@ -84,11 +94,13 @@ await client.close()
 
 ### Using Token
 
+Set `HULY_TOKEN` to a valid Huly authentication token for a user who can access the workspace. This does not create a token or restrict its permissions. The complete example below checks the required environment variables before connecting.
+
 ```ts
 import { connect } from '@hcengineering/api-client'
 
-const client = await connect('https://huly.app', {
-  token: '...',
+const client = await connect('https://huly.example.com', {
+  token: process.env.HULY_TOKEN!,
   workspace: 'my-workspace'
 })
 
@@ -171,6 +183,58 @@ const persons = await client.findAll(
   }
 )
 ```
+
+### Read comments on an issue
+
+This read-only Node.js/TypeScript example uses `@hcengineering/api-client`, `@hcengineering/core`, `@hcengineering/tracker`, and `@hcengineering/chunter`. Install compatible versions of these packages using the registry setup above. Set `HULY_URL`, `HULY_WORKSPACE`, `HULY_TOKEN`, and `HULY_ISSUE` (for example, `ENG-123`) in your environment.
+
+```ts
+import { connect } from '@hcengineering/api-client'
+import { SortingOrder } from '@hcengineering/core'
+import chunter from '@hcengineering/chunter'
+import tracker from '@hcengineering/tracker'
+
+async function main (): Promise<void> {
+  const { HULY_URL, HULY_WORKSPACE, HULY_TOKEN, HULY_ISSUE } = process.env
+  if (!HULY_URL || !HULY_WORKSPACE || !HULY_TOKEN || !HULY_ISSUE) {
+    throw new Error('Set HULY_URL, HULY_WORKSPACE, HULY_TOKEN and HULY_ISSUE')
+  }
+
+  const client = await connect(HULY_URL, {
+    workspace: HULY_WORKSPACE,
+    token: HULY_TOKEN
+  })
+
+  try {
+    const issue = await client.findOne(tracker.class.Issue, { identifier: HULY_ISSUE })
+    if (issue === undefined) {
+      console.log('Issue not found or not accessible')
+      return
+    }
+
+    const comments = await client.findAll(
+      chunter.class.ChatMessage,
+      { attachedTo: issue._id },
+      { sort: { createdOn: SortingOrder.Ascending }, limit: 100 }
+    )
+    for (const comment of comments) {
+      console.log(comment._id, comment.message)
+    }
+    if (comments.length === 0) {
+      console.log('No comments found')
+    }
+  } finally {
+    await client.close()
+  }
+}
+
+main().catch((error) => {
+  console.error(error)
+  process.exitCode = 1
+})
+```
+
+Comments are `chunter.class.ChatMessage` documents attached to the issue's internal `_id`; the displayed issue identifier is used only to find the issue. `message` contains Huly markup, not plain text. This example reads at most 100 direct comments, excludes activity events such as status changes, and does not traverse comment threads. Results follow the authenticated user's access rights.
 
 ### Documents API
 

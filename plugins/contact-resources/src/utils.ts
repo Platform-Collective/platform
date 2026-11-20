@@ -388,11 +388,23 @@ function detectBrowserTimezone (): string | undefined {
 }
 
 let timezoneSyncInFlight = false
+// Employee and browser time zone of the last successful sync. Each session writes its time zone at most
+// once, so two sessions of the same user in different time zones do not keep overwriting each other.
+let timezoneSyncedFor: string | undefined
+let timezoneSyncFailures = 0
+const maxTimezoneSyncAttempts = 3
 
 async function syncMyEmployeeTimezone (employee: WithLookup<Employee> | undefined): Promise<void> {
   if (timezoneSyncInFlight || employee === undefined) return
   const browserTz = detectBrowserTimezone()
-  if (browserTz === undefined || employee.timezone === browserTz) return
+  if (browserTz === undefined) return
+  const syncKey = `${employee._id}:${browserTz}`
+  if (timezoneSyncedFor === syncKey) return
+  if (employee.timezone === browserTz) {
+    timezoneSyncedFor = syncKey
+    return
+  }
+  if (timezoneSyncFailures >= maxTimezoneSyncAttempts) return
 
   timezoneSyncInFlight = true
   try {
@@ -400,7 +412,9 @@ async function syncMyEmployeeTimezone (employee: WithLookup<Employee> | undefine
     await client.updateMixin(employee._id, contact.class.Person, employee.space, contact.mixin.Employee, {
       timezone: browserTz
     })
+    timezoneSyncedFor = syncKey
   } catch (err) {
+    timezoneSyncFailures++
     console.error('Failed to sync employee timezone', err)
   } finally {
     timezoneSyncInFlight = false

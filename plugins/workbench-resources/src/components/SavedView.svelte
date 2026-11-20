@@ -160,22 +160,55 @@
   }
 
   let selectedId: Ref<FilteredView> | undefined = undefined
+  // Number of load() calls still applying a saved view. Between navigate()
+  // and setFilters() the previous page's filters are still in place, and
+  // checkSelected() must not clear the view that is being opened. A counter,
+  // so an earlier load() finishing doesn't lift the guard for a later one.
+  let loading = 0
+
+  // The saved view this tab last opened. After a reload only this view is
+  // put back into selectedFilterStore when the filters match it; a view the
+  // user never opened is highlighted but not selected, so "Save" can't
+  // overwrite it. Kept per tab in sessionStorage so it survives a reload.
+  const LAST_OPENED_KEY = 'savedView.lastOpened'
+
+  function getLastOpened(): string | null {
+    try {
+      return sessionStorage.getItem(LAST_OPENED_KEY)
+    } catch {
+      return null
+    }
+  }
+
+  function setLastOpened(id: Ref<FilteredView>): void {
+    try {
+      sessionStorage.setItem(LAST_OPENED_KEY, id)
+    } catch {
+      // Storage unavailable: the view is still selected until the next reload.
+    }
+  }
 
   async function load(fv: FilteredView): Promise<void> {
-    selectedFilterStore.set(fv)
-    navigate({
-      path: fv.location.path,
-      query: fv.location.query ?? undefined,
-      fragment: fv.location.fragment ?? undefined
-    })
-    if (fv.viewletId !== undefined && fv.viewletId !== null) {
-      const viewlet = await client.findOne<Viewlet>(view.class.Viewlet, { _id: fv.viewletId })
-      setActiveViewletId(fv.viewletId, fv.location)
-      if (viewlet !== undefined && fv.viewOptions !== undefined) {
-        setViewOptions(viewlet, copy(fv.viewOptions))
+    loading++
+    setLastOpened(fv._id)
+    try {
+      selectedFilterStore.set(fv)
+      navigate({
+        path: fv.location.path,
+        query: fv.location.query ?? undefined,
+        fragment: fv.location.fragment ?? undefined
+      })
+      if (fv.viewletId !== undefined && fv.viewletId !== null) {
+        const viewlet = await client.findOne<Viewlet>(view.class.Viewlet, { _id: fv.viewletId })
+        setActiveViewletId(fv.viewletId, fv.location)
+        if (viewlet !== undefined && fv.viewOptions !== undefined) {
+          setViewOptions(viewlet, copy(fv.viewOptions))
+        }
       }
+      setFilters(JSON.parse(fv.filters))
+    } finally {
+      loading--
     }
-    setFilters(JSON.parse(fv.filters))
   }
 
   const clearSelection = (): void => {
@@ -207,6 +240,7 @@
     filteredViews: FilteredView[] | undefined,
     viewOptionStore: Map<string, ViewOptions>
   ): void {
+    if (loading > 0) return
     const filters = JSON.stringify(fs)
     if (loc && Array.isArray(fs) && fs.length > 0 && Array.isArray(filteredViews)) {
       if ($selectedFilterStore !== undefined) {
@@ -219,6 +253,9 @@
       for (const fv of filteredViews) {
         if (checkFilter(fv, loc, filters, viewOptionStore)) {
           selectedId = fv._id
+          if (fv._id === getLastOpened()) {
+            selectedFilterStore.set(fv)
+          }
           dispatch('select', true)
           return
         }

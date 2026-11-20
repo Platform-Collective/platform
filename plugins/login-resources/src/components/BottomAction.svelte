@@ -39,7 +39,7 @@
       }}><Label label={action.i18n} /></NavLink
     >
   {:else}
-    <a href="." on:click|preventDefault={action.func}><Label label={action.i18n} /></a>
+    <a href="." class:muted={action.muted} on:click|preventDefault={action.func}><Label label={action.i18n} /></a>
   {/if}
 </div>
 
@@ -48,7 +48,20 @@
     color: var(--theme-darker-color);
   }
   a {
-    font-weight: 400;
-    color: var(--theme-content-color);
+    font-weight: 500;
+    color: var(--theme-link-color);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &.muted {
+      color: var(--theme-dark-color);
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 </style>

@@ -611,7 +611,10 @@ const specialRule: Record<string, ParsingSpecialRule> = {
   link: {
     type: (state, tok) => {
       const href = tok.attrGet('href')
-      if ((href?.startsWith(state.refUrl) ?? false) || state.stack[state.stack.length - 1]?.type === 'reference') {
+      if (
+        ((href?.startsWith(state.refUrl) ?? false) && tok.markup !== 'linkify') ||
+        state.stack[state.stack.length - 1]?.type === 'reference'
+      ) {
         return { type: MarkupNodeType.reference, node: true }
       }
       return { type: MarkupMarkType.link, node: false, close: true }
@@ -621,7 +624,7 @@ const specialRule: Record<string, ParsingSpecialRule> = {
       if (attrs.href !== undefined) {
         try {
           const url = new URL(attrs.href)
-          if (attrs.href.startsWith(state.refUrl) ?? false) {
+          if ((attrs.href.startsWith(state.refUrl) ?? false) && tok.markup !== 'linkify') {
             return {
               label: url.searchParams?.get('label') ?? '',
               id: url.searchParams?.get('_id') ?? '',

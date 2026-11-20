@@ -104,7 +104,7 @@ import {
   getWorkspaceRoles,
   GUEST_ACCOUNT,
   isEmail,
-  isOtpValid,
+  verifyOtpAttempt,
   normalizeValue,
   doReleaseSocialId,
   selectWorkspace,
@@ -468,9 +468,15 @@ export async function validateOtp (
       throw new PlatformError(new Status(Severity.ERROR, platform.status.AccountNotFound, { account: email }))
     }
 
-    const isValid = await isOtpValid(db, emailSocialId._id, code)
+    const otpResult = await verifyOtpAttempt(db, emailSocialId._id, code)
 
-    if (!isValid) {
+    if (otpResult === 'locked') {
+      ctx.warn('OTP validation locked due to too many failed attempts', { socialId: emailSocialId._id })
+      throw new PlatformError(new Status(Severity.ERROR, platform.status.OtpLocked, {}))
+    }
+
+    if (otpResult !== 'valid') {
+      ctx.warn('Invalid OTP attempt', { socialId: emailSocialId._id })
       throw new PlatformError(new Status(Severity.ERROR, platform.status.InvalidOtp, {}))
     }
 
@@ -488,6 +494,13 @@ export async function validateOtp (
       }
     }
 
+    // Consume the code atomically: only the request that actually deletes it may proceed,
+    // so concurrent requests with the same valid code cannot both succeed.
+    const consumed = await db.otp.deleteMany({ socialId: emailSocialId._id, code })
+    if (consumed === 0) {
+      ctx.warn('OTP already used', { socialId: emailSocialId._id })
+      throw new PlatformError(new Status(Severity.ERROR, platform.status.InvalidOtp, {}))
+    }
     await db.otp.deleteMany({ socialId: emailSocialId._id })
 
     const targetAccount = await db.account.findOne({ uuid: emailSocialId.personUuid as AccountUuid })
@@ -2690,7 +2703,7 @@ async function getMailboxSecret (
   }
 ): Promise<MailboxSecret | null> {
   const { extra } = decodeTokenVerbose(ctx, token)
-  verifyAllowedServices(['huly-mail'], extra, false)
+  verifyAllowedServices(['huly-mail'], extra)
   return await db.mailboxSecret.findOne({ mailbox: params.mailbox })
 }
 

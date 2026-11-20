@@ -98,11 +98,21 @@
     }
   }
 
+  // The grid wrapper grows with its ::after copy of the value, but WebKit does not always lay out
+  // that content again when data-value changes. A min-height from the textarea's own content keeps
+  // it from staying one line; the grid still sizes it in all other cases.
+  function fitMultiline(): void {
+    if (format !== 'text-multiline' || input == null) return
+    input.style.minHeight = ''
+    input.style.minHeight = `${input.scrollHeight}px`
+  }
+
   function handleInput(ev: Event): void {
     const t: HTMLInputElement | EventTarget | null = ev.target
     if (t !== null && t !== undefined) {
       computeSize(t)
     }
+    fitMultiline()
     dispatch('input')
     dispatch('value', value)
   }
@@ -117,10 +127,12 @@
       select = false
     }
     computeSize(input)
+    fitMultiline()
   })
 
   afterUpdate(() => {
     computeSize(input)
+    fitMultiline()
   })
 
   export function focusInput(): void {

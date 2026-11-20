@@ -879,7 +879,8 @@ async function handleStatusError (message: string, err: Status): Promise<void> {
   if (
     err.code === platform.status.InvalidPassword ||
     err.code === platform.status.AccountNotFound ||
-    err.code === platform.status.InvalidOtp
+    err.code === platform.status.InvalidOtp ||
+    err.code === platform.status.OtpLocked
   ) {
     // No need to send to analytics
     return

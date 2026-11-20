@@ -159,6 +159,7 @@
     "GroupByStatus": "Por estado",
     "GroupByDate": "Por fecha",
     "SpeakingWhileMuted": "Tienes el micrófono silenciado - los demás no te oyen",
-    "SpeakingWhileMutedAlert": "Avisarme cuando hable con el micrófono silenciado"
+    "SpeakingWhileMutedAlert": "Avisarme cuando hable con el micrófono silenciado",
+    "ScreenSharedBy": "{name} está compartiendo la pantalla"
   }
 }
