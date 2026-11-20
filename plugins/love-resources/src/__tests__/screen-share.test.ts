@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import { setPlatformStatus, unknownError } from '@hcengineering/platform'
+import { addNotification, NotificationSeverity } from '@hcengineering/ui'
 import { LiveKitClient } from '../liveKitClient'
 
 jest.mock(
   '@hcengineering/platform',
   () => ({
-    setPlatformStatus: jest.fn().mockResolvedValue(undefined),
-    unknownError: jest.fn((error) => ({ error }))
+    translate: jest.fn(async (key) => key)
   }),
   { virtual: true }
 )
@@ -15,13 +14,30 @@ jest.mock('@hcengineering/media', () => ({}), { virtual: true })
 jest.mock('@hcengineering/love', () => ({}), { virtual: true })
 jest.mock('@hcengineering/media-resources', () => ({}), { virtual: true })
 jest.mock('@hcengineering/analytics', () => ({}), { virtual: true })
-jest.mock('@hcengineering/ui', () => ({}), { virtual: true })
-jest.mock('@hcengineering/theme', () => ({}), { virtual: true })
+jest.mock('@hcengineering/ui', () => ({ addNotification: jest.fn(), NotificationSeverity: { Error: 'error' } }), {
+  virtual: true
+})
+jest.mock('@hcengineering/view-resources', () => ({ SimpleNotification: {} }), { virtual: true })
+jest.mock('@hcengineering/theme', () => ({ getCurrentLanguage: () => 'en' }), { virtual: true })
 jest.mock('svelte/store', () => ({ writable: jest.fn() }), { virtual: true })
 jest.mock('../components/meeting/LastParticipantNotification.svelte', () => ({}))
-jest.mock('../plugin', () => ({}))
+jest.mock('../plugin', () => ({
+  string: { ScreenShareFailed: 'failed', ScreenShareDenied: 'denied', ScreenShareError: 'generic' }
+}))
 jest.mock('../stores', () => ({}))
 jest.mock('../meetings', () => ({}))
+
+const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+beforeAll(() => {
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { mediaDevices: { getDisplayMedia: jest.fn() } }
+  })
+})
+afterAll(() => {
+  if (navigatorDescriptor !== undefined) Object.defineProperty(globalThis, 'navigator', navigatorDescriptor)
+  else Reflect.deleteProperty(globalThis, 'navigator')
+})
 
 const setScreenShareEnabled = jest.fn()
 let client: LiveKitClient
@@ -39,14 +55,20 @@ test('surfaces capture failures and permits a successful retry', async () => {
 
   await client.setScreenShareEnabled(true, true)
 
-  expect(unknownError).toHaveBeenCalledWith(error)
-  expect(setPlatformStatus).toHaveBeenCalledWith(unknownError(error))
+  expect(addNotification).toHaveBeenCalledWith(
+    'failed',
+    'generic',
+    expect.anything(),
+    undefined,
+    NotificationSeverity.Error,
+    'love'
+  )
 
   await client.setScreenShareEnabled(true, true)
 
   expect(setScreenShareEnabled).toHaveBeenCalledTimes(2)
   expect(setScreenShareEnabled).toHaveBeenLastCalledWith(true, { audio: true })
-  expect(setPlatformStatus).toHaveBeenCalledTimes(1)
+  expect(addNotification).toHaveBeenCalledTimes(1)
 })
 
 test('does not show an error when source selection is cancelled', async () => {
@@ -54,7 +76,7 @@ test('does not show an error when source selection is cancelled', async () => {
 
   await client.setScreenShareEnabled(true)
 
-  expect(setPlatformStatus).not.toHaveBeenCalled()
+  expect(addNotification).not.toHaveBeenCalled()
 })
 
 test('does not show an error when the browser picker is dismissed', async () => {
@@ -62,7 +84,7 @@ test('does not show an error when the browser picker is dismissed', async () => 
 
   await client.setScreenShareEnabled(true)
 
-  expect(setPlatformStatus).not.toHaveBeenCalled()
+  expect(addNotification).not.toHaveBeenCalled()
 })
 
 test('surfaces screen capture blocked by the operating system', async () => {
@@ -71,5 +93,12 @@ test('surfaces screen capture blocked by the operating system', async () => {
 
   await client.setScreenShareEnabled(true)
 
-  expect(setPlatformStatus).toHaveBeenCalledWith(unknownError(error))
+  expect(addNotification).toHaveBeenCalledWith(
+    'failed',
+    'denied',
+    expect.anything(),
+    undefined,
+    NotificationSeverity.Error,
+    'love'
+  )
 })

@@ -160,6 +160,12 @@
     "IncludeArchived": "Uwzględnij zarchiwizowane",
     "LeaveParticipant": "Opuszczono spotkanie",
     "Summary": "Podsumowanie",
-    "ScreenSharedBy": "{name} udostępnia ekran"
+    "ScreenSharedBy": "{name} udostępnia ekran",
+    "ScreenShareFailed": "Nie można udostępnić ekranu",
+    "ScreenShareDenied": "Udostępnianie ekranu zostało zablokowane przez przeglądarkę lub system operacyjny. Zezwól przeglądarce na nagrywanie ekranu w ustawieniach prywatności systemu i spróbuj ponownie.",
+    "ScreenShareUnsupported": "Udostępnianie ekranu nie jest obsługiwane w tej przeglądarce lub przy tym połączeniu. Użyj aktualnej przeglądarki na komputerze przez HTTPS.",
+    "ScreenShareError": "Nie udało się rozpocząć udostępniania ekranu. Spróbuj ponownie.",
+    "ScreenShareNotStartedTitle": "Nie rozpoczęto udostępniania ekranu",
+    "ScreenShareNotStarted": "Nie rozpoczęto udostępniania ekranu. Jeśli nie anulowano tej operacji, sprawdź, czy przeglądarka i system operacyjny zezwalają tej witrynie na udostępnianie ekranu."
   }
 }
