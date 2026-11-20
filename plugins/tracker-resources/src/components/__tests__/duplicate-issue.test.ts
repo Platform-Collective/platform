@@ -5,7 +5,7 @@ import type { Class, Doc, Ref } from '@hcengineering/core'
 import type { IntlString } from '@hcengineering/platform'
 import type { TaskType } from '@hcengineering/task'
 import type { Issue } from '@hcengineering/tracker'
-import { getDuplicateIssueCustomFields } from '../duplicate-issue'
+import { getDuplicateIssueCustomFields, getDuplicateIssueSource } from '../duplicate-issue'
 
 const issueClass = 'test:class:Issue' as Ref<Class<Issue>>
 const taskMixin = 'test:mixin:Task' as Ref<Class<Doc>>
@@ -95,6 +95,17 @@ describe('duplicate issue custom fields', () => {
       'test:task:OtherKind' as Ref<TaskType>
     )
 
+    expect(result.attributes).toEqual({})
+    expect(result.mixins.size).toBe(0)
+  })
+
+  it('does not restore duplicate values after switching task kind away and back', () => {
+    const otherKind = 'test:task:OtherKind' as Ref<TaskType>
+    const afterOtherKind = getDuplicateIssueSource(createOriginalIssue(), otherKind)
+    const afterOriginalKind = getDuplicateIssueSource(afterOtherKind, taskKind)
+    const result = getDuplicateIssueCustomFields(createHierarchy(), afterOriginalKind, taskKind)
+
+    expect(afterOriginalKind).toBeUndefined()
     expect(result.attributes).toEqual({})
     expect(result.mixins.size).toBe(0)
   })

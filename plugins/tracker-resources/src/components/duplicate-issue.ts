@@ -9,6 +9,10 @@ interface DuplicateIssueCustomFields {
   mixins: Map<Ref<Mixin<Doc>>, Record<string, unknown>>
 }
 
+export function getDuplicateIssueSource (source: Issue | undefined, kind: Ref<TaskType> | undefined): Issue | undefined {
+  return source?.kind === kind ? source : undefined
+}
+
 /** Copy user-defined fields without carrying over issue or integration metadata. */
 export function getDuplicateIssueCustomFields (
   hierarchy: Hierarchy,

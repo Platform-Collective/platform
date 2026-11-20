@@ -103,7 +103,7 @@
   import SetParentIssueActionPopup from './SetParentIssueActionPopup.svelte'
   import SubIssues from './SubIssues.svelte'
   import ComponentSelector from './components/ComponentSelector.svelte'
-  import { getDuplicateIssueCustomFields } from './duplicate-issue'
+  import { getDuplicateIssueCustomFields, getDuplicateIssueSource } from './duplicate-issue'
   import AssigneeEditor from './issues/AssigneeEditor.svelte'
   import IssueNotification from './issues/IssueNotification.svelte'
   import ParentIssue from './issues/ParentIssue.svelte'
@@ -262,6 +262,7 @@
   $: selectedTaskType = kind !== undefined ? $taskTypeStore.get(kind) : undefined
   $: createIssueAttributes = getCreateIssueAttributes(hierarchy, selectedTaskType)
   $: if (kind !== previousKind) {
+    duplicateSource = getDuplicateIssueSource(duplicateSource, kind)
     const previousAttributes = getTaskTypeAttributes(
       hierarchy,
       previousKind !== undefined ? $taskTypeStore.get(previousKind) : undefined
