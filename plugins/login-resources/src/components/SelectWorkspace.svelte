@@ -20,6 +20,7 @@
     isArchivingMode,
     isRestoringMode,
     isRestoreFailedMode,
+    isUpgradeFailedMode,
     isUpgradingMode
   } from '@hcengineering/core'
   import { LoginInfo } from '@hcengineering/login'
@@ -200,6 +201,8 @@
                 {/if}
                 {#if isRestoreFailedMode(workspace.mode)}
                   - <Label label={login.string.WorkspaceRestoreFailed} />
+                {:else if isUpgradeFailedMode(workspace.mode)}
+                  - <Label label={login.string.WorkspaceUpgradeFailed} />
                 {:else if !isActiveMode(workspace.mode) && !isArchivingMode(workspace.mode)}
                   ({workspace.processingProgress}%)
                 {/if}

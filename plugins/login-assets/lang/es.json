@@ -75,6 +75,7 @@
     "WorkspaceArchivedDesc": "El espacio de trabajo está archivado por no estar en uso.",
     "WorkspaceRestoreFailed": "Restore failed",
     "WorkspaceRestoreFailedDesc": "Restoring the workspace failed. You can retry; contact support if it keeps failing.",
+    "WorkspaceUpgradeFailed": "La actualización falló",
     "RestoreArchivedWorkspace": "Restaurar",
     "Hello": "Hola {name},",
     "ProcessingInvite": "Procesando invitación, por favor espere...",
