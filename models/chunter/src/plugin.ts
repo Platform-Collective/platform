@@ -17,6 +17,7 @@ import type { ActivityMessage } from '@hcengineering/activity'
 import { chunterId, type Channel } from '@hcengineering/chunter'
 import chunter from '@hcengineering/chunter-resources/src/plugin'
 import { type Client, type Doc, type Ref } from '@hcengineering/core'
+import { type ObjectSearchCategory, type ObjectSearchFactory } from '@hcengineering/model-presentation'
 import { type NotificationGroup } from '@hcengineering/notification'
 import type { IntlString, Resource } from '@hcengineering/platform'
 import { mergeIds } from '@hcengineering/platform'
@@ -61,6 +62,10 @@ export default mergeIds(chunterId, chunter, {
   },
   category: {
     Chunter: '' as Ref<ActionCategory>
+  },
+  completion: {
+    ChannelQuery: '' as Resource<ObjectSearchFactory>,
+    ChannelCategory: '' as Ref<ObjectSearchCategory>
   },
   activity: {
     ChannelCreatedMessage: '' as AnyComponent

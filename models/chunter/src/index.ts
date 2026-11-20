@@ -172,6 +172,21 @@ export function createModel (builder: Builder): void {
     presenter: chunter.component.ChannelPresenter
   })
 
+  builder.createDoc(
+    presentation.class.ObjectSearchCategory,
+    core.space.Model,
+    {
+      title: chunter.string.Channels,
+      icon: chunter.icon.Hashtag,
+      label: presentation.string.Search,
+      query: chunter.completion.ChannelQuery,
+      context: ['mention'],
+      classToSearch: chunter.class.Channel,
+      priority: 700
+    },
+    chunter.completion.ChannelCategory
+  )
+
   builder.mixin(chunter.class.DirectMessage, core.class.Class, view.mixin.SpaceHeader, {
     header: chunter.component.DmHeader
   })
