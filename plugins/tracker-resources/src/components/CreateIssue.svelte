@@ -262,6 +262,7 @@
   let previousKind = kind
   let defaultsKind: Ref<TaskType> | undefined
   let attributesRevision = 0
+  let createIssueAttributes = getCreateIssueAttributes(hierarchy)
 
   $: selectedTaskType = kind !== undefined ? $taskTypeStore.get(kind) : undefined
   $: if (attributesRevision >= 0) {
