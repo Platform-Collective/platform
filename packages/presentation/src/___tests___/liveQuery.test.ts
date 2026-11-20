@@ -13,8 +13,26 @@
 // limitations under the License.
 //
 
-import core, { type Client, type Doc, type FindResult, setCurrentAccount } from '@hcengineering/core'
-import { createQuery, refreshClient, setClient } from '../utils'
+import core, {
+  Hierarchy,
+  TxFactory,
+  type Client,
+  type Doc,
+  type FindResult,
+  type Tx,
+  setCurrentAccount
+} from '@hcengineering/core'
+import { get } from 'svelte/store'
+import {
+  addTxListener,
+  createQuery,
+  getClient,
+  pendingCreatedDocs,
+  refreshClient,
+  removeTxListener,
+  setClient
+} from '../utils'
+import type { InstantTransactions } from '../types'
 
 interface Subscription {
   query: Record<string, any>
@@ -23,6 +41,7 @@ interface Subscription {
 }
 
 const mockDestroyHandlers: Array<() => void> = []
+const mockNotifications: Array<{ client: object, txes: Tx[] }> = []
 jest.mock('svelte', () => ({ onDestroy: (fn: () => void) => mockDestroyHandlers.push(fn) }))
 jest.mock('svelte/store', () => {
   const writable = (value: any): any => {
@@ -56,6 +75,9 @@ jest.mock('@hcengineering/ui', () => ({ getRawCurrentLocation: () => ({ path: []
 jest.mock('@hcengineering/query', () => ({
   LiveQuery: class {
     static subscriptions: Subscription[] = []
+    async tx (...tx: Tx[]): Promise<void> {
+      mockNotifications.push({ client: this, txes: tx })
+    }
 
     query (_class: any, query: Record<string, any>, onResult: (res: any) => void): () => void {
       const sub: Subscription = { query, active: true, onResult }
@@ -84,6 +106,16 @@ async function settle (): Promise<void> {
   for (let i = 0; i < 5; i++) {
     await new Promise((resolve) => setTimeout(resolve, 0))
   }
+}
+
+function deferred (): { promise: Promise<void>, resolve: () => void } {
+  let complete: () => void = () => {
+    throw new Error('Deferred promise is not initialized')
+  }
+  const promise = new Promise<void>((resolve) => {
+    complete = resolve
+  })
+  return { promise, resolve: complete }
 }
 
 describe('LiveQuery', () => {
@@ -192,5 +224,68 @@ describe('LiveQuery', () => {
     const released = subscriptions().find((it) => it.query.name === 'L1')
     released?.onResult([{ query: { name: 'L1' } }])
     expect(received).toEqual(['L1', 'L2'])
+  })
+
+  it('marks only a pending optimistic create confirmation for both query clients', async () => {
+    const hierarchy = new Hierarchy()
+    const instantTransactions = { txClasses: [core.class.TxCreateDoc] } as unknown as InstantTransactions
+    jest.spyOn(hierarchy, 'classHierarchyMixin').mockReturnValue(instantTransactions)
+    const send = jest.fn(async () => ({}))
+    const storage = {
+      findAll: async () => [],
+      getHierarchy: () => hierarchy,
+      notify: (..._tx: Tx[]) => {},
+      tx: send,
+      close: async () => {}
+    } as unknown as Client
+    await setClient(storage)
+    const notifications = mockNotifications
+    notifications.length = 0
+    const tx = new TxFactory(core.account.System).createTxCreateDoc(core.class.Space, core.space.Model, {
+      name: 'chat',
+      description: '',
+      private: true,
+      members: [],
+      archived: false
+    })
+    let completed = deferred()
+    const listener = (): void => {
+      completed.resolve()
+    }
+    addTxListener(listener)
+    try {
+      await getClient().tx(tx)
+      await completed.promise
+      expect(get(pendingCreatedDocs)[tx.objectId]).toBe(true)
+      expect(notifications).toHaveLength(2)
+      expect(new Set(notifications.map(({ client }) => client)).size).toBe(2)
+      expect(notifications.every(({ txes: [t] }) => t.meta?.isCreateConfirmation !== true)).toBe(true)
+      expect(notifications.every(({ txes: [t] }) => t.meta?.isOptimisticCreate === true)).toBe(true)
+      expect(tx.meta?.isOptimisticCreate).toBeUndefined()
+      const clients = notifications.map(({ client }) => client)
+      notifications.length = 0
+
+      completed = deferred()
+      const confirmed = { ...tx, createdOn: tx.modifiedOn + 100, modifiedOn: tx.modifiedOn + 100 }
+      storage.notify?.(confirmed)
+      await completed.promise
+      expect(get(pendingCreatedDocs)[tx.objectId]).toBeUndefined()
+      expect(notifications).toHaveLength(2)
+      expect(notifications.map(({ client }) => client)).toEqual(clients)
+      expect(notifications.every(({ txes: [t] }) => t.meta?.isCreateConfirmation === true)).toBe(true)
+      expect(notifications.every(({ txes: [t] }) => t.meta?.isOptimisticCreate !== true)).toBe(true)
+      expect(confirmed.meta?.isCreateConfirmation).toBeUndefined()
+      expect(send).toHaveBeenCalledWith(tx)
+      notifications.length = 0
+
+      completed = deferred()
+      storage.notify?.(confirmed)
+      await completed.promise
+      expect(notifications).toHaveLength(2)
+      expect(notifications.map(({ client }) => client)).toEqual(clients)
+      expect(notifications.every(({ txes: [t] }) => t.meta?.isCreateConfirmation !== true)).toBe(true)
+    } finally {
+      removeTxListener(listener)
+    }
   })
 })

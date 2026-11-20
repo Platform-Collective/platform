@@ -26,6 +26,7 @@
   import ChatMessageInput from './ChatMessageInput.svelte'
   import ChatMessagePresenter from './ChatMessagePresenter.svelte'
   import { getChannelSpace } from '../../utils'
+  import { comparePopupMessages } from '../../message-order'
 
   export let objectId: Ref<Doc>
   export let object: Doc
@@ -38,16 +39,17 @@
   let messages: ChatMessage[] = []
 
   let activityOrderNewestFirst = getActivityNewestFirst()
+  $: order = activityOrderNewestFirst ? SortingOrder.Descending : SortingOrder.Ascending
   $: setActivityNewestFirst(activityOrderNewestFirst)
   $: query.query(
     chunter.class.ChatMessage,
     { attachedTo: objectId, space: getChannelSpace(object._class, object._id, object.space) },
     (res) => {
-      messages = res.sort((message) => (message?.isPinned ? -1 : 1))
+      messages = res.sort((first, second) => comparePopupMessages(first, second, order))
       loading = false
     },
     {
-      sort: { createdOn: activityOrderNewestFirst ? SortingOrder.Descending : SortingOrder.Ascending },
+      sort: { createdOn: order, _id: order },
       showArchived: true
     }
   )
