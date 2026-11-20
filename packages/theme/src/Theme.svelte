@@ -33,6 +33,7 @@
   const currentFontSize = writable<string>(getCurrentFontSize())
   const currentLanguage = writable<string>(getCurrentLanguage())
   const currentEmoji = writable<string>(getCurrentEmoji())
+  let languageRequest = 0
 
   const setOptions = (currentFont: string, theme: string, language: string, emoji: string) => {
     themeOptions.set(new ThemeOptions(currentFont === 'normal-font' ? 16 : 14, isThemeDark(theme), language, emoji))
@@ -62,6 +63,7 @@
     setOptions(fontsize, getCurrentTheme(), getCurrentLanguage(), getCurrentEmoji())
   }
   const setLanguage = async (language: string, set: boolean = true) => {
+    const request = ++languageRequest
     currentLanguage.set(language)
     if (set) {
       localStorage.setItem('lang', language)
@@ -69,6 +71,7 @@
     Analytics.setTag('language', language)
     setMetadata(platform.metadata.locale, $currentLanguage)
     await loadPluginStrings($currentLanguage, set)
+    if (request !== languageRequest) return
     setOptions(getCurrentFontSize(), getCurrentTheme(), language, getCurrentEmoji())
   }
   const setEmoji = (emoji: string, set = true) => {
