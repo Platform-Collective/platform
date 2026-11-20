@@ -82,6 +82,8 @@ import {
   type NotificationTemplate,
   type NotificationType,
   type NotificationTypeSetting,
+  DOMAIN_WORKSPACE_NOTIFICATION,
+  type WorkspaceNotificationTypeSetting,
   type PushSubscription,
   type PushSubscriptionKeys,
   type PushSubscriptionSetting,
@@ -93,7 +95,13 @@ import { type AnyComponent, type Location } from '@hcengineering/ui/src/types'
 
 import notification from './plugin'
 
-export { DOMAIN_DOC_NOTIFY, DOMAIN_NOTIFICATION, DOMAIN_USER_NOTIFY, notificationId } from '@hcengineering/notification'
+export {
+  DOMAIN_DOC_NOTIFY,
+  DOMAIN_NOTIFICATION,
+  DOMAIN_USER_NOTIFY,
+  DOMAIN_WORKSPACE_NOTIFICATION,
+  notificationId
+} from '@hcengineering/notification'
 export { notificationOperation } from './migration'
 export { notification as default }
 
@@ -157,6 +165,13 @@ export class TNotificationPreferencesGroup extends TDoc implements NotificationP
 @Model(notification.class.NotificationTypeSetting, preference.class.Preference)
 export class TNotificationTypeSetting extends TPreference implements NotificationTypeSetting {
   declare attachedTo: Ref<TNotificationProvider>
+  type!: Ref<NotificationType>
+  enabled!: boolean
+}
+
+@Model(notification.class.WorkspaceNotificationTypeSetting, core.class.Doc, DOMAIN_WORKSPACE_NOTIFICATION)
+export class TWorkspaceNotificationTypeSetting extends TDoc implements WorkspaceNotificationTypeSetting {
+  attachedTo!: Ref<TNotificationProvider>
   type!: Ref<NotificationType>
   enabled!: boolean
 }
@@ -379,6 +394,7 @@ export function createModel (builder: Builder): void {
     TNotificationProvider,
     TNotificationProviderSetting,
     TNotificationTypeSetting,
+    TWorkspaceNotificationTypeSetting,
     TNotificationProviderDefaults,
     TReactionInboxNotification
   )
@@ -586,6 +602,13 @@ export function createModel (builder: Builder): void {
     createAccessLevel: AccountRole.Guest,
     updateAccessLevel: AccountRole.Guest,
     removeAccessLevel: AccountRole.Guest
+  })
+
+  // Workspace-wide defaults are managed by workspace owners only
+  builder.mixin(notification.class.WorkspaceNotificationTypeSetting, core.class.Class, core.mixin.TxAccessLevel, {
+    createAccessLevel: AccountRole.Owner,
+    updateAccessLevel: AccountRole.Owner,
+    removeAccessLevel: AccountRole.Owner
   })
 
   builder.mixin(notification.class.NotificationProviderSetting, core.class.Class, core.mixin.TxAccessLevel, {
