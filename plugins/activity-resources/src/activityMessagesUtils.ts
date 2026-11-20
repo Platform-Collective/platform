@@ -329,7 +329,7 @@ export function combineActivityMessages (
     const cantMergeIds = new Set(cantMerge.map(({ _id }) => _id))
 
     const canMerge = groupedMessages.filter(({ _id }) => !cantMergeIds.has(_id))
-    const forMerge = groupByTime(canMerge)
+    const forMerge = groupByTime(canMerge).flatMap(splitAttributeUpdatesAtResets)
 
     forMerge.forEach((messagesForMerge) => {
       const mergedNotification = mergeDocUpdateMessages(messagesForMerge)
@@ -388,6 +388,33 @@ function groupByTime<T extends ActivityMessage> (messages: T[]): T[][] {
       }
     }
 
+    result.push(forMerge)
+  }
+
+  return result
+}
+
+function splitAttributeUpdatesAtResets (messages: DocUpdateMessage[]): DocUpdateMessage[][] {
+  if (messages[0].action !== 'update') {
+    return [messages]
+  }
+
+  const result: DocUpdateMessage[][] = []
+  let forMerge: DocUpdateMessage[] = []
+
+  for (const message of messages) {
+    if (message.attributeUpdates?.set.includes(null) === true) {
+      if (forMerge.length > 0) {
+        result.push(forMerge)
+        forMerge = []
+      }
+      result.push([message])
+    } else {
+      forMerge.push(message)
+    }
+  }
+
+  if (forMerge.length > 0) {
     result.push(forMerge)
   }
 
