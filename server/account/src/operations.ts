@@ -149,6 +149,22 @@ const NIL_UUID = '00000000-0000-0000-0000-000000000000' as AccountUuid
 const workspaceLimitPerUser =
   process.env.WORKSPACE_LIMIT_PER_USER != null ? parseInt(process.env.WORKSPACE_LIMIT_PER_USER) : 10
 
+function getWorkspaceCreationPolicy (): string {
+  const raw = process.env.WORKSPACE_CREATION?.toLowerCase()
+  return raw == null || raw === '' ? 'all' : raw
+}
+
+function isWorkspaceCreationAllowed (extra?: Record<string, unknown>): boolean {
+  return getWorkspaceCreationPolicy() === 'all' || extra?.admin === 'true'
+}
+
+const workspaceCreation = getWorkspaceCreationPolicy()
+if (workspaceCreation !== 'all' && workspaceCreation !== 'admin') {
+  console.warn('Unknown WORKSPACE_CREATION value; only platform admins can create workspaces', {
+    value: process.env.WORKSPACE_CREATION
+  })
+}
+
 /* =================================== */
 /* ============OPERATIONS============= */
 /* =================================== */
@@ -176,8 +192,8 @@ export async function loginAsGuest (
 }
 
 /**
- * Returns login affordance flags so clients can hide sign-up and guest-login
- * controls when they are disabled by env vars or unavailable (no guest person).
+ * Returns login affordance flags, including workspace creation permission for
+ * the supplied token. Anonymous callers can still query sign-up and guest login.
  */
 // L-AUTH-1: getLoginCapabilities is unauthenticated; without caching every
 // anonymous call hits the DB (db.person.findOne on the guest account) and lets
@@ -195,9 +211,17 @@ export async function getLoginCapabilities (
   ctx: MeasureContext,
   db: AccountDB,
   branding: Branding | null,
-  token: string
-): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean }> {
+  token?: string
+): Promise<{ signUpEnabled: boolean, guestLoginAvailable: boolean, workspaceCreationAllowed: boolean }> {
   const signUpEnabled = process.env.DISABLE_SIGNUP !== 'true'
+  let workspaceCreationAllowed = isWorkspaceCreationAllowed()
+  if (!workspaceCreationAllowed && token != null && token !== '') {
+    try {
+      workspaceCreationAllowed = isWorkspaceCreationAllowed(decodeTokenVerbose(ctx, token).extra)
+    } catch {
+      workspaceCreationAllowed = false
+    }
+  }
 
   let guestLoginAvailable = false
   if (process.env.DISABLE_GUEST_LOGIN !== 'true') {
@@ -209,7 +233,7 @@ export async function getLoginCapabilities (
     guestLoginAvailable = guestPersonCache.value
   }
 
-  return { signUpEnabled, guestLoginAvailable }
+  return { signUpEnabled, guestLoginAvailable, workspaceCreationAllowed }
 }
 
 /**
@@ -387,7 +411,9 @@ export async function signUp (
     account,
     name: getPersonName(person),
     socialId,
-    token: !forceConfirmation ? generateToken(account) : undefined
+    token: !forceConfirmation
+      ? generateToken(account, undefined, isAdminEmail(email) ? { admin: 'true' } : undefined)
+      : undefined
   }
 }
 
@@ -636,6 +662,10 @@ export async function createWorkspace (
   }
 
   const { account, extra } = decodeTokenVerbose(ctx, token)
+
+  if (!isWorkspaceCreationAllowed(extra)) {
+    throw new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
+  }
 
   checkRateLimit(account, workspaceName)
 
@@ -1456,7 +1486,7 @@ export async function confirm (
     account,
     name: getPersonName(person),
     socialId,
-    token: generateToken(account)
+    token: generateToken(account, undefined, isAdminEmail(email) ? { admin: 'true' } : undefined)
   }
 
   // If invite info was carried through the confirmation token (signUpJoin flow),
