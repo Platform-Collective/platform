@@ -459,6 +459,10 @@ export async function locationDataResolver (loc: Location): Promise<LocationData
       icon: Asset
     }
   > = {
+    drafts: {
+      label: chunter.string.Drafts,
+      icon: chunter.icon.Chunter
+    },
     threads: {
       label: chunter.string.Threads,
       icon: chunter.icon.Chunter

@@ -1,6 +1,10 @@
 {
   "string": {
     "ApplicationLabelChunter": "聊天",
+    "Drafts": "Drafts",
+    "Draft": "Draft",
+    "DraftsLocal": "Unsent messages saved in this browser only. Drafts for unavailable conversations are not shown.",
+    "NoDrafts": "No unsent drafts",
     "LeftComment": "留下评论",
     "Channels": "频道",
     "DirectMessages": "直连消息",

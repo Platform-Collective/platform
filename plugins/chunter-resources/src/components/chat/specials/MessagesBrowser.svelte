@@ -14,45 +14,43 @@
 -->
 <script lang="ts">
   import chunter, { ChatMessage } from '@hcengineering/chunter'
-  import { DocumentQuery, SortingOrder } from '@hcengineering/core'
+  import { DocumentQuery } from '@hcengineering/core'
   import { getClient } from '@hcengineering/presentation'
-  import { Label, Scroller, SearchEdit } from '@hcengineering/ui'
-  import { FilterBar } from '@hcengineering/view-resources'
+  import ui, { Button, Label, Loading, Scroller, SearchEdit } from '@hcengineering/ui'
+  import { FilterBar, FilterButton } from '@hcengineering/view-resources'
   import { ActivityMessagePresenter } from '@hcengineering/activity-resources'
 
+  import { setPlatformStatus, unknownError } from '@hcengineering/platform'
+  import { deepEqual } from 'fast-equals'
+  import { onDestroy } from 'svelte'
+
+  import { MessageSearch, type MessageSearchState } from '../../../message-search'
   import plugin from '../../../plugin'
   import { openMessageFromSpecial } from '../../../navigation'
 
   export let withHeader: boolean = true
   export let search: string = ''
 
-  let searchQuery: DocumentQuery<ChatMessage> = { $search: search }
-
-  function updateSearchQuery(search: string): void {
-    searchQuery = { $search: search }
-  }
-
-  $: updateSearchQuery(search)
-
   const client = getClient()
-  let messages: ChatMessage[] = []
+  let state: MessageSearchState = { messages: [], loading: false, hasMore: false }
+  const results = new MessageSearch(
+    async (query, options) => await client.findAll(chunter.class.ChatMessage, query, options),
+    (next) => (state = next),
+    (error) => {
+      void setPlatformStatus(unknownError(error))
+    }
+  )
 
-  let resultQuery: DocumentQuery<ChatMessage> = { ...searchQuery }
+  // Empty text must use the database directly, including for date-only searches.
+  $: searchQuery = search.trim() === '' ? {} : { $search: search }
+  let resultQuery: DocumentQuery<ChatMessage> | undefined
+  $: if (resultQuery !== undefined) void results.setQuery(resultQuery)
 
-  async function updateMessages(resultQuery: DocumentQuery<ChatMessage>) {
-    messages = await client.findAll(
-      chunter.class.ChatMessage,
-      {
-        ...resultQuery
-      },
-      {
-        sort: { createdOn: SortingOrder.Descending },
-        limit: 100
-      }
-    )
+  function updateQuery(query: DocumentQuery<ChatMessage>): void {
+    if (!deepEqual(query, resultQuery)) resultQuery = query
   }
 
-  $: updateMessages(resultQuery)
+  onDestroy(() => results.destroy())
 </script>
 
 {#if withHeader}
@@ -60,24 +58,20 @@
     <div class="ac-header__wrap-title">
       <span class="ac-header__title"><Label label={plugin.string.MessagesBrowser} /></span>
     </div>
-    <SearchEdit
-      value={search}
-      on:change={() => {
-        updateSearchQuery(search)
-        updateMessages(resultQuery)
-      }}
-    />
+    <SearchEdit bind:value={search} />
+    <FilterButton _class={chunter.class.ChatMessage} />
   </div>
 {/if}
 <FilterBar
   _class={chunter.class.ChatMessage}
   space={undefined}
   query={searchQuery}
-  on:change={(e) => (resultQuery = e.detail)}
+  on:change={(e) => updateQuery(e.detail)}
+  hideSaveButtons
 />
-{#if messages.length > 0}
+{#if state.messages.length > 0}
   <Scroller padding={'1rem 0'} bottomPadding={'1rem'}>
-    {#each messages as message}
+    {#each state.messages as message (message._id)}
       <ActivityMessagePresenter
         value={message}
         onClick={() => {
@@ -85,7 +79,14 @@
         }}
       />
     {/each}
+    {#if state.hasMore}
+      <div class="flex-center p-4">
+        <Button label={ui.string.ShowMore} disabled={state.loading} on:click={() => results.loadMore()} />
+      </div>
+    {/if}
   </Scroller>
+{:else if state.loading}
+  <Loading />
 {:else}
   <div class="flex-center h-full text-lg">
     <Label label={plugin.string.NoResults} />
