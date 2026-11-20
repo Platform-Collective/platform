@@ -30,7 +30,9 @@ jest.mock('svelte/store', () => ({
       },
       set: (next: T) => {
         value = next
-        subscribers.forEach((subscriber) => subscriber(value))
+        subscribers.forEach((subscriber) => {
+          subscriber(value)
+        })
       }
     }
   }
