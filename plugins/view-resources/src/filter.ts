@@ -15,6 +15,7 @@ import { createQuery, getClient, type LiveQuery } from '@hcengineering/presentat
 import { getCurrentResolvedLocation, locationToUrl, type AnyComponent } from '@hcengineering/ui'
 import { type Filter, type FilterMode, type FilteredView, type KeyFilter } from '@hcengineering/view'
 import { get, writable } from 'svelte/store'
+import { distinctLinkValues, FILTER_DOC_IDS } from './filter/query-builder'
 import view from './plugin'
 
 /**
@@ -48,12 +49,46 @@ export function updateFilter (filter: Filter): void {
   filterStore.set(index === -1 ? [...old, filter] : old.map((p, idx) => (idx === index ? filter : p)))
 }
 
+/**
+ * Result for a list of links to other documents (an issue's "blocked by" or "related to").
+ * The server matches such a list against one link given as a plain value; it finds nothing for links inside
+ * `$all` or `$in`. One ticked link is sent as that plain value. Several are looked up one by one and the
+ * filter becomes the ids of the documents that hold all of them, or any of them.
+ */
+async function linkListResult (
+  filter: Filter,
+  links: Array<{ _id: string, _class?: string }>,
+  all: boolean
+): Promise<ObjQueryType<any>> {
+  if (links.length === 1) return links[0] as ObjQueryType<any>
+  const client = getClient()
+  const hierarchy = client.getHierarchy()
+  const attr = hierarchy.getAttribute(filter.key._class, filter.key.key)
+  const key = hierarchy.isMixin(attr.attributeOf) ? `${attr.attributeOf}.${filter.key.key}` : filter.key.key
+  const found = await Promise.all(
+    links.map(
+      async (link) => await client.findAll(filter.key._class, { [key]: link } as any, { projection: { _id: 1 } })
+    )
+  )
+  const idSets = found.map((docs) => new Set<Ref<Doc>>(docs.map((doc) => doc._id)))
+  const ids = all
+    ? [...idSets[0]].filter((id) => idSets.every((set) => set.has(id)))
+    : [...new Set(idSets.flatMap((set) => [...set]))]
+  return { [FILTER_DOC_IDS]: ids }
+}
+
 export async function arrayAllResult (filter: Filter): Promise<ObjQueryType<any>> {
-  return { $all: filter.value.map((p) => p[1]).flat() }
+  const values = filter.value.map((p) => p[1]).flat()
+  const links = distinctLinkValues(values)
+  if (links !== undefined) return await linkListResult(filter, links, true)
+  return { $all: values }
 }
 
 export async function arrayAnyResult (filter: Filter): Promise<ObjQueryType<any>> {
-  return { $in: filter.value.map((p) => p[1]).flat() }
+  const values = filter.value.map((p) => p[1]).flat()
+  const links = distinctLinkValues(values)
+  if (links !== undefined) return await linkListResult(filter, links, false)
+  return { $in: values }
 }
 
 export async function objectInResult (filter: Filter): Promise<ObjQueryType<any>> {

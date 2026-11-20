@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { DocumentQuery, Doc } from '@hcengineering/core'
 import type { Filter, FilterMode } from '@hcengineering/view'
-import { makeFilterQuery } from '../filter/query-builder'
+import { distinctLinkValues, FILTER_DOC_IDS, makeFilterQuery } from '../filter/query-builder'
 
 const mockResult = async (filter: Filter): Promise<{ $in: unknown }> => ({ $in: filter.value })
 const mockResolveResource = jest.fn(async () => mockResult)
@@ -93,5 +93,72 @@ describe('makeFilterQuery', () => {
     expect(out).toEqual({ status: { $in: ['a'] } })
     expect(({} as any).polluted).toBeUndefined()
     expect((out as any).status.polluted).toBeUndefined()
+  })
+})
+
+describe('makeFilterQuery with an emptied tick-list filter', () => {
+  const resultOf = (result: unknown): any => jest.fn(async () => async () => result)
+
+  it('leaves out a filter whose selection is empty instead of matching nothing', async () => {
+    const out = await makeFilterQuery({ space: 'foo' as any }, [mockFilter('milestone', [])], async () => mockMode, resultOf({ $in: [] }))
+    expect(out).toEqual({ space: 'foo' })
+  })
+
+  it('leaves out an emptied "is not" and an emptied "all" filter too', async () => {
+    const nin = await makeFilterQuery({}, [mockFilter('milestone', [])], async () => mockMode, resultOf({ $nin: [] }))
+    const all = await makeFilterQuery({}, [mockFilter('labels', [])], async () => mockMode, resultOf({ $all: [] }))
+    expect(nin).toEqual({})
+    expect(all).toEqual({})
+  })
+
+  it('keeps a filter that has no values by design, such as a date mode', async () => {
+    const out = await makeFilterQuery({}, [mockFilter('dueDate', [])], async () => mockMode, resultOf({ $exists: false }))
+    expect(out).toEqual({ dueDate: { $exists: false } })
+  })
+
+  it('keeps an empty intersection of two filters on the same key', async () => {
+    const filters: Filter[] = [mockFilter('status', ['a'], 1), mockFilter('status', ['b'], 2)]
+    const out = await makeFilterQuery({}, filters, async () => mockMode, mockResolveResource as any)
+    expect(out).toEqual({ status: { $in: [] } })
+  })
+})
+
+describe('makeFilterQuery with a result given as document ids', () => {
+  const idsResult = (ids: string[]): any => jest.fn(async () => async () => ({ [FILTER_DOC_IDS]: ids }))
+
+  it('turns the ids into a condition on _id, not on the filter key', async () => {
+    const out = await makeFilterQuery({}, [mockFilter('blockedBy', [['x', ['x']]])], async () => mockMode, idsResult(['a', 'b']))
+    expect(out).toEqual({ _id: { $in: ['a', 'b'] } })
+  })
+
+  it('narrows an _id condition the query already has', async () => {
+    const base: DocumentQuery<Doc> = { _id: { $in: ['b', 'c'] } as any }
+    const out = await makeFilterQuery(base, [mockFilter('blockedBy', [['x', ['x']]])], async () => mockMode, idsResult(['a', 'b']))
+    expect(out).toEqual({ _id: { $in: ['b'] } })
+  })
+
+  it('matches nothing when no document holds the links', async () => {
+    const out = await makeFilterQuery({}, [mockFilter('blockedBy', [['x', ['x']]])], async () => mockMode, idsResult([]))
+    expect(out).toEqual({ _id: { $in: [] } })
+  })
+})
+
+describe('distinctLinkValues', () => {
+  it('merges links to the same document that are separate objects', () => {
+    const links = distinctLinkValues([
+      { _id: 'i1', _class: 'tracker:class:Issue' },
+      { _class: 'tracker:class:Issue', _id: 'i1' },
+      { _id: 'i2', _class: 'tracker:class:Issue' }
+    ])
+    expect(links).toEqual([
+      { _id: 'i1', _class: 'tracker:class:Issue' },
+      { _id: 'i2', _class: 'tracker:class:Issue' }
+    ])
+  })
+
+  it('answers undefined for plain values, so they keep their usual operators', () => {
+    expect(distinctLinkValues(['a', 'b'])).toBeUndefined()
+    expect(distinctLinkValues([{ _id: 'i1' }, 'b'])).toBeUndefined()
+    expect(distinctLinkValues([])).toBeUndefined()
   })
 })

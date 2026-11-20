@@ -53,8 +53,20 @@
   const key = { key: filter.key.key }
   const promise = getPresenter(client, filter.key._class, key, key, undefined, false, 'attribute')
 
+  // Links to other documents ({ _id, _class }) are separate objects even when they point to the same
+  // document. One object per document is kept, so the list shows it once and its tick is found again.
+  const canonicalLinks = new Map<string, any>()
+  function canonical(obj: any): any {
+    if (typeof obj !== 'object' || obj === null || typeof obj._id !== 'string') return obj
+    const linkKey = `${obj._class ?? ''}|${obj._id}`
+    const known = canonicalLinks.get(linkKey)
+    if (known !== undefined) return known
+    canonicalLinks.set(linkKey, obj)
+    return obj
+  }
+
   let values = new Set<any>()
-  let selectedValues: Set<any> = new Set<any>(filter.value.map((p) => p[0]))
+  let selectedValues: Set<any> = new Set<any>(filter.value.map((p) => canonical(p[0])))
   const realValues = new Map<any, Set<any>>()
 
   let objectsPromise: Promise<FindResult<Doc>> | undefined
@@ -122,7 +134,7 @@
       }
     }
     for (const object of filter.value.map((p) => p[0])) {
-      values.add(object)
+      values.add(canonical(object))
     }
     values = values
     objectsPromise = undefined
@@ -133,7 +145,7 @@
       const trim = obj.trim()
       return trim.length > 0 ? trim.toUpperCase() : undefined
     } else {
-      return obj ?? undefined
+      return obj == null ? undefined : canonical(obj)
     }
   }
 
