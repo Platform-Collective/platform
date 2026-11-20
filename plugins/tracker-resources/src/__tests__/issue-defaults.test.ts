@@ -13,6 +13,10 @@ import { compile, preprocess } from 'svelte/compiler'
 import ts from 'typescript'
 import { runInNewContext } from 'vm'
 import { fillIssueDefaults } from '../issue-defaults'
+import { saveSubIssues } from '../save-sub-issues'
+
+jest.mock('@hcengineering/presentation', () => ({ createMarkup: jest.fn() }), { virtual: true })
+jest.mock('@hcengineering/text', () => ({ isEmptyMarkup: () => true }))
 
 interface SubIssuesMethods {
   save: (parents: IssueParentInfo[], id: Ref<Doc>) => Promise<void>
@@ -70,7 +74,7 @@ async function loadSubIssues (client: object): Promise<SubIssuesMethods> {
     '@hcengineering/task-resources': { taskTypeStore: new Map() },
     '@hcengineering/view-resources': { statusStore: { byId: new Map() } },
     '../plugin': { __esModule: true, default: tracker },
-    '../issue-defaults': { fillIssueDefaults },
+    '../save-sub-issues': { saveSubIssues },
     './icons/Collapsed.svelte': {},
     './icons/Expanded.svelte': {},
     './templates/DraftIssueChildList.svelte': {}
@@ -160,10 +164,14 @@ describe('issue creation defaults', () => {
     const subIssues: IssueDraft[] = [{ ...createDraft(), _id: 'child-default' as Ref<Issue> }, explicitChild]
     const parent = { ...createDraft(), subIssues }
     const reloadedParent: IssueDraft = JSON.parse(JSON.stringify(parent))
+    const operations = {
+      addCollection: jest.fn().mockResolvedValue(undefined),
+      commit: jest.fn().mockResolvedValue({ result: true })
+    }
     const client = {
       getHierarchy: () => hierarchy,
-      updateDoc: jest.fn().mockResolvedValue({ object: { sequence: 1 } }),
-      addCollection: jest.fn().mockResolvedValue(undefined)
+      updateDoc: jest.fn().mockResolvedValue({ object: { sequence: 2 } }),
+      apply: jest.fn(() => operations)
     }
     const component = await loadSubIssues(client)
     const parents: IssueParentInfo[] = [
@@ -178,9 +186,9 @@ describe('issue creation defaults', () => {
     component.load(reloadedParent.subIssues)
     await component.save(parents, parent._id)
 
-    expect(client.addCollection).toHaveBeenCalledTimes(2)
+    expect(operations.addCollection).toHaveBeenCalledTimes(2)
     for (const [index, customEnum] of ['Open', 'Closed'].entries()) {
-      expect(client.addCollection).toHaveBeenNthCalledWith(
+      expect(operations.addCollection).toHaveBeenNthCalledWith(
         index + 1,
         tracker.class.Issue,
         parent.space,
