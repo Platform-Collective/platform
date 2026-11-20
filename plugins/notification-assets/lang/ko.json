@@ -72,6 +72,9 @@
     "AlreadySubscribed": "이 브라우저는 이미 구독되어 있습니다",
     "PushNotConfigured": "이 서버에는 푸시 알림이 구성되어 있지 않습니다",
     "PushNotSupported": "이 브라우저에서 지원되지 않습니다",
-    "PushDenied": "브라우저 설정에서 알림이 차단되어 있습니다"
+    "PushDenied": "브라우저 설정에서 알림이 차단되어 있습니다",
+    "NotifyLevelAll": "모든 메시지",
+    "NotifyLevelMentions": "멘션만",
+    "NotifyLevelNone": "없음"
     }
 }

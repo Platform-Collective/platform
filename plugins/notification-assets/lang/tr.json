@@ -72,6 +72,9 @@
     "AlreadySubscribed": "Bu tarayıcı zaten abone",
     "PushNotConfigured": "Anlık bildirimler bu sunucuda yapılandırılmamış",
     "PushNotSupported": "Bu tarayıcı tarafından desteklenmiyor",
-    "PushDenied": "Bildirimler tarayıcı ayarlarında engellenmiş"
+    "PushDenied": "Bildirimler tarayıcı ayarlarında engellenmiş",
+    "NotifyLevelAll": "Tüm mesajlar",
+    "NotifyLevelMentions": "Yalnızca bahsetmeler",
+    "NotifyLevelNone": "Hiçbiri"
   }
 }

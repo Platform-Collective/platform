@@ -317,6 +317,13 @@ function defineChannelActions (builder: Builder): void {
   })
 
   createAction(builder, {
+    ...notificationActionTemplates.setNotifyLevel,
+    query: {
+      objectClass: { $in: [chunter.class.Channel, chunter.class.DirectMessage] }
+    }
+  })
+
+  createAction(builder, {
     ...notificationActionTemplates.pinContext,
     query: {
       objectClass: { $nin: [chunter.class.DirectMessage, chunter.class.Channel] }

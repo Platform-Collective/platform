@@ -129,7 +129,7 @@
   {count}
   title={item.title}
   description={item.description}
-  secondaryNotifyMarker={context === undefined
+  secondaryNotifyMarker={context === undefined || context.notifyLevel === 'none'
     ? false
     : (context?.lastViewedTimestamp ?? 0) < (context?.lastUpdateTimestamp ?? 0)}
   {actions}
