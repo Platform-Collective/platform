@@ -429,7 +429,9 @@ export class OptimizeQueryMiddleware extends BasePresentationMiddleware implemen
           // Emopty in, will always return []
           return toFindResult([], 0)
         } else if (vobj.$in != null && vobj.$in.length === 1 && Object.keys(vobj).length === 1) {
-          ;(fQuery as any)[k] = vobj.$in[0]
+          // An empty single value means "has no value". undefined is dropped on the way to the server,
+          // which would remove the condition and match everything, so it is sent as null.
+          ;(fQuery as any)[k] = vobj.$in[0] ?? null
         } else if (vobj.$nin != null && vobj.$nin.length === 1 && Object.keys(vobj).length === 1) {
           ;(fQuery as any)[k] = { $ne: vobj.$nin[0] }
         }
