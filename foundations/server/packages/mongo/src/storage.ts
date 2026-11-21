@@ -312,6 +312,10 @@ abstract class MongoAdapterBase implements DbAdapter {
           translated[tkey.key] = translateLikeQuery(value.$like as string)
           continue
         }
+        if ((hasObjectItems(value.$in) || hasObjectItems(value.$all)) && this.isArrayAttribute(clazz, key)) {
+          translated[tkey.key] = translateObjectListQuery(value)
+          continue
+        }
       }
       translated[tkey.key] = value
     }
@@ -795,6 +799,19 @@ abstract class MongoAdapterBase implements DbAdapter {
       this.stripHash(v)
     }
     return obj
+  }
+
+  private isArrayAttribute<T extends Doc> (clazz: Ref<Class<T>>, key: string): boolean {
+    try {
+      const [mixinOrKey, ...rest] = key.split('.')
+      const attr =
+        rest.length > 0 && this.hierarchy.isMixin(mixinOrKey as Ref<Class<Doc>>)
+          ? this.hierarchy.findAttribute(mixinOrKey as Ref<Class<Doc>>, rest.join('.'))
+          : this.hierarchy.findAttribute(clazz, key)
+      return attr?.type._class === core.class.ArrOf
+    } catch {
+      return false
+    }
   }
 
   private translateKey<T extends Doc> (
@@ -1827,6 +1844,36 @@ function fillCustomSort<T extends Doc> (
     options.sort = {}
   }
   sort[`sort_${key}`] = rules.order === SortingOrder.Ascending ? 1 : -1
+}
+
+function isObjectItem (value: any): boolean {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)
+}
+
+function hasObjectItems (values: any): boolean {
+  return Array.isArray(values) && values.length > 0 && values.every(isObjectItem)
+}
+
+/**
+ * MongoDB matches an object inside $in / $all only when it is exactly equal to a list item,
+ * field order included. A list of links ({ _id, _class }, such as an issue's "blocked by") can
+ * hold the same link with its fields in another order, so each object is matched by its fields
+ * with $elemMatch instead.
+ */
+function translateObjectListQuery (value: Record<string, any>): Record<string, any> {
+  const { $in, $all, ...rest } = value
+  const result: Record<string, any> = { ...rest }
+  if ($in !== undefined) {
+    if (hasObjectItems($in)) {
+      result.$elemMatch = { $or: $in.map((it: Record<string, any>) => ({ ...it })) }
+    } else {
+      result.$in = $in
+    }
+  }
+  if ($all !== undefined) {
+    result.$all = hasObjectItems($all) ? $all.map((it: Record<string, any>) => ({ $elemMatch: { ...it } })) : $all
+  }
+  return result
 }
 
 function translateLikeQuery (pattern: string): { $regex: string, $options: string } {

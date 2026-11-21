@@ -40,7 +40,16 @@ export interface Task extends Doc {
   reproduce?: TaskReproduce
   eta?: TaskEstimate | null
   arr?: number[]
+  links?: TaskLink[]
   stat?: Ref<TStat>
+}
+
+/**
+ * A link to another document, stored like an issue's "blocked by" or "related to" entries.
+ */
+export interface TaskLink {
+  _id: Ref<Doc>
+  _class: Ref<Class<Doc>>
 }
 
 export interface TStatCat extends Doc {
@@ -144,6 +153,15 @@ export function createTaskModel (txes: Tx[]): void {
         _class: core.class.ArrOf,
         label: 'arr' as IntlString,
         type: core.class.TypeNumber
+      }
+    }),
+    createAttribute({
+      attributeOf: taskPlugin.class.Task,
+      name: 'links',
+      type: {
+        _class: core.class.ArrOf,
+        label: 'links' as IntlString,
+        type: core.class.TypeRelatedDocument
       }
     }),
     createDoc(taskPlugin.class.TStatCat, { label: 'cat-a' }, taskPlugin.ids.StatCatA),

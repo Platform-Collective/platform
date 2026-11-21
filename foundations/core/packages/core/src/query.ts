@@ -3,7 +3,7 @@ import type { Class, Doc, Enum, EnumOf, Ref } from './classes'
 import core from './component'
 import type { Hierarchy } from './hierarchy'
 import { getObjectValue } from './objvalue'
-import { createPredicates, isPredicate } from './predicate'
+import { createPredicates, includesValue, isPredicate } from './predicate'
 import type { SortQuerySelector, SortingOrder, SortingQuery, SortingRules } from './storage'
 
 /**
@@ -28,7 +28,7 @@ export function findProperty (objects: Doc[], propertyKey: string, value: any): 
 }
 
 function isArrayValueCheck<T, P> (val: T, value: P): boolean {
-  return Array.isArray(val) && !Array.isArray(value) && val.includes(value)
+  return Array.isArray(val) && !Array.isArray(value) && includesValue(val, value)
 }
 
 function getEnumValue<T extends Doc> (

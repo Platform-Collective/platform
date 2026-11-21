@@ -14,6 +14,7 @@
 //
 
 import core, {
+  type AnyAttribute,
   type PersonId,
   type Arr,
   type AttachedDoc,
@@ -45,6 +46,10 @@ export function createClass (_class: Ref<Class<Obj>>, attributes: Data<Class<Obj
 /**
  * @public
  */
+export function createAttribute (attribute: Data<AnyAttribute>): TxCreateDoc<Doc> {
+  return txFactory.createTxCreateDoc(core.class.Attribute, core.space.Model, attribute)
+}
+
 export function createDoc<T extends Doc> (
   _class: Ref<Class<T>>,
   attributes: Data<T>,
@@ -93,6 +98,13 @@ export function genMinModel (): TxCUD<Doc>[] {
   const txes = []
   // Fill Tx'es with basic model classes.
   txes.push(createClass(core.class.Obj, { label: 'Obj' as IntlString, kind: ClassifierKind.CLASS }))
+  txes.push(
+    createClass(core.class.Attribute, {
+      label: 'Attribute' as IntlString,
+      extends: core.class.Doc,
+      kind: ClassifierKind.CLASS
+    })
+  )
   txes.push(
     createClass(core.class.Doc, { label: 'Doc' as IntlString, extends: core.class.Obj, kind: ClassifierKind.CLASS })
   )
