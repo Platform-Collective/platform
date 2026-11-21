@@ -1050,10 +1050,20 @@ export class LiveQuery implements WithTx, Client {
 
       TxProcessor.updateDoc2Doc(doc, virtualTx)
 
+      // $push / $pull / $update change only some items of a list, so the partial doc does not hold the
+      // whole list. Such keys are checked against the full document below.
+      const partialArrayKeys = new Set<string>(
+        [ops.$push, ops.$pull, ops.$update].flatMap((op) => (op != null ? Object.keys(op) : []))
+      )
+
       for (const key in q.query) {
         const value = (q.query as any)[key]
         const tkey = checkMixinKey(key, q._class, this.client.getHierarchy())
         if (getObjectValue(tkey, doc) === undefined) continue
+        if (partialArrayKeys.has(tkey)) {
+          matched = true
+          continue
+        }
         const res = findProperty([doc], tkey, value)
         if (res.length === 0) {
           return false

@@ -25,6 +25,28 @@ type PredicateFactory = (pred: any, propertyKey: string) => Predicate
 
 type ExecPredicate = (value: any) => boolean
 
+/**
+ * Checks if a query value is equal to a stored value.
+ * Objects (for example `{ _id, _class }` links in a list attribute) are compared by content,
+ * since the query and the document never share the same object instance.
+ */
+export function isSameValue (queryValue: any, value: any): boolean {
+  if (queryValue !== null && typeof queryValue === 'object') {
+    return deepEqual(queryValue, value)
+  }
+  return queryValue == value
+}
+
+/**
+ * Checks if an array holds a query value, comparing objects by content.
+ */
+export function includesValue (values: any[], queryValue: any): boolean {
+  if (queryValue !== null && typeof queryValue === 'object') {
+    return values.some((it) => deepEqual(queryValue, it))
+  }
+  return values.includes(queryValue)
+}
+
 function execPredicate (docs: Doc[], propertyKey: string, pred: ExecPredicate): Doc[] {
   const result: Doc[] = []
   for (const doc of docs) {
@@ -44,10 +66,9 @@ const predicates: Record<string, PredicateFactory> = {
     return (docs) =>
       execPredicate(docs, propertyKey, (value) => {
         if (Array.isArray(value)) {
-          return o.some((p) => value.includes(p))
+          return o.some((p) => includesValue(value, p))
         } else {
-          // eslint-disable-next-line eqeqeq
-          return o.some((p) => p == value)
+          return o.some((p) => isSameValue(p, value))
         }
       })
   },
@@ -57,8 +78,9 @@ const predicates: Record<string, PredicateFactory> = {
     }
     return (docs) =>
       execPredicate(docs, propertyKey, (value: any[]) => {
+        if (!Array.isArray(value)) return false
         for (const val of o) {
-          if (!value.includes(val)) return false
+          if (!includesValue(value, val)) return false
         }
         return true
       })
@@ -70,10 +92,9 @@ const predicates: Record<string, PredicateFactory> = {
     return (docs) =>
       execPredicate(docs, propertyKey, (value) => {
         if (Array.isArray(value)) {
-          return !o.some((p) => value.includes(p))
+          return !o.some((p) => includesValue(value, p))
         } else {
-          // eslint-disable-next-line eqeqeq
-          return !o.some((p) => p == value)
+          return !o.some((p) => isSameValue(p, value))
         }
       })
   },

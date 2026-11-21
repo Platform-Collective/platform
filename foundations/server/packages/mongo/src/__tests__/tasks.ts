@@ -1,4 +1,4 @@
-import {
+import core, {
   type AttachedDoc,
   type Class,
   ClassifierKind,
@@ -11,7 +11,7 @@ import {
   type Tx
 } from '@hcengineering/core'
 import { type IntlString, plugin, type Plugin } from '@hcengineering/platform'
-import { createClass } from './minmodel'
+import { createAttribute, createClass } from './minmodel'
 
 export interface TaskComment extends AttachedDoc {
   message: string
@@ -38,6 +38,15 @@ export interface Task extends Doc {
   status?: TaskStatus
   reproduce?: TaskReproduce
   eta?: TaskEstimate | null
+  links?: TaskLink[]
+}
+
+/**
+ * A link to another document, stored like an issue's "blocked by" or "related to" entries.
+ */
+export interface TaskLink {
+  _id: Ref<Doc>
+  _class: Ref<Class<Doc>>
 }
 
 /**
@@ -106,6 +115,15 @@ export function createTaskModel (txes: Tx[]): void {
       kind: ClassifierKind.CLASS,
       label: 'Comment' as IntlString,
       domain: 'test-task' as Domain
+    }),
+    createAttribute({
+      attributeOf: taskPlugin.class.Task,
+      name: 'links',
+      type: {
+        _class: core.class.ArrOf,
+        label: 'links' as IntlString,
+        type: core.class.TypeRelatedDocument
+      }
     })
   )
 }

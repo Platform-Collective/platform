@@ -397,6 +397,24 @@ describe('mongo operations', () => {
     ).toEqual(thirdTask)
   })
 
+  it('translates $in / $all over a list of links to $elemMatch', () => {
+    const linkA = { _id: 'link-a', _class: 'class:Linked' }
+    const linkB = { _id: 'link-b', _class: 'class:Linked' }
+    const translate = (query: any): any =>
+      (serverStorage as any).translateQuery(taskPlugin.class.Task, query, { skipClass: true }).base
+
+    // Each link is matched by its fields, so their order in the stored list item does not matter.
+    expect(translate({ links: { $in: [linkA, linkB] } })).toEqual({
+      links: { $elemMatch: { $or: [linkA, linkB] } }
+    })
+    expect(translate({ links: { $all: [linkA, linkB] } })).toEqual({
+      links: { $all: [{ $elemMatch: linkA }, { $elemMatch: linkB }] }
+    })
+    // Lists of plain values and attributes that are not lists stay as they are.
+    expect(translate({ links: { $in: ['a', 'b'] } })).toEqual({ links: { $in: ['a', 'b'] } })
+    expect(translate({ name: { $in: [linkA] } })).toEqual({ name: { $in: [linkA] } })
+  })
+
   // Run shared integration tests
   runSharedIntegrationTests('MongoDB', () => ({
     client,

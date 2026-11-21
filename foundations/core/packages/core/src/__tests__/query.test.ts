@@ -64,3 +64,33 @@ describe('findProperty', () => {
     })
   })
 })
+
+describe('findProperty over a list of links', () => {
+  // Query values are separate copies of the stored links, as after a round trip to the server.
+  const link = (id: string): any => ({ _id: id, _class: 'test:class:Issue' })
+  const both = doc('l1', { blockedBy: [link('a'), link('b')] })
+  const onlyA = doc('l2', { blockedBy: [link('a')] })
+  const reordered = doc('l3', { blockedBy: [{ _class: 'test:class:Issue', _id: 'b' }] })
+  const none = doc('l4', { blockedBy: [] })
+  const missing = doc('l5')
+  const allDocs = [both, onlyA, reordered, none, missing]
+  const ids = (docs: Doc[]): string[] => docs.map((it) => it._id)
+
+  it('matches $in by link content', () => {
+    expect(ids(findProperty(allDocs, 'blockedBy', { $in: [link('b')] }))).toEqual(['l1', 'l3'])
+    expect(ids(findProperty(allDocs, 'blockedBy', { $in: [link('a'), link('b')] }))).toEqual(['l1', 'l2', 'l3'])
+  })
+
+  it('matches $all by link content', () => {
+    expect(ids(findProperty(allDocs, 'blockedBy', { $all: [link('a'), link('b')] }))).toEqual(['l1'])
+    expect(ids(findProperty(allDocs, 'blockedBy', { $all: [link('a')] }))).toEqual(['l1', 'l2'])
+  })
+
+  it('matches $nin by link content', () => {
+    expect(ids(findProperty(allDocs, 'blockedBy', { $nin: [link('a')] }))).toEqual(['l3', 'l4', 'l5'])
+  })
+
+  it('matches a single link by content', () => {
+    expect(ids(findProperty(allDocs, 'blockedBy', link('a')))).toEqual(['l1', 'l2'])
+  })
+})

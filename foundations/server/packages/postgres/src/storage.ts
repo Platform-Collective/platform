@@ -1395,12 +1395,10 @@ abstract class PostgresAdapterBase implements DbAdapter {
 
   private translateQueryValue (vars: ValuesVariables, tkey: string, value: any, type: ValueType): string | undefined {
     const tkeyData = tkey.includes('data') && (tkey.includes('->') || tkey.includes('#>>'))
+    // Items of a JSONB list may be objects, such as { _id, _class } links; they are kept to be matched as JSON.
+    const toText = type === 'dataArray' ? toJsonText : toPlainText
     if (tkeyData && (Array.isArray(value) || (typeof value !== 'object' && typeof value !== 'string'))) {
-      value = Array.isArray(value)
-        ? value.map((it) => (it == null ? null : `${it}`))
-        : value == null
-          ? null
-          : `${value}`
+      value = Array.isArray(value) ? value.map(toText) : value == null ? null : `${value}`
     }
 
     if (value === null) {
@@ -1412,7 +1410,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
       for (const operator in value) {
         let val = value[operator]
         if (tkeyData && (Array.isArray(val) || (typeof val !== 'object' && typeof val !== 'string'))) {
-          val = Array.isArray(val) ? val.map((it) => (it == null ? null : `${it}`)) : val == null ? null : `${val}`
+          val = Array.isArray(val) ? val.map(toText) : val == null ? null : `${val}`
         }
 
         let valType = inferType(val)
@@ -1466,7 +1464,14 @@ abstract class PostgresAdapterBase implements DbAdapter {
                 }
                 break
               case 'dataArray':
-                {
+                if (Array.isArray(val) && val.some(isJsonObject)) {
+                  // `?|` only checks string elements. Objects, such as { _id, _class } links,
+                  // are matched by containment: the list holds at least one of them.
+                  const items = val
+                    .filter((it) => it != null)
+                    .map((it) => `${tkey} @> ${vars.add(JSON.stringify([it]), '::text::jsonb')}`)
+                  res.push(items.length > 0 ? `(${items.join(' OR ')})` : 'FALSE')
+                } else {
                   const vv = vars.addArrayI(val, valType)
                   res.push(`${tkey} ?| ${vv}`)
                 }
@@ -1497,7 +1502,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
             break
           case '$all':
             if (arrowCount > 0) {
-              res.push(`${tkey} @> '${JSON.stringify(val)}'::jsonb`)
+              res.push(`${tkey} @> ${vars.add(JSON.stringify(val), '::text::jsonb')}`)
             } else {
               res.push(`${tkey} @> ${vars.addArray(val, valType)}`)
             }
@@ -2261,6 +2266,23 @@ class PostgresTxAdapter extends PostgresAdapterBase implements TxAdapter {
     return this.stripHash(model) as Tx[]
   }
 }
+
+function isJsonObject (value: any): boolean {
+  return value !== null && typeof value === 'object' && !(value instanceof Date)
+}
+
+function toPlainText (value: any): any {
+  return value == null ? null : `${value}`
+}
+
+/**
+ * Values compared against JSONB data are sent as text, except objects (for example { _id, _class } links),
+ * which are kept so they can be matched as JSON.
+ */
+function toJsonText (value: any): any {
+  return isJsonObject(value) ? value : toPlainText(value)
+}
+
 function prepareJsonValue (tkey: string, valType: string): { tlkey: string, arrowCount: number } {
   if (valType === '::string') {
     valType = '' // No need to add a string conversion

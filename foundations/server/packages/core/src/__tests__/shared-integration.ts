@@ -33,7 +33,17 @@
  * ```
  */
 
-import core, { type Client, type Ref, SortingOrder, type Space, type TxOperations } from '@hcengineering/core'
+import core, {
+  type Class,
+  type Client,
+  type Doc,
+  type DocumentQuery,
+  matchQuery,
+  type Ref,
+  SortingOrder,
+  type Space,
+  type TxOperations
+} from '@hcengineering/core'
 
 /**
  * Test context provided to the shared test suite
@@ -449,6 +459,67 @@ export function runSharedIntegrationTests (adapterName: string, getContext: () =
         )
         expect(r.length).toEqual(1)
         expect(r[0].$associations?.[`${association._id}_b`][0]?._id).toEqual(secondTask)
+      })
+    })
+
+    describe('Lists of links', () => {
+      // A list of { _id, _class } objects, like an issue's "blocked by" or "related to".
+      // Filters over such a list send its objects inside $in / $all.
+      const linkA = { _id: 'link-a' as Ref<Doc>, _class: 'class:Linked' as Ref<Class<Doc>> }
+      const linkB = { _id: 'link-b' as Ref<Doc>, _class: 'class:Linked' as Ref<Class<Doc>> }
+      const linkC = { _id: 'link-c' as Ref<Doc>, _class: 'class:Linked' as Ref<Class<Doc>> }
+      const unknownLink = { _id: 'link-unknown' as Ref<Doc>, _class: 'class:Linked' as Ref<Class<Doc>> }
+
+      async function findNames (linksQuery: any): Promise<string[]> {
+        const { client, taskPlugin } = getContext()
+        const query: DocumentQuery<Doc> = { links: linksQuery }
+        const found: any[] = await client.findAll(taskPlugin.class.Task, query)
+        const names = found.map((it) => it.name).sort((a, b) => a.localeCompare(b))
+
+        // The client's live queries decide with matchQuery whether a changed document enters or leaves
+        // a result, so it has to agree with the database.
+        const all = await client.findAll<Doc>(taskPlugin.class.Task, {})
+        const matched: any[] = matchQuery(all, query, taskPlugin.class.Task, client.getHierarchy())
+        expect(matched.map((it) => it.name).sort((a, b) => a.localeCompare(b))).toEqual(names)
+        return names
+      }
+
+      it('should match $in and $all over a list of link objects, also after links change', async () => {
+        const { operations, taskPlugin } = getContext()
+        const space = '' as Ref<Space>
+        const create = async (name: string, links?: any[]): Promise<Ref<Doc>> =>
+          await operations.createDoc(taskPlugin.class.Task, space, {
+            name,
+            description: '',
+            rate: 0,
+            ...(links !== undefined ? { links } : {})
+          })
+
+        const t1 = await create('t1', [linkA, linkB])
+        const t2 = await create('t2', [linkA])
+        // Same link as linkB, with its keys in another order.
+        await create('t3', [{ _class: linkB._class, _id: linkB._id }, linkC])
+        await create('t4', [])
+        await create('t5')
+
+        expect(await findNames({ $in: [linkA, linkB] })).toEqual(['t1', 't2', 't3'])
+        expect(await findNames({ $in: [linkC] })).toEqual(['t3'])
+        expect(await findNames({ $in: [unknownLink] })).toEqual([])
+        expect(await findNames({ $all: [linkA, linkB] })).toEqual(['t1'])
+        expect(await findNames({ $all: [linkA] })).toEqual(['t1', 't2'])
+        expect(await findNames({ $all: [linkB] })).toEqual(['t1', 't3'])
+        expect(await findNames({ $all: [linkA, unknownLink] })).toEqual([])
+
+        // Links change after the filter is applied, the way the tracker adds and removes them.
+        await operations.updateDoc(taskPlugin.class.Task, space, t2, {
+          $push: { links: { _id: linkB._id, _class: linkB._class } }
+        })
+        expect(await findNames({ $all: [linkA, linkB] })).toEqual(['t1', 't2'])
+
+        await operations.updateDoc(taskPlugin.class.Task, space, t1, { $pull: { links: { _id: linkA._id } } })
+        expect(await findNames({ $all: [linkA, linkB] })).toEqual(['t2'])
+        expect(await findNames({ $in: [linkA] })).toEqual(['t2'])
+        expect(await findNames({ $in: [linkA, linkB] })).toEqual(['t1', 't2', 't3'])
       })
     })
 
