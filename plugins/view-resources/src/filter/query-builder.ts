@@ -45,49 +45,21 @@ function isPlainObject (value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/**
- * Key a filter result can carry instead of an operator on its own attribute: the ids of the documents that
- * match. `makeFilterQuery` turns it into a condition on `_id`.
- */
-export const FILTER_DOC_IDS = '$filterDocIds'
-
 const LIST_OPERATORS = ['$in', '$nin', '$all']
 
 /**
  * A tick-list filter with nothing ticked. Its empty list would match no document at all (`$in: []`), while
  * the user asked for nothing, so such a filter is left out of the query.
+ *
+ * Only modes where the user ticks the values count. A mode without a value selector (dates, "has active
+ * applicant") and a nested filter compute their list from other documents, so an empty list there is a real
+ * result that matches nothing and must be kept.
  */
-function isEmptySelection (filter: Filter, result: unknown): boolean {
+function isEmptySelection (filter: Filter, mode: FilterMode, result: unknown): boolean {
+  if (mode.disableValueSelector === true || filter.nested !== undefined) return false
   if (!Array.isArray(filter.value) || filter.value.length > 0) return false
   if (!isPlainObject(result)) return false
   return LIST_OPERATORS.some((op) => Array.isArray(result[op]) && result[op].length === 0)
-}
-
-/** Narrow the query to the given document ids, keeping any `_id` condition it already has. */
-function narrowToDocIds (target: Record<string, any>, ids: unknown[]): void {
-  const existing = Object.prototype.hasOwnProperty.call(target, '_id') ? target._id : undefined
-  if (existing == null) {
-    target._id = { $in: ids }
-  } else if (typeof existing === 'string') {
-    target._id = { $in: ids.filter((p) => p === existing) }
-  } else if (isPlainObject(existing)) {
-    existing.$in = Array.isArray(existing.$in) ? existing.$in.filter((p: unknown) => ids.includes(p)) : ids
-  }
-}
-
-/**
- * The distinct `{ _id, _class }` values (links to other documents, such as an issue's "blocked by" list)
- * among `values`, or undefined when the values are not all such objects. Two links to the same document are
- * separate objects, so they are compared by id and class, not by identity.
- */
-export function distinctLinkValues (values: unknown[]): Array<{ _id: string, _class?: string }> | undefined {
-  const byKey = new Map<string, { _id: string, _class?: string }>()
-  for (const value of values) {
-    if (!isPlainObject(value) || typeof value._id !== 'string') return undefined
-    const link = typeof value._class === 'string' ? { _id: value._id, _class: value._class } : { _id: value._id }
-    byKey.set(`${link._class ?? ''}|${link._id}`, link)
-  }
-  return byKey.size > 0 ? [...byKey.values()] : undefined
 }
 
 /**
@@ -130,13 +102,9 @@ export async function makeFilterQuery (
     }
 
     if (isUnsafeKey(filterKey)) continue
-    if (isEmptySelection(filter, result)) continue
+    if (isEmptySelection(filter, mode, result)) continue
 
     const target = out as Record<string, any>
-    if (isPlainObject(result) && Array.isArray(result[FILTER_DOC_IDS])) {
-      narrowToDocIds(target, result[FILTER_DOC_IDS])
-      continue
-    }
     const existing = Object.prototype.hasOwnProperty.call(target, filterKey) ? target[filterKey] : undefined
     if (existing == null) {
       target[filterKey] = result

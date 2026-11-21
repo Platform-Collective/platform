@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { DocumentQuery, Doc } from '@hcengineering/core'
 import type { Filter, FilterMode } from '@hcengineering/view'
-import { distinctLinkValues, FILTER_DOC_IDS, makeFilterQuery } from '../filter/query-builder'
+import { makeFilterQuery } from '../filter/query-builder'
 
 const mockResult = async (filter: Filter): Promise<{ $in: unknown }> => ({ $in: filter.value })
 const mockResolveResource = jest.fn(async () => mockResult)
@@ -131,59 +131,19 @@ describe('makeFilterQuery with an emptied tick-list filter', () => {
     const out = await makeFilterQuery({}, filters, async () => mockMode, mockResolveResource as any)
     expect(out).toEqual({ status: { $in: [] } })
   })
-})
 
-describe('makeFilterQuery with a result given as document ids', () => {
-  const idsResult = (ids: string[]): any => jest.fn(async () => async () => ({ [FILTER_DOC_IDS]: ids }))
-
-  it('turns the ids into a condition on _id, not on the filter key', async () => {
-    const out = await makeFilterQuery(
-      {},
-      [mockFilter('blockedBy', [['x', ['x']]])],
-      async () => mockMode,
-      idsResult(['a', 'b'])
-    )
-    expect(out).toEqual({ _id: { $in: ['a', 'b'] } })
+  it('keeps an empty result from a nested filter, such as a date condition that matches nothing', async () => {
+    // A nested filter copies the inner filter's value; a date mode has no values, so the list is empty by
+    // design. The inner filter matched no document, so the outer one must match nothing too.
+    const nested: Filter = { ...mockFilter('dueDate', [], 2), mode: 'mock:mode:Today' as any }
+    const filter: Filter = { ...mockFilter('assignee', []), nested }
+    const out = await makeFilterQuery({}, [filter], async () => mockMode, resultOf({ $in: [] }))
+    expect(out).toEqual({ assignee: { $in: [] } })
   })
 
-  it('narrows an _id condition the query already has', async () => {
-    const base: DocumentQuery<Doc> = { _id: { $in: ['b', 'c'] } as any }
-    const out = await makeFilterQuery(
-      base,
-      [mockFilter('blockedBy', [['x', ['x']]])],
-      async () => mockMode,
-      idsResult(['a', 'b'])
-    )
-    expect(out).toEqual({ _id: { $in: ['b'] } })
-  })
-
-  it('matches nothing when no document holds the links', async () => {
-    const out = await makeFilterQuery(
-      {},
-      [mockFilter('blockedBy', [['x', ['x']]])],
-      async () => mockMode,
-      idsResult([])
-    )
+  it('keeps an empty result from a mode without a value selector', async () => {
+    const noSelector = { ...mockMode, disableValueSelector: true } as unknown as FilterMode
+    const out = await makeFilterQuery({}, [mockFilter('_id', [])], async () => noSelector, resultOf({ $in: [] }))
     expect(out).toEqual({ _id: { $in: [] } })
-  })
-})
-
-describe('distinctLinkValues', () => {
-  it('merges links to the same document that are separate objects', () => {
-    const links = distinctLinkValues([
-      { _id: 'i1', _class: 'tracker:class:Issue' },
-      { _class: 'tracker:class:Issue', _id: 'i1' },
-      { _id: 'i2', _class: 'tracker:class:Issue' }
-    ])
-    expect(links).toEqual([
-      { _id: 'i1', _class: 'tracker:class:Issue' },
-      { _id: 'i2', _class: 'tracker:class:Issue' }
-    ])
-  })
-
-  it('answers undefined for plain values, so they keep their usual operators', () => {
-    expect(distinctLinkValues(['a', 'b'])).toBeUndefined()
-    expect(distinctLinkValues([{ _id: 'i1' }, 'b'])).toBeUndefined()
-    expect(distinctLinkValues([])).toBeUndefined()
   })
 })
