@@ -21,14 +21,22 @@ import { escapeLikeForRegexp } from './utils'
 import { deepEqual } from 'fast-equals'
 
 type Predicate = (docs: Doc[]) => Doc[]
-type PredicateFactory = (pred: any, propertyKey: string) => Predicate
+type PredicateFactory = (pred: any, propertyKey: string, same: ValueMatcher) => Predicate
 
 type ExecPredicate = (value: any) => boolean
 
 /**
- * Checks if a query value is equal to a stored value.
- * Objects (for example `{ _id, _class }` links in a list attribute) are compared by content,
- * since the query and the document never share the same object instance.
+ * Compares a query value with a stored value (or a stored list item).
+ */
+export type ValueMatcher = (queryValue: any, value: any) => boolean
+
+function isPlainObject (value: any): boolean {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)
+}
+
+/**
+ * Literal matching: objects are compared by content, since the query and the document never share
+ * the same object instance; other values with `==`.
  */
 export function isSameValue (queryValue: any, value: any): boolean {
   if (queryValue !== null && typeof queryValue === 'object') {
@@ -38,11 +46,38 @@ export function isSameValue (queryValue: any, value: any): boolean {
 }
 
 /**
- * Checks if an array holds a query value, comparing objects by content.
+ * The fields that identify a link (`RelatedDocument`) in a query value, or undefined when the value is
+ * not a link. Items of a link list are matched by these fields only; other fields are ignored.
  */
-export function includesValue (values: any[], queryValue: any): boolean {
+export function getLinkIdentity (queryValue: any): { _id?: any, _class?: any } | undefined {
+  if (!isPlainObject(queryValue)) return undefined
+  if (queryValue._id === undefined && queryValue._class === undefined) return undefined
+  const result: { _id?: any, _class?: any } = {}
+  if (queryValue._id !== undefined) result._id = queryValue._id
+  if (queryValue._class !== undefined) result._class = queryValue._class
+  return result
+}
+
+/**
+ * Matching for items of a link list (`ArrOf(TypeRef(core.class.TypeRelatedDocument))`): a link matches a
+ * stored item with the same `_id` and `_class`, whatever other fields it holds. Other values match literally.
+ */
+export function isSameLink (queryValue: any, value: any): boolean {
+  const identity = getLinkIdentity(queryValue)
+  if (identity === undefined) return isSameValue(queryValue, value)
+  if (!isPlainObject(value)) return false
+  return (
+    (identity._id === undefined || value._id === identity._id) &&
+    (identity._class === undefined || value._class === identity._class)
+  )
+}
+
+/**
+ * Checks if an array holds a query value.
+ */
+export function includesValue (values: any[], queryValue: any, same: ValueMatcher = isSameValue): boolean {
   if (queryValue !== null && typeof queryValue === 'object') {
-    return values.some((it) => deepEqual(queryValue, it))
+    return values.some((it) => same(queryValue, it))
   }
   return values.includes(queryValue)
 }
@@ -59,20 +94,20 @@ function execPredicate (docs: Doc[], propertyKey: string, pred: ExecPredicate): 
 }
 
 const predicates: Record<string, PredicateFactory> = {
-  $in: (o, propertyKey) => {
+  $in: (o, propertyKey, same) => {
     if (!Array.isArray(o)) {
       throw new Error('$in predicate requires array')
     }
     return (docs) =>
       execPredicate(docs, propertyKey, (value) => {
         if (Array.isArray(value)) {
-          return o.some((p) => includesValue(value, p))
+          return o.some((p) => includesValue(value, p, same))
         } else {
-          return o.some((p) => isSameValue(p, value))
+          return o.some((p) => same(p, value))
         }
       })
   },
-  $all: (o, propertyKey) => {
+  $all: (o, propertyKey, same) => {
     if (!Array.isArray(o)) {
       throw new Error('$all predicate requires array')
     }
@@ -80,21 +115,21 @@ const predicates: Record<string, PredicateFactory> = {
       execPredicate(docs, propertyKey, (value: any[]) => {
         if (!Array.isArray(value)) return false
         for (const val of o) {
-          if (!includesValue(value, val)) return false
+          if (!includesValue(value, val, same)) return false
         }
         return true
       })
   },
-  $nin: (o, propertyKey) => {
+  $nin: (o, propertyKey, same) => {
     if (!Array.isArray(o)) {
       throw new Error('$nin predicate requires array')
     }
     return (docs) =>
       execPredicate(docs, propertyKey, (value) => {
         if (Array.isArray(value)) {
-          return !o.some((p) => includesValue(value, p))
+          return !o.some((p) => includesValue(value, p, same))
         } else {
-          return !o.some((p) => isSameValue(p, value))
+          return !o.some((p) => same(p, value))
         }
       })
   },
@@ -155,13 +190,17 @@ export function isPredicate (o: Record<string, any>): boolean {
   return keys.length > 0 && keys.every((key) => key.startsWith('$'))
 }
 
-export function createPredicates (o: Record<string, any>, propertyKey: string): Predicate[] {
+export function createPredicates (
+  o: Record<string, any>,
+  propertyKey: string,
+  same: ValueMatcher = isSameValue
+): Predicate[] {
   const keys = Object.keys(o)
   const result: Predicate[] = []
   for (const key of keys) {
     const factory = predicates[key]
     if (factory === undefined) throw new Error(`unknown predicate: ${keys[0]}`)
-    result.push(factory(o[key], propertyKey))
+    result.push(factory(o[key], propertyKey, same))
   }
   return result
 }

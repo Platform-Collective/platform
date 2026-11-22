@@ -56,6 +56,7 @@ import core, {
   checkMixinKey,
   clone,
   findProperty,
+  getValueMatcher,
   generateId,
   getObjectValue,
   matchQuery,
@@ -236,7 +237,7 @@ export class LiveQuery implements WithTx, Client {
       if (key === '$search') continue
       if (skipLookup && key.startsWith('$lookup')) continue
       const value = (query as any)[key]
-      const result = findProperty([doc], key, value)
+      const result = findProperty([doc], key, value, getValueMatcher(this.getHierarchy(), q._class, key))
       if (result.length === 0) {
         return false
       }
@@ -842,7 +843,9 @@ export class LiveQuery implements WithTx, Client {
       const udoc = q.result.findDoc(tx.objectId)
       await this.updatedDocCallback(q, q.result, udoc)
     } else if (this.matchQuerySync(q, tx) && (await this.matchQuery(q, tx, docCache))) {
-      await this.sort(q, tx)
+      // The document was appended to the result, so it must be sorted into place even when the
+      // transaction does not change a sort key.
+      await this.sort(q, tx, true)
       const udoc = q.result.findDoc(tx.objectId)
       await this.updatedDocCallback(q, q.result, udoc)
     } else if (
@@ -1064,7 +1067,7 @@ export class LiveQuery implements WithTx, Client {
           matched = true
           continue
         }
-        const res = findProperty([doc], tkey, value)
+        const res = findProperty([doc], tkey, value, getValueMatcher(this.client.getHierarchy(), q._class, key))
         if (res.length === 0) {
           return false
         } else {
@@ -1772,10 +1775,10 @@ export class LiveQuery implements WithTx, Client {
     await this.__updateLookup(q, updatedDoc, ops)
   }
 
-  private async sort (q: Query, tx: TxUpdateDoc<Doc> | TxMixin<Doc, Doc>): Promise<void> {
+  private async sort (q: Query, tx: TxUpdateDoc<Doc> | TxMixin<Doc, Doc>, force = false): Promise<void> {
     const sort = q.options?.sort
     if (sort === undefined) return
-    let needSort = sort.modifiedBy !== undefined || sort.modifiedOn !== undefined
+    let needSort = force || sort.modifiedBy !== undefined || sort.modifiedOn !== undefined
     if (!needSort) needSort = this.checkNeedSort(sort, tx)
 
     if (needSort) {

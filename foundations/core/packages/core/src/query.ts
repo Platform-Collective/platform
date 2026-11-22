@@ -1,17 +1,24 @@
 import type { DocumentQuery, MemDb } from '.'
-import type { Class, Doc, Enum, EnumOf, Ref } from './classes'
+import type { ArrOf, AnyAttribute, Class, Doc, Enum, EnumOf, Ref, RefTo } from './classes'
 import core from './component'
 import type { Hierarchy } from './hierarchy'
 import { getObjectValue } from './objvalue'
-import { createPredicates, includesValue, isPredicate } from './predicate'
+import { createPredicates, includesValue, isPredicate, isSameLink, isSameValue, type ValueMatcher } from './predicate'
 import type { SortQuerySelector, SortingOrder, SortingQuery, SortingRules } from './storage'
+
+export { getLinkIdentity, isSameLink, isSameValue, type ValueMatcher } from './predicate'
 
 /**
  * @public
  */
-export function findProperty (objects: Doc[], propertyKey: string, value: any): Doc[] {
+export function findProperty (
+  objects: Doc[],
+  propertyKey: string,
+  value: any,
+  same: ValueMatcher = isSameValue
+): Doc[] {
   if (isPredicate(value)) {
-    const preds = createPredicates(value, propertyKey)
+    const preds = createPredicates(value, propertyKey, same)
     for (const pred of preds) {
       objects = pred(objects)
     }
@@ -20,15 +27,48 @@ export function findProperty (objects: Doc[], propertyKey: string, value: any): 
   const result: Doc[] = []
   for (const object of objects) {
     const val = getObjectValue(propertyKey, object)
-    if (val === value || (val == null && value == null) || isArrayValueCheck(val, value)) {
+    if (val === value || (val == null && value == null) || isArrayValueCheck(val, value, same)) {
       result.push(object)
     }
   }
   return result
 }
 
-function isArrayValueCheck<T, P> (val: T, value: P): boolean {
-  return Array.isArray(val) && !Array.isArray(value) && includesValue(val, value)
+function isArrayValueCheck<T, P> (val: T, value: P, same: ValueMatcher): boolean {
+  return Array.isArray(val) && !Array.isArray(value) && includesValue(val, value, same)
+}
+
+/**
+ * Checks if an attribute is declared as a list of links (`ArrOf(TypeRef(core.class.TypeRelatedDocument))`),
+ * such as an issue's "blocked by". Items of such lists are matched by `_id` and `_class`.
+ * The key may be prefixed with a mixin.
+ * @public
+ */
+export function isLinkListAttribute (hierarchy: Hierarchy, _class: Ref<Class<Doc>>, key: string): boolean {
+  let attr: AnyAttribute | undefined
+  try {
+    const [mixinOrKey, ...rest] = key.split('.')
+    attr =
+      rest.length > 0 && hierarchy.isMixin(mixinOrKey as Ref<Class<Doc>>)
+        ? hierarchy.findAttribute(mixinOrKey as Ref<Class<Doc>>, rest.join('.'))
+        : hierarchy.findAttribute(_class, key)
+  } catch {
+    return false
+  }
+  if (attr?.type._class !== core.class.ArrOf) return false
+  const of: ArrOf<any>['of'] | undefined = (attr.type as ArrOf<any>).of
+  return (
+    of?._class === core.class.TypeRelatedDocument ||
+    (of?._class === core.class.RefTo && (of as RefTo<Doc>).to === core.class.TypeRelatedDocument)
+  )
+}
+
+/**
+ * The value matcher for an attribute: link identity for link lists, literal matching otherwise.
+ * @public
+ */
+export function getValueMatcher (hierarchy: Hierarchy, _class: Ref<Class<Doc>>, key: string): ValueMatcher {
+  return isLinkListAttribute(hierarchy, _class, key) ? isSameLink : isSameValue
 }
 
 function getEnumValue<T extends Doc> (
@@ -167,7 +207,7 @@ export function matchQuery<T extends Doc> (
     }
     const value = (query as any)[key]
     const tkey = checkMixinKey(key, clazz, hierarchy)
-    result = findProperty(result, tkey, value)
+    result = findProperty(result, tkey, value, getValueMatcher(hierarchy, clazz, key))
     if (result.length === 0) {
       break
     }

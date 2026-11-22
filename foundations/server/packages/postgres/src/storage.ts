@@ -35,8 +35,10 @@ import core, {
   type FindOptions,
   type FindResult,
   getClassCollaborators,
+  getLinkIdentity,
   groupByArray,
   type Hierarchy,
+  isLinkListAttribute,
   isOperator,
   type Iterator,
   type Lookup,
@@ -1228,7 +1230,10 @@ abstract class PostgresAdapterBase implements DbAdapter {
       const key = escape(_key)
       const valueType = this.getValueType(_class, key)
       const tkey = this.getKey(_class, baseDomain, key, joins, valueType === 'dataArray')
-      const translated = this.translateQueryValue(vars, tkey, value, valueType)
+      const translated =
+        valueType === 'dataArray' && isLinkListAttribute(this.hierarchy, _class, key)
+          ? this.translateLinkListValue(vars, tkey, value)
+          : this.translateQueryValue(vars, tkey, value, valueType)
       if (translated !== undefined) {
         res.push(translated)
       }
@@ -1393,12 +1398,67 @@ abstract class PostgresAdapterBase implements DbAdapter {
     return key
   }
 
+  /**
+   * Items of a link list ({ _id, _class }, such as an issue's "blocked by") are matched by JSON containment
+   * of their `_id` and `_class`, so extra stored fields do not matter. `?|` would only check string items.
+   * In `$in` / `$nin`, null matches a missing field, a null field and a null item, as in the in-memory
+   * matcher and MongoDB. `$nin` is the complement of `$in`. `$all: []` matches every list.
+   * Other operators are translated as for any JSONB list.
+   */
+  private translateLinkListValue (vars: ValuesVariables, tkey: string, value: any): string | undefined {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      return this.translateQueryValue(vars, tkey, value, 'dataArray')
+    }
+    const contains = (items: any[]): string =>
+      `${tkey} @> ${vars.add(JSON.stringify(items.map((it) => getLinkIdentity(it) ?? it)), '::text::jsonb')}`
+    if (!Object.keys(value).some((it) => it.startsWith('$'))) {
+      // A single link: the list holds it.
+      return getLinkIdentity(value) !== undefined
+        ? contains([value])
+        : this.translateQueryValue(vars, tkey, value, 'dataArray')
+    }
+    const membership = (items: any[]): string => {
+      const parts = items.filter((it) => it != null).map((it) => contains([it]))
+      if (items.some((it) => it == null)) {
+        parts.push(`${tkey} IS NULL`, `jsonb_typeof(${tkey}) = 'null'`, `${tkey} @> '[null]'::jsonb`)
+      }
+      return parts.length > 0 ? `(${parts.join(' OR ')})` : 'FALSE'
+    }
+    const res: string[] = []
+    const rest: Record<string, any> = {}
+    for (const operator in value) {
+      const val = value[operator]
+      if (!Array.isArray(val) || !['$in', '$nin', '$all'].includes(operator)) {
+        rest[operator] = val
+        continue
+      }
+      switch (operator) {
+        case '$in':
+          res.push(membership(val))
+          break
+        case '$nin':
+          res.push(`NOT COALESCE(${membership(val)}, FALSE)`)
+          break
+        case '$all':
+          res.push(val.length === 0 ? `jsonb_typeof(${tkey}) = 'array'` : contains(val))
+          break
+      }
+    }
+    if (Object.keys(rest).length > 0) {
+      const translated = this.translateQueryValue(vars, tkey, rest, 'dataArray')
+      if (translated !== undefined) res.push(translated)
+    }
+    return res.length === 0 ? undefined : res.join(' AND ')
+  }
+
   private translateQueryValue (vars: ValuesVariables, tkey: string, value: any, type: ValueType): string | undefined {
     const tkeyData = tkey.includes('data') && (tkey.includes('->') || tkey.includes('#>>'))
-    // Items of a JSONB list may be objects, such as { _id, _class } links; they are kept to be matched as JSON.
-    const toText = type === 'dataArray' ? toJsonText : toPlainText
     if (tkeyData && (Array.isArray(value) || (typeof value !== 'object' && typeof value !== 'string'))) {
-      value = Array.isArray(value) ? value.map(toText) : value == null ? null : `${value}`
+      value = Array.isArray(value)
+        ? value.map((it) => (it == null ? null : `${it}`))
+        : value == null
+          ? null
+          : `${value}`
     }
 
     if (value === null) {
@@ -1410,7 +1470,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
       for (const operator in value) {
         let val = value[operator]
         if (tkeyData && (Array.isArray(val) || (typeof val !== 'object' && typeof val !== 'string'))) {
-          val = Array.isArray(val) ? val.map(toText) : val == null ? null : `${val}`
+          val = Array.isArray(val) ? val.map((it) => (it == null ? null : `${it}`)) : val == null ? null : `${val}`
         }
 
         let valType = inferType(val)
@@ -1464,14 +1524,7 @@ abstract class PostgresAdapterBase implements DbAdapter {
                 }
                 break
               case 'dataArray':
-                if (Array.isArray(val) && val.some(isJsonObject)) {
-                  // `?|` only checks string elements. Objects, such as { _id, _class } links,
-                  // are matched by containment: the list holds at least one of them.
-                  const items = val
-                    .filter((it) => it != null)
-                    .map((it) => `${tkey} @> ${vars.add(JSON.stringify([it]), '::text::jsonb')}`)
-                  res.push(items.length > 0 ? `(${items.join(' OR ')})` : 'FALSE')
-                } else {
+                {
                   const vv = vars.addArrayI(val, valType)
                   res.push(`${tkey} ?| ${vv}`)
                 }
@@ -2266,23 +2319,6 @@ class PostgresTxAdapter extends PostgresAdapterBase implements TxAdapter {
     return this.stripHash(model) as Tx[]
   }
 }
-
-function isJsonObject (value: any): boolean {
-  return value !== null && typeof value === 'object' && !(value instanceof Date)
-}
-
-function toPlainText (value: any): any {
-  return value == null ? null : `${value}`
-}
-
-/**
- * Values compared against JSONB data are sent as text, except objects (for example { _id, _class } links),
- * which are kept so they can be matched as JSON.
- */
-function toJsonText (value: any): any {
-  return isJsonObject(value) ? value : toPlainText(value)
-}
-
 function prepareJsonValue (tkey: string, valType: string): { tlkey: string, arrowCount: number } {
   if (valType === '::string') {
     valType = '' // No need to add a string conversion

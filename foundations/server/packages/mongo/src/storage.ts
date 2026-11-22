@@ -24,6 +24,8 @@ import core, {
   cutObjectArray,
   escapeLikeForRegexp,
   groupByArray,
+  getLinkIdentity,
+  isLinkListAttribute,
   isOperator,
   matchQuery,
   platformNow,
@@ -312,8 +314,18 @@ abstract class MongoAdapterBase implements DbAdapter {
           translated[tkey.key] = translateLikeQuery(value.$like as string)
           continue
         }
-        if ((hasObjectItems(value.$in) || hasObjectItems(value.$all)) && this.isArrayAttribute(clazz, key)) {
-          translated[tkey.key] = translateObjectListQuery(value)
+        if (isLinkListAttribute(this.hierarchy, clazz, key)) {
+          const { field, and } = translateLinkListQuery(tkey.key, value)
+          if (Object.keys(field).length > 0) {
+            translated[tkey.key] = field
+          }
+          if (and.length > 0) {
+            translated.$and = [...(translated.$and ?? []), ...and]
+          }
+          continue
+        }
+        if (Array.isArray(value.$all) && value.$all.length === 0) {
+          translated[tkey.key] = translateEmptyAll(value)
           continue
         }
       }
@@ -799,19 +811,6 @@ abstract class MongoAdapterBase implements DbAdapter {
       this.stripHash(v)
     }
     return obj
-  }
-
-  private isArrayAttribute<T extends Doc> (clazz: Ref<Class<T>>, key: string): boolean {
-    try {
-      const [mixinOrKey, ...rest] = key.split('.')
-      const attr =
-        rest.length > 0 && this.hierarchy.isMixin(mixinOrKey as Ref<Class<Doc>>)
-          ? this.hierarchy.findAttribute(mixinOrKey as Ref<Class<Doc>>, rest.join('.'))
-          : this.hierarchy.findAttribute(clazz, key)
-      return attr?.type._class === core.class.ArrOf
-    } catch {
-      return false
-    }
   }
 
   private translateKey<T extends Doc> (
@@ -1846,34 +1845,89 @@ function fillCustomSort<T extends Doc> (
   sort[`sort_${key}`] = rules.order === SortingOrder.Ascending ? 1 : -1
 }
 
-function isObjectItem (value: any): boolean {
-  return value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)
+/**
+ * `$all: []` matches every document whose field is a list, as in the in-memory matcher and PostgreSQL.
+ * MongoDB itself would match none.
+ */
+function translateEmptyAll (value: Record<string, any>): Record<string, any> {
+  const { $all, ...rest } = value
+  return { ...rest, $type: 'array' }
 }
 
-function hasObjectItems (values: any): boolean {
-  return Array.isArray(values) && values.length > 0 && values.every(isObjectItem)
+function splitLinks (values: any[]): { links: Array<Record<string, any>>, others: any[] } {
+  const links: Array<Record<string, any>> = []
+  const others: any[] = []
+  for (const it of values) {
+    const identity = getLinkIdentity(it)
+    if (identity !== undefined) {
+      links.push(identity)
+    } else {
+      others.push(it)
+    }
+  }
+  return { links, others }
 }
 
 /**
- * MongoDB matches an object inside $in / $all only when it is exactly equal to a list item,
- * field order included. A list of links ({ _id, _class }, such as an issue's "blocked by") can
- * hold the same link with its fields in another order, so each object is matched by its fields
- * with $elemMatch instead.
+ * Items of a link list ({ _id, _class }, such as an issue's "blocked by") are matched by `_id` and `_class`
+ * with $elemMatch, so field order and extra stored fields do not matter. MongoDB alone would match an object
+ * only when it is exactly equal to a list item. Other operand values (null, plain values) keep their
+ * MongoDB meaning: `$in: [null]` matches a missing field, a null field and a null item.
+ *
+ * Returns the condition for the field itself and conditions that must be added to the query with `$and`.
  */
-function translateObjectListQuery (value: Record<string, any>): Record<string, any> {
-  const { $in, $all, ...rest } = value
-  const result: Record<string, any> = { ...rest }
-  if ($in !== undefined) {
-    if (hasObjectItems($in)) {
-      result.$elemMatch = { $or: $in.map((it: Record<string, any>) => ({ ...it })) }
+function translateLinkListQuery (
+  key: string,
+  value: Record<string, any>
+): { field: Record<string, any>, and: Array<Record<string, any>> } {
+  if (!Object.keys(value).some((it) => it.startsWith('$'))) {
+    // A single link: the list holds it.
+    const identity = getLinkIdentity(value)
+    return { field: identity !== undefined ? { $elemMatch: identity } : value, and: [] }
+  }
+  const { $in, $nin, $all, ...rest } = value
+  const field: Record<string, any> = { ...rest }
+  const and: Array<Record<string, any>> = []
+  if (Array.isArray($in)) {
+    const { links, others } = splitLinks($in)
+    if (links.length === 0) {
+      field.$in = $in
+    } else if (others.length === 0) {
+      field.$elemMatch = { $or: links }
     } else {
-      result.$in = $in
+      and.push({ $or: [{ [key]: { $elemMatch: { $or: links } } }, { [key]: { $in: others } }] })
     }
+  } else if ($in !== undefined) {
+    field.$in = $in
   }
-  if ($all !== undefined) {
-    result.$all = hasObjectItems($all) ? $all.map((it: Record<string, any>) => ({ $elemMatch: { ...it } })) : $all
+  if (Array.isArray($nin)) {
+    const { links, others } = splitLinks($nin)
+    if (links.length > 0) {
+      // $not also matches documents without the field, like $nin.
+      field.$not = { $elemMatch: { $or: links } }
+    }
+    if (others.length > 0 || links.length === 0) {
+      field.$nin = others
+    }
+  } else if ($nin !== undefined) {
+    field.$nin = $nin
   }
-  return result
+  if (Array.isArray($all)) {
+    const { links } = splitLinks($all)
+    if ($all.length === 0) {
+      field.$type = 'array'
+    } else if (links.length === 0) {
+      field.$all = $all
+    } else {
+      field.$all = $all.map((it) => {
+        const identity = getLinkIdentity(it)
+        return { $elemMatch: identity ?? { $eq: it } }
+      })
+    }
+  } else if ($all !== undefined) {
+    field.$all = $all
+  }
+  return { field, and }
 }
 
 function translateLikeQuery (pattern: string): { $regex: string, $options: string } {

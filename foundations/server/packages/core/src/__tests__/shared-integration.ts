@@ -521,6 +521,51 @@ export function runSharedIntegrationTests (adapterName: string, getContext: () =
         expect(await findNames({ $in: [linkA] })).toEqual(['t2'])
         expect(await findNames({ $in: [linkA, linkB] })).toEqual(['t1', 't2', 't3'])
       })
+
+      it('should match links by _id and _class, with $nin, null and empty operands', async () => {
+        const { operations, taskPlugin } = getContext()
+        const space = '' as Ref<Space>
+        const create = async (name: string, links?: any[] | null): Promise<void> => {
+          await operations.createDoc(taskPlugin.class.Task, space, {
+            name,
+            description: '',
+            rate: 0,
+            ...(links !== undefined ? { links } : {})
+          })
+        }
+
+        await create('t1', [linkA, linkB])
+        await create('t2', [linkA])
+        // Same link as linkB, with its keys in another order.
+        await create('t3', [{ _class: linkB._class, _id: linkB._id }, linkC])
+        await create('t4', [])
+        await create('t5')
+        // Same link as linkA, stored with an extra field.
+        await create('t6', [{ ...linkA, title: 'extra' }])
+        await create('t7', null)
+        await create('t8', [null, linkC])
+
+        // A link is identified by _id and _class only, in the query too.
+        expect(await findNames(linkA)).toEqual(['t1', 't2', 't6'])
+        expect(await findNames({ $in: [linkA] })).toEqual(['t1', 't2', 't6'])
+        expect(await findNames({ $in: [{ ...linkA, title: 'other' }] })).toEqual(['t1', 't2', 't6'])
+        expect(await findNames({ $all: [linkA] })).toEqual(['t1', 't2', 't6'])
+        expect(await findNames({ $all: [linkB, linkC] })).toEqual(['t3'])
+        expect(await findNames({ $in: [{ ...linkA, _class: 'class:Other' }] })).toEqual([])
+
+        // $nin is the complement of $in: documents without the field or with a null field are kept.
+        expect(await findNames({ $nin: [linkA] })).toEqual(['t3', 't4', 't5', 't7', 't8'])
+        expect(await findNames({ $nin: [linkA, linkC] })).toEqual(['t4', 't5', 't7'])
+
+        // null matches a missing field, a null field and a null item.
+        expect(await findNames({ $in: [linkA, null] })).toEqual(['t1', 't2', 't5', 't6', 't7', 't8'])
+        expect(await findNames({ $in: [linkB, null] })).toEqual(['t1', 't3', 't5', 't7', 't8'])
+        expect(await findNames({ $nin: [linkA, null] })).toEqual(['t3', 't4'])
+
+        // Empty operands: $in matches nothing, $all every list.
+        expect(await findNames({ $in: [] })).toEqual([])
+        expect(await findNames({ $all: [] })).toEqual(['t1', 't2', 't3', 't4', 't6', 't8'])
+      })
     })
 
     describe('Date Handling', () => {

@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: EPL-2.0
 
-import core, { type Class, createClient, type Doc, type Ref, type Space, TxOperations } from '@hcengineering/core'
+import core, {
+  type Class,
+  createClient,
+  type Doc,
+  type Ref,
+  SortingOrder,
+  type Space,
+  TxOperations
+} from '@hcengineering/core'
 import { LiveQuery } from '..'
 import { connect } from './connection'
 
@@ -76,6 +84,53 @@ describe('LiveQuery - $in / $all over a list of links', () => {
     await factory.updateDoc(core.class.Space, core.space.Model, s1, { $pull: { links: { _id: 'b' } } } as any)
     await settle()
     expect(anyNames).toEqual(['s2', 's3'])
+
+    await close()
+  })
+
+  it('keeps the sort order when a document enters the result', async () => {
+    const { liveQuery, factory, close } = await getClient()
+
+    const create = async (name: string, links: any[]): Promise<Ref<Space>> =>
+      await factory.createDoc(core.class.Space, core.space.Model, {
+        name,
+        description: '',
+        private: false,
+        members: [],
+        archived: false,
+        links
+      } as any)
+
+    await create('Zulu', [link('a')])
+    await create('Mike', [link('a')])
+    const alpha = await create('Alpha', [])
+
+    // Results in callback order, not sorted again by the test.
+    const results = new Map<number | undefined, string[]>()
+    for (const limit of [undefined, 3, 2]) {
+      liveQuery.query(
+        core.class.Space,
+        { links: { $in: [link('a')] } },
+        (res) => {
+          results.set(
+            limit,
+            res.map((it) => it.name)
+          )
+        },
+        { sort: { name: SortingOrder.Ascending }, ...(limit !== undefined ? { limit } : {}) }
+      )
+    }
+    await settle()
+    expect(results.get(undefined)).toEqual(['Mike', 'Zulu'])
+    expect(results.get(3)).toEqual(['Mike', 'Zulu'])
+    expect(results.get(2)).toEqual(['Mike', 'Zulu'])
+
+    // Only the links change, not the sort key: Alpha must still come first.
+    await factory.updateDoc(core.class.Space, core.space.Model, alpha, { $push: { links: link('a') } } as any)
+    await settle()
+    expect(results.get(undefined)).toEqual(['Alpha', 'Mike', 'Zulu'])
+    expect(results.get(3)).toEqual(['Alpha', 'Mike', 'Zulu'])
+    expect(results.get(2)).toEqual(['Alpha', 'Mike'])
 
     await close()
   })

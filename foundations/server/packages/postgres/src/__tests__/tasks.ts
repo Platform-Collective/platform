@@ -161,8 +161,9 @@ export function createTaskModel (txes: Tx[]): void {
       type: {
         _class: core.class.ArrOf,
         label: 'links' as IntlString,
-        type: core.class.TypeRelatedDocument
-      }
+        // Declared like tracker's "blocked by": ArrOf(TypeRef(core.class.TypeRelatedDocument))
+        of: { _class: core.class.RefTo, label: 'link' as IntlString, to: core.class.TypeRelatedDocument }
+      } as any
     }),
     createDoc(taskPlugin.class.TStatCat, { label: 'cat-a' }, taskPlugin.ids.StatCatA),
     createDoc(taskPlugin.class.TStatCat, { label: 'cat-b' }, taskPlugin.ids.StatCatB),

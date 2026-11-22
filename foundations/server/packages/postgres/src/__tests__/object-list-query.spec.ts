@@ -32,7 +32,7 @@ class TestVariables {
 const linkA = { _id: 'link-a' as Ref<Doc>, _class: 'class:Linked' as Ref<Class<Doc>> }
 const linkB = { _id: 'link-b' as Ref<Doc>, _class: 'class:Linked' as Ref<Class<Doc>> }
 
-describe('postgres - $in / $all over a list of objects', () => {
+describe('postgres - $in / $nin / $all over a list of links', () => {
   let adapter: any
 
   beforeAll(async () => {
@@ -88,10 +88,35 @@ describe('postgres - $in / $all over a list of objects', () => {
     }
   })
 
+  it('matches links by _id and _class only', () => {
+    const { values } = build({ links: { $in: [{ ...linkA, title: 'extra' }] } })
+    expect(values[1]).toEqual(JSON.stringify([linkA]))
+  })
+
+  it('translates $nin over links as the complement of $in', () => {
+    const { sql } = build({ links: { $nin: [linkA] } })
+    expect(sql).toContain("NOT COALESCE((test_task.data->'links' @> $2::text::jsonb), FALSE)")
+  })
+
+  it('adds a null branch for null operands', () => {
+    const { sql, values } = build({ links: { $in: [linkA, null] } })
+    expect(sql).toContain(
+      "(test_task.data->'links' @> $2::text::jsonb OR test_task.data->'links' IS NULL OR " +
+        "jsonb_typeof(test_task.data->'links') = 'null' OR test_task.data->'links' @> '[null]'::jsonb)"
+    )
+    expect(values.slice(1)).toEqual([JSON.stringify([linkA])])
+  })
+
+  it('handles empty operands', () => {
+    expect(build({ links: { $in: [] } }).sql).toContain('FALSE')
+    expect(build({ links: { $all: [] } }).sql).toContain("jsonb_typeof(test_task.data->'links') = 'array'")
+  })
+
   it('keeps the existing translation for lists of plain values', () => {
     expect(build({ arr: { $in: [1, 2] } }).sql).toContain("test_task.data->'arr' ?| $2::text[]")
     const all = build({ arr: { $all: [1, 2] } })
     expect(all.sql).toContain("test_task.data->'arr' @> $2::text::jsonb")
     expect(all.values[1]).toEqual('["1","2"]')
+    expect(build({ arr: { $nin: [1, 2] } }).sql).toContain("(test_task.data->>'arr')::text != ALL($2::text[])")
   })
 })

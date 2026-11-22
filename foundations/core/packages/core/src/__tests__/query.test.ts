@@ -13,7 +13,7 @@
 // limitations under the License.
 //
 
-import { findProperty } from '../query'
+import { findProperty, isSameLink } from '../query'
 import type { Doc, Ref, Class } from '../classes'
 
 function doc (id: string, fields: Record<string, any> = {}): Doc {
@@ -92,5 +92,42 @@ describe('findProperty over a list of links', () => {
 
   it('matches a single link by content', () => {
     expect(ids(findProperty(allDocs, 'blockedBy', link('a')))).toEqual(['l1', 'l2'])
+  })
+
+  it('matches link-list items by _id and _class only', () => {
+    const extra = doc('l6', { blockedBy: [{ ...link('a'), title: 'extra' }] })
+    const otherClass = doc('l7', { blockedBy: [{ _id: 'a', _class: 'test:class:Other' }] })
+    const docs = [...allDocs, extra, otherClass]
+    expect(ids(findProperty(docs, 'blockedBy', { $in: [link('a')] }, isSameLink))).toEqual(['l1', 'l2', 'l6'])
+    expect(ids(findProperty(docs, 'blockedBy', { $all: [link('a')] }, isSameLink))).toEqual(['l1', 'l2', 'l6'])
+    expect(ids(findProperty(docs, 'blockedBy', { $nin: [link('a')] }, isSameLink))).toEqual(['l3', 'l4', 'l5', 'l7'])
+    expect(ids(findProperty(docs, 'blockedBy', link('a'), isSameLink))).toEqual(['l1', 'l2', 'l6'])
+    // Extra fields in the query link are ignored too.
+    expect(ids(findProperty(docs, 'blockedBy', { $in: [{ ...link('a'), title: 'x' }] }, isSameLink))).toEqual([
+      'l1',
+      'l2',
+      'l6'
+    ])
+  })
+
+  it('keeps literal object matching for other lists', () => {
+    const extra = doc('l6', { blockedBy: [{ ...link('a'), title: 'extra' }] })
+    expect(ids(findProperty([...allDocs, extra], 'blockedBy', { $in: [link('a')] }))).toEqual(['l1', 'l2'])
+  })
+
+  it('matches null operands against a missing field, a null field and a null item', () => {
+    const nullField = doc('l6', { blockedBy: null })
+    const nullItem = doc('l7', { blockedBy: [null] })
+    const docs = [...allDocs, nullField, nullItem]
+    expect(ids(findProperty(docs, 'blockedBy', { $in: [link('a'), null] }, isSameLink))).toEqual([
+      'l1',
+      'l2',
+      'l5',
+      'l6',
+      'l7'
+    ])
+    expect(ids(findProperty(docs, 'blockedBy', { $nin: [link('a'), null] }, isSameLink))).toEqual(['l3', 'l4'])
+    // $all: [] matches every list.
+    expect(ids(findProperty(docs, 'blockedBy', { $all: [] }, isSameLink))).toEqual(['l1', 'l2', 'l3', 'l4', 'l7'])
   })
 })

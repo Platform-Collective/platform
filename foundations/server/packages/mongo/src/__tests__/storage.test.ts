@@ -397,7 +397,7 @@ describe('mongo operations', () => {
     ).toEqual(thirdTask)
   })
 
-  it('translates $in / $all over a list of links to $elemMatch', () => {
+  it('translates $in / $nin / $all over a list of links to $elemMatch', () => {
     const linkA = { _id: 'link-a', _class: 'class:Linked' }
     const linkB = { _id: 'link-b', _class: 'class:Linked' }
     const translate = (query: any): any =>
@@ -410,8 +410,26 @@ describe('mongo operations', () => {
     expect(translate({ links: { $all: [linkA, linkB] } })).toEqual({
       links: { $all: [{ $elemMatch: linkA }, { $elemMatch: linkB }] }
     })
-    // Lists of plain values and attributes that are not lists stay as they are.
+    // Links are matched by _id and _class only.
+    expect(translate({ links: { $in: [{ ...linkA, title: 'extra' }] } })).toEqual({
+      links: { $elemMatch: { $or: [linkA] } }
+    })
+    expect(translate({ links: linkA })).toEqual({ links: { $elemMatch: linkA } })
+    // $nin is the complement of $in; $not also keeps documents without the field.
+    expect(translate({ links: { $nin: [linkA] } })).toEqual({ links: { $not: { $elemMatch: { $or: [linkA] } } } })
+    // null keeps its MongoDB meaning (missing field, null field, null item) in a separate branch.
+    expect(translate({ links: { $in: [linkA, null] } })).toEqual({
+      $and: [{ $or: [{ links: { $elemMatch: { $or: [linkA] } } }, { links: { $in: [null] } }] }]
+    })
+    expect(translate({ links: { $nin: [linkA, null] } })).toEqual({
+      links: { $not: { $elemMatch: { $or: [linkA] } }, $nin: [null] }
+    })
+    // $all: [] matches every list, as in PostgreSQL and the in-memory matcher.
+    expect(translate({ links: { $all: [] } })).toEqual({ links: { $type: 'array' } })
+    expect(translate({ arr: { $all: [] } })).toEqual({ arr: { $type: 'array' } })
+    // Lists of plain values and attributes that are not link lists stay as they are.
     expect(translate({ links: { $in: ['a', 'b'] } })).toEqual({ links: { $in: ['a', 'b'] } })
+    expect(translate({ arr: { $in: [linkA] } })).toEqual({ arr: { $in: [linkA] } })
     expect(translate({ name: { $in: [linkA] } })).toEqual({ name: { $in: [linkA] } })
   })
 
