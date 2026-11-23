@@ -107,6 +107,7 @@
   } from '@hcengineering/workbench'
   import communication from '@hcengineering/communication'
   import { getContext, onDestroy, onMount, tick } from 'svelte'
+  import { mergeResolvedLocation } from '../locationMerge'
   import { subscribeMobile } from '../mobile'
   import workbench from '../plugin'
   import {
@@ -415,58 +416,7 @@
   }
 
   function mergeLoc(loc: Location, resolved: ResolvedLocation): Location {
-    const resolvedApp = resolved.loc.path[2]
-    const resolvedSpace = resolved.loc.path[3]
-    const resolvedSpecial = resolved.loc.path[4]
-    if (resolvedApp === undefined) {
-      if (currentAppAlias === undefined) {
-        loc.path = [loc.path[0], loc.path[1], ...resolved.defaultLocation.path.splice(2)]
-      } else {
-        const isSameApp = currentAppAlias === loc.path[2]
-        loc.path[2] = currentAppAlias ?? resolved.defaultLocation.path[2]
-        loc.path[3] = currentSpace ?? currentSpecial ?? resolved.defaultLocation.path[3]
-        if (loc.path[3] !== undefined && isSameApp) {
-          // setting space special/aside only if it belongs to the same app
-          if (currentSpace) {
-            loc.path[4] = currentSpecial ?? resolved.defaultLocation.path[4]
-          } else if (currentSpecial) {
-            loc.path[4] = resolved.defaultLocation.path[4]
-          }
-        } else {
-          loc.path.length = 4
-        }
-      }
-    } else {
-      loc.path[2] = resolvedApp
-      if (resolvedSpace === undefined) {
-        loc.path[3] = currentSpace ?? currentSpecial ?? resolved.defaultLocation.path[3]
-        loc.path[4] = currentSpecial ?? resolved.defaultLocation.path[4]
-      } else {
-        loc.path[3] = resolvedSpace
-        if (resolvedSpecial) {
-          loc.path[4] = resolvedSpecial
-        } else if (currentSpace) {
-          loc.path[4] = currentSpecial ?? resolved.defaultLocation.path[4]
-        } else if (currentSpecial) {
-          loc.path[4] = resolved.defaultLocation.path[4]
-        } else {
-          loc.path.length = 4
-        }
-      }
-    }
-    for (let index = 0; index < loc.path.length; index++) {
-      const path = loc.path[index]
-      if (path === undefined) {
-        loc.path.length = index
-        break
-      }
-    }
-    loc.query = resolved.loc.query ?? loc.query ?? currentQuery ?? resolved.defaultLocation.query
-    loc.fragment =
-      (loc.fragment ?? '') !== '' && resolved.loc.fragment === resolved.defaultLocation.fragment
-        ? loc.fragment
-        : (resolved.loc.fragment ?? resolved.defaultLocation.fragment)
-    return loc
+    return mergeResolvedLocation(loc, resolved, { currentAppAlias, currentSpace, currentSpecial, currentQuery })
   }
 
   async function syncLoc(loc: Location): Promise<void> {
@@ -655,6 +605,7 @@
       case 3:
         if (currentSpace !== undefined) {
           specialComponent = undefined
+          currentSpecial = undefined
         }
     }
   }
@@ -674,7 +625,7 @@
   }
 
   function setSpaceSpecial(spaceSpecial: string | undefined): void {
-    if (currentSpecial !== undefined && spaceSpecial === currentSpecial) return
+    if (currentSpecial !== undefined && spaceSpecial === currentSpecial && specialComponent !== undefined) return
     clear(3)
     if (spaceSpecial === undefined) return
     specialComponent = getSpecialComponent(spaceSpecial)
