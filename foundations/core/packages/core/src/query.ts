@@ -11,12 +11,7 @@ export { getLinkIdentity, isSameLink, isSameValue, type ValueMatcher } from './p
 /**
  * @public
  */
-export function findProperty (
-  objects: Doc[],
-  propertyKey: string,
-  value: any,
-  same: ValueMatcher = isSameValue
-): Doc[] {
+export function findProperty (objects: Doc[], propertyKey: string, value: any, same: ValueMatcher = isSameValue): Doc[] {
   if (isPredicate(value)) {
     const preds = createPredicates(value, propertyKey, same)
     for (const pred of preds) {
