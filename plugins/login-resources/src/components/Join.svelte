@@ -32,7 +32,8 @@
     joinByToken,
     setLoginInfo,
     signUpJoin,
-    getLoginInfo
+    getLoginInfo,
+    fetchLoginCapabilities
   } from '../utils'
   import Form from './Form.svelte'
   import StatusControl from './StatusControl.svelte'
@@ -55,6 +56,7 @@
   let currentAccountName: string | undefined
   let joiningWithAccount = false
   let inviteWorkspaceName: string | undefined
+  let publicJoinSignUpEnabled = true
 
   $: signupStore.setSignUpFlow(page === 'signUp')
 
@@ -131,7 +133,8 @@
     }
   }
 
-  $: secondaryButtonLabel = page === 'login' ? login.string.CreateNewAccount : login.string.HaveAccount
+  $: secondaryButtonLabel =
+    page === 'login' ? (publicJoinSignUpEnabled ? login.string.CreateNewAccount : undefined) : login.string.HaveAccount
   $: secondaryButtonAction =
     page === 'login'
       ? () => {
@@ -147,6 +150,11 @@
 
   async function check(): Promise<void> {
     if (location.query?.inviteId === undefined || location.query?.inviteId === null) {
+      const capabilities = await fetchLoginCapabilities()
+      publicJoinSignUpEnabled = capabilities.publicJoinSignUpEnabled
+      if (!publicJoinSignUpEnabled) {
+        page = 'login'
+      }
       checking = false
       return
     }

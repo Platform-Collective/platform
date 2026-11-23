@@ -62,6 +62,8 @@ import {
   getMailUrl,
   getSocialIdByKey,
   getWorkspaceInvite,
+  updateAllowReadOnlyGuests,
+  updateAllowGuestSignUp,
   loginOrSignUpWithProvider,
   isProviderSignUpDisabled,
   sendEmail,
@@ -74,6 +76,7 @@ import {
   tokenErrorReason,
   tokenFingerprint
 } from '../utils'
+import { overrideAccountConfigurationForTests } from '../config'
 import platform, { getMetadata, PlatformError, Severity, Status } from '@hcengineering/platform'
 import serverToken, { decodeTokenVerbose, generateToken, TokenError } from '@hcengineering/server-token'
 import { Analytics } from '@hcengineering/analytics'
@@ -153,6 +156,55 @@ describe('account utils', () => {
       ['space@domain.com ', false, 'trailing space']
     ])('%s -> %s (%s)', (input, expected) => {
       expect(isEmail(input)).toBe(expected)
+    })
+  })
+
+  describe('invite-or-SSO guest settings', () => {
+    const mockCtx = {} as unknown as MeasureContext
+    const mockToken = 'test-token'
+    const workspace = 'workspace-uuid' as WorkspaceUuid
+    const account = 'account-uuid' as AccountUuid
+    const mockDb = {
+      getWorkspaceRole: jest.fn(),
+      updateAllowReadOnlyGuests: jest.fn(),
+      updateAllowGuestSignUp: jest.fn(),
+      unassignWorkspace: jest.fn()
+    } as unknown as AccountDB
+
+    beforeEach(() => {
+      jest.clearAllMocks()
+      ;(decodeTokenVerbose as jest.Mock).mockReturnValue({ account, workspace })
+    })
+
+    test('denies enabling read-only guests and guest signup in invite-or-SSO mode', async () => {
+      const restoreConfiguration = overrideAccountConfigurationForTests({ inviteOrSsoSignup: true })
+      try {
+        await expect(
+          updateAllowReadOnlyGuests(mockCtx, mockDb, null, mockToken, { readOnlyGuestsAllowed: true })
+        ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {})))
+        await expect(
+          updateAllowGuestSignUp(mockCtx, mockDb, null, mockToken, { guestSignUpAllowed: true })
+        ).rejects.toThrow(new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {})))
+        expect(mockDb.updateAllowReadOnlyGuests).not.toHaveBeenCalled()
+        expect(mockDb.updateAllowGuestSignUp).not.toHaveBeenCalled()
+      } finally {
+        restoreConfiguration()
+      }
+    })
+
+    test('still allows disabling guest settings in invite-or-SSO mode', async () => {
+      const restoreConfiguration = overrideAccountConfigurationForTests({ inviteOrSsoSignup: true })
+      try {
+        ;(mockDb.getWorkspaceRole as jest.Mock).mockResolvedValue(AccountRole.Owner)
+
+        await updateAllowReadOnlyGuests(mockCtx, mockDb, null, mockToken, { readOnlyGuestsAllowed: false })
+        await updateAllowGuestSignUp(mockCtx, mockDb, null, mockToken, { guestSignUpAllowed: false })
+
+        expect(mockDb.updateAllowReadOnlyGuests).toHaveBeenCalledWith(workspace, false)
+        expect(mockDb.updateAllowGuestSignUp).toHaveBeenCalledWith(workspace, false)
+      } finally {
+        restoreConfiguration()
+      }
     })
   })
 
@@ -2031,6 +2083,32 @@ describe('account utils', () => {
       })
     })
 
+    test('continues to allow provider signup in invite-or-SSO mode', async () => {
+      const personUuid = 'provider-person' as PersonUuid
+      const restoreConfiguration = overrideAccountConfigurationForTests({ inviteOrSsoSignup: true })
+      try {
+        ;(mockDb.socialId.findOne as jest.Mock).mockResolvedValue(null)
+        ;(mockDb.socialId.insertOne as jest.Mock).mockResolvedValue('provider-social-id')
+        ;(mockDb.person.insertOne as jest.Mock).mockResolvedValue(personUuid)
+        ;(mockDb.person.findOne as jest.Mock).mockResolvedValue({ firstName: 'OIDC', lastName: 'User' })
+        ;(mockDb.account.findOne as jest.Mock).mockResolvedValue(null)
+
+        const result = await loginOrSignUpWithProvider(
+          mockCtx,
+          mockDb,
+          mockBranding,
+          'oidc@example.com',
+          'OIDC',
+          'User',
+          mockSocialId
+        )
+
+        expect(result).toEqual(expect.objectContaining({ account: personUuid, name: 'OIDC User' }))
+      } finally {
+        restoreConfiguration()
+      }
+    })
+
     test('should return null when signup disabled and no account exists', async () => {
       ;(mockDb.socialId.findOne as jest.Mock).mockResolvedValue(null)
 
@@ -2050,34 +2128,28 @@ describe('account utils', () => {
   })
 
   describe('isProviderSignUpDisabled', () => {
-    test('should allow provider sign-up when DISABLE_SIGNUP is not set', () => {
-      expect(isProviderSignUpDisabled({})).toBe(false)
-      expect(isProviderSignUpDisabled({ DISABLE_SIGNUP: 'false' })).toBe(false)
+    test('should allow provider sign-up when signup is enabled', () => {
+      expect(isProviderSignUpDisabled({ disableSignup: false, allowProviderSignup: false })).toBe(false)
+      expect(isProviderSignUpDisabled({ disableSignup: false, allowProviderSignup: true })).toBe(false)
     })
 
-    test('should follow DISABLE_SIGNUP by default', () => {
-      expect(isProviderSignUpDisabled({ DISABLE_SIGNUP: 'true' })).toBe(true)
-      expect(isProviderSignUpDisabled({ DISABLE_SIGNUP: 'true', ALLOW_PROVIDER_SIGNUP: 'false' })).toBe(true)
+    test('should follow disableSignup by default', () => {
+      expect(isProviderSignUpDisabled({ disableSignup: true, allowProviderSignup: false })).toBe(true)
     })
 
-    test('should allow provider sign-up when ALLOW_PROVIDER_SIGNUP=true overrides DISABLE_SIGNUP', () => {
-      expect(isProviderSignUpDisabled({ DISABLE_SIGNUP: 'true', ALLOW_PROVIDER_SIGNUP: 'true' })).toBe(false)
+    test('should allow provider sign-up when allowProviderSignup overrides disableSignup', () => {
+      expect(isProviderSignUpDisabled({ disableSignup: true, allowProviderSignup: true })).toBe(false)
     })
 
-    test('should read process.env when no env is passed', () => {
-      const prevSignup = process.env.DISABLE_SIGNUP
-      const prevProvider = process.env.ALLOW_PROVIDER_SIGNUP
+    test('should read account configuration when no config is passed', () => {
+      const restoreConfiguration = overrideAccountConfigurationForTests({
+        disableSignup: true,
+        allowProviderSignup: false
+      })
       try {
-        process.env.DISABLE_SIGNUP = 'true'
-        delete process.env.ALLOW_PROVIDER_SIGNUP
         expect(isProviderSignUpDisabled()).toBe(true)
-        process.env.ALLOW_PROVIDER_SIGNUP = 'true'
-        expect(isProviderSignUpDisabled()).toBe(false)
       } finally {
-        if (prevSignup === undefined) delete process.env.DISABLE_SIGNUP
-        else process.env.DISABLE_SIGNUP = prevSignup
-        if (prevProvider === undefined) delete process.env.ALLOW_PROVIDER_SIGNUP
-        else process.env.ALLOW_PROVIDER_SIGNUP = prevProvider
+        restoreConfiguration()
       }
     })
   })

@@ -59,6 +59,7 @@
 
   let allowReadOnlyGuests = false
   let allowGuestSignUp = false
+  let guestSettingsLocked = false
   let existingGuestChatSettings: GuestCommunicationSettings | undefined = undefined
 
   const accountClient = getAccountClient()
@@ -81,9 +82,13 @@
   onMount(() => {
     void (async (): Promise<void> => {
       try {
-        const res = await accountClient.getWorkspaceInfo()
+        const [res, capabilities] = await Promise.all([
+          accountClient.getWorkspaceInfo(),
+          accountClient.getLoginCapabilities().catch(() => undefined)
+        ])
         allowReadOnlyGuests = res.allowReadOnlyGuest ?? false
         allowGuestSignUp = res.allowGuestSignUp ?? false
+        guestSettingsLocked = capabilities?.guestSettingsLocked ?? false
       } finally {
         loadingWorkspaceGuest = false
       }
@@ -327,7 +332,11 @@
                       <Label label={settingsRes.string.GuestAccessDescription} />
                     </div>
                     <div class="guestAccessRow-toggleCell">
-                      <Toggle on={allowReadOnlyGuests} on:change={onReadonlyGuestsToggle} />
+                      <Toggle
+                        disabled={guestSettingsLocked && !allowReadOnlyGuests}
+                        on={allowReadOnlyGuests}
+                        on:change={onReadonlyGuestsToggle}
+                      />
                     </div>
                   </div>
                   <div class="guestAccessRow">
@@ -335,7 +344,11 @@
                       <Label label={settingsRes.string.GuestSignUpDescription} />
                     </div>
                     <div class="guestAccessRow-toggleCell">
-                      <Toggle disabled={!allowReadOnlyGuests} on={allowGuestSignUp} on:change={onGuestSignUpToggle} />
+                      <Toggle
+                        disabled={!allowReadOnlyGuests || (guestSettingsLocked && !allowGuestSignUp)}
+                        on={allowGuestSignUp}
+                        on:change={onGuestSignUpToggle}
+                      />
                     </div>
                   </div>
                   {#if communicationApiEnabled}

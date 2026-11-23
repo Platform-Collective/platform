@@ -16,6 +16,7 @@
 import { accountPlugin } from './plugin'
 
 export * from './operations'
+export * from './config'
 export * from './plugin'
 export * from './utils'
 export * from './types'

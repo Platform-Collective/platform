@@ -12,7 +12,8 @@ import account, {
   getAllTransactors,
   getMethods,
   cleanExpiredOtp,
-  isProviderSignUpDisabled
+  isProviderSignUpDisabled,
+  accountConfiguration
 } from '@hcengineering/account'
 import accountEn from '@hcengineering/account/lang/en.json'
 import accountRu from '@hcengineering/account/lang/ru.json'
@@ -145,7 +146,7 @@ export function serveAccount (measureCtx: MeasureContext, brandings: BrandingMap
   // Force undefied, for user tokens do not include service
   setMetadata(serverToken.metadata.Service, undefined)
 
-  const hasSignUp = process.env.DISABLE_SIGNUP !== 'true'
+  const hasSignUp = !accountConfiguration.disableSignup
   const methods = getMethods(hasSignUp)
 
   const dbNs = process.env.DB_NS
