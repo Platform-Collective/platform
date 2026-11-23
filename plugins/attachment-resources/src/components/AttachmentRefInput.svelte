@@ -24,6 +24,7 @@
     PersonId,
     RateLimiter,
     Ref,
+    SortingOrder,
     Space,
     generateId,
     toIdMap
@@ -169,7 +170,8 @@
         (res) => {
           originalAttachments = new Set(res.map((p) => p._id))
           attachments = toIdMap(res)
-        }
+        },
+        { sort: { createdOn: SortingOrder.Ascending, _id: SortingOrder.Ascending } }
       )
     } else {
       attachments = new Map()
@@ -239,37 +241,58 @@
     }
   }
 
+  /**
+   * Uploads files in parallel, but adds them to the input in the order they were selected,
+   * so the attachment order does not depend on which upload finishes first.
+   */
+  async function createAttachmentsInOrder(list: FileList): Promise<void> {
+    const files: File[] = []
+    for (let index = 0; index < list.length; index++) {
+      const file = list.item(index)
+      if (file !== null) files.push(file)
+    }
+    const limiter = new RateLimiter(10)
+    const uploads = files.map(async (file) => {
+      try {
+        return await limiter.exec(async () => await uploadFile(file))
+      } catch (err: any) {
+        void setPlatformStatus(unknownError(err))
+        return undefined
+      }
+    })
+    for (let index = 0; index < files.length; index++) {
+      const uploaded = await uploads[index]
+      if (uploaded !== undefined) {
+        await _createAttachment(uploaded.uuid, files[index].name, files[index], uploaded.metadata)
+      }
+    }
+  }
+
   async function fileSelected(): Promise<void> {
     progress = true
     await tick()
     const list = inputFile.files
-    if (list === null || list.length === 0) return
-    const limiter = new RateLimiter(10)
-    for (let index = 0; index < list.length; index++) {
-      const file = list.item(index)
-      if (file !== null) {
-        await limiter.add(() => createAttachment(file))
-      }
+    if (list === null || list.length === 0) {
+      progress = false
+      return
     }
-    await limiter.waitProcessing()
-    inputFile.value = ''
-    progress = false
+    try {
+      await createAttachmentsInOrder(list)
+    } finally {
+      inputFile.value = ''
+      progress = false
+    }
   }
 
   async function fileDrop(e: DragEvent): Promise<void> {
     const list = e.dataTransfer?.files
-    const limiter = new RateLimiter(10)
-
     if (list === undefined || list.length === 0) return
     progress = true
-    for (let index = 0; index < list.length; index++) {
-      const file = list.item(index)
-      if (file !== null) {
-        await limiter.add(() => createAttachment(file))
-      }
+    try {
+      await createAttachmentsInOrder(list)
+    } finally {
+      progress = false
     }
-    await limiter.waitProcessing()
-    progress = false
   }
 
   async function removeAttachment(attachment: Attachment): Promise<void> {
@@ -330,13 +353,18 @@
       return
     }
     saved = true
-    const limiter = new RateLimiter(10)
-    newAttachments.forEach((p) => {
-      const attachment = attachments.get(p)
-      if (attachment !== undefined) {
-        void limiter.add(() => saveAttachment(attachment))
+    // Save new attachments one by one in input order: the server assigns createdOn on arrival,
+    // and attachments are displayed sorted by createdOn.
+    for (const [id, attachment] of attachments) {
+      if (newAttachments.has(id)) {
+        try {
+          await saveAttachment(attachment)
+        } catch (err: any) {
+          void setPlatformStatus(unknownError(err))
+        }
       }
-    })
+    }
+    const limiter = new RateLimiter(10)
     removedAttachments.forEach((p) => {
       void limiter.add(() => deleteAttachment(p))
     })
