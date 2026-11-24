@@ -35989,6 +35989,9 @@ importers:
 
   ../../server-plugins/workflow-rules-resources:
     dependencies:
+      '@hcengineering/contact':
+        specifier: workspace:^0.7.0
+        version: link:../../plugins/contact
       '@hcengineering/core':
         specifier: workspace:^0.7.26
         version: link:../../foundations/core/packages/core

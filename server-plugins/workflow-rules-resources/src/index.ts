@@ -6,24 +6,40 @@
 // you may not use this file except in compliance with the License. You may
 // obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
 
+import contact, { type Employee } from '@hcengineering/contact'
 import core, {
   AccountRole,
+  generateId,
   roleOrder,
   systemAccountUuid,
   type AccountUuid,
+  type Data,
   type DocumentClassQuery,
   type Doc,
   type PersonId,
   type Ref,
   type Space,
   type Tx,
+  type TxApplyIf,
   type TxCUD,
+  type TxResult,
   type TxUpdateDoc
 } from '@hcengineering/core'
 import type { TriggerControl } from '@hcengineering/server-core'
-import task from '@hcengineering/task'
-import tracker, { type Issue, type IssueStatus, type Project } from '@hcengineering/tracker'
-import workflowRules, { workflowRulesId, type WorkflowRule } from '@hcengineering/workflow-rules'
+import task, { type ProjectType, type TaskType } from '@hcengineering/task'
+import tracker, {
+  IssuePriority,
+  type Component,
+  type Issue,
+  type IssueParentInfo,
+  type IssueStatus,
+  type Project
+} from '@hcengineering/tracker'
+import workflowRules, {
+  workflowRulesId,
+  type WorkflowRule,
+  type WorkflowRuleInheritField
+} from '@hcengineering/workflow-rules'
 
 import { isRegression } from './logic'
 
@@ -138,6 +154,12 @@ export async function OnWorkflowRuleMirror (_txes: Tx[], control: TriggerControl
   const pendingStatuses = new Map<Ref<Issue>, Ref<IssueStatus>>()
   // A request can contain multiple actors, so memoize by actor+space.
   const targetSpaceAuthz = new Map<string, boolean>()
+  // Per-request guard against duplicate auto-creates: if the same (source,
+  // rule) fires auto-create twice in one request (two actor groups),
+  // emit only the first. The second would fail the TxApplyIf notMatch
+  // predicate at apply time, but suppressing it here avoids a wasted
+  // sequence allocation and keeps the emitted tx list clean.
+  const pendingCreates = new Set<string>()
 
   for (const actualTx of sorted) {
     if (actualTx._class !== core.class.TxUpdateDoc) continue
@@ -167,18 +189,25 @@ export async function OnWorkflowRuleMirror (_txes: Tx[], control: TriggerControl
       const counterpart = await resolveCounterpart(control, source, rule)
 
       if (counterpart === undefined) {
-        // Auto-create path: the counterpart does not exist yet, and the new
-        // status is in the rule's auto-create trigger set. Phase 3b will fill
-        // this in with: resolve target TaskType, allocate next sequence
-        // number, build identifier, copy inheritable fields, emit
-        // TxCreateDoc<Issue> with attachedTo pointing at `source`. Deferred
-        // from the first PR because sequence allocation needs its own review.
-        if (rule.autoCreate != null && rule.autoCreate.triggerStatuses.includes(newStatus)) {
-          control.ctx.info('[workflow-rules] auto-create requested but not yet implemented', {
-            ruleId: rule._id,
-            sourceIssue: source._id,
-            status: newStatus
-          })
+        // Auto-create path. Emit a TxCreateDoc<Issue> in the linked project
+        // when the rule asks for it and all preconditions pass. tryEmitAutoCreate
+        // fails closed: a missing TaskType, unmapped status, refused target, or
+        // failed sequence allocation each log at info/warn and drop the create.
+        if (rule.autoCreate != null && Array.isArray(rule.autoCreate.triggerStatuses)) {
+          if (rule.autoCreate.triggerStatuses.includes(newStatus)) {
+            const autoTxes = await tryEmitAutoCreate(
+              control,
+              source,
+              rule,
+              newStatus,
+              updateTx,
+              targetSpaceAuthz,
+              pendingCreates
+            )
+            for (const t of autoTxes) {
+              result.push(t)
+            }
+          }
         }
         continue
       }
@@ -551,6 +580,567 @@ export async function checkRegressionGuard (
   }
 
   return isRegression(effectiveFrom, target, statuses, rule.allowedLoops)
+}
+
+/**
+ * Closed set of fields `autoCreate.inherit` may contain. The persisted list is
+ * validated against this set per invocation so a stored rule with an unknown
+ * field name does not silently copy an arbitrary attribute onto the new
+ * counterpart.
+ *
+ * @public
+ */
+export const INHERIT_FIELDS: ReadonlySet<WorkflowRuleInheritField> = new Set<WorkflowRuleInheritField>([
+  'title',
+  'description',
+  'priority',
+  'dueDate',
+  'milestone',
+  'assignee'
+])
+
+/**
+ * Resolve the TaskType the auto-created counterpart should use. Picks the
+ * first TaskType on the target project's ProjectType whose descriptor is
+ * `tracker.descriptors.Issue`. Returns undefined when any precondition
+ * fails: missing/malformed Project, missing/malformed ProjectType, no
+ * eligible TaskType, or a TaskType without a valid `statuses` array.
+ *
+ * `limit: 2` on the Project and ProjectType lookups treats "more than one
+ * row" as a malformed state and refuses, matching rule #6 of the
+ * contribution guide.
+ *
+ * @public
+ */
+export async function resolveTargetTaskType (
+  control: TriggerControl,
+  projectId: Ref<Project>
+): Promise<{ project: Project, taskType: TaskType } | undefined> {
+  const projects = await control.findAll(control.ctx, tracker.class.Project, { _id: projectId }, { limit: 2 })
+  if (projects.length !== 1) return undefined
+  const project = projects[0]
+  if (typeof project.identifier !== 'string' || project.identifier.length === 0) return undefined
+  if (typeof project.sequence !== 'number' || !Number.isFinite(project.sequence)) return undefined
+  if (typeof project.type !== 'string' || project.type.length === 0) return undefined
+
+  const types = await control.findAll(control.ctx, task.class.ProjectType, { _id: project.type }, { limit: 2 })
+  if (types.length !== 1) return undefined
+  const projectType = types[0] as ProjectType
+  if (!Array.isArray(projectType.tasks) || projectType.tasks.length === 0) return undefined
+
+  const taskTypeIds = projectType.tasks.filter((it) => typeof it === 'string' && it.length > 0)
+  if (taskTypeIds.length === 0) return undefined
+
+  const taskTypes = (await control.findAll(control.ctx, task.class.TaskType, {
+    _id: { $in: taskTypeIds }
+  })) as unknown as TaskType[]
+  const issueTaskType = taskTypes.find(
+    (tt) => tt.descriptor === tracker.descriptors.Issue && Array.isArray(tt.statuses)
+  )
+  if (issueTaskType === undefined) return undefined
+  if (!Array.isArray(issueTaskType.statuses) || issueTaskType.statuses.length === 0) return undefined
+
+  return { project, taskType: issueTaskType }
+}
+
+/**
+ * Atomically allocate the next issue sequence for `project`. Emits a
+ * `TxUpdateDoc<Project>` with `$inc: { sequence: 1 }` and `retrieve: true`
+ * via `control.apply`, then reads the post-update sequence from the
+ * returned TxResult.
+ *
+ * Returns undefined on any failure: the storage adapter refused the apply,
+ * the TxResult did not carry the expected `{ object: { sequence } }`
+ * shape, or the returned value is not a positive finite integer. A failed
+ * allocation drops the auto-create rather than emitting a half-formed
+ * TxCreateDoc without a valid identifier.
+ *
+ * Note: a successful allocation whose downstream TxApplyIf notMatch
+ * predicate later fails (concurrent counterpart appeared) burns the
+ * sequence - the project's numbering will skip that number. This matches
+ * the normal CreateIssue UI flow where the client increments sequence
+ * before the commit may fail, and keeps the increment ordering strictly
+ * monotonic under concurrency.
+ *
+ * @public
+ */
+export async function allocateNextSequence (
+  control: TriggerControl,
+  project: Project,
+  modifiedBy: PersonId,
+  modifiedOn: number
+): Promise<number | undefined> {
+  const incTx = control.txFactory.createTxUpdateDoc<Project>(
+    tracker.class.Project,
+    core.space.Space,
+    project._id,
+    { $inc: { sequence: 1 } },
+    true,
+    modifiedOn,
+    modifiedBy
+  )
+  try {
+    const res = (await control.apply(control.ctx, [incTx], true)) as unknown
+    const first: TxResult | undefined = Array.isArray(res) ? (res[0] as TxResult) : (res as TxResult)
+    const obj = (first as unknown as { object?: { sequence?: unknown } } | undefined)?.object
+    const seq = obj?.sequence
+    if (typeof seq !== 'number' || !Number.isFinite(seq) || seq <= 0 || !Number.isInteger(seq)) {
+      control.ctx.warn('[workflow-rules] auto-create sequence allocation returned invalid value', {
+        projectId: project._id,
+        sequence: seq
+      })
+      return undefined
+    }
+    return seq
+  } catch (e) {
+    control.ctx.warn('[workflow-rules] auto-create sequence allocation failed', {
+      projectId: project._id,
+      error: String(e)
+    })
+    return undefined
+  }
+}
+
+/**
+ * Resolve the component for the new counterpart under `rule.autoCreate`.
+ *
+ * Returns `{ skip: true }` when `componentMap` explicitly maps the source
+ * component to `null` (the author chose "do not auto-create for issues
+ * with this component"). Returns `{ skip: false, component }` with the
+ * mapped value, the `defaultComponent` fallback, or `null` when neither
+ * applies. Uses `hasOwnProperty` for the map lookup so prototype-chain
+ * keys (`constructor`, `__proto__`) cannot resolve to a non-Ref value.
+ *
+ * @public
+ */
+export function resolveAutoCreateComponent (
+  rule: WorkflowRule,
+  source: Issue
+): { skip: boolean, component: Ref<Component> | null } {
+  const autoCreate = rule.autoCreate
+  if (autoCreate == null) {
+    return { skip: false, component: null }
+  }
+  const map = autoCreate.componentMap
+  const defaultComponent = typeof autoCreate.defaultComponent === 'string' ? autoCreate.defaultComponent : null
+  const sourceComponent = source.component
+  if (sourceComponent == null) {
+    return { skip: false, component: defaultComponent ?? null }
+  }
+  if (map != null && typeof map === 'object' && !Array.isArray(map)) {
+    if (Object.prototype.hasOwnProperty.call(map, sourceComponent)) {
+      const mapped = (map as Record<string, unknown>)[sourceComponent]
+      if (mapped === null) {
+        return { skip: true, component: null }
+      }
+      if (typeof mapped === 'string' && mapped.length > 0) {
+        return { skip: false, component: mapped as Ref<Component> }
+      }
+      // Malformed value: fall through to default.
+    }
+  }
+  return { skip: false, component: defaultComponent ?? null }
+}
+
+/**
+ * Build the subset of Issue attributes inherited from the source according to
+ * `rule.autoCreate.inherit`. Each inheritable field is validated at runtime:
+ * the stored inherit list may contain names not in the closed set, and even
+ * valid names skip their field when the source value is malformed or the
+ * target reference cannot be verified in the destination project.
+ *
+ * `milestone`: verified by querying `tracker.class.Milestone` in the target
+ * project. If the milestone does not exist in the target project, the field
+ * is skipped with a warn. Milestones are per-project so copying the source's
+ * milestone id unconditionally would produce a dangling reference.
+ *
+ * `assignee`: verified by querying `contact.mixin.Employee` with
+ * `active: true`. A deactivated or missing employee is skipped with a warn
+ * rather than copied.
+ *
+ * @public
+ */
+export async function resolveInheritedFields (
+  control: TriggerControl,
+  rule: WorkflowRule,
+  source: Issue
+): Promise<Partial<Data<Issue>>> {
+  const out: Partial<Data<Issue>> = {}
+  const autoCreate = rule.autoCreate
+  if (autoCreate == null || !Array.isArray(autoCreate.inherit)) return out
+  for (const nameRaw of autoCreate.inherit) {
+    if (typeof nameRaw !== 'string') continue
+    if (!INHERIT_FIELDS.has(nameRaw)) continue
+    const name = nameRaw
+    switch (name) {
+      case 'title': {
+        if (typeof source.title === 'string' && source.title.length > 0) {
+          out.title = source.title
+        }
+        break
+      }
+      case 'description': {
+        // Blob refs are strings; null is also a valid persisted value.
+        if (source.description === null) {
+          out.description = null
+        } else if (typeof source.description === 'string') {
+          out.description = source.description
+        }
+        break
+      }
+      case 'priority': {
+        const p = source.priority as unknown
+        if (typeof p === 'number' && Number.isFinite(p)) {
+          out.priority = p
+        }
+        break
+      }
+      case 'dueDate': {
+        const d = source.dueDate as unknown
+        if (d === null || (typeof d === 'number' && Number.isFinite(d))) {
+          out.dueDate = d
+        }
+        break
+      }
+      case 'milestone': {
+        if (source.milestone == null) {
+          out.milestone = null
+          break
+        }
+        const found = await control.findAll(
+          control.ctx,
+          tracker.class.Milestone,
+          { _id: source.milestone, space: rule.linkedProject },
+          { limit: 2 }
+        )
+        if (found.length === 1) {
+          out.milestone = source.milestone
+        } else {
+          control.ctx.warn('[workflow-rules] auto-create skipped milestone inherit: ref not in target project', {
+            ruleId: rule._id,
+            sourceIssue: source._id,
+            milestone: source.milestone,
+            targetProject: rule.linkedProject,
+            found: found.length
+          })
+        }
+        break
+      }
+      case 'assignee': {
+        if (source.assignee == null) {
+          out.assignee = null
+          break
+        }
+        // Task.assignee is Ref<Person>; Employee is a mixin on Person, so
+        // the ref values are identical at the storage layer. The cast
+        // tells the type system about that identity; the runtime query
+        // naturally returns zero rows when the person does not have the
+        // Employee mixin applied, which is handled below.
+        const found = await control.findAll(
+          control.ctx,
+          contact.mixin.Employee,
+          { _id: source.assignee as Ref<Employee>, active: true },
+          { limit: 2 }
+        )
+        if (found.length === 1) {
+          out.assignee = source.assignee
+        } else {
+          control.ctx.warn('[workflow-rules] auto-create skipped assignee inherit: employee not found/active', {
+            ruleId: rule._id,
+            sourceIssue: source._id,
+            assignee: source.assignee,
+            found: found.length
+          })
+        }
+        break
+      }
+    }
+  }
+  return out
+}
+
+/**
+ * Emit the tx sequence that creates a counterpart under `rule.autoCreate`
+ * for a source issue whose status just entered one of `triggerStatuses`.
+ *
+ * Returns an empty array when any precondition refuses the create:
+ *  - `rule.autoCreate.triggerStatuses` or `rule.forwardMap` does not map
+ *    `newStatus`, or the mapped target is malformed (prototype-pollution
+ *    safe via `hasOwnProperty`).
+ *  - the caller is not authorized to write to `rule.linkedProject` per
+ *    `isAuthorizedForTarget` (target-level deny conditions apply first).
+ *  - target TaskType cannot be resolved via `resolveTargetTaskType`.
+ *  - `componentMap[source.component]` is explicitly `null` (author-opted-out
+ *    for this source component).
+ *  - sequence allocation via `allocateNextSequence` returns undefined.
+ *  - the same `(source, rule)` pair already emitted an auto-create in this
+ *    request (per-request `pendingCreates` guard; the TxApplyIf notMatch
+ *    predicate also catches this case at apply time).
+ *  - `rule.linkKind === 'parentIssue'` and `source.attachedTo` already
+ *    points at a real parent (overwriting it would be destructive).
+ *
+ * The emitted `TxCreateDoc<Issue>` is wrapped in a `TxApplyIf` whose
+ * `notMatch` predicate rejects the apply when a counterpart has appeared
+ * in `linkedProject` since this trigger's read. Scope is
+ * `workflow-rules.auto-create:${source._id}:${rule._id}` so the
+ * `ApplyTxMiddleware.verifyApplyIf` serializes parallel auto-creates on
+ * the same source + rule through its `scopes` Promise map.
+ *
+ * The create tx is emitted with `space = core.space.DerivedTx` so a
+ * status-update trigger that fires on the newly created counterpart's
+ * status (or any later status change the auto-create seeds) hits the
+ * existing one-hop cascade guard and does not re-enter this trigger.
+ *
+ * @public
+ */
+export async function tryEmitAutoCreate (
+  control: TriggerControl,
+  source: Issue,
+  rule: WorkflowRule,
+  newStatus: Ref<IssueStatus>,
+  sourceTx: TxUpdateDoc<Issue>,
+  authzCache: Map<string, boolean>,
+  pendingCreates: Set<string>
+): Promise<Tx[]> {
+  const autoCreate = rule.autoCreate
+  if (autoCreate == null) return []
+  if (!Array.isArray(autoCreate.triggerStatuses) || !autoCreate.triggerStatuses.includes(newStatus)) return []
+
+  // Status must still go through forwardMap. The auto-create section does
+  // not authorize creating a counterpart with an unmapped status.
+  const forwardMap = rule.forwardMap
+  if (forwardMap == null || typeof forwardMap !== 'object' || Array.isArray(forwardMap)) return []
+  if (!Object.prototype.hasOwnProperty.call(forwardMap, newStatus)) return []
+  const targetStatus = (forwardMap as Record<string, unknown>)[newStatus]
+  if (typeof targetStatus !== 'string' || targetStatus.length === 0) return []
+
+  // Per-request duplicate guard.
+  const pendingKey = `${source._id}:${rule._id}`
+  if (pendingCreates.has(pendingKey)) {
+    control.ctx.info('[workflow-rules] auto-create suppressed: already queued this request', {
+      ruleId: rule._id,
+      sourceIssue: source._id
+    })
+    return []
+  }
+
+  // Target-side authz. Target-level deny conditions (missing, archived,
+  // restricted) apply first inside the helper and refuse every caller.
+  const authorized = await isAuthorizedForTarget(control, sourceTx.modifiedBy, rule.linkedProject, authzCache)
+  if (!authorized) {
+    control.ctx.warn('[workflow-rules] auto-create suppressed: actor not authorized on target project', {
+      ruleId: rule._id,
+      sourceIssue: source._id,
+      targetSpace: rule.linkedProject,
+      modifiedBy: sourceTx.modifiedBy
+    })
+    return []
+  }
+
+  // Resolve TaskType on the target project. Fails closed on any shape issue.
+  const resolved = await resolveTargetTaskType(control, rule.linkedProject)
+  if (resolved === undefined) {
+    control.ctx.warn('[workflow-rules] auto-create suppressed: target TaskType unresolved', {
+      ruleId: rule._id,
+      sourceIssue: source._id,
+      targetProject: rule.linkedProject
+    })
+    return []
+  }
+  const { project, taskType } = resolved
+
+  // The resolved status must live in the target TaskType's status list so the
+  // new issue does not open in a status unknown to its own TaskType.
+  if (!taskType.statuses.includes(targetStatus as Ref<IssueStatus>)) {
+    control.ctx.warn('[workflow-rules] auto-create suppressed: target status not in TaskType', {
+      ruleId: rule._id,
+      sourceIssue: source._id,
+      targetStatus,
+      taskType: taskType._id
+    })
+    return []
+  }
+
+  // Component mapping.
+  const componentDecision = resolveAutoCreateComponent(rule, source)
+  if (componentDecision.skip) {
+    control.ctx.info('[workflow-rules] auto-create skipped by componentMap=null for source component', {
+      ruleId: rule._id,
+      sourceIssue: source._id,
+      sourceComponent: source.component
+    })
+    return []
+  }
+
+  // linkKind-specific preconditions and attachment shape.
+  let attachedTo: Ref<Issue>
+  let counterpartParents: IssueParentInfo[] = []
+  let sourceUpdateTx: TxUpdateDoc<Issue> | undefined
+  const newId = generateId<Issue>()
+  if (rule.linkKind === 'subIssue') {
+    attachedTo = source._id
+    // The new counterpart is a child of source; its parent chain is the
+    // source plus the source's existing parents.
+    const srcParents = Array.isArray(source.parents) ? source.parents : []
+    counterpartParents = [
+      {
+        parentId: source._id,
+        parentTitle: typeof source.title === 'string' ? source.title : '',
+        space: source.space,
+        identifier: typeof source.identifier === 'string' ? source.identifier : ''
+      },
+      ...srcParents
+    ]
+  } else if (rule.linkKind === 'parentIssue') {
+    if (source.attachedTo != null && source.attachedTo !== tracker.ids.NoParent) {
+      control.ctx.warn('[workflow-rules] auto-create suppressed: parentIssue would overwrite existing parent', {
+        ruleId: rule._id,
+        sourceIssue: source._id,
+        existingParent: source.attachedTo
+      })
+      return []
+    }
+    attachedTo = tracker.ids.NoParent
+    // Build the source-update tx that reattaches the source as a sub-issue of
+    // the new counterpart. parents chain gets the new counterpart prepended.
+    const titleForParents = typeof source.title === 'string' ? source.title : ''
+    const identifierForParents =
+      typeof source.identifier === 'string' && source.identifier.length > 0
+        ? source.identifier
+        : `${project.identifier}-0`
+    const nextParents: IssueParentInfo[] = [
+      {
+        parentId: newId,
+        parentTitle: titleForParents,
+        space: rule.linkedProject,
+        identifier: identifierForParents
+      },
+      ...(Array.isArray(source.parents) ? source.parents : [])
+    ]
+    sourceUpdateTx = control.txFactory.createTxUpdateDoc(
+      tracker.class.Issue,
+      source.space,
+      source._id,
+      {
+        attachedTo: newId,
+        attachedToClass: tracker.class.Issue,
+        collection: 'subIssues',
+        parents: nextParents
+      },
+      false,
+      sourceTx.modifiedOn,
+      sourceTx.modifiedBy
+    )
+    // Mark the source update as derived so a status trigger watching the
+    // source does not re-enter us. The source update here does NOT change
+    // status, so even without this mark the cascade guard would not fire;
+    // the mark keeps the invariant "every tx we emit is DerivedTx".
+    ;(sourceUpdateTx as unknown as { space: unknown }).space = core.space.DerivedTx
+  } else {
+    // Unknown linkKind; isValidRule should have refused, but fail closed.
+    return []
+  }
+
+  // Inherited fields.
+  const inherited = await resolveInheritedFields(control, rule, source)
+
+  // Sequence allocation. Done last so a preceding refusal does not burn a
+  // project sequence number.
+  const number = await allocateNextSequence(control, project, sourceTx.modifiedBy, sourceTx.modifiedOn)
+  if (number === undefined) return []
+  const identifier = `${project.identifier}-${number}`
+
+  // Compose attributes. Defaults match CreateIssue.svelte's DocData<Issue>.
+  const defaultTitle =
+    typeof inherited.title === 'string' && inherited.title.length > 0
+      ? inherited.title
+      : `${project.identifier} auto-created`
+  const attrs: Data<Issue> = {
+    attachedTo,
+    attachedToClass: tracker.class.Issue,
+    collection: rule.linkKind === 'subIssue' ? 'subIssues' : 'subIssues',
+    title: defaultTitle,
+    description: inherited.description !== undefined ? inherited.description : null,
+    status: targetStatus as Ref<IssueStatus>,
+    priority: typeof inherited.priority === 'number' ? inherited.priority : IssuePriority.NoPriority,
+    assignee: inherited.assignee !== undefined ? inherited.assignee : null,
+    component: componentDecision.component,
+    milestone: inherited.milestone !== undefined ? inherited.milestone : null,
+    dueDate: inherited.dueDate !== undefined ? inherited.dueDate : null,
+    startDate: null,
+    subIssues: 0,
+    parents: counterpartParents,
+    reportedTime: 0,
+    remainingTime: 0,
+    estimation: 0,
+    reports: 0,
+    childInfo: [],
+    kind: taskType._id,
+    number,
+    identifier,
+    rank: ''
+  }
+
+  const createTx = control.txFactory.createTxCreateDoc<Issue>(
+    tracker.class.Issue,
+    rule.linkedProject,
+    attrs,
+    newId,
+    sourceTx.modifiedOn,
+    sourceTx.modifiedBy
+  )
+  // Mark the create as derived explicitly (txFactory is already in derived
+  // mode in the server path, but keep the invariant visible to readers).
+  ;(createTx as unknown as { space: unknown }).space = core.space.DerivedTx
+
+  // notMatch: no counterpart exists under this rule's linkKind resolution in
+  // `linkedProject`. The predicate rejects the apply when a parallel request
+  // created a counterpart since this trigger read.
+  const notMatch: DocumentClassQuery<Doc>[] = []
+  if (rule.linkKind === 'subIssue') {
+    notMatch.push({
+      _class: tracker.class.Issue,
+      query: {
+        attachedTo: source._id,
+        attachedToClass: tracker.class.Issue,
+        collection: 'subIssues',
+        space: rule.linkedProject
+      }
+    })
+  } else {
+    // parentIssue: the predicate is "source still has no parent in the
+    // linked project". The apply is refused if source's attachedTo has
+    // been updated by a concurrent request.
+    notMatch.push({
+      _class: tracker.class.Issue,
+      query: {
+        _id: source._id,
+        attachedTo: { $ne: tracker.ids.NoParent }
+      }
+    })
+  }
+
+  const innerTxes: TxCUD<Doc>[] = [createTx]
+  if (sourceUpdateTx !== undefined) {
+    innerTxes.push(sourceUpdateTx)
+  }
+
+  const applyIf: TxApplyIf = control.txFactory.createTxApplyIf(
+    rule.linkedProject,
+    `workflow-rules.auto-create:${source._id}:${rule._id}`,
+    [],
+    notMatch,
+    innerTxes,
+    'workflow-rules.auto-create',
+    true,
+    [],
+    sourceTx.modifiedOn,
+    sourceTx.modifiedBy
+  )
+
+  pendingCreates.add(pendingKey)
+
+  return [applyIf]
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type

@@ -9,11 +9,12 @@
 // multiple rules and multiple source transactions, target-side
 // authorization gate, and PluginConfiguration kill switch.
 
+import contact from '@hcengineering/contact'
 import core, { AccountRole, TxFactory, type AccountUuid, type PersonId, type Ref } from '@hcengineering/core'
 import { MeasureMetricsContext } from '@hcengineering/measurements'
 import { ApplyTxMiddleware } from '@hcengineering/middleware'
 import task from '@hcengineering/task'
-import tracker from '@hcengineering/tracker'
+import tracker, { IssuePriority } from '@hcengineering/tracker'
 import workflowRules, { workflowRulesId } from '@hcengineering/workflow-rules'
 
 import { OnWorkflowRuleMirror as _OnWorkflowRuleMirror, isValidRule } from '../index'
@@ -1443,5 +1444,479 @@ describe('rev-8: TxApplyIf predicate runs through the real ApplyTxMiddleware', (
     const [r1, r2] = await Promise.all([mw.tx(ctx, [w1no]), mw.tx(ctx, [w2no])])
     // Both succeed because the predicate never ran.
     expect([didApply(r1), didApply(r2)]).toEqual([true, true])
+  })
+})
+
+/**
+ * Auto-create path tests. Shape and preconditions mirror the stub's replacement
+ * in `tryEmitAutoCreate`. These tests exercise the auto-create branch on its
+ * own, without relying on the status-mirror update path. They use a custom
+ * `makeAutoControl` that adds mocks for ProjectType, Milestone, and Employee
+ * findAll and for `control.apply` (which the sequence allocator calls).
+ */
+
+const PROJ_TYPE_B = 'projtype:b'
+const TT_ISSUE = 'task-type:issue-b'
+const TT_DESC_ISSUE = tracker.descriptors.Issue
+const COMP_B_DEFAULT = 'comp:b-default'
+const COMP_A_FEATURE = 'comp:a-feature'
+const COMP_B_FEATURE = 'comp:b-feature'
+const MILESTONE_A = 'milestone:a1'
+const MILESTONE_B = 'milestone:b1'
+const PERSON_A = 'person:alice' as any
+const PERSON_INACTIVE = 'person:inactive' as any
+
+interface AutoWorldOptions extends WorldOptions {
+  projectTypes?: Any[]
+  milestones?: Any[]
+  employees?: Any[]
+  // Allow overriding the apply return (defaults: increments `sequence` by 1
+  // on the queried project and returns `[{ object: { ...project, sequence: next } }]`).
+  applyImpl?: (txes: any[], needResult?: boolean) => Promise<any>
+}
+
+function makeAutoControl (opts: AutoWorldOptions = {}): any {
+  const base = makeControl(opts)
+  const projects = opts.projects ?? [project({ type: PROJ_TYPE_B, identifier: 'BRA', sequence: 10 })]
+  const projectTypes = opts.projectTypes ?? [{ _id: PROJ_TYPE_B, _class: task.class.ProjectType, tasks: [TT_ISSUE] }]
+  const taskTypes = opts.taskTypes ?? [
+    {
+      _id: TT_ISSUE,
+      _class: task.class.TaskType,
+      descriptor: TT_DESC_ISSUE,
+      statuses: [S.backlog, S.todo, S.inProgress, S.review, S.done]
+    }
+  ]
+  const milestones = opts.milestones ?? [{ _id: MILESTONE_B, _class: tracker.class.Milestone, space: PROJ_B }]
+  const employees = opts.employees ?? [{ _id: PERSON_A, _class: contact.mixin.Employee, active: true }]
+  // Extend findAll to handle the new classes while preserving defaults.
+  const existingFindAll = base.findAll.getMockImplementation()
+  base.findAll.mockImplementation(async (_ctx: unknown, _class: Ref<any>, q: any, o?: any) => {
+    if (_class === task.class.ProjectType) {
+      return projectTypes.filter((p) => q._id === undefined || matches(p._id, q._id))
+    }
+    if (_class === task.class.TaskType) {
+      return taskTypes.filter(
+        (t) =>
+          (q._id === undefined || matches(t._id, q._id)) &&
+          (q.descriptor === undefined || matches(t.descriptor, q.descriptor))
+      )
+    }
+    if (_class === tracker.class.Project) {
+      return projects.filter((p) => q._id === undefined || matches(p._id, q._id))
+    }
+    if (_class === tracker.class.Milestone) {
+      return milestones.filter(
+        (m) => (q._id === undefined || matches(m._id, q._id)) && (q.space === undefined || matches(m.space, q.space))
+      )
+    }
+    if (_class === contact.mixin.Employee) {
+      return employees.filter(
+        (e) => (q._id === undefined || matches(e._id, q._id)) && (q.active === undefined || e.active === q.active)
+      )
+    }
+    return existingFindAll(_ctx, _class, q, o)
+  })
+
+  base.apply = jest.fn(async (_ctx: unknown, txes: any[], needResult?: boolean) => {
+    if (opts.applyImpl !== undefined) return await opts.applyImpl(txes, needResult)
+    // Default: sequence $inc on Project returns { object: { ..., sequence: next } }.
+    const res: any[] = []
+    for (const tx of txes) {
+      if (
+        tx._class === core.class.TxUpdateDoc &&
+        tx.objectClass === tracker.class.Project &&
+        tx.operations?.$inc?.sequence != null
+      ) {
+        const p = projects.find((pp) => pp._id === tx.objectId)
+        if (p !== undefined) {
+          const delta = tx.operations.$inc.sequence
+          p.sequence = (p.sequence ?? 0) + delta
+          res.push({ object: { ...p } })
+          continue
+        }
+      }
+      res.push({})
+    }
+    return res
+  })
+  return base
+}
+
+function sourceIssue (over: Any = {}): Any {
+  return {
+    _id: 'issue:a-source',
+    _class: tracker.class.Issue,
+    space: PROJ_A,
+    kind: 'task-type:a',
+    status: S.backlog,
+    title: 'Source title',
+    description: null,
+    priority: IssuePriority.High,
+    assignee: null,
+    component: null,
+    milestone: null,
+    dueDate: null,
+    attachedTo: tracker.ids.NoParent,
+    attachedToClass: tracker.class.Issue,
+    collection: 'subIssues',
+    parents: [],
+    identifier: 'SRC-7',
+    ...over
+  }
+}
+
+function autoRule (over: Any = {}): Any {
+  return rule({
+    linkKind: 'subIssue',
+    forwardMap: { [S.inProgress]: S.inProgress, [S.review]: S.done },
+    autoCreate: {
+      triggerStatuses: [S.inProgress],
+      componentMap: {},
+      inherit: []
+    },
+    ...over
+  })
+}
+
+function unwrapAutoApplyIf (tx: Any): { apply: Any, create: Any, update: Any } {
+  expect(tx._class).toBe(core.class.TxApplyIf)
+  const inner: any[] = Array.isArray(tx.txes) ? tx.txes : []
+  const create = inner.find((t) => t._class === core.class.TxCreateDoc)
+  const update = inner.find((t) => t._class === core.class.TxUpdateDoc)
+  return { apply: tx, create, update }
+}
+
+describe('auto-create', () => {
+  it('emits TxApplyIf with TxCreateDoc on trigger status', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      rules: [autoRule()]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(1)
+    const { apply, create, update } = unwrapAutoApplyIf(emitted[0])
+    expect(apply.scope).toBe(`workflow-rules.auto-create:issue:a-source:${autoRule()._id}`)
+    expect(apply.notMatch).toHaveLength(1)
+    expect(apply.notMatch[0].query).toMatchObject({
+      attachedTo: 'issue:a-source',
+      attachedToClass: tracker.class.Issue,
+      collection: 'subIssues',
+      space: PROJ_B
+    })
+    expect(create).toBeDefined()
+    expect(update).toBeUndefined()
+    expect(create.objectSpace).toBe(PROJ_B)
+    expect(create.attributes.status).toBe(S.inProgress)
+    expect(create.attributes.attachedTo).toBe('issue:a-source')
+    expect(create.attributes.number).toBe(11) // sequence was 10, $inc -> 11
+    expect(create.attributes.identifier).toBe('BRA-11')
+    expect(create.attributes.kind).toBe(TT_ISSUE)
+    expect(create.space).toBe(core.space.DerivedTx)
+  })
+
+  it('skips when autoCreate absent', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      rules: [rule({ forwardMap: { [S.inProgress]: S.inProgress } })]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('skips when newStatus not in triggerStatuses', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      rules: [autoRule({ autoCreate: { triggerStatuses: [S.done], componentMap: {}, inherit: [] } })]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('skips when forwardMap has no entry for newStatus', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      rules: [
+        autoRule({
+          forwardMap: { [S.review]: S.done },
+          autoCreate: { triggerStatuses: [S.inProgress], componentMap: {}, inherit: [] }
+        })
+      ]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('refuses when forwardMap owns prototype-chain keys only', async () => {
+    const malicious: any = Object.create({ [S.inProgress]: S.inProgress })
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      rules: [autoRule({ forwardMap: malicious })]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('skips when componentMap maps source component to null (opt-out)', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue({ component: COMP_A_FEATURE })],
+      rules: [
+        autoRule({
+          autoCreate: {
+            triggerStatuses: [S.inProgress],
+            componentMap: { [COMP_A_FEATURE]: null },
+            inherit: []
+          }
+        })
+      ]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('uses defaultComponent when componentMap misses', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue({ component: COMP_A_FEATURE })],
+      rules: [
+        autoRule({
+          autoCreate: {
+            triggerStatuses: [S.inProgress],
+            componentMap: {},
+            defaultComponent: COMP_B_DEFAULT,
+            inherit: []
+          }
+        })
+      ]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(1)
+    expect(unwrapAutoApplyIf(emitted[0]).create.attributes.component).toBe(COMP_B_DEFAULT)
+  })
+
+  it('honors componentMap entry over defaultComponent', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue({ component: COMP_A_FEATURE })],
+      rules: [
+        autoRule({
+          autoCreate: {
+            triggerStatuses: [S.inProgress],
+            componentMap: { [COMP_A_FEATURE]: COMP_B_FEATURE },
+            defaultComponent: COMP_B_DEFAULT,
+            inherit: []
+          }
+        })
+      ]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(1)
+    expect(unwrapAutoApplyIf(emitted[0]).create.attributes.component).toBe(COMP_B_FEATURE)
+  })
+
+  it('refuses when linked project is archived', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      projects: [project({ type: PROJ_TYPE_B, identifier: 'BRA', sequence: 10, archived: true })],
+      rules: [autoRule()]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('refuses when linked project is restricted', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      projects: [project({ type: PROJ_TYPE_B, identifier: 'BRA', sequence: 10, restricted: true })],
+      rules: [autoRule()]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('refuses when actor role is below User', async () => {
+    const SOC_GUEST = 'social:guest'
+    const ACC_GUEST = 'acc-guest' as AccountUuid
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      rules: [autoRule()]
+    })
+    control.ctx.contextData.socialStringsToUsers.set(SOC_GUEST, {
+      accontUuid: ACC_GUEST,
+      role: AccountRole.Guest
+    })
+    const emitted = await rawEmit(
+      [updateTx(S.inProgress, { objectId: 'issue:a-source', modifiedBy: SOC_GUEST })],
+      control
+    )
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('allows system account', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      rules: [autoRule()]
+    })
+    const emitted = await rawEmit(
+      [updateTx(S.inProgress, { objectId: 'issue:a-source', modifiedBy: core.account.System })],
+      control
+    )
+    expect(emitted).toHaveLength(1)
+  })
+
+  it('skips when target TaskType is missing', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      projectTypes: [{ _id: PROJ_TYPE_B, _class: task.class.ProjectType, tasks: [] }],
+      rules: [autoRule()]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('skips when target TaskType statuses do not include the target status', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      taskTypes: [
+        {
+          _id: TT_ISSUE,
+          _class: task.class.TaskType,
+          descriptor: TT_DESC_ISSUE,
+          statuses: [S.backlog, S.todo]
+        }
+      ],
+      rules: [autoRule()]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('skips when sequence allocation returns nothing', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      rules: [autoRule()],
+      applyImpl: async () => []
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('skips when sequence allocation throws', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      rules: [autoRule()],
+      applyImpl: async () => {
+        throw new Error('storage unavailable')
+      }
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('inherits title, priority, dueDate when configured', async () => {
+    const control = makeAutoControl({
+      issues: [
+        sourceIssue({
+          title: 'Mirror me',
+          priority: IssuePriority.Urgent,
+          dueDate: 20260101
+        })
+      ],
+      rules: [
+        autoRule({
+          autoCreate: {
+            triggerStatuses: [S.inProgress],
+            componentMap: {},
+            inherit: ['title', 'priority', 'dueDate']
+          }
+        })
+      ]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(1)
+    const create = unwrapAutoApplyIf(emitted[0]).create
+    expect(create.attributes.title).toBe('Mirror me')
+    expect(create.attributes.priority).toBe(IssuePriority.Urgent)
+    expect(create.attributes.dueDate).toBe(20260101)
+  })
+
+  it('skips milestone inherit when ref is not in target project', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue({ milestone: MILESTONE_A })],
+      milestones: [{ _id: MILESTONE_A, _class: tracker.class.Milestone, space: PROJ_A }],
+      rules: [
+        autoRule({
+          autoCreate: { triggerStatuses: [S.inProgress], componentMap: {}, inherit: ['milestone'] }
+        })
+      ]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(1)
+    const create = unwrapAutoApplyIf(emitted[0]).create
+    expect(create.attributes.milestone).toBe(null)
+    expect(control.ctx.warn).toHaveBeenCalledWith(
+      expect.stringContaining('skipped milestone inherit'),
+      expect.any(Object)
+    )
+  })
+
+  it('skips assignee inherit when employee is inactive', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue({ assignee: PERSON_INACTIVE })],
+      employees: [{ _id: PERSON_INACTIVE, _class: contact.mixin.Employee, active: false }],
+      rules: [
+        autoRule({
+          autoCreate: { triggerStatuses: [S.inProgress], componentMap: {}, inherit: ['assignee'] }
+        })
+      ]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(1)
+    const create = unwrapAutoApplyIf(emitted[0]).create
+    expect(create.attributes.assignee).toBe(null)
+    expect(control.ctx.warn).toHaveBeenCalledWith(
+      expect.stringContaining('skipped assignee inherit'),
+      expect.any(Object)
+    )
+  })
+
+  it('refuses parentIssue auto-create when source already has a parent', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue({ attachedTo: 'issue:existing-parent' })],
+      rules: [autoRule({ linkKind: 'parentIssue' })]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(0)
+  })
+
+  it('parentIssue linkKind emits create + source update', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue({ attachedTo: tracker.ids.NoParent })],
+      rules: [autoRule({ linkKind: 'parentIssue' })]
+    })
+    const emitted = await rawEmit([updateTx(S.inProgress, { objectId: 'issue:a-source' })], control)
+    expect(emitted).toHaveLength(1)
+    const { create, update, apply } = unwrapAutoApplyIf(emitted[0])
+    expect(create).toBeDefined()
+    expect(update).toBeDefined()
+    expect(create.attributes.attachedTo).toBe(tracker.ids.NoParent)
+    expect(update.objectId).toBe('issue:a-source')
+    expect(update.operations.attachedTo).toBe(create.objectId)
+    expect(update.operations.parents[0]).toMatchObject({ parentId: create.objectId, space: PROJ_B })
+    // notMatch for parentIssue is "source.attachedTo has been reassigned".
+    expect(apply.notMatch[0].query).toMatchObject({ _id: 'issue:a-source' })
+  })
+
+  it('suppresses duplicate auto-create for same (source, rule) in one request', async () => {
+    const control = makeAutoControl({
+      issues: [sourceIssue()],
+      rules: [autoRule()]
+    })
+    const emitted = await rawEmit(
+      [
+        updateTx(S.inProgress, { objectId: 'issue:a-source', modifiedOn: 1001 }),
+        updateTx(S.inProgress, { objectId: 'issue:a-source', modifiedOn: 1002 })
+      ],
+      control
+    )
+    expect(emitted).toHaveLength(1)
   })
 })

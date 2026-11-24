@@ -142,13 +142,44 @@ The trigger body:
      = 'subIssues'`, and `space = rule.linkedProject`.
    - `parentIssue`: this issue's own `attachedTo`, scoped to
      `rule.linkedProject`.
-5. If no counterpart exists AND the new status is in `autoCreate.triggerStatuses`,
-   the v1 trigger logs an info line and does nothing. Emitting a
-   `TxCreateDoc<Issue>` here (sequence allocation, rank, parent/sub-issue
-   count backfill) is deferred to a dedicated follow-up PR so its creation
-   path gets its own review surface. The design still carries the auto-create
-   shape (`triggerStatuses`, `componentMap`, `defaultComponent`, `inherit`)
-   so no schema change is needed when that PR lands.
+5. If no counterpart exists AND the new status is in
+   `autoCreate.triggerStatuses`, emit a `TxCreateDoc<Issue>` in
+   `rule.linkedProject`. The create path (implemented in
+   `tryEmitAutoCreate`) fails closed on every precondition:
+   - `forwardMap[newStatus]` must resolve (prototype-pollution-safe via
+     `hasOwnProperty`); the auto-create goes through the same status map
+     as the mirror update path. An unmapped source status drops the
+     create.
+   - `isAuthorizedForTarget` must accept the actor for `linkedProject`.
+     Target-level deny conditions (missing target, archived, restricted)
+     apply first and refuse every caller including the system account
+     and workspace admins.
+   - The target project's `ProjectType.tasks` must resolve to at least
+     one `TaskType` whose `descriptor` is `tracker.descriptors.Issue`
+     and whose `statuses` array is non-empty; the resolved target
+     status must live in that status list.
+   - `componentMap[source.component]` may be `null` to opt out of
+     auto-create for issues with that source component.
+   - Sequence allocation runs last via `control.apply(ctx, [TxUpdateDoc
+     with $inc: { sequence: 1 }], true)`; a failed allocation drops the
+     create without burning a sequence number.
+   - The create is wrapped in a `TxApplyIf` whose `notMatch` predicate
+     refuses the apply when a counterpart has appeared since the trigger
+     read. Scope is `workflow-rules.auto-create:${source._id}:${rule._id}`.
+   - `rule.autoCreate.inherit` is a closed set (`title`, `description`,
+     `priority`, `dueDate`, `milestone`, `assignee`). Each field is
+     validated per invocation. Per-project refs (`milestone`) are
+     checked against the target project; ref-to-contact (`assignee`) is
+     checked against `contact.mixin.Employee` with `active: true`. A
+     missing ref is dropped with a warn rather than copied.
+   - `rule.linkKind === 'parentIssue'` auto-create emits a second
+     `TxUpdateDoc<Issue>` on the source, inside the same `TxApplyIf`,
+     to attach the source as a sub-issue of the new counterpart. It
+     refuses when the source already has a parent (would overwrite
+     `attachedTo`).
+   The create tx carries `space = core.space.DerivedTx` so any status
+   update the create seeds hits the one-hop cascade guard and does
+   not re-enter the trigger.
 6. If a counterpart exists, compute the target status via `forwardMap[new
    status]`. If the map has no entry, do nothing (not a failure - it is how
    you say "this status does not move the mirror").
