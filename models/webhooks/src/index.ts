@@ -40,6 +40,7 @@ import webhooks, {
 
 export { webhooksId } from '@hcengineering/webhooks'
 export { default } from '@hcengineering/webhooks'
+export { webhooksOperation } from './migration'
 
 /** @public */
 export const DOMAIN_WEBHOOKS = 'webhooks' as Domain
@@ -289,16 +290,29 @@ export function createModel (builder: Builder): void {
   //  - The webhooks service's system token bypasses the filter
   //    via `isSystem(account, ctx)` short-circuit
   //
-  // Members are seeded empty here. In PR 1 the Settings UI is a
-  // placeholder and no subscriptions exist, so no reads need to
-  // succeed yet. PR 2 ships:
-  //  (a) a server-side trigger on `TxUpdateDoc<Account>` that syncs
-  //      workspace Owners into this space's members list on role
-  //      changes
-  //  (b) a migration that seeds existing workspace Owners at
-  //      install time
-  //  (c) the management RPC also adds its caller to the members
-  //      list as a side effect of creating a subscription
+  // Members are seeded empty here. Membership is maintained by
+  // four complementary paths (see `src/migration.ts` for the full
+  // flow write-up):
+  //  (a) **Migration** (this PR): `webhooksOperation` seeds every
+  //      current workspace Owner into `members` on fresh install
+  //      and on existing workspaces, using
+  //      `client.accountClient.getWorkspaceMembers()`. Idempotent;
+  //      non-Owner members are preserved.
+  //  (b) **Self-heal in `WebhookPermissionsMiddleware`** (next PR):
+  //      the first authenticated Owner Tx that reaches the webhook
+  //      pipeline will add the caller to `members` if they are not
+  //      already present. This covers "promote to Owner AFTER the
+  //      migration ran" because `Account` is a UUID identity owned
+  //      by the accounts service, NOT a workspace Doc, so no
+  //      in-workspace Tx is emitted on role changes and a
+  //      `TxUpdateDoc<Account>` trigger cannot exist.
+  //  (c) **Management RPC caller-add** (future PR): on first
+  //      subscription create, the service-authored RPC adds the
+  //      caller to `members` as a side effect of the service Tx.
+  //  (d) **Background reconciliation** (future delivery service
+  //      PR): a periodic sweep inside the webhooks pod removes
+  //      AccountUuids whose role is no longer Owner so a demoted
+  //      Owner stops receiving the space's broadcast.
   builder.createDoc(
     core.class.Space,
     core.space.Model,

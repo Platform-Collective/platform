@@ -50,7 +50,7 @@ type FindAllFn = <T extends Doc>(
 ) => Promise<FindResult<T>>
 
 function emptyResult<T extends Doc> (): FindResult<T> {
-  return Object.assign([] as T[], { total: -1 }) as FindResult<T>
+  return Object.assign([] as T[], { total: -1 })
 }
 
 function makeAccount (role: AccountRole, uuid?: AccountUuid): Account {
@@ -109,7 +109,7 @@ function makeMiddleware (findAll?: FindAllFn): {
       txCalled = true
       return {}
     },
-    findAll: async <T extends Doc>(
+    findAll: async <T extends Doc> (
       _ctx: MeasureContext,
       _class: Ref<Class<T>>,
       _query: DocumentQuery<T>,
@@ -121,13 +121,13 @@ function makeMiddleware (findAll?: FindAllFn): {
   }
   const mw = new (WebhookPermissionsMiddleware as any)(context, next)
   if (findAll !== undefined) {
-    ;(mw as any).provideFindAll = findAll
+    mw.provideFindAll = findAll
   }
   return { mw, nextCalled: () => txCalled, nextFindCalled: () => findCalled }
 }
 
 const WEBHOOKS_SPACE = webhooks.space.Webhooks
-const SUB_ID = (): Ref<Doc> => generateId() as unknown as Ref<Doc>
+const SUB_ID = (): Ref<Doc> => generateId()
 
 function makeFactory (caller: Account): TxFactory {
   return new TxFactory(caller.primarySocialId)
@@ -242,7 +242,7 @@ describe('WebhookPermissionsMiddleware (rev 6)', () => {
         webhooks.class.WebhookSubscription,
         WEBHOOKS_SPACE,
         webhooks.class.WebhookSubscription,
-        {} as any
+        {}
       )
       await expect(mw.tx(makeCtx(owner), [tx])).rejects.toThrow()
     })
@@ -292,7 +292,11 @@ describe('WebhookPermissionsMiddleware (rev 6)', () => {
       const { mw } = makeMiddleware()
       const owner = makeAccount(AccountRole.Owner)
       const factory = makeFactory(owner)
-      const tx = factory.createTxCreateDoc(cls as any, WEBHOOKS_SPACE, {} as any)
+      // Fixture body is irrelevant to the refusal path: these classes
+      // are service-only, so a client Tx is refused before any field
+      // shape is consulted. Casting around the strict `Data<T>` type
+      // keeps the test a pure refusal test (platform-contributions-rules.md #7).
+      const tx = factory.createTxCreateDoc(cls, WEBHOOKS_SPACE, {} as any)
       await expect(mw.tx(makeCtx(owner), [tx])).rejects.toThrow()
     })
   })
@@ -339,7 +343,7 @@ describe('WebhookPermissionsMiddleware (rev 6)', () => {
         default:
           ops[field] = 'spoof'
       }
-      const tx = factory.createTxUpdateDoc(webhooks.class.WebhookSubscription, WEBHOOKS_SPACE, SUB_ID(), ops as any)
+      const tx = factory.createTxUpdateDoc(webhooks.class.WebhookSubscription, WEBHOOKS_SPACE, SUB_ID(), ops)
       await expect(mw.tx(makeCtx(owner), [tx])).rejects.toThrow()
     })
 
@@ -379,7 +383,7 @@ describe('WebhookPermissionsMiddleware (rev 6)', () => {
       const factory = makeFactory(owner)
       const tx = factory.createTxUpdateDoc(webhooks.class.WebhookSubscription, WEBHOOKS_SPACE, SUB_ID(), {
         $unset: { owner: '' }
-      } as any)
+      })
       await expect(mw.tx(makeCtx(owner), [tx])).rejects.toThrow()
     })
 
@@ -419,7 +423,7 @@ describe('WebhookPermissionsMiddleware (rev 6)', () => {
       const factory = makeFactory(owner)
       const tx = factory.createTxUpdateDoc(webhooks.class.WebhookSubscription, WEBHOOKS_SPACE, SUB_ID(), {
         $push: { secretsMeta: { name: 'x', lastRotatedAt: 0 } }
-      } as any)
+      })
       await expect(mw.tx(makeCtx(owner), [tx])).rejects.toThrow()
     })
 
@@ -434,7 +438,7 @@ describe('WebhookPermissionsMiddleware (rev 6)', () => {
             scope: { kind: 'allSpaces' }
           }
         }
-      } as any)
+      })
       await expect(mw.tx(makeCtx(owner), [tx])).rejects.toThrow()
     })
 
@@ -521,7 +525,7 @@ describe('WebhookPermissionsMiddleware (rev 6)', () => {
       const owner = makeAccount(AccountRole.Owner)
       const { mw } = makeMiddleware()
       const factory = makeFactory(owner)
-      const tx = factory.createTxUpdateDoc(webhooks.class.WebhookSubscription, WEBHOOKS_SPACE, SUB_ID(), {} as any)
+      const tx = factory.createTxUpdateDoc(webhooks.class.WebhookSubscription, WEBHOOKS_SPACE, SUB_ID(), {})
       await expect(mw.tx(makeCtx(owner), [tx])).rejects.toThrow()
     })
 
@@ -557,14 +561,7 @@ describe('WebhookPermissionsMiddleware (rev 6)', () => {
         owner: user.uuid,
         enabled: true
       } as any) as TxCUD<Doc>
-      const applyIf = factory.createTxApplyIf(
-        core.space.Workspace,
-        'test-scope',
-        [],
-        [],
-        [innerCreate],
-        'test-measure'
-      )
+      const applyIf = factory.createTxApplyIf(core.space.Workspace, 'test-scope', [], [], [innerCreate], 'test-measure')
       await expect(mw.tx(makeCtx(user), [applyIf as Tx])).rejects.toThrow()
     })
   })
@@ -612,7 +609,7 @@ describe('WebhookPermissionsMiddleware (rev 6)', () => {
         return emptyResult()
       }
       const { mw } = makeMiddleware(findAll)
-      const result = await mw.findAll(makeCtx(owner), cls as any, {})
+      const result = await mw.findAll(makeCtx(owner), cls, {})
       expect(result.length).toBe(0)
       expect(delegated).toBe(false)
     })
@@ -630,7 +627,7 @@ describe('WebhookPermissionsMiddleware (rev 6)', () => {
       const { mw } = makeMiddleware(findAll)
       const result = await mw.findAll(makeCtx(owner), core.class.Tx, {
         objectClass: webhooks.class.WebhookSubscription
-      } as any)
+      })
       expect(result.length).toBe(0)
       expect(delegated).toBe(false)
     })
@@ -645,7 +642,7 @@ describe('WebhookPermissionsMiddleware (rev 6)', () => {
       const { mw } = makeMiddleware(findAll)
       const result = await mw.findAll(makeCtx(owner), core.class.Tx, {
         objectClass: { $in: [webhooks.class.WebhookSecret] }
-      } as any)
+      })
       expect(result.length).toBe(0)
       expect(delegated).toBe(false)
     })
@@ -660,7 +657,7 @@ describe('WebhookPermissionsMiddleware (rev 6)', () => {
       const { mw } = makeMiddleware(findAll)
       await mw.findAll(makeCtx(system, 'webhooks'), core.class.Tx, {
         objectClass: webhooks.class.WebhookSubscription
-      } as any)
+      })
       expect(delegated).toBe(true)
     })
 

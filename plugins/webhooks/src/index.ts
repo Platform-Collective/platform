@@ -6,18 +6,7 @@
 // you may not use this file except in compliance with the License. You may
 // obtain a copy of the License at https://www.eclipse.org/legal/epl-2.0
 
-import type {
-  AccountUuid,
-  Class,
-  Doc,
-  Mixin,
-  PersonId,
-  Ref,
-  Space,
-  Timestamp,
-  Tx,
-  TxCUD
-} from '@hcengineering/core'
+import type { AccountUuid, Class, Doc, Mixin, PersonId, Ref, Space, Timestamp, Tx, TxCUD } from '@hcengineering/core'
 import type { Asset, IntlString, Plugin, Resource } from '@hcengineering/platform'
 import { plugin } from '@hcengineering/platform'
 import type { AnyComponent } from '@hcengineering/ui'
@@ -144,10 +133,7 @@ export interface WebhookMatchContext {
 }
 
 /** @public */
-export type WebhookVariablesFn = (
-  ctx: WebhookRenderContext,
-  sourceDoc: Doc
-) => Promise<Record<string, unknown>>
+export type WebhookVariablesFn = (ctx: WebhookRenderContext, sourceDoc: Doc) => Promise<Record<string, unknown>>
 
 /** @public */
 export type WebhookRenderBodyFn = (
@@ -192,9 +178,7 @@ export interface WebhookTrigger {
   // source is registered at delivery time, the trigger is treated
   // as if disabled and audited as `skipped`.
   eventKind: Ref<WebhookEventSource>
-  scope:
-  | { kind: 'space', space: Ref<Space> }
-  | { kind: 'allSpaces' }
+  scope: { kind: 'space', space: Ref<Space> } | { kind: 'allSpaces' }
   // Narrow the source class to this subclass or mixin. Hierarchy
   // and mixins are honoured by the match step. For a `WebhookEventSource`
   // without `sourceClass` (generic CUD), the save step validates

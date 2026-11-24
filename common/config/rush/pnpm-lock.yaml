@@ -13801,7 +13801,7 @@ importers:
         specifier: workspace:^0.7.26
         version: link:../../foundations/core/packages/core
       '@hcengineering/model':
-        specifier: workspace:^0.7.0
+        specifier: workspace:^0.7.17
         version: link:../../foundations/core/packages/model
       '@hcengineering/model-core':
         specifier: workspace:^0.7.0
@@ -13825,6 +13825,9 @@ importers:
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.6
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.67.0
         version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
@@ -29900,6 +29903,9 @@ importers:
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.6
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.67.0
         version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
@@ -35846,7 +35852,7 @@ importers:
         specifier: workspace:^0.7.20
         version: link:../../foundations/core/packages/platform
       '@hcengineering/server-core':
-        specifier: workspace:^0.7.0
+        specifier: workspace:^0.7.19
         version: link:../../foundations/server/packages/core
       '@hcengineering/webhooks':
         specifier: workspace:^0.7.0
@@ -40644,6 +40650,9 @@ importers:
       '@hcengineering/platform':
         specifier: workspace:^0.7.20
         version: link:../../../foundations/core/packages/platform
+      '@hcengineering/safe-fetch':
+        specifier: workspace:^0.7.0
+        version: link:../../../packages/safe-fetch
       '@hcengineering/server-core':
         specifier: workspace:^0.7.19
         version: link:../../../foundations/server/packages/core
@@ -61773,6 +61782,14 @@ snapshots:
     optionalDependencies:
       postcss: 8.5.28
 
+  minimizer-webpack-plugin@5.13.0(webpack@5.111.1):
+    dependencies:
+      '@jridgewell/trace-mapping': 0.3.31
+      jest-worker: 27.5.1
+      schema-utils: 4.5.0
+      terser: 5.51.2
+      webpack: 5.111.1
+
   minio@8.0.7:
     dependencies:
       async: 3.2.6
@@ -61965,7 +61982,7 @@ snapshots:
   node-loader@2.0.0(webpack@5.111.1):
     dependencies:
       loader-utils: 2.0.4
-      webpack: 5.111.1(esbuild@0.25.12)(postcss@8.5.28)(webpack-cli@5.1.4)
+      webpack: 5.111.1
 
   node-localstorage@2.2.1:
     dependencies:
@@ -64612,6 +64629,43 @@ snapshots:
       source-map: 0.6.1
 
   webpack-sources@3.6.0: {}
+
+  webpack@5.111.1:
+    dependencies:
+      '@types/estree': 1.0.8
+      '@types/json-schema': 7.0.15
+      '@webassemblyjs/ast': 1.14.1
+      '@webassemblyjs/wasm-edit': 1.14.1
+      '@webassemblyjs/wasm-parser': 1.14.1
+      browserslist: 4.29.5
+      chrome-trace-event: 1.0.4
+      enhanced-resolve: 5.26.0
+      es-module-lexer: 2.3.2
+      events: 3.3.0
+      graceful-fs: 4.2.11
+      mime-db: 1.54.0
+      minimizer-webpack-plugin: 5.13.0(webpack@5.111.1)
+      schema-utils: 4.5.0
+      tapable: 2.3.0
+      watchpack: 2.5.2
+      webpack-sources: 3.6.0
+    transitivePeerDependencies:
+      - '@minify-html/node'
+      - '@napi-rs/image'
+      - '@swc/core'
+      - '@swc/css'
+      - '@swc/html'
+      - clean-css
+      - cssnano
+      - csso
+      - esbuild
+      - html-minifier-terser
+      - imagemin
+      - lightningcss
+      - postcss
+      - sharp
+      - svgo
+      - uglify-js
 
   webpack@5.111.1(esbuild@0.25.12)(postcss@8.5.28)(webpack-cli@5.1.4):
     dependencies:

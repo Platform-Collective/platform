@@ -61,6 +61,7 @@ import { timeOperation } from '@hcengineering/model-time'
 import { trackerOperation } from '@hcengineering/model-tracker'
 import { trainingOperation } from '@hcengineering/model-training'
 import { viewOperation } from '@hcengineering/model-view'
+import { webhooksOperation } from '@hcengineering/model-webhooks'
 import { workbenchOperation } from '@hcengineering/model-workbench'
 
 export const migrateOperations: [string, MigrateOperation][] = [
@@ -112,5 +113,10 @@ export const migrateOperations: [string, MigrateOperation][] = [
   [inboxId, inboxOperation],
   [processId, processOperation],
   [communicationId, communicationOperation],
-  [recorderId, recorderOperation]
+  [recorderId, recorderOperation],
+  // Must come AFTER any plugin that seeds workspace Owners so that
+  // `accountClient.getWorkspaceMembers()` returns a complete set.
+  // The core/contact migrations above assign roles; the webhooks
+  // seed reads those roles.
+  ['webhooks', webhooksOperation]
 ]

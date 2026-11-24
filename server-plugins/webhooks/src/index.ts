@@ -21,7 +21,6 @@ import core, {
   type MeasureContext,
   type Ref,
   type SessionData,
-  type Space,
   type Tx,
   type TxApplyIf,
   type TxCreateDoc,
@@ -184,7 +183,7 @@ export class WebhookPermissionsMiddleware extends BaseMiddleware implements Midd
     return await this.provideTx(ctx, txes)
   }
 
-  override async findAll<T extends Doc>(
+  override async findAll<T extends Doc> (
     ctx: MeasureContext<SessionData>,
     _class: Ref<Class<T>>,
     query: DocumentQuery<T>,
@@ -195,7 +194,7 @@ export class WebhookPermissionsMiddleware extends BaseMiddleware implements Midd
         return this.emptyResult<T>(options)
       }
     } else if (this.context.hierarchy.isDerived(_class, core.class.Tx)) {
-      if (this.queryTargetsWebhookClass(query as DocumentQuery<Doc>) && !this.isService(ctx)) {
+      if (this.queryTargetsWebhookClass(query) && !this.isService(ctx)) {
         return this.emptyResult<T>(options)
       }
     }
@@ -245,15 +244,11 @@ export class WebhookPermissionsMiddleware extends BaseMiddleware implements Midd
     return false
   }
 
-  private emptyResult<T extends Doc>(options?: FindOptions<T>): FindResult<T> {
-    return Object.assign([] as T[], { total: options?.total === true ? 0 : -1 }) as FindResult<T>
+  private emptyResult<T extends Doc> (options?: FindOptions<T>): FindResult<T> {
+    return Object.assign([] as T[], { total: options?.total === true ? 0 : -1 })
   }
 
-  private async processTx (
-    ctx: MeasureContext<SessionData>,
-    tx: Tx,
-    account: Account
-  ): Promise<void> {
+  private async processTx (ctx: MeasureContext<SessionData>, tx: Tx, account: Account): Promise<void> {
     if (tx._class === core.class.TxApplyIf) {
       const applyTx = tx as TxApplyIf
       for (const inner of applyTx.txes) {
@@ -294,19 +289,14 @@ export class WebhookPermissionsMiddleware extends BaseMiddleware implements Midd
     }
     if (cud._class === core.class.TxUpdateDoc) {
       await this.processUpdate(ctx, cud as TxUpdateDoc<Doc>, account)
-      return
     }
     // TxRemoveDoc: Owner role is enough. Removal is containment.
   }
 
-  private async processCreate (
-    ctx: MeasureContext<SessionData>,
-    tx: TxCreateDoc<Doc>,
-    account: Account
-  ): Promise<void> {
+  private async processCreate (ctx: MeasureContext<SessionData>, tx: TxCreateDoc<Doc>, account: Account): Promise<void> {
     // Space pin: subscription must be created in the dedicated
     // private webhooks space. Any other objectSpace is refused.
-    if (tx.objectSpace !== (webhooks.space.Webhooks as Ref<Space>)) {
+    if (tx.objectSpace !== webhooks.space.Webhooks) {
       throw forbidden()
     }
 
@@ -326,11 +316,7 @@ export class WebhookPermissionsMiddleware extends BaseMiddleware implements Midd
     }
   }
 
-  private async processUpdate (
-    ctx: MeasureContext<SessionData>,
-    tx: TxUpdateDoc<Doc>,
-    account: Account
-  ): Promise<void> {
+  private async processUpdate (ctx: MeasureContext<SessionData>, tx: TxUpdateDoc<Doc>, account: Account): Promise<void> {
     const ops = tx.operations as DocumentUpdate<Doc> & Record<string, unknown>
 
     // Collect the set of paths this update touches, in every form the
@@ -344,7 +330,7 @@ export class WebhookPermissionsMiddleware extends BaseMiddleware implements Midd
       if (key.startsWith('$')) {
         if (!KNOWN_OPERATORS.has(key)) throw forbidden()
         if (!isPlainObject(value)) throw forbidden()
-        const payload = value as Record<string, unknown>
+        const payload = value
         for (const payloadKey of Object.keys(payload)) {
           this.registerPath(touched, payloadKey)
           if (key === '$rename') {
@@ -391,7 +377,7 @@ function isPlainObject (v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v)
 }
 
-function forbidden (): PlatformError {
+function forbidden (): PlatformError<Record<string, never>> {
   return new PlatformError(new Status(Severity.ERROR, platform.status.Forbidden, {}))
 }
 
